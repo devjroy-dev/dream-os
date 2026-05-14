@@ -268,6 +268,11 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         if (input.event_date) {
           const parsed = new Date(input.event_date);
           if (!isNaN(parsed.getTime())) {
+            const today = new Date();
+            if (parsed < today) {
+              parsed.setFullYear(parsed.getFullYear() + 1);
+              if (parsed < today) parsed.setFullYear(parsed.getFullYear() + 1);
+            }
             event_date = parsed.toISOString().split('T')[0];
           }
         }
