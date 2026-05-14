@@ -6,7 +6,7 @@
 WhatsApp-first chief of staff for wedding vendors.
 Vendor runs their business by texting a number.
 Agent remembers everything, handles routine, escalates judgment calls.
-Admin layer lets Dev/Swati manage the founding cohort.
+Admin layer lets Dev/Swati manage the founding cohort of 50 vendors.
 Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 
 ## What's shipped
@@ -27,18 +27,28 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - Unknown numbers: invitation-only dead end
 - Admin auth: single ADMIN_PASSWORD env var
 - Monorepo: backend now, web/ and discover/ added in Sessions 9+
-- Session 8.1: smart model routing Haiku→Sonnet for complex tasks (between Sessions 7 and 8)
+- Session 8.1: smart model routing Haiku→Sonnet for complex tasks
+- Routing: one shared +91 number + TDW codes (not one number per vendor)
+- TDW code format: TDW-[HANDLE] e.g. TDW-RAHULCLICKS or TDW-DEV-DEL
+- Handle source: vendor's Instagram handle if they have one, else auto-generated (FIRSTNAME-CITY → FIRSTNAME-CATEGORY → FIRSTNAME-PHONE4)
+- Instagram question in onboarding: "Are you on Instagram? If yes, share your handle." — no/skip/later/nope/anything without @ treated as skip
+- Email: collected naturally whenever vendor mentions it in conversation — no dedicated onboarding step
+- Routing fallback: if couple's first message doesn't start with TDW-, system replies asking for their vendor's TDW code
+- Onboarding completion message (exact, locked): "Perfect — you're all set. Here's your TDW link: wa.me/91XXXXXXXXX?text=TDW-[HANDLE] — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant."
 
-## Session 5 — Couple-vendor thread routing
-**Goal:** When a couple messages a vendor's number, it routes to the vendor as a lead thread.
+## Session 5 — Couple routing + TDW handles
+**Goal:** Couples can reach vendors through the dream-os number. Vendors get their TDW link on day one.
 
 What ships:
-- Inbound from unknown number → create couple + conversation → notify vendor on WhatsApp
-- Vendor gets: "New enquiry from Preethi (March 22, Hyderabad). Want me to draft a reply?"
-- Agent drafts reply vendor can copy-paste to the couple
-- pending_actions table comes into play for draft approval flow
-- wa.me link updated to +91 number (blocked until +91 arrives)
-- Lead name lookup — vendor can say "mark Preethi as booked" without UUID
+- Migration 0005: vendors.routing_handle (UNIQUE), vendors.instagram_handle, users.email
+- Onboarding updated: 5 steps — category, city, rate, instagram handle, completion with TDW link
+- Onboarding states: new → asked_category → asked_city → asked_rate → asked_instagram → complete
+- Auto-handle generation when vendor skips Instagram: FIRSTNAME-CITY → FIRSTNAME-CATEGORY → FIRSTNAME-PHONE4
+- Completion message sends TDW link immediately (exact wording locked above)
+- Couple routing: unknown number messages dream-os → first word checked against routing_handle → vendor identified → couple thread created → vendor notified on WhatsApp
+- Routing fallback message: "Hi! To reach a TDW vendor, send their TDW code — you'll find it in their Instagram bio or the link they shared."
+- Admin: vendor detail shows TDW handle + copyable wa.me link
+- wa.me link updated to +91 number once it arrives (currently blocked on Twilio approval)
 
 Estimated time: 90 minutes
 Blocked on: +91 number from Twilio
@@ -73,7 +83,7 @@ What ships:
 - Router in engine.js: sets MODEL based on classifier output
 - Sonnet for: complex extraction, nuanced drafting, financial reasoning
 - Haiku for: simple notes, greetings, status questions
-- Cost tracking: model_used, input_tokens, output_tokens, cost_usd columns on messages
+- Cost tracking: model_used, input_tokens, output_tokens, cost_usd on messages table
 - Admin: AI cost this month on vendor detail page
 
 Estimated time: 45-60 minutes
@@ -83,16 +93,16 @@ Estimated time: 45-60 minutes
 
 What ships:
 - +91 number live — update TWILIO_WHATSAPP_NUMBER env var
-- wa.me link updated from sandbox to +91 number
+- wa.me links updated from sandbox to +91 number
 - Vendor list: search + filter by status
 - Bulk invite: CSV upload of name + phone
 - Manual onboarding_state override in admin
-- Lead name-based state updates (no UUID required)
+- Lead name-based state updates (no UUID required from vendor)
 
 Estimated time: 60 minutes
 
-## Session 9+ — thedreamwedding.in Discover
-**Goal:** Bride-side curated marketplace.
+## Session 9 — thedreamwedding.in Discover
+**Goal:** Bride-side curated marketplace. Couples browse vendors, send enquiries.
 
 What ships:
 - discover/ folder added to monorepo
@@ -100,9 +110,22 @@ What ships:
 - Next.js site on Vercel
 - Vendor profile pages (public, read-only)
 - Bride can browse, no auth required
-- Enquiry from Discover → vendor WhatsApp thread automatically
+- Enquiry from Discover → vendor WhatsApp thread automatically (no TDW code needed — website handles routing)
 
 Estimated time: 2-3 sessions
+
+## Session 10 — Instagram DM integration
+**Goal:** Vendor connects Instagram Business account. DMs auto-route to their WhatsApp thread.
+
+What ships:
+- Migration: vendor_integrations table (vendor_id, platform, access_token, instagram_user_id)
+- OAuth flow: vendor connects Instagram Business account from admin panel
+- Meta webhook: /webhook/instagram receives new DMs
+- Auto lead creation from Instagram DMs — no manual forwarding
+- Vendor WhatsApp notification: "New Instagram DM from @username: [message]. Lead created."
+- Requires: Meta App with Instagram Messaging API approval (1-2 weeks)
+
+Estimated time: 2 sessions
 
 ## Session 11-12 — thedreamai.in vendor dashboard
 **Goal:** Web dashboard as read layer over WhatsApp-captured data.
@@ -112,12 +135,13 @@ What ships:
 - Leads, money, calendar as read-only views
 - Built on existing dreamai design language (Frost palette, Cormorant + DM Sans)
 - Re-pointed at dream-os Supabase schema
+- Vendor can see everything the agent has captured — without needing to ask on WhatsApp
 
 ## Open questions
 1. +91 number — applied, arriving soon. Session 5 blocked until live.
 2. Founding cohort pricing — free forever or free for X months?
 3. Couple phone collection on Discover enquiry
-4. thedreamwedding.in domain — where pointing currently?
+4. thedreamwedding.in domain — currently pointing where?
 5. Swati's role in Discover editorial curation
 
 ## Deliberately out of scope
@@ -126,3 +150,4 @@ What ships:
 - RLS (after bride-side public access needed)
 - Multi-vertical (weddings first)
 - Email/SMS fallback (WhatsApp only)
+- One number per vendor (TDW code system solves routing cleanly)
