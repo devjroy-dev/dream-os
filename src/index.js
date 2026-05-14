@@ -1,14 +1,15 @@
 // dream-os backend — entry point
-// Session 2: WhatsApp inbound → agentic loop → intelligent reply
+// Session 3: admin layer + agentic loop
 
-const express = require('express');
-const twilio = require('twilio');
-const ws = require('ws');
-const Anthropic = require('@anthropic-ai/sdk').default;
+const express      = require('express');
+const twilio       = require('twilio');
+const ws           = require('ws');
+const cookieParser = require('cookie-parser');
+const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runAgenticTurn } = require('./agent/engine');
+const adminRouter  = require('./admin/router');
 
-// ─── Environment ───────────────────────────────────────────────
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,23 +18,25 @@ const TWILIO_AUTH_TOKEN          = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WHATSAPP_NUMBER     = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
 const ANTHROPIC_API_KEY          = process.env.ANTHROPIC_API_KEY;
 
-// ─── Clients ───────────────────────────────────────────────────
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   realtime: { transport: ws },
 });
 const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+const anthropic    = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser());
 
-// ─── Health check ──────────────────────────────────────────────
+app.locals.supabase = supabase;
+
+app.use('/admin', adminRouter);
+
 app.get('/', (req, res) => {
-  res.json({ status: 'alive', service: 'dream-os', version: '0.2.0' });
+  res.json({ status: 'alive', service: 'dream-os', version: '0.3.0' });
 });
 
-// ─── WhatsApp inbound webhook ──────────────────────────────────
 app.post('/webhook/whatsapp', async (req, res) => {
   try {
     const fromRaw     = req.body.From || '';
@@ -43,7 +46,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     console.log(`[whatsapp:in] ${phone} → ${body}`);
 
-    // 1. Identify or create user
     let user;
     const { data: existingUser } = await supabase
       .from('users').select('*').eq('phone', phone).maybeSingle();
@@ -57,16 +59,16 @@ app.post('/webhook/whatsapp', async (req, res) => {
       user = newUser;
     }
 
-    // 2. Find vendor profile
     const { data: vendor } = await supabase
       .from('vendors').select('*').eq('user_id', user.id).maybeSingle();
 
     if (!vendor) {
-      await sendWhatsApp(phone, "Hi! Dream OS doesn't recognize this number yet. Vendor onboarding coming soon.");
+      await sendWhatsApp(phone,
+        "This number is for invited vendors only. If you'd like to work with us, reach out to hello@thedreamwedding.in."
+      );
       return res.status(200).send('<Response/>');
     }
 
-    // 3. Find or create vendor's self-conversation
     let convo;
     const { data: existingConvo } = await supabase
       .from('conversations').select('*')
@@ -88,7 +90,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
       convo = newConvo;
     }
 
-    // 4. Persist inbound message
     await supabase.from('messages').insert({
       conversation_id: convo.id,
       direction: 'inbound',
@@ -97,9 +98,9 @@ app.post('/webhook/whatsapp', async (req, res) => {
       sent_by: 'vendor',
     });
 
-    // 5. Run the agentic turn
     const result = await runAgenticTurn({
       vendor,
+      user,
       conversation: convo,
       inboundMessage: body,
       supabase,
@@ -108,16 +109,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     console.log(`[agent] reply: "${result.reply.slice(0, 80)}..."  (${result.iterations} iter, ${result.toolCalls.length} tool calls)`);
 
-    // 6. Update conversation timestamp
     await supabase
       .from('conversations')
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', convo.id);
 
-    // 7. Send reply via WhatsApp
     const twilioMsg = await sendWhatsApp(phone, result.reply);
 
-    // 8. Persist outbound message + tool call audit
     await supabase.from('messages').insert({
       conversation_id: convo.id,
       direction: 'outbound',
