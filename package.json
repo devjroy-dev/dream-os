@@ -1,0 +1,19 @@
+{
+  "name": "dream-os-backend",
+  "version": "0.1.0",
+  "description": "WhatsApp-first chief of staff for wedding vendors",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "express": "^4.21.0",
+    "twilio": "^5.3.0"
+  }
+}
