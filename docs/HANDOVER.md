@@ -1,56 +1,59 @@
 # dream-os — Session Handover
 **Last updated:** 2026-05-14
-**Session:** 3
-**Version:** 0.3.0
+**Session:** 4
+**Version:** 0.4.0
 
 ## What shipped this session
 
-### Admin layer (`src/admin/`)
-- Login page with cookie-based session auth (7-day session)
-- Vendor list — shows all vendors with status (Active/Onboarding/Invited) and stats
-- Invite form — name + phone → calls `invite_vendor()` Postgres function → shows wa.me link on success
-- Vendor detail — profile, conversation thread, agent notes
-- Mounted at `/admin` on the existing Railway service
-- Protected by `ADMIN_PASSWORD` env var
+### leads table (migration 0004)
+- New table: leads (vendor_id, name, phone, email, wedding_date, wedding_city, event_types, budget_min, budget_max, source, referrer_name, state, raw_message, notes)
+- States: new → contacted → quoted → booked → lost
+- Realtime enabled
+- Indexed on vendor_id, state, created_at, wedding_date
 
-### Onboarding flow (`src/agent/onboarding.js`)
-- New vendor messages → Swati greeting fires: "Hi [Name] — Swati mentioned a little bit about you..."
-- Four-step flow: greeting → category → city → rate → complete
-- Each step persists to `vendors` table and creates a note
-- On completion, seeds `vendor_state.summary` and `pricing_policy`
-- Unknown numbers (not pre-seeded) get: "This number is for invited vendors only..."
+### New agent tools (src/agent/tools.js)
+- create_lead — extracts structured data from natural language enquiries, creates leads row
+- list_leads — returns pipeline summary when vendor asks
+- update_lead_state — moves lead through lifecycle on vendor signal
 
-### Conversation history (`src/agent/engine.js`)
-- Agent now loads last 10 turns from `messages` table per conversation
-- Sent as clean user/assistant alternating history to Claude
-- Agent maintains conversational context across a full session, not just the current message
+### System prompt (src/agent/systemPrompt.js)
+- Agent now detects enquiries automatically and calls create_lead without being asked
+- Lead vs referrer distinction — referrer_name and lead name are separate fields
+- Hard zero-commentary rule — no opinions, observations, or encouragement
+- "Got it — [details]. [Single question]?" format enforced for lead confirmations
+- Rule 8: never say "[name]'s in" — sounds like a booking confirmation
+- openLeadsCount injected into prompt for pipeline awareness
 
-### System prompt (`src/agent/systemPrompt.js`)
-- Hard 2-3 sentence cap
-- No markdown, no filler phrases
-- Better examples covering common scenarios
-- Now receives `user` param for vendor name
+### Engine (src/agent/engine.js)
+- Post-processing: strips everything after first ? in every reply — model-proof commentary removal
+- openLeadsCount loaded from leads table and passed to system prompt
 
-### Migration 0003
-- Added `vendors.onboarding_state` column
-- Added `invite_vendor(p_phone, p_name)` Postgres function
-- Existing test vendor marked `onboarding_state = complete`
+### Admin (src/admin/views/detail.js + router.js)
+- Leads tab on vendor detail page — shows all leads with name, date, city, budget, state, received time
+- Router fetches leads in parallel with messages and notes
+
+### Fixes via Claude Code
+- respond_to_vendor tool description constrains format directly in tool schema
+- Post-processing in engine.js truncates after first ?
+- Lead/referrer distinction in system prompt
+- Zero-commentary rule hardened across multiple iterations
 
 ## Verified working
-- Admin login at `/admin/login` ✅
-- Vendor list shows Dev as Active ✅
-- Invite form creates vendor row + shows wa.me link ✅
-- Onboarding flow: full 4-step conversation completes correctly ✅
-- Agent remembers context across messages in a session ✅
-- System prompt responses are shorter and more natural ✅
+- Forwarded enquiry → lead created in Supabase automatically ✅
+- Correct extraction: name, date, city, budget, source, referrer ✅
+- Referrer correctly separated from lead name (Anjali referral ≠ Anjali lead) ✅
+- Admin leads tab shows leads with correct data ✅
+- No commentary after lead confirmation ✅
+- Reply format: "Got it — [details]. [Single question]?" ✅
+- Test: Preethi, March 22 Hyderabad, 2.5L, Anjali referral → clean reply ✅
 
-## Known gaps (fix in Session 4)
-1. No `create_lead` tool — agent notes enquiries but doesn't create structured lead records
-2. Pricing model is a single string — no support for multiple packages
-3. Agent can't distinguish forwarded enquiries from vendor's own messages
-4. Conversation history deduplication is basic — may skip turns in edge cases
-5. Admin has no search or filter on vendor list
-6. wa.me link hardcoded to sandbox number — update when +91 number arrives
+## Known gaps (fix in Session 5)
+1. Agent cannot send replies to couples — vendor must copy-paste manually
+2. No lead deduplication — same couple can create multiple lead rows
+3. list_leads returns raw data — agent sometimes formats it awkwardly
+4. update_lead_state requires lead UUID — vendor can't say "mark Preethi as booked" yet (needs name-based lookup)
+5. wa.me link still hardcoded to sandbox — update when +91 arrives
+6. Pricing model still single string — multiple packages not yet structured
 
 ## Test credentials
 - Sandbox WhatsApp: +1 415 523 8886 (join code: acres-eventually)
@@ -63,45 +66,17 @@
 - Admin URL: https://dream-os-production.up.railway.app/admin
 
 ## First thing next session
-Run this to verify the system is healthy before touching code:
 curl https://dream-os-production.up.railway.app
-Should return: {"status":"alive","service":"dream-os","version":"0.3.0"}
-
+Should return: {"status":"alive","service":"dream-os","version":"0.4.0"}
 Then read SCHEMA.md and ROADMAP.md before writing anything.
 
-## Document update protocol (read this every session)
+## Document update protocol
+HANDOVER.md — fully rewritten every session
+SCHEMA.md — fully rewritten every session
+ROADMAP.md — updated every session
+All three committed before session closes. No exceptions.
+git add docs/ && git commit -m "docs: session N handover, schema, roadmap" && git push
 
-These three documents — HANDOVER.md, SCHEMA.md, ROADMAP.md — are the institutional memory of dream-os. They must be updated at the end of every session, before the session closes. No exceptions.
-
-### HANDOVER.md (this file)
-Fully rewritten every session. Not appended — rewritten.
-Always reflects the current state, not the history. Git preserves the history.
-Contains: what shipped, what was verified, known gaps, test credentials, first thing next session.
-
-### SCHEMA.md
-Fully rewritten every session.
-Always reflects the exact current state of the Supabase database.
-Every new migration adds new tables/columns here. Never describes what we planned — only what is actually in the database.
-
-### ROADMAP.md
-Updated (not fully rewritten) every session.
-Mark completed sessions as done. Add new sessions as they become clear.
-Update open questions when decisions are made.
-
-### How to update at end of every session
-1. I (Claude) write all three files as terminal paste blocks
-2. Dev pastes them into the Codespace terminal
-3. git add docs/ && git commit -m "docs: session N handover, schema, roadmap" && git push
-4. Session is not considered complete until this push succeeds
-
-### If a session ends abruptly
-The FIRST thing the next session does is write the docs for the previous session before touching any code.
-
-## Repo access (for future Claude sessions)
-Repo is PUBLIC. Clone with:
+## Repo access
 git clone https://github.com/devjroy-dev/dream-os.git
-
-After cloning, read these three files before touching anything:
-cat docs/HANDOVER.md
-cat docs/SCHEMA.md  
-cat docs/ROADMAP.md
+Read docs/ before touching anything.
