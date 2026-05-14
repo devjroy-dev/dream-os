@@ -34,7 +34,7 @@ app.locals.supabase = supabase;
 app.use('/admin', adminRouter);
 
 app.get('/', (req, res) => {
-  res.json({ status: 'alive', service: 'dream-os', version: '0.3.0' });
+  res.json({ status: 'alive', service: 'dream-os', version: '0.4.0' });
 });
 
 app.post('/webhook/whatsapp', async (req, res) => {
