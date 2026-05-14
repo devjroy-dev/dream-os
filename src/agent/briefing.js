@@ -9,17 +9,24 @@ async function buildBriefing({ vendor, user, supabase }) {
 
   // ── 1. Check 24h customer service window ───────────────────────
   // WhatsApp only allows free-form outbound if vendor messaged within last 24h.
+  // Fetch vendor_self conversation IDs first, then query messages
+  const { data: selfConvos } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('vendor_id', vendorId)
+    .eq('kind', 'vendor_self');
+
+  const selfConvoIds = (selfConvos || []).map(c => c.id);
+
+  if (selfConvoIds.length === 0) {
+    return { send: false, reason: 'no_inbound_ever' };
+  }
+
   const { data: lastInbound } = await supabase
     .from('messages')
     .select('created_at')
     .eq('direction', 'inbound')
-    .in('conversation_id',
-      supabase
-        .from('conversations')
-        .select('id')
-        .eq('vendor_id', vendorId)
-        .eq('kind', 'vendor_self')
-    )
+    .in('conversation_id', selfConvoIds)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
