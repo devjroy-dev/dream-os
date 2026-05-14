@@ -13,10 +13,11 @@
 
 ### Onboarding (src/agent/onboarding.js)
 - New step: asked_instagram inserted between asked_rate and complete
-- Full state chain: new -> asked_category -> asked_city -> asked_rate -> asked_instagram -> complete
-- Instagram skip detection: message without @, or common skip words (no/nope/skip/later/nah) -> auto-generate handle
-- Handle normalisation: strip @, uppercase, strip all non-alphanumeric (dots, underscores removed)
-- Handle generation cascade: Instagram handle -> FIRSTNAME-CITY -> FIRSTNAME-CATEGORY -> FIRSTNAME-PHONE4 -> FIRSTNAME-TIMESTAMP
+- Full state chain: new -> asked_category -> asked_city -> asked_travel -> asked_rate -> asked_handle -> complete
+- asked_travel: detects open/yes/travel/anywhere as true, else false. Saves travel_notes. Advances to asked_rate.
+- asked_handle: vendor picks their own TDW handle. If taken, agent replies with suggestion and loops. If vendor says suggest/you pick/anything, auto-generates from FIRSTNAME-CITY cascade. Instagram handle extracted if @ present.
+- Handle normalisation: strip @, uppercase, strip all non-alphanumeric except hyphen
+- Handle generation cascade: FIRSTNAME-CITY -> FIRSTNAME-CATEGORY -> FIRSTNAME-PHONE4 -> FIRSTNAME-TIMESTAMP
 - Uniqueness: each candidate checked against DB before use
 - Completion message (exact, locked):
   "Perfect — you're all set. Here's your TDW link: wa.me/[TDW_WA_NUMBER]?text=TDW-[HANDLE] — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant."

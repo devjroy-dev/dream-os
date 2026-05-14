@@ -35,16 +35,17 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - TDW_WA_NUMBER env var: parameterised, swap when +91 arrives, no code change needed
 - Draft-reply-to-couple: not yet built, owned by this assistant, ship in Session 6
 
-## Session 6 — Morning briefing + draft reply to couples
-**Goal:** Vendor gets a WhatsApp briefing every morning. Agent can draft and send replies to couples.
+## Session 6 — Morning briefing
+**Goal:** Vendor gets a WhatsApp briefing every morning.
 
 What ships:
 - Cron job: 8am IST daily per active vendor
 - Format: "Morning [Name]. X open leads, Y pending replies, Z events this week."
 - Overdue nudge: "You haven't replied to Preethi's enquiry in 3 days."
 - Railway cron configuration
-- Draft reply: vendor says "reply to Preethi: we'd love to work with you" -> agent sends via Twilio to couple's phone
-- Twilio template submission for outbound initiated messages (approval 1-7 days)
+
+Open questions:
+- Vendor handle change: if vendor wants to change TDW handle after onboarding, agent should support it. Add update_routing_handle tool in Session 6.
 
 Estimated time: 90 minutes
 

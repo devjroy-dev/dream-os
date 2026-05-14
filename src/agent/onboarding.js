@@ -1,6 +1,6 @@
 // onboarding.js — conversational onboarding flow for new vendors
 //
-// States: new -> asked_category -> asked_city -> asked_rate -> asked_instagram -> complete
+// States: new -> asked_category -> asked_city -> asked_travel -> asked_rate -> asked_handle -> complete
 //
 // Session 5: added asked_instagram step + TDW handle generation + completion TDW link.
 
@@ -56,9 +56,17 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
 
     case 'asked_city': {
       const city = inboundMessage.trim();
-      await supabase.from('vendors').update({ city, onboarding_state: 'asked_rate' }).eq('id', vendor.id);
+      await supabase.from('vendors').update({ city, onboarding_state: 'asked_travel' }).eq('id', vendor.id);
       await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Based in ${city}`, tags: ['onboarding', 'city'] });
-      return { reply: `${city} — good. And what's your typical rate for a wedding day? Ballpark is fine.` };
+      return { reply: `${city} — and are you open to travelling for shoots, or mostly local?` };
+    }
+
+    case 'asked_travel': {
+      const open_to_travel = /yes|open|travel|anywhere|pan.?india|outstation|outside/i.test(inboundMessage);
+      const travel_notes = inboundMessage.trim();
+      await supabase.from('vendors').update({ open_to_travel, travel_notes, onboarding_state: 'asked_rate' }).eq('id', vendor.id);
+      await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Travel: ${inboundMessage.trim()}`, tags: ['onboarding', 'travel'] });
+      return { reply: `Got it. And what's your typical rate for a wedding day? Ballpark is fine.` };
     }
 
     case 'asked_rate': {
@@ -71,30 +79,99 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
         updated_at: new Date().toISOString(),
       });
       await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Typical wedding day rate: ${rate}`, tags: ['onboarding', 'pricing'] });
-      await supabase.from('vendors').update({ onboarding_state: 'asked_instagram' }).eq('id', vendor.id);
-      return { reply: `Got it. Last thing — are you on Instagram? If yes, share your handle.` };
+      await supabase.from('vendors').update({ onboarding_state: 'asked_handle' }).eq('id', vendor.id);
+      return { reply: `Got it. Last thing — pick a short name for your TDW link. Your Instagram handle works great, or just make one up. Example: RAHULCLICKS or RAHUL-DELHI.` };
     }
 
-    case 'asked_instagram': {
+    case 'asked_handle': {
       const msg = inboundMessage.trim();
-      const isSkip = !msg.includes('@') || /^(no|nope|skip|later|nah|na|not really|don't have|dont have)/i.test(msg);
-      const instagramHandle = isSkip ? null : msg.replace(/^@/, '').split(/\s+/)[0];
-      const routingHandle = await generateHandle({ vendor, user, instagramHandle, supabase });
 
-      await supabase.from('vendors').update({
-        instagram_handle: instagramHandle || null,
-        routing_handle: routingHandle,
-        onboarding_state: 'complete',
-      }).eq('id', vendor.id);
+      // Check if vendor wants us to pick for them
+      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose)/i.test(msg);
+
+      let chosenHandle = null;
+
+      if (!wantsSuggestion) {
+        // Normalise what vendor typed
+        const normalised = msg.replace(/^@/, '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+
+        if (normalised.length >= 2) {
+          // Check uniqueness
+          const { data: existing } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('routing_handle', normalised)
+            .maybeSingle();
+
+          if (!existing) {
+            chosenHandle = normalised;
+          } else {
+            // Taken — suggest fallback and loop back
+            const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const suggestion = `${firstName}-${city}`;
+
+            // Stay in asked_handle — do not advance state
+            return {
+              reply: `That one's taken — try another? Or I can suggest one: ${suggestion}`,
+            };
+          }
+        }
+      }
+
+      // Auto-generate if vendor wants suggestion or typed something too short
+      if (!chosenHandle) {
+        const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const category = (vendor.category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const phone = (user?.phone || '').replace(/\D/g, '').slice(-4);
+
+        const candidates = [
+          `${firstName}-${city}`,
+          `${firstName}-${category}`,
+          `${firstName}-${phone}`,
+          `${firstName}-${Date.now().toString().slice(-6)}`,
+        ];
+
+        for (const candidate of candidates) {
+          if (!candidate || candidate.replace(/-/g, '').length < 2) continue;
+          const { data: existing } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('routing_handle', candidate)
+            .maybeSingle();
+          if (!existing) {
+            chosenHandle = candidate;
+            break;
+          }
+        }
+      }
+
+      // Extract Instagram handle if message looks like one
+      const instagramHandle = !wantsSuggestion && msg.includes('@')
+        ? msg.replace(/^@/, '').split(/\s+/)[0].toLowerCase()
+        : null;
+
+      // Save and complete
+      await supabase
+        .from('vendors')
+        .update({
+          routing_handle: chosenHandle,
+          instagram_handle: instagramHandle || null,
+          onboarding_state: 'complete',
+        })
+        .eq('id', vendor.id);
 
       await supabase.from('notes').insert({
         vendor_id: vendor.id,
-        content: `TDW handle: ${routingHandle}${instagramHandle ? `. Instagram: @${instagramHandle}` : ' (auto-generated, no Instagram)'}`,
+        content: `TDW handle: ${chosenHandle}${instagramHandle ? `. Instagram: @${instagramHandle}` : ''}`,
         tags: ['onboarding', 'tdw', 'instagram'],
       });
 
-      const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${routingHandle}`;
-      return { reply: `Perfect — you're all set. Here's your TDW link: ${tdwLink} — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant.` };
+      const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${chosenHandle}`;
+      return {
+        reply: `Perfect — you're all set. Here's your TDW link: ${tdwLink} — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant.`,
+      };
     }
 
     default: {

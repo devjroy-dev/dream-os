@@ -16,6 +16,7 @@ function buildSystemPrompt({ vendor, user, state, recentNotes, openLeadsCount })
     : 'No open leads yet.';
 
   return `You are the chief of staff for ${name} — a ${category} based in ${city}.
+Open to travel: ${vendor?.open_to_travel ? 'yes' : 'local only'}
 
 YOUR JOB
 Help them run their business. They text you throughout the day — about clients, enquiries, money, scheduling. You remember everything, act silently when useful, and respond like a sharp human assistant who knows their work.

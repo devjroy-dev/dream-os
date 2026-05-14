@@ -1,7 +1,7 @@
 # dream-os — Schema Reference
 **Last updated:** 2026-05-14
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0005_tdw_handles.sql
+**Latest migration applied:** 0006_travel_handle.sql
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -11,6 +11,7 @@
 | 0003_vendor_onboarding.sql | 2026-05-14 | 3 | vendors.onboarding_state, invite_vendor() function |
 | 0004_leads.sql | 2026-05-14 | 4 | leads table |
 | 0005_tdw_handles.sql | 2026-05-14 | 5 | vendors.routing_handle, vendors.instagram_handle, users.email |
+| 0006_travel_handle.sql | 2026-05-14 | 5 | vendors.open_to_travel, vendors.travel_notes |
 
 ## Tables
 
@@ -35,12 +36,14 @@
 | city | text | set during onboarding |
 | routing_handle | text UNIQUE | TDW code suffix e.g. RAHULCLICKS. Uppercase, alphanumeric + hyphen only. |
 | instagram_handle | text | raw IG handle without @ e.g. rahulclicks. NULL if skipped. |
+| open_to_travel | boolean | default false. Whether vendor travels for shoots. Set during onboarding. |
+| travel_notes | text | Raw travel preference as vendor stated it. e.g. "Pan-India, no international" |
 | upi_id | text | future — payment collection |
 | gstin | text | future — tax |
 | status | text | 'active' or 'paused' or 'churned' |
 | tier | text | 'trial' or 'essential' or 'signature' or 'prestige' |
 | founding_cohort | boolean | true for first 50 vendors |
-| onboarding_state | text | NULL or 'complete' = active. 'new' or 'asked_category' or 'asked_city' or 'asked_rate' or 'asked_instagram' = in progress |
+| onboarding_state | text | NULL or complete = active. new / asked_category / asked_city / asked_travel / asked_rate / asked_handle = in progress |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
