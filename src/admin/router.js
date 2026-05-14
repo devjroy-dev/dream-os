@@ -86,7 +86,7 @@ router.post('/invite', express.urlencoded({ extended: true }), async (req, res) 
     return res.send(invitePage({ error: error.message }));
   }
 
-  res.send(invitePage({ success: name.trim() }));
+  res.send(invitePage({ success: true, successName: name.trim() }));
 });
 
 // ─── Vendor detail ──────────────────────────────────────────────────
