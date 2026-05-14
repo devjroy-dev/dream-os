@@ -125,3 +125,12 @@ Estimated time: 2 sessions
 - Multi-vertical (weddings first)
 - Email/SMS fallback (WhatsApp only)
 - One number per vendor (TDW code system solves routing)
+
+## Session 6 addition — bulk imports clarification
+Bulk CSV imports are scoped to Session 8, not Session 6.
+Session 6 strictly covers:
+- Migration 0007 (events table)
+- create_event, list_events, update_event_state tools
+- Morning briefing cron (node-cron, 8am IST, inside Express)
+- Twilio template submission for outbound briefing messages
+- update_routing_handle tool
