@@ -3,27 +3,23 @@
 // Session 5.5: couple-facing agent on Mode 1 + Mode 2
 
 const express      = require('express');
-const twilio       = require('twilio');
 const ws           = require('ws');
 const cookieParser = require('cookie-parser');
 const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runAgenticTurn, runCoupleAgenticTurn } = require('./agent/engine');
+const { sendWhatsApp } = require('./lib/whatsapp');
 const adminRouter  = require('./admin/router');
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TWILIO_ACCOUNT_SID         = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN          = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_WHATSAPP_NUMBER     = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14787788550';
 const TDW_WA_NUMBER              = process.env.TDW_WA_NUMBER || '14787788550';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   realtime: { transport: ws },
 });
-const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-const anthropic    = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -31,6 +27,40 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.locals.supabase = supabase;
+
+// ── Twilio status callback ──────────────────────────────────────────
+// Twilio POSTs here on every delivery state change for outbound WhatsApp messages.
+// We match on MessageSid and update messages.delivery_status.
+app.post('/webhook/twilio-status', async (req, res) => {
+  try {
+    const sid    = req.body.MessageSid    || req.body.SmsSid    || null;
+    const status = req.body.MessageStatus || req.body.SmsStatus || null;
+    const errCode = req.body.ErrorCode || null;
+
+    console.log(`[twilio-status] sid=${sid} status=${status}${errCode ? ` errCode=${errCode}` : ''}`);
+
+    if (!sid || !status) {
+      return res.status(200).send('ok');
+    }
+
+    const { data, error } = await supabase
+      .from('messages')
+      .update({ delivery_status: status })
+      .eq('twilio_sid', sid)
+      .select('id');
+
+    if (error) {
+      console.error('[twilio-status] db update error:', error);
+    } else if (!data || data.length === 0) {
+      console.log(`[twilio-status] no message row for sid=${sid} (callback ignored)`);
+    }
+
+    res.status(200).send('ok');
+  } catch (err) {
+    console.error('[twilio-status] handler error:', err);
+    res.status(200).send('ok');
+  }
+});
 
 app.use('/admin', adminRouter);
 
@@ -295,17 +325,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
     res.status(500).send('error');
   }
 });
-
-async function sendWhatsApp(toPhone, body) {
-  const to = toPhone.startsWith('whatsapp:') ? toPhone : `whatsapp:${toPhone}`;
-  const msg = await twilioClient.messages.create({
-    from: TWILIO_WHATSAPP_NUMBER,
-    to,
-    body,
-  });
-  console.log(`[whatsapp:out] ${to} <- ${body.slice(0, 60)} (${msg.sid})`);
-  return msg;
-}
 
 app.listen(PORT, () => {
   console.log(`[dream-os] listening on :${PORT}`);
