@@ -1,6 +1,6 @@
 # dream-os -- Roadmap
 **Last updated:** 2026-05-14
-**Current version:** 0.5.5
+**Current version:** 0.6.0
 
 ## Vision
 WhatsApp-first chief of staff for wedding vendors.
@@ -19,6 +19,7 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 4 | leads table, create_lead tool, list_leads, update_lead_state, lead/referrer distinction, post-processing commentary strip, admin leads tab | 0.4.0 |
 | 5 | TDW handles (migration 0005), travel preference (migration 0006), 4-step onboarding, FIRSTNAMEPHONE3 auto-handle, three-mode couple routing, admin TDW link display | 0.5.0 |
 | 5.5 | Couple-facing agent (Haiku), capture_couple_lead, name last, past date fix, phone in list_leads, admin Enquiries tab, TDW handle deflection, draft reply blocked | 0.5.5 |
+| 6 | events table (migration 0007), 5 new tools (create_event, list_events, update_event_state, update_routing_handle, get_my_tdw_link), morning briefing cron (8am IST), Twilio status callback, sendWhatsApp refactor, ? strip fix, invite page fix | 0.6.0 |
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
@@ -35,22 +36,24 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - Lead dedup in Mode 2: one lead per (vendor_id, counterparty_phone), ever
 - TDW_WA_NUMBER env var: parameterised, swap when +91 arrives, no code change needed
 - Couple-facing agent: Haiku, collect occasion/date/city/budget/name, notify vendor with summary
-- Vendor cannot draft/send replies to couples yet -- Session 6
-- Onboarding is dumb state machine -- no Haiku until Session 8.1
+- Morning briefing: node-cron inside Express, 8am IST, 24h window check, skip-if-closed
+- Events kind values: shoot / call / meeting / task / reminder / recce / other (CHECK constraint)
+- Morning briefing: template submission deferred to Session 6.5 pending +91 WABA confirmation
 
-## Session 6 -- Morning briefing + proactive triggers
-**Goal:** Vendor gets a WhatsApp briefing every morning without asking.
+## Session 6.5 -- Twilio template + +91 number migration
+**Trigger:** +91 WhatsApp number arrives (Twilio approval pending)
+**Founder directive:** No matter which session we are at, when +91 arrives, do Session 6.5 first.
 
 What ships:
-- Cron job: 8am IST daily per active vendor
-- Format: "Morning [Name]. X open leads, Y pending replies, Z events this week."
-- Overdue nudge: "You haven't replied to Preethi's enquiry in 3 days."
-- Railway cron configuration
-- update_routing_handle tool: vendor can change TDW handle via WhatsApp
-- Twilio template submission for outbound initiated messages (approval 1-7 days)
-- Draft and send reply to couple: vendor says "reply to Meha: we'd love to work with you" -> agent sends via Twilio
+- Confirm WABA status (same WABA = templates transfer; new WABA = resubmit)
+- Submit dream_os_morning_briefing UTILITY template (body locked -- see HANDOVER.md)
+- Update TWILIO_WHATSAPP_NUMBER and TDW_WA_NUMBER env vars
+- Update outbound send wrapper: template path when 24h window closed
+- Update invite page wa.me link to +91
+- Smoke test: briefing fires to vendor inactive >24h
 
-Estimated time: 90 minutes
+Estimated time: 30 min build + Meta approval wait (1-7 days)
+Blocked until: +91 number live
 
 ## Session 7 -- Money tools
 **Goal:** Vendor logs expenses, creates invoices, tracks payments through WhatsApp.
@@ -73,23 +76,24 @@ What ships:
 - Haiku for: simple notes, greetings, status questions
 - Cost tracking on messages table
 - Admin: AI cost this month on vendor detail
-- Onboarding gets Haiku: category normalisation (photo -> photography), graceful handling of unexpected inputs, vendor can answer multiple questions in one message, casual/random messages handled naturally not like a call center chatbot
+- Onboarding gets Haiku: category normalisation (photo -> photography), graceful handling of unexpected inputs, vendor can answer multiple questions in one message
 - Couple agent routing: Sonnet for long/complex enquiries, Haiku for simple ones
 - Smart router applies to both vendor agent and couple agent
 
 Estimated time: 60-90 minutes
 
-## Session 8 -- Admin polish + +91 number live
-**Goal:** Admin production-ready for 50 founding vendors.
+## Session 8 -- Admin polish + +91 number live + Google Calendar
+**Goal:** Admin production-ready for 50 founding vendors. Google Calendar OAuth sync.
 
 What ships:
 - +91 number live -- update TWILIO_WHATSAPP_NUMBER and TDW_WA_NUMBER env vars
 - Vendor list: search + filter by status
 - Bulk invite: CSV upload
 - Manual onboarding_state override in admin
-- Lead name-based state updates (no UUID required from vendor)
+- Lead name-based state updates
+- Google Calendar OAuth sync (two-way, conflict handling, recurring events)
 
-Estimated time: 60 minutes
+Estimated time: 90 minutes
 
 ## Session 9 -- thedreamwedding.in Discover
 **Goal:** Bride-side curated marketplace.
@@ -112,7 +116,7 @@ Estimated time: 2 sessions
 **Goal:** Web dashboard as read layer over WhatsApp-captured data.
 
 ## Open questions
-1. +91 number -- applied, arriving soon
+1. +91 number -- applied, arriving soon (triggers Session 6.5)
 2. Founding cohort pricing -- free forever or free for X months?
 3. Couple phone collection on Discover enquiry
 4. thedreamwedding.in domain -- currently pointing where?
@@ -125,12 +129,3 @@ Estimated time: 2 sessions
 - Multi-vertical (weddings first)
 - Email/SMS fallback (WhatsApp only)
 - One number per vendor (TDW code system solves routing)
-
-## Session 6 addition — bulk imports clarification
-Bulk CSV imports are scoped to Session 8, not Session 6.
-Session 6 strictly covers:
-- Migration 0007 (events table)
-- create_event, list_events, update_event_state tools
-- Morning briefing cron (node-cron, 8am IST, inside Express)
-- Twilio template submission for outbound briefing messages
-- update_routing_handle tool

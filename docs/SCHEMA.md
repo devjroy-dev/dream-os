@@ -1,7 +1,7 @@
 # dream-os -- Schema Reference
 **Last updated:** 2026-05-14
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0006_travel_preference.sql
+**Latest migration applied:** 0007_events_and_briefing.sql
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -12,6 +12,7 @@
 | 0004_leads.sql | 2026-05-14 | 4 | leads table |
 | 0005_tdw_handles.sql | 2026-05-14 | 5 | vendors.routing_handle, vendors.instagram_handle, users.email |
 | 0006_travel_preference.sql | 2026-05-14 | 5 | vendors.open_to_travel, vendors.travel_notes |
+| 0007_events_and_briefing.sql | 2026-05-14 | 6 | events table, messages.delivery_status, vendors.briefing_enabled |
 
 No new migrations in Session 5.5 -- all changes were code-only.
 
@@ -46,6 +47,7 @@ No new migrations in Session 5.5 -- all changes were code-only.
 | tier | text | trial or essential or signature or prestige |
 | founding_cohort | boolean | true for first 50 vendors |
 | onboarding_state | text | NULL or complete = active. new / asked_category / asked_city / asked_travel / asked_rate = in progress |
+| briefing_enabled | boolean NOT NULL | default true. Kill switch for morning briefing per vendor. |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
@@ -92,6 +94,7 @@ Realtime: enabled
 | tool_calls | jsonb | full audit trail of agent tool calls |
 | tool_results | jsonb | reserved |
 | twilio_sid | text | Twilio message SID |
+| delivery_status | text | queued / sent / delivered / read / failed / undelivered / skipped_window_closed. Updated by /webhook/twilio-status. |
 | created_at | timestamptz | auto |
 
 Realtime: enabled
@@ -140,13 +143,13 @@ Realtime: enabled
 |---|---|---|
 | id | uuid PK | auto-generated |
 | vendor_id | uuid FK -> vendors.id | CASCADE delete |
-| name | text | couple name e.g. Meha or Priya & Rohit |
-| phone | text | couple phone -- always captured in Mode 2 TDW flow |
+| name | text | couple name e.g. Preethi or Priya & Rohit |
+| phone | text | couple phone if given |
 | email | text | couple email if given |
-| wedding_date | date | extracted date -- past dates bumped forward 1-2 years |
-| wedding_city | text | where the event is |
+| wedding_date | date | extracted date |
+| wedding_city | text | where the wedding is |
 | event_types | text[] | e.g. ['wedding','reception','mehndi'] |
-| budget_min | integer | in Rs e.g. 200000 |
+| budget_min | integer | in Rs e.g. 150000 |
 | budget_max | integer | in Rs |
 | source | text | default whatsapp. instagram or referral or discover or other |
 | referrer_name | text | person who referred the couple |
@@ -158,17 +161,38 @@ Realtime: enabled
 
 Realtime: enabled
 
+### events
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | auto-generated |
+| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| title | text NOT NULL | short event title e.g. "Shoot for Priya" |
+| event_date | date NOT NULL | required -- no date = use notes table instead |
+| event_time | time | nullable -- only if vendor mentioned a time |
+| kind | text NOT NULL | CHECK: shoot / call / meeting / task / reminder / recce / other |
+| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
+| state | text NOT NULL | CHECK: upcoming / done / cancelled. Default: upcoming. |
+| notes | text | location, contact, prep notes, or specific type if kind=other |
+| created_at | timestamptz | auto |
+| updated_at | timestamptz | auto via trigger |
+
+Realtime: enabled
+
 ## Key relationships
 - Every vendor has one user (identity)
 - Every message belongs to one conversation -> one vendor
 - Every note belongs to one vendor, optionally one conversation
 - Every lead belongs to one vendor
+- Every event belongs to one vendor, optionally linked to one lead
 - vendor_id is always the scoping key -- never query without it
 - couple_thread conversations scoped by counterparty_phone for Mode 1 routing
-- One lead per (vendor_id, counterparty_phone) -- deduped in Mode 2
 
 ## Indexes
 - vendors_routing_handle_idx on vendors(routing_handle) -- fast TDW lookup on every inbound message
+- events_vendor_id_idx on events(vendor_id)
+- events_event_date_idx on events(event_date)
+- events_state_idx on events(state)
+- events_vendor_date_state_idx on events(vendor_id, event_date, state) -- briefing query
 
 ## Postgres functions
 | Function | Args | Returns | Purpose |
@@ -178,7 +202,7 @@ Realtime: enabled
 
 ## RLS
 Disabled on all tables. service_role key held by Railway only.
-Will enable when bride-side public access is needed.
+Will enable when bride-side public access is needed (Session 9).
 
 ## Realtime enabled on
-conversations, messages, notes, pending_actions, leads
+conversations, messages, notes, pending_actions, leads, events
