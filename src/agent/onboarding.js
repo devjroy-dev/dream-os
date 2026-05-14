@@ -1,7 +1,7 @@
 // onboarding.js — conversational onboarding flow for new vendors
 //
-// States: new -> asked_category -> asked_city -> asked_travel -> asked_rate -> asked_handle -> complete
-// asked_handle: auto-assigns FIRSTNAME-PHONE3, no vendor input needed
+// States: new -> asked_category -> asked_city -> asked_travel -> asked_rate -> complete
+// asked_rate: saves rate, auto-assigns TDW handle (FIRSTNAME-PHONE3), sends completion message
 
 const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
 
@@ -40,6 +40,8 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
 
     case 'asked_rate': {
       const rate = inboundMessage.trim();
+
+      // Save rate
       await supabase.from('vendor_state').upsert({
         vendor_id: vendor.id,
         summary: `${user?.name || 'Vendor'} — ${vendor.category || ''} based in ${vendor.city || ''}. Typical rate: ${rate}. Founding cohort vendor.`,
@@ -48,11 +50,8 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
         updated_at: new Date().toISOString(),
       });
       await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Typical wedding day rate: ${rate}`, tags: ['onboarding', 'pricing'] });
-      await supabase.from('vendors').update({ onboarding_state: 'asked_handle' }).eq('id', vendor.id);
-      return { reply: `Got it. One moment — setting up your TDW link now.` };
-    }
 
-    case 'asked_handle': {
+      // Auto-assign TDW handle: FIRSTNAME-PHONE3 cascade
       const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
       const phone3 = (user?.phone || '').replace(/\D/g, '').slice(-3);
       const phone4 = (user?.phone || '').replace(/\D/g, '').slice(-4);
@@ -64,7 +63,7 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
         `${firstName}-${Date.now().toString().slice(-6)}`,
       ];
 
-      let chosenHandle = null;
+      let handle = null;
       for (const candidate of candidates) {
         if (!candidate || candidate.replace(/-/g, '').length < 2) continue;
         const { data: existing } = await supabase
@@ -73,27 +72,23 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
           .eq('routing_handle', candidate)
           .maybeSingle();
         if (!existing) {
-          chosenHandle = candidate;
+          handle = candidate;
           break;
         }
       }
 
       await supabase
         .from('vendors')
-        .update({
-          routing_handle: chosenHandle,
-          instagram_handle: null,
-          onboarding_state: 'complete',
-        })
+        .update({ routing_handle: handle, instagram_handle: null, onboarding_state: 'complete' })
         .eq('id', vendor.id);
 
       await supabase.from('notes').insert({
         vendor_id: vendor.id,
-        content: `TDW handle: ${chosenHandle}`,
+        content: `TDW handle: ${handle}`,
         tags: ['onboarding', 'tdw'],
       });
 
-      const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${chosenHandle}`;
+      const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${handle}`;
       return {
         reply: `Perfect — you're all set. Here's your TDW link: ${tdwLink} — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant.`,
       };
