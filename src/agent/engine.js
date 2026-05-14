@@ -1,25 +1,25 @@
 // engine.js — the agentic loop
-//
-// Input:  { vendor, conversation, inboundMessage, supabase, anthropic }
-// Output: { reply, toolCalls, notesAdded, stateUpdated }
-//
-// Flow:
-//   1. Load vendor's working memory (vendor_state + recent notes)
-//   2. Build system prompt
-//   3. Call Claude with full tool list
-//   4. Execute any tool calls (note_to_self, update_conversation_state)
-//   5. The vendor-visible reply comes from respond_to_vendor
-//   6. Loop up to MAX_ITERATIONS if Claude wants more tools
-//   7. Persist tool calls to messages.tool_calls for audit
+// Session 3: adds conversation history + onboarding routing
 
-const { buildSystemPrompt } = require('./systemPrompt');
+const { buildSystemPrompt }    = require('./systemPrompt');
+const { buildOnboardingPrompt, nextOnboardingMessage } = require('./onboarding');
 const { TOOLS } = require('./tools');
 
 const MAX_ITERATIONS = 5;
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL          = 'claude-haiku-4-5-20251001';
+const HISTORY_LIMIT  = 10; // last N turns to send to Claude
 
-async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, anthropic }) {
-  // 1. Load working memory
+async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supabase, anthropic }) {
+
+  // ── Onboarding routing ──────────────────────────────────────────
+  // If vendor is not yet fully onboarded, route to onboarding handler
+  if (vendor.onboarding_state && vendor.onboarding_state !== 'complete') {
+    return await handleOnboarding({
+      vendor, user, conversation, inboundMessage, supabase, anthropic,
+    });
+  }
+
+  // ── Load working memory ─────────────────────────────────────────
   const { data: state } = await supabase
     .from('vendor_state')
     .select('*')
@@ -33,23 +33,48 @@ async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, 
     .order('created_at', { ascending: false })
     .limit(10);
 
-  // 2. Build system prompt
+  // ── Load conversation history ───────────────────────────────────
+  const { data: recentMessages } = await supabase
+    .from('messages')
+    .select('direction, body, sent_by, created_at')
+    .eq('conversation_id', conversation.id)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_LIMIT + 1); // +1 because the inbound we just received is already in DB
+
+  // Build history in chronological order, excluding the just-received message
+  // (it's passed as the current user message, not in history)
+  const history = (recentMessages || [])
+    .reverse()
+    .filter(m => m.body !== inboundMessage || m.direction !== 'inbound')
+    .slice(-HISTORY_LIMIT)
+    .map(m => ({
+      role: m.direction === 'inbound' ? 'user' : 'assistant',
+      content: m.body || '',
+    }))
+    // Claude requires alternating roles — filter consecutive same roles
+    .reduce((acc, msg) => {
+      if (acc.length === 0) return [msg];
+      if (acc[acc.length - 1].role === msg.role) return acc; // skip duplicate role
+      return [...acc, msg];
+    }, []);
+
+  // ── Build system prompt ─────────────────────────────────────────
   const systemPrompt = buildSystemPrompt({
     vendor,
+    user,
     state,
     recentNotes: recentNotes || [],
   });
 
-  // 3. Build conversation history for the API
-  // For now we send only the inbound message. Future sessions will load the
-  // last N turns from the messages table.
+  // ── Build messages array ────────────────────────────────────────
   const messages = [
+    ...history,
     { role: 'user', content: inboundMessage },
   ];
 
-  // 4. Agentic loop
-  let iterations = 0;
-  let finalReply = null;
+  // ── Agentic loop ────────────────────────────────────────────────
+  let iterations  = 0;
+  let finalReply  = null;
   const toolCallsAudit = [];
 
   while (iterations < MAX_ITERATIONS) {
@@ -65,12 +90,10 @@ async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, 
 
     console.log(`[agent] iteration ${iterations}, stop_reason: ${response.stop_reason}`);
 
-    // Find tool_use blocks
     const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
 
     if (toolUseBlocks.length === 0) {
-      // No more tool calls — agent is done. But we expected respond_to_vendor.
-      // If we didn't get one, fall back to a generic reply.
+      // No tool calls — use text response as fallback
       if (!finalReply) {
         const textBlocks = response.content.filter(b => b.type === 'text');
         finalReply = textBlocks.map(b => b.text).join('\n').trim() || 'Got it.';
@@ -78,7 +101,6 @@ async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, 
       break;
     }
 
-    // Execute each tool
     const toolResults = [];
     for (const toolUse of toolUseBlocks) {
       const result = await executeTool({
@@ -91,7 +113,6 @@ async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, 
 
       toolCallsAudit.push({ name: toolUse.name, input: toolUse.input, result });
 
-      // If this is the visible reply, capture it
       if (toolUse.name === 'respond_to_vendor') {
         finalReply = toolUse.input.message;
       }
@@ -103,17 +124,13 @@ async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, 
       });
     }
 
-    // Append assistant message and tool results to history for next iteration
     messages.push({ role: 'assistant', content: response.content });
     messages.push({ role: 'user', content: toolResults });
 
-    // If respond_to_vendor was called, we're done — no more loops needed
-    if (finalReply !== null) {
-      break;
-    }
+    if (finalReply !== null) break;
   }
 
-  // Refresh recent_notes cache on vendor_state (last 10 notes)
+  // ── Refresh recent_notes cache ──────────────────────────────────
   const { data: latestNotes } = await supabase
     .from('notes')
     .select('content, tags, created_at')
@@ -121,13 +138,11 @@ async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, 
     .order('created_at', { ascending: false })
     .limit(10);
 
-  await supabase
-    .from('vendor_state')
-    .upsert({
-      vendor_id: vendor.id,
-      recent_notes: latestNotes || [],
-      updated_at: new Date().toISOString(),
-    });
+  await supabase.from('vendor_state').upsert({
+    vendor_id: vendor.id,
+    recent_notes: latestNotes || [],
+    updated_at: new Date().toISOString(),
+  });
 
   return {
     reply: finalReply || 'Got it.',
@@ -136,6 +151,23 @@ async function runAgenticTurn({ vendor, conversation, inboundMessage, supabase, 
   };
 }
 
+// ── Onboarding handler ────────────────────────────────────────────
+async function handleOnboarding({ vendor, user, conversation, inboundMessage, supabase, anthropic }) {
+  const result = await nextOnboardingMessage({
+    vendor,
+    user,
+    inboundMessage,
+    supabase,
+  });
+
+  return {
+    reply: result.reply,
+    toolCalls: [],
+    iterations: 1,
+  };
+}
+
+// ── Tool executor ─────────────────────────────────────────────────
 async function executeTool({ name, input, vendor, conversation, supabase }) {
   switch (name) {
     case 'note_to_self': {
@@ -167,7 +199,6 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
     }
 
     case 'respond_to_vendor': {
-      // No side effect — capturing the reply happens in the loop.
       console.log(`[tool:respond] "${input.message.slice(0, 80)}..."`);
       return 'Reply queued.';
     }
