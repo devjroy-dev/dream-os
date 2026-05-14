@@ -572,20 +572,47 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
 
       // 4e. Duplicate name check (only if lead_id not provided)
       if (!input.lead_id) {
-        const { data: nameMatches } = await supabase
+        // Check leads table
+        const { data: leadMatches } = await supabase
           .from('leads')
           .select('id, name, wedding_date, wedding_city')
           .eq('vendor_id', vendor.id)
           .ilike('name', `%${input.client_name}%`);
 
-        if (nameMatches && nameMatches.length >= 1) {
-          const matchList = nameMatches.map(m => {
-            const parts = [m.name];
-            if (m.wedding_date) parts.push(m.wedding_date);
-            if (m.wedding_city) parts.push(m.wedding_city);
-            return `${parts.join(', ')} (ID: ${m.id})`;
-          }).join('; ');
-          return `Found ${nameMatches.length} existing lead(s) named "${input.client_name}": ${matchList}. Is this the same client? If yes, reply with their lead ID. If this is a different person, reply with a more specific name (e.g. 'Priya from Pune').`;
+        // Check invoices table
+        const { data: invoiceMatches } = await supabase
+          .from('invoices')
+          .select('id, client_name, invoice_number, state, created_at')
+          .eq('vendor_id', vendor.id)
+          .ilike('client_name', `%${input.client_name}%`)
+          .neq('state', 'cancelled');
+
+        const hasLeadMatches    = leadMatches    && leadMatches.length > 0;
+        const hasInvoiceMatches = invoiceMatches && invoiceMatches.length > 0;
+
+        if (hasLeadMatches || hasInvoiceMatches) {
+          let msg = `Found existing records for "${input.client_name}":\n`;
+
+          if (hasLeadMatches) {
+            msg += `\nLeads:\n`;
+            msg += leadMatches.map(l => {
+              const date = l.wedding_date ? `, wedding ${l.wedding_date}` : '';
+              const city = l.wedding_city ? `, ${l.wedding_city}` : '';
+              return `- ${l.name}${date}${city} (lead ID: ${l.id})`;
+            }).join('\n');
+          }
+
+          if (hasInvoiceMatches) {
+            msg += `\nExisting invoices:\n`;
+            msg += invoiceMatches.map(i => {
+              const date = new Date(i.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+              return `- ${i.invoice_number} (${i.state}, raised ${date})`;
+            }).join('\n');
+          }
+
+          msg += `\n\nIs this the same ${input.client_name}, or a different person? If same, confirm and I'll raise the invoice. If different, give me a more specific name (e.g. "Priya from Pune").`;
+
+          return msg;
         }
       }
 

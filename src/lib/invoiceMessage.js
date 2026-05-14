@@ -13,7 +13,7 @@ function buildInvoiceMessage({ clientName, vendorDisplayName, invoiceNumber, des
     '',
     `Invoice No: ${invoiceNumber}`,
   ];
-  if (description) parts.push(description);
+  if (description) parts.push(description.charAt(0).toUpperCase() + description.slice(1));
   parts.push(`Total: Rs ${formatRs(amountTotal)}`);
 
   if (amountAdvance && amountAdvance > 0) {
