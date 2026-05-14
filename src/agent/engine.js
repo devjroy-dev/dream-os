@@ -40,6 +40,22 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     .eq('vendor_id', vendor.id)
     .in('state', ['new', 'contacted', 'quoted']);
 
+  // ── Load upcoming events for context (next 14 days, IST) ───────
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(Date.now() + istOffsetMs);
+  const istToday = istNow.toISOString().split('T')[0];
+  const ist14days = new Date(istNow.getTime() + 14 * 86400000).toISOString().split('T')[0];
+
+  const { data: upcomingEvents } = await supabase
+    .from('events')
+    .select('id, title, event_date, event_time, kind')
+    .eq('vendor_id', vendor.id)
+    .eq('state', 'upcoming')
+    .gte('event_date', istToday)
+    .lte('event_date', ist14days)
+    .order('event_date', { ascending: true })
+    .limit(10);
+
   // ── Load conversation history ───────────────────────────────────
   const { data: recentMessages } = await supabase
     .from('messages')
@@ -69,6 +85,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     state,
     recentNotes: recentNotes || [],
     openLeadsCount: openLeadsCount || 0,
+    upcomingEvents: upcomingEvents || [],
   });
 
   const messages = [
@@ -497,6 +514,142 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
       if (error) return `Error: ${error.message}`;
       console.log(`[tool:update_state] -> ${input.new_state}`);
       return `Conversation state updated to ${input.new_state}.`;
+    }
+
+    case 'create_event': {
+      // Sanitise linked_lead_id — agent sometimes passes a name instead of UUID
+      let linked_lead_id = null;
+      if (input.linked_lead_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.linked_lead_id)) {
+        linked_lead_id = input.linked_lead_id;
+      }
+
+      const { data: event, error } = await supabase.from('events').insert({
+        vendor_id:      vendor.id,
+        title:          input.title,
+        event_date:     input.event_date,
+        event_time:     input.event_time || null,
+        kind:           input.kind,
+        linked_lead_id,
+        notes:          input.notes || null,
+        state:          'upcoming',
+      }).select('id, title, event_date, kind').single();
+
+      if (error) {
+        console.error('[tool:create_event] error:', error);
+        return `Error creating event: ${error.message}`;
+      }
+
+      console.log(`[tool:create_event] ${event.kind} "${event.title}" on ${event.event_date} (${event.id})`);
+      return `Event created. ID: ${event.id}. ${event.kind}: ${event.title} on ${event.event_date}.`;
+    }
+
+    case 'list_events': {
+      // Compute IST date boundaries (UTC+5:30)
+      const now = new Date();
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+      const istNow = new Date(now.getTime() + istOffsetMs);
+      const istToday = istNow.toISOString().split('T')[0];
+
+      let dateStart = istToday;
+      let dateEnd   = null;
+
+      if (input.window === 'today') {
+        dateEnd = istToday;
+      } else if (input.window === 'this_week') {
+        // End of current week (Sunday). getUTCDay() returns 0=Sunday, 1=Monday...
+        const daysUntilSunday = (7 - istNow.getUTCDay()) % 7;
+        const sundayDate = new Date(istNow.getTime() + daysUntilSunday * 86400000);
+        dateEnd = sundayDate.toISOString().split('T')[0];
+      } else if (input.window === 'next_7_days') {
+        const plus7 = new Date(istNow.getTime() + 7 * 86400000);
+        dateEnd = plus7.toISOString().split('T')[0];
+      }
+      // upcoming_all: dateEnd stays null (no upper bound)
+
+      let query = supabase
+        .from('events')
+        .select('id, title, event_date, event_time, kind, state, notes')
+        .eq('vendor_id', vendor.id)
+        .eq('state', 'upcoming')
+        .gte('event_date', dateStart)
+        .order('event_date', { ascending: true })
+        .limit(20);
+
+      if (dateEnd) query = query.lte('event_date', dateEnd);
+      if (input.kind && input.kind !== 'all') query = query.eq('kind', input.kind);
+
+      const { data: events, error } = await query;
+      if (error) return `Error fetching events: ${error.message}`;
+
+      if (!events || events.length === 0) {
+        return `No events found in window: ${input.window}.`;
+      }
+
+      const summary = events.map(e => {
+        const time = e.event_time ? ` at ${e.event_time.slice(0, 5)}` : '';
+        return `${e.event_date}${time} — ${e.kind}: ${e.title}`;
+      }).join('\n');
+
+      return `${events.length} event(s):\n${summary}`;
+    }
+
+    case 'update_event_state': {
+      const { error } = await supabase
+        .from('events')
+        .update({ state: input.new_state })
+        .eq('id', input.event_id)
+        .eq('vendor_id', vendor.id);
+
+      if (error) return `Error: ${error.message}`;
+      console.log(`[tool:update_event_state] ${input.event_id} -> ${input.new_state}`);
+      return `Event marked ${input.new_state}.`;
+    }
+
+    case 'update_routing_handle': {
+      // Clean: uppercase, alphanumeric + hyphen only
+      const cleaned = (input.new_handle || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+      if (cleaned.length < 3) {
+        return 'Handle too short. Needs at least 3 alphanumeric characters.';
+      }
+
+      // Check uniqueness
+      const { data: existing } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('routing_handle', cleaned)
+        .neq('id', vendor.id)
+        .maybeSingle();
+
+      if (existing) {
+        return `Handle ${cleaned} is already taken. Ask the vendor to try another.`;
+      }
+
+      const { error } = await supabase
+        .from('vendors')
+        .update({ routing_handle: cleaned })
+        .eq('id', vendor.id);
+
+      if (error) return `Error updating handle: ${error.message}`;
+
+      console.log(`[tool:update_routing_handle] vendor ${vendor.id} -> ${cleaned}`);
+      return `Handle updated to ${cleaned}. New TDW link: wa.me/${process.env.TDW_WA_NUMBER || '14787788550'}?text=TDW-${cleaned}`;
+    }
+
+    case 'get_my_tdw_link': {
+      const { data: v } = await supabase
+        .from('vendors')
+        .select('routing_handle')
+        .eq('id', vendor.id)
+        .maybeSingle();
+
+      if (!v || !v.routing_handle) {
+        return 'No TDW handle is set for this vendor. This is unexpected — escalate to Dev.';
+      }
+
+      const tdwNumber = process.env.TDW_WA_NUMBER || '14787788550';
+      const link = `wa.me/${tdwNumber}?text=TDW-${v.routing_handle}`;
+      console.log(`[tool:get_my_tdw_link] vendor ${vendor.id} -> ${link}`);
+      return `TDW link: ${link}`;
     }
 
     case 'respond_to_vendor': {

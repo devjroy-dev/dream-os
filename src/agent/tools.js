@@ -138,6 +138,104 @@ const TOOLS = [
       required: ['new_state', 'reason'],
     },
   },
+  // ── Session 6 tools: events, routing handle, TDW link ─────────
+  {
+    name: 'create_event',
+    description: 'Log an event on the vendor calendar. Use whenever the vendor mentions a shoot, call, meeting, task, reminder, or recce that has a date. Always extract a date — if the vendor says "tomorrow" or "next Friday", convert to YYYY-MM-DD. Do not invent events the vendor did not mention.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Short event title. e.g. "Shoot for Priya", "Call with editor", "Recce at Leela"',
+        },
+        event_date: {
+          type: 'string',
+          description: 'Date in YYYY-MM-DD format. Required.',
+        },
+        event_time: {
+          type: 'string',
+          description: 'Time in HH:MM (24-hour) format. Optional — only if vendor mentioned a time.',
+        },
+        kind: {
+          type: 'string',
+          enum: ['shoot', 'call', 'meeting', 'task', 'reminder', 'recce', 'other'],
+          description: 'Event type. Map naturally: photoshoot/wedding/event = shoot. Phone call = call. Site visit = recce. Anything that does not clearly fit goes to "other" with the specific type in notes.',
+        },
+        linked_lead_id: {
+          type: 'string',
+          description: 'UUID of an existing lead this event relates to. Optional. Only set if vendor refers to an enquiry by name and you can identify the lead from list_leads.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Anything else worth capturing — location, contact, prep notes.',
+        },
+      },
+      required: ['title', 'event_date', 'kind'],
+    },
+  },
+  {
+    name: 'list_events',
+    description: 'Fetch upcoming or recent events from the vendor calendar. Use when the vendor asks "what is on my calendar", "what shoots do I have this week", "any events today".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        window: {
+          type: 'string',
+          enum: ['today', 'this_week', 'next_7_days', 'upcoming_all'],
+          description: 'Which range to fetch. "today" = today only. "this_week" = today through Sunday. "next_7_days" = next 7 days from today. "upcoming_all" = all future events.',
+        },
+        kind: {
+          type: 'string',
+          enum: ['shoot', 'call', 'meeting', 'task', 'reminder', 'recce', 'other', 'all'],
+          description: 'Filter by kind. Use "all" for everything.',
+        },
+      },
+      required: ['window', 'kind'],
+    },
+  },
+  {
+    name: 'update_event_state',
+    description: 'Mark an event as done or cancelled. Use when the vendor confirms an event is complete or has been cancelled.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: {
+          type: 'string',
+          description: 'UUID of the event. Get this from list_events first if unsure.',
+        },
+        new_state: {
+          type: 'string',
+          enum: ['done', 'cancelled'],
+          description: 'New state for the event.',
+        },
+      },
+      required: ['event_id', 'new_state'],
+    },
+  },
+  {
+    name: 'update_routing_handle',
+    description: 'Change the vendor TDW routing handle. Use only when the vendor explicitly asks to change their TDW code or handle. Handle will be uppercased and stripped of non-alphanumeric characters automatically. If the requested handle is already taken by another vendor, the tool will return an error and you should ask the vendor to try a different one.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        new_handle: {
+          type: 'string',
+          description: 'The new handle. Will be uppercased and cleaned (alphanumeric and hyphen only). e.g. "PRIYA-PHOTO" or "DEV2026".',
+        },
+      },
+      required: ['new_handle'],
+    },
+  },
+  {
+    name: 'get_my_tdw_link',
+    description: 'Fetch the vendor current TDW link. Use whenever the vendor asks for their TDW link, their wa.me link, or what to put in their Instagram bio. Never construct a TDW link manually — always call this tool and use the value it returns verbatim.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
   {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
