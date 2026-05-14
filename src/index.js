@@ -9,6 +9,7 @@ const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runAgenticTurn, runCoupleAgenticTurn } = require('./agent/engine');
 const { buildBriefing } = require('./agent/briefing');
+const { startCronJobs } = require('./cron');
 const { sendWhatsApp } = require('./lib/whatsapp');
 const adminRouter  = require('./admin/router');
 
@@ -365,4 +366,5 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[dream-os] listening on :${PORT}`);
+  startCronJobs({ supabase });
 });
