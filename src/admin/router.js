@@ -1,6 +1,3 @@
-// router.js — all /admin routes
-// Mounted at /admin in src/index.js
-
 const express  = require('express');
 const router   = express.Router();
 
@@ -9,8 +6,6 @@ const { loginPage }   = require('./views/login');
 const { vendorsPage } = require('./views/vendors');
 const { invitePage }  = require('./views/invite');
 const { detailPage }  = require('./views/detail');
-
-// ─── Login / logout ─────────────────────────────────────────────────
 
 router.get('/login', (req, res) => {
   const error = req.query.error === '1';
@@ -24,21 +19,14 @@ router.get('/logout', (req, res) => {
   res.redirect('/admin/login');
 });
 
-// ─── All routes below require auth ──────────────────────────────────
-
 router.use(requireAuth);
-
-// ─── Vendor list ────────────────────────────────────────────────────
 
 router.get('/', async (req, res) => {
   const supabase = req.app.locals.supabase;
 
   const { data: vendors } = await supabase
     .from('vendors')
-    .select(`
-      id, business_name, category, city, onboarding_state, created_at,
-      user:users(name, phone)
-    `)
+    .select('id, business_name, category, city, onboarding_state, created_at, user:users(name, phone)')
     .order('created_at', { ascending: false });
 
   const list = (vendors || []).map(v => ({
@@ -60,8 +48,6 @@ router.get('/', async (req, res) => {
   res.send(vendorsPage({ vendors: list, stats }));
 });
 
-// ─── Invite form ────────────────────────────────────────────────────
-
 router.get('/invite', (req, res) => {
   res.send(invitePage());
 });
@@ -74,7 +60,6 @@ router.post('/invite', express.urlencoded({ extended: true }), async (req, res) 
     return res.send(invitePage({ error: 'Name and phone are required.' }));
   }
 
-  // Normalise phone — strip spaces, ensure + prefix
   const cleanPhone = phone.trim().replace(/\s+/g, '');
 
   const { error } = await supabase.rpc('invite_vendor', {
@@ -89,8 +74,6 @@ router.post('/invite', express.urlencoded({ extended: true }), async (req, res) 
   res.send(invitePage({ success: true, successName: name.trim() }));
 });
 
-// ─── Vendor detail ──────────────────────────────────────────────────
-
 router.get('/vendors/:id', async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { id } = req.params;
@@ -99,15 +82,16 @@ router.get('/vendors/:id', async (req, res) => {
     { data: vendor },
     { data: state },
     { data: notes },
+    { data: leads },
   ] = await Promise.all([
     supabase.from('vendors').select('*, user:users(name, phone)').eq('id', id).maybeSingle(),
     supabase.from('vendor_state').select('*').eq('vendor_id', id).maybeSingle(),
     supabase.from('notes').select('content, tags, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(20),
+    supabase.from('leads').select('id, name, phone, wedding_date, wedding_city, budget_min, budget_max, state, source, referrer_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }),
   ]);
 
   if (!vendor) return res.redirect('/admin');
 
-  // Get conversation for this vendor
   const { data: convo } = await supabase
     .from('conversations')
     .select('id')
@@ -132,6 +116,7 @@ router.get('/vendors/:id', async (req, res) => {
     state,
     messages,
     notes: notes || [],
+    leads: leads || [],
   }));
 });
 
