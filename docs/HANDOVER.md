@@ -96,3 +96,12 @@ Update open questions when decisions are made.
 
 ### If a session ends abruptly
 The FIRST thing the next session does is write the docs for the previous session before touching any code.
+
+## Repo access (for future Claude sessions)
+Repo is PUBLIC. Clone with:
+git clone https://github.com/devjroy-dev/dream-os.git
+
+After cloning, read these three files before touching anything:
+cat docs/HANDOVER.md
+cat docs/SCHEMA.md  
+cat docs/ROADMAP.md
