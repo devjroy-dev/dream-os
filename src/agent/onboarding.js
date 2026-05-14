@@ -88,17 +88,52 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
 
       const normalisedMsg = msg.replace(/^@/, '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
 
-      // Check if vendor wants us to pick for them
-      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha|no|nope|nah|neither|none|not really|don't like|dont like|i don't like|i dont like|not that|something else|other|another)/i.test(msg);
+      // Vendor deferring entirely — pick anything from the full cascade
+      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha)/i.test(msg);
+
+      // Vendor rejecting last suggestion — skip FIRSTNAME-CITY, start from next candidate
+      const wantsAnother = /^(no|nope|nah|neither|none|not really|don't like|dont like|i don't like|i dont like|not that|something else|other|another|no\.)/i.test(msg);
+
+      const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+      console.log('city value:', vendor.city);
+      const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const category = (vendor.category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const phone = (user?.phone || '').replace(/\D/g, '').slice(-4);
 
       let chosenHandle = null;
 
+      if (wantsAnother) {
+        // Skip FIRSTNAME-CITY (already suggested), try remaining candidates
+        const fallbacks = [
+          `${firstName}-${category}`,
+          `${firstName}-${phone}`,
+          `${firstName}-${Date.now().toString().slice(-6)}`,
+        ];
+
+        for (const candidate of fallbacks) {
+          if (!candidate || candidate.replace(/-/g, '').length < 2) continue;
+          const { data: existing } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('routing_handle', candidate)
+            .maybeSingle();
+          if (!existing) {
+            chosenHandle = candidate;
+            break;
+          }
+        }
+
+        // Stay in asked_handle — show new suggestion, do not complete onboarding
+        return {
+          reply: `How about this one: ${chosenHandle}? Or pick your own.`,
+        };
+      }
+
       if (!wantsSuggestion) {
-        // Normalise what vendor typed
+        // Vendor typed a handle — normalise and check uniqueness
         const normalised = normalisedMsg;
 
         if (normalised.length >= 2) {
-          // Check uniqueness
           const { data: existing } = await supabase
             .from('vendors')
             .select('id')
@@ -108,13 +143,9 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
           if (!existing) {
             chosenHandle = normalised;
           } else {
-            // Taken — suggest fallback and loop back
-            const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
-            console.log('city value:', vendor.city);
-            const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            // Taken — suggest FIRSTNAME-CITY and loop back
             const suggestion = `${firstName}-${city}`;
 
-            // Stay in asked_handle — do not advance state
             return {
               reply: `That one's taken — try another? Or I can suggest one: ${suggestion}`,
             };
@@ -122,14 +153,8 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
         }
       }
 
-      // Auto-generate if vendor wants suggestion or typed something too short
+      // wantsSuggestion (or typed something too short) — full cascade from the start
       if (!chosenHandle) {
-        const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
-        console.log('city value:', vendor.city);
-        const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-        const category = (vendor.category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-        const phone = (user?.phone || '').replace(/\D/g, '').slice(-4);
-
         const candidates = [
           `${firstName}-${city}`,
           `${firstName}-${category}`,
