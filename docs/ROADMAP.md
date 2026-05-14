@@ -1,6 +1,6 @@
 # dream-os -- Roadmap
-**Last updated:** 2026-05-14
-**Current version:** 0.6.0
+**Last updated:** 2026-05-15
+**Current version:** 0.7.0-alpha
 
 ## Vision
 WhatsApp-first chief of staff for wedding vendors.
@@ -20,6 +20,10 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 5 | TDW handles (migration 0005), travel preference (migration 0006), 4-step onboarding, FIRSTNAMEPHONE3 auto-handle, three-mode couple routing, admin TDW link display | 0.5.0 |
 | 5.5 | Couple-facing agent (Haiku), capture_couple_lead, name last, past date fix, phone in list_leads, admin Enquiries tab, TDW handle deflection, draft reply blocked | 0.5.5 |
 | 6 | events table (migration 0007), 5 new tools (create_event, list_events, update_event_state, update_routing_handle, get_my_tdw_link), morning briefing cron (8am IST), Twilio status callback, sendWhatsApp refactor, ? strip fix, invite page fix | 0.6.0 |
+| 7 (partial) | invoices table (migration 0008), Supabase invoices bucket, pdfkit + qrcode installed, create_invoice tool (Stage 1 text only), format.js + invoiceMessage.js, Railway auto-deploy fix | 0.7.0-alpha |
+
+## Session sequence (confirmed by founder 2026-05-15)
+6.5 (on +91 arrival, jumps queue) → 8.1 → 7.5 → 8.5 → 8 → 9 → 10 → 11-12
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
@@ -39,6 +43,18 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - Morning briefing: node-cron inside Express, 8am IST, 24h window check, skip-if-closed
 - Events kind values: shoot / call / meeting / task / reminder / recce / other (CHECK constraint)
 - Morning briefing: template submission deferred to Session 6.5 pending +91 WABA confirmation
+- Invoice number format: <invoice_prefix>/<counter padded to 2>. e.g. TDW/DEV550/01
+- Invoice prefix: editable by vendor, defaults to TDW/<routing_handle> on first invoice
+- Invoice counter: never resets on prefix change. Gaps are accountant-safe.
+- Invoice state machine: unpaid / advance_paid / paid / cancelled
+- Invoice duplicate check: soft prompt, surfaces existing leads + invoices, never hard blocks
+- Invoice description: vendor's words verbatim, capitalised, prefixed "For:". Skipped if not given.
+- UPI QR: lives inside Stage 2 PDF only. No standalone QR generator.
+- Invoices link to leads in v1. Clients table (Session 8.5) adds client_id FK alongside lead_id.
+- Clients model: promotion trigger = advance paid OR vendor directly adds client. Session 8.5.
+- Lead dedup (upstream, create_lead blind insert): Session 8.5.
+- Money tools need Sonnet: record_payment, expenses, PDF, QR deferred to Session 7.5 (after 8.1).
+- Session 8.1 before 7.5: confirmed by founder after Haiku disambiguation loop failure in Session 7.
 
 ## Session 6.5 -- Twilio template + +91 number migration
 **Trigger:** +91 WhatsApp number arrives (Twilio approval pending)
@@ -55,38 +71,57 @@ What ships:
 Estimated time: 30 min build + Meta approval wait (1-7 days)
 Blocked until: +91 number live
 
-## Session 7 -- Money tools
-**Goal:** Vendor logs expenses, creates invoices, tracks payments through WhatsApp.
-
-What ships:
-- Migration: invoices table, expenses table
-- New tools: create_invoice, log_expense, record_payment
-- Agent answers: "Who owes me money?" "What did I spend this month?"
-- Admin: Money tab on vendor detail
-
-Estimated time: 90 minutes
-
 ## Session 8.1 -- Smart model routing (Haiku -> Sonnet)
 **Goal:** Route complex tasks to Sonnet, keep simple tasks on Haiku. 80/20 split.
+**Why before 7.5:** Money tools (record_payment, disambiguation, PDF) need Sonnet reasoning. Haiku failed clearly in Session 7 invoice testing.
 
 What ships:
-- Task classifier: lightweight Haiku call determines complexity
+- Task classifier: lightweight Haiku call determines complexity before main agent call
 - Router in engine.js: sets MODEL based on classifier output
-- Sonnet for: complex extraction, nuanced drafting, financial reasoning
-- Haiku for: simple notes, greetings, status questions
-- Cost tracking on messages table
+- Sonnet for: financial reasoning, multi-turn disambiguation, nuanced drafting, invoice flows
+- Haiku for: simple notes, greetings, status questions, single-tool calls
+- Cost tracking on messages table (model used, token counts)
 - Admin: AI cost this month on vendor detail
-- Onboarding gets Haiku: category normalisation (photo -> photography), graceful handling of unexpected inputs, vendor can answer multiple questions in one message
+- Onboarding gets Haiku intelligence: category normalisation, graceful unexpected input handling
 - Couple agent routing: Sonnet for long/complex enquiries, Haiku for simple ones
-- Smart router applies to both vendor agent and couple agent
 
 Estimated time: 60-90 minutes
 
-## Session 8 -- Admin polish + +91 number live + Google Calendar
+## Session 7.5 -- Money tools continued (after 8.1)
+**Goal:** Complete the invoice flow + expenses. Sonnet available for financial reasoning.
+
+What ships:
+- record_payment tool (Stage 2: advance paid -> PDF with embedded UPI QR -> state=advance_paid)
+- record_payment tool (Stage 3: balance paid -> plain WhatsApp text reminder -> state=paid)
+- PDF generation via pdfkit (booking confirmation, vendor name, invoice number, amounts, QR)
+- QR code generation via qrcode (dynamic UPI QR with amount embedded in PDF)
+- list_invoices tool ("who owes me money?" / "show unpaid invoices")
+- update_invoice_prefix tool (with warning: old invoices keep their numbers)
+- expenses table (migration 0009) + log_expense tool
+- Admin Money tab on vendor detail page (invoices + expenses + totals, read-only)
+- Morning briefing: overdue invoice alerts
+
+Estimated time: 90 minutes
+
+## Session 8.5 -- Clients model + lead deduplication
+**Goal:** Introduce proper clients table. Leads promote to clients. Dedup upstream lead creation.
+
+What ships:
+- clients table (Session 8.5 migration): id, vendor_id, user_id (nullable, links to couples), name, phone, email, source, referrer_name, notes, created_at, updated_at
+- leads.client_id FK (nullable, SET NULL) -- promotion link
+- invoices.client_id FK (nullable, SET NULL) -- alongside existing lead_id
+- Promotion logic: advance paid -> auto-create client, link lead, link invoice
+- add_client tool: vendor directly adds a client ("add client Priya, +91XXXX")
+- list_clients tool
+- Dedup fix in create_lead: name + phone match check before blind insert
+- Admin: clients tab on vendor detail
+
+Estimated time: 90-120 minutes
+
+## Session 8 -- Admin polish + Google Calendar
 **Goal:** Admin production-ready for 50 founding vendors. Google Calendar OAuth sync.
 
 What ships:
-- +91 number live -- update TWILIO_WHATSAPP_NUMBER and TDW_WA_NUMBER env vars
 - Vendor list: search + filter by status
 - Bulk invite: CSV upload
 - Manual onboarding_state override in admin
@@ -110,7 +145,17 @@ Estimated time: 2-3 sessions
 ## Session 10 -- Instagram DM integration
 **Goal:** Vendor connects Instagram Business account. DMs auto-route to their WhatsApp thread.
 
-Estimated time: 2 sessions
+Requirements (researched Session 7):
+- Instagram Business or Creator account (not personal)
+- Meta Developer App with instagram_manage_messages permission
+- App Review required (2-4 weeks, business verification, demo video)
+- OAuth flow: vendor connects IG account via dream-os admin
+- Webhook: /webhook/instagram on Railway, Meta signature verification
+- 24h messaging window applies (same as WhatsApp)
+- New DB columns: vendors.instagram_user_id, vendors.instagram_access_token, vendors.instagram_token_expires_at
+- Start Meta App Review submission early -- it gates the whole session
+
+Estimated time: 2 sessions + Meta review wait (2-4 weeks calendar time)
 
 ## Session 11-12 -- thedreamai.in vendor dashboard
 **Goal:** Web dashboard as read layer over WhatsApp-captured data.
@@ -121,6 +166,7 @@ Estimated time: 2 sessions
 3. Couple phone collection on Discover enquiry
 4. thedreamwedding.in domain -- currently pointing where?
 5. Swati's role in Discover editorial curation
+6. Instagram DM integration: start Meta App Review process early -- what entity name for business verification?
 
 ## Deliberately out of scope
 - iOS/Android native app
@@ -129,3 +175,4 @@ Estimated time: 2 sessions
 - Multi-vertical (weddings first)
 - Email/SMS fallback (WhatsApp only)
 - One number per vendor (TDW code system solves routing)
+- Standalone UPI QR generator (QR lives inside Stage 2 PDF only)

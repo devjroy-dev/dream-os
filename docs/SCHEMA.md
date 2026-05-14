@@ -1,7 +1,7 @@
 # dream-os -- Schema Reference
-**Last updated:** 2026-05-14
+**Last updated:** 2026-05-15
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0007_events_and_briefing.sql
+**Latest migration applied:** 0008_invoices.sql
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -13,8 +13,7 @@
 | 0005_tdw_handles.sql | 2026-05-14 | 5 | vendors.routing_handle, vendors.instagram_handle, users.email |
 | 0006_travel_preference.sql | 2026-05-14 | 5 | vendors.open_to_travel, vendors.travel_notes |
 | 0007_events_and_briefing.sql | 2026-05-14 | 6 | events table, messages.delivery_status, vendors.briefing_enabled |
-
-No new migrations in Session 5.5 -- all changes were code-only.
+| 0008_invoices.sql | 2026-05-15 | 7 | invoices table, vendors.invoice_prefix, vendors.invoice_counter |
 
 ## Tables
 
@@ -41,13 +40,15 @@ No new migrations in Session 5.5 -- all changes were code-only.
 | instagram_handle | text | IG handle without @. NULL -- collected naturally post-onboarding. |
 | open_to_travel | boolean | default false. Set during asked_travel onboarding step. |
 | travel_notes | text | Raw travel preference as vendor stated it. |
-| upi_id | text | future -- payment collection |
+| upi_id | text | UPI ID e.g. swati@okhdfc. Used in invoice messages and PDFs. |
 | gstin | text | future -- tax |
 | status | text | active or paused or churned |
 | tier | text | trial or essential or signature or prestige |
 | founding_cohort | boolean | true for first 50 vendors |
 | onboarding_state | text | NULL or complete = active. new / asked_category / asked_city / asked_travel / asked_rate = in progress |
 | briefing_enabled | boolean NOT NULL | default true. Kill switch for morning briefing per vendor. |
+| invoice_prefix | text | Editable invoice number prefix e.g. TDW/DEV550. Auto-set to TDW/<routing_handle> on first invoice if NULL. |
+| invoice_counter | integer NOT NULL | default 0. Per-vendor sequence. Never resets. Next invoice = counter + 1. |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
@@ -178,14 +179,42 @@ Realtime: enabled
 
 Realtime: enabled
 
+### invoices
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | auto-generated |
+| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
+| invoice_number | text NOT NULL | e.g. TDW/DEV550/01. Unique per vendor via constraint. |
+| client_name | text NOT NULL | vendor's client name, kept as text snapshot even if lead linked |
+| client_phone | text | optional, E.164 if provided |
+| description | text | what the invoice is for, vendor's exact words |
+| amount_total | integer NOT NULL | total in Rs. CHECK >= 0. |
+| amount_advance | integer | booking amount in Rs as quoted. CHECK >= 0 if not null. Immutable after creation. |
+| amount_paid | integer NOT NULL | default 0. Running total received. CHECK >= 0. Updated by record_payment. |
+| due_date | date | balance due date. Optional. |
+| state | text NOT NULL | CHECK: unpaid / advance_paid / paid / cancelled. Default: unpaid. |
+| pdf_url | text | signed Supabase storage URL. NULL until Stage 2 PDF generated (Session 7.5). |
+| notes | text | optional |
+| created_at | timestamptz | auto |
+| updated_at | timestamptz | auto via trigger |
+
+Realtime: enabled
+
+NOTE: amount_paid <= amount_total is deliberately NOT enforced at DB level.
+Overpayment (shagun tips, UPI typos) is a legitimate vendor reality.
+Handled as soft prompt at tool layer in record_payment (Session 7.5).
+
 ## Key relationships
 - Every vendor has one user (identity)
 - Every message belongs to one conversation -> one vendor
 - Every note belongs to one vendor, optionally one conversation
 - Every lead belongs to one vendor
 - Every event belongs to one vendor, optionally linked to one lead
+- Every invoice belongs to one vendor, optionally linked to one lead
 - vendor_id is always the scoping key -- never query without it
 - couple_thread conversations scoped by counterparty_phone for Mode 1 routing
+- clients table arrives in Session 8.5 -- invoices.lead_id becomes invoices.lead_id + invoices.client_id
 
 ## Indexes
 - vendors_routing_handle_idx on vendors(routing_handle) -- fast TDW lookup on every inbound message
@@ -193,6 +222,14 @@ Realtime: enabled
 - events_event_date_idx on events(event_date)
 - events_state_idx on events(state)
 - events_vendor_date_state_idx on events(vendor_id, event_date, state) -- briefing query
+- invoices_vendor_id_idx on invoices(vendor_id)
+- invoices_state_idx on invoices(state)
+- invoices_due_date_idx on invoices(due_date)
+- invoices_lead_id_idx on invoices(lead_id)
+- invoices_created_at_idx on invoices(created_at desc)
+
+## Unique constraints
+- invoices_vendor_number_unique on invoices(vendor_id, invoice_number)
 
 ## Postgres functions
 | Function | Args | Returns | Purpose |
@@ -200,9 +237,14 @@ Realtime: enabled
 | invite_vendor | p_phone text, p_name text | uuid | Creates user + vendor rows, sets onboarding_state = new |
 | set_updated_at | -- | trigger | Auto-stamps updated_at |
 
+## Supabase storage buckets
+| Bucket | Public | Size limit | MIME types | Purpose |
+|---|---|---|---|---|
+| invoices | No (private) | 5 MB | application/pdf | Booking confirmation PDFs (Stage 2, Session 7.5) |
+
 ## RLS
 Disabled on all tables. service_role key held by Railway only.
 Will enable when bride-side public access is needed (Session 9).
 
 ## Realtime enabled on
-conversations, messages, notes, pending_actions, leads, events
+conversations, messages, notes, pending_actions, leads, events, invoices
