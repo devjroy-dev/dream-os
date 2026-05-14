@@ -144,6 +144,15 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     updated_at: new Date().toISOString(),
   });
 
+  // Strip any commentary after the first question mark
+  // The agent should stop after asking one question — nothing more
+  if (finalReply) {
+    const qIdx = finalReply.indexOf('?');
+    if (qIdx !== -1) {
+      finalReply = finalReply.slice(0, qIdx + 1).trim();
+    }
+  }
+
   return {
     reply: finalReply || 'Got it.',
     toolCalls: toolCallsAudit,
