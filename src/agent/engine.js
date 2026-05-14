@@ -164,11 +164,14 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     updated_at: new Date().toISOString(),
   });
 
-  // Strip any commentary after the first question mark
+  // Strip any commentary after the first sentence-ending question mark.
+  // A sentence-ending "?" is followed by a space, newline, or end-of-string.
+  // A URL query separator "?" is followed by alphanumeric characters — we do NOT strip those.
   if (finalReply) {
-    const qIdx = finalReply.indexOf('?');
-    if (qIdx !== -1) {
-      finalReply = finalReply.slice(0, qIdx + 1).trim();
+    const sentenceEndQ = /\?(?=\s|$)/;
+    const match = sentenceEndQ.exec(finalReply);
+    if (match) {
+      finalReply = finalReply.slice(0, match.index + 1).trim();
     }
   }
 
