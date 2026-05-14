@@ -3,6 +3,7 @@
 
 const express = require('express');
 const twilio = require('twilio');
+const ws = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 
 const PORT                       = process.env.PORT || 3000;
@@ -12,7 +13,10 @@ const TWILIO_ACCOUNT_SID         = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN          = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WHATSAPP_NUMBER     = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
 
-const supabase     = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+// Supabase realtime needs explicit ws transport on Node 20
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  realtime: { transport: ws },
+});
 const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
 const app = express();
