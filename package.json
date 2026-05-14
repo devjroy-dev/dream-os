@@ -1,6 +1,6 @@
 {
   "name": "dream-os-backend",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "WhatsApp-first chief of staff for wedding vendors",
   "main": "src/index.js",
   "scripts": {
