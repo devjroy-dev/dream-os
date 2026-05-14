@@ -151,3 +151,67 @@ What ships:
 - Multi-vertical (weddings first)
 - Email/SMS fallback (WhatsApp only)
 - One number per vendor (TDW code system solves routing cleanly)
+
+## TDW routing full spec (three modes — for Session 5 implementation)
+
+When any unknown or known number messages the dream-os WhatsApp number,
+the backend checks in this order:
+
+MODE 1 — Returning couple (highest priority)
+Check: does conversations table have a row with counterparty_phone = this number
+and kind = 'couple_thread'?
+If yes → route to that vendor's thread directly. No code needed.
+This covers all repeat messages from a couple who has already connected.
+
+MODE 2 — TDW code in first message
+Check: does the first word of the message match any vendors.routing_handle?
+(stored without TDW- prefix, so check first word stripped of TDW- prefix)
+If yes → create couple row + conversation row with kind='couple_thread' →
+notify vendor on their self-thread:
+"New enquiry via TDW link. They said: [message]. Want me to draft a reply?"
+Also create a lead record automatically.
+
+MODE 3 — No code, no history (fallback)
+Check: neither Mode 1 nor Mode 2 matched.
+Reply to couple:
+"Hi! To reach a TDW vendor, send their TDW code —
+you'll find it in their Instagram bio or the link they shared."
+Wait for their next message → recheck Mode 2.
+If still no match after 2 attempts → dead end:
+"We couldn't find that vendor. Ask them to share their TDW link directly."
+
+## Instagram interception strategy (three surfaces)
+
+Surface 1 — wa.me link in Instagram bio (primary)
+Vendor posts: wa.me/91XXXXXXXXX?text=TDW-RAHULCLICKS
+Couple taps → WhatsApp opens → TDW code pre-filled → couple hits Send.
+System receives message → Mode 2 routing → vendor notified.
+This is the primary couple acquisition channel for founding cohort.
+
+Surface 2 — Instagram DM integration (Session 10)
+Vendor connects their Instagram Business account via OAuth in admin panel.
+Meta webhook fires on new DM → dream-os backend receives it →
+identifies vendor by instagram_handle match in vendors table →
+creates lead automatically → notifies vendor on WhatsApp:
+"New Instagram DM from @username: [message]. Lead created."
+No manual forwarding needed.
+Requires: Meta App approval (1-2 weeks), vendor OAuth flow.
+
+Surface 3 — Vendor forwards manually (always available fallback)
+Vendor receives enquiry anywhere (personal WhatsApp, Instagram, email) →
+forwards or pastes it to the dream-os number →
+agent detects enquiry → calls create_lead → extracts structured data.
+This is what's built in Session 4 and works right now.
+
+## What cannot be intercepted (hard limits)
+- Vendor's personal WhatsApp messages — end-to-end encrypted, no API exists
+- WhatsApp Business App (the free app) — not the API, cannot be tapped
+- Personal Instagram DMs on personal accounts — requires Business account + OAuth
+- Any message not sent to the dream-os number or forwarded by the vendor
+
+## The complete picture for a founding vendor
+Day 1: vendor onboards → gets TDW link → puts it in Instagram bio
+New couples: tap link → WhatsApp → TDW code → Mode 2 routing → vendor notified
+Existing couples: message again → Mode 1 routing → straight to their thread
+Other enquiries: vendor forwards to dream-os number → Surface 3 → lead created
+Session 10: Instagram DMs automated → no forwarding needed for IG enquiries
