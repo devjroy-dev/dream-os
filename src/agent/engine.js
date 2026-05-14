@@ -448,7 +448,7 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
     case 'list_leads': {
       let query = supabase
         .from('leads')
-        .select('id, name, wedding_date, wedding_city, state, budget_min, budget_max, created_at')
+        .select('id, name, phone, wedding_date, wedding_city, state, budget_min, budget_max, created_at')
         .eq('vendor_id', vendor.id)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -471,7 +471,7 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
         const budget = l.budget_min
           ? `Rs ${(l.budget_min/100000).toFixed(1)}L${l.budget_max && l.budget_max !== l.budget_min ? `-${(l.budget_max/100000).toFixed(1)}L` : ''}`
           : 'budget unknown';
-        return `${l.name || 'Unknown'} — ${date} — ${l.state} — ${budget}`;
+        return `${l.name || 'Unknown'} — ${l.phone || 'no phone'} — ${date} — ${l.state} — ${budget}`;
       }).join('\n');
 
       return `${leads.length} lead(s):\n${summary}`;
