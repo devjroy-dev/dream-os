@@ -18,16 +18,17 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
 
     case 'asked_category': {
       const category = inboundMessage.trim();
-      await supabase.from('vendors').update({ category: category.toLowerCase(), onboarding_state: 'asked_city' }).eq('id', vendor.id);
-      await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Category: ${category}`, tags: ['onboarding', 'category'] });
-      return { reply: `Got it — ${category}. And where are you based mostly?` };
+      const cleanCategory = category.replace(/^(i'm an?|i am an?|im an?)\s+/i, '').trim();
+      await supabase.from('vendors').update({ category: cleanCategory.toLowerCase(), onboarding_state: 'asked_city' }).eq('id', vendor.id);
+      await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Category: ${cleanCategory}`, tags: ['onboarding', 'category'] });
+      return { reply: `Got it — ${cleanCategory}. And where are you based mostly?` };
     }
 
     case 'asked_city': {
       const city = inboundMessage.trim();
       await supabase.from('vendors').update({ city, onboarding_state: 'asked_travel' }).eq('id', vendor.id);
       await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Based in ${city}`, tags: ['onboarding', 'city'] });
-      return { reply: `${city} — and are you open to travelling for shoots, or mostly local?` };
+      return { reply: `${city} — and are you open to travelling for work, or mostly local?` };
     }
 
     case 'asked_travel': {
