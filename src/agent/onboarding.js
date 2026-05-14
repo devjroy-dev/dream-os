@@ -86,14 +86,18 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
     case 'asked_handle': {
       const msg = inboundMessage.trim();
 
-      // Check if vendor wants us to pick for them
-      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha)/i.test(msg);
+      // FIX 3: if vendor re-sends their own existing handle, auto-generate instead of re-assigning
+      const normalisedMsg = msg.replace(/^@/, '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+      const isSameAsExisting = !!(vendor.routing_handle && vendor.routing_handle === normalisedMsg);
+
+      // Check if vendor wants us to pick for them (or re-sent their own handle)
+      const wantsSuggestion = isSameAsExisting || /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha|no|nope|nah|neither|none|not really|don't like|dont like|i don't like|i dont like|not that|something else|other|another)/i.test(msg);
 
       let chosenHandle = null;
 
       if (!wantsSuggestion) {
         // Normalise what vendor typed
-        const normalised = msg.replace(/^@/, '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+        const normalised = normalisedMsg;
 
         if (normalised.length >= 2) {
           // Check uniqueness
@@ -108,6 +112,7 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
           } else {
             // Taken — suggest fallback and loop back
             const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+            console.log('city value:', vendor.city);
             const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             const suggestion = `${firstName}-${city}`;
 
@@ -122,6 +127,7 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
       // Auto-generate if vendor wants suggestion or typed something too short
       if (!chosenHandle) {
         const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+        console.log('city value:', vendor.city);
         const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         const category = (vendor.category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         const phone = (user?.phone || '').replace(/\D/g, '').slice(-4);
