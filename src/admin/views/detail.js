@@ -2,7 +2,7 @@
 
 const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
 
-function renderDetail({ vendor, user, state, messages, notes, leads }) {
+function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [] }) {
   const name = user?.name || vendor.id.slice(0, 8);
 
   const statusLabel = vendor.onboarding_state === 'complete' || !vendor.onboarding_state
@@ -83,6 +83,26 @@ function renderDetail({ vendor, user, state, messages, notes, leads }) {
         </tbody>
       </table>`;
 
+
+  const enquiriesList = enquiries.length === 0
+    ? '<div class="empty-state">No enquiries yet.</div>'
+    : enquiries.map(e => {
+        const threadBubbles = e.messages.map(m => `
+          <div class="message-row ${m.direction}">
+            <div>
+              <div class="bubble ${m.direction === 'inbound' ? 'bubble-in' : 'bubble-out'}">${m.body || ''}</div>
+              <div class="msg-meta">${m.sent_by} · ${new Date(m.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+            </div>
+          </div>`).join('');
+        return `
+          <div style="background:#fff;border:1px solid #eee;border-radius:8px;padding:20px;margin-bottom:16px;">
+            <div style="font-size:12px;color:#999;margin-bottom:12px;">
+              <strong style="color:#333;">${e.phone}</strong> · ${new Date(e.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+            </div>
+            <div style="height:300px;overflow-y:auto;">${threadBubbles || '<div class="empty-state">No messages.</div>'}</div>
+          </div>`;
+      }).join('');
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -150,9 +170,11 @@ function renderDetail({ vendor, user, state, messages, notes, leads }) {
     </div>
     <div class="tabs">
       <a class="tab active" onclick="showTab('leads',this)">Leads</a>
+      <a class="tab" onclick="showTab('enquiries',this)">Enquiries</a>
       <a class="tab" onclick="showTab('notes',this)">Notes</a>
     </div>
     <div id="leads" class="tab-content active">${leadsList}</div>
+    <div id="enquiries" class="tab-content">${enquiriesList}</div>
     <div id="notes" class="tab-content">${notesList}</div>
   </div>
   <script>

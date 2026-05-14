@@ -110,6 +110,29 @@ router.get('/vendors/:id', async (req, res) => {
     messages = msgs || [];
   }
 
+  // Load couple threads and their messages for Enquiries tab
+  const { data: coupleThreads } = await supabase
+    .from('conversations')
+    .select('id, counterparty_phone, created_at, last_message_at')
+    .eq('vendor_id', id)
+    .eq('kind', 'couple_thread')
+    .order('created_at', { ascending: false });
+
+  const enquiries = [];
+  for (const thread of (coupleThreads || [])) {
+    const { data: threadMsgs } = await supabase
+      .from('messages')
+      .select('direction, body, created_at, sent_by')
+      .eq('conversation_id', thread.id)
+      .order('created_at', { ascending: true })
+      .limit(50);
+    enquiries.push({
+      phone: thread.counterparty_phone,
+      created_at: thread.created_at,
+      messages: threadMsgs || [],
+    });
+  }
+
   res.send(detailPage({
     vendor,
     user: vendor.user,
@@ -117,6 +140,7 @@ router.get('/vendors/:id', async (req, res) => {
     messages,
     notes: notes || [],
     leads: leads || [],
+    enquiries,
   }));
 });
 
