@@ -17,8 +17,8 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 2 | Agentic loop (Claude Haiku), note_to_self, update_conversation_state, respond_to_vendor, vendor_state + notes + pending_actions | 0.2.0 |
 | 3 | Admin layer, onboarding flow (Swati greeting), conversation history, system prompt tightening, invite_vendor() | 0.3.0 |
 | 4 | leads table, create_lead tool, list_leads, update_lead_state, lead/referrer distinction, post-processing commentary strip, admin leads tab | 0.4.0 |
-| 5 | TDW handles (migration 0005), travel preference (migration 0006), 4-step onboarding, FIRSTNAME-PHONE3 auto-handle, three-mode couple routing, admin TDW link display | 0.5.0 |
-| 5.5 | Couple-facing agent, coupleSystemPrompt, runCoupleAgenticTurn, capture_couple_lead tool, vendor summary notification | 0.5.5 |
+| 5 | TDW handles (migration 0005), travel preference (migration 0006), 4-step onboarding, FIRSTNAMEPHONE3 auto-handle, three-mode couple routing, admin TDW link display | 0.5.0 |
+| 5.5 | Couple-facing agent (Haiku), capture_couple_lead, name last, past date fix, phone in list_leads, admin Enquiries tab, TDW handle deflection, draft reply blocked | 0.5.5 |
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
@@ -30,10 +30,13 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - Admin auth: single ADMIN_PASSWORD env var
 - Monorepo: backend now, web/ and discover/ added in Sessions 9+
 - Routing: one shared number + TDW codes
-- TDW handle format: FIRSTNAME-PHONE3 e.g. DEV-550. Auto-assigned, no vendor input needed.
+- TDW handle format: FIRSTNAMEPHONE3 e.g. DEV550. Auto-assigned, no vendor input needed.
+- wa.me link format: wa.me/14787788550?text=TDW-DEV550
 - Lead dedup in Mode 2: one lead per (vendor_id, counterparty_phone), ever
 - TDW_WA_NUMBER env var: parameterised, swap when +91 arrives, no code change needed
-- Couple-facing agent: Haiku, collect occasion/date/city/budget, notify vendor with summary
+- Couple-facing agent: Haiku, collect occasion/date/city/budget/name, notify vendor with summary
+- Vendor cannot draft/send replies to couples yet -- Session 6
+- Onboarding is dumb state machine -- no Haiku until Session 8.1
 
 ## Session 6 -- Morning briefing + proactive triggers
 **Goal:** Vendor gets a WhatsApp briefing every morning without asking.
@@ -44,7 +47,8 @@ What ships:
 - Overdue nudge: "You haven't replied to Preethi's enquiry in 3 days."
 - Railway cron configuration
 - update_routing_handle tool: vendor can change TDW handle via WhatsApp
-- Twilio template submission for outbound initiated messages
+- Twilio template submission for outbound initiated messages (approval 1-7 days)
+- Draft and send reply to couple: vendor says "reply to Meha: we'd love to work with you" -> agent sends via Twilio
 
 Estimated time: 90 minutes
 
@@ -69,7 +73,7 @@ What ships:
 - Haiku for: simple notes, greetings, status questions
 - Cost tracking on messages table
 - Admin: AI cost this month on vendor detail
-- Onboarding gets Haiku: category normalisation (photo -> photography), graceful handling of unexpected inputs, vendor can answer multiple questions in one message
+- Onboarding gets Haiku: category normalisation (photo -> photography), graceful handling of unexpected inputs, vendor can answer multiple questions in one message, casual/random messages handled naturally not like a call center chatbot
 - Couple agent routing: Sonnet for long/complex enquiries, Haiku for simple ones
 - Smart router applies to both vendor agent and couple agent
 
@@ -83,7 +87,7 @@ What ships:
 - Vendor list: search + filter by status
 - Bulk invite: CSV upload
 - Manual onboarding_state override in admin
-- Lead name-based state updates
+- Lead name-based state updates (no UUID required from vendor)
 
 Estimated time: 60 minutes
 
