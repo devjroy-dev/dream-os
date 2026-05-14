@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runAgenticTurn, runCoupleAgenticTurn } = require('./agent/engine');
+const { buildBriefing } = require('./agent/briefing');
 const { sendWhatsApp } = require('./lib/whatsapp');
 const adminRouter  = require('./admin/router');
 
@@ -27,6 +28,42 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.locals.supabase = supabase;
+
+// ── Briefing test endpoint (manual trigger, no WhatsApp send) ──────
+// Usage: GET /admin/test-briefing/:vendorId
+// Returns the briefing message that would be sent, or the skip reason.
+app.get('/admin/test-briefing/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    const { data: vendor } = await supabase
+      .from('vendors')
+      .select('*')
+      .eq('id', vendorId)
+      .maybeSingle();
+
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', vendor.user_id)
+      .maybeSingle();
+
+    const result = await buildBriefing({ vendor, user, supabase });
+
+    res.json({
+      vendor_id: vendorId,
+      vendor_name: user?.name || 'unknown',
+      ...result,
+    });
+  } catch (err) {
+    console.error('[test-briefing] error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── Twilio status callback ──────────────────────────────────────────
 // Twilio POSTs here on every delivery state change for outbound WhatsApp messages.
