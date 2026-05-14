@@ -672,7 +672,10 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
       });
 
       // 4k. Build return string
-      let result = `Invoice ${invoiceNumber} created.\n\nForward this to ${input.client_name}:\n\n${composedMessage}`;
+      let result = `Invoice ${invoiceNumber} created.\n\n`;
+      result += `--- FORWARD THIS TO ${input.client_name.toUpperCase()} — DO NOT MODIFY ---\n`;
+      result += composedMessage;
+      result += `\n--- END ---`;
       if (!v.upi_id) {
         result += `\n\n(UPI ID not saved — client won't see a payment ID. Reply "set my UPI to [your UPI]" to add it.)`;
       }
