@@ -68,3 +68,31 @@ curl https://dream-os-production.up.railway.app
 Should return: {"status":"alive","service":"dream-os","version":"0.3.0"}
 
 Then read SCHEMA.md and ROADMAP.md before writing anything.
+
+## Document update protocol (read this every session)
+
+These three documents — HANDOVER.md, SCHEMA.md, ROADMAP.md — are the institutional memory of dream-os. They must be updated at the end of every session, before the session closes. No exceptions.
+
+### HANDOVER.md (this file)
+Fully rewritten every session. Not appended — rewritten.
+Always reflects the current state, not the history. Git preserves the history.
+Contains: what shipped, what was verified, known gaps, test credentials, first thing next session.
+
+### SCHEMA.md
+Fully rewritten every session.
+Always reflects the exact current state of the Supabase database.
+Every new migration adds new tables/columns here. Never describes what we planned — only what is actually in the database.
+
+### ROADMAP.md
+Updated (not fully rewritten) every session.
+Mark completed sessions as done. Add new sessions as they become clear.
+Update open questions when decisions are made.
+
+### How to update at end of every session
+1. I (Claude) write all three files as terminal paste blocks
+2. Dev pastes them into the Codespace terminal
+3. git add docs/ && git commit -m "docs: session N handover, schema, roadmap" && git push
+4. Session is not considered complete until this push succeeds
+
+### If a session ends abruptly
+The FIRST thing the next session does is write the docs for the previous session before touching any code.
