@@ -57,10 +57,10 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
       const phone4 = (user?.phone || '').replace(/\D/g, '').slice(-4);
 
       const candidates = [
-        `${firstName}-${phone3}`,
-        `${firstName}-${phone4}`,
-        `${firstName}-${phone3}${phone4}`,
-        `${firstName}-${Date.now().toString().slice(-6)}`,
+        `${firstName}${phone3}`,
+        `${firstName}${phone4}`,
+        `${firstName}${phone3}${phone4}`,
+        `${firstName}${Date.now().toString().slice(-6)}`,
       ];
 
       let handle = null;
