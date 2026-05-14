@@ -30,54 +30,6 @@ app.use(cookieParser());
 
 app.locals.supabase = supabase;
 
-// ── Manual cron trigger — REMOVE AFTER SESSION 6 TESTING ───────────
-app.post('/admin/trigger-briefing', async (req, res) => {
-  try {
-    console.log('[manual-trigger] briefing run triggered manually');
-
-    const { data: vendors, error } = await supabase
-      .from('vendors')
-      .select('*, users(*)')
-      .eq('onboarding_state', 'complete')
-      .eq('briefing_enabled', true)
-      .eq('status', 'active');
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    const results = [];
-
-    for (const vendor of (vendors || [])) {
-      const user = vendor.users;
-      const phone = user?.phone;
-
-      if (!phone) {
-        results.push({ vendor_id: vendor.id, skipped: true, reason: 'no_phone' });
-        continue;
-      }
-
-      const { buildBriefing } = require('./agent/briefing');
-      const { sendWhatsApp } = require('./lib/whatsapp');
-
-      const result = await buildBriefing({ vendor, user, supabase });
-
-      if (!result.send) {
-        results.push({ vendor_id: vendor.id, name: user?.name, skipped: true, reason: result.reason });
-        continue;
-      }
-
-      await sendWhatsApp(phone, result.message);
-      results.push({ vendor_id: vendor.id, name: user?.name, sent: true, message: result.message });
-    }
-
-    res.json({ triggered: true, results });
-  } catch (err) {
-    console.error('[manual-trigger] error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ── Briefing test endpoint (manual trigger, no WhatsApp send) ──────
 // Usage: GET /admin/test-briefing/:vendorId
 // Returns the briefing message that would be sent, or the skip reason.
