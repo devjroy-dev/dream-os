@@ -86,12 +86,10 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
     case 'asked_handle': {
       const msg = inboundMessage.trim();
 
-      // FIX 3: if vendor re-sends their own existing handle, auto-generate instead of re-assigning
       const normalisedMsg = msg.replace(/^@/, '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
-      const isSameAsExisting = !!(vendor.routing_handle && vendor.routing_handle === normalisedMsg);
 
-      // Check if vendor wants us to pick for them (or re-sent their own handle)
-      const wantsSuggestion = isSameAsExisting || /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha|no|nope|nah|neither|none|not really|don't like|dont like|i don't like|i dont like|not that|something else|other|another)/i.test(msg);
+      // Check if vendor wants us to pick for them
+      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha|no|nope|nah|neither|none|not really|don't like|dont like|i don't like|i dont like|not that|something else|other|another)/i.test(msg);
 
       let chosenHandle = null;
 
