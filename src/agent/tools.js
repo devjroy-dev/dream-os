@@ -214,6 +214,48 @@ const TOOLS = [
     },
   },
   {
+    name: 'create_invoice',
+    description: 'Create a new invoice for a client and compose a WhatsApp message the vendor can forward. Use when the vendor says raise invoice, send invoice, create invoice, or similar. Extract client name, total amount, advance/booking amount if mentioned, description of work, and due date if mentioned. Do NOT invent a description — only use what the vendor said.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_name: {
+          type: 'string',
+          description: 'Client name exactly as vendor stated it.',
+        },
+        client_phone: {
+          type: 'string',
+          description: 'Client phone in E.164 format if mentioned. Optional.',
+        },
+        lead_id: {
+          type: 'string',
+          description: 'UUID of an existing lead this invoice is for. Only set this if the vendor explicitly disambiguated which client (e.g. said "the Priya from Bandra"). If unsure, leave null — the tool will handle duplicates.',
+        },
+        description: {
+          type: 'string',
+          description: 'What the invoice is for, in the vendor\'s own words. e.g. "bridal makeup", "floral decoration", "pre-wedding shoot in Goa". Only include if vendor mentioned it. Do NOT invent or default this field.',
+        },
+        amount_total: {
+          type: 'integer',
+          description: 'Total invoice amount in whole rupees. Convert "1.2 lakh" to 120000, "80k" to 80000. Required.',
+        },
+        amount_advance: {
+          type: 'integer',
+          description: 'Booking/advance amount in whole rupees. If vendor says "30 percent advance" calculate it from total. If vendor says "30k advance" use 30000. Leave null if no advance mentioned.',
+        },
+        due_date: {
+          type: 'string',
+          description: 'Balance due date in YYYY-MM-DD. Convert "Nov 15" to most likely upcoming year. Optional.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Anything else worth capturing. Optional.',
+        },
+      },
+      required: ['client_name', 'amount_total'],
+    },
+  },
+  {
     name: 'update_routing_handle',
     description: 'Change the vendor TDW routing handle. Use only when the vendor explicitly asks to change their TDW code or handle. Handle will be uppercased and stripped of non-alphanumeric characters automatically. If the requested handle is already taken by another vendor, the tool will return an error and you should ask the vendor to try a different one.',
     input_schema: {

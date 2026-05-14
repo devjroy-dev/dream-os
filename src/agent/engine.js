@@ -6,6 +6,7 @@ const { buildSystemPrompt }       = require('./systemPrompt');
 const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
 const { nextOnboardingMessage }   = require('./onboarding');
 const { TOOLS }                   = require('./tools');
+const { buildInvoiceMessage }     = require('../lib/invoiceMessage');
 
 const MAX_ITERATIONS = 5;
 const MODEL          = 'claude-haiku-4-5-20251001';
@@ -544,6 +545,112 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
 
       console.log(`[tool:create_event] ${event.kind} "${event.title}" on ${event.event_date} (${event.id})`);
       return `Event created. ID: ${event.id}. ${event.kind}: ${event.title} on ${event.event_date}.`;
+    }
+
+    case 'create_invoice': {
+      // 4a. Validation
+      if (input.amount_total <= 0) return 'Invoice total must be greater than zero.';
+      if (input.amount_advance != null && input.amount_advance < 0) return 'Advance amount cannot be negative.';
+      if (input.amount_advance != null && input.amount_advance > input.amount_total) return 'Advance amount cannot exceed the invoice total.';
+
+      // 4b. Fetch vendor row
+      const { data: v } = await supabase
+        .from('vendors')
+        .select('id, business_name, upi_id, routing_handle, invoice_prefix, invoice_counter, user_id')
+        .eq('id', vendor.id)
+        .single();
+
+      // 4c. Fetch user name (fallback for display)
+      const { data: u } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', v.user_id)
+        .single();
+
+      // 4d. Guard: routing handle
+      if (!v.routing_handle) return 'Cannot create invoice — onboarding is incomplete. Contact support.';
+
+      // 4e. Duplicate name check (only if lead_id not provided)
+      if (!input.lead_id) {
+        const { data: nameMatches } = await supabase
+          .from('leads')
+          .select('id, name, wedding_date, wedding_city')
+          .eq('vendor_id', vendor.id)
+          .ilike('name', `%${input.client_name}%`);
+
+        if (nameMatches && nameMatches.length >= 1) {
+          const matchList = nameMatches.map(m => {
+            const parts = [m.name];
+            if (m.wedding_date) parts.push(m.wedding_date);
+            if (m.wedding_city) parts.push(m.wedding_city);
+            return `${parts.join(', ')} (ID: ${m.id})`;
+          }).join('; ');
+          return `Found ${nameMatches.length} existing lead(s) named "${input.client_name}": ${matchList}. Is this the same client? If yes, reply with their lead ID. If this is a different person, reply with a more specific name (e.g. 'Priya from Pune').`;
+        }
+      }
+
+      // 4f. Set invoice prefix if null
+      if (v.invoice_prefix === null) {
+        const derivedPrefix = `TDW/${v.routing_handle}`;
+        await supabase.from('vendors').update({ invoice_prefix: derivedPrefix }).eq('id', vendor.id);
+        v.invoice_prefix = derivedPrefix;
+      }
+
+      // 4g. Increment counter (atomic)
+      const { data: vUpd } = await supabase
+        .from('vendors')
+        .update({ invoice_counter: v.invoice_counter + 1 })
+        .eq('id', vendor.id)
+        .select('invoice_counter')
+        .single();
+      const newCounter = vUpd.invoice_counter;
+
+      // 4h. Build invoice number
+      const invoiceNumber = `${v.invoice_prefix}/${String(newCounter).padStart(2, '0')}`;
+
+      // 4i. Insert invoice row
+      const { data: invoice, error: invErr } = await supabase
+        .from('invoices')
+        .insert({
+          vendor_id:      vendor.id,
+          lead_id:        input.lead_id || null,
+          invoice_number: invoiceNumber,
+          client_name:    input.client_name,
+          client_phone:   input.client_phone || null,
+          description:    input.description  || null,
+          amount_total:   input.amount_total,
+          amount_advance: input.amount_advance || null,
+          amount_paid:    0,
+          due_date:       input.due_date || null,
+          state:          'unpaid',
+          notes:          input.notes || null,
+        })
+        .select('id')
+        .single();
+
+      if (invErr) return `Error creating invoice: ${invErr.message}`;
+
+      // 4j. Compose message
+      const vendorDisplayName = v.business_name || u?.name || 'Your vendor';
+
+      const composedMessage = buildInvoiceMessage({
+        clientName:        input.client_name,
+        vendorDisplayName,
+        invoiceNumber,
+        description:       input.description  || null,
+        amountTotal:       input.amount_total,
+        amountAdvance:     input.amount_advance || null,
+        dueDate:           input.due_date      || null,
+        upiId:             v.upi_id            || null,
+      });
+
+      // 4k. Build return string
+      let result = `Invoice ${invoiceNumber} created.\n\nForward this to ${input.client_name}:\n\n${composedMessage}`;
+      if (!v.upi_id) {
+        result += `\n\n(UPI ID not saved — client won't see a payment ID. Reply "set my UPI to [your UPI]" to add it.)`;
+      }
+      console.log(`[tool:create_invoice] ${invoiceNumber} for ${input.client_name} — Rs ${input.amount_total}`);
+      return result;
     }
 
     case 'list_events': {
