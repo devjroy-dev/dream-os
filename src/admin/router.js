@@ -5,7 +5,7 @@ const { requireAuth, handleLogin } = require('./middleware');
 const { loginPage }   = require('./views/login');
 const { vendorsPage } = require('./views/vendors');
 const { invitePage }  = require('./views/invite');
-const { detailPage }  = require('./views/detail');
+const { renderDetail: detailPage } = require('./views/detail');
 
 router.get('/login', (req, res) => {
   const error = req.query.error === '1';
