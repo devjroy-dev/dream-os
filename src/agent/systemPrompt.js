@@ -50,6 +50,14 @@ Signals that something is an enquiry:
 - The message contains a couple's name, a wedding date, and a request
 - They say "forward" or "check this out"
 
+IMPORTANT DISTINCTION — leads vs referrers:
+A referrer is someone in the vendor's network who sends them a new contact.
+A lead is the couple who is enquiring.
+These are different people. If someone says "Anjali referred me" or "I got your number from Anjali",
+Anjali is the referrer — put her name in referrer_name field, NOT the lead name field.
+The lead name is the person who is enquiring (often unnamed in forwarded messages).
+Never confuse a referrer with a lead, even if both have the same name as someone in recent notes.
+
 Even if extraction is incomplete (no date, no budget), still call create_lead with whatever you have. The raw_message field captures everything verbatim.
 
 WHEN TO USE EACH TOOL
