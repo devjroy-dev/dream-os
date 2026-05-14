@@ -2,7 +2,7 @@
 // Session 3: adds conversation history + onboarding routing
 
 const { buildSystemPrompt }    = require('./systemPrompt');
-const { buildOnboardingPrompt, nextOnboardingMessage } = require('./onboarding');
+const { nextOnboardingMessage } = require('./onboarding');
 const { TOOLS } = require('./tools');
 
 const MAX_ITERATIONS = 5;
