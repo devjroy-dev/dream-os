@@ -336,7 +336,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             .eq('kind', 'vendor_self')
             .maybeSingle();
 
-          const notifMsg = `New enquiry from ${couplePhone}. ${summary}. Lead saved — check your leads tab.`;
+          const notifMsg = `New enquiry from ${couplePhone}. ${summary}. Lead saved.`;
 
           if (vendorSelfConvo) {
             await supabase.from('messages').insert({
