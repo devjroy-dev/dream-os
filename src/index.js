@@ -1,5 +1,5 @@
 // dream-os backend — entry point
-// Session 3: admin layer + agentic loop
+// Session 5: three-mode couple routing
 
 const express      = require('express');
 const twilio       = require('twilio');
@@ -15,14 +15,14 @@ const SUPABASE_URL               = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TWILIO_ACCOUNT_SID         = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN          = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_WHATSAPP_NUMBER     = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
-const ANTHROPIC_API_KEY          = process.env.ANTHROPIC_API_KEY;
+const TWILIO_WHATSAPP_NUMBER     = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14787788550';
+const TDW_WA_NUMBER              = process.env.TDW_WA_NUMBER || '14787788550';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   realtime: { transport: ws },
 });
 const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-const anthropic    = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+const anthropic    = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -34,7 +34,7 @@ app.locals.supabase = supabase;
 app.use('/admin', adminRouter);
 
 app.get('/', (req, res) => {
-  res.json({ status: 'alive', service: 'dream-os', version: '0.4.0' });
+  res.json({ status: 'alive', service: 'dream-os', version: '0.5.0' });
 });
 
 app.post('/webhook/whatsapp', async (req, res) => {
@@ -44,7 +44,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const body        = req.body.Body || '';
     const profileName = req.body.ProfileName || null;
 
-    console.log(`[whatsapp:in] ${phone} → ${body}`);
+    console.log(`[whatsapp:in] ${phone} -> ${body}`);
 
     let user;
     const { data: existingUser } = await supabase
@@ -63,12 +63,115 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .from('vendors').select('*').eq('user_id', user.id).maybeSingle();
 
     if (!vendor) {
+      // ── Couple routing — three modes ──────────────────────────────
+
+      // MODE 1 — Returning couple: already has a thread with a vendor
+      const { data: existingThread } = await supabase
+        .from('conversations')
+        .select('*, vendors(*)')
+        .eq('counterparty_phone', phone)
+        .eq('kind', 'couple_thread')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingThread) {
+        console.log(`[routing:mode1] returning couple ${phone} -> vendor ${existingThread.vendor_id}`);
+
+        await supabase.from('messages').insert({
+          conversation_id: existingThread.id,
+          direction: 'inbound',
+          channel: 'whatsapp',
+          body,
+          sent_by: 'couple',
+        });
+
+        const { data: vendorUser } = await supabase
+          .from('users').select('*').eq('id', existingThread.vendors.user_id).maybeSingle();
+
+        if (vendorUser?.phone) {
+          await sendWhatsApp(vendorUser.phone, `Message from your enquiry: "${body}"`);
+        }
+
+        await supabase.from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', existingThread.id);
+
+        return res.status(200).send('<Response/>');
+      }
+
+      // MODE 2 — TDW code: first word matches a vendor routing_handle
+      const firstWord = body.trim().split(/\s+/)[0].toUpperCase();
+      const handle    = firstWord.startsWith('TDW-') ? firstWord.slice(4) : firstWord;
+
+      const { data: matchedVendor } = await supabase
+        .from('vendors')
+        .select('*, users(*)')
+        .eq('routing_handle', handle)
+        .maybeSingle();
+
+      if (matchedVendor) {
+        console.log(`[routing:mode2] TDW code ${handle} -> vendor ${matchedVendor.id}`);
+
+        // Dedup: one lead per (vendor_id, counterparty_phone), ever
+        const { data: existingLead } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('vendor_id', matchedVendor.id)
+          .eq('phone', phone)
+          .maybeSingle();
+
+        const { data: coupleThread } = await supabase
+          .from('conversations')
+          .insert({
+            vendor_id: matchedVendor.id,
+            counterparty_phone: phone,
+            kind: 'couple_thread',
+            state: 'new',
+            mode: 'auto',
+          })
+          .select()
+          .single();
+
+        await supabase.from('messages').insert({
+          conversation_id: coupleThread.id,
+          direction: 'inbound',
+          channel: 'whatsapp',
+          body,
+          sent_by: 'couple',
+        });
+
+        if (!existingLead) {
+          await supabase.from('leads').insert({
+            vendor_id: matchedVendor.id,
+            phone,
+            source: 'whatsapp',
+            raw_message: body,
+            state: 'new',
+          });
+        }
+
+        const vendorPhone = matchedVendor.users?.phone;
+        if (vendorPhone) {
+          await sendWhatsApp(vendorPhone, `New enquiry via your TDW link. They said: "${body}"`);
+        }
+
+        await supabase.from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', coupleThread.id);
+
+        return res.status(200).send('<Response/>');
+      }
+
+      // MODE 3 — Fallback
+      console.log(`[routing:mode3] no match for ${phone}, body: "${body.slice(0, 40)}"`);
       await sendWhatsApp(phone,
-        "This number is for invited vendors only. If you'd like to work with us, reach out to hello@thedreamwedding.in."
+        `Hi! To reach a TDW vendor, send their TDW code — you'll find it in their Instagram bio or the link they shared.`
       );
       return res.status(200).send('<Response/>');
     }
 
+    // ── Vendor path ────────────────────────────────────────────────
     let convo;
     const { data: existingConvo } = await supabase
       .from('conversations').select('*')
@@ -109,8 +212,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     console.log(`[agent] reply: "${result.reply.slice(0, 80)}..."  (${result.iterations} iter, ${result.toolCalls.length} tool calls)`);
 
-    await supabase
-      .from('conversations')
+    await supabase.from('conversations')
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', convo.id);
 
@@ -140,7 +242,7 @@ async function sendWhatsApp(toPhone, body) {
     to,
     body,
   });
-  console.log(`[whatsapp:out] ${to} ← ${body.slice(0, 60)} (${msg.sid})`);
+  console.log(`[whatsapp:out] ${to} <- ${body.slice(0, 60)} (${msg.sid})`);
   return msg;
 }
 
