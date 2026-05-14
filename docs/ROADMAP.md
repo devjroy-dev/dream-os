@@ -1,6 +1,6 @@
 # dream-os -- Roadmap
 **Last updated:** 2026-05-14
-**Current version:** 0.5.0
+**Current version:** 0.5.5
 
 ## Vision
 WhatsApp-first chief of staff for wedding vendors.
@@ -18,6 +18,7 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 3 | Admin layer, onboarding flow (Swati greeting), conversation history, system prompt tightening, invite_vendor() | 0.3.0 |
 | 4 | leads table, create_lead tool, list_leads, update_lead_state, lead/referrer distinction, post-processing commentary strip, admin leads tab | 0.4.0 |
 | 5 | TDW handles (migration 0005), travel preference (migration 0006), 4-step onboarding, FIRSTNAME-PHONE3 auto-handle, three-mode couple routing, admin TDW link display | 0.5.0 |
+| 5.5 | Couple-facing agent, coupleSystemPrompt, runCoupleAgenticTurn, capture_couple_lead tool, vendor summary notification | 0.5.5 |
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
@@ -32,20 +33,7 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - TDW handle format: FIRSTNAME-PHONE3 e.g. DEV-550. Auto-assigned, no vendor input needed.
 - Lead dedup in Mode 2: one lead per (vendor_id, counterparty_phone), ever
 - TDW_WA_NUMBER env var: parameterised, swap when +91 arrives, no code change needed
-- Couple-facing agent: Haiku, session 5.5
-
-## Session 5.5 -- Couple-facing agent
-**Goal:** Couples get a response after sending TDW code. Agent collects wedding details, creates structured lead, notifies vendor with summary.
-
-What ships:
-- Mode 2 now sends couple an immediate acknowledgement: "Hi! You've reached [VendorName]. I'm their assistant -- what can I help you with? Tell me a bit about your wedding and I'll get them to follow up."
-- Couple replies with details -- agent running on couple_thread conversation collects: wedding date, city, events, budget
-- Agent creates structured lead with all extracted info
-- Vendor notified with summary: "New lead from [name/phone]. Wedding: [date], [city], [budget]. Full details captured."
-- Mode 1 (returning couple) also gets agent response -- not just vendor notification
-- Engine updated to handle couple_thread conversations (currently only handles vendor_self)
-
-Estimated time: 90 minutes
+- Couple-facing agent: Haiku, collect occasion/date/city/budget, notify vendor with summary
 
 ## Session 6 -- Morning briefing + proactive triggers
 **Goal:** Vendor gets a WhatsApp briefing every morning without asking.
@@ -72,15 +60,20 @@ What ships:
 Estimated time: 90 minutes
 
 ## Session 8.1 -- Smart model routing (Haiku -> Sonnet)
-**Goal:** Route complex tasks to Sonnet, keep simple tasks on Haiku.
+**Goal:** Route complex tasks to Sonnet, keep simple tasks on Haiku. 80/20 split.
 
 What ships:
 - Task classifier: lightweight Haiku call determines complexity
 - Router in engine.js: sets MODEL based on classifier output
+- Sonnet for: complex extraction, nuanced drafting, financial reasoning
+- Haiku for: simple notes, greetings, status questions
 - Cost tracking on messages table
 - Admin: AI cost this month on vendor detail
+- Onboarding gets Haiku: category normalisation (photo -> photography), graceful handling of unexpected inputs, vendor can answer multiple questions in one message
+- Couple agent routing: Sonnet for long/complex enquiries, Haiku for simple ones
+- Smart router applies to both vendor agent and couple agent
 
-Estimated time: 45-60 minutes
+Estimated time: 60-90 minutes
 
 ## Session 8 -- Admin polish + +91 number live
 **Goal:** Admin production-ready for 50 founding vendors.
@@ -102,6 +95,7 @@ What ships:
 - Next.js site on Vercel
 - Vendor profile pages (public, read-only)
 - Enquiry from Discover -> vendor WhatsApp thread automatically
+- Reuses couple-facing agent from Session 5.5
 
 Estimated time: 2-3 sessions
 
