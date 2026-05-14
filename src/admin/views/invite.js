@@ -2,7 +2,7 @@ const { layout } = require('./layout');
 
 function invitePage({ success, successName, error } = {}) {
   const waLink = successName
-    ? `https://wa.me/14155238886?text=Hi`
+    ? `https://wa.me/14787788550?text=Hi`
     : null;
 
   const body = `
@@ -23,9 +23,6 @@ function invitePage({ success, successName, error } = {}) {
           <button onclick="navigator.clipboard.writeText('Hey ${successName} — tap this link to get started with your chief of staff: ${waLink}')" class="btn btn-primary btn-sm">Copy message</button>
           <a href="https://wa.me/?text=${encodeURIComponent(`Hey ${successName} — tap this link to get started with your chief of staff: ${waLink}`)}" class="btn btn-gold btn-sm" target="_blank">Send via WhatsApp</a>
         </div>
-        <p style="font-size:11px;color:#8C8480;margin-top:12px;">
-          ⚠️ Sandbox only: they must first send <strong>join acres-eventually</strong> to +1 415 523 8886 to activate. This step goes away when the +91 number is live.
-        </p>
       </div>
     ` : ''}
 
