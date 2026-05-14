@@ -1,40 +1,9 @@
 // onboarding.js — conversational onboarding flow for new vendors
 //
 // States: new -> asked_category -> asked_city -> asked_travel -> asked_rate -> asked_handle -> complete
-//
-// Session 5: added asked_instagram step + TDW handle generation + completion TDW link.
+// asked_handle: auto-assigns FIRSTNAME-PHONE3, no vendor input needed
 
 const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
-
-function normaliseHandle(raw) {
-  return raw
-    .replace(/^@/, '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-}
-
-async function generateHandle({ vendor, user, instagramHandle, supabase }) {
-  const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const city      = (vendor.city     || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const category  = (vendor.category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const phone     = (user?.phone     || '').replace(/\D/g, '').slice(-4);
-
-  const candidates = instagramHandle
-    ? [normaliseHandle(instagramHandle), `${firstName}-${city}`, `${firstName}-${category}`, `${firstName}-${phone}`]
-    : [`${firstName}-${city}`, `${firstName}-${category}`, `${firstName}-${phone}`];
-
-  for (const handle of candidates) {
-    if (!handle || handle.replace(/-/g, '').length < 2) continue;
-    const { data: existing } = await supabase
-      .from('vendors')
-      .select('id')
-      .eq('routing_handle', handle)
-      .maybeSingle();
-    if (!existing) return handle;
-  }
-
-  return `${firstName}-${Date.now().toString().slice(-6)}`;
-}
 
 async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase }) {
   const state = vendor.onboarding_state;
@@ -80,121 +49,48 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
       });
       await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Typical wedding day rate: ${rate}`, tags: ['onboarding', 'pricing'] });
       await supabase.from('vendors').update({ onboarding_state: 'asked_handle' }).eq('id', vendor.id);
-      return { reply: `Got it. Last thing — pick a short name for your TDW link. Your Instagram handle works great, or just make one up. Example: RAHULCLICKS or RAHUL-DELHI.` };
+      return { reply: `Got it. One moment — setting up your TDW link now.` };
     }
 
     case 'asked_handle': {
-      const msg = inboundMessage.trim();
-
-      const normalisedMsg = msg.replace(/^@/, '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
-
-      // Vendor deferring entirely — pick anything from the full cascade
-      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha)/i.test(msg);
-
-      // Vendor rejecting last suggestion — skip FIRSTNAME-CITY, start from next candidate
-      const wantsAnother = /^(no|nope|nah|neither|none|not really|don't like|dont like|i don't like|i dont like|not that|something else|other|another|no\.)/i.test(msg);
-
       const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
-      console.log('city value:', vendor.city);
-      const city = (vendor.city || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const category = (vendor.category || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const phone = (user?.phone || '').replace(/\D/g, '').slice(-4);
+      const phone3 = (user?.phone || '').replace(/\D/g, '').slice(-3);
+      const phone4 = (user?.phone || '').replace(/\D/g, '').slice(-4);
+
+      const candidates = [
+        `${firstName}-${phone3}`,
+        `${firstName}-${phone4}`,
+        `${firstName}-${phone3}${phone4}`,
+        `${firstName}-${Date.now().toString().slice(-6)}`,
+      ];
 
       let chosenHandle = null;
-
-      if (wantsAnother) {
-        // Skip FIRSTNAME-CITY (already suggested), try remaining candidates
-        const fallbacks = [
-          `${firstName}-${category}`,
-          `${firstName}-${phone}`,
-          `${firstName}-${Date.now().toString().slice(-6)}`,
-        ];
-
-        for (const candidate of fallbacks) {
-          if (!candidate || candidate.replace(/-/g, '').length < 2) continue;
-          const { data: existing } = await supabase
-            .from('vendors')
-            .select('id')
-            .eq('routing_handle', candidate)
-            .maybeSingle();
-          if (!existing) {
-            chosenHandle = candidate;
-            break;
-          }
-        }
-
-        // Stay in asked_handle — show new suggestion, do not complete onboarding
-        return {
-          reply: `How about this one: ${chosenHandle}? Or pick your own.`,
-        };
-      }
-
-      if (!wantsSuggestion) {
-        // Vendor typed a handle — normalise and check uniqueness
-        const normalised = normalisedMsg;
-
-        if (normalised.length >= 2) {
-          const { data: existing } = await supabase
-            .from('vendors')
-            .select('id')
-            .eq('routing_handle', normalised)
-            .maybeSingle();
-
-          if (!existing) {
-            chosenHandle = normalised;
-          } else {
-            // Taken — suggest FIRSTNAME-CITY and loop back
-            const suggestion = `${firstName}-${city}`;
-
-            return {
-              reply: `That one's taken — try another? Or I can suggest one: ${suggestion}`,
-            };
-          }
+      for (const candidate of candidates) {
+        if (!candidate || candidate.replace(/-/g, '').length < 2) continue;
+        const { data: existing } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('routing_handle', candidate)
+          .maybeSingle();
+        if (!existing) {
+          chosenHandle = candidate;
+          break;
         }
       }
 
-      // wantsSuggestion (or typed something too short) — full cascade from the start
-      if (!chosenHandle) {
-        const candidates = [
-          `${firstName}-${city}`,
-          `${firstName}-${category}`,
-          `${firstName}-${phone}`,
-          `${firstName}-${Date.now().toString().slice(-6)}`,
-        ];
-
-        for (const candidate of candidates) {
-          if (!candidate || candidate.replace(/-/g, '').length < 2) continue;
-          const { data: existing } = await supabase
-            .from('vendors')
-            .select('id')
-            .eq('routing_handle', candidate)
-            .maybeSingle();
-          if (!existing) {
-            chosenHandle = candidate;
-            break;
-          }
-        }
-      }
-
-      // Extract Instagram handle if message looks like one
-      const instagramHandle = !wantsSuggestion && msg.includes('@')
-        ? msg.replace(/^@/, '').split(/\s+/)[0].toLowerCase()
-        : null;
-
-      // Save and complete
       await supabase
         .from('vendors')
         .update({
           routing_handle: chosenHandle,
-          instagram_handle: instagramHandle || null,
+          instagram_handle: null,
           onboarding_state: 'complete',
         })
         .eq('id', vendor.id);
 
       await supabase.from('notes').insert({
         vendor_id: vendor.id,
-        content: `TDW handle: ${chosenHandle}${instagramHandle ? `. Instagram: @${instagramHandle}` : ''}`,
-        tags: ['onboarding', 'tdw', 'instagram'],
+        content: `TDW handle: ${chosenHandle}`,
+        tags: ['onboarding', 'tdw'],
       });
 
       const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${chosenHandle}`;
