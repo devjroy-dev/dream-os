@@ -34,7 +34,7 @@ function renderDetail({ vendor, user, state, messages, notes, leads }) {
 
   const bubbles = messages.length === 0
     ? '<div class="empty-state">No messages yet.</div>'
-    : messages.map(m => `
+    : messages.slice().reverse().map(m => `
         <div class="message-row ${m.direction}">
           <div>
             <div class="bubble ${m.direction === 'inbound' ? 'bubble-in' : 'bubble-out'}">${m.body || ''}</div>
@@ -144,7 +144,7 @@ function renderDetail({ vendor, user, state, messages, notes, leads }) {
       <div class="right-col">
         <div class="card">
           <div class="card-title">Messages</div>
-          ${bubbles}
+          <div style="height:520px;overflow-y:auto;">${bubbles}</div>
         </div>
       </div>
     </div>
