@@ -103,7 +103,7 @@ app.post('/webhook/twilio-status', async (req, res) => {
 app.use('/admin', adminRouter);
 
 app.get('/', (req, res) => {
-  res.json({ status: 'alive', service: 'dream-os', version: '0.5.5' });
+  res.json({ status: 'alive', service: 'dream-os', version: '0.6.0' });
 });
 
 app.post('/webhook/whatsapp', async (req, res) => {
