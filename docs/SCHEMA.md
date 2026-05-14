@@ -13,6 +13,8 @@
 | 0005_tdw_handles.sql | 2026-05-14 | 5 | vendors.routing_handle, vendors.instagram_handle, users.email |
 | 0006_travel_preference.sql | 2026-05-14 | 5 | vendors.open_to_travel, vendors.travel_notes |
 
+No new migrations in Session 5.5 -- all changes were code-only.
+
 ## Tables
 
 ### users
@@ -34,10 +36,10 @@
 | category | text | set during onboarding e.g. photography |
 | vertical | text | default wedding |
 | city | text | set during onboarding |
-| routing_handle | text UNIQUE | TDW code suffix e.g. DEV-550. Uppercase, alphanumeric + hyphen. Auto-assigned as FIRSTNAME-PHONE3. |
+| routing_handle | text UNIQUE | TDW code suffix e.g. DEV550. Uppercase, alphanumeric only. Auto-assigned as FIRSTNAMEPHONE3. |
 | instagram_handle | text | IG handle without @. NULL -- collected naturally post-onboarding. |
 | open_to_travel | boolean | default false. Set during asked_travel onboarding step. |
-| travel_notes | text | Raw travel preference as vendor stated it. e.g. Yes pan-India |
+| travel_notes | text | Raw travel preference as vendor stated it. |
 | upi_id | text | future -- payment collection |
 | gstin | text | future -- tax |
 | status | text | active or paused or churned |
@@ -100,7 +102,7 @@ Realtime: enabled
 | vendor_id | uuid PK FK -> vendors.id | CASCADE delete |
 | summary | text | free-form summary the agent maintains |
 | pricing_policy | jsonb | {stated_rate: string} |
-| recent_notes | jsonb | cache of last 10 notes |
+| recent_notes | jsonb | cache of last 10 notes -- refreshed after every vendor turn |
 | open_threads | integer | denormalized count |
 | pending_actions | integer | denormalized count |
 | updated_at | timestamptz | auto via trigger |
@@ -138,13 +140,13 @@ Realtime: enabled
 |---|---|---|
 | id | uuid PK | auto-generated |
 | vendor_id | uuid FK -> vendors.id | CASCADE delete |
-| name | text | couple name e.g. Preethi or Priya & Rohit |
-| phone | text | couple phone if given |
+| name | text | couple name e.g. Meha or Priya & Rohit |
+| phone | text | couple phone -- always captured in Mode 2 TDW flow |
 | email | text | couple email if given |
-| wedding_date | date | extracted date |
-| wedding_city | text | where the wedding is |
+| wedding_date | date | extracted date -- past dates bumped forward 1-2 years |
+| wedding_city | text | where the event is |
 | event_types | text[] | e.g. ['wedding','reception','mehndi'] |
-| budget_min | integer | in Rs e.g. 150000 |
+| budget_min | integer | in Rs e.g. 200000 |
 | budget_max | integer | in Rs |
 | source | text | default whatsapp. instagram or referral or discover or other |
 | referrer_name | text | person who referred the couple |
@@ -163,6 +165,7 @@ Realtime: enabled
 - Every lead belongs to one vendor
 - vendor_id is always the scoping key -- never query without it
 - couple_thread conversations scoped by counterparty_phone for Mode 1 routing
+- One lead per (vendor_id, counterparty_phone) -- deduped in Mode 2
 
 ## Indexes
 - vendors_routing_handle_idx on vendors(routing_handle) -- fast TDW lookup on every inbound message

@@ -1,88 +1,109 @@
 # dream-os -- Session Handover
 **Last updated:** 2026-05-14
-**Session:** 5
-**Version:** 0.5.0
+**Session:** 5.5
+**Version:** 0.5.5
 
 ## What shipped this session
 
-### Migration 0005 (db/migrations/0005_tdw_handles.sql)
-- vendors.routing_handle -- UNIQUE, uppercase, alphanumeric + hyphen. TDW code suffix e.g. DEV-550
-- vendors.instagram_handle -- raw IG handle without @. NULL for now, collected naturally post-onboarding
-- users.email -- collected naturally in conversation, no dedicated onboarding step
-- Index: vendors_routing_handle_idx for fast routing lookups on every inbound message
+### Couple-facing agent (src/agent/coupleSystemPrompt.js + src/agent/engine.js)
+- New file: coupleSystemPrompt.js -- Haiku prompt for talking to couples on vendor's behalf
+- New function: runCoupleAgenticTurn in engine.js -- separate agentic loop for couple_thread conversations
+- New tool: capture_couple_lead -- upserts lead with structured data collected from couple
+- Couple flow: TDW code -> greeting -> occasion -> date/city -> budget -> name -> warm close
+- Exact locked first message: "Hey! Thanks for reaching out. I'm [vendorName]'s assistant. What's the occasion you're planning -- wedding, birthday, corporate event, or something else?"
+- Name collected last (commitment psychology)
+- Past date fix: if parsed date is in past, bumped forward 1-2 years
+- Vendor notified with structured summary: "New enquiry from [phone]. Name: X, Occasion: Y, Date: Z, City: W, Budget: Rs N. Lead saved."
 
-### Migration 0006 (db/migrations/0006_travel_preference.sql)
-- vendors.open_to_travel -- boolean, default false. Set during onboarding
-- vendors.travel_notes -- raw travel preference as vendor stated it
+### Mode 1 and Mode 2 routing updated (src/index.js)
+- Both modes now run runCoupleAgenticTurn instead of silent/notify-only
+- Couple gets agent response immediately after Mode 2 TDW match
+- Mode 1 returning couple also gets agent response
+- Vendor gets immediate basic notification, then structured summary after lead captured
 
-### Onboarding (src/agent/onboarding.js)
-Final state chain: new -> asked_category -> asked_city -> asked_travel -> asked_rate -> complete
+### Admin (src/admin/views/detail.js + src/admin/router.js)
+- Two-column white layout restored (left: profile, right: messages, tabs below)
+- Fixed 520px height message panel, latest message at top
+- Phone column added to leads table
+- Enquiries tab added -- shows all couple_thread conversations with full message history
+- TDW link and Instagram rows in profile
+- renderDetail export fixed (was detailPage in router.js)
 
-Step by step:
-- new: "Hi [Name] -- Swati mentioned a little bit about you..." asks what they do
-- asked_category: saves category lowercase, asks city
-- asked_city: saves city, asks about travel
-- asked_travel: regex detects open/yes/travel/anywhere/pan-india -> open_to_travel = true, else false. Saves travel_notes. Asks rate.
-- asked_rate: saves rate to vendor_state + note. Auto-assigns TDW handle (FIRSTNAME-PHONE3 cascade). Sets onboarding_state = complete. Sends completion message with TDW link.
+### System prompt fixes (src/agent/systemPrompt.js)
+- TDW handle questions deflected: "Your TDW link was sent when you completed onboarding -- check that message."
+- list_leads always called fresh when vendor asks for specific lead details -- no hallucination
+- Draft reply to couple blocked: "Reply to them directly on WhatsApp -- I'll track it when you update me."
 
-TDW handle auto-generation (no vendor input needed):
-- Cascade: FIRSTNAME-PHONE3 -> FIRSTNAME-PHONE4 -> FIRSTNAME-PHONE3PHONE4 -> FIRSTNAME-TIMESTAMP6
-- Each candidate checked for uniqueness in DB before use
-- Phone number is unique per vendor so collision is near impossible for 50-vendor cohort
+### list_leads tool fix (src/agent/engine.js)
+- Phone added to select query and summary line
+- Vendor can now ask "any leads with phone number?" and get real numbers back
 
-Completion message (exact, locked):
-"Perfect -- you're all set. Here's your TDW link: wa.me/[TDW_WA_NUMBER]?text=TDW-[HANDLE] -- put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant."
+### TDW handle format change
+- Old format: FIRSTNAME-PHONE3 e.g. DEV-550
+- New format: FIRSTNAMEPHONE3 e.g. DEV550
+- wa.me link: wa.me/14787788550?text=TDW-DEV550
+- Couples send: TDW-DEV550 or DEV550 (both work)
+- DB updated for test vendor: routing_handle = DEV550
 
-TDW_WA_NUMBER env var: set to 14787788550 in Railway. Swap to 91XXXXXXXXX when +91 arrives. No code change needed.
+## Verified working
+- TDW-DEV550 -> couple gets exact locked greeting ✅
+- Couple flow: occasion -> date/city -> budget -> name -> close ✅
+- Vendor notified with full structured summary ✅
+- Lead created with name, phone, date, city, budget, occasion ✅
+- Mode 1 returning couple gets agent response ✅
+- Admin Enquiries tab shows couple threads ✅
+- Admin leads table shows phone number ✅
+- Vendor asks for lead phone -> Haiku fetches fresh, returns correct number ✅
+- Vendor asks to draft reply -> agent deflects cleanly ✅
+- Vendor asks about TDW handle -> agent deflects to onboarding message ✅
 
-### Couple routing (src/index.js)
-Three-mode routing for any non-vendor number:
+## Test reset SQL (run in Supabase to clean test data)
+-- Delete couple thread
+delete from messages where conversation_id in (
+  select id from conversations where counterparty_phone = '+919625759924'
+);
+delete from leads where phone = '+919625759924';
+delete from conversations where counterparty_phone = '+919625759924';
+delete from users where phone = '+919625759924';
 
-Mode 1 -- Returning couple
-- Check: conversations table has counterparty_phone = this number and kind = couple_thread
-- Action: log message to thread, notify vendor: "Message from your enquiry: [body]"
+-- Clean vendor messages
+delete from messages where conversation_id = 'c2740497-6f40-4469-8bc1-8d66c9bda7bd';
 
-Mode 2 -- TDW code
-- Check: first word stripped of TDW- prefix matches vendors.routing_handle (case insensitive via UPPER)
-- Works with or without TDW- prefix: DEV-550 and TDW-DEV-550 both route correctly
-- Action: create couple_thread, log message, create lead (deduped on vendor_id + phone), notify vendor: "New enquiry via your TDW link. They said: [body]"
-- Lead dedup: one lead per (vendor_id, counterparty_phone), ever
+-- Clean duplicate onboarding notes (keep latest 5 only)
+delete from notes
+where vendor_id = '2eb5d3fb-31eb-4b26-859a-cf10ae477d53'
+and tags && array['onboarding']
+and id not in (
+  select id from notes
+  where vendor_id = '2eb5d3fb-31eb-4b26-859a-cf10ae477d53'
+  and tags && array['onboarding']
+  order by created_at desc
+  limit 5
+);
 
-Mode 3 -- Fallback
-- No match: "Hi! To reach a TDW vendor, send their TDW code -- you'll find it in their Instagram bio or the link they shared."
+-- Clear vendor_state cache
+update vendor_state
+set recent_notes = '[]'
+where vendor_id = '2eb5d3fb-31eb-4b26-859a-cf10ae477d53';
 
-### Admin (src/admin/views/detail.js)
-- Vendor detail shows TDW Link (clickable wa.me link) and Instagram handle
-- TDW_WA_NUMBER from env var
-
-### System prompt (src/agent/systemPrompt.js)
-- Travel availability added to vendor profile context
-- Rule added: never mention or construct TDW links -- handled by onboarding only
+## Known gaps (Session 6+)
+1. update_routing_handle tool not built -- vendor cannot change TDW handle via WhatsApp (Session 6)
+2. No lead dedup on vendor-forwarded messages -- only Mode 2 deduped
+3. update_lead_state requires UUID -- name-based update deferred to Session 8
+4. No status callback URL on Twilio -- needed for Session 6 delivery receipts
+5. Onboarding is a dumb state machine -- no Haiku, no normalisation (Session 8.1)
+6. Agent context gets confused with many test resets -- duplicate notes in vendor context. Production use will be clean.
+7. Smart routing Haiku/Sonnet not yet live -- Session 8.1
+8. Vendor cannot reply to couple through dream-os yet -- Session 6
 
 ## Railway env vars (current)
 - TWILIO_WHATSAPP_NUMBER = whatsapp:+14787788550
 - TDW_WA_NUMBER = 14787788550
 
-## Smoke tests passed
-- Full onboarding 4 steps: category, city, travel, rate -> TDW link sent automatically
-- TDW handle auto-generated as FIRSTNAME-PHONE3 (DEV-550)
-- Mode 3 fallback: unknown number gets TDW code prompt
-- Mode 2: TDW-DEV-550 routed correctly, vendor notified instantly
-- Mode 1: returning couple routed without TDW code
-
-## Known gaps (fix in Session 5.5 and beyond)
-1. Couple gets no response after sending TDW code -- silent after Mode 2 (Session 5.5)
-2. No couple-facing agent -- couples not asked for wedding details (Session 5.5)
-3. Agent improvises TDW-related replies post-onboarding -- system prompt rule added but needs testing
-4. update_routing_handle tool not built -- vendor cannot change handle via WhatsApp (Session 6)
-5. No lead deduplication on vendor-forwarded messages -- only Mode 2 deduped
-6. update_lead_state still requires UUID -- name-based update deferred to Session 8
-7. No status callback URL on Twilio -- needed for Session 6 delivery receipts
-
 ## WhatsApp numbers reference
 | Number | Currently points to | Notes |
 |---|---|---|
-| +14155238886 | Twilio sandbox | Retired from dream-os |
+| +14155238886 | Twilio sandbox | Retired |
 | +14787788550 | dream-os Railway | Active now |
 | +91XXXXXXXXX | Pending Twilio approval | Will become primary |
 
@@ -97,16 +118,16 @@ When +91 arrives:
 - Test vendor phone: +918757788550
 - Test vendor UUID: 2eb5d3fb-31eb-4b26-859a-cf10ae477d53
 - Test vendor user UUID: f1d6d3af-a828-4e42-98ab-862b05dbc110
-- Supabase project: nvzkbagqxbysoeszxent (Mumbai)
+- Test conversation UUID: c2740497-6f40-4469-8bc1-8d66c9bda7bd
+- Supabase: nvzkbagqxbysoeszxent (Mumbai)
 - Railway: https://dream-os-production.up.railway.app
 - Admin: https://dream-os-production.up.railway.app/admin
 
-## First thing next session (5.5)
+## First thing next session
 curl https://dream-os-production.up.railway.app
-Should return: {"status":"alive","service":"dream-os","version":"0.5.0"}
+Should return: {"status":"alive","service":"dream-os","version":"0.5.5"}
 
-Session 5.5 goal: couple-facing agent. When Mode 2 fires, couple gets a response from the agent
-asking for wedding details. Agent collects info, creates structured lead, notifies vendor with summary.
+Session 6 goal: morning briefing cron + update_routing_handle tool + Twilio template submission.
 
 ## Document update protocol
 HANDOVER.md -- fully rewritten every session

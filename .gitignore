@@ -3,3 +3,10 @@ node_modules/
 .env.local
 *.log
 .DS_Store
+
+# Claude Code scratch files at repo root
+/session*.md
+/admin_*_fix.md
+/anything_*_fix.md
+/*_writes.md
+/*_final.md
