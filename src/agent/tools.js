@@ -140,7 +140,7 @@ const TOOLS = [
   },
   {
     name: 'respond_to_vendor',
-    description: 'Send the actual reply to the vendor on WhatsApp. MUST be the last tool call every turn. The vendor only sees what you put here. Keep it WhatsApp-short — 1-3 sentences max.',
+    description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {
       type: 'object',
       properties: {
