@@ -87,7 +87,7 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase })
       const msg = inboundMessage.trim();
 
       // Check if vendor wants us to pick for them
-      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose)/i.test(msg);
+      const wantsSuggestion = /^(suggest|you pick|anything|whatever|auto|generate|you choose|sure|yes|ok|okay|sounds good|that works|go ahead|perfect|fine|alright|great|yep|yup|haan|ha)/i.test(msg);
 
       let chosenHandle = null;
 
