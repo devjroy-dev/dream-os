@@ -279,6 +279,87 @@ const TOOLS = [
     },
   },
   {
+    name: 'record_payment',
+    description: 'Record a payment received against an existing invoice. Use when the vendor says advance received, deposit paid, booking amount paid, token received, booking done, booking confirmed, got the advance, she paid the advance, advance transferred, advance cleared, balance received, balance cleared, full payment done, paid in full, settled, final payment received, or similar. Stage 2: advance/token/booking amount received — generates booking confirmation PDF. Stage 3: balance/full payment received — closes the invoice. Always call list_invoices first if you need to find the invoice_id by client name.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        invoice_id: {
+          type: 'string',
+          description: 'UUID of the invoice to record payment against. Required.',
+        },
+        amount_received: {
+          type: 'integer',
+          description: 'Amount received in whole rupees. e.g. 32000. Required.',
+        },
+        payment_type: {
+          type: 'string',
+          enum: ['advance', 'balance', 'partial'],
+          description: 'Type of payment. advance = booking amount received (triggers PDF). balance = full balance cleared (closes invoice). partial = partial payment, invoice stays open.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional. Any notes about this payment e.g. payment method, transaction reference.',
+        },
+      },
+      required: ['invoice_id', 'amount_received', 'payment_type'],
+    },
+  },
+  {
+    name: 'list_invoices',
+    description: 'List invoices for this vendor. Use when vendor asks who owes money, show unpaid invoices, invoice status, or needs an invoice_id to record a payment.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        state: {
+          type: 'string',
+          enum: ['all', 'unpaid', 'advance_paid', 'paid', 'cancelled'],
+          description: 'Filter by invoice state. Default: unpaid.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'log_expense',
+    description: 'Log a business expense. Use when vendor mentions spending money on travel, equipment, an assistant, studio hire, marketing, software, food, printing, commission, a shoot, inventory purchase, or anything else business-related.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        amount: {
+          type: 'integer',
+          description: 'Amount spent in whole rupees. Required.',
+        },
+        category: {
+          type: 'string',
+          enum: ['travel', 'equipment', 'assistant', 'studio', 'marketing', 'software', 'food', 'printing', 'commission', 'shoot', 'inventory', 'other'],
+          description: 'Expense category. Required.',
+        },
+        description: {
+          type: 'string',
+          description: 'Short description in vendor words. e.g. "Ola to venue recce", "New 50mm lens". Optional but helpful.',
+        },
+        expense_date: {
+          type: 'string',
+          description: 'Date in YYYY-MM-DD. Optional — defaults to today if not mentioned.',
+        },
+        client_name: {
+          type: 'string',
+          description: 'Client name if this expense is for a specific client. Optional.',
+        },
+        linked_lead_id: {
+          type: 'string',
+          description: 'UUID of linked lead if expense is for a specific booking. Optional.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Any additional notes. Optional.',
+        },
+      },
+      required: ['amount', 'category'],
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {

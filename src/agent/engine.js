@@ -7,6 +7,8 @@ const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
 const { nextOnboardingMessage }   = require('./onboarding');
 const { TOOLS }                   = require('./tools');
 const { buildInvoiceMessage }     = require('../lib/invoiceMessage');
+const { generateInvoicePdf }     = require('../lib/invoicePdf');
+const { formatRs }               = require('../lib/format');
 const { classifyMessage }         = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 
@@ -830,7 +832,173 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
       return 'Reply queued.';
     }
 
-    default:
+    case 'record_payment': {
+      // Fetch invoice — must belong to this vendor
+      const { data: inv, error: invErr } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', input.invoice_id)
+        .eq('vendor_id', vendor.id)
+        .single();
+
+      if (invErr || !inv) return 'Invoice not found. Check the invoice ID and try again.';
+      if (inv.state === 'paid')      return `Invoice ${inv.invoice_number} is already fully paid.`;
+      if (inv.state === 'cancelled') return `Invoice ${inv.invoice_number} is cancelled — cannot record payment.`;
+
+      const newAmountPaid = inv.amount_paid + input.amount_received;
+
+      // Soft overpayment warning (shagun, tips — not blocked at DB)
+      if (newAmountPaid > inv.amount_total) {
+        const excess = newAmountPaid - inv.amount_total;
+        console.warn(`[tool:record_payment] overpayment of Rs ${excess} on ${inv.invoice_number} — recording as-is`);
+      }
+
+      // Determine new state
+      let newState = inv.state;
+      if (input.payment_type === 'balance' || newAmountPaid >= inv.amount_total) {
+        newState = 'paid';
+      } else if (input.payment_type === 'advance' && inv.state === 'unpaid') {
+        newState = 'advance_paid';
+      }
+
+      // Update invoice record
+      await supabase.from('invoices').update({
+        amount_paid: newAmountPaid,
+        state:       newState,
+        updated_at:  new Date().toISOString(),
+      }).eq('id', inv.id);
+
+      console.log(`[tool:record_payment] ${inv.invoice_number} Rs ${input.amount_received} received — ${inv.state} -> ${newState}`);
+
+      // ── Stage 2: advance paid → generate booking confirmation PDF ──
+      if (newState === 'advance_paid') {
+        try {
+          const { data: v } = await supabase
+            .from('vendors')
+            .select('business_name, upi_id, routing_handle, user_id')
+            .eq('id', vendor.id)
+            .single();
+
+          const { data: u } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', v.user_id)
+            .single();
+
+          const pdfBuffer = await generateInvoicePdf({
+            invoice:    { ...inv, amount_paid: newAmountPaid },
+            vendor:     v,
+            vendorName: u?.name || 'Vendor',
+          });
+
+          const fileName = `${vendor.id}/${inv.invoice_number.replace(/\//g, '-')}.pdf`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from('invoices')
+            .upload(fileName, pdfBuffer, {
+              contentType: 'application/pdf',
+              upsert:      true,
+            });
+
+          if (uploadErr) {
+            console.error('[tool:record_payment] PDF upload failed:', uploadErr.message);
+            return `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Booking confirmed. PDF generation failed — try again or contact support.`;
+          }
+
+          // Signed URL valid for 1 year
+          const { data: signedData } = await supabase.storage
+            .from('invoices')
+            .createSignedUrl(fileName, 60 * 60 * 24 * 365);
+
+          if (signedData?.signedUrl) {
+            await supabase.from('invoices')
+              .update({ pdf_url: signedData.signedUrl })
+              .eq('id', inv.id);
+          }
+
+          const balance    = inv.amount_total - newAmountPaid;
+          const balanceStr = balance > 0 ? ` Balance due: Rs ${formatRs(balance)}.` : '';
+          const pdfUrl     = signedData?.signedUrl || null;
+
+          console.log(`[tool:record_payment] PDF generated for ${inv.invoice_number} — ${fileName}`);
+
+          let result = `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Booking confirmed.${balanceStr}`;
+          if (pdfUrl) result += `
+
+--- BOOKING CONFIRMATION PDF — FORWARD TO ${inv.client_name.toUpperCase()} ---
+${pdfUrl}
+--- END ---`;
+          return result;
+
+        } catch (pdfErr) {
+          console.error('[tool:record_payment] PDF error:', pdfErr.message);
+          return `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Booking confirmed. PDF could not be generated: ${pdfErr.message}`;
+        }
+      }
+
+      // ── Stage 3: balance paid → plain text, invoice closed ──────────
+      if (newState === 'paid') {
+        return `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Invoice ${inv.invoice_number} fully paid (Rs ${formatRs(inv.amount_total)}). All done.`;
+      }
+
+      // ── Partial payment — invoice still open ─────────────────────────
+      const remaining = inv.amount_total - newAmountPaid;
+      return `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Rs ${formatRs(remaining)} still outstanding on ${inv.invoice_number}.`;
+    }
+
+    case 'list_invoices': {
+      const state = input.state || 'unpaid';
+
+      let query = supabase
+        .from('invoices')
+        .select('id, invoice_number, client_name, amount_total, amount_paid, state, due_date, created_at')
+        .eq('vendor_id', vendor.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (state !== 'all') query = query.eq('state', state);
+
+      const { data: invoices, error } = await query;
+      if (error) return `Error fetching invoices: ${error.message}`;
+      if (!invoices || invoices.length === 0) {
+        return state === 'all' ? 'No invoices yet.' : `No ${state} invoices.`;
+      }
+
+      const lines = invoices.map(i => {
+        const balance = i.amount_total - i.amount_paid;
+        const due     = i.due_date ? `, due ${i.due_date}` : '';
+        const bal     = balance > 0 ? `, balance Rs ${formatRs(balance)}` : ' (paid)';
+        return `${i.invoice_number} — ${i.client_name} — Rs ${formatRs(i.amount_total)}${bal} — ${i.state}${due} (ID: ${i.id})`;
+      }).join('\n');
+
+      return `${invoices.length} invoice(s):\n${lines}`;
+    }
+
+    case 'log_expense': {
+      if (!input.amount || input.amount <= 0) return 'Expense amount must be greater than zero.';
+
+      const { data: expense, error } = await supabase.from('expenses').insert({
+        vendor_id:      vendor.id,
+        amount:         input.amount,
+        category:       input.category,
+        description:    input.description   || null,
+        expense_date:   input.expense_date  || null,
+        client_name:    input.client_name   || null,
+        linked_lead_id: input.linked_lead_id || null,
+        notes:          input.notes         || null,
+      }).select('id, category, amount, expense_date').single();
+
+      if (error) {
+        console.error('[tool:log_expense] error:', error);
+        return `Error logging expense: ${error.message}`;
+      }
+
+      const dateStr = expense.expense_date || new Date().toISOString().split('T')[0];
+      console.log(`[tool:log_expense] Rs ${input.amount} — ${input.category} — ${dateStr}`);
+      return `Expense logged — Rs ${formatRs(input.amount)}, ${input.category}${input.description ? `: ${input.description}` : ''}, ${dateStr}.`;
+    }
+
+        default:
       return `Unknown tool: ${name}`;
   }
 }
