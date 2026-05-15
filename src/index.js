@@ -11,6 +11,7 @@ const { runAgenticTurn, runCoupleAgenticTurn } = require('./agent/engine');
 const { buildBriefing } = require('./agent/briefing');
 const { startCronJobs } = require('./cron');
 const { sendWhatsApp } = require('./lib/whatsapp');
+const { buildDisambiguationQuestion, interpretDisambiguationReply, vendorDisplayName } = require('./agent/disambiguation');
 const adminRouter  = require('./admin/router');
 
 const PORT                       = process.env.PORT || 3000;
@@ -133,100 +134,164 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .from('vendors').select('*').eq('user_id', user.id).maybeSingle();
 
     if (!vendor) {
-      // ── Couple routing — three modes ──────────────────────────────
+      // ── Couple routing — disambiguation-aware (Session 8.5 Step 10) ──
+      //
+      // Order:
+      //   Step A: Pending routing clarification (user was previously asked which vendor)
+      //   Step B: TDW code in first word -> Mode 2 (wins over thread history)
+      //   Step C: Count existing couple_threads:
+      //             0 -> Mode 3 fallback
+      //             1 -> Mode 1 (route to that thread)
+      //             2+ -> Set pending_routing_context, ask disambiguation question
 
-      // MODE 1 -- Returning couple: already has a thread with a vendor
-      const { data: existingThread } = await supabase
-        .from('conversations')
-        .select('*, vendors(*)')
-        .eq('counterparty_phone', phone)
-        .eq('kind', 'couple_thread')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const DISAMBIGUATION_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-      if (existingThread) {
-        console.log(`[routing:mode1] returning couple ${phone} -> vendor ${existingThread.vendor_id}`);
+      // ── Step A: Pending disambiguation reply ──────────────────────
+      const pendingCtx = user.pending_routing_context;
+      const pendingFresh = pendingCtx?.asked_at
+        && (Date.now() - new Date(pendingCtx.asked_at).getTime()) < DISAMBIGUATION_TTL_MS;
 
-        // Log inbound message
-        await supabase.from('messages').insert({
-          conversation_id: existingThread.id,
-          direction: 'inbound',
-          channel: 'whatsapp',
-          body,
-          sent_by: 'couple',
-        });
-
-        // Load vendor user for notification
-        const { data: vendorUser } = await supabase
-          .from('users').select('*').eq('id', existingThread.vendors.user_id).maybeSingle();
-
-        // Run couple agent
-        const result = await runCoupleAgenticTurn({
-          vendor: existingThread.vendors,
-          vendorUser,
-          conversation: existingThread,
-          couplePhone: phone,
-          inboundMessage: body,
-          supabase,
-          anthropic,
-        });
-
-        // Send agent reply to couple
-        const twilioMsg = await sendWhatsApp(phone, result.reply);
-
-        // Log outbound message
-        await supabase.from('messages').insert({
-          conversation_id: existingThread.id,
-          direction: 'outbound',
-          channel: 'whatsapp',
-          body: result.reply,
-          sent_by: 'agent',
-          twilio_sid: twilioMsg.sid,
-          tool_calls: result.toolCalls,
-        });
-
-        // Send vendor notification if lead was captured
-        if (result.vendorNotification && vendorUser?.phone) {
-          await sendWhatsApp(vendorUser.phone, result.vendorNotification);
-        }
-
-        await supabase.from('conversations')
-          .update({ last_message_at: new Date().toISOString() })
-          .eq('id', existingThread.id);
-
-        return res.status(200).send('<Response/>');
-      }
-
-      // MODE 2 -- TDW code: first word matches a vendor routing_handle
+      // Detect TDW code in this message — needed for Step A and Step B
       const firstWord = body.trim().split(/\s+/)[0].toUpperCase();
       const handle    = firstWord.startsWith('TDW-') ? firstWord.slice(4) : firstWord;
 
-      const { data: matchedVendor } = await supabase
+      if (pendingFresh && pendingCtx.candidate_vendor_ids?.length > 0) {
+        // A TDW code in the reply short-circuits disambiguation
+        if (firstWord && handle && handle !== firstWord && /^[A-Z0-9]+$/.test(handle)) {
+          // Starts with TDW- prefix — handled in Step B below, fall through after clearing pending
+          await supabase.from('users').update({ pending_routing_context: null }).eq('id', user.id);
+        } else {
+          // Load candidate vendors (we stored ids; need names + categories for interpretation)
+          const { data: candidateVendors } = await supabase
+            .from('vendors')
+            .select('id, business_name, category, users(name)')
+            .in('id', pendingCtx.candidate_vendor_ids);
+
+          const interp = await interpretDisambiguationReply({
+            replyText: body,
+            candidateVendors: candidateVendors || [],
+            anthropic,
+          });
+
+          if (interp.matched_vendor_id && interp.confidence === 'high') {
+            // Clear pending state
+            await supabase.from('users').update({ pending_routing_context: null }).eq('id', user.id);
+
+            // Route the ORIGINAL message (not this clarification reply) to matched vendor
+            const matchedVendor = (candidateVendors || []).find(v => v.id === interp.matched_vendor_id);
+            const originalMessage = pendingCtx.original_message || body;
+
+            // Find or create the couple_thread with this vendor
+            let { data: thread } = await supabase
+              .from('conversations')
+              .select('*, vendors(*)')
+              .eq('vendor_id', interp.matched_vendor_id)
+              .eq('counterparty_phone', phone)
+              .eq('kind', 'couple_thread')
+              .maybeSingle();
+
+            if (!thread) {
+              const { data: newThread } = await supabase.from('conversations').insert({
+                vendor_id: interp.matched_vendor_id,
+                counterparty_phone: phone,
+                kind: 'couple_thread',
+                state: 'new',
+                mode: 'auto',
+              }).select('*, vendors(*)').single();
+              thread = newThread;
+            }
+
+            // Log the original message as the actual inbound (we deferred it earlier)
+            await supabase.from('messages').insert({
+              conversation_id: thread.id,
+              direction: 'inbound',
+              channel: 'whatsapp',
+              body: originalMessage,
+              sent_by: 'couple',
+            });
+
+            const { data: vendorUser } = await supabase
+              .from('users').select('*').eq('id', thread.vendors.user_id).maybeSingle();
+
+            const result = await runCoupleAgenticTurn({
+              vendor: thread.vendors,
+              vendorUser,
+              conversation: thread,
+              couplePhone: phone,
+              inboundMessage: originalMessage,
+              supabase,
+              anthropic,
+            });
+
+            const twilioMsg = await sendWhatsApp(phone, result.reply);
+
+            await supabase.from('messages').insert({
+              conversation_id: thread.id,
+              direction: 'outbound',
+              channel: 'whatsapp',
+              body: result.reply,
+              sent_by: 'agent',
+              twilio_sid: twilioMsg.sid,
+              tool_calls: result.toolCalls,
+            });
+
+            if (result.vendorNotification && vendorUser?.phone) {
+              await sendWhatsApp(vendorUser.phone, result.vendorNotification);
+            }
+
+            await supabase.from('conversations')
+              .update({ last_message_at: new Date().toISOString() })
+              .eq('id', thread.id);
+
+            console.log(`[routing:disambiguated] ${phone} -> vendor ${interp.matched_vendor_id} (${vendorDisplayName(matchedVendor)})`);
+            return res.status(200).send('<Response/>');
+          }
+
+          // Unclear or low confidence — ask one more time with the same vendors
+          await sendWhatsApp(phone,
+            `Sorry, didn't catch that — ${buildDisambiguationQuestion(candidateVendors || []).replace(/^Hi! /, '')}`
+          );
+          console.log(`[routing:disambiguation_unclear] ${phone} reply="${body.slice(0, 40)}"`);
+          return res.status(200).send('<Response/>');
+        }
+      }
+
+      // ── Step B: TDW code wins over history ────────────────────────
+      const { data: matchedByTdw } = await supabase
         .from('vendors')
         .select('*, users(*)')
         .eq('routing_handle', handle)
         .maybeSingle();
 
-      if (matchedVendor) {
-        console.log(`[routing:mode2] TDW code ${handle} -> vendor ${matchedVendor.id}`);
+      if (matchedByTdw) {
+        console.log(`[routing:tdw] code ${handle} -> vendor ${matchedByTdw.id}`);
 
-        const vendorUser = matchedVendor.users;
+        const vendorUser = matchedByTdw.users;
 
-        // Create couple thread
-        const { data: coupleThread } = await supabase
+        // Find or create couple_thread for this vendor
+        let { data: coupleThread } = await supabase
           .from('conversations')
-          .insert({
-            vendor_id: matchedVendor.id,
-            counterparty_phone: phone,
-            kind: 'couple_thread',
-            state: 'new',
-            mode: 'auto',
-          })
-          .select()
-          .single();
+          .select('*')
+          .eq('vendor_id', matchedByTdw.id)
+          .eq('counterparty_phone', phone)
+          .eq('kind', 'couple_thread')
+          .maybeSingle();
 
-        // Log inbound message
+        if (!coupleThread) {
+          const { data: newThread } = await supabase
+            .from('conversations')
+            .insert({
+              vendor_id: matchedByTdw.id,
+              counterparty_phone: phone,
+              kind: 'couple_thread',
+              state: 'new',
+              mode: 'auto',
+            })
+            .select()
+            .single();
+          coupleThread = newThread;
+        }
+
         await supabase.from('messages').insert({
           conversation_id: coupleThread.id,
           direction: 'inbound',
@@ -239,13 +304,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
         const { data: existingLead } = await supabase
           .from('leads')
           .select('id')
-          .eq('vendor_id', matchedVendor.id)
+          .eq('vendor_id', matchedByTdw.id)
           .eq('phone', phone)
           .maybeSingle();
 
         if (!existingLead) {
           await supabase.from('leads').insert({
-            vendor_id:   matchedVendor.id,
+            vendor_id:   matchedByTdw.id,
             phone,
             source:      'whatsapp',
             raw_message: body,
@@ -253,9 +318,8 @@ app.post('/webhook/whatsapp', async (req, res) => {
           });
         }
 
-        // Run couple agent -- will reply to couple and collect details
         const result = await runCoupleAgenticTurn({
-          vendor: matchedVendor,
+          vendor: matchedByTdw,
           vendorUser,
           conversation: coupleThread,
           couplePhone: phone,
@@ -264,10 +328,8 @@ app.post('/webhook/whatsapp', async (req, res) => {
           anthropic,
         });
 
-        // Send agent reply to couple
         const twilioMsg = await sendWhatsApp(phone, result.reply);
 
-        // Log outbound message
         await supabase.from('messages').insert({
           conversation_id: coupleThread.id,
           direction: 'outbound',
@@ -278,7 +340,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
           tool_calls: result.toolCalls,
         });
 
-        // Send vendor notification if lead was captured, else send basic notification
         const vendorPhone = vendorUser?.phone;
         if (vendorPhone) {
           const notif = result.vendorNotification
@@ -293,11 +354,93 @@ app.post('/webhook/whatsapp', async (req, res) => {
         return res.status(200).send('<Response/>');
       }
 
-      // MODE 3 -- Fallback
-      console.log(`[routing:mode3] no match for ${phone}, body: "${body.slice(0, 40)}"`);
-      await sendWhatsApp(phone,
-        `Hi! To reach a TDW vendor, send their TDW code — you'll find it in their Instagram bio or the link they shared.`
-      );
+      // ── Step C: Count existing couple_threads ─────────────────────
+      const { data: existingThreads } = await supabase
+        .from('conversations')
+        .select('*, vendors(id, business_name, category, users(name))')
+        .eq('counterparty_phone', phone)
+        .eq('kind', 'couple_thread')
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+
+      const threadCount = existingThreads?.length || 0;
+
+      if (threadCount === 0) {
+        // Mode 3 -- no history, no TDW code
+        console.log(`[routing:fallback] no match for ${phone}, body: "${body.slice(0, 40)}"`);
+        await sendWhatsApp(phone,
+          `Hi! To reach a TDW vendor, send their TDW code — you'll find it in their Instagram bio or the link they shared.`
+        );
+        return res.status(200).send('<Response/>');
+      }
+
+      if (threadCount === 1) {
+        // Mode 1 -- single existing thread, route there
+        const existingThread = existingThreads[0];
+        console.log(`[routing:single_thread] ${phone} -> vendor ${existingThread.vendor_id}`);
+
+        await supabase.from('messages').insert({
+          conversation_id: existingThread.id,
+          direction: 'inbound',
+          channel: 'whatsapp',
+          body,
+          sent_by: 'couple',
+        });
+
+        const { data: vendorUser } = await supabase
+          .from('users').select('*').eq('id', existingThread.vendors.users?.id || existingThread.vendor_id).maybeSingle();
+
+        // Re-fetch vendor with all fields (the joined version above only has a subset)
+        const { data: fullVendor } = await supabase
+          .from('vendors').select('*').eq('id', existingThread.vendor_id).maybeSingle();
+
+        const result = await runCoupleAgenticTurn({
+          vendor: fullVendor,
+          vendorUser,
+          conversation: existingThread,
+          couplePhone: phone,
+          inboundMessage: body,
+          supabase,
+          anthropic,
+        });
+
+        const twilioMsg = await sendWhatsApp(phone, result.reply);
+
+        await supabase.from('messages').insert({
+          conversation_id: existingThread.id,
+          direction: 'outbound',
+          channel: 'whatsapp',
+          body: result.reply,
+          sent_by: 'agent',
+          twilio_sid: twilioMsg.sid,
+          tool_calls: result.toolCalls,
+        });
+
+        if (result.vendorNotification && vendorUser?.phone) {
+          await sendWhatsApp(vendorUser.phone, result.vendorNotification);
+        }
+
+        await supabase.from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', existingThread.id);
+
+        return res.status(200).send('<Response/>');
+      }
+
+      // threadCount >= 2 -- DISAMBIGUATION
+      const candidateVendors = existingThreads.map(t => t.vendors);
+      const question = buildDisambiguationQuestion(candidateVendors);
+
+      await supabase.from('users').update({
+        pending_routing_context: {
+          candidate_vendor_ids: candidateVendors.map(v => v.id),
+          original_message: body,
+          asked_at: new Date().toISOString(),
+        },
+      }).eq('id', user.id);
+
+      await sendWhatsApp(phone, question);
+
+      console.log(`[routing:disambiguation_asked] ${phone} candidates=${candidateVendors.length}`);
       return res.status(200).send('<Response/>');
     }
 
