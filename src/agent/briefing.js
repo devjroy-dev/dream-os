@@ -125,7 +125,18 @@ async function buildBriefing({ vendor, user, supabase }) {
     .order('event_date', { ascending: true })
     .limit(5);
 
-  // ── 6. Build message ───────────────────────────────────────────
+  // ── 6. Overdue invoices ───────────────────────────────────────────
+  const { data: overdueInvoices } = await supabase
+    .from('invoices')
+    .select('invoice_number, client_name, due_date, amount_total, amount_paid')
+    .eq('vendor_id', vendorId)
+    .in('state', ['unpaid', 'advance_paid'])
+    .lt('due_date', istToday)
+    .not('due_date', 'is', null)
+    .order('due_date', { ascending: true })
+    .limit(5);
+
+  // ── 7. Build message ───────────────────────────────────────────
   const parts = [`Morning ${name}.`];
 
   // Shoots today
@@ -149,6 +160,16 @@ async function buildBriefing({ vendor, user, supabase }) {
   for (const t of overdueThreads) {
     const who = t.name || t.phone;
     parts.push(`${who} messaged ${t.hours}h ago — no reply yet.`);
+  }
+
+  // Overdue invoices
+  if (overdueInvoices && overdueInvoices.length > 0) {
+    const names = overdueInvoices.map(i => {
+      const balance = i.amount_total - i.amount_paid;
+      return `${i.client_name} (${i.invoice_number}, Rs ${(balance/100000).toFixed(1)}L due ${i.due_date})`;
+    }).join(', ');
+    const count = overdueInvoices.length;
+    parts.push(`${count} overdue invoice${count === 1 ? '' : 's'}: ${names}.`);
   }
 
   // Upcoming non-shoot events

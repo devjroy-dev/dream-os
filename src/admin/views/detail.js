@@ -57,10 +57,32 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
     </div>
 
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-bottom:12px;">Invoices</div>
-    ${invoices.length === 0 ? '<div class="empty-state">No invoices yet.</div>' : `
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead>
-        <tr style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">
+    ${invoices.length === 0 ? '<div class="empty-state">No invoices yet.</div>' : (() => {
+      const LIMIT = 5;
+      const invoiceRow = i => {
+        const balance = i.amount_total - i.amount_paid;
+        const due = i.due_date ? `<div style="font-size:10px;color:#999;">due ${i.due_date}</div>` : '';
+        const pdfLink = i.pdf_url ? `<a href="${i.pdf_url}" target="_blank" style="color:#B08D6A;font-size:11px;">View</a>` : '<span style="color:#ccc;font-size:11px;">—</span>';
+        return `<tr style="border-bottom:1px solid #f5f5f5;">
+          <td style="padding:8px 0;font-weight:600;">${i.invoice_number}</td>
+          <td style="padding:8px 0;">${i.client_name}</td>
+          <td style="padding:8px 0;text-align:right;">Rs ${fmtRs(i.amount_total)}</td>
+          <td style="padding:8px 0;text-align:right;color:#27AE60;">Rs ${fmtRs(i.amount_paid)}</td>
+          <td style="padding:8px 0;text-align:right;color:#E67E22;">${balance > 0 ? 'Rs ' + fmtRs(balance) : '—'}${due}</td>
+          <td style="padding:8px 0;text-align:center;"><span style="background:${stateColour(i.state)}22;color:${stateColour(i.state)};padding:2px 8px;border-radius:4px;font-size:11px;">${i.state}</span></td>
+          <td style="padding:8px 0;text-align:center;">${pdfLink}</td>
+        </tr>`;
+      };
+      const visible = invoices.slice(0, LIMIT);
+      const hidden  = invoices.slice(LIMIT);
+      const hiddenRows = hidden.length > 0
+        ? `<tbody id="inv-extra" style="display:none;">${hidden.map(invoiceRow).join('')}</tbody>
+           <tbody><tr><td colspan="7" style="padding:10px 0;">
+             <a href="#" onclick="var e=document.getElementById('inv-extra');var l=document.getElementById('inv-lnk');e.style.display=e.style.display==='none'?'':'none';l.textContent=e.style.display===''?'Show ${hidden.length} more ↓':'Show fewer ↑';return false;" id="inv-lnk" style="font-size:12px;color:#B08D6A;">Show ${hidden.length} more ↓</a>
+           </td></tr></tbody>`
+        : '';
+      return `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">
           <th style="text-align:left;padding:6px 0;">Invoice</th>
           <th style="text-align:left;padding:6px 0;">Client</th>
           <th style="text-align:right;padding:6px 0;">Total</th>
@@ -68,48 +90,42 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
           <th style="text-align:right;padding:6px 0;">Balance</th>
           <th style="text-align:center;padding:6px 0;">State</th>
           <th style="text-align:center;padding:6px 0;">PDF</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${invoices.map(i => {
-          const balance = i.amount_total - i.amount_paid;
-          const due = i.due_date ? `<div style="font-size:10px;color:#999;">due ${i.due_date}</div>` : '';
-          const pdfLink = i.pdf_url ? `<a href="${i.pdf_url}" target="_blank" style="color:#B08D6A;font-size:11px;">View</a>` : '<span style="color:#ccc;font-size:11px;">—</span>';
-          return `<tr style="border-bottom:1px solid #f5f5f5;">
-            <td style="padding:8px 0;font-weight:600;">${i.invoice_number}</td>
-            <td style="padding:8px 0;">${i.client_name}</td>
-            <td style="padding:8px 0;text-align:right;">Rs ${fmtRs(i.amount_total)}</td>
-            <td style="padding:8px 0;text-align:right;color:#27AE60;">Rs ${fmtRs(i.amount_paid)}</td>
-            <td style="padding:8px 0;text-align:right;color:#E67E22;">${balance > 0 ? 'Rs ' + fmtRs(balance) : '—'}${due}</td>
-            <td style="padding:8px 0;text-align:center;"><span style="background:${stateColour(i.state)}22;color:${stateColour(i.state)};padding:2px 8px;border-radius:4px;font-size:11px;">${i.state}</span></td>
-            <td style="padding:8px 0;text-align:center;">${pdfLink}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`}
+        </tr></thead>
+        <tbody>${visible.map(invoiceRow).join('')}</tbody>
+        ${hiddenRows}
+      </table>`;
+    })()}
 
     <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-top:28px;margin-bottom:12px;">Expenses</div>
-    ${expenses.length === 0 ? '<div class="empty-state">No expenses logged yet.</div>' : `
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead>
-        <tr style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">
+    ${expenses.length === 0 ? '<div class="empty-state">No expenses logged yet.</div>' : (() => {
+      const LIMIT = 5;
+      const expRow = e => `<tr style="border-bottom:1px solid #f5f5f5;">
+        <td style="padding:8px 0;color:#999;">${e.expense_date || '—'}</td>
+        <td style="padding:8px 0;">${e.category}</td>
+        <td style="padding:8px 0;">${e.description || '—'}</td>
+        <td style="padding:8px 0;">${e.client_name || '—'}</td>
+        <td style="padding:8px 0;text-align:right;font-weight:600;color:#C0392B;">Rs ${fmtRs(e.amount)}</td>
+      </tr>`;
+      const visible = expenses.slice(0, LIMIT);
+      const hidden  = expenses.slice(LIMIT);
+      const hiddenRows = hidden.length > 0
+        ? `<tbody id="exp-extra" style="display:none;">${hidden.map(expRow).join('')}</tbody>
+           <tbody><tr><td colspan="5" style="padding:10px 0;">
+             <a href="#" onclick="var e=document.getElementById('exp-extra');var l=document.getElementById('exp-lnk');e.style.display=e.style.display==='none'?'':'none';l.textContent=e.style.display===''?'Show ${hidden.length} more ↓':'Show fewer ↑';return false;" id="exp-lnk" style="font-size:12px;color:#B08D6A;">Show ${hidden.length} more ↓</a>
+           </td></tr></tbody>`
+        : '';
+      return `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">
           <th style="text-align:left;padding:6px 0;">Date</th>
           <th style="text-align:left;padding:6px 0;">Category</th>
           <th style="text-align:left;padding:6px 0;">Description</th>
           <th style="text-align:left;padding:6px 0;">Client</th>
           <th style="text-align:right;padding:6px 0;">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${expenses.map(e => `<tr style="border-bottom:1px solid #f5f5f5;">
-          <td style="padding:8px 0;color:#999;">${e.expense_date || '—'}</td>
-          <td style="padding:8px 0;">${e.category}</td>
-          <td style="padding:8px 0;">${e.description || '—'}</td>
-          <td style="padding:8px 0;">${e.client_name || '—'}</td>
-          <td style="padding:8px 0;text-align:right;font-weight:600;color:#C0392B;">Rs ${fmtRs(e.amount)}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`}
+        </tr></thead>
+        <tbody>${visible.map(expRow).join('')}</tbody>
+        ${hiddenRows}
+      </table>`;
+    })()}
   `;
 
   // ── Build AI cost display string
