@@ -1,137 +1,124 @@
 # dream-os -- Session Handover
 **Last updated:** 2026-05-15
-**Session:** 8.1
-**Version:** 0.8.1-alpha
+**Session:** 8.2
+**Version:** 0.8.2-alpha
 
 ## What shipped this session
 
-### Pre-session housekeeping (before 8.1 work began)
-- Backfilled missing `0008_invoices.sql` migration file (schema was applied in Session 7 but file never committed)
-- Synced `package-lock.json` to 0.7.0-alpha (version field was out of sync)
-- Deleted 5 zero-byte junk files from repo root (`0,`, `30%`, `=`, `For: Bridal makeup`, `Rs`) — created by copy-paste accident in Session 7 invoice testing
+### Hotfix: engine.js smart routing restored
+Session 8.1's onboarding commit (ae693d4) had accidentally overwritten engine.js with a stale
+version, removing the classifier imports, modelToUse routing, token accumulation, and cost
+calculation. Smart routing was silently broken from that commit until the start of 8.2.
 
-### Migration 0009 (db/migrations/0009_message_cost_tracking.sql)
-- `messages.model` text (nullable) — which model handled this message
-- `messages.input_tokens` integer (nullable, CHECK >= 0) — input token count
-- `messages.output_tokens` integer (nullable, CHECK >= 0) — output token count
-- `messages.cost_usd` numeric(10,6) (nullable, CHECK >= 0) — Anthropic billing cost
-- `messages.cost_inr` numeric(10,2) (nullable, CHECK >= 0) — Rs equivalent at USD_TO_INR=100
-- `messages_model_idx` index on messages(model) for cost aggregation queries
-- `vendors.style_notes` text (nullable) — qualifier captured during onboarding (e.g. "luxury", "celebrity", "budget")
-- Note: Session 7.5's expenses table was previously planned as migration 0009 — now renumbered to 0010
+Fixed in commit 718807c. All four things restored:
+- classifyMessage + models imports
+- modelToUse classifier routing
+- token accumulation + calculateCost
+- couple agent MODEL_HAIKU explicit pin
+- anthropic pass-through to handleOnboarding preserved
 
-### Smart model routing (src/agent/models.js + src/agent/classifier.js + src/agent/engine.js)
-- `src/agent/models.js` — single source of truth for model IDs, pricing constants, cost calculator
-  - MODEL_HAIKU = 'claude-haiku-4-5-20251001' (locked)
-  - MODEL_SONNET = 'claude-sonnet-4-6' (locked)
-  - USD_TO_INR = 100 (Dev's call 2026-05-15, forward-looking macro view)
-  - calculateCost(model, inputTokens, outputTokens) → { cost_usd, cost_inr }
-- `src/agent/classifier.js` — lightweight Haiku call before main vendor agent call
-  - max_tokens: 5 — enforces single-word output at API level
-  - Returns 'simple' or 'complex'
-  - Passes last 2 history turns for disambiguation context
-  - Defaults to 'simple' on any error — message always gets processed
-- `src/agent/engine.js` — classifier wired into vendor agent path
-  - Classifier runs → modelToUse set → main agent loop uses modelToUse
-  - Token usage accumulated across all iterations
-  - calculateCost() called after loop → cost returned in result object
-  - Couple agent: MODEL_HAIKU always (no classifier — narrow scope)
-  - Old hardcoded MODEL constant removed entirely
+### Prompt caching (src/agent/systemPrompt.js + src/agent/engine.js)
+systemPrompt.js split into two parts:
+- `STATIC_SYSTEM_PROMPT`: all rules, tool guidance, examples (~6,600 chars). Identical for
+  every vendor on every call. Sent with `cache_control: { type: 'ephemeral' }` (1-hour cache).
+  Anthropic caches after first call — subsequent calls pay 10% of normal input price.
+- `buildDynamicContext()`: vendor name, city, summary, leads, events, notes. Fresh every call,
+  never cached.
+- `buildSystemPrompt()` preserved as legacy compatibility export (returns full plain string).
 
-### Cost tracking (src/index.js)
-- Outbound message insert now saves: model, input_tokens, output_tokens, cost_usd, cost_inr
-- Pre-8.1 messages have null values in these columns — expected, not an error
+engine.js: system param now an array of two blocks `[{ STATIC, cache_control }, { dynamic }]`
+instead of a plain string. Couple agent unchanged — uses plain string (no caching needed).
 
-### Smart onboarding (src/agent/categories.js + src/agent/onboarding.js)
-- `src/agent/categories.js` — locked vendor category taxonomy
-  - 16 categories (florist merged into decor — founder confirmed 2026-05-15)
-  - VENDOR_CATEGORIES list + CATEGORY_ALIASES for Haiku prompt context
-- `src/agent/onboarding.js` — asked_category state now uses Haiku extraction
-  - extractCategoryDetails() calls Haiku with strict JSON-only prompt
-  - Returns { category, style_notes, city }
-  - If city extracted in same message → saves city, skips asked_city state
-  - category normalised to taxonomy (e.g. "luxury decorator" → category=decor, style_notes=luxury)
-  - Fallback to raw input strip if Haiku fails — onboarding never breaks
-  - style_notes saved to vendors.style_notes column
-  - anthropic client now passed through handleOnboarding → nextOnboardingMessage
+### Actual observed cost impact (live Railway logs, 2026-05-15)
+| Metric | Before caching | After caching | Change |
+|---|---|---|---|
+| Input tokens per Haiku turn | ~11,500 | ~1,200 | -91% |
+| Cost per Haiku turn | Rs 1.24 | Rs 0.20 | -85% |
+| Monthly per vendor (20 msg/day) | Rs 900 | ~Rs 144 (AI only) | -84% |
 
-### Admin cost display (src/admin/router.js + src/admin/views/detail.js)
-- router.js queries messages table for this month's agent cost per vendor
-- Aggregates by model (Haiku / Sonnet breakdown)
-- detail.js: two new rows in vendor profile
-  - Style: vendor.style_notes (e.g. "luxury")
-  - AI Cost (month): Rs X.XX · Haiku: Rs X.XX, Sonnet: Rs X.XX
+Near-100% cache hit rate observed — static block is truly identical every call.
+See docs/UNIT_ECONOMICS.md for full corrected analysis including Twilio costs.
 
-### Version health check fix (src/index.js)
-- Health check endpoint now reads version from package.json dynamically
-- `const { version } = require('../package.json')`
-- Eliminates version drift between package.json and /health response
+### Gemini SDK wiring (src/lib/groundedSearch.js)
+Package: `@google/genai ^2.2.0` installed.
+New file: `src/lib/groundedSearch.js` — retrieval-only wrapper.
+
+**Why wired now, not in Session 9:**
+Session 9 (Discover marketplace) is already complex — Next.js on Vercel, vendor profile pages,
+couple enquiry flow, rate_min/rate_max migration, multi-model planner. Adding "set up Gemini SDK
+from scratch" to that session was unnecessary debt.
+
+The wrapper is infrastructure groundwork: installed, configured, deployed, and verified working.
+Session 9 starts with the retrieval layer already ready — one less thing to figure out.
+
+**How groundedSearch.js works:**
+- Takes a query string + optional context
+- Calls Gemini 3.1 Flash-Lite with `tools: [{ googleSearch: {} }]` (Google Search grounding)
+- Returns `{ answer, sources, raw }` — structured results with citation URLs
+- Never throws — all errors returned as `{ answer: null, error }`, caller decides how to handle
+
+**The agent does NOT call this today.** Zero impact on vendor agent, couple agent, onboarding,
+or any existing functionality. It sits ready in src/lib/ for Session 9.
+
+**Session 9 usage pattern (for reference):**
+Bride query → groundedSearch() retrieves web context (Gemini) + DB query (Haiku) →
+Sonnet composes bride-facing reply combining both sources.
+
+### Railway env var added
+- `GOOGLE_API_KEY` — Google AI Studio key (dev@thedreamwedding.in account, free tier)
+  Required by groundedSearch.js. Missing key handled gracefully (logs warning, returns null).
+
+### Repo housekeeping
+- Stray HANDOVER.md, ROADMAP.md, SCHEMA.md files deleted from repo root (belonged only in docs/)
+- UNIT_ECONOMICS.md updated with actual Session 8.2 smoke test results + corrected figures
 
 ## Smoke tests passed
-- "what's my TDW link" → classifier: simple → Haiku ✅
-- "create an invoice for Priya, total 1,20,000 advance 36,000" → classifier: complex → Sonnet ✅
-- Disambiguation "same Priya" resolved in 1 Sonnet turn (was 4+ Haiku loops in Session 7) ✅
-- "Priya Roy" follow-up → classifier: simple → Haiku completed invoice correctly ✅
-- Token counts + cost saved to messages table (verified in Supabase) ✅
-- Onboarding: "I'm a luxury decorator based in Mumbai" → category=decor, style_notes=luxury, city=Mumbai, asked_city skipped ✅
-- Admin: Style row + AI Cost (month) row showing on vendor detail ✅
-
-## Routing rules (locked)
-| Surface | Model | Notes |
-|---|---|---|
-| Vendor agent | Classifier → Haiku (simple) or Sonnet (complex) | Classifier runs on every vendor turn |
-| Couple agent | Haiku always | Narrow scope — route + capture only |
-| Onboarding | Haiku always | Smart extraction prompt, not free reasoning |
-| Classifier itself | Haiku always | max_tokens=5, defaults simple on error |
-
-## Complex signals (classifier routes to Sonnet)
-- Invoice creation, editing, questions about a specific invoice
-- Payment recording (advance, balance, partial)
-- Disambiguation between clients with same/similar name
-- Long forwarded enquiry message (lead extraction)
-- Multi-step financial reasoning
-- Nuanced reply drafting where tone is critical
+- Agent health check post-deploy: "what's my TDW link" → correct reply ✅
+- Smart routing re-verified after hotfix: Haiku for simple, Sonnet for complex ✅
+- Prompt caching: input tokens 11,500 → 1,200 (-91%) ✅
+- Gemini SDK loads on Railway startup without errors ✅
+- Existing agent completely unaffected by Gemini addition ✅
 
 ## Known gaps carried forward
 1. Twilio status callback: vendor notification message (sent_by: system) missing twilio_sid — pre-existing Session 5.5 bug
-2. No Anthropic credit-low warning — agent fails silently if credits run out. More critical now Sonnet is in use.
+2. No Anthropic credit-low warning — agent fails silently if credits run out
 3. update_lead_state requires UUID — name-based update deferred to Session 8
 4. Lead dedup upstream (create_lead tool does blind insert) — deferred to Session 8.5
-5. Classifier context gap: if prior Sonnet disambiguation turn is outside the 2-turn history window, follow-up message may route to Haiku with incomplete context. Low risk at current conversation volumes.
-6. Session 7.5 expenses migration renumbered from 0009 to 0010 — update SCHEMA.md when 7.5 ships.
-7. vendors.rate_min / rate_max columns not yet added — needed for Discover budget matching. Session 9 migration.
-8. Prompt caching not yet implemented — deferred to Session 8.2. See UNIT_ECONOMICS.md.
-
-## Session 8.2 scope (confirmed)
-- Prompt caching: add cache_control to system prompt block in engine.js (1-hour cache)
-- Gemini 3.1 Flash-Lite SDK wired as retrieval-only provider (not used in agent yet)
-- Gemini grounded search wrapper ready for Session 9 Discover
+5. Classifier context gap: if prior Sonnet disambiguation turn is outside the 2-turn history window, follow-up message may route to Haiku with incomplete context. Low risk at current volumes.
+6. Session 7.5 expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1)
+7. vendors.rate_min / rate_max columns not yet added — Session 9 migration
+8. Sonnet post-caching cost not yet observed — estimated at ~Rs 0.40/turn. Verify in Session 7.5.
+9. Railway running in EU West — Supabase is Mumbai (ap-south-1). ~150-200ms cross-region latency. Move Railway region before scaling beyond 50 vendors.
 
 ## Key product decisions locked this session
-- MODEL_HAIKU = 'claude-haiku-4-5-20251001' — never change without founder approval
-- MODEL_SONNET = 'claude-sonnet-4-6' — never change without founder approval
-- USD_TO_INR = 100 — hardcoded, forward-looking (Dev's call, macro view on rupee)
-- Classifier defaults to simple on any failure — message never dropped
-- Couple agent: Haiku always, no classifier
-- Onboarding: Haiku always, extraction prompt only
-- 16 vendor categories — florist merged into decor, invitations kept
-- style_notes: qualifier field, free text, nullable. Populated by Haiku extractor.
-- Cost stored in both cost_usd (audit/reconciliation) and cost_inr (admin display)
-- Version string: read from package.json dynamically — never hardcoded again
-- UNIT_ECONOMICS.md: Dev's reference document, stays in docs/, no other session amends it
+- Prompt caching: 1-hour ephemeral cache on STATIC_SYSTEM_PROMPT only
+- buildSystemPrompt() preserved for compatibility — never remove
+- Gemini model lock: `gemini-3.1-flash-lite` (retrieval-only, never main agent model)
+- GOOGLE_API_KEY: dev@thedreamwedding.in Google AI Studio account, free tier
+- groundedSearch.js: retrieval only — Gemini retrieves, Anthropic composes the reply
+- Twilio is now the dominant cost driver post-caching, not AI (~Rs 300 vs Rs 144/vendor/month)
+- Message caps protect Twilio spend more than AI spend
 
-## Document update protocol
-Four files updated this session and every future session:
-- HANDOVER.md — fully rewritten
-- SCHEMA.md — fully rewritten
-- ROADMAP.md — updated
-- UNIT_ECONOMICS.md — Dev's reference only, no other session amends it
-git add docs/ src/index.js package.json && git commit -m "docs: session 8.1 handover, schema, roadmap, unit economics + version bump" && git push
+## Session 7.5 scope (next session)
+Goal: Complete the invoice flow + expenses. Sonnet available, caching active.
+Note: expenses migration is 0010 (not 0009).
+
+What ships:
+- record_payment tool (Stage 2: advance paid → PDF with embedded UPI QR → state=advance_paid)
+- record_payment tool (Stage 3: balance paid → plain WhatsApp text → state=paid)
+- PDF generation via pdfkit
+- QR code generation via qrcode (UPI QR embedded in PDF)
+- list_invoices tool
+- update_invoice_prefix tool
+- expenses table (migration 0010) + log_expense tool
+- Admin Money tab on vendor detail page
+- Morning briefing: overdue invoice alerts
 
 ## Railway env vars (current)
 - TWILIO_WHATSAPP_NUMBER = whatsapp:+14787788550
 - TDW_WA_NUMBER = 14787788550
 - ANTHROPIC_API_KEY (workspace: dream-os, model lock: haiku-4-5-20251001 + sonnet-4-6)
+- GOOGLE_API_KEY (Google AI Studio, dev@thedreamwedding.in, free tier)
 - ADMIN_PASSWORD, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (all in Railway)
 
 ## Test credentials
@@ -150,12 +137,16 @@ git add docs/ src/index.js package.json && git commit -m "docs: session 8.1 hand
 
 ## First thing next session (7.5)
 curl https://dream-os-production.up.railway.app
-Should return: {"status":"alive","service":"dream-os","version":"0.8.1-alpha"}
-
-Check Railway logs for:
-[dream-os] listening on :3000
-[cron] jobs registered: morning briefing at 08:00 IST (02:30 UTC)
+Should return: {"status":"alive","service":"dream-os","version":"0.8.2-alpha"}
 
 If +91 number has arrived: do Session 6.5 before anything else.
 Otherwise: start Session 7.5 (money tools — record_payment, PDF, QR, expenses).
-Note: expenses migration is now 0010 (not 0009 — taken by cost tracking).
+Note: expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1).
+
+## Document update protocol
+Four files updated every session:
+- HANDOVER.md — fully rewritten
+- SCHEMA.md — fully rewritten
+- ROADMAP.md — updated
+- UNIT_ECONOMICS.md — Dev's reference only, no other session amends it
+git add docs/ package.json package-lock.json && git commit -m "docs: session 8.2 handover, roadmap + version bump" && git push

@@ -1,6 +1,6 @@
 # dream-os -- Roadmap
 **Last updated:** 2026-05-15
-**Current version:** 0.8.1-alpha
+**Current version:** 0.8.2-alpha
 
 ## Vision
 WhatsApp-first chief of staff for wedding vendors.
@@ -22,9 +22,10 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 6 | events table (migration 0007), 5 new tools (create_event, list_events, update_event_state, update_routing_handle, get_my_tdw_link), morning briefing cron (8am IST), Twilio status callback, sendWhatsApp refactor, ? strip fix, invite page fix | 0.6.0 |
 | 7 (partial) | invoices table (migration 0008), Supabase invoices bucket, pdfkit + qrcode installed, create_invoice tool (Stage 1 text only), format.js + invoiceMessage.js, Railway auto-deploy fix | 0.7.0-alpha |
 | 8.1 | Smart model routing (Haiku→Sonnet classifier), cost tracking on messages (migration 0009), smart onboarding (16-category taxonomy, style_notes, city skip), admin AI cost display, version health check fix | 0.8.1-alpha |
+| 8.2 | Prompt caching (91% input token reduction), engine.js hotfix, Gemini SDK wired (groundedSearch.js, retrieval-only), GOOGLE_API_KEY in Railway, UNIT_ECONOMICS updated | 0.8.2-alpha |
 
 ## Session sequence (confirmed by founder 2026-05-15)
-6.5 (on +91 arrival, jumps queue) → 8.2 → 7.5 → 8.5 → 8 → 9 → 10 → 11-12
+6.5 (on +91 arrival, jumps queue) → 7.5 → 8.5 → 8 → 9 → 10 → 11-12
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
@@ -63,8 +64,12 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - Version string: read from package.json dynamically via require('../package.json').
 - expenses table migration renumbered from 0009 to 0010 (0009 taken by cost tracking in 8.1).
 - vendors.rate_min / rate_max: not yet added. Session 9 migration. Haiku extracts + Swati overrides.
-- Prompt caching: deferred to Session 8.2. See UNIT_ECONOMICS.md for cost impact analysis.
-- Gemini 3.1 Flash-Lite: deferred to Session 8.2 (SDK wiring only, retrieval-only provider).
+- Prompt caching: SHIPPED Session 8.2. 1-hour ephemeral cache on STATIC_SYSTEM_PROMPT. -91% input tokens.
+- Gemini 3.1 Flash-Lite: SHIPPED Session 8.2. Retrieval-only. Never the main agent model.
+- groundedSearch.js pattern: Gemini retrieves, Anthropic composes. Separation of concerns locked.
+- GOOGLE_API_KEY: dev@thedreamwedding.in Google AI Studio account, free tier.
+- Twilio is dominant cost driver post-caching (~Rs 300/vendor/month vs Rs 144 AI). Message caps protect Twilio spend.
+- Railway region (EU West) vs Supabase (Mumbai ap-south-1): ~150-200ms cross-region latency. Move before scaling beyond 50 vendors.
 - Bride-side planner model stack: Gemini Flash-Lite (grounded retrieval) + Haiku (internal DB) + Sonnet (multi-constraint planning). Session 9 decision — re-evaluate model landscape at that time.
 
 ## Session 6.5 -- Twilio template + +91 number migration
@@ -85,17 +90,20 @@ Blocked until: +91 number live
 ## Session 8.1 -- Smart model routing (Haiku -> Sonnet) ✅ DONE
 Shipped 2026-05-15. See HANDOVER.md for full detail.
 
-## Session 8.2 -- Prompt caching + Gemini SDK wiring
-**Goal:** Reduce API costs via prompt caching. Wire Gemini as future retrieval provider.
+## Session 8.2 -- Prompt caching + Gemini SDK wiring ✅ DONE
+Shipped 2026-05-15. See HANDOVER.md for full detail.
 
-What ships:
-- Prompt caching: add cache_control to system prompt block in engine.js (1-hour cache)
-- Gemini 3.1 Flash-Lite SDK installed and configured (GOOGLE_API_KEY env var in Railway)
-- Gemini grounded search wrapper: src/lib/groundedSearch.js (not used by agent yet — ready for Session 9)
-- Smoke test: verify cache hits appearing in Railway logs, cost_usd drops vs uncached baseline
+Key results:
+- Prompt caching: input tokens -91%, cost per Haiku turn Rs 1.24 → Rs 0.20
+- Gemini 3.1 Flash-Lite SDK wired as retrieval-only provider (src/lib/groundedSearch.js)
+- GOOGLE_API_KEY added to Railway (dev@thedreamwedding.in, free tier)
+- Twilio now the dominant cost driver post-caching, not AI
 
-Estimated time: 45 minutes
-Cost impact: see UNIT_ECONOMICS.md
+Why Gemini wired now (not Session 9):
+Session 9 is already complex (Next.js, Vercel, vendor profiles, rate migration, multi-model planner).
+Wiring the SDK now means Session 9 starts with retrieval layer ready — no setup debt.
+groundedSearch.js: Gemini retrieves web context, Anthropic (Haiku/Sonnet) composes the reply.
+The vendor agent does NOT call this today.
 
 ## Session 7.5 -- Money tools continued (after 8.2)
 **Goal:** Complete the invoice flow + expenses. Sonnet available for financial reasoning.
