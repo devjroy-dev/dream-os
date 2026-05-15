@@ -43,7 +43,7 @@ create table if not exists invoices (
 
 -- Deliberate omission: amount_paid <= amount_total is NOT enforced.
 -- Overpayment (shagun tips, UPI typos) is a legitimate vendor reality.
--- Handled as a soft prompt at the tool layer in record_payment (Session 7.5).
+-- Handled as a soft prompt at the tool layer in record_payment (Session 8.3).
 
 -- ───────────────────────────────────────────────────────────────────
 -- Unique constraint: one invoice_number per vendor
@@ -78,4 +78,4 @@ alter publication supabase_realtime add table invoices;
 -- ───────────────────────────────────────────────────────────────────
 -- Note: bucket creation was done via Supabase Dashboard in Session 7.
 -- Recorded here for reference. service_role has full INSERT/SELECT/UPDATE/DELETE.
--- Used in Session 7.5 when PDF generation ships.
+-- Used in Session 8.3 when PDF generation ships.
