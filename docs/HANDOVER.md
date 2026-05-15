@@ -85,9 +85,9 @@ Sonnet composes bride-facing reply combining both sources.
 3. update_lead_state requires UUID — name-based update deferred to Session 8
 4. Lead dedup upstream (create_lead tool does blind insert) — deferred to Session 8.5
 5. Classifier context gap: if prior Sonnet disambiguation turn is outside the 2-turn history window, follow-up message may route to Haiku with incomplete context. Low risk at current volumes.
-6. Session 7.5 expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1)
+6. Session 8.3 expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1)
 7. vendors.rate_min / rate_max columns not yet added — Session 9 migration
-8. Sonnet post-caching cost not yet observed — estimated at ~Rs 0.40/turn. Verify in Session 7.5.
+8. Sonnet post-caching cost not yet observed — estimated at ~Rs 0.40/turn. Verify in Session 8.3.
 9. Railway running in EU West — Supabase is Mumbai (ap-south-1). ~150-200ms cross-region latency. Move Railway region before scaling beyond 50 vendors.
 
 ## Key product decisions locked this session
@@ -99,7 +99,7 @@ Sonnet composes bride-facing reply combining both sources.
 - Twilio is now the dominant cost driver post-caching, not AI (~Rs 300 vs Rs 144/vendor/month)
 - Message caps protect Twilio spend more than AI spend
 
-## Session 7.5 scope (next session)
+## Session 8.3 scope (next session, formerly 7.5)
 Goal: Complete the invoice flow + expenses. Sonnet available, caching active.
 Note: expenses migration is 0010 (not 0009).
 
@@ -135,12 +135,12 @@ What ships:
 - Railway: https://dream-os-production.up.railway.app
 - Admin: https://dream-os-production.up.railway.app/admin
 
-## First thing next session (7.5)
+## First thing next session (8.3)
 curl https://dream-os-production.up.railway.app
 Should return: {"status":"alive","service":"dream-os","version":"0.8.2-alpha"}
 
 If +91 number has arrived: do Session 6.5 before anything else.
-Otherwise: start Session 7.5 (money tools — record_payment, PDF, QR, expenses).
+Otherwise: start Session 8.3 (money tools — record_payment, PDF, QR, expenses).
 Note: expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1).
 
 ## Document update protocol

@@ -203,7 +203,7 @@ only the dynamic context, conversation history, and inbound message are charged 
 | Haiku | Rs 1.25 | Rs 0.20 (avg observed) | 84% |
 | Sonnet | Rs 2.50 | Rs ~0.40 (estimated) | ~84% |
 
-Note: Sonnet post-caching cost is estimated, not yet observed. To be verified in Session 7.5
+Note: Sonnet post-caching cost is estimated, not yet observed. To be verified in Session 8.3
 when invoice smoke tests are re-run with caching active.
 
 ### Full cost per vendor per month (actual, 20 messages/day)

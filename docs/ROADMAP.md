@@ -25,7 +25,7 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 8.2 | Prompt caching (91% input token reduction), engine.js hotfix, Gemini SDK wired (groundedSearch.js, retrieval-only), GOOGLE_API_KEY in Railway, UNIT_ECONOMICS updated | 0.8.2-alpha |
 
 ## Session sequence (confirmed by founder 2026-05-15)
-6.5 (on +91 arrival, jumps queue) → 7.5 → 8.5 → 8 → 9 → 10 → 11-12
+6.5 (on +91 arrival, jumps queue) → 8.3 → 8.5 → 8 → 9 → 10 → 11-12
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
@@ -56,7 +56,7 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - Invoices link to leads in v1. Clients table (Session 8.5) adds client_id FK alongside lead_id.
 - Clients model: promotion trigger = advance paid OR vendor directly adds client. Session 8.5.
 - Lead dedup (upstream, create_lead blind insert): Session 8.5.
-- Money tools need Sonnet: record_payment, expenses, PDF, QR in Session 7.5.
+- Money tools need Sonnet: record_payment, expenses, PDF, QR in Session 8.3 (formerly 7.5, renumbered 2026-05-15 — only made sense after 8.1 Sonnet routing + 8.2 prompt caching were production-ready).
 - Vendor category taxonomy: 16 categories locked (florist merged into decor). See src/agent/categories.js.
 - style_notes: free-text qualifier field on vendors table. Haiku extracts during onboarding.
 - USD_TO_INR = 100: hardcoded constant in src/agent/models.js. Dev's call (macro view, 2026-05-15).
@@ -105,8 +105,13 @@ Wiring the SDK now means Session 9 starts with retrieval layer ready — no setu
 groundedSearch.js: Gemini retrieves web context, Anthropic (Haiku/Sonnet) composes the reply.
 The vendor agent does NOT call this today.
 
-## Session 7.5 -- Money tools continued (after 8.2)
-**Goal:** Complete the invoice flow + expenses. Sonnet available for financial reasoning.
+## Session 8.3 -- Money tools (formerly Session 7.5, renumbered 2026-05-15)
+**Goal:** Complete the invoice flow + expenses. Sonnet routing + prompt caching now active.
+
+**Why renumbered from 7.5 to 8.3:** This session was originally called 7.5 and deferred until
+after 8.1 and 8.2 because money tools (invoice disambiguation, record_payment, PDF generation)
+require Sonnet-level reasoning. Session 7.5 only made sense after the AI layer was production-ready.
+Renaming to 8.3 reflects the actual build order and makes the session sequence self-explanatory.
 
 What ships:
 - record_payment tool (Stage 2: advance paid -> PDF with embedded UPI QR -> state=advance_paid)

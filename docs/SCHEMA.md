@@ -201,7 +201,7 @@ Realtime: enabled
 | amount_paid | integer NOT NULL | default 0. Running total received. CHECK >= 0. Updated by record_payment. |
 | due_date | date | balance due date. Optional. |
 | state | text NOT NULL | CHECK: unpaid / advance_paid / paid / cancelled. Default: unpaid. |
-| pdf_url | text | signed Supabase storage URL. NULL until Stage 2 PDF generated (Session 7.5). |
+| pdf_url | text | signed Supabase storage URL. NULL until Stage 2 PDF generated (Session 8.3). |
 | notes | text | optional |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
@@ -210,7 +210,7 @@ Realtime: enabled
 
 NOTE: amount_paid <= amount_total is deliberately NOT enforced at DB level.
 Overpayment (shagun tips, UPI typos) is a legitimate vendor reality.
-Handled as soft prompt at tool layer in record_payment (Session 7.5).
+Handled as soft prompt at tool layer in record_payment (Session 8.3).
 
 ## Vendor category taxonomy (code-only, not a DB constraint)
 Defined in src/agent/categories.js. 16 categories locked 2026-05-15 (founder confirmed).
@@ -272,7 +272,7 @@ vendors.style_notes captures qualifiers (e.g. "luxury", "celebrity") separately.
 ## Supabase storage buckets
 | Bucket | Public | Size limit | MIME types | Purpose |
 |---|---|---|---|---|
-| invoices | No (private) | 5 MB | application/pdf | Booking confirmation PDFs (Stage 2, Session 7.5) |
+| invoices | No (private) | 5 MB | application/pdf | Booking confirmation PDFs (Stage 2, Session 8.3) |
 
 ## RLS
 Disabled on all tables. service_role key held by Railway only.
