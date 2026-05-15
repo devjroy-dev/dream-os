@@ -48,13 +48,13 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'add_event',
-    description: 'Add an event to the bride\'s calendar. Use for fittings, trials, vendor meetings, family events, ceremony events, social plans she mentions in passing. Always needs a date and a kind. If she mentions a time too, include it. Location, contact, or prep notes go in notes.',
+    description: 'Add an event to the bride\'s calendar. Use for shoots (pre-wedding, engagement, bridal portfolio), fittings, trials, vendor meetings, calls with vendors or planners, family events, ceremony events, social plans she mentions in passing. Always needs a date and a kind. If she mentions a time too, include it. Location, contact, or prep notes go in notes.',
     input_schema: {
       type: 'object',
       properties: {
         title: {
           type: 'string',
-          description: 'Short event title. Examples: "Fitting at Studio Anvaya", "Brunch with mom", "Decor recce at Leela", "Sangeet rehearsal".',
+          description: 'Short event title. Examples: "Pre-wedding shoot with Stories By Joseph Radhik", "Fitting at Studio Anvaya", "Brunch with mom", "Decor recce at Leela", "Sangeet rehearsal", "Call with planner".',
         },
         event_date: {
           type: 'string',
@@ -66,8 +66,8 @@ const BRIDE_TOOLS = [
         },
         kind: {
           type: 'string',
-          enum: ['fitting', 'trial', 'meeting', 'task', 'reminder', 'recce', 'family', 'ceremony', 'social', 'other'],
-          description: 'Event category. Use fitting for outfit fittings, trial for hair/makeup/menu trials, meeting for vendor or planner meetings, recce for venue visits, family for family events (mehndi, haldi, sangeet), ceremony for the wedding day and reception, social for brunches/lunches/dinners/coffee/shopping, task for to-dos with a date, reminder for things she wants flagged, other if nothing else fits.',
+          enum: ['shoot', 'call', 'fitting', 'trial', 'meeting', 'task', 'reminder', 'recce', 'family', 'ceremony', 'social', 'other'],
+          description: 'Event category. Use shoot for any photo or video shoot (pre-wedding, engagement, bridal, portfolio shoots with photographer/MUA/designer). Use call for scheduled phone consultations with vendors or planners. Use fitting for outfit fittings. Use trial for hair/makeup/menu trials. Use meeting for in-person vendor or planner meetings. Use recce for venue visits. Use family for family events (mehndi, haldi, sangeet). Use ceremony for the wedding day and reception. Use social for brunches/lunches/dinners/coffee/shopping. Use task for to-dos with a date. Use reminder for things she wants flagged. Use other if nothing else fits.',
         },
         notes: {
           type: 'string',
