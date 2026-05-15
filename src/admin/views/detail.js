@@ -2,7 +2,7 @@
 
 const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
 
-function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [] }) {
+function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [], monthCostInr = '0.00', costByModel = {} }) {
   const name = user?.name || vendor.id.slice(0, 8);
 
   const statusLabel = vendor.onboarding_state === 'complete' || !vendor.onboarding_state
@@ -16,15 +16,26 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
     ? `<a href="https://instagram.com/${vendor.instagram_handle}" target="_blank" style="color:#B08D6A;text-decoration:none;">@${vendor.instagram_handle}</a>`
     : '—';
 
+  // Build AI cost display string
+  const costModelParts = Object.entries(costByModel).map(([m, c]) => {
+    const label = m.includes('sonnet') ? 'Sonnet' : m.includes('haiku') ? 'Haiku' : m;
+    return `${label}: Rs ${parseFloat(c).toFixed(2)}`;
+  });
+  const costDisplay = parseFloat(monthCostInr) === 0
+    ? 'Rs 0.00 (no agent calls this month)'
+    : `Rs ${monthCostInr}${costModelParts.length > 0 ? ' · ' + costModelParts.join(', ') : ''}`;
+
   const profileRows = [
-    ['Name',      name],
-    ['Phone',     user?.phone || '—'],
-    ['Category',  vendor.category || '—'],
-    ['City',      vendor.city || '—'],
-    ['Status',    statusLabel],
-    ['TDW Link',  tdwDisplay],
-    ['Instagram', igDisplay],
-    ['Summary',   state?.summary || '—'],
+    ['Name',           name],
+    ['Phone',          user?.phone || '—'],
+    ['Category',       vendor.category || '—'],
+    ['Style',          vendor.style_notes || '—'],
+    ['City',           vendor.city || '—'],
+    ['Status',         statusLabel],
+    ['TDW Link',       tdwDisplay],
+    ['Instagram',      igDisplay],
+    ['Summary',        state?.summary || '—'],
+    ['AI Cost (month)', costDisplay],
   ].map(([k, v]) => `
     <tr>
       <td style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.1em;width:120px;padding:8px 0;">${k}</td>

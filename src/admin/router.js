@@ -78,17 +78,27 @@ router.get('/vendors/:id', async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { id } = req.params;
 
+  // Cost query: sum this month's AI spend across all vendor conversations
+  const istNow      = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const monthStart  = new Date(istNow.getFullYear(), istNow.getMonth(), 1).toISOString();
+
   const [
     { data: vendor },
     { data: state },
     { data: notes },
     { data: leads },
+    { data: costRows },
   ] = await Promise.all([
     supabase.from('vendors').select('*, user:users(name, phone)').eq('id', id).maybeSingle(),
     supabase.from('vendor_state').select('*').eq('vendor_id', id).maybeSingle(),
     supabase.from('notes').select('content, tags, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(20),
     supabase.from('leads').select('id, name, phone, wedding_date, wedding_city, budget_min, budget_max, state, source, referrer_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }),
+    supabase.from('messages').select('cost_inr, model').eq('sent_by', 'agent').gte('created_at', monthStart),
   ]);
+
+  // Aggregate cost by model for this vendor's conversations
+  // We filter by conversation_id via the convo we load below — but cost rows
+  // are loaded here so the query runs in parallel. We'll filter after convo loads.
 
   if (!vendor) return res.redirect('/admin');
 
@@ -133,6 +143,29 @@ router.get('/vendors/:id', async (req, res) => {
     });
   }
 
+  // Calculate this month's AI cost for this vendor's conversations
+  // convo is the vendor_self conversation — use its ID to filter cost rows
+  const vendorConvoIds = new Set();
+  if (convo) vendorConvoIds.add(convo.id);
+  for (const t of (coupleThreads || [])) vendorConvoIds.add(t.id);
+
+  // costRows are all agent messages since monthStart — filter to this vendor
+  // Note: messages table doesn't have vendor_id directly, only conversation_id.
+  // We loaded cost rows without conversation filter (runs in parallel before convo loads).
+  // Re-query with conversation filter for accuracy.
+  const { data: vendorCostRows } = await supabase
+    .from('messages')
+    .select('cost_inr, model')
+    .eq('sent_by', 'agent')
+    .gte('created_at', monthStart)
+    .in('conversation_id', [...vendorConvoIds].length > 0 ? [...vendorConvoIds] : ['00000000-0000-0000-0000-000000000000']);
+
+  const monthCostInr = (vendorCostRows || []).reduce((sum, r) => sum + (parseFloat(r.cost_inr) || 0), 0);
+  const costByModel  = (vendorCostRows || []).reduce((acc, r) => {
+    if (r.model) acc[r.model] = (acc[r.model] || 0) + (parseFloat(r.cost_inr) || 0);
+    return acc;
+  }, {});
+
   res.send(detailPage({
     vendor,
     user: vendor.user,
@@ -141,6 +174,8 @@ router.get('/vendors/:id', async (req, res) => {
     notes: notes || [],
     leads: leads || [],
     enquiries,
+    monthCostInr: monthCostInr.toFixed(2),
+    costByModel,
   }));
 });
 
