@@ -360,6 +360,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'update_invoice_prefix',
+    description: 'Change the vendor invoice number prefix. Use ONLY when vendor explicitly asks to change their invoice prefix or invoice numbering format. e.g. "change my invoice prefix to DRP" or "use DEVROY on my invoices". WARNING: old invoices keep their old numbers. Counter never resets — next invoice continues from current count with new prefix.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        new_prefix: {
+          type: 'string',
+          description: 'The new prefix string. e.g. "DRP", "DEVROY", "BLOOMS". Will be uppercased and trimmed. Keep it short — it appears on every invoice number.',
+        },
+      },
+      required: ['new_prefix'],
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {

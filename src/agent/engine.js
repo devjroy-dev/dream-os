@@ -998,6 +998,35 @@ ${pdfUrl}
       return `Expense logged — Rs ${formatRs(input.amount)}, ${input.category}${input.description ? `: ${input.description}` : ''}, ${dateStr}.`;
     }
 
+        case 'update_invoice_prefix': {
+      const cleaned = (input.new_prefix || '').toUpperCase().trim().replace(/[^A-Z0-9\-\/]/g, '');
+      if (!cleaned || cleaned.length < 2) {
+        return 'Prefix too short. Use at least 2 characters e.g. "DRP" or "DEVROY".';
+      }
+      if (cleaned.length > 20) {
+        return 'Prefix too long. Keep it under 20 characters.';
+      }
+
+      // Fetch current prefix and counter for warning message
+      const { data: v } = await supabase
+        .from('vendors')
+        .select('invoice_prefix, invoice_counter')
+        .eq('id', vendor.id)
+        .single();
+
+      const oldPrefix = v?.invoice_prefix || '(none)';
+
+      await supabase
+        .from('vendors')
+        .update({ invoice_prefix: cleaned })
+        .eq('id', vendor.id);
+
+      console.log(`[tool:update_invoice_prefix] vendor ${vendor.id} — ${oldPrefix} -> ${cleaned}`);
+
+      const nextNum = String((v?.invoice_counter || 0) + 1).padStart(2, '0');
+      return `Invoice prefix updated to ${cleaned}. Your next invoice will be ${cleaned}/${nextNum}. Previous invoices keep their original numbers (${oldPrefix}/01 and onwards).`;
+    }
+
         default:
       return `Unknown tool: ${name}`;
   }
