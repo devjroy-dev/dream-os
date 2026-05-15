@@ -349,12 +349,17 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     await supabase.from('messages').insert({
       conversation_id: convo.id,
-      direction: 'outbound',
-      channel: 'whatsapp',
-      body: result.reply,
-      sent_by: 'agent',
-      twilio_sid: twilioMsg.sid,
-      tool_calls: result.toolCalls,
+      direction:       'outbound',
+      channel:         'whatsapp',
+      body:            result.reply,
+      sent_by:         'agent',
+      twilio_sid:      twilioMsg.sid,
+      tool_calls:      result.toolCalls,
+      model:           result.model        ?? null,
+      input_tokens:    result.inputTokens  ?? null,
+      output_tokens:   result.outputTokens ?? null,
+      cost_usd:        result.costUsd      ?? null,
+      cost_inr:        result.costInr      ?? null,
     });
 
     res.status(200).send('<Response/>');
