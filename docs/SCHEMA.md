@@ -1,7 +1,8 @@
 # dream-os -- Schema Reference
 **Last updated:** 2026-05-15
+**Session:** 8.5
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0010_expenses.sql
+**Latest migration applied:** 0012_routing_disambiguation.sql
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -16,6 +17,8 @@
 | 0008_invoices.sql | 2026-05-15 | 7 | invoices table, vendors.invoice_prefix, vendors.invoice_counter |
 | 0009_message_cost_tracking.sql | 2026-05-15 | 8.1 | messages cost columns, vendors.style_notes |
 | 0010_expenses.sql | 2026-05-15 | 8.3 | expenses table |
+| 0011_clients.sql | 2026-05-15 | 8.5 | clients table, leads.client_id, invoices.client_id |
+| 0012_routing_disambiguation.sql | 2026-05-15 | 8.5 | users.pending_routing_context |
 
 ## Tables
 
@@ -26,6 +29,7 @@
 | phone | text UNIQUE NOT NULL | always E.164 e.g. +918757788550 |
 | name | text | first name, set on invite or from WhatsApp profile |
 | email | text | collected naturally in conversation |
+| pending_routing_context | jsonb | NEW Session 8.5. Stores either pending-question state {candidate_vendor_ids, original_message, asked_at} or sticky-resolution state {sticky_vendor_id, sticky_until}. NULL when no routing context active. |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
@@ -35,23 +39,23 @@
 | id | uuid PK | auto-generated |
 | user_id | uuid FK -> users.id | CASCADE delete |
 | business_name | text | studio/brand name (optional) |
-| category | text | normalised during onboarding e.g. photography, makeup, decor. Always one of 16 locked taxonomy values (see src/agent/categories.js). |
-| style_notes | text | qualifier captured during onboarding e.g. "luxury", "celebrity", "budget". Nullable. Populated by Haiku extractor. |
+| category | text | one of 16 locked taxonomy values (see src/agent/categories.js) |
+| style_notes | text | qualifier from onboarding e.g. "luxury", "celebrity". Nullable. |
 | vertical | text | default wedding |
 | city | text | set during onboarding |
-| routing_handle | text UNIQUE | TDW code suffix e.g. DEV550. Uppercase, alphanumeric only. Auto-assigned as FIRSTNAMEPHONE3. |
+| routing_handle | text UNIQUE | TDW code suffix e.g. DEV550. Auto-assigned as FIRSTNAMEPHONE3. |
 | instagram_handle | text | IG handle without @. NULL — collected naturally post-onboarding. |
-| open_to_travel | boolean | default false. Set during asked_travel onboarding step. |
-| travel_notes | text | Raw travel preference as vendor stated it. |
-| upi_id | text | UPI ID e.g. swati@okhdfc. Used in invoice messages and PDFs. |
+| open_to_travel | boolean | default false |
+| travel_notes | text | Raw travel preference as vendor stated it |
+| upi_id | text | UPI ID e.g. swati@okhdfc |
 | gstin | text | future — tax |
 | status | text | active or paused or churned |
 | tier | text | trial or essential or signature or prestige |
 | founding_cohort | boolean | true for first 50 vendors |
 | onboarding_state | text | NULL or complete = active. new / asked_category / asked_city / asked_travel / asked_rate = in progress |
 | briefing_enabled | boolean NOT NULL | default true. Kill switch for morning briefing per vendor. |
-| invoice_prefix | text | Editable invoice number prefix e.g. TDW/DEV550. Auto-set to TDW/<routing_handle> on first invoice if NULL. |
-| invoice_counter | integer NOT NULL | default 0. Per-vendor sequence. Never resets. Next invoice = counter + 1. |
+| invoice_prefix | text | Editable invoice number prefix e.g. TDW/DEV550 |
+| invoice_counter | integer NOT NULL | default 0. Per-vendor sequence. Never resets. |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
@@ -68,6 +72,8 @@
 | planning_state | text | browsing or shortlisting or booked or planning or wedding_done |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
+
+NOTE: couples table exists but is essentially unused as of Session 8.5. Routing identity stitched via users.phone + conversations.counterparty_phone. clients table (Session 8.5) is the active "real human" record.
 
 ### conversations
 | Column | Type | Notes |
@@ -99,9 +105,9 @@ Realtime: enabled
 | tool_results | jsonb | reserved |
 | twilio_sid | text | Twilio message SID |
 | delivery_status | text | queued / sent / delivered / read / failed / undelivered / skipped_window_closed |
-| model | text | which model handled this message (claude-haiku-4-5-20251001 or claude-sonnet-4-6). NULL for pre-8.1 messages and non-agent messages. |
-| input_tokens | integer | CHECK >= 0. NULL for pre-8.1 and non-agent messages. |
-| output_tokens | integer | CHECK >= 0. NULL for pre-8.1 and non-agent messages. |
+| model | text | which model handled this message. NULL for pre-8.1 and non-agent messages. |
+| input_tokens | integer | CHECK >= 0. NULL for pre-8.1 / non-agent. |
+| output_tokens | integer | CHECK >= 0. NULL for pre-8.1 / non-agent. |
 | cost_usd | numeric(10,6) | CHECK >= 0. Anthropic billing cost. NULL for pre-8.1. |
 | cost_inr | numeric(10,2) | CHECK >= 0. Rs equivalent at USD_TO_INR=100. NULL for pre-8.1. |
 | created_at | timestamptz | auto |
@@ -152,6 +158,7 @@ Realtime: enabled
 |---|---|---|
 | id | uuid PK | auto-generated |
 | vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| client_id | uuid FK -> clients.id | NEW Session 8.5. SET NULL on delete. Populated when lead promotes to client or auto-linked at create_lead time. |
 | name | text | couple name e.g. Preethi or Priya & Rohit |
 | phone | text | couple phone if given |
 | email | text | couple email if given |
@@ -181,7 +188,7 @@ Realtime: enabled
 | kind | text NOT NULL | CHECK: shoot / call / meeting / task / reminder / recce / other |
 | linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
 | state | text NOT NULL | CHECK: upcoming / done / cancelled. Default: upcoming. |
-| notes | text | location, contact, prep notes, or specific type if kind=other |
+| notes | text | location, contact, prep notes |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
@@ -193,16 +200,17 @@ Realtime: enabled
 | id | uuid PK | auto-generated |
 | vendor_id | uuid FK -> vendors.id | CASCADE delete |
 | lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
+| client_id | uuid FK -> clients.id | NEW Session 8.5. SET NULL on delete. Stamped on promotion (advance paid) or when lead's client_id is already populated. |
 | invoice_number | text NOT NULL | e.g. TDW/DEV550/01. Unique per vendor via constraint. |
-| client_name | text NOT NULL | vendor's client name, kept as text snapshot even if lead linked |
+| client_name | text NOT NULL | vendor's client name, text snapshot |
 | client_phone | text | optional, E.164 if provided |
-| description | text | what the invoice is for, vendor's exact words |
+| description | text | what the invoice is for |
 | amount_total | integer NOT NULL | total in Rs. CHECK >= 0. |
-| amount_advance | integer | booking amount in Rs as quoted. CHECK >= 0 if not null. Immutable after creation. |
-| amount_paid | integer NOT NULL | default 0. Running total received. CHECK >= 0. Updated by record_payment. |
+| amount_advance | integer | booking amount in Rs. CHECK >= 0 if not null. Immutable after creation. |
+| amount_paid | integer NOT NULL | default 0. CHECK >= 0. Updated by record_payment. |
 | due_date | date | balance due date. Optional. |
 | state | text NOT NULL | CHECK: unpaid / advance_paid / paid / cancelled. Default: unpaid. |
-| pdf_url | text | signed Supabase storage URL. NULL until Stage 2 PDF generated (Session 8.3). |
+| pdf_url | text | signed Supabase storage URL. NULL until Stage 2 PDF generated. |
 | notes | text | optional |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
@@ -210,13 +218,46 @@ Realtime: enabled
 Realtime: enabled
 
 NOTE: amount_paid <= amount_total is deliberately NOT enforced at DB level.
-Overpayment (shagun tips, UPI typos) is a legitimate vendor reality.
-Handled as soft prompt at tool layer in record_payment (Session 8.3).
+
+### expenses
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | auto-generated |
+| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| amount | integer NOT NULL | CHECK > 0. In whole rupees. |
+| category | text NOT NULL | CHECK: travel / equipment / assistant / studio / marketing / software / food / printing / commission / shoot / inventory / other |
+| description | text | vendor's own words, optional |
+| expense_date | date | nullable, defaults to current_date |
+| client_name | text | free-text client attribution. Nullable. |
+| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional. |
+| notes | text | optional |
+| created_at | timestamptz | auto |
+| updated_at | timestamptz | auto via trigger |
+
+Realtime: enabled
+
+### clients (NEW Session 8.5)
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | auto-generated |
+| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| user_id | uuid FK -> users.id | SET NULL on delete. Populated when phone matches an existing users row. |
+| name | text NOT NULL | vendor's chosen client name |
+| phone | text | E.164 when present. Phone is the dedup key. |
+| email | text | optional |
+| source | text NOT NULL | default 'lead_promotion'. Other values: 'manual_add', 'discover' (future). |
+| referrer_name | text | nullable |
+| notes | text | nullable |
+| created_at | timestamptz | auto |
+| updated_at | timestamptz | auto via trigger |
+
+Realtime: enabled
+
+Unique constraint: clients_vendor_phone_unique on (vendor_id, phone) WHERE phone IS NOT NULL — partial index, allows multiple phoneless clients.
 
 ## Vendor category taxonomy (code-only, not a DB constraint)
-Defined in src/agent/categories.js. 16 categories locked 2026-05-15 (founder confirmed).
+Defined in src/agent/categories.js. 16 categories locked 2026-05-15.
 vendors.category should always be one of these values.
-vendors.style_notes captures qualifiers (e.g. "luxury", "celebrity") separately.
 
 | Category | Covers |
 |---|---|
@@ -237,54 +278,31 @@ vendors.style_notes captures qualifiers (e.g. "luxury", "celebrity") separately.
 | attire | bridal wear, lehenga, sherwani |
 | other | anything that doesn't fit above |
 
-### expenses
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid PK | auto-generated |
-| vendor_id | uuid FK -> vendors.id | CASCADE delete |
-| amount | integer NOT NULL | CHECK > 0. In whole rupees. |
-| category | text NOT NULL | CHECK: travel / equipment / assistant / studio / marketing / software / food / printing / commission / shoot / inventory / other |
-| description | text | vendor's own words, optional |
-| expense_date | date | nullable, defaults to current_date |
-| client_name | text | free-text client attribution. Nullable. Use linked_lead_id when lead exists. |
-| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
-| notes | text | optional |
-| created_at | timestamptz | auto |
-| updated_at | timestamptz | auto via trigger |
-
-Realtime: enabled
-
 ## Key relationships
 - Every vendor has one user (identity)
 - Every message belongs to one conversation -> one vendor
 - Every note belongs to one vendor, optionally one conversation
-- Every lead belongs to one vendor
+- Every lead belongs to one vendor, optionally one client (via client_id)
 - Every event belongs to one vendor, optionally linked to one lead
-- Every invoice belongs to one vendor, optionally linked to one lead
-- vendor_id is always the scoping key — never query without it
-- couple_thread conversations scoped by counterparty_phone for Mode 1 routing
+- Every invoice belongs to one vendor, optionally linked to one lead AND one client
 - Every expense belongs to one vendor, optionally linked to one lead
-- clients table arrives in Session 8.5 — invoices.lead_id becomes invoices.lead_id + invoices.client_id
+- Every client belongs to one vendor (vendor-scoped, mirrors leads)
+- vendor_id is always the scoping key — never query without it
+- couple_thread conversations scoped by counterparty_phone for routing
+- clients UNIQUE(vendor_id, phone WHERE phone NOT NULL) — phone is dedup key, names never matched
 
 ## Indexes
-- vendors_routing_handle_idx on vendors(routing_handle) — fast TDW lookup on every inbound message
-- events_vendor_id_idx on events(vendor_id)
-- events_event_date_idx on events(event_date)
-- events_state_idx on events(state)
-- events_vendor_date_state_idx on events(vendor_id, event_date, state) — briefing query
-- invoices_vendor_id_idx on invoices(vendor_id)
-- invoices_state_idx on invoices(state)
-- invoices_due_date_idx on invoices(due_date)
-- invoices_lead_id_idx on invoices(lead_id)
-- invoices_created_at_idx on invoices(created_at desc)
-- messages_model_idx on messages(model) — AI cost aggregation queries
-- expenses_vendor_id_idx on expenses(vendor_id)
-- expenses_expense_date_idx on expenses(expense_date)
-- expenses_category_idx on expenses(category)
-- expenses_created_at_idx on expenses(created_at desc)
+- vendors_routing_handle_idx on vendors(routing_handle)
+- events_vendor_id_idx, events_event_date_idx, events_state_idx, events_vendor_date_state_idx
+- invoices_vendor_id_idx, invoices_state_idx, invoices_due_date_idx, invoices_lead_id_idx, invoices_created_at_idx, invoices_client_id_idx (NEW 8.5)
+- messages_model_idx on messages(model)
+- expenses_vendor_id_idx, expenses_expense_date_idx, expenses_category_idx, expenses_created_at_idx
+- clients_vendor_id_idx, clients_created_at_idx (NEW 8.5)
+- leads_client_id_idx (NEW 8.5)
 
 ## Unique constraints
 - invoices_vendor_number_unique on invoices(vendor_id, invoice_number)
+- clients_vendor_phone_unique on clients(vendor_id, phone) WHERE phone IS NOT NULL (NEW 8.5, partial)
 
 ## Postgres functions
 | Function | Args | Returns | Purpose |
@@ -295,11 +313,11 @@ Realtime: enabled
 ## Supabase storage buckets
 | Bucket | Public | Size limit | MIME types | Purpose |
 |---|---|---|---|---|
-| invoices | No (private) | 5 MB | application/pdf | Booking confirmation PDFs (Stage 2, Session 8.3) |
+| invoices | No (private) | 5 MB | application/pdf | Booking confirmation PDFs |
 
 ## RLS
 Disabled on all tables. service_role key held by Railway only.
 Will enable when bride-side public access is needed (Session 9).
 
 ## Realtime enabled on
-conversations, messages, notes, pending_actions, leads, events, invoices, expenses
+conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients
