@@ -902,6 +902,46 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
 
       console.log(`[tool:record_payment] ${inv.invoice_number} Rs ${input.amount_received} received — ${inv.state} -> ${newState}`);
 
+      // ── Lead → client promotion (silent, best-effort) ──────────────
+      // Trigger: state moved to advance_paid OR paid (skips repeat-promotion)
+      if ((newState === 'advance_paid' || newState === 'paid') && inv.state !== newState && inv.lead_id) {
+        try {
+          const { data: linkedLead } = await supabase
+            .from('leads')
+            .select('id, name, phone, email, referrer_name, notes, client_id')
+            .eq('id', inv.lead_id)
+            .maybeSingle();
+
+          if (linkedLead && !linkedLead.client_id) {
+            const { client, created } = await resolveOrCreateClient(supabase, vendor.id, {
+              name:          linkedLead.name || inv.client_name,
+              phone:         linkedLead.phone || inv.client_phone,
+              email:         linkedLead.email,
+              source:        'lead_promotion',
+              referrer_name: linkedLead.referrer_name,
+              notes:         linkedLead.notes,
+            });
+
+            await supabase.from('leads')
+              .update({ client_id: client.id })
+              .eq('id', linkedLead.id);
+
+            await supabase.from('invoices')
+              .update({ client_id: client.id })
+              .eq('id', inv.id);
+
+            console.log(`[tool:record_payment] promoted lead ${linkedLead.id} -> client ${client.id} (created=${created})`);
+          } else if (linkedLead?.client_id) {
+            await supabase.from('invoices')
+              .update({ client_id: linkedLead.client_id })
+              .eq('id', inv.id);
+            console.log(`[tool:record_payment] invoice ${inv.id} linked to existing client ${linkedLead.client_id}`);
+          }
+        } catch (promoteErr) {
+          console.error('[tool:record_payment] promotion failed (non-fatal):', promoteErr.message);
+        }
+      }
+
       // ── Stage 2: advance paid → generate booking confirmation PDF ──
       if (newState === 'advance_paid') {
         try {
