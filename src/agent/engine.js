@@ -870,13 +870,34 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
           notes:         input.notes,
         });
 
+        // Back-link existing leads with matching phone (best-effort, silent)
+        let backLinkedCount = 0;
+        if (input.phone) {
+          const { data: linkedRows, error: linkErr } = await supabase
+            .from('leads')
+            .update({ client_id: client.id })
+            .eq('vendor_id', vendor.id)
+            .eq('phone', input.phone)
+            .is('client_id', null)
+            .select('id');
+          if (!linkErr && linkedRows) {
+            backLinkedCount = linkedRows.length;
+            if (backLinkedCount > 0) {
+              console.log(`[tool:add_client] back-linked ${backLinkedCount} existing lead(s) to client ${client.id}`);
+            }
+          } else if (linkErr) {
+            console.error('[tool:add_client] back-link failed (non-fatal):', linkErr.message);
+          }
+        }
+
         if (!created) {
           console.log(`[tool:add_client] dedup hit — returning existing client ${client.id}`);
           return `Client already exists. ID: ${client.id}. Name: ${client.name}. Phone: ${client.phone || 'not set'}.`;
         }
 
         console.log(`[tool:add_client] new client ${client.id} (${client.name})`);
-        return `Client added. ID: ${client.id}. Name: ${client.name}. Phone: ${client.phone || 'not set'}.`;
+        const linkNote = backLinkedCount > 0 ? ` Linked ${backLinkedCount} existing lead(s).` : '';
+        return `Client added. ID: ${client.id}. Name: ${client.name}. Phone: ${client.phone || 'not set'}.${linkNote}`;
       } catch (err) {
         console.error('[tool:add_client] error:', err.message);
         return `Error adding client: ${err.message}`;
