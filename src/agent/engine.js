@@ -7,9 +7,10 @@ const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
 const { nextOnboardingMessage }   = require('./onboarding');
 const { TOOLS }                   = require('./tools');
 const { buildInvoiceMessage }     = require('../lib/invoiceMessage');
+const { classifyMessage }         = require('./classifier');
+const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 
 const MAX_ITERATIONS = 5;
-const MODEL          = 'claude-haiku-4-5-20251001';
 const HISTORY_LIMIT  = 10;
 
 // ── Vendor agentic turn ───────────────────────────────────────────
@@ -94,21 +95,34 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     { role: 'user', content: inboundMessage },
   ];
 
+  // ── Classify complexity → pick model ───────────────────────────
+  // Pass last 2 history turns so classifier has disambiguation context.
+  const classifierHistory = history.slice(-2);
+  const complexity  = await classifyMessage(inboundMessage, classifierHistory, anthropic);
+  const modelToUse  = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
+  console.log(`[agent] model selected: ${modelToUse} (${complexity})`);
+
   // ── Agentic loop ────────────────────────────────────────────────
-  let iterations  = 0;
-  let finalReply  = null;
+  let iterations     = 0;
+  let finalReply     = null;
+  let totalInputTok  = 0;
+  let totalOutputTok = 0;
   const toolCallsAudit = [];
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
 
     const response = await anthropic.messages.create({
-      model: MODEL,
+      model: modelToUse,
       max_tokens: 1024,
       system: systemPrompt,
       tools: TOOLS,
       messages,
     });
+
+    // Accumulate token usage across all iterations
+    totalInputTok  += response.usage?.input_tokens  || 0;
+    totalOutputTok += response.usage?.output_tokens || 0;
 
     console.log(`[agent] iteration ${iterations}, stop_reason: ${response.stop_reason}`);
 
@@ -176,10 +190,19 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     }
   }
 
+  // ── Calculate and return cost data ────────────────────────────
+  const cost = calculateCost(modelToUse, totalInputTok, totalOutputTok);
+  console.log(`[agent] tokens: ${totalInputTok} in / ${totalOutputTok} out | cost: $${cost?.cost_usd ?? '?'} / Rs ${cost?.cost_inr ?? '?'}`);
+
   return {
-    reply: finalReply || 'Got it.',
-    toolCalls: toolCallsAudit,
+    reply:        finalReply || 'Got it.',
+    toolCalls:    toolCallsAudit,
     iterations,
+    model:        modelToUse,
+    inputTokens:  totalInputTok,
+    outputTokens: totalOutputTok,
+    costUsd:      cost?.cost_usd  ?? null,
+    costInr:      cost?.cost_inr  ?? null,
   };
 }
 
@@ -259,7 +282,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     iterations++;
 
     const response = await anthropic.messages.create({
-      model: MODEL,
+      model: MODEL_HAIKU,   // couple agent: Haiku always — narrow scope, simple routing
       max_tokens: 512,
       system: systemPrompt,
       tools: COUPLE_TOOLS,
