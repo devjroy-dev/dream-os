@@ -448,11 +448,19 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     if (finalReply !== null) break;
   }
 
+  // Build vendor notification:
+  // - First-contact: use the synthetic vendor_notification audit message (capture_couple_lead pushes one)
+  // - Returning bride: forward the bride's actual message verbatim, prefixed with their name
+  const firstContactNotif = toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null;
+  const returningBrideNotif = isReturningBride
+    ? `${leadName || 'Returning enquiry'} just messaged: "${inboundMessage}"`
+    : null;
+
   return {
     reply: finalReply || 'Thanks — we\'ll be in touch soon!',
     toolCalls: toolCallsAudit,
     iterations,
-    vendorNotification: isReturningBride ? null : (toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null),
+    vendorNotification: isReturningBride ? returningBrideNotif : firstContactNotif,
   };
 }
 

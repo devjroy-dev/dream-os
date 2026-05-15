@@ -144,7 +144,8 @@ app.post('/webhook/whatsapp', async (req, res) => {
       //             1 -> Mode 1 (route to that thread)
       //             2+ -> Set pending_routing_context, ask disambiguation question
 
-      const DISAMBIGUATION_TTL_MS = 10 * 60 * 1000; // 10 minutes
+      const DISAMBIGUATION_TTL_MS = 10 * 60 * 1000;  // 10 minutes
+      const STICKY_TTL_MS         = 30 * 60 * 1000;  // 30 minutes — vendor stickiness after resolution
 
       // ── Step A: Pending disambiguation reply ──────────────────────
       const pendingCtx = user.pending_routing_context;
@@ -174,8 +175,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
           });
 
           if (interp.matched_vendor_id && interp.confidence === 'high') {
-            // Clear pending state
-            await supabase.from('users').update({ pending_routing_context: null }).eq('id', user.id);
+            // Set sticky state — bride sticks to this vendor for 30 min
+            await supabase.from('users').update({
+              pending_routing_context: {
+                sticky_vendor_id: interp.matched_vendor_id,
+                sticky_until:    new Date(Date.now() + STICKY_TTL_MS).toISOString(),
+              },
+            }).eq('id', user.id);
 
             // Route the ORIGINAL message (not this clarification reply) to matched vendor
             const matchedVendor = (candidateVendors || []).find(v => v.id === interp.matched_vendor_id);
@@ -254,6 +260,85 @@ app.post('/webhook/whatsapp', async (req, res) => {
           console.log(`[routing:disambiguation_unclear] ${phone} reply="${body.slice(0, 40)}"`);
           return res.status(200).send('<Response/>');
         }
+      }
+
+      // ── Step A.5: Sticky vendor (recently resolved disambiguation) ──
+      // If pending_routing_context has sticky_vendor_id and not expired,
+      // route directly to that vendor. A TDW code in the message overrides
+      // and is handled by Step B below.
+      const stickyVendorId = pendingCtx?.sticky_vendor_id;
+      const stickyUntil    = pendingCtx?.sticky_until;
+      const stickyFresh    = stickyVendorId && stickyUntil
+        && new Date(stickyUntil).getTime() > Date.now();
+
+      // Does this message start with a TDW code? If yes, skip sticky.
+      const startsWithTdw = firstWord.startsWith('TDW-');
+
+      if (stickyFresh && !startsWithTdw) {
+        const { data: stickyThread } = await supabase
+          .from('conversations')
+          .select('*, vendors(*)')
+          .eq('vendor_id', stickyVendorId)
+          .eq('counterparty_phone', phone)
+          .eq('kind', 'couple_thread')
+          .maybeSingle();
+
+        if (stickyThread) {
+          console.log(`[routing:sticky] ${phone} -> vendor ${stickyVendorId} (until ${stickyUntil})`);
+
+          await supabase.from('messages').insert({
+            conversation_id: stickyThread.id,
+            direction: 'inbound',
+            channel: 'whatsapp',
+            body,
+            sent_by: 'couple',
+          });
+
+          const { data: vendorUser } = await supabase
+            .from('users').select('*').eq('id', stickyThread.vendors.user_id).maybeSingle();
+
+          const result = await runCoupleAgenticTurn({
+            vendor: stickyThread.vendors,
+            vendorUser,
+            conversation: stickyThread,
+            couplePhone: phone,
+            inboundMessage: body,
+            supabase,
+            anthropic,
+          });
+
+          const twilioMsg = await sendWhatsApp(phone, result.reply);
+
+          await supabase.from('messages').insert({
+            conversation_id: stickyThread.id,
+            direction: 'outbound',
+            channel: 'whatsapp',
+            body: result.reply,
+            sent_by: 'agent',
+            twilio_sid: twilioMsg.sid,
+            tool_calls: result.toolCalls,
+          });
+
+          if (result.vendorNotification && vendorUser?.phone) {
+            await sendWhatsApp(vendorUser.phone, result.vendorNotification);
+          }
+
+          // Refresh sticky window — each interaction extends stickiness
+          await supabase.from('users').update({
+            pending_routing_context: {
+              sticky_vendor_id: stickyVendorId,
+              sticky_until:    new Date(Date.now() + STICKY_TTL_MS).toISOString(),
+            },
+          }).eq('id', user.id);
+
+          await supabase.from('conversations')
+            .update({ last_message_at: new Date().toISOString() })
+            .eq('id', stickyThread.id);
+
+          return res.status(200).send('<Response/>');
+        }
+        // If sticky thread doesn't exist (deleted?), fall through to normal routing
+        console.warn(`[routing:sticky_orphan] sticky vendor ${stickyVendorId} has no thread for ${phone}, falling through`);
       }
 
       // ── Step B: TDW code wins over history ────────────────────────
@@ -350,6 +435,14 @@ app.post('/webhook/whatsapp', async (req, res) => {
         await supabase.from('conversations')
           .update({ last_message_at: new Date().toISOString() })
           .eq('id', coupleThread.id);
+
+        // Set sticky state — bride sticks to this vendor for 30 min
+        await supabase.from('users').update({
+          pending_routing_context: {
+            sticky_vendor_id: matchedByTdw.id,
+            sticky_until:    new Date(Date.now() + STICKY_TTL_MS).toISOString(),
+          },
+        }).eq('id', user.id);
 
         return res.status(200).send('<Response/>');
       }
