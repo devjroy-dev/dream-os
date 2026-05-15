@@ -453,7 +453,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // - Returning bride: forward the bride's actual message verbatim, prefixed with their name
   const firstContactNotif = toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null;
   const returningBrideNotif = isReturningBride
-    ? `${leadName || 'Returning enquiry'} just messaged: "${inboundMessage}"`
+    ? `${leadName || `+${couplePhone.slice(-4)}`} just messaged: "${inboundMessage}"`
     : null;
 
   return {
@@ -913,12 +913,12 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
 
         if (!created) {
           console.log(`[tool:add_client] dedup hit — returning existing client ${client.id}`);
-          return `Client already exists. ID: ${client.id}. Name: ${client.name}. Phone: ${client.phone || 'not set'}.`;
+          return `Client already exists: ${client.name}${client.phone ? ` (${client.phone})` : ''}.`;
         }
 
         console.log(`[tool:add_client] new client ${client.id} (${client.name})`);
         const linkNote = backLinkedCount > 0 ? ` Linked ${backLinkedCount} existing lead(s).` : '';
-        return `Client added. ID: ${client.id}. Name: ${client.name}. Phone: ${client.phone || 'not set'}.${linkNote}`;
+        return `Client added: ${client.name}${client.phone ? ` (${client.phone})` : ''}.${linkNote}`;
       } catch (err) {
         console.error('[tool:add_client] error:', err.message);
         return `Error adding client: ${err.message}`;
@@ -926,6 +926,11 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
     }
 
     case 'list_clients': {
+      const { count } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('vendor_id', vendor.id);
+
       const { data: clients, error } = await supabase
         .from('clients')
         .select('id, name, phone, email, source, created_at')
@@ -946,7 +951,7 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
         `${i + 1}. ${c.name}${c.phone ? ` (${c.phone})` : ''}${c.email ? ` — ${c.email}` : ''}`
       );
       console.log(`[tool:list_clients] returned ${clients.length} clients`);
-      return `Recent clients:\n${lines.join('\n')}`;
+      return `Recent clients (showing ${clients.length} of ${count ?? clients.length}):\n${lines.join('\n')}`;
     }
 
     case 'respond_to_vendor': {
