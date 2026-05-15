@@ -121,9 +121,11 @@ router.get('/vendors/:id', async (req, res) => {
       .from('messages')
       .select('direction, body, created_at, sent_by')
       .eq('conversation_id', convo.id)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(100);
-    messages = msgs || [];
+    // Fetch newest-first so recent messages are guaranteed in the panel
+    // even when total exceeds 100. Reverse so display stays oldest-to-newest.
+    messages = (msgs || []).slice().reverse();
   }
 
   // Load couple threads and their messages for Enquiries tab
