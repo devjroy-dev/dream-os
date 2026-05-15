@@ -859,6 +859,54 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
       return `TDW link: ${link}`;
     }
 
+    case 'add_client': {
+      try {
+        const { client, created } = await resolveOrCreateClient(supabase, vendor.id, {
+          name:          input.name,
+          phone:         input.phone,
+          email:         input.email,
+          source:        'manual_add',
+          referrer_name: input.referrer_name,
+          notes:         input.notes,
+        });
+
+        if (!created) {
+          console.log(`[tool:add_client] dedup hit — returning existing client ${client.id}`);
+          return `Client already exists. ID: ${client.id}. Name: ${client.name}. Phone: ${client.phone || 'not set'}.`;
+        }
+
+        console.log(`[tool:add_client] new client ${client.id} (${client.name})`);
+        return `Client added. ID: ${client.id}. Name: ${client.name}. Phone: ${client.phone || 'not set'}.`;
+      } catch (err) {
+        console.error('[tool:add_client] error:', err.message);
+        return `Error adding client: ${err.message}`;
+      }
+    }
+
+    case 'list_clients': {
+      const { data: clients, error } = await supabase
+        .from('clients')
+        .select('id, name, phone, email, source, created_at')
+        .eq('vendor_id', vendor.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('[tool:list_clients] error:', error);
+        return `Error listing clients: ${error.message}`;
+      }
+
+      if (!clients || clients.length === 0) {
+        return 'No clients yet.';
+      }
+
+      const lines = clients.map((c, i) =>
+        `${i + 1}. ${c.name}${c.phone ? ` (${c.phone})` : ''}${c.email ? ` — ${c.email}` : ''}`
+      );
+      console.log(`[tool:list_clients] returned ${clients.length} clients`);
+      return `Recent clients:\n${lines.join('\n')}`;
+    }
+
     case 'respond_to_vendor': {
       console.log(`[tool:respond] "${input.message.slice(0, 80)}"`);
       return 'Reply queued.';
