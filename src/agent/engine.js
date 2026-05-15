@@ -246,7 +246,20 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
       return [...acc, msg];
     }, []);
 
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser });
+  // Detect returning bride — lead already exists for (vendor_id, couplePhone)
+  const { data: existingLeadForCouple } = await supabase
+    .from('leads')
+    .select('id, name')
+    .eq('vendor_id', vendor.id)
+    .eq('phone', couplePhone)
+    .maybeSingle();
+
+  const isReturningBride = !!existingLeadForCouple;
+  const leadName = existingLeadForCouple?.name || null;
+
+  console.log(`[couple-agent] isReturningBride=${isReturningBride} phone=${couplePhone}${leadName ? ` name=${leadName}` : ''}`);
+
+  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName });
 
   const messages = [
     ...history,
@@ -439,7 +452,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     reply: finalReply || 'Thanks — we\'ll be in touch soon!',
     toolCalls: toolCallsAudit,
     iterations,
-    vendorNotification: toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null,
+    vendorNotification: isReturningBride ? null : (toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null),
   };
 }
 
