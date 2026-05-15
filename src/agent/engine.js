@@ -11,6 +11,7 @@ const { generateInvoicePdf }     = require('../lib/invoicePdf');
 const { formatRs }               = require('../lib/format');
 const { classifyMessage }         = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
+const { resolveOrCreateClient } = require('../lib/clients');
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 10;
@@ -475,6 +476,36 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
         }
       }
 
+      // Dedup: if phone present, check for existing lead with same vendor+phone
+      if (input.phone) {
+        const { data: existingLead } = await supabase
+          .from('leads')
+          .select('id, name, wedding_date, state, client_id')
+          .eq('vendor_id', vendor.id)
+          .eq('phone', input.phone)
+          .maybeSingle();
+
+        if (existingLead) {
+          console.log(`[tool:create_lead] dedup hit — returning existing lead ${existingLead.id} for phone ${input.phone}`);
+          return `Lead already exists for this phone. ID: ${existingLead.id}. Name: ${existingLead.name || 'unknown'}. State: ${existingLead.state}.`;
+        }
+      }
+
+      // Auto-link to existing client (phone match) — silent
+      let clientIdToLink = null;
+      if (input.phone) {
+        const { data: existingClient } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('vendor_id', vendor.id)
+          .eq('phone', input.phone)
+          .maybeSingle();
+        if (existingClient) {
+          clientIdToLink = existingClient.id;
+          console.log(`[tool:create_lead] auto-linking to existing client ${existingClient.id} on phone ${input.phone}`);
+        }
+      }
+
       const { data: lead, error } = await supabase.from('leads').insert({
         vendor_id:    vendor.id,
         name:         input.name         || null,
@@ -490,15 +521,16 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
         notes:        input.notes        || null,
         raw_message:  input.raw_message  || null,
         state:        'new',
-      }).select('id, name, wedding_date').single();
+        client_id:    clientIdToLink,
+      }).select('id, name, wedding_date, client_id').single();
 
       if (error) {
         console.error('[tool:create_lead] error:', error);
         return `Error creating lead: ${error.message}`;
       }
 
-      console.log(`[tool:create_lead] ${lead.name || 'unnamed'} — ${lead.wedding_date || 'no date'} (${lead.id})`);
-      return `Lead created. ID: ${lead.id}. Name: ${lead.name || 'unknown'}. Date: ${lead.wedding_date || 'not specified'}.`;
+      console.log(`[tool:create_lead] ${lead.name || 'unnamed'} — ${lead.wedding_date || 'no date'} (${lead.id})${lead.client_id ? ` [client: ${lead.client_id}]` : ''}`);
+      return `Lead created. ID: ${lead.id}. Name: ${lead.name || 'unknown'}. Date: ${lead.wedding_date || 'not specified'}.${lead.client_id ? ' Linked to existing client.' : ''}`;
     }
 
     case 'list_leads': {
