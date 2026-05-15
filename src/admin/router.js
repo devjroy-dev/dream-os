@@ -90,6 +90,7 @@ router.get('/vendors/:id', async (req, res) => {
     { data: costRows },
     { data: invoices },
     { data: expenses },
+    { data: clients },
   ] = await Promise.all([
     supabase.from('vendors').select('*, user:users(name, phone)').eq('id', id).maybeSingle(),
     supabase.from('vendor_state').select('*').eq('vendor_id', id).maybeSingle(),
@@ -98,6 +99,7 @@ router.get('/vendors/:id', async (req, res) => {
     supabase.from('messages').select('cost_inr, model').eq('sent_by', 'agent').gte('created_at', monthStart),
     supabase.from('invoices').select('id, invoice_number, client_name, amount_total, amount_paid, amount_advance, state, due_date, pdf_url, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
     supabase.from('expenses').select('id, amount, category, description, expense_date, client_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
+    supabase.from('clients').select('id, name, phone, email, source, referrer_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
   ]);
 
   // Aggregate cost by model for this vendor's conversations
@@ -194,6 +196,7 @@ router.get('/vendors/:id', async (req, res) => {
     totalPaid,
     totalOutstanding,
     totalExpenses,
+    clients:          clients || [],
   }));
 });
 

@@ -2,7 +2,7 @@
 
 const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
 
-function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [], monthCostInr = '0.00', costByModel = {}, invoices = [], expenses = [], totalBilled = 0, totalPaid = 0, totalOutstanding = 0, totalExpenses = 0 }) {
+function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [], monthCostInr = '0.00', costByModel = {}, invoices = [], expenses = [], totalBilled = 0, totalPaid = 0, totalOutstanding = 0, totalExpenses = 0, clients = [] }) {
   const name = user?.name || vendor.id.slice(0, 8);
 
   const statusLabel = vendor.onboarding_state === 'complete' || !vendor.onboarding_state
@@ -127,6 +127,70 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
       </table>`;
     })()}
   `;
+
+  // ── Clients tab ───────────────────────────────────────────────────
+  const sourceLabel = s => ({
+    manual_add:      'Manual',
+    lead_promotion:  'Promoted from lead',
+    discover:        'Discover',
+  }[s] || s);
+
+  const sourceColour = s => ({
+    manual_add:      '#7F8C8D',
+    lead_promotion:  '#27AE60',
+    discover:        '#8E44AD',
+  }[s] || '#999');
+
+  // Same-name duplicate detection (case-insensitive, trimmed)
+  const nameCounts = {};
+  clients.forEach(c => {
+    const key = (c.name || '').trim().toLowerCase();
+    if (key) nameCounts[key] = (nameCounts[key] || 0) + 1;
+  });
+  const isDuplicate = c => {
+    const key = (c.name || '').trim().toLowerCase();
+    return nameCounts[key] > 1;
+  };
+
+  const clientsTab = clients.length === 0
+    ? '<div class="empty-state">No clients yet.</div>'
+    : (() => {
+        const LIMIT = 5;
+        const clientRow = c => {
+          const dupPill = isDuplicate(c)
+            ? '<span style="background:#F1C40F22;color:#B7950B;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:6px;">possible duplicate</span>'
+            : '';
+          const dateStr = c.created_at ? c.created_at.slice(0, 10) : '—';
+          return `<tr style="border-bottom:1px solid #f5f5f5;">
+            <td style="padding:8px 0;font-weight:600;">${c.name}${dupPill}</td>
+            <td style="padding:8px 0;">${c.phone || '<span style=\"color:#ccc;\">—</span>'}</td>
+            <td style="padding:8px 0;">${c.email || '<span style=\"color:#ccc;\">—</span>'}</td>
+            <td style="padding:8px 0;text-align:center;"><span style="background:${sourceColour(c.source)}22;color:${sourceColour(c.source)};padding:2px 8px;border-radius:4px;font-size:11px;">${sourceLabel(c.source)}</span></td>
+            <td style="padding:8px 0;">${c.referrer_name || '<span style=\"color:#ccc;\">—</span>'}</td>
+            <td style="padding:8px 0;color:#999;font-size:11px;">${dateStr}</td>
+          </tr>`;
+        };
+        const visible = clients.slice(0, LIMIT);
+        const hidden  = clients.slice(LIMIT);
+        const hiddenRows = hidden.length > 0
+          ? `<tbody id="cli-extra" style="display:none;">${hidden.map(clientRow).join('')}</tbody>
+             <tbody><tr><td colspan="6" style="padding:10px 0;">
+               <a href="#" onclick="var e=document.getElementById('cli-extra');var l=document.getElementById('cli-lnk');e.style.display=e.style.display==='none'?'':'none';l.textContent=e.style.display===''?'Show ${hidden.length} more ↓':'Show fewer ↑';return false;" id="cli-lnk" style="font-size:12px;color:#B08D6A;">Show ${hidden.length} more ↓</a>
+             </td></tr></tbody>`
+          : '';
+        return `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">
+            <th style="text-align:left;padding:6px 0;">Name</th>
+            <th style="text-align:left;padding:6px 0;">Phone</th>
+            <th style="text-align:left;padding:6px 0;">Email</th>
+            <th style="text-align:center;padding:6px 0;">Source</th>
+            <th style="text-align:left;padding:6px 0;">Referrer</th>
+            <th style="text-align:left;padding:6px 0;">Added</th>
+          </tr></thead>
+          <tbody>${visible.map(clientRow).join('')}</tbody>
+          ${hiddenRows}
+        </table>`;
+      })();
 
   // ── Build AI cost display string
   const costModelParts = Object.entries(costByModel).map(([m, c]) => {
@@ -296,11 +360,13 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
       <a class="tab" onclick="showTab('enquiries',this)">Enquiries</a>
       <a class="tab" onclick="showTab('notes',this)">Notes</a>
       <a class="tab" onclick="showTab('money',this)">Money</a>
+      <a class="tab" onclick="showTab('clients',this)">Clients</a>
     </div>
     <div id="leads" class="tab-content active">${leadsList}</div>
     <div id="enquiries" class="tab-content">${enquiriesList}</div>
     <div id="notes" class="tab-content">${notesList}</div>
     <div id="money" class="tab-content">${moneyTab}</div>
+    <div id="clients" class="tab-content">${clientsTab}</div>
   </div>
   <script>
     function showTab(id, el) {
