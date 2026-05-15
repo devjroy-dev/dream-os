@@ -72,6 +72,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   const history = (recentMessages || [])
     .reverse()
     .filter(m => m.body !== inboundMessage || m.direction !== 'inbound')
+    .filter(m => m.body && m.body.trim().length > 0)
     .slice(-HISTORY_LIMIT)
     .map(m => ({
       role: m.direction === 'inbound' ? 'user' : 'assistant',
@@ -235,6 +236,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   const history = (recentMessages || [])
     .reverse()
     .filter(m => m.body !== inboundMessage || m.direction !== 'inbound')
+    .filter(m => m.body && m.body.trim().length > 0)
     .slice(-HISTORY_LIMIT)
     .map(m => ({
       role: m.direction === 'inbound' ? 'user' : 'assistant',
