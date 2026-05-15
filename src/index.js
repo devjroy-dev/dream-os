@@ -494,12 +494,12 @@ app.post('/webhook/whatsapp', async (req, res) => {
           sent_by: 'couple',
         });
 
-        const { data: vendorUser } = await supabase
-          .from('users').select('*').eq('id', existingThread.vendors.users?.id || existingThread.vendor_id).maybeSingle();
-
-        // Re-fetch vendor with all fields (the joined version above only has a subset)
+        // Fetch full vendor row first so we have user_id for the user lookup
         const { data: fullVendor } = await supabase
           .from('vendors').select('*').eq('id', existingThread.vendor_id).maybeSingle();
+
+        const { data: vendorUser } = await supabase
+          .from('users').select('*').eq('id', fullVendor?.user_id).maybeSingle();
 
         const result = await runCoupleAgenticTurn({
           vendor: fullVendor,
