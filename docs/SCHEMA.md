@@ -1,8 +1,9 @@
-# dream-os -- Schema Reference
+# dream-os — Schema Reference (Vendor + Bride)
 **Last updated:** 2026-05-15
-**Session:** 8.5
+**Session:** 8.5a (in progress)
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Latest migration applied:** 0012_routing_disambiguation.sql
+**Next migration:** 0013_couples_onboarding.sql (B1 — not yet applied)
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -29,7 +30,7 @@
 | phone | text UNIQUE NOT NULL | always E.164 e.g. +918757788550 |
 | name | text | first name, set on invite or from WhatsApp profile |
 | email | text | collected naturally in conversation |
-| pending_routing_context | jsonb | NEW Session 8.5. Stores either pending-question state {candidate_vendor_ids, original_message, asked_at} or sticky-resolution state {sticky_vendor_id, sticky_until}. NULL when no routing context active. |
+| pending_routing_context | jsonb | Session 8.5. Stores either pending-question state {candidate_vendor_ids, original_message, asked_at} or sticky-resolution state {sticky_vendor_id, sticky_until}. NULL when no routing context active. |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
@@ -73,7 +74,7 @@
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
-NOTE: couples table exists but is essentially unused as of Session 8.5. Routing identity stitched via users.phone + conversations.counterparty_phone. clients table (Session 8.5) is the active "real human" record.
+NOTE: couples table exists but is essentially unused as of Session 8.5. Routing identity stitched via users.phone + conversations.counterparty_phone. This table becomes real and fully populated when B1 ships. The "essentially unused" note is deleted at end of B4.
 
 ### conversations
 | Column | Type | Notes |
@@ -158,7 +159,7 @@ Realtime: enabled
 |---|---|---|
 | id | uuid PK | auto-generated |
 | vendor_id | uuid FK -> vendors.id | CASCADE delete |
-| client_id | uuid FK -> clients.id | NEW Session 8.5. SET NULL on delete. Populated when lead promotes to client or auto-linked at create_lead time. |
+| client_id | uuid FK -> clients.id | Session 8.5. SET NULL on delete. Populated when lead promotes to client or auto-linked at create_lead time. |
 | name | text | couple name e.g. Preethi or Priya & Rohit |
 | phone | text | couple phone if given |
 | email | text | couple email if given |
@@ -183,15 +184,16 @@ Realtime: enabled
 | id | uuid PK | auto-generated |
 | vendor_id | uuid FK -> vendors.id | CASCADE delete |
 | title | text NOT NULL | short event title e.g. "Shoot for Priya" |
-| event_date | date NOT NULL | required -- no date = use notes table instead |
-| event_time | time | nullable -- only if vendor mentioned a time |
+| event_date | date NOT NULL | required |
+| event_time | time | nullable |
 | kind | text NOT NULL | CHECK: shoot / call / meeting / task / reminder / recce / other |
-| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
+| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional. |
 | state | text NOT NULL | CHECK: upcoming / done / cancelled. Default: upcoming. |
 | notes | text | location, contact, prep notes |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
+NOTE: Migration 0015 (B3) adds couple_id column to this table so it serves both vendors and brides.
 Realtime: enabled
 
 ### invoices
@@ -199,9 +201,9 @@ Realtime: enabled
 |---|---|---|
 | id | uuid PK | auto-generated |
 | vendor_id | uuid FK -> vendors.id | CASCADE delete |
-| lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
-| client_id | uuid FK -> clients.id | NEW Session 8.5. SET NULL on delete. Stamped on promotion (advance paid) or when lead's client_id is already populated. |
-| invoice_number | text NOT NULL | e.g. TDW/DEV550/01. Unique per vendor via constraint. |
+| lead_id | uuid FK -> leads.id | SET NULL on delete. Optional. |
+| client_id | uuid FK -> clients.id | Session 8.5. SET NULL on delete. |
+| invoice_number | text NOT NULL | e.g. TDW/DEV550/01. Unique per vendor. |
 | client_name | text NOT NULL | vendor's client name, text snapshot |
 | client_phone | text | optional, E.164 if provided |
 | description | text | what the invoice is for |
@@ -216,7 +218,6 @@ Realtime: enabled
 | updated_at | timestamptz | auto via trigger |
 
 Realtime: enabled
-
 NOTE: amount_paid <= amount_total is deliberately NOT enforced at DB level.
 
 ### expenses
@@ -236,7 +237,7 @@ NOTE: amount_paid <= amount_total is deliberately NOT enforced at DB level.
 
 Realtime: enabled
 
-### clients (NEW Session 8.5)
+### clients
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | auto-generated |
@@ -252,12 +253,10 @@ Realtime: enabled
 | updated_at | timestamptz | auto via trigger |
 
 Realtime: enabled
-
 Unique constraint: clients_vendor_phone_unique on (vendor_id, phone) WHERE phone IS NOT NULL — partial index, allows multiple phoneless clients.
 
 ## Vendor category taxonomy (code-only, not a DB constraint)
 Defined in src/agent/categories.js. 16 categories locked 2026-05-15.
-vendors.category should always be one of these values.
 
 | Category | Covers |
 |---|---|
@@ -294,15 +293,15 @@ vendors.category should always be one of these values.
 ## Indexes
 - vendors_routing_handle_idx on vendors(routing_handle)
 - events_vendor_id_idx, events_event_date_idx, events_state_idx, events_vendor_date_state_idx
-- invoices_vendor_id_idx, invoices_state_idx, invoices_due_date_idx, invoices_lead_id_idx, invoices_created_at_idx, invoices_client_id_idx (NEW 8.5)
+- invoices_vendor_id_idx, invoices_state_idx, invoices_due_date_idx, invoices_lead_id_idx, invoices_created_at_idx, invoices_client_id_idx
 - messages_model_idx on messages(model)
 - expenses_vendor_id_idx, expenses_expense_date_idx, expenses_category_idx, expenses_created_at_idx
-- clients_vendor_id_idx, clients_created_at_idx (NEW 8.5)
-- leads_client_id_idx (NEW 8.5)
+- clients_vendor_id_idx, clients_created_at_idx
+- leads_client_id_idx
 
 ## Unique constraints
 - invoices_vendor_number_unique on invoices(vendor_id, invoice_number)
-- clients_vendor_phone_unique on clients(vendor_id, phone) WHERE phone IS NOT NULL (NEW 8.5, partial)
+- clients_vendor_phone_unique on clients(vendor_id, phone) WHERE phone IS NOT NULL (partial)
 
 ## Postgres functions
 | Function | Args | Returns | Purpose |
@@ -321,3 +320,35 @@ Will enable when bride-side public access is needed (Session 9).
 
 ## Realtime enabled on
 conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients
+
+---
+
+## Upcoming bride migrations (B-sessions — not yet applied)
+
+Bride migrations continue the vendor sequence. No separate numbering. One migration history.
+
+| File | Session | What it adds |
+|---|---|---|
+| 0013_couples_onboarding.sql | B1 | couples.onboarding_state, couples.whatsapp_linked, couple_state table |
+| 0014_muse_circle.sql | B2 | muse_saves table, circle_members table, circle_activity table |
+| 0015_bride_planner.sql | B3 | couple_tasks, couple_expenses, couple_budget, couple_id column on events |
+| 0016_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags |
+
+Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail.
+
+---
+
+## Known schema debt
+
+### user_id vs couple_id naming inconsistency (inherited from tdw-2)
+The existing tdw-2 web app has a naming inconsistency baked into its API:
+- v2 GET endpoints filter Supabase with user_id
+- POST/PATCH/DELETE endpoints send couple_id in the request body
+- Both values are the same: session.id from localStorage couple_session
+This inconsistency is carried as-is through all B-sessions. Do NOT fix mid-flight. Resolved at Session 9 consolidation. Anyone reading this: do not rename columns or parameters without a full coordinated migration.
+
+### couples table — currently sparse
+Exists since migration 0001 but essentially unused as of Session 8.5. Routing identity stitched via users.phone + conversations.counterparty_phone. Becomes real and fully populated when B1 ships. "Essentially unused" note deleted at end of B4.
+
+### events table — currently vendor-scoped only
+Migration 0007. Has vendor_id FK. Migration 0015 (B3) adds couple_id column. Additive change — existing vendor rows unaffected.

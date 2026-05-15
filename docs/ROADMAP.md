@@ -1,14 +1,37 @@
-# dream-os -- Roadmap
+# dream-os — Vendor Roadmap
 **Last updated:** 2026-05-15
-**Current session:** 8.5
+**Current session:** 8.5a (in progress)
 **Current version:** 8.5
 
+---
+
 ## Vision
-WhatsApp-first chief of staff for wedding vendors.
-Vendor runs their business by texting a number.
-Agent remembers everything, handles routine, escalates judgment calls.
-Admin layer lets Dev/Swati manage the founding cohort of 50 vendors.
-Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
+
+thedreamai.in is where vendors live.
+
+WhatsApp-first chief of staff for wedding vendors in India. Vendor runs their business by texting a number. Agent remembers everything, handles routine, escalates judgment calls. Admin layer lets Dev and Swati manage the founding cohort of 50 vendors.
+
+Vendors don't live on thedreamwedding.in. They appear there — curated, styled, earned. The vendor earns access through quality of work. Dev and Swati decide who features on Discover.
+
+thedreamai.in (vendor) and thedreamwedding.in (bride) meet at Discover. That is the crossroads. Everything else is separate.
+
+---
+
+## Why vendor sessions pause after Session 8
+
+After Session 8 (admin polish + Google Calendar), vendor-side development pauses while B-sessions build the bride product to parity.
+
+This is a deliberate product decision, not a deprioritisation.
+
+The reason: Discover — the crossroads where vendor and bride meet — cannot be built properly until both sides have persistent identity, a real schema, and a working agent. If we build Discover on a stateless bride, we get a directory, not a marketplace. The bride B-sessions (B1 through B4) build the foundation that makes Session 9 Discover worth building.
+
+During the pause, vendor infrastructure continues to run. The founding cohort of 50 vendors continues to be served. No vendor-facing features regress. The pause is on new development only.
+
+Session 9 is the convergence point. Both products meet. Discover goes live. From Session 9 onwards, vendor and bride roadmaps are developed in parallel, connected at the Discover layer.
+
+See ROADMAP_BRIDE.md for the full bride roadmap and B-session plan.
+
+---
 
 ## What's shipped
 
@@ -25,67 +48,30 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 8.1 | Smart model routing (Haiku→Sonnet classifier), cost tracking on messages (0009), smart onboarding (16 categories), admin AI cost display | 0.8.1 |
 | 8.2 | Prompt caching (91% input token reduction), Gemini SDK wired (groundedSearch.js, retrieval-only) | 0.8.2 |
 | 8.3 | record_payment (Stage 2+3), invoicePdf.js, list_invoices, log_expense, update_invoice_prefix, expenses table (0010), Admin Money tab, morning briefing overdue alerts | 0.8.3 |
-| 8.5 | clients table (0011), routing context (0012), resolveOrCreateClient helper, add_client + list_clients tools, lead-to-client promotion, create_lead dedup + auto-link, admin Clients tab with duplicate detection, admin messages newest-first, multi-vendor routing fix with Haiku disambiguation, sticky disambiguation (30 min), returning-bride detection, vendor notification forwarding, system prompt tool-call discipline rule | 8.5 |
+| 8.5 | clients table (0011), routing context (0012), resolveOrCreateClient helper, add_client + list_clients tools, lead-to-client promotion, create_lead dedup + auto-link, admin Clients tab with duplicate detection, admin messages newest-first, multi-vendor couple routing with Haiku disambiguation, sticky disambiguation (30 min), returning-bride detection, vendor notification forwarding, system prompt tool-call discipline rule | 8.5 |
+| 8.5a | Empty inbound crash fix (Bug #1), single-thread user_id lookup fix (Bug #4), TDW typo fuzzy-match "Did you mean?" (Bug #7), four docs written (HANDOVER, SCHEMA, ROADMAP, ROADMAP_BRIDE) — in progress | 8.5a |
 
-## Session sequence (confirmed by founder 2026-05-15)
-6.5 (on +91 arrival, jumps queue) → 8.5a → 8 → 9 → 10 → 11-12
+---
 
-Note on naming: bug-fix sessions are labeled after their parent session (e.g. 8.5a follows 8.5). This is founder's incompetency-traceability discipline — anyone reading the roadmap can see at a glance which sessions shipped enough bugs to need a dedicated cleanup session.
+## Session sequence
 
-## Decisions locked
-- Model: claude-haiku-4-5-20251001 (never change without founder approval)
-- Model: claude-sonnet-4-6 (never change without founder approval — added Session 8.1)
-- Phone format: always E.164 (+918757788550)
-- Schema discipline: every change through numbered migration file
-- Four docs updated every session: HANDOVER.md, SCHEMA.md, ROADMAP.md, UNIT_ECONOMICS.md (Dev's reference only — no other session amends it)
-- Currency: Rs (never Rs with symbol)
-- Unknown numbers: three-mode couple routing
-- Admin auth: single ADMIN_PASSWORD env var
-- Monorepo: backend now, web/ and discover/ added in Sessions 9+
-- Routing: one shared number + TDW codes
-- TDW handle format: FIRSTNAMEPHONE3 e.g. DEV550. Auto-assigned, no vendor input needed.
-- wa.me link format: wa.me/14787788550?text=TDW-DEV550
-- Lead dedup in create_lead: phone-based, one lead per (vendor_id, phone), ever
-- TDW_WA_NUMBER env var: parameterised, swap when +91 arrives, no code change needed
-- Couple-facing agent: Haiku always, narrow scope (TDW routing + lead capture only)
-- Morning briefing: node-cron inside Express, 8am IST, 24h window check, skip-if-closed
-- Events kind values: shoot / call / meeting / task / reminder / recce / other (CHECK constraint)
-- Morning briefing: template submission deferred to Session 6.5 pending +91 WABA confirmation
-- Invoice number format: <invoice_prefix>/<counter padded to 2>. e.g. TDW/DEV550/01
-- Invoice prefix: editable by vendor, defaults to TDW/<routing_handle> on first invoice
-- Invoice counter: never resets on prefix change. Gaps are accountant-safe.
-- Invoice state machine: unpaid / advance_paid / paid / cancelled
-- Invoice duplicate check: soft prompt, surfaces existing leads + invoices, never hard blocks
-- UPI QR: lives inside Stage 2 PDF only. No standalone QR generator.
-- Invoices link to leads in v1. Clients table (Session 8.5 SHIPPED) adds client_id FK alongside lead_id.
-- Clients model: vendor-scoped (UNIQUE vendor_id + phone). Phone is dedup key. Names never matched. Promotion trigger = advance paid OR vendor adds directly via add_client tool. SHIPPED Session 8.5.
-- resolveOrCreateClient: single allowed door for client creation. Used by both add_client and promotion. SHIPPED Session 8.5.
-- Lead dedup (upstream, create_lead blind insert): SHIPPED Session 8.5 — phone-based check before insert.
-- Money tools (Sonnet routing): record_payment, expenses, PDF, QR shipped Session 8.3.
-- Vendor category taxonomy: 16 categories locked (florist merged into decor). See src/agent/categories.js.
-- style_notes: free-text qualifier field on vendors table. Haiku extracts during onboarding.
-- USD_TO_INR = 100: hardcoded constant in src/agent/models.js. Macro view, 2026-05-15.
-- Cost stored in both cost_usd (Anthropic reconciliation) and cost_inr (admin display).
-- Version string: read from package.json dynamically via require('../package.json').
-- Prompt caching: SHIPPED Session 8.2. 1-hour ephemeral cache on STATIC_SYSTEM_PROMPT. -91% input tokens.
-- Gemini 3.1 Flash-Lite: SHIPPED Session 8.2. Retrieval-only. Never the main agent model.
-- groundedSearch.js pattern: Gemini retrieves, Anthropic composes. Separation of concerns locked.
-- GOOGLE_API_KEY: dev@thedreamwedding.in Google AI Studio account, free tier.
-- Twilio is dominant cost driver post-caching (~Rs 300/vendor/month vs Rs 144 AI).
-- Railway region (EU West) vs Supabase (Mumbai ap-south-1): ~150-200ms cross-region latency. Move before scaling beyond 50 vendors.
-- Bride-side planner model stack: Gemini Flash-Lite (grounded retrieval) + Haiku (internal DB) + Sonnet (multi-constraint planning). Session 9 decision.
-- Multi-vendor routing: SHIPPED Session 8.5. TDW code always wins over thread history. 2+ threads → Haiku disambiguation question. Sticky vendor for 30 min after resolution. State stored in users.pending_routing_context jsonb (single column, two schemas distinguished by keys).
-- Returning-bride detection: SHIPPED Session 8.5. Detection via lead-exists check for (vendor_id, phone). Skips greeting + onboarding. Vendor notification replaced with "<leadName> just messaged: '<body>'".
-- Conversational disambiguation primitive: half-built in Session 8.5 (routing only). Reuse pattern for client identity ambiguity in a future session.
+Vendor track: 6.5 (on +91 arrival, jumps queue) → 8.5a → 8 → PAUSE → 9 (convergence)
+Bride track: B1 → B2 → B3 → B4 → 9 (convergence)
+Post-convergence: 9 → 10 → 11-12 (both tracks, parallel)
 
-## Session 6.5 -- Twilio template + +91 number migration
-**Trigger:** +91 WhatsApp number arrives (Twilio approval pending)
-**Founder directive:** No matter which session we are at, when +91 arrives, do Session 6.5 first.
+Note on naming: bug-fix sessions are labelled after their parent session (e.g. 8.5a follows 8.5). This is founder's incompetency-traceability discipline — anyone reading the roadmap can see at a glance which sessions shipped enough bugs to need a dedicated cleanup session.
+
+---
+
+## Session 6.5 — Twilio template + +91 number migration
+Trigger: +91 WhatsApp number arrives (Twilio approval pending).
+Founder directive: No matter which session we are at when +91 arrives, do Session 6.5 first.
 
 What ships:
 - Confirm WABA status (same WABA = templates transfer; new WABA = resubmit)
 - Submit dream_os_morning_briefing UTILITY template
-- Update TWILIO_WHATSAPP_NUMBER and TDW_WA_NUMBER env vars
+- Update TWILIO_WHATSAPP_NUMBER and TDW_WA_NUMBER env vars to +91
+- +14787788550 freed up: becomes the bride WhatsApp number permanently
 - Update outbound send wrapper: template path when 24h window closed
 - Update invite page wa.me link to +91
 - Smoke test: briefing fires to vendor inactive >24h
@@ -93,34 +79,36 @@ What ships:
 Estimated time: 30 min build + Meta approval wait (1-7 days)
 Blocked until: +91 number live
 
-## Session 8.5 -- Clients model + multi-vendor routing ✅ DONE
-Shipped 2026-05-15. See HANDOVER.md for full detail.
+---
 
-Key deliverables: clients table (migration 0011), pending_routing_context (migration 0012),
-resolveOrCreateClient helper, add_client + list_clients tools, lead-to-client promotion on advance paid,
-create_lead dedup + auto-link, admin Clients tab with same-name duplicate detection,
-admin messages newest-first fix, multi-vendor couple routing with Haiku disambiguation,
-sticky disambiguation (30 min window), returning-bride detection + vendor message forwarding,
-system prompt tool-call discipline rule.
-
-## Session 8.5a -- Cleanup of bugs discovered during 8.5 testing
-**Goal:** Resolve all bugs surfaced by Session 8.5 production testing. Focused, narrow scope.
-**Naming:** 8.5a labels this session as a cleanup of bugs originating in 8.5. Founder's incompetency-traceability discipline.
+## Session 8.5a — Cleanup of bugs from Session 8.5 (IN PROGRESS)
+Goal: Resolve production bugs surfaced by Session 8.5 testing.
+Naming: 8.5a = cleanup session for bugs born in 8.5. Founder's incompetency-traceability discipline.
 
 What ships:
-- PDF interim acknowledgement in record_payment (3-5 second silence fix — was Step 11 of 8.5)
-- Defensive check for empty inbound messages (media-only messages currently crash webhook)
-- Engine-level guardrail for agent tool-call shortcut behavior (action verbs require tool call)
-- Better fallback for returning-bride vendor notification when leadName is null
-- Fix single-thread couple routing user_id lookup (silent miss in src/index.js line ~390)
-- Strip UUIDs from add_client reply (system prompt nudge)
-- "Showing 10 of N" suffix in list_clients
-- "Did you mean SWATI978?" UX for typo'd TDW codes (stretch goal)
+- DONE: Bug #1 — Empty inbound messages (media-only) crash webhook (commit b3ece5c)
+- DONE: Bug #4 — Single-thread couple routing user_id lookup (commit 1c23609)
+- DONE: Bug #7 — Typo'd TDW codes route silently to wrong vendor (commit 853b5f0)
+- DONE: Four docs written — HANDOVER, SCHEMA, ROADMAP, ROADMAP_BRIDE
+- PENDING: Bug #3 — Returning-bride notification null leadName fallback
+- PENDING: Bug #5 — UUIDs leak into add_client reply
+- PENDING: Bug #6 — list_clients caps at 10 silently with no message
+- Deferred to 8.5b: PDF interim acknowledgement in record_payment
+- Deferred to 8.5b: Tool-call shortcut guardrail (needs founder to lock verb list)
 
-Estimated time: 60-90 minutes
+Strategic decisions locked this session (architectural, not code):
+- Sonnet routing for couple agent in multi-vendor scenarios deferred to Session 9
+- Bride product architecture locked. See ROADMAP_BRIDE.md.
+- Number routing locked: +91 = vendors, +14787788550 = brides. Permanent.
+- Two Railway services from one repo. One Supabase project.
+- Session 9 redefined as convergence of vendor + bride tracks, not just Discover build.
+- tdw-2 vendor-side pages retire at Sessions 11-12. Bride PWA shell reused from B1.
+- Discover hosted at thedreamwedding.in. Vendors have no login on thedreamwedding.in.
 
-## Session 8 -- Admin polish + Google Calendar
-**Goal:** Admin production-ready for 50 founding vendors. Google Calendar OAuth sync.
+---
+
+## Session 8 — Admin polish + Google Calendar
+Goal: Admin production-ready for 50 founding vendors. Google Calendar OAuth sync.
 
 What ships:
 - Vendor list: search + filter by status
@@ -128,54 +116,116 @@ What ships:
 - Manual onboarding_state override in admin
 - Lead name-based state updates (currently UUID-only)
 - Google Calendar OAuth sync (two-way, conflict handling, recurring events)
-- Event conflict detection in create_event: prompt vendor when new event clashes with existing event on the same day (threshold TBD — see open questions)
-- Surface lead→client and invoice→client connections in admin Leads tab + Money tab (add client_id to selects + small "→ promoted" label)
+- Event conflict detection in create_event: prompt vendor when new event clashes
+- Surface lead→client and invoice→client connections in admin Leads + Money tabs
+
+Open question to resolve before Session 8 starts:
+- Event conflict detection threshold: exact date match? Within +/-2 hours? Same day? Founder must decide.
 
 Estimated time: 90-120 minutes
 
-## Session 9 -- thedreamwedding.in Discover
-**Goal:** Bride-side curated marketplace.
+---
+
+## Session 9 — Convergence + Discover (REDEFINED 2026-05-15)
+Goal: Vendor track and bride track converge. Discover goes live at thedreamwedding.in.
+Prerequisite: B1 through B4 complete. Bride has persistent couple_id, Muse, Circle, planner, Surprise Me.
 
 What ships:
-- discover/ folder added to monorepo
-- Next.js site on Vercel
-- Vendor profile pages (public, read-only)
-- Enquiry from Discover -> vendor WhatsApp thread automatically
-- Reuses couple-facing agent from Session 5.5
-- vendors.rate_min / rate_max migration + Haiku extraction + Swati admin override
-- Bride-side model stack: Gemini Flash-Lite (grounded retrieval) + Haiku (internal DB) + Sonnet (planning)
-- Evaluate adding Sonnet routing for couple agent for complex/contextual returning-bride messages (currently Haiku-only)
+- Discover at thedreamwedding.in/discover
+- Real dream-os vendor profiles surfaced to brides (replaces seed data in tdw-2)
+- Enquiry from Discover carries couple_id + taste profile. Vendor gets a qualified lead.
+- Vendor notification includes Muse match context: "Priya (moody editorial, budget 3L+) enquired"
+- Swati editorial curation layer in admin: vendors.discover_eligible toggle
+- vendors.rate_min / rate_max migration + admin override
+- Silent onboarding for brides arriving via TDW wa.me link. couple_id stamped.
+- Snippet to enquiring brides: "I also help brides plan their entire wedding — save this number"
+- Sonnet routing for couple agent in multi-vendor scenarios (deferred here from 8.5a)
+- couples table note "essentially unused" deleted — couples table is now real and populated
+- Resolve user_id / couple_id naming inconsistency inherited from tdw-2
 
 Estimated time: 2-3 sessions
 
-## Session 10 -- Instagram DM integration
-**Goal:** Vendor connects Instagram Business account. DMs auto-route to their WhatsApp thread.
+---
+
+## Session 10 — Instagram DM integration
+Goal: Vendor connects Instagram Business account. DMs auto-route to their WhatsApp thread.
 
 Requirements:
 - Instagram Business or Creator account (not personal)
 - Meta Developer App with instagram_manage_messages permission
 - App Review required (2-4 weeks, business verification, demo video)
 - OAuth flow: vendor connects IG account via dream-os admin
-- Webhook: /webhook/instagram on Railway, Meta signature verification
-- 24h messaging window applies (same as WhatsApp)
+- Webhook: /webhook/instagram on Railway
 - New DB columns: vendors.instagram_user_id, vendors.instagram_access_token, vendors.instagram_token_expires_at
 - Start Meta App Review submission early — it gates the whole session
 
 Estimated time: 2 sessions + Meta review wait (2-4 weeks calendar time)
 
-## Session 11-12 -- thedreamai.in vendor dashboard
-**Goal:** Web dashboard as read layer over WhatsApp-captured data.
-- vendors.rate_min / rate_max displayed and editable
-- AI cost this month (from messages table)
-- Full lead, invoice, event, client history
+---
+
+## Sessions 11-12 — thedreamai.in vendor dashboard
+Goal: Web dashboard as read layer over WhatsApp-captured data. tdw-2 vendor-side retires.
+
+What ships:
+- thedreamai.in — vendor-facing web dashboard on Vercel
+- Full lead, invoice, event, client, expense history
+- AI cost this month display
+- vendors.rate_min / rate_max editable
+- Portfolio image management (feeds into Discover)
+
+Note: All tdw-2 vendor-side pages (web and native) retire at this point. Not deprecated — retired. thedreamai.in is the permanent vendor web surface.
+
+---
+
+## Decisions locked
+
+Architecture:
+- Two products: thedreamai.in (vendors) + thedreamwedding.in (brides). Meet at Discover.
+- Same repo: devjroy-dev/dream-os. Two Railway services. One Supabase project.
+- Vendor entry point: src/index.js. Bride entry point: src/brideIndex.js (B1).
+- +91 number = vendors (thedreamai.in). +14787788550 = brides (thedreamwedding.in). Permanent.
+- Discover hosted at thedreamwedding.in. Vendors have no login there.
+- tdw-2 vendor-side (web + native) retires at Sessions 11-12.
+- tdw-2 bride-side PWA shell reused as-is. Backend switches to dream-os Railway at B1.
+- Shared lib layer: src/lib/ (sendWhatsApp, supabase, models, clients). Never duplicated.
+
+Models:
+- claude-haiku-4-5-20251001: never change without founder approval
+- claude-sonnet-4-6: never change without founder approval
+- Gemini Flash-Lite: retrieval only, never main agent
+
+Schema:
+- Every schema change: numbered migration file in db/migrations/
+- Bride migrations continue vendor sequence from 0013. No separate numbering.
+- One migration history. One DB.
+- Four docs updated every session: HANDOVER.md, SCHEMA.md, ROADMAP.md, ROADMAP_BRIDE.md
+- UNIT_ECONOMICS.md: Dev's reference only. No session amends it.
+- Session not complete until all four docs committed and pushed.
+
+Vendor-specific:
+- Phone format: always E.164
+- Currency: Rs (never Rs symbol)
+- TDW handle format: FIRSTNAMEPHONE3 e.g. DEV550
+- wa.me link: wa.me/14787788550?text=TDW-DEV550 (updates to +91 after Session 6.5)
+- Lead dedup: phone-based, one lead per (vendor_id, phone), ever
+- Client dedup: phone-based, partial unique index WHERE phone IS NOT NULL
+- Invoice number format: prefix/counter-padded-to-2 e.g. TDW/DEV550/01
+- Invoice counter: never resets on prefix change. Gaps are accountant-safe.
+- Invoice state machine: unpaid / advance_paid / paid / cancelled
+- Prompt caching: 1-hour ephemeral cache on STATIC_SYSTEM_PROMPT. -91% input tokens.
+- USD_TO_INR = 100: hardcoded in src/agent/models.js
+- Multi-vendor routing: TDW code always wins over thread history
+- Sticky disambiguation: 30 min window
+- Returning-bride detection: per-vendor, via lead-exists check for (vendor_id, phone)
+
+---
 
 ## Open questions
-1. +91 number — applied, arriving soon (triggers Session 6.5)
-2. Event conflict detection threshold: exact event_date match? Within ±2 hours? Same day regardless of time? — decide before Session 8.
-3. Action verb list for tool-call guardrail (Session 8.5a): add / save / log / record / create — what else? Threshold may need product call.
-4. Founding cohort pricing model: free forever vs free for X months. Open.
-5. Couple phone collection on Discover enquiry: form field vs WhatsApp redirect. Session 9 decision.
-6. thedreamwedding.in domain — currently pointing where? Need to confirm before Session 9 wiring.
-7. Swati's role in Discover editorial curation — process? veto power? Session 9 decision.
-8. Instagram App Review entity name — Anthropic dba dream-os? Personal entity? Session 10 prep.
-9. Lead → client promotion: should we add conversational disambiguation when phone-only dedup is ambiguous? (Reuses Session 8.5 routing disambiguation pattern.) Future session.
+
+1. +91 number — applied, arriving soon. Triggers Session 6.5 the moment it lands.
+2. Event conflict detection threshold — exact date? Within +/-2 hours? Same day? Decide before Session 8.
+3. Tool-call shortcut guardrail verb list — add / save / log / record / create / new — what else? Needed before 8.5b.
+4. Founding cohort pricing model — free forever vs free for X months. Open.
+5. Instagram App Review entity name — personal entity or business? Decide before Session 10 prep.
+6. Lead → client promotion disambiguation — conversational disambiguation when phone-only dedup ambiguous? Future session.
+7. Railway region (EU West) vs Supabase (Mumbai) — 150-200ms latency. Move before scaling beyond 50 vendors.
