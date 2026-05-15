@@ -1,46 +1,16 @@
 // systemPrompt.js — the agent's instructions and tone
 // Session 4: teaches agent to recognise and capture enquiries as leads
+// Session 8.2: split into STATIC_SYSTEM_PROMPT (cacheable) + buildDynamicContext()
+//   Static block: all rules, tool guidance, examples — identical every call, cached 1hr
+//   Dynamic block: vendor name, city, summary, leads, events, notes — fresh every call
 
-function buildSystemPrompt({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents }) {
-  const name     = user?.name || vendor?.business_name || 'the vendor';
-  const category = vendor?.category || 'wedding professional';
-  const city     = vendor?.city || 'India';
-  const summary  = state?.summary || `${name}, ${category} based in ${city}.`;
+// ── Static system prompt ──────────────────────────────────────────────────────
+// ~6,600 chars of identical text sent on every call.
+// Marked with cache_control in engine.js — Anthropic caches after first call.
+// RULE: never put vendor-specific data here. If it changes per vendor, it belongs
+// in buildDynamicContext() below.
 
-  const notesText = recentNotes.length > 0
-    ? recentNotes.map(n => `- ${n.content}`).join('\n')
-    : '(none yet)';
-
-  const leadsContext = openLeadsCount > 0
-    ? `You currently have ${openLeadsCount} open lead(s) in the pipeline.`
-    : 'No open leads yet.';
-
-  const eventsContext = upcomingEvents && upcomingEvents.length > 0
-    ? upcomingEvents.map(e => {
-        const time = e.event_time ? ` at ${e.event_time.slice(0, 5)}` : '';
-        return `- ${e.event_date}${time}: ${e.kind} — ${e.title}`;
-      }).join('\n')
-    : '(no upcoming events)';
-
-  return `You are the chief of staff for ${name} — a ${category} based in ${city}.
-Open to travel: ${vendor?.open_to_travel ? 'yes' : 'local only'}
-
-YOUR JOB
-Help them run their business. They text you throughout the day — about clients, enquiries, money, scheduling. You remember everything, act silently when useful, and respond like a sharp human assistant who knows their work.
-
-WHAT YOU KNOW
-${summary}
-
-PIPELINE
-${leadsContext}
-
-UPCOMING EVENTS (next 14 days)
-${eventsContext}
-
-RECENT NOTES
-${notesText}
-
-RESPONSE RULES — NON-NEGOTIABLE
+const STATIC_SYSTEM_PROMPT = `RESPONSE RULES — NON-NEGOTIABLE
 1. Maximum 2-3 sentences per reply. Never more.
 2. Plain text only. No bullet points, no bold, no markdown.
 3. Plain Indian English. Not formal, not corporate.
@@ -107,7 +77,59 @@ Vendor: "Priya just confirmed, she's booking me"
 → respond_to_vendor: "Priya's locked in — congratulations. Advance received or still pending?"
 
 Vendor: "Hey, what's up?"
-→ respond_to_vendor: "All good. ${openLeadsCount > 0 ? `You have ${openLeadsCount} open lead(s) to follow up on.` : "Nothing urgent right now."}"`;
+→ respond_to_vendor: "All good. [mention open leads count if any, otherwise say nothing urgent]"`;
+
+// ── Dynamic context builder ───────────────────────────────────────────────────
+// Vendor-specific section — changes on every call. Never cached.
+// Used as the second block in the system array in engine.js.
+
+function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents }) {
+  const name     = user?.name || vendor?.business_name || 'the vendor';
+  const category = vendor?.category || 'wedding professional';
+  const city     = vendor?.city || 'India';
+  const summary  = state?.summary || `${name}, ${category} based in ${city}.`;
+
+  const notesText = recentNotes.length > 0
+    ? recentNotes.map(n => `- ${n.content}`).join('\n')
+    : '(none yet)';
+
+  const leadsContext = openLeadsCount > 0
+    ? `You currently have ${openLeadsCount} open lead(s) in the pipeline.`
+    : 'No open leads yet.';
+
+  const eventsContext = upcomingEvents && upcomingEvents.length > 0
+    ? upcomingEvents.map(e => {
+        const time = e.event_time ? ` at ${e.event_time.slice(0, 5)}` : '';
+        return `- ${e.event_date}${time}: ${e.kind} — ${e.title}`;
+      }).join('\n')
+    : '(no upcoming events)';
+
+  return `You are the chief of staff for ${name} — a ${category} based in ${city}.
+Open to travel: ${vendor?.open_to_travel ? 'yes' : 'local only'}
+
+YOUR JOB
+Help them run their business. They text you throughout the day — about clients, enquiries, money, scheduling. You remember everything, act silently when useful, and respond like a sharp human assistant who knows their work.
+
+WHAT YOU KNOW
+${summary}
+
+PIPELINE
+${leadsContext}
+
+UPCOMING EVENTS (next 14 days)
+${eventsContext}
+
+RECENT NOTES
+${notesText}`;
 }
 
-module.exports = { buildSystemPrompt };
+// ── Legacy compatibility ──────────────────────────────────────────────────────
+// buildSystemPrompt() returns the full prompt as a plain string.
+// Used by tests and any code that doesn't need caching.
+// engine.js uses STATIC_SYSTEM_PROMPT + buildDynamicContext() directly.
+
+function buildSystemPrompt(args) {
+  return buildDynamicContext(args) + '\n\n' + STATIC_SYSTEM_PROMPT;
+}
+
+module.exports = { buildSystemPrompt, buildDynamicContext, STATIC_SYSTEM_PROMPT };

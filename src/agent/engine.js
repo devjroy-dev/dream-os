@@ -2,7 +2,7 @@
 // Session 4: adds create_lead, list_leads, update_lead_state tool handlers
 // Session 5.5: adds runCoupleAgenticTurn for couple_thread conversations
 
-const { buildSystemPrompt }       = require('./systemPrompt');
+const { buildDynamicContext, STATIC_SYSTEM_PROMPT } = require('./systemPrompt');
 const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
 const { nextOnboardingMessage }   = require('./onboarding');
 const { TOOLS }                   = require('./tools');
@@ -81,7 +81,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     }, []);
 
   // ── Build system prompt ─────────────────────────────────────────
-  const systemPrompt = buildSystemPrompt({
+  const dynamicContext = buildDynamicContext({
     vendor,
     user,
     state,
@@ -115,7 +115,17 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     const response = await anthropic.messages.create({
       model: modelToUse,
       max_tokens: 1024,
-      system: systemPrompt,
+      system: [
+        {
+          type: 'text',
+          text: STATIC_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },  // 1-hour cache — saves ~6,600 tokens per call
+        },
+        {
+          type: 'text',
+          text: dynamicContext,                   // vendor-specific — never cached
+        },
+      ],
       tools: TOOLS,
       messages,
     });
