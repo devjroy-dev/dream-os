@@ -88,12 +88,16 @@ router.get('/vendors/:id', async (req, res) => {
     { data: notes },
     { data: leads },
     { data: costRows },
+    { data: invoices },
+    { data: expenses },
   ] = await Promise.all([
     supabase.from('vendors').select('*, user:users(name, phone)').eq('id', id).maybeSingle(),
     supabase.from('vendor_state').select('*').eq('vendor_id', id).maybeSingle(),
     supabase.from('notes').select('content, tags, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(20),
     supabase.from('leads').select('id, name, phone, wedding_date, wedding_city, budget_min, budget_max, state, source, referrer_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }),
     supabase.from('messages').select('cost_inr, model').eq('sent_by', 'agent').gte('created_at', monthStart),
+    supabase.from('invoices').select('id, invoice_number, client_name, amount_total, amount_paid, amount_advance, state, due_date, pdf_url, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
+    supabase.from('expenses').select('id, amount, category, description, expense_date, client_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
   ]);
 
   // Aggregate cost by model for this vendor's conversations
@@ -166,6 +170,14 @@ router.get('/vendors/:id', async (req, res) => {
     return acc;
   }, {});
 
+  // Compute money totals for Money tab
+  const invoiceList  = invoices  || [];
+  const expenseList  = expenses  || [];
+  const totalBilled  = invoiceList.reduce((s, i) => s + (i.amount_total || 0), 0);
+  const totalPaid    = invoiceList.reduce((s, i) => s + (i.amount_paid  || 0), 0);
+  const totalOutstanding = totalBilled - totalPaid;
+  const totalExpenses    = expenseList.reduce((s, e) => s + (e.amount || 0), 0);
+
   res.send(detailPage({
     vendor,
     user: vendor.user,
@@ -176,6 +188,12 @@ router.get('/vendors/:id', async (req, res) => {
     enquiries,
     monthCostInr: monthCostInr.toFixed(2),
     costByModel,
+    invoices:         invoiceList,
+    expenses:         expenseList,
+    totalBilled,
+    totalPaid,
+    totalOutstanding,
+    totalExpenses,
   }));
 });
 

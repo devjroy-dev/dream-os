@@ -2,7 +2,7 @@
 
 const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
 
-function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [], monthCostInr = '0.00', costByModel = {} }) {
+function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [], monthCostInr = '0.00', costByModel = {}, invoices = [], expenses = [], totalBilled = 0, totalPaid = 0, totalOutstanding = 0, totalExpenses = 0 }) {
   const name = user?.name || vendor.id.slice(0, 8);
 
   const statusLabel = vendor.onboarding_state === 'complete' || !vendor.onboarding_state
@@ -16,7 +16,103 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
     ? `<a href="https://instagram.com/${vendor.instagram_handle}" target="_blank" style="color:#B08D6A;text-decoration:none;">@${vendor.instagram_handle}</a>`
     : '—';
 
-  // Build AI cost display string
+  // ── Format helpers ───────────────────────────────────────────────
+  const fmtRs = n => {
+    const s = String(n);
+    if (s.length <= 3) return s;
+    const last3 = s.slice(-3);
+    const rest  = s.slice(0, -3);
+    const groups = [];
+    let i = rest.length;
+    while (i > 0) { groups.unshift(rest.slice(Math.max(0, i - 2), i)); i -= 2; }
+    return groups.join(',') + ',' + last3;
+  };
+
+  const stateColour = s => ({
+    unpaid:       '#E67E22',
+    advance_paid: '#2980B9',
+    paid:         '#27AE60',
+    cancelled:    '#999',
+  }[s] || '#999');
+
+  // ── Money tab ─────────────────────────────────────────────────────
+  const moneyTab = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:28px;">
+      <div style="background:#f9f9f9;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Total Billed</div>
+        <div style="font-size:20px;font-weight:700;color:#1A1A1A;">Rs ${fmtRs(totalBilled)}</div>
+      </div>
+      <div style="background:#f9f9f9;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Total Received</div>
+        <div style="font-size:20px;font-weight:700;color:#27AE60;">Rs ${fmtRs(totalPaid)}</div>
+      </div>
+      <div style="background:#f9f9f9;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Outstanding</div>
+        <div style="font-size:20px;font-weight:700;color:#E67E22;">Rs ${fmtRs(totalOutstanding)}</div>
+      </div>
+      <div style="background:#f9f9f9;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Total Expenses</div>
+        <div style="font-size:20px;font-weight:700;color:#C0392B;">Rs ${fmtRs(totalExpenses)}</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-bottom:12px;">Invoices</div>
+    ${invoices.length === 0 ? '<div class="empty-state">No invoices yet.</div>' : `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">
+          <th style="text-align:left;padding:6px 0;">Invoice</th>
+          <th style="text-align:left;padding:6px 0;">Client</th>
+          <th style="text-align:right;padding:6px 0;">Total</th>
+          <th style="text-align:right;padding:6px 0;">Paid</th>
+          <th style="text-align:right;padding:6px 0;">Balance</th>
+          <th style="text-align:center;padding:6px 0;">State</th>
+          <th style="text-align:center;padding:6px 0;">PDF</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${invoices.map(i => {
+          const balance = i.amount_total - i.amount_paid;
+          const due = i.due_date ? `<div style="font-size:10px;color:#999;">due ${i.due_date}</div>` : '';
+          const pdfLink = i.pdf_url ? `<a href="${i.pdf_url}" target="_blank" style="color:#B08D6A;font-size:11px;">View</a>` : '<span style="color:#ccc;font-size:11px;">—</span>';
+          return `<tr style="border-bottom:1px solid #f5f5f5;">
+            <td style="padding:8px 0;font-weight:600;">${i.invoice_number}</td>
+            <td style="padding:8px 0;">${i.client_name}</td>
+            <td style="padding:8px 0;text-align:right;">Rs ${fmtRs(i.amount_total)}</td>
+            <td style="padding:8px 0;text-align:right;color:#27AE60;">Rs ${fmtRs(i.amount_paid)}</td>
+            <td style="padding:8px 0;text-align:right;color:#E67E22;">${balance > 0 ? 'Rs ' + fmtRs(balance) : '—'}${due}</td>
+            <td style="padding:8px 0;text-align:center;"><span style="background:${stateColour(i.state)}22;color:${stateColour(i.state)};padding:2px 8px;border-radius:4px;font-size:11px;">${i.state}</span></td>
+            <td style="padding:8px 0;text-align:center;">${pdfLink}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`}
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-top:28px;margin-bottom:12px;">Expenses</div>
+    ${expenses.length === 0 ? '<div class="empty-state">No expenses logged yet.</div>' : `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">
+          <th style="text-align:left;padding:6px 0;">Date</th>
+          <th style="text-align:left;padding:6px 0;">Category</th>
+          <th style="text-align:left;padding:6px 0;">Description</th>
+          <th style="text-align:left;padding:6px 0;">Client</th>
+          <th style="text-align:right;padding:6px 0;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${expenses.map(e => `<tr style="border-bottom:1px solid #f5f5f5;">
+          <td style="padding:8px 0;color:#999;">${e.expense_date || '—'}</td>
+          <td style="padding:8px 0;">${e.category}</td>
+          <td style="padding:8px 0;">${e.description || '—'}</td>
+          <td style="padding:8px 0;">${e.client_name || '—'}</td>
+          <td style="padding:8px 0;text-align:right;font-weight:600;color:#C0392B;">Rs ${fmtRs(e.amount)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`}
+  `;
+
+  // ── Build AI cost display string
   const costModelParts = Object.entries(costByModel).map(([m, c]) => {
     const label = m.includes('sonnet') ? 'Sonnet' : m.includes('haiku') ? 'Haiku' : m;
     return `${label}: Rs ${parseFloat(c).toFixed(2)}`;
@@ -183,10 +279,12 @@ function renderDetail({ vendor, user, state, messages, notes, leads, enquiries =
       <a class="tab active" onclick="showTab('leads',this)">Leads</a>
       <a class="tab" onclick="showTab('enquiries',this)">Enquiries</a>
       <a class="tab" onclick="showTab('notes',this)">Notes</a>
+      <a class="tab" onclick="showTab('money',this)">Money</a>
     </div>
     <div id="leads" class="tab-content active">${leadsList}</div>
     <div id="enquiries" class="tab-content">${enquiriesList}</div>
     <div id="notes" class="tab-content">${notesList}</div>
+    <div id="money" class="tab-content">${moneyTab}</div>
   </div>
   <script>
     function showTab(id, el) {
