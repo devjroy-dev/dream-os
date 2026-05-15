@@ -117,6 +117,21 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     console.log(`[whatsapp:in] ${phone} -> ${body}`);
 
+    // ── Media-only / empty-body guard ──────────────────────────────
+    const trimmedBody = body.trim();
+    const numMedia    = parseInt(req.body.NumMedia || '0', 10);
+    const hasMedia    = numMedia > 0 || !!req.body.MediaUrl0;
+
+    if (!trimmedBody && hasMedia) {
+      console.log(`[webhook] media-only message from ${req.body.From}, replying with text-only notice`);
+      await sendWhatsApp(phone, "I'll be able to process images and voice notes really soon — but for now, please type your message and I'll help.");
+      return res.status(200).send('<Response></Response>');
+    }
+    if (!trimmedBody && !hasMedia) {
+      console.warn('[webhook] empty body, no media, dropping');
+      return res.status(200).send('<Response></Response>');
+    }
+
     let user;
     const { data: existingUser } = await supabase
       .from('users').select('*').eq('phone', phone).maybeSingle();
