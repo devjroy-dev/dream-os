@@ -1,29 +1,11 @@
-// clients.js — single entry point for client creation
-// Session 8.5: prevents duplicate clients across promotion + manual add paths
+// src/lib/clients.js — single entry point for client creation
+// Session 8.5 — prevents duplicate clients across promotion + manual add paths
 //
 // resolveOrCreateClient is the ONLY allowed door to creating a client.
 // Both lead promotion (record_payment) and manual add (add_client tool)
 // route through here. Phone is the dedup key. Names are never matched.
 
-/**
- * Find or create a client for this vendor.
- *
- * @param {object} supabase   - supabase client (service role)
- * @param {string} vendorId   - vendor uuid
- * @param {object} input
- * @param {string} input.name             - required
- * @param {string} [input.phone]          - E.164 if present
- * @param {string} [input.email]
- * @param {string} [input.source]         - default 'lead_promotion'
- * @param {string} [input.referrer_name]
- * @param {string} [input.notes]
- * @param {string} [input.user_id]        - if caller already resolved a users row
- *
- * @returns {Promise<{ client: object, created: boolean }>}
- *   created=true means a new row was inserted.
- *   created=false means an existing client was matched (by vendor_id + phone).
- */
-export async function resolveOrCreateClient(supabase, vendorId, input) {
+async function resolveOrCreateClient(supabase, vendorId, input) {
   if (!vendorId) throw new Error('resolveOrCreateClient: vendorId required');
   if (!input?.name) throw new Error('resolveOrCreateClient: name required');
 
@@ -79,3 +61,5 @@ export async function resolveOrCreateClient(supabase, vendorId, input) {
   console.log(`[clients:resolveOrCreate] created new client ${created.id} (${name}) for vendor ${vendorId}`);
   return { client: created, created: true };
 }
+
+module.exports = { resolveOrCreateClient };
