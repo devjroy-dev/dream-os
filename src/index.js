@@ -162,6 +162,19 @@ app.post('/webhook/whatsapp', async (req, res) => {
       const DISAMBIGUATION_TTL_MS = 10 * 60 * 1000;  // 10 minutes
       const STICKY_TTL_MS         = 30 * 60 * 1000;  // 30 minutes — vendor stickiness after resolution
 
+      function levenshtein(a, b) {
+        const m = a.length, n = b.length;
+        const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0));
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            dp[i][j] = a[i - 1] === b[j - 1]
+              ? dp[i - 1][j - 1]
+              : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+          }
+        }
+        return dp[m][n];
+      }
+
       // ── Step A: Pending disambiguation reply ──────────────────────
       const pendingCtx = user.pending_routing_context;
       const pendingFresh = pendingCtx?.asked_at
@@ -460,6 +473,34 @@ app.post('/webhook/whatsapp', async (req, res) => {
         }).eq('id', user.id);
 
         return res.status(200).send('<Response/>');
+      }
+
+      // ── Step B.5: Typo'd TDW code fuzzy-match ──────────────────────
+      const looksLikeHandle = firstWord.length >= 3
+        && firstWord.length <= 12
+        && /^[A-Z0-9]+$/.test(firstWord)
+        && !firstWord.startsWith('TDW-')
+        && trimmedBody.toUpperCase() === firstWord;
+
+      if (looksLikeHandle) {
+        const { data: brideThreads } = await supabase
+          .from('conversations')
+          .select('vendor_id, vendors(routing_handle)')
+          .eq('counterparty_phone', phone)
+          .eq('kind', 'couple_thread');
+
+        const handles = (brideThreads || [])
+          .map(t => t.vendors?.routing_handle)
+          .filter(Boolean);
+
+        const closeMatches = handles.map(h => ({ h, dist: levenshtein(firstWord, h) })).filter(x => x.dist <= 2);
+
+        if (closeMatches.length === 1) {
+          const { h: closeMatch, dist } = closeMatches[0];
+          console.log(`[routing:typo] "${firstWord}" close to "${closeMatch}" (distance ${dist}), prompting bride`);
+          await sendWhatsApp(phone, `Did you mean TDW-${closeMatch}? Send that and I'll connect you right away.`);
+          return res.status(200).send('<Response/>');
+        }
       }
 
       // ── Step C: Count existing couple_threads ─────────────────────
