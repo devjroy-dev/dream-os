@@ -1,6 +1,6 @@
 # dream-os -- Roadmap
 **Last updated:** 2026-05-15
-**Current version:** 0.8.2-alpha
+**Current version:** 0.8.3-alpha
 
 ## Vision
 WhatsApp-first chief of staff for wedding vendors.
@@ -23,9 +23,10 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 7 (partial) | invoices table (migration 0008), Supabase invoices bucket, pdfkit + qrcode installed, create_invoice tool (Stage 1 text only), format.js + invoiceMessage.js, Railway auto-deploy fix | 0.7.0-alpha |
 | 8.1 | Smart model routing (Haiku→Sonnet classifier), cost tracking on messages (migration 0009), smart onboarding (16-category taxonomy, style_notes, city skip), admin AI cost display, version health check fix | 0.8.1-alpha |
 | 8.2 | Prompt caching (91% input token reduction), engine.js hotfix, Gemini SDK wired (groundedSearch.js, retrieval-only), GOOGLE_API_KEY in Railway, UNIT_ECONOMICS updated | 0.8.2-alpha |
+| 8.3 | record_payment (Stage 2+3), invoicePdf.js, list_invoices, log_expense, update_invoice_prefix, expenses table (migration 0010), Admin Money tab, morning briefing overdue alerts | 0.8.3-alpha |
 
 ## Session sequence (confirmed by founder 2026-05-15)
-6.5 (on +91 arrival, jumps queue) → 8.3 → 8.5 → 8 → 9 → 10 → 11-12
+6.5 (on +91 arrival, jumps queue) → 8.5 → 8 → 9 → 10 → 11-12
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
@@ -105,28 +106,12 @@ Wiring the SDK now means Session 9 starts with retrieval layer ready — no setu
 groundedSearch.js: Gemini retrieves web context, Anthropic (Haiku/Sonnet) composes the reply.
 The vendor agent does NOT call this today.
 
-## Session 8.3 -- Money tools (formerly Session 7.5, renumbered 2026-05-15)
-**Goal:** Complete the invoice flow + expenses. Sonnet routing + prompt caching now active.
+## Session 8.3 -- Money tools ✅ DONE
+Shipped 2026-05-15. See HANDOVER.md for full detail.
 
-**Why renumbered from 7.5 to 8.3:** This session was originally called 7.5 and deferred until
-after 8.1 and 8.2 because money tools (invoice disambiguation, record_payment, PDF generation)
-require Sonnet-level reasoning. Session 7.5 only made sense after the AI layer was production-ready.
-Renaming to 8.3 reflects the actual build order and makes the session sequence self-explanatory.
-
-What ships:
-- record_payment tool (Stage 2: advance paid -> PDF with embedded UPI QR -> state=advance_paid)
-- record_payment tool (Stage 3: balance paid -> plain WhatsApp text reminder -> state=paid)
-- PDF generation via pdfkit (booking confirmation, vendor name, invoice number, amounts, QR)
-- QR code generation via qrcode (dynamic UPI QR with amount embedded in PDF)
-- list_invoices tool ("who owes me money?" / "show unpaid invoices")
-- update_invoice_prefix tool (with warning: old invoices keep their numbers)
-- expenses table (migration 0010) + log_expense tool
-- Admin Money tab on vendor detail page (invoices + expenses + totals, read-only)
-- Morning briefing: overdue invoice alerts
-
-Estimated time: 90 minutes
-Note: expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1)
-
+Key deliverables: record_payment (Stage 2 PDF + Stage 3), invoicePdf.js with TDW watermark,
+list_invoices, log_expense, update_invoice_prefix, expenses table (migration 0010),
+Admin Money tab with collapsible rows, morning briefing overdue invoice alerts.
 ## Session 8.5 -- Clients model + lead deduplication
 **Goal:** Introduce proper clients table. Leads promote to clients. Dedup upstream lead creation.
 

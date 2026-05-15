@@ -1,7 +1,7 @@
 # dream-os -- Schema Reference
 **Last updated:** 2026-05-15
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0009_message_cost_tracking.sql
+**Latest migration applied:** 0010_expenses.sql
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -15,6 +15,7 @@
 | 0007_events_and_briefing.sql | 2026-05-14 | 6 | events table, messages.delivery_status, vendors.briefing_enabled |
 | 0008_invoices.sql | 2026-05-15 | 7 | invoices table, vendors.invoice_prefix, vendors.invoice_counter |
 | 0009_message_cost_tracking.sql | 2026-05-15 | 8.1 | messages cost columns, vendors.style_notes |
+| 0010_expenses.sql | 2026-05-15 | 8.3 | expenses table |
 
 ## Tables
 
@@ -236,6 +237,23 @@ vendors.style_notes captures qualifiers (e.g. "luxury", "celebrity") separately.
 | attire | bridal wear, lehenga, sherwani |
 | other | anything that doesn't fit above |
 
+### expenses
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | auto-generated |
+| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| amount | integer NOT NULL | CHECK > 0. In whole rupees. |
+| category | text NOT NULL | CHECK: travel / equipment / assistant / studio / marketing / software / food / printing / commission / shoot / inventory / other |
+| description | text | vendor's own words, optional |
+| expense_date | date | nullable, defaults to current_date |
+| client_name | text | free-text client attribution. Nullable. Use linked_lead_id when lead exists. |
+| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional link to a lead. |
+| notes | text | optional |
+| created_at | timestamptz | auto |
+| updated_at | timestamptz | auto via trigger |
+
+Realtime: enabled
+
 ## Key relationships
 - Every vendor has one user (identity)
 - Every message belongs to one conversation -> one vendor
@@ -245,6 +263,7 @@ vendors.style_notes captures qualifiers (e.g. "luxury", "celebrity") separately.
 - Every invoice belongs to one vendor, optionally linked to one lead
 - vendor_id is always the scoping key — never query without it
 - couple_thread conversations scoped by counterparty_phone for Mode 1 routing
+- Every expense belongs to one vendor, optionally linked to one lead
 - clients table arrives in Session 8.5 — invoices.lead_id becomes invoices.lead_id + invoices.client_id
 
 ## Indexes
@@ -259,6 +278,10 @@ vendors.style_notes captures qualifiers (e.g. "luxury", "celebrity") separately.
 - invoices_lead_id_idx on invoices(lead_id)
 - invoices_created_at_idx on invoices(created_at desc)
 - messages_model_idx on messages(model) — AI cost aggregation queries
+- expenses_vendor_id_idx on expenses(vendor_id)
+- expenses_expense_date_idx on expenses(expense_date)
+- expenses_category_idx on expenses(category)
+- expenses_created_at_idx on expenses(created_at desc)
 
 ## Unique constraints
 - invoices_vendor_number_unique on invoices(vendor_id, invoice_number)
@@ -279,4 +302,4 @@ Disabled on all tables. service_role key held by Railway only.
 Will enable when bride-side public access is needed (Session 9).
 
 ## Realtime enabled on
-conversations, messages, notes, pending_actions, leads, events, invoices
+conversations, messages, notes, pending_actions, leads, events, invoices, expenses

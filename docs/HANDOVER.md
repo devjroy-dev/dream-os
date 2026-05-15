@@ -1,118 +1,116 @@
 # dream-os -- Session Handover
 **Last updated:** 2026-05-15
-**Session:** 8.2
-**Version:** 0.8.2-alpha
+**Session:** 8.3
+**Version:** 0.8.3-alpha
 
 ## What shipped this session
 
-### Hotfix: engine.js smart routing restored
-Session 8.1's onboarding commit (ae693d4) had accidentally overwritten engine.js with a stale
-version, removing the classifier imports, modelToUse routing, token accumulation, and cost
-calculation. Smart routing was silently broken from that commit until the start of 8.2.
+### Migration 0010 (db/migrations/0010_expenses.sql)
+- `expenses` table: id, vendor_id, amount, category, description, expense_date,
+  client_name, linked_lead_id, notes, created_at, updated_at
+- 12 categories: travel, equipment, assistant, studio, marketing, software,
+  food, printing, commission, shoot, inventory, other
+- expense_date nullable, defaults to current_date
+- client_name text (free-text fallback for unlinked expenses)
+- linked_lead_id FK to leads (SET NULL on delete) — primary client link
+- Same lead_id + client_name dual pattern as invoices table
+- Realtime enabled, set_updated_at trigger, 4 indexes
 
-Fixed in commit 718807c. All four things restored:
-- classifyMessage + models imports
-- modelToUse classifier routing
-- token accumulation + calculateCost
-- couple agent MODEL_HAIKU explicit pin
-- anthropic pass-through to handleOnboarding preserved
+### record_payment tool (src/agent/engine.js + src/agent/tools.js)
+Three payment stages:
+- Stage 2 (advance paid): records amount_paid, state → advance_paid,
+  generates booking confirmation PDF via invoicePdf.js, uploads to
+  Supabase invoices bucket, returns signed URL (1-year validity)
+- Stage 3 (balance paid): records amount_paid, state → paid, plain text confirmation
+- Partial: records amount_paid, state unchanged, outstanding balance returned
+- Overpayment soft warning (shagun, tips) — not blocked at DB level
+- Comprehensive Indian vendor payment vocabulary in tool description:
+  token received, booking done, advance transferred, settled, paid in full etc.
 
-### Prompt caching (src/agent/systemPrompt.js + src/agent/engine.js)
-systemPrompt.js split into two parts:
-- `STATIC_SYSTEM_PROMPT`: all rules, tool guidance, examples (~6,600 chars). Identical for
-  every vendor on every call. Sent with `cache_control: { type: 'ephemeral' }` (1-hour cache).
-  Anthropic caches after first call — subsequent calls pay 10% of normal input price.
-- `buildDynamicContext()`: vendor name, city, summary, leads, events, notes. Fresh every call,
-  never cached.
-- `buildSystemPrompt()` preserved as legacy compatibility export (returns full plain string).
+### invoicePdf.js (src/lib/invoicePdf.js)
+- generateInvoicePdf() — pdfkit PDF, A4, clean layout
+- Header: vendor business name (large, top left)
+- Watermark: "TDW" small grey text (top right)
+- BOOKING CONFIRMED badge in gold
+- Invoice meta: number, client, description, due date
+- Amount breakdown: total, booking amount received (%), balance due
+- UPI QR code: dynamic, encodes upi://pay with balance amount pre-filled
+- Footer: thank you line
+- Returns Buffer — ready for Supabase storage upload
 
-engine.js: system param now an array of two blocks `[{ STATIC, cache_control }, { dynamic }]`
-instead of a plain string. Couple agent unchanged — uses plain string (no caching needed).
+### list_invoices tool
+- Filters by state (all / unpaid / advance_paid / paid / cancelled)
+- Default: unpaid
+- Returns invoice_id — needed for record_payment
+- Shows balance, due date, state per invoice
 
-### Actual observed cost impact (live Railway logs, 2026-05-15)
-| Metric | Before caching | After caching | Change |
-|---|---|---|---|
-| Input tokens per Haiku turn | ~11,500 | ~1,200 | -91% |
-| Cost per Haiku turn | Rs 1.24 | Rs 0.20 | -85% |
-| Monthly per vendor (20 msg/day) | Rs 900 | ~Rs 144 (AI only) | -84% |
+### log_expense tool
+- Saves to expenses table with all 12 categories
+- Date defaults to today if not mentioned
+- Extracts client_name and linked_lead_id if mentioned
 
-Near-100% cache hit rate observed — static block is truly identical every call.
-See docs/UNIT_ECONOMICS.md for full corrected analysis including Twilio costs.
+### update_invoice_prefix tool
+- Changes vendors.invoice_prefix
+- Counter never resets — old invoices keep original numbers
+- New prefix: uppercased, alphanumeric/hyphen/slash, 2-20 chars
+- Agent warns vendor about continuity before confirming
 
-### Gemini SDK wiring (src/lib/groundedSearch.js)
-Package: `@google/genai ^2.2.0` installed.
-New file: `src/lib/groundedSearch.js` — retrieval-only wrapper.
+### Admin Money tab (src/admin/router.js + src/admin/views/detail.js)
+- Fourth tab on vendor detail page: Leads / Enquiries / Notes / Money
+- 4 summary cards: Total Billed, Total Received, Outstanding, Total Expenses
+- Invoices table: number, client, total, paid, balance, state badge, PDF View link
+- Expenses table: date, category, description, client, amount
+- State colours: unpaid=orange, advance_paid=blue, paid=green, cancelled=grey
+- Collapsible rows: shows 5 by default, "Show N more" expands inline
+- PDF view link opens Supabase signed URL directly in browser
 
-**Why wired now, not in Session 9:**
-Session 9 (Discover marketplace) is already complex — Next.js on Vercel, vendor profile pages,
-couple enquiry flow, rate_min/rate_max migration, multi-model planner. Adding "set up Gemini SDK
-from scratch" to that session was unnecessary debt.
-
-The wrapper is infrastructure groundwork: installed, configured, deployed, and verified working.
-Session 9 starts with the retrieval layer already ready — one less thing to figure out.
-
-**How groundedSearch.js works:**
-- Takes a query string + optional context
-- Calls Gemini 3.1 Flash-Lite with `tools: [{ googleSearch: {} }]` (Google Search grounding)
-- Returns `{ answer, sources, raw }` — structured results with citation URLs
-- Never throws — all errors returned as `{ answer: null, error }`, caller decides how to handle
-
-**The agent does NOT call this today.** Zero impact on vendor agent, couple agent, onboarding,
-or any existing functionality. It sits ready in src/lib/ for Session 9.
-
-**Session 9 usage pattern (for reference):**
-Bride query → groundedSearch() retrieves web context (Gemini) + DB query (Haiku) →
-Sonnet composes bride-facing reply combining both sources.
-
-### Railway env var added
-- `GOOGLE_API_KEY` — Google AI Studio key (dev@thedreamwedding.in account, free tier)
-  Required by groundedSearch.js. Missing key handled gracefully (logs warning, returns null).
-
-### Repo housekeeping
-- Stray HANDOVER.md, ROADMAP.md, SCHEMA.md files deleted from repo root (belonged only in docs/)
-- UNIT_ECONOMICS.md updated with actual Session 8.2 smoke test results + corrected figures
+### Morning briefing overdue alerts (src/agent/briefing.js)
+- New section in daily 8am IST briefing
+- Queries invoices where due_date < today AND state in (unpaid, advance_paid)
+- Format: "2 overdue invoices: Priya (TDW/DEV550/01, Rs 1.2L due 2026-11-15)"
+- Capped at 5 invoices to keep briefing readable
 
 ## Smoke tests passed
-- Agent health check post-deploy: "what's my TDW link" → correct reply ✅
-- Smart routing re-verified after hotfix: Haiku for simple, Sonnet for complex ✅
-- Prompt caching: input tokens 11,500 → 1,200 (-91%) ✅
-- Gemini SDK loads on Railway startup without errors ✅
-- Existing agent completely unaffected by Gemini addition ✅
-
-## Known gaps carried forward
-1. Twilio status callback: vendor notification message (sent_by: system) missing twilio_sid — pre-existing Session 5.5 bug
-2. No Anthropic credit-low warning — agent fails silently if credits run out
-3. update_lead_state requires UUID — name-based update deferred to Session 8
-4. Lead dedup upstream (create_lead tool does blind insert) — deferred to Session 8.5
-5. Classifier context gap: if prior Sonnet disambiguation turn is outside the 2-turn history window, follow-up message may route to Haiku with incomplete context. Low risk at current volumes.
-6. Session 8.3 expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1)
-7. vendors.rate_min / rate_max columns not yet added — Session 9 migration
-8. Sonnet post-caching cost not yet observed — estimated at ~Rs 0.40/turn. Verify in Session 8.3.
-9. Railway running in EU West — Supabase is Mumbai (ap-south-1). ~150-200ms cross-region latency. Move Railway region before scaling beyond 50 vendors.
+- list_invoices: 5 unpaid invoices listed correctly ✅
+- record_payment Stage 2: advance recorded, PDF generated, signed URL returned ✅
+- PDF: vendor name header, TDW watermark, BOOKING CONFIRMED, amounts, QR code ✅
+- QR code: UPI deep link with balance Rs 48,000 pre-filled ✅
+- log_expense: Rs 2,500 travel, date extracted, client linked ✅
+- Routing: Sonnet for record_payment (Rs 1.45), Haiku for log_expense (Rs 0.26) ✅
+- Admin Money tab: 4 cards + invoices + expenses rendering correctly ✅
 
 ## Key product decisions locked this session
-- Prompt caching: 1-hour ephemeral cache on STATIC_SYSTEM_PROMPT only
-- buildSystemPrompt() preserved for compatibility — never remove
-- Gemini model lock: `gemini-3.1-flash-lite` (retrieval-only, never main agent model)
-- GOOGLE_API_KEY: dev@thedreamwedding.in Google AI Studio account, free tier
-- groundedSearch.js: retrieval only — Gemini retrieves, Anthropic composes the reply
-- Twilio is now the dominant cost driver post-caching, not AI (~Rs 300 vs Rs 144/vendor/month)
-- Message caps protect Twilio spend more than AI spend
+- PDF generated at Stage 2 (advance paid) only — not Stage 1, not Stage 3
+- Lead → client promotion deferred to Session 8.5 as planned
+- invoice_prefix change: counter never resets, old invoices keep original numbers
+- TDW default prefix preserves brand on every invoice sent to clients
+- expense_date nullable, defaults to current_date
+- client_name on expenses: free-text fallback when no lead is linked
+- Collapsible rows: 5 visible by default, expand inline
+- Sonnet routes all financial operations regardless of message simplicity
 
-## Session 8.3 scope (next session, formerly 7.5)
-Goal: Complete the invoice flow + expenses. Sonnet available, caching active.
-Note: expenses migration is 0010 (not 0009).
+## Known gaps carried forward
+1. Twilio status callback: vendor notification missing twilio_sid — pre-existing Session 5.5 bug
+2. No Anthropic credit-low warning — agent fails silently if credits run out
+3. update_lead_state requires UUID — name-based update deferred to Session 8
+4. Lead dedup upstream (create_lead blind insert) — deferred to Session 8.5
+5. Classifier context gap: prior Sonnet turn outside 2-turn history may route to Haiku
+6. vendors.rate_min / rate_max not yet added — Session 9 migration
+7. Railway running in EU West, Supabase in Mumbai — move before scaling beyond 50 vendors
+8. PDF generation causes 3-5 second silence — no interim acknowledgement. Session 8.5.
+9. Lead → client promotion on advance paid — Session 8.5.
+
+## Session 8.5 scope (next session)
+Goal: Clients model + lead deduplication.
 
 What ships:
-- record_payment tool (Stage 2: advance paid → PDF with embedded UPI QR → state=advance_paid)
-- record_payment tool (Stage 3: balance paid → plain WhatsApp text → state=paid)
-- PDF generation via pdfkit
-- QR code generation via qrcode (UPI QR embedded in PDF)
-- list_invoices tool
-- update_invoice_prefix tool
-- expenses table (migration 0010) + log_expense tool
-- Admin Money tab on vendor detail page
-- Morning briefing: overdue invoice alerts
+- clients table migration
+- leads.client_id FK + invoices.client_id FK
+- Promotion logic: advance paid → auto-create client, link lead, link invoice
+- add_client tool + list_clients tool
+- Dedup fix in create_lead: name + phone match check before blind insert
+- Admin: clients tab on vendor detail
+- Interim acknowledgement for record_payment PDF silence
 
 ## Railway env vars (current)
 - TWILIO_WHATSAPP_NUMBER = whatsapp:+14787788550
@@ -125,8 +123,6 @@ What ships:
 - WhatsApp: +14787788550
 - Test vendor phone: +918757788550
 - Test vendor UUID: 2eb5d3fb-31eb-4b26-859a-cf10ae477d53
-- Test vendor user UUID: f1d6d3af-a828-4e42-98ab-862b05dbc110
-- Test conversation UUID: c2740497-6f40-4469-8bc1-8d66c9bda7bd
 - Test vendor routing_handle: DEV550
 - Test vendor TDW link: wa.me/14787788550?text=TDW-DEV550
 - Test vendor business_name: Dev Roy Photography
@@ -135,13 +131,12 @@ What ships:
 - Railway: https://dream-os-production.up.railway.app
 - Admin: https://dream-os-production.up.railway.app/admin
 
-## First thing next session (8.3)
+## First thing next session (8.5)
 curl https://dream-os-production.up.railway.app
-Should return: {"status":"alive","service":"dream-os","version":"0.8.2-alpha"}
+Should return: {"status":"alive","service":"dream-os","version":"0.8.3-alpha"}
 
 If +91 number has arrived: do Session 6.5 before anything else.
-Otherwise: start Session 8.3 (money tools — record_payment, PDF, QR, expenses).
-Note: expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1).
+Otherwise: start Session 8.5 (clients model + lead deduplication).
 
 ## Document update protocol
 Four files updated every session:
@@ -149,4 +144,3 @@ Four files updated every session:
 - SCHEMA.md — fully rewritten
 - ROADMAP.md — updated
 - UNIT_ECONOMICS.md — Dev's reference only, no other session amends it
-git add docs/ package.json package-lock.json && git commit -m "docs: session 8.2 handover, roadmap + version bump" && git push
