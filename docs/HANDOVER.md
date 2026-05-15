@@ -1,147 +1,138 @@
 # dream-os -- Session Handover
 **Last updated:** 2026-05-15
-**Session:** 7 (partial -- chunks 1-2 only)
-**Version:** 0.7.0-alpha
+**Session:** 8.1
+**Version:** 0.8.1-alpha
 
 ## What shipped this session
 
-### Decision: session reorder (founder confirmed)
-New sequence: 6.5 (on +91 arrival) → 7 chunks 1-2 → 8.1 → 7.5 (chunks 3-8) → 8.5 → 8 → 9 → 10 → 11-12
-Reason: money tools (record_payment, expenses, PDF, QR) require Sonnet-level reasoning.
-Haiku showed clear limits during invoice disambiguation testing -- looped 4 times on a simple "same Priya" confirmation.
-Session 8.1 ships first, then Session 7.5 completes money tools with Sonnet available.
+### Pre-session housekeeping (before 8.1 work began)
+- Backfilled missing `0008_invoices.sql` migration file (schema was applied in Session 7 but file never committed)
+- Synced `package-lock.json` to 0.7.0-alpha (version field was out of sync)
+- Deleted 5 zero-byte junk files from repo root (`0,`, `30%`, `=`, `For: Bridal makeup`, `Rs`) — created by copy-paste accident in Session 7 invoice testing
 
-### Migration 0008 (db/migrations/0008_invoices.sql)
-- invoices table: id, vendor_id, lead_id, invoice_number, client_name, client_phone, description, amount_total, amount_advance, amount_paid, due_date, state, pdf_url, notes, created_at, updated_at
-- state CHECK: unpaid / advance_paid / paid / cancelled. Default: unpaid.
-- amount CHECKs: amount_total >= 0, amount_paid >= 0, amount_advance nullable non-negative
-- Deliberate omission: amount_paid <= amount_total NOT enforced -- overpayment (shagun, tips) is legitimate vendor reality, handled as soft prompt at tool layer
-- unique constraint: (vendor_id, invoice_number)
-- 5 indexes: vendor_id, state, due_date, lead_id, created_at desc
-- vendors.invoice_prefix text (nullable) -- editable, auto-set to TDW/<routing_handle> on first invoice
-- vendors.invoice_counter integer NOT NULL default 0 -- per-vendor sequence, never resets
-- Realtime enabled on invoices
-- set_updated_at trigger attached
+### Migration 0009 (db/migrations/0009_message_cost_tracking.sql)
+- `messages.model` text (nullable) — which model handled this message
+- `messages.input_tokens` integer (nullable, CHECK >= 0) — input token count
+- `messages.output_tokens` integer (nullable, CHECK >= 0) — output token count
+- `messages.cost_usd` numeric(10,6) (nullable, CHECK >= 0) — Anthropic billing cost
+- `messages.cost_inr` numeric(10,2) (nullable, CHECK >= 0) — Rs equivalent at USD_TO_INR=100
+- `messages_model_idx` index on messages(model) for cost aggregation queries
+- `vendors.style_notes` text (nullable) — qualifier captured during onboarding (e.g. "luxury", "celebrity", "budget")
+- Note: Session 7.5's expenses table was previously planned as migration 0009 — now renumbered to 0010
 
-### Supabase storage bucket: invoices
-- Private bucket (not public)
-- File size limit: 5 MB
-- Allowed MIME types: application/pdf only
-- Policy: service_role has INSERT, SELECT, UPDATE, DELETE
-- Used in Session 7.5 when PDF generation ships
+### Smart model routing (src/agent/models.js + src/agent/classifier.js + src/agent/engine.js)
+- `src/agent/models.js` — single source of truth for model IDs, pricing constants, cost calculator
+  - MODEL_HAIKU = 'claude-haiku-4-5-20251001' (locked)
+  - MODEL_SONNET = 'claude-sonnet-4-6' (locked)
+  - USD_TO_INR = 100 (Dev's call 2026-05-15, forward-looking macro view)
+  - calculateCost(model, inputTokens, outputTokens) → { cost_usd, cost_inr }
+- `src/agent/classifier.js` — lightweight Haiku call before main vendor agent call
+  - max_tokens: 5 — enforces single-word output at API level
+  - Returns 'simple' or 'complex'
+  - Passes last 2 history turns for disambiguation context
+  - Defaults to 'simple' on any error — message always gets processed
+- `src/agent/engine.js` — classifier wired into vendor agent path
+  - Classifier runs → modelToUse set → main agent loop uses modelToUse
+  - Token usage accumulated across all iterations
+  - calculateCost() called after loop → cost returned in result object
+  - Couple agent: MODEL_HAIKU always (no classifier — narrow scope)
+  - Old hardcoded MODEL constant removed entirely
 
-### npm dependencies added
-- pdfkit ^0.18.0 -- PDF generation (Session 7.5)
-- qrcode ^1.5.4 -- UPI QR code embedded in PDF (Session 7.5)
+### Cost tracking (src/index.js)
+- Outbound message insert now saves: model, input_tokens, output_tokens, cost_usd, cost_inr
+- Pre-8.1 messages have null values in these columns — expected, not an error
 
-### create_invoice tool (Stage 1 only -- text, no PDF)
-Files touched:
-- src/agent/tools.js -- create_invoice tool definition added
-- src/agent/engine.js -- case 'create_invoice' handler added
-- src/lib/format.js -- NEW -- formatRs() Indian comma formatting, formatPercent()
-- src/lib/invoiceMessage.js -- NEW -- buildInvoiceMessage() composes WhatsApp text
+### Smart onboarding (src/agent/categories.js + src/agent/onboarding.js)
+- `src/agent/categories.js` — locked vendor category taxonomy
+  - 16 categories (florist merged into decor — founder confirmed 2026-05-15)
+  - VENDOR_CATEGORIES list + CATEGORY_ALIASES for Haiku prompt context
+- `src/agent/onboarding.js` — asked_category state now uses Haiku extraction
+  - extractCategoryDetails() calls Haiku with strict JSON-only prompt
+  - Returns { category, style_notes, city }
+  - If city extracted in same message → saves city, skips asked_city state
+  - category normalised to taxonomy (e.g. "luxury decorator" → category=decor, style_notes=luxury)
+  - Fallback to raw input strip if Haiku fails — onboarding never breaks
+  - style_notes saved to vendors.style_notes column
+  - anthropic client now passed through handleOnboarding → nextOnboardingMessage
 
-Tool logic (in order):
-1. Validates: amount_total > 0, advance <= total if provided, advance >= 0 if provided
-2. Fetches vendor row: routing_handle, business_name, upi_id, invoice_prefix, invoice_counter, user_id
-3. Fetches user.name as fallback display name
-4. Duplicate name check: queries leads AND invoices tables (ilike match on client_name). If match found and no lead_id supplied, returns disambiguation prompt -- does NOT create invoice.
-5. Auto-sets invoice_prefix to TDW/<routing_handle> if null, saves to DB
-6. Atomically increments invoice_counter, builds invoice_number e.g. TDW/DEV550/01 (zero-padded to 2 digits)
-7. Inserts invoice row: state=unpaid, amount_paid=0
-8. Composes WhatsApp message via buildInvoiceMessage()
-9. Returns result with --- FORWARD THIS TO [NAME] --- delimiters so agent copies verbatim
+### Admin cost display (src/admin/router.js + src/admin/views/detail.js)
+- router.js queries messages table for this month's agent cost per vendor
+- Aggregates by model (Haiku / Sonnet breakdown)
+- detail.js: two new rows in vendor profile
+  - Style: vendor.style_notes (e.g. "luxury")
+  - AI Cost (month): Rs X.XX · Haiku: Rs X.XX, Sonnet: Rs X.XX
 
-Invoice message format (Stage 1):
-- With advance: Hi [name] -- invoice number, For: [description], Total Rs X, Booking amount Rs Y (Z%), payment instruction, UPI, due date, Thanks.
-- Without advance: Hi [name] -- invoice number, For: [description], Total Rs X, UPI, due date, Thanks.
-- Description line skipped entirely if vendor did not provide one
-- UPI line skipped if upi_id not set on vendor (agent warned to prompt vendor to set it)
-- Description capitalised first letter: "bridal makeup" -> "For: Bridal makeup"
-- Indian rupee formatting: 120000 -> Rs 1,20,000
-
-System prompt updates:
-- Rule 7: extended with delimiter-based verbatim copy instruction for create_invoice
-- create_invoice entry in WHEN TO USE EACH TOOL: Stage 1 scope, no hallucination rules, no-modify instruction
-
-### Railway auto-deploy fix
-- "Wait for CI" toggle was ON in Railway settings -- was blocking all auto-deploys silently
-- Toggled OFF during this session
-- Auto-deploys now fire correctly on every git push to main
+### Version health check fix (src/index.js)
+- Health check endpoint now reads version from package.json dynamically
+- `const { version } = require('../package.json')`
+- Eliminates version drift between package.json and /health response
 
 ## Smoke tests passed
-- create_invoice happy path: advance + description + due date -- message composed correctly
-- create_invoice no advance, no description -- lines correctly omitted
-- Duplicate name check fires when Priya exists in invoices table
-- Indian comma formatting: 120000 -> Rs 1,20,000
-- Percentage: 36000/120000 -> 30%
-- Description capitalised: "bridal makeup" -> "For: Bridal makeup"
-- invoice_prefix auto-set to TDW/DEV550 on first invoice
-- invoice_counter increments atomically
-- Delimiter guardrail: agent copies message verbatim, no hallucinated lines
+- "what's my TDW link" → classifier: simple → Haiku ✅
+- "create an invoice for Priya, total 1,20,000 advance 36,000" → classifier: complex → Sonnet ✅
+- Disambiguation "same Priya" resolved in 1 Sonnet turn (was 4+ Haiku loops in Session 7) ✅
+- "Priya Roy" follow-up → classifier: simple → Haiku completed invoice correctly ✅
+- Token counts + cost saved to messages table (verified in Supabase) ✅
+- Onboarding: "I'm a luxury decorator based in Mumbai" → category=decor, style_notes=luxury, city=Mumbai, asked_city skipped ✅
+- Admin: Style row + AI Cost (month) row showing on vendor detail ✅
 
-## What is NOT done (deferred to Session 7.5, after 8.1)
-- record_payment tool (Stage 2: advance paid -> PDF + QR generated + state=advance_paid)
-- record_payment tool (Stage 3: balance paid -> state=paid + balance reminder text)
-- PDF generation via pdfkit
-- QR code generation via qrcode embedded in PDF
-- list_invoices tool
-- update_invoice_prefix tool (with warning: old invoices keep their numbers)
-- expenses table (migration 0009) + log_expense tool
-- Admin Money tab on vendor detail page
-- Morning briefing: overdue invoice alerts
+## Routing rules (locked)
+| Surface | Model | Notes |
+|---|---|---|
+| Vendor agent | Classifier → Haiku (simple) or Sonnet (complex) | Classifier runs on every vendor turn |
+| Couple agent | Haiku always | Narrow scope — route + capture only |
+| Onboarding | Haiku always | Smart extraction prompt, not free reasoning |
+| Classifier itself | Haiku always | max_tokens=5, defaults simple on error |
 
-## Three-stage invoice flow (designed, partially built)
-Stage 1 (unpaid) -- BUILT: vendor raises invoice, dream-os composes WhatsApp text with UPI ID. No PDF.
-Stage 2 (advance_paid) -- DEFERRED to 7.5: advance received, PDF with embedded UPI QR. Booking confirmed.
-Stage 3 (paid) -- DEFERRED to 7.5: balance received, plain WhatsApp text, invoice closed.
-
-## Key product decisions locked this session
-- Invoices link to leads (lead_id FK, nullable, SET NULL) -- clients table arrives in Session 8.5
-- Invoice number format: <vendor.invoice_prefix>/<counter padded to 2>. e.g. TDW/DEV550/01
-- Invoice prefix: editable by vendor, defaults to TDW/<routing_handle> on first invoice
-- Invoice counter: never resets, gaps are normal and expected (accountant-safe)
-- Duplicate name: soft prompt at creation -- surfaces existing leads + invoices, asks vendor to confirm
-- State machine: unpaid / advance_paid / paid / cancelled
-- amount_paid <= amount_total: NOT enforced at DB. Soft prompt at tool layer (Session 7.5).
-- Description: vendor's words verbatim, first letter capitalised, prefixed "For:". Skipped if not given.
-- UPI QR: lives inside Stage 2 PDF only. No standalone QR generator.
-- Clients table: Session 8.5. Promotion trigger: advance paid OR vendor directly adds client.
-- Lead dedup (upstream, create_lead blind insert): Session 8.5.
+## Complex signals (classifier routes to Sonnet)
+- Invoice creation, editing, questions about a specific invoice
+- Payment recording (advance, balance, partial)
+- Disambiguation between clients with same/similar name
+- Long forwarded enquiry message (lead extraction)
+- Multi-step financial reasoning
+- Nuanced reply drafting where tone is critical
 
 ## Known gaps carried forward
-1. Twilio status callback: vendor notification message (sent_by: system) missing twilio_sid -- pre-existing Session 5.5 bug
-2. No Anthropic credit-low warning -- agent fails silently if credits run out
-3. update_lead_state requires UUID -- name-based update deferred to Session 8
-4. Onboarding is dumb state machine -- no Haiku intelligence until Session 8.1
-5. Vendor cannot draft/send replies to couples yet
-6. Lead dedup upstream (create_lead tool does blind insert) -- deferred to Session 8.5
-7. Invoice disambiguation loop verbose with Haiku -- resolves in 8.1 with Sonnet routing
+1. Twilio status callback: vendor notification message (sent_by: system) missing twilio_sid — pre-existing Session 5.5 bug
+2. No Anthropic credit-low warning — agent fails silently if credits run out. More critical now Sonnet is in use.
+3. update_lead_state requires UUID — name-based update deferred to Session 8
+4. Lead dedup upstream (create_lead tool does blind insert) — deferred to Session 8.5
+5. Classifier context gap: if prior Sonnet disambiguation turn is outside the 2-turn history window, follow-up message may route to Haiku with incomplete context. Low risk at current conversation volumes.
+6. Session 7.5 expenses migration renumbered from 0009 to 0010 — update SCHEMA.md when 7.5 ships.
+7. vendors.rate_min / rate_max columns not yet added — needed for Discover budget matching. Session 9 migration.
+8. Prompt caching not yet implemented — deferred to Session 8.2. See UNIT_ECONOMICS.md.
 
-## Session 6.5 -- Twilio template + +91 migration
-**Founder directive (explicit, confirmed):** No matter which session we are at, when the WhatsApp +91 number arrives, pause everything and do Session 6.5 first.
+## Session 8.2 scope (confirmed)
+- Prompt caching: add cache_control to system prompt block in engine.js (1-hour cache)
+- Gemini 3.1 Flash-Lite SDK wired as retrieval-only provider (not used in agent yet)
+- Gemini grounded search wrapper ready for Session 9 Discover
 
-Steps when +91 arrives:
-1. Confirm WABA: same as +14787788550? (determines if templates transfer)
-2. If same WABA: update TWILIO_WHATSAPP_NUMBER and TDW_WA_NUMBER env vars only
-3. If new WABA: submit dream_os_morning_briefing UTILITY template first, wait approval
-4. Template body: "Morning {{1}}. You have {{2}} open leads and {{3}} pending replies. {{4}} Reply to update."
-5. Update outbound send wrapper: if 24h window closed AND template approved -> send via template
-6. Update invite page wa.me link to +91 number
-7. Smoke test: briefing fires to vendor inactive >24h
+## Key product decisions locked this session
+- MODEL_HAIKU = 'claude-haiku-4-5-20251001' — never change without founder approval
+- MODEL_SONNET = 'claude-sonnet-4-6' — never change without founder approval
+- USD_TO_INR = 100 — hardcoded, forward-looking (Dev's call, macro view on rupee)
+- Classifier defaults to simple on any failure — message never dropped
+- Couple agent: Haiku always, no classifier
+- Onboarding: Haiku always, extraction prompt only
+- 16 vendor categories — florist merged into decor, invitations kept
+- style_notes: qualifier field, free text, nullable. Populated by Haiku extractor.
+- Cost stored in both cost_usd (audit/reconciliation) and cost_inr (admin display)
+- Version string: read from package.json dynamically — never hardcoded again
+- UNIT_ECONOMICS.md: Dev's reference document, stays in docs/, no other session amends it
+
+## Document update protocol
+Four files updated this session and every future session:
+- HANDOVER.md — fully rewritten
+- SCHEMA.md — fully rewritten
+- ROADMAP.md — updated
+- UNIT_ECONOMICS.md — Dev's reference only, no other session amends it
+git add docs/ src/index.js package.json && git commit -m "docs: session 8.1 handover, schema, roadmap, unit economics + version bump" && git push
 
 ## Railway env vars (current)
 - TWILIO_WHATSAPP_NUMBER = whatsapp:+14787788550
 - TDW_WA_NUMBER = 14787788550
-- ANTHROPIC_API_KEY (workspace: dream-os, model: claude-haiku-4-5-20251001)
+- ANTHROPIC_API_KEY (workspace: dream-os, model lock: haiku-4-5-20251001 + sonnet-4-6)
 - ADMIN_PASSWORD, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (all in Railway)
-
-## WhatsApp numbers reference
-| Number | Currently points to | Notes |
-|---|---|---|
-| +14155238886 | Twilio sandbox | Retired |
-| +14787788550 | dream-os Railway | Active, Meta-verified |
-| +91XXXXXXXXX | Pending Twilio approval | Will become primary -- triggers Session 6.5 |
 
 ## Test credentials
 - WhatsApp: +14787788550
@@ -156,23 +147,15 @@ Steps when +91 arrives:
 - Supabase: nvzkbagqxbysoeszxent (Mumbai)
 - Railway: https://dream-os-production.up.railway.app
 - Admin: https://dream-os-production.up.railway.app/admin
-- Briefing test: GET https://dream-os-production.up.railway.app/admin/test-briefing/2eb5d3fb-31eb-4b26-859a-cf10ae477d53
 
-## First thing next session (8.1)
+## First thing next session (7.5)
 curl https://dream-os-production.up.railway.app
-Should return: {"status":"alive","service":"dream-os","version":"0.7.0-alpha"}
+Should return: {"status":"alive","service":"dream-os","version":"0.8.1-alpha"}
 
 Check Railway logs for:
+[dream-os] listening on :3000
 [cron] jobs registered: morning briefing at 08:00 IST (02:30 UTC)
 
 If +91 number has arrived: do Session 6.5 before anything else.
-Otherwise: start Session 8.1 (smart model routing Haiku -> Sonnet).
-
-Session 8.1 goal: task classifier routes complex tasks to Sonnet, simple tasks stay on Haiku.
-Once 8.1 ships, return to Session 7.5 to complete money tools with Sonnet available.
-
-## Document update protocol
-HANDOVER.md -- fully rewritten every session
-SCHEMA.md -- fully rewritten every session
-ROADMAP.md -- updated every session
-git add docs/ package.json && git commit -m "docs: session 7 handover, schema, roadmap" && git push
+Otherwise: start Session 7.5 (money tools — record_payment, PDF, QR, expenses).
+Note: expenses migration is now 0010 (not 0009 — taken by cost tracking).

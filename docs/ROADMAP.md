@@ -1,6 +1,6 @@
 # dream-os -- Roadmap
 **Last updated:** 2026-05-15
-**Current version:** 0.7.0-alpha
+**Current version:** 0.8.1-alpha
 
 ## Vision
 WhatsApp-first chief of staff for wedding vendors.
@@ -21,15 +21,17 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 | 5.5 | Couple-facing agent (Haiku), capture_couple_lead, name last, past date fix, phone in list_leads, admin Enquiries tab, TDW handle deflection, draft reply blocked | 0.5.5 |
 | 6 | events table (migration 0007), 5 new tools (create_event, list_events, update_event_state, update_routing_handle, get_my_tdw_link), morning briefing cron (8am IST), Twilio status callback, sendWhatsApp refactor, ? strip fix, invite page fix | 0.6.0 |
 | 7 (partial) | invoices table (migration 0008), Supabase invoices bucket, pdfkit + qrcode installed, create_invoice tool (Stage 1 text only), format.js + invoiceMessage.js, Railway auto-deploy fix | 0.7.0-alpha |
+| 8.1 | Smart model routing (Haiku→Sonnet classifier), cost tracking on messages (migration 0009), smart onboarding (16-category taxonomy, style_notes, city skip), admin AI cost display, version health check fix | 0.8.1-alpha |
 
 ## Session sequence (confirmed by founder 2026-05-15)
-6.5 (on +91 arrival, jumps queue) → 8.1 → 7.5 → 8.5 → 8 → 9 → 10 → 11-12
+6.5 (on +91 arrival, jumps queue) → 8.2 → 7.5 → 8.5 → 8 → 9 → 10 → 11-12
 
 ## Decisions locked
 - Model: claude-haiku-4-5-20251001 (never change without founder approval)
+- Model: claude-sonnet-4-6 (never change without founder approval — added Session 8.1)
 - Phone format: always E.164 (+918757788550)
 - Schema discipline: every change through numbered migration file
-- Three docs updated every session: HANDOVER.md, SCHEMA.md, ROADMAP.md
+- Four docs updated every session: HANDOVER.md, SCHEMA.md, ROADMAP.md, UNIT_ECONOMICS.md (Dev's reference only — no other session amends it)
 - Currency: Rs (never Rs with symbol)
 - Unknown numbers: three-mode couple routing
 - Admin auth: single ADMIN_PASSWORD env var
@@ -39,7 +41,7 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - wa.me link format: wa.me/14787788550?text=TDW-DEV550
 - Lead dedup in Mode 2: one lead per (vendor_id, counterparty_phone), ever
 - TDW_WA_NUMBER env var: parameterised, swap when +91 arrives, no code change needed
-- Couple-facing agent: Haiku, collect occasion/date/city/budget/name, notify vendor with summary
+- Couple-facing agent: Haiku always, narrow scope (TDW routing + lead capture only)
 - Morning briefing: node-cron inside Express, 8am IST, 24h window check, skip-if-closed
 - Events kind values: shoot / call / meeting / task / reminder / recce / other (CHECK constraint)
 - Morning briefing: template submission deferred to Session 6.5 pending +91 WABA confirmation
@@ -53,8 +55,17 @@ Marketplace (thedreamwedding.in) surfaces curated vendors to brides.
 - Invoices link to leads in v1. Clients table (Session 8.5) adds client_id FK alongside lead_id.
 - Clients model: promotion trigger = advance paid OR vendor directly adds client. Session 8.5.
 - Lead dedup (upstream, create_lead blind insert): Session 8.5.
-- Money tools need Sonnet: record_payment, expenses, PDF, QR deferred to Session 7.5 (after 8.1).
-- Session 8.1 before 7.5: confirmed by founder after Haiku disambiguation loop failure in Session 7.
+- Money tools need Sonnet: record_payment, expenses, PDF, QR in Session 7.5.
+- Vendor category taxonomy: 16 categories locked (florist merged into decor). See src/agent/categories.js.
+- style_notes: free-text qualifier field on vendors table. Haiku extracts during onboarding.
+- USD_TO_INR = 100: hardcoded constant in src/agent/models.js. Dev's call (macro view, 2026-05-15).
+- Cost stored in both cost_usd (Anthropic reconciliation) and cost_inr (admin display).
+- Version string: read from package.json dynamically via require('../package.json').
+- expenses table migration renumbered from 0009 to 0010 (0009 taken by cost tracking in 8.1).
+- vendors.rate_min / rate_max: not yet added. Session 9 migration. Haiku extracts + Swati overrides.
+- Prompt caching: deferred to Session 8.2. See UNIT_ECONOMICS.md for cost impact analysis.
+- Gemini 3.1 Flash-Lite: deferred to Session 8.2 (SDK wiring only, retrieval-only provider).
+- Bride-side planner model stack: Gemini Flash-Lite (grounded retrieval) + Haiku (internal DB) + Sonnet (multi-constraint planning). Session 9 decision — re-evaluate model landscape at that time.
 
 ## Session 6.5 -- Twilio template + +91 number migration
 **Trigger:** +91 WhatsApp number arrives (Twilio approval pending)
@@ -71,23 +82,22 @@ What ships:
 Estimated time: 30 min build + Meta approval wait (1-7 days)
 Blocked until: +91 number live
 
-## Session 8.1 -- Smart model routing (Haiku -> Sonnet)
-**Goal:** Route complex tasks to Sonnet, keep simple tasks on Haiku. 80/20 split.
-**Why before 7.5:** Money tools (record_payment, disambiguation, PDF) need Sonnet reasoning. Haiku failed clearly in Session 7 invoice testing.
+## Session 8.1 -- Smart model routing (Haiku -> Sonnet) ✅ DONE
+Shipped 2026-05-15. See HANDOVER.md for full detail.
+
+## Session 8.2 -- Prompt caching + Gemini SDK wiring
+**Goal:** Reduce API costs via prompt caching. Wire Gemini as future retrieval provider.
 
 What ships:
-- Task classifier: lightweight Haiku call determines complexity before main agent call
-- Router in engine.js: sets MODEL based on classifier output
-- Sonnet for: financial reasoning, multi-turn disambiguation, nuanced drafting, invoice flows
-- Haiku for: simple notes, greetings, status questions, single-tool calls
-- Cost tracking on messages table (model used, token counts)
-- Admin: AI cost this month on vendor detail
-- Onboarding gets Haiku intelligence: category normalisation, graceful unexpected input handling
-- Couple agent routing: Sonnet for long/complex enquiries, Haiku for simple ones
+- Prompt caching: add cache_control to system prompt block in engine.js (1-hour cache)
+- Gemini 3.1 Flash-Lite SDK installed and configured (GOOGLE_API_KEY env var in Railway)
+- Gemini grounded search wrapper: src/lib/groundedSearch.js (not used by agent yet — ready for Session 9)
+- Smoke test: verify cache hits appearing in Railway logs, cost_usd drops vs uncached baseline
 
-Estimated time: 60-90 minutes
+Estimated time: 45 minutes
+Cost impact: see UNIT_ECONOMICS.md
 
-## Session 7.5 -- Money tools continued (after 8.1)
+## Session 7.5 -- Money tools continued (after 8.2)
 **Goal:** Complete the invoice flow + expenses. Sonnet available for financial reasoning.
 
 What ships:
@@ -97,19 +107,20 @@ What ships:
 - QR code generation via qrcode (dynamic UPI QR with amount embedded in PDF)
 - list_invoices tool ("who owes me money?" / "show unpaid invoices")
 - update_invoice_prefix tool (with warning: old invoices keep their numbers)
-- expenses table (migration 0009) + log_expense tool
+- expenses table (migration 0010) + log_expense tool
 - Admin Money tab on vendor detail page (invoices + expenses + totals, read-only)
 - Morning briefing: overdue invoice alerts
 
 Estimated time: 90 minutes
+Note: expenses migration is 0010 (not 0009 — taken by cost tracking in 8.1)
 
 ## Session 8.5 -- Clients model + lead deduplication
 **Goal:** Introduce proper clients table. Leads promote to clients. Dedup upstream lead creation.
 
 What ships:
-- clients table (Session 8.5 migration): id, vendor_id, user_id (nullable, links to couples), name, phone, email, source, referrer_name, notes, created_at, updated_at
-- leads.client_id FK (nullable, SET NULL) -- promotion link
-- invoices.client_id FK (nullable, SET NULL) -- alongside existing lead_id
+- clients table migration: id, vendor_id, user_id (nullable), name, phone, email, source, referrer_name, notes, created_at, updated_at
+- leads.client_id FK (nullable, SET NULL) — promotion link
+- invoices.client_id FK (nullable, SET NULL) — alongside existing lead_id
 - Promotion logic: advance paid -> auto-create client, link lead, link invoice
 - add_client tool: vendor directly adds a client ("add client Priya, +91XXXX")
 - list_clients tool
@@ -139,13 +150,15 @@ What ships:
 - Vendor profile pages (public, read-only)
 - Enquiry from Discover -> vendor WhatsApp thread automatically
 - Reuses couple-facing agent from Session 5.5
+- vendors.rate_min / rate_max migration + Haiku extraction + Swati admin override
+- Bride-side model stack: Gemini Flash-Lite (grounded retrieval) + Haiku (internal DB) + Sonnet (planning)
 
 Estimated time: 2-3 sessions
 
 ## Session 10 -- Instagram DM integration
 **Goal:** Vendor connects Instagram Business account. DMs auto-route to their WhatsApp thread.
 
-Requirements (researched Session 7):
+Requirements:
 - Instagram Business or Creator account (not personal)
 - Meta Developer App with instagram_manage_messages permission
 - App Review required (2-4 weeks, business verification, demo video)
@@ -153,12 +166,15 @@ Requirements (researched Session 7):
 - Webhook: /webhook/instagram on Railway, Meta signature verification
 - 24h messaging window applies (same as WhatsApp)
 - New DB columns: vendors.instagram_user_id, vendors.instagram_access_token, vendors.instagram_token_expires_at
-- Start Meta App Review submission early -- it gates the whole session
+- Start Meta App Review submission early — it gates the whole session
 
 Estimated time: 2 sessions + Meta review wait (2-4 weeks calendar time)
 
 ## Session 11-12 -- thedreamai.in vendor dashboard
 **Goal:** Web dashboard as read layer over WhatsApp-captured data.
+- vendors.rate_min / rate_max displayed and editable
+- AI cost this month (from messages table)
+- Full lead, invoice, event history
 
 ## Open questions
 1. +91 number -- applied, arriving soon (triggers Session 6.5)
@@ -167,6 +183,7 @@ Estimated time: 2 sessions + Meta review wait (2-4 weeks calendar time)
 4. thedreamwedding.in domain -- currently pointing where?
 5. Swati's role in Discover editorial curation
 6. Instagram DM integration: start Meta App Review process early -- what entity name for business verification?
+7. Vendor "what's my balance remaining" query -- billing layer needed. Session 9+ / post-Razorpay.
 
 ## Deliberately out of scope
 - iOS/Android native app
@@ -176,3 +193,4 @@ Estimated time: 2 sessions + Meta review wait (2-4 weeks calendar time)
 - Email/SMS fallback (WhatsApp only)
 - One number per vendor (TDW code system solves routing)
 - Standalone UPI QR generator (QR lives inside Stage 2 PDF only)
+- Gemini as main agent model (retrieval-only role, Session 9+)

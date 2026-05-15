@@ -1,7 +1,7 @@
 # dream-os -- Schema Reference
 **Last updated:** 2026-05-15
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0008_invoices.sql
+**Latest migration applied:** 0009_message_cost_tracking.sql
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -14,6 +14,7 @@
 | 0006_travel_preference.sql | 2026-05-14 | 5 | vendors.open_to_travel, vendors.travel_notes |
 | 0007_events_and_briefing.sql | 2026-05-14 | 6 | events table, messages.delivery_status, vendors.briefing_enabled |
 | 0008_invoices.sql | 2026-05-15 | 7 | invoices table, vendors.invoice_prefix, vendors.invoice_counter |
+| 0009_message_cost_tracking.sql | 2026-05-15 | 8.1 | messages cost columns, vendors.style_notes |
 
 ## Tables
 
@@ -33,15 +34,16 @@
 | id | uuid PK | auto-generated |
 | user_id | uuid FK -> users.id | CASCADE delete |
 | business_name | text | studio/brand name (optional) |
-| category | text | set during onboarding e.g. photography |
+| category | text | normalised during onboarding e.g. photography, makeup, decor. Always one of 16 locked taxonomy values (see src/agent/categories.js). |
+| style_notes | text | qualifier captured during onboarding e.g. "luxury", "celebrity", "budget". Nullable. Populated by Haiku extractor. |
 | vertical | text | default wedding |
 | city | text | set during onboarding |
 | routing_handle | text UNIQUE | TDW code suffix e.g. DEV550. Uppercase, alphanumeric only. Auto-assigned as FIRSTNAMEPHONE3. |
-| instagram_handle | text | IG handle without @. NULL -- collected naturally post-onboarding. |
+| instagram_handle | text | IG handle without @. NULL — collected naturally post-onboarding. |
 | open_to_travel | boolean | default false. Set during asked_travel onboarding step. |
 | travel_notes | text | Raw travel preference as vendor stated it. |
 | upi_id | text | UPI ID e.g. swati@okhdfc. Used in invoice messages and PDFs. |
-| gstin | text | future -- tax |
+| gstin | text | future — tax |
 | status | text | active or paused or churned |
 | tier | text | trial or essential or signature or prestige |
 | founding_cohort | boolean | true for first 50 vendors |
@@ -95,7 +97,12 @@ Realtime: enabled
 | tool_calls | jsonb | full audit trail of agent tool calls |
 | tool_results | jsonb | reserved |
 | twilio_sid | text | Twilio message SID |
-| delivery_status | text | queued / sent / delivered / read / failed / undelivered / skipped_window_closed. Updated by /webhook/twilio-status. |
+| delivery_status | text | queued / sent / delivered / read / failed / undelivered / skipped_window_closed |
+| model | text | which model handled this message (claude-haiku-4-5-20251001 or claude-sonnet-4-6). NULL for pre-8.1 messages and non-agent messages. |
+| input_tokens | integer | CHECK >= 0. NULL for pre-8.1 and non-agent messages. |
+| output_tokens | integer | CHECK >= 0. NULL for pre-8.1 and non-agent messages. |
+| cost_usd | numeric(10,6) | CHECK >= 0. Anthropic billing cost. NULL for pre-8.1. |
+| cost_inr | numeric(10,2) | CHECK >= 0. Rs equivalent at USD_TO_INR=100. NULL for pre-8.1. |
 | created_at | timestamptz | auto |
 
 Realtime: enabled
@@ -106,7 +113,7 @@ Realtime: enabled
 | vendor_id | uuid PK FK -> vendors.id | CASCADE delete |
 | summary | text | free-form summary the agent maintains |
 | pricing_policy | jsonb | {stated_rate: string} |
-| recent_notes | jsonb | cache of last 10 notes -- refreshed after every vendor turn |
+| recent_notes | jsonb | cache of last 10 notes — refreshed after every vendor turn |
 | open_threads | integer | denormalized count |
 | pending_actions | integer | denormalized count |
 | updated_at | timestamptz | auto via trigger |
@@ -205,6 +212,30 @@ NOTE: amount_paid <= amount_total is deliberately NOT enforced at DB level.
 Overpayment (shagun tips, UPI typos) is a legitimate vendor reality.
 Handled as soft prompt at tool layer in record_payment (Session 7.5).
 
+## Vendor category taxonomy (code-only, not a DB constraint)
+Defined in src/agent/categories.js. 16 categories locked 2026-05-15 (founder confirmed).
+vendors.category should always be one of these values.
+vendors.style_notes captures qualifiers (e.g. "luxury", "celebrity") separately.
+
+| Category | Covers |
+|---|---|
+| photography | photographers, candid shooters |
+| videography | videographers, cinematographers, film makers |
+| makeup | MUAs, bridal makeup, hair and makeup |
+| mehendi | mehendi artists, henna artists |
+| decor | decorators, florists, floral decor, mandap decor |
+| catering | caterers, food and beverage, chefs |
+| venue | banquet halls, farmhouses, resorts |
+| music_dj | DJs, sound systems, emcees |
+| music_live | live bands, singers, musicians |
+| choreography | choreographers, dance trainers |
+| planning | wedding planners, event managers |
+| transport | car rentals, vintage cars, baraat |
+| invitations | card printing, stationery, digital invites, wedding cards |
+| jewellery | jewellery designers, rental jewellery |
+| attire | bridal wear, lehenga, sherwani |
+| other | anything that doesn't fit above |
+
 ## Key relationships
 - Every vendor has one user (identity)
 - Every message belongs to one conversation -> one vendor
@@ -212,21 +243,22 @@ Handled as soft prompt at tool layer in record_payment (Session 7.5).
 - Every lead belongs to one vendor
 - Every event belongs to one vendor, optionally linked to one lead
 - Every invoice belongs to one vendor, optionally linked to one lead
-- vendor_id is always the scoping key -- never query without it
+- vendor_id is always the scoping key — never query without it
 - couple_thread conversations scoped by counterparty_phone for Mode 1 routing
-- clients table arrives in Session 8.5 -- invoices.lead_id becomes invoices.lead_id + invoices.client_id
+- clients table arrives in Session 8.5 — invoices.lead_id becomes invoices.lead_id + invoices.client_id
 
 ## Indexes
-- vendors_routing_handle_idx on vendors(routing_handle) -- fast TDW lookup on every inbound message
+- vendors_routing_handle_idx on vendors(routing_handle) — fast TDW lookup on every inbound message
 - events_vendor_id_idx on events(vendor_id)
 - events_event_date_idx on events(event_date)
 - events_state_idx on events(state)
-- events_vendor_date_state_idx on events(vendor_id, event_date, state) -- briefing query
+- events_vendor_date_state_idx on events(vendor_id, event_date, state) — briefing query
 - invoices_vendor_id_idx on invoices(vendor_id)
 - invoices_state_idx on invoices(state)
 - invoices_due_date_idx on invoices(due_date)
 - invoices_lead_id_idx on invoices(lead_id)
 - invoices_created_at_idx on invoices(created_at desc)
+- messages_model_idx on messages(model) — AI cost aggregation queries
 
 ## Unique constraints
 - invoices_vendor_number_unique on invoices(vendor_id, invoice_number)
