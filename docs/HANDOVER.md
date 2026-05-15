@@ -162,3 +162,39 @@ Four files updated every session, no exceptions:
 
 B-sessions additionally maintain:
 - HANDOVER_BRIDE.md — written at end of every B-session, read at start of next B-session
+
+---
+
+## Session 6.5 — +91 number migration (completed same session as 8.5a)
+
+### What shipped
+
+**+917982159047 registered as WhatsApp sender** under existing WABA 1299109268220358. Business display name: The Dream Wedding. Status: Online. Same WABA means all existing Meta approvals and business verification transfer automatically.
+
+**Railway env vars updated:**
+- TWILIO_WHATSAPP_NUMBER = whatsapp:+917982159047 (vendor number, permanent)
+- TDW_WA_NUMBER = 917982159047 (vendor number, permanent)
+- BRIDE_WA_NUMBER = 14787788550 (bride number, permanent, used from B1)
+
+**Twilio webhooks set on +917982159047:**
+- Incoming: https://dream-os-production.up.railway.app/webhook/whatsapp
+- Status callback: https://dream-os-production.up.railway.app/webhook/twilio-status
+
+**+14787788550 webhooks:** left pointing at thedreamwedding.in (existing dream-wedding product). Correct — this is now the permanent bride number. Will be rewired to dream-os bride webhook at B1.
+
+**invite.js wa.me link parameterised (commit c277219):** was hardcoded to 14787788550. Now uses TDW_WA_NUMBER env var. Will automatically reflect +91 number.
+
+**Empty conversation history crash fix (commit b6a421c):** discovered during 6.5 smoke test. Old media-only messages (pre-Bug #1) stored with empty body in DB were being loaded into conversation history and sent to Anthropic → "messages.N: user messages must have non-empty content" → 500. Fix: added .filter(m => m.body && m.body.trim().length > 0) to both history loaders in src/agent/engine.js (vendor agent line ~74, couple agent line ~237).
+
+### Number routing — locked permanently
+- +917982159047 = vendors, thedreamai.in. Indian number, local trust.
+- +14787788550 = brides, thedreamwedding.in. US number, NRI brides, premium positioning.
+
+### Twilio template submission — PENDING
+Morning briefing template (dream_os_morning_briefing) must be submitted for +917982159047 via Twilio Content Template Builder. Required before morning briefing can fire to vendors inactive >24h. Submit at start of next session. Approval takes 1-7 days.
+
+### First thing next session
+1. Submit morning briefing template in Twilio Content Template Builder
+2. Smoke test: morning briefing fires to vendor inactive >24h on +917982159047
+3. Check: has +91 number received any vendor messages? Check Railway logs.
+4. Then proceed to Session 8 (admin polish)
