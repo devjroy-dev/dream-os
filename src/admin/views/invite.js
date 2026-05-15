@@ -1,8 +1,9 @@
 const { layout } = require('./layout');
+const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '917982159047';
 
 function invitePage({ success, successName, error } = {}) {
   const waLink = successName
-    ? `https://wa.me/14787788550?text=Hi`
+    ? `https://wa.me/${TDW_WA_NUMBER}?text=Hi`
     : null;
 
   const body = `
