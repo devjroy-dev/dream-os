@@ -374,6 +374,44 @@ const TOOLS = [
     },
   },
   {
+    name: 'add_client',
+    description: 'Add a client to the vendor\'s client list. Use when vendor explicitly asks to save someone as a client. e.g. "add client Priya, +919876543210", "save Anjali Sharma as a client", "add Rohit Mehta to my clients, anjali@gmail.com". Different from create_lead — clients are people the vendor has actively chosen to track (often already booked or paying). If a client with the same phone already exists for this vendor, the existing record is returned — no duplicate is created.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Client name as the vendor stated it. Required.',
+        },
+        phone: {
+          type: 'string',
+          description: 'Phone in E.164 format if given. e.g. +919876543210. Optional but strongly preferred — phone is the dedup key.',
+        },
+        email: {
+          type: 'string',
+          description: 'Email if mentioned. Optional.',
+        },
+        referrer_name: {
+          type: 'string',
+          description: 'Name of person who referred this client, if mentioned. Optional.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Any extra context vendor shared about the client. Optional.',
+        },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'list_clients',
+    description: 'List the vendor\'s most recent clients. Use when vendor asks "who are my clients", "show my clients", "list clients", etc. Returns up to 10 most recently added clients.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {
