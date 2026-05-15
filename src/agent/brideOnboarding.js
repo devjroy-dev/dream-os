@@ -173,6 +173,81 @@ Message: "${inboundMessage}"`;
   }
 }
 
+// ── Dodge transition composer — Haiku in BFF voice ──────────────────────────
+// When the bride dodges an onboarding question, we still want a graceful
+// one-line transition before the next question. The transition is composed
+// by Haiku so each one feels natural rather than scripted.
+//
+// Cost: one extra Haiku call (~30 tokens out) per dodge. Dodges are rare,
+// so the latency tax only hits the bride who already chose not to answer.
+//
+// Falls back to a safe hardcoded line if Haiku fails — never blocks the flow.
+
+const DODGE_FALLBACK = {
+  date:    `No rush — we'll figure that out as we go.`,
+  partner: `Fair — we'll come back to that.`,
+  city:    `Fair, big decision.`,
+  budget:  `Cool, we'll figure it out as we go.`,
+};
+
+async function composeDodgeTransition(dodgedField, nextQuestion, anthropic) {
+  const fieldDescriptions = {
+    date:    "when her wedding is",
+    partner: "her partner's name",
+    city:    "where the wedding will happen",
+    budget:  "her wedding budget",
+  };
+
+  const fieldDesc = fieldDescriptions[dodgedField] || "that question";
+
+  const prompt = `You are the bride's WhatsApp assistant. Voice: BFF with wit. Informal, brief, dry. No therapy voice, no cheerleader voice, no emojis.
+
+The bride just dodged a question about ${fieldDesc} during onboarding — she said something like "I don't know yet" or "not sure". She's not pressing for help, she just doesn't want to answer right now.
+
+Write ONE short transitional sentence (maximum 8 words) that:
+- Acknowledges the dodge without pressing
+- Does not ask any question
+- Does not moralize, doesn't say "no worries", doesn't sound corporate
+
+Then output a newline, then exactly this question text verbatim:
+"${nextQuestion}"
+
+Return ONLY the two-line reply. No preamble, no quotes, no markdown.
+
+EXAMPLES of good acknowledgments (do not copy verbatim, write fresh in same register):
+- "Fair, we'll figure that out as we go."
+- "Cool, no rush."
+- "Got it, parking that."
+- "Right, moving on."
+- "Sure, later."`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 50,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const raw = response.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim()
+      .replace(/^["'`]+|["'`]+$/g, '');
+
+    // Sanity check: must include the next question text verbatim.
+    // If the model paraphrased or dropped the question, fall back to safe shape.
+    if (!raw.includes(nextQuestion)) {
+      return `${DODGE_FALLBACK[dodgedField] || 'Right.'} ${nextQuestion}`;
+    }
+
+    return raw;
+  } catch (err) {
+    console.warn(`[brideOnboarding:composeDodge] Haiku failed — using fallback:`, err.message);
+    return `${DODGE_FALLBACK[dodgedField] || 'Right.'} ${nextQuestion}`;
+  }
+}
+
 // ── Main onboarding handler ──────────────────────────────────────────────────
 // Mirrors vendor onboarding.nextOnboardingMessage signature.
 
@@ -195,7 +270,8 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
       // Dodge handling first — if she dodges the date, skip and ask partner
       if (looksLikeDodge(inboundMessage)) {
         await supabase.from('couples').update({ onboarding_state: 'asked_partner' }).eq('id', couple.id);
-        return { reply: `No rush — we'll figure that out as we go. ${LOCKED.ask_partner}` };
+        const reply = await composeDodgeTransition('date', LOCKED.ask_partner, anthropic);
+        return { reply };
       }
 
       const extracted = await extractOnboardingDetails(inboundMessage, anthropic);
@@ -233,7 +309,8 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
     case 'asked_partner': {
       if (looksLikeDodge(inboundMessage)) {
         await supabase.from('couples').update({ onboarding_state: 'asked_city' }).eq('id', couple.id);
-        return { reply: `Fair — we'll come back to that. ${LOCKED.ask_city}` };
+        const reply = await composeDodgeTransition('partner', LOCKED.ask_city, anthropic);
+        return { reply };
       }
       // Light parsing: take the message as-is, trimmed. Strip preambles.
       const partnerName = inboundMessage.trim().replace(/^(his|her|their)\s+name'?s?\s+/i, '').replace(/^it'?s\s+/i, '').slice(0, 80);
@@ -256,7 +333,8 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
     case 'asked_city': {
       if (looksLikeDodge(inboundMessage)) {
         await supabase.from('couples').update({ onboarding_state: 'asked_budget' }).eq('id', couple.id);
-        return { reply: `Fair, big decision. ${LOCKED.ask_budget}` };
+        const reply = await composeDodgeTransition('city', LOCKED.ask_budget, anthropic);
+        return { reply };
       }
       const city = inboundMessage.trim().slice(0, 80);
 
