@@ -213,11 +213,25 @@ async function analyzeWithVision(imageUrl) {
     ],
   };
 
-  const res = await fetch(endpoint, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  let res;
+  try {
+    res = await fetch(endpoint, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+      signal:  controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('imagePipeline: Vision API request timed out after 10s');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
@@ -252,7 +266,7 @@ async function deriveAestheticTags(visionLabels, visionColors, anthropic) {
     model:      MODEL_HAIKU,
     max_tokens: 80,
     messages:   [{ role: 'user', content: prompt }],
-  });
+  }, { timeout: 8000 });
 
   const raw = response.content
     .filter(b => b.type === 'text')
