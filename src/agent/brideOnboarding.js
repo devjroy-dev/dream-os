@@ -18,8 +18,18 @@ const { MODEL_HAIKU } = require('./models');
 const LOCKED = {
   // Sent the moment a freshly-invited bride's first message arrives.
   // Triggered when couples.onboarding_state = 'new'.
-  greeting: () =>
-    `Swati said you'd be texting. Glad you're here. Before we begin, when is the big day?`,
+  // Takes the bride's first name. If name is missing/empty, falls back to
+  // the no-name version so the greeting still works for legacy invites.
+  greeting: (name) => {
+    const firstName = (name || '').trim().split(' ')[0];
+    return firstName
+      ? `Hi ${firstName} — Swati said you'd be texting. Glad you're here. Before we begin, when is the big day?`
+      : `Swati said you'd be texting. Glad you're here. Before we begin, when is the big day?`;
+  },
+
+  // Bare question text used by the dodge classifier to ground its judgement.
+  // Not sent on its own — the date question lives inside greeting().
+  ask_date: `When is the big day?`,
 
   // After date captured.
   ask_partner: `And who's the lucky person?`,
@@ -36,12 +46,13 @@ const LOCKED = {
     `So ${name || 'there'}, you're all set. I'm not just here to remind you of things, I'm here to help you decide whatever you need to for the wedding. Starting from your outfit to what songs to play for your special dance performance (I really hope you are doing one).\n\nLet's start with you telling me what all vendors you've already booked, or do you want to do that later?`
 };
 
-// ── Dodge detection — agent-composed graceful transitions ────────────────────
+// ── Dodge detection — Haiku-based intent classification ─────────────────────
 
-// Lightweight heuristic. Vague non-answers at any onboarding state count as
-// dodges. We capture nothing and advance to the next question with a soft
-// transition (composed in code here — not the agent loop, to keep state
-// transitions deterministic).
+// Earlier sessions used a regex match. That breaks on phrasings we didn't
+// anticipate ("I'd rather not say" gets saved as the literal name).
+// Now Haiku does the intent classification with the question as context.
+// Regex remains as the fallback if Haiku errors out — we never silently
+// accept a dodge as an answer.
 
 const DODGE_PHRASES = [
   /\bi\s*don'?t\s+know\b/i,
@@ -53,15 +64,58 @@ const DODGE_PHRASES = [
   /\bhaven'?t\s+(decided|figured|thought)\b/i,
   /\bwe'?ll\s+(see|figure|decide)\b/i,
   /\bnothing\s+(fixed|set|yet)\b/i,
+  /\b(rather|prefer)\s+not\b/i,
+  /\bprivate\b/i,
+  /\bpass\b/i,
   /^\s*(idk|dunno|nope|na)\s*$/i,
 ];
 
-function looksLikeDodge(message) {
+function looksLikeDodgeRegex(message) {
   const trimmed = (message || '').trim();
   if (!trimmed) return true;
-  // Very short non-affirmative answers
   if (/^\s*(no|nope|na|idk|dunno)\s*$/i.test(trimmed)) return true;
   return DODGE_PHRASES.some(rx => rx.test(trimmed));
+}
+
+async function looksLikeDodge(message, currentQuestion, anthropic) {
+  const trimmed = (message || '').trim();
+  if (!trimmed) return true;
+
+  // If anthropic client isn't provided (defensive — shouldn't happen),
+  // fall back to regex
+  if (!anthropic) {
+    return looksLikeDodgeRegex(trimmed);
+  }
+
+  const prompt = `You are evaluating a message in a wedding-planning onboarding conversation.
+
+Question asked: "${currentQuestion}"
+Bride's reply: "${trimmed}"
+
+Is the bride's reply a DODGE — meaning she's avoiding answering the question, declining to share, deferring, or saying she doesn't know — rather than actually answering it?
+
+Examples of DODGES: "I don't know yet", "not sure", "TBD", "skip", "later", "I'd rather not say", "private", "pass on that", "we'll see", "haven't decided", "next question", "rather keep that to myself".
+Examples of ANSWERS: "February 2027", "Rohit", "Goa", "around 35 lakhs", "Mumbai or Goa, undecided", "his name is Arjun", or anything that directly answers the question even if hedged.
+
+Reply with exactly one word: DODGE or ANSWER. No punctuation, no explanation.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 8,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const verdict = response.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim()
+      .toUpperCase();
+    return verdict.startsWith('DODGE');
+  } catch (err) {
+    console.warn(`[brideOnboarding:looksLikeDodge] Haiku failed — falling back to regex check:`, err.message);
+    return looksLikeDodgeRegex(trimmed);
+  }
 }
 
 // ── Haiku extractor — runs at asked_date, mirrors vendor's extractCategoryDetails
@@ -269,13 +323,13 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
     // hits this. We don't read her message content — we just greet her.
     case 'new': {
       await supabase.from('couples').update({ onboarding_state: 'asked_date' }).eq('id', couple.id);
-      return { reply: LOCKED.greeting() };
+      return { reply: LOCKED.greeting(user?.name) };
     }
 
     // ── asked_date: Haiku extraction across all four fields ─────────────────
     case 'asked_date': {
       // Dodge handling first — if she dodges the date, skip and ask partner
-      if (looksLikeDodge(inboundMessage)) {
+      if (await looksLikeDodge(inboundMessage, LOCKED.ask_date, anthropic)) {
         await supabase.from('couples').update({ onboarding_state: 'asked_partner' }).eq('id', couple.id);
         const reply = await composeDodgeTransition('date', LOCKED.ask_partner, anthropic);
         return { reply };
@@ -314,7 +368,7 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
 
     // ── asked_partner: capture partner name ─────────────────────────────────
     case 'asked_partner': {
-      if (looksLikeDodge(inboundMessage)) {
+      if (await looksLikeDodge(inboundMessage, LOCKED.ask_partner, anthropic)) {
         await supabase.from('couples').update({ onboarding_state: 'asked_city' }).eq('id', couple.id);
         const reply = await composeDodgeTransition('partner', LOCKED.ask_city, anthropic);
         return { reply };
@@ -338,7 +392,7 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
 
     // ── asked_city: capture wedding city ────────────────────────────────────
     case 'asked_city': {
-      if (looksLikeDodge(inboundMessage)) {
+      if (await looksLikeDodge(inboundMessage, LOCKED.ask_city, anthropic)) {
         await supabase.from('couples').update({ onboarding_state: 'asked_budget' }).eq('id', couple.id);
         const reply = await composeDodgeTransition('city', LOCKED.ask_budget, anthropic);
         return { reply };
@@ -361,7 +415,7 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
 
     // ── asked_budget: Haiku extracts integer rupees, then complete ──────────
     case 'asked_budget': {
-      if (looksLikeDodge(inboundMessage)) {
+      if (await looksLikeDodge(inboundMessage, LOCKED.ask_budget, anthropic)) {
         await supabase.from('couples').update({ onboarding_state: 'complete' }).eq('id', couple.id);
         return { reply: LOCKED.complete(user?.name) };
       }
