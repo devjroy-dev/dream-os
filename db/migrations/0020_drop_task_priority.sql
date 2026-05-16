@@ -1,0 +1,45 @@
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 0020 — Drop priority column from couple_tasks
+-- Date:    2026-05-16
+-- Session: B3 (mid-build correction)
+-- Author:  Dev
+-- ════════════════════════════════════════════════════════════════════
+--
+-- WHAT THIS REMOVES
+--   couple_tasks.priority — text column (CHECK in ('high','medium','low')),
+--                           default 'medium', shipped in migration 0019.
+--
+-- WHY
+--   Caught mid-build before task tools shipped: priority is the wrong
+--   abstraction for the bride product. Due date IS the urgency signal —
+--   closer the date, more urgent the task. Brides don't think in
+--   abstract priority levels; they think in dates and ceremonies.
+--
+--   Earlier in B3 we shipped 0019 with `priority` because the original
+--   roadmap (written at B2 close, before B3 planning) had it. The B3
+--   planning conversation surfaced architectural principle #1 — "no
+--   agent arithmetic, ever" — and priority is a soft form of agent
+--   judgment (Haiku deciding high/medium/low for the bride). Dropped
+--   from the design before any tool code shipped.
+--
+--   Since no application code ever read or wrote this column (the task
+--   tools weren't shipped yet), dropping it has zero impact. It's a
+--   clean retroactive correction.
+--
+-- ORDERING IN list_tasks (now implemented in task tool layer, not DB)
+--   1. Tasks with due_date: ASC (soonest first; overdue bubbles to top)
+--   2. Tasks without due_date: at bottom, sorted by created_at DESC
+--
+-- IF PRIORITY IS NEEDED LATER
+--   Re-add as a single boolean `is_urgent` (default false). One column,
+--   no enum, no judgment by the model — only the bride sets it via
+--   explicit urgency language. Migration would be additive.
+--
+-- IMMUTABILITY: never edit this file. Changes go in 0021+.
+-- ════════════════════════════════════════════════════════════════════
+
+alter table couple_tasks drop column if exists priority;
+
+-- ════════════════════════════════════════════════════════════════════
+-- End of 0020_drop_task_priority.sql
+-- ════════════════════════════════════════════════════════════════════
