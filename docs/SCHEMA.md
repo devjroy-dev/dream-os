@@ -1,9 +1,9 @@
 # dream-os — Schema Reference (Vendor + Bride)
 **Last updated:** 2026-05-16
-**Session:** B2 complete
+**Session:** B2 complete (+ hotfix 0018 applied post-B2)
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0017_circle_sessions.sql
-**Next migration:** 0018_bride_planner.sql (B3.1 — pending token expiry + B3)
+**Latest migration applied:** 0018_fix_muse_saves_fk.sql
+**Next migration:** 0019_bride_planner.sql (B3 — tasks, bookings, receipts)
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -25,6 +25,7 @@
 | **0015_pronouns_and_dedup.sql** | **2026-05-16** | **B1** | **users.pronouns text column (CHECK 'she'/'he'), couples.user_id unique constraint, invite_couple() rewritten to 3-arg signature** |
 | **0016_muse_and_circle.sql** | **2026-05-16** | **B2** | **muse_saves table, circle_members table, circle_activity table, conversations.kind widened to include circle_thread, invite_circle_member() function, claim_circle_invite() function** |
 | **0017_circle_sessions.sql** | **2026-05-16** | **B2** | **circle_sessions table, circle_activity.session_id FK column + two indexes** |
+| **0018_fix_muse_saves_fk.sql** | **2026-05-16** | **B2 hotfix** | **muse_saves.saved_by_user_id FK changed from ON DELETE RESTRICT to ON DELETE CASCADE (unblocked admin "Delete couple" cascade). File backfilled to repo after direct SQL Editor application.** |
 
 ## Tables
 
@@ -376,7 +377,7 @@ Bride's mood board. One row per saved image, link, or vendor pin.
 | caption | text | Optional. Text that arrived with the image/link. Max 500 chars. |
 | aesthetic_tags | jsonb | Array of strings from 12-value taxonomy (brideAesthetics.js). |
 | vision_raw | jsonb | Full Google Vision API response. Used by B4 Surprise Me for dominant color aggregation. |
-| saved_by_user_id | uuid | FK users(id). Who triggered the save. |
+| saved_by_user_id | uuid | FK users(id) ON DELETE CASCADE (changed from RESTRICT in 0018 hotfix). Who triggered the save. |
 | saved_by_role | text | CHECK: bride / circle_member |
 | created_at | timestamptz | |
 | updated_at | timestamptz | Auto-stamped by trigger. |
@@ -451,8 +452,9 @@ Bride migrations continue the vendor sequence. No separate numbering. One migrat
 | ~~0015_pronouns_and_dedup.sql~~ | B1 | ✅ Applied 2026-05-16 |
 | ~~0016_muse_and_circle.sql~~ | B2 | ✅ Applied 2026-05-16 |
 | ~~0017_circle_sessions.sql~~ | B2 | ✅ Applied 2026-05-16 |
-| 0018_bride_planner.sql | B3.1 + B3 | couple_tasks, couple_receipts, pending token expiry |
-| 0019_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
+| ~~0018_fix_muse_saves_fk.sql~~ | B2 hotfix | ✅ Applied 2026-05-16 (post-B2 SQL Editor; backfilled to repo) |
+| 0019_bride_planner.sql | B3 | couple_tasks, couple_bookings, couple_receipts (with booking_id FK), record_payment() function |
+| 0020_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
 
 Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail on B2+ migrations.
 
