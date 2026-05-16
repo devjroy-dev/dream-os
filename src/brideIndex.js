@@ -64,7 +64,7 @@ app.locals.supabase = supabase;
 // append in messages ("Love this https://pin.it/abc!"). [^\s.,!?;:'"<>] keeps
 // matching until whitespace or one of those punctuation chars — preventing
 // the dot/comma/bang from being pulled into the URL itself.
-const LINK_REGEX = /\bhttps?:\/\/(?:www\.|m\.)?(?:pinterest\.[a-z.]+\/(?:pin\/|search\/)|pin\.it\/|instagram\.com\/(?:p|reel|tv)\/|instagr\.am\/(?:p|reel)\/)[^\s.,!?;:'"<>]+/i;
+const LINK_REGEX = /\bhttps?:\/\/(?:www\.|m\.)?(?:pinterest\.[a-z]{2,6}(?:\.[a-z]{2})?\/(?:pin\/|search\/)|pin\.it\/|instagram\.com\/(?:p|reel|tv)\/|instagr\.am\/(?:p|reel)\/)[^\s.,!?;:'"<>]+/i;
 
 function extractMuseUrl(text) {
   if (!text || typeof text !== 'string') return null;
