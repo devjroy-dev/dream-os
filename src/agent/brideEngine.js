@@ -471,6 +471,14 @@ async function execAddEvent({ input, couple, supabase }) {
 // couple's task_id returns the same error.
 
 const ALLOWED_TASK_STATUSES = new Set(['pending', 'done']);
+
+// ── Shared validators (used by task executors and any future entity executors) ──
+// UUID_REGEX validates the v4-shape uuid string used for couple_tasks.id,
+// couple_bookings.id, couple_receipts.id, events.id, muse_saves.id, etc.
+// isValidDateString validates the YYYY-MM-DD format used for due_date,
+// receipt_date, balance_due_date, event_date. Both are intentionally module-
+// scope so all executors share them. DO NOT re-declare locally inside an
+// executor — it shadows the shared version and creates refactor traps.
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isValidDateString(s) {
@@ -488,9 +496,14 @@ async function execCreateTask({ input, couple, supabase }) {
   if (due_date && isValidDateString(due_date)) {
     dueDateValue = due_date;
   } else if (due_date) {
-    // Malformed dates are silently dropped — task is still created without a due_date.
-    // The agent should reformat before retrying if needed.
-    console.warn('[bride-tool:create_task] dropping malformed due_date:', due_date);
+    // M2 fix: return a hard error instead of silently dropping the date.
+    // Silent drop creates agent/DB divergence — bride hears "task added for
+    // Monday" but stored row has no date. Forcing the agent to reformat and
+    // retry keeps reply and DB consistent. The bad input goes to logs (for
+    // our debugging) but NOT into the returned error (to avoid leaking
+    // bride text into log noise downstream).
+    console.warn('[bride-tool:create_task] rejecting malformed due_date:', due_date);
+    return { ok: false, error: 'due_date must be YYYY-MM-DD format' };
   }
 
   const { data, error } = await supabase
@@ -522,16 +535,32 @@ async function execListTasks({ input, couple, supabase }) {
     .select('id, title, status, due_date, event_name, notes, created_at, updated_at')
     .eq('couple_id', couple.id);
 
-  // status filter: default to 'pending' if not specified or 'all'
+  // status filter: default to 'pending' if not specified
+  // L3 fix: make 'all' explicit and treat unknown values as safe default (pending).
+  // Tool schema enum should prevent unknown values but defensive coding here
+  // protects against any non-schema-validated caller (tests, internal use).
   if (!status || status === 'pending') {
     query = query.eq('status', 'pending');
   } else if (status === 'done') {
     query = query.eq('status', 'done');
+  } else if (status === 'all') {
+    // explicit "all" → no status filter
+  } else {
+    // unknown value → safe default (pending) rather than silently returning everything
+    query = query.eq('status', 'pending');
   }
-  // status === 'all' → no filter
 
-  if (due_before && isValidDateString(due_before)) {
-    query = query.lte('due_date', due_before);
+  // due_before filter: hard error on malformed date.
+  // I2 fix: symmetric with M2 (execCreateTask). Silent drop would return all
+  // tasks up to the limit, which is wrong query results — not stored data,
+  // but still a divergence between what the agent asked for and what came back.
+  if (due_before) {
+    if (isValidDateString(due_before)) {
+      query = query.lte('due_date', due_before);
+    } else {
+      console.warn('[bride-tool:list_tasks] rejecting malformed due_before:', due_before);
+      return { ok: false, error: 'due_before must be YYYY-MM-DD format' };
+    }
   }
 
   if (event_name && typeof event_name === 'string' && event_name.trim()) {
@@ -601,22 +630,29 @@ async function execUpdateTask({ input, couple, supabase }) {
     updates.title = title.trim().slice(0, 200);
   }
 
-  // due_date: literal "null" string clears the value; valid YYYY-MM-DD sets it
-  if (due_date === 'null') {
+  // M1 fix: clear-field sentinel accepts all three natural model conventions:
+  //   - "null" (4-char string, original convention documented in tool schema)
+  //   - null (JSON null — Haiku may emit despite schema type "string")
+  //   - "" (empty string — natural interpretation of "remove the date")
+  // Without this, the agent says "removed the deadline" but the field is not
+  // cleared, producing silent agent/DB divergence.
+
+  // due_date: clear on null sentinel; valid YYYY-MM-DD sets it.
+  if (due_date === 'null' || due_date === null || due_date === '') {
     updates.due_date = null;
   } else if (isValidDateString(due_date)) {
     updates.due_date = due_date;
   }
 
-  // event_name: literal "null" string clears; non-empty trimmed string sets
-  if (event_name === 'null') {
+  // event_name: clear on null sentinel; non-empty trimmed string sets it.
+  if (event_name === 'null' || event_name === null || event_name === '') {
     updates.event_name = null;
   } else if (typeof event_name === 'string' && event_name.trim()) {
     updates.event_name = event_name.trim().slice(0, 80);
   }
 
-  // notes: literal "null" string clears; non-empty trimmed string sets
-  if (notes === 'null') {
+  // notes: clear on null sentinel; non-empty trimmed string sets it.
+  if (notes === 'null' || notes === null || notes === '') {
     updates.notes = null;
   } else if (typeof notes === 'string' && notes.trim()) {
     updates.notes = notes.trim().slice(0, 500);
@@ -652,34 +688,30 @@ async function execDeleteTask({ input, couple, supabase }) {
     return { ok: false, error: 'task_id required (UUID format)' };
   }
 
-  // Fetch first so we can return the deleted row content for the agent's reply
-  const { data: existing, error: fetchError } = await supabase
-    .from('couple_tasks')
-    .select('id, title, status, due_date, event_name')
-    .eq('id', task_id)
-    .eq('couple_id', couple.id)
-    .maybeSingle();
-
-  if (fetchError) {
-    console.error('[bride-tool:delete_task] fetch error:', fetchError);
-    return { ok: false, error: fetchError.message };
-  }
-  if (!existing) {
-    return { ok: false, error: 'task not found or not yours' };
-  }
-
-  const { error: deleteError } = await supabase
+  // L2 fix: atomic single-call delete (mirrors execCompleteTask/execUpdateTask).
+  // The PostgREST .delete().eq().select().single() pattern deletes the row and
+  // returns its content in one round-trip. PGRST116 ("zero rows") means the row
+  // didn't exist or belonged to another couple — same error, prevents fishing.
+  // This is the CANONICAL DELETE PATTERN for the bride product. The remaining
+  // three delete executors (delete_event, delete_booking, delete_receipt) must
+  // follow this shape, not the older fetch-then-delete pattern.
+  const { data, error } = await supabase
     .from('couple_tasks')
     .delete()
     .eq('id', task_id)
-    .eq('couple_id', couple.id);
+    .eq('couple_id', couple.id)
+    .select('id, title, status, due_date, event_name')
+    .single();
 
-  if (deleteError) {
-    console.error('[bride-tool:delete_task] delete error:', deleteError);
-    return { ok: false, error: deleteError.message };
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'task not found or not yours' };
+    }
+    console.error('[bride-tool:delete_task] delete error:', error);
+    return { ok: false, error: error.message };
   }
 
-  return { ok: true, deleted_task: existing };
+  return { ok: true, deleted_task: data };
 }
 
 // ── list_muse executor (B2) ──────────────────────────────────────────
@@ -721,7 +753,8 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
   // the system note — if the model truncates or reformats it, we get a bad
   // string. Return a clear error so the agent can inform the bride rather than
   // silently returning 0 saves.
-  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  // (UUID_REGEX is defined at module scope under "Shared validators" — no
+  //  local re-declaration; L1 audit fix.)
   let sessionSaveIds = null;
   if (session_id && typeof session_id === 'string' && session_id.trim()) {
     const trimmedSessionId = session_id.trim();
