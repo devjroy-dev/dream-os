@@ -1,9 +1,9 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-15
-**Session:** 8.5a (in progress)
+**Last updated:** 2026-05-16
+**Session:** B1 complete
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0012_routing_disambiguation.sql
-**Next migration:** 0013_couples_onboarding.sql (B1 — not yet applied)
+**Latest migration applied:** 0015_pronouns_and_dedup.sql
+**Next migration:** 0016_muse_and_circle.sql (B2 — not yet built)
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -20,6 +20,9 @@
 | 0010_expenses.sql | 2026-05-15 | 8.3 | expenses table |
 | 0011_clients.sql | 2026-05-15 | 8.5 | clients table, leads.client_id, invoices.client_id |
 | 0012_routing_disambiguation.sql | 2026-05-15 | 8.5 | users.pending_routing_context |
+| **0013_couples_onboarding.sql** | **2026-05-16** | **B1** | **couples.onboarding_state, couples.nudge_sent_at, couple_state table, events.kind widened to 12 values, events/notes nullable vendor_id with couple_id + XOR, invite_couple() function** |
+| **0014_conversations_xor.sql** | **2026-05-16** | **B1** | **conversations.vendor_id nullable, conversations.couple_id added, conversations_owner_xor CHECK (bugfix discovered live)** |
+| **0015_pronouns_and_dedup.sql** | **2026-05-16** | **B1** | **users.pronouns text column (CHECK 'she'/'he'), couples.user_id unique constraint, invite_couple() rewritten to 3-arg signature** |
 
 ## Tables
 
@@ -30,6 +33,7 @@
 | phone | text UNIQUE NOT NULL | always E.164 e.g. +918757788550 |
 | name | text | first name, set on invite or from WhatsApp profile |
 | email | text | collected naturally in conversation |
+| **pronouns** | **text** | **B1: 'she' or 'he' (CHECK constraint). Required at bride invite. NULL on legacy users + all vendors until Session 9 parity work. Read by bride system prompt for voice adaptation.** |
 | pending_routing_context | jsonb | Session 8.5. Stores either pending-question state {candidate_vendor_ids, original_message, asked_at} or sticky-resolution state {sticky_vendor_id, sticky_until}. NULL when no routing context active. |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
@@ -64,31 +68,38 @@
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | auto-generated |
-| user_id | uuid FK -> users.id | CASCADE delete |
-| partner_name | text | |
-| wedding_date | date | |
-| wedding_city | text | |
-| budget_total | integer | in Rs |
-| events_planned | jsonb | e.g. ['mehndi','sangeet','wedding','reception'] |
+| user_id | uuid FK -> users.id | CASCADE delete. **UNIQUE constraint added in 0015** to prevent duplicate invites. |
+| partner_name | text | nullable, populated during onboarding |
+| wedding_date | date | nullable, populated during onboarding via Haiku date extraction |
+| wedding_city | text | nullable, populated during onboarding |
+| budget_total | integer | in Rs (nullable, Haiku extracts e.g. "35L" → 3500000) |
+| events_planned | jsonb | e.g. ['mehndi','sangeet','wedding','reception'] (nullable) |
 | planning_state | text | browsing or shortlisting or booked or planning or wedding_done |
+| **onboarding_state** | **text** | **B1: new, asked_date, asked_partner, asked_city, asked_budget, complete. Default 'new'.** |
+| **nudge_sent_at** | **timestamptz** | **B1: for Session 9 vendor-side nudge logic. NULL until first nudge sent.** |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
-NOTE: couples table exists but is essentially unused as of Session 8.5. Routing identity stitched via users.phone + conversations.counterparty_phone. This table becomes real and fully populated when B1 ships. The "essentially unused" note is deleted at end of B4.
+Constraints:
+- `couples_user_id_unique` (added 0015) — prevents duplicate couples rows for same user
 
 ### conversations
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | auto-generated |
-| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| vendor_id | uuid FK -> vendors.id | **B1: now nullable (was NOT NULL)**. CASCADE delete. |
+| **couple_id** | **uuid FK -> couples.id** | **B1: new column. CASCADE delete. NULL for vendor conversations.** |
 | counterparty_user_id | uuid FK -> users.id | nullable |
 | counterparty_phone | text | denormalized for WhatsApp routing |
-| kind | text | vendor_self or couple_thread or network |
+| kind | text | vendor_self, couple_thread, couple_self (B1 new), network |
 | state | text | new or qualifying or negotiating or booked or planning or event_done or closed |
 | mode | text | auto or draft or manual |
 | last_message_at | timestamptz | updated on every message |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
+
+Constraints:
+- `conversations_owner_xor` (added 0014) — exactly one of vendor_id or couple_id is set
 
 Realtime: enabled
 
@@ -126,15 +137,30 @@ Realtime: enabled
 | pending_actions | integer | denormalized count |
 | updated_at | timestamptz | auto via trigger |
 
+### couple_state
+| Column | Type | Notes |
+|---|---|---|
+| couple_id | uuid PK FK -> couples.id | CASCADE delete |
+| summary | text | free-form summary the agent maintains, parallel to vendor_state.summary |
+| vendor_shortlist | jsonb | default '[]'. List of vendors the bride is considering. Populated B4 + Session 9. |
+| taste_notes | text | aesthetic preferences captured by the agent (e.g. "Bride prefers moody editorial style") |
+| updated_at | timestamptz | auto via trigger |
+
+Added in migration 0013. Mirrors vendor_state pattern: one row per couples row, auto-created on invite. Bride agent does NOT cache recent_notes here (the system prompt queries notes directly via buildDynamicContext — different pattern from vendor side).
+
 ### notes
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | auto-generated |
-| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| vendor_id | uuid FK -> vendors.id | **B1: now nullable**. CASCADE delete. |
+| **couple_id** | **uuid FK -> couples.id** | **B1: new column. CASCADE delete. Exactly one of vendor_id or couple_id is set (XOR).** |
 | conversation_id | uuid FK -> conversations.id | SET NULL on delete |
 | content | text NOT NULL | short factual note |
-| tags | text[] | e.g. ['lead','pricing','onboarding','tdw','travel'] |
+| tags | text[] | e.g. ['lead','pricing','onboarding','tdw','travel','detail'] |
 | created_at | timestamptz | auto |
+
+Constraints:
+- `notes_owner_xor` (added 0013) — exactly one of vendor_id or couple_id is set
 
 Realtime: enabled
 
@@ -182,18 +208,21 @@ Realtime: enabled
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | auto-generated |
-| vendor_id | uuid FK -> vendors.id | CASCADE delete |
-| title | text NOT NULL | short event title e.g. "Shoot for Priya" |
+| vendor_id | uuid FK -> vendors.id | **B1: now nullable**. CASCADE delete. |
+| **couple_id** | **uuid FK -> couples.id** | **B1: new column. CASCADE delete. Exactly one of vendor_id or couple_id is set (XOR).** |
+| title | text NOT NULL | short event title e.g. "Shoot for Priya" or "Mehndi" |
 | event_date | date NOT NULL | required |
 | event_time | time | nullable |
-| kind | text NOT NULL | CHECK: shoot / call / meeting / task / reminder / recce / other |
-| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional. |
+| kind | text NOT NULL | **B1: enum widened to 12 values.** CHECK: shoot / call / meeting / task / reminder / recce / fitting / trial / family / ceremony / social / other |
+| linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional. Vendor side only. |
 | state | text NOT NULL | CHECK: upcoming / done / cancelled. Default: upcoming. |
 | notes | text | location, contact, prep notes |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 
-NOTE: Migration 0015 (B3) adds couple_id column to this table so it serves both vendors and brides.
+Constraints:
+- `events_owner_xor` (added 0013) — exactly one of vendor_id or couple_id is set
+
 Realtime: enabled
 
 ### invoices
@@ -329,12 +358,14 @@ Bride migrations continue the vendor sequence. No separate numbering. One migrat
 
 | File | Session | What it adds |
 |---|---|---|
-| 0013_couples_onboarding.sql | B1 | couples.onboarding_state, couples.whatsapp_linked, couple_state table |
-| 0014_muse_circle.sql | B2 | muse_saves table, circle_members table, circle_activity table |
-| 0015_bride_planner.sql | B3 | couple_tasks, couple_expenses, couple_budget, couple_id column on events |
-| 0016_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags |
+| ~~0013_couples_onboarding.sql~~ | B1 | ✅ Applied 2026-05-16 |
+| ~~0014_conversations_xor.sql~~ | B1 | ✅ Applied 2026-05-16 (bugfix discovered live) |
+| ~~0015_pronouns_and_dedup.sql~~ | B1 | ✅ Applied 2026-05-16 |
+| 0016_muse_and_circle.sql | B2 | muse_saves table, circle_members table, circle_activity table |
+| 0017_bride_planner.sql | B3 | couple_tasks, couple_expenses, couple_budget |
+| 0018_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags |
 
-Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail.
+Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail on B2+ migrations.
 
 ---
 
@@ -347,8 +378,8 @@ The existing tdw-2 web app has a naming inconsistency baked into its API:
 - Both values are the same: session.id from localStorage couple_session
 This inconsistency is carried as-is through all B-sessions. Do NOT fix mid-flight. Resolved at Session 9 consolidation. Anyone reading this: do not rename columns or parameters without a full coordinated migration.
 
-### couples table — currently sparse
-Exists since migration 0001 but essentially unused as of Session 8.5. Routing identity stitched via users.phone + conversations.counterparty_phone. Becomes real and fully populated when B1 ships. "Essentially unused" note deleted at end of B4.
+### couples table — populated as of B1
+Exists since migration 0001. Was sparse until B1 (2026-05-16) when bride product went live. Now real and populated. The "essentially unused" caveat is resolved.
 
-### events table — currently vendor-scoped only
-Migration 0007. Has vendor_id FK. Migration 0015 (B3) adds couple_id column. Additive change — existing vendor rows unaffected.
+### events table — now serves both vendors and brides
+Migration 0007 added events with vendor_id only. Migration 0013 (B1) made vendor_id nullable, added couple_id with XOR constraint, and widened the kind enum to 12 values. Both vendors and brides now use this table.

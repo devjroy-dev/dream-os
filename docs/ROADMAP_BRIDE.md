@@ -1,7 +1,8 @@
 # dream-os — Bride & Couple Roadmap
-**Last updated:** 2026-05-15
-**Current session:** Pre-B1 (architecture locked, not yet built)
-**Status:** Expanded from skeleton to full B1-B4 plan + convergence
+**Last updated:** 2026-05-16
+**Current session:** B1 complete, B2 next
+**Status:** B1 (Foundation) shipped. B2-B4 planned. Convergence at Session 9.
+**Latest bride product version:** 0.8.5a.1-b1
 
 ---
 
@@ -312,49 +313,47 @@ Once bride product is at parity and Discover is live, the +91 vendor number can 
 
 Each B-session ships a tight scope, tested live, with four documents updated at the end.
 
-### B1 — Couple identity + WhatsApp onboarding (90-120 min)
+### B1 — Couple identity + WhatsApp onboarding ✅ COMPLETE
+**Status:** ✅ Shipped 2026-05-16. Version 0.8.5a.1-b1.
+**Final commit:** c4cedcc
+**Time taken:** ~6 hours including live debugging and two patches
 
-**Goal:** A bride with a valid `couple_invites` token can text +14787788550 and complete onboarding. Her `couples` row, wedding details, and conversation are stored in dream-os Supabase. Admin (Swati) can generate tokens and see couples list.
+**What actually shipped (differs slightly from original B1 spec — see HANDOVER_BRIDE.md for full inventory):**
 
-**See `docs/B1_SPEC.md` for full detail.**
+Architectural changes from original spec:
+- **Phone-as-gate instead of token invites.** No `couple_invites` table. Swati invites by phone + name + pronouns via admin. Bride messages from that phone → phone-gate passes. Phone is by definition her WhatsApp number at every entry point.
+- **No `whatsapp_linked` column.** Onboarding state alone is sufficient.
+- **Added `users.pronouns` column** (not in original spec). Founder added this during testing to support both bride and groom.
+- **Three migrations instead of one** because two bugs surfaced during live testing: 0014 (conversations XOR) and 0015 (pronouns + invite dedup + 3-arg invite_couple).
 
-**Migrations:** `0013_couples_onboarding.sql`
-- `couples.onboarding_state` (text — `new` / `asked_partner` / `asked_date` / `asked_city` / `asked_budget` / `complete`)
-- `couples.whatsapp_linked` (boolean — true when onboarded via WhatsApp)
-- `couples.nudge_sent_at` (timestamptz — for the Session 9 vendor-side nudge logic, but column added now to avoid later ALTER)
-- `couple_state` table (couple_id PK, summary text, vendor_shortlist jsonb default '[]', taste_notes text, updated_at)
-- `couple_invites` table (id, token, bride_name, generated_by, used, used_at, used_by_phone, created_at)
+**Migrations shipped:**
+- `0013_couples_onboarding.sql` — couples.onboarding_state, couple_state table, events.kind enum widened to 12, events/notes/conversations XOR for vendor_id/couple_id (conversations fixed in 0014), invite_couple() function
+- `0014_conversations_xor.sql` — conversations.vendor_id nullable + couple_id added + XOR constraint (bugfix discovered live)
+- `0015_pronouns_and_dedup.sql` — users.pronouns, couples.user_id unique, invite_couple() 3-arg signature
 
-**Code:**
-- `src/brideIndex.js` — bride webhook server (Railway service "dream-wedding")
-- `src/agent/brideEngine.js` — agentic loop, mirrors engine.js, **no terminal reply tool, no first-question strip**
-- `src/agent/brideSystemPrompt.js` — BFF voice, locked at B1
-- `src/agent/brideTools.js` — 3 tools: `note_to_self`, `save_wedding_detail`, `add_event`
-- `src/agent/brideOnboarding.js` — token validation → state machine → onboarding completion
-- `src/lib/coupleIdentity.js` — shared helper for couples row creation
-- Twilio webhook for +14787788550 → src/brideIndex.js
-- Railway env: `BRIDE_TWILIO_WHATSAPP_NUMBER = whatsapp:+14787788550`
+**Code shipped:** see HANDOVER_BRIDE.md "What shipped in B1 — file inventory" for the complete list.
 
-**Admin:**
-- `/admin/couples/invites` — token generation page (form + table of generated tokens)
-- `/admin/couples/list` — couples list (name, onboarding state, wedding date, city, last message at)
-- `/admin/couples/:id` — couple detail (profile + conversation history)
+**Live verification:**
+- Test couple `7abccc1b-...` (Swati Couple Test) walked through full onboarding from her phone
+- Dodged date question → captured nothing, moved on without "circle back" phrasing
+- Dodged partner question with "I'd rather not say" → Haiku correctly classified as DODGE, did NOT save the literal text
+- Captured city ("Goa") and budget ("35l" → 3500000) correctly
+- Completion message fired with bride's name
+- Defer response ("later") triggered locked "👍 You know where to find me" branch
 
-**Smoke tests:**
-- Generate token in admin → wa.me link returned correctly
-- Tap link → WhatsApp opens with token pre-filled
-- Send → bride agent receives, validates, greets by name
-- Walk through onboarding → couples row populated, conversation kind=couple_self, agent uses BFF voice
-- Invalid/missing token → dead-end message, no couples row created
-- Used token re-attempted → same dead-end
-- Add an event ("fitting on Friday 3pm") → events row created with couple_id
-- Note something ("Mom prefers gold") → notes row created with couple_id
+**Locked decisions for future B-sessions:**
+- Phone-as-gate is the default. Token invites added later only if needed (see HANDOVER_BRIDE.md "Open questions")
+- Haiku-based intent classification preferred over regex for any natural-language judgement
+- Writer .py protocol is mandatory for all file changes (see HANDOVER_BRIDE.md)
+- Versioning scheme: bride sessions are `0.8.5a.<N>-b<N>`. Convergence is `0.9.0`
+
+**See `docs/HANDOVER_BRIDE.md` for full B1 build log, bugs caught, vendor parity items, and operational state.**
 
 ### B2 — Muse + Circle (120-150 min)
 
 **Goal:** Bride has a mood board. Her circle can contribute (with bounded permissions). AI summarizes circle activity in BFF voice.
 
-**Migrations:** `0014_muse_and_circle.sql`
+**Migrations:** `0016_muse_and_circle.sql`
 - `muse_saves` table (id, couple_id, source_type [image/link/vendor], source_url, image_url, caption, aesthetic_tags jsonb, saved_by_user_id, created_at)
 - `circle_members` table (id, couple_id, invitee_phone, invitee_name, role [partner/family/inner_circle], invite_token, status [pending/active/removed], joined_at, last_checked_in_at, created_at)
 - `circle_activity` table (id, couple_id, actor_user_id, actor_name, activity_type [save/like/add/comment], subject_id, subject_type [muse_save], comment_text, created_at)
@@ -382,7 +381,7 @@ Each B-session ships a tight scope, tested live, with four documents updated at 
 
 **Goal:** Bride has complete planning substrate. Tasks, schedule, receipt vault. Morning nudge live.
 
-**Migrations:** `0015_bride_planner.sql`
+**Migrations:** `0017_bride_planner.sql`
 - `couple_tasks` table (id, couple_id, title, status [pending/done], priority [high/medium/low], due_date, event_name, notes, created_at, updated_at)
 - `couple_receipts` table (id, couple_id, amount, vendor_name, description, receipt_date, image_url, tags text[], created_at)
 - `events.couple_id` column added (events already exists with vendor_id; column is additive)
@@ -421,7 +420,7 @@ Each B-session ships a tight scope, tested live, with four documents updated at 
 
 **Goal:** Bride has all her vendors in one place. Surprise Me works. Silent vendor-side onboarding live.
 
-**Migrations:** `0016_vendor_connections_and_discover.sql`
+**Migrations:** `0018_vendor_connections_and_discover.sql`
 - `couple_vendor_connections` table (id, couple_id, vendor_id, state [shortlisted/enquired/booked/passed], source [muse/discover/whatsapp/manual], shortlisted_at, enquired_at, notes, created_at, updated_at)
 - `vendors.aesthetic_tags` jsonb (Swati-managed portfolio tags for Surprise Me matching)
 - `discover_readiness` table (city, category, ready boolean, ready_at timestamptz, primary key (city, category))
