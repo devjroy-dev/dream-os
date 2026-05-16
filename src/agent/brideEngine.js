@@ -289,6 +289,18 @@ async function executeBrideTool({ name, input, couple, user, conversation, supab
       return await execDeleteTask({ input, couple, supabase });
     }
 
+    case 'list_events': {
+      return await execListEvents({ input, couple, supabase });
+    }
+
+    case 'update_event': {
+      return await execUpdateEvent({ input, couple, supabase });
+    }
+
+    case 'delete_event': {
+      return await execDeleteEvent({ input, couple, supabase });
+    }
+
     case 'list_muse': {
       return await execListMuse({ input, couple, supabase, mediaUrlsToReturn });
     }
@@ -712,6 +724,217 @@ async function execDeleteTask({ input, couple, supabase }) {
   }
 
   return { ok: true, deleted_task: data };
+}
+
+// ── event executors (B3 Step 3) ───────────────────────────────────────
+// 3 tools: list_events, update_event, delete_event.
+// add_event already shipped at B1; the read/edit/delete surface is added here
+// to make the event tooling complete.
+//
+// Important: the events table is SHARED between vendors and brides via XOR
+// ownership (events_owner_xor constraint, migration 0013) — exactly one of
+// vendor_id or couple_id is set per row. All bride-side executors MUST scope
+// every query to couple_id at the SQL WHERE level. Same security property as
+// the task tools.
+//
+// All three inherit the post-audit canonical patterns:
+//   - Atomic single-call mutations (L2 pattern)
+//   - PGRST116 mapped to "not found or not yours"
+//   - "null" / null / "" sentinel clears nullable fields (M1 pattern)
+//   - Hard error on malformed dates (M2 pattern), input not leaked in error
+//   - Safe default on unknown enum value (L3 pattern)
+//   - Module-level UUID_REGEX and isValidDateString (no re-declaration)
+//
+// Note: ALLOWED_KINDS is defined at line 403 (above execAddEvent, B1). Reused
+// here for kind validation in update_event.
+
+const ALLOWED_EVENT_STATES = new Set(['upcoming', 'done', 'cancelled']);
+const TIME_REGEX = /^\d{1,2}:\d{2}$/;
+
+function normalizeEventTime(t) {
+  // Normalises "9:30" → "09:30", "15:30" → "15:30". Returns null on malformed.
+  if (typeof t !== 'string') return null;
+  const trimmed = t.trim();
+  if (!TIME_REGEX.test(trimmed)) return null;
+  return trimmed.length === 4 ? `0${trimmed}` : trimmed;
+}
+
+async function execListEvents({ input, couple, supabase }) {
+  const { date_from, date_to, kind, state, limit } = input || {};
+
+  let query = supabase
+    .from('events')
+    .select('id, title, event_date, event_time, kind, state, notes, created_at, updated_at')
+    .eq('couple_id', couple.id);
+
+  // date_from filter: hard error on malformed (M2/I2 pattern)
+  if (date_from) {
+    if (isValidDateString(date_from)) {
+      query = query.gte('event_date', date_from);
+    } else {
+      console.warn('[bride-tool:list_events] rejecting malformed date_from:', date_from);
+      return { ok: false, error: 'date_from must be YYYY-MM-DD format' };
+    }
+  }
+
+  // date_to filter: same pattern
+  if (date_to) {
+    if (isValidDateString(date_to)) {
+      query = query.lte('event_date', date_to);
+    } else {
+      console.warn('[bride-tool:list_events] rejecting malformed date_to:', date_to);
+      return { ok: false, error: 'date_to must be YYYY-MM-DD format' };
+    }
+  }
+
+  // kind filter: silent skip if unknown value (schema enum should prevent)
+  if (kind && ALLOWED_KINDS.has(kind)) {
+    query = query.eq('kind', kind);
+  }
+
+  // state filter: default to 'upcoming'; explicit-all branch + safe default (L3 pattern)
+  if (!state || state === 'upcoming') {
+    query = query.eq('state', 'upcoming');
+  } else if (state === 'done') {
+    query = query.eq('state', 'done');
+  } else if (state === 'cancelled') {
+    query = query.eq('state', 'cancelled');
+  } else if (state === 'all') {
+    // explicit "all" → no state filter
+  } else {
+    // unknown value → safe default (upcoming)
+    query = query.eq('state', 'upcoming');
+  }
+
+  // Limit: default 20, cap 50
+  let limitValue = 20;
+  if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+    limitValue = Math.min(limit, 50);
+  }
+  query = query.limit(limitValue);
+
+  // Sort: event_date ASC (soonest first), then event_time ASC nulls last
+  query = query.order('event_date', { ascending: true })
+               .order('event_time', { ascending: true, nullsFirst: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('[bride-tool:list_events] select error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, events: data || [], count: (data || []).length };
+}
+
+async function execUpdateEvent({ input, couple, supabase }) {
+  const { event_id, title, event_date, event_time, kind, notes, state } = input || {};
+
+  if (!event_id || typeof event_id !== 'string' || !UUID_REGEX.test(event_id)) {
+    return { ok: false, error: 'event_id required (UUID format)' };
+  }
+
+  const updates = {};
+
+  if (typeof title === 'string' && title.trim()) {
+    updates.title = title.trim().slice(0, 200);
+  }
+
+  // event_date: REQUIRED column in schema (NOT NULL) — cannot be cleared, only changed.
+  // Hard error on malformed (M2 pattern). No null/empty acceptance.
+  if (event_date !== undefined && event_date !== null && event_date !== '') {
+    if (isValidDateString(event_date)) {
+      updates.event_date = event_date;
+    } else {
+      console.warn('[bride-tool:update_event] rejecting malformed event_date:', event_date);
+      return { ok: false, error: 'event_date must be YYYY-MM-DD format' };
+    }
+  }
+
+  // event_time: nullable, clearable via M1 pattern ("null"/null/"")
+  if (event_time === 'null' || event_time === null || event_time === '') {
+    updates.event_time = null;
+  } else if (event_time !== undefined) {
+    const normalized = normalizeEventTime(event_time);
+    if (normalized === null) {
+      console.warn('[bride-tool:update_event] rejecting malformed event_time:', event_time);
+      return { ok: false, error: 'event_time must be HH:MM format' };
+    }
+    updates.event_time = normalized;
+  }
+
+  // kind: enum validation. Silent skip if invalid (schema enum should prevent).
+  if (kind && ALLOWED_KINDS.has(kind)) {
+    updates.kind = kind;
+  } else if (kind) {
+    console.warn('[bride-tool:update_event] ignoring invalid kind:', kind);
+    // No hard error here — kind is a categorisation tweak, not a correctness gate.
+    // If model passes a bad value, we ignore it rather than block the whole update.
+  }
+
+  // notes: clearable via M1 pattern
+  if (notes === 'null' || notes === null || notes === '') {
+    updates.notes = null;
+  } else if (typeof notes === 'string' && notes.trim()) {
+    updates.notes = notes.trim().slice(0, 500);
+  }
+
+  // state: enum validation, no clear path (state is NOT NULL with default 'upcoming')
+  if (state && ALLOWED_EVENT_STATES.has(state)) {
+    updates.state = state;
+  } else if (state) {
+    console.warn('[bride-tool:update_event] ignoring invalid state:', state);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { ok: false, error: 'no fields to update' };
+  }
+
+  const { data, error } = await supabase
+    .from('events')
+    .update(updates)
+    .eq('id', event_id)
+    .eq('couple_id', couple.id)
+    .select('id, title, event_date, event_time, kind, state, notes')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'event not found or not yours' };
+    }
+    console.error('[bride-tool:update_event] update error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, event: data };
+}
+
+async function execDeleteEvent({ input, couple, supabase }) {
+  const { event_id } = input || {};
+
+  if (!event_id || typeof event_id !== 'string' || !UUID_REGEX.test(event_id)) {
+    return { ok: false, error: 'event_id required (UUID format)' };
+  }
+
+  // L2 canonical delete pattern: atomic single-call .delete().eq().select().single()
+  // PGRST116 means zero rows matched — either doesn't exist or belongs to another couple.
+  const { data, error } = await supabase
+    .from('events')
+    .delete()
+    .eq('id', event_id)
+    .eq('couple_id', couple.id)
+    .select('id, title, event_date, event_time, kind, state')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'event not found or not yours' };
+    }
+    console.error('[bride-tool:delete_event] delete error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, deleted_event: data };
 }
 
 // ── list_muse executor (B2) ──────────────────────────────────────────

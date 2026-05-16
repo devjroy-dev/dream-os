@@ -196,6 +196,92 @@ const BRIDE_TOOLS = [
     },
   },
   {
+    name: 'list_events',
+    description: 'Look up the bride\'s calendar — trials, fittings, shoots, family events, ceremonies, meetings. Use when she asks "what\'s on my calendar this week", "anything Saturday", "show me everything for sangeet", "what\'s coming up". Returns event rows with id, title, event_date, event_time, kind, state, notes — sorted by event_date ascending (soonest first), then event_time ascending. To act on a specific event (update/delete) you MUST first resolve its id via this tool; do not invent ids.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        date_from: {
+          type: 'string',
+          description: 'Optional. YYYY-MM-DD. Filter to events on or after this date. Use for "anything next week", "events this month".',
+        },
+        date_to: {
+          type: 'string',
+          description: 'Optional. YYYY-MM-DD. Filter to events on or before this date. Use with date_from for a range, or alone for "anything before the wedding".',
+        },
+        kind: {
+          type: 'string',
+          enum: ['shoot', 'call', 'meeting', 'task', 'reminder', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'],
+          description: 'Optional. Filter to one kind. Use when she asks about a specific category — "all my trials", "any shoots this week".',
+        },
+        state: {
+          type: 'string',
+          enum: ['upcoming', 'done', 'cancelled', 'all'],
+          description: 'Optional. Default "upcoming" — only future/active events. Use "all" if she asks for everything including done/cancelled. Use "done" if she asks what already happened.',
+        },
+        limit: {
+          type: 'integer',
+          description: 'Optional. Max rows to return. Default 20. Max 50.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'update_event',
+    description: 'Change something about an existing event — its title, date, time, kind, notes, or state. Use when she says "move the trial to Sunday", "rename that to Anvaya trial", "actually it\'s a fitting not a trial", "cancel the venue recce". Pass only the fields she wants changed. The event_id must be resolved first via list_events if she referenced the event by name. event_date cannot be cleared (events must have a date) — only changed.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: {
+          type: 'string',
+          description: 'UUID of the event to update. Required. Get from list_events.',
+        },
+        title: {
+          type: 'string',
+          description: 'Optional. New title.',
+        },
+        event_date: {
+          type: 'string',
+          description: 'Optional. New event_date in YYYY-MM-DD format. Cannot be cleared (events must have a date).',
+        },
+        event_time: {
+          type: 'string',
+          description: 'Optional. New event_time in HH:MM format (24-hour, e.g. "15:30" for 3:30pm). Pass the literal string "null" (four characters) to CLEAR an existing event_time.',
+        },
+        kind: {
+          type: 'string',
+          enum: ['shoot', 'call', 'meeting', 'task', 'reminder', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'],
+          description: 'Optional. Change the event kind — e.g. trial → fitting, meeting → call.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional. New notes, or "null" to clear.',
+        },
+        state: {
+          type: 'string',
+          enum: ['upcoming', 'done', 'cancelled'],
+          description: 'Optional. Move the event to a different state. Use "done" when she finished an event ("I had the trial yesterday, mark it done"), "cancelled" when she\'s scrapping it, "upcoming" to revive a cancelled or done event.',
+        },
+      },
+      required: ['event_id'],
+    },
+  },
+  {
+    name: 'delete_event',
+    description: 'Permanently remove an event from the bride\'s calendar. Use when she clearly asks to delete one — "drop that trial entirely", "remove the venue recce, never going". Destructive and not recoverable. If she just wants to cancel (not delete), use update_event with state="cancelled" instead — that preserves the record. The event_id must be resolved first via list_events. If she referenced the event by name and there is any ambiguity, confirm with her before calling this tool.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: {
+          type: 'string',
+          description: 'UUID of the event to delete. Required.',
+        },
+      },
+      required: ['event_id'],
+    },
+  },
+  {
     name: 'list_muse',
     description: 'Look up saved images on the bride\'s Muse mood board. Use this whenever she asks about her saves — "what have I saved this week", "show me save 47", "what are my recent pastel saves", "what did mom add". Returns a structured list with save numbers, aesthetic tags, captions, contributor info, and image URLs. After getting the result, you can compose a natural reply describing the saves. If she wants to actually SEE one or more images, set the request_image_playback flag — the engine will forward those images back to her via WhatsApp.',
     input_schema: {
