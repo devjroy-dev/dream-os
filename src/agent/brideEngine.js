@@ -14,6 +14,10 @@
 //
 // Tool executors live as switch-case branches inside this file (mirroring
 // the vendor engine.js pattern where executors live alongside the loop).
+//
+// B2: added mediaContext parameter for image auto-save context injection,
+// list_muse + delete_muse_save executors, and mediaUrls return for image
+// playback ("show me save 47" sends the actual image back).
 
 const { STATIC_SYSTEM_PROMPT, buildDynamicContext } = require('./brideSystemPrompt');
 const { nextBrideOnboardingMessage } = require('./brideOnboarding');
@@ -24,9 +28,34 @@ const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./mode
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 10;
 
+// Limits enforced server-side (independent of model behavior)
+const LIST_MUSE_DEFAULT_LIMIT = 10;
+const LIST_MUSE_MAX_LIMIT     = 30;
+const PLAYBACK_MAX_IMAGES     = 5;  // max images sent back in a single bride reply
+
 // ── Bride agentic turn ───────────────────────────────────────────────
 // Entry point called from brideIndex.js webhook handler.
-async function runBrideAgenticTurn({ couple, user, conversation, inboundMessage, supabase, anthropic }) {
+//
+// New B2 parameter:
+//   mediaContext : string | null — when brideIndex.js has just saved an
+//     image/link to Muse, this is the synthesized context note ("User sent
+//     an image and we saved it to her Muse as save 47, tags: ethnic/grand,
+//     caption: 'love this lehenga'"). Injected as a system-level note so
+//     the agent knows what happened and can reply naturally.
+//
+// Returns include new field:
+//   mediaUrls : string[] — Cloudinary URLs the engine wants brideIndex to
+//     send back to the bride via Twilio media. Populated by list_muse when
+//     request_image_playback is true.
+async function runBrideAgenticTurn({
+  couple,
+  user,
+  conversation,
+  inboundMessage,
+  mediaContext = null,
+  supabase,
+  anthropic,
+}) {
 
   // ── Onboarding routing ────────────────────────────────────────────
   // If onboarding is not complete, hand off to the state machine.
@@ -44,13 +73,21 @@ async function runBrideAgenticTurn({ couple, user, conversation, inboundMessage,
       outputTokens: null,
       costUsd:      null,
       costInr:      null,
+      mediaUrls:    [],
     };
   }
 
   // ── Onboarding complete: run the agent loop ──────────────────────
 
   // Build dynamic context (couple info, notes, events). Self-querying.
-  const dynamicContext = await buildDynamicContext(couple.id);
+  let dynamicContext = await buildDynamicContext(couple.id);
+
+  // If a media auto-save just happened, prepend a context note so the agent
+  // knows what landed in Muse and can reply naturally. The bride did not
+  // type "save this" — she just forwarded an image. We surface that here.
+  if (mediaContext && typeof mediaContext === 'string' && mediaContext.trim()) {
+    dynamicContext = `${mediaContext.trim()}\n\n${dynamicContext}`;
+  }
 
   // Load conversation history
   const { data: recentMessages } = await supabase
@@ -91,6 +128,7 @@ async function runBrideAgenticTurn({ couple, user, conversation, inboundMessage,
   let totalInputTok  = 0;
   let totalOutputTok = 0;
   const toolCallsAudit = [];
+  const mediaUrlsToReturn = [];   // Cloudinary URLs for image playback
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -134,8 +172,10 @@ async function runBrideAgenticTurn({ couple, user, conversation, inboundMessage,
         name:  toolUse.name,
         input: toolUse.input,
         couple,
+        user,
         conversation,
         supabase,
+        mediaUrlsToReturn,    // mutable — list_muse pushes URLs here when playback requested
       });
 
       toolCallsAudit.push({ name: toolUse.name, input: toolUse.input, result });
@@ -174,6 +214,7 @@ async function runBrideAgenticTurn({ couple, user, conversation, inboundMessage,
     outputTokens: totalOutputTok,
     costUsd:      cost?.cost_usd ?? null,
     costInr:      cost?.cost_inr ?? null,
+    mediaUrls:    mediaUrlsToReturn.slice(0, PLAYBACK_MAX_IMAGES),
   };
 }
 
@@ -181,7 +222,7 @@ async function runBrideAgenticTurn({ couple, user, conversation, inboundMessage,
 // ── Tool executors ───────────────────────────────────────────────────
 // Switch-case dispatcher (mirrors vendor engine.js pattern).
 
-async function executeBrideTool({ name, input, couple, conversation, supabase }) {
+async function executeBrideTool({ name, input, couple, user, conversation, supabase, mediaUrlsToReturn }) {
   switch (name) {
 
     case 'note_to_self': {
@@ -194,6 +235,14 @@ async function executeBrideTool({ name, input, couple, conversation, supabase })
 
     case 'add_event': {
       return await execAddEvent({ input, couple, supabase });
+    }
+
+    case 'list_muse': {
+      return await execListMuse({ input, couple, supabase, mediaUrlsToReturn });
+    }
+
+    case 'delete_muse_save': {
+      return await execDeleteMuseSave({ input, couple, user, supabase });
     }
 
     default: {
@@ -339,6 +388,173 @@ async function execAddEvent({ input, couple, supabase }) {
   }
 
   return { ok: true, event: data };
+}
+
+// ── list_muse executor (B2) ──────────────────────────────────────────
+// Queries muse_saves with structured filters. Optionally pushes Cloudinary
+// URLs into mediaUrlsToReturn for outbound image playback.
+//
+// Supports four filters from the agent: save_number (single lookup), limit
+// (pagination), aesthetic_tags (taxonomy match), saved_by (bride vs circle).
+// Plus request_image_playback flag.
+//
+// Note on aesthetic_tags filter: uses the jsonb 'overlaps' operator (?| in
+// SQL, .overlaps() / .contains() in Supabase) so a save with ANY of the
+// requested tags matches — not all. Bride asking "show me ethnic" should
+// match saves tagged ["ethnic","grand"] AND saves tagged ["ethnic"] alone.
+
+async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
+  const {
+    save_number,
+    limit = LIST_MUSE_DEFAULT_LIMIT,
+    aesthetic_tags,
+    saved_by,
+    request_image_playback = false,
+  } = input || {};
+
+  // Build the query
+  let query = supabase
+    .from('muse_saves')
+    .select('id, save_number, source_type, source_url, image_url, caption, aesthetic_tags, saved_by_user_id, saved_by_role, created_at')
+    .eq('couple_id', couple.id);
+
+  if (typeof save_number === 'number') {
+    query = query.eq('save_number', save_number);
+  }
+
+  if (saved_by === 'bride') {
+    query = query.eq('saved_by_role', 'bride');
+  } else if (saved_by === 'circle_member') {
+    query = query.eq('saved_by_role', 'circle_member');
+  }
+
+  // aesthetic_tags overlap: jsonb array contains ANY of the filter values
+  if (Array.isArray(aesthetic_tags) && aesthetic_tags.length > 0) {
+    // Postgres jsonb '?|' operator: any element in the array exists as a top-level key/element
+    // Supabase: .overlaps() works on Postgres array columns and on jsonb arrays via the ?| pattern
+    query = query.overlaps('aesthetic_tags', aesthetic_tags);
+  }
+
+  // Apply limit + ordering (newest first), unless looking up a single save
+  if (typeof save_number !== 'number') {
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || LIST_MUSE_DEFAULT_LIMIT, 1), LIST_MUSE_MAX_LIMIT);
+    query = query.order('save_number', { ascending: false }).limit(safeLimit);
+  }
+
+  const { data: saves, error } = await query;
+
+  if (error) {
+    console.error('[bride-tool:list_muse] query error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  // If playback requested, queue up the Cloudinary URLs for the engine to
+  // return to brideIndex. Capped at PLAYBACK_MAX_IMAGES via final slice in
+  // runBrideAgenticTurn.
+  if (request_image_playback && Array.isArray(saves) && saves.length > 0 && Array.isArray(mediaUrlsToReturn)) {
+    for (const s of saves) {
+      if (s.image_url && mediaUrlsToReturn.length < PLAYBACK_MAX_IMAGES) {
+        mediaUrlsToReturn.push(s.image_url);
+      }
+    }
+  }
+
+  // Shape the response for the agent — keep it lean (no vision_raw, no urls
+  // when not needed). Agent composes natural-language reply from this.
+  const shaped = (saves || []).map(s => ({
+    save_number:    s.save_number,
+    source_type:    s.source_type,
+    caption:        s.caption,
+    aesthetic_tags: s.aesthetic_tags,
+    saved_by_role:  s.saved_by_role,
+    created_at:     s.created_at,
+  }));
+
+  return {
+    ok: true,
+    count:               shaped.length,
+    saves:               shaped,
+    image_playback_queued: request_image_playback && Array.isArray(mediaUrlsToReturn) ? mediaUrlsToReturn.length : 0,
+  };
+}
+
+// ── delete_muse_save executor (B2) ───────────────────────────────────
+// Hard delete. Bride can delete any save on her board. Circle members can
+// only delete their own contributions — enforced here, even though Step 4
+// only ships bride-side execution (circle agent loop arrives in Step 5).
+//
+// The `user` param is the user_id of the speaker (passed in from brideIndex
+// based on whose phone matched). We compare against muse_saves.saved_by_user_id
+// to enforce circle-member ownership.
+
+async function execDeleteMuseSave({ input, couple, user, supabase }) {
+  const { save_number } = input || {};
+
+  if (typeof save_number !== 'number' || save_number < 1) {
+    return { ok: false, error: 'save_number must be a positive integer' };
+  }
+
+  // Look up the save first to check permissions and report what was deleted
+  const { data: target, error: lookupError } = await supabase
+    .from('muse_saves')
+    .select('id, save_number, saved_by_user_id, saved_by_role, caption, aesthetic_tags')
+    .eq('couple_id', couple.id)
+    .eq('save_number', save_number)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error('[bride-tool:delete_muse_save] lookup error:', lookupError);
+    return { ok: false, error: lookupError.message };
+  }
+
+  if (!target) {
+    return { ok: false, error: `save ${save_number} not found` };
+  }
+
+  // Permission check: bride can delete anything; circle member only their own
+  const speakerUserId = user?.id;
+  const speakerIsTheBride = speakerUserId && couple.user_id && speakerUserId === couple.user_id;
+
+  if (!speakerIsTheBride) {
+    // Speaker is not the bride. They can only delete their own contributions.
+    if (target.saved_by_user_id !== speakerUserId) {
+      return {
+        ok: false,
+        error: 'circle members can only delete their own contributions',
+      };
+    }
+  }
+
+  // Delete the row. circle_activity rows referencing this save stay (the
+  // FK is polymorphic-style with no constraint — see migration 0016).
+  const { error: deleteError } = await supabase
+    .from('muse_saves')
+    .delete()
+    .eq('id', target.id);
+
+  if (deleteError) {
+    console.error('[bride-tool:delete_muse_save] delete error:', deleteError);
+    return { ok: false, error: deleteError.message };
+  }
+
+  // Write a circle_activity row to record the removal (so the bride can be
+  // told about it later if a circle member removed their own save).
+  await supabase.from('circle_activity').insert({
+    couple_id:     couple.id,
+    actor_user_id: speakerUserId ?? null,
+    actor_name:    speakerIsTheBride ? 'You' : 'Circle member',
+    actor_role:    speakerIsTheBride ? 'bride' : 'circle_member',
+    activity_type: 'removed',
+    subject_type:  'muse_save',
+    subject_id:    target.id,
+    payload:       { save_number, caption: target.caption },
+  });
+
+  return {
+    ok: true,
+    deleted_save_number: save_number,
+    deleted_caption:     target.caption,
+  };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

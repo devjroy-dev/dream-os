@@ -5,8 +5,15 @@
 // branches inside src/agent/brideEngine.js (mirroring how engine.js handles
 // vendor tool execution).
 //
-// B1 ships three tools. More added in B2 (Muse, Circle), B3 (planner),
-// B4 (vendor connections, Surprise Me) — see docs/ROADMAP_BRIDE.md.
+// B1 shipped three tools. B2 adds list_muse and delete_muse_save.
+// More added in B3 (planner) and B4 (vendor connections, Surprise Me).
+// See docs/ROADMAP_BRIDE.md.
+//
+// NOTE ON MUSE SAVES: there is intentionally NO save_to_muse tool.
+// Muse saves happen automatically when the bride or a circle member forwards
+// an image or a Pinterest/Instagram link via WhatsApp — handled in brideIndex.js
+// before the agent runs. The agent receives a synthesized context message
+// ("we just saved this to Muse as save X") and composes a natural reply.
 
 const BRIDE_TOOLS = [
   {
@@ -75,6 +82,52 @@ const BRIDE_TOOLS = [
         },
       },
       required: ['title', 'event_date', 'kind'],
+    },
+  },
+  {
+    name: 'list_muse',
+    description: 'Look up saved images on the bride\'s Muse mood board. Use this whenever she asks about her saves — "what have I saved this week", "show me save 47", "what are my recent pastel saves", "what did mom add". Returns a structured list with save numbers, aesthetic tags, captions, contributor info, and image URLs. After getting the result, you can compose a natural reply describing the saves. If she wants to actually SEE one or more images, set the request_image_playback flag on the saves you want delivered — the engine will forward those images back to her via WhatsApp.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        save_number: {
+          type: 'integer',
+          description: 'Optional. Look up one specific save by its number. Used when she references a save by number ("show me save 47").',
+        },
+        limit: {
+          type: 'integer',
+          description: 'Optional. Number of saves to return when listing recent. Default 10. Max 30.',
+        },
+        aesthetic_tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional. Filter to saves containing ANY of these tags. Locked taxonomy: moody, editorial, pastel, OTT, minimal, candid, grand, rustic, modern, ethnic, elegant, old money. Pass lower case, exact strings (including the space in "old money").',
+        },
+        saved_by: {
+          type: 'string',
+          enum: ['bride', 'circle_member'],
+          description: 'Optional. Filter to saves added by the bride only ("my saves"), or by any circle member ("what mom added", "what did the circle add").',
+        },
+        request_image_playback: {
+          type: 'boolean',
+          description: 'Optional. If true, the engine will send the actual images back to the bride via WhatsApp after replying with the text description. Use when she asks to see an image ("show me save 47", "what did mom save yesterday"). Do not use for broad list queries ("show me everything") — only specific lookups or short result sets.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'delete_muse_save',
+    description: 'Permanently remove a Muse save from the bride\'s mood board. Use when she clearly asks to delete a save by number or by reference ("delete save 47", "remove that last one"). Bride can delete any save on her board, including ones added by circle members. Circle members can ONLY delete their own contributions — the executor enforces this, but you should not call this tool from a circle member\'s conversation unless they explicitly ask to delete one of their own saves. This is destructive and not recoverable in B2 — confirm intent if ambiguous, but do NOT confirm if she clearly named the save.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        save_number: {
+          type: 'integer',
+          description: 'The save_number of the muse save to delete. Required.',
+        },
+      },
+      required: ['save_number'],
     },
   },
 ];

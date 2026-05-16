@@ -14,6 +14,13 @@
 //
 // Phone-as-gate: phone in users + couples row exists → engine runs.
 // No couples row → dead-end reply.
+//
+// B2: media auto-save to Muse.
+//   - Inbound image (Twilio MediaUrl0) → saveToMuse pipeline runs BEFORE the agent
+//   - Inbound text containing Pinterest/Instagram URL → URL extracted, treated as link save
+//   - Saves happen in brideIndex.js, not via a tool, so the agent always
+//     receives a synthesized text + mediaContext. The agent composes a natural
+//     reply. The agent NEVER calls save_to_muse — that tool does not exist.
 
 const express      = require('express');
 const ws           = require('ws');
@@ -21,6 +28,7 @@ const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn } = require('./agent/brideEngine');
 const { sendWhatsApp } = require('./lib/whatsapp');
+const { saveToMuse }   = require('./lib/museSave');
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -38,6 +46,43 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.locals.supabase = supabase;
+
+// ── URL detection for Pinterest / Instagram in message body ──────────
+// Matches:
+//   https://pinterest.com/pin/...
+//   https://www.pinterest.com/pin/...
+//   https://pin.it/...
+//   https://www.instagram.com/p/...
+//   https://www.instagram.com/reel/...
+//   https://instagr.am/p/...
+// First match wins (we save the first detected link, agent handles the rest
+// in conversation).
+const LINK_REGEX = /\bhttps?:\/\/(?:www\.|m\.)?(?:pinterest\.[a-z.]+\/(?:pin\/|search\/)|pin\.it\/|instagram\.com\/(?:p|reel|tv)\/|instagr\.am\/(?:p|reel)\/)[^\s]+/i;
+
+function extractMuseUrl(text) {
+  if (!text || typeof text !== 'string') return null;
+  const match = text.match(LINK_REGEX);
+  return match ? match[0] : null;
+}
+
+// ── Synthesize a mediaContext note for the agent ─────────────────────
+// Called after a successful Muse save. The note is injected into the agent's
+// dynamic context so it knows what just happened and can reply naturally.
+//
+// The agent NEVER sees raw URLs or pipeline internals — just the human
+// summary: what kind of save, what tags, what caption.
+function buildMediaContextNote(save, saved_by_label) {
+  const tagsString = save.aesthetic_tags && save.aesthetic_tags.length > 0
+    ? save.aesthetic_tags.join(', ')
+    : 'no aesthetic tags';
+  const captionString = save.caption ? ` Caption: "${save.caption}".` : '';
+  const sourceKind = save.source_type === 'link' ? 'link' : 'image';
+  return [
+    `[SYSTEM NOTE] ${saved_by_label} just forwarded a ${sourceKind} and it was automatically saved to the bride's Muse as save ${save.save_number}.`,
+    `Aesthetic tags: ${tagsString}.${captionString}`,
+    `Compose a natural reply acknowledging the save — do NOT call any save tool. The save already happened. Stay in BFF voice. Don't list the tags robotically; reference them lightly if relevant. If the caption is rich enough, you can engage with it.`,
+  ].join(' ');
+}
 
 // ── Health check ─────────────────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -91,16 +136,11 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     console.log(`[bride-whatsapp:in] ${phone} -> ${body}`);
 
-    // ── Media-only / empty-body guard (mirrors vendor Bug #1 fix) ───
     const trimmedBody = body.trim();
     const numMedia    = parseInt(req.body.NumMedia || '0', 10);
     const hasMedia    = numMedia > 0 || !!req.body.MediaUrl0;
 
-    if (!trimmedBody && hasMedia) {
-      console.log(`[bride-webhook] media-only message from ${phone}, replying with text-only notice`);
-      await sendWhatsApp(phone, "I'll be able to process images and voice notes really soon — but for now, please type your message and I'll help.");
-      return res.status(200).send('<Response></Response>');
-    }
+    // Empty payload — drop silently.
     if (!trimmedBody && !hasMedia) {
       console.warn('[bride-webhook] empty body, no media, dropping');
       return res.status(200).send('<Response></Response>');
@@ -163,12 +203,74 @@ app.post('/webhook/whatsapp', async (req, res) => {
       conversation = newConvo;
     }
 
+    // ── Detect Muse trigger BEFORE running the engine ───────────────
+    // Two sources:
+    //   (1) Inbound image attachment (Twilio MediaUrl0, media-type image/*)
+    //   (2) Pinterest or Instagram URL inside the text body
+    //
+    // If detected, run the saveToMuse pipeline. On success, synthesize a
+    // mediaContext note for the agent so it can compose a natural reply.
+    // On pipeline failure, the agent still runs but gets a soft-failure note
+    // so it can reply gracefully (Option (a) per Step 4 planning).
+    let mediaContextNote = null;
+    let mediaSaveAttempted = false;
+    let mediaSaveSucceeded = false;
+
+    // Determine the source URL: image media wins over URL in body text.
+    let sourceUrlForMuse = null;
+    let sourceCaption    = trimmedBody || null;
+
+    if (hasMedia && (req.body.MediaContentType0 || '').toLowerCase().startsWith('image/')) {
+      sourceUrlForMuse = req.body.MediaUrl0;
+      // The bride's caption is whatever text she sent alongside the image (may be empty).
+    } else {
+      const linkInBody = extractMuseUrl(trimmedBody);
+      if (linkInBody) {
+        sourceUrlForMuse = linkInBody;
+        // The caption is the rest of the message minus the URL.
+        // Strip the URL out of the body and collapse any double-spaces it leaves behind
+        const captionWithoutUrl = trimmedBody.replace(linkInBody, '').replace(/\s+/g, ' ').trim();
+        sourceCaption = captionWithoutUrl.length > 0 ? captionWithoutUrl : null;
+      }
+    }
+
+    if (sourceUrlForMuse) {
+      mediaSaveAttempted = true;
+      const saveResult = await saveToMuse({
+        sourceUrl:         sourceUrlForMuse,
+        couple_id:         couple.id,
+        saved_by_user_id:  user.id,
+        saved_by_role:     'bride',   // Step 5 will extend to circle_member
+        caption:           sourceCaption,
+        supabase,
+        anthropic,
+      });
+
+      if (saveResult.ok) {
+        mediaSaveSucceeded = true;
+        mediaContextNote = buildMediaContextNote(saveResult.save, 'The bride');
+        console.log(`[bride-webhook] muse save succeeded: #${saveResult.save.save_number}`);
+      } else {
+        // Soft failure: agent gets a note about the failed save and replies with a
+        // friendly retry message. The save itself is not retried automatically.
+        mediaContextNote = `[SYSTEM NOTE] The bride forwarded an image or link, but the Muse save pipeline failed (${saveResult.error}). Apologise briefly in BFF voice and suggest she resend in a minute. Do NOT pretend the save happened.`;
+        console.warn(`[bride-webhook] muse save failed: ${saveResult.error}`);
+      }
+    }
+
     // ── Log inbound message ─────────────────────────────────────────
+    // Body text is logged as-is. If the inbound was image-only with no text,
+    // we log a synthetic body that records the save (so conversation history
+    // remains coherent for the agent).
+    const bodyForLog = trimmedBody.length > 0
+      ? trimmedBody
+      : (mediaSaveSucceeded ? '[forwarded an image]' : (mediaSaveAttempted ? '[forwarded an image — save failed]' : '[empty]'));
+
     await supabase.from('messages').insert({
       conversation_id: conversation.id,
       direction:       'inbound',
       channel:         'whatsapp',
-      body:            trimmedBody,
+      body:            bodyForLog,
       sent_by:         'couple',
       twilio_sid:      twilioSid,
     });
@@ -180,19 +282,28 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .eq('id', conversation.id);
 
     // ── Run the engine ──────────────────────────────────────────────
+    // Pass the body (which may include the URL — agent reads naturally).
+    // If the inbound was image-only with no caption, pass a synthetic "user
+    // forwarded an image" message so the model has something to respond to.
+    const inboundForEngine = trimmedBody.length > 0
+      ? trimmedBody
+      : (mediaSaveSucceeded ? '[forwarded an image]' : '[forwarded media]');
+
     const result = await runBrideAgenticTurn({
       couple,
       user,
       conversation,
-      inboundMessage: trimmedBody,
+      inboundMessage: inboundForEngine,
+      mediaContext:   mediaContextNote,
       supabase,
       anthropic,
     });
 
     // ── Send the reply via Twilio ───────────────────────────────────
+    // result.mediaUrls is populated when list_muse was called with playback.
     let twilioMsg = null;
     try {
-      twilioMsg = await sendWhatsApp(phone, result.reply);
+      twilioMsg = await sendWhatsApp(phone, result.reply, result.mediaUrls || []);
     } catch (sendErr) {
       console.error('[bride-webhook] sendWhatsApp error:', sendErr);
       // Continue to log the outbound message even if Twilio errored —
