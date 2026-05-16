@@ -1,7 +1,7 @@
 # dream-os — Bride & Couple Roadmap
 **Last updated:** 2026-05-16
-**Current session:** B2 complete, B3.1 next
-**Status:** B1 + B2 shipped. B3.1 (bug fix + smoke test) → B3 → B4 → Session 9.
+**Current session:** B3 in progress (B3.1 follows B3 — order corrected from B2 close)
+**Status:** B1 + B2 shipped. B3 (planner: tasks + bookings + receipts + event tools) in progress → B3.1 (cleanup + circle invite link bug fix) → B4 → Session 9.
 **Latest bride product version:** 0.8.5a.2-b2
 
 ---
@@ -384,13 +384,129 @@ Architectural changes from original spec:
 - Mom tries to delete bride's save via API → 403 (permission enforced)
 
 
-### B3.1 — Bug fix + smoke test (prerequisite for B3, ~90 min)
+### B3 — Planner: tasks + event tools + bookings + receipts (single session, ~3.5-4 hours including smoke tests)
 
-**Goal:** Close out B2 properly. Circle smoke test + B2 deferred audit fixes + B3 planner smoke test. B3 cannot start without B3.1.
+**Goal:** Bride has complete planning substrate. Tasks, schedule (events fully tooled), receipts, and per-vendor commitment tracking (Bookings). Morning nudge live.
+
+**Scope correction from B2 close:** B3 grew from "tasks + receipts" to "tasks + event tools + bookings + receipts" after the B3-planning discussion. Two corrections:
+
+1. **The original "no money tools on bride side" framing was over-corrected.** The bride does not need a CFO function (parents handle venue/catering, no GST, no income reconciliation) — but she does need to remember what she owes whom and when. Bookings fill that gap. The locked decision "no budget tracking" stays; bookings are commitment-tracking, not budget-tracking. See "Architectural principles" below.
+
+2. **Event tools are half-built and need completion.** `add_event` shipped at B1. `list_events`, `update_event`, `delete_event` were never added — the bride can create events but can't see, edit, or delete them. The morning nudge can't read events without `list_events`. B3 closes this gap.
+
+**Migrations:** `0019_bride_planner.sql`
+- `couple_tasks` table (id, couple_id, title, status [pending/done], priority [high/medium/low], due_date nullable, event_name, notes, timestamps)
+- `couple_bookings` table (id, couple_id, vendor_name text, vendor_id uuid nullable FK vendors(id) ON DELETE SET NULL [for B4 linkage], category text CHECK enum, amount_total integer nullable, amount_advance integer nullable, amount_paid integer NOT NULL default 0, balance_due_date date, state text CHECK [booked/advance_paid/paid] default 'booked', notes, timestamps)
+- `couple_receipts` table (id, couple_id, booking_id uuid nullable FK couple_bookings(id) ON DELETE SET NULL, amount integer nullable, vendor_name text nullable, description, receipt_date date nullable, image_url, tags text[], created_at)
+- `record_payment()` Postgres function — transactional. Updates `couple_bookings.amount_paid`, recomputes `state` via CASE expression, returns the updated row. **All booking arithmetic happens in SQL, never in the agent.**
+- `events.couple_id` column ALREADY exists from migration 0013 (B1). No event-table schema changes in 0019.
+
+**Booking category enum (locked, 11 values):** photographer, videographer, mua, designer, venue, caterer, decor, florist, music, planner, other. Bride-product terminology, not vendor expense terminology — these enums never share.
+
+**Architectural principles locked at B3 (non-negotiable, apply to all future bride work):**
+
+1. **No agent arithmetic, ever.** Every number the agent says must come from a database query in the current turn. Sums, balances, percentages, totals — all computed by SQL (in tool functions or via columns like `balance_due = amount_total - amount_paid`). Haiku reads the returned numbers verbatim into the reply. This rule exists because Haiku gets simple math wrong often enough to destroy trust in a money tool. The model identifies intent; SQL computes values.
+
+2. **Intent maps to tool, not to phrasing.** "Cancel Anvaya," "delete Anvaya booking," "remove Anvaya," "scratch the photographer" — all resolve to `delete_booking()`. "Remind me about the trial Saturday," "block Saturday for trial," "add a trial Saturday at 11am" — all resolve to `add_event(kind='trial', ...)`. The bride speaks naturally; the agent classifies intent and calls the right tool. Phrasing varies, intent → tool is the model's job to get right.
+
+3. **Delete replaces cancellation. No state machine for refunds.** Booking cancelled → `delete_booking()`. Receipt was wrong → `delete_receipt()`. Event cancelled → `delete_event()`. No `cancelled` state on bookings or receipts. No refund logic, no reconciliation flow. If a booking is cancelled and the advance comes back, the bride deletes the booking and (optionally) adds a free-text note. The audit trail is the conversation history, not the table.
+
+4. **No per-payer attribution. Ever.** Every receipt is implicitly the bride's. If Dad pays the venue, the bride captures that in free-text notes ("Dad paid this — Rs 5L advance to Sterling Banquet, 12 May"). No `paid_by` field, no payer table, no splits with parents, no shared budgets. This is **out of scope forever**, not deferred. The bride product is a BFF that remembers, not a ledger that reconciles.
+
+5. **Bookings are flat. Single-row commitment tracking.** No multi-event splits ("Anvaya doing both wedding AND reception, Rs 1L each") — that's two bookings, or one booking with free-text notes. No category allocation against a total budget — the budget table does not exist. Bookings stand alone.
+
+6. **Receipts link to bookings optionally, never silently.** When a receipt arrives (image or text), the agent uses a three-branch flow: Branch A (standalone), Branch B (looks like advance for new booking), Branch C (matches existing booking). The agent **asks** in every case — never auto-links. Confirmation precedes any write that updates `couple_bookings.amount_paid`.
+
+7. **Destructive actions confirm. Ambiguous references disambiguate.** Before any `delete_*` call: present what will be deleted, get explicit yes. Before any tool call with an ID resolved from a name (e.g. "delete Anvaya" → which Anvaya?): list candidates, confirm the right row. Applies to bookings, receipts, events, tasks — every entity with a `delete_*` tool. Same pattern shipped on the vendor side at Session 8.5.
+
+**Code additions to brideTools.js (17 new tools):**
+
+*Task tools (5):*
+- `create_task` / `list_tasks` / `complete_task` / `update_task` / `delete_task`
+
+*Event tools (3 new — `add_event` already shipped at B1):*
+- `list_events` (filterable: by date range, by kind, by state)
+- `update_event` (change date, time, title, notes; disambiguation required when bride references by name)
+- `delete_event` (irreversible; disambiguation required)
+
+*Booking tools (5):*
+- `add_booking(vendor_name, category, amount_total?, amount_advance?, balance_due_date?, notes?)` — `amount_total` and `amount_advance` both nullable to allow "advance paid, total TBD" common in real bookings (designers especially)
+- `list_bookings(state?, category?)` — returns rows with `balance_due` and other derived fields computed by SQL
+- `update_booking(booking_id, ...)`
+- `delete_booking(booking_id)` — irreversible; linked receipts get `booking_id` set to null (receipts preserved as standalone records via ON DELETE SET NULL)
+- `list_dues(within_days?)` — what's due, when, who to; sorted by date, computed in SQL
+
+*Receipt tools (4):*
+- `save_receipt(vendor_name, amount, receipt_date, description, tags, image_url, booking_id?)` — `booking_id` set only after explicit bride confirmation in the linkage flow
+- `list_receipts(vendor_name?, tags?, booking_id?, date_range?)`
+- `delete_receipt(receipt_id)` — irreversible; if linked to a booking, also reverses the payment contribution by calling `record_payment` with negative amount in the same transaction (atomic)
+- `record_payment(booking_id, amount, receipt_id, payment_date)` — transactional. Calls the `record_payment()` SQL function. Single source of truth for booking state transitions. Agent never updates `amount_paid` or `state` directly — only through this tool.
+
+**Image classifier (Haiku-as-classifier):** When the bride sends an image, the pipeline runs Vision first (we need it for both Muse tagging and receipt OCR anyway), then Haiku reads the Vision response + caption text and returns `muse` or `receipt`. One extra Haiku call per image (~Rs 0.10), chosen for flexibility over a hardcoded Vision text-density rule. Cost acceptable at founding-cohort scale; can revisit if cost matters at 500+ active brides.
+
+**Receipt OCR flow (Haiku-as-classifier → Vision → three-branch flow):**
+1. Bride sends photo → image classifier (Haiku) routes to receipt vs Muse
+2. Receipt path → Vision OCR extracts amount, vendor, date (best-effort, any field may be null — no confidence gate)
+3. Agent queries existing bookings for fuzzy vendor-name match (case-insensitive substring)
+4. Agent picks branch based on match results + vendor shape + OCR signals:
+   - **Branch A (standalone):** No vendor-shaped match, non-wedding-vendor purchase. "Got this — Rs 8K to Bombay Mithai on 14 May. Save it as a receipt?"
+   - **Branch B (new booking likely):** Vendor-shaped name, no existing booking, substantial amount or "advance" detected. "Got this — Rs 50K to Studio Anvaya on 14 May. Looks like an advance for a new booking. Want me to set one up — what's the total contract value?"
+   - **Branch C (existing booking match):** Vendor name matches a booking. "Got this — Rs 1L to Studio Anvaya on 14 May. Is this against your Studio Anvaya booking? (Total Rs 2L, Rs 50K paid so far.)"
+5. Bride confirms → atomic tool call:
+   - Branch A confirmed → `save_receipt()` alone
+   - Branch B confirmed (+ total given) → `add_booking()` then `save_receipt()` (with booking_id) then `record_payment()`
+   - Branch C confirmed → `save_receipt()` (with booking_id) then `record_payment()`
+
+**Receipt OCR confidence threshold (locked at B3 — no gate):** Vision returns what it returns. Agent proposes the save with whatever fields are filled. Missing fields → agent asks for them in the same turn ("Got the receipt — looks like Priya Mehta Couture on 14 May. What was the amount?"). Hard confidence gates produce silent failures, which feel worse than a wrong guess that the bride can correct.
+
+**Text-only payment events:** Bride says "Just paid Anvaya Rs 50K advance" with no image. Agent treats this identically to a receipt with no `image_url`. Same three-branch flow. Creates a `couple_receipts` row with `image_url = null`. Real-world critical — brides often log payments verbally without a photo handy.
+
+**Morning nudge (cron):**
+- 8am IST daily, same cron pattern as vendor morning briefing (inherited from Session 6)
+- Content: days-to-wedding count + top priority task + any events today + dues within next 14 days
+- Sent as service message if 24h window open; utility template if closed
+
+**Twilio template submission:** Moved from start of B3 to **end of B3, after smoke testing the morning nudge content** (decision in B3 planning). Submit `dream_wedding_morning_nudge` once nudge content is finalized — approval takes 1-7 days, but a re-submission cycle costs more than a 1-7 day wait at the end.
+
+**B3 build order (one thing at a time, smoke-test after each):**
+1. Migration 0019 (tasks + bookings + receipts + record_payment function)
+2. Task tools (5) — smoke-test
+3. Event tools (3 new) — smoke-test (using existing test bride's `add_event` flow as the validation harness)
+4. Booking tools (5) — smoke-test
+5. Image router refactor — Haiku-as-classifier. Smoke-test that existing Muse images still route correctly
+6. Receipt tools + 3-branch linkage flow (4 tools) — smoke-test all three branches with the test bride
+7. Morning nudge cron (8am IST) — smoke-test (manual trigger first, then verify cron schedule)
+8. Twilio template submission (now that nudge content is known)
+9. Docs + close (HANDOVER_BRIDE.md rewrite, SCHEMA.md update, this roadmap update, ROADMAP.md vendor-fires log)
+
+**Smoke test surfaces:**
+- create_task("call venue Monday", due_date "monday") → list_tasks shows it correctly → complete_task → status updated → delete_task → gone
+- list_events on test bride → returns events created in B1+ shows correctly with couple_id filter
+- update_event ("move trial to Sunday") → with disambiguation if multiple trials
+- delete_event with confirmation flow
+- add_booking ("Booked Studio Anvaya, photographer, Rs 2L total, paid 50K advance, balance due Dec 1") → row created with state='advance_paid'
+- list_bookings → shows Anvaya with balance_due computed by SQL = 150000
+- list_dues(within_days=30) → shows Anvaya balance due in N days
+- Image classifier: send Pinterest aesthetic image → routes to Muse → existing flow works
+- Image classifier: send receipt photo → routes to receipt OCR → three-branch flow
+- Receipt Branch A: photo of sweets bill → "Save it?" → standalone receipt
+- Receipt Branch B: photo of new vendor advance receipt → "Set up a booking?" → asks total → creates booking + receipt + payment atomically
+- Receipt Branch C: photo of second payment to known vendor → "Against existing booking?" → links receipt + updates amount_paid via record_payment
+- Text-only payment: "paid 30K to florist" → no image → still goes through three-branch flow
+- Morning nudge: manual trigger for test bride → composes correct content with days-to-wedding + top task + today's events + 14-day dues
+- delete_booking → confirms before deleting → linked receipts preserved as standalone
+
+### B3.1 — Cleanup + circle invite link bug fix (post-B3, ~90 min)
+
+**B3.1 was incorrectly documented at B2 close as a prerequisite to B3. Corrected at B3 start: B3.1 follows B3.** B3.1 is the dedicated cleanup session for B2 deferred items + a known production bug + admin polish + a small migration.
+
+**Goal:** Close out B2 deferred audit items, fix the broken circle invite link, close known admin/schema gaps. Not a feature session — entirely cleanup.
 
 **Smoke tests:**
 - End-to-end circle flow: bride invites Mom → Mom claims CIRCLE-XXXXXX token → Mom forwards image → session closes (10 min idle) → bride messages → summary preamble appears → bride says "yeah" → images sent back
-- All B3 tools: create_task, list_tasks, complete_task, save_receipt, list_receipts, add_event, morning nudge
+
+**Known production bug (added to B3.1 scope):**
+- **Circle invite wa.me link broken end-to-end.** Bride invites a circle member (e.g. Mom), the wa.me/CIRCLE-XXXXXX link is generated and returned, but does not work end-to-end when the invitee taps it. Specific symptom TBD on investigation. Affected flow: `invite_circle_member()` Postgres function → admin/agent response containing wa.me link → invitee taps → claim flow. One of the steps in this chain is broken. Investigate the admin invite generation path and the bride agent's invite response composition, plus the claim regex in `brideIndex.js`. Fix in B3.1.
 
 **Bug fixes (CC audit findings deferred from B2):**
 - M2: Duplicate session creation race → unique partial index on circle_sessions(circle_member_id) WHERE summarized_to_bride = false
@@ -404,49 +520,11 @@ Architectural changes from original spec:
 **Admin fixes:**
 - Delete button password confirmation (currently one-click — security gap). Second POST route validates ADMIN_PASSWORD env var before executing delete.
 
-**Migration 0018 (small):**
+**Migration 0020 (small — note: 0019 = B3 planner, 0020 = B3.1 cleanup, 0021 = B4 vendor connections; migrations numbered in apply order):**
 - 7-day expiry on pending circle invite tokens (add expires_at column + check in claim_circle_invite function)
 - summary_message_id FK to messages(id) ON DELETE SET NULL
 - circle_sessions unique partial index (M2 fix)
 
-### B3 — Planner: calendar, tasks, receipts (2 sessions, ~180 min total)
-
-**Goal:** Bride has complete planning substrate. Tasks, schedule, receipt vault. Morning nudge live.
-
-**Migrations:** `0017_bride_planner.sql`
-- `couple_tasks` table (id, couple_id, title, status [pending/done], priority [high/medium/low], due_date, event_name, notes, created_at, updated_at)
-- `couple_receipts` table (id, couple_id, amount, vendor_name, description, receipt_date, image_url, tags text[], created_at)
-- `events.couple_id` column added (events already exists with vendor_id; column is additive)
-
-**Note:** No `couple_budget` table, no `couple_expenses` table. **Bride is record-keeping, not budget-tracking.** Most big-money decisions are made by parents (venue, catering). Bride needs to organize her own receipts and schedule, not run a CFO function. If a future bride explicitly wants budget tracking, add `set_budget` tool then.
-
-**Code additions to brideTools.js:**
-- `create_task` / `list_tasks` / `complete_task` / `update_task`
-- `save_receipt` (text + optional image — Google Vision OCRs amount/vendor when image present)
-- `list_receipts` (searchable, by vendor name or date range or tags)
-- Reuses `add_event` / `list_events` / `update_event_state` from B1, now scoped by couple_id when message originates from bride
-
-**Morning nudge (cron):**
-- 8am IST daily, same cron pattern as vendor morning briefing
-- Content: days-to-wedding count + top priority task + any events today
-- Sent as service message if 24h window open; utility template if closed
-- **Twilio template submission needed for closed-window case.** Submit template `dream_wedding_morning_nudge` at start of B3.
-
-**Receipt OCR flow:**
-- Bride sends photo → media guard detects image → routes to Google Vision OCR
-- Vision returns: amount (best-effort), vendor name (best-effort), date (best-effort)
-- Agent: "Got this — Rs 45,000 to Priya Mehta Couture on 14 May. Save it?" → Yes/No
-- Confirm → save_receipt row created
-
-**Note:** This is the one place where image handling diverges from vendor side. Vendor side rejects images. Bride side B3+ routes to OCR for receipts (and to Muse for non-receipt images, decided by image classifier).
-
-**Smoke tests:**
-- create_task("call venue Monday", due_date "monday") → list_tasks shows it correctly
-- Complete task → status updated
-- Send receipt photo → OCR → confirmation → save_receipt row
-- list_receipts → searchable by vendor name
-- add_event ("trial Saturday 11am at Studio Anvaya") → events row, couple_id set
-- 8am morning nudge fires correctly for active brides
 
 ### B4 — Vendor connections + Surprise Me + silent onboarding (2 sessions, ~180 min total)
 
@@ -460,7 +538,7 @@ Ships independently, not blocked by bride data. Adds `factual_search` tool to br
 #### B4.1b — Bride classifier tuning (~45-60 min)
 Ships after 4 weeks of real founding-cohort bride conversation data accumulates. Current classifier (classifier.js) was written for vendor COMPLEX patterns. Bride-specific COMPLEX triggers (family conflict, taste arbitration, multi-vendor decisions, emotional moments) under-promote to Sonnet. Tuning: add bride-specific COMPLEX and SIMPLE examples. Option: separate brideClassifier.js instead of modifying the shared one.
 
-**Migrations:** `0019_vendor_connections_and_discover.sql`
+**Migrations:** `0021_vendor_connections_and_discover.sql`
 - `couple_vendor_connections` table (id, couple_id, vendor_id, state [shortlisted/enquired/booked/passed], source [muse/discover/whatsapp/manual], shortlisted_at, enquired_at, notes, created_at, updated_at)
 - `vendors.aesthetic_tags` jsonb (Swati-managed portfolio tags for Surprise Me matching)
 - `discover_readiness` table (city, category, ready boolean, ready_at timestamptz, primary key (city, category))
@@ -505,7 +583,7 @@ B4 launch: these tools work only for dream-os vendors (vendors table). External 
 
 At end of B4, the couples table is fully populated for active brides. **Bride track is at parity with vendor track.**
 
-**Migrations:** `0018_vendor_connections_and_discover.sql`
+**Migrations:** `0021_vendor_connections_and_discover.sql`
 - `couple_vendor_connections` table (id, couple_id, vendor_id, state [shortlisted/enquired/booked/passed], source [muse/discover/whatsapp/manual], shortlisted_at, enquired_at, notes, created_at, updated_at)
 - `vendors.aesthetic_tags` jsonb (Swati-managed portfolio tags for Surprise Me matching)
 - `discover_readiness` table (city, category, ready boolean, ready_at timestamptz, primary key (city, category))
@@ -608,11 +686,11 @@ After Session 9: single vendor-and-bride codebase, single doc set, parallel-trac
 
 2. **Onboarding flow exact wording** — current planned greeting: "Hi [Name] — welcome. When's the big day?" Open: founder review of full onboarding script before B1 build.
 
-3. **Twilio template content for morning nudge** — must be submitted at start of B3. Content TBD.
+3. **Twilio template content for morning nudge** — submission moved from start of B3 to **end of B3, after smoke testing** the nudge content. Content drafted during build, submitted once finalized. Approval takes 1-7 days but a re-submission cycle costs more.
 
-4. **Receipt OCR confidence threshold** — what confidence level from Google Vision is needed before agent proposes saving a receipt? Founder to decide at B3.
+4. ~~**Receipt OCR confidence threshold**~~ — ✅ Resolved at B3 planning. **No gate.** Vision returns what it returns; agent proposes save with whatever fields are filled. Missing fields → agent asks for them in the same turn. Hard confidence gates produce silent failures, which feel worse than a wrong guess the bride can correct.
 
-5. **Image classifier (Muse vs receipt vs other)** — when bride sends image, how does agent decide Muse vs receipt? Probably: Vision label inspection. If Vision sees receipts/text → receipt path. Otherwise Muse path. Locked at B3.
+5. ~~**Image classifier (Muse vs receipt vs other)**~~ — ✅ Resolved at B3 planning. **Haiku-as-classifier.** Pipeline runs Vision first (needed for both Muse tagging and receipt OCR anyway), then Haiku reads the Vision response + caption text and returns `muse` or `receipt`. One extra Haiku call per image (~Rs 0.10). Chosen for flexibility over a hardcoded Vision text-density rule.
 
 6. **Paid tier definition** — what triggers "paid" for Surprise Me Sonnet routing? Couple tier field? Explicit upgrade? Razorpay? Open. Founder to decide before B4.
 
