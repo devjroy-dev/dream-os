@@ -453,10 +453,11 @@ app.post('/webhook/whatsapp', async (req, res) => {
       });
 
       if (saveResult.ok && saveResult.classified_as === 'receipt') {
-        // Classifier routed to receipt — image saved to Cloudinary but NOT to Muse.
-        // Synthesize a context note so the agent asks the bride what it's for.
+        // Classifier routed to receipt — call save_receipt immediately then
+        // acknowledge warmly. No questions — receipt is filed as-is. Bride
+        // retrieves it via PWA when she needs it.
         mediaSaveSucceeded = true;
-        mediaContextNote = `[SYSTEM NOTE] The bride forwarded an image that looks like a receipt or invoice. It has been saved to Cloudinary at ${saveResult.image_url}. Ask her two things in one natural sentence: what's this for (so you can label it) and how much was it? Then call save_receipt with her answers. Keep your tone warm and brief — one sentence.`;
+        mediaContextNote = `[SYSTEM NOTE] The bride forwarded a receipt. It has been filed to her receipt vault (image_url: ${saveResult.image_url}). Call save_receipt immediately with just the image_url. Then reply with one warm sentence acknowledging the receipt was saved — something like "Got it, filed away!" Do NOT ask for details, label, or amount.`;
         console.log(`[bride-webhook] image classified as receipt, image_url=${saveResult.image_url}`);
       } else if (saveResult.ok) {
         mediaSaveSucceeded = true;

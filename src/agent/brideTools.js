@@ -420,6 +420,52 @@ const BRIDE_TOOLS = [
     },
   },
   {
+    name: 'save_receipt',
+    description: 'File a receipt image to the bride\'s receipt vault. Use IMMEDIATELY when the [SYSTEM NOTE] tells you a receipt was forwarded — call this with the image_url from the note, then acknowledge warmly in one sentence. Do NOT ask the bride for any details before calling this tool. Receipt retrieval and browsing happens via the PWA.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        image_url: {
+          type: 'string',
+          description: 'Cloudinary URL of the receipt image. Take this directly from the [SYSTEM NOTE]. Required.',
+        },
+      },
+      required: ['image_url'],
+    },
+  },
+  {
+    name: 'list_receipts',
+    description: 'Look up the bride\'s saved receipts. Use when she asks "show me my receipts", "how many receipts do I have", "can you show me the ones I saved". Returns receipt rows with id, image_url, created_at sorted by most recent first. Set request_image_playback=true if she wants to actually see the images — the engine will send them back via WhatsApp.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'integer',
+          description: 'Optional. Max rows to return. Default 10. Max 20.',
+        },
+        request_image_playback: {
+          type: 'boolean',
+          description: 'Optional. Default false. Set true if she wants to see the receipt images in WhatsApp.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'delete_receipt',
+    description: 'Permanently remove a saved receipt. Use when she clearly asks to delete one — "delete that last receipt", "remove the one I just saved". Destructive and not recoverable. The receipt_id must be resolved first via list_receipts.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        receipt_id: {
+          type: 'string',
+          description: 'UUID of the receipt to delete. Get from list_receipts. Required.',
+        },
+      },
+      required: ['receipt_id'],
+    },
+  },
+  {
     name: 'list_muse',
     description: 'Look up saved images on the bride\'s Muse mood board. Use this whenever she asks about her saves — "what have I saved this week", "show me save 47", "what are my recent pastel saves", "what did mom add". Returns a structured list with save numbers, aesthetic tags, captions, contributor info, and image URLs. After getting the result, you can compose a natural reply describing the saves. If she wants to actually SEE one or more images, set the request_image_playback flag — the engine will forward those images back to her via WhatsApp.',
     input_schema: {

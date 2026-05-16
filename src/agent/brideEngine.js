@@ -321,6 +321,18 @@ async function executeBrideTool({ name, input, couple, user, conversation, supab
       return await execRecordPayment({ input, couple, supabase });
     }
 
+    case 'save_receipt': {
+      return await execSaveReceipt({ input, couple, supabase });
+    }
+
+    case 'list_receipts': {
+      return await execListReceipts({ input, couple, supabase, mediaUrlsToReturn });
+    }
+
+    case 'delete_receipt': {
+      return await execDeleteReceipt({ input, couple, supabase });
+    }
+
     case 'list_muse': {
       return await execListMuse({ input, couple, supabase, mediaUrlsToReturn });
     }
@@ -1321,6 +1333,104 @@ async function execRecordPayment({ input, couple, supabase }) {
   }
 
   return { ok: true, booking: data };
+}
+
+// ── receipt executors (B3 Step 6) ─────────────────────────────────────
+// 3 tools: save_receipt, list_receipts, delete_receipt.
+//
+// Receipts are a SAFEKEEPING VAULT — visual archive, no questions asked.
+// Agent calls save_receipt immediately on receipt detection with just the
+// image_url. No label, no amount, no vendor_name asked of the bride.
+// Retrieval and linking to vendors happens via PWA (Sessions 11-12).
+//
+// All three inherit the post-audit canonical patterns (L2, M1, UUID_REGEX).
+// list_receipts supports image playback via mediaUrlsToReturn (same as list_muse).
+
+async function execSaveReceipt({ input, couple, supabase }) {
+  const { image_url } = input || {};
+
+  if (!image_url || typeof image_url !== 'string' || !image_url.trim()) {
+    return { ok: false, error: 'image_url required' };
+  }
+
+  const { data, error } = await supabase
+    .from('couple_receipts')
+    .insert({
+      couple_id: couple.id,
+      image_url: image_url.trim(),
+    })
+    .select('id, image_url, created_at')
+    .single();
+
+  if (error) {
+    console.error('[bride-tool:save_receipt] insert error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, receipt: data };
+}
+
+async function execListReceipts({ input, couple, supabase, mediaUrlsToReturn }) {
+  const { limit, request_image_playback = false } = input || {};
+
+  // Limit: default 10, cap 20 (receipts are fewer than tasks/bookings)
+  let limitValue = 10;
+  if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+    limitValue = Math.min(limit, 20);
+  }
+
+  const { data, error } = await supabase
+    .from('couple_receipts')
+    .select('id, image_url, created_at')
+    .eq('couple_id', couple.id)
+    .order('created_at', { ascending: false })
+    .limit(limitValue);
+
+  if (error) {
+    console.error('[bride-tool:list_receipts] select error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  const receipts = data || [];
+
+  // Image playback — push Cloudinary URLs into mediaUrlsToReturn (same
+  // pattern as list_muse). Engine sends these back as WhatsApp images.
+  if (request_image_playback && Array.isArray(mediaUrlsToReturn)) {
+    for (const r of receipts) {
+      if (r.image_url && mediaUrlsToReturn.length < 5) {
+        mediaUrlsToReturn.push(r.image_url);
+      }
+    }
+  }
+
+  return { ok: true, receipts, count: receipts.length };
+}
+
+async function execDeleteReceipt({ input, couple, supabase }) {
+  const { receipt_id } = input || {};
+
+  if (!receipt_id || typeof receipt_id !== 'string' || !UUID_REGEX.test(receipt_id)) {
+    return { ok: false, error: 'receipt_id required (UUID format)' };
+  }
+
+  // L2 canonical delete pattern
+  const { data, error } = await supabase
+    .from('couple_receipts')
+    .delete()
+    .eq('id', receipt_id)
+    .eq('couple_id', couple.id)
+    .select('id, image_url, created_at')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'receipt not found or not yours' };
+    }
+    console.error('[bride-tool:delete_receipt] delete error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, deleted_receipt: data };
 }
 
 // ── list_muse executor (B2) ──────────────────────────────────────────
