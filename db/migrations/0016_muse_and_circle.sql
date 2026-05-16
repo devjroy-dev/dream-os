@@ -58,7 +58,7 @@ create table if not exists muse_saves (
   caption              text,
   aesthetic_tags       jsonb not null default '[]'::jsonb,
   vision_raw           jsonb,
-  saved_by_user_id     uuid not null references users(id) on delete restrict,
+  saved_by_user_id     uuid not null references users(id) on delete cascade,  -- NOTE: originally RESTRICT; fixed to CASCADE in migration 0018
   saved_by_role        text not null,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
