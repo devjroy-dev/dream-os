@@ -57,12 +57,21 @@ app.locals.supabase = supabase;
 //   https://instagr.am/p/...
 // First match wins (we save the first detected link, agent handles the rest
 // in conversation).
-const LINK_REGEX = /\bhttps?:\/\/(?:www\.|m\.)?(?:pinterest\.[a-z.]+\/(?:pin\/|search\/)|pin\.it\/|instagram\.com\/(?:p|reel|tv)\/|instagr\.am\/(?:p|reel)\/)[^\s]+/i;
+//
+// Tail character class excludes trailing punctuation/quotes that users often
+// append in messages ("Love this https://pin.it/abc!"). [^\s.,!?;:'"<>] keeps
+// matching until whitespace or one of those punctuation chars — preventing
+// the dot/comma/bang from being pulled into the URL itself.
+const LINK_REGEX = /\bhttps?:\/\/(?:www\.|m\.)?(?:pinterest\.[a-z.]+\/(?:pin\/|search\/)|pin\.it\/|instagram\.com\/(?:p|reel|tv)\/|instagr\.am\/(?:p|reel)\/)[^\s.,!?;:'"<>]+/i;
 
 function extractMuseUrl(text) {
   if (!text || typeof text !== 'string') return null;
   const match = text.match(LINK_REGEX);
-  return match ? match[0] : null;
+  if (!match) return null;
+  // Belt and braces: strip any trailing punctuation the regex somehow let through.
+  // Handles edge cases like Pinterest URLs that legitimately end with a slash
+  // followed by punctuation — keeps the slash, drops the punctuation.
+  return match[0].replace(/[.,!?;:'")\]}>]+$/, '');
 }
 
 // ── Synthesize a mediaContext note for the agent ─────────────────────
@@ -259,12 +268,28 @@ app.post('/webhook/whatsapp', async (req, res) => {
     }
 
     // ── Log inbound message ─────────────────────────────────────────
-    // Body text is logged as-is. If the inbound was image-only with no text,
-    // we log a synthetic body that records the save (so conversation history
-    // remains coherent for the agent).
-    const bodyForLog = trimmedBody.length > 0
-      ? trimmedBody
-      : (mediaSaveSucceeded ? '[forwarded an image]' : (mediaSaveAttempted ? '[forwarded an image — save failed]' : '[empty]'));
+    // Body text is logged as-is. If the inbound was image-only or media-only,
+    // synthesize a clear body string so conversation history stays coherent
+    // and the agent reading the audit trail later isn't confused.
+    let bodyForLog;
+    if (trimmedBody.length > 0) {
+      bodyForLog = trimmedBody;
+    } else if (mediaSaveSucceeded) {
+      bodyForLog = '[forwarded an image]';
+    } else if (mediaSaveAttempted) {
+      bodyForLog = '[forwarded an image — save failed]';
+    } else if (hasMedia) {
+      // Media was present but not an image (video, audio, document, etc).
+      // Identify the rough kind for the audit trail.
+      const ct = (req.body.MediaContentType0 || '').toLowerCase();
+      const kind = ct.startsWith('video/') ? 'video'
+                 : ct.startsWith('audio/') ? 'voice note'
+                 : ct.startsWith('application/pdf') ? 'PDF'
+                 : 'media';
+      bodyForLog = `[forwarded a ${kind} — not yet supported]`;
+    } else {
+      bodyForLog = '[empty]';
+    }
 
     await supabase.from('messages').insert({
       conversation_id: conversation.id,
@@ -283,11 +308,9 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     // ── Run the engine ──────────────────────────────────────────────
     // Pass the body (which may include the URL — agent reads naturally).
-    // If the inbound was image-only with no caption, pass a synthetic "user
-    // forwarded an image" message so the model has something to respond to.
-    const inboundForEngine = trimmedBody.length > 0
-      ? trimmedBody
-      : (mediaSaveSucceeded ? '[forwarded an image]' : '[forwarded media]');
+    // For media-only inbounds, pass the same synthesized string we wrote to
+    // the audit log so the agent's context matches its history.
+    const inboundForEngine = trimmedBody.length > 0 ? trimmedBody : bodyForLog;
 
     const result = await runBrideAgenticTurn({
       couple,

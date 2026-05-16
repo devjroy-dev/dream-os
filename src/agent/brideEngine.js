@@ -398,10 +398,14 @@ async function execAddEvent({ input, couple, supabase }) {
 // (pagination), aesthetic_tags (taxonomy match), saved_by (bride vs circle).
 // Plus request_image_playback flag.
 //
-// Note on aesthetic_tags filter: uses the jsonb 'overlaps' operator (?| in
-// SQL, .overlaps() / .contains() in Supabase) so a save with ANY of the
-// requested tags matches — not all. Bride asking "show me ethnic" should
-// match saves tagged ["ethnic","grand"] AND saves tagged ["ethnic"] alone.
+// Note on aesthetic_tags filter: muse_saves.aesthetic_tags is a jsonb column
+// (not text[]). Supabase's .overlaps() compiles to Postgres '&&' which is NOT
+// defined for jsonb — so we do the tag intersection in JavaScript instead.
+// At bride-scale (max a few hundred saves per couple), the perf cost is nil.
+// We pre-fetch a wider window from Postgres (FETCH_FACTOR x limit) and then
+// filter to the requested tags in memory, slicing to the final limit after.
+
+const FETCH_FACTOR = 4;  // when filtering, pull 4x the limit to give in-memory filter room
 
 async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
   const {
@@ -411,6 +415,8 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
     saved_by,
     request_image_playback = false,
   } = input || {};
+
+  const tagFilterActive = Array.isArray(aesthetic_tags) && aesthetic_tags.length > 0;
 
   // Build the query
   let query = supabase
@@ -428,24 +434,41 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
     query = query.eq('saved_by_role', 'circle_member');
   }
 
-  // aesthetic_tags overlap: jsonb array contains ANY of the filter values
-  if (Array.isArray(aesthetic_tags) && aesthetic_tags.length > 0) {
-    // Postgres jsonb '?|' operator: any element in the array exists as a top-level key/element
-    // Supabase: .overlaps() works on Postgres array columns and on jsonb arrays via the ?| pattern
-    query = query.overlaps('aesthetic_tags', aesthetic_tags);
-  }
+  // Note: tag intersection is done in JS post-fetch, not in SQL. See header
+  // comment above this function.
 
-  // Apply limit + ordering (newest first), unless looking up a single save
+  // Apply limit + ordering (newest first), unless looking up a single save.
+  // When a tag filter is active, fetch FETCH_FACTOR x the limit so the JS
+  // filter has enough candidates to satisfy the requested limit.
+  let safeLimit;
   if (typeof save_number !== 'number') {
-    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || LIST_MUSE_DEFAULT_LIMIT, 1), LIST_MUSE_MAX_LIMIT);
-    query = query.order('save_number', { ascending: false }).limit(safeLimit);
+    safeLimit = Math.min(Math.max(parseInt(limit, 10) || LIST_MUSE_DEFAULT_LIMIT, 1), LIST_MUSE_MAX_LIMIT);
+    const fetchLimit = tagFilterActive
+      ? Math.min(safeLimit * FETCH_FACTOR, LIST_MUSE_MAX_LIMIT * FETCH_FACTOR)
+      : safeLimit;
+    query = query.order('save_number', { ascending: false }).limit(fetchLimit);
   }
 
-  const { data: saves, error } = await query;
+  const { data: rawSaves, error } = await query;
 
   if (error) {
     console.error('[bride-tool:list_muse] query error:', error);
     return { ok: false, error: error.message };
+  }
+
+  // In-memory tag intersection. A save matches if its aesthetic_tags array
+  // shares at least one element with the requested filter (OR semantics).
+  let saves = rawSaves || [];
+  if (tagFilterActive) {
+    const wantedTags = new Set(aesthetic_tags);
+    saves = saves.filter(s => {
+      if (!Array.isArray(s.aesthetic_tags)) return false;
+      return s.aesthetic_tags.some(t => wantedTags.has(t));
+    });
+    // After filtering, slice down to the originally-requested limit
+    if (typeof save_number !== 'number') {
+      saves = saves.slice(0, safeLimit);
+    }
   }
 
   // If playback requested, queue up the Cloudinary URLs for the engine to
@@ -538,8 +561,11 @@ async function execDeleteMuseSave({ input, couple, user, supabase }) {
   }
 
   // Write a circle_activity row to record the removal (so the bride can be
-  // told about it later if a circle member removed their own save).
-  await supabase.from('circle_activity').insert({
+  // told about it later if a circle member removed their own save). Non-fatal
+  // if it fails — the delete itself already succeeded; we log a warning so
+  // a schema or constraint issue doesn't go unobserved (parity with the
+  // same pattern in museSave.js).
+  const { error: activityError } = await supabase.from('circle_activity').insert({
     couple_id:     couple.id,
     actor_user_id: speakerUserId ?? null,
     actor_name:    speakerIsTheBride ? 'You' : 'Circle member',
@@ -549,6 +575,10 @@ async function execDeleteMuseSave({ input, couple, user, supabase }) {
     subject_id:    target.id,
     payload:       { save_number, caption: target.caption },
   });
+
+  if (activityError) {
+    console.error('[bride-tool:delete_muse_save] circle_activity insert failed (non-fatal):', activityError.message);
+  }
 
   return {
     ok: true,

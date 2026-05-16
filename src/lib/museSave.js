@@ -103,41 +103,74 @@ async function saveToMuse({
     aesthetic_tags,
   } = pipelineResult;
 
-  // ── Phase 2: get next save_number ────────────────────────────────────
-  let save_number;
-  try {
-    save_number = await nextSaveNumber(supabase, couple_id);
-  } catch (err) {
-    console.error('[museSave] save_number lookup failed:', err.message);
-    return { ok: false, error: err.message };
-  }
-
-  // ── Phase 3: insert muse_saves row ───────────────────────────────────
+  // ── Phase 2 + 3: get next save_number and insert, with retry on race ─
+  // The unique index (couple_id, save_number) makes concurrent saves
+  // collision-safe at the DB level: one insert wins, the other errors.
+  // We retry up to MAX_SAVE_RETRIES times in case multiple writers (bride
+  // + circle members) happen to hit the same save_number window.
+  //
+  // Postgres unique-violation SQLSTATE is 23505. Supabase error.code carries
+  // it through as a string. We retry only on that specific code — other
+  // errors (column violations, RLS, network) fail immediately.
   const cleanCaption = (caption && typeof caption === 'string' && caption.trim())
     ? caption.trim().slice(0, 500)
     : null;
 
-  const { data: savedRow, error: insertError } = await supabase
-    .from('muse_saves')
-    .insert({
-      couple_id,
-      save_number,
-      source_type,
-      source_url:       resolvedSourceUrl,
-      image_url,
-      vendor_id:        null,        // B2: never a vendor save. Discover saves arrive at Session 9.
-      caption:          cleanCaption,
-      aesthetic_tags,
-      vision_raw,
-      saved_by_user_id,
-      saved_by_role,
-    })
-    .select('id, save_number, source_type, source_url, image_url, caption, aesthetic_tags, saved_by_user_id, saved_by_role')
-    .single();
+  const MAX_SAVE_RETRIES = 3;
+  let save_number;
+  let savedRow = null;
+  let lastError = null;
 
-  if (insertError) {
+  for (let attempt = 1; attempt <= MAX_SAVE_RETRIES; attempt++) {
+    try {
+      save_number = await nextSaveNumber(supabase, couple_id);
+    } catch (err) {
+      console.error('[museSave] save_number lookup failed:', err.message);
+      return { ok: false, error: err.message };
+    }
+
+    const { data, error: insertError } = await supabase
+      .from('muse_saves')
+      .insert({
+        couple_id,
+        save_number,
+        source_type,
+        source_url:       resolvedSourceUrl,
+        image_url,
+        vendor_id:        null,        // B2: never a vendor save. Discover saves arrive at Session 9.
+        caption:          cleanCaption,
+        aesthetic_tags,
+        vision_raw,
+        saved_by_user_id,
+        saved_by_role,
+      })
+      .select('id, save_number, source_type, source_url, image_url, caption, aesthetic_tags, saved_by_user_id, saved_by_role')
+      .single();
+
+    if (!insertError) {
+      savedRow = data;
+      break;
+    }
+
+    lastError = insertError;
+    // 23505 = unique_violation — a concurrent insert took our save_number.
+    // Retry: bump and re-lookup.
+    if (insertError.code === '23505') {
+      console.warn(`[museSave] save_number ${save_number} collision (attempt ${attempt}/${MAX_SAVE_RETRIES}), retrying`);
+      continue;
+    }
+
+    // Any other error → fail fast.
     console.error('[museSave] insert failed:', insertError);
     return { ok: false, error: `muse_saves insert failed: ${insertError.message}` };
+  }
+
+  if (!savedRow) {
+    console.error('[museSave] save failed after retries:', lastError);
+    return {
+      ok: false,
+      error: `muse_saves insert failed after ${MAX_SAVE_RETRIES} retries: ${lastError?.message ?? 'unknown'}`,
+    };
   }
 
   // ── Phase 4: insert circle_activity row ──────────────────────────────
@@ -169,7 +202,10 @@ async function saveToMuse({
     console.error('[museSave] circle_activity insert failed (non-fatal):', activityError.message);
   }
 
-  console.log(`[museSave] saved #${save_number} for couple ${couple_id} (${source_type}, tags: ${aesthetic_tags.join(',')})`);
+  // Null-safe formatting — Array.isArray guards against unexpected pipeline
+  // output. Throwing here would leave an orphan DB row reported as a failure.
+  const tagsForLog = Array.isArray(aesthetic_tags) ? aesthetic_tags.join(',') : 'none';
+  console.log(`[museSave] saved #${save_number} for couple ${couple_id} (${source_type}, tags: ${tagsForLog})`);
 
   return { ok: true, save: savedRow };
 }
