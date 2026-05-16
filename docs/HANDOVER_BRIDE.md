@@ -1,220 +1,227 @@
 # HANDOVER_BRIDE.md — dream-os bride product
 
-**Session:** B1 — Foundation
-**Status:** ✅ COMPLETE
+**Session:** B2 — Muse + Circle
+**Status:** ✅ COMPLETE (pending smoke test of circle flow in B3.1)
 **Date closed:** 2026-05-16
-**Author:** Dev
-**Bride product version:** 0.8.5a.1-b1
+**Bride product version:** 0.8.5a.2-b2
 **Vendor product version (frozen):** 0.8.5a
+**HEAD at B2 close:** acb4828
 
-This is the first thing the next bride-session Claude reads at start of session. Read it top to bottom before touching any code.
-
----
-
-## What B1 shipped
-
-A complete, live, end-to-end bride product running on WhatsApp:
-
-- Bride messages **+1 478 778 8550** ("The Dream Wedding")
-- Phone-as-gate validates her against the database
-- New brides go through a 4-question onboarding (date, partner, city, budget)
-- Onboarding completes → agentic loop takes over for ongoing conversation
-- Admin at `thedreamai.in/admin/couples` lets Swati invite brides and view their state
-
-The product is live and verified. One test bride completed onboarding end-to-end including dodge handling and a Haiku-extracted budget field.
+This is the first thing the next bride-session Claude reads. Read it top to bottom before touching any code. Then read ROADMAP_BRIDE.md and SCHEMA.md.
 
 ---
 
-## Build pattern locked: writer .py protocol
+## What B2 shipped
 
-**Every code change in B1 was applied via a self-contained Python writer script.** This pattern emerged during step 2 after two heredoc paste failures corrupted files (special characters in JavaScript template literals and SQL CHECK constraints didn't survive shell escaping). The writer .py pattern proved so reliable it is now the **default for all future sessions** including all future handovers.
+Full Muse vertical + Circle infrastructure, running live in production:
 
-### How it works
+- Bride forwards any image, Pinterest pin, or Instagram URL to +14787788550
+- Google Cloud Vision API tags the image with aesthetic labels
+- Haiku picks from the locked 12-value taxonomy and stores tags in muse_saves
+- Cloudinary mirrors the image (own CDN, not Twilio's media URL)
+- Agent replies in BFF voice acknowledging the save
+- Bride can list saves, filter by tag, and ask for image playback
+- Bride can add people to her Circle via natural language ("add Mom")
+- Circle member gets a wa.me invite link, claims it with a CIRCLE-XXXXXX token
+- Circle member can forward images, links, and text notes to the bride's board
+- Circle member messages are session-batched (10-min idle = session ends)
+- When bride next messages, she gets a Haiku-composed BFF-voice summary of what her circle did
+- Admin: Delete button on vendor list and couple list (irreversible, cascade deletes)
 
-1. Claude builds the target file(s) in its sandbox, runs `node --check` on JavaScript or `python3 -c "import json"` on JSON, and smoke-tests the writer end-to-end before sending it.
-
-2. The writer is a single Python script with:
-   - Base64-encoded payload (the file content, line-wrapped at 76 chars)
-   - Expected SHA-256 hash
-   - Expected size in bytes
-   - Path validation (refuses to run outside repo root)
-   - Self-delete on success
-
-3. Multi-file writes go in ONE writer script. Every payload's hash is validated **before** any file is written. If any check fails, nothing lands. Atomic semantics.
-
-4. Dev's workflow per write:
-   - Download `write_<descriptor>.py` from Claude's response
-   - Drop into `/workspaces/dream-os` root
-   - Run: `python3 write_<descriptor>.py`
-   - Verify if needed: `git status`, `git diff`, `wc -l`
-   - Commit + push
-   - Paste commit output back to Claude
-
-5. After every commit, Claude reclones the repo into its OWN sandbox at `/home/claude/dream-os-fresh` (different from Dev's `/workspaces/dream-os`) and confirms HEAD matches before proceeding. Dev does NOT reclone in Codespaces.
-
-### Why this matters
-
-The writer .py pattern eliminates the entire class of "Claude generated correct code but it didn't land correctly" bugs. Three forms of that bug seen during B1:
-
-- Heredoc paste failures (special characters in template literals broke parsing)
-- Copy-paste truncation (long files paste only the first N lines silently)
-- Encoding mismatch (smart quotes, em-dashes corrupted via clipboard)
-
-With SHA-256 verification, the file on disk EXACTLY matches what Claude generated, or the script aborts.
-
-### When the writer pattern doesn't apply
-
-- One-line config tweaks (env vars, single boolean flips) → Claude Code or direct str_replace
-- SQL migrations to be pasted into Supabase SQL editor → plain code block in chat (the SQL still gets committed to the repo via writer .py, but the actual application to Supabase is a paste)
-- Trivial markdown edits → still preferred but pasting is acceptable
-
-### Naming convention
-
-`write_<descriptor>.py` where descriptor explains what's being written. Examples from B1:
-
-- `write_brideOnboarding.py` — single file, step 4
-- `write_brideAdmin.py` — multi-file: 3 new views + 2 edits
-- `write_b1_fix0014.py` — bugfix: migration + brideIndex.js patch
-- `write_b1_patch0015.py` — feature: 5 files for pronouns + dedup + dodge variety
-- `write_b1_package_json.py` — single file, version + scripts update
+All verified in production. Muse pipeline end-to-end smoke-tested. Circle code shipped and audit-fixed; circle smoke test deferred to B3.1 (see below).
 
 ---
 
-## What shipped in B1 — file inventory
+## B2 commit history
 
-### Schema migrations (all applied to Supabase)
+| Commit | Description |
+|---|---|
+| 8c1346b | B2: migration 0016 — muse_saves, circle_members, circle_activity |
+| 20d3233 | B2 step 3: image pipeline (Cloudinary + Vision + Haiku tagging) |
+| 9f2c831 | B2 step 4: Muse tools + media auto-save + image playback |
+| b0d6f45 | B2 step 4.1: audit fixes (race retry, jsonb filter, regex, log clarity) |
+| 52ea09b | B2 step 4.2: Twilio webhook signature verification (audit #1) |
+| f62dea6 | B2 step 4.2: Cloudinary MIME format hint (audit #9) |
+| 0c537b3 | B2 step 4.2: trust proxy for Railway TLS termination (audit #1 follow-up) |
+| d5cec24 | B2 step 4.2: external API timeouts (audit #11) |
+| b37607d | B2 step 4.2: tighten Pinterest TLD regex (audit #13) |
+| 5920493 | B2 step 5+6: circle invites + member loop + session-based summaries (migration 0017) |
+| 11955a2 | admin: delete button for vendors and couples |
+| acb4828 | B2 audit fixes: H1 H2 M1 M3 M4 M6 L1 L3 L4 L7 I1 I3 |
+
+---
+
+## What shipped in B2 — file inventory
+
+### Schema migrations
 
 | Migration | What it added |
 |---|---|
-| **0013_couples_onboarding.sql** | `couples.onboarding_state`, `couples.nudge_sent_at`, `couple_state` table, widened `events.kind` enum to 12 values, made `events.vendor_id` + `notes.vendor_id` nullable, added `couple_id` to events + notes with XOR constraints, `invite_couple()` function |
-| **0014_conversations_xor.sql** | Made `conversations.vendor_id` nullable, added `conversations.couple_id` with FK and index, added `conversations_owner_xor` CHECK. Discovered as a bug during live testing on first real message. |
-| **0015_pronouns_and_dedup.sql** | `users.pronouns` text column (CHECK 'she'/'he', nullable), `couples.user_id` unique constraint (prevents duplicate invites), dropped old 2-arg `invite_couple()`, created new 3-arg `invite_couple(p_phone, p_name, p_pronouns)` with validation |
+| **0016_muse_and_circle.sql** | `muse_saves` table, `circle_members` table, `circle_activity` table, `conversations.kind` widened to include `circle_thread`, `invite_circle_member()` Postgres function (token generation, 3-member cap), `claim_circle_invite()` Postgres function (token claim, status flip, joined activity row) |
+| **0017_circle_sessions.sql** | `circle_sessions` table (session-batching of circle member activity, 10-min idle boundary), `circle_activity.session_id` FK column + index |
 
-### Code files
+### New code files
 
-| File | Status | What it does |
+| File | Lines | What it does |
 |---|---|---|
-| `src/lib/supabase.js` | NEW | Shared Supabase client for bride-side modules |
-| `src/agent/brideSystemPrompt.js` | NEW | Pronoun-aware BFF voice. 220 lines. Static prompt + dynamic context query |
-| `src/agent/brideOnboarding.js` | NEW | State machine: new → asked_date → asked_partner → asked_city → asked_budget → complete. Haiku extraction for dates and budgets. Haiku-based dodge classification with regex fallback. 509 lines |
-| `src/agent/brideTools.js` | NEW | Three tool schemas: note_to_self, save_wedding_detail, add_event |
-| `src/agent/brideEngine.js` | NEW | Agentic loop with executor switch-cases for 3 tools. 400 lines |
-| `src/brideIndex.js` | NEW | Bride webhook server. Phone-as-gate, conversation creation, message logging, calls runBrideAgenticTurn, sendWhatsApp, status callback. 227 lines |
-| `src/admin/views/coupleInvite.js` | NEW | Admin invite form with pronouns radio (She/Her, He/Him) |
-| `src/admin/views/couples.js` | NEW | Admin couples list with stats + status badges |
-| `src/admin/views/coupleDetail.js` | NEW | Bride detail page: profile + notes + events + conversation transcript |
-| `src/admin/views/layout.js` | EDITED | Added "Couples" to nav, removed redundant top-level "Invite" link |
-| `src/admin/router.js` | EDITED | Added 3 routes: GET /couples, GET/POST /couples/invite, GET /couples/:id |
-| `package.json` | EDITED | Version bump to 0.8.5a.1-b1, bride-aware description, added start:bride + dev:bride scripts |
+| `src/lib/imagePipeline.js` | ~250 | Cloudinary upload (buffer + URL paths), Google Vision LABEL_DETECTION + IMAGE_PROPERTIES, Haiku aesthetic tagging against 12-value taxonomy, og:image scraping for Pinterest/IG links |
+| `src/lib/museSave.js` | 240 | Atomic Muse save: pipeline → save_number → muse_saves insert (with 3-retry race protection) → circle_activity insert. Accepts `actor_name` from caller (no DB lookup). Accepts `session_id` for session linkage. |
+| `src/agent/brideAesthetics.js` | ~40 | 12-value locked taxonomy: moody, editorial, pastel, OTT, minimal, candid, grand, rustic, modern, ethnic, elegant, old money |
+| `src/agent/circleSystemPrompt.js` | 111 | Deferential-warm voice for circle members. `buildDynamicCircleContext({circleMember, brideName, imageSavesToday})`. `DAILY_CAP_IMAGES=5` (single source of truth — imported by brideIndex.js). |
+| `src/agent/circleEngine.js` | 143 | `runCircleAgenticTurn` — Haiku-only, no tools, no loop, single LLM call, 200 max tokens. Mirrors brideEngine shape for parity. |
 
-### Infrastructure
+### Modified code files
 
-- **Railway service `dream-wedding`** created in the dream-os project. Custom start command: `node src/brideIndex.js`. URL: `https://dream-wedding-production-6cef.up.railway.app`. Env vars: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER=whatsapp:+14787788550, TDW_WA_NUMBER=14787788550
-- **Vendor service `dream-os`** gained env var `TDW_WA_NUMBER_BRIDE=14787788550` so admin invite links point at bride number
-- **Twilio +14787788550** flipped to point at dream-wedding service (was pointing at vendor service)
-- **Twilio +91 7982159047** unchanged — still vendor
-
----
-
-## Current state
-
-| Item | Status |
+| File | Key changes |
 |---|---|
-| dream-wedding service | Live at https://dream-wedding-production-6cef.up.railway.app |
-| dream-os service (vendor + admin) | Live at https://dream-os-production.up.railway.app |
-| Twilio +14787788550 routing | → dream-wedding ✓ |
-| Twilio +91 7982159047 routing | → dream-os (vendor) ✓ |
-| Latest migration | 0015 |
-| Test couple verified end-to-end | 1 (`7abccc1b-...`, Swati Couple Test, state=complete, partner=null dodged, date=null dodged, city=Goa, budget=3500000, pronouns=she) |
-| Founding cohort brides invited | 0 (B1 was foundation; real cohort invites start B2+ or whenever Swati starts) |
+| `src/agent/brideTools.js` | Added: `list_muse` (with `session_id` optional param), `delete_muse_save`, `invite_to_circle`, `list_circle`. Updated: `note_to_self` description adds "call only ONCE per turn" |
+| `src/agent/brideEngine.js` | Added: `execListMuse` (session_id branch, UUID validation), `execDeleteMuseSave`, `execInviteToCircle`, `execListCircle`, `surfacePendingCircleSessions`, `summarizeOneSession`. Added: `SESSION_IDLE_MS` constant. Modified: pre-turn session surfacing injected into dynamicContext when no mediaContext. |
+| `src/brideIndex.js` | Added: circle member routing (BEFORE token regex — M1 fix), token claim path (CIRCLE_TOKEN_REGEX), `handleCircleMemberMessage` (daily cap, session open/bump, media save, text-note capture, circle agent call). Added: `DAILY_CIRCLE_IMAGE_CAP` (imported from circleSystemPrompt — single source). |
+| `src/lib/museSave.js` | Added: `actor_name` optional param (eliminates 2-query DB lookup), `session_id` optional param (threaded onto circle_activity row). |
+| `src/admin/router.js` | Added: `POST /vendors/:id/delete`, `POST /couples/:id/delete` (both cascade-delete via users row) |
+| `src/admin/views/vendors.js` | Added: Delete button per vendor row (red, confirm dialog) |
+| `src/admin/views/couples.js` | Added: Delete button per couple row (red, confirm dialog) |
 
 ---
 
-## Three locked architectural differences from vendor
+## Infrastructure added in B2
 
-These are intentional. Future sessions must NOT "fix" them by aligning to vendor side.
-
-1. **No terminal reply tool.** Vendor engine has `respond_to_vendor` as a forced last tool call. Bride engine does not. The model's final text message IS the reply. Loop exits when the model returns plain text without tool calls.
-
-2. **No first-question post-processing strip.** Vendor engine strips everything after the first `?` to enforce single-question discipline. Bride engine keeps full text. Multi-sentence, multi-question replies are allowed because BFF voice rambles naturally.
-
-3. **Phone-as-gate routing.** No TDW codes, no disambiguation, no sticky logic. Just: phone → users → couples row. Pass or dead-end. Vendor's three-mode routing (Mode 1 returning couple, Mode 2 TDW code, Mode 3 fallback) does not apply to bride product.
+- **Google Cloud Vision API** — enabled on project `dream-os` (`gen-lang-client-0017514064`) on `dev@thedreamwedding.in`. Billing upgraded from Free Trial to Paid account (16 May 2026). $300 credit still attached. Vision API key stored as `GOOGLE_VISION_API_KEY` in Railway dream-wedding env vars.
+- **Cloudinary** — `dccso5ljv` cloud. Used for Muse image mirroring. Free tier: 25GB storage, 25GB bandwidth. Env var: `CLOUDINARY_URL` in Railway dream-wedding service.
+- **Twilio webhook signature verification** — `twilio.validateRequest()` in both `src/index.js` and `src/brideIndex.js`. `app.set('trust proxy', true)` for Railway TLS termination. Escape hatch: `DISABLE_TWILIO_SIGNATURE_CHECK=true` env var (logs warning at startup if set).
 
 ---
 
-## Vendor parity issues discovered (carry-forward to Session 9)
+## Production verification (Muse vertical — fully tested)
 
-**INSTRUCTIONS FOR B4 (the last B-session):** This section is the canonical list of vendor parity items. Every B-session adds to this section. At B4 close, B4's handover must include this complete cumulative list as a dedicated section labeled "Session 9 convergence checklist." Session 9's first task is reading this list and addressing every item before Discover work begins.
+Test couple: `7abccc1b-0698-43ba-9709-c6a1e52af789` (Swati Couple Test)
+Test phone: `+919888294440`
 
-**Format:** each item is a discovery + the fix needed + estimated effort.
-
-### Items discovered in B1
-
-1. **Pronouns on vendors not implemented.** Migration 0015 added `users.pronouns` (CHECK 'she'/'he', nullable). Bride admin form captures it. Bride system prompt reads and uses it. Vendor admin form does NOT capture it. Vendor system prompt does NOT read it. To fix:
-   - Update `src/admin/views/invite.js` to add pronouns radio (mirror coupleInvite.js)
-   - Update `src/admin/router.js` POST `/invite` to read and validate pronouns
-   - Update `invite_vendor()` Postgres function signature to accept p_pronouns
-   - Update `src/agent/systemPrompt.js` to include pronouns in dynamic context and adapt voice
-   - Backfill existing vendors via direct UPDATE in Supabase (founder will need to manually set each)
-   - Effort: ~20 minutes of code + manual backfill
-
-2. **Admin invite form lacks E.164 phone validation.** Both vendor and bride invite forms accept malformed phone numbers. Founder discovered this when typing `9888294440` (no +91) and the invite went through silently. The phone-gate then failed because lookups use the exact stored string. Manually patched once with UPDATE. To fix:
-   - Add client-side validation: regex `^\+\d{10,15}$` with error message
-   - Add server-side validation in `invite_couple()` and `invite_vendor()`: RAISE EXCEPTION on malformed phone
-   - Effort: ~10 minutes
-
-3. **Package.json versioning scheme assumes vendor frozen at 8.5a.** Current scheme: `0.8.5a.<bride_session_number>-b<n>`. At convergence, version becomes `0.9.0`. Vendor side has no version awareness — package.json describes both products. To formalize:
-   - Decide whether to track unified version going forward
-   - Or split package.json into per-service files (not recommended)
-   - Effort: ~5 minutes (decision more than code)
+| Test | Result |
+|---|---|
+| Image save (lehenga JPEG from gallery) | ✓ save #1, tags: editorial, moody |
+| list_muse + image playback | ✓ agent asked "want me to pull it up?", sent image on confirm |
+| IG link save (own post, dog selfie) | ✓ save #2, og:image scrape worked, tags: candid, intimate |
+| Pinterest link (pin.it short URL) | ✓ save #3, tags: old money, elegant, tightened TLD regex passed |
+| Preference note capture | ✓ agent called note_to_self silently on "soft colors for morning wear" |
+| Twilio signature verification | ✓ verified on real production traffic post-deployment |
+| Cost tracking | ✓ Rs 0.1 per turn (Haiku), Rs 1.50 total per image save end-to-end |
 
 ---
 
-## Open questions
+## Circle smoke test — deferred to B3.1
 
-### Identity evolution (locked, just recording)
+Circle code shipped and CC-audited (12 findings fixed). **Full smoke test deferred to B3.1** — requires two phones and cannot be shortened. B3.1 is a dedicated bug-fix + smoke test session.
 
-B1 uses WhatsApp-number-as-identity. By definition the phone field at any entry point IS the WhatsApp number, so phone-as-gate is reliable for founding cohort. When scaling, the PWA (Sessions 11-12) adds Google sign-in / email verify / Instagram handle / WhatsApp OTP as additional authenticators on top of the WhatsApp-number identity.
-
-The schema already keys on `users.id` (uuid), not phone. So adding authenticators later is purely additive — new columns or a `user_authenticators` table — never a schema rewrite. No code or schema work needed in B1, B2, B3, or B4.
-
-### Invite tokens — future option
-
-Currently bride product uses phone-as-gate only. If founding-cohort phone-as-gate ever runs into a wall (e.g. brides messaging from a phone Swati didn't register, or open invites Swati shares without knowing the phone yet), invite tokens can be added as a parallel path. Token would be a one-time-use string like `PRIYA-A8F2K9`. Tokens and phone-gate coexist; tokens are only checked when phone lookup fails. Defer until needed.
-
-### Versioning scheme
-
-Bride sessions live in a B-suffix namespace anchored to the vendor's frozen version:
-- `0.8.5a.1-b1` — current (B1 complete, vendor frozen at 8.5a)
-- `0.8.5a.2-b2` — after B2
-- `0.8.5a.3-b3` — after B3
-- `0.8.5a.4-b4` — after B4
-- `0.9.0` — Session 9 convergence. Vendor unfreezes. Bride suffix retires. Single unified product version begins. Reserved exclusively for the convergence moment.
-- `0.10.0`, `0.11.0`, etc. — post-convergence sessions
-
-The version field is informational — nothing programmatic in the codebase parses it. The scheme is for humans (founder and Claude) to immediately see (a) which vendor version is frozen, (b) how many bride sessions have shipped, (c) whether convergence has happened.
+**B3.1 scope:**
+- End-to-end circle smoke test (invite → claim → Mom sends image → session closes → bride gets summary → "yeah" → images back)
+- All B3 tool smoke tests (tasks, receipts, events, morning nudge)
+- CC audit findings deferred from B2: M2, M5, L2, L5, L6, L8, L9, I4 (hard cap on text notes)
+- Admin delete button password confirmation (currently one-click — security gap)
+- Pending token expiry (tokens currently never expire — add 7-day expiry as a small migration)
 
 ---
 
-## Bugs caught during B1 testing
+## Three-tier model routing — current actual state
 
-Logged for historical context. All resolved before B1 close.
+The "three-tier" architecture (Haiku + Sonnet + Gemini) is the **intent**, not the current state:
 
-1. **Migration 0013 missed conversations table.** First real bride message failed with `null value in column "vendor_id" of relation "conversations" violates not-null constraint`. Fix: migration 0014, made vendor_id nullable and added couple_id with XOR.
+- **Haiku** — active, doing all the work. Every bride turn in B2 ran on Haiku.
+- **Sonnet** — wired, but the classifier (vendor-trained) never promoted a bride message to COMPLEX in any B2 test. Effectively inactive. Will activate when classifier is tuned in B4.1b.
+- **Gemini Flash-Lite** — wired in `src/lib/groundedSearch.js` (vendor Session 8.2). No bride code path calls it yet. First bride-side use at B4.1a when `factual_search` tool is added.
 
-2. **Admin invite link pointed at vendor number.** `coupleInvite.js` reads `TDW_WA_NUMBER_BRIDE || TDW_WA_NUMBER || '14787788550'`. On the vendor service (where admin runs), `TDW_WA_NUMBER` was the vendor's own number. Fix: added env var `TDW_WA_NUMBER_BRIDE=14787788550` to vendor service.
+---
 
-3. **Duplicate invite created when admin form was submitted twice.** `invite_couple()` was missing a unique constraint on `couples.user_id`. Two couples rows for the same user existed simultaneously. Fix: migration 0015 added the unique constraint and rewrote `invite_couple()` to be idempotent.
+## Audit findings status
 
-4. **Regex-based dodge detection missed "I'd rather not say".** Falling through saved the literal text as `partner_name`. Fix: converted `looksLikeDodge` from regex to Haiku-based intent classification with regex fallback if Haiku errors.
+B2 Step 5+6 was CC-audited. Full findings and disposition:
 
-5. **Repeated "circle back" phrasing in dodge transitions felt boring.** Haiku was gravitating to "we'll circle back to that" across multiple calls. Fix: explicit ban on "circle back" in the composeDodgeTransition prompt + runtime check to reject if Haiku slips it in + updated examples.
+**Fixed in B2 (acb4828):** H1, H2, M1, M3, M4, M6, L1, L3, L4, L7, I1, I3
 
-6. **Greeting didn't include bride's name.** Founder requested addition during testing. Fix: `LOCKED.greeting` became a function taking the name parameter. Falls back to no-name version when name is missing.
+**Deferred to B3.1:**
+- M2: Duplicate session creation race (unique partial index fix)
+- M5: Brittle string-contains for cap-reached error (use SQLSTATE instead)
+- L2: image_playback_queued cumulative across tool calls
+- L4 (circleEngine): already fixed in acb4828
+- L5: Index missing partial filter on summarized_to_bride
+- L6: summary_message_id has no FK constraint
+- L8: profileName not truncated — fixed in acb4828 (part of H1 fix)
+- L9: Inbound message not logged early enough in handleCircleMemberMessage
+- I4: No hard cap on text-only circle messages (deferred by design, now flagged as B3.1)
 
-7. **Phone format not validated at admin invite.** Founder typed `9888294440` without `+91`. The invite succeeded but the phone-gate later failed because lookups expected `+919888294440`. Fix: manual SQL patch once. Real validation logged as a vendor parity item above.
+**Deferred from earlier audit (Step 4):**
+- #2: Webhook sync timeout — vendor empirical evidence shows no incidents. Monitor.
+- #12: History dedup content comparison — benign in practice.
+- #14: Vision API key in URL — Google's documented pattern. Rotate every 90 days.
 
-8. **Pronoun was not captured at invite time.** Founder asked for this during testing after walking through onboarding the first time. Fix: migration 0015 added `users.pronouns` + admin form pronouns radio + system prompt branching.
+---
+
+## Known behaviors and quirks
+
+1. **Agent asks permission before playback** — when bride asks "show my last muse", agent frequently asks "want me to pull it up?" before sending. Emergent from tool description. Acceptable. To remove: tighten `list_muse` tool description with "set request_image_playback=true when bride asks to see an image without qualification".
+
+2. **Agent double-calls note_to_self** — observed once (two identical note rows 16 seconds apart). Add "call only ONCE per turn" to note_to_self description if it recurs.
+
+3. **Session_id extracted via LLM parsing** — the session_id UUID is embedded in the system note as `[session_id: uuid]` text. Haiku reads it and passes it back in list_muse. UUID validation added (I3 fix) so a malformed value returns a clear error. Still a soft dependency on Haiku reading the marker correctly.
+
+4. **Gemini Flash-Lite not called** — groundedSearch.js exists but no bride tool calls it. B4.1a adds it.
+
+5. **Bride classifier is vendor-trained** — classifier.js system prompt describes vendor COMPLEX patterns. Bride complex patterns (family conflict, taste arbitration, multi-vendor decisions) are under-promoted to Sonnet. B4.1b tuning after 4 weeks of founding-cohort data.
+
+6. **Google Cloud billing** — account upgraded from Free Trial to Paid on 2026-05-16. $300 credit remains. Vision API costs ~Rs 0.25 per image. Rotate `GOOGLE_VISION_API_KEY` every 90 days.
+
+7. **Vendor Vision API stranded** — `devjroy@gmail.com`'s `thedreamwedding-493105` project has Vision API enabled but unused. Disable at Session 9 cleanup.
+
+8. **PWA link in circle summaries is dead** — `thedreamwedding.in/muse` appears in circle session summaries alongside "or should I just send them here?" — the link is intentionally planted (muscle memory for when PWA ships at Sessions 11-12). Not a bug.
+
+---
+
+## Cost reference
+
+| Event | Cost |
+|---|---|
+| Image save end-to-end (Twilio in + Cloudinary + Vision + Haiku tag + agent reply + Twilio out) | ~Rs 1.50 |
+| PWA bulk upload (Vision + Haiku only, no Twilio) | ~Rs 0.42 |
+| Circle session summary composition (one Haiku call) | ~Rs 0.10-0.15 |
+| Agent conversation turn (Haiku) | ~Rs 0.10 |
+| Active bride per month (~30 saves + 50 turns) | ~Rs 60 |
+| Founding cohort (50 brides) | ~Rs 3,000/month |
+
+**Policy: no rate-limiting through soft launch. Calibrate caps after observing first 10 founding-cohort brides.**
+
+**Post-Sessions 11-12 PWA:** add one-time nudge toward PWA bulk upload after 3 saves in 24 hours. Track via `couples.nudge_pwa_sent_at`. WhatsApp save path stays free and functional — nudge is a convenience suggestion, not a paywall.
+
+---
+
+## Vendor parity issues discovered (cumulative — carry forward to B4)
+
+This section is cumulative. B1 items carried forward.
+
+### From B1
+
+1. **Pronouns on vendors not implemented.** Effort: ~20 min.
+2. **Admin invite form lacks E.164 phone validation.** Effort: ~10 min.
+3. **Package.json versioning scheme.** Effort: ~5 min decision.
+
+### From B2
+
+4. **Admin delete button has no password confirmation.** One-click delete currently. Security gap for a destructive irreversible action. Fix: second POST route validates ADMIN_PASSWORD env var before executing delete. Effort: ~15 min. Scheduled for B3.1.
+
+5. **Pending circle invite tokens never expire.** No expiry on `circle_members` rows in `status=pending`. A generated-but-unsent invite token occupies one of the 3-member cap slots indefinitely. Fix: 7-day expiry via a small migration + derived check in `invite_circle_member()`. Scheduled for B3.1.
+
+---
+
+## B3.1 — Bug fix + smoke test session (before B3 ships)
+
+**Prerequisite for B3:** B3.1 must close before B3 starts.
+
+**Scope:**
+- End-to-end circle smoke test (full 5-step flow with two phones)
+- All B3 tools smoke test
+- CC audit findings: M2, M5, L2, L5, L6, L9
+- I4: Hard cap on text-only circle messages (currently unlimited — flagged by CC)
+- Admin delete password confirmation
+- Pending token 7-day expiry (small migration — 0018)
 
 ---
 
@@ -225,59 +232,36 @@ Logged for historical context. All resolved before B1 close.
 | Repo | https://github.com/devjroy-dev/dream-os |
 | dream-wedding service | https://dream-wedding-production-6cef.up.railway.app |
 | dream-os (vendor) service | https://dream-os-production.up.railway.app |
-| Admin (lives on vendor service) | https://dream-os-production.up.railway.app/admin |
+| Admin | https://dream-os-production.up.railway.app/admin |
 | Supabase project | nvzkbagqxbysoeszxent (Mumbai, ap-south-1) |
-| Bride WhatsApp number | +1 478 778 8550 (The Dream Wedding, Meta-verified) |
-| Vendor WhatsApp number | +91 79821 59047 (dream-os, Meta-verified) |
+| Bride WhatsApp | +14787788550 (The Dream Wedding, Meta-verified) |
+| Vendor WhatsApp | +91 7982159047 (dream-os, Meta-verified) |
+| Google Cloud project | dream-os (gen-lang-client-0017514064) on dev@thedreamwedding.in |
+| Cloudinary cloud | dccso5ljv |
 | Anthropic workspace | dream-os |
-| Model lock | claude-haiku-4-5-20251001 (never change without founder approval) |
-| Latest commit at B1 close | c4cedcc |
+| Model lock | claude-haiku-4-5-20251001 (Haiku), claude-sonnet-4-6 (Sonnet) |
+| HEAD at B2 close | acb4828 |
 | Test bride couple_id | 7abccc1b-0698-43ba-9709-c6a1e52af789 |
-| Test bride phone | +919888294440 (also founder's WhatsApp) |
+| Test bride phone | +919888294440 |
+| Test bride conversation_id | c2740497-6f40-4469-8bc1-8d66c9bda7bd |
 
 ---
 
-## B1 commit history
+## What B3 should NOT do
 
-13 commits, in order:
-
-| Commit | Description |
-|---|---|
-| 2b8e8f2 | B1: migration 0013 — couples onboarding, couple_state, events kind, invite_couple |
-| f525431 | B1: src/lib/supabase.js — shared client |
-| 0701cd9 | B1: brideSystemPrompt.js — ESM→CJS, lock post-onboarding handling |
-| 9935ebf | B1: brideOnboarding.js — initial state machine (later replaced) |
-| 52a614f | B1: brideOnboarding.js — agent-composed dodge transitions via Haiku |
-| bc7234f | B1: brideTools.js — three tool schemas |
-| b0fd836 | B1: brideTools.js — add shoot and call back to add_event.kind enum |
-| a7669d6 | B1: brideEngine.js — agentic loop with executor switch-cases |
-| 72b5268 | B1: brideIndex.js — bride webhook server |
-| 8a10dd4 | B1: admin pages for couples — list, invite, detail + nav |
-| 49a5dbe | B1 fix: migration 0014 + brideIndex.js sets couple_id |
-| 40bf881 | B1 patch: pronouns + invite dedup + dodge-variety improvements |
-| f115818 | B1: greeting includes name + Haiku-based dodge detection (was regex) |
-| c4cedcc | B1 close: bump version to 0.8.5a.1-b1, bride-aware description |
-
----
-
-## What's next: B2
-
-See `docs/ROADMAP_BRIDE.md` for the full B2 spec. Short version:
-
-- B1 = Foundation (THIS) ✅
-- B2 = Muse + Circle (visual taste profile + bride's people)
-- B3 = Planner + Nudges (events, tasks, morning briefing for bride)
-- B4 = Surprise Me + final polish (curated suggestions)
-- Session 9 = Convergence + Discover
-
-B2 starts by reading: HANDOVER_BRIDE.md (this file), ROADMAP_BRIDE.md, SCHEMA.md, and `docs/B2_SPEC.md` if one exists.
-
----
-
-## What B2 should NOT do
-
-- Don't change anything in `src/index.js`, `src/agent/engine.js`, `src/agent/tools.js`, `src/agent/systemPrompt.js`, `src/agent/onboarding.js` — those are vendor side, frozen
-- Don't touch admin vendor views or the `/admin/`, `/admin/invite`, `/admin/vendors/:id` routes
-- Don't fix vendor parity issues directly. Log them in this file's "Vendor parity issues discovered" section
+- Don't circle smoke test — that's B3.1's job
+- Don't touch `src/index.js`, `src/agent/engine.js`, `src/agent/tools.js`, `src/agent/systemPrompt.js` — vendor side, frozen
 - Don't modify the three locked architectural differences (no terminal reply tool, no question strip, phone-as-gate routing)
-- Don't change the writer .py protocol unless founder approves
+- Don't activate Gemini or tune the classifier — those are B4.1a and B4.1b respectively
+- Don't add reactions or comments to Circle — B2 shipped forward-only. Reactions are locked for a later session.
+
+---
+
+## What's next
+
+- **B3.1** — Bug fix + circle smoke test (see scope above)
+- **B3** — Planner: tasks, receipts, events, morning nudge
+- **B4.1a** — Gemini grounded search activation (~90 min, ships independently)
+- **B4.1b** — Bride classifier tuning (~45-60 min, ships after 4 weeks of founding-cohort data)
+- **B4** — Vendor connections + Surprise Me + silent onboarding
+- **Session 9** — Convergence + Discover

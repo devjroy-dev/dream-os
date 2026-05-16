@@ -1,8 +1,8 @@
 # dream-os — Bride & Couple Roadmap
 **Last updated:** 2026-05-16
-**Current session:** B2 complete, B3.1 next
-**Status:** B1 + B2 shipped. B3.1 (bug fix + smoke test) → B3 → B4 → Session 9.
-**Latest bride product version:** 0.8.5a.2-b2
+**Current session:** B1 complete, B2 next
+**Status:** B1 (Foundation) shipped. B2-B4 planned. Convergence at Session 9.
+**Latest bride product version:** 0.8.5a.1-b1
 
 ---
 
@@ -349,15 +349,9 @@ Architectural changes from original spec:
 
 **See `docs/HANDOVER_BRIDE.md` for full B1 build log, bugs caught, vendor parity items, and operational state.**
 
-### B2 — Muse + Circle ✅ COMPLETE (2026-05-16)
+### B2 — Muse + Circle (120-150 min)
 
-**Version:** 0.8.5a.2-b2 | **HEAD:** acb4828
-
-**What shipped:** Full Muse vertical (image + Pinterest/IG link saves, Google Vision tagging, Haiku taxonomy classification, Cloudinary mirroring, agent BFF voice). Circle invites (CIRCLE-XXXXXX tokens, 3-member cap). Circle member routing (daily image cap 5, session-based summarization, text-note capture). Step 6 session surfacing (Haiku composes BFF summary, prepends to bride's next turn). Admin delete button. CC audit (12 findings fixed, 8 deferred to B3.1).
-
-**Smoke test status:** Muse vertical fully verified in production. Circle smoke test deferred to B3.1 (requires two phones).
-
-**Goal (original):** Bride has a mood board. Her circle can contribute (with bounded permissions). AI summarizes circle activity in BFF voice.
+**Goal:** Bride has a mood board. Her circle can contribute (with bounded permissions). AI summarizes circle activity in BFF voice.
 
 **Migrations:** `0016_muse_and_circle.sql`
 - `muse_saves` table (id, couple_id, source_type [image/link/vendor], source_url, image_url, caption, aesthetic_tags jsonb, saved_by_user_id, created_at)
@@ -382,32 +376,6 @@ Architectural changes from original spec:
 - Mom comments on bride's save → "Mom said 'too much gold' on save #X" surfaces correctly
 - Bride asks "what did Mom say about save 17?" → exact comment returned
 - Mom tries to delete bride's save via API → 403 (permission enforced)
-
-
-### B3.1 — Bug fix + smoke test (prerequisite for B3, ~90 min)
-
-**Goal:** Close out B2 properly. Circle smoke test + B2 deferred audit fixes + B3 planner smoke test. B3 cannot start without B3.1.
-
-**Smoke tests:**
-- End-to-end circle flow: bride invites Mom → Mom claims CIRCLE-XXXXXX token → Mom forwards image → session closes (10 min idle) → bride messages → summary preamble appears → bride says "yeah" → images sent back
-- All B3 tools: create_task, list_tasks, complete_task, save_receipt, list_receipts, add_event, morning nudge
-
-**Bug fixes (CC audit findings deferred from B2):**
-- M2: Duplicate session creation race → unique partial index on circle_sessions(circle_member_id) WHERE summarized_to_bride = false
-- M5: Brittle string-contains for circle_member_limit_reached → use SQLSTATE or structured exception payload
-- L2: image_playback_queued cumulative across tool calls → capture count before loop
-- L5: circle_sessions_member_activity_idx missing WHERE summarized_to_bride = false
-- L6: summary_message_id has no FK → add REFERENCES messages(id) ON DELETE SET NULL
-- L9: Inbound message not logged early enough in handleCircleMemberMessage
-- I4: Hard cap on text-only circle messages (currently unlimited) — add daily text cap, separate from image cap
-
-**Admin fixes:**
-- Delete button password confirmation (currently one-click — security gap). Second POST route validates ADMIN_PASSWORD env var before executing delete.
-
-**Migration 0018 (small):**
-- 7-day expiry on pending circle invite tokens (add expires_at column + check in claim_circle_invite function)
-- summary_message_id FK to messages(id) ON DELETE SET NULL
-- circle_sessions unique partial index (M2 fix)
 
 ### B3 — Planner: calendar, tasks, receipts (2 sessions, ~180 min total)
 
@@ -450,60 +418,7 @@ Architectural changes from original spec:
 
 ### B4 — Vendor connections + Surprise Me + silent onboarding (2 sessions, ~180 min total)
 
-**Goal:** Bride has all her vendors in one place. Surprise Me works. Silent vendor-side onboarding live. Two-sided vendor funnel live.
-
-**Pre-B4 sessions:**
-
-#### B4.1a — Gemini grounded search activation (~90 min)
-Ships independently, not blocked by bride data. Adds `factual_search` tool to brideTools.js. Executor calls `src/lib/groundedSearch.js` (wired at vendor Session 8.2, currently unused). Brides ask factual market questions ("venue pricing in Mumbai", "Sabyasachi lehenga cost") → Gemini Flash-Lite retrieves → Haiku composes BFF-voice reply. Tool description must distinguish factual queries (use tool) from taste/opinion (just chat). Failure path: graceful fallback if Gemini errors.
-
-#### B4.1b — Bride classifier tuning (~45-60 min)
-Ships after 4 weeks of real founding-cohort bride conversation data accumulates. Current classifier (classifier.js) was written for vendor COMPLEX patterns. Bride-specific COMPLEX triggers (family conflict, taste arbitration, multi-vendor decisions, emotional moments) under-promote to Sonnet. Tuning: add bride-specific COMPLEX and SIMPLE examples. Option: separate brideClassifier.js instead of modifying the shared one.
-
-**Migrations:** `0019_vendor_connections_and_discover.sql`
-- `couple_vendor_connections` table (id, couple_id, vendor_id, state [shortlisted/enquired/booked/passed], source [muse/discover/whatsapp/manual], shortlisted_at, enquired_at, notes, created_at, updated_at)
-- `vendors.aesthetic_tags` jsonb (Swati-managed portfolio tags for Surprise Me matching)
-- `discover_readiness` table (city, category, ready boolean, ready_at timestamptz, primary key (city, category))
-
-**Code additions:**
-- `shortlist_vendor` tool — bride saves a vendor → couple_vendor_connections + leads row on vendor side
-- `list_my_vendors` tool — all her vendor connections with state (shortlisted/enquired/booked/passed)
-- `ask_vendor` tool — bride routes a message to a specific vendor in her list. Works only for dream-os vendors. For external vendors, bride manages via WhatsApp directly and records notes via agent.
-- `/surprise` command handler — runs Surprise Me matching, with hard density block
-- **Silent wa.me onboarding** in vendor agent (src/index.js):
-  - Vendor agent calls `coupleIdentity.ensureCoupleRow(phone)` on first couple_thread message
-  - Vendor agent calls `coupleIdentity.captureField(couple_id, field, value)` when wedding details mentioned
-  - Vendor system prompt rule: after 3+ exchanges, append the bride-product nudge once. Check couples.nudge_sent_at first.
-
-**The locked nudge line (bride-side):**
-> "We're opening The Dream Wedding's planning tool to a small group of brides. If you'd like a peek: thedreamwedding.in/explore"
-
-**B4 discussion items (architecture TBD — discuss at B4 planning):**
-
-**1. Bride-initiated vendor outreach + silent vendor onboarding (two-sided funnel)**
-Bride adds an external vendor via WhatsApp (name + phone). dream-os sends a Twilio template to that vendor:
-> "Hi, I'm [Bride]'s assistant. She wanted to know when to come for trials."
-Vendor replies → reply routes back to bride via dream-os relay. After 2-3 exchanges, vendor gets one-time nudge:
-> "Our team also manages professionals like yourself. You should try our services — manage your entire business from WhatsApp itself."
-Mirror image of bride silent onboarding via +91 link — same pattern, opposite direction, opposite number (+14787788550 sends template, vendor replies to +14787788550, brideIndex.js routes). New conversation kind needed: `vendor_relay`. New schema element: links bride, external vendor phone, exchange count. Template needs Twilio/Meta approval — submit at B4 start (1-7 day approval). If vendor already on dream-os → skip nudge, just connect thread. Every founding-cohort bride becomes a vendor acquisition channel.
-
-**Architectural question for B4 planning:** does vendor reply route to +14787788550 (bride number, brideIndex.js handles) or +91 (vendor number, index.js handles)? Instinct: +14787788550 — bride initiated, bride side owns the relay.
-
-**2. shortlist_vendor / list_my_vendors / ask_vendor scope**
-B4 launch: these tools work only for dream-os vendors (vendors table). External vendors managed via WhatsApp directly + notes in agent. Scales naturally as vendor base grows via Discover and the two-sided funnel.
-
-**Smoke tests:**
-- shortlist_vendor → couple_vendor_connections + lead created, both with couple_id
-- list_my_vendors shows her shortlist with state
-- ask_vendor routes message to correct vendor's thread, vendor sees bride context
-- /surprise with density unmet → honest deflection + Gemini-grounded suggestions
-- /surprise with density met → 3-5 vendor matches returned
-- TDW link first-message from new phone → couples row created silently
-- After 3+ exchanges, vendor agent appends nudge once, nudge_sent_at stamped
-- Same bride enquires with 2nd vendor → nudge NOT appended again
-- Bride adds external vendor phone → Twilio template sent → vendor reply routed back → after 2 more exchanges → vendor nudge sent
-
-At end of B4, the couples table is fully populated for active brides. **Bride track is at parity with vendor track.**
+**Goal:** Bride has all her vendors in one place. Surprise Me works. Silent vendor-side onboarding live.
 
 **Migrations:** `0018_vendor_connections_and_discover.sql`
 - `couple_vendor_connections` table (id, couple_id, vendor_id, state [shortlisted/enquired/booked/passed], source [muse/discover/whatsapp/manual], shortlisted_at, enquired_at, notes, created_at, updated_at)
@@ -616,7 +531,7 @@ After Session 9: single vendor-and-bride codebase, single doc set, parallel-trac
 
 6. **Paid tier definition** — what triggers "paid" for Surprise Me Sonnet routing? Couple tier field? Explicit upgrade? Razorpay? Open. Founder to decide before B4.
 
-7. ~~**Circle member invite flow**~~ — ✅ Resolved at B2. Token-gated. claim_circle_invite() creates users row on first message. 3-member cap. CIRCLE-XXXXXX token format. Pending tokens currently never expire (B3.1 adds 7-day expiry).
+7. **Circle member invite flow** — does circle member need to be a dream-os user, or can anyone join via link? Likely: invite generates `circle_members` row in `status=pending`, joining flips it to `active` and creates a users row. Founder to lock at B2.
 
 8. **Existing tdw-2 bride data** — discarded as test data. No migration from old Supabase to new. Confirmed: hard cutover at B1.
 

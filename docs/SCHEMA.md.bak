@@ -1,9 +1,9 @@
 # dream-os — Schema Reference (Vendor + Bride)
 **Last updated:** 2026-05-16
-**Session:** B2 complete
+**Session:** B1 complete
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0017_circle_sessions.sql
-**Next migration:** 0018_bride_planner.sql (B3.1 — pending token expiry + B3)
+**Latest migration applied:** 0015_pronouns_and_dedup.sql
+**Next migration:** 0016_muse_and_circle.sql (B2 — not yet built)
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -23,8 +23,6 @@
 | **0013_couples_onboarding.sql** | **2026-05-16** | **B1** | **couples.onboarding_state, couples.nudge_sent_at, couple_state table, events.kind widened to 12 values, events/notes nullable vendor_id with couple_id + XOR, invite_couple() function** |
 | **0014_conversations_xor.sql** | **2026-05-16** | **B1** | **conversations.vendor_id nullable, conversations.couple_id added, conversations_owner_xor CHECK (bugfix discovered live)** |
 | **0015_pronouns_and_dedup.sql** | **2026-05-16** | **B1** | **users.pronouns text column (CHECK 'she'/'he'), couples.user_id unique constraint, invite_couple() rewritten to 3-arg signature** |
-| **0016_muse_and_circle.sql** | **2026-05-16** | **B2** | **muse_saves table, circle_members table, circle_activity table, conversations.kind widened to include circle_thread, invite_circle_member() function, claim_circle_invite() function** |
-| **0017_circle_sessions.sql** | **2026-05-16** | **B2** | **circle_sessions table, circle_activity.session_id FK column + two indexes** |
 
 ## Tables
 
@@ -339,8 +337,6 @@ Defined in src/agent/categories.js. 16 categories locked 2026-05-15.
 |---|---|---|---|
 | invite_vendor | p_phone text, p_name text | uuid | Creates user + vendor rows, sets onboarding_state = new |
 | set_updated_at | -- | trigger | Auto-stamps updated_at |
-| invite_circle_member | p_couple_id uuid, p_invitee_name text, p_role text | table(id, invite_token, wa_me_link) | Generates CIRCLE-XXXXXX token, enforces 3-member cap, inserts pending circle_members row |
-| claim_circle_invite | p_token text, p_invitee_phone text | table(member_id, couple_id, invitee_name, bride_name, member_role) | Flips circle_members status to active, sets phone + joined_at, writes joined circle_activity row |
 
 ## Supabase storage buckets
 | Bucket | Public | Size limit | MIME types | Purpose |
@@ -352,93 +348,9 @@ Disabled on all tables. service_role key held by Railway only.
 Will enable when bride-side public access is needed (Session 9).
 
 ## Realtime enabled on
-conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients, muse_saves, circle_members, circle_activity, circle_sessions
+conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients
 
 ---
-
-
----
-
-## Bride tables added in B2
-
-### muse_saves
-Bride's mood board. One row per saved image, link, or vendor pin.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | PK |
-| couple_id | uuid | FK couples(id) ON DELETE CASCADE |
-| save_number | int | Monotonic per couple_id. UNIQUE(couple_id, save_number). |
-| source_type | text | CHECK: image / link / vendor |
-| source_url | text | Original Pinterest/IG URL for link saves. Null for image saves. |
-| image_url | text | Cloudinary URL (mirrored image). |
-| vendor_id | uuid | FK vendors(id), nullable. Populated at Session 9 for Discover saves. |
-| caption | text | Optional. Text that arrived with the image/link. Max 500 chars. |
-| aesthetic_tags | jsonb | Array of strings from 12-value taxonomy (brideAesthetics.js). |
-| vision_raw | jsonb | Full Google Vision API response. Used by B4 Surprise Me for dominant color aggregation. |
-| saved_by_user_id | uuid | FK users(id). Who triggered the save. |
-| saved_by_role | text | CHECK: bride / circle_member |
-| created_at | timestamptz | |
-| updated_at | timestamptz | Auto-stamped by trigger. |
-
-Indexes: couple_id, (couple_id, created_at DESC), (couple_id, saved_by_user_id), (couple_id, vendor_id WHERE vendor_id NOT NULL).
-
-### circle_members
-Bride's circle — people she's invited to contribute to her Muse board.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | PK |
-| couple_id | uuid | FK couples(id) ON DELETE CASCADE |
-| invitee_name | text | How the bride refers to this person ("Mom", "Priya"). |
-| invitee_phone | text | Populated when they claim the invite. |
-| role | text | CHECK: partner / family / inner_circle |
-| invite_token | text | CIRCLE-XXXXXX format. UNIQUE. One-time use. Currently no expiry (B3.1 adds 7-day expiry). |
-| status | text | CHECK: pending / active / removed |
-| invited_at | timestamptz | |
-| joined_at | timestamptz | Populated on claim. |
-| created_at | timestamptz | |
-| updated_at | timestamptz | Auto-stamped by trigger. |
-
-Cap: 3 active+pending members per couple (enforced in invite_circle_member() function).
-
-### circle_activity
-Append-only feed of what circle members have done on the bride's board.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | PK |
-| couple_id | uuid | FK couples(id) ON DELETE CASCADE |
-| actor_user_id | uuid | FK users(id), nullable. |
-| actor_name | text | Display name (invitee_name from circle_members, or "You" for bride). |
-| actor_role | text | CHECK: bride / circle_member / agent |
-| activity_type | text | CHECK: joined / save_added / comment / reaction / removed |
-| subject_type | text | CHECK: muse_save / circle_member / null |
-| subject_id | uuid | Polymorphic — references the subject row. No FK constraint (polymorphic). |
-| payload | jsonb | Activity-specific data (save_number, content, etc.) |
-| session_id | uuid | FK circle_sessions(id) ON DELETE SET NULL. Null for bride-side activity. |
-| surfaced_to_bride | boolean | Legacy column (pre-session-model). Kept for backwards compat. |
-| created_at | timestamptz | |
-
-### circle_sessions
-Tracks bursts of circle member activity for session-based summarization.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | PK |
-| couple_id | uuid | FK couples(id) ON DELETE CASCADE |
-| circle_member_id | uuid | FK circle_members(id) ON DELETE CASCADE |
-| started_at | timestamptz | When first message in this session arrived. |
-| last_activity_at | timestamptz | Bumped on each subsequent message. Session "ends" when this is >10 min ago. |
-| summarized_to_bride | boolean | Default false. Flipped true when bride-side summary is composed and surfaced. |
-| summarized_at | timestamptz | |
-| summary_message_id | uuid | Nullable. No FK constraint (B3.1 adds it). |
-| created_at | timestamptz | |
-| updated_at | timestamptz | Auto-stamped by trigger. |
-
-**Session end is derived, not stored.** A session is "ended and pending summary" when: `last_activity_at < now - 10min AND summarized_to_bride = false`.
-
-Indexes: (circle_member_id, last_activity_at DESC), (couple_id, last_activity_at) WHERE summarized_to_bride = false.
 
 ## Upcoming bride migrations (B-sessions — not yet applied)
 
@@ -449,10 +361,9 @@ Bride migrations continue the vendor sequence. No separate numbering. One migrat
 | ~~0013_couples_onboarding.sql~~ | B1 | ✅ Applied 2026-05-16 |
 | ~~0014_conversations_xor.sql~~ | B1 | ✅ Applied 2026-05-16 (bugfix discovered live) |
 | ~~0015_pronouns_and_dedup.sql~~ | B1 | ✅ Applied 2026-05-16 |
-| ~~0016_muse_and_circle.sql~~ | B2 | ✅ Applied 2026-05-16 |
-| ~~0017_circle_sessions.sql~~ | B2 | ✅ Applied 2026-05-16 |
-| 0018_bride_planner.sql | B3.1 + B3 | couple_tasks, couple_receipts, pending token expiry |
-| 0019_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
+| 0016_muse_and_circle.sql | B2 | muse_saves table, circle_members table, circle_activity table |
+| 0017_bride_planner.sql | B3 | couple_tasks, couple_expenses, couple_budget |
+| 0018_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags |
 
 Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail on B2+ migrations.
 

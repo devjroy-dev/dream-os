@@ -1,7 +1,7 @@
 {
   "name": "dream-os-backend",
-  "version": "0.8.5a.2-b2",
-  "description": "WhatsApp-first chief of staff \u2014 for wedding vendors (dream-os) and brides (dream-wedding). Monorepo: two Railway services share this codebase; each picks its entry point via the start script.",
+  "version": "0.8.5a.1-b1",
+  "description": "WhatsApp-first chief of staff — for wedding vendors (dream-os) and brides (dream-wedding). Monorepo: two Railway services share this codebase; each picks its entry point via the start script.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
