@@ -26,12 +26,7 @@ function couplesPage({ couples, stats }) {
           <td>${formatDate(c.wedding_date)}</td>
           <td>${c.wedding_city || '—'}</td>
           <td>${statusBadge(c.onboarding_state)}</td>
-          <td style="display:flex;gap:6px;align-items:center;">
-            <a class="btn btn-sm btn-primary" href="/admin/couples/${c.id}">View</a>
-            <form method="POST" action="/admin/couples/${c.id}/delete" style="margin:0;" onsubmit="return confirm('Delete ${(c.name || c.phone || 'this couple').replace(/'/g, "\\'")}? This cannot be undone.');">
-              <button type="submit" class="btn btn-sm" style="background:#c0392b;color:#fff;border:none;cursor:pointer;">Delete</button>
-            </form>
-          </td>
+          <td><a class="btn btn-sm btn-primary" href="/admin/couples/${c.id}">View</a></td>
         </tr>
       `).join('');
 

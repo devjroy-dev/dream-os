@@ -16,12 +16,7 @@ function vendorsPage({ vendors, stats }) {
           <td>${v.category || '—'}</td>
           <td>${v.city || '—'}</td>
           <td>${statusBadge(v.onboarding_state)}</td>
-          <td style="display:flex;gap:6px;align-items:center;">
-            <a class="btn btn-sm btn-primary" href="/admin/vendors/${v.id}">View</a>
-            <form method="POST" action="/admin/vendors/${v.id}/delete" style="margin:0;" onsubmit="return confirm('Delete ${(v.name || v.phone || 'this vendor').replace(/'/g, "\\'")}? This cannot be undone.');">
-              <button type="submit" class="btn btn-sm" style="background:#c0392b;color:#fff;border:none;cursor:pointer;">Delete</button>
-            </form>
-          </td>
+          <td><a class="btn btn-sm btn-primary" href="/admin/vendors/${v.id}">View</a></td>
         </tr>
       `).join('');
 
