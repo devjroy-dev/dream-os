@@ -242,17 +242,22 @@ router.get('/couples/invite', (req, res) => {
 
 router.post('/couples/invite', express.urlencoded({ extended: true }), async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { name, phone } = req.body;
+  const { name, phone, pronouns } = req.body;
 
-  if (!name || !phone) {
-    return res.send(coupleInvitePage({ error: 'Name and phone are required.' }));
+  if (!name || !phone || !pronouns) {
+    return res.send(coupleInvitePage({ error: 'Name, phone and pronouns are all required.' }));
+  }
+
+  if (!['she', 'he'].includes(pronouns)) {
+    return res.send(coupleInvitePage({ error: 'Pronouns must be she or he.' }));
   }
 
   const cleanPhone = phone.trim().replace(/\s+/g, '');
 
   const { error } = await supabase.rpc('invite_couple', {
-    p_phone: cleanPhone,
-    p_name:  name.trim(),
+    p_phone:    cleanPhone,
+    p_name:     name.trim(),
+    p_pronouns: pronouns,
   });
 
   if (error) {

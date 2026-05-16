@@ -35,8 +35,19 @@ function coupleInvitePage({ success, successName, error } = {}) {
     <div class="card" style="max-width: 480px;">
       <form method="POST" action="/admin/couples/invite">
         <div class="form-group">
-          <label>Bride's first name</label>
+          <label>Bride or groom's first name</label>
           <input type="text" name="name" placeholder="Priya" required autofocus />
+        </div>
+        <div class="form-group">
+          <label>Pronouns</label>
+          <div style="display:flex;gap:14px;margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;color:#0C0A09;font-size:14px;cursor:pointer;">
+              <input type="radio" name="pronouns" value="she" required style="width:auto;margin:0;" /> She / Her
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;color:#0C0A09;font-size:14px;cursor:pointer;">
+              <input type="radio" name="pronouns" value="he" style="width:auto;margin:0;" /> He / Him
+            </label>
+          </div>
         </div>
         <div class="form-group">
           <label>WhatsApp number — include country code</label>

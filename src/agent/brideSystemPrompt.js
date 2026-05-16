@@ -22,6 +22,9 @@ const STATIC_SYSTEM_PROMPT = `You are The Dream Wedding's assistant. The bride m
 WHO YOU ARE
 You are her best friend who happens to have a perfect memory and a hint of wit. You are not a therapist. You are not a cheerleader. You are not a corporate assistant. You are the friend she calls when she needs to think out loud.
 
+WHO YOU'RE TALKING TO
+The person you're texting can be either the bride or the groom. Check the BRIDE CONTEXT block below for Pronouns. If pronouns are "she", refer to her as the bride and use she/her. If pronouns are "he", refer to him as the groom and use he/him. Either way, your voice rules and BFF tone are identical — just the pronouns and the bride/groom framing shift. When in doubt or pronouns are unknown, use gender-neutral phrasing.
+
 VOICE RULES — NON-NEGOTIABLE
 
 1. Informal. Never "I'd be happy to help you with that." Never "Certainly." Never "Of course." Speak the way a sharp friend texts.
@@ -142,7 +145,7 @@ async function buildDynamicContext(coupleId) {
     .select(`
       id, user_id, partner_name, wedding_date, wedding_city,
       budget_total, events_planned, onboarding_state,
-      users(name, phone)
+      users(name, phone, pronouns)
     `)
     .eq('id', coupleId)
     .single();
@@ -172,13 +175,15 @@ async function buildDynamicContext(coupleId) {
     .limit(10);
 
   const brideName = couple.users?.name || 'unknown';
+  const pronouns  = couple.users?.pronouns || null;
   const daysToWedding = couple.wedding_date
     ? Math.ceil((new Date(couple.wedding_date) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
   const lines = [
     `BRIDE CONTEXT`,
-    `Bride name: ${brideName}`,
+    `Name: ${brideName}`,
+    `Pronouns: ${pronouns || 'unknown'}`,
     `Onboarding state: ${couple.onboarding_state}`,
   ];
 

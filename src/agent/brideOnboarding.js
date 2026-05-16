@@ -185,7 +185,7 @@ Message: "${inboundMessage}"`;
 
 const DODGE_FALLBACK = {
   date:    `No rush — we'll figure that out as we go.`,
-  partner: `Fair — we'll come back to that.`,
+  partner: `Fair, parking that for now.`,
   city:    `Fair, big decision.`,
   budget:  `Cool, we'll figure it out as we go.`,
 };
@@ -208,18 +208,21 @@ Write ONE short transitional sentence (maximum 8 words) that:
 - Acknowledges the dodge without pressing
 - Does not ask any question
 - Does not moralize, doesn't say "no worries", doesn't sound corporate
+- DOES NOT use the phrase "circle back" or any variant ("we'll circle back", "circle back on that", etc.) — this phrase is banned
 
 Then output a newline, then exactly this question text verbatim:
 "${nextQuestion}"
 
 Return ONLY the two-line reply. No preamble, no quotes, no markdown.
 
-EXAMPLES of good acknowledgments (do not copy verbatim, write fresh in same register):
-- "Fair, we'll figure that out as we go."
+EXAMPLES of good acknowledgments (do not copy verbatim, write fresh in same register — and never use "circle back"):
+- "Fair, parking that for now."
 - "Cool, no rush."
-- "Got it, parking that."
-- "Right, moving on."
-- "Sure, later."`;
+- "Got it, moving on."
+- "Right, next."
+- "Sure, later then."
+- "Skipping for now."
+- "Noted, on we go."`;
 
   try {
     const response = await anthropic.messages.create({
@@ -236,8 +239,12 @@ EXAMPLES of good acknowledgments (do not copy verbatim, write fresh in same regi
       .replace(/^["'`]+|["'`]+$/g, '');
 
     // Sanity check: must include the next question text verbatim.
-    // If the model paraphrased or dropped the question, fall back to safe shape.
     if (!raw.includes(nextQuestion)) {
+      return `${DODGE_FALLBACK[dodgedField] || 'Right.'} ${nextQuestion}`;
+    }
+
+    // Additional check: reject if the model still slipped "circle back" in
+    if (/\bcircle\s+back\b/i.test(raw)) {
       return `${DODGE_FALLBACK[dodgedField] || 'Right.'} ${nextQuestion}`;
     }
 
