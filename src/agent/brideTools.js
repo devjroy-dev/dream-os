@@ -318,7 +318,7 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'list_bookings',
-    description: 'Look up the bride\'s vendor commitments. Use when she asks "who have I booked", "show me my bookings", "what have I paid for the photographer", "anything due this month". Returns booking rows with id, vendor_name, category, amount_total, amount_paid, balance_due_date, state, notes — sorted by state (booked first, then advance_paid, then paid) and balance_due_date ASC. To act on a specific booking (update/delete/record_payment) you MUST first resolve its id via this tool; do not invent ids.',
+    description: 'Look up the bride\'s vendor commitments. Use when she asks "who have I booked", "show me my bookings", "what have I paid for the photographer", "anything due this month". Returns booking rows with id, vendor_name, category, amount_total, amount_paid, balance_due_date, state, notes — sorted by balance_due_date ascending (overdue and soonest-due first), bookings with no deadline at the bottom sorted by most recently added. To act on a specific booking (update/delete/record_payment) you MUST first resolve its id via this tool; do not invent ids.',
     input_schema: {
       type: 'object',
       properties: {

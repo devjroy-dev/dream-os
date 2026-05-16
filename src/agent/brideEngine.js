@@ -1194,15 +1194,18 @@ async function execUpdateBooking({ input, couple, supabase }) {
     updates.notes = notes.trim().slice(0, 500);
   }
 
+  // Critical guard FIRST (L1 audit fix from Audit 2b): strip reserved fields
+  // before checking what's left. If future drift adds amount_paid or state
+  // to updates above, they get stripped here rather than sneaking through
+  // to the DB write or creating an empty-update call. Position matters:
+  // running the deletes AFTER the empty check defeats the guard's own purpose.
+  // record_payment() owns amount_paid and state exclusively.
+  delete updates.amount_paid;
+  delete updates.state;
+
   if (Object.keys(updates).length === 0) {
     return { ok: false, error: 'no fields to update' };
   }
-
-  // Critical guard: this tool MUST NOT touch amount_paid or state. Those are owned
-  // exclusively by record_payment(). The schema-validated input doesn't expose them,
-  // but a defensive double-check costs nothing.
-  delete updates.amount_paid;
-  delete updates.state;
 
   const { data, error } = await supabase
     .from('couple_bookings')
@@ -1305,7 +1308,12 @@ async function execRecordPayment({ input, couple, supabase }) {
   if (error) {
     // Postgres no_data_found (raised inside the function) bubbles up here for
     // booking-deleted-between-check-and-rpc cases. Same user message.
-    if (error.code === 'P0002' || error.code === 'no_data_found' || /not found/i.test(error.message || '')) {
+    // I2 audit fix: removed the over-broad /not found/i regex. It would
+    // silently swallow any other DB error containing "not found" in the
+    // message (network errors, future SQL exceptions, receipt-linkage
+    // failures in Step 6) without logging. The P0002 / no_data_found codes
+    // are exactly what this SQL function raises — no fallback needed.
+    if (error.code === 'P0002' || error.code === 'no_data_found') {
       return { ok: false, error: 'booking not found or not yours' };
     }
     console.error('[bride-tool:record_payment] rpc error:', error);
