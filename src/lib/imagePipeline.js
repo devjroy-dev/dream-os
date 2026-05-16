@@ -37,6 +37,7 @@ const {
   composeAestheticPrompt,
   isValidTag,
 } = require('../agent/brideAesthetics');
+const { classifyImage } = require('./imageOCRRouter');
 
 // ── Cloudinary config (uses env vars on the dream-wedding service) ───────────
 // Reads CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET.
@@ -313,23 +314,49 @@ async function deriveAestheticTags(visionLabels, visionColors, anthropic) {
 }
 
 // ── Main entry point ─────────────────────────────────────────────────────────
-// processImageForMuse({ sourceUrl, couple_id, anthropic })
+// processImageForMuse({ sourceUrl, couple_id, anthropic, runClassifier })
 //
-// sourceUrl : string  — Twilio media URL, Pinterest/IG URL, or direct image URL
-// couple_id : string  — used for Cloudinary folder scoping (no DB writes here)
-// anthropic : object  — initialised Anthropic SDK client passed by caller
+// sourceUrl     : string  — Twilio media URL, Pinterest/IG URL, or direct image URL
+// couple_id     : string  — used for Cloudinary folder scoping (no DB writes here)
+// anthropic     : object  — initialised Anthropic SDK client passed by caller
+// runClassifier : boolean — when true, classify the image AFTER Cloudinary upload
+//                           but BEFORE Vision/Haiku tagging. If classifier returns
+//                           'receipt', return early with source_type='receipt' and
+//                           skip the rest of the Muse pipeline. The caller
+//                           branches on source_type to route the receipt flow.
+//                           Defaults to false (Circle members + legacy callers
+//                           get unchanged Muse-only behaviour).
 //
-// Returns:
+// Returns (Muse path — runClassifier=false OR classifier returned 'muse'):
 //   {
-//     source_type:    'image' | 'link',
-//     image_url:      string,        // Cloudinary URL (permanent)
-//     source_url:     string | null, // original URL — null for 'image', set for 'link'
-//     vision_raw:     object,        // full Vision response for re-analysis later
-//     aesthetic_tags: string[],      // 1-3 values from BRIDE_AESTHETIC_TAGS
-//     tagging_cost:   { cost_usd, cost_inr } | null  // Haiku call cost
+//     source_type:     'image' | 'link',
+//     image_url:       string,        // Cloudinary URL (permanent)
+//     source_url:      string | null, // original URL — null for 'image', set for 'link'
+//     vision_raw:      object,        // full Vision response for re-analysis later
+//     aesthetic_tags:  string[],      // 1-3 values from BRIDE_AESTHETIC_TAGS
+//     tagging_cost:    { cost_usd, cost_inr } | null,  // Haiku tagging call cost
+//     classifier_cost: null,  // Google Vision cost not tracked per-call (free tier)
 //   }
+//
+// Returns (Receipt path — runClassifier=true AND classifier returned 'receipt'):
+//   {
+//     source_type:     'receipt',
+//     image_url:       string,        // Cloudinary URL — image is already uploaded
+//     source_url:      string | null, // original URL — null for Twilio, set for link
+//     vision_raw:      null,          // skipped — receipts don't need aesthetic vision
+//     aesthetic_tags:  [],            // empty — receipts don't get aesthetic tags
+//     tagging_cost:    null,          // skipped
+//     classifier_cost: null,          // Google Vision cost not tracked per-call
+//   }
+//
+// CLASSIFIER ARCHITECTURE: lives inline here (after Cloudinary upload, before
+// Vision/Haiku tagging) so that receipts short-circuit the expensive Muse
+// pipeline. Saves ~Rs 0.45 per receipt (Vision + Haiku tagging skipped) at the
+// cost of ~Rs 0.10 per bride image (classifier call). Net: cheaper on receipts,
+// slightly more expensive on Muse. Worth it because Muse contamination is the
+// primary UX cost we're solving.
 
-async function processImageForMuse({ sourceUrl, couple_id, anthropic }) {
+async function processImageForMuse({ sourceUrl, couple_id, anthropic, runClassifier = false }) {
   if (!sourceUrl) throw new Error('imagePipeline: sourceUrl is required');
   if (!couple_id) throw new Error('imagePipeline: couple_id is required');
   if (!anthropic) throw new Error('imagePipeline: anthropic client is required');
@@ -364,6 +391,39 @@ async function processImageForMuse({ sourceUrl, couple_id, anthropic }) {
     throw new Error('imagePipeline: Cloudinary upload returned no secure_url');
   }
 
+  // ── Classifier (bride path only) ────────────────────────────────────────
+  // Runs ONLY when runClassifier=true. Circle members and link forwards skip
+  // this — Circle by design (Muse-only access), link forwards because
+  // Pinterest/IG pages are aesthetic by nature and receipts are never shared
+  // via those platforms. Twilio image forwards from the bride are the one
+  // class that could be either muse or receipt.
+  //
+  // Defaulting to muse on failure (handled inside classifyImage) keeps the
+  // existing flow working when the classifier breaks. False muse routes are
+  // recoverable via natural language ("this was a receipt"). False receipt
+  // routes contaminate her mood board.
+  let classifier_cost = null;
+  if (runClassifier && resolvedSourceType === 'image') {
+    const result = await classifyImage({ image_url });
+    // Google Vision cost tracking: ~$1.50 per 1000 calls, free tier covers
+    // cohort scale. Not tracked per-call like Haiku tokens.
+
+    if (result.route === 'receipt') {
+      // Early exit — caller branches to receipt flow. Image is in Cloudinary,
+      // metadata captured by caller from there.
+      return {
+        source_type:     'receipt',
+        image_url,
+        source_url:      resolvedSourceUrl,
+        vision_raw:      null,
+        aesthetic_tags:  [],
+        tagging_cost:    null,
+        classifier_cost,
+      };
+    }
+    // route === 'muse' → fall through to existing Vision/Haiku tagging
+  }
+
   // Vision analysis on the Cloudinary URL — guaranteed public-fetchable
   const { labels, colors, raw: vision_raw } = await analyzeWithVision(image_url);
 
@@ -377,6 +437,7 @@ async function processImageForMuse({ sourceUrl, couple_id, anthropic }) {
     vision_raw,
     aesthetic_tags: tags,
     tagging_cost:   taggingCost,
+    classifier_cost,
   };
 }
 
