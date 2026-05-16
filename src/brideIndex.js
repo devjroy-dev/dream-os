@@ -141,7 +141,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
     let { data: conversation } = await supabase
       .from('conversations')
       .select('*')
-      .eq('counterparty_phone', phone)
+      .eq('couple_id', couple.id)
       .eq('kind', 'couple_self')
       .maybeSingle();
 
@@ -149,6 +149,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
       const { data: newConvo, error: convoError } = await supabase
         .from('conversations')
         .insert({
+          couple_id:            couple.id,
           counterparty_phone:   phone,
           counterparty_user_id: user.id,
           kind:                 'couple_self',
