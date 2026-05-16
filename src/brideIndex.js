@@ -452,7 +452,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
         anthropic,
       });
 
-      if (saveResult.ok) {
+      if (saveResult.ok && saveResult.classified_as === 'receipt') {
+        // Classifier routed to receipt — image saved to Cloudinary but NOT to Muse.
+        // Synthesize a context note so the agent asks the bride what it's for.
+        mediaSaveSucceeded = true;
+        mediaContextNote = `[SYSTEM NOTE] The bride forwarded an image that looks like a receipt or invoice. It has been saved to Cloudinary at ${saveResult.image_url}. Ask her two things in one natural sentence: what's this for (so you can label it) and how much was it? Then call save_receipt with her answers. Keep your tone warm and brief — one sentence.`;
+        console.log(`[bride-webhook] image classified as receipt, image_url=${saveResult.image_url}`);
+      } else if (saveResult.ok) {
         mediaSaveSucceeded = true;
         mediaContextNote = buildMediaContextNote(saveResult.save, 'The bride');
         console.log(`[bride-webhook] muse save succeeded: #${saveResult.save.save_number}`);

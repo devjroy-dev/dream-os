@@ -98,16 +98,34 @@ async function saveToMuse({
   }
 
   // ── Phase 1: run the pipeline (Cloudinary + Vision + Haiku tagging) ──
+  // runClassifier: true for bride saves only. Circle saves always go to Muse.
+  // When the classifier returns 'receipt', processImageForMuse returns early
+  // with source_type='receipt' — we skip the muse_save insert entirely and
+  // return a receipt-classified result for brideIndex.js to handle.
   let pipelineResult;
   try {
     pipelineResult = await processImageForMuse({
       sourceUrl,
       couple_id,
       anthropic,
+      runClassifier: saved_by_role === 'bride',
     });
   } catch (err) {
     console.error('[museSave] pipeline failed:', err.message);
     return { ok: false, error: `image pipeline failed: ${err.message}` };
+  }
+
+  // ── Receipt early-exit (bride path only) ─────────────────────────────
+  // If the classifier routed to 'receipt', skip the muse_save pipeline.
+  // Image is already in Cloudinary. Return the Cloudinary URL so brideIndex.js
+  // can synthesize a receipt-flow context note for the agent.
+  if (pipelineResult.source_type === 'receipt') {
+    console.log(`[museSave] image classified as receipt, skipping muse_save insert. image_url=${pipelineResult.image_url}`);
+    return {
+      ok:             true,
+      classified_as:  'receipt',
+      image_url:      pipelineResult.image_url,
+    };
   }
 
   const {
