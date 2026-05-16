@@ -24,6 +24,7 @@
 
 const express      = require('express');
 const ws           = require('ws');
+const twilio       = require('twilio');
 const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn } = require('./agent/brideEngine');
@@ -144,6 +145,22 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const twilioSid   = req.body.MessageSid || null;
 
     console.log(`[bride-whatsapp:in] ${phone} -> ${body}`);
+
+    // ── Twilio signature verification ─────────────────────────────────
+    if (process.env.DISABLE_TWILIO_SIGNATURE_CHECK !== 'true') {
+      const twilioSignature = req.headers['x-twilio-signature'] || '';
+      const webhookUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+      const isValid = twilio.validateRequest(
+        process.env.TWILIO_AUTH_TOKEN,
+        twilioSignature,
+        webhookUrl,
+        req.body,
+      );
+      if (!isValid) {
+        console.warn(`[bride-webhook] invalid Twilio signature from ${phone}, url=${webhookUrl}`);
+        return res.status(403).send('Forbidden');
+      }
+    }
 
     const trimmedBody = body.trim();
     const numMedia    = parseInt(req.body.NumMedia || '0', 10);
@@ -358,4 +375,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[dream-wedding] listening on :${PORT}`);
+  if (process.env.DISABLE_TWILIO_SIGNATURE_CHECK === 'true') {
+    console.warn('[dream-wedding] WARNING: DISABLE_TWILIO_SIGNATURE_CHECK=true — Twilio webhook signature verification is OFF. Do not run in production with this flag set.');
+  }
 });
