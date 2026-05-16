@@ -51,16 +51,12 @@ async function runCircleAgenticTurn({
   }
 
   // Load short conversation history from this circle thread.
-  const { data: recentMessages, error: histErr } = await supabase
+  const { data: recentMessages } = await supabase
     .from('messages')
     .select('direction, body, sent_by, created_at')
     .eq('conversation_id', conversation.id)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT + 1);
-
-  if (histErr) {
-    console.error('[circle-agent] history query failed (proceeding with empty history):', histErr.message);
-  }
 
   const history = (recentMessages || [])
     .reverse()

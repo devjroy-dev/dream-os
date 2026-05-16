@@ -29,6 +29,7 @@ const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn }  = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
+const { DAILY_CAP_IMAGES }     = require('./agent/circleSystemPrompt');
 const { sendWhatsApp } = require('./lib/whatsapp');
 const { saveToMuse }   = require('./lib/museSave');
 
@@ -40,7 +41,8 @@ const DEAD_END_REPLY = "Sorry — you're not on our invite list yet. Request acc
 
 // ── Circle constants (Step 5+6) ──────────────────────────────────────
 const CIRCLE_TOKEN_REGEX     = /^CIRCLE-[A-Z0-9]{6}$/;
-const DAILY_CIRCLE_IMAGE_CAP = 5;          // images/links per circle member per IST day
+// DAILY_CAP_IMAGES imported from circleSystemPrompt.js (single source of truth — L3 fix)
+const DAILY_CIRCLE_IMAGE_CAP = DAILY_CAP_IMAGES;
 const CIRCLE_SESSION_IDLE_MS = 10 * 60 * 1000;  // 10 min — must match brideEngine constant
 
 function buildCircleGreeting(brideName, role) {
@@ -197,10 +199,42 @@ app.post('/webhook/whatsapp', async (req, res) => {
       return res.status(200).send('<Response></Response>');
     }
 
+    // ── Step 5: existing circle member routing ────────────────────────
+    // Check FIRST — before token regex — so an active circle member who
+    // accidentally sends a token-shaped message (e.g. forwarding someone
+    // else's invite link) gets routed correctly rather than hitting the
+    // claim path and receiving a dead-end reply. (M1 audit fix)
+    const { data: activeCircleMember } = await supabase
+      .from('circle_members')
+      .select('id, couple_id, invitee_name, role, status, invitee_phone')
+      .eq('invitee_phone', phone)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (activeCircleMember) {
+      try {
+        await handleCircleMemberMessage({
+          phone,
+          body,
+          trimmedBody,
+          hasMedia,
+          numMedia,
+          req,
+          twilioSid,
+          profileName,
+          circleMember: activeCircleMember,
+        });
+        return res.status(200).send('<Response></Response>');
+      } catch (err) {
+        console.error('[bride-webhook] circle-member handler error:', err);
+        return res.status(500).send('error');
+      }
+    }
+
     // ── Step 5: token-claim path (first message from circle invitee) ─
-    // If the message body is a CIRCLE-XXXXXX token AND the phone is unknown
-    // (no user row yet) OR is known but not yet a circle member, attempt to
-    // claim the invite. Successful claim → create user (if needed), create
+    // Only reached if phone is NOT already an active circle member.
+    // If the message body is a CIRCLE-XXXXXX token, attempt to claim the
+    // invite. Successful claim → create user (if needed), create
     // circle_thread conversation, send the hardcoded greeting, return.
     if (CIRCLE_TOKEN_REGEX.test(trimmedBody)) {
       const token = trimmedBody;
@@ -227,6 +261,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
       // Ensure a users row exists for this phone. We use the invitee_name from
       // the claim as the user's display name (best info we have at this point).
+      // H1 fix: if users or conversations insert fails AFTER the RPC has already
+      // consumed the token (status=active), do NOT send dead-end reply.
+      // The member's status is active, so their next message will hit the
+      // activeCircleMember routing path and the conversation heal block will
+      // create the missing circle_thread. Send a soft retry message instead.
+      const CLAIM_RETRY_REPLY = "Something went wrong on our end — please send that message again in a moment.";
+
       let circleUser;
       const { data: existingUser } = await supabase
         .from('users')
@@ -237,18 +278,19 @@ app.post('/webhook/whatsapp', async (req, res) => {
       if (existingUser) {
         circleUser = existingUser;
       } else {
+        const safeName = (profileName || claim.invitee_name || '').slice(0, 120);
         const { data: newUser, error: userErr } = await supabase
           .from('users')
           .insert({
             phone,
-            name: profileName || claim.invitee_name,
+            name: safeName,
             pronouns: null,
           })
           .select()
           .single();
         if (userErr) {
           console.error('[bride-webhook] users insert (circle) failed:', userErr);
-          await sendWhatsApp(phone, DEAD_END_REPLY);
+          await sendWhatsApp(phone, CLAIM_RETRY_REPLY);
           return res.status(200).send('<Response></Response>');
         }
         circleUser = newUser;
@@ -273,7 +315,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
       if (convoErr) {
         console.error('[bride-webhook] circle_thread conversation insert failed:', convoErr);
-        await sendWhatsApp(phone, DEAD_END_REPLY);
+        await sendWhatsApp(phone, CLAIM_RETRY_REPLY);
         return res.status(200).send('<Response></Response>');
       }
 
@@ -308,35 +350,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
       console.log(`[bride-webhook] circle claim complete: member ${claim.invitee_name} → bride ${claim.bride_name}`);
       return res.status(200).send('<Response></Response>');
-    }
-
-    // ── Step 5: existing circle member routing ────────────────────────
-    // Phone-based lookup: is this an ACTIVE circle member? If yes, route to
-    // the circle agent loop (separate from bride flow). This must come BEFORE
-    // the bride-side phone gate so circle members don't get dead-ended.
-    const { data: activeCircleMember } = await supabase
-      .from('circle_members')
-      .select('id, couple_id, invitee_name, role, status, invitee_phone')
-      .eq('invitee_phone', phone)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (activeCircleMember) {
-      return await handleCircleMemberMessage({
-        phone,
-        body,
-        trimmedBody,
-        hasMedia,
-        numMedia,
-        req,
-        twilioSid,
-        profileName,
-        circleMember: activeCircleMember,
-      }).then(() => res.status(200).send('<Response></Response>'))
-        .catch((err) => {
-          console.error('[bride-webhook] circle-member handler error:', err);
-          return res.status(500).send('error');
-        });
     }
 
     // ── Phone-as-gate: must already exist in users + couples ────────
@@ -619,12 +632,21 @@ async function handleCircleMemberMessage({
 
   // ── Daily-cap check (images/links only) ──
   if (isMediaOrLink) {
-    const { count: savesToday } = await supabase
+    const { count: savesToday, error: capErr } = await supabase
       .from('muse_saves')
       .select('id', { count: 'exact', head: true })
       .eq('couple_id', circleMember.couple_id)
       .eq('saved_by_user_id', user.id)
       .gte('created_at', istMidnightUtcIso());
+
+    if (capErr) {
+      // M3 fix: if the count query fails, block conservatively rather than
+      // defaulting to 0 and allowing unlimited saves through.
+      console.error('[circle-handler] daily cap count query failed (blocking conservatively):', capErr.message);
+      const capErrReply = "Something went wrong on our end — please try again in a moment.";
+      await sendWhatsApp(phone, capErrReply);
+      return;
+    }
 
     if ((savesToday || 0) >= DAILY_CIRCLE_IMAGE_CAP) {
       console.log(`[circle-handler] ${circleMember.invitee_name} hit daily cap (${savesToday}/${DAILY_CIRCLE_IMAGE_CAP})`);
@@ -729,6 +751,7 @@ async function handleCircleMemberMessage({
         couple_id:        circleMember.couple_id,
         saved_by_user_id: user.id,
         saved_by_role:    'circle_member',
+        actor_name:       circleMember.invitee_name,
         caption:          sourceCaption,
         session_id:       sessionId,
         supabase,

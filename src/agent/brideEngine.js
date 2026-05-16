@@ -463,12 +463,25 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
   // When the bride confirms "yes send them here" on a session-summary preamble,
   // the agent passes session_id. We resolve session_id → list of muse_save IDs
   // via circle_activity, then constrain the main query.
+  //
+  // I3 fix: validate that session_id is a valid UUID before querying. The
+  // session_id is extracted by the LLM from the [session_id: uuid] marker in
+  // the system note — if the model truncates or reformats it, we get a bad
+  // string. Return a clear error so the agent can inform the bride rather than
+  // silently returning 0 saves.
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   let sessionSaveIds = null;
   if (session_id && typeof session_id === 'string' && session_id.trim()) {
+    const trimmedSessionId = session_id.trim();
+    if (!UUID_REGEX.test(trimmedSessionId)) {
+      console.error(`[bride-tool:list_muse] invalid session_id format: "${trimmedSessionId}"`);
+      return { ok: false, error: `session_id must be a valid UUID (got: "${trimmedSessionId}")` };
+    }
+
     const { data: sessionRows, error: sessionErr } = await supabase
       .from('circle_activity')
       .select('subject_id')
-      .eq('session_id', session_id.trim())
+      .eq('session_id', trimmedSessionId)
       .eq('subject_type', 'muse_save')
       .eq('activity_type', 'save_added');
 
@@ -787,22 +800,41 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
 
   for (const session of sessions) {
     try {
-      const summary = await summarizeOneSession({ session, supabase, anthropic });
-      if (summary) {
-        // Embed session_id so the agent can pass it back via list_muse if
-        // the bride says "yes send them here".
-        summaryLines.push(`${summary}\n[session_id: ${session.id}]`);
-      }
-
-      // Mark session summarized regardless — if summarize returned null we
-      // still want to avoid re-firing.
-      await supabase
+      // M4 fix: optimistic update — attempt to claim this session for summarization
+      // before doing any work. If another concurrent webhook already claimed it
+      // (summarized_to_bride flipped to true), affected rows = 0 and we skip.
+      const { data: claimResult, error: claimErr } = await supabase
         .from('circle_sessions')
         .update({
           summarized_to_bride: true,
           summarized_at: new Date().toISOString(),
         })
-        .eq('id', session.id);
+        .eq('id', session.id)
+        .eq('summarized_to_bride', false)  // only succeeds if still unsummarized
+        .select('id');
+
+      if (claimErr) {
+        console.error(`[bride-surface-circle] claim update failed for session ${session.id}:`, claimErr.message);
+        continue;  // skip — don't summarize if we couldn't claim
+      }
+
+      if (!claimResult || claimResult.length === 0) {
+        // Another concurrent webhook already claimed this session — skip.
+        console.log(`[bride-surface-circle] session ${session.id} already claimed by concurrent request — skipping`);
+        continue;
+      }
+
+      // We own this session. Summarize it.
+      const summary = await summarizeOneSession({ session, supabase, anthropic });
+
+      if (summary) {
+        summaryLines.push(`${summary}\n[session_id: ${session.id}]`);
+      } else {
+        // H2 fix: summarize returned null (activity lookup failed or empty).
+        // Session is already marked summarized_to_bride=true (from the optimistic
+        // update above). Log that the bride won't see a summary for this session.
+        console.warn(`[bride-surface-circle] session ${session.id} claimed but no summary produced — bride will not see it`);
+      }
     } catch (err) {
       console.error(`[bride-surface-circle] error summarizing session ${session.id}:`, err.message);
       // Continue with other sessions; don't crash the bride's whole turn.
@@ -905,7 +937,7 @@ Reply with ONLY the summary sentence(s). No preamble, no closing, no quotes arou
 
   try {
     const response = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      MODEL_HAIKU,
       max_tokens: 150,
       messages: [{ role: 'user', content: prompt }],
     }, { timeout: 8000 });

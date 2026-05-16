@@ -16,14 +16,18 @@
 //   reply rather than a 500.
 //
 // CALLER CONTEXT REQUIRED:
-//   { sourceUrl, couple_id, saved_by_user_id, saved_by_role, caption?, supabase, anthropic }
+//   { sourceUrl, couple_id, saved_by_user_id, saved_by_role, caption?,
+//     session_id?, supabase, anthropic }
 //
 // RETURNS on success:
 //   { ok: true, save: { id, save_number, image_url, source_url, source_type,
 //                       aesthetic_tags, caption, saved_by_user_id, saved_by_role } }
 //
-// Used by brideIndex.js for bride-forwarded images (Step 4). Will be used by
-// the circle member flow (Step 5) with the same shape.
+// B2 Step 4: bride-forwarded images.
+// B2 Step 5: extended for circle members (saved_by_role='circle_member').
+//            - actor_name lookup from circle_members.invitee_name
+//            - optional session_id threaded onto the circle_activity row
+//              for session-scoped surfacing (Step 6 summaries).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { processImageForMuse } = require('./imagePipeline');
@@ -59,6 +63,10 @@ async function nextSaveNumber(supabase, couple_id) {
 // saved_by_role   : string  — 'bride' or 'circle_member'
 // caption         : string  — optional. The text body that arrived alongside the
 //                             image/link, if any.
+// session_id      : string  — optional UUID. When saving as a circle_member during
+//                             an active session, threading this in lets Step 6's
+//                             summarizer pull all activity for one session in order.
+//                             Bride-side saves pass null (sessions are circle-only).
 // supabase        : object  — Supabase client (service role)
 // anthropic       : object  — Anthropic SDK client (passed through to pipeline)
 
@@ -68,6 +76,7 @@ async function saveToMuse({
   saved_by_user_id,
   saved_by_role,
   caption = null,
+  session_id = null,
   supabase,
   anthropic,
 }) {
@@ -174,28 +183,76 @@ async function saveToMuse({
   }
 
   // ── Phase 4: insert circle_activity row ──────────────────────────────
-  // Activity row records who did what, when. surface_circle_summary (Step 6)
-  // reads unsurfaced activity to compose the BFF preamble for the bride.
+  // Activity row records who did what, when. Step 6's session-summary path
+  // reads activity rows by session_id to compose the bride's preamble.
   //
-  // actor_name: B2 default to 'You' for bride saves, the circle member's
-  // invitee_name for circle saves. Caller passes the right one via a fetch.
-  // For now (Step 4 only ships bride saves), we'll write 'You' as actor_name
-  // when role is bride. Step 5 extends this.
-  const actorName = saved_by_role === 'bride' ? 'You' : 'Circle member';
+  // actor_name:
+  //   - For bride saves: 'You'
+  //   - For circle member saves: looked up from circle_members.invitee_name
+  //     (the bride sees "Mom added 3 shots" not "Circle member added 3 shots")
+  //
+  // session_id:
+  //   - Threaded onto the row for circle saves (when caller passes one).
+  //   - Always null for bride saves (sessions are a circle concept).
+
+  let actorName;
+  if (saved_by_role === 'bride') {
+    actorName = 'You';
+  } else {
+    // Look up the circle member's invitee_name by their user_id + couple_id.
+    // We use the user_id (not the member id) because that's what's available
+    // on the muse_saves row. The (couple_id, invitee_phone -> users.phone)
+    // chain gets us to the right member row.
+    //
+    // To avoid a 3-table join, the caller (brideIndex.js) is expected to have
+    // already routed via the circle_members row and could pass member_id —
+    // but we keep this helper's signature stable and look it up here. The
+    // cost is one extra query per circle save, which is fine at B2 scale.
+    const { data: memberLookup } = await supabase
+      .from('circle_members')
+      .select('invitee_name, invitee_phone')
+      .eq('couple_id', couple_id)
+      .eq('status', 'active')
+      .order('joined_at', { ascending: false });
+
+    // Find the member whose invitee_phone maps to the saving user's phone.
+    // We need users.phone for that user_id.
+    let resolvedName = null;
+    if (memberLookup && memberLookup.length > 0) {
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('phone')
+        .eq('id', saved_by_user_id)
+        .maybeSingle();
+      if (userRow?.phone) {
+        const match = memberLookup.find(m => m.invitee_phone === userRow.phone);
+        if (match) resolvedName = match.invitee_name;
+      }
+    }
+
+    actorName = resolvedName || 'Circle member';
+  }
+
+  const activityRow = {
+    couple_id,
+    actor_user_id:  saved_by_user_id,
+    actor_name:     actorName,
+    actor_role:     saved_by_role,
+    activity_type:  'save_added',
+    subject_type:   'muse_save',
+    subject_id:     savedRow.id,
+    payload:        { save_number },
+    // surfaced_to_bride defaults to false at DB level
+  };
+
+  // Thread session_id only for circle saves where it was passed.
+  if (saved_by_role === 'circle_member' && session_id) {
+    activityRow.session_id = session_id;
+  }
 
   const { error: activityError } = await supabase
     .from('circle_activity')
-    .insert({
-      couple_id,
-      actor_user_id:  saved_by_user_id,
-      actor_name:     actorName,
-      actor_role:     saved_by_role,
-      activity_type:  'save_added',
-      subject_type:   'muse_save',
-      subject_id:     savedRow.id,
-      payload:        { save_number },
-      // surfaced_to_bride defaults to false at DB level
-    });
+    .insert(activityRow);
 
   if (activityError) {
     // Non-fatal: the save itself succeeded. Log but don't fail the whole save.
@@ -205,7 +262,7 @@ async function saveToMuse({
   // Null-safe formatting — Array.isArray guards against unexpected pipeline
   // output. Throwing here would leave an orphan DB row reported as a failure.
   const tagsForLog = Array.isArray(aesthetic_tags) ? aesthetic_tags.join(',') : 'none';
-  console.log(`[museSave] saved #${save_number} for couple ${couple_id} (${source_type}, tags: ${tagsForLog})`);
+  console.log(`[museSave] saved #${save_number} for couple ${couple_id} (${source_type}, tags: ${tagsForLog}, actor: ${actorName}${session_id ? ', session: ' + session_id.slice(0,8) : ''})`);
 
   return { ok: true, save: savedRow };
 }

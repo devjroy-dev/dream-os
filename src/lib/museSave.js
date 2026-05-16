@@ -61,6 +61,11 @@ async function nextSaveNumber(supabase, couple_id) {
 // saved_by_user_id: string  — UUID of the person who triggered the save (bride or
 //                             circle member). Stored on the row for attribution.
 // saved_by_role   : string  — 'bride' or 'circle_member'
+// actor_name      : string  — optional. Display name for circle_activity row.
+//                             Caller (handleCircleMemberMessage) passes
+//                             circleMember.invitee_name directly, eliminating
+//                             the 2-query DB lookup and its silent failure modes.
+//                             Defaults to 'You' for bride, 'Circle member' if not passed.
 // caption         : string  — optional. The text body that arrived alongside the
 //                             image/link, if any.
 // session_id      : string  — optional UUID. When saving as a circle_member during
@@ -75,6 +80,7 @@ async function saveToMuse({
   couple_id,
   saved_by_user_id,
   saved_by_role,
+  actor_name = null,
   caption = null,
   session_id = null,
   supabase,
@@ -183,54 +189,14 @@ async function saveToMuse({
   }
 
   // ── Phase 4: insert circle_activity row ──────────────────────────────
-  // Activity row records who did what, when. Step 6's session-summary path
-  // reads activity rows by session_id to compose the bride's preamble.
-  //
-  // actor_name:
-  //   - For bride saves: 'You'
-  //   - For circle member saves: looked up from circle_members.invitee_name
-  //     (the bride sees "Mom added 3 shots" not "Circle member added 3 shots")
-  //
-  // session_id:
-  //   - Threaded onto the row for circle saves (when caller passes one).
-  //   - Always null for bride saves (sessions are a circle concept).
-
+  // actor_name: M6/I2 fix — caller passes actor_name directly (e.g. circleMember.invitee_name)
+  // eliminating the 2-query DB lookup and its silent-failure modes.
+  // Fall back to role-based defaults only when not provided.
   let actorName;
-  if (saved_by_role === 'bride') {
-    actorName = 'You';
+  if (actor_name && typeof actor_name === 'string' && actor_name.trim()) {
+    actorName = actor_name.trim();
   } else {
-    // Look up the circle member's invitee_name by their user_id + couple_id.
-    // We use the user_id (not the member id) because that's what's available
-    // on the muse_saves row. The (couple_id, invitee_phone -> users.phone)
-    // chain gets us to the right member row.
-    //
-    // To avoid a 3-table join, the caller (brideIndex.js) is expected to have
-    // already routed via the circle_members row and could pass member_id —
-    // but we keep this helper's signature stable and look it up here. The
-    // cost is one extra query per circle save, which is fine at B2 scale.
-    const { data: memberLookup } = await supabase
-      .from('circle_members')
-      .select('invitee_name, invitee_phone')
-      .eq('couple_id', couple_id)
-      .eq('status', 'active')
-      .order('joined_at', { ascending: false });
-
-    // Find the member whose invitee_phone maps to the saving user's phone.
-    // We need users.phone for that user_id.
-    let resolvedName = null;
-    if (memberLookup && memberLookup.length > 0) {
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('phone')
-        .eq('id', saved_by_user_id)
-        .maybeSingle();
-      if (userRow?.phone) {
-        const match = memberLookup.find(m => m.invitee_phone === userRow.phone);
-        if (match) resolvedName = match.invitee_name;
-      }
-    }
-
-    actorName = resolvedName || 'Circle member';
+    actorName = saved_by_role === 'bride' ? 'You' : 'Circle member';
   }
 
   const activityRow = {
