@@ -447,17 +447,23 @@ async function execAddEvent({ input, couple, supabase }) {
     return { ok: false, error: 'event_date required in YYYY-MM-DD format' };
   }
   if (!ALLOWED_KINDS.has(kind)) {
-    return { ok: false, error: `kind "${kind}" not in allowed list` };
+    // L2 audit fix: console.warn the bad input for our logs, return generic
+    // error string to the agent (M2 input-leak rule from Audit #1).
+    console.warn('[bride-tool:add_event] rejecting invalid kind:', kind);
+    return { ok: false, error: 'kind not in allowed list' };
   }
 
-  // event_time is optional; if present, validate HH:MM
+  // event_time is optional; if present, validate HH:MM.
+  // M1 audit fix: was previously silent-drop on malformed time, creating
+  // agent/DB divergence. Now hard-errors via normalizeEventTime helper
+  // (consistent with execUpdateEvent's M2 pattern from B3 Step 3).
   let timeValue = null;
-  if (event_time && typeof event_time === 'string') {
-    const t = event_time.trim();
-    if (/^\d{1,2}:\d{2}$/.test(t)) {
-      timeValue = t.length === 4 ? `0${t}` : t;
+  if (event_time !== undefined && event_time !== null && event_time !== '') {
+    timeValue = normalizeEventTime(event_time);
+    if (timeValue === null) {
+      console.warn('[bride-tool:add_event] rejecting malformed event_time:', event_time);
+      return { ok: false, error: 'event_time must be HH:MM format (24-hour)' };
     }
-    // silent skip on malformed time — event still gets created without it
   }
 
   const { data, error } = await supabase
@@ -773,9 +779,15 @@ const TIME_REGEX = /^\d{1,2}:\d{2}$/;
 
 function normalizeEventTime(t) {
   // Normalises "9:30" → "09:30", "15:30" → "15:30". Returns null on malformed.
+  // I1 audit fix: validates format AND semantic range. "25:00", "12:99",
+  // "09:75" are syntactically valid digit patterns but invalid times — they
+  // would otherwise pass TIME_REGEX and get stored as text. Range check
+  // rejects them.
   if (typeof t !== 'string') return null;
   const trimmed = t.trim();
   if (!TIME_REGEX.test(trimmed)) return null;
+  const [h, m] = trimmed.split(':').map(Number);
+  if (h > 23 || m > 59) return null;
   return trimmed.length === 4 ? `0${trimmed}` : trimmed;
 }
 
@@ -807,9 +819,15 @@ async function execListEvents({ input, couple, supabase }) {
     }
   }
 
-  // kind filter: silent skip if unknown value (schema enum should prevent)
-  if (kind && ALLOWED_KINDS.has(kind)) {
-    query = query.eq('kind', kind);
+  // kind filter: L3 safe-default (return all kinds, not error). I2 audit fix:
+  // now logs a console.warn when an unknown value arrives so schema drift
+  // gets detected. Symmetric with update_event's logging behavior.
+  if (kind) {
+    if (ALLOWED_KINDS.has(kind)) {
+      query = query.eq('kind', kind);
+    } else {
+      console.warn('[bride-tool:list_events] unknown kind filter, returning all kinds:', kind);
+    }
   }
 
   // state filter: default to 'upcoming'; explicit-all branch + safe default (L3 pattern)
@@ -883,13 +901,16 @@ async function execUpdateEvent({ input, couple, supabase }) {
     updates.event_time = normalized;
   }
 
-  // kind: enum validation. Silent skip if invalid (schema enum should prevent).
+  // kind: enum validation. Invalid values are silently ignored with a log.
+  // L1 audit decision (split call): kind is a label only — it doesn't affect
+  // filtering defaults, sort behavior, or any state machine. Silent-ignore
+  // here lets the rest of an update proceed even if the model passes a slightly
+  // wrong kind ("dress_fitting" instead of "fitting"). Contrast with state
+  // below, which is operational and IS hard-errored on invalid input.
   if (kind && ALLOWED_KINDS.has(kind)) {
     updates.kind = kind;
   } else if (kind) {
     console.warn('[bride-tool:update_event] ignoring invalid kind:', kind);
-    // No hard error here — kind is a categorisation tweak, not a correctness gate.
-    // If model passes a bad value, we ignore it rather than block the whole update.
   }
 
   // notes: clearable via M1 pattern
@@ -899,11 +920,16 @@ async function execUpdateEvent({ input, couple, supabase }) {
     updates.notes = notes.trim().slice(0, 500);
   }
 
-  // state: enum validation, no clear path (state is NOT NULL with default 'upcoming')
+  // state: operational field — filters list_events default view (upcoming-only)
+  // and signals event completion/cancellation. L1 audit fix: invalid values
+  // hard-error instead of silent-ignore. Without this, agent says "marked it
+  // done" while state stays 'upcoming' — agent/DB divergence on an operational
+  // field. No clear path (state is NOT NULL with schema default 'upcoming').
   if (state && ALLOWED_EVENT_STATES.has(state)) {
     updates.state = state;
   } else if (state) {
-    console.warn('[bride-tool:update_event] ignoring invalid state:', state);
+    console.warn('[bride-tool:update_event] rejecting invalid state:', state);
+    return { ok: false, error: 'state must be upcoming, done, or cancelled' };
   }
 
   if (Object.keys(updates).length === 0) {
