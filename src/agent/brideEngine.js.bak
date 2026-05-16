@@ -15,17 +15,9 @@
 // Tool executors live as switch-case branches inside this file (mirroring
 // the vendor engine.js pattern where executors live alongside the loop).
 //
-// B2 Step 4: added mediaContext parameter for image auto-save context injection,
+// B2: added mediaContext parameter for image auto-save context injection,
 // list_muse + delete_muse_save executors, and mediaUrls return for image
 // playback ("show me save 47" sends the actual image back).
-//
-// B2 Step 5+6: added invite_to_circle + list_circle executors,
-// session_id filter on list_muse, and pre-turn session-summary surfacing
-// (Step 6) — when the bride messages, we check for ended-but-unsummarized
-// circle sessions, compose a one-line preamble via Haiku, and prepend it to
-// dynamicContext. The preamble carries the session_id back to the agent so
-// if the bride says "yes send them here", the agent calls list_muse with
-// session_id to playback that session's saves only.
 
 const { STATIC_SYSTEM_PROMPT, buildDynamicContext } = require('./brideSystemPrompt');
 const { nextBrideOnboardingMessage } = require('./brideOnboarding');
@@ -40,10 +32,6 @@ const HISTORY_LIMIT  = 10;
 const LIST_MUSE_DEFAULT_LIMIT = 10;
 const LIST_MUSE_MAX_LIMIT     = 30;
 const PLAYBACK_MAX_IMAGES     = 5;  // max images sent back in a single bride reply
-
-// Step 6: circle session is considered "ended" after this much idle time.
-// Bride's next message triggers summary composition for ended sessions.
-const SESSION_IDLE_MS = 10 * 60 * 1000;  // 10 minutes
 
 // ── Bride agentic turn ───────────────────────────────────────────────
 // Entry point called from brideIndex.js webhook handler.
@@ -93,26 +81,6 @@ async function runBrideAgenticTurn({
 
   // Build dynamic context (couple info, notes, events). Self-querying.
   let dynamicContext = await buildDynamicContext(couple.id);
-
-  // ── Step 6: pre-turn circle session summary surfacing ─────────────
-  // When the bride's last interaction was a while ago and a circle member
-  // has been active in between, we surface a one-time summary of that
-  // session as a preamble. The summary is composed by Haiku from the
-  // circle_activity rows of the session.
-  //
-  // We only fire this when there's no fresh mediaContext (i.e. the bride
-  // didn't just forward an image herself — in that case the conversation
-  // is about HER save, not a circle update).
-  if (!mediaContext) {
-    const circleSummary = await surfacePendingCircleSessions({
-      couple_id: couple.id,
-      supabase,
-      anthropic,
-    });
-    if (circleSummary && circleSummary.trim()) {
-      dynamicContext = `${circleSummary.trim()}\n\n${dynamicContext}`;
-    }
-  }
 
   // If a media auto-save just happened, prepend a context note so the agent
   // knows what landed in Muse and can reply naturally. The bride did not
@@ -275,14 +243,6 @@ async function executeBrideTool({ name, input, couple, user, conversation, supab
 
     case 'delete_muse_save': {
       return await execDeleteMuseSave({ input, couple, user, supabase });
-    }
-
-    case 'invite_to_circle': {
-      return await execInviteToCircle({ input, couple, supabase });
-    }
-
-    case 'list_circle': {
-      return await execListCircle({ input, couple, supabase });
     }
 
     default: {
@@ -453,36 +413,10 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
     limit = LIST_MUSE_DEFAULT_LIMIT,
     aesthetic_tags,
     saved_by,
-    session_id,
     request_image_playback = false,
   } = input || {};
 
   const tagFilterActive = Array.isArray(aesthetic_tags) && aesthetic_tags.length > 0;
-
-  // ── Step 6: session_id filter ───────────────────────────────────
-  // When the bride confirms "yes send them here" on a session-summary preamble,
-  // the agent passes session_id. We resolve session_id → list of muse_save IDs
-  // via circle_activity, then constrain the main query.
-  let sessionSaveIds = null;
-  if (session_id && typeof session_id === 'string' && session_id.trim()) {
-    const { data: sessionRows, error: sessionErr } = await supabase
-      .from('circle_activity')
-      .select('subject_id')
-      .eq('session_id', session_id.trim())
-      .eq('subject_type', 'muse_save')
-      .eq('activity_type', 'save_added');
-
-    if (sessionErr) {
-      console.error('[bride-tool:list_muse] session lookup error:', sessionErr);
-      return { ok: false, error: sessionErr.message };
-    }
-
-    sessionSaveIds = (sessionRows || []).map(r => r.subject_id).filter(Boolean);
-    if (sessionSaveIds.length === 0) {
-      // Session had no muse saves — return empty cleanly.
-      return { ok: true, count: 0, saves: [], image_playback_queued: 0 };
-    }
-  }
 
   // Build the query
   let query = supabase
@@ -498,11 +432,6 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
     query = query.eq('saved_by_role', 'bride');
   } else if (saved_by === 'circle_member') {
     query = query.eq('saved_by_role', 'circle_member');
-  }
-
-  // Constrain to a specific session's saves if session_id was passed.
-  if (sessionSaveIds) {
-    query = query.in('id', sessionSaveIds);
   }
 
   // Note: tag intersection is done in JS post-fetch, not in SQL. See header
@@ -656,277 +585,6 @@ async function execDeleteMuseSave({ input, couple, user, supabase }) {
     deleted_save_number: save_number,
     deleted_caption:     target.caption,
   };
-}
-
-// ── invite_to_circle executor (Step 5) ───────────────────────────────
-// Calls the invite_circle_member Postgres function from migration 0016.
-// Returns the invite link the bride can forward to the invitee via WhatsApp.
-// Returns 'circle_member_limit_reached' error specifically when the cap is hit.
-
-async function execInviteToCircle({ input, couple, supabase }) {
-  const { invitee_name, role } = input || {};
-
-  if (!invitee_name || typeof invitee_name !== 'string' || !invitee_name.trim()) {
-    return { ok: false, error: 'invitee_name required' };
-  }
-
-  if (!['partner', 'family', 'inner_circle'].includes(role)) {
-    return { ok: false, error: 'role must be partner, family, or inner_circle' };
-  }
-
-  const { data, error } = await supabase.rpc('invite_circle_member', {
-    p_couple_id:    couple.id,
-    p_invitee_name: invitee_name.trim(),
-    p_role:         role,
-  });
-
-  if (error) {
-    // Postgres exceptions from the function come through here with a
-    // 'message' attribute. Surface the specific cap message distinctly so
-    // the agent can compose a helpful reply.
-    if (error.message && error.message.includes('circle_member_limit_reached')) {
-      return {
-        ok: false,
-        error: 'circle_member_limit_reached',
-        message: 'The bride has reached the 3-member circle cap. To add someone new, she needs to remove an existing circle member first.',
-      };
-    }
-    console.error('[bride-tool:invite_to_circle] rpc error:', error);
-    return { ok: false, error: error.message };
-  }
-
-  // RPC returns a single row (set-returning function returning one row)
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row) {
-    return { ok: false, error: 'invite_circle_member returned no row' };
-  }
-
-  return {
-    ok: true,
-    member_id:    row.id,
-    invite_token: row.invite_token,
-    wa_me_link:   row.wa_me_link,
-    invitee_name: invitee_name.trim(),
-    role,
-  };
-}
-
-// ── list_circle executor (Step 5) ────────────────────────────────────
-// Returns the bride's circle members. Filter by status (default 'all').
-
-async function execListCircle({ input, couple, supabase }) {
-  const { status = 'all' } = input || {};
-
-  let query = supabase
-    .from('circle_members')
-    .select('id, invitee_name, role, status, invited_at, joined_at')
-    .eq('couple_id', couple.id)
-    .order('invited_at', { ascending: false });
-
-  if (status === 'active') {
-    query = query.eq('status', 'active');
-  } else if (status === 'pending') {
-    query = query.eq('status', 'pending');
-  }
-  // 'all' → no filter
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('[bride-tool:list_circle] query error:', error);
-    return { ok: false, error: error.message };
-  }
-
-  const members = (data || []).map(m => ({
-    invitee_name: m.invitee_name,
-    role:         m.role,
-    status:       m.status,
-    invited_at:   m.invited_at,
-    joined_at:    m.joined_at,
-  }));
-
-  return {
-    ok:    true,
-    count: members.length,
-    members,
-  };
-}
-
-// ── Step 6: pre-turn circle session summary surfacing ─────────────
-// Called from runBrideAgenticTurn before the agent's LLM call.
-// Finds all of the bride's circle sessions that are:
-//   - ended (last_activity_at < now - SESSION_IDLE_MS)
-//   - unsummarized (summarized_to_bride = false)
-// For each, composes a Haiku-generated summary, marks the session as
-// summarized, and accumulates all summaries into a single SYSTEM NOTE
-// preamble that gets prepended to dynamicContext.
-
-async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) {
-  const cutoffIso = new Date(Date.now() - SESSION_IDLE_MS).toISOString();
-
-  const { data: sessions, error } = await supabase
-    .from('circle_sessions')
-    .select('id, circle_member_id, started_at, last_activity_at')
-    .eq('couple_id', couple_id)
-    .eq('summarized_to_bride', false)
-    .lt('last_activity_at', cutoffIso)
-    .order('last_activity_at', { ascending: true });
-
-  if (error) {
-    console.error('[bride-surface-circle] lookup error:', error);
-    return null;
-  }
-
-  if (!sessions || sessions.length === 0) {
-    return null;
-  }
-
-  console.log(`[bride-surface-circle] ${sessions.length} pending session(s) for couple ${couple_id}`);
-
-  const summaryLines = [];
-
-  for (const session of sessions) {
-    try {
-      const summary = await summarizeOneSession({ session, supabase, anthropic });
-      if (summary) {
-        // Embed session_id so the agent can pass it back via list_muse if
-        // the bride says "yes send them here".
-        summaryLines.push(`${summary}\n[session_id: ${session.id}]`);
-      }
-
-      // Mark session summarized regardless — if summarize returned null we
-      // still want to avoid re-firing.
-      await supabase
-        .from('circle_sessions')
-        .update({
-          summarized_to_bride: true,
-          summarized_at: new Date().toISOString(),
-        })
-        .eq('id', session.id);
-    } catch (err) {
-      console.error(`[bride-surface-circle] error summarizing session ${session.id}:`, err.message);
-      // Continue with other sessions; don't crash the bride's whole turn.
-    }
-  }
-
-  if (summaryLines.length === 0) return null;
-
-  return [
-    '[SYSTEM NOTE — circle activity summary]',
-    'One or more of the bride\'s circle members were active on her board since she was last here. Weave this into your reply naturally as a preamble before answering whatever the bride just said. Include the link "thedreamwedding.in/muse" and offer "or should I just send them here?" — if she says yes in her next message, you should call list_muse with the session_id (shown in the summary blocks) and request_image_playback=true.',
-    '',
-    ...summaryLines,
-  ].join('\n');
-}
-
-// Compose a single session's summary by passing all its activity rows
-// (saves + notes) to Haiku with a BFF-voice instruction.
-
-async function summarizeOneSession({ session, supabase, anthropic }) {
-  // Look up the member's name + role
-  const { data: member } = await supabase
-    .from('circle_members')
-    .select('invitee_name, role')
-    .eq('id', session.circle_member_id)
-    .maybeSingle();
-
-  const memberName = member?.invitee_name || 'A circle member';
-  const memberRole = member?.role || 'family';
-
-  // Pull all activity rows for this session in chronological order.
-  const { data: activities, error } = await supabase
-    .from('circle_activity')
-    .select('activity_type, subject_type, subject_id, payload, created_at')
-    .eq('session_id', session.id)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('[bride-surface-circle] activity lookup error:', error);
-    return null;
-  }
-
-  if (!activities || activities.length === 0) {
-    return null;
-  }
-
-  // Build a structured digest to give Haiku. Group save-adds and notes separately.
-  const saveAdds = activities.filter(a => a.activity_type === 'save_added');
-  const notes    = activities.filter(a => a.activity_type === 'comment');
-
-  // For save_added rows, look up the muse_save tags so the summary can reference them.
-  const saveIds = saveAdds.map(a => a.subject_id).filter(Boolean);
-  let saveLookup = {};
-  if (saveIds.length > 0) {
-    const { data: saves } = await supabase
-      .from('muse_saves')
-      .select('id, save_number, source_type, aesthetic_tags, caption')
-      .in('id', saveIds);
-    if (saves) {
-      for (const s of saves) saveLookup[s.id] = s;
-    }
-  }
-
-  const saveDescriptions = saveAdds.map(a => {
-    const s = saveLookup[a.subject_id];
-    if (!s) return '- a save (details unavailable)';
-    const tagStr = Array.isArray(s.aesthetic_tags) && s.aesthetic_tags.length > 0
-      ? ` [${s.aesthetic_tags.join(', ')}]`
-      : '';
-    const capStr = s.caption ? ` — "${s.caption}"` : '';
-    return `- save #${s.save_number} (${s.source_type})${tagStr}${capStr}`;
-  });
-
-  const noteDescriptions = notes.map(n => {
-    const content = n.payload?.content || '(empty note)';
-    return `- said: "${content}"`;
-  });
-
-  const digestLines = [
-    `Circle member: ${memberName} (${memberRole})`,
-    `Session window: ${session.started_at} to ${session.last_activity_at}`,
-    `Activity:`,
-    ...saveDescriptions,
-    ...noteDescriptions,
-  ];
-  const digest = digestLines.join('\n');
-
-  const prompt = `${memberName} (a ${memberRole} circle member) just spent some time on the bride's wedding mood board. Here's exactly what they did:
-
-${digest}
-
-Write a 1-2 sentence summary FOR THE BRIDE in BFF voice — informal, friendly, natural. Mention ${memberName} by name. Capture the gist of what they added or said. Don't list every save individually unless there are very few. Don't add a closing question; the agent will add one after.
-
-EXAMPLES of the voice:
-- "Quick update — your mom just added 3 cream-and-gold decor shots and said she's leaning OTT for the mehndi."
-- "Heads up — Priya pinned 2 elegant moody saves and mentioned wanting to discuss the photographer."
-- "Mom just went through your board and added a candid intimate shot — said it reminded her of your engagement photos."
-
-Reply with ONLY the summary sentence(s). No preamble, no closing, no quotes around it.`;
-
-  try {
-    const response = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 150,
-      messages: [{ role: 'user', content: prompt }],
-    }, { timeout: 8000 });
-
-    const textBlocks = response.content.filter(b => b.type === 'text');
-    const summary = textBlocks.map(b => b.text).join(' ').trim();
-
-    if (summary) {
-      console.log(`[bride-surface-circle] summarized session ${session.id} (${memberName}, ${saveAdds.length} saves, ${notes.length} notes)`);
-      return summary;
-    }
-    return null;
-  } catch (err) {
-    console.error('[bride-surface-circle] haiku call failed, using fallback:', err.message);
-    // Deterministic fallback if Haiku times out / errors
-    const parts = [];
-    if (saveAdds.length > 0) parts.push(`${saveAdds.length} save${saveAdds.length === 1 ? '' : 's'}`);
-    if (notes.length > 0)    parts.push(`${notes.length} note${notes.length === 1 ? '' : 's'}`);
-    const what = parts.length > 0 ? parts.join(' and ') : 'some activity';
-    return `Quick update — ${memberName} just added ${what} to your board.`;
-  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

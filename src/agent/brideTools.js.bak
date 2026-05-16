@@ -5,8 +5,8 @@
 // branches inside src/agent/brideEngine.js (mirroring how engine.js handles
 // vendor tool execution).
 //
-// B1 shipped three tools. B2 adds list_muse, delete_muse_save, invite_to_circle,
-// list_circle. More added in B3 (planner) and B4 (vendor connections, Surprise Me).
+// B1 shipped three tools. B2 adds list_muse and delete_muse_save.
+// More added in B3 (planner) and B4 (vendor connections, Surprise Me).
 // See docs/ROADMAP_BRIDE.md.
 //
 // NOTE ON MUSE SAVES: there is intentionally NO save_to_muse tool.
@@ -18,7 +18,7 @@
 const BRIDE_TOOLS = [
   {
     name: 'note_to_self',
-    description: 'Record a durable fact about this bride or her wedding. Use whenever she shares something worth remembering long-term — family preferences, observations about people, taste signals, vendors she has already booked, things people said about her ideas. Notes are private and never sent to her. Tag with relevant labels (e.g. booked, family, preferences, taste). Call only ONCE per turn for a given insight — do not record the same fact in multiple variations within one turn.',
+    description: 'Record a durable fact about this bride or her wedding. Use whenever she shares something worth remembering long-term — family preferences, observations about people, taste signals, vendors she has already booked, things people said about her ideas. Notes are private and never sent to her. Tag with relevant labels (e.g. booked, family, preferences, taste).',
     input_schema: {
       type: 'object',
       properties: {
@@ -86,7 +86,7 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'list_muse',
-    description: 'Look up saved images on the bride\'s Muse mood board. Use this whenever she asks about her saves — "what have I saved this week", "show me save 47", "what are my recent pastel saves", "what did mom add". Returns a structured list with save numbers, aesthetic tags, captions, contributor info, and image URLs. After getting the result, you can compose a natural reply describing the saves. If she wants to actually SEE one or more images, set the request_image_playback flag — the engine will forward those images back to her via WhatsApp.',
+    description: 'Look up saved images on the bride\'s Muse mood board. Use this whenever she asks about her saves — "what have I saved this week", "show me save 47", "what are my recent pastel saves", "what did mom add". Returns a structured list with save numbers, aesthetic tags, captions, contributor info, and image URLs. After getting the result, you can compose a natural reply describing the saves. If she wants to actually SEE one or more images, set the request_image_playback flag on the saves you want delivered — the engine will forward those images back to her via WhatsApp.',
     input_schema: {
       type: 'object',
       properties: {
@@ -108,13 +108,9 @@ const BRIDE_TOOLS = [
           enum: ['bride', 'circle_member'],
           description: 'Optional. Filter to saves added by the bride only ("my saves"), or by any circle member ("what mom added", "what did the circle add").',
         },
-        session_id: {
-          type: 'string',
-          description: 'Optional. Filter to saves added during a specific circle session. Use when the bride confirms she wants to see images from a session you just surfaced in a summary preamble — pass the session_id from that summary. Format: UUID.',
-        },
         request_image_playback: {
           type: 'boolean',
-          description: 'Optional. If true, the engine will send the actual images back to the bride via WhatsApp after replying with the text description. Use when she asks to see an image ("show me save 47", "yeah send them here", "what did mom save yesterday"). Do not use for broad list queries ("show me everything") — only specific lookups or short result sets.',
+          description: 'Optional. If true, the engine will send the actual images back to the bride via WhatsApp after replying with the text description. Use when she asks to see an image ("show me save 47", "what did mom save yesterday"). Do not use for broad list queries ("show me everything") — only specific lookups or short result sets.',
         },
       },
       required: [],
@@ -132,40 +128,6 @@ const BRIDE_TOOLS = [
         },
       },
       required: ['save_number'],
-    },
-  },
-  {
-    name: 'invite_to_circle',
-    description: 'Generate an invite link for someone the bride wants to add to her wedding circle. Use when she says things like "add my mom", "invite my sister", "send the link to my fiancé". The circle is the group of people who can contribute to her Muse mood board (images, Pinterest pins, thoughts). At B2 the cap is 3 active circle members per bride — if she already has 3 active or pending, this tool returns a limit-reached error and you should let her know to remove someone first. Returns the invite link as a wa.me URL the bride can forward via WhatsApp.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        invitee_name: {
-          type: 'string',
-          description: 'How the bride refers to this person. Examples: "Mom", "Priya", "my sister Nisha", "Anjali\'s mom". Used in the welcome greeting and in summaries surfaced to the bride.',
-        },
-        role: {
-          type: 'string',
-          enum: ['partner', 'family', 'inner_circle'],
-          description: 'Relationship category. Use "partner" for fiancé/spouse only. Use "family" for parents, siblings, in-laws, cousins, extended family. Use "inner_circle" for close friends, best friends, maid of honor — the chosen-family tier. If genuinely ambiguous, default to "family" — it\'s the most common.',
-        },
-      },
-      required: ['invitee_name', 'role'],
-    },
-  },
-  {
-    name: 'list_circle',
-    description: 'Look up the bride\'s circle — who has been invited, who has joined, who is pending. Use when she asks "who\'s in my circle", "did mom join yet", "who have I invited", "did anyone claim my invite". Returns a list of circle members with their names, roles, status (active/pending/removed), and timestamps. After getting the result, compose a natural reply describing who is on her circle and their state.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        status: {
-          type: 'string',
-          enum: ['active', 'pending', 'all'],
-          description: 'Optional. Filter by status. Default "all" — show every circle member regardless of state.',
-        },
-      },
-      required: [],
     },
   },
 ];
