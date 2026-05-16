@@ -43,6 +43,11 @@
 
 // Receipt-adjacent labels from Google Vision taxonomy.
 // Labels at confidence >= RECEIPT_LABEL_THRESHOLD trigger receipt routing.
+// NOTE: 'document' and 'paper' are intentionally excluded (M1 audit fix).
+// Vision assigns these at high confidence to wedding invitations, menus,
+// design briefs, and event programs — all common bride forwards. Signal A
+// (word count) already covers text-heavy documents. Signal B should only
+// catch financial-instrument labels that Signal A might miss.
 const RECEIPT_LABELS = new Set([
   'receipt',
   'invoice',
@@ -51,8 +56,6 @@ const RECEIPT_LABELS = new Set([
   'currency',
   'money',
   'payment',
-  'document',
-  'paper',
   'tax',
   'bank statement',
   'cheque',
@@ -60,11 +63,18 @@ const RECEIPT_LABELS = new Set([
 ]);
 
 const RECEIPT_LABEL_THRESHOLD  = 0.70;  // confidence >= 70% to count as receipt label
-const RECEIPT_WORD_COUNT_MIN   = 8;     // document text word count to indicate a receipt
+const RECEIPT_WORD_COUNT_MIN   = 20;    // L1 audit fix: raised from 8 to 20. At 8 words,
+                                         // mood board screenshots with captions, vendor
+                                         // website screenshots, and design references all
+                                         // triggered receipt routing. Real receipts have
+                                         // many words (address, GST, line items, totals).
 
 async function classifyImage({ image_url }) {
+  // L2 audit fix: return { route: 'muse' } instead of throwing on invalid
+  // image_url — consistent with "default to muse on any failure" principle.
   if (!image_url || typeof image_url !== 'string') {
-    throw new Error('imageOCRRouter: image_url is required');
+    console.warn('[imageOCRRouter] image_url missing or not a string, defaulting to muse');
+    return { route: 'muse' };
   }
 
   const apiKey = process.env.GOOGLE_VISION_API_KEY;

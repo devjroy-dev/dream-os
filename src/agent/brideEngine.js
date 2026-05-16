@@ -1353,11 +1353,21 @@ async function execSaveReceipt({ input, couple, supabase }) {
     return { ok: false, error: 'image_url required' };
   }
 
+  // I2 audit fix: minimal URL shape check — mirrors the B2 I3 pattern for
+  // session_id. Cloudinary URLs always start with https://. If the model
+  // truncates or reformats the URL from the SYSTEM NOTE, a malformed URL
+  // stored in couple_receipts would show as a broken image in the PWA.
+  const trimmedUrl = image_url.trim();
+  if (!trimmedUrl.startsWith('https://')) {
+    console.warn('[bride-tool:save_receipt] image_url does not look like a URL:', trimmedUrl.slice(0, 80));
+    return { ok: false, error: 'image_url must be a valid https URL' };
+  }
+
   const { data, error } = await supabase
     .from('couple_receipts')
     .insert({
       couple_id: couple.id,
-      image_url: image_url.trim(),
+      image_url: trimmedUrl,
     })
     .select('id, image_url, created_at')
     .single();
@@ -1397,7 +1407,7 @@ async function execListReceipts({ input, couple, supabase, mediaUrlsToReturn }) 
   // pattern as list_muse). Engine sends these back as WhatsApp images.
   if (request_image_playback && Array.isArray(mediaUrlsToReturn)) {
     for (const r of receipts) {
-      if (r.image_url && mediaUrlsToReturn.length < 5) {
+      if (r.image_url && mediaUrlsToReturn.length < PLAYBACK_MAX_IMAGES) {
         mediaUrlsToReturn.push(r.image_url);
       }
     }
