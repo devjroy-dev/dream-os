@@ -85,6 +85,117 @@ const BRIDE_TOOLS = [
     },
   },
   {
+    name: 'create_task',
+    description: 'Create a to-do for the bride. Use when she asks you to remember something to do — "remind me to call the venue Monday", "I need to follow up with the designer", "add: book a hotel for Mom". Tasks are different from events: events have a fixed time slot ("trial Saturday 11am"), tasks are things to do that may or may not have a deadline. If she mentions a date, capture it as due_date — the date IS the urgency signal (closer = more urgent). If she does not mention a date, leave due_date empty; the task will sort to the bottom of her list.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Short to-do text. Examples: "Call the venue about parking", "Follow up with Anvaya on contract", "Book hotel for Mom and Dad", "Confirm sangeet playlist with DJ".',
+        },
+        due_date: {
+          type: 'string',
+          description: 'Optional. YYYY-MM-DD format. Convert relative dates ("Monday", "next week", "by the 20th") to the most likely actual date using context. Omit entirely if she did not mention a deadline. The date IS the urgency — sooner sorts higher in her list.',
+        },
+        event_name: {
+          type: 'string',
+          description: 'Optional. Free-text tag for which wedding event this task relates to — "mehndi", "wedding", "reception", "engagement", "honeymoon". Use only if she mentions it.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional. Anything extra worth remembering — context, contact, why it matters.',
+        },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'list_tasks',
+    description: 'Look up the bride\'s tasks. Use when she asks "what\'s on my list", "what do I need to do this week", "what\'s pending", "show me my done tasks", "anything overdue". Returns task rows with id, title, status, due_date, event_name, notes — sorted by due_date ascending (overdue and soonest first), tasks without a due_date at the bottom. Use the returned data to compose a natural reply. To act on a specific task (complete/update/delete) you MUST first resolve its id via this tool; do not invent ids.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['pending', 'done', 'all'],
+          description: 'Optional. Default "pending" — only open tasks. Use "all" if she asks for everything including done. Use "done" if she asks what she has finished.',
+        },
+        due_before: {
+          type: 'string',
+          description: 'Optional. YYYY-MM-DD. Filter to tasks due on or before this date. Use when she asks "what is due this week" or "overdue stuff".',
+        },
+        event_name: {
+          type: 'string',
+          description: 'Optional. Filter to tasks tagged with a specific wedding event ("mehndi", "wedding").',
+        },
+        limit: {
+          type: 'integer',
+          description: 'Optional. Max rows to return. Default 20. Max 50.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'complete_task',
+    description: 'Mark a task as done. Use when she says "done with X", "finished the venue call", "tick off the hotel booking". The task_id must be resolved first via list_tasks if she referenced the task by name — do not invent ids. If multiple tasks match her reference and you are unsure which one, ask her before calling this tool.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task_id: {
+          type: 'string',
+          description: 'UUID of the task to complete. Get this from list_tasks.',
+        },
+      },
+      required: ['task_id'],
+    },
+  },
+  {
+    name: 'update_task',
+    description: 'Change something about an existing task — its title, due date, event_name, or notes. Use when she says "move that venue call to Tuesday", "actually rename that one to...", "remove the deadline on the florist task". Pass only the fields she wants changed. The task_id must be resolved first via list_tasks if she referenced the task by name.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task_id: {
+          type: 'string',
+          description: 'UUID of the task to update. Required.',
+        },
+        title: {
+          type: 'string',
+          description: 'Optional. New title.',
+        },
+        due_date: {
+          type: 'string',
+          description: 'Optional. New due_date in YYYY-MM-DD format. Pass the literal string "null" (four characters) to CLEAR an existing due_date.',
+        },
+        event_name: {
+          type: 'string',
+          description: 'Optional. New event_name tag, or "null" to clear.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional. New notes, or "null" to clear.',
+        },
+      },
+      required: ['task_id'],
+    },
+  },
+  {
+    name: 'delete_task',
+    description: 'Permanently remove a task. Use when she clearly asks to delete one — "drop that venue task", "remove the hotel booking from my list". Destructive and not recoverable. The task_id must be resolved first via list_tasks. If she referenced the task by name and there is any ambiguity (multiple matches, vague reference), confirm with her before calling this tool.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task_id: {
+          type: 'string',
+          description: 'UUID of the task to delete. Required.',
+        },
+      },
+      required: ['task_id'],
+    },
+  },
+  {
     name: 'list_muse',
     description: 'Look up saved images on the bride\'s Muse mood board. Use this whenever she asks about her saves — "what have I saved this week", "show me save 47", "what are my recent pastel saves", "what did mom add". Returns a structured list with save numbers, aesthetic tags, captions, contributor info, and image URLs. After getting the result, you can compose a natural reply describing the saves. If she wants to actually SEE one or more images, set the request_image_playback flag — the engine will forward those images back to her via WhatsApp.',
     input_schema: {

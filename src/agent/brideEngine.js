@@ -269,6 +269,26 @@ async function executeBrideTool({ name, input, couple, user, conversation, supab
       return await execAddEvent({ input, couple, supabase });
     }
 
+    case 'create_task': {
+      return await execCreateTask({ input, couple, supabase });
+    }
+
+    case 'list_tasks': {
+      return await execListTasks({ input, couple, supabase });
+    }
+
+    case 'complete_task': {
+      return await execCompleteTask({ input, couple, supabase });
+    }
+
+    case 'update_task': {
+      return await execUpdateTask({ input, couple, supabase });
+    }
+
+    case 'delete_task': {
+      return await execDeleteTask({ input, couple, supabase });
+    }
+
     case 'list_muse': {
       return await execListMuse({ input, couple, supabase, mediaUrlsToReturn });
     }
@@ -428,6 +448,238 @@ async function execAddEvent({ input, couple, supabase }) {
   }
 
   return { ok: true, event: data };
+}
+
+// ── task executors (B3) ──────────────────────────────────────────────
+// 5 tools: create_task, list_tasks, complete_task, update_task, delete_task.
+//
+// Design note: priority was DROPPED before tool shipment (see migration
+// 0020). The urgency signal is due_date alone — closer the date, more
+// urgent. list_tasks sorts by due_date ASC NULLS LAST, then created_at
+// DESC, so overdue and soon-due tasks bubble to the top naturally.
+//
+// Pattern parity with execAddEvent: defensive input validation, supabase
+// insert/update/delete with .select(...).single() to return the row, and
+// console.error log + { ok: false, error: msg } on any DB failure.
+//
+// Task disambiguation lives at the AGENT layer, not here: when the bride
+// says "complete the venue call", the agent calls list_tasks first to
+// resolve the task_id. These executors trust the task_id they receive
+// (after validating UUID format) and refuse to act on missing rows by
+// reporting { ok: false, error: 'task not found or not yours' } — which
+// also implicitly enforces couple scoping: a tool call with another
+// couple's task_id returns the same error.
+
+const ALLOWED_TASK_STATUSES = new Set(['pending', 'done']);
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidDateString(s) {
+  return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+async function execCreateTask({ input, couple, supabase }) {
+  const { title, due_date, event_name, notes } = input || {};
+
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return { ok: false, error: 'title required' };
+  }
+
+  let dueDateValue = null;
+  if (due_date && isValidDateString(due_date)) {
+    dueDateValue = due_date;
+  } else if (due_date) {
+    // Malformed dates are silently dropped — task is still created without a due_date.
+    // The agent should reformat before retrying if needed.
+    console.warn('[bride-tool:create_task] dropping malformed due_date:', due_date);
+  }
+
+  const { data, error } = await supabase
+    .from('couple_tasks')
+    .insert({
+      couple_id:  couple.id,
+      title:      title.trim().slice(0, 200),
+      due_date:   dueDateValue,
+      event_name: event_name && typeof event_name === 'string' ? event_name.trim().slice(0, 80) : null,
+      notes:      notes && typeof notes === 'string' ? notes.trim().slice(0, 500) : null,
+      status:     'pending',
+    })
+    .select('id, title, status, due_date, event_name, notes, created_at')
+    .single();
+
+  if (error) {
+    console.error('[bride-tool:create_task] insert error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, task: data };
+}
+
+async function execListTasks({ input, couple, supabase }) {
+  const { status, due_before, event_name, limit } = input || {};
+
+  let query = supabase
+    .from('couple_tasks')
+    .select('id, title, status, due_date, event_name, notes, created_at, updated_at')
+    .eq('couple_id', couple.id);
+
+  // status filter: default to 'pending' if not specified or 'all'
+  if (!status || status === 'pending') {
+    query = query.eq('status', 'pending');
+  } else if (status === 'done') {
+    query = query.eq('status', 'done');
+  }
+  // status === 'all' → no filter
+
+  if (due_before && isValidDateString(due_before)) {
+    query = query.lte('due_date', due_before);
+  }
+
+  if (event_name && typeof event_name === 'string' && event_name.trim()) {
+    query = query.eq('event_name', event_name.trim());
+  }
+
+  // Limit: default 20, cap 50
+  let limitValue = 20;
+  if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+    limitValue = Math.min(limit, 50);
+  }
+  query = query.limit(limitValue);
+
+  // Sort: due_date ASC (overdue + soonest first), nulls last (no-due-date tasks
+  // at the bottom), then created_at DESC as tiebreaker.
+  query = query.order('due_date', { ascending: true, nullsFirst: false })
+               .order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('[bride-tool:list_tasks] select error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, tasks: data || [], count: (data || []).length };
+}
+
+async function execCompleteTask({ input, couple, supabase }) {
+  const { task_id } = input || {};
+
+  if (!task_id || typeof task_id !== 'string' || !UUID_REGEX.test(task_id)) {
+    return { ok: false, error: 'task_id required (UUID format)' };
+  }
+
+  // Scope to couple_id at the WHERE level — prevents acting on another couple's task.
+  const { data, error } = await supabase
+    .from('couple_tasks')
+    .update({ status: 'done' })
+    .eq('id', task_id)
+    .eq('couple_id', couple.id)
+    .select('id, title, status, due_date, event_name')
+    .single();
+
+  if (error) {
+    // PostgREST returns PGRST116 for no-rows-matched on .single()
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'task not found or not yours' };
+    }
+    console.error('[bride-tool:complete_task] update error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, task: data };
+}
+
+async function execUpdateTask({ input, couple, supabase }) {
+  const { task_id, title, due_date, event_name, notes } = input || {};
+
+  if (!task_id || typeof task_id !== 'string' || !UUID_REGEX.test(task_id)) {
+    return { ok: false, error: 'task_id required (UUID format)' };
+  }
+
+  const updates = {};
+
+  if (typeof title === 'string' && title.trim()) {
+    updates.title = title.trim().slice(0, 200);
+  }
+
+  // due_date: literal "null" string clears the value; valid YYYY-MM-DD sets it
+  if (due_date === 'null') {
+    updates.due_date = null;
+  } else if (isValidDateString(due_date)) {
+    updates.due_date = due_date;
+  }
+
+  // event_name: literal "null" string clears; non-empty trimmed string sets
+  if (event_name === 'null') {
+    updates.event_name = null;
+  } else if (typeof event_name === 'string' && event_name.trim()) {
+    updates.event_name = event_name.trim().slice(0, 80);
+  }
+
+  // notes: literal "null" string clears; non-empty trimmed string sets
+  if (notes === 'null') {
+    updates.notes = null;
+  } else if (typeof notes === 'string' && notes.trim()) {
+    updates.notes = notes.trim().slice(0, 500);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { ok: false, error: 'no fields to update' };
+  }
+
+  const { data, error } = await supabase
+    .from('couple_tasks')
+    .update(updates)
+    .eq('id', task_id)
+    .eq('couple_id', couple.id)
+    .select('id, title, status, due_date, event_name, notes')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'task not found or not yours' };
+    }
+    console.error('[bride-tool:update_task] update error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, task: data };
+}
+
+async function execDeleteTask({ input, couple, supabase }) {
+  const { task_id } = input || {};
+
+  if (!task_id || typeof task_id !== 'string' || !UUID_REGEX.test(task_id)) {
+    return { ok: false, error: 'task_id required (UUID format)' };
+  }
+
+  // Fetch first so we can return the deleted row content for the agent's reply
+  const { data: existing, error: fetchError } = await supabase
+    .from('couple_tasks')
+    .select('id, title, status, due_date, event_name')
+    .eq('id', task_id)
+    .eq('couple_id', couple.id)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('[bride-tool:delete_task] fetch error:', fetchError);
+    return { ok: false, error: fetchError.message };
+  }
+  if (!existing) {
+    return { ok: false, error: 'task not found or not yours' };
+  }
+
+  const { error: deleteError } = await supabase
+    .from('couple_tasks')
+    .delete()
+    .eq('id', task_id)
+    .eq('couple_id', couple.id);
+
+  if (deleteError) {
+    console.error('[bride-tool:delete_task] delete error:', deleteError);
+    return { ok: false, error: deleteError.message };
+  }
+
+  return { ok: true, deleted_task: existing };
 }
 
 // ── list_muse executor (B2) ──────────────────────────────────────────
