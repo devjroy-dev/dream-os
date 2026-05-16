@@ -1,6 +1,6 @@
 // layout.js — shared HTML wrapper for all admin pages
 
-function layout({ title, body }) {
+function layout({ title, body, activeNav = 'vendors' }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -291,8 +291,8 @@ function layout({ title, body }) {
   <nav>
     <div class="wordmark">dream<span>os</span> admin</div>
     <div class="nav-links">
-      <a href="/admin">Vendors</a>
-      <a href="/admin/invite">Invite</a>
+      <a href="/admin" class="${activeNav === 'vendors' ? 'active' : ''}">Vendors</a>
+      <a href="/admin/couples" class="${activeNav === 'couples' ? 'active' : ''}">Couples</a>
       <a href="/admin/logout">Sign out</a>
     </div>
   </nav>

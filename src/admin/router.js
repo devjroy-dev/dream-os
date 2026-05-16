@@ -6,6 +6,9 @@ const { loginPage }   = require('./views/login');
 const { vendorsPage } = require('./views/vendors');
 const { invitePage }  = require('./views/invite');
 const { renderDetail: detailPage } = require('./views/detail');
+const { couplesPage }       = require('./views/couples');
+const { coupleInvitePage }  = require('./views/coupleInvite');
+const { coupleDetailPage }  = require('./views/coupleDetail');
 
 router.get('/login', (req, res) => {
   const error = req.query.error === '1';
@@ -199,6 +202,110 @@ router.get('/vendors/:id', async (req, res) => {
     totalOutstanding,
     totalExpenses,
     clients:          clients || [],
+  }));
+});
+
+// ── COUPLES ──────────────────────────────────────────────────────────
+// B1: bride product admin (couples list, invite, detail).
+
+router.get('/couples', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+
+  const { data: couples } = await supabase
+    .from('couples')
+    .select('id, partner_name, wedding_date, wedding_city, onboarding_state, created_at, user:users(name, phone)')
+    .order('created_at', { ascending: false });
+
+  const list = (couples || []).map(c => ({
+    id:               c.id,
+    name:             c.user?.name || '—',
+    phone:            c.user?.phone,
+    partner_name:     c.partner_name,
+    wedding_date:     c.wedding_date,
+    wedding_city:     c.wedding_city,
+    onboarding_state: c.onboarding_state,
+    created_at:       c.created_at,
+  }));
+
+  const stats = {
+    active:     list.filter(c => !c.onboarding_state || c.onboarding_state === 'complete').length,
+    onboarding: list.filter(c => c.onboarding_state && !['complete','new'].includes(c.onboarding_state)).length,
+    invited:    list.filter(c => c.onboarding_state === 'new').length,
+  };
+
+  res.send(couplesPage({ couples: list, stats }));
+});
+
+router.get('/couples/invite', (req, res) => {
+  res.send(coupleInvitePage());
+});
+
+router.post('/couples/invite', express.urlencoded({ extended: true }), async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { name, phone } = req.body;
+
+  if (!name || !phone) {
+    return res.send(coupleInvitePage({ error: 'Name and phone are required.' }));
+  }
+
+  const cleanPhone = phone.trim().replace(/\s+/g, '');
+
+  const { error } = await supabase.rpc('invite_couple', {
+    p_phone: cleanPhone,
+    p_name:  name.trim(),
+  });
+
+  if (error) {
+    return res.send(coupleInvitePage({ error: error.message }));
+  }
+
+  res.send(coupleInvitePage({ success: true, successName: name.trim() }));
+});
+
+router.get('/couples/:id', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { id } = req.params;
+
+  const [
+    { data: couple },
+    { data: state },
+    { data: notes },
+    { data: events },
+  ] = await Promise.all([
+    supabase.from('couples').select('*, user:users(name, phone)').eq('id', id).maybeSingle(),
+    supabase.from('couple_state').select('*').eq('couple_id', id).maybeSingle(),
+    supabase.from('notes').select('content, tags, created_at').eq('couple_id', id).order('created_at', { ascending: false }).limit(30),
+    supabase.from('events').select('title, event_date, event_time, kind, state').eq('couple_id', id).eq('state', 'upcoming').gte('event_date', new Date().toISOString().split('T')[0]).order('event_date', { ascending: true }).limit(20),
+  ]);
+
+  if (!couple) return res.redirect('/admin/couples');
+
+  // Load the single couple_self conversation and its messages
+  const { data: convo } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('counterparty_user_id', couple.user_id)
+    .eq('kind', 'couple_self')
+    .maybeSingle();
+
+  let messages = [];
+  if (convo) {
+    const { data: msgs } = await supabase
+      .from('messages')
+      .select('direction, body, created_at, sent_by')
+      .eq('conversation_id', convo.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    messages = (msgs || []).slice().reverse();
+  }
+
+  res.send(coupleDetailPage({
+    couple,
+    user:     couple.user,
+    state,
+    notes:    notes || [],
+    events:   events || [],
+    messages,
   }));
 });
 
