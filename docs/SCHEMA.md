@@ -1,9 +1,9 @@
 # dream-os — Schema Reference (Vendor + Bride)
 **Last updated:** 2026-05-16
-**Session:** B2 complete (+ hotfix 0018 applied post-B2)
+**Session:** B3 in progress (migration 0019 applied; tool work next)
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0018_fix_muse_saves_fk.sql
-**Next migration:** 0019_bride_planner.sql (B3 — tasks, bookings, receipts)
+**Latest migration applied:** 0019_bride_planner.sql
+**Next migration:** 0020_circle_cleanup.sql (B3.1 — pending, post-B3)
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -26,6 +26,7 @@
 | **0016_muse_and_circle.sql** | **2026-05-16** | **B2** | **muse_saves table, circle_members table, circle_activity table, conversations.kind widened to include circle_thread, invite_circle_member() function, claim_circle_invite() function** |
 | **0017_circle_sessions.sql** | **2026-05-16** | **B2** | **circle_sessions table, circle_activity.session_id FK column + two indexes** |
 | **0018_fix_muse_saves_fk.sql** | **2026-05-16** | **B2 hotfix** | **muse_saves.saved_by_user_id FK changed from ON DELETE RESTRICT to ON DELETE CASCADE (unblocked admin "Delete couple" cascade). File backfilled to repo after direct SQL Editor application.** |
+| **0019_bride_planner.sql** | **2026-05-16** | **B3** | **couple_tasks table, couple_bookings table, couple_receipts table (with booking_id FK), record_payment() Postgres function (transactional, single source of truth for booking state), 9 indexes, updated_at triggers on tasks/bookings, 3 realtime publications.** |
 
 ## Tables
 
@@ -342,6 +343,7 @@ Defined in src/agent/categories.js. 16 categories locked 2026-05-15.
 | set_updated_at | -- | trigger | Auto-stamps updated_at |
 | invite_circle_member | p_couple_id uuid, p_invitee_name text, p_role text | table(id, invite_token, wa_me_link) | Generates CIRCLE-XXXXXX token, enforces 3-member cap, inserts pending circle_members row |
 | claim_circle_invite | p_token text, p_invitee_phone text | table(member_id, couple_id, invitee_name, bride_name, member_role) | Flips circle_members status to active, sets phone + joined_at, writes joined circle_activity row |
+| **record_payment** | **p_booking_id uuid, p_amount integer, p_receipt_id uuid default null, p_payment_date date default null** | **couple_bookings (row)** | **B3. Transactional. Locks booking row, adds p_amount to amount_paid (may be negative for receipt deletion reversal), recomputes state via CASE (paid / advance_paid / booked), optionally links receipt via p_receipt_id, returns updated row. SINGLE SOURCE OF TRUTH for couple_bookings.amount_paid and state — agent never updates these directly.** |
 
 ## Supabase storage buckets
 | Bucket | Public | Size limit | MIME types | Purpose |
@@ -353,7 +355,7 @@ Disabled on all tables. service_role key held by Railway only.
 Will enable when bride-side public access is needed (Session 9).
 
 ## Realtime enabled on
-conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients, muse_saves, circle_members, circle_activity, circle_sessions
+conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients, muse_saves, circle_members, circle_activity, circle_sessions, couple_tasks, couple_bookings, couple_receipts
 
 ---
 
@@ -441,6 +443,99 @@ Tracks bursts of circle member activity for session-based summarization.
 
 Indexes: (circle_member_id, last_activity_at DESC), (couple_id, last_activity_at) WHERE summarized_to_bride = false.
 
+---
+
+## Bride tables added in B3
+
+These three tables form the bride's planner substrate: tasks (undated/due-dated to-dos), bookings (per-vendor commitment tracking), and receipts (the universal vault for any spend, optionally linked to a booking).
+
+### couple_tasks
+Undated or due-dated to-dos. Distinct from events (events are anchored to a calendar slot via `events.event_date NOT NULL`). Tasks have an optional `due_date` — "call venue Monday" gets a due_date, "research florists" doesn't.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK, default uuid_generate_v4() |
+| couple_id | uuid | FK couples(id) ON DELETE CASCADE, NOT NULL |
+| title | text | NOT NULL |
+| status | text | CHECK: pending / done. Default 'pending'. |
+| priority | text | CHECK: high / medium / low. Default 'medium'. |
+| due_date | date | Nullable |
+| event_name | text | Free-text label e.g. "engagement" or "wedding". Optional. |
+| notes | text | |
+| created_at | timestamptz | Auto |
+| updated_at | timestamptz | Auto via trigger |
+
+Indexes: `couple_tasks_couple_id_idx` on (couple_id). `couple_tasks_open_by_due_idx` on (couple_id, status, due_date) WHERE status = 'pending' — partial index for the common "what's open and due soon" query.
+
+### couple_bookings
+Per-vendor commitment tracking. The bride's mirror of the vendor's `invoices` table — same shape, reversed perspective. Vendor side records "client owes me 1.5L by Dec 1"; bride side records "I owe photographer 1.5L by Dec 1."
+
+`amount_total` and `amount_advance` are both nullable. Real-world: brides often pay an advance before the final contract value is fixed (designers especially). State stays 'booked' until `amount_total` is set and `amount_paid >= amount_total`.
+
+`vendor_id` is nullable and points to `vendors(id)` for B4+ linkage. At B3, the bride enters bookings as free text via `vendor_name`. At B4, when `couple_vendor_connections` lights up, a booking can link to a real dream-os vendor row.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK, default uuid_generate_v4() |
+| couple_id | uuid | FK couples(id) ON DELETE CASCADE, NOT NULL |
+| vendor_name | text | NOT NULL. Free text — what the bride calls this vendor. |
+| vendor_id | uuid | FK vendors(id) ON DELETE SET NULL. Nullable. B4+ linkage. |
+| category | text | NOT NULL. CHECK enum: photographer / videographer / mua / designer / venue / caterer / decor / florist / music / planner / other (11 values, locked at B3). |
+| amount_total | integer | Nullable. CHECK >= 0 if not null. Full contract value in Rs. |
+| amount_advance | integer | Nullable. CHECK >= 0 if not null. Booking advance amount in Rs. |
+| amount_paid | integer | NOT NULL default 0. Running total of payments. NO CHECK constraint — may go negative (deliberate, see below). |
+| balance_due_date | date | Nullable. When the balance is due. |
+| state | text | NOT NULL. CHECK: booked / advance_paid / paid. Default 'booked'. No 'cancelled' state — cancellation = delete_booking at tool layer. |
+| notes | text | |
+| created_at | timestamptz | Auto |
+| updated_at | timestamptz | Auto via trigger |
+
+**Deliberate omissions:**
+- No CHECK (amount_paid >= 0) — `delete_receipt` reverses contributions via `record_payment(..., -amount, ...)`. If the bride deletes more than she paid, `amount_paid` goes negative. Agent surfaces this as a warning at tool layer ("something's off, want to fix?"), not blocked at DB layer.
+- No CHECK (amount_paid <= amount_total) — overpayment is real (shagun tips, UPI typos). Mirrors vendor invoices (0008).
+- No 'cancelled' state — cancellation handled by `delete_booking()` at tool layer. Locked architectural principle (ROADMAP_BRIDE.md, B3).
+
+Indexes: `couple_bookings_couple_id_idx` on (couple_id). `couple_bookings_couple_state_idx` on (couple_id, state). `couple_bookings_couple_due_idx` on (couple_id, balance_due_date) WHERE balance_due_date IS NOT NULL (partial — for `list_dues`). `couple_bookings_couple_vendor_name_idx` on (couple_id, lower(vendor_name)) — lowercased for case-insensitive fuzzy match in the receipt 3-branch flow.
+
+### couple_receipts
+The receipt vault. Every spend the bride captures, whether linked to a booking or not. Most fields are nullable because Vision OCR may not extract every field cleanly and the agent does NOT gate on completeness (locked decision: no OCR confidence threshold — agent proposes save with whatever Vision returned, asks bride for missing fields).
+
+`booking_id` is the optional meeting point with `couple_bookings`. When set, this receipt represents a payment that contributed to the booking's `amount_paid`. ON DELETE SET NULL: deleting a booking preserves its receipts as standalone records (the link is severed, the receipt survives).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK, default uuid_generate_v4() |
+| couple_id | uuid | FK couples(id) ON DELETE CASCADE, NOT NULL |
+| booking_id | uuid | FK couple_bookings(id) ON DELETE SET NULL. Nullable. Optional meeting point. |
+| amount | integer | Nullable. CHECK >= 0 if not null. Filled in later if OCR couldn't read it. |
+| vendor_name | text | Nullable. |
+| description | text | |
+| receipt_date | date | Nullable. |
+| image_url | text | Cloudinary URL for receipt photo. Nullable — text-only payment events have no image. |
+| tags | text[] | NOT NULL default ARRAY[]::text[]. Free-form tags. |
+| created_at | timestamptz | Auto |
+
+**No updated_at column or trigger.** Receipts are append-only (matches vendor `expenses` pattern, migration 0010). The only post-creation mutation is `booking_id` being set by `record_payment()`. Tracking updated_at for that single flip would be over-engineering.
+
+Indexes: `couple_receipts_couple_id_idx` on (couple_id). `couple_receipts_couple_created_idx` on (couple_id, created_at DESC) for "show me my recent receipts." `couple_receipts_booking_id_idx` on (couple_id, booking_id) WHERE booking_id IS NOT NULL — partial index for "receipts against this booking" queries.
+
+### record_payment() — the booking state machine in one function
+
+Critical to B3 architecture. Documented in the Postgres functions table above; full behaviour:
+
+1. Locks the booking row with `SELECT FOR UPDATE` (prevents concurrent payment races).
+2. Adds `p_amount` to `amount_paid`. **`p_amount` may be negative** — this is how `delete_receipt` reverses a contribution. No CHECK enforces non-negative `amount_paid`.
+3. Recomputes `state` via CASE expression:
+   - `'paid'` if `amount_total IS NOT NULL AND amount_paid >= amount_total`
+   - `'advance_paid'` if `amount_paid > 0 AND (amount_advance IS NULL OR amount_paid >= amount_advance)`
+   - `'booked'` otherwise
+4. If `p_receipt_id` is provided, sets that receipt's `booking_id` to `p_booking_id`. This is how Branch B/C of the receipt 3-branch flow links a newly-saved receipt to its booking, atomically with the payment.
+5. Returns the updated booking row (full `couple_bookings` shape).
+
+The agent reads the returned row and surfaces the numbers verbatim in its reply. **No arithmetic in the agent, ever.** This is the single source of truth for `couple_bookings.amount_paid` and `state` — no other code path may update these fields. The tool layer enforces this discipline.
+
+---
+
 ## Upcoming bride migrations (B-sessions — not yet applied)
 
 Bride migrations continue the vendor sequence. No separate numbering. One migration history.
@@ -453,8 +548,9 @@ Bride migrations continue the vendor sequence. No separate numbering. One migrat
 | ~~0016_muse_and_circle.sql~~ | B2 | ✅ Applied 2026-05-16 |
 | ~~0017_circle_sessions.sql~~ | B2 | ✅ Applied 2026-05-16 |
 | ~~0018_fix_muse_saves_fk.sql~~ | B2 hotfix | ✅ Applied 2026-05-16 (post-B2 SQL Editor; backfilled to repo) |
-| 0019_bride_planner.sql | B3 | couple_tasks, couple_bookings, couple_receipts (with booking_id FK), record_payment() function |
-| 0020_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
+| ~~0019_bride_planner.sql~~ | B3 | ✅ Applied 2026-05-16 (couple_tasks, couple_bookings, couple_receipts, record_payment() function) |
+| 0020_circle_cleanup.sql | B3.1 (post-B3 cleanup) | 7-day expiry on pending circle invite tokens, summary_message_id FK to messages(id) ON DELETE SET NULL, circle_sessions unique partial index (M2 fix from B2 audit) |
+| 0021_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
 
 Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail on B2+ migrations.
 
