@@ -146,17 +146,21 @@ async function extractOgImage(pageUrl) {
 // Buffer upload uses upload_stream. URL upload uses upload() with the URL.
 // Both place files under: dream-os/muse/<couple_id>/
 
-function uploadBufferToCloudinary(buffer, couple_id) {
+function uploadBufferToCloudinary(buffer, couple_id, contentType = null) {
   ensureCloudinaryConfigured();
   const folder = `dream-os/muse/${couple_id}`;
+  const options = {
+    folder,
+    resource_type: 'image',
+    unique_filename: true,
+    overwrite: false,
+  };
+  if (contentType && typeof contentType === 'string' && contentType.toLowerCase().startsWith('image/')) {
+    options.format = contentType.slice(6).toLowerCase();  // e.g. image/jpeg -> jpeg
+  }
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: 'image',
-        unique_filename: true,
-        overwrite: false,
-      },
+      options,
       (err, result) => {
         if (err) return reject(new Error(`imagePipeline: Cloudinary upload failed: ${err.message}`));
         resolve(result);
@@ -324,8 +328,8 @@ async function processImageForMuse({ sourceUrl, couple_id, anthropic }) {
 
   if (sourceType === 'twilio') {
     // WhatsApp image forward — direct user upload
-    const { buffer } = await downloadFromTwilio(sourceUrl);
-    cloudinaryResult = await uploadBufferToCloudinary(buffer, couple_id);
+    const { buffer, contentType } = await downloadFromTwilio(sourceUrl);
+    cloudinaryResult = await uploadBufferToCloudinary(buffer, couple_id, contentType);
     resolvedSourceType = 'image';
     resolvedSourceUrl  = null;
   } else if (sourceType === 'page') {
