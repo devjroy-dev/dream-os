@@ -282,6 +282,144 @@ const BRIDE_TOOLS = [
     },
   },
   {
+    name: 'add_booking',
+    description: 'Record a vendor commitment — the bride has hired/locked in a vendor. Use when she says "I booked Anvaya for 2 lakhs", "locked in the photographer for 1.5L", "we\'re going with the caterer at 3L total, 50k advance paid". CATEGORY IS REQUIRED — if she did not specify which kind of vendor (photographer, venue, etc), ask her before calling this tool. Amounts are in rupees as integers (2 lakh = 200000, not 2). Do not call this tool to "add a booking" if she has not actually committed (use list_muse / list_events for exploration; bookings are commitments, not options).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        vendor_name: {
+          type: 'string',
+          description: 'Vendor name as she refers to them. Examples: "Anvaya Photography", "Anjali Sharma", "The Lalit, Goa". Required.',
+        },
+        category: {
+          type: 'string',
+          enum: ['photographer', 'videographer', 'mua', 'designer', 'venue', 'caterer', 'decor', 'florist', 'music', 'planner', 'other'],
+          description: 'Required. Vendor category. If she did not specify, ASK her before calling this tool — do not guess.',
+        },
+        amount_total: {
+          type: 'integer',
+          description: 'Optional. Total contract value in rupees (integer, no decimals). 2 lakh = 200000. Leave empty if she did not state a final figure yet.',
+        },
+        amount_advance: {
+          type: 'integer',
+          description: 'Optional. Advance amount agreed, in rupees. Use only if she specified an advance distinct from the total.',
+        },
+        balance_due_date: {
+          type: 'string',
+          description: 'Optional. YYYY-MM-DD. When the remaining balance is due. Use only if she mentioned a deadline.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional. Anything extra worth remembering — terms, what is included, contact info.',
+        },
+      },
+      required: ['vendor_name', 'category'],
+    },
+  },
+  {
+    name: 'list_bookings',
+    description: 'Look up the bride\'s vendor commitments. Use when she asks "who have I booked", "show me my bookings", "what have I paid for the photographer", "anything due this month". Returns booking rows with id, vendor_name, category, amount_total, amount_paid, balance_due_date, state, notes — sorted by state (booked first, then advance_paid, then paid) and balance_due_date ASC. To act on a specific booking (update/delete/record_payment) you MUST first resolve its id via this tool; do not invent ids.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['photographer', 'videographer', 'mua', 'designer', 'venue', 'caterer', 'decor', 'florist', 'music', 'planner', 'other'],
+          description: 'Optional. Filter to one category.',
+        },
+        state: {
+          type: 'string',
+          enum: ['booked', 'advance_paid', 'paid', 'all'],
+          description: 'Optional. Default "all" — show every active booking. Use "paid" to see fully-paid ones, "booked" or "advance_paid" for things she still owes money on.',
+        },
+        vendor_name: {
+          type: 'string',
+          description: 'Optional. Partial-match filter on vendor name (case-insensitive). Use when she asks about a specific vendor by name.',
+        },
+        limit: {
+          type: 'integer',
+          description: 'Optional. Max rows to return. Default 20. Max 50.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'update_booking',
+    description: 'Change something about an existing booking — vendor_name, category, amount_total, amount_advance, balance_due_date, or notes. Use when she says "update the photographer total to 2.2 lakhs", "change the venue category to caterer, I had it wrong", "move the florist deadline to Dec 15". DO NOT use this tool to record a payment — use record_payment for that (it updates amount_paid AND state atomically). The booking_id must be resolved first via list_bookings.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        booking_id: {
+          type: 'string',
+          description: 'UUID of the booking to update. Required.',
+        },
+        vendor_name: {
+          type: 'string',
+          description: 'Optional. New vendor name.',
+        },
+        category: {
+          type: 'string',
+          enum: ['photographer', 'videographer', 'mua', 'designer', 'venue', 'caterer', 'decor', 'florist', 'music', 'planner', 'other'],
+          description: 'Optional. New category.',
+        },
+        amount_total: {
+          type: 'integer',
+          description: 'Optional. New total in rupees. Pass -1 to CLEAR an existing amount_total (set to null).',
+        },
+        amount_advance: {
+          type: 'integer',
+          description: 'Optional. New advance in rupees. Pass -1 to CLEAR.',
+        },
+        balance_due_date: {
+          type: 'string',
+          description: 'Optional. New balance_due_date in YYYY-MM-DD. Pass the literal string "null" to CLEAR.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional. New notes, or "null" to clear.',
+        },
+      },
+      required: ['booking_id'],
+    },
+  },
+  {
+    name: 'delete_booking',
+    description: 'Permanently remove a booking. Use when the bride has DROPPED a vendor entirely — "we\'re not going with Anvaya, remove them", "scrap the caterer booking". Destructive and not recoverable. Any receipts linked to this booking are NOT deleted — they become standalone records. The booking_id must be resolved first via list_bookings.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        booking_id: {
+          type: 'string',
+          description: 'UUID of the booking to delete. Required.',
+        },
+      },
+      required: ['booking_id'],
+    },
+  },
+  {
+    name: 'record_payment',
+    description: 'Record a payment against an existing booking. Use when she says "I paid the photographer 50k", "transferred 1.5L to the venue", "advance of 25k to the MUA today". This tool updates the booking\'s amount_paid AND state in one atomic transaction — the bride\'s state moves from booked → advance_paid → paid automatically based on amounts. The booking_id must be resolved first via list_bookings. Amounts are in rupees as integers (50k = 50000). DO NOT use update_booking to change amount_paid — use this tool, always.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        booking_id: {
+          type: 'string',
+          description: 'UUID of the booking the payment is for. Required.',
+        },
+        amount: {
+          type: 'integer',
+          description: 'Payment amount in rupees, integer. 50k = 50000. Required. Negative amounts are allowed (to reverse a recorded payment), but use sparingly — only when she explicitly asks to reverse one.',
+        },
+        payment_date: {
+          type: 'string',
+          description: 'Optional. YYYY-MM-DD. When the payment was made. Defaults to today if not specified.',
+        },
+      },
+      required: ['booking_id', 'amount'],
+    },
+  },
+  {
     name: 'list_muse',
     description: 'Look up saved images on the bride\'s Muse mood board. Use this whenever she asks about her saves — "what have I saved this week", "show me save 47", "what are my recent pastel saves", "what did mom add". Returns a structured list with save numbers, aesthetic tags, captions, contributor info, and image URLs. After getting the result, you can compose a natural reply describing the saves. If she wants to actually SEE one or more images, set the request_image_playback flag — the engine will forward those images back to her via WhatsApp.',
     input_schema: {

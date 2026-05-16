@@ -301,6 +301,26 @@ async function executeBrideTool({ name, input, couple, user, conversation, supab
       return await execDeleteEvent({ input, couple, supabase });
     }
 
+    case 'add_booking': {
+      return await execAddBooking({ input, couple, supabase });
+    }
+
+    case 'list_bookings': {
+      return await execListBookings({ input, couple, supabase });
+    }
+
+    case 'update_booking': {
+      return await execUpdateBooking({ input, couple, supabase });
+    }
+
+    case 'delete_booking': {
+      return await execDeleteBooking({ input, couple, supabase });
+    }
+
+    case 'record_payment': {
+      return await execRecordPayment({ input, couple, supabase });
+    }
+
     case 'list_muse': {
       return await execListMuse({ input, couple, supabase, mediaUrlsToReturn });
     }
@@ -935,6 +955,338 @@ async function execDeleteEvent({ input, couple, supabase }) {
   }
 
   return { ok: true, deleted_event: data };
+}
+
+// ── booking executors (B3 Step 4) ─────────────────────────────────────
+// 5 tools: add_booking, list_bookings, update_booking, delete_booking,
+//          record_payment.
+//
+// LOCKED ARCHITECTURAL PRINCIPLES from migration 0019 + ROADMAP_BRIDE.md:
+//   - Bookings are FLAT: one row per vendor commitment, no multi-event splits
+//   - No 'cancelled' state: delete_booking replaces cancellation
+//   - No agent arithmetic: ALL amount_paid + state math is in record_payment()
+//     SQL function. update_booking explicitly REFUSES amount_paid changes.
+//   - No per-payer attribution: every payment is implicitly the bride's
+//
+// Patterns inherited from post-audit Step 2:
+//   - L2 atomic delete pattern
+//   - PGRST116 → "not found or not yours"
+//   - M1 "null"/null/"" clear sentinel
+//   - M2 hard error on malformed dates (no input leak in error messages)
+//   - L3 safe default on unknown enum
+//   - Module-level UUID_REGEX + isValidDateString (no re-declaration)
+//
+// State enum (from 0019): 'booked' | 'advance_paid' | 'paid'. The agent
+// NEVER writes to state directly — record_payment() computes it from
+// amount_paid vs amount_advance vs amount_total.
+//
+// AMOUNT CLEAR CONVENTION: passing -1 to update_booking clears an integer
+// amount field (sets to null). This is distinct from M1's string sentinel
+// because integer fields can't use "null"/"" — they'd be type-coerced or
+// rejected. -1 is impossible for a real rupee amount (CHECK constraint
+// enforces >= 0), so it's safe as a sentinel.
+
+const ALLOWED_BOOKING_CATEGORIES = new Set([
+  'photographer', 'videographer', 'mua', 'designer',
+  'venue', 'caterer', 'decor', 'florist', 'music',
+  'planner', 'other',
+]);
+
+const ALLOWED_BOOKING_STATES = new Set(['booked', 'advance_paid', 'paid']);
+
+async function execAddBooking({ input, couple, supabase }) {
+  const { vendor_name, category, amount_total, amount_advance, balance_due_date, notes } = input || {};
+
+  if (!vendor_name || typeof vendor_name !== 'string' || !vendor_name.trim()) {
+    return { ok: false, error: 'vendor_name required' };
+  }
+  if (!category || !ALLOWED_BOOKING_CATEGORIES.has(category)) {
+    return { ok: false, error: 'category required (must be one of the allowed values)' };
+  }
+
+  // amount_total: optional. Must be non-negative integer if provided.
+  let amountTotalValue = null;
+  if (amount_total !== undefined && amount_total !== null) {
+    if (!Number.isInteger(amount_total) || amount_total < 0) {
+      return { ok: false, error: 'amount_total must be a non-negative integer (rupees)' };
+    }
+    amountTotalValue = amount_total;
+  }
+
+  // amount_advance: optional. Must be non-negative integer if provided.
+  let amountAdvanceValue = null;
+  if (amount_advance !== undefined && amount_advance !== null) {
+    if (!Number.isInteger(amount_advance) || amount_advance < 0) {
+      return { ok: false, error: 'amount_advance must be a non-negative integer (rupees)' };
+    }
+    amountAdvanceValue = amount_advance;
+  }
+
+  // balance_due_date: optional. Hard error on malformed (M2 pattern).
+  let balanceDueDateValue = null;
+  if (balance_due_date) {
+    if (!isValidDateString(balance_due_date)) {
+      console.warn('[bride-tool:add_booking] rejecting malformed balance_due_date:', balance_due_date);
+      return { ok: false, error: 'balance_due_date must be YYYY-MM-DD format' };
+    }
+    balanceDueDateValue = balance_due_date;
+  }
+
+  const { data, error } = await supabase
+    .from('couple_bookings')
+    .insert({
+      couple_id:        couple.id,
+      vendor_name:      vendor_name.trim().slice(0, 200),
+      category,
+      amount_total:     amountTotalValue,
+      amount_advance:   amountAdvanceValue,
+      balance_due_date: balanceDueDateValue,
+      notes:            notes && typeof notes === 'string' ? notes.trim().slice(0, 500) : null,
+      // amount_paid + state default to 0 / 'booked' in schema
+    })
+    .select('id, vendor_name, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes, created_at')
+    .single();
+
+  if (error) {
+    console.error('[bride-tool:add_booking] insert error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, booking: data };
+}
+
+async function execListBookings({ input, couple, supabase }) {
+  const { category, state, vendor_name, limit } = input || {};
+
+  let query = supabase
+    .from('couple_bookings')
+    .select('id, vendor_name, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes, created_at, updated_at')
+    .eq('couple_id', couple.id);
+
+  // category filter: silent skip on invalid (schema enum should prevent)
+  if (category && ALLOWED_BOOKING_CATEGORIES.has(category)) {
+    query = query.eq('category', category);
+  }
+
+  // state filter: default 'all' (different from tasks/events where pending/upcoming is default).
+  // Bookings are commitments — the bride usually wants to see EVERYTHING she has booked,
+  // regardless of payment progress. L3 safe-default pattern for unknown values.
+  if (!state || state === 'all') {
+    // no state filter
+  } else if (ALLOWED_BOOKING_STATES.has(state)) {
+    query = query.eq('state', state);
+  } else {
+    // unknown value → safe default: show all
+    console.warn('[bride-tool:list_bookings] unknown state value, falling back to all:', state);
+  }
+
+  // vendor_name partial match: case-insensitive ILIKE
+  if (vendor_name && typeof vendor_name === 'string' && vendor_name.trim()) {
+    const term = vendor_name.trim().slice(0, 200);
+    // Escape % and _ to prevent ILIKE pattern injection
+    const escaped = term.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    query = query.ilike('vendor_name', `%${escaped}%`);
+  }
+
+  // Limit: default 20, cap 50
+  let limitValue = 20;
+  if (typeof limit === 'number' && Number.isInteger(limit) && limit > 0) {
+    limitValue = Math.min(limit, 50);
+  }
+  query = query.limit(limitValue);
+
+  // Sort: by balance_due_date ASC nulls last, then by created_at DESC.
+  // Bookings with deadlines bubble up; standalone commitments at bottom by recency.
+  query = query.order('balance_due_date', { ascending: true, nullsFirst: false })
+               .order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('[bride-tool:list_bookings] select error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, bookings: data || [], count: (data || []).length };
+}
+
+async function execUpdateBooking({ input, couple, supabase }) {
+  const { booking_id, vendor_name, category, amount_total, amount_advance, balance_due_date, notes } = input || {};
+
+  if (!booking_id || typeof booking_id !== 'string' || !UUID_REGEX.test(booking_id)) {
+    return { ok: false, error: 'booking_id required (UUID format)' };
+  }
+
+  const updates = {};
+
+  if (typeof vendor_name === 'string' && vendor_name.trim()) {
+    updates.vendor_name = vendor_name.trim().slice(0, 200);
+  }
+
+  if (category && ALLOWED_BOOKING_CATEGORIES.has(category)) {
+    updates.category = category;
+  } else if (category) {
+    console.warn('[bride-tool:update_booking] ignoring invalid category:', category);
+  }
+
+  // amount_total: -1 clears (sets to null); non-negative integer sets.
+  // The -1 sentinel is safe because schema CHECK enforces amount >= 0.
+  if (amount_total === -1) {
+    updates.amount_total = null;
+  } else if (amount_total !== undefined && amount_total !== null) {
+    if (!Number.isInteger(amount_total) || amount_total < 0) {
+      return { ok: false, error: 'amount_total must be a non-negative integer (or -1 to clear)' };
+    }
+    updates.amount_total = amount_total;
+  }
+
+  // amount_advance: same -1 sentinel
+  if (amount_advance === -1) {
+    updates.amount_advance = null;
+  } else if (amount_advance !== undefined && amount_advance !== null) {
+    if (!Number.isInteger(amount_advance) || amount_advance < 0) {
+      return { ok: false, error: 'amount_advance must be a non-negative integer (or -1 to clear)' };
+    }
+    updates.amount_advance = amount_advance;
+  }
+
+  // balance_due_date: M1 pattern ("null"/null/"" clears), M2 hard error on malformed.
+  if (balance_due_date === 'null' || balance_due_date === null || balance_due_date === '') {
+    updates.balance_due_date = null;
+  } else if (balance_due_date !== undefined) {
+    if (!isValidDateString(balance_due_date)) {
+      console.warn('[bride-tool:update_booking] rejecting malformed balance_due_date:', balance_due_date);
+      return { ok: false, error: 'balance_due_date must be YYYY-MM-DD format' };
+    }
+    updates.balance_due_date = balance_due_date;
+  }
+
+  // notes: M1 pattern
+  if (notes === 'null' || notes === null || notes === '') {
+    updates.notes = null;
+  } else if (typeof notes === 'string' && notes.trim()) {
+    updates.notes = notes.trim().slice(0, 500);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { ok: false, error: 'no fields to update' };
+  }
+
+  // Critical guard: this tool MUST NOT touch amount_paid or state. Those are owned
+  // exclusively by record_payment(). The schema-validated input doesn't expose them,
+  // but a defensive double-check costs nothing.
+  delete updates.amount_paid;
+  delete updates.state;
+
+  const { data, error } = await supabase
+    .from('couple_bookings')
+    .update(updates)
+    .eq('id', booking_id)
+    .eq('couple_id', couple.id)
+    .select('id, vendor_name, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'booking not found or not yours' };
+    }
+    console.error('[bride-tool:update_booking] update error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, booking: data };
+}
+
+async function execDeleteBooking({ input, couple, supabase }) {
+  const { booking_id } = input || {};
+
+  if (!booking_id || typeof booking_id !== 'string' || !UUID_REGEX.test(booking_id)) {
+    return { ok: false, error: 'booking_id required (UUID format)' };
+  }
+
+  // L2 canonical delete pattern: atomic single-call .delete().eq().select().single()
+  // Receipts linked to this booking are NOT deleted — booking_id FK uses ON DELETE
+  // SET NULL (migration 0019), so receipts become standalone records.
+  const { data, error } = await supabase
+    .from('couple_bookings')
+    .delete()
+    .eq('id', booking_id)
+    .eq('couple_id', couple.id)
+    .select('id, vendor_name, category, amount_total, amount_paid, state')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { ok: false, error: 'booking not found or not yours' };
+    }
+    console.error('[bride-tool:delete_booking] delete error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, deleted_booking: data };
+}
+
+async function execRecordPayment({ input, couple, supabase }) {
+  const { booking_id, amount, payment_date } = input || {};
+
+  if (!booking_id || typeof booking_id !== 'string' || !UUID_REGEX.test(booking_id)) {
+    return { ok: false, error: 'booking_id required (UUID format)' };
+  }
+
+  // amount: integer (rupees). Allowed to be negative (reversal). Must not be zero.
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount === 0) {
+    return { ok: false, error: 'amount required (non-zero integer rupees)' };
+  }
+
+  // payment_date: optional. Hard error on malformed.
+  let paymentDateValue = null;
+  if (payment_date) {
+    if (!isValidDateString(payment_date)) {
+      console.warn('[bride-tool:record_payment] rejecting malformed payment_date:', payment_date);
+      return { ok: false, error: 'payment_date must be YYYY-MM-DD format' };
+    }
+    paymentDateValue = payment_date;
+  }
+
+  // Pre-check couple scoping: the SQL function does NOT scope to couple_id (it operates
+  // on booking_id directly). We must verify the booking belongs to this couple BEFORE
+  // calling the function — otherwise couple B could record a payment on couple A's booking.
+  const { data: bookingCheck, error: checkError } = await supabase
+    .from('couple_bookings')
+    .select('id')
+    .eq('id', booking_id)
+    .eq('couple_id', couple.id)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('[bride-tool:record_payment] couple-scope check error:', checkError);
+    return { ok: false, error: checkError.message };
+  }
+  if (!bookingCheck) {
+    return { ok: false, error: 'booking not found or not yours' };
+  }
+
+  // Call the SQL function. It locks the row, updates amount_paid, recomputes state.
+  // p_receipt_id is null at this stage — the 3-branch receipt flow (Step 6) will
+  // pass a receipt id when linking a saved receipt to a payment.
+  const { data, error } = await supabase.rpc('record_payment', {
+    p_booking_id:   booking_id,
+    p_amount:       amount,
+    p_receipt_id:   null,
+    p_payment_date: paymentDateValue,
+  });
+
+  if (error) {
+    // Postgres no_data_found (raised inside the function) bubbles up here for
+    // booking-deleted-between-check-and-rpc cases. Same user message.
+    if (error.code === 'P0002' || error.code === 'no_data_found' || /not found/i.test(error.message || '')) {
+      return { ok: false, error: 'booking not found or not yours' };
+    }
+    console.error('[bride-tool:record_payment] rpc error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, booking: data };
 }
 
 // ── list_muse executor (B2) ──────────────────────────────────────────
