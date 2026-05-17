@@ -586,6 +586,25 @@ app.post('/webhook/whatsapp', async (req, res) => {
       anthropic,
     });
 
+    // Bug #2 fix: circle summary delivered as a separate WhatsApp message
+    // before the agent reply — never injected into the agent context.
+    if (result.circleSummary) {
+      try {
+        const summaryMsg = await sendWhatsApp(phone, result.circleSummary);
+        await supabase.from('messages').insert({
+          conversation_id: conversation.id,
+          direction:       'outbound',
+          channel:         'whatsapp',
+          body:            result.circleSummary,
+          sent_by:         'agent',
+          twilio_sid:      summaryMsg?.sid ?? null,
+        });
+        console.log(`[bride-circle-summary] delivered to ${phone} (${summaryMsg?.sid})`);
+      } catch (summaryErr) {
+        console.error('[bride-circle-summary] send failed (continuing):', summaryErr.message);
+      }
+    }
+
     // ── Send the reply via Twilio ───────────────────────────────────
     // result.mediaUrls is populated when list_muse was called with playback.
     let twilioMsg = null;

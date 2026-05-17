@@ -156,11 +156,6 @@ async function runBrideAgenticTurn({
 
   const messages = [
     ...history,
-    // If a circle summary was surfaced this turn, inject it as a fake assistant
-    // message immediately before the bride's inbound. The model treats it as
-    // something it already said and continues naturally from it — far more
-    // reliable than a system prompt instruction which Haiku ignores on short messages.
-    ...(circleSummaryMessage ? [{ role: 'assistant', content: circleSummaryMessage }] : []),
     { role: 'user', content: inboundMessage },
   ];
 
@@ -264,6 +259,7 @@ async function runBrideAgenticTurn({
     costUsd:      cost?.cost_usd ?? null,
     costInr:      cost?.cost_inr ?? null,
     mediaUrls:    mediaUrlsToReturn.slice(0, PLAYBACK_MAX_IMAGES),
+    circleSummary: circleSummaryMessage || null,
   };
 }
 
