@@ -12,6 +12,7 @@ const { runAgenticTurn, runCoupleAgenticTurn } = require('./agent/engine');
 const { buildBriefing } = require('./agent/briefing');
 const { startCronJobs } = require('./cron');
 const { sendWhatsApp } = require('./lib/whatsapp');
+const { ensureCoupleRow, captureField } = require('./lib/coupleIdentity');
 const { buildDisambiguationQuestion, interpretDisambiguationReply, vendorDisplayName } = require('./agent/disambiguation');
 const adminRouter  = require('./admin/router');
 
@@ -180,6 +181,20 @@ app.post('/webhook/whatsapp', async (req, res) => {
       const DISAMBIGUATION_TTL_MS = 10 * 60 * 1000;  // 10 minutes
       const STICKY_TTL_MS         = 30 * 60 * 1000;  // 30 minutes — vendor stickiness after resolution
 
+      // ── Ensure bride has persistent couple_id ─────────────────────
+      // Idempotent — creates users + couples + couple_state rows silently
+      // on first contact with any vendor on +91. From this point forward
+      // the bride has a stable identity reachable via
+      //   conversations.counterparty_user_id → users.id → couples.user_id
+      // We do NOT stamp couple_id on the conversations row — XOR holds
+      // because vendor_id is set on couple_thread rows.
+      const { user_id: _ensuredUserId, couple_id: brideCoupleId } =
+        await ensureCoupleRow(supabase, phone, profileName);
+
+      if (_ensuredUserId !== user.id) {
+        console.warn(`[coupleIdentity] user_id mismatch: ensured=${_ensuredUserId} loaded=${user.id}`);
+      }
+
       function levenshtein(a, b) {
         const m = a.length, n = b.length;
         const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0));
@@ -270,6 +285,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
               vendorUser,
               conversation: thread,
               couplePhone: phone,
+              coupleId: brideCoupleId,
               inboundMessage: originalMessage,
               supabase,
               anthropic,
@@ -348,6 +364,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
             vendorUser,
             conversation: stickyThread,
             couplePhone: phone,
+            coupleId: brideCoupleId,
             inboundMessage: body,
             supabase,
             anthropic,
@@ -454,6 +471,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
           vendorUser,
           conversation: coupleThread,
           couplePhone: phone,
+          coupleId: brideCoupleId,
           inboundMessage: body,
           supabase,
           anthropic,
@@ -565,6 +583,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
           vendorUser,
           conversation: existingThread,
           couplePhone: phone,
+          coupleId: brideCoupleId,
           inboundMessage: body,
           supabase,
           anthropic,

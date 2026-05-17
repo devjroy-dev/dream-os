@@ -13,6 +13,7 @@ const { classifyMessage }         = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { resolveOrCreateClient } = require('../lib/clients');
 const { sendWhatsApp }          = require('../lib/whatsapp');
+const { captureField }          = require('../lib/coupleIdentity');
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 10;
@@ -224,7 +225,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
 // ── Couple agentic turn ───────────────────────────────────────────
 // Runs on couple_thread conversations.
 // Collects event details, updates lead, notifies vendor with summary.
-async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, inboundMessage, supabase, anthropic }) {
+async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, supabase, anthropic }) {
 
   // ── Load conversation history ───────────────────────────────────
   const { data: recentMessages } = await supabase
@@ -394,6 +395,26 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           if (newLead) leadCaptured = newLead.id;
         }
 
+        // ── Mirror lead fields into couples silently (P1-4) ─────────
+        // captureField writes only wedding_date, wedding_city, budget_total.
+        // Never partner_name (bride product owns that field).
+        if (coupleId) {
+          if (event_date) {
+            await captureField(supabase, coupleId, 'wedding_date', event_date);
+          }
+          if (input.event_city) {
+            await captureField(supabase, coupleId, 'wedding_city', input.event_city);
+          }
+          if (input.budget_min) {
+            // budget_total on couples is a single integer (rupees).
+            // leads carries budget_min/max range. Use the lower bound as
+            // the conservative anchor — it's what the bride explicitly
+            // committed to. If she narrows later via the bride product,
+            // that overwrites this.
+            await captureField(supabase, coupleId, 'budget_total', input.budget_min);
+          }
+        }
+
         // Build vendor notification summary
         const parts = [];
         if (input.name)       parts.push(`Name: ${input.name}`);
@@ -464,6 +485,57 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   const returningBrideNotif = isReturningBride
     ? `${leadName || `...${couplePhone.slice(-4)}`} just messaged: "${inboundMessage}"`
     : null;
+
+  // ── Silent onboarding nudge (P1-4) ────────────────────────────────
+  // After 3+ inbound bride messages on ANY vendor thread (lifetime, not
+  // per-vendor), append the bride-product nudge once. couples.nudge_sent_at
+  // stamped. Never appended again from any vendor, ever.
+  if (coupleId && finalReply) {
+    const { data: coupleRow } = await supabase
+      .from('couples')
+      .select('nudge_sent_at')
+      .eq('id', coupleId)
+      .maybeSingle();
+
+    if (coupleRow && !coupleRow.nudge_sent_at) {
+      // Count inbound bride messages across ALL her couple_thread conversations.
+      // Two-query approach for reliability with supabase-js join counts.
+      const { data: brideThreads } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('counterparty_phone', couplePhone)
+        .eq('kind', 'couple_thread');
+
+      const threadIds = (brideThreads || []).map(t => t.id);
+
+      let brideMessageCount = 0;
+      if (threadIds.length > 0) {
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .in('conversation_id', threadIds)
+          .eq('direction', 'inbound')
+          .eq('sent_by', 'couple');
+        brideMessageCount = count ?? 0;
+      }
+
+      // Threshold: 3+ inbound messages. The current inbound is already
+      // logged before runCoupleAgenticTurn is called (see src/index.js
+      // lines 257, 335, 426, 548 — depending on Step), so the count
+      // includes this turn.
+      if (brideMessageCount >= 3) {
+        const NUDGE_LINE = "We're opening The Dream Wedding's planning tool to a small group of brides. If you'd like a peek: thedreamwedding.in/explore";
+        finalReply = `${finalReply}\n\n${NUDGE_LINE}`;
+
+        await supabase
+          .from('couples')
+          .update({ nudge_sent_at: new Date().toISOString() })
+          .eq('id', coupleId);
+
+        console.log(`[couple-agent] nudge appended for couple ${coupleId} (count=${brideMessageCount})`);
+      }
+    }
+  }
 
   return {
     reply: finalReply || 'Thanks — we\'ll be in touch soon!',
