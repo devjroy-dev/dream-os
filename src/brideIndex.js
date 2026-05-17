@@ -30,8 +30,10 @@ const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn }  = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
 const { DAILY_CAP_IMAGES, DAILY_CAP_TEXTS } = require('./agent/circleSystemPrompt');
-const { sendWhatsApp } = require('./lib/whatsapp');
-const { saveToMuse }   = require('./lib/museSave');
+const { sendWhatsApp }   = require('./lib/whatsapp');
+const { saveToMuse }     = require('./lib/museSave');
+const { groundedSearch } = require('./lib/groundedSearch');
+const { MODEL_HAIKU }    = require('./agent/models');
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -511,6 +513,35 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversation.id);
 
+    // ── /surprise command intercept ─────────────────────────────────
+    // Short-circuits the normal engine. Handled entirely here — no agent turn.
+    if (trimmedBody.toLowerCase() === '/surprise') {
+      console.log(`[bride-webhook] /surprise command from couple ${couple.id}`);
+      const surpriseReply = await handleSurpriseMe({ couple, supabase });
+
+      let twilioSurprise = null;
+      try {
+        twilioSurprise = await sendWhatsApp(phone, surpriseReply);
+      } catch (e) {
+        console.error('[bride-webhook] /surprise send error:', e);
+      }
+
+      await supabase.from('messages').insert({
+        conversation_id: conversation.id,
+        direction:       'outbound',
+        channel:         'whatsapp',
+        body:            surpriseReply,
+        sent_by:         'agent',
+        twilio_sid:      twilioSurprise?.sid ?? null,
+      });
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversation.id);
+
+      return res.status(200).send('<Response></Response>');
+    }
+
     // ── Run the engine ──────────────────────────────────────────────
     // Pass the body (which may include the URL — agent reads naturally).
     // For media-only inbounds, pass the same synthesized string we wrote to
@@ -560,6 +591,112 @@ app.post('/webhook/whatsapp', async (req, res) => {
     return res.status(500).send('error');
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// handleSurpriseMe — /surprise command handler (P1-2)
+//
+// Triggered when the bride sends exactly "/surprise".
+// Reads her muse_saves.aesthetic_tags, finds the most frequent tags,
+// queries Gemini for internet results matching that aesthetic, then
+// composes a BFF-voice reply via Haiku.
+//
+// Pattern: Gemini retrieves → Haiku composes. Gemini never writes the reply.
+//
+// Edge cases:
+//   - Fewer than 3 Muse saves → polite fallback, no Gemini call
+//   - Gemini errors → graceful BFF fallback
+//   - No dominant tags → fallback
+//
+// Returns the reply string. Never throws — all errors caught internally.
+// ─────────────────────────────────────────────────────────────────────
+async function handleSurpriseMe({ couple, supabase }) {
+  const FALLBACK_FEW_SAVES = "Save a few more things to your board first and I'll have more to work with — I need at least 3 saves to get a feel for your vibe.";
+  const FALLBACK_GEMINI_ERR = "Having a moment with the search — try again in a bit? Your board is gorgeous btw.";
+
+  // ── 1. Fetch all muse_saves for this couple ───────────────────────
+  const { data: saves, error: savesErr } = await supabase
+    .from('muse_saves')
+    .select('aesthetic_tags')
+    .eq('couple_id', couple.id);
+
+  if (savesErr) {
+    console.error('[surprise-me] muse_saves fetch error:', savesErr.message);
+    return FALLBACK_GEMINI_ERR;
+  }
+
+  if (!saves || saves.length < 3) {
+    console.log(`[surprise-me] too few saves (${saves?.length ?? 0}) for couple ${couple.id}`);
+    return FALLBACK_FEW_SAVES;
+  }
+
+  // ── 2. Count tag frequency across all saves ───────────────────────
+  const tagCount = {};
+  for (const save of saves) {
+    const tags = Array.isArray(save.aesthetic_tags) ? save.aesthetic_tags : [];
+    for (const tag of tags) {
+      if (typeof tag === 'string' && tag.trim()) {
+        tagCount[tag.trim()] = (tagCount[tag.trim()] || 0) + 1;
+      }
+    }
+  }
+
+  const sortedTags = Object.entries(tagCount)
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag)
+    .slice(0, 5);
+
+  if (sortedTags.length === 0) {
+    console.log(`[surprise-me] no aesthetic_tags found on saves for couple ${couple.id}`);
+    return FALLBACK_FEW_SAVES;
+  }
+
+  const tagString = sortedTags.join(', ');
+  console.log(`[surprise-me] couple ${couple.id} top tags: ${tagString}`);
+
+  // ── 3. Query Gemini ───────────────────────────────────────────────
+  const query = `Indian wedding inspiration: ${tagString} aesthetic — bridal fashion, decor, venues, jewellery`;
+  const { answer, sources, error: geminiErr } = await groundedSearch(query, {
+    context: 'Indian wedding planning, bridal fashion, decor, venues, jewellery',
+    maxResults: 5,
+  });
+
+  if (geminiErr || !answer) {
+    console.warn(`[surprise-me] Gemini error or empty answer: ${geminiErr || 'no answer'}`);
+    return FALLBACK_GEMINI_ERR;
+  }
+
+  // ── 4. Compose BFF reply via Haiku ───────────────────────────────
+  const sourcesText = sources.length > 0
+    ? sources.map((s, i) => `${i + 1}. ${s.title} — ${s.url}`).join('\n')
+    : '';
+
+  const composePrompt = `You are a bride's BFF planning assistant — witty, warm, dry, non-judgmental. The bride sent "/surprise" and you pulled inspiration from the internet based on her mood board.
+
+Her top aesthetic tags from her board: ${tagString}
+
+Here's what you found online (Gemini grounded search result):
+${answer}
+${sourcesText ? `\nSources:\n${sourcesText}` : ''}
+
+Write a short BFF-voice reply (3-5 sentences max) sharing these results with her. Reference her specific aesthetic tags naturally. Be specific — mention actual results, not just vibes. End with one question or nudge. Do NOT use bullet points. Do NOT say "based on your board" — just tell her what you found.`;
+
+  try {
+    const haiku = await anthropic.messages.create({
+      model:      MODEL_HAIKU,
+      max_tokens: 400,
+      messages:   [{ role: 'user', content: composePrompt }],
+    });
+
+    const reply = haiku.content?.[0]?.text?.trim();
+    if (!reply) throw new Error('empty Haiku response');
+    console.log(`[surprise-me] reply composed (${reply.length} chars)`);
+    return reply;
+
+  } catch (err) {
+    console.error('[surprise-me] Haiku compose error:', err.message);
+    return FALLBACK_GEMINI_ERR;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // handleCircleMemberMessage — Step 5+6
