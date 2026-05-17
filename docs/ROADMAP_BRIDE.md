@@ -2,7 +2,7 @@
 **Last updated:** 2026-05-16
 **Current session:** B3 — COMPLETE (2026-05-17)
 **Status:** B1 + B2 + B3 shipped. Next: B3.1 (Muse landing page + bug fixes) → B4.1a → B4 → Session 9.
-**Latest bride product version:** 0.8.5a.2-b2
+**Latest bride product version:** 0.8.5a.3-b3
 
 ---
 
