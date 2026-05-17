@@ -503,7 +503,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
           conversation: coupleThread,
           couplePhone: phone,
           coupleId: brideCoupleId,
-          inboundMessage: body,
+          inboundMessage: firstWord.startsWith('TDW-') ? 'hi' : body,
           supabase,
           anthropic,
         });
