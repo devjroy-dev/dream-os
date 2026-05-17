@@ -34,6 +34,7 @@ const { sendWhatsApp }   = require('./lib/whatsapp');
 const { saveToMuse }     = require('./lib/museSave');
 const { groundedSearch } = require('./lib/groundedSearch');
 const { MODEL_HAIKU }    = require('./agent/models');
+const { startBrideCronJobs } = require('./brideCron');
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -1128,4 +1129,5 @@ app.listen(PORT, () => {
   if (process.env.DISABLE_TWILIO_SIGNATURE_CHECK === 'true') {
     console.warn('[dream-wedding] WARNING: DISABLE_TWILIO_SIGNATURE_CHECK=true — Twilio webhook signature verification is OFF. Do not run in production with this flag set.');
   }
+  startBrideCronJobs({ supabase });
 });

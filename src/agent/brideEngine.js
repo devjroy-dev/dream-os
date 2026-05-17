@@ -32,6 +32,7 @@ const { nextBrideOnboardingMessage } = require('./brideOnboarding');
 const { BRIDE_TOOLS } = require('./brideTools');
 const { classifyMessage } = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
+const { groundedSearch } = require('../lib/groundedSearch');
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 10;
@@ -207,6 +208,7 @@ async function runBrideAgenticTurn({
         user,
         conversation,
         supabase,
+        anthropic,
         mediaUrlsToReturn,    // mutable — list_muse pushes URLs here when playback requested
       });
 
@@ -254,7 +256,7 @@ async function runBrideAgenticTurn({
 // ── Tool executors ───────────────────────────────────────────────────
 // Switch-case dispatcher (mirrors vendor engine.js pattern).
 
-async function executeBrideTool({ name, input, couple, user, conversation, supabase, mediaUrlsToReturn }) {
+async function executeBrideTool({ name, input, couple, user, conversation, supabase, anthropic, mediaUrlsToReturn }) {
   switch (name) {
 
     case 'note_to_self': {
@@ -347,6 +349,10 @@ async function executeBrideTool({ name, input, couple, user, conversation, supab
 
     case 'list_circle': {
       return await execListCircle({ input, couple, supabase });
+    }
+
+    case 'factual_search': {
+      return await execFactualSearch({ input, anthropic });
     }
 
     default: {
@@ -2073,6 +2079,45 @@ function formatNoteContent(field, coercedValue, originalValue) {
     default:
       return `${field}: ${coercedValue}`;
   }
+}
+
+// ── factual_search executor ──────────────────────────────────────────
+// Gemini retrieves internet results for factual market questions.
+// Haiku composes the BFF-voice reply from those results.
+// Gemini never composes the reply — retrieval-only (locked architecture).
+//
+// Failure path: if Gemini errors, returns a graceful fallback so the
+// agent can reply honestly rather than silently failing.
+async function execFactualSearch({ input, anthropic }) {
+  const { query } = input || {};
+
+  if (!query || typeof query !== 'string' || !query.trim()) {
+    return { ok: false, error: 'query required' };
+  }
+
+  const { answer, sources, error: geminiErr } = await groundedSearch(query.trim(), {
+    context: 'Indian wedding planning, bridal fashion, venues, vendors, costs',
+    maxResults: 5,
+  });
+
+  if (geminiErr || !answer) {
+    console.warn(`[bride-tool:factual_search] Gemini error: ${geminiErr || 'no answer'}`);
+    return {
+      ok: false,
+      error: 'search_unavailable',
+      message: 'Search is having a moment — I can give you a rough estimate from what I know, or try again in a bit.',
+    };
+  }
+
+  const sourcesText = sources.length > 0
+    ? '\n\nSources: ' + sources.map(s => s.url).join(', ')
+    : '';
+
+  return {
+    ok: true,
+    query: query.trim(),
+    answer: answer + sourcesText,
+  };
 }
 
 module.exports = { runBrideAgenticTurn, executeBrideTool, surfacePendingCircleSessions };

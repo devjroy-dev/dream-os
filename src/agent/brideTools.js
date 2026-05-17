@@ -535,6 +535,20 @@ const BRIDE_TOOLS = [
     },
   },
   {
+    name: 'factual_search',
+    description: 'Search the internet for factual wedding market information. Use ONLY for objective, answerable questions: venue pricing, designer/vendor costs, current rules or regulations, public event dates, city-specific market rates. Do NOT use for taste, opinion, aesthetic, or personal planning questions — those are just chat. Examples of correct use: "how much does a Sabyasachi lehenga cost?", "average wedding venue cost in Goa", "is there a dry day during Diwali in Mumbai?". Examples of incorrect use: "which lehenga should I pick?", "do you like this colour?".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The factual question to search for. Be specific — include city, category, or price range if the bride mentioned them.',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
     name: 'list_circle',
     description: 'Look up the bride\'s circle — who has been invited, who has joined, who is pending. Use when she asks "who\'s in my circle", "did mom join yet", "who have I invited", "did anyone claim my invite". Returns a list of circle members with their names, roles, status (active/pending/removed), and timestamps. After getting the result, compose a natural reply describing who is on her circle and their state.',
     input_schema: {
