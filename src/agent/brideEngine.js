@@ -98,12 +98,15 @@ async function runBrideAgenticTurn({
   // ── Step 6: pre-turn circle session summary surfacing ─────────────
   // When the bride's last interaction was a while ago and a circle member
   // has been active in between, we surface a one-time summary of that
-  // session as a preamble. The summary is composed by Haiku from the
-  // circle_activity rows of the session.
+  // session. We inject it as a fake assistant message immediately before
+  // the bride's inbound — the model treats it as something it already said
+  // and naturally continues from it. This is more reliable than prepending
+  // to dynamicContext (system prompt), which Haiku ignores on simple messages.
   //
   // We only fire this when there's no fresh mediaContext (i.e. the bride
   // didn't just forward an image herself — in that case the conversation
   // is about HER save, not a circle update).
+  let circleSummaryMessage = null;
   if (!mediaContext) {
     const circleSummary = await surfacePendingCircleSessions({
       couple_id: couple.id,
@@ -111,7 +114,14 @@ async function runBrideAgenticTurn({
       anthropic,
     });
     if (circleSummary && circleSummary.trim()) {
-      dynamicContext = `${circleSummary.trim()}\n\n${dynamicContext}`;
+      // Extract just the human-readable summary lines — strip the [SYSTEM NOTE] header
+      // and instruction block, keep only the actual summary content.
+      const summaryLines = circleSummary.trim().split('\n');
+      const contentStart = summaryLines.findIndex(l => !l.startsWith('[SYSTEM NOTE') && l.trim().length > 0 && !l.startsWith('MANDATORY') && !l.startsWith('One or more'));
+      const summaryContent = contentStart >= 0
+        ? summaryLines.slice(contentStart).join('\n').trim()
+        : circleSummary.trim();
+      circleSummaryMessage = summaryContent;
     }
   }
 
@@ -146,6 +156,11 @@ async function runBrideAgenticTurn({
 
   const messages = [
     ...history,
+    // If a circle summary was surfaced this turn, inject it as a fake assistant
+    // message immediately before the bride's inbound. The model treats it as
+    // something it already said and continues naturally from it — far more
+    // reliable than a system prompt instruction which Haiku ignores on short messages.
+    ...(circleSummaryMessage ? [{ role: 'assistant', content: circleSummaryMessage }] : []),
     { role: 'user', content: inboundMessage },
   ];
 
@@ -1909,7 +1924,7 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
 
   return [
     '[SYSTEM NOTE — circle activity summary]',
-    'MANDATORY — circle update: One or more of the bride\'s circle members were active on her board since she was last here. Your reply MUST lead with this update before anything else — before greeting her, before answering her question. Do not skip it. Do not bury it. Open with a natural varied phrase such as "Before anything —", "Oh by the way —", "Before I forget —", "Quick update —", or "You\'ve got a circle update —". Then give the summary in BFF voice. Then answer whatever she just said in the same message. Include the link "thedreamwedding.in/muse" and offer to send the images directly — if she says yes, call list_muse with the session_id (shown in the summary blocks below) and request_image_playback=true.',
+    'One or more of the bride\'s circle members were active on her board since she was last here. Weave this into your reply naturally as a preamble before answering whatever the bride just said. Include the link "thedreamwedding.in/muse" and offer "or should I just send them here?" — if she says yes in her next message, you should call list_muse with the session_id (shown in the summary blocks) and request_image_playback=true.',
     '',
     ...summaryLines,
   ].join('\n');
