@@ -555,6 +555,18 @@ These passed unit/integration smoke tests but have NOT been verified on a real p
 
 ---
 
+### B4.1c — Morning nudge + Twilio template (~90 min)
+
+**Deferred from B3 (2026-05-17).** Morning nudge cron + list_dues tool + Twilio template submission.
+
+- list_dues(within_days?) tool — feeds the nudge content
+- Morning nudge cron (8am IST): days-to-wedding + today's events + dues within 14 days
+- Twilio template submission (dream_wedding_morning_nudge)
+- Template approval takes 1-7 days — submit at B4.1c start, build the cron while waiting
+- Proactive circle summary: if bride active in last 24h (WhatsApp session open) + circle session closed → send immediately as free-form message (no template needed)
+
+---
+
 ### B4 — Vendor connections + Surprise Me + silent onboarding (2 sessions, ~180 min total)
 
 **Goal:** Bride has all her vendors in one place. Surprise Me works. Silent vendor-side onboarding live. Two-sided vendor funnel live.

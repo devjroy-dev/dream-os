@@ -30,6 +30,9 @@
 | **0020_drop_priority.sql** | **2026-05-17** | **B3** | **Drops priority column from couple_tasks. due_date is the urgency signal.** |
 | **0021_couple_receipts_label.sql** | **2026-05-17** | **B3** | **Adds label (text, nullable) column to couple_receipts. Index on (couple_id, label).** |
 | **0022_task_event_merge.sql** | **2026-05-17** | **B3** | **Copies all couple_tasks rows into events (kind=reminder, pending→upcoming, due_date null→today IST). Empties couple_tasks. Table stays in schema, retired in place.** |
+| **0020_drop_priority.sql** | **2026-05-17** | **B3** | **Drops priority column from couple_tasks. due_date is the urgency signal.** |
+| **0021_couple_receipts_label.sql** | **2026-05-17** | **B3** | **Adds label (text, nullable) column to couple_receipts. Index on (couple_id, label).** |
+| **0022_task_event_merge.sql** | **2026-05-17** | **B3** | **Copies all couple_tasks rows into events (kind=reminder, pending→upcoming, due_date null→today IST). Empties couple_tasks. Table stays in schema, retired in place.** |
 
 ## Tables
 
