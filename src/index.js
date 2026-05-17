@@ -337,6 +337,35 @@ app.post('/webhook/whatsapp', async (req, res) => {
       // Does this message start with a TDW code? If yes, skip sticky.
       const startsWithTdw = firstWord.startsWith('TDW-');
 
+      // Bug #4 fix: if message looks like a bare handle attempt, fuzzy-match against
+      // ALL vendor handles globally before sticky can claim it. Prevents "Swati978"
+      // routing to the sticky vendor instead of prompting "Did you mean TDW-SWATI978?"
+      const looksLikeBareHandle = firstWord.length >= 3
+        && firstWord.length <= 12
+        && /^[A-Z0-9]+$/.test(firstWord)
+        && !firstWord.startsWith('TDW-')
+        && trimmedBody.toUpperCase() === firstWord;
+
+      if (stickyFresh && looksLikeBareHandle) {
+        const { data: allVendors } = await supabase
+          .from('vendors')
+          .select('routing_handle')
+          .not('routing_handle', 'is', null);
+
+        const allHandles = (allVendors || []).map(v => v.routing_handle).filter(Boolean);
+        const allCloseMatches = allHandles
+          .map(h => ({ h, dist: levenshtein(firstWord, h) }))
+          .filter(x => x.dist <= 2);
+
+        if (allCloseMatches.length === 1) {
+          const { h: closeMatch } = allCloseMatches[0];
+          console.log(`[routing:bare_handle] "${firstWord}" matches "${closeMatch}" globally — prompting before sticky`);
+          await sendWhatsApp(phone, `Did you mean TDW-${closeMatch}? Send that and I'll connect you right away.`);
+          return res.status(200).send('<Response/>');
+        }
+        // 0 or 2+ matches → fall through to sticky as before
+      }
+
       if (stickyFresh && !startsWithTdw) {
         const { data: stickyThread } = await supabase
           .from('conversations')
