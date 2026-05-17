@@ -319,6 +319,10 @@ router.get('/couples/:id', async (req, res) => {
 // messages, notes, leads, and all downstream tables automatically).
 // Auth: requireAuth middleware is applied to all routes below router.use(requireAuth).
 router.post('/vendors/:id/delete', async (req, res) => {
+  if (!process.env.ADMIN_PASSWORD || req.body.password !== process.env.ADMIN_PASSWORD) {
+    return res.status(403).send('Incorrect password — delete cancelled.');
+  }
+
   const supabase = req.app.locals.supabase;
   const { id } = req.params;
 
@@ -354,6 +358,10 @@ router.post('/vendors/:id/delete', async (req, res) => {
 // messages, muse_saves, circle_members, circle_sessions, circle_activity,
 // notes, events, and all downstream tables automatically).
 router.post('/couples/:id/delete', async (req, res) => {
+  if (!process.env.ADMIN_PASSWORD || req.body.password !== process.env.ADMIN_PASSWORD) {
+    return res.status(403).send('Incorrect password — delete cancelled.');
+  }
+
   const supabase = req.app.locals.supabase;
   const { id } = req.params;
 

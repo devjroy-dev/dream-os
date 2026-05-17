@@ -1572,6 +1572,7 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
   // If playback requested, queue up the Cloudinary URLs for the engine to
   // return to brideIndex. Capped at PLAYBACK_MAX_IMAGES via final slice in
   // runBrideAgenticTurn.
+  const prevPlaybackCount = Array.isArray(mediaUrlsToReturn) ? mediaUrlsToReturn.length : 0;
   if (request_image_playback && Array.isArray(saves) && saves.length > 0 && Array.isArray(mediaUrlsToReturn)) {
     for (const s of saves) {
       if (s.image_url && mediaUrlsToReturn.length < PLAYBACK_MAX_IMAGES) {
@@ -1595,7 +1596,7 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
     ok: true,
     count:               shaped.length,
     saves:               shaped,
-    image_playback_queued: request_image_playback && Array.isArray(mediaUrlsToReturn) ? mediaUrlsToReturn.length : 0,
+    image_playback_queued: request_image_playback && Array.isArray(mediaUrlsToReturn) ? mediaUrlsToReturn.length - prevPlaybackCount : 0,
   };
 }
 

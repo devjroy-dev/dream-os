@@ -689,6 +689,16 @@ async function handleCircleMemberMessage({
     }
   }
 
+  // ── Log inbound message (earliest safe point — after conversation resolved, cap-hit path has returned) ──
+  await supabase.from('messages').insert({
+    conversation_id: conversation.id,
+    direction:       'inbound',
+    channel:         'whatsapp',
+    body:            trimmedBody.length > 0 ? trimmedBody : hasMedia ? '[image]' : '[empty]',
+    sent_by:         'couple',
+    twilio_sid:      twilioSid,
+  });
+
   // ── Open or bump circle_sessions row ──
   // If the most recent session for this member is still "alive" (last_activity
   // within SESSION_IDLE_MS), bump it. Otherwise open a new one.
@@ -840,15 +850,6 @@ async function handleCircleMemberMessage({
   } else {
     bodyForLog = '[empty]';
   }
-
-  await supabase.from('messages').insert({
-    conversation_id: conversation.id,
-    direction:       'inbound',
-    channel:         'whatsapp',
-    body:            bodyForLog,
-    sent_by:         'couple',
-    twilio_sid:      twilioSid,
-  });
 
   await supabase
     .from('conversations')

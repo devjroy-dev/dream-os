@@ -307,11 +307,17 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     },
   ];
 
+  // ── Classify complexity → pick model ─────────────────────────────
+  const classifierHistory = history.slice(-2);
+  const complexity  = await classifyMessage(inboundMessage, classifierHistory, anthropic);
+  const modelToUse  = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
+  console.log(`[couple-agent] model selected: ${modelToUse} (${complexity})`);
+
   while (iterations < MAX_ITERATIONS) {
     iterations++;
 
     const response = await anthropic.messages.create({
-      model: MODEL_HAIKU,   // couple agent: Haiku always — narrow scope, simple routing
+      model: modelToUse,
       max_tokens: 512,
       system: systemPrompt,
       tools: COUPLE_TOOLS,
