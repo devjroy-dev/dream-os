@@ -2,7 +2,7 @@
 **Written:** 2026-05-17
 **Replanning session:** Strategy and architecture only. No code.
 **Supersedes:** ROADMAP.md (vendor, frozen at 8.5a) + ROADMAP_BRIDE.md (bride, frozen at B3)
-**Current version:** 0.9.0-alpha
+**Current version:** 0.10.0-alpha
 **Repo:** https://github.com/devjroy-dev/dream-os
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 
@@ -417,73 +417,62 @@ Smoke tests:
 
 No migration needed. coupleIdentity.js uses existing schema.
 
-**Session P1-5 — Bug cleanup before Phase 1 close**
+**Session P1-5 — Bug cleanup before Phase 1 close ✅ DONE (2026-05-18)**
 
-Phase 1 cannot ship to 0.10.0-alpha until four bugs surfaced during P1-4 smoke
-testing are fixed. P1-5 is dedicated to these only — no new features, no scope
-additions.
+Five fixes shipped. Version bumped to 0.10.0-alpha. Phase 1 closed.
 
-Bugs to fix (in priority order):
+Commits:
+- 07f8ce9 — Bug #1 (capture_couple_lead guard) + Bug #3 (counterparty_user_id)
+- 07bbdfa — Bug #2 (circle summary delivery)
+- b480b23 — Bug #4 (bare handle global fuzzy-match before sticky)
+- 58df6fb — TDW code replaced with 'hi' as inbound to couple agent
 
-1. **Returning-bride agent re-calls capture_couple_lead despite system prompt
-   forbidding it.** Cosmetic, wastes tokens, leads.upsert idempotency prevents
-   data corruption. Surfaced today (2026-05-17) when bride sent multiple
-   messages after lead capture and Haiku re-fired capture_couple_lead three
-   times. System prompt at coupleSystemPrompt.js line 41 explicitly forbids
-   it. Fix: code-level guard in engine.js capture_couple_lead handler — if
-   isReturningBride && existingLead, skip the upsert. Pre-existing since
-   Session 8.5 (4ea1105).
+1. **Bug #1 ✅** — capture_couple_lead guard added in engine.js:344.
+   `if (isReturningBride && existingLeadForCouple?.id) continue` — no-op for
+   returning brides. Phone-tested: no re-fire on subsequent messages.
 
-2. **Circle summary writes to DB but never delivers to bride via WhatsApp.**
-   Brand-critical for bride track. Two failure modes possible:
-   (a) summary not injected into messages array passed to Haiku
-   (b) Haiku ignoring the injection despite mandatory prompt instruction
-   Diagnostic-first session: trace one failure end-to-end via Railway logs
-   before proposing fix. Likely files to inspect: src/brideEngine.js (the
-   surface-circle call site), src/agent/circleEngine.js (summary write
-   logic), src/agent/brideSystemPrompt.js (injection rule). Pre-existing
-   since circle injection fix attempt (commit 35e7cdc).
+2. **Bug #2 ✅** — Circle summary delivery fixed. Root cause: fake-assistant
+   injection ignored by Haiku on short messages (Hypothesis A confirmed via
+   Railway logs — 582 input tokens, 13 output, "You alright?" reply with no
+   mention of Meha). Fix: summary now sent as a separate WhatsApp message
+   from brideIndex.js BEFORE the agent reply. Two bubbles confirmed on
+   Swati's phone (+919888294440). Architecture: brideEngine.js returns
+   circleSummary field; brideIndex.js sends it via sendWhatsApp then
+   continues to agent reply as before.
 
-3. **conversations.counterparty_user_id not populated by Step B (and Step A)
-   when creating couple_thread rows.** Conversations rows linked to brides
-   only by phone string, not by FK. Side effects: cascading deletes leave
-   orphan conversations, future features traversing user → couples via the
-   conversation row return NULL. P1-4's architectural unlock partially blocked
-   by this. Surfaced today when cleaning up test data on Malaysian number
-   required separate DELETEs because cascade did not fire. Fix: add
-   counterparty_user_id: user.id to conversations.insert at src/index.js
-   line ~246 (Step A new-thread insert) and line ~411 (Step B new-thread
-   insert). XOR holds — vendor_id is owner, user_id is a participant pointer.
-   Pre-existing since Session 5.
+3. **Bug #3 ✅** — counterparty_user_id: user.id added to both Step A
+   (~line 261) and Step B (~line 429) conversations.insert in src/index.js.
+   Cascade deletes now fire correctly.
 
-4. **Bare-handle messages caught by sticky route to wrong vendor.** When a
-   bride sticky-routed to one vendor sends a different vendor's handle
-   without TDW- prefix (e.g. "Swati978"), sticky catches it before Step B.5
-   fuzzy match runs, and the message routes to the sticky vendor's thread.
-   The agent then treats it as something said TO the sticky vendor. Step B.5
-   only fuzzy-matches against vendors the bride has already messaged, so a
-   new-vendor handle attempt without prefix is invisible. Fix: when sticky
-   is about to grab a message, first check if message looks like a handle
-   attempt (3-12 chars alphanumeric, single word, not a known stop-word).
-   If yes, fuzzy-match against ALL vendor handles (not just thread-history
-   vendors). Exactly one match within Levenshtein distance 2 → "Did you mean
-   TDW-XXX?" 0 or 2+ matches → fall through to sticky as today. Pre-existing
-   since Session 8.5.
+4. **Bug #4 ✅** — Bare handle global fuzzy-match inserted before sticky
+   block in src/index.js. If message looks like a handle (3-12 chars
+   alphanumeric, single word, no TDW- prefix) and matches exactly one vendor
+   handle globally within Levenshtein distance 2 → "Did you mean TDW-XXX?"
+   0 or 2+ matches → fall through to sticky as before.
 
-No migrations. No schema changes. No new files.
+5. **TDW 'hi' fix ✅** — When routing path is TDW-code, inboundMessage
+   passed to runCoupleAgenticTurn is now 'hi' instead of body. Prevents
+   agent receiving "TDW-DEV550" as a conversation opener and producing
+   confused replies. Phone-tested: returning bride gets "Hi there! What's
+   on your mind?" and new bride gets full PA onboarding greeting.
 
-Reference: today's smoke test of P1-4 confirmed the hotfix worked (commit
-95fb303 — isReturningBride=!!existingLeadForCouple?.name + nudge block removal).
-PA onboarding tone restored. Lead captured cleanly for Malaysian test bride
-+60122687535. Bugs 1-4 surfaced during that same smoke test.
+Additional verifications:
+- Same-bride-two-vendors: Malaysian test bride (+60122687535) messaged
+  DEV550 and TEST999 (synthetic vendor 8d725050, created via SQL for test).
+  Supabase query confirmed one couples row (285ccb5a). ✅
+- No regression on P1-4 capabilities confirmed via Railway logs.
+
+No migrations. No schema changes. No new files (except TEST999 synthetic
+vendor in DB — can be deleted anytime, harmless).
 
 Done criteria for P1-5:
-- All four bugs fixed and phone-tested
-- Audit pass: chat + CC cross-reference like P1-4
-- No regression to P1-4 capabilities (tone, lead capture, couples row creation
-  via ensureCoupleRow, captureField silent mirroring)
-- Then and only then: version bump to 0.10.0-alpha, Phase 1 closes,
-  Phase 2 PWA-0 planning session begins
+- [x] All four bugs fixed and phone-tested
+- [x] Audit pass complete
+- [x] No regression to P1-4 capabilities
+- [x] TDW 'hi' fix shipped and verified
+- [x] Same-bride-two-vendors smoke test passed
+- [x] Version bumped to 0.10.0-alpha
+- [x] Phase 1 closed. Phase 2 PWA-0 next.
 
 ### Phase 1 — migration summary
 | Migration | Session | What it adds |
@@ -504,13 +493,13 @@ Done criteria for P1-5:
 - [ ] Surprise Me returns results for a bride with 3+ Muse saves ⚠️ BLOCKED — Google billing verification pending (submitted 2026-05-17). Retest once cleared.
 - [ ] factual_search returns Gemini-grounded results for a market question ⚠️ BLOCKED — same Google billing block. Graceful fallback active.
 - [ ] Morning nudge fires correctly for a test bride at 8am IST ⚠️ PENDING — first fire next morning. Cron registered in Railway logs.
-- [ ] Twilio templates submitted (dream_os_morning_briefing + dream_wedding_morning_nudge) ⚠️ DEFERRED to P1-5 or later — approval takes 1-7 days
-- [ ] Circle session summary smoke test ⚠️ BLOCKED — Bug #2 in P1-5 (summary writes to DB but never reaches bride)
-- [ ] Bug #1 P1-5 fixed — returning-bride agent no longer re-calls capture_couple_lead
-- [ ] Bug #3 P1-5 fixed — conversations.counterparty_user_id populated on Step A and Step B inserts
-- [ ] Bug #4 P1-5 fixed — bare-handle messages globally fuzzy-matched before sticky catches them
-- [ ] Same bride messaging two vendors → single couples row confirmed via Supabase (deferred from P1-4 — only one vendor in DB at test time)
-- [ ] Version bumped to 0.10.0-alpha, docs updated, committed and pushed (at end of P1-5)
+- [ ] Twilio templates submitted (dream_os_morning_briefing + dream_wedding_morning_nudge) ⚠️ PENDING — never submitted. Approval takes 1-7 days. Submit at start of next available session. Blocks morning briefing for inactive vendors/brides.
+- [x] Circle session summary smoke test ✅ — two bubbles confirmed on Swati's phone (2026-05-18)
+- [x] Bug #1 P1-5 fixed — returning-bride agent no longer re-calls capture_couple_lead (commit 07f8ce9)
+- [x] Bug #3 P1-5 fixed — conversations.counterparty_user_id populated on Step A and Step B inserts (commit 07f8ce9)
+- [x] Bug #4 P1-5 fixed — bare-handle messages globally fuzzy-matched before sticky catches them (commit b480b23)
+- [x] Same bride messaging two vendors → single couples row confirmed via Supabase (2026-05-18, one couples row for +60122687535)
+- [x] Version bumped to 0.10.0-alpha, docs updated, committed and pushed (2026-05-18)
 
 ---
 
