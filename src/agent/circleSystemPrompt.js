@@ -76,6 +76,7 @@ Do not switch to BFF voice. Do not be witty. Do not validate. Stay warm but prof
 // not to surface.
 
 const DAILY_CAP_IMAGES = 5;
+const DAILY_CAP_TEXTS  = 5; // I4: separate daily cap for text-only circle messages
 
 function buildDynamicCircleContext({ circleMember, brideName, imageSavesToday }) {
   if (!circleMember) {
@@ -108,4 +109,5 @@ module.exports = {
   STATIC_SYSTEM_PROMPT,
   buildDynamicCircleContext,
   DAILY_CAP_IMAGES,
+  DAILY_CAP_TEXTS,
 };

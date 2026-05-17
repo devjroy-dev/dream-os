@@ -29,7 +29,7 @@ const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn }  = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
-const { DAILY_CAP_IMAGES }     = require('./agent/circleSystemPrompt');
+const { DAILY_CAP_IMAGES, DAILY_CAP_TEXTS } = require('./agent/circleSystemPrompt');
 const { sendWhatsApp } = require('./lib/whatsapp');
 const { saveToMuse }   = require('./lib/museSave');
 
@@ -43,6 +43,7 @@ const DEAD_END_REPLY = "Sorry — you're not on our invite list yet. Request acc
 const CIRCLE_TOKEN_REGEX     = /^CIRCLE-[A-Z0-9]{6}$/;
 // DAILY_CAP_IMAGES imported from circleSystemPrompt.js (single source of truth — L3 fix)
 const DAILY_CIRCLE_IMAGE_CAP = DAILY_CAP_IMAGES;
+const DAILY_CIRCLE_TEXT_CAP  = DAILY_CAP_TEXTS;  // I4: hard cap at 5 text messages per member per day
 const CIRCLE_SESSION_IDLE_MS = 10 * 60 * 1000;  // 10 min — must match brideEngine constant
 
 function buildCircleGreeting(brideName, role) {
@@ -807,6 +808,55 @@ async function handleCircleMemberMessage({
       }
     }
   } else if (trimmedBody && trimmedBody.length > 0) {
+    // ── Daily-cap check (text messages only) — I4 ──
+    // Mirror of the image cap above. Counts circle_activity 'comment' rows
+    // from this member today (IST). Hard cap: DAILY_CIRCLE_TEXT_CAP per day.
+    const { count: textsToday, error: textCapErr } = await supabase
+      .from('circle_activity')
+      .select('id', { count: 'exact', head: true })
+      .eq('couple_id', circleMember.couple_id)
+      .eq('actor_user_id', user.id)
+      .eq('activity_type', 'comment')
+      .gte('created_at', istMidnightUtcIso());
+
+    if (textCapErr) {
+      console.error('[circle-handler] text cap count query failed (blocking conservatively):', textCapErr.message);
+      await sendWhatsApp(phone, "Something went wrong on our end — please try again in a moment.");
+      return;
+    }
+
+    if ((textsToday || 0) >= DAILY_CIRCLE_TEXT_CAP) {
+      console.log(`[circle-handler] ${circleMember.invitee_name} hit daily text cap (${textsToday}/${DAILY_CIRCLE_TEXT_CAP})`);
+      const textCapReply = `You've sent ${DAILY_CIRCLE_TEXT_CAP} notes today — the limit resets tomorrow. Keep saving images in the meantime!`;
+      let capMsg = null;
+      try {
+        capMsg = await sendWhatsApp(phone, textCapReply);
+      } catch (e) {
+        console.error('[circle-handler] text cap reply send failed:', e);
+      }
+      await supabase.from('messages').insert({
+        conversation_id: conversation.id,
+        direction:       'inbound',
+        channel:         'whatsapp',
+        body:            trimmedBody,
+        sent_by:         'couple',
+        twilio_sid:      twilioSid,
+      });
+      await supabase.from('messages').insert({
+        conversation_id: conversation.id,
+        direction:       'outbound',
+        channel:         'whatsapp',
+        body:            textCapReply,
+        sent_by:         'agent',
+        twilio_sid:      capMsg?.sid ?? null,
+      });
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversation.id);
+      return;
+    }
+
     // Text-only contribution: record as a circle_activity 'comment' row.
     // payload.content holds the note body for Step 6's summary composer.
     const { error: noteErr } = await supabase
