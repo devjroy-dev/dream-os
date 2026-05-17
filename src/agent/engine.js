@@ -12,6 +12,7 @@ const { formatRs }               = require('../lib/format');
 const { classifyMessage }         = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { resolveOrCreateClient } = require('../lib/clients');
+const { sendWhatsApp }          = require('../lib/whatsapp');
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 10;
@@ -455,7 +456,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // - Returning bride: forward the bride's actual message verbatim, prefixed with their name
   const firstContactNotif = toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null;
   const returningBrideNotif = isReturningBride
-    ? `${leadName || `+${couplePhone.slice(-4)}`} just messaged: "${inboundMessage}"`
+    ? `${leadName || `...${couplePhone.slice(-4)}`} just messaged: "${inboundMessage}"`
     : null;
 
   return {
@@ -919,8 +920,8 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
         }
 
         console.log(`[tool:add_client] new client ${client.id} (${client.name})`);
-        const linkNote = backLinkedCount > 0 ? ` Linked ${backLinkedCount} existing lead(s).` : '';
-        return `Client added: ${client.name}${client.phone ? ` (${client.phone})` : ''}.${linkNote}`;
+        if (backLinkedCount > 0) console.log(`[tool:add_client] linked ${backLinkedCount} existing lead(s)`);
+        return { name: client.name, phone: client.phone, source: client.source, created_at: client.created_at };
       } catch (err) {
         console.error('[tool:add_client] error:', err.message);
         return `Error adding client: ${err.message}`;
@@ -952,8 +953,12 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
       const lines = clients.map((c, i) =>
         `${i + 1}. ${c.name}${c.phone ? ` (${c.phone})` : ''}${c.email ? ` — ${c.email}` : ''}`
       );
-      console.log(`[tool:list_clients] returned ${clients.length} clients`);
-      return `Recent clients (showing ${clients.length} of ${count ?? clients.length}):\n${lines.join('\n')}`;
+      console.log(`[tool:list_clients] returned ${clients.length} of ${count ?? clients.length} clients`);
+      const total = count ?? clients.length;
+      const footer = total > 10
+        ? `\nShowing 10 of ${total} clients. Ask to see more or search by name to narrow results.`
+        : '';
+      return `Recent clients:\n${lines.join('\n')}${footer}`;
     }
 
     case 'respond_to_vendor': {
@@ -1050,9 +1055,11 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
 
           const { data: u } = await supabase
             .from('users')
-            .select('name')
+            .select('name, phone')
             .eq('id', v.user_id)
             .single();
+
+          if (u?.phone) await sendWhatsApp(u.phone, "Got it — recording your payment. Generating the invoice PDF, just a moment...");
 
           const pdfBuffer = await generateInvoicePdf({
             invoice:    { ...inv, amount_paid: newAmountPaid },
@@ -1060,7 +1067,7 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
             vendorName: u?.name || 'Vendor',
           });
 
-          const fileName = `${vendor.id}/${inv.invoice_number.replace(/\//g, '-')}.pdf`;
+          const fileName = `${vendor.id}/INVOICE-${inv.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;
 
           const { error: uploadErr } = await supabase.storage
             .from('invoices')
