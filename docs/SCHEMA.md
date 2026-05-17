@@ -1,9 +1,9 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-16
-**Session:** B3 — COMPLETE (2026-05-17)
+**Last updated:** 2026-05-17
+**Session:** P1-1 — COMPLETE (2026-05-17)
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0022_task_event_merge.sql
-**Next migration:** 0023_circle_cleanup.sql (B3.1 — pending)
+**Latest migration applied:** 0023_circle_cleanup.sql
+**Next migration:** 0024a_vendor_profile.sql (Phase 2)
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -30,6 +30,7 @@
 | **0020_drop_priority.sql** | **2026-05-17** | **B3** | **Drops priority column from couple_tasks. due_date is the urgency signal.** |
 | **0021_couple_receipts_label.sql** | **2026-05-17** | **B3** | **Adds label (text, nullable) column to couple_receipts. Index on (couple_id, label).** |
 | **0022_task_event_merge.sql** | **2026-05-17** | **B3** | **Copies all couple_tasks rows into events (kind=reminder, pending→upcoming, due_date null→today IST). Empties couple_tasks. Table stays in schema, retired in place.** |
+| **0023_circle_cleanup.sql** | **2026-05-17** | **P1-1** | **circle_members.expires_at (7-day expiry on pending invite tokens). circle_sessions.summary_message_id FK to messages(id) ON DELETE SET NULL. circle_sessions unique partial index (circle_member_id) WHERE summarized_to_bride=false (M2 race fix). invite_circle_member() rewritten — sets expires_at, structured ERRCODE exceptions. claim_circle_invite() rewritten — rejects expired tokens, structured exceptions.** |
 ## Tables
 
 ### users
@@ -398,10 +399,11 @@ Bride's circle — people she's invited to contribute to her Muse board.
 | invitee_name | text | How the bride refers to this person ("Mom", "Priya"). |
 | invitee_phone | text | Populated when they claim the invite. |
 | role | text | CHECK: partner / family / inner_circle |
-| invite_token | text | CIRCLE-XXXXXX format. UNIQUE. One-time use. Currently no expiry (B3.1 adds 7-day expiry). |
+| invite_token | text | CIRCLE-XXXXXX format. UNIQUE. One-time use. **expires_at set to now()+7 days on all new invites (migration 0023). Legacy rows have expires_at=null and remain claimable.** |
 | status | text | CHECK: pending / active / removed |
 | invited_at | timestamptz | |
 | joined_at | timestamptz | Populated on claim. |
+| **expires_at** | **timestamptz** | **Nullable. 7-day expiry on pending tokens. Added in migration 0023. Null on legacy rows (pre-0023) — those remain claimable forever. claim_circle_invite() rejects non-null expired values.** |
 | created_at | timestamptz | |
 | updated_at | timestamptz | Auto-stamped by trigger. |
 
@@ -437,11 +439,13 @@ Tracks bursts of circle member activity for session-based summarization.
 | last_activity_at | timestamptz | Bumped on each subsequent message. Session "ends" when this is >10 min ago. |
 | summarized_to_bride | boolean | Default false. Flipped true when bride-side summary is composed and surfaced. |
 | summarized_at | timestamptz | |
-| summary_message_id | uuid | Nullable. No FK constraint (B3.1 adds it). |
+| summary_message_id | uuid | Nullable. **FK to messages(id) ON DELETE SET NULL added in migration 0023.** Points to the outbound message row that contained the summary. |
 | created_at | timestamptz | |
 | updated_at | timestamptz | Auto-stamped by trigger. |
 
 **Session end is derived, not stored.** A session is "ended and pending summary" when: `last_activity_at < now - 10min AND summarized_to_bride = false`.
+
+**Unique partial index (migration 0023):** `circle_sessions_one_open_per_member_unique` on `(circle_member_id) WHERE summarized_to_bride = false`. Enforces at most one open session per member. Concurrent inserts resolve via unique violation — app re-fetches the existing session.
 
 Indexes: (circle_member_id, last_activity_at DESC), (couple_id, last_activity_at) WHERE summarized_to_bride = false.
 
@@ -541,9 +545,7 @@ The agent reads the returned row and surfaces the numbers verbatim in its reply.
 
 ---
 
-## Upcoming bride migrations (B-sessions — not yet applied)
-
-Bride migrations continue the vendor sequence. No separate numbering. One migration history.
+## Migration sequence (applied + pending)
 
 | File | Session | What it adds |
 |---|---|---|
@@ -557,10 +559,9 @@ Bride migrations continue the vendor sequence. No separate numbering. One migrat
 | ~~0020_drop_priority.sql~~ | B3 | ✅ Applied 2026-05-17 |
 | ~~0021_couple_receipts_label.sql~~ | B3 | ✅ Applied 2026-05-17 |
 | ~~0022_task_event_merge.sql~~ | B3 | ✅ Applied 2026-05-17 |
-| 0023_circle_cleanup.sql | B3.1 | 7-day expiry on pending circle invite tokens, summary_message_id FK, circle_sessions unique partial index (M2 fix from B2 audit) |
-| 0024_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
-
-Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail on B2+ migrations.
+| ~~0023_circle_cleanup.sql~~ | P1-1 | ✅ Applied 2026-05-17 — expires_at on circle_members, summary_message_id FK, unique partial index (M2 fix), structured exceptions on invite/claim functions |
+| 0024a_vendor_profile.sql | Phase 2 | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios storage bucket |
+| 0024b_discover.sql | Phase 3 | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
 
 ---
 

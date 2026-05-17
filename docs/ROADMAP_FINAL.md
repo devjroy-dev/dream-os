@@ -423,18 +423,19 @@ No migration needed. coupleIdentity.js uses existing schema.
 | 0023_circle_cleanup.sql | P1-1 | expires_at on circle_members, summary_message_id FK, circle_sessions unique partial index |
 
 ### Phase 1 — done criteria
-- [ ] All CC fixes applied and verified
-- [ ] Migration 0023 applied
-- [ ] Circle invite works end-to-end on a real phone
-- [ ] Receipt classifier verified on a real receipt photo
-- [ ] Surprise Me returns results for a bride with 3+ Muse saves
-- [ ] factual_search returns Gemini-grounded results for a market question
-- [ ] Morning nudge fires correctly for a test bride at 8am IST
-- [ ] Vendor morning briefing template submitted to Twilio
+- [x] All CC fixes applied and verified
+- [x] Migration 0023 applied
+- [x] Circle invite works end-to-end on a real phone
+- [x] Receipt classifier verified on a real receipt photo
+- [x] Sonnet routing active on both vendor couple-agent and bride agent
+- [ ] Surprise Me returns results for a bride with 3+ Muse saves ⚠️ BLOCKED — Google billing verification pending (submitted 2026-05-17). Retest once cleared.
+- [ ] factual_search returns Gemini-grounded results for a market question ⚠️ BLOCKED — same Google billing block. Graceful fallback active.
+- [ ] Morning nudge fires correctly for a test bride at 8am IST ⚠️ PENDING — first fire tomorrow 8am IST. Cron registered in Railway logs.
+- [ ] Vendor morning briefing template submitted to Twilio ⚠️ DEFERRED — submit both Twilio templates together (dream_os_morning_briefing + dream_wedding_morning_nudge) in P1-4 session.
+- [ ] Circle session summary smoke test ⚠️ DEFERRED — injection fix in place (35e7cdc). Full smoke test after P1-4 vendor disambiguation is done.
 - [ ] coupleIdentity.js exists and is called from src/index.js at all three step entry points
 - [ ] Same bride messaging two vendors → single couples row confirmed via Supabase
 - [ ] Silent onboarding nudge fires after 3+ exchanges, never twice
-- [ ] Sonnet routing active on both vendor couple-agent and bride agent
 - [ ] Version bumped to 0.10.0-alpha, docs updated, committed and pushed
 
 ---
@@ -771,7 +772,7 @@ Rendered in the same bride PWA Surprise Me tab.
 | 0020 | drop_task_priority.sql | B3 | ✅ Applied | Drops priority column from couple_tasks |
 | 0021 | couple_receipts_label.sql | B3 | ✅ Applied | couple_receipts.label column |
 | 0022 | task_event_merge.sql | B3 | ✅ Applied | Copies couple_tasks → events (kind=reminder). couple_tasks retired. |
-| 0023 | circle_cleanup.sql | P1-1 | ⏳ Pending | expires_at on circle_members, summary_message_id FK, circle_sessions unique partial index |
+| 0023 | circle_cleanup.sql | P1-1 | ✅ Applied 2026-05-17 | expires_at on circle_members, summary_message_id FK, circle_sessions unique partial index, structured exceptions on invite/claim functions |
 | 0024a | vendor_profile.sql | P2 | ⏳ Pending | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios bucket |
 | 0024b | discover.sql | P3 | ⏳ Pending | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
 

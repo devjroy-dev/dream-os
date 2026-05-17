@@ -639,58 +639,56 @@ architectural gap across both tracks. No code was written in the planning portio
 
 ---
 
-## Current state — bride WhatsApp (src/brideIndex.js) at 0.9.0-alpha
+## Current state — bride WhatsApp (src/brideIndex.js) — P1-3 complete (HEAD: 35e7cdc)
 
 **Working:**
 - Phone-gated onboarding. BFF voice. IST date aware.
 - Muse: image + link saves. Google Vision tagging. Cloudinary mirror.
-- Image classifier: Vision routes to receipt or Muse.
-- Circle: 3-member cap, tokens, BFF-voice summaries.
-- Circle members can see Muse ✅ (fixed B3)
+- Image classifier: Vision routes to receipt or Muse. Phone-tested ✅
+- Receipt list + image playback. Phone-tested ✅
+- Circle: 3-member cap, CIRCLE-XXXXXX tokens (7-day expiry from migration 0023).
+- Circle daily image cap: 5/day ✅ Circle daily text cap: 5/day ✅
+- Circle session summary: fires after 10-min idle. Injected as fake assistant message (35e7cdc) — guaranteed delivery. Pipeline phone-tested ✅
 - Planner: events as universal calendar entry.
 - Bookings: commitment tracking. record_payment() SQL function.
 - Receipts: vault-only. "Got it, filed away."
-- Smart model routing: Haiku/Sonnet active ✅ (confirmed by CC)
-- image_playback_queued non-cumulative ✅
-- Circle inbound logged earlier ✅
+- Surprise Me: built. Trigger: "surprise me". ⚠️ PENDING PHONE TEST — Google billing verification pending.
+- factual_search tool: built. ⚠️ PENDING PHONE TEST — same Google billing block. Graceful fallback active.
+- Morning nudge cron: built. src/brideCron.js + src/agent/brideNudge.js. ⚠️ PENDING — first fire tomorrow 8am IST.
+- Smart model routing: Haiku/Sonnet active ✅
 - Prompt caching: active.
 
 **Pending (Phase 1):**
-- Circle invite wa.me link: BROKEN IN PRODUCTION. Circle unusable. Fix P1-1.
-- Receipt classifier: never phone-tested. Verify P1-2 before Surprise Me.
-- Receipt list + image playback: never phone-tested. Verify P1-2.
-- Surprise Me: not built. P1-2.
-- factual_search tool (Gemini): not built. P1-3.
-- Morning nudge cron: not built. P1-3.
-- list_dues tool: not built. P1-3.
-- Twilio template dream_wedding_morning_nudge: not submitted. P1-3.
+- Surprise Me + factual_search: blocked on Google billing verification. Retest once cleared.
+- Morning nudge: first fire tomorrow 8am IST.
+- Twilio templates: DEFERRED. Both submitted together in P1-4 session.
 - coupleIdentity.js: not written. P1-4.
 - Silent onboarding nudge: not built. P1-4.
-- Migration 0023: not applied. P1-1.
-- B2 audit M2, M5: not fixed. P1-1.
+- Circle summary full smoke test: DEFERRED to after P1-4 vendor disambiguation.
 
 ---
 
-## Phase 1 sessions (next up, in order)
+## Phase 1 sessions (status)
 
-**P1-1 — Migration 0023 + Circle invite bug fix**
-Fix the broken circle invite wa.me link. Apply migration 0023 (circle cleanup).
-Fix B2 audit M2 (race condition) and M5 (brittle exception handling).
-Phone-test full circle flow end-to-end on two phones.
+**P1-1 — Migration 0023 + Circle fixes ✅ DONE**
+Migration 0023 applied. M2, M5, I4 shipped. Circle invite phone-tested on two phones.
 
-**P1-2 — Receipt classifier phone-test + Surprise Me**
-Phone-test receipt classifier, list_receipts, image playback FIRST (no new code until verified).
-Then build Surprise Me: /surprise command → reads muse_saves.aesthetic_tags → Gemini → BFF reply.
+**P1-2 — Receipt classifier + Surprise Me ✅ CODE DONE, partial phone test**
+Receipt classifier, list_receipts, image playback phone-tested ✅
+Surprise Me built. Pending full phone test (Google billing block).
 
-**P1-3 — factual_search tool + Morning nudge (both sides)**
-factual_search tool in brideTools.js (Gemini retrieval, Haiku voice).
-list_dues tool. Morning nudge cron (8am IST). Both Twilio templates submitted.
+**P1-3 — factual_search + Morning nudge ✅ CODE DONE, pending verification**
+factual_search tool built. Pending full phone test (Google billing block).
+Morning nudge cron built. Pending first fire (tomorrow 8am IST).
+Twilio templates deferred — submit both together in P1-4 session.
 
-**P1-4 — coupleIdentity.js + disambiguation fix**
+**P1-4 — coupleIdentity.js + disambiguation fix (NEXT SESSION)**
 Write src/lib/coupleIdentity.js: ensureCoupleRow(phone) + captureField(couple_id, field, value).
 Wire into src/index.js at Step A, B, C entry points.
 Silent onboarding nudge after 3+ exchanges.
+Submit both Twilio templates at start of session.
 Smoke test: same bride messages two vendors → single couples row confirmed.
+After P1-4: circle summary full smoke test.
 
 ---
 
@@ -741,7 +739,7 @@ Only after all 10 agenda items are decided does Phase 2 code begin.
 | 0020 | drop_task_priority.sql | ✅ Applied | Drops priority from couple_tasks |
 | 0021 | couple_receipts_label.sql | ✅ Applied | couple_receipts.label column |
 | 0022 | task_event_merge.sql | ✅ Applied | Tasks → events migration. couple_tasks retired. |
-| 0023 | circle_cleanup.sql | ⏳ Phase 1 P1-1 | expires_at tokens, summary_message_id FK, circle_sessions index |
+| 0023 | circle_cleanup.sql | ✅ Applied 2026-05-17 | expires_at on circle_members, summary_message_id FK, unique partial index (M2), structured exceptions |
 | 0024a | vendor_profile.sql | ⏳ Phase 2 | aesthetic_tags, rate_min/max, vendor_portfolio table |
 | 0024b | discover.sql | ⏳ Phase 3 | couple_vendor_connections, discover_readiness, discover_eligible |
 
