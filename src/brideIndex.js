@@ -733,16 +733,30 @@ async function handleCircleMemberMessage({
       .select()
       .single();
     if (sessionErr) {
-      // CC audit fix: do NOT silently continue with sessionId=null — that creates
-      // orphaned circle_activity rows with session_id=null which surfacePendingCircleSessions
-      // will never find, so the bride never gets a summary.
-      // However a hard abort loses the image save entirely. Compromise: log loudly at ERROR
-      // level and continue with sessionId=null so the save still lands in muse_saves,
-      // but the Railway log will show the exact failure for diagnosis.
-      // The root cause (constraint violation, RLS, trigger error) must be fixed
-      // in the DB, not papered over here.
-      console.error('[circle-handler] circle_sessions insert FAILED — session_id will be null, bride summary will NOT fire for this save. Fix the DB constraint. Error:', sessionErr);
-      sessionId = null;
+      // Migration 0023 added a unique partial index on (circle_member_id) WHERE
+      // summarized_to_bride = false. Under concurrent webhook delivery, a second
+      // handler may race past the aliveSession check and hit a 23505 unique violation.
+      // That means another handler already opened the session — re-fetch and use it.
+      if (sessionErr.code === '23505') {
+        console.warn('[circle-handler] circle_sessions insert raced (23505) — re-fetching existing open session');
+        const { data: racedSession } = await supabase
+          .from('circle_sessions')
+          .select('id, last_activity_at')
+          .eq('circle_member_id', circleMember.id)
+          .eq('summarized_to_bride', false)
+          .order('last_activity_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        sessionId = racedSession ? racedSession.id : null;
+        if (!sessionId) {
+          console.error('[circle-handler] race re-fetch returned nothing — session_id will be null');
+        }
+      } else {
+        // Any other error: log loudly and continue with null so the muse save still
+        // lands, but the Railway log will show the failure for diagnosis.
+        console.error('[circle-handler] circle_sessions insert FAILED — session_id will be null, bride summary will NOT fire for this save. Error:', sessionErr);
+        sessionId = null;
+      }
     } else {
       sessionId = newSession.id;
     }

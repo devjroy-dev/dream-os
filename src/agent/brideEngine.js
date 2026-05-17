@@ -1709,10 +1709,10 @@ async function execInviteToCircle({ input, couple, supabase }) {
   });
 
   if (error) {
-    // Postgres exceptions from the function come through here with a
-    // 'message' attribute. Surface the specific cap message distinctly so
-    // the agent can compose a helpful reply.
-    if (error.message && error.message.includes('circle_member_limit_reached')) {
+    // Migration 0023 upgraded invite_circle_member() to raise structured exceptions
+    // using ERRCODE = 'P0001' and HINT = '<machine_token>'. Match on code + hint,
+    // not on message text (which is human-readable and may change).
+    if (error.code === 'P0001' && error.hint === 'circle_member_limit_reached') {
       return {
         ok: false,
         error: 'circle_member_limit_reached',
