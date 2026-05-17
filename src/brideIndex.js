@@ -723,7 +723,15 @@ async function handleCircleMemberMessage({
       .select()
       .single();
     if (sessionErr) {
-      console.error('[circle-handler] circle_sessions insert failed:', sessionErr);
+      // CC audit fix: do NOT silently continue with sessionId=null — that creates
+      // orphaned circle_activity rows with session_id=null which surfacePendingCircleSessions
+      // will never find, so the bride never gets a summary.
+      // However a hard abort loses the image save entirely. Compromise: log loudly at ERROR
+      // level and continue with sessionId=null so the save still lands in muse_saves,
+      // but the Railway log will show the exact failure for diagnosis.
+      // The root cause (constraint violation, RLS, trigger error) must be fixed
+      // in the DB, not papered over here.
+      console.error('[circle-handler] circle_sessions insert FAILED — session_id will be null, bride summary will NOT fire for this save. Fix the DB constraint. Error:', sessionErr);
       sessionId = null;
     } else {
       sessionId = newSession.id;
@@ -856,6 +864,8 @@ async function handleCircleMemberMessage({
     conversation,
     inboundMessage: inboundForEngine,
     mediaContext:   mediaContextNote,
+    couple:      { id: circleMember.couple_id, user_id: brideRow?.user_id ?? null },
+    circleUser:  { id: user.id },
     supabase,
     anthropic,
   });

@@ -1791,6 +1791,9 @@ async function execListCircle({ input, couple, supabase }) {
 async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) {
   const cutoffIso = new Date(Date.now() - SESSION_IDLE_MS).toISOString();
 
+  // Issue 5 fix: log every invocation so Railway logs show whether this ran.
+  console.log(`[bride-surface-circle] checking couple ${couple_id}, session idle cutoff: ${cutoffIso}`);
+
   const { data: sessions, error } = await supabase
     .from('circle_sessions')
     .select('id, circle_member_id, started_at, last_activity_at')
@@ -1805,6 +1808,8 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
   }
 
   if (!sessions || sessions.length === 0) {
+    // Issue 5 fix: was a silent return null — now logged so we can confirm in Railway.
+    console.log(`[bride-surface-circle] 0 pending sessions found for couple ${couple_id}`);
     return null;
   }
 
@@ -2031,4 +2036,4 @@ function formatNoteContent(field, coercedValue, originalValue) {
   }
 }
 
-module.exports = { runBrideAgenticTurn };
+module.exports = { runBrideAgenticTurn, executeBrideTool };

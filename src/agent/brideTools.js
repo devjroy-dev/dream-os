@@ -112,7 +112,7 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'list_tasks',
-    description: 'Look up the bride\'s tasks. Use when she asks "what\'s on my list", "what do I need to do this week", "what\'s pending", "show me my done tasks", "anything overdue". Returns task rows with id, title, status, due_date, event_name, notes — sorted by due_date ascending (overdue and soonest first), tasks without a due_date at the bottom. Use the returned data to compose a natural reply. To act on a specific task (complete/update/delete) you MUST first resolve its id via this tool; do not invent ids.',
+    description: 'DEPRECATED — do not call. All tasks and to-do items are now stored as events. Use list_events instead for any query about tasks, reminders, to-do list, pending items, or schedule.',
     input_schema: {
       type: 'object',
       properties: {
@@ -139,7 +139,7 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'complete_task',
-    description: 'Mark a task as done. Use when she says "done with X", "finished the venue call", "tick off the hotel booking". The task_id must be resolved first via list_tasks if she referenced the task by name — do not invent ids. If multiple tasks match her reference and you are unsure which one, ask her before calling this tool.',
+    description: 'DEPRECATED — do not call. Use update_event with state="done" instead.',
     input_schema: {
       type: 'object',
       properties: {
@@ -153,7 +153,7 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'update_task',
-    description: 'Change something about an existing task — its title, due date, event_name, or notes. Use when she says "move that venue call to Tuesday", "actually rename that one to...", "remove the deadline on the florist task". Pass only the fields she wants changed. The task_id must be resolved first via list_tasks if she referenced the task by name.',
+    description: 'DEPRECATED — do not call. Use update_event instead.',
     input_schema: {
       type: 'object',
       properties: {
@@ -183,7 +183,7 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'delete_task',
-    description: 'Permanently remove a task. Use when she clearly asks to delete one — "drop that venue task", "remove the hotel booking from my list". Destructive and not recoverable. The task_id must be resolved first via list_tasks. If she referenced the task by name and there is any ambiguity (multiple matches, vague reference), confirm with her before calling this tool.',
+    description: 'DEPRECATED — do not call. Use delete_event instead.',
     input_schema: {
       type: 'object',
       properties: {
@@ -229,7 +229,7 @@ const BRIDE_TOOLS = [
   },
   {
     name: 'update_event',
-    description: 'Change something about an existing event — its title, date, time, kind, notes, or state. Use when she says "move the trial to Sunday", "rename that to Anvaya trial", "actually it\'s a fitting not a trial", "cancel the venue recce". Pass only the fields she wants changed. The event_id must be resolved first via list_events if she referenced the event by name. event_date cannot be cleared (events must have a date) — only changed.',
+    description: 'Change something about an existing event — its title, date, time, kind, notes, or state. Use when she says "move the trial to Sunday", "rename that to Anvaya trial", "actually it\'s a fitting not a trial", "cancel the venue recce". Pass only the fields she wants changed. The event_id must be resolved first via list_events if she referenced the event by name. event_date cannot be cleared (events must have a date) — only changed. After a successful update, if the bride asks to see her current calendar in the same reply, call list_events immediately — the UPCOMING EVENTS block in your context reflects the state before this update ran, not after.',
     input_schema: {
       type: 'object',
       properties: {

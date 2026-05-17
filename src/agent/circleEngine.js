@@ -21,9 +21,18 @@
 
 const { STATIC_SYSTEM_PROMPT, buildDynamicCircleContext } = require('./circleSystemPrompt');
 const { MODEL_HAIKU, calculateCost } = require('./models');
+const { BRIDE_TOOLS } = require('./brideTools');
+const { executeBrideTool } = require('./brideEngine');
+
+// Circle members get a narrow tool surface: list_muse (read board) and
+// delete_muse_save (their own saves only — enforced in executeBrideTool
+// via saved_by_user_id check). All other tools are bride-only.
+const CIRCLE_TOOL_NAMES = new Set(['list_muse', 'delete_muse_save']);
+const CIRCLE_TOOLS = BRIDE_TOOLS.filter(t => CIRCLE_TOOL_NAMES.has(t.name));
 
 const HISTORY_LIMIT      = 6;
-const CIRCLE_MAX_TOKENS  = 200;
+const CIRCLE_MAX_TOKENS  = 400;  // raised slightly to allow tool + reply
+const CIRCLE_MAX_ITERS   = 3;    // list_muse → delete_muse_save → final reply needs 3
 const ANTHROPIC_TIMEOUT  = 8000;
 
 async function runCircleAgenticTurn({
@@ -33,24 +42,21 @@ async function runCircleAgenticTurn({
   conversation,
   inboundMessage,
   mediaContext = null,
+  couple,       // { id, user_id } — bride's couple; couple_id scopes muse queries
+  circleUser,   // { id }          — circle member's user row; for permission checks
   supabase,
   anthropic,
 }) {
-  // Build dynamic context (member name, role, bride name, daily cap state)
   let dynamicContext = buildDynamicCircleContext({
     circleMember,
     brideName,
     imageSavesToday,
   });
 
-  // Prepend media auto-save context if one just happened.
-  // Same pattern as brideEngine: the system note tells the agent what
-  // happened so it can reply naturally.
   if (mediaContext && typeof mediaContext === 'string' && mediaContext.trim()) {
     dynamicContext = `${mediaContext.trim()}\n\n${dynamicContext}`;
   }
 
-  // Load short conversation history from this circle thread.
   const { data: recentMessages, error: histErr } = await supabase
     .from('messages')
     .select('direction, body, sent_by, created_at')
@@ -70,7 +76,6 @@ async function runCircleAgenticTurn({
       role: m.direction === 'inbound' ? 'user' : 'assistant',
       content: m.body,
     }))
-    // Drop the just-logged inbound if it's the last history item
     .filter((m, i, arr) => !(i === arr.length - 1 && m.role === 'user' && m.content === inboundMessage));
 
   const messages = [
@@ -78,65 +83,109 @@ async function runCircleAgenticTurn({
     { role: 'user', content: inboundMessage },
   ];
 
-  // ── Single Haiku call (no loop, no tools) ────────────────────────
+  // ── Mini tool loop (max CIRCLE_MAX_ITERS) ────────────────────────────
+  // Circle members get list_muse + delete_muse_save only.
+  // Permission enforcement for delete is inside executeBrideTool.
   console.log(`[circle-agent] model: ${MODEL_HAIKU} (member: ${circleMember?.invitee_name || 'unknown'})`);
 
-  let response;
-  try {
-    response = await anthropic.messages.create({
-      model:      MODEL_HAIKU,
-      max_tokens: CIRCLE_MAX_TOKENS,
-      system: [
-        {
-          type: 'text',
-          text: STATIC_SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },  // 1-hour cache — shared across all circle members
-        },
-        {
-          type: 'text',
-          text: dynamicContext,
-        },
-      ],
-      // No tools array — circle agent has no tools in B2.
-      messages,
-    }, { timeout: ANTHROPIC_TIMEOUT });
-  } catch (err) {
-    console.error('[circle-agent] anthropic call failed:', err.message);
-    // Soft fallback: send a warm minimal reply so the member isn't ghosted.
-    return {
-      reply:        'Got it. Thanks.',
-      toolCalls:    [],
-      iterations:   0,
-      model:        MODEL_HAIKU,
-      inputTokens:  0,
-      outputTokens: 0,
-      costUsd:      null,
-      costInr:      null,
-      mediaUrls:    [],
-    };
+  const mediaUrlsToReturn = [];
+  let finalReply = null;
+  let totalInputTokens  = 0;
+  let totalOutputTokens = 0;
+  let iterations = 0;
+
+  while (iterations < CIRCLE_MAX_ITERS && finalReply === null) {
+    iterations++;
+
+    let response;
+    try {
+      response = await anthropic.messages.create({
+        model:      MODEL_HAIKU,
+        max_tokens: CIRCLE_MAX_TOKENS,
+        tools:      CIRCLE_TOOLS,
+        system: [
+          {
+            type: 'text',
+            text: STATIC_SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' },
+          },
+          {
+            type: 'text',
+            text: dynamicContext,
+          },
+        ],
+        messages,
+      }, { timeout: ANTHROPIC_TIMEOUT });
+    } catch (err) {
+      console.error('[circle-agent] anthropic call failed:', err.message);
+      return {
+        reply:        'Got it. Thanks.',
+        toolCalls:    [],
+        iterations,
+        model:        MODEL_HAIKU,
+        inputTokens:  totalInputTokens,
+        outputTokens: totalOutputTokens,
+        costUsd:      null,
+        costInr:      null,
+        mediaUrls:    [],
+      };
+    }
+
+    totalInputTokens  += response.usage?.input_tokens  || 0;
+    totalOutputTokens += response.usage?.output_tokens || 0;
+    console.log(`[circle-agent] iter ${iterations} stop_reason: ${response.stop_reason}`);
+
+    if (response.stop_reason === 'tool_use') {
+      const toolUseBlock = response.content.find(b => b.type === 'tool_use');
+
+      if (!toolUseBlock || !CIRCLE_TOOL_NAMES.has(toolUseBlock.name)) {
+        // Hallucinated tool outside the narrow circle surface — end turn
+        const textBefore = response.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+        finalReply = textBefore || 'Got it.';
+        break;
+      }
+
+      const toolResult = await executeBrideTool({
+        name:             toolUseBlock.name,
+        input:            toolUseBlock.input || {},
+        couple:           { id: couple.id, user_id: couple.user_id },
+        user:             circleUser,
+        supabase,
+        mediaUrlsToReturn,
+      });
+
+      messages.push({ role: 'assistant', content: response.content });
+      messages.push({
+        role: 'user',
+        content: [{
+          type:        'tool_result',
+          tool_use_id: toolUseBlock.id,
+          content:     JSON.stringify(toolResult),
+        }],
+      });
+
+    } else {
+      // end_turn — compose final reply
+      const textBlocks = response.content.filter(b => b.type === 'text');
+      finalReply = textBlocks.map(b => b.text).join('\n').trim() || 'Got it.';
+    }
   }
 
-  console.log(`[circle-agent] stop_reason: ${response.stop_reason}`);
+  if (finalReply === null) finalReply = 'Got it.';
 
-  // Compose reply from text blocks. No tool_use blocks expected (no tools).
-  const textBlocks = response.content.filter(b => b.type === 'text');
-  const finalReply = textBlocks.map(b => b.text).join('\n').trim() || 'Got it.';
-
-  const inputTokens  = response.usage?.input_tokens  || 0;
-  const outputTokens = response.usage?.output_tokens || 0;
-  const cost = calculateCost(MODEL_HAIKU, inputTokens, outputTokens);
-  console.log(`[circle-agent] tokens: ${inputTokens} in / ${outputTokens} out | cost: $${cost?.cost_usd ?? '?'} / Rs ${cost?.cost_inr ?? '?'}`);
+  const cost = calculateCost(MODEL_HAIKU, totalInputTokens, totalOutputTokens);
+  console.log(`[circle-agent] tokens: ${totalInputTokens} in / ${totalOutputTokens} out | cost: $${cost?.cost_usd ?? '?'} / Rs ${cost?.cost_inr ?? '?'}`);
 
   return {
     reply:        finalReply,
     toolCalls:    [],
-    iterations:   1,
+    iterations,
     model:        MODEL_HAIKU,
-    inputTokens,
-    outputTokens,
+    inputTokens:  totalInputTokens,
+    outputTokens: totalOutputTokens,
     costUsd:      cost?.cost_usd ?? null,
     costInr:      cost?.cost_inr ?? null,
-    mediaUrls:    [],
+    mediaUrls:    mediaUrlsToReturn,
   };
 }
 
