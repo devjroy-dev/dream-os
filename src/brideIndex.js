@@ -27,7 +27,7 @@ const ws           = require('ws');
 const twilio       = require('twilio');
 const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
-const { runBrideAgenticTurn }  = require('./agent/brideEngine');
+const { runBrideAgenticTurn, surfacePendingCircleSessions } = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
 const { DAILY_CAP_IMAGES, DAILY_CAP_TEXTS } = require('./agent/circleSystemPrompt');
 const { sendWhatsApp }   = require('./lib/whatsapp');
@@ -518,6 +518,32 @@ app.post('/webhook/whatsapp', async (req, res) => {
     // Short-circuits the normal engine. Handled entirely here — no agent turn.
     if (trimmedBody.toLowerCase().trim() === 'surprise me') {
       console.log(`[bride-webhook] surprise me from couple ${couple.id}`);
+
+      // Surface any pending circle session summaries first — same as the normal
+      // engine path. /surprise bypasses runBrideAgenticTurn so we call this here
+      // explicitly to ensure the bride doesn't miss circle activity.
+      const circleSummary = await surfacePendingCircleSessions({
+        couple_id: couple.id,
+        supabase,
+        anthropic,
+      });
+      if (circleSummary && circleSummary.trim()) {
+        let circleMsg = null;
+        try {
+          circleMsg = await sendWhatsApp(phone, circleSummary.trim());
+        } catch (e) {
+          console.error('[bride-webhook] /surprise circle summary send error:', e);
+        }
+        await supabase.from('messages').insert({
+          conversation_id: conversation.id,
+          direction:       'outbound',
+          channel:         'whatsapp',
+          body:            circleSummary.trim(),
+          sent_by:         'agent',
+          twilio_sid:      circleMsg?.sid ?? null,
+        });
+      }
+
       const surpriseReply = await handleSurpriseMe({ couple, supabase });
 
       let twilioSurprise = null;

@@ -9,13 +9,13 @@
 // PATTERN: Gemini retrieves + Anthropic (Haiku/Sonnet) composes the reply.
 // This file handles the retrieval step only — returns structured results.
 //
-// MODEL LOCK: gemini-3.1-flash-lite (retrieval-only, not main agent model)
+// MODEL LOCK: gemini-2.0-flash-lite (retrieval-only, not main agent model)
 // API KEY: GOOGLE_API_KEY env var in Railway (added Session 8.2)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { GoogleGenAI } = require('@google/genai');
 
-const GEMINI_MODEL = 'gemini-3.1-flash-lite';
+const GEMINI_MODEL = 'gemini-2.0-flash-lite';
 
 // ── groundedSearch ────────────────────────────────────────────────────────────
 // query        : string  — the search query

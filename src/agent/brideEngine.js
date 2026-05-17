@@ -2037,4 +2037,4 @@ function formatNoteContent(field, coercedValue, originalValue) {
   }
 }
 
-module.exports = { runBrideAgenticTurn, executeBrideTool };
+module.exports = { runBrideAgenticTurn, executeBrideTool, surfacePendingCircleSessions };
