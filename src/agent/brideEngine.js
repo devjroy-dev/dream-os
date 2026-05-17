@@ -1848,6 +1848,44 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
       const summary = await summarizeOneSession({ session, supabase, anthropic });
 
       if (summary) {
+        // Pre-persist the summary to messages before returning to the caller so
+        // the text survives a Twilio send failure or a crash in the caller path.
+        try {
+          const { data: convRow } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('couple_id', couple_id)
+            .eq('kind', 'couple_self')
+            .maybeSingle();
+
+          if (convRow?.id) {
+            const { data: msgRow, error: msgErr } = await supabase
+              .from('messages')
+              .insert({
+                conversation_id: convRow.id,
+                direction:       'outbound',
+                channel:         'whatsapp',
+                body:            summary,
+                sent_by:         'agent',
+              })
+              .select('id')
+              .single();
+
+            if (msgErr) {
+              console.error(`[bride-surface-circle] message pre-insert failed for session ${session.id}:`, msgErr.message);
+            } else if (msgRow?.id) {
+              await supabase
+                .from('circle_sessions')
+                .update({ summary_message_id: msgRow.id })
+                .eq('id', session.id);
+            }
+          } else {
+            console.error(`[bride-surface-circle] couple_self conversation not found for couple ${couple_id} — skipping message pre-insert`);
+          }
+        } catch (preInsertErr) {
+          console.error(`[bride-surface-circle] message pre-insert threw for session ${session.id}:`, preInsertErr.message);
+        }
+
         summaryLines.push(`${summary}\n[session_id: ${session.id}]`);
       } else {
         // H2 fix: summarize returned null (activity lookup failed or empty).
