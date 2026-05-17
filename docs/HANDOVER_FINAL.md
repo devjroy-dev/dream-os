@@ -1,8 +1,8 @@
 # dream-os — Master Handover (The Bridge Document)
-**Written:** 2026-05-17
-**Session:** Replanning session + CC fixes
-**Version:** 0.9.0-alpha
-**HEAD:** a2314d6
+**Written:** 2026-05-17 (P1-4 + hotfix session)
+**Session:** P1-4 complete + hotfix shipped + P1-5 queued
+**Version:** 0.9.0-alpha (bumps to 0.10.0-alpha at end of P1-5)
+**HEAD:** 95fb303
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Repo:** https://github.com/devjroy-dev/dream-os
 
@@ -603,7 +603,7 @@ architectural gap across both tracks. No code was written in the planning portio
 
 ---
 
-## Current state — vendor WhatsApp (src/index.js) at 0.9.0-alpha
+## Current state — vendor WhatsApp (src/index.js) at 0.9.0-alpha (HEAD: 95fb303)
 
 **Working:**
 - Full onboarding (name, category, city, rate). 16 categories. Smart detection.
@@ -611,9 +611,14 @@ architectural gap across both tracks. No code was written in the planning portio
 - Three-mode couple routing. TDW code always wins over thread history.
 - Fuzzy TDW match (Levenshtein ≤2).
 - Sticky disambiguation: 30-min window.
-- Returning-bride detection: per-vendor.
+- Returning-bride detection: per-vendor. **Now requires name on lead (P1-5 hotfix)** —
+  skeleton leads without names no longer flip isReturningBride. Fresh-phone
+  brides correctly get full PA onboarding.
 - Returning-bride notification: ...XXXX fallback when name null ✅
 - Couple-facing agent: Haiku + Sonnet routing now active ✅
+- coupleIdentity.js (P1-4): ensureCoupleRow creates users + couples +
+  couple_state silently on first contact. captureField mirrors lead fields
+  (wedding_date, wedding_city, budget_total) into couples row.
 - All tools working: note_to_self, create_lead, list_leads, update_lead_state,
   respond_to_vendor, create_event, list_events, update_event_state,
   update_routing_handle, get_my_tdw_link, create_invoice, list_invoices,
@@ -625,10 +630,25 @@ architectural gap across both tracks. No code was written in the planning portio
 - Admin: vendor list, invite, vendor detail, leads, clients, money, messages.
 - Admin delete: password confirmation required ✅
 
-**Pending (Phase 1):**
-- coupleIdentity.js: not written. The disambiguation fix. Phase 1 Session P1-4.
+**Phone-tested today (2026-05-17):**
+- TDW first contact from Malaysian number +60122687535 → full PA greeting fired
+- Onboarding flow: occasion → date/city → budget → name → capture_couple_lead → close
+- Lead row created cleanly: name="Testing best session", date=2026-10-13,
+  city=Delhi, budget_min=1000000, event_types=["wedding"]
+- couples row created silently: wedding_date, wedding_city, budget_total mirrored
+- Vendor notifications delivered (Twilio session window open)
+
+**Pending (P1-5, blocking 0.10.0-alpha):**
+- Bug #1: returning-bride agent re-calls capture_couple_lead. Code-level guard.
+- Bug #3: conversations.counterparty_user_id not populated on Step A/B inserts.
+- Bug #4: bare-handle messages caught by sticky route to wrong vendor.
+
+**Pending (post-P1-5 or later):**
 - Twilio template dream_os_morning_briefing: NEVER SUBMITTED for +917982159047.
-  Submit immediately — approval 1-7 days. Blocks morning briefing for inactive vendors.
+  Approval 1-7 days. Blocks morning briefing for inactive vendors.
+- Same bride messaging two vendors → single couples row: NOT YET SMOKE-TESTED
+  (only one vendor in DB at P1-4 test time). To validate during P1-5 or
+  immediately after a second real vendor is onboarded.
 
 **Known pre-existing gaps (low priority, not blocking):**
 - Twilio status callback race condition (pre-existing since Session 5.5)
@@ -639,7 +659,7 @@ architectural gap across both tracks. No code was written in the planning portio
 
 ---
 
-## Current state — bride WhatsApp (src/brideIndex.js) — P1-3 complete (HEAD: 35e7cdc)
+## Current state — bride WhatsApp (src/brideIndex.js) — P1-3 complete, P1-5 fix queued (HEAD: 95fb303)
 
 **Working:**
 - Phone-gated onboarding. BFF voice. IST date aware.
@@ -648,23 +668,26 @@ architectural gap across both tracks. No code was written in the planning portio
 - Receipt list + image playback. Phone-tested ✅
 - Circle: 3-member cap, CIRCLE-XXXXXX tokens (7-day expiry from migration 0023).
 - Circle daily image cap: 5/day ✅ Circle daily text cap: 5/day ✅
-- Circle session summary: fires after 10-min idle. Injected as fake assistant message (35e7cdc) — guaranteed delivery. Pipeline phone-tested ✅
+- Circle session summary: WRITE works (DB row created after 10-min idle). **DELIVERY broken** —
+  summary never reaches bride via WhatsApp. P1-5 Bug #2. Two failure modes possible:
+  (a) summary not injected into messages array passed to Haiku
+  (b) Haiku ignoring the mandatory injection rule
 - Planner: events as universal calendar entry.
 - Bookings: commitment tracking. record_payment() SQL function.
 - Receipts: vault-only. "Got it, filed away."
 - Surprise Me: built. Trigger: "surprise me". ⚠️ PENDING PHONE TEST — Google billing verification pending.
 - factual_search tool: built. ⚠️ PENDING PHONE TEST — same Google billing block. Graceful fallback active.
-- Morning nudge cron: built. src/brideCron.js + src/agent/brideNudge.js. ⚠️ PENDING — first fire tomorrow 8am IST.
+- Morning nudge cron: built. src/brideCron.js + src/agent/brideNudge.js. ⚠️ PENDING — first fire next morning.
 - Smart model routing: Haiku/Sonnet active ✅
 - Prompt caching: active.
 
-**Pending (Phase 1):**
+**Pending (P1-5, blocking 0.10.0-alpha):**
+- Bug #2: Circle summary delivery to bride — diagnostic-first session, brand-critical.
+
+**Pending (post-P1-5 or later):**
 - Surprise Me + factual_search: blocked on Google billing verification. Retest once cleared.
-- Morning nudge: first fire tomorrow 8am IST.
-- Twilio templates: DEFERRED. Both submitted together in P1-4 session.
-- coupleIdentity.js: not written. P1-4.
-- Silent onboarding nudge: not built. P1-4.
-- Circle summary full smoke test: DEFERRED to after P1-4 vendor disambiguation.
+- Morning nudge: first fire verification.
+- Twilio template dream_wedding_morning_nudge: deferred to later session.
 
 ---
 
@@ -679,16 +702,61 @@ Surprise Me built. Pending full phone test (Google billing block).
 
 **P1-3 — factual_search + Morning nudge ✅ CODE DONE, pending verification**
 factual_search tool built. Pending full phone test (Google billing block).
-Morning nudge cron built. Pending first fire (tomorrow 8am IST).
-Twilio templates deferred — submit both together in P1-4 session.
+Morning nudge cron built. Pending first fire.
+Twilio templates deferred — submit both together at a later session.
 
-**P1-4 — coupleIdentity.js + disambiguation fix (NEXT SESSION)**
-Write src/lib/coupleIdentity.js: ensureCoupleRow(phone) + captureField(couple_id, field, value).
-Wire into src/index.js at Step A, B, C entry points.
-Silent onboarding nudge after 3+ exchanges.
-Submit both Twilio templates at start of session.
-Smoke test: same bride messages two vendors → single couples row confirmed.
-After P1-4: circle summary full smoke test.
+**P1-4 — coupleIdentity.js + disambiguation fix ✅ DONE (commit a98d6b0)**
+Wrote src/lib/coupleIdentity.js: ensureCoupleRow(supabase, phone, name) +
+captureField(supabase, couple_id, field, value). Wired into src/index.js at
+single call site (line 181, top of if (!vendor) block — covers Steps A, A.5,
+B, B.5, C). captureField called from inside capture_couple_lead handler in
+engine.js — mirrors wedding_date, wedding_city, budget_total into couples.
+Silent onboarding nudge block added then REMOVED in hotfix (see below).
+XOR preserved — no couple_id stamped on couple_thread conversations rows.
+
+**P1-4 hotfix — restore couple-agent onboarding tone + remove nudge ✅ DONE (commit 95fb303)**
+During P1-4 phone smoke test, discovered fresh-phone bride received curt
+"Hi! What's on your mind?" instead of full PA onboarding greeting. Root cause:
+Step B in src/index.js pre-inserts a skeleton leads row (name=null) before
+runCoupleAgenticTurn fires. The agent then queries the leads table and finds
+the just-inserted row, flipping isReturningBride=true. This bug was
+introduced in Session 8.5 commit 4ea1105 ("returning-bride detection in
+couple agent") and went latent for 2 days until a fresh phone hit the TDW
+flow today. Note: Case 15 in the frozen HANDOVER.md disambiguation inventory
+correctly identified this bug as Bug #3 in Session 8.5a, but the fix
+(commit d9c52b3) addressed only the vendor notification surface (last-4-digits
+fallback string), not the underlying isReturningBride logic.
+
+Hotfix: src/agent/engine.js line 261 — `const isReturningBride = !!existingLeadForCouple?.name;`
+(optional chaining + name check). Skeleton lead with name=null no longer
+flips returning. Phone-smoke-tested on Malaysian number +60122687535 — full
+PA onboarding fired, agent walked through occasion → date/city → budget →
+name → capture_couple_lead → close. Lead row populated correctly. couples
+row created silently via ensureCoupleRow.
+
+Also in same hotfix: removed silent onboarding nudge block per founder
+directive (lines 489-538 of engine.js deleted). nudge_sent_at column and
+infrastructure remain in place (no schema change) if ever re-enabled. P1-4's
+ensureCoupleRow and captureField are intact.
+
+**P1-5 — Bug cleanup before Phase 1 close (NEXT SESSION)**
+Four bugs surfaced during P1-4 smoke testing. Phase 1 cannot ship to
+0.10.0-alpha until these are fixed. No new features in P1-5 — bug fixes only.
+
+1. Returning-bride agent re-calls capture_couple_lead despite system prompt
+   forbidding it. Code-level guard in engine.js. Pre-existing since 8.5.
+2. Circle summary writes to DB but never delivers to bride via WhatsApp.
+   Brand-critical for bride track. Diagnostic-first session.
+3. conversations.counterparty_user_id not populated by Step A/B inserts.
+   Cascading deletes leave orphans. One-line fix in src/index.js.
+4. Bare-handle messages caught by sticky route to wrong vendor (e.g.
+   "Swati978" without TDW- prefix when bride is sticky on Dev). Sticky
+   should fuzzy-match against ALL handles before catching.
+
+See ROADMAP_FINAL.md P1-5 section for full spec.
+
+After P1-5: version bumps to 0.10.0-alpha, Phase 1 closes, Phase 2 PWA-0
+planning session begins.
 
 ---
 

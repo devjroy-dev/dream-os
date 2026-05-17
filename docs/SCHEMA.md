@@ -1,9 +1,17 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-17
-**Session:** P1-1 — COMPLETE (2026-05-17)
+**Last updated:** 2026-05-17 (P1-4 + hotfix session)
+**Session:** P1-4 + hotfix complete; P1-5 queued (no migrations needed in P1-4, P1-5)
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Latest migration applied:** 0023_circle_cleanup.sql
 **Next migration:** 0024a_vendor_profile.sql (Phase 2)
+
+**Note (2026-05-17):** P1-4 added no migrations. coupleIdentity.js uses
+existing schema only — users, couples (with nudge_sent_at from 0013),
+couple_state (from 0013), conversations (with XOR from 0014, user_id
+unique from 0015). The P1-4 hotfix (commit 95fb303) also added no
+migrations — single-line code change to engine.js + nudge block removal.
+P1-5 will not require migrations either; all four queued bug fixes are
+code-only.
 
 ## Migration history
 | File | Date | Session | What it added |

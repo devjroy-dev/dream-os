@@ -242,7 +242,7 @@ Full schema documented in SCHEMA.md.
 | Anthropic credit-low warning | Agent fails silently if credits run out. Alert needed. |
 | Founding cohort pricing model | Free forever vs free for X months. Founder decision when relevant. |
 | Paid tier definition for Surprise Me | What triggers Sonnet routing for Surprise Me? Razorpay integration? Founder decision. |
-| Two-sided vendor funnel | Bride adds external vendor phone → Twilio template sent → relay back → vendor gets nudge. Architecture TBD. New conversation kind needed: vendor_relay. Twilio template approval needed. |
+| Two-sided vendor funnel (targeted) | Relay infrastructure for bride-initiated outreach to external vendors. Premium-signal-gated invitations only — gated on bride budget + saved-vendor category mix. No mass nudging. Net-a-Porter brand discipline: scarcity is the product. Design pending real bride data post-launch. New conversation kind needed: vendor_relay. Twilio template approval needed. |
 
 ---
 
@@ -417,6 +417,74 @@ Smoke tests:
 
 No migration needed. coupleIdentity.js uses existing schema.
 
+**Session P1-5 — Bug cleanup before Phase 1 close**
+
+Phase 1 cannot ship to 0.10.0-alpha until four bugs surfaced during P1-4 smoke
+testing are fixed. P1-5 is dedicated to these only — no new features, no scope
+additions.
+
+Bugs to fix (in priority order):
+
+1. **Returning-bride agent re-calls capture_couple_lead despite system prompt
+   forbidding it.** Cosmetic, wastes tokens, leads.upsert idempotency prevents
+   data corruption. Surfaced today (2026-05-17) when bride sent multiple
+   messages after lead capture and Haiku re-fired capture_couple_lead three
+   times. System prompt at coupleSystemPrompt.js line 41 explicitly forbids
+   it. Fix: code-level guard in engine.js capture_couple_lead handler — if
+   isReturningBride && existingLead, skip the upsert. Pre-existing since
+   Session 8.5 (4ea1105).
+
+2. **Circle summary writes to DB but never delivers to bride via WhatsApp.**
+   Brand-critical for bride track. Two failure modes possible:
+   (a) summary not injected into messages array passed to Haiku
+   (b) Haiku ignoring the injection despite mandatory prompt instruction
+   Diagnostic-first session: trace one failure end-to-end via Railway logs
+   before proposing fix. Likely files to inspect: src/brideEngine.js (the
+   surface-circle call site), src/agent/circleEngine.js (summary write
+   logic), src/agent/brideSystemPrompt.js (injection rule). Pre-existing
+   since circle injection fix attempt (commit 35e7cdc).
+
+3. **conversations.counterparty_user_id not populated by Step B (and Step A)
+   when creating couple_thread rows.** Conversations rows linked to brides
+   only by phone string, not by FK. Side effects: cascading deletes leave
+   orphan conversations, future features traversing user → couples via the
+   conversation row return NULL. P1-4's architectural unlock partially blocked
+   by this. Surfaced today when cleaning up test data on Malaysian number
+   required separate DELETEs because cascade did not fire. Fix: add
+   counterparty_user_id: user.id to conversations.insert at src/index.js
+   line ~246 (Step A new-thread insert) and line ~411 (Step B new-thread
+   insert). XOR holds — vendor_id is owner, user_id is a participant pointer.
+   Pre-existing since Session 5.
+
+4. **Bare-handle messages caught by sticky route to wrong vendor.** When a
+   bride sticky-routed to one vendor sends a different vendor's handle
+   without TDW- prefix (e.g. "Swati978"), sticky catches it before Step B.5
+   fuzzy match runs, and the message routes to the sticky vendor's thread.
+   The agent then treats it as something said TO the sticky vendor. Step B.5
+   only fuzzy-matches against vendors the bride has already messaged, so a
+   new-vendor handle attempt without prefix is invisible. Fix: when sticky
+   is about to grab a message, first check if message looks like a handle
+   attempt (3-12 chars alphanumeric, single word, not a known stop-word).
+   If yes, fuzzy-match against ALL vendor handles (not just thread-history
+   vendors). Exactly one match within Levenshtein distance 2 → "Did you mean
+   TDW-XXX?" 0 or 2+ matches → fall through to sticky as today. Pre-existing
+   since Session 8.5.
+
+No migrations. No schema changes. No new files.
+
+Reference: today's smoke test of P1-4 confirmed the hotfix worked (commit
+95fb303 — isReturningBride=!!existingLeadForCouple?.name + nudge block removal).
+PA onboarding tone restored. Lead captured cleanly for Malaysian test bride
++60122687535. Bugs 1-4 surfaced during that same smoke test.
+
+Done criteria for P1-5:
+- All four bugs fixed and phone-tested
+- Audit pass: chat + CC cross-reference like P1-4
+- No regression to P1-4 capabilities (tone, lead capture, couples row creation
+  via ensureCoupleRow, captureField silent mirroring)
+- Then and only then: version bump to 0.10.0-alpha, Phase 1 closes,
+  Phase 2 PWA-0 planning session begins
+
 ### Phase 1 — migration summary
 | Migration | Session | What it adds |
 |---|---|---|
@@ -428,15 +496,21 @@ No migration needed. coupleIdentity.js uses existing schema.
 - [x] Circle invite works end-to-end on a real phone
 - [x] Receipt classifier verified on a real receipt photo
 - [x] Sonnet routing active on both vendor couple-agent and bride agent
+- [x] coupleIdentity.js exists and is called from src/index.js (P1-4, commit a98d6b0)
+- [x] First-contact bride receives full PA onboarding tone (P1-5 hotfix, commit 95fb303)
+- [x] Lead captured with full data on completion of onboarding flow (smoke tested 2026-05-17)
+- [x] couples row created silently on first bride contact (smoke tested 2026-05-17)
+- [x] captureField mirrors wedding_date, wedding_city, budget_total into couples (smoke tested 2026-05-17)
 - [ ] Surprise Me returns results for a bride with 3+ Muse saves ⚠️ BLOCKED — Google billing verification pending (submitted 2026-05-17). Retest once cleared.
 - [ ] factual_search returns Gemini-grounded results for a market question ⚠️ BLOCKED — same Google billing block. Graceful fallback active.
-- [ ] Morning nudge fires correctly for a test bride at 8am IST ⚠️ PENDING — first fire tomorrow 8am IST. Cron registered in Railway logs.
-- [ ] Vendor morning briefing template submitted to Twilio ⚠️ DEFERRED — submit both Twilio templates together (dream_os_morning_briefing + dream_wedding_morning_nudge) in P1-4 session.
-- [ ] Circle session summary smoke test ⚠️ DEFERRED — injection fix in place (35e7cdc). Full smoke test after P1-4 vendor disambiguation is done.
-- [ ] coupleIdentity.js exists and is called from src/index.js at all three step entry points
-- [ ] Same bride messaging two vendors → single couples row confirmed via Supabase
-- [ ] Silent onboarding nudge fires after 3+ exchanges, never twice
-- [ ] Version bumped to 0.10.0-alpha, docs updated, committed and pushed
+- [ ] Morning nudge fires correctly for a test bride at 8am IST ⚠️ PENDING — first fire next morning. Cron registered in Railway logs.
+- [ ] Twilio templates submitted (dream_os_morning_briefing + dream_wedding_morning_nudge) ⚠️ DEFERRED to P1-5 or later — approval takes 1-7 days
+- [ ] Circle session summary smoke test ⚠️ BLOCKED — Bug #2 in P1-5 (summary writes to DB but never reaches bride)
+- [ ] Bug #1 P1-5 fixed — returning-bride agent no longer re-calls capture_couple_lead
+- [ ] Bug #3 P1-5 fixed — conversations.counterparty_user_id populated on Step A and Step B inserts
+- [ ] Bug #4 P1-5 fixed — bare-handle messages globally fuzzy-matched before sticky catches them
+- [ ] Same bride messaging two vendors → single couples row confirmed via Supabase (deferred from P1-4 — only one vendor in DB at test time)
+- [ ] Version bumped to 0.10.0-alpha, docs updated, committed and pushed (at end of P1-5)
 
 ---
 
@@ -845,7 +919,7 @@ Session not complete until ROADMAP_FINAL.md, HANDOVER.md, and SCHEMA.md are comm
 | Instagram DM integration | Vendor connects IG Business. DMs auto-route to WhatsApp thread. Meta App Review 2-4 weeks. | When vendor Instagram outreach becomes a priority |
 | Bride classifier tuning | Bride-specific COMPLEX/SIMPLE examples. Separate brideClassifier.js. | After 4 weeks of real founding-cohort bride data |
 | Lead → client promotion disambiguation | Conversational disambiguation for phone-only ambiguous cases | When clients table grows |
-| Two-sided vendor funnel | Bride adds external vendor phone → Twilio template → relay → vendor nudge. Architecture TBD. | When external vendor acquisition becomes a priority |
+| Two-sided vendor funnel (targeted) | Relay infrastructure for bride-initiated outreach to external vendors. Premium-signal-gated invitations only — gated on bride budget + saved-vendor category mix. No mass nudging. Net-a-Porter brand discipline: scarcity is the product. Design pending real bride data post-launch. | After 1.0.0 + post-launch cohort data |
 | Twilio status callback race condition | Pre-existing since Session 5.5. Low impact. | When it causes a real user complaint |
 | Anthropic credit-low warning | Agent fails silently if credits run out | Before scaling to 100+ users |
 | Railway region move | EU West → Mumbai | Must happen at Phase 3 start before Discover traffic |
