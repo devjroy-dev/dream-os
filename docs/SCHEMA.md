@@ -1,9 +1,9 @@
 # dream-os — Schema Reference (Vendor + Bride)
 **Last updated:** 2026-05-16
-**Session:** B3 in progress (migration 0019 applied; tool work next)
+**Session:** B3 — COMPLETE (2026-05-17)
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0019_bride_planner.sql
-**Next migration:** 0020_circle_cleanup.sql (B3.1 — pending, post-B3)
+**Latest migration applied:** 0022_task_event_merge.sql
+**Next migration:** 0023_circle_cleanup.sql (B3.1 — pending)
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -27,6 +27,9 @@
 | **0017_circle_sessions.sql** | **2026-05-16** | **B2** | **circle_sessions table, circle_activity.session_id FK column + two indexes** |
 | **0018_fix_muse_saves_fk.sql** | **2026-05-16** | **B2 hotfix** | **muse_saves.saved_by_user_id FK changed from ON DELETE RESTRICT to ON DELETE CASCADE (unblocked admin "Delete couple" cascade). File backfilled to repo after direct SQL Editor application.** |
 | **0019_bride_planner.sql** | **2026-05-16** | **B3** | **couple_tasks table, couple_bookings table, couple_receipts table (with booking_id FK), record_payment() Postgres function (transactional, single source of truth for booking state), 9 indexes, updated_at triggers on tasks/bookings, 3 realtime publications.** |
+| **0020_drop_priority.sql** | **2026-05-17** | **B3** | **Drops priority column from couple_tasks. due_date is the urgency signal.** |
+| **0021_couple_receipts_label.sql** | **2026-05-17** | **B3** | **Adds label (text, nullable) column to couple_receipts. Index on (couple_id, label).** |
+| **0022_task_event_merge.sql** | **2026-05-17** | **B3** | **Copies all couple_tasks rows into events (kind=reminder, pending→upcoming, due_date null→today IST). Empties couple_tasks. Table stays in schema, retired in place.** |
 
 ## Tables
 
@@ -458,9 +461,9 @@ Undated or due-dated to-dos. Distinct from events (events are anchored to a cale
 | couple_id | uuid | FK couples(id) ON DELETE CASCADE, NOT NULL |
 | title | text | NOT NULL |
 | status | text | CHECK: pending / done. Default 'pending'. |
-| priority | text | CHECK: high / medium / low. Default 'medium'. |
+| ~~priority~~ | ~~text~~ | **Dropped in migration 0020.** Column removed. |
 | due_date | date | Nullable |
-| event_name | text | Free-text label e.g. "engagement" or "wedding". Optional. |
+| event_name | text | Free-text label e.g. "engagement" or "wedding". Optional. Not migrated to events (no equivalent column). Context preserved in title/notes. |
 | notes | text | |
 | created_at | timestamptz | Auto |
 | updated_at | timestamptz | Auto via trigger |
@@ -511,7 +514,8 @@ The receipt vault. Every spend the bride captures, whether linked to a booking o
 | vendor_name | text | Nullable. |
 | description | text | |
 | receipt_date | date | Nullable. |
-| image_url | text | Cloudinary URL for receipt photo. Nullable — text-only payment events have no image. |
+| image_url | text | Cloudinary URL for receipt photo. NOT NULL — receipts are image-only in B3 (vault design). Google Vision classifier routes Twilio image forwards here. |
+| label | text | Nullable. Added in migration 0021. Reserved for future use — NOT written by the agent in B3. Bride labels receipts via PWA at Sessions 11-12. |
 | tags | text[] | NOT NULL default ARRAY[]::text[]. Free-form tags. |
 | created_at | timestamptz | Auto |
 
@@ -548,9 +552,12 @@ Bride migrations continue the vendor sequence. No separate numbering. One migrat
 | ~~0016_muse_and_circle.sql~~ | B2 | ✅ Applied 2026-05-16 |
 | ~~0017_circle_sessions.sql~~ | B2 | ✅ Applied 2026-05-16 |
 | ~~0018_fix_muse_saves_fk.sql~~ | B2 hotfix | ✅ Applied 2026-05-16 (post-B2 SQL Editor; backfilled to repo) |
-| ~~0019_bride_planner.sql~~ | B3 | ✅ Applied 2026-05-16 (couple_tasks, couple_bookings, couple_receipts, record_payment() function) |
-| 0020_circle_cleanup.sql | B3.1 (post-B3 cleanup) | 7-day expiry on pending circle invite tokens, summary_message_id FK to messages(id) ON DELETE SET NULL, circle_sessions unique partial index (M2 fix from B2 audit) |
-| 0021_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
+| ~~0019_bride_planner.sql~~ | B3 | ✅ Applied 2026-05-16 |
+| ~~0020_drop_priority.sql~~ | B3 | ✅ Applied 2026-05-17 |
+| ~~0021_couple_receipts_label.sql~~ | B3 | ✅ Applied 2026-05-17 |
+| ~~0022_task_event_merge.sql~~ | B3 | ✅ Applied 2026-05-17 |
+| 0023_circle_cleanup.sql | B3.1 | 7-day expiry on pending circle invite tokens, summary_message_id FK, circle_sessions unique partial index (M2 fix from B2 audit) |
+| 0024_vendor_connections.sql | B4 | couple_vendor_connections table, vendors.aesthetic_tags, discover_readiness |
 
 Full schema for each table documented here when the migration is applied. See ROADMAP_BRIDE.md for field-level detail on B2+ migrations.
 

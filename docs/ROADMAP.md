@@ -220,6 +220,14 @@ Vendor-specific:
 
 ---
 
+## B-session vendor fires log
+
+| Session | Fire | Status |
+|---|---|---|
+| B3 (2026-05-17) | None — vendor side stable throughout B3. | — |
+
+---
+
 ## Open questions
 
 1. +91 number — applied, arriving soon. Triggers Session 6.5 the moment it lands.

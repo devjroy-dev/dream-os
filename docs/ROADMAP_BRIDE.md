@@ -1,7 +1,7 @@
 # dream-os — Bride & Couple Roadmap
 **Last updated:** 2026-05-16
-**Current session:** B3 in progress (B3.1 follows B3 — order corrected from B2 close)
-**Status:** B1 + B2 shipped. B3 (planner: tasks + bookings + receipts + event tools) in progress → B3.1 (cleanup + circle invite link bug fix) → B4 → Session 9.
+**Current session:** B3 — COMPLETE (2026-05-17)
+**Status:** B1 + B2 + B3 shipped. Next: B3.1 (Muse landing page + bug fixes) → B4.1a → B4 → Session 9.
 **Latest bride product version:** 0.8.5a.2-b2
 
 ---
@@ -215,7 +215,7 @@ Every bride feature mirrors a vendor pattern. We adapt, not reinvent.
 | note_to_self tool | note_to_self tool | Identical pattern. |
 | save_wedding_detail tool | Onboarding field updates | Bride version of updating profile fields mid-conversation. |
 | add_event / list_events | events table | Reuse events table scoped by couple_id (B3 migration adds couple_id column). |
-| create_task / list_tasks / complete_task | (no vendor equivalent) | Personal organization, not business ops. |
+| ~~create_task / list_tasks / complete_task~~ | ~~(no vendor equivalent)~~ | **Deprecated B3.** All tasks merged into events (kind=reminder). Everything is a calendar entry. |
 | save_receipt / list_receipts | log_expense (similar shape, different intent) | Bride is record-keeping, not budget-tracking. |
 | shortlist_vendor tool | create_lead tool | Bride saves a vendor. Generates a lead on vendor side simultaneously. |
 | list_my_vendors tool | list_leads tool | Bride sees her shortlisted vendors. |
@@ -384,9 +384,11 @@ Architectural changes from original spec:
 - Mom tries to delete bride's save via API → 403 (permission enforced)
 
 
-### B3 — Planner: tasks + event tools + bookings + receipts (single session, ~3.5-4 hours including smoke tests)
+### B3 — Planner: tasks + event tools + bookings + receipts ✅ COMPLETE (2026-05-17)
 
-**Goal:** Bride has complete planning substrate. Tasks, schedule (events fully tooled), receipts, and per-vendor commitment tracking (Bookings). Morning nudge live.
+**Version:** 0.8.5a.3-b3 | **HEAD:** 2e7009c
+
+**Goal:** Bride has complete planning substrate. Schedule (events fully tooled), bookings, receipts, image classifier. Tasks merged into events.
 
 **Scope correction from B2 close:** B3 grew from "tasks + receipts" to "tasks + event tools + bookings + receipts" after the B3-planning discussion. Two corrections:
 
@@ -466,18 +468,33 @@ Architectural changes from original spec:
 - Content: days-to-wedding count + top priority task + any events today + dues within next 14 days
 - Sent as service message if 24h window open; utility template if closed
 
-**Twilio template submission:** Moved from start of B3 to **end of B3, after smoke testing the morning nudge content** (decision in B3 planning). Submit `dream_wedding_morning_nudge` once nudge content is finalized — approval takes 1-7 days, but a re-submission cycle costs more than a 1-7 day wait at the end.
+**Morning nudge + Twilio template:** Deferred to B4.1c (new sub-session). Decision made at B3 close 2026-05-17.
 
-**B3 build order (one thing at a time, smoke-test after each):**
-1. Migration 0019 (tasks + bookings + receipts + record_payment function)
-2. Task tools (5) — smoke-test
-3. Event tools (3 new) — smoke-test (using existing test bride's `add_event` flow as the validation harness)
-4. Booking tools (5) — smoke-test
-5. Image router refactor — Haiku-as-classifier. Smoke-test that existing Muse images still route correctly
-6. Receipt tools + 3-branch linkage flow (4 tools) — smoke-test all three branches with the test bride
-7. Morning nudge cron (8am IST) — smoke-test (manual trigger first, then verify cron schedule)
-8. Twilio template submission (now that nudge content is known)
-9. Docs + close (HANDOVER_BRIDE.md rewrite, SCHEMA.md update, this roadmap update, ROADMAP.md vendor-fires log)
+**B3 what actually shipped (vs spec):**
+1. Migration 0019 (tasks + bookings + receipts + record_payment) ✅
+2. Migration 0020 (drop priority column) ✅
+3. Migration 0021 (couple_receipts.label column) ✅
+4. Migration 0022 (task→event merge, couple_tasks retired) ✅
+5. Task tools (5) — built, then deprecated at B3 close ✅
+6. Event tools (list/update/delete) ✅
+7. Booking tools (add/list/update/delete/record_payment) ✅
+8. Google Vision image classifier (imageOCRRouter.js) — NOT Haiku-as-classifier (spec changed) ✅
+9. Receipt tools (save/list/delete) — vault-only, no label/amount/OCR asked ✅
+10. Phone test fixes: date injection, task/event routing, circle Muse access, circle summary, stale data ✅
+11. CC Audit 3 (5 findings fixed) ✅
+12. Docs close ✅
+
+**Deliberately dropped from B3 spec:**
+- Receipt 3-branch OCR linkage flow — replaced with vault-only design (no label, no amount, just file it)
+- list_dues tool — deferred to B4.1c alongside morning nudge
+- Morning nudge cron — deferred to B4.1c
+- Twilio template submission — deferred to B4.1c
+
+**⚠️ NOT YET PHONE-TESTED:**
+- Receipt image classifier (forwarding a receipt photo → "Got it, filed away")
+- Receipt list + image playback via WhatsApp
+- Google Vision DOCUMENT_TEXT_DETECTION receipt routing end-to-end
+These passed unit/integration smoke tests but have NOT been verified on a real phone with real receipt images. Must test at B3.1 start before any B3.1 code work.
 
 **Smoke test surfaces:**
 - create_task("call venue Monday", due_date "monday") → list_tasks shows it correctly → complete_task → status updated → delete_task → gone
@@ -496,11 +513,11 @@ Architectural changes from original spec:
 - Morning nudge: manual trigger for test bride → composes correct content with days-to-wedding + top task + today's events + 14-day dues
 - delete_booking → confirms before deleting → linked receipts preserved as standalone
 
-### B3.1 — Cleanup + circle invite link bug fix (post-B3, ~90 min)
+### B3.1 — Muse landing page + bug fixes (post-B3)
 
-**B3.1 was incorrectly documented at B2 close as a prerequisite to B3. Corrected at B3 start: B3.1 follows B3.** B3.1 is the dedicated cleanup session for B2 deferred items + a known production bug + admin polish + a small migration.
+**Scope change (2026-05-17):** B3.1 primary deliverable is now the Muse landing page at thedreamwedding.in/muse. Bug fixes are secondary. Architecture for the landing page to be discussed at B3.1 planning session.
 
-**Goal:** Close out B2 deferred audit items, fix the broken circle invite link, close known admin/schema gaps. Not a feature session — entirely cleanup.
+**Goal:** Ship thedreamwedding.in/muse — each bride gets a unique public Muse board URL. Architecture TBD at B3.1 planning (URL structure, auth model, what circle members see vs public). Then close B2 deferred items.
 
 **Smoke tests:**
 - End-to-end circle flow: bride invites Mom → Mom claims CIRCLE-XXXXXX token → Mom forwards image → session closes (10 min idle) → bride messages → summary preamble appears → bride says "yeah" → images sent back
@@ -525,6 +542,18 @@ Architectural changes from original spec:
 - summary_message_id FK to messages(id) ON DELETE SET NULL
 - circle_sessions unique partial index (M2 fix)
 
+
+### B4.1c — Morning nudge + Twilio template (~90 min)
+
+**Deferred from B3 (2026-05-17).** Morning nudge cron + list_dues tool + Twilio template submission.
+
+- list_dues(within_days?) tool — feeds the nudge content
+- Morning nudge cron (8am IST): days-to-wedding + today's events + dues within 14 days
+- Twilio template submission (dream_wedding_morning_nudge)
+- Template approval takes 1-7 days — submit at B4.1c start, build the cron while waiting
+- Proactive circle summary: if bride active in last 24h (WhatsApp session open) + circle session closed → send immediately as free-form message (no template needed)
+
+---
 
 ### B4 — Vendor connections + Surprise Me + silent onboarding (2 sessions, ~180 min total)
 
