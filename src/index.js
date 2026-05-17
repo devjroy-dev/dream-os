@@ -261,6 +261,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
               const { data: newThread } = await supabase.from('conversations').insert({
                 vendor_id: interp.matched_vendor_id,
                 counterparty_phone: phone,
+                counterparty_user_id: user.id,
                 kind: 'couple_thread',
                 state: 'new',
                 mode: 'auto',
@@ -431,6 +432,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
             .insert({
               vendor_id: matchedByTdw.id,
               counterparty_phone: phone,
+              counterparty_user_id: user.id,
               kind: 'couple_thread',
               state: 'new',
               mode: 'auto',

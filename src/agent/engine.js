@@ -341,6 +341,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     for (const toolUse of toolUseBlocks) {
 
       if (toolUse.name === 'capture_couple_lead') {
+        if (isReturningBride && existingLeadForCouple?.id) {
+          toolCallsAudit.push({ name: 'capture_couple_lead', input: toolUse.input, result: 'Lead already captured — skipped.' });
+          toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: 'Lead already captured for this couple.' });
+          continue;
+        }
+
         const input = toolUse.input;
 
         // Parse date safely
