@@ -513,10 +513,11 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversation.id);
 
-    // ── /surprise command intercept ─────────────────────────────────
+    // ── Surprise Me intercept ────────────────────────────────────────
+    // Triggered when the bride says "surprise me" (case-insensitive, trimmed).
     // Short-circuits the normal engine. Handled entirely here — no agent turn.
-    if (trimmedBody.toLowerCase() === '/surprise') {
-      console.log(`[bride-webhook] /surprise command from couple ${couple.id}`);
+    if (trimmedBody.toLowerCase().trim() === 'surprise me') {
+      console.log(`[bride-webhook] surprise me from couple ${couple.id}`);
       const surpriseReply = await handleSurpriseMe({ couple, supabase });
 
       let twilioSurprise = null;
