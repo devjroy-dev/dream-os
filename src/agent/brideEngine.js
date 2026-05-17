@@ -1909,7 +1909,7 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
 
   return [
     '[SYSTEM NOTE — circle activity summary]',
-    'One or more of the bride\'s circle members were active on her board since she was last here. Weave this into your reply naturally as a preamble before answering whatever the bride just said. Include the link "thedreamwedding.in/muse" and offer "or should I just send them here?" — if she says yes in her next message, you should call list_muse with the session_id (shown in the summary blocks) and request_image_playback=true.',
+    'MANDATORY — circle update: One or more of the bride\'s circle members were active on her board since she was last here. Your reply MUST lead with this update before anything else — before greeting her, before answering her question. Do not skip it. Do not bury it. Open with a natural varied phrase such as "Before anything —", "Oh by the way —", "Before I forget —", "Quick update —", or "You\'ve got a circle update —". Then give the summary in BFF voice. Then answer whatever she just said in the same message. Include the link "thedreamwedding.in/muse" and offer to send the images directly — if she says yes, call list_muse with the session_id (shown in the summary blocks below) and request_image_playback=true.',
     '',
     ...summaryLines,
   ].join('\n');
