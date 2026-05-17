@@ -30,10 +30,6 @@
 | **0020_drop_priority.sql** | **2026-05-17** | **B3** | **Drops priority column from couple_tasks. due_date is the urgency signal.** |
 | **0021_couple_receipts_label.sql** | **2026-05-17** | **B3** | **Adds label (text, nullable) column to couple_receipts. Index on (couple_id, label).** |
 | **0022_task_event_merge.sql** | **2026-05-17** | **B3** | **Copies all couple_tasks rows into events (kind=reminder, pending→upcoming, due_date null→today IST). Empties couple_tasks. Table stays in schema, retired in place.** |
-| **0020_drop_priority.sql** | **2026-05-17** | **B3** | **Drops priority column from couple_tasks. due_date is the urgency signal.** |
-| **0021_couple_receipts_label.sql** | **2026-05-17** | **B3** | **Adds label (text, nullable) column to couple_receipts. Index on (couple_id, label).** |
-| **0022_task_event_merge.sql** | **2026-05-17** | **B3** | **Copies all couple_tasks rows into events (kind=reminder, pending→upcoming, due_date null→today IST). Empties couple_tasks. Table stays in schema, retired in place.** |
-
 ## Tables
 
 ### users
@@ -456,6 +452,8 @@ Indexes: (circle_member_id, last_activity_at DESC), (couple_id, last_activity_at
 These three tables form the bride's planner substrate: tasks (undated/due-dated to-dos), bookings (per-vendor commitment tracking), and receipts (the universal vault for any spend, optionally linked to a booking).
 
 ### couple_tasks
+**RETIRED IN PLACE (migration 0022).** Table is empty. All tasks have been migrated to the `events` table (kind=reminder, pending→upcoming, done→done). The 5 task tools in brideTools.js are marked DEPRECATED — do not call. Everything is now a calendar event.
+
 Undated or due-dated to-dos. Distinct from events (events are anchored to a calendar slot via `events.event_date NOT NULL`). Tasks have an optional `due_date` — "call venue Monday" gets a due_date, "research florists" doesn't.
 
 | Column | Type | Notes |
