@@ -1,6 +1,6 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-18 (P2-3 session)
-**Session:** P2-3 complete. Migrations 0028, 0031, 0032, 0033 applied. Last migration applied: 0033.
+**Last updated:** 2026-05-18 (P2-4 session)
+**Session:** P2-4 complete. No new migrations. Schema unchanged from P2-3. Last migration applied: 0033.
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Latest migration applied:** 0033_otp_sessions.sql (2026-05-18)
 **Next migration:** 0024_vendor_profile.sql (Phase 2 — pending)

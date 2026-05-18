@@ -282,3 +282,43 @@ in HANDOVER at that point.
 ---
 
 *End of P2-3 findings. Next session's findings appended below this line.*
+
+## P2-4 — 2026-05-18
+
+---
+
+### Finding #11 — RESOLVED
+
+**Original finding (P2-3):** verify-otp and pin-login endpoints did not issue Supabase Auth JWTs.
+supabase.auth.admin.createSession was called but does not exist in ^2.45.0.
+
+**Resolution (P2-4):**
+The correct pattern for this SDK version:
+1. admin.createUser({ id, email: internalEmail, email_confirm: true }) — idempotent user creation
+2. admin.updateUserById(id, { email, email_confirm: true }) — idempotent email pin for returning users
+3. admin.generateLink({ type: 'magiclink', email }) — returns hashed_token, no email dispatched
+4. auth.verifyOtp({ token_hash, type: 'email' }) — exchanges token for real JWT session
+
+Internal email format: vendor-{uuid}@internal.dreamai.app / couple-{uuid}@internal.dreamai.app
+Phone-tested 2026-05-18. JWT issued and verified against /api/v2/_test/whoami.
+
+**Status:** RESOLVED — 2026-05-18 commit 20c801b
+
+---
+
+### Finding #12 — Admin password source-code residue (dreamos-pwa public repo)
+
+**What:** Finding #1 from P2-2 noted Mira@2551354 hardcoded in 25 files of public dreamos-pwa repo.
+Admin password was rotated in Railway (P2-4 session). Source-code residue remains in dreamos-pwa.
+The 25 hardcoded references are now stale (do not match live password) but still exist in git history.
+
+**Severity:** 🟡 Medium. Stale value. No live security risk. Source cleanup still owed.
+
+**Action:** Delete all 25 hardcoded references in post-Phase 2 admin rebuild session.
+Rebuild admin pages with server-side auth — password lives only in Railway env var.
+
+**Status:** OPEN — cleanup deferred to post-Phase 2 admin session. Finding #1 updated to this status.
+
+---
+
+*End of P2-4 findings. Next session's findings appended below this line.*

@@ -513,7 +513,9 @@ dreamos-pwa live on Vercel. Founding cohort can be onboarded. dream-wedding Rail
 P2-1: WhatsApp agent lifts (vendor + bride). Backend only. Phone-tested. [DONE 2026-05-18]
 P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Coming Soon on post-launch screens. [DONE 2026-05-18]
 P2-3: Landing page infrastructure + full auth block. DB foundations, invite/waitlist/auth endpoints, admin mint. [DONE 2026-05-18]
-P2-4+: Endpoints one by one. Block 1 auth -> Block 2 vendor -> Block 3 bride -> Block 4 journey.
+P2-4: JWT issuance. Block 1 auth complete. Phone-tested. [DONE 2026-05-18]
+P2-5: Landing page build + wire 6 login screens to live endpoints. dreamos-pwa frontend session.
+P2-6+: Block 2 vendor core -> Block 3 bride core -> Block 4 journey.
 P2-final: Migrations 0024 + 0026 applied. dream-wedding retired. Version 0.11.0-alpha.
 
 ### WhatsApp surface — LOCKED
@@ -665,6 +667,7 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [x] Landing page session complete (waitlist flow decided + built) ✅ 2026-05-18
 - [x] Login/invite sequence built fresh (phone -> WhatsApp OTP -> PIN) ✅ 2026-05-18
 - [x] Block 1 auth endpoints live ✅ 2026-05-18
+- [x] Block 1 JWT issuance live ✅ 2026-05-18 (Finding #11 resolved)
 - [ ] Block 2 vendor core live — TODAY shows real data
 - [ ] Block 3 bride core live — bride PWA functional
 - [ ] Block 4 journey tools live
