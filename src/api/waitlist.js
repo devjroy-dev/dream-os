@@ -55,9 +55,8 @@ router.post('/signup', async (req, res) => {
   // Strip leading @ and trim whitespace. Store raw without @.
   // Mirrors vendors.instagram_handle (migration 0005).
   const cleanIg = (instagram_handle || '').trim().replace(/^@/, '');
-  if (!cleanIg) {
-    return res.status(400).json({ error: 'instagram_handle is required.' });
-  }
+  // instagram_handle optional
+  if (!cleanIg) { /* optional — skip */ }
 
   // ── 5. Insert ──────────────────────────────────────────────────────
   const { error } = await supabase
