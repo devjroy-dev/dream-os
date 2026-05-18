@@ -17,6 +17,7 @@
     "@google/genai": "^2.2.0",
     "@supabase/supabase-js": "^2.45.0",
     "cloudinary": "^2.10.0",
+    "cors": "^2.8.5",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.0",
     "node-cron": "^4.2.1",

@@ -3,6 +3,7 @@
 // Session 5.5: couple-facing agent on Mode 1 + Mode 2
 
 const express      = require('express');
+const cors         = require('cors');
 const ws           = require('ws');
 const twilio       = require('twilio');
 const cookieParser = require('cookie-parser');
@@ -29,6 +30,31 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const app = express();
 app.set('trust proxy', true);
+
+// CORS — allow PWA origins to call dream-os API endpoints.
+// Locked list: production domain + Vercel shell + local dev.
+// Add new origins here when new deploy targets are introduced.
+const ALLOWED_ORIGINS = [
+  'https://thedreamwedding.in',
+  'https://www.thedreamwedding.in',
+  'https://dreamos-pwa.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow server-to-server calls (no origin) and Vercel preview URLs
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Allow any dreamos-pwa Vercel preview URL
+    if (/^https:\/\/dreamos-pwa[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
+    cb(new Error('CORS: origin not allowed — ' + origin));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
