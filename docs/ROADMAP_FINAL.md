@@ -510,10 +510,11 @@ dreamos-pwa live on Vercel. Founding cohort can be onboarded. dream-wedding Rail
 
 ### Phase 2 — session sequence
 
-P2-1: WhatsApp agent lifts (vendor + bride). Backend only. Phone-tested.
-P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Most screens "Coming soon."
-P2-3+: Endpoints one by one. Block 1 auth -> Block 2 vendor -> Block 3 bride -> Block 4 journey.
-P2-final: Migrations 0024 + 0025 applied. dream-wedding retired. Version 0.11.0-alpha.
+P2-1: WhatsApp agent lifts (vendor + bride). Backend only. Phone-tested. [DONE 2026-05-18]
+P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Most screens "Coming soon." [NEXT]
+P2-3: Landing page session — decide waitlist flow, build landing, build login/invite fresh.
+P2-4+: Endpoints one by one. Block 1 auth -> Block 2 vendor -> Block 3 bride -> Block 4 journey.
+P2-final: Migrations 0024 + 0026 applied. dream-wedding retired. Version 0.11.0-alpha.
 
 ### WhatsApp surface — LOCKED
 
@@ -563,10 +564,12 @@ Vendor PWA — three-mode (LOCKED):
   AI: full screen chat no chrome
   DISCOVERY: Coming soon placeholder (Phase 3)
 
-Bride PWA — (LOCKED):
+Bride PWA — three-mode (LOCKED):
+  Pill: PLAN / ✦ / DISCOVER (gold ✦ = DreamAi full screen chat)
   PLAN: TODAY, PLAN, CIRCLE
+  ✦ mode: full screen DreamAi chat, no chrome
   DISCOVER: MUSE, FEED, MESSAGES
-  DreamAi FAB: floating button, slides up over any screen
+  No FAB. Consistent with vendor three-mode pattern.
 
 Coming soon pattern: "Coming soon - your data is safe with us." on any unbuilt screen.
 
@@ -610,10 +613,11 @@ Block 5: Retire dream-wedding Railway after all screens confirmed on dream-os.
 ### Phase 2 — migrations
 
 Migration naming convention changed: letter suffixes retired. Clean integers only.
-0024a -> 0024. 0024b -> 0026. New 0025 inserted.
+Convention: 0024a->0024, 0024b->0027, 0025=hot_dates(applied), 0026=invoices_last_payment_at.
 
 0024  vendor_profile.sql             Phase 2 start. aesthetic_tags, rate_min/max, vendor_portfolio, portfolios bucket.
-0025  invoices_last_payment_at.sql   Phase 2. invoices.last_payment_at timestamptz. Set by record_payment.
+0025  hot_dates.sql                  Phase 2. hot_dates table. Vivah Muhurat 2026/2027. APPLIED 2026-05-18.
+0026  invoices_last_payment_at.sql   Phase 2. invoices.last_payment_at timestamptz. Set by record_payment.
 
 ### Profile completion tab (vendor PWA)
 
@@ -621,15 +625,20 @@ Unchanged from previous spec. Write-enabled. Portfolio images, aesthetic tags, r
 This is the Discover data collection surface. Populates vendor data passively before Phase 3.
 
 ### Phase 2 — done criteria
-- [ ] Twilio templates submitted (both numbers)
-- [ ] Six vendor agent lifts phone-tested
-- [ ] Bride agent lifts phone-tested
+- [ ] Twilio templates submitted (both numbers) ⚠ still pending
+- [x] Six vendor agent lifts phone-tested ✅ 2026-05-18
+- [x] Bride agent lifts B1-B4 phone-tested ✅ 2026-05-18
+- [x] Migration 0025 hot_dates applied ✅ 2026-05-18
 - [ ] dreamos-pwa deployed to Vercel
+- [ ] Landing page session complete (waitlist flow decided + built)
+- [ ] Login/invite sequence built fresh (phone -> WhatsApp OTP -> PIN)
 - [ ] Block 1 auth endpoints live
 - [ ] Block 2 vendor core live — TODAY shows real data
-- [ ] Block 3 bride core live — Frost native + bride PWA functional
+- [ ] Block 3 bride core live — bride PWA functional
 - [ ] Block 4 journey tools live
-- [ ] Migrations 0024 and 0025 applied
+- [ ] New vendor tools built (update_event, delete_event, delete_lead, update_client, delete_client, cancel_invoice, update_expense, delete_expense, list_expenses)
+- [ ] Admin panel for hot_dates management live
+- [ ] Migrations 0024 and 0026 applied
 - [ ] dream-wedding Railway retired
 - [ ] Version 0.11.0-alpha, docs updated, committed and pushed
 
@@ -774,8 +783,9 @@ Rendered in the same bride PWA Surprise Me tab.
 | 0022 | task_event_merge.sql | B3 | ✅ Applied | Copies couple_tasks → events (kind=reminder). couple_tasks retired. |
 | 0023 | circle_cleanup.sql | P1-1 | ✅ Applied 2026-05-17 | expires_at on circle_members, summary_message_id FK, circle_sessions unique partial index, structured exceptions on invite/claim functions |
 | 0024 | vendor_profile.sql | P2 | ⏳ Pending | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios bucket |
-| 0025 | invoices_last_payment_at.sql | P2 | ⏳ Pending | invoices.last_payment_at timestamptz. Set by record_payment. |
-| 0026 | discover.sql | P3 | ⏳ Pending | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
+| 0025 | hot_dates.sql | P2 | ✅ Applied 2026-05-18 | hot_dates table. Vivah Muhurat dates 2026/2027. Seeded with 60+ dates. |
+| 0026 | invoices_last_payment_at.sql | P2 | ⏳ Pending | invoices.last_payment_at timestamptz. Set by record_payment. |
+| 0027 | discover.sql | P3 | ⏳ Pending | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
 
 ---
 
@@ -838,6 +848,7 @@ Session not complete until ROADMAP_FINAL.md, HANDOVER.md, and SCHEMA.md are comm
 |---|---|---|
 | Admin bulk CSV invite | Upload CSV of phone + name, system invites in bulk | When Swati onboards >10 vendors at once |
 | Tax / GST compliance | Invoice GST fields, TDS at payment, GST reporting. Scope TBD. | Founding cohort confirmed Rs 20L+ turnover |
+| Admin hot_dates panel | Add/edit/delete Vivah Muhurat dates without Supabase access. Phase 2 addition. | Build during P2 admin work |
 | Admin vendor list search + filter | Search by name, filter by status | When vendor list exceeds 20 |
 | Admin manual onboarding_state override | Push a stuck vendor past an onboarding step | When a vendor gets stuck in production |
 | Admin lead name-based state updates | update_lead_state by name, not UUID | When vendors start complaining about UUID requirement |

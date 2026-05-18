@@ -1,8 +1,8 @@
 # dream-os — Master Handover (The Bridge Document)
-**Written:** 2026-05-18 (PWA-0 session)
-**Session:** PWA-0 complete. Phase 2 architecture locked. No code this session.
-**Version:** 0.10.0-alpha (no bump — planning session only)
-**HEAD:** 2de8db9
+**Written:** 2026-05-18 (P2-1 session)
+**Session:** P2-1 complete. All AI lifts done and phone-tested. WhatsApp PA now matches DreamAI v3 quality.
+**Version:** 0.10.0-alpha (no bump — P2-1 is mid-Phase 2, no PWA live yet)
+**HEAD:** 7246696
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Repo backend:** https://github.com/devjroy-dev/dream-os
 **Repo frontend:** https://github.com/devjroy-dev/dreamos-pwa (created this session)
@@ -13,14 +13,33 @@ Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md.
 
 ## Phase 1 — complete (0.10.0-alpha)
 
-All sessions P1-1 through P1-5 done at HEAD 2de8db9.
+All sessions P1-1 through P1-5 done. PWA-0 planning session done. P2-1 done.
+See previous handovers for history. Not repeated here.
 See that commit's HANDOVER_FINAL.md for full Phase 1 session history. Not repeated here.
 
 ---
 
-## PWA-0 — 2026-05-18 (this session, planning only)
+## PWA-0 — 2026-05-18 (planning only, previous session)
 
-A full planning session. No code written. All Phase 2 architecture decisions locked below.
+All Phase 2 architecture decisions locked. See PWA-0 handover (commit 27833d6) for full decisions.
+
+---
+
+## P2-1 — 2026-05-18 (this session)
+
+All AI lifts completed and phone-tested. WhatsApp vendor PA and bride agent now match DreamAI v3 quality.
+Migration 0025 (hot_dates) applied to Supabase.
+
+### Commits this session (oldest to newest)
+- 5751a8b feat(agent): P2-1 lift 1 — baked snapshot system prompt
+- 5df85b3 feat(agent): P2-1 lift 2 — query_day tool
+- 8ecf037 feat(agent): P2-1 lift 3 — hot_dates_context tool + migration 0025
+- d39e526 feat(agent): P2-1 lifts 4-6 — draft-before-send, multi-option destructive, PWA link pattern
+- 903670a fix(agent): disambiguate client name before draft-before-send
+- 2650185 feat(bride): P2-1 bride lifts B1-B4
+- ab03ad2 fix(bride): always offer day-before reminder after trial/fitting/ceremony
+- 629a138 feat(agent): lift 3 remaining DreamAI v3 rules
+- 7246696 fix(agent): extend snapshot event window from 14 to 30 days
 
 ---
 
@@ -105,7 +124,26 @@ No apology. No error. A signal. Screens light up as endpoints are built.
 
 ---
 
-## DreamAI v3 lifts — Phase 2 first session
+## dreamos-pwa landing page — deferred session
+
+Landing page (thedreamwedding.in / thedreamai.in) is a dedicated session, NOT part of endpoint wiring.
+Before that session: discuss and decide waitlist flow (form vs WhatsApp redirect).
+No open access. Waitlist-gated. Locked.
+
+What to lift from tdw-2 landing page:
+- Full-bleed background slideshow with crossfade
+- Motto line and glass panel aesthetic
+- Dot selector, gold button, ghost button components
+- "Just Exploring" blind swipe experience
+- Public Discover feed (unauthenticated vendor browsing)
+
+What to build fresh:
+- Login/invite sequence (phone -> WhatsApp OTP -> PIN, not invite code flow)
+- Waitlist form design (TBD at landing page session)
+
+---
+
+## DreamAI v3 lifts — P2-1 (completed this session)
 
 Six lifts from dream-wedding vendor agent into dream-os. Backend only.
 Files: src/agent/systemPrompt.js, src/agent/tools.js, src/agent/engine.js.
@@ -119,11 +157,11 @@ Files: src/agent/systemPrompt.js, src/agent/tools.js, src/agent/engine.js.
 
 After these six, WhatsApp PA achieves tdw-2 PWA chat quality on WhatsApp.
 
-Bride agent lifts (same session alongside vendor):
-- Confirm cards before mutations (system prompt instruction)
-- Follow-up prompts after AI replies
-- Contact vendor drafting
-- Clarify pattern for disambiguation
+Bride agent lifts (same session alongside vendor). All phone-tested:
+- B1: Confirm before mutations — "Just to confirm — recording Rs 50k against Sabya. Yes?"
+- B2: Follow-up after completing — offer one natural next step. Trial/fitting/ceremony always gets day-before reminder offer.
+- B3: Contact vendor drafting — drafts forwadable WhatsApp message, does not send itself.
+- B4: Clarify before acting — one question when genuinely ambiguous (e.g. second trial detected).
 
 ---
 
@@ -193,11 +231,14 @@ ActionCard pattern, Just Do It toggle, suggestion chips, streaming responses.
 ## Migration decisions this session
 
 Convention change: letter suffixes dropped. Clean integers only.
-0024a -> 0024. 0024b -> 0026. New 0025 inserted.
 
-0024  vendor_profile.sql             Phase 2 start
-0025  invoices_last_payment_at.sql   Phase 2 (invoices.last_payment_at timestamptz)
-0026  discover.sql                   Phase 3
+0024  vendor_profile.sql             Phase 2 start (pending)
+0025  hot_dates.sql                  Phase 2 — APPLIED 2026-05-18
+0026  invoices_last_payment_at.sql   Phase 2 (pending)
+0027  discover.sql                   Phase 3 (pending)
+
+Admin panel for hot_dates management (add/edit/delete Muhurat dates) — Phase 2 addition.
+Swati/Dev can update without touching Supabase directly.
 
 ---
 
@@ -209,6 +250,8 @@ Tax / GST tools               Post-launch. Trigger: cohort confirmed Rs 20L+ tur
 React Native new build        Post-launch. Frost native connects to dream-os endpoints.
 Monorepo                      Two repos. Separate deploy targets.
 dream-wedding backend         Retire. Never touch again.
+Landing page login/invite      Build fresh. phone -> WhatsApp OTP -> PIN. Not lifted from tdw-2.
+Landing page waitlist form     TBD at landing page session. No open access. Locked.
 
 ---
 
@@ -226,11 +269,14 @@ All Phase 1 tools working. Morning briefing 8am IST. Prompt caching 91%.
 Full list in previous handover (HEAD 2de8db9).
 
 Pending (carried from Phase 1):
-⚠ Twilio template dream_os_morning_briefing: NEVER SUBMITTED +917982159047. Submit now.
-⚠ Twilio template dream_wedding_morning_nudge: NEVER SUBMITTED +14787788550. Submit now.
+⚠ Twilio templates: NEVER SUBMITTED. Both numbers. Submit immediately.
+  dream_os_morning_briefing on +917982159047
+  dream_wedding_morning_nudge on +14787788550
 ⚠ Surprise Me: pending phone test (Google billing block).
 ⚠ factual_search: pending phone test (same block).
 ⚠ Morning nudge first fire: pending next 8am IST.
+⚠ New vendor tools (update_event, delete_event, delete_lead etc): defined in roadmap, NOT YET BUILT in code.
+  Phase 2 scope — build alongside PWA endpoint work.
 
 ---
 

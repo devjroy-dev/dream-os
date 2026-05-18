@@ -1,19 +1,21 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-18 (PWA-0 session)
-**Session:** PWA-0 complete. Phase 2 architecture locked. No migration changes this session.
+**Last updated:** 2026-05-18 (P2-1 session)
+**Session:** P2-1 complete. Migration 0025 hot_dates applied.
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Latest migration applied:** 0023_circle_cleanup.sql
-**Next migration:** 0024_vendor_profile.sql (Phase 2)
-**Pending Phase 2:** 0024_vendor_profile.sql, 0025_invoices_last_payment_at.sql
-**Pending Phase 3:** 0026_discover.sql
-**Convention change:** letter suffixes retired (0024a->0024, 0024b->0026). Clean integers only.
+**Latest migration applied:** 0025_hot_dates.sql (2026-05-18)
+**Next migration:** 0024_vendor_profile.sql (Phase 2 start — not yet applied)
+**Pending Phase 2:** 0024_vendor_profile.sql, 0026_invoices_last_payment_at.sql
+**Pending Phase 3:** 0027_discover.sql
+**Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at, 0027=discover
 
 **Note (2026-05-18):** P1-5 added no migrations. All five fixes were
 code-only: capture_couple_lead guard (engine.js), circle summary delivery
 architecture (brideEngine.js + brideIndex.js), counterparty_user_id on
 couple_thread inserts (index.js), bare-handle global fuzzy-match (index.js),
 TDW code replaced with hi as inbound message (index.js). Schema is
-unchanged from 0023. Next migration is 0024_vendor_profile.sql at Phase 2 start.
+Next pending migration is 0024_vendor_profile.sql at Phase 2 start.
+0025_hot_dates.sql was applied 2026-05-18 (out of sequence — hot_dates needed for P2-1 tool).
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -590,3 +592,18 @@ Exists since migration 0001. Was sparse until B1 (2026-05-16) when bride product
 
 ### events table — now serves both vendors and brides
 Migration 0007 added events with vendor_id only. Migration 0013 (B1) made vendor_id nullable, added couple_id with XOR constraint, and widened the kind enum to 12 values. Both vendors and brides now use this table.
+
+### hot_dates
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | auto-generated |
+| date | date NOT NULL | The Muhurat date |
+| note | text | Description e.g. "Akshaya Tritiya", "Dev Uthani Ekadashi" |
+| region | text | Default "All India". For region-specific muhurats. |
+| created_at | timestamptz | auto |
+
+Index: idx_hot_dates_date on (date).
+No vendor_id — shared reference table, read-only from agent.
+Populated annually each October by Swati or Dev via Supabase or admin panel (Phase 2).
+Seeded with 60+ dates for 2026 and 2027.
+
