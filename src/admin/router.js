@@ -9,6 +9,7 @@ const { renderDetail: detailPage } = require('./views/detail');
 const { couplesPage }       = require('./views/couples');
 const { coupleInvitePage }  = require('./views/coupleInvite');
 const { coupleDetailPage }  = require('./views/coupleDetail');
+const { inviteMintPage }    = require('./views/inviteMint');
 
 router.get('/login', (req, res) => {
   const error = req.query.error === '1';
@@ -390,6 +391,94 @@ router.post('/couples/:id/delete', async (req, res) => {
   const label = couple.user?.name || couple.user?.phone || id;
   console.log(`[admin-delete] couple deleted: ${label} (user_id: ${couple.user_id})`);
   res.redirect('/admin/couples');
+});
+
+// ── INVITE CODES ─────────────────────────────────────────────────────
+// Mint single-use invite codes for Dreamers (brides) and Makers (vendors).
+// GET  /admin/invite-codes       — list recent codes + mint form
+// POST /admin/invite-codes/mint  — generate one code, redirect back with code shown
+
+const INVITE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function generateCode(length = 8) {
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += INVITE_ALPHABET[Math.floor(Math.random() * INVITE_ALPHABET.length)];
+  }
+  return code;
+}
+
+async function mintUniqueCode(supabase) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = generateCode(8);
+    const { data } = await supabase
+      .from('invite_codes')
+      .select('code')
+      .eq('code', code)
+      .maybeSingle();
+    if (!data) return code;
+  }
+  throw new Error('Could not generate a unique code after 10 attempts.');
+}
+
+router.get('/invite-codes', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { data: recentCodes } = await supabase
+    .from('invite_codes')
+    .select('code, kind, tier, notes, created_by, created_at, consumed_at')
+    .order('created_at', { ascending: false })
+    .limit(20);
+  res.send(inviteMintPage({ recentCodes: recentCodes || [] }));
+});
+
+router.post('/invite-codes/mint', express.urlencoded({ extended: true }), async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { kind, tier, notes } = req.body;
+
+  if (!kind || !['dreamer', 'maker'].includes(kind)) {
+    const { data: recentCodes } = await supabase
+      .from('invite_codes')
+      .select('code, kind, tier, notes, created_by, created_at, consumed_at')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    return res.send(inviteMintPage({ error: 'Kind must be dreamer or maker.', recentCodes: recentCodes || [] }));
+  }
+
+  let code;
+  try {
+    code = await mintUniqueCode(supabase);
+  } catch (err) {
+    console.error('[admin:invite-codes:mint] code generation failed:', err.message);
+    return res.send(inviteMintPage({ error: 'Code generation failed. Please try again.' }));
+  }
+
+  const { error } = await supabase
+    .from('invite_codes')
+    .insert({
+      code,
+      kind,
+      tier:       tier?.trim()   || null,
+      notes:      notes?.trim()  || null,
+      created_by: 'admin',
+    });
+
+  if (error) {
+    console.error('[admin:invite-codes:mint] insert error:', error.message);
+    return res.send(inviteMintPage({ error: 'Failed to save code. Please try again.' }));
+  }
+
+  console.log(`[admin:invite-codes:mint] minted code=${code} kind=${kind}`);
+
+  const { data: recentCodes } = await supabase
+    .from('invite_codes')
+    .select('code, kind, tier, notes, created_by, created_at, consumed_at')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  res.send(inviteMintPage({
+    generated: { code, kind, tier: tier?.trim() || null, notes: notes?.trim() || null },
+    recentCodes: recentCodes || [],
+  }));
 });
 
 module.exports = router;
