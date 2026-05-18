@@ -31,7 +31,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   const istOffsetMs = 5.5 * 60 * 60 * 1000;
   const istNow      = new Date(Date.now() + istOffsetMs);
   const istToday    = istNow.toISOString().split('T')[0];
-  const ist14days   = new Date(istNow.getTime() + 14 * 86400000).toISOString().split('T')[0];
+  const ist14days   = new Date(istNow.getTime() + 30 * 86400000).toISOString().split('T')[0];
 
   // ── Baked snapshot — parallel fetch (P2-1 lift) ─────────────────
   // All context for the system prompt is fetched in one Promise.all so the

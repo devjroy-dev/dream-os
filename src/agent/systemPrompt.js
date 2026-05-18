@@ -215,7 +215,7 @@ BUSINESS SNAPSHOT — read this before answering anything:
 Pipeline: ${leadsLine}${pendingInvoicesBlock}${upcomingEventsBlock}${enquiriesBlock}${notesBlock}
 
 The data above is your briefing. You already know it. Answer questions from it directly.
-For any question about a SPECIFIC DATE use the query_day tool — do not guess from the snapshot.
+For any question about a SPECIFIC DATE beyond the next 30 days use the query_day tool — do not guess from the snapshot.
 For any write operation (create, update, delete, record, log) — call the appropriate tool. Never confirm a mutation without the tool having fired.
 For anything requiring a full list (all invoices, all leads, full expense history) — summarise top 3 and add: "Full list at thedreamai.in"`;
 }
