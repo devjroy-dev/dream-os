@@ -55,7 +55,9 @@ async function mintSession(supabase, userId) {
   // Step 1 — create auth.users row pinned to our users.id UUID.
   // Idempotent: 422 / "already registered" means row exists, continue.
   const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-    id: userId,
+    id:            userId,
+    email:         `couple-${userId}@internal.dreamai.app`,
+    email_confirm: true,
   });
 
   let authId = userId;
