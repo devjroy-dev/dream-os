@@ -99,44 +99,73 @@ Vendor: "Hey, what's up?"
 // Vendor-specific section — changes on every call. Never cached.
 // Used as the second block in the system array in engine.js.
 
-function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents }) {
+function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents, pendingInvoices, pendingEnquiries, istToday }) {
   const name     = user?.name || vendor?.business_name || 'the vendor';
   const category = vendor?.category || 'wedding professional';
   const city     = vendor?.city || 'India';
-  const summary  = state?.summary || `${name}, ${category} based in ${city}.`;
+  const today    = istToday || new Date().toISOString().split('T')[0];
 
-  const notesText = recentNotes.length > 0
-    ? recentNotes.map(n => `- ${n.content}`).join('\n')
-    : '(none yet)';
+  // ── Pending invoices block ────────────────────────────────────
+  // Shows per-invoice detail so agent answers "who owes me money" without a tool call.
+  // If more than 10, appends a PWA link hint.
+  const invList = (pendingInvoices || []);
+  const moreInv = Math.max(0, (openLeadsCount || 0) > 0 ? 0 : 0); // placeholder — actual more count not fetched
+  let pendingInvoicesBlock = '';
+  if (invList.length > 0) {
+    const lines = invList.map(i => {
+      const owed      = Math.round((i.amount_total || 0) - (i.amount_paid || 0));
+      const overdueTag = i.due_date && i.due_date < today ? ' [OVERDUE]' : '';
+      const dueLine    = i.due_date ? ` (due ${i.due_date})` : '';
+      return `- ${i.client_name || 'Unknown'}: Rs ${owed.toLocaleString('en-IN')}${dueLine}${overdueTag}`;
+    });
+    pendingInvoicesBlock = '\nPENDING INVOICES:\n' + lines.join('\n');
+  }
 
-  const leadsContext = openLeadsCount > 0
-    ? `You currently have ${openLeadsCount} open lead(s) in the pipeline.`
-    : 'No open leads yet.';
+  // ── Upcoming schedule block ───────────────────────────────────
+  const evList = (upcomingEvents || []);
+  let upcomingEventsBlock = '';
+  if (evList.length > 0) {
+    const lines = evList.map(e => {
+      const timeLine   = e.event_time ? ` ${e.event_time.slice(0, 5)}` : '';
+      return `- ${e.event_date}${timeLine}: ${e.kind} — ${e.title}`;
+    });
+    upcomingEventsBlock = '\nUPCOMING SCHEDULE:\n' + lines.join('\n');
+  }
 
-  const eventsContext = upcomingEvents && upcomingEvents.length > 0
-    ? upcomingEvents.map(e => {
-        const time = e.event_time ? ` at ${e.event_time.slice(0, 5)}` : '';
-        return `- ${e.event_date}${time}: ${e.kind} — ${e.title}`;
-      }).join('\n')
-    : '(no upcoming events)';
+  // ── Pending enquiries block ───────────────────────────────────
+  const enqList = (pendingEnquiries || []);
+  let enquiriesBlock = '';
+  if (enqList.length > 0) {
+    const lines = enqList.map(e => {
+      const datePart   = e.wedding_date ? ` — ${e.wedding_date}` : '';
+      const cityPart   = e.wedding_city ? `, ${e.wedding_city}` : '';
+      const budgetPart = e.budget_total ? `, Rs ${Math.round(e.budget_total / 100000)}L` : '';
+      return `- ${e.name || 'Unknown'}${datePart}${cityPart}${budgetPart}`;
+    });
+    enquiriesBlock = '\nNEW ENQUIRIES:\n' + lines.join('\n');
+  }
 
-  return `You are the chief of staff for ${name} — a ${category} based in ${city}.
+  // ── Recent notes block ────────────────────────────────────────
+  const notesBlock = (recentNotes || []).length > 0
+    ? '\nRECENT NOTES:\n' + recentNotes.map(n => `- ${n.content}`).join('\n')
+    : '';
+
+  // ── Pipeline summary ─────────────────────────────────────────
+  const leadsLine = (openLeadsCount || 0) > 0
+    ? `${openLeadsCount} open lead(s) in pipeline.`
+    : 'No open leads.';
+
+  return `You are the PA (personal assistant) for ${name} — a ${category} based in ${city}.
+Today: ${today}. India timezone.
 Open to travel: ${vendor?.open_to_travel ? 'yes' : 'local only'}
 
-YOUR JOB
-Help them run their business. They text you throughout the day — about clients, enquiries, money, scheduling. You remember everything, act silently when useful, and respond like a sharp human assistant who knows their work.
+BUSINESS SNAPSHOT — read this before answering anything:
+Pipeline: ${leadsLine}${pendingInvoicesBlock}${upcomingEventsBlock}${enquiriesBlock}${notesBlock}
 
-WHAT YOU KNOW
-${summary}
-
-PIPELINE
-${leadsContext}
-
-UPCOMING EVENTS (next 14 days)
-${eventsContext}
-
-RECENT NOTES
-${notesText}`;
+The data above is your briefing. You already know it. Answer questions from it directly.
+For any question about a SPECIFIC DATE use the query_day tool — do not guess from the snapshot.
+For any write operation (create, update, delete, record, log) — call the appropriate tool. Never confirm a mutation without the tool having fired.
+For anything requiring a full list (all invoices, all leads, full expense history) — summarise top 3 and add: "Full list at thedreamai.in"`;
 }
 
 // ── Legacy compatibility ──────────────────────────────────────────────────────

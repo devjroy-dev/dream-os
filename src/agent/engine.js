@@ -27,41 +27,56 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   }
 
   // ── Load working memory ─────────────────────────────────────────
-  const { data: state } = await supabase
-    .from('vendor_state')
-    .select('*')
-    .eq('vendor_id', vendor.id)
-    .maybeSingle();
-
-  const { data: recentNotes } = await supabase
-    .from('notes')
-    .select('content, tags, created_at')
-    .eq('vendor_id', vendor.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  // ── Load open leads count for context ──────────────────────────
-  const { count: openLeadsCount } = await supabase
-    .from('leads')
-    .select('*', { count: 'exact', head: true })
-    .eq('vendor_id', vendor.id)
-    .in('state', ['new', 'contacted', 'quoted']);
-
-  // ── Load upcoming events for context (next 14 days, IST) ───────
+  // ── IST today (used by snapshot fetches below) ─────────────────
   const istOffsetMs = 5.5 * 60 * 60 * 1000;
-  const istNow = new Date(Date.now() + istOffsetMs);
-  const istToday = istNow.toISOString().split('T')[0];
-  const ist14days = new Date(istNow.getTime() + 14 * 86400000).toISOString().split('T')[0];
+  const istNow      = new Date(Date.now() + istOffsetMs);
+  const istToday    = istNow.toISOString().split('T')[0];
+  const ist14days   = new Date(istNow.getTime() + 14 * 86400000).toISOString().split('T')[0];
 
-  const { data: upcomingEvents } = await supabase
-    .from('events')
-    .select('id, title, event_date, event_time, kind')
-    .eq('vendor_id', vendor.id)
-    .eq('state', 'upcoming')
-    .gte('event_date', istToday)
-    .lte('event_date', ist14days)
-    .order('event_date', { ascending: true })
-    .limit(10);
+  // ── Baked snapshot — parallel fetch (P2-1 lift) ─────────────────
+  // All context for the system prompt is fetched in one Promise.all so the
+  // agent can answer read questions instantly without tool calls.
+  const [
+    { data: state },
+    { data: recentNotes },
+    { count: openLeadsCount },
+    { data: upcomingEvents },
+    { data: pendingInvoices },
+    { data: pendingEnquiries },
+  ] = await Promise.all([
+    supabase.from('vendor_state').select('*').eq('vendor_id', vendor.id).maybeSingle(),
+
+    supabase.from('notes').select('content, created_at')
+      .eq('vendor_id', vendor.id)
+      .order('created_at', { ascending: false })
+      .limit(3),
+
+    supabase.from('leads').select('*', { count: 'exact', head: true })
+      .eq('vendor_id', vendor.id)
+      .in('state', ['new', 'contacted', 'quoted']),
+
+    supabase.from('events').select('id, title, event_date, event_time, kind')
+      .eq('vendor_id', vendor.id)
+      .eq('state', 'upcoming')
+      .gte('event_date', istToday)
+      .lte('event_date', ist14days)
+      .order('event_date', { ascending: true })
+      .limit(10),
+
+    // Pending invoices — unpaid/advance_paid, sorted by due date
+    supabase.from('invoices').select('id, client_name, amount_total, amount_paid, due_date, state')
+      .eq('vendor_id', vendor.id)
+      .in('state', ['unpaid', 'advance_paid'])
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(10),
+
+    // Pending enquiries — leads in new state, most recent first
+    supabase.from('leads').select('id, name, wedding_date, wedding_city, budget_total, raw_message, created_at')
+      .eq('vendor_id', vendor.id)
+      .eq('state', 'new')
+      .order('created_at', { ascending: false })
+      .limit(5),
+  ]);
 
   // ── Load conversation history ───────────────────────────────────
   const { data: recentMessages } = await supabase
@@ -91,9 +106,12 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     vendor,
     user,
     state,
-    recentNotes: recentNotes || [],
-    openLeadsCount: openLeadsCount || 0,
-    upcomingEvents: upcomingEvents || [],
+    recentNotes:      recentNotes      || [],
+    openLeadsCount:   openLeadsCount   || 0,
+    upcomingEvents:   upcomingEvents   || [],
+    pendingInvoices:  pendingInvoices  || [],
+    pendingEnquiries: pendingEnquiries || [],
+    istToday,
   });
 
   const messages = [
