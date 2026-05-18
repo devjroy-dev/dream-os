@@ -6,11 +6,11 @@
 //   POST /api/v2/waitlist/signup         — landing page waitlist capture (P2-3) ✅
 //   POST /api/v2/invite/validate         — check code valid + unconsumed (P2-3) ✅
 //   POST /api/v2/invite/consume          — consume code + create user (P2-3) ✅
-//   POST /api/v2/vendor/auth/send-otp    — vendor auth (P2-3)
-//   POST /api/v2/vendor/auth/verify-otp  — vendor auth (P2-3)
-//   POST /api/v2/vendor/auth/set-pin     — vendor auth (P2-3)
-//   POST /api/v2/vendor/auth/pin-login   — vendor auth (P2-3)
-//   POST /api/v2/vendor/auth/forgot-pin  — vendor auth (P2-3)
+//   POST /api/v2/vendor/auth/send-otp    — vendor auth (P2-3) ✅
+//   POST /api/v2/vendor/auth/verify-otp  — vendor auth (P2-3) ✅
+//   POST /api/v2/vendor/auth/set-pin     — vendor auth (P2-3) ✅
+//   POST /api/v2/vendor/auth/pin-login   — vendor auth (P2-3) ✅
+//   POST /api/v2/vendor/auth/forgot-pin  — vendor auth (P2-3) ✅
 //   POST /api/v2/couple/auth/send-otp    — couple auth (P2-3)
 //   POST /api/v2/couple/auth/verify-otp  — couple auth (P2-3)
 //   POST /api/v2/couple/auth/set-pin     — couple auth (P2-3)
@@ -21,19 +21,19 @@
 
 'use strict';
 
-const express        = require('express');
-const router         = express.Router();
+const express          = require('express');
+const router           = express.Router();
 
-const waitlistRouter = require('./waitlist');
-const inviteRouter   = require('./invite');
+const waitlistRouter   = require('./waitlist');
+const inviteRouter     = require('./invite');
+const vendorAuthRouter = require('./vendor/auth');
 
-router.use('/waitlist', waitlistRouter);
-router.use('/invite',   inviteRouter);
+router.use('/waitlist',      waitlistRouter);
+router.use('/invite',        inviteRouter);
+router.use('/vendor/auth',   vendorAuthRouter);
 
-// Subsequent routers mounted here as they are built in P2-3:
-// const vendorAuthRouter = require('./vendor/auth');
+// Subsequent routers mounted here as they are built:
 // const coupleAuthRouter = require('./couple/auth');
-// router.use('/vendor',  vendorAuthRouter);
-// router.use('/couple',  coupleAuthRouter);
+// router.use('/couple/auth', coupleAuthRouter);
 
 module.exports = router;
