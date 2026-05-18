@@ -114,9 +114,11 @@ STUDIO has sub-pages: calendar, analytics, broadcast, settings, referrals, team.
 Calendar lives in STUDIO, not at top level.
 
 Bride PWA structure (LOCKED, from tdw-2/web/app/couple/):
+Pill: PLAN / ✦ / DISCOVER (gold ✦ = DreamAi full screen chat mode)
   PLAN mode     -> TODAY, PLAN, CIRCLE
+  ✦ mode        -> full screen DreamAi chat, no chrome
   DISCOVER mode -> MUSE, FEED, MESSAGES
-  DreamAi FAB  -> floating button, slides up chat sheet over any screen
+  No FAB. Consistent with vendor three-mode pattern.
 
 Coming soon pattern (LOCKED):
 Any unbuilt screen shows: "Coming soon - your data is safe with us."

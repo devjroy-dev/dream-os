@@ -573,8 +573,9 @@ The agent reads the returned row and surfaces the numbers verbatim in its reply.
 | ~~0022_task_event_merge.sql~~ | B3 | ✅ Applied 2026-05-17 |
 | ~~0023_circle_cleanup.sql~~ | P1-1 | ✅ Applied 2026-05-17 — expires_at on circle_members, summary_message_id FK, unique partial index (M2 fix), structured exceptions on invite/claim functions |
 | 0024_vendor_profile.sql | Phase 2 | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios storage bucket |
-| 0025_invoices_last_payment_at.sql | Phase 2 | invoices.last_payment_at timestamptz. Set by record_payment. |
-| 0026_discover.sql | Phase 3 | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
+| **0025_hot_dates.sql** | **P2-1** | **hot_dates table. Vivah Muhurat 2026/2027. Applied 2026-05-18.** |
+| 0026_invoices_last_payment_at.sql | Phase 2 | invoices.last_payment_at timestamptz. Set by record_payment. |
+| 0027_discover.sql | Phase 3 | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
 
 ---
 
