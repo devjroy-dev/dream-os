@@ -16,6 +16,9 @@
 //   POST /api/v2/couple/auth/set-pin          — couple auth (P2-3) ✅
 //   POST /api/v2/couple/auth/pin-login        — couple auth + JWT (P2-4) ✅
 //   POST /api/v2/couple/auth/forgot-pin       — couple auth (P2-3) ✅
+//   POST /api/v2/auth/pin-status              — pre-login PIN status lookup (P2-5) ✅
+//   GET  /api/v2/landing-slides               — landing slideshow source (P2-5) ✅
+//   GET  /api/v2/exploring-photos             — "Just Exploring" gallery (P2-5) ✅
 //   GET  /api/v2/_test/whoami                 — JWT smoke test (P2-4, delete after Block 2) ✅
 //
 // Auth middleware: src/api/middleware/requireAuth.js
@@ -26,17 +29,23 @@
 const express          = require('express');
 const router           = express.Router();
 
-const waitlistRouter   = require('./waitlist');
-const inviteRouter     = require('./invite');
-const vendorAuthRouter = require('./vendor/auth');
-const coupleAuthRouter = require('./couple/auth');
-const testRouter       = require('./_test/whoami');
+const waitlistRouter        = require('./waitlist');
+const inviteRouter          = require('./invite');
+const vendorAuthRouter      = require('./vendor/auth');
+const coupleAuthRouter      = require('./couple/auth');
+const pinStatusRouter       = require('./pin-status');
+const landingSlidesRouter   = require('./landing-slides');
+const exploringPhotosRouter = require('./exploring-photos');
+const testRouter            = require('./_test/whoami');
 
-router.use('/waitlist',     waitlistRouter);
-router.use('/invite',       inviteRouter);
-router.use('/vendor/auth',  vendorAuthRouter);
-router.use('/couple/auth',  coupleAuthRouter);
-router.use('/_test/whoami', testRouter);
+router.use('/waitlist',           waitlistRouter);
+router.use('/invite',             inviteRouter);
+router.use('/vendor/auth',        vendorAuthRouter);
+router.use('/couple/auth',        coupleAuthRouter);
+router.use('/auth/pin-status',    pinStatusRouter);
+router.use('/landing-slides',     landingSlidesRouter);
+router.use('/exploring-photos',   exploringPhotosRouter);
+router.use('/_test/whoami',       testRouter);
 
 // Block 2+ routers mounted here as they are built:
 // router.use('/vendor', require('./vendor/core'));
