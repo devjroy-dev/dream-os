@@ -424,6 +424,21 @@ const TOOLS = [
     },
   },
   {
+    // P2-1 lift 3 — hot_dates_context (lifted from DreamAI v3 wedding_hot_dates_context)
+    name: 'hot_dates_context',
+    description: 'Return upcoming Vivah Muhurat (auspicious Hindu wedding) dates. Use when the vendor asks about hot dates, muhurat dates, auspicious dates, peak wedding season, or when discussing capacity planning and scheduling around wedding season.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        months_ahead: {
+          type: 'number',
+          description: 'How many months ahead to look. Default 3. Max 12.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {

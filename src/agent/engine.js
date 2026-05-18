@@ -1077,6 +1077,43 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
       return `${date}:\n\n${sections.join('\n\n')}`;
     }
 
+    // P2-1 lift 3 — hot_dates_context
+    case 'hot_dates_context': {
+      const monthsAhead = Math.max(1, Math.min(12, Number(input.months_ahead) || 3));
+
+      const istNow    = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      const todayStr  = istNow.toISOString().split('T')[0];
+      const endDate   = new Date(istNow.getFullYear(), istNow.getMonth() + monthsAhead, istNow.getDate())
+        .toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('hot_dates')
+        .select('date, note, region')
+        .gte('date', todayStr)
+        .lte('date', endDate)
+        .order('date', { ascending: true })
+        .limit(30);
+
+      if (error) {
+        console.error('[tool:hot_dates_context] error:', error.message);
+        return 'Could not fetch hot dates right now.';
+      }
+
+      const rows = data || [];
+      if (rows.length === 0) {
+        return `No Vivah Muhurat dates in the next ${monthsAhead} month${monthsAhead === 1 ? '' : 's'}.`;
+      }
+
+      const lines = rows.map(r => {
+        const notePart   = r.note ? ` — ${r.note}` : '';
+        const regionPart = r.region && r.region !== 'All India' ? ` (${r.region})` : '';
+        return `- ${r.date}${notePart}${regionPart}`;
+      });
+
+      console.log(`[tool:hot_dates_context] ${rows.length} dates in next ${monthsAhead}mo`);
+      return `Vivah Muhurat — next ${monthsAhead} month${monthsAhead === 1 ? '' : 's'}:\n${lines.join('\n')}`;
+    }
+
     case 'respond_to_vendor': {
       console.log(`[tool:respond] "${input.message.slice(0, 80)}"`);
       return 'Reply queued.';
