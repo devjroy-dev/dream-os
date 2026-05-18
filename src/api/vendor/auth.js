@@ -1,29 +1,31 @@
 // src/api/vendor/auth.js
-// Vendor PWA auth endpoints.
+// Vendor PWA auth endpoints — P2-4 clean build.
 // Mounted at /api/v2/vendor/auth via src/api/router.js
 //
 // ENDPOINTS
-//   POST /send-otp     -- generate + send WhatsApp OTP to vendor phone
-//   POST /verify-otp   -- verify OTP, mint Supabase Auth session, return JWT
-//   POST /set-pin      -- bcrypt PIN, write to vendors.pin_hash
-//   POST /pin-login    -- verify phone + PIN, mint Supabase Auth session, return JWT
-//   POST /forgot-pin   -- alias for send-otp with purpose=reset
+//   POST /send-otp     — send WhatsApp OTP to vendor phone
+//   POST /verify-otp   — verify OTP, mint JWT, return tokens
+//   POST /set-pin      — bcrypt PIN, store in vendors.pin_hash
+//   POST /pin-login    — verify PIN, mint JWT, return tokens
+//   POST /forgot-pin   — send reset OTP (purpose=reset)
 //
-// JWT / SESSION CONTRACT (P2-4)
+// SESSION CONTRACT
 //   verify-otp and pin-login return { access_token, refresh_token }.
-//   PWA stores in localStorage. Sends Authorization: Bearer <access_token>
-//   on all subsequent /api/v2/* requests that require auth.
+//   PWA stores in localStorage. All protected endpoints require:
+//   Authorization: Bearer <access_token>
 //
-//   Lazy auth.users backfill: first verify-otp for a phone creates an auth.users
-//   row via supabase.auth.admin.createUser (idempotent -- 422 = already exists).
-//   auth.users UUID pinned to users.id so both tables share one identity.
+// MINT PATTERN (lazy auth.users backfill)
+//   1. createUser — idempotent, pins users.id as auth.users UUID
+//   2. updateUserById — pins stable internal email (no email dispatched)
+//   3. generateLink magiclink — returns hashed_token (no email dispatched)
+//   4. verifyOtp token_hash — exchanges token for real JWT session
 
 'use strict';
 
-const express   = require('express');
-const router    = express.Router();
-const bcrypt    = require('bcryptjs');
-const twilio    = require('twilio');
+const express = require('express');
+const router  = express.Router();
+const bcrypt  = require('bcryptjs');
+const twilio  = require('twilio');
 
 const BCRYPT_ROUNDS    = 10;
 const OTP_TTL_MS       = 5 * 60 * 1000;
@@ -32,7 +34,7 @@ const PHONE_RE         = /^\+[0-9]{8,15}$/;
 const LOCKOUT_ATTEMPTS = 5;
 const LOCKOUT_MS       = 15 * 60 * 1000;
 
-const VENDOR_WA_NUMBER = process.env.TDW_WA_NUMBER
+const VENDOR_WA = process.env.TDW_WA_NUMBER
   ? `+${process.env.TDW_WA_NUMBER}`
   : '+917982159047';
 
@@ -41,72 +43,61 @@ function getTwilio() {
 }
 
 function generateOtp() {
-  return String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+  return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
 }
 
-// -- mintSession --------------------------------------------------------------
-// Lazy auth.users backfill + Supabase Auth session mint.
-// Creates auth.users row on first login; retrieves on subsequent logins.
-// Returns { access_token, refresh_token }.
-async function mintSession(supabase, phone, userId) {
-  let authUserId = userId;
-
-  const { data: createData, error: createError } = await supabase.auth.admin.createUser({
-    phone,
+// ---------------------------------------------------------------------------
+// mintSession
+// Lazy auth.users backfill + JWT session mint.
+// Called after OTP verify or PIN verify — phone already proved at that point.
+// ---------------------------------------------------------------------------
+async function mintSession(supabase, userId) {
+  // Step 1 — create auth.users row pinned to our users.id UUID.
+  // Idempotent: 422 / "already registered" means row exists, continue.
+  const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+    id:            userId,
+    phone:         `${userId}@placeholder`,
     phone_confirm: true,
-    id: userId,
   });
 
-  if (createError) {
-    if (
-      createError.message?.includes('already registered') ||
-      createError.message?.includes('already been registered') ||
-      createError.status === 422
-    ) {
-      const { data: existing, error: existErr } = await supabase.auth.admin.getUserById(userId);
-      if (existErr || !existing?.user) {
-        throw new Error(`auth.users lookup failed: ${existErr?.message || 'no user'}`);
-      }
-      authUserId = existing.user.id;
-    } else {
-      throw new Error(`auth.users creation failed: ${createError.message}`);
+  let authId = userId;
+  if (createErr) {
+    const msg = createErr.message || '';
+    if (!msg.includes('already registered') && !msg.includes('already been registered') && createErr.status !== 422) {
+      throw new Error(`auth.users create failed: ${msg}`);
     }
+    // Already exists — look it up
+    const { data: existing, error: lookupErr } = await supabase.auth.admin.getUserById(userId);
+    if (lookupErr || !existing?.user) {
+      throw new Error(`auth.users lookup failed: ${lookupErr?.message || 'no user'}`);
+    }
+    authId = existing.user.id;
   } else {
-    authUserId = createData.user.id;
+    authId = created.user.id;
   }
 
-  // admin.createSession does not exist in this SDK version; the GoTrue REST
-  // endpoint /admin/users/:id/sessions is not available on this project.
-  //
-  // Pattern: pin a stable internal email on the auth.users row (admin update,
-  // no email dispatched), generate a magic-link token via the admin API (also
-  // no email dispatched -- admin generateLink only returns the token), then
-  // exchange the hashed_token for a real JWT session via verifyOtp.
-  const internalEmail = `vendor-${authUserId}@internal.dreamai.app`;
-
-  const { error: updateErr } = await supabase.auth.admin.updateUserById(authUserId, {
+  // Step 2 — pin a stable internal email (required by generateLink).
+  // Admin update does not dispatch any email.
+  const internalEmail = `vendor-${authId}@internal.dreamai.app`;
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(authId, {
     email:         internalEmail,
     email_confirm: true,
   });
-  if (updateErr) {
-    throw new Error(`auth.users email pin failed: ${updateErr.message}`);
-  }
+  if (updateErr) throw new Error(`auth.users email pin failed: ${updateErr.message}`);
 
+  // Step 3 — generate magic-link token server-side. No email dispatched.
   const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
     type:  'magiclink',
     email: internalEmail,
   });
-  if (linkErr) {
-    throw new Error(`generateLink failed: ${linkErr.message}`);
-  }
+  if (linkErr) throw new Error(`generateLink failed: ${linkErr.message}`);
 
+  // Step 4 — exchange hashed_token for real JWT session.
   const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
     token_hash: linkData.properties.hashed_token,
     type:       'email',
   });
-  if (sessionErr) {
-    throw new Error(`verifyOtp failed: ${sessionErr.message}`);
-  }
+  if (sessionErr) throw new Error(`verifyOtp failed: ${sessionErr.message}`);
 
   return {
     access_token:  sessionData.session.access_token,
@@ -114,7 +105,9 @@ async function mintSession(supabase, phone, userId) {
   };
 }
 
-// -- POST /send-otp -----------------------------------------------------------
+// ---------------------------------------------------------------------------
+// POST /send-otp
+// ---------------------------------------------------------------------------
 router.post('/send-otp', async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { phone } = req.body;
@@ -126,9 +119,7 @@ router.post('/send-otp', async (req, res) => {
 
   const { data: userRow } = await supabase
     .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
-
   if (!userRow) {
-    console.log(`[vendor:auth:send-otp] phone not found: ${cleanPhone}`);
     return res.status(404).json({
       error:  'No account found for this number. Please check your invite.',
       reason: 'phone_not_found',
@@ -136,47 +127,46 @@ router.post('/send-otp', async (req, res) => {
   }
 
   const { data: vendorRow } = await supabase
-    .from('vendors').select('id, pin_locked_until').eq('user_id', userRow.id).maybeSingle();
-
+    .from('vendors').select('id').eq('user_id', userRow.id).maybeSingle();
   if (!vendorRow) {
-    console.log(`[vendor:auth:send-otp] no vendor row: ${cleanPhone}`);
     return res.status(403).json({
       error:  'This number is registered as a Dreamer account, not a Maker.',
       reason: 'wrong_role',
     });
   }
 
-  const otp       = generateOtp();
-  const otpHash   = await bcrypt.hash(otp, BCRYPT_ROUNDS);
-  const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
+  const otp     = generateOtp();
+  const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
+  const expires = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
-  const { error: upsertError } = await supabase.from('otp_sessions').upsert({
-    phone: cleanPhone, otp_hash: otpHash, purpose: 'login',
-    expires_at: expiresAt, created_at: new Date().toISOString(),
-  }, { onConflict: 'phone' });
-
-  if (upsertError) {
-    console.error('[vendor:auth:send-otp] upsert error:', upsertError.message);
+  const { error: upsertErr } = await supabase.from('otp_sessions').upsert(
+    { phone: cleanPhone, otp_hash: otpHash, purpose: 'login', expires_at: expires, created_at: new Date().toISOString() },
+    { onConflict: 'phone' }
+  );
+  if (upsertErr) {
+    console.error('[vendor:send-otp] upsert error:', upsertErr.message);
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 
   try {
     await getTwilio().messages.create({
-      from: `whatsapp:${VENDOR_WA_NUMBER}`,
+      from: `whatsapp:${VENDOR_WA}`,
       to:   `whatsapp:${cleanPhone}`,
       body: `Your DreamAI login code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
     });
   } catch (err) {
-    console.error('[vendor:auth:send-otp] twilio error:', err.message);
+    console.error('[vendor:send-otp] twilio error:', err.message);
     await supabase.from('otp_sessions').delete().eq('phone', cleanPhone);
     return res.status(500).json({ error: 'Could not send WhatsApp message. Please try again.' });
   }
 
-  console.log(`[vendor:auth:send-otp] OTP sent to ${cleanPhone}`);
+  console.log(`[vendor:send-otp] sent to ${cleanPhone}`);
   return res.json({ ok: true });
 });
 
-// -- POST /forgot-pin ---------------------------------------------------------
+// ---------------------------------------------------------------------------
+// POST /forgot-pin
+// ---------------------------------------------------------------------------
 router.post('/forgot-pin', async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { phone } = req.body;
@@ -198,39 +188,40 @@ router.post('/forgot-pin', async (req, res) => {
     return res.status(403).json({ error: 'This number is not a Maker account.', reason: 'wrong_role' });
   }
 
-  const otp       = generateOtp();
-  const otpHash   = await bcrypt.hash(otp, BCRYPT_ROUNDS);
-  const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
+  const otp     = generateOtp();
+  const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
+  const expires = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
-  const { error: upsertError } = await supabase.from('otp_sessions').upsert({
-    phone: cleanPhone, otp_hash: otpHash, purpose: 'reset',
-    expires_at: expiresAt, created_at: new Date().toISOString(),
-  }, { onConflict: 'phone' });
-
-  if (upsertError) {
-    console.error('[vendor:auth:forgot-pin] upsert error:', upsertError.message);
+  const { error: upsertErr } = await supabase.from('otp_sessions').upsert(
+    { phone: cleanPhone, otp_hash: otpHash, purpose: 'reset', expires_at: expires, created_at: new Date().toISOString() },
+    { onConflict: 'phone' }
+  );
+  if (upsertErr) {
+    console.error('[vendor:forgot-pin] upsert error:', upsertErr.message);
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 
   try {
     await getTwilio().messages.create({
-      from: `whatsapp:${VENDOR_WA_NUMBER}`,
+      from: `whatsapp:${VENDOR_WA}`,
       to:   `whatsapp:${cleanPhone}`,
       body: `Your DreamAI PIN reset code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
     });
   } catch (err) {
-    console.error('[vendor:auth:forgot-pin] twilio error:', err.message);
+    console.error('[vendor:forgot-pin] twilio error:', err.message);
     await supabase.from('otp_sessions').delete().eq('phone', cleanPhone);
     return res.status(500).json({ error: 'Could not send WhatsApp message. Please try again.' });
   }
 
-  console.log(`[vendor:auth:forgot-pin] reset OTP sent to ${cleanPhone}`);
+  console.log(`[vendor:forgot-pin] reset OTP sent to ${cleanPhone}`);
   return res.json({ ok: true });
 });
 
-// -- POST /verify-otp ---------------------------------------------------------
-// Body: { phone, otp, purpose }
-// Returns { ok, user_id, vendor_id, pin_set, access_token, refresh_token }
+// ---------------------------------------------------------------------------
+// POST /verify-otp
+// Body:    { phone, otp, purpose }
+// Returns: { ok, user_id, vendor_id, pin_set, access_token, refresh_token }
+// ---------------------------------------------------------------------------
 router.post('/verify-otp', async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { phone, otp, purpose } = req.body;
@@ -246,24 +237,24 @@ router.post('/verify-otp', async (req, res) => {
   }
 
   const cleanPhone = phone.trim();
-  const cleanOtp   = (otp || '').trim();
+  const cleanOtp   = String(otp).trim();
 
-  const { data: session } = await supabase
+  const { data: otpRow } = await supabase
     .from('otp_sessions').select('otp_hash, purpose, expires_at')
     .eq('phone', cleanPhone).maybeSingle();
 
-  if (!session) {
-    return res.status(400).json({ error: 'No OTP found for this number. Please request a new one.', reason: 'otp_not_found' });
+  if (!otpRow) {
+    return res.status(400).json({ error: 'No OTP found. Please request a new one.', reason: 'otp_not_found' });
   }
-  if (new Date(session.expires_at) < new Date()) {
+  if (new Date(otpRow.expires_at) < new Date()) {
     await supabase.from('otp_sessions').delete().eq('phone', cleanPhone);
     return res.status(400).json({ error: 'OTP has expired. Please request a new one.', reason: 'otp_expired' });
   }
-  if (session.purpose !== purpose) {
+  if (otpRow.purpose !== purpose) {
     return res.status(400).json({ error: 'OTP purpose mismatch.', reason: 'otp_purpose_mismatch' });
   }
 
-  const valid = await bcrypt.compare(cleanOtp, session.otp_hash);
+  const valid = await bcrypt.compare(cleanOtp, otpRow.otp_hash);
   if (!valid) {
     return res.status(400).json({ error: 'Incorrect code. Please try again.', reason: 'otp_invalid' });
   }
@@ -272,16 +263,12 @@ router.post('/verify-otp', async (req, res) => {
 
   const { data: userRow } = await supabase
     .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
-  if (!userRow) {
-    return res.status(500).json({ error: 'Account not found after OTP verification.' });
-  }
+  if (!userRow) return res.status(500).json({ error: 'Account not found after OTP verification.' });
 
   const { data: vendorRow } = await supabase
     .from('vendors').select('id, pin_hash, pin_failed_attempts, pin_locked_until')
     .eq('user_id', userRow.id).maybeSingle();
-  if (!vendorRow) {
-    return res.status(500).json({ error: 'Vendor record not found after OTP verification.' });
-  }
+  if (!vendorRow) return res.status(500).json({ error: 'Vendor record not found after OTP verification.' });
 
   if (purpose === 'reset' && (vendorRow.pin_failed_attempts > 0 || vendorRow.pin_locked_until)) {
     await supabase.from('vendors')
@@ -291,14 +278,14 @@ router.post('/verify-otp', async (req, res) => {
 
   let tokens;
   try {
-    tokens = await mintSession(supabase, cleanPhone, userRow.id);
-  } catch (mintErr) {
-    console.error('[vendor:auth:verify-otp] session mint error:', mintErr.message);
+    tokens = await mintSession(supabase, userRow.id);
+  } catch (err) {
+    console.error('[vendor:verify-otp] mint error:', err.message);
     return res.status(500).json({ error: 'Could not create session. Please try again.' });
   }
 
   const pinSet = !!vendorRow.pin_hash;
-  console.log(`[vendor:auth:verify-otp] verified + JWT minted phone=${cleanPhone} purpose=${purpose} pin_set=${pinSet}`);
+  console.log(`[vendor:verify-otp] ok phone=${cleanPhone} purpose=${purpose} pin_set=${pinSet}`);
   return res.json({
     ok:            true,
     user_id:       userRow.id,
@@ -309,9 +296,11 @@ router.post('/verify-otp', async (req, res) => {
   });
 });
 
-// -- POST /set-pin ------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// POST /set-pin
 // Body: { vendor_id, pin }
-// No auth required -- called immediately after verify-otp (phone already proved).
+// No auth — called immediately after verify-otp (phone already proved).
+// ---------------------------------------------------------------------------
 router.post('/set-pin', async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { vendor_id, pin } = req.body;
@@ -329,17 +318,19 @@ router.post('/set-pin', async (req, res) => {
     .eq('id', vendor_id);
 
   if (error) {
-    console.error('[vendor:auth:set-pin] update error:', error.message);
+    console.error('[vendor:set-pin] error:', error.message);
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 
-  console.log(`[vendor:auth:set-pin] PIN set for vendor_id=${vendor_id}`);
+  console.log(`[vendor:set-pin] PIN set vendor_id=${vendor_id}`);
   return res.json({ ok: true });
 });
 
-// -- POST /pin-login ----------------------------------------------------------
-// Body: { phone, pin }
-// Returns { ok, user_id, vendor_id, access_token, refresh_token }
+// ---------------------------------------------------------------------------
+// POST /pin-login
+// Body:    { phone, pin }
+// Returns: { ok, user_id, vendor_id, access_token, refresh_token }
+// ---------------------------------------------------------------------------
 router.post('/pin-login', async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { phone, pin } = req.body;
@@ -373,9 +364,9 @@ router.post('/pin-login', async (req, res) => {
   }
 
   if (vendorRow.pin_locked_until && new Date(vendorRow.pin_locked_until) > new Date()) {
-    const remaining = Math.ceil((new Date(vendorRow.pin_locked_until) - new Date()) / 60000);
+    const mins = Math.ceil((new Date(vendorRow.pin_locked_until) - Date.now()) / 60000);
     return res.status(429).json({
-      error:        `Too many incorrect attempts. Try again in ${remaining} minute${remaining === 1 ? '' : 's'}, or use Forgot PIN.`,
+      error:        `Too many incorrect attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}, or use Forgot PIN.`,
       reason:       'pin_locked',
       locked_until: vendorRow.pin_locked_until,
     });
@@ -391,18 +382,15 @@ router.post('/pin-login', async (req, res) => {
       update.pin_failed_attempts = 0;
     }
     await supabase.from('vendors').update(update).eq('id', vendorRow.id);
-    const attemptsLeft = LOCKOUT_ATTEMPTS - attempts;
-    console.log(`[vendor:auth:pin-login] wrong PIN phone=${cleanPhone} attempts=${attempts}`);
+    const left = LOCKOUT_ATTEMPTS - attempts;
+    console.log(`[vendor:pin-login] wrong PIN phone=${cleanPhone} attempts=${attempts}`);
     if (attempts >= LOCKOUT_ATTEMPTS) {
-      return res.status(429).json({
-        error:  'Too many incorrect attempts. Locked out for 15 minutes. Use Forgot PIN.',
-        reason: 'pin_locked',
-      });
+      return res.status(429).json({ error: 'Too many incorrect attempts. Locked out for 15 minutes. Use Forgot PIN.', reason: 'pin_locked' });
     }
     return res.status(400).json({
-      error:              `Incorrect PIN. ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining.`,
+      error:              `Incorrect PIN. ${left} attempt${left === 1 ? '' : 's'} remaining.`,
       reason:             'pin_invalid',
-      attempts_remaining: attemptsLeft,
+      attempts_remaining: left,
     });
   }
 
@@ -412,13 +400,13 @@ router.post('/pin-login', async (req, res) => {
 
   let tokens;
   try {
-    tokens = await mintSession(supabase, cleanPhone, userRow.id);
-  } catch (mintErr) {
-    console.error('[vendor:auth:pin-login] session mint error:', mintErr.message);
+    tokens = await mintSession(supabase, userRow.id);
+  } catch (err) {
+    console.error('[vendor:pin-login] mint error:', err.message);
     return res.status(500).json({ error: 'Could not create session. Please try again.' });
   }
 
-  console.log(`[vendor:auth:pin-login] success + JWT minted phone=${cleanPhone} vendor_id=${vendorRow.id}`);
+  console.log(`[vendor:pin-login] ok phone=${cleanPhone} vendor_id=${vendorRow.id}`);
   return res.json({
     ok:            true,
     user_id:       userRow.id,
