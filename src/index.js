@@ -15,6 +15,7 @@ const { sendWhatsApp } = require('./lib/whatsapp');
 const { ensureCoupleRow, captureField } = require('./lib/coupleIdentity');
 const { buildDisambiguationQuestion, interpretDisambiguationReply, vendorDisplayName } = require('./agent/disambiguation');
 const adminRouter  = require('./admin/router');
+const apiRouter    = require('./api/router');
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -105,6 +106,7 @@ app.post('/webhook/twilio-status', async (req, res) => {
 });
 
 app.use('/admin', adminRouter);
+app.use('/api/v2', apiRouter);
 
 app.get('/', (req, res) => {
   const { version } = require('../package.json');
