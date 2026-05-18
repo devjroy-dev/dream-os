@@ -75,33 +75,42 @@ async function mintSession(supabase, phone, userId) {
     authUserId = createData.user.id;
   }
 
-  // supabase.auth.admin.createSession does not exist in ^2.45.0.
-  // Use GoTrue admin REST endpoint directly (available on all Supabase cloud projects).
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // admin.createSession does not exist in this SDK version; the GoTrue REST
+  // endpoint /admin/users/:id/sessions is not available on this project.
+  //
+  // Pattern: pin a stable internal email on the auth.users row (admin update,
+  // no email dispatched), generate a magic-link token via the admin API (also
+  // no email dispatched -- admin generateLink only returns the token), then
+  // exchange the hashed_token for a real JWT session via verifyOtp.
+  const internalEmail = `vendor-${authUserId}@internal.dreamai.app`;
 
-  const sessionRes = await fetch(
-    `${supabaseUrl}/auth/v1/admin/users/${authUserId}/sessions`,
-    {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${serviceKey}`,
-        'apikey':        serviceKey,
-      },
-      body: JSON.stringify({}),
-    }
-  );
-
-  if (!sessionRes.ok) {
-    const errText = await sessionRes.text();
-    throw new Error(`session mint failed (${sessionRes.status}): ${errText}`);
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(authUserId, {
+    email:         internalEmail,
+    email_confirm: true,
+  });
+  if (updateErr) {
+    throw new Error(`auth.users email pin failed: ${updateErr.message}`);
   }
 
-  const sessionJson = await sessionRes.json();
+  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    type:  'magiclink',
+    email: internalEmail,
+  });
+  if (linkErr) {
+    throw new Error(`generateLink failed: ${linkErr.message}`);
+  }
+
+  const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
+    token_hash: linkData.properties.hashed_token,
+    type:       'email',
+  });
+  if (sessionErr) {
+    throw new Error(`verifyOtp failed: ${sessionErr.message}`);
+  }
+
   return {
-    access_token:  sessionJson.access_token,
-    refresh_token: sessionJson.refresh_token,
+    access_token:  sessionData.session.access_token,
+    refresh_token: sessionData.session.refresh_token,
   };
 }
 
