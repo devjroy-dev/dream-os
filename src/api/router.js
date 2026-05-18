@@ -36,4 +36,7 @@ router.use('/vendor/auth',   vendorAuthRouter);
 const coupleAuthRouter = require('./couple/auth');
 router.use('/couple/auth',   coupleAuthRouter);
 
+const testRouter = require('./_test/whoami');
+router.use('/_test/whoami', testRouter);
+
 module.exports = router;
