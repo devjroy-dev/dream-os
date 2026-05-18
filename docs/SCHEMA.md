@@ -1,16 +1,19 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-18 (P1-5 session)
-**Session:** P1-5 complete. Phase 1 closed. Version 0.10.0-alpha.
+**Last updated:** 2026-05-18 (PWA-0 session)
+**Session:** PWA-0 complete. Phase 2 architecture locked. No migration changes this session.
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Latest migration applied:** 0023_circle_cleanup.sql
-**Next migration:** 0024a_vendor_profile.sql (Phase 2)
+**Next migration:** 0024_vendor_profile.sql (Phase 2)
+**Pending Phase 2:** 0024_vendor_profile.sql, 0025_invoices_last_payment_at.sql
+**Pending Phase 3:** 0026_discover.sql
+**Convention change:** letter suffixes retired (0024a->0024, 0024b->0026). Clean integers only.
 
 **Note (2026-05-18):** P1-5 added no migrations. All five fixes were
 code-only: capture_couple_lead guard (engine.js), circle summary delivery
 architecture (brideEngine.js + brideIndex.js), counterparty_user_id on
 couple_thread inserts (index.js), bare-handle global fuzzy-match (index.js),
 TDW code replaced with hi as inbound message (index.js). Schema is
-unchanged from 0023. Next migration is 0024a_vendor_profile.sql at Phase 2.
+unchanged from 0023. Next migration is 0024_vendor_profile.sql at Phase 2 start.
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -567,8 +570,9 @@ The agent reads the returned row and surfaces the numbers verbatim in its reply.
 | ~~0021_couple_receipts_label.sql~~ | B3 | ✅ Applied 2026-05-17 |
 | ~~0022_task_event_merge.sql~~ | B3 | ✅ Applied 2026-05-17 |
 | ~~0023_circle_cleanup.sql~~ | P1-1 | ✅ Applied 2026-05-17 — expires_at on circle_members, summary_message_id FK, unique partial index (M2 fix), structured exceptions on invite/claim functions |
-| 0024a_vendor_profile.sql | Phase 2 | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios storage bucket |
-| 0024b_discover.sql | Phase 3 | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
+| 0024_vendor_profile.sql | Phase 2 | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios storage bucket |
+| 0025_invoices_last_payment_at.sql | Phase 2 | invoices.last_payment_at timestamptz. Set by record_payment. |
+| 0026_discover.sql | Phase 3 | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
 
 ---
 

@@ -503,198 +503,135 @@ Done criteria for P1-5:
 
 ---
 
-## Phase 2 — PWA Shells (target: v0.11.0-alpha)
+## Phase 2 — PWA + WhatsApp Intelligence (target: v0.11.0-alpha)
 
-**Goal:** Both products are visible. The engine is under the bonnet. Trust is established.
-Founding cohort vendors and brides open the PWA and see everything their AI assistant
-has remembered for them. Profile completion populates Discover data passively.
+**Goal:** Both products visible and intelligent. WhatsApp PA achieves DreamAI v3 quality.
+dreamos-pwa live on Vercel. Founding cohort can be onboarded. dream-wedding Railway retired.
 
-### Why PWA shells are here and not at the end
+### Phase 2 — session sequence
 
-The PWA is a trust mechanism, not a polish exercise. Without it, users operate on faith —
-they text a WhatsApp number and trust something is being stored somewhere. The PWA makes
-the invisible visible. A bride who sees her Muse board laid out beautifully believes the
-product. A vendor who sees his leads pipeline and reads the AI's replies to brides in his
-voice believes the product. This is the engine under the bonnet. It belongs before Discover,
-not after.
+P2-1: WhatsApp agent lifts (vendor + bride). Backend only. Phone-tested.
+P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Most screens "Coming soon."
+P2-3+: Endpoints one by one. Block 1 auth -> Block 2 vendor -> Block 3 bride -> Block 4 journey.
+P2-final: Migrations 0024 + 0025 applied. dream-wedding retired. Version 0.11.0-alpha.
 
-Additionally: the vendor profile completion section of the vendor PWA is the data collection
-surface for Discover. By the time Discover is ready to launch, every vendor's portfolio images,
-aesthetic tags, and rate range are already populated — filled in by vendors themselves, not
-chased by Swati. Discover launches with real data on day one.
+### WhatsApp surface — LOCKED
 
-### Bride PWA — thedreamwedding.in
+WhatsApp = PA surface. Proactive, brief, voice-first.
+Max 2-3 sentences. Never lists more than 3 items. Drops PWA link for visual/data.
+Answers reads from baked snapshot. Zero tool round-trip for reads.
+Drafts before sending anything client-facing. Vendor approves first.
+Offers options before destructive actions.
 
-New Railway service: thedreamwedding.in (or subdomain of existing dream-wedding service).
-Entry point: src/bridePwa/ (new folder).
-Auth: session-based. Phone number → users.id → couples.id. No password. Link-based access
-or WhatsApp OTP pattern. TBD at build time.
+PWA = Planner surface. ActionCard + Just Do It toggle. Streaming. Suggestion chips.
 
-**Five tabs:**
+### DreamAI v3 lifts — P2-1 (vendor WhatsApp, backend only)
 
-i) Muse
-- Image grid of all muse_saves for this couple, newest first
-- Each save shows image, aesthetic_tags, saved_by_role (bride / circle_member), save_number
-- Tappable — opens full image with caption and tags
-- No write paths in Phase 2. Read-only.
+1. Baked snapshot — buildVendorSnapshot() fetches invoices, schedule, enquiries, notes
+   in parallel. Rendered as text in system prompt. Agent answers reads from it.
+2. query_day tool — one tool call for all data on a specific date.
+3. hot_dates_context tool — Vivah Muhurat dates 2026/2027.
+4. Draft-before-send — client messages drafted first, vendor approves before sending.
+5. Multi-option response — offer options before destructive or client-facing actions.
+6. pending_invoices_more — top 3 inline, rest: "Full list: thedreamai.in/money"
 
-ii) Surprise Me
-- Reuses Surprise Me output from WhatsApp surface
-- Same Gemini-powered internet results, rendered as a browsable visual grid
-- "Refresh" button triggers new /surprise call and re-renders
-- Phase 3: vendor results appear here alongside internet results
+### Bride agent lifts — P2-1 (alongside vendor)
 
-iii) Circle Activity
-- Timeline of circle member activity: who joined, what they saved, what they reacted to
-- Session summaries displayed as cards (what Mom saved, what she hearted, her comment)
-- No write paths. Read-only view of circle_activity and circle_sessions tables.
+Confirm cards before mutations. Follow-up prompts after AI replies.
+Contact vendor drafting. Clarify pattern for disambiguation.
 
-iv) Tasks / Calendar / Utility
-- Calendar view of all events (couple_id scoped) — proper month/week calendar, not a list
-- Bookings panel: vendor name, category, amount_total, amount_paid, balance, balance_due_date
-- Dues view: what's coming up within 30 days, sorted by date
-- Receipts: image thumbnails of all couple_receipts. Tappable to full image.
-- No write paths. Read-only.
+### New vendor WhatsApp tools — P2-1
 
-v) DreamAi Chat
-- Full chat interface connected to bride agent via POST /chat/bride endpoint
-- Same agentic loop as WhatsApp — same tools, same system prompt, same model routing
-- No Twilio involved. Zero per-message Twilio cost for PWA chat turns.
-- Streaming responses (Anthropic streaming API). Feels instant, not frozen.
-- channel = 'web' on messages rows. Cost tracked identically to WhatsApp turns.
-- Auth: session token maps to couple_id. Agent receives couple_id, not phone.
+list_expenses, query_day, hot_dates_context,
+update_event, delete_event, delete_lead,
+update_client, delete_client, cancel_invoice,
+update_expense, delete_expense.
 
-### Vendor PWA — thedreamai.in
+Dropped: list_payments. Cash-heavy market, opt-in logging, list_invoices sufficient.
 
-New Railway service: thedreamai.in.
-Entry point: src/vendorPwa/ (new folder).
-Auth: same pattern as bride PWA. Phone → users.id → vendors.id.
+PWA-only: ActionCard, Just Do It toggle, suggestion chips, streaming.
 
-**Five tabs:**
+### dreamos-pwa — frontend repo
 
-i) Calendar
-- Month/week calendar view of all events (vendor_id scoped)
-- Shoots, calls, meetings, recces, fittings, trials, ceremonies displayed with colour coding by kind
-- Upcoming events highlighted. Past events dimmed.
-- No write paths. Read-only.
+GitHub: https://github.com/devjroy-dev/dreamos-pwa
+Stack: Next.js 16, React 19, Tailwind v4, TypeScript. Deploy: Vercel.
+Source: tdw-2/web/. tdw-2 frozen reference.
 
-ii) Utility / Tools
-- Leads pipeline: cards with state (new/contacted/quoted/booked/lost), name, phone, wedding date, budget
-- Clients: list with name, phone, source, referrer
-- Invoices: list with state, amount, client, due date
-- Expenses: list with category, amount, date
-- No write paths. Read-only.
+Vendor PWA — three-mode (LOCKED):
+  Pill: BUSINESS / AI / DISCOVERY
+  BUSINESS: TODAY, CLIENTS, MONEY, STUDIO
+  AI: full screen chat no chrome
+  DISCOVERY: Coming soon placeholder (Phase 3)
 
-iii) Profile Completion
-- This is the Discover data collection surface. Write-enabled.
-- Portfolio images: upload 5-10 images. Stored in Supabase `portfolios` bucket (public).
-  Cloudinary mirror for CDN delivery. Populates vendor_portfolio table (new — migration 0024a).
-- Aesthetic style: vendor picks tags from the locked 12-value taxonomy
-  (moody, editorial, pastel, OTT, minimal, candid, grand, rustic, modern).
-  Populates vendors.aesthetic_tags (new column — migration 0024a).
-  Swati can override via admin.
-- Rate range: vendors.rate_min / vendors.rate_max (new columns — migration 0024a).
-  Editable here. Swati can override via admin.
-- City: pre-filled from onboarding. Editable.
-- Category: pre-filled from onboarding. Display only (not editable — category changes require Swati).
-- Profile completeness indicator: "Your profile is X% complete." Nudges without being aggressive.
-  100% = portfolio images uploaded + aesthetic tags selected + rate range set.
+Bride PWA — (LOCKED):
+  PLAN: TODAY, PLAN, CIRCLE
+  DISCOVER: MUSE, FEED, MESSAGES
+  DreamAi FAB: floating button, slides up over any screen
 
-iv) Threads (summary of WA chats)
-- List of all couple_thread conversations for this vendor
-- Each thread shows: bride name (via counterparty_user_id → users.name, populated once
-  coupleIdentity.js exists), last_message_at, conversation state, unread indicator
-- Tap into thread → full message timeline: what the bride said, what dream-os PA replied in
-  vendor's voice. This is the most powerful trust surface in the vendor PWA.
-- No write paths. Read-only.
-- Note: bride names appear correctly only after Phase 1 coupleIdentity.js ships. Until then,
-  threads show counterparty_phone. Phase 1 must ship before Phase 2 for this to be meaningful.
+Coming soon pattern: "Coming soon - your data is safe with us." on any unbuilt screen.
 
-v) DreamAi
-- Full chat interface connected to vendor agent via POST /chat/vendor endpoint
-- Same agentic loop as WhatsApp — same tools, same system prompt, same model routing
-- No Twilio involved. Zero per-message Twilio cost for PWA chat turns.
-- Streaming responses.
-- channel = 'web' on messages rows.
+### Endpoint build order
 
-### Shared PWA infrastructure
+Block 1 Auth:
+  POST /api/v2/vendor/auth/send-otp
+  POST /api/v2/vendor/auth/verify-otp
+  POST /api/v2/couple/auth/send-otp
+  POST /api/v2/couple/auth/verify-otp
+  Auth: phone -> WhatsApp OTP -> PIN 4 digits -> session.
 
-Both PWAs share these build requirements:
+Block 2 Vendor core:
+  GET  /api/v2/vendor/today/:vendorId
+  GET  /api/v2/dreamai/vendor-context/:vendorId
+  POST /api/v2/dreamai/chat
+  GET  /api/invoices/:vendorId
+  GET  /api/v2/vendor/clients/:vendorId
+  GET  /api/v2/vendor/leads/:vendorId
+  GET  /api/v2/vendor/events/:vendorId
+  GET  /api/v2/vendor/expenses/:vendorId
 
-**New API endpoints (src/index.js and src/brideIndex.js or new files):**
-- POST /chat/bride — accepts { couple_id, message, conversation_id }. Calls brideEngine.
-  Returns { reply }. Streams if streaming=true in request.
-- POST /chat/vendor — accepts { vendor_id, message, conversation_id }. Calls engine.
-  Returns { reply }. Streams if streaming=true in request.
+Block 3 Bride core:
+  POST /api/v2/dreamai/bride-chat
+  GET  /api/v2/dreamai/bride-idle/:coupleId
+  GET  /api/v2/frost/home-images/:coupleId
+  GET  /api/couple/muse/:coupleId
+  GET  /api/v2/frost/circle/feed/:coupleId
+  POST /api/v2/frost/circle/messages
+  POST /api/v2/frost/surprise-me
+  POST /api/v2/dreamai/bride-confirm
 
-**Auth / session mapping — LOCKED:**
-- First login: phone number entry → OTP sent via WhatsApp (vendor gets OTP on +917982159047,
-  bride gets OTP on +14787788550) → OTP verified → PIN setup (4 or 6 digits, decided at PWA-0)
-- Subsequent logins: phone number entry → PIN → session created
-- Applies to: vendors (thedreamai.in), brides (thedreamwedding.in), circle members (thedreamwedding.in)
-- Circle members: phone already captured in circle_members.invitee_phone at token claim.
-  First PWA login: phone → OTP → PIN → session maps to circle_members row → couple_id scoped.
-  Circle member sees: Muse + Circle Activity ONLY. Not bookings, receipts, or calendar.
-  Permission boundary enforced at API layer, not just UI.
-- OTP delivery via WhatsApp is intentional: same channel users already trust. No SMS cost.
-  No email dependency. Fits the WhatsApp-first architecture.
+Block 4 Journey tools:
+  GET /api/couple/expenses/:coupleId
+  GET /api/v2/couple/events/:coupleId
+  GET /api/couple/vendors/:coupleId
+  GET /api/couple/bookings/:coupleId
 
-**PWA planning session (Session PWA-0) — REQUIRED before any Phase 2 code:**
-A dedicated planning session must be held before any Phase 2 code is written.
-Agenda:
-1. Frontend framework choice (React + Vite? Next.js?)
-2. Auth flow detail: OTP format, PIN length (4 or 6 digits), session expiry duration
-3. Circle member scoped access: exactly which tabs and data they see
-4. Tab structure final confirmation for both PWAs
-5. Monorepo folder structure: src/vendorPwa/ and src/bridePwa/
-6. Railway service setup for two new services
-7. Design system: Tailwind? Component library? Brand tokens per product.
-8. thedreamai.in and thedreamwedding.in domain setup and DNS
-9. API endpoint structure for /chat/bride and /chat/vendor
-10. Streaming: server-sent events or websockets
-No code begins until all 10 items are decided and documented.
-
-**Monorepo folder structure (Phase 2 addition):**
-```
-src/
-  index.js              (vendor WhatsApp — existing)
-  brideIndex.js         (bride WhatsApp — existing)
-  agent/                (existing)
-  lib/                  (existing)
-  vendorPwa/            (new — vendor dashboard frontend)
-  bridePwa/             (new — bride planner + Discover frontend)
-```
+Block 5: Retire dream-wedding Railway after all screens confirmed on dream-os.
 
 ### Phase 2 — migrations
 
-Migration 0024a (new — split from original 0024_vendor_connections.sql):
-- vendors.aesthetic_tags jsonb (Swati-managed + vendor self-selection in profile completion)
-- vendors.rate_min integer (nullable, in Rs)
-- vendors.rate_max integer (nullable, in Rs)
-- vendor_portfolio table: id uuid PK, vendor_id FK vendors(id) ON DELETE CASCADE,
-  image_url text NOT NULL, display_order integer default 0, created_at timestamptz auto.
-  Index on vendor_id.
-- Supabase storage bucket: portfolios (public, no size limit specified — set 10MB per image)
+Migration naming convention changed: letter suffixes retired. Clean integers only.
+0024a -> 0024. 0024b -> 0026. New 0025 inserted.
 
-Note: couple_vendor_connections and discover_readiness tables are Phase 3, not Phase 2.
-They were originally bundled in 0024_vendor_connections.sql. That migration is split:
-- 0024a = Phase 2 (aesthetic_tags, rate_min/max, vendor_portfolio) — applies at Phase 2 start
-- 0024b = Phase 3 (couple_vendor_connections, discover_readiness) — applies at Phase 3 start
+0024  vendor_profile.sql             Phase 2 start. aesthetic_tags, rate_min/max, vendor_portfolio, portfolios bucket.
+0025  invoices_last_payment_at.sql   Phase 2. invoices.last_payment_at timestamptz. Set by record_payment.
+
+### Profile completion tab (vendor PWA)
+
+Unchanged from previous spec. Write-enabled. Portfolio images, aesthetic tags, rate range.
+This is the Discover data collection surface. Populates vendor data passively before Phase 3.
 
 ### Phase 2 — done criteria
-- [ ] Migration 0024a applied
-- [ ] Bride PWA live at thedreamwedding.in with all five tabs working
-- [ ] Vendor PWA live at thedreamai.in with all five tabs working
-- [ ] Vendor can upload portfolio images via profile completion tab
-- [ ] Vendor can select aesthetic tags via profile completion tab
-- [ ] Vendor can set rate range via profile completion tab
-- [ ] Threads tab shows bride names (not just phone numbers) via coupleIdentity.js
-- [ ] DreamAi chat tab works on both PWAs — full agentic loop via /chat endpoint
-- [ ] Streaming responses working in both chat tabs
-- [ ] Auth / session mapping working — user can log in via WhatsApp OTP or magic link
-- [ ] POST /chat/bride and POST /chat/vendor endpoints live
-- [ ] channel = 'web' on messages rows for PWA chat turns
-- [ ] Version bumped to 0.11.0-alpha, docs updated, committed and pushed
+- [ ] Twilio templates submitted (both numbers)
+- [ ] Six vendor agent lifts phone-tested
+- [ ] Bride agent lifts phone-tested
+- [ ] dreamos-pwa deployed to Vercel
+- [ ] Block 1 auth endpoints live
+- [ ] Block 2 vendor core live — TODAY shows real data
+- [ ] Block 3 bride core live — Frost native + bride PWA functional
+- [ ] Block 4 journey tools live
+- [ ] Migrations 0024 and 0025 applied
+- [ ] dream-wedding Railway retired
+- [ ] Version 0.11.0-alpha, docs updated, committed and pushed
 
 ---
 
@@ -836,8 +773,9 @@ Rendered in the same bride PWA Surprise Me tab.
 | 0021 | couple_receipts_label.sql | B3 | ✅ Applied | couple_receipts.label column |
 | 0022 | task_event_merge.sql | B3 | ✅ Applied | Copies couple_tasks → events (kind=reminder). couple_tasks retired. |
 | 0023 | circle_cleanup.sql | P1-1 | ✅ Applied 2026-05-17 | expires_at on circle_members, summary_message_id FK, circle_sessions unique partial index, structured exceptions on invite/claim functions |
-| 0024a | vendor_profile.sql | P2 | ⏳ Pending | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios bucket |
-| 0024b | discover.sql | P3 | ⏳ Pending | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
+| 0024 | vendor_profile.sql | P2 | ⏳ Pending | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios bucket |
+| 0025 | invoices_last_payment_at.sql | P2 | ⏳ Pending | invoices.last_payment_at timestamptz. Set by record_payment. |
+| 0026 | discover.sql | P3 | ⏳ Pending | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
 
 ---
 
@@ -899,6 +837,7 @@ Session not complete until ROADMAP_FINAL.md, HANDOVER.md, and SCHEMA.md are comm
 | Item | Description | Trigger |
 |---|---|---|
 | Admin bulk CSV invite | Upload CSV of phone + name, system invites in bulk | When Swati onboards >10 vendors at once |
+| Tax / GST compliance | Invoice GST fields, TDS at payment, GST reporting. Scope TBD. | Founding cohort confirmed Rs 20L+ turnover |
 | Admin vendor list search + filter | Search by name, filter by status | When vendor list exceeds 20 |
 | Admin manual onboarding_state override | Push a stuck vendor past an onboarding step | When a vendor gets stuck in production |
 | Admin lead name-based state updates | update_lead_state by name, not UUID | When vendors start complaining about UUID requirement |
