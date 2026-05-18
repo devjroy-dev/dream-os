@@ -1,11 +1,10 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-18 (P2-4 session)
-**Session:** P2-4 complete. No new migrations. Schema unchanged from P2-3. Last migration applied: 0033.
+**Last updated:** 2026-05-19 (P2-5 session)
+**Session:** P2-5 complete. Migration 0030 applied. landing_slides + exploring_photos tables live and seeded.
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0033_otp_sessions.sql (2026-05-18)
-**Next migration:** 0024_vendor_profile.sql (Phase 2 — pending)
-**Pending Phase 2:** 0024, 0026, 0029
-**Landing page session:** 0030
+**Latest migration applied:** 0030_landing_assets.sql (2026-05-19)
+**Next migration:** 0034 (when needed)
+**Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
 **Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at,
   0027=discover(P3), 0028=pin_auth(applied), 0029=discover_preview, 0030=landing_assets,
@@ -594,6 +593,7 @@ The agent reads the returned row and surfaces the numbers verbatim in its reply.
 | **0031_invite_codes.sql** | **P2-3** | **✅ Applied 2026-05-18. invite_codes table + consume_invite_code() function.** |
 | **0032_waitlist_signups.sql** | **P2-3** | **✅ Applied 2026-05-18. waitlist_signups table.** |
 | **0033_otp_sessions.sql** | **P2-3** | **✅ Applied 2026-05-18. otp_sessions table. Transient OTP state for PWA login.** |
+| **0030_landing_assets.sql** | **P2-5** | **✅ Applied 2026-05-19. landing_slides + exploring_photos tables. Seeded with 3 Cloudinary URLs.** |
 
 ---
 
@@ -672,4 +672,39 @@ Index: `otp_sessions_expires_at_idx` on (expires_at).
 No FK to users — intentional. Allows OTP rows before users row exists on some error paths.
 Single-use: row deleted immediately on successful verify-otp.
 No FK to users — intentional, see migration 0033 header.
+
+### landing_slides (added 0030, P2-5)
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | uuid_generate_v4() |
+| image_url | text NOT NULL | Cloudinary delivery URL. Frontend renders this directly. |
+| cloudinary_public_id | text | Nullable. Present when uploaded via admin panel. NULL when URL pasted from outside. |
+| caption | text | Nullable. |
+| display_order | integer NOT NULL | default 0. ASC order. |
+| active | boolean NOT NULL | default true. false = skipped by public endpoint. |
+| created_at | timestamptz NOT NULL | default now() |
+| updated_at | timestamptz NOT NULL | default now(), auto via set_updated_at() trigger. |
+
+Index: landing_slides_active_order_idx on (display_order) WHERE active = true.
+Endpoint: GET /api/v2/landing-slides. Public. Returns { ok, slides: [...] }.
+Seeded: 3 Cloudinary URLs from cloud dccso5ljv. Same URLs hardcoded as FALLBACK_SLIDES in frontend.
+Admin UI: post-Phase 2 admin session. Until then: manage via Supabase SQL Editor.
+
+### exploring_photos (added 0030, P2-5)
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | uuid_generate_v4() |
+| image_url | text NOT NULL | Cloudinary delivery URL. |
+| cloudinary_public_id | text | Nullable. |
+| caption | text | Nullable. |
+| display_order | integer NOT NULL | default 0. |
+| active | boolean NOT NULL | default true. |
+| created_at | timestamptz NOT NULL | default now() |
+| updated_at | timestamptz NOT NULL | default now(), auto via set_updated_at() trigger. |
+
+Index: exploring_photos_active_order_idx on (display_order) WHERE active = true.
+Endpoint: GET /api/v2/exploring-photos. Public. Returns { ok, photos: [...] }.
+Purpose: editorial mood gallery for Just Exploring entry on landing page (anonymous visitors).
+Distinct from Discover preview (vendor profiles inside PWA - Phase 2 Block 5, not built yet).
+Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel post-Phase 2.
 

@@ -322,3 +322,66 @@ Rebuild admin pages with server-side auth — password lives only in Railway env
 ---
 
 *End of P2-4 findings. Next session's findings appended below this line.*
+
+## P2-5 - 2026-05-19
+
+---
+
+### Finding #13 - CORS not configured in dream-os
+
+**What:** dream-os had no CORS headers. Browser blocked every request from dreamos-pwa.vercel.app to dream-os-production.up.railway.app. All API calls failed with net::ERR_FAILED or "No Access-Control-Allow-Origin header present."
+
+**Why:** CORS is a browser security feature. curl and server-to-server calls ignore it. That is why all P2-3/P2-4 curl tests passed but the browser failed. Only surfaced in P2-5 when the frontend ran in a browser for the first time.
+
+**Fix:** Added cors npm package (^2.8.5). Mounted app.use(cors({...})) in src/index.js before all route mounts. Allowed origins: thedreamwedding.in, www.thedreamwedding.in, dreamos-pwa.vercel.app, localhost:3000/3001, any dreamos-pwa Vercel preview URL.
+
+**Status:** RESOLVED - commit dab31e3 (2026-05-19)
+
+---
+
+### Finding #14 - All phone numbers sent without country code
+
+**What:** Every auth call in the frontend sent bare 10-digit numbers (e.g. 9888294440) without the + country code prefix. dream-os validates all phones as E.164 so every call was rejected or misrouted. Affected: sendOtp, verifyOtp, handleSignIn, waitlist submitRequest, session storage.
+
+**Why:** Frontend lifted from tdw-2 which assumed India-only and stripped to 10 digits everywhere. No E.164 enforcement was added during the lift.
+
+**Fix:** Added country.dialCode + digits pattern throughout. Then added CountrySheet component (11-country NRI-focused picker) so non-India users can select their country code.
+
+**Status:** RESOLVED - commits 61ddd68, 1b9ec3d, 0da8345, ed9040f (2026-05-19)
+
+---
+
+### Finding #15 - Waitlist payload field name mismatches
+
+**What:** Landing page waitlist form sent role and instagram in POST body. The endpoint expected kind and instagram_handle. Every waitlist submission returned 400.
+
+**Fix:** Updated submitRequest in app/page.tsx: role -> kind, instagram -> instagram_handle.
+
+**Status:** RESOLVED - commit 0da8345 (2026-05-19)
+
+---
+
+### Finding #16 - instagram_handle required in backend but not enforced in form
+
+**What:** Even after fixing field names, submissions without Instagram handle returned 400. Form had no visual indicator that Instagram was mandatory. Submit button enabled with blank field. Users saw Received. (false confirmation) but no row was saved.
+
+**Fix:** Made instagram_handle optional in src/api/waitlist.js. Field still stored when provided. Null accepted when missing.
+
+**Status:** RESOLVED - commit e91930c (2026-05-19)
+
+---
+
+### Finding #17 - Returning users bounced back to landing instead of PIN login
+
+**What:** Returning users (vendor and bride) who tapped Sign In were routed to OTP flow instead of PIN login, then bounced back to landing. The /couple/pin-login and /vendor/pin-login screens guard on session.id / session.userId. handleSignIn was only storing { phone, pin_set: true } with no id or userId so the guard fired and router.replace('/') was called.
+
+**Root cause:** pin-status endpoint returned only { ok, exists, pin_set }. No IDs. handleSignIn had no way to populate the required session fields before routing.
+
+**Fix:** Added user_id and role_id to pin-status response. Updated handleSignIn to store { id: d.role_id, userId: d.user_id, vendorId: d.role_id, phone, pin_set } in localStorage before router.push.
+
+**Status:** RESOLVED - commits f83fdce (dream-os) + 31a3b11 (dreamos-pwa) (2026-05-19)
+
+---
+
+*End of P2-5 findings. Next session's findings appended below this line.*
+

@@ -514,9 +514,11 @@ P2-1: WhatsApp agent lifts (vendor + bride). Backend only. Phone-tested. [DONE 2
 P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Coming Soon on post-launch screens. [DONE 2026-05-18]
 P2-3: Landing page infrastructure + full auth block. DB foundations, invite/waitlist/auth endpoints, admin mint. [DONE 2026-05-18]
 P2-4: JWT issuance. Block 1 auth complete. Phone-tested. [DONE 2026-05-18]
-P2-5: Landing page build + wire 6 login screens to live endpoints. dreamos-pwa frontend session.
-P2-6+: Block 2 vendor core -> Block 3 bride core -> Block 4 journey.
-P2-final: Migrations 0024 + 0026 applied. dream-wedding retired. Version 0.11.0-alpha.
+P2-5: Landing page build + auth wiring + CORS + country picker + waitlist. [DONE 2026-05-19]
+P2-6: Block 2 vendor core endpoints. TODAY shows real data. DreamAI chat. Invoices, clients, leads, events, expenses.
+P2-7: Block 3 bride core endpoints. Bride home functional. DreamAI chat. Muse. Circle feed.
+P2-8: Block 4 journey tools. Couple expenses, events, vendors, bookings.
+P2-9: Migrations 0024 + 0026 applied. Discover preview endpoint. dream-wedding retired. Version 0.11.0-alpha.
 
 ### WhatsApp surface — LOCKED
 
@@ -668,6 +670,7 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [x] Login/invite sequence built fresh (phone -> WhatsApp OTP -> PIN) ✅ 2026-05-18
 - [x] Block 1 auth endpoints live ✅ 2026-05-18
 - [x] Block 1 JWT issuance live ✅ 2026-05-18 (Finding #11 resolved)
+- [x] Landing page live. Auth wired. Waitlist. Country picker. Vendor + bride home reached. ✅ 2026-05-19
 - [ ] Block 2 vendor core live — TODAY shows real data
 - [ ] Block 3 bride core live — bride PWA functional
 - [ ] Block 4 journey tools live
