@@ -1,6 +1,6 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-18 (P2-1 session)
-**Session:** P2-1 complete. Migration 0025 hot_dates applied.
+**Last updated:** 2026-05-18 (P2-2 session)
+**Session:** P2-2 complete. No schema changes this session. Last migration applied: 0025.
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Latest migration applied:** 0023_circle_cleanup.sql
 **Latest migration applied:** 0025_hot_dates.sql (2026-05-18)

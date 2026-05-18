@@ -1,45 +1,111 @@
 # dream-os — Master Handover (The Bridge Document)
-**Written:** 2026-05-18 (P2-1 session)
-**Session:** P2-1 complete. All AI lifts done and phone-tested. WhatsApp PA now matches DreamAI v3 quality.
-**Version:** 0.10.0-alpha (no bump — P2-1 is mid-Phase 2, no PWA live yet)
-**HEAD:** 7246696
+**Written:** 2026-05-18 (P2-2 session)
+**Session:** P2-2 complete. dreamos-pwa URL swap done. Shell live on Vercel. Coming Soon applied.
+**Version:** 0.10.0-alpha (no bump — P2-2 is mid-Phase 2, no auth or endpoints yet)
+**HEAD (dream-os):** 25ab58e
+**HEAD (dreamos-pwa):** 76ac9a4
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Repo backend:** https://github.com/devjroy-dev/dream-os
-**Repo frontend:** https://github.com/devjroy-dev/dreamos-pwa (created this session)
+**Repo frontend:** https://github.com/devjroy-dev/dreamos-pwa
+**Vercel:** https://dreamos-pwa.vercel.app (live, smoke-tested 2026-05-18)
 
-Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md.
+Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then FINDINGS_LOG.md.
 
 ---
 
 ## Phase 1 — complete (0.10.0-alpha)
 
-All sessions P1-1 through P1-5 done. PWA-0 planning session done. P2-1 done.
-See previous handovers for history. Not repeated here.
-See that commit's HANDOVER_FINAL.md for full Phase 1 session history. Not repeated here.
+All sessions P1-1 through P1-5 done. PWA-0 planning done. P2-1 done. P2-2 done.
+See commit 25ab58e HANDOVER_FINAL.md for full Phase 1 and P2-1 session history.
 
 ---
 
-## PWA-0 — 2026-05-18 (planning only, previous session)
+## P2-2 — 2026-05-18 (this session)
 
-All Phase 2 architecture decisions locked. See PWA-0 handover (commit 27833d6) for full decisions.
+dreamos-pwa URL swap complete. Shell live on Vercel. Coming Soon applied to post-launch screens.
+No backend changes. No schema changes. No migrations. dream-os Railway untouched.
 
----
+### What was built
 
-## P2-1 — 2026-05-18 (this session)
+dreamos-pwa repo — 12 commits (oldest to newest):
+- f019311 feat(pwa): P2-2 step 1 — add lib/api.ts shared API_BASE export
+- 8488223 feat(pwa): P2-2 step 2 — admin URL swap (23 files use API_BASE)
+- 8e5296b feat(pwa): P2-2 step 3 — vendor PWA URL swap (22 files use API_BASE)
+- fc61802 feat(pwa): P2-2 step 4 — couple/bride PWA URL swap (16 files use API_BASE)
+- 97300bf feat(pwa): P2-2 step 5 — shared/root URL swap (8 files, URL swap phase complete)
+- 59c936b chore(pwa): commit auto-generated tsconfig.json (required for Vercel build)
+- d4c180d feat(pwa): P2-2 step 6 — Coming Soon on post-launch studio screens + TAX tab
+- d55a7f9 fix(pwa): replace broken @/ alias with relative path in couple/discover/feed
+- b032524 fix(pwa): replace API+ string concat with API_BASE+ (missed by Writer 3/4)
+- 097c3d1 fix(pwa): remove orphaned DreamAiFAB.tsx (replaced by three-mode pill per roadmap)
+- e1025f0 fix(pwa): delete Discovery.BACKUP.tsx — backup file causes build error
+- 76ac9a4 fix(pwa): replace @/ alias with relative path in Discovery.tsx
 
-All AI lifts completed and phone-tested. WhatsApp vendor PA and bride agent now match DreamAI v3 quality.
-Migration 0025 (hot_dates) applied to Supabase.
+### URL swap — complete
 
-### Commits this session (oldest to newest)
-- 5751a8b feat(agent): P2-1 lift 1 — baked snapshot system prompt
-- 5df85b3 feat(agent): P2-1 lift 2 — query_day tool
-- 8ecf037 feat(agent): P2-1 lift 3 — hot_dates_context tool + migration 0025
-- d39e526 feat(agent): P2-1 lifts 4-6 — draft-before-send, multi-option destructive, PWA link pattern
-- 903670a fix(agent): disambiguate client name before draft-before-send
-- 2650185 feat(bride): P2-1 bride lifts B1-B4
-- ab03ad2 fix(bride): always offer day-before reminder after trial/fitting/ceremony
-- 629a138 feat(agent): lift 3 remaining DreamAI v3 rules
-- 7246696 fix(agent): extend snapshot event window from 14 to 30 days
+All 69+ files that previously hardcoded dream-wedding-production-89ae.up.railway.app
+now import API_BASE from lib/api.ts. Zero hardcoded old URLs remain.
+
+lib/api.ts — the single source of truth:
+  export const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE
+    || 'https://dream-os-production.up.railway.app';
+
+Vercel env var: NEXT_PUBLIC_API_BASE = https://dream-os-production.up.railway.app
+Set for Production and Preview environments.
+
+Special cases handled:
+- app/coplanner/CircleSessionContext.tsx: re-export shim — export { API_BASE as API }
+  preserves backward compat with 7 importing coplanner files. Cleanup in Phase 3 hygiene.
+  See FINDINGS_LOG.md finding #5.
+- app/api/razorpay/route.ts: server-side file, env-var-with-fallback pattern kept.
+  Only fallback URL swapped to dream-os-production.
+- Inline literal URLs (string concat API + '/path' not template literals) — fixed in
+  second pass by Claude Code after first Vercel deploy revealed the gap. See FINDINGS_LOG #9.
+
+### Coming Soon screens — applied
+
+Five vendor studio sub-pages replaced with Coming Soon (post-launch features):
+- app/vendor/studio/analytics/page.tsx — Discovery analytics (Phase 3)
+- app/vendor/studio/broadcast/page.tsx — Bulk messaging (post-launch)
+- app/vendor/studio/contracts/page.tsx — Contracts (post-launch)
+- app/vendor/studio/referrals/page.tsx — Referrals (post-launch)
+- app/vendor/studio/team/page.tsx — Team management (post-launch)
+
+Inline Coming Soon on TAX tab only in app/vendor/money/page.tsx.
+INVOICES, EXPENSES, PAYMENTS tabs untouched and functional.
+
+Coming Soon text (canonical, locked): "Coming soon — your data is safe with us."
+Design: Cormorant Garamond italic, #888580, centered vertically on screen.
+
+NOT touched: studio/page.tsx (nav), calendar, settings, discovery-preview.
+
+### dreamos-pwa technical state
+
+- Framework: Next.js 16.2.3, React 19, Tailwind v4, TypeScript
+- Build: passes cleanly (next build zero errors as of HEAD 76ac9a4)
+- Deploy: Vercel, auto-deploy on push to main
+- tsconfig.json: committed (required for Vercel)
+- DreamAiFAB.tsx: deleted (orphaned, not imported anywhere, replaced by three-mode pill)
+- Discovery.BACKUP.tsx: deleted (backup file was causing build error)
+- Relative imports: all lib/api imports use relative paths (e.g. ../../../lib/api)
+  NOT @/lib/api — tsconfig has no paths config. See FINDINGS_LOG #3 and #5.
+
+### P2-2.a — deferred (do before P2-3)
+
+Railway outage during this session (May 18 06:37-06:52 UTC) prevented live password rotation.
+Two actions needed before P2-3 begins:
+1. Rotate ADMIN_PASSWORD in Railway dream-os service Variables tab.
+   Old value is in public git history on dreamos-pwa repo.
+   New value: generate 24-char random, store in password manager only.
+2. Confirm deployment 25ab58e (docs-only, failed during outage) is redeployed or
+   superseded by a new code commit so Railway is running current code.
+
+### Security findings from P2-2 — full list in FINDINGS_LOG.md
+
+Admin password hardcoded in 25 files in dreamos-pwa (public repo). Option A taken:
+acknowledge, rotate Railway secret, defer code cleanup to admin session.
+See FINDINGS_LOG.md for complete inventory of all 9 findings.
 
 ---
 
@@ -47,15 +113,13 @@ Migration 0025 (hot_dates) applied to Supabase.
 
 Four surfaces. One backend. Always.
 
-```
-WhatsApp vendor  (+917982159047)  ->  dream-os  src/index.js
-WhatsApp bride   (+14787788550)   ->  dream-os  src/brideIndex.js
-Vendor PWA       thedreamai.in    ->  dream-os  new API endpoints
-Bride PWA        thedreamwedding  ->  dream-os  new API endpoints
-Frost native     iOS/Android      ->  dream-os  new API endpoints (post-launch)
-```
+  WhatsApp vendor  (+917982159047)  ->  dream-os  src/index.js
+  WhatsApp bride   (+14787788550)   ->  dream-os  src/brideIndex.js
+  Vendor PWA       thedreamai.in    ->  dream-os  new API endpoints (P2-4+)
+  Bride PWA        thedreamwedding  ->  dream-os  new API endpoints (P2-4+)
+  Frost native     iOS/Android      ->  dream-os  new API endpoints (post-launch)
 
-dream-os is the only backend. dream-wedding server.js is retired.
+dream-os is the only backend. dream-wedding server.js is retiring.
 dreamos-pwa is the only active frontend repo. tdw-2 is frozen reference.
 Two repos. Two deploy targets. dream-os = Railway (Node). dreamos-pwa = Vercel (Next.js).
 No monorepo.
@@ -64,124 +128,85 @@ No monorepo.
 
 ## Surface philosophy — LOCKED
 
-### WhatsApp = PA surface
-
-Proactive. Brief. Voice-first. Never more than 2-3 sentences. Never lists more than 3 items.
+WhatsApp = PA surface. Proactive. Brief. Voice-first.
+Never more than 2-3 sentences. Never lists more than 3 items.
 Drops PWA link for anything visual or data-heavy.
-
-Vendor: speaks in their ear. Captures, alerts, drafts client messages, answers instantly.
+Vendor: speaks in their ear. Captures, alerts, drafts, answers instantly.
 Bride: BFF voice. Saves to Muse, plans through chat, emotionally intelligent.
 
-### PWA = Planner surface
-
-Visual. Rich. Data-forward.
+PWA = Planner surface. Visual. Rich. Data-forward.
 Vendor: leads, calendar, money, threads. DreamAI chat with ActionCard + Just Do It toggle.
 Bride: Muse board, Circle, Journey, Discover. DreamAI chat with confirm cards.
 Streaming responses. Suggestion chips.
 
-### Baked snapshot — LOCKED
-
-Before every WhatsApp vendor agent turn, a parallel Supabase fetch populates system prompt:
-- Outstanding invoices (name, amount owed, due date)
-- Today's schedule (time, client, location)
-- This week's upcoming events
-- Pending enquiries (name, date, budget, one line each)
-- Recent notes (last 3)
-
-Agent answers read questions from snapshot. Zero tool calls for reads.
-Writes still use tools. Makes the PA feel genuinely informed before vendor types.
-Implementation: buildVendorSnapshot(supabase, vendorId) at turn start.
+Baked snapshot (LOCKED): Before every vendor agent turn, Supabase fetch populates system
+prompt with invoices, schedule (30-day), enquiries, notes. Agent reads from snapshot.
+Zero tool calls for reads. Writes still use tools.
 
 ---
 
-## dreamos-pwa — created this session
+## dreamos-pwa — current state (post P2-2)
 
 GitHub: https://github.com/devjroy-dev/dreamos-pwa
+Vercel: https://dreamos-pwa.vercel.app (live)
 Stack: Next.js 16, React 19, Tailwind v4, TypeScript
-Source: Copied from tdw-2/web/. tdw-2 frozen, dreamos-pwa is active.
-Status: Created, cleaned, pushed to GitHub. Not yet pointed at dream-os. Not on Vercel.
-Deploy target: Vercel (separate from dream-os Railway).
 
 Vendor PWA three-mode architecture (LOCKED):
-Pill: BUSINESS / AI / DISCOVERY
+  Pill: BUSINESS / AI / DISCOVERY
+  BUSINESS: TODAY, CLIENTS, MONEY, STUDIO
+  AI: full screen chat, no chrome
+  DISCOVERY: Phase 3 — Discover preview endpoint (needs 0024+0029 first)
 
-  BUSINESS mode  -> TODAY, CLIENTS, MONEY, STUDIO
-  AI mode        -> full screen chat, no chrome
-  DISCOVERY mode -> Coming soon placeholder (activates Phase 3)
+STUDIO sub-pages:
+  calendar          built (dream-os has event tools)
+  settings          built
+  discovery-preview built (Phase 2 endpoint pending)
+  analytics         COMING SOON (Phase 3)
+  broadcast         COMING SOON (post-launch)
+  contracts         COMING SOON (post-launch)
+  referrals         COMING SOON (post-launch)
+  team              COMING SOON (post-launch)
 
-TODAY is home screen. Curated dashboard (needs attention, schedule, money snapshot).
-STUDIO has sub-pages: calendar, analytics, broadcast, settings, referrals, team.
-Calendar lives in STUDIO, not at top level.
+MONEY tabs:
+  INVOICES          built
+  EXPENSES          built
+  PAYMENTS          built
+  TAX               COMING SOON (post-launch — GST/TDS)
 
-Bride PWA structure (LOCKED, from tdw-2/web/app/couple/):
-Pill: PLAN / ✦ / DISCOVER (gold ✦ = DreamAi full screen chat mode)
-  PLAN mode     -> TODAY, PLAN, CIRCLE
-  ✦ mode        -> full screen DreamAi chat, no chrome
-  DISCOVER mode -> MUSE, FEED, MESSAGES
-  No FAB. Consistent with vendor three-mode pattern.
+Bride PWA three-mode architecture (LOCKED):
+  Pill: PLAN / gold-star / DISCOVER
+  PLAN: TODAY, PLAN, CIRCLE
+  gold-star: full screen DreamAi chat, no chrome
+  DISCOVER: MUSE, FEED, MESSAGES
+  No FAB.
 
-Coming soon pattern (LOCKED):
-Any unbuilt screen shows: "Coming soon - your data is safe with us."
-No apology. No error. A signal. Screens light up as endpoints are built.
+Coming soon pattern (LOCKED): "Coming soon — your data is safe with us."
 
----
-
-## dreamos-pwa landing page — deferred session
-
-Landing page (thedreamwedding.in / thedreamai.in) is a dedicated session, NOT part of endpoint wiring.
-Before that session: discuss and decide waitlist flow (form vs WhatsApp redirect).
-No open access. Waitlist-gated. Locked.
-
-What to lift from tdw-2 landing page:
-- Full-bleed background slideshow with crossfade
-- Motto line and glass panel aesthetic
-- Dot selector, gold button, ghost button components
-- "Just Exploring" blind swipe experience
-- Public Discover feed (unauthenticated vendor browsing)
-
-What to build fresh:
-- Login/invite sequence (phone -> WhatsApp OTP -> PIN, not invite code flow)
-- Waitlist form design (TBD at landing page session)
+All screens handle empty/error states gracefully (silent catch, skeleton shimmer).
+Login/PIN screens exist but not yet wired to dream-os auth. Rebuilt in P2-3.
 
 ---
 
-## DreamAI v3 lifts — P2-1 (completed this session)
+## dreamos-pwa landing page — P2-3
 
-Six lifts from dream-wedding vendor agent into dream-os. Backend only.
-Files: src/agent/systemPrompt.js, src/agent/tools.js, src/agent/engine.js.
-
-1. Baked snapshot system prompt
-2. query_day tool — single-date lookup: events, invoices, leads for that date
-3. hot_dates_context tool — Vivah Muhurat dates 2026/2027
-4. Draft-before-send instruction — client messages drafted first, vendor approves
-5. Multi-option response for destructive actions — offer options before executing
-6. pending_invoices_more PWA link pattern — top 3 inline, rest at thedreamai.in/money
-
-After these six, WhatsApp PA achieves tdw-2 PWA chat quality on WhatsApp.
-
-Bride agent lifts (same session alongside vendor). All phone-tested:
-- B1: Confirm before mutations — "Just to confirm — recording Rs 50k against Sabya. Yes?"
-- B2: Follow-up after completing — offer one natural next step. Trial/fitting/ceremony always gets day-before reminder offer.
-- B3: Contact vendor drafting — drafts forwadable WhatsApp message, does not send itself.
-- B4: Clarify before acting — one question when genuinely ambiguous (e.g. second trial detected).
+Landing page session is P2-3. Decide waitlist flow first.
+Custom domains (thedreamai.in, thedreamwedding.in) not yet pointed at Vercel.
+Currently pointed at old Railway services until P2-3 landing page is live.
 
 ---
 
 ## Endpoint build order — Phase 2
 
-Block 1 Auth (must be first):
+Block 1 Auth:
   POST /api/v2/vendor/auth/send-otp
   POST /api/v2/vendor/auth/verify-otp
   POST /api/v2/couple/auth/send-otp
   POST /api/v2/couple/auth/verify-otp
 
-Auth LOCKED: phone -> WhatsApp OTP -> PIN 4 digits -> session.
-Vendor OTP on +917982159047. Bride OTP on +14787788550.
-
 Block 2 Vendor core:
   GET  /api/v2/vendor/today/:vendorId
   GET  /api/v2/dreamai/vendor-context/:vendorId
-  POST /api/v2/dreamai/chat (vendor PWA AI, channel=web)
+  POST /api/v2/dreamai/chat
   GET  /api/invoices/:vendorId
   GET  /api/v2/vendor/clients/:vendorId
   GET  /api/v2/vendor/leads/:vendorId
@@ -204,64 +229,31 @@ Block 4 Journey tools:
   GET /api/couple/vendors/:coupleId
   GET /api/couple/bookings/:coupleId
 
-Block 5 Retire dream-wedding Railway:
-  After all screens confirmed on dream-os endpoints.
+Block 5: Retire dream-wedding Railway after all screens confirmed on dream-os.
 
 ---
 
-## New vendor WhatsApp tools — Phase 2
+## Migration status
 
-list_expenses      Filterable date/category/client. Returns list + sum.
-query_day          Events, invoices, leads for a specific date.
-hot_dates_context  Vivah Muhurat dates 2026/2027.
-update_event       Full edit: reschedule, rename, time change.
-delete_event       Remove from calendar.
-delete_lead        Remove spam/duplicate.
-update_client      Fix name, phone, notes.
-delete_client      Remove duplicate entry.
-cancel_invoice     Mark cancelled if no payments recorded.
-update_expense     Fix amount, category, client link.
-delete_expense     Remove erroneous log.
-
-Dropped: list_payments. Cash-heavy market, opt-in logging, list_invoices sufficient.
-
-PWA-only AI features (not WhatsApp):
-ActionCard pattern, Just Do It toggle, suggestion chips, streaming responses.
-
----
-
-## Migration decisions this session
-
-Convention change: letter suffixes dropped. Clean integers only.
-
+Last applied: 0025
 0024  vendor_profile.sql             Phase 2 start (pending)
-0025  hot_dates.sql                  Phase 2 — APPLIED 2026-05-18
+0025  hot_dates.sql                  APPLIED 2026-05-18
 0026  invoices_last_payment_at.sql   Phase 2 (pending)
 0027  discover.sql                   Phase 3 (pending)
-0028  pin_auth.sql                   Phase 2 Block 1 — vendors.pin_hash, couples.pin_hash (nullable text)
-0029  discover_preview.sql           Phase 2 Block 2 — vendors.discover_preview boolean default false
-0030  landing_assets.sql             Landing page session — landing_slides table, exploring_photos table
-
-Admin panel for hot_dates management (add/edit/delete Muhurat dates) — Phase 2 addition.
-Swati/Dev can update without touching Supabase directly.
+0028  pin_auth.sql                   Phase 2 Block 1 (pending)
+0029  discover_preview.sql           Phase 2 Block 2 (pending)
+0030  landing_assets.sql             Landing page session (pending)
 
 ---
 
 ## PWA login sequence — LOCKED
 
-New user (has invite code):
-  Enter invite code -> validate -> enter phone -> OTP via WhatsApp -> set 4-digit PIN -> enter app
-
-New user (came via WhatsApp link — already invited):
-  Click sign in -> enter phone -> OTP via WhatsApp -> set 4-digit PIN -> enter app
-
-Returning user (PIN already set):
-  Enter phone -> enter PIN -> enter app (no OTP, no WhatsApp)
-
-PIN stored as: vendors.pin_hash (bcrypt, nullable). couples.pin_hash (bcrypt, nullable).
-NULL = PIN not yet set (new user). Set = returning user, skip OTP.
-Session: Supabase Auth JWT. No custom sessions table.
-Six screens built fresh (not lifted from tdw-2):
+New user (invite code): invite code -> phone -> WhatsApp OTP -> set PIN -> enter app
+New user (via WhatsApp): sign in -> phone -> WhatsApp OTP -> set PIN -> enter app
+Returning user: phone -> PIN -> enter app (no OTP)
+PIN: bcrypt hash in vendors.pin_hash / couples.pin_hash. NULL = not set yet.
+Session: Supabase Auth JWT.
+Six screens built fresh (not yet wired to dream-os auth — rewired in P2-3):
   /vendor/login, /vendor/pin, /vendor/pin-login
   /couple/login, /couple/pin, /couple/pin-login
 
@@ -269,63 +261,35 @@ Six screens built fresh (not lifted from tdw-2):
 
 ## Discover preview — Phase 2
 
-Bride FEED tab shows 4-5 hand-picked founding vendor profiles. Pure view. No enquire button.
-Vendor DISCOVERY mode shows their own profile preview. Pure view. "Goes live at launch."
-Endpoint: GET /api/v2/discover/preview — returns vendors WHERE discover_preview = true.
-Swati seeds manually via Supabase. Admin panel in post-Phase 2 admin session.
-Requires migration 0024 applied first (vendor_portfolio for images).
-Requires migration 0029 (vendors.discover_preview column).
+Bride FEED: 4-5 founding vendors. Pure view. No enquire button.
+Vendor DISCOVERY: own profile preview. Pure view.
+Endpoint: GET /api/v2/discover/preview (WHERE discover_preview=true). No auth.
+Requires 0024 + 0029 applied first. Swati seeds manually.
 
 ---
 
 ## Post-Phase 2 admin session — full scope
 
-Dedicated session after Phase 2 complete. All admin work together:
-1. hot_dates panel — add/edit/delete Muhurat dates
-2. Just Explore management — editorial photos for landing page blind swipe
-3. Cover photo management — background slideshow images on landing page
-4. Discover preview management — add/remove/reorder founding vendor preview cards
-5. Any other accumulated admin needs
-
-All live at dream-os-production.up.railway.app/admin behind existing ADMIN_PASSWORD.
+1. hot_dates panel
+2. Just Explore management (exploring_photos)
+3. Cover photo management (landing_slides)
+4. Discover preview management
+5. Admin password rotation + rebuild admin pages server-side (see FINDINGS_LOG #1)
+6. Any accumulated admin needs
 
 ---
 
-## What is NOT being built
+## Current WhatsApp agent state (0.10.0-alpha)
 
-list_payments WhatsApp tool   Dropped. Cash-heavy. list_invoices sufficient.
-Full payments table           Post-launch. 0025 adds last_payment_at as insurance only.
-Tax / GST tools               Post-launch. Trigger: cohort confirmed Rs 20L+ turnover.
-React Native new build        Post-launch. Frost native connects to dream-os endpoints.
-Monorepo                      Two repos. Separate deploy targets.
-dream-wedding backend         Retire. Never touch again.
-Landing page login/invite      Build fresh. phone -> WhatsApp OTP -> PIN. Not lifted from tdw-2.
-Landing page waitlist form     TBD at landing page session. No open access. Locked.
+Vendor agent — all Phase 1 + P2-1 features working. Full tool list in P2-1 handover.
+Bride agent — all Phase 1 + P2-1 features working.
 
----
-
-## Reference repos — frozen
-
-tdw-2          Frozen. Native app reference. Design source of truth. Frost design system.
-dream-wedding  Frozen, retiring. DreamAI v3 reference. Lift patterns only.
-dreamai        Frozen. Vendor chat PWA UI reference.
-
----
-
-## Current state — vendor WhatsApp (0.10.0-alpha)
-
-All Phase 1 tools working. Morning briefing 8am IST. Prompt caching 91%.
-Full list in previous handover (HEAD 2de8db9).
-
-Pending (carried from Phase 1):
-⚠ Twilio templates: NEVER SUBMITTED. Both numbers. Submit immediately.
+Pending:
+TWILIO TEMPLATES NEVER SUBMITTED. Submit at start of P2-3.
   dream_os_morning_briefing on +917982159047
   dream_wedding_morning_nudge on +14787788550
-⚠ Surprise Me: pending phone test (Google billing block).
-⚠ factual_search: pending phone test (same block).
-⚠ Morning nudge first fire: pending next 8am IST.
-⚠ New vendor tools (update_event, delete_event, delete_lead etc): defined in roadmap, NOT YET BUILT in code.
-  Phase 2 scope — build alongside PWA endpoint work.
+Surprise Me / factual_search: pending phone test (Google billing block).
+New vendor tools from P2-1 roadmap: NOT YET IN CODE. Build in P2-4+.
 
 ---
 
@@ -333,48 +297,52 @@ Pending (carried from Phase 1):
 
 Vendor WhatsApp          +917982159047
 Bride WhatsApp           +14787788550
-Test vendor (Dev)        +918757788550, UUID 2eb5d3fb-31eb-4b26-859a-cf10ae477d53, DEV550
-Test vendor (Swati)      SWATI978, UUID e036ea4d-3f9a-4ec5-ba89-a5defa3a042b
-Test bride (Swati)       +919888294440, couple_id 7abccc1b-0698-43ba-9709-c6a1e52af789
+Test vendor (Dev)        +918757788550 / UUID 2eb5d3fb-31eb-4b26-859a-cf10ae477d53 / DEV550
+Test vendor (Swati)      SWATI978 / UUID e036ea4d-3f9a-4ec5-ba89-a5defa3a042b
+Test bride (Swati)       +919888294440 / couple_id 7abccc1b-0698-43ba-9709-c6a1e52af789
 Test bride (Meha)        +919625759924
-Malaysian test bride     +60122687535, couple_id 285ccb5a-01f0-4873-829c-aac66377c890
+Malaysian test bride     +60122687535 / couple_id 285ccb5a-01f0-4873-829c-aac66377c890
 Supabase                 nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 Railway vendor           https://dream-os-production.up.railway.app
 Railway bride            https://dream-wedding-production-6cef.up.railway.app
 Admin                    https://dream-os-production.up.railway.app/admin
-Google Cloud             dream-os (gen-lang-client-0017514064) dev@thedreamwedding.in
+Vercel PWA               https://dreamos-pwa.vercel.app
 Cloudinary               dccso5ljv
 Anthropic workspace      dream-os
 
 ---
 
-## Railway env vars
+## Env vars
 
-TWILIO_WHATSAPP_NUMBER   whatsapp:+917982159047
-TDW_WA_NUMBER            917982159047
-BRIDE_WA_NUMBER          14787788550
-ANTHROPIC_API_KEY        workspace: dream-os
-GOOGLE_API_KEY           Google AI Studio, dev@thedreamwedding.in
-ADMIN_PASSWORD           admin login
-SUPABASE_URL             nvzkbagqxbysoeszxent
-SUPABASE_SERVICE_ROLE_KEY  service_role, never expose
+Railway (dream-os):
+  TWILIO_WHATSAPP_NUMBER       whatsapp:+917982159047
+  TDW_WA_NUMBER                917982159047
+  BRIDE_WA_NUMBER              14787788550
+  ANTHROPIC_API_KEY            workspace: dream-os
+  GOOGLE_API_KEY               Google AI Studio, dev@thedreamwedding.in
+  ADMIN_PASSWORD               ROTATE before P2-3 (see P2-2.a above)
+  SUPABASE_URL                 nvzkbagqxbysoeszxent
+  SUPABASE_SERVICE_ROLE_KEY    service_role, never expose
+
+Vercel (dreamos-pwa):
+  NEXT_PUBLIC_API_BASE         https://dream-os-production.up.railway.app
 
 ---
 
 ## Document discipline
 
 Active (updated every session):
-HANDOVER_FINAL.md  this file. Fully rewritten each session.
-ROADMAP_FINAL.md   single active roadmap.
-SCHEMA.md          unified schema reference.
+  HANDOVER_FINAL.md  — this file, fully rewritten each session
+  ROADMAP_FINAL.md   — single active roadmap
+  SCHEMA.md          — unified schema reference
+  FINDINGS_LOG.md    — append-only out-of-scope findings (NEW in P2-2)
 
 Frozen (do not update):
-HANDOVER.md, HANDOVER_BRIDE.md  frozen at 8.5a and B3
-ROADMAP.md, ROADMAP_BRIDE.md    frozen at 8.5a and B3
-B1_SPEC.md                      historical spec
+  HANDOVER.md, HANDOVER_BRIDE.md  frozen at 8.5a and B3
+  ROADMAP.md, ROADMAP_BRIDE.md    frozen at 8.5a and B3
 
-Session not complete until all three active docs committed and pushed.
+Session not complete until all four active docs committed and pushed.
 
-Working rule 14 (added P2-1): At the start of every session, after reading the three docs,
-Claude briefs the founder on exactly what the session will build — one thing at a time,
-in order — and waits for explicit confirmation before writing a single line of code.
+Working rule 14: At session start, after reading docs, Claude briefs founder on what
+the session will build — one thing at a time — and waits for explicit confirmation
+before writing any code.

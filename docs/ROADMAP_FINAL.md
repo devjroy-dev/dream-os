@@ -511,8 +511,8 @@ dreamos-pwa live on Vercel. Founding cohort can be onboarded. dream-wedding Rail
 ### Phase 2 — session sequence
 
 P2-1: WhatsApp agent lifts (vendor + bride). Backend only. Phone-tested. [DONE 2026-05-18]
-P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Most screens "Coming soon." [NEXT]
-P2-3: Landing page session — decide waitlist flow, build landing, build login/invite fresh.
+P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Coming Soon on post-launch screens. [DONE 2026-05-18]
+P2-3: Landing page session — decide waitlist flow, build landing, build login/invite fresh. [NEXT]
 P2-4+: Endpoints one by one. Block 1 auth -> Block 2 vendor -> Block 3 bride -> Block 4 journey.
 P2-final: Migrations 0024 + 0026 applied. dream-wedding retired. Version 0.11.0-alpha.
 
@@ -658,7 +658,7 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [x] Six vendor agent lifts phone-tested ✅ 2026-05-18
 - [x] Bride agent lifts B1-B4 phone-tested ✅ 2026-05-18
 - [x] Migration 0025 hot_dates applied ✅ 2026-05-18
-- [ ] dreamos-pwa deployed to Vercel
+- [x] dreamos-pwa deployed to Vercel ✅ 2026-05-18
 - [ ] Landing page session complete (waitlist flow decided + built)
 - [ ] Login/invite sequence built fresh (phone -> WhatsApp OTP -> PIN)
 - [ ] Block 1 auth endpoints live
@@ -756,6 +756,34 @@ Rendered in the same bride PWA Surprise Me tab.
   user_id in GET endpoints and couple_id in POST/PATCH/DELETE. Both are the same value
   (session.id from localStorage couple_session). Safe to carry through Phase 1 and Phase 2.
   Resolve at Phase 3 with a coordinated migration. Do NOT rename columns mid-flight without this.
+
+**dreamos-pwa tdw-2 hygiene cleanup (bundle into one coordinated Phase 3 PR):**
+All items are cosmetic/consistency — no functional change, no user-visible difference.
+Bundle because they touch overlapping files and one PR is safer than five.
+
+1. user_id / couple_id resolution (see above).
+
+2. Path-alias migration — replace relative imports (../../../../lib/api) with @/lib/api.
+   Requires adding paths + baseUrl to tsconfig.json compilerOptions. ~60+ files.
+
+3. CircleSessionContext re-export shim removal.
+   In P2-2, app/coplanner/CircleSessionContext.tsx was changed from:
+     export const API = 'https://dream-wedding-production-89ae.up.railway.app';
+   to:
+     export { API_BASE as API } from '../../lib/api';
+   This shim was needed because P2-2 scope was strictly URL swap — the 7 coplanner files
+   that import API from this file were outside the URL-swap target list.
+   When Phase 3 hygiene runs:
+   (a) Update these 7 files to import API_BASE directly from lib/api:
+       app/coplanner/dreamai/page.tsx, muse/AddMuseSheet.tsx, muse/page.tsx,
+       threads/[threadId]/page.tsx, threads/page.tsx, layout.tsx, page.tsx
+   (b) Replace ${API} with ${API_BASE} in those 7 files
+   (c) Remove the re-export shim from CircleSessionContext.tsx
+
+4. Admin page cleanup — remove hardcoded admin password from 25 files.
+   Done as part of admin page rebuild (server-side auth). See FINDINGS_LOG #1.
+
+See FINDINGS_LOG.md for full details on each item.
 
 **Doc consolidation at Phase 3:**
 - HANDOVER_BRIDE.md archived (frozen at B3). HANDOVER.md becomes single active handover.
@@ -862,15 +890,16 @@ Rendered in the same bride PWA Surprise Me tab.
 ## Document discipline (active rules from this session onwards)
 
 1. **ROADMAP_FINAL.md** — this document. Single active roadmap. Updated at end of every session.
-2. **HANDOVER.md** — single active handover. Fully rewritten at end of every session. Covers both products.
+2. **HANDOVER_FINAL.md** — single active handover. Fully rewritten at end of every session. Covers both products.
 3. **SCHEMA.md** — fully rewritten at end of every session. Unified. Covers both products.
-4. **ROADMAP.md** — frozen at vendor 8.5a. Historical record only. Do not update.
-5. **ROADMAP_BRIDE.md** — frozen at B3. Historical record only. Do not update.
-6. **HANDOVER_BRIDE.md** — frozen at B3. Historical record only. Do not update.
-7. **UNIT_ECONOMICS.md** — Dev's reference only. No session amends it.
-8. **B1_SPEC.md** — historical record. Do not update.
+4. **FINDINGS_LOG.md** — append-only. Out-of-scope findings across all sessions. Added P2-2. Read after SCHEMA.md.
+5. **ROADMAP.md** — frozen at vendor 8.5a. Historical record only. Do not update.
+6. **ROADMAP_BRIDE.md** — frozen at B3. Historical record only. Do not update.
+7. **HANDOVER_BRIDE.md** — frozen at B3. Historical record only. Do not update.
+8. **UNIT_ECONOMICS.md** — Dev's reference only. No session amends it.
+9. **B1_SPEC.md** — historical record. Do not update.
 
-Session not complete until ROADMAP_FINAL.md, HANDOVER.md, and SCHEMA.md are committed and pushed.
+Session not complete until ROADMAP_FINAL.md, HANDOVER_FINAL.md, SCHEMA.md, and FINDINGS_LOG.md are committed and pushed.
 
 Rule 14 (added P2-1): At session start, after reading docs, Claude briefs founder on what
 the session will build — one thing at a time — and waits for explicit confirmation before
