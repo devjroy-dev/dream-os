@@ -1012,6 +1012,71 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
       return `Recent clients:\n${lines.join('\n')}${footer}`;
     }
 
+    // P2-1 lift 2 — query_day
+    case 'query_day': {
+      const { date } = input;
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return 'Invalid date format. Please provide YYYY-MM-DD.';
+      }
+
+      const [evRes, invRes, expRes] = await Promise.all([
+        supabase.from('events')
+          .select('title, event_date, event_time, kind, state')
+          .eq('vendor_id', vendor.id)
+          .eq('event_date', date)
+          .in('state', ['upcoming', 'done'])
+          .order('event_time', { ascending: true, nullsFirst: false }),
+
+        supabase.from('invoices')
+          .select('id, client_name, amount_total, amount_paid, state')
+          .eq('vendor_id', vendor.id)
+          .eq('due_date', date)
+          .in('state', ['unpaid', 'advance_paid']),
+
+        supabase.from('expenses')
+          .select('description, amount, category, created_at')
+          .eq('vendor_id', vendor.id)
+          .gte('created_at', date + 'T00:00:00.000Z')
+          .lt('created_at',  date + 'T23:59:59.999Z'),
+      ]);
+
+      const events   = evRes.data  || [];
+      const invoices = invRes.data || [];
+      const expenses = expRes.data || [];
+      const sections = [];
+
+      if (events.length > 0) {
+        const lines = events.map(e => {
+          const time = e.event_time ? `${e.event_time.slice(0, 5)} — ` : '';
+          const done = e.state === 'done' ? ' [done]' : '';
+          return `- ${time}${e.kind}: ${e.title}${done}`;
+        });
+        sections.push(`EVENTS (${events.length}):\n${lines.join('\n')}`);
+      }
+
+      if (invoices.length > 0) {
+        const lines = invoices.map(i => {
+          const owed = Math.round((i.amount_total || 0) - (i.amount_paid || 0));
+          return `- ${i.client_name || 'Unknown'}: Rs ${owed.toLocaleString('en-IN')} due`;
+        });
+        sections.push(`INVOICES DUE (${invoices.length}):\n${lines.join('\n')}`);
+      }
+
+      if (expenses.length > 0) {
+        const lines = expenses.map(e =>
+          `- Rs ${Math.round(e.amount || 0).toLocaleString('en-IN')} — ${e.category || 'general'}${e.description ? ': ' + e.description : ''}`
+        );
+        sections.push(`EXPENSES LOGGED (${expenses.length}):\n${lines.join('\n')}`);
+      }
+
+      if (sections.length === 0) {
+        return `Nothing on ${date} — no events, invoices due, or expenses logged.`;
+      }
+
+      console.log(`[tool:query_day] ${date} → ${events.length} events, ${invoices.length} invoices, ${expenses.length} expenses`);
+      return `${date}:\n\n${sections.join('\n\n')}`;
+    }
+
     case 'respond_to_vendor': {
       console.log(`[tool:respond] "${input.message.slice(0, 80)}"`);
       return 'Reply queued.';

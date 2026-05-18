@@ -412,6 +412,18 @@ const TOOLS = [
     },
   },
   {
+    // P2-1 lift 2 — query_day (lifted from DreamAI v3 wedding_query_day)
+    name: 'query_day',
+    description: 'Return everything the vendor has on a specific date: events (shoots, calls, meetings, trials, ceremonies), invoices due, and expenses logged. Use whenever the vendor asks what is happening / scheduled / on / due on a specific date. Always prefer this over answering from the snapshot for date-specific questions.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'The date to query. YYYY-MM-DD format.' },
+      },
+      required: ['date'],
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {
