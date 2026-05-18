@@ -1,111 +1,180 @@
 # dream-os — Master Handover (The Bridge Document)
-**Written:** 2026-05-18 (P2-2 session)
-**Session:** P2-2 complete. dreamos-pwa URL swap done. Shell live on Vercel. Coming Soon applied.
-**Version:** 0.10.0-alpha (no bump — P2-2 is mid-Phase 2, no auth or endpoints yet)
-**HEAD (dream-os):** 25ab58e
-**HEAD (dreamos-pwa):** 76ac9a4
+**Written:** 2026-05-18 (P2-3 session)
+**Session:** P2-3 complete. Landing page infrastructure + full auth block built and phone-tested.
+**Version:** 0.10.0-alpha (no bump — P2-4 endpoints needed before 0.11.0-alpha)
+**HEAD (dream-os):** 7423439
+**HEAD (dreamos-pwa):** 76ac9a4 (unchanged since P2-2)
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Repo backend:** https://github.com/devjroy-dev/dream-os
 **Repo frontend:** https://github.com/devjroy-dev/dreamos-pwa
-**Vercel:** https://dreamos-pwa.vercel.app (live, smoke-tested 2026-05-18)
+**Vercel:** https://dreamos-pwa.vercel.app (live, shell only)
 
 Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then FINDINGS_LOG.md.
 
 ---
 
 ## Phase 1 — complete (0.10.0-alpha)
+## P2-1 — complete (2026-05-18)
+## P2-2 — complete (2026-05-18)
 
-All sessions P1-1 through P1-5 done. PWA-0 planning done. P2-1 done. P2-2 done.
-See commit 25ab58e HANDOVER_FINAL.md for full Phase 1 and P2-1 session history.
+All history in previous HANDOVER_FINAL.md commits. See git log.
 
 ---
 
-## P2-2 — 2026-05-18 (this session)
+## P2-3 — 2026-05-18 (this session)
 
-dreamos-pwa URL swap complete. Shell live on Vercel. Coming Soon applied to post-launch screens.
-No backend changes. No schema changes. No migrations. dream-os Railway untouched.
+Landing page infrastructure and full auth block. Backend only.
+No frontend changes. No dreamos-pwa changes. dream-os Railway only.
 
 ### What was built
 
-dreamos-pwa repo — 12 commits (oldest to newest):
-- f019311 feat(pwa): P2-2 step 1 — add lib/api.ts shared API_BASE export
-- 8488223 feat(pwa): P2-2 step 2 — admin URL swap (23 files use API_BASE)
-- 8e5296b feat(pwa): P2-2 step 3 — vendor PWA URL swap (22 files use API_BASE)
-- fc61802 feat(pwa): P2-2 step 4 — couple/bride PWA URL swap (16 files use API_BASE)
-- 97300bf feat(pwa): P2-2 step 5 — shared/root URL swap (8 files, URL swap phase complete)
-- 59c936b chore(pwa): commit auto-generated tsconfig.json (required for Vercel build)
-- d4c180d feat(pwa): P2-2 step 6 — Coming Soon on post-launch studio screens + TAX tab
-- d55a7f9 fix(pwa): replace broken @/ alias with relative path in couple/discover/feed
-- b032524 fix(pwa): replace API+ string concat with API_BASE+ (missed by Writer 3/4)
-- 097c3d1 fix(pwa): remove orphaned DreamAiFAB.tsx (replaced by three-mode pill per roadmap)
-- e1025f0 fix(pwa): delete Discovery.BACKUP.tsx — backup file causes build error
-- 76ac9a4 fix(pwa): replace @/ alias with relative path in Discovery.tsx
+**Migrations applied (4):**
+- 0028_pin_auth.sql — vendors/couples PIN columns + lockout + hard role XOR triggers
+- 0031_invite_codes.sql — invite_codes table + consume_invite_code() atomic function
+- 0032_waitlist_signups.sql — waitlist_signups table
+- 0033_otp_sessions.sql — otp_sessions table (transient OTP state)
 
-### URL swap — complete
+**New API endpoints (13):**
+- POST /api/v2/waitlist/signup — public, no auth, inserts waitlist_signups
+- POST /api/v2/invite/validate — check code valid + unconsumed, kind match
+- POST /api/v2/invite/consume — atomic consume + users row creation
+- POST /api/v2/vendor/auth/send-otp — OTP via +917982159047
+- POST /api/v2/vendor/auth/verify-otp — bcrypt verify, returns vendor_id + pin_set
+- POST /api/v2/vendor/auth/set-pin — bcrypt PIN → vendors.pin_hash
+- POST /api/v2/vendor/auth/pin-login — verify PIN, lockout enforcement
+- POST /api/v2/vendor/auth/forgot-pin — reset OTP via +917982159047
+- POST /api/v2/couple/auth/send-otp — OTP via +14787788550
+- POST /api/v2/couple/auth/verify-otp — bcrypt verify, returns couple_id + pin_set
+- POST /api/v2/couple/auth/set-pin — bcrypt PIN → couples.pin_hash
+- POST /api/v2/couple/auth/pin-login — verify PIN, lockout enforcement
+- POST /api/v2/couple/auth/forgot-pin — reset OTP via +14787788550
 
-All 69+ files that previously hardcoded dream-wedding-production-89ae.up.railway.app
-now import API_BASE from lib/api.ts. Zero hardcoded old URLs remain.
+**New admin routes:**
+- GET  /admin/invite-codes — list recent 20 codes + mint form
+- POST /admin/invite-codes/mint — generate 8-char unique code, collision-checked
 
-lib/api.ts — the single source of truth:
-  export const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE
-    || 'https://dream-os-production.up.railway.app';
+**Admin nav:** Invite Codes link added to layout.js nav.
 
-Vercel env var: NEXT_PUBLIC_API_BASE = https://dream-os-production.up.railway.app
-Set for Production and Preview environments.
+**New dependency:** bcryptjs ^2.4.3 (pure JS bcrypt, no native build required).
 
-Special cases handled:
-- app/coplanner/CircleSessionContext.tsx: re-export shim — export { API_BASE as API }
-  preserves backward compat with 7 importing coplanner files. Cleanup in Phase 3 hygiene.
-  See FINDINGS_LOG.md finding #5.
-- app/api/razorpay/route.ts: server-side file, env-var-with-fallback pattern kept.
-  Only fallback URL swapped to dream-os-production.
-- Inline literal URLs (string concat API + '/path' not template literals) — fixed in
-  second pass by Claude Code after first Vercel deploy revealed the gap. See FINDINGS_LOG #9.
+**New files:**
+- src/api/router.js — top-level /api/v2 router
+- src/api/waitlist.js — waitlist endpoint
+- src/api/invite.js — invite validate + consume
+- src/api/vendor/auth.js — all 5 vendor auth endpoints
+- src/api/couple/auth.js — all 5 couple auth endpoints
+- src/admin/views/inviteMint.js — admin mint page view
 
-### Coming Soon screens — applied
+**Patched files:**
+- src/index.js — mounts /api/v2 router
+- src/admin/router.js — mounts invite-codes routes
+- src/admin/views/layout.js — adds Invite Codes nav link
+- package.json — adds bcryptjs
 
-Five vendor studio sub-pages replaced with Coming Soon (post-launch features):
-- app/vendor/studio/analytics/page.tsx — Discovery analytics (Phase 3)
-- app/vendor/studio/broadcast/page.tsx — Bulk messaging (post-launch)
-- app/vendor/studio/contracts/page.tsx — Contracts (post-launch)
-- app/vendor/studio/referrals/page.tsx — Referrals (post-launch)
-- app/vendor/studio/team/page.tsx — Team management (post-launch)
+### Architecture decisions locked in P2-3
 
-Inline Coming Soon on TAX tab only in app/vendor/money/page.tsx.
-INVOICES, EXPENSES, PAYMENTS tabs untouched and functional.
+**Access model:** Fully gated. Two and only two ways in:
+1. Invite code (admin-minted, single-use, forever until consumed)
+2. WhatsApp invite (Swati → admin → existing flow creates vendors/couples row)
 
-Coming Soon text (canonical, locked): "Coming soon — your data is safe with us."
-Design: Cormorant Garamond italic, #888580, centered vertically on screen.
+**Single front door:** thedreamwedding.in for everyone (vendors + brides).
+thedreamai.in parked until post-launch. Top-tier vendor access via thedreamai.in TBD.
 
-NOT touched: studio/page.tsx (nav), calendar, settings, discovery-preview.
+**Landing page sections (to be built in dreamos-pwa):**
+- Hero
+- "I have an invite code" → Dreamers tab / Makers tab → code input → validate → onboarding
+- "Sign in" → phone → OTP → PIN setup (first time) or PIN login (returning)
+- "Join the waitlist" → two forms: Dreamers / Makers → three fields: name, phone, ig handle
+- Waitlist confirmation: "We are onboarding in small batches and shall be getting in touch with you soon."
 
-### dreamos-pwa technical state
+**Invite codes:**
+- 8 chars, alphabet ABCDEFGHJKMNPQRSTUVWXYZ23456789 (no 0/O/1/I/L)
+- Uppercase. Case-insensitive lookup.
+- Single-use. Never expire until consumed.
+- kind: dreamer | maker (enforced at validate + consume)
+- tier: nullable (provisioning-ready, no CHECK constraint yet)
+- Minted via admin at /admin/invite-codes
 
-- Framework: Next.js 16.2.3, React 19, Tailwind v4, TypeScript
-- Build: passes cleanly (next build zero errors as of HEAD 76ac9a4)
-- Deploy: Vercel, auto-deploy on push to main
-- tsconfig.json: committed (required for Vercel)
-- DreamAiFAB.tsx: deleted (orphaned, not imported anywhere, replaced by three-mode pill)
-- Discovery.BACKUP.tsx: deleted (backup file was causing build error)
-- Relative imports: all lib/api imports use relative paths (e.g. ../../../lib/api)
-  NOT @/lib/api — tsconfig has no paths config. See FINDINGS_LOG #3 and #5.
+**Waitlist:**
+- Fields: name, phone (E.164, country-code dropdown default +91 India), instagram_handle
+- Split: Dreamers form + Makers form (kind captured at submission)
+- No UNIQUE on phone — duplicate submissions captured, admin decides
+- Admin views waitlist in Supabase (post-Phase 2 admin session adds UI)
 
-### P2-2.a — deferred (do before P2-3)
+**Phone normalisation:**
+- All phones stored E.164 with leading + (matches users.phone from 0001)
+- Frontend country-code dropdown: default +91 India, NRI corridors at top (+1 US, +44 UK, +971 UAE, +65 SG, +966 SA, +974 QA), Other → full list
+- API validates ^\+[0-9]{8,15}$ before insert
 
-Railway outage during this session (May 18 06:37-06:52 UTC) prevented live password rotation.
-Two actions needed before P2-3 begins:
-1. Rotate ADMIN_PASSWORD in Railway dream-os service Variables tab.
-   Old value is in public git history on dreamos-pwa repo.
-   New value: generate 24-char random, store in password manager only.
-2. Confirm deployment 25ab58e (docs-only, failed during outage) is redeployed or
-   superseded by a new code commit so Railway is running current code.
+**IG handle:** Raw without @. API strips leading @ and trims. Mirrors vendors.instagram_handle (0005).
 
-### Security findings from P2-2 — full list in FINDINGS_LOG.md
+**Hard role XOR:**
+- One phone = one role. Dreamer OR Maker. Never both. Lifetime.
+- Enforced at: (1) DB level — enforce_role_xor() triggers on vendors + couples INSERT, (2) API level — /invite/consume + send-otp check for opposite role
+- Pre-condition verified 2026-05-18: zero cross-table user_id violations in production
 
-Admin password hardcoded in 25 files in dreamos-pwa (public repo). Option A taken:
-acknowledge, rotate Railway secret, defer code cleanup to admin session.
-See FINDINGS_LOG.md for complete inventory of all 9 findings.
+**PIN:**
+- 4 digits, numbers only (0-9). regex ^\d{4}$
+- bcrypt hash, BCRYPT_ROUNDS=10. Stored in vendors.pin_hash / couples.pin_hash
+- NULL = PIN not yet set (go through OTP → set-pin)
+- Input UI: numeric keypad (inputMode=numeric, pattern=[0-9]*, maxLength=4)
+
+**Lockout:**
+- 5 failed PIN attempts → pin_locked_until = now() + 15 min
+- pin_failed_attempts resets to 0 on: successful PIN, successful OTP reset
+- pin_locked_until cleared on: successful OTP reset
+- Escape: forgot-pin flow (OTP → set new PIN)
+
+**OTP delivery:**
+- Vendor OTPs from +917982159047 (thedreamai.in number)
+- Bride OTPs from +14787788550 (thedreamwedding.in number)
+- 6-digit numeric, zero-padded, bcrypt-hashed in otp_sessions
+- TTL: 5 minutes. Single-use (row deleted on successful verify).
+- Vendor message: "Your DreamAI login code is: XXXXXX. Valid for 5 minutes."
+- Bride message: "Your Dream Wedding login code is: XXXXXX. Valid for 5 minutes."
+- Reset variant: "Your DreamAI/Dream Wedding PIN reset code is: XXXXXX."
+
+**Forgot PIN:**
+- "Forgot PIN" → send-otp (purpose=reset) → verify-otp (purpose=reset) → set-pin screen
+- Set-pin screen copy: "Enter a new 4-digit PIN."
+- verify-otp (purpose=reset) clears lockout columns on success
+
+### P2-3.a — deferred (do before P2-4)
+
+1. Supabase Auth JWT not yet issued by verify-otp endpoints. See FINDINGS_LOG Finding #11.
+   Must be added in P2-4 Block 1 before any protected endpoints can work.
+   Requires Supabase Auth phone provider setup (Twilio config in Supabase dashboard).
+
+2. Twilio templates still not submitted:
+   - dream_os_morning_briefing on +917982159047
+   - dream_wedding_morning_nudge on +14787788550
+   Submit at start of P2-4. Approval 1-7 days.
+
+3. Admin URL shows /mint after form submit (cosmetic). FINDINGS_LOG #10.
+   Fix: add res.redirect after successful mint. Post-Phase 2 admin polish.
+
+### Test credentials (updated)
+
+| Account | Phone | PIN | ID |
+|---|---|---|---|
+| Dev vendor (DEV550) | +918757788550 | 1234 | 2eb5d3fb-31eb-4b26-859a-cf10ae477d53 |
+| Swati bride | +919888294440 | 1234 | couple_id 7abccc1b-0698-43ba-9709-c6a1e52af789 |
+| Swati vendor (SWATI978) | +91XXXXXXXXXX | not set | e036ea4d-3f9a-4ec5-ba89-a5defa3a042b |
+| Meha bride | +919625759924 | not set | — |
+| Malaysian test bride | +60122687535 | not set | couple_id 285ccb5a-01f0-4873-829c-aac66377c890 |
+
+### P2-3 commits (oldest to newest)
+
+- fd0ccee feat(db): migration 0028 — pin_auth columns + role XOR triggers (P2-3)
+- d5b88ad feat(db): migration 0031 — invite_codes table + consume function (P2-3)
+- 9cfd955 feat(db): migration 0032 — waitlist_signups table (P2-3)
+- 646e1e4 feat(api): POST /api/v2/waitlist/signup + api/v2 router (P2-3)
+- 4a76507 feat(api): POST /api/v2/invite/validate + consume (P2-3)
+- fe20925 feat(admin): invite code minting — GET/POST /admin/invite-codes (P2-3)
+- 5c77a0b feat(db): migration 0033 — otp_sessions table (P2-3)
+- 405c6da feat(api): vendor auth endpoints — OTP + PIN (P2-3)
+- 3674a0f feat(admin): add Invite Codes nav link (P2-3)
+- 7423439 feat(api): couple auth endpoints — OTP + PIN (P2-3)
 
 ---
 
@@ -115,8 +184,8 @@ Four surfaces. One backend. Always.
 
   WhatsApp vendor  (+917982159047)  ->  dream-os  src/index.js
   WhatsApp bride   (+14787788550)   ->  dream-os  src/brideIndex.js
-  Vendor PWA       thedreamai.in    ->  dream-os  new API endpoints (P2-4+)
-  Bride PWA        thedreamwedding  ->  dream-os  new API endpoints (P2-4+)
+  Vendor PWA       thedreamai.in    ->  dream-os  /api/v2/vendor/* (P2-4+)
+  Bride PWA        thedreamwedding  ->  dream-os  /api/v2/couple/* (P2-4+)
   Frost native     iOS/Android      ->  dream-os  new API endpoints (post-launch)
 
 dream-os is the only backend. dream-wedding server.js is retiring.
@@ -131,13 +200,9 @@ No monorepo.
 WhatsApp = PA surface. Proactive. Brief. Voice-first.
 Never more than 2-3 sentences. Never lists more than 3 items.
 Drops PWA link for anything visual or data-heavy.
-Vendor: speaks in their ear. Captures, alerts, drafts, answers instantly.
-Bride: BFF voice. Saves to Muse, plans through chat, emotionally intelligent.
 
 PWA = Planner surface. Visual. Rich. Data-forward.
-Vendor: leads, calendar, money, threads. DreamAI chat with ActionCard + Just Do It toggle.
-Bride: Muse board, Circle, Journey, Discover. DreamAI chat with confirm cards.
-Streaming responses. Suggestion chips.
+ActionCard + Just Do It toggle. Streaming. Suggestion chips.
 
 Baked snapshot (LOCKED): Before every vendor agent turn, Supabase fetch populates system
 prompt with invoices, schedule (30-day), enquiries, notes. Agent reads from snapshot.
@@ -145,63 +210,53 @@ Zero tool calls for reads. Writes still use tools.
 
 ---
 
-## dreamos-pwa — current state (post P2-2)
+## dreamos-pwa — current state (post P2-2, unchanged in P2-3)
 
 GitHub: https://github.com/devjroy-dev/dreamos-pwa
-Vercel: https://dreamos-pwa.vercel.app (live)
+Vercel: https://dreamos-pwa.vercel.app (live, shell only)
+HEAD: 76ac9a4
 Stack: Next.js 16, React 19, Tailwind v4, TypeScript
 
-Vendor PWA three-mode architecture (LOCKED):
-  Pill: BUSINESS / AI / DISCOVERY
-  BUSINESS: TODAY, CLIENTS, MONEY, STUDIO
-  AI: full screen chat, no chrome
-  DISCOVERY: Phase 3 — Discover preview endpoint (needs 0024+0029 first)
-
-STUDIO sub-pages:
-  calendar          built (dream-os has event tools)
-  settings          built
-  discovery-preview built (Phase 2 endpoint pending)
-  analytics         COMING SOON (Phase 3)
-  broadcast         COMING SOON (post-launch)
-  contracts         COMING SOON (post-launch)
-  referrals         COMING SOON (post-launch)
-  team              COMING SOON (post-launch)
-
-MONEY tabs:
-  INVOICES          built
-  EXPENSES          built
-  PAYMENTS          built
-  TAX               COMING SOON (post-launch — GST/TDS)
-
-Bride PWA three-mode architecture (LOCKED):
-  Pill: PLAN / gold-star / DISCOVER
-  PLAN: TODAY, PLAN, CIRCLE
-  gold-star: full screen DreamAi chat, no chrome
-  DISCOVER: MUSE, FEED, MESSAGES
-  No FAB.
-
-Coming soon pattern (LOCKED): "Coming soon — your data is safe with us."
-
-All screens handle empty/error states gracefully (silent catch, skeleton shimmer).
-Login/PIN screens exist but not yet wired to dream-os auth. Rebuilt in P2-3.
+URL swap complete. All 69+ files point at dream-os-production via API_BASE.
+Coming Soon on post-launch screens.
+Six login/auth screens exist but not yet wired to dream-os auth endpoints.
+Wiring happens in P2-4 alongside Block 2 endpoints.
 
 ---
 
-## dreamos-pwa landing page — P2-3
+## Landing page — P2-4
 
-Landing page session is P2-3. Decide waitlist flow first.
-Custom domains (thedreamai.in, thedreamwedding.in) not yet pointed at Vercel.
-Currently pointed at old Railway services until P2-3 landing page is live.
+Landing page build is P2-4 (was P2-3 in original plan, deferred).
+P2-3 built the backend infrastructure (endpoints + migrations) first.
+dreamos-pwa landing page + screen wiring is the next frontend session.
+
+Before landing page session:
+- Supabase Auth JWT must be wired (Finding #11 / P2-3.a)
+- Custom domains (thedreamai.in, thedreamwedding.in) still pointed at old Railway services
+- Decision needed: when do we cut DNS to Vercel?
 
 ---
 
-## Endpoint build order — Phase 2
+## Endpoint build order — Phase 2 (updated)
 
-Block 1 Auth:
-  POST /api/v2/vendor/auth/send-otp
-  POST /api/v2/vendor/auth/verify-otp
-  POST /api/v2/couple/auth/send-otp
-  POST /api/v2/couple/auth/verify-otp
+Block 1 Auth — COMPLETE ✅ (P2-3)
+  POST /api/v2/waitlist/signup          ✅
+  POST /api/v2/invite/validate          ✅
+  POST /api/v2/invite/consume           ✅
+  POST /api/v2/vendor/auth/send-otp     ✅
+  POST /api/v2/vendor/auth/verify-otp   ✅
+  POST /api/v2/vendor/auth/set-pin      ✅
+  POST /api/v2/vendor/auth/pin-login    ✅
+  POST /api/v2/vendor/auth/forgot-pin   ✅
+  POST /api/v2/couple/auth/send-otp     ✅
+  POST /api/v2/couple/auth/verify-otp   ✅
+  POST /api/v2/couple/auth/set-pin      ✅
+  POST /api/v2/couple/auth/pin-login    ✅
+  POST /api/v2/couple/auth/forgot-pin   ✅
+  POST /admin/invite-codes (mint)       ✅
+
+Block 1 remaining:
+  Supabase Auth JWT issuance in verify-otp (Finding #11)
 
 Block 2 Vendor core:
   GET  /api/v2/vendor/today/:vendorId
@@ -229,31 +284,38 @@ Block 4 Journey tools:
   GET /api/couple/vendors/:coupleId
   GET /api/couple/bookings/:coupleId
 
-Block 5: Retire dream-wedding Railway after all screens confirmed on dream-os.
+Block 5: Discover preview endpoint + retire dream-wedding Railway.
 
 ---
 
-## Migration status
+## Migration status (as of P2-3)
 
-Last applied: 0025
-0024  vendor_profile.sql             Phase 2 start (pending)
-0025  hot_dates.sql                  APPLIED 2026-05-18
-0026  invoices_last_payment_at.sql   Phase 2 (pending)
-0027  discover.sql                   Phase 3 (pending)
-0028  pin_auth.sql                   Phase 2 Block 1 (pending)
-0029  discover_preview.sql           Phase 2 Block 2 (pending)
-0030  landing_assets.sql             Landing page session (pending)
+Last applied: 0033
+| # | File | Status | What it adds |
+|---|---|---|---|
+| 0001–0025 | (applied) | ✅ | Full history in SCHEMA.md |
+| 0026 | invoices_last_payment_at.sql | ⏳ Phase 2 | invoices.last_payment_at |
+| 0027 | discover.sql | ⏳ Phase 3 | couple_vendor_connections, discover_readiness |
+| 0028 | pin_auth.sql | ✅ Applied 2026-05-18 | PIN columns + lockout + XOR triggers |
+| 0029 | discover_preview.sql | ⏳ Phase 2 Block 2 | vendors.discover_preview boolean |
+| 0030 | landing_assets.sql | ⏳ Landing page session | landing_slides, exploring_photos |
+| 0031 | invite_codes.sql | ✅ Applied 2026-05-18 | invite_codes table + consume function |
+| 0032 | waitlist_signups.sql | ✅ Applied 2026-05-18 | waitlist_signups table |
+| 0033 | otp_sessions.sql | ✅ Applied 2026-05-18 | otp_sessions table |
+
+Next migration when needed: 0034
 
 ---
 
 ## PWA login sequence — LOCKED
 
-New user (invite code): invite code -> phone -> WhatsApp OTP -> set PIN -> enter app
-New user (via WhatsApp): sign in -> phone -> WhatsApp OTP -> set PIN -> enter app
-Returning user: phone -> PIN -> enter app (no OTP)
-PIN: bcrypt hash in vendors.pin_hash / couples.pin_hash. NULL = not set yet.
-Session: Supabase Auth JWT.
-Six screens built fresh (not yet wired to dream-os auth — rewired in P2-3):
+New user (invite code): invite code → phone → WhatsApp OTP → set 4-digit PIN → enter app
+New user (via WhatsApp): sign in → phone → WhatsApp OTP → set 4-digit PIN → enter app
+Returning user: phone → PIN → enter app (no OTP)
+PIN: 4 digits, numbers only. bcrypt hash in vendors.pin_hash / couples.pin_hash. NULL = not set.
+Session: Supabase Auth JWT (pending — see Finding #11).
+
+Six screens in dreamos-pwa (exist, not yet wired):
   /vendor/login, /vendor/pin, /vendor/pin-login
   /couple/login, /couple/pin, /couple/pin-login
 
@@ -264,7 +326,8 @@ Six screens built fresh (not yet wired to dream-os auth — rewired in P2-3):
 Bride FEED: 4-5 founding vendors. Pure view. No enquire button.
 Vendor DISCOVERY: own profile preview. Pure view.
 Endpoint: GET /api/v2/discover/preview (WHERE discover_preview=true). No auth.
-Requires 0024 + 0029 applied first. Swati seeds manually.
+Requires 0024 (vendor_portfolio) + 0029 (discover_preview column) applied first.
+Swati seeds manually. Admin panel in post-Phase 2 admin session.
 
 ---
 
@@ -274,41 +337,51 @@ Requires 0024 + 0029 applied first. Swati seeds manually.
 2. Just Explore management (exploring_photos)
 3. Cover photo management (landing_slides)
 4. Discover preview management
-5. Admin password rotation + rebuild admin pages server-side (see FINDINGS_LOG #1)
-6. Any accumulated admin needs
+5. Admin password rotation + rebuild admin pages server-side (FINDINGS_LOG #1)
+6. Waitlist management UI (view/triage waitlist_signups)
+7. Admin URL /mint cosmetic fix (FINDINGS_LOG #10)
+8. Any accumulated admin needs
 
 ---
 
 ## Current WhatsApp agent state (0.10.0-alpha)
 
-Vendor agent — all Phase 1 + P2-1 features working. Full tool list in P2-1 handover.
+Vendor agent — all Phase 1 + P2-1 features working. Full tool list in ROADMAP_FINAL.
 Bride agent — all Phase 1 + P2-1 features working.
 
 Pending:
-TWILIO TEMPLATES NEVER SUBMITTED. Submit at start of P2-3.
+TWILIO TEMPLATES NEVER SUBMITTED. Submit at start of P2-4.
   dream_os_morning_briefing on +917982159047
   dream_wedding_morning_nudge on +14787788550
-Surprise Me / factual_search: pending phone test (Google billing block).
-New vendor tools from P2-1 roadmap: NOT YET IN CODE. Build in P2-4+.
+Surprise Me / factual_search: pending Google billing verification.
+Morning nudge: cron registered, first fire pending.
 
 ---
 
 ## Test credentials
 
-Vendor WhatsApp          +917982159047
-Bride WhatsApp           +14787788550
-Test vendor (Dev)        +918757788550 / UUID 2eb5d3fb-31eb-4b26-859a-cf10ae477d53 / DEV550
-Test vendor (Swati)      SWATI978 / UUID e036ea4d-3f9a-4ec5-ba89-a5defa3a042b
-Test bride (Swati)       +919888294440 / couple_id 7abccc1b-0698-43ba-9709-c6a1e52af789
-Test bride (Meha)        +919625759924
-Malaysian test bride     +60122687535 / couple_id 285ccb5a-01f0-4873-829c-aac66377c890
-Supabase                 nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-Railway vendor           https://dream-os-production.up.railway.app
-Railway bride            https://dream-wedding-production-6cef.up.railway.app
-Admin                    https://dream-os-production.up.railway.app/admin
-Vercel PWA               https://dreamos-pwa.vercel.app
-Cloudinary               dccso5ljv
-Anthropic workspace      dream-os
+| Item | Value |
+|---|---|
+| Vendor WhatsApp | +917982159047 |
+| Bride WhatsApp | +14787788550 |
+| Test vendor phone (Dev) | +918757788550 |
+| Test vendor UUID | 2eb5d3fb-31eb-4b26-859a-cf10ae477d53 |
+| Test vendor handle | DEV550 |
+| Test vendor PIN | 1234 |
+| Second test vendor (Swati) | SWATI978 / UUID e036ea4d-3f9a-4ec5-ba89-a5defa3a042b |
+| Test bride phone (Swati) | +919888294440 |
+| Test bride couple_id | 7abccc1b-0698-43ba-9709-c6a1e52af789 |
+| Test bride PIN (Swati) | 1234 |
+| Test bride phone (Meha) | +919625759924 |
+| Malaysian test bride | +60122687535 / couple_id 285ccb5a-01f0-4873-829c-aac66377c890 |
+| Supabase | nvzkbagqxbysoeszxent (Mumbai, ap-south-1) |
+| Railway vendor | https://dream-os-production.up.railway.app |
+| Railway bride | https://dream-wedding-production-6cef.up.railway.app |
+| Admin | https://dream-os-production.up.railway.app/admin |
+| Admin invite codes | https://dream-os-production.up.railway.app/admin/invite-codes |
+| Vercel PWA | https://dreamos-pwa.vercel.app |
+| Cloudinary | dccso5ljv |
+| Anthropic workspace | dream-os |
 
 ---
 
@@ -316,11 +389,13 @@ Anthropic workspace      dream-os
 
 Railway (dream-os):
   TWILIO_WHATSAPP_NUMBER       whatsapp:+917982159047
+  TWILIO_ACCOUNT_SID           (in Railway)
+  TWILIO_AUTH_TOKEN            (in Railway)
   TDW_WA_NUMBER                917982159047
   BRIDE_WA_NUMBER              14787788550
   ANTHROPIC_API_KEY            workspace: dream-os
   GOOGLE_API_KEY               Google AI Studio, dev@thedreamwedding.in
-  ADMIN_PASSWORD               ROTATE before P2-3 (see P2-2.a above)
+  ADMIN_PASSWORD               (rotated P2-2.a — in password manager only)
   SUPABASE_URL                 nvzkbagqxbysoeszxent
   SUPABASE_SERVICE_ROLE_KEY    service_role, never expose
 
@@ -335,7 +410,7 @@ Active (updated every session):
   HANDOVER_FINAL.md  — this file, fully rewritten each session
   ROADMAP_FINAL.md   — single active roadmap
   SCHEMA.md          — unified schema reference
-  FINDINGS_LOG.md    — append-only out-of-scope findings (NEW in P2-2)
+  FINDINGS_LOG.md    — append-only out-of-scope findings
 
 Frozen (do not update):
   HANDOVER.md, HANDOVER_BRIDE.md  frozen at 8.5a and B3

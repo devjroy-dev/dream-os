@@ -1,23 +1,21 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-18 (P2-2 session)
-**Session:** P2-2 complete. No schema changes this session. Last migration applied: 0025.
+**Last updated:** 2026-05-18 (P2-3 session)
+**Session:** P2-3 complete. Migrations 0028, 0031, 0032, 0033 applied. Last migration applied: 0033.
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0023_circle_cleanup.sql
-**Latest migration applied:** 0025_hot_dates.sql (2026-05-18)
-**Next migration:** 0024_vendor_profile.sql (Phase 2 start — not yet applied)
-**Pending Phase 2:** 0024, 0026, 0028, 0029
+**Latest migration applied:** 0033_otp_sessions.sql (2026-05-18)
+**Next migration:** 0024_vendor_profile.sql (Phase 2 — pending)
+**Pending Phase 2:** 0024, 0026, 0029
 **Landing page session:** 0030
 **Pending Phase 3:** 0027
 **Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at,
-  0027=discover(P3), 0028=pin_auth, 0029=discover_preview, 0030=landing_assets
+  0027=discover(P3), 0028=pin_auth(applied), 0029=discover_preview, 0030=landing_assets,
+  0031=invite_codes(applied), 0032=waitlist_signups(applied), 0033=otp_sessions(applied)
 
-**Note (2026-05-18):** P1-5 added no migrations. All five fixes were
-code-only: capture_couple_lead guard (engine.js), circle summary delivery
-architecture (brideEngine.js + brideIndex.js), counterparty_user_id on
-couple_thread inserts (index.js), bare-handle global fuzzy-match (index.js),
-TDW code replaced with hi as inbound message (index.js). Schema is
-Next pending migration is 0024_vendor_profile.sql at Phase 2 start.
-0025_hot_dates.sql was applied 2026-05-18 (out of sequence — hot_dates needed for P2-1 tool).
+**Note (2026-05-18, P2-3):** Four migrations applied this session: 0028 (pin_auth + XOR triggers),
+0031 (invite_codes), 0032 (waitlist_signups), 0033 (otp_sessions). All phone-tested end-to-end.
+0024 (vendor_profile) remains next pending migration — apply at Phase 2 Discover preview block.
+0025 (hot_dates) was applied 2026-05-18 out of sequence — hot_dates needed for P2-1 tool.
+0031 and 0032 are P2-3 additions not in the original Phase 2 plan — added for invite-gated landing page.
 
 ## Migration history
 | File | Date | Session | What it added |
@@ -45,6 +43,10 @@ Next pending migration is 0024_vendor_profile.sql at Phase 2 start.
 | **0021_couple_receipts_label.sql** | **2026-05-17** | **B3** | **Adds label (text, nullable) column to couple_receipts. Index on (couple_id, label).** |
 | **0022_task_event_merge.sql** | **2026-05-17** | **B3** | **Copies all couple_tasks rows into events (kind=reminder, pending→upcoming, due_date null→today IST). Empties couple_tasks. Table stays in schema, retired in place.** |
 | **0023_circle_cleanup.sql** | **2026-05-17** | **P1-1** | **circle_members.expires_at (7-day expiry on pending invite tokens). circle_sessions.summary_message_id FK to messages(id) ON DELETE SET NULL. circle_sessions unique partial index (circle_member_id) WHERE summarized_to_bride=false (M2 race fix). invite_circle_member() rewritten — sets expires_at, structured ERRCODE exceptions. claim_circle_invite() rewritten — rejects expired tokens, structured exceptions.** |
+| **0028_pin_auth.sql** | **2026-05-18** | **P2-3** | **vendors.pin_hash, vendors.pin_failed_attempts, vendors.pin_locked_until. couples.pin_hash, couples.pin_failed_attempts, couples.pin_locked_until. enforce_role_xor() function. vendors_enforce_role_xor + couples_enforce_role_xor triggers (BEFORE INSERT, hard role XOR at DB level).** |
+| **0031_invite_codes.sql** | **2026-05-18** | **P2-3** | **invite_codes table (code PK, kind, tier, notes, created_at, created_by, consumed_at, consumed_by_user_id). invite_codes_unconsumed_idx + invite_codes_created_at_idx. consume_invite_code(p_code, p_user_id) atomic function — race-safe, structured exceptions.** |
+| **0032_waitlist_signups.sql** | **2026-05-18** | **P2-3** | **waitlist_signups table (id, kind, name, phone, instagram_handle, status, notes, created_at, updated_at). waitlist_signups_new_recent_idx (partial) + waitlist_signups_created_at_idx. waitlist_signups_updated_at trigger.** |
+| **0033_otp_sessions.sql** | **2026-05-18** | **P2-3** | **otp_sessions table (phone PK, otp_hash, purpose, expires_at, created_at). otp_sessions_expires_at_idx. Transient OTP state for PWA login — upserted on send-otp, deleted on verify-otp. No FK to users (intentional).** |
 ## Tables
 
 ### users
@@ -84,6 +86,12 @@ Next pending migration is 0024_vendor_profile.sql at Phase 2 start.
 | invoice_counter | integer NOT NULL | default 0. Per-vendor sequence. Never resets. |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
+| **pin_hash** | **text** | **0028: bcrypt hash of 4-digit PWA PIN. NULL = PIN not yet set.** |
+| **pin_failed_attempts** | **integer NOT NULL** | **0028: default 0. Consecutive failed PIN attempts. Resets on success or OTP reset. 5 failures triggers lockout.** |
+| **pin_locked_until** | **timestamptz** | **0028: NULL = not locked. Set to now()+15min after 5 failures. Cleared on OTP reset.** |
+
+Constraints (new in 0028):
+- `vendors_enforce_role_xor` trigger — BEFORE INSERT, rejects if user_id already exists in couples.
 
 ### couples
 | Column | Type | Notes |
@@ -100,9 +108,13 @@ Next pending migration is 0024_vendor_profile.sql at Phase 2 start.
 | **nudge_sent_at** | **timestamptz** | **B1: for Session 9 vendor-side nudge logic. NULL until first nudge sent.** |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
+| **pin_hash** | **text** | **0028: bcrypt hash of 4-digit PWA PIN. NULL = PIN not yet set.** |
+| **pin_failed_attempts** | **integer NOT NULL** | **0028: default 0. Consecutive failed PIN attempts. Resets on success or OTP reset. 5 failures triggers lockout.** |
+| **pin_locked_until** | **timestamptz** | **0028: NULL = not locked. Set to now()+15min after 5 failures. Cleared on OTP reset.** |
 
 Constraints:
 - `couples_user_id_unique` (added 0015) — prevents duplicate couples rows for same user
+- `couples_enforce_role_xor` trigger (added 0028) — BEFORE INSERT, rejects if user_id already exists in vendors.
 
 ### conversations
 | Column | Type | Notes |
@@ -578,6 +590,10 @@ The agent reads the returned row and surfaces the numbers verbatim in its reply.
 | **0025_hot_dates.sql** | **P2-1** | **hot_dates table. Vivah Muhurat 2026/2027. Applied 2026-05-18.** |
 | 0026_invoices_last_payment_at.sql | Phase 2 | invoices.last_payment_at timestamptz. Set by record_payment. |
 | 0027_discover.sql | Phase 3 | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
+| **0028_pin_auth.sql** | **P2-3** | **✅ Applied 2026-05-18. vendors/couples PIN columns (pin_hash, pin_failed_attempts, pin_locked_until). enforce_role_xor() + triggers.** |
+| **0031_invite_codes.sql** | **P2-3** | **✅ Applied 2026-05-18. invite_codes table + consume_invite_code() function.** |
+| **0032_waitlist_signups.sql** | **P2-3** | **✅ Applied 2026-05-18. waitlist_signups table.** |
+| **0033_otp_sessions.sql** | **P2-3** | **✅ Applied 2026-05-18. otp_sessions table. Transient OTP state for PWA login.** |
 
 ---
 
@@ -609,4 +625,51 @@ Index: idx_hot_dates_date on (date).
 No vendor_id — shared reference table, read-only from agent.
 Populated annually each October by Swati or Dev via Supabase or admin panel (Phase 2).
 Seeded with 60+ dates for 2026 and 2027.
+
+### invite_codes (added 0031, P2-3)
+| Column | Type | Notes |
+|---|---|---|
+| code | text PK | 8-char uppercase alphanumeric. Alphabet: ABCDEFGHJKMNPQRSTUVWXYZ23456789 (no 0/O/1/I/L). Stored uppercase, case-insensitive lookup in consume function. |
+| kind | text NOT NULL | CHECK (dreamer, maker). Dreamer = bride. Maker = vendor. |
+| tier | text | Nullable. Provisioning-ready for future pricing. No CHECK constraint yet. |
+| notes | text | Admin-only internal note. Never user-visible. |
+| created_at | timestamptz NOT NULL | default now() |
+| created_by | text | Free-text label of who minted the code (admin, swati, dev). |
+| consumed_at | timestamptz | NULL = unconsumed. Stamped atomically by consume_invite_code(). |
+| consumed_by_user_id | uuid FK → users(id) ON DELETE SET NULL | Set when consumed. |
+
+Indexes: `invite_codes_unconsumed_idx` on (code) WHERE consumed_at IS NULL. `invite_codes_created_at_idx` on (created_at DESC).
+Function: `consume_invite_code(p_code, p_user_id)` — atomic, race-safe via WHERE consumed_at IS NULL guard. Returns (kind, tier). Raises P0001 with hint invite_code_invalid or invite_code_already_consumed.
+Admin: GET/POST /admin/invite-codes — mint form + recent codes table. Password-gated.
+
+### waitlist_signups (added 0032, P2-3)
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| kind | text NOT NULL | CHECK (dreamer, maker). Which landing page form was submitted. |
+| name | text NOT NULL | Raw, as entered. |
+| phone | text NOT NULL | E.164 with leading +. Frontend country-code dropdown, default +91 India. API validates ^\+[0-9]{8,15}$. No UNIQUE constraint — duplicate submissions allowed, admin decides. |
+| instagram_handle | text NOT NULL | Raw, no @. API strips leading @ before insert. Mirrors vendors.instagram_handle convention. |
+| status | text NOT NULL | default 'new'. CHECK (new, contacted, invited, ignored). Admin triage state. |
+| notes | text | Admin-only triage notes. |
+| created_at | timestamptz NOT NULL | default now() |
+| updated_at | timestamptz NOT NULL | default now(), auto via set_updated_at() trigger. |
+
+Indexes: `waitlist_signups_new_recent_idx` on (created_at DESC) WHERE status = 'new'. `waitlist_signups_created_at_idx` on (created_at DESC).
+Trigger: `waitlist_signups_updated_at` — reuses set_updated_at() from 0001.
+Confirmation copy (locked): "We are onboarding in small batches and shall be getting in touch with you soon."
+
+### otp_sessions (added 0033, P2-3)
+| Column | Type | Notes |
+|---|---|---|
+| phone | text PK | E.164. One row per phone — upsert on send-otp overwrites any prior OTP. |
+| otp_hash | text NOT NULL | bcrypt hash of 6-digit OTP. Never stored plaintext. |
+| purpose | text NOT NULL | CHECK (login, reset). Matched at verify time to prevent cross-purpose reuse. |
+| expires_at | timestamptz NOT NULL | now() + 5 minutes. verify-otp rejects expired rows. |
+| created_at | timestamptz NOT NULL | default now() |
+
+Index: `otp_sessions_expires_at_idx` on (expires_at).
+No FK to users — intentional. Allows OTP rows before users row exists on some error paths.
+Single-use: row deleted immediately on successful verify-otp.
+No FK to users — intentional, see migration 0033 header.
 

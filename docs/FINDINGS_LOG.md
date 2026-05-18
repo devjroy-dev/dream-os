@@ -230,3 +230,55 @@ Add BOTH to the verification grep before generating the writer manifest.
 ---
 
 *End of P2-2 findings. Next session's findings appended below this line.*
+
+## P2-3 — 2026-05-18
+
+---
+
+### Finding #10 — Admin invite-codes URL shows /mint after form submit
+
+**What:** After submitting the Generate Code form at `/admin/invite-codes`,
+the browser URL updates to `/admin/invite-codes/mint` (the POST action URL).
+The page renders correctly with the generated code shown. Navigation and
+functionality are unaffected.
+
+**Severity:** 🟢 Low. Cosmetic only. No functional impact.
+
+**Action:** In a future admin polish pass, add a `res.redirect` after successful
+mint so the URL returns to `/admin/invite-codes`. Out of P2-3 scope.
+
+**Status:** OPEN — deferred to post-Phase 2 admin polish.
+
+---
+
+### Finding #11 — No Supabase Auth JWT issued on verify-otp (P2-3 scope decision)
+
+**What:** The verify-otp endpoints (`/api/v2/vendor/auth/verify-otp` and
+`/api/v2/couple/auth/verify-otp`) return `{ ok, user_id, vendor_id/couple_id,
+pin_set }` but do NOT issue a Supabase Auth JWT. The roadmap specifies
+"Session: Supabase Auth JWT. No custom sessions table."
+
+**Why deferred:** Supabase Auth phone-based sessions require `auth.users` rows
+linked to phone numbers. Creating these requires either (a) Supabase Auth phone
+provider enabled (requires Twilio config in Supabase dashboard, separate from
+Railway env vars) or (b) `supabase.auth.admin.createUser()` + `createSession()`
+which requires careful handling. This is a P2-4 Block 1 completion item — the
+PWA screens that call these endpoints will need the JWT before they can call
+protected endpoints in Block 2+.
+
+**Current state:** verify-otp returns user_id + vendor_id/couple_id. The PWA
+can use these as session identifiers temporarily. JWT issuance to be added in
+P2-4 Block 1 alongside the first protected endpoints.
+
+**Severity:** 🟡 Medium. Not blocking P2-3 (no protected endpoints yet).
+Blocks P2-4 Block 2+ (vendor today view, DreamAI chat, etc).
+
+**Action:** Add `supabase.auth.admin.createUser()` + JWT issuance to
+verify-otp in P2-4 Block 1. Document Supabase Auth phone provider setup
+in HANDOVER at that point.
+
+**Status:** OPEN — deferred to P2-4 Block 1.
+
+---
+
+*End of P2-3 findings. Next session's findings appended below this line.*

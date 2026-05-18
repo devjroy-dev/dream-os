@@ -512,7 +512,7 @@ dreamos-pwa live on Vercel. Founding cohort can be onboarded. dream-wedding Rail
 
 P2-1: WhatsApp agent lifts (vendor + bride). Backend only. Phone-tested. [DONE 2026-05-18]
 P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Coming Soon on post-launch screens. [DONE 2026-05-18]
-P2-3: Landing page session — decide waitlist flow, build landing, build login/invite fresh. [NEXT]
+P2-3: Landing page infrastructure + full auth block. DB foundations, invite/waitlist/auth endpoints, admin mint. [DONE 2026-05-18]
 P2-4+: Endpoints one by one. Block 1 auth -> Block 2 vendor -> Block 3 bride -> Block 4 journey.
 P2-final: Migrations 0024 + 0026 applied. dream-wedding retired. Version 0.11.0-alpha.
 
@@ -644,9 +644,12 @@ Convention: 0024a->0024, 0024b->0027, 0025=hot_dates(applied), 0026=invoices_las
 0025  hot_dates.sql                  Phase 2. hot_dates table. APPLIED 2026-05-18.
 0026  invoices_last_payment_at.sql   Phase 2. invoices.last_payment_at timestamptz.
 0027  discover.sql                   Phase 3. couple_vendor_connections, discover_readiness, vendors.discover_eligible.
-0028  pin_auth.sql                   Phase 2 Block 1. vendors.pin_hash + couples.pin_hash (bcrypt, nullable).
+0028  pin_auth.sql                   Phase 2 Block 1. vendors/couples PIN columns (pin_hash, pin_failed_attempts, pin_locked_until). enforce_role_xor() + triggers. APPLIED 2026-05-18.
 0029  discover_preview.sql           Phase 2 Block 2. vendors.discover_preview boolean default false.
 0030  landing_assets.sql             Landing page session. landing_slides + exploring_photos tables.
+0031  invite_codes.sql               P2-3. invite_codes table + consume_invite_code(). APPLIED 2026-05-18.
+0032  waitlist_signups.sql           P2-3. waitlist_signups table. APPLIED 2026-05-18.
+0033  otp_sessions.sql               P2-3. otp_sessions table. Transient OTP state. APPLIED 2026-05-18.
 
 ### Profile completion tab (vendor PWA)
 
@@ -659,9 +662,9 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [x] Bride agent lifts B1-B4 phone-tested ✅ 2026-05-18
 - [x] Migration 0025 hot_dates applied ✅ 2026-05-18
 - [x] dreamos-pwa deployed to Vercel ✅ 2026-05-18
-- [ ] Landing page session complete (waitlist flow decided + built)
-- [ ] Login/invite sequence built fresh (phone -> WhatsApp OTP -> PIN)
-- [ ] Block 1 auth endpoints live
+- [x] Landing page session complete (waitlist flow decided + built) ✅ 2026-05-18
+- [x] Login/invite sequence built fresh (phone -> WhatsApp OTP -> PIN) ✅ 2026-05-18
+- [x] Block 1 auth endpoints live ✅ 2026-05-18
 - [ ] Block 2 vendor core live — TODAY shows real data
 - [ ] Block 3 bride core live — bride PWA functional
 - [ ] Block 4 journey tools live
@@ -843,9 +846,12 @@ See FINDINGS_LOG.md for full details on each item.
 | 0025 | hot_dates.sql | P2 | ✅ Applied 2026-05-18 | hot_dates table. Vivah Muhurat 2026/2027. 60+ dates seeded. |
 | 0026 | invoices_last_payment_at.sql | P2 | ⏳ Pending | invoices.last_payment_at timestamptz. Set by record_payment. |
 | 0027 | discover.sql | P3 | ⏳ Pending | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
-| 0028 | pin_auth.sql | P2 Block 1 | ⏳ Pending | vendors.pin_hash + couples.pin_hash (bcrypt nullable). PWA login. |
+| 0028 | pin_auth.sql | P2 Block 1 | ✅ Applied 2026-05-18 | vendors/couples PIN columns + lockout columns. enforce_role_xor() + triggers. Hard role XOR at DB level. |
 | 0029 | discover_preview.sql | P2 Block 2 | ⏳ Pending | vendors.discover_preview boolean. Bride FEED preview. |
 | 0030 | landing_assets.sql | Landing page session | ⏳ Pending | landing_slides + exploring_photos tables + storage buckets. |
+| 0031 | invite_codes.sql | P2-3 | ✅ Applied 2026-05-18 | invite_codes table + consume_invite_code() atomic function. |
+| 0032 | waitlist_signups.sql | P2-3 | ✅ Applied 2026-05-18 | waitlist_signups table. Landing page waitlist capture. |
+| 0033 | otp_sessions.sql | P2-3 | ✅ Applied 2026-05-18 | otp_sessions table. Transient OTP state for PWA login. |
 
 ---
 
