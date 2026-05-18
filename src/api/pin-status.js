@@ -108,6 +108,8 @@ router.post('/', async (req, res) => {
       ok:      true,
       exists:  true,
       pin_set: !!roleRow.pin_hash,
+      user_id: userRow.id,
+      role_id: roleRow.id,
     });
   } catch (err) {
     console.error('[pin-status] unexpected error:', err);
