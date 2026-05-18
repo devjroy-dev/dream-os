@@ -573,6 +573,31 @@ Bride PWA — three-mode (LOCKED):
 
 Coming soon pattern: "Coming soon - your data is safe with us." on any unbuilt screen.
 
+### PWA login sequence — LOCKED
+
+New user (invite code): invite code -> phone -> WhatsApp OTP -> set PIN -> enter app
+New user (via WhatsApp): sign in -> phone -> WhatsApp OTP -> set PIN -> enter app
+Returning user: phone -> PIN -> enter app (no OTP)
+PIN: bcrypt hash stored in vendors.pin_hash / couples.pin_hash. NULL = not set yet.
+Session: Supabase Auth JWT. No custom sessions table.
+6 screens built fresh: /vendor/login, /vendor/pin, /vendor/pin-login + couple equivalents.
+
+### Discover preview — Phase 2
+
+Bride FEED tab: 4-5 founding vendors. Pure view. No enquire button.
+Vendor DISCOVERY mode: own profile preview. Pure view.
+Endpoint: GET /api/v2/discover/preview (WHERE discover_preview=true). No auth required.
+Swati seeds manually. Admin panel in post-Phase 2 admin session.
+Requires 0024 (vendor_portfolio) + 0029 (discover_preview column) applied first.
+
+### Post-Phase 2 admin session
+
+1. hot_dates panel
+2. Just Explore management (exploring_photos)
+3. Cover photo management (landing_slides)
+4. Discover preview management
+5. Any accumulated admin needs
+
 ### Endpoint build order
 
 Block 1 Auth:
@@ -616,8 +641,12 @@ Migration naming convention changed: letter suffixes retired. Clean integers onl
 Convention: 0024a->0024, 0024b->0027, 0025=hot_dates(applied), 0026=invoices_last_payment_at.
 
 0024  vendor_profile.sql             Phase 2 start. aesthetic_tags, rate_min/max, vendor_portfolio, portfolios bucket.
-0025  hot_dates.sql                  Phase 2. hot_dates table. Vivah Muhurat 2026/2027. APPLIED 2026-05-18.
-0026  invoices_last_payment_at.sql   Phase 2. invoices.last_payment_at timestamptz. Set by record_payment.
+0025  hot_dates.sql                  Phase 2. hot_dates table. APPLIED 2026-05-18.
+0026  invoices_last_payment_at.sql   Phase 2. invoices.last_payment_at timestamptz.
+0027  discover.sql                   Phase 3. couple_vendor_connections, discover_readiness, vendors.discover_eligible.
+0028  pin_auth.sql                   Phase 2 Block 1. vendors.pin_hash + couples.pin_hash (bcrypt, nullable).
+0029  discover_preview.sql           Phase 2 Block 2. vendors.discover_preview boolean default false.
+0030  landing_assets.sql             Landing page session. landing_slides + exploring_photos tables.
 
 ### Profile completion tab (vendor PWA)
 
@@ -638,7 +667,7 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [ ] Block 4 journey tools live
 - [ ] New vendor tools built (update_event, delete_event, delete_lead, update_client, delete_client, cancel_invoice, update_expense, delete_expense, list_expenses)
 - [ ] Admin panel for hot_dates management live
-- [ ] Migrations 0024 and 0026 applied
+- [ ] Migrations 0024, 0026, 0028, 0029 applied
 - [ ] dream-wedding Railway retired
 - [ ] Version 0.11.0-alpha, docs updated, committed and pushed
 
@@ -783,9 +812,12 @@ Rendered in the same bride PWA Surprise Me tab.
 | 0022 | task_event_merge.sql | B3 | ✅ Applied | Copies couple_tasks → events (kind=reminder). couple_tasks retired. |
 | 0023 | circle_cleanup.sql | P1-1 | ✅ Applied 2026-05-17 | expires_at on circle_members, summary_message_id FK, circle_sessions unique partial index, structured exceptions on invite/claim functions |
 | 0024 | vendor_profile.sql | P2 | ⏳ Pending | vendors.aesthetic_tags, vendors.rate_min/max, vendor_portfolio table, portfolios bucket |
-| 0025 | hot_dates.sql | P2 | ✅ Applied 2026-05-18 | hot_dates table. Vivah Muhurat dates 2026/2027. Seeded with 60+ dates. |
+| 0025 | hot_dates.sql | P2 | ✅ Applied 2026-05-18 | hot_dates table. Vivah Muhurat 2026/2027. 60+ dates seeded. |
 | 0026 | invoices_last_payment_at.sql | P2 | ⏳ Pending | invoices.last_payment_at timestamptz. Set by record_payment. |
 | 0027 | discover.sql | P3 | ⏳ Pending | couple_vendor_connections, discover_readiness, vendors.discover_eligible |
+| 0028 | pin_auth.sql | P2 Block 1 | ⏳ Pending | vendors.pin_hash + couples.pin_hash (bcrypt nullable). PWA login. |
+| 0029 | discover_preview.sql | P2 Block 2 | ⏳ Pending | vendors.discover_preview boolean. Bride FEED preview. |
+| 0030 | landing_assets.sql | Landing page session | ⏳ Pending | landing_slides + exploring_photos tables + storage buckets. |
 
 ---
 
@@ -839,6 +871,10 @@ Rendered in the same bride PWA Surprise Me tab.
 8. **B1_SPEC.md** — historical record. Do not update.
 
 Session not complete until ROADMAP_FINAL.md, HANDOVER.md, and SCHEMA.md are committed and pushed.
+
+Rule 14 (added P2-1): At session start, after reading docs, Claude briefs founder on what
+the session will build — one thing at a time — and waits for explicit confirmation before
+writing any code.
 
 ---
 

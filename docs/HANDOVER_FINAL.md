@@ -238,9 +238,56 @@ Convention change: letter suffixes dropped. Clean integers only.
 0025  hot_dates.sql                  Phase 2 — APPLIED 2026-05-18
 0026  invoices_last_payment_at.sql   Phase 2 (pending)
 0027  discover.sql                   Phase 3 (pending)
+0028  pin_auth.sql                   Phase 2 Block 1 — vendors.pin_hash, couples.pin_hash (nullable text)
+0029  discover_preview.sql           Phase 2 Block 2 — vendors.discover_preview boolean default false
+0030  landing_assets.sql             Landing page session — landing_slides table, exploring_photos table
 
 Admin panel for hot_dates management (add/edit/delete Muhurat dates) — Phase 2 addition.
 Swati/Dev can update without touching Supabase directly.
+
+---
+
+## PWA login sequence — LOCKED
+
+New user (has invite code):
+  Enter invite code -> validate -> enter phone -> OTP via WhatsApp -> set 4-digit PIN -> enter app
+
+New user (came via WhatsApp link — already invited):
+  Click sign in -> enter phone -> OTP via WhatsApp -> set 4-digit PIN -> enter app
+
+Returning user (PIN already set):
+  Enter phone -> enter PIN -> enter app (no OTP, no WhatsApp)
+
+PIN stored as: vendors.pin_hash (bcrypt, nullable). couples.pin_hash (bcrypt, nullable).
+NULL = PIN not yet set (new user). Set = returning user, skip OTP.
+Session: Supabase Auth JWT. No custom sessions table.
+Six screens built fresh (not lifted from tdw-2):
+  /vendor/login, /vendor/pin, /vendor/pin-login
+  /couple/login, /couple/pin, /couple/pin-login
+
+---
+
+## Discover preview — Phase 2
+
+Bride FEED tab shows 4-5 hand-picked founding vendor profiles. Pure view. No enquire button.
+Vendor DISCOVERY mode shows their own profile preview. Pure view. "Goes live at launch."
+Endpoint: GET /api/v2/discover/preview — returns vendors WHERE discover_preview = true.
+Swati seeds manually via Supabase. Admin panel in post-Phase 2 admin session.
+Requires migration 0024 applied first (vendor_portfolio for images).
+Requires migration 0029 (vendors.discover_preview column).
+
+---
+
+## Post-Phase 2 admin session — full scope
+
+Dedicated session after Phase 2 complete. All admin work together:
+1. hot_dates panel — add/edit/delete Muhurat dates
+2. Just Explore management — editorial photos for landing page blind swipe
+3. Cover photo management — background slideshow images on landing page
+4. Discover preview management — add/remove/reorder founding vendor preview cards
+5. Any other accumulated admin needs
+
+All live at dream-os-production.up.railway.app/admin behind existing ADMIN_PASSWORD.
 
 ---
 
@@ -327,3 +374,7 @@ ROADMAP.md, ROADMAP_BRIDE.md    frozen at 8.5a and B3
 B1_SPEC.md                      historical spec
 
 Session not complete until all three active docs committed and pushed.
+
+Working rule 14 (added P2-1): At the start of every session, after reading the three docs,
+Claude briefs the founder on exactly what the session will build — one thing at a time,
+in order — and waits for explicit confirmation before writing a single line of code.

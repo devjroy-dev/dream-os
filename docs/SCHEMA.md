@@ -5,9 +5,11 @@
 **Latest migration applied:** 0023_circle_cleanup.sql
 **Latest migration applied:** 0025_hot_dates.sql (2026-05-18)
 **Next migration:** 0024_vendor_profile.sql (Phase 2 start — not yet applied)
-**Pending Phase 2:** 0024_vendor_profile.sql, 0026_invoices_last_payment_at.sql
-**Pending Phase 3:** 0027_discover.sql
-**Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at, 0027=discover
+**Pending Phase 2:** 0024, 0026, 0028, 0029
+**Landing page session:** 0030
+**Pending Phase 3:** 0027
+**Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at,
+  0027=discover(P3), 0028=pin_auth, 0029=discover_preview, 0030=landing_assets
 
 **Note (2026-05-18):** P1-5 added no migrations. All five fixes were
 code-only: capture_couple_lead guard (engine.js), circle summary delivery
