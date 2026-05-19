@@ -735,22 +735,63 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', convo.id);
 
-    const twilioMsg = await sendWhatsApp(phone, result.reply, result.attachments || []);
+    // Two-message delivery when attachments are present.
+    // The PDF travels alone in its own WhatsApp message so the vendor can
+    // long-press → forward to the client without the agent's status text
+    // (which references internal balance, vendor-facing phrasing, etc.)
+    // ending up as a caption on the forwarded attachment. Status text is
+    // a separate text-only follow-up message the vendor sees in their own
+    // chat but never travels with the PDF.
+    const attachments = Array.isArray(result.attachments) ? result.attachments : [];
+    const hasAttachments = attachments.length > 0;
 
-    await supabase.from('messages').insert({
-      conversation_id: convo.id,
-      direction:       'outbound',
-      channel:         'whatsapp',
-      body:            result.reply,
-      sent_by:         'agent',
-      twilio_sid:      twilioMsg.sid,
-      tool_calls:      result.toolCalls,
-      model:           result.model        ?? null,
-      input_tokens:    result.inputTokens  ?? null,
-      output_tokens:   result.outputTokens ?? null,
-      cost_usd:        result.costUsd      ?? null,
-      cost_inr:        result.costInr      ?? null,
-    });
+    if (hasAttachments) {
+      // 1) PDF-only message. Empty body, media URL(s) attached.
+      const mediaMsg = await sendWhatsApp(phone, '', attachments);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id,
+        direction:       'outbound',
+        channel:         'whatsapp',
+        body:            '',
+        media_url:       attachments[0],
+        sent_by:         'agent',
+        twilio_sid:      mediaMsg.sid,
+      });
+
+      // 2) Text-only status message. Carries the agent's metadata.
+      const textMsg = await sendWhatsApp(phone, result.reply, []);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id,
+        direction:       'outbound',
+        channel:         'whatsapp',
+        body:            result.reply,
+        sent_by:         'agent',
+        twilio_sid:      textMsg.sid,
+        tool_calls:      result.toolCalls,
+        model:           result.model        ?? null,
+        input_tokens:    result.inputTokens  ?? null,
+        output_tokens:   result.outputTokens ?? null,
+        cost_usd:        result.costUsd      ?? null,
+        cost_inr:        result.costInr      ?? null,
+      });
+    } else {
+      // No attachments — single message, original behavior.
+      const twilioMsg = await sendWhatsApp(phone, result.reply, []);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id,
+        direction:       'outbound',
+        channel:         'whatsapp',
+        body:            result.reply,
+        sent_by:         'agent',
+        twilio_sid:      twilioMsg.sid,
+        tool_calls:      result.toolCalls,
+        model:           result.model        ?? null,
+        input_tokens:    result.inputTokens  ?? null,
+        output_tokens:   result.outputTokens ?? null,
+        cost_usd:        result.costUsd      ?? null,
+        cost_inr:        result.costInr      ?? null,
+      });
+    }
 
     res.status(200).send('<Response/>');
   } catch (err) {

@@ -1265,24 +1265,18 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
           }
 
           const balance    = inv.amount_total - newAmountPaid;
-          const balanceStr = balance > 0 ? ` Balance due: Rs ${formatRs(balance)}.` : '';
+          const balanceStr = balance > 0 ? `Balance: Rs ${formatRs(balance)}.` : 'Fully paid.';
           const pdfUrl     = signedData?.signedUrl || null;
 
           console.log(`[tool:record_payment] PDF generated for ${inv.invoice_number} — ${fileName}`);
 
-          // Hand the PDF off to the delivery layer as an attachment, not as a
-          // signed URL embedded in the message body. The vendor receives an
-          // actual PDF attachment in WhatsApp they can long-press and forward
-          // directly to the client — two taps instead of save-then-reattach.
-          // PWA channel: attachments still returned in result for the typed
-          // client to render (will be wired in P2-6b).
+          // PDF is delivered as a separate WhatsApp message by the delivery
+          // layer (src/index.js), so the vendor can forward it to the client
+          // without the status text traveling along as a caption. Reply text
+          // below is vendor-facing only — it should never reach the client.
           if (pdfUrl) attachments.push(pdfUrl);
 
-          let result = `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Booking confirmed.${balanceStr}`;
-          if (pdfUrl) {
-            result += `\n\nBooking confirmation attached — forward to ${inv.client_name}.`;
-          }
-          return result;
+          return `Recorded — Rs ${formatRs(input.amount_received)} from ${inv.client_name} (${inv.invoice_number}). ${balanceStr}`;
 
         } catch (pdfErr) {
           console.error('[tool:record_payment] PDF error:', pdfErr.message);
