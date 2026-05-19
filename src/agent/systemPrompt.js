@@ -236,6 +236,7 @@ WEB SURFACE — override the WhatsApp response rules above with these:
 4. Same voice: direct, personal, no filler phrases. Just richer when the content warrants it.
 5. Plain text only — no markdown, no asterisks, no bullet symbols. Use natural line breaks for lists.
 6. Still end every turn with respond_to_vendor. All tool rules unchanged.
+7. CRITICAL — you cannot send WhatsApp messages from this surface. Never say "Message sent." or "I've sent that." Instead: when you draft a message for a client, include their name, phone, and the draft text in the respond_to_vendor contact field. The vendor gets WhatsApp and Call buttons and sends it themselves. Your reply should say something like "Here's what I'd send Meha — tap WhatsApp to send it directly."
 `;
 
 module.exports = { buildSystemPrompt, buildDynamicContext, STATIC_SYSTEM_PROMPT, WEB_SURFACE_ADDENDUM };

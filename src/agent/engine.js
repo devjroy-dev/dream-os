@@ -143,6 +143,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   // ── Agentic loop ────────────────────────────────────────────────
   let iterations     = 0;
   let finalReply     = null;
+  let finalContact   = null;
   let totalInputTok  = 0;
   let totalOutputTok = 0;
   const toolCallsAudit = [];
@@ -210,6 +211,10 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
 
       if (toolUse.name === 'respond_to_vendor') {
         finalReply = toolUse.input.message;
+        // contact is optional — present when agent drafted a client message
+        if (toolUse.input.contact) {
+          finalContact = toolUse.input.contact;
+        }
       }
 
       toolResults.push({
@@ -256,6 +261,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
 
   return {
     reply:        finalReply || 'Got it.',
+    contact:      finalContact,
     toolCalls:    toolCallsAudit,
     attachments,
     iterations,
