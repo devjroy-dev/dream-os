@@ -3,9 +3,9 @@
 //
 // Phase 2 endpoints built in order during P2-6a:
 //   GET    /me                        ✅ P2-6a #1
-//   GET    /today/:vendorId           ✅ P2-6a #2 this writer
-//   GET    /leads/:vendorId           ⏳
-//   PATCH  /leads/:leadId/state       ⏳
+//   GET    /today/:vendorId           ✅ P2-6a #2
+//   GET    /leads/:vendorId           ✅ P2-6a #3 this writer
+//   PATCH  /leads/:leadId/state       ✅ P2-6a #4 this writer
 //   GET    /clients/:vendorId         ⏳
 //   GET    /clients/:vendorId/:clientId ⏳
 //   GET    /invoices/:vendorId        ⏳
@@ -24,5 +24,6 @@ const router  = express.Router();
 
 router.use('/me',    require('./me'));
 router.use('/today', require('./today'));
+router.use('/leads', require('./leads'));
 
 module.exports = router;
