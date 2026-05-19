@@ -24,6 +24,8 @@
 //   GET  /api/v2/vendor/today/:vendorId       — TODAY dashboard (P2-6a) ✅
 //   GET  /api/v2/vendor/leads/:vendorId       — leads pipeline list (P2-6a) ✅
 //   PATCH /api/v2/vendor/leads/:leadId/state  — move lead through pipeline (P2-6a) ✅
+//   GET  /api/v2/vendor/clients/:vendorId            — client roster (P2-6a) ✅
+//   GET  /api/v2/vendor/clients/:vendorId/:clientId  — client detail (P2-6a) ✅
 //
 // Auth middleware: src/api/middleware/requireAuth.js
 // Vendor ownership middleware: src/api/middleware/resolveVendor.js
