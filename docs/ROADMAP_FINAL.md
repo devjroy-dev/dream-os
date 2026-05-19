@@ -684,7 +684,7 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [x] Block 1 auth endpoints live ✅ 2026-05-18
 - [x] Block 1 JWT issuance live ✅ 2026-05-18 (Finding #11 resolved)
 - [x] Landing page live. Auth wired. Waitlist. Country picker. Vendor + bride home reached. ✅ 2026-05-19
-- [ ] P2-6a: Vendor core endpoints built + smoke tested (backend)
+- [x] P2-6a: Vendor core endpoints built + smoke tested (backend) — COMPLETE 2026-05-19
 - [ ] P2-6b: dreamos-pwa vendor screens wired (frontend)
 - [ ] P2-7a: Bride/couple core endpoints built + smoke tested (backend)
 - [ ] P2-7b: dreamos-pwa couple screens wired (frontend)

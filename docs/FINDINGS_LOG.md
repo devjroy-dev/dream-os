@@ -385,3 +385,98 @@ Rebuild admin pages with server-side auth — password lives only in Railway env
 
 *End of P2-5 findings. Next session's findings appended below this line.*
 
+## P2-6a - 2026-05-19
+
+---
+
+### Finding #18 — WhatsApp vs PWA feature surface map (informational, no action)
+
+**Context:** P2-6a built all 11 vendor core endpoints. During session close, founder asked for a complete feature gap analysis between the WhatsApp agent and the PWA.
+
+**Key clarification:** The vendor PWA chat tab (`POST /api/v2/vendor/chat`) runs the SAME engine.js agent with the SAME 21 tools as WhatsApp. Any action the vendor can do on WhatsApp, they can also do via PWA chat. The list/card views in the PWA are for reviewing what the agent created — not the only way to interact.
+
+**WhatsApp-exclusive features (not available in PWA):**
+| Feature | Why WhatsApp only |
+|---|---|
+| Morning briefing | Proactive cron push — no PWA equivalent by design |
+| Couple routing | Bride messages vendor's WhatsApp number, agent handles on vendor's behalf. PWA has no inbound message routing. |
+| Day-before reminders | Cron-triggered push. PWA has no proactive push mechanism yet. |
+
+**PWA-exclusive features (not available on WhatsApp):**
+| Feature | Notes |
+|---|---|
+| Visual list views — leads, clients, invoices, expenses, events | WhatsApp shows max 3 items inline, then drops PWA link |
+| PDF retrieval — "My Booking Confirmations" | GET /api/v2/vendor/invoices/:vendorId/pdfs. WhatsApp has no list-all-PDFs command. |
+| TODAY dashboard | Single-screen money snapshot + schedule + open leads. WhatsApp delivers this as the morning briefing only. |
+| Persistent visible chat history | PWA shows conversation thread. WhatsApp messages scroll naturally but no structured history view. |
+
+**All 21 agent tools available on BOTH surfaces via chat:**
+note_to_self, create_lead, list_leads, update_lead_state, create_event, list_events, update_event_state, create_invoice, list_invoices, record_payment, log_expense, add_client, list_clients, query_day, hot_dates_context, update_routing_handle, get_my_tdw_link, update_invoice_prefix, respond_to_vendor, update_conversation_state, hot_dates_context
+
+**Status:** INFORMATIONAL — no action required. Logged per founder direction for future reference.
+
+---
+
+### Finding #19 — Railway shared egress IP throttling by Anthropic
+
+**What:** During P2-6a testing, Railway production service hit sustained Anthropic 529 (overloaded_error) for 40+ minutes. Anthropic status page showed green. Direct curl from Codespaces succeeded. All 529s showed identical cf-ray AMS (Amsterdam) Cloudflare edge. Changing Railway region to Singapore did not help — same 529s, different cf-ray node (SIN).
+
+**Root cause:** Railway's shared egress IP pool was soft-throttled at Anthropic's API gateway — a noisy-neighbor effect from other Railway tenants sharing the same IP block. Not a global Anthropic outage. Not a rate limit (Tier 2 limits: 450K ITPM, not close to being hit).
+
+**Fix:** Upgraded Railway to Pro plan. Enabled Static Outbound IP on both dream-os and dream-wedding services. Each service now has a dedicated IP that only dream-os uses. 529s stopped immediately.
+
+**Also fixed in same session:**
+- Anthropic client timeout changed from SDK default (600s) to 12s — prevents Railway connection pool exhaustion under sustained 529 load
+- Anthropic SDK upgraded from 0.30.1 to 0.97.0
+- maxRetries:0 set on client — we own the retry loop, SDK default 2 retries was stacking silently
+
+**Remaining hardening item (not yet built):** retry-with-backoff wrapper in engine.js — 3 attempts, 1s/2s backoff, for genuine transient Anthropic capacity events. Static IP handles the IP-throttle case; the retry wrapper handles the global-capacity case. Slot into a future engine-hardening session before launch.
+
+**Cost note:** Railway Pro is $20/month. Static IP has a small additional charge. Ongoing infrastructure cost — log in budget planning.
+
+**Status:** RESOLVED (static IP) — 2026-05-19. Retry-with-backoff OPEN — deferred to engine-hardening session.
+
+---
+
+### Finding #20 — PDF booking amount received line missing or wrong
+
+**What:** Two bugs in `generateInvoicePdf` / `record_payment`:
+1. If invoice was created without explicit advance amount (most common), `amount_advance` is null. `invoicePdf.js` only renders the "Booking amount received" line when `amount_advance` is non-null → line missing entirely from PDF.
+2. If invoice was created with an explicit advance amount (e.g. Rs 36,000), that stale value was being passed to the PDF template even when the actual payment recorded was different (e.g. Rs 5,000) → wrong amount shown.
+
+**Root cause:** `record_payment` only updates `amount_paid`, never `amount_advance`. The PDF template reads `invoice.amount_advance` which is set at invoice creation time and never updated.
+
+**Fix:** Always pass `newAmountPaid` as `amount_advance` when calling `generateInvoicePdf` in Stage 2. `newAmountPaid` is the cumulative total paid as of the current turn — always accurate.
+
+**Status:** RESOLVED — 2026-05-19 (post-session-close commit)
+
+---
+
+### Finding #21 — Conversation history contamination after 529 storm
+
+**What:** During P2-6a, sustained Anthropic 529s caused multiple failed WhatsApp turns for the same vendor. The messages were persisted to the conversation history (inbound message stored) but the agent never completed. On the next successful turn, Sonnet read the accumulated failed requests from conversation history and tried to process all of them — resulting in multiple payments being recorded in one turn (e.g. Rs 2,000 + Rs 3,000 against the same invoice when only Rs 3,000 was requested).
+
+**Severity:** 🟡 Medium. Only occurs after sustained failures. Real vendors won't hit this under normal conditions. Test invoices TDW/DEV550/02, 03, 06 have inflated amount_paid values as a result.
+
+**Mitigation options (not yet built):**
+- Clear conversation history after a failed agent turn
+- System prompt instruction not to infer payments from prior messages without explicit confirmation in the current turn
+- Retry-with-backoff (Finding #19) would reduce failed turns, reducing contamination surface
+
+**Status:** OPEN — deferred. Log for engine-hardening session.
+
+---
+
+### Finding #22 — cost cap from dream-wedding not ported to dream-os
+
+**What:** dream-wedding's vendor agent loop (backend/agentic/wedding/vendor/loop.js) had three per-turn caps: MAX_ITERATIONS=8, MAX_COST_USD=0.50 ($0.50 per turn ≈ Rs 50), MAX_WALL_MS=45000 (45s wall time). dream-os has MAX_ITERATIONS=5 but no cost cap and no wall-time cap.
+
+**Risk:** A runaway tool loop or unexpectedly complex turn could spend significantly more than Rs 50 per vendor turn with no enforcement. At launch scale (many active vendors) this becomes a real cost exposure.
+
+**Recommended fix:** Port the cost cap and wall-time cap from dream-wedding loop.js into engine.js. Check cost after each iteration — if `costSoFar > MAX_COST_USD`, break with a graceful reply. Add wall-time check similarly.
+
+**Status:** OPEN — deferred to engine-hardening session before launch.
+
+---
+
+*End of P2-6a findings. Next session's findings appended below this line.*

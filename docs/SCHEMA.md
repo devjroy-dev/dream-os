@@ -1,6 +1,6 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-19 (P2-5 session)
-**Session:** P2-5 complete. Migration 0030 applied. landing_slides + exploring_photos tables live and seeded.
+**Last updated:** 2026-05-19 (P2-6a session)
+**Session:** P2-6a complete. No new migrations. messages.media_url column now in active use for PDF delivery (was 'future' in prior schema docs).
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Latest migration applied:** 0030_landing_assets.sql (2026-05-19)
 **Next migration:** 0034 (when needed)
