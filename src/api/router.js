@@ -21,6 +21,7 @@
 //   GET  /api/v2/exploring-photos             — "Just Exploring" gallery (P2-5) ✅
 //   GET  /api/v2/_test/whoami                 — JWT smoke test (P2-4, delete after Block 2) ✅
 //   GET  /api/v2/vendor/me                    — vendor profile (P2-6a) ✅
+//   GET  /api/v2/vendor/today/:vendorId       — TODAY dashboard (P2-6a) ✅
 //
 // Auth middleware: src/api/middleware/requireAuth.js
 // Vendor ownership middleware: src/api/middleware/resolveVendor.js
