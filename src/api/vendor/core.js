@@ -6,9 +6,9 @@
 //   GET    /today/:vendorId           ✅ P2-6a #2
 //   GET    /leads/:vendorId           ✅ P2-6a #3
 //   PATCH  /leads/:leadId/state       ✅ P2-6a #4
-//   GET    /clients/:vendorId         ✅ P2-6a #5 this writer
-//   GET    /clients/:vendorId/:clientId ✅ P2-6a #6 this writer
-//   GET    /invoices/:vendorId        ⏳
+//   GET    /clients/:vendorId         ✅ P2-6a #5
+//   GET    /clients/:vendorId/:clientId ✅ P2-6a #6
+//   GET    /invoices/:vendorId        ✅ P2-6a #7 this writer
 //   GET    /expenses/:vendorId        ⏳
 //   GET    /events/:vendorId          ⏳
 //   GET    /context/:vendorId         ⏳
@@ -22,9 +22,10 @@
 const express = require('express');
 const router  = express.Router();
 
-router.use('/me',      require('./me'));
-router.use('/today',   require('./today'));
-router.use('/leads',   require('./leads'));
-router.use('/clients', require('./clients'));
+router.use('/me',       require('./me'));
+router.use('/today',    require('./today'));
+router.use('/leads',    require('./leads'));
+router.use('/clients',  require('./clients'));
+router.use('/invoices', require('./invoices'));
 
 module.exports = router;
