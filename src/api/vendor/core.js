@@ -9,8 +9,8 @@
 //   GET    /clients/:vendorId         ✅ P2-6a #5
 //   GET    /clients/:vendorId/:clientId ✅ P2-6a #6
 //   GET    /invoices/:vendorId        ✅ P2-6a #7
-//   GET    /expenses/:vendorId        ✅ P2-6a #8 this writer
-//   GET    /events/:vendorId          ⏳
+//   GET    /expenses/:vendorId        ✅ P2-6a #8
+//   GET    /events/:vendorId          ✅ P2-6a #9 this writer
 //   GET    /context/:vendorId         ⏳
 //   POST   /chat                      ⏳
 //
@@ -28,5 +28,6 @@ router.use('/leads',    require('./leads'));
 router.use('/clients',  require('./clients'));
 router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
+router.use('/events',   require('./events'));
 
 module.exports = router;
