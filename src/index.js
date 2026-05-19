@@ -41,19 +41,23 @@ app.set('trust proxy', true);
 const ALLOWED_ORIGINS = [
   'https://thedreamwedding.in',
   'https://www.thedreamwedding.in',
+  'https://thedreamai.in',
+  'https://www.thedreamai.in',
   'https://dreamos-pwa.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
 ];
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow server-to-server calls (no origin) and Vercel preview URLs
     if (!origin) return cb(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    // Allow any dreamos-pwa Vercel preview URL
+    // dreamos-pwa Vercel previews
     if (/^https:\/\/dreamos-pwa[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
-    cb(new Error('CORS: origin not allowed — ' + origin));
-  },
+    // dreamai Vercel previews
+    if (/^https:\/\/dreamai[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
+    // GitHub Codespaces (dev)
+    if (/^https:\/\/[a-z0-9-]+-\d+\.app\.github\.dev$/.test(origin)) return cb(null, true);
+    cb(new Error('CORS: origin not allowed — ' + origin));  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
