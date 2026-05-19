@@ -10,8 +10,8 @@
 //   GET    /clients/:vendorId/:clientId ✅ P2-6a #6
 //   GET    /invoices/:vendorId        ✅ P2-6a #7
 //   GET    /expenses/:vendorId        ✅ P2-6a #8
-//   GET    /events/:vendorId          ✅ P2-6a #9 this writer
-//   GET    /context/:vendorId         ⏳
+//   GET    /events/:vendorId          ✅ P2-6a #9
+//   GET    /context/:vendorId         ✅ P2-6a #10 this writer
 //   POST   /chat                      ⏳
 //
 // Note: /auth/* is mounted directly under /vendor in router.js, not here.
@@ -29,5 +29,6 @@ router.use('/clients',  require('./clients'));
 router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
+router.use('/context',  require('./context'));
 
 module.exports = router;
