@@ -64,12 +64,13 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   }
 
   // ── Validate request body ──────────────────────────────────────────
-  const body    = req.body || {};
-  const message = typeof body.message === 'string' ? body.message.trim() : '';
+  const body     = req.body || {};
+  const message  = typeof body.message === 'string' ? body.message.trim() : '';
+  // ai_primer: the context question the PWA injected ("What would you like to
+  // change about invoice X?"). Persisted as an assistant message before the
+  // vendor's reply so the engine sees full edit context in DB history.
+  const aiPrimer = typeof body.ai_primer === 'string' ? body.ai_primer.trim() : '';
 
-  // The contract has vendor_id in the request body, but ownership is established
-  // by the JWT-resolved vendor. We accept vendor_id for contract compliance but
-  // reject if it disagrees with the JWT vendor — this catches frontend bugs early.
   if (body.vendor_id && body.vendor_id !== vendor.id) {
     return res.status(403).json({ ok: false, error: 'vendor_id mismatch with session.' });
   }
@@ -129,9 +130,22 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     }
   }
 
+  // ── Persist ai_primer as synthetic assistant message (edit context) ─
+  // The PWA injects a context question ("What would you like to change about
+  // invoice TDW/DEV550/03 for Priya?") as a synthetic AI message. It never
+  // reaches the backend on its own. We persist it here so the engine reads it
+  // from DB history and gives a targeted response, not a generic one.
+  if (aiPrimer) {
+    await supabase.from('messages').insert({
+      conversation_id: conversation.id,
+      direction:       'outbound',
+      channel:         'web',
+      body:            aiPrimer,
+      sent_by:         'agent',
+    });
+  }
+
   // ── Persist inbound message ────────────────────────────────────────
-  // Engine reads conversation history from the messages table — so persistence
-  // must happen BEFORE invoking the agent. Channel='web' marks the surface.
   const { error: inboundErr } = await supabase
     .from('messages')
     .insert({
@@ -143,7 +157,6 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     });
   if (inboundErr) {
     console.error('[POST /vendor/chat] inbound persist error:', inboundErr.message);
-    // Don't fail the turn — the engine can still run from the request message.
   }
 
   // ── Run the agent turn ─────────────────────────────────────────────
