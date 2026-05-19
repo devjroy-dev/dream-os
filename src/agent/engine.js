@@ -137,6 +137,12 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   let totalInputTok  = 0;
   let totalOutputTok = 0;
   const toolCallsAudit = [];
+  // attachments collector — tools that produce files (currently just
+  // record_payment's PDF) push their URLs here. runAgenticTurn returns this
+  // array; src/index.js then forwards them as Twilio mediaUrls so the vendor
+  // receives the PDF attached to the WhatsApp message instead of as a long
+  // signed-URL embedded in the message body.
+  const attachments    = [];
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -184,6 +190,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
         conversation,
         supabase,
         channel,
+        attachments,
       });
 
       toolCallsAudit.push({ name: toolUse.name, input: toolUse.input, result });
@@ -237,6 +244,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   return {
     reply:        finalReply || 'Got it.',
     toolCalls:    toolCallsAudit,
+    attachments,
     iterations,
     model:        modelToUse,
     inputTokens:  totalInputTok,
@@ -533,7 +541,7 @@ async function handleOnboarding({ vendor, user, conversation, inboundMessage, su
 }
 
 // ── Tool executor (vendor agent) ──────────────────────────────────
-async function executeTool({ name, input, vendor, conversation, supabase, channel = 'whatsapp' }) {
+async function executeTool({ name, input, vendor, conversation, supabase, channel = 'whatsapp', attachments = [] }) {
   switch (name) {
 
     case 'note_to_self': {
@@ -1262,12 +1270,18 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
 
           console.log(`[tool:record_payment] PDF generated for ${inv.invoice_number} — ${fileName}`);
 
-          let result = `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Booking confirmed.${balanceStr}`;
-          if (pdfUrl) result += `
+          // Hand the PDF off to the delivery layer as an attachment, not as a
+          // signed URL embedded in the message body. The vendor receives an
+          // actual PDF attachment in WhatsApp they can long-press and forward
+          // directly to the client — two taps instead of save-then-reattach.
+          // PWA channel: attachments still returned in result for the typed
+          // client to render (will be wired in P2-6b).
+          if (pdfUrl) attachments.push(pdfUrl);
 
---- BOOKING CONFIRMATION PDF — FORWARD TO ${inv.client_name.toUpperCase()} ---
-${pdfUrl}
---- END ---`;
+          let result = `Payment recorded — Rs ${formatRs(input.amount_received)} received from ${inv.client_name}. Booking confirmed.${balanceStr}`;
+          if (pdfUrl) {
+            result += `\n\nBooking confirmation attached — forward to ${inv.client_name}.`;
+          }
           return result;
 
         } catch (pdfErr) {

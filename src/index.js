@@ -735,7 +735,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', convo.id);
 
-    const twilioMsg = await sendWhatsApp(phone, result.reply);
+    const twilioMsg = await sendWhatsApp(phone, result.reply, result.attachments || []);
 
     await supabase.from('messages').insert({
       conversation_id: convo.id,
