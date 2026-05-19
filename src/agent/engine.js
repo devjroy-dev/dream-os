@@ -125,11 +125,20 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   ];
 
   // ── Classify complexity → pick model ───────────────────────────
-  // Pass last 2 history turns so classifier has disambiguation context.
-  const classifierHistory = history.slice(-2);
-  const complexity  = await classifyMessage(inboundMessage, classifierHistory, anthropic);
-  const modelToUse  = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
-  console.log(`[agent] model selected: ${modelToUse} (${complexity})`);
+  // Web channel: skip classifier, go straight to Haiku for speed.
+  // The classifier itself is a Haiku call — skipping it saves one full
+  // round trip (~300-500ms) on every PWA message. Sonnet is still available
+  // for WhatsApp complex turns where the latency trade-off is worth it.
+  let modelToUse;
+  if (channel === 'web') {
+    modelToUse = MODEL_HAIKU;
+    console.log(`[agent] model selected: ${modelToUse} (web-fast-path)`);
+  } else {
+    const classifierHistory = history.slice(-2);
+    const complexity = await classifyMessage(inboundMessage, classifierHistory, anthropic);
+    modelToUse = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
+    console.log(`[agent] model selected: ${modelToUse} (${complexity})`);
+  }
 
   // ── Agentic loop ────────────────────────────────────────────────
   let iterations     = 0;
