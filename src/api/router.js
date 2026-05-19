@@ -20,8 +20,10 @@
 //   GET  /api/v2/landing-slides               — landing slideshow source (P2-5) ✅
 //   GET  /api/v2/exploring-photos             — "Just Exploring" gallery (P2-5) ✅
 //   GET  /api/v2/_test/whoami                 — JWT smoke test (P2-4, delete after Block 2) ✅
+//   GET  /api/v2/vendor/me                    — vendor profile (P2-6a) ✅
 //
 // Auth middleware: src/api/middleware/requireAuth.js
+// Vendor ownership middleware: src/api/middleware/resolveVendor.js
 //   Apply per-route on all Block 2+ protected endpoints.
 
 'use strict';
@@ -46,9 +48,9 @@ router.use('/auth/pin-status',    pinStatusRouter);
 router.use('/landing-slides',     landingSlidesRouter);
 router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
+router.use('/vendor',             require('./vendor/core'));
 
 // Block 2+ routers mounted here as they are built:
-// router.use('/vendor', require('./vendor/core'));
 // router.use('/couple', require('./couple/core'));
 
 module.exports = router;
