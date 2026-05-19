@@ -9,7 +9,7 @@
 **Repo frontend:** https://github.com/devjroy-dev/dreamos-pwa
 **Vercel:** https://dreamos-pwa.vercel.app (live - landing page + full auth flow working)
 
-Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then FINDINGS_LOG.md.
+Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then API_CONTRACTS.md. Then FINDINGS_LOG.md.
 
 ---
 
@@ -114,21 +114,29 @@ Note: vendor home and bride home show 404s on all data endpoints - expected. Blo
 
 ---
 
-## What is next - P2-6
+## What is next - P2-6a
 
-P2-6 is Block 2: vendor core endpoints. Backend + frontend wiring. Both repos touched.
+P2-6a is backend only. Build all vendor core endpoints per API_CONTRACTS.md. Smoke test each with curl.
+dream-os repo only. dreamos-pwa not touched.
 
-Endpoints to build:
+Endpoints to build (exact paths from API_CONTRACTS.md):
+  GET  /api/v2/vendor/me
   GET  /api/v2/vendor/today/:vendorId
-  GET  /api/v2/dreamai/vendor-context/:vendorId
-  POST /api/v2/dreamai/chat
-  GET  /api/invoices/:vendorId
-  GET  /api/v2/vendor/clients/:vendorId
   GET  /api/v2/vendor/leads/:vendorId
-  GET  /api/v2/vendor/events/:vendorId
+  PATCH /api/v2/vendor/leads/:leadId/state
+  GET  /api/v2/vendor/clients/:vendorId
+  GET  /api/v2/vendor/clients/:vendorId/:clientId
+  GET  /api/v2/vendor/invoices/:vendorId
   GET  /api/v2/vendor/expenses/:vendorId
+  GET  /api/v2/vendor/events/:vendorId
+  GET  /api/v2/vendor/context/:vendorId
+  POST /api/v2/vendor/chat
 
-After P2-6: P2-7 (Block 3 bride core), P2-8 (Block 4 journey), P2-9 (migrations + retire dream-wedding + v0.11.0-alpha).
+After P2-6a: P2-6b (wire dreamos-pwa vendor screens — frontend only).
+After P2-6b: P2-7a (bride core backend), P2-7b (bride frontend), P2-8a/b (journey), P2-9.
+
+Rule: API_CONTRACTS.md is the source of truth. Backend builds to it. Frontend wires to it.
+Backend session = dream-os only. Frontend session = dreamos-pwa only. Never both.
 
 ---
 

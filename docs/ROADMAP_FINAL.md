@@ -515,10 +515,16 @@ P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Coming Soon on post-laun
 P2-3: Landing page infrastructure + full auth block. DB foundations, invite/waitlist/auth endpoints, admin mint. [DONE 2026-05-18]
 P2-4: JWT issuance. Block 1 auth complete. Phone-tested. [DONE 2026-05-18]
 P2-5: Landing page build + auth wiring + CORS + country picker + waitlist. [DONE 2026-05-19]
-P2-6: Block 2 vendor core endpoints. TODAY shows real data. DreamAI chat. Invoices, clients, leads, events, expenses.
-P2-7: Block 3 bride core endpoints. Bride home functional. DreamAI chat. Muse. Circle feed.
-P2-8: Block 4 journey tools. Couple expenses, events, vendors, bookings.
+P2-6a: Backend only. Build all vendor core endpoints per API_CONTRACTS.md. Smoke test each with curl. dream-os only.
+P2-6b: Frontend only. Wire dreamos-pwa vendor screens to contracts. No backend changes. dreamos-pwa only.
+P2-7a: Backend only. Build all couple/bride core + coplanner endpoints per API_CONTRACTS.md.
+P2-7b: Frontend only. Wire dreamos-pwa couple screens to contracts.
+P2-8a: Backend only. Build journey tools (couple/plan — bookings, events, receipts).
+P2-8b: Frontend only. Wire couple/plan screen.
 P2-9: Migrations 0024 + 0026 applied. Discover preview endpoint. dream-wedding retired. Version 0.11.0-alpha.
+
+Rule: a/b split is MANDATORY. Backend session never touches dreamos-pwa. Frontend session never touches dream-os.
+API_CONTRACTS.md is the contract. Backend builds to it. Frontend wires to it. No drift.
 
 ### WhatsApp surface — LOCKED
 
@@ -671,9 +677,12 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [x] Block 1 auth endpoints live ✅ 2026-05-18
 - [x] Block 1 JWT issuance live ✅ 2026-05-18 (Finding #11 resolved)
 - [x] Landing page live. Auth wired. Waitlist. Country picker. Vendor + bride home reached. ✅ 2026-05-19
-- [ ] Block 2 vendor core live — TODAY shows real data
-- [ ] Block 3 bride core live — bride PWA functional
-- [ ] Block 4 journey tools live
+- [ ] P2-6a: Vendor core endpoints built + smoke tested (backend)
+- [ ] P2-6b: dreamos-pwa vendor screens wired (frontend)
+- [ ] P2-7a: Bride/couple core endpoints built + smoke tested (backend)
+- [ ] P2-7b: dreamos-pwa couple screens wired (frontend)
+- [ ] P2-8a: Journey tools built + smoke tested (backend)
+- [ ] P2-8b: dreamos-pwa couple/plan screen wired (frontend)
 - [ ] New vendor tools built (update_event, delete_event, delete_lead, update_client, delete_client, cancel_invoice, update_expense, delete_expense, list_expenses)
 - [ ] Admin panel for hot_dates management live
 - [ ] Migrations 0024, 0026, 0028, 0029 applied
