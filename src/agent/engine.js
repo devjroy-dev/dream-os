@@ -1233,8 +1233,13 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
             await sendWhatsApp(u.phone, "Got it — recording your payment. Generating the invoice PDF, just a moment...");
           }
 
+          // When generating the PDF, ensure amount_advance is populated.
+          // If invoice was created without explicit advance (vendor said "invoice Rohit Rs 50k"),
+          // amount_advance is null and the PDF template skips the booking amount received line.
+          // For Stage 2 (advance payment), the payment just recorded IS the advance.
+          const pdfAdvance = inv.amount_advance || input.amount_received;
           const pdfBuffer = await generateInvoicePdf({
-            invoice:    { ...inv, amount_paid: newAmountPaid },
+            invoice:    { ...inv, amount_paid: newAmountPaid, amount_advance: pdfAdvance },
             vendor:     v,
             vendorName: u?.name || 'Vendor',
           });
