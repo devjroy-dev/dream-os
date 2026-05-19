@@ -1,3 +1,51 @@
+## Frontend implementation pattern — MANDATORY for all frontend sessions
+
+dreamos-pwa must use a typed API client. No raw fetch() calls in screen components.
+This is the required file structure before wiring any screen:
+
+```
+lib/
+  api/
+    _base.ts      <- shared: getAuthHeader(), handleResponse(), API_BASE constant
+    vendor.ts     <- one exported async function per vendor contract endpoint
+    couple.ts     <- one exported async function per couple contract endpoint
+    coplanner.ts  <- one exported async function per coplanner contract endpoint
+  types/
+    common.ts     <- shared: ApiResponse<T>, PaginatedResponse<T>
+    vendor.ts     <- TypeScript interfaces mirroring vendor contract response shapes
+    couple.ts     <- TypeScript interfaces mirroring couple contract response shapes
+```
+
+### Rules
+1. Every contract endpoint = one exported function in lib/api/*.ts.
+2. Every response shape = one exported interface in lib/types/*.ts.
+3. Screen components import from lib/api/* and lib/types/* only. No inline fetch().
+4. JWT attached once in _base.ts getAuthHeader(). Never duplicated in screens.
+5. All responses typed. Contract drift = TypeScript compile error, not runtime bug.
+6. Dropped endpoints (see table at bottom) = removed entirely from screens. No stubs.
+7. Legacy fetches from tdw-2 = deleted, not renamed. Rip and rebuild, not patch.
+
+### Session build order for frontend sessions
+P2-6b (vendor):
+  1. Create lib/api/_base.ts and lib/types/common.ts first
+  2. Create lib/api/vendor.ts with all vendor contract functions
+  3. Create lib/types/vendor.ts with all vendor response interfaces
+  4. Rewrite each vendor screen one at a time to use typed client
+  5. Delete all legacy fetch calls and dropped endpoint calls
+
+P2-7b (bride + coplanner):
+  1. lib/api/_base.ts and lib/types/common.ts already exist from P2-6b
+  2. Create lib/api/couple.ts + lib/api/coplanner.ts
+  3. Create lib/types/couple.ts
+  4. Rewrite each couple/coplanner screen one at a time
+  5. Delete all legacy fetch calls and dropped endpoint calls
+
+P2-8b (journey):
+  1. lib/api/couple.ts already exists — add journey functions to it
+  2. Rewrite couple/plan screen using typed client
+
+---
+
 # dream-os — API Contracts
 **Written:** 2026-05-19
 **Status:** Authoritative. Backend builds to this. Frontend wires to this. No drift.

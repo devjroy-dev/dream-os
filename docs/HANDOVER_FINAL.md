@@ -116,27 +116,40 @@ Note: vendor home and bride home show 404s on all data endpoints - expected. Blo
 
 ## What is next - P2-6a
 
-P2-6a is backend only. Build all vendor core endpoints per API_CONTRACTS.md. Smoke test each with curl.
-dream-os repo only. dreamos-pwa not touched.
+P2-6a is backend only. Build all vendor core endpoints per API_CONTRACTS.md.
+Smoke test each with curl before moving to next. dream-os repo only. dreamos-pwa not touched.
 
 Endpoints to build (exact paths from API_CONTRACTS.md):
-  GET  /api/v2/vendor/me
-  GET  /api/v2/vendor/today/:vendorId
-  GET  /api/v2/vendor/leads/:vendorId
+  GET   /api/v2/vendor/me
+  GET   /api/v2/vendor/today/:vendorId
+  GET   /api/v2/vendor/leads/:vendorId
   PATCH /api/v2/vendor/leads/:leadId/state
-  GET  /api/v2/vendor/clients/:vendorId
-  GET  /api/v2/vendor/clients/:vendorId/:clientId
-  GET  /api/v2/vendor/invoices/:vendorId
-  GET  /api/v2/vendor/expenses/:vendorId
-  GET  /api/v2/vendor/events/:vendorId
-  GET  /api/v2/vendor/context/:vendorId
-  POST /api/v2/vendor/chat
+  GET   /api/v2/vendor/clients/:vendorId
+  GET   /api/v2/vendor/clients/:vendorId/:clientId
+  GET   /api/v2/vendor/invoices/:vendorId
+  GET   /api/v2/vendor/expenses/:vendorId
+  GET   /api/v2/vendor/events/:vendorId
+  GET   /api/v2/vendor/context/:vendorId
+  POST  /api/v2/vendor/chat
 
-After P2-6a: P2-6b (wire dreamos-pwa vendor screens — frontend only).
-After P2-6b: P2-7a (bride core backend), P2-7b (bride frontend), P2-8a/b (journey), P2-9.
+After P2-6a: P2-6b (frontend only — rip and rebuild vendor screens).
 
-Rule: API_CONTRACTS.md is the source of truth. Backend builds to it. Frontend wires to it.
-Backend session = dream-os only. Frontend session = dreamos-pwa only. Never both.
+P2-6b scope:
+  Build lib/api/_base.ts, lib/api/vendor.ts, lib/types/common.ts, lib/types/vendor.ts.
+  Rip all legacy tdw-2 fetches from vendor screens. Wire each screen to typed client.
+  Delete all dropped endpoint calls per API_CONTRACTS.md dropped table.
+  dreamos-pwa only. No backend changes.
+
+P2-7a: Bride/couple core + coplanner endpoints. dream-os only.
+P2-7b: Build lib/api/couple.ts + lib/api/coplanner.ts + lib/types/couple.ts.
+       Rip all legacy bride fetches. Wire couple + coplanner screens. dreamos-pwa only.
+P2-8a: Journey tools backend. dream-os only.
+P2-8b: Wire couple/plan screen using typed client. dreamos-pwa only.
+P2-9:  Migrations, discover preview, retire dream-wedding, v0.11.0-alpha.
+
+Rule: a/b split MANDATORY. Backend = dream-os only. Frontend = dreamos-pwa only. Never both.
+API_CONTRACTS.md is source of truth. Frontend pattern: typed client in lib/api/* + lib/types/*.
+Rip and rebuild — not tactical editing. Legacy fetches deleted not renamed.
 
 ---
 

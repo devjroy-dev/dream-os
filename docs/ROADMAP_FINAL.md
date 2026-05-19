@@ -516,15 +516,22 @@ P2-3: Landing page infrastructure + full auth block. DB foundations, invite/wait
 P2-4: JWT issuance. Block 1 auth complete. Phone-tested. [DONE 2026-05-18]
 P2-5: Landing page build + auth wiring + CORS + country picker + waitlist. [DONE 2026-05-19]
 P2-6a: Backend only. Build all vendor core endpoints per API_CONTRACTS.md. Smoke test each with curl. dream-os only.
-P2-6b: Frontend only. Wire dreamos-pwa vendor screens to contracts. No backend changes. dreamos-pwa only.
-P2-7a: Backend only. Build all couple/bride core + coplanner endpoints per API_CONTRACTS.md.
-P2-7b: Frontend only. Wire dreamos-pwa couple screens to contracts.
-P2-8a: Backend only. Build journey tools (couple/plan — bookings, events, receipts).
-P2-8b: Frontend only. Wire couple/plan screen.
-P2-9: Migrations 0024 + 0026 applied. Discover preview endpoint. dream-wedding retired. Version 0.11.0-alpha.
+P2-6b: Frontend only. dreamos-pwa only. No backend changes.
+        Build lib/api/_base.ts, lib/api/vendor.ts, lib/types/common.ts, lib/types/vendor.ts.
+        Rip all legacy tdw-2 fetches from vendor screens. Wire each screen to typed client.
+        Delete all dropped endpoint calls (see API_CONTRACTS.md dropped table).
+P2-7a: Backend only. Build all couple/bride core + coplanner endpoints per API_CONTRACTS.md. dream-os only.
+P2-7b: Frontend only. dreamos-pwa only. No backend changes.
+        Build lib/api/couple.ts, lib/api/coplanner.ts, lib/types/couple.ts.
+        Rip all legacy tdw-2 fetches from couple + coplanner screens. Wire to typed client.
+P2-8a: Backend only. Build journey tools (couple/plan — bookings, events, receipts). dream-os only.
+P2-8b: Frontend only. Wire couple/plan screen using typed client. dreamos-pwa only.
+P2-9:  Migrations 0024 + 0026 applied. Discover preview endpoint. dream-wedding retired. Version 0.11.0-alpha.
 
-Rule: a/b split is MANDATORY. Backend session never touches dreamos-pwa. Frontend session never touches dream-os.
+Rule: a/b split is MANDATORY. Backend session = dream-os only. Frontend session = dreamos-pwa only.
 API_CONTRACTS.md is the contract. Backend builds to it. Frontend wires to it. No drift.
+Frontend pattern: typed API client in lib/api/* + lib/types/*. No raw fetch in screen components.
+Rip and rebuild — not tactical editing. Legacy tdw-2 fetches deleted, not renamed.
 
 ### WhatsApp surface — LOCKED
 
