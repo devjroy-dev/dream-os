@@ -26,7 +26,11 @@ const TDW_WA_NUMBER              = process.env.TDW_WA_NUMBER || '14787788550';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   realtime: { transport: ws },
 });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({
+  apiKey:     process.env.ANTHROPIC_API_KEY,
+  timeout:    12000,  // 12s — safe margin under Twilio's 15s webhook limit
+  maxRetries: 0,      // We own the retry loop in engine.js
+});
 
 const app = express();
 app.set('trust proxy', true);

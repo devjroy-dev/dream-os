@@ -13,7 +13,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.1",
+    "@anthropic-ai/sdk": "^0.97.0",
     "@google/genai": "^2.2.0",
     "@supabase/supabase-js": "^2.45.0",
     "cloudinary": "^2.10.0",
