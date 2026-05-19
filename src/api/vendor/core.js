@@ -11,8 +11,8 @@
 //   GET    /invoices/:vendorId        ✅ P2-6a #7
 //   GET    /expenses/:vendorId        ✅ P2-6a #8
 //   GET    /events/:vendorId          ✅ P2-6a #9
-//   GET    /context/:vendorId         ✅ P2-6a #10 this writer
-//   POST   /chat                      ⏳
+//   GET    /context/:vendorId         ✅ P2-6a #10
+//   POST   /chat                      ✅ P2-6a #11 this writer
 //
 // Note: /auth/* is mounted directly under /vendor in router.js, not here.
 // This sub-router only owns the non-auth vendor endpoints.
@@ -30,5 +30,6 @@ router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
 router.use('/context',  require('./context'));
+router.use('/chat',     require('./chat'));
 
 module.exports = router;

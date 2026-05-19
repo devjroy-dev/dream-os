@@ -30,6 +30,7 @@
 //   GET  /api/v2/vendor/expenses/:vendorId           — expense list + total_spent (P2-6a) ✅
 //   GET  /api/v2/vendor/events/:vendorId             — calendar list (P2-6a) ✅
 //   GET  /api/v2/vendor/context/:vendorId            — DreamAI PWA chat context (P2-6a) ✅
+//   POST /api/v2/vendor/chat                         — DreamAI PWA chat turn (P2-6a) ✅
 //
 // Auth middleware: src/api/middleware/requireAuth.js
 // Vendor ownership middleware: src/api/middleware/resolveVendor.js

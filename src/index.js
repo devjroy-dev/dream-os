@@ -59,7 +59,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-app.locals.supabase = supabase;
+app.locals.supabase  = supabase;
+app.locals.anthropic = anthropic;
 
 // ── Briefing test endpoint (manual trigger, no WhatsApp send) ──────
 // Usage: GET /admin/test-briefing/:vendorId
