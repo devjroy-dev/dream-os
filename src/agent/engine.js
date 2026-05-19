@@ -19,7 +19,12 @@ const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 10;
 
 // ── Vendor agentic turn ───────────────────────────────────────────
-async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supabase, anthropic }) {
+// `channel` defaults to 'whatsapp' so existing callers (src/index.js WhatsApp
+// handler) don't need to pass it. The PWA chat endpoint passes 'web', which
+// suppresses cross-surface side effects (e.g. the holding-pattern WhatsApp
+// notification inside record_payment). Surface that initiated the action
+// owns the confirmation — no cross-channel notifications.
+async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supabase, anthropic, channel = 'whatsapp' }) {
 
   // ── Onboarding routing ──────────────────────────────────────────
   if (vendor.onboarding_state && vendor.onboarding_state !== 'complete') {
@@ -178,6 +183,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
         vendor,
         conversation,
         supabase,
+        channel,
       });
 
       toolCallsAudit.push({ name: toolUse.name, input: toolUse.input, result });
@@ -527,7 +533,7 @@ async function handleOnboarding({ vendor, user, conversation, inboundMessage, su
 }
 
 // ── Tool executor (vendor agent) ──────────────────────────────────
-async function executeTool({ name, input, vendor, conversation, supabase }) {
+async function executeTool({ name, input, vendor, conversation, supabase, channel = 'whatsapp' }) {
   switch (name) {
 
     case 'note_to_self': {
@@ -1212,7 +1218,12 @@ async function executeTool({ name, input, vendor, conversation, supabase }) {
             .eq('id', v.user_id)
             .single();
 
-          if (u?.phone) await sendWhatsApp(u.phone, "Got it — recording your payment. Generating the invoice PDF, just a moment...");
+          // Cross-surface notification: only fire when this turn originated on WhatsApp.
+          // PWA-initiated record_payment actions show their progress in the PWA chat reply
+          // and should NOT also blast a WhatsApp message. Surface that started it owns it.
+          if (channel === 'whatsapp' && u?.phone) {
+            await sendWhatsApp(u.phone, "Got it — recording your payment. Generating the invoice PDF, just a moment...");
+          }
 
           const pdfBuffer = await generateInvoicePdf({
             invoice:    { ...inv, amount_paid: newAmountPaid },

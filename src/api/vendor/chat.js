@@ -37,12 +37,13 @@
 //    which is internal detail. The contract returns only names — useful for
 //    "the agent did X, Y" surface affordances without leaking tool internals.
 //
-// 6. Known cross-surface side-effect:
-//    Some tools (e.g. record_payment) send WhatsApp notifications via
-//    sendWhatsApp(). When triggered from PWA, those messages still fire.
-//    This is intentional for now — a vendor recording a payment from the
-//    PWA still gets the cross-surface confirmation on their phone. If P2-6b
-//    UX makes this undesirable, the engine can be made channel-aware later.
+// 6. Cross-surface notification suppression:
+//    Some agent tools (e.g. record_payment) send WhatsApp confirmation messages
+//    via sendWhatsApp() during their execution. The PWA chat endpoint passes
+//    channel:'web' into runAgenticTurn, which propagates through executeTool
+//    and suppresses those out-of-band WhatsApp sends. The surface that
+//    initiated the action owns the confirmation — PWA replies appear in the
+//    PWA chat, WhatsApp replies appear in WhatsApp, no cross-channel leakage.
 
 'use strict';
 
@@ -155,6 +156,7 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
       inboundMessage: message,
       supabase,
       anthropic,
+      channel: 'web',
     });
   } catch (err) {
     console.error('[POST /vendor/chat] agent turn error:', err.message);
