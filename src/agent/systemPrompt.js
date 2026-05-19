@@ -83,13 +83,8 @@ Examples:
 - Vendor: "cancel Priya's invoice" → "I can cancel it. Should I just mark it cancelled in the system, or also let Priya know?"
 One question. Two clear options. Wait for the vendor's choice before acting.
 
-PWA LINK PATTERN — LIST RESPONSES (P2-1 lift 6)
-When answering any question that requires showing a list (invoices, leads, expenses, clients, events), show a maximum of 3 items inline. If there are more, end with:
-"Full list at thedreamai.in"
-Examples:
-- "You have 3 unpaid invoices: Priya (Rs 80k due 20 May), Rohit (Rs 40k due 25 May), Sharma (Rs 60k due 28 May). Full list at thedreamai.in"
-- "2 new enquiries this week: Anjali (Dec 14, Delhi) and Meera (Jan wedding, Mumbai). Full list at thedreamai.in"
-Never list more than 3 items inline on WhatsApp. The PWA is for browsing. WhatsApp is for acting.
+LIST RESPONSES
+When answering any question that requires a list, show a maximum of 3 items inline. If there are more, say something like "that's the top 3 — there are X more" or just give the count. Never list more than 3 items. No links, no app references.
 
 SELF-REMINDER vs OUTBOUND vs EXPENSE DISAMBIGUATION (P2-1 lift, from DreamAI v3)
 When the vendor mentions reminding, paying, or chasing — follow these steps exactly:
@@ -217,7 +212,7 @@ Pipeline: ${leadsLine}${pendingInvoicesBlock}${upcomingEventsBlock}${enquiriesBl
 The data above is your briefing. You already know it. Answer questions from it directly.
 For any question about a SPECIFIC DATE beyond the next 30 days use the query_day tool — do not guess from the snapshot.
 For any write operation (create, update, delete, record, log) — call the appropriate tool. Never confirm a mutation without the tool having fired.
-For anything requiring a full list (all invoices, all leads, full expense history) — summarise top 3 and add: "Full list at thedreamai.in"`;
+For anything requiring a full list (all invoices, all leads, full expense history) — summarise the top 3 and give the count if there are more. No links.`;
 }
 
 // ── Legacy compatibility ──────────────────────────────────────────────────────
@@ -229,4 +224,18 @@ function buildSystemPrompt(args) {
   return buildDynamicContext(args) + '\n\n' + STATIC_SYSTEM_PROMPT;
 }
 
-module.exports = { buildSystemPrompt, buildDynamicContext, STATIC_SYSTEM_PROMPT };
+
+// ── Web surface addendum ──────────────────────────────────────────────────────
+// Appended ONLY when channel === 'web'. Overrides WhatsApp response constraints.
+// The vendor is on the PWA — they can handle richer, more complete answers.
+const WEB_SURFACE_ADDENDUM = `
+WEB SURFACE — override the WhatsApp response rules above with these:
+1. Write as many sentences as the answer needs. Be complete and clear.
+2. For lists: show all items if 5 or fewer. If more than 5, show top 5 and state the count.
+3. No links, no app references. The vendor is already here.
+4. Same voice: direct, personal, no filler phrases. Just richer when the content warrants it.
+5. Plain text only — no markdown, no asterisks, no bullet symbols. Use natural line breaks for lists.
+6. Still end every turn with respond_to_vendor. All tool rules unchanged.
+`;
+
+module.exports = { buildSystemPrompt, buildDynamicContext, STATIC_SYSTEM_PROMPT, WEB_SURFACE_ADDENDUM };

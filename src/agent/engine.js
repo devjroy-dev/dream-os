@@ -2,7 +2,7 @@
 // Session 4: adds create_lead, list_leads, update_lead_state tool handlers
 // Session 5.5: adds runCoupleAgenticTurn for couple_thread conversations
 
-const { buildDynamicContext, STATIC_SYSTEM_PROMPT } = require('./systemPrompt');
+const { buildDynamicContext, STATIC_SYSTEM_PROMPT, WEB_SURFACE_ADDENDUM } = require('./systemPrompt');
 const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
 const { nextOnboardingMessage }   = require('./onboarding');
 const { TOOLS }                   = require('./tools');
@@ -158,7 +158,11 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
         },
         {
           type: 'text',
-          text: dynamicContext,                   // vendor-specific — never cached
+          // Web: append addendum overriding WhatsApp brevity rules.
+          // WhatsApp: dynamic context only — keeps terse 2-3 sentence voice.
+          text: channel === 'web'
+            ? dynamicContext + '\n\n' + WEB_SURFACE_ADDENDUM
+            : dynamicContext,
         },
       ],
       tools: TOOLS,
