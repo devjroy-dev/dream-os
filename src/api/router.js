@@ -58,6 +58,7 @@ router.use('/auth/pin-status',    pinStatusRouter);
 router.use('/landing-slides',     landingSlidesRouter);
 router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
+router.use('/hot-dates',          require('./public/hotDates'));
 router.use('/vendor',             require('./vendor/core'));
 
 // Block 2+ routers mounted here as they are built:
