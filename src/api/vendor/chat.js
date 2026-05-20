@@ -172,15 +172,22 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no');  // disable Nginx buffering
     res.flushHeaders();
 
+    // Absorb any ERR_STREAM_WRITE_AFTER_END or EPIPE error events —
+    // these fire as unhandled 'error' events on the response object,
+    // not as thrown exceptions, and would crash Node without this handler.
     let streamDead = false;
+    res.on('error', (resErr) => {
+      streamDead = true;
+      console.warn('[SSE] response stream error (absorbed):', resErr.message);
+    });
+
     function send(obj) {
-      if (streamDead) return;
+      if (streamDead || res.writableEnded) return;
       try {
         res.write(`data: ${JSON.stringify(obj)}\n\n`);
       } catch (writeErr) {
-        // Client disconnected (EPIPE) — mark stream dead, stop writing
         streamDead = true;
-        console.warn('[SSE] client disconnected mid-stream:', writeErr.message);
+        console.warn('[SSE] res.write failed:', writeErr.message);
       }
     }
 
@@ -246,24 +253,29 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
       // ── Persist after stream completes ─────────────────────────────
       const reply = replyText;
 
-      await supabase.from('messages').insert({
-        conversation_id: conversation.id,
-        direction:       'outbound',
-        channel:         'web',
-        body:            reply,
-        sent_by:         'agent',
-        tool_calls:      result.toolCalls || [],
-        model:           result.model        || null,
-        input_tokens:    result.inputTokens  ?? null,
-        output_tokens:   result.outputTokens ?? null,
-        cost_usd:        result.costUsd      ?? null,
-        cost_inr:        result.costInr      ?? null,
-      }).catch(e => console.error('[SSE] outbound persist error:', e.message));
+      try {
+        const { error: persistErr } = await supabase.from('messages').insert({
+          conversation_id: conversation.id,
+          direction:       'outbound',
+          channel:         'web',
+          body:            reply,
+          sent_by:         'agent',
+          tool_calls:      result.toolCalls || [],
+          model:           result.model        || null,
+          input_tokens:    result.inputTokens  ?? null,
+          output_tokens:   result.outputTokens ?? null,
+          cost_usd:        result.costUsd      ?? null,
+          cost_inr:        result.costInr      ?? null,
+        });
+        if (persistErr) console.error('[SSE] outbound persist error:', persistErr.message);
+      } catch (e) { console.error('[SSE] outbound persist threw:', e.message); }
 
-      await supabase.from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversation.id)
-        .catch(e => console.error('[SSE] last_message_at error:', e.message));
+      try {
+        const { error: convErr } = await supabase.from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', conversation.id);
+        if (convErr) console.error('[SSE] last_message_at error:', convErr.message);
+      } catch (e) { console.error('[SSE] last_message_at threw:', e.message); }
 
     } catch (agentErr) {
       console.error('[POST /vendor/chat SSE] agent error:', agentErr.message);
