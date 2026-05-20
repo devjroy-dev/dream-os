@@ -68,7 +68,7 @@ async function createLead(supabase, vendorId, params) {
     .select('id, name, phone, email, wedding_date, wedding_city, state, source, client_id, created_at')
     .single();
 
-  if (error) return { ok: false, error: \`Could not create lead: \${error.message}\` };
+  if (error) return { ok: false, error: `Could not create lead: ${error.message}` };
   return { ok: true, lead, deduped: false };
 }
 
@@ -129,7 +129,7 @@ async function loseLead(supabase, vendorId, leadId, reason) {
   if (error) return { ok: false, error: error.message };
 
   if (reason) {
-    const content = \`Lead "\${existing.name || 'unnamed'}" marked lost. Reason: \${reason}\`;
+    const content = `Lead "${existing.name || 'unnamed'}" marked lost. Reason: ${reason}`;
     const { error: noteErr } = await supabase
       .from('notes')
       .insert({ vendor_id: vendorId, content, tags: ['lead', 'state_change'] });
