@@ -162,4 +162,32 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   });
 });
 
+// PATCH /:eventId/cancel
+// Direct cancel from list UI — no chat involved.
+router.patch('/:eventId/cancel', requireAuth, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { user_id } = req.auth;
+  const { eventId } = req.params;
+
+  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
+  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+
+  const { data: ev, error: fetchErr } = await supabase
+    .from('events').select('id, title, state')
+    .eq('id', eventId).eq('vendor_id', vendorRow.id).single();
+
+  if (fetchErr?.code === 'PGRST116' || !ev) return res.status(404).json({ ok: false, error: 'Event not found.' });
+  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
+  if (ev.state === 'cancelled') return res.json({ ok: true, already_cancelled: true, message: `"${ev.title}" was already cancelled.` });
+
+  const { error: cancelErr } = await supabase
+    .from('events').update({ state: 'cancelled' })
+    .eq('id', eventId).eq('vendor_id', vendorRow.id);
+
+  if (cancelErr) return res.status(500).json({ ok: false, error: cancelErr.message });
+
+  console.log(`[events:cancel] "${ev.title}" cancelled by vendor ${vendorRow.id}`);
+  return res.json({ ok: true, message: `"${ev.title}" cancelled.` });
+});
+
 module.exports = router;

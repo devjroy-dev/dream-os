@@ -126,4 +126,36 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   });
 });
 
+// PATCH /:invoiceId/cancel
+// Direct cancel from list UI — no chat involved.
+router.patch('/:invoiceId/cancel', requireAuth, async (req, res) => {
+  const supabase   = req.app.locals.supabase;
+  const { user_id } = req.auth;
+  const { invoiceId } = req.params;
+
+  // Resolve vendor
+  const { data: userRow } = await supabase.from('users').select('id').eq('id', user_id).maybeSingle();
+  if (!userRow) return res.status(403).json({ ok: false, error: 'User not found.' });
+  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
+  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+
+  const { data: inv, error: fetchErr } = await supabase
+    .from('invoices').select('id, invoice_number, client_name, state')
+    .eq('id', invoiceId).eq('vendor_id', vendorRow.id).single();
+
+  if (fetchErr?.code === 'PGRST116' || !inv) return res.status(404).json({ ok: false, error: 'Invoice not found.' });
+  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
+  if (inv.state === 'cancelled') return res.json({ ok: true, already_cancelled: true, message: `${inv.invoice_number} was already cancelled.` });
+  if (inv.state === 'paid') return res.status(400).json({ ok: false, error: 'Cannot cancel a fully paid invoice.' });
+
+  const { error: cancelErr } = await supabase
+    .from('invoices').update({ state: 'cancelled' })
+    .eq('id', invoiceId).eq('vendor_id', vendorRow.id);
+
+  if (cancelErr) return res.status(500).json({ ok: false, error: cancelErr.message });
+
+  console.log(`[invoices:cancel] ${inv.invoice_number} cancelled by vendor ${vendorRow.id}`);
+  return res.json({ ok: true, message: `${inv.client_name}'s invoice ${inv.invoice_number} cancelled.` });
+});
+
 module.exports = router;
