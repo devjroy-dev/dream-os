@@ -35,6 +35,10 @@ const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 
+const asyncHandler   = require('../../lib/asyncHandler');
+const { ok: okRes, err: errRes } = require('../../lib/response');
+const { createLead, updateLead, loseLead, getLeadDetail } = require('../../lib/vendor/leads');
+
 const ALLOWED_STATES         = ['new', 'contacted', 'quoted', 'booked', 'lost'];
 const ACTIVE_PIPELINE_STATES = ['new', 'contacted', 'quoted'];
 
