@@ -51,6 +51,24 @@ const ACTIVE_PIPELINE_STATES = ['new', 'contacted', 'quoted'];
 //     - 'all'             -> no state filter (every lead)
 //   ?limit=20&offset=0    -> default limit 20, max 100
 
+// ─── GET /api/v2/vendor/leads/:leadId/detail ──────────────────────────────
+//
+// Lead detail — full profile, vendor_summary, couple conversation, linked records.
+// Auth: requireAuth. resolveVendor mode C via leads table.
+
+router.get('/:leadId/detail', requireAuth,
+  resolveVendor({ paramName: 'leadId', via: 'leads' }),
+  asyncHandler(async (req, res) => {
+    const supabase = req.app.locals.supabase;
+    const vendor   = req.vendor;
+    const leadId   = req.params.leadId;
+
+    const result = await getLeadDetail(supabase, vendor.id, leadId);
+    if (!result.ok) return errRes(res, 404, result.error);
+    return okRes(res, result);
+  })
+);
+
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
@@ -230,23 +248,5 @@ router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 
   return okRes(res, { lead: result.lead });
 }));
 
-
-// ─── GET /api/v2/vendor/leads/:leadId/detail ──────────────────────────────
-//
-// Lead detail — full profile, vendor_summary, couple conversation, linked records.
-// Auth: requireAuth. resolveVendor mode C via leads table.
-
-router.get('/:leadId/detail', requireAuth,
-  resolveVendor({ paramName: 'leadId', via: 'leads' }),
-  asyncHandler(async (req, res) => {
-    const supabase = req.app.locals.supabase;
-    const vendor   = req.vendor;
-    const leadId   = req.params.leadId;
-
-    const result = await getLeadDetail(supabase, vendor.id, leadId);
-    if (!result.ok) return errRes(res, 404, result.error);
-    return okRes(res, result);
-  })
-);
 
 module.exports = router;
