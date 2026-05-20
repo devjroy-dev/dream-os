@@ -440,23 +440,13 @@ const TOOLS = [
   },
   {
     name: 'respond_to_vendor',
-    description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more. CONTACT FIELD: when the reply contains a drafted message intended for a specific client (payment reminder, follow-up, enquiry reply etc.), include their name and phone in the contact field so the vendor gets WhatsApp and Call buttons on the web surface.',
+    description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {
       type: 'object',
       properties: {
         message: {
           type: 'string',
-          description: 'The reply text. Plain text. No markdown. 1-3 sentences.',
-        },
-        contact: {
-          type: 'object',
-          description: 'Optional. Include when the reply contains a message intended for a specific client. Gives the vendor WhatsApp and Call action buttons.',
-          properties: {
-            name:  { type: 'string', description: 'Client name.' },
-            phone: { type: 'string', description: 'Client phone in E.164 format e.g. +919876543210.' },
-            draft: { type: 'string', description: 'The exact message text to pre-fill in WhatsApp.' },
-          },
-          required: ['name', 'phone'],
+          description: 'The WhatsApp message. Plain text. No markdown. 1-3 sentences.',
         },
       },
       required: ['message'],

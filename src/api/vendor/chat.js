@@ -211,12 +211,11 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     ? result.toolCalls.map(t => t && t.name).filter(Boolean)
     : [];
 
-  // Include contact when agent drafted a client-facing message.
-  // Frontend renders WhatsApp + Call buttons — vendor sends directly,
-  // no Twilio needed on the web surface.
-  const responseBody = { ok: true, reply, tool_calls: toolCallNames };
-  if (result.contact) responseBody.contact = result.contact;
-  return res.json(responseBody);
+  return res.json({
+    ok:         true,
+    reply,
+    tool_calls: toolCallNames,
+  });
 });
 
 module.exports = router;
