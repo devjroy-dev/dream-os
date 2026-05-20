@@ -75,9 +75,8 @@ async function registerImage(supabase, vendorId, body) {
 // List portfolio images.
 async function listImages(supabase, vendorId, state = 'all') {
   let q = supabase.from('vendor_portfolio')
-    .select('id, image_url, caption, aesthetic_tags, is_hero, in_carousel, approval_state, rejection_reason, sort_order, created_at')
+    .select('id, image_url, caption, aesthetic_tags, is_hero, in_carousel, approval_state, rejection_reason, created_at')
     .eq('vendor_id', vendorId)
-    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
 
   if (state !== 'all') q = q.eq('approval_state', state);
