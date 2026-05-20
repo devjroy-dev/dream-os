@@ -1,200 +1,150 @@
 # dream-os — Session Handover
-**Last updated:** 2026-05-15
-**Session:** 8.5a (in progress — 3 of 6 bugs fixed)
-**Version:** 8.5 (bumps to 8.5a on session close)
+**Last updated:** 2026-05-20
+**Session:** DreamAi PWA Agent (complete)
+**Version:** 0.10.0-alpha
 
 ---
 
 ## What shipped this session
 
-### Bug fixes shipped (3 of 6)
+### New: Separate PWA Vendor Agent Engine
 
-**Bug #1 — Empty inbound messages crash webhook (FIXED — commit b3ece5c)**
-Media-only WhatsApp messages (images, voice notes, stickers) arrived with empty Body. Anthropic API rejected empty user messages → 500. Fix: defensive guard in src/index.js before any routing or agent invocation. If Body is empty and media is present → reply "I'll be able to process images and voice notes really soon — but for now, please type your message and I'll help." If Body is empty and no media → log and drop silently. Smoke tested: image sent to +14787788550 → correct reply, no 500.
+Three new files created. Zero changes to WhatsApp engine.
 
-**Bug #4 — Single-thread couple routing user_id lookup (FIXED — commit 1c23609)**
-Step C threadCount=1 branch used existingThread.vendors.users?.id || existingThread.vendor_id to look up the vendor's user record. The join on line 468 selected users(name) not users(id), so existingThread.vendors.users?.id was always undefined. Fallback used vendor_id (wrong table) → silent null → vendor notification never fired. Fix: fetch fullVendor first (which has user_id), then look up user via fullVendor.user_id. Smoke test deferred (requires bride with exactly one thread).
+```
+src/agent/pwaEngine.js      — new agentic loop (completely separate from engine.js)
+src/agent/pwaTools.js       — 22 tools for PWA
+src/agent/pwaSystemPrompt.js — new system prompt for PWA
+src/api/vendor/chat.js      — swapped to runPWAAgenticTurn, added SSE streaming
+```
 
-**Bug #7 — Typo'd TDW codes route silently to wrong vendor (FIXED — commit 853b5f0)**
-Bride sending SWATI978 (no TDW- prefix) fell through Step B (no match) → sticky caught it → routed to wrong vendor silently. Fix: Step B.5 inserted between Step B and Step C. If first word looks like a handle attempt (alphanumeric, 3-12 chars, single word only), fuzzy-match via Levenshtein against handles of vendors this bride already has threads with. If exactly one match within distance 2 → "Did you mean TDW-SWATI978? Send that and I'll connect you right away." 0 or 2+ matches → fall through. Also fixed: trimmedBody scoping bug (needed .toUpperCase() for case-insensitive single-word check). Smoke tested in production.
+Key differences from WhatsApp engine:
+- Always Sonnet, no classifier (saves ~400ms/turn)
+- MAX_ITERATIONS = 8 (vs 5)
+- MAX_COST_USD = $0.50 cost cap
+- Anthropic timeout = 45s per call (overrides global 12s WhatsApp budget)
+- No `respond_to_vendor` tool — model's final text IS the reply
+- 15-minute session boundary on history
+- Post-write full snapshot refetch on any mutation
+- SSE streaming path with `text_delta` events
 
-### Bug fixes pending (3 of 6)
+### New: 5 Backend API Endpoints
 
-**Bug #3 — Returning-bride notification falls back to generic string when leadName is null**
-When isReturningBride=true but lead.name is null → vendor gets "Returning enquiry just messaged: 'X'" instead of a named notification. Fix: use bride's phone last 4 digits as fallback. Pending.
+```
+POST   /api/v2/vendor/auth/refresh        — silent JWT renewal
+PATCH  /api/v2/vendor/invoices/:id/cancel — cancel = delete for vendor
+PATCH  /api/v2/vendor/events/:id/cancel   — cancel event directly
+DELETE /api/v2/vendor/clients/:id         — hard delete (SET NULL cascade safe)
+DELETE /api/v2/vendor/expenses/:id        — hard delete
+```
 
-**Bug #5 — UUIDs leak into add_client reply**
-add_client returns "Client added. ID: 4e3a-..." to the vendor. Cosmetic. Fix: system prompt nudge + tool result shape change. Pending.
+### New: cancel_invoice Tool (PWA)
 
-**Bug #6 — list_clients caps at 10 silently**
-No "showing 10 of N" suffix. Fix: add count to tool result. Pending.
+`cancel`, `delete`, `remove` on any invoice → `cancel_invoice` tool → `state = 'cancelled'`. Model never says "can't delete." Paid invoices cannot be cancelled (guard in place).
 
-### Deferred to 8.5b
+### Critical Bug Fixes
 
-- PDF interim acknowledgement in record_payment (3-5 second silence fix)
-- Tool-call shortcut guardrail (needs founder to lock verb list first)
+**SSE crash — Railway restarting on every message (FIXED)**
+Root cause 1: `supabase.from(...).insert(...).catch()` — Supabase JS v2 returns PromiseLike not Promise. `.catch()` throws "is not a function", caught by outer try/catch, which called `send()` on already-ended response.
+Root cause 2: `ERR_STREAM_WRITE_AFTER_END` emitted as unhandled `error` event on `ServerResponse` — not a thrown exception, so try/catch didn't intercept it. Node crashed and Railway restarted.
+Fix: `res.on('error')` handler + `res.writableEnded` guard in `send()` + replaced all `.catch()` with proper try/catch on Supabase persistence calls.
+Impact: Was causing 15-20 second delays (Railway cold start) after every single message.
 
-### Strategic decisions locked this session (architectural, not code)
+**PGRST116 zero-row update lying (FIXED)**
+`update_event_state`, `update_lead_state`, `update_conversation_state` all used `.update().eq()` without `.select().single()`. Supabase returns `{error: null}` on zero-row match — agent confirmed success when nothing changed.
+Fix: Added `.select('id').single()` + PGRST116 error code check to all three.
 
-1. Bride product architecture. thedreamwedding.in = brides. thedreamai.in = vendors. Same repo, two Railway services, one Supabase. See ROADMAP_BRIDE.md.
-2. Number routing locked permanently. +91 = vendors, thedreamai.in. +14787788550 = brides, thedreamwedding.in.
-3. Vendor sessions pause after Session 8. B1 → B2 → B3 → B4 build bride to parity. Session 9 is convergence.
-4. Session 9 redefined. Convergence of vendor + bride tracks. Discover goes live only after bride has persistent couple_id, Muse, Circle, planner, Surprise Me.
-5. tdw-2 vendor-side retires at Sessions 11-12. tdw-2 bride-side PWA shell reused from B1.
-6. Sonnet for couple agent in multi-vendor scenarios deferred to Session 9.
-7. Discover curation model. Price gets vendor considered. Style gets them featured. Swati has editorial control via vendors.discover_eligible toggle.
-8. Edge case inventory. 17-case disambiguation + dedup edge case document written. Added below.
+**JWT session expiry — "Something went wrong" after 5 minutes (FIXED)**
+Frontend had no token refresh logic. On 401, every API call showed generic error.
+Fix: `fetchWithAuth()` in `_base.ts` — on 401, calls `/auth/refresh`, updates localStorage, retries. `streamChat()` in `vendor.ts` has same logic for SSE path. Backend `/refresh` endpoint added.
 
----
+**`record_payment` unguarded write (FIXED)**
+Invoice UPDATE had no error check. Payment could appear confirmed when DB write failed.
+Fix: Capture `{ error: updateErr }`, return `err()` on failure.
 
-## Smoke tests passed this session
+**`update_invoice_prefix` unguarded write (FIXED)**
+Same pattern. Fixed same way.
 
-- Bug #1: image-only WhatsApp → correct polite reply, no 500 in Railway logs ✅
-- Bug #7: SWATI978 (no TDW- prefix) → "Did you mean TDW-SWATI978?" ✅
-- Bug #7: TDW-SWATI978 (correct) → normal routing, no regression ✅
-- Bug #7: "hi is anyone there" → falls through to Step C, no fuzzy match triggered ✅
-- Bug #4: code-verified via diff audit. Live smoke test deferred.
+### Prompt Fixes
 
----
+- Cancel/delete/remove routing: now calls correct tools (no more "can't delete" response)
+- List responses: max 3 items, prose format, never numbered, never thedreamai.in URL
+- wa.me link: model never puts raw URL in reply text — frontend button handles it
+- WhatsApp: "dreamai link" / "app link" → responds with `thedreamai.in/wedding`
 
-## Known disambiguation + dedup edge cases (Session 8.5 inventory)
+### dreamai Frontend (separate repo)
 
-These are architectural truths, not bugs to fix. Documented for traceability.
-
-### Disambiguation edge cases
-
-Case 1: TDW code typos route silently to wrong vendor. FIXED by Bug #7 (Step B.5 fuzzy match). Residual: typos with Levenshtein distance >2 or 0/2+ matches still fall through to Step C as designed.
-
-Case 2: Disambiguation fires per message, not per conversation. Each inbound from a multi-vendor bride re-runs routing from scratch. Sticky mitigates within 30 min. By design — prevents wrong-vendor lock-in.
-
-Case 3: Sticky window extends on every sticky-routed message. Each sticky route pushes sticky_until 30 min forward. Intentional — active conversations stay routed.
-
-Case 4: TDW code overrides sticky but does NOT clear sticky. Bride sticky=Dev sends TDW-SWATI978 → routes to Swati → new sticky=Swati. Correct and intentional.
-
-Case 5: Single-thread user_id lookup was broken. FIXED by Bug #4 (commit 1c23609).
-
-Case 6: Step C count is global per bride-phone, not per vendor. Correct for current product.
-
-Case 7: Disambiguation reply uses Haiku interpretation, not exact string match. Confidence below "high" falls through. No instrumentation today for low-confidence falls-through. Logging deferred.
-
-### Dedup edge cases
-
-Case 8: Client dedup is phone-only. Phoneless duplicates invisible to helper. Admin Clients tab shows yellow "possible duplicate" pill. By design.
-
-Case 9: Names never used for dedup. Deliberate. Indian naming conventions make normalisation error-prone.
-
-Case 10: Lead dedup in create_lead, not in resolveOrCreateClient. Two independent dedup layers, both keyed on phone.
-
-Case 11: add_client back-link is one-way only at creation. create_lead stamps existing client_id at insert time. Both directions covered via different code paths.
-
-Case 12: Promotion is silent and best-effort. Wrapped in try/catch. Reconciliation job deferred.
-
-Case 13: clients.user_id populated when phone matches existing users row. Not used today. Bridge to bride-side identity in Session 9.
-
-Case 14: Lead/invoice ↔ client connections stamped but not surfaced in admin UI. Session 8 item.
-
-### Returning-bride edge cases
-
-Case 15: isReturningBride=true can fire with leadName=null. Produces "Returning enquiry just messaged." Bug #3 — pending fix this session.
-
-Case 16: Returning-bride detection is per-vendor, not global. Correct and intentional.
-
-Case 17: Couple agent is Haiku-only, not Sonnet-routed. Deferred to Session 9.
+```
+hooks/useChat.ts                  — SSE streaming, refresh, clarify, contact card
+lib/api/vendor.ts                 — streamChat() with 401 refresh + retry
+lib/api/_base.ts                  — fetchWithAuth with JWT refresh
+lib/types/vendor.ts               — all missing types added (VendorEvent, Client, etc.)
+components/OnboardingOverlay.tsx  — first-session intro, tappable prompts, can't-do list
+components/ChatThread.tsx         — inline clarify chips
+app/wedding/list/[slice]/page.tsx — CRUD delete for all 5 slices, confirmation card
+```
 
 ---
 
-## Pre-existing gaps (not new this session)
+## Commit history (this session — dream-os)
 
-1. Twilio status callback: many [twilio-status] no message row for sid=... log lines — pre-existing 5.5 race condition.
-2. No Anthropic credit-low warning — agent fails silently if credits run out.
-3. update_lead_state requires UUID — name-based update deferred to Session 8.
-4. Classifier context gap: prior Sonnet turn outside 2-turn history may route to Haiku.
-5. vendors.rate_min / rate_max not yet added — Session 9 migration.
-6. Railway running in EU West, Supabase in Mumbai — move before scaling beyond 50 vendors.
-7. PDF generation causes 3-5 second silence in record_payment — deferred to 8.5b.
-
----
-
-## First thing next session (completing 8.5a)
-
-curl https://dream-os-production.up.railway.app
-Should return: {"status":"alive","service":"dream-os","version":"0.8.5"}
-
-Then fix Bug #3, Bug #5, Bug #6 in that order. One at a time.
-Then write final handover, update all four docs, commit, push. Session 8.5a is complete.
-Then check: has +91 arrived? If yes → Session 6.5 before anything else.
-If no → Session 8 (admin polish).
+```
+5451d3a — feat(pwa): separate PWA agent engine
+b723be5 — feat(auth): POST /refresh endpoint
+b02e29d — fix(pwa): guard unchecked writes, 45s timeout, EPIPE guard
+8129ebb — fix(sse): absorb res error event, replace .catch() with try/catch
+3d5f743 — fix(prompts): delete routing, no thedreamai.in, dreamai app link
+a2884f0 — feat(api): DELETE clients/:id and expenses/:id
+32bbfb0 — feat(api): PATCH invoices/:id/cancel and events/:id/cancel
+641304a — fix(pwa): hard 3-item list limit, no numbered lists
+e0ae189 — feat(pwa): cancel_invoice tool, fix walink URL spill
+```
 
 ---
 
-## Railway env vars (current)
+## Current Railway env vars
 
-- TWILIO_WHATSAPP_NUMBER = whatsapp:+14787788550 (moves to +91 after Session 6.5)
-- TDW_WA_NUMBER = 14787788550 (moves to +91 after Session 6.5)
-- ANTHROPIC_API_KEY (workspace: dream-os, model lock: haiku-4-5-20251001 + sonnet-4-6)
-- GOOGLE_API_KEY (Google AI Studio, dev@thedreamwedding.in, free tier)
-- ADMIN_PASSWORD, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (all in Railway)
+- `TWILIO_WHATSAPP_NUMBER` = whatsapp:+917982159047 (vendor)
+- `TDW_WA_NUMBER` = 917982159047
+- `BRIDE_WA_NUMBER` = 14787788550
+- `ANTHROPIC_API_KEY` — model lock: haiku-4-5-20251001 (WhatsApp) + sonnet-4-6 (PWA)
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD` — in Railway
 
 ---
 
-## Test credentials
+## Known open debt (carry forward)
 
-- WhatsApp: +14787788550
-- Test vendor phone (Dev): +918757788550
-- Test vendor UUID: 2eb5d3fb-31eb-4b26-859a-cf10ae477d53
-- Test vendor routing_handle: DEV550
-- Second test vendor (Swati): routing_handle SWATI978, UUID e036ea4d-3f9a-4ec5-ba89-a5defa3a042b
-- Test couple phone (Meha): +919625759924
-- Supabase: nvzkbagqxbysoeszxent (Mumbai)
-- Railway: https://dream-os-production.up.railway.app
-- Admin: https://dream-os-production.up.railway.app/admin
+| Item | Priority |
+|---|---|
+| Razorpay KYC | High |
+| Twilio upgrade to paid | High |
+| Morning briefing template submission for +917982159047 | High |
+| `send_to_couple` tool (Twilio send to TDW-thread couples) | Medium |
+| `schedule_message` + migration 0034 | Medium |
+| `hide_client` tool + migration 0034 | Medium |
+| True first-token SSE streaming (async generator refactor) | Low |
+| Deprecated task tools in brideTools.js | Medium |
+| Android/iOS bundle ID `in.thedreamwedding.dreamer` | Low |
+| Google Calendar OAuth live sync | Low |
+| Instagram DM lead capture | Low |
+
+---
+
+## First thing next session
+
+1. Confirm Railway is stable — no crashes in logs
+2. Check Supabase JWT expiry setting (Authentication → Configuration → JWT expiry — raise to 3600 if short)
+3. Run smoke tests (see list in session notes)
+4. Submit morning briefing Twilio template for +917982159047 if not done
 
 ---
 
 ## Document update protocol
 
-Four files updated every session, no exceptions:
-- HANDOVER.md — fully rewritten (current state, not history)
-- SCHEMA.md — fully rewritten (exact current DB state)
-- ROADMAP.md — updated (mark done, add new, update open questions)
-- ROADMAP_BRIDE.md — updated (mark done, add new, update open questions)
-- UNIT_ECONOMICS.md — Dev's reference only, no other session amends it
+Five files updated every session, no exceptions:
+- `DEVS_HOLY_GRAIL.md` — single source of truth, read before every session
+- `HANDOVER.md` — fully rewritten (current state, not history)
+- `SCHEMA.md` — updated when migrations run
+- `ROADMAP.md` — mark done, add new
+- `API_CONTRACTS.md` — updated when endpoints added/changed
 
-B-sessions additionally maintain:
-- HANDOVER_BRIDE.md — written at end of every B-session, read at start of next B-session
-
----
-
-## Session 6.5 — +91 number migration (completed same session as 8.5a)
-
-### What shipped
-
-**+917982159047 registered as WhatsApp sender** under existing WABA 1299109268220358. Business display name: The Dream Wedding. Status: Online. Same WABA means all existing Meta approvals and business verification transfer automatically.
-
-**Railway env vars updated:**
-- TWILIO_WHATSAPP_NUMBER = whatsapp:+917982159047 (vendor number, permanent)
-- TDW_WA_NUMBER = 917982159047 (vendor number, permanent)
-- BRIDE_WA_NUMBER = 14787788550 (bride number, permanent, used from B1)
-
-**Twilio webhooks set on +917982159047:**
-- Incoming: https://dream-os-production.up.railway.app/webhook/whatsapp
-- Status callback: https://dream-os-production.up.railway.app/webhook/twilio-status
-
-**+14787788550 webhooks:** left pointing at thedreamwedding.in (existing dream-wedding product). Correct — this is now the permanent bride number. Will be rewired to dream-os bride webhook at B1.
-
-**invite.js wa.me link parameterised (commit c277219):** was hardcoded to 14787788550. Now uses TDW_WA_NUMBER env var. Will automatically reflect +91 number.
-
-**Empty conversation history crash fix (commit b6a421c):** discovered during 6.5 smoke test. Old media-only messages (pre-Bug #1) stored with empty body in DB were being loaded into conversation history and sent to Anthropic → "messages.N: user messages must have non-empty content" → 500. Fix: added .filter(m => m.body && m.body.trim().length > 0) to both history loaders in src/agent/engine.js (vendor agent line ~74, couple agent line ~237).
-
-### Number routing — locked permanently
-- +917982159047 = vendors, thedreamai.in. Indian number, local trust.
-- +14787788550 = brides, thedreamwedding.in. US number, NRI brides, premium positioning.
-
-### Twilio template submission — PENDING
-Morning briefing template (dream_os_morning_briefing) must be submitted for +917982159047 via Twilio Content Template Builder. Required before morning briefing can fire to vendors inactive >24h. Submit at start of next session. Approval takes 1-7 days.
-
-### First thing next session
-1. Submit morning briefing template in Twilio Content Template Builder
-2. Smoke test: morning briefing fires to vendor inactive >24h on +917982159047
-3. Check: has +91 number received any vendor messages? Check Railway logs.
-4. Then proceed to Session 8 (admin polish)
