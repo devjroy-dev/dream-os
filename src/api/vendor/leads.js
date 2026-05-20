@@ -212,4 +212,23 @@ router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId',
   });
 });
 
+// ─── PATCH /api/v2/vendor/leads/:leadId ────────────────────────────────
+//
+// Full field update. Distinct from PATCH /:leadId/state.
+// State changes still go through the state endpoint so the notes audit
+// trail stays consistent.
+// Auth: requireAuth. resolveVendor mode C via leads table.
+
+router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const leadId   = req.params.leadId;
+  const body     = req.body || {};
+
+  const result = await updateLead(supabase, vendor.id, leadId, body);
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { lead: result.lead });
+}));
+
+
 module.exports = router;
