@@ -30,6 +30,7 @@ router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
 router.use('/context',  require('./context'));
-router.use('/chat',     require('./chat'));
+router.use('/chat',         require('./chat'));
+router.use('/availability', require('./availability'));
 
 module.exports = router;
