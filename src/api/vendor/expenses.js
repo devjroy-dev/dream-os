@@ -70,4 +70,32 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   });
 });
 
+// DELETE /:expenseId
+// Hard delete — expenses have no downstream financial implications.
+router.delete('/:expenseId', requireAuth, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { user_id } = req.auth;
+  const { expenseId } = req.params;
+
+  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
+  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+
+  const { data: expense, error: fetchErr } = await supabase
+    .from('expenses').select('id, amount, category, description')
+    .eq('id', expenseId).eq('vendor_id', vendorRow.id).single();
+
+  if (fetchErr?.code === 'PGRST116' || !expense) return res.status(404).json({ ok: false, error: 'Expense not found.' });
+  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
+
+  const { error: delErr } = await supabase
+    .from('expenses').delete()
+    .eq('id', expenseId).eq('vendor_id', vendorRow.id);
+
+  if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
+
+  const label = expense.description || expense.category || 'expense';
+  console.log(`[expenses:delete] "${label}" deleted by vendor ${vendorRow.id}`);
+  return res.json({ ok: true, message: `Rs ${expense.amount} ${label} deleted.` });
+});
+
 module.exports = router;

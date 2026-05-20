@@ -136,4 +136,31 @@ router.get('/:vendorId/:clientId', requireAuth, resolveVendor({ paramName: 'vend
   });
 });
 
+// DELETE /:clientId
+// Hard delete. leads.client_id and invoices.client_id SET NULL on delete — financial records safe.
+router.delete('/:clientId', requireAuth, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { user_id } = req.auth;
+  const { clientId } = req.params;
+
+  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
+  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+
+  const { data: client, error: fetchErr } = await supabase
+    .from('clients').select('id, name')
+    .eq('id', clientId).eq('vendor_id', vendorRow.id).single();
+
+  if (fetchErr?.code === 'PGRST116' || !client) return res.status(404).json({ ok: false, error: 'Client not found.' });
+  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
+
+  const { error: delErr } = await supabase
+    .from('clients').delete()
+    .eq('id', clientId).eq('vendor_id', vendorRow.id);
+
+  if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
+
+  console.log(`[clients:delete] "${client.name}" deleted by vendor ${vendorRow.id}`);
+  return res.json({ ok: true, message: `${client.name} removed from your clients.` });
+});
+
 module.exports = router;
