@@ -24,6 +24,9 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
+const asyncHandler   = require('../../lib/asyncHandler');
+const { ok: okRes, err: errRes } = require('../../lib/response');
+const { createClient, updateClient, deleteClient } = require('../../lib/vendor/clients');
 
 // ─── GET /api/v2/vendor/clients/:vendorId ──────────────────────────────
 //
@@ -44,12 +47,14 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     supabase.from('clients')
       .select('id, name, phone, email, notes, created_at')
       .eq('vendor_id', vendor.id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1),
 
     supabase.from('clients')
       .select('*', { count: 'exact', head: true })
-      .eq('vendor_id', vendor.id),
+      .eq('vendor_id', vendor.id)
+      .is('deleted_at', null),
   ]);
 
   if (dataErr || countErr) {
@@ -87,6 +92,7 @@ router.get('/:vendorId/:clientId', requireAuth, resolveVendor({ paramName: 'vend
       .select('id, name, phone, email, notes')
       .eq('id', clientId)
       .eq('vendor_id', vendor.id)
+      .is('deleted_at', null)
       .maybeSingle(),
 
     supabase.from('leads')
@@ -136,31 +142,61 @@ router.get('/:vendorId/:clientId', requireAuth, resolveVendor({ paramName: 'vend
   });
 });
 
-// DELETE /:clientId
-// Hard delete. leads.client_id and invoices.client_id SET NULL on delete — financial records safe.
-router.delete('/:clientId', requireAuth, async (req, res) => {
+// ─── POST /api/v2/vendor/clients ──────────────────────────────────────
+//
+// Create a new client. Idempotent on phone:
+//   - Active match   -> return existing, deduped:true
+//   - Deleted match  -> restore, deduped:true, restored:true
+//   - No match       -> create new, deduped:false
+// Auth: requireAuth. resolveVendor mode A.
+
+router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { user_id } = req.auth;
-  const { clientId } = req.params;
+  const vendor   = req.vendor;
+  const body     = req.body || {};
 
-  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
-  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+  const result = await createClient(supabase, vendor.id, {
+    name:  body.name  || null,
+    phone: body.phone || null,
+    email: body.email || null,
+    notes: body.notes || null,
+  });
 
-  const { data: client, error: fetchErr } = await supabase
-    .from('clients').select('id, name')
-    .eq('id', clientId).eq('vendor_id', vendorRow.id).single();
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { client: result.client, deduped: result.deduped, restored: result.restored || false });
+}));
 
-  if (fetchErr?.code === 'PGRST116' || !client) return res.status(404).json({ ok: false, error: 'Client not found.' });
-  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
+// ─── PATCH /api/v2/vendor/clients/:clientId ────────────────────────────
+//
+// Partial update. Phone collision returns 409.
+// Auth: requireAuth. resolveVendor mode C via clients table.
 
-  const { error: delErr } = await supabase
-    .from('clients').delete()
-    .eq('id', clientId).eq('vendor_id', vendorRow.id);
+router.patch('/:clientId', requireAuth, resolveVendor({ paramName: 'clientId', via: 'clients' }), asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const vendor    = req.vendor;
+  const clientId  = req.params.clientId;
+  const body      = req.body || {};
 
-  if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
+  const result = await updateClient(supabase, vendor.id, clientId, body);
+  if (!result.ok && result.code === 'PHONE_COLLISION') return errRes(res, 409, result.error, result.code);
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { client: result.client });
+}));
 
-  console.log(`[clients:delete] "${client.name}" deleted by vendor ${vendorRow.id}`);
-  return res.json({ ok: true, message: `${client.name} removed from your clients.` });
-});
+// ─── DELETE /api/v2/vendor/clients/:clientId ───────────────────────────
+//
+// Soft delete (sets deleted_at). No API contract change for callers.
+// leads.client_id and invoices.client_id links are preserved for history.
+// Auth: requireAuth. resolveVendor mode C via clients table.
+
+router.delete('/:clientId', requireAuth, resolveVendor({ paramName: 'clientId', via: 'clients' }), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const clientId = req.params.clientId;
+
+  const result = await deleteClient(supabase, vendor.id, clientId);
+  if (!result.ok) return errRes(res, 404, result.error);
+  return okRes(res, { deleted: true });
+}));
 
 module.exports = router;
