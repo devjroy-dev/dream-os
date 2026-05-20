@@ -377,6 +377,173 @@ const PWA_TOOLS = [
     },
   },
 
+
+  // ── Block 1a tools ──────────────────────────────────────────────────────────
+
+  {
+    name: 'update_lead',
+    description: 'Update editable fields on an existing lead. Use when vendor corrects a lead detail — name, date, budget, city, notes. Do NOT use for state changes; use update_lead_state for that.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        lead_id:      { type: 'string', description: 'UUID of the lead to update.' },
+        name:         { type: 'string', description: 'Updated couple name.' },
+        phone:        { type: 'string', description: 'Updated phone number.' },
+        email:        { type: 'string', description: 'Updated email.' },
+        wedding_date: { type: 'string', description: 'Updated wedding date in YYYY-MM-DD.' },
+        wedding_city: { type: 'string', description: 'Updated wedding city.' },
+        budget_min:   { type: 'number', description: 'Updated minimum budget in Rs.' },
+        budget_max:   { type: 'number', description: 'Updated maximum budget in Rs.' },
+        notes:        { type: 'string', description: 'Updated notes.' },
+      },
+      required: ['lead_id'],
+    },
+  },
+
+  {
+    name: 'lose_lead',
+    description: 'Mark a lead as lost when the vendor signals rejection — "they went with someone else", "no response", "out of budget". Writes an audit note. Use instead of update_lead_state when a reason is available.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        lead_id: { type: 'string', description: 'UUID of the lead to mark lost.' },
+        reason:  { type: 'string', description: 'Why the lead was lost. e.g. "Went with another vendor" or "Budget mismatch"' },
+      },
+      required: ['lead_id', 'reason'],
+    },
+  },
+
+  {
+    name: 'update_client',
+    description: 'Update editable fields on an existing client — name, phone, email, notes.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'UUID of the client to update.' },
+        name:      { type: 'string', description: 'Updated name.' },
+        phone:     { type: 'string', description: 'Updated phone number.' },
+        email:     { type: 'string', description: 'Updated email.' },
+        notes:     { type: 'string', description: 'Updated notes.' },
+      },
+      required: ['client_id'],
+    },
+  },
+
+  {
+    name: 'delete_client',
+    description: 'Soft-delete a client. Use when vendor says "remove", "delete", or "archive" a client. The client is hidden from lists but linked invoices and leads are preserved.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'UUID of the client to delete.' },
+      },
+      required: ['client_id'],
+    },
+  },
+
+  {
+    name: 'update_invoice',
+    description: 'Update editable fields on an invoice. Only works when no payment has been recorded yet — locked after any payment. If locked, suggest cancel and re-issue.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        invoice_id:     { type: 'string', description: 'UUID of the invoice to update.' },
+        client_name:    { type: 'string', description: 'Updated client name.' },
+        client_phone:   { type: 'string', description: 'Updated client phone.' },
+        description:    { type: 'string', description: 'Updated description of services.' },
+        amount_total:   { type: 'number', description: 'Updated total amount in Rs.' },
+        amount_advance: { type: 'number', description: 'Updated advance amount in Rs.' },
+        due_date:       { type: 'string', description: 'Updated due date in YYYY-MM-DD.' },
+        notes:          { type: 'string', description: 'Updated notes.' },
+      },
+      required: ['invoice_id'],
+    },
+  },
+
+  {
+    name: 'update_expense',
+    description: 'Update an existing expense record — amount, category, description, date.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        expense_id:   { type: 'string', description: 'UUID of the expense to update.' },
+        amount:       { type: 'number', description: 'Updated amount in Rs.' },
+        category:     { type: 'string', enum: ['travel','equipment','editing','assistant','studio','printing','packaging','food','accommodation','marketing','software','other'], description: 'Updated category.' },
+        description:  { type: 'string', description: 'Updated description.' },
+        expense_date: { type: 'string', description: 'Updated date in YYYY-MM-DD.' },
+        client_name:  { type: 'string', description: 'Updated client name this expense is for.' },
+        notes:        { type: 'string', description: 'Updated notes.' },
+      },
+      required: ['expense_id'],
+    },
+  },
+
+  {
+    name: 'update_event',
+    description: 'Update an existing event — title, date, time, kind, notes. Does not change state; use update_event_state for that.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id:   { type: 'string', description: 'UUID of the event to update.' },
+        title:      { type: 'string', description: 'Updated event title.' },
+        event_date: { type: 'string', description: 'Updated date in YYYY-MM-DD.' },
+        event_time: { type: 'string', description: 'Updated time in HH:MM (24-hour).' },
+        kind:       { type: 'string', enum: ['shoot','call','meeting','task','reminder','recce','fitting','trial','family','ceremony','social','other'], description: 'Updated event kind.' },
+        notes:      { type: 'string', description: 'Updated notes.' },
+      },
+      required: ['event_id'],
+    },
+  },
+
+  {
+    name: 'delete_event',
+    description: 'Soft-delete an event created in error. Distinct from cancelling — use update_event_state with cancelled for events that were planned but did not happen.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'UUID of the event to delete.' },
+      },
+      required: ['event_id'],
+    },
+  },
+
+  {
+    name: 'block_date',
+    description: 'Mark a date as unavailable on the vendor calendar. Use when vendor says they are unavailable, out of town, or already booked on a specific date.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        date:   { type: 'string', description: 'Date to block in YYYY-MM-DD format.' },
+        reason: { type: 'string', description: 'Optional reason. e.g. "Family wedding", "Out of town"' },
+      },
+      required: ['date'],
+    },
+  },
+
+  {
+    name: 'unblock_date',
+    description: 'Remove a blocked date from the vendor calendar.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        block_id: { type: 'string', description: 'UUID of the block to remove. Get from list_availability.' },
+        date:     { type: 'string', description: 'Date in YYYY-MM-DD. Alternative to block_id.' },
+      },
+    },
+  },
+
+  {
+    name: 'list_availability',
+    description: 'List the vendor calendar blocked dates. Use when vendor asks what dates they have blocked or wants to check their availability.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string', description: 'Start date filter in YYYY-MM-DD. Optional.' },
+        to:   { type: 'string', description: 'End date filter in YYYY-MM-DD. Optional.' },
+      },
+    },
+  },
+
   {
     name: 'clarify',
     description: 'Ask the vendor a clarifying question when their request is genuinely ambiguous between two equally likely options. Use sparingly — only when acting on the wrong interpretation would cause real harm (e.g. wrong invoice, wrong client). Do NOT use for minor uncertainties you can resolve from context.',

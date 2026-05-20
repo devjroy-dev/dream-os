@@ -41,6 +41,12 @@ const { PWA_STATIC_SYSTEM_PROMPT, buildPWADynamicContext } = require('./pwaSyste
 const { PWA_TOOLS }           = require('./pwaTools');
 const { MODEL_SONNET, calculateCost } = require('./models');
 const { buildInvoiceMessage } = require('../lib/invoiceMessage');
+const { updateLead, loseLead }               = require('../lib/vendor/leads');
+const { updateClient, deleteClient }         = require('../lib/vendor/clients');
+const { updateInvoice }                      = require('../lib/vendor/invoices');
+const { updateExpense, deleteExpense }        = require('../lib/vendor/expenses');
+const { updateEvent, deleteEvent }            = require('../lib/vendor/events');
+const { blockDate, unblockDate, listBlocks }  = require('../lib/vendor/availability');
 const { generateInvoicePdf }  = require('../lib/invoicePdf');
 const { formatRs }            = require('../lib/format');
 const { resolveOrCreateClient } = require('../lib/clients');
@@ -1034,6 +1040,105 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     // ── clarify ─────────────────────────────────────────────────────────
     // PWA-only. Returns structured clarification payload so the frontend
     // can render options as tappable chips rather than text.
+
+    // ── update_lead ─────────────────────────────────────────────────────
+    case 'update_lead': {
+      const result = await updateLead(supabase, vendor.id, input.lead_id, input);
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:update_lead] ' + input.lead_id);
+      return write('Lead updated. ' + (result.lead.name || 'Lead') + ' — ' + input.lead_id + '.');
+    }
+
+    // ── lose_lead ────────────────────────────────────────────────────────
+    case 'lose_lead': {
+      const result = await loseLead(supabase, vendor.id, input.lead_id, input.reason);
+      if (!result.ok) return err(result.error);
+      if (result.already_lost) return ok((result.lead.name || 'Lead') + ' was already marked lost.');
+      console.log('[pwa-tool:lose_lead] ' + input.lead_id);
+      return write((result.lead.name || 'Lead') + ' marked lost. Reason noted.');
+    }
+
+    // ── update_client ────────────────────────────────────────────────────
+    case 'update_client': {
+      const result = await updateClient(supabase, vendor.id, input.client_id, input);
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:update_client] ' + input.client_id);
+      return write('Client updated. ' + (result.client.name || 'Client') + '.');
+    }
+
+    // ── delete_client ────────────────────────────────────────────────────
+    case 'delete_client': {
+      const result = await deleteClient(supabase, vendor.id, input.client_id);
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:delete_client] ' + input.client_id);
+      return write('Client removed from your roster.');
+    }
+
+    // ── update_invoice ───────────────────────────────────────────────────
+    case 'update_invoice': {
+      const result = await updateInvoice(supabase, vendor.id, input.invoice_id, input);
+      if (!result.ok && result.code === 'INVOICE_LOCKED') {
+        return err('That invoice has payments recorded and cannot be edited. Cancel it and raise a new one.');
+      }
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:update_invoice] ' + input.invoice_id);
+      return write('Invoice updated — ' + (result.invoice.invoice_number || input.invoice_id) + '.');
+    }
+
+    // ── update_expense ───────────────────────────────────────────────────
+    case 'update_expense': {
+      const result = await updateExpense(supabase, vendor.id, input.expense_id, input);
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:update_expense] ' + input.expense_id);
+      return write('Expense updated — Rs ' + formatRs(result.expense.amount) + ', ' + result.expense.category + '.');
+    }
+
+    // ── update_event ─────────────────────────────────────────────────────
+    case 'update_event': {
+      const result = await updateEvent(supabase, vendor.id, input.event_id, input);
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:update_event] ' + input.event_id);
+      return write('Event updated — ' + (result.event.title || input.event_id) + ' on ' + result.event.event_date + '.');
+    }
+
+    // ── delete_event ─────────────────────────────────────────────────────
+    case 'delete_event': {
+      const result = await deleteEvent(supabase, vendor.id, input.event_id);
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:delete_event] ' + input.event_id);
+      return write('Event removed from your calendar.');
+    }
+
+    // ── block_date ───────────────────────────────────────────────────────
+    case 'block_date': {
+      const result = await blockDate(supabase, vendor.id, input.date, input.reason || null);
+      if (!result.ok && result.code === 'ALREADY_BLOCKED') return ok(input.date + ' is already marked unavailable.');
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:block_date] ' + input.date);
+      const reasonStr = input.reason ? ' — ' + input.reason : '';
+      return write(input.date + ' blocked' + reasonStr + '.');
+    }
+
+    // ── unblock_date ─────────────────────────────────────────────────────
+    case 'unblock_date': {
+      const result = await unblockDate(supabase, vendor.id, { block_id: input.block_id, date: input.date });
+      if (!result.ok) return err(result.error);
+      console.log('[pwa-tool:unblock_date] ' + (input.block_id || input.date));
+      return write((input.date || input.block_id) + ' is now available again.');
+    }
+
+    // ── list_availability ────────────────────────────────────────────────
+    case 'list_availability': {
+      const result = await listBlocks(supabase, vendor.id, { from: input.from, to: input.to });
+      if (!result.ok) return err(result.error);
+      if (!result.blocks || result.blocks.length === 0) return ok('No dates blocked.');
+      const lines = result.blocks.map(b => {
+        const r = b.reason ? ' — ' + b.reason : '';
+        return b.blocked_date + r + ' (ID: ' + b.id + ')';
+      }).join('\n');
+      return ok(result.blocks.length + ' blocked date(s):\n' + lines);
+    }
+
     case 'clarify': {
       const clarify = {
         question: input.question,
