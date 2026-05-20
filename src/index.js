@@ -558,10 +558,20 @@ app.post('/webhook/whatsapp', async (req, res) => {
         });
 
         const vendorPhone = vendorUser?.phone;
+        const notif = result.vendorNotification
+          || `New enquiry via your TDW link from ${phone}. I'm collecting their details now.`;
+
         if (vendorPhone) {
-          const notif = result.vendorNotification
-            || `New enquiry via your TDW link from ${phone}. I'm collecting their details now.`;
           await sendWhatsApp(vendorPhone, notif);
+        }
+
+        // Denormalise vendor_summary onto the lead row for fast reads in detail view
+        if (result.vendorNotification && !existingLead) {
+          await supabase.from('leads')
+            .update({ vendor_summary: result.vendorNotification })
+            .eq('vendor_id', matchedByTdw.id)
+            .eq('phone', phone)
+            .is('deleted_at', null);
         }
 
         await supabase.from('conversations')

@@ -142,7 +142,7 @@ async function loseLead(supabase, vendorId, leadId, reason) {
 async function getLeadDetail(supabase, vendorId, leadId) {
   const [leadRes, invoicesRes, eventsRes] = await Promise.all([
     supabase.from('leads')
-      .select('id, name, phone, email, wedding_date, wedding_city, event_types, budget_min, budget_max, state, source, referrer_name, raw_message, notes, client_id, created_at')
+      .select('id, name, phone, email, wedding_date, wedding_city, event_types, budget_min, budget_max, state, source, referrer_name, raw_message, notes, client_id, vendor_summary, created_at')
       .eq('id', leadId)
       .eq('vendor_id', vendorId)
       .is('deleted_at', null)
@@ -167,6 +167,7 @@ async function getLeadDetail(supabase, vendorId, leadId) {
   if (leadRes.error) return { ok: false, error: leadRes.error.message };
 
   const lead = leadRes.data;
+
   let client = null;
   if (lead.client_id) {
     const { data: c } = await supabase
@@ -177,11 +178,38 @@ async function getLeadDetail(supabase, vendorId, leadId) {
     client = c || null;
   }
 
+  // Fetch couple conversation thread (last 20 non-system messages)
+  let conversation = [];
+  if (lead.phone) {
+    const { data: thread } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('vendor_id', vendorId)
+      .eq('counterparty_phone', lead.phone)
+      .eq('kind', 'couple_thread')
+      .maybeSingle();
+
+    if (thread) {
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('direction, body, created_at, sent_by')
+        .eq('conversation_id', thread.id)
+        .neq('sent_by', 'system')
+        .not('body', 'is', null)
+        .order('created_at', { ascending: true })
+        .limit(20);
+
+      conversation = (msgs || []).filter(m => m.body && m.body.trim());
+    }
+  }
+
   return {
-    ok:       true,
+    ok:             true,
     lead,
-    invoices: invoicesRes.data || [],
-    events:   eventsRes.data   || [],
+    vendor_summary: lead.vendor_summary || null,
+    conversation,
+    invoices:       invoicesRes.data || [],
+    events:         eventsRes.data   || [],
     client,
   };
 }
