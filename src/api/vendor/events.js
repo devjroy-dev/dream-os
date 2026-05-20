@@ -32,6 +32,9 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
+const asyncHandler   = require('../../lib/asyncHandler');
+const { ok: okRes, err: errRes } = require('../../lib/response');
+const { createEvent, updateEvent, deleteEvent } = require('../../lib/vendor/events');
 
 const ALLOWED_STATES = ['upcoming', 'done', 'cancelled'];
 const ALLOWED_KINDS  = [
@@ -111,12 +114,14 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   let listQuery = supabase.from('events')
     .select('id, title, kind, event_date, event_time, state, linked_lead_id, notes')
     .eq('vendor_id', vendor.id)
+    .is('deleted_at', null)
     .gte('event_date', from)
     .lte('event_date', to);
 
   let countQuery = supabase.from('events')
     .select('*', { count: 'exact', head: true })
     .eq('vendor_id', vendor.id)
+    .is('deleted_at', null)
     .gte('event_date', from)
     .lte('event_date', to);
 
@@ -162,32 +167,85 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   });
 });
 
-// PATCH /:eventId/cancel
-// Direct cancel from list UI — no chat involved.
-router.patch('/:eventId/cancel', requireAuth, async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const { user_id } = req.auth;
-  const { eventId } = req.params;
+// ─── PATCH /api/v2/vendor/events/:eventId/cancel ──────────────────────
+//
+// Direct cancel from list UI. Preserved for dreamai list page CRUD.
+// Auth: requireAuth. resolveVendor mode C via events table.
 
-  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
-  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+router.patch('/:eventId/cancel', requireAuth, resolveVendor({ paramName: 'eventId', via: 'events' }), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const eventId  = req.params.eventId;
 
   const { data: ev, error: fetchErr } = await supabase
     .from('events').select('id, title, state')
-    .eq('id', eventId).eq('vendor_id', vendorRow.id).single();
+    .eq('id', eventId).eq('vendor_id', vendor.id).is('deleted_at', null).single();
 
-  if (fetchErr?.code === 'PGRST116' || !ev) return res.status(404).json({ ok: false, error: 'Event not found.' });
-  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
-  if (ev.state === 'cancelled') return res.json({ ok: true, already_cancelled: true, message: `"${ev.title}" was already cancelled.` });
+  if (fetchErr?.code === 'PGRST116' || !ev) return errRes(res, 404, 'Event not found.');
+  if (fetchErr) return errRes(res, 500, fetchErr.message);
+  if (ev.state === 'cancelled') return okRes(res, { already_cancelled: true });
 
   const { error: cancelErr } = await supabase
     .from('events').update({ state: 'cancelled' })
-    .eq('id', eventId).eq('vendor_id', vendorRow.id);
+    .eq('id', eventId).eq('vendor_id', vendor.id);
 
-  if (cancelErr) return res.status(500).json({ ok: false, error: cancelErr.message });
+  if (cancelErr) return errRes(res, 500, cancelErr.message);
+  console.log('[events:cancel] "' + ev.title + '" cancelled by vendor ' + vendor.id);
+  return okRes(res, { event: { id: eventId, state: 'cancelled' } });
+}));
 
-  console.log(`[events:cancel] "${ev.title}" cancelled by vendor ${vendorRow.id}`);
-  return res.json({ ok: true, message: `"${ev.title}" cancelled.` });
-});
+// ─── POST /api/v2/vendor/events ────────────────────────────────────────
+//
+// Create a new event. kind='task' for vendor todos.
+// Auth: requireAuth. resolveVendor mode A.
+
+router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const body     = req.body || {};
+
+  const result = await createEvent(supabase, vendor.id, {
+    title:          body.title          || null,
+    event_date:     body.event_date     || null,
+    event_time:     body.event_time     || null,
+    kind:           body.kind           || null,
+    linked_lead_id: body.linked_lead_id || null,
+    notes:          body.notes          || null,
+  });
+
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { event: result.event });
+}));
+
+// ─── PATCH /api/v2/vendor/events/:eventId ─────────────────────────────
+//
+// Full field update. Does not change state — use /cancel for that.
+// Auth: requireAuth. resolveVendor mode C via events table.
+
+router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via: 'events' }), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const eventId  = req.params.eventId;
+  const body     = req.body || {};
+
+  const result = await updateEvent(supabase, vendor.id, eventId, body);
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { event: result.event });
+}));
+
+// ─── DELETE /api/v2/vendor/events/:eventId ────────────────────────────
+//
+// Soft delete. For events created in error. Distinct from cancel.
+// Auth: requireAuth. resolveVendor mode C via events table.
+
+router.delete('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via: 'events' }), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const eventId  = req.params.eventId;
+
+  const result = await deleteEvent(supabase, vendor.id, eventId);
+  if (!result.ok) return errRes(res, 404, result.error);
+  return okRes(res, { deleted: true });
+}));
 
 module.exports = router;
