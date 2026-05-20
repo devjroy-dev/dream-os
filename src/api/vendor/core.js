@@ -32,5 +32,9 @@ router.use('/events',   require('./events'));
 router.use('/context',  require('./context'));
 router.use('/chat',         require('./chat'));
 router.use('/availability', require('./availability'));
+router.use('/portfolio',   require('./portfolio'));
+router.use('/discover',    require('./discover'));
+router.use('/couture',     require('./couture'));
+router.use('/featured',    require('./featured'));
 
 module.exports = router;

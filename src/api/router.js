@@ -60,6 +60,10 @@ router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
 router.use('/hot-dates',          require('./public/hotDates'));
 router.use('/vendor',             require('./vendor/core'));
+router.use('/admin/discover',     require('./admin/discover'));
+router.use('/admin/photos',       require('./admin/photos'));
+router.use('/admin/couture',      require('./admin/couture'));
+router.use('/admin/featured',     require('./admin/featured'));
 
 // Block 2+ routers mounted here as they are built:
 // router.use('/couple', require('./couple/core'));
