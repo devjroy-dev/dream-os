@@ -14,8 +14,8 @@
 
 const express = require('express');
 const router  = express.Router();
-const asyncHandler = require('../lib/asyncHandler');
-const { ok: okRes, err: errRes } = require('../lib/response');
+const asyncHandler = require('../../lib/asyncHandler');
+const { ok: okRes, err: errRes } = require('../../lib/response');
 
 // ─── GET /api/v2/hot-dates ─────────────────────────────────────────────
 
