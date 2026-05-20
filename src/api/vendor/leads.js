@@ -123,17 +123,23 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
 // ─── POST / — create a new lead ───────────────────────────────────────────────
 router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
-  const vendor = req.vendor;
-  const { bride_name, groom_name, wedding_date, wedding_city, budget_total, services, source, referrer, raw_message } = req.body;
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const {
+    bride_name, name, phone, email,
+    wedding_date, wedding_city, event_types,
+    budget_min, budget_max, source, referrer_name, raw_message, notes,
+  } = req.body;
 
-  if (!bride_name) return errRes(res, 400, 'bride_name is required.');
+  const leadName = name || bride_name;
+  if (!leadName) return errRes(res, 400, 'bride_name is required.');
 
-  const { data, error } = await createLead(vendor.id, {
-    bride_name, groom_name, wedding_date, wedding_city,
-    budget_total, services, source, referrer, raw_message,
+  const result = await createLead(supabase, vendor.id, {
+    name: leadName, phone, email, wedding_date, wedding_city,
+    event_types, budget_min, budget_max, source, referrer_name, raw_message, notes,
   });
-  if (error) return errRes(res, 400, error);
-  return res.status(201).json({ ok: true, data });
+  if (!result.ok) return errRes(res, 400, result.error);
+  return res.status(201).json({ ok: true, data: result.lead, deduped: result.deduped || false });
 }));
 
 router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), async (req, res) => {
