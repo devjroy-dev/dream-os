@@ -339,21 +339,60 @@ Key tables: conversations, messages, notes, pending_actions, leads, events, invo
 
 ---
 
-## BLOCK 14 — OPEN DEBT / DEFERRED
+## BLOCK 14 — WHAT COMES NEXT + OPEN DEBT
+
+### How to run the next session
+
+Every session starts with two files dropped into the chat:
+1. This Holy Grail
+2. The spec file for the current block (e.g. `BLOCK_F_SPEC.md`)
+
+Say "build this" and the session starts. The spec has everything needed — migration SQL, endpoint designs, file layout, smoke tests, and a completion checklist. Block is not done until every checkbox ticks.
+
+All spec files live in `dream-os/docs/`. The master index is `docs/VENDOR_PORT_ROADMAP.md`.
+
+### Vendor port block sequence (do in order — each depends on the previous)
+
+```
+Block F  → Block 1a → Block 1b → Block 1c → Block 2 → Block 3 → Block 4 → Block 5 → Block 6 → Block 7
+```
+
+| Block | Repo | Migration | What | Spec |
+|---|---|---|---|---|
+| **F** ← START HERE | dream-os | 0034 | Foundation: asyncHandler, response envelope, auth audit. No user-visible change. | `BLOCK_F_SPEC.md` |
+| **1a** | dream-os | 0035 | 20 new REST endpoints + 11 agent tools. Full vendor CRUD via API. | `BLOCK_1a_SPEC.md` |
+| **1b** | dreamai | — | Typed API client + TypeScript types for every 1a endpoint. No UI. | `BLOCK_1b_SPEC.md` |
+| **1c** | dreamai | — | Add/Edit forms, Settings page, Calendar blocked dates + hot dates. | `BLOCK_1c_SPEC.md` |
+| **2** | both | 0036 | Web Push notifications — new lead, payment received, state change. | `BLOCK_2_SPEC.md` |
+| **3** | both | 0037 | Vendor enquiries inbox in PWA. Conversations state + read tracking. | `BLOCK_3_SPEC.md` |
+| **4** | both | 0038 | Razorpay subscriptions + DreamAi token packs. Revenue layer. | `BLOCK_4_SPEC.md` |
+| **5** | both | 0039 | Vendor Discover submission, Couture, Featured promos. | `BLOCK_5_SPEC.md` |
+| **6** | both | 0040 | Studio Suite (partial) — Team, Tasks, Briefing. Prestige tier. | `BLOCK_6_SPEC.md` |
+| **7** | both | 0041 | Payment schedules, contracts, TDS ledger. | `BLOCK_7_SPEC.md` |
+
+After Block 7 → v0.11.0-alpha → Phase 3 (Discover go-live, Bride track, Convergence).
+
+**If runway forces a cut:** drop from the back. 1+2+3+4 is minimum viable vendor port. Drop 7 first, then 6, then 5.
+
+### Infrastructure open debt (external blockers — not coding sessions)
+
+| Item | Priority |
+|---|---|
+| Razorpay KYC | High — needed before Block 4 |
+| Twilio upgrade to paid | High — needed before scaling |
+| Morning briefing Twilio template submission for +917982159047 | High — pending approval |
+
+### Coding open debt (needs a session)
 
 | Item | Blocked by | Priority |
 |---|---|---|
-| `send_to_couple` tool (Twilio send to TDW-thread couples) | Architecture decision | Medium |
-| `schedule_message` tool | `scheduled_actions` table (migration 0034) | Medium |
+| `send_to_couple` tool | Architecture decision | Medium |
+| `schedule_message` tool | migration 0034 (Block F) | Medium |
 | True first-token SSE streaming | pwaEngine async generator refactor | Low |
-| Android/iOS bundle ID `in.thedreamwedding.dreamer` | `google-services.json` Firebase | Low |
-| Co-planner hosting on Vercel | Not configured | Low |
-| Razorpay KYC | Pending | High |
-| Twilio upgrade to paid | Pending | High |
-| Google Calendar OAuth live sync | Deferred post-launch | Low |
-| Instagram DM lead capture | Deferred post-launch | Low |
 | Deprecated task tools in brideTools.js | Cleanup session | Medium |
-| Morning briefing Twilio template submission for +917982159047 | Pending approval | High |
+| Google Calendar OAuth live sync | Deferred post-launch | Low |
+| Instagram DM lead capture | Meta App Review (2-4 weeks) | Low |
+| Android/iOS bundle ID `in.thedreamwedding.dreamer` | Firebase config | Low |
 
 ---
 
