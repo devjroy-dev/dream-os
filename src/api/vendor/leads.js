@@ -120,6 +120,22 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
 // ─── PATCH /api/v2/vendor/leads/:leadId/state ──────────────────────────
 
+
+// ─── POST / — create a new lead ───────────────────────────────────────────────
+router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const vendor = req.vendor;
+  const { bride_name, groom_name, wedding_date, wedding_city, budget_total, services, source, referrer, raw_message } = req.body;
+
+  if (!bride_name) return errRes(res, 400, 'bride_name is required.');
+
+  const { data, error } = await createLead(vendor.id, {
+    bride_name, groom_name, wedding_date, wedding_city,
+    budget_total, services, source, referrer, raw_message,
+  });
+  if (error) return errRes(res, 400, error);
+  return res.status(201).json({ ok: true, data });
+}));
+
 router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
