@@ -23,9 +23,6 @@ const resolveVendor  = require('../middleware/resolveVendor');
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
-const asyncHandler   = require('../../lib/asyncHandler');
-const { ok: okRes, err: errRes } = require('../../lib/response');
-const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
 
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
   const supabase = req.app.locals.supabase;
