@@ -280,4 +280,28 @@ For any write operation — call the appropriate tool. Never confirm a mutation 
 HARD RULE: Never show more than 3 items in any list. Pick the 3 most relevant, prose format. If more exist, say "Check the app for the full list." No numbered lists ever.`;
 }
 
-module.exports = { PWA_STATIC_SYSTEM_PROMPT, buildPWADynamicContext };
+
+// ── Block 1a tool addendum ────────────────────────────────────────────────────
+// Appended to PWA_STATIC_SYSTEM_PROMPT to inform the model of new tools.
+// Do not restructure the prompt — append only.
+
+const PWA_BLOCK_1A_TOOLS = `
+
+NEW TOOLS (Block 1a):
+- update_lead: edit lead fields (name, date, budget, city, notes). Not for state changes.
+- lose_lead: mark lead lost with a reason. Prefer this over update_lead_state when a reason is present.
+- update_client: edit client fields (name, phone, email, notes).
+- delete_client: soft-delete a client from the roster.
+- update_invoice: edit invoice fields. Locked after any payment — suggest cancel + re-issue if locked.
+- update_expense: edit expense amount, category, description, date.
+- update_event: edit event title, date, time, kind, notes. Not for state changes.
+- delete_event: soft-delete an event created in error. Different from cancelling.
+- block_date: mark a date unavailable on the vendor calendar.
+- unblock_date: remove a blocked date. Accepts block_id or date.
+- list_availability: list all blocked dates.
+
+Use these tools the same way as existing tools — call the tool, wait for success, then reply. Never confirm a mutation without the tool returning ok.`;
+
+const PWA_FULL_STATIC_PROMPT = PWA_STATIC_SYSTEM_PROMPT + PWA_BLOCK_1A_TOOLS;
+
+module.exports = { PWA_STATIC_SYSTEM_PROMPT: PWA_FULL_STATIC_PROMPT, buildPWADynamicContext };
