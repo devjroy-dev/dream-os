@@ -211,6 +211,10 @@ async function runPWAAgenticTurn({
       ],
       tools:    PWA_TOOLS,
       messages,
+    }, {
+      // Override the global 12s WhatsApp timeout. PWA has no webhook budget.
+      // 45s matches the MAX_WALL_MS cap in the cost guard above.
+      timeout: 45000,
     });
 
     // Accumulate token usage and cost
@@ -766,11 +770,16 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
         newState = 'advance_paid';
       }
 
-      await supabase.from('invoices').update({
+      const { error: updateErr } = await supabase.from('invoices').update({
         amount_paid: newAmountPaid,
         state:       newState,
         updated_at:  new Date().toISOString(),
       }).eq('id', inv.id);
+
+      if (updateErr) {
+        console.error(`[pwa-tool:record_payment] invoice update failed: ${updateErr.message}`);
+        return err(`Could not record payment — database error: ${updateErr.message}. Please try again.`);
+      }
 
       console.log(`[pwa-tool:record_payment] ${inv.invoice_number} Rs ${input.amount_received} — ${inv.state} → ${newState}`);
 
@@ -875,7 +884,10 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
       const { data: v } = await supabase
         .from('vendors').select('invoice_prefix, invoice_counter').eq('id', vendor.id).single();
 
-      await supabase.from('vendors').update({ invoice_prefix: cleaned }).eq('id', vendor.id);
+      const { error: prefixErr } = await supabase
+        .from('vendors').update({ invoice_prefix: cleaned }).eq('id', vendor.id);
+
+      if (prefixErr) return err(`Could not update invoice prefix: ${prefixErr.message}`);
 
       const nextNum = String((v?.invoice_counter || 0) + 1).padStart(2, '0');
       console.log(`[pwa-tool:update_invoice_prefix] ${v?.invoice_prefix} → ${cleaned}`);

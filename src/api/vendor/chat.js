@@ -172,8 +172,16 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no');  // disable Nginx buffering
     res.flushHeaders();
 
+    let streamDead = false;
     function send(obj) {
-      res.write(`data: ${JSON.stringify(obj)}\n\n`);
+      if (streamDead) return;
+      try {
+        res.write(`data: ${JSON.stringify(obj)}\n\n`);
+      } catch (writeErr) {
+        // Client disconnected (EPIPE) — mark stream dead, stop writing
+        streamDead = true;
+        console.warn('[SSE] client disconnected mid-stream:', writeErr.message);
+      }
     }
 
     let result;
