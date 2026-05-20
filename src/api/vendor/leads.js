@@ -119,6 +119,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   const leads = (rows || []).map(l => ({
     id:           l.id,
     name:         l.name,
+    phone:        l.phone,
     wedding_date: l.wedding_date,
     wedding_city: l.wedding_city,
     budget_total: l.budget_max,
