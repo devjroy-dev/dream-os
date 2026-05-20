@@ -1,9 +1,9 @@
 # dream-os — Master Handover (The Bridge Document)
-**Written:** 2026-05-20 (P2-6b-alpha session close)
-**Session:** P2-6b-alpha — On founder's order, dreamos-pwa P2-6b was deferred. dreamai (devjroy-dev/dreamai) adopted as the vendor PWA alpha, wired to dream-os backend.
-**Version:** 0.10.0-alpha (no bump — P2-6b-alpha complete, weather testing in progress)
-**HEAD (dream-os):** 3b975df
-**HEAD (dreamai):** 166a308
+**Written:** 2026-05-21 (Block 3 session close)
+**Session:** Block 3 — Lead detail: vendor summary card + couple conversation thread + WhatsApp/Call buttons
+**Version:** 0.10.3-alpha
+**HEAD (dream-os):** see git log
+**HEAD (dreamai):** see git log
 **HEAD (dreamos-pwa):** 31a3b11 (unchanged)
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Repo backend:** https://github.com/devjroy-dev/dream-os
@@ -19,6 +19,45 @@ Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then API_CONTRACTS.md.
 ## P2-1 through P2-6a — complete
 
 All history in previous HANDOVER_FINAL.md commits. See git log.
+
+---
+
+## Block 3 — 2026-05-21 (this session)
+
+### What Block 3 is
+
+Lead detail view — surfaces the WhatsApp conversation between the couple and DreamAi alongside the lead in dreamai. Vendor taps a lead, sees the full enquiry conversation, summary, and can WhatsApp or call the bride directly. No reply surface built — vendor continues on WhatsApp. Read-only, clean.
+
+### What shipped
+
+**dream-os:**
+- `GET /api/v2/vendor/leads/:leadId/detail` — new endpoint returning lead, vendor_summary, conversation (last 20 non-system messages from couple_thread), linked invoices, linked events
+- Route order fixed: `GET /:leadId/detail` moved before `GET /:vendorId` to prevent Express param shadowing
+- `phone` added to leads list `dataSelect` and response mapping (was selected but dropped)
+- `leads.vendor_summary` column added (migration 0036) — denormalised WhatsApp notification text written at lead creation
+- `src/index.js` patched to write `vendor_summary` from `result.vendorNotification` after couple agent runs
+
+**dreamai:**
+- `ConversationThread.tsx` — new read-only component, alternating inbound/outbound bubbles, gold summary card at top
+- `fetchLeadDetail()` function already existed from Block 1b; mock updated to return full shape
+- `Lead` type updated with `phone` field (was missing)
+- `ConversationMessage` + full `LeadDetailResponse` types added
+- Slice list page: lead rows tap → fires `fetchLeadDetail` in background, renders summary + conversation in bottom sheet
+- WhatsApp + Call buttons rendered in fixed action area (above Edit/Delete) when lead has phone
+- Sheet `maxHeight` increased from `70dvh` to `88dvh`
+
+**Migration 0034 (retrospective):**
+- `0034_vendor_profile_fields.sql` created as historical record — columns were applied directly to prod during Block F. Now committed to source control.
+
+### Open items from this session
+- `leads.vendor_summary` is null for all existing leads (predates the column). Only new WhatsApp enquiries will populate it going forward.
+- `PATCH /leads/:leadId` (full update) exists in dream-os (commit a003802) but no agent tool yet — leads edit in dreamai routes to chat.
+
+### Key commits this session (dream-os)
+- `165f430` fix(api): include phone in leads list response mapping
+- `652ae3f` fix(api): add phone to leads list select
+- `ae60b8a` fix(api): move GET /leads/:id/detail before /:vendorId to avoid route shadowing
+- `650625f` feat(api): GET /leads/:id/detail — vendor_summary + conversation + linked records (Block 3)
 
 ---
 
