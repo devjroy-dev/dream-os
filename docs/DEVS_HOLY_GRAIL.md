@@ -9,11 +9,9 @@
 
 **The Dream Wedding (TDW)** — India's First Wedding OS. Two-sided marketplace + vendor SaaS platform.
 
-**Dev** — CEO & co-founder. Built the entire platform. Background: legal/tax/commercial litigation. Planned his own wedding → founding insight. Do NOT mention content creator background or geopolitics content in any investor-facing document.
+**Dev** — CEO & co-founder. Built the entire platform. Background: legal/tax/commercial litigation. Planned his own wedding → founding insight.
 
 **Swati Tomar** — Co-founder (@makeupbyswatiroy). Celebrity MUA. Brand, vendor relationships, supply-side distribution. 10+ years industry relationships.
-
-**Investor:** Bhaskar Majumdar (Unicorn India Ventures). Ask: Rs 25 lac for 4-5% on Rs 6 crore post-money.
 
 **Naming locked:** Dreamers = couples. Makers = vendors. `vendor` in DB — never rename DB columns.
 
