@@ -2,7 +2,7 @@
 // Session 4: adds create_lead, list_leads, update_lead_state tool handlers
 // Session 5.5: adds runCoupleAgenticTurn for couple_thread conversations
 
-const { buildDynamicContext, STATIC_SYSTEM_PROMPT, WEB_SURFACE_ADDENDUM } = require('./systemPrompt');
+const { buildDynamicContext, STATIC_SYSTEM_PROMPT } = require('./systemPrompt');
 const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
 const { nextOnboardingMessage }   = require('./onboarding');
 const { TOOLS }                   = require('./tools');
@@ -125,25 +125,15 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   ];
 
   // ── Classify complexity → pick model ───────────────────────────
-  // Web channel: skip classifier, go straight to Haiku for speed.
-  // The classifier itself is a Haiku call — skipping it saves one full
-  // round trip (~300-500ms) on every PWA message. Sonnet is still available
-  // for WhatsApp complex turns where the latency trade-off is worth it.
-  let modelToUse;
-  if (channel === 'web') {
-    modelToUse = MODEL_HAIKU;
-    console.log(`[agent] model selected: ${modelToUse} (web-fast-path)`);
-  } else {
-    const classifierHistory = history.slice(-2);
-    const complexity = await classifyMessage(inboundMessage, classifierHistory, anthropic);
-    modelToUse = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
-    console.log(`[agent] model selected: ${modelToUse} (${complexity})`);
-  }
+  // Pass last 2 history turns so classifier has disambiguation context.
+  const classifierHistory = history.slice(-2);
+  const complexity  = await classifyMessage(inboundMessage, classifierHistory, anthropic);
+  const modelToUse  = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
+  console.log(`[agent] model selected: ${modelToUse} (${complexity})`);
 
   // ── Agentic loop ────────────────────────────────────────────────
   let iterations     = 0;
   let finalReply     = null;
-  let finalContact   = null;
   let totalInputTok  = 0;
   let totalOutputTok = 0;
   const toolCallsAudit = [];
@@ -168,11 +158,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
         },
         {
           type: 'text',
-          // Web: append addendum overriding WhatsApp brevity rules.
-          // WhatsApp: dynamic context only — keeps terse 2-3 sentence voice.
-          text: channel === 'web'
-            ? dynamicContext + '\n\n' + WEB_SURFACE_ADDENDUM
-            : dynamicContext,
+          text: dynamicContext,                   // vendor-specific — never cached
         },
       ],
       tools: TOOLS,
@@ -211,10 +197,6 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
 
       if (toolUse.name === 'respond_to_vendor') {
         finalReply = toolUse.input.message;
-        // contact is optional — present when agent drafted a client message
-        if (toolUse.input.contact) {
-          finalContact = toolUse.input.contact;
-        }
       }
 
       toolResults.push({
@@ -261,7 +243,6 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
 
   return {
     reply:        finalReply || 'Got it.',
-    contact:      finalContact,
     toolCalls:    toolCallsAudit,
     attachments,
     iterations,
