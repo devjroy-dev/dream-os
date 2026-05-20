@@ -416,4 +416,43 @@ router.post('/pin-login', async (req, res) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// POST /refresh
+// Body:    { refresh_token }
+// Returns: { ok, access_token, refresh_token }
+// No requireAuth — this is called precisely when the access_token has expired.
+// ---------------------------------------------------------------------------
+router.post('/refresh', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { refresh_token } = req.body;
+
+  if (!refresh_token || typeof refresh_token !== 'string') {
+    return res.status(400).json({ error: 'refresh_token is required.', reason: 'missing_token' });
+  }
+
+  try {
+    // Exchange refresh_token for a new session via Supabase
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+
+    if (error || !data?.session) {
+      console.warn('[vendor:refresh] refresh failed:', error?.message || 'no session');
+      return res.status(401).json({
+        error:  'Session expired. Please log in again.',
+        reason: 'refresh_failed',
+      });
+    }
+
+    console.log('[vendor:refresh] session refreshed successfully');
+    return res.json({
+      ok:            true,
+      access_token:  data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+
+  } catch (err) {
+    console.error('[vendor:refresh] unexpected error:', err.message);
+    return res.status(500).json({ error: 'Could not refresh session. Please log in again.' });
+  }
+});
+
 module.exports = router;
