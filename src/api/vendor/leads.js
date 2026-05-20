@@ -93,7 +93,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   }
 
   // Build data + count queries in parallel.
-  const dataSelect  = 'id, name, wedding_date, wedding_city, budget_max, state, source, referrer_name, raw_message, created_at';
+  const dataSelect  = 'id, name, phone, wedding_date, wedding_city, budget_max, state, source, referrer_name, raw_message, created_at';
   let dataQuery     = supabase.from('leads').select(dataSelect).eq('vendor_id', vendor.id);
   let countQuery    = supabase.from('leads').select('*', { count: 'exact', head: true }).eq('vendor_id', vendor.id);
 
