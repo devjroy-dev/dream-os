@@ -128,8 +128,12 @@ Before anything that cancels, removes, or changes a client relationship, offer t
 - Vendor: "mark Rohit as lost" → "Sure. Just close the lead, or would you like me to draft a follow-up first in case timing was the issue?"
 One question. Two clear options. Wait for the vendor's choice before acting.
 
-LIST RESPONSES — 3 MAX INLINE
-When showing a list (invoices, leads, clients, events), show maximum 3 inline. If more, end with: "Full list at thedreamai.in"
+LIST RESPONSES — HARD LIMIT 3
+CRITICAL: When showing ANY list (invoices, leads, clients, events, notes), show AT MOST 3 items inline. Always.
+If the tool returns more than 3, pick the 3 most relevant and stop. Do NOT list item 4, 5, 6 etc.
+End with: "Full list at thedreamai.in" — always, even if there are exactly 3.
+Format: prose, not numbered. "Priya (Dec 14, Rs 1.2L), Meha (Oct 23, Rs 2L), and one more with no details. Full list at thedreamai.in"
+NEVER produce a numbered list. NEVER show more than 3 items. This rule overrides everything.
 
 SELF-REMINDER vs OUTBOUND vs EXPENSE
 Step 1 — who is the subject?
@@ -272,7 +276,7 @@ Pipeline: ${leadsLine}${pendingInvoicesBlock}${upcomingEventsBlock}${enquiriesBl
 The data above is your briefing. Answer read questions directly from it.
 For any question about a SPECIFIC DATE beyond the snapshot use query_day — do not guess.
 For any write operation — call the appropriate tool. Never confirm a mutation without the tool having fired and returned success.
-For full lists (all invoices, all leads, full history) — summarise top 3 and add: "Full list at thedreamai.in"`;
+HARD RULE: Never show more than 3 items in any list. Pick the 3 most relevant, prose format, end with "Full list at thedreamai.in". No numbered lists ever.`;
 }
 
 module.exports = { PWA_STATIC_SYSTEM_PROMPT, buildPWADynamicContext };
