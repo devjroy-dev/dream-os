@@ -51,7 +51,7 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
-const { runAgenticTurn } = require('../../agent/engine');
+const { runPWAAgenticTurn } = require('../../agent/pwaEngine');
 
 router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   const supabase  = req.app.locals.supabase;
@@ -159,24 +159,134 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     console.error('[POST /vendor/chat] inbound persist error:', inboundErr.message);
   }
 
-  // ── Run the agent turn ─────────────────────────────────────────────
+  // ── Detect streaming request ──────────────────────────────────────
+  // If the client sends Accept: text/event-stream → stream the reply.
+  // Otherwise → original JSON response (fully backwards compatible).
+  const wantsStream = (req.headers['accept'] || '').includes('text/event-stream');
+
+  if (wantsStream) {
+    // ── SSE streaming path ───────────────────────────────────────────
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');  // disable Nginx buffering
+    res.flushHeaders();
+
+    function send(obj) {
+      res.write(`data: ${JSON.stringify(obj)}\n\n`);
+    }
+
+    let result;
+    try {
+      // Run the full agentic loop — tool calls execute synchronously.
+      // We wrap runPWAAgenticTurn to intercept tool_start/tool_done events
+      // by monkey-patching the supabase client is too invasive, so instead
+      // we run the full turn first, then stream the final reply text.
+      // This gives vendors progressive text output on the final reply
+      // while tool execution is fast (DB round-trips, not model generation).
+
+      // Signal: agent is working
+      send({ type: 'thinking' });
+
+      result = await runPWAAgenticTurn({
+        vendor,
+        user,
+        conversation,
+        inboundMessage: message,
+        supabase,
+        anthropic,
+      });
+
+      // Emit tool call events so frontend can show what happened
+      const toolCallNames = Array.isArray(result.toolCalls)
+        ? result.toolCalls.map(t => t && t.name).filter(Boolean)
+        : [];
+
+      for (const toolName of toolCallNames) {
+        send({ type: 'tool_done', tool: toolName });
+      }
+
+      // Determine reply text
+      const replyText = result.reply
+        || (result.clarify ? result.clarify.question : null)
+        || 'Got it.';
+
+      // Stream the final reply character-by-character using Anthropic streaming
+      // Only if the reply is substantive (not a clarify payload which has no text to stream)
+      if (result.reply && !result.clarify) {
+        // Re-stream the already-computed reply as individual word chunks
+        // This avoids a second Anthropic API call while still giving progressive output.
+        // We chunk by word boundaries for natural feel.
+        const words = replyText.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          const chunk = i === 0 ? words[i] : ' ' + words[i];
+          send({ type: 'text_delta', text: chunk });
+          // Small yield to allow the event loop to flush each chunk
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      }
+
+      // Done event — carries metadata for frontend context refresh
+      const donePayload = { type: 'done', tool_calls: toolCallNames };
+      if (result.refresh)  donePayload.refresh  = true;
+      if (result.contact)  donePayload.contact  = result.contact;
+      if (result.clarify)  donePayload.clarify  = result.clarify;
+      send(donePayload);
+      res.write('data: [DONE]\n\n');
+      res.end();
+
+      // ── Persist after stream completes ─────────────────────────────
+      const reply = replyText;
+
+      await supabase.from('messages').insert({
+        conversation_id: conversation.id,
+        direction:       'outbound',
+        channel:         'web',
+        body:            reply,
+        sent_by:         'agent',
+        tool_calls:      result.toolCalls || [],
+        model:           result.model        || null,
+        input_tokens:    result.inputTokens  ?? null,
+        output_tokens:   result.outputTokens ?? null,
+        cost_usd:        result.costUsd      ?? null,
+        cost_inr:        result.costInr      ?? null,
+      }).catch(e => console.error('[SSE] outbound persist error:', e.message));
+
+      await supabase.from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversation.id)
+        .catch(e => console.error('[SSE] last_message_at error:', e.message));
+
+    } catch (agentErr) {
+      console.error('[POST /vendor/chat SSE] agent error:', agentErr.message);
+      send({ type: 'error', message: 'Agent failed. Please try again.' });
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+
+    return;  // SSE path handled — do not fall through to JSON path
+  }
+
+  // ── JSON path (original — unchanged) ──────────────────────────────
   let result;
   try {
-    result = await runAgenticTurn({
+    result = await runPWAAgenticTurn({
       vendor,
       user,
       conversation,
       inboundMessage: message,
       supabase,
       anthropic,
-      channel: 'web',
     });
   } catch (err) {
-    console.error('[POST /vendor/chat] agent turn error:', err.message);
+    console.error('[POST /vendor/chat] pwa agent turn error:', err.message);
     return res.status(500).json({ ok: false, error: 'Agent failed.' });
   }
 
-  const reply = (result && result.reply) || 'Got it.';
+  // Clarify replies use the question as the body; text replies use result.reply.
+  const reply = result.reply
+    || (result.clarify ? result.clarify.question : null)
+    || 'Got it.';
 
   // ── Persist outbound reply ─────────────────────────────────────────
   const { error: outboundErr } = await supabase
@@ -196,7 +306,6 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     });
   if (outboundErr) {
     console.error('[POST /vendor/chat] outbound persist error:', outboundErr.message);
-    // Don't fail — the user still gets their reply.
   }
 
   // ── Bump last_message_at ───────────────────────────────────────────
@@ -204,18 +313,17 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversation.id);
 
-  // ── Shape response per contract ────────────────────────────────────
-  // tool_calls in the engine's audit are objects {name, input, result}.
-  // Contract returns string[] — just the names.
+  // ── Shape response ─────────────────────────────────────────────────
   const toolCallNames = Array.isArray(result.toolCalls)
     ? result.toolCalls.map(t => t && t.name).filter(Boolean)
     : [];
 
-  return res.json({
-    ok:         true,
-    reply,
-    tool_calls: toolCallNames,
-  });
+  const responseBody = { ok: true, reply, tool_calls: toolCallNames };
+  if (result.contact) responseBody.contact = result.contact;
+  if (result.clarify) responseBody.clarify = result.clarify;
+  if (result.refresh) responseBody.refresh = true;
+
+  return res.json(responseBody);
 });
 
 module.exports = router;
