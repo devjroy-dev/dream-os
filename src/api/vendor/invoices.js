@@ -26,6 +26,11 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
+const asyncHandler         = require('../../lib/asyncHandler');
+const { ok: okRes, err: errRes } = require('../../lib/response');
+const { createInvoice, updateInvoice } = require('../../lib/vendor/invoices');
+const { generateInvoicePdf }  = require('../../lib/invoicePdf');
+const { buildInvoiceMessage } = require('../../lib/invoiceMessage');
 
 // Per schema (SCHEMA.md lines 260-282): invoices.state CHECK constraint values.
 const ALLOWED_STATES = ['unpaid', 'advance_paid', 'paid', 'cancelled'];
@@ -61,11 +66,13 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
   let listQuery = supabase.from('invoices')
     .select('id, invoice_number, client_name, amount_total, amount_paid, state, due_date, created_at')
-    .eq('vendor_id', vendor.id);
+    .eq('vendor_id', vendor.id)
+    .is('deleted_at', null);
 
   let countQuery = supabase.from('invoices')
     .select('*', { count: 'exact', head: true })
-    .eq('vendor_id', vendor.id);
+    .eq('vendor_id', vendor.id)
+    .is('deleted_at', null);
 
   if (stateFilter) {
     listQuery  = listQuery.in('state', stateFilter);
@@ -79,7 +86,8 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
   const summaryQuery = supabase.from('invoices')
     .select('amount_total, amount_paid, state')
-    .eq('vendor_id', vendor.id);
+    .eq('vendor_id', vendor.id)
+    .is('deleted_at', null);
 
   const [
     { data: rows,         error: listErr },
@@ -128,34 +136,139 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
 // PATCH /:invoiceId/cancel
 // Direct cancel from list UI — no chat involved.
-router.patch('/:invoiceId/cancel', requireAuth, async (req, res) => {
-  const supabase   = req.app.locals.supabase;
-  const { user_id } = req.auth;
-  const { invoiceId } = req.params;
+// ─── PATCH /api/v2/vendor/invoices/:invoiceId/cancel ──────────────────
+//
+// Cancel invoice. Preserved for dreamai list page CRUD.
+// Auth: requireAuth. resolveVendor mode C via invoices table.
 
-  // Resolve vendor
-  const { data: userRow } = await supabase.from('users').select('id').eq('id', user_id).maybeSingle();
-  if (!userRow) return res.status(403).json({ ok: false, error: 'User not found.' });
-  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
-  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+router.patch('/:invoiceId/cancel', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
+  const supabase   = req.app.locals.supabase;
+  const vendor     = req.vendor;
+  const invoiceId  = req.params.invoiceId;
 
   const { data: inv, error: fetchErr } = await supabase
     .from('invoices').select('id, invoice_number, client_name, state')
-    .eq('id', invoiceId).eq('vendor_id', vendorRow.id).single();
+    .eq('id', invoiceId).eq('vendor_id', vendor.id).is('deleted_at', null).single();
 
-  if (fetchErr?.code === 'PGRST116' || !inv) return res.status(404).json({ ok: false, error: 'Invoice not found.' });
-  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
-  if (inv.state === 'cancelled') return res.json({ ok: true, already_cancelled: true, message: `${inv.invoice_number} was already cancelled.` });
-  if (inv.state === 'paid') return res.status(400).json({ ok: false, error: 'Cannot cancel a fully paid invoice.' });
+  if (fetchErr?.code === 'PGRST116' || !inv) return errRes(res, 404, 'Invoice not found.');
+  if (fetchErr) return errRes(res, 500, fetchErr.message);
+  if (inv.state === 'cancelled') return okRes(res, { already_cancelled: true });
+  if (inv.state === 'paid') return errRes(res, 400, 'Cannot cancel a fully paid invoice.');
 
   const { error: cancelErr } = await supabase
     .from('invoices').update({ state: 'cancelled' })
-    .eq('id', invoiceId).eq('vendor_id', vendorRow.id);
+    .eq('id', invoiceId).eq('vendor_id', vendor.id);
 
-  if (cancelErr) return res.status(500).json({ ok: false, error: cancelErr.message });
+  if (cancelErr) return errRes(res, 500, cancelErr.message);
+  console.log('[invoices:cancel] ' + inv.invoice_number + ' cancelled by vendor ' + vendor.id);
+  return okRes(res, { invoice: { id: invoiceId, state: 'cancelled' } });
+}));
 
-  console.log(`[invoices:cancel] ${inv.invoice_number} cancelled by vendor ${vendorRow.id}`);
-  return res.json({ ok: true, message: `${inv.client_name}'s invoice ${inv.invoice_number} cancelled.` });
-});
+// ─── POST /api/v2/vendor/invoices ──────────────────────────────────────
+//
+// Create invoice. Auto-assigns invoice_number. Counter never resets.
+// Auth: requireAuth. resolveVendor mode A.
+
+router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const body     = req.body || {};
+
+  const result = await createInvoice(supabase, vendor.id, {
+    client_name:    body.client_name    || null,
+    client_phone:   body.client_phone   || null,
+    client_id:      body.client_id      || null,
+    lead_id:        body.lead_id        || null,
+    description:    body.description    || null,
+    amount_total:   body.amount_total   || null,
+    amount_advance: body.amount_advance != null ? body.amount_advance : null,
+    due_date:       body.due_date       || null,
+    notes:          body.notes          || null,
+  });
+
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { invoice: result.invoice, pdf_pending: true });
+}));
+
+// ─── PATCH /api/v2/vendor/invoices/:invoiceId ─────────────────────────
+//
+// Update invoice fields. Locked after any payment (amount_paid > 0).
+// Auth: requireAuth. resolveVendor mode C via invoices table.
+
+router.patch('/:invoiceId', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const vendor    = req.vendor;
+  const invoiceId = req.params.invoiceId;
+  const body      = req.body || {};
+
+  const result = await updateInvoice(supabase, vendor.id, invoiceId, body);
+  if (!result.ok && result.code) return errRes(res, 409, result.error, result.code);
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { invoice: result.invoice });
+}));
+
+// ─── POST /api/v2/vendor/invoices/:invoiceId/payments ─────────────────
+//
+// Record a payment. Calls the record_payment Postgres function.
+// Auth: requireAuth. resolveVendor mode C via invoices table.
+
+router.post('/:invoiceId/payments', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const vendor    = req.vendor;
+  const invoiceId = req.params.invoiceId;
+  const body      = req.body || {};
+
+  const amount = Number(body.amount);
+  if (!amount || amount <= 0) return errRes(res, 400, 'amount must be greater than zero.');
+
+  const { data: result, error: fnErr } = await supabase
+    .rpc('record_payment', { p_invoice_id: invoiceId, p_amount: amount });
+
+  if (fnErr) return errRes(res, 500, fnErr.message);
+  if (!result.ok) return errRes(res, 409, result.error);
+
+  // Fetch updated invoice row
+  const { data: inv } = await supabase
+    .from('invoices')
+    .select('id, invoice_number, client_name, amount_total, amount_paid, state, due_date')
+    .eq('id', invoiceId).single();
+
+  // Audit note (non-fatal)
+  if (body.note) {
+    const noteContent = 'Payment of Rs ' + amount + ' recorded on ' + (inv ? inv.invoice_number : invoiceId) + '. Note: ' + body.note;
+    await supabase.from('notes').insert({
+      vendor_id: vendor.id,
+      content:   noteContent,
+      tags:      ['payment', 'invoice'],
+    });
+  }
+
+  console.log('[invoices:payment] Rs ' + amount + ' on ' + invoiceId + ' -> ' + result.state);
+  return okRes(res, {
+    invoice:          inv || null,
+    payment_recorded: amount,
+    new_state:        result.state,
+  });
+}));
+
+// ─── GET /api/v2/vendor/invoices/:invoiceId/pdf ────────────────────────
+//
+// Returns the signed Supabase storage URL for the invoice PDF.
+// Auth: requireAuth. resolveVendor mode C via invoices table.
+
+router.get('/:invoiceId/pdf', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const invoiceId = req.params.invoiceId;
+
+  const { data: inv } = await supabase
+    .from('invoices').select('id, pdf_url, invoice_number')
+    .eq('id', invoiceId).maybeSingle();
+
+  if (!inv || !inv.pdf_url) {
+    return errRes(res, 404, 'PDF not generated yet. Try again in a moment.', 'PDF_PENDING');
+  }
+
+  return okRes(res, { pdf_url: inv.pdf_url, expires_in: 3600 });
+}));
 
 module.exports = router;
