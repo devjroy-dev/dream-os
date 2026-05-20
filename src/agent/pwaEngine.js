@@ -1009,6 +1009,28 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
       }));
     }
 
+    // ── cancel_invoice ──────────────────────────────────────────────────
+    // Cancel = delete from the vendor's perspective. Never hard-deletes.
+    case 'cancel_invoice': {
+      const { data: inv, error: fetchErr } = await supabase
+        .from('invoices').select('id, invoice_number, client_name, state')
+        .eq('id', input.invoice_id).eq('vendor_id', vendor.id).single();
+
+      if (fetchErr?.code === 'PGRST116') return err('Invoice not found.');
+      if (fetchErr || !inv) return err('Could not find that invoice.');
+      if (inv.state === 'cancelled') return err(`${inv.invoice_number} is already cancelled.`);
+      if (inv.state === 'paid') return err(`${inv.invoice_number} is fully paid — cannot cancel a paid invoice.`);
+
+      const { error: cancelErr } = await supabase
+        .from('invoices').update({ state: 'cancelled' })
+        .eq('id', inv.id).eq('vendor_id', vendor.id);
+
+      if (cancelErr) return err(`Could not cancel invoice: ${cancelErr.message}`);
+
+      console.log(`[pwa-tool:cancel_invoice] ${inv.invoice_number} cancelled`);
+      return write(`Done. ${inv.client_name}'s invoice ${inv.invoice_number} cancelled.`);
+    }
+
     // ── clarify ─────────────────────────────────────────────────────────
     // PWA-only. Returns structured clarification payload so the frontend
     // can render options as tappable chips rather than text.

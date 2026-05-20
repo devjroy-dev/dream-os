@@ -365,6 +365,19 @@ const PWA_TOOLS = [
   },
 
   {
+    name: 'cancel_invoice',
+    description: "Cancel an invoice. Use when vendor says cancel, delete, remove, or void an invoice. Cancelled = deleted from the vendor's perspective. Always call list_invoices first if you need the invoice_id. Never hard-delete — cancelled state is the equivalent of deletion.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        invoice_id: { type: 'string', description: 'UUID of the invoice to cancel. Required.' },
+        reason:     { type: 'string', description: 'Optional one-line reason. e.g. "Client cancelled booking"' },
+      },
+      required: ['invoice_id'],
+    },
+  },
+
+  {
     name: 'clarify',
     description: 'Ask the vendor a clarifying question when their request is genuinely ambiguous between two equally likely options. Use sparingly — only when acting on the wrong interpretation would cause real harm (e.g. wrong invoice, wrong client). Do NOT use for minor uncertainties you can resolve from context.',
     input_schema: {
