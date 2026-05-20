@@ -515,8 +515,14 @@ P2-2: dreamos-pwa URL swap + Vercel deploy. Shell live. Coming Soon on post-laun
 P2-3: Landing page infrastructure + full auth block. DB foundations, invite/waitlist/auth endpoints, admin mint. [DONE 2026-05-18]
 P2-4: JWT issuance. Block 1 auth complete. Phone-tested. [DONE 2026-05-18]
 P2-5: Landing page build + auth wiring + CORS + country picker + waitlist. [DONE 2026-05-19]
-P2-6a: Backend only. Build all vendor core endpoints per API_CONTRACTS.md. Smoke test each with curl. dream-os only.
-P2-6b: Frontend only. dreamos-pwa only. No backend changes.
+P2-6a: Backend only. Build all vendor core endpoints per API_CONTRACTS.md. Smoke test each with curl. dream-os only. [DONE 2026-05-19]
+P2-6b-alpha: On founder's order, dreamos-pwa P2-6b deferred. dreamai (devjroy-dev/dreamai) adopted as vendor PWA alpha.
+        Re-skinned with dark glass design system. Wired to dream-os backend. Phone+OTP auth.
+        Briefing-as-message pattern. Compact snapshot dropdown. Studio (list) slices.
+        ai_primer edit context. Same agent as WhatsApp — no engine changes.
+        dream-os: CORS + ai_primer in chat.js only. engine.js/systemPrompt.js/tools.js untouched.
+        Pending: JWT auto-refresh, vendor name, 529 retry, session history fix, list tool IDs. [DONE 2026-05-20]
+P2-6b: Frontend only. dreamos-pwa only. No backend changes. DEFERRED — after P2-6b-alpha fully verified.
         Build lib/api/_base.ts, lib/api/vendor.ts, lib/types/common.ts, lib/types/vendor.ts.
         Rip all legacy tdw-2 fetches from vendor screens. Wire each screen to typed client.
         Delete all dropped endpoint calls (see API_CONTRACTS.md dropped table).

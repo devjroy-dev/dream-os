@@ -1,218 +1,179 @@
 # dream-os — Master Handover (The Bridge Document)
-**Written:** 2026-05-19 (P2-6a session)
-**Session:** P2-6a complete. 11 vendor core endpoints built + verified. 4 engine/infra bug fixes shipped. Railway upgraded to Pro with static outbound IPs on both services.
-**Version:** 0.10.0-alpha (no bump — P2-6b frontend wiring needed before 0.11.0-alpha)
-**HEAD (dream-os):** 2940a70 + 2 post-session commits (PDF amount_advance fixes)
-**HEAD (dreamos-pwa):** 31a3b11 (unchanged this session)
+**Written:** 2026-05-20 (P2-6b-alpha session close)
+**Session:** P2-6b-alpha — On founder's order, dreamos-pwa P2-6b was deferred. dreamai (devjroy-dev/dreamai) adopted as the vendor PWA alpha, wired to dream-os backend.
+**Version:** 0.10.0-alpha (no bump — P2-6b-alpha complete, weather testing in progress)
+**HEAD (dream-os):** 3b975df
+**HEAD (dreamai):** 166a308
+**HEAD (dreamos-pwa):** 31a3b11 (unchanged)
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 **Repo backend:** https://github.com/devjroy-dev/dream-os
-**Repo frontend:** https://github.com/devjroy-dev/dreamos-pwa
-**Vercel:** https://dreamos-pwa.vercel.app (live)
+**Repo vendor PWA alpha:** https://github.com/devjroy-dev/dreamai
+**Repo PWA shell:** https://github.com/devjroy-dev/dreamos-pwa
+**Vercel (dreamai):** https://thedreamai.in
 
-Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then API_CONTRACTS.md. Then FINDINGS_LOG.md.
+Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then API_CONTRACTS.md.
 
 ---
 
-## Phase 1 - complete (0.10.0-alpha)
-## P2-1 through P2-5 - complete (2026-05-18/19)
+## Phase 1 — complete (0.10.0-alpha)
+## P2-1 through P2-6a — complete
 
 All history in previous HANDOVER_FINAL.md commits. See git log.
 
 ---
 
-## P2-6a - 2026-05-19 (this session)
+## P2-6b-alpha — 2026-05-20 (this session)
 
-Backend only. 11 vendor core endpoints per API_CONTRACTS.md + 4 authorized bug fixes + infrastructure hardening. dream-os repo only. dreamos-pwa not touched.
+### What P2-6b-alpha is
 
-### New files
+On founder's order, the session sequence was changed after P2-6a. dreamos-pwa (P2-6b proper) was deferred. dreamai — the existing vendor chat PWA at devjroy-dev/dreamai — was adopted as the vendor PWA alpha surface, wired directly to dream-os backend. This session re-skinned it with the dark glass design system and built all the AI chat wiring.
 
-- src/api/middleware/resolveVendor.js — ownership middleware, 3 modes: JWT-only, param match, child-row via pattern
-- src/api/vendor/core.js — vendor sub-router mounted at /api/v2/vendor in src/api/router.js
-- src/api/vendor/me.js
-- src/api/vendor/today.js
-- src/api/vendor/leads.js
-- src/api/vendor/clients.js
-- src/api/vendor/invoices.js — includes both list endpoint AND new /pdfs sub-endpoint (Bug B)
-- src/api/vendor/expenses.js
-- src/api/vendor/events.js
-- src/api/vendor/context.js
-- src/api/vendor/chat.js
+dreamai is a Next.js 14 / React 18 / Tailwind v4 / TypeScript app. It is NOT dreamos-pwa. Separate repo, separate Vercel deployment, separate domain (thedreamai.in). It was already live with the old dream-wedding backend. This session re-skinned it and wired it to dream-os.
 
-### Modified files
-
-- src/api/router.js — mounts /vendor sub-router
-- src/index.js — app.locals.anthropic; Anthropic client timeout:12000 + maxRetries:0; two-message WhatsApp delivery when attachments present
-- src/agent/engine.js — channel param; attachments[] collector; record_payment reply text rewritten; sendWhatsApp channel guard; PDF amount_advance fix
-- package.json — @anthropic-ai/sdk ^0.30.1 → ^0.97.0
-- docs/API_CONTRACTS.md — new /vendor/invoices/:vendorId/pdfs endpoint added
-
-### Endpoints built and verified (11 + 1 bonus)
-
-| # | Endpoint | Notes |
-|---|---|---|
-| 1 | GET /api/v2/vendor/me | Profile. P2-9 stub fields null/false. |
-| 2 | GET /api/v2/vendor/today/:vendorId | 7 parallel queries. Money snapshot, overdue, new leads, events. IST. |
-| 3 | GET /api/v2/vendor/leads/:vendorId | State filter (default: active pipeline). Pagination. |
-| 4 | PATCH /api/v2/vendor/leads/:leadId/state | State change with optional reason. Reason persists to notes table. |
-| 5 | GET /api/v2/vendor/clients/:vendorId | Roster. |
-| 6 | GET /api/v2/vendor/clients/:vendorId/:clientId | Detail with linked leads + invoices. Cross-tenant returns 404. |
-| 7 | GET /api/v2/vendor/invoices/:vendorId | List + summary. amount_owed computed server-side. |
-| 7b | GET /api/v2/vendor/invoices/:vendorId/pdfs | All invoices with generated PDFs. Sorted newest first. No pagination. |
-| 8 | GET /api/v2/vendor/expenses/:vendorId | List + total_spent aggregate. |
-| 9 | GET /api/v2/vendor/events/:vendorId | from/to/state/kind filters. Default today+60d. Hard cap 200. |
-| 10 | GET /api/v2/vendor/context/:vendorId | Mirrors engine.js baked snapshot exactly. |
-| 11 | POST /api/v2/vendor/chat | Runs same agent as WhatsApp. channel:'web' suppresses cross-surface notifications. |
-
-### Bug fixes shipped (all founder-authorized)
-
-**Fix A — Cross-surface WhatsApp notification leak:**
-PWA-triggered tool actions were firing WhatsApp notifications (e.g. record_payment holding-pattern message). Fixed by adding `channel` parameter to `runAgenticTurn` and `executeTool`. Default `'whatsapp'` preserves existing behavior. Chat endpoint passes `channel:'web'`. The sendWhatsApp call inside record_payment is guarded by `channel === 'whatsapp'`.
-
-**Fix B — PDF delivered as Twilio attachment not URL:**
-record_payment was embedding the Supabase signed URL in the WhatsApp message body. Vendor had to tap, browser, download, re-attach, forward (~7 steps). Fixed by adding `attachments[]` collector to `runAgenticTurn`. record_payment pushes PDF URL into attachments instead of reply text. src/index.js passes attachments as Twilio mediaUrls.
-
-**Fix C — PDF and status text as separate WhatsApp messages:**
-With Fix B, the PDF and status text still traveled together — when vendor forwarded the PDF, the internal status text ("Rs X recorded against Y, balance Z") showed as caption to the client. Fixed by splitting into two consecutive WhatsApp messages: (1) PDF-only with empty body, (2) status text only. PDF is now cleanly forwardable. Status text stays in vendor's chat.
-
-**Fix D — PDF booking amount received line missing or wrong:**
-`invoicePdf.js` only renders the "Booking amount received" line when `invoice.amount_advance` is non-null. `record_payment` only updates `amount_paid`, never `amount_advance`. Result: (1) invoices created without explicit advance → line missing, (2) invoices with stale amount_advance set at creation → wrong amount shown. Fixed by always passing `newAmountPaid` as `amount_advance` to `generateInvoicePdf`. newAmountPaid is the cumulative total paid as of the current turn — always accurate.
-
-### Infrastructure changes
-
-- Railway upgraded from Hobby to Pro
-- Static Outbound IP enabled on both dream-os and dream-wedding Railway services
-- Root cause of P2-6a 529 errors: Railway's shared Amsterdam egress IPs were soft-throttled at Anthropic's API gateway (noisy-neighbor effect from other Railway tenants). Static IP gives each service a dedicated IP. Confirmed resolved — no 529s after static IP was enabled.
-- Anthropic SDK upgraded: 0.30.1 → 0.97.0
-- Anthropic client: timeout:12000 (prevents 10-min connection pool bomb under 529 load), maxRetries:0 (we own retry loop, not SDK)
-
-### P2-6a commits (dream-os)
-
-- 457c5b5 feat(p2-6a): GET /api/v2/vendor/me + resolveVendor middleware
-- 67fa088 feat(p2-6a): GET /api/v2/vendor/today/:vendorId
-- 2a6a27a feat(p2-6a): GET /vendor/leads + PATCH /vendor/leads/:leadId/state
-- bd3cc8f feat(p2-6a): GET /vendor/clients + GET /vendor/clients/:clientId
-- 3c2ae91 feat(p2-6a): GET /vendor/invoices/:vendorId
-- 37a2d5d feat(p2-6a): GET /vendor/expenses/:vendorId
-- 18ff044 feat(p2-6a): GET /vendor/events/:vendorId
-- b1d32bc feat(p2-6a): GET /vendor/context/:vendorId
-- c65c3e9 feat(p2-6a): POST /vendor/chat
-- 56dda92 fix(p2-6a): suppress WhatsApp notifications when PWA initiates tool action
-- 04b4b17 fix(p2-6a): deliver PDF as Twilio attachment instead of signed URL in message body
-- fa5a8df fix(p2-6a): send PDF and status as separate WhatsApp messages
-- 2940a70 fix(p2-6a): Anthropic client timeout+maxRetries, SDK upgrade 0.30.1→0.97.0
-- (+ 2 PDF amount_advance fix commits post-session-close)
-
-### Key design decisions locked this session
-
-- **Typed client pattern locked:** P2-6b must build lib/api/_base.ts, lib/api/vendor.ts, lib/types/common.ts, lib/types/vendor.ts. No raw fetch() in screen components. Every contract endpoint = one exported function. Every response shape = one TypeScript interface.
-- **Rip and rebuild locked:** P2-6b is not tactical editing. Legacy tdw-2 fetches are deleted, not renamed.
-- **messages.media_url column now in active use:** PDF delivery stores the Supabase signed URL in messages.media_url on the PDF-only row. Previously documented as "future" in SCHEMA.md.
-- **PDF booking amount:** always uses newAmountPaid at generation time, not inv.amount_advance. This is the correct source of truth.
-- **channel parameter:** engine.js runAgenticTurn and executeTool both accept channel (default 'whatsapp'). All future WhatsApp-side-effect tools must be guarded by `channel === 'whatsapp'`.
+dreamos-pwa remains the long-term vendor + bride PWA shell. dreamai is the vendor-only alpha.
 
 ---
 
-## What is next — P2-6b
+### dream-os changes this session
 
-Frontend only. dreamos-pwa only. No backend changes.
+**Current HEAD: 3b975df — "revert: restore d373c5c state"**
 
-Build:
-1. lib/api/_base.ts — JWT attach, base URL, error handling
-2. lib/api/vendor.ts — one function per vendor endpoint
-3. lib/types/common.ts — shared types
-4. lib/types/vendor.ts — all vendor response shapes
+Net state of dream-os vs P2-6a (716f545):
 
-Then rip all legacy tdw-2 fetches from vendor screens and wire each to the typed client. Delete dropped endpoint calls per API_CONTRACTS.md dropped table.
+**src/index.js** — CORS additions only:
+- Added `https://thedreamai.in`, `https://www.thedreamai.in`
+- Added GitHub Codespaces regex
+- Added dreamai Vercel previews regex
+- Nothing else touched in index.js
 
-Screens to wire:
-- /vendor/today — today endpoint
-- /vendor/money — invoices + expenses endpoints
-- /vendor/leads — leads list + state PATCH
-- /vendor/clients — clients list + detail
-- /vendor/calendar — events endpoint
-- /vendor/chat — chat endpoint (streaming)
-- /vendor/profile — me endpoint
-- "My Booking Confirmations" surface — new, consumes /invoices/:vendorId/pdfs (Bug B endpoint). P2-6b frontend should design this surface. Noted in handover per founder direction.
+**src/api/vendor/chat.js** — AT d373c5c STATE:
+- Accepts `body.ai_primer` — persists as outbound assistant message before vendor's reply so engine reads full edit context from DB history
+- Passes `channel: 'web'` to runAgenticTurn (suppresses cross-surface WhatsApp sends)
+- This is the only backend change that touches the agent path
 
----
+**src/agent/engine.js** — REVERTED TO d373c5c:
+- Original engine, unchanged from P2-6a
+- No web fast path, no WEB_SURFACE_ADDENDUM, no finalContact
+- Full classifier → Haiku/Sonnet routing on all channels including web
+- Same agent behaviour on PWA as WhatsApp
 
-## Access model — LOCKED
+**src/agent/systemPrompt.js** — REVERTED TO d373c5c:
+- Original system prompt, unchanged from P2-6a
+- No WEB_SURFACE_ADDENDUM exported or used
 
-Two and only two ways into the PWA:
-1. Invite code (admin-minted, single-use)
-2. WhatsApp onboarding (wa.me link) → Sign in path
+**src/agent/tools.js** — REVERTED TO d373c5c:
+- Original tools, unchanged from P2-6a
+- No contact field in respond_to_vendor
 
-Single front door: thedreamwedding.in for vendors AND dreamers.
+**dream-os commits this session:**
+- c98b1ea fix(cors): add Codespaces + thedreamai.in to CORS allowlist
+- d373c5c feat(chat): persist ai_primer as assistant context before vendor reply
+- 5bbed6a feat: web surface voice [SUPERSEDED — reverted]
+- b37585a feat: web fast path, CORS, ai_primer, voice [SUPERSEDED — reverted]
+- a48e24d feat: WhatsApp+Call buttons via contact field [SUPERSEDED — reverted]
+- 2abff3a feat: WhatsApp+Call buttons on drafted messages [writer file only]
+- f6ac896 fix: one-turn draft [SUPERSEDED — reverted]
+- 9c4f220 revert: restore original WhatsApp agent engine and system prompt [partial revert]
+- 3b975df revert: restore d373c5c state [CURRENT HEAD — full clean revert]
 
----
-
-## Product architecture — LOCKED
-
-Four surfaces. One backend. Always.
-
-  WhatsApp vendor  (+917982159047)  →  dream-os  src/index.js
-  WhatsApp bride   (+14787788550)   →  dream-os  src/brideIndex.js
-  Vendor PWA       thedreamwedding  →  dream-os  /api/v2/vendor/* (P2-6b wiring next)
-  Bride PWA        thedreamwedding  →  dream-os  /api/v2/couple/* (P2-7+)
-  Frost native     iOS/Android      →  dream-os  new API endpoints (post-launch)
-
----
-
-## Surface philosophy — LOCKED
-
-WhatsApp = PA surface. Proactive. Brief. Voice-first. Max 2-3 sentences.
-PWA = Planner surface. Visual. Rich. Data-forward.
-
-The vendor PWA chat tab runs the SAME agent as WhatsApp (same engine.js, same 21 tools).
-Vendor can create leads, invoices, events, expenses, log payments — everything — via PWA chat.
-List/card views in the PWA are for reviewing what the agent created.
-The only things exclusive to WhatsApp: morning briefing (proactive push), couple routing (bride messages vendor's number), day-before reminders (cron push).
+**What this means:** dream-os at HEAD is exactly P2-6a plus CORS and ai_primer in chat.js. The original WhatsApp agent is intact and untouched.
 
 ---
 
-## dreamos-pwa — current state (post P2-5, unchanged in P2-6a)
+### dreamai changes this session (devjroy-dev/dreamai)
 
-GitHub: https://github.com/devjroy-dev/dreamos-pwa
-Vercel: https://dreamos-pwa.vercel.app (live)
-HEAD: 31a3b11
-Stack: Next.js 16, React 19, Tailwind v4, TypeScript
+**Current HEAD: 166a308**
 
-Landing page: fully functional. Auth flow: working end-to-end.
-Vendor home: /vendor/today shell loads. All data endpoints 404 — P2-6b not built yet.
-Bride home: /couple/today shell loads. All data endpoints 404 — P2-7b not built yet.
+Complete re-skin and re-wire of the existing dreamai Next.js app.
+
+**Design system — dark glass:**
+- Background: `linear-gradient(160deg, #0E0D0B 0%, #111111 45%, #0D0E0B 100%)`
+- All panels: `backdrop-filter: blur()` + `rgba(255,255,255,0.03-0.08)` fills
+- Typography: Cormorant Garamond 300 (display), DM Sans 300/400 (body), Jost 200/300 (labels)
+- Gold: `#C9A84C`
+
+**Screens:** Login (phone+OTP), Chat (/wedding), Calendar, Studio hub (/wedding/list), Studio drilldowns (/wedding/list/[slice])
+
+**Key components:**
+- `Header` — glass, profile circle (gold ring + initials), compact snapshot chevron dropdown (counts only — overdue, pending invoices, new enquiries, upcoming shoots). Gold dot when urgent. Closes on outside tap.
+- `BottomNav` — Calendar / Chat (centred) / Studio
+- `MessageBubble` — user: gold bubble. AI: `#1C1C1C` glass + Cormorant 17px.
+- `SuggestionChips` — context-driven from real backend data
+- `InputBar`, `ChatThread`, `ActionCard`
+
+**Data layer:**
+- `lib/api/_base.ts` — JWT attach, base URL defaults to `dream-os-production.up.railway.app`
+- `lib/api/vendor.ts` — one function per endpoint. `sendChat` accepts optional `ai_primer`
+- `lib/types/vendor.ts` — all response shapes
+
+**hooks/useChat.ts:**
+- Briefing fires as first AI message only when urgent (overdue invoices, new leads, today events). Empty thread if all clear.
+- Briefing respects injected messages — `setMessages(prev => prev.length === 0 ? [briefing] : prev)`. If aiPrimer already injected before context loads, briefing stays silent.
+- `pendingPrimerRef` — ai_primer sent with first backend call after inject, then cleared
+
+**Auth:** Phone → WhatsApp OTP → JWT stored in localStorage. PIN flow deferred.
+
+**Known issues / pending:**
+1. **JWT expiry** — Supabase magic link JWTs expire in ~1 hour. `_base.ts` has no token refresh logic. Vendor must re-login when session expires. Fix needed: add `tryRefresh` to `_base.ts` using stored `refresh_token`. This is the top priority for next session.
+2. **Vendor name** — `session.name` is null post-OTP-login. Header shows "Vendor". Need `GET /api/v2/vendor/me` call after login to enrich session.
+3. **Delete tools** — `delete_event`, `delete_invoice`, `delete_lead`, `delete_client`, `delete_expense` not in tools.js. Studio delete button flow works (passes UUID directly). Chat delete flow fails — agent can't execute.
+4. **list_events/list_leads/list_clients/list_invoices** — don't return IDs in their string output. Agent can't delete/update by name via chat — asks for phone number or UUID. Fix: add `(id: ${e.id})` to each list tool return string in engine.js.
+5. **Anthropic 529 overload** — PWA chat has no retry on 529. WhatsApp webhook retries. When Anthropic is overloaded, PWA shows "Something went wrong" while WhatsApp recovers. Fix: add retry loop to chat.js for 529 errors.
+6. **Session history pollution** — `vendor_self` conversation accumulates all messages forever. Agent reads last 10 from DB — could be from yesterday's session, polluting current context. WhatsApp unaffected (each WA conversation is scoped). Fix: on `channel === 'web'`, use frontend session history instead of DB history.
+
+**dreamai commits this session:**
+- 51d4607 feat: dark glass UI, phone+OTP auth, wired to dream-os
+- be326a7 feat(chat): send ai_primer to backend for targeted edit responses
+- edd7957 fix: useVendorData cast for Vercel build
+- a129f83 feat: briefing-as-message, no snapshot panel, fast
+- 5ec027e feat: WhatsApp+Call buttons, contact field [partially superseded]
+- e3a17bd fix: briefing does not overwrite injected aiPrimer message
+- 55da0ae fix: remove loading text below search bar on Studio slices
+- 166a308 feat: compact snapshot dropdown in header
 
 ---
 
-## Migration status (as of P2-6a)
+### Key decisions locked this session
 
-No new migrations this session. Last applied: 0033. Next migration when needed: 0034.
-messages.media_url column is in active use as of P2-6a (PDF delivery). Was "future" in schema — now live.
+- **dreamai is the vendor PWA alpha.** devjroy-dev/dreamai → thedreamai.in. Separate from dreamos-pwa.
+- **Same agent as WhatsApp.** No web-specific engine changes. dream-os engine.js and systemPrompt.js are identical to P2-6a. The PWA gets the same intelligence, same voice, same Haiku/Sonnet routing as WhatsApp.
+- **ai_primer pattern locked.** Edit flows pass context to backend as assistant message before vendor reply — agent has full edit context, gives targeted response.
+- **Briefing-as-message pattern locked.** No snapshot panel. Context fires as first AI message when urgent. Empty thread if all clear.
+- **Compact snapshot dropdown.** Counts only (overdue invoices, pending invoices, new enquiries, upcoming shoots). Gold dot when urgent. Lives in the header next to vendor name. Same glass pattern as profile dropdown.
+- **Studio = List.** Renamed everywhere. Route stays `/wedding/list`.
+- **Auth: phone + OTP only.** PIN login deferred. Returning user PIN flow in later session.
+- **WhatsApp unchanged.** All backend changes either additive (CORS) or channel-gated (ai_primer, channel:'web'). Zero impact on WhatsApp agent behaviour, voice, or routing.
+
+---
+
+### What is next (priority order)
+
+**Immediate — next session:**
+1. JWT auto-refresh in `_base.ts` — add `tryRefresh` using stored refresh_token. Vendor should never need to re-login manually.
+2. Vendor name enrichment — call `/api/v2/vendor/me` after login, store name in session. Header shows "Vendor" currently.
+3. 529 retry in `chat.js` — retry up to 2x on overloaded_error before returning failure.
+4. Session history fix — on `channel === 'web'`, pass frontend history array to engine instead of reading from DB.
+5. List tools with IDs — add `(id: ${e.id})` to list_events, list_leads, list_clients, list_invoices return strings in engine.js.
+
+**After fixes verified:**
+- P2-6b proper (dreamos-pwa vendor screens)
+- P2-7a bride/couple core endpoints
+- P2-7b bride PWA screens
+
+---
+
+### Migration status (no changes this session)
+
+Last applied: 0033. No new migrations in P2-6b-alpha.
 
 | # | File | Status | What it adds |
 |---|---|---|---|
-| 0001–0025 | applied | ✅ | Full history in SCHEMA.md |
-| 0026 | invoices_last_payment_at.sql | ⏳ P2-9 | invoices.last_payment_at |
-| 0027 | discover.sql | ⏳ Phase 3 | couple_vendor_connections, discover_readiness |
-| 0028 | pin_auth.sql | ✅ Applied 2026-05-18 | PIN columns + lockout + XOR triggers |
-| 0029 | discover_preview.sql | ⏳ P2-9 | vendors.discover_preview boolean |
-| 0030 | landing_assets.sql | ✅ Applied 2026-05-19 | landing_slides + exploring_photos + seed |
-| 0031 | invite_codes.sql | ✅ Applied 2026-05-18 | invite_codes + consume function |
-| 0032 | waitlist_signups.sql | ✅ Applied 2026-05-18 | waitlist_signups table |
-| 0033 | otp_sessions.sql | ✅ Applied 2026-05-18 | otp_sessions table |
+| 0001–0033 | applied | ✅ | Full history in SCHEMA.md |
+| 0034 | next when needed | ⏳ | TBD |
 
 ---
 
-## PWA login sequence — LOCKED
-
-New user (invite code): invite code → phone → WhatsApp OTP → set 4-digit PIN → enter app
-New user (via WhatsApp): sign in → phone → WhatsApp OTP → set 4-digit PIN → enter app
-Returning user: phone → PIN → enter app (no OTP)
-PIN: bcrypt hash in vendors.pin_hash / couples.pin_hash. NULL = not set.
-Session: Supabase Auth JWT.
-
----
-
-## Test credentials
+### Test credentials
 
 | Item | Value |
 |---|---|
@@ -221,51 +182,52 @@ Session: Supabase Auth JWT.
 | Test vendor phone (Dev) | +918757788550 |
 | Test vendor UUID | 2eb5d3fb-31eb-4b26-859a-cf10ae477d53 |
 | Test vendor handle | DEV550 |
-| Test vendor PIN | 1234 |
 | Second test vendor (Swati) | SWATI978 / UUID e036ea4d-3f9a-4ec5-ba89-a5defa3a042b |
 | Test bride phone (Swati) | +919888294440 |
 | Test bride couple_id | 7abccc1b-0698-43ba-9709-c6a1e52af789 |
-| Test bride PIN (Swati) | 1234 |
 | Test bride phone (Meha) | +919625759924 |
 | Malaysian test bride | +60122687535 / couple_id 285ccb5a-01f0-4873-829c-aac66377c890 |
 | Supabase | nvzkbagqxbysoeszxent (Mumbai, ap-south-1) |
 | Railway vendor | https://dream-os-production.up.railway.app |
 | Railway bride | https://dream-wedding-production-6cef.up.railway.app |
 | Admin | https://dream-os-production.up.railway.app/admin |
-| Vercel PWA | https://dreamos-pwa.vercel.app |
+| Vercel dreamai | https://thedreamai.in |
+| Vercel dreamos-pwa | https://dreamos-pwa.vercel.app |
 | Cloudinary | dccso5ljv |
 | Anthropic workspace | dream-os (Tier 2) |
 
-Note: Several test invoices (TDW/DEV550/02, 03, 06) have inflated amount_paid values from repeated test payments during the P2-6a 529 storm. These are testing artifacts — safe to ignore or reset via Supabase SQL Editor if clean test data is needed.
-
 ---
 
-## Env vars
+### Env vars
 
 Railway (dream-os):
-  TWILIO_WHATSAPP_NUMBER       whatsapp:+917982159047
-  TWILIO_ACCOUNT_SID           (in Railway)
-  TWILIO_AUTH_TOKEN            (in Railway)
-  TDW_WA_NUMBER                917982159047
-  BRIDE_WA_NUMBER              14787788550
-  ANTHROPIC_API_KEY            workspace: dream-os
-  GOOGLE_API_KEY               Google AI Studio
-  ADMIN_PASSWORD               (in password manager only)
-  SUPABASE_URL                 nvzkbagqxbysoeszxent
-  SUPABASE_SERVICE_ROLE_KEY    service_role, never expose
+```
+TWILIO_WHATSAPP_NUMBER       whatsapp:+917982159047
+TWILIO_ACCOUNT_SID           (in Railway)
+TWILIO_AUTH_TOKEN            (in Railway)
+TDW_WA_NUMBER                917982159047
+BRIDE_WA_NUMBER              14787788550
+ANTHROPIC_API_KEY            workspace: dream-os
+GOOGLE_API_KEY               Google AI Studio
+ADMIN_PASSWORD               (in Railway)
+SUPABASE_URL                 nvzkbagqxbysoeszxent
+SUPABASE_SERVICE_ROLE_KEY    service_role, never expose
+```
 
-Vercel (dreamos-pwa):
-  NEXT_PUBLIC_API_BASE         https://dream-os-production.up.railway.app
+Vercel (dreamai — thedreamai.in):
+```
+NEXT_PUBLIC_API_BASE = https://dream-os-production.up.railway.app
+NEXT_PUBLIC_USE_MOCKS = false
+```
 
 ---
 
-## Document discipline
+### Document discipline
 
 Active (updated every session):
-  HANDOVER_FINAL.md  — this file, fully rewritten each session
-  ROADMAP_FINAL.md   — single active roadmap
-  SCHEMA.md          — unified schema reference
-  FINDINGS_LOG.md    — append-only findings
+  HANDOVER_FINAL.md — this file, fully rewritten each session
+  ROADMAP_FINAL.md  — single active roadmap
+  SCHEMA.md         — unified schema reference
 
 Frozen (do not update):
   HANDOVER.md, HANDOVER_BRIDE.md — frozen at 8.5a and B3
