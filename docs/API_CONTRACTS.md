@@ -768,3 +768,80 @@ Frontend calls to these must be **removed or replaced with "coming soon" stubs**
 | Couple journey | events, bookings, receipts | ⏳ P2-8a |
 | Coplanner | profile, muse, feed, chat | ⏳ P2-7a |
 | Discover preview | preview | ⏳ P2-9 |
+
+
+---
+
+## Block 1a endpoints (added 2026-05-20)
+
+### POST /api/v2/vendor/leads
+Auth: vendor JWT
+Body: `{ bride_name|name, phone?, wedding_date?, wedding_city?, source?, referrer_name?, raw_message?, notes? }`
+Response: `{ ok, data: Lead, deduped: boolean }`
+
+### PATCH /api/v2/vendor/leads/:leadId
+Auth: vendor JWT | Body: editable lead fields | Response: `{ ok, data: Lead }`
+
+### GET /api/v2/vendor/leads/:leadId/detail
+Auth: vendor JWT | Response: `{ ok, lead, invoices[], events[], client? }`
+
+### POST /api/v2/vendor/clients
+Auth: vendor JWT | Body: `{ vendor_id, name, phone?, email?, notes? }`
+Response: `{ ok, client, deduped, restored }` — phone dedup restores soft-deleted records
+
+### PATCH /api/v2/vendor/clients/:clientId
+Auth: vendor JWT | Body: `{ name?, phone?, email?, notes? }` | Response: `{ ok, client }`
+
+### DELETE /api/v2/vendor/clients/:clientId
+Auth: vendor JWT | Action: Soft delete. leads.client_id + invoices.client_id SET NULL. | Response: `{ ok }`
+
+### POST /api/v2/vendor/events
+Auth: vendor JWT | Body: `{ vendor_id, title, kind (required), event_date?, notes?, linked_lead_id? }` | Response: `{ ok, event }`
+
+### PATCH /api/v2/vendor/events/:eventId
+Auth: vendor JWT | Body: editable event fields | Response: `{ ok, event }`
+
+### DELETE /api/v2/vendor/events/:eventId
+Auth: vendor JWT | Action: Soft delete | Response: `{ ok }`
+
+### POST /api/v2/vendor/expenses
+Auth: vendor JWT
+Body: `{ vendor_id, amount, category, description?, expense_date?, client_name? }`
+Valid categories: travel, equipment, editing, assistant, studio, printing, packaging, food, accommodation, marketing, software, other
+Response: `{ ok, expense }`
+
+### PATCH /api/v2/vendor/expenses/:expenseId
+Auth: vendor JWT | Body: editable expense fields | Response: `{ ok, expense }`
+
+### DELETE /api/v2/vendor/expenses/:expenseId
+Auth: vendor JWT | Action: Soft delete | Response: `{ ok }`
+
+### POST /api/v2/vendor/invoices
+Auth: vendor JWT | Body: `{ vendor_id, client_name, amount_total, services?, event_date?, due_date? }` | Response: `{ ok, invoice, pdf_pending: true }`
+
+### PATCH /api/v2/vendor/invoices/:invoiceId
+Auth: vendor JWT | Note: LOCKED after any payment (INVOICE_LOCKED error) | Response: `{ ok, invoice }`
+
+### POST /api/v2/vendor/invoices/:invoiceId/payments
+Auth: vendor JWT | Body: `{ amount, payment_date?, method?, notes? }` | Response: `{ ok, invoice }`
+
+### GET /api/v2/vendor/availability/:vendorId
+Auth: vendor JWT | Response: `{ ok, blocks: [{id, blocked_date, reason, created_at}], total }`
+
+### POST /api/v2/vendor/availability
+Auth: vendor JWT | Body: `{ vendor_id, blocked_date (YYYY-MM-DD), reason? }` | Response: `{ ok, block }`
+
+### DELETE /api/v2/vendor/availability/:blockId
+Auth: vendor JWT | Response: `{ ok }`
+
+### GET /api/v2/hot-dates
+Auth: none (public) | Query: `?year=2026&region=north_india` | Response: `{ ok, dates[], total }`
+
+### PATCH /api/v2/vendor/me
+Auth: vendor JWT | Body: any of: `{ business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview, ... }` | Response: `{ ok, vendor }`
+
+### PATCH /api/v2/vendor/me/routing-handle
+Auth: vendor JWT | Body: `{ handle }` min 3 chars | Response: `{ ok, handle }`
+
+### PATCH /api/v2/vendor/me/invoice-prefix
+Auth: vendor JWT | Body: `{ prefix }` max 10 chars | Response: `{ ok, prefix }`

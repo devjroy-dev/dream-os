@@ -708,3 +708,21 @@ Purpose: editorial mood gallery for Just Exploring entry on landing page (anonym
 Distinct from Discover preview (vendor profiles inside PWA - Phase 2 Block 5, not built yet).
 Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel post-Phase 2.
 
+
+---
+
+## Migrations 0034 + 0035 (applied 2026-05-20)
+
+### 0034 — vendor_foundation
+- vendors: added aesthetic_tags text[], rate_min int, rate_max int, discover_preview boolean
+- invoices: added last_payment_at timestamptz
+- New table: vendor_portfolio (id, vendor_id, url, caption, display_order, created_at)
+- New storage bucket: portfolios (public, 5MB, jpeg/png/webp/heic)
+
+### 0035 — vendor_writes
+- Added deleted_at timestamptz null to: leads, clients, invoices, expenses, events
+- leads: added source text default 'whatsapp'
+- New table: vendor_availability (id, vendor_id, blocked_date date, reason, created_at, unique vendor_id+blocked_date)
+
+**Latest migration:** 0035_vendor_writes.sql
+**Next migration number:** 0036

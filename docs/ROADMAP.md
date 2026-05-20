@@ -1,7 +1,7 @@
 # dream-os — Vendor Roadmap
-**Last updated:** 2026-05-20 (DreamAi PWA Agent session)
-**Current session:** DreamAi PWA Agent (complete)
-**Current version:** 0.10.0-alpha
+**Last updated:** 2026-05-20 (Block F + Block 1a session)
+**Current session:** Block 1a (complete)
+**Current version:** 0.10.2-alpha
 
 ---
 
@@ -91,18 +91,23 @@ Vendor and bride tracks meet at Discover. Real vendor profiles surface to brides
 | 8.5 | clients table (0011), routing context (0012), resolveOrCreateClient, add_client + list_clients, lead→client promotion, multi-vendor routing, sticky disambiguation, returning-bride detection | 8.5 |
 | 8.5a | Empty inbound crash fix, single-thread routing fix, TDW typo fuzzy-match | 8.5a |
 | DreamAi PWA | Separate PWA engine (pwaEngine.js), SSE streaming, JWT refresh, PGRST116 fixes, Railway crash fix, cancel_invoice tool, CRUD list pages, onboarding overlay, 5 new API endpoints, WhatsApp + Call buttons on clients | 0.10.0-alpha |
+| Block F + 1a | Foundation lib (asyncHandler, response), auth audit, migrations 0034+0035, 20 new REST endpoints, 11 new PWA agent tools, soft delete everywhere, vendor_availability table, public hot-dates endpoint | 0.10.2-alpha |
 
 ---
 
 ## Session sequence (revised)
 
 ```
-COMPLETE: Sessions 1–8.5a, 6.5, DreamAi PWA Agent
-NEXT:     Phase 2 polish (1-2 sessions) — migration 0034, Razorpay, Twilio, admin
-THEN:     B1 → B2 → B3 → B4 (bride track)
-THEN:     Session 9 (convergence + Discover)
-THEN:     Session 10 (Instagram DM)
-THEN:     Sessions 11-12 (thedreamai.in vendor dashboard)
+COMPLETE: Sessions 1–8.5a, 6.5, DreamAi PWA Agent, Block F, Block 1a
+NEXT:     Block 1b — dreamai typed API client (devjroy-dev/dreamai repo)
+THEN:     Block 1c — dreamai UI forms (Add/Edit forms, Settings, Calendar)
+THEN:     Block 2 — Web Push notifications
+THEN:     Block 3 — Vendor enquiries inbox
+THEN:     Block 4 — Razorpay subscriptions + token packs
+THEN:     Block 5 — Vendor Discover submission, Couture, Featured promos
+THEN:     Block 6 — Studio Suite (Team, Tasks, Briefing)
+THEN:     Block 7 — Payment schedules, contracts, TDS ledger
+THEN:     v0.11.0-alpha → Phase 3 (Discover go-live, Bride track, Convergence)
 ```
 
 ---
