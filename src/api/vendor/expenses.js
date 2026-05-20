@@ -20,6 +20,9 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
+const asyncHandler   = require('../../lib/asyncHandler');
+const { ok: okRes, err: errRes } = require('../../lib/response');
+const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
 
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -40,16 +43,19 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     supabase.from('expenses')
       .select('id, description, amount, category, expense_date, client_name, created_at')
       .eq('vendor_id', vendor.id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1),
 
     supabase.from('expenses')
       .select('*', { count: 'exact', head: true })
-      .eq('vendor_id', vendor.id),
+      .eq('vendor_id', vendor.id)
+      .is('deleted_at', null),
 
     supabase.from('expenses')
       .select('amount')
-      .eq('vendor_id', vendor.id),
+      .eq('vendor_id', vendor.id)
+      .is('deleted_at', null),
   ]);
 
   if (listErr || countErr || summaryErr) {
@@ -70,32 +76,59 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   });
 });
 
-// DELETE /:expenseId
-// Hard delete — expenses have no downstream financial implications.
-router.delete('/:expenseId', requireAuth, async (req, res) => {
+// ─── POST /api/v2/vendor/expenses ─────────────────────────────────────
+//
+// Log a new expense.
+// Auth: requireAuth. resolveVendor mode A.
+
+router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { user_id } = req.auth;
-  const { expenseId } = req.params;
+  const vendor   = req.vendor;
+  const body     = req.body || {};
 
-  const { data: vendorRow } = await supabase.from('vendors').select('id').eq('user_id', user_id).maybeSingle();
-  if (!vendorRow) return res.status(403).json({ ok: false, error: 'Vendor not found.' });
+  const result = await createExpense(supabase, vendor.id, {
+    amount:         body.amount         || null,
+    category:       body.category       || null,
+    description:    body.description    || null,
+    expense_date:   body.expense_date   || null,
+    client_name:    body.client_name    || null,
+    linked_lead_id: body.linked_lead_id || null,
+    notes:          body.notes          || null,
+  });
 
-  const { data: expense, error: fetchErr } = await supabase
-    .from('expenses').select('id, amount, category, description')
-    .eq('id', expenseId).eq('vendor_id', vendorRow.id).single();
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { expense: result.expense });
+}));
 
-  if (fetchErr?.code === 'PGRST116' || !expense) return res.status(404).json({ ok: false, error: 'Expense not found.' });
-  if (fetchErr) return res.status(500).json({ ok: false, error: fetchErr.message });
+// ─── PATCH /api/v2/vendor/expenses/:expenseId ─────────────────────────
+//
+// Partial update.
+// Auth: requireAuth. resolveVendor mode C via expenses table.
 
-  const { error: delErr } = await supabase
-    .from('expenses').delete()
-    .eq('id', expenseId).eq('vendor_id', vendorRow.id);
+router.patch('/:expenseId', requireAuth, resolveVendor({ paramName: 'expenseId', via: 'expenses' }), asyncHandler(async (req, res) => {
+  const supabase   = req.app.locals.supabase;
+  const vendor     = req.vendor;
+  const expenseId  = req.params.expenseId;
+  const body       = req.body || {};
 
-  if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
+  const result = await updateExpense(supabase, vendor.id, expenseId, body);
+  if (!result.ok) return errRes(res, 400, result.error);
+  return okRes(res, { expense: result.expense });
+}));
 
-  const label = expense.description || expense.category || 'expense';
-  console.log(`[expenses:delete] "${label}" deleted by vendor ${vendorRow.id}`);
-  return res.json({ ok: true, message: `Rs ${expense.amount} ${label} deleted.` });
-});
+// ─── DELETE /api/v2/vendor/expenses/:expenseId ────────────────────────
+//
+// Soft delete.
+// Auth: requireAuth. resolveVendor mode C via expenses table.
+
+router.delete('/:expenseId', requireAuth, resolveVendor({ paramName: 'expenseId', via: 'expenses' }), asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const vendor    = req.vendor;
+  const expenseId = req.params.expenseId;
+
+  const result = await deleteExpense(supabase, vendor.id, expenseId);
+  if (!result.ok) return errRes(res, 404, result.error);
+  return okRes(res, { deleted: true });
+}));
 
 module.exports = router;
