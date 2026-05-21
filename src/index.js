@@ -60,7 +60,7 @@ app.use(cors({
     return cb(null, false);  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password'],
 }));
 
 // CORS error handler — return 403 JSON, not 500 HTML
