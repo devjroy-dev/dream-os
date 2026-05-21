@@ -544,6 +544,66 @@ const PWA_TOOLS = [
     },
   },
 
+  // ── Studio Suite — Prestige only ───────────────────────────────────────────
+  // These tools only execute when vendor.tier === 'prestige'.
+  // Non-Prestige vendors receive a friendly tier error.
+
+  {
+    name: 'assign_task',
+    description: 'Create a task assigned to a team member. Use when vendor says things like "Tell Rohit to...", "Assign X to Y", or "Create a task for...". If assigned_to_member_name is provided but no unique match is found in the team roster, call clarify to resolve the ambiguity before creating. Prestige vendors only.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title:                  { type: 'string',  description: 'Task title. Short and action-oriented. e.g. "Edit Priya highlight reel"' },
+        description:            { type: 'string',  description: 'Optional detail. e.g. "3-minute reel, gold tones, drone shots first 30s"' },
+        assigned_to_member_name: { type: 'string', description: 'Team member name as the vendor said it. The executor will fuzzy-match against the roster.' },
+        linked_event_id:        { type: 'string',  description: 'UUID of the related event if mentioned.' },
+        due_date:               { type: 'string',  description: 'Due date in YYYY-MM-DD.' },
+        priority:               { type: 'string',  enum: ['low','normal','high','urgent'], description: 'Task priority. Default: normal.' },
+      },
+      required: ['title'],
+    },
+  },
+
+  {
+    name: 'team_pay',
+    description: 'Log that the vendor paid (or owes) a team member for a job. Use when vendor says "I paid Rohit X" or "Log Rs 5000 for Rohit for Saturday shoot". Marks an existing owed payment as paid, or creates a new paid record if no prior obligation exists. Prestige vendors only.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        team_member_name: { type: 'string',  description: 'Name of the team member as the vendor said it.' },
+        amount_inr:       { type: 'number',  description: 'Amount in Rs. e.g. 5000' },
+        description:      { type: 'string',  description: 'What the payment is for. e.g. "2-day shoot for Priya wedding"' },
+        paid_via:         { type: 'string',  description: 'Payment method: cash, upi, bank, or other.' },
+      },
+      required: ['team_member_name', 'amount_inr'],
+    },
+  },
+
+  {
+    name: 'pin_team_message',
+    description: 'Post a pinned broadcast message to the team. Use for important standing info — shoot logistics, venue address, call time — that needs to stay visible at the top of the team feed. Prestige vendors only.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        body:            { type: 'string', description: 'The message to pin. Should be concise and action-relevant.' },
+        linked_event_id: { type: 'string', description: 'UUID of the related event, if applicable.' },
+      },
+      required: ['body'],
+    },
+  },
+
+  {
+    name: 'team_briefing',
+    description: 'Fetch the full team briefing — today\'s events with assignments, open/overdue tasks, pinned messages, this week\'s calendar, and owed team payments. Call whenever the vendor asks about their team, what\'s on today, or who owes what. Read-only — does not consume quota. Prestige vendors only.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+
+
   {
     name: 'clarify',
     description: 'Ask the vendor a clarifying question when their request is genuinely ambiguous between two equally likely options. Use sparingly — only when acting on the wrong interpretation would cause real harm (e.g. wrong invoice, wrong client). Do NOT use for minor uncertainties you can resolve from context.',

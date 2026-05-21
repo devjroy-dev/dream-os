@@ -1150,6 +1150,209 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
       return ok(JSON.stringify({ clarify }));
     }
 
+
+    // ── Studio Suite — Prestige-gated tools ──────────────────────────────────
+
+    case 'assign_task': {
+      if (vendor.tier !== 'prestige') {
+        return err('Studio Suite is for Prestige vendors only. Contact Swati for an invite.');
+      }
+      const { title, description, assigned_to_member_name, linked_event_id, due_date, priority } = input;
+
+      let assigned_to_member_id = null;
+
+      // Resolve member name → id if provided
+      if (assigned_to_member_name) {
+        const { data: members } = await supabase
+          .from('team_members')
+          .select('id, name')
+          .eq('vendor_id', vendor.id)
+          .eq('active', true)
+          .is('deleted_at', null);
+
+        const norm    = s => s.toLowerCase().trim();
+        const matches = (members || []).filter(m => norm(m.name).includes(norm(assigned_to_member_name)));
+
+        if (matches.length === 0) {
+          return err(`No team member found matching "${assigned_to_member_name}". Use list_team to check the roster.`);
+        }
+        if (matches.length > 1) {
+          // Surface as clarify — caller should follow up with clarify tool
+          return ok(JSON.stringify({
+            clarify: {
+              question: `Which ${assigned_to_member_name}?`,
+              options:  matches.map(m => m.name),
+            },
+          }));
+        }
+        assigned_to_member_id = matches[0].id;
+      }
+
+      const { data, error: insertErr } = await supabase
+        .from('team_tasks')
+        .insert({
+          vendor_id:              vendor.id,
+          title:                  title.trim(),
+          description:            description            || null,
+          assigned_to_member_id:  assigned_to_member_id  || null,
+          linked_event_id:        linked_event_id        || null,
+          due_date:               due_date               || null,
+          priority:               priority               || 'normal',
+        })
+        .select()
+        .single();
+      if (insertErr) return err(insertErr.message);
+      console.log(`[pwa-tool:assign_task] created "${title}" → member ${assigned_to_member_id || 'unassigned'}`);
+      return write(JSON.stringify({ task: data }));
+    }
+
+    case 'team_pay': {
+      if (vendor.tier !== 'prestige') {
+        return err('Studio Suite is for Prestige vendors only. Contact Swati for an invite.');
+      }
+      const { team_member_name, amount_inr, description, paid_via } = input;
+
+      // Resolve member
+      const { data: members } = await supabase
+        .from('team_members')
+        .select('id, name')
+        .eq('vendor_id', vendor.id)
+        .eq('active', true)
+        .is('deleted_at', null);
+
+      const norm    = s => s.toLowerCase().trim();
+      const matches = (members || []).filter(m => norm(m.name).includes(norm(team_member_name)));
+      if (matches.length === 0) return err(`No team member found matching "${team_member_name}".`);
+      if (matches.length > 1)  return ok(JSON.stringify({ clarify: { question: `Which ${team_member_name}?`, options: matches.map(m => m.name) } }));
+      const memberId = matches[0].id;
+
+      // Check for an existing owed payment — mark it paid if found
+      const { data: owed } = await supabase
+        .from('team_payments')
+        .select('id')
+        .eq('vendor_id', vendor.id)
+        .eq('team_member_id', memberId)
+        .eq('state', 'owed')
+        .order('created_at', { ascending: true })
+        .limit(1);
+
+      let result;
+      if (owed && owed.length > 0) {
+        const { data: updated, error: upErr } = await supabase
+          .from('team_payments')
+          .update({ state: 'paid', paid_at: new Date().toISOString(), paid_via: paid_via || null, notes: description || null })
+          .eq('id', owed[0].id)
+          .select()
+          .single();
+        if (upErr) return err(upErr.message);
+        result = updated;
+      } else {
+        // No prior obligation — log as a completed payment
+        const { data: inserted, error: insErr } = await supabase
+          .from('team_payments')
+          .insert({
+            vendor_id:      vendor.id,
+            team_member_id: memberId,
+            amount_inr,
+            description:    description || null,
+            paid_via:       paid_via    || null,
+            state:          'paid',
+            paid_at:        new Date().toISOString(),
+          })
+          .select()
+          .single();
+        if (insErr) return err(insErr.message);
+        result = inserted;
+      }
+
+      // Return new balance
+      const { data: owedRows } = await supabase
+        .from('team_payments')
+        .select('amount_inr')
+        .eq('vendor_id', vendor.id)
+        .eq('team_member_id', memberId)
+        .eq('state', 'owed');
+      const new_balance = (owedRows || []).reduce((s, r) => s + r.amount_inr, 0);
+
+      console.log(`[pwa-tool:team_pay] Rs ${amount_inr} → ${matches[0].name}. Remaining owed: Rs ${new_balance}`);
+      return write(JSON.stringify({ payment: result, new_balance_owed_inr: new_balance }));
+    }
+
+    case 'pin_team_message': {
+      if (vendor.tier !== 'prestige') {
+        return err('Studio Suite is for Prestige vendors only. Contact Swati for an invite.');
+      }
+      const { body, linked_event_id } = input;
+      const { data, error: insErr } = await supabase
+        .from('team_messages')
+        .insert({
+          vendor_id:       vendor.id,
+          body:            body.trim(),
+          pinned:          true,
+          linked_event_id: linked_event_id || null,
+        })
+        .select()
+        .single();
+      if (insErr) return err(insErr.message);
+      console.log(`[pwa-tool:pin_team_message] pinned: "${body.slice(0, 60)}"`);
+      return write(JSON.stringify({ message: data }));
+    }
+
+    case 'team_briefing': {
+      if (vendor.tier !== 'prestige') {
+        return err('Studio Suite is for Prestige vendors only. Contact Swati for an invite.');
+      }
+      const BASE = process.env.RAILWAY_STATIC_URL || 'http://localhost:3000';
+      // Re-use the briefing endpoint logic inline to avoid HTTP self-call
+      const today   = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const weekEnd = new Date(Date.now() + 5.5 * 60 * 60 * 1000 + 7 * 86400000).toISOString().slice(0, 10);
+
+      const { data: todayEvents } = await supabase
+        .from('events').select('id, title, event_time, state')
+        .eq('vendor_id', vendor.id).eq('event_date', today).neq('state', 'cancelled');
+
+      const { data: openTasks } = await supabase
+        .from('team_tasks').select('id, title, priority, due_date, state, team_members(name)')
+        .eq('vendor_id', vendor.id).in('state', ['open','in_progress']).is('deleted_at', null)
+        .order('due_date', { ascending: true, nullsFirst: false });
+
+      const { data: pinned } = await supabase
+        .from('team_messages').select('id, body, created_at')
+        .eq('vendor_id', vendor.id).eq('pinned', true)
+        .order('created_at', { ascending: false });
+
+      const { data: weekEvents } = await supabase
+        .from('events').select('id, title, event_date, event_time')
+        .eq('vendor_id', vendor.id).gte('event_date', today).lte('event_date', weekEnd)
+        .neq('state', 'cancelled').order('event_date', { ascending: true });
+
+      const { data: owedRows } = await supabase
+        .from('team_payments').select('team_member_id, amount_inr, team_members(name)')
+        .eq('vendor_id', vendor.id).eq('state', 'owed');
+
+      const owedMap = {};
+      let totalOwed = 0;
+      for (const row of (owedRows || [])) {
+        totalOwed += row.amount_inr;
+        if (!owedMap[row.team_member_id]) owedMap[row.team_member_id] = { name: row.team_members?.name || '', owed_inr: 0 };
+        owedMap[row.team_member_id].owed_inr += row.amount_inr;
+      }
+
+      const overdue = (openTasks || []).filter(t => t.due_date && t.due_date < today);
+
+      console.log(`[pwa-tool:team_briefing] today=${today} events=${(todayEvents||[]).length} open_tasks=${(openTasks||[]).length}`);
+      return ok(JSON.stringify({
+        today,
+        today_events:         todayEvents  || [],
+        open_tasks:           openTasks    || [],
+        overdue_tasks:        overdue,
+        pinned_messages:      pinned       || [],
+        this_week_calendar:   weekEvents   || [],
+        team_owed_total_inr:  totalOwed,
+        team_owed_per_member: Object.values(owedMap),
+      }));
+    }
+
     default:
       return err(`Unknown tool: ${name}`);
   }
