@@ -1,56 +1,64 @@
 #!/usr/bin/env python3
 """
 update_holy_grail.py
-Run from dream-os repo root after completing a block:
+Run from dream-os repo root at the end of every session.
   cd /workspaces/dream-os
   python3 update_holy_grail.py
 
-Edit the UPDATES dict below before running.
-Only change what your session completed.
+Edit the UPDATES dict — change only what your session completed.
 """
 
 from datetime import date
 
-# ── EDIT THIS SECTION BEFORE RUNNING ─────────────────────────────────────────
+# ── EDIT THIS SECTION ────────────────────────────────────────────────────────
+# Replace the block you completed and advance the Next pointer.
+# Copy the exact row text from the Holy Grail — spacing matters.
 
-UPDATES = {
-    # Block you just completed — change ⬜ to ✅
-    # Format: 'exact string to find': 'replacement string'
-    '| Bride B-1 | dream-os | ⬜ Next — start here |':
-    '| Bride B-1 | dream-os | ✅ Done |',
+COMPLETED_BLOCK  = '| Bride B-1 | dream-os | ⬜ Next — start here |'
+COMPLETED_DONE   = '| Bride B-1 | dream-os | ✅ Done |'
 
-    # Move "Next — start here" to the next block
-    '| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ |':
-    '| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ Next — start here |',
+NEXT_BLOCK_OLD   = '| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ |'
+NEXT_BLOCK_NEW   = '| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ Next — start here |'
 
-    # Update last-updated line
-    '**Last updated:** 2026-05-21 (Vendor port complete. Bride blocks specced. SSO wired. B-F done.)':
-    f'**Last updated:** {date.today()} (B-1 complete)',
-}
+SESSION_SUMMARY  = 'B-1 complete — discover feed, muse endpoints'
 
-# ── DO NOT EDIT BELOW THIS LINE ──────────────────────────────────────────────
+# ── DO NOT EDIT BELOW ────────────────────────────────────────────────────────
 
 path = 'docs/DEVS_HOLY_GRAIL.md'
-
 with open(path, 'r') as f:
     src = f.read()
 
 changed = 0
-for old, new in UPDATES.items():
-    if old in src:
-        src = src.replace(old, new)
-        print(f'✓ {old[:70]}')
-        changed += 1
-    else:
-        print(f'SKIP (not found): {old[:70]}')
+
+if COMPLETED_BLOCK in src:
+    src = src.replace(COMPLETED_BLOCK, COMPLETED_DONE)
+    print(f'✓ Marked done: {COMPLETED_BLOCK[:60]}')
+    changed += 1
+else:
+    print(f'SKIP: {COMPLETED_BLOCK[:60]}')
+
+if NEXT_BLOCK_OLD in src:
+    src = src.replace(NEXT_BLOCK_OLD, NEXT_BLOCK_NEW)
+    print(f'✓ Advanced next: {NEXT_BLOCK_NEW[:60]}')
+    changed += 1
+else:
+    print(f'SKIP: {NEXT_BLOCK_OLD[:60]}')
+
+# Update last-updated line
+import re
+src = re.sub(
+    r'\*\*Last updated:\*\* [^\n]+',
+    f'**Last updated:** {date.today()} ({SESSION_SUMMARY})',
+    src
+)
+print(f'✓ Last-updated: {date.today()} ({SESSION_SUMMARY})')
+changed += 1
 
 with open(path, 'w') as f:
     f.write(src)
 
-if changed > 0:
-    print(f'\n✅ {changed} update(s) applied.')
-    print('Commit with:')
+print(f'\n{"✅" if changed else "⚠"} {changed} change(s) applied.')
+if changed:
+    print('\nCommit with:')
     print('  git add docs/DEVS_HOLY_GRAIL.md')
-    print('  git commit -m "docs: Holy Grail — mark block complete, advance next pointer"')
-else:
-    print('\nNo changes made. Check the UPDATES dict.')
+    print(f'  git commit -m "docs: Holy Grail — {SESSION_SUMMARY}"')

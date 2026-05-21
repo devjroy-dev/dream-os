@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-21 (Vendor port complete. Bride blocks specced. SSO wired.)
+**Last updated:** 2026-05-21 (Vendor port complete. Bride blocks specced. SSO wired. B-F done.)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -386,57 +386,53 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | Vendor 5 (Discover) | both | ✅ Done |
 | Vendor 6 (Studio) | both | ✅ Done |
 | Vendor 7 (Schedules/Contracts/TDS) | both | ✅ Done |
-| **Bride B-F** | dream-os | ⬜ Next — start here |
-| Bride B-1 | dream-os | ⬜ |
-| Bride B-2 | dreamos-pwa | ⬜ |
-| Bride B-3 | dream-os | ⬜ |
+| **Bride B-F** | dream-os | ✅ Done |
+| Bride B-1 | dream-os | ⬜ Next — start here |
+| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ |
+| Bride B-2 (Wire discover swipe) | dreamos-pwa | ⬜ |
+| Bride B-3 (Couple data API) | dream-os | ⬜ |
+| Bride B-3a (Coplanner API) | dream-os | ⬜ |
 | Bride B-4 | dreamos-pwa | ⬜ |
 | Bride B-5 | dream-os | ⬜ |
 | Bride B-6 | dreamos-pwa | ⬜ |
 | Bride B-Admin | both | ⬜ |
 
-## ADDITION TO BLOCK 15 — BRIDE BLOCK SEQUENCE (update in Holy Grail)
-
-Replace the current bride block sequence with this updated one:
+### Bride block sequence
 
 ```
-B-F → B-1 → B-2a → B-2 → B-3 → B-4 → B-5 → B-6 → B-Admin
+B-F ✅ → B-1 → B-2a → B-2 → B-3 → B-3a → B-4 → B-5 → B-6 → B-Admin
 ```
 
-| Block | Repo | What |
-|---|---|---|
-| B-F | dream-os | Couple REST foundation — router mounted ✅ Done |
-| B-1 | dream-os | Discover public API — feed, featured, heroes, muse |
-| **B-2a** | dreamos-pwa | **Discover landing — category grid, filter sheet, blind entry** |
-| B-2 | dreamos-pwa | Wire discover swipe canvas to real backend |
-| B-3 | dream-os | Couple data API — me, today, events, expenses, circle |
-| B-4 | dreamos-pwa | Wire journey canvases to real backend |
-| B-5 | dream-os | POST /api/v2/couple/chat — SSE bridge to brideEngine |
-| B-6 | dreamos-pwa | Wire dream canvas to real chat |
-| B-Admin | both | Admin audit + wiring + delete retired route groups |
+Each depends on the previous:
+- B-2a (discover landing) before B-2 (wire swipe feed)
+- B-3a (coplanner API) after B-3 — needs circle_comment_count trigger from B-3 migration
+- B-2, B-4, B-6 cannot start until preceding backend block is smoke-tested from curl
 
-**B-2a must ship before B-2.** The landing is the entry point to the swipe feed.
-B-2 wires the swipe feed to real data — the landing needs to exist first.
-
-**Discover landing (B-2a) covers:**
-- 10 category pills reordered by couple budget tier (Essential/Signature/Luxe)
-- Budget tier ordering ported from tdw-2 home.tsx
-- "Browse All" → unfiltered swipe feed
-- "Discover Blind" → swipe in blind mode (name/price hidden)
-- Filter sheet — city, vibe tags, budget filter before entering swipe
-- Bride name + days countdown greeting
-- All in Frost design system — Sanctuary/Dream modes, locked tokens
+**Spec files (all in dream-os/docs/):**
+BRIDE_ROADMAP.md, BRIDE_BLOCK_F_SPEC.md, BRIDE_BLOCK_1_SPEC.md,
+BRIDE_BLOCK_2a_SPEC.md, BRIDE_BLOCK_2_SPEC.md, BRIDE_BLOCK_2_MUSE_AMENDMENT.md,
+BRIDE_BLOCK_3_SPEC.md, BRIDE_BLOCK_3a_SPEC.md, BRIDE_BLOCK_4_SPEC.md,
+BRIDE_BLOCK_5_SPEC.md, BRIDE_BLOCK_6_SPEC.md, BRIDE_BLOCK_ADMIN_SPEC.md
 
 
 
 
+
+### Session close rule — every session, no exceptions
+
+At the end of every session:
+1. Tick completed blocks in the status table (⬜ → ✅)
+2. Move "Next — start here" to the next block
+3. Add new bugs to coding debt table
+4. Run `python3 update_holy_grail.py` and commit:
+   `git add docs/DEVS_HOLY_GRAIL.md && git commit -m "docs: Holy Grail — Block X complete"`
 
 ### How to run bride sessions
 
 Every bride session starts with three files:
 1. This Holy Grail
 2. `SESSION_HACK_SHEET.md`
-3. The spec file for the current block (e.g. `BRIDE_BLOCK_F_SPEC.md`)
+3. The spec file for the current block (e.g. `BRIDE_BLOCK_1_SPEC.md`)
 
 Say "build this" and the session starts.
 
