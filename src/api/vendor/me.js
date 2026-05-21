@@ -49,7 +49,11 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       aesthetic_tags:    vendor.aesthetic_tags    || [],
       rate_min:          vendor.rate_min          || null,
       rate_max:          vendor.rate_max          || null,
-      discover_preview:  vendor.discover_preview  === true,
+      discover_preview:        vendor.discover_preview        === true,
+      discover_eligible:       vendor.discover_eligible       === true,
+      discover_request_state:  vendor.discover_request_state  || 'not_requested',
+      couture_eligible:        vendor.couture_eligible        === true,
+      featured_eligible:       vendor.featured_eligible       === true,
     },
   });
 });
@@ -92,7 +96,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
 
   const { data: updated, error } = await supabase
     .from('vendors').update(update).eq('id', vendor.id)
-    .select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview')
+    .select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
     .maybeSingle();
 
   if (error) return errRes(res, 500, error.message);
