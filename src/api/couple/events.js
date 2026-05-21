@@ -82,6 +82,74 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
   return okRes(res, { event: data });
 }));
 
+// PATCH /:eventId — full update: title, event_date, event_time, kind, notes, state
+router.patch('/:eventId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+
+  const ALLOWED_KINDS = new Set([
+    'shoot','call','meeting','task','reminder','recce',
+    'fitting','trial','family','ceremony','social','other',
+  ]);
+  const ALLOWED_STATES = new Set(['upcoming', 'done', 'cancelled']);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const { eventId } = req.params;
+  if (!UUID_RE.test(eventId)) return errRes(res, 400, 'Invalid event id.');
+
+  const { title, event_date, event_time, kind, notes, state } = req.body || {};
+  const updates = {};
+
+  if (title !== undefined) {
+    if (typeof title !== 'string' || !title.trim())
+      return errRes(res, 400, 'title must be a non-empty string.');
+    updates.title = title.trim().slice(0, 200);
+  }
+  if (event_date !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(event_date))
+      return errRes(res, 400, 'event_date must be YYYY-MM-DD.');
+    updates.event_date = event_date;
+  }
+  if (event_time !== undefined) {
+    if (event_time === null || event_time === '') {
+      updates.event_time = null;
+    } else {
+      const tStr = String(event_time).trim();
+      if (!/^\d{1,2}:\d{2}$/.test(tStr)) return errRes(res, 400, 'event_time must be HH:MM.');
+      const [h, m] = tStr.split(':').map(Number);
+      if (h > 23 || m > 59) return errRes(res, 400, 'event_time out of range.');
+      updates.event_time = tStr.length === 4 ? `0${tStr}` : tStr;
+    }
+  }
+  if (kind !== undefined) {
+    if (!ALLOWED_KINDS.has(kind)) return errRes(res, 400, 'Invalid kind.');
+    updates.kind = kind;
+  }
+  if (notes !== undefined) {
+    updates.notes = (notes === null || notes === '') ? null : String(notes).trim().slice(0, 500);
+  }
+  if (state !== undefined) {
+    if (!ALLOWED_STATES.has(state)) return errRes(res, 400, 'state must be upcoming, done, or cancelled.');
+    updates.state = state;
+  }
+  if (Object.keys(updates).length === 0) return errRes(res, 400, 'No fields to update.');
+
+  const { data, error } = await supabase
+    .from('events')
+    .update(updates)
+    .eq('id', eventId)
+    .eq('couple_id', couple_id)
+    .select('id, title, event_date, event_time, kind, state, notes')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return errRes(res, 404, 'Event not found.');
+    console.error('[PATCH /couple/events/:eventId] error:', error.message);
+    return errRes(res, 500, 'Could not update event.');
+  }
+  return okRes(res, { event: data });
+}));
+
 // PATCH /:eventId/state — toggle state (upcoming/done)
 router.patch('/:eventId/state', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;

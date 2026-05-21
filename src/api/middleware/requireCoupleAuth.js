@@ -34,7 +34,7 @@ async function requireCoupleAuth(req, res, next) {
     return res.status(403).json({ ok: false, error: 'No couple profile found.' });
   }
 
-  req.coupleUser = { id: user.id, couple_id: couple.id };
+  req.coupleUser = { id: user.id, user_id: user.id, couple_id: couple.id };
   next();
 }
 

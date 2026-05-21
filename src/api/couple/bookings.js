@@ -78,6 +78,132 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
   return okRes(res, { booking: data });
 }));
 
+// PATCH /:bookingId — update booking fields
+// amount_paid is NOT writable here — use POST /:bookingId/payment (record_payment RPC).
+router.patch('/:bookingId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+
+  const ALLOWED_CATEGORIES = new Set([
+    'photographer','videographer','mua','designer',
+    'venue','caterer','decor','florist','music','planner','other',
+  ]);
+  // DB CHECK constraint only allows these three states.
+  // considering/shortlisted/in_discussion are NOT in the constraint — reject them.
+  const ALLOWED_STATES = new Set(['booked', 'advance_paid', 'paid']);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const { bookingId } = req.params;
+  if (!UUID_RE.test(bookingId)) return errRes(res, 400, 'Invalid booking id.');
+
+  const { vendor_name, category, amount_total, amount_advance, balance_due_date, notes, state } = req.body || {};
+  const updates = {};
+
+  if (vendor_name !== undefined) {
+    if (typeof vendor_name !== 'string' || !vendor_name.trim())
+      return errRes(res, 400, 'vendor_name must be a non-empty string.');
+    updates.vendor_name = vendor_name.trim().slice(0, 200);
+  }
+  if (category !== undefined) {
+    if (!ALLOWED_CATEGORIES.has(category)) return errRes(res, 400, 'Invalid category.');
+    updates.category = category;
+  }
+  // -1 sentinel clears integer fields (schema CHECK enforces >= 0, so -1 is safe as clear signal)
+  if (amount_total !== undefined) {
+    if (amount_total === null || amount_total === -1) {
+      updates.amount_total = null;
+    } else {
+      const n = parseInt(amount_total, 10);
+      if (isNaN(n) || n < 0) return errRes(res, 400, 'amount_total must be a non-negative integer.');
+      updates.amount_total = n;
+    }
+  }
+  if (amount_advance !== undefined) {
+    if (amount_advance === null || amount_advance === -1) {
+      updates.amount_advance = null;
+    } else {
+      const n = parseInt(amount_advance, 10);
+      if (isNaN(n) || n < 0) return errRes(res, 400, 'amount_advance must be a non-negative integer.');
+      updates.amount_advance = n;
+    }
+  }
+  if (balance_due_date !== undefined) {
+    if (balance_due_date === null || balance_due_date === '') {
+      updates.balance_due_date = null;
+    } else {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(balance_due_date))
+        return errRes(res, 400, 'balance_due_date must be YYYY-MM-DD.');
+      updates.balance_due_date = balance_due_date;
+    }
+  }
+  if (notes !== undefined) {
+    updates.notes = (notes === null || notes === '') ? null : String(notes).trim().slice(0, 500);
+  }
+  if (state !== undefined) {
+    if (!ALLOWED_STATES.has(state)) return errRes(res, 400, 'state must be booked, advance_paid, or paid.');
+    updates.state = state;
+  }
+  delete updates.amount_paid;  // never writable via this endpoint
+  if (Object.keys(updates).length === 0) return errRes(res, 400, 'No fields to update.');
+
+  const { data, error } = await supabase
+    .from('couple_bookings')
+    .update(updates)
+    .eq('id', bookingId)
+    .eq('couple_id', couple_id)
+    .select('id, vendor_name, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return errRes(res, 404, 'Booking not found.');
+    console.error('[PATCH /couple/bookings/:bookingId] error:', error.message);
+    return errRes(res, 500, 'Could not update booking.');
+  }
+  return okRes(res, { booking: data });
+}));
+
+// POST /:bookingId/payment — record a payment via record_payment() RPC
+// Body: { amount: integer (rupees, non-zero), payment_date?: YYYY-MM-DD }
+// The RPC atomically updates amount_paid and recomputes state (booked→advance_paid→paid).
+router.post('/:bookingId/payment', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const { bookingId } = req.params;
+  if (!UUID_RE.test(bookingId)) return errRes(res, 400, 'Invalid booking id.');
+
+  const { amount, payment_date } = req.body || {};
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount === 0)
+    return errRes(res, 400, 'amount required (non-zero integer rupees).');
+  if (payment_date && !/^\d{4}-\d{2}-\d{2}$/.test(payment_date))
+    return errRes(res, 400, 'payment_date must be YYYY-MM-DD.');
+
+  // Couple-scope check before calling RPC — the SQL function does not scope to couple_id.
+  const { data: check } = await supabase
+    .from('couple_bookings')
+    .select('id')
+    .eq('id', bookingId)
+    .eq('couple_id', couple_id)
+    .maybeSingle();
+  if (!check) return errRes(res, 404, 'Booking not found.');
+
+  const { data, error } = await supabase.rpc('record_payment', {
+    p_booking_id:   bookingId,
+    p_amount:       amount,
+    p_receipt_id:   null,
+    p_payment_date: payment_date || null,
+  });
+
+  if (error) {
+    if (error.code === 'P0002' || error.code === 'no_data_found')
+      return errRes(res, 404, 'Booking not found.');
+    console.error('[POST /couple/bookings/:bookingId/payment] rpc error:', error.message);
+    return errRes(res, 500, 'Could not record payment.');
+  }
+  return okRes(res, { booking: data });
+}));
+
 // DELETE /:bookingId — delete booking
 router.delete('/:bookingId', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
