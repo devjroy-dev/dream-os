@@ -86,15 +86,34 @@ router.post('/', ...mw, asyncHandler(async (req, res) => {
   return okRes(res, { payment: data });
 }));
 
+// PATCH /:id/cancel — cancel an owed obligation
+router.patch('/:paymentId/cancel', ...mw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { data, error } = await supabase
+    .from('team_payments')
+    .update({ state: 'cancelled' })
+    .eq('id', req.params.paymentId)
+    .eq('vendor_id', req.vendor.id)
+    .eq('state', 'owed')
+    .select()
+    .single();
+  if (error) {
+    if (error.code === 'PGRST116') return errRes(res, 404, 'Payment not found or already settled.');
+    return errRes(res, 500, error.message);
+  }
+  return okRes(res, { payment: data });
+}));
+
 // PATCH /:id/mark-paid
 router.patch('/:paymentId/mark-paid', ...mw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { paid_via, notes } = req.body || {};
+
   const { data, error } = await supabase
     .from('team_payments')
     .update({
-      state:   'paid',
-      paid_at: new Date().toISOString(),
+      state:    'paid',
+      paid_at:  new Date().toISOString(),
       paid_via: paid_via || null,
       notes:    notes    || null,
     })
@@ -107,6 +126,32 @@ router.patch('/:paymentId/mark-paid', ...mw, asyncHandler(async (req, res) => {
     if (error.code === 'PGRST116') return errRes(res, 404, 'Payment not found or already settled.');
     return errRes(res, 500, error.message);
   }
+
+  // Auto-create a business expense so team payments show up in the vendor's expense ledger.
+  // Fire-and-forget — don't fail the mark-paid if expense creation fails.
+  try {
+    const expenseDate = new Date().toISOString().slice(0, 10);
+    const memberRes   = await supabase
+      .from('team_members')
+      .select('name')
+      .eq('id', data.team_member_id)
+      .single();
+    const memberName = memberRes.data?.name || 'Team member';
+    const desc = data.description
+      ? `${memberName} — ${data.description}`
+      : `Payment to ${memberName}`;
+    await supabase.from('expenses').insert({
+      vendor_id:    req.vendor.id,
+      amount:       data.amount_inr,
+      category:     'assistant',
+      description:  desc,
+      expense_date: expenseDate,
+      notes:        paid_via ? `Paid via ${paid_via}` : null,
+    });
+  } catch (expErr) {
+    console.warn('[studio:mark-paid] expense auto-create failed:', expErr.message);
+  }
+
   return okRes(res, { payment: data });
 }));
 
