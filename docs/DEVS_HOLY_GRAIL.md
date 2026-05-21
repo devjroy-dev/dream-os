@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-20 (DreamAi PWA Agent session)
+**Last updated:** 2026-05-21 (Vendor port complete. Bride blocks specced. SSO wired.)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -21,9 +21,11 @@
 
 | Repo | Stack | Deploy | Purpose |
 |---|---|---|---|
-| `dream-os` | Node.js/Express | Railway | Backend — WhatsApp webhook, all vendor APIs, PWA agent engine |
-| `dreamai` | Next.js PWA | Vercel | Vendor PWA frontend — thedreamai.in |
-| `tdw-2` | Next.js + React Native/Expo | Vercel | Couple-facing frontend + native app (reference only in dreamai sessions) |
+| `dream-os` | Node.js/Express | Railway | Single backend — vendor API, bride API, WhatsApp webhooks, agent engines |
+| `dreamai` | Next.js 14 PWA | Vercel | Vendor PWA — thedreamai.in |
+| `dreamos-pwa` | Next.js 16 PWA | Vercel | Bride Frost PWA + Admin — thedreamwedding.in |
+| `dream-wedding` | Expo/React Native | FROZEN | Legacy. Reference only. Being retired. Never touch. |
+| `tdw-2` | Next.js + Expo | FROZEN | Legacy. Reference only. Being retired. Never touch. |
 
 **Supabase:** `nvzkbagqxbysoeszxent` (Mumbai, ap-south-1)
 **Railway:** `https://dream-os-production.up.railway.app`
@@ -31,15 +33,16 @@
 **Cloudinary:** `dccso5ljv`, preset `dream_wedding_uploads`
 
 **WhatsApp numbers (permanent):**
-- `+917982159047` = vendors, thedreamai.in
-- `+14787788550` = brides, thedreamwedding.in
+- `+917982159047` = vendors + thedreamai.in
+- `+14787788550` = brides + thedreamwedding.in
 
 **Test credentials:**
 - Test vendor phone: `+918757788550`
 - Test vendor UUID: `2eb5d3fb-31eb-4b26-859a-cf10ae477d53`
 - Test vendor handle: `DEV550`
+- Test vendor PIN: `1234`
 - Swati vendor UUID: `e036ea4d-3f9a-4ec5-ba89-a5defa3a042b`, handle: `SWATI978`
-- Test couple phone (Meha): `+919625759924`
+- Test couple phone: `+919625759924`
 - Admin password: `Mira@2551354`
 
 ---
@@ -65,21 +68,27 @@ No dark mode. Ever.
 Currency: Rs (never ₹)
 ```
 
+**Frost PWA (dreamos-pwa) has its own design system — also locked:**
+- Sanctuary mode (light) + Dream mode (dark)
+- E1/E3 look tokens
+- `lib/frost/tokens.ts` — never touch
+- Same font stack as above
+
 ---
 
 ## BLOCK 4 — CODE DELIVERY DISCIPLINE
 
 **Backend (dream-os):**
-- All changes via Python string-replacement scripts (`python3 << 'EOF'`)
-- Never full file replacement via ZIP for existing files
+- All changes via Python string-replacement scripts
+- Never full file replacement for existing files
 - `node --check` before every backend commit
-- Never replace `server.js` or any existing file via ZIP — patch only
+- Pre-push hook in `.git/hooks/pre-push` — bans `?aiPrimer=` in router.push, runs `node --check` on all changed .js files. Install in every new Codespace.
 - Run `SELECT column_name FROM information_schema.columns WHERE table_name = 'tablename'` before any INSERT/UPDATE
 
-**Frontend (dreamai / tdw-2):**
-- Changes via ZIP with full folder structure
-- Run: `unzip -o FILE.zip && cp -r deploy/* . && rm -rf deploy FILE.zip`
-- Files dropped to repo root
+**Frontend (dreamai / dreamos-pwa):**
+- Python string-replacement scripts for .tsx files — NEVER sed on TSX (nested backticks break)
+- `npx tsc --noEmit` before every frontend commit
+- Pre-push hook in `.git/hooks/pre-push` — runs tsc, bans `?aiPrimer=` in router.push
 
 **Commit format:**
 ```
@@ -87,63 +96,40 @@ feat(scope): description
 fix(scope): description
 ```
 
-**Two Codespaces always open separately:**
+**Three Codespaces always open separately:**
 - dream-os Codespace
 - dreamai Codespace
-Never combine terminal blocks.
+- dreamos-pwa Codespace
+Never combine terminal blocks across repos.
 
 **CRITICAL — Supabase query pattern:**
-- NEVER use `.catch()` on Supabase queries — Supabase JS v2 returns PromiseLike, not Promise. `.catch()` throws "is not a function" and crashes Railway.
-- ALWAYS use `{ error }` destructuring or wrap in try/catch:
-  ```js
-  // CORRECT
-  const { data, error } = await supabase.from('table').select('*');
-  if (error) return err(error.message);
-
-  // CORRECT
-  try {
-    const { error } = await supabase.from('table').insert({...});
-    if (error) console.error(error.message);
-  } catch (e) { console.error(e.message); }
-
-  // WRONG — CRASHES RAILWAY
-  await supabase.from('table').insert({...}).catch(e => console.error(e));
-  ```
+- NEVER use `.catch()` on Supabase queries — crashes Railway.
+- ALWAYS use `{ error }` destructuring or wrap in try/catch.
 
 ---
 
-## BLOCK 5 — ARCHITECTURE: TWO COMPLETELY SEPARATE AGENT ENGINES
+## BLOCK 5 — ARCHITECTURE: FOUR AGENT ENGINES
 
 ### WhatsApp Vendor Agent (NEVER TOUCH)
 ```
 src/index.js → engine.js → runAgenticTurn()
-src/agent/engine.js       — agentic loop
-src/agent/tools.js        — tool definitions
-src/agent/systemPrompt.js — system prompt
+src/agent/engine.js        — agentic loop
+src/agent/tools.js         — tool definitions
+src/agent/systemPrompt.js  — system prompt
 ```
 - Model: Haiku (simple) or Sonnet (complex) via classifier
-- MAX_ITERATIONS: 5
-- Timeout: 12s (Twilio webhook budget)
-- Has `respond_to_vendor` as terminal tool
+- MAX_ITERATIONS: 5 — Timeout: 12s
 
 ### PWA Vendor Agent (dreamai → chat.js → pwaEngine.js)
 ```
-src/api/vendor/chat.js      — HTTP endpoint, SSE streaming
-src/agent/pwaEngine.js      — agentic loop (SEPARATE from engine.js)
-src/agent/pwaTools.js       — tool definitions (22 tools)
+src/api/vendor/chat.js       — HTTP endpoint, SSE streaming
+src/agent/pwaEngine.js       — agentic loop (SEPARATE from engine.js)
+src/agent/pwaTools.js        — tool definitions (28 tools as of Block 7)
 src/agent/pwaSystemPrompt.js — system prompt
 ```
-- Model: Always Sonnet (no classifier — saves 400ms/turn)
-- MAX_ITERATIONS: 8
-- MAX_COST_USD: $0.50 per turn
-- Timeout: 45s per Anthropic call (overrides global 12s)
-- NO `respond_to_vendor` tool — model's final text IS the reply
-- 15-minute session boundary on history
-- Post-write snapshot refetch after any mutation
-- SSE streaming: `Accept: text/event-stream` header → streams reply word-by-word
-- Response includes: `reply`, `tool_calls`, `contact?`, `clarify?`, `refresh?`
-
-**RULE: Never modify WhatsApp engine files when working on PWA. Never modify PWA engine files when working on WhatsApp. They are completely isolated.**
+- Model: Always `claude-sonnet-4-6` (never Haiku)
+- MAX_ITERATIONS: 8 — MAX_COST_USD: $0.50/turn — Timeout: 45s
+- SSE streaming: `Accept: text/event-stream` header
 
 ### Bride Agent (NEVER TOUCH)
 ```
@@ -151,42 +137,41 @@ src/agent/brideEngine.js
 src/agent/brideTools.js
 src/agent/brideSystemPrompt.js
 ```
-Model: claude-haiku-4-5-20251001 always. Never Sonnet for bride DreamAi.
+- Model: `claude-haiku-4-5-20251001` always. NEVER Sonnet.
+- Entry: `src/brideIndex.js` (separate from vendor index.js)
+
+### Circle Member Agent (NEVER TOUCH)
+```
+src/agent/circleEngine.js
+src/agent/circleSystemPrompt.js
+```
+- Model: Haiku always. Max 3 iterations. Max 400 tokens.
+- Only tools: `list_muse`, `delete_muse_save`
+- Entry: `src/brideIndex.js` (routed by phone match on circle_members table)
+
+**RULE: Never modify WhatsApp engine files when working on PWA. Never modify PWA engine files when working on WhatsApp. All four engines are completely isolated.**
 
 ---
 
-## BLOCK 6 — PWA AGENT: 22 TOOLS
+## BLOCK 6 — PWA AGENT: 28 TOOLS (as of Block 7)
 
-| Tool | Mutates | Notes |
-|---|---|---|
-| `note_to_self` | ✓ | |
-| `create_lead` | ✓ | |
-| `list_leads` | ✗ | |
-| `update_lead_state` | ✓ | PGRST116 checked |
-| `update_conversation_state` | ✓ | PGRST116 checked |
-| `create_event` | ✓ | |
-| `list_events` | ✗ | |
-| `update_event_state` | ✓ | PGRST116 checked |
-| `query_day` | ✗ | |
-| `hot_dates_context` | ✗ | |
-| `create_invoice` | ✓ | |
-| `list_invoices` | ✗ | |
-| `record_payment` | ✓ | PDF generation, updateErr checked |
-| `log_expense` | ✓ | |
-| `add_client` | ✓ | |
-| `list_clients` | ✗ | |
-| `update_routing_handle` | ✓ | |
-| `update_invoice_prefix` | ✓ | prefixErr checked |
-| `get_my_tdw_link` | ✗ | |
-| `generate_client_walink` | ✗ | wa.me link, never sends directly |
-| `cancel_invoice` | ✓ | cancel/delete/remove → cancelled state |
-| `clarify` | ✗ | disambiguation chips |
+### Original 22 tools (Block 1a)
+`note_to_self`, `create_lead`, `list_leads`, `update_lead_state`, `update_conversation_state`,
+`create_event`, `list_events`, `update_event_state`, `query_day`, `hot_dates_context`,
+`create_invoice`, `list_invoices`, `record_payment`, `log_expense`, `add_client`,
+`list_clients`, `update_routing_handle`, `update_invoice_prefix`, `get_my_tdw_link`,
+`generate_client_walink`, `cancel_invoice`, `clarify`
 
-**PGRST116 rule:** `update_lead_state`, `update_conversation_state`, `update_event_state` all use `.select().single()` + PGRST116 check. Zero-row updates return honest error, never fake success.
+### Added in later blocks
+`update_lead`, `lose_lead`, `update_client`, `delete_client`, `update_invoice`,
+`update_expense`, `delete_event`, `block_date`, `unblock_date`, `list_availability`,
+`create_schedule`, `mark_milestone_paid`, `attach_contract`, `list_contracts`,
+`log_tds`, `query_tds_summary`, `assign_task`, `team_pay`, `pin_team_message`,
+`team_briefing`, `list_expenses`, `list_team`
 
 ---
 
-## BLOCK 7 — SSE STREAMING PROTOCOL
+## BLOCK 7 — SSE STREAMING PROTOCOL (vendor chat)
 
 ```
 POST /api/v2/vendor/chat
@@ -200,116 +185,159 @@ Accept: text/event-stream
 ← data: [DONE]
 ```
 
-**SSE rules:**
-- `res.on('error')` handler MUST exist to absorb `ERR_STREAM_WRITE_AFTER_END`
+- `res.on('error')` handler MUST exist
 - `streamDead` flag + `res.writableEnded` check before every `res.write`
-- Persistence (messages insert, conversations update) done AFTER `res.end()` via try/catch — NEVER `.catch()`
-- Frontend sends `Accept: text/event-stream` to opt in; plain JSON path preserved
+- Persistence done AFTER `res.end()` via try/catch — NEVER `.catch()`
 
 ---
 
-## BLOCK 8 — API ENDPOINTS (FULL CURRENT LIST)
+## BLOCK 8 — VENDOR API ENDPOINTS (complete as of Block 7)
 
 ### Auth
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/api/v2/vendor/auth/send-otp` | |
-| POST | `/api/v2/vendor/auth/verify-otp` | Returns access_token, refresh_token, vendor_id, user_id |
-| POST | `/api/v2/vendor/auth/pin-login` | |
-| POST | `/api/v2/vendor/auth/set-pin` | |
-| POST | `/api/v2/vendor/auth/forgot-pin` | |
-| POST | `/api/v2/vendor/auth/refresh` | Silent JWT refresh — no auth required |
+`POST /api/v2/vendor/auth/send-otp`
+`POST /api/v2/vendor/auth/verify-otp`
+`POST /api/v2/vendor/auth/pin-login`
+`POST /api/v2/vendor/auth/set-pin`
+`POST /api/v2/vendor/auth/forgot-pin`
+`POST /api/v2/vendor/auth/refresh`
 
-### Vendor Data (all require auth)
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/api/v2/vendor/me` | |
-| GET | `/api/v2/vendor/context/:vendorId` | Snapshot for PWA header |
-| GET | `/api/v2/vendor/today/:vendorId` | |
-| GET | `/api/v2/vendor/leads/:vendorId` | |
-| PATCH | `/api/v2/vendor/leads/:leadId/state` | |
-| GET | `/api/v2/vendor/clients/:vendorId` | |
-| GET | `/api/v2/vendor/clients/:vendorId/:clientId` | |
-| DELETE | `/api/v2/vendor/clients/:clientId` | Hard delete, SET NULL cascade safe |
-| GET | `/api/v2/vendor/invoices/:vendorId` | |
-| PATCH | `/api/v2/vendor/invoices/:invoiceId/cancel` | Cancel = delete for vendor |
-| GET | `/api/v2/vendor/expenses/:vendorId` | |
-| DELETE | `/api/v2/vendor/expenses/:expenseId` | Hard delete |
-| GET | `/api/v2/vendor/events/:vendorId` | |
-| PATCH | `/api/v2/vendor/events/:eventId/cancel` | |
-| POST | `/api/v2/vendor/chat` | SSE or JSON — PWA agent |
+### Vendor data (all require auth)
+Leads, clients, invoices, expenses, events, me/profile, availability, schedules,
+contracts, tds, portfolio, discover, couture, featured, studio (team/tasks/payments/messages/briefing),
+today, context, hot-dates (public), chat (SSE).
+
+### Couple auth (built, data endpoints pending)
+`POST /api/v2/couple/auth/send-otp`
+`POST /api/v2/couple/auth/verify-otp`
+`POST /api/v2/couple/auth/pin-login`
+`POST /api/v2/couple/auth/set-pin`
+`POST /api/v2/couple/auth/forgot-pin`
+
+### Admin
+`/api/v2/admin/discover/*` — discover queue, grant, deny, revoke, photo approve
+`/api/v2/admin/featured/*` — featured queue
+`/api/v2/admin/couture/*` — couture admin
+`/api/v2/admin/photos/*`  — portfolio photos
 
 ---
 
 ## BLOCK 9 — JWT / AUTH FLOW
 
-**Problem solved:** Supabase magic-link sessions expire (can be as short as 5 minutes). Previously caused "Something went wrong" on every message after expiry.
+**Vendor auth (dreamai):**
+- `_base.ts` `fetchWithAuth()` — on 401, calls `/api/v2/vendor/auth/refresh`, retries once
+- `streamChat()` in `vendor.ts` — separate SSE path with 401 detection + refresh + retry
+- On refresh failure → clear localStorage + redirect to `/wedding/login`
+- Session key: `vendor_session` in localStorage
 
-**Fix:**
-1. `_base.ts` `fetchWithAuth()` — on 401, calls `/api/v2/vendor/auth/refresh` with stored `refresh_token`, updates localStorage, retries original request once
-2. `streamChat()` in `vendor.ts` — separate SSE path also has 401 detection + refresh + retry
-3. `/api/v2/vendor/auth/refresh` backend — calls `supabase.auth.refreshSession({ refresh_token })`, returns new `access_token` + `refresh_token`
-4. On refresh failure → clear localStorage + redirect to `/wedding/login`
+**Vendor SSO (thedreamwedding.in → thedreamai.in):**
+- Vendor logs in at thedreamwedding.in (dreamos-pwa auth flow)
+- After PIN → redirects to `thedreamai.in/wedding/auth/handoff?token=...&refresh=...`
+- Handoff page (`app/wedding/auth/handoff/page.tsx` in dreamai) reads JWT, calls `/me`, writes `vendor_session` to localStorage, redirects to `/wedding`
+- Single sign-in. No second login required.
 
-**Supabase JWT expiry setting:** Check Authentication → Configuration → JWT expiry. Raise to 3600 if short.
+**🚨 AUTH FLOW IN DREAMOS-PWA — NEVER TOUCH:**
+```
+app/(auth)/couple/...   — couple OTP + PIN login
+app/(auth)/vendor/...   — vendor OTP + PIN login (redirects to dreamai via SSO)
+app/(landing)/page.tsx  — Dreamer/Maker choice + OTP entry
+```
+These files must not be deleted or modified when removing legacy route groups.
+The `(auth)` route group is independent of `(vendor)` and `(bride)` — it stays forever.
+
+**Legacy vendor routes in dreamos-pwa (BEING RETIRED):**
+```
+app/(vendor)/vendor/*   — legacy vendor screens. DEAD ROUTES after SSO wired.
+                          DO NOT DELETE YET — wait until thedreamai.in confirmed stable.
+                          When deleting: only delete (vendor) group, never (auth).
+app/(bride)/*           — legacy couple screens. Being replaced by (frost).
+                          DO NOT DELETE until Frost bride blocks complete.
+```
 
 ---
 
-## BLOCK 10 — DREAMAI FRONTEND (dreamai repo)
+## BLOCK 10 — DREAMAI FRONTEND (vendor PWA)
 
 **Key files:**
 ```
-app/wedding/page.tsx              — main chat page, OnboardingOverlay wired
-app/wedding/login/page.tsx        — OTP + PIN login
-app/wedding/list/[slice]/page.tsx — list pages with CRUD delete
-components/OnboardingOverlay.tsx  — first-session intro overlay
-components/ChatThread.tsx         — message list + clarify chips
-components/MessageBubble.tsx      — individual message rendering
-components/InputBar.tsx           — chat input
-components/SuggestionChips.tsx    — context-aware quick action chips
-hooks/useChat.ts                  — SSE streaming, refresh, clarify, contact
-lib/api/vendor.ts                 — all API calls incl. streamChat()
-lib/api/_base.ts                  — fetchWithAuth with JWT refresh
-lib/types/vendor.ts               — all TypeScript interfaces
+app/wedding/page.tsx                    — main chat page
+app/wedding/login/page.tsx              — OTP + PIN login (direct vendor login)
+app/wedding/auth/handoff/page.tsx       — SSO handoff from thedreamwedding.in ← NEW
+app/wedding/list/[slice]/page.tsx       — list pages (leads/clients/invoices/expenses/events)
+app/wedding/settings/page.tsx           — vendor settings
+app/wedding/calendar/page.tsx           — calendar + availability + cancel events
+app/wedding/studio/page.tsx             — Studio hub (Prestige only)
+app/wedding/studio/team/page.tsx        — Team management
+app/wedding/studio/tasks/page.tsx       — Team tasks
+app/wedding/studio/team-payments/page.tsx — Team payments
+app/wedding/contracts/page.tsx          — Contracts
+app/wedding/tds/page.tsx                — TDS ledger
+app/wedding/portfolio/page.tsx          — Portfolio
+app/wedding/discover/page.tsx           — Discover status
+app/wedding/couture/page.tsx            — Couture programme
+app/wedding/featured/page.tsx           — Featured promos
 ```
 
-**Onboarding overlay:**
-- `localStorage` key: `dreamai_onboarding_dismissed`
-- "Don't show again" = permanent dismiss
-- "Got it" = session dismiss only
-- Tapping a prompt chip fires the message AND dismisses
-
-**List page CRUD:**
-| Slice | Delete action | Backend |
-|---|---|---|
-| invoices | PATCH cancel | `invoices.state = 'cancelled'` |
-| events | PATCH cancel | `events.state = 'cancelled'` |
-| leads | PATCH state | `leads.state = 'lost'` |
-| clients | DELETE | Hard delete, cascade SET NULL |
-| expenses | DELETE | Hard delete |
-
-**Client rows:** WhatsApp + Call buttons inline (phone required). Don't trigger bottom sheet.
+**Edit flow law (CRITICAL — read EDIT_FLOW_LAW.md before touching):**
+- "Edit here" → form → Save → direct REST PATCH. Never opens chat.
+- "Via chat" → opens chat with `?aiPrimer=` so agent gets context silently.
+- `?aiPrimer=` injects context silently. `?primer=&autoSend=1` sends visible vendor message.
+- Never use sed on .tsx files. Use Python string replacement only.
+- Never put `router.push` inside AddSheet `submit()` function.
 
 ---
 
-## BLOCK 11 — SUBSCRIPTION TIERS
+## BLOCK 11 — DREAMOS-PWA FRONTEND (bride Frost PWA)
+
+**Route groups:**
+```
+app/(frost)/frost/          — Frost bride PWA (active, being wired to backend)
+app/(auth)/                 — Auth flow (PERMANENT — never delete)
+app/(landing)/              — Landing page with Dreamer/Maker choice (PERMANENT)
+app/(vendor)/vendor/*       — Legacy vendor screens (RETIRING — do not modify)
+app/(bride)/*               — Legacy couple screens (RETIRING — being replaced by frost)
+app/admin/*                 — Admin panel (25 pages — partially wired)
+app/coplanner/*             — Circle member surface
+app/circle/join/[token]/    — Circle invite claim page (LIVE — wired to dream-os)
+```
+
+**Frost canvases:**
+```
+app/(frost)/frost/page.tsx                    — landing (Sanctuary/Dream modes)
+app/(frost)/frost/canvas/discover/page.tsx    — swipe feed (seed data → wiring in B-2)
+app/(frost)/frost/canvas/dream/page.tsx       — DreamAi chat (mock → wiring in B-6)
+app/(frost)/frost/canvas/muse/page.tsx        — mood board (mock → wiring in B-2)
+app/(frost)/frost/canvas/journey/page.tsx     — journey hub
+app/(frost)/frost/canvas/journey/circle/      — circle (mock → wiring in B-4)
+app/(frost)/frost/canvas/journey/events/      — events (mock → wiring in B-4)
+app/(frost)/frost/canvas/journey/expenses/    — expenses (mock → wiring in B-4)
+app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B-4)
+```
+
+**Frost design — LOCKED:**
+- Sanctuary mode (light) + Dream mode (dark). E1/E3 look tokens.
+- `lib/frost/tokens.ts` — never touch.
+- No new canvases. No layout changes. Wire existing canvases to real backend only.
+
+---
+
+## BLOCK 12 — SUBSCRIPTION TIERS
 
 **Vendor tiers:**
-- Essential: Rs 499/mo (Recommended for Solo Vendors)
-- Signature: Rs 1,999/mo (Recommended for Established Businesses)
+- Essential: Rs 499/mo
+- Signature: Rs 1,999/mo
 - Prestige: Rs 3,999/mo (Invite Only)
-- Trial: Before Aug 1 2026 → all new signups get Signature free until Aug 1. After Aug 1 → 30-day Signature trial then auto-downgrade to Essential.
+- Trial: Before Aug 1 2026 → all new signups get Signature free. After Aug 1 → 30-day Signature then Essential.
 
 **Couple tiers:**
 - Basic (free)
 - Gold (Rs 999 one-time)
-- Platinum (Rs 2,999 one-time — Couture + DreamAi + Memory Box)
+- Platinum (Rs 2,999 one-time)
 
-**DreamAi quotas:** Essential 20/mo, Signature 75/mo, Prestige 500/mo, 10 free trial commands.
+**DreamAi quotas:** Essential 20/mo, Signature 75/mo, Prestige 500/mo, 10 free trial.
 
 ---
 
-## BLOCK 12 — MONETISATION (6 STREAMS)
+## BLOCK 13 — MONETISATION (6 STREAMS)
 
 1. Vendor subscriptions
 2. Couple subscriptions
@@ -318,103 +346,177 @@ lib/types/vendor.ts               — all TypeScript interfaces
 5. Featured promos
 6. Honeymoon commission 10-15%
 
-**Past Client Discount Loop:** Vendors get 10% off subscription per 10 past clients who join AND send at least one enquiry, up to 50% off. Only counts clients imported via client import tool. Consider softening entry to 5 clients = 5% off to trigger early momentum.
-
 ---
 
-## BLOCK 13 — SCHEMA SUMMARY
+## BLOCK 14 — SCHEMA SUMMARY
 
-**Latest migration applied:** 0030_landing_assets.sql (2026-05-19)
-**No new migrations in the DreamAi PWA session (2026-05-20)**
+**Latest migrations applied:** 0039_vendor_discover.sql
+**Block 7 tables (applied out of band):** `payment_schedules`, `contracts`, `tds_ledger`
+**Block 6 tables (applied out of band):** `team_members`, `team_tasks`, `team_payments`, `team_messages`
 
-Key tables: conversations, messages, notes, pending_actions, leads, events, invoices, expenses, clients, muse_saves, circle_members, circle_activity, circle_sessions, couple_tasks, couple_bookings, couple_receipts, vendors, users, couples, hot_dates, vendor_state, couple_state
+Key tables: conversations, messages, notes, leads, events, invoices, expenses, clients,
+muse_saves, circle_members, circle_activity, circle_sessions, couple_tasks, couple_bookings,
+couple_receipts, vendors, users, couples, hot_dates, vendor_state,
+payment_schedules, contracts, tds_ledger, team_members, team_tasks, team_payments, team_messages,
+vendor_discover_requests, vendor_portfolio, vendor_featured_submissions
 
-**Storage buckets:** `cover-photos` (working), `invoices` (working). `vendor-images` does NOT exist.
-
-**Clients table:** No `hidden_at` or `status` column. Hard delete is safe — `leads.client_id` and `invoices.client_id` are SET NULL on delete.
+**Key column:** `vendors.discover_eligible` — gates vendor appearing in bride's Frost discover feed.
+Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET discover_eligible=true WHERE id='2eb5d3fb-...'`
 
 **Invoices state values:** `unpaid`, `advance_paid`, `paid`, `cancelled`
 **Events state values:** `upcoming`, `done`, `cancelled`
 **Leads state values:** `new`, `contacted`, `quoted`, `booked`, `lost`
+**circle_members status:** `pending`, `active`, `removed`
 
 ---
 
-## BLOCK 14 — WHAT COMES NEXT + OPEN DEBT
+## BLOCK 15 — WHAT COMES NEXT
 
-### How to run the next session
+### Current block status
 
-Every session starts with two files dropped into the chat:
+| Block | Repo | Status |
+|---|---|---|
+| Vendor F | dream-os | ✅ Done |
+| Vendor 1a | dream-os | ✅ Done |
+| Vendor 1b | dreamai | ✅ Done |
+| Vendor 1c | dreamai | ✅ Done |
+| Vendor 2 (Push) | — | ⏭ Dropped |
+| Vendor 3 (Lead detail) | both | ✅ Done |
+| Vendor 4 (Razorpay) | both | ⬜ Pending KYC |
+| Vendor 5 (Discover) | both | ✅ Done |
+| Vendor 6 (Studio) | both | ✅ Done |
+| Vendor 7 (Schedules/Contracts/TDS) | both | ✅ Done |
+| **Bride B-F** | dream-os | ⬜ Next — start here |
+| Bride B-1 | dream-os | ⬜ |
+| Bride B-2 | dreamos-pwa | ⬜ |
+| Bride B-3 | dream-os | ⬜ |
+| Bride B-4 | dreamos-pwa | ⬜ |
+| Bride B-5 | dream-os | ⬜ |
+| Bride B-6 | dreamos-pwa | ⬜ |
+| Bride B-Admin | both | ⬜ |
+
+## ADDITION TO BLOCK 15 — BRIDE BLOCK SEQUENCE (update in Holy Grail)
+
+Replace the current bride block sequence with this updated one:
+
+```
+B-F → B-1 → B-2a → B-2 → B-3 → B-4 → B-5 → B-6 → B-Admin
+```
+
+| Block | Repo | What |
+|---|---|---|
+| B-F | dream-os | Couple REST foundation — router mounted ✅ Done |
+| B-1 | dream-os | Discover public API — feed, featured, heroes, muse |
+| **B-2a** | dreamos-pwa | **Discover landing — category grid, filter sheet, blind entry** |
+| B-2 | dreamos-pwa | Wire discover swipe canvas to real backend |
+| B-3 | dream-os | Couple data API — me, today, events, expenses, circle |
+| B-4 | dreamos-pwa | Wire journey canvases to real backend |
+| B-5 | dream-os | POST /api/v2/couple/chat — SSE bridge to brideEngine |
+| B-6 | dreamos-pwa | Wire dream canvas to real chat |
+| B-Admin | both | Admin audit + wiring + delete retired route groups |
+
+**B-2a must ship before B-2.** The landing is the entry point to the swipe feed.
+B-2 wires the swipe feed to real data — the landing needs to exist first.
+
+**Discover landing (B-2a) covers:**
+- 10 category pills reordered by couple budget tier (Essential/Signature/Luxe)
+- Budget tier ordering ported from tdw-2 home.tsx
+- "Browse All" → unfiltered swipe feed
+- "Discover Blind" → swipe in blind mode (name/price hidden)
+- Filter sheet — city, vibe tags, budget filter before entering swipe
+- Bride name + days countdown greeting
+- All in Frost design system — Sanctuary/Dream modes, locked tokens
+
+
+
+
+
+### How to run bride sessions
+
+Every bride session starts with three files:
 1. This Holy Grail
-2. The spec file for the current block (e.g. `BLOCK_F_SPEC.md`)
+2. `SESSION_HACK_SHEET.md`
+3. The spec file for the current block (e.g. `BRIDE_BLOCK_F_SPEC.md`)
 
-Say "build this" and the session starts. The spec has everything needed — migration SQL, endpoint designs, file layout, smoke tests, and a completion checklist. Block is not done until every checkbox ticks.
+Say "build this" and the session starts.
 
-All spec files live in `dream-os/docs/`. The master index is `docs/VENDOR_PORT_ROADMAP.md`.
+All bride spec files live in `dream-os/docs/`:
+- `BRIDE_ROADMAP.md`
+- `BRIDE_BLOCK_F_SPEC.md` through `BRIDE_BLOCK_ADMIN_SPEC.md`
 
-### Vendor port block sequence (do in order — each depends on the previous)
+### Bride block sequence
 
 ```
-Block F  → Block 1a → Block 1b → Block 1c → Block 2 → Block 3 → Block 4 → Block 5 → Block 6 → Block 7
+B-F → B-1 → B-2 → B-3 → B-4 → B-5 → B-6 → B-Admin
 ```
 
-| Block | Repo | Migration | What | Spec |
-|---|---|---|---|---|
-| **F** ← START HERE | dream-os | 0034 | Foundation: asyncHandler, response envelope, auth audit. No user-visible change. | `BLOCK_F_SPEC.md` |
-| **1a** | dream-os | 0035 | 20 new REST endpoints + 11 agent tools. Full vendor CRUD via API. | `BLOCK_1a_SPEC.md` |
-| **1b** | dreamai | — | Typed API client + TypeScript types for every 1a endpoint. No UI. | `BLOCK_1b_SPEC.md` |
-| **1c** | dreamai | — | Add/Edit forms, Settings page, Calendar blocked dates + hot dates. | `BLOCK_1c_SPEC.md` |
-| **2** | both | 0036 | Web Push notifications — new lead, payment received, state change. | `BLOCK_2_SPEC.md` |
-| **3** | both | 0037 | Vendor enquiries inbox in PWA. Conversations state + read tracking. | `BLOCK_3_SPEC.md` |
-| **4** | both | 0038 | Razorpay subscriptions + DreamAi token packs. Revenue layer. | `BLOCK_4_SPEC.md` |
-| **5** | both | 0039 | Vendor Discover submission, Couture, Featured promos. | `BLOCK_5_SPEC.md` |
-| **6** | both | 0040 | Studio Suite (partial) — Team, Tasks, Briefing. Prestige tier. | `BLOCK_6_SPEC.md` |
-| **7** | both | 0041 | Payment schedules, contracts, TDS ledger. | `BLOCK_7_SPEC.md` |
+Each depends on the previous. B-2 cannot start until B-1 endpoints are smoke-tested from curl.
+B-4 cannot start until B-3 endpoints are smoke-tested from curl.
+B-6 cannot start until B-5 smoke-tested.
 
-After Block 7 → v0.11.0-alpha → Phase 3 (Discover go-live, Bride track, Convergence).
-
-**If runway forces a cut:** drop from the back. 1+2+3+4 is minimum viable vendor port. Drop 7 first, then 6, then 5.
-
-### Infrastructure open debt (external blockers — not coding sessions)
+### Infrastructure open debt
 
 | Item | Priority |
 |---|---|
-| Razorpay KYC | High — needed before Block 4 |
+| Razorpay KYC | High — needed before Vendor Block 4 |
 | Twilio upgrade to paid | High — needed before scaling |
-| Morning briefing Twilio template submission for +917982159047 | High — pending approval |
+| Morning briefing template approval (+917982159047) | High — pending |
+| `thedreamwedding.in` pointed at dreamos-pwa on Vercel | Before Bride B-2 goes live |
 
-### Coding open debt (needs a session)
+### Coding open debt
 
-| Item | Blocked by | Priority |
-|---|---|---|
-| `send_to_couple` tool | Architecture decision | Medium |
-| `schedule_message` tool | migration 0034 (Block F) | Medium |
-| True first-token SSE streaming | pwaEngine async generator refactor | Low |
-| Deprecated task tools in brideTools.js | Cleanup session | Medium |
-| Google Calendar OAuth live sync | Deferred post-launch | Low |
-| Instagram DM lead capture | Meta App Review (2-4 weeks) | Low |
-| Android/iOS bundle ID `in.thedreamwedding.dreamer` | Firebase config | Low |
+| Item | Priority |
+|---|---|
+| `PATCH /leads/:leadId` full update agent tool (updateLead in pwaTools) | Medium |
+| `GET /leads/:leadId/detail` endpoint | Medium |
+| Vendor Block 4 (Razorpay) — build in test mode | After KYC |
+| Via chat primer — agent gets context but vendor sees own bubble | Parked |
+| True first-token SSE streaming (pwaEngine async generator) | Low |
+| Google Calendar OAuth live sync | Low |
+| Instagram DM lead capture | Low |
 
 ---
 
-## BLOCK 15 — STANDING RULES (CARRY EVERY SESSION)
+## BLOCK 16 — STANDING RULES (CARRY EVERY SESSION)
 
-1. **Model lock:** WhatsApp DreamAi → `claude-haiku-4-5-20251001`. PWA DreamAi → `claude-sonnet-4-6` always. Bride DreamAi → Haiku always. NEVER Sonnet for WhatsApp or bride agents.
+1. **Model lock:**
+   - WhatsApp vendor agent → Haiku or Sonnet via classifier
+   - PWA vendor agent → `claude-sonnet-4-6` always
+   - Bride agent → `claude-haiku-4-5-20251001` always. NEVER Sonnet.
+   - Circle agent → Haiku always.
 
-2. **Theme:** Permanently locked. See Block 3. No exceptions.
+2. **Theme + Frost design:** Permanently locked. No exceptions.
 
-3. **Never `.catch()` on Supabase.** See Block 4. This crashes Railway.
+3. **Never `.catch()` on Supabase.** Crashes Railway.
 
-4. **WhatsApp engine isolation:** `engine.js`, `tools.js`, `systemPrompt.js`, `index.js` — never touched in PWA sessions. Zero changes.
+4. **Agent isolation:** Four engines. Never cross-modify. WhatsApp, PWA vendor, bride, circle — completely isolated.
 
-5. **Login crash rule (React Native):** Never add `SplashScreen.preventAutoHideAsync()` at module level, font-blocking render, `GoogleSignin.configure()` at module level, or `(tabs)` route conflict. Last working mobile commit: `c72c863`.
+5. **Auth flow in dreamos-pwa is permanent.** `app/(auth)/*` and `app/(landing)/page.tsx` are never deleted or modified when retiring legacy route groups. The `(vendor)` and `(bride)` groups are retiring — `(auth)` stays forever.
 
-6. **Delivery discipline:** Read ALL governance/handover docs before touching code. Verify patches against cloned code. Run `node --check` before every backend commit.
+6. **Vendor route groups in dreamos-pwa are retiring.** `app/(vendor)/vendor/*` — do not modify. Do not delete until `thedreamai.in` is confirmed stable for all vendors. When deleting: delete only `(vendor)`, never `(auth)`.
 
-7. **PWA list responses:** Max 3 items inline, prose format (never numbered lists). If more exist: "Check the app for the full list." Never mention thedreamai.in URL in chat replies — vendor is already there.
+7. **Frost canvases — wire only, never redesign.** No new canvases. No layout changes. Swap mocks for real API calls only.
 
-8. **Invoice cancel = delete:** `cancel`, `delete`, `remove` on an invoice → call `cancel_invoice` tool → `state = 'cancelled'`. Never say "can't delete."
+8. **Edit flow law (see EDIT_FLOW_LAW.md):**
+   - "Edit here" → form → REST PATCH. Never routes to chat.
+   - "Via chat" → `?aiPrimer=` (context injected silently).
+   - Never sed on .tsx. Python string replacement only.
+   - Never put router.push inside AddSheet submit().
 
-9. **wa.me links:** `generate_client_walink` returns a contact card. The model NEVER puts the raw wa.me URL in the reply text — the frontend renders the button.
+9. **Enquire link format:** `https://wa.me/917982159047?text=TDW-{routing_handle}`
+   Always use the vendor WhatsApp number. Always TDW- prefix. Never expose raw phone numbers.
 
-10. **Currency:** Rs, never ₹.
+10. **discover_eligible = true** gates vendor appearing in bride's Frost discover feed.
+    Set via admin grant (`POST /api/v2/admin/discover/grant/:vendorId`).
 
+11. **Currency:** Rs, never ₹.
+
+12. **Invoice cancel = delete:** `cancel`, `delete`, `remove` → `cancel_invoice` tool → `state = 'cancelled'`.
+
+13. **wa.me links:** `generate_client_walink` returns contact card. Model never puts raw wa.me URL in reply text.
+
+14. **PWA list responses:** Max 3 items inline, prose format. Never numbered lists.
+
+15. **Node check + tsc before every push.** Pre-push hooks enforce this. If bypassed, prod breaks.
+
+16. **Circle 3-member cap.** Enforced in Postgres via `invite_circle_member()` RPC. Never bypass in API.
