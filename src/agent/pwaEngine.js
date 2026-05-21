@@ -1155,7 +1155,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     // ── Block 7: Schedules / Contracts / TDS ─────────────────────────────────
 
     case 'create_schedule': {
-      const { createSchedule } = require('./../../lib/vendor/schedules');
+      const { createSchedule } = require('../lib/vendor/schedules');
       const result = await createSchedule(supabase, vendor.id, input.invoice_id, input.milestones);
       if (!result.ok) return err(result.error);
       console.log(`[pwa-tool:create_schedule] invoice ${input.invoice_id} — ${result.schedule.length} milestones`);
@@ -1163,7 +1163,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     }
 
     case 'mark_milestone_paid': {
-      const { markMilestonePaid } = require('./../../lib/vendor/schedules');
+      const { markMilestonePaid } = require('../lib/vendor/schedules');
       const result = await markMilestonePaid(supabase, vendor.id, input.milestone_id, input.amount_paid);
       if (!result.ok) return err(result.error);
       console.log(`[pwa-tool:mark_milestone_paid] milestone ${input.milestone_id} Rs ${input.amount_paid}`);
@@ -1171,7 +1171,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     }
 
     case 'attach_contract': {
-      const { attachFromUrl } = require('./../../lib/vendor/contracts');
+      const { attachFromUrl } = require('../lib/vendor/contracts');
       const result = await attachFromUrl(supabase, vendor.id, {
         title:    input.title,
         clientId: input.client_id || null,
@@ -1194,7 +1194,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     }
 
     case 'log_tds': {
-      const { createEntry, getSummary, currentFinancialYear } = require('./../../lib/vendor/tds');
+      const { createEntry, getSummary, currentFinancialYear } = require('../lib/vendor/tds');
       const params = {
         ...input,
         deduction_date: input.deduction_date || new Date().toISOString().slice(0, 10),
@@ -1214,7 +1214,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     }
 
     case 'query_tds_summary': {
-      const { getSummary, currentFinancialYear } = require('./../../lib/vendor/tds');
+      const { getSummary, currentFinancialYear } = require('../lib/vendor/tds');
       const fy = input.financial_year || currentFinancialYear();
       const result = await getSummary(supabase, vendor.id, fy);
       if (!result.ok) return err(result.error);
