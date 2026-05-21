@@ -135,7 +135,11 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
 
   let query = supabase
     .from('muse_saves')
-    .select('id, save_number, image_url, source_type, vendor_id, vendor:vendors(business_name), caption, aesthetic_tags, saved_by_role, circle_comment_count, created_at', { count: 'exact' })
+    .select(`
+      id, save_number, image_url, source_type, vendor_id,
+      caption, aesthetic_tags, saved_by_role, circle_comment_count, created_at,
+      vendor:vendors(id, business_name, city, category, rate_min, aesthetic_tags, routing_handle)
+    `, { count: 'exact' })
     .eq('couple_id', couple_id)
     .order('save_number', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -149,18 +153,28 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not fetch saves.');
   }
 
+  const ENQUIRE_BASE = 'https://wa.me/917982159047?text=TDW-';
+
   const shaped = (saves || []).map(s => ({
-    id:                   s.id,
-    save_number:          s.save_number,
-    image_url:            s.image_url             || null,
-    source_type:          s.source_type,
-    vendor_id:            s.vendor_id             || null,
-    vendor_name:          s.vendor?.business_name || null,
-    caption:              s.caption               || null,
-    aesthetic_tags:       s.aesthetic_tags        || [],
-    saved_by_role:        s.saved_by_role,
-    circle_comment_count: s.circle_comment_count  || 0,
-    created_at:           s.created_at,
+    id:                    s.id,
+    save_number:           s.save_number,
+    image_url:             s.image_url                  || null,
+    source_type:           s.source_type,
+    vendor_id:             s.vendor_id                  || null,
+    vendor_name:           s.vendor?.business_name      || null,
+    vendor_city:           s.vendor?.city               || null,
+    vendor_category:       s.vendor?.category           || null,
+    vendor_starting_price: s.vendor?.rate_min           || null,
+    vendor_vibe_tags:      s.vendor?.aesthetic_tags     || [],
+    vendor_routing_handle: s.vendor?.routing_handle     || null,
+    enquire_link:          s.vendor?.routing_handle
+      ? `${ENQUIRE_BASE}${s.vendor.routing_handle}`
+      : null,
+    caption:               s.caption                    || null,
+    aesthetic_tags:        s.aesthetic_tags             || [],
+    saved_by_role:         s.saved_by_role,
+    circle_comment_count:  s.circle_comment_count       || 0,
+    created_at:            s.created_at,
   }));
 
   return okRes(res, { saves: shaped, total: count || 0 });
