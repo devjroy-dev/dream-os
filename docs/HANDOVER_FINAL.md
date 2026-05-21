@@ -1,4 +1,71 @@
 # dream-os — Master Handover (The Bridge Document)
+**Written:** 2026-05-21 (Bride Blocks B-F, B-1, B-2 + amendments session close)
+**Session:** Bride Block F (couple REST foundation) + Block 1 (discover + muse API) + Block 2 (Frost PWA wiring + amendments)
+**Version:** dream-os → 0.11.1-alpha / dreamos-pwa → 0.11.1-alpha
+**HEAD (dream-os):** 0a596a9 feat(bride): muse list returns vendor fields for full-bleed overlay
+**HEAD (dreamos-pwa):** d024119 feat(bride): muse full-bleed vendor overlay, enquire, share, remove
+**HEAD (dreamai):** unchanged
+**Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
+**Railway:** https://dream-os-production.up.railway.app
+**Vercel (dreamos-pwa):** https://thedreamwedding.in
+**Vercel (dreamai):** https://thedreamai.in
+
+---
+
+## Bride Block F — Couple REST Foundation
+
+**Migration 0040 committed:** couples columns (wedding_date, wedding_city, bride_name, groom_name, budget_total, notes), vendors.discover_eligible, muse_saves.circle_comment_count
+**Migration 0041 committed:** vendors.about
+
+- `src/api/middleware/requireCoupleAuth.js` — JWT middleware for couple routes. Returns 401 JSON (never HTML) on missing/invalid token.
+- `src/api/couple/core.js` — couple router at `/api/v2/couple`. `requireCoupleAuth` applied at router level — all sub-routers inherit.
+- `src/api/router.js` — couple core mounted.
+
+---
+
+## Bride Block 1 — Discover Public API + Muse Endpoints
+
+- `src/api/couple/discover.js` — GET /feed, /featured, /heroes (public, no auth). Feed filters by discover_eligible=true, returns up to 5 approved portfolio photos per vendor, computes enquire_link server-side.
+- `src/api/couple/muse.js` — POST /save, GET /:coupleId, DELETE /:saveId, GET /saves/:saveId/activity (couple auth). Save accepts image_url — each photo is a distinct save. Duplicate check on vendor_id + image_url. GET list JOINs vendors and returns vendor_name, vendor_city, vendor_category, vendor_starting_price, vendor_vibe_tags, vendor_routing_handle, enquire_link.
+- `src/api/router.js` — /discover mounted public; /couple/muse mounted with requireCoupleAuth.
+
+---
+
+## Bride Block 2 — Frost PWA Wiring + Amendments
+
+**dreamos-pwa:**
+- `lib/types/discover.ts` — DiscoverVendor, FeaturedCollection, DiscoverHero, MuseSave (with vendor fields), MuseActivity
+- `lib/frost-api/_base.ts` — getCoupleSession(), apiDelete()
+- `lib/frost-api/discover.ts` — fetchDiscoverFeed, fetchFeatured, fetchHeroes, makeEnquireLink
+- `lib/frost-api/muse.ts` — fetchMuseSaves, saveVendorToMuse(vendorId, imageUrl), deleteMuseSave, fetchSaveActivity
+- `app/(frost)/frost/canvas/discover/page.tsx` — real API, infinite scroll, image preload. Normal mode: swipe up/down = vendors, left/right = photos, single tap = overlay, double-tap = save current photo. Blind mode: flat queue of all vendor photos, swipe up = next photo, double-tap = save, gold ✕ on dismiss, no carousel dots.
+- `app/(frost)/frost/canvas/muse/page.tsx` — real API, source filter (All/Mine/Circle) + ceremony filter. Full-bleed overlay: tap image → vendor glass overlay with enquire, share, remove. Circle activity tile below.
+
+**Domain:** thedreamwedding.in → dreamos-pwa (Frost bride PWA live).
+**Env:** NEXT_PUBLIC_USE_MOCKS=false, NEXT_PUBLIC_API_BASE=https://dream-os-production.up.railway.app
+
+---
+
+## Test credentials (added this session)
+
+| Test couple phone | +919888294440 |
+| Test couple couple_id | 7abccc1b-0698-43ba-9709-c6a1e52af789 |
+| Test couple PIN | 1234 |
+
+---
+
+## What is next
+
+1. Bride B-3 — couple data endpoints: /me, /today, /events, /expenses, /circle, /bookings, /receipts (dream-os)
+2. Bride B-4 — wire journey canvases to real backend (dreamos-pwa)
+3. Domain cleanup — www.thedreamwedding.in and app.thedreamwedding.in off tdw-2
+4. Vendor Block 4 (Razorpay) — when KYC clears
+
+---
+
+## Previous sessions archived below
+
+# dream-os — Master Handover (The Bridge Document)
 **Written:** 2026-05-21 (Block 6 + Block 7 session close)
 **Session:** Block 6 — Studio Suite (Team Hub) + Block 7 — Payment Schedules, Contracts, TDS
 **Version:** 0.10.8-alpha (dream-os) / dreamai up to date

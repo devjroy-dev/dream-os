@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-21 (Vendor port complete. Bride blocks specced. SSO wired. B-F done.)
+**Last updated:** 2026-05-21 (Vendor port complete. Bride blocks specced. SSO wired. B-F, B-1, B-2 done.)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -350,7 +350,7 @@ app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B
 
 ## BLOCK 14 — SCHEMA SUMMARY
 
-**Latest migrations applied:** 0039_vendor_discover.sql
+**Latest migrations applied:** 0041_vendor_about.sql
 **Block 7 tables (applied out of band):** `payment_schedules`, `contracts`, `tds_ledger`
 **Block 6 tables (applied out of band):** `team_members`, `team_tasks`, `team_payments`, `team_messages`
 
@@ -362,6 +362,12 @@ vendor_discover_requests, vendor_portfolio, vendor_featured_submissions
 
 **Key column:** `vendors.discover_eligible` — gates vendor appearing in bride's Frost discover feed.
 Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET discover_eligible=true WHERE id='2eb5d3fb-...'`
+
+**B-F/B-1 columns added (0040 + 0041):**
+- `couples`: wedding_date, wedding_city, bride_name, groom_name, budget_total, notes
+- `vendors`: about (text) — vendor bio for discover feed
+- `muse_saves`: circle_comment_count (integer, default 0)
+- `muse_saves`: image_url populated on save — each photo is a distinct save (vendor_id + image_url duplicate check)
 
 **Invoices state values:** `unpaid`, `advance_paid`, `paid`, `cancelled`
 **Events state values:** `upcoming`, `done`, `cancelled`
@@ -387,10 +393,10 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | Vendor 6 (Studio) | both | ✅ Done |
 | Vendor 7 (Schedules/Contracts/TDS) | both | ✅ Done |
 | **Bride B-F** | dream-os | ✅ Done |
-| Bride B-1 | dream-os | ⬜ Next — start here |
-| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ |
-| Bride B-2 (Wire discover swipe) | dreamos-pwa | ⬜ |
-| Bride B-3 (Couple data API) | dream-os | ⬜ |
+| **Bride B-1** | dream-os | ✅ Done |
+| Bride B-2a (Discover landing) | dreamos-pwa | ⏭ Merged into B-2 |
+| **Bride B-2** (Wire discover + muse) | dreamos-pwa | ✅ Done |
+| Bride B-3 (Couple data API) | dream-os | ⬜ Next — start here |
 | Bride B-3a (Coplanner API) | dream-os | ⬜ |
 | Bride B-4 | dreamos-pwa | ⬜ |
 | Bride B-5 | dream-os | ⬜ |
@@ -457,7 +463,7 @@ B-6 cannot start until B-5 smoke-tested.
 | Razorpay KYC | High — needed before Vendor Block 4 |
 | Twilio upgrade to paid | High — needed before scaling |
 | Morning briefing template approval (+917982159047) | High — pending |
-| `thedreamwedding.in` pointed at dreamos-pwa on Vercel | Before Bride B-2 goes live |
+| `thedreamwedding.in` pointed at dreamos-pwa on Vercel | ✅ Done |
 
 ### Coding open debt
 
