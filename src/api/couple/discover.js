@@ -19,6 +19,8 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
   const category = req.query.category || null;
   const city     = req.query.city     || null;
+  const budget   = req.query.budget   || null;
+  const vibes    = req.query.vibes    || null;
   const page     = Math.max(0, parseInt(req.query.page,  10) || 0);
   const limit    = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const offset   = page * limit;
@@ -30,6 +32,8 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
   if (category) query = query.eq('category', category);
   if (city)     query = query.ilike('city', `%${city}%`);
+  if (budget)   query = query.lte('rate_min', parseInt(budget, 10));
+  if (vibes)    query = query.overlaps('aesthetic_tags', vibes.split(','));
 
   query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
