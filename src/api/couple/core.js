@@ -28,4 +28,7 @@ router.use('/receipts', require('./receipts'));
 // B-5: chat
 router.use('/chat',     require('./chat'));
 
+// B-6: taste quiz (Surprise Me)
+router.use('/quiz',     require('./quiz'));
+
 module.exports = router;
