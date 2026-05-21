@@ -26,6 +26,6 @@ router.use('/bookings', require('./bookings'));
 router.use('/receipts', require('./receipts'));
 
 // B-5: chat
-// router.use('/chat',     require('./chat'));
+router.use('/chat',     require('./chat'));
 
 module.exports = router;
