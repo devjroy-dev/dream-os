@@ -196,10 +196,11 @@ async function getLeadDetail(supabase, vendorId, leadId) {
         .eq('conversation_id', thread.id)
         .neq('sent_by', 'system')
         .not('body', 'is', null)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(20);
 
-      conversation = (msgs || []).filter(m => m.body && m.body.trim());
+      // Reverse to chronological order for display
+      conversation = (msgs || []).filter(m => m.body && m.body.trim()).reverse();
     }
   }
 
