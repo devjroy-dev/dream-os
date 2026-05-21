@@ -1,4 +1,159 @@
 # dream-os — Master Handover (The Bridge Document)
+**Written:** 2026-05-21 (Block 6 + Block 7 session close)
+**Session:** Block 6 — Studio Suite (Team Hub) + Block 7 — Payment Schedules, Contracts, TDS
+**Version:** 0.10.8-alpha (dream-os) / dreamai up to date
+**HEAD (dream-os):** 3f2a242 feat(block7): payment schedules, contracts, TDS — 16 endpoints + 6 agent tools
+**HEAD (dreamai):** latest (see git log — multiple commits this session)
+**HEAD (dreamos-pwa):** 31a3b11 (unchanged)
+**Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
+**Repo backend:** https://github.com/devjroy-dev/dream-os
+**Repo vendor PWA alpha:** https://github.com/devjroy-dev/dreamai
+**Vercel (dreamai):** https://thedreamai.in
+**Railway (dream-os):** https://dream-os-production.up.railway.app
+
+Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then API_CONTRACTS.md.
+
+---
+
+## Block 6 — Studio Suite (Team Hub) — 2026-05-21
+
+### What shipped
+
+**Migration 0040 — applied to prod (via Supabase SQL editor — not yet committed to db/migrations/):**
+- `team_members` — vendor crew roster
+- `team_tasks` — task assignment with state machine (open/in_progress/done/cancelled)
+- `team_messages` — broadcast messages with pinned flag
+- `team_payments` — crew payment obligations with mark-paid + auto-expense creation
+
+**dream-os:**
+- `src/api/middleware/requirePrestige.js` — 403 TIER_PRESTIGE_REQUIRED gate
+- `src/api/vendor/studio/index.js` — studio sub-router
+- `src/api/vendor/studio/briefing.js` — GET /briefing (aggregated: today events, open tasks, pinned messages, week calendar, team owed)
+- `src/api/vendor/studio/team.js` — CRUD team members (soft delete)
+- `src/api/vendor/studio/tasks.js` — CRUD tasks + state transitions
+- `src/api/vendor/studio/messages.js` — CRUD messages + pin toggle
+- `src/api/vendor/studio/payments.js` — CRUD payments + mark-paid (auto-creates assistant expense) + cancel endpoint
+- `src/api/vendor/core.js` — mounted /studio
+- `src/agent/pwaTools.js` — 4 Prestige tools: assign_task, team_pay, pin_team_message, team_briefing
+- `src/agent/pwaEngine.js` — 4 Prestige tool case handlers
+
+**dreamai:**
+- `app/wedding/studio/page.tsx` — Team Hub landing (Prestige-gated, locked badges for non-Prestige)
+- `app/wedding/studio/team/page.tsx` — roster + role dropdown + add/edit/delete sheets
+- `app/wedding/studio/tasks/page.tsx` — tab board (Open/In Progress/Done) + state advance + delete
+- `app/wedding/studio/team-payments/page.tsx` — balance cards, owed rows with Mark Paid + Delete, settled rows with date+method
+- `app/wedding/list/page.tsx` — restructured to Business / Finance / Team Hub / Discover sections
+- `app/wedding/login/page.tsx` — fixed: now fetches /me after OTP verify to get real tier + name into session (was hardcoded 'essential')
+
+### Key decisions
+- Studio Suite renamed → **Team Hub** in all UI (route stays /wedding/studio)
+- Mark-paid auto-creates `assistant` category expense — team payments appear in expense ledger
+- Login tier fix: `tier: 'essential'` was hardcoded at OTP verify — now calls fetchMe() post-login
+- Studio hub restructured: Business (Clients/Leads/Events/Contracts) / Finance (Invoices/Expenses/TDS) / Team Hub / Discover
+
+### Smoke tests passed (20/20 curl + tier gate)
+- Team CRUD, task state machine, pin toggle, payment obligations, balance, mark-paid, cancel
+- 403 TIER_PRESTIGE_REQUIRED confirmed on non-Prestige vendor
+- briefing endpoint aggregates correctly
+
+---
+
+## Block 7 — Payment Schedules, Contracts, TDS — 2026-05-21
+
+### What shipped
+
+**Migration 0041 — applied to prod (via Supabase SQL editor — not yet committed to db/migrations/):**
+- `payment_schedules` — milestone-based payment plans on invoices (ordinal, pct, amount_due, state)
+- `contracts` — PDF contract storage (two-phase upload via Supabase Storage signed URLs)
+- `tds_ledger` — Tax Deducted at Source ledger (gross/rate/tds/net, FY, PAN, TAN, section)
+- `invoices.has_schedule` column added
+
+**Storage:**
+- `contracts` bucket created in Supabase Storage (private, 10MB, application/pdf)
+- RLS policies: authenticated upload (INSERT) + authenticated read (SELECT)
+
+**dream-os:**
+- `src/lib/vendor/schedules.js` — createSchedule, markMilestonePaid (syncs invoice amount_paid), deleteSchedule
+- `src/lib/vendor/contracts.js` — getUploadUrl, finalizeContract, getDownloadUrl, attachFromUrl (WhatsApp), cleanupDraftContracts
+- `src/lib/vendor/tds.js` — createEntry, getSummary, currentFinancialYear()
+- `src/api/vendor/schedules.js` — 5 endpoints (POST/GET/DELETE schedule, PATCH milestone, POST milestone/paid)
+- `src/api/vendor/contracts.js` — 7 endpoints (upload-url, finalize, list, download, patch, send, delete)
+- `src/api/vendor/tds.js` — 6 endpoints (list, create, patch, delete, summary, export CSV)
+- `src/api/vendor/core.js` — mounted schedules, contracts, tds
+- `src/agent/pwaTools.js` — 6 new tools: create_schedule, mark_milestone_paid, attach_contract, list_contracts, log_tds, query_tds_summary
+- `src/agent/pwaEngine.js` — 6 tool case handlers
+- `src/cron.js` — draft contract cleanup cron (3am IST daily)
+
+**dreamai:**
+- `app/wedding/contracts/page.tsx` — list + two-phase PDF upload + detail sheet (Download/Mark Sent/Mark Signed/Cancel)
+- `app/wedding/tds/page.tsx` — FY selector, summary card (gross/TDS/net + by-section), entries list, log sheet, CSV export
+- `app/wedding/list/[slice]/page.tsx` — schedule section on invoice bottom sheet (milestones with Paid button + builder sheet)
+- `lib/types/vendor.ts` — ScheduleMilestone, Contract, TdsEntry, TdsSummary
+- `lib/api/vendor.ts` — all Block 7 API functions
+
+### Key decisions
+- Milestone → invoice sync done in JS (sequential awaits), not Postgres function — consistent with codebase pattern
+- Contracts are PDF documents (booking agreements), NOT terms & conditions templates
+- TDS is what corporate clients deduct from vendor invoices — vendor tracks it for year-end income tax credit
+- Two-phase upload: backend returns signed URL → frontend uploads directly to Supabase Storage → finalize call
+- WhatsApp contract attach uses separate code path (downloads from Twilio URL, uploads directly)
+- Schedule builder sheet: zIndex 60 (above invoice bottom sheet at 50)
+
+### Smoke tests passed (20/20 curl)
+- Schedule: create, duplicate guard (409), bad pct sum (400), milestone paid × 3, invoice state machine, delete guard (409)
+- TDS: create, list, summary (correct aggregation + by_section), CSV export, patch (recomputes tds_amount), delete
+- Contracts: upload URL (signed URL returned), list, patch, soft delete
+
+### Open items / known debt
+- **0040 + 0041 migrations not committed to db/migrations/** — applied via SQL editor. Need to drop files and commit.
+- **Admin CORS bug** — `dream-os-production.up.railway.app/admin` returns Internal Server Error because CORS middleware fires on admin routes. Fix: exempt `/admin/*` from CORS. One-line patch, deferred (scope creep).
+- **Admin panel not updated for Block 6/7** — no visibility into team members, contracts, schedules, TDS per vendor in admin UI. Deferred.
+- **Founding cohort tier** — all founding vendors manually set to `prestige` via SQL. Block 4 (Razorpay) will enforce this properly when KYC clears.
+
+---
+
+## Test credentials (unchanged)
+
+| Item | Value |
+|---|---|
+| Test vendor phone | +918757788550 |
+| Test vendor UUID | 2eb5d3fb-31eb-4b26-859a-cf10ae477d53 |
+| Test vendor handle | DEV550 |
+| Test vendor tier | prestige (manually set) |
+| Supabase | nvzkbagqxbysoeszxent (Mumbai, ap-south-1) |
+| Railway | https://dream-os-production.up.railway.app |
+| Admin | https://dream-os-production.up.railway.app/admin |
+| Vercel dreamai | https://thedreamai.in |
+| Admin password | Mira@2551354 |
+
+---
+
+## Migration status
+
+| # | File | Status | What it adds |
+|---|---|---|---|
+| 0001–0039 | applied + committed | ✅ | See SCHEMA.md |
+| 0040 | applied to prod | ⚠️ not committed | team_members, team_tasks, team_messages, team_payments |
+| 0041 | applied to prod | ⚠️ not committed | payment_schedules, contracts, tds_ledger, invoices.has_schedule |
+
+**Action required:** Commit 0040 and 0041 as files to `db/migrations/` in next session.
+
+---
+
+## What is next (priority order)
+
+1. **Commit 0040 + 0041 migration files** — drop into db/migrations/, commit, push
+2. **Admin CORS fix** — exempt /admin/* from CORS middleware (one-line patch)
+3. **Block 4 — Razorpay** — when KYC clears. Subscription enforcement, trial cron, token packs
+4. **Phase 3 — Discover go-live** — public bride-facing feed, v1.0.0
+
+---
+
+---
+
+## Previous sessions (archived below)
+
+# dream-os — Master Handover (The Bridge Document)
 **Written:** 2026-05-21 (Block 3 session close)
 **Session:** Block 3 — Lead detail: vendor summary card + couple conversation thread + WhatsApp/Call buttons
 **Version:** 0.10.3-alpha

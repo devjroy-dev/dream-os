@@ -829,3 +829,147 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 | couture_eligible | boolean | default false — admin invite-only toggle |
 | featured_eligible | boolean | default false — admin toggle, requires discover_eligible |
 
+
+---
+
+## Block 6 — Team Hub (migration 0040)
+
+### team_members
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| name | text | required |
+| role | text | second_shooter / assistant / editor / runner / videographer / makeup_artist / coordinator / other |
+| phone | text | E.164 format |
+| daily_rate_inr | integer | nullable |
+| notes | text | nullable |
+| active | boolean | default true |
+| deleted_at | timestamptz | soft delete |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+### team_tasks
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| assigned_to_member_id | uuid FK team_members | ON DELETE SET NULL |
+| linked_event_id | uuid FK events | ON DELETE SET NULL |
+| title | text | required |
+| description | text | nullable |
+| due_date | date | nullable |
+| priority | text | low / normal / high / urgent |
+| state | text | open / in_progress / done / cancelled |
+| completed_at | timestamptz | stamped when state → done |
+| deleted_at | timestamptz | soft delete |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+### team_messages
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| body | text | required |
+| pinned | boolean | default false — pinned messages surface in briefing |
+| sent_to_count | integer | nullable — optional record of recipients |
+| linked_event_id | uuid FK events | ON DELETE SET NULL |
+| created_at | timestamptz | |
+
+### team_payments
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| team_member_id | uuid FK team_members | ON DELETE CASCADE |
+| linked_event_id | uuid FK events | ON DELETE SET NULL |
+| linked_task_id | uuid FK team_tasks | ON DELETE SET NULL |
+| description | text | nullable |
+| amount_inr | integer | CHECK > 0 |
+| state | text | owed / paid / cancelled |
+| paid_at | timestamptz | stamped on mark-paid |
+| paid_via | text | cash / upi / bank / other |
+| notes | text | nullable |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+**Side effect:** marking a team payment as paid auto-creates an `assistant` category expense in the `expenses` table.
+
+---
+
+## Block 7 — Payment Schedules, Contracts, TDS (migration 0041)
+
+### payment_schedules
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| invoice_id | uuid FK invoices | ON DELETE CASCADE |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| milestone_label | text | e.g. "Booking", "Shoot day", "Delivery" |
+| pct | numeric(5,2) | CHECK > 0 AND <= 100 — percentages must sum to 100 across invoice |
+| amount_due | integer | denormalised: invoice.amount_total × pct/100 at create time |
+| due_date | date | nullable — some milestones are event-driven |
+| state | text | pending / paid / waived |
+| paid_at | timestamptz | stamped on mark-paid |
+| paid_amount | integer | captured at mark-paid — may differ from amount_due |
+| ordinal | integer | display order; UNIQUE per invoice |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+**Constraint:** Sum of pct must equal 100 — enforced in code, not DB CHECK.
+**Sync rule:** marking a milestone paid also bumps `invoices.amount_paid` — done in JS (sequential awaits).
+
+### invoices additions (migration 0041)
+| Column | Type | Notes |
+|---|---|---|
+| has_schedule | boolean | default false — set true when schedule created, false when deleted |
+
+### contracts
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| client_id | uuid FK clients | ON DELETE SET NULL |
+| lead_id | uuid FK leads | ON DELETE SET NULL |
+| invoice_id | uuid FK invoices | ON DELETE SET NULL |
+| title | text | required |
+| storage_path | text | contracts/{vendor_id}/{contract_id}.pdf — set after upload |
+| file_size | integer | bytes — set on finalize |
+| mime_type | text | default application/pdf |
+| notes | text | nullable |
+| state | text | draft / sent / signed / cancelled |
+| sent_at | timestamptz | stamped when state → sent |
+| signed_at | timestamptz | stamped when state → signed |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+**Storage:** Supabase Storage bucket `contracts` (private). Signed URLs generated on demand (1hr expiry for download, 5min for upload).
+**Upload pattern:** Two-phase — backend creates draft row + returns signed upload URL → frontend uploads directly to Storage → finalize call reads file metadata.
+**Cleanup:** Draft contracts older than 24h with no file are deleted by cron (3am IST daily).
+
+### tds_ledger
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| invoice_id | uuid FK invoices | ON DELETE SET NULL |
+| client_id | uuid FK clients | ON DELETE SET NULL |
+| client_name | text | snapshot — survives client delete |
+| client_pan | text | deductor PAN — required for 26AS reconciliation |
+| client_tan | text | deductor TAN |
+| gross_amount | integer | CHECK > 0 |
+| tds_rate | numeric(4,2) | CHECK 0–30% |
+| tds_amount | integer | computed: gross × rate / 100 |
+| net_received | integer | computed: gross − tds_amount |
+| section | text | income tax section code e.g. 194J (professional), 194C (contractors) |
+| deduction_date | date | required |
+| financial_year | text | FY2026-27 format — Indian FY (Apr–Mar) |
+| certificate_no | text | Form 16A certificate number — nullable |
+| notes | text | nullable |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+**FY helper:** `currentFinancialYear()` in `src/lib/vendor/tds.js` — Apr–Mar Indian calendar.
+**Hard delete:** TDS entries are hard-deleted (vendor-managed tax records — soft delete adds year-end confusion).
+**CSV export:** `GET /api/v2/vendor/tds/:vendorId/export?financial_year=FY2026-27` returns text/csv.

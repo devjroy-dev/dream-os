@@ -1,6 +1,7 @@
 # Vendor port roadmap — dream-os ↔ dreamai
 
 **Written:** 2026-05-20
+**Last updated:** 2026-05-21 (Blocks 6 + 7 complete)
 **Scope:** Bring dream-os vendor product to feature parity with legacy `dream-wedding` vendor surface, with dreamai PWA frontend keeping pace.
 **Not in scope:** Bride product. dreamos-pwa shell. Frontend port from legacy Expo app.
 **Standing reference:** This roadmap supersedes the porting discussion in conversation history. Each block has its own spec file (`BLOCK_<id>_SPEC.md`).
@@ -30,8 +31,8 @@ After all blocks ship:
 | **3**  | both     | `0037_conversations_state.sql`| 0.10.3-α → 0.10.4-α | `BLOCK_3_SPEC.md` |
 | **4**  | both     | `0038_monetisation.sql`       | 0.10.4-α → 0.10.5-α | `BLOCK_4_SPEC.md` |
 | **5**  | both     | `0039_vendor_discover.sql`    | 0.10.5-α → 0.10.6-α | `BLOCK_5_SPEC.md` |
-| **6**  | both     | `0040_studio_partial.sql`     | 0.10.6-α → 0.10.7-α | `BLOCK_6_SPEC.md` |
-| **7**  | both     | `0041_schedules_contracts_tds.sql` | 0.10.7-α → 0.10.8-α | `BLOCK_7_SPEC.md` |
+| **6** ✅ | both   | `0040_studio_partial.sql`     | 0.10.6-α → 0.10.7-α | `BLOCK_6_SPEC.md` |
+| **7** ✅ | both   | `0041_schedules_contracts_tds.sql` | 0.10.7-α → 0.10.8-α | `BLOCK_7_SPEC.md` |
 
 After Block 7, dream-os hits **v0.11.0-alpha** (Phase 2 complete) provided the open Phase 2 checkboxes from ROADMAP_FINAL also close. Phase 3 (Discover go-live, v1.0.0) follows.
 
