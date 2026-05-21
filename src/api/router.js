@@ -66,20 +66,20 @@ router.use('/admin/couture',      require('./admin/couture'));
 router.use('/admin/featured',     require('./admin/featured'));
 
 // Block 2+ routers mounted here as they are built:
-router.use('/discover',    require('./couple/discover'));                          // B-1: public, no auth
+router.use('/discover',      require('./couple/discover'));                        // B-1: public, no auth
 const requireCoupleAuth = require('./middleware/requireCoupleAuth');
-router.use('/couple/muse', requireCoupleAuth, require('./couple/muse'));           // B-1: muse, auth required
-router.use('/couple',      require('./couple/core'));                              // B-1/B-3: couple data
+router.use('/couple/muse',   requireCoupleAuth, require('./couple/muse'));         // B-1: muse, auth required
+router.use('/couple/profile',require('./couple/profile'));                         // B-3a: public — MUST be before /couple catch-all
+router.use('/couple',        require('./couple/core'));                            // B-1/B-3: couple data
 
 // B-3a: circle member / coplanner endpoints
 const requireCircleMemberAuth = require('./middleware/requireCircleMemberAuth');
-router.use('/auth/verify-pin',     require('./circle/verifyPin'));                // public — verify circle member PIN
-router.use('/circle/session',      require('./circle/session'));                  // public — load circle session
-router.use('/couple/profile',      require('./couple/profile'));                  // public — couple profile for coplanner
-router.use('/frost/circle/feed',   requireCircleMemberAuth, require('./circle/feed'));      // activity feed
-router.use('/circle/muse',         requireCircleMemberAuth, require('./circle/muse'));      // muse board + save + comment
-router.use('/frost/circle/threads',requireCircleMemberAuth, require('./circle/threads'));   // thread list + messages
+router.use('/auth/verify-pin',      require('./circle/verifyPin'));               // public — verify circle member PIN
+router.use('/circle/session',       require('./circle/session'));                 // public — load circle session
+router.use('/frost/circle/feed',    requireCircleMemberAuth, require('./circle/feed'));      // activity feed
+router.use('/circle/muse',          requireCircleMemberAuth, require('./circle/muse'));      // muse board + save + comment
+router.use('/frost/circle/threads', requireCircleMemberAuth, require('./circle/threads'));   // thread list + messages
 router.use('/frost/circle/messages',requireCircleMemberAuth, require('./circle/messages')); // send message
-router.use('/dreamai',             requireCircleMemberAuth, require('./circle/dreamai'));   // DreamAi history + chat
+router.use('/dreamai',              requireCircleMemberAuth, require('./circle/dreamai'));   // DreamAi history + chat
 
 module.exports = router;
