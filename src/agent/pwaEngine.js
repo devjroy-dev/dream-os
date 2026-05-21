@@ -1139,6 +1139,33 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
       return ok(result.blocks.length + ' blocked date(s):\n' + lines);
     }
 
+    case 'list_expenses': {
+      let q = supabase.from('expenses')
+        .select('id, description, amount, category, expense_date, client_name, created_at')
+        .eq('vendor_id', vendor.id)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (input.client_name) q = q.ilike('client_name', `%${input.client_name}%`);
+      if (input.category)    q = q.eq('category', input.category);
+      const { data, error } = await q;
+      if (error) return err(error.message);
+      const total = (data || []).reduce((s, e) => s + (e.amount || 0), 0);
+      console.log(`[pwa-tool:list_expenses] ${(data||[]).length} expenses, Rs ${total} total`);
+      return ok(JSON.stringify({ expenses: data || [], total_spent: total }));
+    }
+
+    case 'list_team': {
+      const { data, error } = await supabase.from('team_members')
+        .select('id, name, role, phone, active')
+        .eq('vendor_id', vendor.id)
+        .eq('active', true)
+        .order('name', { ascending: true });
+      if (error) return err(error.message);
+      console.log(`[pwa-tool:list_team] ${(data||[]).length} members`);
+      return ok(JSON.stringify({ team: data || [], count: (data||[]).length }));
+    }
+
     case 'clarify': {
       const clarify = {
         question: input.question,

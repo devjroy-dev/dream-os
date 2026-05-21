@@ -704,6 +704,27 @@ const PWA_TOOLS = [
 
 
   {
+    name: 'list_expenses',
+    description: 'List recent vendor expenses. Use when vendor asks "show my expenses", "what did I spend recently", "list expenses". Returns last 20 expenses sorted by date.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_name: { type: 'string', description: 'Filter by client name. Optional.' },
+        category:    { type: 'string', description: 'Filter by category e.g. travel, equipment. Optional.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'list_team',
+    description: 'List all team members. Use when vendor asks "show my team", "who is on my team", "list team members". Returns active team members with their roles.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
     name: 'clarify',
     description: 'Ask the vendor a clarifying question when their request is genuinely ambiguous between two equally likely options. Use sparingly — only when acting on the wrong interpretation would cause real harm (e.g. wrong invoice, wrong client). Do NOT use for minor uncertainties you can resolve from context.',
     input_schema: {
