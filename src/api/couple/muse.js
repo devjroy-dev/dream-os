@@ -1,0 +1,193 @@
+// src/api/couple/muse.js
+// Muse board endpoints — all require couple auth (applied in core.js).
+//   POST   /api/v2/couple/muse/save
+//   GET    /api/v2/couple/muse/:coupleId
+//   DELETE /api/v2/couple/muse/:saveId
+//   GET    /api/v2/couple/muse/saves/:saveId/activity
+
+'use strict';
+
+const express      = require('express');
+const router       = express.Router();
+const asyncHandler = require('../../lib/asyncHandler');
+const { ok: okRes, err: errRes } = require('../../lib/response');
+
+// ── POST /save ────────────────────────────────────────────────────────────────
+router.post('/save', asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const { couple_id, id: user_id } = req.coupleUser;
+  const { vendor_id } = req.body || {};
+
+  if (!vendor_id) return errRes(res, 400, 'vendor_id is required.');
+
+  // Check for existing save — no duplicate rows
+  const { data: existing } = await supabase
+    .from('muse_saves')
+    .select('id, save_number')
+    .eq('couple_id', couple_id)
+    .eq('vendor_id', vendor_id)
+    .eq('source_type', 'vendor')
+    .maybeSingle();
+
+  if (existing) {
+    return okRes(res, { save_id: existing.id, save_number: existing.save_number, already_saved: true });
+  }
+
+  // Get next save_number for this couple
+  const { data: last } = await supabase
+    .from('muse_saves')
+    .select('save_number')
+    .eq('couple_id', couple_id)
+    .order('save_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const save_number = (last?.save_number || 0) + 1;
+
+  const { data: newSave, error } = await supabase
+    .from('muse_saves')
+    .insert({
+      couple_id,
+      save_number,
+      source_type:      'vendor',
+      vendor_id,
+      saved_by_user_id: user_id,
+      saved_by_role:    'bride',
+    })
+    .select('id, save_number')
+    .single();
+
+  if (error) {
+    console.error('[POST /muse/save] insert error:', error.message);
+    return errRes(res, 500, 'Could not save vendor.');
+  }
+
+  return okRes(res, { save_id: newSave.id, save_number: newSave.save_number, already_saved: false });
+}));
+
+// ── GET /saves/:saveId/activity — must come before /:coupleId ─────────────────
+router.get('/saves/:saveId/activity', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  const { saveId } = req.params;
+
+  const { data: save, error: saveErr } = await supabase
+    .from('muse_saves')
+    .select('id, image_url, vendor_id, vendor:vendors(business_name)')
+    .eq('id', saveId)
+    .eq('couple_id', couple_id)
+    .maybeSingle();
+
+  if (saveErr || !save) return errRes(res, 404, 'Save not found.');
+
+  const { data: activity, error: actErr } = await supabase
+    .from('circle_activity')
+    .select('id, activity_type, actor_name, actor_role, payload, created_at')
+    .eq('couple_id', couple_id)
+    .eq('subject_id', saveId)
+    .order('created_at', { ascending: true });
+
+  if (actErr) {
+    console.error('[GET /muse/saves/:saveId/activity] query error:', actErr.message);
+    return errRes(res, 500, 'Could not fetch activity.');
+  }
+
+  const shaped = (activity || []).map(a => ({
+    id:            a.id,
+    activity_type: a.activity_type,
+    member_name:   a.actor_name,
+    role:          a.actor_role,
+    content:       a.payload?.content || null,
+    created_at:    a.created_at,
+  }));
+
+  return okRes(res, {
+    save: {
+      id:          save.id,
+      image_url:   save.image_url            || null,
+      vendor_name: save.vendor?.business_name || null,
+    },
+    activity: shaped,
+  });
+}));
+
+// ── GET /:coupleId ────────────────────────────────────────────────────────────
+router.get('/:coupleId', asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+
+  if (req.params.coupleId !== couple_id) {
+    return errRes(res, 403, 'Forbidden.');
+  }
+
+  const saved_by = req.query.saved_by || 'all';
+  const limit    = Math.min(100, Math.max(1, parseInt(req.query.limit,  10) || 50));
+  const offset   = Math.max(0,               parseInt(req.query.offset, 10) || 0);
+
+  let query = supabase
+    .from('muse_saves')
+    .select('id, save_number, image_url, source_type, vendor_id, vendor:vendors(business_name), caption, aesthetic_tags, saved_by_role, circle_comment_count, created_at', { count: 'exact' })
+    .eq('couple_id', couple_id)
+    .order('save_number', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (saved_by === 'bride')         query = query.eq('saved_by_role', 'bride');
+  if (saved_by === 'circle_member') query = query.eq('saved_by_role', 'circle_member');
+
+  const { data: saves, error, count } = await query;
+  if (error) {
+    console.error('[GET /muse/:coupleId] query error:', error.message);
+    return errRes(res, 500, 'Could not fetch saves.');
+  }
+
+  const shaped = (saves || []).map(s => ({
+    id:                   s.id,
+    save_number:          s.save_number,
+    image_url:            s.image_url             || null,
+    source_type:          s.source_type,
+    vendor_id:            s.vendor_id             || null,
+    vendor_name:          s.vendor?.business_name || null,
+    caption:              s.caption               || null,
+    aesthetic_tags:       s.aesthetic_tags        || [],
+    saved_by_role:        s.saved_by_role,
+    circle_comment_count: s.circle_comment_count  || 0,
+    created_at:           s.created_at,
+  }));
+
+  return okRes(res, { saves: shaped, total: count || 0 });
+}));
+
+// ── DELETE /:saveId ───────────────────────────────────────────────────────────
+router.delete('/:saveId', asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const { couple_id, id: user_id } = req.coupleUser;
+  const { saveId } = req.params;
+
+  const { data: save, error: fetchErr } = await supabase
+    .from('muse_saves')
+    .select('id, couple_id, saved_by_user_id, saved_by_role')
+    .eq('id', saveId)
+    .eq('couple_id', couple_id)
+    .maybeSingle();
+
+  if (fetchErr || !save) return errRes(res, 404, 'Save not found.');
+
+  // Circle members can only delete their own saves
+  if (save.saved_by_role === 'circle_member' && save.saved_by_user_id !== user_id) {
+    return errRes(res, 403, 'You can only remove your own saves.');
+  }
+
+  const { error: delErr } = await supabase
+    .from('muse_saves')
+    .delete()
+    .eq('id', saveId);
+
+  if (delErr) {
+    console.error('[DELETE /muse/:saveId] delete error:', delErr.message);
+    return errRes(res, 500, 'Could not remove save.');
+  }
+
+  return okRes(res);
+}));
+
+module.exports = router;

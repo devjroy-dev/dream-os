@@ -13,8 +13,8 @@ const requireCoupleAuth = require('../middleware/requireCoupleAuth');
 router.use(requireCoupleAuth);
 
 // B-1: discover + muse
-// router.use('/discover', require('./discover'));
-// router.use('/muse',     require('./muse'));
+// router.use('/discover', require('./discover'));  // public — mounted on main router directly
+router.use('/muse',     require('./muse'));
 
 // B-3: couple data
 // router.use('/me',       require('./me'));

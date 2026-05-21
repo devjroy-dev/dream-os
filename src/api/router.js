@@ -66,6 +66,9 @@ router.use('/admin/couture',      require('./admin/couture'));
 router.use('/admin/featured',     require('./admin/featured'));
 
 // Block 2+ routers mounted here as they are built:
-router.use('/couple', require('./couple/core'));
+router.use('/discover',    require('./couple/discover'));                          // B-1: public, no auth
+const requireCoupleAuth = require('./middleware/requireCoupleAuth');
+router.use('/couple/muse', requireCoupleAuth, require('./couple/muse'));           // B-1: muse, auth required
+router.use('/couple',      require('./couple/core'));
 
 module.exports = router;
