@@ -16,18 +16,26 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 router.post('/save', asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const { couple_id, id: user_id } = req.coupleUser;
-  const { vendor_id } = req.body || {};
+  const { vendor_id, image_url = null } = req.body || {};
 
   if (!vendor_id) return errRes(res, 400, 'vendor_id is required.');
 
-  // Check for existing save — no duplicate rows
-  const { data: existing } = await supabase
+  // Duplicate check: same vendor + same photo = already saved
+  // Different photos from the same vendor are distinct saves
+  let dupQuery = supabase
     .from('muse_saves')
     .select('id, save_number')
     .eq('couple_id', couple_id)
     .eq('vendor_id', vendor_id)
-    .eq('source_type', 'vendor')
-    .maybeSingle();
+    .eq('source_type', 'vendor');
+
+  if (image_url) {
+    dupQuery = dupQuery.eq('image_url', image_url);
+  } else {
+    dupQuery = dupQuery.is('image_url', null);
+  }
+
+  const { data: existing } = await dupQuery.maybeSingle();
 
   if (existing) {
     return okRes(res, { save_id: existing.id, save_number: existing.save_number, already_saved: true });
@@ -51,6 +59,7 @@ router.post('/save', asyncHandler(async (req, res) => {
       save_number,
       source_type:      'vendor',
       vendor_id,
+      image_url:        image_url || null,
       saved_by_user_id: user_id,
       saved_by_role:    'bride',
     })
