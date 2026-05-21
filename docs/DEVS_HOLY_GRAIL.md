@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-21 (B-3 complete — couple data API, me/today/events/expenses/circle/bookings/receipts)
+**Last updated:** 2026-05-21 (B-3a complete — coplanner API, circle session, verify-pin, muse, feed, threads, dreamai)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -350,7 +350,7 @@ app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B
 
 ## BLOCK 14 — SCHEMA SUMMARY
 
-**Latest migrations applied:** 0042_couple_data.sql
+**Latest migrations applied:** 0042_couple_data.sql (no new migration in B-3a)
 **Block 7 tables (applied out of band):** `payment_schedules`, `contracts`, `tds_ledger`
 **Block 6 tables (applied out of band):** `team_members`, `team_tasks`, `team_payments`, `team_messages`
 
@@ -397,8 +397,8 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | Bride B-2a (Discover landing) | dreamos-pwa | ⏭ Merged into B-2 |
 | **Bride B-2** (Wire discover + muse) | dreamos-pwa | ✅ Done |
 | Bride B-3 (Couple data API) | dream-os | ✅ Done |
-| Bride B-3a (Coplanner API) | dream-os | ⬜ Next — start here |
-| Bride B-4 | dreamos-pwa | ⬜ |
+| Bride B-3a (Coplanner API) | dream-os | ✅ Done |
+| Bride B-4 | dreamos-pwa | ⬜ Next — start here |
 | Bride B-5 | dream-os | ⬜ |
 | Bride B-6 | dreamos-pwa | ⬜ |
 | Bride B-Admin | both | ⬜ |
@@ -470,6 +470,7 @@ B-6 cannot start until B-5 smoke-tested.
 | Item | Priority |
 |---|---|
 | `PATCH /leads/:leadId` full update agent tool (updateLead in pwaTools) | Medium |
+| B-3a coplanner auth — `GET /frost/circle/feed` and `GET /frost/circle/threads` validate brideId only, not caller identity. Add userId query param validation before public launch. | High — pre-launch |
 | `GET /leads/:leadId/detail` endpoint | Medium |
 | Vendor Block 4 (Razorpay) — build in test mode | After KYC |
 | Via chat primer — agent gets context but vendor sees own bubble | Parked |

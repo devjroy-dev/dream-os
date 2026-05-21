@@ -2,7 +2,7 @@
 **Last updated:** 2026-05-19 (P2-6a session)
 **Session:** P2-6a complete. No new migrations. messages.media_url column now in active use for PDF delivery (was 'future' in prior schema docs).
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0042_couple_data.sql (2026-05-21)
+**Latest migration applied:** 0042_couple_data.sql (2026-05-21) — no new migration in B-3a
 **Next migration:** 0034 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
@@ -633,6 +633,52 @@ All mounted at `/api/v2/couple/*`, all require `requireCoupleAuth`.
 | `GET /couple/receipts/:coupleId` | `receipts.js` | `couple_receipts` ordered by created_at desc, optional booking_id filter |
 
 **Important:** `bride_name` in API responses comes from `users.name` (joined via `couples.user_id`). There is no `bride_name` column on the `couples` table. The `couples` table columns are exactly as defined in `0001_initial_schema.sql` plus additions from 0013, 0015, 0028 — see couples table definition above.
+
+
+---
+
+## B-3a — Coplanner API (circle member backend, no migration)
+
+No new tables or migrations. Uses existing schema.
+
+### New files
+
+| File | Purpose |
+|---|---|
+| `src/api/circle/verifyPin.js` | `POST /api/v2/auth/verify-pin` — verifies circle member PIN against `couples.pin_hash`. Body: `{ phone, pin }`. Returns `{ success, userId }`. Phone normalised to E.164 (+91 prefix). |
+| `src/api/circle/session.js` | `GET /api/v2/circle/session/:userId` — returns full CircleSession shape for coplanner. Looks up `users` by id → `circle_members` by `invitee_phone` → `couples` for bride context. |
+| `src/api/couple/profile.js` | `GET /api/v2/couple/profile/:brideId` — public. Returns bride name (from `users.name`), `partner_name`, `wedding_date`, `days_until_wedding` for coplanner home. |
+| `src/api/circle/feed.js` | `GET /api/v2/frost/circle/feed/:brideId` — circle activity feed. Reads `circle_activity` filtered by `couple_id`. |
+| `src/api/circle/muse.js` | `GET /api/v2/circle/muse/:brideId` — bride's Muse board. `POST /circle/muse/save` — add image (validates `memberUserId` is active circle_member). `POST /circle/muse/:saveId/comment` — add comment (fires `trg_circle_comment_inc` trigger). |
+| `src/api/circle/threads.js` | `GET /api/v2/frost/circle/threads/:brideId` — thread list. `GET /frost/circle/threads/:brideId/:threadId/messages` — messages in thread. |
+| `src/api/circle/messages.js` | `POST /api/v2/frost/circle/messages` — send message to thread. Body: `{ userId, thread_id, body, sender_name }`. Note: `userId` = `couple_id` (bride) per frontend convention. |
+| `src/api/circle/dreamai.js` | `GET /api/v2/dreamai/circle-member-history/:userId` — last 30 messages from circle_thread. `POST /dreamai/circle-member-chat` — calls `runCircleAgenticTurn`, returns `{ success, data: { reply } }`. Body: `{ user_id, primary_user_id, message }`. |
+| `src/api/middleware/requireCircleMemberAuth.js` | JWT-based middleware (built but not used — coplanner sends no auth headers). Reserved for future hardening. |
+
+### Auth pattern
+
+Coplanner sends **no Authorization header**. Auth is by param:
+- `memberUserId` (query/body) → looked up via `users.phone` → `circle_members.invitee_phone` (E.164 match)
+- `brideId` (URL param) = `couple.id`
+
+**Security debt:** `GET /frost/circle/feed` and `GET /frost/circle/threads` validate only that `brideId` is a valid couple — not that the caller is a circle member. Fix before public launch by requiring `userId` query param and validating against `circle_members`.
+
+### Phone format
+
+`users.phone` and `circle_members.invitee_phone` both stored as E.164 (`+919888294440`). Direct match. No stripping needed.
+
+### Permissions
+
+No `permissions` column on `circle_members`. All active members get hardcoded defaults:
+```json
+{
+  "dreamai_access_granted": false,
+  "can_see_budget": false,
+  "can_see_guests": false,
+  "can_see_vendors": false,
+  "can_contribute_muse": true
+}
+```
 
 ## Known schema debt
 
