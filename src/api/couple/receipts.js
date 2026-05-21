@@ -41,6 +41,34 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
 }));
 
 
+// POST /:coupleId — create receipt (expense log from PWA)
+router.post('/:coupleId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  if (req.params.coupleId !== couple_id) return errRes(res, 403, 'Forbidden.');
+
+  const { vendor_name, amount, description, receipt_date, tags, notes } = req.body || {};
+
+  const { data, error } = await supabase
+    .from('couple_receipts')
+    .insert({
+      couple_id,
+      vendor_name:  vendor_name  ? String(vendor_name).trim().slice(0,200)  : null,
+      amount:       amount       ? parseInt(amount, 10)                      : null,
+      description:  description  ? String(description).trim().slice(0,500)  : null,
+      receipt_date: receipt_date || null,
+      tags:         Array.isArray(tags) ? tags : (notes ? [notes] : null),
+    })
+    .select('id, amount, vendor_name, description, receipt_date, image_url, tags, created_at')
+    .single();
+
+  if (error) {
+    console.error('[POST /couple/receipts] insert error:', error.message);
+    return errRes(res, 500, 'Could not create receipt.');
+  }
+  return okRes(res, { expense: data });
+}));
+
 // DELETE /:receiptId — delete receipt
 router.delete('/:receiptId', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
