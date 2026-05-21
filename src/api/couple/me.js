@@ -55,4 +55,44 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
   });
 }));
 
+// -- PATCH /:coupleId ---------------------------------------------------------
+router.patch('/:coupleId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id, user_id } = req.coupleUser;
+
+  if (req.params.coupleId !== couple_id) {
+    return errRes(res, 403, 'Forbidden.');
+  }
+
+  const { name, partner_name, wedding_date, wedding_city } = req.body || {};
+
+  const couplesPatch = {};
+  if (partner_name !== undefined) couplesPatch.partner_name = partner_name;
+  if (wedding_date  !== undefined) couplesPatch.wedding_date  = wedding_date || null;
+  if (wedding_city  !== undefined) couplesPatch.wedding_city  = wedding_city || null;
+
+  if (Object.keys(couplesPatch).length > 0) {
+    const { error: cErr } = await supabase
+      .from('couples')
+      .update(couplesPatch)
+      .eq('id', couple_id);
+    if (cErr) {
+      console.error('[PATCH /couple/me] couples error:', cErr.message);
+      return errRes(res, 500, 'Could not update profile.');
+    }
+  }
+
+  if (name !== undefined && user_id) {
+    const { error: uErr } = await supabase
+      .from('users')
+      .update({ name })
+      .eq('id', user_id);
+    if (uErr) {
+      console.error('[PATCH /couple/me] users error:', uErr.message);
+    }
+  }
+
+  return okRes(res, { updated: true });
+}));
+
 module.exports = router;
