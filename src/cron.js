@@ -9,7 +9,20 @@ const cron = require('node-cron');
 const { buildBriefing } = require('./agent/briefing');
 const { sendWhatsApp } = require('./lib/whatsapp');
 
+const { cleanupDraftContracts } = require('./lib/vendor/contracts');
+
 function startCronJobs({ supabase }) {
+
+  // ── Draft contract cleanup — 3:00am IST = 9:30pm UTC ──────────────
+  cron.schedule('30 21 * * *', async () => {
+    console.log('[cron:contracts] starting draft cleanup');
+    try {
+      const cleaned = await cleanupDraftContracts(supabase);
+      console.log(`[cron:contracts] cleaned ${cleaned} stale draft contracts`);
+    } catch (e) {
+      console.error('[cron:contracts] cleanup error:', e.message);
+    }
+  });
 
   // ── Morning briefing — 8:00am IST = 2:30am UTC ─────────────────
   // Fires daily. For each active, onboarded vendor with briefing_enabled:

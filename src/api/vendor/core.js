@@ -37,5 +37,8 @@ router.use('/discover',    require('./discover'));
 router.use('/couture',     require('./couture'));
 router.use('/featured',    require('./featured'));
 router.use('/studio',      require('./studio/index'));
+router.use('/',            require('./schedules'));
+router.use('/contracts',   require('./contracts'));
+router.use('/tds',         require('./tds'));
 
 module.exports = router;

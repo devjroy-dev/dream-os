@@ -544,6 +544,105 @@ const PWA_TOOLS = [
     },
   },
 
+
+  // ── Block 7: Schedules / Contracts / TDS ──────────────────────────────────
+
+  {
+    name: 'create_schedule',
+    description: 'Create a milestone-based payment schedule on an invoice. Use when vendor says "split this invoice into 30/40/30" or mentions booking/shoot/delivery payment stages. Milestones must sum to 100%.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        invoice_id: { type: 'string', description: 'UUID of the invoice to attach the schedule to.' },
+        milestones: {
+          type: 'array',
+          description: 'List of payment milestones. Must sum to 100%.',
+          items: {
+            type: 'object',
+            properties: {
+              label:    { type: 'string', description: 'Milestone name. e.g. "Booking", "Shoot day", "Delivery"' },
+              pct:      { type: 'number', description: 'Percentage of total invoice. e.g. 30 for 30%.' },
+              due_date: { type: 'string', description: 'Due date in YYYY-MM-DD. Optional.' },
+            },
+            required: ['label', 'pct'],
+          },
+        },
+      },
+      required: ['invoice_id', 'milestones'],
+    },
+  },
+
+  {
+    name: 'mark_milestone_paid',
+    description: 'Mark a payment schedule milestone as paid and update the parent invoice amount. Use when vendor says "Priya paid the booking amount" or "milestone 1 received". Also updates the invoice running total.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        milestone_id: { type: 'string', description: 'UUID of the milestone to mark paid.' },
+        amount_paid:  { type: 'number', description: 'Amount received in Rs. May differ from amount_due (partial/negotiated).' },
+      },
+      required: ['milestone_id', 'amount_paid'],
+    },
+  },
+
+  {
+    name: 'attach_contract',
+    description: 'Save a contract PDF forwarded by the vendor on WhatsApp. Downloads the file from the media URL and stores it. Use when vendor forwards a PDF and says "save this as X\'s contract."',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title:     { type: 'string',  description: 'Contract title. e.g. "Booking contract — Priya Kapoor"' },
+        client_id: { type: 'string',  description: 'UUID of the client to link. Optional.' },
+        file_url:  { type: 'string',  description: 'Twilio media URL for the PDF attachment.' },
+      },
+      required: ['title', 'file_url'],
+    },
+  },
+
+  {
+    name: 'list_contracts',
+    description: 'List the vendor\'s saved contracts. Use when vendor asks "show me contracts" or "do I have a contract for Priya?"',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'Filter by client UUID. Optional.' },
+      },
+    },
+  },
+
+  {
+    name: 'log_tds',
+    description: 'Log a Tax Deducted at Source entry. Use when vendor says "ABC Corp deducted 10% TDS on Rs 1 lakh" or "log TDS from Infosys". Computes tds_amount and net_received automatically. Returns running FY totals.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_name:     { type: 'string', description: 'Name of the company that deducted TDS.' },
+        gross_amount:    { type: 'number', description: 'Gross invoice amount before TDS deduction in Rs.' },
+        tds_rate:        { type: 'number', description: 'TDS rate as percentage. e.g. 10 for 10%.' },
+        deduction_date:  { type: 'string', description: 'Date TDS was deducted, YYYY-MM-DD. Defaults to today.' },
+        section:         { type: 'string', description: 'Income tax section. e.g. "194J" for professional services, "194C" for contractors.' },
+        financial_year:  { type: 'string', description: 'Financial year string. e.g. "FY2026-27". Defaults to current FY.' },
+        invoice_id:      { type: 'string', description: 'UUID of related invoice. Optional.' },
+        client_id:       { type: 'string', description: 'UUID of related client. Optional.' },
+        client_pan:      { type: 'string', description: 'Deductor PAN. e.g. "AABCS1234X". Optional.' },
+        client_tan:      { type: 'string', description: 'Deductor TAN. e.g. "DELS01234C". Optional.' },
+        certificate_no:  { type: 'string', description: 'TDS certificate / Form 16A number. Optional.' },
+      },
+      required: ['client_name', 'gross_amount', 'tds_rate'],
+    },
+  },
+
+  {
+    name: 'query_tds_summary',
+    description: 'Get TDS summary for a financial year — total gross, total TDS deducted, net received, breakdown by section. Use when vendor asks "how much TDS this year?" or "what\'s my total deduction for FY2026-27?"',
+    input_schema: {
+      type: 'object',
+      properties: {
+        financial_year: { type: 'string', description: 'e.g. "FY2026-27". Defaults to current Indian FY if omitted.' },
+      },
+    },
+  },
+
   // ── Studio Suite — Prestige only ───────────────────────────────────────────
   // These tools only execute when vendor.tier === 'prestige'.
   // Non-Prestige vendors receive a friendly tier error.

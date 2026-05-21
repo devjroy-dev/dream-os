@@ -1151,6 +1151,77 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     }
 
 
+
+    // ── Block 7: Schedules / Contracts / TDS ─────────────────────────────────
+
+    case 'create_schedule': {
+      const { createSchedule } = require('./../../lib/vendor/schedules');
+      const result = await createSchedule(supabase, vendor.id, input.invoice_id, input.milestones);
+      if (!result.ok) return err(result.error);
+      console.log(`[pwa-tool:create_schedule] invoice ${input.invoice_id} — ${result.schedule.length} milestones`);
+      return write(JSON.stringify({ schedule: result.schedule }));
+    }
+
+    case 'mark_milestone_paid': {
+      const { markMilestonePaid } = require('./../../lib/vendor/schedules');
+      const result = await markMilestonePaid(supabase, vendor.id, input.milestone_id, input.amount_paid);
+      if (!result.ok) return err(result.error);
+      console.log(`[pwa-tool:mark_milestone_paid] milestone ${input.milestone_id} Rs ${input.amount_paid}`);
+      return write(JSON.stringify({ milestone: result.milestone, invoice: result.invoice }));
+    }
+
+    case 'attach_contract': {
+      const { attachFromUrl } = require('./../../lib/vendor/contracts');
+      const result = await attachFromUrl(supabase, vendor.id, {
+        title:    input.title,
+        clientId: input.client_id || null,
+        fileUrl:  input.file_url,
+      });
+      if (!result.ok) return err(result.error);
+      console.log(`[pwa-tool:attach_contract] "${input.title}" saved`);
+      return write(JSON.stringify({ contract: result.contract }));
+    }
+
+    case 'list_contracts': {
+      let q = supabase.from('contracts').select('id, title, state, client_id, created_at')
+        .eq('vendor_id', vendor.id).neq('state', 'cancelled')
+        .order('created_at', { ascending: false }).limit(20);
+      if (input.client_id) q = q.eq('client_id', input.client_id);
+      const { data, error: qErr } = await q;
+      if (qErr) return err(qErr.message);
+      console.log(`[pwa-tool:list_contracts] ${(data || []).length} contracts`);
+      return ok(JSON.stringify({ contracts: data || [], total: (data || []).length }));
+    }
+
+    case 'log_tds': {
+      const { createEntry, getSummary, currentFinancialYear } = require('./../../lib/vendor/tds');
+      const params = {
+        ...input,
+        deduction_date: input.deduction_date || new Date().toISOString().slice(0, 10),
+        financial_year: input.financial_year || currentFinancialYear(),
+      };
+      const result = await createEntry(supabase, vendor.id, params);
+      if (!result.ok) return err(result.error);
+      // Return running FY totals for the agent to echo back
+      const summary = await getSummary(supabase, vendor.id, params.financial_year);
+      console.log(`[pwa-tool:log_tds] Rs ${input.gross_amount} gross — ${input.client_name}`);
+      return write(JSON.stringify({
+        entry: result.entry,
+        fy_total_gross: summary.total_gross,
+        fy_total_tds:   summary.total_tds,
+        fy_total_net:   summary.total_net,
+      }));
+    }
+
+    case 'query_tds_summary': {
+      const { getSummary, currentFinancialYear } = require('./../../lib/vendor/tds');
+      const fy = input.financial_year || currentFinancialYear();
+      const result = await getSummary(supabase, vendor.id, fy);
+      if (!result.ok) return err(result.error);
+      console.log(`[pwa-tool:query_tds_summary] ${fy} — ${result.entry_count} entries`);
+      return ok(JSON.stringify(result));
+    }
+
     // ── Studio Suite — Prestige-gated tools ──────────────────────────────────
 
     case 'assign_task': {
