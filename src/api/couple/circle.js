@@ -73,7 +73,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
   // Active members
   const { data: members, error: mErr } = await supabase
     .from('circle_members')
-    .select('id, invitee_name, role, status, joined_at, created_at')
+    .select('id, invitee_name, invitee_phone, role, status, joined_at, created_at')
     .eq('couple_id', couple_id)
     .eq('status', 'active')
     .order('joined_at', { ascending: true });
@@ -82,6 +82,18 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     console.error('[GET /couple/circle] members error:', mErr.message);
     return errRes(res, 500, 'Could not fetch circle.');
   }
+
+  // Fetch conversation_id for each member via counterparty_phone match
+  const { data: convos } = await supabase
+    .from('conversations')
+    .select('id, counterparty_phone, last_message_at')
+    .eq('couple_id', couple_id)
+    .eq('kind', 'circle_thread');
+
+  const convoByPhone = {};
+  (convos || []).forEach(c => {
+    if (c.counterparty_phone) convoByPhone[c.counterparty_phone] = c;
+  });
 
   // Pending invites
   const { data: pending, error: pErr } = await supabase
@@ -120,8 +132,21 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     created_at:    a.created_at,
   }));
 
+  const shapedMembers = (members || []).map(m => {
+    const convo = m.invitee_phone ? convoByPhone[m.invitee_phone] : null;
+    return {
+      id:              m.id,
+      invitee_name:    m.invitee_name,
+      role:            m.role,
+      status:          m.status,
+      joined_at:       m.joined_at,
+      conversation_id: convo?.id || null,
+      last_active:     convo?.last_message_at || m.joined_at || null,
+    };
+  });
+
   return okRes(res, {
-    members:         members  || [],
+    members:         shapedMembers,
     activity:        shapedActivity,
     pending_invites: (pending || []).map(p => ({
       id:            p.id,
