@@ -726,3 +726,106 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 
 **Latest migration:** 0035_vendor_writes.sql
 **Next migration number:** 0036
+
+---
+
+## Block 5 tables (migration 0039, applied 2026-05-21)
+
+### vendor_portfolio
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| image_url | text | Cloudinary secure_url |
+| caption | text | nullable |
+| aesthetic_tags | jsonb | default [] |
+| is_hero | boolean | default false — one hero per vendor (atomic unset) |
+| in_carousel | boolean | default true |
+| approval_state | text | pending / approved / rejected |
+| reviewed_by_admin | text | nullable |
+| reviewed_at | timestamptz | nullable |
+| rejection_reason | text | nullable |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+### vendor_discover_requests
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| state | text | requested / under_review / approved / denied / revoked |
+| reason | text | vendor pitch or admin decision note |
+| decided_by_admin | text | nullable |
+| decided_at | timestamptz | nullable |
+| created_at | timestamptz | |
+
+### couture_appointments
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| couple_id | uuid FK couples | ON DELETE SET NULL |
+| appointment_at | timestamptz | |
+| duration_minutes | integer | default 60 |
+| fee_inr | integer | Rs 2000–5000 |
+| state | text | booked / confirmed / completed / cancelled / no_show |
+| razorpay_order_id | text | nullable — stubbed pending KYC |
+| paid_at | timestamptz | nullable |
+| vendor_payout_inr | integer | 80% of fee, set on payment capture |
+| notes | text | nullable |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+### couture_availability
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| slot_at | timestamptz | UNIQUE per vendor |
+| duration_minutes | integer | default 60 |
+| fee_inr | integer | |
+| state | text | open / booked / blocked |
+| booked_by_appointment_id | uuid FK couture_appointments | ON DELETE SET NULL |
+| created_at | timestamptz | |
+
+### vendor_featured_submissions
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| slot_kind | text | discover_top / spotlight / blind_swipe_priority / newsletter |
+| hero_image_id | uuid FK vendor_portfolio | ON DELETE SET NULL |
+| caption | text | nullable |
+| proposed_start_date | date | nullable |
+| proposed_end_date | date | nullable |
+| fee_inr | integer | calculated from slot_kind × weeks |
+| razorpay_order_id | text | nullable — stubbed pending KYC |
+| paid_at | timestamptz | nullable |
+| state | text | submitted / under_review / approved / rejected / live / expired / refunded |
+| scheduled_start | timestamptz | set by admin on approval |
+| scheduled_end | timestamptz | set by admin on approval |
+| rejection_reason | text | nullable |
+| decided_by_admin | text | nullable |
+| decided_at | timestamptz | nullable |
+| created_at | timestamptz | |
+| updated_at | timestamptz | trigger set_updated_at |
+
+### admin_activity_log
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| admin_email | text | |
+| action | text | discover_grant / discover_deny / discover_revoke / etc |
+| target_type | text | vendor / couple / photo / featured / couture |
+| target_id | uuid | nullable |
+| metadata | jsonb | default {} |
+| created_at | timestamptz | |
+
+### vendors additions (migration 0039)
+| Column | Type | Notes |
+|---|---|---|
+| discover_eligible | boolean | default false — admin-managed editorial toggle |
+| discover_request_state | text | not_requested / requested / under_review / approved / denied / revoked |
+| couture_eligible | boolean | default false — admin invite-only toggle |
+| featured_eligible | boolean | default false — admin toggle, requires discover_eligible |
+

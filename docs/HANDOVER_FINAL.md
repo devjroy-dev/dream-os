@@ -22,6 +22,89 @@ All history in previous HANDOVER_FINAL.md commits. See git log.
 
 ---
 
+
+---
+
+## Block 5 — 2026-05-21 (this session)
+
+### What Block 5 is
+
+Vendor Discover submission pipeline + photo approval queue + Couture appointments + Featured promos. The vendor's path onto Discover. Three monetisation surfaces wired. Razorpay payments stubbed pending KYC (Block 4).
+
+### What shipped
+
+**Migration 0039 — applied to prod:**
+- `vendor_portfolio` table — image library, per-image approval state, Cloudinary URLs
+- `vendor_discover_requests` table — audit trail of Discover access requests
+- `couture_appointments` + `couture_availability` tables — slot publishing + booking lifecycle
+- `vendor_featured_submissions` table — featured promo applications
+- `admin_activity_log` table — admin action audit
+- `vendors` columns: `discover_eligible`, `discover_request_state`, `couture_eligible`, `featured_eligible`
+
+**Schema fix (applied directly):**
+- `vendor_portfolio.display_order` column dropped (ghost from first failed migration run)
+- `vendor_portfolio.reviewed_by_admin`, `reviewed_at`, `rejection_reason` added (were missing from partial first run)
+- `vendor_portfolio` now exactly matches migration 0039 definition
+
+**dream-os (tag: dream-os-v0.10.5-alpha):**
+- `src/lib/vendor/portfolio.js` — Cloudinary signing, registerImage, listImages, updateImage, setHeroImage, deleteImage, portfolioSummary
+- `src/lib/vendor/discover.js` — requestDiscover, getDiscoverStatus, withdrawRequest
+- `src/lib/vendor/couture.js` — listSlots, addSlot, removeSlot, listAppointments, updateAppointment
+- `src/lib/vendor/featured.js` — submitFeatured, listSubmissions, FEATURED_FEES (Razorpay stub)
+- `src/api/vendor/portfolio.js` — POST /upload-url, POST /, GET /:vendorId, PATCH /:imageId/hero, PATCH /:imageId, DELETE /:imageId
+- `src/api/vendor/discover.js` — GET /status, POST /request, POST /withdraw
+- `src/api/vendor/couture.js` — GET/POST /availability, DELETE /availability/:slotId, GET /appointments, PATCH /appointments/:id
+- `src/api/vendor/featured.js` — GET /, POST /submit (gated on featured_eligible)
+- `src/api/vendor/core.js` — wired: portfolio, discover, couture, featured
+- `src/api/admin/requireAdmin.js` — validates dream_admin_session cookie for REST API
+- `src/api/admin/discover.js` — GET /requests, POST /grant/:vendorId, POST /deny/:vendorId, POST /revoke/:vendorId
+- `src/api/admin/photos.js` — GET /queue, POST /:imageId/approve, POST /:imageId/reject, POST /bulk-approve
+- `src/api/admin/couture.js` — POST /eligible/:vendorId, GET /payouts/pending
+- `src/api/admin/featured.js` — POST /eligible/:vendorId, GET /queue, POST /:submissionId/approve, POST /:submissionId/reject
+- `src/api/router.js` — wired: /admin/discover, /admin/photos, /admin/couture, /admin/featured
+- `src/api/vendor/me.js` — added couture_eligible, featured_eligible, discover_eligible, discover_request_state to GET /me response
+- Railway env vars added: CLOUDINARY_CLOUD_NAME=dccso5ljv, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+
+**dreamai (tag: dreamai-v1.4):**
+- `app/wedding/discover/page.tsx` — 3-state dashboard (not_requested / under_review / approved)
+- `app/wedding/discover/submit/page.tsx` — 4-step form: rates → aesthetic tags → pitch → sample images
+- `app/wedding/portfolio/page.tsx` — 2-col portrait grid, Cloudinary signed upload, hero/delete action sheet
+- `app/wedding/couture/page.tsx` — gated, availability + appointments tabs, add slot sheet
+- `app/wedding/featured/page.tsx` — gated, submission history + apply form
+- `app/wedding/list/page.tsx` — Discover section added to Studio hub (Discover, Portfolio, Couture, Featured)
+- `app/wedding/settings/page.tsx` — Discover summary card added
+- `components/BottomNav.tsx` — Discover tab added (4th, rightmost), 4-pointed star icon, gold active state, scale press animation, chat circle hue removed
+- `lib/types/vendor.ts` — PortfolioImage, PortfolioListResponse, UploadUrlResponse, DiscoverStatus, CoutureSlot, CoutureAppointment, FeaturedSubmission
+- `lib/api/vendor.ts` — all Block 5 API functions
+
+### Key commits this session (dream-os)
+- `d5205c3` fix(api): add couture_eligible, featured_eligible, discover fields to /me response
+- `c451b2c` feat(api): Block 5 — portfolio, discover, couture, featured + admin endpoints
+
+### Key commits this session (dreamai)
+- `3b60146` fix(nav): remove chat circle hue, 4-pointed star for Discover
+- `b79208b` feat(nav): Discover tab, gold active state, scale press animation
+- `d777427` fix(portfolio): 2-col portrait grid, Block 5 types + API functions
+- `0511fe2` feat(ui): Block 5 — portfolio, discover, couture, featured pages
+
+### Smoke tests passed
+- ✅ GET /vendor/discover/status → `not_requested`, portfolio_summary correct
+- ✅ POST /vendor/portfolio/upload-url → signed Cloudinary params returned
+- ✅ POST /vendor/couture/availability → 403 COUTURE_GATED (before SQL flag)
+- ✅ GET /vendor/portfolio/:vendorId → images returned after display_order drop
+- ✅ Couture page — slots visible, add slot sheet working
+- ✅ Featured page — submissions list, apply form working
+- ✅ Discover dashboard — 3-state rendering correct
+
+### Open items / known debt from this session
+- Razorpay payments stubbed in featured.js — `RAZORPAY_LIVE=true` activates when Block 4 KYC clears
+- Couture payment capture also stubbed — same flag
+- `vendor_portfolio` had a schema mismatch from failed first migration run — fixed manually in Supabase
+- Test vendor has `couture_eligible=true` and `featured_eligible=true` set directly via SQL for dev testing
+- Portfolio grid uses `objectPosition: center top` — no crop tool built (deferred)
+
+---
+
 ## Block 3 — 2026-05-21 (this session)
 
 ### What Block 3 is

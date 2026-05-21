@@ -2,7 +2,7 @@
 **Written:** 2026-05-17
 **Replanning session:** Strategy and architecture only. No code.
 **Supersedes:** ROADMAP.md (vendor, frozen at 8.5a) + ROADMAP_BRIDE.md (bride, frozen at B3)
-**Current version:** 0.10.3-alpha
+**Current version:** 0.10.5-alpha
 **Repo:** https://github.com/devjroy-dev/dream-os
 **Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
 
@@ -528,9 +528,9 @@ Block F ✅ → Block 1a ✅ → Block 1b ✅ → Block 1c ✅ → Block 2 ⏭ (
 | 1b | dreamai | Typed API client + TypeScript types | ✅ Done (tagged dreamai-v1.1) |
 | 1c | dreamai | AddSheet forms, Settings page, Calendar blocking | ✅ Done (tagged dreamai-v1.2) |
 | 2 | both | Push notifications | ⏭ Dropped — WhatsApp handles it |
-| 3 | both | Lead detail: summary card + conversation thread | ✅ Done 2026-05-21 |
+| 3 | both | Lead detail: summary card + conversation thread | ✅ Done 2026-05-21 (tagged dreamai-v1.3) |
 | 4 | both | Razorpay subscriptions + token packs | ⏳ Blocked — KYC pending |
-| 5 | both | Vendor Discover submission + portfolio | ⏳ Next |
+| 5 | both | Vendor Discover submission + portfolio + couture + featured | ✅ Done 2026-05-21 (tagged dreamai-v1.4, dream-os-v0.10.5-alpha) |
 
 P2-6b-alpha: On founder's order, dreamos-pwa P2-6b deferred. dreamai (devjroy-dev/dreamai) adopted as vendor PWA alpha.
         Re-skinned with dark glass design system. Wired to dream-os backend. Phone+OTP auth.
@@ -707,6 +707,7 @@ This is the Discover data collection surface. Populates vendor data passively be
 - [x] Block 1 JWT issuance live ✅ 2026-05-18 (Finding #11 resolved)
 - [x] Landing page live. Auth wired. Waitlist. Country picker. Vendor + bride home reached. ✅ 2026-05-19
 - [x] P2-6a: Vendor core endpoints built + smoke tested (backend) — COMPLETE 2026-05-19
+- [x] Block 5: Discover submission + portfolio + couture + featured — COMPLETE 2026-05-21
 - [ ] P2-6b: dreamos-pwa vendor screens wired (frontend)
 - [ ] P2-7a: Bride/couple core endpoints built + smoke tested (backend)
 - [ ] P2-7b: dreamos-pwa couple screens wired (frontend)
@@ -899,6 +900,7 @@ See FINDINGS_LOG.md for full details on each item.
 | 0034 | vendor_profile_fields.sql | Block F | ✅ Applied 2026-05-19 (retrospective file) | vendors.aesthetic_tags, rate_min, rate_max, discover_preview, style_notes, travel_notes, briefing_enabled |
 | 0035 | vendor_writes.sql | Block 1a | ✅ Applied 2026-05-19 | Soft-delete columns on 5 vendor tables, vendor_availability table, partial indexes |
 | 0036 | lead_vendor_summary.sql | Block 3 | ✅ Applied 2026-05-21 | leads.vendor_summary — denormalised WhatsApp notification for lead detail view |
+| 0039 | vendor_discover.sql | Block 5 | ✅ Applied 2026-05-21 | vendor_portfolio, vendor_discover_requests, couture_appointments, couture_availability, vendor_featured_submissions, admin_activity_log; vendors columns: discover_eligible, discover_request_state, couture_eligible, featured_eligible |
 
 ---
 
