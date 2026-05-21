@@ -57,11 +57,19 @@ app.use(cors({
     if (/^https:\/\/dreamai[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
     // GitHub Codespaces (dev)
     if (/^https:\/\/[a-z0-9-]+-\d+\.app\.github\.dev$/.test(origin)) return cb(null, true);
-    cb(new Error('CORS: origin not allowed — ' + origin));  },
+    return cb(null, false);  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// CORS error handler — return 403 JSON, not 500 HTML
+app.use((err, req, res, next) => {
+  if (err && err.message && err.message.startsWith('CORS:')) {
+    return res.status(403).json({ ok: false, error: 'CORS: origin not allowed.' });
+  }
+  next(err);
+});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
