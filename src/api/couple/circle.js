@@ -1,7 +1,11 @@
 // src/api/couple/circle.js
-// GET  /api/v2/couple/circle/:coupleId  — members + activity feed + pending invites
-// POST /api/v2/couple/circle/invite     — invite a new circle member
+// GET  /api/v2/couple/circle/:coupleId        — enriched unified feed + members
+// GET  /api/v2/couple/circle/member/:memberId — individual member feed
+// POST /api/v2/couple/circle/invite           — invite a circle member
 // Requires couple auth (applied in core.js).
+//
+// Enrichment: save_added activity rows are joined with muse_saves to inline
+// image_url, caption, aesthetic_tags — one batch query, not N+1.
 
 'use strict';
 
@@ -33,17 +37,12 @@ router.post('/invite', asyncHandler(async (req, res) => {
   });
 
   if (error) {
-    // Structured error from 0023 — check hint field
     const hint = error.hint || '';
     if (hint === 'circle_member_limit_reached') {
       return errRes(res, 422, 'Circle is full. Maximum 3 members allowed.');
     }
-    if (hint === 'invalid_circle_role') {
-      return errRes(res, 400, 'Invalid role.');
-    }
-    if (hint === 'couple_not_found') {
-      return errRes(res, 404, 'Couple not found.');
-    }
+    if (hint === 'invalid_circle_role') return errRes(res, 400, 'Invalid role.');
+    if (hint === 'couple_not_found')    return errRes(res, 404, 'Couple not found.');
     console.error('[POST /couple/circle/invite] rpc error:', error.message);
     return errRes(res, 500, 'Could not create invite.');
   }
@@ -61,7 +60,114 @@ router.post('/invite', asyncHandler(async (req, res) => {
   });
 }));
 
-// ── GET /:coupleId ─────────────────────────────────────────────────────────────
+// ── Shared: enrich activity rows with muse_save image data ───────────────────
+// Collects all subject_ids from save_added rows, fetches muse_saves in one
+// query, returns a lookup map. Never throws — enrichment failure is non-fatal.
+async function enrichSaveActivity(supabase, activityRows) {
+  const saveIds = activityRows
+    .filter(a => a.activity_type === 'save_added' && a.subject_id)
+    .map(a => a.subject_id);
+
+  if (saveIds.length === 0) return {};
+
+  const { data: saves, error } = await supabase
+    .from('muse_saves')
+    .select('id, image_url, caption, aesthetic_tags, save_number, source_type')
+    .in('id', saveIds);
+
+  if (error) {
+    console.error('[circle] muse_saves enrichment error (non-fatal):', error.message);
+    return {};
+  }
+
+  const lookup = {};
+  (saves || []).forEach(s => { lookup[s.id] = s; });
+  return lookup;
+}
+
+// ── Shape one activity row (with optional muse enrichment) ───────────────────
+function shapeActivity(a, saveLookup) {
+  const base = {
+    id:            a.id,
+    activity_type: a.activity_type,
+    member_name:   a.actor_name,
+    actor_role:    a.actor_role,
+    subject_type:  a.subject_type  || null,
+    subject_id:    a.subject_id    || null,
+    content:       a.payload?.content || null,
+    created_at:    a.created_at,
+    // enrichment fields — null unless save_added
+    image_url:       null,
+    caption:         null,
+    aesthetic_tags:  null,
+    save_number:     null,
+    source_type:     null,
+  };
+
+  if (a.activity_type === 'save_added' && a.subject_id && saveLookup[a.subject_id]) {
+    const save = saveLookup[a.subject_id];
+    base.image_url      = save.image_url      || null;
+    base.caption        = save.caption        || null;
+    base.aesthetic_tags = save.aesthetic_tags || null;
+    base.save_number    = save.save_number    || null;
+    base.source_type    = save.source_type    || null;
+  }
+
+  return base;
+}
+
+// ── GET /member/:memberId — individual member feed ────────────────────────────
+// Must come before /:coupleId to avoid Express matching 'member' as a coupleId.
+router.get('/member/:memberId', asyncHandler(async (req, res) => {
+  const supabase    = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  const { memberId } = req.params;
+
+  // Verify member belongs to this couple
+  const { data: member, error: mErr } = await supabase
+    .from('circle_members')
+    .select('id, invitee_name, invitee_phone, role, status, joined_at')
+    .eq('id', memberId)
+    .eq('couple_id', couple_id)
+    .maybeSingle();
+
+  if (mErr) {
+    console.error('[GET /couple/circle/member] member error:', mErr.message);
+    return errRes(res, 500, 'Could not fetch member.');
+  }
+  if (!member) return errRes(res, 404, 'Member not found.');
+
+  // Their activity — all types, chronological ascending for a story feel
+  const { data: activity, error: aErr } = await supabase
+    .from('circle_activity')
+    .select('id, activity_type, actor_name, actor_role, subject_type, subject_id, payload, created_at')
+    .eq('couple_id', couple_id)
+    .eq('actor_name', member.invitee_name)  // scoped to this member by name
+    .order('created_at', { ascending: true })
+    .limit(100);
+
+  if (aErr) {
+    console.error('[GET /couple/circle/member] activity error:', aErr.message);
+    return errRes(res, 500, 'Could not fetch member activity.');
+  }
+
+  const saveLookup = await enrichSaveActivity(supabase, activity || []);
+  const shaped = (activity || []).map(a => shapeActivity(a, saveLookup));
+
+  return okRes(res, {
+    member: {
+      id:             member.id,
+      invitee_name:   member.invitee_name,
+      invitee_phone:  member.invitee_phone || null,
+      role:           member.role,
+      status:         member.status,
+      joined_at:      member.joined_at,
+    },
+    activity: shaped,
+  });
+}));
+
+// ── GET /:coupleId — unified enriched feed ────────────────────────────────────
 router.get('/:coupleId', asyncHandler(async (req, res) => {
   const supabase    = req.app.locals.supabase;
   const { couple_id } = req.coupleUser;
@@ -70,7 +176,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 403, 'Forbidden.');
   }
 
-  // Active members
+  // Active members (include invitee_phone for WhatsApp/call buttons)
   const { data: members, error: mErr } = await supabase
     .from('circle_members')
     .select('id, invitee_name, invitee_phone, role, status, joined_at, created_at')
@@ -82,18 +188,6 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     console.error('[GET /couple/circle] members error:', mErr.message);
     return errRes(res, 500, 'Could not fetch circle.');
   }
-
-  // Fetch conversation_id for each member via counterparty_phone match
-  const { data: convos } = await supabase
-    .from('conversations')
-    .select('id, counterparty_phone, last_message_at')
-    .eq('couple_id', couple_id)
-    .eq('kind', 'circle_thread');
-
-  const convoByPhone = {};
-  (convos || []).forEach(c => {
-    if (c.counterparty_phone) convoByPhone[c.counterparty_phone] = c;
-  });
 
   // Pending invites
   const { data: pending, error: pErr } = await supabase
@@ -108,52 +202,42 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not fetch circle.');
   }
 
-  // Recent activity feed — last 50 rows
+  // Activity feed — ascending for timeline/scrapbook feel, newest at bottom
   const { data: activity, error: aErr } = await supabase
     .from('circle_activity')
     .select('id, activity_type, actor_name, actor_role, subject_type, subject_id, payload, created_at')
     .eq('couple_id', couple_id)
-    .order('created_at', { ascending: false })
-    .limit(50);
+    .order('created_at', { ascending: true })
+    .limit(100);
 
   if (aErr) {
     console.error('[GET /couple/circle] activity error:', aErr.message);
     return errRes(res, 500, 'Could not fetch circle.');
   }
 
-  const shapedActivity = (activity || []).map(a => ({
-    id:            a.id,
-    activity_type: a.activity_type,
-    member_name:   a.actor_name,
-    actor_role:    a.actor_role,
-    subject_type:  a.subject_type  || null,
-    subject_id:    a.subject_id    || null,
-    content:       a.payload?.content || null,
-    created_at:    a.created_at,
-  }));
+  // Enrich save_added rows with muse_save image data (one batch query)
+  const saveLookup = await enrichSaveActivity(supabase, activity || []);
+  const shapedActivity = (activity || []).map(a => shapeActivity(a, saveLookup));
 
-  const shapedMembers = (members || []).map(m => {
-    const convo = m.invitee_phone ? convoByPhone[m.invitee_phone] : null;
-    return {
-      id:              m.id,
-      invitee_name:    m.invitee_name,
-      role:            m.role,
-      status:          m.status,
-      joined_at:       m.joined_at,
-      conversation_id: convo?.id || null,
-      last_active:     convo?.last_message_at || m.joined_at || null,
-    };
-  });
+  const shapedMembers = (members || []).map(m => ({
+    id:             m.id,
+    invitee_name:   m.invitee_name,
+    invitee_phone:  m.invitee_phone || null,
+    role:           m.role,
+    status:         m.status,
+    joined_at:      m.joined_at,
+    last_active:    m.joined_at || null,
+  }));
 
   return okRes(res, {
     members:         shapedMembers,
     activity:        shapedActivity,
     pending_invites: (pending || []).map(p => ({
-      id:            p.id,
-      invitee_name:  p.invitee_name,
-      role:          p.role,
-      expires_at:    p.expires_at || null,
-      created_at:    p.created_at,
+      id:           p.id,
+      invitee_name: p.invitee_name,
+      role:         p.role,
+      expires_at:   p.expires_at || null,
+      created_at:   p.created_at,
     })),
   });
 }));
