@@ -25,7 +25,7 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
   let query = supabase
     .from('vendors')
-    .select('id, business_name, category, city, routing_handle, rate_min, aesthetic_tags, about, discover_preview', { count: 'exact' })
+    .select('id, business_name, category, city, routing_handle, rate_min, aesthetic_tags, discover_preview', { count: 'exact' })
     .eq('discover_eligible', true);
 
   if (category) query = query.eq('category', category);
@@ -66,7 +66,6 @@ router.get('/feed', asyncHandler(async (req, res) => {
     starting_price: v.rate_min      || null,
     photos:         photoMap[v.id]  || [],
     vibe_tags:      v.aesthetic_tags || [],
-    about:          v.about         || null,
     enquire_link:   v.routing_handle ? `${ENQUIRE_BASE}${v.routing_handle}` : null,
   }));
 
