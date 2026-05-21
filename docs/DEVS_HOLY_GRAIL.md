@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-22 (B-4 complete — journey canvases wired, CRUD endpoints, vendor auth SSO fix, circle deferred)
+**Last updated:** 2026-05-22 (B-4 extended — Circle scrapbook + My People + member feed + Moments placeholder + journey CRUD + dreamai/frost text selection fix + light mode contrast)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -477,6 +477,8 @@ B-6 cannot start until B-5 smoke-tested.
 | True first-token SSE streaming (pwaEngine async generator) | Low |
 | Google Calendar OAuth live sync | Low |
 | Instagram DM lead capture | Low |
+| Circle member delete REST endpoint — no `DELETE /couple/circle/:memberId` exists. Cleanup via Supabase SQL only. | Medium — pre-launch |
+| Moments — photograph classification branch not yet in imagePipeline. personal photos vs product saves need separation. | Medium — B-Moments block |
 
 ---
 
