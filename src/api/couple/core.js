@@ -6,6 +6,12 @@
 const express = require('express');
 const router  = express.Router();
 
+const requireCoupleAuth = require('../middleware/requireCoupleAuth');
+
+// Auth gate — all couple data routes require a valid couple JWT.
+// Sub-routers added per block mount below this line so they inherit the gate.
+router.use(requireCoupleAuth);
+
 // B-1: discover + muse
 // router.use('/discover', require('./discover'));
 // router.use('/muse',     require('./muse'));
