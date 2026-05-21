@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-21 (Vendor port complete. Bride blocks specced. SSO wired. B-F, B-1, B-2 done.)
+**Last updated:** 2026-05-21 (B-3 complete — couple data API, me/today/events/expenses/circle/bookings/receipts)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -350,7 +350,7 @@ app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B
 
 ## BLOCK 14 — SCHEMA SUMMARY
 
-**Latest migrations applied:** 0041_vendor_about.sql
+**Latest migrations applied:** 0042_couple_data.sql
 **Block 7 tables (applied out of band):** `payment_schedules`, `contracts`, `tds_ledger`
 **Block 6 tables (applied out of band):** `team_members`, `team_tasks`, `team_payments`, `team_messages`
 
@@ -364,7 +364,7 @@ vendor_discover_requests, vendor_portfolio, vendor_featured_submissions
 Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET discover_eligible=true WHERE id='2eb5d3fb-...'`
 
 **B-F/B-1 columns added (0040 + 0041):**
-- `couples`: wedding_date, wedding_city, bride_name, groom_name, budget_total, notes
+- `couples`: no new columns added (wedding_date, wedding_city, budget_total, partner_name, events_planned, planning_state existed since 0001_initial_schema.sql)
 - `vendors`: about (text) — vendor bio for discover feed
 - `muse_saves`: circle_comment_count (integer, default 0)
 - `muse_saves`: image_url populated on save — each photo is a distinct save (vendor_id + image_url duplicate check)
@@ -396,8 +396,8 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | **Bride B-1** | dream-os | ✅ Done |
 | Bride B-2a (Discover landing) | dreamos-pwa | ⏭ Merged into B-2 |
 | **Bride B-2** (Wire discover + muse) | dreamos-pwa | ✅ Done |
-| Bride B-3 (Couple data API) | dream-os | ⬜ Next — start here |
-| Bride B-3a (Coplanner API) | dream-os | ⬜ |
+| Bride B-3 (Couple data API) | dream-os | ✅ Done |
+| Bride B-3a (Coplanner API) | dream-os | ⬜ Next — start here |
 | Bride B-4 | dreamos-pwa | ⬜ |
 | Bride B-5 | dream-os | ⬜ |
 | Bride B-6 | dreamos-pwa | ⬜ |

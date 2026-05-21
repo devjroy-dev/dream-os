@@ -2,7 +2,7 @@
 **Last updated:** 2026-05-19 (P2-6a session)
 **Session:** P2-6a complete. No new migrations. messages.media_url column now in active use for PDF delivery (was 'future' in prior schema docs).
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0030_landing_assets.sql (2026-05-19)
+**Latest migration applied:** 0042_couple_data.sql (2026-05-21)
 **Next migration:** 0034 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
@@ -596,6 +596,43 @@ The agent reads the returned row and surfaces the numbers verbatim in its reply.
 | **0030_landing_assets.sql** | **P2-5** | **✅ Applied 2026-05-19. landing_slides + exploring_photos tables. Seeded with 3 Cloudinary URLs.** |
 
 ---
+
+
+---
+
+## B-3 — Couple data API (migration 0042, applied 2026-05-21)
+
+### Migration 0042 — circle comment count triggers
+
+Added to support `circle_comment_count` auto-increment on `muse_saves` when a circle member posts a comment anchored to a muse save.
+
+**Index:**
+- `circle_activity_subject_idx` on `circle_activity(subject_id) WHERE subject_id IS NOT NULL`
+
+**Functions:**
+- `increment_circle_comment_count()` — trigger function, increments `muse_saves.circle_comment_count` on `circle_activity` INSERT where `subject_type = 'muse_save'` and `activity_type = 'comment'`
+- `decrement_circle_comment_count()` — trigger function, decrements (floor 0) on DELETE
+
+**Triggers:**
+- `trg_circle_comment_inc` AFTER INSERT ON `circle_activity`
+- `trg_circle_comment_dec` AFTER DELETE ON `circle_activity`
+
+### B-3 API endpoints (no new tables — reads existing schema)
+
+All mounted at `/api/v2/couple/*`, all require `requireCoupleAuth`.
+
+| Endpoint | File | What it reads |
+|---|---|---|
+| `GET /couple/me/:coupleId` | `me.js` | `couples` joined `users(name)` — returns bride_name (from users.name), partner_name, wedding_date, wedding_city, budget_total, events_planned, planning_state, onboarding_state |
+| `GET /couple/today/:coupleId` | `today.js` | `couples` (wedding_date, budget_total) + `events` (today + 30-day upcoming) + `couple_bookings` (total_spent, total_committed) |
+| `GET /couple/events/:coupleId` | `events.js` | `events` filtered by couple_id + state query param |
+| `GET /couple/expenses/:coupleId` | `expenses.js` | `couple_receipts` ordered by created_at desc |
+| `GET /couple/circle/:coupleId` | `circle.js` | `circle_members` (active) + `circle_activity` (last 50) + `circle_members` (pending invites) |
+| `POST /couple/circle/invite` | `circle.js` | Calls `invite_circle_member()` RPC — returns invite_token + wa_me_link |
+| `GET /couple/bookings/:coupleId` | `bookings.js` | `couple_bookings` ordered by created_at desc |
+| `GET /couple/receipts/:coupleId` | `receipts.js` | `couple_receipts` ordered by created_at desc, optional booking_id filter |
+
+**Important:** `bride_name` in API responses comes from `users.name` (joined via `couples.user_id`). There is no `bride_name` column on the `couples` table. The `couples` table columns are exactly as defined in `0001_initial_schema.sql` plus additions from 0013, 0015, 0028 — see couples table definition above.
 
 ## Known schema debt
 

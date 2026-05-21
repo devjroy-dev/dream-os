@@ -14,13 +14,13 @@ from datetime import date
 # Replace the block you completed and advance the Next pointer.
 # Copy the exact row text from the Holy Grail — spacing matters.
 
-COMPLETED_BLOCK  = '| Bride B-1 | dream-os | ⬜ Next — start here |'
-COMPLETED_DONE   = '| Bride B-1 | dream-os | ✅ Done |'
+COMPLETED_BLOCK  = '| Bride B-3a (Coplanner API) | dream-os | ⬜ Next — start here |'
+COMPLETED_DONE   = '| Bride B-3a (Coplanner API) | dream-os | ✅ Done |'
 
-NEXT_BLOCK_OLD   = '| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ |'
-NEXT_BLOCK_NEW   = '| Bride B-2a (Discover landing) | dreamos-pwa | ⬜ Next — start here |'
+NEXT_BLOCK_OLD   = '| Bride B-4 | dreamos-pwa | ⬜ |'
+NEXT_BLOCK_NEW   = '| Bride B-4 | dreamos-pwa | ⬜ Next — start here |'
 
-SESSION_SUMMARY  = 'B-1 complete — discover feed, muse endpoints'
+SESSION_SUMMARY  = 'B-3a complete — coplanner API'
 
 # ── DO NOT EDIT BELOW ────────────────────────────────────────────────────────
 
