@@ -42,4 +42,61 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
   return okRes(res, { bookings: bookings || [] });
 }));
 
+
+// POST /:coupleId — create booking
+router.post('/:coupleId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  if (req.params.coupleId !== couple_id) return errRes(res, 403, 'Forbidden.');
+
+  const { vendor_name, category, amount_total, amount_advance, balance_due_date, state, notes } = req.body || {};
+  if (!vendor_name || typeof vendor_name !== 'string' || !vendor_name.trim())
+    return errRes(res, 400, 'vendor_name required.');
+
+  const VALID_STATES = ['considering', 'shortlisted', 'in_discussion', 'booked', 'advance_paid', 'paid'];
+  const resolvedState = VALID_STATES.includes(state) ? state : 'booked';
+
+  const { data, error } = await supabase
+    .from('couple_bookings')
+    .insert({
+      couple_id,
+      vendor_name: vendor_name.trim().slice(0, 200),
+      category: category || 'other',
+      amount_total: amount_total ? parseInt(amount_total, 10) : null,
+      amount_advance: amount_advance ? parseInt(amount_advance, 10) : null,
+      balance_due_date: balance_due_date || null,
+      notes: notes ? String(notes).trim().slice(0, 500) : null,
+      state: resolvedState,
+    })
+    .select('id, vendor_name, vendor_id, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes, created_at')
+    .single();
+
+  if (error) {
+    console.error('[POST /couple/bookings] insert error:', error.message);
+    return errRes(res, 500, 'Could not create booking.');
+  }
+  return okRes(res, { booking: data });
+}));
+
+// DELETE /:bookingId — delete booking
+router.delete('/:bookingId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+
+  const { data, error } = await supabase
+    .from('couple_bookings')
+    .delete()
+    .eq('id', req.params.bookingId)
+    .eq('couple_id', couple_id)
+    .select('id')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return errRes(res, 404, 'Booking not found.');
+    console.error('[DELETE /couple/bookings] error:', error.message);
+    return errRes(res, 500, 'Could not delete booking.');
+  }
+  return okRes(res, { deleted: data.id });
+}));
+
 module.exports = router;

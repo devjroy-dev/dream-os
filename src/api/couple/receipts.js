@@ -40,4 +40,26 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
   return okRes(res, { receipts: receipts || [] });
 }));
 
+
+// DELETE /:receiptId — delete receipt
+router.delete('/:receiptId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+
+  const { data, error } = await supabase
+    .from('couple_receipts')
+    .delete()
+    .eq('id', req.params.receiptId)
+    .eq('couple_id', couple_id)
+    .select('id')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return errRes(res, 404, 'Receipt not found.');
+    console.error('[DELETE /couple/receipts] error:', error.message);
+    return errRes(res, 500, 'Could not delete receipt.');
+  }
+  return okRes(res, { deleted: data.id });
+}));
+
 module.exports = router;
