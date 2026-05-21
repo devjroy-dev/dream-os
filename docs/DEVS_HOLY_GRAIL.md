@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-21 (B-3a complete — coplanner API, circle session, verify-pin, muse, feed, threads, dreamai)
+**Last updated:** 2026-05-22 (B-4 complete — journey canvases wired, CRUD endpoints, vendor auth SSO fix, circle deferred)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -398,9 +398,9 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | **Bride B-2** (Wire discover + muse) | dreamos-pwa | ✅ Done |
 | Bride B-3 (Couple data API) | dream-os | ✅ Done |
 | Bride B-3a (Coplanner API) | dream-os | ✅ Done |
-| Bride B-4 | dreamos-pwa | ⬜ Next — start here |
-| Bride B-5 | dream-os | ⬜ |
-| Bride B-6 | dreamos-pwa | ⬜ |
+| Bride B-4 | dreamos-pwa | ✅ Done |
+| Bride B-5 | dream-os | ⬜ Next — start here |
+| Bride B-6 | dreamos-pwa | ⬜ Wire DreamAI canvas |
 | Bride B-Admin | both | ⬜ |
 
 ### Bride block sequence
