@@ -66,6 +66,6 @@ router.use('/admin/couture',      require('./admin/couture'));
 router.use('/admin/featured',     require('./admin/featured'));
 
 // Block 2+ routers mounted here as they are built:
-// router.use('/couple', require('./couple/core'));
+router.use('/couple', require('./couple/core'));
 
 module.exports = router;
