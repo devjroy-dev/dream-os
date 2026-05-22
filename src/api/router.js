@@ -40,7 +40,8 @@ router.use('/admin/muse-pool',       require('./admin/musePool').adminRouter);
 router.use('/admin/surprise-pool',   require('./admin/surprisePool'));
 router.use('/admin/spotlight',       require('./admin/spotlight').adminRouter);
 router.use('/admin/discover-heroes', require('./admin/discoverHeroes').adminRouter);
-// Public endpoints for content surfaces (no auth)
+router.use('/admin/conversations',   require('./admin/conversations'));
+// Public endpoints for content surfaces
 router.use('/muse-pool',             require('./admin/musePool').publicRouter);
 router.use('/spotlight',             require('./admin/spotlight').publicRouter);
 router.use('/discover-heroes',       require('./admin/discoverHeroes').publicRouter);
