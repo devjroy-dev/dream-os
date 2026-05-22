@@ -266,9 +266,9 @@ router.post('/verify-otp', async (req, res) => {
   if (!userRow) return res.status(500).json({ error: 'Account not found after OTP verification.' });
 
   const { data: coupleRow } = await supabase
-    .from('couples').select('id, pin_hash, pin_failed_attempts, pin_locked_until')
+    .from('couples').select('id, pin_hash, pin_failed_attempts, pin_locked_until, users!inner(name)')
     .eq('user_id', userRow.id).maybeSingle();
-  if (!coupleRow) return res.status(500).json({ error: 'Vendor record not found after OTP verification.' });
+  if (!coupleRow) return res.status(500).json({ error: 'Couple record not found after OTP verification.' });
 
   if (purpose === 'reset' && (coupleRow.pin_failed_attempts > 0 || coupleRow.pin_locked_until)) {
     await supabase.from('couples')
@@ -291,6 +291,7 @@ router.post('/verify-otp', async (req, res) => {
     user_id:       userRow.id,
     couple_id:     coupleRow.id,
     pin_set:       pinSet,
+    name:          coupleRow.users?.name || null,
     access_token:  tokens.access_token,
     refresh_token: tokens.refresh_token,
   });
