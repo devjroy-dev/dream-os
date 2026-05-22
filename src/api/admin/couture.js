@@ -9,6 +9,34 @@ const requireAuth  = require('../middleware/requireAuth');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
+// GET / — list couture-eligible vendors with slot + appointment counts
+router.get('/', requireAdmin, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { data, error } = await supabase
+    .from('vendors')
+    .select(`
+      id, business_name, category, city, couture_eligible,
+      users!inner(name, phone),
+      couture_slots:couture_availability(count),
+      couture_appointments(count)
+    `)
+    .order('created_at', { ascending: false });
+  if (error) return errRes(res, 500, error.message);
+
+  const vendors = (data || []).map(v => ({
+    id:                v.id,
+    name:              v.business_name || v.users?.name || 'Unnamed',
+    phone:             v.users?.phone,
+    category:          v.category,
+    city:              v.city,
+    couture_eligible:  v.couture_eligible || false,
+    slot_count:        v.couture_slots?.[0]?.count ?? 0,
+    appointment_count: v.couture_appointments?.[0]?.count ?? 0,
+  }));
+
+  return okRes(res, { vendors, total: vendors.length });
+}));
+
 // POST /eligible/:vendorId
 router.post('/eligible/:vendorId', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;

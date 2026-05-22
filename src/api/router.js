@@ -33,6 +33,17 @@ router.use('/admin/featured',        require('./admin/featured'));
 router.use('/admin/vendors',         require('./admin/vendors'));
 router.use('/admin/couples',         require('./admin/couples'));
 router.use('/admin/hot-dates',       require('./admin/hotDates'));
+router.use('/admin/invites',         require('./admin/invites'));
+router.use('/admin/config',          require('./admin/config'));
+router.use('/admin',                 require('./admin/content'));
+router.use('/admin/muse-pool',       require('./admin/musePool').adminRouter);
+router.use('/admin/surprise-pool',   require('./admin/surprisePool'));
+router.use('/admin/spotlight',       require('./admin/spotlight').adminRouter);
+router.use('/admin/discover-heroes', require('./admin/discoverHeroes').adminRouter);
+// Public endpoints for content surfaces (no auth)
+router.use('/muse-pool',             require('./admin/musePool').publicRouter);
+router.use('/spotlight',             require('./admin/spotlight').publicRouter);
+router.use('/discover-heroes',       require('./admin/discoverHeroes').publicRouter);
 
 // Couple routes — profile must be before /couple catch-all
 router.use('/discover',       require('./couple/discover'));

@@ -9,15 +9,23 @@ const requireAuth  = require('../middleware/requireAuth');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
-// GET /queue
-router.get('/queue', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  const supabase  = req.app.locals.supabase;
-  const vendorId  = req.query.vendor_id || null;
+// GET /queue — ?category=photographer&state=pending|approved|rejected|all&vendor_id=
+router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendorId = req.query.vendor_id || null;
+  const category = req.query.category  || null;
+  const state    = req.query.state     || 'pending';
+  const validStates = ['pending', 'approved', 'rejected', 'all'];
+  if (!validStates.includes(state)) return errRes(res, 400, `state must be one of: ${validStates.join(', ')}.`);
+
   let q = supabase.from('vendor_portfolio')
-    .select('id, vendor_id, image_url, caption, aesthetic_tags, approval_state, created_at, vendor:vendors(id, business_name, routing_handle, user:users(name))')
-    .eq('approval_state', 'pending')
+    .select('id, vendor_id, image_url, caption, aesthetic_tags, approval_state, created_at, vendor:vendors(id, business_name, category, routing_handle, user:users(name))')
     .order('created_at', { ascending: true });
+
+  if (state !== 'all') q = q.eq('approval_state', state);
   if (vendorId) q = q.eq('vendor_id', vendorId);
+  if (category) q = q.eq('vendor.category', category);
+
   const { data, error } = await q;
   if (error) return errRes(res, 500, error.message);
   return okRes(res, { photos: data || [], total: (data || []).length });

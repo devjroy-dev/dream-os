@@ -1,0 +1,6 @@
+-- 0045_admin_foundation.sql
+-- Already applied to prod via Supabase SQL editor.
+-- This file is the committed historical record.
+-- Tables added: admin_config, taste_quiz_images, muse_pool, spotlight
+-- Columns added: invite_codes.intended_phone, couples.tier
+-- Function updated: consume_invite_code (enforces intended_phone)
