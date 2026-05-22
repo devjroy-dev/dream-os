@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-22 (B-6 complete — Dream canvas SSE chat, Surprise Me (Gemini grounded search + Muse tag overlay), Expenses 3-slice canvas, CORS fix, schema 0043 consistency fix)
+**Last updated:** 2026-05-22 (Post B-6 bug fixes — Surprise Me stripped to vendor-only, Expenses canvas slice + snapshot fixed, SerpApi/CSE/Unsplash removed)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -477,9 +477,8 @@ B-6 cannot start until B-5 smoke-tested.
 | True first-token SSE streaming (pwaEngine async generator) | Low |
 | Google Calendar OAuth live sync | Low |
 | Instagram DM lead capture | Low |
-| Expenses canvas — My Expenses / Receipt Tracker filter by image_url needs clean patch next session | High — B-Admin |
-| Surprise Me — Gemini grounded search returns page URLs not direct image URLs — may need image extraction layer | Medium — B-Surprise |
-| Surprise Me — Admin image pool UI (replace Unsplash placeholders with real editorial images) | Medium — B-Admin |
+| Surprise Me — Admin image pool UI: upload real editorial Indian wedding images tagged by aesthetic. Surprise Me serves vendor portfolio + admin pool only. | High — B-Admin |
+| Remove unused Railway env vars: SERPAPI_KEY, GOOGLE_CSE_KEY, GOOGLE_CSE_ID (all replaced/abandoned this session) | Low |
 | taste_quiz_images table still exists in Supabase — DROP TABLE taste_quiz_images in next migration | Low |
 | Circle member delete REST endpoint — no `DELETE /couple/circle/:memberId` exists. Cleanup via Supabase SQL only. | Medium — pre-launch |
 | Moments — photograph classification branch not yet in imagePipeline. personal photos vs product saves need separation. | Medium — B-Moments block |
