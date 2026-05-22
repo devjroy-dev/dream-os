@@ -26,17 +26,17 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   if (error) return errRes(res, 500, error.message);
 
   const vendors = (data || []).map(v => ({
-    id:                     v.id,
-    name:                   v.business_name || v.users?.name || 'Unnamed',
-    category:               v.category,
-    city:                   v.city,
-    phone:                  v.users?.phone,
-    tier:                   v.tier,
-    status:                 v.status,
-    founding_cohort:        v.founding_cohort || false,
-    discover_eligible:      v.discover_eligible || false,
+    id:                    v.id,
+    name:                  v.business_name || v.users?.name || 'Unnamed',
+    category:              v.category,
+    city:                  v.city,
+    phone:                 v.users?.phone,
+    tier:                  v.tier,
+    status:                v.status,
+    founding_cohort:       v.founding_cohort || false,
+    discover_eligible:     v.discover_eligible || false,
     discover_request_state: v.discover_request_state || 'not_requested',
-    created_at:             v.created_at,
+    created_at:            v.created_at,
   }));
 
   return okRes(res, { vendors, total: vendors.length });
@@ -49,12 +49,14 @@ router.post('/create', requireAdmin, asyncHandler(async (req, res) => {
 
   if (!phone) return errRes(res, 400, 'phone is required.');
 
+  // Create user + vendor via existing RPC (same as HTML admin invite flow).
   const { error: rpcError } = await supabase.rpc('invite_vendor', {
     p_phone: phone.trim(),
     p_name:  business_name?.trim() || 'Vendor',
   });
   if (rpcError) return errRes(res, 400, rpcError.message);
 
+  // Patch additional fields supplied by admin form.
   const { data: user } = await supabase
     .from('users')
     .select('id')
@@ -96,6 +98,7 @@ router.patch('/:vendorId/tier', requireAdmin, asyncHandler(async (req, res) => {
 router.patch('/:vendorId/approve', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
 
+  // Toggle status: active <-> paused. "Approve" sets active, re-approving toggles.
   const { data: vendor, error: fetchErr } = await supabase
     .from('vendors')
     .select('status')
@@ -137,6 +140,7 @@ router.patch('/:vendorId/discover-eligible', requireAdmin, asyncHandler(async (r
 }));
 
 // ─── PATCH /api/v2/admin/vendors/:id/dreamai ────────────────────────────
+// Toggle a vendor's DreamAi PWA access (briefing_enabled serves as the gate).
 router.patch('/:vendorId/dreamai', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { access } = req.body;
@@ -161,6 +165,23 @@ router.patch('/:vendorId/revoke', requireAdmin, asyncHandler(async (req, res) =>
 
   if (error) return errRes(res, 500, error.message);
   return okRes(res, { revoked: true });
+}));
+
+// ── DELETE /api/v2/admin/vendors/:vendorId ────────────────────────────────────
+// Hard delete. Cascades to all vendor data via FK constraints.
+// Requires confirmation — caller must pass { confirm: true } in body.
+router.delete('/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  if (!req.body?.confirm) return errRes(res, 400, 'Pass { confirm: true } to confirm deletion.');
+
+  // Delete the users row — cascades to vendors + all vendor data
+  const { data: vendor } = await supabase
+    .from('vendors').select('user_id').eq('id', req.params.vendorId).maybeSingle();
+  if (!vendor) return errRes(res, 404, 'Vendor not found.');
+
+  const { error } = await supabase.from('users').delete().eq('id', vendor.user_id);
+  if (error) return errRes(res, 500, error.message);
+  return okRes(res, { deleted: true });
 }));
 
 module.exports = router;

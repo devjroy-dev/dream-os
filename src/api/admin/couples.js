@@ -26,26 +26,34 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
 
   const coupleIds = (data || []).map(c => c.id);
 
+  // Counts in parallel — muse saves + circle members.
   const [museSavesRes, circleMembersRes] = await Promise.all([
-    supabase.from('muse_saves').select('couple_id').in('couple_id', coupleIds),
-    supabase.from('circle_members').select('couple_id, status').in('couple_id', coupleIds).eq('status', 'active'),
+    supabase
+      .from('muse_saves')
+      .select('couple_id')
+      .in('couple_id', coupleIds),
+    supabase
+      .from('circle_members')
+      .select('couple_id, status')
+      .in('couple_id', coupleIds)
+      .eq('status', 'active'),
   ]);
 
   const museCounts   = {};
   const circleCounts = {};
-  for (const row of (museSavesRes.data || []))    museCounts[row.couple_id]   = (museCounts[row.couple_id]   || 0) + 1;
+  for (const row of (museSavesRes.data || []))   museCounts[row.couple_id]   = (museCounts[row.couple_id]   || 0) + 1;
   for (const row of (circleMembersRes.data || [])) circleCounts[row.couple_id] = (circleCounts[row.couple_id] || 0) + 1;
 
   const couples = (data || []).map(c => ({
-    id:             c.id,
-    name:           c.users?.name || 'Unknown',
-    phone:          c.users?.phone,
-    wedding_date:   c.wedding_date,
-    wedding_city:   c.wedding_city,
-    planning_state: c.planning_state,
-    muse_saves:     museCounts[c.id]   || 0,
-    circle_members: circleCounts[c.id] || 0,
-    created_at:     c.created_at,
+    id:              c.id,
+    name:            c.users?.name || 'Unknown',
+    phone:           c.users?.phone,
+    wedding_date:    c.wedding_date,
+    wedding_city:    c.wedding_city,
+    planning_state:  c.planning_state,
+    muse_saves:      museCounts[c.id]   || 0,
+    circle_members:  circleCounts[c.id] || 0,
+    created_at:      c.created_at,
   }));
 
   return okRes(res, { couples, total: couples.length });
@@ -58,6 +66,7 @@ router.post('/create', requireAdmin, asyncHandler(async (req, res) => {
 
   if (!phone || !name) return errRes(res, 400, 'name and phone are required.');
 
+  // Upsert user row.
   const { data: user, error: userErr } = await supabase
     .from('users')
     .upsert({ phone: phone.trim(), name: name.trim() }, { onConflict: 'phone' })
@@ -66,6 +75,7 @@ router.post('/create', requireAdmin, asyncHandler(async (req, res) => {
 
   if (userErr) return errRes(res, 400, userErr.message);
 
+  // Insert couple row.
   const { error: coupleErr } = await supabase
     .from('couples')
     .insert({ user_id: user.id, planning_state: 'browsing' });
@@ -76,13 +86,16 @@ router.post('/create', requireAdmin, asyncHandler(async (req, res) => {
 }));
 
 // ─── PATCH /api/v2/admin/couples/:id/tier ───────────────────────────────
+// Couples don't have a tier column yet — placeholder for when it's added.
 router.patch('/:coupleId/tier', requireAdmin, asyncHandler(async (req, res) => {
   const { tier } = req.body;
   if (!VALID_TIERS.includes(tier)) return errRes(res, 400, `Invalid tier. Must be one of: ${VALID_TIERS.join(', ')}.`);
+  // No tier column on couples yet — return ok so the admin UI doesn't error.
   return okRes(res, { tier, note: 'Couple tiers not yet enforced in DB.' });
 }));
 
 // ─── PATCH /api/v2/admin/couples/:id/revoke ─────────────────────────────
+// "Revoke" for couples means deleting their circle + muse data and resetting planning state.
 router.patch('/:coupleId/revoke', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
 
@@ -93,6 +106,21 @@ router.patch('/:coupleId/revoke', requireAdmin, asyncHandler(async (req, res) =>
 
   if (error) return errRes(res, 500, error.message);
   return okRes(res, { revoked: true });
+}));
+
+// ── DELETE /api/v2/admin/couples/:coupleId ────────────────────────────────────
+// Hard delete. Cascades to all couple data via FK constraints.
+router.delete('/:coupleId', requireAdmin, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  if (!req.body?.confirm) return errRes(res, 400, 'Pass { confirm: true } to confirm deletion.');
+
+  const { data: couple } = await supabase
+    .from('couples').select('user_id').eq('id', req.params.coupleId).maybeSingle();
+  if (!couple) return errRes(res, 404, 'Couple not found.');
+
+  const { error } = await supabase.from('users').delete().eq('id', couple.user_id);
+  if (error) return errRes(res, 500, error.message);
+  return okRes(res, { deleted: true });
 }));
 
 module.exports = router;
