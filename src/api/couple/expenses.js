@@ -38,4 +38,43 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
   return okRes(res, { expenses: expenses || [] });
 }));
 
+// POST /:coupleId — add a manual expense (receipt without image)
+router.post('/:coupleId', asyncHandler(async (req, res) => {
+  const supabase    = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+
+  if (req.params.coupleId !== couple_id) {
+    return res.status(403).json({ ok: false, error: 'Forbidden.' });
+  }
+
+  const { vendor_name, amount, receipt_date, description, tags } = req.body || {};
+
+  if (!vendor_name && !description) {
+    return res.status(400).json({ ok: false, error: 'vendor_name or description required.' });
+  }
+
+  const row = {
+    couple_id,
+    vendor_name:  vendor_name  || null,
+    description:  description  || null,
+    amount:       amount       ? parseInt(amount, 10) : null,
+    receipt_date: receipt_date || null,
+    tags:         Array.isArray(tags) ? tags : [],
+    image_url:    null,
+  };
+
+  const { data, error } = await supabase
+    .from('couple_receipts')
+    .insert(row)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[POST /couple/expenses] insert error:', error.message);
+    return res.status(500).json({ ok: false, error: 'Could not add expense.' });
+  }
+
+  return res.json({ ok: true, expense: data });
+}));
+
 module.exports = router;
