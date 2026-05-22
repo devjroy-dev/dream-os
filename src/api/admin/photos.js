@@ -5,11 +5,10 @@
 const express      = require('express');
 const router       = express.Router();
 const requireAdmin = require('./requireAdmin');
-const requireAuth  = require('../middleware/requireAuth');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
-// GET /queue — ?category=photographer&state=pending|approved|rejected|all&vendor_id=
+// GET /queue — supports ?category=photographer&state=pending|approved|rejected|all&vendor_id=
 router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendorId = req.query.vendor_id || null;
@@ -32,7 +31,7 @@ router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
 }));
 
 // POST /:imageId/approve
-router.post('/:imageId/approve', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/:imageId/approve', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { error } = await supabase.from('vendor_portfolio')
     .update({ approval_state: 'approved', reviewed_by_admin: 'admin', reviewed_at: new Date().toISOString() })
@@ -42,7 +41,7 @@ router.post('/:imageId/approve', requireAuth, requireAdmin, asyncHandler(async (
 }));
 
 // POST /:imageId/reject
-router.post('/:imageId/reject', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/:imageId/reject', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const reason   = (req.body || {}).reason || null;
   const { error } = await supabase.from('vendor_portfolio')
@@ -53,7 +52,7 @@ router.post('/:imageId/reject', requireAuth, requireAdmin, asyncHandler(async (r
 }));
 
 // POST /bulk-approve
-router.post('/bulk-approve', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/bulk-approve', requireAdmin, asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const imageIds  = (req.body || {}).image_ids || [];
   if (!imageIds.length) return errRes(res, 400, 'image_ids required.');
