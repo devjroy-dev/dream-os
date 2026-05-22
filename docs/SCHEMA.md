@@ -2,7 +2,12 @@
 **Last updated:** 2026-05-19 (P2-6a session)
 **Session:** P2-6a complete. No new migrations. messages.media_url column now in active use for PDF delivery (was 'future' in prior schema docs).
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0042_couple_data.sql (2026-05-21) — no new migration in B-3a
+**Latest migration applied:** 0045_admin_foundation.sql (2026-05-22 — applied via SQL editor)
+**Migrations 0040–0045 applied to prod but not yet committed to db/migrations/ as files.**
+- 0040: team_members, team_tasks, team_messages, team_payments
+- 0041: payment_schedules, contracts, tds_ledger, invoices.has_schedule
+- 0044: discover_heroes
+- 0045: muse_pool, taste_quiz_images, spotlight, admin_config, couples.tier, invite_codes.intended_phone
 **Next migration:** 0034 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027

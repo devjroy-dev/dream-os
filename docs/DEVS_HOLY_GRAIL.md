@@ -43,7 +43,7 @@
 - Test vendor PIN: `1234`
 - Swati vendor UUID: `e036ea4d-3f9a-4ec5-ba89-a5defa3a042b`, handle: `SWATI978`
 - Test couple phone: `+919625759924`
-- Admin password: `Mira@2551354`
+- Admin password: `Liza@2551354`
 
 ---
 
@@ -350,9 +350,11 @@ app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B
 
 ## BLOCK 14 — SCHEMA SUMMARY
 
-**Latest migrations applied:** 0042_couple_data.sql (no new migration in B-3a)
+**Latest migrations applied:** 0045_admin_foundation.sql (applied 2026-05-22 via SQL editor)
 **Block 7 tables (applied out of band):** `payment_schedules`, `contracts`, `tds_ledger`
 **Block 6 tables (applied out of band):** `team_members`, `team_tasks`, `team_payments`, `team_messages`
+**B-Admin tables (0044+0045, applied 2026-05-22):** `discover_heroes`, `muse_pool`, `taste_quiz_images`, `spotlight`, `admin_config`
+**B-Admin columns (0045):** `couples.tier` (basic/gold/platinum), `invite_codes.intended_phone`
 
 Key tables: conversations, messages, notes, leads, events, invoices, expenses, clients,
 muse_saves, circle_members, circle_activity, circle_sessions, couple_tasks, couple_bookings,
@@ -401,7 +403,7 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | Bride B-4 | dreamos-pwa | ✅ Done |
 | Bride B-5 | dream-os | ✅ Done |
 | Bride B-6 | dreamos-pwa | ✅ Done |
-| Bride B-Admin | both | ⬜ Next — start here |
+| Bride B-Admin | both | ✅ Done |
 
 ### Bride block sequence
 
@@ -466,6 +468,15 @@ B-6 cannot start until B-5 smoke-tested.
 | `thedreamwedding.in` pointed at dreamos-pwa on Vercel | ✅ Done |
 
 ### Coding open debt
+
+| Item | Priority |
+|---|---|
+| AI caps enforcement — wire admin_config values into engine.js, pwaEngine.js, brideEngine.js | High — before scaling |
+| `POST /api/v2/vendor/onboarding` endpoint — create vendor profile details (name/category/city) | Medium — fallback if name missing from verify-otp |
+| `POST /api/v2/couple/onboarding` endpoint — create couple profile details | Medium |
+| Commit 0040, 0041, 0044, 0045 migration files to db/migrations/ | Medium |
+
+### Coding open debt (pre-existing)
 
 | Item | Priority |
 |---|---|

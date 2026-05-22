@@ -1,4 +1,142 @@
 # dream-os — Master Handover (The Bridge Document)
+**Written:** 2026-05-22 (Admin Portal + Auth Flow session close)
+**Session:** B-Admin — Complete admin portal rebuild + auth flow bug fixes
+**Version:** dream-os → 0.11.2-alpha / dreamos-pwa → 0.11.2-alpha
+**HEAD (dream-os):** d973361 fix(auth): couple verify-otp returns name, fix couple set-pin field names
+**HEAD (dreamos-pwa):** latest (see git log — multiple auth + admin commits this session)
+**HEAD (dreamai):** unchanged
+**Supabase:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
+**Railway:** https://dream-os-production.up.railway.app
+**Vercel (dreamos-pwa):** https://thedreamwedding.in
+**Vercel (dreamai):** https://thedreamai.in
+
+---
+
+## B-Admin — Complete Admin Portal Rebuild — 2026-05-22
+
+### What shipped
+
+**Migrations applied to Supabase prod (0044 + 0045 — applied via SQL editor):**
+- `discover_heroes` table — editorial hero images for bride discover feed
+- `muse_pool` table — pre-seeded muse images (20 max active)
+- `taste_quiz_images` table — Surprise Me pool (100 max active)
+- `spotlight` table — vendor spotlight cards (vendor_id FK, week_label, active)
+- `admin_config` table — AI caps per tier per surface (28 rows seeded)
+- `couples.tier` column — basic/gold/platinum
+- `invite_codes.intended_phone` column — phone-bound invite codes
+
+**dream-os — new admin endpoints:**
+- `src/api/admin/conversations.js` — GET /vendors (vendor_self threads), GET /brides (couple_self threads), GET /:id/messages (last 50)
+- `src/api/admin/vendorPortfolio.js` — GET/POST/upload-url/DELETE for vendor portfolio (admin uploads auto-approved)
+- `src/api/admin/vendors.js` — added DELETE /:vendorId (cascades via users row)
+- `src/api/admin/couples.js` — added DELETE /:coupleId (cascades via users row)
+- `src/api/admin/photos.js` — removed `requireAuth` from approve/reject routes (was blocking all photo approvals)
+- `src/api/admin/invites.js` — generate now accepts `name` + `intended_phone`; when both provided, calls `invite_vendor()` or `invite_couple()` RPC immediately to pre-create user row
+- `src/api/vendor/auth.js` — verify-otp now returns `name`, `category`, `tier`, `routing_handle` in response
+- `src/api/couple/auth.js` — verify-otp now returns `name` in response; fixed "Vendor record" error message to "Couple record"
+
+**dreamos-pwa — complete admin UI rebuild:**
+- `lib/admin-api/_base.ts` — adminGet/Post/Patch/Delete/UploadFile with x-admin-password injection
+- `lib/admin-api/index.ts` — all types + all API functions
+- `app/admin/layout.tsx` — cockpit dark design (#0A0908 bg, #C9A84C gold), mobile sidebar, 9-section nav
+- `app/admin/login/page.tsx` — dark login screen
+- `app/admin/page.tsx` — dashboard with 5 stat cards + quick links
+- `app/admin/_components/AdminUI.tsx` — shared: PageHeader, StatCard, GoldBtn, GhostBtn, Toast, FieldInput, FieldSelect, BottomSheet, UploadZone (device+URL tabs), ImageGrid, LoadingGrid, SectionDivider, Counter
+- `app/admin/ContentPage.tsx` — generic content page factory
+- `app/admin/makers/page.tsx` — vendor list, tier, discover toggle, revoke, delete, invite-by-phone form
+- `app/admin/dreamers/page.tsx` — couple list, tier, delete
+- `app/admin/invites/page.tsx` — WA links, generate codes (phone+name required), list/delete
+- `app/admin/config/page.tsx` — AI caps editor (per tier per surface)
+- `app/admin/couture/page.tsx` — couture vendor management
+- `app/admin/hot-dates/page.tsx` — muhurat calendar management
+- `app/admin/content/landing/page.tsx` — landing photos
+- `app/admin/content/exploring/page.tsx` — exploring photos
+- `app/admin/content/heroes/page.tsx` — discover heroes
+- `app/admin/content/muse-pool/page.tsx` — muse pool (20-image cap)
+- `app/admin/content/surprise-me/page.tsx` — surprise me pool (100-image cap)
+- `app/admin/content/spotlight/page.tsx` — spotlight cards with vendor picker
+- `app/admin/approvals/photos/page.tsx` — photo queue with approve/reject
+- `app/admin/approvals/discover/page.tsx` — discover queue with grant/deny/revoke
+- `app/admin/conversations/vendors/page.tsx` — vendor chat audit (read-only)
+- `app/admin/conversations/brides/page.tsx` — bride chat audit (read-only)
+- `app/admin/vendors/portfolio/page.tsx` — upload photos on behalf of any vendor (auto-approved)
+
+**dreamos-pwa — auth flow fixes:**
+- `app/(landing)/page.tsx` — verify-otp now sends `otp` (not `code`) and `purpose: 'login'`; invite validate sends `kind` (not `role`), `'maker'`/`'dreamer'` (not `'vendor'`/`'couple'`)
+- `app/(auth)/vendor/pin/page.tsx` — set-pin sends `vendor_id` (not `userId`/`role`/`phone`)
+- `app/(auth)/couple/pin/page.tsx` — set-pin sends `couple_id` (not `userId`/`role`/`phone`)
+
+### Key decisions
+
+**Admin design:** Deep cockpit dark — `#0A0908` bg, `#C9A84C` gold accent, `#F5F0E8` ink. Cormorant Garamond display, DM Sans body, Jost labels. Mobile-first, 48px tap targets, bottom sheets for all actions. Lives at `thedreamwedding.in/admin`. Password in Railway env `ADMIN_PASSWORD` + Vercel env `NEXT_PUBLIC_ADMIN_PASSWORD`.
+
+**Gated onboarding:** Invite generation now requires `name` + `intended_phone`. Backend calls `invite_vendor()` / `invite_couple()` RPC at generation time — user+vendor/couple row created immediately. OTP sign-in works from that moment. Nobody gets in without an explicit admin invite. XOR constraint (users can only be vendor OR couple) enforced at DB level.
+
+**Vendor WA-onboarding flow confirmed:** Admin creates vendor via Makers → + Invite OR Invites → Generate (both create user row) → share WA link → vendor texts → onboarding fires (onboarding_state machine) → vendor comes to thedreamwedding.in → Sign In → OTP → set PIN → redirected to thedreamai.in via SSO handoff.
+
+**AI caps:** Values stored in `admin_config`, editable via Config page. Enforcement NOT yet wired into agent engines — deferred to a future session. Trial tier = tightest caps; when enforcement is built it applies immediately based on `vendor.tier`.
+
+**Photo approve/reject was broken:** `requireAuth` middleware on POST routes expected a vendor JWT. Admin portal sends `x-admin-password` header only. Removed `requireAuth` — these routes now only need `requireAdmin`.
+
+**Swati's duplicate vendor rows:** Cleaned via `DELETE FROM users WHERE phone = '+918595356978'` — cascades deleted both vendor rows. Re-invite via Makers page to restore.
+
+### Auth flow field mismatches fixed (all bugs that blocked web sign-in)
+
+| Endpoint | Frontend was sending | Backend expected | Fixed |
+|---|---|---|---|
+| vendor verify-otp | `code` | `otp` | ✅ |
+| vendor verify-otp | no `purpose` | `purpose: 'login'` | ✅ |
+| couple verify-otp | `code` | `otp` | ✅ |
+| couple verify-otp | no `purpose` | `purpose: 'login'` | ✅ |
+| invite validate | `role: 'vendor'` | `kind: 'maker'` | ✅ |
+| vendor set-pin | `userId`, `role`, `phone` | `vendor_id`, `pin` | ✅ |
+| couple set-pin | `userId`, `role`, `phone` | `couple_id`, `pin` | ✅ |
+| vendor verify-otp response | no `name` returned | needed for onboarding check | ✅ |
+| couple verify-otp response | no `name` returned | needed for onboarding check | ✅ |
+
+### Known open items
+
+- **AI caps not enforced** — `admin_config` values are set but agents don't read them. One session of work.
+- **`/api/v2/vendor/onboarding` endpoint doesn't exist** — frontend routes to it when `!pin_set && !name`. Now bypassed because verify-otp returns `name`. But if a vendor somehow has no name in DB, they'll see "Could not save." Build this endpoint if it becomes an issue.
+- **`/api/v2/couple/onboarding` endpoint doesn't exist** — same situation for couples.
+- **Invite code web flow for new users (no WA)** — now works because generate pre-creates user row.
+- **Admin password changed** — now `Liza@2551354` (was `Mira@2551354`). Update Railway env if needed.
+
+### Migration status
+
+| # | File | Status | What it adds |
+|---|---|---|---|
+| 0001–0039 | applied + committed | ✅ | See SCHEMA.md |
+| 0040 | applied to prod | ⚠️ not committed | team_members, team_tasks, team_messages, team_payments |
+| 0041 | applied to prod | ⚠️ not committed | payment_schedules, contracts, tds_ledger, invoices.has_schedule |
+| 0044 | applied to prod | ⚠️ not committed | discover_heroes table |
+| 0045 | applied to prod | ⚠️ not committed | muse_pool, taste_quiz_images, spotlight, admin_config, couples.tier, invite_codes.intended_phone |
+
+**Action required:** Commit 0040, 0041, 0044, 0045 as files to `db/migrations/`.
+
+### Test credentials
+
+| Item | Value |
+|---|---|
+| Test vendor phone | +918757788550 |
+| Test vendor UUID | 2eb5d3fb-31eb-4b26-859a-cf10ae477d53 |
+| Test vendor handle | DEV550 |
+| Test vendor PIN | 1234 |
+| Test vendor tier | prestige |
+| Admin password | Liza@2551354 |
+| Admin URL | thedreamwedding.in/admin |
+| Supabase | nvzkbagqxbysoeszxent (Mumbai, ap-south-1) |
+| Railway | https://dream-os-production.up.railway.app |
+| Vercel dreamos-pwa | https://thedreamwedding.in |
+| Vercel dreamai | https://thedreamai.in |
+
+
+
+---
+
+## Previous sessions archived below
+
+# dream-os — Master Handover (The Bridge Document)
 **Written:** 2026-05-21 (Bride Blocks B-F, B-1, B-2 + amendments session close)
 **Session:** Bride Block F (couple REST foundation) + Block 1 (discover + muse API) + Block 2 (Frost PWA wiring + amendments)
 **Version:** dream-os → 0.11.1-alpha / dreamos-pwa → 0.11.1-alpha
