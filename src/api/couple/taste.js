@@ -19,6 +19,7 @@
 'use strict';
 
 const express      = require('express');
+const { groundedSearch } = require('../../lib/groundedSearch');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
@@ -143,25 +144,51 @@ router.get('/surprise', asyncHandler(async (req, res) => {
     }
   }
 
-  // Pad with curated fallback if < 5 vendor matches
+  // Pad with Gemini grounded search if < 5 vendor matches
   let results = [...vendorImages];
   if (results.length < 5) {
-    const matching = CURATED_FALLBACK
-      .filter(f => f.tags.some(t => herTags.includes(t)))
-      .map(f => ({ image_url: f.image_url, caption: f.caption, aesthetic_tags: f.tags, source_url: f.source_url, source: 'curated' }));
+    try {
+      const tagStr  = herTags.slice(0, 4).join(', ');
+      const query   = `Indian wedding photography ${tagStr} aesthetic — real wedding images site:pinterest.com OR site:instagram.com OR site:wedmegood.com OR site:shaadisaga.com`;
+      const { answer, sources } = await groundedSearch(query, {
+        maxResults: 10,
+        context: `Find real Indian wedding images matching these aesthetics: ${tagStr}. Return direct image URLs only.`,
+      });
 
-    // Add fallback items not already in results
-    for (const f of matching) {
-      if (results.length >= 20) break;
-      results.push(f);
+      // Extract image URLs from sources
+      if (sources && sources.length > 0) {
+        for (const src of sources) {
+          if (results.length >= 20) break;
+          if (src.uri && (src.uri.includes('.jpg') || src.uri.includes('.jpeg') || src.uri.includes('.png') || src.uri.includes('.webp'))) {
+            results.push({
+              image_url:      src.uri,
+              caption:        src.title || `${tagStr} wedding`,
+              aesthetic_tags: herTags.slice(0, 3),
+              source_url:     src.uri,
+              source:         'web',
+            });
+          }
+        }
+      }
+    } catch (searchErr) {
+      console.warn('[GET /taste/surprise] grounded search failed:', searchErr.message);
     }
 
-    // If still < 5, add all fallback images
+    // Final fallback — curated Unsplash if search returned nothing
     if (results.length < 5) {
-      for (const f of CURATED_FALLBACK) {
+      const matching = CURATED_FALLBACK
+        .filter(f => f.tags.some(t => herTags.includes(t)))
+        .map(f => ({ image_url: f.image_url, caption: f.caption, aesthetic_tags: f.tags, source_url: f.source_url, source: 'curated' }));
+      for (const f of matching) {
         if (results.length >= 20) break;
-        if (!results.find(r => r.image_url === f.image_url)) {
-          results.push({ image_url: f.image_url, caption: f.caption, aesthetic_tags: f.tags, source_url: f.source_url, source: 'curated' });
+        results.push(f);
+      }
+      if (results.length < 5) {
+        for (const f of CURATED_FALLBACK) {
+          if (results.length >= 20) break;
+          if (!results.find(r => r.image_url === f.image_url)) {
+            results.push({ image_url: f.image_url, caption: f.caption, aesthetic_tags: f.tags, source_url: f.source_url, source: 'curated' });
+          }
         }
       }
     }
