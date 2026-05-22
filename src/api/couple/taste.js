@@ -143,40 +143,39 @@ router.get('/surprise', asyncHandler(async (req, res) => {
     }
   }
 
-  // Pad with Google Custom Search Images if < 5 vendor matches
+  // Pad with SerpApi Google Images if < 5 vendor matches
   let results = [...vendorImages];
   if (results.length < 5) {
     try {
-      const apiKey = process.env.GOOGLE_CSE_KEY;
-      const cseId  = process.env.GOOGLE_CSE_ID;
+      const serpKey = process.env.SERPAPI_KEY;
 
-      if (apiKey && cseId) {
+      if (serpKey) {
         const tagStr = herTags.slice(0, 4).join(' ');
         const query  = encodeURIComponent(`Indian wedding ${tagStr}`);
-        const url    = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&q=${query}&searchType=image&num=10&imgType=photo&imgSize=large&safe=off`;
+        const url    = `https://serpapi.com/search.json?engine=google_images&q=${query}&ijn=0&num=10&api_key=${serpKey}`;
 
-        const cseRes  = await fetch(url);
-        const cseData = await cseRes.json();
+        const serpRes  = await fetch(url);
+        const serpData = await serpRes.json();
 
-        if (cseData.items && cseData.items.length > 0) {
-          for (const item of cseData.items) {
+        if (serpData.images_results && serpData.images_results.length > 0) {
+          for (const item of serpData.images_results) {
             if (results.length >= 20) break;
-            if (item.link) {
+            if (item.original) {
               results.push({
-                image_url:      item.link,
+                image_url:      item.original,
                 caption:        item.title || `${tagStr} wedding`,
                 aesthetic_tags: herTags.slice(0, 3),
-                source_url:     item.image?.contextLink || null,
+                source_url:     item.link || null,
                 source:         'web',
               });
             }
           }
         }
       } else {
-        console.warn('[GET /taste/surprise] GOOGLE_API_KEY or GOOGLE_CSE_ID not set — skipping image search');
+        console.warn('[GET /taste/surprise] SERPAPI_KEY not set — skipping image search');
       }
     } catch (searchErr) {
-      console.warn('[GET /taste/surprise] Google Custom Search failed:', searchErr.message);
+      console.warn('[GET /taste/surprise] SerpApi search failed:', searchErr.message);
     }
 
     // Final fallback — curated Unsplash if search returned nothing
