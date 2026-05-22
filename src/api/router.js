@@ -41,6 +41,7 @@ router.use('/admin/surprise-pool',   require('./admin/surprisePool'));
 router.use('/admin/spotlight',       require('./admin/spotlight').adminRouter);
 router.use('/admin/discover-heroes', require('./admin/discoverHeroes').adminRouter);
 router.use('/admin/conversations',   require('./admin/conversations'));
+router.use('/admin/vendors/:vendorId/portfolio', require('./admin/vendorPortfolio'));
 // Public endpoints for content surfaces
 router.use('/muse-pool',             require('./admin/musePool').publicRouter);
 router.use('/spotlight',             require('./admin/spotlight').publicRouter);
