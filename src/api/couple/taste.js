@@ -147,7 +147,7 @@ router.get('/surprise', asyncHandler(async (req, res) => {
   let results = [...vendorImages];
   if (results.length < 5) {
     try {
-      const apiKey = process.env.GOOGLE_API_KEY;
+      const apiKey = process.env.GOOGLE_CSE_KEY;
       const cseId  = process.env.GOOGLE_CSE_ID;
 
       if (apiKey && cseId) {
