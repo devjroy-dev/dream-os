@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-22 (B-5 complete — POST /couple/chat SSE bridge to brideEngine. Haiku, word-by-word streaming, couple_self conversation, history persisted.)
+**Last updated:** 2026-05-22 (B-6 complete — Dream canvas SSE chat, Surprise Me (Gemini grounded search + Muse tag overlay), Expenses 3-slice canvas, CORS fix, schema 0043 consistency fix)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -400,8 +400,8 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | Bride B-3a (Coplanner API) | dream-os | ✅ Done |
 | Bride B-4 | dreamos-pwa | ✅ Done |
 | Bride B-5 | dream-os | ✅ Done |
-| Bride B-6 | dreamos-pwa | ⬜ Next — start here |
-| Bride B-Admin | both | ⬜ |
+| Bride B-6 | dreamos-pwa | ✅ Done |
+| Bride B-Admin | both | ⬜ Next — start here |
 
 ### Bride block sequence
 
@@ -477,6 +477,10 @@ B-6 cannot start until B-5 smoke-tested.
 | True first-token SSE streaming (pwaEngine async generator) | Low |
 | Google Calendar OAuth live sync | Low |
 | Instagram DM lead capture | Low |
+| Expenses canvas — My Expenses / Receipt Tracker filter by image_url needs clean patch next session | High — B-Admin |
+| Surprise Me — Gemini grounded search returns page URLs not direct image URLs — may need image extraction layer | Medium — B-Surprise |
+| Surprise Me — Admin image pool UI (replace Unsplash placeholders with real editorial images) | Medium — B-Admin |
+| taste_quiz_images table still exists in Supabase — DROP TABLE taste_quiz_images in next migration | Low |
 | Circle member delete REST endpoint — no `DELETE /couple/circle/:memberId` exists. Cleanup via Supabase SQL only. | Medium — pre-launch |
 | Moments — photograph classification branch not yet in imagePipeline. personal photos vs product saves need separation. | Medium — B-Moments block |
 

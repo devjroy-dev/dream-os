@@ -1056,3 +1056,26 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 **FY helper:** `currentFinancialYear()` in `src/lib/vendor/tds.js` — Apr–Mar Indian calendar.
 **Hard delete:** TDS entries are hard-deleted (vendor-managed tax records — soft delete adds year-end confusion).
 **CSV export:** `GET /api/v2/vendor/tds/:vendorId/export?financial_year=FY2026-27` returns text/csv.
+
+
+## Migration 0043 — Taste Profile (B-6)
+**Applied:** 2026-05-22
+
+### couples table additions
+| Column | Type | Default | Notes |
+|---|---|---|---|
+| `taste_quiz_done` | boolean | false | True after bride submits aesthetic tags. Muse overlay never shows again. |
+| `aesthetic_tags` | jsonb | [] | Her selected taste tags e.g. ["moody","editorial"]. jsonb to match muse_saves/vendors/vendor_portfolio. |
+
+**Type fix applied out of band:** Initially created as `text[]`, converted to `jsonb` via DROP DEFAULT → ALTER TYPE → SET DEFAULT.
+
+### Endpoints added (B-6)
+- `POST /api/v2/couple/taste` — saves aesthetic_tags + flips taste_quiz_done
+- `GET /api/v2/couple/taste/profile` — returns tags + flag
+- `GET /api/v2/couple/taste/surprise` — returns curated images matching her tags (vendor portfolio + Gemini grounded search + Unsplash fallback)
+- `POST /api/v2/couple/expenses/:coupleId` — manual expense add to couple_receipts
+- `POST /api/v2/couple/chat` — SSE bridge to brideEngine (B-5, documented here)
+
+### Note on taste_quiz_images
+Original 0043 draft created `taste_quiz_images` table — dropped. Not needed.
+`DROP TABLE IF EXISTS taste_quiz_images;` — run in next session cleanup migration.
