@@ -57,13 +57,49 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
 }));
 
 // POST /generate
+// When phone is provided, ALSO creates the users + vendor/couple row immediately
+// so send-otp works the moment they enter the code on the web.
 router.post('/generate', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { kind, tier, intended_phone, notes, count = 1 } = req.body;
+  const { kind, tier, intended_phone, name, notes, count = 1 } = req.body;
 
   if (!kind || !['dreamer', 'maker'].includes(kind))
     return errRes(res, 400, 'kind is required: dreamer or maker.');
 
+  // If phone is provided, it is mandatory to also provide a name.
+  // We create the users + vendor/couple row right now so web OTP works immediately.
+  if (intended_phone) {
+    if (!name || !name.trim())
+      return errRes(res, 400, 'name is required when phone is provided.');
+
+    const cleanPhone = intended_phone.trim();
+    const cleanName  = name.trim();
+
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
+
+    if (!existingUser) {
+      // Create user + vendor/couple row via the same RPCs the old HTML admin used
+      const rpc = kind === 'maker' ? 'invite_vendor' : 'invite_couple';
+      const rpcParams = kind === 'maker'
+        ? { p_phone: cleanPhone, p_name: cleanName }
+        : { p_phone: cleanPhone, p_name: cleanName, p_pronouns: 'they/them' };
+
+      const { error: rpcErr } = await supabase.rpc(rpc, rpcParams);
+      if (rpcErr) return errRes(res, 400, `Could not create account: ${rpcErr.message}`);
+
+      // Set tier if provided
+      if (tier && kind === 'maker') {
+        const { data: userRow } = await supabase.from('users').select('id').eq('phone', cleanPhone).maybeSingle();
+        if (userRow) await supabase.from('vendors').update({ tier }).eq('user_id', userRow.id);
+      }
+
+      console.log(`[admin:invites] pre-created ${kind} account for ${cleanPhone}`);
+    }
+  }
+
+  // Generate exactly 1 code when phone is bound, up to 50 otherwise
   const qty  = intended_phone ? 1 : Math.min(Math.max(1, parseInt(count) || 1), 50);
   const rows = Array.from({ length: qty }, () => ({
     code:           generateCode(),
