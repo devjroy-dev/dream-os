@@ -26,10 +26,13 @@ router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
 router.use('/hot-dates',          require('./public/hotDates'));
 router.use('/vendor',             require('./vendor/core'));
-router.use('/admin/discover',     require('./admin/discover'));
-router.use('/admin/photos',       require('./admin/photos'));
-router.use('/admin/couture',      require('./admin/couture'));
-router.use('/admin/featured',     require('./admin/featured'));
+router.use('/admin/discover',        require('./admin/discover'));
+router.use('/admin/photos',          require('./admin/photos'));
+router.use('/admin/couture',         require('./admin/couture'));
+router.use('/admin/featured',        require('./admin/featured'));
+router.use('/admin/vendors',         require('./admin/vendors'));
+router.use('/admin/couples',         require('./admin/couples'));
+router.use('/admin/hot-dates',       require('./admin/hotDates'));
 
 // Couple routes — profile must be before /couple catch-all
 router.use('/discover',       require('./couple/discover'));

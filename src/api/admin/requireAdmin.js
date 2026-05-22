@@ -11,6 +11,12 @@ function signSession(password) {
 }
 
 function requireAdmin(req, res, next) {
+  // Accept either the session cookie (HTML admin panel) or x-admin-password header (dreamos-pwa REST calls).
+  const header = req.headers['x-admin-password'];
+  if (header) {
+    if (header !== ADMIN_PASSWORD) return res.status(403).json({ ok: false, error: 'Forbidden.' });
+    return next();
+  }
   const cookie = req.cookies?.dream_admin_session;
   if (!cookie) return res.status(401).json({ ok: false, error: 'Admin auth required.' });
   const expected = signSession(ADMIN_PASSWORD);
