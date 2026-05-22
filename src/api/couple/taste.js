@@ -23,20 +23,6 @@ const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
-// Curated fallback images — covers all 15 tags.
-// Replace with real editorial images (Pinterest/Instagram sourced) via admin portal.
-const CURATED_FALLBACK = [
-  { image_url: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=1080&q=85', caption: 'Grand ballroom ceremony',       tags: ['grand','ott','opulent'],          source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1080&q=85', caption: 'Soft pastel bridal portrait',   tags: ['pastel','minimal','editorial'],    source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1080&q=85', caption: 'Moody candlelit mandap',        tags: ['moody','intimate','editorial'],    source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1080&q=85', caption: 'Rustic outdoor ceremony',       tags: ['rustic','natural','candid'],       source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1591604466107-ec97de577aff?w=1080&q=85', caption: 'Minimal modern decor',          tags: ['minimal','modern','clean'],        source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1080&q=85', caption: 'Cinematic couple portrait',     tags: ['editorial','cinematic','film'],    source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1080&q=85', caption: 'Grand floral destination wedding', tags: ['grand','floral','destination'], source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=1080&q=85', caption: 'Intimate mehndi warm tones',    tags: ['intimate','warm','candid'],        source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1080&q=85', caption: 'Festive vibrant sangeet',      tags: ['festive','vibrant','pastel'],      source_url: null },
-  { image_url: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=1080&q=85', caption: 'Dramatic dark editorial',      tags: ['moody','dramatic','editorial'],    source_url: null },
-];
 
 // ── POST /taste — save her tags ───────────────────────────────────────────────
 router.post('/', asyncHandler(async (req, res) => {
@@ -143,63 +129,9 @@ router.get('/surprise', asyncHandler(async (req, res) => {
     }
   }
 
-  // Pad with SerpApi Google Images if < 5 vendor matches
-  let results = [...vendorImages];
-  if (results.length < 5) {
-    try {
-      const serpKey = process.env.SERPAPI_KEY;
-
-      if (serpKey) {
-        const tagStr = herTags.slice(0, 4).join(' ');
-        const query  = encodeURIComponent(`Indian wedding ${tagStr}`);
-        const url    = `https://serpapi.com/search.json?engine=google_images&q=${query}&ijn=0&num=10&api_key=${serpKey}`;
-
-        const serpRes  = await fetch(url);
-        const serpData = await serpRes.json();
-
-        if (serpData.images_results && serpData.images_results.length > 0) {
-          for (const item of serpData.images_results) {
-            if (results.length >= 20) break;
-            if (item.original) {
-              results.push({
-                image_url:      item.original,
-                caption:        item.title || `${tagStr} wedding`,
-                aesthetic_tags: herTags.slice(0, 3),
-                source_url:     item.link || null,
-                source:         'web',
-              });
-            }
-          }
-        }
-      } else {
-        console.warn('[GET /taste/surprise] SERPAPI_KEY not set — skipping image search');
-      }
-    } catch (searchErr) {
-      console.warn('[GET /taste/surprise] SerpApi search failed:', searchErr.message);
-    }
-
-    // Final fallback — curated Unsplash if search returned nothing
-    if (results.length < 5) {
-      const matching = CURATED_FALLBACK
-        .filter(f => f.tags.some(t => herTags.includes(t)))
-        .map(f => ({ image_url: f.image_url, caption: f.caption, aesthetic_tags: f.tags, source_url: f.source_url, source: 'curated' }));
-      for (const f of matching) {
-        if (results.length >= 20) break;
-        results.push(f);
-      }
-      if (results.length < 5) {
-        for (const f of CURATED_FALLBACK) {
-          if (results.length >= 20) break;
-          if (!results.find(r => r.image_url === f.image_url)) {
-            results.push({ image_url: f.image_url, caption: f.caption, aesthetic_tags: f.tags, source_url: f.source_url, source: 'curated' });
-          }
-        }
-      }
-    }
-  }
-
-  // Shuffle
-  results = results.sort(() => Math.random() - 0.5);
+  // Vendor portfolio images only. Admin image pool added in B-Admin.
+  // Return what we have — frontend shows "coming soon" if empty.
+  const results = vendorImages.sort(() => Math.random() - 0.5);
 
   return okRes(res, { profile_set: true, images: results.slice(0, 20) });
 }));
