@@ -19,7 +19,6 @@
 'use strict';
 
 const express      = require('express');
-const { groundedSearch } = require('../../lib/groundedSearch');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
@@ -144,34 +143,40 @@ router.get('/surprise', asyncHandler(async (req, res) => {
     }
   }
 
-  // Pad with Gemini grounded search if < 5 vendor matches
+  // Pad with Google Custom Search Images if < 5 vendor matches
   let results = [...vendorImages];
   if (results.length < 5) {
     try {
-      const tagStr  = herTags.slice(0, 4).join(', ');
-      const query   = `Indian wedding photography ${tagStr} aesthetic — real wedding images site:pinterest.com OR site:instagram.com OR site:wedmegood.com OR site:shaadisaga.com`;
-      const { answer, sources } = await groundedSearch(query, {
-        maxResults: 10,
-        context: `Find real Indian wedding images matching these aesthetics: ${tagStr}. Return direct image URLs only.`,
-      });
+      const apiKey = process.env.GOOGLE_API_KEY;
+      const cseId  = process.env.GOOGLE_CSE_ID;
 
-      // Extract image URLs from sources
-      if (sources && sources.length > 0) {
-        for (const src of sources) {
-          if (results.length >= 20) break;
-          if (src.uri && (src.uri.includes('.jpg') || src.uri.includes('.jpeg') || src.uri.includes('.png') || src.uri.includes('.webp'))) {
-            results.push({
-              image_url:      src.uri,
-              caption:        src.title || `${tagStr} wedding`,
-              aesthetic_tags: herTags.slice(0, 3),
-              source_url:     src.uri,
-              source:         'web',
-            });
+      if (apiKey && cseId) {
+        const tagStr = herTags.slice(0, 4).join(' ');
+        const query  = encodeURIComponent(`Indian wedding ${tagStr}`);
+        const url    = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&q=${query}&searchType=image&num=10&imgType=photo&imgSize=large&safe=off`;
+
+        const cseRes  = await fetch(url);
+        const cseData = await cseRes.json();
+
+        if (cseData.items && cseData.items.length > 0) {
+          for (const item of cseData.items) {
+            if (results.length >= 20) break;
+            if (item.link) {
+              results.push({
+                image_url:      item.link,
+                caption:        item.title || `${tagStr} wedding`,
+                aesthetic_tags: herTags.slice(0, 3),
+                source_url:     item.image?.contextLink || null,
+                source:         'web',
+              });
+            }
           }
         }
+      } else {
+        console.warn('[GET /taste/surprise] GOOGLE_API_KEY or GOOGLE_CSE_ID not set — skipping image search');
       }
     } catch (searchErr) {
-      console.warn('[GET /taste/surprise] grounded search failed:', searchErr.message);
+      console.warn('[GET /taste/surprise] Google Custom Search failed:', searchErr.message);
     }
 
     // Final fallback — curated Unsplash if search returned nothing
