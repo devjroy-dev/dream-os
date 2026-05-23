@@ -38,6 +38,18 @@ const BRIDE_WA = process.env.BRIDE_WA_NUMBER
   ? `+${process.env.BRIDE_WA_NUMBER}`
   : '+14787788550';
 
+
+// ── Cookie helper — sets couple session cookie for iOS Safari compatibility ──
+function setCoupleCookie(res, token) {
+  res.cookie('tdw_couple_token', token, {
+    maxAge:   7 * 24 * 60 * 60 * 1000,
+    secure:   true,
+    sameSite: 'none',
+    httpOnly: false,
+    path:     '/',
+  });
+}
+
 function getTwilio() {
   return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 }
@@ -286,6 +298,7 @@ router.post('/verify-otp', async (req, res) => {
 
   const pinSet = !!coupleRow.pin_hash;
   console.log(`[couple:verify-otp] ok phone=${cleanPhone} purpose=${purpose} pin_set=${pinSet}`);
+  setCoupleCookie(res, tokens.access_token);
   return res.json({
     ok:            true,
     user_id:       userRow.id,
@@ -408,6 +421,7 @@ router.post('/pin-login', async (req, res) => {
   }
 
   console.log(`[couple:pin-login] ok phone=${cleanPhone} couple_id=${coupleRow.id}`);
+  setCoupleCookie(res, tokens.access_token);
   return res.json({
     ok:            true,
     user_id:       userRow.id,

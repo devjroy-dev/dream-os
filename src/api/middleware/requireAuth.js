@@ -14,14 +14,20 @@ async function requireAuth(req, res, next) {
   const supabase = req.app.locals.supabase;
 
   const header = req.headers['authorization'] || '';
-  if (!header.startsWith('Bearer ')) {
+  // Cookie fallback — iOS Safari may have cleared localStorage but cookie persists
+  const cookieToken = req.cookies?.tdw_vendor_token || req.cookies?.tdw_couple_token || '';
+  
+  let token = '';
+  if (header.startsWith('Bearer ')) {
+    token = header.slice(7).trim();
+  } else if (cookieToken) {
+    token = cookieToken;
+  } else {
     return res.status(401).json({
       error:  'Missing or malformed Authorization header.',
       reason: 'no_token',
     });
   }
-
-  const token = header.slice(7).trim();
   if (!token) {
     return res.status(401).json({ error: 'Empty token.', reason: 'no_token' });
   }

@@ -10,11 +10,16 @@ async function requireCoupleAuth(req, res, next) {
   const supabase = req.app.locals.supabase;
 
   const header = req.headers['authorization'] || '';
-  if (!header.startsWith('Bearer ')) {
+  const cookieToken = req.cookies?.tdw_couple_token || req.cookies?.tdw_vendor_token || '';
+
+  let token = '';
+  if (header.startsWith('Bearer ')) {
+    token = header.slice(7).trim();
+  } else if (cookieToken) {
+    token = cookieToken;
+  } else {
     return res.status(401).json({ ok: false, error: 'Unauthorised.' });
   }
-
-  const token = header.slice(7).trim();
   if (!token) {
     return res.status(401).json({ ok: false, error: 'Unauthorised.' });
   }

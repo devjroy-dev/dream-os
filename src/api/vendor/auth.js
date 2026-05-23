@@ -38,6 +38,20 @@ const VENDOR_WA = process.env.TDW_WA_NUMBER
   ? `+${process.env.TDW_WA_NUMBER}`
   : '+917982159047';
 
+
+// ── Cookie helper — sets vendor session cookie for iOS Safari compatibility ──
+// Not httpOnly so frontend JS can read it as fallback when localStorage is
+// wiped by ITP. SameSite=None + Secure required for cross-origin PWA calls.
+function setVendorCookie(res, token) {
+  res.cookie('tdw_vendor_token', token, {
+    maxAge:   7 * 24 * 60 * 60 * 1000,  // 7 days in ms
+    secure:   true,
+    sameSite: 'none',
+    httpOnly: false,   // JS-readable — frontend needs it for Authorization header
+    path:     '/',
+  });
+}
+
 function getTwilio() {
   return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 }
@@ -287,6 +301,7 @@ router.post('/verify-otp', async (req, res) => {
   const pinSet = !!vendorRow.pin_hash;
   console.log(`[vendor:verify-otp] ok phone=${cleanPhone} purpose=${purpose} pin_set=${pinSet}`);
   const vendorName = vendorRow.business_name || vendorRow.users?.name || null;
+  setVendorCookie(res, tokens.access_token);
   return res.json({
     ok:            true,
     user_id:       userRow.id,
@@ -412,6 +427,7 @@ router.post('/pin-login', async (req, res) => {
   }
 
   console.log(`[vendor:pin-login] ok phone=${cleanPhone} vendor_id=${vendorRow.id}`);
+  setVendorCookie(res, tokens.access_token);
   return res.json({
     ok:            true,
     user_id:       userRow.id,
@@ -461,3 +477,4 @@ router.post('/refresh', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.mintSession = mintSession;
