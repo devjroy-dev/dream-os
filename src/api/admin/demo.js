@@ -7,7 +7,51 @@ const express      = require('express');
 const router       = express.Router();
 const requireAdmin = require('./requireAdmin');
 const asyncHandler = require('../../lib/asyncHandler');
-const { mintSession } = require('../vendor/auth');
+// Inline mintSession — avoids circular dependency with vendor/auth.js
+async function mintSession(supabase, userId) {
+  const internalEmail = `vendor-${userId}@internal.dreamai.app`;
+
+  // Step 1 — create or find auth.users row
+  const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+    id: userId, email: internalEmail, email_confirm: true,
+  });
+
+  let authId = userId;
+  if (createErr) {
+    const msg = createErr.message || '';
+    if (!msg.includes('already registered') && createErr.status !== 422) {
+      throw new Error(`auth.users create failed: ${msg}`);
+    }
+    const { data: existing, error: lookupErr } = await supabase.auth.admin.getUserById(userId);
+    if (lookupErr || !existing?.user) throw new Error(`auth.users lookup failed`);
+    authId = existing.user.id;
+  } else {
+    authId = created.user.id;
+  }
+
+  // Step 2 — pin stable internal email
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(authId, {
+    email: internalEmail, email_confirm: true,
+  });
+  if (updateErr) throw new Error(`email pin failed: ${updateErr.message}`);
+
+  // Step 3 — generate magic-link token server-side (no email dispatched)
+  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    type: 'magiclink', email: internalEmail,
+  });
+  if (linkErr) throw new Error(`generateLink failed: ${linkErr.message}`);
+
+  // Step 4 — exchange for real JWT session
+  const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
+    token_hash: linkData.properties.hashed_token, type: 'email',
+  });
+  if (sessionErr) throw new Error(`verifyOtp failed: ${sessionErr.message}`);
+
+  return {
+    access_token:  sessionData.session.access_token,
+    refresh_token: sessionData.session.refresh_token,
+  };
+}
 
 // ── Helper — Generate DM message ─────────────────────────────────────────────
 function generateDMMessage(name, studioLink, brideLink) {
