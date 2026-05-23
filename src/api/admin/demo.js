@@ -51,6 +51,7 @@ router.post('/', asyncHandler(async (req, res) => {
     name,
     demo_handle,
     instagram_handle,
+    vendor_phone,       // optional — real WhatsApp number for notifications
     category,
     city,
     about,
@@ -81,12 +82,15 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(409).json({ ok: false, error: 'Demo handle already active. Deactivate it first.' });
   }
 
-  // Create ghost user row
-  const ghostPhone = `+10000${Date.now().toString().slice(-7)}`;
+  // Use real vendor phone if provided, otherwise generate a ghost number
+  // Real phone = vendor receives WhatsApp notification when a bride enquires
+  const userPhone = vendor_phone
+    ? vendor_phone.replace(/\s/g, '').replace(/^0/, '+91')
+    : `+10000${Date.now().toString().slice(-7)}`;
 
   const { data: user, error: userErr } = await supabase
     .from('users')
-    .insert({ phone: ghostPhone, name })
+    .insert({ phone: userPhone, name })
     .select('id')
     .single();
 
@@ -96,6 +100,18 @@ router.post('/', asyncHandler(async (req, res) => {
 
   const expiresAt = new Date(Date.now() + expires_hours * 60 * 60 * 1000).toISOString();
 
+  // Generate a routing handle from the demo handle (uppercase, max 8 chars)
+  // This is what the couple agent uses to route enquiries: TDW-ROHAN
+  const baseHandle = demo_handle.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  const { data: existingHandle } = await supabase
+    .from('vendors')
+    .select('id')
+    .eq('routing_handle', baseHandle)
+    .maybeSingle();
+  const routingHandle = existingHandle
+    ? `${baseHandle.slice(0, 5)}${Math.floor(Math.random() * 900) + 100}`
+    : baseHandle;
+
   const { data: vendor, error: vendorErr } = await supabase
     .from('vendors')
     .insert({
@@ -104,6 +120,7 @@ router.post('/', asyncHandler(async (req, res) => {
       city,
       status: 'active',
       tier: 'signature',
+      routing_handle: routingHandle,
       demo_active: true,
       demo_expires_at: expiresAt,
       demo_created_at: new Date().toISOString(),
@@ -149,10 +166,13 @@ router.post('/', asyncHandler(async (req, res) => {
     ok: true,
     vendor_id: vendor.id,
     demo_handle: demo_handle.toLowerCase(),
+    routing_handle: routingHandle,
+    enquire_link: `https://go.thedreamwedding.in/${routingHandle}`,
     studio_link: studioLink,
     bride_link: brideLink,
     expires_at: expiresAt,
-    dm_message: dmMessage
+    dm_message: dmMessage,
+    has_real_phone: !!vendor_phone
   });
 }));
 
