@@ -86,7 +86,26 @@ function startCronJobs({ supabase }) {
     timezone: 'UTC',
   });
 
-  console.log('[cron] jobs registered: morning briefing at 08:00 IST (02:30 UTC)');
+  // ── Demo profile expiry — every hour ─────────────────────────────────────
+  cron.schedule('0 * * * *', async () => {
+    try {
+      const { data: expired, error } = await supabase
+        .from('vendors')
+        .update({ demo_active: false })
+        .eq('demo_active', true)
+        .not('demo_handle', 'is', null)
+        .lt('demo_expires_at', new Date().toISOString())
+        .select('id, demo_handle');
+
+      if (expired?.length > 0) {
+        console.log(`[cron:demo] expired ${expired.length} demo profiles:`, expired.map(v => v.demo_handle));
+      }
+    } catch (err) {
+      console.error('[cron:demo] expiry error:', err.message);
+    }
+  });
+
+  console.log('[cron] jobs registered: morning briefing at 08:00 IST (02:30 UTC), demo expiry hourly');
 }
 
 module.exports = { startCronJobs };
