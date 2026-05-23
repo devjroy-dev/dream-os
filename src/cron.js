@@ -105,7 +105,25 @@ function startCronJobs({ supabase }) {
     }
   });
 
-  console.log('[cron] jobs registered: morning briefing at 08:00 IST (02:30 UTC), demo expiry hourly');
+  // ── Collab post expiry — 3:15am IST = 9:45pm UTC ──────────────────
+  cron.schedule('45 21 * * *', async () => {
+    try {
+      const { data: expired } = await supabase
+        .from('collab_posts')
+        .update({ state: 'expired' })
+        .eq('state', 'open')
+        .lt('expires_at', new Date().toISOString())
+        .select('id');
+
+      if (expired && expired.length > 0) {
+        console.log(`[cron:collab] expired ${expired.length} collab post(s)`);
+      }
+    } catch (err) {
+      console.error('[cron:collab] expiry error:', err.message);
+    }
+  });
+
+  console.log('[cron] jobs registered: morning briefing at 08:00 IST (02:30 UTC), demo expiry hourly, collab expiry at 03:15 IST');
 }
 
 module.exports = { startCronJobs };

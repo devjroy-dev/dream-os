@@ -34,6 +34,7 @@ router.use('/chat',         require('./chat'));
 router.use('/availability', require('./availability'));
 router.use('/portfolio',   require('./portfolio'));
 router.use('/discover',    require('./discover'));
+router.use('/collab',      require('./collab'));
 router.use('/couture',     require('./couture'));
 router.use('/featured',    require('./featured'));
 router.use('/studio',      require('./studio/index'));
