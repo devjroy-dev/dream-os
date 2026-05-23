@@ -25,7 +25,6 @@ router.use('/landing-slides',     landingSlidesRouter);
 router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
 router.use('/hot-dates',          require('./public/hotDates'));
-router.use('/demo/chat',          require('./public/demoChat'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/admin/discover',        require('./admin/discover'));
 router.use('/admin/photos',          require('./admin/photos'));
@@ -70,9 +69,6 @@ router.use('/dreamai',               require('./circle/dreamai'));      // user_
 router.use('/admin/demo',           require('./admin/demo'));
 
 // Demo public routes — no auth required
-// activate/:handle and discover are exposed via the same demo router
-// which handles these routes before the adminAuth middleware fires
-router.use('/demo',                 require('./admin/demo'));
 
 // Public vendor demo endpoint
 router.use('/public/vendor',        require('./public/vendor'));
