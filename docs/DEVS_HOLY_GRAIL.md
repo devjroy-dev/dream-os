@@ -1,6 +1,6 @@
 # DEVS_HOLY_GRAIL.md
 # The Dream Wedding — Single Source of Truth
-**Last updated:** 2026-05-24 (Demo Profiles system — 0046+0047, iOS cookie auth, Safari fixes, dark mode)
+**Last updated:** 2026-05-22 (Post B-6 bug fixes — Surprise Me stripped to vendor-only, Expenses canvas slice + snapshot fixed, SerpApi/CSE/Unsplash removed)
 **Read this before every session. Every block. No skipping.**
 
 ---
@@ -350,19 +350,20 @@ app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B
 
 ## BLOCK 14 — SCHEMA SUMMARY
 
-**Latest migrations applied:** 0047_demo_session_token.sql (applied 2026-05-24 via SQL editor)
+**Latest migrations applied:** 0048_collab.sql (applied 2026-05-24 via SQL editor)
 **Block 7 tables (applied out of band):** `payment_schedules`, `contracts`, `tds_ledger`
 **Block 6 tables (applied out of band):** `team_members`, `team_tasks`, `team_payments`, `team_messages`
 **B-Admin tables (0044+0045, applied 2026-05-22):** `discover_heroes`, `muse_pool`, `taste_quiz_images`, `spotlight`, `admin_config`
-**Demo tables (0046+0047, applied 2026-05-24):** `demo_profile_views`, `enquiry_taps`. Columns on vendors: `demo_active`, `demo_expires_at`, `demo_created_at`, `demo_handle`, `demo_instagram`, `demo_notes`, `demo_session_token`, `demo_session_expires_at`
 **B-Admin columns (0045):** `couples.tier` (basic/gold/platinum), `invite_codes.intended_phone`
+**B-Demo (0046, applied 2026-05-24):** demo vendor profiles for thedreamai.in demo subdomain
+**B-Demo session (0047, applied 2026-05-24):** `vendors.demo_session_token`, `vendors.demo_session_expires_at`
+**B-Collab (0048, applied 2026-05-24):** `collab_posts`, `collab_responses` — vendor-to-vendor requirement board
 
 Key tables: conversations, messages, notes, leads, events, invoices, expenses, clients,
 muse_saves, circle_members, circle_activity, circle_sessions, couple_tasks, couple_bookings,
 couple_receipts, vendors, users, couples, hot_dates, vendor_state,
 payment_schedules, contracts, tds_ledger, team_members, team_tasks, team_payments, team_messages,
-vendor_discover_requests, vendor_portfolio, vendor_featured_submissions,
-demo_profile_views, enquiry_taps
+vendor_discover_requests, vendor_portfolio, vendor_featured_submissions
 
 **Key column:** `vendors.discover_eligible` — gates vendor appearing in bride's Frost discover feed.
 Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET discover_eligible=true WHERE id='2eb5d3fb-...'`
@@ -406,7 +407,6 @@ Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET disc
 | Bride B-5 | dream-os | ✅ Done |
 | Bride B-6 | dreamos-pwa | ✅ Done |
 | Bride B-Admin | both | ✅ Done |
-| **Demo Profiles** | all 3 repos | ✅ Done |
 
 ### Bride block sequence
 
@@ -477,7 +477,7 @@ B-6 cannot start until B-5 smoke-tested.
 | AI caps enforcement — wire admin_config values into engine.js, pwaEngine.js, brideEngine.js | High — before scaling |
 | `POST /api/v2/vendor/onboarding` endpoint — create vendor profile details (name/category/city) | Medium — fallback if name missing from verify-otp |
 | `POST /api/v2/couple/onboarding` endpoint — create couple profile details | Medium |
-| Commit 0040, 0041, 0044, 0045 migration files to db/migrations/ | Medium |
+| ~~Commit 0040–0048 migration files to db/migrations/~~ — ✅ All committed | Done |
 
 ### Coding open debt (pre-existing)
 
@@ -493,7 +493,7 @@ B-6 cannot start until B-5 smoke-tested.
 | Instagram DM lead capture | Low |
 | Surprise Me — Admin image pool UI: upload real editorial Indian wedding images tagged by aesthetic. Surprise Me serves vendor portfolio + admin pool only. | High — B-Admin |
 | Remove unused Railway env vars: SERPAPI_KEY, GOOGLE_CSE_KEY, GOOGLE_CSE_ID (all replaced/abandoned this session) | Low |
-| taste_quiz_images table still exists in Supabase — DROP TABLE taste_quiz_images in next migration | Low |
+| taste_quiz_images table — drop in migration 0049 if not already cleaned up | Low |
 | Circle member delete REST endpoint — no `DELETE /couple/circle/:memberId` exists. Cleanup via Supabase SQL only. | Medium — pre-launch |
 | Moments — photograph classification branch not yet in imagePipeline. personal photos vs product saves need separation. | Medium — B-Moments block |
 

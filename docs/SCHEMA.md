@@ -1,16 +1,17 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-24 (Demo Profiles session)
-**Session:** Demo profile system complete. 0046 + 0047 applied. iOS cookie auth, Safari fixes deployed.
+**Last updated:** 2026-05-19 (P2-6a session)
+**Session:** P2-6a complete. No new migrations. messages.media_url column now in active use for PDF delivery (was 'future' in prior schema docs).
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0047_demo_session_token.sql (2026-05-24 — applied via SQL editor)
-**Migrations 0040–0047 applied to prod. Files committed to db/migrations/.**
+**Latest migration applied:** 0048_collab.sql (2026-05-24 — applied via SQL editor)
+**Migrations 0040–0048 applied to prod. All committed to db/migrations/.**
 - 0040: team_members, team_tasks, team_messages, team_payments
 - 0041: payment_schedules, contracts, tds_ledger, invoices.has_schedule
 - 0044: discover_heroes
 - 0045: muse_pool, taste_quiz_images, spotlight, admin_config, couples.tier, invite_codes.intended_phone
-- 0046: demo_active/expires_at/handle/instagram/notes/created_at on vendors, demo_profile_views table, enquiry_taps table
-- 0047: vendors.demo_session_token, vendors.demo_session_expires_at (real JWT for demo auth bypass)
-**Next migration:** 0048 (when needed)
+- 0046: demo_profiles
+- 0047: vendors.demo_session_token, vendors.demo_session_expires_at
+- 0048: collab_posts, collab_responses
+**Next migration:** 0049 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
 **Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at,
@@ -53,8 +54,6 @@
 | **0031_invite_codes.sql** | **2026-05-18** | **P2-3** | **invite_codes table (code PK, kind, tier, notes, created_at, created_by, consumed_at, consumed_by_user_id). invite_codes_unconsumed_idx + invite_codes_created_at_idx. consume_invite_code(p_code, p_user_id) atomic function — race-safe, structured exceptions.** |
 | **0032_waitlist_signups.sql** | **2026-05-18** | **P2-3** | **waitlist_signups table (id, kind, name, phone, instagram_handle, status, notes, created_at, updated_at). waitlist_signups_new_recent_idx (partial) + waitlist_signups_created_at_idx. waitlist_signups_updated_at trigger.** |
 | **0033_otp_sessions.sql** | **2026-05-18** | **P2-3** | **otp_sessions table (phone PK, otp_hash, purpose, expires_at, created_at). otp_sessions_expires_at_idx. Transient OTP state for PWA login — upserted on send-otp, deleted on verify-otp. No FK to users (intentional).** |
-| **0046_demo_profiles.sql** | **2026-05-24** | **Demo** | **vendors: demo_active, demo_expires_at, demo_created_at, demo_handle, demo_instagram, demo_notes. demo_profile_views table (vendor_id, handle, event, viewed_at, user_agent, referrer). enquiry_taps table (handle, source, tapped_at). Indexes for cron expiry + admin queries.** |
-| **0047_demo_session_token.sql** | **2026-05-24** | **Demo** | **vendors.demo_session_token (real Supabase JWT minted at demo creation), vendors.demo_session_expires_at. Index on demo_session_token. Enables full app access via demo link without OTP/PIN.** |
 ## Tables
 
 ### users
@@ -97,14 +96,6 @@
 | **pin_hash** | **text** | **0028: bcrypt hash of 4-digit PWA PIN. NULL = PIN not yet set.** |
 | **pin_failed_attempts** | **integer NOT NULL** | **0028: default 0. Consecutive failed PIN attempts. Resets on success or OTP reset. 5 failures triggers lockout.** |
 | **pin_locked_until** | **timestamptz** | **0028: NULL = not locked. Set to now()+15min after 5 failures. Cleared on OTP reset.** |
-| **demo_active** | **boolean** | **0046: default false. True = this is an active demo profile.** |
-| **demo_expires_at** | **timestamptz** | **0046: when the demo expires. Cron runs hourly to set demo_active=false past this.** |
-| **demo_created_at** | **timestamptz** | **0046: when demo was created by admin.** |
-| **demo_handle** | **text** | **0046: URL slug e.g. 'rohan'. Unique index (case-insensitive) where not null.** |
-| **demo_instagram** | **text** | **0046: @handle for admin reference only. Never shown to users.** |
-| **demo_notes** | **text** | **0046: admin-only notes about this demo profile.** |
-| **demo_session_token** | **text** | **0047: real Supabase JWT minted at demo creation. Gives full DreamAi app access.** |
-| **demo_session_expires_at** | **timestamptz** | **0047: mirrors demo_expires_at. Session invalid after this.** |
 
 Constraints (new in 0028):
 - `vendors_enforce_role_xor` trigger — BEFORE INSERT, rejects if user_id already exists in couples.
@@ -127,14 +118,6 @@ Constraints (new in 0028):
 | **pin_hash** | **text** | **0028: bcrypt hash of 4-digit PWA PIN. NULL = PIN not yet set.** |
 | **pin_failed_attempts** | **integer NOT NULL** | **0028: default 0. Consecutive failed PIN attempts. Resets on success or OTP reset. 5 failures triggers lockout.** |
 | **pin_locked_until** | **timestamptz** | **0028: NULL = not locked. Set to now()+15min after 5 failures. Cleared on OTP reset.** |
-| **demo_active** | **boolean** | **0046: default false. True = this is an active demo profile.** |
-| **demo_expires_at** | **timestamptz** | **0046: when the demo expires. Cron runs hourly to set demo_active=false past this.** |
-| **demo_created_at** | **timestamptz** | **0046: when demo was created by admin.** |
-| **demo_handle** | **text** | **0046: URL slug e.g. 'rohan'. Unique index (case-insensitive) where not null.** |
-| **demo_instagram** | **text** | **0046: @handle for admin reference only. Never shown to users.** |
-| **demo_notes** | **text** | **0046: admin-only notes about this demo profile.** |
-| **demo_session_token** | **text** | **0047: real Supabase JWT minted at demo creation. Gives full DreamAi app access.** |
-| **demo_session_expires_at** | **timestamptz** | **0047: mirrors demo_expires_at. Session invalid after this.** |
 
 Constraints:
 - `couples_user_id_unique` (added 0015) — prevents duplicate couples rows for same user
@@ -619,6 +602,9 @@ The agent reads the returned row and surfaces the numbers verbatim in its reply.
 | **0032_waitlist_signups.sql** | **P2-3** | **✅ Applied 2026-05-18. waitlist_signups table.** |
 | **0033_otp_sessions.sql** | **P2-3** | **✅ Applied 2026-05-18. otp_sessions table. Transient OTP state for PWA login.** |
 | **0030_landing_assets.sql** | **P2-5** | **✅ Applied 2026-05-19. landing_slides + exploring_photos tables. Seeded with 3 Cloudinary URLs.** |
+| **0046_demo_profiles.sql** | **B-Collab** | **✅ Applied 2026-05-24. Demo vendor profiles for thedreamai.in demo subdomain.** |
+| **0047_demo_session_token.sql** | **B-Collab** | **✅ Applied 2026-05-24. vendors.demo_session_token + vendors.demo_session_expires_at. Index on demo_session_token WHERE NOT NULL.** |
+| **0048_collab.sql** | **B-Collab** | **✅ Applied 2026-05-24. collab_posts + collab_responses tables. Vendor-to-vendor requirement board. Full schema in Migration 0048 section below.** |
 
 ---
 
@@ -832,8 +818,8 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 - leads: added source text default 'whatsapp'
 - New table: vendor_availability (id, vendor_id, blocked_date date, reason, created_at, unique vendor_id+blocked_date)
 
-**Latest migration:** 0035_vendor_writes.sql
-**Next migration number:** 0036
+**Latest migration:** 0048_collab.sql
+**Next migration number:** 0049
 
 ---
 
@@ -1104,3 +1090,63 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 ### Note on taste_quiz_images
 Original 0043 draft created `taste_quiz_images` table — dropped. Not needed.
 `DROP TABLE IF EXISTS taste_quiz_images;` — run in next session cleanup migration.
+
+
+## Migration 0048 — Collab (B-Collab)
+**Applied:** 2026-05-24
+
+### collab_posts
+Vendor-to-vendor requirement board. A vendor posts a collab requirement (e.g. second shooter, hair stylist) for a specific date. Poster identity anonymised until connection accepted.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE — the poster |
+| requirement_type | text NOT NULL | CHECK: photography / videography / makeup / mehendi / decor / catering / venue / music_dj / music_live / choreography / planning / transport / invitations / jewellery / attire / other. Maps to VENDOR_CATEGORIES. |
+| event_date | date NOT NULL | When the collab is needed |
+| city | text NOT NULL | Where |
+| open_to_other_cities | boolean NOT NULL | default false. If true, vendors from other cities who open_to_travel also see this post |
+| budget_inr | integer | Nullable — some collabs are equity/credit |
+| payment_period | text | CHECK: per_day / per_shoot / total / tbd. Nullable. |
+| event_type | text | CHECK: wedding / pre_wedding / engagement / editorial / brand_shoot / portrait / other. Nullable. |
+| details | text | Max 200 chars (CHECK constraint). Nullable. |
+| state | text NOT NULL | CHECK: open / filled / expired / cancelled. Default 'open'. |
+| expires_at | timestamptz NOT NULL | default now() + 30 days. Cron expires at 03:15 IST daily. |
+| created_at | timestamptz NOT NULL | default now() |
+| updated_at | timestamptz NOT NULL | default now(), auto via set_updated_at() trigger |
+
+Indexes: `collab_posts_vendor_id_idx` on (vendor_id, created_at DESC). `collab_posts_feed_idx` on (requirement_type, city, state, event_date) WHERE state = 'open'. `collab_posts_expires_idx` on (expires_at) WHERE state = 'open'.
+
+### collab_responses
+A vendor's response to a collab post. 'passed' is invisible to the poster. Identity revealed only when poster accepts ('accepted').
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| post_id | uuid FK collab_posts | ON DELETE CASCADE |
+| responder_vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| state | text NOT NULL | CHECK: interested / accepted / declined / withdrawn / passed. Default 'interested'. |
+| poster_notified_at | timestamptz | Stamped when poster receives WhatsApp notification. Nullable. |
+| contact_shared_at | timestamptz | Stamped when poster accepts — contact shared with both parties. Nullable. |
+| created_at | timestamptz NOT NULL | default now() |
+| updated_at | timestamptz NOT NULL | default now(), auto via set_updated_at() trigger |
+
+Constraints: UNIQUE (post_id, responder_vendor_id) — one response per vendor per post, enforced at DB level.
+
+Indexes: `collab_responses_post_id_idx` on (post_id, state, created_at DESC). `collab_responses_responder_idx` on (responder_vendor_id, created_at DESC).
+
+### Tier gating
+| Action | Essential | Signature | Prestige | Trial |
+|---|---|---|---|---|
+| View feed (OPPORTUNITIES tab) | ✓ | ✓ | ✓ | ✓ |
+| Respond (Interested / Pass) | ✓ | ✓ | ✓ | ✓ |
+| Post a requirement | ✗ | ✓ | ✓ | ✓ |
+| Connect with responders | ✗ | ✓ | ✓ | ✓ |
+
+### Backend
+- `src/api/vendor/collab.js` — 7 endpoints mounted at `/api/v2/vendor/collab` via `core.js`
+- Cron: `src/cron.js` — collab expiry at 03:15 IST (21:45 UTC) daily
+
+### Frontend
+- `dreamai/app/wedding/collab/page.tsx` — main Collab page (DISCOVER mode, 3rd tab)
+- `dreamai/app/wedding/collab/[post_id]/responses/page.tsx` — responses sub-page (poster only)
