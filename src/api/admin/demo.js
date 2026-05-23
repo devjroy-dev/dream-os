@@ -443,6 +443,36 @@ router.delete('/:vendor_id', asyncHandler(async (req, res) => {
   return res.json({ ok: true });
 }));
 
+// ── DELETE /api/v2/admin/demo/:vendor_id/delete — Hard delete demo profile ───
+router.delete('/:vendor_id/delete', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { vendor_id } = req.params;
+
+  // Get the user_id first so we can clean up the ghost user too
+  const { data: vendor } = await supabase
+    .from('vendors')
+    .select('user_id')
+    .eq('id', vendor_id)
+    .not('demo_handle', 'is', null)
+    .maybeSingle();
+
+  // Delete vendor (cascades to portfolio, demo_profile_views)
+  const { error } = await supabase
+    .from('vendors')
+    .delete()
+    .eq('id', vendor_id)
+    .not('demo_handle', 'is', null);
+
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+
+  // Clean up the ghost user row
+  if (vendor?.user_id) {
+    await supabase.from('users').delete().eq('id', vendor.user_id);
+  }
+
+  return res.json({ ok: true });
+}));
+
 // ── POST /api/v2/admin/demo/:vendor_id/extend — Extend expiry ────────────────
 router.post('/:vendor_id/extend', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
