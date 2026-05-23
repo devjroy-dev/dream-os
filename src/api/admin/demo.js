@@ -7,6 +7,7 @@ const express      = require('express');
 const router       = express.Router();
 const requireAdmin = require('./requireAdmin');
 const asyncHandler = require('../../lib/asyncHandler');
+const { mintSession } = require('../vendor/auth');
 
 // ── Helper — Generate DM message ─────────────────────────────────────────────
 function generateDMMessage(name, studioLink, brideLink) {
@@ -39,6 +40,126 @@ router.post('/view', asyncHandler(async (req, res) => {
   });
 
   return res.json({ ok: true });
+}));
+
+// ── GET /api/v2/demo/activate/:handle — Public. Returns real session for demo vendor ──
+// Called by demo.thedreamwedding.in/[handle] landing page.
+// Returns full vendor session JSON so DreamAi app loads without login.
+router.get('/activate/:handle', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const handle   = req.params.handle.toLowerCase();
+  const now      = new Date().toISOString();
+
+  const { data: vendor, error } = await supabase
+    .from('vendors')
+    .select(`
+      id,
+      demo_handle,
+      demo_session_token,
+      demo_session_expires_at,
+      demo_expires_at,
+      demo_active,
+      demo_instagram,
+      category,
+      city,
+      routing_handle,
+      tier,
+      users!inner(id, name, phone),
+      vendor_portfolio(id, image_url, caption, is_hero, approval_state)
+    `)
+    .ilike('demo_handle', handle)
+    .eq('demo_active', true)
+    .gt('demo_expires_at', now)
+    .maybeSingle();
+
+  if (error || !vendor) {
+    return res.status(404).json({ ok: false, error: 'Demo profile not found or expired' });
+  }
+
+  if (!vendor.demo_session_token) {
+    return res.status(404).json({ ok: false, error: 'Demo session not available for this profile' });
+  }
+
+  // Only return approved photos
+  const photos = (vendor.vendor_portfolio || [])
+    .filter(p => p.approval_state === 'approved')
+    .sort((a, b) => (b.is_hero ? 1 : 0) - (a.is_hero ? 1 : 0));
+
+  // Shape the vendor session exactly as DreamAi expects
+  const session = {
+    id:            vendor.id,
+    user_id:       vendor.users?.id,
+    name:          vendor.users?.name,
+    phone:         vendor.users?.phone,
+    tier:          vendor.tier || 'signature',
+    access_token:  vendor.demo_session_token,
+    refresh_token: vendor.demo_session_token, // same token — demo only
+    routing_handle: vendor.routing_handle,
+    category:      vendor.category,
+    city:          vendor.city,
+    instagram:     vendor.demo_instagram,
+    photos,
+    demo:          true,
+    demo_handle:   vendor.demo_handle,
+    expires_at:    vendor.demo_expires_at,
+  };
+
+  return res.json({ ok: true, session });
+}));
+
+// ── GET /api/v2/demo/discover — Public. Returns active demo vendors for bride demo feed ──
+// Completely isolated from the real discover feed.
+// Only returns vendors with demo_active=true, not expired, with approved photos.
+router.get('/discover', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const now      = new Date().toISOString();
+
+  const { data: vendors, error } = await supabase
+    .from('vendors')
+    .select(`
+      id,
+      demo_handle,
+      demo_instagram,
+      category,
+      city,
+      routing_handle,
+      users!inner(name),
+      vendor_portfolio(image_url, is_hero, approval_state)
+    `)
+    .eq('demo_active', true)
+    .gt('demo_expires_at', now)
+    .not('demo_handle', 'is', null);
+
+  if (error) {
+    return res.status(500).json({ ok: false, error: 'Demo discover unavailable' });
+  }
+
+  const shaped = (vendors || [])
+    .map(v => {
+      const photos = (v.vendor_portfolio || [])
+        .filter(p => p.approval_state === 'approved')
+        .sort((a, b) => (b.is_hero ? 1 : 0) - (a.is_hero ? 1 : 0))
+        .map(p => p.image_url);
+
+      if (photos.length === 0) return null; // skip vendors with no approved photos
+
+      return {
+        id:             v.id,
+        name:           v.users?.name || v.demo_handle,
+        category:       v.category,
+        city:           v.city,
+        routing_handle: v.routing_handle,
+        handle:         v.demo_handle,
+        instagram:      v.demo_instagram,
+        photos,
+        enquire_link:   v.routing_handle
+          ? `https://wa.me/917982159047?text=TDW-${v.routing_handle}`
+          : null,
+      };
+    })
+    .filter(Boolean);
+
+  return res.json({ ok: true, vendors: shaped });
 }));
 
 // ── All routes below require admin auth ──────────────────────────────────────
@@ -156,6 +277,25 @@ router.post('/', asyncHandler(async (req, res) => {
 
   if (portfolioErr) {
     return res.status(500).json({ ok: false, error: 'Failed to insert portfolio', detail: portfolioErr.message });
+  }
+
+  // Mint a real Supabase JWT for this ghost vendor — 48hr session
+  // This lets the full DreamAi app load without any login wall
+  let demoSessionToken = null;
+  try {
+    const tokens = await mintSession(supabase, user.id);
+    demoSessionToken = tokens.access_token;
+    // Store token on vendor row for activation endpoint to retrieve
+    await supabase
+      .from('vendors')
+      .update({
+        demo_session_token:      tokens.access_token,
+        demo_session_expires_at: expiresAt
+      })
+      .eq('id', vendor.id);
+  } catch (mintErr) {
+    console.error('[demo] mintSession failed:', mintErr.message);
+    // Non-fatal — demo still works, just without real session
   }
 
   const studioLink = `https://demo.thedreamwedding.in/${demo_handle.toLowerCase()}`;
@@ -277,5 +417,7 @@ router.post('/:vendor_id/extend', asyncHandler(async (req, res) => {
 
   return res.json({ ok: true, expires_at: newExpiry });
 }));
+
+
 
 module.exports = router;

@@ -66,11 +66,19 @@ router.use('/frost/circle/threads',  require('./circle/threads'));      // bride
 router.use('/frost/circle/messages', require('./circle/messages'));     // no per-user auth
 router.use('/dreamai',               require('./circle/dreamai'));      // user_id + primary_user_id validate
 
-// Demo admin routes
+// Demo admin routes (admin auth enforced inside the file)
 router.use('/admin/demo',           require('./admin/demo'));
+
+// Demo public routes — no auth required
+// activate/:handle and discover are exposed via the same demo router
+// which handles these routes before the adminAuth middleware fires
+router.use('/demo',                 require('./admin/demo'));
 
 // Public vendor demo endpoint
 router.use('/public/vendor',        require('./public/vendor'));
+
+// Public demo session + discover feed (for demo subdomain)
+router.use('/demo',                 require('./public/demo'));
 
 // go.thedreamwedding.in branded redirect
 router.use('/go',                   require('./public/go'));
