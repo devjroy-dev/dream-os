@@ -8,6 +8,45 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 
+
+// ── mintSession — inline to avoid circular deps ──────────────────────────────
+// Mints a fresh Supabase JWT for a ghost vendor user.
+// Called on every /session/:handle request so token is never stale.
+async function mintFreshSession(supabase, userId, internalEmail) {
+  // Step 1 — ensure auth.users row exists
+  const { error: createErr } = await supabase.auth.admin.createUser({
+    id: userId, email: internalEmail, email_confirm: true,
+  });
+  if (createErr) {
+    const msg = createErr.message || '';
+    if (!msg.includes('already registered') && createErr.status !== 422) {
+      throw new Error(`auth.users create failed: ${msg}`);
+    }
+  }
+
+  // Step 2 — pin email
+  await supabase.auth.admin.updateUserById(userId, {
+    email: internalEmail, email_confirm: true,
+  });
+
+  // Step 3 — generate magic link
+  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    type: 'magiclink', email: internalEmail,
+  });
+  if (linkErr) throw new Error(`generateLink failed: ${linkErr.message}`);
+
+  // Step 4 — exchange for fresh JWT
+  const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
+    token_hash: linkData.properties.hashed_token, type: 'email',
+  });
+  if (sessionErr) throw new Error(`verifyOtp failed: ${sessionErr.message}`);
+
+  return {
+    access_token:  sessionData.session.access_token,
+    refresh_token: sessionData.session.refresh_token,
+  };
+}
+
 // ── GET /session/:handle ──────────────────────────────────────────────────────
 // Returns a real vendor session object for the demo handle.
 // The vendor demo landing page calls this, then encodes the session into
@@ -48,9 +87,22 @@ router.get('/session/:handle', asyncHandler(async (req, res) => {
     return res.status(404).json({ ok: false, error: 'Demo profile not found or expired' });
   }
 
-  if (!vendor.demo_session_token) {
-    return res.status(404).json({ ok: false, error: 'Demo session not available. Please recreate this demo profile.' });
+  // Mint a FRESH JWT on every request — stored token expires after 1hr
+  // This ensures the token is always valid regardless of when the link is opened
+  let freshTokens = null;
+  try {
+    const internalEmail = `vendor-${vendor.users?.id}@internal.dreamai.app`;
+    freshTokens = await mintFreshSession(supabase, vendor.users?.id, internalEmail);
+  } catch (mintErr) {
+    console.error('[demo:session] mintFreshSession failed:', mintErr.message);
+    // Fall back to stored token if mint fails
+    if (!vendor.demo_session_token) {
+      return res.status(500).json({ ok: false, error: 'Could not create demo session.' });
+    }
   }
+
+  const accessToken  = freshTokens?.access_token  || vendor.demo_session_token;
+  const refreshToken = freshTokens?.refresh_token || vendor.demo_session_token;
 
   // Only approved photos, hero first
   const photos = (vendor.vendor_portfolio || [])
@@ -61,16 +113,15 @@ router.get('/session/:handle', asyncHandler(async (req, res) => {
 
   return res.json({
     ok: true,
-    // Full vendor session — DreamAi writes this to localStorage as vendor_session
     session: {
       id:             vendor.id,
       user_id:        vendor.users?.id,
       name:           vendorName,
-      phone:          null,           // ghost — no real phone shown
+      phone:          null,
       tier:           vendor.tier || 'signature',
       routing_handle: vendor.routing_handle || null,
-      access_token:   vendor.demo_session_token,
-      refresh_token:  vendor.demo_session_token, // same token — demo only
+      access_token:   accessToken,
+      refresh_token:  refreshToken,
     },
     // Vendor profile data for landing page display
     vendor: {
