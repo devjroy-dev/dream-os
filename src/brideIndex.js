@@ -449,14 +449,17 @@ app.post('/webhook/whatsapp', async (req, res) => {
     // URLs in the body (Pinterest/IG links) are explicit single actions and
     // not subject to throttling.
     if (sourceUrlForMuse && hasMedia && (req.body.MediaContentType0 || '').toLowerCase().startsWith('image/')) {
-      const { checkImageThrottle } = require('./lib/imageThrottle');
+      const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle');
       const throttle = await checkImageThrottle({ supabase, phone, engine: 'bride' });
       if (!throttle.allowed) {
-        console.log(`[bride-webhook] image throttle: ${phone} count=${throttle.count}`);
-        await sendWhatsApp(
-          phone,
-          "I'll be able to process two at a time right now. Send the rest after I respond to these two. Good news though, I'll be able to process multiple images together, very soon! Or upload them all together from the Add button in Muse — much faster for batches. thedreamwedding.in"
-        );
+        console.log(`[bride-webhook] image throttle: ${phone} count=${throttle.count} notify=${throttle.shouldNotify}`);
+        if (throttle.shouldNotify) {
+          await sendWhatsApp(
+            phone,
+            "I'll be able to process two at a time right now. Send the rest after I respond to these two. Good news though, I'll be able to process multiple images together, very soon! Or upload them all together from the Add button in Muse — much faster for batches. thedreamwedding.in"
+          );
+          await markRejectionSent({ supabase, rowId: throttle.rowId });
+        }
         return res.status(200).send('<Response></Response>');
       }
     }

@@ -214,14 +214,17 @@ app.post('/webhook/whatsapp', async (req, res) => {
     // → 5 separate replies). Fires for any onboarded vendor with media,
     // regardless of whether a caption is attached.
     if (vendor && vendor.onboarding_state === 'complete' && hasMedia && req.body.MediaUrl0) {
-      const { checkImageThrottle } = require('./lib/imageThrottle');
+      const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle');
       const throttle = await checkImageThrottle({ supabase, phone, engine: 'vendor' });
       if (!throttle.allowed) {
-        console.log(`[webhook] vendor image throttle: ${phone} count=${throttle.count}`);
-        await sendWhatsApp(
-          phone,
-          "I'll be able to process two at a time right now. Send the rest after I respond to these two. Good news though, I'll be able to process multiple images together, very soon!"
-        );
+        console.log(`[webhook] vendor image throttle: ${phone} count=${throttle.count} notify=${throttle.shouldNotify}`);
+        if (throttle.shouldNotify) {
+          await sendWhatsApp(
+            phone,
+            "I'll be able to process two at a time right now. Send the rest after I respond to these two. Good news though, I'll be able to process multiple images together, very soon!"
+          );
+          await markRejectionSent({ supabase, rowId: throttle.rowId });
+        }
         return res.status(200).send('<Response></Response>');
       }
     }

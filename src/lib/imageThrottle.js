@@ -36,18 +36,19 @@ async function checkImageThrottle({ supabase, phone, engine }) {
   }
 
   // 1. Insert this attempt FIRST so concurrent webhooks see each other.
-  const { error: insErr } = await supabase
+  const { data: insertedRow, error: insErr } = await supabase
     .from('image_throttle_log')
-    .insert({ phone, engine });
+    .insert({ phone, engine })
+    .select('id')
+    .single();
 
   if (insErr) {
     // Fail-open. Log + return allowed.
     console.error(`[imageThrottle] insert failed for ${phone}/${engine}:`, insErr.message);
-    return { allowed: true, count: 0 };
+    return { allowed: true, count: 0, shouldNotify: false, rowId: null };
   }
 
-  // 2. Count attempts for this phone in the last 30s (inclusive of the row
-  //    we just inserted).
+  // 2. Count attempts for this phone in the last 30s (inclusive of this row).
   const windowStart = new Date(Date.now() - WINDOW_SECONDS * 1000).toISOString();
   const { count, error: cntErr } = await supabase
     .from('image_throttle_log')
@@ -57,12 +58,46 @@ async function checkImageThrottle({ supabase, phone, engine }) {
 
   if (cntErr) {
     console.error(`[imageThrottle] count failed for ${phone}:`, cntErr.message);
-    return { allowed: true, count: 0 };
+    return { allowed: true, count: 0, shouldNotify: false, rowId: insertedRow?.id || null };
   }
 
   const allowed = (count || 0) <= MAX_PER_WINDOW;
-  console.log(`[imageThrottle] ${phone}/${engine} count=${count} allowed=${allowed}`);
-  return { allowed, count: count || 0 };
+
+  // 3. If over limit, check whether we've ALREADY sent a rejection in this
+  //    window. If so, this caller should stay silent (still drop the image).
+  let shouldNotify = false;
+  if (!allowed) {
+    const { count: rejCount, error: rejErr } = await supabase
+      .from('image_throttle_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('phone', phone)
+      .eq('rejection_sent', true)
+      .gte('created_at', windowStart);
+
+    if (rejErr) {
+      console.error(`[imageThrottle] rejection check failed for ${phone}:`, rejErr.message);
+      // Fail-open: notify, so we don't silently drop everything.
+      shouldNotify = true;
+    } else {
+      shouldNotify = (rejCount || 0) === 0;
+    }
+  }
+
+  console.log(`[imageThrottle] ${phone}/${engine} count=${count} allowed=${allowed} shouldNotify=${shouldNotify}`);
+  return { allowed, count: count || 0, shouldNotify, rowId: insertedRow?.id || null };
 }
 
-module.exports = { checkImageThrottle, WINDOW_SECONDS, MAX_PER_WINDOW };
+// Mark a throttle row as having sent a rejection reply. Future over-limit
+// checks in the same window will see this and return shouldNotify=false.
+async function markRejectionSent({ supabase, rowId }) {
+  if (!supabase || !rowId) return;
+  const { error } = await supabase
+    .from('image_throttle_log')
+    .update({ rejection_sent: true })
+    .eq('id', rowId);
+  if (error) {
+    console.error(`[imageThrottle] markRejectionSent failed for row ${rowId}:`, error.message);
+  }
+}
+
+module.exports = { checkImageThrottle, markRejectionSent, WINDOW_SECONDS, MAX_PER_WINDOW };
