@@ -655,11 +655,33 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
 
     case 'create_lead': {
       let wedding_date = null;
-      if (input.wedding_date) {
+      // Patch 8b — only persist wedding_date when date_precision='day'.
+      // For 'month' / 'year' / 'unknown' / missing, store null and append
+      // the partial date hint to raw_message. This stops Haiku's habit of
+      // converting "July 2026" → "2026-07-01" from creating fake-precise rows.
+      const datePrecision = (typeof input.date_precision === 'string')
+        ? input.date_precision.toLowerCase()
+        : (input.wedding_date ? 'day' : 'unknown');  // legacy: assume day if precision not given
+
+      if (input.wedding_date && datePrecision === 'day') {
         const parsed = new Date(input.wedding_date);
         if (!isNaN(parsed.getTime())) {
           wedding_date = parsed.toISOString().split('T')[0];
         }
+      } else if (input.wedding_date && (datePrecision === 'month' || datePrecision === 'year')) {
+        // Don't store the fake date — but preserve the hint in raw_message
+        const parsed = new Date(input.wedding_date);
+        if (!isNaN(parsed.getTime())) {
+          const ymd = parsed.toISOString().split('T')[0];
+          const hint = datePrecision === 'month'
+            ? `[partial date: ${ymd.slice(0,7)} (month only)]`
+            : `[partial date: ${ymd.slice(0,4)} (year only)]`;
+          input.raw_message = input.raw_message
+            ? `${input.raw_message} ${hint}`
+            : hint;
+        }
+        wedding_date = null;
+        console.log(`[tool:create_lead] date_precision=${datePrecision}, nulling wedding_date (was ${input.wedding_date})`);
       }
 
       // Dedup: if phone present, check for existing lead with same vendor+phone

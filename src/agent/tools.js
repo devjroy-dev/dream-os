@@ -41,7 +41,12 @@ const TOOLS = [
         },
         wedding_date: {
           type: 'string',
-          description: 'Wedding date in YYYY-MM-DD format. Convert "Dec 14" to the most likely upcoming year. CRITICAL: only fill this if the vendor specified a SPECIFIC DAY. If they only said "July 2026" or "December" or "next month" without a day, OMIT this field entirely (leave it null) and put the partial date in raw_message instead. Never invent a day to satisfy the format.',
+          description: 'Wedding date in YYYY-MM-DD format. Convert "Dec 14" to the most likely upcoming year. If the vendor only said a MONTH without a day (e.g. "July 2026"), you may still pass the first of that month here BUT YOU MUST set date_precision: "month". The server will then null this field. Same for year-only ("sometime in 2027"): pass Jan 1 + date_precision: "year".',
+        },
+        date_precision: {
+          type: 'string',
+          enum: ['day', 'month', 'year', 'unknown'],
+          description: 'How precise the date the vendor gave actually is. "day" = vendor specified a calendar day ("Dec 14", "next Friday"). "month" = month only ("July", "July 2026", "next month"). "year" = year only ("sometime in 2027"). "unknown" = no date hint at all. CRITICAL: set this honestly. The server uses it to decide whether to store wedding_date or null it out. Default to "day" only when the vendor truly named a day.',
         },
         wedding_city: {
           type: 'string',
