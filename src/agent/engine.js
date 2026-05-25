@@ -14,6 +14,7 @@ const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./mode
 const { resolveOrCreateClient } = require('../lib/clients');
 const { sendWhatsApp }          = require('../lib/whatsapp');
 const { captureField }          = require('../lib/coupleIdentity');
+const { getReturningBrideIntent } = require('../lib/intentExtractor');
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 10;
@@ -285,7 +286,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // Detect returning bride — lead already exists for (vendor_id, couplePhone)
   const { data: existingLeadForCouple } = await supabase
     .from('leads')
-    .select('id, name')
+    .select('id, name, intent_summary, intent_summary_at')
     .eq('vendor_id', vendor.id)
     .eq('phone', couplePhone)
     .maybeSingle();
@@ -518,11 +519,31 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   // Build vendor notification:
   // - First-contact: use the synthetic vendor_notification audit message (capture_couple_lead pushes one)
-  // - Returning bride: forward the bride's actual message verbatim, prefixed with their name
+  // - Returning bride: enrich with a Haiku-extracted intent summary (cached on leads.intent_summary).
+  //   On any extraction error or null result, fall back to the verbatim format.
   const firstContactNotif = toolCallsAudit.find(t => t.name === 'vendor_notification')?.message || null;
-  const returningBrideNotif = isReturningBride
-    ? `${leadName || `...${couplePhone.slice(-4)}`} just messaged: "${inboundMessage}"`
-    : null;
+
+  let returningBrideNotif = null;
+  if (isReturningBride) {
+    const verbatimFallback = `${leadName || `...${couplePhone.slice(-4)}`} just messaged: "${inboundMessage}"`;
+    try {
+      const summary = await getReturningBrideIntent({
+        inboundMessage,
+        leadId: existingLeadForCouple.id,
+        leadName,
+        cachedSummary: existingLeadForCouple.intent_summary,
+        cachedAt: existingLeadForCouple.intent_summary_at,
+        supabase,
+        anthropic,
+      });
+      returningBrideNotif = summary
+        ? `${summary}\n\nHer message: "${inboundMessage}"`
+        : verbatimFallback;
+    } catch (err) {
+      console.warn('[couple-agent] intent extraction error:', err.message);
+      returningBrideNotif = verbatimFallback;
+    }
+  }
 
   return {
     reply: finalReply || 'Thanks — we\'ll be in touch soon!',
