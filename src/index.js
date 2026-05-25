@@ -802,22 +802,61 @@ app.post('/webhook/whatsapp', async (req, res) => {
         cost_inr:        result.costInr      ?? null,
       });
     } else {
-      // No attachments — single message, original behavior.
-      const twilioMsg = await sendWhatsApp(phone, result.reply, []);
-      await supabase.from('messages').insert({
-        conversation_id: convo.id,
-        direction:       'outbound',
-        channel:         'whatsapp',
-        body:            result.reply,
-        sent_by:         'agent',
-        twilio_sid:      twilioMsg.sid,
-        tool_calls:      result.toolCalls,
-        model:           result.model        ?? null,
-        input_tokens:    result.inputTokens  ?? null,
-        output_tokens:   result.outputTokens ?? null,
-        cost_usd:        result.costUsd      ?? null,
-        cost_inr:        result.costInr      ?? null,
-      });
+      // No attachments. Check for ---DRAFT--- delimiter — if present,
+      // split into two WhatsApp messages so the second (the actual draft
+      // body) can be long-pressed → forwarded by the vendor without edits.
+      const DRAFT_DELIM = '---DRAFT---';
+      if (result.reply.includes(DRAFT_DELIM)) {
+        const parts = result.reply.split(DRAFT_DELIM);
+        const intro = parts[0].trim();
+        const draft = parts.slice(1).join(DRAFT_DELIM).trim();
+
+        if (intro.length > 0) {
+          const introMsg = await sendWhatsApp(phone, intro, []);
+          await supabase.from('messages').insert({
+            conversation_id: convo.id,
+            direction:       'outbound',
+            channel:         'whatsapp',
+            body:            intro,
+            sent_by:         'agent',
+            twilio_sid:      introMsg.sid,
+            tool_calls:      result.toolCalls,
+            model:           result.model        ?? null,
+            input_tokens:    result.inputTokens  ?? null,
+            output_tokens:   result.outputTokens ?? null,
+            cost_usd:        result.costUsd      ?? null,
+            cost_inr:        result.costInr      ?? null,
+          });
+        }
+
+        if (draft.length > 0) {
+          const draftMsg = await sendWhatsApp(phone, draft, []);
+          await supabase.from('messages').insert({
+            conversation_id: convo.id,
+            direction:       'outbound',
+            channel:         'whatsapp',
+            body:            draft,
+            sent_by:         'agent',
+            twilio_sid:      draftMsg.sid,
+          });
+        }
+      } else {
+        const twilioMsg = await sendWhatsApp(phone, result.reply, []);
+        await supabase.from('messages').insert({
+          conversation_id: convo.id,
+          direction:       'outbound',
+          channel:         'whatsapp',
+          body:            result.reply,
+          sent_by:         'agent',
+          twilio_sid:      twilioMsg.sid,
+          tool_calls:      result.toolCalls,
+          model:           result.model        ?? null,
+          input_tokens:    result.inputTokens  ?? null,
+          output_tokens:   result.outputTokens ?? null,
+          cost_usd:        result.costUsd      ?? null,
+          cost_inr:        result.costInr      ?? null,
+        });
+      }
     }
 
     res.status(200).send('<Response/>');
