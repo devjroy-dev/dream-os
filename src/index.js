@@ -208,6 +208,24 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const { data: vendor } = await supabase
       .from('vendors').select('*').eq('user_id', user.id).maybeSingle();
 
+    // ── Image throttle (Patch 9) ────────────────────────────────────
+    // Before any image-pipeline work, throttle to 2 images per 30s per phone.
+    // Prevents burst-forward spam (5 calendar screenshots → 5 Vision calls
+    // → 5 separate replies). Fires for any onboarded vendor with media,
+    // regardless of whether a caption is attached.
+    if (vendor && vendor.onboarding_state === 'complete' && hasMedia && req.body.MediaUrl0) {
+      const { checkImageThrottle } = require('./lib/imageThrottle');
+      const throttle = await checkImageThrottle({ supabase, phone, engine: 'vendor' });
+      if (!throttle.allowed) {
+        console.log(`[webhook] vendor image throttle: ${phone} count=${throttle.count}`);
+        await sendWhatsApp(
+          phone,
+          "I'll be able to process two at a time right now. Send the rest after I respond to these two. Good news though, I'll be able to process multiple images together, very soon!"
+        );
+        return res.status(200).send('<Response></Response>');
+      }
+    }
+
     // ── Vendor calendar bulk-import via image OCR (Patch 8) ────────
     // If an onboarded vendor sends an image (with or without caption),
     // run it through Haiku Vision to extract events, stage them as
