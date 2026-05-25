@@ -81,25 +81,50 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
     }
   }
 
+  // name lives in users table — handle separately
+  let updatedName = null;
+  if (body.name !== undefined) {
+    const trimmed = String(body.name).trim();
+    if (trimmed.length > 0) {
+      const { error: nameErr } = await supabase
+        .from('users').update({ name: trimmed }).eq('id', vendor.user_id);
+      if (nameErr) return errRes(res, 500, nameErr.message);
+      updatedName = trimmed;
+    }
+  }
+
   const update = {};
   for (const key of ALLOWED_FIELDS) {
     if (body[key] !== undefined) update[key] = body[key];
   }
-  if (Object.keys(update).length === 0) return errRes(res, 400, 'No editable fields provided.');
 
-  // rate_min <= rate_max guard
-  const rMin = update.rate_min !== undefined ? update.rate_min : vendor.rate_min;
-  const rMax = update.rate_max !== undefined ? update.rate_max : vendor.rate_max;
-  if (rMin != null && rMax != null && rMin > rMax) {
-    return errRes(res, 400, 'rate_min cannot exceed rate_max.');
+  // If only name was provided, skip vendors update but still return success
+  let updated = null;
+  if (Object.keys(update).length > 0) {
+    // rate_min <= rate_max guard
+    const rMin = update.rate_min !== undefined ? update.rate_min : vendor.rate_min;
+    const rMax = update.rate_max !== undefined ? update.rate_max : vendor.rate_max;
+    if (rMin != null && rMax != null && rMin > rMax) {
+      return errRes(res, 400, 'rate_min cannot exceed rate_max.');
+    }
+
+    const { data, error } = await supabase
+      .from('vendors').update(update).eq('id', vendor.id)
+      .select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .maybeSingle();
+    if (error) return errRes(res, 500, error.message);
+    updated = data;
+  } else if (!updatedName) {
+    return errRes(res, 400, 'No editable fields provided.');
   }
 
-  const { data: updated, error } = await supabase
-    .from('vendors').update(update).eq('id', vendor.id)
-    .select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
-    .maybeSingle();
-
-  if (error) return errRes(res, 500, error.message);
+  // If we only updated name, re-fetch vendor row for the response
+  if (!updated) {
+    const { data } = await supabase
+      .from('vendors').select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview')
+      .eq('id', vendor.id).maybeSingle();
+    updated = data;
+  }
 
   const { data: user } = await supabase.from('users').select('name').eq('id', vendor.user_id).maybeSingle();
 

@@ -2,7 +2,7 @@
 // Mirrors invite.js (vendor invite) for couples.
 
 const { layout } = require('./layout');
-const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER_BRIDE || process.env.TDW_WA_NUMBER || '14787788550';
+const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER_BRIDE || process.env.TDW_WA_NUMBER || '917982159047';
 
 function coupleInvitePage({ success, successName, error } = {}) {
   const waLink = successName
