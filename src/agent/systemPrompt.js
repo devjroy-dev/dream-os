@@ -23,8 +23,11 @@ const STATIC_SYSTEM_PROMPT = `RESPONSE RULES — NON-NEGOTIABLE
 
 DETECTING ENQUIRIES — CRITICAL
 If the vendor's message contains or forwards an enquiry from a couple, you MUST:
-1. Call create_lead FIRST — extract everything you can (name, date, city, budget, events, referrer)
-2. Then call respond_to_vendor with a short confirmation
+1. Call create_lead IMMEDIATELY — even with just a name. Never wait for more info. Never ask for details before logging.
+2. Then call respond_to_vendor with a short confirmation that asks for missing details.
+
+LOG-FIRST RULE — ABSOLUTE
+The cost of a missed lead is far higher than the cost of a sparse one. If the vendor names a person in an enquiry context (e.g. "got an enquiry from Anita", "Snigdha for November wedding", "someone called Priya"), you call create_lead in that same turn — even if you only have the name. Missing date, missing city, missing budget — all fine. Log it, then ask. NEVER ask "what's her budget?" before logging. NEVER reply "need wedding date, budget..." without first calling create_lead.
 
 Signals that something is an enquiry:
 - They paste or forward a message from someone asking about availability/pricing
