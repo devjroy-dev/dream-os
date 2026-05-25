@@ -187,11 +187,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const numMedia    = parseInt(req.body.NumMedia || '0', 10);
     const hasMedia    = numMedia > 0 || !!req.body.MediaUrl0;
 
-    if (!trimmedBody && hasMedia) {
-      console.log(`[webhook] media-only message from ${req.body.From}, replying with text-only notice`);
-      await sendWhatsApp(phone, "I'll be able to process images and voice notes really soon — but for now, please type your message and I'll help.");
-      return res.status(200).send('<Response></Response>');
-    }
     if (!trimmedBody && !hasMedia) {
       console.warn('[webhook] empty body, no media, dropping');
       return res.status(200).send('<Response></Response>');
@@ -305,6 +300,18 @@ app.post('/webhook/whatsapp', async (req, res) => {
         console.error('[webhook:vendor-image] error:', err.message);
         // Fall through to existing media handling on Vision failure
       }
+    }
+
+    // ── Late media-only refusal ────────────────────────────────────
+    // Reached when:
+    //   (a) media arrived from a NON-vendor (bride, unknown sender)
+    //   (b) media arrived from a vendor whose onboarding is incomplete
+    //   (c) vendor calendar branch threw and fell through
+    // In all cases, no body text means no agent turn we can run.
+    if (!trimmedBody && hasMedia) {
+      console.log(`[webhook] media-only fallback from ${req.body.From} (vendor=${!!vendor}, onboarded=${vendor?.onboarding_state === 'complete'})`);
+      await sendWhatsApp(phone, "I'll be able to process images and voice notes really soon — but for now, please type your message and I'll help.");
+      return res.status(200).send('<Response></Response>');
     }
 
     if (!vendor) {
