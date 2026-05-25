@@ -35,7 +35,9 @@ const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./mode
 const { groundedSearch } = require('../lib/groundedSearch');
 
 const MAX_ITERATIONS = 5;
-const HISTORY_LIMIT  = 10;
+const HISTORY_LIMIT  = 5;
+// Bride session boundary: brides chat in slower bursts than vendors. 60 min.
+const BRIDE_SESSION_IDLE_MS = 60 * 60 * 1000;
 
 // Limits enforced server-side (independent of model behavior)
 const LIST_MUSE_DEFAULT_LIMIT = 10;
@@ -132,11 +134,13 @@ async function runBrideAgenticTurn({
     dynamicContext = `${mediaContext.trim()}\n\n${dynamicContext}`;
   }
 
-  // Load conversation history
+  // Load conversation history (session-bounded)
+  const brideSessionCutoff = new Date(Date.now() - BRIDE_SESSION_IDLE_MS).toISOString();
   const { data: recentMessages } = await supabase
     .from('messages')
     .select('direction, body, sent_by, created_at')
     .eq('conversation_id', conversation.id)
+    .gte('created_at', brideSessionCutoff)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT + 1);
 

@@ -17,7 +17,9 @@ const { captureField }          = require('../lib/coupleIdentity');
 const { getReturningBrideIntent } = require('../lib/intentExtractor');
 
 const MAX_ITERATIONS = 5;
-const HISTORY_LIMIT  = 10;
+const HISTORY_LIMIT  = 5;
+// WhatsApp vendor session boundary: vendor's pace, short bursts. 10 minutes.
+const VENDOR_SESSION_IDLE_MS = 10 * 60 * 1000;
 
 // ── Vendor agentic turn ───────────────────────────────────────────
 // `channel` defaults to 'whatsapp' so existing callers (src/index.js WhatsApp
@@ -84,11 +86,15 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
       .limit(5),
   ]);
 
-  // ── Load conversation history ───────────────────────────────────
+  // ── Load conversation history (session-bounded) ───────────────────
+  // Older messages belong to a prior session — start fresh.
+  const sessionCutoff = new Date(Date.now() - VENDOR_SESSION_IDLE_MS).toISOString();
+
   const { data: recentMessages } = await supabase
     .from('messages')
     .select('direction, body, sent_by, created_at')
     .eq('conversation_id', conversation.id)
+    .gte('created_at', sessionCutoff)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT + 1);
 
@@ -260,11 +266,14 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
 // Collects event details, updates lead, notifies vendor with summary.
 async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, supabase, anthropic }) {
 
-  // ── Load conversation history ───────────────────────────────────
+  // ── Load conversation history (session-bounded) ───────────────────
+  const coupleSessionCutoff = new Date(Date.now() - VENDOR_SESSION_IDLE_MS).toISOString();
+
   const { data: recentMessages } = await supabase
     .from('messages')
     .select('direction, body, sent_by, created_at')
     .eq('conversation_id', conversation.id)
+    .gte('created_at', coupleSessionCutoff)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT + 1);
 
@@ -542,6 +551,29 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     } catch (err) {
       console.warn('[couple-agent] intent extraction error:', err.message);
       returningBrideNotif = verbatimFallback;
+    }
+
+    // Mirror first-contact behaviour: log this notification to vendor_self
+    // messages so the vendor agent's next turn can see it in history.
+    // Without this, the vendor's WhatsApp shows the notification but the
+    // agent has no idea who "her" is when the vendor says "tell her ...".
+    if (vendorUser?.phone && returningBrideNotif) {
+      const { data: vendorSelfConvo } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('vendor_id', vendor.id)
+        .eq('kind', 'vendor_self')
+        .maybeSingle();
+
+      if (vendorSelfConvo) {
+        await supabase.from('messages').insert({
+          conversation_id: vendorSelfConvo.id,
+          direction: 'outbound',
+          channel: 'whatsapp',
+          body: returningBrideNotif,
+          sent_by: 'system',
+        });
+      }
     }
   }
 

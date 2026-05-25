@@ -33,20 +33,25 @@ function withTimeout(promise, ms, label) {
 }
 
 // ── Full extraction: produce a one-line intent summary ─────────────────────
+// We force the bride's name into the returned summary programmatically.
+// The model is instructed to produce a verb phrase (no subject); we prepend
+// the name. This is more reliable than asking Haiku to start with the name —
+// it sometimes ignores that and writes "She is asking..." instead.
 async function extractIntent({ inboundMessage, leadName, anthropic }) {
-  const prompt = `A bride named ${leadName || 'a returning bride'} just sent this message to her wedding vendor on WhatsApp:
+  const subject = leadName || 'The bride';
+  const prompt = `A bride${leadName ? ` named ${leadName}` : ''} just sent this message to her wedding vendor on WhatsApp:
 
 "${inboundMessage}"
 
-Summarise what she is asking about or telling the vendor in ONE short sentence, third-person, present tense. Start with her name (or "She" if name unknown). Be specific about dates, places, or amounts she mentions.
+Summarise what she is asking about or telling the vendor as a VERB PHRASE only (no subject, no pronoun). The output will be prefixed with her name automatically.
 
-Examples:
-- "Priya is asking if you're free for her wedding on Nov 14."
-- "Priya is following up on the quote you sent last week."
-- "Priya wants to add a mehndi event the day before."
-- "Priya is checking whether your team handles destination weddings in Goa."
+Examples of good verb phrases:
+- "is asking if you're free for her wedding on Nov 14"
+- "is following up on the quote you sent last week"
+- "wants to add a mehndi event the day before"
+- "is checking whether your team handles destination weddings in Goa"
 
-Respond with the summary sentence ONLY. No preamble, no quotes, no explanation.`;
+Respond with the verb phrase ONLY. No subject, no pronoun, no preamble, no quotes, no explanation. Start with a verb like "is", "wants", "asked", "needs".`;
 
   const response = await withTimeout(
     anthropic.messages.create({
@@ -58,8 +63,15 @@ Respond with the summary sentence ONLY. No preamble, no quotes, no explanation.`
     'intent_extract',
   );
 
-  const text = response.content?.[0]?.text?.trim();
-  return text || null;
+  let verbPhrase = response.content?.[0]?.text?.trim();
+  if (!verbPhrase) return null;
+
+  // Strip any leaked subject the model might have included anyway.
+  verbPhrase = verbPhrase.replace(/^(she|he|they|the bride|the groom|priya|test priya)\s+/i, '');
+  // Strip a trailing period if Haiku added one; we'll add proper punctuation below.
+  verbPhrase = verbPhrase.replace(/[.!?]+$/, '');
+
+  return `${subject} ${verbPhrase}.`;
 }
 
 // ── Topic-shift classification ─────────────────────────────────────────────
