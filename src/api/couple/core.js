@@ -14,7 +14,9 @@ router.use(requireCoupleAuth);
 
 // B-1: discover + muse
 // router.use('/discover', require('./discover'));  // public — mounted on main router directly
-router.use('/muse',     require('./muse'));
+// Muse upload endpoints accept base64 images — default 100kb body limit is too small.
+// Bump to 12mb (covers a 9mb image after 33% base64 inflation, with headroom).
+router.use('/muse',     express.json({ limit: '12mb' }), require('./muse'));
 
 // B-3: couple data
 router.use('/me',       require('./me'));

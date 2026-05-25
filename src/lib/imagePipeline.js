@@ -356,18 +356,36 @@ async function deriveAestheticTags(visionLabels, visionColors, anthropic) {
 // slightly more expensive on Muse. Worth it because Muse contamination is the
 // primary UX cost we're solving.
 
-async function processImageForMuse({ sourceUrl, couple_id, anthropic, runClassifier = false }) {
-  if (!sourceUrl) throw new Error('imagePipeline: sourceUrl is required');
+async function processImageForMuse({ sourceUrl, bufferSource, couple_id, anthropic, runClassifier = false }) {
+  // Either sourceUrl OR bufferSource must be provided.
+  // bufferSource is used for direct uploads from the bride PWA (FormData → base64 → Buffer).
+  if (!sourceUrl && !bufferSource) {
+    throw new Error('imagePipeline: sourceUrl or bufferSource is required');
+  }
   if (!couple_id) throw new Error('imagePipeline: couple_id is required');
   if (!anthropic) throw new Error('imagePipeline: anthropic client is required');
 
-  const sourceType = detectSourceType(sourceUrl);
+  // sourceType is only meaningful when we have a URL
+  const sourceType = sourceUrl ? detectSourceType(sourceUrl) : null;
 
   let cloudinaryResult;
   let resolvedSourceType;
   let resolvedSourceUrl;
 
-  if (sourceType === 'twilio') {
+  if (bufferSource) {
+    // Direct upload — bride picked a file from her phone.
+    // bufferSource = { buffer, contentType }
+    if (!Buffer.isBuffer(bufferSource.buffer)) {
+      throw new Error('imagePipeline: bufferSource.buffer must be a Buffer');
+    }
+    cloudinaryResult = await uploadBufferToCloudinary(
+      bufferSource.buffer,
+      couple_id,
+      bufferSource.contentType || 'image/jpeg',
+    );
+    resolvedSourceType = 'image';
+    resolvedSourceUrl  = null;
+  } else if (sourceType === 'twilio') {
     // WhatsApp image forward — direct user upload
     const { buffer, contentType } = await downloadFromTwilio(sourceUrl);
     cloudinaryResult = await uploadBufferToCloudinary(buffer, couple_id, contentType);

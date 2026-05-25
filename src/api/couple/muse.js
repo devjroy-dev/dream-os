@@ -213,4 +213,163 @@ router.delete('/:saveId', asyncHandler(async (req, res) => {
   return okRes(res);
 }));
 
+// ── POST /upload — direct image upload from Frost PWA ──────────────────────
+// Body (JSON): { image_base64: string, mime: string, caption?: string }
+// image_base64 is the raw base64 payload (data URI prefix is stripped if present).
+// mime is the file's content type (e.g. "image/jpeg", "image/png", "image/webp").
+//
+// Runs the same Cloudinary + Vision + Haiku tagging pipeline as the WhatsApp
+// path. Inserts a muse_saves row with source_type='image' and the bride's
+// caption (if provided). Returns the new save id and resolved aesthetic tags.
+router.post('/upload', asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const anthropic = req.app.locals.anthropic;
+  const { couple_id, id: user_id } = req.coupleUser;
+  const { image_base64, mime, caption } = req.body || {};
+
+  if (!image_base64 || typeof image_base64 !== 'string') {
+    return errRes(res, 400, 'image_base64 is required.');
+  }
+  if (!mime || !mime.startsWith('image/')) {
+    return errRes(res, 400, 'mime must be an image content type.');
+  }
+
+  // Decode base64 to Buffer. Strip any leading data URI prefix.
+  const clean = image_base64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
+  let buffer;
+  try {
+    buffer = Buffer.from(clean, 'base64');
+  } catch (e) {
+    return errRes(res, 400, 'image_base64 is not valid base64.');
+  }
+  if (buffer.length === 0) {
+    return errRes(res, 400, 'image_base64 decoded to empty.');
+  }
+
+  // Run the full pipeline (Cloudinary upload + Vision + Haiku tagging)
+  const { processImageForMuse } = require('../../lib/imagePipeline');
+  let pipelineResult;
+  try {
+    pipelineResult = await processImageForMuse({
+      bufferSource: { buffer, contentType: mime },
+      couple_id,
+      anthropic,
+      runClassifier: false, // bride explicitly chose Muse — no need to disambiguate
+    });
+  } catch (err) {
+    console.error('[POST /muse/upload] pipeline error:', err.message);
+    return errRes(res, 500, 'Could not process image. Try again.');
+  }
+
+  // Get next save_number for this couple
+  const { data: last } = await supabase
+    .from('muse_saves')
+    .select('save_number')
+    .eq('couple_id', couple_id)
+    .order('save_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const save_number = (last?.save_number || 0) + 1;
+
+  const { data: newSave, error } = await supabase
+    .from('muse_saves')
+    .insert({
+      couple_id,
+      save_number,
+      source_type:      'image',
+      vendor_id:        null,
+      image_url:        pipelineResult.image_url,
+      source_url:       null,
+      vision_raw:       pipelineResult.vision_raw,
+      aesthetic_tags:   pipelineResult.aesthetic_tags,
+      caption:          (typeof caption === 'string' && caption.trim()) ? caption.trim() : null,
+      saved_by_user_id: user_id,
+      saved_by_role:    'bride',
+    })
+    .select('id, save_number, image_url, aesthetic_tags')
+    .single();
+
+  if (error) {
+    console.error('[POST /muse/upload] insert error:', error.message);
+    return errRes(res, 500, 'Could not save image to Muse.');
+  }
+
+  console.log(`[POST /muse/upload] couple=${couple_id} save=${newSave.id} tags=${(newSave.aesthetic_tags||[]).join(',')}`);
+  return okRes(res, {
+    save_id:        newSave.id,
+    save_number:    newSave.save_number,
+    image_url:      newSave.image_url,
+    aesthetic_tags: newSave.aesthetic_tags || [],
+  });
+}));
+
+// ── POST /add-url — save image from URL (Pinterest/Instagram/direct) ───────
+// Body (JSON): { url: string, caption?: string }
+// Same pipeline as /upload but Cloudinary fetches the URL itself (for direct
+// image URLs) or we extract og:image first (for Pinterest/IG pages).
+router.post('/add-url', asyncHandler(async (req, res) => {
+  const supabase  = req.app.locals.supabase;
+  const anthropic = req.app.locals.anthropic;
+  const { couple_id, id: user_id } = req.coupleUser;
+  const { url, caption } = req.body || {};
+
+  if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+    return errRes(res, 400, 'A valid http(s) URL is required.');
+  }
+
+  const { processImageForMuse } = require('../../lib/imagePipeline');
+  let pipelineResult;
+  try {
+    pipelineResult = await processImageForMuse({
+      sourceUrl: url,
+      couple_id,
+      anthropic,
+      runClassifier: false,
+    });
+  } catch (err) {
+    console.error('[POST /muse/add-url] pipeline error:', err.message);
+    return errRes(res, 500, 'Could not save from that link. Check the URL and try again.');
+  }
+
+  const { data: last } = await supabase
+    .from('muse_saves')
+    .select('save_number')
+    .eq('couple_id', couple_id)
+    .order('save_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const save_number = (last?.save_number || 0) + 1;
+
+  const { data: newSave, error } = await supabase
+    .from('muse_saves')
+    .insert({
+      couple_id,
+      save_number,
+      source_type:      pipelineResult.source_type, // 'image' or 'link'
+      vendor_id:        null,
+      image_url:        pipelineResult.image_url,
+      source_url:       pipelineResult.source_url,
+      vision_raw:       pipelineResult.vision_raw,
+      aesthetic_tags:   pipelineResult.aesthetic_tags,
+      caption:          (typeof caption === 'string' && caption.trim()) ? caption.trim() : null,
+      saved_by_user_id: user_id,
+      saved_by_role:    'bride',
+    })
+    .select('id, save_number, image_url, aesthetic_tags')
+    .single();
+
+  if (error) {
+    console.error('[POST /muse/add-url] insert error:', error.message);
+    return errRes(res, 500, 'Could not save image to Muse.');
+  }
+
+  console.log(`[POST /muse/add-url] couple=${couple_id} save=${newSave.id} src=${pipelineResult.source_type}`);
+  return okRes(res, {
+    save_id:        newSave.id,
+    save_number:    newSave.save_number,
+    image_url:      newSave.image_url,
+    aesthetic_tags: newSave.aesthetic_tags || [],
+  });
+}));
+
 module.exports = router;
