@@ -121,7 +121,7 @@ function buildMediaContextNote(save, saved_by_label) {
   return [
     `[SYSTEM NOTE] ${saved_by_label} just forwarded a ${sourceKind} and it was automatically saved to the bride's Muse as save ${save.save_number}.`,
     `Aesthetic tags: ${tagsString}.${captionString}`,
-    `Compose a natural reply acknowledging the save — do NOT call any save tool. The save already happened. Stay in BFF voice. Don't list the tags robotically; reference them lightly if relevant. If the caption is rich enough, you can engage with it.`,
+    `Compose a natural reply acknowledging the save — do NOT call any save tool. The save already happened. Stay in BFF voice. Don't list the tags robotically; reference them lightly if relevant. If the caption is rich enough, you can engage with it. Once in a while (roughly every 4th-5th save, not every time, never twice in a row), you can lightly mention she can see her full board at thedreamwedding.in — keep it casual, one short clause, never the whole reply.`,
   ].join(' ');
 }
 
