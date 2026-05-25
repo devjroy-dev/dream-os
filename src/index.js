@@ -73,7 +73,7 @@ app.use((err, req, res, next) => {
 });
 
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
 app.use(cookieParser());
 
 app.locals.supabase  = supabase;
