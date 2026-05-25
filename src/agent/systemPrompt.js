@@ -90,6 +90,16 @@ WHEN TO USE EACH TOOL
 - respond_to_vendor: ALWAYS last. Every turn. This is the only thing the vendor sees.
 - Drafting for couples/clients: you CAN draft messages for the vendor to forward. You CANNOT send any message to a couple, client, or lead yourself. Follow the DRAFT-AND-FORWARD pattern below.
 
+PRONOUN RESOLUTION — CRITICAL (no guessing)
+
+When the vendor uses a pronoun like "her", "him", "she", "he", "this person", or "them" without naming the lead — check the PENDING ALERTS block in the dynamic context.
+
+- If PENDING ALERTS has ZERO entries: ask explicitly "Who do you mean?"
+- If PENDING ALERTS has ONE entry: that entry IS the referent. Use that name. Do not ask.
+- If PENDING ALERTS has TWO OR MORE entries: ask exactly this format — "Did you mean [Name 1] or [Name 2]? Both conversations are open." Pick the two most recent. Never guess. Never default to the older one. Never default to the one you talked about most recently — the more recent ping wins on tie-breaking.
+
+After the vendor clarifies, proceed normally. Do not re-ask.
+
 DRAFT-AND-FORWARD — CRITICAL (the vendor sends; you only draft)
 
 You have NO ability to send any message to any client, couple, or lead. You can only draft. The vendor forwards manually from their own WhatsApp.
@@ -190,11 +200,29 @@ Vendor: "Hey, what's up?"
 // Vendor-specific section — changes on every call. Never cached.
 // Used as the second block in the system array in engine.js.
 
-function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents, pendingInvoices, pendingEnquiries, istToday }) {
+function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents, pendingInvoices, pendingEnquiries, pendingPings, istToday }) {
   const name     = user?.name || vendor?.business_name || 'the vendor';
   const category = vendor?.category || 'wedding professional';
   const city     = vendor?.city || 'India';
   const today    = istToday || new Date().toISOString().split('T')[0];
+
+  // ── PENDING ALERTS block (recently-active leads for pronoun resolution) ──
+  // Single source of truth for "tell her", "reply to her", etc. Sorted by
+  // most recent first. If the agent sees ONE entry, that's the "her". If
+  // it sees TWO OR MORE, it must ask which one — never guess.
+  const pingsList = (pendingPings || []);
+  let pendingAlertsBlock = '';
+  if (pingsList.length > 0) {
+    const lines = pingsList.map(p => {
+      const minsAgo = Math.max(1, Math.round((Date.now() - new Date(p.created_at).getTime()) / 60000));
+      const name = p.lead_name || 'Unnamed lead';
+      const source = p.source === 'bride_message' ? 'bride messaged you' : 'lead just created';
+      const detail = p.intent_summary || p.bride_message || '';
+      const detailLine = detail ? ` — ${detail.slice(0, 140)}` : '';
+      return `- ${name} (${source} ${minsAgo} min ago)${detailLine}`;
+    });
+    pendingAlertsBlock = '\nPENDING ALERTS (active in the last 10 minutes — these are who the vendor most likely means by "her", "she", "this person"):\n' + lines.join('\n');
+  }
 
   // ── Pending invoices block ────────────────────────────────────
   // Shows per-invoice detail so agent answers "who owes me money" without a tool call.
@@ -256,7 +284,7 @@ Pipeline: ${leadsLine}${pendingInvoicesBlock}${upcomingEventsBlock}${enquiriesBl
 The data above is your briefing. You already know it. Answer questions from it directly.
 For any question about a SPECIFIC DATE beyond the next 30 days use the query_day tool — do not guess from the snapshot.
 For any write operation (create, update, delete, record, log) — call the appropriate tool. Never confirm a mutation without the tool having fired.
-For anything requiring a full list (all invoices, all leads, full expense history) — summarise top 3 and add: "Full list at thedreamai.in"`;
+For anything requiring a full list (all invoices, all leads, full expense history) — summarise top 3 and add: "Full list at thedreamai.in"${pendingAlertsBlock}`;
 }
 
 // ── Legacy compatibility ──────────────────────────────────────────────────────

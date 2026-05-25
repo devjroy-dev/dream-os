@@ -102,6 +102,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     .reverse()
     .filter(m => m.body !== inboundMessage || m.direction !== 'inbound')
     .filter(m => m.body && m.body.trim().length > 0)
+    .filter(m => m.sent_by !== 'system')   // system notifications are not real turns; live in PENDING ALERTS instead
     .slice(-HISTORY_LIMIT)
     .map(m => ({
       role: m.direction === 'inbound' ? 'user' : 'assistant',
@@ -113,6 +114,22 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
       return [...acc, msg];
     }, []);
 
+  // ── Pending lead pings (recently active leads for pronoun resolution) ──
+  // Reads pings from the last 10 minutes that haven't been acknowledged.
+  // These are NOT history rows — they're working memory injected into the
+  // dynamic context so pronouns ("tell her") resolve to the right lead
+  // even when history truncation pushes older context out.
+  const PING_WINDOW_MS = 10 * 60 * 1000;
+  const pingCutoff = new Date(Date.now() - PING_WINDOW_MS).toISOString();
+  const { data: activePings } = await supabase
+    .from('pending_lead_pings')
+    .select('id, lead_id, lead_name, bride_message, intent_summary, source, created_at')
+    .eq('vendor_id', vendor.id)
+    .is('acknowledged_at', null)
+    .gte('created_at', pingCutoff)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
   // ── Build system prompt ─────────────────────────────────────────
   const dynamicContext = buildDynamicContext({
     vendor,
@@ -123,6 +140,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     upcomingEvents:   upcomingEvents   || [],
     pendingInvoices:  pendingInvoices  || [],
     pendingEnquiries: pendingEnquiries || [],
+    pendingPings:     activePings      || [],
     istToday,
   });
 
@@ -496,6 +514,20 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             });
           }
 
+          // First-contact ping — vendor agent will see this lead as "active"
+          // in the next turn for pronoun resolution. Best-effort.
+          if (leadCaptured) {
+            const { error: pingErr } = await supabase.from('pending_lead_pings').insert({
+              vendor_id:     vendor.id,
+              lead_id:       leadCaptured,
+              lead_name:     input.name || null,
+              bride_message: inboundMessage || null,
+              intent_summary: null,
+              source:        'bride_message',
+            });
+            if (pingErr) console.warn('[couple-agent:first-contact] ping insert failed:', pingErr.message);
+          }
+
           // Send WhatsApp to vendor — handled in index.js after this returns
           // Store notification in toolCallsAudit for index.js to pick up
           toolCallsAudit.push({ name: 'vendor_notification', message: notifMsg });
@@ -574,6 +606,18 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           sent_by: 'system',
         });
       }
+
+      // Returning-bride ping — vendor agent will see this lead as "active"
+      // in the next turn for pronoun resolution.
+      const { error: pingErr } = await supabase.from('pending_lead_pings').insert({
+        vendor_id:     vendor.id,
+        lead_id:       existingLeadForCouple.id,
+        lead_name:     leadName || null,
+        bride_message: inboundMessage || null,
+        intent_summary: existingLeadForCouple.intent_summary || null,
+        source:        'bride_message',
+      });
+      if (pingErr) console.warn('[couple-agent:returning] ping insert failed:', pingErr.message);
     }
   }
 
@@ -672,6 +716,19 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
       }
 
       console.log(`[tool:create_lead] ${lead.name || 'unnamed'} — ${lead.wedding_date || 'no date'} (${lead.id})${lead.client_id ? ` [client: ${lead.client_id}]` : ''}`);
+
+      // Write a pending ping so the next turn knows this lead is "active"
+      // for pronoun resolution. Best-effort — failure doesn't block the lead.
+      const { error: pingErr } = await supabase.from('pending_lead_pings').insert({
+        vendor_id:     vendor.id,
+        lead_id:       lead.id,
+        lead_name:     lead.name || null,
+        bride_message: null,
+        intent_summary: null,
+        source:        'vendor_create_lead',
+      });
+      if (pingErr) console.warn('[tool:create_lead] ping insert failed:', pingErr.message);
+
       return `Lead created. ID: ${lead.id}. Name: ${lead.name || 'unknown'}. Date: ${lead.wedding_date || 'not specified'}.${lead.client_id ? ' Linked to existing client.' : ''}`;
     }
 
