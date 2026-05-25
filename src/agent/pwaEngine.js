@@ -382,17 +382,17 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
 
     // ── create_lead ─────────────────────────────────────────────────────
     case 'create_lead': {
-      // Patch 8c — same bulletproof month-only date guard as WhatsApp engine.
+      // Patch 8d — same helper, precision column populated alongside.
       const { resolveWeddingDate } = require('./datePrecision');
       const resolved = resolveWeddingDate({
         wedding_date: input.wedding_date,
         raw_message:  input.raw_message || inboundMessage,
         name:         input.name,
       });
-      const wedding_date = resolved.wedding_date;
-      if (resolved.raw_message !== (input.raw_message || null)) {
-        input.raw_message = resolved.raw_message;
-        console.log(`[pwa-tool:create_lead] month-only detected — wedding_date nulled`);
+      const wedding_date            = resolved.wedding_date;
+      const wedding_date_precision  = resolved.precision;
+      if (wedding_date_precision === 'month' || wedding_date_precision === 'year') {
+        console.log(`[pwa-tool:create_lead] precision=${wedding_date_precision} — sentinel date kept (${wedding_date})`);
       }
 
       // Dedup on phone
@@ -420,6 +420,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
         phone:         input.phone        || null,
         email:         input.email        || null,
         wedding_date,
+        wedding_date_precision,
         wedding_city:  input.wedding_city || null,
         event_types:   input.event_types  || null,
         budget_min:    input.budget_min   || null,

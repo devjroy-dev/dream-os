@@ -654,20 +654,20 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
     }
 
     case 'create_lead': {
-      // Patch 8c — bulletproof month-only date guard.
-      // The helper inspects raw_message AND the vendor's inbound message
-      // to decide whether the model's wedding_date is genuine. Model-
-      // agnostic — works the same for Haiku, Sonnet, future models.
+      // Patch 8d — date + precision via helper. Keeps the 1st-of-month
+      // sentinel in wedding_date when precision='month' so the DB has
+      // a sortable date; PWA UI uses precision to render "July 2026"
+      // instead of "1 Jul 2026". Year-precision similar (Jan 1 sentinel).
       const { resolveWeddingDate } = require('./datePrecision');
       const resolved = resolveWeddingDate({
         wedding_date: input.wedding_date,
         raw_message:  input.raw_message || inboundMessage,
         name:         input.name,
       });
-      const wedding_date = resolved.wedding_date;
-      if (resolved.raw_message !== (input.raw_message || null)) {
-        input.raw_message = resolved.raw_message;
-        console.log(`[tool:create_lead] month-only detected — wedding_date nulled, raw_message annotated`);
+      const wedding_date            = resolved.wedding_date;
+      const wedding_date_precision  = resolved.precision; // 'day' | 'month' | 'year' | null
+      if (wedding_date_precision === 'month' || wedding_date_precision === 'year') {
+        console.log(`[tool:create_lead] precision=${wedding_date_precision} — sentinel date kept (${wedding_date}), UI will render appropriately`);
       }
 
       // Dedup: if phone present, check for existing lead with same vendor+phone
@@ -706,6 +706,7 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
         phone:        input.phone        || null,
         email:        input.email        || null,
         wedding_date,
+        wedding_date_precision,
         wedding_city: input.wedding_city || null,
         event_types:  input.event_types  || null,
         budget_min:   input.budget_min   || null,
