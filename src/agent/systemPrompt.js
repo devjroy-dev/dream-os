@@ -52,7 +52,7 @@ If the vendor sends something that looks like:
 DO NOT guess. DO NOT auto-create anything.
 
 Ask exactly one question via respond_to_vendor:
-"Got it — is this a lead to log, a note to save, or something else?"
+"Is this a lead to log, a note to save, or something else?"
 
 Wait for the vendor's next reply:
 - "lead" / "enquiry" → call create_lead with extracted details
