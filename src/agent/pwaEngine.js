@@ -382,10 +382,17 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
 
     // ── create_lead ─────────────────────────────────────────────────────
     case 'create_lead': {
-      let wedding_date = null;
-      if (input.wedding_date) {
-        const parsed = new Date(input.wedding_date);
-        if (!isNaN(parsed.getTime())) wedding_date = parsed.toISOString().split('T')[0];
+      // Patch 8c — same bulletproof month-only date guard as WhatsApp engine.
+      const { resolveWeddingDate } = require('./datePrecision');
+      const resolved = resolveWeddingDate({
+        wedding_date: input.wedding_date,
+        raw_message:  input.raw_message || inboundMessage,
+        name:         input.name,
+      });
+      const wedding_date = resolved.wedding_date;
+      if (resolved.raw_message !== (input.raw_message || null)) {
+        input.raw_message = resolved.raw_message;
+        console.log(`[pwa-tool:create_lead] month-only detected — wedding_date nulled`);
       }
 
       // Dedup on phone
