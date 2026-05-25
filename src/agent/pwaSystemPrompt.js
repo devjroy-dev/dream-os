@@ -240,7 +240,7 @@ function buildPWADynamicContext({
   let enquiriesBlock = '';
   if (enqList.length > 0) {
     const lines = enqList.map(e => {
-      const datePart   = e.wedding_date ? ` — ${e.wedding_date}` : '';
+      const datePart   = e.wedding_date ? ` — ${require('./datePrecision').formatDateWithPrecision(e.wedding_date, e.wedding_date_precision)}` : '';
       const cityPart   = e.wedding_city ? `, ${e.wedding_city}` : '';
       const budgetPart = e.budget_total ? `, Rs ${Math.round(e.budget_total / 100000)}L` : '';
       return `- ${e.name || 'Unknown'}${datePart}${cityPart}${budgetPart}`;

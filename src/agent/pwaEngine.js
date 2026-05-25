@@ -95,7 +95,7 @@ async function fetchSnapshot(supabase, vendorId, istToday, ist14days) {
       .order('due_date', { ascending: true, nullsFirst: false })
       .limit(10),
 
-    supabase.from('leads').select('id, name, wedding_date, wedding_city, budget_total, raw_message, created_at')
+    supabase.from('leads').select('id, name, wedding_date, wedding_date_precision, wedding_city, budget_total, raw_message, created_at')
       .eq('vendor_id', vendorId)
       .eq('state', 'new')
       .order('created_at', { ascending: false })
@@ -442,7 +442,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     case 'list_leads': {
       let query = supabase
         .from('leads')
-        .select('id, name, phone, wedding_date, wedding_city, state, budget_min, budget_max, created_at')
+        .select('id, name, phone, wedding_date, wedding_date_precision, wedding_city, state, budget_min, budget_max, created_at')
         .eq('vendor_id', vendor.id)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -455,8 +455,9 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
         return ok(input.state === 'all' ? 'No leads yet.' : `No leads with state: ${input.state}.`);
       }
 
+      const { formatDateWithPrecision } = require('./datePrecision');
       const summary = leads.map(l => {
-        const date   = l.wedding_date || 'no date';
+        const date   = formatDateWithPrecision(l.wedding_date, l.wedding_date_precision);
         const budget = l.budget_min ? `Rs ${(l.budget_min/100000).toFixed(1)}L` : 'budget unknown';
         return `${l.name || 'Unknown'} — ${l.phone || 'no phone'} — ${date} — ${l.state} — ${budget} — ID: ${l.id}`;
       }).join('\n');
@@ -665,13 +666,14 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
 
       // Duplicate name check (only if lead_id not provided)
       if (!input.lead_id) {
-        const { data: leadMatches }    = await supabase.from('leads').select('id, name, wedding_date, wedding_city').eq('vendor_id', vendor.id).ilike('name', `%${input.client_name}%`);
+        const { data: leadMatches }    = await supabase.from('leads').select('id, name, wedding_date, wedding_date_precision, wedding_city').eq('vendor_id', vendor.id).ilike('name', `%${input.client_name}%`);
         const { data: invoiceMatches } = await supabase.from('invoices').select('id, client_name, invoice_number, state, created_at').eq('vendor_id', vendor.id).ilike('client_name', `%${input.client_name}%`).neq('state', 'cancelled');
 
         if ((leadMatches?.length > 0) || (invoiceMatches?.length > 0)) {
           let msg = `Found existing records for "${input.client_name}":\n`;
           if (leadMatches?.length > 0) {
-            msg += '\nLeads:\n' + leadMatches.map(l => `- ${l.name}${l.wedding_date ? `, wedding ${l.wedding_date}` : ''}${l.wedding_city ? `, ${l.wedding_city}` : ''} (ID: ${l.id})`).join('\n');
+            const { formatDateWithPrecision: fmtDP } = require('./datePrecision');
+            msg += '\nLeads:\n' + leadMatches.map(l => `- ${l.name}${l.wedding_date ? `, wedding ${fmtDP(l.wedding_date, l.wedding_date_precision)}` : ''}${l.wedding_city ? `, ${l.wedding_city}` : ''} (ID: ${l.id})`).join('\n');
           }
           if (invoiceMatches?.length > 0) {
             msg += '\nExisting invoices:\n' + invoiceMatches.map(i => `- ${i.invoice_number} (${i.state})`).join('\n');

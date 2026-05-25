@@ -107,4 +107,33 @@ function resolveWeddingDate({ wedding_date, raw_message, name }) {
   return { wedding_date: ymd, raw_message: raw_message || null, precision: 'month' };
 }
 
-module.exports = { resolveWeddingDate, findMonthInText, hasDayAdjacentToMonth };
+// ── Display formatter for precision-aware date rendering ────────────────────
+// Used by both engines (list_leads, pendingEnquiries, client lookups) to
+// surface dates honestly to the LLM. The LLM then echoes them back to the
+// vendor without inventing days.
+//
+//   formatDateWithPrecision('2026-07-14', 'day')   → '14 Jul 2026'
+//   formatDateWithPrecision('2026-07-01', 'month') → 'Jul 2026'
+//   formatDateWithPrecision('2026-01-01', 'year')  → '2026'
+//   formatDateWithPrecision(null, anything)         → 'no date'
+//   formatDateWithPrecision('2026-07-01', null)    → '1 Jul 2026' (legacy)
+//
+// The legacy case (date present, precision null) treats it as day-level —
+// matches the backfill default for pre-migration rows.
+
+const MONTH_ABBR_LIST = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatDateWithPrecision(iso, precision) {
+  if (!iso) return 'no date';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const year  = m[1];
+  const month = MONTH_ABBR_LIST[parseInt(m[2], 10) - 1];
+  const day   = parseInt(m[3], 10);
+  if (precision === 'year')  return year;
+  if (precision === 'month') return `${month} ${year}`;
+  // 'day' or null (legacy): show full date
+  return `${day} ${month} ${year}`;
+}
+
+module.exports = { resolveWeddingDate, findMonthInText, hasDayAdjacentToMonth, formatDateWithPrecision };

@@ -79,7 +79,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
       .limit(10),
 
     // Pending enquiries — leads in new state, most recent first
-    supabase.from('leads').select('id, name, wedding_date, wedding_city, budget_total, raw_message, created_at')
+    supabase.from('leads').select('id, name, wedding_date, wedding_date_precision, wedding_city, budget_total, raw_message, created_at')
       .eq('vendor_id', vendor.id)
       .eq('state', 'new')
       .order('created_at', { ascending: false })
@@ -744,7 +744,7 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
     case 'list_leads': {
       let query = supabase
         .from('leads')
-        .select('id, name, phone, wedding_date, wedding_city, state, budget_min, budget_max, created_at')
+        .select('id, name, phone, wedding_date, wedding_date_precision, wedding_city, state, budget_min, budget_max, created_at')
         .eq('vendor_id', vendor.id)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -762,8 +762,9 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
           : `No leads with state: ${input.state}.`;
       }
 
+      const { formatDateWithPrecision } = require('./datePrecision');
       const summary = leads.map(l => {
-        const date   = l.wedding_date || 'no date';
+        const date   = formatDateWithPrecision(l.wedding_date, l.wedding_date_precision);
         const budget = l.budget_min
           ? `Rs ${(l.budget_min/100000).toFixed(1)}L${l.budget_max && l.budget_max !== l.budget_min ? `-${(l.budget_max/100000).toFixed(1)}L` : ''}`
           : 'budget unknown';
@@ -850,7 +851,7 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
         // Check leads table
         const { data: leadMatches } = await supabase
           .from('leads')
-          .select('id, name, wedding_date, wedding_city')
+          .select('id, name, wedding_date, wedding_date_precision, wedding_city')
           .eq('vendor_id', vendor.id)
           .ilike('name', `%${input.client_name}%`);
 
@@ -870,8 +871,9 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
 
           if (hasLeadMatches) {
             msg += `\nLeads:\n`;
+            const { formatDateWithPrecision: fmtDP1 } = require('./datePrecision');
             msg += leadMatches.map(l => {
-              const date = l.wedding_date ? `, wedding ${l.wedding_date}` : '';
+              const date = l.wedding_date ? `, wedding ${fmtDP1(l.wedding_date, l.wedding_date_precision)}` : '';
               const city = l.wedding_city ? `, ${l.wedding_city}` : '';
               return `- ${l.name}${date}${city} (lead ID: ${l.id})`;
             }).join('\n');
