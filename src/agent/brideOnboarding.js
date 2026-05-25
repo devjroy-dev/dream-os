@@ -43,7 +43,7 @@ const LOCKED = {
   // After budget captured. Completes onboarding. Ends with the vendor-listing
   // question — her next message routes to the agent loop's first-turn handler.
   complete: (name) =>
-    `So ${name || 'there'}, you're all set. I'm not just here to remind you of things, I'm here to help you decide whatever you need to for the wedding. Starting from your outfit to what songs to play for your special dance performance (I really hope you are doing one).\n\nLet's start with you telling me what all vendors you've already booked, or do you want to do that later?`
+    `So ${name || 'there'}, you're all set. I'm not just here to remind you of things, I'm here to help you decide whatever you need to for the wedding. Starting from your outfit to what songs to play for your special dance performance (I really hope you are doing one).\n\nAnd to have the best possible experience at the TDW, check out thedreamwedding.in. It's already waiting for you to sign in.\n\nLet's start with you telling me what all vendors you've already booked, or do you want to do that later?`
 };
 
 // ── Dodge detection — Haiku-based intent classification ─────────────────────
