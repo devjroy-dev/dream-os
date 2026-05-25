@@ -130,17 +130,31 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     .order('created_at', { ascending: false })
     .limit(5);
 
+  // ── Active calendar-image proposals (Patch 8) ──────────────────────
+  // 30-minute window — vendor confirms screenshot OCR via next message.
+  const PROPOSAL_WINDOW_MS = 30 * 60 * 1000;
+  const proposalCutoff = new Date(Date.now() - PROPOSAL_WINDOW_MS).toISOString();
+  const { data: activeProposals } = await supabase
+    .from('pending_event_proposals')
+    .select('id, proposals, caption, created_at')
+    .eq('vendor_id', vendor.id)
+    .is('resolved_at', null)
+    .gte('created_at', proposalCutoff)
+    .order('created_at', { ascending: false })
+    .limit(3);
+
   // ── Build system prompt ─────────────────────────────────────────
   const dynamicContext = buildDynamicContext({
     vendor,
     user,
     state,
-    recentNotes:      recentNotes      || [],
-    openLeadsCount:   openLeadsCount   || 0,
-    upcomingEvents:   upcomingEvents   || [],
-    pendingInvoices:  pendingInvoices  || [],
-    pendingEnquiries: pendingEnquiries || [],
-    pendingPings:     activePings      || [],
+    recentNotes:           recentNotes      || [],
+    openLeadsCount:        openLeadsCount   || 0,
+    upcomingEvents:        upcomingEvents   || [],
+    pendingInvoices:       pendingInvoices  || [],
+    pendingEnquiries:      pendingEnquiries || [],
+    pendingPings:          activePings      || [],
+    pendingEventProposals: activeProposals  || [],
     istToday,
   });
 
@@ -821,6 +835,94 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
 
       console.log(`[tool:create_event] ${event.kind} "${event.title}" on ${event.event_date} (${event.id})`);
       return `Event created. ID: ${event.id}. ${event.kind}: ${event.title} on ${event.event_date}.`;
+    }
+
+    case 'commit_event_proposals': {
+      // Patch 8 — bulk-commit events extracted from vendor calendar screenshot.
+      const proposalId = input.proposal_id;
+      const action     = input.action;
+      const keepIdx    = Array.isArray(input.keep_indices) ? input.keep_indices : null;
+
+      if (!proposalId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(proposalId)) {
+        return 'Error: proposal_id must be a UUID from the PENDING EVENT PROPOSALS context.';
+      }
+
+      // Fetch the proposal — must belong to this vendor and still be unresolved
+      const { data: proposal, error: pErr } = await supabase
+        .from('pending_event_proposals')
+        .select('id, proposals, resolved_at')
+        .eq('id', proposalId)
+        .eq('vendor_id', vendor.id)
+        .maybeSingle();
+
+      if (pErr || !proposal) {
+        return `Error: proposal ${proposalId} not found or not yours.`;
+      }
+      if (proposal.resolved_at) {
+        return `That proposal has already been resolved. Send a fresh screenshot if you want to add more events.`;
+      }
+
+      const allProposals = Array.isArray(proposal.proposals) ? proposal.proposals : [];
+
+      if (action === 'cancel') {
+        await supabase
+          .from('pending_event_proposals')
+          .update({ resolved_at: new Date().toISOString(), resolution: 'cancel' })
+          .eq('id', proposalId);
+        return `Cancelled. No events were added.`;
+      }
+
+      // Decide which to commit
+      let toCommit = [];
+      if (action === 'save_all') {
+        toCommit = allProposals;
+      } else if (action === 'save_selected') {
+        if (!keepIdx || keepIdx.length === 0) {
+          return 'Error: save_selected requires keep_indices (1-based array of which events to keep).';
+        }
+        for (const idx of keepIdx) {
+          if (idx >= 1 && idx <= allProposals.length) {
+            toCommit.push(allProposals[idx - 1]);
+          }
+        }
+        if (toCommit.length === 0) {
+          return 'Error: keep_indices did not match any events in the proposal.';
+        }
+      } else {
+        return `Error: unknown action "${action}". Use save_all, save_selected, or cancel.`;
+      }
+
+      // Bulk insert into events
+      const rowsToInsert = toCommit.map(e => ({
+        vendor_id:  vendor.id,
+        title:      e.title,
+        event_date: e.event_date,
+        event_time: e.event_time || null,
+        kind:       (typeof e.kind === 'string' ? e.kind : 'other'),
+        notes:      e.notes || null,
+        state:      'upcoming',
+      }));
+
+      const { data: inserted, error: insErr } = await supabase
+        .from('events')
+        .insert(rowsToInsert)
+        .select('id');
+
+      if (insErr) {
+        console.error('[tool:commit_event_proposals] insert error:', insErr);
+        return `Error inserting events: ${insErr.message}`;
+      }
+
+      await supabase
+        .from('pending_event_proposals')
+        .update({
+          resolved_at: new Date().toISOString(),
+          resolution: action,
+        })
+        .eq('id', proposalId);
+
+      console.log(`[tool:commit_event_proposals] proposal ${proposalId} → committed ${inserted.length}/${allProposals.length} events (action: ${action})`);
+      return `Committed ${inserted.length} event(s) to your calendar.`;
     }
 
     case 'create_invoice': {

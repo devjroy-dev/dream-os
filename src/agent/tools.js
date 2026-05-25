@@ -444,6 +444,30 @@ const TOOLS = [
     },
   },
   {
+    name: 'commit_event_proposals',
+    description: 'Commit a calendar-image proposal (from vendor screenshot) into the events table. Use ONLY when there is an active proposal in PENDING EVENT PROPOSALS in the dynamic context AND the vendor has clearly indicated which events to save. Reads the proposal_id from that context. Three actions: save_all (commit every event), save_selected (commit only events at the given indices — 1-based to match what the vendor sees), cancel (mark resolved without inserting anything). After this tool fires, call respond_to_vendor with a one-line confirmation.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        proposal_id: {
+          type: 'string',
+          description: 'UUID of the pending proposal — read this from the PENDING EVENT PROPOSALS block in your dynamic context. Never invent.',
+        },
+        action: {
+          type: 'string',
+          enum: ['save_all', 'save_selected', 'cancel'],
+          description: 'save_all = commit every event in the proposal. save_selected = commit only events at keep_indices. cancel = drop the proposal without inserting anything.',
+        },
+        keep_indices: {
+          type: 'array',
+          items: { type: 'integer', minimum: 1 },
+          description: 'Required when action is save_selected. 1-based indices of events to keep, matching the numbered list shown to the vendor. e.g. [1, 3, 4] means keep events 1, 3, 4 and skip 2.',
+        },
+      },
+      required: ['proposal_id', 'action'],
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {

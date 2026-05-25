@@ -104,6 +104,19 @@ WHEN TO USE EACH TOOL
 - respond_to_vendor: ALWAYS last. Every turn. This is the only thing the vendor sees.
 - Drafting for couples/clients: you CAN draft messages for the vendor to forward. You CANNOT send any message to a couple, client, or lead yourself. Follow the DRAFT-AND-FORWARD pattern below.
 
+CALENDAR IMAGE PROPOSALS — CRITICAL
+
+When the dynamic context shows a PENDING EVENT PROPOSALS block, the vendor sent a calendar screenshot and these events were extracted via Vision. They are NOT in the database yet. The vendor's next message tells you what to do with them.
+
+- If vendor says "save all", "yes", "go ahead", "all good", "looks right": call commit_event_proposals(proposal_id, "save_all").
+- If vendor says "skip 2", "skip 1 and 3", "only 2, 4, 5", or any specific subset: call commit_event_proposals(proposal_id, "save_selected", keep_indices=[...]). Indices are 1-based, matching the numbered list shown to the vendor. "Skip 2" with 5 events means keep_indices=[1,3,4,5].
+- If vendor says "cancel", "nevermind", "wrong screenshot", "drop these": call commit_event_proposals(proposal_id, "cancel").
+- If vendor wants to edit one event (change a date, title): for v1 we don't support inline edits. Tell them "I can save these as-is and you can edit specific events from the calendar tab. Or cancel and resend a corrected screenshot."
+
+ALWAYS read proposal_id from the PENDING EVENT PROPOSALS block. Never invent it.
+
+After commit_event_proposals fires, call respond_to_vendor with a one-line confirmation that matches what the tool returned ("Committed 5 events to your calendar." or "Cancelled. No events were added.").
+
 PRONOUN RESOLUTION — CRITICAL (no guessing)
 
 When the vendor uses a pronoun like "her", "him", "she", "he", "this person", or "them" without naming the lead — check the PENDING ALERTS block in the dynamic context.
@@ -214,7 +227,7 @@ Vendor: "Hey, what's up?"
 // Vendor-specific section — changes on every call. Never cached.
 // Used as the second block in the system array in engine.js.
 
-function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents, pendingInvoices, pendingEnquiries, pendingPings, istToday }) {
+function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount, upcomingEvents, pendingInvoices, pendingEnquiries, pendingPings, pendingEventProposals, istToday }) {
   const name     = user?.name || vendor?.business_name || 'the vendor';
   const category = vendor?.category || 'wedding professional';
   const city     = vendor?.city || 'India';
@@ -236,6 +249,23 @@ function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount,
       return `- ${name} (${source} ${minsAgo} min ago)${detailLine}`;
     });
     pendingAlertsBlock = '\nPENDING ALERTS (active in the last 10 minutes — these are who the vendor most likely means by "her", "she", "this person"):\n' + lines.join('\n');
+  }
+
+  // ── PENDING EVENT PROPOSALS block (calendar image OCR — Patch 8) ──
+  // Listed verbatim with proposal_id so the agent can pass it to
+  // commit_event_proposals when the vendor confirms.
+  const proposalsList = (pendingEventProposals || []);
+  let pendingProposalsBlock = '';
+  if (proposalsList.length > 0) {
+    const blocks = proposalsList.map(pr => {
+      const items = (pr.proposals || []).map((ev, i) => {
+        const timeBit = ev.event_time ? ` ${ev.event_time}` : '';
+        const noteBit = ev.notes ? ` — ${ev.notes}` : '';
+        return `  ${i + 1}. ${ev.event_date}${timeBit} · ${ev.kind} · ${ev.title}${noteBit}`;
+      }).join('\n');
+      return `Proposal ${pr.id} (${(pr.proposals || []).length} events from screenshot):\n${items}`;
+    });
+    pendingProposalsBlock = '\nPENDING EVENT PROPOSALS (vendor sent a calendar screenshot; awaiting confirmation. Call commit_event_proposals with the proposal_id below):\n' + blocks.join('\n\n');
   }
 
   // ── Pending invoices block ────────────────────────────────────
@@ -299,7 +329,7 @@ Pipeline: ${leadsLine}${pendingInvoicesBlock}${upcomingEventsBlock}${enquiriesBl
 The data above is your briefing. You already know it. Answer questions from it directly.
 For any question about a SPECIFIC DATE beyond the next 30 days use the query_day tool — do not guess from the snapshot.
 For any write operation (create, update, delete, record, log) — call the appropriate tool. Never confirm a mutation without the tool having fired.
-For anything requiring a full list (all invoices, all leads, full expense history) — summarise top 3 and add: "Full list at thedreamai.in"${pendingAlertsBlock}`;
+For anything requiring a full list (all invoices, all leads, full expense history) — summarise top 3 and add: "Full list at thedreamai.in"${pendingAlertsBlock}${pendingProposalsBlock}`;
 }
 
 // ── Legacy compatibility ──────────────────────────────────────────────────────

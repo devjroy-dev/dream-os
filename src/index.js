@@ -213,6 +213,100 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const { data: vendor } = await supabase
       .from('vendors').select('*').eq('user_id', user.id).maybeSingle();
 
+    // ── Vendor calendar bulk-import via image OCR (Patch 8) ────────
+    // If an onboarded vendor sends an image (with or without caption),
+    // run it through Haiku Vision to extract events, stage them as
+    // pending_event_proposals, and reply with the list for confirmation.
+    // The vendor's next text message goes through the normal agent loop
+    // and calls commit_event_proposals to bulk-insert.
+    if (vendor && vendor.onboarding_state === 'complete' && hasMedia && req.body.MediaUrl0) {
+      try {
+        const { extractCalendarFromImage } = require('./lib/vendorCalendarImage');
+
+        // IST today for date inference inside the Vision prompt
+        const istOffsetMs = 5.5 * 60 * 60 * 1000;
+        const istToday = new Date(Date.now() + istOffsetMs).toISOString().split('T')[0];
+
+        const caption = trimmedBody.length > 0 ? trimmedBody : null;
+        const { proposals } = await extractCalendarFromImage({
+          image_url: req.body.MediaUrl0,
+          caption,
+          anthropic,
+          istToday,
+        });
+
+        if (!proposals || proposals.length === 0) {
+          await sendWhatsApp(phone, "I couldn't make out any events from this image. Try cropping closer or sending a clearer screenshot of the calendar view.");
+          return res.status(200).send('<Response></Response>');
+        }
+
+        // Stage proposals — agent reads these from dynamic context next turn
+        const { data: proposalRow, error: propErr } = await supabase
+          .from('pending_event_proposals')
+          .insert({
+            vendor_id: vendor.id,
+            proposals: proposals,
+            source_image_url: req.body.MediaUrl0,
+            caption,
+          })
+          .select('id')
+          .single();
+
+        if (propErr) {
+          console.error('[webhook:vendor-image] proposal insert failed:', propErr);
+          await sendWhatsApp(phone, "I read the calendar but had trouble saving the draft. Please try sending the image again.");
+          return res.status(200).send('<Response></Response>');
+        }
+
+        // Format the human-readable preview
+        const lines = proposals.map((p, i) => {
+          const timeBit = p.event_time ? ` ${p.event_time}` : '';
+          const noteBit = p.notes ? ` — ${p.notes}` : '';
+          return `${i + 1}. ${p.event_date}${timeBit} · ${p.kind} · ${p.title}${noteBit}`;
+        });
+        const previewMsg =
+          `I found ${proposals.length} event${proposals.length === 1 ? '' : 's'} in this image:\n\n` +
+          lines.join('\n') +
+          `\n\nReply "save all" to add them all, or tell me which to skip (e.g. "skip 2 and 4") or edit.`;
+
+        const sent = await sendWhatsApp(phone, previewMsg);
+
+        // Log inbound + outbound to vendor_self for audit + agent history
+        const { data: vendorSelfConvo } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('vendor_id', vendor.id)
+          .eq('kind', 'vendor_self')
+          .maybeSingle();
+        if (vendorSelfConvo) {
+          await supabase.from('messages').insert([
+            {
+              conversation_id: vendorSelfConvo.id,
+              direction: 'inbound',
+              channel:   'whatsapp',
+              body:      caption || '[calendar image]',
+              sent_by:   'vendor',
+              media_url: req.body.MediaUrl0,
+            },
+            {
+              conversation_id: vendorSelfConvo.id,
+              direction: 'outbound',
+              channel:   'whatsapp',
+              body:      previewMsg,
+              sent_by:   'agent',
+              twilio_sid: sent && sent.sid ? sent.sid : null,
+            },
+          ]);
+        }
+
+        console.log(`[webhook:vendor-image] proposal ${proposalRow.id} staged with ${proposals.length} events`);
+        return res.status(200).send('<Response></Response>');
+      } catch (err) {
+        console.error('[webhook:vendor-image] error:', err.message);
+        // Fall through to existing media handling on Vision failure
+      }
+    }
+
     if (!vendor) {
       // ── Couple routing — disambiguation-aware (Session 8.5 Step 10) ──
       //
