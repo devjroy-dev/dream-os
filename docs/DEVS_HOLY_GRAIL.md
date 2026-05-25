@@ -350,7 +350,7 @@ app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B
 
 ## BLOCK 14 — SCHEMA SUMMARY
 
-**Latest migrations applied:** 0048_collab.sql (applied 2026-05-24 via SQL editor)
+**Latest migrations applied:** 0054_image_throttle_rejection_sent.sql (applied 2026-05-25 via SQL editor)
 **Block 7 tables (applied out of band):** `payment_schedules`, `contracts`, `tds_ledger`
 **Block 6 tables (applied out of band):** `team_members`, `team_tasks`, `team_payments`, `team_messages`
 **B-Admin tables (0044+0045, applied 2026-05-22):** `discover_heroes`, `muse_pool`, `taste_quiz_images`, `spotlight`, `admin_config`
@@ -358,12 +358,19 @@ app/(frost)/frost/canvas/journey/vendors/     — bookings (mock → wiring in B
 **B-Demo (0046, applied 2026-05-24):** demo vendor profiles for thedreamai.in demo subdomain
 **B-Demo session (0047, applied 2026-05-24):** `vendors.demo_session_token`, `vendors.demo_session_expires_at`
 **B-Collab (0048, applied 2026-05-24):** `collab_posts`, `collab_responses` — vendor-to-vendor requirement board
+**Lead intent cache (0049, applied 2026-05-25):** `lead_intent_summary` — Haiku-extracted one-line summary cached per lead for returning-bride notifications (30-day cache)
+**Vendor pronoun pings (0050, applied 2026-05-25):** `pending_lead_pings` — 10-min window of un-ack'd lead pings (one per create_lead / bride first-contact / returning-bride) for "she/her" disambiguation
+**Vendor calendar OCR (0051, applied 2026-05-25):** `pending_event_proposals` — staged events extracted from a calendar screenshot via Haiku Vision; vendor commits via `commit_event_proposals` tool
+**Lead date precision (0052, applied 2026-05-25):** `leads.wedding_date_precision` (text, check 'day'|'month'|'year') — keeps 1st-of-month / Jan 1 sentinels in `wedding_date` but lets UI render "Jul 2026" instead of "1 Jul 2026"
+**WhatsApp image throttle (0053, applied 2026-05-25):** `image_throttle_log` — rate-limits inbound WhatsApp images to 2 per 30s per phone (both engines); prevents Vision-call spam from burst forwards
+**Throttle silent-after-first (0054, applied 2026-05-25):** `image_throttle_log.rejection_sent` — boolean column ensures only ONE rejection reply per 30s window even when 5 over-limit images arrive
 
 Key tables: conversations, messages, notes, leads, events, invoices, expenses, clients,
 muse_saves, circle_members, circle_activity, circle_sessions, couple_tasks, couple_bookings,
 couple_receipts, vendors, users, couples, hot_dates, vendor_state,
 payment_schedules, contracts, tds_ledger, team_members, team_tasks, team_payments, team_messages,
-vendor_discover_requests, vendor_portfolio, vendor_featured_submissions
+vendor_discover_requests, vendor_portfolio, vendor_featured_submissions,
+lead_intent_summary, pending_lead_pings, pending_event_proposals, image_throttle_log
 
 **Key column:** `vendors.discover_eligible` — gates vendor appearing in bride's Frost discover feed.
 Set to `true` via admin grant. Test vendor already set: `UPDATE vendors SET discover_eligible=true WHERE id='2eb5d3fb-...'`
