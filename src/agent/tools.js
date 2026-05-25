@@ -41,7 +41,7 @@ const TOOLS = [
         },
         wedding_date: {
           type: 'string',
-          description: 'Wedding date in YYYY-MM-DD format. Convert "Dec 14" to the most likely upcoming year.',
+          description: 'Wedding date in YYYY-MM-DD format. Convert "Dec 14" to the most likely upcoming year. CRITICAL: only fill this if the vendor specified a SPECIFIC DAY. If they only said "July 2026" or "December" or "next month" without a day, OMIT this field entirely (leave it null) and put the partial date in raw_message instead. Never invent a day to satisfy the format.',
         },
         wedding_city: {
           type: 'string',
