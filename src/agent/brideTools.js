@@ -563,6 +563,24 @@ const BRIDE_TOOLS = [
       required: [],
     },
   },
+  {
+    name: 'read_pages',
+    description: 'Read the bride\'s diary entries from her Pages surface. Pages is her private journal — what she has written about her interior weather across days. Each entry has a mood (one of: hopeful, heavy, tender, tired, angry, still, missing-someone, proud, doubting, peaceful, overwhelmed, in-between), a mood colour, free-text body, and a date. Use this tool whenever ground-truth knowledge of her emotional state across days would let you reply more truly — e.g. she opens with "I\'m tired today" and you want to acknowledge whether yesterday was also heavy; she asks "have I been okay lately"; she mentions a feeling and you want to mirror language from her own pages. Do NOT cite specific lines from her diary back to her unless she invites it — instead let the awareness inform the texture of your reply (warmer, gentler, more direct). Returns recent entries newest first.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'integer',
+          description: 'Optional. How many recent entries to read. Default 10. Maximum 30. Most replies only need the last 3–5 entries to ground tone.',
+        },
+        mood_filter: {
+          type: 'string',
+          description: 'Optional. Filter to entries with this exact mood string. Use when she asks something like "have I been tired lately" — pass mood_filter="tired" and limit=10 to count.',
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 module.exports = { BRIDE_TOOLS };

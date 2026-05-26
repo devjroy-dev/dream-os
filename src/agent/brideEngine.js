@@ -366,6 +366,10 @@ async function executeBrideTool({ name, input, couple, user, conversation, supab
       return await execListCircle({ input, couple, supabase });
     }
 
+    case 'read_pages': {
+      return await execReadPages({ input, couple, supabase });
+    }
+
     case 'factual_search': {
       return await execFactualSearch({ input, anthropic });
     }
@@ -2094,6 +2098,48 @@ function formatNoteContent(field, coercedValue, originalValue) {
     default:
       return `${field}: ${coercedValue}`;
   }
+}
+
+// ── read_pages executor ──────────────────────────────────────────────
+// Returns the bride's recent diary entries. AI uses these to ground tone —
+// e.g. acknowledge yesterday's heaviness, mirror her language. Does NOT
+// quote her back to herself unless she invites it; informs reply texture.
+async function execReadPages({ input, couple, supabase }) {
+  const limitRaw   = parseInt(input?.limit, 10);
+  const limit      = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 30) : 10;
+  const moodFilter = typeof input?.mood_filter === 'string' ? input.mood_filter.trim() : null;
+
+  let query = supabase
+    .from('bride_pages')
+    .select('id, entry_date, mood, mood_color, body, created_at')
+    .eq('couple_id', couple.id)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (moodFilter) query = query.eq('mood', moodFilter);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('[bride-tool:read_pages] error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  const entries = (data || []).map(r => ({
+    date:    r.entry_date,
+    mood:    r.mood,
+    body:    r.body,
+    written: r.created_at,
+  }));
+
+  return {
+    ok: true,
+    count:   entries.length,
+    entries,
+    summary: entries.length === 0
+      ? 'No pages yet.'
+      : `${entries.length} recent entry${entries.length === 1 ? '' : 'ies'}, newest first.`,
+  };
 }
 
 // ── factual_search executor ──────────────────────────────────────────

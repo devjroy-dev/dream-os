@@ -33,4 +33,7 @@ router.use('/chat',     require('./chat'));
 // B-6: taste profile + Surprise Me
 router.use('/taste',    require('./taste'));
 
+// B-7: Pages — bride's diary surface (one row per entry).
+router.use('/pages',    require('./pages'));
+
 module.exports = router;
