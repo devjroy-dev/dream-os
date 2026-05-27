@@ -250,7 +250,9 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
 
       const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${handle}`;
       return {
-        reply: `Perfect — you're all set. Here's your TDW link: ${tdwLink} — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant.`,
+        reply: `Perfect — you're all set. Here's your TDW link: ${tdwLink} — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant.
+
+Also head over to thedreamwedding.in and sign in as a Maker — your dashboard is ready and waiting for you.`,
       };
     }
 
