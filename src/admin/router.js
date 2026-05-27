@@ -578,7 +578,7 @@ router.post('/unified-invite', express.urlencoded({ extended: true }), async (re
   }
 
   const waNumber = kind === 'maker' ? VENDOR_WA : BRIDE_WA;
-  const waLink   = `https://wa.me/${waNumber}`;
+  const waLink   = `https://wa.me/${waNumber}?text=Hi`;
 
   console.log(`[admin:unified-invite] invited ${cleanName} (${cleanPhone}) as ${kind} — code=${code}`);
 

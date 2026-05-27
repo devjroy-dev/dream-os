@@ -24,8 +24,8 @@ const COUPLE_WA_NUMBER = process.env.BRIDE_WA_NUMBER || '14787788550';
 // GET /whatsapp-links
 router.get('/whatsapp-links', requireAdmin, asyncHandler(async (req, res) => {
   return okRes(res, {
-    vendor: `https://wa.me/${VENDOR_WA_NUMBER}`,
-    couple: `https://wa.me/${COUPLE_WA_NUMBER}`,
+    vendor: `https://wa.me/${VENDOR_WA_NUMBER}?text=Hi`,
+    couple: `https://wa.me/${COUPLE_WA_NUMBER}?text=Hi`,
     note:   'Share these links. When someone messages, the agent onboards them automatically.',
   });
 }));
