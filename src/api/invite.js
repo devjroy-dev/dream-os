@@ -100,8 +100,8 @@ router.post('/consume', async (req, res) => {
   const { code, kind, name, phone } = req.body;
 
   // 1. Required fields
-  if (!code || !kind || !name || !phone) {
-    return res.status(400).json({ error: 'code, kind, name and phone are required.' });
+  if (!code || !kind || !phone) {
+    return res.status(400).json({ error: 'code, kind and phone are required.' });
   }
   if (!['dreamer', 'maker'].includes(kind)) {
     return res.status(400).json({ error: 'kind must be dreamer or maker.' });
@@ -117,80 +117,75 @@ router.post('/consume', async (req, res) => {
     });
   }
 
-  // 2. Check phone not already registered (users row exists)
-  //    The XOR trigger handles vendor/couple collision, but we want a clean
-  //    error before we attempt anything if this phone already has a users row.
+  // 2. Check if phone already has a users row (WA-onboarded or pre-provisioned by admin).
+  //    If so: confirm correct role exists, mark code consumed, return already_provisioned.
+  //    This lets WA-onboarded vendors sign in via web invite without friction.
   const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('phone', cleanPhone)
-    .maybeSingle();
+    .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
+
+  let userId;
+  let alreadyProvisioned = false;
 
   if (existingUser) {
-    console.log(`[invite:consume] phone already registered: ${cleanPhone}`);
-    return res.status(409).json({
-      error: 'This number is already registered. Please sign in instead.',
-      reason: 'phone_already_registered',
-    });
+    userId = existingUser.id;
+    const roleTable = kind === 'maker' ? 'vendors' : 'couples';
+    const { data: roleRow } = await supabase
+      .from(roleTable).select('id').eq('user_id', userId).maybeSingle();
+    if (!roleRow) {
+      return res.status(409).json({
+        error: `This number is registered as a ${kind === 'maker' ? 'Dreamer' : 'Maker'} account.`,
+        reason: 'wrong_role',
+      });
+    }
+    alreadyProvisioned = true;
+    if (cleanName) {
+      const { data: uRow } = await supabase.from('users').select('name').eq('id', userId).maybeSingle();
+      if (!uRow?.name) await supabase.from('users').update({ name: cleanName }).eq('id', userId);
+    }
+    console.log(`[invite:consume] ${cleanPhone} already provisioned as ${kind} — consuming code only`);
+  } else {
+    // 3. Create users row
+    const { data: newUser, error: userError } = await supabase
+      .from('users').insert({ phone: cleanPhone, name: cleanName }).select('id').single();
+    if (userError) {
+      console.error('[invite:consume] users insert error:', userError.message);
+      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    }
+    userId = newUser.id;
   }
 
-  // 3. Create users row — needed before consume_invite_code() so we have a user_id
-  const { data: newUser, error: userError } = await supabase
-    .from('users')
-    .insert({ phone: cleanPhone, name: cleanName })
-    .select('id')
-    .single();
-
-  if (userError) {
-    console.error('[invite:consume] users insert error:', userError.message);
-    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-
-  const userId = newUser.id;
-
-  // 4. Atomic consume via DB function (0031)
-  //    consume_invite_code() raises P0001 with structured hints on failure.
+  // 4. Atomic consume via DB function
   const { data: consumeResult, error: consumeError } = await supabase
     .rpc('consume_invite_code', { p_code: cleanCode, p_user_id: userId });
 
   if (consumeError) {
-    // Best-effort rollback of the users row we just created
-    await supabase.from('users').delete().eq('id', userId);
-
+    if (!alreadyProvisioned) await supabase.from('users').delete().eq('id', userId);
     const hint = consumeError.hint || '';
-    console.log(`[invite:consume] consume failed: ${cleanCode} hint=${hint}`);
-
-    if (hint === 'invite_code_invalid') {
+    if (hint === 'invite_code_invalid')
       return res.status(400).json({ error: 'Invite code not found.', reason: hint });
-    }
     if (hint === 'invite_code_already_consumed') {
+      if (alreadyProvisioned)
+        return res.json({ ok: true, user_id: userId, kind, already_provisioned: true });
       return res.status(409).json({ error: 'This invite code has already been used.', reason: hint });
     }
-    console.error('[invite:consume] unexpected consume error:', consumeError.message);
+    console.error('[invite:consume] unexpected error:', consumeError.message);
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 
-  const result = consumeError === null && consumeResult?.[0];
+  const result = consumeResult?.[0];
   const resultKind = result?.kind || kind;
 
-  // 5. Kind mismatch — consume succeeded but kind is wrong
-  //    Undo: mark code unconsumed again + delete users row.
-  //    This should not happen if /validate was called first, but belt-and-suspenders.
+  // 5. Kind mismatch guard
   if (result && result.kind !== kind) {
-    console.log(`[invite:consume] kind mismatch post-consume: code=${cleanCode} code_kind=${result.kind} requested=${kind}. Rolling back.`);
-    await supabase
-      .from('invite_codes')
-      .update({ consumed_at: null, consumed_by_user_id: null })
-      .eq('code', cleanCode);
-    await supabase.from('users').delete().eq('id', userId);
-    return res.status(400).json({
-      error: 'This invite code is for a different role.',
-      reason: 'invite_code_wrong_kind',
-    });
+    if (!alreadyProvisioned) {
+      await supabase.from('invite_codes').update({ consumed_at: null, consumed_by_user_id: null }).eq('code', cleanCode);
+      await supabase.from('users').delete().eq('id', userId);
+    }
+    return res.status(400).json({ error: 'This invite code is for a different role.', reason: 'invite_code_wrong_kind' });
   }
 
-  console.log(`[invite:consume] consumed: ${cleanCode} user_id=${userId} kind=${resultKind}`);
-  return res.json({ ok: true, user_id: userId, kind: resultKind });
+  console.log(`[invite:consume] ok code=${cleanCode} user=${userId} kind=${resultKind} already_provisioned=${alreadyProvisioned}`);
+  return res.json({ ok: true, user_id: userId, kind: resultKind, already_provisioned: alreadyProvisioned });
 });
 
 module.exports = router;

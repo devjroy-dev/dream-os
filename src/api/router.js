@@ -25,6 +25,7 @@ router.use('/landing-slides',     landingSlidesRouter);
 router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
 router.use('/hot-dates',          require('./public/hotDates'));
+router.use('/vendor/onboarding',  require('./vendor/onboarding'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/admin/discover',        require('./admin/discover'));
 router.use('/admin/photos',          require('./admin/photos'));
@@ -53,6 +54,7 @@ router.use('/discover',       require('./couple/discover'));
 const requireCoupleAuth = require('./middleware/requireCoupleAuth');
 router.use('/couple/muse',    requireCoupleAuth, require('./couple/muse'));
 router.use('/couple/profile', require('./couple/profile'));          // public, before /couple catch-all
+router.use('/couple/onboarding', require('./couple/onboarding'));
 router.use('/couple',         require('./couple/core'));
 
 // B-3a: circle member / coplanner endpoints

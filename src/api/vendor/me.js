@@ -54,6 +54,8 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       discover_request_state:  vendor.discover_request_state  || 'not_requested',
       couture_eligible:        vendor.couture_eligible        === true,
       featured_eligible:       vendor.featured_eligible       === true,
+      onboarding_state:        vendor.onboarding_state        || null,
+      instagram_handle:        vendor.instagram_handle        || null,
     },
   });
 });

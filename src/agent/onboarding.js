@@ -1,6 +1,6 @@
 // onboarding.js — conversational onboarding flow for new vendors
 //
-// States: new -> asked_category -> asked_city -> asked_travel -> asked_rate -> complete
+// States: new -> asked_name -> asked_ig -> asked_category -> asked_city -> asked_travel -> asked_rate -> complete
 // Session 8.1: asked_category now uses Haiku smart extraction.
 //   - Normalises category against locked taxonomy (categories.js)
 //   - Extracts style_notes (qualifiers like "luxury", "celebrity", "budget")
@@ -110,8 +110,32 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
   switch (state) {
 
     case 'new': {
-      await supabase.from('vendors').update({ onboarding_state: 'asked_category' }).eq('id', vendor.id);
-      return { reply: `Hi ${name} — Swati mentioned a little bit about you. I'm your chief of staff, and I'll be running the operational side of your business from here. Before we get started, tell me a bit about your work — what do you do?` };
+      await supabase.from('vendors').update({ onboarding_state: 'asked_name' }).eq('id', vendor.id);
+      const greeting = name && name !== 'there'
+        ? `Hi ${name} — Swati mentioned you'd be joining. I'm your chief of staff.`
+        : `Hi — Swati said you'd be joining. I'm your chief of staff.`;
+      return { reply: `${greeting} Quick question before we begin — what should I call you? Just your first name is fine.` };
+    }
+
+    case 'asked_name': {
+      const firstName = inboundMessage.trim().split(/\s+/)[0].slice(0, 60);
+      const cleanFirst = firstName.replace(/[^\w'-]/g, '').trim() || firstName;
+      await supabase.from('users').update({ name: cleanFirst }).eq('id', vendor.user_id);
+      await supabase.from('vendors').update({ onboarding_state: 'asked_ig' }).eq('id', vendor.id);
+      return { reply: `Got it, ${cleanFirst}. One more thing — what's your Instagram handle? Your clients will use it to reach your PA. If you don't have one, just say skip.` };
+    }
+
+    case 'asked_ig': {
+      const trimmedIg = inboundMessage.trim();
+      const skipped = /^skip$/i.test(trimmedIg) || /^no$/i.test(trimmedIg) || !trimmedIg;
+      const igRaw = skipped ? null : trimmedIg.replace(/^@/, '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 30);
+      const igUpdates = { onboarding_state: 'asked_category' };
+      if (igRaw) igUpdates.instagram_handle = igRaw;
+      await supabase.from('vendors').update(igUpdates).eq('id', vendor.id);
+      if (igRaw) {
+        return { reply: `@${igRaw} — perfect. Now tell me a bit about your work — what do you do?` };
+      }
+      return { reply: `No worries. Tell me a bit about your work — what do you do?` };
     }
 
     case 'asked_category': {
@@ -187,36 +211,36 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
         tags: ['onboarding', 'pricing'],
       });
 
-      // Auto-assign TDW handle: FIRSTNAME + PHONE3 cascade
-      const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const phone3    = (user?.phone || '').replace(/\D/g, '').slice(-3);
-      const phone4    = (user?.phone || '').replace(/\D/g, '').slice(-4);
-
-      const candidates = [
-        `${firstName}${phone3}`,
-        `${firstName}${phone4}`,
-        `${firstName}${phone3}${phone4}`,
-        `${firstName}${Date.now().toString().slice(-6)}`,
-      ];
-
-      let handle = null;
-      for (const candidate of candidates) {
-        if (!candidate || candidate.replace(/-/g, '').length < 2) continue;
-        const { data: existing } = await supabase
-          .from('vendors')
-          .select('id')
-          .eq('routing_handle', candidate)
-          .maybeSingle();
-        if (!existing) {
-          handle = candidate;
-          break;
+      // Auto-assign TDW handle — priority: IG handle → FIRSTNAME+PHONE3 → fallbacks
+      const { data: freshVendor } = await supabase
+        .from('vendors').select('instagram_handle, routing_handle').eq('id', vendor.id).maybeSingle();
+      if (freshVendor?.routing_handle) {
+        // Handle already set (e.g. from web onboarding) — skip generation
+        await supabase.from('vendors').update({ onboarding_state: 'complete' }).eq('id', vendor.id);
+      } else {
+        const igHandle  = (freshVendor?.instagram_handle || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+        const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const phone3    = (user?.phone || '').replace(/\D/g, '').slice(-3);
+        const phone4    = (user?.phone || '').replace(/\D/g, '').slice(-4);
+        const candidates = [
+          igHandle,
+          `${firstName}${phone3}`,
+          `${firstName}${phone4}`,
+          `${firstName}${phone3}${phone4}`,
+          `${firstName}${Date.now().toString().slice(-6)}`,
+        ].filter(Boolean);
+        let handle = null;
+        for (const candidate of candidates) {
+          if (!candidate || candidate.length < 2) continue;
+          const { data: existing } = await supabase
+            .from('vendors').select('id').eq('routing_handle', candidate).maybeSingle();
+          if (!existing) { handle = candidate; break; }
         }
+        await supabase
+          .from('vendors')
+          .update({ routing_handle: handle, onboarding_state: 'complete' })
+          .eq('id', vendor.id);
       }
-
-      await supabase
-        .from('vendors')
-        .update({ routing_handle: handle, instagram_handle: null, onboarding_state: 'complete' })
-        .eq('id', vendor.id);
 
       await supabase.from('notes').insert({
         vendor_id: vendor.id,
