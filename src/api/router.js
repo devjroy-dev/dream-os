@@ -69,26 +69,9 @@ router.use('/frost/circle/messages', require('./circle/messages'));     // no pe
 router.use('/dreamai',               require('./circle/dreamai'));      // user_id + primary_user_id validate
 
 // Demo admin routes (admin auth enforced inside the file)
-router.use('/admin/demo',           require('./admin/demo'));
 
 // Demo public routes — no auth required
 
-// Public vendor demo endpoint
-router.use('/public/vendor',        require('./public/vendor'));
 
-// Public demo session + discover feed (for demo subdomain)
-router.use('/demo',                 require('./public/demo'));
-
-// go.thedreamwedding.in branded redirect
-router.use('/go',                   require('./public/go'));
-
-// Public demo view logging endpoint — no admin auth required
-// Frontend calls POST /api/v2/demo/view from demo subdomain
-const demoAdminRouter = require('./admin/demo');
-router.post('/demo/view', (req, res, next) => {
-  // Rewrite path so the /view handler inside demo router fires
-  req.url = '/view';
-  demoAdminRouter(req, res, next);
-});
 
 module.exports = router;
