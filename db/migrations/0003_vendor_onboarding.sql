@@ -22,7 +22,7 @@ set onboarding_state = 'complete'
 where id = '2eb5d3fb-31eb-4b26-859a-cf10ae477d53';
 
 comment on column vendors.onboarding_state is
-  'Tracks conversational onboarding progress. NULL or complete = active vendor. new/asked_category/asked_city/asked_rate/asked_instagram = onboarding in progress.';
+  'Tracks conversational onboarding progress. NULL or complete = active vendor. new/asked_name/asked_ig/asked_category/asked_city/asked_travel/asked_rate = onboarding in progress.';
 
 create or replace function invite_vendor(p_phone text, p_name text)
 returns uuid as $$
