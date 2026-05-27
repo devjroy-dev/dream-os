@@ -112,9 +112,9 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
     case 'new': {
       await supabase.from('vendors').update({ onboarding_state: 'asked_name' }).eq('id', vendor.id);
       const greeting = name && name !== 'there'
-        ? `Hi ${name} — Swati mentioned you'd be joining. I'm your chief of staff.`
-        : `Hi — Swati said you'd be joining. I'm your chief of staff.`;
-      return { reply: `${greeting} Quick question before we begin — what should I call you? Just your first name is fine.` };
+        ? `Hi ${name} —`
+        : `Hi —`;
+      return { reply: `${greeting} I'm your chief of staff, here to help you manage every aspect of your business. Quick question before we begin — what should I call you? Just your first name is fine.` };
     }
 
     case 'asked_name': {
