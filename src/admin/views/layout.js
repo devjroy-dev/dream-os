@@ -293,6 +293,7 @@ function layout({ title, body, activeNav = 'vendors' }) {
     <div class="nav-links">
       <a href="/admin" class="${activeNav === 'vendors' ? 'active' : ''}">Vendors</a>
       <a href="/admin/couples" class="${activeNav === 'couples' ? 'active' : ''}">Couples</a>
+      <a href="/admin/unified-invite" class="${activeNav === 'invite' ? 'active' : ''}">Invite</a>
       <a href="/admin/invite-codes" class="${activeNav === 'invite-codes' ? 'active' : ''}">Invite Codes</a>
       <a href="/admin/logout">Sign out</a>
     </div>

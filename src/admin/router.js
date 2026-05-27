@@ -5,6 +5,7 @@ const { requireAuth, handleLogin } = require('./middleware');
 const { loginPage }   = require('./views/login');
 const { vendorsPage } = require('./views/vendors');
 const { invitePage }  = require('./views/invite');
+const { unifiedInvitePage, VENDOR_WA, BRIDE_WA } = require('./views/unifiedInvite');
 const { renderDetail: detailPage } = require('./views/detail');
 const { couplesPage }       = require('./views/couples');
 const { coupleInvitePage }  = require('./views/coupleInvite');
@@ -481,4 +482,116 @@ router.post('/invite-codes/mint', express.urlencoded({ extended: true }), async 
   }));
 });
 
+
+// ── Unified invite — GET /admin/unified-invite ────────────────────────────────
+router.get('/unified-invite', (req, res) => {
+  res.send(unifiedInvitePage());
+});
+
+// ── Unified invite — POST /admin/unified-invite ───────────────────────────────
+// 1. Validate inputs
+// 2. Check if phone already in users table
+// 3. If not: call invite_vendor() or invite_couple() RPC to create account
+// 4. Set tier if provided
+// 5. Mint unique invite code and insert into invite_codes with intended_phone
+// 6. Return both WA link and invite code
+
+router.post('/unified-invite', express.urlencoded({ extended: true }), async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { kind, name, phone, tier, notes } = req.body;
+
+  // Validate
+  if (!kind || !['maker', 'dreamer'].includes(kind))
+    return res.send(unifiedInvitePage({ error: 'Role must be Maker or Dreamer.' }));
+  if (!name || !name.trim())
+    return res.send(unifiedInvitePage({ error: 'Name is required.' }));
+  if (!phone || !phone.trim())
+    return res.send(unifiedInvitePage({ error: 'Phone number is required.' }));
+
+  const cleanName  = name.trim();
+  const cleanPhone = phone.trim();
+  const cleanTier  = tier?.trim() || null;
+  const cleanNotes = notes?.trim() || null;
+
+  // Check if already exists
+  const { data: existingUser } = await supabase
+    .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
+
+  if (!existingUser) {
+    // Create account via RPC
+    const rpc = kind === 'maker' ? 'invite_vendor' : 'invite_couple';
+    const params = kind === 'maker'
+      ? { p_phone: cleanPhone, p_name: cleanName }
+      : { p_phone: cleanPhone, p_name: cleanName, p_pronouns: 'they/them' };
+
+    const { error: rpcErr } = await supabase.rpc(rpc, params);
+    if (rpcErr) {
+      console.error(`[admin:unified-invite] RPC ${rpc} error:`, rpcErr.message);
+      return res.send(unifiedInvitePage({ error: `Could not create account: ${rpcErr.message}` }));
+    }
+
+    // Set tier on vendor if provided
+    if (cleanTier && kind === 'maker') {
+      const { data: userRow } = await supabase.from('users').select('id').eq('phone', cleanPhone).maybeSingle();
+      if (userRow) {
+        await supabase.from('vendors').update({ tier: cleanTier }).eq('user_id', userRow.id);
+      }
+    }
+
+    console.log(`[admin:unified-invite] created ${kind} account for ${cleanPhone}`);
+  } else {
+    console.log(`[admin:unified-invite] ${cleanPhone} already exists — skipping account creation`);
+  }
+
+  // Mint unique invite code
+  const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  function genCode() {
+    let c = '';
+    for (let i = 0; i < 8; i++) c += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+    return c;
+  }
+
+  let code;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = genCode();
+    const { data: existing } = await supabase
+      .from('invite_codes').select('code').eq('code', candidate).maybeSingle();
+    if (!existing) { code = candidate; break; }
+  }
+
+  if (!code) {
+    return res.send(unifiedInvitePage({ error: 'Could not generate a unique invite code. Please try again.' }));
+  }
+
+  const { error: codeErr } = await supabase.from('invite_codes').insert({
+    code,
+    kind,
+    tier:           cleanTier,
+    intended_phone: cleanPhone,
+    notes:          cleanNotes,
+    created_by:     'admin',
+  });
+
+  if (codeErr) {
+    console.error('[admin:unified-invite] code insert error:', codeErr.message);
+    return res.send(unifiedInvitePage({ error: 'Account created but code generation failed. Please mint a code manually.' }));
+  }
+
+  const waNumber = kind === 'maker' ? VENDOR_WA : BRIDE_WA;
+  const waLink   = `https://wa.me/${waNumber}`;
+
+  console.log(`[admin:unified-invite] invited ${cleanName} (${cleanPhone}) as ${kind} — code=${code}`);
+
+  return res.send(unifiedInvitePage({
+    result: {
+      name:   cleanName,
+      kind,
+      tier:   cleanTier,
+      code,
+      waLink,
+    },
+  }));
+});
+
 module.exports = router;
+
