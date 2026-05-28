@@ -1150,3 +1150,346 @@ Indexes: `collab_responses_post_id_idx` on (post_id, state, created_at DESC). `c
 ### Frontend
 - `dreamai/app/wedding/collab/page.tsx` — main Collab page (DISCOVER mode, 3rd tab)
 - `dreamai/app/wedding/collab/[post_id]/responses/page.tsx` — responses sub-page (poster only)
+
+---
+
+## Migration table update — 0049 through 0058
+
+| File | Session | Status |
+|---|---|---|
+| **0049_lead_intent_summary.sql** | **B-DreamAi** | **✅ Applied 2026-05-25. `lead_intent_summary` table — Haiku-cached one-line intent per lead for returning-bride notifications.** |
+| **0050_pending_lead_pings.sql** | **B-DreamAi** | **✅ Applied 2026-05-25. `pending_lead_pings` table — 10-min window for un-acked vendor lead pings (she/her disambiguation).** |
+| **0051_pending_event_proposals.sql** | **B-DreamAi** | **✅ Applied 2026-05-25. `pending_event_proposals` table — staged events extracted from WhatsApp calendar screenshot via Haiku Vision.** |
+| **0052_lead_wedding_date_precision.sql** | **B-DreamAi** | **✅ Applied 2026-05-25. `leads.wedding_date_precision` column — keeps month/year sentinels readable without changing wedding_date storage.** |
+| **0053_image_throttle_log.sql** | **B-DreamAi** | **✅ Applied 2026-05-25. `image_throttle_log` table — rate-limits inbound WhatsApp images to 2 per 30s per phone number.** |
+| **0054_image_throttle_rejection_sent.sql** | **B-DreamAi** | **✅ Applied 2026-05-25. `image_throttle_log.rejection_sent` column — ensures only one rejection reply per 30s burst window.** |
+| **0055_bride_pages.sql** | **B-Frost** | **✅ Applied 2026-05-27. `bride_pages` table — the diary surface. One row per journal entry; DreamAi reads via `read_pages` tool.** |
+| **0056_remove_demo_columns.sql** | **B-Demo** | **✅ Applied 2026-05-27. Drops 8 demo_* columns from `vendors` table. Drops `demo_profile_views` table. Old demo system fully excised.** |
+| **0057_demo_system.sql** | **B-Demo** | **✅ Applied 2026-05-27. `demo_vendors` + `demo_leads` + `demo_muse_pool` tables. Clean rebuild, zero FK to real vendors/users. Extends `otp_sessions.purpose` to allow `demo_enquiry`.** |
+| **0058_demo_claim_requests.sql** | **B-Demo** | **✅ Applied 2026-05-28. `demo_claim_requests` table — tracks vendors who tap "Claim Your Studio" on the demo landing page.** |
+
+**Latest migration applied:** 0058_demo_claim_requests.sql (2026-05-28)
+**Next migration number:** 0059
+
+---
+
+## Migration 0049 — Lead Intent Summary
+**Applied:** 2026-05-25
+
+### lead_intent_summary
+
+Haiku-extracted one-line intent summary cached per lead. Used by the returning-bride notification system to personalise the "she's back" vendor ping without a second Haiku call. Cache expires after 30 days and is regenerated on next contact.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| lead_id | uuid FK leads | ON DELETE CASCADE. One row per lead. |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE. Denormalised for fast lookup by vendor. |
+| summary | text NOT NULL | Haiku-generated one-liner e.g. "Bride planning a December Delhi wedding, budget ~₹3L, needs full-day coverage." Max ~200 chars in practice; no DB constraint. |
+| generated_at | timestamptz NOT NULL | default now(). Stamped on insert or upsert. |
+| expires_at | timestamptz NOT NULL | default now() + 30 days. Expired rows are regenerated on next returning-bride event; never served stale. |
+
+Constraint: UNIQUE (lead_id) — upserted on every new summary generation. One summary per lead at any time.
+
+Indexes: `lead_intent_summary_lead_idx` on (lead_id). `lead_intent_summary_expires_idx` on (expires_at).
+
+**Usage pattern:** `brideEngine.js` → `buildDynamicContext()` — checks for non-expired row before calling Haiku. If absent or expired: generates, upserts, returns. Backend never serves an expired summary.
+
+---
+
+## Migration 0050 — Pending Lead Pings
+**Applied:** 2026-05-25
+
+### pending_lead_pings
+
+10-minute acknowledgement window for un-acked vendor lead pings. Created when a new lead arrives (create_lead tool) or when a returning bride makes first contact after a gap. Consumed when vendor replies or 10 minutes elapses. Drives the "she/her" disambiguation pattern — vendor agent reads pending pings before composing any outbound WhatsApp message to ensure pronouns are set correctly.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| lead_id | uuid FK leads | ON DELETE CASCADE |
+| ping_type | text NOT NULL | CHECK: new_lead / returning_bride / first_contact. Determines notification copy and urgency. |
+| bride_name | text | Snapshot of lead.name at ping time. Survives lead.name updates. |
+| created_at | timestamptz NOT NULL | default now() |
+| expires_at | timestamptz NOT NULL | default now() + 10 minutes |
+| acknowledged_at | timestamptz | NULL = unacknowledged. Stamped on first vendor reply or explicit dismiss. |
+
+Constraint: UNIQUE (vendor_id, lead_id) — one pending ping per vendor per lead at a time. Re-triggered by upserting with new expires_at.
+
+Indexes: `pending_lead_pings_vendor_idx` on (vendor_id, expires_at) WHERE acknowledged_at IS NULL. `pending_lead_pings_expires_idx` on (expires_at).
+
+**Cleanup:** Expired un-acked pings are purged by cron at 03:30 IST daily. No user-visible effect — they simply expire silently.
+
+---
+
+## Migration 0051 — Pending Event Proposals
+**Applied:** 2026-05-25
+
+### pending_event_proposals
+
+Staged events extracted from a WhatsApp calendar screenshot via Haiku Vision. When a vendor sends an image of their booking calendar/diary, the agent extracts each entry as a pending_event_proposals row. Vendor confirms or discards via `commit_event_proposals` tool — confirmed rows are promoted to the `events` table; discarded rows are deleted.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE |
+| title | text NOT NULL | Haiku-extracted event title e.g. "Sharma Wedding", "Pre-wedding shoot". |
+| event_date | date NOT NULL | Extracted date. Where year is ambiguous, nearest future year assumed. |
+| event_time | text | Nullable. Raw time string as extracted e.g. "10am", "2:30 PM". Not parsed to timestamptz to preserve ambiguity. |
+| city | text | Nullable. Extracted city or venue hint. |
+| notes | text | Nullable. Any additional context Haiku extracted e.g. "beach location", "₹45K advance paid". |
+| confidence | text NOT NULL | CHECK: high / medium / low. Haiku self-reports. Low-confidence rows shown with caution flag in UI. |
+| source_image_url | text | Cloudinary URL of the source image that triggered this extraction. Nullable — set when image persisted to Cloudinary. |
+| created_at | timestamptz NOT NULL | default now() |
+| expires_at | timestamptz NOT NULL | default now() + 2 hours. Proposals not committed within 2h are auto-purged. |
+
+Indexes: `pending_event_proposals_vendor_idx` on (vendor_id, created_at DESC). `pending_event_proposals_expires_idx` on (expires_at).
+
+**Commit flow:** `POST /api/v2/vendor/events/commit-proposals` — body: `{ vendor_id, proposal_ids: [...] }`. For each id: inserts into `events` (kind=wedding, state=upcoming), then deletes the proposal row. Returns `{ committed: n, skipped: m }`.
+
+**Cron:** Proposals purged at expires_at by the same 03:30 IST sweep that handles pending_lead_pings.
+
+---
+
+## Migration 0052 — Lead Wedding Date Precision
+**Applied:** 2026-05-25
+
+### leads table addition
+
+| Column | Type | Notes |
+|---|---|---|
+| wedding_date_precision | text | Nullable. CHECK: 'day' \| 'month' \| 'year'. Default NULL (treated as 'day'). |
+
+**Problem solved:** When a bride says "sometime in July 2026", the agent sets `wedding_date = 2026-07-01` (1st-of-month sentinel). Without precision tracking, the UI renders "1 Jul 2026" — which is wrong and confusing. With `wedding_date_precision = 'month'`, the frontend renders "Jul 2026" instead.
+
+**Sentinel convention:**
+- `precision = 'day'` (or NULL) → render full date: "15 Nov 2026"
+- `precision = 'month'` → `wedding_date` set to 1st of month → render "Nov 2026"
+- `precision = 'year'` → `wedding_date` set to Jan 1 of year → render "2026"
+
+**Agent behaviour:** `create_lead` and `update_lead` tools accept optional `wedding_date_precision` param. When bride gives only a month ("December wedding"), agent sets precision='month' and wedding_date to Dec 1 of inferred year.
+
+Index: no new index — existing `leads_vendor_id_idx` and `leads_wedding_date_idx` cover the access patterns.
+
+---
+
+## Migration 0053 — Image Throttle Log
+**Applied:** 2026-05-25
+
+### image_throttle_log
+
+Rate-limits inbound WhatsApp images to 2 per 30-second window per phone number, across both the vendor DreamAi engine and the couple DreamAi engine. Prevents Vision API cost explosions when a vendor or bride forwards a burst of photos (common with Indian WhatsApp users forwarding wedding inspo).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| phone | text NOT NULL | E.164 sender phone number. No FK to users — throttle applies before authentication. |
+| engine | text NOT NULL | CHECK: vendor / couple. Which DreamAi pipeline received the image. |
+| received_at | timestamptz NOT NULL | default now(). Stamped on image receipt, before Vision call. |
+| rejection_sent | boolean NOT NULL | default false. See migration 0054. |
+
+**Window logic:** Before each Vision call, backend queries COUNT of rows WHERE phone = $1 AND engine = $2 AND received_at > now() - 30s. If count >= 2: reject without Vision call. Insert throttle row for tracking. If count < 2: insert row, proceed with Vision.
+
+**No UNIQUE constraint** — multiple rows per phone per window are expected and correct. The COUNT is what governs.
+
+Indexes: `image_throttle_log_phone_engine_idx` on (phone, engine, received_at DESC). `image_throttle_log_cleanup_idx` on (received_at) — used by cron purge.
+
+**Cron:** Rows older than 1 hour purged at 03:45 IST daily. Window is 30s so anything older is guaranteed irrelevant.
+
+---
+
+## Migration 0054 — Image Throttle Rejection Sent
+**Applied:** 2026-05-25
+
+### image_throttle_log addition
+
+| Column | Type | Notes |
+|---|---|---|
+| rejection_sent | boolean NOT NULL | default false. Added to `image_throttle_log` via ALTER TABLE. |
+
+**Problem solved:** When 5 images arrive in a burst, the throttle fires on images 3, 4, 5. Without tracking, the engine sends "please slow down" to the vendor/bride 3 times — annoying. With `rejection_sent`, the engine only sends one rejection reply per 30s window: on the first throttled image it sends the message AND sets rejection_sent = true. Images 4 and 5 are silently dropped.
+
+**Update pattern:** On throttle trigger: query for any row in the window WHERE rejection_sent = true. If none found: send WhatsApp rejection message + UPDATE the current throttle row SET rejection_sent = true. If one already found: drop silently.
+
+This column is added via ALTER TABLE to `image_throttle_log` in a standalone migration to isolate the behavioural change from the table creation.
+
+---
+
+## Migration 0055 — Bride Pages (The Diary)
+**Applied:** 2026-05-27
+
+### bride_pages
+
+The Frost diary surface. One row per journal entry. Brides write one or more entries per day; each entry carries a mood (one of 12 locked values from the Frost mood vocabulary) and a body of plain text. DreamAi reads from this table via the `read_pages` tool to ground the AI in the bride's emotional weather across multiple days. The Sanctuary V Pages row renders the most-recent entry body as a preview.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| couple_id | uuid FK couples | ON DELETE CASCADE. All entries owned by the couple. |
+| user_id | uuid FK users | ON DELETE CASCADE. The specific user who wrote the entry (bride or circle member in future). |
+| entry_date | date NOT NULL | default current_date. The "wedding-arc day" she wrote on. Used for grouping (all entries for a day rendered together) and for the daily teal idle line in the Sanctuary timeline. |
+| mood | text NOT NULL | One of 12 locked Frost vocabulary values: 'excited' / 'nervous' / 'grateful' / 'overwhelmed' / 'hopeful' / 'joyful' / 'anxious' / 'content' / 'frustrated' / 'reflective' / 'tired' / 'in_love'. No DB CHECK — locked in frontend validation and agent prompt. |
+| mood_color | text NOT NULL | Hex or rgba string matching the mood. Stored denormalised for fast render without client-side lookup. Set by frontend at write time per FROST_COPY mood palette. |
+| body | text NOT NULL | Plain text. No length constraint at DB level; frontend recommends 100–500 chars but does not enforce. |
+| created_at | timestamptz NOT NULL | default now(). Canonical timestamp. Multiple entries on same entry_date are ordered by created_at DESC. |
+| updated_at | timestamptz NOT NULL | default now(). Auto via set_updated_at() trigger. |
+
+Indexes:
+- `idx_bride_pages_couple_created` on (couple_id, created_at DESC) — Sanctuary preview (most recent entry) and history list.
+- `idx_bride_pages_couple_entry_date` on (couple_id, entry_date DESC) — DreamAi "what did she write on day X" queries via `read_pages` tool.
+
+**DreamAi access pattern:** `read_pages` tool → `GET /api/v2/couple/pages/:coupleId?limit=7&before=<ISO>` — returns last N entries ordered by created_at DESC. Agent includes the last 3–5 entries in system prompt when diary context is relevant.
+
+**No edit/delete:** Entries are append-only at the agent level. The PWA may allow soft corrections but the table supports it — updated_at trigger is present.
+
+**Multiple entries per day:** Fully supported. entry_date groups them visually; individual rows are ordered by created_at within a day.
+
+---
+
+## Migration 0056 — Remove Demo Columns from vendors
+**Applied:** 2026-05-27
+
+### vendors table columns dropped
+
+The original demo system stored demo state directly on the `vendors` table, causing session contamination — demo JWTs were indistinguishable from real vendor sessions. Migration 0056 completely excises this.
+
+**Columns dropped via ALTER TABLE vendors DROP COLUMN IF EXISTS:**
+| Column | Previous type | Reason for removal |
+|---|---|---|
+| demo_handle | text | Demo URL key — moved to demo_vendors.ig_handle |
+| demo_active | boolean | Demo on/off flag — moved to demo_vendors.active |
+| demo_expires_at | timestamptz | Demo TTL — not needed in new system |
+| demo_created_at | timestamptz | Redundant with demo_vendors.created_at |
+| demo_session_token | text | Caused session contamination — completely removed |
+| demo_session_expires_at | timestamptz | Token TTL — removed with token |
+| demo_notes | text | Admin notes — moved to demo_vendors (implicit in display_name + about) |
+| demo_instagram | text | Redundant with demo_vendors.ig_handle |
+
+**Table dropped:**
+- `demo_profile_views` — view tracking table from old system. DROP TABLE IF EXISTS.
+
+**Effect:** Real vendor records are now clean. No demo-related columns remain on the vendors table. All demo data lives in the isolated demo_vendors / demo_leads / demo_muse_pool tables (migration 0057).
+
+---
+
+## Migration 0057 — Demo System (Clean Rebuild)
+**Applied:** 2026-05-27
+
+Complete rebuild of the demo infrastructure. Three new tables, zero FK to real vendors/users tables. Completely isolated from production data. Also extends the `otp_sessions` purpose constraint to support demo bride OTP verification.
+
+### demo_vendors
+
+Demo vendor profiles for `demo.thedreamwedding.in/vendor/[handle]`. Completely separate from the real `vendors` table. No FK to users or vendors. The ig_handle is the URL key.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| ig_handle | text NOT NULL UNIQUE | URL key: /demo/[handle]. e.g. makeupbyswatiroy. Lowercase. |
+| display_name | text NOT NULL | Shown on demo landing page and studio header. |
+| category | text NOT NULL | Matches vendor category vocabulary: makeup / photography / videography / decor / venue / planning / catering / mehendi / music_dj / jewellery / attire / honeymoon / invitation / other. |
+| city | text NOT NULL | e.g. "Delhi", "Mumbai". |
+| whatsapp_phone | text | Nullable. E.164. Where to send lead notifications on live system. Not used in current demo — leads go to admin. |
+| about | text | Nullable. Short bio shown in demo discover overlay. |
+| rate_display | text | Nullable. Human-readable rate range e.g. "₹50K – ₹2L". |
+| photos | jsonb NOT NULL | default '[]'. Array of `{ url: string, is_hero: boolean, cloudinary_id: string }`. Rendered in landing carousel and demo discover feed. |
+| active | boolean NOT NULL | default true. false = hidden from all surfaces. Admin toggle via /admin/demo. |
+| created_at | timestamptz NOT NULL | default now() |
+| created_by | text NOT NULL | default 'admin'. Free-text label. |
+
+Indexes: `demo_vendors_ig_handle_idx` on (ig_handle). `demo_vendors_active_idx` on (active).
+
+**Admin management:** `POST /api/v2/admin/demo/vendors` — create. `DELETE /api/v2/admin/demo/vendors/:id` — deactivate (sets active=false, never hard deletes). `GET /api/v2/admin/demo/vendors` — list all.
+
+**Public endpoint:** `GET /api/v2/demo/vendor/:handle` — returns single demo vendor by handle for landing page. `GET /api/v2/demo/discover` — returns all active demo vendors shaped as DiscoverVendor for the swipe feed at demodiscover.thedreamwedding.in.
+
+---
+
+### demo_leads
+
+Enquiries from demo brides to demo vendors. Completely separate from the real `leads` table. OTP-verified before a row is persisted. No FK to real leads/vendors/users.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| demo_vendor_id | uuid FK demo_vendors | ON DELETE CASCADE |
+| demo_vendor_handle | text NOT NULL | Denormalised ig_handle. Survives demo_vendor record changes. |
+| bride_name | text NOT NULL | As entered by the bride at OTP step. |
+| bride_phone | text NOT NULL | E.164. The OTP-verified phone. |
+| bride_ig_handle | text | Nullable. Optional Instagram handle entered by bride. |
+| bride_email | text | Nullable. |
+| bride_wedding_date | date | Nullable. |
+| bride_wedding_city | text | Nullable. |
+| otp_verified | boolean NOT NULL | default false. Set true after OTP verification via otp_sessions (purpose='demo_enquiry'). Only otp_verified=true rows are surfaced in admin panel and vendor demo AI. |
+| notified_vendor | boolean NOT NULL | default false. Set true once WhatsApp notification sent to real vendor (manual relay by admin for now). |
+| admin_notified | boolean NOT NULL | default false. Set true once admin WhatsApp notification sent. |
+| created_at | timestamptz NOT NULL | default now() |
+
+Indexes: `demo_leads_vendor_id_idx` on (demo_vendor_id). `demo_leads_created_at_idx` on (created_at DESC). `demo_leads_notified_idx` on (notified_vendor, admin_notified) — used by notification cron sweep.
+
+**Admin panel:** `GET /api/v2/admin/demo/leads` — list all leads. `POST /api/v2/admin/demo/leads` — seed mock leads for demo. Displayed under Leads tab in /admin/demo.
+
+---
+
+### demo_muse_pool
+
+Admin-curated images for the bride demo Muse board. Shown to all bride demo users at `demodreamer.thedreamwedding.in`. Purely content — no user data.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| image_url | text NOT NULL | Cloudinary delivery URL. |
+| cloudinary_id | text | Nullable. Cloudinary public_id for deletion. |
+| tags | text[] NOT NULL | default '{}'. Curated aesthetic tags e.g. {lehenga, decor, jewellery, mehendi, candid}. Used for filtering in bride demo Muse. |
+| caption | text | Nullable. Editorial caption. |
+| display_order | integer NOT NULL | default 0. ASC sort. |
+| active | boolean NOT NULL | default true. |
+| created_at | timestamptz NOT NULL | default now() |
+
+Index: `demo_muse_pool_active_idx` on (active, display_order).
+
+---
+
+### otp_sessions.purpose constraint extension
+
+Migration 0057 also modifies the `otp_sessions` table:
+
+```sql
+ALTER TABLE otp_sessions DROP CONSTRAINT IF EXISTS otp_sessions_purpose_check;
+ALTER TABLE otp_sessions ADD CONSTRAINT otp_sessions_purpose_check
+  CHECK (purpose IN ('login', 'reset', 'demo_enquiry'));
+```
+
+**Before 0057:** purpose CHECK only allowed 'login' | 'reset'.
+**After 0057:** 'demo_enquiry' is a valid third purpose. Used when a bride submits an enquiry from a demo vendor landing page — OTP verifies her phone before the demo_lead row is created.
+
+**Flow:** POST /api/v2/demo/otp/send → inserts otp_sessions row with purpose='demo_enquiry' → POST /api/v2/demo/otp/verify → validates + deletes row → POST /api/v2/demo/leads → creates demo_lead with otp_verified=true.
+
+---
+
+## Migration 0058 — Demo Claim Requests
+**Applied:** 2026-05-28
+
+### demo_claim_requests
+
+Tracks vendors who tap "Claim Your Studio" on the demo landing page (`demo.thedreamwedding.in/vendor/[handle]`) and enter their phone number. Notifies admin immediately. Admin follows up manually via WhatsApp to convert the vendor to a real TDW Maker account.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| ig_handle | text NOT NULL | The demo vendor handle from the URL — e.g. makeupbyswatiroy. Not FK to demo_vendors — survives demo vendor deletion. |
+| vendor_name | text | Nullable. Display name of the demo vendor at time of claim. Snapshot. |
+| phone | text NOT NULL | Phone number as entered by the vendor. Raw — not E.164-enforced at DB level (frontend collects 10-digit Indian number with implied +91). |
+| claimed_at | timestamptz NOT NULL | default now(). When the vendor submitted the claim. |
+| contacted | boolean NOT NULL | default false. Admin toggle — set true when admin has reached out to the vendor. |
+| notes | text | Nullable. Admin field for call notes, follow-up reminders etc. |
+
+Indexes: `demo_claim_requests_handle_idx` on (ig_handle). `demo_claim_requests_claimed_at_idx` on (claimed_at DESC).
+
+**Backend endpoint:** `POST /api/v2/demo/vendor/:handle/claim` — body: `{ phone, vendor_name }`. Inserts row. Returns `{ ok: true }` even on insert failure (vendor sees success screen regardless — critical UX, don't break the moment).
+
+**Admin endpoints:** `GET /api/v2/admin/demo/claims` — list all claims newest first. `PATCH /api/v2/admin/demo/claims/:id/contacted` — body: `{ contacted: true|false }`. Toggle the contacted flag.
+
+**Admin UI:** `/admin/demo` → Claims tab. Shows vendor name, handle, phone (tappable tel: link), WhatsApp button, contacted toggle, timestamp. New/uncontacted claims have gold border highlight. No contacted claims fade to default border.
+
+**No deduplication constraint:** A vendor can claim multiple times (e.g. if they didn't hear back). Multiple rows per handle are valid and visible in the admin panel. Admin sees all attempts.
