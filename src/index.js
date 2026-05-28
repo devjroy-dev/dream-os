@@ -44,6 +44,7 @@ const ALLOWED_ORIGINS = [
   'https://thedreamai.in',
   'https://www.thedreamai.in',
   'https://dreamos-pwa.vercel.app',
+  'https://demo.thedreamwedding.in',
   'http://localhost:3000',
   'http://localhost:3001',
 ];
