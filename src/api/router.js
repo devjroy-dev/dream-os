@@ -69,8 +69,11 @@ router.use('/frost/circle/messages', require('./circle/messages'));     // no pe
 router.use('/dreamai',               require('./circle/dreamai'));      // user_id + primary_user_id validate
 
 // Demo admin routes (admin auth enforced inside the file)
+router.use('/admin/demo', require('./admin/demoAdmin'));
 
 // Demo public routes — no auth required
+router.use('/demo/vendor', require('./demo/vendor'));
+router.use('/demo/discover', require('./demo/vendor'));
 
 
 
