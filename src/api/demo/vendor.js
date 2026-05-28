@@ -299,35 +299,4 @@ router.get('/vendors', asyncHandler(async (req, res) => {
   return res.json({ ok: true, vendors: shaped });
 }));
 
-
-// ── GET /session — mint a real JWT for the demo vendor UUID ──────────────────
-// No auth required. Returns a short-lived JWT for the shared demo vendor account.
-// Safe: demo UUID is tied to fake phone +20000000000001, not a real vendor.
-router.get('/session', asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-
-  const DEMO_USER_ID   = 'aaaaaaaa-1111-1111-1111-aaaaaaaaaaaa';
-  const DEMO_VENDOR_ID = 'bbbbbbbb-1111-1111-1111-bbbbbbbbbbbb';
-
-  try {
-    const { mintSession } = require('../vendor/auth');
-    const tokens = await mintSession(supabase, DEMO_USER_ID);
-
-    console.log('[demo:session] minted JWT for demo vendor');
-    return res.json({
-      ok:            true,
-      vendor_id:     DEMO_VENDOR_ID,
-      user_id:       DEMO_USER_ID,
-      access_token:  tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      name:          'Demo Studio',
-      tier:          'signature',
-    });
-  } catch (err) {
-    console.error('[demo:session] mint failed:', err.message);
-    return res.status(500).json({ ok: false, error: 'Could not create demo session.' });
-  }
-}));
-
 module.exports = router;
-
