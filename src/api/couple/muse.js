@@ -225,12 +225,13 @@ router.post('/upload', asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const anthropic = req.app.locals.anthropic;
   const { couple_id, id: user_id } = req.coupleUser;
-  const { image_base64, mime, caption } = req.body || {};
+  const { image_base64, mime, mime_type, caption, surface } = req.body || {};
+  const mimeType = mime || mime_type; // frontend may send either
 
   if (!image_base64 || typeof image_base64 !== 'string') {
     return errRes(res, 400, 'image_base64 is required.');
   }
-  if (!mime || !mime.startsWith('image/')) {
+  if (!mimeType || !mimeType.startsWith('image/')) {
     return errRes(res, 400, 'mime must be an image content type.');
   }
 
@@ -251,10 +252,10 @@ router.post('/upload', asyncHandler(async (req, res) => {
   let pipelineResult;
   try {
     pipelineResult = await processImageForMuse({
-      bufferSource: { buffer, contentType: mime },
+      bufferSource: { buffer, contentType: mimeType },
       couple_id,
       anthropic,
-      runClassifier: false, // bride explicitly chose Muse — no need to disambiguate
+      runClassifier: surface === 'moments' ? false : false, // classifier handled by museSave for WA path
     });
   } catch (err) {
     console.error('[POST /muse/upload] pipeline error:', err.message);
@@ -285,6 +286,7 @@ router.post('/upload', asyncHandler(async (req, res) => {
       caption:          (typeof caption === 'string' && caption.trim()) ? caption.trim() : null,
       saved_by_user_id: user_id,
       saved_by_role:    'bride',
+      surface:          (surface === 'moments') ? 'moments' : 'muse',
     })
     .select('id, save_number, image_url, aesthetic_tags')
     .single();
