@@ -1,11 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // src/lib/imageOCRRouter.js
-// Bride image classifier: muse vs receipt.
+// Bride image classifier: muse vs receipt vs moment.
 //
-// PURPOSE: Decide whether an inbound bride image is wedding inspiration
-// (route to Muse mood board) or a receipt/invoice (route to receipt vault).
-// Runs ONLY on the bride path. Circle members' images always go to Muse —
-// the caller controls this via the runClassifier flag in imagePipeline.js.
+// PURPOSE: Decide whether an inbound bride image is:
+//   'muse'    — wedding inspiration (vendor portfolio, design, decor, fashion)
+//   'receipt' — receipt/invoice for the expense vault
+//   'moment'  — personal candid (people, food, social, real life)
+// Runs on both bride and circle member image paths.
 //
 // IMPLEMENTATION: Google Vision DOCUMENT_TEXT_DETECTION + LABEL_DETECTION.
 // Google Vision is purpose-built for document/receipt recognition and
@@ -64,6 +65,36 @@ const RECEIPT_LABELS = new Set([
 
 const RECEIPT_LABEL_THRESHOLD  = 0.70;  // confidence >= 70% to count as receipt label
 const RECEIPT_WORD_COUNT_MIN   = 20;    // L1 audit fix: raised from 8 to 20. At 8 words,
+
+// Moment-adjacent labels — personal photos, candids, real life, food, social.
+// Any of these at >= MOMENT_LABEL_THRESHOLD routes to 'moment' surface.
+// Evaluated AFTER receipt check, BEFORE defaulting to muse.
+// The list is deliberately broad — false positives (a vendor portfolio shot
+// with people in it) are recoverable; false negatives (a candid landing in
+// Muse) are worse UX. Default to moment when in doubt for people/food.
+const MOMENT_LABELS = new Set([
+  // People & social
+  'people', 'person', 'smile', 'fun', 'friendship', 'event', 'selfie',
+  'crowd', 'party', 'ceremony', 'togetherness', 'social group', 'community',
+  'facial expression', 'laugh', 'happy', 'joy', 'leisure', 'recreation',
+  'snapshot', 'portrait', 'child', 'baby', 'family', 'skin', 'hair',
+  'lip', 'eye', 'nose', 'face', 'head', 'forehead', 'cheek', 'chin',
+  'human body', 'shoulder', 'arm', 'hand', 'finger',
+  // Food & drink
+  'food', 'meal', 'dish', 'cuisine', 'restaurant', 'cafe', 'dining',
+  'lunch', 'dinner', 'brunch', 'breakfast', 'drink', 'beverage',
+  'coffee', 'tea', 'cocktail', 'dessert', 'cake', 'snack', 'plate',
+  'table setting', 'tableware',
+  // Street & real life
+  'street', 'road', 'neighbourhood', 'city', 'urban', 'market',
+  'bazaar', 'shop', 'store', 'building', 'architecture',
+  // Moments / candid signals
+  'photograph', 'photography', 'snapshot', 'selfie', 'group photo',
+  'outdoor', 'nature', 'sky', 'tree', 'grass', 'park',
+  // Bride-specific personal moments
+  'shopping', 'fitting', 'trial', 'appointment', 'mirror',
+]);
+const MOMENT_LABEL_THRESHOLD = 0.72; // slightly higher than receipt to avoid false positives
                                          // mood board screenshots with captions, vendor
                                          // website screenshots, and design references all
                                          // triggered receipt routing. Real receipts have
@@ -153,11 +184,24 @@ async function classifyImage({ image_url }) {
          RECEIPT_LABELS.has((l.description || '').toLowerCase())
   );
 
-  const route = (hasDocumentText || hasReceiptLabel) ? 'receipt' : 'muse';
+  // ── Signal C: moment-adjacent labels ────────────────────────────
+  // Check AFTER receipt to avoid misclassifying receipts as moments.
+  // A photo of someone holding a receipt should still route to receipt.
+  const hasMomentLabel = !hasDocumentText && !hasReceiptLabel && labels.some(
+    l => l.score >= MOMENT_LABEL_THRESHOLD &&
+         MOMENT_LABELS.has((l.description || '').toLowerCase())
+  );
 
-  if (route === 'receipt') {
-    console.log(`[imageOCRRouter] classified as receipt (wordCount=${wordCount}, hasReceiptLabel=${hasReceiptLabel})`);
+  let route;
+  if (hasDocumentText || hasReceiptLabel) {
+    route = 'receipt';
+  } else if (hasMomentLabel) {
+    route = 'moment';
+  } else {
+    route = 'muse';
   }
+
+  console.log(`[imageOCRRouter] classified as ${route} (wordCount=${wordCount}, hasReceiptLabel=${hasReceiptLabel}, hasMomentLabel=${hasMomentLabel})`);
 
   return { route };
 }
@@ -169,4 +213,6 @@ module.exports = {
   RECEIPT_LABELS,
   RECEIPT_LABEL_THRESHOLD,
   RECEIPT_WORD_COUNT_MIN,
+  MOMENT_LABELS,
+  MOMENT_LABEL_THRESHOLD,
 };

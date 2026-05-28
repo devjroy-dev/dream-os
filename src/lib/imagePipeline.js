@@ -439,6 +439,19 @@ async function processImageForMuse({ sourceUrl, bufferSource, couple_id, anthrop
         classifier_cost,
       };
     }
+    if (result.route === 'moment') {
+      // Personal moment — skip aesthetic tagging (not relevant for candids).
+      // Return source_type='moment' so museSave.js sets surface='moments'.
+      return {
+        source_type:     'moment',
+        image_url,
+        source_url:      resolvedSourceUrl,
+        vision_raw:      null,
+        aesthetic_tags:  [],
+        tagging_cost:    null,
+        classifier_cost,
+      };
+    }
     // route === 'muse' → fall through to existing Vision/Haiku tagging
   }
 

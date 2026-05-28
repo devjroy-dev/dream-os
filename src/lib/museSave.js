@@ -58,6 +58,8 @@ async function nextSaveNumber(supabase, couple_id) {
 // sourceUrl       : string  — Twilio media URL OR external link (Pinterest, IG, etc)
 // couple_id       : string  — the bride's couple_id (always the bride's, even when a
 //                             circle member is saving — see B2 architecture)
+// surface         : string  — 'muse' (default) or 'moments'. Passed through from
+//                             imageOCRRouter classification or explicit caller override.
 // saved_by_user_id: string  — UUID of the person who triggered the save (bride or
 //                             circle member). Stored on the row for attribution.
 // saved_by_role   : string  — 'bride' or 'circle_member'
@@ -83,6 +85,7 @@ async function saveToMuse({
   actor_name = null,
   caption = null,
   session_id = null,
+  surface = 'muse',
   supabase,
   anthropic,
 }) {
@@ -119,6 +122,12 @@ async function saveToMuse({
   // If the classifier routed to 'receipt', skip the muse_save pipeline.
   // Image is already in Cloudinary. Return the Cloudinary URL so brideIndex.js
   // can synthesize a receipt-flow context note for the agent.
+  // Moment classification overrides caller's surface param
+  if (pipelineResult.source_type === 'moment') {
+    surface = 'moments';
+    console.log(`[museSave] image classified as moment, saving with surface=moments`);
+  }
+
   if (pipelineResult.source_type === 'receipt') {
     console.log(`[museSave] image classified as receipt, skipping muse_save insert. image_url=${pipelineResult.image_url}`);
     return {
@@ -176,6 +185,7 @@ async function saveToMuse({
         vision_raw,
         saved_by_user_id,
         saved_by_role,
+        surface:          surface || 'muse',
       })
       .select('id, save_number, source_type, source_url, image_url, caption, aesthetic_tags, saved_by_user_id, saved_by_role')
       .single();

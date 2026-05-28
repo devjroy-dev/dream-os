@@ -483,6 +483,10 @@ app.post('/webhook/whatsapp', async (req, res) => {
         mediaSaveSucceeded = true;
         mediaContextNote = `[SYSTEM NOTE] The bride forwarded a receipt. It has been filed to her receipt vault (image_url: ${saveResult.image_url}). Call save_receipt immediately with just the image_url. Then reply with one warm sentence acknowledging the receipt was saved — something like "Got it, filed away!" Do NOT ask for details, label, or amount.`;
         console.log(`[bride-webhook] image classified as receipt, image_url=${saveResult.image_url}`);
+      } else if (saveResult.ok && saveResult.save?.surface === 'moments') {
+        mediaSaveSucceeded = true;
+        mediaContextNote = `[SYSTEM NOTE] The bride forwarded a personal photo — it has been saved to her Moments (save #${saveResult.save.save_number}). Moments is her personal photo diary — candids, real life, her journey. Reply with one warm sentence acknowledging the moment was saved. Keep it brief and personal, like "Saved to your Moments ✦" or acknowledge what kind of moment it looks like if obvious from context.`;
+        console.log(`[bride-webhook] moment save succeeded: #${saveResult.save.save_number}`);
       } else if (saveResult.ok) {
         mediaSaveSucceeded = true;
         mediaContextNote = buildMediaContextNote(saveResult.save, 'The bride');
@@ -1004,8 +1008,13 @@ async function handleCircleMemberMessage({
 
       if (saveResult.ok) {
         saveSucceeded = true;
-        mediaContextNote = buildMediaContextNote(saveResult.save, circleMember.invitee_name);
-        console.log(`[circle-handler] save succeeded: #${saveResult.save.save_number} from ${circleMember.invitee_name}`);
+        if (saveResult.save?.surface === 'moments') {
+          mediaContextNote = `[SYSTEM NOTE] ${circleMember.invitee_name} forwarded a personal photo — it has been saved to the bride's Moments (save #${saveResult.save.save_number}). Reply warmly acknowledging their contribution to her journey.`;
+          console.log(`[circle-handler] moment save succeeded: #${saveResult.save.save_number} from ${circleMember.invitee_name}`);
+        } else {
+          mediaContextNote = buildMediaContextNote(saveResult.save, circleMember.invitee_name);
+          console.log(`[circle-handler] save succeeded: #${saveResult.save.save_number} from ${circleMember.invitee_name}`);
+        }
       } else {
         mediaContextNote = `[SYSTEM NOTE] The circle member ${circleMember.invitee_name} forwarded an image or link, but the Muse save pipeline failed (${saveResult.error}). Apologise briefly and ask them to try again. Do NOT pretend the save happened.`;
         console.warn(`[circle-handler] save failed: ${saveResult.error}`);

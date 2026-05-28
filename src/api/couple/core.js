@@ -36,4 +36,10 @@ router.use('/taste',    require('./taste'));
 // B-7: Pages — bride's diary surface (one row per entry).
 router.use('/pages',    require('./pages'));
 
+// B-8: Moments — personal candid photos (surface='moments' in muse_saves).
+router.use('/moments',  require('./moments'));
+
+// B-9: Meridian — personal concierge (skin, mind, body, decisions).
+router.use('/meridian', require('./meridian'));
+
 module.exports = router;
