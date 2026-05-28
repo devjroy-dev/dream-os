@@ -24,7 +24,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
 
   let query = supabase
     .from('couple_bookings')
-    .select('id, vendor_name, vendor_id, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes, created_at, updated_at')
+    .select('id, vendor_name, vendor_id, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes, contact_phone, created_at, updated_at')
     .eq('couple_id', couple_id)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -96,7 +96,7 @@ router.patch('/:bookingId', asyncHandler(async (req, res) => {
   const { bookingId } = req.params;
   if (!UUID_RE.test(bookingId)) return errRes(res, 400, 'Invalid booking id.');
 
-  const { vendor_name, category, amount_total, amount_advance, balance_due_date, notes, state } = req.body || {};
+  const { vendor_name, category, amount_total, amount_advance, balance_due_date, notes, contact_phone, state } = req.body || {};
   const updates = {};
 
   if (vendor_name !== undefined) {
