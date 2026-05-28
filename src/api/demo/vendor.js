@@ -196,7 +196,7 @@ router.post('/:handle/chat', async (req, res) => {
 });
 
 // GET /demo/discover — all active demo vendors shaped for Frost swipe feed
-router.get('/discover', async (req, res) => {
+router.get('/', async (req, res) => {
   const supabase = req.app.locals.supabase;
   try {
     const { data: vendors, error } = await supabase
