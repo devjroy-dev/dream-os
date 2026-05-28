@@ -114,3 +114,39 @@ router.post('/cloudinary-sign', requireAdminPassword, async (req, res) => {
 });
 
 module.exports = router;
+
+// GET /admin/demo/claims — list all claim requests newest first
+router.get('/claims', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  try {
+    const { data, error } = await supabase
+      .from('demo_claim_requests')
+      .select('*')
+      .order('claimed_at', { ascending: false });
+    if (error) throw error;
+    return res.json({ ok: true, claims: data || [] });
+  } catch (err) {
+    console.error('[admin/demo/claims]', err.message);
+    return res.status(500).json({ ok: false, error: 'Server error.' });
+  }
+});
+
+// PATCH /admin/demo/claims/:id/contacted — toggle contacted flag
+router.patch('/claims/:id/contacted', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { id } = req.params;
+  const { contacted } = req.body || {};
+  try {
+    const { data, error } = await supabase
+      .from('demo_claim_requests')
+      .update({ contacted: !!contacted })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, claim: data });
+  } catch (err) {
+    console.error('[admin/demo/claims/:id/contacted]', err.message);
+    return res.status(500).json({ ok: false, error: 'Server error.' });
+  }
+});
