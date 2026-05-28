@@ -42,4 +42,7 @@ router.use('/moments',  require('./moments'));
 // B-9: Meridian — personal concierge (skin, mind, body, decisions).
 router.use('/meridian', require('./meridian'));
 
+// B-10: Concierge — human escalation from Meridian.
+router.use('/concierge', require('./concierge'));
+
 module.exports = router;
