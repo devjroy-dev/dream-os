@@ -51,6 +51,7 @@ router.use('/discover-heroes',       require('./admin/discoverHeroes').publicRou
 
 // Couple routes — profile must be before /couple catch-all
 router.use('/discover',       require('./couple/discover'));
+router.use('/discover/enquire', require('./couple/enquire'));
 const requireCoupleAuth = require('./middleware/requireCoupleAuth');
 router.use('/couple/muse',    requireCoupleAuth, require('./couple/muse'));
 router.use('/couple/profile', require('./couple/profile'));          // public, before /couple catch-all
