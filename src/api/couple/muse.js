@@ -288,7 +288,7 @@ router.post('/upload', asyncHandler(async (req, res) => {
       saved_by_role:    'bride',
       surface:          (surface === 'moments') ? 'moments' : 'muse',
     })
-    .select('id, save_number, image_url, aesthetic_tags')
+    .select('id, save_number, image_url, aesthetic_tags, created_at')
     .single();
 
   if (error) {
@@ -296,8 +296,19 @@ router.post('/upload', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not save image to Muse.');
   }
 
-  console.log(`[POST /muse/upload] couple=${couple_id} save=${newSave.id} tags=${(newSave.aesthetic_tags||[]).join(',')}`);
+  console.log(`[POST /muse/upload] couple=${couple_id} save=${newSave.id} surface=${surface||'muse'} tags=${(newSave.aesthetic_tags||[]).join(',')}`);
   return okRes(res, {
+    save: {
+      id:             newSave.id,
+      save_number:    newSave.save_number,
+      image_url:      newSave.image_url,
+      caption:        null,
+      saved_by_role:  'bride',
+      surface:        (surface === 'moments') ? 'moments' : 'muse',
+      created_at:     new Date().toISOString(),
+      aesthetic_tags: newSave.aesthetic_tags || [],
+    },
+    // Legacy flat fields — kept for Muse room compatibility
     save_id:        newSave.id,
     save_number:    newSave.save_number,
     image_url:      newSave.image_url,
