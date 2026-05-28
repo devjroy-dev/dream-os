@@ -2,7 +2,7 @@
 **Last updated:** 2026-05-19 (P2-6a session)
 **Session:** P2-6a complete. No new migrations. messages.media_url column now in active use for PDF delivery (was 'future' in prior schema docs).
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0048_collab.sql (2026-05-24 — applied via SQL editor)
+**Latest migration applied:** 0060_booking_contact.sql (2026-05-29)
 **Migrations 0040–0048 applied to prod. All committed to db/migrations/.**
 - 0040: team_members, team_tasks, team_messages, team_payments
 - 0041: payment_schedules, contracts, tds_ledger, invoices.has_schedule
@@ -11,7 +11,7 @@
 - 0046: demo_profiles
 - 0047: vendors.demo_session_token, vendors.demo_session_expires_at
 - 0048: collab_posts, collab_responses
-**Next migration:** 0049 (when needed)
+**Next migration:** 0061 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
 **Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at,
@@ -417,6 +417,7 @@ Bride's mood board. One row per saved image, link, or vendor pin.
 | vision_raw | jsonb | Full Google Vision API response. Used by B4 Surprise Me for dominant color aggregation. |
 | saved_by_user_id | uuid | FK users(id) ON DELETE CASCADE (changed from RESTRICT in 0018 hotfix). Who triggered the save. |
 | saved_by_role | text | CHECK: bride / circle_member |
+| surface | text | NOT NULL DEFAULT 'muse'. CHECK IN ('muse','moments'). Added migration 0059. 'muse' = mood board inspo, 'moments' = personal candids/real-life photos. |
 | created_at | timestamptz | |
 | updated_at | timestamptz | Auto-stamped by trigger. |
 
@@ -527,7 +528,8 @@ Per-vendor commitment tracking. The bride's mirror of the vendor's `invoices` ta
 | amount_paid | integer | NOT NULL default 0. Running total of payments. NO CHECK constraint — may go negative (deliberate, see below). |
 | balance_due_date | date | Nullable. When the balance is due. |
 | state | text | NOT NULL. CHECK: booked / advance_paid / paid. Default 'booked'. No 'cancelled' state — cancellation = delete_booking at tool layer. |
-| notes | text | |
+| notes | text | Nullable. |
+| contact_phone | text | Nullable. Vendor contact number. Added migration 0060. Powers WA+Call buttons in VendorsRoom. |
 | created_at | timestamptz | Auto |
 | updated_at | timestamptz | Auto via trigger |
 
@@ -818,8 +820,8 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 - leads: added source text default 'whatsapp'
 - New table: vendor_availability (id, vendor_id, blocked_date date, reason, created_at, unique vendor_id+blocked_date)
 
-**Latest migration:** 0048_collab.sql
-**Next migration number:** 0049
+**Latest migration:** 0060_booking_contact.sql
+**Next migration number:** 0061
 
 ---
 
@@ -1153,7 +1155,7 @@ Indexes: `collab_responses_post_id_idx` on (post_id, state, created_at DESC). `c
 
 ---
 
-## Migration table update — 0049 through 0058
+## Migration table update — 0049 through 0060
 
 | File | Session | Status |
 |---|---|---|
@@ -1167,9 +1169,11 @@ Indexes: `collab_responses_post_id_idx` on (post_id, state, created_at DESC). `c
 | **0056_remove_demo_columns.sql** | **B-Demo** | **✅ Applied 2026-05-27. Drops 8 demo_* columns from `vendors` table. Drops `demo_profile_views` table. Old demo system fully excised.** |
 | **0057_demo_system.sql** | **B-Demo** | **✅ Applied 2026-05-27. `demo_vendors` + `demo_leads` + `demo_muse_pool` tables. Clean rebuild, zero FK to real vendors/users. Extends `otp_sessions.purpose` to allow `demo_enquiry`.** |
 | **0058_demo_claim_requests.sql** | **B-Demo** | **✅ Applied 2026-05-28. `demo_claim_requests` table — tracks vendors who tap "Claim Your Studio" on the demo landing page.** |
+| **0059_moments_surface.sql** | **B-Frost** | **✅ Applied 2026-05-29. `muse_saves.surface` column — TEXT NOT NULL DEFAULT 'muse' CHECK IN ('muse','moments'). Routes personal candids to Moments room, inspiration to Muse board. Vision classifier (imageOCRRouter) returns muse/receipt/moment based on 50+ labels.** |
+| **0060_booking_contact.sql** | **B-Frost** | **✅ Applied 2026-05-29. `couple_bookings.contact_phone` column — TEXT nullable. Stores vendor contact number for in-app WA+Call buttons in VendorsRoom.** |
 
-**Latest migration applied:** 0058_demo_claim_requests.sql (2026-05-28)
-**Next migration number:** 0059
+**Latest migration applied:** 0060_booking_contact.sql (2026-05-29)
+**Next migration number:** 0061
 
 ---
 
