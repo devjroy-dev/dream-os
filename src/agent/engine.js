@@ -16,6 +16,7 @@ const { sendWhatsApp }          = require('../lib/whatsapp');
 const { captureField }          = require('../lib/coupleIdentity');
 const { getReturningBrideIntent } = require('../lib/intentExtractor');
 const { buildVendorSnapshot, logActivity, fetchRecentActivity, formatActivityBlock } = require('../lib/vendor/snapshot');
+const { buildEnquiryEnrichment } = require('../lib/vendor/enquiryEnrichment');
 
 // Tools that mutate the DB on the WhatsApp surface. Used to feed the
 // cross-surface activity log (Phase 1.5). Read-only tools (list_*, query_*,
@@ -582,7 +583,21 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             .eq('kind', 'vendor_self')
             .maybeSingle();
 
-          const notifMsg = `New enquiry from ${couplePhone}. ${summary}. Lead saved.`;
+          // Phase 2.2 — opportunistic enrichment (📅 / 🔥 / 💰). Emits only the
+          // lines it has data for; hydrates date/budget from the couple profile
+          // when known. Never throws, never blanks.
+          const enrichment = await buildEnquiryEnrichment(supabase, {
+            vendorId:    vendor.id,
+            vendor,
+            coupleId,
+            weddingDate: event_date,
+            budgetMin:   input.budget_min,
+            budgetMax:   input.budget_max,
+          });
+
+          const notifMsg = enrichment
+            ? `New enquiry from ${couplePhone}. ${summary}. Lead saved.\n\n${enrichment}`
+            : `New enquiry from ${couplePhone}. ${summary}. Lead saved.`;
 
           if (vendorSelfConvo) {
             await supabase.from('messages').insert({

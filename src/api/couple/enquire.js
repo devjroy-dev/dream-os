@@ -31,7 +31,7 @@ router.post('/', asyncHandler(async (req, res) => {
   // Look up vendor + their user phone
   const { data: vendor, error: vErr } = await supabase
     .from('vendors')
-    .select('id, business_name, routing_handle, user_id, category, city')
+    .select('id, business_name, routing_handle, user_id, category, city, base_fee_min, base_fee_max')
     .eq('id', vendor_id)
     .eq('discover_eligible', true)
     .maybeSingle();
@@ -54,7 +54,24 @@ router.post('/', asyncHandler(async (req, res) => {
   // ── 1. WhatsApp ping to vendor ─────────────────────────────────────────────
   const brideLine = bride_name ? `Bride: ${bride_name}` : 'A bride on The Dream Wedding';
   const phoneLine = bride_phone ? `\nBride contact: ${bride_phone}` : '';
-  const body = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}\n\nShe found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
+
+  // Phase 2.2 — opportunistic enrichment. A logged-in bride (couple_id present)
+  // lets us hydrate her wedding date + budget from her profile, so even a silent
+  // Discover tap can carry 📅 / 🔥 / 💰 lines. Anonymous taps get none — clean.
+  let enrichment = '';
+  try {
+    const { buildEnquiryEnrichment } = require('../../lib/vendor/enquiryEnrichment');
+    enrichment = await buildEnquiryEnrichment(supabase, {
+      vendorId: vendor.id,
+      vendor,                 // carries base_fee_min/max from the select below
+      coupleId: couple_id,    // hydrates date + budget when she's a known bride
+    });
+  } catch (err) {
+    console.warn('[enquire] enrichment failed (non-fatal):', err.message);
+  }
+
+  const enrichBlock = enrichment ? `\n\n${enrichment}` : '';
+  const body = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}${enrichBlock}\n\nShe found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
 
   let sent = true;
   try {
