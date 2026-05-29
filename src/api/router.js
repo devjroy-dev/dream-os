@@ -62,6 +62,7 @@ router.use('/couple',         require('./couple/core'));
 // No requireCircleMemberAuth — coplanner sends no JWT. Each endpoint validates
 // via userId/memberUserId/brideId params against circle_members table directly.
 router.use('/auth/verify-pin',       require('./circle/verifyPin'));   // public
+router.use('/circle/join',           require('./circle/join'));         // public — invite token validates
 router.use('/circle/session',        require('./circle/session'));      // public
 router.use('/frost/circle/feed',     require('./circle/feed'));         // brideId validates couple exists
 router.use('/circle/muse',           require('./circle/muse'));         // memberUserId validates circle_member
