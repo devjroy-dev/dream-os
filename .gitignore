@@ -10,3 +10,8 @@ node_modules/
 /anything_*_fix.md
 /*_writes.md
 /*_final.md
+
+# Phase package artifacts — never commit these
+*.zip
+phase*_pkg/
+.phase*_backup/
