@@ -1,10 +1,16 @@
 // src/api/couple/enquire.js
 // POST /api/v2/discover/enquire
-// Silent WhatsApp enquiry — fires WA message to vendor, bride stays in-app.
-// No auth required (discover is public; bride may not be logged in).
+// One Discover "Enquire" tap fans out to four places:
+//   1. WhatsApp ping to the vendor (from the TDW number) — bride stays in-app.
+//   2. Vendor-side LEAD created in their Leads tab (createLead, deduped by phone).
+//   3. Bride-side couple_enquiries row → powers her "Enquired" list in Vendors room.
+//   4. enquiry_taps analytics row.
 //
-// Body: { vendor_id, bride_name?, bride_phone? }
-// Returns: { ok: true, sent: true } or { ok: false, error }
+// No JWT (discover is public). couple_id is passed in the body when the bride is
+// logged in, so steps 2/3 are best-effort: a logged-out bride still gets step 1+4.
+//
+// Body: { vendor_id, couple_id?, bride_name?, bride_phone? }
+// Returns: { ok: true, sent: bool }
 
 'use strict';
 
@@ -12,10 +18,11 @@ const express       = require('express');
 const router        = express.Router();
 const asyncHandler  = require('../../lib/asyncHandler');
 const { sendWhatsApp } = require('../../lib/whatsapp');
+const { createLead }   = require('../../lib/vendor/leads');
 
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { vendor_id, bride_name, bride_phone } = req.body || {};
+  const { vendor_id, couple_id, bride_name, bride_phone } = req.body || {};
 
   if (!vendor_id) {
     return res.status(400).json({ ok: false, error: 'vendor_id required' });
@@ -44,27 +51,62 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(422).json({ ok: false, error: 'Vendor phone not available.' });
   }
 
-  // Compose enquiry message
+  // ── 1. WhatsApp ping to vendor ─────────────────────────────────────────────
   const brideLine = bride_name ? `Bride: ${bride_name}` : 'A bride on The Dream Wedding';
   const phoneLine = bride_phone ? `\nBride contact: ${bride_phone}` : '';
-  const body = `✦ New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}\n\nShe found you on the Discover feed. Reply on WhatsApp to connect.\n\n— TDW`;
+  const body = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}\n\nShe found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
 
+  let sent = true;
   try {
     await sendWhatsApp(user.phone, body);
   } catch (err) {
     console.error('[enquire] sendWhatsApp error:', err.message);
-    // Still return ok — log failure silently, don't ruin bride's experience
-    return res.json({ ok: true, sent: false, warn: 'message_delayed' });
+    sent = false; // non-fatal — continue creating records
   }
 
-  // Log the tap
-  await supabase.from('enquiry_taps').insert({
-    handle:    vendor.routing_handle || vendor_id,
-    source:    'discover_inapp',
-    tapped_at: new Date().toISOString(),
-  }).then(() => {}).catch(() => {});
+  // ── 2. Vendor-side lead (createLead dedupes by phone) ──────────────────────
+  let vendorLeadId = null;
+  try {
+    const leadRes = await createLead(supabase, vendor.id, {
+      name:        bride_name || 'Dream Wedding enquiry',
+      phone:       bride_phone || null,
+      source:      'discover',
+      raw_message: `${bride_name || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
+    });
+    vendorLeadId = leadRes?.lead?.id || null;
+  } catch (err) {
+    console.error('[enquire] createLead error:', err.message);
+  }
 
-  return res.json({ ok: true, sent: true });
+  // ── 3. Bride-side enquiry record (only if logged in) ───────────────────────
+  if (couple_id) {
+    const { error: enqErr } = await supabase
+      .from('couple_enquiries')
+      .upsert({
+        couple_id,
+        vendor_id:       vendor.id,
+        vendor_name:     vendor.business_name || null,
+        vendor_category: vendor.category      || null,
+        vendor_city:     vendor.city          || null,
+        routing_handle:  vendor.routing_handle || null,
+        vendor_lead_id:  vendorLeadId,
+        created_at:      new Date().toISOString(),
+      }, { onConflict: 'couple_id,vendor_id' });
+    if (enqErr) console.error('[enquire] couple_enquiries upsert error:', enqErr.message);
+  }
+
+  // ── 4. Analytics tap (no .catch on supabase — try/catch instead) ───────────
+  try {
+    await supabase.from('enquiry_taps').insert({
+      handle:    vendor.routing_handle || vendor_id,
+      source:    'discover_inapp',
+      tapped_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[enquire] enquiry_taps insert error:', err.message);
+  }
+
+  return res.json({ ok: true, sent });
 }));
 
 module.exports = router;

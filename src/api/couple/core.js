@@ -45,4 +45,7 @@ router.use('/meridian', require('./meridian'));
 // B-10: Concierge — human escalation from Meridian.
 router.use('/concierge', require('./concierge'));
 
+// B-11: Enquiries — bride's "Enquired" list (Discover enquiries she made).
+router.use('/enquiries', require('./enquiries'));
+
 module.exports = router;
