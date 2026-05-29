@@ -63,7 +63,7 @@ async function findMatches(supabase, vendorId, rawName) {
       .eq('vendor_id', vendorId)
       .ilike('name', like),
     supabase.from('leads')
-      .select('id, name, phone, wedding_date, wedding_date_precision, wedding_city, created_at')
+      .select('id, name, phone, wedding_date, wedding_date_precision, wedding_city, state, created_at')
       .eq('vendor_id', vendorId)
       .ilike('name', like),
     supabase.from('invoices')
@@ -98,8 +98,11 @@ async function findMatches(supabase, vendorId, rawName) {
             ? formatDateWithPrecision(l.wedding_date, l.wedding_date_precision)
             : l.wedding_date)
         : null;
-      const detail = [dateBit ? `wedding ${dateBit}` : null, l.wedding_city || null]
-        .filter(Boolean).join(' · ') || 'lead';
+      const detail = [
+        dateBit ? `wedding ${dateBit}` : null,
+        l.wedding_city || null,
+        l.state && l.state !== 'new' ? l.state : null,
+      ].filter(Boolean).join(' · ') || 'lead';
       candidates.push({
         kind:   'lead',
         id:     l.id,
@@ -125,37 +128,41 @@ async function findMatches(supabase, vendorId, rawName) {
     }
   }
 
-  // De-duplicate PEOPLE. A person can appear as both a client and a lead and
-  // an invoice. We collapse by normalised name + phone so we don't show the
-  // same human three times. Preference order: client > lead > invoice (a
-  // client is the most "real" record). Keep the richest detail.
-  const byKey = new Map();
-  const rank  = { client: 3, lead: 2, invoice: 1 };
+  // De-duplicate PEOPLE — carefully. The ONLY safe signal that two records
+  // are the same human is a shared phone. So:
+  //   • Records WITH a phone: collapse by name+phone (same person across
+  //     client/lead/invoice tables). Preference client > lead > invoice.
+  //   • Records WITHOUT a phone: keep EACH distinct record. Two phone-less
+  //     "Aryan" leads may be two different people — collapsing them would let
+  //     the vendor pick "Aryan" and silently resolve to the wrong record
+  //     (a real data-integrity harm). Better to show each as its own card
+  //     with distinguishing detail (date/city/state) and let the vendor choose.
+  const phoned   = new Map();   // key: name|phone  → collapsed candidate
+  const phoneless = [];          // each kept as-is (distinct row)
+  const rank = { client: 3, lead: 2, invoice: 1 };
+
   for (const cand of candidates) {
-    const key = `${norm(cand.name)}|${cand.phone || ''}`;
-    const existing = byKey.get(key);
-    if (!existing || rank[cand.kind] > rank[existing.kind]) {
-      byKey.set(key, cand);
+    if (cand.phone) {
+      const key = `${norm(cand.name)}|${cand.phone}`;
+      const existing = phoned.get(key);
+      if (!existing || rank[cand.kind] > rank[existing.kind]) {
+        phoned.set(key, cand);
+      }
+    } else {
+      phoneless.push(cand);
     }
   }
 
-  // If phone is missing on some records, the same name with no phone could be
-  // a separate key from the same name WITH a phone. Collapse name-only dupes
-  // into the phoned record when one exists.
-  const collapsed = collapseNameOnlyDupes([...byKey.values()]);
+  // A phone-less record whose name+phone twin already exists in `phoned` is
+  // the same person seen from a record that lacked the phone — drop it.
+  const phonedNames = new Set([...phoned.values()].map(c => norm(c.name)));
+  const keptPhoneless = phoneless.filter(c => !phonedNames.has(norm(c.name)));
+
+  const collapsed = [...phoned.values(), ...keptPhoneless];
 
   // Stable order: most recently touched first.
   collapsed.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   return collapsed;
-}
-
-// If "Priya|<phone>" and "Priya|" both exist, drop the phone-less one — it's
-// the same person seen from a record that lacked the phone.
-function collapseNameOnlyDupes(list) {
-  const phonedNames = new Set(
-    list.filter(c => c.phone).map(c => norm(c.name))
-  );
-  return list.filter(c => c.phone || !phonedNames.has(norm(c.name)));
 }
 
 // Main entry point. Returns:
@@ -181,11 +188,30 @@ function buildClarifyOptions(rawName, matches, opts = {}) {
   const newValue    = opts.newValue    || `${valuePrefix}:new:${rawName}`;
   const noun        = opts.noun        || 'this';
 
-  const options = matches.map(m => ({
-    label: `${m.name}${m.detail ? ` — ${m.detail}` : ''} (existing)`,
-    // value carries kind + id so the caller can resolve the exact record.
-    value: `${valuePrefix}:${m.kind}:${m.id}`,
+  // Build base labels.
+  const base = matches.map(m => ({
+    name:   m.name,
+    detail: m.detail,
+    label:  `${m.name}${m.detail ? ` — ${m.detail}` : ''} (existing)`,
+    value:  `${valuePrefix}:${m.kind}:${m.id}`,
+    created_at: m.created_at,
   }));
+
+  // If any labels are identical (e.g. four "Aryan" leads with no detail),
+  // append a short distinguishing tag so the vendor can still choose the
+  // RIGHT one rather than guessing — never show two identical cards.
+  const labelCounts = base.reduce((acc, o) => {
+    acc[o.label] = (acc[o.label] || 0) + 1; return acc;
+  }, {});
+  const options = base.map((o, i) => {
+    if (labelCounts[o.label] > 1) {
+      const when = o.created_at
+        ? new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+        : `#${i + 1}`;
+      return { label: `${o.name} — added ${when} (existing)`, value: o.value };
+    }
+    return { label: o.label, value: o.value };
+  });
 
   options.push({
     label: matches.length === 1

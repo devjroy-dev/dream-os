@@ -654,6 +654,31 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
 
     // ── create_invoice ──────────────────────────────────────────────────
     case 'create_invoice': {
+      // STEP 1 — resolve the person FIRST, before anything else (incl. amount).
+      // This means "create invoice for Aryan" disambiguates the Aryan before
+      // we ever ask for the amount — no "how much?" then "which Aryan?".
+      // Fires unless the vendor already pinned a lead_id OR already confirmed.
+      // Uses token-boundary matching ("riya" ≠ "Priya") and shows distinct
+      // cards for same-name people (four Aryans → four cards).
+      if (!input.lead_id && !input.confirmed_duplicate) {
+        const { resolveClientReference, buildClarifyOptions } = require('../lib/vendor/resolveClientReference');
+        const { status, matches } = await resolveClientReference(supabase, vendor.id, input.client_name);
+        if (status !== 'none') {
+          const { question, options } = buildClarifyOptions(input.client_name, matches, {
+            valuePrefix: 'invoice_for',
+            noun:        'this invoice',
+          });
+          return ok(JSON.stringify({ clarify: { question, options } }));
+        }
+        // status 'none' → brand-new client, fall through.
+      }
+
+      // STEP 2 — person is resolved (or confirmed new). Now we need an amount.
+      // If the agent called us upfront (just to resolve the person) without an
+      // amount yet, ask for it now — the person is already pinned.
+      if (input.amount_total == null) {
+        return ok(`Got it — who's this for is sorted. What's the total amount for this invoice?`);
+      }
       if (input.amount_total <= 0) return err('Invoice total must be greater than zero.');
       if (input.amount_advance != null && input.amount_advance < 0) return err('Advance cannot be negative.');
       if (input.amount_advance != null && input.amount_advance > input.amount_total) return err('Advance cannot exceed the total.');
@@ -667,25 +692,6 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
         .from('users').select('name').eq('id', v.user_id).single();
 
       if (!v.routing_handle) return err('Onboarding incomplete — cannot create invoice. Contact support.');
-
-      // Client-reference disambiguation via the shared resolver (3.0-C1).
-      // Fires unless the vendor already pinned a lead_id OR already confirmed.
-      // Unlike the old check, this also offers cards on a SINGLE match
-      // (existing-vs-new) and uses token-boundary matching so "riya" does not
-      // collide with "Priya".
-      if (!input.lead_id && !input.confirmed_duplicate) {
-        const { resolveClientReference, buildClarifyOptions } = require('../lib/vendor/resolveClientReference');
-        const { status, matches } = await resolveClientReference(supabase, vendor.id, input.client_name);
-
-        if (status !== 'none') {
-          const { question, options } = buildClarifyOptions(input.client_name, matches, {
-            valuePrefix: 'invoice_for',
-            noun:        'this invoice',
-          });
-          return ok(JSON.stringify({ clarify: { question, options } }));
-        }
-        // status 'none' → brand-new client, fall through and create the invoice.
-      }
 
       // Set prefix if null
       if (v.invoice_prefix === null) {

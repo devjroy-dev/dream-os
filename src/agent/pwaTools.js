@@ -220,7 +220,7 @@ const PWA_TOOLS = [
         notes: { type: 'string', description: 'Anything else worth capturing. Optional.' },
         confirmed_duplicate: { type: 'boolean', description: 'Set true ONLY when you previously asked the vendor "is this the same [name] or a different person?" (or showed disambiguation options) AND they confirmed it is the same existing client. This skips the duplicate-name check and proceeds. Never set true on the first attempt — only after an explicit confirmation.' },
       },
-      required: ['client_name', 'amount_total'],
+      required: ['client_name'],
     },
   },
 
