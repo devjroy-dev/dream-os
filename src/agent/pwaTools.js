@@ -727,7 +727,7 @@ const PWA_TOOLS = [
   },
   {
     name: 'clarify',
-    description: 'Ask the vendor a clarifying question when their request is genuinely ambiguous between two equally likely options. Use sparingly — only when acting on the wrong interpretation would cause real harm (e.g. wrong invoice, wrong client). Do NOT use for minor uncertainties you can resolve from context.',
+    description: 'Ask the vendor a question by showing tappable cards instead of prose. Use this WHENEVER your question has a small set of discrete answers (2-4) the vendor can pick from — which client they mean, existing-vs-new, yes/no confirmations, which invoice. The vendor taps instead of re-typing. Always prefer this over asking in plain text when the answers are knowable. Only ask in prose when the answer is genuinely open-ended (e.g. a freeform amount or description).',
     input_schema: {
       type: 'object',
       properties: {
