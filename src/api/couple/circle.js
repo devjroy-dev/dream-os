@@ -116,7 +116,41 @@ function shapeActivity(a, saveLookup) {
   return base;
 }
 
-// ── GET /member/:memberId — individual member feed ────────────────────────────
+// ── DELETE /member/:memberId — soft-delete a circle member (status → removed) ─
+router.delete('/member/:memberId', asyncHandler(async (req, res) => {
+  const supabase     = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  const { memberId } = req.params;
+
+  // Verify member belongs to this couple
+  const { data: member, error: fErr } = await supabase
+    .from('circle_members')
+    .select('id, status, invitee_name')
+    .eq('id', memberId)
+    .eq('couple_id', couple_id)
+    .maybeSingle();
+
+  if (fErr) {
+    console.error('[DELETE /couple/circle/member] fetch error:', fErr.message);
+    return errRes(res, 500, 'Could not remove member.');
+  }
+  if (!member) return errRes(res, 404, 'Member not found.');
+  if (member.status === 'removed') return okRes(res, { member_id: memberId, status: 'removed' });
+
+  const { error: uErr } = await supabase
+    .from('circle_members')
+    .update({ status: 'removed' })
+    .eq('id', memberId)
+    .eq('couple_id', couple_id);
+
+  if (uErr) {
+    console.error('[DELETE /couple/circle/member] update error:', uErr.message);
+    return errRes(res, 500, 'Could not remove member.');
+  }
+
+  console.log(`[DELETE /couple/circle/member] removed member=${memberId} couple=${couple_id} name=${member.invitee_name}`);
+  return okRes(res, { member_id: memberId, status: 'removed' });
+}));
 // Must come before /:coupleId to avoid Express matching 'member' as a coupleId.
 router.get('/member/:memberId', asyncHandler(async (req, res) => {
   const supabase    = req.app.locals.supabase;
