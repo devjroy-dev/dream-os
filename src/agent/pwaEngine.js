@@ -157,6 +157,7 @@ async function runPWAAgenticTurn({
   const attachments    = [];
   let contactCard      = null;   // populated by generate_client_walink
   let clarifyPayload   = null;   // populated by clarify tool
+  let lastMutation     = null;   // 3.0-C2: {toolName, input, result} of last successful mutating tool
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -224,6 +225,11 @@ async function runPWAAgenticTurn({
 
       // Track mutation for post-loop refetch
       if (mutated) anyMutation = true;
+
+      // 3.0-C2: remember the last successful mutating tool for proactive suggestions.
+      if (mutated && !error) {
+        lastMutation = { toolName: toolUse.name, input: toolUse.input, result };
+      }
 
       // Track errors — model must see these before composing reply
       if (error) iterationHadError = true;
@@ -321,6 +327,63 @@ async function runPWAAgenticTurn({
     }
   }
 
+  // ── 3.0-C2: proactive suggestions ─────────────────────────────────────
+  // After a successful action, offer the natural next step as tappable cards.
+  // Phone-gated: contact actions only when the person has a number; otherwise
+  // we proactively ask for the number with the reason. Never blocks; purely
+  // additive next-steps. Suppressed if a clarify is pending (that's a question).
+  let proactive = null;
+  if (lastMutation && !clarifyPayload) {
+    try {
+      const { buildProactiveSuggestions } = require('../lib/vendor/proactiveSuggestions');
+      const m = lastMutation;
+
+      // Extract ids from the tool result/input (best-effort).
+      const idFrom = (re, str) => { const x = (str || '').match(re); return x ? x[1] : null; };
+      const resultStr = typeof m.result === 'string' ? m.result : '';
+
+      let personName = null, personPhone = null, personLeadId = null, invoiceId = null;
+
+      if (m.toolName === 'create_invoice') {
+        invoiceId    = idFrom(/Invoice ID:\s*([0-9a-f-]{36})/i, resultStr) || idFrom(/ID:\s*([0-9a-f-]{36})/i, resultStr);
+        personName   = m.input?.client_name || null;
+        personLeadId = m.input?.lead_id || null;
+      } else if (m.toolName === 'create_lead') {
+        personLeadId = idFrom(/ID:\s*([0-9a-f-]{36})/i, resultStr);
+        personName   = m.input?.name || null;
+        const phoneM = resultStr.match(/Phone:\s*([^.]+)/i);
+        personPhone  = phoneM && !/none/i.test(phoneM[1]) ? phoneM[1].trim() : null;
+      } else if (m.toolName === 'update_lead_state') {
+        personLeadId = m.input?.lead_id || null;
+      } else if (m.toolName === 'record_payment') {
+        invoiceId    = m.input?.invoice_id || null;
+      } else if (m.toolName === 'add_client') {
+        personName   = m.input?.name || null;
+        personPhone  = m.input?.phone || null;
+      }
+
+      // Resolve phone if we have a lead but no phone yet (the gate needs it).
+      if (personLeadId && personPhone == null) {
+        const { data: lp } = await supabase
+          .from('leads').select('name, phone').eq('id', personLeadId).maybeSingle();
+        if (lp) { personPhone = lp.phone || null; if (!personName) personName = lp.name; }
+      }
+      // For an invoice, resolve the client's phone via the invoice's lead/client.
+      if (m.toolName === 'create_invoice' && personPhone == null && personLeadId) {
+        const { data: lp } = await supabase
+          .from('leads').select('phone').eq('id', personLeadId).maybeSingle();
+        if (lp) personPhone = lp.phone || null;
+      }
+
+      proactive = buildProactiveSuggestions({
+        toolName: m.toolName, input: m.input, result: resultStr,
+        personName, personPhone, personLeadId, invoiceId,
+      });
+    } catch (sugErr) {
+      console.warn('[pwa-agent] proactive suggestion build failed (non-fatal):', sugErr.message);
+    }
+  }
+
   // ── Cost summary ──────────────────────────────────────────────────────
   const cost = calculateCost(modelToUse, totalInputTok, totalOutputTok);
   console.log(`[pwa-agent] tokens: ${totalInputTok} in / ${totalOutputTok} out | cost: $${cost?.cost_usd ?? '?'} / Rs ${cost?.cost_inr ?? '?'} | ${iterations} iter | mutations: ${anyMutation}`);
@@ -328,6 +391,7 @@ async function runPWAAgenticTurn({
   return {
     reply:        finalReply || null,
     clarify:      clarifyPayload || null,   // { question, options[] } if clarify tool fired
+    suggestions:  proactive       || null,   // 3.0-C2: { intro, suggestions[] } optional next-steps
     contact:      contactCard    || null,   // { name, phone, draft } if walink tool fired
     toolCalls:    toolCallsAudit,
     attachments,

@@ -246,6 +246,7 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
       if (result.refresh)  donePayload.refresh  = true;
       if (result.contact)  donePayload.contact  = result.contact;
       if (result.clarify)  donePayload.clarify  = result.clarify;
+      if (result.suggestions) donePayload.suggestions = result.suggestions;
       send(donePayload);
       res.write('data: [DONE]\n\n');
       res.end();
@@ -341,6 +342,7 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   const responseBody = { ok: true, reply, tool_calls: toolCallNames };
   if (result.contact) responseBody.contact = result.contact;
   if (result.clarify) responseBody.clarify = result.clarify;
+  if (result.suggestions) responseBody.suggestions = result.suggestions;
   if (result.refresh) responseBody.refresh = true;
 
   return res.json(responseBody);
