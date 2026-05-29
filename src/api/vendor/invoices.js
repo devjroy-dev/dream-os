@@ -169,6 +169,45 @@ router.patch('/:invoiceId/cancel', requireAuth, resolveVendor({ paramName: 'invo
 // Create invoice. Auto-assigns invoice_number. Counter never resets.
 // Auth: requireAuth. resolveVendor mode A.
 
+// Generate the invoice PDF, upload to the `invoices` storage bucket, set pdf_url.
+// Best-effort: returns the signed URL on success, null on any failure (the invoice
+// itself is already created — a PDF failure must never 500 the create call).
+async function generateAndStoreInvoicePdf(supabase, vendor, invoice) {
+  try {
+    const { data: u } = await supabase
+      .from('users').select('name').eq('id', vendor.user_id).maybeSingle();
+
+    const pdfBuffer = await generateInvoicePdf({
+      invoice,
+      vendor,
+      vendorName: u?.name || vendor.business_name || 'Vendor',
+    });
+
+    const fileName = `${vendor.id}/INVOICE-${invoice.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from('invoices')
+      .upload(fileName, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+    if (uploadErr) {
+      console.error('[invoices:pdf] upload failed:', uploadErr.message);
+      return null;
+    }
+
+    const { data: signed } = await supabase.storage
+      .from('invoices')
+      .createSignedUrl(fileName, 60 * 60 * 24 * 365);
+
+    if (signed?.signedUrl) {
+      await supabase.from('invoices').update({ pdf_url: signed.signedUrl }).eq('id', invoice.id);
+      return signed.signedUrl;
+    }
+    return null;
+  } catch (err) {
+    console.error('[invoices:pdf] generation error:', err.message);
+    return null;
+  }
+}
+
 router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
@@ -187,7 +226,15 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   });
 
   if (!result.ok) return errRes(res, 400, result.error);
-  return okRes(res, { invoice: result.invoice, pdf_pending: true });
+
+  // Generate the PDF synchronously so the vendor can download it immediately.
+  const pdfUrl = await generateAndStoreInvoicePdf(supabase, vendor, result.invoice);
+
+  return okRes(res, {
+    invoice:  { ...result.invoice, pdf_url: pdfUrl },
+    pdf_url:  pdfUrl,
+    pdf_pending: !pdfUrl,
+  });
 }));
 
 // ─── PATCH /api/v2/vendor/invoices/:invoiceId ─────────────────────────

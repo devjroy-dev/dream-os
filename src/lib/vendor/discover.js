@@ -56,11 +56,18 @@ async function getDiscoverStatus(supabase, vendorId) {
   const request = requestRes.data;
   const summary = await portfolioSummary(supabase, vendorId);
 
+  // Saves: how many times brides have saved this vendor to their Muse board.
+  const { count: savesCount } = await supabase
+    .from('muse_saves')
+    .select('id', { count: 'exact', head: true })
+    .eq('vendor_id', vendorId);
+
   return {
     ok: true,
     discover_request_state: vendor?.discover_request_state || 'not_requested',
     discover_eligible:      vendor?.discover_eligible || false,
     portfolio_summary:      summary,
+    saves_count:            savesCount || 0,
     current_request:        request || null,
     last_decision_reason:   request?.reason || null,
   };
