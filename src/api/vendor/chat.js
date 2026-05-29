@@ -346,4 +346,55 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   return res.json(responseBody);
 });
 
+// ── GET /api/v2/vendor/chat/history/:vendorId ──────────────────────────
+// 3.0-B: display-only scrollback. Returns the last N messages of the vendor's
+// vendor_self conversation so the PWA chat shows recent history on open
+// instead of a blank screen. This is NOT agent memory — the agent already
+// reads history from the messages table directly. This endpoint exists purely
+// to render the recent transcript in the UI.
+router.get('/history/:vendorId', requireAuth, resolveVendor(), async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const limit    = Math.min(parseInt(req.query.limit, 10) || 10, 30);
+
+  try {
+    const { data: convo } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('vendor_id', vendor.id)
+      .eq('kind', 'vendor_self')
+      .maybeSingle();
+
+    if (!convo) return res.json({ ok: true, messages: [] });
+
+    const { data: rows, error } = await supabase
+      .from('messages')
+      .select('id, direction, body, sent_by, created_at')
+      .eq('conversation_id', convo.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('[GET /vendor/chat/history] query error:', error.message);
+      return res.status(500).json({ ok: false, error: 'Could not load history.' });
+    }
+
+    // Reverse to chronological, drop empties, shape for the UI.
+    const messages = (rows || [])
+      .reverse()
+      .filter(m => m.body && m.body.trim().length > 0)
+      .map(m => ({
+        id:   m.id,
+        role: m.direction === 'inbound' ? 'user' : 'ai',
+        text: m.body,
+        at:   m.created_at,
+      }));
+
+    return res.json({ ok: true, messages });
+  } catch (err) {
+    console.error('[GET /vendor/chat/history] error:', err.message);
+    return res.status(500).json({ ok: false, error: 'Could not load history.' });
+  }
+});
+
 module.exports = router;
