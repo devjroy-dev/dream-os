@@ -468,6 +468,25 @@ const TOOLS = [
     },
   },
   {
+    name: 'clarify',
+    description: 'Ask the vendor a clarifying question when their request is genuinely ambiguous between two or more equally likely entities, and acting on the wrong one would cause real harm — e.g. recording a payment against the wrong invoice, drafting to the wrong client, or marking the wrong lead lost. MANDATORY before any write (create_invoice, record_payment, update_lead_state, lose_lead, update_lead) when two or more leads/clients/invoices plausibly match what the vendor said (e.g. two clients both named "Priya"). Use sparingly — never for minor uncertainties you can resolve from context or the PENDING ALERTS block. This tool ENDS the turn: it is the vendor-facing reply for this turn. Do NOT also call respond_to_vendor in the same turn. The vendor answers in their next message, then you proceed.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        question: {
+          type: 'string',
+          description: 'The clarifying question. One short sentence. e.g. "Which Priya did you mean?"',
+        },
+        options: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'The distinguishing options, 2-4 short labels with enough detail to tell them apart. e.g. ["Priya Roy — Dec 14 wedding", "Priya Sharma — Feb 8 wedding"]',
+        },
+      },
+      required: ['question', 'options'],
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {

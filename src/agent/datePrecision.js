@@ -82,29 +82,44 @@ function resolveWeddingDate({ wedding_date, raw_message, name }) {
     return { wedding_date: null, raw_message: raw_message || null, precision: null };
   }
 
-  const day = parseInt(ymd.slice(8, 10), 10);
-
-  // Non-1st dates: trust the model, it didn't invent a random day
-  if (day !== 1) {
-    return { wedding_date: ymd, raw_message: raw_message || null, precision: 'day' };
-  }
-
-  // 1st of a month — inspect text sources
+  // Inspect the source text for an explicit month name. This is the
+  // independent signal — we never trust the model's date_precision label.
   const haystack = [raw_message, name].filter(Boolean).join(' ');
   const month = findMonthInText(haystack);
 
-  // No month name in the text → date came from a numeric parse, trust it
-  if (!month) {
-    return { wedding_date: ymd, raw_message: raw_message || null, precision: 'day' };
+  // ── Case 1: a month NAME is present in the text ─────────────────────
+  // This is where the model is most likely to invent a day. Decide purely
+  // on whether the vendor actually wrote a day next to that month — NOT on
+  // which day the model happened to put in wedding_date.
+  if (month) {
+    if (hasDayAdjacentToMonth(haystack, month)) {
+      // Vendor literally said "Dec 14" / "14th July" → day precision, trust it.
+      return { wedding_date: ymd, raw_message: raw_message || null, precision: 'day' };
+    }
+    // Month named, NO day adjacent (e.g. "a December wedding", "July 2026").
+    // Any day in wedding_date is invented. Force month precision AND normalize
+    // the stored date to the 1st-of-month sentinel so the DB is honest — the
+    // UI renders "Dec 2026", never a fake "14 Dec 2026".
+    const sentinel = `${ymd.slice(0, 8)}01`;
+    return { wedding_date: sentinel, raw_message: raw_message || null, precision: 'month' };
   }
 
-  // Month name AND adjacent day → vendor literally said "July 1"
-  if (hasDayAdjacentToMonth(haystack, month)) {
-    return { wedding_date: ymd, raw_message: raw_message || null, precision: 'day' };
+  // ── Case 2: no month name in the text ───────────────────────────────
+  // Could still be a year-only mention ("sometime in 2027", "2027 wedding").
+  // If the text names a 4-digit year but NO month and NO standalone day
+  // number, any month/day in wedding_date is invented → year precision,
+  // normalized to Jan 1 sentinel so the UI renders just "2027".
+  const yearOnly = /\b(20\d{2})\b/.test(haystack)
+    && !/\b([1-9]|[12]\d|3[01])(?:st|nd|rd|th)\b/i.test(haystack)   // no "14th"-style day
+    && !/\b([1-9]|[12]\d|3[01])[\s\-/]/.test(haystack);            // no leading day number
+  if (yearOnly) {
+    const yyyy = /\b(20\d{2})\b/.exec(haystack)[1];
+    return { wedding_date: `${yyyy}-01-01`, raw_message: raw_message || null, precision: 'year' };
   }
 
-  // Month-only — KEEP the 1st sentinel, mark precision=month
-  return { wedding_date: ymd, raw_message: raw_message || null, precision: 'month' };
+  // Date came from a numeric parse ("14-12-2026") or a relative phrase
+  // ("next Friday") the model resolved. Trusted as 'day'.
+  return { wedding_date: ymd, raw_message: raw_message || null, precision: 'day' };
 }
 
 // ── Display formatter for precision-aware date rendering ────────────────────

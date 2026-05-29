@@ -171,7 +171,14 @@ async function runCircleAgenticTurn({
     }
   }
 
-  if (finalReply === null) finalReply = 'Got it.';
+  // Honest fallback (Phase 1.1): reaching here with finalReply still null means
+  // the loop ran every iteration calling tools (e.g. delete_muse_save) without
+  // ever composing a reply. 'Got it.' would falsely confirm a possibly-failed
+  // action. Say something honest instead.
+  if (finalReply === null) {
+    console.warn(`[circle-agent] hit CIRCLE_MAX_ITERS without a final reply — honest fallback`);
+    finalReply = "Hmm, that didn't quite go through — mind trying once more?";
+  }
 
   const cost = calculateCost(MODEL_HAIKU, totalInputTokens, totalOutputTokens);
   console.log(`[circle-agent] tokens: ${totalInputTokens} in / ${totalOutputTokens} out | cost: $${cost?.cost_usd ?? '?'} / Rs ${cost?.cost_inr ?? '?'}`);

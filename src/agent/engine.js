@@ -9,7 +9,7 @@ const { TOOLS }                   = require('./tools');
 const { buildInvoiceMessage }     = require('../lib/invoiceMessage');
 const { generateInvoicePdf }     = require('../lib/invoicePdf');
 const { formatRs }               = require('../lib/format');
-const { classifyMessage }         = require('./classifier');
+const { classifyMessage, classifyVendorMessage } = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { resolveOrCreateClient } = require('../lib/clients');
 const { sendWhatsApp }          = require('../lib/whatsapp');
@@ -163,16 +163,45 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     { role: 'user', content: inboundMessage },
   ];
 
-  // ── Classify complexity → pick model ───────────────────────────
-  // Pass last 2 history turns so classifier has disambiguation context.
+  // ── Classify complexity + ambiguity (Phase 1.4) ─────────────────
+  // ONE Haiku call returns both verdicts. Pass last 2 history turns so the
+  // classifier has context ("same Priya", a reply to a prior clarify, etc.).
   const classifierHistory = history.slice(-2);
-  const complexity  = await classifyMessage(inboundMessage, classifierHistory, anthropic);
+  const { complexity, ambiguity } = await classifyVendorMessage(inboundMessage, classifierHistory, anthropic);
   const modelToUse  = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
-  console.log(`[agent] model selected: ${modelToUse} (${complexity})`);
+  console.log(`[agent] model selected: ${modelToUse} (${complexity}/${ambiguity})`);
+
+  // ── Ambiguity gate (Phase 1.4) ──────────────────────────────────
+  // Structural guarantee for the AMBIGUOUS OR FORWARDED CONTENT rule: if the
+  // inbound is a bare forward / name+number / contextless fragment, do NOT run
+  // the main agent (which could silently auto-create the wrong thing). Ask one
+  // clarifying question and end the turn. The vendor's framed reply ("lead" /
+  // "note" / "ignore") flows through normally next turn — by then the message
+  // has context, so the classifier returns 'clear' and the agent proceeds.
+  //
+  // Skipped when there's recent session history (the message is likely a reply
+  // to something already in flight, not a cold contextless drop) — we only gate
+  // genuinely cold ambiguous inbounds.
+  if (ambiguity === 'ambiguous' && history.length === 0) {
+    const gateReply = 'Is this a lead to log, a note to save, or something else?';
+    console.log(`[agent] ambiguity gate fired — asking instead of auto-acting | "${inboundMessage.slice(0, 60)}"`);
+    return {
+      reply:        gateReply,
+      toolCalls:    [],
+      attachments:  [],
+      iterations:   0,
+      model:        MODEL_HAIKU,
+      inputTokens:  0,
+      outputTokens: 0,
+      costUsd:      null,
+      costInr:      null,
+    };
+  }
 
   // ── Agentic loop ────────────────────────────────────────────────
   let iterations     = 0;
   let finalReply     = null;
+  let isClarify      = false;   // Phase 1.2 — true when finalReply is a clarify question (skip the ?-strip)
   let totalInputTok  = 0;
   let totalOutputTok = 0;
   const toolCallsAudit = [];
@@ -238,6 +267,21 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
         finalReply = toolUse.input.message;
       }
 
+      // ── clarify (Phase 1.2) ──────────────────────────────────────
+      // WhatsApp has no tappable chips, so a clarification becomes the
+      // text reply itself: the question followed by a numbered list of
+      // options. Setting finalReply here ends the turn — the vendor
+      // answers in their next message. isClarify guards this reply from
+      // the first-question-mark strip below (which would otherwise chop
+      // off the numbered options after the "?").
+      if (toolUse.name === 'clarify') {
+        const q    = (toolUse.input.question || '').trim();
+        const opts = Array.isArray(toolUse.input.options) ? toolUse.input.options : [];
+        const numbered = opts.map((o, i) => `${i + 1}. ${o}`).join('\n');
+        finalReply = numbered ? `${q}\n${numbered}` : q;
+        isClarify  = true;
+      }
+
       toolResults.push({
         type: 'tool_result',
         tool_use_id: toolUse.id,
@@ -268,7 +312,9 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   // Strip any commentary after the first sentence-ending question mark.
   // A sentence-ending "?" is followed by a space, newline, or end-of-string.
   // A URL query separator "?" is followed by alphanumeric characters — we do NOT strip those.
-  if (finalReply) {
+  // EXCEPTION (Phase 1.2): a clarify reply is "Question?\n1. ...\n2. ..." — stripping
+  // at the first "?" would delete the numbered options. Skip the strip for clarify.
+  if (finalReply && !isClarify) {
     const sentenceEndQ = /\?(?=\s|$)/;
     const match = sentenceEndQ.exec(finalReply);
     if (match) {
@@ -276,12 +322,27 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     }
   }
 
+  // ── Honest fallback (Phase 1.1) ────────────────────────────────
+  // Two distinct cases were previously collapsed into 'Got it.':
+  //   (a) The loop ended cleanly but the model produced no text (finalReply
+  //       was set to '' / 'Got it.' at the no-tool-use break). Harmless.
+  //   (b) The loop hit MAX_ITERATIONS still wanting to call tools and NEVER
+  //       set finalReply (still null here). In that case 'Got it.' is a LIE —
+  //       it confirms success when the work may not have completed.
+  // We only reach this return with finalReply === null in case (b). Replace
+  // the false confirmation with honest uncertainty so the vendor retries
+  // instead of trusting a phantom success.
+  if (finalReply === null) {
+    console.warn(`[agent] hit MAX_ITERATIONS (${iterations}) without a final reply — sending honest fallback`);
+    finalReply = "Something slowed down on my end and I'm not sure that went through. Send that again?";
+  }
+
   // ── Calculate and return cost data ────────────────────────────
   const cost = calculateCost(modelToUse, totalInputTok, totalOutputTok);
   console.log(`[agent] tokens: ${totalInputTok} in / ${totalOutputTok} out | cost: $${cost?.cost_usd ?? '?'} / Rs ${cost?.cost_inr ?? '?'}`);
 
   return {
-    reply:        finalReply || 'Got it.',
+    reply:        finalReply,
     toolCalls:    toolCallsAudit,
     attachments,
     iterations,
@@ -1354,6 +1415,14 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
     case 'respond_to_vendor': {
       console.log(`[tool:respond] "${input.message.slice(0, 80)}"`);
       return 'Reply queued.';
+    }
+
+    case 'clarify': {
+      // No DB side effects. The agentic loop has already formatted this into
+      // the numbered text reply and ended the turn. This case exists so the
+      // tool dispatch doesn't fall through to "unknown tool".
+      console.log(`[tool:clarify] "${(input.question || '').slice(0, 80)}" (${(input.options || []).length} options)`);
+      return 'Clarification asked.';
     }
 
     case 'record_payment': {
