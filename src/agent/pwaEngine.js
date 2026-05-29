@@ -483,6 +483,23 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
         linked_lead_id = input.linked_lead_id;
       }
 
+      // Client-reference disambiguation (3.0-C1). Only when the event is tied
+      // to a NAMED client, the lead isn't already pinned, and we haven't yet
+      // confirmed. Person-less events ("edit photos", "pay rent") carry no
+      // client_name and skip this entirely.
+      if (input.client_name && !linked_lead_id && !input.confirmed_client) {
+        const { resolveClientReference, buildClarifyOptions } = require('../lib/vendor/resolveClientReference');
+        const { status, matches } = await resolveClientReference(supabase, vendor.id, input.client_name);
+        if (status !== 'none') {
+          const { question, options } = buildClarifyOptions(input.client_name, matches, {
+            valuePrefix: 'event_for',
+            noun:        'this event',
+          });
+          return ok(JSON.stringify({ clarify: { question, options } }));
+        }
+        // status 'none' → new person, fall through and create the event.
+      }
+
       const { data: event, error } = await supabase.from('events').insert({
         vendor_id:      vendor.id,
         title:          input.title,
@@ -651,47 +668,23 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
 
       if (!v.routing_handle) return err('Onboarding incomplete — cannot create invoice. Contact support.');
 
-      // Duplicate name check (only if lead_id not provided AND not already confirmed)
-      // confirmed_duplicate is set by the agent after the vendor confirms the
-      // disambiguation — this is what stops the re-ask loop (3.0-A).
+      // Client-reference disambiguation via the shared resolver (3.0-C1).
+      // Fires unless the vendor already pinned a lead_id OR already confirmed.
+      // Unlike the old check, this also offers cards on a SINGLE match
+      // (existing-vs-new) and uses token-boundary matching so "riya" does not
+      // collide with "Priya".
       if (!input.lead_id && !input.confirmed_duplicate) {
-        const { data: leadMatches }    = await supabase.from('leads').select('id, name, wedding_date, wedding_date_precision, wedding_city').eq('vendor_id', vendor.id).ilike('name', `%${input.client_name}%`);
-        const { data: invoiceMatches } = await supabase.from('invoices').select('id, client_name, invoice_number, state, created_at').eq('vendor_id', vendor.id).ilike('client_name', `%${input.client_name}%`).neq('state', 'cancelled');
+        const { resolveClientReference, buildClarifyOptions } = require('../lib/vendor/resolveClientReference');
+        const { status, matches } = await resolveClientReference(supabase, vendor.id, input.client_name);
 
-        if ((leadMatches?.length > 0) || (invoiceMatches?.length > 0)) {
-          // Return as a structured clarify so the PWA renders tappable cards
-          // instead of a re-askable text question (3.0-A + C1). Each card's
-          // value carries the resolution so a tap is unambiguous.
-          const { formatDateWithPrecision: fmtDP } = require('./datePrecision');
-          const options = [];
-
-          (leadMatches || []).forEach(l => {
-            const date = l.wedding_date ? ` · ${fmtDP(l.wedding_date, l.wedding_date_precision)}` : '';
-            const city = l.wedding_city ? ` · ${l.wedding_city}` : '';
-            options.push({
-              label: `${l.name}${date}${city} (existing lead)`,
-              value: `same_client_invoice:${input.client_name}`,
-            });
+        if (status !== 'none') {
+          const { question, options } = buildClarifyOptions(input.client_name, matches, {
+            valuePrefix: 'invoice_for',
+            noun:        'this invoice',
           });
-          (invoiceMatches || []).forEach(i => {
-            options.push({
-              label: `${i.invoice_number} — ${i.state} (existing invoice)`,
-              value: `same_client_invoice:${input.client_name}`,
-            });
-          });
-          // Always offer the "different person" escape.
-          options.push({
-            label: `Different person — new client`,
-            value: `new_client_invoice:${input.client_name}`,
-          });
-
-          return ok(JSON.stringify({
-            clarify: {
-              question: `I found existing records for "${input.client_name}". Is this the same person, or someone new?`,
-              options,
-            },
-          }));
+          return ok(JSON.stringify({ clarify: { question, options } }));
         }
+        // status 'none' → brand-new client, fall through and create the invoice.
       }
 
       // Set prefix if null

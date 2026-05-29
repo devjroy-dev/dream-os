@@ -133,6 +133,8 @@ const PWA_TOOLS = [
           description: 'Event type. photoshoot/wedding/event = shoot. Phone call = call. Site visit = recce.',
         },
         linked_lead_id: { type: 'string', description: 'UUID of an existing lead this event relates to. Optional.' },
+        client_name: { type: 'string', description: 'If this event is FOR a specific named client (e.g. "Priya\'s shoot"), put just their name here so it can be matched to the right person. Leave empty for person-less events like "edit photos" or "pay rent".' },
+        confirmed_client: { type: 'boolean', description: 'Set true only after you showed disambiguation cards for client_name and the vendor confirmed which person. Skips the client match check.' },
         notes: { type: 'string', description: 'Location, contact, prep notes. Optional.' },
       },
       required: ['title', 'event_date', 'kind'],
