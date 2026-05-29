@@ -385,4 +385,42 @@ router.post('/add-url', asyncHandler(async (req, res) => {
   });
 }));
 
+// ── PATCH /caption/:saveId — update caption on a muse_save (incl. moments) ──
+// Body: { caption: string | null }
+router.patch('/caption/:saveId', asyncHandler(async (req, res) => {
+  const supabase     = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  const { saveId }   = req.params;
+  const { caption }  = req.body || {};
+
+  // Verify ownership
+  const { data: existing, error: fErr } = await supabase
+    .from('muse_saves')
+    .select('id')
+    .eq('id', saveId)
+    .eq('couple_id', couple_id)
+    .maybeSingle();
+
+  if (fErr) {
+    console.error('[PATCH /muse/caption] fetch error:', fErr.message);
+    return errRes(res, 500, 'Could not update caption.');
+  }
+  if (!existing) return errRes(res, 404, 'Save not found.');
+
+  const newCaption = (typeof caption === 'string' && caption.trim()) ? caption.trim() : null;
+
+  const { error: uErr } = await supabase
+    .from('muse_saves')
+    .update({ caption: newCaption })
+    .eq('id', saveId)
+    .eq('couple_id', couple_id);
+
+  if (uErr) {
+    console.error('[PATCH /muse/caption] update error:', uErr.message);
+    return errRes(res, 500, 'Could not update caption.');
+  }
+
+  return okRes(res, { save_id: saveId, caption: newCaption });
+}));
+
 module.exports = router;
