@@ -509,6 +509,24 @@ const TOOLS = [
     },
   },
   {
+    name: 'send_to_couple',
+    description: 'Send a message to a couple/client on the vendor\'s behalf — e.g. when the vendor says "quote Ananya 4 lakh", "tell Priya we\'re available", "let her know the date works". The couple receives it on WhatsApp as a continuation of their existing thread with this vendor. Resolve WHICH couple from the PENDING ALERTS block (that is who "her"/"him"/"them" refers to). You MUST compose the message yourself in a warm, semi-formal assistant voice — NEVER relay the vendor\'s raw shorthand. For any price or quote, frame it professionally with the caveat the tool guidance gives you (a bare number must never go out). Do NOT over-pleasantry, do NOT sound like a chatbot. After sending, confirm to the vendor briefly what was passed on.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        lead_id: {
+          type: 'string',
+          description: 'UUID of the lead/couple to message. Get it from the PENDING ALERTS block (the active conversation the vendor is referring to).',
+        },
+        message: {
+          type: 'string',
+          description: 'The fully-composed message to send to the couple, in warm semi-formal assistant voice. If conveying a price, it MUST include the professional caveat (what the figure depends on) — never a bare number. Plain text, no markdown, 1-3 sentences.',
+        },
+      },
+      required: ['lead_id', 'message'],
+    },
+  },
+  {
     name: 'respond_to_vendor',
     description: 'Send the reply to the vendor. FORMAT RULES — non-negotiable: (1) For lead confirmations: "Got it — [name or details], [date], [city], [budget], [source]. [Single question about next step]?" — nothing else. (2) For all other replies: maximum 2 sentences. (3) No opinions, no commentary, no observations about the lead quality or business. The vendor gets exactly what they need to act, nothing more.',
     input_schema: {

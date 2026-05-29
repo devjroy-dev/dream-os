@@ -25,7 +25,7 @@ const WA_MUTATING_TOOLS = new Set([
   'note_to_self', 'create_lead', 'update_lead_state', 'update_conversation_state',
   'create_event', 'update_event_state', 'commit_event_proposals',
   'create_invoice', 'record_payment', 'log_expense', 'add_client',
-  'update_routing_handle', 'update_invoice_prefix',
+  'update_routing_handle', 'update_invoice_prefix', 'send_to_couple',
 ]);
 
 const MAX_ITERATIONS = 5;
@@ -1718,6 +1718,31 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
       const dateStr = expense.expense_date || new Date().toISOString().split('T')[0];
       console.log(`[tool:log_expense] Rs ${input.amount} — ${input.category} — ${dateStr}`);
       return `Expense logged — Rs ${formatRs(input.amount)}, ${input.category}${input.description ? `: ${input.description}` : ''}, ${dateStr}.`;
+    }
+
+    case 'send_to_couple': {
+      if (!input.lead_id) return 'I need to know which client this is for. Who should I send it to?';
+      if (!input.message || !input.message.trim()) return 'There is no message to send.';
+
+      const { replyToCouple } = require('../lib/vendor/replyToCouple');
+      const result = await replyToCouple(supabase, {
+        vendor,
+        leadId:  input.lead_id,
+        message: input.message,
+      });
+
+      if (!result.ok) {
+        if (result.error === 'no_phone') {
+          const who = result.lead?.name ? result.lead.name : 'this client';
+          return `I couldn't send it — I don't have a phone number for ${who} on file. Add their number and I'll be able to message them.`;
+        }
+        console.error('[tool:send_to_couple] failed:', result.error);
+        return `I couldn't send that message right now (${result.error}). Try again in a moment.`;
+      }
+
+      const who = result.lead?.name ? result.lead.name : 'them';
+      console.log(`[tool:send_to_couple] sent to lead ${input.lead_id} (${who}) — thread ${result.threadId}`);
+      return `Sent to ${who}. They'll see it on WhatsApp as part of your conversation with them.`;
     }
 
         case 'update_invoice_prefix': {
