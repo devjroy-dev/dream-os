@@ -56,24 +56,32 @@ async function buildEnquiryEnrichment(supabase, opts = {}) {
 
     let { vendor, coupleId, weddingDate, budgetMin, budgetMax } = opts;
 
-    // ── Hydrate the DATE (only) from the couple profile when known ──────────
-    // Path B (Discover tap) carries no date — but a logged-in bride's couples
-    // row may have one from bride-side onboarding. A wedding date is valid for
-    // 📅 and 🔥 regardless of where it came from.
+    // ── Hydrate DATE + BUDGET from couple profile when known ────────────────
+    // Path B (Discover tap) carries no date or budget. A logged-in bride's
+    // couples row may have both from bride-side onboarding.
     //
-    // We deliberately DO NOT hydrate budget here. couples.budget_total is her
-    // WHOLE-WEDDING budget — comparing it to a single vendor's fee is apples to
-    // oranges and produces nonsense ("1186% above your base fee"). The 💰 line
-    // only fires when a genuine PER-VENDOR budget is passed in by the caller —
-    // which happens on the conversation path (capture_couple_lead captures
-    // "₹4L for photography"), never from profile hydration.
-    if (coupleId && !weddingDate) {
+    // DATE: always valid for 📅 and 🔥 — hydrate freely.
+    // BUDGET: hydrated only for the NEUTRAL FACT display ("Total wedding budget:
+    //   Rs 45L"). The explicitBudget flag (opts.budgetMin != null) distinguishes
+    //   a per-vendor budget passed by the caller from a whole-wedding total
+    //   hydrated here. The fee comparison (💰 X% above your base fee) is only
+    //   shown for explicit per-vendor budgets — never for the whole-wedding total.
+    if (coupleId && (!weddingDate || budgetMin == null)) {
       const { data: couple } = await supabase
         .from('couples')
-        .select('wedding_date')
+        .select('wedding_date, budget_total')
         .eq('id', coupleId)
         .maybeSingle();
-      if (couple && couple.wedding_date) weddingDate = couple.wedding_date;
+      if (couple) {
+        if (!weddingDate && couple.wedding_date) weddingDate = couple.wedding_date;
+        // Only hydrate budget if no explicit per-vendor budget was passed in.
+        // This sets budgetMin/Max so the neutral-fact line can fire, but
+        // explicitBudget stays false so the fee comparison is suppressed.
+        if (budgetMin == null && couple.budget_total) {
+          budgetMin = couple.budget_total;
+          budgetMax = couple.budget_total;
+        }
+      }
     }
 
     const lines = [];
@@ -112,30 +120,44 @@ async function buildEnquiryEnrichment(supabase, opts = {}) {
       }
     }
 
-    // ── 💰 Budget vs base fee ────────────────────────────────────────────
-    // Need the vendor's base fee. Use the passed vendor object if present,
-    // else read it. Compare her budget midpoint to the vendor's fee midpoint.
-    const brideBudget = midpoint(budgetMin, budgetMax);
+    // ── 💰 Budget context ────────────────────────────────────────────────
+    // Two modes:
+    //   (a) budgetMin was passed in explicitly (conversation path — she stated
+    //       a per-vendor budget) → compare to vendor fee, show delta %.
+    //   (b) only whole-wedding budget_total is available (Discover path) →
+    //       show as a neutral fact ("Total wedding budget: Rs 45L") so the
+    //       vendor has the context without a misleading fee comparison.
+    const explicitBudget = opts.budgetMin != null;   // true only when caller passed it in
+    const brideBudget    = midpoint(budgetMin, budgetMax);
     if (brideBudget != null) {
-      let feeMin = vendor?.base_fee_min;
-      let feeMax = vendor?.base_fee_max;
-      if (feeMin == null && feeMax == null) {
-        const { data: v } = await supabase
-          .from('vendors')
-          .select('base_fee_min, base_fee_max')
-          .eq('id', vendorId)
-          .maybeSingle();
-        if (v) { feeMin = v.base_fee_min; feeMax = v.base_fee_max; }
-      }
-      const vendorFee = midpoint(feeMin, feeMax);
-      if (vendorFee != null && vendorFee > 0) {
-        const deltaPct = Math.round(((brideBudget - vendorFee) / vendorFee) * 100);
-        const absPct   = Math.abs(deltaPct);
-        let verdict;
-        if (absPct <= 5)        verdict = `right around your base fee`;
-        else if (deltaPct > 0)  verdict = `${absPct}% ABOVE your base fee`;
-        else                    verdict = `${absPct}% below your base fee`;
-        lines.push(`💰 Her budget (${fmtRsShort(brideBudget)}) is ${verdict} (${fmtRsShort(vendorFee)}).`);
+      if (explicitBudget) {
+        // Conversation path — per-vendor budget, compare to fee.
+        let feeMin = vendor?.base_fee_min;
+        let feeMax = vendor?.base_fee_max;
+        if (feeMin == null && feeMax == null) {
+          const { data: v } = await supabase
+            .from('vendors')
+            .select('base_fee_min, base_fee_max')
+            .eq('id', vendorId)
+            .maybeSingle();
+          if (v) { feeMin = v.base_fee_min; feeMax = v.base_fee_max; }
+        }
+        const vendorFee = midpoint(feeMin, feeMax);
+        if (vendorFee != null && vendorFee > 0) {
+          const deltaPct = Math.round(((brideBudget - vendorFee) / vendorFee) * 100);
+          const absPct   = Math.abs(deltaPct);
+          let verdict;
+          if (absPct <= 5)        verdict = `right around your base fee`;
+          else if (deltaPct > 0)  verdict = `${absPct}% ABOVE your base fee`;
+          else                    verdict = `${absPct}% below your base fee`;
+          lines.push(`💰 Her budget (${fmtRsShort(brideBudget)}) is ${verdict} (${fmtRsShort(vendorFee)}).`);
+        } else {
+          // No fee set — show as neutral fact.
+          lines.push(`💰 Her budget: ${fmtRsShort(brideBudget)}.`);
+        }
+      } else {
+        // Discover path — whole-wedding budget shown as neutral context.
+        lines.push(`💰 Total wedding budget: ${fmtRsShort(brideBudget)}.`);
       }
     }
 

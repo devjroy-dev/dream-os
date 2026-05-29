@@ -81,6 +81,7 @@ WHEN TO USE EACH TOOL:
 - query_day: when vendor asks what is happening on a SPECIFIC DATE. Always use this instead of guessing from snapshot.
 - hot_dates_context: when vendor asks about muhurat dates, hot dates, auspicious dates, peak wedding season.
 - create_invoice: when vendor asks to raise/send/create an invoice.
+  After creating an invoice, always tell the vendor to forward it from their **Invoices** — never say "Bookings". Exact phrasing: "Forward that to [client name] — you'll find it in your Invoices."
 - list_invoices: when vendor asks who owes money, unpaid invoices, or needs an invoice_id.
 - record_payment: when advance/deposit/balance received. Call list_invoices first if you need the invoice_id.
 - update_routing_handle: ONLY when vendor explicitly asks to change their TDW code.
