@@ -43,16 +43,27 @@ async function replyToCouple(supabase, { vendor, leadId = null, couplePhone = nu
     phone = lead?.phone || null;
   }
 
-  // Fallback: if the lead has no phone, try to recover it from this vendor's
-  // couple_threads — but ONLY in a way that can't send to the wrong couple.
-  // We require the lead to exist and match the thread, so a stray recent thread
-  // for a different couple is never used. If we can't tie a thread to THIS
-  // lead, we return no_phone honestly rather than guess.
+  // Recovery 1: the dupe-split case. Earlier testing/enquiry paths can leave
+  // TWO leads for the same couple — one with the phone, one without — and the
+  // vendor-agent may resolve to the phone-less one. If this lead has a name,
+  // look for a same-name sibling (same vendor) that DOES carry a phone.
+  if (!phone && lead?.name) {
+    const { data: sibling } = await supabase
+      .from('leads')
+      .select('phone')
+      .eq('vendor_id', vendor.id)
+      .ilike('name', lead.name)
+      .not('phone', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sibling?.phone) phone = sibling.phone;
+  }
+
+  // Recovery 2: if still nothing, recover from this vendor's couple_threads —
+  // but ONLY when unambiguous (exactly one thread), so we never send to the
+  // wrong couple. With multiple threads we do not guess.
   if (!phone && lead) {
-    // Threads don't store lead_id, but the couple's lead and thread share the
-    // same phone in normal operation — which is exactly what's missing here.
-    // The only safe recovery is if this vendor has exactly ONE couple_thread
-    // (unambiguous — must be this couple). With multiple, we don't guess.
     const { data: threads } = await supabase
       .from('conversations')
       .select('counterparty_phone')
