@@ -1,8 +1,8 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-19 (P2-6a session)
-**Session:** P2-6a complete. No new migrations. messages.media_url column now in active use for PDF delivery (was 'future' in prior schema docs).
+**Last updated:** 2026-05-29 (Frost audit + vendor PWA audit session)
+**Session:** Frost audit fixes + vendor PWA audit + iOS Safari login hardening. Two new migrations: 0061 (otp_sessions circle_join purpose) and 0062 (couple_enquiries table — bride Discover enquiry ledger).
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0060_booking_contact.sql (2026-05-29)
+**Latest migration applied:** 0062_couple_enquiries.sql (2026-05-29)
 **Migrations 0040–0048 applied to prod. All committed to db/migrations/.**
 - 0040: team_members, team_tasks, team_messages, team_payments
 - 0041: payment_schedules, contracts, tds_ledger, invoices.has_schedule
@@ -11,7 +11,9 @@
 - 0046: demo_profiles
 - 0047: vendors.demo_session_token, vendors.demo_session_expires_at
 - 0048: collab_posts, collab_responses
-**Next migration:** 0061 (when needed)
+- 0061: otp_sessions.purpose widened to include 'circle_join'
+- 0062: couple_enquiries table (bride Discover enquiry ledger)
+**Next migration:** 0063 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
 **Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at,
@@ -821,7 +823,7 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 - New table: vendor_availability (id, vendor_id, blocked_date date, reason, created_at, unique vendor_id+blocked_date)
 
 **Latest migration:** 0060_booking_contact.sql
-**Next migration number:** 0061
+**Next migration number:** 0063
 
 ---
 
@@ -1171,9 +1173,11 @@ Indexes: `collab_responses_post_id_idx` on (post_id, state, created_at DESC). `c
 | **0058_demo_claim_requests.sql** | **B-Demo** | **✅ Applied 2026-05-28. `demo_claim_requests` table — tracks vendors who tap "Claim Your Studio" on the demo landing page.** |
 | **0059_moments_surface.sql** | **B-Frost** | **✅ Applied 2026-05-29. `muse_saves.surface` column — TEXT NOT NULL DEFAULT 'muse' CHECK IN ('muse','moments'). Routes personal candids to Moments room, inspiration to Muse board. Vision classifier (imageOCRRouter) returns muse/receipt/moment based on 50+ labels.** |
 | **0060_booking_contact.sql** | **B-Frost** | **✅ Applied 2026-05-29. `couple_bookings.contact_phone` column — TEXT nullable. Stores vendor contact number for in-app WA+Call buttons in VendorsRoom.** |
+| **0061_otp_circle_join.sql** | **B-Frost** | **✅ Applied 2026-05-29. `otp_sessions.purpose` CHECK constraint widened — adds 'circle_join' (prior: login/reset/demo_enquiry). Allows the circle invite → co-planner join flow to send invite-scoped OTPs that can never be confused with login/reset codes.** |
+| **0062_couple_enquiries.sql** | **B-Frost** | **✅ Applied 2026-05-29. `couple_enquiries` table — bride's Discover enquiry ledger. One row per (couple, vendor) pair. Powers the "Enquired" section in the Frost Vendors room with a pre-filled TDW wa.me link. Distinct from enquiry_taps (analytics), leads (vendor side), and couple_bookings (committed vendors). Unique index on (couple_id, vendor_id).** |
 
-**Latest migration applied:** 0060_booking_contact.sql (2026-05-29)
-**Next migration number:** 0061
+**Latest migration applied:** 0062_couple_enquiries.sql (2026-05-29)
+**Next migration number:** 0063
 
 ---
 
@@ -1497,3 +1501,64 @@ Indexes: `demo_claim_requests_handle_idx` on (ig_handle). `demo_claim_requests_c
 **Admin UI:** `/admin/demo` → Claims tab. Shows vendor name, handle, phone (tappable tel: link), WhatsApp button, contacted toggle, timestamp. New/uncontacted claims have gold border highlight. No contacted claims fade to default border.
 
 **No deduplication constraint:** A vendor can claim multiple times (e.g. if they didn't hear back). Multiple rows per handle are valid and visible in the admin panel. Admin sees all attempts.
+
+---
+
+## Migration 0061 — OTP Sessions: circle_join Purpose
+**Applied:** 2026-05-29
+
+### otp_sessions.purpose constraint extension
+
+The `circle_join` purpose is added to `otp_sessions` so the circle invite → co-planner join flow can send an invite-scoped OTP without that code ever being confused with a login or reset code at verify time.
+
+```sql
+alter table otp_sessions drop constraint if exists otp_sessions_purpose_check;
+alter table otp_sessions add constraint otp_sessions_purpose_check
+  check (purpose in ('login', 'reset', 'demo_enquiry', 'circle_join'));
+```
+
+**Before 0061:** purpose CHECK allowed `'login' | 'reset' | 'demo_enquiry'` (0057 added demo_enquiry).
+**After 0061:** `'circle_join'` is a valid fourth purpose.
+
+**Flow:** The circle invite join route (`src/api/circle/join.js`) — `/circle/join/send-otp` — creates an `otp_sessions` row with `purpose='circle_join'`. The verify endpoint rejects any row where the purpose doesn't match, so a circle-join code can never be replayed as a login.
+
+---
+
+## Migration 0062 — Couple Enquiries (Bride Discover Ledger)
+**Applied:** 2026-05-29
+
+### couple_enquiries
+
+The bride's Discover enquiry ledger. One row per (couple, vendor) pair, written when the bride taps "Enquire" on a vendor in the Discover feed. Powers the **"Enquired"** section in the Frost Vendors room, where each row shows a pre-filled `wa.me/917982159047?text=TDW-<handle>` link to the TDW couple-facing agent — so the bride can follow up without leaving the immersive feed.
+
+Distinct from:
+- `enquiry_taps` — anonymous analytics counter (handle + timestamp, no couple_id)
+- `leads` — the **vendor-side** record (vendor sees it in their Leads tab)
+- `couple_bookings` — vendors the couple has actually committed to ("My team")
+
+A single Discover "Enquire" tap now fans out to four places: (1) WhatsApp ping to vendor via Twilio, (2) this `couple_enquiries` row, (3) a `leads` row on the vendor side (`source='discover'`, deduped by phone via `createLead`), (4) `enquiry_taps` analytics.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| couple_id | uuid FK couples | ON DELETE CASCADE. NOT NULL. |
+| vendor_id | uuid FK vendors | ON DELETE CASCADE. NOT NULL. |
+| vendor_name | text | Snapshot of vendor display name at enquiry time. Nullable. |
+| vendor_category | text | Snapshot of vendor category. Nullable. |
+| vendor_city | text | Snapshot of vendor city. Nullable. |
+| routing_handle | text | Snapshot of vendor routing handle. Used to build the wa.me link client-side without a join. Nullable. |
+| vendor_lead_id | uuid | The `leads.id` created on the vendor side. Nullable (set on successful createLead). |
+| created_at | timestamptz NOT NULL | default now() |
+
+Indexes:
+- `couple_enquiries_couple_vendor_uidx` — UNIQUE on (couple_id, vendor_id). Re-enquiring the same vendor upserts (bumps created_at) rather than creating a duplicate row.
+- `couple_enquiries_couple_idx` — on (couple_id, created_at DESC). Powers the Vendors room "Enquired" list sorted newest-first.
+
+**Backend:**
+- `POST /api/v2/discover/enquire` — public (no JWT). Body: `{ vendor_id, couple_id?, bride_name?, bride_phone? }`. Fan-out: Twilio WA ping → createLead (vendor side, deduped) → couple_enquiries upsert (if couple_id provided) → enquiry_taps insert. Each step try/catch so a partial failure never 500s the enquiry.
+- `GET /api/v2/couple/enquiries` — requireCoupleAuth. Returns `{ enquiries: [...] }`. Mounted in `src/api/couple/core.js` as B-11.
+
+**Frontend:**
+- Vendors room "Enquired" section (above "My team"): fetches on mount, renders vendor name/category + a green WhatsApp button per row.
+- `fetchEnquiries()` in `lib/frost/journey.ts` — `CoupleEnquiry` interface.
+- `DiscoverStatus.saves_count` — also added this session: `getDiscoverStatus` now returns `saves_count` (a COUNT of `muse_saves WHERE vendor_id = <this vendor>`), wired to the vendor's TDW Returns dashboard.
