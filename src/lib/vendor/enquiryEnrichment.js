@@ -56,24 +56,24 @@ async function buildEnquiryEnrichment(supabase, opts = {}) {
 
     let { vendor, coupleId, weddingDate, budgetMin, budgetMax } = opts;
 
-    // ── Hydrate from couple profile when bride is known and fields missing ──
-    // Path B (Discover tap) usually has neither date nor budget — but if she's
-    // a logged-in bride, her couples row may carry both from bride-side onboarding.
-    if (coupleId && (!weddingDate || budgetMin == null)) {
+    // ── Hydrate the DATE (only) from the couple profile when known ──────────
+    // Path B (Discover tap) carries no date — but a logged-in bride's couples
+    // row may have one from bride-side onboarding. A wedding date is valid for
+    // 📅 and 🔥 regardless of where it came from.
+    //
+    // We deliberately DO NOT hydrate budget here. couples.budget_total is her
+    // WHOLE-WEDDING budget — comparing it to a single vendor's fee is apples to
+    // oranges and produces nonsense ("1186% above your base fee"). The 💰 line
+    // only fires when a genuine PER-VENDOR budget is passed in by the caller —
+    // which happens on the conversation path (capture_couple_lead captures
+    // "₹4L for photography"), never from profile hydration.
+    if (coupleId && !weddingDate) {
       const { data: couple } = await supabase
         .from('couples')
-        .select('wedding_date, budget_total')
+        .select('wedding_date')
         .eq('id', coupleId)
         .maybeSingle();
-      if (couple) {
-        if (!weddingDate && couple.wedding_date) weddingDate = couple.wedding_date;
-        // couples.budget_total is a single integer; use it for both bounds if
-        // the enquiry didn't carry an explicit range.
-        if (budgetMin == null && couple.budget_total) {
-          budgetMin = couple.budget_total;
-          budgetMax = couple.budget_total;
-        }
-      }
+      if (couple && couple.wedding_date) weddingDate = couple.wedding_date;
     }
 
     const lines = [];

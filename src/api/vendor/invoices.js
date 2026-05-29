@@ -65,7 +65,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   //  3. ALL invoices (any state) for the summary block aggregation.
 
   let listQuery = supabase.from('invoices')
-    .select('id, invoice_number, client_name, amount_total, amount_paid, state, due_date, created_at')
+    .select('id, invoice_number, client_name, client_phone, amount_total, amount_paid, state, due_date, created_at')
     .eq('vendor_id', vendor.id)
     .is('deleted_at', null);
 

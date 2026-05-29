@@ -326,6 +326,24 @@ const TOOLS = [
     },
   },
   {
+    name: 'get_invoice_pdf',
+    description: 'Get the booking confirmation PDF for an invoice and send it to the vendor as a WhatsApp attachment. Use when vendor asks for the PDF, invoice document, booking confirmation PDF, or says "send me Shreya\'s invoice" / "share the PDF" / "give me the booking document". Always call list_invoices first to get the invoice_id by client name. Only works for invoices in advance_paid or paid state — no PDF exists before an advance is recorded.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        invoice_id: {
+          type: 'string',
+          description: 'The UUID of the invoice. Get this from list_invoices.',
+        },
+        client_name: {
+          type: 'string',
+          description: 'Client name — used to confirm which PDF is being fetched.',
+        },
+      },
+      required: ['invoice_id'],
+    },
+  },
+  {
     name: 'log_expense',
     description: 'Log a business expense. Use when vendor mentions spending money on travel, equipment, an assistant, studio hire, marketing, software, food, printing, commission, a shoot, inventory purchase, or anything else business-related.',
     input_schema: {

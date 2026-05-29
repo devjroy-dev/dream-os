@@ -1639,6 +1639,62 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
       return `${invoices.length} invoice(s):\n${lines}`;
     }
 
+    // ── get_invoice_pdf (Phase 2.7) ─────────────────────────────────────
+    // Fetches the booking confirmation PDF for an invoice and queues it as a
+    // WhatsApp media attachment (index.js picks up attachments[] and sends
+    // as a separate Twilio media message). Uses the stored pdf_url first;
+    // re-signs from the canonical storage path if missing or stale (handles
+    // legacy TDW-* filenames too via the new path). Honest if no PDF exists.
+    case 'get_invoice_pdf': {
+      if (!input.invoice_id) return 'Invoice ID required — call list_invoices first to get it.';
+
+      const { data: inv, error: invErr } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, client_name, state, pdf_url')
+        .eq('id', input.invoice_id)
+        .eq('vendor_id', vendor.id)
+        .maybeSingle();
+
+      if (invErr || !inv) return 'Invoice not found. Check the ID from list_invoices.';
+
+      const clientLabel = input.client_name || inv.client_name;
+
+      // No PDF exists until advance is recorded (Stage 2).
+      if (!['advance_paid', 'paid'].includes(inv.state)) {
+        return `No PDF yet for ${clientLabel}'s invoice (${inv.invoice_number}) — the booking confirmation PDF is generated once the advance payment is recorded.`;
+      }
+
+      let pdfUrl = inv.pdf_url || null;
+
+      // If stored pdf_url is missing, re-sign from the canonical path.
+      // Also handles legacy TDW-* files by trying the new INVOICE-* name.
+      if (!pdfUrl) {
+        try {
+          const canonicalPath = `${vendor.id}/INVOICE-${inv.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;
+          const { data: signed } = await supabase.storage
+            .from('invoices')
+            .createSignedUrl(canonicalPath, 60 * 60 * 24 * 365);
+          if (signed?.signedUrl) {
+            pdfUrl = signed.signedUrl;
+            // Save the re-signed URL so future lookups are instant.
+            await supabase.from('invoices').update({ pdf_url: pdfUrl }).eq('id', inv.id);
+            console.log(`[tool:get_invoice_pdf] re-signed URL for ${inv.invoice_number}`);
+          }
+        } catch (signErr) {
+          console.warn('[tool:get_invoice_pdf] re-sign failed:', signErr.message);
+        }
+      }
+
+      if (!pdfUrl) {
+        return `Couldn't retrieve the PDF for ${clientLabel}'s invoice (${inv.invoice_number}). The PDF may not have been generated — try recording the advance payment again if this seems wrong.`;
+      }
+
+      // Queue as WhatsApp attachment — index.js sends it as a Twilio media message.
+      attachments.push(pdfUrl);
+      console.log(`[tool:get_invoice_pdf] PDF queued for ${inv.invoice_number} — ${pdfUrl.slice(0, 60)}...`);
+      return `Here's ${clientLabel}'s booking confirmation PDF (${inv.invoice_number}) — sending it now.`;
+    }
+
     case 'log_expense': {
       if (!input.amount || input.amount <= 0) return 'Expense amount must be greater than zero.';
 
