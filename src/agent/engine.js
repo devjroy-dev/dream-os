@@ -15,6 +15,17 @@ const { resolveOrCreateClient } = require('../lib/clients');
 const { sendWhatsApp }          = require('../lib/whatsapp');
 const { captureField }          = require('../lib/coupleIdentity');
 const { getReturningBrideIntent } = require('../lib/intentExtractor');
+const { buildVendorSnapshot, logActivity, fetchRecentActivity, formatActivityBlock } = require('../lib/vendor/snapshot');
+
+// Tools that mutate the DB on the WhatsApp surface. Used to feed the
+// cross-surface activity log (Phase 1.5). Read-only tools (list_*, query_*,
+// get_my_tdw_link, hot_dates_context, respond_to_vendor, clarify) are excluded.
+const WA_MUTATING_TOOLS = new Set([
+  'note_to_self', 'create_lead', 'update_lead_state', 'update_conversation_state',
+  'create_event', 'update_event_state', 'commit_event_proposals',
+  'create_invoice', 'record_payment', 'log_expense', 'add_client',
+  'update_routing_handle', 'update_invoice_prefix',
+]);
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 5;
@@ -41,50 +52,22 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   const istToday    = istNow.toISOString().split('T')[0];
   const ist14days   = new Date(istNow.getTime() + 30 * 86400000).toISOString().split('T')[0];
 
-  // ── Baked snapshot — parallel fetch (P2-1 lift) ─────────────────
-  // All context for the system prompt is fetched in one Promise.all so the
-  // agent can answer read questions instantly without tool calls.
-  const [
-    { data: state },
-    { data: recentNotes },
-    { count: openLeadsCount },
-    { data: upcomingEvents },
-    { data: pendingInvoices },
-    { data: pendingEnquiries },
-  ] = await Promise.all([
-    supabase.from('vendor_state').select('*').eq('vendor_id', vendor.id).maybeSingle(),
+  // ── Baked snapshot — shared builder (Phase 1.5) ─────────────────
+  // Same definition the PWA Business Manager uses, so both surfaces read
+  // identical numbers. Followed by cross-surface recent activity.
+  const {
+    state,
+    recentNotes,
+    openLeadsCount,
+    upcomingEvents,
+    pendingInvoices,
+    pendingEnquiries,
+  } = await buildVendorSnapshot(supabase, vendor.id, istToday, ist14days);
 
-    supabase.from('notes').select('content, created_at')
-      .eq('vendor_id', vendor.id)
-      .order('created_at', { ascending: false })
-      .limit(3),
-
-    supabase.from('leads').select('*', { count: 'exact', head: true })
-      .eq('vendor_id', vendor.id)
-      .in('state', ['new', 'contacted', 'quoted']),
-
-    supabase.from('events').select('id, title, event_date, event_time, kind')
-      .eq('vendor_id', vendor.id)
-      .eq('state', 'upcoming')
-      .gte('event_date', istToday)
-      .lte('event_date', ist14days)
-      .order('event_date', { ascending: true })
-      .limit(10),
-
-    // Pending invoices — unpaid/advance_paid, sorted by due date
-    supabase.from('invoices').select('id, client_name, amount_total, amount_paid, due_date, state')
-      .eq('vendor_id', vendor.id)
-      .in('state', ['unpaid', 'advance_paid'])
-      .order('due_date', { ascending: true, nullsFirst: false })
-      .limit(10),
-
-    // Pending enquiries — leads in new state, most recent first
-    supabase.from('leads').select('id, name, wedding_date, wedding_date_precision, wedding_city, budget_total, raw_message, created_at')
-      .eq('vendor_id', vendor.id)
-      .eq('state', 'new')
-      .order('created_at', { ascending: false })
-      .limit(5),
-  ]);
+  // Cross-surface activity — what happened on the app recently, so the PA
+  // knows what the Business Manager just did.
+  const recentActivity = await fetchRecentActivity(supabase, vendor.id);
+  const waActivityBlock = formatActivityBlock(recentActivity, 'whatsapp');
 
   // ── Load conversation history (session-bounded) ───────────────────
   // Older messages belong to a prior session — start fresh.
@@ -144,7 +127,7 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     .limit(3);
 
   // ── Build system prompt ─────────────────────────────────────────
-  const dynamicContext = buildDynamicContext({
+  let dynamicContext = buildDynamicContext({
     vendor,
     user,
     state,
@@ -157,6 +140,9 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
     pendingEventProposals: activeProposals  || [],
     istToday,
   });
+  // Cross-surface activity block (Phase 1.5) — prepend so the PA opens with
+  // awareness of what the Business Manager just did on the app.
+  if (waActivityBlock) dynamicContext = `${waActivityBlock}\n\n${dynamicContext}`;
 
   const messages = [
     ...history,
@@ -262,6 +248,25 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
       });
 
       toolCallsAudit.push({ name: toolUse.name, input: toolUse.input, result });
+
+      // Cross-surface activity log (Phase 1.5) — record successful mutations
+      // so the PWA Business Manager knows what the PA just did. Name-based
+      // allowlist (the WhatsApp executor returns plain strings, no mutated
+      // flag). Skip when the result string signals an error. Fire-and-forget.
+      if (WA_MUTATING_TOOLS.has(toolUse.name)) {
+        const resStr = typeof result === 'string' ? result : JSON.stringify(result);
+        const looksLikeError = /^error|error:|failed|not found|already (exists|lost)/i.test(resStr);
+        if (!looksLikeError) {
+          logActivity(supabase, {
+            vendorId:   vendor.id,
+            surface:    'whatsapp',
+            action:     toolUse.name,
+            summary:    resStr.slice(0, 280),
+            entityType: null,
+            entityId:   null,
+          });
+        }
+      }
 
       if (toolUse.name === 'respond_to_vendor') {
         finalReply = toolUse.input.message;

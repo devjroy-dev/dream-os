@@ -51,6 +51,7 @@ const { generateInvoicePdf }  = require('../lib/invoicePdf');
 const { formatRs }            = require('../lib/format');
 const { resolveOrCreateClient } = require('../lib/clients');
 const { sendWhatsApp }        = require('../lib/whatsapp');
+const { buildVendorSnapshot, logActivity, fetchRecentActivity, formatActivityBlock } = require('../lib/vendor/snapshot');
 
 const MAX_ITERATIONS   = 8;
 const MAX_COST_USD     = 0.50;
@@ -58,51 +59,11 @@ const HISTORY_LIMIT    = 10;
 const SESSION_IDLE_MS  = 15 * 60 * 1000;   // 15 minutes — session boundary
 
 // ── fetchSnapshot ─────────────────────────────────────────────────────────
-// Runs the 6 parallel queries that populate the dynamic context.
-// Called once at start, and again after any write turn (mutated=true).
-
+// Thin wrapper over the shared buildVendorSnapshot (Phase 1.5). Kept as a
+// local name so existing call sites (initial fetch + refetch-after-mutation)
+// don't change. Both surfaces now read the SAME snapshot definition.
 async function fetchSnapshot(supabase, vendorId, istToday, ist14days) {
-  const [
-    { data: state },
-    { data: recentNotes },
-    { count: openLeadsCount },
-    { data: upcomingEvents },
-    { data: pendingInvoices },
-    { data: pendingEnquiries },
-  ] = await Promise.all([
-    supabase.from('vendor_state').select('*').eq('vendor_id', vendorId).maybeSingle(),
-
-    supabase.from('notes').select('content, created_at')
-      .eq('vendor_id', vendorId)
-      .order('created_at', { ascending: false })
-      .limit(3),
-
-    supabase.from('leads').select('*', { count: 'exact', head: true })
-      .eq('vendor_id', vendorId)
-      .in('state', ['new', 'contacted', 'quoted']),
-
-    supabase.from('events').select('id, title, event_date, event_time, kind')
-      .eq('vendor_id', vendorId)
-      .eq('state', 'upcoming')
-      .gte('event_date', istToday)
-      .lte('event_date', ist14days)
-      .order('event_date', { ascending: true })
-      .limit(10),
-
-    supabase.from('invoices').select('id, client_name, amount_total, amount_paid, due_date, state')
-      .eq('vendor_id', vendorId)
-      .in('state', ['unpaid', 'advance_paid'])
-      .order('due_date', { ascending: true, nullsFirst: false })
-      .limit(10),
-
-    supabase.from('leads').select('id, name, wedding_date, wedding_date_precision, wedding_city, budget_total, raw_message, created_at')
-      .eq('vendor_id', vendorId)
-      .eq('state', 'new')
-      .order('created_at', { ascending: false })
-      .limit(5),
-  ]);
-
-  return { state, recentNotes, openLeadsCount, upcomingEvents, pendingInvoices, pendingEnquiries };
+  return buildVendorSnapshot(supabase, vendorId, istToday, ist14days);
 }
 
 // ── runPWAAgenticTurn ─────────────────────────────────────────────────────
@@ -126,6 +87,11 @@ async function runPWAAgenticTurn({
   // ── Initial snapshot fetch ────────────────────────────────────────────
   const snapshot = await fetchSnapshot(supabase, vendor.id, istToday, ist14days);
 
+  // Cross-surface activity (Phase 1.5) — what happened on WhatsApp recently,
+  // so the Business Manager knows what the PA just did.
+  const recentActivity = await fetchRecentActivity(supabase, vendor.id);
+  const activityBlock  = formatActivityBlock(recentActivity, 'pwa');
+
   // ── Build dynamic context ─────────────────────────────────────────────
   let dynamicContext = buildPWADynamicContext({
     vendor,
@@ -138,6 +104,7 @@ async function runPWAAgenticTurn({
     pendingEnquiries: snapshot.pendingEnquiries || [],
     istToday,
   });
+  if (activityBlock) dynamicContext = `${activityBlock}\n\n${dynamicContext}`;
 
   // ── Session-bounded history ───────────────────────────────────────────
   // Only load messages from within the last SESSION_IDLE_MS (15 min).
@@ -260,6 +227,21 @@ async function runPWAAgenticTurn({
 
       // Track errors — model must see these before composing reply
       if (error) iterationHadError = true;
+
+      // Cross-surface activity log (Phase 1.5) — record successful mutations
+      // so the WhatsApp PA knows what was done on the app. Fire-and-forget,
+      // never blocks. The tool's own result string is the human summary.
+      if (mutated && !error) {
+        const summary = (typeof result === 'string' ? result : JSON.stringify(result)).slice(0, 280);
+        logActivity(supabase, {
+          vendorId:   vendor.id,
+          surface:    'pwa',
+          action:     toolUse.name,
+          summary,
+          entityType: null,
+          entityId:   null,
+        });
+      }
 
       // Handle PWA-specific tool outputs
       if (toolUse.name === 'generate_client_walink' && !error) {
