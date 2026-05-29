@@ -1029,8 +1029,9 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
       // 4d. Guard: routing handle
       if (!v.routing_handle) return 'Cannot create invoice — onboarding is incomplete. Contact support.';
 
-      // 4e. Duplicate name check (only if lead_id not provided)
-      if (!input.lead_id) {
+      // 4e. Duplicate name check (only if lead_id not provided AND not confirmed)
+      // confirmed_duplicate is set after the vendor confirms — stops the re-ask loop (3.0-A).
+      if (!input.lead_id && !input.confirmed_duplicate) {
         // Check leads table
         const { data: leadMatches } = await supabase
           .from('leads')
@@ -1070,7 +1071,7 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
             }).join('\n');
           }
 
-          msg += `\n\nIs this the same ${input.client_name}, or a different person? If same, confirm and I'll raise the invoice. If different, give me a more specific name (e.g. "Priya from Pune").`;
+          msg += `\n\nIs this the same ${input.client_name}, or a different person? If the vendor confirms it's the same, call create_invoice again with the same details and confirmed_duplicate set to true. If different, ask for a more specific name.`;
 
           return msg;
         }

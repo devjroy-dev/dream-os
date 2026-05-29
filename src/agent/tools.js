@@ -256,6 +256,10 @@ const TOOLS = [
           type: 'string',
           description: 'Anything else worth capturing. Optional.',
         },
+        confirmed_duplicate: {
+          type: 'boolean',
+          description: 'Set true ONLY after you already asked "is this the same [name] or a different person?" AND the vendor confirmed it is the same existing client. Skips the duplicate-name check and raises the invoice. Never true on the first attempt.',
+        },
       },
       required: ['client_name', 'amount_total'],
     },

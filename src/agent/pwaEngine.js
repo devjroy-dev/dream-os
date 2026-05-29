@@ -251,10 +251,15 @@ async function runPWAAgenticTurn({
         } catch {}
       }
 
-      if (toolUse.name === 'clarify' && !error) {
+      // Any tool may surface a clarify payload (the clarify tool, but also
+      // create_invoice's duplicate-name check, team-member disambiguation,
+      // etc). Detect it generically so all disambiguation renders as cards.
+      if (!error) {
         try {
           const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-          if (parsed.clarify) clarifyPayload = parsed.clarify;
+          if (parsed && parsed.clarify && Array.isArray(parsed.clarify.options)) {
+            clarifyPayload = parsed.clarify;
+          }
         } catch {}
       }
 
@@ -646,22 +651,46 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
 
       if (!v.routing_handle) return err('Onboarding incomplete — cannot create invoice. Contact support.');
 
-      // Duplicate name check (only if lead_id not provided)
-      if (!input.lead_id) {
+      // Duplicate name check (only if lead_id not provided AND not already confirmed)
+      // confirmed_duplicate is set by the agent after the vendor confirms the
+      // disambiguation — this is what stops the re-ask loop (3.0-A).
+      if (!input.lead_id && !input.confirmed_duplicate) {
         const { data: leadMatches }    = await supabase.from('leads').select('id, name, wedding_date, wedding_date_precision, wedding_city').eq('vendor_id', vendor.id).ilike('name', `%${input.client_name}%`);
         const { data: invoiceMatches } = await supabase.from('invoices').select('id, client_name, invoice_number, state, created_at').eq('vendor_id', vendor.id).ilike('client_name', `%${input.client_name}%`).neq('state', 'cancelled');
 
         if ((leadMatches?.length > 0) || (invoiceMatches?.length > 0)) {
-          let msg = `Found existing records for "${input.client_name}":\n`;
-          if (leadMatches?.length > 0) {
-            const { formatDateWithPrecision: fmtDP } = require('./datePrecision');
-            msg += '\nLeads:\n' + leadMatches.map(l => `- ${l.name}${l.wedding_date ? `, wedding ${fmtDP(l.wedding_date, l.wedding_date_precision)}` : ''}${l.wedding_city ? `, ${l.wedding_city}` : ''} (ID: ${l.id})`).join('\n');
-          }
-          if (invoiceMatches?.length > 0) {
-            msg += '\nExisting invoices:\n' + invoiceMatches.map(i => `- ${i.invoice_number} (${i.state})`).join('\n');
-          }
-          msg += `\n\nIs this the same ${input.client_name}, or a different person? If same, confirm and I'll raise the invoice. If different, give me a more specific name.`;
-          return ok(msg);
+          // Return as a structured clarify so the PWA renders tappable cards
+          // instead of a re-askable text question (3.0-A + C1). Each card's
+          // value carries the resolution so a tap is unambiguous.
+          const { formatDateWithPrecision: fmtDP } = require('./datePrecision');
+          const options = [];
+
+          (leadMatches || []).forEach(l => {
+            const date = l.wedding_date ? ` · ${fmtDP(l.wedding_date, l.wedding_date_precision)}` : '';
+            const city = l.wedding_city ? ` · ${l.wedding_city}` : '';
+            options.push({
+              label: `${l.name}${date}${city} (existing lead)`,
+              value: `same_client_invoice:${input.client_name}`,
+            });
+          });
+          (invoiceMatches || []).forEach(i => {
+            options.push({
+              label: `${i.invoice_number} — ${i.state} (existing invoice)`,
+              value: `same_client_invoice:${input.client_name}`,
+            });
+          });
+          // Always offer the "different person" escape.
+          options.push({
+            label: `Different person — new client`,
+            value: `new_client_invoice:${input.client_name}`,
+          });
+
+          return ok(JSON.stringify({
+            clarify: {
+              question: `I found existing records for "${input.client_name}". Is this the same person, or someone new?`,
+              options,
+            },
+          }));
         }
       }
 
@@ -1159,12 +1188,22 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
     }
 
     case 'clarify': {
+      // Normalize options to {label, value}. Accept the new structured form
+      // ({label, value}) and the legacy plain-string form (label === value).
+      // The value carries an unambiguous reference (e.g. "invoice_id:abc") so
+      // a tap resolves the exact record — no re-asking (kills the dup loop).
+      const rawOpts = Array.isArray(input.options) ? input.options : [];
+      const options = rawOpts.map(o => {
+        if (typeof o === 'string') return { label: o, value: o };
+        return { label: o.label || o.value || '', value: o.value || o.label || '' };
+      }).filter(o => o.label);
+
       const clarify = {
         question: input.question,
-        options:  input.options || [],
+        options,
       };
 
-      console.log(`[pwa-tool:clarify] "${input.question}" — ${(input.options || []).length} options`);
+      console.log(`[pwa-tool:clarify] "${input.question}" — ${options.length} options`);
 
       return ok(JSON.stringify({ clarify }));
     }
@@ -1271,7 +1310,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
           return ok(JSON.stringify({
             clarify: {
               question: `Which ${assigned_to_member_name}?`,
-              options:  matches.map(m => m.name),
+              options:  matches.map(m => ({ label: m.name, value: `member_id:${m.id}` })),
             },
           }));
         }
@@ -1313,7 +1352,7 @@ async function executePWATool({ name, input, vendor, conversation, supabase, att
       const norm    = s => s.toLowerCase().trim();
       const matches = (members || []).filter(m => norm(m.name).includes(norm(team_member_name)));
       if (matches.length === 0) return err(`No team member found matching "${team_member_name}".`);
-      if (matches.length > 1)  return ok(JSON.stringify({ clarify: { question: `Which ${team_member_name}?`, options: matches.map(m => m.name) } }));
+      if (matches.length > 1)  return ok(JSON.stringify({ clarify: { question: `Which ${team_member_name}?`, options: matches.map(m => ({ label: m.name, value: `member_id:${m.id}` })) } }));
       const memberId = matches[0].id;
 
       // Check for an existing owed payment — mark it paid if found

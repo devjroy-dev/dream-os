@@ -216,6 +216,7 @@ const PWA_TOOLS = [
         amount_advance: { type: 'integer', description: 'Booking/advance amount in whole rupees. "30 percent advance" = calculate from total. Null if not mentioned.' },
         due_date: { type: 'string', description: 'Balance due date in YYYY-MM-DD. Optional.' },
         notes: { type: 'string', description: 'Anything else worth capturing. Optional.' },
+        confirmed_duplicate: { type: 'boolean', description: 'Set true ONLY when you previously asked the vendor "is this the same [name] or a different person?" (or showed disambiguation options) AND they confirmed it is the same existing client. This skips the duplicate-name check and proceeds. Never set true on the first attempt — only after an explicit confirmation.' },
       },
       required: ['client_name', 'amount_total'],
     },
@@ -736,8 +737,15 @@ const PWA_TOOLS = [
         },
         options: {
           type: 'array',
-          items: { type: 'string' },
-          description: 'The options the vendor can choose from. 2-4 short labels. e.g. ["Priya Roy — Dec 14", "Priya Sharma — Feb 8"]',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string', description: 'What the vendor sees on the tappable card. Short, human. e.g. "Priya Roy — Dec 14 wedding"' },
+              value: { type: 'string', description: 'The unambiguous reference sent back when tapped, so you never re-ask. Use a "key:id" form that resolves the exact record — e.g. "invoice_id:abc-123", "lead_id:def-456", "client_id:ghi-789". When the options are a yes/no confirmation rather than records, use "confirm:yes" / "confirm:no".' },
+            },
+            required: ['label', 'value'],
+          },
+          description: 'The choices the vendor can tap. 2-4 options. Each carries a human label and a machine value. ALWAYS put the resolving id in value so a tap is unambiguous and you do not have to ask again. e.g. [{label:"Priya Roy — Dec 14", value:"lead_id:abc-123"}, {label:"Priya Sharma — Feb 8", value:"lead_id:def-456"}]',
         },
       },
       required: ['question', 'options'],
