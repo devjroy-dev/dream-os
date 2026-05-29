@@ -16,9 +16,32 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 router.post('/save', asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const { couple_id, id: user_id } = req.coupleUser;
-  const { vendor_id, image_url = null } = req.body || {};
+  const { vendor_id, image_url = null, share_to_circle = false } = req.body || {};
 
   if (!vendor_id) return errRes(res, 400, 'vendor_id is required.');
+
+  // Helper: append a save_added activity to the circle feed (best-effort).
+  const logCircleShare = async (saveId, vendorName) => {
+    const { error: actErr } = await supabase.from('circle_activity').insert({
+      couple_id,
+      actor_user_id: user_id,
+      actor_name:    'Bride',
+      actor_role:    'bride',
+      activity_type: 'save_added',
+      subject_type:  'muse_save',
+      subject_id:    saveId,
+      payload:       { vendor_name: vendorName || null },
+    });
+    if (actErr) console.warn('[POST /muse/save] circle activity warn:', actErr.message);
+  };
+
+  // Resolve vendor name once if we'll be sharing
+  let vendorName = null;
+  if (share_to_circle) {
+    const { data: v } = await supabase
+      .from('vendors').select('business_name').eq('id', vendor_id).maybeSingle();
+    vendorName = v?.business_name || null;
+  }
 
   // Duplicate check: same vendor + same photo = already saved
   // Different photos from the same vendor are distinct saves
@@ -38,7 +61,8 @@ router.post('/save', asyncHandler(async (req, res) => {
   const { data: existing } = await dupQuery.maybeSingle();
 
   if (existing) {
-    return okRes(res, { save_id: existing.id, save_number: existing.save_number, already_saved: true });
+    if (share_to_circle) await logCircleShare(existing.id, vendorName);
+    return okRes(res, { save_id: existing.id, save_number: existing.save_number, already_saved: true, shared_to_circle: !!share_to_circle });
   }
 
   // Get next save_number for this couple
@@ -71,7 +95,9 @@ router.post('/save', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not save vendor.');
   }
 
-  return okRes(res, { save_id: newSave.id, save_number: newSave.save_number, already_saved: false });
+  if (share_to_circle) await logCircleShare(newSave.id, vendorName);
+
+  return okRes(res, { save_id: newSave.id, save_number: newSave.save_number, already_saved: false, shared_to_circle: !!share_to_circle });
 }));
 
 // ── GET /saves/:saveId/activity — must come before /:coupleId ─────────────────

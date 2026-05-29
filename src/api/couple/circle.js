@@ -19,7 +19,7 @@ router.post('/invite', asyncHandler(async (req, res) => {
   const supabase    = req.app.locals.supabase;
   const { couple_id } = req.coupleUser;
 
-  const { invitee_name, role } = req.body || {};
+  const { invitee_name, role, invitee_phone } = req.body || {};
 
   if (!invitee_name || !role) {
     return errRes(res, 400, 'invitee_name and role are required.');
@@ -28,6 +28,15 @@ router.post('/invite', asyncHandler(async (req, res) => {
   const VALID_ROLES = ['partner', 'family', 'inner_circle'];
   if (!VALID_ROLES.includes(role)) {
     return errRes(res, 400, `role must be one of: ${VALID_ROLES.join(', ')}.`);
+  }
+
+  // Normalise optional phone to E.164 (bare 10-digit → +91). Empty = no phone.
+  let phoneE164 = null;
+  if (invitee_phone && String(invitee_phone).trim()) {
+    const digits = String(invitee_phone).replace(/\D/g, '');
+    if (digits.length === 10)      phoneE164 = `+91${digits}`;
+    else if (digits.length > 10)   phoneE164 = `+${digits}`;
+    if (phoneE164 && !/^\+[0-9]{8,15}$/.test(phoneE164)) phoneE164 = null;
   }
 
   const { data, error } = await supabase.rpc('invite_circle_member', {
@@ -53,10 +62,31 @@ router.post('/invite', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not create invite.');
   }
 
+  // Persist phone on the pending row (best-effort; non-fatal).
+  if (phoneE164) {
+    const { error: phoneErr } = await supabase
+      .from('circle_members')
+      .update({ invitee_phone: phoneE164 })
+      .eq('id', row.id);
+    if (phoneErr) console.warn('[POST /couple/circle/invite] phone save warn:', phoneErr.message);
+  }
+
+  // Build a recipient-addressed WhatsApp link carrying the WEB join URL, so the
+  // bride opens a chat with the invitee and the message is the tappable link.
+  // Falls back to a generic share link (no recipient) when no phone is given.
+  const APP_ORIGIN = process.env.FROST_WEB_ORIGIN || 'https://thedreamwedding.in';
+  const joinUrl    = `${APP_ORIGIN}/circle/join/${row.invite_token}`;
+  const inviteText = `You're invited to join my wedding circle on The Dream Wedding ✦ Tap to join: ${joinUrl}`;
+  const waMeLink   = phoneE164
+    ? `https://wa.me/${phoneE164.replace(/\D/g, '')}?text=${encodeURIComponent(inviteText)}`
+    : `https://wa.me/?text=${encodeURIComponent(inviteText)}`;
+
   return okRes(res, {
     invite_token: row.invite_token,
-    wa_me_link:   row.wa_me_link,
+    join_url:     joinUrl,
+    wa_me_link:   waMeLink,
     member_id:    row.id,
+    has_phone:    !!phoneE164,
   });
 }));
 
