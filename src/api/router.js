@@ -75,6 +75,7 @@ router.use('/admin/demo', require('./admin/demoAdmin'));
 // Demo public routes — no auth required
 router.use('/demo/vendor', require('./demo/vendor'));
 router.use('/demo/discover', require('./demo/vendor'));
+router.use('/demo/bride',    require('./demo/bride'));
 
 
 
