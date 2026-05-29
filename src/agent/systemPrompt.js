@@ -295,9 +295,10 @@ function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount,
       const source = p.source === 'bride_message' ? 'bride messaged you' : 'lead just created';
       const detail = p.intent_summary || p.bride_message || '';
       const detailLine = detail ? ` — ${detail.slice(0, 140)}` : '';
-      return `- ${name} (${source} ${minsAgo} min ago)${detailLine}`;
+      const idTag = p.lead_id ? ` [lead_id: ${p.lead_id}]` : '';
+      return `- ${name}${idTag} (${source} ${minsAgo} min ago)${detailLine}`;
     });
-    pendingAlertsBlock = '\nPENDING ALERTS (active in the last 10 minutes — these are who the vendor most likely means by "her", "she", "this person"):\n' + lines.join('\n');
+    pendingAlertsBlock = '\nPENDING ALERTS (active in the last 10 minutes — these are who the vendor most likely means by "her", "she", "this person"). Each shows a [lead_id] — pass that exact id to send_to_couple:\n' + lines.join('\n');
   }
 
   // ── PENDING EVENT PROPOSALS block (calendar image OCR — Patch 8) ──
