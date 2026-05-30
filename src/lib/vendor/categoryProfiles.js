@@ -67,9 +67,10 @@ const PROFILES = {
     ask: [
       'what kind of outfit they have in mind (lehenga, gown, sherwani, saree, etc.)',
       'which function it is for',
+      'whether they want it custom-made / stitched, or are looking at ready pieces',
       'roughly when they would need it / could come in for a trial fitting',
     ],
-    vocabulary: 'outfit, lehenga, gown, trial fitting',
+    vocabulary: 'outfit, lehenga, gown, custom-made, trial fitting',
   },
 
   // ── JEWELLER ──────────────────────────────────────────────────────────
@@ -77,11 +78,13 @@ const PROFILES = {
     label: 'jeweller',
     timelineType: 'delivery',
     ask: [
+      'which function / occasion the jewellery is for',
       'which pieces they want (a single piece, or a full set)',
       'the type they prefer — gold, polki, kundan, diamond, or temple',
+      'whether they want it custom-made or are looking at ready pieces',
       'when they need it ready by',
     ],
-    vocabulary: 'pieces, set, polki, kundan, temple',
+    vocabulary: 'pieces, set, polki, kundan, temple, custom-made',
   },
 
   // ── DECOR ─────────────────────────────────────────────────────────────

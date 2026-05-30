@@ -69,21 +69,30 @@ Bad: "Great question!"`;
     ? `\nYOU ALREADY KNOW HER NAME: ${knownBrideName}. Greet her by name and do NOT ask "who should I say enquired" — you know who she is.`
     : '';
 
-  let shapeBlock;
-  if (haveShape) {
-    const bits = [];
-    if (weddingShape.functions)    bits.push(`functions: ${weddingShape.functions}`);
-    if (weddingShape.wedding_days) bits.push(`over ${weddingShape.wedding_days} days`);
-    if (weddingShape.wedding_date) bits.push(`wedding date: ${weddingShape.wedding_date}`);
-    if (weddingShape.wedding_city) bits.push(`city: ${weddingShape.wedding_city}`);
-    shapeBlock = `
+  // Wedding shape only matters for EVENT categories (photographer, MUA, decor,
+  // venue) whose work happens AT the functions. DELIVERY categories (jeweller,
+  // designer) make/deliver a piece — they don't care how many functions she
+  // has, so we never ask or inject the shape for them.
+  const shapeMatters = (p.timelineType || 'event') === 'event';
+  let shapeBlock = '';
+  if (shapeMatters) {
+    if (haveShape) {
+      const bits = [];
+      if (weddingShape.functions)    bits.push(`functions: ${weddingShape.functions}`);
+      if (weddingShape.wedding_days) bits.push(`over ${weddingShape.wedding_days} days`);
+      if (weddingShape.wedding_date) bits.push(`wedding date: ${weddingShape.wedding_date}`);
+      if (weddingShape.wedding_city) bits.push(`city: ${weddingShape.wedding_city}`);
+      shapeBlock = `
 YOU ALREADY KNOW HER WEDDING (do NOT re-ask — use it): ${bits.join(', ')}.
 When a question needs a function, refer to her real ones. NEVER ask "how many functions", "which functions", or "when's the wedding" — you already know.`;
-  } else {
-    // Unregistered wa.me bride — gather the shape FIRST (category Qs need it).
-    shapeBlock = `
+    } else {
+      shapeBlock = `
 YOU DO NOT KNOW HER WEDDING SHAPE YET. Before the category questions, find out — in ONE question — whether it's a single day or spread across functions (mehendi, sangeet, wedding, reception), roughly which ones and how many days. You need this so ${vendorName} knows the scope. Capture it.`;
+    }
   }
+
+  // Only an unregistered bride of an EVENT category needs the shape asked first.
+  const askShapeFirst = shapeMatters && !haveShape;
 
   // Decor / venue special notes.
   const visionNote = p.freeTextVision ? `\nIMPORTANT: ${p.freeTextPrompt}` : '';
@@ -96,7 +105,7 @@ YOUR JOB
 You are taking a QUICK enquiry for ${vendorName} (a ${p.label}) — to qualify the lead and hand off. This is a short intake, NOT a consultation. Get a few specific things, then pass it to ${vendorName}. Do not linger.
 
 WHAT TO FIND OUT (these specific things — for a ${p.label} — and nothing more):
-${haveShape ? '' : '  • (first) her wedding shape — functions & days, as described above\n'}${askList}
+${askShapeFirst ? '  • (first) her wedding shape — functions & days, as described above\n' : ''}${askList}
   • her approximate / ballpark budget for this — so ${vendorName} gets a qualified lead (a ${p.label} needs to know roughly what she's looking to spend). Ask it plainly, e.g. "And roughly what budget did you have in mind for this?"
 ${haveName ? '' : 'Then ask her NAME.'}${visionNote}${visitNote}
 
@@ -112,7 +121,7 @@ HARD RULES — FOLLOW EXACTLY
 
 FLOW (aim for ~4-5 short exchanges total, then hand off)
 1. Open in ONE warm line that identifies you as ${vendorName}'s assistant, and ask your first question.
-${haveShape ? '' : '   (If you don\'t know her wedding shape yet, that first question is the functions/days one.)\n'}2. Work through the list, one short question per turn, skipping anything she already told you.
+${askShapeFirst ? '   (Ask the wedding-shape question FIRST — functions/days.)\n' : ''}2. Work through the list, one short question per turn, skipping anything she already told you.
 3. Ask her budget plainly${haveName ? ' (you already know her name — do NOT ask it).' : ', and her name ("And who should I say enquired?").'}
 4. Once you have the details + name, call capture_couple_lead. That is the END of intake — immediately after, call respond_to_couple with a brief warm close: "Perfect — I've passed this to ${vendorName}, they'll be in touch soon!" Do NOT ask anything else after capturing. The enquiry is done.
 
