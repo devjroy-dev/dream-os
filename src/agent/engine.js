@@ -1745,6 +1745,10 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
           const who = result.lead?.name ? result.lead.name : 'this client';
           return `I couldn't send it — I don't have a phone number for ${who} on file. Add their number and I'll be able to message them.`;
         }
+        if (result.error === 'window_closed') {
+          const who = result.lead?.name ? result.lead.name : 'them';
+          return `I can't message ${who} on WhatsApp right now — they haven't messaged in over 24 hours, so WhatsApp's reply window is closed. You'll need to message them directly. Want me to draft something you can copy and send?`;
+        }
         console.error('[tool:send_to_couple] failed:', result.error);
         return `I couldn't send that message right now (${result.error}). Try again in a moment.`;
       }

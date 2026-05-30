@@ -108,6 +108,29 @@ async function replyToCouple(supabase, { vendor, leadId = null, couplePhone = nu
     thread = newThread;
   }
 
+  // ── 2.5 WhatsApp 24-hour session window gate ──────────────────────────
+  // WhatsApp only allows free-form (non-template) messages within 24h of the
+  // user's last inbound message. Outside that window, Twilio ACCEPTS the
+  // message (returns a SID) but Meta later marks it undelivered — so a naive
+  // send would let us falsely tell the vendor "Sent!" when the bride got
+  // nothing. To never lie about a send, we check the window BEFORE sending:
+  // is there an inbound from this couple in the last 24h? If not, we do not
+  // attempt the send — we return window_closed so the agent can be honest and
+  // offer to draft-and-forward instead.
+  const windowCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentInbound } = await supabase
+    .from('messages')
+    .select('id')
+    .eq('conversation_id', thread.id)
+    .eq('direction', 'inbound')
+    .gte('created_at', windowCutoff)
+    .limit(1)
+    .maybeSingle();
+
+  if (!recentInbound) {
+    return { ok: false, error: 'window_closed', threadId: thread.id, lead, phone };
+  }
+
   // ── 3. Send to the couple via WhatsApp (+91, per-service number) ──────
   let twilioSid = null;
   try {
