@@ -1,8 +1,8 @@
 # dream-os — Schema Reference (Vendor + Bride)
-**Last updated:** 2026-05-29 (Frost audit + vendor PWA audit session)
-**Session:** Frost audit fixes + vendor PWA audit + iOS Safari login hardening. Two new migrations: 0061 (otp_sessions circle_join purpose) and 0062 (couple_enquiries table — bride Discover enquiry ledger).
+**Last updated:** 2026-05-30 (DreamAi phase build session — 3.0 block + Phase 3 reply path)
+**Session:** Phases 1–3 vendor/bride build. New since 0062: 0063 (vendor_activity_log — cross-surface action log, Phase 1.5) and 0064 (vendors.base_fee_min/max — enquiry budget enrichment, Phase 2). Phase 3 (send_to_couple vendor reply path) added NO new tables — reuses conversations/messages/leads.
 **Supabase project:** nvzkbagqxbysoeszxent (Mumbai, ap-south-1)
-**Latest migration applied:** 0062_couple_enquiries.sql (2026-05-29)
+**Latest migration applied:** 0064 (vendors base_fee columns, 2026-05-30)
 **Migrations 0040–0048 applied to prod. All committed to db/migrations/.**
 - 0040: team_members, team_tasks, team_messages, team_payments
 - 0041: payment_schedules, contracts, tds_ledger, invoices.has_schedule
@@ -13,7 +13,9 @@
 - 0048: collab_posts, collab_responses
 - 0061: otp_sessions.purpose widened to include 'circle_join'
 - 0062: couple_enquiries table (bride Discover enquiry ledger)
-**Next migration:** 0063 (when needed)
+- 0063: vendor_activity_log table (cross-surface action log — Phase 1.5)
+- 0064: vendors.base_fee_min / base_fee_max columns (enquiry budget enrichment — Phase 2)
+**Next migration:** 0065 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
 **Convention:** 0024=vendor_profile, 0025=hot_dates(applied), 0026=invoices_last_payment_at,
@@ -822,8 +824,9 @@ Seeded: same 3 Cloudinary URLs as landing_slides. Swati expands via admin panel 
 - leads: added source text default 'whatsapp'
 - New table: vendor_availability (id, vendor_id, blocked_date date, reason, created_at, unique vendor_id+blocked_date)
 
-**Latest migration:** 0060_booking_contact.sql
-**Next migration number:** 0063
+**Latest migration:** 0064 (vendors base_fee columns)
+**Next migration number:** 0065
+*(Note: this marker is historical context from the 0034/0035 session; see the top of this file for the current migration state.)*
 
 ---
 
@@ -1176,8 +1179,8 @@ Indexes: `collab_responses_post_id_idx` on (post_id, state, created_at DESC). `c
 | **0061_otp_circle_join.sql** | **B-Frost** | **✅ Applied 2026-05-29. `otp_sessions.purpose` CHECK constraint widened — adds 'circle_join' (prior: login/reset/demo_enquiry). Allows the circle invite → co-planner join flow to send invite-scoped OTPs that can never be confused with login/reset codes.** |
 | **0062_couple_enquiries.sql** | **B-Frost** | **✅ Applied 2026-05-29. `couple_enquiries` table — bride's Discover enquiry ledger. One row per (couple, vendor) pair. Powers the "Enquired" section in the Frost Vendors room with a pre-filled TDW wa.me link. Distinct from enquiry_taps (analytics), leads (vendor side), and couple_bookings (committed vendors). Unique index on (couple_id, vendor_id).** |
 
-**Latest migration applied:** 0062_couple_enquiries.sql (2026-05-29)
-**Next migration number:** 0063
+**Latest migration applied:** 0064 (vendors base_fee columns, 2026-05-30)
+**Next migration number:** 0065
 
 ---
 
@@ -1562,3 +1565,87 @@ Indexes:
 - Vendors room "Enquired" section (above "My team"): fetches on mount, renders vendor name/category + a green WhatsApp button per row.
 - `fetchEnquiries()` in `lib/frost/journey.ts` — `CoupleEnquiry` interface.
 - `DiscoverStatus.saves_count` — also added this session: `getDiscoverStatus` now returns `saves_count` (a COUNT of `muse_saves WHERE vendor_id = <this vendor>`), wired to the vendor's TDW Returns dashboard.
+
+---
+
+## Migration 0063 — Vendor Activity Log (Phase 1.5, cross-surface)
+
+### vendor_activity_log
+
+Append-only, fail-safe record of every mutating action taken on either vendor
+surface (WhatsApp PA or PWA Business Manager). The purpose is cross-surface
+awareness: an action taken on the app is visible to the WhatsApp agent on the
+next turn, and vice versa, so the vendor experiences "one mind, two surfaces."
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | default gen_random_uuid() |
+| vendor_id | uuid FK → vendors.id | indexed |
+| surface | text | `'whatsapp'` or `'pwa'` |
+| action | text | the tool name that mutated (e.g. `create_invoice`) |
+| summary | text | one-line human snapshot of what happened |
+| entity_type | text nullable | `'invoice'` / `'lead'` / `'event'` / … / null |
+| entity_id | uuid nullable | the affected row, when applicable (UUID-validated before insert) |
+| created_at | timestamptz | default now() |
+
+**Written by:** `logActivity()` in `src/lib/vendor/snapshot.js` — called after every
+successful mutation in BOTH engines (`engine.js` WhatsApp + `pwaEngine.js`).
+FAIL-SAFE: any insert error is logged and swallowed; logging never blocks the
+real action.
+
+**Read by:** `fetchRecentActivity()` in the same file — newest-first, default
+15-minute window (matches the WhatsApp session boundary), surfaced into the
+agent's dynamic context via `formatActivityBlock()`.
+
+**Index:** (vendor_id, created_at desc) for the windowed read.
+
+---
+
+## Migration 0064 — Vendor Base Fee (Phase 2, enquiry enrichment)
+
+### vendors table additions
+
+Two columns added to the existing `vendors` table (NOT a new table). They hold
+the vendor's starting/typical fee band, used to enrich couple enquiries with a
+budget signal ("Her budget is 43% below your base fee").
+
+| Column | Type | Notes |
+|---|---|---|
+| base_fee_min | numeric nullable | lower bound of the vendor's typical fee |
+| base_fee_max | numeric nullable | upper bound of the vendor's typical fee |
+
+**Read by:** `src/lib/vendor/enquiryEnrichment.js` (`buildEnquiryEnrichment()`)
+and `src/api/couple/enquire.js` (selected alongside the vendor row on the
+Discover fan-out). Used ONLY for the per-vendor budget framing — distinct from
+`couples.budget_total` (the whole-wedding figure), per the Phase 2.5
+budget-semantics rule.
+
+---
+
+## Phase 3 — Vendor Reply Path (send_to_couple) — NO new tables
+
+Phase 3 lets a vendor instruct the agent to message a couple ("quote Ananya
+4L") and have the assistant deliver a warm, category-framed message to the
+couple's WhatsApp. It reuses existing schema — no migration required:
+
+- **conversations** — the `kind = 'couple_thread'` row for (vendor_id,
+  counterparty_phone) is the delivery target. Found-or-created by
+  `replyToCouple()`.
+- **messages** — the sent message is logged as a `direction='outbound',
+  channel='whatsapp', sent_by='agent'` row on that thread.
+- **leads** — `leads.phone` is the primary phone source; `send_to_couple`
+  resolves the couple's number from the lead referenced by the PENDING ALERT.
+- **pending_lead_pings** — `lead_id` is surfaced into the agent's PENDING
+  ALERTS context block so the agent can pass the exact id to `send_to_couple`.
+  (Phone recovery fallbacks: same-name sibling lead, then single couple_thread.)
+
+**New code files (no schema):** `src/lib/vendor/replyToCouple.js` (delivery),
+`src/lib/vendor/categoryFraming.js` (the category-awareness seam — quote caveat
+per category; foundation for the Phase 3.5 profile system), plus the
+`send_to_couple` tool in `tools.js` + handler in `engine.js`.
+
+**Future schema note (Phase 3.5 / cleanup):** consider adding `couple_phone`
+(or a thread reference) to `pending_lead_pings` so the vendor-agent never has
+to re-derive the couple's phone from the lead. Tonight's fix (lead_id in
+context + recovery fallbacks) works; this would make the whole phone-resolution
+class of bug impossible.
