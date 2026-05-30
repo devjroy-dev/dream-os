@@ -3,7 +3,7 @@
 // Mirrors src/agent/onboarding.js for the bride product. Same shape,
 // different content, bride-specific Haiku extractor, skip-on-dodge transitions.
 //
-// States: new -> asked_date -> asked_partner -> asked_city -> asked_budget -> complete
+// States: new -> asked_date -> asked_functions -> asked_partner -> asked_city -> asked_budget -> complete
 //
 // Onboarding runs OUTSIDE the agent loop. The state machine is deterministic
 // and unbreakable. Haiku is used only as a structured extractor at asked_date
@@ -30,6 +30,10 @@ const LOCKED = {
   // Bare question text used by the dodge classifier to ground its judgement.
   // Not sent on its own — the date question lives inside greeting().
   ask_date: `When is the big day?`,
+
+  // After date captured. Phase 3.5 — capture the wedding SHAPE (a wedding is a
+  // span, not one day). Asked once here; every category enquiry reads from it.
+  ask_functions: `Is it a single day, or spread across a few functions — mehendi, sangeet, the wedding, reception? Roughly which ones, and over how many days?`,
 
   // After date captured.
   ask_partner: `And who's the lucky person?`,
@@ -129,7 +133,10 @@ Extract the following fields from the message and return ONLY valid JSON, no oth
   "wedding_date": "<YYYY-MM-DD if exact date, or a season/month string like 'February 2027' or 'winter 2026', or null>",
   "partner_name": "<partner's name if mentioned, or null>",
   "wedding_city": "<city name if mentioned, or null>",
-  "budget_total": <integer rupees if budget mentioned (e.g. 3500000 for 35L), or null>
+  "budget_total": <integer rupees if budget mentioned (e.g. 3500000 for 35L), or null>,
+  "function_count": <integer number of functions if she mentions them (e.g. mehendi+sangeet+wedding = 3), or null>,
+  "wedding_days": <integer days the wedding spans if mentioned, or null>,
+  "functions": "<comma-separated function names if mentioned (e.g. 'mehendi, sangeet, wedding'), or null>"
 }
 
 RULES:
@@ -137,6 +144,7 @@ RULES:
 - partner_name: only if she names her partner. Don't infer.
 - wedding_city: only if she names a city.
 - budget_total: convert lakhs (L) and crores (Cr) to integer rupees. 30L = 3000000, 1Cr = 10000000. Return integer only, no commas.
+- function_count / wedding_days / functions: ONLY if she volunteers them in this message (most won't — she's usually just answering the date). Otherwise null.
 - Return ONLY the JSON object. No explanation, no markdown, no backticks.
 
 EXAMPLES:
@@ -183,10 +191,60 @@ Now extract from this message:
       partner_name: typeof parsed.partner_name === 'string' && parsed.partner_name.trim() ? parsed.partner_name.trim() : null,
       wedding_city: typeof parsed.wedding_city === 'string' && parsed.wedding_city.trim() ? parsed.wedding_city.trim() : null,
       budget_total: Number.isInteger(parsed.budget_total) && parsed.budget_total > 0 ? parsed.budget_total : null,
+      function_count: Number.isInteger(parsed.function_count) && parsed.function_count > 0 ? parsed.function_count : null,
+      wedding_days:   Number.isInteger(parsed.wedding_days)   && parsed.wedding_days   > 0 ? parsed.wedding_days   : null,
+      functions:      typeof parsed.functions === 'string' && parsed.functions.trim() ? parsed.functions.trim().slice(0, 200) : null,
     };
   } catch (err) {
     console.warn(`[brideOnboarding:extract] Haiku extraction failed — treating message as raw text:`, err.message);
-    return { wedding_date: null, partner_name: null, wedding_city: null, budget_total: null };
+    return { wedding_date: null, partner_name: null, wedding_city: null, budget_total: null, function_count: null, wedding_days: null, functions: null };
+  }
+}
+
+// ── Wedding-shape extractor — runs at asked_functions (Phase 3.5) ────────────
+
+async function extractWeddingShape(inboundMessage, anthropic) {
+  const prompt = `Extract the SHAPE of an Indian wedding from this WhatsApp message. The bride was asked whether her wedding is one day or spread across functions (mehendi, sangeet, wedding, reception) and over how many days. Return ONLY valid JSON:
+
+{ "function_count": <integer or null>, "wedding_days": <integer or null>, "functions": "<comma-separated list as she described, or null>" }
+
+RULES:
+- function_count: how many distinct functions/events (e.g. "mehendi, sangeet and reception" = 3). null if unclear.
+- wedding_days: how many days it spans (e.g. "over 3 days" = 3; a single-day wedding = 1). null if unclear.
+- functions: a short comma-separated list of the function names she mentioned, lowercased (e.g. "mehendi, sangeet, wedding, reception"). null if she didn't name any.
+- "just one day" / "single day" → function_count 1, wedding_days 1, functions null.
+- Return ONLY the JSON, no explanation.
+
+EXAMPLES:
+Message: "Mehendi, sangeet and the wedding, over 3 days"
+{"function_count":3,"wedding_days":3,"functions":"mehendi, sangeet, wedding"}
+
+Message: "Just the wedding, one day"
+{"function_count":1,"wedding_days":1,"functions":null}
+
+Message: "It's a big one — mehendi, haldi, sangeet, wedding and reception across 4 days"
+{"function_count":5,"wedding_days":4,"functions":"mehendi, haldi, sangeet, wedding, reception"}
+
+Message: "${inboundMessage}"`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model:      MODEL_HAIKU,
+      max_tokens: 120,
+      messages:   [{ role: 'user', content: prompt }],
+    });
+    const raw = response.content
+      .filter(b => b.type === 'text').map(b => b.text).join('').trim()
+      .replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(raw);
+    return {
+      function_count: Number.isInteger(parsed.function_count) && parsed.function_count > 0 ? parsed.function_count : null,
+      wedding_days:   Number.isInteger(parsed.wedding_days)   && parsed.wedding_days   > 0 ? parsed.wedding_days   : null,
+      functions:      typeof parsed.functions === 'string' && parsed.functions.trim() ? parsed.functions.trim().slice(0, 200) : null,
+    };
+  } catch (err) {
+    console.warn(`[brideOnboarding:extractWeddingShape] Haiku extraction failed:`, err.message);
+    return { function_count: null, wedding_days: null, functions: null };
   }
 }
 
@@ -239,6 +297,7 @@ Message: "${inboundMessage}"`;
 
 const DODGE_FALLBACK = {
   date:    `No rush — we'll figure that out as we go.`,
+  functions: `No worries — we can map out the functions later.`,
   partner: `Fair, parking that for now.`,
   city:    `Fair, big decision.`,
   budget:  `Cool, we'll figure it out as we go.`,
@@ -247,6 +306,7 @@ const DODGE_FALLBACK = {
 async function composeDodgeTransition(dodgedField, nextQuestion, anthropic) {
   const fieldDescriptions = {
     date:    "when her wedding is",
+    functions: "how many functions her wedding has and over how many days",
     partner: "her partner's name",
     city:    "where the wedding will happen",
     budget:  "her wedding budget",
@@ -355,6 +415,13 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
         updates.budget_total = extracted.budget_total;
         notesToInsert.push({ couple_id: couple.id, content: `Budget: Rs ${extracted.budget_total.toLocaleString('en-IN')}`, tags: ['onboarding', 'budget'] });
       }
+      // Phase 3.5: persist wedding shape if she volunteered it alongside the date.
+      if (extracted.function_count) updates.function_count = extracted.function_count;
+      if (extracted.wedding_days)   updates.wedding_days   = extracted.wedding_days;
+      if (extracted.functions) {
+        updates.functions = extracted.functions;
+        notesToInsert.push({ couple_id: couple.id, content: `Wedding shape: ${extracted.functions}${extracted.wedding_days ? ` over ${extracted.wedding_days} days` : ''}`, tags: ['onboarding', 'functions'] });
+      }
 
       // Advance state past whatever was captured
       const nextState = nextStateAfter('asked_date', extracted);
@@ -364,6 +431,37 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
       if (notesToInsert.length > 0) await supabase.from('notes').insert(notesToInsert);
 
       return { reply: replyForState(nextState, user?.name, extracted) };
+    }
+
+    // ── asked_functions: capture the wedding shape (Phase 3.5) ──────────────
+    case 'asked_functions': {
+      if (await looksLikeDodge(inboundMessage, LOCKED.ask_functions, anthropic)) {
+        await supabase.from('couples').update({ onboarding_state: 'asked_partner' }).eq('id', couple.id);
+        const reply = await composeDodgeTransition('functions', LOCKED.ask_partner, anthropic);
+        return { reply };
+      }
+
+      const shape = await extractWeddingShape(inboundMessage, anthropic);
+      const updates = { onboarding_state: 'asked_partner' };
+      if (shape.function_count) updates.function_count = shape.function_count;
+      if (shape.wedding_days)   updates.wedding_days   = shape.wedding_days;
+      if (shape.functions)      updates.functions      = shape.functions;
+
+      await supabase.from('couples').update(updates).eq('id', couple.id);
+
+      if (shape.functions || shape.function_count) {
+        await supabase.from('notes').insert({
+          couple_id: couple.id,
+          content: `Wedding shape: ${shape.functions || `${shape.function_count} functions`}${shape.wedding_days ? ` over ${shape.wedding_days} days` : ''}`,
+          tags: ['onboarding', 'functions'],
+        });
+      }
+
+      // Acknowledge naturally, then ask the partner question.
+      const ack = shape.functions
+        ? `Got it — ${shape.functions}. `
+        : (shape.function_count ? `Got it. ` : `Noted. `);
+      return { reply: `${ack}${LOCKED.ask_partner}` };
     }
 
     // ── asked_partner: capture partner name ─────────────────────────────────
@@ -450,6 +548,9 @@ async function nextBrideOnboardingMessage({ couple, user, inboundMessage, supaba
 
 function nextStateAfter(currentState, extracted) {
   if (currentState === 'asked_date') {
+    // Phase 3.5: the wedding SHAPE comes right after the date. Skip it only if
+    // she already volunteered the functions in her date message.
+    if (!extracted.functions && !extracted.function_count) return 'asked_functions';
     if (!extracted.partner_name) return 'asked_partner';
     if (!extracted.wedding_city) return 'asked_city';
     if (!extracted.budget_total) return 'asked_budget';
@@ -471,6 +572,7 @@ function replyForState(nextState, name, extracted) {
   const prefix = confirms.length > 0 ? `Got it — ${confirms.join(', ')}. ` : '';
 
   switch (nextState) {
+    case 'asked_functions': return `${prefix}${LOCKED.ask_functions}`;
     case 'asked_partner': return `${prefix}${LOCKED.ask_partner}`;
     case 'asked_city':    return `${prefix}${LOCKED.ask_city}`;
     case 'asked_budget':  return `${prefix}${LOCKED.ask_budget}`;
