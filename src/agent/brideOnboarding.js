@@ -204,18 +204,25 @@ Now extract from this message:
 // ── Wedding-shape extractor — runs at asked_functions (Phase 3.5) ────────────
 
 async function extractWeddingShape(inboundMessage, anthropic) {
-  const prompt = `Extract the SHAPE of an Indian wedding from this WhatsApp message. The bride was asked whether her wedding is one day or spread across functions (mehendi, sangeet, wedding, reception) and over how many days. Return ONLY valid JSON:
+  const prompt = `Extract the SHAPE of an Indian wedding from this WhatsApp message. The bride was JUST asked: "Is it a single day, or spread across a few functions — mehendi, sangeet, the wedding, reception? Roughly which ones, and over how many days?" Her reply may refer back to that list (e.g. "all of them", "everything", "the usual"). Return ONLY valid JSON:
 
 { "function_count": <integer or null>, "wedding_days": <integer or null>, "functions": "<comma-separated list as she described, or null>" }
 
 RULES:
-- function_count: how many distinct functions/events (e.g. "mehendi, sangeet and reception" = 3). null if unclear.
-- wedding_days: how many days it spans (e.g. "over 3 days" = 3; a single-day wedding = 1). null if unclear.
-- functions: a short comma-separated list of the function names she mentioned, lowercased (e.g. "mehendi, sangeet, wedding, reception"). null if she didn't name any.
+- The question NAMED these four standard functions: mehendi, sangeet, wedding, reception. If she says "all of them", "everything", "all four", "the works", or similar → functions = "mehendi, sangeet, wedding, reception" and function_count = 4.
+- If she names specific ones → list exactly those, lowercased.
+- function_count: how many distinct functions (derive from the list if she named or implied them).
+- wedding_days: how many days it spans (e.g. "around 4 days" = 4; single-day = 1). null if she didn't say.
 - "just one day" / "single day" → function_count 1, wedding_days 1, functions null.
 - Return ONLY the JSON, no explanation.
 
 EXAMPLES:
+Message: "All of them. Around 4 days"
+{"function_count":4,"wedding_days":4,"functions":"mehendi, sangeet, wedding, reception"}
+
+Message: "Everything, over 5 days"
+{"function_count":4,"wedding_days":5,"functions":"mehendi, sangeet, wedding, reception"}
+
 Message: "Mehendi, sangeet and the wedding, over 3 days"
 {"function_count":3,"wedding_days":3,"functions":"mehendi, sangeet, wedding"}
 
