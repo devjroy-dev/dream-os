@@ -66,6 +66,22 @@ Respond with the verb phrase ONLY. No subject, no pronoun, no preamble, no quote
   let verbPhrase = response.content?.[0]?.text?.trim();
   if (!verbPhrase) return null;
 
+  // Guard: Haiku sometimes refuses to summarise very short/ambiguous messages
+  // (e.g. "3", "ok") and returns a meta-refusal like "I cannot provide a
+  // meaningful verb phrase from just '3'". That must NEVER be sent to the
+  // vendor. Reject anything that smells like a refusal or doesn't begin with
+  // a verb — caller falls back to verbatim.
+  const refusalMarkers = /\b(i cannot|i can't|i'm not able|unable to|meaningful verb phrase|i'm sorry|cannot provide|not enough (context|information)|please provide)\b/i;
+  if (refusalMarkers.test(verbPhrase)) {
+    console.warn(`[intentExtractor:extract] rejected non-summary output: "${verbPhrase.slice(0, 60)}"`);
+    return null;
+  }
+  // Must start with a sensible verb — otherwise it isn't a verb phrase.
+  if (!/^(is|are|was|were|has|have|wants|needs|asked|asking|wanted|needed|checking|following|would|will|did|does|sent|shared|added|changed|confirmed|mentioned|said|let|likes|prefers|booked|requested|enquired|reached)\b/i.test(verbPhrase)) {
+    console.warn(`[intentExtractor:extract] output not a verb phrase, skipping: "${verbPhrase.slice(0, 60)}"`);
+    return null;
+  }
+
   // Strip any leaked subject the model might have included anyway.
   verbPhrase = verbPhrase.replace(/^(she|he|they|the bride|the groom|priya|test priya)\s+/i, '');
   // Strip a trailing period if Haiku added one; we'll add proper punctuation below.
