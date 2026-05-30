@@ -1668,7 +1668,7 @@ class of bug impossible.
 | File | Status | Adds |
 |---|---|---|
 | `0065_couple_wedding_shape.sql` | ✅ Applied 2026-05-30 (confirmed via WhatsApp onboarding + SQL) | `couples.function_count`, `couples.wedding_days`, `couples.functions` |
-| `0066_lead_wedding_shape.sql` | ⚠️ Committed — VERIFY it was run in Supabase | `leads.function_count`, `leads.wedding_days`, `leads.functions` |
+| `0066_lead_wedding_shape.sql` | ✅ Applied 2026-05-30 (verified via information_schema) | `leads.function_count`, `leads.wedding_days`, `leads.functions` |
 
 **Verify 0066 was applied:**
 ```sql
