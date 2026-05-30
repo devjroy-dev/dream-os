@@ -414,10 +414,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // brides won't have onboarded — then shape is null and the category profile
   // simply gathers what it needs fresh. Best-effort; never blocks the turn.
   let weddingShape = null;
+  let knownBrideName = null;
   try {
     const { data: coupleUser } = await supabase
-      .from('users').select('id').eq('phone', couplePhone).maybeSingle();
+      .from('users').select('id, name').eq('phone', couplePhone).maybeSingle();
     if (coupleUser) {
+      if (coupleUser.name && coupleUser.name.trim()) knownBrideName = coupleUser.name.trim();
       const { data: coupleRec } = await supabase
         .from('couples')
         .select('wedding_date, wedding_city, function_count, wedding_days, functions, budget_total')
@@ -426,12 +428,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
       if (coupleRec) weddingShape = coupleRec;
     }
   } catch (e) {
-    console.warn('[couple-agent] wedding-shape lookup failed (non-fatal):', e.message);
+    console.warn('[couple-agent] wedding-shape/name lookup failed (non-fatal):', e.message);
   }
 
   console.log(`[couple-agent] isReturningBride=${isReturningBride} phone=${couplePhone}${leadName ? ` name=${leadName}` : ''}`);
 
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape });
+  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName });
 
   const messages = [
     ...history,
@@ -535,6 +537,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         }
 
         // Upsert lead — dedup on (vendor_id, phone)
+        const resolvedName = input.name || knownBrideName || null;
         const { data: existingLead } = await supabase
           .from('leads')
           .select('id')
@@ -545,7 +548,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         if (existingLead) {
           // Update existing lead with collected details
           await supabase.from('leads').update({
-            name:         input.name         || null,
+            name:         resolvedName,
             wedding_date: event_date,
             wedding_city: input.event_city   || null,
             event_types:  input.occasion ? [input.occasion] : null,
@@ -562,7 +565,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           const { data: newLead } = await supabase.from('leads').insert({
             vendor_id:    vendor.id,
             phone:        couplePhone,
-            name:         input.name         || null,
+            name:         resolvedName,
             wedding_date: event_date,
             wedding_city: input.event_city   || null,
             event_types:  input.occasion ? [input.occasion] : null,
@@ -600,7 +603,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
         // Build vendor notification summary
         const parts = [];
-        if (input.name)       parts.push(`Name: ${input.name}`);
+        if (resolvedName)     parts.push(`Name: ${resolvedName}`);
         if (input.occasion)   parts.push(`Occasion: ${input.occasion}`);
         if (event_date)       parts.push(`Date: ${event_date}`);
         if (input.event_city) parts.push(`City: ${input.event_city}`);

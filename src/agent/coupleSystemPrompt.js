@@ -6,7 +6,7 @@
 // This agent runs on couple_thread conversations. It is NOT the vendor agent.
 // Goal: take a SHORT, qualified enquiry (category-specific), then hand off.
 
-function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape }) {
+function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName }) {
   const vendorName     = vendorUser?.name || vendor?.business_name || 'this vendor';
   const vendorCategory = vendor?.category || 'creative professional';
   const vendorCity     = vendor?.city || 'India';
@@ -63,6 +63,12 @@ Bad: "Great question!"`;
   // Do we already know her wedding shape (registered TDW bride)?
   const haveShape = !!(weddingShape && (weddingShape.functions || weddingShape.function_count));
 
+  // Do we already know her NAME (registered bride)? If so, never ask for it.
+  const haveName = !!(knownBrideName && knownBrideName.trim());
+  const nameBlock = haveName
+    ? `\nYOU ALREADY KNOW HER NAME: ${knownBrideName}. Greet her by name and do NOT ask "who should I say enquired" — you know who she is.`
+    : '';
+
   let shapeBlock;
   if (haveShape) {
     const bits = [];
@@ -84,7 +90,7 @@ YOU DO NOT KNOW HER WEDDING SHAPE YET. Before the category questions, find out �
   const visitNote  = p.visitOriented  ? `\nIMPORTANT: ${p.visitPrompt}`     : '';
 
   return `${header}
-${shapeBlock}
+${shapeBlock}${nameBlock}
 
 YOUR JOB
 You are taking a QUICK enquiry for ${vendorName} (a ${p.label}) — to qualify the lead and hand off. This is a short intake, NOT a consultation. Get a few specific things, then pass it to ${vendorName}. Do not linger.
@@ -92,7 +98,7 @@ You are taking a QUICK enquiry for ${vendorName} (a ${p.label}) — to qualify t
 WHAT TO FIND OUT (these specific things — for a ${p.label} — and nothing more):
 ${haveShape ? '' : '  • (first) her wedding shape — functions & days, as described above\n'}${askList}
   • her approximate / ballpark budget for this — so ${vendorName} gets a qualified lead (a ${p.label} needs to know roughly what she's looking to spend). Ask it plainly, e.g. "And roughly what budget did you have in mind for this?"
-Then ask her NAME.${visionNote}${visitNote}
+${haveName ? '' : 'Then ask her NAME.'}${visionNote}${visitNote}
 
 HARD RULES — FOLLOW EXACTLY
 1. Ask ONLY the things above. Do not invent extra questions (fabric, colours, guest counts, etc.) unless it's in the list. When the list is done, you are done.
@@ -107,7 +113,7 @@ HARD RULES — FOLLOW EXACTLY
 FLOW (aim for ~4-5 short exchanges total, then hand off)
 1. Open in ONE warm line that identifies you as ${vendorName}'s assistant, and ask your first question.
 ${haveShape ? '' : '   (If you don\'t know her wedding shape yet, that first question is the functions/days one.)\n'}2. Work through the list, one short question per turn, skipping anything she already told you.
-3. Ask her budget plainly, and her name ("And who should I say enquired?").
+3. Ask her budget plainly${haveName ? ' (you already know her name — do NOT ask it).' : ', and her name ("And who should I say enquired?").'}
 4. Once you have the details + name, call capture_couple_lead. That is the END of intake — immediately after, call respond_to_couple with a brief warm close: "Perfect — I've passed this to ${vendorName}, they'll be in touch soon!" Do NOT ask anything else after capturing. The enquiry is done.
 
 If she volunteers several things at once — capture them all, skip ahead, hand off sooner.
