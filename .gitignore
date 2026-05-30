@@ -15,3 +15,8 @@ node_modules/
 *.zip
 phase*_pkg/
 .phase*_backup/
+
+# apply.sh backups and unzipped package folders (local debris)
+.*_backup/
+*_pkg/
+*_fix/
