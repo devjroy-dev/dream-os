@@ -169,7 +169,14 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   // Skipped when there's recent session history (the message is likely a reply
   // to something already in flight, not a cold contextless drop) — we only gate
   // genuinely cold ambiguous inbounds.
-  if (ambiguity === 'ambiguous' && history.length === 0) {
+  //
+  // EXCEPTION (Phase 3): if there's an active bride ping, "her"/"she"/"tell her
+  // X" has an obvious referent — the bride who just messaged. Gating here would
+  // wrongly intercept a send_to_couple instruction ("tell her not available")
+  // and silently drop it. So when a ping is active, never gate — let the agent
+  // run, see the PENDING ALERT, and act (resolve the lead, send the reply).
+  const hasActivePing = Array.isArray(activePings) && activePings.length > 0;
+  if (ambiguity === 'ambiguous' && history.length === 0 && !hasActivePing) {
     const gateReply = 'Is this a lead to log, a note to save, or something else?';
     console.log(`[agent] ambiguity gate fired — asking instead of auto-acting | "${inboundMessage.slice(0, 60)}"`);
     return {
@@ -1724,12 +1731,14 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
       if (!input.lead_id) return 'I need to know which client this is for. Who should I send it to?';
       if (!input.message || !input.message.trim()) return 'There is no message to send.';
 
+      console.log(`[tool:send_to_couple] called with lead_id=${input.lead_id} vendor=${vendor.id}`);
       const { replyToCouple } = require('../lib/vendor/replyToCouple');
       const result = await replyToCouple(supabase, {
         vendor,
         leadId:  input.lead_id,
         message: input.message,
       });
+      console.log(`[tool:send_to_couple] replyToCouple result: ok=${result.ok} error=${result.error || '-'} phone=${result.phone || '-'} lead=${result.lead?.name || '-'}/${result.lead?.phone || 'NO_PHONE'}`);
 
       if (!result.ok) {
         if (result.error === 'no_phone') {

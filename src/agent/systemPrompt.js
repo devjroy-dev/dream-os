@@ -298,7 +298,10 @@ function buildDynamicContext({ vendor, user, state, recentNotes, openLeadsCount,
       const idTag = p.lead_id ? ` [lead_id: ${p.lead_id}]` : '';
       return `- ${name}${idTag} (${source} ${minsAgo} min ago)${detailLine}`;
     });
-    pendingAlertsBlock = '\nPENDING ALERTS (active in the last 10 minutes — these are who the vendor most likely means by "her", "she", "this person"). Each shows a [lead_id] — pass that exact id to send_to_couple:\n' + lines.join('\n');
+    const header = pingsList.length === 1
+      ? '\nPENDING ALERTS — there is exactly ONE active conversation. Any "her"/"she"/"tell her"/"reply to her" means THIS person. Do NOT ask "did you mean [name]?" — it is obviously them. Use this [lead_id] directly with send_to_couple:\n'
+      : '\nPENDING ALERTS (active in the last 10 minutes — these are who the vendor most likely means by "her", "she", "this person"). There are MULTIPLE — if it is unclear which, ask one short question. Each shows a [lead_id] — pass that exact id to send_to_couple:\n';
+    pendingAlertsBlock = header + lines.join('\n');
   }
 
   // ── PENDING EVENT PROPOSALS block (calendar image OCR — Patch 8) ──
