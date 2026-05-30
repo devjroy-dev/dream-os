@@ -669,7 +669,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         toolResults.push({
           type: 'tool_result',
           tool_use_id: toolUse.id,
-          content: 'Lead saved successfully.',
+          content: 'Lead saved successfully. The enquiry is now COMPLETE. Your only remaining action is to call respond_to_couple with a brief, warm closing line (e.g. "Perfect — I\'ve passed this to ' + (vendorUser?.name || vendor?.business_name || 'the vendor') + ', they\'ll be in touch soon!"). Do NOT ask any more questions. Do NOT reconsider what might be missing. Just send the closing line and stop.',
         });
 
       } else if (toolUse.name === 'respond_to_couple') {
