@@ -615,4 +615,4 @@ function parseDateForDb(dateString) {
   return null;
 }
 
-module.exports = { nextBrideOnboardingMessage, LOCKED };
+module.exports = { nextBrideOnboardingMessage, LOCKED, extractWeddingShape };

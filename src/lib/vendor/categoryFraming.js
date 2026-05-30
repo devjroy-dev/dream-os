@@ -38,7 +38,7 @@ const PRICE_DEPENDS_ON = {
   transport:    'the vehicles, distance, and number of days',
   invitations:  'the quantity, the design, and the finish you choose',
   jewellery:    'the pieces you choose, the materials, and any customisation',
-  attire:       'the outfits, the fabrics, and how much customisation you want',
+  designer:     'the outfits, the fabrics, and how much customisation you want',
   other:        'your specific requirements',
 };
 
@@ -70,7 +70,7 @@ const OFFERING_NOUN = {
   transport:    'the transport',
   invitations:  'the invitations',
   jewellery:    'the pieces',
-  attire:       'the outfits',
+  designer:     'the outfits',
   other:        'the work',
 };
 
@@ -99,7 +99,7 @@ function normaliseCategory(category) {
   if (c.includes('transport') || c.includes('car')) return 'transport';
   if (c.includes('invit') || c.includes('card') || c.includes('stationery')) return 'invitations';
   if (c.includes('jewel')) return 'jewellery';
-  if (c.includes('attire') || c.includes('lehenga') || c.includes('outfit') || c.includes('cloth')) return 'attire';
+  if (c.includes('attire') || c.includes('lehenga') || c.includes('outfit') || c.includes('cloth') || c.includes('designer') || c.includes('couture') || c.includes('sherwani') || c.includes('gown') || c.includes('saree') || c.includes('boutique')) return 'designer';
   return 'other';
 }
 

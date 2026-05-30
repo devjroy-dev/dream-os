@@ -409,9 +409,29 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   const isReturningBride = !!existingLeadForCouple?.name;
   const leadName = existingLeadForCouple?.name || null;
 
+  // Phase 3.5 Layer 1: inherit the bride's wedding SHAPE if she has a couple
+  // record (from bride onboarding). Linked by phone via users. Many enquiring
+  // brides won't have onboarded — then shape is null and the category profile
+  // simply gathers what it needs fresh. Best-effort; never blocks the turn.
+  let weddingShape = null;
+  try {
+    const { data: coupleUser } = await supabase
+      .from('users').select('id').eq('phone', couplePhone).maybeSingle();
+    if (coupleUser) {
+      const { data: coupleRec } = await supabase
+        .from('couples')
+        .select('wedding_date, wedding_city, function_count, wedding_days, functions, budget_total')
+        .eq('user_id', coupleUser.id)
+        .maybeSingle();
+      if (coupleRec) weddingShape = coupleRec;
+    }
+  } catch (e) {
+    console.warn('[couple-agent] wedding-shape lookup failed (non-fatal):', e.message);
+  }
+
   console.log(`[couple-agent] isReturningBride=${isReturningBride} phone=${couplePhone}${leadName ? ` name=${leadName}` : ''}`);
 
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName });
+  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape });
 
   const messages = [
     ...history,

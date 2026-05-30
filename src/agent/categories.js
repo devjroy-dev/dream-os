@@ -27,7 +27,7 @@ const VENDOR_CATEGORIES = [
   'transport',      // car rentals, horse/buggy, vintage cars, baraat
   'invitations',    // invitation designers, card printing, stationery, digital invites
   'jewellery',      // jewellery designers, rental jewellery
-  'attire',         // bridal wear, lehenga, sherwani, clothing rental
+  'designer',       // bridal wear, lehenga, sherwani, clothing rental, couture
   'other',          // anything that genuinely doesn't fit above
 ];
 
@@ -50,7 +50,7 @@ const CATEGORY_ALIASES = {
   'invitations':  ['invitation', 'card', 'stationery', 'printing', 'digital invite',
                    'wedding card', 'card printer', 'card printing', 'e-invite', 'digital card'],
   'jewellery':    ['jewellery', 'jewelry', 'jewels', 'rental jewellery'],
-  'attire':       ['bridal wear', 'lehenga', 'sherwani', 'clothing', 'outfit', 'fashion'],
+  'designer':     ['bridal wear', 'lehenga', 'sherwani', 'clothing', 'outfit', 'fashion', 'attire', 'couture', 'boutique'],
 };
 
 module.exports = { VENDOR_CATEGORIES, CATEGORY_ALIASES };
