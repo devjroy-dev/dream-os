@@ -49,7 +49,7 @@
   - **DECOR (event):** [shape if unregistered] → function(s)+venue → free-text vision (capture as-is) → budget → name.
   - **VENUE (event):** [shape if unregistered] → guests → functions/dates → budget → name; visit-oriented (nudge a visit).
 - **Wedding-shape gating:** only EVENT categories use shape (`timelineType==='event'`). Registered bride inherits shape (don't re-ask); unregistered event-category bride is asked shape FIRST. Delivery categories (jeweller/designer) NEVER ask or inherit it.
-- **Migration 0066** (`db/migrations/0066_lead_wedding_shape.sql`): adds the same three shape columns to `leads`, for unregistered brides (Option A — store on lead, no ghost couples record). STATUS UNCERTAIN whether run in Supabase — flagged.
+- **Migration 0066** (`db/migrations/0066_lead_wedding_shape.sql`): adds the same three shape columns to `leads`, for unregistered brides (Option A — store on lead, no ghost couples record). Applied 2026-05-30, verified in Supabase via information_schema.
 
 ### 1.4 Phase 3.5 Layer 1 — final enquiry cleanup (deployed `143b1ec`)
 - **Dropped the occasion/function question entirely from jeweller AND designer.** Reason: the greeting itself carries the context; a separate "what occasion" question was redundant and caused loops.
@@ -152,7 +152,7 @@
 ## 5. FLAGGED ITEMS (complete register — open at session end)
 
 ### 5.1 To verify
-- **Migration 0066 status uncertain.** The .sql is committed but it is unclear whether it was actually run in Supabase. Verify: `select column_name from information_schema.columns where table_name='leads' and column_name in ('function_count','wedding_days','functions');` — if 0 rows, run 0066.
+- **Migration 0066 — APPLIED & verified 2026-05-30** (information_schema confirms all 3 columns on leads). Original verify query: `select column_name from information_schema.columns where table_name='leads' and column_name in ('function_count','wedding_days','functions');` — if 0 rows, run 0066.
 - **Confirm `143b1ec` send-first + intent-guard pushed and live**, then re-test the vendor "tell her X" path with an open window.
 
 ### 5.2 Pending work (scoped & decided, NOT built)
