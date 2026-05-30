@@ -20,3 +20,4 @@ phase*_pkg/
 .*_backup/
 *_pkg/
 *_fix/
+*.zip
