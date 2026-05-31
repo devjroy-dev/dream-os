@@ -14,6 +14,10 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const ENQUIRE_BASE = 'https://wa.me/917982159047?text=TDW-';
 
 // ── GET /feed ─────────────────────────────────────────────────────────────────
+// Returns real vendors (discover_eligible=true) UNION demo vendors
+// (discover_eligible=true AND active=true). Fully filtered on both sides —
+// no cross-leakage possible. Demo vendors are identified by is_demo:true in
+// the response so the client can render them identically.
 router.get('/feed', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
 
@@ -25,32 +29,33 @@ router.get('/feed', asyncHandler(async (req, res) => {
   const limit    = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const offset   = page * limit;
 
-  let query = supabase
+  // ── 1. Real vendors ────────────────────────────────────────────────────────
+  let realQuery = supabase
     .from('vendors')
-    .select('id, business_name, category, city, routing_handle, rate_min, aesthetic_tags, about, discover_preview', { count: 'exact' })
+    .select('id, business_name, category, city, routing_handle, rate_min, aesthetic_tags, about', { count: 'exact' })
     .eq('discover_eligible', true);
 
-  if (category) query = query.eq('category', category);
-  if (city)     query = query.ilike('city', `%${city}%`);
-  if (budget)   query = query.lte('rate_min', parseInt(budget, 10));
-  if (vibes)    query = query.overlaps('aesthetic_tags', vibes.split(','));
+  if (category) realQuery = realQuery.eq('category', category);
+  if (city)     realQuery = realQuery.ilike('city', `%${city}%`);
+  if (budget)   realQuery = realQuery.lte('rate_min', parseInt(budget, 10));
+  if (vibes)    realQuery = realQuery.overlaps('aesthetic_tags', vibes.split(','));
 
-  query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+  realQuery = realQuery.order('created_at', { ascending: false });
 
-  const { data: vendors, error, count } = await query;
-  if (error) {
-    console.error('[GET /discover/feed] query error:', error.message);
+  const { data: realVendors, error: realError, count: realCount } = await realQuery;
+  if (realError) {
+    console.error('[GET /discover/feed] real vendors error:', realError.message);
     return errRes(res, 500, 'Feed unavailable.');
   }
 
-  // Fetch up to 5 approved portfolio images per vendor in one query
-  const vendorIds = (vendors || []).map(v => v.id);
+  // Fetch approved portfolio photos for real vendors
+  const realIds = (realVendors || []).map(v => v.id);
   let photoMap = {};
-  if (vendorIds.length > 0) {
+  if (realIds.length > 0) {
     const { data: photos } = await supabase
       .from('vendor_portfolio')
       .select('vendor_id, image_url')
-      .in('vendor_id', vendorIds)
+      .in('vendor_id', realIds)
       .eq('approval_state', 'approved')
       .order('is_hero', { ascending: false })
       .order('created_at', { ascending: false });
@@ -61,24 +66,87 @@ router.get('/feed', asyncHandler(async (req, res) => {
     });
   }
 
-  const shaped = (vendors || []).map(v => ({
+  const shapedReal = (realVendors || []).map(v => ({
     id:             v.id,
-    name:           v.business_name || null,
-    category:       v.category      || null,
-    city:           v.city          || null,
+    name:           v.business_name  || null,
+    category:       v.category       || null,
+    city:           v.city           || null,
     routing_handle: v.routing_handle || null,
-    starting_price: v.rate_min      || null,
-    photos:         photoMap[v.id]  || [],
+    starting_price: v.rate_min       || null,
+    photos:         photoMap[v.id]   || [],
     vibe_tags:      v.aesthetic_tags || [],
-    about:          v.about           || null,
+    about:          v.about          || null,
     enquire_link:   v.routing_handle ? `${ENQUIRE_BASE}${v.routing_handle}` : null,
+    is_demo:        false,
   }));
 
+  // ── 2. Demo vendors (discover_eligible=true AND active=true only) ──────────
+  let demoQuery = supabase
+    .from('demo_vendors')
+    .select('id, display_name, category, city, ig_handle, rate_display, photos, about')
+    .eq('discover_eligible', true)
+    .eq('active', true);
+
+  if (category) demoQuery = demoQuery.eq('category', category);
+  if (city)     demoQuery = demoQuery.ilike('city', `%${city}%`);
+  // budget filter not applied to demo vendors — rate_display is a string not int
+  // vibes filter not applied — demo vendors don't have aesthetic_tags yet
+
+  demoQuery = demoQuery.order('created_at', { ascending: false });
+
+  const { data: demoVendors, error: demoError } = await demoQuery;
+  if (demoError) {
+    // Non-fatal — if demo table query fails, still return real vendors
+    console.error('[GET /discover/feed] demo vendors error:', demoError.message);
+  }
+
+  const shapedDemo = (demoVendors || []).map(v => {
+    // photos is a JSONB array of {url, is_hero, cloudinary_id}
+    const photoUrls = (Array.isArray(v.photos) ? v.photos : [])
+      .slice(0, 5)
+      .map(p => (typeof p === 'string' ? p : p?.url))
+      .filter(Boolean);
+
+    return {
+      id:             v.id,
+      name:           v.display_name || null,
+      category:       v.category     || null,
+      city:           v.city         || null,
+      routing_handle: v.ig_handle    || null,
+      starting_price: null,           // rate_display is a string; client shows it via about
+      photos:         photoUrls,
+      vibe_tags:      [],
+      about:          v.about        || null,
+      enquire_link:   v.ig_handle ? `${ENQUIRE_BASE}${v.ig_handle}` : null,
+      is_demo:        true,
+    };
+  });
+
+  // ── 3. Merge, shuffle slightly so demos don't always cluster, paginate ─────
+  const combined = [...shapedReal, ...shapedDemo];
+  // Stable interleave: insert demo vendors at every ~5th position so they
+  // feel natural in the feed rather than all appearing at the end.
+  const interleaved = [];
+  let di = 0;
+  const demoOnly  = combined.filter(v => v.is_demo);
+  const realOnly  = combined.filter(v => !v.is_demo);
+  realOnly.forEach((v, i) => {
+    interleaved.push(v);
+    if ((i + 1) % 5 === 0 && di < demoOnly.length) {
+      interleaved.push(demoOnly[di++]);
+    }
+  });
+  // Append any remaining demo vendors
+  while (di < demoOnly.length) interleaved.push(demoOnly[di++]);
+
+  const total    = interleaved.length;
+  const paginated = interleaved.slice(offset, offset + limit);
+
   return okRes(res, {
-    vendors:  shaped,
+    vendors:  paginated,
     page,
-    has_more: (count || 0) > offset + limit,
-    total:    count || 0,
+    has_more: total > offset + limit,
+    total,
   });
 }));
 

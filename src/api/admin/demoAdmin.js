@@ -95,6 +95,36 @@ router.post('/leads', requireAdminPassword, async (req, res) => {
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
 
+// POST /admin/demo/vendors/:id/discover-grant
+router.post('/vendors/:id/discover-grant', requireAdminPassword, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  try {
+    const { data, error } = await supabase
+      .from('demo_vendors')
+      .update({ discover_eligible: true, discover_eligible_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .select('id, display_name, discover_eligible')
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, vendor: data });
+  } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
+});
+
+// POST /admin/demo/vendors/:id/discover-revoke
+router.post('/vendors/:id/discover-revoke', requireAdminPassword, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  try {
+    const { data, error } = await supabase
+      .from('demo_vendors')
+      .update({ discover_eligible: false })
+      .eq('id', req.params.id)
+      .select('id, display_name, discover_eligible')
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, vendor: data });
+  } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
+});
+
 // POST /admin/demo/cloudinary-sign
 router.post('/cloudinary-sign', requireAdminPassword, async (req, res) => {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
