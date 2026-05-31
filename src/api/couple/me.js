@@ -95,4 +95,20 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
   return okRes(res, { updated: true });
 }));
 
+// ── GET / (bare — used by sanctuary onboarding guard) ────────────────────────
+// Same as /:coupleId but coupleId comes from the JWT via req.coupleUser.
+router.get('/', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+
+  const { data: couple, error } = await supabase
+    .from('couples')
+    .select('id, onboarding_state, planning_state, wedding_date, wedding_city, partner_name, budget_total')
+    .eq('id', couple_id)
+    .maybeSingle();
+
+  if (error || !couple) return errRes(res, 404, 'Couple not found.');
+  return okRes(res, { couple });
+}));
+
 module.exports = router;
