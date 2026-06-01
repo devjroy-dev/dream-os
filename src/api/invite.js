@@ -156,13 +156,15 @@ router.post('/consume', async (req, res) => {
 
   // 4. Atomic consume via DB function
   const { data: consumeResult, error: consumeError } = await supabase
-    .rpc('consume_invite_code', { p_code: cleanCode, p_user_id: userId });
+    .rpc('consume_invite_code', { p_code: cleanCode, p_user_id: userId, p_phone: cleanPhone });
 
   if (consumeError) {
     if (!alreadyProvisioned) await supabase.from('users').delete().eq('id', userId);
     const hint = consumeError.hint || '';
     if (hint === 'invite_code_invalid')
       return res.status(400).json({ error: 'Invite code not found.', reason: hint });
+    if (hint === 'invite_code_wrong_phone')
+      return res.status(400).json({ error: 'This invite was issued for a different phone number. Please use the number it was sent to, or ask for a new invite.', reason: hint });
     if (hint === 'invite_code_already_consumed') {
       if (alreadyProvisioned)
         return res.json({ ok: true, user_id: userId, kind, already_provisioned: true });
