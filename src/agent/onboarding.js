@@ -207,14 +207,13 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
   switch (state) {
 
     case 'new': {
-      await supabase.from('vendors').update({ onboarding_state: 'asked_name' }).eq('id', vendor.id);
+      // We already have the vendor's name from the invite (used in the greeting),
+      // so skip the "what should I call you?" step entirely — greet and go
+      // straight to the Instagram question. users.name is never overwritten here.
+      await supabase.from('vendors').update({ onboarding_state: 'asked_ig' }).eq('id', vendor.id);
       const knownFirst = (name && name !== 'there') ? name.split(/\s+/)[0] : null;
-      if (knownFirst) {
-        // We already have a name from the invite — propose it, don't ask open-ended.
-        // A "yes/yeah" reply keeps this name; a typed name overrides it.
-        return { reply: `Hi ${knownFirst} — I'm your chief of staff, here to help you manage every aspect of your business. Quick one before we begin: should I call you ${knownFirst}, or would you prefer something else?` };
-      }
-      return { reply: `Hi — I'm your chief of staff, here to help you manage every aspect of your business. Quick question before we begin — what should I call you? Just type your first name.` };
+      const greeting = knownFirst ? `Hi ${knownFirst} —` : `Hi —`;
+      return { reply: `${greeting} I'm your chief of staff, here to help you manage every aspect of your business. One quick thing to set you up — what's your Instagram handle? Your clients will use it to reach your PA. If you don't have one, just say skip.` };
     }
 
     case 'asked_name': {
