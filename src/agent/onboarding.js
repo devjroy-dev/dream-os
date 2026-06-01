@@ -208,18 +208,55 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
 
     case 'new': {
       await supabase.from('vendors').update({ onboarding_state: 'asked_name' }).eq('id', vendor.id);
-      const greeting = name && name !== 'there'
-        ? `Hi ${name} —`
-        : `Hi —`;
-      return { reply: `${greeting} I'm your chief of staff, here to help you manage every aspect of your business. Quick question before we begin — what should I call you? Just your first name is fine.` };
+      const knownFirst = (name && name !== 'there') ? name.split(/\s+/)[0] : null;
+      if (knownFirst) {
+        // We already have a name from the invite — propose it, don't ask open-ended.
+        // A "yes/yeah" reply keeps this name; a typed name overrides it.
+        return { reply: `Hi ${knownFirst} — I'm your chief of staff, here to help you manage every aspect of your business. Quick one before we begin: should I call you ${knownFirst}, or would you prefer something else?` };
+      }
+      return { reply: `Hi — I'm your chief of staff, here to help you manage every aspect of your business. Quick question before we begin — what should I call you? Just type your first name.` };
     }
 
     case 'asked_name': {
-      const firstName = inboundMessage.trim().split(/\s+/)[0].slice(0, 60);
-      const cleanFirst = firstName.replace(/[^\w'-]/g, '').trim() || firstName;
-      await supabase.from('users').update({ name: cleanFirst }).eq('id', vendor.user_id);
+      const raw = inboundMessage.trim();
+      const existingName = (name && name !== 'there') ? name.split(/\s+/)[0] : null;
+
+      // Normalise: lowercase, drop trailing punctuation, collapse spaces.
+      const norm = raw.toLowerCase().replace(/[.!,]+$/, '').replace(/\s+/g, ' ').trim();
+
+      // Pure acknowledgement — possibly followed by filler ("yes that works",
+      // "yeah sounds good", "haan perfect", "ok cool"). If the WHOLE reply is an
+      // affirmation + optional filler (no actual name token), keep the existing
+      // name. Without this guard the agent stored "yeah" as the vendor's name.
+      const AFFIRM = '(?:ya+|yea+h?|yep+|yup|yes+|ok+|okay|sure|fine|haan?|haa+n?|perfect|cool|great|right|correct|done|👍)';
+      const FILLER = '(?:that(?:\'s| is)?|sounds|works|good|great|fine|perfect|right|ok|okay|cool|yes|yep|sure|👍|\\s)';
+      const ACK_RE = new RegExp(`^${AFFIRM}(?:\\s+${FILLER})*$`, 'i');
+      const isAck = existingName && ACK_RE.test(norm);
+
+      let cleanFirst;
+      if (isAck) {
+        // Keep the invite name as-is.
+        cleanFirst = existingName;
+      } else if (raw) {
+        // Treat the reply as the name they want. Strip leading filler/corrections
+        // so "call me Kay" -> "Kay", "no it's Priya" -> "Priya", "i'm Rohan" -> "Rohan".
+        const stripped = raw
+          .replace(/^((no|nope|nah|actually|well|um|uh)[,\s]+)+/i, '')
+          .replace(/^(call me|you can call me|please call me|i am|i'm|im|its|it'?s|name is|my name is|just|its just|i go by)\s+/i, '')
+          .trim();
+        const firstName = (stripped || raw).split(/\s+/)[0].slice(0, 60);
+        cleanFirst = firstName.replace(/[^\w'-]/g, '').trim() || existingName || firstName;
+      } else {
+        // Empty reply — fall back to the invite name if we have one.
+        cleanFirst = existingName || '';
+      }
+
+      if (cleanFirst) {
+        await supabase.from('users').update({ name: cleanFirst }).eq('id', vendor.user_id);
+      }
       await supabase.from('vendors').update({ onboarding_state: 'asked_ig' }).eq('id', vendor.id);
-      return { reply: `Got it, ${cleanFirst}. One more thing — what's your Instagram handle? Your clients will use it to reach your PA. If you don't have one, just say skip.` };
+      const callName = cleanFirst || 'there';
+      return { reply: `Got it, ${callName}. One more thing — what's your Instagram handle? Your clients will use it to reach your PA. If you don't have one, just say skip.` };
     }
 
     case 'asked_ig': {
