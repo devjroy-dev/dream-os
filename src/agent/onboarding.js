@@ -1,15 +1,54 @@
 // onboarding.js — conversational onboarding flow for new vendors
 //
-// States: new -> asked_name -> asked_ig -> asked_category -> asked_city -> asked_travel -> asked_rate -> complete
-// Session 8.1: asked_category now uses Haiku smart extraction.
+// EVENT vendors   (photographer, MUA, decor, venue, etc.) — the work happens ON
+//                 the wedding day. Flow: name -> ig -> category -> city ->
+//                 travel -> rate -> complete.
+// DELIVERY vendors (designer, jeweller) — the work is MADE and DELIVERED before
+//                 the wedding. "Travel to the venue" and "rate per wedding day"
+//                 are the wrong questions. Flow forks after category/city into:
+//                 craft -> reach (pan-India?) -> price -> complete.
+//
+// Session 8.1: asked_category uses Haiku smart extraction.
 //   - Normalises category against locked taxonomy (categories.js)
 //   - Extracts style_notes (qualifiers like "luxury", "celebrity", "budget")
 //   - If vendor mentions city in same message, captures it and skips asked_city
+//
+// Completion (handle assignment + final message) is shared by both flows via
+// completeOnboarding() — single source of truth, and the place the old
+// out-of-scope `handle` ReferenceError used to crash.
 
 const { MODEL_HAIKU }                    = require('./models');
 const { VENDOR_CATEGORIES, CATEGORY_ALIASES } = require('./categories');
 
 const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
+
+// Categories whose work is made-and-delivered before the wedding. These get the
+// craft -> reach -> price sub-flow instead of travel -> rate.
+const DELIVERY_CATEGORIES = new Set(['designer', 'jewellery']);
+
+// ── Category-specific question wording (delivery vendors only) ────────────────
+function craftQuestion(category) {
+  if (category === 'designer')
+    return 'What do you make mostly — bridal lehengas, gowns, sherwanis, sarees? Whatever you specialise in.';
+  if (category === 'jewellery')
+    return 'What do you work in mostly — full bridal sets, necklaces, individual pieces? And the style: polki, kundan, gold, diamond, temple?';
+  return 'Tell me a bit about what you make.';
+}
+
+function priceQuestion(category) {
+  if (category === 'designer')
+    return "And what's the typical price range for a custom outfit with you? A ballpark is fine.";
+  if (category === 'jewellery')
+    return "And what's the typical price range for a piece or a full set? A ballpark is fine.";
+  return "And what's your typical price range? A ballpark is fine.";
+}
+
+// Pan-India reach — the delivery-vendor stand-in for "open to travel".
+function reachQuestion(city) {
+  return city
+    ? `And are your services available pan-India, or mostly within ${city}?`
+    : `And are your services available pan-India, or mostly local?`;
+}
 
 // ── Category extractor ────────────────────────────────────────────────────────
 // Calls Haiku with a strict JSON-only prompt to extract:
@@ -101,6 +140,64 @@ Now extract from this message:
   }
 }
 
+// ── Shared completion ─────────────────────────────────────────────────────────
+// Assigns the TDW routing handle, marks onboarding complete, and returns the
+// final hand-off message. Called by BOTH the event flow (asked_rate) and the
+// delivery flow (asked_price), so the closing experience is identical.
+//
+// NOTE: `handle` is declared in this function's top scope (not inside the
+// if/else) so it is always defined when the final message is built. The old
+// code declared it inside the else block, which threw a ReferenceError on the
+// `${handle}` references below and meant the closing message was never sent.
+async function completeOnboarding({ vendor, user, supabase }) {
+  const { data: freshVendor } = await supabase
+    .from('vendors').select('instagram_handle, routing_handle').eq('id', vendor.id).maybeSingle();
+
+  let handle = freshVendor?.routing_handle || null;
+
+  if (handle) {
+    // Handle already set (e.g. from web onboarding) — keep it, just complete.
+    await supabase.from('vendors').update({ onboarding_state: 'complete' }).eq('id', vendor.id);
+  } else {
+    const igHandle  = (freshVendor?.instagram_handle || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const phone3    = (user?.phone || '').replace(/\D/g, '').slice(-3);
+    const phone4    = (user?.phone || '').replace(/\D/g, '').slice(-4);
+    const candidates = [
+      igHandle,
+      `${firstName}${phone3}`,
+      `${firstName}${phone4}`,
+      `${firstName}${phone3}${phone4}`,
+      `${firstName}${Date.now().toString().slice(-6)}`,
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+      if (!candidate || candidate.length < 2) continue;
+      const { data: existing } = await supabase
+        .from('vendors').select('id').eq('routing_handle', candidate).maybeSingle();
+      if (!existing) { handle = candidate; break; }
+    }
+    // Last-resort fallback so handle is never null.
+    if (!handle) handle = `VENDOR${Date.now().toString().slice(-6)}`;
+    await supabase
+      .from('vendors')
+      .update({ routing_handle: handle, onboarding_state: 'complete' })
+      .eq('id', vendor.id);
+  }
+
+  await supabase.from('notes').insert({
+    vendor_id: vendor.id,
+    content: `TDW handle: ${handle}`,
+    tags: ['onboarding', 'tdw'],
+  });
+
+  const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${handle}`;
+  return {
+    reply: `Perfect — you're all set. Here's your TDW link: ${tdwLink} — put this in your Instagram bio so couples can reach you directly. Or just tell me about a lead who messaged and I'll log it. From here just talk to me like you'd talk to a trusted assistant.
+
+Also head over to thedreamwedding.in and sign in as a Maker — your dashboard is ready and waiting for you.`,
+  };
+}
+
 // ── Main onboarding handler ───────────────────────────────────────────────────
 
 async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, anthropic }) {
@@ -142,14 +239,16 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
       // ── Smart extraction via Haiku ──────────────────────────────
       const extracted = await extractCategoryDetails(inboundMessage, anthropic);
       const { category, style_notes, city } = extracted;
+      const isDelivery = DELIVERY_CATEGORIES.has(category);
 
       // If vendor mentioned city, capture it and skip asked_city
       if (city) {
+        const nextState = isDelivery ? 'asked_craft' : 'asked_travel';
         await supabase.from('vendors').update({
           category,
           style_notes,
           city,
-          onboarding_state: 'asked_travel',
+          onboarding_state: nextState,
         }).eq('id', vendor.id);
 
         await supabase.from('notes').insert([
@@ -157,12 +256,14 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
           { vendor_id: vendor.id, content: `Based in ${city}`, tags: ['onboarding', 'city'] },
         ]);
 
-        // Build a natural reply that confirms both category and city
         const categoryDisplay = style_notes ? `${style_notes} ${category}` : category;
+        if (isDelivery) {
+          return { reply: `Got it — ${categoryDisplay} based in ${city}. ${craftQuestion(category)}` };
+        }
         return { reply: `Got it — ${categoryDisplay} based in ${city}. Are you open to travelling for work, or mostly local?` };
       }
 
-      // No city extracted — proceed normally to asked_city
+      // No city extracted — proceed to asked_city
       await supabase.from('vendors').update({
         category,
         style_notes,
@@ -181,11 +282,62 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
 
     case 'asked_city': {
       const city = inboundMessage.trim();
-      await supabase.from('vendors').update({ city, onboarding_state: 'asked_travel' }).eq('id', vendor.id);
+      const isDelivery = DELIVERY_CATEGORIES.has(vendor.category);
+      const nextState = isDelivery ? 'asked_craft' : 'asked_travel';
+      await supabase.from('vendors').update({ city, onboarding_state: nextState }).eq('id', vendor.id);
       await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Based in ${city}`, tags: ['onboarding', 'city'] });
+      if (isDelivery) {
+        return { reply: `${city} — ${craftQuestion(vendor.category)}` };
+      }
       return { reply: `${city} — and are you open to travelling for work, or mostly local?` };
     }
 
+    // ── DELIVERY sub-flow: craft -> reach -> price ──────────────────────────
+    case 'asked_craft': {
+      // What they make. Stored as style_notes (appended) + a note.
+      const craft = inboundMessage.trim();
+      const existingNotes = vendor.style_notes ? `${vendor.style_notes}; ` : '';
+      const newStyleNotes = `${existingNotes}${craft}`.slice(0, 300);
+      await supabase.from('vendors').update({
+        style_notes: newStyleNotes,
+        onboarding_state: 'asked_reach',
+      }).eq('id', vendor.id);
+      await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Makes: ${craft}`, tags: ['onboarding', 'craft'] });
+      return { reply: `Got it. ${reachQuestion(vendor.city)}` };
+    }
+
+    case 'asked_reach': {
+      // Pan-India reach — the delivery stand-in for "open to travel".
+      // Reuses vendors.open_to_travel / travel_notes so downstream readers are
+      // unchanged (true = ships/serves pan-India).
+      const open_to_travel = /yes|pan.?india|all over|everywhere|anywhere|nationwide|across india|ship/i.test(inboundMessage);
+      const travel_notes   = inboundMessage.trim();
+      await supabase.from('vendors').update({ open_to_travel, travel_notes, onboarding_state: 'asked_price' }).eq('id', vendor.id);
+      await supabase.from('notes').insert({ vendor_id: vendor.id, content: `Reach: ${inboundMessage.trim()}`, tags: ['onboarding', 'reach'] });
+      return { reply: priceQuestion(vendor.category) };
+    }
+
+    case 'asked_price': {
+      // Typical price range. Stored in the same slot as event vendors' rate so
+      // any pricing logic that reads pricing_policy.stated_rate still works.
+      const price = inboundMessage.trim();
+      await supabase.from('vendor_state').upsert({
+        vendor_id: vendor.id,
+        summary: `${user?.name || 'Vendor'} — ${vendor.category || ''}${vendor.style_notes ? ` (${vendor.style_notes})` : ''} based in ${vendor.city || ''}. Typical price range: ${price}. Founding cohort vendor.`,
+        pricing_policy: { stated_rate: price },
+        recent_notes: [],
+        updated_at: new Date().toISOString(),
+      });
+      await supabase.from('notes').insert({
+        vendor_id: vendor.id,
+        content: `Typical price range: ${price}`,
+        tags: ['onboarding', 'pricing'],
+      });
+
+      return await completeOnboarding({ vendor, user, supabase });
+    }
+
+    // ── EVENT sub-flow: travel -> rate ──────────────────────────────────────
     case 'asked_travel': {
       const open_to_travel = /yes|open|travel|anywhere|pan.?india|outstation|outside/i.test(inboundMessage);
       const travel_notes   = inboundMessage.trim();
@@ -197,7 +349,6 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
     case 'asked_rate': {
       const rate = inboundMessage.trim();
 
-      // Save rate to vendor_state
       await supabase.from('vendor_state').upsert({
         vendor_id: vendor.id,
         summary: `${user?.name || 'Vendor'} — ${vendor.category || ''}${vendor.style_notes ? ` (${vendor.style_notes})` : ''} based in ${vendor.city || ''}. Typical rate: ${rate}. Founding cohort vendor.`,
@@ -211,49 +362,7 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
         tags: ['onboarding', 'pricing'],
       });
 
-      // Auto-assign TDW handle — priority: IG handle → FIRSTNAME+PHONE3 → fallbacks
-      const { data: freshVendor } = await supabase
-        .from('vendors').select('instagram_handle, routing_handle').eq('id', vendor.id).maybeSingle();
-      if (freshVendor?.routing_handle) {
-        // Handle already set (e.g. from web onboarding) — skip generation
-        await supabase.from('vendors').update({ onboarding_state: 'complete' }).eq('id', vendor.id);
-      } else {
-        const igHandle  = (freshVendor?.instagram_handle || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
-        const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
-        const phone3    = (user?.phone || '').replace(/\D/g, '').slice(-3);
-        const phone4    = (user?.phone || '').replace(/\D/g, '').slice(-4);
-        const candidates = [
-          igHandle,
-          `${firstName}${phone3}`,
-          `${firstName}${phone4}`,
-          `${firstName}${phone3}${phone4}`,
-          `${firstName}${Date.now().toString().slice(-6)}`,
-        ].filter(Boolean);
-        let handle = null;
-        for (const candidate of candidates) {
-          if (!candidate || candidate.length < 2) continue;
-          const { data: existing } = await supabase
-            .from('vendors').select('id').eq('routing_handle', candidate).maybeSingle();
-          if (!existing) { handle = candidate; break; }
-        }
-        await supabase
-          .from('vendors')
-          .update({ routing_handle: handle, onboarding_state: 'complete' })
-          .eq('id', vendor.id);
-      }
-
-      await supabase.from('notes').insert({
-        vendor_id: vendor.id,
-        content: `TDW handle: ${handle}`,
-        tags: ['onboarding', 'tdw'],
-      });
-
-      const tdwLink = `wa.me/${TDW_WA_NUMBER}?text=TDW-${handle}`;
-      return {
-        reply: `Perfect — you're all set. Here's your TDW link: ${tdwLink} — put this in your Instagram bio so couples can reach you directly. Or you just send me the messages you receive. From here just talk to me like you'd talk to a trusted assistant.
-
-Also head over to thedreamwedding.in and sign in as a Maker — your dashboard is ready and waiting for you.`,
-      };
+      return await completeOnboarding({ vendor, user, supabase });
     }
 
     default: {
