@@ -210,10 +210,12 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
       // We already have the vendor's name from the invite (used in the greeting),
       // so skip the "what should I call you?" step entirely — greet and go
       // straight to the Instagram question. users.name is never overwritten here.
+      // The ---DRAFT--- delimiter makes the webhook send this as TWO separate
+      // WhatsApp messages: the greeting first, then the IG question.
       await supabase.from('vendors').update({ onboarding_state: 'asked_ig' }).eq('id', vendor.id);
       const knownFirst = (name && name !== 'there') ? name.split(/\s+/)[0] : null;
       const greeting = knownFirst ? `Hi ${knownFirst} —` : `Hi —`;
-      return { reply: `${greeting} I'm your chief of staff, here to help you manage every aspect of your business. One quick thing to set you up — what's your Instagram handle? Your clients will use it to reach your PA. If you don't have one, just say skip.` };
+      return { reply: `${greeting} I'm your chief of staff, here to help you manage every aspect of your business.---DRAFT---One quick thing to set you up — what's your Instagram handle? Your clients will use it to reach you. If you want to do it later, just say skip.` };
     }
 
     case 'asked_name': {
