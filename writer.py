@@ -1,46 +1,55 @@
 #!/usr/bin/env python3
-# Piece 2-B - Cabinet read softened. ONE anchor-guarded, idempotent replacement of
-# the slice block in src/api/vendor/cabinet.js:
-#   clients : exact stage=='client'  ->  soft: stage CONTAINS a conversion word
-#             (client/booked/confirmed/signed/advance/paid), read off STAGE only,
-#             never inferred from money.
-#   leads   : exact stage=='lead'    ->  catch-all: every non-client binder that
-#             isn't an expense (direction!='out'), carrying its own stage as status.
-#             Nothing falls through.
-#   booked  : kind denylist          ->  allowlist of commitment kinds; 'call' no
-#             longer leaks in. blocked/reminder/task stay out as before.
-#   paid / owed / reminders : UNCHANGED.
-# Safe to re-run: already-applied SKIPs; missing anchor SKIPs loudly, no corruption.
+# Piece 3-A - GET /binders read hand. Adds src/api/vendor/binderRead.js (flat ledger)
+# and mounts it at /binders alongside binderWrite (GET->reader, POST->writer by method).
+# Additive, idempotent: existing file with same content SKIPs; missing mount anchor SKIPs.
 import base64, sys, os
-PATH = "src/api/vendor/cabinet.js"
-OLD = base64.b64decode("ICAvLyDilIDilIAgQmluZGVyIHNsaWNlcyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICBjb25zdCBjbGllbnRzID0gYWxsQmluZGVycy5maWx0ZXIoYiA9PiAoYi5zdGFnZSB8fCAnJykudG9Mb3dlckNhc2UoKSA9PT0gJ2NsaWVudCcpOwogIGNvbnN0IGxlYWRzICAgPSBhbGxCaW5kZXJzLmZpbHRlcihiID0+IChiLnN0YWdlIHx8ICcnKS50b0xvd2VyQ2FzZSgpID09PSAnbGVhZCcpOwogIGNvbnN0IHBhaWQgICAgPSBhbGxCaW5kZXJzLmZpbHRlcihiID0+IE51bWJlcihiLmFtb3VudF9yZWNlaXZlZCkgPiAwKTsKICBjb25zdCBvd2VkICAgID0gYWxsQmluZGVycy5maWx0ZXIoYiA9PiBOdW1iZXIoYi5hbW91bnRfcGVuZGluZykgID4gMCk7CgogIC8vIOKUgOKUgCBDYWxlbmRhciBzbGljZXMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgLy8gQm9va2VkID0gcmVhbCBjb21taXRtZW50cyBnb2luZyBmb3J3YXJkIChleGNsdWRlIHJlbWluZGVycy90YXNrcy9ibG9ja2VkKS4KICBjb25zdCBSRU1JTkRFUl9LSU5EUyA9IFsncmVtaW5kZXInLCAndGFzayddOwogIGNvbnN0IGJvb2tlZCA9IGFsbEV2ZW50cy5maWx0ZXIoZSA9PgogICAgZS5ldmVudF9kYXRlICYmIGUuZXZlbnRfZGF0ZSA+PSB0b2RheSAmJgogICAgZS5raW5kICE9PSAnYmxvY2tlZCcgJiYgIVJFTUlOREVSX0tJTkRTLmluY2x1ZGVzKGUua2luZCkKICApOwoKICAvLyBSZW1pbmRlcnMgJiB0YXNrcyA9IGNhbGVuZGFyIHJlbWluZGVycy90YXNrcyArIGFueSBiaW5kZXIgY2FycnlpbmcgYSBmb2xsb3d1cC4KICBjb25zdCByZW1pbmRlckV2ZW50cyA9IGFsbEV2ZW50cwogICAgLmZpbHRlcihlID0+IFJFTUlOREVSX0tJTkRTLmluY2x1ZGVzKGUua2luZCkpCiAgICAubWFwKGUgPT4gKHsgc291cmNlOiAnZXZlbnQnLCAuLi5lIH0pKTsKICBjb25zdCByZW1pbmRlckJpbmRlcnMgPSBhbGxCaW5kZXJzCiAgICAuZmlsdGVyKGIgPT4gYi5mb2xsb3d1cF9vbikKICAgIC5tYXAoYiA9PiAoeyBzb3VyY2U6ICdiaW5kZXInLCBpZDogYi5pZCwgY2xpZW50OiBiLmNsaWVudCwKICAgICAgICAgICAgICAgICBmb2xsb3d1cF9vbjogYi5mb2xsb3d1cF9vbiwgZm9sbG93dXBfbm90ZTogYi5mb2xsb3d1cF9ub3RlLCBiaW5kZXI6IGIgfSkpOwogIGNvbnN0IHJlbWluZGVycyA9IFsuLi5yZW1pbmRlckV2ZW50cywgLi4ucmVtaW5kZXJCaW5kZXJzXTs=").decode("utf-8")
-NEW = base64.b64decode("ICAvLyDilIDilIAgQmluZGVyIHNsaWNlcyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAvLyBTdGFnZSBpcyBmcmVlIHRleHQgKHRoZSBvd25lcidzIHdvcmQpIOKAlCB3ZSBuZXZlciBtYXRjaCBpdCBleGFjdGx5LiBBIGJpbmRlciBpcyBhCiAgLy8gQ0xJRU5UIHdoZW4gaXRzIHN0YWdlIGNhcnJpZXMgYSBjb252ZXJzaW9uIHdvcmQgKGNsaWVudC9ib29rZWQvY29uZmlybWVkL3NpZ25lZC8KICAvLyBhZHZhbmNlL3BhaWQpLCByZWFkIG9mZiB0aGUgU1RBR0UgdGhlIG93bmVyIHNldCBhbmQgbmV2ZXIgaW5mZXJyZWQgZnJvbSB0aGUgbW9uZXkKICAvLyBjb2x1bW5zIChhIHBhaWQgYmluZGVyIHRoZSBvd25lciBzdGlsbCBjYWxscyBhIGxlYWQgc3RheXMgYSBsZWFkOyBwYXltZW50IGRvZXMgbm90CiAgLy8gcHJvbW90ZSkuIEV2ZXJ5dGhpbmcgZWxzZSBpbmJvdW5kIGlzIGEgTEVBRCDigJQgdGhlIGNhdGNoLWFsbCwgc28gbm8gc3RhZ2UgZXZlciBmYWxscwogIC8vIHRocm91Z2gg4oCUIGNhcnJ5aW5nIGl0cyBvd24gc3RhZ2UgYXMgaXRzIHN0YXR1cy4gRXhwZW5zZXMgKGRpcmVjdGlvbj0nb3V0JykgYXJlIG5laXRoZXIuCiAgY29uc3QgQ0xJRU5UX1NUQUdFX1dPUkRTID0gWydjbGllbnQnLCAnYm9va2VkJywgJ2NvbmZpcm1lZCcsICdzaWduZWQnLCAnYWR2YW5jZScsICdwYWlkJ107CiAgY29uc3QgaXNDbGllbnRTdGFnZSA9IChiKSA9PiB7CiAgICBjb25zdCBzID0gKGIuc3RhZ2UgfHwgJycpLnRvTG93ZXJDYXNlKCk7CiAgICByZXR1cm4gQ0xJRU5UX1NUQUdFX1dPUkRTLnNvbWUodyA9PiBzLmluY2x1ZGVzKHcpKTsKICB9OwogIGNvbnN0IGNsaWVudHMgPSBhbGxCaW5kZXJzLmZpbHRlcihpc0NsaWVudFN0YWdlKTsKICBjb25zdCBsZWFkcyAgID0gYWxsQmluZGVycy5maWx0ZXIoYiA9PiAhaXNDbGllbnRTdGFnZShiKSAmJiAoYi5kaXJlY3Rpb24gfHwgJycpLnRvTG93ZXJDYXNlKCkgIT09ICdvdXQnKTsKICBjb25zdCBwYWlkICAgID0gYWxsQmluZGVycy5maWx0ZXIoYiA9PiBOdW1iZXIoYi5hbW91bnRfcmVjZWl2ZWQpID4gMCk7CiAgY29uc3Qgb3dlZCAgICA9IGFsbEJpbmRlcnMuZmlsdGVyKGIgPT4gTnVtYmVyKGIuYW1vdW50X3BlbmRpbmcpICA+IDApOwoKICAvLyDilIDilIAgQ2FsZW5kYXIgc2xpY2VzIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogIC8vIEJvb2tlZCA9IHJlYWwgY29tbWl0bWVudHMgZ29pbmcgZm9yd2FyZC4gQW4gQUxMT1dMSVNUIG9mIGNvbW1pdG1lbnQga2luZHMsIG5vdCBhCiAgLy8gZGVueWxpc3Qg4oCUIHNvICdjYWxsJyAoYW5kIGFueXRoaW5nIHRoYXQgaXNuJ3QgYSB0cnVlIGJvb2tpbmcpIG5ldmVyIGxlYWtzIGluLgogIGNvbnN0IEJPT0tFRF9LSU5EUyA9IFsnc2hvb3QnLCAnbWVldGluZycsICdyZWNjZScsICdmaXR0aW5nJywgJ3RyaWFsJywgJ2ZhbWlseScsICdjZXJlbW9ueScsICdzb2NpYWwnLCAnb3RoZXInXTsKICBjb25zdCBib29rZWQgPSBhbGxFdmVudHMuZmlsdGVyKGUgPT4KICAgIGUuZXZlbnRfZGF0ZSAmJiBlLmV2ZW50X2RhdGUgPj0gdG9kYXkgJiYgQk9PS0VEX0tJTkRTLmluY2x1ZGVzKGUua2luZCkKICApOwoKICAvLyBSZW1pbmRlcnMgJiB0YXNrcyA9IGNhbGVuZGFyIHJlbWluZGVycy90YXNrcyArIGFueSBiaW5kZXIgY2FycnlpbmcgYSBmb2xsb3d1cC4KICBjb25zdCBSRU1JTkRFUl9LSU5EUyA9IFsncmVtaW5kZXInLCAndGFzayddOwogIGNvbnN0IHJlbWluZGVyRXZlbnRzID0gYWxsRXZlbnRzCiAgICAuZmlsdGVyKGUgPT4gUkVNSU5ERVJfS0lORFMuaW5jbHVkZXMoZS5raW5kKSkKICAgIC5tYXAoZSA9PiAoeyBzb3VyY2U6ICdldmVudCcsIC4uLmUgfSkpOwogIGNvbnN0IHJlbWluZGVyQmluZGVycyA9IGFsbEJpbmRlcnMKICAgIC5maWx0ZXIoYiA9PiBiLmZvbGxvd3VwX29uKQogICAgLm1hcChiID0+ICh7IHNvdXJjZTogJ2JpbmRlcicsIGlkOiBiLmlkLCBjbGllbnQ6IGIuY2xpZW50LAogICAgICAgICAgICAgICAgIGZvbGxvd3VwX29uOiBiLmZvbGxvd3VwX29uLCBmb2xsb3d1cF9ub3RlOiBiLmZvbGxvd3VwX25vdGUsIGJpbmRlcjogYiB9KSk7CiAgY29uc3QgcmVtaW5kZXJzID0gWy4uLnJlbWluZGVyRXZlbnRzLCAuLi5yZW1pbmRlckJpbmRlcnNdOw==").decode("utf-8")
-if not os.path.exists(PATH):
-    print("FATAL: %s not found. Run from the dream-os repo root." % PATH); sys.exit(1)
-text = open(PATH, encoding="utf-8").read()
-if NEW in text:
-    print("SKIP  slice block already softened.")
-elif text.count(OLD) == 1:
-    open(PATH, "w", encoding="utf-8").write(text.replace(OLD, NEW))
-    print("OK    slice block replaced (soft clients / catch-all leads / booked allowlist).")
-elif text.count(OLD) == 0:
-    print("SKIP  anchor NOT FOUND - left untouched (no corruption)."); 
+
+READ_PATH = "src/api/vendor/binderRead.js"
+CORE_PATH = "src/api/vendor/core.js"
+READ_SRC  = base64.b64decode("Ly8gc3JjL2FwaS92ZW5kb3IvYmluZGVyUmVhZC5qcwovLyBCaW5kZXIgUkVBRCBlbmRwb2ludCDigJQgdGhlIGZsYXQgbGVkZ2VyIGZvciB0aGUgU3R1ZGlvIExpc3QgKyBob29kLWxpZnQuCi8vCi8vICAgR0VUIC9hcGkvdjIvdmVuZG9yL2JpbmRlcnMvOnZlbmRvcklkICAgICAgICAgIC0+IGxpdmUgbGVkZ2VyIChoaWRkZW49ZmFsc2UpLCBuZXdlc3QgZmlyc3QKLy8gICAgICAgP2luY2x1ZGVfaGlkZGVuPXRydWUgICAgICAgICAgICAgICAgICAgICAgLT4gYWxzbyByZXR1cm4gYXJjaGl2ZWQgYmluZGVycwovLwovLyBSZWFkcyBhcmUgRElSRUNUIChzY29wZWQgdG8gdmVuZG9yX2lkKSwgTk9UIHRocm91Z2ggS3JpeWE6IHRoZSB0aHJvdWdoLUtyaXlhCi8vIGRpc2NpcGxpbmUgZ3VhcmRzIE1VVEFUSU9OUyAoZ3JvdW5kLXRydXRoLWJlZm9yZS13cml0ZSwgdGhlIG1vbmV5IGRvb3IpOyBhIHJlYWQKLy8gaGFzIG5vdGhpbmcgdG8gbXV0YXRlLiBPd25lcnNoaXAgaXMgZW5mb3JjZWQgdHdpY2Ugb3ZlciDigJQgcmVzb2x2ZVZlbmRvciBhc3NlcnRzCi8vIHRoZSBKV1Qgb3ducyA6dmVuZG9ySWQsIGFuZCBldmVyeSBxdWVyeSBpcyAuZXEoJ3ZlbmRvcl9pZCcpIHNjb3BlZCDigJQgc28gYSB2ZW5kb3IKLy8gY2FuIG5ldmVyIHJlYWQgYW5vdGhlcidzIGxlZGdlci4gU2FtZSBmdWxsIGJpbmRlciBzaGFwZSBhcyBjYWJpbmV0LmpzLCBidXQgdGhlCi8vIGxlZGdlciBpcyByZXR1cm5lZCBGTEFULCB3aGVyZSAvY2FiaW5ldCByZXR1cm5zIHRoZSBzYW1lIGJpbmRlcnMgcHJlLXNsaWNlZC4KLy8KLy8gVGhlIHRvb2wgdm9jYWJ1bGFyeSAoa3JpeWFfKikgaXMgbmV2ZXIgZXhwb3NlZCBoZXJlIOKAlCBhIHJlYWQgbmVlZHMgbm8gdG9vbDsgaXQKLy8gaXMgYSBwbGFpbiBzY29wZWQgc2VsZWN0LiBUaGUgZGlzcGxheSBmaXJld2FsbCBpcyB1bmFmZmVjdGVkLgoKJ3VzZSBzdHJpY3QnOwoKY29uc3QgZXhwcmVzcyAgICAgICAgPSByZXF1aXJlKCdleHByZXNzJyk7CmNvbnN0IHJvdXRlciAgICAgICAgID0gZXhwcmVzcy5Sb3V0ZXIoKTsKY29uc3QgcmVxdWlyZUF1dGggICAgPSByZXF1aXJlKCcuLi9taWRkbGV3YXJlL3JlcXVpcmVBdXRoJyk7CmNvbnN0IHJlc29sdmVWZW5kb3IgID0gcmVxdWlyZSgnLi4vbWlkZGxld2FyZS9yZXNvbHZlVmVuZG9yJyk7CgovLyBGdWxsIGJpbmRlciBzaGFwZSAoKyBoaWRkZW4vaGlkZGVuX2F0IHNvIHRoZSBMaXN0IGNhbiBiYWRnZSBhcmNoaXZlZCByb3dzKS4KY29uc3QgQklOREVSX1NFTEVDVCA9CiAgJ2lkLCBjbGllbnQsIGFtb3VudCwgYW1vdW50X3JlY2VpdmVkLCBhbW91bnRfcGVuZGluZywgcGF5bWVudF9zdGF0dXMsICcgKwogICdkaXJlY3Rpb24sIGRhdGUsIHN0YWdlLCBub3RlLCBmb2xsb3d1cF9vbiwgZm9sbG93dXBfbm90ZSwgcmVwZWF0X2V2ZXJ5LCAnICsKICAnZG9jX3JlZiwgcGhvbmUsIHJlYXNvbl9mb3JfYWN0aW9uLCBoaWRkZW4sIGhpZGRlbl9hdCwgY3JlYXRlZF9hdCwgdXBkYXRlZF9hdCc7Cgpjb25zdCBhdXRoID0gW3JlcXVpcmVBdXRoLCByZXNvbHZlVmVuZG9yKHsgcGFyYW1OYW1lOiAndmVuZG9ySWQnIH0pXTsKCi8vIEdFVCAvOnZlbmRvcklkIOKAlCB0aGUgcmF3IGxlZGdlciwgbmV3ZXN0IGZpcnN0Lgpyb3V0ZXIuZ2V0KCcvOnZlbmRvcklkJywgLi4uYXV0aCwgYXN5bmMgKHJlcSwgcmVzKSA9PiB7CiAgY29uc3Qgc3VwYWJhc2UgPSByZXEuYXBwLmxvY2Fscy5zdXBhYmFzZTsKICBjb25zdCB2ZW5kb3JJZCA9IHJlcS52ZW5kb3IuaWQ7CiAgY29uc3QgaW5jbHVkZUhpZGRlbiA9IHJlcS5xdWVyeS5pbmNsdWRlX2hpZGRlbiA9PT0gJ3RydWUnIHx8IHJlcS5xdWVyeS5pbmNsdWRlX2hpZGRlbiA9PT0gJzEnOwoKICBsZXQgcSA9IHN1cGFiYXNlLmZyb20oJ2JpbmRlcnMnKQogICAgLnNlbGVjdChCSU5ERVJfU0VMRUNUKQogICAgLmVxKCd2ZW5kb3JfaWQnLCB2ZW5kb3JJZCkKICAgIC5vcmRlcignY3JlYXRlZF9hdCcsIHsgYXNjZW5kaW5nOiBmYWxzZSB9KTsKICBpZiAoIWluY2x1ZGVIaWRkZW4pIHEgPSBxLmVxKCdoaWRkZW4nLCBmYWxzZSk7CgogIGNvbnN0IHsgZGF0YSwgZXJyb3IgfSA9IGF3YWl0IHE7CiAgaWYgKGVycm9yKSB7CiAgICBjb25zb2xlLmVycm9yKCdbR0VUIC92ZW5kb3IvYmluZGVyc10gcmVhZCBmYWlsZWQ6JywgZXJyb3IubWVzc2FnZSk7CiAgICByZXR1cm4gcmVzLnN0YXR1cyg1MDApLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnTG9va3VwIGZhaWxlZC4nIH0pOwogIH0KICBjb25zdCBiaW5kZXJzID0gZGF0YSB8fCBbXTsKICByZXR1cm4gcmVzLmpzb24oeyBvazogdHJ1ZSwgY291bnQ6IGJpbmRlcnMubGVuZ3RoLCBiaW5kZXJzIH0pOwp9KTsKCm1vZHVsZS5leHBvcnRzID0gcm91dGVyOwo=").decode("utf-8")
+ANCHOR    = base64.b64decode("cm91dGVyLnVzZSgnL2JpbmRlcnMnLCAgcmVxdWlyZSgnLi9iaW5kZXJXcml0ZScpKTs=").decode("utf-8")
+INSERT    = base64.b64decode("cm91dGVyLnVzZSgnL2JpbmRlcnMnLCAgcmVxdWlyZSgnLi9iaW5kZXJXcml0ZScpKTsKcm91dGVyLnVzZSgnL2JpbmRlcnMnLCAgcmVxdWlyZSgnLi9iaW5kZXJSZWFkJykpOw==").decode("utf-8")
+
+applied = skipped = 0
+
+# 1 — write the read router file
+if os.path.exists(READ_PATH):
+    if open(READ_PATH, encoding="utf-8").read() == READ_SRC:
+        print("SKIP  binderRead.js already present and identical."); skipped += 1
+    else:
+        open(READ_PATH, "w", encoding="utf-8").write(READ_SRC)
+        print("OK    binderRead.js overwritten to current version."); applied += 1
 else:
-    print("SKIP  anchor found %d times (expected 1) - left untouched." % text.count(OLD))
-final = open(PATH, encoding="utf-8").read()
+    os.makedirs(os.path.dirname(READ_PATH), exist_ok=True)
+    open(READ_PATH, "w", encoding="utf-8").write(READ_SRC)
+    print("OK    binderRead.js created."); applied += 1
+
+# 2 — mount it in core.js (anchor-guarded)
+if not os.path.exists(CORE_PATH):
+    print("FATAL: %s not found." % CORE_PATH); sys.exit(1)
+core = open(CORE_PATH, encoding="utf-8").read()
+if "require('./binderRead')" in core:
+    print("SKIP  binderRead already mounted in core.js."); skipped += 1
+elif core.count(ANCHOR) == 1:
+    open(CORE_PATH, "w", encoding="utf-8").write(core.replace(ANCHOR, INSERT))
+    print("OK    binderRead mounted at /binders in core.js."); applied += 1
+elif core.count(ANCHOR) == 0:
+    print("SKIP  mount anchor NOT FOUND - core.js untouched (no corruption)."); skipped += 1
+else:
+    print("SKIP  mount anchor found %d times - untouched." % core.count(ANCHOR)); skipped += 1
+
+# verification
 checks = [
-    ("soft client matcher present",   "CLIENT_STAGE_WORDS" in final and "isClientStage" in final),
-    ("leads is catch-all",            "!isClientStage(b) && (b.direction" in final),
-    ("booked is an allowlist",        "BOOKED_KINDS" in final),
-    ("'call' excluded from booked",   "BOOKED_KINDS = ['shoot', 'meeting'" in final),
-    ("old exact client-match GONE",   "=== 'client'" not in final),
-    ("old exact lead-match GONE",     "=== 'lead'" not in final),
-    ("old kind-denylist GONE",        "e.kind !== 'blocked'" not in final),
-    ("paid/owed untouched",           "Number(b.amount_received) > 0" in final and "Number(b.amount_pending)  > 0" in final),
+    ("read router file exists",  os.path.exists(READ_PATH)),
+    ("GET route present",        "router.get('/:vendorId'" in open(READ_PATH, encoding="utf-8").read()),
+    ("include_hidden handled",   "include_hidden" in open(READ_PATH, encoding="utf-8").read()),
+    ("reads direct (no Kriya)",  "executeKriyaTool" not in open(READ_PATH, encoding="utf-8").read()),
+    ("mounted in core.js",       "require('./binderRead')" in open(CORE_PATH, encoding="utf-8").read()),
 ]
 print("\n-- verification --")
 ok = True
 for name, passed in checks:
     print("  %s %s" % ("PASS" if passed else "FAIL", name)); ok = ok and passed
-print("\nALL CHECKS PASSED" if ok else "\nSOME CHECKS FAILED - review above")
+print("\n(%d applied, %d skipped)" % (applied, skipped))
+print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED - review above")
 sys.exit(0 if ok else 2)
