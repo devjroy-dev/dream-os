@@ -51,7 +51,7 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
-const { runPWAAgenticTurn } = require('../../agent/pwaEngine');
+const { runMyraTurn: runPWAAgenticTurn } = require('../../agent/myraLoop');  // Piece 1b: dual-soul engine (alias keeps both call sites unchanged)
 
 router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   const supabase  = req.app.locals.supabase;
