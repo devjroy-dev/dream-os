@@ -160,6 +160,45 @@ const KRIYA_TOOLS = [
   { name: 'kriya_unarchive',
     description: 'Bring an archived binder back into the live picture. Needs binder_id.',
     input_schema: { type: 'object', properties: { binder_id: { type: 'string' } }, required: ['binder_id'] } },
+  { name: 'kriya_edit',
+    description: "Edit the non-money cells of an existing binder: client, date, stage, phone, doc_ref — and the note, WHICH GROWS: a note written here is added beneath what already stands, so the binder's story accumulates instead of being erased (to rewrite the note clean to current truth, use kriya_note). Money cells are not edited here — money corrections go through kriya_money_edit, the one witnessed door. Always needs binder_id.",
+    input_schema: { type: 'object', properties: {
+      binder_id: { type: 'string' },
+      client: { type: 'string' }, date: { type: 'string' },
+      note: { type: 'string', description: 'A line added beneath the existing note — the story grows.' },
+      phone: { type: 'string' }, doc_ref: { type: 'string' }, stage: { type: 'string' },
+      reason_for_action: { type: 'string', description: 'Note-to-self; appends, never overwrites.' },
+    }, required: ['binder_id'] } },
+  { name: 'kriya_repeatfollowup',
+    description: "Set a binder to come BACK on a date — a follow-up that resurfaces when it's due (a deadline to chase, a payment to confirm, a check-in). Give follow_on (YYYY-MM-DD: when it should return to attention) and why (a short line: what to do then). For something that RECURS — a monthly retainer, a quarterly check-in — also give repeat ('1 month', '7 days'): when it comes due and is handled, it sets its own next date. This is what makes a stored date actually return. Needs binder_id.",
+    input_schema: { type: 'object', properties: {
+      binder_id: { type: 'string', description: 'The binder this follow-up belongs to.' },
+      follow_on: { type: 'string', description: 'YYYY-MM-DD — when this should come back to attention.' },
+      why: { type: 'string', description: 'Short line: what needs doing when it returns.' },
+      repeat: { type: 'string', description: "Recurrence rhythm if it repeats: '1 month', '7 days'. Omit for one-time." },
+    }, required: ['binder_id', 'follow_on'] } },
+  { name: 'kriya_merge',
+    description: "Merge two binders that are the same thing into one — when a client got logged twice and the truth is split across both. Name which binder SURVIVES (survivor_id) and which is RETIRED (retire_id), and give the values that should stand on the survivor — cell by cell, your judgment decides what is true. Anything you name is written onto the survivor; anything you don't name keeps the survivor's existing value. The retired binder is set aside (hidden, never destroyed) with a breadcrumb saying where it went, recoverable via kriya_unarchive. Read both first (kriya_find / kriya_history) before you decide what survives.",
+    input_schema: { type: 'object', properties: {
+      survivor_id: { type: 'string', description: 'The binder that stays — merging INTO.' },
+      retire_id: { type: 'string', description: 'The duplicate to retire after its truth is folded in.' },
+      client: { type: 'string' }, amount: { type: 'string' }, direction: { type: 'string', enum: ['in', 'out'] },
+      date: { type: 'string' }, note: { type: 'string' }, phone: { type: 'string' },
+      doc_ref: { type: 'string' }, stage: { type: 'string' },
+      amount_received: { type: 'string' }, amount_pending: { type: 'string' }, payment_status: { type: 'string' },
+      reason_for_action: { type: 'string', description: 'Your note-to-self on the survivor about what you merged and why.' },
+    }, required: ['survivor_id', 'retire_id'] } },
+  { name: 'kriya_split',
+    description: "Split one binder that turns out to be TWO real things — when two people or matters got tangled into one (a shared name, a contradiction of phone or city that means two real people). Name the source binder (source_id) and give the cells that belong to the SECOND thing — those open a brand-new binder, and a dated line is left on both saying what was separated and where it went. The source keeps everything it has; afterward correct it with kriya_edit if any cell truly belonged to the one that left. The mirror of kriya_merge. Read it first (kriya_find / kriya_history) before you separate.",
+    input_schema: { type: 'object', properties: {
+      source_id: { type: 'string', description: 'The tangled binder being split — it stays, minus what you separate out.' },
+      client: { type: 'string', description: "The second entity's name — goes on the NEW binder." },
+      amount: { type: 'string' }, direction: { type: 'string', enum: ['in', 'out'] },
+      date: { type: 'string' }, note: { type: 'string' }, phone: { type: 'string' },
+      doc_ref: { type: 'string' }, stage: { type: 'string' },
+      amount_received: { type: 'string' }, amount_pending: { type: 'string' }, payment_status: { type: 'string' },
+      reason_for_action: { type: 'string', description: 'Your note-to-self on the NEW binder about why it was separated.' },
+    }, required: ['source_id'] } },
 ];
 
 // ── Executor ─────────────────────────────────────────────────────────────────
@@ -248,7 +287,97 @@ async function executeKriyaTool(supabase, vendorId, name, input) {
         .eq('id', rid).eq('vendor_id', vendorId).select('id').single();
       if (error) return { display: `ERROR unarchiving binder: ${error.message}`, error: true };
       await logEvent(supabase, vendorId, 'unarchive', data.id, 'brought back to live');
-      return { display: `Binder ${data.id} back in the live picture.`, mutated: true };
+      return { display: `Binder ${data.id} back in the live picture.`, mutated: true, binder_id: data.id };
+    }
+    case 'kriya_edit': {
+      if (!rid) return { display: 'ERROR: kriya_edit needs binder_id.', error: true };
+      const patch = {};
+      for (const k of ['client', 'date', 'note', 'phone', 'doc_ref', 'stage', 'reason_for_action']) {
+        if (k in input) patch[k] = input[k];
+      }
+      const moneyKeys = ['amount', 'direction', 'amount_received', 'amount_pending', 'payment_status'].filter((k) => k in input);
+      if (moneyKeys.length && !Object.keys(patch).length) {
+        return { display: `REFUSED — money cells (${moneyKeys.join(', ')}) are not edited here. Money corrections go through kriya_money_edit, the one witnessed door.`, error: true };
+      }
+      if (!Object.keys(patch).length) return { display: 'ERROR: kriya_edit needs at least one cell to change.', error: true };
+      const dropped = moneyKeys.length ? ` (money cells ${moneyKeys.join(', ')} NOT touched — those go through kriya_money_edit)` : '';
+      // note GROWS here, reason_for_action always appends.
+      return writeFields(supabase, vendorId, rid, patch, `edited ${Object.keys(patch).join(', ')}${dropped}`, new Set(['note']));
+    }
+    case 'kriya_repeatfollowup': {
+      if (!rid) return { display: 'ERROR: kriya_repeatfollowup needs binder_id.', error: true };
+      const followOn = typeof input.follow_on === 'string' ? input.follow_on.trim() : '';
+      if (!followOn) return { display: 'ERROR: kriya_repeatfollowup needs follow_on (YYYY-MM-DD).', error: true };
+      const fields = { followup_on: followOn };
+      if (typeof input.why === 'string' && input.why.trim()) fields.followup_note = input.why.trim();
+      if (typeof input.repeat === 'string' && input.repeat.trim()) fields.repeat_every = input.repeat.trim();
+      const rpt = fields.repeat_every ? `, repeats ${fields.repeat_every}` : '';
+      return writeFields(supabase, vendorId, rid, fields, `follow-up on ${followOn}${rpt}`);
+    }
+    case 'kriya_merge': {
+      const survivorId = typeof input.survivor_id === 'string' ? input.survivor_id.trim() : '';
+      const retireId = typeof input.retire_id === 'string' ? input.retire_id.trim() : '';
+      if (!survivorId || !retireId) return { display: 'ERROR: kriya_merge needs survivor_id and retire_id.', error: true };
+      if (survivorId === retireId) return { display: 'ERROR: survivor_id and retire_id are the same binder.', error: true };
+      const patch = {};
+      for (const k of ['client', 'direction', 'date', 'note', 'phone', 'doc_ref', 'stage', 'payment_status', 'reason_for_action']) {
+        if (k in input) patch[k] = input[k];
+      }
+      for (const k of ['amount', 'amount_received', 'amount_pending']) {
+        if (k in input) {
+          const parsed = parseMoney(input[k]);
+          if (parsed == null) return { display: `ERROR: could not read ${k} "${String(input[k])}".`, error: true };
+          patch[k] = parsed;
+        }
+      }
+      if (Object.keys(patch).length) {
+        const survivorOutcome = await writeFields(supabase, vendorId, survivorId, patch, `merged from ${retireId}`);
+        if (survivorOutcome.error) return survivorOutcome;
+      }
+      const { data: prior } = await supabase.from('binders')
+        .select('reason_for_action').eq('id', retireId).eq('vendor_id', vendorId).single();
+      const existingReason = ((prior && prior.reason_for_action) || '').trim();
+      const breadcrumb = `Merged into ${survivorId} on ${today} — set aside, recoverable.`;
+      const mergedReason = existingReason ? `${existingReason}\n${breadcrumb}` : breadcrumb;
+      const { error: retErr } = await supabase.from('binders')
+        .update({ hidden: true, hidden_at: new Date().toISOString(), reason_for_action: mergedReason, updated_at: new Date().toISOString() })
+        .eq('id', retireId).eq('vendor_id', vendorId);
+      if (retErr) return { display: `Survivor updated, but ERROR retiring ${retireId}: ${retErr.message}`, error: true };
+      await logEvent(supabase, vendorId, 'merge_retire', retireId, `merged into ${survivorId}, set aside`);
+      return { display: `Merged ${retireId} into ${survivorId} — ${Object.keys(patch).length ? Object.keys(patch).join(', ') + ' folded onto survivor; ' : ''}duplicate set aside (recoverable).`, mutated: true, binder_id: survivorId };
+    }
+    case 'kriya_split': {
+      const sourceId = typeof input.source_id === 'string' ? input.source_id.trim() : '';
+      if (!sourceId) return { display: 'ERROR: kriya_split needs source_id.', error: true };
+      const { data: src, error: srcErr } = await supabase.from('binders')
+        .select('id, reason_for_action').eq('id', sourceId).eq('vendor_id', vendorId).single();
+      if (srcErr || !src) return { display: `ERROR: source binder ${sourceId} not found.`, error: true };
+      const newFields = {};
+      for (const k of ['client', 'direction', 'date', 'note', 'phone', 'doc_ref', 'stage', 'payment_status']) {
+        if (k in input) newFields[k] = input[k];
+      }
+      for (const k of ['amount', 'amount_received', 'amount_pending']) {
+        if (k in input) {
+          const parsed = parseMoney(input[k]);
+          if (parsed == null) return { display: `ERROR: could not read ${k} "${String(input[k])}".`, error: true };
+          newFields[k] = parsed;
+        }
+      }
+      if (Object.keys(newFields).length === 0) return { display: 'ERROR: kriya_split needs at least one cell for the new binder.', error: true };
+      const newReason = typeof input.reason_for_action === 'string' && input.reason_for_action.trim()
+        ? `${input.reason_for_action.trim()}\nSplit from ${sourceId} on ${today}.`
+        : `Split from ${sourceId} on ${today}.`;
+      const created = await writeFields(supabase, vendorId, undefined, { ...newFields, reason_for_action: newReason }, `split from ${sourceId}`);
+      if (created.error) return created;
+      const newId = created.binder_id || '(unknown)';
+      const existing = ((src.reason_for_action) || '').trim();
+      const crumb = `Split: ${newId} separated from this binder on ${today}.`;
+      const { error: crumbErr } = await supabase.from('binders')
+        .update({ reason_for_action: existing ? `${existing}\n${crumb}` : crumb, updated_at: new Date().toISOString() })
+        .eq('id', sourceId).eq('vendor_id', vendorId);
+      if (crumbErr) return { display: `New binder ${newId} created, but ERROR marking source: ${crumbErr.message}`, error: true };
+      await logEvent(supabase, vendorId, 'split_out', sourceId, `split: ${newId} separated out`);
+      return { display: `Split ${sourceId}: new binder ${newId} opened with ${Object.keys(newFields).join(', ')}; both binders carry the trail.`, mutated: true, binder_id: newId };
     }
     default:
       return { display: `ERROR: unknown tool ${name}.`, error: true };

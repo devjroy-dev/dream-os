@@ -95,7 +95,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
       }
       let outcome;
       if (KRIYA_READ_NAMES.has(tu.name)) {
-        outcome = await executeKriyaRead(supabase, vendorId, tu.name, input);
+        outcome = await executeKriyaRead(supabase, vendorId, tu.name, input, today);
       } else {
         outcome = await executeKriyaTool(supabase, vendorId, tu.name, input);
       }

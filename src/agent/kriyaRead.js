@@ -43,6 +43,11 @@ const KRIYA_READ_TOOLS = [
   { name: 'kriya_history',
     description: "Open one binder's whole story — every filled cell as it stands now, your diary on it (every reason-for-action line, in order), when it was created and last touched, whether it's set aside, and the log of every confirmed write that touched it, dated. The hand for 'how do you know that'. Needs binder_id.",
     input_schema: { type: 'object', properties: { binder_id: { type: 'string' } }, required: ['binder_id'] } },
+  { name: 'kriya_whatsdue',
+    description: "What's due or overdue right now — the binders whose follow-up date has arrived (today or earlier), so nothing slips. Use it when Myra asks what's coming up / what's pending / what needs chasing, or to lead the day with what matters. Optionally give 'through' (YYYY-MM-DD) to look ahead to a date (e.g. end of the week) instead of just today. Returns the due binders with their ids, soonest first.",
+    input_schema: { type: 'object', properties: {
+      through: { type: 'string', description: "Look ahead through this date (YYYY-MM-DD). Omit to see what's due as of today." },
+    } } },
 ];
 
 const KRIYA_READ_NAMES = new Set(KRIYA_READ_TOOLS.map((t) => t.name));
@@ -221,13 +226,42 @@ async function executeHistory(supabase, vendorId, input) {
   return { display: lines.join('\n') };
 }
 
-async function executeKriyaRead(supabase, vendorId, name, input) {
+async function executeKriyaRead(supabase, vendorId, name, input, today) {
   switch (name) {
     case 'kriya_find':    return executeFind(supabase, vendorId, input);
     case 'kriya_tally':   return executeTally(supabase, vendorId, input);
     case 'kriya_history': return executeHistory(supabase, vendorId, input);
+    case 'kriya_whatsdue': return executeWhatsDue(supabase, vendorId, input, today);
     default: return { display: `ERROR: unknown read tool ${name}.` };
   }
+}
+
+// ── whatsdue ──────────────────────────────────────────────────────────────────
+async function executeWhatsDue(supabase, vendorId, input, today) {
+  const todayIso = today || new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+  const through = typeof input.through === 'string' && input.through.trim() ? input.through.trim() : todayIso;
+  const { data, error } = await supabase.from('binders')
+    .select('id, client, followup_on, followup_note, repeat_every')
+    .eq('vendor_id', vendorId).eq('hidden', false)
+    .not('followup_on', 'is', null)
+    .lte('followup_on', through)
+    .order('followup_on', { ascending: true })
+    .limit(FIND_LIMIT + 1);
+  if (error) return { display: `ERROR checking what's due: ${error.message}` };
+  const rows = data || [];
+  if (rows.length === 0) {
+    return { display: through === todayIso ? 'Nothing due as of today.' : `Nothing due through ${through}.` };
+  }
+  const shown = rows.slice(0, FIND_LIMIT);
+  const lines = shown.map((r) => {
+    const who = r.client ? ` ${r.client}` : '';
+    const why = r.followup_note ? ` — ${r.followup_note}` : '';
+    const rpt = r.repeat_every ? ` (repeats ${r.repeat_every})` : '';
+    const overdue = r.followup_on && r.followup_on < todayIso ? ' [OVERDUE]' : '';
+    return `  [${r.id}] due ${r.followup_on}${overdue}${who}${why}${rpt}`;
+  });
+  const header = `Due${through === todayIso ? ' now' : ` through ${through}`}: ${shown.length}${rows.length > FIND_LIMIT ? '+' : ''}`;
+  return { display: `${header}\n${lines.join('\n')}` };
 }
 
 module.exports = { KRIYA_READ_TOOLS, KRIYA_READ_NAMES, executeKriyaRead };
