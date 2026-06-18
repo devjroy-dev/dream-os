@@ -75,21 +75,33 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   const allBinders = binders || [];
   const allEvents  = events  || [];
 
-  // ── Binder slices ──────────────────────────────────────────────────────────
-  const clients = allBinders.filter(b => (b.stage || '').toLowerCase() === 'client');
-  const leads   = allBinders.filter(b => (b.stage || '').toLowerCase() === 'lead');
+  // ── Binder slices ────────────────────────────────────────────
+  // Stage is free text (the owner's word) — we never match it exactly. A binder is a
+  // CLIENT when its stage carries a conversion word (client/booked/confirmed/signed/
+  // advance/paid), read off the STAGE the owner set and never inferred from the money
+  // columns (a paid binder the owner still calls a lead stays a lead; payment does not
+  // promote). Everything else inbound is a LEAD — the catch-all, so no stage ever falls
+  // through — carrying its own stage as its status. Expenses (direction='out') are neither.
+  const CLIENT_STAGE_WORDS = ['client', 'booked', 'confirmed', 'signed', 'advance', 'paid'];
+  const isClientStage = (b) => {
+    const s = (b.stage || '').toLowerCase();
+    return CLIENT_STAGE_WORDS.some(w => s.includes(w));
+  };
+  const clients = allBinders.filter(isClientStage);
+  const leads   = allBinders.filter(b => !isClientStage(b) && (b.direction || '').toLowerCase() !== 'out');
   const paid    = allBinders.filter(b => Number(b.amount_received) > 0);
   const owed    = allBinders.filter(b => Number(b.amount_pending)  > 0);
 
-  // ── Calendar slices ─────────────────────────────────────────────────────────
-  // Booked = real commitments going forward (exclude reminders/tasks/blocked).
-  const REMINDER_KINDS = ['reminder', 'task'];
+  // ── Calendar slices ──────────────────────────────────────────
+  // Booked = real commitments going forward. An ALLOWLIST of commitment kinds, not a
+  // denylist — so 'call' (and anything that isn't a true booking) never leaks in.
+  const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
   const booked = allEvents.filter(e =>
-    e.event_date && e.event_date >= today &&
-    e.kind !== 'blocked' && !REMINDER_KINDS.includes(e.kind)
+    e.event_date && e.event_date >= today && BOOKED_KINDS.includes(e.kind)
   );
 
   // Reminders & tasks = calendar reminders/tasks + any binder carrying a followup.
+  const REMINDER_KINDS = ['reminder', 'task'];
   const reminderEvents = allEvents
     .filter(e => REMINDER_KINDS.includes(e.kind))
     .map(e => ({ source: 'event', ...e }));
