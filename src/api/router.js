@@ -18,6 +18,7 @@ const testRouter            = require('./_test/whoami');
 
 router.use('/waitlist',           waitlistRouter);
 router.use('/invite',             inviteRouter);
+router.use('/register',           require('./register'));   // public — open phone-OTP signup
 router.use('/vendor/auth',        vendorAuthRouter);
 router.use('/couple/auth',        coupleAuthRouter);
 router.use('/auth/pin-status',    pinStatusRouter);
