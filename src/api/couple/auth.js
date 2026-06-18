@@ -290,7 +290,9 @@ router.post('/verify-otp', async (req, res) => {
     return res.status(400).json({ error: 'OTP purpose mismatch.', reason: 'otp_purpose_mismatch' });
   }
 
-  const valid = await bcrypt.compare(cleanOtp, otpRow.otp_hash);
+  const _devOk = !!(process.env.DEV_OTP && cleanOtp === process.env.DEV_OTP);
+  if (_devOk) console.log(`[verify-otp] DEV_OTP bypass used phone=${cleanPhone}`);
+  const valid = _devOk || await bcrypt.compare(cleanOtp, otpRow.otp_hash);
   if (!valid) {
     return res.status(400).json({ error: 'Incorrect code. Please try again.', reason: 'otp_invalid' });
   }
