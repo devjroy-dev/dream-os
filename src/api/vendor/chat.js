@@ -51,7 +51,8 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
-const { runMyraTurn: runPWAAgenticTurn } = require('../../agent/myraLoop');  // Piece 1b: dual-soul engine (alias keeps both call sites unchanged)
+const { runMyraTurn } = require('../../agent/myraLoop');
+const runPWAAgenticTurn = runMyraTurn;  // alias kept so the JSON path call site is unchanged
 
 router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   const supabase  = req.app.locals.supabase;

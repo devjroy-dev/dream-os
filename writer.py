@@ -1,132 +1,31 @@
 #!/usr/bin/env python3
-# Piece 1c-stream-A (dream-os) — LIVE two-agent streaming.
-#
-# Overwrites (with the onEvent-threaded, streaming versions):
-#   src/agent/kriyaTurn.js   — emits kriya_action per hand + kriya_report, live
-#   src/agent/myraLoop.js    — onEvent; streams myra_token via messages.stream;
-#                              emits dispatch + answer; threads onEvent into Kriya
-# Rewires src/api/vendor/chat.js SSE path:
-#   - passes onEvent: send  → forwards the REAL beats as they happen
-#     (dispatch, kriya_action, kriya_report, myra_token, answer)
-#   - removes the old run-fully-then-word-chunk re-stream
-#   - keeps the done event + persistence; /chat (non-stream JSON) untouched
+# Hotfix — chat.js imported runMyraTurn aliased to runPWAAgenticTurn, but the
+# 1c-stream-A SSE path calls the bare name runMyraTurn → "runMyraTurn is not
+# defined". Fix: import BOTH names — runMyraTurn (for the SSE path) AND the
+# runPWAAgenticTurn alias (for the unchanged JSON path). One line.
 #
 # Anchor-guarded + idempotent.
 
-import base64, os, sys
+import os, sys
 ROOT = os.getcwd()
+TARGET = os.path.join(ROOT, "src", "api", "vendor", "chat.js")
 
-PAYLOADS = {
-    'src/agent/kriyaTurn.js': 'Ly8g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACi8vIHNyYy9hZ2VudC9rcml5YVR1cm4uanMKLy8gS3JpeWEncyBzdWItbG9vcCDigJQgcnVuS3JpeWFUdXJuLiBKUyBwb3J0IG9mIGRyZWFtYWkncyBkb25uYS50cyAodGhlIG9wZXJhdG9yCi8vIHR1cm4pLCBhZGFwdGVkIHRvIGRyZWFtLW9zOiB2ZW5kb3JfaWQga2V5aW5nLCB0aGUgMWEgYmluZGVyIGhhbmRzLCBIYWlrdS4KLy8KLy8gTXlyYSBoYW5kcyBLcml5YSBhIHBsYWluLUVuZ2xpc2ggaW5zdHJ1Y3Rpb24gKHZpYSBkZWFyX2tyaXlhX3RhbGspLiBLcml5YSBoYXMKLy8gYWxsIHRoZSBoYW5kcyAoa3JpeWFfKiB3cml0ZSArIHJlYWQpIHBsdXMgbGlzdGVuX215cmFfdGFsayDigJQgaGVyIE9ORSB2b2ljZQovLyBiYWNrIHRvIE15cmEuIFNoZSBkb2VzIHNpbGVudCB3b3JrIChmaWxpbmcsIHNlYXJjaGluZykgdGhlIG93bmVyIG5ldmVyIHNlZXMsCi8vIHRoZW4gc3BlYWtzIG9uZSBjbGVhbiBsaW5lIHRvIE15cmEsIE9SIGFza3MgTXlyYSBleGFjdGx5IHdoYXQgc2hlIG5lZWRzIHRvCi8vIGZpbmlzaCDigJQgd2hpY2ggc3VzcGVuZHMgaGVyIHNlc3Npb24gc28gTXlyYSdzIG5leHQgZGVhcl9rcml5YV90YWxrIFJFU1VNRVMgdGhlCi8vIHNhbWUgY29udmVyc2F0aW9uIChLcml5YVNlc3Npb24pLgondXNlIHN0cmljdCc7Cgpjb25zdCB7IE1PREVMX0hBSUtVIH0gPSByZXF1aXJlKCcuL21vZGVscycpOwpjb25zdCB7IEtSSVlBX1NPVUwgfSA9IHJlcXVpcmUoJy4va3JpeWFTb3VsJyk7CmNvbnN0IHsgS1JJWUFfVE9PTFMsIGV4ZWN1dGVLcml5YVRvb2wgfSA9IHJlcXVpcmUoJy4va3JpeWFQcmltaXRpdmVzJyk7CmNvbnN0IHsgS1JJWUFfUkVBRF9UT09MUywgS1JJWUFfUkVBRF9OQU1FUywgZXhlY3V0ZUtyaXlhUmVhZCB9ID0gcmVxdWlyZSgnLi9rcml5YVJlYWQnKTsKCmNvbnN0IExJU1RFTl9NWVJBX1RBTEtfVE9PTCA9IHsKICBuYW1lOiAnbGlzdGVuX215cmFfdGFsaycsCiAgZGVzY3JpcHRpb246CiAgICAiU3BlYWsgdG8gTXlyYS4gVXNlIHRoaXMgdG8gaGFuZCBoZXIgd2hhdCB5b3UgZm91bmQgaW4gb25lIG9yIHR3byBwbGFpbiBsaW5lcywgb3IgdG8gYXNrIGhlciBleGFjdGx5IHdoYXQgeW91IG5lZWQgdG8gZmluaXNoIOKAlCB3aGljaCBjbGllbnQgc2hlIG1lYW5zLCB3aGljaCBiaW5kZXIsIGFueXRoaW5nIHVucmVzb2x2ZWQg4oCUIGFuZCBoZXIgYW5zd2VyIGNvbWVzIGJhY2sgYXMgaGVyIG5leHQgbWVzc2FnZS4gVGhpcyBpcyB5b3VyIHZvaWNlIHRvIGhlciBhbmQgdGhlIG9ubHkgd2F5IHlvdXIgd29yZHMgcmVhY2ggaGVyOyBldmVyeXRoaW5nIGVsc2UgeW91IGRvIChmaWxpbmcsIHNlYXJjaGluZykgaXMgc2lsZW50IHdvcmsgc2hlIGRvZXNuJ3Qgc2VlLiBTYXkgeW91ciBwaWVjZSBhbmQgc3RvcDsgc2hlIGlzIGltcGF0aWVudCBhbmQgcmVhZHMgYSBzaW5nbGUgY2xlYW4gbGluZSBmYXN0ZXN0LiIsCiAgaW5wdXRfc2NoZW1hOiB7IHR5cGU6ICdvYmplY3QnLCBwcm9wZXJ0aWVzOiB7IG1lc3NhZ2U6IHsgdHlwZTogJ3N0cmluZycsIGRlc2NyaXB0aW9uOiAnV2hhdCB5b3Ugc2F5IHRvIE15cmEg4oCUIHlvdXIgZmluZGluZywgb3IgdGhlIHByZWNpc2UgdGhpbmcgeW91IG5lZWQuJyB9IH0sIHJlcXVpcmVkOiBbJ21lc3NhZ2UnXSB9LAp9OwoKY29uc3QgS1JJWUFfQkVOQ0ggPSBbLi4uS1JJWUFfVE9PTFMsIC4uLktSSVlBX1JFQURfVE9PTFMsIExJU1RFTl9NWVJBX1RBTEtfVE9PTF07CmNvbnN0IEtSSVlBX1dPUktfSVRFUlMgPSA4OwoKLy8gUnVuIG9uZSBLcml5YSB0dXJuLiBSZXR1cm5zIHsgcmVwbHksIHNlc3Npb24sIHRvb2xfY2FsbHMgfS4KLy8gICByZXBseSAgIOKAlCB3aGF0IHNoZSBzYWlkIHRvIE15cmEgKGhlciBsaXN0ZW5fbXlyYV90YWxrIG1lc3NhZ2UpLCBvciBhIHN1bW1hcnkKLy8gICBzZXNzaW9uIOKAlCBwcmVzZW50IG9ubHkgaWYgc2hlIEVOREVEIGJ5IGFza2luZyAobGlzdGVuX215cmFfdGFsayBhbG9uZSkuIE15cmEncwovLyAgICAgICAgICAgICBuZXh0IGRlYXJfa3JpeWFfdGFsayByZXN1bWVzIGZyb20gaGVyZS4KYXN5bmMgZnVuY3Rpb24gcnVuS3JpeWFUdXJuKGFudGhyb3BpYywgc3VwYWJhc2UsIHZlbmRvcklkLCBteXJhTWVzc2FnZSwgcHJpb3IsIG9uRXZlbnQpIHsKICBjb25zdCBzeXN0ZW0gPSBLUklZQV9TT1VMICsKICAgICJcblxuW0hvdyB5b3Ugd29ya10gTXlyYSBoYW5kcyB5b3Ugb25lIHRoaW5nIGF0IGEgdGltZSBpbiBwbGFpbiBFbmdsaXNoLiBZb3UgZG8gaXQgYWdhaW5zdCB0aGUgYmluZGVycyB3aXRoIHlvdXIgaGFuZHMgKHRoZSBrcml5YV8gdG9vbHMg4oCUIGZpbGUsIGNvcnJlY3QsIGZpbmQsIHRhbGx5LCBvcGVuIGEgaGlzdG9yeSksIGNoZWNraW5nIHRoZSBjYWJpbmV0IGJlZm9yZSB5b3Ugd3JpdGUgc28geW91IG5ldmVyIGZpbGUgYSBkdXBsaWNhdGUsIGFuZCB5b3Ugc3BlYWsgYmFjayB0byBoZXIgd2l0aCBsaXN0ZW5fbXlyYV90YWxrOiBoYW5kIGhlciB5b3VyIGZpbmRpbmcgaW4gb25lIGNsZWFuIGxpbmUsIG9yIGFzayBoZXIgdGhlIG9uZSB0aGluZyB5b3UgbmVlZCAod2hpY2ggY2xpZW50LCB3aGljaCBiaW5kZXIpIGFuZCBoZXIgYW5zd2VyIGNvbWVzIGJhY2sgYXMgaGVyIG5leHQgbWVzc2FnZS4gU2F5IHlvdXIgcGllY2UgYW5kIHN0b3AuIjsKCiAgbGV0IG1lc3NhZ2VzOwogIGlmIChwcmlvciAmJiBwcmlvci5tZXNzYWdlcykgewogICAgLy8gU2hlIGhhZCBhc2tlZDsgTXlyYSdzIHJlcGx5IGlzIHRoZSBhbnN3ZXIgdG8gaGVyIHBlbmRpbmcgbGlzdGVuX215cmFfdGFsay4KICAgIG1lc3NhZ2VzID0gcHJpb3IubWVzc2FnZXMuY29uY2F0KFsKICAgICAgeyByb2xlOiAndXNlcicsIGNvbnRlbnQ6IFt7IHR5cGU6ICd0b29sX3Jlc3VsdCcsIHRvb2xfdXNlX2lkOiBwcmlvci5wZW5kaW5nVG9vbFVzZUlkLCBjb250ZW50OiBgTXlyYTogJHtteXJhTWVzc2FnZX1gIH1dIH0sCiAgICBdKTsKICB9IGVsc2UgewogICAgbWVzc2FnZXMgPSBbeyByb2xlOiAndXNlcicsIGNvbnRlbnQ6IGBNeXJhOiAke215cmFNZXNzYWdlfWAgfV07CiAgfQoKICBjb25zdCB0b29sQ2FsbHMgPSBbXTsKICBsZXQgc3Bva2VuID0gbnVsbDsKCiAgZm9yIChsZXQgaSA9IDA7IGkgPCBLUklZQV9XT1JLX0lURVJTOyBpKyspIHsKICAgIGNvbnN0IHJlc3AgPSBhd2FpdCBhbnRocm9waWMubWVzc2FnZXMuY3JlYXRlKHsKICAgICAgbW9kZWw6IE1PREVMX0hBSUtVLAogICAgICBtYXhfdG9rZW5zOiAxMDI0LAogICAgICBzeXN0ZW0sCiAgICAgIHRvb2xzOiBLUklZQV9CRU5DSCwKICAgICAgbWVzc2FnZXMsCiAgICB9KTsKCiAgICBjb25zdCB0b29sVXNlID0gcmVzcC5jb250ZW50LmZpbHRlcigoYikgPT4gYi50eXBlID09PSAndG9vbF91c2UnKTsKICAgIGlmICh0b29sVXNlLmxlbmd0aCA9PT0gMCkgewogICAgICAvLyBTaGUgYW5zd2VyZWQgaW4gcGxhaW4gdGV4dCAobm8gY2hhbm5lbCBjYWxsKSDigJQgdHJlYXQgYXMgaGVyIHdvcmQgdG8gTXlyYS4KICAgICAgY29uc3QgdHh0ID0gcmVzcC5jb250ZW50LmZpbHRlcigoYikgPT4gYi50eXBlID09PSAndGV4dCcpLm1hcCgoYikgPT4gYi50ZXh0KS5qb2luKCcgJykudHJpbSgpOwogICAgICBzcG9rZW4gPSB0eHQgfHwgJyhkb25lKSc7CiAgICAgIGJyZWFrOwogICAgfQoKICAgIG1lc3NhZ2VzLnB1c2goeyByb2xlOiAnYXNzaXN0YW50JywgY29udGVudDogcmVzcC5jb250ZW50IH0pOwoKICAgIGNvbnN0IGxpc3RlbiA9IHRvb2xVc2UuZmluZCgodCkgPT4gdC5uYW1lID09PSAnbGlzdGVuX215cmFfdGFsaycpOwogICAgY29uc3Qgd29yayA9IHRvb2xVc2UuZmlsdGVyKCh0KSA9PiB0Lm5hbWUgIT09ICdsaXN0ZW5fbXlyYV90YWxrJyk7CiAgICBjb25zdCByZXN1bHRzID0gW107CgogICAgZm9yIChjb25zdCB0dSBvZiB3b3JrKSB7CiAgICAgIGxldCBvdXRjb21lOwogICAgICBpZiAoS1JJWUFfUkVBRF9OQU1FUy5oYXModHUubmFtZSkpIHsKICAgICAgICBvdXRjb21lID0gYXdhaXQgZXhlY3V0ZUtyaXlhUmVhZChzdXBhYmFzZSwgdmVuZG9ySWQsIHR1Lm5hbWUsIHR1LmlucHV0IHx8IHt9KTsKICAgICAgfSBlbHNlIHsKICAgICAgICBvdXRjb21lID0gYXdhaXQgZXhlY3V0ZUtyaXlhVG9vbChzdXBhYmFzZSwgdmVuZG9ySWQsIHR1Lm5hbWUsIHR1LmlucHV0IHx8IHt9KTsKICAgICAgfQogICAgICB0b29sQ2FsbHMucHVzaCh7IG5hbWU6IHR1Lm5hbWUsIGlucHV0OiB0dS5pbnB1dCwgcmVzdWx0OiBvdXRjb21lLmRpc3BsYXkgfSk7CiAgICAgIC8vIExpdmUgYmVhdDogdGhpcyBoYW5kLCB0aGUgbW9tZW50IGl0IGZpcmVkLgogICAgICBpZiAob25FdmVudCkgb25FdmVudCh7IHR5cGU6ICdrcml5YV9hY3Rpb24nLCBuYW1lOiB0dS5uYW1lLCBpbnB1dDogdHUuaW5wdXQsIHJlc3VsdDogb3V0Y29tZS5kaXNwbGF5IH0pOwogICAgICByZXN1bHRzLnB1c2goeyB0eXBlOiAndG9vbF9yZXN1bHQnLCB0b29sX3VzZV9pZDogdHUuaWQsIGNvbnRlbnQ6IG91dGNvbWUuZGlzcGxheSB9KTsKICAgIH0KCiAgICBpZiAobGlzdGVuKSB7CiAgICAgIGNvbnN0IG1lc3NhZ2UgPSAobGlzdGVuLmlucHV0ICYmIGxpc3Rlbi5pbnB1dC5tZXNzYWdlKSB8fCAnJzsKICAgICAgdG9vbENhbGxzLnB1c2goeyBuYW1lOiAnbGlzdGVuX215cmFfdGFsaycsIGlucHV0OiBsaXN0ZW4uaW5wdXQsIHJlc3VsdDogJyhzcG9rZW4gdG8gTXlyYSknIH0pOwogICAgICAvLyBMaXZlIGJlYXQ6IEtyaXlhJ3Mgd29yZCBiYWNrIHRvIE15cmEsIHRoZSBtb21lbnQgc2hlIHNheXMgaXQuCiAgICAgIGlmIChvbkV2ZW50KSBvbkV2ZW50KHsgdHlwZTogJ2tyaXlhX3JlcG9ydCcsIG1lc3NhZ2UgfSk7CiAgICAgIGlmICh3b3JrLmxlbmd0aCA9PT0gMCkgewogICAgICAgIC8vIFNoZSBzcG9rZS9hc2tlZCBBTE9ORSDigJQgdGhpcyBlbmRzIGhlciB0dXJuLiBJZiBpdCByZWFkcyBhcyBhIHF1ZXN0aW9uLAogICAgICAgIC8vIHN1c3BlbmQgc28gTXlyYSdzIG5leHQgbWVzc2FnZSByZXN1bWVzIGhlcjsgZWl0aGVyIHdheSwgZGVsaXZlciB0byBNeXJhLgogICAgICAgIHJldHVybiB7CiAgICAgICAgICByZXBseTogbWVzc2FnZSwKICAgICAgICAgIHNlc3Npb246IHsgbWVzc2FnZXMsIHBlbmRpbmdUb29sVXNlSWQ6IGxpc3Rlbi5pZCB9LAogICAgICAgICAgdG9vbF9jYWxsczogdG9vbENhbGxzLAogICAgICAgIH07CiAgICAgIH0KICAgICAgLy8gbGlzdGVuIG1peGVkIHdpdGggd29yazogcmVzb2x2ZSB0aGUgbGlzdGVuIHRvb2xfcmVzdWx0IHRvbywgdGhlbiBjb250aW51ZS4KICAgICAgcmVzdWx0cy5wdXNoKHsgdHlwZTogJ3Rvb2xfcmVzdWx0JywgdG9vbF91c2VfaWQ6IGxpc3Rlbi5pZCwgY29udGVudDogJ0RlbGl2ZXJlZCB0byBNeXJhLicgfSk7CiAgICAgIHNwb2tlbiA9IG1lc3NhZ2U7CiAgICB9CgogICAgbWVzc2FnZXMucHVzaCh7IHJvbGU6ICd1c2VyJywgY29udGVudDogcmVzdWx0cyB9KTsKCiAgICBpZiAoc3Bva2VuICYmICFsaXN0ZW4pIGJyZWFrOwogICAgaWYgKHNwb2tlbiAmJiBsaXN0ZW4gJiYgd29yay5sZW5ndGgpIHsKICAgICAgLy8gc2hlIGJvdGggd29ya2VkIGFuZCBzcG9rZSDigJQgaGVyIHdvcmQgc3RhbmRzIGFzIHRoZSB0dXJuJ3MgcmVwbHkKICAgICAgcmV0dXJuIHsgcmVwbHk6IHNwb2tlbiwgc2Vzc2lvbjogbnVsbCwgdG9vbF9jYWxsczogdG9vbENhbGxzIH07CiAgICB9CiAgfQoKICByZXR1cm4geyByZXBseTogc3Bva2VuIHx8ICcobm8gcmVwbHkpJywgc2Vzc2lvbjogbnVsbCwgdG9vbF9jYWxsczogdG9vbENhbGxzIH07Cn0KCm1vZHVsZS5leHBvcnRzID0geyBydW5Lcml5YVR1cm4sIExJU1RFTl9NWVJBX1RBTEtfVE9PTCB9Owo=',
-    'src/agent/myraLoop.js': 'Ly8g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACi8vIHNyYy9hZ2VudC9teXJhTG9vcC5qcwovLyBydW5NeXJhVHVybiDigJQgdGhlIGR1YWwtc291bCBsb29wLiBKUyBwb3J0IG9mIGRyZWFtYWkgbG9vcC50cywgYWRhcHRlZCB0byBkcmVhbS1vcy4KLy8KLy8gTXlyYSAoanVkZ21lbnQsIEhhaWt1KSBob2xkcyBOTyBEQiB0b29scyDigJQgaGVyIE9ORSBvcGVyYXRpb25hbCBsZXZlciBpcwovLyBkZWFyX2tyaXlhX3RhbGsuIEhlciBsb29wOiBtb2RlbCBjYWxsIOKGkiBpZiBzaGUgY2FsbHMgZGVhcl9rcml5YV90YWxrLCBydW4gS3JpeWEncwovLyBzdWItdHVybiAocnVuS3JpeWFUdXJuKSwgZmVlZCBLcml5YSdzIHJlcGx5IGJhY2sgYXMgdGhlIHRvb2xfcmVzdWx0LCBjb250aW51ZTsKLy8gaGVyIGZpbmFsIHRleHQgYmxvY2sgaXMgdGhlIHJlcGx5IHRvIHRoZSBvd25lci4gS3JpeWEgY2FuIEFTSyAoc3VzcGVuZHMgaGVyCi8vIHNlc3Npb24pOyBNeXJhJ3MgbmV4dCBkZWFyX2tyaXlhX3RhbGsgcmVzdW1lcyB0aGUgc2FtZSBLcml5YSBjb252ZXJzYXRpb24uCi8vCi8vIENvbnRyYWN0IG1hdGNoZXMgdGhlIG9sZCBwd2FFbmdpbmUgc28gY2hhdC5qcyBzd2FwcyBjbGVhbmx5OgovLyAgIGluOiAgeyB2ZW5kb3IsIHVzZXIsIGNvbnZlcnNhdGlvbiwgaW5ib3VuZE1lc3NhZ2UsIHN1cGFiYXNlLCBhbnRocm9waWMgfQovLyAgIG91dDogeyByZXBseSwgY2xhcmlmeSwgdG9vbENhbGxzLCByZWZyZXNoLCBpdGVyYXRpb25zLCBtb2RlbCB9Ci8vCi8vIDFiOiBWRU5ET1ItUk9PTSBNT0RFLCBiaW5kZXItb25seSwgSGFpa3UgYm90aC4gTm8gb2xkLWxlZGdlciBzbmFwc2hvdC4KJ3VzZSBzdHJpY3QnOwoKY29uc3QgeyBNT0RFTF9IQUlLVSB9ID0gcmVxdWlyZSgnLi9tb2RlbHMnKTsKY29uc3QgeyBteXJhU291bCB9ID0gcmVxdWlyZSgnLi9teXJhU291bCcpOwpjb25zdCB7IHJ1bktyaXlhVHVybiB9ID0gcmVxdWlyZSgnLi9rcml5YVR1cm4nKTsKCmNvbnN0IFNFU1NJT05fSURMRV9NUyA9IDE1ICogNjAgKiAxMDAwOwpjb25zdCBISVNUT1JZX0xJTUlUID0gMjA7CmNvbnN0IE1BWF9JVEVSQVRJT05TID0gMTI7Cgpjb25zdCBERUFSX0tSSVlBX1RBTEtfVE9PTCA9IHsKICBuYW1lOiAnZGVhcl9rcml5YV90YWxrJywKICBkZXNjcmlwdGlvbjoKICAgICJUYWxrIHRvIHlvdXIgb3BlcmF0b3IgaW4gcGxhaW4gRW5nbGlzaC4gSGFuZCB0aGVtIHNvbWV0aGluZyB0byBkbyBhZ2FpbnN0IHRoZSBib29rcyDigJQgbG9nIG9yIHVwZGF0ZSBhIGxlYWQsIHJlY29yZCB0aGUgdHJ1ZSBzdGF0ZSBvZiBzb21ldGhpbmcsIGxvb2sgYSByZWNvcmQgdXAsIHRvdGFsIGEgc2xpY2Ug4oCUIG9yIGFuc3dlciBhIHF1ZXN0aW9uIHRoZXkganVzdCBhc2tlZCB5b3UuIFRoZXkgZG8gdGhlIGRvaW5nOyB5b3UgZG8gdGhlIHRoaW5raW5nLiBUaGV5IG1heSBjb21lIGJhY2sgd2l0aCB3aGF0IHRoZXkgZm91bmQsIG9yIHdpdGggYSBxdWVzdGlvbiB0aGV5IG5lZWQgYW5zd2VyZWQgdG8gZmluaXNoICh3aGljaCBjbGllbnQsIHdoaWNoIGJpbmRlcikg4oCUIHdoZW4gdGhleSBkbywgY2FsbCB0aGlzIGFnYWluIHdpdGggeW91ciBhbnN3ZXIgYW5kIHRoZXkgcGljayB1cCB3aGVyZSB0aGV5IGxlZnQgb2ZmLiBLZWVwIGdvaW5nIHVudGlsIHlvdSBoYXZlIHdoYXQgeW91IG5lZWQsIHRoZW4gc3BlYWsgdG8gdGhlIG93bmVyLiBIYW5kIHRoZW0gT05FIGNsZWFyIHRoaW5nIGF0IGEgdGltZTsgdGhlIHNpbXBsZXIgYW5kIG1vcmUgZGlyZWN0IHlvdXIgbGluZSwgdGhlIHRydWVyIHRoZWlyIHdvcmsuIFdoZW4geW91IHRlbGwgdGhlbSB0byByZWNvcmQgc29tZXRoaW5nLCBzdGF0ZSBpdHMgdHJ1dGgtc3RhdHVzOiB0aGUgb3duZXIncyBPV04gYWN0aW9uIGFib3V0IHRoZW1zZWx2ZXMgaXMgY29uZmlybWVkOyBhbnl0aGluZyByZWxheWVkIGFib3V0IGEgdGhpcmQgcGFydHkgaXMgdW52ZXJpZmllZCB1bnRpbCBjb25maXJtZWQ7IG1vbmV5IHlvdSBrZWVwIGNhcmVmdWwg4oCUIGFmZmlybWVkIGlzIG5vdCBwcm92ZW4uIFlvdSBuZXZlciB0cmVhdCBzaWxlbmNlIGFzIGNvbmZpcm1hdGlvbi4gVXNlIHRoaXMgb25seSB3aGVuIHNvbWV0aGluZyBtdXN0IGFjdHVhbGx5IGJlIGRvbmUgb3IgbG9va2VkIHVwIOKAlCBuZXZlciBvbiBhIHB1cmUtYWR2aWNlIHR1cm4uIiwKICBpbnB1dF9zY2hlbWE6IHsgdHlwZTogJ29iamVjdCcsIHByb3BlcnRpZXM6IHsgbWVzc2FnZTogeyB0eXBlOiAnc3RyaW5nJywgZGVzY3JpcHRpb246ICJZb3VyIHBsYWluLUVuZ2xpc2ggbWVzc2FnZSB0byB5b3VyIG9wZXJhdG9yIOKAlCBhbiBpbnN0cnVjdGlvbiwgb3IgeW91ciBhbnN3ZXIgdG8gd2hhdCB0aGV5IGp1c3QgYXNrZWQuIiB9IH0sIHJlcXVpcmVkOiBbJ21lc3NhZ2UnXSB9LAp9OwoKYXN5bmMgZnVuY3Rpb24gcnVuTXlyYVR1cm4oeyB2ZW5kb3IsIHVzZXIsIGNvbnZlcnNhdGlvbiwgaW5ib3VuZE1lc3NhZ2UsIHN1cGFiYXNlLCBhbnRocm9waWMsIG9uRXZlbnQgfSkgewogIC8vIOKUgOKUgCBXYWtlLXVwOiBzZXNzaW9uLWJvdW5kZWQgaGlzdG9yeSAobWlycm9ycyBwd2FFbmdpbmUpIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogIGNvbnN0IHNlc3Npb25DdXRvZmYgPSBuZXcgRGF0ZShEYXRlLm5vdygpIC0gU0VTU0lPTl9JRExFX01TKS50b0lTT1N0cmluZygpOwogIGNvbnN0IHsgZGF0YTogcmVjZW50TWVzc2FnZXMgfSA9IGF3YWl0IHN1cGFiYXNlCiAgICAuZnJvbSgnbWVzc2FnZXMnKQogICAgLnNlbGVjdCgnZGlyZWN0aW9uLCBib2R5LCBzZW50X2J5LCBjcmVhdGVkX2F0JykKICAgIC5lcSgnY29udmVyc2F0aW9uX2lkJywgY29udmVyc2F0aW9uLmlkKQogICAgLmd0ZSgnY3JlYXRlZF9hdCcsIHNlc3Npb25DdXRvZmYpCiAgICAub3JkZXIoJ2NyZWF0ZWRfYXQnLCB7IGFzY2VuZGluZzogZmFsc2UgfSkKICAgIC5saW1pdChISVNUT1JZX0xJTUlUICsgMSk7CgogIGNvbnN0IGhpc3RvcnkgPSAocmVjZW50TWVzc2FnZXMgfHwgW10pCiAgICAucmV2ZXJzZSgpCiAgICAuZmlsdGVyKChtKSA9PiBtLmJvZHkgIT09IGluYm91bmRNZXNzYWdlIHx8IG0uZGlyZWN0aW9uICE9PSAnaW5ib3VuZCcpCiAgICAuZmlsdGVyKChtKSA9PiBtLmJvZHkgJiYgbS5ib2R5LnRyaW0oKS5sZW5ndGggPiAwKQogICAgLnNsaWNlKC1ISVNUT1JZX0xJTUlUKQogICAgLm1hcCgobSkgPT4gKHsgcm9sZTogbS5kaXJlY3Rpb24gPT09ICdpbmJvdW5kJyA/ICd1c2VyJyA6ICdhc3Npc3RhbnQnLCBjb250ZW50OiBtLmJvZHkgfHwgJycgfSkpCiAgICAucmVkdWNlKChhY2MsIG1zZykgPT4gewogICAgICBpZiAoYWNjLmxlbmd0aCA9PT0gMCkgcmV0dXJuIFttc2ddOwogICAgICBpZiAoYWNjW2FjYy5sZW5ndGggLSAxXS5yb2xlID09PSBtc2cucm9sZSkgcmV0dXJuIGFjYzsKICAgICAgcmV0dXJuIFsuLi5hY2MsIG1zZ107CiAgICB9LCBbXSk7CgogIGNvbnN0IG1lc3NhZ2VzID0gWy4uLmhpc3RvcnksIHsgcm9sZTogJ3VzZXInLCBjb250ZW50OiBpbmJvdW5kTWVzc2FnZSB9XTsKCiAgLy8gYXNzaXN0YW50X25hbWUgbm90IHlldCBhIGNvbHVtbiAobGF0ZXIgcGllY2UpIOKGkiBkZWZhdWx0IE15cmEuCiAgY29uc3QgYXNzaXN0YW50TmFtZSA9ICh2ZW5kb3IgJiYgdmVuZG9yLmFzc2lzdGFudF9uYW1lKSB8fCAnTXlyYSc7CiAgY29uc3QgaXN0VG9kYXkgPSBuZXcgRGF0ZShEYXRlLm5vdygpICsgNS41ICogMzYwMDAwMCkudG9JU09TdHJpbmcoKS5zbGljZSgwLCAxMCk7CiAgY29uc3Qgc3lzdGVtID0gbXlyYVNvdWwoYXNzaXN0YW50TmFtZSkgKyBgXG5cbltUb2RheSBpcyAke2lzdFRvZGF5fS4gWW91IGFyZSBzcGVha2luZyB3aXRoIHRoZSBvd25lciBvZiB0aGlzIGJ1c2luZXNzIGluc2lkZSB0aGVpciBhcHAuXWA7CgogIGNvbnN0IHRvb2xDYWxscyA9IFtdOwogIGxldCBrcml5YVNlc3Npb24gPSBudWxsOyAgICAgIC8vIHBlcnNpc3RzIGFjcm9zcyBkZWFyX2tyaXlhX3RhbGsgY2FsbHMgaW4gVEhJUyB0dXJuCiAgbGV0IGFueU11dGF0aW9uID0gZmFsc2U7CiAgbGV0IGZpbmFsUmVwbHkgPSBudWxsOwogIGxldCBpdGVyYXRpb25zID0gMDsKCiAgZm9yIChsZXQgaSA9IDA7IGkgPCBNQVhfSVRFUkFUSU9OUzsgaSsrKSB7CiAgICBpdGVyYXRpb25zID0gaSArIDE7CgogICAgLy8gU3RyZWFtIEVWRVJZIE15cmEgaXRlcmF0aW9uLiBPbiBhIHR1cm4gd2hlcmUgc2hlIG9ubHkgY2FsbHMgYSB0b29sLCBubwogICAgLy8gdGV4dCBkZWx0YXMgZmlyZTsgb24gaGVyIGNvbXBvc2luZyB0dXJuLCBoZXIgcHJvc2Ugc3RyZWFtcyB0b2tlbi1ieS10b2tlbgogICAgLy8gYXMgbXlyYV90b2tlbi4gKFNhbWUgcGF0dGVybiBhcyBkcmVhbWFpIGxvb3AudHMuKQogICAgY29uc3Qgc3RyZWFtID0gYW50aHJvcGljLm1lc3NhZ2VzLnN0cmVhbSh7CiAgICAgIG1vZGVsOiBNT0RFTF9IQUlLVSwKICAgICAgbWF4X3Rva2VuczogMTAyNCwKICAgICAgc3lzdGVtLAogICAgICB0b29sczogW0RFQVJfS1JJWUFfVEFMS19UT09MXSwKICAgICAgbWVzc2FnZXMsCiAgICB9KTsKICAgIGlmIChvbkV2ZW50KSBzdHJlYW0ub24oJ3RleHQnLCAoZGVsdGEpID0+IG9uRXZlbnQoeyB0eXBlOiAnbXlyYV90b2tlbicsIHRleHQ6IGRlbHRhIH0pKTsKICAgIGNvbnN0IHJlc3AgPSBhd2FpdCBzdHJlYW0uZmluYWxNZXNzYWdlKCk7CgogICAgY29uc3QgdG9vbFVzZSA9IHJlc3AuY29udGVudC5maWx0ZXIoKGIpID0+IGIudHlwZSA9PT0gJ3Rvb2xfdXNlJyk7CiAgICBjb25zdCB0ZXh0QmxvY2tzID0gcmVzcC5jb250ZW50LmZpbHRlcigoYikgPT4gYi50eXBlID09PSAndGV4dCcpLm1hcCgoYikgPT4gYi50ZXh0KS5qb2luKCcgJykudHJpbSgpOwoKICAgIGlmICh0b29sVXNlLmxlbmd0aCA9PT0gMCkgewogICAgICBmaW5hbFJlcGx5ID0gdGV4dEJsb2NrcyB8fCAnRG9uZS4nOwogICAgICBicmVhazsKICAgIH0KCiAgICBtZXNzYWdlcy5wdXNoKHsgcm9sZTogJ2Fzc2lzdGFudCcsIGNvbnRlbnQ6IHJlc3AuY29udGVudCB9KTsKICAgIGNvbnN0IHJlc3VsdHMgPSBbXTsKCiAgICBmb3IgKGNvbnN0IHR1IG9mIHRvb2xVc2UpIHsKICAgICAgaWYgKHR1Lm5hbWUgPT09ICdkZWFyX2tyaXlhX3RhbGsnKSB7CiAgICAgICAgY29uc3QgbXNnID0gKHR1LmlucHV0ICYmIHR1LmlucHV0Lm1lc3NhZ2UpIHx8ICcnOwogICAgICAgIC8vIExpdmUgYmVhdDogTXlyYSBoYW5kcyBvZmYgdG8gaGVyIG9wZXJhdG9yLCBoZXIgd29yZHMsIHRoZSBtb21lbnQgc2hlIHNheXMgdGhlbS4KICAgICAgICBpZiAob25FdmVudCkgb25FdmVudCh7IHR5cGU6ICdkaXNwYXRjaCcsIG1lc3NhZ2U6IG1zZyB9KTsKICAgICAgICBjb25zdCBrcml5YSA9IGF3YWl0IHJ1bktyaXlhVHVybihhbnRocm9waWMsIHN1cGFiYXNlLCB2ZW5kb3IuaWQsIG1zZywga3JpeWFTZXNzaW9uLCBvbkV2ZW50KTsKICAgICAgICBrcml5YVNlc3Npb24gPSBrcml5YS5zZXNzaW9uIHx8IG51bGw7ICAgLy8gcmVzdW1lIGlmIHNoZSBhc2tlZDsgZWxzZSBjbGVhcgogICAgICAgIGZvciAoY29uc3QgZGMgb2Yga3JpeWEudG9vbF9jYWxscykgewogICAgICAgICAgdG9vbENhbGxzLnB1c2goZGMpOwogICAgICAgICAgaWYgKGRjLnJlc3VsdCAmJiAvY3JlYXRlZHxVcGRhdGVkfGFyY2hpdmVkfGJhY2sgaW4gdGhlIGxpdmV8Y29ycmVjdGVkfHJlcGxhY2VkLy50ZXN0KGRjLnJlc3VsdCkpIGFueU11dGF0aW9uID0gdHJ1ZTsKICAgICAgICB9CiAgICAgICAgcmVzdWx0cy5wdXNoKHsgdHlwZTogJ3Rvb2xfcmVzdWx0JywgdG9vbF91c2VfaWQ6IHR1LmlkLCBjb250ZW50OiBgS3JpeWE6ICR7a3JpeWEucmVwbHl9YCB9KTsKICAgICAgfSBlbHNlIHsKICAgICAgICByZXN1bHRzLnB1c2goeyB0eXBlOiAndG9vbF9yZXN1bHQnLCB0b29sX3VzZV9pZDogdHUuaWQsIGNvbnRlbnQ6IGBVbmtub3duIHRvb2wgJHt0dS5uYW1lfS5gIH0pOwogICAgICB9CiAgICB9CiAgICBtZXNzYWdlcy5wdXNoKHsgcm9sZTogJ3VzZXInLCBjb250ZW50OiByZXN1bHRzIH0pOwogIH0KCiAgaWYgKCFmaW5hbFJlcGx5KSBmaW5hbFJlcGx5ID0gJ0xldCBtZSBjb21lIGJhY2sgdG8geW91IG9uIHRoYXQuJzsKCiAgLy8gVGhlIGFuc3dlciBiZWF0IOKAlCB0aGUgYXNzZW1ibGVkIGZpbmFsIHJlcGx5LCBmb3IgdGhlIHN1cmZhY2UgdG8gcmVjb25jaWxlLgogIGlmIChvbkV2ZW50KSBvbkV2ZW50KHsgdHlwZTogJ2Fuc3dlcicsIHJlcGx5OiBmaW5hbFJlcGx5IH0pOwoKICByZXR1cm4gewogICAgcmVwbHk6IGZpbmFsUmVwbHksCiAgICBjbGFyaWZ5OiBudWxsLAogICAgdG9vbENhbGxzLAogICAgcmVmcmVzaDogYW55TXV0YXRpb24sCiAgICBpdGVyYXRpb25zLAogICAgbW9kZWw6IE1PREVMX0hBSUtVLAogIH07Cn0KCm1vZHVsZS5leHBvcnRzID0geyBydW5NeXJhVHVybiwgREVBUl9LUklZQV9UQUxLX1RPT0wgfTsK',
-}
-
-def expect():
-    if not os.path.isdir(os.path.join(ROOT, "src", "agent")):
-        print("ERROR: run from dream-os repo root. Aborting."); sys.exit(1)
-
-def write(rel, b64):
-    full = os.path.join(ROOT, rel)
-    open(full, "wb").write(base64.b64decode(b64))
-    print(f"OK: overwrote {rel}")
-
-OLD_SSE = """      result = await runPWAAgenticTurn({
-        vendor,
-        user,
-        conversation,
-        inboundMessage: message,
-        supabase,
-        anthropic,
-      });
-
-      // Emit tool call events so frontend can show what happened
-      const toolCallNames = Array.isArray(result.toolCalls)
-        ? result.toolCalls.map(t => t && t.name).filter(Boolean)
-        : [];
-
-      for (const toolName of toolCallNames) {
-        send({ type: 'tool_done', tool: toolName });
-      }
-
-      // Determine reply text
-      const replyText = result.reply
-        || (result.clarify ? result.clarify.question : null)
-        || 'Got it.';
-
-      // Stream the final reply character-by-character using Anthropic streaming
-      // Only if the reply is substantive (not a clarify payload which has no text to stream)
-      if (result.reply && !result.clarify) {
-        // Re-stream the already-computed reply as individual word chunks
-        // This avoids a second Anthropic API call while still giving progressive output.
-        // We chunk by word boundaries for natural feel.
-        const words = replyText.split(' ');
-        for (let i = 0; i < words.length; i++) {
-          const chunk = i === 0 ? words[i] : ' ' + words[i];
-          send({ type: 'text_delta', text: chunk });
-          // Small yield to allow the event loop to flush each chunk
-          await new Promise(resolve => setImmediate(resolve));
-        }
-      }
-
-      // Done event — carries metadata for frontend context refresh
-      const donePayload = { type: 'done', tool_calls: toolCallNames };"""
-
-NEW_SSE = """      // LIVE two-agent streaming: every beat fires the moment it happens —
-      // dispatch (Myra → operator), kriya_action (each hand), kriya_report
-      // (operator → Myra), myra_token (her prose, token by token), answer.
-      result = await runMyraTurn({
-        vendor,
-        user,
-        conversation,
-        inboundMessage: message,
-        supabase,
-        anthropic,
-        onEvent: (e) => {
-          // myra_token rides as text_delta so the answer types out live; the
-          // operator beats ride as-is for the deliberation pill. tool names are
-          // forwarded raw here — the FRONTEND owns the display firewall (plain
-          // language, kriya_* never shown).
-          if (e.type === 'myra_token') send({ type: 'text_delta', text: e.text });
-          else send(e);
-        },
-      });
-
-      const toolCallNames = Array.isArray(result.toolCalls)
-        ? result.toolCalls.map(t => t && t.name).filter(Boolean)
-        : [];
-      const replyText = result.reply
-        || (result.clarify ? result.clarify.question : null)
-        || 'Got it.';
-
-      // Done event — carries metadata for frontend context refresh
-      const donePayload = { type: 'done', tool_calls: toolCallNames };"""
-
-def rewire_sse():
-    path = os.path.join(ROOT, "src", "api", "vendor", "chat.js")
-    if not os.path.isfile(path):
-        print("SKIP: chat.js not found."); return
-    s = open(path, encoding="utf-8").read()
-    # require alias from 1b should already point runPWAAgenticTurn -> runMyraTurn,
-    # but the SSE rework calls runMyraTurn directly, so ensure the import exists.
-    if "runMyraTurn" not in s:
-        print("SKIP: chat.js not on the 1b engine yet (runMyraTurn import missing). Apply 1b first.")
-        return
-    if "onEvent: (e) =>" in s:
-        print("SKIP: chat.js SSE already streaming live beats."); return
-    if OLD_SSE not in s:
-        print("SKIP: SSE word-chunk anchor not found — rewire the SSE path by hand:")
-        print("      pass onEvent:(e)=>{ if(e.type==='myra_token') send({type:'text_delta',text:e.text}); else send(e); }")
-        return
-    s = s.replace(OLD_SSE, NEW_SSE, 1)
-    open(path, "w", encoding="utf-8").write(s)
-    print("OK: chat.js SSE path now forwards live two-agent beats.")
+OLD = "const { runMyraTurn: runPWAAgenticTurn } = require('../../agent/myraLoop');  // Piece 1b: dual-soul engine (alias keeps both call sites unchanged)"
+NEW = "const { runMyraTurn } = require('../../agent/myraLoop');\nconst runPWAAgenticTurn = runMyraTurn;  // alias kept so the JSON path call site is unchanged"
 
 def main():
-    expect()
-    write("src/agent/kriyaTurn.js", PAYLOADS["src/agent/kriyaTurn.js"])
-    write("src/agent/myraLoop.js",  PAYLOADS["src/agent/myraLoop.js"])
-    rewire_sse()
-    print("\nPiece 1c-stream-A written. The two agents now stream live; /chat (JSON) unchanged.")
+    if not os.path.isfile(TARGET):
+        print("ERROR: chat.js not found — run from dream-os repo root."); sys.exit(1)
+    s = open(TARGET, encoding="utf-8").read()
+    if "const { runMyraTurn } = require('../../agent/myraLoop');" in s:
+        print("SKIP: runMyraTurn already imported under its own name."); return
+    if OLD not in s:
+        print("SKIP: import anchor not found. Fix by hand — import runMyraTurn under its own name:")
+        print("      const { runMyraTurn } = require('../../agent/myraLoop');")
+        print("      const runPWAAgenticTurn = runMyraTurn;")
+        return
+    open(TARGET, "w", encoding="utf-8").write(s.replace(OLD, NEW, 1))
+    print("OK: runMyraTurn now imported under its own name (alias kept for the JSON path).")
 
 if __name__ == "__main__":
     main()
