@@ -38,7 +38,7 @@ const KRIYA_WORK_ITERS = 8;
 //             next dear_kriya_talk resumes from here.
 async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, onEvent, today) {
   const clock = today
-    ? `\n\n[${today}] Use this when something is dated relative to now. A bare month/day with no year means the NEXT occurrence from today (a "12 Dec" with today in June means this year; if that date has already passed this year, the next year). Never guess a past year.`
+    ? `\n\n[${today}] This is today. EVERY date you write — a binder date, a follow-up, a calendar shoot, a block — resolves against it. A bare month/day with no year means the NEXT occurrence from today (a "12 Dec" with today in June means this year; if that day has already passed this year, the next year). A wedding, shoot, or booking is always in the future — never write a date in the past. Never guess a past year.`
     : '';
   // Cache-friendly system blocks. Kriya's soul + how-she-works + her 22-tool bench
   // are byte-identical every call — the big, stable prefix that should be CACHED

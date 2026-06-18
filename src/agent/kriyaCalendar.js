@@ -21,7 +21,7 @@ const KIND_VALUES = ['shoot', 'call', 'meeting', 'task', 'reminder', 'recce', 'f
 
 const KRIYA_CALENDAR_TOOLS = [
   { name: 'kriya_calendar_add',
-    description: "Put something on the owner's calendar: a shoot, a call, a meeting, a task — give title, date (YYYY-MM-DD), kind, and time (HH:MM, optional; omit for all-day). To mark a day the owner is UNAVAILABLE, use kind 'blocked' — a block means not-free, whatever the reason (personal, professional, out of town); the reason, if the owner gives one, goes in title. For a range of blocked days, add one block per day. Check the date first (kriya_calendar_check) if you need to know whether the owner is already committed.",
+    description: "Put something on the owner's calendar: a shoot, a call, a meeting, a task — give title, date (YYYY-MM-DD), kind, and time (HH:MM, optional; omit for all-day). Resolve the date against today — a shoot or booking is in the future; a bare month/day means its next occurrence, never a past year. To mark a day the owner is UNAVAILABLE, use kind 'blocked' — a block means not-free, whatever the reason (personal, professional, out of town); the reason, if the owner gives one, goes in title. For a range of blocked days, add one block per day. Check the date first (kriya_calendar_check) if you need to know whether the owner is already committed.",
     input_schema: { type: 'object', properties: {
       title: { type: 'string', description: 'Short title — "Shoot for Priya", "Recce at Leela", or for a block the reason if any ("Out of town").' },
       date: { type: 'string', description: 'YYYY-MM-DD.' },
