@@ -16,6 +16,22 @@
 'use strict';
 
 const { MODEL_HAIKU, calculateCost } = require('./models');
+
+// Single source of truth for "what day is it" — weekday, human date, and ISO,
+// so the agents can both resolve years AND count days, and never drift from each
+// other. Ported from dreamai today.ts (commit 364f854).
+function todayLine(timezone) {
+  const tz = (timezone && timezone.trim()) ? timezone : 'Asia/Kolkata';
+  const now = new Date();
+  let human, iso;
+  try {
+    human = new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz }).format(now);
+    iso = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz }).format(now);
+  } catch {
+    human = now.toUTCString(); iso = now.toISOString().slice(0, 10);
+  }
+  return `Today is ${human} (${iso}).`;
+}
 const { myraSoul } = require('./myraSoul');
 const { runKriyaTurn } = require('./kriyaTurn');
 
@@ -57,14 +73,18 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
 
   // assistant_name not yet a column (later piece) → default Myra.
   const assistantName = (vendor && vendor.assistant_name) || 'Myra';
-  const istToday = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+  // The clock (ported from dreamai today.ts, 364f854): weekday + human date + ISO,
+  // in IST. The weekday/human form is what lets the agents COUNT days ("next Friday",
+  // "in 3 days") — bare ISO alone can't. Both Myra and Kriya read the SAME line so
+  // they never drift. Lives in the UNCACHED block (changes daily).
+  const istToday = todayLine('Asia/Kolkata');
   // System as cache-friendly blocks: the soul is stable (cached, re-read at ~10%
   // input price on repeat calls within the cache window); the dated line is
   // volatile so it sits in its own UNCACHED block — otherwise the daily date
   // change would bust the cache every day.
   const system = [
     { type: 'text', text: myraSoul(assistantName), cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: `[Today is ${istToday}. You are speaking with the owner of this business inside their app.]` },
+    { type: 'text', text: `[${istToday} You are speaking with the owner of this business inside their app.] Every date you state or pass to your operator resolves against today: a bare month/day with no year means the NEXT occurrence (a "March 8" with today in June means next year if it has already passed this year). A wedding, shoot, or booking is always in the future — never a past date or past year.` },
   ];
 
   const toolCalls = [];
