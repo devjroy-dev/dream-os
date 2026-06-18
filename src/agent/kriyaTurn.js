@@ -24,7 +24,12 @@ const LISTEN_MYRA_TALK_TOOL = {
   input_schema: { type: 'object', properties: { message: { type: 'string', description: 'What you say to Myra — your finding, or the precise thing you need.' } }, required: ['message'] },
 };
 
-const KRIYA_BENCH = [...KRIYA_TOOLS, ...KRIYA_READ_TOOLS, ...KRIYA_CALENDAR_TOOLS, LISTEN_MYRA_TALK_TOOL];
+const KRIYA_BENCH_RAW = [...KRIYA_TOOLS, ...KRIYA_READ_TOOLS, ...KRIYA_CALENDAR_TOOLS, LISTEN_MYRA_TALK_TOOL];
+// Cache the whole tool bench: cache_control on the LAST tool caches every tool
+// definition before it. The bench is identical every call — pure cache win.
+const KRIYA_BENCH = KRIYA_BENCH_RAW.map((t, i) =>
+  i === KRIYA_BENCH_RAW.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t
+);
 const KRIYA_WORK_ITERS = 8;
 
 // Run one Kriya turn. Returns { reply, session, tool_calls }.
@@ -35,9 +40,18 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
   const clock = today
     ? `\n\n[${today}] Use this when something is dated relative to now. A bare month/day with no year means the NEXT occurrence from today (a "12 Dec" with today in June means this year; if that date has already passed this year, the next year). Never guess a past year.`
     : '';
-  const system = KRIYA_SOUL +
-    "\n\n[How you work] Myra hands you one thing at a time in plain English. You do it against the binders with your hands (the kriya_ tools — file, correct, find, tally, open a history), checking the cabinet before you write so you never file a duplicate, and you speak back to her with listen_myra_talk: hand her your finding in one clean line, or ask her the one thing you need (which client, which binder) and her answer comes back as her next message. Say your piece and stop." +
-    clock;
+  // Cache-friendly system blocks. Kriya's soul + how-she-works + her 22-tool bench
+  // are byte-identical every call — the big, stable prefix that should be CACHED
+  // (re-read at ~10% input price on her repeated iterations, the single biggest
+  // cost win). The clock (today) is volatile → its own UNCACHED block so the daily
+  // date change never busts the cache. The tools array, sitting behind a cached
+  // system, caches with it.
+  const stable = KRIYA_SOUL +
+    "\n\n[How you work] Myra hands you one thing at a time in plain English. You do it against the binders with your hands (the kriya_ tools — file, correct, find, tally, open a history), checking the cabinet before you write so you never file a duplicate, and you speak back to her with listen_myra_talk: hand her your finding in one clean line, or ask her the one thing you need (which client, which binder) and her answer comes back as her next message. Say your piece and stop.";
+  const system = [
+    { type: 'text', text: stable, cache_control: { type: 'ephemeral' } },
+  ];
+  if (clock) system.push({ type: 'text', text: clock.trim() });
 
   let messages;
   if (prior && prior.messages) {

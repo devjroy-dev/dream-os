@@ -58,7 +58,14 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
   // assistant_name not yet a column (later piece) → default Myra.
   const assistantName = (vendor && vendor.assistant_name) || 'Myra';
   const istToday = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
-  const system = myraSoul(assistantName) + `\n\n[Today is ${istToday}. You are speaking with the owner of this business inside their app.]`;
+  // System as cache-friendly blocks: the soul is stable (cached, re-read at ~10%
+  // input price on repeat calls within the cache window); the dated line is
+  // volatile so it sits in its own UNCACHED block — otherwise the daily date
+  // change would bust the cache every day.
+  const system = [
+    { type: 'text', text: myraSoul(assistantName), cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: `[Today is ${istToday}. You are speaking with the owner of this business inside their app.]` },
+  ];
 
   const toolCalls = [];
   let kriyaSession = null;      // persists across dear_kriya_talk calls in THIS turn
