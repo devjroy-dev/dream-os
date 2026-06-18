@@ -30,7 +30,7 @@ const DEAR_KRIYA_TALK_TOOL = {
   input_schema: { type: 'object', properties: { message: { type: 'string', description: "Your plain-English message to your operator — an instruction, or your answer to what they just asked." } }, required: ['message'] },
 };
 
-async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabase, anthropic }) {
+async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabase, anthropic, onEvent }) {
   // ── Wake-up: session-bounded history (mirrors pwaEngine) ───────────────
   const sessionCutoff = new Date(Date.now() - SESSION_IDLE_MS).toISOString();
   const { data: recentMessages } = await supabase
@@ -68,13 +68,19 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     iterations = i + 1;
-    const resp = await anthropic.messages.create({
+
+    // Stream EVERY Myra iteration. On a turn where she only calls a tool, no
+    // text deltas fire; on her composing turn, her prose streams token-by-token
+    // as myra_token. (Same pattern as dreamai loop.ts.)
+    const stream = anthropic.messages.stream({
       model: MODEL_HAIKU,
       max_tokens: 1024,
       system,
       tools: [DEAR_KRIYA_TALK_TOOL],
       messages,
     });
+    if (onEvent) stream.on('text', (delta) => onEvent({ type: 'myra_token', text: delta }));
+    const resp = await stream.finalMessage();
 
     const toolUse = resp.content.filter((b) => b.type === 'tool_use');
     const textBlocks = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join(' ').trim();
@@ -90,7 +96,9 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
     for (const tu of toolUse) {
       if (tu.name === 'dear_kriya_talk') {
         const msg = (tu.input && tu.input.message) || '';
-        const kriya = await runKriyaTurn(anthropic, supabase, vendor.id, msg, kriyaSession);
+        // Live beat: Myra hands off to her operator, her words, the moment she says them.
+        if (onEvent) onEvent({ type: 'dispatch', message: msg });
+        const kriya = await runKriyaTurn(anthropic, supabase, vendor.id, msg, kriyaSession, onEvent);
         kriyaSession = kriya.session || null;   // resume if she asked; else clear
         for (const dc of kriya.tool_calls) {
           toolCalls.push(dc);
@@ -106,8 +114,8 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
 
   if (!finalReply) finalReply = 'Let me come back to you on that.';
 
-  // NOTE: the chat.js route persists the outbound reply itself (matching the old
-  // pwaEngine contract). We do NOT persist here, to avoid a double-write.
+  // The answer beat — the assembled final reply, for the surface to reconcile.
+  if (onEvent) onEvent({ type: 'answer', reply: finalReply });
 
   return {
     reply: finalReply,

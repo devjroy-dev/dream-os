@@ -30,7 +30,7 @@ const KRIYA_WORK_ITERS = 8;
 //   reply   — what she said to Myra (her listen_myra_talk message), or a summary
 //   session — present only if she ENDED by asking (listen_myra_talk alone). Myra's
 //             next dear_kriya_talk resumes from here.
-async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior) {
+async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, onEvent) {
   const system = KRIYA_SOUL +
     "\n\n[How you work] Myra hands you one thing at a time in plain English. You do it against the binders with your hands (the kriya_ tools — file, correct, find, tally, open a history), checking the cabinet before you write so you never file a duplicate, and you speak back to her with listen_myra_talk: hand her your finding in one clean line, or ask her the one thing you need (which client, which binder) and her answer comes back as her next message. Say your piece and stop.";
 
@@ -78,12 +78,16 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior) {
         outcome = await executeKriyaTool(supabase, vendorId, tu.name, tu.input || {});
       }
       toolCalls.push({ name: tu.name, input: tu.input, result: outcome.display });
+      // Live beat: this hand, the moment it fired.
+      if (onEvent) onEvent({ type: 'kriya_action', name: tu.name, input: tu.input, result: outcome.display });
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
     }
 
     if (listen) {
       const message = (listen.input && listen.input.message) || '';
       toolCalls.push({ name: 'listen_myra_talk', input: listen.input, result: '(spoken to Myra)' });
+      // Live beat: Kriya's word back to Myra, the moment she says it.
+      if (onEvent) onEvent({ type: 'kriya_report', message });
       if (work.length === 0) {
         // She spoke/asked ALONE — this ends her turn. If it reads as a question,
         // suspend so Myra's next message resumes her; either way, deliver to Myra.

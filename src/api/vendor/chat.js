@@ -203,43 +203,32 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
       // Signal: agent is working
       send({ type: 'thinking' });
 
-      result = await runPWAAgenticTurn({
+      // LIVE two-agent streaming: every beat fires the moment it happens —
+      // dispatch (Myra → operator), kriya_action (each hand), kriya_report
+      // (operator → Myra), myra_token (her prose, token by token), answer.
+      result = await runMyraTurn({
         vendor,
         user,
         conversation,
         inboundMessage: message,
         supabase,
         anthropic,
+        onEvent: (e) => {
+          // myra_token rides as text_delta so the answer types out live; the
+          // operator beats ride as-is for the deliberation pill. tool names are
+          // forwarded raw here — the FRONTEND owns the display firewall (plain
+          // language, kriya_* never shown).
+          if (e.type === 'myra_token') send({ type: 'text_delta', text: e.text });
+          else send(e);
+        },
       });
 
-      // Emit tool call events so frontend can show what happened
       const toolCallNames = Array.isArray(result.toolCalls)
         ? result.toolCalls.map(t => t && t.name).filter(Boolean)
         : [];
-
-      for (const toolName of toolCallNames) {
-        send({ type: 'tool_done', tool: toolName });
-      }
-
-      // Determine reply text
       const replyText = result.reply
         || (result.clarify ? result.clarify.question : null)
         || 'Got it.';
-
-      // Stream the final reply character-by-character using Anthropic streaming
-      // Only if the reply is substantive (not a clarify payload which has no text to stream)
-      if (result.reply && !result.clarify) {
-        // Re-stream the already-computed reply as individual word chunks
-        // This avoids a second Anthropic API call while still giving progressive output.
-        // We chunk by word boundaries for natural feel.
-        const words = replyText.split(' ');
-        for (let i = 0; i < words.length; i++) {
-          const chunk = i === 0 ? words[i] : ' ' + words[i];
-          send({ type: 'text_delta', text: chunk });
-          // Small yield to allow the event loop to flush each chunk
-          await new Promise(resolve => setImmediate(resolve));
-        }
-      }
 
       // Done event — carries metadata for frontend context refresh
       const donePayload = { type: 'done', tool_calls: toolCallNames };
