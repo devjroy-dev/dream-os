@@ -30,6 +30,8 @@ router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
 router.use('/context',  require('./context'));
+router.use('/cabinet',  require('./cabinet'));
+router.use('/binders',  require('./binderWrite'));
 router.use('/chat',         require('./chat'));
 router.use('/availability', require('./availability'));
 router.use('/portfolio',   require('./portfolio'));
