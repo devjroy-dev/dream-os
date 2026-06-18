@@ -52,6 +52,7 @@ const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 const { runMyraTurn } = require('../../agent/myraLoop');
+const { translateBeat, safeStepKinds } = require('../../agent/displayFirewall');
 const runPWAAgenticTurn = runMyraTurn;  // alias kept so the JSON path call site is unchanged
 
 router.post('/', requireAuth, resolveVendor(), async (req, res) => {
@@ -219,8 +220,8 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
           // operator beats ride as-is for the deliberation pill. tool names are
           // forwarded raw here — the FRONTEND owns the display firewall (plain
           // language, kriya_* never shown).
-          if (e.type === 'myra_token') send({ type: 'text_delta', text: e.text });
-          else send(e);
+          const safe = translateBeat(e);
+          if (safe) send(safe);
         },
       });
 
@@ -232,7 +233,7 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
         || 'Got it.';
 
       // Done event — carries metadata for frontend context refresh
-      const donePayload = { type: 'done', tool_calls: toolCallNames };
+      const donePayload = { type: 'done', tool_calls: safeStepKinds(result.toolCalls) };
       if (result.costInr  != null) donePayload.cost_inr     = result.costInr;
       if (result.costUsd  != null) donePayload.cost_usd     = result.costUsd;
       if (result.inputTokens  != null) donePayload.input_tokens  = result.inputTokens;
