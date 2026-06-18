@@ -92,7 +92,7 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
   let anyMutation = false;
   let finalReply = null;
   let iterations = 0;
-  let inTok = 0, outTok = 0;  // whole-turn token usage (Myra's streams + Kriya's sub-turns)
+  let inTok = 0, outTok = 0, cacheRead = 0, cacheWrite = 0;  // whole-turn usage (Myra's streams + Kriya's sub-turns), cache buckets priced correctly
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     iterations = i + 1;
@@ -109,7 +109,12 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
     });
     if (onEvent) stream.on('text', (delta) => onEvent({ type: 'myra_token', text: delta }));
     const resp = await stream.finalMessage();
-    if (resp.usage) { inTok += resp.usage.input_tokens || 0; outTok += resp.usage.output_tokens || 0; }
+    if (resp.usage) {
+      inTok += resp.usage.input_tokens || 0;
+      outTok += resp.usage.output_tokens || 0;
+      cacheRead += resp.usage.cache_read_input_tokens || 0;
+      cacheWrite += resp.usage.cache_creation_input_tokens || 0;
+    }
 
     const toolUse = resp.content.filter((b) => b.type === 'tool_use');
     const textBlocks = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join(' ').trim();
@@ -128,7 +133,12 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
         // Live beat: Myra hands off to her operator, her words, the moment she says them.
         if (onEvent) onEvent({ type: 'dispatch', message: msg });
         const kriya = await runKriyaTurn(anthropic, supabase, vendor.id, msg, kriyaSession, onEvent, istToday);
-        if (kriya.usage) { inTok += kriya.usage.input_tokens || 0; outTok += kriya.usage.output_tokens || 0; }
+        if (kriya.usage) {
+          inTok += kriya.usage.input_tokens || 0;
+          outTok += kriya.usage.output_tokens || 0;
+          cacheRead += kriya.usage.cache_read || 0;
+          cacheWrite += kriya.usage.cache_write || 0;
+        }
         kriyaSession = kriya.session || null;   // resume if she asked; else clear
         for (const dc of kriya.tool_calls) {
           toolCalls.push(dc);
@@ -144,7 +154,7 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
 
   if (!finalReply) finalReply = 'Let me come back to you on that.';
 
-  const cost = calculateCost(MODEL_HAIKU, inTok, outTok) || { cost_usd: null, cost_inr: null };
+  const cost = calculateCost(MODEL_HAIKU, inTok, outTok, cacheRead, cacheWrite) || { cost_usd: null, cost_inr: null };
 
   // The answer beat — the assembled final reply, for the surface to reconcile.
   if (onEvent) onEvent({ type: 'answer', reply: finalReply });
@@ -160,6 +170,8 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
     outputTokens: outTok,
     costUsd: cost.cost_usd,
     costInr: cost.cost_inr,
+    cacheRead,
+    cacheWrite,
   };
 }
 

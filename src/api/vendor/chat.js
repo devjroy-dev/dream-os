@@ -237,6 +237,8 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
       if (result.costUsd  != null) donePayload.cost_usd     = result.costUsd;
       if (result.inputTokens  != null) donePayload.input_tokens  = result.inputTokens;
       if (result.outputTokens != null) donePayload.output_tokens = result.outputTokens;
+      if (result.cacheRead  != null) donePayload.cache_read  = result.cacheRead;
+      if (result.cacheWrite != null) donePayload.cache_write = result.cacheWrite;
       if (result.refresh)  donePayload.refresh  = true;
       if (result.contact)  donePayload.contact  = result.contact;
       if (result.clarify)  donePayload.clarify  = result.clarify;
