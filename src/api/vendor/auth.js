@@ -131,22 +131,46 @@ router.post('/send-otp', async (req, res) => {
   }
   const cleanPhone = phone.trim();
 
-  const { data: userRow } = await supabase
-    .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
-  if (!userRow) {
-    return res.status(404).json({
-      error:  'No account found for this number. Please check your invite.',
-      reason: 'phone_not_found',
-    });
-  }
+  // Open signup: self-mint the account if this phone is new.
+  let { data: userRow } = await supabase
+    .from('users').select('id, name').eq('phone', cleanPhone).maybeSingle();
 
-  const { data: vendorRow } = await supabase
-    .from('vendors').select('id').eq('user_id', userRow.id).maybeSingle();
-  if (!vendorRow) {
-    return res.status(403).json({
-      error:  'This number is registered as a Dreamer account, not a Maker.',
-      reason: 'wrong_role',
-    });
+  if (userRow) {
+    // Existing user — guard against the OTHER role owning this phone.
+    const { data: otherRow } = await supabase
+      .from('couples').select('id').eq('user_id', userRow.id).maybeSingle();
+    const { data: thisRow } = await supabase
+      .from('vendors').select('id').eq('user_id', userRow.id).maybeSingle();
+    if (otherRow && !thisRow) {
+      return res.status(403).json({
+        error:  'This number is registered as a Dreamer account.',
+        reason: 'wrong_role',
+      });
+    }
+    if (!thisRow) {
+      const { error: roleErr } = await supabase.from('vendors')
+        .insert({ user_id: userRow.id, onboarding_state: 'new' });
+      if (roleErr) {
+        console.error('[vendor:send-otp] vendors insert error:', roleErr.message);
+        return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+      }
+    }
+  } else {
+    // Fresh phone — create users + role row.
+    const { data: newUser, error: userErr } = await supabase
+      .from('users').insert({ phone: cleanPhone }).select('id').single();
+    if (userErr) {
+      console.error('[vendor:send-otp] users insert error:', userErr.message);
+      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    }
+    userRow = newUser;
+    const { error: roleErr } = await supabase.from('vendors')
+      .insert({ user_id: userRow.id, onboarding_state: 'new' });
+    if (roleErr) {
+      await supabase.from('users').delete().eq('id', userRow.id);
+      console.error('[vendor:send-otp] vendors insert error:', roleErr.message);
+      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    }
   }
 
   const otp     = generateOtp();

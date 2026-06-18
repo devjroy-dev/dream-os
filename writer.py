@@ -1,264 +1,125 @@
 #!/usr/bin/env python3
-# Piece 0 — dream-os — Open phone-OTP registration (invite gate removed).
+# Piece 0.2 — dream-os — send-otp self-mints (dreamai-style easy account creation).
 #
-# WHAT THIS DOES (backend only; Twilio/OTP untouched; bride side untouched):
-#   1. Writes src/api/register.js — a PUBLIC POST /api/v2/register that creates
-#      the users row + the role row (vendors|couples, onboarding_state:'new')
-#      WITHOUT an invite code. The existing send-otp -> verify-otp flow then
-#      carries the user in exactly as before.
-#   2. Mounts it in src/api/router.js (anchor-guarded, idempotent).
-#   3. Drops db/clean_piece0.sql — a GUARDED, DRY-RUN-FIRST data clean
-#      (wipes invite_codes + your own phone's rows). It does NOT run itself;
-#      you run it explicitly in Supabase SQL editor after reading it.
+# THE PROBLEM:
+#   send-otp (vendor AND couple) 404s "No account found ... check your invite"
+#   when the phone has no users row. That invite-era gate lives INSIDE the OTP
+#   layer, so open signup can't get a code for a new phone.
 #
-# /invite (validate, consume) and consume_invite_code are left DORMANT, untouched.
-# No schema change. No ledger change. No bride change.
+# THE FIX:
+#   Replace the 404 block with a SELF-MINT: if no users row -> create it;
+#   if no role row -> create it (onboarding_state:'new'); then send OTP.
+#   Keep the WRONG-ROLE guard (a real other-role account still gets told).
+#   One endpoint owns creation now: give a phone -> get a code.
 #
-# Idempotent: re-running is safe (skips already-applied edits, overwrites generated files).
+#   /register becomes redundant (left dormant; the front-end stops calling it
+#   in the paired dreamos-pwa Piece 0.2).
+#
+# Anchor-guarded + idempotent. SKIPs cleanly if an anchor isn't found.
 
-import base64, os, sys
-
+import os, sys
 ROOT = os.getcwd()
 
-def expect_root():
+def expect():
     if not os.path.isdir(os.path.join(ROOT, "src", "api")):
-        print("ERROR: run this from the dream-os repo root (src/api not found). Aborting.")
-        sys.exit(1)
+        print("ERROR: run from dream-os repo root. Aborting."); sys.exit(1)
 
-# ---------------------------------------------------------------------------
-# File 1 (NEW): src/api/register.js
-# ---------------------------------------------------------------------------
-REGISTER_JS = r"""// src/api/register.js
-// POST /api/v2/register  — PUBLIC, open phone-OTP registration (no invite code).
-//
-// Replaces the invite-gated /invite/consume as the front door. Creates the
-// users row + the role row (vendors|couples), then the caller proceeds to
-// /api/v2/{vendor|couple}/auth/send-otp with the same phone.
-//
-// Mirrors /invite/consume's account-creation logic EXACTLY, minus the
-// consume_invite_code call. The one addition consume_invite_code used to do
-// for us — creating the role row — is done here explicitly, because that DB
-// function is being retired from the signup path.
-//
-//   Body: { kind: 'maker'|'dreamer', name?, phone }
-//   - maker  -> users + vendors (onboarding_state:'new')
-//   - dreamer-> users + couples  (onboarding_state:'new')
-//
-//   Phone contract: E.164 with leading +. Same as /invite/consume.
-//   Returns { ok:true, user_id, kind, already_provisioned } so the PWA login
-//   flow can continue to send-otp with the phone it already has.
+# The shared OLD gate, parameterised per role.
+def old_block(role_table, other_role_label):
+    return (
+        "  const { data: userRow } = await supabase\n"
+        "    .from('users').select('id').eq('phone', cleanPhone).maybeSingle();\n"
+        "  if (!userRow) {\n"
+        "    return res.status(404).json({\n"
+        "      error:  'No account found for this number. Please check your invite.',\n"
+        "      reason: 'phone_not_found',\n"
+        "    });\n"
+        "  }\n"
+        "\n"
+        f"  const {{ data: {role_table}Row }} = await supabase\n"
+        f"    .from('{role_table}s').select('id').eq('user_id', userRow.id).maybeSingle();\n"
+        f"  if (!{role_table}Row) {{\n"
+        "    return res.status(403).json({\n"
+        f"      error:  'This number is registered as a {other_role_label} account, not a {'Maker' if role_table=='vendor' else 'Dreamer'}.',\n"
+        "      reason: 'wrong_role',\n"
+        "    });\n"
+        "  }\n"
+    )
 
-'use strict';
+def new_block(role_table, other_table, other_role_label, role_word):
+    # role_table: 'vendor'|'couple' ; table name is role_table+'s'
+    table = role_table + "s"
+    other = other_table  # 'couples' | 'vendors'
+    return (
+        "  // Open signup: self-mint the account if this phone is new.\n"
+        "  let { data: userRow } = await supabase\n"
+        "    .from('users').select('id, name').eq('phone', cleanPhone).maybeSingle();\n"
+        "\n"
+        "  if (userRow) {\n"
+        "    // Existing user — guard against the OTHER role owning this phone.\n"
+        f"    const {{ data: otherRow }} = await supabase\n"
+        f"      .from('{other}').select('id').eq('user_id', userRow.id).maybeSingle();\n"
+        f"    const {{ data: thisRow }} = await supabase\n"
+        f"      .from('{table}').select('id').eq('user_id', userRow.id).maybeSingle();\n"
+        "    if (otherRow && !thisRow) {\n"
+        "      return res.status(403).json({\n"
+        f"        error:  'This number is registered as a {other_role_label} account.',\n"
+        "        reason: 'wrong_role',\n"
+        "      });\n"
+        "    }\n"
+        "    if (!thisRow) {\n"
+        f"      const {{ error: roleErr }} = await supabase.from('{table}')\n"
+        "        .insert({ user_id: userRow.id, onboarding_state: 'new' });\n"
+        "      if (roleErr) {\n"
+        f"        console.error('[{role_table}:send-otp] {table} insert error:', roleErr.message);\n"
+        "        return res.status(500).json({ error: 'Something went wrong. Please try again.' });\n"
+        "      }\n"
+        "    }\n"
+        "  } else {\n"
+        "    // Fresh phone — create users + role row.\n"
+        "    const { data: newUser, error: userErr } = await supabase\n"
+        "      .from('users').insert({ phone: cleanPhone }).select('id').single();\n"
+        "    if (userErr) {\n"
+        f"      console.error('[{role_table}:send-otp] users insert error:', userErr.message);\n"
+        "      return res.status(500).json({ error: 'Something went wrong. Please try again.' });\n"
+        "    }\n"
+        "    userRow = newUser;\n"
+        f"    const {{ error: roleErr }} = await supabase.from('{table}')\n"
+        "      .insert({ user_id: userRow.id, onboarding_state: 'new' });\n"
+        "    if (roleErr) {\n"
+        "      await supabase.from('users').delete().eq('id', userRow.id);\n"
+        f"      console.error('[{role_table}:send-otp] {table} insert error:', roleErr.message);\n"
+        "      return res.status(500).json({ error: 'Something went wrong. Please try again.' });\n"
+        "    }\n"
+        "  }\n"
+    )
 
-const express = require('express');
-const router  = express.Router();
-
-const PHONE_RE = /^\+[0-9]{8,15}$/;
-
-router.post('/', async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const { kind, name, phone } = req.body;
-
-  // 1. Required fields
-  if (!kind || !phone) {
-    return res.status(400).json({ error: 'kind and phone are required.' });
-  }
-  if (!['dreamer', 'maker'].includes(kind)) {
-    return res.status(400).json({ error: 'kind must be dreamer or maker.' });
-  }
-
-  const cleanName  = (name || '').trim();
-  const cleanPhone = (phone || '').trim().replace(/\s+/g, '');
-
-  if (!PHONE_RE.test(cleanPhone)) {
-    return res.status(400).json({
-      error: 'Please enter a valid phone number with country code, e.g. +91 98882 94440.',
-    });
-  }
-
-  const roleTable = kind === 'maker' ? 'vendors' : 'couples';
-
-  // 2. Existing user? (WA-onboarded, or a returning signer). Confirm the role
-  //    row matches; if it exists for the OTHER role, reject.
-  const { data: existingUser, error: lookupErr } = await supabase
-    .from('users').select('id, name').eq('phone', cleanPhone).maybeSingle();
-
-  if (lookupErr) {
-    console.error('[register] users lookup error:', lookupErr.message);
-    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-
-  let userId;
-  let alreadyProvisioned = false;
-
-  if (existingUser) {
-    userId = existingUser.id;
-
-    // Does a role row already exist for this user (either kind)?
-    const { data: vRow } = await supabase.from('vendors').select('id').eq('user_id', userId).maybeSingle();
-    const { data: cRow } = await supabase.from('couples').select('id').eq('user_id', userId).maybeSingle();
-
-    const hasThis  = roleTable === 'vendors' ? vRow : cRow;
-    const hasOther = roleTable === 'vendors' ? cRow : vRow;
-
-    if (hasOther && !hasThis) {
-      return res.status(409).json({
-        error: `This number is already registered as a ${kind === 'maker' ? 'Dreamer' : 'Maker'} account.`,
-        reason: 'wrong_role',
-      });
-    }
-
-    if (hasThis) {
-      alreadyProvisioned = true;
-    } else {
-      // user exists but no role row yet — create it.
-      const { error: roleErr } = await supabase
-        .from(roleTable).insert({ user_id: userId, onboarding_state: 'new' });
-      if (roleErr) {
-        console.error(`[register] ${roleTable} insert error:`, roleErr.message);
-        return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-      }
-    }
-
-    // Backfill name if we have one and the user had none.
-    if (cleanName && !existingUser.name) {
-      await supabase.from('users').update({ name: cleanName }).eq('id', userId);
-    }
-
-    console.log(`[register] ${cleanPhone} existing user — kind=${kind} already_provisioned=${alreadyProvisioned}`);
-  } else {
-    // 3. Fresh signup: create users row, then the role row.
-    const { data: newUser, error: userErr } = await supabase
-      .from('users').insert({ phone: cleanPhone, name: cleanName }).select('id').single();
-    if (userErr) {
-      console.error('[register] users insert error:', userErr.message);
-      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-    }
-    userId = newUser.id;
-
-    const { error: roleErr } = await supabase
-      .from(roleTable).insert({ user_id: userId, onboarding_state: 'new' });
-    if (roleErr) {
-      // Best-effort rollback of the orphan users row (no FK dependents yet).
-      await supabase.from('users').delete().eq('id', userId);
-      console.error(`[register] ${roleTable} insert error:`, roleErr.message);
-      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-    }
-
-    console.log(`[register] new ${kind} created user=${userId}`);
-  }
-
-  return res.json({ ok: true, user_id: userId, kind, already_provisioned: alreadyProvisioned });
-});
-
-module.exports = router;
-"""
-
-# ---------------------------------------------------------------------------
-# File 2 (NEW): db/clean_piece0.sql  (guarded, dry-run first, you run it)
-# ---------------------------------------------------------------------------
-CLEAN_SQL = r"""-- db/clean_piece0.sql
--- Piece 0 data clean. RUN THIS YOURSELF in the Supabase SQL editor.
--- It does NOT run automatically and the writer never executes it.
---
--- WHAT IT DOES:
---   A. DRY RUN (default): SELECTs the rows it WOULD delete. Deletes nothing.
---   B. APPLY: uncomment the COMMIT block at the bottom to actually delete.
---
--- WHAT IT TOUCHES:
---   * invite_codes        -> wiped (invite system retired)
---   * YOUR OWN phone rows  -> users + vendors/couples + otp_sessions for the
---                             test numbers, so you re-register fresh.
--- WHAT IT NEVER TOUCHES:
---   * demo_* tables, hot_dates, landing_slides, bride/couple data of real users,
---     schema (no DROP/ALTER). Data only.
---
--- >>> EDIT THIS LIST: put your own test phone numbers here (E.164, with +). <<<
---     (Leave it as-is to dry-run nothing on the phone side.)
-
--- ============================ A. DRY RUN ============================
--- Shows what would go. Safe to run anytime.
-
-with my_phones as (
-  select unnest(array[
-    -- '+919888294440',   -- <-- uncomment / add your test numbers
-    '+0'  -- placeholder so the array is never empty; matches nothing real
-  ]) as phone
-),
-my_users as (
-  select u.id, u.phone from users u join my_phones m on u.phone = m.phone
-)
-select 'invite_codes (all)' as what, count(*) as rows_affected from invite_codes
-union all
-select 'users (mine)',       count(*) from my_users
-union all
-select 'vendors (mine)',     count(*) from vendors  where user_id in (select id from my_users)
-union all
-select 'couples (mine)',     count(*) from couples  where user_id in (select id from my_users)
-union all
-select 'otp_sessions (mine)',count(*) from otp_sessions where phone in (select phone from my_phones);
-
--- ============================ B. APPLY ==============================
--- Re-read the dry-run output above. When the counts look right, uncomment
--- the block below and run again to actually delete.
---
--- begin;
---   with my_phones as (
---     select unnest(array[
---       '+919888294440'   -- <-- your test numbers
---     ]) as phone
---   ),
---   my_users as ( select u.id from users u join my_phones m on u.phone = m.phone )
---   -- order matters: child rows first (FKs cascade from users, but be explicit)
---   , del_otp  as ( delete from otp_sessions where phone in (select phone from my_phones) returning 1 )
---   , del_vend as ( delete from vendors where user_id in (select id from my_users) returning 1 )
---   , del_coup as ( delete from couples where user_id in (select id from my_users) returning 1 )
---   , del_user as ( delete from users where id in (select id from my_users) returning 1 )
---   delete from invite_codes returning 1;
--- commit;
-"""
-
-# ---------------------------------------------------------------------------
-# Edit: mount /register in src/api/router.js (anchor-guarded, idempotent)
-# ---------------------------------------------------------------------------
-def edit_router():
-    path = os.path.join(ROOT, "src", "api", "router.js")
-    if not os.path.isfile(path):
-        print("SKIP: src/api/router.js not found — cannot mount /register.")
-        return
-    with open(path, "r", encoding="utf-8") as f:
+def patch(path, role_table, other_table, other_role_label):
+    full = os.path.join(ROOT, path)
+    if not os.path.isfile(full):
+        print(f"SKIP: {path} not found."); return
+    with open(full, "r", encoding="utf-8") as f:
         src = f.read()
-
-    if "router.use('/register'" in src:
-        print("SKIP: /register already mounted in router.js.")
+    nb = new_block(role_table, other_table, other_role_label, role_table)
+    marker = "// Open signup: self-mint the account if this phone is new."
+    if marker in src:
+        print(f"SKIP: {path} already self-minting."); return
+    ob = old_block(role_table, other_role_label)
+    if ob not in src:
+        print(f"SKIP: gate anchor not found in {path} — patch send-otp by hand (replace the 404 phone_not_found block with a self-mint).")
         return
-
-    anchor = "router.use('/invite',             inviteRouter);"
-    if anchor not in src:
-        print("SKIP: mount anchor (/invite line) not found in router.js — mount /register by hand:")
-        print("      router.use('/register', require('./register'));")
-        return
-
-    addition = anchor + "\n" + "router.use('/register',           require('./register'));   // public — open phone-OTP signup"
-    src = src.replace(anchor, addition, 1)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(src)
-    print("OK: mounted /register in src/api/router.js (after /invite).")
-
-def write_file(relpath, content):
-    full = os.path.join(ROOT, relpath)
-    os.makedirs(os.path.dirname(full), exist_ok=True)
+    src = src.replace(ob, nb, 1)
     with open(full, "w", encoding="utf-8") as f:
-        f.write(content)
-    print(f"OK: wrote {relpath}")
+        f.write(src)
+    print(f"OK: {path} send-otp now self-mints ({role_table}).")
 
 def main():
-    expect_root()
-    write_file(os.path.join("src", "api", "register.js"), REGISTER_JS)
-    write_file(os.path.join("db", "clean_piece0.sql"), CLEAN_SQL)
-    edit_router()
-    print("\nPiece 0 (dream-os) written.")
-    print("NOTE: db/clean_piece0.sql is DRY-RUN only until you edit phones + uncomment the APPLY block, then run it in Supabase.")
+    expect()
+    # vendor: other role is couples / "Dreamer"
+    patch(os.path.join("src","api","vendor","auth.js"), "vendor", "couples", "Dreamer")
+    # couple: other role is vendors / "Maker"
+    patch(os.path.join("src","api","couple","auth.js"), "couple", "vendors", "Maker")
+    print("\nPiece 0.2 (dream-os) written. send-otp owns account creation now; /register is dormant.")
 
 if __name__ == "__main__":
     main()
