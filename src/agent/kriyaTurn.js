@@ -30,9 +30,13 @@ const KRIYA_WORK_ITERS = 8;
 //   reply   — what she said to Myra (her listen_myra_talk message), or a summary
 //   session — present only if she ENDED by asking (listen_myra_talk alone). Myra's
 //             next dear_kriya_talk resumes from here.
-async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, onEvent) {
+async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, onEvent, today) {
+  const clock = today
+    ? `\n\n[${today}] Use this when something is dated relative to now. A bare month/day with no year means the NEXT occurrence from today (a "12 Dec" with today in June means this year; if that date has already passed this year, the next year). Never guess a past year.`
+    : '';
   const system = KRIYA_SOUL +
-    "\n\n[How you work] Myra hands you one thing at a time in plain English. You do it against the binders with your hands (the kriya_ tools — file, correct, find, tally, open a history), checking the cabinet before you write so you never file a duplicate, and you speak back to her with listen_myra_talk: hand her your finding in one clean line, or ask her the one thing you need (which client, which binder) and her answer comes back as her next message. Say your piece and stop.";
+    "\n\n[How you work] Myra hands you one thing at a time in plain English. You do it against the binders with your hands (the kriya_ tools — file, correct, find, tally, open a history), checking the cabinet before you write so you never file a duplicate, and you speak back to her with listen_myra_talk: hand her your finding in one clean line, or ask her the one thing you need (which client, which binder) and her answer comes back as her next message. Say your piece and stop." +
+    clock;
 
   let messages;
   if (prior && prior.messages) {
@@ -46,6 +50,18 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
 
   const toolCalls = [];
   let spoken = null;
+
+  // THE OPEN BINDER (ported from dreamai 01eb949). Within one turn Kriya works a
+  // binder across several atoms: kriya_client opens it, then date/note/money/etc.
+  // belong ON that binder. An attribute atom arriving with no binder_id lands on
+  // the open binder — not a new orphan row. kriya_client legitimately OPENS a new
+  // binder. An explicit binder_id always wins. After every write, whatever was
+  // written becomes the open binder for the rest of the turn.
+  let currentBinderId = (prior && prior.currentBinderId) || null;
+  const ATTRIBUTE_ATOMS = new Set([
+    'kriya_money', 'kriya_date', 'kriya_note', 'kriya_note_append',
+    'kriya_phone', 'kriya_doc', 'kriya_stage', 'kriya_reasonforaction_append',
+  ]);
 
   for (let i = 0; i < KRIYA_WORK_ITERS; i++) {
     const resp = await anthropic.messages.create({
@@ -71,15 +87,23 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
     const results = [];
 
     for (const tu of work) {
+      const input = tu.input || {};
+      // OPEN-BINDER DEFAULT: an attribute atom with no binder_id lands on the
+      // binder Kriya is already working this turn, instead of orphaning a new row.
+      if (ATTRIBUTE_ATOMS.has(tu.name) && (input.binder_id == null || input.binder_id === '') && currentBinderId) {
+        input.binder_id = currentBinderId;
+      }
       let outcome;
       if (KRIYA_READ_NAMES.has(tu.name)) {
-        outcome = await executeKriyaRead(supabase, vendorId, tu.name, tu.input || {});
+        outcome = await executeKriyaRead(supabase, vendorId, tu.name, input);
       } else {
-        outcome = await executeKriyaTool(supabase, vendorId, tu.name, tu.input || {});
+        outcome = await executeKriyaTool(supabase, vendorId, tu.name, input);
       }
-      toolCalls.push({ name: tu.name, input: tu.input, result: outcome.display });
+      // Whatever we just wrote becomes the open binder for the rest of this turn.
+      if (outcome.binder_id) currentBinderId = outcome.binder_id;
+      toolCalls.push({ name: tu.name, input, result: outcome.display });
       // Live beat: this hand, the moment it fired.
-      if (onEvent) onEvent({ type: 'kriya_action', name: tu.name, input: tu.input, result: outcome.display });
+      if (onEvent) onEvent({ type: 'kriya_action', name: tu.name, input, result: outcome.display });
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
     }
 
@@ -93,7 +117,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
         // suspend so Myra's next message resumes her; either way, deliver to Myra.
         return {
           reply: message,
-          session: { messages, pendingToolUseId: listen.id },
+          session: { messages, pendingToolUseId: listen.id, currentBinderId },
           tool_calls: toolCalls,
         };
       }

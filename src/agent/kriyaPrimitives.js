@@ -103,14 +103,14 @@ async function writeFields(supabase, vendorId, binderId, fields, label, appendAl
       .select(SELECT).single();
     if (error) return { display: `ERROR updating binder: ${error.message}`, error: true };
     await logEvent(supabase, vendorId, 'update', data.id, label);
-    return { display: `Updated binder ${data.id} — ${label}.\n  binder now reads: ${binderLine(data)}`, mutated: true };
+    return { display: `Updated binder ${data.id} — ${label}.\n  binder now reads: ${binderLine(data)}`, mutated: true, binder_id: data.id };
   }
   const { data, error } = await supabase
     .from('binders').insert({ vendor_id: vendorId, ...fields })
     .select(SELECT).single();
   if (error) return { display: `ERROR creating binder: ${error.message}`, error: true };
   await logEvent(supabase, vendorId, 'create', data.id, label);
-  return { display: `Binder ${data.id} created — ${label}.\n  binder now reads: ${binderLine(data)}`, mutated: true };
+  return { display: `Binder ${data.id} created — ${label}.\n  binder now reads: ${binderLine(data)}`, mutated: true, binder_id: data.id };
 }
 
 // ── The atoms (Kriya's bench) ────────────────────────────────────────────────

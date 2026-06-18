@@ -98,7 +98,7 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
         const msg = (tu.input && tu.input.message) || '';
         // Live beat: Myra hands off to her operator, her words, the moment she says them.
         if (onEvent) onEvent({ type: 'dispatch', message: msg });
-        const kriya = await runKriyaTurn(anthropic, supabase, vendor.id, msg, kriyaSession, onEvent);
+        const kriya = await runKriyaTurn(anthropic, supabase, vendor.id, msg, kriyaSession, onEvent, istToday);
         kriyaSession = kriya.session || null;   // resume if she asked; else clear
         for (const dc of kriya.tool_calls) {
           toolCalls.push(dc);
