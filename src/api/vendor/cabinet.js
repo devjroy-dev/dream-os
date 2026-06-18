@@ -39,7 +39,7 @@ const BINDER_SELECT =
   'direction, date, stage, note, followup_on, followup_note, repeat_every, ' +
   'doc_ref, phone, reason_for_action, created_at, updated_at';
 
-const EVENT_SELECT = 'id, title, kind, event_date, event_time, state, note';
+const EVENT_SELECT = 'id, title, kind, event_date, event_time, state, notes';
 
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -65,10 +65,11 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
       .order('event_date', { ascending: true }),
   ]);
 
-  const anyErr = userErr || bindersErr || eventsErr;
-  if (anyErr) {
-    console.error('[GET /vendor/cabinet] supabase error:', anyErr.message);
-    return res.status(500).json({ ok: false, error: 'Lookup failed.' });
+  if (userErr || bindersErr || eventsErr) {
+    const which = userErr ? 'users' : bindersErr ? 'binders' : 'events';
+    const msg = (userErr || bindersErr || eventsErr).message;
+    console.error(`[GET /vendor/cabinet] ${which} read failed:`, msg);
+    return res.status(500).json({ ok: false, error: 'Lookup failed.', which, detail: msg });
   }
 
   const allBinders = binders || [];
