@@ -51,6 +51,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
 
   const toolCalls = [];
   let spoken = null;
+  let inTok = 0, outTok = 0;  // Kriya's token usage this turn (carried up to Myra's loop for the whole-turn cost)
 
   // THE OPEN BINDER (ported from dreamai 01eb949). Within one turn Kriya works a
   // binder across several atoms: kriya_client opens it, then date/note/money/etc.
@@ -72,6 +73,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
       tools: KRIYA_BENCH,
       messages,
     });
+    if (resp.usage) { inTok += resp.usage.input_tokens || 0; outTok += resp.usage.output_tokens || 0; }
 
     const toolUse = resp.content.filter((b) => b.type === 'tool_use');
     if (toolUse.length === 0) {
@@ -122,6 +124,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
           reply: message,
           session: { messages, pendingToolUseId: listen.id, currentBinderId },
           tool_calls: toolCalls,
+          usage: { input_tokens: inTok, output_tokens: outTok },
         };
       }
       // listen mixed with work: resolve the listen tool_result too, then continue.
@@ -134,11 +137,11 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
     if (spoken && !listen) break;
     if (spoken && listen && work.length) {
       // she both worked and spoke — her word stands as the turn's reply
-      return { reply: spoken, session: null, tool_calls: toolCalls };
+      return { reply: spoken, session: null, tool_calls: toolCalls, usage: { input_tokens: inTok, output_tokens: outTok } };
     }
   }
 
-  return { reply: spoken || '(no reply)', session: null, tool_calls: toolCalls };
+  return { reply: spoken || '(no reply)', session: null, tool_calls: toolCalls, usage: { input_tokens: inTok, output_tokens: outTok } };
 }
 
 module.exports = { runKriyaTurn, LISTEN_MYRA_TALK_TOOL };

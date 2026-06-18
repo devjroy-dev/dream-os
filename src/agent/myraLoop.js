@@ -15,7 +15,7 @@
 // 1b: VENDOR-ROOM MODE, binder-only, Haiku both. No old-ledger snapshot.
 'use strict';
 
-const { MODEL_HAIKU } = require('./models');
+const { MODEL_HAIKU, calculateCost } = require('./models');
 const { myraSoul } = require('./myraSoul');
 const { runKriyaTurn } = require('./kriyaTurn');
 
@@ -65,6 +65,7 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
   let anyMutation = false;
   let finalReply = null;
   let iterations = 0;
+  let inTok = 0, outTok = 0;  // whole-turn token usage (Myra's streams + Kriya's sub-turns)
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     iterations = i + 1;
@@ -81,6 +82,7 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
     });
     if (onEvent) stream.on('text', (delta) => onEvent({ type: 'myra_token', text: delta }));
     const resp = await stream.finalMessage();
+    if (resp.usage) { inTok += resp.usage.input_tokens || 0; outTok += resp.usage.output_tokens || 0; }
 
     const toolUse = resp.content.filter((b) => b.type === 'tool_use');
     const textBlocks = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join(' ').trim();
@@ -99,6 +101,7 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
         // Live beat: Myra hands off to her operator, her words, the moment she says them.
         if (onEvent) onEvent({ type: 'dispatch', message: msg });
         const kriya = await runKriyaTurn(anthropic, supabase, vendor.id, msg, kriyaSession, onEvent, istToday);
+        if (kriya.usage) { inTok += kriya.usage.input_tokens || 0; outTok += kriya.usage.output_tokens || 0; }
         kriyaSession = kriya.session || null;   // resume if she asked; else clear
         for (const dc of kriya.tool_calls) {
           toolCalls.push(dc);
@@ -114,6 +117,8 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
 
   if (!finalReply) finalReply = 'Let me come back to you on that.';
 
+  const cost = calculateCost(MODEL_HAIKU, inTok, outTok) || { cost_usd: null, cost_inr: null };
+
   // The answer beat — the assembled final reply, for the surface to reconcile.
   if (onEvent) onEvent({ type: 'answer', reply: finalReply });
 
@@ -124,6 +129,10 @@ async function runMyraTurn({ vendor, user, conversation, inboundMessage, supabas
     refresh: anyMutation,
     iterations,
     model: MODEL_HAIKU,
+    inputTokens: inTok,
+    outputTokens: outTok,
+    costUsd: cost.cost_usd,
+    costInr: cost.cost_inr,
   };
 }
 

@@ -233,6 +233,10 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
 
       // Done event — carries metadata for frontend context refresh
       const donePayload = { type: 'done', tool_calls: toolCallNames };
+      if (result.costInr  != null) donePayload.cost_inr     = result.costInr;
+      if (result.costUsd  != null) donePayload.cost_usd     = result.costUsd;
+      if (result.inputTokens  != null) donePayload.input_tokens  = result.inputTokens;
+      if (result.outputTokens != null) donePayload.output_tokens = result.outputTokens;
       if (result.refresh)  donePayload.refresh  = true;
       if (result.contact)  donePayload.contact  = result.contact;
       if (result.clarify)  donePayload.clarify  = result.clarify;
