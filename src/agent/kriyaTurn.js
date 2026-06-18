@@ -15,6 +15,7 @@ const { MODEL_HAIKU } = require('./models');
 const { KRIYA_SOUL } = require('./kriyaSoul');
 const { KRIYA_TOOLS, executeKriyaTool } = require('./kriyaPrimitives');
 const { KRIYA_READ_TOOLS, KRIYA_READ_NAMES, executeKriyaRead } = require('./kriyaRead');
+const { KRIYA_CALENDAR_TOOLS, KRIYA_CALENDAR_NAMES, executeKriyaCalendar } = require('./kriyaCalendar');
 
 const LISTEN_MYRA_TALK_TOOL = {
   name: 'listen_myra_talk',
@@ -23,7 +24,7 @@ const LISTEN_MYRA_TALK_TOOL = {
   input_schema: { type: 'object', properties: { message: { type: 'string', description: 'What you say to Myra — your finding, or the precise thing you need.' } }, required: ['message'] },
 };
 
-const KRIYA_BENCH = [...KRIYA_TOOLS, ...KRIYA_READ_TOOLS, LISTEN_MYRA_TALK_TOOL];
+const KRIYA_BENCH = [...KRIYA_TOOLS, ...KRIYA_READ_TOOLS, ...KRIYA_CALENDAR_TOOLS, LISTEN_MYRA_TALK_TOOL];
 const KRIYA_WORK_ITERS = 8;
 
 // Run one Kriya turn. Returns { reply, session, tool_calls }.
@@ -94,7 +95,9 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
         input.binder_id = currentBinderId;
       }
       let outcome;
-      if (KRIYA_READ_NAMES.has(tu.name)) {
+      if (KRIYA_CALENDAR_NAMES.has(tu.name)) {
+        outcome = await executeKriyaCalendar(supabase, vendorId, tu.name, input);
+      } else if (KRIYA_READ_NAMES.has(tu.name)) {
         outcome = await executeKriyaRead(supabase, vendorId, tu.name, input, today);
       } else {
         outcome = await executeKriyaTool(supabase, vendorId, tu.name, input);
