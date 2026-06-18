@@ -19,6 +19,7 @@ const router        = express.Router();
 const asyncHandler  = require('../../lib/asyncHandler');
 const { sendWhatsApp } = require('../../lib/whatsapp');
 const { createLead }   = require('../../lib/vendor/leads');
+const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld: enquiries → binders
 
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -84,13 +85,12 @@ router.post('/', asyncHandler(async (req, res) => {
   // ── 2. Vendor-side lead (createLead dedupes by phone) ──────────────────────
   let vendorLeadId = null;
   try {
-    const leadRes = await createLead(supabase, vendor.id, {
-      name:        bride_name || 'Dream Wedding enquiry',
-      phone:       bride_phone || null,
-      source:      'discover',
-      raw_message: `${bride_name || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
+    const binderRes = await enquiryToBinder(supabase, vendor.id, {
+      name:  bride_name || 'Dream Wedding enquiry',
+      phone: bride_phone || null,
+      note:  `${bride_name || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
     });
-    vendorLeadId = leadRes?.lead?.id || null;
+    vendorLeadId = binderRes?.binder?.id || null;
   } catch (err) {
     console.error('[enquire] createLead error:', err.message);
   }
