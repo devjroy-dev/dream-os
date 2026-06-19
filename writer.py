@@ -1,38 +1,49 @@
 #!/usr/bin/env python3
-# Vendor Suit -- Phase 3-D: the engine-backed chat door (Victor online).
-# POST /chat -> runTurn; GET /chat/history/:vendorId -> engine.messages scrollback.
-# Creates one file and mounts it at /chat in vendor-engine/index.js. Requires the
-# compiled engine (dist/core/loop). Guarded + idempotent.
-#   unzip -o vendor-suit-phase3d-chat-v1.zip && python3 writer.py
-import os, sys, base64, json
+# Vendor Suit -- Phase 4: THE FLIP. Re-point the five proven vendor routes from
+# Myra to the engine doors, inside src/api/vendor/core.js. The pwa now talks to
+# Victor and Donna. Surgical: ONLY cabinet / today / binders(write+read) / chat
+# are re-pointed; every other route (me, events, portfolio, contracts, tds, ...)
+# stays exactly as-is. Myra's files stay on disk, merely unmounted -- so this is a
+# switch, not a leap: reverting is just flipping these requires back. /vendor-e is
+# left mounted as a live fallback. Guarded + idempotent.
+#   unzip -o vendor-suit-phase4-flip-v1.zip && python3 writer.py
+import os, sys, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
+F = os.path.join(ROOT, "src", "api", "vendor", "core.js")
+if not os.path.isfile(F): die("src/api/vendor/core.js not found.")
+# the engine doors must exist (Phase 3 applied)
 VE = os.path.join(ROOT, "src", "api", "vendor-engine")
-if not os.path.isdir(VE): die("src/api/vendor-engine/ not found -- run Phase 3-A..3-C first.")
-if not os.path.isfile(os.path.join(ROOT, "src", "engine", "tsconfig.json")):
-    die("src/engine not found -- run Phase 0 first (the chat door needs the compiled engine).")
+for need in ["cabinet.js","ledger.js","today.js","binderWrite.js","chat.js"]:
+    if not os.path.isfile(os.path.join(VE, need)):
+        die("engine door missing: vendor-engine/%s -- run Phase 3 first." % need)
 
-FILES = {'src/api/vendor-engine/chat.js': 'J3VzZSBzdHJpY3QnOwovLyBzcmMvYXBpL3ZlbmRvci1lbmdpbmUvY2hhdC5qcwovLyBWZW5kb3IgU3VpdCwgUGhhc2UgMy1EIOKAlCB0aGUgZW5naW5lLWJhY2tlZCBjaGF0IGRvb3IuIFZpY3RvciBjb21lcyBvbmxpbmUuCi8vCi8vIFRoaXMgaXMgdGhlIHBheW9mZiBvZiB0aGUgcG9ydDogdGhlIHZlbmRvciB0YWxrcyB0byB0aGUgYWR2aXNvciwgd2hvIHJlYXNvbnMKLy8gd2l0aCB0aGUgc3RhbmRpbmcgU01NIGxlbnMgKGFuZCB0aGUgY2F0ZWdvcnkgQ29kZXgsIG9uY2UgYSByZWFsIE1VQS9wbGFubmVyCi8vIGhpdHMgaXQg4oCUIFBoYXNlIDIpLCBkaXNwYXRjaGVzIERvbm5hIGZvciBhbnkgZmlsaW5nLCBhbmQgcmVwbGllcyBpbiBoaXMgb3duCi8vIHZvaWNlLiBUaGUgZG9vciBpcyBhIHRoaW4gd3JhcHBlcjsgcnVuVHVybiBvd25zIGV2ZXJ5dGhpbmcg4oCUIGl0cyBvd24gQW50aHJvcGljCi8vIGNsaWVudCAoQU5USFJPUElDX0FQSV9LRVksIGFscmVhZHkgaW4gZHJlYW0tb3MncyBlbnYgZm9yIE15cmEpLCB0aGUgcm9sbGluZwovLyBwZXItYWdlbnQgY29udmVyc2F0aW9uIChtZW1vcnkgcGVyc2lzdHMgd2l0aCBubyB3b3JrIGhlcmUpLCB0aGUgb3duZXIgYnJpZWZpbmcuCi8vCi8vIFVubGlrZSB0aGUgMy1DIGZvcm0gZG9vcnMsIFRISVMgaXMgdGhlIG1vZGVsIHBhdGg6IHJlYWwgQW50aHJvcGljIGNhbGxzIChWaWN0b3IsCi8vIHBsdXMgRG9ubmEgaWYgZGlzcGF0Y2hlZCkuIEEgdHVybiB0YWtlcyBzZWNvbmRzIGFuZCBjb3N0cyB0b2tlbnMuIFRoZSBkb29yIGp1c3QKLy8gYXdhaXRzIHJ1blR1cm4sIGV4YWN0bHkgYXMgdGhlIE15cmEgaGFuZGxlciBhd2FpdGVkIGl0cyBsb29wLgovLwovLyAgIFBPU1QgL2FwaS92Mi92ZW5kb3ItZS9jaGF0ICAgICAgICAgICAgICAgICB7IG1lc3NhZ2UgfSAgLT4gb25lIGFkdmlzb3IgdHVybgovLyAgIEdFVCAgL2FwaS92Mi92ZW5kb3ItZS9jaGF0L2hpc3RvcnkvOnZlbmRvcklkICAgICAgICAgICAtPiBkaXNwbGF5LW9ubHkgc2Nyb2xsYmFjawpjb25zdCBleHByZXNzICAgICAgID0gcmVxdWlyZSgnZXhwcmVzcycpOwpjb25zdCByb3V0ZXIgICAgICAgID0gZXhwcmVzcy5Sb3V0ZXIoKTsKY29uc3QgcmVxdWlyZUF1dGggICA9IHJlcXVpcmUoJy4uL21pZGRsZXdhcmUvcmVxdWlyZUF1dGgnKTsKY29uc3QgcmVzb2x2ZVZlbmRvciA9IHJlcXVpcmUoJy4uL21pZGRsZXdhcmUvcmVzb2x2ZVZlbmRvcicpOwpjb25zdCByZXNvbHZlQWdlbnQgID0gcmVxdWlyZSgnLi4vbWlkZGxld2FyZS9yZXNvbHZlQWdlbnQnKTsKLy8gVGhlIGNvbXBpbGVkIGVuZ2luZSBsb29wIChQaGFzZSAwIGxhbmRlZCBzcmMvZW5naW5lOyBkaXN0IGlzIGJ1aWx0IG9uIGRlcGxveSkuCmNvbnN0IHsgcnVuVHVybiB9ID0gcmVxdWlyZSgnLi4vLi4vZW5naW5lL2Rpc3QvY29yZS9sb29wJyk7CgovLyBQT1NUIC9jaGF0IOKAlCBvbmUgYWR2aXNvciB0dXJuLiBWZW5kb3IgY29tZXMgZnJvbSB0aGUgSldUIChubyA6dmVuZG9ySWQgcGFyYW0pLAovLyBtYXRjaGluZyB0aGUgTXlyYSBjaGF0IGNvbnRyYWN0LiBhaV9wcmltZXIgLyBtb2RlIGFyZSBhY2NlcHRlZCBhbmQgaWdub3JlZDoKLy8gdGhlIGVuZ2luZSBydW5zIGFkdmlzb3J5IFZpY3RvciBhbmQgaGFzIG5vIGVkaXQtcHJpbWluZyBtZWNoYW5pc20gKHRoZSBNeXJhCi8vIGhhbmRsZXIgbGlrZXdpc2UgYWNjZXB0ZWQtYW5kLWlnbm9yZWQgaXRzIGBoaXN0b3J5YCBmaWVsZCkuCnJvdXRlci5wb3N0KCcvJywgcmVxdWlyZUF1dGgsIHJlc29sdmVWZW5kb3IoKSwgcmVzb2x2ZUFnZW50KCksIGFzeW5jIChyZXEsIHJlcykgPT4gewogIGNvbnN0IGJvZHkgICAgPSByZXEuYm9keSB8fCB7fTsKICBjb25zdCBtZXNzYWdlID0gdHlwZW9mIGJvZHkubWVzc2FnZSA9PT0gJ3N0cmluZycgPyBib2R5Lm1lc3NhZ2UudHJpbSgpIDogJyc7CiAgaWYgKCFtZXNzYWdlKSByZXR1cm4gcmVzLnN0YXR1cyg0MDApLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnbWVzc2FnZSBpcyByZXF1aXJlZC4nIH0pOwogIHRyeSB7CiAgICBjb25zdCByZXN1bHQgICAgPSBhd2FpdCBydW5UdXJuKHsgYWdlbnRJZDogcmVxLmFnZW50SWQsIG1lc3NhZ2UgfSk7CiAgICAvLyBDb250cmFjdDogdG9vbF9jYWxscyBpcyBuYW1lcyBvbmx5IChubyBpbnRlcm5hbCBpbnB1dC9yZXN1bHQpLiByZWZyZXNoIHRlbGxzCiAgICAvLyB0aGUgUFdBIHRvIHJlcGFpbnQgdGhlIGNhYmluZXQgd2hlbiB0aGUgdHVybiBhY3R1YWxseSBmaWxlZCBzb21ldGhpbmcuCiAgICBjb25zdCB0b29sTmFtZXMgPSAocmVzdWx0LnRvb2xfY2FsbHMgfHwgW10pLm1hcCgodCkgPT4gdC5uYW1lKTsKICAgIHJldHVybiByZXMuanNvbih7CiAgICAgIG9rOiB0cnVlLAogICAgICByZXBseTogcmVzdWx0LnJlcGx5LAogICAgICB0b29sX2NhbGxzOiB0b29sTmFtZXMsCiAgICAgIHJlZnJlc2g6IHRvb2xOYW1lcy5sZW5ndGggPiAwLAogICAgfSk7CiAgfSBjYXRjaCAoZSkgewogICAgY29uc29sZS5lcnJvcignW3ZlbmRvci1lIGNoYXRdJywgZS5tZXNzYWdlKTsKICAgIHJldHVybiByZXMuc3RhdHVzKDUwMCkuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdDaGF0IGZhaWxlZC4nIH0pOwogIH0KfSk7CgovLyBHRVQgL2NoYXQvaGlzdG9yeS86dmVuZG9ySWQg4oCUIGRpc3BsYXktb25seSBzY3JvbGxiYWNrIHNvIHRoZSBQV0EgY2hhdCBzaG93cyB0aGUKLy8gcmVjZW50IHRyYW5zY3JpcHQgb24gb3BlbiBpbnN0ZWFkIG9mIGEgYmxhbmsgc2NyZWVuLiBOT1QgYWdlbnQgbWVtb3J5ICh0aGUKLy8gZW5naW5lIHJlYWRzIGhpc3RvcnkgaXRzZWxmKS4gUmVhZHMgdGhlIGFnZW50J3MgbW9zdC1yZWNlbnQgY29udmVyc2F0aW9uICh0aGUKLy8gb25lIHJ1blR1cm4gcmV1c2VzIHdpdGhpbiB0aGUgc2Vzc2lvbiB3aW5kb3cpLCBsYXN0IE4gbWVzc2FnZXMsIG1hcHBlZCB0byB0aGUKLy8gUFdBIHNoYXBlOiBlbmdpbmUgcm9sZSAndXNlcictPid1c2VyJywgJ2Fzc2lzdGFudCctPidhaScgKCd0b29sJyByb3dzIHNraXBwZWQpLgpyb3V0ZXIuZ2V0KCcvaGlzdG9yeS86dmVuZG9ySWQnLCByZXF1aXJlQXV0aCwgcmVzb2x2ZVZlbmRvcih7IHBhcmFtTmFtZTogJ3ZlbmRvcklkJyB9KSwgcmVzb2x2ZUFnZW50KCksIGFzeW5jIChyZXEsIHJlcykgPT4gewogIGNvbnN0IGVuZyAgID0gcmVxLmFwcC5sb2NhbHMuc3VwYWJhc2Uuc2NoZW1hKCdlbmdpbmUnKTsKICBjb25zdCBsaW1pdCA9IE1hdGgubWluKHBhcnNlSW50KHJlcS5xdWVyeS5saW1pdCwgMTApIHx8IDEwLCAzMCk7CiAgdHJ5IHsKICAgIGNvbnN0IHsgZGF0YTogY29udm8gfSA9IGF3YWl0IGVuZy5mcm9tKCdjb252ZXJzYXRpb25zJykKICAgICAgLnNlbGVjdCgnaWQnKS5lcSgnYWdlbnRfaWQnLCByZXEuYWdlbnRJZCkKICAgICAgLm9yZGVyKCdsYXN0X2FjdGl2ZV9hdCcsIHsgYXNjZW5kaW5nOiBmYWxzZSB9KS5saW1pdCgxKS5tYXliZVNpbmdsZSgpOwogICAgaWYgKCFjb252bykgcmV0dXJuIHJlcy5qc29uKHsgb2s6IHRydWUsIG1lc3NhZ2VzOiBbXSB9KTsKCiAgICBjb25zdCB7IGRhdGE6IHJvd3MsIGVycm9yIH0gPSBhd2FpdCBlbmcuZnJvbSgnbWVzc2FnZXMnKQogICAgICAuc2VsZWN0KCdpZCwgcm9sZSwgY29udGVudCwgY3JlYXRlZF9hdCcpCiAgICAgIC5lcSgnY29udmVyc2F0aW9uX2lkJywgY29udm8uaWQpCiAgICAgIC5pbigncm9sZScsIFsndXNlcicsICdhc3Npc3RhbnQnXSkKICAgICAgLm9yZGVyKCdjcmVhdGVkX2F0JywgeyBhc2NlbmRpbmc6IGZhbHNlIH0pCiAgICAgIC5saW1pdChsaW1pdCk7CiAgICBpZiAoZXJyb3IpIHsKICAgICAgY29uc29sZS5lcnJvcignW3ZlbmRvci1lIGNoYXQvaGlzdG9yeV0gcXVlcnkgZXJyb3I6JywgZXJyb3IubWVzc2FnZSk7CiAgICAgIHJldHVybiByZXMuc3RhdHVzKDUwMCkuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdDb3VsZCBub3QgbG9hZCBoaXN0b3J5LicgfSk7CiAgICB9CgogICAgY29uc3QgbWVzc2FnZXMgPSAocm93cyB8fCBbXSkKICAgICAgLnJldmVyc2UoKQogICAgICAuZmlsdGVyKChtKSA9PiBtLmNvbnRlbnQgJiYgbS5jb250ZW50LnRyaW0oKS5sZW5ndGggPiAwKQogICAgICAubWFwKChtKSA9PiAoeyBpZDogbS5pZCwgcm9sZTogbS5yb2xlID09PSAndXNlcicgPyAndXNlcicgOiAnYWknLCB0ZXh0OiBtLmNvbnRlbnQsIGF0OiBtLmNyZWF0ZWRfYXQgfSkpOwogICAgcmV0dXJuIHJlcy5qc29uKHsgb2s6IHRydWUsIG1lc3NhZ2VzIH0pOwogIH0gY2F0Y2ggKGVycikgewogICAgY29uc29sZS5lcnJvcignW3ZlbmRvci1lIGNoYXQvaGlzdG9yeV0nLCBlcnIubWVzc2FnZSk7CiAgICByZXR1cm4gcmVzLnN0YXR1cyg1MDApLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnQ291bGQgbm90IGxvYWQgaGlzdG9yeS4nIH0pOwogIH0KfSk7Cgptb2R1bGUuZXhwb3J0cyA9IHJvdXRlcjsK'}
-wrote = 0
-for rel, b64 in FILES.items():
-    content = base64.b64decode(b64); path = os.path.join(ROOT, rel)
-    if os.path.isfile(path):
-        if open(path,"rb").read() == content: print("= unchanged: " + rel); continue
-        die("file exists and differs: " + rel + " (refusing to clobber; inspect).")
-    open(path,"wb").write(content); wrote += 1; print("+ wrote: " + rel)
+txt = open(F, encoding="utf-8").read()
+if "Phase 4 flip" in txt:
+    print("= already flipped (idempotent)."); sys.exit(0)
 
-IDX = os.path.join(VE, "index.js"); txt = open(IDX, encoding="utf-8").read()
-if "3-D: chat door" in txt:
-    print("= 3-D mount already present (idempotent).")
-else:
-    anchor = next((l for l in txt.splitlines() if "require('./binderWrite')" in l), None) \
-          or next((l for l in txt.splitlines() if "require('./ledger')" in l), None)
-    if anchor is None: die("no mount anchor found in index.js -- run 3-B/3-C first.")
-    txt = txt.replace(anchor, anchor + "\n" + "router.use('/chat', require('./chat')); // 3-D: chat door (Victor)", 1)
-    open(IDX, "w", encoding="utf-8").write(txt)
-    print("+ mounted /chat in vendor-engine/index.js")
-
-print("\nPhase 3-D applied (%d new file). Rebuild + smoke:" % wrote)
-print("  npm run build:engine && node -e \"require('./src/api/vendor-engine')\"")
+# Exact-line re-points. Myra require -> engine door require, with a visible marker.
+EDITS = [
+    ("router.use('/today',    require('./today'));",
+     "router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip -> engine"),
+    ("router.use('/cabinet',  require('./cabinet'));",
+     "router.use('/cabinet',  require('../vendor-engine/cabinet'));   // Phase 4 flip -> engine"),
+    ("router.use('/binders',  require('./binderWrite'));",
+     "router.use('/binders',  require('../vendor-engine/binderWrite')); // Phase 4 flip -> engine"),
+    ("router.use('/binders',  require('./binderRead'));",
+     "router.use('/binders',  require('../vendor-engine/ledger'));      // Phase 4 flip -> engine (was binderRead)"),
+    ("router.use('/chat',         require('./chat'));",
+     "router.use('/chat',         require('../vendor-engine/chat'));   // Phase 4 flip -> engine (Victor)"),
+]
+for old, new in EDITS:
+    if old not in txt:
+        die("anchor not found (core.js differs from expected): " + old)
+for old, new in EDITS:
+    txt = txt.replace(old, new, 1)
+open(F, "w", encoding="utf-8").write(txt)
+print("+ flipped 5 vendor routes to the engine in core.js:")
+print("    /cabinet /today /binders(write) /binders(ledger) /chat")
+print("  Myra's files stay on disk (unmounted). /vendor-e left mounted as fallback.")
+print("\\nRebuild + restart, then gate the REAL /api/v2/vendor paths (not -e).")

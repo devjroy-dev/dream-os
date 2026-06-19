@@ -23,17 +23,17 @@ const express = require('express');
 const router  = express.Router();
 
 router.use('/me',       require('./me'));
-router.use('/today',    require('./today'));
+router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip -> engine
 router.use('/leads',    require('./leads'));
 router.use('/clients',  require('./clients'));
 router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
 router.use('/context',  require('./context'));
-router.use('/cabinet',  require('./cabinet'));
-router.use('/binders',  require('./binderWrite'));
-router.use('/binders',  require('./binderRead'));
-router.use('/chat',         require('./chat'));
+router.use('/cabinet',  require('../vendor-engine/cabinet'));   // Phase 4 flip -> engine
+router.use('/binders',  require('../vendor-engine/binderWrite')); // Phase 4 flip -> engine
+router.use('/binders',  require('../vendor-engine/ledger'));      // Phase 4 flip -> engine (was binderRead)
+router.use('/chat',         require('../vendor-engine/chat'));   // Phase 4 flip -> engine (Victor)
 router.use('/availability', require('./availability'));
 router.use('/portfolio',   require('./portfolio'));
 router.use('/discover',    require('./discover'));
