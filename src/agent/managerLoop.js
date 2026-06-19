@@ -90,12 +90,17 @@ async function runManagerTurn({ vendor, user, conversation, inboundMessage, supa
   const assistantName = (vendor && vendor.assistant_name) || undefined;
   const istToday = todayLine('Asia/Kolkata');
 
-  // Cache-friendly system: the soul is stable (cached; below the Haiku 2048-token cache
-  // floor it simply no-ops, no harm); the dated line is volatile so it rides its own
-  // UNCACHED block — otherwise the daily date change would bust the cache every day.
+  // System assembled as a faithful port of kriyaTurn (the proven operator loop): the
+  // soul + the [How you work] operational bridge ride in one CACHED block; the clock is
+  // volatile so it sits in its own UNCACHED block. Only two things differ from kriyaTurn:
+  // the bridge addresses the OWNER (not Myra), and she speaks back in her own words
+  // (no listen_myra_talk — there is no one to hand to).
+  const clock = `\n\n[${istToday}] EVERY date you write — a binder date, a follow-up, a calendar shoot, a block — resolves against it. A bare month/day with no year means the NEXT occurrence from today (a "12 Dec" with today in June means this year; if that day has already passed this year, the next year). A wedding, shoot, or booking is always in the future — never write a date in the past. Never guess a past year.`;
+  const stable = kriyaManagerSoul(assistantName) +
+    "\n\n[How you work] The owner hands you one thing at a time in plain English. You do it against the binders with your hands (the kriya_ tools — file, correct, find, tally, open a history), checking the cabinet before you write so you never file a duplicate, and you speak back to the owner in your own words: the one true line of what you did, or the one thing you genuinely need settled (which client, which binder). Say your piece and stop.";
   const system = [
-    { type: 'text', text: kriyaManagerSoul(assistantName), cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: `[${istToday} You are speaking with the owner of this business inside their app.] Every date you write or resolve falls against today: a bare month/day with no year means the NEXT occurrence (a "March 8" with today in June means next year if it has already passed this year). A wedding, shoot, or booking is always in the future — never a past date or past year.` },
+    { type: 'text', text: stable, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: clock.trim() },
   ];
 
   const toolCalls = [];
