@@ -1,3 +1,9 @@
+// Provide a global WebSocket on Node < 22 (Railway runs 20). supabase-js's
+// createClient builds a realtime client that requires one; without it the
+// engine's db.js throws at boot. 'ws' is already a dependency. The engine
+// never uses realtime -- this only satisfies the constructor.
+if (!globalThis.WebSocket) globalThis.WebSocket = require('ws');
+
 // dream-os backend -- entry point
 // Session 5: three-mode couple routing
 // Session 5.5: couple-facing agent on Mode 1 + Mode 2
