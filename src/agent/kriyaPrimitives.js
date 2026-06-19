@@ -239,8 +239,12 @@ async function executeKriyaTool(supabase, vendorId, name, input) {
       const fields = {};
       const confessions = [];
       const num = (v) => (v == null ? null : parseMoney(v));
-      const moneyKeys = ['amount', 'amount_received', 'amount_pending'];
-      for (const k of moneyKeys) {
+      // The ground facts the model supplies: amount (the contract total) and
+      // amount_received (what has actually landed). Pending is NEVER supplied by hand —
+      // it is derived below as amount - received, so a stored balance can never disagree
+      // with the deal and the payments. A model-passed amount_pending is ignored.
+      const groundKeys = ['amount', 'amount_received'];
+      for (const k of groundKeys) {
         if (k in input && input[k] != null) {
           const parsed = num(input[k]);
           if (parsed == null) return { display: `ERROR: could not read ${k} "${input[k]}".`, error: true };
@@ -248,6 +252,19 @@ async function executeKriyaTool(supabase, vendorId, name, input) {
           confessions.push(`${k}: ${oldV == null ? '—' : moneyWords(oldV)} → ${moneyWords(parsed)}`);
           fields[k] = parsed;
         }
+      }
+      // Derive pending from the resulting facts whenever a ground fact moved. The hand
+      // does the arithmetic, never the head: pending = amount - received (received null
+      // treated as 0). Negative is allowed to stand — if received exceeds amount that is
+      // itself an absurdity, and Kriya's read-time backstop will catch and surface it
+      // rather than have it silently clamped away.
+      if ('amount' in fields || 'amount_received' in fields) {
+        const newAmount = ('amount' in fields) ? fields.amount : existing.amount;
+        const newReceived = ('amount_received' in fields) ? fields.amount_received : existing.amount_received;
+        const derived = (newAmount == null ? 0 : newAmount) - (newReceived == null ? 0 : newReceived);
+        const oldP = existing.amount_pending;
+        if (oldP !== derived) confessions.push(`amount_pending: ${oldP == null ? '—' : moneyWords(oldP)} → ${moneyWords(derived)}`);
+        fields.amount_pending = derived;
       }
       if ('direction' in input && (input.direction === 'in' || input.direction === 'out')) {
         if (existing.direction !== input.direction) confessions.push(`direction: ${existing.direction || '—'} → ${input.direction}`);
