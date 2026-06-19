@@ -29,6 +29,20 @@ const KRIYA_CALENDAR_TOOLS = [
       time: { type: 'string', description: 'HH:MM (24-hour). Optional — omit for all-day.' },
       notes: { type: 'string', description: 'Anything more, plain words. Optional.' },
     }, required: ['title', 'date', 'kind'] } },
+  { name: 'kriya_calendar_edit',
+    description: "Change an event already on the calendar — its date, time, or title. Give event_id and ONLY the fields you're changing. This UPDATES the existing event in place; it never makes a second one. Use to move a shoot, retime a call, rename an entry. Resolve a bare date against today the same way as adding — the next occurrence, never a past year. Who/what an event is for lives in the binder (the engagement); this hand is the calendar row only.",
+    input_schema: { type: 'object', properties: {
+      event_id: { type: 'string', description: 'The id of the event to change (shown in brackets when the calendar is read).' },
+      date: { type: 'string', description: 'New date, YYYY-MM-DD. Optional.' },
+      time: { type: 'string', description: 'New time, HH:MM (24-hour). Optional. Pass empty to clear to all-day.' },
+      title: { type: 'string', description: 'New title. Optional.' },
+      kind: { type: 'string', enum: KIND_VALUES, description: 'New kind. Optional.' },
+    }, required: ['event_id'] } },
+  { name: 'kriya_calendar_cancel',
+    description: "Take an event off the calendar — give event_id. The event is set to cancelled (recoverable, never destroyed), so the date frees up. Use when the owner calls something off or removes it.",
+    input_schema: { type: 'object', properties: {
+      event_id: { type: 'string', description: 'The id of the event to cancel (shown in brackets when the calendar is read).' },
+    }, required: ['event_id'] } },
   { name: 'kriya_calendar_check',
     description: "Read the owner's calendar for a date, or a range — what's on it, and therefore whether the owner is free. Give 'date' for one day, or 'from'+'to' for a range. Returns every event in the window, blocks included; ANY event on a day means the owner is not free that day. Use before booking, or when the owner asks what's on their calendar / whether they're free.",
     input_schema: { type: 'object', properties: {
@@ -57,7 +71,7 @@ async function executeKriyaCalendar(supabase, vendorId, name, input) {
     if (error) return { display: `ERROR adding to calendar: ${error.message}`, error: true };
     const when = row.event_time ? `${date} ${row.event_time}` : date;
     const label = kind === 'blocked' ? `Blocked ${when} — "${title}" (owner unavailable).` : `Calendar: "${title}" on ${when} (${kind}).`;
-    return { display: `${label} [${data.id}]`, mutated: true };
+    return { display: `${label} [${data.id}]`, mutated: true, event_id: data.id };
   }
 
   if (name === 'kriya_calendar_check') {
@@ -92,6 +106,48 @@ async function executeKriyaCalendar(supabase, vendorId, name, input) {
     const blockedCount = rows.filter((e) => e.kind === 'blocked').length;
     const calSummary = `checked the calendar — ${rows.length} item${rows.length === 1 ? '' : 's'}, ${spanLabel}${blockedCount ? `; ${blockedCount} blocked day${blockedCount === 1 ? '' : 's'}` : ''}.`;
     return { display: `${head}\n${lines.join('\n')}`, summary: calSummary };
+  }
+
+  if (name === 'kriya_calendar_edit') {
+    const id = typeof input.event_id === 'string' ? input.event_id.trim() : '';
+    if (!id) return { display: 'ERROR: kriya_calendar_edit needs event_id.', error: true };
+    // Read ground truth first — we never edit a row we haven't seen.
+    const { data: cur, error: readErr } = await supabase.from('events')
+      .select('id, title, event_date, event_time, kind, state')
+      .eq('id', id).eq('vendor_id', vendorId).maybeSingle();
+    if (readErr) return { display: `ERROR reading event: ${readErr.message}`, error: true };
+    if (!cur) return { display: `ERROR: no event ${id} on this calendar.`, error: true };
+    const patch = {};
+    if (typeof input.date === 'string' && input.date.trim()) patch.event_date = input.date.trim();
+    if (typeof input.title === 'string' && input.title.trim()) patch.title = input.title.trim();
+    if (input.kind != null && KIND_VALUES.includes(input.kind)) patch.kind = input.kind;
+    if (typeof input.time === 'string') patch.event_time = input.time.trim() || null;
+    if (Object.keys(patch).length === 0) return { display: `Nothing to change on event ${id} — no new date, time, title, or kind given.`, error: true, event_id: id };
+    const { error: updErr } = await supabase.from('events').update(patch)
+      .eq('id', id).eq('vendor_id', vendorId);
+    if (updErr) return { display: `ERROR changing event: ${updErr.message}`, error: true };
+    const nd = patch.event_date || cur.event_date;
+    const ntRaw = ('event_time' in patch) ? patch.event_time : cur.event_time;
+    const nt = ntRaw ? ` ${String(ntRaw).slice(0,5)}` : '';
+    const ntitle = patch.title || cur.title;
+    const nkind = patch.kind || cur.kind;
+    const changed = Object.keys(patch).map((k) => k.replace('event_', '')).join(', ');
+    return { display: `Changed "${ntitle}" — now ${nd}${nt} (${nkind}). [updated: ${changed}] [${id}]`, mutated: true, event_id: id,
+      summary: `moved "${ntitle}" to ${new Date(nd + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}${nt}.` };
+  }
+
+  if (name === 'kriya_calendar_cancel') {
+    const id = typeof input.event_id === 'string' ? input.event_id.trim() : '';
+    if (!id) return { display: 'ERROR: kriya_calendar_cancel needs event_id.', error: true };
+    const { data: cur, error: readErr } = await supabase.from('events')
+      .select('id, title, event_date').eq('id', id).eq('vendor_id', vendorId).maybeSingle();
+    if (readErr) return { display: `ERROR reading event: ${readErr.message}`, error: true };
+    if (!cur) return { display: `ERROR: no event ${id} on this calendar.`, error: true };
+    const { error: updErr } = await supabase.from('events').update({ state: 'cancelled' })
+      .eq('id', id).eq('vendor_id', vendorId);
+    if (updErr) return { display: `ERROR cancelling event: ${updErr.message}`, error: true };
+    return { display: `Cancelled "${cur.title}" (was ${cur.event_date}) — the date is free again. [${id}]`, mutated: true, event_id: id,
+      summary: `cancelled "${cur.title}".` };
   }
 
   return { display: `ERROR: unknown calendar tool ${name}.`, error: true };

@@ -74,10 +74,16 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
   // binder. An explicit binder_id always wins. After every write, whatever was
   // written becomes the open binder for the rest of the turn.
   let currentBinderId = (prior && prior.currentBinderId) || null;
+  // Same discipline for the calendar: the event Kriya just touched stays "in hand"
+  // for the rest of the turn, so a follow-up edit lands on it without a re-search.
+  let currentEventId = (prior && prior.currentEventId) || null;
   const ATTRIBUTE_ATOMS = new Set([
     'kriya_money', 'kriya_date', 'kriya_note', 'kriya_note_append',
     'kriya_phone', 'kriya_doc', 'kriya_stage', 'kriya_reasonforaction_append',
   ]);
+  // Calendar edits that act on a single existing event — auto-fill the active
+  // event (mirrors the open-binder default below) so "move it" lands in hand.
+  const CALENDAR_EDIT_ATOMS = new Set(['kriya_calendar_edit', 'kriya_calendar_cancel']);
 
   for (let i = 0; i < KRIYA_WORK_ITERS; i++) {
     const resp = await anthropic.messages.create({
@@ -115,6 +121,9 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
       if (ATTRIBUTE_ATOMS.has(tu.name) && (input.binder_id == null || input.binder_id === '') && currentBinderId) {
         input.binder_id = currentBinderId;
       }
+      if (CALENDAR_EDIT_ATOMS.has(tu.name) && (input.event_id == null || input.event_id === '') && currentEventId) {
+        input.event_id = currentEventId;
+      }
       let outcome;
       if (KRIYA_CALENDAR_NAMES.has(tu.name)) {
         outcome = await executeKriyaCalendar(supabase, vendorId, tu.name, input);
@@ -125,6 +134,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
       }
       // Whatever we just wrote becomes the open binder for the rest of this turn.
       if (outcome.binder_id) currentBinderId = outcome.binder_id;
+      if (outcome.event_id) currentEventId = outcome.event_id;
       toolCalls.push({ name: tu.name, input, result: outcome.display });
       // Live beat: this hand, the moment it fired.
       if (onEvent) onEvent({ type: 'kriya_action', name: tu.name, input, result: outcome.display, summary: outcome.summary });
@@ -141,7 +151,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
         // suspend so Myra's next message resumes her; either way, deliver to Myra.
         return {
           reply: message,
-          session: { messages, pendingToolUseId: listen.id, currentBinderId },
+          session: { messages, pendingToolUseId: listen.id, currentBinderId, currentEventId },
           tool_calls: toolCalls,
           usage: { input_tokens: inTok, output_tokens: outTok, cache_read: cacheRead, cache_write: cacheWrite },
         };
