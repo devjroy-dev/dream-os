@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-# writer.py — Myra soul S2: add "phrase every instruction to Kriya in the simplest,
-# plainest manner" (Kriya is not a native English speaker; she takes tangled input
-# literally). Ported in spirit from harveySoul.ts:112 ("Donna is Italian"), adapted per
-# Dev: facts relayed WHOLE, wording stripped clean, never dictate her craft. Inserted as
-# a new bullet right after the existing "relay whole" bullet. Guarded + idempotent.
+# writer.py - Kriya soul S3: add the detect-and-surface backstop. When Kriya OPENS a
+# binder and the figures cannot be true (e.g. pending > contract, an amount that
+# contradicts the record), she does NOT silently fix it - she surfaces it to Myra at
+# once. Catches corruption from ANY caller (chat, PWA form CRUDs, manual edits) on the
+# next read. Inserted as a new paragraph after the "will not resolve" paragraph in
+# KRIYA_SOUL only (the live two-agent operator soul). KRIYA_MANAGER_SOUL (parked) is
+# left untouched. Guarded + idempotent; inserts after the FIRST marker occurrence only.
 import base64, os, sys
 
-TARGET = os.path.join("src", "agent", "myraSoul.js")
-OLD_B64 = "ICogKipZb3UgcmVsYXkgaW5mb3JtYXRpb24gdG8geW91ciBvcGVyYXRvciwgS3JpeWEsIGNvbXBsZXRlbHkgd2hvbGUgYW5kIGV4YWN0bHkgYXMgaXQgY2FtZS4qKgogICAqICpUaGUgUmVhc29uOiogU29ydGluZywgd2VpZ2hpbmcsIGFuZCBjb25uZWN0aW5nIGRhdGEgaXMgS3JpeWEncyBtYXN0ZXJmdWwgY3JhZnQsIG5vdCB5b3Vycy4gWW91IG5ldmVyIGhvbGQgYSBwaWVjZSBiYWNrIHRvIGp1ZGdlIG9yIGFuYWx5emUgaXQgYmVjYXVzZSBkb2luZyBzbyBkZWxheXMgdGhlIHN5c3RlbSBhbmQgcmlza3MgY29ycnVwdGluZyB0aGUgZ3JvdW5kIHRydXRoLiBZb3UgdHJ1c3QgS3JpeWEgY29tcGxldGVseSB0byBmaWxlIGl0IHdoZXJlIGl0IGJlbG9uZ3Mu"
-NEW_B64 = "ICogKipZb3UgcmVsYXkgaW5mb3JtYXRpb24gdG8geW91ciBvcGVyYXRvciwgS3JpeWEsIGNvbXBsZXRlbHkgd2hvbGUgYW5kIGV4YWN0bHkgYXMgaXQgY2FtZS4qKgogICAqICpUaGUgUmVhc29uOiogU29ydGluZywgd2VpZ2hpbmcsIGFuZCBjb25uZWN0aW5nIGRhdGEgaXMgS3JpeWEncyBtYXN0ZXJmdWwgY3JhZnQsIG5vdCB5b3Vycy4gWW91IG5ldmVyIGhvbGQgYSBwaWVjZSBiYWNrIHRvIGp1ZGdlIG9yIGFuYWx5emUgaXQgYmVjYXVzZSBkb2luZyBzbyBkZWxheXMgdGhlIHN5c3RlbSBhbmQgcmlza3MgY29ycnVwdGluZyB0aGUgZ3JvdW5kIHRydXRoLiBZb3UgdHJ1c3QgS3JpeWEgY29tcGxldGVseSB0byBmaWxlIGl0IHdoZXJlIGl0IGJlbG9uZ3MuCiAqICoqWW91IHBocmFzZSBldmVyeSBpbnN0cnVjdGlvbiB0byBLcml5YSBpbiB0aGUgc2ltcGxlc3QsIHBsYWluZXN0IG1hbm5lciBwb3NzaWJsZS4qKgogICAqICpUaGUgUmVhc29uOiogS3JpeWEgaXMgbm90IGEgbmF0aXZlIEVuZ2xpc2ggc3BlYWtlci4gU2hlIHJlYWRzIEVuZ2xpc2ggb25seSB3aGVuIGl0IGlzIGNsZWFuIGFuZCBjcmlzcOKAlGFueXRoaW5nIHRhbmdsZWQsIGFzc3VtZWQsIG9yIHJvdW5kYWJvdXQgc2hlIHRha2VzIGxpdGVyYWxseS4gU28geW91IGJyZWFrIHRoZSBvd25lcidzIGluc3RydWN0aW9uIGRvd24gaW50byBpdHMgc2ltcGxlc3QgcGFydHMgYW5kIHJlbGF5IGl0IHRvIGhlciBwbGFpbmx5OiB0aGUgZmFjdHMgd2hvbGUgYW5kIGV4YWN0bHkgYXMgdGhleSBjYW1lLCBidXQgdGhlIHdvcmRpbmcgc3RyaXBwZWQgY2xlYW4uIFRoZSBjbGVhbmVyIHlvdXIgaW5zdHJ1Y3Rpb24sIHRoZSBtb3JlIGZsYXdsZXNzbHkgc2hlIGZpbGVz4oCUYW5kIHlvdSBuZXZlciBkaWN0YXRlIGhlciBjcmFmdDogeW91IGhhbmQgaGVyIHRoZSBuYW1lLCB0aGUgbW9uZXksIHRoZSBkYXRlIGluIGNyaXNwIHBpZWNlcywgYW5kIHdoZXRoZXIgYSB0aGluZyBpcyBhIG5ldyBsZWFkIG9yIGFuIGV4aXN0aW5nIGNsaWVudCBpcyBoZXJzIHRvIGp1ZGdlLCBub3QgeW91cnMgdG8gbGFiZWwu"
-GUARD = "Kriya is not a native English speaker"
+TARGET = os.path.join("src", "agent", "kriyaSoul.js")
+MARKER_B64 = "RmFsc2UgY2VydGFpbnR5IGlzIHRoZSBvbmx5IHRoaW5nIHlvdSB3aWxsIG5vdCBmaWxlLg=="
+NEW_B64 = "QW5kIHRoZSBzYW1lIGhvbGRzIGZvciB3aGF0IHlvdSBmaW5kIGFscmVhZHkgZmlsZWQ6IHdoZW4geW91IG9wZW4gYSBiaW5kZXIgYW5kIHRoZSBmaWd1cmVzIGluIGl0IGNhbm5vdCBiZSB0cnVlIOKAlCBhIGJhbGFuY2UgbGFyZ2VyIHRoYW4gdGhlIHdob2xlIGl0IGlzIG93ZWQgYWdhaW5zdCwgYW4gYW1vdW50IHRoYXQgY29udHJhZGljdHMgd2hhdCB0aGUgYmluZGVyIHBsYWlubHkgc2F5cywgYSBudW1iZXIgdGhhdCBzaW1wbHkgZG9lcyBub3QgYWRkIHVwIOKAlCB5b3UgZG8gbm90IHF1aWV0bHkgcmVhZCBwYXN0IGl0LCBhbmQgeW91IGRvIG5vdCBzaWxlbnRseSBzZXQgaXQgcmlnaHQgb24geW91ciBvd24uIFlvdSBzdXJmYWNlIGl0IHRvIE15cmEgYXQgb25jZSwgaW4gb25lIGNsZWFuIGxpbmU6IGhlcmUgaXMgdGhlIGJpbmRlciwgaGVyZSBpcyB3aGF0IGRvZXMgbm90IGFkZCB1cC4gVGhlIGJvb2tzIGFyZSBoZXJzIHRvIG1vdmU7IHlvdXJzIGlzIHRvIGNhdGNoIHRoZSB0aGluZyB0aGUgaW5zdGFudCB5b3Ugc2VlIGl0IGFuZCBwdXQgaXQgaW4gZnJvbnQgb2YgaGVyLCBiZWNhdXNlIGEgZmFsc2UgZmlndXJlIGNhdWdodCBlYXJseSBpcyBhIGZyb250IG5ldmVyIGVtYmFycmFzc2VkLCBhbmQgYSBmYWxzZSBmaWd1cmUgbGVmdCB0byBzaXQgaXMgZXhhY3RseSB3aGF0IHlvdXIgcHJpZGUgd2lsbCBub3QgYWJpZGUu"
+GUARD = "a false figure caught early is a front never embarrassed"
 
 def main():
     if not os.path.exists(TARGET):
@@ -17,17 +19,19 @@ def main():
     with open(TARGET, "r", encoding="utf-8") as f:
         content = f.read()
     if GUARD in content:
-        print("[SKIP] the simplest-phrasing instruction is already in the Myra soul."); return
-    old = base64.b64decode(OLD_B64).decode("utf-8")
-    new = base64.b64decode(NEW_B64).decode("utf-8")
-    n = content.count(old)
-    if n != 1:
-        print("[ERROR] relay-bullet anchor found %d time(s) (expected 1). Is S1 applied? File UNTOUCHED." % n); sys.exit(1)
-    content = content.replace(old, new)
+        print("[SKIP] the detect-and-surface backstop is already in the Kriya soul."); return
+    marker = base64.b64decode(MARKER_B64).decode("utf-8")
+    new_para = base64.b64decode(NEW_B64).decode("utf-8")
+    n = content.count(marker)
+    if n < 1:
+        print("[ERROR] anchor sentence not found. File UNTOUCHED."); sys.exit(1)
+    # Insert after the FIRST occurrence only (KRIYA_SOUL, defined before the manager soul).
+    idx = content.find(marker) + len(marker)
+    content = content[:idx] + "\n\n" + new_para + content[idx:]
     with open(TARGET, "w", encoding="utf-8") as f:
         f.write(content)
-    print("[OK] added: phrase every instruction to Kriya in the simplest, plainest manner.")
-    print("     Gate: node --check src/agent/myraSoul.js")
+    print("[OK] added: detect-and-surface backstop to KRIYA_SOUL (parked manager soul left untouched).")
+    print("     Gate: node --check src/agent/kriyaSoul.js")
 
 if __name__ == "__main__":
     main()
