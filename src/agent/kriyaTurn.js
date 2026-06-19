@@ -127,7 +127,7 @@ async function runKriyaTurn(anthropic, supabase, vendorId, myraMessage, prior, o
       if (outcome.binder_id) currentBinderId = outcome.binder_id;
       toolCalls.push({ name: tu.name, input, result: outcome.display });
       // Live beat: this hand, the moment it fired.
-      if (onEvent) onEvent({ type: 'kriya_action', name: tu.name, input, result: outcome.display });
+      if (onEvent) onEvent({ type: 'kriya_action', name: tu.name, input, result: outcome.display, summary: outcome.summary });
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
     }
 

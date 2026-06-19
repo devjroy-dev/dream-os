@@ -46,7 +46,10 @@ function translateBeat(e) {
       return { type: 'handoff', from: 'manager', to: 'operator', message: scrub(e.message) };
     case 'kriya_action':
       // Name DROPPED. kind (read/write/calendar) + scrubbed result only.
-      return { type: 'operator_action', kind: kindOf(e.name), detail: scrub(e.result) };
+      // detail is the tool's OWNER-FACING summary (authored at the source), never
+      // the raw display dump (which carries UUIDs/IDs for the operator's own memory).
+      // No summary yet -> empty detail; the trace then shows the bare action line.
+      return { type: 'operator_action', kind: kindOf(e.name), detail: scrub(e.summary || '') };
     case 'kriya_report':
       return { type: 'operator_report', message: scrub(e.message) };
     case 'answer':
