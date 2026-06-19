@@ -1,49 +1,62 @@
 #!/usr/bin/env python3
-# Vendor Suit -- Phase 4: THE FLIP. Re-point the five proven vendor routes from
-# Myra to the engine doors, inside src/api/vendor/core.js. The pwa now talks to
-# Victor and Donna. Surgical: ONLY cabinet / today / binders(write+read) / chat
-# are re-pointed; every other route (me, events, portfolio, contracts, tds, ...)
-# stays exactly as-is. Myra's files stay on disk, merely unmounted -- so this is a
-# switch, not a leap: reverting is just flipping these requires back. /vendor-e is
-# left mounted as a live fallback. Guarded + idempotent.
-#   unzip -o vendor-suit-phase4-flip-v1.zip && python3 writer.py
-import os, sys, json
+# Vendor Suit -- Phase 5-A: WhatsApp -> engine. The vendor's WhatsApp text turn
+# dispatches to runTurn (the same engine agent the web app uses), so memory unifies
+# across web + WhatsApp. Changes:
+#   1. NEW  src/api/middleware/agentBridge.js  -- shared get-or-create (one source of truth)
+#   2. EDIT src/api/middleware/resolveAgent.js -- delegate to the shared helper
+#   3. EDIT src/index.js -- add requires; re-point the vendor text-turn dispatch.
+# PDF attachments + ---DRAFT--- split dropped (engine cut lacks them; deferred).
+# public.messages audit log kept (3b). Guarded + idempotent.
+#   unzip -o vendor-suit-phase5a-whatsapp-v1.zip && python3 writer.py
+import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
-F = os.path.join(ROOT, "src", "api", "vendor", "core.js")
-if not os.path.isfile(F): die("src/api/vendor/core.js not found.")
-# the engine doors must exist (Phase 3 applied)
-VE = os.path.join(ROOT, "src", "api", "vendor-engine")
-for need in ["cabinet.js","ledger.js","today.js","binderWrite.js","chat.js"]:
-    if not os.path.isfile(os.path.join(VE, need)):
-        die("engine door missing: vendor-engine/%s -- run Phase 3 first." % need)
+if not os.path.isfile(os.path.join(ROOT,"src","engine","tsconfig.json")):
+    die("src/engine not found -- run Phase 0 first (5-A needs the compiled engine loop).")
 
-txt = open(F, encoding="utf-8").read()
-if "Phase 4 flip" in txt:
-    print("= already flipped (idempotent)."); sys.exit(0)
+P = {'agentBridge_js': 'J3VzZSBzdHJpY3QnOwovLyBzcmMvYXBpL21pZGRsZXdhcmUvYWdlbnRCcmlkZ2UuanMKLy8gVmVuZG9yIFN1aXQsIFBoYXNlIDUtQSDigJQgdGhlIGlkZW50aXR5IGJyaWRnZSBjb3JlLCBjYWxsYWJsZSBvdXRzaWRlIEV4cHJlc3MuCi8vCi8vIEdpdmVuIGEgdmVuZG9yIGFuZCB0aGVpciBTdXBhYmFzZSBhdXRoIHVpZCwgZ2V0LW9yLWNyZWF0ZSB0aGUgZW5naW5lLnVzZXJzICsKLy8gZW5naW5lLmFnZW50cyByb3dzIGFuZCByZXR1cm4gdGhlIGFnZW50SWQgKCsgcHJlc2V0KS4gT25lIHNvdXJjZSBvZiB0cnV0aCBmb3IKLy8gQk9USCByZXNvbHZlQWdlbnQgKHdlYiBtaWRkbGV3YXJlKSBhbmQgdGhlIFdoYXRzQXBwIHdlYmhvb2sgKDUtQSksIHNvIHRoZSBicmlkZ2UKLy8gbG9naWMgY2FuIG5ldmVyIGRyaWZ0IGJldHdlZW4gc3VyZmFjZXMuIFRoZSBjaGFpbiAoYWdlbnRzLnVzZXJfaWQgaXMgTk9UIE5VTEwpOgovLwovLyAgIGF1dGhVc2VySWQgKFN1cGFiYXNlIHVpZCkKLy8gICAgIC0+IGVuZ2luZS51c2VycyAgIChhdXRoX3VzZXJfaWQgPSB1aWQpICAgW2NyZWF0ZWQgaWYgYWJzZW50XQovLyAgICAgLT4gZW5naW5lLmFnZW50cyAgKHVzZXJfaWQgPSB1c2Vycy5pZCkgICBbdGhlIHZlbmRvcidzIFZpY3Rvci9Eb25uYV0KY29uc3QgeyByZXNvbHZlUHJlc2V0IH0gPSByZXF1aXJlKCcuLi92ZW5kb3IvY2F0ZWdvcnlQcmVzZXQnKTsKCmFzeW5jIGZ1bmN0aW9uIHJlc29sdmVBZ2VudEZvclZlbmRvcihzdXBhYmFzZSwgdmVuZG9yLCBhdXRoVXNlcklkKSB7CiAgaWYgKCFhdXRoVXNlcklkIHx8ICF2ZW5kb3IpIHsKICAgIHRocm93IG5ldyBFcnJvcigncmVzb2x2ZUFnZW50Rm9yVmVuZG9yOiBtaXNzaW5nIGF1dGhVc2VySWQgb3IgdmVuZG9yJyk7CiAgfQogIGNvbnN0IGVuZyA9IHN1cGFiYXNlLnNjaGVtYSgnZW5naW5lJyk7CgogIC8vIDEg4oCUIGVuZ2luZS51c2VycyBieSBhdXRoX3VzZXJfaWQgKHVwc2VydCBpcyBzYWZlOyBhdXRoX3VzZXJfaWQgaXMgdW5pcXVlKS4KICBsZXQgeyBkYXRhOiB1LCBlcnJvcjogdWUgfSA9IGF3YWl0IGVuZwogICAgLmZyb20oJ3VzZXJzJykuc2VsZWN0KCdpZCcpLmVxKCdhdXRoX3VzZXJfaWQnLCBhdXRoVXNlcklkKS5tYXliZVNpbmdsZSgpOwogIGlmICh1ZSkgdGhyb3cgdWU7CiAgaWYgKCF1KSB7CiAgICBjb25zdCB1cCA9IGF3YWl0IGVuZy5mcm9tKCd1c2VycycpCiAgICAgIC51cHNlcnQoCiAgICAgICAgeyBhdXRoX3VzZXJfaWQ6IGF1dGhVc2VySWQsIHBob25lOiB2ZW5kb3Iud2hhdHNhcHBfcGhvbmUgfHwgbnVsbCwgbmFtZTogdmVuZG9yLmJ1c2luZXNzX25hbWUgfHwgbnVsbCB9LAogICAgICAgIHsgb25Db25mbGljdDogJ2F1dGhfdXNlcl9pZCcgfSwKICAgICAgKQogICAgICAuc2VsZWN0KCdpZCcpLnNpbmdsZSgpOwogICAgaWYgKHVwLmVycm9yKSB0aHJvdyB1cC5lcnJvcjsKICAgIHUgPSB1cC5kYXRhOwogIH0KCiAgLy8gMiDigJQgZW5naW5lLmFnZW50cyBieSB1c2VyX2lkIChvbmUgYWdlbnQgcGVyIHZlbmRvcikuIENyZWF0ZSBpZiBhYnNlbnQuCiAgbGV0IHsgZGF0YTogYSwgZXJyb3I6IGFlIH0gPSBhd2FpdCBlbmcKICAgIC5mcm9tKCdhZ2VudHMnKS5zZWxlY3QoJ2lkLCBwcm9mZXNzaW9uX3ByZXNldCcpLmVxKCd1c2VyX2lkJywgdS5pZCkubWF5YmVTaW5nbGUoKTsKICBpZiAoYWUpIHRocm93IGFlOwogIGlmICghYSkgewogICAgY29uc3QgcHJlc2V0ID0gcmVzb2x2ZVByZXNldCh2ZW5kb3IuY2F0ZWdvcnkpOwogICAgY29uc3QgYWcgPSBhd2FpdCBlbmcuZnJvbSgnYWdlbnRzJykKICAgICAgLmluc2VydCh7CiAgICAgICAgdXNlcl9pZDogICAgICAgICAgIHUuaWQsCiAgICAgICAgcHJvZmVzc2lvbl9wcmVzZXQ6IHByZXNldCwKICAgICAgICBkaXNwbGF5X25hbWU6ICAgICAgdmVuZG9yLmJ1c2luZXNzX25hbWUgfHwgbnVsbCwKICAgICAgICBraW5kOiAgICAgICAgICAgICAgJ3NvbG8nLAogICAgICAgIHRpZXI6ICAgICAgICAgICAgICAnZW50cnknLAogICAgICAgIHRpbWV6b25lOiAgICAgICAgICAnQXNpYS9Lb2xrYXRhJywKICAgICAgfSkKICAgICAgLnNlbGVjdCgnaWQsIHByb2Zlc3Npb25fcHJlc2V0Jykuc2luZ2xlKCk7CiAgICBpZiAoYWcuZXJyb3IpIHRocm93IGFnLmVycm9yOwogICAgYSA9IGFnLmRhdGE7CiAgfQoKICByZXR1cm4geyBhZ2VudElkOiBhLmlkLCBhZ2VudFByZXNldDogYS5wcm9mZXNzaW9uX3ByZXNldCB9Owp9Cgptb2R1bGUuZXhwb3J0cyA9IHsgcmVzb2x2ZUFnZW50Rm9yVmVuZG9yIH07Cg==', 'resolveAgent_js': 'J3VzZSBzdHJpY3QnOwovLyBzcmMvYXBpL21pZGRsZXdhcmUvcmVzb2x2ZUFnZW50LmpzCi8vIFZlbmRvciBTdWl0LCBQaGFzZSAzLUEg4oCUIHRoZSBpZGVudGl0eSBicmlkZ2UgKEV4cHJlc3MgbWlkZGxld2FyZSkuCi8vCi8vIFJlc29sdmVzIHRoZSBhdXRoZW50aWNhdGVkIHZlbmRvciB0byB0aGVpciBlbmdpbmUgYWdlbnQsIHByb3Zpc2lvbmluZyB0aGUKLy8gZW5naW5lLnVzZXJzICsgZW5naW5lLmFnZW50cyByb3dzIG9uIGZpcnN0IHRvdWNoLiBBcyBvZiA1LUEgdGhlIGdldC1vci1jcmVhdGUKLy8gbGl2ZXMgaW4gYWdlbnRCcmlkZ2UuanMgKHNoYXJlZCB3aXRoIHRoZSBXaGF0c0FwcCB3ZWJob29rKTsgdGhpcyBpcyB0aGUgdGhpbgovLyBFeHByZXNzIHdyYXBwZXIuIE11c3QgcnVuIEFGVEVSIHJlcXVpcmVBdXRoICsgcmVzb2x2ZVZlbmRvciAobmVlZHMKLy8gcmVxLmF1dGgudXNlcl9pZCArIHJlcS52ZW5kb3IpLiBBdHRhY2hlcyByZXEuYWdlbnRJZCBhbmQgcmVxLmFnZW50UHJlc2V0Lgpjb25zdCB7IHJlc29sdmVBZ2VudEZvclZlbmRvciB9ID0gcmVxdWlyZSgnLi9hZ2VudEJyaWRnZScpOwoKZnVuY3Rpb24gcmVzb2x2ZUFnZW50KCkgewogIHJldHVybiBhc3luYyBmdW5jdGlvbiByZXNvbHZlQWdlbnRNaWRkbGV3YXJlKHJlcSwgcmVzLCBuZXh0KSB7CiAgICB0cnkgewogICAgICBjb25zdCB1aWQgPSByZXEuYXV0aCAmJiByZXEuYXV0aC51c2VyX2lkOwogICAgICBjb25zdCB2ICAgPSByZXEudmVuZG9yOwogICAgICBpZiAoIXVpZCB8fCAhdikgewogICAgICAgIHJldHVybiByZXMuc3RhdHVzKDQwMSkuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdVbmF1dGhvcml6ZWQuJyB9KTsKICAgICAgfQogICAgICBjb25zdCB7IGFnZW50SWQsIGFnZW50UHJlc2V0IH0gPQogICAgICAgIGF3YWl0IHJlc29sdmVBZ2VudEZvclZlbmRvcihyZXEuYXBwLmxvY2Fscy5zdXBhYmFzZSwgdiwgdWlkKTsKICAgICAgcmVxLmFnZW50SWQgICAgID0gYWdlbnRJZDsKICAgICAgcmVxLmFnZW50UHJlc2V0ID0gYWdlbnRQcmVzZXQ7CiAgICAgIHJldHVybiBuZXh0KCk7CiAgICB9IGNhdGNoIChlKSB7CiAgICAgIGNvbnNvbGUuZXJyb3IoJ1tyZXNvbHZlQWdlbnRdJywgKGUgJiYgZS5tZXNzYWdlKSB8fCBlKTsKICAgICAgcmV0dXJuIHJlcy5zdGF0dXMoNTAwKS5qc29uKHsgb2s6IGZhbHNlLCBlcnJvcjogJ0FnZW50IHJlc29sdXRpb24gZmFpbGVkLicgfSk7CiAgICB9CiAgfTsKfQoKbW9kdWxlLmV4cG9ydHMgPSByZXNvbHZlQWdlbnQ7Cg==', 'old_block': 'ICAgIGNvbnN0IHJlc3VsdCA9IGF3YWl0IHJ1bkFnZW50aWNUdXJuKHsKICAgICAgdmVuZG9yLAogICAgICB1c2VyLAogICAgICBjb252ZXJzYXRpb246IGNvbnZvLAogICAgICBpbmJvdW5kTWVzc2FnZTogYm9keSwKICAgICAgc3VwYWJhc2UsCiAgICAgIGFudGhyb3BpYywKICAgIH0pOwoKICAgIGNvbnNvbGUubG9nKGBbYWdlbnRdIHJlcGx5OiAiJHtyZXN1bHQucmVwbHkuc2xpY2UoMCwgODApfS4uLiIgICgke3Jlc3VsdC5pdGVyYXRpb25zfSBpdGVyLCAke3Jlc3VsdC50b29sQ2FsbHMubGVuZ3RofSB0b29sIGNhbGxzKWApOwoKICAgIGF3YWl0IHN1cGFiYXNlLmZyb20oJ2NvbnZlcnNhdGlvbnMnKQogICAgICAudXBkYXRlKHsgbGFzdF9tZXNzYWdlX2F0OiBuZXcgRGF0ZSgpLnRvSVNPU3RyaW5nKCkgfSkKICAgICAgLmVxKCdpZCcsIGNvbnZvLmlkKTsKCiAgICAvLyBUd28tbWVzc2FnZSBkZWxpdmVyeSB3aGVuIGF0dGFjaG1lbnRzIGFyZSBwcmVzZW50LgogICAgLy8gVGhlIFBERiB0cmF2ZWxzIGFsb25lIGluIGl0cyBvd24gV2hhdHNBcHAgbWVzc2FnZSBzbyB0aGUgdmVuZG9yIGNhbgogICAgLy8gbG9uZy1wcmVzcyDihpIgZm9yd2FyZCB0byB0aGUgY2xpZW50IHdpdGhvdXQgdGhlIGFnZW50J3Mgc3RhdHVzIHRleHQKICAgIC8vICh3aGljaCByZWZlcmVuY2VzIGludGVybmFsIGJhbGFuY2UsIHZlbmRvci1mYWNpbmcgcGhyYXNpbmcsIGV0Yy4pCiAgICAvLyBlbmRpbmcgdXAgYXMgYSBjYXB0aW9uIG9uIHRoZSBmb3J3YXJkZWQgYXR0YWNobWVudC4gU3RhdHVzIHRleHQgaXMKICAgIC8vIGEgc2VwYXJhdGUgdGV4dC1vbmx5IGZvbGxvdy11cCBtZXNzYWdlIHRoZSB2ZW5kb3Igc2VlcyBpbiB0aGVpciBvd24KICAgIC8vIGNoYXQgYnV0IG5ldmVyIHRyYXZlbHMgd2l0aCB0aGUgUERGLgogICAgY29uc3QgYXR0YWNobWVudHMgPSBBcnJheS5pc0FycmF5KHJlc3VsdC5hdHRhY2htZW50cykgPyByZXN1bHQuYXR0YWNobWVudHMgOiBbXTsKICAgIGNvbnN0IGhhc0F0dGFjaG1lbnRzID0gYXR0YWNobWVudHMubGVuZ3RoID4gMDsKCiAgICBpZiAoaGFzQXR0YWNobWVudHMpIHsKICAgICAgLy8gMSkgUERGLW9ubHkgbWVzc2FnZS4gRW1wdHkgYm9keSwgbWVkaWEgVVJMKHMpIGF0dGFjaGVkLgogICAgICBjb25zdCBtZWRpYU1zZyA9IGF3YWl0IHNlbmRXaGF0c0FwcChwaG9uZSwgJycsIGF0dGFjaG1lbnRzKTsKICAgICAgYXdhaXQgc3VwYWJhc2UuZnJvbSgnbWVzc2FnZXMnKS5pbnNlcnQoewogICAgICAgIGNvbnZlcnNhdGlvbl9pZDogY29udm8uaWQsCiAgICAgICAgZGlyZWN0aW9uOiAgICAgICAnb3V0Ym91bmQnLAogICAgICAgIGNoYW5uZWw6ICAgICAgICAgJ3doYXRzYXBwJywKICAgICAgICBib2R5OiAgICAgICAgICAgICcnLAogICAgICAgIG1lZGlhX3VybDogICAgICAgYXR0YWNobWVudHNbMF0sCiAgICAgICAgc2VudF9ieTogICAgICAgICAnYWdlbnQnLAogICAgICAgIHR3aWxpb19zaWQ6ICAgICAgbWVkaWFNc2cuc2lkLAogICAgICB9KTsKCiAgICAgIC8vIDIpIFRleHQtb25seSBzdGF0dXMgbWVzc2FnZS4gQ2FycmllcyB0aGUgYWdlbnQncyBtZXRhZGF0YS4KICAgICAgY29uc3QgdGV4dE1zZyA9IGF3YWl0IHNlbmRXaGF0c0FwcChwaG9uZSwgcmVzdWx0LnJlcGx5LCBbXSk7CiAgICAgIGF3YWl0IHN1cGFiYXNlLmZyb20oJ21lc3NhZ2VzJykuaW5zZXJ0KHsKICAgICAgICBjb252ZXJzYXRpb25faWQ6IGNvbnZvLmlkLAogICAgICAgIGRpcmVjdGlvbjogICAgICAgJ291dGJvdW5kJywKICAgICAgICBjaGFubmVsOiAgICAgICAgICd3aGF0c2FwcCcsCiAgICAgICAgYm9keTogICAgICAgICAgICByZXN1bHQucmVwbHksCiAgICAgICAgc2VudF9ieTogICAgICAgICAnYWdlbnQnLAogICAgICAgIHR3aWxpb19zaWQ6ICAgICAgdGV4dE1zZy5zaWQsCiAgICAgICAgdG9vbF9jYWxsczogICAgICByZXN1bHQudG9vbENhbGxzLAogICAgICAgIG1vZGVsOiAgICAgICAgICAgcmVzdWx0Lm1vZGVsICAgICAgICA/PyBudWxsLAogICAgICAgIGlucHV0X3Rva2VuczogICAgcmVzdWx0LmlucHV0VG9rZW5zICA/PyBudWxsLAogICAgICAgIG91dHB1dF90b2tlbnM6ICAgcmVzdWx0Lm91dHB1dFRva2VucyA/PyBudWxsLAogICAgICAgIGNvc3RfdXNkOiAgICAgICAgcmVzdWx0LmNvc3RVc2QgICAgICA/PyBudWxsLAogICAgICAgIGNvc3RfaW5yOiAgICAgICAgcmVzdWx0LmNvc3RJbnIgICAgICA/PyBudWxsLAogICAgICB9KTsKICAgIH0gZWxzZSB7CiAgICAgIC8vIE5vIGF0dGFjaG1lbnRzLiBDaGVjayBmb3IgLS0tRFJBRlQtLS0gZGVsaW1pdGVyIOKAlCBpZiBwcmVzZW50LAogICAgICAvLyBzcGxpdCBpbnRvIHR3byBXaGF0c0FwcCBtZXNzYWdlcyBzbyB0aGUgc2Vjb25kICh0aGUgYWN0dWFsIGRyYWZ0CiAgICAgIC8vIGJvZHkpIGNhbiBiZSBsb25nLXByZXNzZWQg4oaSIGZvcndhcmRlZCBieSB0aGUgdmVuZG9yIHdpdGhvdXQgZWRpdHMuCiAgICAgIGNvbnN0IERSQUZUX0RFTElNID0gJy0tLURSQUZULS0tJzsKICAgICAgaWYgKHJlc3VsdC5yZXBseS5pbmNsdWRlcyhEUkFGVF9ERUxJTSkpIHsKICAgICAgICBjb25zdCBwYXJ0cyA9IHJlc3VsdC5yZXBseS5zcGxpdChEUkFGVF9ERUxJTSk7CiAgICAgICAgY29uc3QgaW50cm8gPSBwYXJ0c1swXS50cmltKCk7CiAgICAgICAgY29uc3QgZHJhZnQgPSBwYXJ0cy5zbGljZSgxKS5qb2luKERSQUZUX0RFTElNKS50cmltKCk7CgogICAgICAgIGlmIChpbnRyby5sZW5ndGggPiAwKSB7CiAgICAgICAgICBjb25zdCBpbnRyb01zZyA9IGF3YWl0IHNlbmRXaGF0c0FwcChwaG9uZSwgaW50cm8sIFtdKTsKICAgICAgICAgIGF3YWl0IHN1cGFiYXNlLmZyb20oJ21lc3NhZ2VzJykuaW5zZXJ0KHsKICAgICAgICAgICAgY29udmVyc2F0aW9uX2lkOiBjb252by5pZCwKICAgICAgICAgICAgZGlyZWN0aW9uOiAgICAgICAnb3V0Ym91bmQnLAogICAgICAgICAgICBjaGFubmVsOiAgICAgICAgICd3aGF0c2FwcCcsCiAgICAgICAgICAgIGJvZHk6ICAgICAgICAgICAgaW50cm8sCiAgICAgICAgICAgIHNlbnRfYnk6ICAgICAgICAgJ2FnZW50JywKICAgICAgICAgICAgdHdpbGlvX3NpZDogICAgICBpbnRyb01zZy5zaWQsCiAgICAgICAgICAgIHRvb2xfY2FsbHM6ICAgICAgcmVzdWx0LnRvb2xDYWxscywKICAgICAgICAgICAgbW9kZWw6ICAgICAgICAgICByZXN1bHQubW9kZWwgICAgICAgID8/IG51bGwsCiAgICAgICAgICAgIGlucHV0X3Rva2VuczogICAgcmVzdWx0LmlucHV0VG9rZW5zICA/PyBudWxsLAogICAgICAgICAgICBvdXRwdXRfdG9rZW5zOiAgIHJlc3VsdC5vdXRwdXRUb2tlbnMgPz8gbnVsbCwKICAgICAgICAgICAgY29zdF91c2Q6ICAgICAgICByZXN1bHQuY29zdFVzZCAgICAgID8/IG51bGwsCiAgICAgICAgICAgIGNvc3RfaW5yOiAgICAgICAgcmVzdWx0LmNvc3RJbnIgICAgICA/PyBudWxsLAogICAgICAgICAgfSk7CiAgICAgICAgfQoKICAgICAgICBpZiAoZHJhZnQubGVuZ3RoID4gMCkgewogICAgICAgICAgY29uc3QgZHJhZnRNc2cgPSBhd2FpdCBzZW5kV2hhdHNBcHAocGhvbmUsIGRyYWZ0LCBbXSk7CiAgICAgICAgICBhd2FpdCBzdXBhYmFzZS5mcm9tKCdtZXNzYWdlcycpLmluc2VydCh7CiAgICAgICAgICAgIGNvbnZlcnNhdGlvbl9pZDogY29udm8uaWQsCiAgICAgICAgICAgIGRpcmVjdGlvbjogICAgICAgJ291dGJvdW5kJywKICAgICAgICAgICAgY2hhbm5lbDogICAgICAgICAnd2hhdHNhcHAnLAogICAgICAgICAgICBib2R5OiAgICAgICAgICAgIGRyYWZ0LAogICAgICAgICAgICBzZW50X2J5OiAgICAgICAgICdhZ2VudCcsCiAgICAgICAgICAgIHR3aWxpb19zaWQ6ICAgICAgZHJhZnRNc2cuc2lkLAogICAgICAgICAgfSk7CiAgICAgICAgfQogICAgICB9IGVsc2UgewogICAgICAgIGNvbnN0IHR3aWxpb01zZyA9IGF3YWl0IHNlbmRXaGF0c0FwcChwaG9uZSwgcmVzdWx0LnJlcGx5LCBbXSk7CiAgICAgICAgYXdhaXQgc3VwYWJhc2UuZnJvbSgnbWVzc2FnZXMnKS5pbnNlcnQoewogICAgICAgICAgY29udmVyc2F0aW9uX2lkOiBjb252by5pZCwKICAgICAgICAgIGRpcmVjdGlvbjogICAgICAgJ291dGJvdW5kJywKICAgICAgICAgIGNoYW5uZWw6ICAgICAgICAgJ3doYXRzYXBwJywKICAgICAgICAgIGJvZHk6ICAgICAgICAgICAgcmVzdWx0LnJlcGx5LAogICAgICAgICAgc2VudF9ieTogICAgICAgICAnYWdlbnQnLAogICAgICAgICAgdHdpbGlvX3NpZDogICAgICB0d2lsaW9Nc2cuc2lkLAogICAgICAgICAgdG9vbF9jYWxsczogICAgICByZXN1bHQudG9vbENhbGxzLAogICAgICAgICAgbW9kZWw6ICAgICAgICAgICByZXN1bHQubW9kZWwgICAgICAgID8/IG51bGwsCiAgICAgICAgICBpbnB1dF90b2tlbnM6ICAgIHJlc3VsdC5pbnB1dFRva2VucyAgPz8gbnVsbCwKICAgICAgICAgIG91dHB1dF90b2tlbnM6ICAgcmVzdWx0Lm91dHB1dFRva2VucyA/PyBudWxsLAogICAgICAgICAgY29zdF91c2Q6ICAgICAgICByZXN1bHQuY29zdFVzZCAgICAgID8/IG51bGwsCiAgICAgICAgICBjb3N0X2lucjogICAgICAgIHJlc3VsdC5jb3N0SW5yICAgICAgPz8gbnVsbCwKICAgICAgICB9KTsKICAgICAgfQogICAgfQo=', 'new_block': 'ICAgIC8vIDUtQSDigJQgZW5naW5lIGRpc3BhdGNoLiBUaGUgc2FtZSBhZ2VudCB0aGUgd2ViIGFwcCB0YWxrcyB0bywgc28gbWVtb3J5CiAgICAvLyB1bmlmaWVzIGFjcm9zcyB3ZWIgKyBXaGF0c0FwcCAob25lIG1pbmQsIHR3byBzdXJmYWNlcykuIFBERiBhdHRhY2htZW50cyBhbmQKICAgIC8vIHRoZSAtLS1EUkFGVC0tLSBzcGxpdCB3ZXJlIE15cmEgZGVsaXZlcnkgZmVhdHVyZXMgdGhlIDc4ODA3ZGQgZW5naW5lIGN1dAogICAgLy8gbGFja3M7IGRlZmVycmVkIChzZWUgV0hBVFNBUFBfRU5HSU5FX0RFRkVSUkVEX0ZFQVRVUkVTLm1kKS4gVGhlIHB1YmxpYy5tZXNzYWdlcwogICAgLy8gYXVkaXQgbG9nIGlzIGtlcHQgKDNiKSBmb3IgZGVsaXZlcnkgdGVsZW1ldHJ5OyBlbmdpbmUubWVzc2FnZXMgY2FycmllcyBtZW1vcnkuCiAgICBjb25zdCB7IGFnZW50SWQgfSA9IGF3YWl0IHJlc29sdmVBZ2VudEZvclZlbmRvcihzdXBhYmFzZSwgdmVuZG9yLCB1c2VyLmlkKTsKICAgIGNvbnN0IHJlc3VsdCA9IGF3YWl0IHJ1blR1cm4oeyBhZ2VudElkLCBtZXNzYWdlOiBib2R5IH0pOwogICAgY29uc3QgdG9vbE5hbWVzID0gKHJlc3VsdC50b29sX2NhbGxzIHx8IFtdKS5tYXAoKHQpID0+IHQubmFtZSk7CgogICAgY29uc29sZS5sb2coYFthZ2VudDplbmdpbmVdIHJlcGx5OiAiJHtyZXN1bHQucmVwbHkuc2xpY2UoMCwgODApfS4uLiIgICgke3Rvb2xOYW1lcy5sZW5ndGh9IHRvb2wgY2FsbHMpYCk7CgogICAgYXdhaXQgc3VwYWJhc2UuZnJvbSgnY29udmVyc2F0aW9ucycpCiAgICAgIC51cGRhdGUoeyBsYXN0X21lc3NhZ2VfYXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSB9KQogICAgICAuZXEoJ2lkJywgY29udm8uaWQpOwoKICAgIGNvbnN0IHR3aWxpb01zZyA9IGF3YWl0IHNlbmRXaGF0c0FwcChwaG9uZSwgcmVzdWx0LnJlcGx5LCBbXSk7CiAgICBhd2FpdCBzdXBhYmFzZS5mcm9tKCdtZXNzYWdlcycpLmluc2VydCh7CiAgICAgIGNvbnZlcnNhdGlvbl9pZDogY29udm8uaWQsCiAgICAgIGRpcmVjdGlvbjogICAgICAgJ291dGJvdW5kJywKICAgICAgY2hhbm5lbDogICAgICAgICAnd2hhdHNhcHAnLAogICAgICBib2R5OiAgICAgICAgICAgIHJlc3VsdC5yZXBseSwKICAgICAgc2VudF9ieTogICAgICAgICAnYWdlbnQnLAogICAgICB0d2lsaW9fc2lkOiAgICAgIHR3aWxpb01zZyAmJiB0d2lsaW9Nc2cuc2lkID8gdHdpbGlvTXNnLnNpZCA6IG51bGwsCiAgICAgIHRvb2xfY2FsbHM6ICAgICAgdG9vbE5hbWVzLAogICAgfSk7Cg=='}
+dec = lambda k: base64.b64decode(P[k]).decode()
 
-# Exact-line re-points. Myra require -> engine door require, with a visible marker.
-EDITS = [
-    ("router.use('/today',    require('./today'));",
-     "router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip -> engine"),
-    ("router.use('/cabinet',  require('./cabinet'));",
-     "router.use('/cabinet',  require('../vendor-engine/cabinet'));   // Phase 4 flip -> engine"),
-    ("router.use('/binders',  require('./binderWrite'));",
-     "router.use('/binders',  require('../vendor-engine/binderWrite')); // Phase 4 flip -> engine"),
-    ("router.use('/binders',  require('./binderRead'));",
-     "router.use('/binders',  require('../vendor-engine/ledger'));      // Phase 4 flip -> engine (was binderRead)"),
-    ("router.use('/chat',         require('./chat'));",
-     "router.use('/chat',         require('../vendor-engine/chat'));   // Phase 4 flip -> engine (Victor)"),
-]
-for old, new in EDITS:
-    if old not in txt:
-        die("anchor not found (core.js differs from expected): " + old)
-for old, new in EDITS:
-    txt = txt.replace(old, new, 1)
-open(F, "w", encoding="utf-8").write(txt)
-print("+ flipped 5 vendor routes to the engine in core.js:")
-print("    /cabinet /today /binders(write) /binders(ledger) /chat")
-print("  Myra's files stay on disk (unmounted). /vendor-e left mounted as fallback.")
-print("\\nRebuild + restart, then gate the REAL /api/v2/vendor paths (not -e).")
+abp = os.path.join(ROOT,"src","api","middleware","agentBridge.js")
+content = dec("agentBridge_js")
+if os.path.isfile(abp):
+    if open(abp,encoding="utf-8").read() == content: print("= unchanged: agentBridge.js")
+    else: die("agentBridge.js exists and differs -- inspect.")
+else:
+    open(abp,"w",encoding="utf-8").write(content); print("+ wrote: src/api/middleware/agentBridge.js")
+
+rap = os.path.join(ROOT,"src","api","middleware","resolveAgent.js")
+new_ra = dec("resolveAgent_js")
+cur_ra = open(rap,encoding="utf-8").read() if os.path.isfile(rap) else ""
+if "agentBridge" in cur_ra:
+    print("= resolveAgent.js already delegates to agentBridge (idempotent).")
+elif "Phase 3-A" in cur_ra:
+    open(rap,"w",encoding="utf-8").write(new_ra); print("+ refactored: resolveAgent.js -> delegates to agentBridge")
+else:
+    die("resolveAgent.js not the expected Phase 3-A file -- refusing to overwrite; inspect.")
+
+IDX = os.path.join(ROOT,"src","index.js"); txt = open(IDX,encoding="utf-8").read()
+if "resolveAgentForVendor" in txt and "engine/dist/core/loop" in txt:
+    print("= index.js requires already present (idempotent).")
+else:
+    anchor = "const apiRouter    = require('./api/router');"
+    if anchor not in txt: die("apiRouter require anchor not found in index.js -- inspect.")
+    add = (anchor + "\n"
+           "const { resolveAgentForVendor } = require('./api/middleware/agentBridge'); // 5-A\n"
+           "const { runTurn } = require('./engine/dist/core/loop');                     // 5-A")
+    txt = txt.replace(anchor, add, 1)
+    print("+ index.js: added resolveAgentForVendor + runTurn requires")
+
+old_block = dec("old_block"); new_block = dec("new_block")
+if "5-A — engine dispatch" in txt:
+    print("= index.js dispatch already flipped to engine (idempotent).")
+elif old_block in txt:
+    txt = txt.replace(old_block, new_block, 1)
+    print("+ index.js: re-pointed vendor WhatsApp turn runAgenticTurn -> runTurn")
+else:
+    die("the runAgenticTurn dispatch block was not found verbatim in index.js -- inspect.")
+
+open(IDX,"w",encoding="utf-8").write(txt)
+print("\nPhase 5-A applied. Rebuild + restart, then send a WhatsApp text from a test number.")

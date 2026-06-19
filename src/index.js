@@ -23,6 +23,8 @@ const { ensureCoupleRow, captureField } = require('./lib/coupleIdentity');
 const { buildDisambiguationQuestion, interpretDisambiguationReply, vendorDisplayName } = require('./agent/disambiguation');
 const adminRouter  = require('./admin/router');
 const apiRouter    = require('./api/router');
+const { resolveAgentForVendor } = require('./api/middleware/agentBridge'); // 5-A
+const { runTurn } = require('./engine/dist/core/loop');                     // 5-A
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -878,117 +880,31 @@ app.post('/webhook/whatsapp', async (req, res) => {
       sent_by: 'vendor',
     });
 
-    const result = await runAgenticTurn({
-      vendor,
-      user,
-      conversation: convo,
-      inboundMessage: body,
-      supabase,
-      anthropic,
-    });
+    // 5-A — engine dispatch. The same agent the web app talks to, so memory
+    // unifies across web + WhatsApp (one mind, two surfaces). PDF attachments and
+    // the ---DRAFT--- split were Myra delivery features the 78807dd engine cut
+    // lacks; deferred (see WHATSAPP_ENGINE_DEFERRED_FEATURES.md). The public.messages
+    // audit log is kept (3b) for delivery telemetry; engine.messages carries memory.
+    const { agentId } = await resolveAgentForVendor(supabase, vendor, user.id);
+    const result = await runTurn({ agentId, message: body });
+    const toolNames = (result.tool_calls || []).map((t) => t.name);
 
-    console.log(`[agent] reply: "${result.reply.slice(0, 80)}..."  (${result.iterations} iter, ${result.toolCalls.length} tool calls)`);
+    console.log(`[agent:engine] reply: "${result.reply.slice(0, 80)}..."  (${toolNames.length} tool calls)`);
 
     await supabase.from('conversations')
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', convo.id);
 
-    // Two-message delivery when attachments are present.
-    // The PDF travels alone in its own WhatsApp message so the vendor can
-    // long-press → forward to the client without the agent's status text
-    // (which references internal balance, vendor-facing phrasing, etc.)
-    // ending up as a caption on the forwarded attachment. Status text is
-    // a separate text-only follow-up message the vendor sees in their own
-    // chat but never travels with the PDF.
-    const attachments = Array.isArray(result.attachments) ? result.attachments : [];
-    const hasAttachments = attachments.length > 0;
-
-    if (hasAttachments) {
-      // 1) PDF-only message. Empty body, media URL(s) attached.
-      const mediaMsg = await sendWhatsApp(phone, '', attachments);
-      await supabase.from('messages').insert({
-        conversation_id: convo.id,
-        direction:       'outbound',
-        channel:         'whatsapp',
-        body:            '',
-        media_url:       attachments[0],
-        sent_by:         'agent',
-        twilio_sid:      mediaMsg.sid,
-      });
-
-      // 2) Text-only status message. Carries the agent's metadata.
-      const textMsg = await sendWhatsApp(phone, result.reply, []);
-      await supabase.from('messages').insert({
-        conversation_id: convo.id,
-        direction:       'outbound',
-        channel:         'whatsapp',
-        body:            result.reply,
-        sent_by:         'agent',
-        twilio_sid:      textMsg.sid,
-        tool_calls:      result.toolCalls,
-        model:           result.model        ?? null,
-        input_tokens:    result.inputTokens  ?? null,
-        output_tokens:   result.outputTokens ?? null,
-        cost_usd:        result.costUsd      ?? null,
-        cost_inr:        result.costInr      ?? null,
-      });
-    } else {
-      // No attachments. Check for ---DRAFT--- delimiter — if present,
-      // split into two WhatsApp messages so the second (the actual draft
-      // body) can be long-pressed → forwarded by the vendor without edits.
-      const DRAFT_DELIM = '---DRAFT---';
-      if (result.reply.includes(DRAFT_DELIM)) {
-        const parts = result.reply.split(DRAFT_DELIM);
-        const intro = parts[0].trim();
-        const draft = parts.slice(1).join(DRAFT_DELIM).trim();
-
-        if (intro.length > 0) {
-          const introMsg = await sendWhatsApp(phone, intro, []);
-          await supabase.from('messages').insert({
-            conversation_id: convo.id,
-            direction:       'outbound',
-            channel:         'whatsapp',
-            body:            intro,
-            sent_by:         'agent',
-            twilio_sid:      introMsg.sid,
-            tool_calls:      result.toolCalls,
-            model:           result.model        ?? null,
-            input_tokens:    result.inputTokens  ?? null,
-            output_tokens:   result.outputTokens ?? null,
-            cost_usd:        result.costUsd      ?? null,
-            cost_inr:        result.costInr      ?? null,
-          });
-        }
-
-        if (draft.length > 0) {
-          const draftMsg = await sendWhatsApp(phone, draft, []);
-          await supabase.from('messages').insert({
-            conversation_id: convo.id,
-            direction:       'outbound',
-            channel:         'whatsapp',
-            body:            draft,
-            sent_by:         'agent',
-            twilio_sid:      draftMsg.sid,
-          });
-        }
-      } else {
-        const twilioMsg = await sendWhatsApp(phone, result.reply, []);
-        await supabase.from('messages').insert({
-          conversation_id: convo.id,
-          direction:       'outbound',
-          channel:         'whatsapp',
-          body:            result.reply,
-          sent_by:         'agent',
-          twilio_sid:      twilioMsg.sid,
-          tool_calls:      result.toolCalls,
-          model:           result.model        ?? null,
-          input_tokens:    result.inputTokens  ?? null,
-          output_tokens:   result.outputTokens ?? null,
-          cost_usd:        result.costUsd      ?? null,
-          cost_inr:        result.costInr      ?? null,
-        });
-      }
-    }
+    const twilioMsg = await sendWhatsApp(phone, result.reply, []);
+    await supabase.from('messages').insert({
+      conversation_id: convo.id,
+      direction:       'outbound',
+      channel:         'whatsapp',
+      body:            result.reply,
+      sent_by:         'agent',
+      twilio_sid:      twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
+      tool_calls:      toolNames,
+    });
 
     res.status(200).send('<Response/>');
   } catch (err) {
