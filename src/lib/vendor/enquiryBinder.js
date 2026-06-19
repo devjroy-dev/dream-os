@@ -1,57 +1,64 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // src/lib/vendor/enquiryBinder.js
-// The WELD: a bride enquiry becomes a binder on the vendor — the vendor↔bride
-// pipe now flows through the new ledger, not the old typed `leads` table.
+// THE WELD (engine edition, Phase 5-B): a bride enquiry becomes a binder on the
+// vendor — now in the ENGINE cabinet (engine.records), through Donna's hands.
 //
-// Mirrors createLead's contract (dedupe by phone; return { binder, deduped })
-// so couple/enquire.js swaps cleanly and couple_enquiries.vendor_lead_id keeps
-// a valid pointer (now a binder id; the column was never a hard FK to leads).
+// Same contract as before (dedupe by phone; return { ok, binder:{id}, deduped })
+// so couple/enquire.js swaps with no caller change, and couple_enquiries.vendor_lead_id
+// keeps a valid pointer (now an engine.records binder id — never a hard FK).
 //
-// Uses Kriya's binder hands directly — same primitives Myra drives — so an
-// enquiry logged by a bride and an enquiry logged by the vendor land in the
-// SAME shape, in the SAME cabinet. One ledger, two doors in.
+// Mirrors the door-layer transformation: executeKriyaTool(supabase, vendorId, ...)
+// -> executeRecordTool(agentId, ...). The vendor is resolved to their engine agent
+// via the shared bridge (same resolver the web middleware + WhatsApp use), so an
+// enquiry logged by a bride and a binder logged by the vendor land in the SAME
+// cabinet, the SAME shape. The marketplace is just another caller.
 'use strict';
 
-const { executeKriyaTool } = require('../../agent/kriyaPrimitives');
+const { executeRecordTool }      = require('../../engine/dist/core/tools/recordPrimitives');
+const { resolveAgentForVendor }  = require('../../api/middleware/agentBridge');
 
-// Create (or find) a binder for an inbound enquiry on this vendor.
+const isErr = (r) => !!r && typeof r.display === 'string' && r.display.startsWith('ERROR');
+
+// Create (or find) an engine binder for an inbound enquiry on this vendor.
 //   supabase, vendorId, { name, phone, note, date }
 // Returns { ok, binder: { id }, deduped }.
 async function enquiryToBinder(supabase, vendorId, params) {
   const { name, phone, note, date } = params || {};
 
-  // Dedupe by phone — the binder equivalent of createLead's phone check.
+  // Bridge the vendor to their engine agent (one resolver, every surface).
+  const { data: vendor } = await supabase
+    .from('vendors').select('*').eq('id', vendorId).maybeSingle();
+  if (!vendor) return { ok: false, error: 'vendor not found' };
+  const { agentId } = await resolveAgentForVendor(supabase, vendor, vendor.user_id);
+  const eng = supabase.schema('engine');
+
+  // Dedupe by phone — the engine equivalent of the old binder phone check.
   if (phone) {
-    const { data: existing } = await supabase
-      .from('binders')
-      .select('id')
-      .eq('vendor_id', vendorId)
-      .eq('phone', phone)
-      .eq('hidden', false)
-      .limit(1)
-      .maybeSingle();
+    const { data: existing } = await eng
+      .from('records').select('id')
+      .eq('agent_id', agentId).eq('phone', phone).eq('hidden', false)
+      .limit(1).maybeSingle();
     if (existing) {
-      // Append a line to the note so the repeat enquiry is on record, but don't
-      // open a duplicate binder.
-      if (note) {
-        await executeKriyaTool(supabase, vendorId, 'kriya_note_append', { binder_id: existing.id, note });
-      }
+      // Repeat enquiry: append to the note, don't open a duplicate binder.
+      if (note) await executeRecordTool(agentId, 'donna_note_append', { binder_id: existing.id, note });
       return { ok: true, binder: existing, deduped: true };
     }
   }
 
   // Open a fresh binder: client first (opens it), then attach the rest by id.
-  const opened = await executeKriyaTool(supabase, vendorId, 'kriya_client', {
+  // ref_id is the raw uuid (item.id is the prefixed snapshot key — the 3-C lesson).
+  const opened = await executeRecordTool(agentId, 'donna_client', {
     client: name || 'Dream Wedding enquiry',
   });
-  const binderId = opened.binder_id;
-  if (!binderId) return { ok: false, error: opened.display || 'could not open binder' };
+  if (isErr(opened)) return { ok: false, error: opened.display };
+  const binderId = opened.item && opened.item.ref_id;
+  if (!binderId) return { ok: false, error: 'could not open binder' };
 
-  if (phone) await executeKriyaTool(supabase, vendorId, 'kriya_phone', { binder_id: binderId, phone });
-  if (date)  await executeKriyaTool(supabase, vendorId, 'kriya_date',  { binder_id: binderId, date });
-  if (note)  await executeKriyaTool(supabase, vendorId, 'kriya_note',  { binder_id: binderId, note });
+  if (phone) await executeRecordTool(agentId, 'donna_phone', { binder_id: binderId, phone });
+  if (date)  await executeRecordTool(agentId, 'donna_date',  { binder_id: binderId, date });
+  if (note)  await executeRecordTool(agentId, 'donna_note',  { binder_id: binderId, note });
   // Every inbound enquiry enters as a LEAD — never a client until the owner says so.
-  await executeKriyaTool(supabase, vendorId, 'kriya_stage', { binder_id: binderId, stage: 'lead' });
+  await executeRecordTool(agentId, 'donna_stage', { binder_id: binderId, stage: 'lead' });
 
   return { ok: true, binder: { id: binderId }, deduped: false };
 }
