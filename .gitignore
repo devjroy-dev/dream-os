@@ -21,3 +21,6 @@ phase*_pkg/
 *_pkg/
 *_fix/
 *.zip
+
+# Vendor Suit -- compiled engine (CJS)
+src/engine/dist/

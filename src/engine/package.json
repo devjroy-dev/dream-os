@@ -1,0 +1,6 @@
+{
+  "name": "vendor-suit-engine",
+  "private": true,
+  "type": "commonjs",
+  "description": "Vendor Suit — the dreamai engine (Harvey & Donna), as-is from dreamai@78807dd. Compiled to CJS and required by dream-os in-process. Internal names stay Harvey/Donna by convention; do not rename."
+}
