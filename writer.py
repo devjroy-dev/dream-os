@@ -1,45 +1,34 @@
 #!/usr/bin/env python3
-# Vendor Suit -- Phase 3-A: the identity bridge (vendor -> engine agent).
-# Creates 4 files (categoryPreset, resolveAgent middleware, shadow vendor-engine
-# router + whoami proof route) and adds ONE mount line to src/api/router.js.
-# Guarded + idempotent. Pure dream-os-side code; queries the engine schema via the
-# service-role client. No migration.
-#   unzip -o vendor-suit-phase3a-bridge-v1.zip && python3 writer.py
-import os, sys, base64, json
+# Vendor Suit -- Phase 3-C FIX (v3): strip undefined-valued keys before calling the
+# engine. The engine's money-edit/edit tools test `if (field in input)`, which is
+# TRUE for a key whose value is undefined -> parseMoney(undefined) -> ERROR. By
+# dropping undefined keys, the engine sees only the cells the caller actually sent.
+# One guarded edit to runTool() in src/api/vendor-engine/binderWrite.js. Idempotent.
+#   unzip -o vendor-suit-phase3c-moneyfix-v1.zip && python3 writer.py
+import os, sys, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
+F = os.path.join(ROOT, "src", "api", "vendor-engine", "binderWrite.js")
+if not os.path.isfile(F): die("binderWrite.js not found -- run Phase 3-C first.")
+txt = open(F, encoding="utf-8").read()
 
-FILES = {'src/api/vendor/categoryPreset.js': 'J3VzZSBzdHJpY3QnOwovLyBzcmMvYXBpL3ZlbmRvci9jYXRlZ29yeVByZXNldC5qcwovLyBWZW5kb3IgU3VpdCwgUGhhc2UgMyDigJQgbWFwcyBhIHZlbmRvcidzIGNhdGVnb3J5IChwdWJsaWMudmVuZG9ycy5jYXRlZ29yeSkgdG8KLy8gdGhlIGVuZ2luZSBhZ2VudCdzIHByb2Zlc3Npb25fcHJlc2V0LCB3aGljaCByZXNvbHZlRmllbGQoKSB0dXJucyBpbnRvIGEgZG9tYWluCi8vIGhhbmRib29rLiBPbmx5IGNhdGVnb3JpZXMgd2l0aCBhbiBhdXRob3JlZCBDb2RleCBnZXQgYW4gb3ZlcnJpZGU7IGV2ZXJ5IG90aGVyCi8vIGNhdGVnb3J5IHBhc3NlcyB0aHJvdWdoIGFzLWlzIGFuZCByZXNvbHZlcyB0byBOTyBoYW5kYm9vayDigJQgaS5lLiB0aGUgU01NCi8vIGFsd2F5cy1vbiBsZW5zIG9ubHkgKGdlbnVpbmVseSB1c2VmdWwsIG5vdCBkZWdyYWRlZCkuIFdoZW4gdGhlIHBob3RvZ3JhcGhlcgovLyBhbmQgZGVzaWduZXIgQ29kZXhlcyBsYW5kLCBhZGQgb25lIGxpbmUgZWFjaCBoZXJlICsgb25lIFNRTCB1cHNlcnQuIE5vIG90aGVyCi8vIGNoYW5nZS4KY29uc3QgQ0FURUdPUllfUFJFU0VUID0gewogIG1ha2V1cDogICAnbWFrZXVwX2FydGlzdCcsICAgICAvLyBDb2RleCBsb2FkZWQgKFBoYXNlIDIpCiAgcGxhbm5pbmc6ICd3ZWRkaW5nX3BsYW5uZXInLCAgIC8vIENvZGV4IGxvYWRlZCAoUGhhc2UgMikKICAvLyBwaG90b2dyYXBoeTogJ3Bob3RvZ3JhcGhlcicsIC8vIHdoZW4gdGhlIENvZGV4IGxhbmRzCiAgLy8gZGVzaWduZXI6ICAgICdkZXNpZ25lcicsICAgICAvLyB3aGVuIHRoZSBDb2RleCBsYW5kcwp9OwoKLy8gY2F0ZWdvcnkgLT4gcHJlc2V0LiBVbmtub3duL2VtcHR5IGNhdGVnb3J5IHBhc3NlcyB0aHJvdWdoIChTTU0tb25seSkuCmZ1bmN0aW9uIHJlc29sdmVQcmVzZXQoY2F0ZWdvcnkpIHsKICBpZiAoIWNhdGVnb3J5KSByZXR1cm4gbnVsbDsKICBjb25zdCBjID0gU3RyaW5nKGNhdGVnb3J5KS50cmltKCkudG9Mb3dlckNhc2UoKTsKICByZXR1cm4gQ0FURUdPUllfUFJFU0VUW2NdIHx8IGM7Cn0KCm1vZHVsZS5leHBvcnRzID0geyBDQVRFR09SWV9QUkVTRVQsIHJlc29sdmVQcmVzZXQgfTsK', 'src/api/middleware/resolveAgent.js': 'J3VzZSBzdHJpY3QnOwovLyBzcmMvYXBpL21pZGRsZXdhcmUvcmVzb2x2ZUFnZW50LmpzCi8vIFZlbmRvciBTdWl0LCBQaGFzZSAzLUEg4oCUIHRoZSBpZGVudGl0eSBicmlkZ2UuCi8vCi8vIFJlc29sdmVzIHRoZSBhdXRoZW50aWNhdGVkIHZlbmRvciB0byB0aGVpciBlbmdpbmUgYWdlbnQsIHByb3Zpc2lvbmluZyB0aGUKLy8gZW5naW5lLnVzZXJzICsgZW5naW5lLmFnZW50cyByb3dzIG9uIGZpcnN0IHRvdWNoIChsYXp5IGdldC1vci1jcmVhdGUpLiBUaGUKLy8gY2hhaW4gKHNldHRsZWQgYnkgdGhlIGVuZ2luZSBzY2hlbWEsIHdoZXJlIGFnZW50cy51c2VyX2lkIGlzIE5PVCBOVUxMKToKLy8KLy8gICByZXEuYXV0aC51c2VyX2lkIChTdXBhYmFzZSB1aWQpCi8vICAgICAtPiBlbmdpbmUudXNlcnMgICAoYXV0aF91c2VyX2lkID0gdWlkKSAgICAgIFt0aGUgYnJpZGdlOyBjcmVhdGVkIGlmIGFic2VudF0KLy8gICAgIC0+IGVuZ2luZS5hZ2VudHMgICh1c2VyX2lkID0gdXNlcnMuaWQpICAgICAgW3RoZSB2ZW5kb3IncyBWaWN0b3IvRG9ubmFdCi8vCi8vIE11c3QgcnVuIEFGVEVSIHJlcXVpcmVBdXRoICsgcmVzb2x2ZVZlbmRvciAobmVlZHMgcmVxLmF1dGgudXNlcl9pZCArIHJlcS52ZW5kb3IpLgovLyBBdHRhY2hlcyByZXEuYWdlbnRJZCBhbmQgcmVxLmFnZW50UHJlc2V0LiBFbmdpbmUgdGFibGVzIGFyZSByZWFjaGVkIHRocm91Z2ggdGhlCi8vIHNlcnZpY2Utcm9sZSBjbGllbnQgd2l0aCBhbiBleHBsaWNpdCAuc2NoZW1hKCdlbmdpbmUnKSBvdmVycmlkZSAoZ3JhbnRlZCBpbgovLyBQaGFzZSAxKTsgdGhlIGRvb3IgbmV2ZXIgdG91Y2hlcyBhbm90aGVyIHZlbmRvcidzIHJvd3Mg4oCUIHJlc29sdmVWZW5kb3IgaGFzCi8vIGFscmVhZHkgYXNzZXJ0ZWQgSldUIG93bmVyc2hpcC4KY29uc3QgeyByZXNvbHZlUHJlc2V0IH0gPSByZXF1aXJlKCcuLi92ZW5kb3IvY2F0ZWdvcnlQcmVzZXQnKTsKCmZ1bmN0aW9uIHJlc29sdmVBZ2VudCgpIHsKICByZXR1cm4gYXN5bmMgZnVuY3Rpb24gcmVzb2x2ZUFnZW50TWlkZGxld2FyZShyZXEsIHJlcywgbmV4dCkgewogICAgdHJ5IHsKICAgICAgY29uc3QgZW5nID0gcmVxLmFwcC5sb2NhbHMuc3VwYWJhc2Uuc2NoZW1hKCdlbmdpbmUnKTsKICAgICAgY29uc3QgdWlkID0gcmVxLmF1dGggJiYgcmVxLmF1dGgudXNlcl9pZDsKICAgICAgY29uc3QgdiAgID0gcmVxLnZlbmRvcjsKICAgICAgaWYgKCF1aWQgfHwgIXYpIHsKICAgICAgICByZXR1cm4gcmVzLnN0YXR1cyg0MDEpLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnVW5hdXRob3JpemVkLicgfSk7CiAgICAgIH0KCiAgICAgIC8vIDEg4oCUIGVuZ2luZS51c2VycyBieSBhdXRoX3VzZXJfaWQuIFVwc2VydCBpcyBzYWZlIChhdXRoX3VzZXJfaWQgaXMgdW5pcXVlKSwKICAgICAgLy8gICAgIHNvIGNvbmN1cnJlbnQgZmlyc3QtdG91Y2hlcyBjb252ZXJnZSBvbiBvbmUgcm93LgogICAgICBsZXQgeyBkYXRhOiB1LCBlcnJvcjogdWUgfSA9IGF3YWl0IGVuZwogICAgICAgIC5mcm9tKCd1c2VycycpLnNlbGVjdCgnaWQnKS5lcSgnYXV0aF91c2VyX2lkJywgdWlkKS5tYXliZVNpbmdsZSgpOwogICAgICBpZiAodWUpIHRocm93IHVlOwogICAgICBpZiAoIXUpIHsKICAgICAgICBjb25zdCB1cCA9IGF3YWl0IGVuZy5mcm9tKCd1c2VycycpCiAgICAgICAgICAudXBzZXJ0KAogICAgICAgICAgICB7IGF1dGhfdXNlcl9pZDogdWlkLCBwaG9uZTogdi53aGF0c2FwcF9waG9uZSB8fCBudWxsLCBuYW1lOiB2LmJ1c2luZXNzX25hbWUgfHwgbnVsbCB9LAogICAgICAgICAgICB7IG9uQ29uZmxpY3Q6ICdhdXRoX3VzZXJfaWQnIH0sCiAgICAgICAgICApCiAgICAgICAgICAuc2VsZWN0KCdpZCcpLnNpbmdsZSgpOwogICAgICAgIGlmICh1cC5lcnJvcikgdGhyb3cgdXAuZXJyb3I7CiAgICAgICAgdSA9IHVwLmRhdGE7CiAgICAgIH0KCiAgICAgIC8vIDIg4oCUIGVuZ2luZS5hZ2VudHMgYnkgdXNlcl9pZCAob25lIGFnZW50IHBlciB2ZW5kb3IpLiBDcmVhdGUgaWYgYWJzZW50LgogICAgICBsZXQgeyBkYXRhOiBhLCBlcnJvcjogYWUgfSA9IGF3YWl0IGVuZwogICAgICAgIC5mcm9tKCdhZ2VudHMnKS5zZWxlY3QoJ2lkLCBwcm9mZXNzaW9uX3ByZXNldCcpLmVxKCd1c2VyX2lkJywgdS5pZCkubWF5YmVTaW5nbGUoKTsKICAgICAgaWYgKGFlKSB0aHJvdyBhZTsKICAgICAgaWYgKCFhKSB7CiAgICAgICAgY29uc3QgcHJlc2V0ID0gcmVzb2x2ZVByZXNldCh2LmNhdGVnb3J5KTsKICAgICAgICBjb25zdCBhZyA9IGF3YWl0IGVuZy5mcm9tKCdhZ2VudHMnKQogICAgICAgICAgLmluc2VydCh7CiAgICAgICAgICAgIHVzZXJfaWQ6ICAgICAgICAgICB1LmlkLAogICAgICAgICAgICBwcm9mZXNzaW9uX3ByZXNldDogcHJlc2V0LAogICAgICAgICAgICBkaXNwbGF5X25hbWU6ICAgICAgdi5idXNpbmVzc19uYW1lIHx8IG51bGwsCiAgICAgICAgICAgIGtpbmQ6ICAgICAgICAgICAgICAnc29sbycsCiAgICAgICAgICAgIHRpZXI6ICAgICAgICAgICAgICAnZW50cnknLAogICAgICAgICAgICB0aW1lem9uZTogICAgICAgICAgJ0FzaWEvS29sa2F0YScsCiAgICAgICAgICB9KQogICAgICAgICAgLnNlbGVjdCgnaWQsIHByb2Zlc3Npb25fcHJlc2V0Jykuc2luZ2xlKCk7CiAgICAgICAgaWYgKGFnLmVycm9yKSB0aHJvdyBhZy5lcnJvcjsKICAgICAgICBhID0gYWcuZGF0YTsKICAgICAgfQoKICAgICAgcmVxLmFnZW50SWQgICAgID0gYS5pZDsKICAgICAgcmVxLmFnZW50UHJlc2V0ID0gYS5wcm9mZXNzaW9uX3ByZXNldDsKICAgICAgcmV0dXJuIG5leHQoKTsKICAgIH0gY2F0Y2ggKGUpIHsKICAgICAgY29uc29sZS5lcnJvcignW3Jlc29sdmVBZ2VudF0nLCAoZSAmJiBlLm1lc3NhZ2UpIHx8IGUpOwogICAgICByZXR1cm4gcmVzLnN0YXR1cyg1MDApLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnQWdlbnQgcmVzb2x1dGlvbiBmYWlsZWQuJyB9KTsKICAgIH0KICB9Owp9Cgptb2R1bGUuZXhwb3J0cyA9IHJlc29sdmVBZ2VudDsK', 'src/api/vendor-engine/whoami.js': 'J3VzZSBzdHJpY3QnOwovLyBzcmMvYXBpL3ZlbmRvci1lbmdpbmUvd2hvYW1pLmpzCi8vIFZlbmRvciBTdWl0LCBQaGFzZSAzLUEgcHJvb2Ygcm91dGUuCi8vICAgR0VUIC9hcGkvdjIvdmVuZG9yLWUvd2hvYW1pLzp2ZW5kb3JJZAovLyBDb25maXJtcyB0aGUgdmVuZG9yIEpXVCByZXNvbHZlcyB0byBhIHN0YWJsZSBlbmdpbmUgYWdlbnQgd2l0aCB0aGUgcmlnaHQKLy8gcHJlc2V0LiBQcm92aXNpb25zIG9uIGZpcnN0IGNhbGw7IHJldHVybnMgdGhlIFNBTUUgYWdlbnRJZCBvbiBldmVyeSBjYWxsCi8vIHRoZXJlYWZ0ZXIuIFNoYWRvdy1tb3VudGVkIChwYXJhbGxlbCB0byBNeXJhKTsgdGhlIHB3YSBuZXZlciBjYWxscyBpdC4KY29uc3QgZXhwcmVzcyAgICAgICA9IHJlcXVpcmUoJ2V4cHJlc3MnKTsKY29uc3Qgcm91dGVyICAgICAgICA9IGV4cHJlc3MuUm91dGVyKCk7CmNvbnN0IHJlcXVpcmVBdXRoICAgPSByZXF1aXJlKCcuLi9taWRkbGV3YXJlL3JlcXVpcmVBdXRoJyk7CmNvbnN0IHJlc29sdmVWZW5kb3IgPSByZXF1aXJlKCcuLi9taWRkbGV3YXJlL3Jlc29sdmVWZW5kb3InKTsKY29uc3QgcmVzb2x2ZUFnZW50ICA9IHJlcXVpcmUoJy4uL21pZGRsZXdhcmUvcmVzb2x2ZUFnZW50Jyk7Cgpyb3V0ZXIuZ2V0KCcvd2hvYW1pLzp2ZW5kb3JJZCcsCiAgcmVxdWlyZUF1dGgsCiAgcmVzb2x2ZVZlbmRvcih7IHBhcmFtTmFtZTogJ3ZlbmRvcklkJyB9KSwKICByZXNvbHZlQWdlbnQoKSwKICAocmVxLCByZXMpID0+IHsKICAgIHJlcy5qc29uKHsKICAgICAgb2s6ICAgICAgIHRydWUsCiAgICAgIHZlbmRvcklkOiByZXEudmVuZG9yLmlkLAogICAgICBjYXRlZ29yeTogcmVxLnZlbmRvci5jYXRlZ29yeSB8fCBudWxsLAogICAgICBhZ2VudElkOiAgcmVxLmFnZW50SWQsCiAgICAgIHByZXNldDogICByZXEuYWdlbnRQcmVzZXQgfHwgbnVsbCwKICAgIH0pOwogIH0pOwoKbW9kdWxlLmV4cG9ydHMgPSByb3V0ZXI7Cg==', 'src/api/vendor-engine/index.js': 'J3VzZSBzdHJpY3QnOwovLyBzcmMvYXBpL3ZlbmRvci1lbmdpbmUvaW5kZXguanMKLy8gVmVuZG9yIFN1aXQsIFBoYXNlIDMg4oCUIHRoZSBlbmdpbmUtYmFja2VkIHZlbmRvciBkb29ycywgbW91bnRlZCBpbiBQQVJBTExFTCB0bwovLyB0aGUgbGl2ZSBNeXJhIHJvdXRlcyB1bmRlciAvYXBpL3YyL3ZlbmRvci1lLiBQaGFzZSA0IGZsaXBzIHRoZSByZWFsCi8vIC9hcGkvdjIvdmVuZG9yIHBhdGhzIG9udG8gdGhlc2UgaGFuZGxlcnM7IHVudGlsIHRoZW4gdGhlIHB3YSBpcyB1bnRvdWNoZWQgYW5kCi8vIE15cmEga2VlcHMgc2VydmluZy4gUGllY2VzIGFyZSBhZGRlZCBoZXJlIGFzIHRoZXkgYXJlIGJ1aWx0ICgzLUEgd2hvYW1pIGZpcnN0KS4KY29uc3QgZXhwcmVzcyA9IHJlcXVpcmUoJ2V4cHJlc3MnKTsKY29uc3Qgcm91dGVyICA9IGV4cHJlc3MuUm91dGVyKCk7Cgpyb3V0ZXIudXNlKCcvJywgcmVxdWlyZSgnLi93aG9hbWknKSk7ICAgLy8gMy1BOiB0aGUgaWRlbnRpdHktYnJpZGdlIHByb29mCgptb2R1bGUuZXhwb3J0cyA9IHJvdXRlcjsK'}
+MARK = "Drop undefined-valued keys"
+if MARK in txt:
+    print("= already fixed (idempotent)."); sys.exit(0)
 
-# 1 -- write the new files (skip if identical already there; never clobber a differing file).
-wrote = 0
-for rel, b64 in FILES.items():
-    content = base64.b64decode(b64)
-    path = os.path.join(ROOT, rel)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    if os.path.isfile(path):
-        if open(path,"rb").read() == content:
-            print("= unchanged: " + rel); continue
-        die("file exists and differs: " + rel + " (refusing to clobber; inspect manually).")
-    open(path,"wb").write(content); wrote += 1; print("+ wrote: " + rel)
-
-# 2 -- mount the shadow router in src/api/router.js (idempotent, anchored).
-R = os.path.join(ROOT, "src", "api", "router.js")
-if not os.path.isfile(R): die("src/api/router.js not found.")
-txt = open(R, encoding="utf-8").read()
-if "/vendor-e" in txt:
-    print("= /vendor-e mount already present (idempotent).")
-else:
-    ANCHOR = "router.use('/vendor',             require('./vendor/core'));"
-    if ANCHOR not in txt:
-        die("anchor for the /vendor mount not found in router.js -- inspect manually.")
-    ADD = ANCHOR + "\n" + "router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)"
-    txt = txt.replace(ANCHOR, ADD, 1)
-    open(R, "w", encoding="utf-8").write(txt)
-    print("+ mounted /vendor-e (shadow) in router.js")
-
-print("\nPhase 3-A applied (%d new file(s)). Smoke it:" % wrote)
-print("  node -e \"require('./src/api/vendor-engine')\"   # router loads clean")
-print("  # then live: GET /api/v2/vendor-e/whoami/<your vendorId> with your vendor JWT")
+ANCHOR = ("async function runTool(req, res, toolName, input) {\n"
+          "  const eng     = req.app.locals.supabase.schema('engine');")
+REPLACE = ("async function runTool(req, res, toolName, input) {\n"
+           "  // Drop undefined-valued keys so the engine's `field in input` checks see only\n"
+           "  // the cells the caller actually sent (money-edit/edit send a partial set).\n"
+           "  const clean = {}; for (const k in input) if (input[k] !== undefined) clean[k] = input[k];\n"
+           "  input = clean;\n"
+           "  const eng     = req.app.locals.supabase.schema('engine');")
+if ANCHOR not in txt:
+    die("runTool anchor not found (binderWrite.js differs) -- inspect.")
+txt = txt.replace(ANCHOR, REPLACE, 1)
+open(F, "w", encoding="utf-8").write(txt)
+print("+ fixed runTool: strips undefined keys before the engine call")
+print("\\nRestart the server (dream-os-side JS, no rebuild).")

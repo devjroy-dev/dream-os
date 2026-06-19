@@ -1,0 +1,108 @@
+'use strict';
+// src/api/vendor-engine/cabinet.js
+// Vendor Suit, Phase 3-B — engine-backed cabinet read.
+//   GET /api/v2/vendor-e/cabinet/:vendorId
+// A faithful mirror of src/api/vendor/cabinet.js, with ONE source swap: the
+// binder slices read engine.records (scoped to req.agentId) instead of
+// public.binders (vendor_id). The calendar slices still read public.events
+// (the wedding calendar is dream-os's own table; engine.events is an audit log,
+// not a calendar). Vendor metadata comes from req.vendor + public.users.
+// Slicing, shape, and counts are identical to the live handler, so Phase 4 can
+// flip the path without the pwa noticing.
+const express       = require('express');
+const router        = express.Router();
+const requireAuth   = require('../middleware/requireAuth');
+const resolveVendor = require('../middleware/resolveVendor');
+const resolveAgent  = require('../middleware/resolveAgent');
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+function istTodayISO() {
+  return new Date(Date.now() + IST_OFFSET_MS).toISOString().split('T')[0];
+}
+
+// engine.records — same cells as the public.binders BINDER_SELECT.
+const RECORD_SELECT =
+  'id, client, amount, amount_received, amount_pending, payment_status, ' +
+  'direction, date, stage, note, followup_on, followup_note, repeat_every, ' +
+  'doc_ref, phone, reason_for_action, created_at, updated_at';
+const EVENT_SELECT = 'id, title, kind, event_date, event_time, state, notes';
+
+router.get('/:vendorId',
+  requireAuth, resolveVendor({ paramName: 'vendorId' }), resolveAgent(),
+  async (req, res) => {
+    const pub     = req.app.locals.supabase;            // public schema
+    const eng     = req.app.locals.supabase.schema('engine');
+    const vendor  = req.vendor;
+    const agentId = req.agentId;
+    const today   = istTodayISO();
+
+    const [
+      { data: user,    error: userErr },
+      { data: binders, error: bindersErr },
+      { data: events,  error: eventsErr },
+    ] = await Promise.all([
+      pub.from('users').select('name').eq('id', vendor.user_id).maybeSingle(),
+      eng.from('records')
+        .select(RECORD_SELECT)
+        .eq('agent_id', agentId)
+        .eq('hidden', false)
+        .order('created_at', { ascending: false }),
+      pub.from('events')
+        .select(EVENT_SELECT)
+        .eq('vendor_id', vendor.id)
+        .order('event_date', { ascending: true }),
+    ]);
+
+    if (userErr || bindersErr || eventsErr) {
+      const which = userErr ? 'users' : bindersErr ? 'records' : 'events';
+      const msg = (userErr || bindersErr || eventsErr).message;
+      console.error(`[GET /vendor-e/cabinet] ${which} read failed:`, msg);
+      return res.status(500).json({ ok: false, error: 'Lookup failed.', which, detail: msg });
+    }
+
+    const allBinders = binders || [];
+    const allEvents  = events  || [];
+
+    // Binder slices — identical to the live cabinet handler.
+    const CLIENT_STAGE_WORDS = ['client', 'booked', 'confirmed', 'signed', 'advance', 'paid'];
+    const isClientStage = (b) => {
+      const s = (b.stage || '').toLowerCase();
+      return CLIENT_STAGE_WORDS.some(w => s.includes(w));
+    };
+    const clients = allBinders.filter(isClientStage);
+    const leads   = allBinders.filter(b => !isClientStage(b) && (b.direction || '').toLowerCase() !== 'out');
+    const paid    = allBinders.filter(b => Number(b.amount_received) > 0);
+    const owed    = allBinders.filter(b => Number(b.amount_pending)  > 0);
+
+    // Calendar slices — public.events, unchanged.
+    const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
+    const booked = allEvents.filter(e =>
+      e.event_date && e.event_date >= today && BOOKED_KINDS.includes(e.kind));
+
+    const REMINDER_KINDS = ['reminder', 'task'];
+    const reminderEvents = allEvents
+      .filter(e => REMINDER_KINDS.includes(e.kind))
+      .map(e => ({ source: 'event', ...e }));
+    const reminderBinders = allBinders
+      .filter(b => b.followup_on)
+      .map(b => ({ source: 'binder', id: b.id, client: b.client,
+                   followup_on: b.followup_on, followup_note: b.followup_note, binder: b }));
+    const reminders = [...reminderEvents, ...reminderBinders];
+
+    return res.json({
+      ok: true,
+      vendor: {
+        name:     user?.name || null,
+        category: vendor.category || null,
+        city:     vendor.city || null,
+        handle:   vendor.routing_handle || null,
+      },
+      clients, leads, paid, owed, booked, reminders,
+      counts: {
+        clients: clients.length, leads: leads.length, paid: paid.length,
+        owed: owed.length, booked: booked.length, reminders: reminders.length,
+      },
+    });
+  });
+
+module.exports = router;

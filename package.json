@@ -8,6 +8,7 @@
     "start:bride": "node src/brideIndex.js",
     "dev": "node --watch src/index.js",
     "dev:bride": "node --watch src/brideIndex.js",
+    "build": "npm run build:engine",
     "build:engine": "tsc -p src/engine/tsconfig.json",
     "typecheck:engine": "tsc -p src/engine/tsconfig.json --noEmit"
   },
