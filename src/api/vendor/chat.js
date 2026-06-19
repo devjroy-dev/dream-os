@@ -74,9 +74,11 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   // vendor's reply so the engine sees full edit context in DB history.
   const aiPrimer = typeof body.ai_primer === 'string' ? body.ai_primer.trim() : '';
 
-  // Mode selector (per conversation, sent with the turn; default = manager). Manager
-  // mode runs the single-agent loop; every other mode keeps the two-agent path.
-  const mode = (typeof body.mode === 'string' && body.mode.trim()) ? body.mode.trim() : 'manager';
+  // Mode selector (per conversation, sent with the turn). DEFAULT = the two-agent path
+  // (Myra reasons + relays, Kriya files) — the reasoning checkpoint that keeps figures
+  // and judgment honest. Single-agent manager is PARKED: it runs only on an explicit
+  // mode:'manager', never as the everyday face.
+  const mode = (typeof body.mode === 'string' && body.mode.trim()) ? body.mode.trim() : 'two_agent';
   const runTurn = (mode === 'manager') ? runManagerTurn : runMyraTurn;
 
   if (body.vendor_id && body.vendor_id !== vendor.id) {
