@@ -1,30 +1,45 @@
 #!/usr/bin/env python3
-# Vendor Suit -- Phase 5-B: marketplace enquiry weld -> engine cabinet.
-# Re-points lib/vendor/enquiryBinder.js from Kriya/public.binders to Donna/
-# engine.records. The web marketplace enquiry (couple/enquire.js) now lands a
-# bride as a LEAD in the vendor's engine cabinet. Signature unchanged -> caller
-# swaps clean. Guarded overwrite (only if the current file is the Kriya version).
-#   unzip -o vendor-suit-phase5b-enquiry-v1.zip && python3 writer.py
+# Vendor Suit -- Phase 5-B-2: WhatsApp TDW enquiry -> engine cabinet.
+# The bride's TDW- WhatsApp enquiry currently writes public.leads directly. This
+# welds it to the engine cabinet via enquiryToBinder (the same engine weld 5-B
+# delivered), so BOTH enquiry channels (web Discover + WhatsApp TDW) land as leads
+# in engine.records. The couple agent (bride-facing) is untouched. Guarded + idempotent.
+# Requires 5-A (engine requires) AND 5-B (engine enquiryBinder.js) already applied.
+#   unzip -o vendor-suit-phase5b2-whatsapp-enquiry-v1.zip && python3 writer.py
 import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
-if not os.path.isfile(os.path.join(ROOT,"src","engine","tsconfig.json")):
-    die("src/engine not found -- run Phase 0 first (the weld needs the compiled engine).")
-F = os.path.join(ROOT, "src", "lib", "vendor", "enquiryBinder.js")
-if not os.path.isfile(F): die("enquiryBinder.js not found -- unexpected.")
+EB = os.path.join(ROOT,"src","lib","vendor","enquiryBinder.js")
+if not os.path.isfile(EB) or "executeRecordTool" not in open(EB,encoding="utf-8").read():
+    die("enquiryBinder.js is not the engine version -- apply Phase 5-B first.")
 
-P = {'enquiryBinder_js': 'Ly8g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACi8vIHNyYy9saWIvdmVuZG9yL2VucXVpcnlCaW5kZXIuanMKLy8gVEhFIFdFTEQgKGVuZ2luZSBlZGl0aW9uLCBQaGFzZSA1LUIpOiBhIGJyaWRlIGVucXVpcnkgYmVjb21lcyBhIGJpbmRlciBvbiB0aGUKLy8gdmVuZG9yIOKAlCBub3cgaW4gdGhlIEVOR0lORSBjYWJpbmV0IChlbmdpbmUucmVjb3JkcyksIHRocm91Z2ggRG9ubmEncyBoYW5kcy4KLy8KLy8gU2FtZSBjb250cmFjdCBhcyBiZWZvcmUgKGRlZHVwZSBieSBwaG9uZTsgcmV0dXJuIHsgb2ssIGJpbmRlcjp7aWR9LCBkZWR1cGVkIH0pCi8vIHNvIGNvdXBsZS9lbnF1aXJlLmpzIHN3YXBzIHdpdGggbm8gY2FsbGVyIGNoYW5nZSwgYW5kIGNvdXBsZV9lbnF1aXJpZXMudmVuZG9yX2xlYWRfaWQKLy8ga2VlcHMgYSB2YWxpZCBwb2ludGVyIChub3cgYW4gZW5naW5lLnJlY29yZHMgYmluZGVyIGlkIOKAlCBuZXZlciBhIGhhcmQgRkspLgovLwovLyBNaXJyb3JzIHRoZSBkb29yLWxheWVyIHRyYW5zZm9ybWF0aW9uOiBleGVjdXRlS3JpeWFUb29sKHN1cGFiYXNlLCB2ZW5kb3JJZCwgLi4uKQovLyAtPiBleGVjdXRlUmVjb3JkVG9vbChhZ2VudElkLCAuLi4pLiBUaGUgdmVuZG9yIGlzIHJlc29sdmVkIHRvIHRoZWlyIGVuZ2luZSBhZ2VudAovLyB2aWEgdGhlIHNoYXJlZCBicmlkZ2UgKHNhbWUgcmVzb2x2ZXIgdGhlIHdlYiBtaWRkbGV3YXJlICsgV2hhdHNBcHAgdXNlKSwgc28gYW4KLy8gZW5xdWlyeSBsb2dnZWQgYnkgYSBicmlkZSBhbmQgYSBiaW5kZXIgbG9nZ2VkIGJ5IHRoZSB2ZW5kb3IgbGFuZCBpbiB0aGUgU0FNRQovLyBjYWJpbmV0LCB0aGUgU0FNRSBzaGFwZS4gVGhlIG1hcmtldHBsYWNlIGlzIGp1c3QgYW5vdGhlciBjYWxsZXIuCid1c2Ugc3RyaWN0JzsKCmNvbnN0IHsgZXhlY3V0ZVJlY29yZFRvb2wgfSAgICAgID0gcmVxdWlyZSgnLi4vLi4vZW5naW5lL2Rpc3QvY29yZS90b29scy9yZWNvcmRQcmltaXRpdmVzJyk7CmNvbnN0IHsgcmVzb2x2ZUFnZW50Rm9yVmVuZG9yIH0gID0gcmVxdWlyZSgnLi4vLi4vYXBpL21pZGRsZXdhcmUvYWdlbnRCcmlkZ2UnKTsKCmNvbnN0IGlzRXJyID0gKHIpID0+ICEhciAmJiB0eXBlb2Ygci5kaXNwbGF5ID09PSAnc3RyaW5nJyAmJiByLmRpc3BsYXkuc3RhcnRzV2l0aCgnRVJST1InKTsKCi8vIENyZWF0ZSAob3IgZmluZCkgYW4gZW5naW5lIGJpbmRlciBmb3IgYW4gaW5ib3VuZCBlbnF1aXJ5IG9uIHRoaXMgdmVuZG9yLgovLyAgIHN1cGFiYXNlLCB2ZW5kb3JJZCwgeyBuYW1lLCBwaG9uZSwgbm90ZSwgZGF0ZSB9Ci8vIFJldHVybnMgeyBvaywgYmluZGVyOiB7IGlkIH0sIGRlZHVwZWQgfS4KYXN5bmMgZnVuY3Rpb24gZW5xdWlyeVRvQmluZGVyKHN1cGFiYXNlLCB2ZW5kb3JJZCwgcGFyYW1zKSB7CiAgY29uc3QgeyBuYW1lLCBwaG9uZSwgbm90ZSwgZGF0ZSB9ID0gcGFyYW1zIHx8IHt9OwoKICAvLyBCcmlkZ2UgdGhlIHZlbmRvciB0byB0aGVpciBlbmdpbmUgYWdlbnQgKG9uZSByZXNvbHZlciwgZXZlcnkgc3VyZmFjZSkuCiAgY29uc3QgeyBkYXRhOiB2ZW5kb3IgfSA9IGF3YWl0IHN1cGFiYXNlCiAgICAuZnJvbSgndmVuZG9ycycpLnNlbGVjdCgnKicpLmVxKCdpZCcsIHZlbmRvcklkKS5tYXliZVNpbmdsZSgpOwogIGlmICghdmVuZG9yKSByZXR1cm4geyBvazogZmFsc2UsIGVycm9yOiAndmVuZG9yIG5vdCBmb3VuZCcgfTsKICBjb25zdCB7IGFnZW50SWQgfSA9IGF3YWl0IHJlc29sdmVBZ2VudEZvclZlbmRvcihzdXBhYmFzZSwgdmVuZG9yLCB2ZW5kb3IudXNlcl9pZCk7CiAgY29uc3QgZW5nID0gc3VwYWJhc2Uuc2NoZW1hKCdlbmdpbmUnKTsKCiAgLy8gRGVkdXBlIGJ5IHBob25lIOKAlCB0aGUgZW5naW5lIGVxdWl2YWxlbnQgb2YgdGhlIG9sZCBiaW5kZXIgcGhvbmUgY2hlY2suCiAgaWYgKHBob25lKSB7CiAgICBjb25zdCB7IGRhdGE6IGV4aXN0aW5nIH0gPSBhd2FpdCBlbmcKICAgICAgLmZyb20oJ3JlY29yZHMnKS5zZWxlY3QoJ2lkJykKICAgICAgLmVxKCdhZ2VudF9pZCcsIGFnZW50SWQpLmVxKCdwaG9uZScsIHBob25lKS5lcSgnaGlkZGVuJywgZmFsc2UpCiAgICAgIC5saW1pdCgxKS5tYXliZVNpbmdsZSgpOwogICAgaWYgKGV4aXN0aW5nKSB7CiAgICAgIC8vIFJlcGVhdCBlbnF1aXJ5OiBhcHBlbmQgdG8gdGhlIG5vdGUsIGRvbid0IG9wZW4gYSBkdXBsaWNhdGUgYmluZGVyLgogICAgICBpZiAobm90ZSkgYXdhaXQgZXhlY3V0ZVJlY29yZFRvb2woYWdlbnRJZCwgJ2Rvbm5hX25vdGVfYXBwZW5kJywgeyBiaW5kZXJfaWQ6IGV4aXN0aW5nLmlkLCBub3RlIH0pOwogICAgICByZXR1cm4geyBvazogdHJ1ZSwgYmluZGVyOiBleGlzdGluZywgZGVkdXBlZDogdHJ1ZSB9OwogICAgfQogIH0KCiAgLy8gT3BlbiBhIGZyZXNoIGJpbmRlcjogY2xpZW50IGZpcnN0IChvcGVucyBpdCksIHRoZW4gYXR0YWNoIHRoZSByZXN0IGJ5IGlkLgogIC8vIHJlZl9pZCBpcyB0aGUgcmF3IHV1aWQgKGl0ZW0uaWQgaXMgdGhlIHByZWZpeGVkIHNuYXBzaG90IGtleSDigJQgdGhlIDMtQyBsZXNzb24pLgogIGNvbnN0IG9wZW5lZCA9IGF3YWl0IGV4ZWN1dGVSZWNvcmRUb29sKGFnZW50SWQsICdkb25uYV9jbGllbnQnLCB7CiAgICBjbGllbnQ6IG5hbWUgfHwgJ0RyZWFtIFdlZGRpbmcgZW5xdWlyeScsCiAgfSk7CiAgaWYgKGlzRXJyKG9wZW5lZCkpIHJldHVybiB7IG9rOiBmYWxzZSwgZXJyb3I6IG9wZW5lZC5kaXNwbGF5IH07CiAgY29uc3QgYmluZGVySWQgPSBvcGVuZWQuaXRlbSAmJiBvcGVuZWQuaXRlbS5yZWZfaWQ7CiAgaWYgKCFiaW5kZXJJZCkgcmV0dXJuIHsgb2s6IGZhbHNlLCBlcnJvcjogJ2NvdWxkIG5vdCBvcGVuIGJpbmRlcicgfTsKCiAgaWYgKHBob25lKSBhd2FpdCBleGVjdXRlUmVjb3JkVG9vbChhZ2VudElkLCAnZG9ubmFfcGhvbmUnLCB7IGJpbmRlcl9pZDogYmluZGVySWQsIHBob25lIH0pOwogIGlmIChkYXRlKSAgYXdhaXQgZXhlY3V0ZVJlY29yZFRvb2woYWdlbnRJZCwgJ2Rvbm5hX2RhdGUnLCAgeyBiaW5kZXJfaWQ6IGJpbmRlcklkLCBkYXRlIH0pOwogIGlmIChub3RlKSAgYXdhaXQgZXhlY3V0ZVJlY29yZFRvb2woYWdlbnRJZCwgJ2Rvbm5hX25vdGUnLCAgeyBiaW5kZXJfaWQ6IGJpbmRlcklkLCBub3RlIH0pOwogIC8vIEV2ZXJ5IGluYm91bmQgZW5xdWlyeSBlbnRlcnMgYXMgYSBMRUFEIOKAlCBuZXZlciBhIGNsaWVudCB1bnRpbCB0aGUgb3duZXIgc2F5cyBzby4KICBhd2FpdCBleGVjdXRlUmVjb3JkVG9vbChhZ2VudElkLCAnZG9ubmFfc3RhZ2UnLCB7IGJpbmRlcl9pZDogYmluZGVySWQsIHN0YWdlOiAnbGVhZCcgfSk7CgogIHJldHVybiB7IG9rOiB0cnVlLCBiaW5kZXI6IHsgaWQ6IGJpbmRlcklkIH0sIGRlZHVwZWQ6IGZhbHNlIH07Cn0KCm1vZHVsZS5leHBvcnRzID0geyBlbnF1aXJ5VG9CaW5kZXIgfTsK'}
-new_content = base64.b64decode(P["enquiryBinder_js"]).decode()
-cur = open(F, encoding="utf-8").read()
+P = {'old_A': 'ICAgICAgICAvLyBDcmVhdGUgaW5pdGlhbCBsZWFkIChkZWR1cGVkIG9uIHZlbmRvcl9pZCArIHBob25lKQogICAgICAgIGNvbnN0IHsgZGF0YTogZXhpc3RpbmdMZWFkIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgICAgICAgLmZyb20oJ2xlYWRzJykKICAgICAgICAgIC5zZWxlY3QoJ2lkJykKICAgICAgICAgIC5lcSgndmVuZG9yX2lkJywgbWF0Y2hlZEJ5VGR3LmlkKQogICAgICAgICAgLmVxKCdwaG9uZScsIHBob25lKQogICAgICAgICAgLm1heWJlU2luZ2xlKCk7CgogICAgICAgIGlmICghZXhpc3RpbmdMZWFkKSB7CiAgICAgICAgICBhd2FpdCBzdXBhYmFzZS5mcm9tKCdsZWFkcycpLmluc2VydCh7CiAgICAgICAgICAgIHZlbmRvcl9pZDogICBtYXRjaGVkQnlUZHcuaWQsCiAgICAgICAgICAgIHBob25lLAogICAgICAgICAgICBzb3VyY2U6ICAgICAgJ3doYXRzYXBwJywKICAgICAgICAgICAgcmF3X21lc3NhZ2U6IGJvZHksCiAgICAgICAgICAgIHN0YXRlOiAgICAgICAnbmV3JywKICAgICAgICAgIH0pOwogICAgICAgIH0K', 'new_A': 'ICAgICAgICAvLyA1LUItMiDigJQgbGFuZCB0aGUgZW5xdWlyeSBpbiB0aGUgZW5naW5lIGNhYmluZXQgKHdhcyBhIHB1YmxpYy5sZWFkcyBpbnNlcnQpLgogICAgICAgIC8vIGVucXVpcnlUb0JpbmRlciBkZWR1cHMgYnkgcGhvbmUgYW5kIG9wZW5zIHRoZSBiaW5kZXIgYXMgYSBsZWFkOyB0aGUKICAgICAgICAvLyBwb3N0LWFnZW50IGNhbGwgYmVsb3cgZW5yaWNoZXMgaXRzIG5vdGUgd2l0aCB0aGUgdmVuZG9yIHN1bW1hcnkuIFRoZQogICAgICAgIC8vIG1hcmtldHBsYWNlIGlzIGp1c3QgYW5vdGhlciBjYWxsZXIuCiAgICAgICAgYXdhaXQgZW5xdWlyeVRvQmluZGVyKHN1cGFiYXNlLCBtYXRjaGVkQnlUZHcuaWQsIHsKICAgICAgICAgIHBob25lLAogICAgICAgICAgbm90ZTogYEVucXVpcnkgdmlhIHlvdXIgVERXIGxpbmsuIEZpcnN0IG1lc3NhZ2U6ICR7Ym9keX1gLAogICAgICAgIH0pOwo=', 'old_B': 'ICAgICAgICAvLyBEZW5vcm1hbGlzZSB2ZW5kb3Jfc3VtbWFyeSBvbnRvIHRoZSBsZWFkIHJvdyBmb3IgZmFzdCByZWFkcyBpbiBkZXRhaWwgdmlldwogICAgICAgIGlmIChyZXN1bHQudmVuZG9yTm90aWZpY2F0aW9uICYmICFleGlzdGluZ0xlYWQpIHsKICAgICAgICAgIGF3YWl0IHN1cGFiYXNlLmZyb20oJ2xlYWRzJykKICAgICAgICAgICAgLnVwZGF0ZSh7IHZlbmRvcl9zdW1tYXJ5OiByZXN1bHQudmVuZG9yTm90aWZpY2F0aW9uIH0pCiAgICAgICAgICAgIC5lcSgndmVuZG9yX2lkJywgbWF0Y2hlZEJ5VGR3LmlkKQogICAgICAgICAgICAuZXEoJ3Bob25lJywgcGhvbmUpCiAgICAgICAgICAgIC5pcygnZGVsZXRlZF9hdCcsIG51bGwpOwogICAgICAgIH0K', 'new_B': 'ICAgICAgICAvLyBFbnJpY2ggdGhlIGVuZ2luZSBiaW5kZXIncyBub3RlIHdpdGggdGhlIHZlbmRvciBzdW1tYXJ5IChkZWR1cCAtPiBub3RlX2FwcGVuZCkuCiAgICAgICAgaWYgKHJlc3VsdC52ZW5kb3JOb3RpZmljYXRpb24pIHsKICAgICAgICAgIGF3YWl0IGVucXVpcnlUb0JpbmRlcihzdXBhYmFzZSwgbWF0Y2hlZEJ5VGR3LmlkLCB7CiAgICAgICAgICAgIHBob25lLAogICAgICAgICAgICBub3RlOiByZXN1bHQudmVuZG9yTm90aWZpY2F0aW9uLAogICAgICAgICAgfSk7CiAgICAgICAgfQo='}
+dec = lambda k: base64.b64decode(P[k]).decode()
+IDX = os.path.join(ROOT,"src","index.js"); txt = open(IDX,encoding="utf-8").read()
 
-if "engine edition" in cur or "executeRecordTool" in cur:
-    print("= enquiryBinder.js already on the engine (idempotent)."); sys.exit(0)
-if "executeKriyaTool" not in cur:
-    die("enquiryBinder.js is not the expected Kriya version -- refusing to overwrite; inspect.")
+if "5-B-2 — land the enquiry" in txt:
+    print("= index.js TDW enquiry already welded to the engine (idempotent)."); sys.exit(0)
 
-open(F, "w", encoding="utf-8").write(new_content)
-print("+ re-pointed lib/vendor/enquiryBinder.js: Kriya/public.binders -> Donna/engine.records")
-print("  Web marketplace enquiries (couple/enquire.js) now land in the engine cabinet as leads.")
-print("\nRebuild + restart. Gate: a bride enquiry via the Discover feed -> vendor's engine cabinet.")
+# 1 — require enquiryToBinder (idempotent)
+if "lib/vendor/enquiryBinder" not in txt:
+    anchor = "const { sendWhatsApp } = require('./lib/whatsapp');"
+    if anchor not in txt: die("sendWhatsApp require anchor not found -- inspect.")
+    txt = txt.replace(anchor, anchor + "\nconst { enquiryToBinder } = require('./lib/vendor/enquiryBinder'); // 5-B-2", 1)
+    print("+ index.js: added enquiryToBinder require")
+else:
+    print("= enquiryToBinder already required.")
+
+# 2 — swap the bare lead insert (block A)
+old_A, new_A = dec("old_A"), dec("new_A")
+if old_A not in txt: die("the public.leads insert block (A) was not found verbatim -- inspect.")
+txt = txt.replace(old_A, new_A, 1); print("+ index.js: TDW lead insert -> enquiryToBinder (engine)")
+
+# 3 — swap the vendor_summary denormalisation (block B)
+old_B, new_B = dec("old_B"), dec("new_B")
+if old_B not in txt: die("the vendor_summary denorm block (B) was not found verbatim -- inspect.")
+txt = txt.replace(old_B, new_B, 1); print("+ index.js: vendor_summary denorm -> note enrich (note_append via dedup)")
+
+open(IDX,"w",encoding="utf-8").write(txt)
+print("\nPhase 5-B-2 applied. Restart, then send a TDW- enquiry from a test number.")

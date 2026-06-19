@@ -19,6 +19,7 @@ const { runAgenticTurn, runCoupleAgenticTurn } = require('./agent/engine');
 const { buildBriefing } = require('./agent/briefing');
 const { startCronJobs } = require('./cron');
 const { sendWhatsApp } = require('./lib/whatsapp');
+const { enquiryToBinder } = require('./lib/vendor/enquiryBinder'); // 5-B-2
 const { ensureCoupleRow, captureField } = require('./lib/coupleIdentity');
 const { buildDisambiguationQuestion, interpretDisambiguationReply, vendorDisplayName } = require('./agent/disambiguation');
 const adminRouter  = require('./admin/router');
@@ -658,23 +659,14 @@ app.post('/webhook/whatsapp', async (req, res) => {
           sent_by: 'couple',
         });
 
-        // Create initial lead (deduped on vendor_id + phone)
-        const { data: existingLead } = await supabase
-          .from('leads')
-          .select('id')
-          .eq('vendor_id', matchedByTdw.id)
-          .eq('phone', phone)
-          .maybeSingle();
-
-        if (!existingLead) {
-          await supabase.from('leads').insert({
-            vendor_id:   matchedByTdw.id,
-            phone,
-            source:      'whatsapp',
-            raw_message: body,
-            state:       'new',
-          });
-        }
+        // 5-B-2 — land the enquiry in the engine cabinet (was a public.leads insert).
+        // enquiryToBinder dedups by phone and opens the binder as a lead; the
+        // post-agent call below enriches its note with the vendor summary. The
+        // marketplace is just another caller.
+        await enquiryToBinder(supabase, matchedByTdw.id, {
+          phone,
+          note: `Enquiry via your TDW link. First message: ${body}`,
+        });
 
         const result = await runCoupleAgenticTurn({
           vendor: matchedByTdw,
@@ -707,13 +699,12 @@ app.post('/webhook/whatsapp', async (req, res) => {
           await sendWhatsApp(vendorPhone, notif);
         }
 
-        // Denormalise vendor_summary onto the lead row for fast reads in detail view
-        if (result.vendorNotification && !existingLead) {
-          await supabase.from('leads')
-            .update({ vendor_summary: result.vendorNotification })
-            .eq('vendor_id', matchedByTdw.id)
-            .eq('phone', phone)
-            .is('deleted_at', null);
+        // Enrich the engine binder's note with the vendor summary (dedup -> note_append).
+        if (result.vendorNotification) {
+          await enquiryToBinder(supabase, matchedByTdw.id, {
+            phone,
+            note: result.vendorNotification,
+          });
         }
 
         await supabase.from('conversations')
