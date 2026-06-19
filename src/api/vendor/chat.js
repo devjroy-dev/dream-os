@@ -53,6 +53,7 @@ const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 const { runMyraTurn } = require('../../agent/myraLoop');
 const { translateBeat, safeStepKinds } = require('../../agent/displayFirewall');
+const { runManagerTurn } = require('../../agent/managerLoop');
 const runPWAAgenticTurn = runMyraTurn;  // alias kept so the JSON path call site is unchanged
 
 router.post('/', requireAuth, resolveVendor(), async (req, res) => {
@@ -72,6 +73,11 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   // change about invoice X?"). Persisted as an assistant message before the
   // vendor's reply so the engine sees full edit context in DB history.
   const aiPrimer = typeof body.ai_primer === 'string' ? body.ai_primer.trim() : '';
+
+  // Mode selector (per conversation, sent with the turn; default = manager). Manager
+  // mode runs the single-agent loop; every other mode keeps the two-agent path.
+  const mode = (typeof body.mode === 'string' && body.mode.trim()) ? body.mode.trim() : 'manager';
+  const runTurn = (mode === 'manager') ? runManagerTurn : runMyraTurn;
 
   if (body.vendor_id && body.vendor_id !== vendor.id) {
     return res.status(403).json({ ok: false, error: 'vendor_id mismatch with session.' });
@@ -208,7 +214,7 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
       // LIVE two-agent streaming: every beat fires the moment it happens —
       // dispatch (Myra → operator), kriya_action (each hand), kriya_report
       // (operator → Myra), myra_token (her prose, token by token), answer.
-      result = await runMyraTurn({
+      result = await runTurn({  // mode-routed (stream)
         vendor,
         user,
         conversation,
@@ -220,7 +226,7 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
           // operator beats ride as-is for the deliberation pill. tool names are
           // forwarded raw here — the FRONTEND owns the display firewall (plain
           // language, kriya_* never shown).
-          const safe = translateBeat(e);
+          const safe = translateBeat(e, mode);
           if (safe) send(safe);
         },
       });
@@ -288,7 +294,7 @@ router.post('/', requireAuth, resolveVendor(), async (req, res) => {
   // ── JSON path (original — unchanged) ──────────────────────────────
   let result;
   try {
-    result = await runPWAAgenticTurn({
+    result = await runTurn({  // mode-routed (json)
       vendor,
       user,
       conversation,

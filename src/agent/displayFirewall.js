@@ -34,14 +34,33 @@ function scrub(text) {
   return out;
 }
 
+// Manager mode: she IS the face, so her NAME must survive — only raw tool tokens are
+// scrubbed (hygiene), never the operator-name replacement. Two-agent mode still uses
+// the full scrub above, which also hides the hidden operator's name.
+function scrubToolsOnly(text) {
+  if (!text) return '';
+  return String(text).replace(/\bkriya_[a-z_]+\b/gi, 'operator tool');
+}
+
 // Translate one raw engine beat into its safe public beat. Returns null to drop.
-function translateBeat(e) {
+function translateBeat(e, mode) {
   if (!e || !e.type) return null;
+  // Manager mode keeps her name; two-agent mode hides the operator. Tool tokens are
+  // scrubbed in both.
+  const sc = mode === 'manager' ? scrubToolsOnly : scrub;
   switch (e.type) {
     case 'myra_token':
       // The manager's prose, streamed live. Her soul hides the operator, so her
       // own words never name it; kept as text_delta (the live wire contract).
       return { type: 'text_delta', text: e.text };
+    case 'manager_token':
+      // Manager mode: her own prose, streamed live. She IS the face — her name is hers,
+      // never scrubbed to "Operator".
+      return { type: 'text_delta', text: e.text };
+    case 'manager_action':
+      // Manager mode: her own hand. Same wire shape as operator_action so the frontend
+      // working-spine renders unchanged; tool tokens scrubbed, her name untouched.
+      return { type: 'operator_action', kind: kindOf(e.name), detail: scrubToolsOnly(e.summary || '') };
     case 'dispatch':
       return { type: 'handoff', from: 'manager', to: 'operator', message: scrub(e.message) };
     case 'kriya_action':
@@ -53,13 +72,13 @@ function translateBeat(e) {
     case 'kriya_report':
       return { type: 'operator_report', message: scrub(e.message) };
     case 'answer':
-      return { type: 'answer', reply: scrub(e.reply) };
+      return { type: 'answer', reply: sc(e.reply) };
     case 'thinking':
       return { type: 'thinking' };
     default: {
       // Unknown beat -- pass through but scrub every string field defensively.
       const safe = {};
-      for (const k of Object.keys(e)) safe[k] = typeof e[k] === 'string' ? scrub(e[k]) : e[k];
+      for (const k of Object.keys(e)) safe[k] = typeof e[k] === 'string' ? sc(e[k]) : e[k];
       return safe;
     }
   }
