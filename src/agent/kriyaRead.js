@@ -65,35 +65,47 @@ function matchedOn(r, terms) {
 }
 
 async function executeFind(supabase, vendorId, input) {
+  // Raw phrases (kept only for the human-readable header/summary) and the TOKENS we
+  // actually search on. Ported from donna_find: the old bug was searching a phrase as one
+  // contiguous string — "Meher Aryan" never matches the stored "Meher & Aryan" because the
+  // & breaks the substring. The fix: split whatever is given on anything that isn't a
+  // letter or number, keep words of 2+ chars, dedupe — then match each WORD across every
+  // text field. Punctuation, word-order, and phrasing stop mattering.
   const terms = [];
   if (typeof input.client === 'string' && input.client.trim()) terms.push(input.client.trim());
   if (typeof input.note === 'string' && input.note.trim()) terms.push(input.note.trim());
   const includeHidden = input.include_hidden === true;
 
+  const tokens = Array.from(new Set(
+    terms.join(' ')
+      .split(/[^\p{L}\p{N}]+/u)
+      .map((w) => w.trim())
+      .filter((w) => w.length >= 2)
+  ));
+
   let q = supabase.from('binders').select(FIND_SELECT).eq('vendor_id', vendorId);
-  if (!includeHidden) {
-    // archived ALWAYS shown when searching by term (nothing hidden from search);
-    // only the empty/recent fallback respects the live picture.
-  }
-  if (terms.length) {
+  if (tokens.length) {
+    // ONE combined OR across every (token x text-column) pair. A SINGLE .or() — chaining
+    // multiple .or() calls would AND the groups in PostgREST and re-introduce the miss.
+    // Tokens are alphanumeric after the split, so they carry no commas/parens that would
+    // break the filter syntax.
+    const cols = ['client', 'note', 'doc_ref', 'phone'];
     const conds = [];
-    for (const t of terms) {
-      const esc = t.replace(/[%_,]/g, ' ').trim();
-      conds.push(`client.ilike.%${esc}%`, `note.ilike.%${esc}%`, `doc_ref.ilike.%${esc}%`, `phone.ilike.%${esc}%`);
-    }
+    for (const t of tokens) for (const c of cols) conds.push(`${c}.ilike.%${t}%`);
     q = q.or(conds.join(','));
   } else if (!includeHidden) {
     q = q.eq('hidden', false);
   }
-  q = q.order('updated_at', { ascending: false }).limit(FIND_LIMIT);
+  // Pull a generous slice — we rank in-memory, so fetch more than we'll show.
+  q = q.order('updated_at', { ascending: false }).limit(FIND_LIMIT * 3 + 1);
 
   const { data, error } = await q;
   if (error) return { display: `ERROR searching: ${error.message}` };
   let rows = data || [];
 
-  // Never a dead end: if a term found nothing, return the most recent binders.
+  // Never a dead end: if the tokens found nothing, return the most recent binders.
   let fellBack = false;
-  if (terms.length && rows.length === 0) {
+  if (tokens.length && rows.length === 0) {
     const { data: recent } = await supabase.from('binders').select(FIND_SELECT)
       .eq('vendor_id', vendorId).eq('hidden', false)
       .order('updated_at', { ascending: false }).limit(FIND_LIMIT);
@@ -101,27 +113,45 @@ async function executeFind(supabase, vendorId, input) {
     fellBack = true;
   }
 
+  // Rank by how many tokens each row hits — best candidate first. This is what turns the
+  // wide net into a useful one: the row matching both name-words floats above a one-word
+  // hit. No ranking on the recents fallback (nothing to rank against).
+  if (tokens.length && !fellBack && rows.length > 1) {
+    const lc = (x) => (x == null ? '' : String(x).toLowerCase());
+    const rowText = (r) => [r.client, r.note, r.doc_ref, r.phone].map(lc).join(' ');
+    rows = rows
+      .map((r) => {
+        const txt = rowText(r);
+        let sc = 0;
+        for (const t of tokens) if (txt.includes(t.toLowerCase())) sc += 1;
+        return { r, sc };
+      })
+      .sort((a, b) => b.sc - a.sc)
+      .map((x) => x.r);
+  }
+  const shown = rows.slice(0, FIND_LIMIT);
+
   const lines = [];
-  if (terms.length && !fellBack) lines.push(`FIND "${terms.join(' / ')}" — ${rows.length} match${rows.length === 1 ? '' : 'es'}, best first:`);
+  if (tokens.length && !fellBack) lines.push(`FIND "${terms.join(' / ')}" — ${shown.length} match${shown.length === 1 ? '' : 'es'}, best first:`);
   else if (fellBack) lines.push(`No binder matched "${terms.join(' / ')}". Most recent binders instead (so you're never stuck):`);
   else lines.push(`Most recent binders:`);
 
-  for (const r of rows) {
+  for (const r of shown) {
     const bits = [];
     if (r.client) bits.push(r.client);
     if (r.amount != null) bits.push(`Rs ${r.amount}${r.direction ? ' ' + r.direction : ''}`);
     if (r.stage) bits.push(r.stage);
     if (r.date) bits.push(r.date);
-    const mo = terms.length ? matchedOn(r, terms) : null;
+    const mo = tokens.length ? matchedOn(r, tokens) : null;
     const moTag = mo ? ` (matched on: ${mo})` : '';
     const arch = r.hidden ? ' [ARCHIVED]' : '';
     lines.push(`  - ${r.id} — ${bits.join(' · ') || 'binder'}${moTag}${arch}`);
   }
-  if (rows.length === 0) lines.push('  Cabinet is empty — no binders yet.');
+  if (shown.length === 0) lines.push('  Cabinet is empty — no binders yet.');
   let findSummary;
-  if (terms.length && !fellBack) findSummary = `searched the cabinet — ${rows.length} match${rows.length === 1 ? '' : 'es'} for "${terms.join(' / ')}".`;
+  if (tokens.length && !fellBack) findSummary = `searched the cabinet — ${shown.length} match${shown.length === 1 ? '' : 'es'} for "${terms.join(' / ')}".`;
   else if (fellBack) findSummary = `searched the cabinet — nothing matched "${terms.join(' / ')}".`;
-  else findSummary = `searched the cabinet — ${rows.length} recent binder${rows.length === 1 ? '' : 's'}.`;
+  else findSummary = `searched the cabinet — ${shown.length} recent binder${shown.length === 1 ? '' : 's'}.`;
   return { display: lines.join('\n'), summary: findSummary };
 }
 
