@@ -118,7 +118,11 @@ async function executeFind(supabase, vendorId, input) {
     lines.push(`  - ${r.id} — ${bits.join(' · ') || 'binder'}${moTag}${arch}`);
   }
   if (rows.length === 0) lines.push('  Cabinet is empty — no binders yet.');
-  return { display: lines.join('\n') };
+  let findSummary;
+  if (terms.length && !fellBack) findSummary = `searched the cabinet — ${rows.length} match${rows.length === 1 ? '' : 'es'} for "${terms.join(' / ')}".`;
+  else if (fellBack) findSummary = `searched the cabinet — nothing matched "${terms.join(' / ')}".`;
+  else findSummary = `searched the cabinet — ${rows.length} recent binder${rows.length === 1 ? '' : 's'}.`;
+  return { display: lines.join('\n'), summary: findSummary };
 }
 
 // ── tally ─────────────────────────────────────────────────────────────────────
@@ -179,7 +183,8 @@ async function executeTally(supabase, vendorId, input) {
   }
   if (rows.length > TALLY_LIST_LIMIT) lines.push(`  …and ${rows.length - TALLY_LIST_LIMIT} more in the count.`);
   if (rows.length === 0) lines.push('  No binders match this slice.');
-  return { display: lines.join('\n') };
+  const tallySummary = `tallied the books — ${rows.length} binder${rows.length === 1 ? '' : 's'}${sumPending > 0 ? `, Rs ${Number(sumPending).toLocaleString('en-IN')} pending` : ''}.`;
+  return { display: lines.join('\n'), summary: tallySummary };
 }
 
 // ── history ───────────────────────────────────────────────────────────────────
@@ -223,7 +228,9 @@ async function executeHistory(supabase, vendorId, input) {
   } else {
     lines.push('  writes: no event log on this binder yet.');
   }
-  return { display: lines.join('\n') };
+  const histPending = r.amount_pending ? `Rs ${Number(r.amount_pending).toLocaleString('en-IN')} pending, ` : '';
+  const histSummary = `opened ${r.client ? `${r.client}'s binder` : 'the binder'} — ${histPending}${events.length} write${events.length === 1 ? '' : 's'} on record.`;
+  return { display: lines.join('\n'), summary: histSummary };
 }
 
 async function executeKriyaRead(supabase, vendorId, name, input, today) {

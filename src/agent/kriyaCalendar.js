@@ -79,7 +79,7 @@ async function executeKriyaCalendar(supabase, vendorId, name, input) {
     if (error) return { display: `ERROR checking calendar: ${error.message}`, error: true };
     const rows = data || [];
     const span = one ? one : `${from || '…'}→${to || '…'}`;
-    if (rows.length === 0) return { display: `Calendar ${span}: nothing on it — the owner is free.` };
+    if (rows.length === 0) return { display: `Calendar ${span}: nothing on it — the owner is free.`, summary: 'checked the calendar — nothing scheduled, the dates are free.' };
     const lines = rows.map((e) => {
       const t = e.event_time ? ` ${e.event_time}` : '';
       const blocked = e.kind === 'blocked' ? ' [BLOCKED — unavailable]' : '';
@@ -87,7 +87,11 @@ async function executeKriyaCalendar(supabase, vendorId, name, input) {
     });
     const anyBlock = rows.some((e) => e.kind === 'blocked');
     const head = `Calendar ${span}: ${rows.length} on it${anyBlock ? ' — includes a BLOCK, owner unavailable those days' : ''}.`;
-    return { display: `${head}\n${lines.join('\n')}` };
+    const fmtD = (iso) => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '…';
+    const spanLabel = one ? fmtD(one) : `${fmtD(from)}–${fmtD(to)}`;
+    const blockedCount = rows.filter((e) => e.kind === 'blocked').length;
+    const calSummary = `checked the calendar — ${rows.length} item${rows.length === 1 ? '' : 's'}, ${spanLabel}${blockedCount ? `; ${blockedCount} blocked day${blockedCount === 1 ? '' : 's'}` : ''}.`;
+    return { display: `${head}\n${lines.join('\n')}`, summary: calSummary };
   }
 
   return { display: `ERROR: unknown calendar tool ${name}.`, error: true };
