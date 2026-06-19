@@ -11,6 +11,7 @@ router.use('/', require('./whoami'));   // 3-A: the identity-bridge proof
 router.use('/cabinet', require('./cabinet'));   // 3-B: cabinet read
 router.use('/binders', require('./ledger'));    // 3-B: flat ledger read
 router.use('/binders', require('./binderWrite')); // 3-C: binder write doors
+router.use('/chat', require('./chat')); // 3-D: chat door (Victor)
 router.use('/today',   require('./today'));     // 3-B: today dashboard
 
 module.exports = router;
