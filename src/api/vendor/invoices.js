@@ -359,8 +359,16 @@ async function generateInvoiceForBinder(supabase, vendor, binder) {
     });
     if (!created.ok) return created;
     invoice = created.invoice;
-    // link the formal invoice back to its money-record binder
-    await supabase.from('invoices').update({ binder_id: binder.id }).eq('id', invoice.id);
+    // Link to the money-record binder AND set amount_paid from what's actually
+    // been received. createInvoice hardcodes amount_paid:0, but the PDF computes
+    // balance = amount_total - amount_paid, so the received money must land here
+    // (else "Balance due" shows the full total). amount_advance drives the
+    // "received" line; amount_paid drives the balance + UPI QR.
+    const received = Number(binder.amount_received) || 0;
+    await supabase.from('invoices')
+      .update({ binder_id: binder.id, amount_paid: received })
+      .eq('id', invoice.id);
+    invoice.amount_paid = received;   // keep the in-memory object truthful for the render
   }
 
   // 3 — already has a stored PDF? serve it (idempotent, no re-render needed)
