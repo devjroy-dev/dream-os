@@ -29,6 +29,7 @@
 // On every success path: req.vendor is the full vendors row.
 
 'use strict';
+const { resolveUsersId } = require('../../lib/resolveUsersId');
 
 function resolveVendor(opts = {}) {
   const paramName = opts.paramName || null;
@@ -42,12 +43,11 @@ function resolveVendor(opts = {}) {
       return res.status(401).json({ ok: false, error: 'Unauthorized.' });
     }
 
-    // Step 1 — resolve vendor by JWT user_id.
-    const { data: vendor, error: vendorErr } = await supabase
-      .from('vendors')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Step 1 — map the Supabase auth identity to public.users.id, then resolve the vendor.
+    const usersId = await resolveUsersId(supabase, userId);
+    const { data: vendor, error: vendorErr } = usersId
+      ? await supabase.from('vendors').select('*').eq('user_id', usersId).maybeSingle()
+      : { data: null, error: null };
 
     if (vendorErr) {
       console.error('[resolveVendor] supabase error:', vendorErr.message);

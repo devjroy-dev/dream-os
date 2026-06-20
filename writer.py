@@ -1,36 +1,39 @@
 #!/usr/bin/env python3
-# Auth Step 1a: users.auth_user_id link column (+ backfill = id) + SCHEMA.md row.
-# Pure schema; nothing reads it yet (resolvers change in 1b). Parallel-safe.
-#   unzip -o auth-1a-users-auth-user-id-v1.zip && python3 writer.py
-#   then apply db/migrations/0063_users_auth_user_id.sql in the Supabase SQL editor.
+# Auth Step 1b: resolvers map Supabase auth id -> public.users.id via auth_user_id
+# (legacy id fallback), then the role row. Parallel-safe: 0063 backfill means current
+# tokens (sub = users.id) match auth_user_id directly, so the live login keeps working.
+#   unzip -o auth-1b-resolvers-v1.zip && python3 writer.py
 import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
-P = {'sql': 'LS0gMDA2M191c2Vyc19hdXRoX3VzZXJfaWQuc3FsCi0tIEF1dGggbWlncmF0aW9uIFN0ZXAgMWEgKHNlZSBBVVRIX1NVUEFCQVNFX1BIT05FX01JR1JBVElPTi5tZCkuCi0tCi0tIFRoZSBsaW5rIGNvbHVtbiBmb3IgU3VwYWJhc2UgUGhvbmUtT1RQIGxvZ2luLiBVbnRpbCBub3cgZHJlYW0tb3MgcGlubmVkIHRoZQotLSBTdXBhYmFzZSBhdXRoIHVzZXIgaWQgRVFVQUwgdG8gcHVibGljLnVzZXJzLmlkIChtaW50U2Vzc2lvbidzIGNyZWF0ZVVzZXIoe2lkfSkpLAotLSBzbyByZXNvbHZlVmVuZG9yL3JlcXVpcmVDb3VwbGVBdXRoIGNvdWxkIG1hdGNoIHZlbmRvcnMudXNlcl9pZCA9IEpXVCBzdWIgZGlyZWN0bHkuCi0tIFN1cGFiYXNlIHNpZ25JbldpdGhPdHAgZ2VuZXJhdGVzIGl0cyBPV04gYXV0aCBpZCAoY2Fubm90IGJlIHBpbm5lZCksIHNvIGlkZW50aXR5Ci0tIG11c3QgcmVzb2x2ZSB0aHJvdWdoIGEgbGluayBjb2x1bW4gaW5zdGVhZDogdXNlcnMuYXV0aF91c2VyX2lkID0gPHN1cGFiYXNlIGF1dGggaWQ+LgotLSBNaXJyb3JzIGVuZ2luZS51c2Vycy5hdXRoX3VzZXJfaWQgKHRoZSBlbmdpbmUgYWxyZWFkeSByZXNvbHZlcyB0aGlzIHdheSkuCi0tCi0tIEJBQ0tGSUxMOiBldmVyeSBleGlzdGluZyB1c2VyIGhhZCBhdXRoLnVzZXJzLmlkID09PSB1c2Vycy5pZCAodGhlIG9sZCBwaW5uaW5nKSwKLS0gc28gc2VlZCBhdXRoX3VzZXJfaWQgPSBpZC4gVGhpcyBrZWVwcyBPTEQtZmxvdyBsb2dpbnMgKEpXVCBzdWIgPSB1c2Vycy5pZCkgcmVzb2x2aW5nCi0tIHRocm91Z2ggdGhlIFNBTUUgYXV0aF91c2VyX2lkIHBhdGggYXMgbmV3IHBob25lLU9UUCBsb2dpbnMg4oCUIG5vIHBhcmFsbGVsIGJyZWFrLgotLSAoQSByZXR1cm5pbmcgdXNlciB3aG8gbGF0ZXIgc2lnbnMgaW4gdmlhIHBob25lLU9UUCBnZXRzIGEgTkVXIHN1cGFiYXNlIGlkOyB0aGUKLS0gIHByb3Zpc2lvbiBlbmRwb2ludCdzIHBob25lLWZhbGxiYWNrIHJlLWJpbmRzIGF1dGhfdXNlcl9pZCB0byBpdCB0aGVuIOKAlCBTdGVwIDFjLikKLS0KLS0gSWRlbXBvdGVudDogc2FmZSB0byByZS1ydW4uCgphbHRlciB0YWJsZSB1c2VycyBhZGQgY29sdW1uIGlmIG5vdCBleGlzdHMgYXV0aF91c2VyX2lkIHV1aWQ7CgotLSBiYWNrZmlsbCBleGlzdGluZyByb3dzOiBhdXRoX3VzZXJfaWQgPSBpZCAob2xkIHBpbm5lZCBpZGVudGl0eSkKdXBkYXRlIHVzZXJzIHNldCBhdXRoX3VzZXJfaWQgPSBpZCB3aGVyZSBhdXRoX3VzZXJfaWQgaXMgbnVsbDsKCi0tIHVuaXF1ZSwgYnV0IGFsbG93IE5VTEwgKGEgYnJhbmQtbmV3IHJvdyBpcyBjcmVhdGVkIGJlZm9yZSBpdHMgYXV0aCBpZCBpcyBrbm93biBpbgotLSBzb21lIHBhdGhzKTsgYSBwYXJ0aWFsIHVuaXF1ZSBpbmRleCBlbmZvcmNlcyBvbmUgdXNlciBwZXIgc3VwYWJhc2UgYXV0aCBpZGVudGl0eS4KY3JlYXRlIHVuaXF1ZSBpbmRleCBpZiBub3QgZXhpc3RzIHVzZXJzX2F1dGhfdXNlcl9pZF9rZXkKICBvbiB1c2VycyAoYXV0aF91c2VyX2lkKSB3aGVyZSBhdXRoX3VzZXJfaWQgaXMgbm90IG51bGw7Cg==', 'row': 'fCBhdXRoX3VzZXJfaWQgfCB1dWlkIFVOSVFVRSB8IFN1cGFiYXNlIEF1dGggdXNlciBpZCAodGhlIEpXVCBgc3ViYCkuIFRoZSBpZGVudGl0eSBsaW5rIGZvciBwaG9uZS1PVFAgbG9naW46IHJlc29sdmVycyBtYXRjaCBgdXNlcnMuYXV0aF91c2VyX2lkID0gcmVxLmF1dGgudXNlcl9pZGAsIHRoZW4gdGhlIHJvbGUgcm93IGJ5IGB1c2Vycy5pZGAuIEJhY2tmaWxsZWQgPSBgaWRgIGZvciBsZWdhY3kgcGlubmVkIGFjY291bnRzICgwMDYzKTsgcmUtYm91bmQgYnkgdGhlIHByb3Zpc2lvbiBlbmRwb2ludCdzIHBob25lLWZhbGxiYWNrIHdoZW4gYSByZXR1cm5pbmcgdXNlciBmaXJzdCBzaWducyBpbiB2aWEgcGhvbmUtT1RQLiBNaXJyb3JzIGBlbmdpbmUudXNlcnMuYXV0aF91c2VyX2lkYC4gfAo='}
+P = {'helper': 'Ly8gc3JjL2xpYi9yZXNvbHZlVXNlcnNJZC5qcwovLyBNYXAgYSBTdXBhYmFzZSBhdXRoIGlkZW50aXR5ICh0aGUgSldUIGBzdWJgLCBpLmUuIHJlcS5hdXRoLnVzZXJfaWQpIHRvIHRoZQovLyBwdWJsaWMudXNlcnMuaWQg4oCUIHRoZSBpZGVudGl0eSBzZWFtIGZvciBTdXBhYmFzZSBQaG9uZS1PVFAgbG9naW4uCi8vCi8vICAgUHJpbWFyeTogIHVzZXJzLmF1dGhfdXNlcl9pZCA9IDxzdXBhYmFzZSBhdXRoIGlkPiAgIChwaG9uZS1PVFAgKyBiYWNrZmlsbGVkIGxlZ2FjeSkKLy8gICBGYWxsYmFjazogdXNlcnMuaWQgICAgICAgICAgPSA8c3VwYWJhc2UgYXV0aCBpZD4gICAgIChwcmUtMDA2My1iYWNrZmlsbCBwaW5uZWQgaWQpCi8vCi8vIFRoZSBmYWxsYmFjayBpcyBiZWx0LWFuZC1zdXNwZW5kZXJzOiAwMDYzIGJhY2tmaWxsZWQgYXV0aF91c2VyX2lkID0gaWQgZm9yIGV2ZXJ5Ci8vIGV4aXN0aW5nIHVzZXIsIHNvIHRoZSBwcmltYXJ5IGFscmVhZHkgY292ZXJzIGxlZ2FjeSBhY2NvdW50cy4gUmV0dXJucyBudWxsIGlmIHRoZQovLyBpZGVudGl0eSBtYXBzIHRvIG5vIHVzZXIgKGNhbGxlciBkZWNpZGVzIHRoZSA0MDEvNDAzKS4KJ3VzZSBzdHJpY3QnOwoKYXN5bmMgZnVuY3Rpb24gcmVzb2x2ZVVzZXJzSWQoc3VwYWJhc2UsIGF1dGhVc2VySWQpIHsKICBpZiAoIWF1dGhVc2VySWQpIHJldHVybiBudWxsOwogIGNvbnN0IHsgZGF0YSB9ID0gYXdhaXQgc3VwYWJhc2UKICAgIC5mcm9tKCd1c2VycycpLnNlbGVjdCgnaWQnKS5lcSgnYXV0aF91c2VyX2lkJywgYXV0aFVzZXJJZCkubWF5YmVTaW5nbGUoKTsKICBpZiAoZGF0YSkgcmV0dXJuIGRhdGEuaWQ7CiAgY29uc3QgeyBkYXRhOiBsZWdhY3kgfSA9IGF3YWl0IHN1cGFiYXNlCiAgICAuZnJvbSgndXNlcnMnKS5zZWxlY3QoJ2lkJykuZXEoJ2lkJywgYXV0aFVzZXJJZCkubWF5YmVTaW5nbGUoKTsKICByZXR1cm4gbGVnYWN5ID8gbGVnYWN5LmlkIDogbnVsbDsKfQoKbW9kdWxlLmV4cG9ydHMgPSB7IHJlc29sdmVVc2Vyc0lkIH07Cg==', 'rv_old': 'ICAgIC8vIFN0ZXAgMSDigJQgcmVzb2x2ZSB2ZW5kb3IgYnkgSldUIHVzZXJfaWQuCiAgICBjb25zdCB7IGRhdGE6IHZlbmRvciwgZXJyb3I6IHZlbmRvckVyciB9ID0gYXdhaXQgc3VwYWJhc2UKICAgICAgLmZyb20oJ3ZlbmRvcnMnKQogICAgICAuc2VsZWN0KCcqJykKICAgICAgLmVxKCd1c2VyX2lkJywgdXNlcklkKQogICAgICAubWF5YmVTaW5nbGUoKTsK', 'rv_new': 'ICAgIC8vIFN0ZXAgMSDigJQgbWFwIHRoZSBTdXBhYmFzZSBhdXRoIGlkZW50aXR5IHRvIHB1YmxpYy51c2Vycy5pZCwgdGhlbiByZXNvbHZlIHRoZSB2ZW5kb3IuCiAgICBjb25zdCB1c2Vyc0lkID0gYXdhaXQgcmVzb2x2ZVVzZXJzSWQoc3VwYWJhc2UsIHVzZXJJZCk7CiAgICBjb25zdCB7IGRhdGE6IHZlbmRvciwgZXJyb3I6IHZlbmRvckVyciB9ID0gdXNlcnNJZAogICAgICA/IGF3YWl0IHN1cGFiYXNlLmZyb20oJ3ZlbmRvcnMnKS5zZWxlY3QoJyonKS5lcSgndXNlcl9pZCcsIHVzZXJzSWQpLm1heWJlU2luZ2xlKCkKICAgICAgOiB7IGRhdGE6IG51bGwsIGVycm9yOiBudWxsIH07Cg==', 'rc_old': 'ICBjb25zdCB7IGRhdGE6IGNvdXBsZSB9ID0gYXdhaXQgc3VwYWJhc2UKICAgIC5mcm9tKCdjb3VwbGVzJykKICAgIC5zZWxlY3QoJ2lkJykKICAgIC5lcSgndXNlcl9pZCcsIHVzZXIuaWQpCiAgICAubWF5YmVTaW5nbGUoKTsKCiAgaWYgKCFjb3VwbGUpIHsKICAgIHJldHVybiByZXMuc3RhdHVzKDQwMykuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdObyBjb3VwbGUgcHJvZmlsZSBmb3VuZC4nIH0pOwogIH0KCiAgcmVxLmNvdXBsZVVzZXIgPSB7IGlkOiB1c2VyLmlkLCB1c2VyX2lkOiB1c2VyLmlkLCBjb3VwbGVfaWQ6IGNvdXBsZS5pZCB9Owo=', 'rc_new': 'ICBjb25zdCB1c2Vyc0lkID0gYXdhaXQgcmVzb2x2ZVVzZXJzSWQoc3VwYWJhc2UsIHVzZXIuaWQpOwogIGNvbnN0IHsgZGF0YTogY291cGxlIH0gPSB1c2Vyc0lkCiAgICA/IGF3YWl0IHN1cGFiYXNlLmZyb20oJ2NvdXBsZXMnKS5zZWxlY3QoJ2lkJykuZXEoJ3VzZXJfaWQnLCB1c2Vyc0lkKS5tYXliZVNpbmdsZSgpCiAgICA6IHsgZGF0YTogbnVsbCB9OwoKICBpZiAoIWNvdXBsZSkgewogICAgcmV0dXJuIHJlcy5zdGF0dXMoNDAzKS5qc29uKHsgb2s6IGZhbHNlLCBlcnJvcjogJ05vIGNvdXBsZSBwcm9maWxlIGZvdW5kLicgfSk7CiAgfQoKICByZXEuY291cGxlVXNlciA9IHsgaWQ6IHVzZXJzSWQsIHVzZXJfaWQ6IHVzZXJzSWQsIGNvdXBsZV9pZDogY291cGxlLmlkIH07Cg=='}
+def b64(k): return base64.b64decode(P[k]).decode()
 
-# 1 — drop the migration file
-MIG = os.path.join(ROOT, "db", "migrations", "0063_users_auth_user_id.sql")
-if os.path.isfile(MIG):
-    print("= migration 0063 already present (idempotent).")
+# 1 — helper
+LIB = os.path.join(ROOT, "src", "lib", "resolveUsersId.js")
+if os.path.isfile(LIB) and "resolveUsersId" in open(LIB).read():
+    print("= resolveUsersId.js already present (idempotent).")
 else:
-    os.makedirs(os.path.dirname(MIG), exist_ok=True)
-    open(MIG, "w", encoding="utf-8").write(base64.b64decode(P["sql"]).decode())
-    print("+ db/migrations/0063_users_auth_user_id.sql")
+    open(LIB, "w", encoding="utf-8").write(b64("helper")); print("+ src/lib/resolveUsersId.js")
 
-# 2 — update docs/SCHEMA.md: insert the auth_user_id row into the ### users table
-SCH = os.path.join(ROOT, "docs", "SCHEMA.md")
-s = open(SCH, encoding="utf-8").read()
-if "| auth_user_id | uuid UNIQUE |" in s:
-    print("= SCHEMA.md already has auth_user_id row (idempotent).")
-else:
-    # insert right after the users.phone row (stable anchor inside the users table)
-    anchor = "| phone | text UNIQUE NOT NULL | always E.164 e.g. +918757788550 |"
-    if anchor not in s: die("SCHEMA.md users.phone anchor not found.")
-    row = base64.b64decode(P["row"]).decode().strip()
-    s = s.replace(anchor, anchor + "\n" + row, 1)
-    open(SCH, "w", encoding="utf-8").write(s)
-    print("+ docs/SCHEMA.md: users.auth_user_id row added")
+def patch(rel, requireLine, old_key, new_key, name):
+    F = os.path.join(ROOT, *rel)
+    t = open(F, encoding="utf-8").read()
+    if "resolveUsersId" in t:
+        print(f"= {name} already on resolveUsersId (idempotent)."); return
+    old = b64(old_key); new = b64(new_key)
+    if old not in t: die(f"{name}: target block not found verbatim.")
+    # add require at top (after 'use strict';)
+    if "require('../../lib/resolveUsersId')" not in t:
+        anchor = "'use strict';"
+        if anchor not in t: die(f"{name}: 'use strict' anchor not found.")
+        t = t.replace(anchor, anchor + "\nconst { resolveUsersId } = require('../../lib/resolveUsersId');", 1)
+    t = t.replace(old, new, 1)
+    open(F, "w", encoding="utf-8").write(t)
+    print(f"+ {name}: resolves via auth_user_id (legacy fallback)")
 
-print("\nDone. Apply 0063 in the Supabase SQL editor, then verify with the gate SQL.")
+patch(["src","api","middleware","resolveVendor.js"], True, "rv_old", "rv_new", "resolveVendor.js")
+patch(["src","api","middleware","requireCoupleAuth.js"], True, "rc_old", "rc_new", "requireCoupleAuth.js")
+print("\nDone. Restart (no engine change).")

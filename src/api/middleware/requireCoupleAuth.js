@@ -5,6 +5,7 @@
 // On failure: returns 401/403 { ok: false, error }.
 
 'use strict';
+const { resolveUsersId } = require('../../lib/resolveUsersId');
 
 async function requireCoupleAuth(req, res, next) {
   const supabase = req.app.locals.supabase;
@@ -29,17 +30,16 @@ async function requireCoupleAuth(req, res, next) {
     return res.status(401).json({ ok: false, error: 'Unauthorised.' });
   }
 
-  const { data: couple } = await supabase
-    .from('couples')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const usersId = await resolveUsersId(supabase, user.id);
+  const { data: couple } = usersId
+    ? await supabase.from('couples').select('id').eq('user_id', usersId).maybeSingle()
+    : { data: null };
 
   if (!couple) {
     return res.status(403).json({ ok: false, error: 'No couple profile found.' });
   }
 
-  req.coupleUser = { id: user.id, user_id: user.id, couple_id: couple.id };
+  req.coupleUser = { id: usersId, user_id: usersId, couple_id: couple.id };
   next();
 }
 
