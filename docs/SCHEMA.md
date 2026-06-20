@@ -65,6 +65,7 @@
 |---|---|---|
 | id | uuid PK | auto-generated |
 | phone | text UNIQUE NOT NULL | always E.164 e.g. +918757788550 |
+| auth_user_id | uuid UNIQUE | Supabase Auth user id (the JWT `sub`). The identity link for phone-OTP login: resolvers match `users.auth_user_id = req.auth.user_id`, then the role row by `users.id`. Backfilled = `id` for legacy pinned accounts (0063); re-bound by the provision endpoint's phone-fallback when a returning user first signs in via phone-OTP. Mirrors `engine.users.auth_user_id`. |
 | name | text | first name, set on invite or from WhatsApp profile |
 | email | text | collected naturally in conversation |
 | **pronouns** | **text** | **B1: 'she' or 'he' (CHECK constraint). Required at bride invite. NULL on legacy users + all vendors until Session 9 parity work. Read by bride system prompt for voice adaptation.** |

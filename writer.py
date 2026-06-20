@@ -1,52 +1,36 @@
 #!/usr/bin/env python3
-# Vendor Suit -- AUTH FIX: isolate the GoTrue session exchange onto a DEDICATED client so
-# it never poisons the shared service-role data client.
-#
-# THE BUG: mintSession ran supabase.auth.verifyOtp() on the SHARED app.locals.supabase
-# (service-role) client. verifyOtp SETS that client's session to the user's JWT, so every
-# subsequent PostgREST request ran as the *authenticated* role -- which lacks USAGE on the
-# `engine` schema. Result: "permission denied for schema engine" on every engine read after
-# any login, until process restart. (Restores locked-plan §4: engine uses service-role
-# internally; the door authenticates the JWT.)
-#
-# THE FIX: a module-level authClient (service key, persistSession:false, autoRefreshToken:
-# false) used for ALL of mintSession's auth ops. The shared data client is never touched.
-#   unzip -o vendor-suit-auth-isolate-v1.zip && python3 writer.py
+# Auth Step 1a: users.auth_user_id link column (+ backfill = id) + SCHEMA.md row.
+# Pure schema; nothing reads it yet (resolvers change in 1b). Parallel-safe.
+#   unzip -o auth-1a-users-auth-user-id-v1.zip && python3 writer.py
+#   then apply db/migrations/0063_users_auth_user_id.sql in the Supabase SQL editor.
 import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
-F = os.path.join(ROOT, "src", "api", "vendor", "auth.js")
-t = open(F, encoding="utf-8").read()
-P = {'old': 'YXN5bmMgZnVuY3Rpb24gbWludFNlc3Npb24oc3VwYWJhc2UsIHVzZXJJZCkgewogIC8vIFN0ZXAgMSDigJQgY3JlYXRlIGF1dGgudXNlcnMgcm93IHBpbm5lZCB0byBvdXIgdXNlcnMuaWQgVVVJRC4KICAvLyBJZGVtcG90ZW50OiA0MjIgLyAiYWxyZWFkeSByZWdpc3RlcmVkIiBtZWFucyByb3cgZXhpc3RzLCBjb250aW51ZS4KICBjb25zdCB7IGRhdGE6IGNyZWF0ZWQsIGVycm9yOiBjcmVhdGVFcnIgfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGguYWRtaW4uY3JlYXRlVXNlcih7CiAgICBpZDogICAgICAgICAgICB1c2VySWQsCiAgICBlbWFpbDogICAgICAgICBgdmVuZG9yLSR7dXNlcklkfUBpbnRlcm5hbC5kcmVhbWFpLmFwcGAsCiAgICBlbWFpbF9jb25maXJtOiB0cnVlLAogIH0pOwoKICBsZXQgYXV0aElkID0gdXNlcklkOwogIGlmIChjcmVhdGVFcnIpIHsKICAgIGNvbnN0IG1zZyA9IGNyZWF0ZUVyci5tZXNzYWdlIHx8ICcnOwogICAgaWYgKCFtc2cuaW5jbHVkZXMoJ2FscmVhZHkgcmVnaXN0ZXJlZCcpICYmICFtc2cuaW5jbHVkZXMoJ2FscmVhZHkgYmVlbiByZWdpc3RlcmVkJykgJiYgY3JlYXRlRXJyLnN0YXR1cyAhPT0gNDIyKSB7CiAgICAgIHRocm93IG5ldyBFcnJvcihgYXV0aC51c2VycyBjcmVhdGUgZmFpbGVkOiAke21zZ31gKTsKICAgIH0KICAgIC8vIEFscmVhZHkgZXhpc3RzIOKAlCBsb29rIGl0IHVwCiAgICBjb25zdCB7IGRhdGE6IGV4aXN0aW5nLCBlcnJvcjogbG9va3VwRXJyIH0gPSBhd2FpdCBzdXBhYmFzZS5hdXRoLmFkbWluLmdldFVzZXJCeUlkKHVzZXJJZCk7CiAgICBpZiAobG9va3VwRXJyIHx8ICFleGlzdGluZz8udXNlcikgewogICAgICB0aHJvdyBuZXcgRXJyb3IoYGF1dGgudXNlcnMgbG9va3VwIGZhaWxlZDogJHtsb29rdXBFcnI/Lm1lc3NhZ2UgfHwgJ25vIHVzZXInfWApOwogICAgfQogICAgYXV0aElkID0gZXhpc3RpbmcudXNlci5pZDsKICB9IGVsc2UgewogICAgYXV0aElkID0gY3JlYXRlZC51c2VyLmlkOwogIH0KCiAgLy8gU3RlcCAyIOKAlCBwaW4gYSBzdGFibGUgaW50ZXJuYWwgZW1haWwgKHJlcXVpcmVkIGJ5IGdlbmVyYXRlTGluaykuCiAgLy8gQWRtaW4gdXBkYXRlIGRvZXMgbm90IGRpc3BhdGNoIGFueSBlbWFpbC4KICBjb25zdCBpbnRlcm5hbEVtYWlsID0gYHZlbmRvci0ke2F1dGhJZH1AaW50ZXJuYWwuZHJlYW1haS5hcHBgOwogIGNvbnN0IHsgZXJyb3I6IHVwZGF0ZUVyciB9ID0gYXdhaXQgc3VwYWJhc2UuYXV0aC5hZG1pbi51cGRhdGVVc2VyQnlJZChhdXRoSWQsIHsKICAgIGVtYWlsOiAgICAgICAgIGludGVybmFsRW1haWwsCiAgICBlbWFpbF9jb25maXJtOiB0cnVlLAogIH0pOwogIGlmICh1cGRhdGVFcnIpIHRocm93IG5ldyBFcnJvcihgYXV0aC51c2VycyBlbWFpbCBwaW4gZmFpbGVkOiAke3VwZGF0ZUVyci5tZXNzYWdlfWApOwoKICAvLyBTdGVwIDMg4oCUIGdlbmVyYXRlIG1hZ2ljLWxpbmsgdG9rZW4gc2VydmVyLXNpZGUuIE5vIGVtYWlsIGRpc3BhdGNoZWQuCiAgY29uc3QgeyBkYXRhOiBsaW5rRGF0YSwgZXJyb3I6IGxpbmtFcnIgfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGguYWRtaW4uZ2VuZXJhdGVMaW5rKHsKICAgIHR5cGU6ICAnbWFnaWNsaW5rJywKICAgIGVtYWlsOiBpbnRlcm5hbEVtYWlsLAogIH0pOwogIGlmIChsaW5rRXJyKSB0aHJvdyBuZXcgRXJyb3IoYGdlbmVyYXRlTGluayBmYWlsZWQ6ICR7bGlua0Vyci5tZXNzYWdlfWApOwoKICAvLyBTdGVwIDQg4oCUIGV4Y2hhbmdlIGhhc2hlZF90b2tlbiBmb3IgcmVhbCBKV1Qgc2Vzc2lvbi4KICBjb25zdCB7IGRhdGE6IHNlc3Npb25EYXRhLCBlcnJvcjogc2Vzc2lvbkVyciB9ID0gYXdhaXQgc3VwYWJhc2UuYXV0aC52ZXJpZnlPdHAoewogICAgdG9rZW5faGFzaDogbGlua0RhdGEucHJvcGVydGllcy5oYXNoZWRfdG9rZW4sCiAgICB0eXBlOiAgICAgICAnZW1haWwnLAogIH0pOwogIGlmIChzZXNzaW9uRXJyKSB0aHJvdyBuZXcgRXJyb3IoYHZlcmlmeU90cCBmYWlsZWQ6ICR7c2Vzc2lvbkVyci5tZXNzYWdlfWApOwoKICByZXR1cm4gewogICAgYWNjZXNzX3Rva2VuOiAgc2Vzc2lvbkRhdGEuc2Vzc2lvbi5hY2Nlc3NfdG9rZW4sCiAgICByZWZyZXNoX3Rva2VuOiBzZXNzaW9uRGF0YS5zZXNzaW9uLnJlZnJlc2hfdG9rZW4sCiAgfTsKfQo=', 'new': 'YXN5bmMgZnVuY3Rpb24gbWludFNlc3Npb24oc3VwYWJhc2UsIHVzZXJJZCkgewogIC8vIFN0ZXAgMSDigJQgY3JlYXRlIGF1dGgudXNlcnMgcm93IHBpbm5lZCB0byBvdXIgdXNlcnMuaWQgVVVJRC4KICAvLyBJZGVtcG90ZW50OiA0MjIgLyAiYWxyZWFkeSByZWdpc3RlcmVkIiBtZWFucyByb3cgZXhpc3RzLCBjb250aW51ZS4KICBjb25zdCB7IGRhdGE6IGNyZWF0ZWQsIGVycm9yOiBjcmVhdGVFcnIgfSA9IGF3YWl0IGF1dGhDbGllbnQuYXV0aC5hZG1pbi5jcmVhdGVVc2VyKHsKICAgIGlkOiAgICAgICAgICAgIHVzZXJJZCwKICAgIGVtYWlsOiAgICAgICAgIGB2ZW5kb3ItJHt1c2VySWR9QGludGVybmFsLmRyZWFtYWkuYXBwYCwKICAgIGVtYWlsX2NvbmZpcm06IHRydWUsCiAgfSk7CgogIGxldCBhdXRoSWQgPSB1c2VySWQ7CiAgaWYgKGNyZWF0ZUVycikgewogICAgY29uc3QgbXNnID0gY3JlYXRlRXJyLm1lc3NhZ2UgfHwgJyc7CiAgICBpZiAoIW1zZy5pbmNsdWRlcygnYWxyZWFkeSByZWdpc3RlcmVkJykgJiYgIW1zZy5pbmNsdWRlcygnYWxyZWFkeSBiZWVuIHJlZ2lzdGVyZWQnKSAmJiBjcmVhdGVFcnIuc3RhdHVzICE9PSA0MjIpIHsKICAgICAgdGhyb3cgbmV3IEVycm9yKGBhdXRoLnVzZXJzIGNyZWF0ZSBmYWlsZWQ6ICR7bXNnfWApOwogICAgfQogICAgLy8gQWxyZWFkeSBleGlzdHMg4oCUIGxvb2sgaXQgdXAKICAgIGNvbnN0IHsgZGF0YTogZXhpc3RpbmcsIGVycm9yOiBsb29rdXBFcnIgfSA9IGF3YWl0IGF1dGhDbGllbnQuYXV0aC5hZG1pbi5nZXRVc2VyQnlJZCh1c2VySWQpOwogICAgaWYgKGxvb2t1cEVyciB8fCAhZXhpc3Rpbmc/LnVzZXIpIHsKICAgICAgdGhyb3cgbmV3IEVycm9yKGBhdXRoLnVzZXJzIGxvb2t1cCBmYWlsZWQ6ICR7bG9va3VwRXJyPy5tZXNzYWdlIHx8ICdubyB1c2VyJ31gKTsKICAgIH0KICAgIGF1dGhJZCA9IGV4aXN0aW5nLnVzZXIuaWQ7CiAgfSBlbHNlIHsKICAgIGF1dGhJZCA9IGNyZWF0ZWQudXNlci5pZDsKICB9CgogIC8vIFN0ZXAgMiDigJQgcGluIGEgc3RhYmxlIGludGVybmFsIGVtYWlsIChyZXF1aXJlZCBieSBnZW5lcmF0ZUxpbmspLgogIC8vIEFkbWluIHVwZGF0ZSBkb2VzIG5vdCBkaXNwYXRjaCBhbnkgZW1haWwuCiAgY29uc3QgaW50ZXJuYWxFbWFpbCA9IGB2ZW5kb3ItJHthdXRoSWR9QGludGVybmFsLmRyZWFtYWkuYXBwYDsKICBjb25zdCB7IGVycm9yOiB1cGRhdGVFcnIgfSA9IGF3YWl0IGF1dGhDbGllbnQuYXV0aC5hZG1pbi51cGRhdGVVc2VyQnlJZChhdXRoSWQsIHsKICAgIGVtYWlsOiAgICAgICAgIGludGVybmFsRW1haWwsCiAgICBlbWFpbF9jb25maXJtOiB0cnVlLAogIH0pOwogIGlmICh1cGRhdGVFcnIpIHRocm93IG5ldyBFcnJvcihgYXV0aC51c2VycyBlbWFpbCBwaW4gZmFpbGVkOiAke3VwZGF0ZUVyci5tZXNzYWdlfWApOwoKICAvLyBTdGVwIDMg4oCUIGdlbmVyYXRlIG1hZ2ljLWxpbmsgdG9rZW4gc2VydmVyLXNpZGUuIE5vIGVtYWlsIGRpc3BhdGNoZWQuCiAgY29uc3QgeyBkYXRhOiBsaW5rRGF0YSwgZXJyb3I6IGxpbmtFcnIgfSA9IGF3YWl0IGF1dGhDbGllbnQuYXV0aC5hZG1pbi5nZW5lcmF0ZUxpbmsoewogICAgdHlwZTogICdtYWdpY2xpbmsnLAogICAgZW1haWw6IGludGVybmFsRW1haWwsCiAgfSk7CiAgaWYgKGxpbmtFcnIpIHRocm93IG5ldyBFcnJvcihgZ2VuZXJhdGVMaW5rIGZhaWxlZDogJHtsaW5rRXJyLm1lc3NhZ2V9YCk7CgogIC8vIFN0ZXAgNCDigJQgZXhjaGFuZ2UgaGFzaGVkX3Rva2VuIGZvciByZWFsIEpXVCBzZXNzaW9uLgogIGNvbnN0IHsgZGF0YTogc2Vzc2lvbkRhdGEsIGVycm9yOiBzZXNzaW9uRXJyIH0gPSBhd2FpdCBhdXRoQ2xpZW50LmF1dGgudmVyaWZ5T3RwKHsKICAgIHRva2VuX2hhc2g6IGxpbmtEYXRhLnByb3BlcnRpZXMuaGFzaGVkX3Rva2VuLAogICAgdHlwZTogICAgICAgJ2VtYWlsJywKICB9KTsKICBpZiAoc2Vzc2lvbkVycikgdGhyb3cgbmV3IEVycm9yKGB2ZXJpZnlPdHAgZmFpbGVkOiAke3Nlc3Npb25FcnIubWVzc2FnZX1gKTsKCiAgcmV0dXJuIHsKICAgIGFjY2Vzc190b2tlbjogIHNlc3Npb25EYXRhLnNlc3Npb24uYWNjZXNzX3Rva2VuLAogICAgcmVmcmVzaF90b2tlbjogc2Vzc2lvbkRhdGEuc2Vzc2lvbi5yZWZyZXNoX3Rva2VuLAogIH07Cn0K'}
+P = {'sql': 'LS0gMDA2M191c2Vyc19hdXRoX3VzZXJfaWQuc3FsCi0tIEF1dGggbWlncmF0aW9uIFN0ZXAgMWEgKHNlZSBBVVRIX1NVUEFCQVNFX1BIT05FX01JR1JBVElPTi5tZCkuCi0tCi0tIFRoZSBsaW5rIGNvbHVtbiBmb3IgU3VwYWJhc2UgUGhvbmUtT1RQIGxvZ2luLiBVbnRpbCBub3cgZHJlYW0tb3MgcGlubmVkIHRoZQotLSBTdXBhYmFzZSBhdXRoIHVzZXIgaWQgRVFVQUwgdG8gcHVibGljLnVzZXJzLmlkIChtaW50U2Vzc2lvbidzIGNyZWF0ZVVzZXIoe2lkfSkpLAotLSBzbyByZXNvbHZlVmVuZG9yL3JlcXVpcmVDb3VwbGVBdXRoIGNvdWxkIG1hdGNoIHZlbmRvcnMudXNlcl9pZCA9IEpXVCBzdWIgZGlyZWN0bHkuCi0tIFN1cGFiYXNlIHNpZ25JbldpdGhPdHAgZ2VuZXJhdGVzIGl0cyBPV04gYXV0aCBpZCAoY2Fubm90IGJlIHBpbm5lZCksIHNvIGlkZW50aXR5Ci0tIG11c3QgcmVzb2x2ZSB0aHJvdWdoIGEgbGluayBjb2x1bW4gaW5zdGVhZDogdXNlcnMuYXV0aF91c2VyX2lkID0gPHN1cGFiYXNlIGF1dGggaWQ+LgotLSBNaXJyb3JzIGVuZ2luZS51c2Vycy5hdXRoX3VzZXJfaWQgKHRoZSBlbmdpbmUgYWxyZWFkeSByZXNvbHZlcyB0aGlzIHdheSkuCi0tCi0tIEJBQ0tGSUxMOiBldmVyeSBleGlzdGluZyB1c2VyIGhhZCBhdXRoLnVzZXJzLmlkID09PSB1c2Vycy5pZCAodGhlIG9sZCBwaW5uaW5nKSwKLS0gc28gc2VlZCBhdXRoX3VzZXJfaWQgPSBpZC4gVGhpcyBrZWVwcyBPTEQtZmxvdyBsb2dpbnMgKEpXVCBzdWIgPSB1c2Vycy5pZCkgcmVzb2x2aW5nCi0tIHRocm91Z2ggdGhlIFNBTUUgYXV0aF91c2VyX2lkIHBhdGggYXMgbmV3IHBob25lLU9UUCBsb2dpbnMg4oCUIG5vIHBhcmFsbGVsIGJyZWFrLgotLSAoQSByZXR1cm5pbmcgdXNlciB3aG8gbGF0ZXIgc2lnbnMgaW4gdmlhIHBob25lLU9UUCBnZXRzIGEgTkVXIHN1cGFiYXNlIGlkOyB0aGUKLS0gIHByb3Zpc2lvbiBlbmRwb2ludCdzIHBob25lLWZhbGxiYWNrIHJlLWJpbmRzIGF1dGhfdXNlcl9pZCB0byBpdCB0aGVuIOKAlCBTdGVwIDFjLikKLS0KLS0gSWRlbXBvdGVudDogc2FmZSB0byByZS1ydW4uCgphbHRlciB0YWJsZSB1c2VycyBhZGQgY29sdW1uIGlmIG5vdCBleGlzdHMgYXV0aF91c2VyX2lkIHV1aWQ7CgotLSBiYWNrZmlsbCBleGlzdGluZyByb3dzOiBhdXRoX3VzZXJfaWQgPSBpZCAob2xkIHBpbm5lZCBpZGVudGl0eSkKdXBkYXRlIHVzZXJzIHNldCBhdXRoX3VzZXJfaWQgPSBpZCB3aGVyZSBhdXRoX3VzZXJfaWQgaXMgbnVsbDsKCi0tIHVuaXF1ZSwgYnV0IGFsbG93IE5VTEwgKGEgYnJhbmQtbmV3IHJvdyBpcyBjcmVhdGVkIGJlZm9yZSBpdHMgYXV0aCBpZCBpcyBrbm93biBpbgotLSBzb21lIHBhdGhzKTsgYSBwYXJ0aWFsIHVuaXF1ZSBpbmRleCBlbmZvcmNlcyBvbmUgdXNlciBwZXIgc3VwYWJhc2UgYXV0aCBpZGVudGl0eS4KY3JlYXRlIHVuaXF1ZSBpbmRleCBpZiBub3QgZXhpc3RzIHVzZXJzX2F1dGhfdXNlcl9pZF9rZXkKICBvbiB1c2VycyAoYXV0aF91c2VyX2lkKSB3aGVyZSBhdXRoX3VzZXJfaWQgaXMgbm90IG51bGw7Cg==', 'row': 'fCBhdXRoX3VzZXJfaWQgfCB1dWlkIFVOSVFVRSB8IFN1cGFiYXNlIEF1dGggdXNlciBpZCAodGhlIEpXVCBgc3ViYCkuIFRoZSBpZGVudGl0eSBsaW5rIGZvciBwaG9uZS1PVFAgbG9naW46IHJlc29sdmVycyBtYXRjaCBgdXNlcnMuYXV0aF91c2VyX2lkID0gcmVxLmF1dGgudXNlcl9pZGAsIHRoZW4gdGhlIHJvbGUgcm93IGJ5IGB1c2Vycy5pZGAuIEJhY2tmaWxsZWQgPSBgaWRgIGZvciBsZWdhY3kgcGlubmVkIGFjY291bnRzICgwMDYzKTsgcmUtYm91bmQgYnkgdGhlIHByb3Zpc2lvbiBlbmRwb2ludCdzIHBob25lLWZhbGxiYWNrIHdoZW4gYSByZXR1cm5pbmcgdXNlciBmaXJzdCBzaWducyBpbiB2aWEgcGhvbmUtT1RQLiBNaXJyb3JzIGBlbmdpbmUudXNlcnMuYXV0aF91c2VyX2lkYC4gfAo='}
 
-if "authClient" in t:
-    print("= auth.js already isolated (idempotent)."); sys.exit(0)
+# 1 — drop the migration file
+MIG = os.path.join(ROOT, "db", "migrations", "0063_users_auth_user_id.sql")
+if os.path.isfile(MIG):
+    print("= migration 0063 already present (idempotent).")
+else:
+    os.makedirs(os.path.dirname(MIG), exist_ok=True)
+    open(MIG, "w", encoding="utf-8").write(base64.b64decode(P["sql"]).decode())
+    print("+ db/migrations/0063_users_auth_user_id.sql")
 
-# 1 -- add the dedicated auth client after the VENDOR_WA const block
-anchor = "const VENDOR_WA = process.env.TDW_WA_NUMBER\n  ? `+${process.env.TDW_WA_NUMBER}`\n  : '+917982159047';"
-if anchor not in t: die("VENDOR_WA anchor not found -- inspect auth.js header.")
-inject = anchor + """
+# 2 — update docs/SCHEMA.md: insert the auth_user_id row into the ### users table
+SCH = os.path.join(ROOT, "docs", "SCHEMA.md")
+s = open(SCH, encoding="utf-8").read()
+if "| auth_user_id | uuid UNIQUE |" in s:
+    print("= SCHEMA.md already has auth_user_id row (idempotent).")
+else:
+    # insert right after the users.phone row (stable anchor inside the users table)
+    anchor = "| phone | text UNIQUE NOT NULL | always E.164 e.g. +918757788550 |"
+    if anchor not in s: die("SCHEMA.md users.phone anchor not found.")
+    row = base64.b64decode(P["row"]).decode().strip()
+    s = s.replace(anchor, anchor + "\n" + row, 1)
+    open(SCH, "w", encoding="utf-8").write(s)
+    print("+ docs/SCHEMA.md: users.auth_user_id row added")
 
-// Dedicated client for the GoTrue session exchange (mintSession). It is built with the
-// SAME service-role key but kept SEPARATE from the shared data client, and with
-// persistSession/autoRefreshToken OFF, so that verifyOtp -- which sets a user session --
-// never mutates the service-role client the rest of the app reads the `engine` schema with.
-const { createClient: _createAuthClient } = require('@supabase/supabase-js');
-const authClient = _createAuthClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false, autoRefreshToken: false } },
-);"""
-t = t.replace(anchor, inject, 1)
-print("+ auth.js: dedicated authClient added (persistSession:false)")
-
-# 2 -- swap mintSession body onto authClient
-old = base64.b64decode(P["old"]).decode(); new = base64.b64decode(P["new"]).decode()
-if old not in t: die("mintSession function not found verbatim.")
-t = t.replace(old, new, 1)
-print("+ auth.js: mintSession's 5 auth calls -> authClient (shared data client never session-mutated)")
-
-open(F, "w", encoding="utf-8").write(t)
-print("\nDone. Restart (no engine change).")
+print("\nDone. Apply 0063 in the Supabase SQL editor, then verify with the gate SQL.")
