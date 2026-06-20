@@ -1,43 +1,23 @@
 #!/usr/bin/env python3
-# Auth Step 1c: the provision endpoint. POST /{vendor|couple}/auth/provision behind
-# requireAuth -> provisionRole (idempotent users + role row, phone-fallback re-bind).
-# Returns ids + pin_set, NO tokens (Supabase mints the session client-side, Path 1).
-# Parallel-safe: a NEW route; nothing existing changes.
-#   unzip -o auth-1c-provision-v1.zip && python3 writer.py
+# Auth Step 1d: normalize phone to E.164 (+digits) in provisionRole BEFORE any
+# write or phone lookup. Fixes the bug where Supabase's digits-only phone
+# ("918757788550") was stored plus-less, mismatching every '+'-keyed lookup
+# (pin-status, legacy rows). One feature: phone normalization.
+#   unzip -o auth-1d-phone-e164-v1.zip && python3 writer.py
 import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
-P = {'helper': 'Ly8gc3JjL2xpYi9wcm92aXNpb25Sb2xlLmpzCi8vIFByb3Zpc2lvbiB0aGUgcHVibGljLnVzZXJzICsgcm9sZSByb3cgZm9yIGEgU3VwYWJhc2UtQVVUSEVOVElDQVRFRCBpZGVudGl0eS4KLy8gQ2FsbGVkIEFGVEVSIHRoZSBicm93c2VyIGhhcyBjb21wbGV0ZWQgU3VwYWJhc2UgUGhvbmUtT1RQIChzaWduSW5XaXRoT3RwL3ZlcmlmeU90cCk7Ci8vIHRoZSByb3V0ZSBpcyBiZWhpbmQgcmVxdWlyZUF1dGgsIHNvIGF1dGhVc2VySWQgaXMgdGhlIFZFUklGSUVEIFN1cGFiYXNlIGF1dGggaWQg4oCUCi8vIG5ldmVyIGNhbGxlci1zdXBwbGllZC4gUmV0dXJucyBpZHMgb25seSAobm8gdG9rZW5zOiBTdXBhYmFzZSBhbHJlYWR5IG1pbnRlZCB0aGUKLy8gc2Vzc2lvbiBjbGllbnQtc2lkZSBpbiBQYXRoIDEpLgovLwovLyBJZGVudGl0eSBiaW5kaW5nIChpZGVtcG90ZW50LCB3aXRoIHRoZSBwaG9uZS1mYWxsYmFjayByZS1iaW5kKToKLy8gICBhKSB1c2VycyBXSEVSRSBhdXRoX3VzZXJfaWQgPSBhdXRoVXNlcklkICAgICAgICAgICAgLT4gYWxyZWFkeSBsaW5rZWQsIHVzZSBpdAovLyAgIGIpIGVsc2UgdXNlcnMgV0hFUkUgcGhvbmUgPSBwaG9uZSAtPiBSRS1CSU5EICAgICAgICAgIC0+IHNldCBhdXRoX3VzZXJfaWQgPSBhdXRoVXNlcklkCi8vICAgICAgICBUaGlzIHJlc2N1ZXMgYSBsZWdhY3kgYWNjb3VudCAoY3JlYXRlZCB1bmRlciB0aGUgb2xkIHBpbm5lZCBtb2RlbCB3aXRoIGFuCi8vICAgICAgICBlbWFpbC1iYXNlZCBhdXRoIHVzZXIgYW5kIE5PIHBob25lKTogdGhlIGZpcnN0IHBob25lLU9UUCBsb2dpbiBmaW5kcyB0aGUgcm93Ci8vICAgICAgICBieSBwaG9uZSBhbmQgYmluZHMgaXQgdG8gdGhlIG5ldyBTdXBhYmFzZSBpZGVudGl0eS4gTm8gZm9yaywgbm8gZGF0YSBsb3NzLgovLyAgIGMpIGVsc2UgSU5TRVJUIGEgZnJlc2ggdXNlcnMgcm93IGxpbmtlZCB0byBhdXRoVXNlcklkCi8vIFRoZW4gZmluZC1vci1jcmVhdGUgdGhlIHJvbGUgcm93ICh2ZW5kb3JzfGNvdXBsZXMpIGZvciB0aGF0IHVzZXJzLmlkLgondXNlIHN0cmljdCc7Cgphc3luYyBmdW5jdGlvbiBwcm92aXNpb25Sb2xlKHN1cGFiYXNlLCB7IGF1dGhVc2VySWQsIHBob25lLCBuYW1lLCByb2xlIH0pIHsKICBpZiAoIWF1dGhVc2VySWQpIHRocm93IG5ldyBFcnJvcignYXV0aFVzZXJJZCByZXF1aXJlZCcpOwogIGNvbnN0IHJvbGVUYWJsZSA9IHJvbGUgPT09ICdjb3VwbGUnID8gJ2NvdXBsZXMnIDogJ3ZlbmRvcnMnOwoKICAvLyBhKSBhbHJlYWR5IGxpbmtlZCB0byB0aGlzIFN1cGFiYXNlIGlkZW50aXR5CiAgbGV0IHVzZXJzSWQgPSBudWxsOwogIGNvbnN0IHsgZGF0YTogYnlBdXRoIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgLmZyb20oJ3VzZXJzJykuc2VsZWN0KCdpZCcpLmVxKCdhdXRoX3VzZXJfaWQnLCBhdXRoVXNlcklkKS5tYXliZVNpbmdsZSgpOwogIGlmIChieUF1dGgpIHVzZXJzSWQgPSBieUF1dGguaWQ7CgogIC8vIGIpIHBob25lLWZhbGxiYWNrIHJlLWJpbmQgKGxlZ2FjeSBhY2NvdW50IG1pZ3JhdGluZyB0byBwaG9uZS1PVFApCiAgaWYgKCF1c2Vyc0lkICYmIHBob25lKSB7CiAgICBjb25zdCB7IGRhdGE6IGJ5UGhvbmUgfSA9IGF3YWl0IHN1cGFiYXNlCiAgICAgIC5mcm9tKCd1c2VycycpLnNlbGVjdCgnaWQnKS5lcSgncGhvbmUnLCBwaG9uZSkubWF5YmVTaW5nbGUoKTsKICAgIGlmIChieVBob25lKSB7CiAgICAgIGNvbnN0IHsgZXJyb3I6IHJlYmluZEVyciB9ID0gYXdhaXQgc3VwYWJhc2UKICAgICAgICAuZnJvbSgndXNlcnMnKS51cGRhdGUoeyBhdXRoX3VzZXJfaWQ6IGF1dGhVc2VySWQgfSkuZXEoJ2lkJywgYnlQaG9uZS5pZCk7CiAgICAgIGlmIChyZWJpbmRFcnIpIHRocm93IG5ldyBFcnJvcihgcmUtYmluZCBmYWlsZWQ6ICR7cmViaW5kRXJyLm1lc3NhZ2V9YCk7CiAgICAgIHVzZXJzSWQgPSBieVBob25lLmlkOwogICAgfQogIH0KCiAgLy8gYykgZnJlc2ggdXNlcgogIGlmICghdXNlcnNJZCkgewogICAgY29uc3QgaW5zID0geyBhdXRoX3VzZXJfaWQ6IGF1dGhVc2VySWQgfTsKICAgIGlmIChwaG9uZSkgaW5zLnBob25lID0gcGhvbmU7CiAgICBpZiAobmFtZSkgIGlucy5uYW1lICA9IG5hbWU7CiAgICBjb25zdCB7IGRhdGE6IGNyZWF0ZWQsIGVycm9yIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgICAuZnJvbSgndXNlcnMnKS5pbnNlcnQoaW5zKS5zZWxlY3QoJ2lkJykuc2luZ2xlKCk7CiAgICBpZiAoZXJyb3IpIHRocm93IG5ldyBFcnJvcihgdXNlcnMgcHJvdmlzaW9uIGZhaWxlZDogJHtlcnJvci5tZXNzYWdlfWApOwogICAgdXNlcnNJZCA9IGNyZWF0ZWQuaWQ7CiAgfQoKICAvLyByb2xlIHJvdyDigJQgZmluZCBvciBjcmVhdGUKICBsZXQgeyBkYXRhOiByb2xlUm93IH0gPSBhd2FpdCBzdXBhYmFzZQogICAgLmZyb20ocm9sZVRhYmxlKS5zZWxlY3QoJ2lkLCBwaW5faGFzaCcpLmVxKCd1c2VyX2lkJywgdXNlcnNJZCkubWF5YmVTaW5nbGUoKTsKICBpZiAoIXJvbGVSb3cpIHsKICAgIGNvbnN0IHsgZGF0YTogY3JlYXRlZFJvbGUsIGVycm9yOiByRXJyIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgICAuZnJvbShyb2xlVGFibGUpLmluc2VydCh7IHVzZXJfaWQ6IHVzZXJzSWQsIG9uYm9hcmRpbmdfc3RhdGU6ICduZXcnIH0pCiAgICAgIC5zZWxlY3QoJ2lkLCBwaW5faGFzaCcpLnNpbmdsZSgpOwogICAgaWYgKHJFcnIpIHRocm93IG5ldyBFcnJvcihgJHtyb2xlVGFibGV9IHByb3Zpc2lvbiBmYWlsZWQ6ICR7ckVyci5tZXNzYWdlfWApOwogICAgcm9sZVJvdyA9IGNyZWF0ZWRSb2xlOwogIH0KCiAgcmV0dXJuIHsgdXNlcl9pZDogdXNlcnNJZCwgcm9sZV9pZDogcm9sZVJvdy5pZCwgcGluX3NldDogISFyb2xlUm93LnBpbl9oYXNoIH07Cn0KCm1vZHVsZS5leHBvcnRzID0geyBwcm92aXNpb25Sb2xlIH07Cg==', 'vroute': 'Ci8vIFBPU1QgL3Byb3Zpc2lvbiDigJQgUGF0aCAxIChTdXBhYmFzZSBQaG9uZS1PVFApLiBUaGUgYnJvd3NlciBoYXMgYWxyZWFkeSBhdXRoZW50aWNhdGVkCi8vIHZpYSBTdXBhYmFzZSAoc2lnbkluV2l0aE90cC92ZXJpZnlPdHApOyByZXF1aXJlQXV0aCB2ZXJpZmllcyB0aGF0IHNlc3Npb24gaGVyZSwgdGhlbgovLyB3ZSBwcm92aXNpb24gdGhlIHVzZXJzICsgdmVuZG9yIHJvdyAoaWRlbXBvdGVudCwgcGhvbmUtZmFsbGJhY2sgcmUtYmluZCkuIE5vIHRva2VucwovLyByZXR1cm5lZCDigJQgdGhlIGJyb3dzZXIgaG9sZHMgdGhlIFN1cGFiYXNlIHNlc3Npb24uCnJvdXRlci5wb3N0KCcvcHJvdmlzaW9uJywgcmVxdWlyZUF1dGgsIGFzeW5jIChyZXEsIHJlcykgPT4gewogIHRyeSB7CiAgICBjb25zdCBhdXRoVXNlcklkID0gcmVxLmF1dGgudXNlcl9pZDsKICAgIGNvbnN0IHBob25lID0gcmVxLmF1dGgucGhvbmUgfHwgKHJlcS5ib2R5ICYmIHJlcS5ib2R5LnBob25lKSB8fCBudWxsOwogICAgY29uc3QgbmFtZSAgPSAoKHJlcS5ib2R5ICYmIHJlcS5ib2R5Lm5hbWUpIHx8ICcnKS50cmltKCkgfHwgbnVsbDsKICAgIGNvbnN0IHIgPSBhd2FpdCBwcm92aXNpb25Sb2xlKHJlcS5hcHAubG9jYWxzLnN1cGFiYXNlLCB7IGF1dGhVc2VySWQsIHBob25lLCBuYW1lLCByb2xlOiAndmVuZG9yJyB9KTsKICAgIHJldHVybiByZXMuanNvbih7IG9rOiB0cnVlLCB1c2VyX2lkOiByLnVzZXJfaWQsIHZlbmRvcl9pZDogci5yb2xlX2lkLCBwaW5fc2V0OiByLnBpbl9zZXQgfSk7CiAgfSBjYXRjaCAoZSkgewogICAgY29uc29sZS5lcnJvcignW3ZlbmRvcjpwcm92aXNpb25dJywgZS5tZXNzYWdlKTsKICAgIHJldHVybiByZXMuc3RhdHVzKDUwMCkuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdQcm92aXNpb25pbmcgZmFpbGVkLicgfSk7CiAgfQp9KTsKCg==', 'croute': 'Ci8vIFBPU1QgL3Byb3Zpc2lvbiDigJQgUGF0aCAxIChTdXBhYmFzZSBQaG9uZS1PVFApLiBCcm93c2VyIGFscmVhZHkgYXV0aGVudGljYXRlZCB2aWEKLy8gU3VwYWJhc2U7IHJlcXVpcmVBdXRoIHZlcmlmaWVzIGl0LCB0aGVuIHByb3Zpc2lvbiB1c2VycyArIGNvdXBsZSByb3cgKGlkZW1wb3RlbnQsCi8vIHBob25lLWZhbGxiYWNrIHJlLWJpbmQpLiBObyB0b2tlbnMgcmV0dXJuZWQg4oCUIHRoZSBicm93c2VyIGhvbGRzIHRoZSBTdXBhYmFzZSBzZXNzaW9uLgpyb3V0ZXIucG9zdCgnL3Byb3Zpc2lvbicsIHJlcXVpcmVBdXRoLCBhc3luYyAocmVxLCByZXMpID0+IHsKICB0cnkgewogICAgY29uc3QgYXV0aFVzZXJJZCA9IHJlcS5hdXRoLnVzZXJfaWQ7CiAgICBjb25zdCBwaG9uZSA9IHJlcS5hdXRoLnBob25lIHx8IChyZXEuYm9keSAmJiByZXEuYm9keS5waG9uZSkgfHwgbnVsbDsKICAgIGNvbnN0IG5hbWUgID0gKChyZXEuYm9keSAmJiByZXEuYm9keS5uYW1lKSB8fCAnJykudHJpbSgpIHx8IG51bGw7CiAgICBjb25zdCByID0gYXdhaXQgcHJvdmlzaW9uUm9sZShyZXEuYXBwLmxvY2Fscy5zdXBhYmFzZSwgeyBhdXRoVXNlcklkLCBwaG9uZSwgbmFtZSwgcm9sZTogJ2NvdXBsZScgfSk7CiAgICByZXR1cm4gcmVzLmpzb24oeyBvazogdHJ1ZSwgdXNlcl9pZDogci51c2VyX2lkLCBjb3VwbGVfaWQ6IHIucm9sZV9pZCwgcGluX3NldDogci5waW5fc2V0IH0pOwogIH0gY2F0Y2ggKGUpIHsKICAgIGNvbnNvbGUuZXJyb3IoJ1tjb3VwbGU6cHJvdmlzaW9uXScsIGUubWVzc2FnZSk7CiAgICByZXR1cm4gcmVzLnN0YXR1cyg1MDApLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnUHJvdmlzaW9uaW5nIGZhaWxlZC4nIH0pOwogIH0KfSk7Cgo='}
-def b64(k): return base64.b64decode(P[k]).decode()
-
-# 1 — helper
-LIB = os.path.join(ROOT, "src", "lib", "provisionRole.js")
-if os.path.isfile(LIB) and "provisionRole" in open(LIB).read():
-    print("= provisionRole.js already present (idempotent).")
-else:
-    open(LIB, "w", encoding="utf-8").write(b64("helper")); print("+ src/lib/provisionRole.js")
-
-def add_route(rel, route_key, name):
-    F = os.path.join(ROOT, *rel)
-    t = open(F, encoding="utf-8").read()
-    if "/provision" in t:
-        print(f"= {name} already has /provision (idempotent)."); return
-    # requires (after 'const twilio')
-    twilio_line = "const twilio  = require('twilio');"
-    if twilio_line not in t: die(f"{name}: twilio require anchor not found.")
-    reqs = ("\nconst requireAuth   = require('../middleware/requireAuth');"
-            "\nconst { provisionRole } = require('../../lib/provisionRole');")
-    if "provisionRole" not in t:
-        t = t.replace(twilio_line, twilio_line + reqs, 1)
-    # insert the route before 'module.exports = router;'
-    anchor = "module.exports = router;"
-    if anchor not in t: die(f"{name}: module.exports anchor not found.")
-    t = t.replace(anchor, b64(route_key) + anchor, 1)
-    open(F, "w", encoding="utf-8").write(t)
-    print(f"+ {name}: POST /provision added")
-
-add_route(["src","api","vendor","auth.js"], "vroute", "vendor/auth.js")
-add_route(["src","api","couple","auth.js"], "croute", "couple/auth.js")
+P = {'old': 'YXN5bmMgZnVuY3Rpb24gcHJvdmlzaW9uUm9sZShzdXBhYmFzZSwgeyBhdXRoVXNlcklkLCBwaG9uZSwgbmFtZSwgcm9sZSB9KSB7CiAgaWYgKCFhdXRoVXNlcklkKSB0aHJvdyBuZXcgRXJyb3IoJ2F1dGhVc2VySWQgcmVxdWlyZWQnKTsKICBjb25zdCByb2xlVGFibGUgPSByb2xlID09PSAnY291cGxlJyA/ICdjb3VwbGVzJyA6ICd2ZW5kb3JzJzsK', 'new': 'YXN5bmMgZnVuY3Rpb24gcHJvdmlzaW9uUm9sZShzdXBhYmFzZSwgeyBhdXRoVXNlcklkLCBwaG9uZSwgbmFtZSwgcm9sZSB9KSB7CiAgaWYgKCFhdXRoVXNlcklkKSB0aHJvdyBuZXcgRXJyb3IoJ2F1dGhVc2VySWQgcmVxdWlyZWQnKTsKICAvLyBTdXBhYmFzZSByZXR1cm5zIHBob25lIGRpZ2l0cy1vbmx5IChlLmcuICI5MTg3NTc3ODg1NTAiKTsgdGhlIHJlc3Qgb2YgdGhlCiAgLy8gc3lzdGVtIHN0b3Jlcy9sb29rcyB1cCBFLjE2NCBXSVRIIHRoZSBsZWFkaW5nICcrJy4gTm9ybWFsaXplIGJlZm9yZSBhbnkKICAvLyB3cml0ZSBvciBwaG9uZSBsb29rdXAgc28gdGhlIG5ldyBmbG93IHN0YXlzIGNvbnNpc3RlbnQgd2l0aCBwaW4tc3RhdHVzLAogIC8vIHRoZSBvbGQgcm93cywgYW5kIGV2ZXJ5ICcrJy1rZXllZCBxdWVyeS4KICBpZiAocGhvbmUpIHsKICAgIGNvbnN0IGRpZ2l0cyA9IFN0cmluZyhwaG9uZSkucmVwbGFjZSgvW14wLTldL2csICcnKTsKICAgIHBob25lID0gZGlnaXRzID8gJysnICsgZGlnaXRzIDogbnVsbDsKICB9CiAgY29uc3Qgcm9sZVRhYmxlID0gcm9sZSA9PT0gJ2NvdXBsZScgPyAnY291cGxlcycgOiAndmVuZG9ycyc7Cg=='}
+F = os.path.join(ROOT, "src", "lib", "provisionRole.js")
+t = open(F, encoding="utf-8").read()
+if "Normalize before any" in t or "replace(/[^0-9]/g" in t:
+    print("= provisionRole already normalizes phone (idempotent)."); sys.exit(0)
+old = base64.b64decode(P["old"]).decode()
+new = base64.b64decode(P["new"]).decode()
+if old not in t: die("provisionRole signature block not found verbatim.")
+t = t.replace(old, new, 1)
+open(F, "w", encoding="utf-8").write(t)
+print("+ provisionRole: phone normalized to +E.164 before write/lookup")
 print("\nDone. Restart (no engine change).")

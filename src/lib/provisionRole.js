@@ -17,6 +17,14 @@
 
 async function provisionRole(supabase, { authUserId, phone, name, role }) {
   if (!authUserId) throw new Error('authUserId required');
+  // Supabase returns phone digits-only (e.g. "918757788550"); the rest of the
+  // system stores/looks up E.164 WITH the leading '+'. Normalize before any
+  // write or phone lookup so the new flow stays consistent with pin-status,
+  // the old rows, and every '+'-keyed query.
+  if (phone) {
+    const digits = String(phone).replace(/[^0-9]/g, '');
+    phone = digits ? '+' + digits : null;
+  }
   const roleTable = role === 'couple' ? 'couples' : 'vendors';
 
   // a) already linked to this Supabase identity
