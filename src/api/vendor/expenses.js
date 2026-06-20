@@ -36,7 +36,10 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   const limit  = Math.max(1, Math.min(100, parseInt(req.query.limit, 10)  || 20));
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
 
-  const baseOut = () => eng.from('records')
+  // select() must come BEFORE filters in supabase-js — the helper takes the
+  // projection so each caller starts from a valid query builder.
+  const baseOut = (sel, opts) => eng.from('records')
+    .select(sel, opts)
     .eq('agent_id', agentId).eq('direction', 'out').eq('hidden', false);
 
   const [
@@ -44,12 +47,11 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     { count,         error: countErr },
     { data: allOut,  error: sumErr },
   ] = await Promise.all([
-    baseOut()
-      .select('id, client, amount, date, note, created_at')
+    baseOut('id, client, amount, date, note, created_at')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1),
-    baseOut().select('*', { count: 'exact', head: true }),
-    baseOut().select('amount'),
+    baseOut('*', { count: 'exact', head: true }),
+    baseOut('amount'),
   ]);
 
   if (listErr || countErr || sumErr) {
