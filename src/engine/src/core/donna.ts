@@ -199,8 +199,13 @@ export async function runDonnaTurn(
   prior: DonnaSession | null,
   today?: string,
   todayIso?: string,
+  onAction?: (a: { name: string; input: unknown; result: string }) => void,
 ): Promise<DonnaTurn> {
   const toolCalls: DonnaTurn['tool_calls'] = [];
+  // record() pushes a tool-call AND fires it live, so each of Donna's hands leaves the
+  // engine the instant it completes (stream cadence for the pair-at-work view) instead of
+  // batched at return. onAction is a no-op on the non-streaming path (the door passes none).
+  const record = (name: string, input: unknown, result: string) => { toolCalls.push({ name, input, result }); onAction?.({ name, input, result }); };
   let inTok = 0, outTok = 0, cost = 0, mutated = false;
   let view: ViewRow[] | null = null; // last READ's rows win — that's THIS ask's view
 
@@ -317,7 +322,7 @@ export async function runDonnaTurn(
           // A supervision verdict: filed to donna_audit_verdict, free-form. It is a
           // record, not a snapshot item — it does not touch the near-horizon note.
           outcome = await executeDonnaVerdict(agentId, input as Parameters<typeof executeDonnaVerdict>[1]);
-          toolCalls.push({ name: tu.name, input: tu.input, result: outcome.display });
+          record(tu.name, tu.input, outcome.display);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;
         }
@@ -325,7 +330,7 @@ export async function runDonnaTurn(
           // The review binder: the container for a supervision review. Verdicts point
           // to it. A record, not a snapshot item.
           outcome = await executeDonnaReview(agentId, input as Parameters<typeof executeDonnaReview>[1]);
-          toolCalls.push({ name: tu.name, input: tu.input, result: outcome.display });
+          record(tu.name, tu.input, outcome.display);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;
         }
@@ -343,7 +348,7 @@ export async function runDonnaTurn(
         if (outcome.item?.ref_id) currentBinderId = outcome.item.ref_id;
       }
       if (outcome.found && outcome.found.length) view = outcome.found; // a read surfaced rows -> this turn has a view
-      toolCalls.push({ name: tu.name, input: tu.input, result: outcome.display });
+      record(tu.name, tu.input, outcome.display);
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
     }
 

@@ -51,10 +51,22 @@ export type TurnResult = {
   view: ViewRow[] | null; // rows to show for THIS turn (wakes the peek; fills the carousel)
 };
 
+// Live beats — surfaced as they happen, ONLY when runTurn is handed an onEvent
+// callback (the streaming door). The non-streaming path passes none, so every emit
+// below is inert. Mirrors dreamai's TurnEvent so the door + PWA translate identically.
+export type TurnEvent =
+  | { type: 'dispatch'; to: 'donna'; message: string }
+  | { type: 'victor_token'; text: string }
+  | { type: 'donna_action'; name: string; input: unknown; result: string }
+  | { type: 'donna_report'; message: string }
+  | { type: 'answer'; reply: string }
+  | { type: 'done'; conversation_id: string; cost_inr: number; view: ViewRow[] | null };
+
 export async function runTurn(args: {
   agentId: string;
   message: string;
   conversationId?: string;
+  onEvent?: (e: TurnEvent) => void;
 }): Promise<TurnResult> {
   const { agentId, message } = args;
 
@@ -214,13 +226,18 @@ export async function runTurn(args: {
   let talks = 0;                                // Harvey<->Donna round-trips this turn
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
-    const resp = await anthropic.messages.create({
+    // Victor's prose streamed token by token (victor_token) when a streaming door wired
+    // onEvent; inert otherwise. finalMessage() assembles the SAME message .create() returned,
+    // so everything below is unchanged.
+    const stream = anthropic.messages.stream({
       model,
       max_tokens: 1024,
       system: buildSystem(),
       tools,
       messages,
     });
+    stream.on('text', (delta) => args.onEvent?.({ type: 'victor_token', text: delta }));
+    const resp = await stream.finalMessage();
 
     totalIn += resp.usage?.input_tokens ?? 0;
     totalOut += resp.usage?.output_tokens ?? 0;
@@ -278,7 +295,8 @@ export async function runTurn(args: {
         // eslint-disable-next-line no-console
         console.log(`[H->D #${talks}] ${msg}`);
 
-        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso);
+        args.onEvent?.({ type: 'dispatch', to: 'donna', message: msg });
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }));
         donnaSession = donna.session; // persist so the next dear_donna_talk RESUMES her
         totalIn += donna.input_tokens;
         totalOut += donna.output_tokens;
@@ -293,6 +311,7 @@ export async function runTurn(args: {
         const voiced = /^listen[,\s]+harvey/i.test(said) ? said : `Listen Harvey \u2014 ${said}`;
         // eslint-disable-next-line no-console
         console.log(`[D->H #${talks}] ${voiced}`);
+        args.onEvent?.({ type: 'donna_report', message: voiced });
 
         toolCalls.push({
           name: 'dear_donna_talk',
@@ -327,6 +346,8 @@ export async function runTurn(args: {
 
   if (!reply) reply = accumulatedText || 'Hmm, that took longer than expected — try that again?';
 
+  args.onEvent?.({ type: 'answer', reply });
+
   await saveMessage(conversationId, 'assistant', reply, toolCalls.length ? toolCalls : undefined);
 
   // First-meeting greeting delivered on this turn → mark it so the opener never fires again,
@@ -344,6 +365,8 @@ export async function runTurn(args: {
     cost_inr: costInr,
     escalated,
   });
+
+  args.onEvent?.({ type: 'done', conversation_id: conversationId, cost_inr: costInr, view: turnView });
 
   return {
     reply,
