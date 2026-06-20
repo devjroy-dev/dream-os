@@ -24,6 +24,70 @@ const resolveAgent  = require('../middleware/resolveAgent');
 const { runTurn } = require('../../engine/dist/core/loop');
 const { generateInvoiceForBinder } = require('../vendor/invoices');
 
+// ── Publication firewall: engine beats -> the wire names the PWA already reads ───
+// The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
+// the older Myra wire (text_delta / handoff / operator_action / operator_report), so the
+// frontend stays untouched. The operator (Donna) is shown but never named; tool tokens
+// collapse to a category — her name and hands never cross the wire.
+function scrubText(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/\bdonna_[a-z_]+\b/gi, 'operator tool')
+    .replace(/\bDonna\b/g, 'Operator')
+    .replace(/\bHarvey\b/g, 'Victor');
+}
+function actionKind(name) {
+  if (/(find|tally|history|shelf|brief|whatsdue|search)/i.test(name || '')) return 'read';
+  if (/(calendar|event)/i.test(name || '')) return 'calendar';
+  return 'write';
+}
+function translateBeat(e) {
+  if (!e || !e.type) return null;
+  switch (e.type) {
+    case 'victor_token': return { type: 'text_delta', text: e.text };
+    case 'dispatch':     return { type: 'handoff', from: 'victor', to: 'operator', message: scrubText(e.message) };
+    case 'donna_action': return { type: 'operator_action', kind: actionKind(e.name), detail: scrubText(typeof e.result === 'string' ? e.result : '') };
+    case 'donna_report': return { type: 'operator_report', message: scrubText(e.message) };
+    // answer / done / handbook dropped: the reply already streamed as text_delta, and the
+    // door sends its own authoritative done below.
+    default: return null;
+  }
+}
+
+// donna_invoice_pdf is Donna's SIGNAL hand: the engine only flags intent. The door mints
+// the real numbered document (idempotent). Shared by the JSON and SSE paths so the invoice
+// contract is identical on both.
+async function buildInvoices(req, result) {
+  const eng = req.app.locals.supabase.schema('engine');
+  const wantInvoice = new Set();
+  for (const tc of (result.tool_calls || [])) {
+    if (tc.name === 'donna_invoice_pdf' && tc.input && tc.input.binder_id) wantInvoice.add(tc.input.binder_id);
+    for (const dc of (tc.donna_calls || [])) {
+      if (dc.name === 'donna_invoice_pdf' && dc.input && dc.input.binder_id) wantInvoice.add(dc.input.binder_id);
+    }
+  }
+  const documents = [];
+  for (const binderId of wantInvoice) {
+    try {
+      const { data: binder } = await eng.from('records')
+        .select('id, client, phone, amount, amount_received, note')
+        .eq('agent_id', req.agentId).eq('id', binderId).maybeSingle();
+      if (binder && Number(binder.amount) > 0) {
+        const gen = await generateInvoiceForBinder(req.app.locals.supabase, req.vendor, binder);
+        if (gen && gen.ok) documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: binder.client });
+      }
+    } catch (e) { console.error('[vendor-e chat:donna_invoice_pdf]', e.message); }
+  }
+  return documents;
+}
+
+// The chat-door confirms the invoice NUMBER only (the download lives in the invoices list).
+function invoiceLines(documents) {
+  return documents.map((d) =>
+    `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready — find it in the invoices list to download or send.`
+  ).join('\n');
+}
+
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
@@ -32,32 +96,57 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
   const body    = req.body || {};
   const message = typeof body.message === 'string' ? body.message.trim() : '';
   if (!message) return res.status(400).json({ ok: false, error: 'message is required.' });
+
+  // ── SSE streaming path ──────────────────────────────────────────────────────
+  // When the PWA sends Accept: text/event-stream, stream Victor's reply token by token
+  // (the blob fills as he writes) plus the pair-at-work beats. The JSON path below is
+  // untouched — curls, evals, and any non-stream caller behave exactly as before.
+  const wantsStream = (req.headers['accept'] || '').includes('text/event-stream');
+  if (wantsStream) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (res.flushHeaders) res.flushHeaders();
+
+    let streamDead = false;
+    res.on('error', (err) => { streamDead = true; console.warn('[vendor-e chat SSE] res error (absorbed):', err.message); });
+    const send = (obj) => {
+      if (streamDead || res.writableEnded) return;
+      try { res.write(`data: ${JSON.stringify(obj)}\n\n`); }
+      catch (err) { streamDead = true; console.warn('[vendor-e chat SSE] write failed:', err.message); }
+    };
+
+    try {
+      send({ type: 'thinking' });
+      const result = await runTurn({
+        agentId: req.agentId,
+        message,
+        onEvent: (e) => { const safe = translateBeat(e); if (safe) send(safe); },
+      });
+
+      // Invoices are minted after the turn (donna_invoice_pdf is a signal). The reply has
+      // already streamed, so the "ready" line rides as a final text_delta before done.
+      const documents = await buildInvoices(req, result);
+      if (documents.length) send({ type: 'text_delta', text: '\n\n' + invoiceLines(documents) });
+
+      const toolNames = (result.tool_calls || []).map((t) => t.name);
+      const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
+      if (documents.length) done.documents = documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
+      send(done);
+      if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (e) {
+      console.error('[vendor-e chat SSE]', e.message);
+      send({ type: 'error', message: 'Chat failed.' });
+      if (!res.writableEnded) { try { res.write('data: [DONE]\n\n'); } catch (_e) { /* gone */ } res.end(); }
+    }
+    return;
+  }
   try {
     const result    = await runTurn({ agentId: req.agentId, message });
 
-    // donna_invoice_pdf is Donna's SIGNAL hand: the engine only flags intent.
-    // The door produces the real numbered document (idempotent) and confirms the
-    // NUMBER in chat — the download lives in the invoices list (no URL pasted here).
-    const eng = req.app.locals.supabase.schema('engine');
-    const wantInvoice = new Set();
-    for (const tc of (result.tool_calls || [])) {
-      if (tc.name === 'donna_invoice_pdf' && tc.input && tc.input.binder_id) wantInvoice.add(tc.input.binder_id);
-      for (const dc of (tc.donna_calls || [])) {
-        if (dc.name === 'donna_invoice_pdf' && dc.input && dc.input.binder_id) wantInvoice.add(dc.input.binder_id);
-      }
-    }
-    const documents = [];
-    for (const binderId of wantInvoice) {
-      try {
-        const { data: binder } = await eng.from('records')
-          .select('id, client, phone, amount, amount_received, note')
-          .eq('agent_id', req.agentId).eq('id', binderId).maybeSingle();
-        if (binder && Number(binder.amount) > 0) {
-          const gen = await generateInvoiceForBinder(req.app.locals.supabase, req.vendor, binder);
-          if (gen && gen.ok) documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: binder.client });
-        }
-      } catch (e) { console.error('[vendor-e chat:donna_invoice_pdf]', e.message); }
-    }
+    const documents = await buildInvoices(req, result);
 
     let reply = result.reply;
     if (documents.length) {
