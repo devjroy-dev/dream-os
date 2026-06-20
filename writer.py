@@ -1,39 +1,43 @@
 #!/usr/bin/env python3
-# Auth Step 1b: resolvers map Supabase auth id -> public.users.id via auth_user_id
-# (legacy id fallback), then the role row. Parallel-safe: 0063 backfill means current
-# tokens (sub = users.id) match auth_user_id directly, so the live login keeps working.
-#   unzip -o auth-1b-resolvers-v1.zip && python3 writer.py
+# Auth Step 1c: the provision endpoint. POST /{vendor|couple}/auth/provision behind
+# requireAuth -> provisionRole (idempotent users + role row, phone-fallback re-bind).
+# Returns ids + pin_set, NO tokens (Supabase mints the session client-side, Path 1).
+# Parallel-safe: a NEW route; nothing existing changes.
+#   unzip -o auth-1c-provision-v1.zip && python3 writer.py
 import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
-P = {'helper': 'Ly8gc3JjL2xpYi9yZXNvbHZlVXNlcnNJZC5qcwovLyBNYXAgYSBTdXBhYmFzZSBhdXRoIGlkZW50aXR5ICh0aGUgSldUIGBzdWJgLCBpLmUuIHJlcS5hdXRoLnVzZXJfaWQpIHRvIHRoZQovLyBwdWJsaWMudXNlcnMuaWQg4oCUIHRoZSBpZGVudGl0eSBzZWFtIGZvciBTdXBhYmFzZSBQaG9uZS1PVFAgbG9naW4uCi8vCi8vICAgUHJpbWFyeTogIHVzZXJzLmF1dGhfdXNlcl9pZCA9IDxzdXBhYmFzZSBhdXRoIGlkPiAgIChwaG9uZS1PVFAgKyBiYWNrZmlsbGVkIGxlZ2FjeSkKLy8gICBGYWxsYmFjazogdXNlcnMuaWQgICAgICAgICAgPSA8c3VwYWJhc2UgYXV0aCBpZD4gICAgIChwcmUtMDA2My1iYWNrZmlsbCBwaW5uZWQgaWQpCi8vCi8vIFRoZSBmYWxsYmFjayBpcyBiZWx0LWFuZC1zdXNwZW5kZXJzOiAwMDYzIGJhY2tmaWxsZWQgYXV0aF91c2VyX2lkID0gaWQgZm9yIGV2ZXJ5Ci8vIGV4aXN0aW5nIHVzZXIsIHNvIHRoZSBwcmltYXJ5IGFscmVhZHkgY292ZXJzIGxlZ2FjeSBhY2NvdW50cy4gUmV0dXJucyBudWxsIGlmIHRoZQovLyBpZGVudGl0eSBtYXBzIHRvIG5vIHVzZXIgKGNhbGxlciBkZWNpZGVzIHRoZSA0MDEvNDAzKS4KJ3VzZSBzdHJpY3QnOwoKYXN5bmMgZnVuY3Rpb24gcmVzb2x2ZVVzZXJzSWQoc3VwYWJhc2UsIGF1dGhVc2VySWQpIHsKICBpZiAoIWF1dGhVc2VySWQpIHJldHVybiBudWxsOwogIGNvbnN0IHsgZGF0YSB9ID0gYXdhaXQgc3VwYWJhc2UKICAgIC5mcm9tKCd1c2VycycpLnNlbGVjdCgnaWQnKS5lcSgnYXV0aF91c2VyX2lkJywgYXV0aFVzZXJJZCkubWF5YmVTaW5nbGUoKTsKICBpZiAoZGF0YSkgcmV0dXJuIGRhdGEuaWQ7CiAgY29uc3QgeyBkYXRhOiBsZWdhY3kgfSA9IGF3YWl0IHN1cGFiYXNlCiAgICAuZnJvbSgndXNlcnMnKS5zZWxlY3QoJ2lkJykuZXEoJ2lkJywgYXV0aFVzZXJJZCkubWF5YmVTaW5nbGUoKTsKICByZXR1cm4gbGVnYWN5ID8gbGVnYWN5LmlkIDogbnVsbDsKfQoKbW9kdWxlLmV4cG9ydHMgPSB7IHJlc29sdmVVc2Vyc0lkIH07Cg==', 'rv_old': 'ICAgIC8vIFN0ZXAgMSDigJQgcmVzb2x2ZSB2ZW5kb3IgYnkgSldUIHVzZXJfaWQuCiAgICBjb25zdCB7IGRhdGE6IHZlbmRvciwgZXJyb3I6IHZlbmRvckVyciB9ID0gYXdhaXQgc3VwYWJhc2UKICAgICAgLmZyb20oJ3ZlbmRvcnMnKQogICAgICAuc2VsZWN0KCcqJykKICAgICAgLmVxKCd1c2VyX2lkJywgdXNlcklkKQogICAgICAubWF5YmVTaW5nbGUoKTsK', 'rv_new': 'ICAgIC8vIFN0ZXAgMSDigJQgbWFwIHRoZSBTdXBhYmFzZSBhdXRoIGlkZW50aXR5IHRvIHB1YmxpYy51c2Vycy5pZCwgdGhlbiByZXNvbHZlIHRoZSB2ZW5kb3IuCiAgICBjb25zdCB1c2Vyc0lkID0gYXdhaXQgcmVzb2x2ZVVzZXJzSWQoc3VwYWJhc2UsIHVzZXJJZCk7CiAgICBjb25zdCB7IGRhdGE6IHZlbmRvciwgZXJyb3I6IHZlbmRvckVyciB9ID0gdXNlcnNJZAogICAgICA/IGF3YWl0IHN1cGFiYXNlLmZyb20oJ3ZlbmRvcnMnKS5zZWxlY3QoJyonKS5lcSgndXNlcl9pZCcsIHVzZXJzSWQpLm1heWJlU2luZ2xlKCkKICAgICAgOiB7IGRhdGE6IG51bGwsIGVycm9yOiBudWxsIH07Cg==', 'rc_old': 'ICBjb25zdCB7IGRhdGE6IGNvdXBsZSB9ID0gYXdhaXQgc3VwYWJhc2UKICAgIC5mcm9tKCdjb3VwbGVzJykKICAgIC5zZWxlY3QoJ2lkJykKICAgIC5lcSgndXNlcl9pZCcsIHVzZXIuaWQpCiAgICAubWF5YmVTaW5nbGUoKTsKCiAgaWYgKCFjb3VwbGUpIHsKICAgIHJldHVybiByZXMuc3RhdHVzKDQwMykuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdObyBjb3VwbGUgcHJvZmlsZSBmb3VuZC4nIH0pOwogIH0KCiAgcmVxLmNvdXBsZVVzZXIgPSB7IGlkOiB1c2VyLmlkLCB1c2VyX2lkOiB1c2VyLmlkLCBjb3VwbGVfaWQ6IGNvdXBsZS5pZCB9Owo=', 'rc_new': 'ICBjb25zdCB1c2Vyc0lkID0gYXdhaXQgcmVzb2x2ZVVzZXJzSWQoc3VwYWJhc2UsIHVzZXIuaWQpOwogIGNvbnN0IHsgZGF0YTogY291cGxlIH0gPSB1c2Vyc0lkCiAgICA/IGF3YWl0IHN1cGFiYXNlLmZyb20oJ2NvdXBsZXMnKS5zZWxlY3QoJ2lkJykuZXEoJ3VzZXJfaWQnLCB1c2Vyc0lkKS5tYXliZVNpbmdsZSgpCiAgICA6IHsgZGF0YTogbnVsbCB9OwoKICBpZiAoIWNvdXBsZSkgewogICAgcmV0dXJuIHJlcy5zdGF0dXMoNDAzKS5qc29uKHsgb2s6IGZhbHNlLCBlcnJvcjogJ05vIGNvdXBsZSBwcm9maWxlIGZvdW5kLicgfSk7CiAgfQoKICByZXEuY291cGxlVXNlciA9IHsgaWQ6IHVzZXJzSWQsIHVzZXJfaWQ6IHVzZXJzSWQsIGNvdXBsZV9pZDogY291cGxlLmlkIH07Cg=='}
+P = {'helper': 'Ly8gc3JjL2xpYi9wcm92aXNpb25Sb2xlLmpzCi8vIFByb3Zpc2lvbiB0aGUgcHVibGljLnVzZXJzICsgcm9sZSByb3cgZm9yIGEgU3VwYWJhc2UtQVVUSEVOVElDQVRFRCBpZGVudGl0eS4KLy8gQ2FsbGVkIEFGVEVSIHRoZSBicm93c2VyIGhhcyBjb21wbGV0ZWQgU3VwYWJhc2UgUGhvbmUtT1RQIChzaWduSW5XaXRoT3RwL3ZlcmlmeU90cCk7Ci8vIHRoZSByb3V0ZSBpcyBiZWhpbmQgcmVxdWlyZUF1dGgsIHNvIGF1dGhVc2VySWQgaXMgdGhlIFZFUklGSUVEIFN1cGFiYXNlIGF1dGggaWQg4oCUCi8vIG5ldmVyIGNhbGxlci1zdXBwbGllZC4gUmV0dXJucyBpZHMgb25seSAobm8gdG9rZW5zOiBTdXBhYmFzZSBhbHJlYWR5IG1pbnRlZCB0aGUKLy8gc2Vzc2lvbiBjbGllbnQtc2lkZSBpbiBQYXRoIDEpLgovLwovLyBJZGVudGl0eSBiaW5kaW5nIChpZGVtcG90ZW50LCB3aXRoIHRoZSBwaG9uZS1mYWxsYmFjayByZS1iaW5kKToKLy8gICBhKSB1c2VycyBXSEVSRSBhdXRoX3VzZXJfaWQgPSBhdXRoVXNlcklkICAgICAgICAgICAgLT4gYWxyZWFkeSBsaW5rZWQsIHVzZSBpdAovLyAgIGIpIGVsc2UgdXNlcnMgV0hFUkUgcGhvbmUgPSBwaG9uZSAtPiBSRS1CSU5EICAgICAgICAgIC0+IHNldCBhdXRoX3VzZXJfaWQgPSBhdXRoVXNlcklkCi8vICAgICAgICBUaGlzIHJlc2N1ZXMgYSBsZWdhY3kgYWNjb3VudCAoY3JlYXRlZCB1bmRlciB0aGUgb2xkIHBpbm5lZCBtb2RlbCB3aXRoIGFuCi8vICAgICAgICBlbWFpbC1iYXNlZCBhdXRoIHVzZXIgYW5kIE5PIHBob25lKTogdGhlIGZpcnN0IHBob25lLU9UUCBsb2dpbiBmaW5kcyB0aGUgcm93Ci8vICAgICAgICBieSBwaG9uZSBhbmQgYmluZHMgaXQgdG8gdGhlIG5ldyBTdXBhYmFzZSBpZGVudGl0eS4gTm8gZm9yaywgbm8gZGF0YSBsb3NzLgovLyAgIGMpIGVsc2UgSU5TRVJUIGEgZnJlc2ggdXNlcnMgcm93IGxpbmtlZCB0byBhdXRoVXNlcklkCi8vIFRoZW4gZmluZC1vci1jcmVhdGUgdGhlIHJvbGUgcm93ICh2ZW5kb3JzfGNvdXBsZXMpIGZvciB0aGF0IHVzZXJzLmlkLgondXNlIHN0cmljdCc7Cgphc3luYyBmdW5jdGlvbiBwcm92aXNpb25Sb2xlKHN1cGFiYXNlLCB7IGF1dGhVc2VySWQsIHBob25lLCBuYW1lLCByb2xlIH0pIHsKICBpZiAoIWF1dGhVc2VySWQpIHRocm93IG5ldyBFcnJvcignYXV0aFVzZXJJZCByZXF1aXJlZCcpOwogIGNvbnN0IHJvbGVUYWJsZSA9IHJvbGUgPT09ICdjb3VwbGUnID8gJ2NvdXBsZXMnIDogJ3ZlbmRvcnMnOwoKICAvLyBhKSBhbHJlYWR5IGxpbmtlZCB0byB0aGlzIFN1cGFiYXNlIGlkZW50aXR5CiAgbGV0IHVzZXJzSWQgPSBudWxsOwogIGNvbnN0IHsgZGF0YTogYnlBdXRoIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgLmZyb20oJ3VzZXJzJykuc2VsZWN0KCdpZCcpLmVxKCdhdXRoX3VzZXJfaWQnLCBhdXRoVXNlcklkKS5tYXliZVNpbmdsZSgpOwogIGlmIChieUF1dGgpIHVzZXJzSWQgPSBieUF1dGguaWQ7CgogIC8vIGIpIHBob25lLWZhbGxiYWNrIHJlLWJpbmQgKGxlZ2FjeSBhY2NvdW50IG1pZ3JhdGluZyB0byBwaG9uZS1PVFApCiAgaWYgKCF1c2Vyc0lkICYmIHBob25lKSB7CiAgICBjb25zdCB7IGRhdGE6IGJ5UGhvbmUgfSA9IGF3YWl0IHN1cGFiYXNlCiAgICAgIC5mcm9tKCd1c2VycycpLnNlbGVjdCgnaWQnKS5lcSgncGhvbmUnLCBwaG9uZSkubWF5YmVTaW5nbGUoKTsKICAgIGlmIChieVBob25lKSB7CiAgICAgIGNvbnN0IHsgZXJyb3I6IHJlYmluZEVyciB9ID0gYXdhaXQgc3VwYWJhc2UKICAgICAgICAuZnJvbSgndXNlcnMnKS51cGRhdGUoeyBhdXRoX3VzZXJfaWQ6IGF1dGhVc2VySWQgfSkuZXEoJ2lkJywgYnlQaG9uZS5pZCk7CiAgICAgIGlmIChyZWJpbmRFcnIpIHRocm93IG5ldyBFcnJvcihgcmUtYmluZCBmYWlsZWQ6ICR7cmViaW5kRXJyLm1lc3NhZ2V9YCk7CiAgICAgIHVzZXJzSWQgPSBieVBob25lLmlkOwogICAgfQogIH0KCiAgLy8gYykgZnJlc2ggdXNlcgogIGlmICghdXNlcnNJZCkgewogICAgY29uc3QgaW5zID0geyBhdXRoX3VzZXJfaWQ6IGF1dGhVc2VySWQgfTsKICAgIGlmIChwaG9uZSkgaW5zLnBob25lID0gcGhvbmU7CiAgICBpZiAobmFtZSkgIGlucy5uYW1lICA9IG5hbWU7CiAgICBjb25zdCB7IGRhdGE6IGNyZWF0ZWQsIGVycm9yIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgICAuZnJvbSgndXNlcnMnKS5pbnNlcnQoaW5zKS5zZWxlY3QoJ2lkJykuc2luZ2xlKCk7CiAgICBpZiAoZXJyb3IpIHRocm93IG5ldyBFcnJvcihgdXNlcnMgcHJvdmlzaW9uIGZhaWxlZDogJHtlcnJvci5tZXNzYWdlfWApOwogICAgdXNlcnNJZCA9IGNyZWF0ZWQuaWQ7CiAgfQoKICAvLyByb2xlIHJvdyDigJQgZmluZCBvciBjcmVhdGUKICBsZXQgeyBkYXRhOiByb2xlUm93IH0gPSBhd2FpdCBzdXBhYmFzZQogICAgLmZyb20ocm9sZVRhYmxlKS5zZWxlY3QoJ2lkLCBwaW5faGFzaCcpLmVxKCd1c2VyX2lkJywgdXNlcnNJZCkubWF5YmVTaW5nbGUoKTsKICBpZiAoIXJvbGVSb3cpIHsKICAgIGNvbnN0IHsgZGF0YTogY3JlYXRlZFJvbGUsIGVycm9yOiByRXJyIH0gPSBhd2FpdCBzdXBhYmFzZQogICAgICAuZnJvbShyb2xlVGFibGUpLmluc2VydCh7IHVzZXJfaWQ6IHVzZXJzSWQsIG9uYm9hcmRpbmdfc3RhdGU6ICduZXcnIH0pCiAgICAgIC5zZWxlY3QoJ2lkLCBwaW5faGFzaCcpLnNpbmdsZSgpOwogICAgaWYgKHJFcnIpIHRocm93IG5ldyBFcnJvcihgJHtyb2xlVGFibGV9IHByb3Zpc2lvbiBmYWlsZWQ6ICR7ckVyci5tZXNzYWdlfWApOwogICAgcm9sZVJvdyA9IGNyZWF0ZWRSb2xlOwogIH0KCiAgcmV0dXJuIHsgdXNlcl9pZDogdXNlcnNJZCwgcm9sZV9pZDogcm9sZVJvdy5pZCwgcGluX3NldDogISFyb2xlUm93LnBpbl9oYXNoIH07Cn0KCm1vZHVsZS5leHBvcnRzID0geyBwcm92aXNpb25Sb2xlIH07Cg==', 'vroute': 'Ci8vIFBPU1QgL3Byb3Zpc2lvbiDigJQgUGF0aCAxIChTdXBhYmFzZSBQaG9uZS1PVFApLiBUaGUgYnJvd3NlciBoYXMgYWxyZWFkeSBhdXRoZW50aWNhdGVkCi8vIHZpYSBTdXBhYmFzZSAoc2lnbkluV2l0aE90cC92ZXJpZnlPdHApOyByZXF1aXJlQXV0aCB2ZXJpZmllcyB0aGF0IHNlc3Npb24gaGVyZSwgdGhlbgovLyB3ZSBwcm92aXNpb24gdGhlIHVzZXJzICsgdmVuZG9yIHJvdyAoaWRlbXBvdGVudCwgcGhvbmUtZmFsbGJhY2sgcmUtYmluZCkuIE5vIHRva2VucwovLyByZXR1cm5lZCDigJQgdGhlIGJyb3dzZXIgaG9sZHMgdGhlIFN1cGFiYXNlIHNlc3Npb24uCnJvdXRlci5wb3N0KCcvcHJvdmlzaW9uJywgcmVxdWlyZUF1dGgsIGFzeW5jIChyZXEsIHJlcykgPT4gewogIHRyeSB7CiAgICBjb25zdCBhdXRoVXNlcklkID0gcmVxLmF1dGgudXNlcl9pZDsKICAgIGNvbnN0IHBob25lID0gcmVxLmF1dGgucGhvbmUgfHwgKHJlcS5ib2R5ICYmIHJlcS5ib2R5LnBob25lKSB8fCBudWxsOwogICAgY29uc3QgbmFtZSAgPSAoKHJlcS5ib2R5ICYmIHJlcS5ib2R5Lm5hbWUpIHx8ICcnKS50cmltKCkgfHwgbnVsbDsKICAgIGNvbnN0IHIgPSBhd2FpdCBwcm92aXNpb25Sb2xlKHJlcS5hcHAubG9jYWxzLnN1cGFiYXNlLCB7IGF1dGhVc2VySWQsIHBob25lLCBuYW1lLCByb2xlOiAndmVuZG9yJyB9KTsKICAgIHJldHVybiByZXMuanNvbih7IG9rOiB0cnVlLCB1c2VyX2lkOiByLnVzZXJfaWQsIHZlbmRvcl9pZDogci5yb2xlX2lkLCBwaW5fc2V0OiByLnBpbl9zZXQgfSk7CiAgfSBjYXRjaCAoZSkgewogICAgY29uc29sZS5lcnJvcignW3ZlbmRvcjpwcm92aXNpb25dJywgZS5tZXNzYWdlKTsKICAgIHJldHVybiByZXMuc3RhdHVzKDUwMCkuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdQcm92aXNpb25pbmcgZmFpbGVkLicgfSk7CiAgfQp9KTsKCg==', 'croute': 'Ci8vIFBPU1QgL3Byb3Zpc2lvbiDigJQgUGF0aCAxIChTdXBhYmFzZSBQaG9uZS1PVFApLiBCcm93c2VyIGFscmVhZHkgYXV0aGVudGljYXRlZCB2aWEKLy8gU3VwYWJhc2U7IHJlcXVpcmVBdXRoIHZlcmlmaWVzIGl0LCB0aGVuIHByb3Zpc2lvbiB1c2VycyArIGNvdXBsZSByb3cgKGlkZW1wb3RlbnQsCi8vIHBob25lLWZhbGxiYWNrIHJlLWJpbmQpLiBObyB0b2tlbnMgcmV0dXJuZWQg4oCUIHRoZSBicm93c2VyIGhvbGRzIHRoZSBTdXBhYmFzZSBzZXNzaW9uLgpyb3V0ZXIucG9zdCgnL3Byb3Zpc2lvbicsIHJlcXVpcmVBdXRoLCBhc3luYyAocmVxLCByZXMpID0+IHsKICB0cnkgewogICAgY29uc3QgYXV0aFVzZXJJZCA9IHJlcS5hdXRoLnVzZXJfaWQ7CiAgICBjb25zdCBwaG9uZSA9IHJlcS5hdXRoLnBob25lIHx8IChyZXEuYm9keSAmJiByZXEuYm9keS5waG9uZSkgfHwgbnVsbDsKICAgIGNvbnN0IG5hbWUgID0gKChyZXEuYm9keSAmJiByZXEuYm9keS5uYW1lKSB8fCAnJykudHJpbSgpIHx8IG51bGw7CiAgICBjb25zdCByID0gYXdhaXQgcHJvdmlzaW9uUm9sZShyZXEuYXBwLmxvY2Fscy5zdXBhYmFzZSwgeyBhdXRoVXNlcklkLCBwaG9uZSwgbmFtZSwgcm9sZTogJ2NvdXBsZScgfSk7CiAgICByZXR1cm4gcmVzLmpzb24oeyBvazogdHJ1ZSwgdXNlcl9pZDogci51c2VyX2lkLCBjb3VwbGVfaWQ6IHIucm9sZV9pZCwgcGluX3NldDogci5waW5fc2V0IH0pOwogIH0gY2F0Y2ggKGUpIHsKICAgIGNvbnNvbGUuZXJyb3IoJ1tjb3VwbGU6cHJvdmlzaW9uXScsIGUubWVzc2FnZSk7CiAgICByZXR1cm4gcmVzLnN0YXR1cyg1MDApLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnUHJvdmlzaW9uaW5nIGZhaWxlZC4nIH0pOwogIH0KfSk7Cgo='}
 def b64(k): return base64.b64decode(P[k]).decode()
 
 # 1 — helper
-LIB = os.path.join(ROOT, "src", "lib", "resolveUsersId.js")
-if os.path.isfile(LIB) and "resolveUsersId" in open(LIB).read():
-    print("= resolveUsersId.js already present (idempotent).")
+LIB = os.path.join(ROOT, "src", "lib", "provisionRole.js")
+if os.path.isfile(LIB) and "provisionRole" in open(LIB).read():
+    print("= provisionRole.js already present (idempotent).")
 else:
-    open(LIB, "w", encoding="utf-8").write(b64("helper")); print("+ src/lib/resolveUsersId.js")
+    open(LIB, "w", encoding="utf-8").write(b64("helper")); print("+ src/lib/provisionRole.js")
 
-def patch(rel, requireLine, old_key, new_key, name):
+def add_route(rel, route_key, name):
     F = os.path.join(ROOT, *rel)
     t = open(F, encoding="utf-8").read()
-    if "resolveUsersId" in t:
-        print(f"= {name} already on resolveUsersId (idempotent)."); return
-    old = b64(old_key); new = b64(new_key)
-    if old not in t: die(f"{name}: target block not found verbatim.")
-    # add require at top (after 'use strict';)
-    if "require('../../lib/resolveUsersId')" not in t:
-        anchor = "'use strict';"
-        if anchor not in t: die(f"{name}: 'use strict' anchor not found.")
-        t = t.replace(anchor, anchor + "\nconst { resolveUsersId } = require('../../lib/resolveUsersId');", 1)
-    t = t.replace(old, new, 1)
+    if "/provision" in t:
+        print(f"= {name} already has /provision (idempotent)."); return
+    # requires (after 'const twilio')
+    twilio_line = "const twilio  = require('twilio');"
+    if twilio_line not in t: die(f"{name}: twilio require anchor not found.")
+    reqs = ("\nconst requireAuth   = require('../middleware/requireAuth');"
+            "\nconst { provisionRole } = require('../../lib/provisionRole');")
+    if "provisionRole" not in t:
+        t = t.replace(twilio_line, twilio_line + reqs, 1)
+    # insert the route before 'module.exports = router;'
+    anchor = "module.exports = router;"
+    if anchor not in t: die(f"{name}: module.exports anchor not found.")
+    t = t.replace(anchor, b64(route_key) + anchor, 1)
     open(F, "w", encoding="utf-8").write(t)
-    print(f"+ {name}: resolves via auth_user_id (legacy fallback)")
+    print(f"+ {name}: POST /provision added")
 
-patch(["src","api","middleware","resolveVendor.js"], True, "rv_old", "rv_new", "resolveVendor.js")
-patch(["src","api","middleware","requireCoupleAuth.js"], True, "rc_old", "rc_new", "requireCoupleAuth.js")
+add_route(["src","api","vendor","auth.js"], "vroute", "vendor/auth.js")
+add_route(["src","api","couple","auth.js"], "croute", "couple/auth.js")
 print("\nDone. Restart (no engine change).")

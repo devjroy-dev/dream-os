@@ -26,6 +26,8 @@ const express = require('express');
 const router  = express.Router();
 const bcrypt  = require('bcryptjs');
 const twilio  = require('twilio');
+const requireAuth   = require('../middleware/requireAuth');
+const { provisionRole } = require('../../lib/provisionRole');
 
 const BCRYPT_ROUNDS    = 10;
 const OTP_TTL_MS       = 5 * 60 * 1000;
@@ -455,6 +457,23 @@ router.post('/pin-login', async (req, res) => {
     access_token:  tokens.access_token,
     refresh_token: tokens.refresh_token,
   });
+});
+
+
+// POST /provision — Path 1 (Supabase Phone-OTP). Browser already authenticated via
+// Supabase; requireAuth verifies it, then provision users + couple row (idempotent,
+// phone-fallback re-bind). No tokens returned — the browser holds the Supabase session.
+router.post('/provision', requireAuth, async (req, res) => {
+  try {
+    const authUserId = req.auth.user_id;
+    const phone = req.auth.phone || (req.body && req.body.phone) || null;
+    const name  = ((req.body && req.body.name) || '').trim() || null;
+    const r = await provisionRole(req.app.locals.supabase, { authUserId, phone, name, role: 'couple' });
+    return res.json({ ok: true, user_id: r.user_id, couple_id: r.role_id, pin_set: r.pin_set });
+  } catch (e) {
+    console.error('[couple:provision]', e.message);
+    return res.status(500).json({ ok: false, error: 'Provisioning failed.' });
+  }
 });
 
 module.exports = router;
