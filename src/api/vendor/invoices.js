@@ -338,14 +338,26 @@ router.post('/:invoiceId/payments', requireAuth, resolveVendor(), resolveAgent()
 // The binder (engine.records, direction in) is the money record; this stamps the
 // formal numbered document onto it via the proven base-vendor flow + invoices bucket.
 async function generateInvoiceForBinder(supabase, vendor, binder) {
-  // 1 — idempotent: already generated for this binder?
-  const { data: existing } = await supabase
+  // 1 — idempotent ONLY while the figures are unchanged. A binder accrues several
+  // invoices across its life (advance, then balance updates) — vendors run ~3-4
+  // payments per booking. Fetch the LATEST invoice for this binder and reuse it
+  // only if its amount_paid + amount_total still match the binder's live money.
+  // If the money has moved since, that stored PDF is STALE — fall through to mint
+  // a FRESH numbered invoice (TDW/.../03) at current figures. Numbers may inflate
+  // per booking; that's accepted. What must never happen is serving a stale
+  // document whose balance no longer matches the account.
+  const { data: existingRows } = await supabase
     .from('invoices')
     .select('id, invoice_number, pdf_url, client_name, amount_total, amount_advance, amount_paid, due_date')
     .eq('binder_id', binder.id).eq('vendor_id', vendor.id)
-    .maybeSingle();
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const latest = (existingRows && existingRows[0]) || null;
+  const stillCurrent = latest
+    && Number(latest.amount_paid)  === (Number(binder.amount_received) || 0)
+    && Number(latest.amount_total) === (Number(binder.amount) || 0);
 
-  let invoice = existing || null;
+  let invoice = stillCurrent ? latest : null;
 
   // 2 — no row yet: create the formal invoice (assigns the next series number)
   if (!invoice) {
