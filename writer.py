@@ -1,23 +1,27 @@
 #!/usr/bin/env python3
-# Auth Step 1d: normalize phone to E.164 (+digits) in provisionRole BEFORE any
-# write or phone lookup. Fixes the bug where Supabase's digits-only phone
-# ("918757788550") was stored plus-less, mismatching every '+'-keyed lookup
-# (pin-status, legacy rows). One feature: phone normalization.
-#   unzip -o auth-1d-phone-e164-v1.zip && python3 writer.py
+# Token refresh -> Supabase: on 401, refresh the session via
+# supabase.auth.refreshSession() instead of the old dream-os /auth/refresh
+# (mintSession) endpoint. Same writeSession contract + retry logic untouched.
+#   unzip -o pwa-token-refresh-v1.zip && python3 writer.py
 import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
-if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
-    die("run from the dream-os repo root.")
-P = {'old': 'YXN5bmMgZnVuY3Rpb24gcHJvdmlzaW9uUm9sZShzdXBhYmFzZSwgeyBhdXRoVXNlcklkLCBwaG9uZSwgbmFtZSwgcm9sZSB9KSB7CiAgaWYgKCFhdXRoVXNlcklkKSB0aHJvdyBuZXcgRXJyb3IoJ2F1dGhVc2VySWQgcmVxdWlyZWQnKTsKICBjb25zdCByb2xlVGFibGUgPSByb2xlID09PSAnY291cGxlJyA/ICdjb3VwbGVzJyA6ICd2ZW5kb3JzJzsK', 'new': 'YXN5bmMgZnVuY3Rpb24gcHJvdmlzaW9uUm9sZShzdXBhYmFzZSwgeyBhdXRoVXNlcklkLCBwaG9uZSwgbmFtZSwgcm9sZSB9KSB7CiAgaWYgKCFhdXRoVXNlcklkKSB0aHJvdyBuZXcgRXJyb3IoJ2F1dGhVc2VySWQgcmVxdWlyZWQnKTsKICAvLyBTdXBhYmFzZSByZXR1cm5zIHBob25lIGRpZ2l0cy1vbmx5IChlLmcuICI5MTg3NTc3ODg1NTAiKTsgdGhlIHJlc3Qgb2YgdGhlCiAgLy8gc3lzdGVtIHN0b3Jlcy9sb29rcyB1cCBFLjE2NCBXSVRIIHRoZSBsZWFkaW5nICcrJy4gTm9ybWFsaXplIGJlZm9yZSBhbnkKICAvLyB3cml0ZSBvciBwaG9uZSBsb29rdXAgc28gdGhlIG5ldyBmbG93IHN0YXlzIGNvbnNpc3RlbnQgd2l0aCBwaW4tc3RhdHVzLAogIC8vIHRoZSBvbGQgcm93cywgYW5kIGV2ZXJ5ICcrJy1rZXllZCBxdWVyeS4KICBpZiAocGhvbmUpIHsKICAgIGNvbnN0IGRpZ2l0cyA9IFN0cmluZyhwaG9uZSkucmVwbGFjZSgvW14wLTldL2csICcnKTsKICAgIHBob25lID0gZGlnaXRzID8gJysnICsgZGlnaXRzIDogbnVsbDsKICB9CiAgY29uc3Qgcm9sZVRhYmxlID0gcm9sZSA9PT0gJ2NvdXBsZScgPyAnY291cGxlcycgOiAndmVuZG9ycyc7Cg=='}
-F = os.path.join(ROOT, "src", "lib", "provisionRole.js")
+if not os.path.isfile("package.json"): die("run from the dreamos-pwa repo root.")
+P = {'old': 'ICAgICAgLy8gU3VwYWJhc2UgdG9rZW4gcmVmcmVzaCBlbmRwb2ludAogICAgICBjb25zdCByZXMgPSBhd2FpdCBmZXRjaChgJHtBUElfQkFTRX0vYXBpL3YyL3ZlbmRvci9hdXRoL3JlZnJlc2hgLCB7CiAgICAgICAgbWV0aG9kOiAgJ1BPU1QnLAogICAgICAgIGhlYWRlcnM6IHsgJ0NvbnRlbnQtVHlwZSc6ICdhcHBsaWNhdGlvbi9qc29uJyB9LAogICAgICAgIGJvZHk6ICAgIEpTT04uc3RyaW5naWZ5KHsgcmVmcmVzaF90b2tlbjogc2Vzc2lvbi5yZWZyZXNoX3Rva2VuIH0pLAogICAgICB9KTsKCiAgICAgIGlmICghcmVzLm9rKSByZXR1cm4gZmFsc2U7CgogICAgICBjb25zdCBkYXRhID0gYXdhaXQgcmVzLmpzb24oKS5jYXRjaCgoKSA9PiBudWxsKTsKICAgICAgaWYgKCFkYXRhPy5hY2Nlc3NfdG9rZW4pIHJldHVybiBmYWxzZTsK', 'new': 'ICAgICAgLy8gU3VwYWJhc2UgY2xpZW50LXNpZGUgcmVmcmVzaDogZXhjaGFuZ2UgdGhlIHN0b3JlZCByZWZyZXNoX3Rva2VuIGZvciBhCiAgICAgIC8vIGZyZXNoIHNlc3Npb24uIFJlcGxhY2VzIHRoZSBvbGQgZHJlYW0tb3MgL2F1dGgvcmVmcmVzaCAobWludFNlc3Npb24pIHBhdGguCiAgICAgIGNvbnN0IHsgZGF0YTogcmVmcmVzaGVkLCBlcnJvciB9ID0gYXdhaXQgc3VwYWJhc2UuYXV0aC5yZWZyZXNoU2Vzc2lvbih7CiAgICAgICAgcmVmcmVzaF90b2tlbjogc2Vzc2lvbi5yZWZyZXNoX3Rva2VuLAogICAgICB9KTsKICAgICAgaWYgKGVycm9yIHx8ICFyZWZyZXNoZWQ/LnNlc3Npb24/LmFjY2Vzc190b2tlbikgcmV0dXJuIGZhbHNlOwogICAgICBjb25zdCBkYXRhID0gewogICAgICAgIGFjY2Vzc190b2tlbjogIHJlZnJlc2hlZC5zZXNzaW9uLmFjY2Vzc190b2tlbiwKICAgICAgICByZWZyZXNoX3Rva2VuOiByZWZyZXNoZWQuc2Vzc2lvbi5yZWZyZXNoX3Rva2VuLAogICAgICB9Owo='}
+F = os.path.join(ROOT, "lib", "vendor", "api", "_base.ts")
 t = open(F, encoding="utf-8").read()
-if "Normalize before any" in t or "replace(/[^0-9]/g" in t:
-    print("= provisionRole already normalizes phone (idempotent)."); sys.exit(0)
+if "supabase.auth.refreshSession" in t:
+    print("= _base.ts already uses supabase.auth.refreshSession (idempotent)."); sys.exit(0)
+# import the supabase client (after the session-helpers import line)
+anchor = "import type { VendorSession } from '@/lib/vendor/session';"
+if anchor not in t: die("_base.ts VendorSession import anchor not found.")
+if "from '@/lib/supabase'" not in t:
+    t = t.replace(anchor, anchor + "\nimport { supabase } from '@/lib/supabase';", 1)
+    print("+ _base.ts: supabase client import")
 old = base64.b64decode(P["old"]).decode()
 new = base64.b64decode(P["new"]).decode()
-if old not in t: die("provisionRole signature block not found verbatim.")
+if old not in t: die("_base.ts refresh fetch block not found verbatim.")
 t = t.replace(old, new, 1)
 open(F, "w", encoding="utf-8").write(t)
-print("+ provisionRole: phone normalized to +E.164 before write/lookup")
-print("\nDone. Restart (no engine change).")
+print("+ _base.ts: 401 refresh -> supabase.auth.refreshSession()")
+print("\nDone. Commit, push (Vercel redeploys). No new deps.")
