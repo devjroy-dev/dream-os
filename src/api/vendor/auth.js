@@ -38,6 +38,17 @@ const VENDOR_WA = process.env.TDW_WA_NUMBER
   ? `+${process.env.TDW_WA_NUMBER}`
   : '+917982159047';
 
+// Dedicated client for the GoTrue session exchange (mintSession). It is built with the
+// SAME service-role key but kept SEPARATE from the shared data client, and with
+// persistSession/autoRefreshToken OFF, so that verifyOtp -- which sets a user session --
+// never mutates the service-role client the rest of the app reads the `engine` schema with.
+const { createClient: _createAuthClient } = require('@supabase/supabase-js');
+const authClient = _createAuthClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false } },
+);
+
 
 // ── Cookie helper — sets vendor session cookie for iOS Safari compatibility ──
 // Not httpOnly so frontend JS can read it as fallback when localStorage is
@@ -68,7 +79,7 @@ function generateOtp() {
 async function mintSession(supabase, userId) {
   // Step 1 — create auth.users row pinned to our users.id UUID.
   // Idempotent: 422 / "already registered" means row exists, continue.
-  const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+  const { data: created, error: createErr } = await authClient.auth.admin.createUser({
     id:            userId,
     email:         `vendor-${userId}@internal.dreamai.app`,
     email_confirm: true,
@@ -81,7 +92,7 @@ async function mintSession(supabase, userId) {
       throw new Error(`auth.users create failed: ${msg}`);
     }
     // Already exists — look it up
-    const { data: existing, error: lookupErr } = await supabase.auth.admin.getUserById(userId);
+    const { data: existing, error: lookupErr } = await authClient.auth.admin.getUserById(userId);
     if (lookupErr || !existing?.user) {
       throw new Error(`auth.users lookup failed: ${lookupErr?.message || 'no user'}`);
     }
@@ -93,21 +104,21 @@ async function mintSession(supabase, userId) {
   // Step 2 — pin a stable internal email (required by generateLink).
   // Admin update does not dispatch any email.
   const internalEmail = `vendor-${authId}@internal.dreamai.app`;
-  const { error: updateErr } = await supabase.auth.admin.updateUserById(authId, {
+  const { error: updateErr } = await authClient.auth.admin.updateUserById(authId, {
     email:         internalEmail,
     email_confirm: true,
   });
   if (updateErr) throw new Error(`auth.users email pin failed: ${updateErr.message}`);
 
   // Step 3 — generate magic-link token server-side. No email dispatched.
-  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+  const { data: linkData, error: linkErr } = await authClient.auth.admin.generateLink({
     type:  'magiclink',
     email: internalEmail,
   });
   if (linkErr) throw new Error(`generateLink failed: ${linkErr.message}`);
 
   // Step 4 — exchange hashed_token for real JWT session.
-  const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
+  const { data: sessionData, error: sessionErr } = await authClient.auth.verifyOtp({
     token_hash: linkData.properties.hashed_token,
     type:       'email',
   });
