@@ -77,6 +77,53 @@ async function loadThread(conversationId: string, limit = 20): Promise<ThreadMes
     .map((r) => ({ role: r.role as 'user' | 'assistant', content: r.content as string }));
 }
 
+// ── Donna messages — the Harvey<->Donna exchange, as a snapshot Harvey re-reads ──
+// The OWNER thread (loadThread) persists Harvey<->owner. The Harvey<->Donna exchange
+// lives in each turn's tool_calls and was NOT replayed — so every turn Harvey lost what
+// Donna had told him, and drafted half-blind (the credit-committee drift, 2026-06-13).
+// This composes the last `limit` Donna exchanges into one snapshot, both sides:
+//   Harvey asked: <his dear_donna_talk message>
+//   Donna:        <her listen_harvey_talk hand-back>
+// Donna's raw donna_brief_read reads stay on HER side (nested in donna_calls) — she has
+// already condensed them into the hand-back; Harvey carries the condensed picture, not
+// the ocean. Scoped to THIS conversation. Composed, not raw-replayed — a snapshot.
+export async function donnaMessages(conversationId: string, limit = 50): Promise<string> {
+  const { data } = await supabase
+    .from('messages')
+    .select('tool_calls, created_at')
+    .eq('conversation_id', conversationId)
+    .eq('role', 'assistant')
+    .not('tool_calls', 'is', null)
+    .order('created_at', { ascending: true });
+
+  type TCall = { name?: string; input?: { message?: string }; result?: unknown };
+  const lines: string[] = [];
+  for (const row of data ?? []) {
+    const calls = Array.isArray(row.tool_calls) ? (row.tool_calls as TCall[]) : [];
+    // Pair them in order: a dear_donna_talk (Harvey's ask) is followed by the matching
+    // listen_harvey_talk (Donna's voiced hand-back).
+    for (let i = 0; i < calls.length; i++) {
+      const c = calls[i];
+      if (c?.name === 'dear_donna_talk') {
+        const ask = (c.input?.message ?? '').trim();
+        // find the listen_harvey_talk that follows
+        let saidVal = '';
+        for (let j = i + 1; j < calls.length; j++) {
+          if (calls[j]?.name === 'listen_harvey_talk') {
+            saidVal = typeof calls[j].result === 'string' ? (calls[j].result as string).trim() : '';
+            break;
+          }
+        }
+        if (ask) lines.push(`Harvey asked: ${ask}`);
+        if (saidVal) lines.push(saidVal.startsWith('Listen Harvey') ? saidVal : `Donna: ${saidVal}`);
+      }
+    }
+  }
+  if (!lines.length) return '';
+  const recent = lines.slice(-limit); // last `limit` exchange-lines, chronological
+  return `\n\n[Donna messages — your standing exchange with her in this conversation — what she has surfaced for you, turn by turn:]\n${recent.join('\n')}\n`;
+}
+
 export async function saveMessage(
   conversationId: string,
   role: 'user' | 'assistant' | 'tool',

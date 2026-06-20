@@ -25,7 +25,7 @@ import type { ViewRow } from './snapshotTypes.js';
 import { todayLine, todayISO } from './today.js';
 import { resolveField, getHandbookIndex, getHandbookFull, getSection } from './handbook.js';
 import {
-  getOrCreateConversation, saveMessage, loadFacts, loadOwner, type ThreadMessage,
+  getOrCreateConversation, saveMessage, loadFacts, loadOwner, donnaMessages, type ThreadMessage,
 } from './memory.js';
 
 // Outer cap on Harvey's own iterations. Raised from 6 to give room for a multi-exchange
@@ -95,6 +95,7 @@ export async function runTurn(args: {
   const wasFirstMeeting = !isConsult && !consultDone; // consult has no first-meeting gate
   const factsBlock = isConsult ? '' : await loadFacts(agentId);
   let snapshot = isConsult ? '' : await snapshotText(agentId); // Donna hands Harvey the real state
+  const donnaMsgs = isConsult ? '' : await donnaMessages(conversationId); // his Donna exchange this conversation (session-scoped)
 
   // ── Document Shelf: PASSIVE sight of what Donna holds (Bible 5.1.6). The titles
   //    of every live Brief stand in Harvey's dynamic context each turn — full title
@@ -184,7 +185,7 @@ export async function runTurn(args: {
   const today = todayLine(agent.timezone as string | null);
   const todayIso = todayISO(agent.timezone as string | null);
   const buildSystem = (): Anthropic.TextBlockParam[] => {
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + shelfBlock;
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];
