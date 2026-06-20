@@ -19,6 +19,7 @@ const { runCoupleAgenticTurn } = require('./agent/engine');
 const { buildBriefing } = require('./agent/briefing');
 const { startCronJobs } = require('./cron');
 const { sendWhatsApp } = require('./lib/whatsapp');
+const { generateInvoiceForBinder } = require('./api/vendor/invoices');
 const { enquiryToBinder } = require('./lib/vendor/enquiryBinder'); // 5-B-2
 const { ensureCoupleRow, captureField } = require('./lib/coupleIdentity');
 const { buildDisambiguationQuestion, interpretDisambiguationReply, vendorDisplayName } = require('./agent/disambiguation');
@@ -886,17 +887,64 @@ app.post('/webhook/whatsapp', async (req, res) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', convo.id);
 
-    const twilioMsg = await sendWhatsApp(phone, result.reply, []);
+    // donna_invoice_pdf over WhatsApp (owner path): detect the signal, generate the
+    // numbered PDF (same routine as pwa + pwa-chat), confirm the NUMBER in text (NO
+    // URL), and send the PDF as a SEPARATE media-only message so the owner can forward
+    // it to the client clean — no advisor chatter, no link, just the document.
+    const wantInvoice = new Set();
+    for (const tc of (result.tool_calls || [])) {
+      if (tc.name === 'donna_invoice_pdf' && tc.input && tc.input.binder_id) wantInvoice.add(tc.input.binder_id);
+      for (const dc of (tc.donna_calls || [])) {
+        if (dc.name === 'donna_invoice_pdf' && dc.input && dc.input.binder_id) wantInvoice.add(dc.input.binder_id);
+      }
+    }
+    const invoiceDocs = [];
+    for (const binderId of wantInvoice) {
+      try {
+        const { data: bnd } = await supabase.schema('engine').from('records')
+          .select('id, client, phone, amount, amount_received, note')
+          .eq('agent_id', agentId).eq('id', binderId).maybeSingle();
+        if (bnd && Number(bnd.amount) > 0) {
+          const gen = await generateInvoiceForBinder(supabase, vendor, bnd);
+          if (gen && gen.ok) invoiceDocs.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: bnd.client });
+        }
+      } catch (e) { console.error('[whatsapp:donna_invoice_pdf]', e.message); }
+    }
+
+    // Message 1 — Victor's reply + a NUMBER-ONLY confirmation line per invoice (no URL).
+    let replyText = result.reply;
+    if (invoiceDocs.length) {
+      replyText += '\n\n' + invoiceDocs.map((d) =>
+        `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} — sending the PDF now.`
+      ).join('\n');
+    }
+    const twilioMsg = await sendWhatsApp(phone, replyText, []);
     await supabase.from('messages').insert({
       conversation_id: convo.id,
       direction:       'outbound',
       channel:         'whatsapp',
-      body:            result.reply,
+      body:            replyText,
       sent_by:         'agent',
       twilio_sid:      twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
       tool_calls:      toolNames,
     });
 
+    // Message 2+ — each PDF as a SEPARATE media-only message (forwardable; no caption,
+    // no URL text — the signed url is only Twilio's mediaUrl, never shown).
+    for (const d of invoiceDocs) {
+      try {
+        const mediaMsg = await sendWhatsApp(phone, '', [d.pdf_url]);
+        await supabase.from('messages').insert({
+          conversation_id: convo.id,
+          direction:       'outbound',
+          channel:         'whatsapp',
+          body:            `[invoice PDF ${d.invoice_number}]`,
+          sent_by:         'agent',
+          twilio_sid:      mediaMsg && mediaMsg.sid ? mediaMsg.sid : null,
+          media_url:       d.pdf_url,
+        });
+      } catch (e) { console.error('[whatsapp:invoice-pdf-send]', e.message); }
+    }
     res.status(200).send('<Response/>');
   } catch (err) {
     console.error('[webhook/whatsapp] error:', err);

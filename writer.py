@@ -1,53 +1,28 @@
 #!/usr/bin/env python3
-# Vendor Suit -- snapshot coherence: REST writes patch Donna's snapshot like chat does.
-# 1) engine: export patchNote from donna.ts (proven in-loop fn, now reachable).
-# 2) dream-os: new src/lib/executeAndPatch.js = executeRecordTool + patchNote.
-# 3) swap binderWrite.js + invoices.js door writes onto executeAndPatch.
-# Forward coherence only. REQUIRES build:engine after.
-#   unzip -o vendor-suit-snapshot-coherence-v1.zip && python3 writer.py
+# Vendor Suit -- PDF-over-WhatsApp (owner path A): detect donna_invoice_pdf in the
+# vendor-self branch, generate, send Victor's text (number only, NO url) + the PDF as
+# a SEPARATE media-only message (forwardable). Reuses generateInvoiceForBinder + the
+# media-capable sendWhatsApp.  unzip -o vendor-suit-whatsapp-pdf-v1.zip && python3 writer.py
 import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
-
-# 1 — engine: export patchNote
-DN = os.path.join(ROOT, "src", "engine", "src", "core", "donna.ts")
-d = open(DN, encoding="utf-8").read()
-if "export async function patchNote" in d:
-    print("= patchNote already exported (idempotent).")
-else:
-    a = "async function patchNote(agentId: string, outcome: ToolOutcome): Promise<void> {"
-    if a not in d: die("patchNote declaration not found.")
-    d = d.replace(a, "export " + a, 1)
-    open(DN, "w", encoding="utf-8").write(d)
-    print("+ donna.ts: patchNote exported")
-
-# 2 — the shared helper
-LIB = os.path.join(ROOT, "src", "lib", "executeAndPatch.js")
-if os.path.isfile(LIB) and "executeAndPatch" in open(LIB).read():
-    print("= executeAndPatch.js already present (idempotent).")
-else:
-    open(LIB, "w", encoding="utf-8").write(base64.b64decode('Ly8gc3JjL2xpYi9leGVjdXRlQW5kUGF0Y2guanMKLy8gIlRoZSBzY3JlZW4gaXMganVzdCBhbm90aGVyIGNhbGxlci4iIEEgUkVTVC9DUlVEIHdyaXRlIG11c3QgYmVoYXZlIEVYQUNUTFkgYXMgaWYKLy8gRG9ubmEgZGlkIGl0IGluIGNoYXQ6IHRoZSBoYW5kIGZpcmVzIEFORCBoZXIgZHVyYWJsZSBzbmFwc2hvdCBpcyBwYXRjaGVkIGZyb20gdGhlCi8vIGNvbmZpcm1lZCBvdXRjb21lLiBUaGUgY2hhdCBsb29wIGRvZXMgZXhlY3V0ZVJlY29yZFRvb2wgLT4gcGF0Y2hOb3RlOyB0aGUgZG9vcnMsCi8vIHdoaWNoIHByZXZpb3VzbHkgY2FsbGVkIGV4ZWN1dGVSZWNvcmRUb29sIGFuZCBkaXNjYXJkZWQgaXRzIHNuYXBzaG90IGhhbGYsIG5vdyBnbwovLyB0aHJvdWdoIGhlcmUgc28gdGhlIHNuYXBzaG90IHN0YXlzIGNvaGVyZW50IG9uIGV2ZXJ5IHBhdGggKGZvcndhcmQgY29oZXJlbmNlKS4KJ3VzZSBzdHJpY3QnOwpjb25zdCB7IGV4ZWN1dGVSZWNvcmRUb29sIH0gPSByZXF1aXJlKCcuLi9lbmdpbmUvZGlzdC9jb3JlL3Rvb2xzL3JlY29yZFByaW1pdGl2ZXMnKTsKY29uc3QgeyBwYXRjaE5vdGUgfSAgICAgICAgID0gcmVxdWlyZSgnLi4vZW5naW5lL2Rpc3QvY29yZS9kb25uYScpOwoKYXN5bmMgZnVuY3Rpb24gZXhlY3V0ZUFuZFBhdGNoKGFnZW50SWQsIG5hbWUsIGlucHV0KSB7CiAgY29uc3Qgb3V0Y29tZSA9IGF3YWl0IGV4ZWN1dGVSZWNvcmRUb29sKGFnZW50SWQsIG5hbWUsIGlucHV0KTsKICB0cnkgewogICAgLy8gcGF0Y2ggZnJvbSB0aGUgQ09ORklSTUVEIHdyaXRlIChvdXRjb21lLml0ZW0gLyBvdXRjb21lLnJlbW92ZSksIGV4YWN0bHkgYXMgdGhlIGxvb3AgZG9lcy4KICAgIGF3YWl0IHBhdGNoTm90ZShhZ2VudElkLCBvdXRjb21lKTsKICB9IGNhdGNoIChlKSB7CiAgICAvLyBhIHNuYXBzaG90LXBhdGNoIGZhaWx1cmUgbXVzdCBuZXZlciBmYWlsIHRoZSB3cml0ZSDigJQgdGhlIGNlbGxzIGFscmVhZHkgbGFuZGVkLgogICAgY29uc29sZS5lcnJvcignW2V4ZWN1dGVBbmRQYXRjaF0gc25hcHNob3QgcGF0Y2ggZmFpbGVkICh3cml0ZSBzdGlsbCBsYW5kZWQpOicsIGUubWVzc2FnZSk7CiAgfQogIHJldHVybiBvdXRjb21lOwp9Cgptb2R1bGUuZXhwb3J0cyA9IHsgZXhlY3V0ZUFuZFBhdGNoIH07Cg==').decode())
-    print("+ created src/lib/executeAndPatch.js")
-
-# 3 — swap the doors
-def swap(rel, old_require):
-    F = os.path.join(ROOT, *rel)
-    t = open(F, encoding="utf-8").read()
-    name = rel[-1]
-    if "executeAndPatch" in t:
-        print(f"= {name} already on executeAndPatch (idempotent)."); return
-    if old_require not in t: die(f"{name}: executeRecordTool require not found.")
-    t = t.replace(old_require, "const { executeAndPatch } = require('../../lib/executeAndPatch');", 1)
-    n = t.count("executeRecordTool(agentId,")
-    t = t.replace("executeRecordTool(agentId,", "executeAndPatch(agentId,")
-    open(F, "w", encoding="utf-8").write(t)
-    print(f"+ {name}: require swapped + {n} call site(s) -> executeAndPatch")
-
-swap(["src","api","vendor-engine","binderWrite.js"],
-     "const { executeRecordTool } = require('../../engine/dist/core/tools/recordPrimitives');")
-swap(["src","api","vendor","invoices.js"],
-     "const { executeRecordTool } = require('../../engine/dist/core/tools/recordPrimitives');")
-
-print("\nDone. npm run build:engine, then restart.")
+F = os.path.join(ROOT, "src", "index.js")
+P = {'old': 'ICAgIGNvbnN0IHsgYWdlbnRJZCB9ID0gYXdhaXQgcmVzb2x2ZUFnZW50Rm9yVmVuZG9yKHN1cGFiYXNlLCB2ZW5kb3IsIHVzZXIuaWQpOwogICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgcnVuVHVybih7IGFnZW50SWQsIG1lc3NhZ2U6IGJvZHkgfSk7CiAgICBjb25zdCB0b29sTmFtZXMgPSAocmVzdWx0LnRvb2xfY2FsbHMgfHwgW10pLm1hcCgodCkgPT4gdC5uYW1lKTsKCiAgICBjb25zb2xlLmxvZyhgW2FnZW50OmVuZ2luZV0gcmVwbHk6ICIke3Jlc3VsdC5yZXBseS5zbGljZSgwLCA4MCl9Li4uIiAgKCR7dG9vbE5hbWVzLmxlbmd0aH0gdG9vbCBjYWxscylgKTsKCiAgICBhd2FpdCBzdXBhYmFzZS5mcm9tKCdjb252ZXJzYXRpb25zJykKICAgICAgLnVwZGF0ZSh7IGxhc3RfbWVzc2FnZV9hdDogbmV3IERhdGUoKS50b0lTT1N0cmluZygpIH0pCiAgICAgIC5lcSgnaWQnLCBjb252by5pZCk7CgogICAgY29uc3QgdHdpbGlvTXNnID0gYXdhaXQgc2VuZFdoYXRzQXBwKHBob25lLCByZXN1bHQucmVwbHksIFtdKTsKICAgIGF3YWl0IHN1cGFiYXNlLmZyb20oJ21lc3NhZ2VzJykuaW5zZXJ0KHsKICAgICAgY29udmVyc2F0aW9uX2lkOiBjb252by5pZCwKICAgICAgZGlyZWN0aW9uOiAgICAgICAnb3V0Ym91bmQnLAogICAgICBjaGFubmVsOiAgICAgICAgICd3aGF0c2FwcCcsCiAgICAgIGJvZHk6ICAgICAgICAgICAgcmVzdWx0LnJlcGx5LAogICAgICBzZW50X2J5OiAgICAgICAgICdhZ2VudCcsCiAgICAgIHR3aWxpb19zaWQ6ICAgICAgdHdpbGlvTXNnICYmIHR3aWxpb01zZy5zaWQgPyB0d2lsaW9Nc2cuc2lkIDogbnVsbCwKICAgICAgdG9vbF9jYWxsczogICAgICB0b29sTmFtZXMsCiAgICB9KTsKCg==', 'new': 'ICAgIGNvbnN0IHsgYWdlbnRJZCB9ID0gYXdhaXQgcmVzb2x2ZUFnZW50Rm9yVmVuZG9yKHN1cGFiYXNlLCB2ZW5kb3IsIHVzZXIuaWQpOwogICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgcnVuVHVybih7IGFnZW50SWQsIG1lc3NhZ2U6IGJvZHkgfSk7CiAgICBjb25zdCB0b29sTmFtZXMgPSAocmVzdWx0LnRvb2xfY2FsbHMgfHwgW10pLm1hcCgodCkgPT4gdC5uYW1lKTsKCiAgICBjb25zb2xlLmxvZyhgW2FnZW50OmVuZ2luZV0gcmVwbHk6ICIke3Jlc3VsdC5yZXBseS5zbGljZSgwLCA4MCl9Li4uIiAgKCR7dG9vbE5hbWVzLmxlbmd0aH0gdG9vbCBjYWxscylgKTsKCiAgICBhd2FpdCBzdXBhYmFzZS5mcm9tKCdjb252ZXJzYXRpb25zJykKICAgICAgLnVwZGF0ZSh7IGxhc3RfbWVzc2FnZV9hdDogbmV3IERhdGUoKS50b0lTT1N0cmluZygpIH0pCiAgICAgIC5lcSgnaWQnLCBjb252by5pZCk7CgogICAgLy8gZG9ubmFfaW52b2ljZV9wZGYgb3ZlciBXaGF0c0FwcCAob3duZXIgcGF0aCk6IGRldGVjdCB0aGUgc2lnbmFsLCBnZW5lcmF0ZSB0aGUKICAgIC8vIG51bWJlcmVkIFBERiAoc2FtZSByb3V0aW5lIGFzIHB3YSArIHB3YS1jaGF0KSwgY29uZmlybSB0aGUgTlVNQkVSIGluIHRleHQgKE5PCiAgICAvLyBVUkwpLCBhbmQgc2VuZCB0aGUgUERGIGFzIGEgU0VQQVJBVEUgbWVkaWEtb25seSBtZXNzYWdlIHNvIHRoZSBvd25lciBjYW4gZm9yd2FyZAogICAgLy8gaXQgdG8gdGhlIGNsaWVudCBjbGVhbiDigJQgbm8gYWR2aXNvciBjaGF0dGVyLCBubyBsaW5rLCBqdXN0IHRoZSBkb2N1bWVudC4KICAgIGNvbnN0IHdhbnRJbnZvaWNlID0gbmV3IFNldCgpOwogICAgZm9yIChjb25zdCB0YyBvZiAocmVzdWx0LnRvb2xfY2FsbHMgfHwgW10pKSB7CiAgICAgIGlmICh0Yy5uYW1lID09PSAnZG9ubmFfaW52b2ljZV9wZGYnICYmIHRjLmlucHV0ICYmIHRjLmlucHV0LmJpbmRlcl9pZCkgd2FudEludm9pY2UuYWRkKHRjLmlucHV0LmJpbmRlcl9pZCk7CiAgICAgIGZvciAoY29uc3QgZGMgb2YgKHRjLmRvbm5hX2NhbGxzIHx8IFtdKSkgewogICAgICAgIGlmIChkYy5uYW1lID09PSAnZG9ubmFfaW52b2ljZV9wZGYnICYmIGRjLmlucHV0ICYmIGRjLmlucHV0LmJpbmRlcl9pZCkgd2FudEludm9pY2UuYWRkKGRjLmlucHV0LmJpbmRlcl9pZCk7CiAgICAgIH0KICAgIH0KICAgIGNvbnN0IGludm9pY2VEb2NzID0gW107CiAgICBmb3IgKGNvbnN0IGJpbmRlcklkIG9mIHdhbnRJbnZvaWNlKSB7CiAgICAgIHRyeSB7CiAgICAgICAgY29uc3QgeyBkYXRhOiBibmQgfSA9IGF3YWl0IHN1cGFiYXNlLnNjaGVtYSgnZW5naW5lJykuZnJvbSgncmVjb3JkcycpCiAgICAgICAgICAuc2VsZWN0KCdpZCwgY2xpZW50LCBwaG9uZSwgYW1vdW50LCBhbW91bnRfcmVjZWl2ZWQsIG5vdGUnKQogICAgICAgICAgLmVxKCdhZ2VudF9pZCcsIGFnZW50SWQpLmVxKCdpZCcsIGJpbmRlcklkKS5tYXliZVNpbmdsZSgpOwogICAgICAgIGlmIChibmQgJiYgTnVtYmVyKGJuZC5hbW91bnQpID4gMCkgewogICAgICAgICAgY29uc3QgZ2VuID0gYXdhaXQgZ2VuZXJhdGVJbnZvaWNlRm9yQmluZGVyKHN1cGFiYXNlLCB2ZW5kb3IsIGJuZCk7CiAgICAgICAgICBpZiAoZ2VuICYmIGdlbi5vaykgaW52b2ljZURvY3MucHVzaCh7IGludm9pY2VfbnVtYmVyOiBnZW4uaW52b2ljZV9udW1iZXIsIHBkZl91cmw6IGdlbi5wZGZfdXJsLCBjbGllbnQ6IGJuZC5jbGllbnQgfSk7CiAgICAgICAgfQogICAgICB9IGNhdGNoIChlKSB7IGNvbnNvbGUuZXJyb3IoJ1t3aGF0c2FwcDpkb25uYV9pbnZvaWNlX3BkZl0nLCBlLm1lc3NhZ2UpOyB9CiAgICB9CgogICAgLy8gTWVzc2FnZSAxIOKAlCBWaWN0b3IncyByZXBseSArIGEgTlVNQkVSLU9OTFkgY29uZmlybWF0aW9uIGxpbmUgcGVyIGludm9pY2UgKG5vIFVSTCkuCiAgICBsZXQgcmVwbHlUZXh0ID0gcmVzdWx0LnJlcGx5OwogICAgaWYgKGludm9pY2VEb2NzLmxlbmd0aCkgewogICAgICByZXBseVRleHQgKz0gJ1xuXG4nICsgaW52b2ljZURvY3MubWFwKChkKSA9PgogICAgICAgIGBJbnZvaWNlICR7ZC5pbnZvaWNlX251bWJlcn0ke2QuY2xpZW50ID8gJyBmb3IgJyArIGQuY2xpZW50IDogJyd9IOKAlCBzZW5kaW5nIHRoZSBQREYgbm93LmAKICAgICAgKS5qb2luKCdcbicpOwogICAgfQogICAgY29uc3QgdHdpbGlvTXNnID0gYXdhaXQgc2VuZFdoYXRzQXBwKHBob25lLCByZXBseVRleHQsIFtdKTsKICAgIGF3YWl0IHN1cGFiYXNlLmZyb20oJ21lc3NhZ2VzJykuaW5zZXJ0KHsKICAgICAgY29udmVyc2F0aW9uX2lkOiBjb252by5pZCwKICAgICAgZGlyZWN0aW9uOiAgICAgICAnb3V0Ym91bmQnLAogICAgICBjaGFubmVsOiAgICAgICAgICd3aGF0c2FwcCcsCiAgICAgIGJvZHk6ICAgICAgICAgICAgcmVwbHlUZXh0LAogICAgICBzZW50X2J5OiAgICAgICAgICdhZ2VudCcsCiAgICAgIHR3aWxpb19zaWQ6ICAgICAgdHdpbGlvTXNnICYmIHR3aWxpb01zZy5zaWQgPyB0d2lsaW9Nc2cuc2lkIDogbnVsbCwKICAgICAgdG9vbF9jYWxsczogICAgICB0b29sTmFtZXMsCiAgICB9KTsKCiAgICAvLyBNZXNzYWdlIDIrIOKAlCBlYWNoIFBERiBhcyBhIFNFUEFSQVRFIG1lZGlhLW9ubHkgbWVzc2FnZSAoZm9yd2FyZGFibGU7IG5vIGNhcHRpb24sCiAgICAvLyBubyBVUkwgdGV4dCDigJQgdGhlIHNpZ25lZCB1cmwgaXMgb25seSBUd2lsaW8ncyBtZWRpYVVybCwgbmV2ZXIgc2hvd24pLgogICAgZm9yIChjb25zdCBkIG9mIGludm9pY2VEb2NzKSB7CiAgICAgIHRyeSB7CiAgICAgICAgY29uc3QgbWVkaWFNc2cgPSBhd2FpdCBzZW5kV2hhdHNBcHAocGhvbmUsICcnLCBbZC5wZGZfdXJsXSk7CiAgICAgICAgYXdhaXQgc3VwYWJhc2UuZnJvbSgnbWVzc2FnZXMnKS5pbnNlcnQoewogICAgICAgICAgY29udmVyc2F0aW9uX2lkOiBjb252by5pZCwKICAgICAgICAgIGRpcmVjdGlvbjogICAgICAgJ291dGJvdW5kJywKICAgICAgICAgIGNoYW5uZWw6ICAgICAgICAgJ3doYXRzYXBwJywKICAgICAgICAgIGJvZHk6ICAgICAgICAgICAgYFtpbnZvaWNlIFBERiAke2QuaW52b2ljZV9udW1iZXJ9XWAsCiAgICAgICAgICBzZW50X2J5OiAgICAgICAgICdhZ2VudCcsCiAgICAgICAgICB0d2lsaW9fc2lkOiAgICAgIG1lZGlhTXNnICYmIG1lZGlhTXNnLnNpZCA/IG1lZGlhTXNnLnNpZCA6IG51bGwsCiAgICAgICAgICBtZWRpYV91cmw6ICAgICAgIGQucGRmX3VybCwKICAgICAgICB9KTsKICAgICAgfSBjYXRjaCAoZSkgeyBjb25zb2xlLmVycm9yKCdbd2hhdHNhcHA6aW52b2ljZS1wZGYtc2VuZF0nLCBlLm1lc3NhZ2UpOyB9CiAgICB9Cg=='}
+old = base64.b64decode(P["old"]).decode(); new = base64.b64decode(P["new"]).decode()
+t = open(F, encoding="utf-8").read()
+if "donna_invoice_pdf over WhatsApp" in t:
+    print("= already applied (idempotent)."); sys.exit(0)
+# 1 — require generateInvoiceForBinder (after sendWhatsApp require)
+rq = "const { sendWhatsApp } = require('./lib/whatsapp');"
+if rq not in t: die("sendWhatsApp require anchor not found.")
+if "generateInvoiceForBinder" not in t:
+    t = t.replace(rq, rq + "\nconst { generateInvoiceForBinder } = require('./api/vendor/invoices');", 1)
+    print("+ index.js: required generateInvoiceForBinder")
+# 2 — swap the vendor-self block
+if old not in t: die("vendor-self runTurn block not found verbatim -- inspect.")
+t = t.replace(old, new, 1)
+open(F, "w", encoding="utf-8").write(t)
+print("+ index.js: vendor-self branch sends invoice PDF as separate media-only message")
+print("\nDone. Restart (no engine change).")
