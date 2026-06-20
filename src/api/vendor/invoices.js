@@ -331,19 +331,70 @@ router.post('/:invoiceId/payments', requireAuth, resolveVendor(), resolveAgent()
 // Returns the signed Supabase storage URL for the invoice PDF.
 // Auth: requireAuth. resolveVendor mode C via invoices table.
 
-router.get('/:invoiceId/pdf', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
-  const supabase  = req.app.locals.supabase;
-  const invoiceId = req.params.invoiceId;
+// ── generateInvoiceForBinder ───────────────────────────────────────────────
+// The ONE "generate invoice" routine (number + PDF), reused by the pwa /pdf door
+// and (later) the chat donna_invoice signal. Idempotent: if a formal invoice
+// already exists for this binder, returns it WITHOUT assigning a new number.
+// The binder (engine.records, direction in) is the money record; this stamps the
+// formal numbered document onto it via the proven base-vendor flow + invoices bucket.
+async function generateInvoiceForBinder(supabase, vendor, binder) {
+  // 1 — idempotent: already generated for this binder?
+  const { data: existing } = await supabase
+    .from('invoices')
+    .select('id, invoice_number, pdf_url, client_name, amount_total, amount_advance, amount_paid, due_date')
+    .eq('binder_id', binder.id).eq('vendor_id', vendor.id)
+    .maybeSingle();
 
-  const { data: inv } = await supabase
-    .from('invoices').select('id, pdf_url, invoice_number')
-    .eq('id', invoiceId).maybeSingle();
+  let invoice = existing || null;
 
-  if (!inv || !inv.pdf_url) {
-    return errRes(res, 404, 'PDF not generated yet. Try again in a moment.', 'PDF_PENDING');
+  // 2 — no row yet: create the formal invoice (assigns the next series number)
+  if (!invoice) {
+    const created = await createInvoice(supabase, vendor.id, {
+      client_name:    binder.client || 'Client',
+      client_phone:   binder.phone  || null,
+      description:    binder.note    || null,
+      amount_total:   Number(binder.amount) || 0,
+      amount_advance: Number(binder.amount_received) || null,
+      due_date:       null,
+    });
+    if (!created.ok) return created;
+    invoice = created.invoice;
+    // link the formal invoice back to its money-record binder
+    await supabase.from('invoices').update({ binder_id: binder.id }).eq('id', invoice.id);
   }
 
-  return okRes(res, { pdf_url: inv.pdf_url, expires_in: 3600 });
+  // 3 — already has a stored PDF? serve it (idempotent, no re-render needed)
+  if (invoice.pdf_url) {
+    return { ok: true, invoice_number: invoice.invoice_number, pdf_url: invoice.pdf_url };
+  }
+
+  // 4 — render + store the PDF (proven base-vendor path, invoices bucket)
+  const pdfUrl = await generateAndStoreInvoicePdf(supabase, vendor, invoice);
+  if (!pdfUrl) return { ok: false, error: 'PDF generation failed.' };
+  return { ok: true, invoice_number: invoice.invoice_number, pdf_url: pdfUrl };
+}
+
+
+router.get('/:invoiceId/pdf', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  // "Generate invoice" (pwa path): :invoiceId is a binder id. Read the money
+  // binder, then generate-or-serve the formal numbered PDF (idempotent).
+  const supabase = req.app.locals.supabase;
+  const eng      = supabase.schema('engine');
+  const agentId  = req.agentId;
+  const vendor   = req.vendor;
+  const binderId = req.params.invoiceId;
+
+  const { data: binder, error } = await eng.from('records')
+    .select('id, client, phone, amount, amount_received, note')
+    .eq('agent_id', agentId).eq('id', binderId).maybeSingle();
+  if (error)   return errRes(res, 500, error.message);
+  if (!binder) return errRes(res, 404, 'Invoice not found.');
+  if (!Number(binder.amount) || Number(binder.amount) <= 0)
+    return errRes(res, 400, 'This invoice has no amount yet — add the amount before generating the PDF.', 'NO_AMOUNT');
+
+  const result = await generateInvoiceForBinder(supabase, vendor, binder);
+  if (!result.ok) return errRes(res, 500, result.error || 'Could not generate invoice PDF.');
+  return okRes(res, { pdf_url: result.pdf_url, invoice_number: result.invoice_number, expires_in: 3600 });
 }));
 
 module.exports = router;
