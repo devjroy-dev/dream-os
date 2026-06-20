@@ -26,6 +26,7 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
+const resolveAgent   = require('../middleware/resolveAgent');
 const asyncHandler         = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createInvoice, updateInvoice } = require('../../lib/vendor/invoices');
@@ -36,91 +37,72 @@ const { buildInvoiceMessage } = require('../../lib/invoiceMessage');
 const ALLOWED_STATES = ['unpaid', 'advance_paid', 'paid', 'cancelled'];
 const DEFAULT_FILTER = ['unpaid', 'advance_paid'];
 
-router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const vendor   = req.vendor;
+// 6-C(i) — invoice state is DERIVED from the binder's money figures.
+// (engine payment_status is free-text, so we trust the numbers, like the cabinet.)
+function deriveInvoiceState(b) {
+  if (b.hidden) return 'cancelled';
+  const total = Number(b.amount) || 0;
+  const recd  = Number(b.amount_received) || 0;
+  if (recd <= 0) return 'unpaid';
+  if (total > 0 && recd >= total) return 'paid';
+  return 'advance_paid';
+}
+
+router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), resolveAgent(), async (req, res) => {
+  // 6-C(i) — invoices read Harvey/Donna's ledger: money-IN binders in
+  // engine.records (direction 'in'). invoice_number + due_date are deferred to
+  // the "generate invoice" piece (see ENGINE_PDF_TOOL_PENDING.md); the binder is
+  // the money record. Founding-cohort scale: fetch all, derive/filter in JS.
+  const eng     = req.app.locals.supabase.schema('engine');
+  const agentId = req.agentId;
 
   const stateQ = (req.query.state || '').trim();
   const limit  = Math.max(1, Math.min(100, parseInt(req.query.limit, 10)  || 20));
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
 
-  // Resolve state filter for the list view.
-  let stateFilter;
-  if (!stateQ) {
-    stateFilter = DEFAULT_FILTER;
-  } else if (stateQ === 'all') {
-    stateFilter = null;
-  } else if (ALLOWED_STATES.includes(stateQ)) {
-    stateFilter = [stateQ];
-  } else {
-    return res.status(400).json({
-      ok: false,
-      error: `Invalid state. Must be one of: ${ALLOWED_STATES.join(', ')}, all.`,
-    });
-  }
+  const ALLOWED = ['unpaid', 'advance_paid', 'paid', 'cancelled'];
+  const DEFAULT = ['unpaid', 'advance_paid'];
+  let wanted;
+  if (!stateQ)                       wanted = DEFAULT;
+  else if (stateQ === 'all')         wanted = null;
+  else if (ALLOWED.includes(stateQ)) wanted = [stateQ];
+  else return res.status(400).json({ ok: false, error: `Invalid state. Must be one of: ${ALLOWED.join(', ')}, all.` });
 
-  // Three parallel reads:
-  //  1. Paginated invoice list per filter (the visible rows).
-  //  2. Count of total rows matching the filter (for pagination metadata).
-  //  3. ALL invoices (any state) for the summary block aggregation.
+  const { data: all, error } = await eng.from('records')
+    .select('id, client, amount, amount_received, amount_pending, date, hidden, created_at')
+    .eq('agent_id', agentId).eq('direction', 'in')
+    .order('created_at', { ascending: false });
 
-  let listQuery = supabase.from('invoices')
-    .select('id, invoice_number, client_name, client_phone, amount_total, amount_paid, state, due_date, created_at')
-    .eq('vendor_id', vendor.id)
-    .is('deleted_at', null);
-
-  let countQuery = supabase.from('invoices')
-    .select('*', { count: 'exact', head: true })
-    .eq('vendor_id', vendor.id)
-    .is('deleted_at', null);
-
-  if (stateFilter) {
-    listQuery  = listQuery.in('state', stateFilter);
-    countQuery = countQuery.in('state', stateFilter);
-  }
-
-  listQuery = listQuery
-    .order('due_date', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  const summaryQuery = supabase.from('invoices')
-    .select('amount_total, amount_paid, state')
-    .eq('vendor_id', vendor.id)
-    .is('deleted_at', null);
-
-  const [
-    { data: rows,         error: listErr },
-    { count,              error: countErr },
-    { data: allInvoices,  error: summaryErr },
-  ] = await Promise.all([listQuery, countQuery, summaryQuery]);
-
-  if (listErr || countErr || summaryErr) {
-    console.error('[GET /vendor/invoices] supabase error:', (listErr || countErr || summaryErr).message);
+  if (error) {
+    console.error('[GET /vendor/invoices] engine read error:', error.message);
     return res.status(500).json({ ok: false, error: 'Lookup failed.' });
   }
 
-  // Aggregate summary (over full invoice set, ignoring the list filter).
-  let totalOutstanding = 0;
-  let totalCollected   = 0;
-  for (const inv of (allInvoices || [])) {
-    if (inv.state === 'unpaid' || inv.state === 'advance_paid') {
-      totalOutstanding += (inv.amount_total || 0) - (inv.amount_paid || 0);
+  const rowsAll = (all || []).map(b => ({ ...b, _state: deriveInvoiceState(b) }));
+
+  // summary over the full set (lifetime money view, ignores the list filter)
+  let totalOutstanding = 0, totalCollected = 0;
+  for (const b of rowsAll) {
+    if (b._state === 'unpaid' || b._state === 'advance_paid') {
+      totalOutstanding += (Number(b.amount) || 0) - (Number(b.amount_received) || 0);
     }
-    totalCollected += (inv.amount_paid || 0);
+    totalCollected += (Number(b.amount_received) || 0);
   }
 
-  // Shape per-row response — adds amount_owed.
-  const invoices = (rows || []).map(inv => ({
-    id:             inv.id,
-    invoice_number: inv.invoice_number,
-    client_name:    inv.client_name,
-    amount_total:   inv.amount_total,
-    amount_paid:    inv.amount_paid,
-    amount_owed:    (inv.amount_total || 0) - (inv.amount_paid || 0),
-    state:          inv.state,
-    due_date:       inv.due_date,
-    created_at:     inv.created_at,
+  const filtered = wanted ? rowsAll.filter(b => wanted.includes(b._state)) : rowsAll;
+  const total    = filtered.length;
+  const page     = filtered.slice(offset, offset + limit);
+
+  const invoices = page.map(b => ({
+    id:             b.id,
+    invoice_number: null,
+    client_name:    b.client,
+    amount_total:   b.amount,
+    amount_paid:    b.amount_received,
+    amount_owed:    (Number(b.amount) || 0) - (Number(b.amount_received) || 0),
+    state:          b._state,
+    due_date:       null,
+    created_at:     b.created_at,
   }));
 
   return res.json({
@@ -130,7 +112,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
       total_outstanding: totalOutstanding,
       total_collected:   totalCollected,
     },
-    total: count || 0,
+    total,
   });
 });
 
