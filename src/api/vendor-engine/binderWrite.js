@@ -29,7 +29,7 @@ const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
 // The compiled engine hands (Phase 0 landed src/engine; dist is built on deploy).
-const { executeRecordTool } = require('../../engine/dist/core/tools/recordPrimitives');
+const { executeAndPatch } = require('../../lib/executeAndPatch');
 
 // Full binder shape to return after a write so the screen repaints immediately.
 const RECORD_SELECT =
@@ -49,7 +49,7 @@ async function runTool(req, res, toolName, input) {
   const eng     = req.app.locals.supabase.schema('engine');
   const agentId = req.agentId;
   try {
-    const result = await executeRecordTool(agentId, toolName, input);
+    const result = await executeAndPatch(agentId, toolName, input);
     if (isErr(result)) {
       return res.status(400).json({ ok: false, error: result.display });
     }
@@ -79,18 +79,18 @@ router.post('/:vendorId', ...auth, async (req, res) => {
   const b = req.body || {};
   try {
     const clientName = (b.client && String(b.client).trim()) || 'New lead';
-    const opened = await executeRecordTool(agentId, 'donna_client', { client: clientName });
+    const opened = await executeAndPatch(agentId, 'donna_client', { client: clientName });
     if (isErr(opened)) return res.status(400).json({ ok: false, error: opened.display });
     const binderId = opened.item && opened.item.ref_id;
     if (!binderId) return res.status(500).json({ ok: false, error: 'Could not open binder.' });
 
-    if (b.phone)   await executeRecordTool(agentId, 'donna_phone', { binder_id: binderId, phone: b.phone });
-    if (b.date)    await executeRecordTool(agentId, 'donna_date',  { binder_id: binderId, date: b.date });
-    if (b.note)    await executeRecordTool(agentId, 'donna_note',  { binder_id: binderId, note: b.note });
-    if (b.doc_ref) await executeRecordTool(agentId, 'donna_doc',   { binder_id: binderId, doc_ref: b.doc_ref });
-    await executeRecordTool(agentId, 'donna_stage', { binder_id: binderId, stage: (b.stage && String(b.stage).trim()) || 'lead' });
+    if (b.phone)   await executeAndPatch(agentId, 'donna_phone', { binder_id: binderId, phone: b.phone });
+    if (b.date)    await executeAndPatch(agentId, 'donna_date',  { binder_id: binderId, date: b.date });
+    if (b.note)    await executeAndPatch(agentId, 'donna_note',  { binder_id: binderId, note: b.note });
+    if (b.doc_ref) await executeAndPatch(agentId, 'donna_doc',   { binder_id: binderId, doc_ref: b.doc_ref });
+    await executeAndPatch(agentId, 'donna_stage', { binder_id: binderId, stage: (b.stage && String(b.stage).trim()) || 'lead' });
     if (b.amount != null && (b.direction === 'in' || b.direction === 'out')) {
-      await executeRecordTool(agentId, 'donna_money', { binder_id: binderId, amount: String(b.amount), direction: b.direction });
+      await executeAndPatch(agentId, 'donna_money', { binder_id: binderId, amount: String(b.amount), direction: b.direction });
     }
 
     const { data: binder } = await eng.from('records')

@@ -31,7 +31,7 @@ const asyncHandler         = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createInvoice, updateInvoice } = require('../../lib/vendor/invoices');
 const { generateInvoicePdf }  = require('../../lib/invoicePdf');
-const { executeRecordTool } = require('../../engine/dist/core/tools/recordPrimitives');
+const { executeAndPatch } = require('../../lib/executeAndPatch');
 const isErr = (r) => !!r && typeof r.display === 'string' && r.display.startsWith('ERROR');
 
 // shape a money-IN binder as the invoice response object (matches the list view).
@@ -162,7 +162,7 @@ router.patch('/:invoiceId/cancel', requireAuth, resolveVendor(), resolveAgent(),
   if (binder.hidden) return okRes(res, { already_cancelled: true });
   if (deriveInvoiceState(binder) === 'paid') return errRes(res, 400, 'Cannot cancel a fully paid invoice.');
 
-  const r = await executeRecordTool(agentId, 'donna_hide', { binder_id: binderId });
+  const r = await executeAndPatch(agentId, 'donna_hide', { binder_id: binderId });
   if (isErr(r)) return errRes(res, 400, r.display);
   return okRes(res, { invoice: { id: binderId, state: 'cancelled' } });
 }));
@@ -225,19 +225,19 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(asyn
   if (advance != null && advance < 0)     return errRes(res, 400, 'amount_advance cannot be negative.');
   if (advance != null && advance > total) return errRes(res, 400, 'amount_advance cannot exceed amount_total.');
 
-  const opened = await executeRecordTool(agentId, 'donna_client', { client: String(b.client_name).trim() });
+  const opened = await executeAndPatch(agentId, 'donna_client', { client: String(b.client_name).trim() });
   if (isErr(opened)) return errRes(res, 400, opened.display);
   const binderId = opened.item && opened.item.ref_id;
   if (!binderId) return errRes(res, 500, 'Could not open binder.');
 
-  if (b.client_phone) await executeRecordTool(agentId, 'donna_phone', { binder_id: binderId, phone: b.client_phone });
+  if (b.client_phone) await executeAndPatch(agentId, 'donna_phone', { binder_id: binderId, phone: b.client_phone });
   const noteBits = [b.description, b.notes, b.due_date ? `Due: ${b.due_date}` : null].filter(Boolean);
-  if (noteBits.length) await executeRecordTool(agentId, 'donna_note', { binder_id: binderId, note: noteBits.join(' — ') });
-  await executeRecordTool(agentId, 'donna_stage', { binder_id: binderId, stage: 'client' });
+  if (noteBits.length) await executeAndPatch(agentId, 'donna_note', { binder_id: binderId, note: noteBits.join(' — ') });
+  await executeAndPatch(agentId, 'donna_stage', { binder_id: binderId, stage: 'client' });
 
-  await executeRecordTool(agentId, 'donna_money', { binder_id: binderId, amount: String(total), direction: 'in' });
+  await executeAndPatch(agentId, 'donna_money', { binder_id: binderId, amount: String(total), direction: 'in' });
   if (advance != null && advance > 0) {
-    await executeRecordTool(agentId, 'donna_money_edit', {
+    await executeAndPatch(agentId, 'donna_money_edit', {
       binder_id:       binderId,
       amount_received: advance,
       amount_pending:  total - advance,
@@ -273,13 +273,13 @@ router.patch('/:invoiceId', requireAuth, resolveVendor(), resolveAgent(), asyncH
   if (b.client_name  != null) edit.client = String(b.client_name);
   if (b.client_phone != null) edit.phone  = String(b.client_phone);
   if (Object.keys(edit).length) {
-    const r = await executeRecordTool(agentId, 'donna_edit', { binder_id: binderId, ...edit });
+    const r = await executeAndPatch(agentId, 'donna_edit', { binder_id: binderId, ...edit });
     if (isErr(r)) return errRes(res, 400, r.display);
   }
   const noteBits = [b.description, b.notes, b.due_date ? `Due: ${b.due_date}` : null].filter(Boolean);
-  if (noteBits.length) await executeRecordTool(agentId, 'donna_note', { binder_id: binderId, note: noteBits.join(' — ') });
+  if (noteBits.length) await executeAndPatch(agentId, 'donna_note', { binder_id: binderId, note: noteBits.join(' — ') });
   if (b.amount_total != null) {
-    const r = await executeRecordTool(agentId, 'donna_money_edit', { binder_id: binderId, amount: String(b.amount_total) });
+    const r = await executeAndPatch(agentId, 'donna_money_edit', { binder_id: binderId, amount: String(b.amount_total) });
     if (isErr(r)) return errRes(res, 400, r.display);
   }
 
@@ -314,7 +314,7 @@ router.post('/:invoiceId/payments', requireAuth, resolveVendor(), resolveAgent()
   const pendingNew      = Math.max(0, total - receivedNew);
   const status          = (total > 0 && receivedNew >= total) ? 'paid' : 'partial';
 
-  const r = await executeRecordTool(agentId, 'donna_money_edit', {
+  const r = await executeAndPatch(agentId, 'donna_money_edit', {
     binder_id:       binderId,
     amount_received: receivedNew,
     amount_pending:  pendingNew,

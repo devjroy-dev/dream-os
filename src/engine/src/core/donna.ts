@@ -138,7 +138,7 @@ async function getNote(agentId: string): Promise<Note> {
 
 // Surgical patch: upsert one item by id (or remove it). This is Donna being a
 // sharp worker — touch only what changed, leave the rest.
-async function patchNote(agentId: string, outcome: ToolOutcome): Promise<void> {
+export async function patchNote(agentId: string, outcome: ToolOutcome): Promise<void> {
   if (!outcome.item && !outcome.remove) return;
   const note = await getNote(agentId);
   let items = note.items;
