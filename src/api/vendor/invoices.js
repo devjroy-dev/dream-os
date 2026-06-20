@@ -31,6 +31,30 @@ const asyncHandler         = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createInvoice, updateInvoice } = require('../../lib/vendor/invoices');
 const { generateInvoicePdf }  = require('../../lib/invoicePdf');
+const { executeRecordTool } = require('../../engine/dist/core/tools/recordPrimitives');
+const isErr = (r) => !!r && typeof r.display === 'string' && r.display.startsWith('ERROR');
+
+// shape a money-IN binder as the invoice response object (matches the list view).
+function binderToInvoiceShape(b) {
+  return {
+    id:             b.id,
+    invoice_number: null,
+    client_name:    b.client,
+    amount_total:   b.amount,
+    amount_paid:    b.amount_received,
+    amount_owed:    (Number(b.amount) || 0) - (Number(b.amount_received) || 0),
+    state:          deriveInvoiceState(b),
+    due_date:       null,
+    created_at:     b.created_at,
+  };
+}
+async function readBinderAsInvoice(eng, agentId, id) {
+  const { data } = await eng.from('records')
+    .select('id, client, amount, amount_received, amount_pending, hidden, created_at')
+    .eq('agent_id', agentId).eq('id', id).maybeSingle();
+  return data ? binderToInvoiceShape(data) : null;
+}
+
 const { buildInvoiceMessage } = require('../../lib/invoiceMessage');
 
 // Per schema (SCHEMA.md lines 260-282): invoices.state CHECK constraint values.
@@ -123,27 +147,24 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 // Cancel invoice. Preserved for dreamai list page CRUD.
 // Auth: requireAuth. resolveVendor mode C via invoices table.
 
-router.patch('/:invoiceId/cancel', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
-  const supabase   = req.app.locals.supabase;
-  const vendor     = req.vendor;
-  const invoiceId  = req.params.invoiceId;
+router.patch('/:invoiceId/cancel', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  // 6-C(ii) — cancel = donna_hide (reversible via unarchive). A fully-paid
+  // invoice cannot be cancelled (mirrors the prior guard).
+  const eng      = req.app.locals.supabase.schema('engine');
+  const agentId  = req.agentId;
+  const binderId = req.params.invoiceId;
 
-  const { data: inv, error: fetchErr } = await supabase
-    .from('invoices').select('id, invoice_number, client_name, state')
-    .eq('id', invoiceId).eq('vendor_id', vendor.id).is('deleted_at', null).single();
+  const { data: binder, error: readErr } = await eng.from('records')
+    .select('id, amount, amount_received, hidden')
+    .eq('agent_id', agentId).eq('id', binderId).maybeSingle();
+  if (readErr) return errRes(res, 500, readErr.message);
+  if (!binder)  return errRes(res, 404, 'Invoice not found.');
+  if (binder.hidden) return okRes(res, { already_cancelled: true });
+  if (deriveInvoiceState(binder) === 'paid') return errRes(res, 400, 'Cannot cancel a fully paid invoice.');
 
-  if (fetchErr?.code === 'PGRST116' || !inv) return errRes(res, 404, 'Invoice not found.');
-  if (fetchErr) return errRes(res, 500, fetchErr.message);
-  if (inv.state === 'cancelled') return okRes(res, { already_cancelled: true });
-  if (inv.state === 'paid') return errRes(res, 400, 'Cannot cancel a fully paid invoice.');
-
-  const { error: cancelErr } = await supabase
-    .from('invoices').update({ state: 'cancelled' })
-    .eq('id', invoiceId).eq('vendor_id', vendor.id);
-
-  if (cancelErr) return errRes(res, 500, cancelErr.message);
-  console.log('[invoices:cancel] ' + inv.invoice_number + ' cancelled by vendor ' + vendor.id);
-  return okRes(res, { invoice: { id: invoiceId, state: 'cancelled' } });
+  const r = await executeRecordTool(agentId, 'donna_hide', { binder_id: binderId });
+  if (isErr(r)) return errRes(res, 400, r.display);
+  return okRes(res, { invoice: { id: binderId, state: 'cancelled' } });
 }));
 
 // ─── POST /api/v2/vendor/invoices ──────────────────────────────────────
@@ -190,33 +211,42 @@ async function generateAndStoreInvoicePdf(supabase, vendor, invoice) {
   }
 }
 
-router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const vendor   = req.vendor;
-  const body     = req.body || {};
+router.post('/', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  // 6-C(ii) — create through Donna: client binder + money 'in' (+ witnessed
+  // advance split). invoice_number + PDF deferred to "generate invoice".
+  const eng     = req.app.locals.supabase.schema('engine');
+  const agentId = req.agentId;
+  const b       = req.body || {};
 
-  const result = await createInvoice(supabase, vendor.id, {
-    client_name:    body.client_name    || null,
-    client_phone:   body.client_phone   || null,
-    client_id:      body.client_id      || null,
-    lead_id:        body.lead_id        || null,
-    description:    body.description    || null,
-    amount_total:   body.amount_total   || null,
-    amount_advance: body.amount_advance != null ? body.amount_advance : null,
-    due_date:       body.due_date       || null,
-    notes:          body.notes          || null,
-  });
+  if (!b.client_name || !String(b.client_name).trim()) return errRes(res, 400, 'client_name is required.');
+  const total = Number(b.amount_total);
+  if (!total || total <= 0) return errRes(res, 400, 'amount_total must be greater than zero.');
+  const advance = b.amount_advance != null ? Number(b.amount_advance) : null;
+  if (advance != null && advance < 0)     return errRes(res, 400, 'amount_advance cannot be negative.');
+  if (advance != null && advance > total) return errRes(res, 400, 'amount_advance cannot exceed amount_total.');
 
-  if (!result.ok) return errRes(res, 400, result.error);
+  const opened = await executeRecordTool(agentId, 'donna_client', { client: String(b.client_name).trim() });
+  if (isErr(opened)) return errRes(res, 400, opened.display);
+  const binderId = opened.item && opened.item.ref_id;
+  if (!binderId) return errRes(res, 500, 'Could not open binder.');
 
-  // Generate the PDF synchronously so the vendor can download it immediately.
-  const pdfUrl = await generateAndStoreInvoicePdf(supabase, vendor, result.invoice);
+  if (b.client_phone) await executeRecordTool(agentId, 'donna_phone', { binder_id: binderId, phone: b.client_phone });
+  const noteBits = [b.description, b.notes, b.due_date ? `Due: ${b.due_date}` : null].filter(Boolean);
+  if (noteBits.length) await executeRecordTool(agentId, 'donna_note', { binder_id: binderId, note: noteBits.join(' — ') });
+  await executeRecordTool(agentId, 'donna_stage', { binder_id: binderId, stage: 'client' });
 
-  return okRes(res, {
-    invoice:  { ...result.invoice, pdf_url: pdfUrl },
-    pdf_url:  pdfUrl,
-    pdf_pending: !pdfUrl,
-  });
+  await executeRecordTool(agentId, 'donna_money', { binder_id: binderId, amount: String(total), direction: 'in' });
+  if (advance != null && advance > 0) {
+    await executeRecordTool(agentId, 'donna_money_edit', {
+      binder_id:       binderId,
+      amount_received: advance,
+      amount_pending:  total - advance,
+      payment_status:  advance >= total ? 'paid' : 'partial',
+    });
+  }
+
+  const invoice = await readBinderAsInvoice(eng, agentId, binderId);
+  return okRes(res, { invoice, pdf_url: null, pdf_pending: true });
 }));
 
 // ─── PATCH /api/v2/vendor/invoices/:invoiceId ─────────────────────────
@@ -224,16 +254,37 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
 // Update invoice fields. Locked after any payment (amount_paid > 0).
 // Auth: requireAuth. resolveVendor mode C via invoices table.
 
-router.patch('/:invoiceId', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
-  const supabase  = req.app.locals.supabase;
-  const vendor    = req.vendor;
-  const invoiceId = req.params.invoiceId;
-  const body      = req.body || {};
+router.patch('/:invoiceId', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  // 6-C(ii) — update through Donna. Locked after any payment (mirrors prior).
+  // Non-money -> donna_edit / donna_note; money (amount_total) -> donna_money_edit.
+  const eng      = req.app.locals.supabase.schema('engine');
+  const agentId  = req.agentId;
+  const binderId = req.params.invoiceId;
+  const b        = req.body || {};
 
-  const result = await updateInvoice(supabase, vendor.id, invoiceId, body);
-  if (!result.ok && result.code) return errRes(res, 409, result.error, result.code);
-  if (!result.ok) return errRes(res, 400, result.error);
-  return okRes(res, { invoice: result.invoice });
+  const { data: binder, error: readErr } = await eng.from('records')
+    .select('id, amount_received')
+    .eq('agent_id', agentId).eq('id', binderId).maybeSingle();
+  if (readErr) return errRes(res, 500, readErr.message);
+  if (!binder)  return errRes(res, 404, 'Invoice not found.');
+  if (Number(binder.amount_received) > 0) return errRes(res, 409, 'Invoice locked after payment.', 'LOCKED');
+
+  const edit = {};
+  if (b.client_name  != null) edit.client = String(b.client_name);
+  if (b.client_phone != null) edit.phone  = String(b.client_phone);
+  if (Object.keys(edit).length) {
+    const r = await executeRecordTool(agentId, 'donna_edit', { binder_id: binderId, ...edit });
+    if (isErr(r)) return errRes(res, 400, r.display);
+  }
+  const noteBits = [b.description, b.notes, b.due_date ? `Due: ${b.due_date}` : null].filter(Boolean);
+  if (noteBits.length) await executeRecordTool(agentId, 'donna_note', { binder_id: binderId, note: noteBits.join(' — ') });
+  if (b.amount_total != null) {
+    const r = await executeRecordTool(agentId, 'donna_money_edit', { binder_id: binderId, amount: String(b.amount_total) });
+    if (isErr(r)) return errRes(res, 400, r.display);
+  }
+
+  const invoice = await readBinderAsInvoice(eng, agentId, binderId);
+  return okRes(res, { invoice });
 }));
 
 // ─── POST /api/v2/vendor/invoices/:invoiceId/payments ─────────────────
@@ -241,43 +292,38 @@ router.patch('/:invoiceId', requireAuth, resolveVendor({ paramName: 'invoiceId',
 // Record a payment. Calls the record_payment Postgres function.
 // Auth: requireAuth. resolveVendor mode C via invoices table.
 
-router.post('/:invoiceId/payments', requireAuth, resolveVendor({ paramName: 'invoiceId', via: 'invoices' }), asyncHandler(async (req, res) => {
-  const supabase  = req.app.locals.supabase;
-  const vendor    = req.vendor;
-  const invoiceId = req.params.invoiceId;
-  const body      = req.body || {};
+router.post('/:invoiceId/payments', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  // 6-C(ii) — payment through the witnessed money door. Read-before-write:
+  // read the binder's current received, compute new ABSOLUTES, then write them.
+  const eng      = req.app.locals.supabase.schema('engine');
+  const agentId  = req.agentId;
+  const binderId = req.params.invoiceId;
 
-  const amount = Number(body.amount);
+  const amount = Number((req.body || {}).amount);
   if (!amount || amount <= 0) return errRes(res, 400, 'amount must be greater than zero.');
 
-  const { data: result, error: fnErr } = await supabase
-    .rpc('record_payment', { p_invoice_id: invoiceId, p_amount: amount });
+  const { data: binder, error: readErr } = await eng.from('records')
+    .select('id, amount, amount_received, hidden')
+    .eq('agent_id', agentId).eq('id', binderId).maybeSingle();
+  if (readErr) return errRes(res, 500, readErr.message);
+  if (!binder)  return errRes(res, 404, 'Invoice not found.');
 
-  if (fnErr) return errRes(res, 500, fnErr.message);
-  if (!result.ok) return errRes(res, 409, result.error);
+  const total           = Number(binder.amount) || 0;
+  const receivedCurrent = Number(binder.amount_received) || 0;
+  const receivedNew     = receivedCurrent + amount;
+  const pendingNew      = Math.max(0, total - receivedNew);
+  const status          = (total > 0 && receivedNew >= total) ? 'paid' : 'partial';
 
-  // Fetch updated invoice row
-  const { data: inv } = await supabase
-    .from('invoices')
-    .select('id, invoice_number, client_name, amount_total, amount_paid, state, due_date')
-    .eq('id', invoiceId).single();
-
-  // Audit note (non-fatal)
-  if (body.note) {
-    const noteContent = 'Payment of Rs ' + amount + ' recorded on ' + (inv ? inv.invoice_number : invoiceId) + '. Note: ' + body.note;
-    await supabase.from('notes').insert({
-      vendor_id: vendor.id,
-      content:   noteContent,
-      tags:      ['payment', 'invoice'],
-    });
-  }
-
-  console.log('[invoices:payment] Rs ' + amount + ' on ' + invoiceId + ' -> ' + result.state);
-  return okRes(res, {
-    invoice:          inv || null,
-    payment_recorded: amount,
-    new_state:        result.state,
+  const r = await executeRecordTool(agentId, 'donna_money_edit', {
+    binder_id:       binderId,
+    amount_received: receivedNew,
+    amount_pending:  pendingNew,
+    payment_status:  status,
   });
+  if (isErr(r)) return errRes(res, 400, r.display);
+
+  const invoice = await readBinderAsInvoice(eng, agentId, binderId);
+  return okRes(res, { invoice, payment_recorded: amount, new_state: invoice.state });
 }));
 
 // ─── GET /api/v2/vendor/invoices/:invoiceId/pdf ────────────────────────
