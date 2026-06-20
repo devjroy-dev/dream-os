@@ -1,72 +1,38 @@
 #!/usr/bin/env python3
-# Vendor Suit -- Phase 6-A: delete the dead Kriya/Myra cluster.
-# Removes 9 dead agent files + 2 Phase-4-orphaned vendor handlers (vendor/chat.js,
-# vendor/binderWrite.js), and trims the unused runAgenticTurn import from index.js
-# (runCoupleAgenticTurn — the live couple agent — is kept). NO table drops, NO
-# touch to live routes. Guarded by a PATH-RESOLVING boot-crash check + idempotent.
-#   unzip -o vendor-suit-phase6a-del-kriya-v1.zip && python3 writer.py
-import os, sys, json
+# Vendor Suit -- Phase 6-B (expenses): flip the expenses LIST read to the engine.
+# GET /api/v2/vendor/expenses/:vendorId now reads money-OUT binders from
+# engine.records (direction 'out') instead of public.expenses -- so the expenses
+# screen reflects Harvey/Donna's ledger. Adds resolveAgent() to the GET chain.
+# Writes (POST/PATCH/DELETE) untouched. Route stays mounted as-is (no core.js change).
+# Guarded + idempotent.
+#   unzip -o vendor-suit-phase6b-expenses-v1.zip && python3 writer.py
+import os, sys, base64, json
 ROOT = os.getcwd()
 def die(m): print("ABORT: " + m); sys.exit(1)
 if not os.path.isfile("package.json") or json.load(open("package.json")).get("name") != "dream-os-backend":
     die("run from the dream-os repo root.")
+F = os.path.join(ROOT, "src", "api", "vendor", "expenses.js")
+if not os.path.isfile(F): die("expenses.js not found.")
+P = {'old_get': 'cm91dGVyLmdldCgnLzp2ZW5kb3JJZCcsIHJlcXVpcmVBdXRoLCByZXNvbHZlVmVuZG9yKHsgcGFyYW1OYW1lOiAndmVuZG9ySWQnIH0pLCBhc3luYyAocmVxLCByZXMpID0+IHsKICBjb25zdCBzdXBhYmFzZSA9IHJlcS5hcHAubG9jYWxzLnN1cGFiYXNlOwogIGNvbnN0IHZlbmRvciAgID0gcmVxLnZlbmRvcjsKCiAgY29uc3QgbGltaXQgID0gTWF0aC5tYXgoMSwgTWF0aC5taW4oMTAwLCBwYXJzZUludChyZXEucXVlcnkubGltaXQsIDEwKSAgfHwgMjApKTsKICBjb25zdCBvZmZzZXQgPSBNYXRoLm1heCgwLCBwYXJzZUludChyZXEucXVlcnkub2Zmc2V0LCAxMCkgfHwgMCk7CgogIC8vIFRocmVlIHBhcmFsbGVsIHJlYWRzOgogIC8vICAxLiBQYWdpbmF0ZWQgZXhwZW5zZXMgKHRoZSB2aXNpYmxlIHJvd3MpLgogIC8vICAyLiBDb3VudCBvZiB0b3RhbCByb3dzIChmb3IgcGFnaW5hdGlvbiBtZXRhZGF0YSkuCiAgLy8gIDMuIEZ1bGwgc2V0IGZvciB0b3RhbF9zcGVudCBhZ2dyZWdhdGlvbi4KICBjb25zdCBbCiAgICB7IGRhdGE6IHJvd3MsICAgICAgICBlcnJvcjogbGlzdEVyciB9LAogICAgeyBjb3VudCwgICAgICAgICAgICAgZXJyb3I6IGNvdW50RXJyIH0sCiAgICB7IGRhdGE6IGFsbEV4cGVuc2VzLCBlcnJvcjogc3VtbWFyeUVyciB9LAogIF0gPSBhd2FpdCBQcm9taXNlLmFsbChbCiAgICBzdXBhYmFzZS5mcm9tKCdleHBlbnNlcycpCiAgICAgIC5zZWxlY3QoJ2lkLCBkZXNjcmlwdGlvbiwgYW1vdW50LCBjYXRlZ29yeSwgZXhwZW5zZV9kYXRlLCBjbGllbnRfbmFtZSwgY3JlYXRlZF9hdCcpCiAgICAgIC5lcSgndmVuZG9yX2lkJywgdmVuZG9yLmlkKQogICAgICAuaXMoJ2RlbGV0ZWRfYXQnLCBudWxsKQogICAgICAub3JkZXIoJ2NyZWF0ZWRfYXQnLCB7IGFzY2VuZGluZzogZmFsc2UgfSkKICAgICAgLnJhbmdlKG9mZnNldCwgb2Zmc2V0ICsgbGltaXQgLSAxKSwKCiAgICBzdXBhYmFzZS5mcm9tKCdleHBlbnNlcycpCiAgICAgIC5zZWxlY3QoJyonLCB7IGNvdW50OiAnZXhhY3QnLCBoZWFkOiB0cnVlIH0pCiAgICAgIC5lcSgndmVuZG9yX2lkJywgdmVuZG9yLmlkKQogICAgICAuaXMoJ2RlbGV0ZWRfYXQnLCBudWxsKSwKCiAgICBzdXBhYmFzZS5mcm9tKCdleHBlbnNlcycpCiAgICAgIC5zZWxlY3QoJ2Ftb3VudCcpCiAgICAgIC5lcSgndmVuZG9yX2lkJywgdmVuZG9yLmlkKQogICAgICAuaXMoJ2RlbGV0ZWRfYXQnLCBudWxsKSwKICBdKTsKCiAgaWYgKGxpc3RFcnIgfHwgY291bnRFcnIgfHwgc3VtbWFyeUVycikgewogICAgY29uc29sZS5lcnJvcignW0dFVCAvdmVuZG9yL2V4cGVuc2VzXSBzdXBhYmFzZSBlcnJvcjonLCAobGlzdEVyciB8fCBjb3VudEVyciB8fCBzdW1tYXJ5RXJyKS5tZXNzYWdlKTsKICAgIHJldHVybiByZXMuc3RhdHVzKDUwMCkuanNvbih7IG9rOiBmYWxzZSwgZXJyb3I6ICdMb29rdXAgZmFpbGVkLicgfSk7CiAgfQoKICBsZXQgdG90YWxTcGVudCA9IDA7CiAgZm9yIChjb25zdCBleHAgb2YgKGFsbEV4cGVuc2VzIHx8IFtdKSkgewogICAgdG90YWxTcGVudCArPSAoZXhwLmFtb3VudCB8fCAwKTsKICB9CgogIHJldHVybiByZXMuanNvbih7CiAgICBvazogICAgICAgICAgdHJ1ZSwKICAgIGV4cGVuc2VzOiAgICByb3dzIHx8IFtdLAogICAgdG90YWxfc3BlbnQ6IHRvdGFsU3BlbnQsCiAgICB0b3RhbDogICAgICAgY291bnQgfHwgMCwKICB9KTsKfSk7Cg==', 'new_get': 'cm91dGVyLmdldCgnLzp2ZW5kb3JJZCcsIHJlcXVpcmVBdXRoLCByZXNvbHZlVmVuZG9yKHsgcGFyYW1OYW1lOiAndmVuZG9ySWQnIH0pLCByZXNvbHZlQWdlbnQoKSwgYXN5bmMgKHJlcSwgcmVzKSA9PiB7CiAgLy8gNi1CIOKAlCBleHBlbnNlcyBub3cgcmVhZCBIYXJ2ZXkvRG9ubmEncyBsZWRnZXI6IG1vbmV5LU9VVCBiaW5kZXJzIGluCiAgLy8gZW5naW5lLnJlY29yZHMgKGRvbm5hX21vbmV5IGRpcmVjdGlvbiAnb3V0JykuICJQYWlkIFJzIFggdG8gWSBmb3IgYWJjIgogIC8vIGlzIGEgYmluZGVyOyBjbGllbnQ9cGF5ZWUsIG5vdGU9d2hhdC1mb3IsIGFtb3VudD1zcGVuZC4gY2F0ZWdvcnkgZm9sZHMKICAvLyBhd2F5ICh0aGUgZW5naW5lIGxlZGdlciBpcyBjYXRlZ29yeS1mcmVlKS4gV3JpdGVzIGJlbG93IGFyZSB1bnRvdWNoZWQuCiAgY29uc3QgZW5nICAgICA9IHJlcS5hcHAubG9jYWxzLnN1cGFiYXNlLnNjaGVtYSgnZW5naW5lJyk7CiAgY29uc3QgYWdlbnRJZCA9IHJlcS5hZ2VudElkOwoKICBjb25zdCBsaW1pdCAgPSBNYXRoLm1heCgxLCBNYXRoLm1pbigxMDAsIHBhcnNlSW50KHJlcS5xdWVyeS5saW1pdCwgMTApICB8fCAyMCkpOwogIGNvbnN0IG9mZnNldCA9IE1hdGgubWF4KDAsIHBhcnNlSW50KHJlcS5xdWVyeS5vZmZzZXQsIDEwKSB8fCAwKTsKCiAgY29uc3QgYmFzZU91dCA9ICgpID0+IGVuZy5mcm9tKCdyZWNvcmRzJykKICAgIC5lcSgnYWdlbnRfaWQnLCBhZ2VudElkKS5lcSgnZGlyZWN0aW9uJywgJ291dCcpLmVxKCdoaWRkZW4nLCBmYWxzZSk7CgogIGNvbnN0IFsKICAgIHsgZGF0YTogcm93cywgICAgZXJyb3I6IGxpc3RFcnIgfSwKICAgIHsgY291bnQsICAgICAgICAgZXJyb3I6IGNvdW50RXJyIH0sCiAgICB7IGRhdGE6IGFsbE91dCwgIGVycm9yOiBzdW1FcnIgfSwKICBdID0gYXdhaXQgUHJvbWlzZS5hbGwoWwogICAgYmFzZU91dCgpCiAgICAgIC5zZWxlY3QoJ2lkLCBjbGllbnQsIGFtb3VudCwgZGF0ZSwgbm90ZSwgY3JlYXRlZF9hdCcpCiAgICAgIC5vcmRlcignY3JlYXRlZF9hdCcsIHsgYXNjZW5kaW5nOiBmYWxzZSB9KQogICAgICAucmFuZ2Uob2Zmc2V0LCBvZmZzZXQgKyBsaW1pdCAtIDEpLAogICAgYmFzZU91dCgpLnNlbGVjdCgnKicsIHsgY291bnQ6ICdleGFjdCcsIGhlYWQ6IHRydWUgfSksCiAgICBiYXNlT3V0KCkuc2VsZWN0KCdhbW91bnQnKSwKICBdKTsKCiAgaWYgKGxpc3RFcnIgfHwgY291bnRFcnIgfHwgc3VtRXJyKSB7CiAgICBjb25zb2xlLmVycm9yKCdbR0VUIC92ZW5kb3IvZXhwZW5zZXNdIGVuZ2luZSByZWFkIGVycm9yOicsIChsaXN0RXJyIHx8IGNvdW50RXJyIHx8IHN1bUVycikubWVzc2FnZSk7CiAgICByZXR1cm4gcmVzLnN0YXR1cyg1MDApLmpzb24oeyBvazogZmFsc2UsIGVycm9yOiAnTG9va3VwIGZhaWxlZC4nIH0pOwogIH0KCiAgbGV0IHRvdGFsU3BlbnQgPSAwOwogIGZvciAoY29uc3QgciBvZiAoYWxsT3V0IHx8IFtdKSkgdG90YWxTcGVudCArPSAoci5hbW91bnQgfHwgMCk7CgogIGNvbnN0IGV4cGVuc2VzID0gKHJvd3MgfHwgW10pLm1hcChyID0+ICh7CiAgICBpZDogICAgICAgICAgIHIuaWQsCiAgICBkZXNjcmlwdGlvbjogIHIubm90ZSAgIHx8IG51bGwsCiAgICBhbW91bnQ6ICAgICAgIHIuYW1vdW50LAogICAgY2F0ZWdvcnk6ICAgICBudWxsLAogICAgZXhwZW5zZV9kYXRlOiByLmRhdGUgICB8fCBudWxsLAogICAgY2xpZW50X25hbWU6ICByLmNsaWVudCB8fCBudWxsLAogICAgY3JlYXRlZF9hdDogICByLmNyZWF0ZWRfYXQsCiAgfSkpOwoKICByZXR1cm4gcmVzLmpzb24oewogICAgb2s6ICAgICAgICAgIHRydWUsCiAgICBleHBlbnNlcywKICAgIHRvdGFsX3NwZW50OiB0b3RhbFNwZW50LAogICAgdG90YWw6ICAgICAgIGNvdW50IHx8IDAsCiAgfSk7Cn0pOwo='}
+old_get = base64.b64decode(P["old_get"]).decode()
+new_get = base64.b64decode(P["new_get"]).decode()
+txt = open(F, encoding="utf-8").read()
 
-CLUSTER = [
-    "src/agent/myraLoop.js", "src/agent/myraSoul.js", "src/agent/managerLoop.js",
-    "src/agent/kriyaTurn.js", "src/agent/kriyaSoul.js", "src/agent/kriyaPrimitives.js",
-    "src/agent/kriyaRead.js", "src/agent/kriyaCalendar.js", "src/agent/displayFirewall.js",
-    "src/api/vendor/chat.js", "src/api/vendor/binderWrite.js",
-]
-cluster_abs = set(os.path.normpath(os.path.join(ROOT, p)) for p in CLUSTER)
+if "6-B — expenses now read Harvey/Donna" in txt:
+    print("= expenses GET already flipped to the engine (idempotent)."); sys.exit(0)
 
-# --- SAFETY GUARD (path-resolving): for every NON-cluster .js, resolve each
-#     relative require() to an actual file path; flag only if it lands on a
-#     cluster member. This is the boot-crash guard, done correctly (a bare
-#     filename like './chat' in another dir resolves to THAT dir, not ours). ---
-import re
-REQ = re.compile(r"require\(\s*['\"](\.[^'\"]+)['\"]\s*\)")
-def resolve(req_str, from_file):
-    base = os.path.dirname(from_file)
-    cand = os.path.normpath(os.path.join(base, req_str))
-    for p in (cand, cand + ".js", os.path.join(cand, "index.js")):
-        if os.path.isfile(p): return os.path.normpath(p)
-    return os.path.normpath(cand + ".js")  # best-effort for a deleted target
+# 1 — ensure resolveAgent is required
+if "resolveAgent" not in txt:
+    anchor = "const resolveVendor  = require('../middleware/resolveVendor');"
+    if anchor not in txt: die("resolveVendor require anchor not found -- inspect.")
+    txt = txt.replace(anchor, anchor + "\nconst resolveAgent   = require('../middleware/resolveAgent');", 1)
+    print("+ expenses.js: added resolveAgent require")
 
-offenders = []
-for dirpath,_,files in os.walk(os.path.join(ROOT, "src")):
-    for fn in files:
-        if not fn.endswith(".js"): continue
-        fp = os.path.normpath(os.path.join(dirpath, fn))
-        if fp in cluster_abs: continue              # cluster members may reference each other
-        txt = open(fp, encoding="utf-8", errors="ignore").read()
-        for m in REQ.finditer(txt):
-            if resolve(m.group(1), fp) in cluster_abs:
-                offenders.append((os.path.relpath(fp, ROOT), m.group(1)))
-if offenders:
-    print("ABORT: live files still require cluster members — deleting would crash boot:")
-    for f, req in sorted(set(offenders)): print("   %s  ->  require('%s')" % (f, req))
-    sys.exit(1)
-print("  guard ✓ no live file resolves a require() onto any cluster member")
+# 2 — swap the GET handler
+if old_get not in txt:
+    die("the expenses GET handler was not found verbatim -- file differs; inspect.")
+txt = txt.replace(old_get, new_get, 1)
+print("+ expenses.js: GET list re-pointed public.expenses -> engine.records (direction out)")
 
-# --- delete the cluster (idempotent) ---
-deleted, already = [], []
-for rel in CLUSTER:
-    p = os.path.join(ROOT, rel)
-    if os.path.isfile(p): os.remove(p); deleted.append(rel)
-    else: already.append(rel)
-for rel in deleted: print("+ deleted: " + rel)
-for rel in already: print("= already gone: " + rel)
-
-# --- trim runAgenticTurn from index.js (keep runCoupleAgenticTurn) ---
-IDX = os.path.join(ROOT, "src", "index.js"); txt = open(IDX, encoding="utf-8").read()
-OLD = "const { runAgenticTurn, runCoupleAgenticTurn } = require('./agent/engine');"
-NEW = "const { runCoupleAgenticTurn } = require('./agent/engine');"
-if OLD in txt:
-    open(IDX,"w",encoding="utf-8").write(txt.replace(OLD, NEW, 1))
-    print("+ index.js: trimmed unused runAgenticTurn import (couple agent kept)")
-elif NEW in txt:
-    print("= index.js import already trimmed (idempotent).")
-else:
-    print("! index.js import line not in expected form — left untouched; inspect.")
-
-print("\\nPhase 6-A done. Restart; couple agent + all live routes untouched.")
+open(F, "w", encoding="utf-8").write(txt)
+print("\nDone. Restart; GET /vendor/expenses now reads the engine ledger.")

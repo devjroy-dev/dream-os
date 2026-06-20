@@ -20,57 +20,59 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
+const resolveAgent   = require('../middleware/resolveAgent');
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
 
-router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const vendor   = req.vendor;
+router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), resolveAgent(), async (req, res) => {
+  // 6-B — expenses now read Harvey/Donna's ledger: money-OUT binders in
+  // engine.records (donna_money direction 'out'). "Paid Rs X to Y for abc"
+  // is a binder; client=payee, note=what-for, amount=spend. category folds
+  // away (the engine ledger is category-free). Writes below are untouched.
+  const eng     = req.app.locals.supabase.schema('engine');
+  const agentId = req.agentId;
 
   const limit  = Math.max(1, Math.min(100, parseInt(req.query.limit, 10)  || 20));
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
 
-  // Three parallel reads:
-  //  1. Paginated expenses (the visible rows).
-  //  2. Count of total rows (for pagination metadata).
-  //  3. Full set for total_spent aggregation.
+  const baseOut = () => eng.from('records')
+    .eq('agent_id', agentId).eq('direction', 'out').eq('hidden', false);
+
   const [
-    { data: rows,        error: listErr },
-    { count,             error: countErr },
-    { data: allExpenses, error: summaryErr },
+    { data: rows,    error: listErr },
+    { count,         error: countErr },
+    { data: allOut,  error: sumErr },
   ] = await Promise.all([
-    supabase.from('expenses')
-      .select('id, description, amount, category, expense_date, client_name, created_at')
-      .eq('vendor_id', vendor.id)
-      .is('deleted_at', null)
+    baseOut()
+      .select('id, client, amount, date, note, created_at')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1),
-
-    supabase.from('expenses')
-      .select('*', { count: 'exact', head: true })
-      .eq('vendor_id', vendor.id)
-      .is('deleted_at', null),
-
-    supabase.from('expenses')
-      .select('amount')
-      .eq('vendor_id', vendor.id)
-      .is('deleted_at', null),
+    baseOut().select('*', { count: 'exact', head: true }),
+    baseOut().select('amount'),
   ]);
 
-  if (listErr || countErr || summaryErr) {
-    console.error('[GET /vendor/expenses] supabase error:', (listErr || countErr || summaryErr).message);
+  if (listErr || countErr || sumErr) {
+    console.error('[GET /vendor/expenses] engine read error:', (listErr || countErr || sumErr).message);
     return res.status(500).json({ ok: false, error: 'Lookup failed.' });
   }
 
   let totalSpent = 0;
-  for (const exp of (allExpenses || [])) {
-    totalSpent += (exp.amount || 0);
-  }
+  for (const r of (allOut || [])) totalSpent += (r.amount || 0);
+
+  const expenses = (rows || []).map(r => ({
+    id:           r.id,
+    description:  r.note   || null,
+    amount:       r.amount,
+    category:     null,
+    expense_date: r.date   || null,
+    client_name:  r.client || null,
+    created_at:   r.created_at,
+  }));
 
   return res.json({
     ok:          true,
-    expenses:    rows || [],
+    expenses,
     total_spent: totalSpent,
     total:       count || 0,
   });
