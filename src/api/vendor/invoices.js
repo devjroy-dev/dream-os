@@ -406,3 +406,4 @@ router.get('/:invoiceId/pdf', requireAuth, resolveVendor(), resolveAgent(), asyn
 }));
 
 module.exports = router;
+module.exports.generateInvoiceForBinder = generateInvoiceForBinder;

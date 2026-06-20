@@ -22,6 +22,7 @@ const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
 // The compiled engine loop (Phase 0 landed src/engine; dist is built on deploy).
 const { runTurn } = require('../../engine/dist/core/loop');
+const { generateInvoiceForBinder } = require('../vendor/invoices');
 
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
@@ -33,14 +34,45 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
   if (!message) return res.status(400).json({ ok: false, error: 'message is required.' });
   try {
     const result    = await runTurn({ agentId: req.agentId, message });
-    // Contract: tool_calls is names only (no internal input/result). refresh tells
-    // the PWA to repaint the cabinet when the turn actually filed something.
+
+    // donna_invoice_pdf is Donna's SIGNAL hand: the engine only flags intent.
+    // The door produces the real numbered document (idempotent) and confirms the
+    // NUMBER in chat — the download lives in the invoices list (no URL pasted here).
+    const eng = req.app.locals.supabase.schema('engine');
+    const wantInvoice = new Set();
+    for (const tc of (result.tool_calls || [])) {
+      if (tc.name === 'donna_invoice_pdf' && tc.input && tc.input.binder_id) wantInvoice.add(tc.input.binder_id);
+      for (const dc of (tc.donna_calls || [])) {
+        if (dc.name === 'donna_invoice_pdf' && dc.input && dc.input.binder_id) wantInvoice.add(dc.input.binder_id);
+      }
+    }
+    const documents = [];
+    for (const binderId of wantInvoice) {
+      try {
+        const { data: binder } = await eng.from('records')
+          .select('id, client, phone, amount, amount_received, note')
+          .eq('agent_id', req.agentId).eq('id', binderId).maybeSingle();
+        if (binder && Number(binder.amount) > 0) {
+          const gen = await generateInvoiceForBinder(req.app.locals.supabase, req.vendor, binder);
+          if (gen && gen.ok) documents.push({ invoice_number: gen.invoice_number, pdf_url: gen.pdf_url, client: binder.client });
+        }
+      } catch (e) { console.error('[vendor-e chat:donna_invoice_pdf]', e.message); }
+    }
+
+    let reply = result.reply;
+    if (documents.length) {
+      reply += '\n\n' + documents.map((d) =>
+        `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready — find it in the invoices list to download or send.`
+      ).join('\n');
+    }
+
     const toolNames = (result.tool_calls || []).map((t) => t.name);
     return res.json({
       ok: true,
-      reply: result.reply,
+      reply,
       tool_calls: toolNames,
       refresh: toolNames.length > 0,
+      documents: documents.length ? documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
     });
   } catch (e) {
     console.error('[vendor-e chat]', e.message);

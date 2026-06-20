@@ -329,12 +329,19 @@ export const DONNA_MONEY_EDIT_TOOL: Anthropic.Tool = {
   },
 };
 
+export const DONNA_INVOICE_PDF_TOOL: Anthropic.Tool = {
+  name: 'donna_invoice_pdf',
+  description: "Produce the formal, numbered invoice document for a binder — the proper PDF the client receives, stamped with the next number in the house series. Use this when Harvey asks for the invoice document itself (the thing to hand the client), not merely the money record on the binder. Omit binder_id to act on the binder you're working; give binder_id to name a specific one.",
+  input_schema: { type: 'object', properties: { binder_id: { type: 'string' } } },
+};
+
 export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_MONEY_TOOL, DONNA_DATE_TOOL, DONNA_CLIENT_TOOL, DONNA_NOTE_TOOL,
   DONNA_PHONE_TOOL, DONNA_DOC_TOOL, DONNA_STAGE_TOOL, DONNA_REASONFORACTION_APPEND_TOOL,
   DONNA_OVERWRITE_NOTE_TOOL,
   DONNA_EDIT_TOOL, DONNA_HIDE_TOOL, DONNA_RETRIEVE_TOOL, DONNA_REPEATFOLLOWUP_TOOL,
   DONNA_MERGE_TOOL, DONNA_SPLIT_TOOL, DONNA_MONEY_EDIT_TOOL,
+  DONNA_INVOICE_PDF_TOOL,
 ];
 
 // ── Executors ────────────────────────────────────────────────────────────────
@@ -441,6 +448,12 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       const dropped = moneyKeys.length ? ` (money cells ${moneyKeys.join(', ')} NOT touched — those go through donna_money_edit)` : '';
       const outcome = await writeFields(agentId, rid, patch, `edited ${Object.keys(patch).join(', ')}${dropped}`, new Set(['note']));
       return outcome;
+    }
+    case 'donna_invoice_pdf': {
+      if (!rid) return { display: 'ERROR: donna_invoice_pdf needs binder_id (which binder to invoice).' };
+      // Signal only — the host stamps the next number, renders the PDF, files it.
+      // Donna's hand asks for the document; the number + PDF return through the door.
+      return { display: `Invoice document requested for record ${rid} — it is being prepared and will appear in the invoices list.` };
     }
     case 'donna_hide': {
       if (!rid) return { display: 'ERROR: donna_hide needs binder_id.' };

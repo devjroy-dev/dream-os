@@ -254,6 +254,7 @@ export async function runDonnaTurn(
   let currentBinderId: string | null = null;
   const ATTRIBUTE_ATOMS = new Set([
     'donna_money', 'donna_date', 'donna_note', 'donna_phone', 'donna_doc', 'donna_stage',
+    'donna_invoice_pdf',
   ]);
 
   for (let i = 0; i < DONNA_WORK_ITERS; i++) {
