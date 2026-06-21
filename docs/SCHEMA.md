@@ -15,6 +15,7 @@
 - 0062: couple_enquiries table (bride Discover enquiry ledger)
 - 0063: vendor_activity_log table (cross-surface action log — Phase 1.5)
 - 0064: vendors.base_fee_min / base_fee_max columns (enquiry budget enrichment — Phase 2)
+- 0071: owner_notes table (note-to-self scratchpad — owner's hand, agents read-only)
 **Next migration:** 0065 (when needed)
 **Pending Phase 2:** 0024, 0026, 0029 (all deferred to P2-9)
 **Pending Phase 3:** 0027
@@ -209,6 +210,19 @@ Constraints:
 - `notes_owner_xor` (added 0013) — exactly one of vendor_id or couple_id is set
 
 Realtime: enabled
+
+### owner_notes
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | auto-generated |
+| vendor_id | uuid FK -> vendors.id | CASCADE delete |
+| body | text NOT NULL | the owner's raw hand, verbatim |
+| binder_id | uuid (soft ref -> engine.records.id) | optional — set only if jotted against a client. No DB FK (cross-schema). |
+| created_at | timestamptz | auto |
+
+The owner's scratchpad ("note to self" / "just do it"). Written directly by the owner, bypassing both agents (added 0071). Harvey never reads it; Donna has read-only vision (door-surfaced + donna_find scope) and surfaces relevant notes to Harvey, but never writes here (not body, not state). Only the owner creates (the toggle) and deletes — a note lives until deleted, no folded/handled state. Distinct from the agent-substrate `notes` table above (that one is conversation-tied agent memory).
+
+Realtime: not enabled
 
 ### pending_actions
 | Column | Type | Notes |
