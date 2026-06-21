@@ -8,10 +8,12 @@
 // and designer Codexes land, add one line each here + one SQL upsert. No other
 // change.
 const CATEGORY_PRESET = {
-  makeup:   'makeup_artist',     // Codex loaded (Phase 2)
-  planning: 'wedding_planner',   // Codex loaded (Phase 2)
-  // photography: 'photographer', // when the Codex lands
-  // designer:    'designer',     // when the Codex lands
+  makeup:          'makeup_artist',    // The Mirror
+  planning:        'wedding_planner',  // The Conductor
+  photography:     'photographer',     // The Frame
+  designer:        'designer',         // The Atelier
+  'venue & decor': 'venue_decorator',  // The Setting
+  jewellery:       'jeweller',         // The Vault
 };
 
 // category -> preset. Unknown/empty category passes through (SMM-only).
