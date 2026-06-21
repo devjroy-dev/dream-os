@@ -58,6 +58,7 @@
 | **0031_invite_codes.sql** | **2026-05-18** | **P2-3** | **invite_codes table (code PK, kind, tier, notes, created_at, created_by, consumed_at, consumed_by_user_id). invite_codes_unconsumed_idx + invite_codes_created_at_idx. consume_invite_code(p_code, p_user_id) atomic function — race-safe, structured exceptions.** |
 | **0032_waitlist_signups.sql** | **2026-05-18** | **P2-3** | **waitlist_signups table (id, kind, name, phone, instagram_handle, status, notes, created_at, updated_at). waitlist_signups_new_recent_idx (partial) + waitlist_signups_created_at_idx. waitlist_signups_updated_at trigger.** |
 | **0033_otp_sessions.sql** | **2026-05-18** | **P2-3** | **otp_sessions table (phone PK, otp_hash, purpose, expires_at, created_at). otp_sessions_expires_at_idx. Transient OTP state for PWA login — upserted on send-otp, deleted on verify-otp. No FK to users (intentional).** |
+| 0070_linked_binder_id.sql | 2026-06-21 | calendar | events.linked_binder_id (uuid, soft ref -> engine.records.id) + partial index. Links a calendar booking to its client binder so Donna keeps their dates in lockstep. |
 ## Tables
 
 ### users
@@ -260,6 +261,7 @@ Realtime: enabled
 | event_time | time | nullable |
 | kind | text NOT NULL | **B1: enum widened to 12 values.** CHECK: shoot / call / meeting / task / reminder / recce / fitting / trial / family / ceremony / social / other |
 | linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional. Vendor side only. |
+| linked_binder_id | uuid (soft ref -> engine.records.id) | added 0070. Optional. The client binder this booking belongs to — lets Donna keep the event's date and the binder's date in lockstep. No DB FK (cross-schema); reconciled in Donna's hand. |
 | state | text NOT NULL | CHECK: upcoming / done / cancelled. Default: upcoming. |
 | notes | text | location, contact, prep notes |
 | created_at | timestamptz | auto |
