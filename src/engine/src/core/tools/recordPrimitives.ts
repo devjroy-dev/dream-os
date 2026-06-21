@@ -346,6 +346,7 @@ export const DONNA_BOOK_EVENT_TOOL: Anthropic.Tool = {
       event_time: { type: 'string', description: 'Optional time, HH:MM 24-hour.' },
       kind:       { type: 'string', description: "The kind that fits this craft: shoot, trial, fitting, recce, meeting, ceremony, family, social, other. Name it from the vendor's field; if unsure, leave it and a neutral booking is kept." },
       notes:      { type: 'string', description: 'Optional short note for the booking.' },
+      binder_id:  { type: 'string', description: "The client binder this booking belongs to, when it's for someone already on file — use donna_find to get the id, and the booking and the binder stay tied. Omit for a standalone date with no binder." },
     },
     required: ['title', 'event_date'],
   },

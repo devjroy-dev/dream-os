@@ -94,6 +94,26 @@ function invoiceLines(documents) {
 // JSON + SSE paths, and the same handler a future WhatsApp door will call. The cabinet's
 // "Booked" already reads public.events, so a booking shows up there with no UI change.
 const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
+// (c) A booking's link to a client binder: Donna's explicit binder_id is the EXACT path; if she
+// gave none, the door tries a CONFIDENT name-match from the title (exact client name, single hit
+// only) — never a guess. 0 or >1 matches -> left honestly unlinked (null). The link is what lets
+// Donna keep the event's date and the binder's date in lockstep.
+async function resolveBinderForBooking(req, bk) {
+  const given = String(bk.binder_id || '').trim();
+  if (UUID_RE.test(given)) return given;
+  const hint = String(bk.title || '').split(/[-\u2013\u2014\u00b7:]/)[0].trim();
+  if (hint.length < 2) return null;
+  try {
+    const { data, error } = await req.app.locals.supabase.schema('engine')
+      .from('records')
+      .select('id, client')
+      .eq('agent_id', req.agentId)
+      .ilike('client', hint)
+      .limit(2);
+    if (error || !data || data.length !== 1) return null; // not a confident single match -> unlinked
+    return data[0].id;
+  } catch (e) { console.warn('[vendor-e chat:link binder]', e.message); return null; }
+}
 async function bookEvents(req, result) {
   const wantBook = [];
   const collect = (call) => {
@@ -112,6 +132,8 @@ async function bookEvents(req, result) {
       const row = { vendor_id: req.vendor.id, title: String(bk.title).slice(0, 200), event_date: bk.event_date, kind, state: 'upcoming' };
       if (bk.event_time) row.event_time = bk.event_time;
       if (bk.notes) row.notes = String(bk.notes);
+      const linkedBinder = await resolveBinderForBooking(req, bk);
+      if (linkedBinder) row.linked_binder_id = linkedBinder;
       const { data, error } = await req.app.locals.supabase
         .from('events').insert(row).select('id, title, event_date, event_time, kind').single();
       if (error) { console.error('[vendor-e chat:donna_book_event]', error.message); continue; }
