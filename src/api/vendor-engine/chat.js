@@ -133,6 +133,24 @@ async function bookEvents(req, result) {
       if (bk.event_time) row.event_time = bk.event_time;
       if (bk.notes) row.notes = String(bk.notes);
       const linkedBinder = await resolveBinderForBooking(req, bk);
+      const existing = await findExistingEvent(req, bk);
+      if (existing) {
+        // (a) same client, same date, already on the calendar — that IS this booking. Link it and
+        // apply any new detail; never mint a duplicate. Re-confirming a booking becomes idempotent.
+        const patch = {};
+        if (bk.event_time) patch.event_time = bk.event_time;
+        if (bk.notes) patch.notes = String(bk.notes);
+        if (linkedBinder && !existing.linked_binder_id) patch.linked_binder_id = linkedBinder;
+        if (Object.keys(patch).length) {
+          const { data } = await req.app.locals.supabase.from('events')
+            .update(patch).eq('id', existing.id).eq('vendor_id', req.vendor.id)
+            .select('id, title, event_date, event_time, kind').maybeSingle();
+          booked.push(data || existing);
+        } else {
+          booked.push(existing);
+        }
+        continue;
+      }
       if (linkedBinder) row.linked_binder_id = linkedBinder;
       const { data, error } = await req.app.locals.supabase
         .from('events').insert(row).select('id, title, event_date, event_time, kind').single();
@@ -147,6 +165,56 @@ function bookingLines(booked) {
     const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
     return `Booked: ${bk.title} — ${when}. It's on your calendar.`;
   }).join('\n');
+}
+// (a) Dedupe: an event for the same client on the same date already on the calendar IS this booking.
+async function findExistingEvent(req, bk) {
+  const hint = String(bk.title || '').split(/[-–—·:]/)[0].trim();
+  if (hint.length < 2) return null;
+  try {
+    const { data, error } = await req.app.locals.supabase
+      .from('events')
+      .select('id, title, event_date, event_time, kind, linked_binder_id, state')
+      .eq('vendor_id', req.vendor.id)
+      .eq('event_date', bk.event_date)
+      .neq('state', 'cancelled')
+      .ilike('title', `${hint}%`)
+      .limit(2);
+    if (error || !data || data.length !== 1) return null; // 0 or ambiguous -> a fresh insert is safer
+    return data[0];
+  } catch (e) { console.warn('[vendor-e chat:dedupe]', e.message); return null; }
+}
+// Retroactive link: when a client binder is filed (donna_client), tie any existing unlinked event
+// that exactly name-matches that client — so the common "book the date, file the client later" order
+// still ends up linked. Confident only: a single binder for the name, exact client-hint match.
+async function retroLinkOnFile(req, result) {
+  const names = new Set();
+  const collect = (call) => {
+    if (call && call.name === 'donna_client' && call.input && typeof call.input.client === 'string') {
+      const n = call.input.client.trim();
+      if (n.length >= 2) names.add(n);
+    }
+  };
+  for (const tc of (result.tool_calls || [])) { collect(tc); for (const dc of (tc.donna_calls || [])) collect(dc); }
+  if (!names.size) return;
+  for (const name of names) {
+    try {
+      const { data: binders } = await req.app.locals.supabase.schema('engine')
+        .from('records').select('id, client')
+        .eq('agent_id', req.agentId).ilike('client', name).limit(2);
+      if (!binders || binders.length !== 1) continue; // not a confident single binder
+      const binderId = binders[0].id;
+      const { data: evs } = await req.app.locals.supabase
+        .from('events').select('id, title')
+        .eq('vendor_id', req.vendor.id).is('linked_binder_id', null)
+        .neq('state', 'cancelled').ilike('title', `${name}%`).limit(20);
+      for (const ev of (evs || [])) {
+        const hint = String(ev.title || '').split(/[-–—·:]/)[0].trim();
+        if (hint.toLowerCase() !== name.toLowerCase()) continue; // exact client-hint only
+        await req.app.locals.supabase.from('events')
+          .update({ linked_binder_id: binderId }).eq('id', ev.id).eq('vendor_id', req.vendor.id);
+      }
+    } catch (e) { console.warn('[vendor-e chat:retro-link]', e.message); }
+  }
 }
 
 // donna_edit_event / donna_cancel_event are Donna's SIGNAL hands for changing the calendar.
@@ -291,6 +359,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const mutated = await mutateEvents(req, result);
       if (mutated.length) send({ type: 'text_delta', text: '\n\n' + mutationLines(mutated) });
 
+      await retroLinkOnFile(req, result);
+
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
       if (documents.length) done.documents = documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
@@ -311,6 +381,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const documents = await buildInvoices(req, result);
     const booked    = await bookEvents(req, result);
     const mutated   = await mutateEvents(req, result);
+    await retroLinkOnFile(req, result);
 
     let reply = result.reply;
     if (documents.length) {
