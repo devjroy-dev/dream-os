@@ -351,13 +351,42 @@ export const DONNA_BOOK_EVENT_TOOL: Anthropic.Tool = {
   },
 };
 
+export const DONNA_EDIT_EVENT_TOOL: Anthropic.Tool = {
+  name: 'donna_edit_event',
+  description: "Change a booking already on the calendar — reschedule it (new date and/or time) or fix its details (title, kind, note). Give event_id (the [handle] shown beside each booking in the calendar you can see) and only the fields that change. Use it when the vendor says move, reschedule, push, change, or rename a booking. The booking must be one you can see on the calendar.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      event_id:   { type: 'string', description: 'The booking handle, exactly as shown in [brackets] beside it in the calendar.' },
+      title:      { type: 'string', description: 'New title, if it changed.' },
+      event_date: { type: 'string', description: 'New date YYYY-MM-DD, if rescheduled.' },
+      event_time: { type: 'string', description: 'New time HH:MM 24-hour, if changed.' },
+      kind:       { type: 'string', description: 'New kind, if it changed.' },
+      notes:      { type: 'string', description: 'New note, if it changed.' },
+    },
+    required: ['event_id'],
+  },
+};
+
+export const DONNA_CANCEL_EVENT_TOOL: Anthropic.Tool = {
+  name: 'donna_cancel_event',
+  description: "Cancel a booking on the calendar — it is marked cancelled, not destroyed (recoverable). Give event_id (the [handle] shown beside each booking in the calendar you can see). Use it when the vendor says cancel, call off, drop, or scrap a booking. The booking must be one you can see on the calendar.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      event_id: { type: 'string', description: 'The booking handle, exactly as shown in [brackets] beside it in the calendar.' },
+    },
+    required: ['event_id'],
+  },
+};
+
 export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_MONEY_TOOL, DONNA_DATE_TOOL, DONNA_CLIENT_TOOL, DONNA_NOTE_TOOL,
   DONNA_PHONE_TOOL, DONNA_DOC_TOOL, DONNA_STAGE_TOOL, DONNA_REASONFORACTION_APPEND_TOOL,
   DONNA_OVERWRITE_NOTE_TOOL,
   DONNA_EDIT_TOOL, DONNA_HIDE_TOOL, DONNA_RETRIEVE_TOOL, DONNA_REPEATFOLLOWUP_TOOL,
   DONNA_MERGE_TOOL, DONNA_SPLIT_TOOL, DONNA_MONEY_EDIT_TOOL,
-  DONNA_INVOICE_PDF_TOOL, DONNA_BOOK_EVENT_TOOL,
+  DONNA_INVOICE_PDF_TOOL, DONNA_BOOK_EVENT_TOOL, DONNA_EDIT_EVENT_TOOL, DONNA_CANCEL_EVENT_TOOL,
 ];
 
 // ── Executors ────────────────────────────────────────────────────────────────
@@ -480,6 +509,21 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       // Donna's hand asks for the booking; the kept date returns through the door.
       const at = typeof input.event_time === 'string' && input.event_time.trim() ? ` at ${input.event_time.trim()}` : '';
       return { display: `Booking requested: ${title} on ${date}${at} — it is being placed on the calendar.` };
+    }
+    case 'donna_edit_event': {
+      const eid = typeof input.event_id === 'string' ? input.event_id.trim() : '';
+      if (!eid) return { display: 'ERROR: donna_edit_event needs event_id (the booking handle from the calendar).' };
+      const fields = ['title', 'event_date', 'event_time', 'kind', 'notes'];
+      const changed = fields.filter((k) => typeof input[k] === 'string' && (input[k] as string).trim());
+      if (changed.length === 0) return { display: 'ERROR: donna_edit_event needs at least one field to change (date, time, title, kind, or note).' };
+      // Signal only — the door applies the change to public.events (vendor-scoped) and confirms.
+      return { display: `Change requested to booking ${eid}: ${changed.join(', ')} — it is being updated on the calendar.` };
+    }
+    case 'donna_cancel_event': {
+      const eid = typeof input.event_id === 'string' ? input.event_id.trim() : '';
+      if (!eid) return { display: 'ERROR: donna_cancel_event needs event_id (the booking handle from the calendar).' };
+      // Signal only — the door marks the calendar row cancelled (recoverable) and confirms.
+      return { display: `Cancellation requested for booking ${eid} — it is being called off on the calendar.` };
     }
     case 'donna_hide': {
       if (!rid) return { display: 'ERROR: donna_hide needs binder_id.' };

@@ -23,6 +23,7 @@ const resolveAgent  = require('../middleware/resolveAgent');
 // The compiled engine loop (Phase 0 landed src/engine; dist is built on deploy).
 const { runTurn } = require('../../engine/dist/core/loop');
 const { generateInvoiceForBinder } = require('../vendor/invoices');
+const { updateEvent } = require('../../lib/vendor/events');
 
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
 // The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
@@ -126,6 +127,73 @@ function bookingLines(booked) {
   }).join('\n');
 }
 
+// donna_edit_event / donna_cancel_event are Donna's SIGNAL hands for changing the calendar.
+// The door resolves the event (vendor-scoped; only on a full valid handle, so a truncated
+// one reports cleanly instead of hard-erroring — the short-UUID lesson), applies the change,
+// and confirms. updateEvent is the same helper the calendar API uses, so the contract matches.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function resolveEvent(req, eventId) {
+  const raw = String(eventId || '').trim();
+  if (!UUID_RE.test(raw)) return null; // not a usable handle -> door reports "tell me which one"
+  const { data, error } = await req.app.locals.supabase
+    .from('events')
+    .select('id, title, event_date, event_time, kind, state')
+    .eq('vendor_id', req.vendor.id)
+    .eq('id', raw)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data;
+}
+async function mutateEvents(req, result) {
+  const edits = [], cancels = [];
+  const collect = (call) => {
+    if (!call || !call.input) return;
+    if (call.name === 'donna_edit_event' && call.input.event_id) edits.push(call.input);
+    if (call.name === 'donna_cancel_event' && call.input.event_id) cancels.push(call.input);
+  };
+  for (const tc of (result.tool_calls || [])) {
+    collect(tc);
+    for (const dc of (tc.donna_calls || [])) collect(dc);
+  }
+  const done = [];
+  for (const e of edits) {
+    try {
+      const ev = await resolveEvent(req, e.event_id);
+      if (!ev) { done.push({ action: 'edit', ok: false }); continue; }
+      const patch = {};
+      for (const k of ['title', 'event_date', 'event_time', 'kind', 'notes']) {
+        if (typeof e[k] === 'string' && e[k].trim()) patch[k] = e[k].trim();
+      }
+      const r = await updateEvent(req.app.locals.supabase, req.vendor.id, ev.id, patch);
+      done.push(r && r.ok ? { action: 'edit', ok: true, event: r.event || ev } : { action: 'edit', ok: false });
+    } catch (err) { console.error('[vendor-e chat:donna_edit_event]', err.message); done.push({ action: 'edit', ok: false }); }
+  }
+  for (const c of cancels) {
+    try {
+      const ev = await resolveEvent(req, c.event_id);
+      if (!ev) { done.push({ action: 'cancel', ok: false }); continue; }
+      const { error } = await req.app.locals.supabase
+        .from('events').update({ state: 'cancelled' })
+        .eq('id', ev.id).eq('vendor_id', req.vendor.id);
+      done.push(!error ? { action: 'cancel', ok: true, event: ev } : { action: 'cancel', ok: false });
+    } catch (err) { console.error('[vendor-e chat:donna_cancel_event]', err.message); done.push({ action: 'cancel', ok: false }); }
+  }
+  return done;
+}
+function mutationLines(done) {
+  return done.map((m) => {
+    if (!m.ok) return m.action === 'cancel'
+      ? `Couldn't cancel that booking — I didn't find a single match. Tell me which one.`
+      : `Couldn't change that booking — I didn't find a single match. Tell me which one.`;
+    const e = m.event || {};
+    const when = e.event_time ? `${e.event_date} at ${e.event_time}` : e.event_date;
+    return m.action === 'cancel'
+      ? `Cancelled: ${e.title}${e.event_date ? ` — ${when}` : ''}. It's off your calendar.`
+      : `Updated: ${e.title} — ${when}. The calendar's set.`;
+  }).join('\n');
+}
+
 // Calendar sight: the door hands Harvey the vendor's upcoming bookings as a compact snapshot,
 // injected into his turn (mirrors the cabinet snapshot). Read-only; the engine stays clean.
 async function fetchCalendarSnapshot(req) {
@@ -133,7 +201,7 @@ async function fetchCalendarSnapshot(req) {
     const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await req.app.locals.supabase
       .from('events')
-      .select('title, event_date, event_time, kind, state')
+      .select('id, title, event_date, event_time, kind, state')
       .eq('vendor_id', req.vendor.id)
       .eq('state', 'upcoming')
       .gte('event_date', today)
@@ -142,9 +210,9 @@ async function fetchCalendarSnapshot(req) {
     if (error || !data || !data.length) return '';
     const lines = data.map((e) => {
       const when = e.event_time ? `${e.event_date} ${e.event_time}` : e.event_date;
-      return `- ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`;
+      return `- [${e.id}] ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`;
     });
-    return `[Calendar — upcoming, kept for you]\n${lines.join('\n')}`;
+    return `[Calendar — upcoming, kept for you. The [handle] before each booking is how you reference it to change or cancel it.]\n${lines.join('\n')}`;
   } catch (e) {
     console.warn('[vendor-e chat:calendar snapshot]', e.message);
     return '';
@@ -198,6 +266,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const booked = await bookEvents(req, result);
       if (booked.length) send({ type: 'text_delta', text: '\n\n' + bookingLines(booked) });
 
+      const mutated = await mutateEvents(req, result);
+      if (mutated.length) send({ type: 'text_delta', text: '\n\n' + mutationLines(mutated) });
+
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
       if (documents.length) done.documents = documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
@@ -217,6 +288,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
 
     const documents = await buildInvoices(req, result);
     const booked    = await bookEvents(req, result);
+    const mutated   = await mutateEvents(req, result);
 
     let reply = result.reply;
     if (documents.length) {
@@ -225,6 +297,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       ).join('\n');
     }
     if (booked.length) reply += '\n\n' + bookingLines(booked);
+    if (mutated.length) reply += '\n\n' + mutationLines(mutated);
 
     const toolNames = (result.tool_calls || []).map((t) => t.name);
     return res.json({
