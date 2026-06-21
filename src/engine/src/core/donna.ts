@@ -200,6 +200,7 @@ export async function runDonnaTurn(
   today?: string,
   todayIso?: string,
   onAction?: (a: { name: string; input: unknown; result: string }) => void,
+  scratchpad?: string,
 ): Promise<DonnaTurn> {
   const toolCalls: DonnaTurn['tool_calls'] = [];
   // record() pushes a tool-call AND fires it live, so each of Donna's hands leaves the
@@ -231,7 +232,9 @@ export async function runDonnaTurn(
     "answer to what you just asked. You do the work against the real records (reconciling against what " +
     "already exists before you write), and you speak back to him with listen_harvey_talk: hand him your " +
     "finding, or ask him exactly what you need to finish (which client, which binder) and his answer " +
-    "comes next. Keep each reply to one or two plain lines. You prepare; you never advise — that is his.";
+    "comes next. Keep each reply to one or two plain lines. You prepare; you never advise — that is his." +
+    // The owner's scratchpad — his own hand, door-fed into Donna's vision (never Harvey's).
+    (scratchpad ? `\n\n${scratchpad}` : "");
 
   // Build the message list: resume the prior conversation, or start fresh.
   const messages: Anthropic.MessageParam[] = prior ? [...prior.messages] : [];

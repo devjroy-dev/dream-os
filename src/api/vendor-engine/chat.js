@@ -340,6 +340,27 @@ async function fetchCalendarSnapshot(req) {
   }
 }
 
+// The owner's note-to-self scratchpad — read for Donna's vision (door-fed; Harvey never sees it).
+// owner_notes is public-schema, vendor-keyed; the door has req.vendor, so the door reads it and
+// threads it to Donna via runTurn({ scratchpad }). Descriptive block only — the disposition to
+// surface relevant notes to Harvey lives in Donna's soul, not here.
+async function fetchScratchpad(req) {
+  try {
+    const { data, error } = await req.app.locals.supabase
+      .from('owner_notes')
+      .select('id, body, created_at')
+      .eq('vendor_id', req.vendor.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error || !data || !data.length) return '';
+    const lines = data.map((n) => `- ${n.body}`);
+    return `[The owner's scratchpad — notes he has left for himself, in his own hand.]\n${lines.join('\n')}`;
+  } catch (e) {
+    console.warn('[vendor-e chat:scratchpad]', e.message);
+    return '';
+  }
+}
+
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
@@ -372,10 +393,12 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     try {
       send({ type: 'thinking' });
       const calendarSnapshot = await fetchCalendarSnapshot(req);
+      const scratchpad = await fetchScratchpad(req);
       const result = await runTurn({
         agentId: req.agentId,
         message,
         calendarSnapshot,
+        scratchpad,
         onEvent: (e) => { const safe = translateBeat(e); if (safe) send(safe); },
       });
 
@@ -408,7 +431,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
   }
   try {
     const calendarSnapshot = await fetchCalendarSnapshot(req);
-    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot });
+    const scratchpad = await fetchScratchpad(req);
+    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad });
 
     const documents = await buildInvoices(req, result);
     const booked    = await bookEvents(req, result);

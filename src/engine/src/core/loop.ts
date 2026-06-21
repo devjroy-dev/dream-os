@@ -67,6 +67,7 @@ export async function runTurn(args: {
   message: string;
   conversationId?: string;
   calendarSnapshot?: string;
+  scratchpad?: string;
   onEvent?: (e: TurnEvent) => void;
 }): Promise<TurnResult> {
   const { agentId, message } = args;
@@ -299,7 +300,7 @@ export async function runTurn(args: {
         console.log(`[H->D #${talks}] ${msg}`);
 
         args.onEvent?.({ type: 'dispatch', to: 'donna', message: msg });
-        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }));
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad);
         donnaSession = donna.session; // persist so the next dear_donna_talk RESUMES her
         totalIn += donna.input_tokens;
         totalOut += donna.output_tokens;
