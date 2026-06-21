@@ -29,6 +29,7 @@ router.use('/clients',  require('./clients'));
 router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
+router.use('/notes',    require('./notes'));        // note-to-self scratchpad (owner-direct)
 router.use('/context',  require('./context'));
 router.use('/cabinet',  require('../vendor-engine/cabinet'));   // Phase 4 flip -> engine
 router.use('/binders',  require('../vendor-engine/binderWrite')); // Phase 4 flip -> engine
