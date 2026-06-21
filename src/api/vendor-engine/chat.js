@@ -24,6 +24,7 @@ const resolveAgent  = require('../middleware/resolveAgent');
 const { runTurn } = require('../../engine/dist/core/loop');
 const { generateInvoiceForBinder } = require('../vendor/invoices');
 const { updateEvent } = require('../../lib/vendor/events');
+const { executeAndPatch } = require('../../lib/executeAndPatch');
 
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
 // The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
@@ -227,7 +228,7 @@ async function resolveEvent(req, eventId) {
   if (!UUID_RE.test(raw)) return null; // not a usable handle -> door reports "tell me which one"
   const { data, error } = await req.app.locals.supabase
     .from('events')
-    .select('id, title, event_date, event_time, kind, state')
+    .select('id, title, event_date, event_time, kind, state, linked_binder_id')
     .eq('vendor_id', req.vendor.id)
     .eq('id', raw)
     .is('deleted_at', null)
@@ -256,6 +257,12 @@ async function mutateEvents(req, result) {
         if (typeof e[k] === 'string' && e[k].trim()) patch[k] = e[k].trim();
       }
       const r = await updateEvent(req.app.locals.supabase, req.vendor.id, ev.id, patch);
+      // Lockstep: a linked event's date moved -> carry the binder's date along, through Donna's hand
+      // (the binder is engine-owned, so it goes through donna_date — snapshot patched, trail written).
+      if (r && r.ok && patch.event_date && ev.linked_binder_id) {
+        try { await executeAndPatch(req.agentId, 'donna_date', { binder_id: ev.linked_binder_id, date: patch.event_date }); }
+        catch (e2) { console.warn('[vendor-e chat:lockstep e->b]', e2.message); }
+      }
       done.push(r && r.ok ? { action: 'edit', ok: true, event: r.event || ev } : { action: 'edit', ok: false });
     } catch (err) { console.error('[vendor-e chat:donna_edit_event]', err.message); done.push({ action: 'edit', ok: false }); }
   }
@@ -282,6 +289,30 @@ function mutationLines(done) {
       ? `Cancelled: ${e.title}${e.event_date ? ` — ${when}` : ''}. It's off your calendar.`
       : `Updated: ${e.title} — ${when}. The calendar's set.`;
   }).join('\n');
+}
+// Lockstep the other way: when Donna moves a binder's date (donna_date / donna_edit carrying a date),
+// the linked calendar event follows. The calendar is door-owned, so the event is written raw here
+// (same as every other event write). Half A's binder write is a post-turn door action, never a
+// donna_call in result, so this never sees it — no loop.
+async function lockstepBinderToEvent(req, result) {
+  const moves = new Map(); // binder_id -> date (last wins)
+  const collect = (call) => {
+    if (!call || !call.input) return;
+    if ((call.name === 'donna_date' || call.name === 'donna_edit') && call.input.binder_id
+        && typeof call.input.date === 'string' && call.input.date.trim()) {
+      moves.set(String(call.input.binder_id), call.input.date.trim());
+    }
+  };
+  for (const tc of (result.tool_calls || [])) { collect(tc); for (const dc of (tc.donna_calls || [])) collect(dc); }
+  for (const [binderId, date] of moves) {
+    try {
+      await req.app.locals.supabase.from('events')
+        .update({ event_date: date })
+        .eq('vendor_id', req.vendor.id)
+        .eq('linked_binder_id', binderId)
+        .neq('state', 'cancelled');
+    } catch (e) { console.warn('[vendor-e chat:lockstep b->e]', e.message); }
+  }
 }
 
 // Calendar sight: the door hands Harvey the vendor's upcoming bookings as a compact snapshot,
@@ -360,6 +391,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       if (mutated.length) send({ type: 'text_delta', text: '\n\n' + mutationLines(mutated) });
 
       await retroLinkOnFile(req, result);
+      await lockstepBinderToEvent(req, result);
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
@@ -382,6 +414,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const booked    = await bookEvents(req, result);
     const mutated   = await mutateEvents(req, result);
     await retroLinkOnFile(req, result);
+    await lockstepBinderToEvent(req, result);
 
     let reply = result.reply;
     if (documents.length) {
