@@ -335,13 +335,29 @@ export const DONNA_INVOICE_PDF_TOOL: Anthropic.Tool = {
   input_schema: { type: 'object', properties: { binder_id: { type: 'string' } } },
 };
 
+export const DONNA_BOOK_EVENT_TOOL: Anthropic.Tool = {
+  name: 'donna_book_event',
+  description: "Place a date on the vendor's calendar — a booking the vendor keeps: a shoot, a trial, a fitting, a recce, an appointment, a meeting, a ceremony. Give title (whose, and what — e.g. \"Kaaya - trial\"), event_date (YYYY-MM-DD), and the kind that fits THIS vendor's craft. Optionally event_time (HH:MM, 24h) and a short note. Use it when the vendor says book, block, schedule, or pencil in a date. The calendar is the vendor's spine — this is how a confirmed date stops living only in talk and becomes a kept appointment.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      title:      { type: 'string', description: 'Whose booking and what - e.g. "Kaaya - trial", "Sharma sangeet recce".' },
+      event_date: { type: 'string', description: 'The date, YYYY-MM-DD.' },
+      event_time: { type: 'string', description: 'Optional time, HH:MM 24-hour.' },
+      kind:       { type: 'string', description: "The kind that fits this craft: shoot, trial, fitting, recce, meeting, ceremony, family, social, other. Name it from the vendor's field; if unsure, leave it and a neutral booking is kept." },
+      notes:      { type: 'string', description: 'Optional short note for the booking.' },
+    },
+    required: ['title', 'event_date'],
+  },
+};
+
 export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_MONEY_TOOL, DONNA_DATE_TOOL, DONNA_CLIENT_TOOL, DONNA_NOTE_TOOL,
   DONNA_PHONE_TOOL, DONNA_DOC_TOOL, DONNA_STAGE_TOOL, DONNA_REASONFORACTION_APPEND_TOOL,
   DONNA_OVERWRITE_NOTE_TOOL,
   DONNA_EDIT_TOOL, DONNA_HIDE_TOOL, DONNA_RETRIEVE_TOOL, DONNA_REPEATFOLLOWUP_TOOL,
   DONNA_MERGE_TOOL, DONNA_SPLIT_TOOL, DONNA_MONEY_EDIT_TOOL,
-  DONNA_INVOICE_PDF_TOOL,
+  DONNA_INVOICE_PDF_TOOL, DONNA_BOOK_EVENT_TOOL,
 ];
 
 // ── Executors ────────────────────────────────────────────────────────────────
@@ -454,6 +470,16 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       // Signal only — the host stamps the next number, renders the PDF, files it.
       // Donna's hand asks for the document; the number + PDF return through the door.
       return { display: `Invoice document requested for record ${rid} — it is being prepared and will appear in the invoices list.` };
+    }
+    case 'donna_book_event': {
+      const title = typeof input.title === 'string' ? input.title.trim() : '';
+      const date  = typeof input.event_date === 'string' ? input.event_date.trim() : '';
+      if (!title) return { display: 'ERROR: donna_book_event needs a title (whose booking and what).' };
+      if (!date)  return { display: 'ERROR: donna_book_event needs event_date (YYYY-MM-DD).' };
+      // Signal only — the door writes the calendar row (public.events, vendor-keyed) and confirms.
+      // Donna's hand asks for the booking; the kept date returns through the door.
+      const at = typeof input.event_time === 'string' && input.event_time.trim() ? ` at ${input.event_time.trim()}` : '';
+      return { display: `Booking requested: ${title} on ${date}${at} — it is being placed on the calendar.` };
     }
     case 'donna_hide': {
       if (!rid) return { display: 'ERROR: donna_hide needs binder_id.' };

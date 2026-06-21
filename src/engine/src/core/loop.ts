@@ -66,6 +66,7 @@ export async function runTurn(args: {
   agentId: string;
   message: string;
   conversationId?: string;
+  calendarSnapshot?: string;
   onEvent?: (e: TurnEvent) => void;
 }): Promise<TurnResult> {
   const { agentId, message } = args;
@@ -185,7 +186,8 @@ export async function runTurn(args: {
   const today = todayLine(agent.timezone as string | null);
   const todayIso = todayISO(agent.timezone as string | null);
   const buildSystem = (): Anthropic.TextBlockParam[] => {
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock;
+    const calBlock = args.calendarSnapshot ? `\n\n${args.calendarSnapshot}` : '';
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];

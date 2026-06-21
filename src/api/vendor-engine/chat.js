@@ -88,6 +88,69 @@ function invoiceLines(documents) {
   ).join('\n');
 }
 
+// donna_book_event is Donna's SIGNAL hand for the calendar: the engine flags intent, the
+// door writes the real row into public.events (vendor-keyed) and confirms. Shared by the
+// JSON + SSE paths, and the same handler a future WhatsApp door will call. The cabinet's
+// "Booked" already reads public.events, so a booking shows up there with no UI change.
+const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
+async function bookEvents(req, result) {
+  const wantBook = [];
+  const collect = (call) => {
+    if (call && call.name === 'donna_book_event' && call.input && call.input.title && call.input.event_date) {
+      wantBook.push(call.input);
+    }
+  };
+  for (const tc of (result.tool_calls || [])) {
+    collect(tc);
+    for (const dc of (tc.donna_calls || [])) collect(dc);
+  }
+  const booked = [];
+  for (const bk of wantBook) {
+    try {
+      const kind = BOOKED_KINDS.includes(bk.kind) ? bk.kind : 'meeting';
+      const row = { vendor_id: req.vendor.id, title: String(bk.title).slice(0, 200), event_date: bk.event_date, kind, state: 'upcoming' };
+      if (bk.event_time) row.event_time = bk.event_time;
+      if (bk.notes) row.notes = String(bk.notes);
+      const { data, error } = await req.app.locals.supabase
+        .from('events').insert(row).select('id, title, event_date, event_time, kind').single();
+      if (error) { console.error('[vendor-e chat:donna_book_event]', error.message); continue; }
+      booked.push(data);
+    } catch (e) { console.error('[vendor-e chat:donna_book_event]', e.message); }
+  }
+  return booked;
+}
+function bookingLines(booked) {
+  return booked.map((bk) => {
+    const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
+    return `Booked: ${bk.title} — ${when}. It's on your calendar.`;
+  }).join('\n');
+}
+
+// Calendar sight: the door hands Harvey the vendor's upcoming bookings as a compact snapshot,
+// injected into his turn (mirrors the cabinet snapshot). Read-only; the engine stays clean.
+async function fetchCalendarSnapshot(req) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await req.app.locals.supabase
+      .from('events')
+      .select('title, event_date, event_time, kind, state')
+      .eq('vendor_id', req.vendor.id)
+      .eq('state', 'upcoming')
+      .gte('event_date', today)
+      .order('event_date', { ascending: true })
+      .limit(12);
+    if (error || !data || !data.length) return '';
+    const lines = data.map((e) => {
+      const when = e.event_time ? `${e.event_date} ${e.event_time}` : e.event_date;
+      return `- ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`;
+    });
+    return `[Calendar — upcoming, kept for you]\n${lines.join('\n')}`;
+  } catch (e) {
+    console.warn('[vendor-e chat:calendar snapshot]', e.message);
+    return '';
+  }
+}
+
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
@@ -119,9 +182,11 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
 
     try {
       send({ type: 'thinking' });
+      const calendarSnapshot = await fetchCalendarSnapshot(req);
       const result = await runTurn({
         agentId: req.agentId,
         message,
+        calendarSnapshot,
         onEvent: (e) => { const safe = translateBeat(e); if (safe) send(safe); },
       });
 
@@ -129,6 +194,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // already streamed, so the "ready" line rides as a final text_delta before done.
       const documents = await buildInvoices(req, result);
       if (documents.length) send({ type: 'text_delta', text: '\n\n' + invoiceLines(documents) });
+
+      const booked = await bookEvents(req, result);
+      if (booked.length) send({ type: 'text_delta', text: '\n\n' + bookingLines(booked) });
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
@@ -144,9 +212,11 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     return;
   }
   try {
-    const result    = await runTurn({ agentId: req.agentId, message });
+    const calendarSnapshot = await fetchCalendarSnapshot(req);
+    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot });
 
     const documents = await buildInvoices(req, result);
+    const booked    = await bookEvents(req, result);
 
     let reply = result.reply;
     if (documents.length) {
@@ -154,6 +224,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready — find it in the invoices list to download or send.`
       ).join('\n');
     }
+    if (booked.length) reply += '\n\n' + bookingLines(booked);
 
     const toolNames = (result.tool_calls || []).map((t) => t.name);
     return res.json({
