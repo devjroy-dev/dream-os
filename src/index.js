@@ -27,6 +27,7 @@ const adminRouter  = require('./admin/router');
 const apiRouter    = require('./api/router');
 const { resolveAgentForVendor } = require('./api/middleware/agentBridge'); // 5-A
 const { runTurn } = require('./engine/dist/core/loop');                     // 5-A
+const { fetchCalendarSnapshot, fetchScratchpad, applyCalendarSignals } = require('./lib/vendor/calendarSignals'); // 5-A calendar parity
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -878,7 +879,11 @@ app.post('/webhook/whatsapp', async (req, res) => {
     // lacks; deferred (see WHATSAPP_ENGINE_DEFERRED_FEATURES.md). The public.messages
     // audit log is kept (3b) for delivery telemetry; engine.messages carries memory.
     const { agentId } = await resolveAgentForVendor(supabase, vendor, user.id);
-    const result = await runTurn({ agentId, message: body });
+    // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference
+    // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
+    const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id);
+    const scratchpad = await fetchScratchpad(supabase, vendor.id);
+    const result = await runTurn({ agentId, message: body, calendarSnapshot, scratchpad });
     const toolNames = (result.tool_calls || []).map((t) => t.name);
 
     console.log(`[agent:engine] reply: "${result.reply.slice(0, 80)}..."  (${toolNames.length} tool calls)`);
@@ -918,6 +923,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
         `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} — sending the PDF now.`
       ).join('\n');
     }
+    // Calendar signals (book / edit / cancel / retro-link / lockstep) — same handler the
+    // web door uses, so a booking made over WhatsApp lands on the same calendar with the
+    // same binder lockstep. The confirmation suffix rides on Victor's reply.
+    try {
+      const cal = await applyCalendarSignals(supabase, vendor, agentId, result);
+      if (cal.suffix) replyText += cal.suffix;
+    } catch (e) { console.error('[whatsapp:calendar-signals]', e.message); }
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
     await supabase.from('messages').insert({
       conversation_id: convo.id,
