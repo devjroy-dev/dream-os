@@ -11,6 +11,7 @@
 //     -> engine.users   (auth_user_id = uid)   [created if absent]
 //     -> engine.agents  (user_id = users.id)   [the vendor's Victor/Donna]
 const { resolvePreset } = require('../vendor/categoryPreset');
+const { presetDescriptor } = require('../vendor/presetDescriptor');
 
 async function resolveAgentForVendor(supabase, vendor, authUserId) {
   if (!authUserId || !vendor) {
@@ -51,6 +52,23 @@ async function resolveAgentForVendor(supabase, vendor, authUserId) {
       .select('id, profession_preset').single();
     if (ag.error) throw ag.error;
     a = ag.data;
+
+    // Owner anchor — WHO this agent works for. Without an agent_owner row, loadOwner
+    // returns nothing and Victor opens "Donna didn't hand me your name." The person's
+    // name lives in public.users.name (set at signup/provision); the descriptor comes
+    // from the preset. consult_done=false routes the first opening. Mirrors signup.ts.
+    const { data: pu } = await supabase
+      .from('users').select('name').eq('id', vendor.user_id).maybeSingle();
+    const ownerName = (pu && pu.name) || vendor.business_name || null;
+    if (ownerName) {
+      const { error: ownerErr } = await eng.from('agent_owner').insert({
+        agent_id:         a.id,
+        owner_name:       ownerName,
+        owner_descriptor: presetDescriptor(preset),
+        consult_done:     false,
+      });
+      if (ownerErr) throw ownerErr;
+    }
   }
 
   return { agentId: a.id, agentPreset: a.profession_preset };
