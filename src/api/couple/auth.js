@@ -14,11 +14,11 @@
 //   PWA stores in localStorage. All protected endpoints require:
 //   Authorization: Bearer <access_token>
 //
-// MINT PATTERN (lazy auth.users backfill)
-//   1. createUser — idempotent, pins users.id as auth.users UUID
-//   2. updateUserById — pins stable internal email (no email dispatched)
+// MINT PATTERN (find the existing phone-OTP identity — never create)
+//   1. resolve auth_user_id from public.users (the identity provision linked)
+//   2. updateUserById — pins stable internal email on that EXISTING row (no dispatch)
 //   3. generateLink magiclink — returns hashed_token (no email dispatched)
-//   4. verifyOtp token_hash — exchanges token for real JWT session
+//   4. verifyOtp token_hash — exchanges token for a JWT session for that same identity
 
 'use strict';
 
@@ -28,6 +28,16 @@ const bcrypt  = require('bcryptjs');
 const twilio  = require('twilio');
 const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
+
+// Dedicated service-role client for the GoTrue session exchange (mintSession), kept
+// SEPARATE from the shared data client with persistSession/autoRefreshToken OFF, so
+// verifyOtp never mutates the client the rest of the app reads `engine`/`public` with.
+const { createClient: _createAuthClient } = require('@supabase/supabase-js');
+const authClient = _createAuthClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false } },
+);
 
 const BCRYPT_ROUNDS    = 10;
 const OTP_TTL_MS       = 5 * 60 * 1000;
@@ -66,48 +76,36 @@ function generateOtp() {
 // Called after OTP verify or PIN verify — phone already proved at that point.
 // ---------------------------------------------------------------------------
 async function mintSession(supabase, userId) {
-  // Step 1 — create auth.users row pinned to our users.id UUID.
-  // Idempotent: 422 / "already registered" means row exists, continue.
-  const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-    id:            userId,
-    email:         `couple-${userId}@internal.dreamai.app`,
-    email_confirm: true,
-  });
-
-  let authId = userId;
-  if (createErr) {
-    const msg = createErr.message || '';
-    if (!msg.includes('already registered') && !msg.includes('already been registered') && createErr.status !== 422) {
-      throw new Error(`auth.users create failed: ${msg}`);
-    }
-    // Already exists — look it up
-    const { data: existing, error: lookupErr } = await supabase.auth.admin.getUserById(userId);
-    if (lookupErr || !existing?.user) {
-      throw new Error(`auth.users lookup failed: ${lookupErr?.message || 'no user'}`);
-    }
-    authId = existing.user.id;
-  } else {
-    authId = created.user.id;
+  // Resolve the EXISTING Supabase auth identity for this user — the one provision
+  // already linked (real phone-OTP user). We NEVER createUser here: createUser pinned
+  // to users.id manufactures a second, divergent auth identity (the bug that split
+  // public.users from engine.users). Find, don't create. One person, one auth user.
+  const { data: u, error: uErr } = await supabase
+    .from('users').select('auth_user_id').eq('id', userId).maybeSingle();
+  if (uErr) throw new Error(`user lookup failed: ${uErr.message}`);
+  const authId = u && u.auth_user_id;
+  if (!authId) {
+    throw new Error('No Supabase auth identity for this account. Sign in with OTP first.');
   }
 
-  // Step 2 — pin a stable internal email (required by generateLink).
-  // Admin update does not dispatch any email.
+  // Pin a stable internal email on the EXISTING auth row (required by generateLink;
+  // admin update dispatches no email, creates no new user).
   const internalEmail = `couple-${authId}@internal.dreamai.app`;
-  const { error: updateErr } = await supabase.auth.admin.updateUserById(authId, {
+  const { error: updateErr } = await authClient.auth.admin.updateUserById(authId, {
     email:         internalEmail,
     email_confirm: true,
   });
   if (updateErr) throw new Error(`auth.users email pin failed: ${updateErr.message}`);
 
-  // Step 3 — generate magic-link token server-side. No email dispatched.
-  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+  // Generate magic-link token server-side (no email dispatched), exchange for a real
+  // JWT session — minted for the existing phone identity, so OTP and PIN converge.
+  const { data: linkData, error: linkErr } = await authClient.auth.admin.generateLink({
     type:  'magiclink',
     email: internalEmail,
   });
   if (linkErr) throw new Error(`generateLink failed: ${linkErr.message}`);
 
-  // Step 4 — exchange hashed_token for real JWT session.
-  const { data: sessionData, error: sessionErr } = await supabase.auth.verifyOtp({
+  const { data: sessionData, error: sessionErr } = await authClient.auth.verifyOtp({
     token_hash: linkData.properties.hashed_token,
     type:       'email',
   });
