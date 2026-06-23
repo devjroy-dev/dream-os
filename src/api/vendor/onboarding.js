@@ -47,19 +47,15 @@ async function generateHandle(supabase, vendorId, user) {
 router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
-  const { name, instagram_handle, business_name, category, city, open_to_travel, stated_rate } = req.body || {};
+  const { instagram_handle, business_name, city, open_to_travel, stated_rate } = req.body || {};
 
-  if (!category || !category.trim()) return errRes(res, 400, 'category is required.');
-  if (!city     || !city.trim())     return errRes(res, 400, 'city is required.');
+  if (!city || !city.trim()) return errRes(res, 400, 'city is required.');
 
-  // Update users.name with person's first name
-  const cleanName = (name || '').trim().split(/\s+/)[0].slice(0, 60);
-  if (cleanName) {
-    await supabase.from('users').update({ name: cleanName }).eq('id', vendor.user_id);
-  }
-
+  // name + category are captured at signup (invite_phone -> provision). Onboarding
+  // never re-collects or overwrites them; it reads the existing values.
   const { data: user } = await supabase
     .from('users').select('name, phone').eq('id', vendor.user_id).maybeSingle();
+  const existingCategory = (vendor.category || '').trim();
 
   const cleanIg = (instagram_handle || '').trim().replace(/^@/, '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 30) || null;
 
@@ -69,7 +65,6 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   const handle = await generateHandle(supabase, vendor.id, user || {});
 
   const vendorUpdate = {
-    category:         category.trim().toLowerCase(),
     city:             city.trim(),
     open_to_travel:   open_to_travel === true || open_to_travel === 'true',
     routing_handle:   handle,
@@ -82,10 +77,10 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   if (vendorErr) return errRes(res, 500, 'Could not save profile. Please try again.');
 
   if (stated_rate && stated_rate.trim()) {
-    const displayName = business_name?.trim() || cleanName || user?.name || 'Vendor';
+    const displayName = business_name?.trim() || user?.name || 'Vendor';
     await supabase.from('vendor_state').upsert({
       vendor_id:      vendor.id,
-      summary:        `${displayName} — ${category.trim()} based in ${city.trim()}. Typical rate: ${stated_rate.trim()}.`,
+      summary:        `${displayName} — ${existingCategory || 'vendor'} based in ${city.trim()}. Typical rate: ${stated_rate.trim()}.`,
       pricing_policy: { stated_rate: stated_rate.trim() },
       recent_notes:   [],
       updated_at:     new Date().toISOString(),
