@@ -878,7 +878,7 @@ app.post('/webhook/whatsapp', async (req, res) => {
     // the ---DRAFT--- split were Myra delivery features the 78807dd engine cut
     // lacks; deferred (see WHATSAPP_ENGINE_DEFERRED_FEATURES.md). The public.messages
     // audit log is kept (3b) for delivery telemetry; engine.messages carries memory.
-    const { agentId } = await resolveAgentForVendor(supabase, vendor, user.id);
+    const { agentId } = await resolveAgentForVendor(supabase, vendor, user.auth_user_id);
     // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference
     // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
     const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id);
