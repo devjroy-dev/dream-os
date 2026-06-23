@@ -508,12 +508,28 @@ router.post('/refresh', async (req, res) => {
 // via Supabase (signInWithOtp/verifyOtp); requireAuth verifies that session here, then
 // we provision the users + vendor row (idempotent, phone-fallback re-bind). No tokens
 // returned — the browser holds the Supabase session.
+const VENDOR_CATEGORIES = ['makeup', 'planning', 'photography', 'designer', 'venue & decor', 'jewellery'];
+
 router.post('/provision', requireAuth, async (req, res) => {
   try {
+    const supabase   = req.app.locals.supabase;
     const authUserId = req.auth.user_id;
     const phone = req.auth.phone || (req.body && req.body.phone) || null;
     const name  = ((req.body && req.body.name) || '').trim() || null;
-    const r = await provisionRole(req.app.locals.supabase, { authUserId, phone, name, role: 'vendor' });
+    const r = await provisionRole(supabase, { authUserId, phone, name, role: 'vendor' });
+
+    // Craft/field captured at signup (invite_phone), BEFORE the engine agent is
+    // born — set once, constrained to the six categories that map to a preset/Codex.
+    // This is what lets resolvePreset() land the right profession_preset at birth.
+    const category = (((req.body && req.body.category) || '').trim().toLowerCase()) || null;
+    if (category && VENDOR_CATEGORIES.includes(category)) {
+      const { data: vrow } = await supabase
+        .from('vendors').select('category').eq('id', r.role_id).maybeSingle();
+      if (vrow && !(vrow.category && String(vrow.category).trim())) {
+        await supabase.from('vendors').update({ category }).eq('id', r.role_id);
+      }
+    }
+
     return res.json({ ok: true, user_id: r.user_id, vendor_id: r.role_id, pin_set: r.pin_set });
   } catch (e) {
     console.error('[vendor:provision]', e.message);
