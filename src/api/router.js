@@ -27,6 +27,7 @@ router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
 router.use('/hot-dates',          require('./public/hotDates'));
 router.use('/vendor/onboarding',  require('./vendor/onboarding'));
+router.use('/vendor/category',    require('./vendor/category'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)
 router.use('/admin/discover',        require('./admin/discover'));
