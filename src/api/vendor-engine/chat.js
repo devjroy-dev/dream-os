@@ -62,7 +62,14 @@ function translateBeat(e, vendorId) {
       // derived ONLY from the door's own witnessed result (F8's covenant). F3 rides
       // inside deriveFiling: an ERROR display becomes the honest failure line and
       // the raw DB text never crosses the wire (it stays in the engine trail).
-      const filing = deriveFiling(vendorId, e.name, e.input, typeof e.result === 'string' ? e.result : '');
+      // P7-b: filings are for WRITES (and honest errors) only — a read beat never
+      // wears a chip. G1 caught donna_find dressed as "Filed".
+      const kindOf = actionKind(e.name);
+      const raw = typeof e.result === 'string' ? e.result : '';
+      if (kindOf !== 'write' && !raw.startsWith('ERROR')) {
+        return { type: 'operator_action', kind: kindOf, detail: scrubText(raw) };
+      }
+      const filing = deriveFiling(vendorId, e.name, e.input, raw);
       if (filing.kind === 'error') {
         return { type: 'operator_action', kind: 'error', detail: filing.summary, summary: filing.summary, retryable: true };
       }
