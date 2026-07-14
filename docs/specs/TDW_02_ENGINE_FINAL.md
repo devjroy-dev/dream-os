@@ -157,3 +157,8 @@ Everything ships as wire contracts (`meta`, `draft`, beats with `undo`) — Expo
 
 ## 8. SESSION BOUNDARIES
 Six sittings, P1→P6 strictly. Each ends with: curl proofs in notes, MASTERPLAN status line, SCHEMA.md (P3/P5 only), drift log. P5 may run before P4 if provider keys arrive late — the only permitted reorder. Engine-schema `leads` drop request goes to the TDW_01 Phase C list, never executed here.
+
+
+---
+
+## ADDENDUM (2026-07-14, from TDW_01 Phase C ruling): the engine plane inherits the `scope_org_id` column verdicts. TDW_01 dropped `engine.orgs`/`org_members` + their SEVEN named FK constraints (on facts, leads, documents, money_entries, open_loops, compliance_deadlines, and org_members itself — corrected per the Step-25 output, 2026-07-14); the `scope_org_id` columns remain — all-NULL, unconstrained, harmless. This block rules keep-or-drop with full engine context (a P1-adjacent decision, recorded in SCHEMA either way; if dropped, a reserved migration number per LD-8).

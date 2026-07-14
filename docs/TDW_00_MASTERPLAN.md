@@ -33,8 +33,8 @@
 | Block | Doc | Scope (one line) | Status |
 |---|---|---|---|
 | — | TDW_BUILD_PROTOCOL | Common law for every session | v1 + language-law append pending at 01 D |
-| 01 | HYGIENE | Legacy deletion (code + DB, founder-gated), migration archive, doc regime install | **IN PROGRESS — Phase A shipped**; rulings issued: 0063 collision documented-not-renamed, .bak delete-behind-diff-gate, docs archive verdicts; awaiting founder: Railway boot truth, PROJECT_PROMPT_ADDITION verdict |
-| 02 | ENGINE | donnaLead→public.leads, filing-law soul weave, drafts both planes, harvest, facade+caps | SPEC READY |
+| 01 | HYGIENE | Legacy deletion (code + DB, founder-gated), migration archive, doc regime install | **SHIPPED — awaiting founder smoke trio + SQL run output** (close-out delivered by CE; residue of ~4 prod-only candidates assigned to 02 audit sitting) |
+| 02 | ENGINE | donnaLead→public.leads, filing-law soul weave, drafts both planes, harvest, facade+caps | SPEC READY — opens with the §3.5 audit-first sitting (incl. prod residue sweep + scope_org_id verdicts) |
 | 03 | CRUDS | Slice split, binder cards, wishbone, swipes/bulk, mastheads, AddSheet, cold-open splash (+Addendum: portfolio-first vendor splash) | SPEC READY |
 | 04 | CALENDAR | One writer, slots/occupancy, date-aware Victor, day sheet (+Addendum B: ICS/CSV import + Snap-a-Date) | SPEC READY |
 | 04.5 | PLANNER | Crew, bands, crew page, planner-grade Collab, money loop | SPEC READY |

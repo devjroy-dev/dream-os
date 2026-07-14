@@ -1,3 +1,4 @@
+-- NOTE (TDW_01): 0063 was double-reserved; both files applied to prod. Twin: 0063_users_auth_user_id.sql. See SCHEMA ladder note + db/BASELINE.md.
 -- 0063_vendor_activity_log.sql
 -- Cross-surface activity memory (Phase 1.5).
 -- Every mutating tool call on EITHER surface (WhatsApp PA or PWA Business

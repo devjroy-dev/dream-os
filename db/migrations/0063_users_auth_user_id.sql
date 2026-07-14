@@ -1,3 +1,4 @@
+-- NOTE (TDW_01): 0063 was double-reserved; both files applied to prod. Twin: 0063_vendor_activity_log.sql. See SCHEMA ladder note + db/BASELINE.md.
 -- 0063_users_auth_user_id.sql
 -- Auth migration Step 1a (see AUTH_SUPABASE_PHONE_MIGRATION.md).
 --

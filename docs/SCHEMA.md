@@ -1742,3 +1742,6 @@ vendor summaries + calendar enrichment. It is really a DELIVERY deadline. Proper
 fix = a separate `ready_by` column for delivery categories (future migration).
 PARKED — noted here so the schema reader is aware `wedding_date` is overloaded
 for delivery-category leads.
+
+
+## Ladder note (TDW_01): 0063 exists twice (users_auth_user_id, vendor_activity_log) — both applied; documented, never renamed (LD-8). 0068 archived (objects absent from prod). Dropped objects: see docs/DROPPED_2026-07.md. Prod baseline: db/BASELINE.md.
