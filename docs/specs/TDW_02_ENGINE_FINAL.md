@@ -162,3 +162,21 @@ Six sittings, P1→P6 strictly. Each ends with: curl proofs in notes, MASTERPLAN
 ---
 
 ## ADDENDUM (2026-07-14, from TDW_01 Phase C ruling): the engine plane inherits the `scope_org_id` column verdicts. TDW_01 dropped `engine.orgs`/`org_members` + their SEVEN named FK constraints (on facts, leads, documents, money_entries, open_loops, compliance_deadlines, and org_members itself — corrected per the Step-25 output, 2026-07-14); the `scope_org_id` columns remain — all-NULL, unconstrained, harmless. This block rules keep-or-drop with full engine context (a P1-adjacent decision, recorded in SCHEMA either way; if dropped, a reserved migration number per LD-8).
+
+
+---
+
+## AMENDMENT ONE (2026-07-14, post-audit — the single §3.5 amendment cycle; supersedes conflicting spec text)
+**Rulings (CE-1…7 + reopener + scope_org_id), binding:**
+1. **CE-1:** Register `DONNA_LEAD_TOOL` in `DONNA_TOOLS` (D1). Plane intent CONFIRMED per LD-1: leads = typed `public.leads`; clients/binders stay on the records plane.
+2. **CE-2:** Lead-create undo gets its witnessed door: NEW `DELETE /:leadId` as SOFT-delete via the existing column (D2) — added in P1 as the undo path's smallest honest addition.
+3. **CE-3:** 0072 SLIMS to `leads.draft_meta` only. The invoice half moves to the records plane as `missing_cells` (D3) — invoices live there post-flip; no new typed column.
+4. **CE-4:** APPROVED — door-side RECENT-ACTIVITY block injected into `runTurn` input assembly (mechanical context, zero soul change), reading `vendor_activity_log.action` (D4's true column name).
+5. **CE-5:** APPROVED — P2 runs proof transcripts FIRST; weave only what fails (D5: the filing law is already substantially in Harvey's soul; no soul churn without evidence).
+6. **CE-6:** ADOPT the existing flat cap keys `vendor_pwa_daily_<tier>` / `vendor_pwa_monthly_<tier>`, enforce BOTH windows. 0073 seeds any missing keys via migration INSERT (D7: PATCH cannot create keys; values are text — parse defensively).
+7. **CE-7:** Product tier reaches the engine as a READ-THROUGH mapping resolved at turn start (door/facade), never a backfill of the hardcoded `agents.tier` (D15): essential→entry · signature→mid (trial-Signature included) · prestige→top. The 09 webhook tier flips thereby reflect on the next turn with no engine writes.
+8. **REOPENER (five ghost engine tables — empty, zero constraints, drops recorded-as-done but never executed, D12/D13):** DROP NOW. Executor authors one guarded SQL block in the TDW01_DROPS pattern (existence + zero-row guards, one commented statement per table, named from the audit log); founder runs; DROPPED_2026-07.md + BASELINE.md corrected from recorded-intent to executed-fact with date — the honesty restoration is part of the deliverable.
+9. **scope_org_id: DROP APPROVED** — reserved migration `0074_drop_scope_org_id.sql`, authored ONLY AFTER ruling-8's drops execute (so it names only real tables), guarded `alter table … drop column if exists` per column, SCHEMA.md records the verdict.
+
+**Drift resolutions folded into the build (binding over original text):** D6 cabinet.ts inline shape canonical; comment fix rides P3 · D8 dual chat-door mounts: keep both, document in SCHEMA/API notes, touch neither · D9 `raw_message` absent from Donna's scope: the spec's fallback branch is the path · D10 the scope_org_id addendum's seven-column list is CORRECTED to the audit's true six live columns · D11 SCHEMA.md's leads (6) + invoices (4) column gaps fixed in P3's doc pass · D14 cap-key naming per CE-6.
+**P1 execution notes confirmed:** `vendorIdFromAgent` via the verified reverse join · `executeDonnaLead` → `public.leads` with the word-map · read-before-write on vendor_id + phone/name · `draft_meta` behind a column-exists check or 0072-first (executor records which) · engine-`leads` stop-write · curl proofs as specified.
