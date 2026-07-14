@@ -114,12 +114,13 @@ function binderLine(r: {
 }
 
 // reason_for_action is Donna's own diary — why she did what she did — so it ALWAYS
-// accumulates, whichever tool writes it, and is never erased. The note is different:
-// it is the CURRENT TRUTH about the binder, a state descriptor, not a claim ledger —
-// so donna_note (and donna_edit) REPLACE it in place, and it only stacks when she
-// deliberately adds a line via donna_note_append. Append is opt-in per write; only
-// the diary appends unconditionally. (The claim-vs-proof "keep the old until verified"
-// discipline lives in the money cells + supersession, not in this descriptor.)
+// accumulates, whichever tool writes it, and is never erased. The note has TWO doors
+// with different verbs (verified against the executors, TDW_03 P2 rider 2026-07-14):
+// donna_note REPLACES it in place — rewrite-to-current-truth, the clean-slate door;
+// donna_edit and donna_note_append both APPEND — a line beneath what stands, the
+// story grows (both pass appendAlso {'note'} into writeFields). Append is opt-in
+// per write; only the diary appends unconditionally. (The claim-vs-proof "keep the
+// old until verified" discipline lives in the money cells + supersession, not here.)
 const ALWAYS_APPEND = ['reason_for_action'] as const;
 
 // Core write: set the given fields on a row. binder_id omitted → insert; given → update.
@@ -132,9 +133,9 @@ async function writeFields(
 ): Promise<ToolOutcome> {
   if (recordId) {
     // What appends on this write = the always-append diary (reason_for_action) plus any
-    // field the calling tool opted to append (donna_note_append opts in 'note'). Everything
-    // else — note included, via donna_note/donna_edit — is replaced in place. Edit means
-    // edit; the note carries current truth, not a stack. The diary never erases.
+    // field the calling tool opted to append (donna_note_append AND donna_edit both opt
+    // in 'note' — verified, TDW_03 P2 rider). Only donna_note replaces the note in place:
+    // rewrite means rewrite; edit and append grow the story. The diary never erases.
     const patch: Record<string, unknown> = { ...fields, updated_at: new Date().toISOString() };
     const appendSet = new Set<string>(ALWAYS_APPEND as readonly string[]);
     if (appendAlso) for (const f of appendAlso) appendSet.add(f);
