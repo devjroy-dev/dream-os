@@ -24,3 +24,6 @@ phase*_pkg/
 
 # Vendor Suit -- compiled engine (CJS)
 src/engine/dist/
+
+# delivery artifacts are applied then discarded — never committed
+/*.zip
