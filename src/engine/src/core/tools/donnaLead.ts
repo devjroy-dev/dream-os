@@ -16,7 +16,7 @@ import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
 
 // Columns read back on every write (draft_meta deliberately excluded so reads
 // survive a pre-0072 database; see writeLead below).
-const SEL = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, notes, raw_message';
+const SEL = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, notes, raw_message, draft_meta';
 
 type LeadRow = {
   id: string; name?: string | null; phone?: string | null;
@@ -193,8 +193,21 @@ export async function executeDonnaLead(
     }
 
     // Recompute draft state from the merged row (spec P3: every update recomputes).
+    // P4-c: PRESERVE provenance — an enrich recomputes `missing` but never clobbers
+    // a standing source/harvested[] trail (harvest's provenance survives her hand;
+    // symmetric with updateLead). 'victor' only when no prior draft stood.
     const merged = { ...cur, ...patch } as Record<string, unknown>;
-    patch.draft_meta = leadDraftMeta(merged, 'victor');
+    const fresh = leadDraftMeta(merged, 'victor');
+    if (fresh === null) {
+      patch.draft_meta = null; // promotion always wins
+    } else {
+      const prior = (cur as unknown as { draft_meta?: { source?: string; harvested?: string[] } }).draft_meta;
+      patch.draft_meta = {
+        missing: fresh.missing,
+        source: (prior && prior.source) || 'victor',
+        ...(prior && prior.harvested ? { harvested: prior.harvested } : {}),
+      };
+    }
 
     const { data, error } = await writeLead('update', patch, cur.id);
     if (error) return { display: `ERROR updating lead: ${error.message}` };
