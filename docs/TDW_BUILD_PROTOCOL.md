@@ -64,6 +64,14 @@ the only authority who can change its scope mid-sitting.
 - **iOS Safari auth pattern is settled:** cookie-before-localStorage with
   session mirrors. Never regress to localStorage-only.
 
+### Proof-evidence laws (promoted at TDW_02 block close — CE wording verbatim)
+- **Count-proofs are evidence only when cold.** A warm thread hands the model its own
+  prior utterances as context; any proof that counts, lists, or audits state runs on a
+  cold-forced conversation with the forcing UPDATE's output on the record.
+- **"No proof run is evidence until its header records repo HEAD (`git log -1
+  --format='%h %s'`) and deploy-green confirmation. Proofs against mid-deploy or
+  ambiguous states are void, not weak."**
+
 ## 5. EXECUTION ORDER (per phase)
 backend slice → migration → curl-prove every endpoint (write the curls in
 your notes) → THEN frontend surface → verification gates (§6) → self-review

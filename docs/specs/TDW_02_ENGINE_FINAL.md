@@ -202,3 +202,12 @@ Six sittings, P1→P6 strictly. Each ends with: curl proofs in notes, MASTERPLAN
 
 **Provisionality clause:** P7's verdict is binding for the current prompt era. TDW_06 P5's lens work materially changes Donna's prompt shape — its spec's re-bench requirement STANDS as re-confirmation, not re-litigation; if the lens-era bench contradicts P7, the matrix reverts pending the 06 verdict.
 **Block close amendments:** the 02→DONE flip now follows P7, not P6; the two protocol promotions ride P7's final ZIP instead.
+
+### P7-2 ADDENDUM (founder-ruled at the gate, 2026-07-14)
+Bench verdict: DeepSeek PASSED the gauntlet (zero false dones, zero fabricated entities,
+voice founder-read PASS). Matrix as flipped: **signature -> Victor anthropic-haiku +
+Donna deepseek (the LD-7 split, role-split machinery shipped this phase)** ·
+**model.harvest.default -> deepseek** (F11 retired GLM's last lane) · trial stays
+anthropic (GLM-era ruling stands) · prestige untouched. Scars on record: F10 (Donna's
+__calendar_check__ probe — phantom cancelled), F11 (harvest fabrication — letters-guard
+shipped, Meera repaired). Rollback = one SQL per row; fallback armor proven live.

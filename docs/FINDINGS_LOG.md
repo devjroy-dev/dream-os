@@ -492,3 +492,10 @@ note_to_self, create_lead, list_leads, update_lead_state, create_event, list_eve
 - **Bench verdict (acceptance 6):** see UNIT_ECONOMICS.md — glm FAILED advisory, PROVEN harvest; routing flipped accordingly (admin_config + DEFAULTS).
 - **Executor corrections self-logged:** invented usage column name (cache_read_tokens) in a proof read; typo'd created_by in a supplied read; both caught by the founder's runs. Third-instance lesson: verify before writing a read — now habitual.
 - **CE ratifications sought in handover:** Proof E descope (moot) · the D-proof banked from the accidental live cap firing (5/20 trial caps) · 0073's trial seed left as-history while DEFAULTS + admin row carry the ruling (applied migrations stay immutable).
+
+## TDW_02 P7 sitting (2026-07-14)
+- **P7-a (FIXED):** non-anthropic + SSE = dead air (SDK stream vs foreign framing); create-backed shim; every prior routed proof had been JSON-path — the gap was real.
+- **P7-b (FIXED):** read beats wore 'Filed' chips; chips now writes/errors only.
+- **F10:** DeepSeek-Donna improvised a __calendar_check__ probe booking (phantom cancelled via events door). Style divergence — 06 lens list.
+- **F11 (guarded+repaired):** harvest fabricated Meera's city ('201' from 'the 21st') + a plausible wedding_date from contaminated context; letters-guard shipped; both fields repaired via wishbone; GLM retired from harvest (founder-ruled).
+- **P7 verdict:** DeepSeek PASS (all 7 gauntlet turns + voice founder-read); matrix flipped A+C; bench dismantled.
