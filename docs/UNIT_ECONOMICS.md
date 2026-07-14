@@ -23,6 +23,19 @@ Its purpose was GLM *chat-route* economics; the bench removed GLM from chat. Har
 prompts are too small for prefix caching to matter. Executor judgment, submitted for
 CE ratification in the P5 handover.
 
+## 02-HOTFIX correction (2026-07-15) — read the ledger with cache eyes
+The 2026-07-14 field report's "stripped ~900-token calls / broken cost math / 582
+signature gone" were all one artifact: engine.usage had no cache columns, so a
+cold-cache turn's ~32.5k prefix WRITE (billed 1.25× ≈ ₹4.06) hid behind a tiny
+fresh-input figure, and warm READS (0.1×) hid behind the ₹0.48–0.49 rows. The 582
+signature is alive (15:10 = 582/₹0.49; 16:15 = 1,444/₹0.49 — fresh tail grown by
+P4's activity block). The 24–35k rows are the documented Donna-uncached dispatch
+spread, not a regression. Post-DDL, engine.usage carries cache_read_tokens /
+cache_write_tokens and cost decomposes exactly; until the DDL runs, the residual
+formula stands: unexplained ₹ ≈ cost − (in×₹0.0001) − (out×₹0.0005); ≈4.06 = one
+cold prefix write, ≈0.32 = one warm read. The 24h trial-flip glance reads these
+columns, not fresh-input alone.
+
 ## The routing thesis, restated with numbers
 Anthropic path today: ₹0.49–9.59/turn (Donna-uncached being the spread). Block 06's
 Donna cache should collapse the top end toward ~₹1–2. Cheap-provider routing remains

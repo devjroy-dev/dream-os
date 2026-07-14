@@ -201,6 +201,11 @@ export type DonnaTurn = {
   cost_inr: number;
   input_tokens: number;
   output_tokens: number;
+  // 02-HOTFIX (2026-07-15): cache buckets surfaced so the turn ledger sees her whole
+  // billing shape. Zero on today's anthropic path (she is uncached by design — Block
+  // 06 owns her cache); nonzero if a compat endpoint reports buckets or 06 caches her.
+  cache_read_tokens: number;
+  cache_write_tokens: number;
   mutated: boolean;
   view: ViewRow[] | null;   // rows a READ surfaced this segment (the peek's payload)
 };
@@ -223,6 +228,7 @@ export async function runDonnaTurn(
   // batched at return. onAction is a no-op on the non-streaming path (the door passes none).
   const record = (name: string, input: unknown, result: string) => { toolCalls.push({ name, input, result }); onAction?.({ name, input, result }); };
   let inTok = 0, outTok = 0, cost = 0, mutated = false;
+  let cacheRead = 0, cacheWrite = 0; // 02-HOTFIX: her buckets, priced and surfaced
   let view: ViewRow[] | null = null; // last READ's rows win — that's THIS ask's view
 
   const donnaSystem =
@@ -311,7 +317,12 @@ export async function runDonnaTurn(
     }
     inTok += resp.usage?.input_tokens ?? 0;
     outTok += resp.usage?.output_tokens ?? 0;
-    cost += calcCostInr(donnaModel, resp.usage?.input_tokens ?? 0, resp.usage?.output_tokens ?? 0);
+    // 02-HOTFIX (2026-07-15): the buckets exist on her responses too (zero while she is
+    // uncached on anthropic; real on bucket-reporting compat endpoints). Priced the same
+    // way Victor's are — the cost calc was silently dropping them before.
+    cacheRead += resp.usage?.cache_read_input_tokens ?? 0;
+    cacheWrite += resp.usage?.cache_creation_input_tokens ?? 0;
+    cost += calcCostInr(donnaModel, resp.usage?.input_tokens ?? 0, resp.usage?.output_tokens ?? 0, resp.usage?.cache_read_input_tokens ?? 0, resp.usage?.cache_creation_input_tokens ?? 0);
 
     const toolUse = resp.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
     const textThis = resp.content
@@ -435,6 +446,8 @@ export async function runDonnaTurn(
     cost_inr: cost,
     input_tokens: inTok,
     output_tokens: outTok,
+    cache_read_tokens: cacheRead,
+    cache_write_tokens: cacheWrite,
     mutated,
     view,
   };

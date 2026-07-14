@@ -346,6 +346,12 @@ export async function runTurn(args: {
         donnaSession = donna.session; // persist so the next dear_donna_talk RESUMES her
         totalIn += donna.input_tokens;
         totalOut += donna.output_tokens;
+        // 02-HOTFIX (2026-07-15): her cache buckets fold into the turn totals so the
+        // ledger sees the WHOLE turn's billing shape, not just Victor's. (On the
+        // anthropic path she is uncached today, so these are zero — the seam exists
+        // for the day Block 06 caches her, and for compat endpoints that report buckets.)
+        cacheRead += donna.cache_read_tokens;
+        cacheWrite += donna.cache_write_tokens;
         costInr += donna.cost_inr;
         if (donna.mutated) mutatedThisRound = true;
         if (donna.view && donna.view.length) turnView = donna.view; // this ask produced a view
@@ -402,7 +408,14 @@ export async function runTurn(args: {
     await supabase.from('agent_owner').update({ consult_done: true }).eq('agent_id', agentId);
   }
 
-  await supabase.from('usage').insert({
+  // 02-HOTFIX (2026-07-15): the ledger records the cache buckets. Root cause of the
+  // "stripped ~900-token calls" field-report item: a cold-cache turn bills its ~32.5k
+  // prefix (soul + Codex + TOOLS) as cache_creation_input_tokens — a bucket this table
+  // had no column for — so fresh-input-only rows read like toolless calls with broken
+  // cost math. Nothing was stripped; the ledger was blind. Column-guarded like
+  // donnaLead's writeLead: a pre-DDL database degrades to the old row shape, honestly
+  // logged, and NEVER loses the ledger row (caps count on these rows — CE-6).
+  const usageRow: Record<string, unknown> = {
     agent_id: agentId,
     conversation_id: conversationId,
     model: args.modelOverride ? model : modelLabel(model), // raw string on routed providers
@@ -410,7 +423,22 @@ export async function runTurn(args: {
     output_tokens: totalOut,
     cost_inr: costInr,
     escalated,
-  });
+    cache_read_tokens: cacheRead,
+    cache_write_tokens: cacheWrite,
+  };
+  {
+    const { error: usageErr } = await supabase.from('usage').insert(usageRow);
+    if (usageErr && /cache_(read|write)_tokens/i.test(usageErr.message)) {
+      // eslint-disable-next-line no-console
+      console.warn('[usage] cache columns absent (apply the 02-HOTFIX engine DDL) — wrote without them');
+      const { cache_read_tokens: _cr, cache_write_tokens: _cw, ...bare } = usageRow;
+      const { error: bareErr } = await supabase.from('usage').insert(bare);
+      if (bareErr) console.error('[usage] ledger write failed:', bareErr.message);
+    } else if (usageErr) {
+      // eslint-disable-next-line no-console
+      console.error('[usage] ledger write failed:', usageErr.message);
+    }
+  }
 
   args.onEvent?.({ type: 'done', conversation_id: conversationId, cost_inr: costInr, view: turnView });
 

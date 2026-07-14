@@ -14,8 +14,9 @@ import { vendorIdFromAgent } from '../vendorIdentity.js';
 import { leadDraftMeta } from '../draftContracts.js';
 import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
 
-// Columns read back on every write (draft_meta deliberately excluded so reads
-// survive a pre-0072 database; see writeLead below).
+// Columns read back on every write — draft_meta INCLUDED (enrich reads the standing
+// provenance). Pre-0072 resilience lives in writeLead's column-guarded retry below,
+// not in this SELECT. (Comment corrected to code truth, 02-HOTFIX 2026-07-15.)
 const SEL = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, notes, raw_message, draft_meta';
 
 type LeadRow = {
@@ -147,17 +148,23 @@ export async function executeDonnaLead(
 
   // ── Read before write: exact phone first (strongest key), then case-insensitive
   //    name — same recognize-before-create shape as before, vendor-scoped, live rows only.
+  //    FAIL-CLOSED (02-HOTFIX 2026-07-15, CE-mandated hardening, not a proven-defect fix):
+  //    a guard read that ERRORS is not the same as a guard read that found nothing. The
+  //    old shape discarded the error and fell through to insert — a transient read failure
+  //    would silently mint a duplicate. Now: no truthful read, no write, honest ERROR back.
   let existing: LeadRow[] = [];
   if (input.contact) {
-    const { data } = await pub.from('leads').select(SEL)
+    const { data, error: readErr } = await pub.from('leads').select(SEL)
       .eq('vendor_id', vendorId).eq('phone', input.contact)
       .is('deleted_at', null).order('created_at', { ascending: false });
+    if (readErr) return { display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
     existing = (data as LeadRow[]) || [];
   }
   if (!existing.length && input.name) {
-    const { data } = await pub.from('leads').select(SEL)
+    const { data, error: readErr } = await pub.from('leads').select(SEL)
       .eq('vendor_id', vendorId).ilike('name', input.name)
       .is('deleted_at', null).order('created_at', { ascending: false });
+    if (readErr) return { display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
     existing = (data as LeadRow[]) || [];
   }
 
