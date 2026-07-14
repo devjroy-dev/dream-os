@@ -180,3 +180,25 @@ Six sittings, P1→P6 strictly. Each ends with: curl proofs in notes, MASTERPLAN
 
 **Drift resolutions folded into the build (binding over original text):** D6 cabinet.ts inline shape canonical; comment fix rides P3 · D8 dual chat-door mounts: keep both, document in SCHEMA/API notes, touch neither · D9 `raw_message` absent from Donna's scope: the spec's fallback branch is the path · D10 the scope_org_id addendum's seven-column list is CORRECTED to the audit's true six live columns · D11 SCHEMA.md's leads (6) + invoices (4) column gaps fixed in P3's doc pass · D14 cap-key naming per CE-6.
 **P1 execution notes confirmed:** `vendorIdFromAgent` via the verified reverse join · `executeDonnaLead` → `public.leads` with the word-map · read-before-write on vendor_id + phone/name · `draft_meta` behind a column-exists check or 0072-first (executor records which) · engine-`leads` stop-write · curl proofs as specified.
+
+
+---
+
+## AMENDMENT TWO (2026-07-14, founder-ruled) — P7: The DeepSeek Advisory Bench + Gated Engine Flip
+**Founder's charge:** bench Victor AND Donna on DeepSeek (`deepseek-v4-flash` via the facade, keys live in Railway), and if the gate passes, flip the engine to cut Anthropic cost. P7 opens after P6 closes; same executor session may run it.
+
+**P7-1 — the bench (the GLM gauntlet, same harness, CE-22 headers, cold throughout):**
+- Both roles on DeepSeek via a bench-scoped config route (never prod matrix during the bench).
+- **Hard bar, inherited from GLM's failure:** zero false dones · zero fabricated-entity writes · tool fidelity across the full DONNA_TOOLS surface · never-false-done wire behavior intact.
+- **Plus the block's own proven proofs re-run on DeepSeek:** the (a)-shape (dispatch turn one, filing first touch, statement close ≤1 follow-up) and the (c)-shape (Donna thin-opening write-first, recognize-before-create) — pass bars identical to their Haiku verdicts.
+- **Founder-read gate on voice:** two bench transcripts to the founder — does Victor still sound like Harvey on DeepSeek? Soul fidelity is a pass criterion, not a nicety.
+- Cost evidence: per-turn ₹ from the honest ledger vs the P5-A anthropic snapshot (582 tok / ₹0.49) — the before/after table is a deliverable. Note for the record: Donna carries zero cache_control today while DeepSeek auto-prefix-caches, so the bench may show DeepSeek both cheaper AND better-cached in the current pre-lens era.
+
+**P7-2 — the gated flip (only on a clean P7-1):**
+- Flip per the standing LD-7 matrix via 0073 config writes (zero-deploy, the P5-B proven path). Today's population (trial-Signature → mid tier) means: **Donna → deepseek, Victor stays haiku at mid**; entry-tier rows route both when post-trial entry vendors exist.
+- **Wider flips (e.g., mid-tier Victor → deepseek) are a founder decision made AT the gate**, with the bench transcripts and cost table in hand — surfaced as options with numbers, never silently ruled. LD-7's matrix amends only by founder word, recorded here as an addendum if widened.
+- Fallback armor stands as proven: any DeepSeek failure downgrades to Haiku same-turn with `provider_downgrade` witnessed. Rollback = one SQL to the haiku rows.
+- **Post-flip proof:** one cold production turn per flipped role, CE-22 headers, ledger showing the provider + the ₹ delta; 24h `provider_downgrade` rate glance banked in the handover.
+
+**Provisionality clause:** P7's verdict is binding for the current prompt era. TDW_06 P5's lens work materially changes Donna's prompt shape — its spec's re-bench requirement STANDS as re-confirmation, not re-litigation; if the lens-era bench contradicts P7, the matrix reverts pending the 06 verdict.
+**Block close amendments:** the 02→DONE flip now follows P7, not P6; the two protocol promotions ride P7's final ZIP instead.
