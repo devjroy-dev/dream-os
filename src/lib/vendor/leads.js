@@ -78,10 +78,11 @@ async function createLead(supabase, vendorId, params) {
 
 async function updateLead(supabase, vendorId, leadId, patch) {
   const EDITABLE = [
-    'name', 'phone', 'email', 'wedding_date', 'wedding_city',
+    'name', 'phone', 'email', 'wedding_date', 'wedding_date_precision', 'wedding_city',
     'event_types', 'budget_min', 'budget_max', 'source',
     'referrer_name', 'raw_message', 'notes',
-  ];
+  ]; // wedding_date_precision added TDW_02 P4-b: the 0052 sentinel convention was
+     // silently dropped here, storing month-known dates as fake-exact days.
 
   const update = {};
   for (const key of EDITABLE) {
@@ -92,6 +93,10 @@ async function updateLead(supabase, vendorId, leadId, patch) {
     const parsed = new Date(update.wedding_date);
     if (isNaN(parsed.getTime())) return { ok: false, error: 'Invalid wedding_date. Use YYYY-MM-DD.' };
     update.wedding_date = parsed.toISOString().split('T')[0];
+  }
+  if (update.wedding_date_precision != null &&
+      !['day', 'month', 'year'].includes(update.wedding_date_precision)) {
+    delete update.wedding_date_precision; // 0052 CHECK values only; junk never reaches the column
   }
 
   if (Object.keys(update).length === 0) return { ok: false, error: 'No editable fields provided.' };

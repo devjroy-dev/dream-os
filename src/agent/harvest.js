@@ -174,12 +174,15 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls }) {
           if (!r.ok) { dropped++; continue; }
           // Harvest trail: recompute already ran in the door; mark provenance.
           if (r.lead && r.lead.draft_meta) {
-            const prior = row.draft_meta || {};
+            // P4-a fix: build the trail on the FRESH post-door draft_meta —
+            // updateLead carries harvested[] forward, so sequential patches stack
+            // instead of the stale pre-patch row clobbering earlier entries.
+            const fresh = r.lead.draft_meta;
             await pub.from('leads').update({
               draft_meta: {
-                missing: r.lead.draft_meta.missing,
+                missing: fresh.missing,
                 source: 'harvest',
-                harvested: [ ...(prior.harvested || []), p.field ],
+                harvested: [ ...(fresh.harvested || []), p.field ],
               },
             }).eq('id', row.id).eq('vendor_id', vendor.id);
           }
