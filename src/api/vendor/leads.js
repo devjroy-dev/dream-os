@@ -41,6 +41,20 @@ const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createLead, updateLead, loseLead, getLeadDetail } = require('../../lib/vendor/leads');
 
+// TDW_02 P3 — the wishbone wire (spec P3; consumed by TDW_03). A lead whose
+// draft_meta stands gains a draft block: complete it inline via the PATCH door,
+// or hand the gap to Victor with a primer the cursor lands after.
+function leadDraftWire(l) {
+  const dm = l.draft_meta;
+  if (!dm || !Array.isArray(dm.missing) || dm.missing.length === 0) return undefined;
+  const label = l.name || 'this lead';
+  return {
+    missing: dm.missing,
+    complete_inline: { method: 'PATCH', path: `/api/v2/vendor/leads/${l.id}` },
+    tell_victor: { path: '/vendor', primer: `About ${label}: the ${dm.missing[0]} is ` },
+  };
+}
+
 const ALLOWED_STATES         = ['new', 'contacted', 'quoted', 'booked', 'lost'];
 const ACTIVE_PIPELINE_STATES = ['new', 'contacted', 'quoted'];
 
@@ -67,6 +81,7 @@ router.get('/:leadId/detail', requireAuth,
 
     const result = await getLeadDetail(supabase, vendor.id, leadId);
     if (!result.ok) return errRes(res, 404, result.error);
+    if (result.lead) result.lead.draft = leadDraftWire(result.lead); // TDW_02 P3 wishbone
     return okRes(res, result);
   })
 );
@@ -96,7 +111,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
   // Build data + count queries in parallel. Soft-deleted rows (deleted_at set — the
   // TDW_02 P1 undo door, and any prior soft-deletes) never appear in the pipeline.
-  const dataSelect  = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, raw_message, created_at';
+  const dataSelect  = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, raw_message, draft_meta, created_at';
   let dataQuery     = supabase.from('leads').select(dataSelect).eq('vendor_id', vendor.id).is('deleted_at', null);
   let countQuery    = supabase.from('leads').select('*', { count: 'exact', head: true }).eq('vendor_id', vendor.id).is('deleted_at', null);
 
@@ -132,6 +147,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     referrer:     l.referrer_name,
     raw_message:  l.raw_message,
     created_at:   l.created_at,
+    draft:        leadDraftWire(l), // TDW_02 P3 wishbone (undefined when complete)
   }));
 
   return res.json({

@@ -10,6 +10,7 @@ const router        = express.Router();
 const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
+const { withRecordCompleteness } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-15/16)
 
 const RECORD_SELECT =
   'id, client, amount, amount_received, amount_pending, payment_status, ' +
@@ -35,7 +36,9 @@ router.get('/:vendorId',
       return res.status(500).json({ ok: false, error: 'Lookup failed.' });
     }
     const binders = data || [];
-    return res.json({ ok: true, count: binders.length, binders });
+    // TDW_02 P3 (CE-15/16): read-time completeness + wishbone draft on every row.
+    const rows = withRecordCompleteness(binders, req.params.vendorId);
+    return res.json({ ok: true, count: rows.length, binders: rows });
   });
 
 module.exports = router;

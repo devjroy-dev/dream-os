@@ -14,6 +14,7 @@ const router        = express.Router();
 const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
+const { withRecordCompleteness } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-15/16)
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 function istTodayISO() {
@@ -60,7 +61,8 @@ router.get('/:vendorId',
       return res.status(500).json({ ok: false, error: 'Lookup failed.', which, detail: msg });
     }
 
-    const allBinders = binders || [];
+    // TDW_02 P3 (CE-15/16): completeness + wishbone draft ride every slice below.
+    const allBinders = withRecordCompleteness(binders || [], req.params.vendorId);
     const allEvents  = events  || [];
 
     // Binder slices — identical to the live cabinet handler.

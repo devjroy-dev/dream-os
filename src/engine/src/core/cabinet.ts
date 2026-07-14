@@ -1,15 +1,17 @@
 // cabinet.ts — the read-side bucketing engine.
 //
 // Universal `records` in, domain-grouped columns out. This is the engine behind the
-// cabinet: it reads a field's manifest (the FORM layer, table domain_manifests, see
-// docs/MANIFEST_SPEC.md) and groups the owner's universal rows into the columns that
+// cabinet: it reads a field's manifest (the FORM layer, table domain_manifests;
+// the inline Manifest shape below IS the canonical spec — the MANIFEST_SPEC.md
+// document was never ported with the engine; code is truth, CE ruling 2026-07-14)
+// and groups the owner's universal rows into the columns that
 // manifest declares. The manifest decides the grouping; this engine only applies it.
 //
 // Cardinal discipline (Bible): READ-ONLY. Never mutates, never touches Donna, never
 // patches a snapshot. Donna files universal cells + her free-form note exactly as
 // before; nothing here is taught to her. The intelligence is entirely on the read side.
 //
-// Two guarantees from MANIFEST_SPEC, enforced here:
+// Two guarantees (canon lives in this file), enforced here:
 //   • FIRST MATCH WINS — columns are walked in order; a record lands in exactly one.
 //   • NO HUSK — anything matching no column falls to the catch_all column and still
 //     shows; a field with no manifest falls back to DEFAULT_MANIFEST (cards). Worst
@@ -18,7 +20,7 @@ import { supabase } from './db.js';
 import { resolveField } from './handbook.js';
 import { loadRecords, OwnerRecord } from './recordsView.js';
 
-// ── manifest shape (mirrors docs/MANIFEST_SPEC.md §3) ───────────────────────────
+// ── manifest shape (CANONICAL — the doc this once mirrored was never ported) ─────
 type Tone = 'warm' | 'go' | 'cool';
 interface MatchRule {
   stage_in?: string[];
@@ -48,7 +50,7 @@ export interface Manifest {
 }
 
 // The fallback when a field has no manifest: the universal flat cabinet (cards).
-// Mirrors the solopreneurs_smb manifest in MANIFEST_SPEC.md §5A. Generic but complete.
+// The solopreneurs_smb fallback, authored here — canonical. Generic but complete.
 const DEFAULT_MANIFEST: Manifest = {
   field: 'solopreneurs_smb',
   type: 'vertical',

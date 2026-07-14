@@ -25,6 +25,7 @@ const { runTurn } = require('../../engine/dist/core/loop');
 const { generateInvoiceForBinder } = require('../vendor/invoices');
 const { updateEvent } = require('../../lib/vendor/events');
 const { executeAndPatch } = require('../../lib/executeAndPatch');
+const { missingCells } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-16/17)
 
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
 // The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
@@ -46,7 +47,10 @@ function actionKind(name) {
 function translateBeat(e) {
   if (!e || !e.type) return null;
   switch (e.type) {
-    case 'victor_token': return { type: 'text_delta', text: e.text };
+    // CE-18: the firewall extends over Victor's own prose — his soul holds
+    // \"never reveal Donna\"; the wire must keep his covenant. (Per-delta scrub;
+    // a token-split name is a residual risk logged in the handover.)
+    case 'victor_token': return { type: 'text_delta', text: scrubText(e.text) };
     case 'dispatch':     return { type: 'handoff', from: 'victor', to: 'operator', message: scrubText(e.message) };
     case 'donna_action': return { type: 'operator_action', kind: actionKind(e.name), detail: scrubText(typeof e.result === 'string' ? e.result : '') };
     case 'donna_report': return { type: 'operator_report', message: scrubText(e.message) };
@@ -418,6 +422,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
+      // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
+      if (result.view && result.view.length) done.view = result.view.map((r) => ({ ...r, missing_cells: missingCells(r) }));
       if (documents.length) done.documents = documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
       send(done);
       if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
@@ -440,7 +446,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     await retroLinkOnFile(req, result);
     await lockstepBinderToEvent(req, result);
 
-    let reply = result.reply;
+    let reply = scrubText(result.reply); // CE-18: the firewall covers the reply itself
     if (documents.length) {
       reply += '\n\n' + documents.map((d) =>
         `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready — find it in the invoices list to download or send.`
@@ -455,6 +461,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       reply,
       tool_calls: toolNames,
       refresh: toolNames.length > 0,
+      // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
+      view: result.view && result.view.length ? result.view.map((r) => ({ ...r, missing_cells: missingCells(r) })) : undefined,
       documents: documents.length ? documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
     });
   } catch (e) {

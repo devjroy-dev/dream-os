@@ -10,6 +10,8 @@
 
 'use strict';
 
+const { leadDraftMeta, leadMissing } = require('../draftContracts'); // TDW_02 P3: typed-plane draft recompute
+
 async function createLead(supabase, vendorId, params) {
   const {
     name, phone, email, wedding_date: rawDate, wedding_city,
@@ -64,8 +66,10 @@ async function createLead(supabase, vendorId, params) {
       raw_message:   raw_message   || null,
       state:         'new',
       client_id:     clientIdToLink,
+      // TDW_02 P3: write-first draft state, computed at the single write point.
+      draft_meta:    leadDraftMeta({ name, phone, wedding_date, wedding_city, budget_max }, 'owner'),
     })
-    .select('id, name, phone, email, wedding_date, wedding_city, state, source, client_id, created_at')
+    .select('id, name, phone, email, wedding_date, wedding_city, state, source, client_id, draft_meta, created_at')
     .single();
 
   if (error) return { ok: false, error: `Could not create lead: ${error.message}` };
@@ -92,13 +96,38 @@ async function updateLead(supabase, vendorId, leadId, patch) {
 
   if (Object.keys(update).length === 0) return { ok: false, error: 'No editable fields provided.' };
 
+  // TDW_02 P3: every update recomputes draft state (spec P3; empty -> NULL = promotion).
+  // Read the current expected cells, merge the patch, recompute — preserving the
+  // prior source and any harvested[] trail (P4 writes those; recompute never erases them).
+  const { data: current } = await supabase
+    .from('leads')
+    .select('name, phone, wedding_date, wedding_city, budget_max, draft_meta')
+    .eq('id', leadId)
+    .eq('vendor_id', vendorId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (current) {
+    const merged  = { ...current, ...update };
+    const missing = leadMissing(merged);
+    if (!missing.length) {
+      update.draft_meta = null; // promotion
+    } else {
+      const prior = current.draft_meta || {};
+      update.draft_meta = {
+        missing,
+        source: prior.source || 'owner',
+        ...(prior.harvested ? { harvested: prior.harvested } : {}),
+      };
+    }
+  }
+
   const { data: lead, error } = await supabase
     .from('leads')
     .update(update)
     .eq('id', leadId)
     .eq('vendor_id', vendorId)
     .is('deleted_at', null)
-    .select('id, name, phone, email, wedding_date, wedding_city, state, source, client_id, created_at')
+    .select('id, name, phone, email, wedding_date, wedding_city, state, source, client_id, draft_meta, created_at')
     .maybeSingle();
 
   if (!lead && !error) return { ok: false, error: 'Lead not found.' };
@@ -142,7 +171,7 @@ async function loseLead(supabase, vendorId, leadId, reason) {
 async function getLeadDetail(supabase, vendorId, leadId) {
   const [leadRes, invoicesRes, eventsRes] = await Promise.all([
     supabase.from('leads')
-      .select('id, name, phone, email, wedding_date, wedding_city, event_types, budget_min, budget_max, state, source, referrer_name, raw_message, notes, client_id, vendor_summary, created_at')
+      .select('id, name, phone, email, wedding_date, wedding_city, event_types, budget_min, budget_max, state, source, referrer_name, raw_message, notes, client_id, vendor_summary, draft_meta, created_at')
       .eq('id', leadId)
       .eq('vendor_id', vendorId)
       .is('deleted_at', null)

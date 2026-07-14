@@ -254,13 +254,22 @@ Realtime: enabled
 | event_types | text[] | e.g. ['wedding','reception','mehndi'] |
 | budget_min | integer | in Rs e.g. 150000 |
 | budget_max | integer | in Rs |
-| source | text | default whatsapp. instagram or referral or discover or other |
+| source | text | default whatsapp. instagram or referral or discover or victor (AI-captured, TDW_02 CE-8) or other |
 | referrer_name | text | person who referred the couple |
 | state | text | new or contacted or quoted or booked or lost |
 | raw_message | text | original forwarded text verbatim |
 | notes | text | anything else extracted |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
+| deleted_at | timestamptz | Nullable. Soft delete — every read filters null; the TDW_02 undo door sets it. (D11 doc pass) |
+| vendor_summary | text | Nullable. (D11: documented from prod inventory) |
+| intent_summary | text | Nullable. (D11) |
+| intent_summary_at | timestamptz | Nullable. (D11) |
+| wedding_date_precision | text | Nullable. 'day'\|'month'\|'year' — see the 0052 section. (D11: row added to this table) |
+| function_count | integer | Nullable. Wedding-shape era (0066). (D11) |
+| wedding_days | integer | Nullable. Wedding-shape era (0066). (D11) |
+| functions | text | Nullable. Wedding-shape era (0066). (D11) |
+| draft_meta | jsonb | 0072 — see the TDW_02 P1 section at the end of this file. |
 
 Realtime: enabled
 
@@ -306,6 +315,10 @@ Realtime: enabled
 | notes | text | optional |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
+| last_payment_at | timestamptz | Nullable. (D11: documented from prod inventory) |
+| deleted_at | timestamptz | Nullable. Soft delete. (D11) |
+| has_schedule | boolean | NOT NULL. Payment-schedule flag. (D11) |
+| binder_id | uuid | Nullable. Link to the engine.records money-IN binder this document was minted from (Phase-4 flip era). (D11) |
 
 Realtime: enabled
 NOTE: amount_paid <= amount_total is deliberately NOT enforced at DB level.
@@ -1756,3 +1769,11 @@ Engine plane: `donna_lead` now writes `public.leads` (state word-map: won→book
 
 ## TDW_02 (2026-07-14) — scope_org_id verdict: DROP, executed as 0074
 Amendment One ruling 9. The org-scoping era's final residue — scope_org_id on engine.facts, leads, documents, money_entries, open_loops — dropped (all-NULL, zero rows beneath, zero constraints per the audit's pg_constraint scan). The sixth column left with engine.compliance_deadlines when the ghost-table reopener (ruling 8, TDW02_GHOST_DROPS) executed the same day. Corrected drop history: db/BASELINE.md · docs/DROPPED_2026-07.md.
+
+
+## TDW_02 P3 (2026-07-14) — the drafts + completeness WIRE (contract for TDW_03)
+Typed leads (list + detail): rows with standing `draft_meta` carry
+`draft: { missing: string[], complete_inline: {method:'PATCH', path:'/api/v2/vendor/leads/:leadId'}, tell_victor: {path:'/vendor', primer:'About <label>: the <field> is '} }` — absent when complete.
+Records plane (ledger + cabinet slices + turn view): every binder row carries `missing_cells: string[]` (semantics: `src/lib/recordCompleteness.js` — the single amendable constant, CE-16; TDW_03 is its named amender); incomplete rows also carry `draft` with `complete_inline: {method:'POST', path:'/api/v2/vendor/binders/:vendorId/:id/edit'}` (POST is the door's real verb — corrects the spec type literal's PATCH).
+Turn view (CE-17): the chat door now emits `view` (ViewRow[] + missing_cells) on the JSON response and the SSE `done` beat — additive, PWA-ignored until TDW_03 consumes it.
+Note for TDW_03's audit: the manifest cabinet engine (`src/engine/src/core/cabinet.ts`, `buildCabinet`) is BUILT but UNMOUNTED — served only by the engine's standalone server.ts, which dream-os never mounts (CE-15). Its inline Manifest shape is canonical (D6).
