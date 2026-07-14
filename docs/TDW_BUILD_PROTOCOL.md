@@ -30,6 +30,14 @@ the only authority who can change its scope mid-sitting.
    Plane Doctrine (Decision C, MASTERPLAN). Know which plane your entity
    lives on before you write a single query.
 
+3.5 **Audit-before-spec:** no spec that touches production state (schema,
+   prod data, deletions) is executable until its ground-truth inventory
+   exists as a prerequisite document, verified against live systems. Where
+   a spec predates its audit, the executor's FIRST sitting is a
+   verification pass of every named table/column/route BEFORE any patch;
+   findings return to the Chief Engineer; the spec is amended ONCE; then
+   build.
+
 ## 4. HOUSE LAWS (inviolable)
 - **Design system is locked:** `#0C0A09` ink, `#C9A84C` gold (max 3× per
   screen), `#F8F7F5` cream. Cormorant Garamond 300 italic display; Jost
