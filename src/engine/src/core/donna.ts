@@ -27,6 +27,7 @@ import { REVIEW_READ_TOOLS, REVIEW_READ_NAMES, executeReviewRead } from './tools
 import { DONNA_VERDICT_TOOL, executeDonnaVerdict } from './tools/donnaVerdict.js';
 import { DONNA_REVIEW_TOOL, executeDonnaReview } from './tools/donnaReview.js';
 import { LISTEN_HARVEY_TALK_TOOL } from './tools/listenHarvey.js';
+import { DONNA_LEAD_TOOL, executeDonnaLead } from './tools/donnaLead.js'; // TDW_02 P1 (Amendment One CE-1)
 import type { SnapshotItem, ToolOutcome, ViewRow } from './snapshotTypes.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -168,7 +169,7 @@ export async function snapshotText(agentId: string): Promise<string> {
 // a fallback, with plain text). A segment ends when she speaks. Her message history is
 // returned as a DonnaSession so the NEXT call resumes the same conversation — that is
 // what makes the exchange two-way instead of a one-shot.
-const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, LISTEN_HARVEY_TALK_TOOL];
+const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, LISTEN_HARVEY_TALK_TOOL];
 // Bounds Donna's OWN tool-work within one segment (file/search/speak). This is NOT the
 // Harvey<->Donna exchange count — that is fused upstream in the loop.
 const DONNA_WORK_ITERS = 6;
@@ -201,6 +202,7 @@ export async function runDonnaTurn(
   todayIso?: string,
   onAction?: (a: { name: string; input: unknown; result: string }) => void,
   scratchpad?: string,
+  rawMessage?: string, // TDW_02 P1: the vendor's raw line, threaded from the loop for donna_lead's raw_message (D9)
 ): Promise<DonnaTurn> {
   const toolCalls: DonnaTurn['tool_calls'] = [];
   // record() pushes a tool-call AND fires it live, so each of Donna's hands leaves the
@@ -333,6 +335,17 @@ export async function runDonnaTurn(
           // The review binder: the container for a supervision review. Verdicts point
           // to it. A record, not a snapshot item.
           outcome = await executeDonnaReview(agentId, input as Parameters<typeof executeDonnaReview>[1]);
+          record(tu.name, tu.input, outcome.display);
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
+          continue;
+        }
+        if (tu.name === 'donna_lead') {
+          // TDW_02 P1: the lead hand files into public.leads (typed plane, LD-1).
+          // A lead is not a binder — it never becomes the open binder, and its
+          // snapshot item is patched from the CONFIRMED write like every mutation.
+          outcome = await executeDonnaLead(agentId, input as Parameters<typeof executeDonnaLead>[1], rawMessage);
+          mutated = true;
+          await patchNote(agentId, outcome);
           record(tu.name, tu.input, outcome.display);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;

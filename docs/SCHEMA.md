@@ -1745,3 +1745,11 @@ for delivery-category leads.
 
 
 ## Ladder note (TDW_01): 0063 exists twice (users_auth_user_id, vendor_activity_log) — both applied; documented, never renamed (LD-8). 0068 archived (objects absent from prod). Dropped objects: see docs/DROPPED_2026-07.md. Prod baseline: db/BASELINE.md.
+
+## TDW_02 P1 (2026-07-14) — 0072_draft_meta.sql (leads only, per Amendment One CE-3)
+| Column | Type | Notes |
+|---|---|---|
+| leads.draft_meta | jsonb | NULL = complete. Else `{"missing":[...],"source":"victor\|harvest","harvested":[...]}`. Expected set: name, phone, wedding_date, wedding_city, budget_max (src/engine/src/core/draftContracts.ts). Partial index `leads_draft_idx` on (vendor_id) where draft_meta is not null. Apply via Supabase editor BEFORE deploying P1 code; founder's information_schema confirmation is the applied record. |
+
+Invoice draft state deliberately absent: post-Phase-4 flip, invoices are engine.records money-IN binders; completeness lands as read-time `missing_cells` in P3 (Amendment One CE-3). `public.invoices` = minted numbered documents only.
+Engine plane: `donna_lead` now writes `public.leads` (state word-map: won→booked). `engine.leads` receives no writes from any path (verified empty 2026-07-14) — drop candidate ruled to hygiene's list via the TDW_02 handover.

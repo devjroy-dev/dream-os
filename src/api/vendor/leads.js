@@ -92,10 +92,11 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     });
   }
 
-  // Build data + count queries in parallel.
+  // Build data + count queries in parallel. Soft-deleted rows (deleted_at set — the
+  // TDW_02 P1 undo door, and any prior soft-deletes) never appear in the pipeline.
   const dataSelect  = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, raw_message, created_at';
-  let dataQuery     = supabase.from('leads').select(dataSelect).eq('vendor_id', vendor.id);
-  let countQuery    = supabase.from('leads').select('*', { count: 'exact', head: true }).eq('vendor_id', vendor.id);
+  let dataQuery     = supabase.from('leads').select(dataSelect).eq('vendor_id', vendor.id).is('deleted_at', null);
+  let countQuery    = supabase.from('leads').select('*', { count: 'exact', head: true }).eq('vendor_id', vendor.id).is('deleted_at', null);
 
   if (stateFilter) {
     dataQuery  = dataQuery.in('state', stateFilter);
@@ -248,6 +249,37 @@ router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 
   const result = await updateLead(supabase, vendor.id, leadId, body);
   if (!result.ok) return errRes(res, 400, result.error);
   return okRes(res, { lead: result.lead });
+}));
+
+// ─── DELETE /api/v2/vendor/leads/:leadId ──────────────────────────────
+//
+// TDW_02 P1 (Amendment One CE-2): the lead-create undo door. SOFT delete via
+// the existing deleted_at column — the row survives at the DB (honest,
+// reversible), and every CRUD read filters it out (list above; lib reads
+// already filter deleted_at). Idempotent: deleting an already-deleted lead
+// confirms rather than errors, so a double-tapped Undo never scares anyone.
+router.delete('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const vendor   = req.vendor;
+  const leadId   = req.params.leadId;
+
+  const { data: existing, error: readErr } = await supabase
+    .from('leads')
+    .select('id, deleted_at')
+    .eq('id', leadId)
+    .eq('vendor_id', vendor.id)
+    .maybeSingle();
+  if (readErr) return errRes(res, 500, readErr.message);
+  if (!existing) return errRes(res, 404, 'Lead not found.');
+  if (existing.deleted_at) return okRes(res, { deleted: { id: leadId }, already_deleted: true });
+
+  const { error } = await supabase
+    .from('leads')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', leadId)
+    .eq('vendor_id', vendor.id);
+  if (error) return errRes(res, 500, error.message);
+  return okRes(res, { deleted: { id: leadId } });
 }));
 
 

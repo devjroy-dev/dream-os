@@ -1,22 +1,39 @@
-// donnaLead.ts — Donna's lead tool (was `capture_lead`), READ-BEFORE-WRITE.
-// Also exports ESCALATE_TOOL (plumbing, name unchanged — no character).
-// Before creating, it checks for an existing lead with the same name for this
-// agent. If one exists, it ENRICHES that lead (fills blanks, updates value)
-// instead of creating a duplicate — "recognize before create". A genuinely new
-// name creates a new lead. This is the fix for the double-Priya bug.
+// donnaLead.ts — Donna's lead tool, READ-BEFORE-WRITE — TDW_02 P1: files into
+// public.leads (the typed plane, LD-1) so the Leads CRUD sees what Victor
+// captures the moment it is captured. Previously targeted engine-schema `leads`
+// — a table verified EMPTY in prod (never wired into DONNA_TOOLS; Amendment One
+// D1) — so this rewrite changes where truth lands without changing any lived
+// behavior. Also exports ESCALATE_TOOL (plumbing, name unchanged — no character).
+//
+// Recognize-before-create preserved: an existing lead for this vendor matched
+// by exact phone or case-insensitive name is ENRICHED (fill blanks, update
+// value/state), never duplicated — the double-Priya fix, now on the typed plane.
 import type Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '../db.js';
+import { vendorIdFromAgent } from '../vendorIdentity.js';
+import { leadDraftMeta } from '../draftContracts.js';
 import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
 
+// Columns read back on every write (draft_meta deliberately excluded so reads
+// survive a pre-0072 database; see writeLead below).
+const SEL = 'id, name, phone, wedding_date, wedding_city, budget_max, state, source, referrer_name, notes, raw_message';
+
+type LeadRow = {
+  id: string; name?: string | null; phone?: string | null;
+  wedding_date?: string | null; wedding_city?: string | null;
+  budget_max?: number | null; state?: string | null; source?: string | null;
+  referrer_name?: string | null; notes?: string | null; raw_message?: string | null;
+};
+
 // Build the snapshot item for a lead row (open pipeline item, sourced from truth).
-function leadItem(row: { id: string; name?: string | null; stage?: string | null; value_estimate?: number | null }): SnapshotItem {
-  const val = row.value_estimate != null ? ` (Rs ${row.value_estimate})` : '';
-  const stage = row.stage ?? 'new';
-  const closed = stage === 'won' || stage === 'lost';
+function leadItem(row: LeadRow): SnapshotItem {
+  const val = row.budget_max != null ? ` (Rs ${row.budget_max})` : '';
+  const state = row.state ?? 'new';
+  const closed = state === 'booked' || state === 'lost';
   return {
     id: `lead:${row.id}`,
     kind: 'lead',
-    text: `${row.name ?? 'unknown'} — lead, stage ${stage}${val}`,
+    text: `${row.name ?? 'unknown'} — lead, ${state}${val}`,
     status: closed ? 'confirmed' : 'open',
     horizon: null,
     ref_type: 'leads',
@@ -27,7 +44,7 @@ function leadItem(row: { id: string; name?: string | null; stage?: string | null
 export const DONNA_LEAD_TOOL: Anthropic.Tool = {
   name: 'donna_lead',
   description:
-    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name. If a lead with that name already exists, this updates it rather than duplicating. Call it immediately; never wait for full details.',
+    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name or a figure. If a lead matching that phone or name already exists, this updates it rather than duplicating. Call it immediately; never wait for full details. Leads are enquiries not yet engaged; an engaged client with work underway is a binder (donna_client), not a lead.',
   input_schema: {
     type: 'object',
     properties: {
@@ -58,61 +75,134 @@ type DonnaLeadInput = {
   stage?: string;
 };
 
-export async function executeDonnaLead(agentId: string, input: DonnaLeadInput): Promise<ToolOutcome> {
-  // Read before write: does a lead with this name already exist for this agent?
-  if (input.name) {
-    const { data: existing } = await supabase
-      .from('leads')
-      .select('id, name, contact, source, referrer, value_estimate, stage')
-      .eq('agent_id', agentId)
-      .ilike('name', input.name)
-      .order('created_at', { ascending: false });
+// Word-map (spec P1.2): engine stage words -> public.leads.state. `won` -> `booked`;
+// the known set passes through; anything else lands as `new` with the original
+// word preserved in notes (never silently discarded).
+const PASS_THROUGH = new Set(['new', 'contacted', 'quoted', 'lost']);
+function mapStage(word?: string): { state: string | null; strayWord: string | null } {
+  if (!word) return { state: null, strayWord: null };
+  const w = word.trim().toLowerCase();
+  if (w === 'won') return { state: 'booked', strayWord: null };
+  if (PASS_THROUGH.has(w)) return { state: w, strayWord: null };
+  return { state: 'new', strayWord: word };
+}
 
-    if (existing && existing.length === 1) {
-      // Single match → enrich it (fill blanks, update value/stage if provided).
-      const cur = existing[0];
-      const patch: Record<string, unknown> = {};
-      if (input.contact && !cur.contact) patch.contact = input.contact;
-      if (input.source && !cur.source) patch.source = input.source;
-      if (input.referrer && !cur.referrer) patch.referrer = input.referrer;
-      if (input.value_estimate != null) patch.value_estimate = input.value_estimate;
-      if (input.stage) patch.stage = input.stage;
+// Append lines to a notes value without losing what stands.
+function growNotes(existing: string | null | undefined, additions: string[]): string | null {
+  const adds = additions.filter(Boolean);
+  if (!adds.length) return existing ?? null;
+  return existing && existing.trim() ? `${existing}\n${adds.join('\n')}` : adds.join('\n');
+}
 
-      if (Object.keys(patch).length === 0) {
-        return { display: `Lead "${cur.name}" already on file (id=${cur.id}) — nothing new to add.`, item: leadItem(cur) };
-      }
-      const { error } = await supabase.from('leads').update(patch).eq('id', cur.id);
-      if (error) return { display: `ERROR updating lead: ${error.message}` };
-      const merged = { ...cur, ...patch };
-      return { display: `Updated existing lead "${cur.name}" (id=${cur.id}) — ${Object.keys(patch).join(', ')}.`, item: leadItem(merged) };
-    }
+// Insert/update that survives a pre-0072 database: if draft_meta doesn't exist
+// yet (42703), retry the same write without it, honestly logged. The recorded
+// sequencing choice is 0072-first; this is the graceful floor beneath it.
+async function writeLead(
+  op: 'insert' | 'update',
+  payload: Record<string, unknown>,
+  id?: string,
+): Promise<{ data: LeadRow | null; error: { message: string } | null }> {
+  const pub = supabase.schema('public');
+  const run = async (body: Record<string, unknown>) => {
+    if (op === 'insert') return pub.from('leads').insert(body).select(SEL).single();
+    return pub.from('leads').update(body).eq('id', id as string).select(SEL).single();
+  };
+  let { data, error } = await run(payload);
+  if (error && 'draft_meta' in payload && /draft_meta/i.test(error.message)) {
+    // eslint-disable-next-line no-console
+    console.warn('[donna_lead] draft_meta column absent (apply migration 0072) — wrote without it');
+    const { draft_meta: _dm, ...rest } = payload;
+    ({ data, error } = await run(rest));
+  }
+  return { data: data as LeadRow | null, error };
+}
 
-    if (existing && existing.length > 1) {
-      // Genuine ambiguity → enrich the most recent, flag it (don't block).
-      const cur = existing[0];
-      const patch: Record<string, unknown> = {};
-      if (input.value_estimate != null) patch.value_estimate = input.value_estimate;
-      if (input.stage) patch.stage = input.stage;
-      if (Object.keys(patch).length > 0) await supabase.from('leads').update(patch).eq('id', cur.id);
-      const merged = { ...cur, ...patch };
-      return { display: `Note: ${existing.length} leads named "${input.name}" exist. Updated the most recent (id=${cur.id}). If you meant a different one, tell me which.`, item: leadItem(merged) };
-    }
+export async function executeDonnaLead(
+  agentId: string,
+  input: DonnaLeadInput,
+  rawMessage?: string,
+): Promise<ToolOutcome> {
+  const vendorId = await vendorIdFromAgent(agentId);
+  if (!vendorId) {
+    return { display: 'ERROR filing lead: could not resolve the owner account for this agent — nothing was written. Tell the owner the lead needs to be added from the Leads screen for now.' };
+  }
+  const pub = supabase.schema('public');
+  const { state: mappedState, strayWord } = mapStage(input.stage);
+
+  // ── Read before write: exact phone first (strongest key), then case-insensitive
+  //    name — same recognize-before-create shape as before, vendor-scoped, live rows only.
+  let existing: LeadRow[] = [];
+  if (input.contact) {
+    const { data } = await pub.from('leads').select(SEL)
+      .eq('vendor_id', vendorId).eq('phone', input.contact)
+      .is('deleted_at', null).order('created_at', { ascending: false });
+    existing = (data as LeadRow[]) || [];
+  }
+  if (!existing.length && input.name) {
+    const { data } = await pub.from('leads').select(SEL)
+      .eq('vendor_id', vendorId).ilike('name', input.name)
+      .is('deleted_at', null).order('created_at', { ascending: false });
+    existing = (data as LeadRow[]) || [];
   }
 
-  // No match → create new.
-  const { data, error } = await supabase
-    .from('leads')
-    .insert({
-      agent_id: agentId,
-      name: input.name ?? null,
-      contact: input.contact ?? null,
-      source: input.source ?? null,
-      referrer: input.referrer ?? null,
-      value_estimate: input.value_estimate ?? null,
-      stage: input.stage ?? 'new',
-    })
-    .select('id, name, stage, value_estimate')
-    .single();
+  if (existing.length >= 1) {
+    const cur = existing[0];
+    const ambiguous = existing.length > 1;
+    const patch: Record<string, unknown> = {};
+    const noteAdds: string[] = [];
+
+    if (input.name && !cur.name) patch.name = input.name;
+    if (input.contact && !cur.phone) patch.phone = input.contact; // verbatim, no formatting
+    if (input.source && !cur.source) patch.source = input.source;
+    if (input.referrer && !cur.referrer_name) patch.referrer_name = input.referrer;
+    if (rawMessage && !cur.raw_message) patch.raw_message = rawMessage;
+    if (input.value_estimate != null) {
+      patch.budget_max = input.value_estimate;
+      if (!/estimate via Victor/.test(cur.notes || '')) noteAdds.push('estimate via Victor');
+    }
+    if (mappedState) patch.state = mappedState;
+    if (strayWord) noteAdds.push(`stage word from Victor: "${strayWord}"`);
+    if (noteAdds.length) patch.notes = growNotes(cur.notes, noteAdds);
+
+    if (Object.keys(patch).length === 0) {
+      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.`, item: leadItem(cur) };
+    }
+
+    // Recompute draft state from the merged row (spec P3: every update recomputes).
+    const merged = { ...cur, ...patch } as Record<string, unknown>;
+    patch.draft_meta = leadDraftMeta(merged, 'victor');
+
+    const { data, error } = await writeLead('update', patch, cur.id);
+    if (error) return { display: `ERROR updating lead: ${error.message}` };
+    const row = data ?? ({ ...cur, ...patch } as LeadRow);
+    const changed = Object.keys(patch).filter((k) => k !== 'draft_meta').join(', ');
+    const flag = ambiguous ? ` Note: ${existing.length} leads matched — updated the most recent; if you meant a different one, tell me which.` : '';
+    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}.${flag}`, item: leadItem(row) };
+  }
+
+  // ── No match -> create new (the typed-plane draft; thin is welcome).
+  const noteAdds: string[] = [];
+  if (input.value_estimate != null) noteAdds.push('estimate via Victor');
+  if (strayWord) noteAdds.push(`stage word from Victor: "${strayWord}"`);
+
+  const row: Record<string, unknown> = {
+    vendor_id:     vendorId,
+    name:          input.name ?? null,
+    phone:         input.contact ?? null,           // verbatim string; no formatting
+    budget_max:    input.value_estimate ?? null,    // budget_min stays null (spec P1.2)
+    source:        input.source ?? 'victor',
+    referrer_name: input.referrer ?? null,
+    state:         mappedState ?? 'new',
+    raw_message:   rawMessage ?? null,
+    notes:         growNotes(null, noteAdds),
+  };
+  row.draft_meta = leadDraftMeta(row, 'victor');
+
+  const { data, error } = await writeLead('insert', row);
   if (error) return { display: `ERROR saving lead: ${error.message}` };
-  return { display: `Lead saved. id=${data.id}, name=${data.name ?? 'unknown'}, stage=${input.stage ?? 'new'}.`, item: leadItem(data) };
+  const saved = data as LeadRow;
+  return {
+    display: `Lead saved. id=${saved.id}, name=${saved.name ?? 'unknown'}, state=${saved.state ?? 'new'}.`,
+    item: leadItem(saved),
+  };
 }
