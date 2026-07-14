@@ -532,6 +532,15 @@ Transcript evidence: 12:39 Victor opens "Now I need three things from you…" in
 **The sentence for 06's desk (founder-ruled):** Victor must read both planes or say which one he's reading.
 **Status:** OPEN — Block 06 (with F13, F14, item-5 cold evidence, Exhibit C).
 
+## TDW_04 §3.5 audit sitting (2026-07-15) — out-of-scope findings
+Full audit: docs/TDW_04_AUDIT_FINDINGS.md (every SURFACE_TRUTH_AUDIT ST claim verified at HEAD e82b6e2/f9872e0; F16 reconciled two-readings-agree; P1's separate table CONFIRMED → 0077 ruled).
+
+- **O-1 (🟢, doc-lag, OPEN — CE ratification owed):** SCHEMA.md lags prod in three cells, schema itself never moved: `invoices.binder_id` (live, used by generateInvoiceForBinder, absent from SCHEMA's table; reconciles BASELINE's 21-column count) · `events.deleted_at` (live — events.js GET filters on it; reconciles BASELINE's 14) · events `kind` listed as 12 values omitting `blocked` (0069, applied, makes 13). One-line riders drafted in the audit doc.
+- **O-2 (🟡, OPEN → 04 A3):** `context.js` typed reads (leads-new count, invoices list) carry no `deleted_at` filters — soft-deleted rows can inflate the chat masthead. Dies at A3's L-4 repoint; acceptance to cover explicitly.
+- **O-3 (🟢, record):** activity-log writers census: `harvest_cross_scope` + the WA engine (`engine.js:268`) also log, beside harvest_patch/provider_downgrade. ST-3d unaffected (doors never log).
+- **O-4 (🟢, record):** ST's glance path is stale — truth is `src/engine/src/core/glance.ts`.
+- **A-1 (🟢, founder-ratified):** dream-os HEAD exactly e82b6e2 — the pre-classified docs-only delta past it never materialized (eebb4bf predates it). Finding, not drift.
+
 ### Field-report items 3 + 5 — FINAL verdicts (charter closed 2026-07-15)
 **Item 5 (interrogation posture): SURVIVED COLD, founder-witnessed** — the cold turn's "Give me those and it's logged" is ask-then-log deferral with no thread to blame. Per charter law: reported, not fixed → 06 packet, primary exhibit.
 **Item 3 (false NOT-done): no standalone cold denial reproduced.** The lived 16:07–16:15 instance stands explained as the interrogation-and-relog flow (CE-ruled framing: the flow, not the vendor, made truthful chips look like lies — quoted lines on record above) riding warm-thread contagion (F8 family) over F16's unlabeled residue. Folds into 06's item-5 + F16 work; no separate defect.

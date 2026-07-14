@@ -17,6 +17,9 @@ All eleven verified zero live-code references (two-pass grep, both repos, HEAD d
 - **Dropped 2026-07-14, later same day, via TDW02_GHOST_DROPS (TDW_01 reopener, TDW_02 Amendment One ruling 8; guarded per-table, all re-verified empty at run time; founder's five DROPPED notices + five-null post-check are the record):** engine.compliance_deadlines, engine.agent_modules, engine.briefing_schedule, engine.briefing_sessions, engine.reconciliations (88→83).
 - `public.cover_photos` context: an admin coming-soon list claimed backend wiring that never existed; the orphaned frontend (`app/admin/cover/page.tsx`, five never-implemented endpoints) deleted same day — superseded by `landing_slides`.
 
+## Applied 2026-07-15 (02-HOTFIX F12, guarded DDL — P5-a precedent, founder-run)
+- **engine.usage** + `cache_read_tokens` integer nullable + `cache_write_tokens` integer nullable — the cache-bucket ledger columns (F12: the ledger was cache-blind; code shipped column-guarded in the hotfix ZIP). Applied and verified 2026-07-15 (founder's information_schema check on record with the CE: both present, integer, nullable). engine.usage is now 12 columns; the count map below predates this DDL.
+
 ## Applied 2026-07-14 (TDW_02)
 - **0072** — `public.leads.draft_meta jsonb` + partial index `leads_draft_idx` (leads only per Amendment One CE-3). Founder-applied, confirmed via information_schema.
 - **0074** — `scope_org_id` dropped from engine.facts, leads, documents, money_entries, open_loops (Amendment One ruling 9; all-NULL, zero constraints; compliance_deadlines' column left with its table above). Column counts in the map below reflect post-0074 state.
