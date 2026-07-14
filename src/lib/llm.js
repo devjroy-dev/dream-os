@@ -106,11 +106,27 @@ async function llmCreate(provider, params) {
   return resp;
 }
 
-// Streaming: returns the SDK stream object (same interface the engine uses:
-// .on('text'), .finalMessage()). Fidelity is asserted by the caller on the
-// final message (the stream must flow before the check can exist).
+// Streaming: for ANTHROPIC, the SDK's native stream (the engine's proven path).
+// For non-anthropic compat endpoints, SSE framing is UNVERIFIED territory (same
+// law as cache-strip): we do NOT hand the SDK's MessageStream a foreign endpoint.
+// Instead: a create-backed pseudo-stream — the same interface the engine uses
+// (.on('text'), .finalMessage()), with the reply delivered as ONE text event
+// after the call completes. Wire contract intact; no bet on foreign framing.
+// (Found the hard way: TDW_02 P7 G1 — DeepSeek + SDK stream = dead air.)
 function llmStream(provider, params) {
-  return clientFor(provider).messages.stream(translateFor(provider, params));
+  if (provider === 'anthropic') {
+    return clientFor(provider).messages.stream(translateFor(provider, params));
+  }
+  const handlers = [];
+  return {
+    on(event, h) { if (event === 'text') handlers.push(h); return this; },
+    async finalMessage() {
+      const resp = await llmCreate(provider, params);
+      const text = (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+      if (text) for (const h of handlers) { try { h(text); } catch (_e) { /* emit is best-effort */ } }
+      return resp;
+    },
+  };
 }
 
 module.exports = { CONF, clientFor, llmCreate, llmStream, translateFor, assertToolFidelity, providerKeyPresent, LLMToolFidelityError };
