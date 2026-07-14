@@ -16,7 +16,7 @@
 | LD-1 Plane Doctrine | Typed tables own money/legal + leads; engine `records` own binders/loops/notes; every CRUD reads its owning plane |
 | LD-2/3/4 Write-first | Drafts visible immediately · harvest forward-only · inline wishbone fill |
 | LD-5 Souls | PWA engine first; WA surfaces get dedicated soul sittings; author the self, never rules-lists |
-| LD-7 Models | Facade + admin_config flip; tier×role matrix (S-8: entry ds/ds · mid haiku/ds · top haiku/haiku); Haiku fallback on tool-fidelity failure; bench-gated flips |
+| LD-7 Models (P7-era, founder-ruled 2026-07-14) | Facade + admin_config flip; LIVE matrix per the P7 gate: signature = Victor haiku / Donna deepseek (role-split) · harvest = deepseek (GLM RETIRED from harvest by F11; keys remain for future benches) · trial = anthropic · prestige = anthropic; Haiku fallback on tool-fidelity failure; bench-gated flips; 06-P5 lens re-bench = re-confirmation, not re-litigation. Spec references to glm-harvest (05/06) are superseded by this verdict — the 0073-descended config IS routing truth |
 | LD-8 Migrations | Reservations; holes harmless; renumbering forbidden; archive never rename |
 | LD-9 (amended ×2) | Design system locked. Vendor: TWO themes — Porcelain (default; oxblood `#5E1A24` sole accent, gold = wordmark metal) + Midnight (gold accent). Bride: `frost` + `dark` (curated, red-born). Generic dark mode forbidden. Accent law: ≤3/screen, one dominant, per theme |
 | Language law (E-1) | TDW product language never uses generic Hindi words — one register everywhere; Marriage Day Mode, never "Shaadi" |
