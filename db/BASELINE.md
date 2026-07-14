@@ -10,9 +10,17 @@
 
 ## Dropped 2026-07-14 (TDW_01 Phase C — founder-approved by name: 'approved: 1-11')
 All eleven verified zero live-code references (two-pass grep, both repos, HEAD dream-os `4a91eb8` / dreamos-pwa `02d190d`) and **zero rows** (founder's count paste in session chat = the backup record; CSV exports waived as compliance theatre on empty tables — spec deviation, CE-ratified, logged in handover).
-- engine.agent_modules, engine.briefing_schedule, engine.briefing_sessions, engine.compliance_deadlines, engine.orgs, engine.org_members, engine.reconciliations
-- public.binder_events, public.demo_muse_pool, public.pending_actions, public.cover_photos
+
+**CORRECTED 2026-07-14 (TDW_02 audit, Amendment One D12/D13 — the honesty restoration):** this section originally recorded all eleven as executed. Prod said otherwise: the TDW_01 run dropped **six** (matching its own 94→88 arithmetic), and five engine statements never ran. The record now reads as executed-fact, with each drop's actual execution:
+
+- **Dropped in the TDW_01 Phase C run (2026-07-14):** engine.orgs, engine.org_members · public.binder_events, public.demo_muse_pool, public.pending_actions, public.cover_photos (94→88 ✓).
+- **Dropped 2026-07-14, later same day, via TDW02_GHOST_DROPS (TDW_01 reopener, TDW_02 Amendment One ruling 8; guarded per-table, all re-verified empty at run time; founder's five DROPPED notices + five-null post-check are the record):** engine.compliance_deadlines, engine.agent_modules, engine.briefing_schedule, engine.briefing_sessions, engine.reconciliations (88→83).
 - `public.cover_photos` context: an admin coming-soon list claimed backend wiring that never existed; the orphaned frontend (`app/admin/cover/page.tsx`, five never-implemented endpoints) deleted same day — superseded by `landing_slides`.
+
+## Applied 2026-07-14 (TDW_02)
+- **0072** — `public.leads.draft_meta jsonb` + partial index `leads_draft_idx` (leads only per Amendment One CE-3). Founder-applied, confirmed via information_schema.
+- **0074** — `scope_org_id` dropped from engine.facts, leads, documents, money_entries, open_loops (Amendment One ruling 9; all-NULL, zero constraints; compliance_deadlines' column left with its table above). Column counts in the map below reflect post-0074 state.
+- 0073 reserved for TDW_02 P5 (llm config seed) — hole is harmless (LD-8).
 
 ## engine schema — 25 tables
 | Table | Columns |
@@ -25,7 +33,7 @@ All eleven verified zero live-code references (two-pass grep, both repos, HEAD d
 | consult_sessions | 9 |
 | contact_messages | 7 |
 | conversations | 7 |
-| documents | 11 |
+| documents | 10 |
 | domain_handbooks | 8 |
 | domain_manifests | 6 |
 | donna_audit_verdict | 10 |
@@ -34,11 +42,11 @@ All eleven verified zero live-code references (two-pass grep, both repos, HEAD d
 | evals_findings | 7 |
 | evals_runs | 16 |
 | events | 8 |
-| facts | 14 |
-| leads | 12 |
+| facts | 13 |
+| leads | 11 |
 | messages | 6 |
-| money_entries | 16 |
-| open_loops | 15 |
+| money_entries | 15 |
+| open_loops | 14 |
 | records | 21 |
 | usage | 10 |
 | users | 8 |
@@ -78,7 +86,7 @@ All eleven verified zero live-code references (two-pass grep, both repos, HEAD d
 | invite_codes | 9 |
 | invoices | 21 |
 | landing_slides | 8 |
-| leads | 26 |
+| leads | 27 |
 | messages | 17 |
 | muse_pool | 8 |
 | muse_saves | 16 |

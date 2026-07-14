@@ -33,8 +33,8 @@
 | Block | Doc | Scope (one line) | Status |
 |---|---|---|---|
 | — | TDW_BUILD_PROTOCOL | Common law for every session | v1 + language-law append pending at 01 D |
-| 01 | HYGIENE | Legacy deletion (code + DB, founder-gated), migration archive, doc regime install | **DONE** (2026-07-14: 6 drops verified 94→88; smoke passed; "fresh Victor" root-caused as by-design unconsulted agent, no bug, no data loss) |
-| 02 | ENGINE | donnaLead→public.leads, filing-law soul weave, drafts both planes, harvest, facade+caps | §3.5 audit DONE (2026-07-14, D1–D15 → Amendment One) · **P1 SHIPPED** (donna_lead registered + typed-plane, 0072 slimmed to leads, DELETE undo door; curl proofs pending founder run) · next: P2 (transcripts-first per CE-5) |
+| 01 | HYGIENE | Legacy deletion (code + DB, founder-gated), migration archive, doc regime install | **DONE** (2026-07-14: 6 drops verified 94→88; smoke passed; "fresh Victor" root-caused as by-design unconsulted agent, no bug, no data loss) · reopener CLOSED same day: 5 engine drops recorded-but-never-run executed via TDW_02 ruling 8 (88→83); drop history corrected in BASELINE/DROPPED |
+| 02 | ENGINE | donnaLead→public.leads, filing-law soul weave, drafts both planes, harvest, facade+caps | §3.5 audit DONE (2026-07-14, D1–D15 → Amendment One) · **P1 SHIPPED + 0072 APPLIED** (donna_lead registered + typed-plane, DELETE undo door; curl proofs pending founder run) · ghost drops EXECUTED + 0074 scope_org_id DROPPED (rulings 8/9) · next: P2 (transcripts-first per CE-5) |
 | 03 | CRUDS | Slice split, binder cards, wishbone, swipes/bulk, mastheads, AddSheet, cold-open splash (+Addendum: portfolio-first vendor splash) | SPEC READY |
 | 04 | CALENDAR | One writer, slots/occupancy, date-aware Victor, day sheet (+Addendum B: ICS/CSV import + Snap-a-Date) | SPEC READY |
 | 04.5 | PLANNER | Crew, bands, crew page, planner-grade Collab, money loop | SPEC READY |

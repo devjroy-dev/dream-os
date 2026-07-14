@@ -1753,3 +1753,6 @@ for delivery-category leads.
 
 Invoice draft state deliberately absent: post-Phase-4 flip, invoices are engine.records money-IN binders; completeness lands as read-time `missing_cells` in P3 (Amendment One CE-3). `public.invoices` = minted numbered documents only.
 Engine plane: `donna_lead` now writes `public.leads` (state word-map: won→booked). `engine.leads` receives no writes from any path (verified empty 2026-07-14) — drop candidate ruled to hygiene's list via the TDW_02 handover.
+
+## TDW_02 (2026-07-14) — scope_org_id verdict: DROP, executed as 0074
+Amendment One ruling 9. The org-scoping era's final residue — scope_org_id on engine.facts, leads, documents, money_entries, open_loops — dropped (all-NULL, zero rows beneath, zero constraints per the audit's pg_constraint scan). The sixth column left with engine.compliance_deadlines when the ghost-table reopener (ruling 8, TDW02_GHOST_DROPS) executed the same day. Corrected drop history: db/BASELINE.md · docs/DROPPED_2026-07.md.
