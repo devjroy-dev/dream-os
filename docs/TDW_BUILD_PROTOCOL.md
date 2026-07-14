@@ -70,6 +70,13 @@ One phase per sitting. The spec's build-order table is the contract.
 - Migrations: syntax-verified, applied to prod ONLY via the founder in the
   Supabase SQL editor, then confirmed via `information_schema` query written
   in your notes.
+- Post-deploy smoke is FOUR items, never three: boot green + a reply on each
+  surface + **the memory check** — the assistant addresses a known user with
+  continuity (no consult re-run, references a known fact). Boot-green plus
+  reply-received once missed an identity fracture; never again (TDW_01 case).
+- tsc verification after any file deletion in dreamos-pwa runs against a
+  cleared build cache (`rm -rf .next` first) — generated types reference
+  deleted pages and false-alarm otherwise.
 - ALWAYS read the actual backend route handler before writing any frontend
   API call — exact request field names, required fields, response shape.
   Never assume field names. (This bit us nine times in one session once.)

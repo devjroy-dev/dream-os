@@ -33,7 +33,7 @@
 | Block | Doc | Scope (one line) | Status |
 |---|---|---|---|
 | — | TDW_BUILD_PROTOCOL | Common law for every session | v1 + language-law append pending at 01 D |
-| 01 | HYGIENE | Legacy deletion (code + DB, founder-gated), migration archive, doc regime install | **SHIPPED — awaiting founder smoke trio + SQL run output** (close-out delivered by CE; residue of ~4 prod-only candidates assigned to 02 audit sitting) |
+| 01 | HYGIENE | Legacy deletion (code + DB, founder-gated), migration archive, doc regime install | **DONE** (2026-07-14: 6 drops verified 94→88; smoke passed; "fresh Victor" root-caused as by-design unconsulted agent, no bug, no data loss) |
 | 02 | ENGINE | donnaLead→public.leads, filing-law soul weave, drafts both planes, harvest, facade+caps | SPEC READY — opens with the §3.5 audit-first sitting (incl. prod residue sweep + scope_org_id verdicts) |
 | 03 | CRUDS | Slice split, binder cards, wishbone, swipes/bulk, mastheads, AddSheet, cold-open splash (+Addendum: portfolio-first vendor splash) | SPEC READY |
 | 04 | CALENDAR | One writer, slots/occupancy, date-aware Victor, day sheet (+Addendum B: ICS/CSV import + Snap-a-Date) | SPEC READY |
@@ -77,3 +77,11 @@ Retired: SPEC-1/1.5 (folded into 02) · masterplan v1 · TDW_11 v1.
 
 ## 7. THE DEFINITION OF LAUNCH
 Vendor: 01–09 live, 11 in stores. Bride: 13–18 live (12 follows). Marketplace: 16's full-loop run passing on production. Admin: 10's Bridge lit. The Closer selling on its own number. That is the house, open.
+
+## Test identity map (founder-ruled 2026-07-14)
+`+918757788550` = the universal test number, AS-IS (unconsulted agent intentional; re-onboards once onboarding is rebuilt) · `+919888294440` = BRIDE-side test · `+917982159047` = vendor WhatsApp line · `+918595986978` = NULL-auth stub, logged to 02's audit sitting.
+
+## Hygiene-forward executions + retirements (CE, 2026-07-14)
+- USE_MOCKS excision EXECUTED by the Chief Engineer (109 lines from `lib/vendor/api/vendor.ts` + `lib/vendor/mocks/vendor.ts` deleted) — removed from TDW_03 P1's duties.
+- CORRECTED RULING: `lib/mocks/bride.ts` + the `couple.ts` guards are LIVE bride demo-mode fixtures (`USE_MOCKS || isBrideDemoMode()`) — NOT debt. The TDW_13 P5 excision is RETRACTED; they stay.
+- RETIRED (founder clicks recorded in docs/RETIREMENTS.md): `dreamai` repo archived (engine ported to dream-os `src/engine`; vendor PWA superseded by dreamos-pwa) · `dream-wedding` + `tdw-2` archived · thedreamai.in Vercel project paused.

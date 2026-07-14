@@ -94,4 +94,4 @@ Six sittings P1→P6 strictly (P1 before any extraction; P4 may run after P2). H
 
 ---
 
-## ADDENDUM (2026-07-14, from TDW_01 Phase B ruling Q3): P5 additionally owns the frost mock excision — remove the mock import/branches from `lib/frost-api/couple.ts`, then delete `lib/mocks/bride.ts`. tsc gate applies; blooms untouched beyond the import line. Closes the declared gap from the 01 handover. NOTE from ruling Q4: `lib/types/` is the frost-side tree (not a duplicate of `lib/vendor/types/`) — the corrected topology is recorded in the 01 handover.
+## ADDENDUM (2026-07-14, Q3 — RETRACTED 2026-07-14 by CE verification): `lib/mocks/bride.ts` and the `couple.ts` guards are LIVE bride demo-mode fixtures (`USE_MOCKS || isBrideDemoMode()`), not debt. They STAY. No P5 excision. NOTE from ruling Q4: `lib/types/` is the frost-side tree (not a duplicate of `lib/vendor/types/`) — the corrected topology is recorded in the 01 handover.

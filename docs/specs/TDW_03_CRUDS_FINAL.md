@@ -128,4 +128,4 @@ Six sittings, P1→P6; P6 may run any time after P1. Handover per protocol §7 e
 ## ADDENDUM (2026-07-14, from TDW_13 F-3): P6 splash source amended — vendor splash becomes PORTFOLIO-FIRST: the vendor's own portfolio covers (first 3 by order, card variants); fewer than 3 usable images → the admin `vendor_fallback` slide collection (landing_slides.audience, migration 0086). Selection logic is a shared pure function. Landing-page slides continue serving audience='landing' unchanged.
 
 
-## ADDENDUM (2026-07-14, from TDW_01 Phase B ruling Q1): P1 additionally owns the USE_MOCKS excision — remove all `NEXT_PUBLIC_USE_MOCKS` branches and the mock import from `lib/vendor/api/vendor.ts` (~25 call sites), then delete `lib/vendor/mocks/vendor.ts`. tsc gate applies. This closes the declared gap recorded in the 01 handover.
+## ADDENDUM (2026-07-14, Q1) — ✅ EXECUTED BY CE 2026-07-14, no longer P1's duty: the USE_MOCKS excision — remove all `NEXT_PUBLIC_USE_MOCKS` branches and the mock import from `lib/vendor/api/vendor.ts` (~25 call sites), then delete `lib/vendor/mocks/vendor.ts`. tsc gate applies. This closes the declared gap recorded in the 01 handover.
