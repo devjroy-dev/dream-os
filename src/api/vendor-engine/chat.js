@@ -29,6 +29,7 @@ const { missingCells } = require('../../lib/recordCompleteness'); // TDW_02 P3 (
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
 const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
+const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
@@ -48,7 +49,7 @@ function actionKind(name) {
   if (/(calendar|event)/i.test(name || '')) return 'calendar';
   return 'write';
 }
-function translateBeat(e) {
+function translateBeat(e, vendorId) {
   if (!e || !e.type) return null;
   switch (e.type) {
     // CE-18: the firewall extends over Victor's own prose — his soul holds
@@ -56,7 +57,23 @@ function translateBeat(e) {
     // a token-split name is a residual risk logged in the handover.)
     case 'victor_token': return { type: 'text_delta', text: scrubText(e.text) };
     case 'dispatch':     return { type: 'handoff', from: 'victor', to: 'operator', message: scrubText(e.message) };
-    case 'donna_action': return { type: 'operator_action', kind: actionKind(e.name), detail: scrubText(typeof e.result === 'string' ? e.result : '') };
+    case 'donna_action': {
+      // TDW_02 P6: the verified-write chip payload — summary + record_ref + undo,
+      // derived ONLY from the door's own witnessed result (F8's covenant). F3 rides
+      // inside deriveFiling: an ERROR display becomes the honest failure line and
+      // the raw DB text never crosses the wire (it stays in the engine trail).
+      const filing = deriveFiling(vendorId, e.name, e.input, typeof e.result === 'string' ? e.result : '');
+      if (filing.kind === 'error') {
+        return { type: 'operator_action', kind: 'error', detail: filing.summary, summary: filing.summary, retryable: true };
+      }
+      return {
+        type: 'operator_action', kind: actionKind(e.name),
+        detail: scrubText(typeof e.result === 'string' ? e.result : ''),
+        summary: scrubText(filing.summary),
+        record_ref: filing.record_ref,
+        undo: filing.undo,
+      };
+    }
     case 'donna_report': return { type: 'operator_report', message: scrubText(e.message) };
     // answer / done / handbook dropped: the reply already streamed as text_delta, and the
     // door sends its own authoritative done below.
@@ -508,7 +525,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         tierOverride: llmWiring.tierOverride,
         modelOverride: llmWiring.modelOverride,
         transport: llmWiring.transport,
-        onEvent: (e) => { const safe = translateBeat(e); if (safe) send(safe); },
+        onEvent: (e) => { const safe = translateBeat(e, req.vendor.id); if (safe) send(safe); },
       });
       if (result.provider_downgrade) {
         logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
