@@ -16,11 +16,11 @@ import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
 
 // Columns read back on every write (draft_meta deliberately excluded so reads
 // survive a pre-0072 database; see writeLead below).
-const SEL = 'id, name, phone, wedding_date, wedding_city, budget_max, state, source, referrer_name, notes, raw_message';
+const SEL = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, notes, raw_message';
 
 type LeadRow = {
   id: string; name?: string | null; phone?: string | null;
-  wedding_date?: string | null; wedding_city?: string | null;
+  wedding_date?: string | null; wedding_date_precision?: string | null; wedding_city?: string | null;
   budget_max?: number | null; state?: string | null; source?: string | null;
   referrer_name?: string | null; notes?: string | null; raw_message?: string | null;
 };
@@ -44,12 +44,14 @@ function leadItem(row: LeadRow): SnapshotItem {
 export const DONNA_LEAD_TOOL: Anthropic.Tool = {
   name: 'donna_lead',
   description:
-    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name or a figure. If a lead matching that phone or name already exists, this updates it rather than duplicating. Call it immediately; never wait for full details. Leads are enquiries not yet engaged; an engaged client with work underway is a binder (donna_client), not a lead.',
+    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name or a figure. If a lead matching that phone or name already exists, this updates it rather than duplicating. Call it immediately; never wait for full details. Leads are enquiries not yet engaged; an engaged client with work underway is a binder (donna_client), not a lead. The id this returns is NOT a binder_id — never point binder hands (follow-ups, money, notes, dates) at it; anything beyond the lead\'s own fields belongs on a binder opened separately.',
   input_schema: {
     type: 'object',
     properties: {
       name: { type: 'string', description: "The lead's name." },
       contact: { type: 'string', description: 'Phone or email, if mentioned.' },
+      wedding_date: { type: 'string', description: "The wedding date if mentioned — YYYY-MM-DD when exact, or YYYY-MM when only the month is known (a bare month name means the nearest upcoming one)." },
+      wedding_city: { type: 'string', description: 'The city or place of the wedding, if mentioned.' },
       source: { type: 'string', description: 'ONLY when the owner explicitly named where they came from (whatsapp, instagram, referral, discover). If he did not name a channel, OMIT this entirely — never infer or guess one; the system marks unattributed captures itself.' },
       referrer: { type: 'string', description: 'Who referred them, if mentioned. A referrer is NOT the lead.' },
       value_estimate: { type: 'number', description: 'Rough deal value in Rs, if mentioned.' },
@@ -69,6 +71,8 @@ export const ESCALATE_TOOL: Anthropic.Tool = {
 type DonnaLeadInput = {
   name?: string;
   contact?: string;
+  wedding_date?: string;
+  wedding_city?: string;
   source?: string;
   referrer?: string;
   value_estimate?: number;
@@ -85,6 +89,18 @@ function mapStage(word?: string): { state: string | null; strayWord: string | nu
   if (w === 'won') return { state: 'booked', strayWord: null };
   if (PASS_THROUGH.has(w)) return { state: w, strayWord: null };
   return { state: 'new', strayWord: word };
+}
+
+// CE-13 (Amendment One P1 acceptance, confirmed by F2): parse the tool's date word
+// into the 0052 columns. YYYY-MM-DD -> exact (precision day/NULL). YYYY-MM -> the
+// 1st-of-month sentinel + precision 'month'. Anything else never pollutes a date
+// column — it lands in notes verbatim instead.
+function parseWeddingDate(s?: string): { date: string; precision: string | null } | { noteWord: string } | null {
+  if (!s || !s.trim()) return null;
+  const w = s.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(w)) return { date: w, precision: null };
+  if (/^\d{4}-\d{2}$/.test(w)) return { date: `${w}-01`, precision: 'month' };
+  return { noteWord: w };
 }
 
 // Append lines to a notes value without losing what stands.
@@ -153,6 +169,14 @@ export async function executeDonnaLead(
 
     if (input.name && !cur.name) patch.name = input.name;
     if (input.contact && !cur.phone) patch.phone = input.contact; // verbatim, no formatting
+    if (input.wedding_city && !cur.wedding_city) patch.wedding_city = input.wedding_city;
+    const parsedDateU = parseWeddingDate(input.wedding_date);
+    if (parsedDateU && 'date' in parsedDateU && !cur.wedding_date) {
+      patch.wedding_date = parsedDateU.date;
+      patch.wedding_date_precision = parsedDateU.precision;
+    } else if (parsedDateU && 'noteWord' in parsedDateU) {
+      noteAdds.push(`date words from Victor: "${parsedDateU.noteWord}"`);
+    }
     if (input.source && !cur.source) patch.source = input.source;
     if (input.referrer && !cur.referrer_name) patch.referrer_name = input.referrer;
     if (rawMessage && !cur.raw_message) patch.raw_message = rawMessage;
@@ -177,18 +201,23 @@ export async function executeDonnaLead(
     const row = data ?? ({ ...cur, ...patch } as LeadRow);
     const changed = Object.keys(patch).filter((k) => k !== 'draft_meta').join(', ');
     const flag = ambiguous ? ` Note: ${existing.length} leads matched — updated the most recent; if you meant a different one, tell me which.` : '';
-    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}.${flag}`, item: leadItem(row) };
+    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}`, item: leadItem(row) };
   }
 
   // ── No match -> create new (the typed-plane draft; thin is welcome).
   const noteAdds: string[] = [];
   if (input.value_estimate != null) noteAdds.push('estimate via Victor');
   if (strayWord) noteAdds.push(`stage word from Victor: "${strayWord}"`);
+  const parsedDate = parseWeddingDate(input.wedding_date);
+  if (parsedDate && 'noteWord' in parsedDate) noteAdds.push(`date words from Victor: "${parsedDate.noteWord}"`);
 
   const row: Record<string, unknown> = {
     vendor_id:     vendorId,
     name:          input.name ?? null,
     phone:         input.contact ?? null,           // verbatim string; no formatting
+    wedding_date:  parsedDate && 'date' in parsedDate ? parsedDate.date : null,
+    wedding_date_precision: parsedDate && 'date' in parsedDate ? parsedDate.precision : null,
+    wedding_city:  input.wedding_city ?? null,
     budget_max:    input.value_estimate ?? null,    // budget_min stays null (spec P1.2)
     source:        input.source ?? 'victor',
     referrer_name: input.referrer ?? null,
@@ -202,7 +231,7 @@ export async function executeDonnaLead(
   if (error) return { display: `ERROR saving lead: ${error.message}` };
   const saved = data as LeadRow;
   return {
-    display: `Lead saved. id=${saved.id}, name=${saved.name ?? 'unknown'}, state=${saved.state ?? 'new'}.`,
+    display: `Lead saved. id=${saved.id}, name=${saved.name ?? 'unknown'}, state=${saved.state ?? 'new'}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)`,
     item: leadItem(saved),
   };
 }
