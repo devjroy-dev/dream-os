@@ -68,6 +68,7 @@ export async function runTurn(args: {
   conversationId?: string;
   calendarSnapshot?: string;
   scratchpad?: string;
+  recentActivity?: string; // TDW_02 P4 (CE-4): door-built cross-surface activity block
   onEvent?: (e: TurnEvent) => void;
 }): Promise<TurnResult> {
   const { agentId, message } = args;
@@ -188,7 +189,8 @@ export async function runTurn(args: {
   const todayIso = todayISO(agent.timezone as string | null);
   const buildSystem = (): Anthropic.TextBlockParam[] => {
     const calBlock = args.calendarSnapshot ? `\n\n${args.calendarSnapshot}` : '';
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock;
+    const actBlock = args.recentActivity ? `\n\n${args.recentActivity}` : ''; // TDW_02 P4 (CE-4), never cached
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];

@@ -26,6 +26,8 @@ const { generateInvoiceForBinder } = require('../vendor/invoices');
 const { updateEvent } = require('../../lib/vendor/events');
 const { executeAndPatch } = require('../../lib/executeAndPatch');
 const { missingCells } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-16/17)
+const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
+const { fetchRecentActivity, formatActivityBlock } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
 
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
 // The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
@@ -365,6 +367,28 @@ async function fetchScratchpad(req) {
   }
 }
 
+// TDW_02 P4 (Amendment One CE-4): the RECENT ACTIVITY block, door-built, so the
+// engine sees cross-surface actions AND harvest_patch rows — Victor never
+// re-asks a harvested fact. Mechanical context; zero soul change. Fail-safe ''.
+async function fetchRecentBlock(req) {
+  try {
+    const rows = await fetchRecentActivity(req.app.locals.supabase, req.vendor.id);
+    return formatActivityBlock(rows, 'pwa');
+  } catch (e) { console.warn('[vendor-e chat:recent-activity]', e.message); return ''; }
+}
+
+// TDW_02 P4: harvest, fire-and-forget AFTER the reply is on the wire. Never
+// blocks, never throws to the request (harvest.js is internally best-effort).
+function fireHarvest(req, message, result) {
+  const supabase = req.app.locals.supabase;
+  const vendor = req.vendor; const agentId = req.agentId;
+  const toolCalls = (result && result.tool_calls) || [];
+  setImmediate(() => {
+    runHarvest({ supabase, vendor, agentId, message, toolCalls })
+      .catch((e) => console.warn('[harvest] fire failed:', e.message));
+  });
+}
+
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
@@ -398,11 +422,13 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       send({ type: 'thinking' });
       const calendarSnapshot = await fetchCalendarSnapshot(req);
       const scratchpad = await fetchScratchpad(req);
+      const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
       const result = await runTurn({
         agentId: req.agentId,
         message,
         calendarSnapshot,
         scratchpad,
+        recentActivity,
         onEvent: (e) => { const safe = translateBeat(e); if (safe) send(safe); },
       });
 
@@ -428,6 +454,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       send(done);
       if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
       res.end();
+      fireHarvest(req, message, result); // TDW_02 P4 — after the wire closes
     } catch (e) {
       console.error('[vendor-e chat SSE]', e.message);
       send({ type: 'error', message: 'Chat failed.' });
@@ -438,7 +465,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
   try {
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
-    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad });
+    const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
+    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity });
 
     const documents = await buildInvoices(req, result);
     const booked    = await bookEvents(req, result);
@@ -455,6 +483,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     if (booked.length) reply += '\n\n' + bookingLines(booked);
     if (mutated.length) reply += '\n\n' + mutationLines(mutated);
 
+    fireHarvest(req, message, result); // TDW_02 P4 — response is fully built; fires post-return
     const toolNames = (result.tool_calls || []).map((t) => t.name);
     return res.json({
       ok: true,
