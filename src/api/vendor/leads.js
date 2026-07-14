@@ -34,6 +34,8 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
+const resolveAgent   = require('../middleware/resolveAgent');           // TDW_02: DELETE door needs the agent for snapshot coherence
+const { patchNote }  = require('../../engine/dist/core/donna');         // TDW_02: same confirmed-write patch path the filing side uses
 
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
@@ -258,7 +260,13 @@ router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 
 // reversible), and every CRUD read filters it out (list above; lib reads
 // already filter deleted_at). Idempotent: deleting an already-deleted lead
 // confirms rather than errors, so a double-tapped Undo never scares anyone.
-router.delete('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), asyncHandler(async (req, res) => {
+//
+// Snapshot coherence (founder-ruled with P2, transcript-(b) exhibit — Victor
+// counted an undone lead): the delete also removes the `lead:<id>` item from
+// Donna's snapshot via the same patchNote the filing side used. FAIL-SAFE:
+// a snapshot miss never fails the delete — the row is already gone from the
+// CRUD's truth; the snapshot self-heals on rebuild.
+router.delete('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), resolveAgent(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
   const leadId   = req.params.leadId;
@@ -279,6 +287,13 @@ router.delete('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via:
     .eq('id', leadId)
     .eq('vendor_id', vendor.id);
   if (error) return errRes(res, 500, error.message);
+
+  try {
+    await patchNote(req.agentId, { display: 'lead removed (undo)', remove: `lead:${leadId}` });
+  } catch (e) {
+    console.warn('[leads:delete] snapshot remove failed (delete already landed):', e.message);
+  }
+
   return okRes(res, { deleted: { id: leadId } });
 }));
 
