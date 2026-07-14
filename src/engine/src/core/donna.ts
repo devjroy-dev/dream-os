@@ -28,6 +28,7 @@ import { DONNA_VERDICT_TOOL, executeDonnaVerdict } from './tools/donnaVerdict.js
 import { DONNA_REVIEW_TOOL, executeDonnaReview } from './tools/donnaReview.js';
 import { LISTEN_HARVEY_TALK_TOOL } from './tools/listenHarvey.js';
 import { DONNA_LEAD_TOOL, executeDonnaLead } from './tools/donnaLead.js'; // TDW_02 P1 (Amendment One CE-1)
+import { vendorIdFromAgent } from './vendorIdentity.js'; // TDW_02: rebuild reads the typed lead plane
 import type { SnapshotItem, ToolOutcome, ViewRow } from './snapshotTypes.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -63,21 +64,31 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
   const items: SnapshotItem[] = [];
   const now = Date.now();
 
-  // Open leads (pipeline not yet won/lost).
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, name, stage, value_estimate')
-    .eq('agent_id', agentId)
-    .not('stage', 'in', '("won","lost")')
-    .order('created_at', { ascending: false })
-    .limit(12);
-  for (const l of leads ?? []) {
-    const val = l.value_estimate != null ? ` (Rs ${l.value_estimate})` : '';
-    items.push({
-      id: `lead:${l.id}`, kind: 'lead',
-      text: `${l.name ?? 'unknown'} — lead, stage ${l.stage ?? 'new'}${val}`,
-      status: 'open', horizon: null, ref_type: 'leads', ref_id: l.id,
-    });
+  // Open leads (pipeline not yet booked/lost) — TYPED PLANE since TDW_02 P1:
+  // donna_lead files into public.leads (engine.leads is stop-written, empty).
+  // Resolved via the reverse identity bridge; soft-deleted rows never rebuild
+  // (the read-path honesty law — founder ruling, the Priya case). Item text
+  // mirrors donnaLead's leadItem register exactly so patched and rebuilt
+  // entries read identically.
+  const vendorId = await vendorIdFromAgent(agentId);
+  if (vendorId) {
+    const { data: leads } = await supabase
+      .schema('public')
+      .from('leads')
+      .select('id, name, state, budget_max')
+      .eq('vendor_id', vendorId)
+      .is('deleted_at', null)
+      .not('state', 'in', '("booked","lost")')
+      .order('created_at', { ascending: false })
+      .limit(12);
+    for (const l of leads ?? []) {
+      const val = l.budget_max != null ? ` (Rs ${l.budget_max})` : '';
+      items.push({
+        id: `lead:${l.id}`, kind: 'lead',
+        text: `${l.name ?? 'unknown'} — lead, ${l.state ?? 'new'}${val}`,
+        status: 'open', horizon: null, ref_type: 'leads', ref_id: l.id,
+      });
+    }
   }
 
   // Unverified claims (stated, not superseded) — the blind-spot map.

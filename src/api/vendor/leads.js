@@ -279,7 +279,13 @@ router.delete('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via:
     .maybeSingle();
   if (readErr) return errRes(res, 500, readErr.message);
   if (!existing) return errRes(res, 404, 'Lead not found.');
-  if (existing.deleted_at) return okRes(res, { deleted: { id: leadId }, already_deleted: true });
+  if (existing.deleted_at) {
+    // Idempotent HEALING: a re-tap on an already-deleted lead still clears any
+    // orphaned snapshot item (pre-P2A deletes left them behind — the Priya case).
+    try { await patchNote(req.agentId, { display: 'lead removed (undo, heal)', remove: `lead:${leadId}` }); }
+    catch (e) { console.warn('[leads:delete] heal-path snapshot remove failed:', e.message); }
+    return okRes(res, { deleted: { id: leadId }, already_deleted: true });
+  }
 
   const { error } = await supabase
     .from('leads')
