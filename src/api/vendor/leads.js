@@ -181,7 +181,28 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   return res.status(201).json({ ok: true, data: result.lead, deduped: result.deduped || false });
 }));
 
-router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), async (req, res) => {
+
+// TDW_02 P5 close (F5): every typed-plane door keeps Donna's snapshot true —
+// the DELETE door already does; the PATCH doors join it. A rename/state change
+// that only touches public.leads leaves a stale item Victor renders as a phantom
+// (the "duplicate Ananya" exhibit). Fail-safe: a snapshot miss never fails the write.
+async function patchLeadSnapshot(req, lead) {
+  try {
+    const val = lead.budget_max != null ? ` (Rs ${lead.budget_max})` : '';
+    const state = lead.state || 'new';
+    await patchNote(req.agentId, {
+      display: 'lead snapshot sync (door)',
+      item: {
+        id: `lead:${lead.id}`, kind: 'lead',
+        text: `${lead.name || 'unknown'} — lead, ${state}${val}`,
+        status: (state === 'booked' || state === 'lost') ? 'confirmed' : 'open',
+        horizon: null, ref_type: 'leads', ref_id: lead.id,
+      },
+    });
+  } catch (e) { console.warn('[leads:patch] snapshot sync failed (write landed):', e.message); }
+}
+
+router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), resolveAgent(), async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
   const leadId   = req.params.leadId;
@@ -204,7 +225,7 @@ router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId',
   // still records the state-as-perceived at PATCH time.
   const { data: existing, error: existingErr } = await supabase
     .from('leads')
-    .select('state, name')
+    .select('state, name, budget_max')
     .eq('id', leadId)
     .maybeSingle();
 
@@ -228,6 +249,9 @@ router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId',
     console.error('[PATCH /vendor/leads/:leadId/state] update error:', updateErr?.message);
     return res.status(500).json({ ok: false, error: 'Update failed.' });
   }
+
+  // F5: keep the snapshot item true to the new state (fail-safe inside).
+  await patchLeadSnapshot(req, { id: leadId, name: leadName, state: newState, budget_max: existing.budget_max });
 
   // If a reason was provided, log it to notes. Reason absence is not an error.
   if (reason) {
@@ -258,7 +282,7 @@ router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId',
 // trail stays consistent.
 // Auth: requireAuth. resolveVendor mode C via leads table.
 
-router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), asyncHandler(async (req, res) => {
+router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 'leads' }), resolveAgent(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
   const leadId   = req.params.leadId;

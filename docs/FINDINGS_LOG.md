@@ -480,3 +480,15 @@ note_to_self, create_lead, list_leads, update_lead_state, create_event, list_eve
 ---
 
 *End of P2-6a findings. Next session's findings appended below this line.*
+
+
+## TDW_02 P5 sitting (2026-07-14) — findings, defects, corrections
+- **P5-a (defect, FIXED via guarded DDL):** engine.usage carried a TDW_01-era CHECK (model ∈ haiku|sonnet); routed model strings were silently rejected → ledgerless turns + caps under-counting on non-anthropic tiers. Two turns lost to the ledger (15:12, 15:15 — messages exist, usage rows do not). DDL: usage_model_check dropped, founder-signed. Lesson: engine's own tables needed the same read-first audit as public's.
+- **F5 (defect, FIXED in close ZIP):** typed CRUD PATCH doors never patched Donna's snapshot → stale items rendered as phantoms ("duplicate Ananya"). Both PATCH doors now sync via patchNote, same law as DELETE.
+- **F6 (finding, 06's list):** no per-conversation concurrency guard at the chat door — a released curl batch raced one thread into a mega-turn (109k tokens) that conflated Kavya's advance into budget_max (repaired via PATCH) and fabricated state 'quoted' (repaired via state door). Proposed 06 fix: per-agent in-flight lock.
+- **F7 (finding, by design — documented):** donna_lead is fill-blanks-only (CE-13); an owner's chat-path CORRECTION to a filled typed field has no door. Corrections belong to the witnessed PATCH/wishbone. TDW_03 cards should surface this affordance.
+- **F8 (finding, P6's strongest argument):** false-done THREAD CONTAGION — GLM's false "done" claims, sitting in a warm thread, were trusted by post-flip Haiku turns ("Already on it"), self-perpetuating the lie until a cold thread cured it. Verified-write chips (P6) + F6's lock are the countermeasures.
+- **F9 (finding, open):** on the anthropic path, Donna stamped a fabricated PAST date (2025-04-01) onto Ruchi's binder from a dateless instruction — invented-specific breach at her hand. Repair pending the real shoot date (binder date door). Soul-side remedy belongs to 06's Donna lens work; logged, not prose-patched mid-close.
+- **Bench verdict (acceptance 6):** see UNIT_ECONOMICS.md — glm FAILED advisory, PROVEN harvest; routing flipped accordingly (admin_config + DEFAULTS).
+- **Executor corrections self-logged:** invented usage column name (cache_read_tokens) in a proof read; typo'd created_by in a supplied read; both caught by the founder's runs. Third-instance lesson: verify before writing a read — now habitual.
+- **CE ratifications sought in handover:** Proof E descope (moot) · the D-proof banked from the accidental live cap firing (5/20 trial caps) · 0073's trial seed left as-history while DEFAULTS + admin row carry the ruling (applied migrations stay immutable).

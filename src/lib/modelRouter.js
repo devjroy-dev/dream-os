@@ -15,7 +15,11 @@ const SONNET = 'claude-sonnet-4-6';
 
 // The default matrix == 0073 seeds (spec P5; tier names are PRODUCT tiers, CE-7).
 const DEFAULTS = {
-  'model.pwa_vendor.trial':     { provider: 'glm',       model: 'glm-4.7-flash' },
+  // BENCH VERDICT 2026-07-14 (acceptance 6, live): glm-4.7-flash FAILED the advisory
+  // tool-turn bench — false dones (C2/C3) + a fabricated-entity write (C4/Nena
+  // Bansal). GLM stays PROVEN for harvest (strict-JSON extraction lane). Trial
+  // routes anthropic until block 06 revisits with caching + a re-bench.
+  'model.pwa_vendor.trial':     { provider: 'anthropic', model: HAIKU },
   'model.pwa_vendor.essential': { provider: 'deepseek',  model: 'deepseek-v4-flash' },
   'model.pwa_vendor.signature': { provider: 'anthropic', model: HAIKU },
   'model.pwa_vendor.prestige':  { provider: 'anthropic', model: HAIKU, escalation_model: SONNET },
