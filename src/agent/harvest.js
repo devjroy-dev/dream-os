@@ -89,7 +89,11 @@ function normalizeTyped(field, value) {
     const n = Math.round(Number(v));
     return Number.isFinite(n) && n > 0 ? { budget_max: n } : null;
   }
-  if (field === 'name' || field === 'wedding_city') return { [field]: v };
+  if (field === 'name' || field === 'wedding_city') {
+    // P7/F11 guard: a name or city must contain letters — GLM harvested "201"
+    // (from "the 21st") into Meera's city. Digits-only or symbol-only -> drop.
+    return /[a-zA-Z\u0900-\u097F]/.test(v) ? { [field]: v } : null;
+  }
   if (field === 'phone') return { phone: v }; // verbatim, no formatting
   return null; // unknown field -> drop (rule 1 also catches this)
 }
