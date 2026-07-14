@@ -129,3 +129,15 @@ Six sittings, P1→P6; P6 may run any time after P1. Handover per protocol §7 e
 
 
 ## ADDENDUM (2026-07-14, Q1) — ✅ EXECUTED BY CE 2026-07-14, no longer P1's duty: the USE_MOCKS excision — remove all `NEXT_PUBLIC_USE_MOCKS` branches and the mock import from `lib/vendor/api/vendor.ts` (~25 call sites), then delete `lib/vendor/mocks/vendor.ts`. tsc gate applies. This closes the declared gap recorded in the 01 handover.
+
+
+---
+
+## ADDENDUM — THE SLICE DOOR (CE-authored 2026-07-14, per the F1 Option-A ruling; binds P2)
+**Charge:** P2 additionally builds the slice-chip row and re-executes the landing retirement with its successor standing. F1's lesson encoded: a page is a bundle of jobs — the landing's navigation job passes to this row BEFORE the landing dies again.
+
+**The row:** lives in `SliceShell`'s chrome, directly under the brass slice label — one horizontal line, the five slices as chips in canonical order (Leads · Clients · Invoices · Expenses · Events).
+**Grammar:** Jost (or the label stack's existing font token) 10px, letterspacing 0.08em, uppercase; inactive chips ink at 0.45 with a transparent underline slot; ACTIVE chip ink at 0.9 with a 2px accent hairline underline (the theme's accent token — never hardcoded gold); 24px min tap-height with padding to 40px touch target; horizontal scroll if width demands, active chip auto-scrolled into view; no counts in v1 (reserved slot — TDW_09 may add).
+**Behavior:** tap navigates `router.push('/vendor/list/<slice>')` — a real route change (the P1 remount nuance stands; P4 judges it under this now-live path per the standing ruling). Active state derives from the route param, never local state. Writes the last-slice key through the EXISTING hook's write path (no new storage patterns).
+**Retirement re-execution:** with the row live, `/vendor/list` retires again to the redirect (stored slice, else `leads` per Q2) — the P1 reversion's landing file deleted in the same commit, `rm -rf .next` before the post-deletion tsc per §6.
+**Acceptance adds:** all five slices reachable by thumb from any slice · active chip truthful on direct-URL entry · redirect honors stored-else-leads · the founder's original ten-item smoke re-run passes WITH items 2/4/7/8 green via the chips · both commits (row first, retirement second) — the door opens before the old one closes, even inside one sitting.
