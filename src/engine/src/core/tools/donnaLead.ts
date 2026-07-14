@@ -50,7 +50,7 @@ export const DONNA_LEAD_TOOL: Anthropic.Tool = {
     properties: {
       name: { type: 'string', description: "The lead's name." },
       contact: { type: 'string', description: 'Phone or email, if mentioned.' },
-      source: { type: 'string', description: 'Where they came from: whatsapp, instagram, referral, etc.' },
+      source: { type: 'string', description: 'ONLY when the owner explicitly named where they came from (whatsapp, instagram, referral, discover). If he did not name a channel, OMIT this entirely — never infer or guess one; the system marks unattributed captures itself.' },
       referrer: { type: 'string', description: 'Who referred them, if mentioned. A referrer is NOT the lead.' },
       value_estimate: { type: 'number', description: 'Rough deal value in Rs, if mentioned.' },
       stage: { type: 'string', enum: ['new', 'contacted', 'quoted', 'won', 'lost'], description: 'Pipeline stage, if it has moved.' },
