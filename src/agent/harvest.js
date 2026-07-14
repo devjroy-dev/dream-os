@@ -35,6 +35,9 @@ const { patchNote } = require('../engine/dist/core/donna');
 const { loadRecords } = require('../engine/dist/core/recordsView');
 const { logActivity } = require('../lib/vendor/snapshot');
 
+const { resolveModel } = require('../lib/modelRouter'); // TDW_02 P5: the seam swap
+const { llmCreate } = require('../lib/llm');
+
 const HAIKU = 'claude-haiku-4-5-20251001';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -49,14 +52,18 @@ const SYSTEM = [
   'No patches -> {"patches":[]}',
 ].join('\n');
 
-// ── the P5 seam ───────────────────────────────────────────────────────────────
-async function callHarvestModel(userPrompt) {
-  const resp = await anthropic.messages.create({
-    model: HAIKU,
-    max_tokens: 700,
-    system: SYSTEM,
-    messages: [{ role: 'user', content: userPrompt }],
-  });
+// ── the P5 seam, SWAPPED (spec P4->P5): route via resolveModel('harvest'); the
+// retry leg stays Haiku direct — the facade's own fallback, and rule 6's floor.
+async function callHarvestModel(userPrompt, supabase, opts = {}) {
+  const params = { max_tokens: 700, system: SYSTEM, messages: [{ role: 'user', content: userPrompt }] };
+  if (opts.forceHaiku) {
+    const resp = await anthropic.messages.create({ ...params, model: HAIKU });
+    return (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+  }
+  const route = await resolveModel(supabase, 'harvest', 'default');
+  const resp = route.provider === 'anthropic'
+    ? await anthropic.messages.create({ ...params, model: route.model })
+    : await llmCreate(route.provider, { ...params, model: route.model });
   return (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
 }
 
@@ -149,8 +156,9 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls }) {
       `${JSON.stringify(toolCalls || []).slice(0, 3000)}\n\nOPEN DRAFTS:\n${draftsBlock}`;
 
     // Rule 6: one silent retry, then give up silently.
-    let patches = parsePatches(await callHarvestModel(prompt));
-    if (patches === null) patches = parsePatches(await callHarvestModel(prompt + '\n\nSTRICT JSON ONLY.'));
+    let patches = null;
+    try { patches = parsePatches(await callHarvestModel(prompt, pub)); } catch (e) { console.warn('[harvest] routed model failed:', e.message); }
+    if (patches === null) patches = parsePatches(await callHarvestModel(prompt + '\n\nSTRICT JSON ONLY.', pub, { forceHaiku: true }));
     if (patches === null) { console.warn('[harvest] unparseable twice — gave up'); return; }
     if (!patches.length) { console.log('[harvest] applied=0 dropped=0 (model proposed nothing)'); return; }
 

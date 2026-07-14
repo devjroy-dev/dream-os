@@ -27,7 +27,9 @@ const { updateEvent } = require('../../lib/vendor/events');
 const { executeAndPatch } = require('../../lib/executeAndPatch');
 const { missingCells } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-16/17)
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
-const { fetchRecentActivity, formatActivityBlock } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
+const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
+const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
+const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
 // The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
@@ -389,6 +391,71 @@ function fireHarvest(req, message, result) {
   });
 }
 
+// ── TDW_02 P5: tiers, routes, caps ────────────────────────────────────────────
+// CE-7: PRODUCT tier -> ENGINE tier, read-through at turn start, never a backfill.
+const ENGINE_TIER_MAP = { trial: 'entry', essential: 'entry', signature: 'mid', prestige: 'top' };
+
+// The turn's llm wiring. Anthropic routes pass NO transport — the engine's own
+// pre-facade path runs byte-identical (acceptance 9). Non-anthropic routes pass
+// the facade transport + one model for both hands.
+async function buildLlmForTurn(req) {
+  const productTier = (req.vendor && req.vendor.tier) || 'trial';
+  const route = await resolveModel(req.app.locals.supabase, 'pwa_vendor', productTier);
+  const tierOverride = ENGINE_TIER_MAP[productTier] || 'entry';
+  if (route.provider === 'anthropic') return { tierOverride, route };
+  return {
+    tierOverride,
+    route,
+    modelOverride: route.model,
+    transport: {
+      provider: route.provider,
+      stream: (p) => llmStream(route.provider, p),
+      create: (p) => llmCreate(route.provider, p),
+    },
+  };
+}
+
+// CE-6/CE-23-iii: caps metered HERE, the shared handler — one meter, two mounts.
+// Turn count = engine.usage rows (one per turn) for this agent, IST windows.
+const IST_MS = 5.5 * 60 * 60 * 1000;
+function istDayStartUtcISO() {
+  const ist = new Date(Date.now() + IST_MS);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - IST_MS).toISOString();
+}
+function istMonthStartUtcISO() {
+  const ist = new Date(Date.now() + IST_MS);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - IST_MS).toISOString();
+}
+async function buildMeta(req, productTier) {
+  try {
+    const pub = req.app.locals.supabase;
+    const eng = pub.schema('engine');
+    const dayKey = `vendor_pwa_daily_${productTier}`;
+    const monKey = `vendor_pwa_monthly_${productTier}`;
+    const [{ data: cfg }, dayRes, monRes] = await Promise.all([
+      pub.from('admin_config').select('key, value').in('key', [dayKey, monKey]),
+      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).gte('created_at', istDayStartUtcISO()),
+      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).gte('created_at', istMonthStartUtcISO()),
+    ]);
+    const val = (k, dflt) => { const r = (cfg || []).find((c) => c.key === k); const n = r ? parseInt(r.value, 10) : NaN; return Number.isFinite(n) && n > 0 ? n : dflt; };
+    const dayCap = val(dayKey, 25), monCap = val(monKey, 250);
+    const dayUsed = dayRes.count || 0, monUsed = monRes.count || 0;
+    // Report the NEARER window (higher used/cap ratio); enforce BOTH (CE-6).
+    const nearer = (dayUsed / dayCap) >= (monUsed / monCap)
+      ? { turns_used: dayUsed, turns_cap: dayCap, window: 'day' }
+      : { turns_used: monUsed, turns_cap: monCap, window: 'month' };
+    const capped = dayUsed >= dayCap || monUsed >= monCap;
+    const state = capped ? 'capped' : (nearer.turns_used / nearer.turns_cap >= 0.8 ? 'nearing' : 'ok');
+    return { tier: productTier, ...nearer, state, upgrade: { label: 'Upgrade', href: '/vendor/settings#tier' } };
+  } catch (e) {
+    console.warn('[vendor-e chat:meta] failed (open meter):', e.message);
+    return null; // a broken meter NEVER blocks a turn
+  }
+}
+const CAPPED_LINE = (meta) =>
+  `You've used this ${meta.window === 'day' ? "day's" : "month's"} conversations on the ${meta.tier} tier (${meta.turns_used}/${meta.turns_cap}). ` +
+  (meta.window === 'day' ? 'The desk reopens at midnight' : 'The desk reopens on the 1st') + ' — or step up a tier and keep going.';
+
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
 // the engine runs advisory Victor and has no edit-priming mechanism (the Myra
@@ -420,6 +487,15 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
 
     try {
       send({ type: 'thinking' });
+      const productTier = (req.vendor && req.vendor.tier) || 'trial';
+      const metaPre = await buildMeta(req, productTier); // TDW_02 P5 (CE-6): both windows
+      if (metaPre && metaPre.state === 'capped') {
+        send({ type: 'text_delta', text: CAPPED_LINE(metaPre) });
+        send({ type: 'done', tool_calls: [], refresh: false, meta: metaPre });
+        if (!res.writableEnded) res.write('data: [DONE]\n\n');
+        return res.end();
+      }
+      const llmWiring = await buildLlmForTurn(req); // TDW_02 P5
       const calendarSnapshot = await fetchCalendarSnapshot(req);
       const scratchpad = await fetchScratchpad(req);
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
@@ -429,8 +505,14 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         calendarSnapshot,
         scratchpad,
         recentActivity,
+        tierOverride: llmWiring.tierOverride,
+        modelOverride: llmWiring.modelOverride,
+        transport: llmWiring.transport,
         onEvent: (e) => { const safe = translateBeat(e); if (safe) send(safe); },
       });
+      if (result.provider_downgrade) {
+        logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
+      }
 
       // Invoices are minted after the turn (donna_invoice_pdf is a signal). The reply has
       // already streamed, so the "ready" line rides as a final text_delta before done.
@@ -450,6 +532,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
       // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
       if (result.view && result.view.length) done.view = result.view.map((r) => ({ ...r, missing_cells: missingCells(r) }));
+      done.meta = await buildMeta(req, productTier); // TDW_02 P5: the meter, every turn
       if (documents.length) done.documents = documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
       send(done);
       if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
@@ -463,10 +546,19 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     return;
   }
   try {
+    const productTier = (req.vendor && req.vendor.tier) || 'trial';
+    const metaPre = await buildMeta(req, productTier); // TDW_02 P5 (CE-6)
+    if (metaPre && metaPre.state === 'capped') {
+      return res.json({ ok: true, capped: true, reply: CAPPED_LINE(metaPre), tool_calls: [], refresh: false, meta: metaPre });
+    }
+    const llmWiring = await buildLlmForTurn(req); // TDW_02 P5
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
-    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity });
+    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport });
+    if (result.provider_downgrade) {
+      logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
+    }
 
     const documents = await buildInvoices(req, result);
     const booked    = await bookEvents(req, result);
@@ -492,6 +584,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       refresh: toolNames.length > 0,
       // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
       view: result.view && result.view.length ? result.view.map((r) => ({ ...r, missing_cells: missingCells(r) })) : undefined,
+      meta: await buildMeta(req, productTier), // TDW_02 P5: the meter, every turn
       documents: documents.length ? documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
     });
   } catch (e) {

@@ -43,9 +43,10 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export type TurnResult = {
   reply: string;
   conversation_id: string;
-  model: 'haiku' | 'sonnet';
+  model: string; // TDW_02 P5: widened — non-anthropic routes carry their real model string
   escalated: boolean;
   tool_calls: { name: string; input: unknown; result: string; donna_calls?: { name: string; input: unknown; result: string }[] }[];
+  provider_downgrade?: boolean; // TDW_02 P5: a non-anthropic hand failed mid-turn; door logs it
   cost_inr: number;
   tokens: { input: number; output: number; cache_read?: number; cache_write?: number };
   view: ViewRow[] | null; // rows to show for THIS turn (wakes the peek; fills the carousel)
@@ -69,6 +70,12 @@ export async function runTurn(args: {
   calendarSnapshot?: string;
   scratchpad?: string;
   recentActivity?: string; // TDW_02 P4 (CE-4): door-built cross-surface activity block
+  // TDW_02 P5 — the facade seams (Amendment One CE-7: tier is a read-through at turn
+  // start, NEVER a backfill of agents.tier). All optional; ABSENT => the pre-facade
+  // anthropic path runs byte-identical (regression law, acceptance 9).
+  tierOverride?: Tier;      // engine tier mapped from the PRODUCT tier at the door
+  modelOverride?: string;   // set ONLY on non-anthropic routes: one model, both hands
+  transport?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> };
   onEvent?: (e: TurnEvent) => void;
 }): Promise<TurnResult> {
   const { agentId, message } = args;
@@ -81,9 +88,15 @@ export async function runTurn(args: {
   if (error) throw new Error(`agent lookup failed: ${error.message}`);
   if (!agent) throw new Error(`agent not found: ${agentId}`);
 
-  const tier = agent.tier as Tier;
-  let model = startModelForTier(tier);
+  const tier = (args.tierOverride ?? agent.tier) as Tier; // CE-7 read-through
+  let model = args.modelOverride ?? startModelForTier(tier);
   let escalated = false;
+  // The turn's transport. On downgrade (non-anthropic fidelity/API failure) this
+  // flips to null for the REMAINDER of the turn — pure anthropic Haiku, spec P5.
+  let transport = args.transport ?? null;
+  let providerDowngrade = false;
+  const streamCall = (params: unknown) =>
+    transport ? transport.stream(params) : anthropic.messages.stream(params as Anthropic.MessageStreamParams);
   // CONSULT MODE: a standalone domain-expert session (consultantHarvey). No Donna, no
   // owner/snapshot/facts, no first-meeting gate — ephemeral. The whole Codex rides as
   // his preparation. Everything advisory does with Donna is skipped below when consult.
@@ -235,15 +248,38 @@ export async function runTurn(args: {
     // Victor's prose streamed token by token (victor_token) when a streaming door wired
     // onEvent; inert otherwise. finalMessage() assembles the SAME message .create() returned,
     // so everything below is unchanged.
-    const stream = anthropic.messages.stream({
-      model,
-      max_tokens: 1024,
-      system: buildSystem(),
-      tools,
-      messages,
-    });
-    stream.on('text', (delta) => args.onEvent?.({ type: 'victor_token', text: delta }));
-    const resp = await stream.finalMessage();
+    let resp: Anthropic.Message;
+    try {
+      const stream = streamCall({
+        model,
+        max_tokens: 1024,
+        system: buildSystem(),
+        tools,
+        messages,
+      });
+      stream.on('text', (delta: string) => args.onEvent?.({ type: 'victor_token', text: delta }));
+      resp = await stream.finalMessage();
+      // Fidelity gate (non-anthropic): malformed tool_use input => throw into the fallback.
+      if (transport && transport.provider !== 'anthropic') {
+        for (const b of resp.content) {
+          if (b.type === 'tool_use' && (b.input === null || typeof b.input !== 'object')) {
+            throw new Error(`tool_fidelity: ${b.name}`);
+          }
+        }
+      }
+    } catch (e) {
+      if (transport && transport.provider !== 'anthropic') {
+        // ONE silent same-turn downgrade to Haiku (spec P5). Logged; door writes activity.
+        // eslint-disable-next-line no-console
+        console.warn(`[provider_downgrade] ${transport.provider} failed (${(e as Error).message}) — Haiku for the rest of this turn`);
+        providerDowngrade = true;
+        transport = null;
+        model = MODELS.haiku;
+        i--; // re-run this iteration on the fallback
+        continue;
+      }
+      throw e;
+    }
 
     totalIn += resp.usage?.input_tokens ?? 0;
     totalOut += resp.usage?.output_tokens ?? 0;
@@ -268,7 +304,7 @@ export async function runTurn(args: {
     const esc = toolUse.find((t) => t.name === 'escalate');
     if (esc && !escalated) {
       escalated = true;
-      model = MODELS.sonnet;
+      model = MODELS.sonnet; // escalate is anthropic-dimension only (mid/top tiers route anthropic)
       const idx = tools.findIndex((t) => t.name === 'escalate');
       if (idx >= 0) tools.splice(idx, 1);
       messages = [...priorTurns, { role: 'user', content: message }]; // clean re-run on Sonnet
@@ -302,7 +338,7 @@ export async function runTurn(args: {
         console.log(`[H->D #${talks}] ${msg}`);
 
         args.onEvent?.({ type: 'dispatch', to: 'donna', message: msg });
-        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message);
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, transport ?? undefined, args.modelOverride);
         donnaSession = donna.session; // persist so the next dear_donna_talk RESUMES her
         totalIn += donna.input_tokens;
         totalOut += donna.output_tokens;
@@ -365,7 +401,7 @@ export async function runTurn(args: {
   await supabase.from('usage').insert({
     agent_id: agentId,
     conversation_id: conversationId,
-    model: modelLabel(model),
+    model: args.modelOverride ? model : modelLabel(model), // raw string on routed providers
     input_tokens: totalIn,
     output_tokens: totalOut,
     cost_inr: costInr,
@@ -377,8 +413,9 @@ export async function runTurn(args: {
   return {
     reply,
     conversation_id: conversationId,
-    model: modelLabel(model),
+    model: args.modelOverride ? model : modelLabel(model),
     escalated,
+    provider_downgrade: providerDowngrade || undefined,
     tool_calls: toolCalls,
     cost_inr: costInr,
     tokens: { input: totalIn, output: totalOut, cache_read: cacheRead, cache_write: cacheWrite },

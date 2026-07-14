@@ -214,6 +214,8 @@ export async function runDonnaTurn(
   onAction?: (a: { name: string; input: unknown; result: string }) => void,
   scratchpad?: string,
   rawMessage?: string, // TDW_02 P1: the vendor's raw line, threaded from the loop for donna_lead's raw_message (D9)
+  transportIn?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> }, // TDW_02 P5
+  modelOverride?: string, // TDW_02 P5: non-anthropic routes run one model, both hands
 ): Promise<DonnaTurn> {
   const toolCalls: DonnaTurn['tool_calls'] = [];
   // record() pushes a tool-call AND fires it live, so each of Donna's hands leaves the
@@ -278,17 +280,38 @@ export async function runDonnaTurn(
     'donna_invoice_pdf',
   ]);
 
+  let transport = transportIn ?? null;
+  let donnaModel = modelOverride ?? MODELS.haiku; // anthropic path: Donna is ALWAYS Haiku (unchanged)
   for (let i = 0; i < DONNA_WORK_ITERS; i++) {
-    const resp = await anthropic.messages.create({
-      model: MODELS.haiku, // Donna is ALWAYS Haiku
-      max_tokens: 2048, // v2 pipe: she writes memos now, not just murmurs — roomy, still bounded (a full reply ~Rs 0.7)
-      system: donnaSystem,
-      tools: DONNA_TOOLS,
-      messages,
-    });
+    let resp: Anthropic.Message;
+    try {
+      const params = {
+        model: donnaModel,
+        max_tokens: 2048, // v2 pipe: she writes memos now, not just murmurs — roomy, still bounded (a full reply ~Rs 0.7)
+        system: donnaSystem,
+        tools: DONNA_TOOLS,
+        messages,
+      };
+      resp = transport ? await transport.create(params) : await anthropic.messages.create(params);
+      if (transport && transport.provider !== 'anthropic') {
+        for (const b of resp.content) {
+          if (b.type === 'tool_use' && (b.input === null || typeof b.input !== 'object')) throw new Error(`tool_fidelity: ${b.name}`);
+        }
+      }
+    } catch (e) {
+      if (transport && transport.provider !== 'anthropic') {
+        // eslint-disable-next-line no-console
+        console.warn(`[provider_downgrade] donna: ${transport.provider} failed (${(e as Error).message}) — Haiku for the rest of this segment`);
+        transport = null;
+        donnaModel = MODELS.haiku;
+        i--;
+        continue;
+      }
+      throw e;
+    }
     inTok += resp.usage?.input_tokens ?? 0;
     outTok += resp.usage?.output_tokens ?? 0;
-    cost += calcCostInr(MODELS.haiku, resp.usage?.input_tokens ?? 0, resp.usage?.output_tokens ?? 0);
+    cost += calcCostInr(donnaModel, resp.usage?.input_tokens ?? 0, resp.usage?.output_tokens ?? 0);
 
     const toolUse = resp.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
     const textThis = resp.content

@@ -44,7 +44,7 @@ function leadItem(row: LeadRow): SnapshotItem {
 export const DONNA_LEAD_TOOL: Anthropic.Tool = {
   name: 'donna_lead',
   description:
-    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name or a figure. If a lead matching that phone or name already exists, this updates it rather than duplicating. Call it immediately; never wait for full details. Leads are enquiries not yet engaged; an engaged client with work underway is a binder (donna_client), not a lead. The id this returns is NOT a binder_id — never point binder hands (follow-ups, money, notes, dates) at it; anything beyond the lead\'s own fields belongs on a binder opened separately.',
+    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name or a figure. If a lead matching that phone or name already exists, this updates it rather than duplicating. Call it immediately; never wait for full details. Leads are enquiries not yet engaged; an engaged client with work underway is a binder (donna_client), not a lead. The id this returns is NOT a binder_id — never point binder hands (follow-ups, money, notes, dates) at it; anything beyond the lead\'s own fields belongs on a binder opened separately. When enriching a lead already on file, pass the name AS FILED — a partner\'s name travels as an explicit name-edit or a note, never as a new spelling of the lead (CE-19).',
   input_schema: {
     type: 'object',
     properties: {
