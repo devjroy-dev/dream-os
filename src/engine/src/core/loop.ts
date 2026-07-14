@@ -76,6 +76,10 @@ export async function runTurn(args: {
   tierOverride?: Tier;      // engine tier mapped from the PRODUCT tier at the door
   modelOverride?: string;   // set ONLY on non-anthropic routes: one model, both hands
   transport?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> };
+  // TDW_02 P7 (Amendment Two): Donna's hand may route separately (LD-7 role split).
+  // ABSENT => she follows Victor's wiring exactly as P5 shipped it.
+  donnaTransport?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> };
+  donnaModelOverride?: string;
   onEvent?: (e: TurnEvent) => void;
 }): Promise<TurnResult> {
   const { agentId, message } = args;
@@ -338,7 +342,7 @@ export async function runTurn(args: {
         console.log(`[H->D #${talks}] ${msg}`);
 
         args.onEvent?.({ type: 'dispatch', to: 'donna', message: msg });
-        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, transport ?? undefined, args.modelOverride);
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, (args.donnaTransport ?? transport) ?? undefined, args.donnaModelOverride ?? args.modelOverride);
         donnaSession = donna.session; // persist so the next dear_donna_talk RESUMES her
         totalIn += donna.input_tokens;
         totalOut += donna.output_tokens;

@@ -419,7 +419,26 @@ async function buildLlmForTurn(req) {
   const productTier = (req.vendor && req.vendor.tier) || 'trial';
   const route = await resolveModel(req.app.locals.supabase, 'pwa_vendor', productTier);
   const tierOverride = ENGINE_TIER_MAP[productTier] || 'entry';
-  if (route.provider === 'anthropic') return { tierOverride, route };
+  // TDW_02 P7 (Amendment Two): optional per-role split — donna_provider/donna_model
+  // route HER hand separately. Anthropic donna split => no donna transport (her own
+  // pre-facade Haiku path, byte-identical).
+  const donnaWiring = {};
+  if (route.donna_provider && route.donna_provider !== route.provider) {
+    if (route.donna_provider === 'anthropic') {
+      donnaWiring.donnaTransport = undefined; donnaWiring.donnaModelOverride = undefined;
+    } else {
+      donnaWiring.donnaTransport = {
+        provider: route.donna_provider,
+        stream: (p) => llmStream(route.donna_provider, p),
+        create: (p) => llmCreate(route.donna_provider, p),
+      };
+      donnaWiring.donnaModelOverride = route.donna_model;
+    }
+  }
+  if (route.provider === 'anthropic') {
+    // Victor anthropic (byte-identical); Donna may still split to a cheap provider.
+    return { tierOverride, route, ...donnaWiring };
+  }
   return {
     tierOverride,
     route,
@@ -429,6 +448,7 @@ async function buildLlmForTurn(req) {
       stream: (p) => llmStream(route.provider, p),
       create: (p) => llmCreate(route.provider, p),
     },
+    ...donnaWiring,
   };
 }
 
@@ -525,6 +545,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         tierOverride: llmWiring.tierOverride,
         modelOverride: llmWiring.modelOverride,
         transport: llmWiring.transport,
+        donnaTransport: llmWiring.donnaTransport,
+        donnaModelOverride: llmWiring.donnaModelOverride,
         onEvent: (e) => { const safe = translateBeat(e, req.vendor.id); if (safe) send(safe); },
       });
       if (result.provider_downgrade) {
@@ -572,7 +594,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
-    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport });
+    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
     if (result.provider_downgrade) {
       logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
     }

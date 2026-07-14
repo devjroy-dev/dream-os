@@ -32,7 +32,14 @@ const cache = new Map(); // key -> { at, val }
 function parseRoute(text) {
   try {
     const v = JSON.parse(String(text));
-    if (v && typeof v === 'object' && v.provider && v.model && CONF[v.provider]) return v;
+    if (v && typeof v === 'object' && v.provider && v.model && CONF[v.provider]) {
+      // TDW_02 P7 (Amendment Two): optional per-role split — donna_provider/donna_model
+      // route HER hand separately (LD-7: e.g. mid = Victor haiku / Donna deepseek).
+      // Invalid split values are dropped, never guessed.
+      if (v.donna_provider && !CONF[v.donna_provider]) { delete v.donna_provider; delete v.donna_model; }
+      if (v.donna_provider && !v.donna_model) delete v.donna_provider;
+      return v;
+    }
   } catch (_e) { /* junk falls through to defaults */ }
   return null;
 }
@@ -41,6 +48,11 @@ function guardKeys(route) {
   if (route.provider !== 'anthropic' && !providerKeyPresent(route.provider)) {
     console.warn(`[provider_misconfigured] ${route.provider} routed but its key is absent — anthropic fallback`);
     return { provider: 'anthropic', model: HAIKU, misconfigured: true };
+  }
+  if (route.donna_provider && route.donna_provider !== 'anthropic' && !providerKeyPresent(route.donna_provider)) {
+    console.warn(`[provider_misconfigured] donna route ${route.donna_provider} keyless — her split dropped, she follows Victor`);
+    const { donna_provider, donna_model, ...rest } = route;
+    return rest;
   }
   return route;
 }
