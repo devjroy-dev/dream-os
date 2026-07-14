@@ -1,6 +1,6 @@
 // src/lib/vendor/expenses.js
 // Shared write logic for vendor expenses.
-// Called by REST handlers and pwaEngine tool executors.
+// Called by REST handlers (src/api/vendor/expenses.js).
 
 'use strict';
 

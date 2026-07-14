@@ -1,7 +1,7 @@
 // src/lib/vendor/leads.js
 // Shared write logic for vendor leads.
-// Called by both REST handlers (src/api/vendor/leads.js) and agent tool
-// executors (src/agent/pwaEngine.js). No duplication of write logic.
+// Called by REST handlers (src/api/vendor/leads.js) and the couple enquiry
+// door (src/api/couple/enquire.js). No duplication of write logic.
 //
 // All functions:
 //   - Accept a supabase client + structured params

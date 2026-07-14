@@ -1,6 +1,6 @@
 // src/lib/vendor/availability.js
 // Shared write logic for vendor availability blocks.
-// Called by REST handlers and pwaEngine tool executors.
+// Called by REST handlers (src/api/vendor/availability.js).
 
 'use strict';
 

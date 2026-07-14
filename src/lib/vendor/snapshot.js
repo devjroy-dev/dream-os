@@ -3,10 +3,10 @@
 // Phase 1.5 — shared vendor context, one source of truth for BOTH surfaces.
 //
 // WHY THIS EXISTS:
-//   engine.js (WhatsApp PA) and pwaEngine.js (PWA Business Manager) each had
-//   their own copy of the same 6-query snapshot fetch. They drift over time.
-//   This module is the single definition both import — guaranteeing the PA and
-//   the Business Manager read the SAME numbers.
+//   engine.js (WhatsApp PA) and the retired PWA engine (deleted, TDW_01 Phase A)
+//   each had their own copy of the same 6-query snapshot fetch. This module is
+//   the single definition every surface imports — guaranteeing all surfaces
+//   read the SAME numbers. Live importer: src/agent/engine.js (WA).
 //
 //   It also owns the cross-surface activity log (migration 0063): a fail-safe
 //   append-only record of every mutating action on either surface, so the PA
@@ -38,7 +38,8 @@ const ACTIVITY_MAX_ROWS  = 5;
 
 // ── buildVendorSnapshot ──────────────────────────────────────────────────────
 // The 6 parallel queries that populate the system-prompt dynamic context.
-// Extracted verbatim from the (identical) fetches in engine.js + pwaEngine.js.
+// Extracted verbatim from the (identical) fetches in engine.js + the retired
+// PWA engine (deleted, TDW_01 Phase A).
 async function buildVendorSnapshot(supabase, vendorId, istToday, ist14days) {
   const [
     { data: state },

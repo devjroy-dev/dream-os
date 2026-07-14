@@ -1,6 +1,7 @@
 // src/lib/vendor/invoices.js
 // Shared write logic for vendor invoices.
-// Called by REST handlers and pwaEngine tool executors.
+// Called by REST handlers (src/api/vendor/invoices.js), the vendor engine
+// chat door (src/api/vendor-engine/chat.js — Victor), and src/index.js.
 //
 // Counter increment is NOT atomic here -- we do a read-then-write.
 // Acceptable for founding cohort scale (<50 vendors, low concurrency).

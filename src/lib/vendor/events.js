@@ -1,6 +1,7 @@
 // src/lib/vendor/events.js
 // Shared write logic for vendor events.
-// Called by REST handlers and pwaEngine tool executors.
+// Called by REST handlers (src/api/vendor/events.js) and the vendor
+// engine chat door (src/api/vendor-engine/chat.js — Victor).
 
 'use strict';
 

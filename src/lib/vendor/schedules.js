@@ -1,6 +1,6 @@
 // src/lib/vendor/schedules.js
 // Shared write logic for payment schedules.
-// Called by REST handlers and pwaEngine tool executors.
+// Called by REST handlers (src/api/vendor/schedules.js).
 'use strict';
 
 // ── createSchedule ────────────────────────────────────────────────────────
