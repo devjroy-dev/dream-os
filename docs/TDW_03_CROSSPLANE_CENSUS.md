@@ -86,6 +86,16 @@ Correct non-twins: Kratika ×2 binders (client ₹30k + expense ₹6k — one-bi
 money-story, NOT a dedupe target). Duplicate-dispatch sightings for the 02-HOTFIX
 file: Simran ×2 (typed), Ritika & Arjun ×2 (typed).
 
+## FOOTNOTES (block close, 2026-07-14)
+- **Exhibit A is itself phone-asymmetric** (binder phone NULL, SQL-confirmed): the
+  R1(b) chip cannot mark the flagship specimen — by disclosed design. This is the
+  strongest single argument for 16's engagements spine over any key-matching interim.
+- **Finding 7 — plane-partial consult (engine-side Exhibit A):** 20:30 UTC transcript —
+  Victor, asked about Meera, read only the typed-lead snapshot ("lost, Rs 300,000"),
+  declared "no current booking or payment in flight" over a booked binder holding
+  ₹20k received / ₹60k total, and attributed the read to Donna. Filed to the
+  02-HOTFIX lane; verify coverage at hotfix close.
+
 ## R1(b)/R2 boundary (for future executors)
 The UI cross-chip READS phone matches and never writes. Dispatch may ANNOUNCE the
 other plane's standing record in its result string (CE-14 pattern) and must not
