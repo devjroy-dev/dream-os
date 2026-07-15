@@ -541,6 +541,17 @@ Full audit: docs/TDW_04_AUDIT_FINDINGS.md (every SURFACE_TRUTH_AUDIT ST claim ve
 - **O-4 (🟢, record):** ST's glance path is stale — truth is `src/engine/src/core/glance.ts`.
 - **A-1 (🟢, founder-ratified):** dream-os HEAD exactly e82b6e2 — the pre-classified docs-only delta past it never materialized (eebb4bf predates it). Finding, not drift.
 
+## TDW_04 Part A sitting A1 (2026-07-15) — Wishbone + lanes CLOSED
+Charter (spec A1, ST-1/L-1): WishboneSheet live (taps wake; complete_inline PATCH leads / POST binders per wire truth; tell_victor prefill-not-fire), every lane declaration + rename, both themes, tsc, executor browser pass, founder smoke. Riders aboard (CE-ruled): phoneKey degenerate-key guard ×2 twins; no-op state-transition log guard.
+
+**SEAL — executor browser pass 21 PASS** (real Chromium, shipped components, route-mocked wire matching verified handlers; local harness route + real pages; `next build` blocked in-sandbox by Google-Fonts egress — environment, not code; §6's cleared-.next tsc = 0 errors ×2). **Founder phone smoke 7/7** (2026-07-15 ~12:30–12:45 + follow-up): lanes on all five slices · binder chip → inline phone through the POST door · money law rendered (Tell Victor only) · lead wishbone on Rahul Sharma (chip block, inline city filed via PATCH, Ask Victor primer landed in the composer with NOTHING auto-sent — prefill-not-fire witnessed in prod, image-evidenced) · cabinet header + ON THE CALENDAR column live with real data (the pass's one unclicked item, founder-confirmed) · light theme legible · regressions clean (Edit/date/Add lead). **CE-22: dream-os `eeee188` · dreamos-pwa `a904424` · smoke ran against live prod (deploys green by evidence).**
+
+**A1 smoke findings (OPEN → CE):**
+- **F-04.5 (🟢 polish, next 04 delivery on CE word):** the wishbone toast prints the door's raw reply incl. record UUID ("Updated record 000568cc-…"). Mechanically true, cosmetically wrong; the delete doors' founder-ruled successMessage pattern applies — override to "Filed."
+- **F-04.6 (🟡 → Block 06 evidence packet, filed beside F-04.3(b)):** placeholder VALUES defeat the completeness contract exactly as placeholder keys defeated fusion — Keka's lead holds city="Unknown" (a present string) + phone=0000000000, so leadMissing correctly reports nothing missing and no chips render, while honest-null leads (Rahul) chip fully. Upstream sin: enrichment filing "Unknown" as fact (F11's plausible-fabrication family). Whether leadMissing should treat sentinel strings as absent = CE ruling; not improvised here.
+- **F-04.7 (🟡, A2 rider candidate on CE word):** lead notes are WRITE-ONLY on the list surface — the Edit sheet PATCHes `notes` (ledger-proven: `lead_update (name, wedding_city, notes)`) but the detail sheet's field rows never rendered them (pre-existing, TDW_03 row mapper) and the wire's coverage of the column needs verifying before a read row lands. Surfaced by the founder's own question ("what's the point of notes then?").
+- **F-04.4 carried (🟢 observation, pre-existing):** useLoader's inline fetcher/extract identities cause refetch churn under instant responses (surfaced by pass fixtures; prod latency settles it). Owner: whichever block next touches the data hooks.
+
 ## TDW_04 engine-lane sitting (2026-07-15) — absorbed 02-HOTFIX-2 CLOSED
 Charter (L-9 as absorbed): ST-3a, ST-3b, ST-3d, ST-3e, ST-6. ST-3c untouched (Block 06's prose).
 
