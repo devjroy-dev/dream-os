@@ -254,6 +254,91 @@ async function retroLinkOnFile(req, result) {
 // The door resolves the event (vendor-scoped; only on a full valid handle, so a truncated
 // one reports cleanly instead of hard-erroring — the short-UUID lesson), applies the change,
 // and confirms. updateEvent is the same helper the calendar API uses, so the contract matches.
+// ── TDW_04 B0 item 3 (CE extension, 2026-07-15) — THE CHAT LANE JOINS THE LEDGER ──
+//
+// Recorded as NEW SCOPE, not laundered into ST-3d: ST-3d is SURFACE_TRUTH_AUDIT R3(d),
+// whose text is "Log BINDER-DOOR and LEAD-DOOR writes" — that shipped (binderWrite.js
+// :69/:109, leads.js :203/:292/:337/:394). The chat lane was never in ST-3d or L-9.
+//
+// WHY (F-04.21, founder-run evidence 2026-07-15): fourteen vendor_activity_log rows in
+// the 11:00-14:00 window, ALL surface='pwa' from the list page. ZERO from this lane.
+// The lead this lane created at 11:22:38 logged nothing, so establishing who wrote it
+// took four founder-run queries. The doors log; the WA agent logs (agent/engine.js:268);
+// this lane did not.
+//
+// GRANULARITY (CE-ruled): ONE ROW PER NESTED MUTATING donna_call. A turn that files a
+// lead and a payment made two facts; the ledger records two. Donna's hands nest inside
+// tool_calls[].donna_calls (loop.ts:48, :368-372) — top-level carries only her
+// dear_donna_talk/listen_harvey_talk envelope, so a top-level-only scan logs nothing.
+//
+// ERROR GATE (CE-ruled): the doors' isErr convention — a display starting with 'ERROR'
+// is a FAILED write and is never logged. WA's looksLikeError regex (engine.js:266) is a
+// legacy heuristic and is deliberately NOT propagated.
+//
+// SIGNAL-ONLY TOOLS ARE DELIBERATELY ABSENT FROM THIS SET. donna_invoice_pdf
+// (recordPrimitives.ts:540-545), donna_book_event (:546-555), donna_edit_event
+// (:556-564) and donna_cancel_event (:565-570) WRITE NOTHING in the engine — their
+// displays are future tense ("it is being placed on the calendar") because the real
+// write happens in THIS FILE's post-processors (buildInvoices/bookEvents/mutateEvents),
+// which can still fail after the signal returns cleanly. Logging a signal as an activity
+// row would enter a REQUEST into the ledger as a COMPLETED FACT — F-04.21's exact
+// disease rebuilt inside the cure for it. Their door-side writes remain unlogged as of
+// B0; see the handover's PROPOSAL (not implemented, outside this charter).
+//
+// The write set below is enumerated from executeRecordTool's own switch
+// (recordPrimitives.ts) plus donna_lead (donna.ts:482-491, the only other hand that
+// sets mutated=true). Reads are excluded by construction (donna.ts:442's read sets);
+// donna_verdict/donna_review write supervision tables, never vendor-visible records,
+// and do not set mutated (donna.ts:466-480) — excluded.
+const CHAT_MUTATING_TOOLS = new Set([
+  'donna_money',                        // recordPrimitives.ts:417
+  'donna_date',                         // :456
+  'donna_client',                       // :458
+  'donna_note',                         // :460
+  'donna_note_append',                  // :463
+  'donna_phone',                        // :467
+  'donna_doc',                          // :469
+  'donna_stage',                        // :471
+  'donna_write_reasonforaction_append', // :474
+  'donna_money_edit',                   // :476
+  'donna_edit',                         // :525
+  'donna_hide',                         // :571
+  'donna_unarchive',                    // :580
+  'donna_retrieve',                     // :581 (transitional alias, same hand)
+  'donna_merge',                        // :590
+  'donna_split',                        // :631
+  'donna_repeatfollowup',               // :671
+  'donna_lead',                         // donna.ts:482-491 (typed plane, LD-1)
+]);
+
+// Collect every mutating call at BOTH depths, in turn order, then log one row each.
+// Fire-and-forget throughout: logActivity is fail-safe by contract (snapshot.js:112-141)
+// and a ledger miss must never disturb a write that already landed.
+async function logChatActivity(req, result) {
+  const supabase = req.app.locals.supabase;
+  const isErr = (r) => typeof r === 'string' && r.startsWith('ERROR');
+  const hits = [];
+  for (const tc of (result.tool_calls || [])) {
+    if (CHAT_MUTATING_TOOLS.has(tc.name)) hits.push(tc);
+    for (const dc of (tc.donna_calls || [])) if (CHAT_MUTATING_TOOLS.has(dc.name)) hits.push(dc);
+  }
+  for (const c of hits) {
+    if (isErr(c.result)) continue; // a failed write is not an activity
+    // entity_type/entity_id stay NULL: tool_calls carries no item.ref_id, and parsing an
+    // id out of prose would put an inference in the ledger. The display's own first line
+    // carries the id where the tool prints one (donna_lead: "Lead saved. id=<uuid>...").
+    // PROPOSAL in the handover: have the engine surface item.ref_id on tool_calls.
+    logActivity(supabase, {
+      vendorId: req.vendor.id,
+      surface: 'pwa',
+      action: c.name, // tool name — logActivity's own convention (snapshot.js:132)
+      summary: String(c.result || c.name).split('\n')[0].slice(0, 240),
+      entityType: null,
+      entityId: null,
+    }).catch(() => {});
+  }
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function resolveEvent(req, eventId) {
   const raw = String(eventId || '').trim();
@@ -573,6 +658,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
 
       await retroLinkOnFile(req, result);
       await lockstepBinderToEvent(req, result);
+      await logChatActivity(req, result); // TDW_04 B0 item 3
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
@@ -611,6 +697,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const mutated   = await mutateEvents(req, result);
     await retroLinkOnFile(req, result);
     await lockstepBinderToEvent(req, result);
+    await logChatActivity(req, result); // TDW_04 B0 item 3
 
     let reply = scrubText(result.reply); // CE-18: the firewall covers the reply itself
     if (documents.length) {

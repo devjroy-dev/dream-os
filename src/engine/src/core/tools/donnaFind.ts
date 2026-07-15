@@ -1,4 +1,5 @@
-// donnaFind.ts — Donna's eyes. The one READ tool over the wide `records` table.
+// donnaFind.ts — Donna's eyes. The one READ tool over the estate: the wide `records`
+// table (binders) AND, since TDW_04 B0 item 4a, the typed `public.leads` plane (LD-1).
 //
 // Donna has write-atoms (recordPrimitives) but, until this, no way to LOOK. Without
 // eyes she cannot reconcile against ground truth before writing — which is the whole
@@ -12,6 +13,7 @@
 // the verify-before-create instinct actually complete instead of hitting a wall.)
 import type Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '../db.js';
+import { vendorIdFromAgent } from '../vendorIdentity.js'; // TDW_04 B0 item 4a: the reverse bridge, mirroring donnaLead's plane
 import type { ToolOutcome, ViewRow } from '../snapshotTypes.js';
 
 // Map a found row to the shell's ViewRow (drops internal-only fields).
@@ -31,7 +33,7 @@ function toViewRow(r: { id: string; client: string | null; direction: string | n
 export const DONNA_FIND_TOOL: Anthropic.Tool = {
   name: 'donna_find',
   description:
-    "Look in the cabinet before you write. Casts a WIDE net: give any names or terms you have — a person, a company, a fragment — and it returns the plausible matching binders, best match first, WITH their binder ids, for you to judge which (if any) is the one. Each term is matched across every field (name, note, doc, phone), so a term finds its record even if it was filed under a different field; a term that matches is enough, extra terms only sharpen the ranking and never shrink the net. Use it to reconcile against what's really on file before you create (so you never file a duplicate), to find the right existing record to add to, or to pull the binder id you need to edit, hide, or retrieve one. stage/date, when given, nudge the ranking rather than filtering. Archived (set-aside) records are ALWAYS included, tagged [ARCHIVED] — nothing is ever hidden from your search. Each result also shows which field your term matched on (e.g. 'matched on: note'), so a record that merely mentions a name in its notes is never mistaken for the record OF that name. If nothing matches, you'll get the most recent records back anyway, so a missing or differently-filed name is never a dead end. With nothing given, returns the most recent records.",
+    "Look in the cabinet before you write. Casts a WIDE net: give any names or terms you have — a person, a company, a fragment — and it returns the plausible matching binders, best match first, WITH their binder ids, for you to judge which (if any) is the one. Each term is matched across every field (name, note, doc, phone), so a term finds its record even if it was filed under a different field; a term that matches is enough, extra terms only sharpen the ranking and never shrink the net. Use it to reconcile against what's really on file before you create (so you never file a duplicate), to find the right existing record to add to, or to pull the binder id you need to edit, hide, or retrieve one. stage/date, when given, nudge the ranking rather than filtering. It searches BOTH planes in one pass: your binders (the cabinet) AND the enquiries plane — typed leads, tagged [ENQUIRY], which carry their own state and budget and are NOT binders (binder hands don't attach to an enquiry id). A person can exist on either plane or both, so finding a binder never means there is no enquiry, and finding neither means neither — but if a plane cannot be read, you will be told exactly that, and 'could not be read' is never 'there is none'. Archived (set-aside) records are ALWAYS included, tagged [ARCHIVED] — nothing is ever hidden from your search. Each result also shows which field your term matched on (e.g. 'matched on: note'), so a record that merely mentions a name in its notes is never mistaken for the record OF that name. If nothing matches, you'll get the most recent records back anyway, so a missing or differently-filed name is never a dead end. With nothing given, returns the most recent records.",
   input_schema: {
     type: 'object',
     properties: {
@@ -78,6 +80,12 @@ type FoundRow = {
   reason_for_action: string | null;
   hidden: boolean | null;
 };
+
+type LeadFound = {
+  id: string; name: string | null; phone: string | null; state: string | null;
+  budget_max: number | null; wedding_date: string | null; wedding_city: string | null;
+  notes: string | null;
+}; // TDW_04 B0 item 4a — public.leads read shape (typed plane, LD-1)
 
 const FIND_SELECT = 'id, amount, client, date, direction, doc_ref, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, hidden';
 const FIND_LIMIT = 15;
@@ -154,6 +162,64 @@ export async function executeFindTool(
   // supervision miss, 2026-06-11). So we run the same tokens against brief titles and
   // fold the hits into the result, each with its brief_id + pages so judgment can
   // read it next with donna_brief_read.
+  // ── THE TYPED PLANE IS PART OF THE ESTATE ────────────────────────────────
+  // TDW_04 B0 item 4a (CE-ruled 2026-07-15). donna_find was records-only: it could not
+  // see public.leads at all, so a dispatched search over half the estate answered as if
+  // the other half did not exist. LD-1: typed tables own leads; engine.records own
+  // binders. A vendor's "Swati" may live on either plane; eyes that see one plane and
+  // speak for both are the confusion this block exists to kill.
+  //
+  // Vendor-scoped and READ-ONLY, mirroring donnaLead's plane exactly: the reverse
+  // identity bridge (vendorIdentity.ts) -> supabase.schema('public') -> .eq('vendor_id')
+  // -> .is('deleted_at', null) (the read-path honesty law — a soft-deleted lead is gone).
+  // This never writes and never patches the snapshot; it is the same honest lookup the
+  // rest of this tool is.
+  //
+  // FAIL-CLOSED (F15's shape, and this tool's own disease): a guard read that ERRORS is
+  // NOT a read that found nothing. This tool's empty branches say "Nothing on file yet"
+  // and "No record matched" — if a failed leads read fell through to those sentences,
+  // the tool would assert ABSENCE FROM A FAILED READ. That is F-04.21 head (b) rebuilt
+  // inside the cure for it. So the error is carried, never swallowed, and every branch
+  // below says the leads plane could not be read rather than that it was empty.
+  //
+  // SCOPE: reach only. Whether the model DISPATCHES this tool before speaking is the
+  // confidence-triggered-retrieval gap (SURFACE_TRUTH_AUDIT §2:55) and belongs to Block
+  // 06 — untouched here.
+  async function searchLeads(tokenList: string[]): Promise<{ lines: string[]; error: string | null }> {
+    const vendorId = await vendorIdFromAgent(agentId);
+    if (!vendorId) {
+      return { lines: [], error: 'the owner account for this agent could not be resolved' };
+    }
+    const pub = supabase.schema('public');
+    let lq = pub
+      .from('leads')
+      .select('id, name, phone, state, budget_max, wedding_date, wedding_city, notes')
+      .eq('vendor_id', vendorId)
+      .is('deleted_at', null);
+    if (tokenList.length > 0) {
+      const cols = ['name', 'phone', 'wedding_city', 'notes'];
+      const conds: string[] = [];
+      for (const t of tokenList) for (const c of cols) conds.push(`${c}.ilike.%${t}%`);
+      lq = lq.or(conds.join(','));
+    }
+    const { data, error } = await lq.order('created_at', { ascending: false }).limit(FIND_LIMIT);
+    if (error) return { lines: [], error: error.message };
+    const rowsL = (data ?? []) as LeadFound[];
+    return {
+      lines: rowsL.map((l) => {
+        const bits: string[] = [];
+        if (l.state) bits.push(`state ${l.state}`);
+        if (l.budget_max != null) bits.push(`budget Rs ${l.budget_max}`);
+        if (l.wedding_date) bits.push(`wedding ${l.wedding_date}`);
+        if (l.wedding_city) bits.push(l.wedding_city);
+        if (l.phone) bits.push(`phone ${l.phone}`);
+        return `  [ENQUIRY] ${l.id} — "${l.name ?? 'unknown'}"${bits.length ? ' | ' + bits.join(' | ') : ''}` +
+               ` (typed lead — not a binder; binder hands don't attach to this id)`;
+      }),
+      error: null,
+    };
+  }
+
   async function searchShelf(tokenList: string[]): Promise<string[]> {
     let bq = supabase
       .from('briefs')
@@ -268,14 +334,24 @@ export async function executeFindTool(
     // Search briefs with the same tokens before ever calling this a dead end.
     const shelfHits = await searchShelf(tokens);
     const reviewHits = await searchReviews(tokens);
+    // TDW_04 B0 item 4a: the typed plane, and its fail-closed voice.
+    const leads = await searchLeads(tokens);
+    const leadTail = leads.error
+      ? `\nEnquiries (typed leads): COULD NOT BE READ — ${leads.error}. This is not "none": the enquiry plane is unknown this turn. Say so rather than speak for it.`
+      : leads.lines.length
+        ? `\nAnd on the enquiries plane:\n${leads.lines.join('\n')}`
+        : '';
     if (recentRows.length === 0) {
-      if (shelfHits.length || reviewHits.length) {
-        const parts: string[] = ['No records in the cabinet — but the disk holds matching items:'];
+      if (shelfHits.length || reviewHits.length || leads.lines.length || leads.error) {
+        const parts: string[] = ['No records in the cabinet — but the disk holds more:'];
         if (shelfHits.length) parts.push('On the shelf:\n' + shelfHits.join('\n'));
         if (reviewHits.length) parts.push('Filed reviews:\n' + reviewHits.join('\n'));
+        if (leads.lines.length) parts.push('On the enquiries plane (typed leads):\n' + leads.lines.join('\n'));
+        if (leads.error) parts.push(`Enquiries (typed leads): COULD NOT BE READ — ${leads.error}. Not "none" — unknown. Say so.`);
         return { display: parts.join('\n') };
       }
-      return { display: 'Nothing on file yet — the cabinet is empty, the shelf holds no matching document, and no filed review matches.' };
+      // Both planes truthfully read, both empty. Only NOW may this sentence be spoken.
+      return { display: 'Nothing on file yet — the cabinet is empty, no enquiry matches on the typed plane, the shelf holds no matching document, and no filed review matches.' };
     }
     const termNote = tokens.length ? ` for "${tokens.join(' ')}"` : '';
     const shelfTail = shelfHits.length ? `\nAnd on the shelf:\n${shelfHits.join('\n')}` : '';
@@ -284,7 +360,7 @@ export async function executeFindTool(
       display:
         `No record matched${termNote}. The handle you searched may be missing or filed differently — ` +
         `here are the most recent records (active and archived), so you can spot the one you mean by its contents:\n` +
-        recentRows.map((r) => describeRow(r, [])).join('\n') + shelfTail + reviewTail,
+        recentRows.map((r) => describeRow(r, [])).join('\n') + leadTail + shelfTail + reviewTail,
     };
   }
 
@@ -315,7 +391,16 @@ export async function executeFindTool(
   const shelfTail = shelfHits.length ? `\nOn the shelf as well:\n${shelfHits.join('\n')}` : '';
   const reviewHits = await searchReviews(tokens);
   const reviewTail = reviewHits.length ? `\nFiled reviews as well:\n${reviewHits.join('\n')}` : '';
-  return { display: `${header}\n${shown.map((r) => describeRow(r, tokens)).join('\n')}${shelfTail}${reviewTail}`, found: shown.map(toViewRow) };
+  // TDW_04 B0 item 4a: binders found does NOT mean the enquiry plane is empty — a twin
+  // may sit on the typed plane with a different state (the Meera/Keka shape). Both
+  // planes, every time, or an honest word about the one that could not be read.
+  const leads = await searchLeads(tokens);
+  const leadTail = leads.error
+    ? `\nEnquiries (typed leads): COULD NOT BE READ — ${leads.error}. Not "none" — unknown. Say so rather than speak for it.`
+    : leads.lines.length
+      ? `\nOn the enquiries plane as well (typed leads — a binder and an enquiry can be the same person):\n${leads.lines.join('\n')}`
+      : '';
+  return { display: `${header}\n${shown.map((r) => describeRow(r, tokens)).join('\n')}${leadTail}${shelfTail}${reviewTail}`, found: shown.map(toViewRow) };
 }
 
 // donna_whatsdue — the records whose follow-up date has arrived (followup_on <= asOf).

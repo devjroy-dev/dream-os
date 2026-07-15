@@ -541,6 +541,71 @@ Full audit: docs/TDW_04_AUDIT_FINDINGS.md (every SURFACE_TRUTH_AUDIT ST claim ve
 - **O-4 (🟢, record):** ST's glance path is stale — truth is `src/engine/src/core/glance.ts`.
 - **A-1 (🟢, founder-ratified):** dream-os HEAD exactly e82b6e2 — the pre-classified docs-only delta past it never materialized (eebb4bf predates it). Finding, not drift.
 
+## TDW_04 B0 (2026-07-15) — the F-04.21 charter: diagnostic, ledger, reach. **CE-22:** dream-os `83b824a` → this ZIP · dreamos-pwa `525b2c8` untouched
+
+**Evidence:** founder-run read-only SQL, Supabase prod `nvzkbagqxbysoeszxent`/`main`, role `postgres`, 2026-07-15 19:18–19:27 IST (diagnostic Q1–Q4, characterization U1–U4, the L-8 oracle). Screenshots + pastes in-session. Static reads against fresh clones at HEAD.
+
+### F-04.21 RESTATED — **the fork returned NEITHER; the write landed**
+
+**CE ruling Q-B0-1 WITHDRAWN by the CE, 2026-07-15,** on this evidence: the `public.leads` row was **not** founder-created via the list page and **was** claimed by the chat — `source='victor'`, `draft_meta` present, and the id is named in `donna_lead`'s own result. Three prior characterizations of this specimen were wrong (the A4 census entry's "held by nothing"; the CE's ruling; this executor's own pre-U1 draft, "the 40k appears only in Donna's prose"). **Everyone characterized; nobody queried.** That is as much the finding as its content.
+
+**The turn, from `engine.messages` (one agent `50b2e89c`, one thread):**
+```
+11:21:59.914  user       "Add a client for 17th july"
+11:22:06.376  assistant  "Once you give me those, it goes straight in…"   [dear_donna_talk; NO WRITE]
+11:22:15.515  user       "Name is swati Roy"
+11:22:16.649  assistant  "Package amount for Swati Roy on 17th July?"     [tool_calls NULL]
+11:22:33.911  user       "40,000"
+11:22:38.011  ══ public.leads d80aa837 CREATED — source='victor' ══
+11:22:40.662  assistant  "Done. Swati Roy is down for the 17th at 40k."   [donna_lead → "Lead saved. id=d80aa837…"]
+11:23:09.371  ══ lead_update "Swati Roy" (wedding_city) — LIST PAGE ══     [PATCH /:leadId — no snapshot patch]
+12:30:34.181  ══ d80aa837 SOFT-DELETED ══ (logged 12:30:34.622, "list page / undo door")
+13:04:31.427  user       "when is swatis event"
+13:04:40.872  assistant  "I don't have a record of someone named Swati…"  [ZERO tool calls]
+```
+**U1:** `budget_max=40000` · `wedding_date=2026-07-17` · `state='new'` · `source='victor'` · `notes='estimate via Victor'` · `raw_message='40,000'` · `draft_meta={"source":"victor","missing":["phone"]}`. **U2: zero binders, ever.**
+
+**The A4 anchor was wrong.** "~18:03 IST" is the **deletion** (12:30:34 UTC); the claim is 11:22:40 UTC (16:52 IST). A window narrowed to the charter's ~12:33 anchor would have returned zero rows. The diagnostic's wide window is why a verdict exists — and its `donna_calls` unnesting is why it is the right verdict: Donna's hands nest under `dear_donna_talk` (`loop.ts:48`, `:368-372`), so a top-level-only scan scores a real ERRORed write as zero and returns a **false model-skipped** verdict (bench-witnessed).
+
+**HEAD (a) — false characterization of a real write, over an unwitnessed confirmation. OPEN → Block 06, top shelf.**
+The vendor asked to **"Add a client."** A **typed lead** was filed. `donnaLead.ts:242-247` writes `budget_max` and `wedding_date`; `:259`'s display reports **only** `id`, `name`, `state`, then warns *"(Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)"* Donna's hand-back — *"Lead logged: Swati Roy, wedding 17 July, 40k package, stage new"* — **echoed her own input back as if it were a witnessed result.** `down for` ≠ `state='new'`; `40k package` ≠ a `budget_max` **estimate** cell; no binder, no calendar row. **Had `value_estimate` silently failed to write, the sentence would have been byte-identical.** F13's family (`:511`), one degree subtler: **F13 lied over a witnessed ERROR; this spoke past a partial success whose result deliberately said "but not that."**
+
+**Write-first breach, folded (CE-ruled Q-B0-10 — one specimen, one finding, no separate number).** Protocol §4: first mention creates the draft. *"Add a client for 17th july"* at 11:21:59 → interrogation at 11:22:06 and 11:22:16 → filing at 11:22:38: **39 seconds and two questions after first mention.** Field-report items 3+5 (`:527`), live.
+
+**HEAD (b) — DISSOLVED. The denial was TRUE.** Deleted from the list page at 12:30:34.622 (`vendor_activity_log`); `deleted_at=12:30:34.181`. Denial at 13:04:40, **34 minutes later**. `donnaLead.ts:164/:171` and `donna.ts:75-83` filter `deleted_at IS NULL`. **U4 confirms:** no `lead:d80aa837` item in the stored note — the delete door's `patchNote` (`leads.js:387`) evicted it. The snapshot was correct and he read it correctly.
+
+**THE RIDER — the sentence this specimen exists to write (→ 06's packet with the specimen attached):** the 13:04 turn made **zero tool calls at either depth**; he asserted absence from the snapshot without dispatching `donna_find` — `SURFACE_TRUTH_AUDIT` §2:55's **confidence-triggered-retrieval gap, confirmed live and unfired.**
+
+> **Head (a): the claim was true, but she didn't read. Head (b): the denial was true, but he didn't look.**
+> **Right twice, by luck, in opposite directions. One disease: speech unmoored from witnessed results.**
+
+**Item 2 (the fork rider) DIED as a code rider (CE-ruled Q-B0-7)** — no discarded error exists in this specimen; nothing mechanical to fail-close against. The defect is soul/lens → 06.
+
+### NEW FINDINGS
+
+- **F-04.22 (🔴 → CE, RATIFIED into `SURFACE_TRUTH_AUDIT` §3 this ZIP):** **`messages` is a two-plane word and `engine.messages` is documented nowhere.** `SCHEMA.md:154-172` documents `public.messages` (17 cols, WA shape); `engine.messages` is 6 cols (`BASELINE.md`; writer `memory.ts:133`). A session writing engine SQL from SCHEMA.md queries `body`/`sent_by`, gets zero rows, and reports *"the turn does not exist"* — a fabricated verdict from a correct-looking query.
+- **F-04.23 (🟡 → CURED STRUCTURALLY this ZIP):** the engine schema's 25 tables had **no documented DDL anywhere** (the ladder is public-only). `db/queries/engine_schema_dump.sql` ships here; its founder-run output commits as `docs/db/ENGINE_SCHEMA.md`. **Standing rule (CE-ruled, binds every session including this one): founder-run SQL is written only against witnessed column lists — never against prose.**
+- **F-04.24 (🟢-watch):** `direction <> 'out'` NULL-unsafety in the oracle's prose. Struck above; runnable line in the census doc. Reachable, not firing.
+- **F-04.25 (🟡 → CURED this ZIP):** **the cabinet's events read carried no `deleted_at` filter** (`cabinet.js:51-54`) while `events.js` filters it (`:117/:124/:186`) — **a soft-deleted future event counted as "On the calendar."** F-04.17's missing half: that ruling stopped *cancelled* dates over-claiming the drawer; *deleted* ones went on doing it. A deleted date is a **sellable** date. Not firing at the run (`oracle_on_calendar=1` = drawer). Founder blessed the cure's side effect: soft-deleted **reminders** also stop rendering, everywhere the read feeds.
+
+### SHIPPED THIS ZIP
+
+- **F-04.25 cure** — `cabinet.js:54` `.is('deleted_at', null)`. `EVENT_SELECT` unchanged: `events.js:115-119` proves in-repo that PostgREST filters a column it does not select.
+- **Item 3 — the chat lane joins `vendor_activity_log`** (`chat.js`, both routes). **Recorded as CE extension, NOT laundered into ST-3d:** ST-3d is R3(d), *"Log binder-door and lead-door writes"* — that shipped; the chat lane was never in it. Granularity: one row per nested mutating `donna_call` (CE-ruled). Error gate: the doors' `isErr` (`ERROR`-prefixed display), **not** WA's legacy regex. **Justification written by the record:** U3 returned 14 rows in the window, **all `surface='pwa'` from the list page, zero from this lane** — the lead this lane created at 11:22:38 logged nothing, so establishing who wrote it took four founder-run queries.
+- **Item 4a — `donna_find` reaches the typed plane**, vendor-scoped, read-only, mirroring `donnaLead`'s plane (reverse bridge → `schema('public')` → `.eq('vendor_id')` → `.is('deleted_at', null)`). **Fail-closed:** a failed leads read says *"COULD NOT BE READ … not 'none' — unknown"*, never *"Nothing on file"*. Reach only — **dispatch is 06's.**
+- **Item 4b — both lead doors sync the snapshot.** `POST /` (create) and `PATCH /:leadId` (field-edit) join the state PATCH and DELETE. **Live specimen:** `11:23:09 lead_update "Swati Roy" (wedding_city)` left her snapshot line stale 31 seconds after it was written. **D-4's lying comment corrected** — it claimed *"the PATCH doors join it"* (plural) while `patchLeadSnapshot` had exactly one call site.
+
+### EXECUTOR DISCLOSURE (B0)
+
+1. **Gravest — repeat-class defect: a column name guessed from prose into founder-run SQL.** U4 shipped `agent_snapshot.rebuilt_at`; the table is `(agent_id, note)` and `rebuilt_at` is a **key inside the note JSON**. It errored `42703` in the founder's editor. **This is verbatim the A4 disclosure's item 3** (`vendor_activity_log.detail`, truth `summary`) — same defect, one block later, by an executor who had quoted that disclosure approvingly. Caught by the founder's run, not by me. **CE ruling: the disclosure standard held; the structure was the gap — `ENGINE_SCHEMA.md` + the witnessed-column rule is its extinction, and the pattern is named for the protocol's promotion list at block close.**
+2. **DEVIATION FROM A RULED MECHANIC (item 4b), standing for ratify-or-revert.** The CE ruled *"`resolveAgent()` + `patchLeadSnapshot` on `POST /` and `PATCH /:leadId`"* **and** *"a missing agent must not fail a lead creation."* **Both cannot hold:** `resolveAgent()` is blocking by construction (`resolveAgent.js` — 401 on missing agent, 500 on resolution failure), so mounting it on the create door makes lead creation fail exactly where the ruling forbids it. Built to the **binding constraint**: the agent is resolved **in-handler, after the write lands**, via `resolveAgentForVendor` (the same function the middleware wraps), every failure swallowed. `PATCH /:leadId` already carried `resolveAgent()` — unchanged, call added only. **Revert = mount the middleware and delete the try/catch; the ruling's mechanic returns and its constraint breaks.**
+3. **The bench fixture guessed `source='list_page'`,** mirroring the then-standing (now withdrawn) CE ruling. Prod says `victor`. The fixture proved SQL *behaviour* only and correctly proved nothing about prod.
+4. **The diagnostic's Q3 `fork_verdict` column is over-applied** — it labels every assistant turn, so two non-claim turns read "MODEL-SKIPPED". Executor design defect; the verdict rests on Q2's raw output.
+5. **Item 3 logs no `entity_id`.** `tool_calls` carries no `item.ref_id`, and parsing an id out of prose would put an inference in the ledger. Summary carries the id where the tool prints one. **PROPOSAL (not implemented):** surface `item.ref_id` on `tool_calls`.
+6. **Item 3 does not log the four SIGNAL-ONLY tools' door-side writes.** `donna_invoice_pdf`/`donna_book_event`/`donna_edit_event`/`donna_cancel_event` write nothing in-engine (`recordPrimitives.ts:540-570`, future-tense displays); the real writes happen in `chat.js`'s own post-processors, which can fail after the signal returns clean. **Logging the signal would enter a request into the ledger as a completed fact — F-04.21's disease rebuilt inside its cure.** Their door-side writes remain unlogged. **PROPOSAL for a later sitting.**
+7. **Ordered read incomplete:** `FINDINGS_LOG`'s pre-04 history (~500 lines: May findings #1-22, TDW_02 P5/P7) unread. Nothing in B0 depends on it.
+8. **B0 is not sealed by this ZIP.** The cold proof turn (Q-B0-9's rewritten proof #2: retrieval-forcing phrasing; non-dispatch banks as 06 evidence; harness invocation is the fallback) and the activity-row witness both run **post-deploy**. No deploy-green is claimed here.
+
 ## TDW_04 Part A sittings A4 + A4.1 (2026-07-15) — CLOSED · **PART A CLOSED** (sealed at dream-os `1b87981` / dreamos-pwa `525b2c8`, both greens witnessed by the founder's smoke against live deploys)
 
 Charter (Part A's finale): AddSheet draft-first + expander (P5) · cold-open splash (P6) · L-10/ST-7 executed · FilterRail + sort (P4) · F-04.14's ruled return · F-04.19's one-liner · founder copy law sweep · acceptance sweep · census re-run per L-8 with the oracle line.
@@ -559,9 +624,11 @@ Charter (Part A's finale): AddSheet draft-first + expander (P5) · cold-open spl
 
 **F-04.18 WATCH (this seal's deploys):** founder explicit verdict — soft ×3 + hard ×1 on /vendor/list/invoices: **PASS**, rows stable, screenshot on record. Third consecutive deploy surviving the watch; SW/chunk-mismatch remains the leading hypothesis for the one historical blank; A3.2 remains formally unexonerated; preview repro (deploy-over-live-SW) still authorized, still pending. F-04.18 stays OPEN.
 
-**CENSUS (L-8, re-run + oracle line inherited permanently):** leads 9 · events 11 · notes_state 5. Oracle line's first run caught TWO things: (1) executor's SQL lacked the cabinet's `hidden=false` and agent scope — corrected; the STANDING line now filters `agent_id + hidden=false + direction<>'out'`; (2) with the correction: **oracle_outstanding 1,25,000 = drawer = Invoices masthead = hub, to the rupee; oracle_on_calendar 1 = the drawer's column.** A3's victory is now a census assertion, permanent.
+**CENSUS (L-8, re-run + oracle line inherited permanently):** leads 9 · events 11 · notes_state 5. Oracle line's first run caught TWO things: (1) executor's SQL lacked the cabinet's `hidden=false` and agent scope — corrected; the STANDING line now filters `agent_id + hidden=false + direction<>'out'`; (2) with the correction: **oracle_outstanding 1,25,000 = drawer = Invoices masthead = hub, to the rupee; oracle_on_calendar 1 = the drawer's column.**
 
-**F-04.21 OPEN → Block 06 packet (the census's catch, named specimen):** Victor said "Done. Swati Roy is down for the 17th at 40k" (founder chat, 2026-07-15 ~18:03 IST) — and NO unhidden direction-'in' record under the founder's agent carries her 40,000. The chat door claimed a money filing that no money cell holds. This sharpens the donna_money settlement-cell discipline note (already routed to 06) into a truth defect with a specimen. Characterization SQL issued (does a Swati record exist without the amount, or no record at all); chat-door territory, outside Part A's charter, NOT fixed here.
+> **CORRECTED 2026-07-15 (TDW_04 B0, F-04.24, CE-ruled).** This entry originally described the standing line as filtering `agent_id + hidden=false + direction<>'out'`. **The `direction<>'out'` clause is NULL-unsafe and is struck as written text** so no future author re-derives the trap: in SQL `NULL <> 'out'` evaluates to `NULL` and the row is silently DROPPED, while the canon (`derive.ts:42`, `(b.direction ?? 'in')`) treats a NULL direction as `'in'` and COUNTS it — as does `cabinet.js:75`'s leads column. A NULL-direction binder with pending > 0 is therefore counted by drawer, slice and hub and dropped by the oracle: **the line would report red against a correct system.** The clause is also redundant — `pendingOf`'s own guard already zeroes `'out'`. The guard is **expression-internal**: `case when lower(coalesce(direction,'in')) = 'out' then 0 …`. Reachable (`donna_client` opens a binder with no direction; only `donna_money` sets one), **not firing** at the 2026-07-15 run. **The runnable line now lives in `docs/TDW_03_CROSSPLANE_CENSUS.md` — this prose is no longer the oracle; that SQL is.** A3's victory is now a census assertion, permanent.
+
+**F-04.21 — SUPERSEDED BY THE B0 RESTATEMENT (2026-07-15).** The A4 entry read: *"Victor said 'Done. Swati Roy is down for the 17th at 40k' — and NO unhidden direction-'in' record under the founder's agent carries her 40,000… does a Swati record exist without the amount, or no record at all."* **The catch was right; the framing was wrong.** B0's founder-run diagnostic settled it: the write LANDED, on the typed plane, and the CE's Q-B0-1 ruling ("founder-created via the list page, never claimed by the chat") is **WITHDRAWN by the CE on this evidence**. Full restatement in this log's **TDW_04 B0** section below. Head (b) DISSOLVED; head (a) OPEN → Block 06.
 
 **THE RAHUL SHARMA VERDICT (CE order: memory ruled unavailable, the record decides).** Trail, verbatim from vendor_activity_log:
 ```

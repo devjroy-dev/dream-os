@@ -77,6 +77,9 @@ So: could the model have known? **Yes** — one `dear_donna_talk` → `donna_fin
 | | "invoice_number" | exists only on the formal `public.invoices` row minted at PDF time; S4 rows show `invoice_number: null` |
 | **paid / advance_paid / unpaid** | S4 | derived from `amount`/`amount_received` arithmetic |
 | | binder `payment_status` | free text ("claimed, outstanding, partial…", `DONNA_MONEY_EDIT_TOOL`), can contradict the arithmetic on the same row; S1's MoneyBadge derives from numbers while the stage word says otherwise |
+| **MESSAGES** | `docs/SCHEMA.md:154-172` | `public.messages` — **17 columns**, the WhatsApp shape: `direction`, `channel`, `body`, `media_url`, `sent_by`, `twilio_sid`, `delivery_status`, cost cells |
+| | `engine.messages` (undocumented) | **6 columns**: `id`, `conversation_id`, `role`, `content`, `tool_calls`, `created_at` (writer `memory.ts:133`; count per `db/BASELINE.md`). The engine's DDL is absent from the ladder — `db/migrations/` 0001-0074 is public-only |
+| | | **The damage (F-04.22, TDW_04 B0):** a session writing engine SQL from SCHEMA.md queries `body`/`sent_by`, gets zero rows, and reports *"the turn does not exist"* — a FABRICATED verdict from a correct-looking query. `docs/db/ENGINE_SCHEMA.md` (B0) is the cure |
 | **"Everything kept"** | S1 header | precisely *not* everything: binders + calendar only. A typed lead with no binder twin — including every WhatsApp-enquiry lead — never appears in "Everything kept". |
 
 The single word doing the most damage is **booked**: on one screen it is a calendar row, a binder in the *Clients* column, and a lead badge — three planes, one vocabulary.

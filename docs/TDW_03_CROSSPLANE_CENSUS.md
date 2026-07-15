@@ -68,6 +68,81 @@ where t.deleted_at is null and b.hidden = false
 order by t.name;
 ```
 
+## THE ORACLE — L-8's STANDING LINE (runnable; added TDW_04 B0, 2026-07-15)
+
+**WITNESSED GREEN 2026-07-15 (founder-run, Supabase prod `nvzkbagqxbysoeszxent`/`main`, role `postgres`):**
+`oracle_outstanding = 125000` · `oracle_owed_count = 3` · `oracle_on_calendar = 1` — matching the Part A seal
+(`1b87981`/`525b2c8`) to the rupee and the row. Independently corroborated a fourth time by the stored
+snapshot's own record lines summed under `pendingOf` (Dev Roy 2 ₹35,000 + Meera ₹40,000 + Keka ₹50,000 = ₹1,25,000
+across 3 binders).
+
+**Why it is here.** Until B0 the oracle existed ONLY as prose in `FINDINGS_LOG` — L-8 required a re-run at block
+close against a line nobody could execute. It is now SQL.
+
+**Authoring law:** this line mirrors the CANON — `dreamos-pwa/lib/vendor/derive.ts::pendingOf()` (F-04.13,
+CE-ratified) and its mirror `dream-os/src/api/vendor-engine/cabinet.js:96-104` — read from code, never from a
+seal note's paraphrase. Population is `engine.records` scoped `agent_id` + `hidden=false` (`cabinet.js:46-50`).
+The drawer (`clients ∪ leads`, `Cabinet.tsx:310`), the hub/slice (`paid ∪ owed`, `deriveMoney`) and this line
+**sum identically by construction**: every row they exclude is `direction='out'`, which the rule zeroes anyway.
+
+**NOTE THE GUARD (F-04.24).** The money guard is **expression-internal**. It is NOT a `where direction <> 'out'`
+clause — that form is NULL-unsafe (`NULL <> 'out'` → `NULL` → row silently dropped) while the canon treats a NULL
+direction as `'in'` and COUNTS it (`derive.ts:42`; `cabinet.js:75`'s leads column agrees). `donna_client` opens a
+binder with no direction and only `donna_money` sets one, so the trap is reachable; it was **not firing** at the
+2026-07-15 run. The clause is also redundant — `pendingOf`'s own guard already zeroes `'out'`.
+
+```sql
+-- L-8 ORACLE — run at block close. READ-ONLY.
+-- Agent id below is the founder's, witnessed 2026-07-15 (diagnostic Q1). The vendor is
+-- WALKED, not hardcoded — vendorIdentity.ts's own reverse bridge, in SQL.
+with agent_vendor as (
+  select a.id as agent_id, v.id as vendor_id
+  from engine.agents a
+  join engine.users  eu on eu.id = a.user_id
+  join public.users  pu on pu.auth_user_id = eu.auth_user_id
+  join public.vendors v on v.user_id = pu.id
+  where a.id = '50b2e89c-30a1-44ef-b69c-e9b6457e7a52'
+),
+binders as (
+  select
+    case
+      when lower(coalesce(r.direction, 'in')) = 'out' then 0                    -- pendingOf :42
+      when r.amount_pending is not null                                          -- pendingOf :43-46
+        then greatest(coalesce(r.amount_pending, 0), 0)
+      else greatest(coalesce(r.amount, 0) - coalesce(r.amount_received, 0), 0)   -- pendingOf :47
+    end as pending
+  from engine.records r
+  join agent_vendor av on av.agent_id = r.agent_id
+  where r.hidden = false                                                          -- cabinet.js:49
+)
+select
+  (select sum(pending)                        from binders)  as oracle_outstanding,
+  (select count(*) filter (where pending > 0) from binders)  as oracle_owed_count,
+  (select count(*)
+     from public.events e join agent_vendor av on av.vendor_id = e.vendor_id
+    where e.event_date >= (now() at time zone 'Asia/Kolkata')::date              -- istTodayISO()
+      and e.kind in ('shoot','meeting','recce','fitting','trial',
+                     'family','ceremony','social','other')                        -- BOOKED_KINDS :118
+      and coalesce(e.state, 'upcoming') = 'upcoming'                              -- F-04.17 :121
+      and e.deleted_at is null                                                    -- F-04.25 :54, cured in B0
+  )                                                           as oracle_on_calendar;
+```
+
+**Run discipline.** The 2026-07-15 run landed while the Supabase status banner read *"investigating a technical
+issue"*; the result matched the seal exactly so it was not voided, **but the block-close re-run must land against
+a green status page** — the proof-evidence law ("proofs against ambiguous states are void, not weak").
+
+### WATCH LIST (not findings — armed traps, verified not firing at the 2026-07-15 run)
+
+- **F-04.24 · NULL-direction (🟢-watch):** see the guard note above. A NULL-direction binder with pending > 0
+  would be counted by drawer/slice/hub and dropped by any `direction <> 'out'` form of this line.
+- **Degenerate phone-key residue (🟢-watch, TDW_04 B0 / F-04.3(a)):** `phoneKey.ts:19` now rejects a single-repeated-digit
+  key (`/^(\d)\1{9}$/` → null), but **stored snapshot residue is never re-normalized.** U4 (2026-07-15) shows Keka's
+  lead item still carrying `phone_key:"0000000000"` from before the guard. Benign at one item; **a second pre-guard
+  degenerate item would FALSE-FUSE two strangers by "phone"** at render-time twin annotation (`donna.ts:239-241`).
+
+---
+
 ## STANDING EXHIBITS — DO NOT RECONCILE (CE ruling R4)
 - **EXHIBIT A — Meera** (lead `72a2f3a9…` state **lost** · binder `99dde40e…` **booked,
   ₹20,000 received**). One person, two confident contradictory truths, no spine.

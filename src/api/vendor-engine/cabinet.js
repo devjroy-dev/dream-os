@@ -51,6 +51,13 @@ router.get('/:vendorId',
       pub.from('events')
         .select(EVENT_SELECT)
         .eq('vendor_id', vendor.id)
+        // TDW_04 B0 (F-04.25, CE-ruled 2026-07-15): the read had NO deleted_at
+        // filter while events.js filters it at :117/:124/:186 — so a soft-deleted
+        // future event still counted as "On the calendar". F-04.17's missing half:
+        // that ruling stopped CANCELLED dates over-claiming the drawer; deleted
+        // ones went on doing it. A deleted date is a SELLABLE date. One rule now,
+        // every vendor events read. (SCHEMA.md:293 already claimed this was true.)
+        .is('deleted_at', null)
         .order('event_date', { ascending: true }),
     ]);
 

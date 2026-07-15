@@ -205,14 +205,45 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     summary: `lead "${leadName}" created (list page)${result.deduped ? ' — deduped onto existing' : ''}`,
     entityType: 'lead', entityId: result.lead && result.lead.id,
   }).catch(() => {});
+  // TDW_04 B0 item 4b (CE-ruled): the create door joins the snapshot-sync doors.
+  //
+  // The agent is resolved HERE, inside the handler and AFTER the write has landed —
+  // NOT via resolveAgent() middleware. The CE's ruling carries a binding constraint,
+  // "a missing agent must not fail a lead creation", and resolveAgent() cannot honour
+  // it: it is blocking by construction (resolveAgent.js — 401 on a missing agent, 500
+  // on resolution failure), so mounting it would make lead creation fail exactly when
+  // the ruling forbids failing. Resolving in-handler satisfies the constraint the
+  // ruling states; the deviation from the mechanic it names is disclosed in B0's
+  // handover for ratify-or-revert. Every failure path here is swallowed: the lead is
+  // already filed and the response is already owed.
+  try {
+    const { resolveAgentForVendor } = require('../middleware/agentBridge');
+    const uid = req.auth && req.auth.user_id;
+    if (uid && result.lead) {
+      const { agentId } = await resolveAgentForVendor(supabase, vendor, uid);
+      if (agentId) await patchLeadSnapshot({ ...req, agentId }, result.lead);
+    }
+  } catch (e) {
+    console.warn('[leads:create] snapshot sync failed (create already landed):', e.message);
+  }
   return res.status(201).json({ ok: true, data: result.lead, deduped: result.deduped || false });
 }));
 
 
-// TDW_02 P5 close (F5): every typed-plane door keeps Donna's snapshot true —
-// the DELETE door already does; the PATCH doors join it. A rename/state change
-// that only touches public.leads leaves a stale item Victor renders as a phantom
-// (the "duplicate Ananya" exhibit). Fail-safe: a snapshot miss never fails the write.
+// TDW_02 P5 close (F5): every typed-plane door keeps Donna's snapshot true — a
+// rename/state change that only touches public.leads leaves a stale item Victor
+// renders as a phantom (the "duplicate Ananya" exhibit). Fail-safe: a snapshot
+// miss never fails the write.
+//
+// TDW_04 B0 item 4b (CE-ruled 2026-07-15) — D-4 CORRECTED. This comment used to
+// claim "the DELETE door already does; the PATCH doors join it" (plural). That was
+// FALSE for two years of readers: patchLeadSnapshot had exactly ONE call site (the
+// state PATCH). The field-edit PATCH and the CREATE door never synced at all — the
+// create door structurally COULD NOT, carrying no resolveAgent and therefore no
+// req.agentId. F-04.21's own trail is the specimen: `11:23:09 lead_update "Swati
+// Roy" (wedding_city) (list page)` went through the field-edit PATCH, and her
+// snapshot line went stale 31 seconds after it was written. All four doors now sync:
+// create (below), state PATCH, field-edit PATCH, DELETE (removal).
 async function patchLeadSnapshot(req, lead) {
   try {
     const val = lead.budget_max != null ? ` (Rs ${lead.budget_max})` : '';
@@ -339,6 +370,11 @@ router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 
     summary: `lead "${(result.lead && result.lead.name) || leadId}" updated (${changedKeys}) (list page)`,
     entityType: 'lead', entityId: leadId,
   }).catch(() => {});
+  // TDW_04 B0 item 4b (CE-ruled): the field-edit door joins the snapshot-sync doors.
+  // This door already carries resolveAgent(), so req.agentId is in scope — the gap was
+  // only the missing call. F-04.21's specimen: the 11:23:09 wedding_city edit went
+  // through here and left Donna's Swati line stale. Fire-and-forget, per the ruling.
+  if (result.lead) await patchLeadSnapshot(req, result.lead);
   return okRes(res, { lead: result.lead });
 }));
 
