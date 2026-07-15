@@ -74,12 +74,51 @@ router.get('/:vendorId',
     const clients = allBinders.filter(isClientStage);
     const leads   = allBinders.filter(b => !isClientStage(b) && (b.direction || '').toLowerCase() !== 'out');
     const paid    = allBinders.filter(b => Number(b.amount_received) > 0);
-    const owed    = allBinders.filter(b => Number(b.amount_pending)  > 0);
 
-    // Calendar slices — public.events, unchanged.
+    // ── F-04.13 (CE-RATIFIED 2026-07-15) — THE money rule ────────────────
+    // CANON lives in dreamos-pwa/lib/vendor/derive.ts :: pendingOf(). This is
+    // its mirror; the two must never diverge (they are one rule, written twice
+    // only because they live in different repos).
+    //
+    //   pending = amount_pending ?? max(amount - amount_received, 0)   [direction 'in' only]
+    //
+    // WHY: money filed through Victor's donna_money door sets `amount` and
+    // never touches the settlement cells; only money-edit writes those. The old
+    // predicate (`amount_pending > 0`) therefore read an UNFILED cell as ZERO
+    // OWED — hiding Rs 85,000 across two unpaid clients (Dev Roy 2, Keka), who
+    // appeared on NO money surface at all while the cabinet drawer, which
+    // inferred, showed the truth. The CE's words: "an unfiled cell means
+    // unfiled, not Rs 0." Explicit cells still win when present — a binder
+    // filed as settled (pending 0) stays settled.
+    //
+    // The direction guard is load-bearing: without it an expense binder
+    // (direction 'out', amount 5000, no cells) would infer Rs 5,000 "owed".
+    const pendingOf = (b) => {
+      if ((b.direction || 'in').toLowerCase() === 'out') return 0;
+      const explicit = b.amount_pending;
+      if (explicit !== null && explicit !== undefined && explicit !== '') {
+        return Math.max(Number(explicit) || 0, 0);
+      }
+      return Math.max((Number(b.amount) || 0) - (Number(b.amount_received) || 0), 0);
+    };
+    const owed = allBinders.filter(b => pendingOf(b) > 0);
+
+    // ── F-04.17 (CE-RATIFIED 2026-07-15) — the calendar predicate ────────
+    // ONE rule, recorded (executor's choice per the ruling: the state filter
+    // lands here, on the column itself, rather than repointing the drawer to
+    // deriveEventsThisWeek — this payload IS the drawer's source, so the
+    // predicate belongs where the rows are chosen).
+    //
+    // The column had NO state predicate: it counted CANCELLED events as "on
+    // the calendar" (founder SQL: __calendar_check__ and Meera - call, both
+    // cancelled, both shown — drawer said 3, truth was 1). A cancelled date is
+    // a SELLABLE date; claiming it is occupied costs the vendor work.
+    // `done` does NOT count either, per the ruling: "on the calendar" answers
+    // what's ahead; history lives in timelines.
     const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
     const booked = allEvents.filter(e =>
-      e.event_date && e.event_date >= today && BOOKED_KINDS.includes(e.kind));
+      e.event_date && e.event_date >= today && BOOKED_KINDS.includes(e.kind)
+      && (e.state || 'upcoming') === 'upcoming');
 
     const REMINDER_KINDS = ['reminder', 'task'];
     const reminderEvents = allEvents
