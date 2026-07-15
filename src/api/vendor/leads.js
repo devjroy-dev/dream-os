@@ -54,14 +54,20 @@ function leadPhoneKey(p) {
 // TDW_02 P3 — the wishbone wire (spec P3; consumed by TDW_03). A lead whose
 // draft_meta stands gains a draft block: complete it inline via the PATCH door,
 // or hand the gap to Victor with a primer the cursor lands after.
+// TDW_04 A2 (F-04.6 ruled): the wire's missing set is RECOMPUTED at read time
+// through the engine's sentinel-aware leadMissing — stored draft_meta remains
+// the write-time record, but placeholder-stuffed rows (city="Unknown",
+// phone=0000000000 — the Keka case) chip TODAY instead of reading complete.
+const { leadMissing } = require('../../engine/dist/core/draftContracts');
+
 function leadDraftWire(l) {
-  const dm = l.draft_meta;
-  if (!dm || !Array.isArray(dm.missing) || dm.missing.length === 0) return undefined;
+  const missing = leadMissing(l);
+  if (!missing.length) return undefined;
   const label = l.name || 'this lead';
   return {
-    missing: dm.missing,
+    missing,
     complete_inline: { method: 'PATCH', path: `/api/v2/vendor/leads/${l.id}` },
-    tell_victor: { path: '/vendor', primer: `About ${label}: the ${dm.missing[0]} is ` },
+    tell_victor: { path: '/vendor', primer: `About ${label}: the ${missing[0]} is ` },
   };
 }
 
@@ -121,7 +127,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
   // Build data + count queries in parallel. Soft-deleted rows (deleted_at set — the
   // TDW_02 P1 undo door, and any prior soft-deletes) never appear in the pipeline.
-  const dataSelect  = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, raw_message, draft_meta, created_at';
+  const dataSelect  = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, raw_message, draft_meta, notes, created_at'; // notes: TDW_04 A2 rider F-04.7 (CE-ruled, display-only read-row)
   let dataQuery     = supabase.from('leads').select(dataSelect).eq('vendor_id', vendor.id).is('deleted_at', null);
   let countQuery    = supabase.from('leads').select('*', { count: 'exact', head: true }).eq('vendor_id', vendor.id).is('deleted_at', null);
 
