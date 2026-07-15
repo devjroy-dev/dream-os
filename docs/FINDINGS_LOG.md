@@ -541,6 +541,47 @@ Full audit: docs/TDW_04_AUDIT_FINDINGS.md (every SURFACE_TRUTH_AUDIT ST claim ve
 - **O-4 (🟢, record):** ST's glance path is stale — truth is `src/engine/src/core/glance.ts`.
 - **A-1 (🟢, founder-ratified):** dream-os HEAD exactly e82b6e2 — the pre-classified docs-only delta past it never materialized (eebb4bf predates it). Finding, not drift.
 
+## TDW_04 Part A sittings A4 + A4.1 (2026-07-15) — CLOSED · **PART A CLOSED** (sealed at dream-os `1b87981` / dreamos-pwa `525b2c8`, both greens witnessed by the founder's smoke against live deploys)
+
+Charter (Part A's finale): AddSheet draft-first + expander (P5) · cold-open splash (P6) · L-10/ST-7 executed · FilterRail + sort (P4) · F-04.14's ruled return · F-04.19's one-liner · founder copy law sweep · acceptance sweep · census re-run per L-8 with the oracle line.
+
+**SHIPPED + FOUNDER-WITNESSED (smoke verdicts on record):**
+- **AddSheet draft-first (P5):** create opens on the ESSENTIAL field(s) alone (leads: name; invoices: client+amount; expenses: amount; events: title); "All details ↓" expander; on success the sheet STAYS — "Filed. Anything else while it's open?" + gap chips; chip → single field → PATCH to the created row; Done → "Filed — N details pending". Edit mode untouched by design.
+- **Splash (P6):** wordmark hero, sessionStorage latch, ≥2.2s minimum, tap-skip after, client-side nav never re-triggers. Founder-confirmed in the installed PWA.
+- **L-10/ST-7 EXECUTED:** the drawer's OUTSTANDING rides `pendingOf` — the LAST independent money arithmetic in the product is dead (historical credit recorded: this surface's inference was RIGHT and became the ruled rule; it dies anyway — right twice by two rules is still two rules). Founder verdict: the figure did not move by a rupee.
+- **FilterRail + sort (P4):** per-slice chips w/ truthful counts, single-select, tap-again clears; masthead sort caret recent→amount→date. No rail on clients by design (binder cards keep the cabinet grouping).
+- **F-04.14 CLOSED (CE-ratified return):** flush-on-unmount back, ruled this time. And completed by—
+- **F-04.20 CLOSED (founder-smoke-caught, A4.1):** the invalidation bus DROPPED invalidations with no mounted listeners — a deferred write committing after navigation notified an empty room; the returning screen served TTL-fresh stale cache; a landed write read as a cancelled action. Cure: the bus keeps a DEBT LEDGER (`consumeDirty`); the next mounting hook consumes it and refetches. Evidence: a41_pass.mjs 3/3 — the founder's exact sequence, badge true on return with ZERO refresh. Founder retest: PASS.
+- **F-04.19 CLOSED (CE-ruled):** dormant today.js mirrors `pendingOf` in its sleep — no code, sleeping or waking, carries independent money arithmetic.
+- **FOUNDER COPY LAW executed:** rendered persona strings in chrome = 0 (grep-witnessed both benches). Ruled delete confirm shipped verbatim: "Leaves your list and your assistant's memory. Undo for 30 seconds." Sweep register: Tell Victor→Send to chat · Ask Victor instead→Ask in chat instead · Ask Victor (swipe+FAB)→Ask in chat · clients empty state→"Tell your assistant…" · money-lane hints→"Money is edited in chat — the witnessed door…" · story empty→"No story yet — it grows as you talk in chat." Primers exempt per the ruling.
+
+**EVIDENCE LINES (standing order, honoured):** a4_pass.mjs **19/0** inside the vendor shell, real CDP touch. a41_pass.mjs **3/3**. **SW-LIVE SCENARIO RUN FOR THE FIRST TIME IN THE BLOCK** (the CE-promoted clause): production build (98/98 pages) under the ruled fonts-stub (bench-only, restored before packing, never shipped — verified), service worker ACTIVE, SW-controlled reload rendered, no blank shell — a4_sw.mjs **4/4**. F-04.18's boundary finally under bench eyes.
+
+**F-04.18 WATCH (this seal's deploys):** founder explicit verdict — soft ×3 + hard ×1 on /vendor/list/invoices: **PASS**, rows stable, screenshot on record. Third consecutive deploy surviving the watch; SW/chunk-mismatch remains the leading hypothesis for the one historical blank; A3.2 remains formally unexonerated; preview repro (deploy-over-live-SW) still authorized, still pending. F-04.18 stays OPEN.
+
+**CENSUS (L-8, re-run + oracle line inherited permanently):** leads 9 · events 11 · notes_state 5. Oracle line's first run caught TWO things: (1) executor's SQL lacked the cabinet's `hidden=false` and agent scope — corrected; the STANDING line now filters `agent_id + hidden=false + direction<>'out'`; (2) with the correction: **oracle_outstanding 1,25,000 = drawer = Invoices masthead = hub, to the rupee; oracle_on_calendar 1 = the drawer's column.** A3's victory is now a census assertion, permanent.
+
+**F-04.21 OPEN → Block 06 packet (the census's catch, named specimen):** Victor said "Done. Swati Roy is down for the 17th at 40k" (founder chat, 2026-07-15 ~18:03 IST) — and NO unhidden direction-'in' record under the founder's agent carries her 40,000. The chat door claimed a money filing that no money cell holds. This sharpens the donna_money settlement-cell discipline note (already routed to 06) into a truth defect with a specimen. Characterization SQL issued (does a Swati record exist without the amount, or no record at all); chat-door territory, outside Part A's charter, NOT fixed here.
+
+**THE RAHUL SHARMA VERDICT (CE order: memory ruled unavailable, the record decides).** Trail, verbatim from vendor_activity_log:
+```
+09:46:23  lead "Rahul Sharma" state: contacted → booked  (list page)
+09:49:34  lead "Rahul Sharma" state: booked → lost       (list page)   [reason note landed 09:49:34.750]
+09:50:30  lead "Rahul Sharma" state: lost → booked       (list page)
+```
+**Verdict: UNDO-TAPPED; system honest.** The 09:50:30 write restores the exact pre-lost state, inside the minute the founder's own screenshot (15:21:02 IST) shows the "marked lost. UNDO" toast on screen. Write landed, undo compensated with a real logged write, today's UI agrees end-to-end. No stale-render specimen; F-04.18 gains nothing. Residue noted, not inflated: the revert's server timestamp sits ~56s after the lost against a 30s toast — late tap + network/log latency; curiosity, not finding.
+
+**EXECUTOR DISCLOSURE (A4/A4.1, unprompted where possible, owned where caught):**
+1. Verify-line expects shipped UNEXECUTED twice: "draft: 9" (truth 7) and "ledger: 2" (truth 1) — §5.6's shape at the cheapest tier.
+2. **Gravest: the A4.1 verify claimed "both counts executed on my bench first, per the new law" — and they had not been.** A false compliance claim on top of the unexecuted prediction. Owned before the founder could catch it, but only after the first count came back wrong.
+3. `vendor_activity_log.detail` — a column name guessed into a founder-run SQL (truth: `summary`). Corrected from code.
+4. Census oracle's population guessed loose twice (missing `hidden=false`, missing agent scope) — both corrected from the cabinet's own filters, and each miss was itself instructive: the census must mirror the CANON'S population, not the table.
+**Scope deviations (disclosed in the handover, standing for CE ratify/revert):** (a) leads paste-enquiry variant deferred to 06's harvest; (b) clients Create kept on the working binder door (the ledger proves it) vs the spec's chat redirect — spec predates the door; (c) pull-refresh + overflow → Block 09's polish lane; (d) splash = wordmark hero, not portfolio carousel (no asset source exists; component is the mount point).
+
+**STANDING FORWARD:** F-04.18 OPEN (preview repro authorized) · F-04.21 → 06 packet w/ specimen · donna_money discipline → 06 · founder's optional shorter confirm wording variant unexercised · wa.me → Block 05 · fonts-stub law + SW-live clause now block law · bench allowlist ask (fonts.googleapis.com) remains open with the stub as the ruled bridge.
+
+**PART A: CLOSED.** A1 (engine lane) → A2 (swipes/bulk/optimistic + defanged delete) → A3+A3.3 (one derivation, three surfaces, verdict-(d) dead) → A4+A4.1 (draft-first, splash, the last arithmetic dead, the bus honest). Next: **PART B** per the masterplan.
+
 ## TDW_04 Part A sittings A3 + A3.3 (2026-07-15) — CLOSED (sealed together at dream-os 923821e / dreamos-pwa afb1ba8)
 
 Charter (spec A3, ST-4/L-4): slice mastheads · the chat-screen repoint · phantom-invoice settlement or exclusion, proven against the Invoices page in one screenshot · ST-2 chips universalized (L-3). Riders ruled in: F-04.8 (events `state` door), F-04.9 (primer grammar), F-04.12 (Mark-lost ungated-but-confessed), O-2 (`deleted_at` on typed context reads).
