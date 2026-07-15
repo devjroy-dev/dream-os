@@ -100,7 +100,7 @@ Skeleton grid shimmer · IST discipline audit on every date render/parse (the re
 ---
 
 ## 3. GUARDRAILS
-eventWrite is the ONLY calendar writer after P2 — any other `.from('events')` insert/update in vendor paths is a failed session (bride/couple XOR paths untouched) · records mutations only via binder doors (lockstep included) · souls per TDW_02 constraints · conflict NEVER silently blocks a write the vendor forced · no localStorage · design system: pips ink, one gold (muhurat diamond) per screen · WhatsApp engines untouched (their event writes route through eventWrite in blocks 05/06, noted for those specs).
+After B2, `src/lib/vendor/eventWrite.js` is the ONLY writer of `public.events` (the vendor calendar). Any other insert/update targeting `public.events` in vendor paths is a failed session. `engine.events` is an UNRELATED agent audit trail (F-04.30/F-04.31) — its writers (`distill.ts:164/:198`, `recordPrimitives.ts:62`, `donnaBench.ts:155`) are exempt by plane, not by pardon, and must NEVER be routed through `eventWrite`. Plane is proven by the client in scope (B1's plane-proof method), never by the table name. (bride/couple XOR paths untouched) · records mutations only via binder doors (lockstep included) · souls per TDW_02 constraints · conflict NEVER silently blocks a write the vendor forced · no localStorage · design system: pips ink, one gold (muhurat diamond) per screen · WhatsApp engines untouched (their event writes route through eventWrite in blocks 05/06, noted for those specs).
 
 ## 4. ACCEPTANCE CRITERIA
 1. P1: blocks live only in `events`; availability GET shape unchanged; Discover availability derives correctly.
@@ -127,7 +127,7 @@ Date-awareness lookups (P4.2) are DB reads, not model calls — zero token cost.
 Scope reserved: `events.assigned_member_id` (+ migration number claimed AT 04.5 time per LD-8) · per-crew-member conflict math riding occupancy.js · wedding-band calendar view (binder-grouped spans across days) · crew assignment UX · planner capacity semantics · planner lead-quoting against the bride's `functions` shape (0065). Nothing in 04 may foreclose these: occupancy.js keeps its check function pluggable (capacity resolver takes a context object, not scalars).
 
 ## 9. SESSION BOUNDARIES
-Six sittings P1→P6 strictly (P1 may collapse if convergence pre-exists — sitting continues into P2). Handover per protocol each sitting; MASTERPLAN + SCHEMA updated; any stray `.from('events')` writers found outside eventWrite get listed, not fixed, unless trivially in scope.
+Six sittings P1→P6 strictly (P1 may collapse if convergence pre-exists — sitting continues into P2). Handover per protocol each sitting; MASTERPLAN + SCHEMA updated; any stray writers of `public.events` found outside eventWrite get listed, not fixed, unless trivially in scope — plane-qualified per §3's guardrail (F-04.30/F-04.31): `engine.events` writers are a DIFFERENT TABLE (an agent audit trail) and are never "strays"; prove the plane by the client in scope, never by the table name.
 
 ---
 
