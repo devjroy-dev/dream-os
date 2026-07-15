@@ -115,7 +115,12 @@ const CALENDAR_KINDS = [
   'blocked',                                                     // 0069 — the 13th
 ];
 
-const EVENT_SELECT = 'id, title, event_date, event_time, kind, slot, state, notes, linked_binder_id, linked_lead_id, ready_by';
+// created_at is NOT decoration: availability.js's toBlock() maps it onto the FROZEN
+// wire ({id, blocked_date, reason, created_at}, PWA calendar/page.tsx:96). Shipping
+// this select without it (a6854bb) would have handed the PWA created_at:undefined
+// the moment blockDate became a thin caller. Latent, caught by doing the relocation
+// rather than by describing it. deleted_at rides so the soft-delete path can confirm.
+const EVENT_SELECT = 'id, title, event_date, event_time, kind, slot, state, notes, linked_binder_id, linked_lead_id, ready_by, created_at, deleted_at';
 
 // ── SLOT DERIVATION (C2's boundaries) ─────────────────────────────────────
 //
@@ -289,6 +294,7 @@ async function writeEvent(supabase, params) {
     event_id = null, title, event_date, event_time = null, kind,
     notes = null, linked_binder_id = null, client_hint = null,
     ready_by = null, state = null, force = false,
+    deleted_at,   // undefined = untouched. Set = SOFT DELETE (update path only).
   } = params || {};
 
   if (!vendorId) return { ok: false, error: 'vendorId is required.' };
@@ -373,6 +379,12 @@ async function writeEvent(supabase, params) {
     if (derivedSlot != null)  patch.slot       = derivedSlot;
     if (ready_by != null)     patch.ready_by   = ready_by;
     if (state != null)        patch.state      = state;
+    // SOFT DELETE (Q-B1-7's covenant, and the guardrail's arithmetic). unblockDate
+    // and deleteEvent are .update()s on public.events, so after B2 they are writes
+    // that must come through here or the guardrail is violated on day one. A hard
+    // delete is never minted: B0 spent a whole finding (F-04.25) curing a read that
+    // forgot deleted_at; nothing here un-learns that.
+    if (deleted_at !== undefined) patch.deleted_at = deleted_at;
     // Dedupe's own rule, carried from chat.js: link an existing event that names
     // no binder; never overwrite a link it already has.
     if (linkedBinder && (!existing || !existing.linked_binder_id)) patch.linked_binder_id = linkedBinder;
@@ -438,7 +450,7 @@ async function writeEvent(supabase, params) {
   logActivity(supabase, {
     vendorId,
     surface,
-    action:  (isUpdate || existing) ? 'event_update' : 'event_create',
+    action:  deleted_at ? 'event_delete' : ((isUpdate || existing) ? 'event_update' : 'event_create'),
     summary: `event "${event.title}" — ${event.event_date}${event.event_time ? ' ' + event.event_time : ''}${event.kind ? ' · ' + event.kind : ''}${force && conflict ? ' (forced)' : ''}`,
     entityType: 'event',
     entityId:   event.id,
