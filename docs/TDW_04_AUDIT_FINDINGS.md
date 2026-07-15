@@ -104,6 +104,16 @@ Docs-only delivery: no `.js`/`.tsx` touched → node --check / tsc gates N/A thi
 
 **SIX TESTS, SIX PASSES** — full table and findings in FINDINGS_LOG's engine-lane section. Highlights: the door ledger caught the DELETE button lying (F-04.2 → A2); two verbatim money repeats left zero residue; the production note replay showed the original Exhibit C pair (Meera) rendering fused; the rebuild that used to erase every binder line restored seven of them. Open to CE: F-04.2 acceptance line for A2, F-04.3 cures (degenerate phone-key guard / harvest trace), ST-3d tunables, no-op-transition log noise.
 
+## 16. B0 SEAL RIDER (2026-07-15) — proofs landed; F-04.27(ii) + F-04.29 cured
+
+**THREE PROOFS, ALL WITNESSED IN PROD** (founder-run, Railway green): **4a PROVEN** — `donna_find` dispatched on a retrieval-forcing phrase, **both planes in one result**, Exhibit C's contradiction visible at last (Keka binder `booked Rs 50,000` / Keka enquiry `contacted`). **Item 3 PROVEN** — two activity rows 203ms apart for one turn; the CE's granularity ruling live. **Oracle GREEN, unmoved** — `125000/3/1`. **4b SHIPPED-UNPROVEN**, rides B1's smoke per ruling.
+
+**CURED IN THIS RIDER:** **F-04.27 layer (ii)** — the scrub was rewriting vocatives, re-aiming Victor's delegation at the vendor ("…filing mess here, **Operator**"); the vocative now collapses, bench-witnessed on the founder's exact specimen from the shipping file. Layer (i) (Victor delegating on the vendor wire) → **06, top shelf**. **F-04.29** — the dump silently truncated at the editor's 100-row cap, losing 12 tables including `engine.messages`/`engine.records`; it is now one-row-per-table, limit-proof.
+
+**FILED, NOT FIXED:** **F-04.26** → B4's opening item (the founder's mechanism read ratified verbatim: donna_find matches individual words, `roy` drags in the Dev Roys, no "Keka Roy" exists, three-way score tie, nothing floats). **F-04.28** → deferred PROPOSAL (`item.ref_id` on tool_calls for door-parity).
+
+**B0 SEALS ON:** `docs/db/ENGINE_SCHEMA.md` — the 25-table witnessed snapshot, from the re-run.
+
 ## 15. B0 (2026-07-15) — the F-04.21 charter. **DELIVERED, NOT SEALED** (cold proof + activity witness are post-deploy)
 
 **CE-22:** dream-os `83b824a` → this ZIP · dreamos-pwa `525b2c8` untouched · **no deploy-green claimed** — B0's proofs run after the founder applies.

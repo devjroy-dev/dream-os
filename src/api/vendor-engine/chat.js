@@ -39,8 +39,34 @@ const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 // collapse to a category — her name and hands never cross the wire.
 function scrubText(text) {
   if (!text) return '';
-  return String(text)
-    .replace(/\bdonna_[a-z_]+\b/gi, 'operator tool')
+  let s = String(text).replace(/\bdonna_[a-z_]+\b/gi, 'operator tool');
+  // ── TDW_04 B0 seal rider — F-04.27 LAYER (ii) (CE-ruled 2026-07-15) ──────────
+  // The blind `\bDonna\b -> Operator` replacement REWROTE VOCATIVES, and a rewritten
+  // vocative changes who a sentence is spoken TO. Founder specimen, 2026-07-15 14:34:07
+  // (engine.messages, witnessed):
+  //   stored   "You've got a filing mess here, Donna. Pull the phone numbers…"
+  //   rendered "You've got a filing mess here, Operator. Pull the phone numbers…"
+  // Victor was delegating to Donna. The vendor read Victor telling HIM he had a filing
+  // mess and asking HIM to go pull phone numbers. The copy law was satisfied — zero
+  // persona strings rendered — while the MEANING inverted. A scrub that turns a wrong
+  // sentence into a plausible wrong sentence is worse than one that breaks visibly,
+  // because nobody notices. Same disease as F-04.21 head (a): the surface reads fine
+  // and means something the system never established.
+  //
+  // The cure is the smallest honest form (CE-ruled): the VOCATIVE PATTERN collapses to
+  // empty — the comma-clause goes with it — instead of re-addressing. A bare,
+  // non-vocative mention keeps the existing replacement.
+  //
+  // THIS DOES NOT CURE LAYER (i). Victor still puts an internal delegation to Donna on
+  // the vendor's wire; that is the speaker, and it is Block 06's (routed there, top
+  // shelf, beside F-04.21's head (a)). This only stops the PRODUCT from actively
+  // re-aiming his sentences at the vendor.
+  s = s
+    // ", Donna." / ", Donna —" / ", Donna," / ", Donna?" / ", Donna" at end
+    .replace(/,\s*Donna\b(?=\s*[.,!?;:—–]|\s*$)/g, '')
+    // sentence-initial "Donna, pull …" -> "Pull …"
+    .replace(/(^|[.!?—–]\s+)Donna,\s*([a-z])/g, (_m, pre, ch) => pre + ch.toUpperCase());
+  return s
     .replace(/\bDonna\b/g, 'Operator')
     .replace(/\bHarvey\b/g, 'Victor');
 }
