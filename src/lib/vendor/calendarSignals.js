@@ -13,9 +13,11 @@
 // their own way), so it is NOT here.
 const { updateEvent } = require('./events');
 const { executeAndPatch } = require('../executeAndPatch');
+const { scrubText, scrubForStorage } = require('./scrub'); // TDW_04 B2 — F-04.38
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
+const S = 'whatsapp'; // F-04.38: this door's surface. snapshot.js:130's vocabulary; engine.js:270's precedent.
 
 // ── donna_book_event ─────────────────────────────────────────────────────────
 async function resolveBinderForBooking(supabase, agentId, bk) {
@@ -64,15 +66,17 @@ async function bookEvents(supabase, vendor, agentId, result) {
   for (const bk of wantBook) {
     try {
       const kind = BOOKED_KINDS.includes(bk.kind) ? bk.kind : 'meeting';
-      const row = { vendor_id: vendor.id, title: String(bk.title).slice(0, 200), event_date: bk.event_date, kind, state: 'upcoming' };
+      // F-04.38: scrub-with-witness — no internal persona name reaches public.events
+      // from THIS door either. Mirrors chat.js's B1 cure site-for-site.
+      const row = { vendor_id: vendor.id, title: scrubForStorage(supabase, vendor.id, S, String(bk.title).slice(0, 200), 'donna_book_event', 'title'), event_date: bk.event_date, kind, state: 'upcoming' };
       if (bk.event_time) row.event_time = bk.event_time;
-      if (bk.notes) row.notes = String(bk.notes);
+      if (bk.notes) row.notes = scrubForStorage(supabase, vendor.id, S, String(bk.notes), 'donna_book_event', 'notes');
       const linkedBinder = await resolveBinderForBooking(supabase, agentId, bk);
       const existing = await findExistingEvent(supabase, vendor, bk);
       if (existing) {
         const patch = {};
         if (bk.event_time) patch.event_time = bk.event_time;
-        if (bk.notes) patch.notes = String(bk.notes);
+        if (bk.notes) patch.notes = scrubForStorage(supabase, vendor.id, S, String(bk.notes), 'donna_book_event', 'notes'); // F-04.38
         if (linkedBinder && !existing.linked_binder_id) patch.linked_binder_id = linkedBinder;
         if (Object.keys(patch).length) {
           const { data } = await supabase.from('events')
@@ -94,11 +98,13 @@ async function bookEvents(supabase, vendor, agentId, result) {
   return booked;
 }
 
+// F-04.38 (same seam, same reason as chat.js's F-04.33 cure): bk.title is
+// DB-sourced and rode RAW to the vendor on the WhatsApp reply.
 function bookingLines(booked) {
-  return booked.map((bk) => {
+  return scrubText(booked.map((bk) => {
     const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
     return `Booked: ${bk.title} — ${when}. It's on your calendar.`;
-  }).join('\n');
+  }).join('\n'));
 }
 
 // ── retro-link on client file ────────────────────────────────────────────────
@@ -166,7 +172,13 @@ async function mutateEvents(supabase, vendor, agentId, result) {
       if (!ev) { done.push({ action: 'edit', ok: false }); continue; }
       const patch = {};
       for (const k of ['title', 'event_date', 'event_time', 'kind', 'notes']) {
-        if (typeof e[k] === 'string' && e[k].trim()) patch[k] = e[k].trim();
+        if (typeof e[k] === 'string' && e[k].trim()) {
+          // F-04.38 (mirrors chat.js): only the free-text cells can carry a persona
+          // name. event_date / event_time / kind are enums and dates — noise.
+          patch[k] = (k === 'title' || k === 'notes')
+            ? scrubForStorage(supabase, vendor.id, S, e[k].trim(), 'donna_edit_event', k)
+            : e[k].trim();
+        }
       }
       const r = await updateEvent(supabase, vendor.id, ev.id, patch);
       if (r && r.ok && patch.event_date && ev.linked_binder_id) {
@@ -189,8 +201,9 @@ async function mutateEvents(supabase, vendor, agentId, result) {
   return done;
 }
 
+// F-04.38: same seam. e.title is DB-sourced.
 function mutationLines(done) {
-  return done.map((m) => {
+  return scrubText(done.map((m) => {
     if (!m.ok) return m.action === 'cancel'
       ? `Couldn't cancel that booking — I didn't find a single match. Tell me which one.`
       : `Couldn't change that booking — I didn't find a single match. Tell me which one.`;
@@ -199,7 +212,7 @@ function mutationLines(done) {
     return m.action === 'cancel'
       ? `Cancelled: ${e.title}${e.event_date ? ` — ${when}` : ''}. It's off your calendar.`
       : `Updated: ${e.title} — ${when}. The calendar's set.`;
-  }).join('\n');
+  }).join('\n'));
 }
 
 // ── binder -> event date lockstep ────────────────────────────────────────────

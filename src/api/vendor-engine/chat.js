@@ -31,45 +31,21 @@ const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../..
 const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
+const { scrubText, scrubForStorage } = require('../../lib/vendor/scrub'); // TDW_04 B2 — F-04.38
 
-// ── Publication firewall: engine beats -> the wire names the PWA already reads ───
-// The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
-// the older Myra wire (text_delta / handoff / operator_action / operator_report), so the
-// frontend stays untouched. The operator (Donna) is shown but never named; tool tokens
-// collapse to a category — her name and hands never cross the wire.
-function scrubText(text) {
-  if (!text) return '';
-  let s = String(text).replace(/\bdonna_[a-z_]+\b/gi, 'operator tool');
-  // ── TDW_04 B0 seal rider — F-04.27 LAYER (ii) (CE-ruled 2026-07-15) ──────────
-  // The blind `\bDonna\b -> Operator` replacement REWROTE VOCATIVES, and a rewritten
-  // vocative changes who a sentence is spoken TO. Founder specimen, 2026-07-15 14:34:07
-  // (engine.messages, witnessed):
-  //   stored   "You've got a filing mess here, Donna. Pull the phone numbers…"
-  //   rendered "You've got a filing mess here, Operator. Pull the phone numbers…"
-  // Victor was delegating to Donna. The vendor read Victor telling HIM he had a filing
-  // mess and asking HIM to go pull phone numbers. The copy law was satisfied — zero
-  // persona strings rendered — while the MEANING inverted. A scrub that turns a wrong
-  // sentence into a plausible wrong sentence is worse than one that breaks visibly,
-  // because nobody notices. Same disease as F-04.21 head (a): the surface reads fine
-  // and means something the system never established.
-  //
-  // The cure is the smallest honest form (CE-ruled): the VOCATIVE PATTERN collapses to
-  // empty — the comma-clause goes with it — instead of re-addressing. A bare,
-  // non-vocative mention keeps the existing replacement.
-  //
-  // THIS DOES NOT CURE LAYER (i). Victor still puts an internal delegation to Donna on
-  // the vendor's wire; that is the speaker, and it is Block 06's (routed there, top
-  // shelf, beside F-04.21's head (a)). This only stops the PRODUCT from actively
-  // re-aiming his sentences at the vendor.
-  s = s
-    // ", Donna." / ", Donna —" / ", Donna," / ", Donna?" / ", Donna" at end
-    .replace(/,\s*Donna\b(?=\s*[.,!?;:—–]|\s*$)/g, '')
-    // sentence-initial "Donna, pull …" -> "Pull …"
-    .replace(/(^|[.!?—–]\s+)Donna,\s*([a-z])/g, (_m, pre, ch) => pre + ch.toUpperCase());
-  return s
-    .replace(/\bDonna\b/g, 'Operator')
-    .replace(/\bHarvey\b/g, 'Victor');
-}
+// ── THE PERSONA FIREWALL now lives at src/lib/vendor/scrub.js ─────────────────
+// F-04.38 (TDW_04 B2, CE-ruled 2026-07-15). scrubText and scrubForStorage were
+// DEFINED here and reachable ONLY from here — so this file's twin,
+// src/lib/vendor/calendarSignals.js (the WhatsApp door's calendar apparatus,
+// factored out of THIS FILE), duplicated all six write/render sites and carried
+// NEITHER firewall. B1's cure covered "all four write sites" — all four in this
+// file. The twin wrote public.events.title RAW from the same model.
+// Both doors now import one firewall. Its full coverage map, its byte-identity
+// note for scrubText, and the RULED signature adaptation on scrubForStorage
+// (Q-B2-7 — the relocation law bends, stated, never silently) live in that file's
+// header. Nothing about this door's behaviour changes: the call sites below pass
+// (req.app.locals.supabase, req.vendor.id, 'pwa', …) — the exact three values the
+// old req-shaped body dereferenced internally.
 function actionKind(name) {
   if (/(find|tally|history|shelf|brief|whatsdue|search)/i.test(name || '')) return 'read';
   if (/(calendar|event)/i.test(name || '')) return 'calendar';
@@ -190,9 +166,9 @@ async function bookEvents(req, result) {
     try {
       const kind = BOOKED_KINDS.includes(bk.kind) ? bk.kind : 'meeting';
       // F-04.34: scrub-with-witness — no internal persona name reaches public.events.
-      const row = { vendor_id: req.vendor.id, title: scrubForStorage(req, String(bk.title).slice(0, 200), 'donna_book_event', 'title'), event_date: bk.event_date, kind, state: 'upcoming' };
+      const row = { vendor_id: req.vendor.id, title: scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', String(bk.title).slice(0, 200), 'donna_book_event', 'title'), event_date: bk.event_date, kind, state: 'upcoming' };
       if (bk.event_time) row.event_time = bk.event_time;
-      if (bk.notes) row.notes = scrubForStorage(req, String(bk.notes), 'donna_book_event', 'notes');
+      if (bk.notes) row.notes = scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', String(bk.notes), 'donna_book_event', 'notes');
       const linkedBinder = await resolveBinderForBooking(req, bk);
       const existing = await findExistingEvent(req, bk);
       if (existing) {
@@ -200,7 +176,7 @@ async function bookEvents(req, result) {
         // apply any new detail; never mint a duplicate. Re-confirming a booking becomes idempotent.
         const patch = {};
         if (bk.event_time) patch.event_time = bk.event_time;
-        if (bk.notes) patch.notes = scrubForStorage(req, String(bk.notes), 'donna_book_event', 'notes'); // F-04.34
+        if (bk.notes) patch.notes = scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', String(bk.notes), 'donna_book_event', 'notes'); // F-04.34
         if (linkedBinder && !existing.linked_binder_id) patch.linked_binder_id = linkedBinder;
         if (Object.keys(patch).length) {
           const { data } = await req.app.locals.supabase.from('events')
@@ -247,43 +223,6 @@ async function bookEvents(req, result) {
 //   scrubText is NOT applied to: anything written to the DATABASE (F-04.34, open) ·
 //     any read path outside this file (calendar grid, day sheet, /vendor/events, all
 //     of B5) — those render events.title RAW and no scrub reaches them.
-// ── TDW_04 B1 SEAL RIDER — F-04.34, SCRUB-WITH-WITNESS AT THE WRITE DOOR ────
-// (CE-ruled 2026-07-15, after Q-B1-11 split the census's two classes.)
-//
-// THE CLAUSE, final text: "Internal persona names are never stored or rendered on
-// vendor planes at any layer. The vendor-facing persona name is lawful in content,
-// banned in chrome. Sweeps verify storage and render separately, against this
-// distinction."
-//
-// So substitution is the RIGHT tool here, and only because Q-B1-11 settled that
-// Victor-in-storage is lawful. scrubText maps INTERNAL (Harvey/Donna) -> vendor-facing
-// (Victor/Operator). The door then guarantees no internal name can land in a
-// vendor-plane row, whatever the model produces.
-//
-// WHY A WITNESS AND NOT A SILENT FIX. A silent scrub would clean the pipe and HIDE the
-// model defect — and the model defect is the real one. Founder specimen 2026-07-15
-// 15:45: Victor titled the VENDOR'S OWN block "Harvey - personal unavailable",
-// filling the estate's `<client> - <purpose>` client slot (cf. "Ananya - recce") with
-// HIMSELF. Data stays clean; the defect stays visible. This log is Block 06's evidence
-// feed — F-04.34(ii) is theirs, not this door's.
-//
-// The witness NEVER blocks the write: logActivity is fail-safe by contract
-// (snapshot.js:112-141) and a booking must not fail because a ledger row didn't land.
-function scrubForStorage(req, value, ctx, field) {
-  if (value == null) return value;
-  const raw   = String(value);
-  const clean = scrubText(raw);
-  if (clean !== raw) {
-    logActivity(req.app.locals.supabase, {
-      vendorId: req.vendor.id,
-      surface:  'pwa',
-      action:   'persona_scrub_on_write',
-      summary:  `${ctx}.${field}: internal persona name scrubbed at write — model produced "${raw.slice(0, 140)}"`,
-    }).catch(() => {});
-  }
-  return clean;
-}
-
 function bookingLines(booked) {
   return scrubText(booked.map((bk) => {
     const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
@@ -466,7 +405,7 @@ async function mutateEvents(req, result) {
           // F-04.34: only the free-text cells can carry a persona name. event_date /
           // event_time / kind are enums and dates — scrubbing them would be noise.
           patch[k] = (k === 'title' || k === 'notes')
-            ? scrubForStorage(req, e[k].trim(), 'donna_edit_event', k)
+            ? scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', e[k].trim(), 'donna_edit_event', k)
             : e[k].trim();
         }
       }
