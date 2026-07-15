@@ -11,7 +11,13 @@ export function phoneKey(p: string | null | undefined): string | null {
   if (!p) return null;
   const digits = String(p).replace(/\D/g, '');
   if (digits.length < 10) return null;
-  return digits.slice(-10);
+  const key = digits.slice(-10);
+  // TDW_04 rider (F-04.3(a), CE-ruled 2026-07-15): reject DEGENERATE keys —
+  // a single repeated digit ("0000000000") is a placeholder, not a phone.
+  // One harvested placeholder is benign; two would FALSE-FUSE strangers by
+  // "phone". Same guard, same comment, in the PWA twin (lib/vendor/cabinet.ts).
+  if (/^(\d)\1{9}$/.test(key)) return null;
+  return key;
 }
 
 // Fallback join key when phones are absent/asymmetric: the lowercase trimmed name.

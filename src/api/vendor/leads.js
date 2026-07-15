@@ -275,7 +275,10 @@ router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId',
   // TDW_04 engine-lane (ST-3d, absorbed 02-HOTFIX-2): the lead doors log to
   // vendor_activity_log so the assistant's cross-surface activity block sees list-page
   // mutations (the 38-minute blind spot). Fire-and-forget — never fails the write.
-  logActivity(supabase, {
+  // TDW_04 rider (CE-ruled 2026-07-15): no-op transitions (lost → lost) don't log —
+  // a ledger that records non-events dilutes the ledger that caught a lying button.
+  // The WRITE itself stays idempotent-permissive; only the log line is guarded.
+  if (oldState !== newState) logActivity(supabase, {
     vendorId: vendor.id, surface: 'pwa', action: 'lead_state',
     summary: `lead "${leadName}" state: ${oldState} → ${newState} (list page)`,
     entityType: 'lead', entityId: leadId,
