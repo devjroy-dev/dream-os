@@ -13,6 +13,7 @@ import { supabase } from '../db.js';
 import { vendorIdFromAgent } from '../vendorIdentity.js';
 import { leadDraftMeta } from '../draftContracts.js';
 import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
+import { phoneKey } from '../phoneKey.js'; // TDW_04 engine-lane (ST-3b)
 
 // Columns read back on every write — draft_meta INCLUDED (enrich reads the standing
 // provenance). Pre-0072 resilience lives in writeLead's column-guarded retry below,
@@ -39,6 +40,10 @@ function leadItem(row: LeadRow): SnapshotItem {
     horizon: null,
     ref_type: 'leads',
     ref_id: row.id,
+    // TDW_04 engine-lane (ST-3b, absorbed 02-HOTFIX-2): twin-annotation match keys
+    // (annotation-only — never drive a write; the R1(b)/R2 boundary holds).
+    name: row.name ?? null,
+    phone_key: phoneKey(row.phone),
   };
 }
 

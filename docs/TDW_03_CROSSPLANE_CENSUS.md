@@ -101,3 +101,9 @@ The UI cross-chip READS phone matches and never writes. Dispatch may ANNOUNCE th
 other plane's standing record in its result string (CE-14 pattern) and must not
 stamp refs, columns, or links — the engagements table (TDW_16) is the only place
 couple×vendor linkage will ever live. Do not build a rival spine in the meantime.
+
+## Ritika & Arjun ×2 — CLOSED (CE verdict, 2026-07-15, TDW_04 engine-lane sitting)
+The same-signature check (read-only SQL, founder-run at the TDW_04 audit close)
+ruled it **CE-19-class name-drift predating its own fix, founder-cleaned** — the
+same family as the Simran item-4 trace, NOT a distinct engine mechanism. No action;
+recorded here so no future census re-run re-opens it as a fresh duplication exhibit.

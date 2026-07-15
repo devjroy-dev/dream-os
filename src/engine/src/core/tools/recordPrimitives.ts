@@ -16,9 +16,13 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '../db.js';
 import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
+import { phoneKey } from '../phoneKey.js'; // TDW_04 engine-lane (ST-3b)
 
 // One snapshot line per record row — generalized (the wide table holds every kind).
-function recordItem(row: {
+// TDW_04 engine-lane (ST-3a): EXPORTED so rebuildSnapshot reads binders through the
+// SAME register the surgical patches use — rebuilt and patched entries read identically
+// (the standing law donnaLead's leadItem already follows for the typed plane).
+export function recordItem(row: {
   id: string; amount?: number | null; client?: string | null; date?: string | null;
   direction?: string | null; note?: string | null; phone?: string | null; stage?: string | null;
   amount_received?: number | null; amount_pending?: number | null; payment_status?: string | null;
@@ -41,6 +45,9 @@ function recordItem(row: {
     horizon: row.date ?? null,
     ref_type: 'records',
     ref_id: row.id,
+    // ST-3b: twin-annotation match keys (annotation-only, never drive a write).
+    name: row.client ?? null,
+    phone_key: phoneKey(row.phone),
   };
 }
 
@@ -150,7 +157,17 @@ async function writeFields(
         .single();
       for (const f of appending) {
         const existing = ((prior as Record<string, string | null> | null)?.[f] ?? '').trim();
-        if (existing) patch[f] = `${existing}\n${(patch[f] as string).trim()}`;
+        if (existing) {
+          // TDW_04 engine-lane (ST-6, absorbed 02-HOTFIX-2): consecutive-duplicate
+          // dedupe at append time. If the incoming line is byte-identical to the
+          // LAST line already standing, the story gains nothing by repeating it —
+          // keep the field as-is instead of stuttering. Non-consecutive repeats
+          // still append (a genuinely re-stated fact later in the story is history).
+          const incoming = (patch[f] as string).trim();
+          const lastLine = existing.split('\n').pop()?.trim() ?? '';
+          if (incoming === lastLine) { patch[f] = existing; continue; }
+          patch[f] = `${existing}\n${incoming}`;
+        }
       }
     }
     const { data, error } = await supabase
@@ -407,6 +424,16 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
           .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
         if (exErr || !existing) return { display: `ERROR: binder ${rid} not found.` };
         if (existing.amount != null) {
+          // TDW_04 engine-lane (ST-6, absorbed 02-HOTFIX-2): old ≠ new guard.
+          // Re-stating the same figure with the same direction is not a replace —
+          // no write, no stamp, no "Rs 40,000 in → Rs 40,000 in" stutter. The
+          // honest answer is that the figure already stands.
+          if (Number(existing.amount) === parsed && (existing.direction ?? null) === dirIn) {
+            return {
+              display: `MONEY UNCHANGED on ${rid} — ${moneyWords(parsed)} ${dirIn} already stands; nothing re-stamped.`,
+              item: recordItem(existing),
+            };
+          }
           // WITNESSED REPLACE — Dev's design: money is never silently lost. The write
           // happens; the old figure is confessed old → new in words, preserved into the
           // binder's own story (note, appended) and the event trail. Her judgment sees
@@ -453,6 +480,7 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       if (befErr || !before) return { display: `ERROR: binder ${rid} not found.` };
       const patch: Record<string, unknown> = {};
       const confess: string[] = [];
+      let sawMoneyField = false; // TDW_04 engine-lane (ST-6): input arrived but matched current figures
       const moneyFields: Array<['amount' | 'amount_received' | 'amount_pending', string]> = [
         ['amount', 'amount'], ['amount_received', 'received'], ['amount_pending', 'pending'],
       ];
@@ -460,8 +488,14 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
         if (field in input) {
           const parsed = parseMoney(input[field]);
           if (parsed == null) return { display: `ERROR: could not read ${field} "${String(input[field])}". Give plain rupees or notation ('2.5L', '90k', '1.2cr').` };
-          patch[field] = parsed;
+          sawMoneyField = true;
           const old = before[field] as number | null;
+          // TDW_04 engine-lane (ST-6, absorbed 02-HOTFIX-2): the amount fields gain the
+          // same old ≠ new guard direction/payment_status always had. A field present in
+          // input but equal to what stands is not a correction — no patch, no confession,
+          // no duplicate "X → X" stamp (the form-resubmit / retry / dual-door-routing trap).
+          if (old != null && Number(old) === parsed) continue;
+          patch[field] = parsed;
           confess.push(`${word}: ${old != null ? moneyWords(old) : '(empty)'} → ${moneyWords(parsed)}`);
         }
       }
@@ -473,7 +507,14 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
         patch.payment_status = input.payment_status.trim();
         if (before.payment_status !== patch.payment_status) confess.push(`payment: ${before.payment_status ?? '(empty)'} → ${patch.payment_status}`);
       }
-      if (!Object.keys(patch).length) return { display: 'ERROR: donna_money_edit needs at least one money cell to change.' };
+      if (!Object.keys(patch).length) {
+        // TDW_04 engine-lane (ST-6): distinguish "nothing sent" (caller error) from
+        // "everything sent already stands" (honest no-op — never an ERROR, never a stamp).
+        if (sawMoneyField) {
+          return { display: `MONEY UNCHANGED on ${rid} — the figures given already stand; nothing stamped.`, item: recordItem(before) };
+        }
+        return { display: 'ERROR: donna_money_edit needs at least one money cell to change.' };
+      }
       // The story carries its own corrections: one dated line appended to the note.
       const today = new Date().toISOString().slice(0, 10);
       if (confess.length) patch.note = `[money corrected ${today}] ${confess.join('; ')}.`;

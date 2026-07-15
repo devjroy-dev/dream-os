@@ -87,3 +87,13 @@
 ## 8. Verification state
 
 Docs-only delivery: no `.js`/`.tsx` touched → node --check / tsc gates N/A this sitting (they gate every code delivery from the engine-lane sitting onward). Companion founder-run SQL (F14 export-then-soft-delete; Ritika & Arjun signature check; vendor_availability row counts) delivered in-chat per the §7 SQL exception.
+
+## 9. ADDENDUM — rulings returned (founder/CE, 2026-07-15, before the engine-lane sitting)
+
+- **Q-1 RATIFIED** — L-9/L-10/0077 spec wording stands as recorded.
+- **Q-2 RULED** — code taxonomy is truth; B3's capacity map rides the code keys, never the spec's stale names. Ruled profiles + defaults (each vendor-editable in the B3 settings row): `photography` 1/day, `makeup` 1/day, `decor` 1/day (person-bound) · `venue` 1/day (space-bound) · **`florist` ADDED, 3/day (production-bound)** · `other` 1/day as the floor. B3 implements exactly this.
+- **Q-3 RATIFIED** — SCHEMA riders ride the next docs commit. **O-1(a) RETRACTED at that commit** (invoices.binder_id was already documented — executor mis-read, self-logged in FINDINGS_LOG); O-1(b) events.deleted_at + O-1(c) blocked-kind/0069-index applied.
+- **Q-4 CONFIRMED** — the sharpened P2 lockstep reading stands: two legs live and relocate verbatim, the CRUD leg is built new, the raw binder→event write re-routes through eventWrite, retroLinkOnFile preserved verbatim.
+- **F14 CLOSED at every layer** — export archived, soft-delete verified, snapshot pre-read empty (no line existed to die).
+- **Ritika & Arjun ×2 CLOSED** — CE-19-class name-drift predating its own fix, founder-cleaned; recorded in TDW_03_CROSSPLANE_CENSUS.md; no distinct-mechanism claim survives.
+- **0077 COLLAPSES to guarded structural convergence** — `vendor_availability` holds zero rows; no data preservation leg. Executor's documented choice, made here: **0077 ships standalone** (`0077_availability_convergence.sql`, structural-only, guarded) rather than folding into 0075 — the ladder stays one-concern-per-file and the ruling's dated header stays legible on its own migration. Lands with B1.

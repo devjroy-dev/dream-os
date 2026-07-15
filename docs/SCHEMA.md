@@ -59,6 +59,7 @@
 | **0031_invite_codes.sql** | **2026-05-18** | **P2-3** | **invite_codes table (code PK, kind, tier, notes, created_at, created_by, consumed_at, consumed_by_user_id). invite_codes_unconsumed_idx + invite_codes_created_at_idx. consume_invite_code(p_code, p_user_id) atomic function — race-safe, structured exceptions.** |
 | **0032_waitlist_signups.sql** | **2026-05-18** | **P2-3** | **waitlist_signups table (id, kind, name, phone, instagram_handle, status, notes, created_at, updated_at). waitlist_signups_new_recent_idx (partial) + waitlist_signups_created_at_idx. waitlist_signups_updated_at trigger.** |
 | **0033_otp_sessions.sql** | **2026-05-18** | **P2-3** | **otp_sessions table (phone PK, otp_hash, purpose, expires_at, created_at). otp_sessions_expires_at_idx. Transient OTP state for PWA login — upserted on send-otp, deleted on verify-otp. No FK to users (intentional).** |
+| 0069_blocked_kind.sql | 2026-06-21 | calendar | events.kind CHECK widened: + `blocked` (13th value) — hard-blocked vendor days on the shared events table. (Index line backfilled: TDW_04 audit O-1 doc-lag rider, CE-ratified 2026-07-15.) |
 | 0070_linked_binder_id.sql | 2026-06-21 | calendar | events.linked_binder_id (uuid, soft ref -> engine.records.id) + partial index. Links a calendar booking to its client binder so Donna keeps their dates in lockstep. |
 ## Tables
 
@@ -282,13 +283,14 @@ Realtime: enabled
 | title | text NOT NULL | short event title e.g. "Shoot for Priya" or "Mehndi" |
 | event_date | date NOT NULL | required |
 | event_time | time | nullable |
-| kind | text NOT NULL | **B1: enum widened to 12 values.** CHECK: shoot / call / meeting / task / reminder / recce / fitting / trial / family / ceremony / social / other |
+| kind | text NOT NULL | **B1: enum widened to 12 values.** CHECK: shoot / call / meeting / task / reminder / recce / fitting / trial / family / ceremony / social / other. **0069: + blocked (13th) — a hard-blocked day on the vendor calendar.** (Doc-lag rider, TDW_04 audit O-1, CE-ratified 2026-07-15.) |
 | linked_lead_id | uuid FK -> leads.id | SET NULL on delete. Optional. Vendor side only. |
 | linked_binder_id | uuid (soft ref -> engine.records.id) | added 0070. Optional. The client binder this booking belongs to — lets Donna keep the event's date and the binder's date in lockstep. No DB FK (cross-schema); reconciled in Donna's hand. |
 | state | text NOT NULL | CHECK: upcoming / done / cancelled. Default: upcoming. |
 | notes | text | location, contact, prep notes |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
+| deleted_at | timestamptz | Nullable. Soft delete — every vendor events read filters `deleted_at is null` (events.js). Documented from prod inventory (reconciles BASELINE's 14-column count). (Doc-lag rider, TDW_04 audit O-1, CE-ratified 2026-07-15.) |
 
 Constraints:
 - `events_owner_xor` (added 0013) — exactly one of vendor_id or couple_id is set

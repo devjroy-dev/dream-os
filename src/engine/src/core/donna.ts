@@ -19,7 +19,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { supabase } from './db.js';
 import { MODELS, calcCostInr } from './models.js';
 import { DONNA_SOUL } from './donnaSoul.js';
-import { RECORD_TOOLS, executeRecordTool } from './tools/recordPrimitives.js';
+import { RECORD_TOOLS, executeRecordTool, recordItem } from './tools/recordPrimitives.js'; // recordItem: TDW_04 engine-lane (ST-3a)
 import { READ_TOOLS, READ_TOOL_NAMES, executeFindTool, executeWhatsDue } from './tools/donnaFind.js';
 import { BENCH_READ_TOOLS, BENCH_READ_NAMES, executeTally, executeHistory } from './tools/donnaBench.js';
 import { SHELF_READ_TOOLS, SHELF_READ_NAMES, executeShelf, executeBriefRead } from './tools/donnaShelf.js';
@@ -29,6 +29,7 @@ import { DONNA_REVIEW_TOOL, executeDonnaReview } from './tools/donnaReview.js';
 import { LISTEN_HARVEY_TALK_TOOL } from './tools/listenHarvey.js';
 import { DONNA_LEAD_TOOL, executeDonnaLead } from './tools/donnaLead.js'; // TDW_02 P1 (Amendment One CE-1)
 import { vendorIdFromAgent } from './vendorIdentity.js'; // TDW_02: rebuild reads the typed lead plane
+import { phoneKey, nameKey } from './phoneKey.js'; // TDW_04 engine-lane (ST-3b): twin annotation at render
 import type { SnapshotItem, ToolOutcome, ViewRow } from './snapshotTypes.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -75,7 +76,7 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
     const { data: leads } = await supabase
       .schema('public')
       .from('leads')
-      .select('id, name, state, budget_max')
+      .select('id, name, phone, state, budget_max') // phone: TDW_04 engine-lane (ST-3b match key)
       .eq('vendor_id', vendorId)
       .is('deleted_at', null)
       .not('state', 'in', '("booked","lost")')
@@ -87,8 +88,30 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
         id: `lead:${l.id}`, kind: 'lead',
         text: `${l.name ?? 'unknown'} — lead, ${l.state ?? 'new'}${val}`,
         status: 'open', horizon: null, ref_type: 'leads', ref_id: l.id,
+        // TDW_04 engine-lane (ST-3b): match keys, mirroring donnaLead's leadItem.
+        name: l.name ?? null,
+        phone_key: phoneKey(l.phone as string | null),
       });
     }
+  }
+
+  // Binders — engine.records, the working plane. TDW_04 engine-lane sitting
+  // (ST-3a, absorbed 02-HOTFIX-2 per L-9): F16's data-loss trap dies here. Before
+  // this, ANY rebuild silently erased every binder line — booked work and received
+  // money vanished from the one context the model trusts, and could only return via
+  // fresh surgical patches. The rebuild now reads the plane: non-hidden binders,
+  // most recently touched first, limit 12 (symmetric with the lead read above).
+  // Items go through the SAME recordItem register the surgical patches use, so
+  // rebuilt and patched entries read identically (the standing register law).
+  const { data: recs } = await supabase
+    .from('records')
+    .select('id, client, amount, amount_received, amount_pending, payment_status, direction, date, stage, note, phone')
+    .eq('agent_id', agentId)
+    .eq('hidden', false)
+    .order('updated_at', { ascending: false })
+    .limit(12);
+  for (const r of recs ?? []) {
+    items.push(recordItem(r));
   }
 
   // Unverified claims (stated, not superseded) — the blind-spot map.
@@ -110,31 +133,39 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
   }
 
   // Money due/expected within 30 days, plus a 7-day lookback for unverified
-  // payments that should have landed. (money_entries arrives in Step 7; this is
-  // honest-empty until then.)
-  const { data: money } = await supabase
-    .from('money_entries')
-    .select('id, direction, amount, counterparty, status, verification_status, due_at')
-    .eq('agent_id', agentId)
-    .in('status', ['expected', 'overdue'])
-    .order('due_at', { ascending: true })
-    .limit(20);
-  for (const m of money ?? []) {
-    const due = m.due_at ? new Date(m.due_at).getTime() : null;
-    const aheadOk = due == null || due <= now + 30 * DAY;
-    const lookbackOk = due != null && due >= now - 7 * DAY && m.verification_status !== 'verified';
-    if (!aheadOk && !lookbackOk) continue;
-    const who = m.counterparty ? ` ${m.counterparty}` : '';
-    const overdue = due != null && due < now;
-    items.push({
-      id: `money:${m.id}`,
-      kind: overdue ? 'payment_due' : 'money',
-      text: overdue
-        ? `You haven't confirmed Rs ${m.amount}${who} — was due ${new Date(m.due_at as string).toDateString()}`
-        : `Rs ${m.amount}${who} — ${m.direction === 'in' ? 'due in' : 'due out'}, ${m.status}, ${m.verification_status}`,
-      status: overdue ? 'overdue' : 'open',
-      horizon: m.due_at ?? null, ref_type: 'money_entries', ref_id: m.id,
-    });
+  // payments that should have landed.
+  // TDW_04 engine-lane (ST-3e, absorbed 02-HOTFIX-2 per L-9): GATED OFF. money_entries
+  // is a table NOTHING writes yet ("honest-empty until Step 7") — an empty read here is
+  // how "no current booking or payment in flight" got asserted over a booked binder
+  // holding Rs 20k received (Exhibit C / Finding 7). A snapshot must never let an
+  // assertion stand on a table with no writers. Step 7's session flips this constant
+  // ON in the same delivery that lands the writers — never before.
+  const MONEY_ENTRIES_LIVE = false;
+  if (MONEY_ENTRIES_LIVE) {
+    const { data: money } = await supabase
+      .from('money_entries')
+      .select('id, direction, amount, counterparty, status, verification_status, due_at')
+      .eq('agent_id', agentId)
+      .in('status', ['expected', 'overdue'])
+      .order('due_at', { ascending: true })
+      .limit(20);
+    for (const m of money ?? []) {
+      const due = m.due_at ? new Date(m.due_at).getTime() : null;
+      const aheadOk = due == null || due <= now + 30 * DAY;
+      const lookbackOk = due != null && due >= now - 7 * DAY && m.verification_status !== 'verified';
+      if (!aheadOk && !lookbackOk) continue;
+      const who = m.counterparty ? ` ${m.counterparty}` : '';
+      const overdue = due != null && due < now;
+      items.push({
+        id: `money:${m.id}`,
+        kind: overdue ? 'payment_due' : 'money',
+        text: overdue
+          ? `You haven't confirmed Rs ${m.amount}${who} — was due ${new Date(m.due_at as string).toDateString()}`
+          : `Rs ${m.amount}${who} — ${m.direction === 'in' ? 'due in' : 'due out'}, ${m.status}, ${m.verification_status}`,
+        status: overdue ? 'overdue' : 'open',
+        horizon: m.due_at ?? null, ref_type: 'money_entries', ref_id: m.id,
+      });
+    }
   }
 
   const note: Note = { items, rebuilt_at: new Date().toISOString() };
@@ -165,12 +196,76 @@ export async function patchNote(agentId: string, outcome: ToolOutcome): Promise<
 }
 
 // What Harvey sees each turn: the durable note, formatted. Declarative lines only.
+//
+// TDW_04 engine-lane (ST-3b, absorbed 02-HOTFIX-2 per L-9): TWIN ANNOTATION at render.
+// When a `lead:` item and a `record:` item share a person (phone_key first, name key
+// as fallback — the same discipline as the PWA's R1(b) chip), the two lines fuse into
+// ONE joined line naming both planes, so Victor can never again voice one twin as the
+// whole truth (Exhibit C: "lost, Rs 300,000" spoken over a booked binder holding Rs 20k).
+// Match keys ride the items (written by leadItem/recordItem since this sitting); items
+// written before it fall back to the name prefix of `text` — both registers open with
+// the person's name. Render-only: the note on disk is untouched; nothing is written,
+// linked, or merged (the R1(b)/R2 boundary — the engagements spine is TDW_16's).
+// The header line is Block 06's (ST-3c) — untouched here.
+function itemMatchKeys(it: SnapshotItem): { phone: string | null; name: string | null } {
+  const fromText = it.text.split(' — ')[0]?.trim() ?? '';
+  return {
+    phone: it.phone_key ?? null,
+    name: nameKey(it.name ?? fromText),
+  };
+}
+
 export async function snapshotText(agentId: string): Promise<string> {
   const note = await getNote(agentId);
   if (!note.items.length) {
     return "\n\n[Donna's snapshot] Nothing open or near yet — clean slate.\n";
   }
-  const lines = note.items.map((it) => `- ${it.text}`);
+
+  const leads   = note.items.filter((it) => it.kind === 'lead');
+  const records = note.items.filter((it) => it.ref_type === 'records');
+  const joinedIds = new Set<string>();
+  const twinLineById = new Map<string, string>(); // lead item id -> joined line
+
+  for (const lead of leads) {
+    const lk = itemMatchKeys(lead);
+    // Phone-first discipline (the PWA chip's): when BOTH sides carry a phone key,
+    // the phones decide — differing phones mean NOT the same person even if names
+    // collide. Name matching is the fallback only where a phone is absent on either
+    // side (the Kavya asymmetry). Basis is recorded PER TWIN so the annotation never
+    // claims a phone match it didn't make.
+    const twins: Array<{ item: SnapshotItem; basis: 'phone' | 'name' }> = [];
+    for (const rec of records) {
+      const rk = itemMatchKeys(rec);
+      if (lk.phone && rk.phone) {
+        if (lk.phone === rk.phone) twins.push({ item: rec, basis: 'phone' });
+        continue;
+      }
+      if (!!lk.name && !!rk.name && lk.name === rk.name) twins.push({ item: rec, basis: 'name' });
+    }
+    if (!twins.length) continue;
+    const name = (lead.name ?? lead.text.split(' — ')[0] ?? 'unknown').trim();
+    const sep = (t: string): string => {
+      const i = t.indexOf(' — ');
+      return i === -1 ? t : t.slice(i + 3).trim() || t;
+    };
+    const leadRest = sep(lead.text);
+    const recParts = twins.map((t) => sep(t.item.text));
+    const bases = new Set(twins.map((t) => t.basis));
+    const basisWord = bases.size > 1 ? 'phone/name' : (twins[0].basis as string);
+    twinLineById.set(
+      lead.id,
+      `- ${name} — TWO ENTRIES, same person by ${basisWord}: enquiry says ${leadRest}; binder says ${recParts.join(' · ')} — reconcile before advising.`,
+    );
+    joinedIds.add(lead.id);
+    for (const t of twins) joinedIds.add(t.item.id);
+  }
+
+  const lines: string[] = [];
+  for (const it of note.items) {
+    if (twinLineById.has(it.id)) { lines.push(twinLineById.get(it.id) as string); continue; }
+    if (joinedIds.has(it.id)) continue; // a record already folded into its twin's joined line
+    lines.push(`- ${it.text}`);
+  }
   return `\n\n[Donna's snapshot — what's open and near, kept true for you]\n${lines.join('\n')}\n`;
 }
 

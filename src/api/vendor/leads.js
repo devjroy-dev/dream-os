@@ -40,6 +40,16 @@ const { patchNote }  = require('../../engine/dist/core/donna');         // TDW_0
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createLead, updateLead, loseLead, getLeadDetail } = require('../../lib/vendor/leads');
+const { logActivity } = require('../../lib/vendor/snapshot'); // TDW_04 engine-lane (ST-3d): lead doors log
+
+// TDW_04 engine-lane (ST-3b): JS twin of the engine's phoneKey.ts / the PWA's
+// cabinet.ts phoneKey — last 10 digits or null. Annotation-only (snapshot item
+// match key); never drives a write.
+function leadPhoneKey(p) {
+  if (!p) return null;
+  const digits = String(p).replace(/\D/g, '');
+  return digits.length >= 10 ? digits.slice(-10) : null;
+}
 
 // TDW_02 P3 — the wishbone wire (spec P3; consumed by TDW_03). A lead whose
 // draft_meta stands gains a draft block: complete it inline via the PATCH door,
@@ -178,6 +188,12 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     event_types, budget_min, budget_max, source, referrer_name, raw_message, notes,
   });
   if (!result.ok) return errRes(res, 400, result.error);
+  // TDW_04 engine-lane (ST-3d): lead doors log. Fire-and-forget.
+  logActivity(supabase, {
+    vendorId: vendor.id, surface: 'pwa', action: 'lead_create',
+    summary: `lead "${leadName}" created (list page)${result.deduped ? ' — deduped onto existing' : ''}`,
+    entityType: 'lead', entityId: result.lead && result.lead.id,
+  }).catch(() => {});
   return res.status(201).json({ ok: true, data: result.lead, deduped: result.deduped || false });
 }));
 
@@ -197,6 +213,9 @@ async function patchLeadSnapshot(req, lead) {
         text: `${lead.name || 'unknown'} — lead, ${state}${val}`,
         status: (state === 'booked' || state === 'lost') ? 'confirmed' : 'open',
         horizon: null, ref_type: 'leads', ref_id: lead.id,
+        // TDW_04 engine-lane (ST-3b): match keys, mirroring donnaLead's leadItem.
+        name: lead.name || null,
+        phone_key: leadPhoneKey(lead.phone),
       },
     });
   } catch (e) { console.warn('[leads:patch] snapshot sync failed (write landed):', e.message); }
@@ -225,7 +244,7 @@ router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId',
   // still records the state-as-perceived at PATCH time.
   const { data: existing, error: existingErr } = await supabase
     .from('leads')
-    .select('state, name, budget_max')
+    .select('state, name, budget_max, phone')
     .eq('id', leadId)
     .maybeSingle();
 
@@ -251,7 +270,16 @@ router.patch('/:leadId/state', requireAuth, resolveVendor({ paramName: 'leadId',
   }
 
   // F5: keep the snapshot item true to the new state (fail-safe inside).
-  await patchLeadSnapshot(req, { id: leadId, name: leadName, state: newState, budget_max: existing.budget_max });
+  await patchLeadSnapshot(req, { id: leadId, name: leadName, state: newState, budget_max: existing.budget_max, phone: existing.phone });
+
+  // TDW_04 engine-lane (ST-3d, absorbed 02-HOTFIX-2): the lead doors log to
+  // vendor_activity_log so the assistant's cross-surface activity block sees list-page
+  // mutations (the 38-minute blind spot). Fire-and-forget — never fails the write.
+  logActivity(supabase, {
+    vendorId: vendor.id, surface: 'pwa', action: 'lead_state',
+    summary: `lead "${leadName}" state: ${oldState} → ${newState} (list page)`,
+    entityType: 'lead', entityId: leadId,
+  }).catch(() => {});
 
   // If a reason was provided, log it to notes. Reason absence is not an error.
   if (reason) {
@@ -290,6 +318,13 @@ router.patch('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via: 
 
   const result = await updateLead(supabase, vendor.id, leadId, body);
   if (!result.ok) return errRes(res, 400, result.error);
+  // TDW_04 engine-lane (ST-3d): lead doors log. Fire-and-forget.
+  const changedKeys = Object.keys(body).join(', ') || 'fields';
+  logActivity(supabase, {
+    vendorId: vendor.id, surface: 'pwa', action: 'lead_update',
+    summary: `lead "${(result.lead && result.lead.name) || leadId}" updated (${changedKeys}) (list page)`,
+    entityType: 'lead', entityId: leadId,
+  }).catch(() => {});
   return okRes(res, { lead: result.lead });
 }));
 
@@ -339,6 +374,14 @@ router.delete('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via:
   } catch (e) {
     console.warn('[leads:delete] snapshot remove failed (delete already landed):', e.message);
   }
+
+  // TDW_04 engine-lane (ST-3d): lead doors log. Fresh deletes only — the idempotent
+  // heal path above is a re-tap, not a new action. Fire-and-forget.
+  logActivity(supabase, {
+    vendorId: vendor.id, surface: 'pwa', action: 'lead_delete',
+    summary: `lead ${leadId} soft-deleted (list page / undo door)`,
+    entityType: 'lead', entityId: leadId,
+  }).catch(() => {});
 
   return okRes(res, { deleted: { id: leadId } });
 }));

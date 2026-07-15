@@ -36,6 +36,24 @@
 const ACTIVITY_WINDOW_MS = 15 * 60 * 1000;
 const ACTIVITY_MAX_ROWS  = 5;
 
+// TDW_04 engine-lane (ST-3d, absorbed 02-HOTFIX-2 per L-9): RECORD MUTATIONS see
+// further. The 15-minute window made a binder updated 38 minutes prior invisible to
+// the assistant (M8's blind spot, Exhibit C) — so lead/binder mutations get their own
+// wider tier: 24 hours, capped at 8 rows, merged beneath the standing 15-minute read.
+// Everything else (harvest_patch, provider_downgrade, …) keeps the tight window.
+// The two constants are TUNABLES flagged to the CE in the sitting handover; the
+// behavior (mutations outlive 15 minutes) is the chartered fix.
+const RECORD_MUTATION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const RECORD_MUTATION_MAX_ROWS  = 8;
+// Door actions that mutate a person's record on either plane. Binder doors log with
+// action = tool name (donna_*, binder_create); lead doors log lead_* (leads.js).
+const RECORD_MUTATION_ACTIONS = [
+  'binder_create', 'donna_client', 'donna_edit', 'donna_money', 'donna_money_edit',
+  'donna_stage', 'donna_note', 'donna_note_append', 'donna_date', 'donna_phone',
+  'donna_doc', 'donna_hide', 'donna_unarchive',
+  'lead_create', 'lead_update', 'lead_state', 'lead_delete',
+];
+
 // ── buildVendorSnapshot ──────────────────────────────────────────────────────
 // The 6 parallel queries that populate the system-prompt dynamic context.
 // Extracted verbatim from the (identical) fetches in engine.js + the retired
@@ -130,18 +148,44 @@ async function fetchRecentActivity(supabase, vendorId, opts = {}) {
   const maxRows  = opts.maxRows  || ACTIVITY_MAX_ROWS;
   try {
     const cutoff = new Date(Date.now() - windowMs).toISOString();
-    const { data, error } = await supabase
-      .from('vendor_activity_log')
-      .select('surface, action, summary, created_at')
-      .eq('vendor_id', vendorId)
-      .gte('created_at', cutoff)
-      .order('created_at', { ascending: false })
-      .limit(maxRows);
-    if (error) {
-      console.warn('[activity-log] read failed (non-fatal):', error.message);
+    const mutationCutoff = new Date(Date.now() - RECORD_MUTATION_WINDOW_MS).toISOString();
+
+    // Two tiers, one indexed table: (1) the standing tight window, all actions;
+    // (2) TDW_04 engine-lane (ST-3d): record mutations over the wide window.
+    const [tight, mutations] = await Promise.all([
+      supabase
+        .from('vendor_activity_log')
+        .select('id, surface, action, summary, created_at')
+        .eq('vendor_id', vendorId)
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false })
+        .limit(maxRows),
+      supabase
+        .from('vendor_activity_log')
+        .select('id, surface, action, summary, created_at')
+        .eq('vendor_id', vendorId)
+        .in('action', RECORD_MUTATION_ACTIONS)
+        .gte('created_at', mutationCutoff)
+        .order('created_at', { ascending: false })
+        .limit(RECORD_MUTATION_MAX_ROWS),
+    ]);
+
+    if (tight.error && mutations.error) {
+      console.warn('[activity-log] read failed (non-fatal):', tight.error.message);
       return [];
     }
-    return data || [];
+
+    // Merge, dedupe by row id, newest first. The tight tier keeps priority order;
+    // wide-tier mutation rows join beneath anything already present.
+    const seen = new Set();
+    const merged = [];
+    for (const r of [...(tight.data || []), ...(mutations.data || [])]) {
+      if (r.id != null && seen.has(r.id)) continue;
+      if (r.id != null) seen.add(r.id);
+      merged.push(r);
+    }
+    merged.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+    return merged;
   } catch (err) {
     console.warn('[activity-log] read threw (non-fatal):', err.message);
     return [];
@@ -164,18 +208,25 @@ function formatActivityBlock(rows, currentSurface) {
   };
 
   const lines = rows.map(r => {
-    // Relative minutes for a human feel ("4 min ago").
+    // Relative age for a human feel ("4 min ago"; hours past 90 min — the ST-3d
+    // widened tier surfaces record mutations up to a day old, so minute-counts
+    // alone would read absurd at "1200 min ago").
     const ageMin = Math.max(0, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000));
-    const ageStr = ageMin <= 0 ? 'just now' : `${ageMin} min ago`;
+    const ageStr = ageMin <= 0 ? 'just now'
+      : ageMin <= 90 ? `${ageMin} min ago`
+      : `${Math.round(ageMin / 60)} hr ago`;
     const where  = r.surface === currentSurface ? 'here' : label(r.surface);
     return `- ${r.summary} (${where}, ${ageStr})`;
   });
 
   return [
-    'RECENT ACTIVITY — last few minutes, BOTH surfaces (WhatsApp + app):',
-    'The vendor uses two surfaces that share one memory. These actions already',
-    'happened — do NOT repeat them, and if the vendor refers to one ("did that',
-    'invoice go out?"), you already know it did. Acknowledge naturally.',
+    // Header kept honest (TDW_04 engine-lane, ST-3d): the block now carries the tight
+    // few-minutes window PLUS today's record mutations from the wider tier.
+    'RECENT ACTIVITY — the last few minutes on BOTH surfaces (WhatsApp + app),',
+    'plus today\'s lead/binder changes. The vendor uses two surfaces that share one',
+    'memory. These actions already happened — do NOT repeat them, and if the vendor',
+    'refers to one ("did that invoice go out?"), you already know it did.',
+    'Acknowledge naturally.',
     ...lines,
   ].join('\n');
 }

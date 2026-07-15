@@ -30,6 +30,7 @@ const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
 // The compiled engine hands (Phase 0 landed src/engine; dist is built on deploy).
 const { executeAndPatch } = require('../../lib/executeAndPatch');
+const { logActivity } = require('../../lib/vendor/snapshot'); // TDW_04 engine-lane (ST-3d): binder doors log
 
 // Full binder shape to return after a write so the screen repaints immediately.
 const RECORD_SELECT =
@@ -61,6 +62,15 @@ async function runTool(req, res, toolName, input) {
         .select(RECORD_SELECT).eq('id', binderId).eq('agent_id', agentId).maybeSingle();
       binder = data || null;
     }
+    // TDW_04 engine-lane (ST-3d, absorbed 02-HOTFIX-2): every binder-door write logs
+    // to vendor_activity_log — the assistant's cross-surface activity block finally
+    // sees list-page/card binder mutations (the 38-minute blind spot). Action = the
+    // tool name (logActivity's own convention). Fire-and-forget — never fails the write.
+    logActivity(req.app.locals.supabase, {
+      vendorId: req.vendor.id, surface: 'pwa', action: toolName,
+      summary: `binder ${binder && binder.client ? `"${binder.client}"` : binderId || ''} — ${String((result && result.display) || toolName).split('\n')[0].slice(0, 140)}`,
+      entityType: 'binder', entityId: binderId,
+    }).catch(() => {});
     return res.json({ ok: true, message: (result && result.display) || 'Done.', binder });
   } catch (e) {
     console.error(`[vendor-e binderWrite ${toolName}]`, e.message);
@@ -95,6 +105,12 @@ router.post('/:vendorId', ...auth, async (req, res) => {
 
     const { data: binder } = await eng.from('records')
       .select(RECORD_SELECT).eq('id', binderId).eq('agent_id', agentId).maybeSingle();
+    // TDW_04 engine-lane (ST-3d): the create door logs too. Fire-and-forget.
+    logActivity(req.app.locals.supabase, {
+      vendorId: req.vendor.id, surface: 'pwa', action: 'binder_create',
+      summary: `binder "${clientName}" opened (list page / AddSheet)`,
+      entityType: 'binder', entityId: binderId,
+    }).catch(() => {});
     return res.json({ ok: true, message: `Opened binder for ${clientName}.`, binder });
   } catch (e) {
     console.error('[vendor-e binderWrite create]', e.message);

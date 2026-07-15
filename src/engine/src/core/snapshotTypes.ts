@@ -11,6 +11,13 @@ export type SnapshotItem = {
   horizon: string | null; // ISO date when it matters by, if dated
   ref_type: string;  // source table: 'leads' | 'facts' | 'money_entries' | 'open_loops'
   ref_id: string;    // the row's uuid
+  // TDW_04 engine-lane (ST-3b, absorbed 02-HOTFIX-2): twin-annotation match keys.
+  // OPTIONAL — items written before this sitting lack them; snapshotText falls back
+  // to the name prefix of `text` (both registers open with the person's name).
+  // phone_key is the last-10-digit key (engine phoneKey.ts, the PWA's twin); name is
+  // the person's name as written. Annotation-only — these fields never drive a write.
+  name?: string | null;
+  phone_key?: string | null;
 };
 
 // A tool execution returns a human-readable line for Harvey AND, when it wrote
