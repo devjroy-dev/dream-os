@@ -97,3 +97,9 @@ Docs-only delivery: no `.js`/`.tsx` touched → node --check / tsc gates N/A thi
 - **F14 CLOSED at every layer** — export archived, soft-delete verified, snapshot pre-read empty (no line existed to die).
 - **Ritika & Arjun ×2 CLOSED** — CE-19-class name-drift predating its own fix, founder-cleaned; recorded in TDW_03_CROSSPLANE_CENSUS.md; no distinct-mechanism claim survives.
 - **0077 COLLAPSES to guarded structural convergence** — `vendor_availability` holds zero rows; no data preservation leg. Executor's documented choice, made here: **0077 ships standalone** (`0077_availability_convergence.sql`, structural-only, guarded) rather than folding into 0075 — the ladder stays one-concern-per-file and the ruling's dated header stays legible on its own migration. Lands with B1.
+
+## 10. SEAL — engine-lane sitting smoke (2026-07-15)
+
+**CE-22:** dream-os `2e57041` (base `e82b6e2` + audit-close + engine-lane deliveries, founder-applied) · dreamos-pwa `f9872e0` untouched · Railway GREEN, latest deploy, founder-confirmed ~05:30 UTC · smoke founder-run in production 05:13–05:45 UTC, evidence in-session (screenshots + SQL reads + one deterministic replay of the production snapshot note).
+
+**SIX TESTS, SIX PASSES** — full table and findings in FINDINGS_LOG's engine-lane section. Highlights: the door ledger caught the DELETE button lying (F-04.2 → A2); two verbatim money repeats left zero residue; the production note replay showed the original Exhibit C pair (Meera) rendering fused; the rebuild that used to erase every binder line restored seven of them. Open to CE: F-04.2 acceptance line for A2, F-04.3 cures (degenerate phone-key guard / harvest trace), ST-3d tunables, no-op-transition log noise.
