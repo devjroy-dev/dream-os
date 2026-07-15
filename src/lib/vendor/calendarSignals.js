@@ -14,6 +14,7 @@
 const { updateEvent } = require('./events');
 const { executeAndPatch } = require('../executeAndPatch');
 const { scrubText, scrubForStorage } = require('./scrub'); // TDW_04 B2 — F-04.38
+const { blockDates, unblockDates, blockLines, unblockLines } = require('./blockHands'); // TDW_04 B2 §1.5
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family', 'ceremony', 'social', 'other'];
@@ -282,12 +283,24 @@ async function fetchScratchpad(supabase, vendorId) {
 async function applyCalendarSignals(supabase, vendor, agentId, result) {
   const booked  = await bookEvents(supabase, vendor, agentId, result);
   const mutated = await mutateEvents(supabase, vendor, agentId, result);
+  // §1.5's two hands land on THIS door too, and that is the whole point. DONNA_TOOLS is
+  // ONE list (donna.ts:278) — not surface-aware — so the moment donna_block_date is
+  // registered, the model can call it here. Without these two lines a vendor on WhatsApp
+  // says "block the 20th", Victor answers "the day is being taken off the calendar", and
+  // NOTHING HAPPENS. That is F-04.21's disease, and it is exactly what §1.5's blessed
+  // copy ("Couldn't block {date} — nothing was written") exists to make impossible.
+  // The hands live in ONE home (blockHands.js) that both doors import — F-04.38's ruling
+  // applied FORWARD instead of retroactively: there is no other file.
+  const blocked   = await blockDates(supabase, vendor.id, result);
+  const unblocked = await unblockDates(supabase, vendor.id, result);
   await retroLinkOnFile(supabase, vendor, agentId, result);
   await lockstepBinderToEvent(supabase, vendor, result);
   let suffix = '';
-  if (booked.length)  suffix += '\n\n' + bookingLines(booked);
-  if (mutated.length) suffix += '\n\n' + mutationLines(mutated);
-  return { booked, mutated, suffix };
+  if (booked.length)    suffix += '\n\n' + bookingLines(booked);
+  if (mutated.length)   suffix += '\n\n' + mutationLines(mutated);
+  if (blocked.length)   suffix += '\n\n' + scrubText(blockLines(blocked));
+  if (unblocked.length) suffix += '\n\n' + scrubText(unblockLines(unblocked));
+  return { booked, mutated, blocked, unblocked, suffix };
 }
 
 module.exports = {

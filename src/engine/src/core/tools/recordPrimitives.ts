@@ -353,9 +353,47 @@ export const DONNA_INVOICE_PDF_TOOL: Anthropic.Tool = {
   input_schema: { type: 'object', properties: { binder_id: { type: 'string' } } },
 };
 
+// ── THE §1.5 RIDER — A BLOCK IS NOT A BOOKING (CE-ruled option (b), 2026-07-15) ──
+// F-04.37: Victor filed the vendor's own block as kind='family' and said "16 August is
+// blocked." He was not lying — he was obeying. donna_book_event's description SAID
+// "use me for blocks" (the word is struck below), offered nine kinds with `blocked` not
+// among them, and the door coerced anything else to 'meeting'. Three layers, no block.
+// Option (a) — widening this tool to carry kind='blocked' — was rejected: it would make
+// a block a booking at the tool's name, its display, and BOOKED_KINDS (the on-calendar
+// READ predicate, cabinet.js:125 — F-04.36 exists because a block leaked into it), and
+// it would arm bookEvents against 0075's UNIQUE index with a console.error-and-silence
+// failure path. These two hands make the teaching line an INVENTORY FACT instead.
+export const DONNA_BLOCK_DATE_TOOL: Anthropic.Tool = {
+  name: 'donna_block_date',
+  description: "Take a date off the vendor's calendar — a day they are not available to be booked. Give date (YYYY-MM-DD) and, if the vendor said why, a short reason. Use it when the vendor says block, hold, or mark themselves unavailable. This is not a booking: a booking is work the vendor sells, a block is a day they withdraw from sale.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      date:   { type: 'string', description: 'The date to block, YYYY-MM-DD.' },
+      reason: { type: 'string', description: "Optional — what the vendor said the day is for, in their words. Shown on their calendar." },
+    },
+    required: ['date'],
+  },
+};
+
+// DELIBERATELY NO `slot` PARAMETER. The block sheet writes full_day today
+// (availability.js:55); per-slot blocking is B5's day-sheet surface and capacity is
+// B3's. A slot parameter now would foreclose their rulings — §8's clause says don't.
+export const DONNA_UNBLOCK_DATE_TOOL: Anthropic.Tool = {
+  name: 'donna_unblock_date',
+  description: "Put a blocked date back on the vendor's calendar — the day becomes available to be booked again. Give date (YYYY-MM-DD). Use it when the vendor says unblock, free up, or open a date they had blocked. This does not touch bookings: it only lifts a block.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      date: { type: 'string', description: 'The blocked date to lift, YYYY-MM-DD.' },
+    },
+    required: ['date'],
+  },
+};
+
 export const DONNA_BOOK_EVENT_TOOL: Anthropic.Tool = {
   name: 'donna_book_event',
-  description: "Place a date on the vendor's calendar — a booking the vendor keeps: a shoot, a trial, a fitting, a recce, an appointment, a meeting, a ceremony. Give title (whose, and what — e.g. \"Kaaya - trial\"), event_date (YYYY-MM-DD), and the kind that fits THIS vendor's craft. Optionally event_time (HH:MM, 24h) and a short note. Use it when the vendor says book, block, schedule, or pencil in a date. The calendar is the vendor's spine — this is how a confirmed date stops living only in talk and becomes a kept appointment.",
+  description: "Place a date on the vendor's calendar — a booking the vendor keeps: a shoot, a trial, a fitting, a recce, an appointment, a meeting, a ceremony. Give title (whose, and what — e.g. \"Kaaya - trial\"), event_date (YYYY-MM-DD), and the kind that fits THIS vendor's craft. Optionally event_time (HH:MM, 24h) and a short note. Use it when the vendor says book, schedule, or pencil in a date. The calendar is the vendor's spine — this is how a confirmed date stops living only in talk and becomes a kept appointment.",
   input_schema: {
     type: 'object',
     properties: {
@@ -406,6 +444,7 @@ export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_EDIT_TOOL, DONNA_HIDE_TOOL, DONNA_RETRIEVE_TOOL, DONNA_REPEATFOLLOWUP_TOOL,
   DONNA_MERGE_TOOL, DONNA_SPLIT_TOOL, DONNA_MONEY_EDIT_TOOL,
   DONNA_INVOICE_PDF_TOOL, DONNA_BOOK_EVENT_TOOL, DONNA_EDIT_EVENT_TOOL, DONNA_CANCEL_EVENT_TOOL,
+  DONNA_BLOCK_DATE_TOOL, DONNA_UNBLOCK_DATE_TOOL,   // TDW_04 B2 §1.5 — a block is not a booking
 ];
 
 // ── Executors ────────────────────────────────────────────────────────────────
@@ -552,6 +591,22 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       // Donna's hand asks for the booking; the kept date returns through the door.
       const at = typeof input.event_time === 'string' && input.event_time.trim() ? ` at ${input.event_time.trim()}` : '';
       return { display: `Booking requested: ${title} on ${date}${at} — it is being placed on the calendar.` };
+    }
+    case 'donna_block_date': {
+      const date = typeof input.date === 'string' ? input.date.trim() : '';
+      if (!date) return { display: 'ERROR: donna_block_date needs date (YYYY-MM-DD).' };
+      // Signal only — the door takes the day off the calendar (public.events, kind='blocked',
+      // through eventWrite) and confirms. Donna's hand asks; the withdrawn day returns
+      // through the door. Signal-only is why these two are absent from CHAT_MUTATING_TOOLS,
+      // exactly like their four siblings.
+      const why = typeof input.reason === 'string' && input.reason.trim() ? ` — ${input.reason.trim()}` : '';
+      return { display: `Block requested for ${date}${why} — the day is being taken off the calendar.` };
+    }
+    case 'donna_unblock_date': {
+      const date = typeof input.date === 'string' ? input.date.trim() : '';
+      if (!date) return { display: 'ERROR: donna_unblock_date needs date (YYYY-MM-DD).' };
+      // Signal only — the door lifts the block (soft delete, Q-B1-7's covenant) and confirms.
+      return { display: `Unblock requested for ${date} — the day is being put back on the calendar.` };
     }
     case 'donna_edit_event': {
       const eid = typeof input.event_id === 'string' ? input.event_id.trim() : '';

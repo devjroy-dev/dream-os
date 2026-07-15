@@ -35,6 +35,7 @@ const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 const { scrubText } = require('../../lib/vendor/scrub');        // TDW_04 B2 — F-04.38
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
+const { blockDates, unblockDates, blockLines, unblockLines } = require('../../lib/vendor/blockHands'); // TDW_04 B2 §1.5
 
 // ── THE PERSONA FIREWALL now lives at src/lib/vendor/scrub.js ─────────────────
 // F-04.38 (TDW_04 B2, CE-ruled 2026-07-15). scrubText and scrubForStorage were
@@ -697,6 +698,15 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const mutated = await mutateEvents(req, result);
       if (mutated.length) send({ type: 'text_delta', text: '\n\n' + mutationLines(mutated) });
 
+      // §1.5's two hands. scrubText wraps them for the same reason bookingLines is
+      // wrapped (F-04.33's seam): these strings carry a vendor-supplied reason straight
+      // back to the wire, and a reason is free text.
+      const blocked = await blockDates(req.app.locals.supabase, req.vendor.id, result);
+      if (blocked.length) send({ type: 'text_delta', text: '\n\n' + scrubText(blockLines(blocked)) });
+
+      const unblocked = await unblockDates(req.app.locals.supabase, req.vendor.id, result);
+      if (unblocked.length) send({ type: 'text_delta', text: '\n\n' + scrubText(unblockLines(unblocked)) });
+
       await retroLinkOnFile(req, result);
       await lockstepBinderToEvent(req, result);
       await logChatActivity(req, result); // TDW_04 B0 item 3
@@ -736,6 +746,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const documents = await buildInvoices(req, result);
     const booked    = await bookEvents(req, result);
     const mutated   = await mutateEvents(req, result);
+    const blocked   = await blockDates(req.app.locals.supabase, req.vendor.id, result);   // §1.5
+    const unblocked = await unblockDates(req.app.locals.supabase, req.vendor.id, result); // §1.5
     await retroLinkOnFile(req, result);
     await lockstepBinderToEvent(req, result);
     await logChatActivity(req, result); // TDW_04 B0 item 3
@@ -746,6 +758,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     if (documents.length) reply += '\n\n' + invoiceLines(documents);
     if (booked.length) reply += '\n\n' + bookingLines(booked);
     if (mutated.length) reply += '\n\n' + mutationLines(mutated);
+    if (blocked.length) reply += '\n\n' + scrubText(blockLines(blocked));       // §1.5
+    if (unblocked.length) reply += '\n\n' + scrubText(unblockLines(unblocked)); // §1.5
 
     fireHarvest(req, message, result); // TDW_02 P4 — response is fully built; fires post-return
     const toolNames = (result.tool_calls || []).map((t) => t.name);
