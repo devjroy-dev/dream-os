@@ -23,7 +23,9 @@ const resolveAgent  = require('../middleware/resolveAgent');
 // The compiled engine loop (Phase 0 landed src/engine; dist is built on deploy).
 const { runTurn } = require('../../engine/dist/core/loop');
 const { generateInvoiceForBinder } = require('../vendor/invoices');
-const { updateEvent } = require('../../lib/vendor/events');
+// updateEvent's import is GONE: mutateEvents was its only caller here, and it routes
+// through eventWrite now. lib/vendor/events.js still serves api/vendor/events.js — that
+// door is relocation C's.
 const { executeAndPatch } = require('../../lib/executeAndPatch');
 const { missingCells } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-16/17)
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
@@ -31,7 +33,8 @@ const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../..
 const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
-const { scrubText, scrubForStorage } = require('../../lib/vendor/scrub'); // TDW_04 B2 — F-04.38
+const { scrubText } = require('../../lib/vendor/scrub');        // TDW_04 B2 — F-04.38
+const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
 
 // ── THE PERSONA FIREWALL now lives at src/lib/vendor/scrub.js ─────────────────
 // F-04.38 (TDW_04 B2, CE-ruled 2026-07-15). scrubText and scrubForStorage were
@@ -134,22 +137,11 @@ const BOOKED_KINDS = ['shoot', 'meeting', 'recce', 'fitting', 'trial', 'family',
 // gave none, the door tries a CONFIDENT name-match from the title (exact client name, single hit
 // only) — never a guess. 0 or >1 matches -> left honestly unlinked (null). The link is what lets
 // Donna keep the event's date and the binder's date in lockstep.
-async function resolveBinderForBooking(req, bk) {
-  const given = String(bk.binder_id || '').trim();
-  if (UUID_RE.test(given)) return given;
-  const hint = String(bk.title || '').split(/[-\u2013\u2014\u00b7:]/)[0].trim();
-  if (hint.length < 2) return null;
-  try {
-    const { data, error } = await req.app.locals.supabase.schema('engine')
-      .from('records')
-      .select('id, client')
-      .eq('agent_id', req.agentId)
-      .ilike('client', hint)
-      .limit(2);
-    if (error || !data || data.length !== 1) return null; // not a confident single match -> unlinked
-    return data[0].id;
-  } catch (e) { console.warn('[vendor-e chat:link binder]', e.message); return null; }
-}
+// resolveBinderForBooking + findExistingEvent ABSORBED INTO eventWrite (TDW_04 B2).
+// They were this door's dedupe and backlink; they are now the ONE writer's, because the
+// CRUD door needs the identical rules and two copies of a rule is how the two copies
+// drift. Moved with logic byte-preserved (proven mechanically in B2's bench); only the
+// req-dereferences became parameters, per Q-B2-7 as extended.
 async function bookEvents(req, result) {
   const wantBook = [];
   const collect = (call) => {
@@ -164,35 +156,36 @@ async function bookEvents(req, result) {
   const booked = [];
   for (const bk of wantBook) {
     try {
+      // BOOKED_KINDS stays HERE and is deliberately NOT eventWrite's CALENDAR_KINDS: this is
+      // the BOOKING door's coercion — an unrecognised kind from the model becomes a neutral
+      // 'meeting'. It is also F-04.37's third layer (a model-sent kind='blocked' is coerced
+      // to 'meeting' right here), which the §1.5 rider addresses. Left exactly as found:
+      // changing it is the rider's chartered work, not this relocation's.
       const kind = BOOKED_KINDS.includes(bk.kind) ? bk.kind : 'meeting';
-      // F-04.34: scrub-with-witness — no internal persona name reaches public.events.
-      const row = { vendor_id: req.vendor.id, title: scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', String(bk.title).slice(0, 200), 'donna_book_event', 'title'), event_date: bk.event_date, kind, state: 'upcoming' };
-      if (bk.event_time) row.event_time = bk.event_time;
-      if (bk.notes) row.notes = scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', String(bk.notes), 'donna_book_event', 'notes');
-      const linkedBinder = await resolveBinderForBooking(req, bk);
-      const existing = await findExistingEvent(req, bk);
-      if (existing) {
-        // (a) same client, same date, already on the calendar — that IS this booking. Link it and
-        // apply any new detail; never mint a duplicate. Re-confirming a booking becomes idempotent.
-        const patch = {};
-        if (bk.event_time) patch.event_time = bk.event_time;
-        if (bk.notes) patch.notes = scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', String(bk.notes), 'donna_book_event', 'notes'); // F-04.34
-        if (linkedBinder && !existing.linked_binder_id) patch.linked_binder_id = linkedBinder;
-        if (Object.keys(patch).length) {
-          const { data } = await req.app.locals.supabase.from('events')
-            .update(patch).eq('id', existing.id).eq('vendor_id', req.vendor.id)
-            .select('id, title, event_date, event_time, kind').maybeSingle();
-          booked.push(data || existing);
-        } else {
-          booked.push(existing);
-        }
+
+      // THIN CALLER. Everything this function used to do inline — the scrub, the dedupe,
+      // the binder backlink, the insert-or-patch fork — is eventWrite's now. The diff
+      // deletes; it does not reimplement.
+      const r = await writeEvent(req.app.locals.supabase, {
+        vendorId:    req.vendor.id,
+        agentId:     req.agentId,
+        surface:     'pwa',
+        source:      'victor',
+        title:       bk.title,
+        event_date:  bk.event_date,
+        event_time:  bk.event_time || null,
+        kind,
+        notes:       bk.notes || null,
+        client_hint: bk.binder_id || null,
+        state:       'upcoming',
+      });
+      if (!r.ok) {
+        // Unchanged in substance: a failed booking is not pushed to `booked`, so no
+        // bookingLine claims it. The door has never lied about a write that didn't land.
+        console.error('[vendor-e chat:donna_book_event]', r.error || (r.conflict && r.conflict.kind) || 'write refused');
         continue;
       }
-      if (linkedBinder) row.linked_binder_id = linkedBinder;
-      const { data, error } = await req.app.locals.supabase
-        .from('events').insert(row).select('id, title, event_date, event_time, kind').single();
-      if (error) { console.error('[vendor-e chat:donna_book_event]', error.message); continue; }
-      booked.push(data);
+      booked.push(r.event);
     } catch (e) { console.error('[vendor-e chat:donna_book_event]', e.message); }
   }
   return booked;
@@ -228,23 +221,6 @@ function bookingLines(booked) {
     const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
     return `Booked: ${bk.title} — ${when}. It's on your calendar.`;
   }).join('\n'));
-}
-// (a) Dedupe: an event for the same client on the same date already on the calendar IS this booking.
-async function findExistingEvent(req, bk) {
-  const hint = String(bk.title || '').split(/[-–—·:]/)[0].trim();
-  if (hint.length < 2) return null;
-  try {
-    const { data, error } = await req.app.locals.supabase
-      .from('events')
-      .select('id, title, event_date, event_time, kind, linked_binder_id, state')
-      .eq('vendor_id', req.vendor.id)
-      .eq('event_date', bk.event_date)
-      .neq('state', 'cancelled')
-      .ilike('title', `${hint}%`)
-      .limit(2);
-    if (error || !data || data.length !== 1) return null; // 0 or ambiguous -> a fresh insert is safer
-    return data[0];
-  } catch (e) { console.warn('[vendor-e chat:dedupe]', e.message); return null; }
 }
 // Retroactive link: when a client binder is filed (donna_client), tie any existing unlinked event
 // that exactly name-matches that client — so the common "book the date, file the client later" order
@@ -283,7 +259,8 @@ async function retroLinkOnFile(req, result) {
 // donna_edit_event / donna_cancel_event are Donna's SIGNAL hands for changing the calendar.
 // The door resolves the event (vendor-scoped; only on a full valid handle, so a truncated
 // one reports cleanly instead of hard-erroring — the short-UUID lesson), applies the change,
-// and confirms. updateEvent is the same helper the calendar API uses, so the contract matches.
+// and confirms. Both now write through eventWrite (TDW_04 B2), so the CRUD door and this
+// one cannot drift: one writer, two doors.
 // ── TDW_04 B0 item 3 (CE extension, 2026-07-15) — THE CHAT LANE JOINS THE LEDGER ──
 //
 // Recorded as NEW SCOPE, not laundered into ST-3d: ST-3d is SURFACE_TRUTH_AUDIT R3(d),
@@ -401,17 +378,18 @@ async function mutateEvents(req, result) {
       if (!ev) { done.push({ action: 'edit', ok: false }); continue; }
       const patch = {};
       for (const k of ['title', 'event_date', 'event_time', 'kind', 'notes']) {
-        if (typeof e[k] === 'string' && e[k].trim()) {
-          // F-04.34: only the free-text cells can carry a persona name. event_date /
-          // event_time / kind are enums and dates — scrubbing them would be noise.
-          patch[k] = (k === 'title' || k === 'notes')
-            ? scrubForStorage(req.app.locals.supabase, req.vendor.id, 'pwa', e[k].trim(), 'donna_edit_event', k)
-            : e[k].trim();
-        }
+        if (typeof e[k] === 'string' && e[k].trim()) patch[k] = e[k].trim();
       }
-      const r = await updateEvent(req.app.locals.supabase, req.vendor.id, ev.id, patch);
+      // Routed: updateEvent's raw .update() is gone. The scrub that used to live in this
+      // loop lives in eventWrite now (same rule — only the free-text cells; dates and enums
+      // are noise), so this loop is back to what it was before F-04.34 patched it here.
+      const r = await writeEvent(req.app.locals.supabase, {
+        vendorId: req.vendor.id, surface: 'pwa', source: 'victor', event_id: ev.id, ...patch,
+      });
       // Lockstep: a linked event's date moved -> carry the binder's date along, through Donna's hand
       // (the binder is engine-owned, so it goes through donna_date — snapshot patched, trail written).
+      // VERBATIM from B1. The charter relocates this leg unchanged; only its sibling's raw
+      // write moved.
       if (r && r.ok && patch.event_date && ev.linked_binder_id) {
         try { await executeAndPatch(req.agentId, 'donna_date', { binder_id: ev.linked_binder_id, date: patch.event_date }); }
         catch (e2) { console.warn('[vendor-e chat:lockstep e->b]', e2.message); }
@@ -423,10 +401,11 @@ async function mutateEvents(req, result) {
     try {
       const ev = await resolveEvent(req, c.event_id);
       if (!ev) { done.push({ action: 'cancel', ok: false }); continue; }
-      const { error } = await req.app.locals.supabase
-        .from('events').update({ state: 'cancelled' })
-        .eq('id', ev.id).eq('vendor_id', req.vendor.id);
-      done.push(!error ? { action: 'cancel', ok: true, event: ev } : { action: 'cancel', ok: false });
+      // Routed. A cancel is a state write, and state is eventWrite's to set.
+      const r = await writeEvent(req.app.locals.supabase, {
+        vendorId: req.vendor.id, surface: 'pwa', source: 'victor', event_id: ev.id, state: 'cancelled',
+      });
+      done.push(r && r.ok ? { action: 'cancel', ok: true, event: ev } : { action: 'cancel', ok: false });
     } catch (err) { console.error('[vendor-e chat:donna_cancel_event]', err.message); done.push({ action: 'cancel', ok: false }); }
   }
   return done;
@@ -461,11 +440,23 @@ async function lockstepBinderToEvent(req, result) {
   for (const tc of (result.tool_calls || [])) { collect(tc); for (const dc of (tc.donna_calls || [])) collect(dc); }
   for (const [binderId, date] of moves) {
     try {
-      await req.app.locals.supabase.from('events')
-        .update({ event_date: date })
+      // THE RAW WRITE THE CHARTER NAMED. It was one multi-row .update(); eventWrite writes
+      // ONE row by id, so the predicate becomes a RESOLVE and each match goes through the
+      // door. Same rows, same rule, one writer. (Identical shape to availability.js's
+      // unblock, ratified at 4a: the guard moves into the constitution, not sideways.)
+      const { data: evs, error } = await req.app.locals.supabase
+        .from('events')
+        .select('id')
         .eq('vendor_id', req.vendor.id)
         .eq('linked_binder_id', binderId)
         .neq('state', 'cancelled');
+      if (error || !evs || !evs.length) continue;
+      for (const ev of evs) {
+        await writeEvent(req.app.locals.supabase, {
+          vendorId: req.vendor.id, surface: 'pwa', source: 'victor',
+          event_id: ev.id, event_date: date,
+        });
+      }
     } catch (e) { console.warn('[vendor-e chat:lockstep b->e]', e.message); }
   }
 }
