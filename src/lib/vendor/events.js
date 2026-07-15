@@ -48,11 +48,22 @@ async function createEvent(supabase, vendorId, params) {
 
 // ── updateEvent ──────────────────────────────────────────────────────────
 
+// TDW_04 A3 rider (F-04.8, CE-ratified): `state` joins the editable set — the
+// P4 swipe table's "mark done" had no door, so A2 stubbed it honest and logged
+// the gap rather than inventing a route. The CE ruled it into A3 as a
+// read-your-writes cousin: an events surface that can't reflect state honestly
+// would undercut A3's own acceptance. Values mirror the DB CHECK exactly.
+const ALLOWED_STATES = ['upcoming', 'done', 'cancelled'];
+
 async function updateEvent(supabase, vendorId, eventId, patch) {
-  const EDITABLE = ['title', 'event_date', 'event_time', 'kind', 'notes'];
+  const EDITABLE = ['title', 'event_date', 'event_time', 'kind', 'notes', 'state'];
   const update = {};
   for (const key of EDITABLE) {
     if (patch[key] !== undefined) update[key] = patch[key];
+  }
+
+  if (update.state && !ALLOWED_STATES.includes(update.state)) {
+    return { ok: false, error: 'Invalid state. Must be one of: ' + ALLOWED_STATES.join(', ') + '.' };
   }
 
   if (update.kind && !ALLOWED_KINDS.includes(update.kind)) {

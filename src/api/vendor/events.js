@@ -112,7 +112,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
   // ── Build query ─────────────────────────────────────────────────────
   let listQuery = supabase.from('events')
-    .select('id, title, kind, event_date, event_time, state, linked_lead_id, notes')
+    .select('id, title, kind, event_date, event_time, state, linked_lead_id, linked_binder_id, notes') // linked_binder_id: TDW_04 A3 (L-3) — the cross-chip needs it to name the twin binder
     .eq('vendor_id', vendor.id)
     .is('deleted_at', null)
     .gte('event_date', from)
@@ -157,6 +157,10 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     event_time: e.event_time,
     state:      e.state,
     lead_id:    e.linked_lead_id,
+    linked_binder_id: e.linked_binder_id, // TDW_04 A3 (L-3): closes TDW_03's logged
+      // upstream gap ("linked_binder_id absent from the payload; a future block
+      // wiring calendar chips must add it first"). SELECT *and* mapper — the A2.2
+      // lesson: this handler maps, it never passes through.
     notes:      e.notes,
   }));
 

@@ -68,9 +68,15 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
       .maybeSingle(),
 
     // 2. Pending invoices — unpaid + advance_paid, soonest due first, max 10
+    // TDW_04 A3 (audit finding O-2): soft-deleted rows were inflating the chat
+    // masthead — every typed read here now filters deleted_at, as the repoint's
+    // acceptance requires. (The hub's MONEY cells repoint to binder truth in the
+    // same delivery; this read still serves any consumer counting typed rows,
+    // and it will no longer count the dead.)
     supabase.from('invoices')
       .select('client_name, amount_total, amount_paid, due_date, state')
       .eq('vendor_id', vendor.id)
+      .is('deleted_at', null)
       .in('state', ['unpaid', 'advance_paid'])
       .order('due_date', { ascending: true, nullsFirst: false })
       .limit(10),
@@ -79,6 +85,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     supabase.from('events')
       .select('title, kind, event_date, event_time')
       .eq('vendor_id', vendor.id)
+      .is('deleted_at', null) // O-2: cancelled-and-removed events stay gone
       .eq('state', 'upcoming')
       .gte('event_date', today)
       .lte('event_date', thirtyDays)
@@ -89,6 +96,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     supabase.from('leads')
       .select('name, wedding_date, budget_max')
       .eq('vendor_id', vendor.id)
+      .is('deleted_at', null) // O-2: an undone lead never counts again
       .eq('state', 'new')
       .order('created_at', { ascending: false })
       .limit(5),
