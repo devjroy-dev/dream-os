@@ -61,6 +61,7 @@
 | **0033_otp_sessions.sql** | **2026-05-18** | **P2-3** | **otp_sessions table (phone PK, otp_hash, purpose, expires_at, created_at). otp_sessions_expires_at_idx. Transient OTP state for PWA login — upserted on send-otp, deleted on verify-otp. No FK to users (intentional).** |
 | 0069_blocked_kind.sql | 2026-06-21 | calendar | events.kind CHECK widened: + `blocked` (13th value) — hard-blocked vendor days on the shared events table. (Index line backfilled: TDW_04 audit O-1 doc-lag rider, CE-ratified 2026-07-15.) |
 | 0070_linked_binder_id.sql | 2026-06-21 | calendar | events.linked_binder_id (uuid, soft ref -> engine.records.id) + partial index. Links a calendar booking to its client binder so Donna keeps their dates in lockstep. |
+| 0075_events_slots.sql | 2026-07-15 | TDW_04 B2 | events.ready_by (date, null) · `events_slot_check` on the bare `slot` column 0077 added · `events_vendor_date_blocked_idx` · **`events_vendor_date_blocked_unique_idx`** (UNIQUE partial — F-04.32's cure, restores atomic ALREADY_BLOCKED) · guarded idempotent slot backfill (a **witnessed no-op**: 0 null-slot blocks at author time). **Ladder split, the other half of 0077's cross-note (L-7, CE-ruled 2026-07-15):** v1 ordered slots→convergence; the renumbering flipped it, so 0077 carried the bare column and 0075 carries the constraints. The order was corrected, not the numbers renamed (LD-8). |
 ## Tables
 
 ### users
@@ -288,12 +289,16 @@ Realtime: enabled
 | linked_binder_id | uuid (soft ref -> engine.records.id) | added 0070. Optional. The client binder this booking belongs to — lets Donna keep the event's date and the binder's date in lockstep. No DB FK (cross-schema); reconciled in Donna's hand. |
 | state | text NOT NULL | CHECK: upcoming / done / cancelled. Default: upcoming. |
 | notes | text | location, contact, prep notes |
+| **slot** | **text** | **Nullable. CHECK: morning / noon / evening / full_day. The C2 day: morning (until 12:00) · noon (12:00–15:59) · evening (16:00 onwards) · full_day. Added BARE by 0077 (structure only) so converged blocks carry `full_day` from day one — no NULL-slot era ever existed; CHECK + indexes added by 0075. NULL is LAWFUL and means timeline-only (an appointment with no time). (TDW_04 B2, Q-B2-2 rider, CE-ratified 2026-07-15.)** |
+| **ready_by** | **date** | **Nullable. Delivery-vendor deadline (C3) — jeweller/designer run on deadlines, not occupancy; their "date" IS the deadline. Function artists never set it. Added 0075. (TDW_04 B2.)** |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto via trigger |
 | deleted_at | timestamptz | Nullable. Soft delete — every vendor events read filters `deleted_at is null` (events.js). Documented from prod inventory (reconciles BASELINE's 14-column count). (Doc-lag rider, TDW_04 audit O-1, CE-ratified 2026-07-15.) |
 
 Constraints:
 - `events_owner_xor` (added 0013) — exactly one of vendor_id or couple_id is set
+- **`events_slot_check` (added 0075) — slot in (morning, noon, evening, full_day); NULL lawful**
+- **`events_vendor_date_blocked_unique_idx` (added 0075) — UNIQUE partial index on (vendor_id, event_date) `where kind='blocked' and deleted_at is null`. Restores the atomic ALREADY_BLOCKED guarantee that died with `public.vendor_availability` at 0077 (F-04.32). NOT a naive unique — a vendor legitimately has many events on one date; the predicate is what makes uniqueness correct. `deleted_at is null` is load-bearing: unblock is a soft delete (Q-B1-7), and without it a dead block would poison its date against re-blocking forever.**
 
 Realtime: enabled
 
