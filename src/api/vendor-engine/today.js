@@ -72,6 +72,19 @@ router.get('/:vendorId',
     const allEvents  = events  || [];
     const isOut = (b) => (b.direction || '').toLowerCase() === 'out';
 
+    // F-04.19 (CE-ruled 2026-07-15, closing the F-04.13 family): THE money rule,
+    // mirrored from the canon (dreamos-pwa/lib/vendor/derive.ts :: pendingOf).
+    // This route is DORMANT (fetchToday has no callers) — ruled anyway: no code,
+    // sleeping or waking, may carry independent money arithmetic.
+    const pendingOf = (b) => {
+      if (isOut(b)) return 0;
+      const explicit = b.amount_pending;
+      if (explicit !== null && explicit !== undefined && explicit !== '') {
+        return Math.max(Number(explicit) || 0, 0);
+      }
+      return Math.max((Number(b.amount) || 0) - (Number(b.amount_received) || 0), 0);
+    };
+
     // Lead-stage = inbound, not yet a client (mirrors the cabinet slicing).
     const CLIENT_STAGE_WORDS = ['client', 'booked', 'confirmed', 'signed', 'advance', 'paid'];
     const isClientStage = (b) => {
@@ -82,11 +95,11 @@ router.get('/:vendorId',
 
     // overdue_invoices — pending money with a past due date.
     const overdue = allBinders
-      .filter(b => Number(b.amount_pending) > 0 && b.date && b.date < today)
+      .filter(b => pendingOf(b) > 0 && b.date && b.date < today)
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
       .slice(0, 10)
       .map(b => ({ id: b.id, client_name: b.client || null,
-                   amount_owed: Number(b.amount_pending) || 0, due_date: b.date }));
+                   amount_owed: pendingOf(b), due_date: b.date }));
 
     // new_leads — most recent lead-stage binders.
     const newLeads = leadBinders
@@ -99,7 +112,7 @@ router.get('/:vendorId',
     // money_snapshot — derived from the records' money cells.
     let totalOutstanding = 0, unpaidCount = 0, advancePaidCount = 0;
     for (const b of allBinders) {
-      const owed = Number(b.amount_pending) || 0;
+      const owed = pendingOf(b); // F-04.19: the ruled rule
       const recv = Number(b.amount_received) || 0;
       if (owed > 0) {
         totalOutstanding += owed;
