@@ -541,7 +541,40 @@ Full audit: docs/TDW_04_AUDIT_FINDINGS.md (every SURFACE_TRUTH_AUDIT ST claim ve
 - **O-4 (🟢, record):** ST's glance path is stale — truth is `src/engine/src/core/glance.ts`.
 - **A-1 (🟢, founder-ratified):** dream-os HEAD exactly e82b6e2 — the pre-classified docs-only delta past it never materialized (eebb4bf predates it). Finding, not drift.
 
-## TDW_04 Part A sitting A2 (2026-07-15) — Swipes, bulk, optimistic honesty CLOSED
+## TDW_04 Part A sitting A3 (2026-07-15) — FINDINGS LOG (sitting OPEN, charter proven, rulings pending)
+
+Charter (spec A3, ST-4/L-4): slice mastheads · the chat-screen repoint · phantom-invoice settlement or exclusion, proven against the Invoices page in one screenshot · ST-2 chips universalized (L-3). Riders ruled in: F-04.8 (events `state` door), F-04.9 (primer grammar), F-04.12 (Mark-lost ungated-but-confessed), O-2 (`deleted_at` on typed context reads).
+
+**CHARTER: PROVEN.** Executor pass 24/24 (harness inside the vendor shell, per A2.3's binding rule). Founder phone smoke confirmed in production:
+- **VERDICT-(d) OBITUARY — the sitting's point, witnessed:** hub Ledger `40K · OWED · from your binders · 1 open`, greeting "one invoice remains"; Invoices masthead `Rs 40,000 · from your binders · across 1 open`. Same rupee, same count, two renderers, one derivation (`lib/vendor/derive.ts`). The disagreement the §3.5 audit named as verdict (d) is dead between those two surfaces.
+- All five P5 mastheads · L-3 chips (`IN YOUR BOOKS · ANANYA ›` on the event that names a binder; no chip where none is named) · both blindness lines · F-04.9 grammar · F-04.12 exactly as ruled (SQL: `Lead "Rahul Sharma" state: booked → lost. Reason: choose another studio` in public.notes tagged ['lead','state_change']; Mr Rao at `contacted` got no confession) · no regression.
+- **A3.1 (executor judgment, flagged for CE):** the hub's compact formatter rounded ₹1,25,000 to "1.3L" while the Invoices masthead printed the exact figure — two agreeing surfaces made to LOOK ₹5,000 apart, which is the class of small lie this block exists to kill. Compact scale kept (the brass cell is ~120px); rounding removed (`1.25L`, `65.4K`, `1.3L` only when it is). One call site. CE may veto in one line.
+
+### THE DISCOVERY A3'S SUCCESS EXPOSED (both material, both need rulings)
+
+A3 made the hub and the Invoices page agree. The founder's phone then found that **the cabinet drawer disagrees with both — in one direction for money, and in the opposite direction for the calendar.** Root cause is identical: THE DRAWER HAS ITS OWN RULE-SET. Two independent derivations of the same fact guarantee that at least one surface is lying at any moment; which one is lying is a coin-toss per fact.
+
+**F-04.13 — MONEY: the drawer is right, the slice+hub are wrong (🔴 material, undercount 68%).**
+`src/api/vendor-engine/cabinet.js:76-77` slices `owed = binders where Number(amount_pending) > 0`. Binders whose money arrived through Victor's `donna_money` door carry `amount` but NEVER the settlement cells (`amount_received`/`amount_pending` stay null) — only the `money-edit` door writes those. Production truth at 2026-07-15: Dev Roy 2 (₹35,000) and Keka (₹50,000) have no `amount_pending`.
+- Cabinet drawer INFERS `pending = amount_pending ?? max(amount − received, 0)` → **OUTSTANDING ₹1,25,000** — matches the vendor's reality.
+- Invoices page + hub read `cab.owed` strictly → only Meera's explicit ₹40,000 → **₹40,000**, and **two unpaid clients do not appear on the Invoices page at all**.
+A3's own acceptance (hub ≡ Invoices) is met — but they agree on an undercount. **Executor recommendation (needs CE word): adopt the inference as the ONE rule — `pending ?? max(amount − received, 0)`, `direction='in'` only — inside `lib/vendor/derive.ts`, and repoint the backend's `owed` slice to the same predicate. One rule, three surfaces, ₹1,25,000 everywhere.**
+
+**F-04.17 — CALENDAR: the slice is right, the drawer is wrong (🔴 material, over-claim).**
+`cabinet.js:80-82` builds the calendar column as `event_date >= today && BOOKED_KINDS.includes(kind)` — **no state filter at all**. Founder SQL, verbatim: `Ananya - recce · recce · 2026-07-19 · upcoming` · `__calendar_check__ · meeting · 2026-07-21 · cancelled` · `Meera - call · meeting · 2026-07-21 · cancelled`. The drawer shows all three as ON THE CALENDAR (count 3); the Events slice shows the one upcoming event (truth). Both surfaces read the SAME table — this is not chat-vs-CRUD, it is one missing predicate. **Executor recommendation (needs CE word): the calendar column filters `state='upcoming'` (or reads `deriveEventsThisWeek`), so a cancelled event stops occupying a date the vendor could sell.**
+
+### EXECUTOR-OWNED DEFECTS (fixed in A3.2, no ruling needed)
+- **F-04.14 (🟠 the vanishing swipe):** deferred-fire + REMOUNT (A2's recorded verdict) = the optimistic badge reverted on slice→slice navigation while the write still sat in its 30s window; the vendor read it as data loss. `pagehide`/`visibilitychange` flushed on tab-close, but client-side navigation fires neither. Cure: `SliceScreen` flushes pending writes on unmount — leaving the screen commits.
+- **F-04.15 (🔴 the masquerade's copy outlived the masquerade):** the delete confirm sheet told TWO lies. It said a lead "will be marked as lost" — M3's own words, still on screen after A2 killed the behaviour and wired the real DELETE door. And it said expenses would be "permanently deleted" when the door is `/hide` (recoverable, per TDW_03's own rider). Both lines now name what their door actually does. Copy that outlives its behaviour is the same defect class as a masquerading button; it just hides in a different file.
+
+### OPEN — FOUNDER'S CALL
+- **F-04.16 (🟢 the 30-second toast):** the toast lives 30s because the undo window is 30s and the toast IS the affordance. Founder reports it loiters. Options: (a) shrink to a tappable pill after ~5s; (b) shorten both to ~8s (contradicts the CE-ruled 30s — needs CE); (c) leave.
+
+### UNRESOLVED — AWAITING FOUNDER DETAIL (logged, not guessed)
+- "Mark as delete no message appears" — which slice, and did the row vanish? The toast fires from the same code path as Mark-lost's, which the founder saw working; cannot diagnose without the distinction.
+- "Mark as lost issues detected — does not behave as stated" — the founder's own screenshots and SQL show the confession firing on `booked`, silence on `contacted`, and the reason landing. The executor is missing something the founder saw; logged rather than dismissed.
+
+
 Charter (spec A2, L-2/L-5): the approved swipe table per slice with the defanged delete + separate Mark-lost · bulk-select + BulkBar · optimistic-write + 30s undo (F2's cure) on every mutation · the remount judged under live navigation, verdict recorded. Riders aboard (CE-ruled): F-04.5 successMessage override · F-04.6 sentinel-aware completeness · F-04.7 notes read-row (display-only fence held — no editor grew).
 
 **SEAL — CE-22: dream-os `b236db8` · dreamos-pwa `e5e2328` · Railway GREEN + Vercel GREEN (founder-confirmed 2026-07-15). Executor browser pass 20/20 (six scenarios) + A2.3 touch pass 8/8 (regression-proofed both ways) + backend sentinel cold-proof. Founder phone smoke: every charter item witnessed in production, read off `vendor_activity_log` line by line** — `lead_state booked→lost` (deliberate Mark-lost, own confirm) · **`lead_delete 9566a91e` + `deleted_at` set (F-04.2's fixture CONSUMED — the button that lied at 05:22 kills honestly at 08:14)** · two `lead_state contacted` rows 1.6s apart (bulk's sequential runner) · `donna_hide` → `donna_unarchive` 3s apart (Hide + UNDO riding the REAL reversal door) · undone actions left ZERO rows (deferred-fire proven: an undone write never touches the database) · `donna_money_edit received: Rs 0 → Rs 50,000` (one confession, ST-6 holding).
