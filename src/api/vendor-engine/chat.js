@@ -142,10 +142,11 @@ async function buildInvoices(req, result) {
 }
 
 // The chat-door confirms the invoice NUMBER only (the download lives in the invoices list).
+// F-04.33 (same seam): d.client is DB-sourced and rode raw on both routes.
 function invoiceLines(documents) {
-  return documents.map((d) =>
+  return scrubText(documents.map((d) =>
     `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready — find it in the invoices list to download or send.`
-  ).join('\n');
+  ).join('\n'));
 }
 
 // donna_book_event is Donna's SIGNAL hand for the calendar: the engine flags intent, the
@@ -219,11 +220,37 @@ async function bookEvents(req, result) {
   }
   return booked;
 }
+// ── TDW_04 B1 SEAL RIDER — F-04.33 (CE-ruled 2026-07-15) ────────────────────
+// THE PERSONA FIREWALL ENDED AT `result.reply` AND NOTHING TOLD ANYONE.
+// scrubText covered the model's prose (:728). These builders' output was appended
+// AFTER it (:734/:735) and sent as RAW text_delta on the SSE route (:677/:680/:683).
+// Both routes leaked. Founder specimen, 2026-07-15 15:45/15:47 — ONE turn, TWO paths:
+//   trace  (translateBeat -> scrubText):  "Booking requested: VICTOR - personal unavailable"
+//   reply  (bookingLines, unscrubbed):    "Booked: HARVEY - personal unavailable"
+// Same string. One scrubbed, one not. The scrub was never broken; it was never applied.
+//
+// THE CURE IS AT THE SEAM, NOT THE ROUTES (CE-ruled): each builder returns an
+// ALREADY-SCRUBBED string, so one change covers both routes and no future caller can
+// forget. Whole-string scrub — no token-split residual.
+//
+// WHAT THIS DOES NOT FIX, deliberately: the title itself is still wrong. "Victor -
+// family wedding" is a persona in the CLIENT SLOT of the estate's `<client> - <purpose>`
+// convention (cf. "Ananya - recce"), for a block that is the VENDOR'S OWN. The leak
+// dies here; the misattribution is F-04.34(ii) and belongs to Block 06. A scrub cannot
+// fix a sentence that means the wrong thing — it can only stop it naming Harvey.
+//
+// COVERAGE MAP (stated per the protocol candidate this finding created — any sitting
+// touching a firewall must publish the firewall's full reach):
+//   scrubText IS applied to: result.reply (:728) · translateBeat's victor_token and
+//     dispatch beats · and now bookingLines / mutationLines / invoiceLines (here).
+//   scrubText is NOT applied to: anything written to the DATABASE (F-04.34, open) ·
+//     any read path outside this file (calendar grid, day sheet, /vendor/events, all
+//     of B5) — those render events.title RAW and no scrub reaches them.
 function bookingLines(booked) {
-  return booked.map((bk) => {
+  return scrubText(booked.map((bk) => {
     const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
     return `Booked: ${bk.title} — ${when}. It's on your calendar.`;
-  }).join('\n');
+  }).join('\n'));
 }
 // (a) Dedupe: an event for the same client on the same date already on the calendar IS this booking.
 async function findExistingEvent(req, bk) {
@@ -421,8 +448,10 @@ async function mutateEvents(req, result) {
   }
   return done;
 }
+// F-04.33 (same seam, same reason as bookingLines): e.title is DB-sourced and rode raw
+// to the vendor on both routes.
 function mutationLines(done) {
-  return done.map((m) => {
+  return scrubText(done.map((m) => {
     if (!m.ok) return m.action === 'cancel'
       ? `Couldn't cancel that booking — I didn't find a single match. Tell me which one.`
       : `Couldn't change that booking — I didn't find a single match. Tell me which one.`;
@@ -431,7 +460,7 @@ function mutationLines(done) {
     return m.action === 'cancel'
       ? `Cancelled: ${e.title}${e.event_date ? ` — ${when}` : ''}. It's off your calendar.`
       : `Updated: ${e.title} — ${when}. The calendar's set.`;
-  }).join('\n');
+  }).join('\n'));
 }
 // Lockstep the other way: when Donna moves a binder's date (donna_date / donna_edit carrying a date),
 // the linked calendar event follows. The calendar is door-owned, so the event is written raw here
@@ -726,11 +755,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     await logChatActivity(req, result); // TDW_04 B0 item 3
 
     let reply = scrubText(result.reply); // CE-18: the firewall covers the reply itself
-    if (documents.length) {
-      reply += '\n\n' + documents.map((d) =>
-        `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} is ready — find it in the invoices list to download or send.`
-      ).join('\n');
-    }
+    // F-04.33: this route hand-rolled the invoice line instead of calling the builder —
+    // precisely how a seam gets missed. One builder, one scrub, both routes.
+    if (documents.length) reply += '\n\n' + invoiceLines(documents);
     if (booked.length) reply += '\n\n' + bookingLines(booked);
     if (mutated.length) reply += '\n\n' + mutationLines(mutated);
 
