@@ -104,6 +104,18 @@ Docs-only delivery: no `.js`/`.tsx` touched → node --check / tsc gates N/A thi
 
 **SIX TESTS, SIX PASSES** — full table and findings in FINDINGS_LOG's engine-lane section. Highlights: the door ledger caught the DELETE button lying (F-04.2 → A2); two verbatim money repeats left zero residue; the production note replay showed the original Exhibit C pair (Meera) rendering fused; the rebuild that used to erase every binder line restored seven of them. Open to CE: F-04.2 acceptance line for A2, F-04.3 cures (degenerate phone-key guard / harvest trace), ST-3d tunables, no-op-transition log noise.
 
+## 17. **B0 SEALED** (2026-07-15) — `docs/db/ENGINE_SCHEMA.md` committed
+
+**CE-22:** dream-os — this ZIP · dreamos-pwa `525b2c8` untouched · Railway green (proofs ran against live prod).
+
+**The last gate: 25 tables, 242 columns, founder-run, committed verbatim.** All counts reconcile with BASELINE; `usage`=12 independently confirms F12's DDL applied; 0074's `scope_org_id` drop is legible as ordinal gaps in exactly its five named tables; and the reference **disproves its own originating guess in its second table** (`agent_snapshot.note`'s default carries `rebuilt_at` as a KEY). The blind-SQL class is dead — structurally, not by discipline.
+
+**B0's LEDGER:** item 1 DONE (fork = NEITHER; Q-B0-1 withdrawn; F-04.21 restated) · item 2 DIED as code rider → 06 · item 3 SHIPPED+PROVEN · 4a SHIPPED+PROVEN · 4b SHIPPED, unproven-in-prod → **rides B1's smoke** · F-04.25 / F-04.27(ii) / F-04.29 CURED · L-8 oracle RUNNABLE + GREEN (125000/3/1) · F-04.22/23 cured structurally · F-04.24 prose struck · **F-04.26 → B4's opening item** · **F-04.28 deferred PROPOSAL** · **F-04.30 → CE (reported, not acted on)**.
+
+**→ BLOCK 06's PACKET:** F-04.21 head (a) (false characterization of a real write over an unwitnessed confirmation) · F-04.27 layer (i) (Victor delegating on the vendor wire) · the unfired retrieval gap · the confabulated "Rohanys" · the note-write double-cell · contradictory twins (Keka, Kavya) · patch-vs-rebuild population disagreement.
+
+**NEXT: the Part B charter read (B1–B8), presented as a plan, then STOP for the founder's go.**
+
 ## 16. B0 SEAL RIDER (2026-07-15) — proofs landed; F-04.27(ii) + F-04.29 cured
 
 **THREE PROOFS, ALL WITNESSED IN PROD** (founder-run, Railway green): **4a PROVEN** — `donna_find` dispatched on a retrieval-forcing phrase, **both planes in one result**, Exhibit C's contradiction visible at last (Keka binder `booked Rs 50,000` / Keka enquiry `contacted`). **Item 3 PROVEN** — two activity rows 203ms apart for one turn; the CE's granularity ruling live. **Oracle GREEN, unmoved** — `125000/3/1`. **4b SHIPPED-UNPROVEN**, rides B1's smoke per ruling.

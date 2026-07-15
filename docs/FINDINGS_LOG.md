@@ -612,6 +612,25 @@ The vendor asked to **"Add a client."** A **typed lead** was filed. `donnaLead.t
 - **Note-write double-cell (🟢 → 06's lens list):** one note instruction → `donna_write_reasonforaction_append` **and** `donna_note_append`; the owner's text landed in both `note` and `reason_for_action` (her *self* cell). `SURFACE_TRUTH_AUDIT` §4 accretion territory. Her judgment, not the ledger's.
 - **503 (🟢 record, not chased):** `Failed to load resource: 503 — vendor:1` across the proof session; plausibly Railway cold-start post-deploy. Outside charter.
 
+### B0 SEALED (2026-07-15) — `docs/db/ENGINE_SCHEMA.md` committed, 25 tables witnessed
+
+**The last gate closed.** Founder-run against prod `nvzkbagqxbysoeszxent`/`main`, role `postgres`: **25 tables, 242 columns**, committed verbatim as `docs/db/ENGINE_SCHEMA.md` under a witnessed-prod-snapshot header. **All 25 column counts reconcile with `db/BASELINE.md`** — including **`usage` = 12**, independently confirming 02-HOTFIX **F12's cache-column DDL is applied in prod** (BASELINE's count map predates it at 10; its own note says 12; the schema settles it).
+
+**0074's fingerprint, read from the schema with no document involved:** exactly **five** tables skip an ordinal — `documents`(9), `facts`(10), `leads`(11), `money_entries`(14), `open_loops`(12) — and those are **precisely** the five BASELINE names `scope_org_id` was dropped from. Applied ladder history, legible in prod.
+
+**The reference disproved its originating guess in its own second table:** `agent_snapshot` is `(agent_id, note, updated_at, created_at)` with `note jsonb NOT NULL default '{"items": [], "rebuilt_at": null}'::jsonb`. **`rebuilt_at` is a KEY INSIDE THE JSONB DEFAULT** — the exact column this executor guessed from prose into founder-run SQL. Now unguessable.
+
+- **F-04.29 addendum (the third attempt's lesson):** the row-shaped dump truncated **twice** — copy-paste and CSV export alike — because the Supabase editor applies its toolbar cap (`Limit 100 rows`) to the **QUERY**, not the export. Both attempts died at 99 rows, mid-table at `donna_review_binder`, **losing 12 tables including `engine.messages` and `engine.records`** — the two the entire defect class was about. **Export does not bypass the cap.** Cured: one row per table (25), limit-proof, with a self-guard ("confirm 25 rows or do not commit").
+
+### F-04.30 (NEW, 🟡 → CE — REPORTED, NOT ACTED ON; rows drafted, awaiting ratification)
+
+**`ENGINE_SCHEMA.md` surfaced two MORE two-plane words on its first read — and one of them is this block's own word.**
+
+- **`events`** — `public.events` is **the calendar** (14 cols: `event_date`, `kind`, `state`, `linked_binder_id`, `deleted_at`). **`engine.events` is an AGENT AUDIT TRAIL** (8 cols: `agent_id, actor, action, entity_type, entity_id, summary, created_at`) — live, written by `distill.ts:164`, `distill.ts:198`, `recordPrimitives.ts:62`. **TDW_04 Part B is the calendar block; B1–B8 are entirely about `public.events`.** A session grepping `from('events')` in the engine finds an audit trail and reads it as the calendar. **This is F-04.22's trap, in the block whose whole subject is the word.** Note also: `engine.events` carries nearly the same shape as `public.vendor_activity_log` (`actor`/`action`/`entity_type`/`entity_id`/`summary`) — **two activity logs, two planes, one concept.**
+- **`leads`** — `public.leads` is the **live typed plane** (27 cols; `donna_lead` files here per LD-1). **`engine.leads` (11 cols: `agent_id, name, contact, source, referrer, stage, value_estimate, …`) is STOP-WRITTEN AND EMPTY** — `donnaLead.ts:4` says so verbatim: *"a table verified EMPTY in prod (never wired into DONNA_TOOLS; Amendment One…)"*. `SURFACE_TRUTH_AUDIT` §3's existing LEADS row covers the **surfaces**; it does not name **this second table**.
+
+**NOT ADDED to the Vocabulary Audit.** The CE ratified `messages` into §3 by name; extending that ruling to two further words is the CE's call, not this executor's. Rows drafted and held. **B0 seals without them** — they are findings, not gates.
+
 ### RATIFICATIONS ON RECORD (CE, 2026-07-15)
 
 - **In-handler agent resolution (4b): RATIFIED as a deviation.** The constraint (never fail a lead creation on agent absence) was the CE's; `resolveAgent()` is blocking (401/500) and could not honour it; the in-handler non-blocking resolution does. Comment in `leads.js` states why.
