@@ -120,6 +120,15 @@ const CALENDAR_KINDS = [
 // this select without it (a6854bb) would have handed the PWA created_at:undefined
 // the moment blockDate became a thin caller. Latent, caught by doing the relocation
 // rather than by describing it. deleted_at rides so the soft-delete path can confirm.
+// ── STATE, relocated from lib/vendor/events.js ────────────────────────────
+// TDW_04 A3 rider (F-04.8, CE-ratified): `state` joins the editable set — the
+// P4 swipe table's "mark done" had no door, so A2 stubbed it honest and logged
+// the gap rather than inventing a route. Values mirror the DB CHECK exactly.
+// Relocated here at B2 because the writer must not accept a state the door used
+// to refuse: routing api/vendor/events.js PATCH through eventWrite without this
+// would have SILENTLY DROPPED the validation and handed a raw 400 to the vendor.
+const ALLOWED_STATES = ['upcoming', 'done', 'cancelled'];
+
 const EVENT_SELECT = 'id, title, event_date, event_time, kind, slot, state, notes, linked_binder_id, linked_lead_id, ready_by, created_at, deleted_at';
 
 // ── SLOT DERIVATION (C2's boundaries) ─────────────────────────────────────
@@ -291,11 +300,23 @@ async function checkOccupancy(_ctx) {
 async function writeEvent(supabase, params) {
   const {
     vendorId, agentId = null, surface = 'pwa', source = 'crud',
-    event_id = null, title, event_date, event_time = null, kind,
-    notes = null, linked_binder_id = null, client_hint = null,
-    ready_by = null, state = null, force = false,
+    event_id = null, title, event_date, event_time, kind,
+    notes, linked_binder_id = null, client_hint = null,
+    ready_by, state, force = false, linked_lead_id,
     deleted_at,   // undefined = untouched. Set = SOFT DELETE (update path only).
   } = params || {};
+
+  // ── undefined vs null: NOT pedantry, a REGRESSION GUARD ──────────────────
+  // updateEvent (lib/vendor/events.js:58-71), which this door replaces, patches on
+  // `patch[key] !== undefined`. So {event_time: null} CLEARS the time. An earlier cut
+  // of this file defaulted these params to null and tested `!= null`, which silently
+  // DROPPED every clear — a vendor removing a time from an event would have watched
+  // it stay. Caught by testing the two implementations against each other before the
+  // door was written, not by reasoning about them.
+  //   undefined -> field absent from the patch (untouched)
+  //   null      -> field patched to NULL (cleared)
+  // Callers that mean "only if truthy" pass `x || undefined`, which is what the old
+  // inline `if (bk.event_time)` guards meant.
 
   if (!vendorId) return { ok: false, error: 'vendorId is required.' };
   const isUpdate = !!event_id;
@@ -304,6 +325,10 @@ async function writeEvent(supabase, params) {
   // Mirrors the DB's own CHECKs so a bad kind reads as a sentence, not a 400.
   if (kind != null && !CALENDAR_KINDS.includes(kind)) {
     return { ok: false, error: 'Invalid kind. Must be one of: ' + CALENDAR_KINDS.join(', ') + '.' };
+  }
+  // Relocated from updateEvent. Same list, same sentence, same job.
+  if (state != null && !ALLOWED_STATES.includes(state)) {
+    return { ok: false, error: 'Invalid state. Must be one of: ' + ALLOWED_STATES.join(', ') + '.' };
   }
   if (!isUpdate) {
     if (!title || !String(title).trim())    return { ok: false, error: 'title is required.' };
@@ -341,6 +366,12 @@ async function writeEvent(supabase, params) {
     }
   }
 
+  // Sanitise linked_lead_id -- model sometimes passes a name instead of UUID
+  // (relocated verbatim from createEvent; the comment is its own, and it is the
+  // reason the guard exists — a name in a uuid column is a 400 the vendor reads
+  // as "the app is broken").
+  const safeLeadId = (linked_lead_id && UUID_RE.test(linked_lead_id)) ? linked_lead_id : null;
+
   // ── 3. BINDER LINKING ───────────────────────────────────────────────────
   let linkedBinder = linked_binder_id || null;
   if (!linkedBinder && agentId && kind !== 'blocked') {
@@ -371,14 +402,15 @@ async function writeEvent(supabase, params) {
   if (isUpdate || existing) {
     const targetId = event_id || existing.id;
     const patch = {};
-    if (cleanTitle != null)   patch.title      = cleanTitle;
-    if (event_date != null)   patch.event_date = event_date;
-    if (event_time != null)   patch.event_time = event_time;
-    if (kind != null)         patch.kind       = kind;
-    if (finalNotes != null)   patch.notes      = finalNotes;
-    if (derivedSlot != null)  patch.slot       = derivedSlot;
-    if (ready_by != null)     patch.ready_by   = ready_by;
-    if (state != null)        patch.state      = state;
+    if (title      !== undefined) patch.title      = cleanTitle;
+    if (event_date !== undefined) patch.event_date = event_date;
+    if (event_time !== undefined) patch.event_time = event_time;
+    if (kind       !== undefined) patch.kind       = kind;
+    if (notes      !== undefined || (conflict && force)) patch.notes = finalNotes;
+    if (derivedSlot != null)      patch.slot       = derivedSlot;
+    if (ready_by   !== undefined) patch.ready_by   = ready_by;
+    if (state      !== undefined) patch.state      = state;
+    if (linked_lead_id !== undefined) patch.linked_lead_id = safeLeadId;
     // SOFT DELETE (Q-B1-7's covenant, and the guardrail's arithmetic). unblockDate
     // and deleteEvent are .update()s on public.events, so after B2 they are writes
     // that must come through here or the guardrail is violated on day one. A hard
@@ -410,6 +442,7 @@ async function writeEvent(supabase, params) {
     if (derivedSlot) row.slot            = derivedSlot;
     if (ready_by)    row.ready_by        = ready_by;
     if (linkedBinder) row.linked_binder_id = linkedBinder;
+    if (safeLeadId)   row.linked_lead_id   = safeLeadId;
 
     const r = await supabase.from('events').insert(row).select(EVENT_SELECT).single();
     event = r.data; error = r.error;

@@ -34,7 +34,25 @@ const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-const { createEvent, updateEvent, deleteEvent } = require('../../lib/vendor/events');
+const { writeEvent } = require('../../lib/vendor/eventWrite');    // TDW_04 B2 — the ONE writer
+const { executeAndPatch } = require('../../lib/executeAndPatch');  // TDW_04 B2 — the CRUD lockstep leg
+const { resolveAgentForVendor } = require('../middleware/agentBridge');
+
+// ── TDW_04 B2 — this door's writes route through eventWrite ────────────────
+// createEvent/updateEvent/deleteEvent are gone from here. lib/vendor/events.js still
+// exists and still serves calendarSignals.js (the WA door, exempt by ruling until
+// Block 05, Q-B2-1); createEvent and deleteEvent are left with no caller at all.
+// LISTED, NOT DELETED, per spec §9 ("strays get listed, not fixed") — a dead-code
+// sweep is not this sitting's charter and 05 will want the file warm.
+//
+// ALLOWED_KINDS below is TWELVE and stays that way. eventWrite's CALENDAR_KINDS is
+// correctly THIRTEEN (it mirrors the DB CHECK), so if this door simply handed `kind`
+// through, a POST with kind='blocked' would start creating blocks HERE — with no
+// reason round-trip, no 'Blocked' title fallback, and NO SLOT, minting exactly the
+// NULL-slot blocks 0077's bare column exists to prevent. This door has never made a
+// block and does not start now: blocks are made at POST /api/v2/vendor/availability,
+// which owns those rulings. Existing behaviour is sacred (Protocol §8) — the 400
+// below is the same 400, with the same sentence, this door returned yesterday.
 
 const ALLOWED_STATES = ['upcoming', 'done', 'cancelled'];
 const ALLOWED_KINDS  = [
@@ -189,11 +207,13 @@ router.patch('/:eventId/cancel', requireAuth, resolveVendor({ paramName: 'eventI
   if (fetchErr) return errRes(res, 500, fetchErr.message);
   if (ev.state === 'cancelled') return okRes(res, { already_cancelled: true });
 
-  const { error: cancelErr } = await supabase
-    .from('events').update({ state: 'cancelled' })
-    .eq('id', eventId).eq('vendor_id', vendor.id);
-
-  if (cancelErr) return errRes(res, 500, cancelErr.message);
+  // Routed (TDW_04 B2). The fetch above stays — it is a READ, and its 404 and
+  // already_cancelled shortcut are this door's contract, not the writer's.
+  const cancelRes = await writeEvent(supabase, {
+    vendorId: vendor.id, surface: 'pwa', source: 'crud',
+    event_id: eventId, state: 'cancelled',
+  });
+  if (!cancelRes.ok) return errRes(res, 500, cancelRes.error);
   console.log('[events:cancel] "' + ev.title + '" cancelled by vendor ' + vendor.id);
   return okRes(res, { event: { id: eventId, state: 'cancelled' } });
 }));
@@ -208,13 +228,22 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   const vendor   = req.vendor;
   const body     = req.body || {};
 
-  const result = await createEvent(supabase, vendor.id, {
+  // The door's own gate, ahead of the writer's. See the ALLOWED_KINDS note at the top:
+  // eventWrite would lawfully accept 'blocked'; this door must not.
+  if (body.kind && !ALLOWED_KINDS.includes(body.kind)) {
+    return errRes(res, 400, 'Invalid kind. Must be one of: ' + ALLOWED_KINDS.join(', ') + '.');
+  }
+
+  const result = await writeEvent(supabase, {
+    vendorId:       vendor.id,
+    surface:        'pwa',
+    source:         'crud',
     title:          body.title          || null,
     event_date:     body.event_date     || null,
-    event_time:     body.event_time     || null,
+    event_time:     body.event_time     || undefined,
     kind:           body.kind           || null,
     linked_lead_id: body.linked_lead_id || null,
-    notes:          body.notes          || null,
+    notes:          body.notes          || undefined,
   });
 
   if (!result.ok) return errRes(res, 400, result.error);
@@ -232,8 +261,63 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
   const eventId  = req.params.eventId;
   const body     = req.body || {};
 
-  const result = await updateEvent(supabase, vendor.id, eventId, body);
+  if (body.kind && !ALLOWED_KINDS.includes(body.kind)) {
+    return errRes(res, 400, 'Invalid kind. Must be one of: ' + ALLOWED_KINDS.join(', ') + '.');
+  }
+
+  // The binder link must be read BEFORE the write: the lockstep leg below needs to know
+  // whether this event belongs to a binder, and the patch cannot tell us.
+  const { data: before } = await supabase
+    .from('events').select('id, linked_binder_id')
+    .eq('id', eventId).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle();
+
+  // Routed. `body`'s keys pass through as-is so undefined stays untouched and an
+  // explicit null still CLEARS — updateEvent's EDITABLE semantics, preserved exactly.
+  const result = await writeEvent(supabase, {
+    vendorId: vendor.id, surface: 'pwa', source: 'crud', event_id: eventId,
+    title:      body.title,
+    event_date: body.event_date,
+    event_time: body.event_time,
+    kind:       body.kind,
+    notes:      body.notes,
+    state:      body.state,
+  });
   if (!result.ok) return errRes(res, 400, result.error);
+
+  // ── THE CRUD LOCKSTEP LEG (TDW_04 B2 — spec P2(b), BUILT NEW) ────────────
+  // "CRUD reschedule of an event with linked_binder_id -> after event write, patch the
+  //  binder date THROUGH the binder edit door (witnessed; the confession trail records
+  //  'date moved with the calendar')."
+  // Its twin (event->binder from CHAT) has existed since B1 in chat.js's mutateEvents.
+  // This door carried none: a vendor moving a date from the Events list left the binder
+  // on the old date, silently. That is the divergence this block exists to kill.
+  //
+  // THE AGENT IS RESOLVED IN-HANDLER, AFTER THE WRITE LANDS — B0's item-4b precedent,
+  // CE-RATIFIED (leads.js:219-228 is the shape). resolveAgent() as middleware is
+  // BLOCKING by construction (401 on missing agent, 500 on failure), and failing a
+  // vendor's calendar edit because their engine agent didn't resolve is not a trade
+  // this door gets to make. Every failure below is swallowed: the event has already
+  // moved and the response is already owed.
+  //
+  // NO LOOP: this is not a chat turn, so lockstepBinderToEvent — which only ever reads
+  // a turn's result.tool_calls — cannot see this write. The guard is architectural,
+  // exactly as chat.js's own lockstep comment documents for its half.
+  if (body.event_date && before && before.linked_binder_id) {
+    try {
+      const uid = req.auth && req.auth.user_id;
+      if (uid) {
+        const { agentId } = await resolveAgentForVendor(supabase, vendor, uid);
+        if (agentId) {
+          await executeAndPatch(agentId, 'donna_date', {
+            binder_id: before.linked_binder_id, date: body.event_date,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[events:patch] lockstep e->b failed (the event already moved):', e.message);
+    }
+  }
+
   return okRes(res, { event: result.event });
 }));
 
@@ -247,8 +331,19 @@ router.delete('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', vi
   const vendor   = req.vendor;
   const eventId  = req.params.eventId;
 
-  const result = await deleteEvent(supabase, vendor.id, eventId);
+  // Routed. deleteEvent's existence-check-then-stamp becomes a read plus the writer's
+  // soft-delete path; the 404 is this door's contract and stays here.
+  const { data: ev } = await supabase
+    .from('events').select('id, title')
+    .eq('id', eventId).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle();
+  if (!ev) return errRes(res, 404, 'Event not found.');
+
+  const result = await writeEvent(supabase, {
+    vendorId: vendor.id, surface: 'pwa', source: 'crud',
+    event_id: eventId, deleted_at: new Date().toISOString(),
+  });
   if (!result.ok) return errRes(res, 404, result.error);
+  console.log('[events:delete] soft-deleted ' + eventId + ' ("' + ev.title + '")');
   return okRes(res, { deleted: true });
 }));
 

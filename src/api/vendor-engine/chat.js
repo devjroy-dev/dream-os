@@ -173,9 +173,13 @@ async function bookEvents(req, result) {
         source:      'victor',
         title:       bk.title,
         event_date:  bk.event_date,
-        event_time:  bk.event_time || null,
+        // `|| undefined` — NOT `|| null`. The origin's guards were `if (bk.event_time)`
+        // and `if (bk.notes)`: absent means DON'T TOUCH, never "set to NULL". eventWrite
+        // reads undefined as untouched and null as clear, so this is the byte-faithful
+        // translation of the guard that was here.
+        event_time:  bk.event_time || undefined,
         kind,
-        notes:       bk.notes || null,
+        notes:       bk.notes || undefined,
         client_hint: bk.binder_id || null,
         state:       'upcoming',
       });
@@ -249,8 +253,16 @@ async function retroLinkOnFile(req, result) {
       for (const ev of (evs || [])) {
         const hint = String(ev.title || '').split(/[-–—·:]/)[0].trim();
         if (hint.toLowerCase() !== name.toLowerCase()) continue; // exact client-hint only
-        await req.app.locals.supabase.from('events')
-          .update({ linked_binder_id: binderId }).eq('id', ev.id).eq('vendor_id', req.vendor.id);
+        // Q-B2-11(1), CE-ruled 2026-07-15: ROUTED. The charter's "preserved verbatim"
+        // clause was written to protect this function's EXISTENCE and BEHAVIOUR — the
+        // §3.5 audit found an unspecced load-bearing wire and the fear was loss, not
+        // modification. Its routing ruling was never written because retroLink was
+        // never in the spec; it is written now. Behaviour identical; the census now
+        // carries ZERO exceptions on the web door.
+        await writeEvent(req.app.locals.supabase, {
+          vendorId: req.vendor.id, surface: 'pwa', source: 'victor',
+          event_id: ev.id, linked_binder_id: binderId,
+        });
       }
     } catch (e) { console.warn('[vendor-e chat:retro-link]', e.message); }
   }
