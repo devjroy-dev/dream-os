@@ -102,6 +102,39 @@ Skeleton grid shimmer · IST discipline audit on every date render/parse (the re
 ## 3. GUARDRAILS
 After B2, `src/lib/vendor/eventWrite.js` is the ONLY writer of `public.events` (the vendor calendar). Any other insert/update targeting `public.events` in vendor paths is a failed session. `engine.events` is an UNRELATED agent audit trail (F-04.30/F-04.31) — its writers (`distill.ts:164/:198`, `recordPrimitives.ts:62`, `donnaBench.ts:155`) are exempt by plane, not by pardon, and must NEVER be routed through `eventWrite`. Plane is proven by the client in scope (B1's plane-proof method), never by the table name. (bride/couple XOR paths untouched) · records mutations only via binder doors (lockstep included) · souls per TDW_02 constraints · conflict NEVER silently blocks a write the vendor forced · no localStorage · design system: pips ink, one gold (muhurat diamond) per screen · WhatsApp engines untouched (their event writes route through eventWrite in blocks 05/06, noted for those specs).
 
+
+### 3.1 — THE CENSUS OF RECORD (TDW_04 B2, CE-ruled 2026-07-15)
+
+The guardrail above says "any other insert/update targeting `public.events` in vendor paths is a failed session." **A law with no census is a law a future session will read as already violated and "fix."** This table is that census, taken by command against dream-os `b610f99` and re-verified at `0e5b404`. **Every exception is a ruling with a name.**
+
+| File | Writes | Disposition |
+|---|---|---|
+| `src/api/vendor-engine/chat.js` | **0 raw** · 5 via `writeEvent` | ROUTED (B2 relocation B + Q-B2-11) |
+| `src/api/vendor/events.js` | **0 raw** · 4 via `writeEvent` | ROUTED (B2 relocation C) |
+| `src/lib/vendor/availability.js` | **0 raw** · 2 via `writeEvent` | ROUTED (B2 relocation A) |
+| `src/lib/vendor/blockHands.js` | 0 raw · via `availability.js` | ROUTED (B2 §1.5 rider) |
+| `src/lib/vendor/eventWrite.js` | 2 (one insert, one update) | **THE WRITER ITSELF** |
+| `src/lib/vendor/calendarSignals.js` | 5 | **EXEMPT BY RULING until Block 05** (Q-B2-1). The WA door's calendar apparatus. 05 owns that surface end-to-end and will have WA smokes to prove the change. NOT a stray; NOT a failed session. F-04.38's *scrub* half shipped at B2; its *routing* half is 05's. |
+| `src/agent/engine.js` :940/:1028/:1239 | 3 | **EXEMPT BY RULING until Block 05/06.** The WA engine proper, Protocol §8's named file. **These three carry NO persona scrub either — an open leak surface, named not cured.** |
+| `src/lib/vendor/events.js` | 3 | **LISTED, NOT DELETED** (spec §9). After B2 its only caller is `calendarSignals.js` — the exemption flows through. `createEvent`/`deleteEvent` now have **zero callers**; recorded for 05's sweep, which inherits the file warm. |
+| `src/engine/src/core/distill.ts` :164/:198 · `tools/recordPrimitives.ts` :62 | 3 | **EXEMPT BY PLANE, never by pardon.** `engine.events` — an agent audit trail (F-04.30/31). Routing these through `eventWrite` would insert audit rows into vendors' calendars. **Never route them.** |
+| `src/agent/brideEngine.js` · `src/api/couple/events.js` | 7 | **OUT OF SCOPE** — bride/couple XOR, different owner. |
+
+**Amended by Q-B2-11(1):** `retroLinkOnFile`: **preserved in behaviour, routed at 4b-follow-up.** The charter's "preserved verbatim" clause protected the function's existence and behaviour — the §3.5 audit found an unspecced load-bearing wire and the fear was loss, not modification. Its routing ruling was never written because it was never in the spec. It is written here.
+
+### 3.2 — FOUR KIND LISTS. FOUR JOBS. DO NOT UNIFY THEM.
+
+Unifying any two **is F-04.36's regression**, and it has already happened once.
+
+| List | Where | Answers |
+|---|---|---|
+| `CALENDAR_KINDS` (**13**) | `eventWrite.js` | *What may exist in the table.* Mirrors the DB CHECK (0007+0013+0069). The **write vocabulary**. |
+| `BOOKED_KINDS` (**9**) | `cabinet.js:125`, `chat.js:132` | *What counts as on-calendar.* A **read predicate** + the booking door's coercion. Excludes `blocked` (F-04.36) and call/task/reminder. **Never a write allowlist.** |
+| `ALLOWED_KINDS` (**12**) | `api/vendor/events.js` | *What may THIS DOOR mint.* Excludes `blocked`: this door has never made blocks, and a raw `POST {kind:'blocked'}` would bypass `blockDate` — no reason round-trip, no `'Blocked'` fallback, **NULL slot** — resurrecting the era 0077's bare column exists to prevent. **Ratified as door policy, Q-B2 (2026-07-15).** |
+| The **occupying** subset | *does not exist yet* | *What consumes a slot's capacity.* **B3's opening proposal** (Q-B2-9). C5 names the appointments that do not; the list is **NOT presumed exhaustive** — B3 verifies against `CALENDAR_KINDS` and proposes the table. A no-time `other` **leans non-occupying** ("a timeless entry must not eat a day") — CE's provisional lean, **final table ratified at B3.** |
+
+`BOOKED_KINDS` ⊄ occupying **and** occupying ⊄ `BOOKED_KINDS`. `BOOKED_KINDS` contains meeting/recce/fitting/trial/social — every one of which C5 calls an **appointment**.
+
 ## 4. ACCEPTANCE CRITERIA
 1. P1: blocks live only in `events`; availability GET shape unchanged; Discover availability derives correctly.
 2. Same colliding booking via CRUD and via Victor → byte-identical ConflictPayload; forced write records the clash.
