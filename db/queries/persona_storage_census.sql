@@ -22,8 +22,24 @@
 -- GATE: B5 does not open until this census has run and its ruled fixes are applied.
 -- No calendar surface gets built on unswept titles.
 --
--- Word-bounded (\m..\M) so "Harveys Ltd" or a client actually named Donna is not
--- silently swept into a false positive. Every hit is eyeballed before anything moves.
+-- SCOPE: INTERNAL names only — `harvey|donna` (CE-ruled Q-B1-11/12, 2026-07-15). NOT
+-- `victor`. The first run swept victor too and returned 12 hits: 3 internal-name rows
+-- (the violation) and NINE identical `"estimate via Victor"` rows in public.leads.notes
+-- written BY OUR OWN SOURCE (donnaLead.ts:197/:234, `noteAdds.push('estimate via
+-- Victor')`) on every lead carrying a value estimate. That is not a model defect — it is
+-- deliberate PROVENANCE, and scrubText maps Harvey->Victor precisely BECAUSE Victor is
+-- what the vendor may see. A clause forbidding stored "Victor" would forbid the output
+-- of the function the same law mandates. So the clause was amended to its three-layer
+-- truth: internal names banned at every layer; the vendor-facing name lawful in CONTENT,
+-- banned in CHROME; sweeps verify storage and render separately. The nine rows STAY, and
+-- this regex must never re-flag them or the sweep becomes noise nobody reads.
+--
+-- Word-bounded (\y..\y) so "Harveys Ltd" or a client actually named Donna surfaces as a
+-- hit rather than being silently swept. Every hit is eyeballed before anything moves.
+--
+-- NOT SWEPT, permanently: engine.messages.content. THE EVIDENCE PLANE IS NEVER SWEPT
+-- (CE standing rule) — it is the turn log and the trail Block 06 exists to read;
+-- rewriting it would destroy the record of the defect.
 -- ════════════════════════════════════════════════════════════════════
 with vend as (
   select v.id as vendor_id, a.id as agent_id
@@ -35,34 +51,34 @@ with vend as (
 select 'public.events' as source, e.id::text, e.kind as context,
        e.event_date::text as ref, 'title' as col, e.title as value, e.created_at
   from public.events e join vend on vend.vendor_id = e.vendor_id
- where e.title ~* '\m(harvey|donna|victor)\M'
+ where e.title ~* '\y(harvey|donna)\y'
 union all
 select 'public.events', e.id::text, e.kind, e.event_date::text, 'notes', e.notes, e.created_at
   from public.events e join vend on vend.vendor_id = e.vendor_id
- where e.notes ~* '\m(harvey|donna|victor)\M'
+ where e.notes ~* '\y(harvey|donna)\y'
 union all
 select 'public.leads', l.id::text, l.state, l.name, 'notes', l.notes, l.created_at
   from public.leads l join vend on vend.vendor_id = l.vendor_id
- where l.notes ~* '\m(harvey|donna|victor)\M'
+ where l.notes ~* '\y(harvey|donna)\y'
 union all
 select 'engine.records', r.id::text, r.stage, r.client, 'note', r.note, r.created_at
   from engine.records r join vend on vend.agent_id = r.agent_id
- where r.note ~* '\m(harvey|donna|victor)\M'
+ where r.note ~* '\y(harvey|donna)\y'
 union all
 select 'engine.records', r.id::text, r.stage, r.client, 'reason_for_action', r.reason_for_action, r.created_at
   from engine.records r join vend on vend.agent_id = r.agent_id
- where r.reason_for_action ~* '\m(harvey|donna|victor)\M'
+ where r.reason_for_action ~* '\y(harvey|donna)\y'
 union all
 select 'engine.records', r.id::text, r.stage, r.client, 'client', r.client, r.created_at
   from engine.records r join vend on vend.agent_id = r.agent_id
- where r.client ~* '\m(harvey|donna|victor)\M'
+ where r.client ~* '\y(harvey|donna)\y'
+union all
+select 'public.leads', l.id::text, l.state, l.name, 'vendor_summary', l.vendor_summary, l.created_at
+  from public.leads l join vend on vend.vendor_id = l.vendor_id
+ where l.vendor_summary ~* '\y(harvey|donna)\y'
 order by created_at;
 
--- COLUMNS SWEPT: public.events.title/notes · public.leads.notes · engine.records
---   .note/.reason_for_action/.client (all cabinet-rendered).
--- NOT SWEPT, and the CE should rule whether they must be: public.leads.vendor_summary
---   (named in the ruling — VERIFY IT EXISTS against docs/db or SCHEMA before adding;
---   it is not in this executor's witnessed column lists and this file will not guess
---   a column name into founder-run SQL — that is the exact A4/B0 repeat-class defect
---   the witnessed-column rule exists to kill) · engine.messages.content (the turn
---   log — arguably NOT vendor-plane; it is the trail 06 reads).
+-- COLUMNS SWEPT: public.events.title/notes · public.leads.notes/vendor_summary ·
+--   engine.records.note/.reason_for_action/.client (all cabinet-rendered).
+--   vendor_summary is WITNESSED — it appears in B0's U1 output (public.leads' column
+--   list, founder-run 2026-07-15), not inferred from prose.

@@ -104,6 +104,22 @@ Docs-only delivery: no `.js`/`.tsx` touched → node --check / tsc gates N/A thi
 
 **SIX TESTS, SIX PASSES** — full table and findings in FINDINGS_LOG's engine-lane section. Highlights: the door ledger caught the DELETE button lying (F-04.2 → A2); two verbatim money repeats left zero residue; the production note replay showed the original Exhibit C pair (Meera) rendering fused; the rebuild that used to erase every binder line restored seven of them. Open to CE: F-04.2 acceptance line for A2, F-04.3 cures (degenerate phone-key guard / harvest trace), ST-3d tunables, no-op-transition log noise.
 
+## 18. **B1 SEALED** (2026-07-15) — availability convergence
+
+**CE-22:** dream-os `83b824a`+B0 → B1 ZIP + 2 riders · dreamos-pwa `525b2c8` → 1 rider · **0077 applied** · Railway green. **Smoke 9/9 + the reason-less branch, all founder-run against prod.**
+
+**SHIPPED:** availability converges into `public.events kind='blocked'` (C1) · **zero FE change**, wire byte-preserved · **two locks** on the unblock door (`via:'events'` + post-resolve kind assertion → 404; `.eq('kind','blocked')` on the delete — *the type guard that used to be the table*) · soft delete per the estate's covenant · **0077** with a self-enforcing zero-row assert and the bare `slot` column (the CE's ladder correction — **no NULL-slot era ever existed**).
+
+**THE PLANE PROOF** landed first, per ruling, and **earned its place immediately**: it caught **F-04.31** — the one-writer guardrail was grep-shaped on a two-plane word and would have had B2 route an **agent audit-trail write through `eventWrite`**, silently inserting audit rows into vendors' calendars, **by obeying the spec.** Method ratified as standing technique.
+
+**CURED:** F-04.31 (guardrail re-worded) · F-04.33 (scrub bypass, at the seam, both routes) · **F-04.34 both halves** (3/3 rows healed; write doors scrub-with-witness; **all 7 census legs witnessed ZERO**) · F-04.35 (pill default) · F-04.36 (a block is not an engagement).
+**ROUTED:** F-04.32 → 0075 at B2 (UNIQUE partial index) · F-04.26 → **B4's opening** · F-04.28 → deferred · **F-04.34(ii) → 06** with a live witness feed.
+**THE LAW CHANGED:** the copy law gained its **storage clause** — internal names banned at every layer; the vendor-facing name lawful in content, banned in chrome; **sweeps verify storage and render separately.** A4's sweep stands as *render* evidence only.
+
+**GATES SET:** **B5 does not open until the storage census has run and its ruled fixes are applied** — no calendar surface gets built on unswept titles. **B2 opens with `FINDINGS_LOG`'s pre-04 read done, stated in its first message.**
+
+**NEXT: B2** — `eventWrite`, the single writer. Opens with **0075** (slot CHECK + `ready_by` + partial index + F-04.32's UNIQUE index + the idempotent backfill), the reworded guardrail binding for the first time, and **`availability.js` on the relocation list**.
+
 ## 17. **B0 SEALED** (2026-07-15) — `docs/db/ENGINE_SCHEMA.md` committed
 
 **CE-22:** dream-os — this ZIP · dreamos-pwa `525b2c8` untouched · Railway green (proofs ran against live prod).

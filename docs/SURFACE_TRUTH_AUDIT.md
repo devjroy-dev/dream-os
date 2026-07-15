@@ -77,6 +77,12 @@ So: could the model have known? **Yes** — one `dear_donna_talk` → `donna_fin
 | | "invoice_number" | exists only on the formal `public.invoices` row minted at PDF time; S4 rows show `invoice_number: null` |
 | **paid / advance_paid / unpaid** | S4 | derived from `amount`/`amount_received` arithmetic |
 | | binder `payment_status` | free text ("claimed, outstanding, partial…", `DONNA_MONEY_EDIT_TOOL`), can contradict the arithmetic on the same row; S1's MoneyBadge derives from numbers while the stage word says otherwise |
+| **EVENTS** | `public.events` | **THE CALENDAR** — 14 cols: `event_date`, `event_time`, `kind` (13 values incl. `blocked`), `state`, `slot` (0077), `linked_binder_id`, `linked_lead_id`, `deleted_at`. Owner-XOR vendor/couple (0013) |
+| | `engine.events` | **AN AGENT AUDIT TRAIL — NOT A CALENDAR.** 8 cols: `agent_id`, `actor`, `action`, `entity_type`, `entity_id`, `summary`, `created_at`. Live; written by `distill.ts:164/:198`, `recordPrimitives.ts:62`, read by `donnaBench.ts:155`. Near-identical in shape to `public.vendor_activity_log` — **two activity logs, two planes, one concept** |
+| | | **The damage (F-04.30/F-04.31, TDW_04 B1):** this is **the calendar block's own word.** B1-B8 are entirely about `public.events`. The spec's one-writer guardrail was grep-shaped on the bare name — *"any other `.from('events')` insert/update in vendor paths is a failed session"* — which flags three innocent `engine.events` writes. Worst case: a session "resolves" the flag by routing an **audit-trail write through `eventWrite`**, silently inserting audit rows into vendors' calendars. Caught by B1's plane proof **before a line of SQL was written**. Guardrail re-worded; `engine.events` writers are **exempt by plane, not by pardon** |
+| **LEADS (the tables)** | `public.leads` | **THE LIVE TYPED PLANE** — 27 cols. `donna_lead` files here (LD-1). `source`, `budget_max`, `wedding_date`, `state`, `draft_meta`, `vendor_summary`, `deleted_at` |
+| | `engine.leads` | **STOP-WRITTEN AND EMPTY** — 11 cols (`agent_id`, `name`, `contact`, `source`, `referrer`, `stage`, `value_estimate`, …). `donnaLead.ts:4` says so verbatim: *"a table verified EMPTY in prod (never wired into DONNA_TOOLS; Amendment One…)"* |
+| | | **Note:** §3's other **LEADS** row (above) maps the *surfaces*. This row is about the two **tables**. Both are needed; neither replaces the other |
 | **MESSAGES** | `docs/SCHEMA.md:154-172` | `public.messages` — **17 columns**, the WhatsApp shape: `direction`, `channel`, `body`, `media_url`, `sent_by`, `twilio_sid`, `delivery_status`, cost cells |
 | | `engine.messages` (undocumented) | **6 columns**: `id`, `conversation_id`, `role`, `content`, `tool_calls`, `created_at` (writer `memory.ts:133`; count per `db/BASELINE.md`). The engine's DDL is absent from the ladder — `db/migrations/` 0001-0074 is public-only |
 | | | **The damage (F-04.22, TDW_04 B0):** a session writing engine SQL from SCHEMA.md queries `body`/`sent_by`, gets zero rows, and reports *"the turn does not exist"* — a FABRICATED verdict from a correct-looking query. `docs/db/ENGINE_SCHEMA.md` (B0) is the cure |
@@ -85,6 +91,31 @@ So: could the model have known? **Yes** — one `dear_donna_talk` → `donna_fin
 The single word doing the most damage is **booked**: on one screen it is a calendar row, a binder in the *Clients* column, and a lead badge — three planes, one vocabulary.
 
 ---
+
+## 3.5 — THE COPY LAW, AMENDED: ITS STORAGE CLAUSE (CE-promoted 2026-07-15, TDW_04 B1)
+
+> **Internal persona names are never stored or rendered on vendor planes at any layer. The vendor-facing persona name is lawful in content, banned in chrome. Sweeps verify storage and render separately, against this distinction.**
+
+**Three layers, not two:**
+
+| | Harvey · Donna (**internal**) | Victor (**vendor-facing**) |
+|---|---|---|
+| **Chrome** (labels, confirms, toasts, empty states) | **BANNED** | **BANNED** — the founder's chrome law, untouched |
+| **Content** (chat speech, titles, notes, provenance) | **BANNED** | **LAWFUL** |
+| **Storage** (vendor-plane rows) | **BANNED** | **LAWFUL** |
+
+**Why the distinction is load-bearing, not a loophole.** `scrubText` maps `Harvey → Victor` **precisely because Victor is what the vendor may see.** A clause forbidding stored "Victor" would forbid the output of the function the same law mandates. And `donnaLead.ts:197/:234` stamps `"estimate via Victor"` onto every lead carrying a value estimate — **deliberate provenance, in our own source, telling a vendor where a number came from.** Nine rows. Collapsing the two classes would have deleted true, useful information to satisfy a clause aimed at a leak it isn't.
+
+**Why the clause exists at all (F-04.34, TDW_04 B1).** A4's copy sweep proved **zero rendered persona strings** and passed. **It checked RENDER. It never checked STORAGE.** `scrubText` is a render-time firewall on **one lane**; the calendar grid, the day sheet, `/api/v2/vendor/events` and all of B5 read `events.title` **raw**. Specimen: `c679204b`'s notes carried *"as requested by Harvey"* from **2026-07-14** — through the entire A-block audit, through A4's sweep, and through B0. Nobody saw it because nobody read `notes`. **The law was verified against the wrong layer for two blocks running.**
+
+**Enforcement:**
+- **Write doors scrub-with-witness** — `chat.js::scrubForStorage` maps internal → vendor-facing at write, and logs `persona_scrub_on_write` to `vendor_activity_log` **only when the scrub fires**. Data stays clean; the model defect stays **visible**. That trail is Block 06's evidence feed — a silent fix would have cleaned the pipe and hidden the disease.
+- **Sweeps:** `db/queries/persona_storage_census.sql` — scoped `\y(harvey|donna)\y`, **never `victor`** (a sweep that re-flags lawful provenance becomes noise nobody reads).
+- **THE EVIDENCE PLANE IS NEVER SWEPT** (standing rule): `engine.messages` is the turn log and the trail 06 exists to read. Rewriting it would destroy the record of the defect.
+
+**WITNESSED CLEAN 2026-07-15** (founder-run, prod, post-cure): all seven legs — `public.events.title/notes`, `public.leads.notes/vendor_summary`, `engine.records.note/.reason_for_action/.client` — **ZERO ROWS.** `engine.records` was clean from the first run: the cabinet's prose was never contaminated.
+
+**GATE:** B5 does not open until the storage census has run and its ruled fixes are applied. **No calendar surface gets built on unswept titles.**
 
 ## 4. Note Accretion — verified mechanics
 

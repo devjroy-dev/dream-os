@@ -189,9 +189,10 @@ async function bookEvents(req, result) {
   for (const bk of wantBook) {
     try {
       const kind = BOOKED_KINDS.includes(bk.kind) ? bk.kind : 'meeting';
-      const row = { vendor_id: req.vendor.id, title: String(bk.title).slice(0, 200), event_date: bk.event_date, kind, state: 'upcoming' };
+      // F-04.34: scrub-with-witness — no internal persona name reaches public.events.
+      const row = { vendor_id: req.vendor.id, title: scrubForStorage(req, String(bk.title).slice(0, 200), 'donna_book_event', 'title'), event_date: bk.event_date, kind, state: 'upcoming' };
       if (bk.event_time) row.event_time = bk.event_time;
-      if (bk.notes) row.notes = String(bk.notes);
+      if (bk.notes) row.notes = scrubForStorage(req, String(bk.notes), 'donna_book_event', 'notes');
       const linkedBinder = await resolveBinderForBooking(req, bk);
       const existing = await findExistingEvent(req, bk);
       if (existing) {
@@ -199,7 +200,7 @@ async function bookEvents(req, result) {
         // apply any new detail; never mint a duplicate. Re-confirming a booking becomes idempotent.
         const patch = {};
         if (bk.event_time) patch.event_time = bk.event_time;
-        if (bk.notes) patch.notes = String(bk.notes);
+        if (bk.notes) patch.notes = scrubForStorage(req, String(bk.notes), 'donna_book_event', 'notes'); // F-04.34
         if (linkedBinder && !existing.linked_binder_id) patch.linked_binder_id = linkedBinder;
         if (Object.keys(patch).length) {
           const { data } = await req.app.locals.supabase.from('events')
@@ -246,6 +247,43 @@ async function bookEvents(req, result) {
 //   scrubText is NOT applied to: anything written to the DATABASE (F-04.34, open) ·
 //     any read path outside this file (calendar grid, day sheet, /vendor/events, all
 //     of B5) — those render events.title RAW and no scrub reaches them.
+// ── TDW_04 B1 SEAL RIDER — F-04.34, SCRUB-WITH-WITNESS AT THE WRITE DOOR ────
+// (CE-ruled 2026-07-15, after Q-B1-11 split the census's two classes.)
+//
+// THE CLAUSE, final text: "Internal persona names are never stored or rendered on
+// vendor planes at any layer. The vendor-facing persona name is lawful in content,
+// banned in chrome. Sweeps verify storage and render separately, against this
+// distinction."
+//
+// So substitution is the RIGHT tool here, and only because Q-B1-11 settled that
+// Victor-in-storage is lawful. scrubText maps INTERNAL (Harvey/Donna) -> vendor-facing
+// (Victor/Operator). The door then guarantees no internal name can land in a
+// vendor-plane row, whatever the model produces.
+//
+// WHY A WITNESS AND NOT A SILENT FIX. A silent scrub would clean the pipe and HIDE the
+// model defect — and the model defect is the real one. Founder specimen 2026-07-15
+// 15:45: Victor titled the VENDOR'S OWN block "Harvey - personal unavailable",
+// filling the estate's `<client> - <purpose>` client slot (cf. "Ananya - recce") with
+// HIMSELF. Data stays clean; the defect stays visible. This log is Block 06's evidence
+// feed — F-04.34(ii) is theirs, not this door's.
+//
+// The witness NEVER blocks the write: logActivity is fail-safe by contract
+// (snapshot.js:112-141) and a booking must not fail because a ledger row didn't land.
+function scrubForStorage(req, value, ctx, field) {
+  if (value == null) return value;
+  const raw   = String(value);
+  const clean = scrubText(raw);
+  if (clean !== raw) {
+    logActivity(req.app.locals.supabase, {
+      vendorId: req.vendor.id,
+      surface:  'pwa',
+      action:   'persona_scrub_on_write',
+      summary:  `${ctx}.${field}: internal persona name scrubbed at write — model produced "${raw.slice(0, 140)}"`,
+    }).catch(() => {});
+  }
+  return clean;
+}
+
 function bookingLines(booked) {
   return scrubText(booked.map((bk) => {
     const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
@@ -424,7 +462,13 @@ async function mutateEvents(req, result) {
       if (!ev) { done.push({ action: 'edit', ok: false }); continue; }
       const patch = {};
       for (const k of ['title', 'event_date', 'event_time', 'kind', 'notes']) {
-        if (typeof e[k] === 'string' && e[k].trim()) patch[k] = e[k].trim();
+        if (typeof e[k] === 'string' && e[k].trim()) {
+          // F-04.34: only the free-text cells can carry a persona name. event_date /
+          // event_time / kind are enums and dates — scrubbing them would be noise.
+          patch[k] = (k === 'title' || k === 'notes')
+            ? scrubForStorage(req, e[k].trim(), 'donna_edit_event', k)
+            : e[k].trim();
+        }
       }
       const r = await updateEvent(req.app.locals.supabase, req.vendor.id, ev.id, patch);
       // Lockstep: a linked event's date moved -> carry the binder's date along, through Donna's hand
