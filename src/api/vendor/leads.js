@@ -162,6 +162,11 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     source:       l.source,
     referrer:     l.referrer_name,
     raw_message:  l.raw_message,
+    notes:        l.notes, // TDW_04 A2 rider F-04.7 (CE-ruled, display-only). SELF-CORRECTION
+                           // (A2.2, founder-smoke-caught): the SELECT carried `notes` but THIS
+                           // mapper dropped it — the handler maps, never passes through. §6's own
+                           // law ("read the handler, never assume the response shape"), broken by
+                           // the executor and caught by the founder's phone. Logged in FINDINGS.
     created_at:   l.created_at,
     draft:        leadDraftWire(l), // TDW_02 P3 wishbone (undefined when complete)
   }));
