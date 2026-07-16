@@ -1041,6 +1041,7 @@ this ZIP's own push        -> ✅ exit 0 — VACUOUSLY: zero .js files changed, 
 **dream-os `7910649` → this ZIP.** The checker has been **correct and unread since ZIP D**. This is the ZIP that reads it.
 
 ### F-04.55 — AMENDED IN PLACE (CE-ruled 2026-07-16, Q-B4-3). **CURED THIS ZIP, BOTH PWA DOORS.**
+> **⚠ AMENDMENT TWO (B5, 2026-07-17, Q-B5-7 ruled): the DOOR half is cured; the TOOL-LAYER half was never touched. See `F-04.55 — AMENDMENT TWO` at this log's end.**
 
 The filed finding stopped at *"the vendor receives a bare `{"ok":false}`"* and *"the kind goes to the server log."* **Both true. Neither was the whole shape, and the amendment is the CE's, adopted:**
 
@@ -1079,3 +1080,65 @@ The founder blessed the six sentences **"subject only to the CE's invitation-cla
 ~~"Say the word and I'll double it up."~~ · ~~"Say the word and I'll put it in anyway."~~ — **struck at the ONE home** (`capacityMessage`), so **both doors inherit it**. Striking "the chat-appended forms" only would have forked one function's string into two forms — **F-04.36, in the file whose header is a five-list warning against exactly that.** **The strike's widening is an executor deviation from the ruling's literal wording, disclosed here rather than discovered: it shipped ratify-or-revert, and this sentence says so BEFORE ratification, which is the lesson the F-04.61 correction above was ordered to teach.**
 
 **Benched §17, and that section is the point:** the clauses cannot quietly return before the hand exists. *An agreement is only a guarantee once something breaks when it stops being true.* **Delete §17 when the affordance lands.**
+
+---
+
+## TDW_04 PART B — SITTING B5 (2026-07-17). Numbers allocated per F-04.39's never-reuse precedent.
+
+**PROVENANCE, worded per the Q-B5-1 ruling.** `.63`/`.64`/`.65` arrived as CE addendum allocations described as *"filed"*. They were **not** filed: `grep -rn "F-04\.6[345]" docs/ src/` returned **0 lines** and the log ended at **F-04.62**, verified by command at `3b29528` and re-verified at the moment of writing. This is **F-04.61's own arrival shape**, and F-04.61's entry says so in as many words. The CE ruled B5 files them. **The allocations are the CE's; the entries are mine; none of the three is cured.**
+
+### F-04.63 (🔴 → INHERITED STOP, NOT CURED. Allocated at B5, found at B4 §2.1): per-slot blocking does not exist, and it needs a migration.
+`0075`'s unique index makes a block one-per-**DATE**. The day sheet's ratified P5 actions say `Block morning/noon/evening/day` — **four toggles against an index that permits one.** No door writes a per-slot block today; no surface offers one. **B5 inherits the STOP and does not relax the index**: LD-8 gives this migration `0078` if it is chartered, and it is **not chartered this sitting** (one founder-run migration per sitting; `0095` stays B7's). **The day sheet cannot ship its slot toggles until this is ruled.** Named, priced, and left standing.
+
+### F-04.64 (🔴 → INHERITED STOP, NOT CURED. Allocated at B5, found at B4 §2.2): capacity is vendor-unreachable end to end.
+`slot_capacity` is in **no allowlist on any door** — the vendor **cannot SET it, cannot force past it, and cannot see it**. `0076` created the column; `capacityCheck:634` reads it (`??` not `||` — 0 is a lawful posture, Q-SP-1); **nothing writes it and nothing renders it.** A column no door writes and no surface shows **dies this block or is deferred with eyes open** (Q-B3-7's parked item). The cure's first half is the settings row (`me.js` allowlist + the stepper); its second half is the force affordance, which is a **PROPOSAL, not an assumption** — and `isOverridable` stays off the wire (Q-C-3: one home for force semantics; if a force affordance is chartered, the door exposes a **computed boolean**, never the rule).
+
+### F-04.65 (🟡 → EXEMPT BY STANDING RULING, NOT CURED. Allocated at B5, found at B4 §2.3): the WhatsApp door has no verdicts at all.
+`calendarSignals.js` is the WA door's calendar home and **the checker does not reach it**. This is F-04.38's twin lesson in its **fourth** instance. **The exemption was priced when the checker was a stub** — it is now four verdicts deep and heard at both PWA doors, so the exemption's price has changed and nobody has re-quoted it. **Block 05's cure by the standing exemption. B5's only duty is to leave it named — `calendarSignals.js` was NOT opened this sitting.**
+
+### F-04.66 (🔴 → FILED AT B5, CURE PROPOSED NOT TAKEN): Victor voiced a raw row id — **and the estate taught him the word.**
+**Founder specimen, 2026-07-17 19:43:21** (relayed, not witnessed by me — provenance stated, per F-04.45): vendor-facing prose rendered `"I can see the 20th is blocked in the calendar (handle: 6cde1a36-287e-4816-8840-763d26a9cf3f)"`.
+
+**THE RELAY'S TWO-LAYER DIAGNOSIS IS WRONG ON BOTH LAYERS, AND THE CODE SAYS SO.**
+
+**(1) It was called mechanical-and-scrub-shaped. `scrub.js` is not the site.** True: `scrubText` has **no UUID pattern** — it maps `donna_[a-z_]+`→`operator tool`, collapses the Donna vocative (F-04.27), and maps `Donna`→`Operator`, `Harvey`→`Victor`. **But the proposed seam cannot carry the pattern.** `scrubText` is shared: `chat.js:65` scrubs Victor's **prose**, and `chat.js:85` scrubs a **tool result** (`detail: scrubText(e.result)`) — and `donnaLead.ts:259` prints `` `Lead saved. id=${saved.id}, …` ``. **A UUID pattern in `scrubText` scrubs the tool-result render too — violating the founder's own caution ("scrub prose, never tool payloads") at the very seam the cure proposed.** The GO was conditional on this read confirming the shape. **It does not confirm it.**
+
+**(2) It was called a model speech-disease and routed to 06. It is not, and it is not 06's.** `fetchCalendarSnapshot` (`chat.js:703`) builds Victor's calendar context as:
+```
+`- [${e.id}] ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`
+```
+under this header, verbatim at `:719`:
+```
+[Calendar — upcoming, kept for you. The [handle] before each booking is how you
+reference it to change or cancel it.]
+```
+**The estate hands Victor the raw row ids, NAMES them "handle", and INSTRUCTS him to use them to reference bookings. He said "handle: 6cde1a36…" because the door taught him the word.** This is **F-04.37's exact signature — *"He was not lying — he was obeying"*** — the third instance of a hand whose description told the model to do the thing the finding blames it for.
+
+**WHY THE SCRUB WOULD HAVE MADE IT WORSE.** Strip the UUID and the sentence becomes `"(handle: )"` — **a mangled sentence the vendor reads as a glitch, while the door keeps teaching the word.** That is **F-04.27's ruled lesson inverted**: *"a scrub that turns a wrong sentence into a plausible wrong sentence is worse than one that breaks visibly."* A scrub here treats the symptom **at the wrong end of the pipe**, and the instruction survives it.
+
+**CURE SHAPE, PROPOSED FOR RULING — NOT TAKEN:** the ids leave the snapshot's **prose** and the word *handle* leaves with them; if Victor needs a reference to change a booking, it is a **referent he can say** (title + date), and the door resolves it — `resolveClientReference.js` is the estate's existing precedent for exactly that. **This is the same function P4.1's date-pressure line extends** — which is why P4.1 is **HELD** in this ZIP rather than built onto a header under active question. **One edit, one ruling, one sitting — or two edits to one function and the second one reopens the first.**
+
+**NOT MINE, NAMED SO NOBODY ASSUMES:** whether Victor should voice an internal handle *even when handed one* is a soul question and stays 06's. **But the handing is the door's, and the door is mine.**
+
+---
+
+### F-04.55 — AMENDMENT TWO (B5, 2026-07-17. Q-B5-7 ruled: AMEND, do not allocate a new number.)
+**The B4 cure was real and it was the DOOR's.** `conflictLines`/`refusedLines` now reach the vendor — **founder screen-witnessed 2026-07-17**, both sentences rendered: the model's fabricated *"Priya-test is on the books — 21 July, 7 PM…"* **followed by** the door's honest *"You've blocked 21 July. That one's a no — unblock it first if you want it back."* **The live path works. There is no mechanical hole.**
+
+**THE RESIDUE THE DOOR-HALF CURE COULD NOT REACH IS THE TOOL LAYER.** `recordPrimitives.ts:650`:
+```
+`Booking requested: ${title} on ${date}${at} — it is being placed on the calendar.`
+```
+and its sibling at `:660`:
+```
+`Block requested for ${date}${why} — the day is being taken off the calendar.`
+```
+**These are returned to the model BEFORE the door has decided anything.** `donna_book_event` is a SIGNAL (`chat.js:133`) and is **deliberately absent from `CHAT_MUTATING_TOOLS`** (`:389`, stated at `recordPrimitives.ts:657`). So the model composes its prose on the strength of *"it is being placed on the calendar"* — **and then the door refuses, and the honest sentence lands UNDERNEATH the fabricated one.** The screen witness is the specimen of record: **both sentences, one reply, contradicting each other.**
+
+**F-04.41 is why this is not merely cosmetic:** the thread preserves the fabricated half and the door's honest half evaporates. **Q-B4-6(b) — the composed-reply save — is chartered to cure that, as its own ZIP after P4's green (engine touch: `tsc` + build + tombstone-bench gates).**
+
+**SOFTENED STRINGS — ON THE FOUNDER'S VETO LIST, VENDOR-VISIBLE, NOT SHIPPED IN THIS ZIP** (utility copy is listed verbatim for veto; these reach the model, and through the model, the vendor):
+- `:650` proposed → `` `Booking requested: ${title} on ${date}${at} — sent to the calendar; it will confirm or refuse.` ``
+- `:660` proposed → `` `Block requested for ${date}${why} — sent to the calendar; it will confirm or refuse.` ``
+
+**Why not stronger:** the string cannot promise a verdict it does not have, and it must not imply failure either — the door usually says yes. *"It will confirm or refuse"* is the only sentence true at the instant it is written. **The string alone cannot cure the fabrication** (the model may still compose optimistically) — **only Q-B4-6(b) makes the thread stop preserving the wrong half.** Named so the softening is not mistaken for the cure.

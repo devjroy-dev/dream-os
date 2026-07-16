@@ -485,6 +485,8 @@ function rowHolds(rowSlot, slot) {
 module.exports = {
   OCCUPYING_KINDS, APPOINTMENT_KINDS, isOccupying, isAppointment, isWeddingAnchor,
   checkOccupancy, isRefusal, isOverridable,
+  // B5: the POSITIVE read. A sibling of checkOccupancy, never a layer over it.
+  describeDate,
   CATEGORY_CAPACITY, RULED_OFF, VERIFY_FAILED, SPATIAL_KEYS,
   // test seams — the bench drives the real function; these let it drive the parts.
   effectiveRow, slotOfRow, _unmappedSeen,
@@ -818,4 +820,112 @@ function overlapMessage(title, slot, date) {
 
 function clusterMessage(count, from, to) {
   return `That's ${count} deadlines between ${fmtDate(from)} and ${fmtDate(to)} — a tight week. Worth pacing.`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// describeDate — THE POSITIVE READ. (TDW_04 Part B, sitting B5. Shape ratified
+// at B4, banked under the seam law, built here fresh.)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// WHY IT IS NOT checkOccupancy — THE FOUR-NULL TABLE, re-derived at B5 by reading
+// the body rather than trusting the handoff's summary of it. `checkOccupancy`
+// returns bare `null` — INDISTINGUISHABLE FROM "FREE" — at ELEVEN sites, and the
+// handoff named four. All eleven, by line, at 3b29528:
+//   :511 no supabase/vendorId · :517 nothing spatial moved · :551 deleted_at
+//   :552 state='cancelled'    · :557 kind='blocked'        · :559 nothing dated
+//   :565 no vendor row        · :572 RULED_OFF (planning)  · :584 unmapped -> 'other'
+//   :592 delivery -> clusterCheck (which returns null when it does not cluster)
+//   :606 kind='other' (the uncertainty sink)
+// A QUERY ENGINE BUILT ON IT WOULD TELL A PLANNER HE IS FREE ON HIS OWN WEDDING
+// DAY — :572 returns the same `null` as "no conflict". The checker is CORRECT: it
+// answers "may this write proceed", and silence is a lawful yes. describeDate asks
+// a DIFFERENT question — "what is true of this date" — where silence is a lie.
+//
+// THE FIVE PROPERTIES, ratified (handoff §3), each load-bearing:
+//   POSITIVE          — answers what IS, never "no objection".
+//   OFF-HONEST        — occupancy:'off' + a reason. OFF is never dressed as open.
+//   NEVER NULL-AS-FREE— every unknown is named. `blocked:null` is "I could not see",
+//                       and it is NOT `false`. See the shape note below.
+//   HORIZON-BLIND     — queries `events` DIRECTLY through liveRowsOn, exactly as
+//                       :412's shipped comment governs. No window, no cap, no
+//                       DEFAULT_WINDOW_DAYS. F-04.47's disease cannot arrive here.
+//   COVENANT-IDENTICAL— `deleted_at is null` + `state <> 'cancelled'`, inherited by
+//                       CALLING liveRowsOn rather than re-writing its two lines. Two
+//                       homes for the covenant would BE F-04.36.
+//
+// ⚠ ONE DISCLOSED EXTENSION OF THE RATIFIED SHAPE — ratify-or-revert, stated BEFORE
+//   ratification because that is F-04.61 #1's whole lesson. The ratified shape is
+//   `{ date, blocked, slots, occupancy, reason? }` and it does not say what `blocked`
+//   is when the READ FAILS. `false` would be null-as-free wearing the cure's own
+//   clothes — the exact disease this function exists to kill. So: `blocked: null`,
+//   `occupancy:'off'`, `reason:'verify_failed'`. THREE-VALUED, and the caller must
+//   treat null as "unknown", never as "no". If the CE prefers `{ err }` (the
+//   checker's fail-closed form, which breaks the shape) or `blocked:false` (which I
+//   will not write without a ruling), say so and it changes in one line.
+//
+// SIBLING, not a layer: it reads the same rows through the same helpers as the
+// checker and agrees with capacityCheck's arithmetic BY CALLING ITS PARTS —
+// liveRowsOn, slotOfRow, rowHolds, DAY_SLOTS, CATEGORY_CAPACITY. If it drifted from
+// them it would be a second opinion about one calendar, which is F-04.36's shape.
+async function describeDate(ctx) {
+  const c = ctx || {};
+  const { supabase, vendorId, date } = c;
+
+  const off = (reason, extra) => ({
+    date: date || null, blocked: false, slots: [], occupancy: 'off', reason, ...(extra || {}),
+  });
+  // Unknown is NOT free. Every failure lands here, and `blocked:null` says so.
+  const unknown = (reason) => ({
+    date: date || null, blocked: null, slots: [], occupancy: 'off', reason,
+  });
+
+  if (!supabase || !vendorId || !date) return off('no_context');
+
+  // ── 1. BLOCKED — asked FIRST, and independently of posture ───────────────
+  // A block is a refusal of future work. It is true of the DATE whatever the
+  // vendor's category is: a RULED_OFF planner who blocked the 20th is blocked on
+  // the 20th, and checkOccupancy:572 would have said `null` and meant "free".
+  // THIS IS THE ORDER THAT MAKES THE FOUR-NULL TABLE SURVIVABLE.
+  const b = await liveRowsOn(supabase, vendorId, date, null, ['blocked']);
+  if (b.err) return unknown('verify_failed');
+  const blocked = b.rows.length > 0;
+
+  // ── 2. THE VENDOR'S POSTURE ─────────────────────────────────────────────
+  const v = await readVendor(supabase, vendorId);
+  if (v.err) return { ...unknown('verify_failed'), blocked };   // the block SURVIVES
+  if (!v.vendor) return { ...off('no_vendor'), blocked };
+
+  const { normaliseCategory } = require('./categoryFraming');
+  const { profileFor }        = require('./categoryProfiles');
+  const norm    = normaliseCategory(v.vendor.category);
+  const profile = profileFor(v.vendor.category);
+
+  // Each of these is a `null` in the checker. Here each is a WORD.
+  if (RULED_OFF.has(norm))               return { ...off('ruled_off'), blocked };
+  if (profile.key === 'other')           return { ...off('unmapped'), blocked };
+  if (profile.timelineType === 'delivery') return { ...off('delivery'), blocked };
+
+  // ── 3. CAPACITY — capacityCheck's arithmetic, by calling its parts ───────
+  // `??` not `||`: 0 is a POSTURE (Q-SP-1, ruled), and `||` would silently promote
+  // it to the category default. capacityCheck:634 carries the same line and the
+  // same reason; this is the one place the number is re-derived rather than shared,
+  // and it is re-derived IDENTICALLY. If these two ever disagree, the bench fails.
+  const capacity = (v.vendor.slot_capacity != null)
+    ? v.vendor.slot_capacity
+    : CATEGORY_CAPACITY[profile.key];
+  if (capacity == null) return { ...off('unmapped'), blocked };
+
+  const r = await liveRowsOn(supabase, vendorId, date, null, OCCUPYING_KINDS);
+  if (r.err) return { ...unknown('verify_failed'), blocked };
+
+  // Legacy rows carry slot=NULL and are not empty air — slotOfRow's four branches,
+  // the same ones the door writes with.
+  const held = r.rows.map((x) => ({ ...x, _slot: slotOfRow(x) }));
+  const slots = DAY_SLOTS.map((slot) => ({
+    slot,
+    held: held.filter((x) => rowHolds(x._slot, slot)).length,
+    capacity,
+  }));
+
+  return { date, blocked, slots, occupancy: 'on' };
 }
