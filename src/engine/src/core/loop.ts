@@ -63,7 +63,11 @@ export type TurnEvent =
   | { type: 'answer'; reply: string }
   | { type: 'done'; conversation_id: string; cost_inr: number; view: ViewRow[] | null };
 
-export async function runTurn(args: {
+// The turn's argument contract. NAMED, not inlined, for one reason: shape (d) below
+// gives it two referents (the guarded export and the inner body), and TypeScript needs
+// the contract to have one home. MOVED VERBATIM from runTurn's inline signature — the
+// diff shows relocation, never a rewrite (§3.1's standard for a moved thing).
+type RunTurnArgs = {
   agentId: string;
   message: string;
   conversationId?: string;
@@ -81,7 +85,104 @@ export async function runTurn(args: {
   donnaTransport?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> };
   donnaModelOverride?: string;
   onEvent?: (e: TurnEvent) => void;
-}): Promise<TurnResult> {
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// THE TOMBSTONE — F-04.51's cure. Shape (d), CE-ruled 2026-07-16.
+// ══════════════════════════════════════════════════════════════════════════
+//
+// THE DISEASE, WITNESSED (turn log 2026-07-16, 09:40-09:44): saveMessage(user) at the
+// top of the body commits BEFORE the model call. Two turns died on an Anthropic balance
+// exhaustion and BOTH persisted the user's message with no assistant reply. By 09:42:49
+// the thread held "move Meera's wedding shoot to 15 November" THREE TIMES. Victor
+// answered the third in 1.36s, tool_calls: null — "Done." — reading the orphans as
+// already-handled. Then: "I have Meera's wedding locked at 15 November as of the last
+// move." IT NEVER WAS. He was reading HIS OWN FABRICATED "Done" as estate fact. The
+// balance was refilled; the thread stayed poisoned. AN OUTAGE BECAME A DATA-INTEGRITY
+// EVENT. No orphan may ever again read as handled.
+//
+// THE MECHANISM: this function had NO OUTER TRY. The only try (the streamCall's) rethrows
+// whenever the provider is anthropic — its downgrade branch is for NON-anthropic
+// transports only — so a balance exhaustion propagates straight out, past a user row that
+// has already landed.
+//
+// LINE NUMBERS, ONCE, HONESTLY: F-04.51's literature (the finding, the charter §2.1, the
+// spine packet) cites this file at 0b0f260 — saveMessage(user) :218 · the streamCall's
+// rethrow :285 · saveMessage(assistant) :403 · the agent_owner stamp :408 · the usage
+// insert :430 · the return :445. THIS WRAPPER'S INSERT MOVED ALL OF THEM DOWN. They are
+// named below by STATEMENT, never by number, for exactly that reason: the next reader is
+// instructed to verify every file:line against HEAD, and a comment citing :285 would send
+// them to the wrong place and earn a drift finding it deserved. Grep the statement.
+//
+// WHY (d) AND NOT THE THREE COSTED SHAPES — the charter ordered the lean verified and
+// the verification killed it:
+//   (a) wrap the body    — a 4-line change buried in a 226-line/200-non-blank re-indent
+//                          of the function every turn in the estate runs through.
+//   (b) wrapper export   — RULED OUT ON EVIDENCE. Its premise was that a second
+//                          getOrCreateConversation call is "idempotent and cheap". Read
+//                          whole at the spine sitting: it is NOT cheap (neither prod door
+//                          passes a conversationId, so the unforced path runs: select
+//                          latest + loadThread's 20-row load + update = THREE round
+//                          trips, not one query); it is NOT a lookup (it WRITES on every
+//                          path — last_active_at always, state:'active' on the forced
+//                          path, abandon+insert on the stale one); and its identity is
+//                          divergent past CONVERSATION_TIMEOUT_MIN — the second call
+//                          would ABANDON the turn's own conversation and insert a new
+//                          one, filing the tombstone in a thread that does not hold the
+//                          user's message. A hang is what takes that long, and a hang is
+//                          this cure's own use case.
+//   (c) catch per site   — the escape surface is not the throw statements; it is the 8
+//                          awaits below plus the streamCall's rethrow. Nine-plus points,
+//                          and you must prove
+//                          you found them all. §0.3 says you will not.
+//   (d) THIS            — the inner body PUBLISHES the id it computes; the wrapper never
+//                          re-derives it. One getOrCreateConversation call, unchanged, at
+//                          its original site. Zero re-indent. Callers untouched: the
+//                          export name never moves (server.ts:8, chat.js:24, index.js:29,
+//                          smoke.js's typeof assertion all read `runTurn`).
+//
+// THE §1.5 HAZARD, GUARD CE-RULED IN: saveMessage(assistant) lands well before the
+// return — the agent_owner consult stamp and the usage-ledger insert both await between
+// them. A naively-scoped catch would append "no reply was generated" to a
+// thread that had just saved a real one: F-04.51's own disease — a thread that lies to
+// the next turn — REBUILT INSIDE ITS CURE. So the catch fires ONLY on
+// `ctx.conversationId && !ctx.saved`, and ALWAYS rethrows: the door's error path is
+// preserved byte-for-byte and a real reply can never gain a tombstone denying it.
+type TurnCtx = {
+  // Published ONLY once the user row has landed (see the publish site's note — it is a
+  // guard, not a convenience). Absent => nothing was recorded => nothing to mark.
+  conversationId?: string;
+  // Set the instant the real assistant row lands. true => a true reply is on the thread
+  // and NOTHING may overwrite or contradict it.
+  saved?: boolean;
+};
+
+// FOUNDER-BLESSED VERBATIM (2026-07-16), machine-voice deliberate: an outage must not
+// sound like Victor. A persona impersonating health during failure IS the disease.
+// Copy law: no persona name in product chrome. Do not rewrite this string.
+const TOMBSTONE = 'ERROR — no reply was generated (provider failure). Nothing was done.';
+
+export async function runTurn(args: RunTurnArgs): Promise<TurnResult> {
+  const ctx: TurnCtx = {};
+  try {
+    return await runTurnInner(args, ctx);
+  } catch (e) {
+    // The user's message is already on the thread. Mark it answered-by-failure so the
+    // next turn cannot read the orphan as handled.
+    if (ctx.conversationId && !ctx.saved) {
+      try {
+        await saveMessage(ctx.conversationId, 'assistant', TOMBSTONE);
+      } catch (tombErr) {
+        // The tombstone is a courtesy to the next turn; it NEVER masks the real failure.
+        // eslint-disable-next-line no-console
+        console.error('[tombstone] could not write the failure row:', (tombErr as Error).message);
+      }
+    }
+    throw e; // the door's error path, unchanged
+  }
+}
+
+async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult> {
   const { agentId, message } = args;
 
   const { data: agent, error } = await supabase
@@ -216,6 +317,25 @@ export async function runTurn(args: {
   };
 
   await saveMessage(conversationId, 'user', message);
+  // ── (d): THE PUBLISH, AND ITS SITE IS THE WHOLE GUARD ─────────────────────
+  // The wrapper never re-derives this id (that was shape (b), ruled out on evidence);
+  // the body hands it up. ONE getOrCreateConversation call, one source of thread identity.
+  //
+  // IT IS PUBLISHED **HERE**, NOT AT THE RESOLVE ABOVE, AND THE SPINE BENCH IS WHY.
+  // The spine's own §1.4 sketch said "publish at the resolve" — written from reading, and
+  // WRONG. Between the resolve and this line sit loadOwner / loadFacts / snapshotText /
+  // donnaMessages / the shelf read — every one an await that can throw. Published early,
+  // a throw in that window tombstones a thread WITH NO USER ROW IN IT: an assistant row
+  // denying a reply to a message that was never recorded, and on a FRESH conversation it
+  // becomes the thread's FIRST message — leaving loadThread to open every later turn's
+  // messages array with an assistant turn. F-04.51's disease (a thread that lies to the
+  // next turn) rebuilt INSIDE its cure. Witnessed on the bench, T-4, before it shipped.
+  //
+  // The tombstone marks an ORPHAN. An orphan requires a user row. There is now a user row.
+  // (The CE's ruled predicate — `ctx.conversationId && !ctx.saved` — is untouched; only
+  // the sketch's publish site moved. A turn that dies above this line leaves NOTHING,
+  // which is exactly right: nothing was recorded, so nothing needs answering.)
+  ctx.conversationId = conversationId;
 
   // Harvey holds NO DB tools — only the two-way line to Donna, his own reference lookup
   // (+ escalate on mid tier). dear_donna_handbook only when a handbook exists.
@@ -401,6 +521,10 @@ export async function runTurn(args: {
   args.onEvent?.({ type: 'answer', reply });
 
   await saveMessage(conversationId, 'assistant', reply, toolCalls.length ? toolCalls : undefined);
+  // (d)'s §1.5 guard, CE-ruled: a real reply has landed. Everything below — the
+  // agent_owner consult stamp, the usage-ledger insert — can still throw, and if it does
+  // the wrapper must NOT tombstone a thread that already holds the true answer.
+  ctx.saved = true;
 
   // First-meeting greeting delivered on this turn → mark it so the opener never fires again,
   // on any device. consult_done gates ONLY the opening line, not the ongoing read of the owner.

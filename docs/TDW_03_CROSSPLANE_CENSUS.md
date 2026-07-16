@@ -132,6 +132,33 @@ select
 issue"*; the result matched the seal exactly so it was not voided, **but the block-close re-run must land against
 a green status page** — the proof-evidence law ("proofs against ambiguous states are void, not weak").
 
+### T19 — THE STANDING BASELINE (founder gate, recorded at the spine sitting, 2026-07-16)
+
+```
+oracle_outstanding  125000
+oracle_owed_count        3
+oracle_on_calendar       4
+```
+
+**Rows behind the 4:** Family wedding 25 Jul · Ananya recce 25 Jul · Meera trial **2 Aug** · Meera wedding shoot
+22 Nov. **Money untouched across the entire B3 smoke** — the oracle's quietest and best sentence.
+
+**GATE STATUS: PASSED on a green banner (founder, 2026-07-16).** This cleared the spine sitting's first-code-ZIP
+gate. **This is the number that must be green again at block close.**
+
+**⚠ HOW THIS RECORD IS WITNESSED, STATED PLAINLY BECAUSE THE PROOF-EVIDENCE LAW IS ABOVE IT.** The run happened
+in the B3 close window and **its recorded output was lost to context truncation** — the same mechanism that ate
+three chartered writes at B3 (handoff §7). **The founder's word is the witness, by his ruling of 2026-07-16, and
+that is what this record carries — not a pasted result set.** It is recorded here at his instruction and named
+for what it is: **a founder attestation, not a cold-run transcript with a header.** Under the standing law a
+proof needs its header and its output; this has neither, and it is load-bearing anyway because the founder
+witnessed it and says so. **The block-close re-run is the one that owes the full header + pasted rows** — and it
+is owed regardless of this record, not excused by it.
+
+**A green oracle is not a clean estate. It counts money and rows; it never asks whether a binder's date is a
+wedding.** `125000 / 3 / 4` was green through the entire F-04.43/46 background rate — green while Ananya's binder
+said her wedding was her recce. **This must be green again at block close, and green will still not mean clean.**
+
 ### WATCH LIST (not findings — armed traps, verified not firing at the 2026-07-15 run)
 
 - **F-04.24 · NULL-direction (🟢-watch):** see the guard note above. A NULL-direction binder with pending > 0
