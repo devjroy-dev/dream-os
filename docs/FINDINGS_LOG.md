@@ -977,3 +977,33 @@ The engine dump **hardcodes** its guard — *"Confirm the result says 25 rows"* 
 **Cure (CE-ruled, 2026-07-16): THE DOOR ASKS THE CHECKER.** `occupancy.js` exports `isRefusal` and `isOverridable`; the door never learns *why* a verdict refuses — **F-04.36's law applied forward: the file that owns the verdict vocabulary owns its force semantics.** No fifth `kind`, no new wire field. **Both refusal classes are now asserted by source position** (`scripts/checker_bench.js` §8) **and behaviourally** (§7, §10).
 
 **⚠ THE LESSON THAT OUTLIVES THE FIX:** *§2.5's `force: true` was ruled safe **on a premise nobody had run**.* The premise was reasonable, written by people who knew the code, and **false**. It would have shipped a wedding drag onto a blocked date — **the harm the ruling assumed impossible, created by the ruling that assumed it.** §0.2 is why it didn't: *a ruling that can't execute as worded is REPORTED, never quietly adapted.* **The report cost one round trip. The alternative cost a vendor his blocked day.**
+
+### THE CONSTRAINTS ADDENDUM — and a POSITIVE witness, which this log has few of.
+
+**`docs/db/PUBLIC_SCHEMA.md` gained its constraints addendum** (§1 CHECK/UNIQUE/PK **134** · §2 FOREIGN KEYS **80** · §3 INDEXES **204**), founder-run 2026-07-16 on `nvzkbagqxbysoeszxent`/`main` as role `postgres`, **all three guards green** (rows_returned == `rows_expected`, computed by the database, immune to the cap that F-04.29 was written about). It entered through `db/queries/append_constraints_to_public_schema.js` — **the file's NEVER-HAND-EDIT law is now kept by construction rather than by good intentions.** The generator **refuses** a capped result and **refuses** a result set missing its guard column, exits nonzero, and writes nothing; proven by feeding it a deliberately truncated §1.
+
+**F-04.57's cure is now complete on both halves.** The column snapshot answered *"what columns exist."* This answers *"what values are legal"* — the question `events.slot`'s CHECK, `events.kind`'s CHECK and `0075`'s UNIQUE partial index all live in, **and which were real and invisible until now.** The checker rides on all three.
+
+**⚠ THREE CLAIMS THE CHECKER MADE ARE NOW WITNESSED RATHER THAN ASSUMED:**
+- **`vendors.slot_capacity` carries NO CHECK.** Nothing in 134 constraints mentions it. **Q-SP-1's ruling — 0 is a lawful posture, no CHECK ever — was a ruling about a fact nobody had looked at.** Absence is only evidence if you looked; the guard is what licenses reading this silence as fact rather than as truncation.
+- **`events.linked_binder_id` carries NO FK.** `events` has exactly three — `couple_id`, `linked_lead_id`, `vendor_id`. The checker's comment that the binder link is informational only now has a row behind it.
+- **`events_owner_xor :: CHECK ((vendor_id IS NULL) <> (couple_id IS NULL))`.** The couple/vendor XOR is a DATABASE constraint, not a convention. The holding query's `.eq('vendor_id', …)` excludes couple-owned rows **structurally**, not by reasoning.
+
+### F-04.60 (🟢 → POSITIVE WITNESS, no cure owed): the ternary EXACTLY partitions the database's own `kind` space.
+
+**Recorded because this log is almost entirely a record of things being wrong, and an estate that only writes down its failures cannot tell a load-bearing agreement from an accident.**
+
+`events_kind_check` legalises **thirteen** values:
+`shoot · call · meeting · task · reminder · recce · fitting · trial · family · ceremony · social · blocked · other`
+
+`occupancy.js`'s ternary claims all thirteen and no more — **OCCUPYING (3): shoot family ceremony · APPOINTMENT (8): trial fitting recce call meeting task reminder social · NEITHER (2): other blocked.** Compared as sets **by command, not by eye**:
+
+```
+DB kinds the ternary does NOT classify : NONE
+Kinds the ternary claims the DB REFUSES: NONE
+THE SETS AGREE EXACTLY — 13 = 13, no gap, no phantom.
+```
+
+**WHY IT MATTERS AND WHY IT IS NOT A SHRUG.** Until this row, the ternary's completeness was assembled **from a migration file's prose** — the exact posture the B3 handoff §0.1 calls *the disease wearing the cure's uniform*, and the posture F-04.57 exists about. **No kind can reach the checker unclassified** (there is no fourteenth value the CHECK would admit), and **no kind the ternary classifies can ever exist** (there is no phantom the CHECK would reject). `isOccupying(undefined)` returning false is the only remaining hole and it is deliberate, ruled, and benched.
+
+**THE FORCING FUNCTION IS STILL MISSING AND THAT IS THE HONEST TAIL.** The sets agree **today**, and nothing fails if a future migration adds a fourteenth kind without touching `occupancy.js` — the new kind would silently land in NEITHER and consume no capacity. **That is F-04.36's shape wearing a green hat, and it is the same shape as F-04.59's two category lists.** *"They agree today; I read both" is the sentence someone wrote about the kind lists before F-04.36.* **Proposal for 06, not taken: a bench assertion comparing the ternary to `events_kind_check`'s live values — the agreement is only a guarantee once something fails when it breaks.**

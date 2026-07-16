@@ -146,13 +146,34 @@ oracle_on_calendar       4
 **GATE STATUS: PASSED on a green banner (founder, 2026-07-16).** This cleared the spine sitting's first-code-ZIP
 gate. **This is the number that must be green again at block close.**
 
-**⚠ HOW THIS RECORD IS WITNESSED, STATED PLAINLY BECAUSE THE PROOF-EVIDENCE LAW IS ABOVE IT.** The run happened
+**✅ RE-RUN AND WITNESSED — 2026-07-16, at the CHECKER sitting's close. `125000 / 3 / 4`, UNMOVED.**
+Founder-run, screenshot handed back: project `nvzkbagqxbysoeszxent` · `main` **PRODUCTION** · role **`postgres`** ·
+**Limit `No limit`** · **`1 row`** · result `125000 · 3 · 4`. The visible query text (lines 24–34) was compared
+against this file's own SQL and is **byte-identical, including the `-- BOOKED_KINDS :118` and `-- F-04.25 :54`
+comment tails.** No incident banner in the dashboard chrome — *the same channel the 2026-07-15 amber appeared in.*
+**ZIP D shipped no migration and wrote no row; the checker only REFUSES writes and cannot create or move one — so
+unmoved is the predicted result, and it is the oracle's quietest and best sentence again: money untouched.**
+
+**⚠ WHAT THIS RUN WITNESSES, AND WHAT IT DOES NOT — stated because the proof-evidence law is above it.**
+The screenshot witnesses **the tail and the result**: the `oracle_on_calendar` subquery, the header, the role, the
+no-limit, the row count. **Lines 1–23 are scrolled off — the `agent_vendor` walk and `pendingOf`'s `case` are NOT
+visible in it.** Those CTEs are where the money rule lives, and they are **trusted from this file's sealed text,
+not from this screenshot.** That is a real limit and it is named rather than papered over. It is **not** the
+status page itself, either — the absence of an incident banner is evidence, not the check.
+
+**⚠ THE BLOCK-CLOSE RUN REMAINS OWED AND UNDISCHARGED.** 04 is not closed — B4, B5 and 06 remain. **This is not
+that run.** It strengthens the standing baseline from *word* to *witness*; it does not retire the gate.
+
+**~~⚠ HOW THIS RECORD IS WITNESSED, STATED PLAINLY BECAUSE THE PROOF-EVIDENCE LAW IS ABOVE IT.~~ ❌ SUPERSEDED
+2026-07-16 AT THE CHECKER SITTING (CE-ratified; corrections convention — update in place, nothing deleted). The
+caveat below was TRUE WHEN WRITTEN and is now OBSOLETE: the run above carries its header and its output.**
+~~The run happened
 in the B3 close window and **its recorded output was lost to context truncation** — the same mechanism that ate
 three chartered writes at B3 (handoff §7). **The founder's word is the witness, by his ruling of 2026-07-16, and
 that is what this record carries — not a pasted result set.** It is recorded here at his instruction and named
 for what it is: **a founder attestation, not a cold-run transcript with a header.** Under the standing law a
 proof needs its header and its output; this has neither, and it is load-bearing anyway because the founder
-witnessed it and says so. **The block-close re-run is the one that owes the full header + pasted rows** — and it
+witnessed it and says so.~~ **The block-close re-run is the one that owes the full header + pasted rows** — and it
 is owed regardless of this record, not excused by it.
 
 **A green oracle is not a clean estate. It counts money and rows; it never asks whether a binder's date is a
