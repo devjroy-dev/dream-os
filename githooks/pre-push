@@ -1,0 +1,59 @@
+#!/bin/bash
+# ══════════════════════════════════════════════════════════════════════════
+# F-04.61 — THE GATE THAT LIVED ON ONE MACHINE. (TDW_04 Part B, sitting B4)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# The founder's terminal printed "All changed .js files passed syntax check."
+# during the ZIP D commit. The checker sitting went looking for it and found
+# NOTHING: not in the tree, not in .git/hooks, not in .githooks, no husky, no
+# lint-staged, no core.hooksPath. It was a script on one machine, and it was
+# not in the estate. Raised as the checker->B4 handoff's §6, "ONE UNEXPLAINED
+# THING — unresolved; raised, not diagnosed." Filed as F-04.61 and cured here.
+#
+# Q-SP-5's LAW, which is why this file exists rather than a note about it:
+#   "A CURE NOBODY CAN RE-RUN QUIETLY STOPS BEING A CURE."
+# A syntax gate only one machine can run is a gate the next executor will
+# assume is protecting them. It is the estate's now: it clones with the repo.
+#
+# THE CONTENT BELOW IS THE FOUNDER'S SCRIPT, VERBATIM AS EXTRACTED FROM HIS
+# CODESPACE. Not one character of its logic changed in transit — the
+# relocation law (Q-B2-7) governs; the header is the only addition, and the
+# byte-identity was proven by diff before this shipped.
+#
+# WHY `githooks/` AND NOT `.githooks/` — IT IS NOT A PREFERENCE:
+#   Protocol §7's FIXED apply command is `cp -r deploy/* .`, and the shell's
+#   `deploy/*` glob DOES NOT MATCH DOTFILES. A `deploy/.githooks/` would be
+#   silently skipped, then destroyed by the same command's `rm -rf deploy`.
+#   Exit 0 throughout. Then `core.hooksPath .githooks` would arm the gate at a
+#   directory that does not exist — and git says NOTHING about that either.
+#   Both halves silent: F-04.61's own disease, reproducing inside F-04.61's
+#   cure. Found by RUNNING the apply block, not by reading it.
+#
+# ARMED BY:  git config core.hooksPath githooks    (one line, in the apply block)
+#            A hook the repo carries but nothing points at is F-04.61 again,
+#            wearing the cure's uniform.
+#
+# NOT ITS JOB, named so nobody assumes otherwise: this checks SYNTAX. It does
+# not know what a divergence is. The forcing function the checker->B4 handoff's
+# §3 wants (the two category lists · the ternary vs events_kind_check · the
+# anchor rule's two homes) is a B4 handover PROPOSAL, deliberately not
+# smuggled in here.
+# ══════════════════════════════════════════════════════════════════════════
+# Pre-push hook: syntax-check every .js file changed in pushed commits.
+# If any file fails node --check, the push is aborted.
+FAILED=0
+for f in $(git diff --name-only origin/main..HEAD | grep '\.js$'); do
+  if [ -f "$f" ]; then
+    if ! node --check "$f" 2>&1; then
+      echo "❌ Syntax error in $f — push aborted."
+      FAILED=1
+    fi
+  fi
+done
+if [ $FAILED -eq 1 ]; then
+  echo ""
+  echo "Fix syntax errors and try again."
+  exit 1
+fi
+echo "✅ All changed .js files passed syntax check."
+exit 0

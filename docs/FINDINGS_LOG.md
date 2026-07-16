@@ -1007,3 +1007,30 @@ THE SETS AGREE EXACTLY — 13 = 13, no gap, no phantom.
 **WHY IT MATTERS AND WHY IT IS NOT A SHRUG.** Until this row, the ternary's completeness was assembled **from a migration file's prose** — the exact posture the B3 handoff §0.1 calls *the disease wearing the cure's uniform*, and the posture F-04.57 exists about. **No kind can reach the checker unclassified** (there is no fourteenth value the CHECK would admit), and **no kind the ternary classifies can ever exist** (there is no phantom the CHECK would reject). `isOccupying(undefined)` returning false is the only remaining hole and it is deliberate, ruled, and benched.
 
 **THE FORCING FUNCTION IS STILL MISSING AND THAT IS THE HONEST TAIL.** The sets agree **today**, and nothing fails if a future migration adds a fourteenth kind without touching `occupancy.js` — the new kind would silently land in NEITHER and consume no capacity. **That is F-04.36's shape wearing a green hat, and it is the same shape as F-04.59's two category lists.** *"They agree today; I read both" is the sentence someone wrote about the kind lists before F-04.36.* **Proposal for 06, not taken: a bench assertion comparing the ternary to `events_kind_check`'s live values — the agreement is only a guarantee once something fails when it breaks.**
+
+## TDW_04 B4 (2026-07-16) — the voice sitting. **ZIP A: the gate becomes the estate's.**
+
+### F-04.61 (🟡 → FILED AND CURED IN THE SAME DELIVERY, CE-ruled 2026-07-16): the syntax gate lived on one machine and the estate could not see it.
+
+The founder's terminal printed **`All changed .js files passed syntax check.`** during the ZIP D commit. The checker sitting went looking for it and **found nothing** — raised as that handoff's **§6, "ONE UNEXPLAINED THING," unresolved: *raised, not diagnosed.*** It arrived at B4 as a charter item **with no finding number allocated** — `grep -rn "F-04\.61" docs/` returned nothing and the log ended at **F-04.60**. Allocated here per F-04.39's never-reuse precedent, because **a header citing a finding nobody can look up is Q-SP-5's disease inside Q-SP-5's cure.**
+
+**RE-VERIFIED AT `2c133a8`, every clause of §6's claim, by command:** `.githooks` **absent** · `core.hooksPath` **unset** · `.git/hooks/` holds **samples only** · no husky, no lint-staged · **the string exists nowhere in the tree** but the handoff that reported it. **It was a script on one machine.**
+
+**WHY IT IS A FINDING AND NOT A SHRUG — Q-SP-5's law:** *a cure nobody can re-run quietly stops being a cure.* **A syntax gate only the founder can run is a gate the next executor will assume is protecting them.**
+
+**CURE:** the founder's script, **verbatim as extracted** — logic **byte-identical, proven by `diff` before shipping**, the only addition a header naming this finding and Q-SP-5 (Q-B2-7's relocation law: the diff must show relocation, not rewrite) — committed to **`githooks/pre-push`**, armed by `git config core.hooksPath githooks` in the apply block. **It clones with the repo now.**
+
+**RUN BEFORE SHIPPING, NOT REASONED ABOUT (§0.1):**
+```
+clean .js                  -> "✅ All changed .js files passed syntax check."   exit 0
+a real SyntaxError         -> "❌ Syntax error in src/probe_bad.js — push aborted."  exit 1
+this ZIP's own push        -> ✅ exit 0 — VACUOUSLY: zero .js files changed, so the
+                              loop body never ran. IT PROVES THE HOOK FIRES.
+                              ZIP B (two .js files) is its first real gate, and the
+                              distinction is stated because a green gate over an
+                              unreachable path is not evidence (B2 disclosure §3).
+```
+
+**⚠ THE PATH IS `githooks/`, NOT `.githooks/`, AND THE CHARTER SAID `.githooks/`. The deviation was reported to the CE and ruled before it shipped; it is not a preference.** Protocol §7's **fixed** apply command is `cp -r deploy/* .`, and **the shell's `deploy/*` glob does not match dotfiles** — `echo deploy/*` expands to `deploy/docs` and nothing else. A `deploy/.githooks/` would be **silently skipped**, then **destroyed** by the same command's `rm -rf deploy`. **Exit 0 throughout.** `core.hooksPath .githooks` would then arm the gate at a directory that does not exist — and **git says nothing about that either** (verified: commit exit 0, no warning). **Both halves silent. F-04.61's own disease, reproducing inside F-04.61's cure — and the founder's only tell would have been the ABSENCE of the ✅ this finding exists about.** Found by **running** the apply block in a scratch clone, not by reading it — the checker sitting's §4 in its own words: *"The heredoc was tested; the apply block was not — because it looked obvious."* **The general defect is filed separately as a PROTOCOL CANDIDATE: §7's fixed command has never been able to ship a dotfile, and nothing had tried until now.**
+
+**NOT ITS JOB, named so nobody assumes otherwise:** it checks **SYNTAX**. It does not know what a divergence is. The forcing function the checker→B4 handoff's §3 asks for — the two category lists (F-04.59) · the ternary vs `events_kind_check` (F-04.60) · the anchor rule's two homes (Q-B3-10) — is a **B4 handover PROPOSAL**, deliberately not smuggled into the first file that looked like a home for it.
