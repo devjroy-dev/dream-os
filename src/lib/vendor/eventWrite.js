@@ -484,7 +484,13 @@ async function writeEvent(supabase, params) {
     vendorId,
     surface,
     action:  deleted_at ? 'event_delete' : ((isUpdate || existing) ? 'event_update' : 'event_create'),
-    summary: `event "${event.title}" — ${event.event_date}${event.event_time ? ' ' + event.event_time : ''}${event.kind ? ' · ' + event.kind : ''}${force && conflict ? ' (forced)' : ''}`,
+    // TDW_04 B3 (F-04.49's rider, CE-ruled 2026-07-16) — ATTRIBUTION WITHOUT SCHEMA.
+    // Both lockstep legs pass surface:'pwa' (chat.js:400, api/vendor/events.js:277) and
+    // `source` was received here and never recorded — so vendor_activity_log showed
+    // IDENTICAL rows for Victor's calendar writes and the web door's. That is why
+    // F-04.46's misattribution to T11 survived to a ruling, and why settling it needed
+    // engine.messages. F-04.28's door-parity: the lane was joinable, not attributable.
+    summary: `event "${event.title}" — ${event.event_date}${event.event_time ? ' ' + event.event_time : ''}${event.kind ? ' · ' + event.kind : ''}${force && conflict ? ' (forced)' : ''} · via ${source === 'victor' ? 'chat' : 'calendar'}`,
     entityType: 'event',
     entityId:   event.id,
   }).catch(() => {});

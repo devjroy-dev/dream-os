@@ -32,7 +32,7 @@ const { runHarvest } = require('../../agent/harvest');                      // T
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
 const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
-const { OCCUPYING_KINDS, isOccupying } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set (subset proposal §3, CE-ratified)
+const { OCCUPYING_KINDS, isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set + the one rule (Q-B3-10, CE-ratified)
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 const { scrubText } = require('../../lib/vendor/scrub');        // TDW_04 B2 — F-04.38
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
@@ -413,7 +413,7 @@ async function mutateEvents(req, result) {
       // from Victor and left THIS one live. F-04.38's twin lesson, third instance.
       if (r && r.ok && patch.event_date && ev.linked_binder_id) {
         try {
-          if (await isWeddingAnchor(req, ev, ev.linked_binder_id)) {
+          if (await isWeddingAnchor(req.app.locals.supabase, ev, ev.linked_binder_id)) {
             await executeAndPatch(req.agentId, 'donna_date', { binder_id: ev.linked_binder_id, date: patch.event_date });
           }
         }
@@ -449,40 +449,9 @@ function mutationLines(done) {
       : `Updated: ${e.title} — ${when}. The calendar's set.`;
   }).join('\n'));
 }
-// ── THE ANCHOR RULE (Q-B3-3 + Q-B3-9's amendment, CE-ruled 2026-07-16) ────
-//
-// "Only a wedding-anchor event's date-edit may write the binder's date."
-// There is no kind='wedding' — CALENDAR_KINDS is thirteen and none of them is
-// that (verified at B3; a 14th kind was rejected). So the anchor is proven by
-// the two facts the estate already holds:
-//
-//   (i)  the event is OCCUPYING (occupancy.js — shoot/family/ceremony). Asked
-//        POSITIVELY. On a ternary set, "not an appointment" is NOT "occupying":
-//        it would let `other` and `blocked` speak for a wedding (Q-B3-9).
-//   (ii) its PRE-MOVE date equalled the binder's date — i.e. it WAS the wedding
-//        before it moved. Testing the POST-move date would compare the new date
-//        to the old binder date, never match, and leave the leg permanently dead.
-//
-// FAIL-CLOSED (F15's law): no truthful read of the binder, no propagation. A
-// binder with no date at all can have no anchor — which is exactly the state
-// Meera's was in when this machinery destroyed her trial.
-//
-// PLANE: req.app.locals.supabase is PUBLIC-DEFAULT (src/index.js:37); the
-// explicit .schema('engine') hop targets `records` (binders) and nothing else.
-// Same enumerated hop as eventWrite.js:230 and api/vendor/invoices.js:80.
-async function isWeddingAnchor(req, evBefore, binderId) {
-  if (!evBefore || !isOccupying(evBefore.kind)) return false;
-  if (!evBefore.event_date) return false;
-  const { data: binder, error } = await req.app.locals.supabase
-    .schema('engine')
-    .from('records')
-    .select('date')
-    .eq('id', binderId)
-    .maybeSingle();
-  if (error || !binder) return false;          // fail-closed
-  if (!binder.date) return false;              // no date -> no anchor
-  return binder.date === evBefore.event_date;
-}
+// THE ANCHOR RULE lives in lib/vendor/occupancy.js beside the set it consumes
+// (Q-B3-10, CE-ruled 2026-07-16 — it was shipped twice at B3; "they agree today;
+// I read both" is F-04.36's origin sentence). Leg 1 and leg 3 now import ONE rule.
 
 // Lockstep the other way: when Donna moves a binder's date (donna_date / donna_edit carrying a date),
 // the linked calendar event follows — BUT ONLY IF THAT EVENT IS THE ENGAGEMENT.

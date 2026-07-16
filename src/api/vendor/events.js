@@ -37,7 +37,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const { writeEvent } = require('../../lib/vendor/eventWrite');    // TDW_04 B2 — the ONE writer
 const { executeAndPatch } = require('../../lib/executeAndPatch');  // TDW_04 B2 — the CRUD lockstep leg
 const { resolveAgentForVendor } = require('../middleware/agentBridge');
-const { isOccupying } = require('../../lib/vendor/occupancy');     // TDW_04 B3 — the one set (subset proposal §3, CE-ratified)
+const { isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one rule (Q-B3-10, CE-ratified)
 
 // ── TDW_04 B2 — this door's writes route through eventWrite ────────────────
 // createEvent/updateEvent/deleteEvent are gone from here. lib/vendor/events.js still
@@ -63,7 +63,18 @@ const ALLOWED_KINDS  = [
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-const DEFAULT_WINDOW_DAYS = 60;
+// TDW_04 B3 (Q-B3-12's interim, CE-ruled 2026-07-16) — F-04.47's stopgap, NOT its cure.
+// WAS 60. A wedding vendor books 6-18 months out; at 60 days his own November shoots were
+// invisible on every surface while the grid showed hot dates. PROVEN 2026-07-16, one door,
+// two calls: ?from=2026-11-01&to=2026-11-30 returned both of Meera's shoots; the same
+// endpoint with no from/to returned 8 rows, none in November. The data was always here.
+// The client (dreamos-pwa lib/vendor/api/vendor.ts:241) sends NO from/to, ever, and the
+// calendar's month-nav moves React state without re-fetching — so this default IS the horizon.
+// B5 OWNS THE CURE (re-scoped by ruling): a deliberate horizon contract, the PWA sending
+// from/to, and month-nav re-fetching. DO NOT treat this number as the design.
+// NOTE FOR B5: HARD_CAP (:67) is .limit(200) on ROWS (:159). At 400 days a busy studio can
+// exceed it and be SILENTLY TRUNCATED — no count, no has_more. The horizon contract owns that too.
+const DEFAULT_WINDOW_DAYS = 400;
 const HARD_CAP = 200;
 
 function istTodayISO() {
@@ -305,30 +316,20 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
   // NO LOOP: this is not a chat turn, so lockstepBinderToEvent — which only ever reads
   // a turn's result.tool_calls — cannot see this write. The guard is architectural,
   // exactly as chat.js's own lockstep comment documents for its half.
-  // ── THE ANCHOR VETO (Q-B3-3 + Q-B3-9's amendment, CE-ruled 2026-07-16) ────
+  // ── THE ANCHOR VETO (Q-B3-10: ONE rule, imported — CE-ruled 2026-07-16) ──
   // A BINDER'S DATE IS THE WEDDING. Before B3 this leg patched the binder from ANY
-  // linked event's date-edit — a trial move rewrote a wedding. The veto: the event
-  // must be OCCUPYING (asked positively — on a ternary set "not an appointment"
-  // would let `other`/`blocked` speak for a wedding) AND its PRE-MOVE date must
-  // have equalled the binder's (it WAS the wedding). There is no kind='wedding';
-  // a 14th kind was rejected at Q-B3-3.
+  // linked event's date-edit — a trial move rewrote a wedding, a recce move rewrote
+  // another (F-04.54: Ananya's binder read her RECCE's date, written HERE at
+  // 2026-07-15 20:22:54 through this very door, with no chat turn in that window).
+  // F-04.43/46 were never Meera-specific: they were a BACKGROUND RATE across every
+  // linked couple, and both legs fired on different couples four minutes apart.
   //
-  // NOTE: this door is router.patch('/:eventId') — THE WEB DOOR. Victor cannot
-  // reach it; his leg is chat.js's. The witnessed F-04.46 specimen fired through
-  // chat, not here (turn log, 2026-07-15 21:49) — F-04.46's filing named this leg
-  // and the record is corrected at B3. Both legs carry the same brain by ruling
-  // (Q-B3-4's widening), so the cure did not depend on getting the attribution right.
-  if (body.event_date && before && before.linked_binder_id && isOccupying(before.kind)
-      && before.event_date) {
+  // The rule lives in occupancy.js beside the set it consumes. It was shipped twice
+  // at B3 and forked because it took `req`, which this door has no equivalent of.
+  // It now takes `supabase`. Both doors, one rule.
+  if (body.event_date && before && before.linked_binder_id) {
     try {
-      // FAIL-CLOSED (F15's law): no truthful read of the binder, no propagation.
-      // PLANE: supabase is public-default; the explicit .schema('engine') hop targets
-      // `records` (binders) only — the enumerated hop, as eventWrite.js:230.
-      const { data: binder, error: binderErr } = await supabase
-        .schema('engine').from('records')
-        .select('date').eq('id', before.linked_binder_id).maybeSingle();
-      const isAnchor = !binderErr && binder && binder.date && binder.date === before.event_date;
-      if (isAnchor) {
+      if (await isWeddingAnchor(supabase, before, before.linked_binder_id)) {
         const uid = req.auth && req.auth.user_id;
         if (uid) {
           const { agentId } = await resolveAgentForVendor(supabase, vendor, uid);
@@ -343,6 +344,7 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
       console.warn('[events:patch] lockstep e->b failed (the event already moved):', e.message);
     }
   }
+
 
   return okRes(res, { event: result.event });
 }));

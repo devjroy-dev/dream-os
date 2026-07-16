@@ -120,4 +120,56 @@ function isAppointment(kind) {
   return APPOINTMENT_KINDS.includes(kind);
 }
 
-module.exports = { OCCUPYING_KINDS, APPOINTMENT_KINDS, isOccupying, isAppointment };
+// ── THE ANCHOR RULE — ONE HOME (Q-B3-10, CE-ruled 2026-07-16) ─────────────
+//
+// B3 shipped this logic TWICE: chat.js:473 (leg 1, never exported, took `req`) and
+// api/vendor/events.js (leg 3, inline). The executor disclosed it; the CE ruled it
+// back to one home with the deciding sentence quoted from that disclosure:
+// "THEY AGREE TODAY; I READ BOTH" — which is F-04.36's ORIGIN SENTENCE. Two things
+// that must agree, in two files, with no forcing function. It takes `supabase`, not
+// `req`, precisely so BOTH doors can call it: the CRUD door has no `req.app.locals`
+// shape and that mismatch is what forked the rule in the first place.
+//
+// "Only a wedding-anchor event's date-edit may write the binder's date."
+// There is no kind='wedding' — CALENDAR_KINDS is thirteen and none of them is that
+// (verified at B3; a 14th kind was rejected at Q-B3-3). So the anchor is proven from
+// two facts the estate already holds:
+//
+//   (i)  the event is OCCUPYING. Asked POSITIVELY. On a ternary set "not an
+//        appointment" is NOT "occupying" — it would let `other` and `blocked` speak
+//        for a wedding (Q-B3-9's amendment).
+//   (ii) its PRE-MOVE date equalled the binder's date — it WAS the wedding before it
+//        moved. Testing the POST-move date compares the new date to the old binder
+//        date, never matches, and leaves the leg permanently dead.
+//
+// WITNESSED IN PRODUCTION, BOTH DOORS, 2026-07-16:
+//   leg 3 — PATCH shoot 8 Nov -> 15 Nov: binder FOLLOWED to 2026-11-15.
+//           PATCH trial -> 1 Aug (same door, same minute): binder HELD at 2026-11-15.
+//   leg 1 — chat "[671902e6] move it to 22 November": binder FOLLOWED to 2026-11-22.
+//   Two PATCHes, one door, opposite outcomes, decided by `kind`. A veto that vetoed
+//   everything would have failed the first line of each pair. It didn't.
+//
+// FAIL-CLOSED (F15's law): no truthful read of the binder, no propagation. A binder
+// with NO date has no anchor — the exact state Meera's was in (F-04.43's real
+// specimen: NULL -> 2026-11-01, a first write) when this machinery destroyed her trial.
+//
+// PLANE: callers pass a PUBLIC-DEFAULT client; the explicit .schema('engine') hop
+// targets `records` (binders) and nothing else — the enumerated hop, as eventWrite.js:230.
+async function isWeddingAnchor(supabase, evBefore, binderId) {
+  if (!evBefore || !binderId) return false;
+  if (!isOccupying(evBefore.kind)) return false;        // (i)
+  if (!evBefore.event_date) return false;
+  const { data: binder, error } = await supabase
+    .schema('engine')
+    .from('records')
+    .select('date')
+    .eq('id', binderId)
+    .maybeSingle();
+  if (error || !binder) return false;                   // fail-closed
+  if (!binder.date) return false;                       // no date -> no anchor
+  return binder.date === evBefore.event_date;           // (ii)
+}
+
+module.exports = {
+  OCCUPYING_KINDS, APPOINTMENT_KINDS, isOccupying, isAppointment, isWeddingAnchor,
+};
