@@ -133,3 +133,29 @@ One phase per sitting. The spec's build-order table is the contract.
 - The WhatsApp engines (`engine.js`, `brideEngine.js`, `circleEngine.js`)
   are live product surfaces. No spec touches them unless it is a 04/05
   webhook/agent spec by name.
+
+## 9. PROMOTED LAWS — TDW_04 block close (CE, 2026-07-17; each earned by a named failure in the block record)
+These bind every session from this date. Where a law amends an earlier section, the amendment is stated.
+
+**Evidence + record discipline**
+- **Findings are evidence, not gospel (§0.1 family).** Before building on any finding or handoff claim, read its EVIDENCE, not its sentence. Your earlier self is a document with a documented drift history: a number measured twenty minutes ago is a claim — re-derive it or do not write it down. (F-04.43's false headline survived four steps; nobody read `donna_history`.)
+- **Rulings are checked against the code before they are built (§0.2).** A ruling that cannot execute as worded is REPORTED, never quietly adapted. (Q-C-3: a ruling assumed force couldn't land on a block; run first, it could.)
+- **A proof witnesses only what its question asked.** Verify against the right layer AND the right question. Assert the artifact, never a predicted count.
+- **Every packet claiming shipped work carries its commit hash in line 1; the CE rules on nothing without one (F-04.40, both directions).**
+- **CE-22 fetches or it guesses (F-04.67 — amends §6/§7 practice).** Every provenance header is re-derived from the remote at the moment of writing: `git fetch -q origin && git rev-parse --short origin/main`. A local clone's HEAD cannot see a founder push and returns the same answer in both worlds.
+- **A cure nobody can re-run quietly stops being a cure (Q-SP-5).** Benches land in the repo, runnable from any working directory.
+- **A bench asserts reality only if its calls are producible by a real caller** (a green over an unreachable path is not evidence), **and every multi-component delivery runs at least one synthesis scenario exercising the components' interaction** (F-04.43 is the specimen: each half worked; together they destroyed a booking).
+- **Firewall/coverage cures publish their coverage map in-file** (F-04.33/F-04.38: a scrub that exists is not a scrub that is applied).
+
+**Founder-shell discipline (amends §7)**
+- **Every shell line handed to the founder is pasted into a real pty first, in the exact form handed over** — `bash -i -c` does not reproduce history-expansion traps, and a pty that cannot reach the target environment is not a check. Apply blocks target `/workspaces/dream-os` (Codespace; ZIP by drag into the VS Code explorer, never `~/Downloads`).
+- **A superseded command is retracted BY NAME in the same message** ("do not run the earlier block"), never merely followed by a better one. Anything runnable left in a transcript will be run.
+- **Commit messages carrying shell metacharacters go through `git commit -F -` with a quoted heredoc.**
+- **§7's fixed apply command cannot ship a dotfile** (`cp -r deploy/*` skips them silently; `rm -rf deploy` then destroys them). No delivery places a dotfile inside `deploy/`; versioned hooks live at non-dot paths (`githooks/` + `core.hooksPath`, the F-04.61 precedent).
+- **Delivery ZIPs are `deploy/`-prefixed; CE transport packets are `CE_PACKET/`-prefixed and must NOT be applicable by the fixed command.** Two classes, never mixed.
+- **Every delivery's paste block opens with `# repo: <name>` above the unzip line**; the founder reads line 1 against the terminal's prompt path.
+- **No live credential is ever echoed into a transcript** — secrets enter via a locally-set env var, referenced never printed; any leaked credential is rotated at once.
+
+**Data discipline (restates standing rules for one-stop reading)**
+- **Founder-run SQL is written only against witnessed column lists** (`docs/db/PUBLIC_SCHEMA.md`, `docs/db/ENGINE_SCHEMA.md`) — never against prose (F-04.23/F-04.57).
+- **Count-proofs and state oracles are re-derived at the moment of running with full header + pasted rows, on a green banner — never carried as a remembered triple** (T19's baseline dispute is the specimen).
