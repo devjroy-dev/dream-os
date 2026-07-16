@@ -367,6 +367,144 @@ sec('14. §2.7 — HORIZON-BLIND BY CONSTRUCTION (F-04.47).');
   ok(!r.ok && r.conflict, 'a booking PAST every surface\'s horizon still occupies — the checker reads the TABLE, never a view');
 }
 
+// ═════════════════════════════════════════════════════════════════════════
+// TDW_04 B4 — THE DEATH CERTIFICATE. The checker has been correct and unread
+// since ZIP D. §§14-17 are the sections that read it.
+// ═════════════════════════════════════════════════════════════════════════
+// ── THE DOOR SHIM, AND WHY IT IS NOT A FOURTH DOUBLE OF THE CODE UNDER TEST ──
+//
+// This bench's LAW is that it runs 78/78 from a CLEAN CLONE, from any working
+// directory — no npm install, no npm run build. That property is Q-SP-5's ("a cure
+// nobody can re-run quietly stops being a cure") and it is precisely what the
+// tombstone bench lacked for two sittings.
+//
+// The door modules pull `express` (node_modules) and `executeAndPatch` pulls
+// `engine/dist/...` (a BUILD ARTIFACT). Requiring them naively would have made this
+// bench need `npm install && npm run build` — I would have traded the bench's own law
+// to test my own code. Found by RUNNING it: `Error: Cannot find module 'express'`.
+//
+// So the loader is shimmed for the door's TRANSPORT and its UNRELATED NEIGHBOURS —
+// never for the functions under test. `conflictOr400`, `conflictLines`,
+// `mutationLines`, `advisoryLines` are the REAL ones, loaded from the real files.
+// A bench that re-implemented their branch order would prove its own copy (B2
+// disclosure §3: "a green bench over an unreachable path is not evidence").
+const Module = require('module');
+const _load  = Module._load;
+const BUILTIN = new Set(Module.builtinModules);
+const noop   = () => new Proxy(function () {}, { get: () => noop() });
+Module._load = function (req) {
+  // ⚠ Router() returns a PLAIN OBJECT, not a catch-all Proxy — and the first cut of
+  //   this shim used a Proxy, whose `get` trap swallowed the door's own test-seam
+  //   export and handed back a noop. `conflictOr400` resolved to undefined and the
+  //   assertion blew up on `r.status`. FOUND BY RUNNING THE SHIM, not by reading it:
+  //   a stub broad enough to fake anything is broad enough to fake the thing you came
+  //   to test. §0.1's shape, in the bench that exists to catch §0.1's shape.
+  if (req === 'express') { const e = () => {}; e.Router = () => ({ get(){}, post(){}, patch(){}, put(){}, delete(){}, use(){} }); return e; }
+  if (/engine\/dist\//.test(req)) return noop();
+  // Everything else from node_modules — pdfkit, @supabase/supabase-js, whatever the
+  // door's NEIGHBOURS drag in (chat.js -> invoices.js -> invoicePdf.js -> pdfkit).
+  // NEVER a relative/absolute path: every file under test loads for real, and the two
+  // ratified doubles (the ledger, the scrub) are still the require.cache entries above.
+  if (!req.startsWith('.') && !req.startsWith('/') && !req.startsWith('node:') && !BUILTIN.has(req)) return noop();
+  return _load.apply(this, arguments);
+};
+
+sec('14. F-04.55 — THE CRUD DOOR. The payload reaches the wire.');
+{
+  const { conflictOr400 } = require(path.join(ROOT, 'src/api/vendor/events.js'));
+  const mk = () => { const o = { _s: null }; o.status = (x) => { o._s = x; return o; }; o.json = (b) => ({ status: o._s, body: b }); return o; };
+
+  // THE DEFECT, reproduced first so the cure has something to be a cure OF.
+  const { err } = require(path.join(ROOT, 'src/lib/response.js'));
+  const bare = err(mk(), 400, undefined);
+  ok(bare.status === 400 && JSON.stringify(bare.body) === '{"ok":false}',
+     'BEFORE: errRes(res,400,result.error) on a conflict shipped a bare {"ok":false} — the finding, reproduced by running the real helper');
+
+  const conflict = { kind: 'date_blocked', date: '2026-07-19', holding: [{ event_id: 'x', title: 'Blocked', slot: 'full_day', kind: 'blocked' }],
+                     message: "You've blocked 19 July. That one's a no — unblock it first if you want it back." };
+  const r = conflictOr400(mk(), { ok: false, conflict });
+  ok(r.status === 409, 'AFTER: a refusal is 409, not 400 — availability.js:73\'s ALREADY_BLOCKED precedent, one calendar, one semantics');
+  ok(r.body.error === conflict.message, '   `error` CARRIES THE BLESSED SENTENCE — AddSheet\'s `?.error ?? "Something went wrong."` now prints it, ZERO PWA diff');
+  ok(r.body.conflict && r.body.conflict.kind === 'date_blocked' && Array.isArray(r.body.conflict.holding),
+     '   `conflict` rides WHOLE — kind, holding, the lot. B5\'s day sheet has something to render');
+  ok(!('overridable' in r.body) && !('isOverridable' in r.body),
+     '   `isOverridable` is NOT on the wire — the client must never learn kind !== \'date_blocked\' (Q-C-3: one home for force semantics)');
+  ok(typeof r.body.error === 'string' && r.body.error.length > 0,
+     '   ApiErr{ok:false;error:string}\'s REQUIRED field is satisfied again — the bare {"ok":false} never satisfied its own type');
+
+  const e = conflictOr400(mk(), { ok: false, error: 'Invalid kind. Must be one of: shoot, call.' });
+  ok(e.status === 400 && e.body.error === 'Invalid kind. Must be one of: shoot, call.',
+     'a VALIDATION failure is still a 400 with its sentence — the 409 is for refusals only');
+  const fc = conflictOr400(mk(), { ok: false, error: VERIFY_FAILED });
+  ok(fc.status === 400 && fc.body.error === VERIFY_FAILED,
+     'FAIL-CLOSED\'s honest string reaches the vendor through the same door (the error channel, unchanged)');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+sec('15. F-04.62 — THE FALSE DIAGNOSIS. Live in prod from ZIP D to this ZIP.');
+{
+  const { mutationLines, conflictLines, advisoryLines } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
+  const SINGLE = /didn't find a single match/;
+
+  const refusal = { action: 'edit', ok: false, conflict: { kind: 'capacity', message: 'Your evening on 19 July is full — that\'s 1 of 1.' }, error: null, reason: null };
+  ok(!SINGLE.test(mutationLines([refusal])), 'a REFUSAL no longer claims "I didn\'t find a single match" — Victor stops misdiagnosing his own deliberate act');
+  ok(mutationLines([refusal]) === refusal.conflict.message, '   it speaks the checker\'s sentence VERBATIM (spec P2) — no wrapper, no re-authoring');
+
+  const failClosed = { action: 'edit', ok: false, conflict: null, error: VERIFY_FAILED, reason: null };
+  ok(mutationLines([failClosed]) === VERIFY_FAILED, 'a FAIL-CLOSED error speaks its own honest string, not a search failure');
+
+  const unresolved = { action: 'edit', ok: false, reason: 'unresolved' };
+  ok(SINGLE.test(mutationLines([unresolved])), 'THE SENTENCE SURVIVES WHERE IT WAS ALWAYS TRUE — !ev, and only !ev');
+  ok(SINGLE.test(mutationLines([{ action: 'cancel', ok: false, reason: 'unresolved' }])), '   both verbs');
+
+  const landed = { action: 'edit', ok: true, event: { title: 'Meera - shoot', event_date: '2026-11-22', event_time: '09:00' }, conflict: null };
+  ok(/Updated: Meera - shoot/.test(mutationLines([landed])), 'a write that LANDED still says so — existing behaviour is sacred (Protocol §8)');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+sec('16. Q-B4-5(b) — ADVISORIES ride BESIDE the success line, never instead of it.');
+{
+  const { mutationLines, advisoryLines } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
+  const advised = { action: 'edit', ok: true, event: { title: 'Kaaya - trial', event_date: '2026-11-22', event_time: '09:00' },
+                    conflict: { kind: 'appointment_overlap', message: 'Heads up — that\'s the same morning as Meera - shoot on 22 November.' } };
+  ok(/Updated: Kaaya - trial/.test(mutationLines([advised])), 'the ADVISED write still reports as done — C9\'s "never blocks", one layer up from the gate');
+  ok(advisoryLines([advised]) === advised.conflict.message, '   and the heads-up is spoken beside it, verbatim');
+  ok(!/Heads up/.test(mutationLines([advised])), '   an advisory NEVER arrives dressed as a refusal ("the same lie facing the other way")');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+sec('17. THE INVITATION CLAUSES ARE STRUCK — and this section is the forcing function.');
+{
+  const occ = fs.readFileSync(OCC, 'utf8');
+  const body = occ.slice(occ.indexOf('function capacityMessage'));
+  const fn   = body.slice(0, body.indexOf('\nfunction '));
+  ok(!/Say the word/.test(fn), 'capacityMessage does not invite a force that has no hand (CE catch, founder-blessed subject to it)');
+  ok(!/double it up|put it in anyway/.test(fn), '   neither clause survives, at the ONE home — both doors inherit the strike');
+
+  // §2.3 SURVIVES. The posture is the substance; the invitation was the defect.
+  ok(/capacity is 0/.test(occ), '   §2.3 survives: the posture is still made visible — the bench asserts it at §6 by RUNNING the checker');
+
+  // The three-layer proof, asserted so it cannot rot silently.
+  const rp  = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/recordPrimitives.ts'), 'utf8');
+  const bookTool = rp.slice(rp.indexOf('DONNA_BOOK_EVENT_TOOL'), rp.indexOf('DONNA_EDIT_EVENT_TOOL'));
+  ok(!/force/.test(bookTool), 'LAYER 1: DONNA_BOOK_EVENT_TOOL\'s schema cannot express `force` — the model cannot utter the word');
+  const chat = fs.readFileSync(path.join(ROOT, 'src/api/vendor-engine/chat.js'), 'utf8');
+  const be   = chat.slice(chat.indexOf('async function bookEvents'), chat.indexOf('function bookingLines'));
+  ok(!/force/.test(be), 'LAYER 2+3: bookEvents neither reads `force` off the tool input nor passes it to writeEvent');
+  // ⚠ COUNT THE CODE, NOT THE PROSE. The first cut of this line matched /force: true/
+  //   across the whole file and asserted 1. It is 3 — two of them are B3's own COMMENTS
+  //   warning about the third ("Do not port `force: true` to another caller without
+  //   it."). The bench failed, the code was right, and the assertion was a number I had
+  //   authored rather than derived. §0.1, inside the section I wrote to enforce §0.1.
+  const codeLines = chat.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l));
+  const forces = codeLines.filter((l) => /force:\s*true/.test(l)).length;
+  ok(forces === 1, 'THE ONLY force:true in this door\'s CODE is lockstep leg 2 — an INTERNAL drag no vendor utterance reaches');
+
+  // ⚠ WHEN THE AFFORDANCE LANDS, THIS SECTION IS WHAT YOU DELETE. Until then it is
+  //   the difference between "we struck them" and "they cannot quietly come back."
+  //   An agreement is only a guarantee once something breaks when it stops being true.
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 console.log('\n══ ' + pass + '/' + (pass + fail) + (fail ? ' — ' + fail + ' FAILED ══' : ' PASS ══'));
 

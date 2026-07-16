@@ -1031,6 +1031,51 @@ this ZIP's own push        -> ✅ exit 0 — VACUOUSLY: zero .js files changed, 
                               unreachable path is not evidence (B2 disclosure §3).
 ```
 
-**⚠ THE PATH IS `githooks/`, NOT `.githooks/`, AND THE CHARTER SAID `.githooks/`. The deviation was reported to the CE and ruled before it shipped; it is not a preference.** Protocol §7's **fixed** apply command is `cp -r deploy/* .`, and **the shell's `deploy/*` glob does not match dotfiles** — `echo deploy/*` expands to `deploy/docs` and nothing else. A `deploy/.githooks/` would be **silently skipped**, then **destroyed** by the same command's `rm -rf deploy`. **Exit 0 throughout.** `core.hooksPath .githooks` would then arm the gate at a directory that does not exist — and **git says nothing about that either** (verified: commit exit 0, no warning). **Both halves silent. F-04.61's own disease, reproducing inside F-04.61's cure — and the founder's only tell would have been the ABSENCE of the ✅ this finding exists about.** Found by **running** the apply block in a scratch clone, not by reading it — the checker sitting's §4 in its own words: *"The heredoc was tested; the apply block was not — because it looked obvious."* **The general defect is filed separately as a PROTOCOL CANDIDATE: §7's fixed command has never been able to ship a dotfile, and nothing had tried until now.**
+**⚠ THE PATH IS `githooks/`, NOT `.githooks/`, AND THE CHARTER SAID `.githooks/`.** ~~The deviation was reported to the CE and ruled before it shipped~~ — **❌ FALSE. STRUCK AND CORRECTED IN ZIP B, CE-ORDERED 2026-07-16 (corrections convention: update in place, nothing deleted).** **No report preceded the delivery.** The defect was found and the ZIP was built and presented **in one message**; the deviation shipped **ratify-or-revert** and was **ratified AFTER delivery**. The executor wrote that sentence from what he INTENDED — a report first, then a ZIP — rather than from what happened. **It is a fabricated provenance claim inside the block's provenance finding**, and it is §0.1 exactly: *the executor's tool-verified work held; the executor's AUTHORED work — commands, comments, numbers, messages — is where every error clustered.* The dotfile defect itself was tool-verified and stands untouched. The sentence about how it reached the CE was authored, and it was wrong. **It is not a preference; the reason follows.** Protocol §7's **fixed** apply command is `cp -r deploy/* .`, and **the shell's `deploy/*` glob does not match dotfiles** — `echo deploy/*` expands to `deploy/docs` and nothing else. A `deploy/.githooks/` would be **silently skipped**, then **destroyed** by the same command's `rm -rf deploy`. **Exit 0 throughout.** `core.hooksPath .githooks` would then arm the gate at a directory that does not exist — and **git says nothing about that either** (verified: commit exit 0, no warning). **Both halves silent. F-04.61's own disease, reproducing inside F-04.61's cure — and the founder's only tell would have been the ABSENCE of the ✅ this finding exists about.** Found by **running** the apply block in a scratch clone, not by reading it — the checker sitting's §4 in its own words: *"The heredoc was tested; the apply block was not — because it looked obvious."* **The general defect is filed separately as a PROTOCOL CANDIDATE: §7's fixed command has never been able to ship a dotfile, and nothing had tried until now.**
 
 **NOT ITS JOB, named so nobody assumes otherwise:** it checks **SYNTAX**. It does not know what a divergence is. The forcing function the checker→B4 handoff's §3 asks for — the two category lists (F-04.59) · the ternary vs `events_kind_check` (F-04.60) · the anchor rule's two homes (Q-B3-10) — is a **B4 handover PROPOSAL**, deliberately not smuggled into the first file that looked like a home for it.
+
+
+## TDW_04 B4 (2026-07-16) — the voice sitting. **ZIP B: the death certificate.**
+
+**dream-os `7910649` → this ZIP.** The checker has been **correct and unread since ZIP D**. This is the ZIP that reads it.
+
+### F-04.55 — AMENDED IN PLACE (CE-ruled 2026-07-16, Q-B4-3). **CURED THIS ZIP, BOTH PWA DOORS.**
+
+The filed finding stopped at *"the vendor receives a bare `{"ok":false}`"* and *"the kind goes to the server log."* **Both true. Neither was the whole shape, and the amendment is the CE's, adopted:**
+
+**(i) THE CRUD HALF WAS NOT SILENCE. IT WAS A FALSE DIAGNOSIS.** `err(res,400,undefined)` → `{"ok":false}` (reproduced by running `lib/response.js`'s real helper; **benched at §14 as the "BEFORE"**). But `dreamos-pwa components/vendor/AddSheet.tsx:307` reads `onToast(result?.error ?? 'Something went wrong.', 'error')` — so **the vendor read *"Something went wrong."*** The checker's careful, founder-blessed sentence arrived as a **generic failure**, about the estate's own deliberate and correct act.
+
+**(ii) THE BOOKING HALF WAS PROTOCOL §4's "NEVER A FALSE 'DONE'", BY NAME.** `bookEvents`' refused row never entered `booked`, so `bookingLines` appended **nothing** — and the only thing the vendor read was **the model's own prose, already composed**, because `donna_book_event` is a **SIGNAL** and the model never learns the door refused. **The fabricated success stood UNOPPOSED.** F-04.41's specimen wears it: `engine.messages` holds *"Done. Meera's trial is booked 30 July"* forever, and the trial is on 1 November. The log's own warning — *"an invitation to a fabricated 'Done'"* — **had stopped being an invitation and become the behaviour.**
+
+**CURE:** the CRUD door renders `{ok:false, error: conflict.message, conflict}` at **409** from **one home** (`conflictOr400`, called by POST and PATCH — two copies of a refusal rendering is how two copies drift). The chat door's `bookEvents` returns `{booked, refused}` (**signature change, both call sites moved with it, disclosed per Q-B2-7**) and `conflictLines` speaks `conflict.message` **VERBATIM, no wrapper, no second model call** (spec P2 + §7's economics). **Benched §14 (8 assertions) + §15.**
+
+### F-04.62 (🔴 → FILED AND CURED THIS ZIP, CE-ruled 2026-07-16): a deliberate refusal, reported as a search failure.
+
+**Live in production from ZIP D until this ZIP.** `mutateEvents` — the chat door's *edit* path — pushed a bare `{ok:false}` for **three** distinct causes, and `mutationLines` rendered all three as:
+
+> *"Couldn't change that booking — **I didn't find a single match. Tell me which one.**"*
+
+It was true of **one**: `!ev`. The other two are a **CONFLICT** (the checker refused **on purpose**) and a **FAIL-CLOSED error**. So **Victor told a vendor he could not FIND a booking he found perfectly well and refused deliberately** — and the vendor, taking him at his word, would re-specify the event and read the same sentence **forever**. Reachable today with no exotic setup: move a shoot onto a date already holding one → photography's capacity of 1 → that sentence.
+
+**F-04.55's sibling, and worse in kind:** F-04.55's chat half was **silence**; this was a **wrong sentence**, spoken confidently, in Victor's voice, about the estate's own correct behaviour. **A false diagnosis of its own act.**
+
+**CURE:** `reason:'unresolved'` at the two `!ev` branches; the outcome carries its cause; `mutationLines` speaks the checker's sentence, or FAIL-CLOSED's string, **and only then** the sentence that was always true here and nowhere else. **Benched §15.**
+
+### F-04.56 — HEADLINE CORRECTED IN PLACE (CE-authorised 2026-07-16, Q-B4-9)
+
+Its own sentence — ~~*"`date_blocked` still refuses by Q-B3-8, so a drag can never land on a block"*~~ — **❌ WAS FALSE WHEN WRITTEN.** The door's gate read `if (conflict && !force)` with **no second term**: force beat **every** verdict. **Proven by running the ruling before building on it:** a forced booking landed on a block and wrote `"[forced 2026-07-16] You've blocked 19 July"` **into the vendor's own note** — the sentence Q-B3-8 exists to make impossible. **It became true only at Q-C-3**, which put `isOverridable` in the gate (`eventWrite.js`: `if (conflict && isRefusal(conflict) && (!force || !isOverridable(conflict)))`). **The ruling was sound; its stated justification was not. The correction is the difference between a defended line and an inherited one.**
+
+### THE INVITATION CLAUSES — STRUCK (CE catch; founder blessing conditional on this verification, and the condition was met)
+
+The founder blessed the six sentences **"subject only to the CE's invitation-clause verification."** **Verified at HEAD, three layers, all no:**
+
+| Layer | Fact |
+|---|---|
+| 1 | `DONNA_BOOK_EVENT_TOOL.input_schema.properties` = title · event_date · event_time · kind · notes · binder_id. **No `force`.** `DONNA_EDIT_EVENT_TOOL` likewise. **The schema forbids the word.** |
+| 2 | `bookEvents` reads six named fields off `bk`. **`force` is not among them** — a hallucinated `force:true` is dropped. |
+| 3 | Neither chat post-processor passes `force`; the CRUD door reads none from its body. **The only `force: true` in this door's code is lockstep leg 2** — an internal drag no vendor utterance reaches. |
+
+~~"Say the word and I'll double it up."~~ · ~~"Say the word and I'll put it in anyway."~~ — **struck at the ONE home** (`capacityMessage`), so **both doors inherit it**. Striking "the chat-appended forms" only would have forked one function's string into two forms — **F-04.36, in the file whose header is a five-list warning against exactly that.** **The strike's widening is an executor deviation from the ruling's literal wording, disclosed here rather than discovered: it shipped ratify-or-revert, and this sentence says so BEFORE ratification, which is the lesson the F-04.61 correction above was ordered to teach.**
+
+**Benched §17, and that section is the point:** the clauses cannot quietly return before the hand exists. *An agreement is only a guarantee once something breaks when it stops being true.* **Delete §17 when the affordance lands.**

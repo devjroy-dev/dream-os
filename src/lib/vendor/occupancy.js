@@ -763,14 +763,52 @@ function blockedMessage(date) {
   return `You've blocked ${fmtDate(date)}. That one's a no — unblock it first if you want it back.`;
 }
 
+// ── THE INVITATION CLAUSES ARE STRUCK (CE catch, founder-blessed subject to this
+//    verification, B4 2026-07-16). CORRECTIONS CONVENTION: struck, not deleted. ──
+//
+// THEY READ, VERBATIM, AND THEY RETURN WITH THE AFFORDANCE:
+//   ~~"Say the word and I'll put it in anyway."~~   (the capacity === 0 posture)
+//   ~~"Say the word and I'll double it up."~~       (the full-slot posture)
+//
+// WHY THEY WENT: THERE IS NO WORD TO SAY. Verified at HEAD by command, three layers,
+// and every one of them says no:
+//   1. THE MODEL CANNOT UTTER IT. DONNA_BOOK_EVENT_TOOL's input_schema.properties are
+//      title · event_date · event_time · kind · notes · binder_id. There is no `force`.
+//      DONNA_EDIT_EVENT_TOOL: event_id · title · event_date · event_time · kind · notes.
+//      No `force`. THE SCHEMA FORBIDS THE WORD.
+//   2. THE DOOR DOES NOT READ IT. bookEvents reads six named fields off `bk`; `force`
+//      is not among them. A hallucinated force:true is dropped on the floor.
+//   3. THE DOOR DOES NOT PASS IT. Neither bookEvents nor mutateEvents passes `force`
+//      to writeEvent, and the CRUD door reads no `force` from its body either.
+//   The ONLY force:true in this estate is chat.js's lockstep leg 2 — an INTERNAL drag
+//   reachable by no vendor utterance, from any door.
+//
+// SO THE CLAUSE PROMISED AN ACT VICTOR HAS NO HANDS FOR — F-04.37's disease in copy
+// form. Worse than a dead promise: it was the ONLY exit the sentence offered, and the
+// vendor accepting it would fire the same booking, meet the same verdict, and read the
+// same invitation — a polite infinite loop, into which F-04.51's fabrication habit
+// ("Done." at 1.36s with tool_calls: null) fits exactly.
+//
+// ⚠ CONTRAST, AND IT IS THE PROOF: blockedMessage names an honest path — "unblock it
+//   first" — AND THAT PATH EXISTS (unblockDate, live, B1-sealed). capacityMessage has
+//   no path to name because none exists. The vendor cannot force it, cannot SET it
+//   (vendors.slot_capacity is in NO allowlist on ANY door — me.js's ALLOWED_FIELDS is
+//   twelve entries and slot_capacity is not one; P3's ruled "Working capacity" stepper
+//   was specced and never built), and cannot SEE it (zero references in dreamos-pwa).
+//   The refusal is honest and it is a dead end. Naming the dead end is the finding;
+//   inventing an exit for it in copy was the defect.
+//
+// §2.3 SURVIVES THE STRIKE AND THAT IS WHY THE FIRST CLAUSE STAYS: "the verdict's
+// message MUST make the posture visible, so the force is INFORMED." The posture is
+// visible. checker_bench asserts /capacity is 0/ — the posture, never the invitation.
+// (§2.3's premise "a vendor who set 0 and forgot" describes a vendor who cannot exist;
+// the founder blessed the attribution verbatim and it ships. Recorded, not re-argued.)
 function capacityMessage(slot, date, capacity, held) {
   const when = SLOT_WORD[slot] || slot;
-  // §2.3, ruled: the verdict's message MUST make the posture visible, so the force
-  // is INFORMED. A vendor who set 0 and forgot is owed the sentence, not a mystery.
   if (capacity === 0) {
-    return `Your ${when} capacity is 0 — that's your own standing rule for ${fmtDate(date)}. Say the word and I'll put it in anyway.`;
+    return `Your ${when} capacity is 0 — that's your own standing rule for ${fmtDate(date)}.`;
   }
-  return `Your ${when} on ${fmtDate(date)} is full — that's ${held} of ${capacity}. Say the word and I'll double it up.`;
+  return `Your ${when} on ${fmtDate(date)} is full — that's ${held} of ${capacity}.`;
 }
 
 function overlapMessage(title, slot, date) {

@@ -156,6 +156,22 @@ async function bookEvents(req, result) {
     for (const dc of (tc.donna_calls || [])) collect(dc);
   }
   const booked = [];
+  // ── F-04.55's CURE, BOOKING HALF (Q-B4-5, CE-ratified 2026-07-16) ────────
+  // `refused` is NEW and it is the whole point of this sitting. What it collects was
+  // previously thrown away by the `continue` twelve lines down.
+  //
+  // ⚠ THE SIGNATURE CHANGES: this returned an ARRAY; it now returns { booked, refused }.
+  //   Both call sites (the SSE route and the JSON route) move with it. DISCLOSED, never
+  //   silent — Q-B2-7's ratified law: the relocation law bends, STATED.
+  //
+  // AMENDED F-04.55 (CE-ruled at B4): the booking half is not a silence, it is
+  // PROTOCOL §4's "never a false 'done'" by name. The refused row never entered
+  // `booked`, so bookingLines appended NOTHING — and the only thing the vendor read was
+  // the model's own prose, ALREADY COMPOSED, because donna_book_event is a SIGNAL and
+  // the model never learns the door refused. The log's own specimen wears it:
+  // engine.messages holds "Done. Meera's trial is booked 30 July" forever, and the
+  // trial is on 1 November (F-04.41). The fabricated success stood UNOPPOSED.
+  const refused = [];
   for (const bk of wantBook) {
     try {
       // BOOKED_KINDS stays HERE and is deliberately NOT eventWrite's CALENDAR_KINDS: this is
@@ -186,15 +202,21 @@ async function bookEvents(req, result) {
         state:       'upcoming',
       });
       if (!r.ok) {
-        // Unchanged in substance: a failed booking is not pushed to `booked`, so no
-        // bookingLine claims it. The door has never lied about a write that didn't land.
+        // STILL TRUE, and still the point: a failed booking is never pushed to `booked`,
+        // so no bookingLine claims it. The door has never lied about a write that
+        // didn't land. WHAT IS NEW IS THAT IT NO LONGER STAYS SILENT ABOUT IT.
         console.error('[vendor-e chat:donna_book_event]', r.error || (r.conflict && r.conflict.kind) || 'write refused');
+        // The payload, carried — NOT re-derived. `conflict.message` is the founder-
+        // blessed sentence and the door hands it to Victor VERBATIM (spec P2). `title`
+        // rides only so the ledger/log line can name what was refused; the vendor-facing
+        // string is the message and nothing else.
+        refused.push({ title: bk.title, conflict: r.conflict || null, error: r.conflict ? null : (r.error || null) });
         continue;
       }
       booked.push(r.event);
     } catch (e) { console.error('[vendor-e chat:donna_book_event]', e.message); }
   }
-  return booked;
+  return { booked, refused };
 }
 // ── TDW_04 B1 SEAL RIDER — F-04.33 (CE-ruled 2026-07-15) ────────────────────
 // THE PERSONA FIREWALL ENDED AT `result.reply` AND NOTHING TOLD ANYONE.
@@ -227,6 +249,59 @@ function bookingLines(booked) {
     const when = bk.event_time ? `${bk.event_date} at ${bk.event_time}` : bk.event_date;
     return `Booked: ${bk.title} — ${when}. It's on your calendar.`;
   }).join('\n'));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// conflictLines — F-04.55's CURE AT THIS DOOR. (TDW_04 B4, Q-B4-5 CE-ratified)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// THE CHECKER HAS BEEN CORRECT AND UNREAD SINCE ZIP D. THIS IS THE FUNCTION THAT
+// READS IT. Every vendor-facing sentence in occupancy.js was authored at the checker
+// sitting SO THAT THIS WOULD BE A WIRING JOB AND NOT AN AUTHORING JOB — and it is:
+// nothing below composes a sentence. It prints `conflict.message`.
+//
+// VERBATIM, AND NO WRAPPER PROSE. Spec P2: "message = a plain sentence, the door hands
+// it to Victor VERBATIM." Spec P4.4: "authored so Victor can carry them verbatim
+// without breaking voice — write them as he'd speak." A wrapper ("Sorry, but —") would
+// be NEW vendor-facing copy and would need its own founder veto. There is none.
+//
+// NO SECOND MODEL CALL, and that is ruled, not saved-for-later (Q-B4-5(a)): the model
+// has already composed by the time this runs. §7's economics clause — "date-awareness
+// lookups are DB reads, not model calls — zero token cost" — is why the sentences were
+// written in his register in the first place. A turn to "put it in his voice" would
+// spend tokens to re-say a sentence already in his voice.
+//
+// ALREADY-SCRUBBED, LIKE ITS FOUR SIBLINGS — F-04.33's cure was ruled AT THE SEAM, not
+// at the routes: "each builder returns an ALREADY-SCRUBBED string, so one change covers
+// both routes and no future caller can forget." Two routes append these; neither may
+// need to remember. (These strings are estate-authored, but `holding` carries DB-sourced
+// titles and the messages interpolate them — overlapMessage prints one. F-04.33's
+// specimen was exactly a DB-sourced title riding raw. The scrub is not ceremonial here.)
+//
+// ── THE ADVISORY ASYMMETRY (Q-B4-5(b), CE-ruled: SURFACE THEM) ────────────
+// This builder is for REFUSALS — the write did not land, and the sentence stands alone.
+// appointment_overlap and cluster ride out on { ok:true, event, conflict }: THE WRITE
+// LANDED. They append BESIDE the success line, never instead of it — see advisoryLines.
+// eventWrite's own gate says why: "a forced write that CLAIMS to have forced past an
+// advisory is the same lie facing the other way." Announcing a heads-up as a refusal is
+// that lie, one layer up.
+//
+// ── THE ERROR CHANNEL RIDES THE SAME RAIL ─────────────────────────────────
+// FAIL-CLOSED's honest string ("Couldn't verify the calendar — nothing was changed. Try
+// again.") is a refusal too — the checker could not see the calendar, so nothing was
+// written. Same treatment, no special case: the vendor is owed the truth in both.
+function conflictLines(refused) {
+  return scrubText(refused.map((r) =>
+    (r.conflict && r.conflict.message) || r.error || `Couldn't put that on the calendar — nothing was changed.`
+  ).join('\n'));
+}
+
+// ── ADVISORIES: the write LANDED. Beside, never instead. (Q-B4-5(b)) ──────
+// C9's "never blocks" was ruled three times and isRefusal is what makes it survive
+// contact with the door's gate. This is the same ruling one layer up: an advisory that
+// arrives where a refusal belongs is a heads-up wearing a refusal's clothes.
+function advisoryLines(withAdvisory) {
+  return scrubText(withAdvisory.map((a) => a.conflict.message).join('\n'));
 }
 // Retroactive link: when a client binder is filed (donna_client), tie any existing unlinked event
 // that exactly name-matches that client — so the common "book the date, file the client later" order
@@ -389,7 +464,13 @@ async function mutateEvents(req, result) {
   for (const e of edits) {
     try {
       const ev = await resolveEvent(req, e.event_id);
-      if (!ev) { done.push({ action: 'edit', ok: false }); continue; }
+      // ── F-04.62's CURE (CE-ruled 2026-07-16, filed and cured this ZIP) ────
+      // `reason:'unresolved'` is the WHOLE FIX, and it is one word. THREE distinct
+      // causes used to collapse into a bare `{ok:false}` here — no single match, a
+      // deliberate REFUSAL, and a FAIL-CLOSED error — and mutationLines rendered all
+      // three as "I didn't find a single match. Tell me which one." THIS is the only
+      // branch that sentence was ever true of. See mutationLines' own note.
+      if (!ev) { done.push({ action: 'edit', ok: false, reason: 'unresolved' }); continue; }
       const patch = {};
       for (const k of ['title', 'event_date', 'event_time', 'kind', 'notes']) {
         if (typeof e[k] === 'string' && e[k].trim()) patch[k] = e[k].trim();
@@ -419,29 +500,75 @@ async function mutateEvents(req, result) {
         }
         catch (e2) { console.warn('[vendor-e chat:lockstep e->b]', e2.message); }
       }
-      done.push(r && r.ok ? { action: 'edit', ok: true, event: r.event || ev } : { action: 'edit', ok: false });
-    } catch (err) { console.error('[vendor-e chat:donna_edit_event]', err.message); done.push({ action: 'edit', ok: false }); }
+      // F-04.62: the outcome now carries its CAUSE. `conflict` rides on BOTH branches —
+      // on ok:true it is an ADVISORY (the write landed; appointment_overlap/cluster ride
+      // out on {ok:true, event, conflict}), and on ok:false it is a REFUSAL. Same field,
+      // opposite meanings, and `ok` is the only thing that tells them apart — which is
+      // exactly why isRefusal lives in occupancy.js and not in a door.
+      done.push(r && r.ok
+        ? { action: 'edit', ok: true,  event: r.event || ev, conflict: r.conflict || null }
+        : { action: 'edit', ok: false, conflict: (r && r.conflict) || null,
+            error: (r && !r.conflict && r.error) || null, reason: (r && (r.conflict || r.error)) ? null : 'unresolved' });
+    } catch (err) { console.error('[vendor-e chat:donna_edit_event]', err.message); done.push({ action: 'edit', ok: false, reason: 'unresolved' }); }
   }
   for (const c of cancels) {
     try {
       const ev = await resolveEvent(req, c.event_id);
-      if (!ev) { done.push({ action: 'cancel', ok: false }); continue; }
+      if (!ev) { done.push({ action: 'cancel', ok: false, reason: 'unresolved' }); continue; }
       // Routed. A cancel is a state write, and state is eventWrite's to set.
       const r = await writeEvent(req.app.locals.supabase, {
         vendorId: req.vendor.id, surface: 'pwa', source: 'victor', event_id: ev.id, state: 'cancelled',
       });
-      done.push(r && r.ok ? { action: 'cancel', ok: true, event: ev } : { action: 'cancel', ok: false });
-    } catch (err) { console.error('[vendor-e chat:donna_cancel_event]', err.message); done.push({ action: 'cancel', ok: false }); }
+      // A cancel CANNOT draw a conflict — checkOccupancy's Item 3 guard returns null for
+      // `eff.state === 'cancelled'` above every query ("a row leaving occupancy asks no
+      // occupancy question"). It CAN still draw a FAIL-CLOSED error, and that is the
+      // only reason `error` is read here. Read from the checker, not assumed by symmetry.
+      done.push(r && r.ok
+        ? { action: 'cancel', ok: true, event: ev }
+        : { action: 'cancel', ok: false, error: (r && r.error) || null, reason: (r && r.error) ? null : 'unresolved' });
+    } catch (err) { console.error('[vendor-e chat:donna_cancel_event]', err.message); done.push({ action: 'cancel', ok: false, reason: 'unresolved' }); }
   }
   return done;
 }
 // F-04.33 (same seam, same reason as bookingLines): e.title is DB-sourced and rode raw
 // to the vendor on both routes.
+// ── F-04.62's CURE LIVES HERE (🔴, filed and cured this ZIP, CE-ruled 2026-07-16) ──
+//
+// THE SENTENCE BELOW WAS A LIE THE MOMENT THE CHECKER GOT A BODY, AND IT WAS LIVE IN
+// PRODUCTION FROM ZIP D UNTIL THIS ZIP.
+//
+// It read, for EVERY `ok:false`:
+//   "Couldn't change that booking — I didn't find a single match. Tell me which one."
+//
+// Three causes reached it. It was true of ONE:
+//   · !ev              -> resolveEvent found no single match.  THE SENTENCE IS TRUE.
+//   · a CONFLICT       -> the checker refused ON PURPOSE. Victor told the vendor he
+//                         could not FIND a booking he found perfectly well and refused
+//                         deliberately — and the vendor, taking him at his word, would
+//                         re-specify the event and read the same sentence FOREVER.
+//   · a FAIL-CLOSED    -> the checker could not see the calendar. Nothing was written,
+//     ERROR               and the reason given named the wrong thing entirely.
+//
+// A DELIBERATE REFUSAL REPORTED AS A SEARCH FAILURE IS A FALSE DIAGNOSIS OF THE
+// ESTATE'S OWN ACT. It is F-04.55's sibling and it is worse in kind: F-04.55's chat
+// half was SILENCE (the kind went to a server log); this was a WRONG SENTENCE, spoken
+// confidently, in Victor's voice, about the estate's own correct behaviour.
+//
+// The cure is one word — `reason:'unresolved'` at the two !ev branches — and this
+// branch order. Every sentence now names what actually happened.
 function mutationLines(done) {
   return scrubText(done.map((m) => {
-    if (!m.ok) return m.action === 'cancel'
-      ? `Couldn't cancel that booking — I didn't find a single match. Tell me which one.`
-      : `Couldn't change that booking — I didn't find a single match. Tell me which one.`;
+    if (!m.ok) {
+      // The REFUSAL: the checker's own sentence, VERBATIM (spec P2). It already says
+      // what happened and why, in his register, and it is founder-blessed.
+      if (m.conflict && m.conflict.message) return m.conflict.message;
+      // FAIL-CLOSED's honest, retryable string. Also verbatim; also already true.
+      if (m.error) return m.error;
+      // AND ONLY NOW, the sentence that was always true HERE and nowhere else.
+      return m.action === 'cancel'
+        ? `Couldn't cancel that booking — I didn't find a single match. Tell me which one.`
+        : `Couldn't change that booking — I didn't find a single match. Tell me which one.`;
+    }
     const e = m.event || {};
     const when = e.event_time ? `${e.event_date} at ${e.event_time}` : e.event_date;
     return m.action === 'cancel'
@@ -789,11 +916,22 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const documents = await buildInvoices(req, result);
       if (documents.length) send({ type: 'text_delta', text: '\n\n' + invoiceLines(documents) });
 
-      const booked = await bookEvents(req, result);
+      // TDW_04 B4 — F-04.55's cure, chat half. bookEvents' signature changed with it
+      // ({booked, refused}); this is one of its two disclosed call sites (Q-B2-7).
+      const { booked, refused } = await bookEvents(req, result);
       if (booked.length) send({ type: 'text_delta', text: '\n\n' + bookingLines(booked) });
+      // THE REFUSAL, IN HIS VOICE. Ordered AFTER bookingLines and it matters: one turn
+      // can book two dates and be refused a third, and the vendor is owed both facts in
+      // the order they happened — what landed, then what did not.
+      if (refused.length) send({ type: 'text_delta', text: '\n\n' + conflictLines(refused) });
 
       const mutated = await mutateEvents(req, result);
       if (mutated.length) send({ type: 'text_delta', text: '\n\n' + mutationLines(mutated) });
+      // Advisories on writes that LANDED — beside the success line, never instead of it
+      // (Q-B4-5(b)). mutationLines already spoke for the write; this speaks for the
+      // heads-up. C9's "never blocks", honoured one layer up from the gate.
+      const advised = mutated.filter((m) => m.ok && m.conflict && m.conflict.message);
+      if (advised.length) send({ type: 'text_delta', text: '\n\n' + advisoryLines(advised) });
 
       // §1.5's two hands. scrubText wraps them for the same reason bookingLines is
       // wrapped (F-04.33's seam): these strings carry a vendor-supplied reason straight
@@ -841,8 +979,10 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     }
 
     const documents = await buildInvoices(req, result);
-    const booked    = await bookEvents(req, result);
+    // TDW_04 B4 — the second of bookEvents' two disclosed call sites.
+    const { booked, refused } = await bookEvents(req, result);
     const mutated   = await mutateEvents(req, result);
+    const advised   = mutated.filter((m) => m.ok && m.conflict && m.conflict.message);
     const blocked   = await blockDates(req.app.locals.supabase, req.vendor.id, result);   // §1.5
     const unblocked = await unblockDates(req.app.locals.supabase, req.vendor.id, result); // §1.5
     await retroLinkOnFile(req, result);
@@ -854,7 +994,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     // precisely how a seam gets missed. One builder, one scrub, both routes.
     if (documents.length) reply += '\n\n' + invoiceLines(documents);
     if (booked.length) reply += '\n\n' + bookingLines(booked);
+    if (refused.length) reply += '\n\n' + conflictLines(refused);   // TDW_04 B4 — F-04.55
     if (mutated.length) reply += '\n\n' + mutationLines(mutated);
+    if (advised.length) reply += '\n\n' + advisoryLines(advised);   // TDW_04 B4 — Q-B4-5(b)
     if (blocked.length) reply += '\n\n' + scrubText(blockLines(blocked));       // §1.5
     if (unblocked.length) reply += '\n\n' + scrubText(unblockLines(unblocked)); // §1.5
 
@@ -913,3 +1055,10 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
 });
 
 module.exports = router;
+// ── TEST SEAMS (TDW_04 B4) — occupancy.js's ratified precedent ────────────
+// The bench drives the REAL builders. conflictLines/mutationLines/advisoryLines are
+// where F-04.55's and F-04.62's cures live; a bench that re-implemented their branch
+// order would prove its own copy and nothing else.
+module.exports.conflictLines  = conflictLines;
+module.exports.mutationLines  = mutationLines;
+module.exports.advisoryLines  = advisoryLines;

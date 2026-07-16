@@ -88,6 +88,68 @@ function addDaysISO(yyyymmdd, days) {
   return new Date(t + days * 86400000).toISOString().split('T')[0];
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// F-04.55's CURE AT THIS DOOR (Q-B4-4, CE-ratified 2026-07-16)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// THE DEFECT, and it was reproduced by RUNNING lib/response.js's real helper, not by
+// reading it: `errRes(res, 400, result.error)` on a CONFLICT return. A conflict is
+// `{ok:false, conflict}` — IT HAS NO `error` FIELD. So `err(res,400,undefined)` builds
+// `{ok:false, error:undefined}`, JSON.stringify drops the undefined key, and the wire
+// carries a bare `{"ok":false}`, status 400. holding, capacity, message — all discarded.
+//
+// AND THE VENDOR WAS NOT SHOWN NOTHING, WHICH IS WHY THIS IS WORSE THAN THE FINDING SAID:
+//   dreamos-pwa components/vendor/AddSheet.tsx:307 reads
+//     onToast((result as { error?: string })?.error ?? 'Something went wrong.', 'error')
+//   `error` is undefined -> THE VENDOR READ "Something went wrong."
+//   The checker's careful, founder-blessed sentence — "You've blocked 19 July. That
+//   one's a no — unblock it first if you want it back." — arrived as a GENERIC FAILURE.
+//   Not silence. A FALSE DIAGNOSIS of the estate's own deliberate act.
+//
+// ONE HOME, and that is not decoration: POST and PATCH both refuse, and two copies of
+// a refusal rendering is how the two copies drift (F-04.36, which this block has now
+// met four times). The door renders; it never reasons about the verdict.
+//
+// ── WHY `error` CARRIES `message` ─────────────────────────────────────────
+// Every renderer the estate already has improves for free, with a ZERO-line PWA diff:
+// AddSheet's `?.error ?? 'Something went wrong.'` prints the blessed sentence. And
+// `ApiErr { ok:false; error:string }` (dreamos-pwa lib/vendor/types/vendor.ts:11) has a
+// REQUIRED `error` — which today's bare {"ok":false} DOES NOT EVEN SATISFY. The wire
+// becomes true again.
+//
+// ── WHY 409, NOT 400 ──────────────────────────────────────────────────────
+// A refusal is not a malformed request. THE PRECEDENT IS INSIDE THIS BLOCK:
+// availability.js:73 maps ALREADY_BLOCKED -> 409, witnessed in B1's prod smoke. Two
+// refusal semantics on one calendar should not disagree. AND IT IS FREE: verified at
+// dreamos-pwa lib/vendor/api/_base.ts:96 — handleResponse parses the body and NEVER
+// throws on non-2xx; no caller of postJson/patchJson reads the status at all (the 401
+// branch in fetchWithAuth is the estate's only status reader).
+//
+// ── WHY `isOverridable` IS NOT ON THIS WIRE ───────────────────────────────
+// The client must never learn `kind !== 'date_blocked'`. THE FILE THAT OWNS THE VERDICT
+// VOCABULARY OWNS ITS FORCE SEMANTICS (Q-C-3). A door — or a browser — that hardcoded
+// the rule would be the second home for a rule that has one. `conflict` rides whole and
+// says WHAT; nothing here says WHETHER.
+//
+// ⚠ `conflict` SHIPS RENDERED BY NOBODY, DELIBERATELY, AND THAT IS NOT F-04.55 AGAIN.
+//   F-04.55 is a payload that never left the server. This one is ON THE WIRE and
+//   addressable: B5's day sheet renders the inline verdict on Move. Named, not smuggled.
+//
+// NOT APPLIED TO /cancel OR DELETE, and the reason is read from the checker, not
+// assumed by symmetry: checkOccupancy's Item 3 guard returns null for `eff.deleted_at`
+// and `eff.state === 'cancelled'` ABOVE EVERY QUERY, so those paths CANNOT receive a
+// conflict. They can still receive { err } -> `error`, and they already render it.
+function conflictOr400(res, result) {
+  if (result.conflict) {
+    return res.status(409).json({
+      ok:       false,
+      error:    result.conflict.message,   // the blessed sentence — renders today
+      conflict: result.conflict,           // { kind, slot?, date, holding[], capacity?, message }
+    });
+  }
+  return errRes(res, 400, result.error);   // validation + FAIL-CLOSED's honest string
+}
+
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
@@ -258,7 +320,7 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     notes:          body.notes          || undefined,
   });
 
-  if (!result.ok) return errRes(res, 400, result.error);
+  if (!result.ok) return conflictOr400(res, result);
   return okRes(res, { event: result.event });
 }));
 
@@ -296,7 +358,7 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
     notes:      body.notes,
     state:      body.state,
   });
-  if (!result.ok) return errRes(res, 400, result.error);
+  if (!result.ok) return conflictOr400(res, result);
 
   // ── THE CRUD LOCKSTEP LEG (TDW_04 B2 — spec P2(b), BUILT NEW) ────────────
   // "CRUD reschedule of an event with linked_binder_id -> after event write, patch the
@@ -376,3 +438,10 @@ router.delete('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', vi
 }));
 
 module.exports = router;
+// ── TEST SEAM (TDW_04 B4) ─────────────────────────────────────────────────
+// occupancy.js's ratified precedent, one file over: "the bench drives the real
+// function; these let it drive the parts." The bench asserts the 409 body against
+// THIS function — not against a copy of its logic in the bench, which would be a
+// green bench over a path the door does not take (B2 disclosure §3). The router is
+// still the default export; nothing about the door's mounting changes.
+module.exports.conflictOr400 = conflictOr400;
