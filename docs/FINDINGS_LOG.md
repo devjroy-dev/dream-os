@@ -1142,3 +1142,30 @@ and its sibling at `:660`:
 - `:660` proposed → `` `Block requested for ${date}${why} — sent to the calendar; it will confirm or refuse.` ``
 
 **Why not stronger:** the string cannot promise a verdict it does not have, and it must not imply failure either — the door usually says yes. *"It will confirm or refuse"* is the only sentence true at the instant it is written. **The string alone cannot cure the fabrication** (the model may still compose optimistically) — **only Q-B4-6(b) makes the thread stop preserving the wrong half.** Named so the softening is not mistaken for the cure.
+
+### F-04.67 (🔴 → FILED AND CURED IN THE SAME DELIVERY, B5, 2026-07-17): **the CE-22 header was computed from an unfetched clone, and CE-22 is the estate's provenance line.**
+**Founder-caught, in his terminal, by pasting the push that disproved it — *"This was already applied. did you not check?"* The answer is no.**
+
+**THE SPECIMEN, by command:**
+```
+2fc60e1 authored 2026-07-16 20:25:03   <- the founder applied + pushed
+TDW_04_B5_SEAL.zip built 20:27         <- its CE-22 read "+ ZIP A, DELIVERED AND NOT YET APPLIED"
+git show -s --format=%P origin/main -> 3b295284…  (parent = the HEAD I named)
+```
+**Two minutes stale.** The claim was **false when written**, not merely at risk of becoming false.
+
+**THE MECHANISM, and it is not carelessness — it is a method that cannot fail visibly.** The check I ran was `git log --oneline -1` **against a local clone**. **A clone's `HEAD` is a snapshot of the moment it was cloned.** It cannot see a founder push. It returns `3b29528` **whether or not** the founder has applied — **so the check returns the same answer in both worlds and cannot distinguish them.** Exit 0. No warning. **The green was real and the number was blind** — F-04.61 #3's inverse, one layer up.
+
+**AND I HAD THE CURE AND DROPPED IT.** At the F-04.63 re-derivation, earlier in this same sitting, I ran `git fetch -q origin 2>/dev/null; git log --oneline -1` — **the fetch is in this sitting's own record.** I dropped it at the CE-22 header, which is the one place the estate requires the number to be true. **§0.1 exactly: the tool-verified work held; the authored line — a header written from what I assumed the founder had not yet done — is where the error landed.**
+
+**WHY IT IS WORSE THAN A STALE NUMBER.** The same handover's §5.7 files `SCHEMA.md:5` for saying *"Latest migration applied: 0064"* while the ladder is at 0077 — ***"stale on its own front page."*** **I shipped that complaint on a front page that was stale.** And CE-22 is not decoration: it is **the line every downstream sitting trusts to know what it is standing on.** A B6 that read that handoff would have believed `describeDate` was unapplied and re-shipped it.
+
+**THE GENERAL DEFECT, and it is not mine alone — filed as a PROTOCOL CANDIDATE.** **Every executor session works from a fresh clone** (protocol §3's first motion). **Every CE-22 header in this estate is therefore computed from a ref that goes stale the instant the founder acts** — and the founder acting mid-sitting is the normal case, not the exception. **The convention has no fetch clause.** It has never bitten before because no prior sitting handed the founder a ZIP and then wrote a second header afterwards. **This one did, and it bit within two minutes.**
+
+**CURE, SHIPPED HERE:** the CE-22 header is **re-derived from `origin` at the moment of writing, never from the local ref** —
+```
+git fetch -q origin && git rev-parse --short origin/main
+```
+**PROPOSED FOR THE PROTOCOL, not taken (§7/§6 are the CE's):** add the fetch to CE-22's definition, so the header names *the remote's* HEAD by construction. **A header that can only be right when the founder happens to be idle is not a provenance line; it is a guess that is usually correct.**
+
+**NOT CURED BY THIS:** whether **Railway is green on `2fc60e1`**. CE-22 requires HEAD **and** which service's green. **I have never had Railway visibility and do not have it now** — see the handoff's §1.2.
