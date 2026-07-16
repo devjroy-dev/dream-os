@@ -507,11 +507,65 @@ async function lockstepBinderToEvent(req, result) {
         .neq('state', 'cancelled')
         .in('kind', OCCUPYING_KINDS);
       if (error || !evs || !evs.length) continue;
+      // ── §2.5 / Q-S-2, CE-RULED — THE ONE AUTHORISED TOUCH ON THIS SEALED LEG ──
+      //
+      // `force: true`. A WEDDING MOVING IS A DECISION ALREADY MADE; the drag is its
+      // CONSEQUENCE, not a proposal. The vendor is not asking the calendar whether
+      // his client may marry on the 15th.
+      //
+      // F-04.56 IS WHY THIS LINE EXISTS, and until the checker sitting it was inert:
+      // this leg passed no `force` and NEVER READ THE RETURN. The catch below catches
+      // THROWS; `{ok:false, conflict}` is a RETURN. It was harmless only because
+      // checkOccupancy returned null always. The moment the checker got a body, a
+      // drag onto a date already at capacity would return a conflict, this leg would
+      // discard it in silence, and THE BINDER WOULD MOVE WHILE THE CALENDAR DID NOT
+      // — the exact divergence this block exists to kill, re-created by this block's
+      // own checker, inside a leg the charter forbids reopening.
+      //
+      // ⚠ THE RULING'S OWN JUSTIFICATION — "date_blocked still refuses by Q-B3-8, so
+      //   a drag can never land on a block" — WAS FALSE AGAINST THE CODE WHEN IT WAS
+      //   WRITTEN, and was made true before this line shipped. The door's gate read
+      //   `if (conflict && !force)` with no second term: force beat EVERY verdict,
+      //   including date_blocked. Proven by running it: a forced booking landed on a
+      //   block and wrote "[forced] You've blocked 19 July" into the vendor's note —
+      //   the sentence Q-B3-8 exists to make impossible. Q-C-3 (CE-ruled 2026-07-16)
+      //   put `isOverridable` in the gate. THIS LINE IS SAFE BECAUSE OF THAT ONE, AND
+      //   NOT BEFORE IT. Do not port `force: true` to another caller without it.
+      //
+      // The vendor-facing surfacing ("your wedding move overloaded the 15th") is
+      // B4's, with F-04.55. This is visibility without a surface change: the LEDGER
+      // records what happened, both ways, so the estate stops being unable to answer
+      // "did the calendar follow?" from anything but the rows.
       for (const ev of evs) {
-        await writeEvent(req.app.locals.supabase, {
+        const r = await writeEvent(req.app.locals.supabase, {
           vendorId: req.vendor.id, surface: 'pwa', source: 'victor',
-          event_id: ev.id, event_date: date,
+          event_id: ev.id, event_date: date, force: true,
         });
+        // Fire-and-forget, BOTH OUTCOMES (CE-ruled): logActivity is fail-safe by
+        // contract (snapshot.js:112-141) and a ledger miss must never disturb a write
+        // that already landed. Only a WITNESSED outcome is logged — `r` is the door's
+        // own return, not a guess about it. F-04.41's lesson: the door line is the
+        // witness, the prose is the guess.
+        if (r && r.ok && r.conflict) {
+          logActivity(req.app.locals.supabase, {
+            vendorId: req.vendor.id, surface: 'pwa', action: 'event_update',
+            summary: `binder date-move: conflict overridden — "${(r.event && r.event.title) || ev.id}" moved to ${date} · ${r.conflict.message}`,
+            entityType: 'event', entityId: ev.id,
+          }).catch(() => {});
+        } else if (r && !r.ok && r.conflict) {
+          logActivity(req.app.locals.supabase, {
+            vendorId: req.vendor.id, surface: 'pwa', action: 'event_update',
+            summary: `binder date-move: drag refused by block — "${ev.id}" stayed put; ${date} is blocked · ${r.conflict.message}`,
+            entityType: 'event', entityId: ev.id,
+          }).catch(() => {});
+        } else if (r && !r.ok) {
+          // The third outcome the ruling did not name, and it is F-04.56's harm
+          // wearing a different hat: the checker went FAIL-CLOSED (F15) or the write
+          // refused, so the binder moved and this event did not. Logged to the server
+          // only — inventing a ledger vocabulary the CE did not rule is how a wire
+          // grows a fifth kind nobody ratified. Raised to B4 with F-04.55/F-04.56.
+          console.warn('[vendor-e chat:lockstep b->e] drag did not land:', r.error || 'refused');
+        }
       }
     } catch (e) { console.warn('[vendor-e chat:lockstep b->e]', e.message); }
   }

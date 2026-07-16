@@ -73,6 +73,20 @@
 const { scrubForStorage } = require('./scrub');
 const { logActivity }     = require('./snapshot');
 
+// TDW_04 — THE CHECKER SITTING. The seam predicted at :241-275 is now wired.
+//
+// `checkOccupancy` is the CHECKER and it lives in occupancy.js, beside the set it
+// consumes. `isRefusal`/`isOverridable` are the GATE's two questions, and they live
+// there too by Q-C-3's ruling (CE, 2026-07-16): THE FILE THAT OWNS THE VERDICT
+// VOCABULARY OWNS ITS FORCE SEMANTICS. This door asks; it never learns why. A door
+// that hardcoded `conflict.kind !== 'date_blocked'` would be the second home for a
+// rule that has one — F-04.36, on the very seam this block exists to build.
+//
+// occupancy.js lazy-requires deriveSlot back out of this file (its own comment says
+// why, and cites categoryProfiles.js:122's precedent). deriveSlot has ONE home and
+// it is here: §2.1a, "two homes for one rule would BE F-04.36."
+const { checkOccupancy, isRefusal, isOverridable } = require('./occupancy');
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -154,7 +168,23 @@ const EVENT_SELECT = 'id, title, event_date, event_time, kind, slot, state, note
 //   for every existing caller, and B3 adds branches 3/4 as a pure extension.
 //   A seam that matches current behaviour is not a placeholder. It is the
 //   honest shape of a rule that is half-ruled.
-function deriveSlot({ event_time, slot }) {
+// ── BRANCHES 3/4 LANDED AT THE CHECKER SITTING (2026-07-16) ───────────────
+// The classification the comment above says does not exist now does, at ONE home:
+// occupancy.js. This function CONSULTS it by import; the function did not move and
+// the table did not fork. Two homes for one rule would BE F-04.36.
+//
+// PURE EXTENSION, and the proof is the shape: branches 1-2 are untouched and still
+// answer first. The only inputs that reach 3/4 are the ones that used to fall
+// through to `return null` — a caller with no slot and no time. Everything witnessed
+// correct at HEAD stays witnessed correct.
+//
+// `kind` JOINS THE SIGNATURE, and it had to: branches 3/4 are the ONLY kind-aware
+// branches and the classification is a function of kind. Branches 1-2 stay KIND-BLIND
+// and this signature does not change that — SLOT ANSWERS WHERE, OCCUPANCY ANSWERS
+// WHETHER (standing distinction). A timed appointment still gets slot='morning'
+// because slot PLACES it on the timeline; it just consumes nothing.
+// Disclosed, never silent (Q-B2-7's ratified law): the caller at :345 gains `kind`.
+function deriveSlot({ event_time, slot, kind }) {
   if (slot) return slot;                                  // branch 1
   if (typeof event_time === 'string' && /^\d{2}:/.test(event_time)) {
     const h = parseInt(event_time.slice(0, 2), 10);       // branch 2 — C2, exactly
@@ -163,8 +193,16 @@ function deriveSlot({ event_time, slot }) {
     if (h < 16) return 'noon';                            // 12:00-15:59
     return 'evening';                                     // 16:00 onwards
   }
-  return null;                                            // branches 3/4 -> B3
-}
+  // Lazy require: occupancy.js requires this file for deriveSlot, this line requires
+  // it back for the table. The cycle resolves at CALL time. categoryProfiles.js:122's
+  // precedent, with its own words: "to avoid any load-order coupling."
+  const { isOccupying, isAppointment } = require('./occupancy');
+  if (isOccupying(kind))   return 'full_day';             // branch 3 — no time, work
+  if (isAppointment(kind)) return null;                   // branch 4 — timeline-only
+  return null;              // `other` / `blocked` / absent kind: NEITHER list. A kind
+}                           // the ternary does not classify does not get a slot invented
+                            // for it — and an ABSENT kind is a PATCH that isn't moving
+                            // the row through space (Q-C-1: the ctx is the patch).
 
 // ── DEDUPE, booking side — RELOCATED from chat.js:233-248 ─────────────────
 // (a) Dedupe: an event for the same client on the same date already on the calendar IS this booking.
@@ -178,6 +216,17 @@ async function findExistingEvent(supabase, vendorId, bk) {
       .eq('vendor_id', vendorId)
       .eq('event_date', bk.event_date)
       .neq('state', 'cancelled')
+      // ── F-04.58's CURE (CE-ruled 2026-07-16 — one line, F-04.25's family) ──
+      // This clause was never here, and the UPDATE this read feeds REQUIRES it
+      // (`.is('deleted_at', null)`, below). So a dedupe that resolved onto a
+      // TOMBSTONED row handed the writer an id its own predicate then refused, and
+      // the vendor read "Event not found." about an event he was looking at.
+      // Live shape: soft-delete "Meera - shoot" on 22 Nov, re-book that client on
+      // that date, be told the event does not exist. F-04.25 spent a whole finding
+      // on a read that forgot deleted_at; this is the same read forgetting the same
+      // covenant, one file over. It also makes `existing` LIVE BY CONSTRUCTION,
+      // which is what lets the checker trust it without a second trip (Q-C-1(α)).
+      .is('deleted_at', null)
       .ilike('title', `${hint}%`)
       .limit(2);
     if (error || !data || data.length !== 1) return null; // 0 or ambiguous -> a fresh insert is safer
@@ -270,9 +319,26 @@ async function resolveBinderForBooking(supabase, agentId, bk) {
 // risk a vendor may knowingly accept). B4's conflict-verdict work inherits this
 // as given. NOTE THE CONSEQUENCE FOR THIS FILE: `force` must never reach the
 // block-dedupe branch, and below, it does not.
-async function checkOccupancy(_ctx) {
-  return null; // B3. See above — ruled, not forgotten.
-}
+// ── LANDED AT THE CHECKER SITTING (2026-07-16) ────────────────────────────
+//
+// The ruling above is executed literally: the body IS a require('./occupancy'),
+// imported at the top of this file, with NO caller changes and NO signature churn.
+// All eleven of this door's callers are untouched. 04.5's per-crew-member math
+// extends the same context object without reopening the seam.
+//
+// THE VOCABULARY SPLIT B2 RATIFIED IN ADVANCE IS NOW REAL — and it is real at the
+// GATE below, not here. B2's note said "`force` must never reach the block-dedupe
+// branch, and below, it does not." That covered the RE-BLOCK (ALREADY_BLOCKED,
+// which returns above force). It did NOT cover BOOKING ONTO a block — that is this
+// checker's verdict, and it lives DOWNSTREAM of the gate, where `force` beat it.
+// Proven by running it before building it: a forced booking landed on a block and
+// printed "[forced] You've blocked 19 July" into the vendor's own note. Q-C-3 closed
+// that half. Both refusal classes are now asserted by source position — see the gate.
+//
+// THE CONTEXT IS THE PATCH, NEVER THE ROW (Q-C-1). `kind` is undefined on all nine
+// update shapes. The checker resolves the EFFECTIVE row itself — row ⊕ patch — which
+// is why `state` and `deleted_at` ride the context below.
+// -> occupancy.js::checkOccupancy
 
 // ══════════════════════════════════════════════════════════════════════════
 // writeEvent — the door
@@ -342,7 +408,10 @@ async function writeEvent(supabase, params) {
   }
 
   // ── 1. SLOT DERIVATION ──────────────────────────────────────────────────
-  const derivedSlot = deriveSlot({ event_time, slot: params.slot });
+  // `kind` joins the call: branches 3/4 are the only kind-aware branches and they
+  // landed this sitting. Branches 1-2 are unchanged and still answer first, so every
+  // caller witnessed correct at HEAD stays witnessed correct. Disclosed, never silent.
+  const derivedSlot = deriveSlot({ event_time, slot: params.slot, kind });
 
   // The free-text cells are the only ones that can carry a persona name.
   // event_date / event_time / kind are enums and dates — scrubbing them is noise.
@@ -379,19 +448,53 @@ async function writeEvent(supabase, params) {
   }
 
   // ── 4. OCCUPANCY CHECK ──────────────────────────────────────────────────
+  // `state` and `deleted_at` JOIN THE CONTEXT (Q-C-1/Item 3, CE-ruled 2026-07-16):
+  // the effective row is row ⊕ patch across kind, event_date, event_time, slot,
+  // ready_by, STATE and DELETED_AT — and a row being cancelled or soft-deleted asks
+  // no occupancy question. The checker cannot answer that about fields it cannot see.
+  // Disclosed, never silent (Q-B2-7's ratified law).
   const conflict = await checkOccupancy({
     supabase, vendorId, kind, event_date, slot: derivedSlot, event_time,
-    ready_by, source, event_id, existing,
+    ready_by, source, event_id, existing, state, deleted_at,
   });
-  if (conflict && !force) {
+
+  // ── THE GATE (Q-C-3, CE-ruled 2026-07-16). THREE LINES, IN THIS ORDER. ──
+  //
+  // THE DOOR ASKS THE CHECKER. It does not know what `date_blocked` means, and it
+  // must not learn: the file that owns the verdict vocabulary owns its force
+  // semantics (F-04.36's law applied forward). A `kind !== 'date_blocked'` here
+  // would be the second home for a rule that has one.
+  //
+  // 1. THE ERROR CHANNEL, ABOVE FORCE. F15's law, and findExistingBlock's precedent
+  //    twelve lines up is the shape this mirrors: a guard read that ERRORS is not a
+  //    guard read that found nothing. FAIL-CLOSED — force cannot beat it, because it
+  //    never reaches the force branch. The trade is ruled with eyes open: availability
+  //    of an edit yields to integrity of the calendar. A refused edit is retryable;
+  //    a waved-through false negative is permanent divergence.
+  if (conflict && conflict.err) return { ok: false, error: conflict.err };
+
+  // 2. THE REFUSAL GATE. `isRefusal` is why C9's ruled "never blocks" survives contact
+  //    with this line: an ADVISORY (appointment_overlap, cluster) reaching a bare
+  //    `if (conflict && !force)` would block the write it was ruled never to block.
+  //    Advisories ride out below on { ok:true, event, conflict } — the return B2
+  //    already built for them and which was dead until now.
+  //    `isOverridable` is why a block is a block: force beats `capacity` (a
+  //    double-booking is a risk a vendor may knowingly accept) and never beats
+  //    `date_blocked` (a stated refusal is not a risk). Both classes of refusal are
+  //    now asserted BY SOURCE POSITION — this line is above the force branch, and
+  //    there is no path from a refusal to a write that does not pass through it.
+  if (conflict && isRefusal(conflict) && (!force || !isOverridable(conflict))) {
     // WRITE NOTHING. The spec is absolute about this and so is this door.
     return { ok: false, conflict };
   }
 
-  // force:true -> the clash goes in the note. A forced write that hides what it
-  // was forced past is a false "done" wearing a calendar's clothes.
+  // 3. force:true -> the clash goes in the note. A forced write that hides what it
+  // was forced past is a false "done" wearing a calendar's clothes — and a forced
+  // write that CLAIMS to have forced past an advisory is the same lie facing the
+  // other way, which is why `isRefusal` guards this too. Nothing is forced past a
+  // heads-up.
   let finalNotes = cleanNotes;
-  if (conflict && force) {
+  if (conflict && force && isRefusal(conflict)) {
     const clash = `[forced ${new Date().toISOString().slice(0, 10)}] ${conflict.message}`;
     finalNotes = finalNotes ? `${finalNotes}\n${clash}` : clash;
   }
@@ -406,7 +509,12 @@ async function writeEvent(supabase, params) {
     if (event_date !== undefined) patch.event_date = event_date;
     if (event_time !== undefined) patch.event_time = event_time;
     if (kind       !== undefined) patch.kind       = kind;
-    if (notes      !== undefined || (conflict && force)) patch.notes = finalNotes;
+    // `isRefusal` guards this for a reason that is not symmetry: when notes is
+    // undefined, cleanNotes is null, so an unguarded `(conflict && force)` on an
+    // ADVISORY would patch notes = null and CLEAR the row's notes. Nothing was
+    // forced; the note is untouched. (The undefined-vs-null law at :309-319 is the
+    // same trap that once dropped every clear, read from the other side.)
+    if (notes      !== undefined || (conflict && force && isRefusal(conflict))) patch.notes = finalNotes;
     if (derivedSlot != null)      patch.slot       = derivedSlot;
     if (ready_by   !== undefined) patch.ready_by   = ready_by;
     if (state      !== undefined) patch.state      = state;
@@ -490,7 +598,10 @@ async function writeEvent(supabase, params) {
     // IDENTICAL rows for Victor's calendar writes and the web door's. That is why
     // F-04.46's misattribution to T11 survived to a ruling, and why settling it needed
     // engine.messages. F-04.28's door-parity: the lane was joinable, not attributable.
-    summary: `event "${event.title}" — ${event.event_date}${event.event_time ? ' ' + event.event_time : ''}${event.kind ? ' · ' + event.kind : ''}${force && conflict ? ' (forced)' : ''} · via ${source === 'victor' ? 'chat' : 'calendar'}`,
+    // `(forced)` means a REFUSAL was overridden. An advisory rode along; nothing was
+    // forced past it, and the ledger does not say otherwise — F-04.49's whole lesson
+    // is that an unattributable ledger line is worse than none.
+    summary: `event "${event.title}" — ${event.event_date}${event.event_time ? ' ' + event.event_time : ''}${event.kind ? ' · ' + event.kind : ''}${force && isRefusal(conflict) ? ' (forced)' : ''} · via ${source === 'victor' ? 'chat' : 'calendar'}`,
     entityType: 'event',
     entityId:   event.id,
   }).catch(() => {});

@@ -89,7 +89,19 @@ function normaliseCategory(category) {
   if (c.includes('video') || c.includes('cinema') || c.includes('film')) return 'videography';
   if (c.includes('makeup') || c.includes('mua') || c.includes('beauty')) return 'makeup';
   if (c.includes('mehendi') || c.includes('mehndi') || c.includes('henna')) return 'mehendi';
-  if (c.includes('decor') || c.includes('floral') || c.includes('flower')) return 'decor';
+  // ── F-04.59's CURE (CE-ruled 2026-07-16 — one word) ──────────────────────
+  // `'florist'` was missing, and its absence was invisible because it fell through
+  // to 'other' rather than erroring. TWO LISTS DISAGREED AND NOBODY COULD SEE IT:
+  // categories.js:6 records "16 categories (florist merged into decor — 2026-05-15,
+  // founder confirmed)" and its CATEGORY_ALIASES lists 'florist' under decor — but
+  // profileFor() consults THIS ladder, never that list, so this ladder never learned
+  // the merge. Live consequence: a vendor typing "florist" got occupancy OFF while
+  // one typing "floral decor" got decor's capacity. Same trade, two answers.
+  // F-04.36's shape exactly — two things that must agree, in two files, with no
+  // forcing function. The merge's INTENT is honoured here; the two-lists-no-forcing-
+  // function shape is recorded for the block handover, because one word does not cure
+  // a structure.
+  if (c.includes('decor') || c.includes('floral') || c.includes('flower') || c.includes('florist')) return 'decor';
   if (c.includes('cater') || c.includes('food')) return 'catering';
   if (c.includes('venue') || c.includes('banquet') || c.includes('resort') || c.includes('hall')) return 'venue';
   if (c.includes('dj')) return 'music_dj';

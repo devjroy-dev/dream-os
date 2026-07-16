@@ -46,7 +46,13 @@ source-code cleanup to post-Phase 2 admin session when admin is rebuilt properly
 - POST-PHASE 2 ADMIN SESSION: Rebuild admin pages with server-side auth. Password lives
   only in Railway env var — never in client-side source code. Delete all 25 hardcoded lines.
 
-**Status:** OPEN — rotation pending (Railway outage on 2026-05-18 prevented rotation).
+**Status:** ROTATED — credential rotated 2026-07-16 (CE-confirmed at the TDW_04 checker sitting).
+The Railway outage of 2026-05-18 that blocked the original rotation is long past; the finding sat
+OPEN for eight weeks on a blocker that had cleared. **The source-code residue is Finding #12's**,
+and its status is ruled there: the residue is now **inert** — rotation killed its value — and a
+history scrub is **DECLINED as disproportionate**. The admin-rebuild cleanup is still owed and
+still lives in Finding #12. *A finding left OPEN on a cleared blocker is a finding nobody is
+reading; the rotation is the fix, and this line now says so.*
 
 ---
 
@@ -317,7 +323,18 @@ The 25 hardcoded references are now stale (do not match live password) but still
 **Action:** Delete all 25 hardcoded references in post-Phase 2 admin rebuild session.
 Rebuild admin pages with server-side auth — password lives only in Railway env var.
 
-**Status:** OPEN — cleanup deferred to post-Phase 2 admin session. Finding #1 updated to this status.
+**Status:** OPEN (cleanup) — **CE-ruled 2026-07-16: credential rotated 2026-07-16 — the
+public-history residue is INERT (rotation killed its value); a history scrub is DECLINED as
+disproportionate, founder may overrule later.**
+
+The 25 hardcoded references in the public `dreamos-pwa` repo's source and git history no longer
+match any live credential. Rewriting public git history to remove a string that unlocks nothing
+costs every clone, every open PR and every commit hash in the estate, to delete a dead value —
+**the cost is real and the benefit is zero.** What remains owed is the SOURCE cleanup in the
+admin rebuild (server-side auth; the password lives only in a Railway env var), which is a code
+change, not a history rewrite. Finding #1's status is now **ROTATED** and points here.
+*Declined-with-a-reason, on the record, is a decision. Left OPEN forever is a decision nobody
+made.* **Founder may overrule; the scrub remains available and costs the same later as now.**
 
 ---
 
@@ -913,7 +930,26 @@ Charter (L-9 as absorbed): ST-3a, ST-3b, ST-3d, ST-3e, ST-6. ST-3c untouched (Bl
 
 ## TDW_04 PART B — SPINE SITTING (2026-07-16, dream-os `674ac6c`)
 
-**⚠ LOG GAP — NAMED, NOT FIXED.** This log runs F-04.2 → F-04.49 and then stops. **F-04.50 through F-04.54 — B3's, including F-04.51, whose cure this sitting shipped — are NOT INDEXED HERE.** They live in `docs/specs/TDW_04_B3_RIDER_PROOF_PACKET.md` §2 and the B3→spine handoff §4: committed, citable, and invisible to anyone who reads this file as the estate's index of findings. The spine charter itself says *"FINDINGS_LOG.md (B3's sections whole — F-04.43 through F-04.54)"* — **five of those eleven are not in this file.** The spine sitting files 55–57 below because the CE ruled them filed; **it does not backfill 50–54, which is a docs pass outside its charter and is raised to the CE rather than taken.**
+**✅ LOG GAP — CLOSED AT THE CHECKER SITTING (2026-07-16, CE-ruled).** The five entries below
+(**F-04.50 – F-04.54**) are backfilled from their committed sources. **Nothing is re-derived and
+nothing is re-diagnosed** — each is a pointer to the packet that proved it, because an index that
+paraphrases its own findings becomes a second home for them (F-04.36), and a backfill that
+re-argues is a backfill that can drift from what it indexes.
+
+**⚠ CITATION CORRECTED, DISCLOSED:** the ruling named `TDW_04_B3_RIDER_PROOF_PACKET.md` **§2.2–2.6**
+as the source for all five. **§2.6 is F-04.49, which is already indexed above at its own entry.**
+The packet's §2.2–2.5 carry F-04.50–53; **F-04.54 lives in `TDW_04_B3_TO_SPINE_HANDOFF.md` §"the
+five witnesses", not in the rider packet at all.** The ruling's *intent* — close the gap this note
+names — is unambiguous and is executed; only its pointer was one section off, and saying so is
+cheaper than a reader later finding F-04.49 where F-04.54 was promised.
+
+- **F-04.50 (🔴 → 06; its checker consequence LANDED THIS SITTING):** ***"move X" mints a duplicate, and auto-link disguises it.*** Turn log 09:40:23 — the founder said **move**; Victor called `donna_book_event` with **no binder_id**, then `donna_edit`. **He booked a second shoot instead of editing the first**, and `eventWrite.js`'s auto-link attached it to Meera's binder anyway, **so the duplicate looks legitimate**. Two identical shoots: same title, same date, same binder (`5464cc5d` cancelled by the founder during that smoke). **Source: `TDW_04_B3_RIDER_PROOF_PACKET.md` §2.2.** **Q-B3-13 ruled and now BENCHED** (`scripts/checker_bench.js` §4): exact duplicates **ARE** real capacity consumption — the checker counts both rows and lists both in `holding`. It tells the truth about the mess; **it does not clean it up.** F-04.50's own cure (stop minting the duplicate) is still 06's.
+- **F-04.51 (🔴 → 06; NEW CLASS):** **an outage becomes a data-integrity event.** `loop.ts:218` runs `saveMessage(conversationId,'user',message)` **before** the model call, so two turns lost to an Anthropic balance exhaustion **persisted the user message with no assistant reply**. By 09:42:49 the thread held *"move Meera's wedding shoot to 15 November"* **three times**; Victor answered the third in **1.36 seconds with `tool_calls: null`** — *"Done."* — reading the orphans as already-handled, then compounding at 09:44:09: *"I have Meera's wedding locked at 15 November as of the last move."* **It never was; the binder read 8 November throughout.** He was reading **his own fabricated "Done" as estate fact**. The balance was refilled; **the poisoned thread stayed poisoned.** **Source: `TDW_04_B3_RIDER_PROOF_PACKET.md` §2.3.** **Its cure shipped at the spine sitting.** Composes with F-04.55's silent doors into an invitation to a fabricated "Done" — noted into 06's packet.
+- **F-04.52 (🔴 → 06):** **the note out-argues the field.** One call, one response body: the reply said *"The binder shows the shoot rescheduled to **8 November** — not 22"* while **`view[0].date` in his own payload read `"2026-11-22"`**. He read the **note** — a line `donna_edit` appended at 09:40 that had been false since 10:52. `SURFACE_TRUTH_AUDIT §4`'s note accretion meeting F-04.21's plane confusion: **the narrative is append-only, goes stale by design, and is treated as current fact over the column beside it.** Also explains his *"13 hours ago"* for something eleven minutes old. **Source: `TDW_04_B3_RIDER_PROOF_PACKET.md` §2.4.**
+- **F-04.53 (🟡 → 06):** **Victor calls the binder's `date` a payment date.** *"If it's just the balance-due date you're confirming — that's already on file as 2026-11-22."* **It is the wedding.** That is **the precise semantic F-04.43 was ruled to protect, misread by the agent whose hands write it** — and the same semantic this sitting's checker now enforces from the other side. **Source: `TDW_04_B3_RIDER_PROOF_PACKET.md` §2.5.**
+- **F-04.54 (🔴 → REPAIRED; it is why the cure had to be on every leg):** **Ananya's binder carried her *recce's* date (`2026-07-25`) while her enquiry read `wedding_date 2027-01-01`.** Written through **T11** at `2026-07-15 20:22:54.081`, **with no chat turn in the window** (the log runs 20:20:42 → 20:36:41; `executeAndPatch` writes no `engine.messages` row). Repaired through the doors; the repair is **witness #5**. **It corrected a correction:** B3 had corrected F-04.46's attribution from T11 to leg 1 and **was also wrong** — T11 fired too. **This is the finding that made Q-B3-4's widening load-bearing:** had "only leg 1" been ruled, the cure would have missed the leg that damaged Ananya. **Source: `TDW_04_B3_TO_SPINE_HANDOFF.md` §"the five witnesses".**
+
+**⚠ THE GAP'S ORIGINAL TEXT, PRESERVED (corrections convention — update in place, nothing deleted):** *This log runs F-04.2 → F-04.49 and then stops. **F-04.50 through F-04.54 — B3's, including F-04.51, whose cure this sitting shipped — are NOT INDEXED HERE.*** They live in `docs/specs/TDW_04_B3_RIDER_PROOF_PACKET.md` §2 and the B3→spine handoff §4: committed, citable, and invisible to anyone who reads this file as the estate's index of findings. The spine charter itself says *"FINDINGS_LOG.md (B3's sections whole — F-04.43 through F-04.54)"* — **five of those eleven are not in this file.** The spine sitting files 55–57 below because the CE ruled them filed; **it does not backfill 50–54, which is a docs pass outside its charter and is raised to the CE rather than taken.**
 
 ### NEW FINDINGS
 
@@ -925,3 +961,19 @@ Charter (L-9 as absorbed): ST-3a, ST-3b, ST-3d, ST-3e, ST-6. ST-3c untouched (Bl
 
 The engine dump **hardcodes** its guard — *"Confirm the result says 25 rows"* (F-04.29's cure: the row-per-column original was silently truncated to 99 rows by the editor's toolbar cap, dropping 12 tables including the two the defect class was about). **The public twin cannot hardcode a count and must not pretend to:** the public table count is the very fact it exists to establish, and every number available to the executor is stale — `BASELINE.md:57` says 58, generated 2026-07-14, **and `0077` has since dropped `public.vendor_availability`.** Hardcoding 58 would be an executor asserting a stale document's number into founder-run SQL — **F-04.57's own disease, inside F-04.57's cure.** So **the guard computes itself**: column 1 of every row is a scalar subquery counting public's BASE TABLEs — evaluated by the database, structurally immune to the cap that truncates the result set around it. **Rows returned == `tables_expected` → complete; fewer → the cap bit, do not commit.** Proven at the spine sitting against a real Postgres 16: capped deliberately to 5 rows of 12, **every surviving row still reported `tables_expected = 12`.** F-04.29's silent truncation is now self-detecting, and nobody has to remember a number.
 
+---
+
+## TDW_04 — THE CHECKER SITTING (ZIP D, 2026-07-16)
+
+- **F-04.58 (🔴 → CURED THIS ZIP as a CE-authorised one-line rider):** **the booking dedupe forgot the soft-delete covenant — F-04.25's family, one file over.** `findExistingEvent` (`eventWrite.js`) selected on `vendor_id` + `event_date` + `state <> 'cancelled'` + a title prefix and **had no `deleted_at is null` clause**, while **the UPDATE it feeds requires one** (`.is('deleted_at', null)` on the write). So a dedupe that resolved onto a **TOMBSTONED** row handed the writer an id **its own predicate then refused**, and the vendor read **`"Event not found."` about an event he was looking at.** Live shape: soft-delete *"Meera - shoot"* on 22 Nov, re-book that client on that date, be told the event does not exist. **F-04.25 spent a whole finding on a read that forgot `deleted_at`; this is the same read forgetting the same covenant.** Cure: one line, `.is('deleted_at', null)`, cited in place. **Benched** (`scripts/checker_bench.js` §13). **It also does structural work for the checker:** `existing` is now **live by construction**, which is what lets the checker trust it on path B without a second read (Q-C-1(α)'s path-A-only cost). *The covenant is law; the file was open; it rode.*
+- **F-04.59 (🟡 → CURED THIS ZIP as a CE-authorised one-word rider; the SHAPE is 06's):** **two category lists disagreed and nothing could see it.** `categories.js:6` records *"16 categories (florist merged into decor — 2026-05-15, founder confirmed)"* and its `CATEGORY_ALIASES` lists `'florist'` under decor. **`profileFor()` consults `categoryFraming.js`'s ladder, never that list — and the ladder never learned the merge.** It tested `decor` / `floral` / `flower` and **never `florist`**, so a vendor typing *"florist"* fell through to `other` → **occupancy OFF**, while one typing *"floral decor"* got **decor's capacity of 1. Same trade, two answers.** Invisible because the miss **fell through silently rather than erroring**. Cure: `'florist'` joins the decor line, comment citing the founder's merge. **Run, not read:** `florist` · `floral decor` · `flower shop` · `decorator` **all → `decor` → key `decor`** (`scripts/checker_bench.js` §12). **⚠ THE SHAPE IS NOT CURED AND THE WORD DOES NOT CURE IT:** two lists that must agree, in two files, **with no forcing function** — F-04.36's exact shape, which this estate has now met three times. **Recorded for the block handover; a structural cure (one home, or a test that fails when they diverge) is 06's.**
+
+### Q-C-3 — THE GATE. Raised, ruled and cured in one sitting; recorded because the mechanism outlives it.
+
+**`force` beat every verdict the checker could return, including `date_blocked`.** The door's gate read `if (conflict && !force) return { ok:false, conflict };` — **no second term** — and `force` was **not in the checker's context**, so the checker could not refuse from inside either. **Proven by running it before building on it:** a forced booking **landed on a block** and wrote **`"[forced 2026-07-16] You've blocked 19 July."`** into the vendor's own note — *the sentence Q-B3-8 exists to make impossible.* B2's ratified-in-advance note (*"`force` must never reach the block-dedupe branch, and below, it does not"*) was **true and covered the wrong half**: it protected the **RE-BLOCK** (`ALREADY_BLOCKED`, which returns above force); **booking ONTO a block is the checker's verdict and lives downstream of the gate.** One of two refusal classes was guarded.
+
+**Three ruled things could not execute against it:** §2.4's *"force explicitly ignored"*; §2.5's `force: true` on the lockstep drag, whose **own justification** (*"date_blocked still refuses by Q-B3-8, so a drag can never land on a block"*) **was false against the code when it was written**; and §2.9's crown proof, which demands *"force on a block is refused"* **at the `writeEvent` boundary**. Item 2(2)'s FAIL-CLOSED had no channel at all — a read error can only come back as a verdict, and a verdict lost to force.
+
+**Cure (CE-ruled, 2026-07-16): THE DOOR ASKS THE CHECKER.** `occupancy.js` exports `isRefusal` and `isOverridable`; the door never learns *why* a verdict refuses — **F-04.36's law applied forward: the file that owns the verdict vocabulary owns its force semantics.** No fifth `kind`, no new wire field. **Both refusal classes are now asserted by source position** (`scripts/checker_bench.js` §8) **and behaviourally** (§7, §10).
+
+**⚠ THE LESSON THAT OUTLIVES THE FIX:** *§2.5's `force: true` was ruled safe **on a premise nobody had run**.* The premise was reasonable, written by people who knew the code, and **false**. It would have shipped a wedding drag onto a blocked date — **the harm the ruling assumed impossible, created by the ruling that assumed it.** §0.2 is why it didn't: *a ruling that can't execute as worded is REPORTED, never quietly adapted.* **The report cost one round trip. The alternative cost a vendor his blocked day.**
