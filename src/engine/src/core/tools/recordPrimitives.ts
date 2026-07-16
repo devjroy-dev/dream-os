@@ -381,7 +381,7 @@ export const DONNA_BLOCK_DATE_TOOL: Anthropic.Tool = {
 // B3's. A slot parameter now would foreclose their rulings — §8's clause says don't.
 export const DONNA_UNBLOCK_DATE_TOOL: Anthropic.Tool = {
   name: 'donna_unblock_date',
-  description: "Put a blocked date back on the vendor's calendar — the day becomes available to be booked again. Give date (YYYY-MM-DD). Use it when the vendor says unblock, free up, or open a date they had blocked. This does not touch bookings: it only lifts a block.",
+  description: "Put a blocked date back on the vendor's calendar — the day becomes available to be booked again. Give date (YYYY-MM-DD). Use it ONLY when the owner asks to unblock or open a date they had blocked; NEVER during a booking move or reschedule. Moving a booking off a date does not unblock that date — those are two different acts, and only the owner asks for this one. This does not touch bookings: it only lifts a block.",
   input_schema: {
     type: 'object',
     properties: {
@@ -492,8 +492,35 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       }
       return writeFields(agentId, rid, { amount: parsed, direction: dirIn }, `money ${moneyWords(parsed)} ${dirIn}`);
     }
-    case 'donna_date':
+    case 'donna_date': {
+      // TDW_04 B3 (Q-B3-1, RE-SCOPED by CE amendment 2026-07-16) — old ≠ new
+      // guard, donna_money's exact shape (:465-475), twelve lines above.
+      //
+      // WHAT THIS IS AND IS NOT. It was ruled as F-04.43's cure against an
+      // unread specimen. The turn log proved it ORTHOGONAL: the crime was a
+      // FIRST write (NULL -> 2026-11-01, old and new differ, this guard passes)
+      // and it fired donna_edit, not this tool. THE KIND BRAIN IN occupancy.js
+      // IS F-04.43's WALL. This is F-04.48's cure — noise-suppression and honest
+      // re-assertion semantics: an unchanged date must not re-stamp, and must
+      // not re-drag the calendar. Defence-in-depth, never the wall.
+      //
+      // The display sentinel is the WIRE: chat.js's lockstep gates on it
+      // (startsWith), exactly as chat.js:339's isErr gates on 'ERROR' — status
+      // sniffing, never value-parsing out of prose (eventWrite.js:472-475's rule).
+      if (rid) {
+        const { data: existing, error: exErr } = await supabase.from('records')
+          .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
+        if (exErr || !existing) return { display: `ERROR: binder ${rid} not found.` };
+        const incoming = typeof input.date === 'string' ? input.date.trim() : '';
+        if (incoming && existing.date === incoming) {
+          return {
+            display: `DATE UNCHANGED on ${rid} — date ${incoming} already stands; nothing re-written, nothing re-dragged.`,
+            item: recordItem(existing),
+          };
+        }
+      }
       return writeFields(agentId, rid, { date: input.date }, `date ${input.date}`);
+    }
     case 'donna_client':
       return writeFields(agentId, rid, { client: input.client }, `client ${input.client}`);
     case 'donna_note':
@@ -572,8 +599,38 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
         return { display: `REFUSED — money cells (${moneyKeys.join(', ')}) are not edited here. Money corrections go through donna_money_edit, the one witnessed door.` };
       }
       if (!Object.keys(patch).length) return { display: 'ERROR: donna_edit needs at least one cell to change.' };
+
+      // TDW_04 B3 (Q-B3-1 as amended 2026-07-16) — THE DATE CELL'S old ≠ new
+      // GUARD. donna_edit is the tool F-04.43's real specimen fired (turn log,
+      // 20:20:22) and chat.js:448's lockstep collects it exactly like donna_date,
+      // so a sentinel on donna_date alone would have shipped with a hole this
+      // wide. Same shape as donna_money (:465-475); the date cell only — every
+      // other cell keeps donna_edit's semantics byte-for-byte.
+      //
+      // It DROPS the unchanged date from the patch rather than refusing the whole
+      // edit: a turn that re-states the wedding date while genuinely changing the
+      // phone must still write the phone. The sentinel LEADS the display so the
+      // lockstep's startsWith gate reads it (chat.js:339's isErr shape).
+      let dateUnchanged = '';
+      if ('date' in patch) {
+        const { data: existing, error: exErr } = await supabase.from('records')
+          .select(SELECT).eq('id', rid).eq('agent_id', agentId).single();
+        if (exErr || !existing) return { display: `ERROR: binder ${rid} not found.` };
+        const incoming = typeof patch.date === 'string' ? patch.date.trim() : '';
+        if (incoming && existing.date === incoming) {
+          delete patch.date;
+          dateUnchanged = `DATE UNCHANGED on ${rid} — date ${incoming} already stands; nothing re-written, nothing re-dragged.`;
+          if (!Object.keys(patch).length) {
+            return { display: dateUnchanged, item: recordItem(existing) };
+          }
+        }
+      }
+
       const dropped = moneyKeys.length ? ` (money cells ${moneyKeys.join(', ')} NOT touched — those go through donna_money_edit)` : '';
       const outcome = await writeFields(agentId, rid, patch, `edited ${Object.keys(patch).join(', ')}${dropped}`, new Set(['note']));
+      if (dateUnchanged && !outcome.display.startsWith('ERROR')) {
+        return { ...outcome, display: `${dateUnchanged}\n${outcome.display}` };
+      }
       return outcome;
     }
     case 'donna_invoice_pdf': {

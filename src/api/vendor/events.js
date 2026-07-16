@@ -37,6 +37,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const { writeEvent } = require('../../lib/vendor/eventWrite');    // TDW_04 B2 — the ONE writer
 const { executeAndPatch } = require('../../lib/executeAndPatch');  // TDW_04 B2 — the CRUD lockstep leg
 const { resolveAgentForVendor } = require('../middleware/agentBridge');
+const { isOccupying } = require('../../lib/vendor/occupancy');     // TDW_04 B3 — the one set (subset proposal §3, CE-ratified)
 
 // ── TDW_04 B2 — this door's writes route through eventWrite ────────────────
 // createEvent/updateEvent/deleteEvent are gone from here. lib/vendor/events.js still
@@ -267,8 +268,10 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
 
   // The binder link must be read BEFORE the write: the lockstep leg below needs to know
   // whether this event belongs to a binder, and the patch cannot tell us.
+  // TDW_04 B3: `kind` and `event_date` join the select — the anchor veto needs the event's
+  // identity and its PRE-MOVE date (Q-B3-3(ii)); after the write both are gone.
   const { data: before } = await supabase
-    .from('events').select('id, linked_binder_id')
+    .from('events').select('id, linked_binder_id, kind, event_date')
     .eq('id', eventId).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle();
 
   // Routed. `body`'s keys pass through as-is so undefined stays untouched and an
@@ -302,15 +305,38 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
   // NO LOOP: this is not a chat turn, so lockstepBinderToEvent — which only ever reads
   // a turn's result.tool_calls — cannot see this write. The guard is architectural,
   // exactly as chat.js's own lockstep comment documents for its half.
-  if (body.event_date && before && before.linked_binder_id) {
+  // ── THE ANCHOR VETO (Q-B3-3 + Q-B3-9's amendment, CE-ruled 2026-07-16) ────
+  // A BINDER'S DATE IS THE WEDDING. Before B3 this leg patched the binder from ANY
+  // linked event's date-edit — a trial move rewrote a wedding. The veto: the event
+  // must be OCCUPYING (asked positively — on a ternary set "not an appointment"
+  // would let `other`/`blocked` speak for a wedding) AND its PRE-MOVE date must
+  // have equalled the binder's (it WAS the wedding). There is no kind='wedding';
+  // a 14th kind was rejected at Q-B3-3.
+  //
+  // NOTE: this door is router.patch('/:eventId') — THE WEB DOOR. Victor cannot
+  // reach it; his leg is chat.js's. The witnessed F-04.46 specimen fired through
+  // chat, not here (turn log, 2026-07-15 21:49) — F-04.46's filing named this leg
+  // and the record is corrected at B3. Both legs carry the same brain by ruling
+  // (Q-B3-4's widening), so the cure did not depend on getting the attribution right.
+  if (body.event_date && before && before.linked_binder_id && isOccupying(before.kind)
+      && before.event_date) {
     try {
-      const uid = req.auth && req.auth.user_id;
-      if (uid) {
-        const { agentId } = await resolveAgentForVendor(supabase, vendor, uid);
-        if (agentId) {
-          await executeAndPatch(agentId, 'donna_date', {
-            binder_id: before.linked_binder_id, date: body.event_date,
-          });
+      // FAIL-CLOSED (F15's law): no truthful read of the binder, no propagation.
+      // PLANE: supabase is public-default; the explicit .schema('engine') hop targets
+      // `records` (binders) only — the enumerated hop, as eventWrite.js:230.
+      const { data: binder, error: binderErr } = await supabase
+        .schema('engine').from('records')
+        .select('date').eq('id', before.linked_binder_id).maybeSingle();
+      const isAnchor = !binderErr && binder && binder.date && binder.date === before.event_date;
+      if (isAnchor) {
+        const uid = req.auth && req.auth.user_id;
+        if (uid) {
+          const { agentId } = await resolveAgentForVendor(supabase, vendor, uid);
+          if (agentId) {
+            await executeAndPatch(agentId, 'donna_date', {
+              binder_id: before.linked_binder_id, date: body.event_date,
+            });
+          }
         }
       }
     } catch (e) {

@@ -148,7 +148,7 @@ Unifying any two **is F-04.36's regression**, and it has already happened once.
 10. `node --check` + engine `tsc` + PWA `tsc --noEmit` clean; migrations applied per protocol with information_schema proof.
 
 ## 5. FOUNDER SMOKE (phone)
-Block an evening from the day sheet → ask Victor to book that evening, receive the clash in his voice, force it → watch both on the grid → move a booking to a muhurat day, read the diamond → open a day with a milestone due, mark paid → tell Victor "Kaaya's date moved to the 18th" and watch the calendar follow the binder.
+**AMENDED 2026-07-16 (Q-B3-8(iii), CE-ruled) — this smoke instructed the founder to FORCE a booking onto a block, which the ratified `DATE_BLOCKED` vocabulary forbids by name (*"a block is a stated refusal, not a risk; force overriding refusals would make 'blocked' mean 'blocked unless someone is confident'"*). It now teaches the vocabulary instead of violating it.** **THE FORCE DEMO (capacity):** a second shoot on a full slot → receive the `capacity` clash in his voice → **force it** → watch both on the grid. **THE BLOCK DEMO (its opposite):** block an evening from the day sheet → ask Victor to book that evening → receive **`date_blocked`** in his voice → **it cannot be forced** → unblock, then book — two deliberate acts, both witnessed, the honest path shown → move a booking to a muhurat day, read the diamond → open a day with a milestone due, mark paid → tell Victor "Kaaya's date moved to the 18th" and watch the calendar follow the binder.
 
 ## 6. NATIVE-IMPLICATIONS CLAUSE
 Grid/rail/day-sheet are presentational over the one `day` endpoint — RN port is layout work only. eventWrite/occupancy are pure backend. No gestures beyond tap (Move is a picker, not drag) — deliberate for parity.

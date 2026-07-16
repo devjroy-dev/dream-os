@@ -69,7 +69,7 @@ async function createLead(supabase, vendorId, params) {
       // TDW_02 P3: write-first draft state, computed at the single write point.
       draft_meta:    leadDraftMeta({ name, phone, wedding_date, wedding_city, budget_max }, 'owner'),
     })
-    .select('id, name, phone, email, wedding_date, wedding_date_precision, wedding_city, state, source, client_id, draft_meta, created_at')
+    .select('id, name, phone, email, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, client_id, draft_meta, created_at')
     .single();
 
   if (error) return { ok: false, error: `Could not create lead: ${error.message}` };
@@ -132,7 +132,7 @@ async function updateLead(supabase, vendorId, leadId, patch) {
     .eq('id', leadId)
     .eq('vendor_id', vendorId)
     .is('deleted_at', null)
-    .select('id, name, phone, email, wedding_date, wedding_date_precision, wedding_city, state, source, client_id, draft_meta, created_at')
+    .select('id, name, phone, email, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, client_id, draft_meta, created_at')
     .maybeSingle();
 
   if (!lead && !error) return { ok: false, error: 'Lead not found.' };

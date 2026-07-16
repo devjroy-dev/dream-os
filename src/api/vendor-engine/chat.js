@@ -32,6 +32,7 @@ const { runHarvest } = require('../../agent/harvest');                      // T
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
 const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
+const { OCCUPYING_KINDS, isOccupying } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set (subset proposal §3, CE-ratified)
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
 const { scrubText } = require('../../lib/vendor/scrub');        // TDW_04 B2 — F-04.38
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
@@ -399,12 +400,23 @@ async function mutateEvents(req, result) {
       const r = await writeEvent(req.app.locals.supabase, {
         vendorId: req.vendor.id, surface: 'pwa', source: 'victor', event_id: ev.id, ...patch,
       });
-      // Lockstep: a linked event's date moved -> carry the binder's date along, through Donna's hand
-      // (the binder is engine-owned, so it goes through donna_date — snapshot patched, trail written).
-      // VERBATIM from B1. The charter relocates this leg unchanged; only its sibling's raw
-      // write moved.
+      // ── THE ANCHOR VETO (Q-B3-3 + Q-B3-9's amendment, CE-ruled 2026-07-16) ──
+      // Lockstep: a linked event's date moved -> carry the binder's date along, through
+      // Donna's hand (the binder is engine-owned, so it goes through donna_date — snapshot
+      // patched, trail written). VERBATIM from B1 except the veto.
+      //
+      // THIS IS THE LEG THAT REWROTE MEERA'S WEDDING — witnessed, turn log 2026-07-15
+      // 21:49 (donna_edit_event on the trial; binder written 697ms later by this line).
+      // F-04.46 was FILED against T11, the CRUD door — which is router.patch('/:eventId')
+      // and cannot be reached from chat at all. Q-B3-4's widening is what saved the cure:
+      // had "only T11" been ruled, the fix would have landed on the leg that never fires
+      // from Victor and left THIS one live. F-04.38's twin lesson, third instance.
       if (r && r.ok && patch.event_date && ev.linked_binder_id) {
-        try { await executeAndPatch(req.agentId, 'donna_date', { binder_id: ev.linked_binder_id, date: patch.event_date }); }
+        try {
+          if (await isWeddingAnchor(req, ev, ev.linked_binder_id)) {
+            await executeAndPatch(req.agentId, 'donna_date', { binder_id: ev.linked_binder_id, date: patch.event_date });
+          }
+        }
         catch (e2) { console.warn('[vendor-e chat:lockstep e->b]', e2.message); }
       }
       done.push(r && r.ok ? { action: 'edit', ok: true, event: r.event || ev } : { action: 'edit', ok: false });
@@ -437,16 +449,74 @@ function mutationLines(done) {
       : `Updated: ${e.title} — ${when}. The calendar's set.`;
   }).join('\n'));
 }
+// ── THE ANCHOR RULE (Q-B3-3 + Q-B3-9's amendment, CE-ruled 2026-07-16) ────
+//
+// "Only a wedding-anchor event's date-edit may write the binder's date."
+// There is no kind='wedding' — CALENDAR_KINDS is thirteen and none of them is
+// that (verified at B3; a 14th kind was rejected). So the anchor is proven by
+// the two facts the estate already holds:
+//
+//   (i)  the event is OCCUPYING (occupancy.js — shoot/family/ceremony). Asked
+//        POSITIVELY. On a ternary set, "not an appointment" is NOT "occupying":
+//        it would let `other` and `blocked` speak for a wedding (Q-B3-9).
+//   (ii) its PRE-MOVE date equalled the binder's date — i.e. it WAS the wedding
+//        before it moved. Testing the POST-move date would compare the new date
+//        to the old binder date, never match, and leave the leg permanently dead.
+//
+// FAIL-CLOSED (F15's law): no truthful read of the binder, no propagation. A
+// binder with no date at all can have no anchor — which is exactly the state
+// Meera's was in when this machinery destroyed her trial.
+//
+// PLANE: req.app.locals.supabase is PUBLIC-DEFAULT (src/index.js:37); the
+// explicit .schema('engine') hop targets `records` (binders) and nothing else.
+// Same enumerated hop as eventWrite.js:230 and api/vendor/invoices.js:80.
+async function isWeddingAnchor(req, evBefore, binderId) {
+  if (!evBefore || !isOccupying(evBefore.kind)) return false;
+  if (!evBefore.event_date) return false;
+  const { data: binder, error } = await req.app.locals.supabase
+    .schema('engine')
+    .from('records')
+    .select('date')
+    .eq('id', binderId)
+    .maybeSingle();
+  if (error || !binder) return false;          // fail-closed
+  if (!binder.date) return false;              // no date -> no anchor
+  return binder.date === evBefore.event_date;
+}
+
 // Lockstep the other way: when Donna moves a binder's date (donna_date / donna_edit carrying a date),
-// the linked calendar event follows. The calendar is door-owned, so the event is written raw here
-// (same as every other event write). Half A's binder write is a post-turn door action, never a
-// donna_call in result, so this never sees it — no loop.
+// the linked calendar event follows — BUT ONLY IF THAT EVENT IS THE ENGAGEMENT.
+// Half A's binder write is a post-turn door action, never a donna_call in result,
+// so this never sees it — no loop.
+//
+// ── F-04.43's WALL (Q-B3-9's amendment, CE-ruled 2026-07-16) ──────────────
+// A BINDER'S DATE IS THE WEDDING. A LINKED EVENT IS USUALLY AN APPOINTMENT
+// LEADING UP TO IT. This leg used to drag EVERY linked event onto the binder's
+// date. THE SPECIMEN, read from the turn log at B3 (2026-07-15 20:20:22): the
+// founder filed "Meera Kapoor … wedding in November"; donna_edit wrote the
+// binder's date NULL -> 2026-11-01 (a genuine FIRST write — donna_history in the
+// same turn showed six writes, not one of them a date); this leg then dragged
+// "Meera - trial" (kind='trial') off 30 Jul onto the wedding. Silently.
+//
+// F-04.43's filed headline — "the binder already carried 2026-11-01; re-asserting
+// an existing date is enough" — WAS FALSE, and corrected on the record at B3.
+// The old != new sentinel below CANNOT stop that crime: old and new differ. The
+// KIND CHECK is what stops it. An appointment's date is its own; a wedding moving
+// has no authority over a trial's calendar.
 async function lockstepBinderToEvent(req, result) {
+  // The gate (Q-B3-1 as re-scoped = F-04.48's cure): PROPAGATE ONLY A WITNESSED
+  // CHANGE. This leg reads call.INPUT, never the write's outcome — so before B3
+  // a donna_date that ERRORED still moved the vendor's calendar off a write that
+  // never landed. Status-sniffing on the result string, exactly as chat.js:339's
+  // isErr does — never value-parsing out of prose (eventWrite.js:472-475's rule).
+  const isErr           = (r) => typeof r === 'string' && r.startsWith('ERROR');
+  const isDateUnchanged = (r) => typeof r === 'string' && r.startsWith('DATE UNCHANGED');
   const moves = new Map(); // binder_id -> date (last wins)
   const collect = (call) => {
     if (!call || !call.input) return;
     if ((call.name === 'donna_date' || call.name === 'donna_edit') && call.input.binder_id
         && typeof call.input.date === 'string' && call.input.date.trim()) {
+      if (isErr(call.result) || isDateUnchanged(call.result)) return; // no write landed -> nothing to mirror
       moves.set(String(call.input.binder_id), call.input.date.trim());
     }
   };
@@ -457,12 +527,16 @@ async function lockstepBinderToEvent(req, result) {
       // ONE row by id, so the predicate becomes a RESOLVE and each match goes through the
       // door. Same rows, same rule, one writer. (Identical shape to availability.js's
       // unblock, ratified at 4a: the guard moves into the constitution, not sideways.)
+      //
+      // .in('kind', OCCUPYING_KINDS) IS F-04.43's CURE. The filter is pushed to the
+      // database so an appointment is never even resolved, let alone written.
       const { data: evs, error } = await req.app.locals.supabase
         .from('events')
         .select('id')
         .eq('vendor_id', req.vendor.id)
         .eq('linked_binder_id', binderId)
-        .neq('state', 'cancelled');
+        .neq('state', 'cancelled')
+        .in('kind', OCCUPYING_KINDS);
       if (error || !evs || !evs.length) continue;
       for (const ev of evs) {
         await writeEvent(req.app.locals.supabase, {
