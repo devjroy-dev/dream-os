@@ -104,6 +104,46 @@ function donnaWitnessLines(vendorId, result) {
   return lines;
 }
 
+// ── TDW_06 D-6 — F-04.81's MECHANICAL HALF (the §0.2 report's trigger, ruled). ──
+// THE DISEASE: Donna searched, found nothing, and ended her segment asking
+// ("Want me to log her as a fresh lead?" — 17:08:36); loop.ts ended the turn on
+// Harvey's prose; the question died in the turn with zero rows, and the vendor
+// read the narration as done. The machine asked itself for permission and hung up.
+// THE TRIGGER, mechanical (D-6, ruled): donna.ts's pendingToolUseId — set EXACTLY
+// when she spoke ALONE (work.length === 0), "she asked and is waiting" — surfaced
+// by loop.ts as TurnResult.pendingDonnaQuestion (her final message text, or empty).
+// No language detection; Q-R-3's aesthetic, one rule further in.
+// THE GUARD (D-6's three clauses, verbatim): turn ended (this post-turn door holds
+// the result) AND pendingDonnaQuestion non-empty AND ZERO WRITE HANDS in the
+// turn's NESTED donna_calls — the only convicting reader, per D-1. The walk reuses
+// the one home's own vocabulary: actionKind decides "write", and her voice
+// (listen_harvey_talk) is fenced by name exactly as chipFiling fences it — it
+// rides donna_calls and actionKind would misread it as a write. The top level is
+// never walked (dear_donna_talk is not a hand).
+// THE LINE rides the witness machinery's own home: composedTail for persistence
+// (the LAST element — matching its live position on the wire, so the stored and
+// live renderings stay twins in order as well as bytes) and the wire for live.
+// COPY, minted by the CE for the founder's veto (shipped byte-exact here):
+//   Still open — Donna asked: {her question}. Answer it and she'll finish the filing.
+// RENDERING DISCLOSURE, on the veto set not silently adapted: every rendering of
+// this slot rides scrubText (CE-18/F-04.27, the persona firewall), which rewrites
+// \bDonna\b -> Operator — the vendor reads "Still open — Operator asked: …". Both
+// forms sit in front of the founder at delivery; the builder's bytes are the
+// ruling's own letters.
+const OPEN_QUESTION_LINE = (q) => `Still open — Donna asked: ${q}. Answer it and she'll finish the filing.`;
+function donnaOpenLine(result) {
+  const q = result && typeof result.pendingDonnaQuestion === 'string'
+    ? result.pendingDonnaQuestion.trim() : '';
+  if (!q) return '';
+  for (const call of (result && result.tool_calls) || []) {
+    for (const dc of (call && call.donna_calls) || []) {
+      if (!dc || dc.name === 'listen_harvey_talk') continue; // her voice is not a hand (D-2's fence)
+      if (actionKind(dc.name) === 'write') return '';        // a write hand fired — nothing stands open
+    }
+  }
+  return OPEN_QUESTION_LINE(q);
+}
+
 function translateBeat(e, vendorId) {
   if (!e || !e.type) return null;
   switch (e.type) {
@@ -737,7 +777,14 @@ function mutationLines(done) {
 // storage-only. Everything below it stays byte-identical, both routes.
 // ADDITIVE: absent or empty `witnessed` returns the pre-cure bytes exactly (older
 // callers and the sealed b6_sitting2_bench unaffected — proven both ways).
-function composedTail({ witnessed, documents, booked, refused, mutated, advised, blocked, unblocked }) {
+// TDW_06 D-6 — `open` joins the list LAST, and unlike `witnessed` it IS appended
+// to the wire by both routes (it has no chip to render it live; the wire IS its
+// live rendering, ruled). Last here so stored order equals live order — twins.
+// ADDITIVE: absent or empty `open` returns the pre-D-6 bytes exactly (older
+// callers and the sealed benches unaffected — proven both ways in the bench).
+// Scrubbed here for the witnessed slot's own stated reason PLUS the line's own:
+// it quotes Donna's sentence by name, and the firewall owns that rendering.
+function composedTail({ witnessed, documents, booked, refused, mutated, advised, blocked, unblocked, open }) {
   const parts = [];
   // scrubText for blockLines' own stated reason: these summaries carry a
   // vendor-supplied NAME back to the wire, and a name is free text. The chip
@@ -750,6 +797,7 @@ function composedTail({ witnessed, documents, booked, refused, mutated, advised,
   if (advised && advised.length)     parts.push(advisoryLines(advised));
   if (blocked && blocked.length)     parts.push(scrubText(blockLines(blocked)));
   if (unblocked && unblocked.length) parts.push(scrubText(unblockLines(unblocked)));
+  if (open)                          parts.push(scrubText(open)); // D-6, last by design
   return parts.length ? '\n\n' + parts.join('\n\n') : '';
 }
 
@@ -1237,13 +1285,20 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const unblocked = await unblockDates(req.app.locals.supabase, req.vendor.id, result);
       if (unblocked.length) send({ type: 'text_delta', text: '\n\n' + scrubText(unblockLines(unblocked)) });
 
+      // TDW_06 D-6 — F-04.81's mechanical half: the open-question line. The wire
+      // IS its live rendering (no chip exists for a hand that never fired); the
+      // stored twin rides composedTail below, last, same bytes through the same
+      // scrub. Sent after every door line — the open state speaks last.
+      const openLine = donnaOpenLine(result);
+      if (openLine) send({ type: 'text_delta', text: '\n\n' + scrubText(openLine) });
+
       await retroLinkOnFile(req, result);
       await lockstepBinderToEvent(req, result);
       await logChatActivity(req, result); // TDW_04 B0 item 3
       // TDW_04 B6 sitting 2 — Q-B4-6(b): the door lines join the thread's row.
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
       await persistComposedReply(req, result,
-        composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked }));
+        composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
@@ -1293,8 +1348,13 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     // the cure's target and both routes store. This route's RETURNED `reply` below
     // is deliberately untouched (curl/eval bytes are existing behaviour, and this
     // route has no chip to twin); the divergence is one line, disclosed.
+    // TDW_06 D-6: `open` joins on both routes too — and unlike `witnessed` it ALSO
+    // joins this route's returned reply below, following the door-line convention
+    // (booked/refused/mutated all do): a NEW line has no curl bytes to preserve,
+    // and the line's live rendering is text on every surface.
+    const openLine = donnaOpenLine(result);
     await persistComposedReply(req, result,
-      composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked }));
+      composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
 
     let reply = scrubText(result.reply); // CE-18: the firewall covers the reply itself
     // F-04.33: this route hand-rolled the invoice line instead of calling the builder —
@@ -1306,6 +1366,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     if (advised.length) reply += '\n\n' + advisoryLines(advised);   // TDW_04 B4 — Q-B4-5(b)
     if (blocked.length) reply += '\n\n' + scrubText(blockLines(blocked));       // §1.5
     if (unblocked.length) reply += '\n\n' + scrubText(unblockLines(unblocked)); // §1.5
+    if (openLine) reply += '\n\n' + scrubText(openLine);                        // TDW_06 D-6, last
 
     fireHarvest(req, message, result); // TDW_02 P4 — response is fully built; fires post-return
     const toolNames = (result.tool_calls || []).map((t) => t.name);
@@ -1390,3 +1451,8 @@ module.exports.composedTail          = composedTail;
 module.exports.donnaWitnessLines     = donnaWitnessLines;
 module.exports.chipFiling            = chipFiling;
 module.exports.translateBeat         = translateBeat;
+// ── TEST SEAM (TDW_06 D-6) — same precedent, same reason ──────────────────
+// donnaOpenLine is where F-04.81's mechanical half lives (the guard's three
+// clauses + the minted line). b6_open_question_bench drives the REAL one, with
+// the REAL composedTail, persistComposedReply and scrubText behind it.
+module.exports.donnaOpenLine         = donnaOpenLine;

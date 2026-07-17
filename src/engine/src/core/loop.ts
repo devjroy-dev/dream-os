@@ -54,6 +54,16 @@ export type TurnResult = {
   // :523 — the door's composed-reply save (F-04.41's cure) patches the door lines
   // onto exactly this row, never a guessed one. Absent when the save missed.
   assistant_message_id?: string;
+  // TDW_06 D-6 (F-04.81's mechanical half; the §0.2 report's proposed trigger,
+  // SITING RULED HERE): Donna's session ended this turn holding pendingToolUseId —
+  // she spoke ALONE (donna.ts: `work.length === 0` -> `pendingToolUseId = listen.id`),
+  // i.e. "she asked and is waiting for an answer" — and the turn ended before that
+  // answer could arrive. This field carries her final message text in exactly that
+  // state, and is absent/empty otherwise. A mechanical signal already on the wire,
+  // no language detection (Q-R-3's aesthetic, one rule further in). The door's guard
+  // (chat.js::donnaOpenLine) reads it beside the turn's nested donna_calls — the
+  // only convicting reader, per D-1.
+  pendingDonnaQuestion?: string;
 };
 
 // Live beats — surfaced as they happen, ONLY when runTurn is handed an onEvent
@@ -371,6 +381,12 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // The two-way exchange state, carried across Harvey's iterations within this turn.
   let donnaSession: DonnaSession | null = null; // Donna's live conversation, for resume
   let talks = 0;                                // Harvey<->Donna round-trips this turn
+  // TDW_06 D-6: her open question, tracked beside the session. Set from each
+  // exchange's own return — non-empty exactly while the session holds
+  // pendingToolUseId (she ended by speaking ALONE and is waiting); a later
+  // exchange that resumes and resolves her clears it, because runDonnaTurn
+  // resets pendingToolUseId per segment and only re-arms it on listen-alone.
+  let pendingDonnaQuestion = '';
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     // Victor's prose streamed token by token (victor_token) when a streaming door wired
@@ -438,6 +454,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
       messages = [...priorTurns, { role: 'user', content: message }]; // clean re-run on Sonnet
       donnaSession = null; // fresh exchange on the re-run
       talks = 0;
+      pendingDonnaQuestion = ''; // D-6: the re-run's exchange starts clean too
       continue;
     }
 
@@ -484,6 +501,10 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         // halves so the dialogue is legible: dear_donna_talk (Harvey -> Donna, with what
         // she actually did nested under it) and listen_harvey_talk (Donna -> Harvey).
         const said = donna.message.trim();
+        // TDW_06 D-6: pendingToolUseId is the trigger (donna.ts's listen-ALONE arm);
+        // her final message text is what the guard's line will quote. An exchange
+        // that resolved her (work+listen, or a fresh segment) writes '' here.
+        pendingDonnaQuestion = donna.session.pendingToolUseId ? said : '';
         const voiced = /^listen[,\s]+harvey/i.test(said) ? said : `Listen Harvey \u2014 ${said}`;
         // eslint-disable-next-line no-console
         console.log(`[D->H #${talks}] ${voiced}`);
@@ -584,5 +605,6 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     tokens: { input: totalIn, output: totalOut, cache_read: cacheRead, cache_write: cacheWrite },
     view: turnView,
     assistant_message_id: assistantMessageId || undefined, // Q-B4-6(b): the row the door may patch
+    pendingDonnaQuestion: pendingDonnaQuestion || undefined, // D-6: absent when no open question
   };
 }
