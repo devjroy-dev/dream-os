@@ -337,10 +337,16 @@ export type DonnaTurn = {
   input_tokens: number;
   output_tokens: number;
   // 02-HOTFIX (2026-07-15): cache buckets surfaced so the turn ledger sees her whole
-  // billing shape. Zero on today's anthropic path (she is uncached by design — Block
-  // 06 owns her cache); nonzero if a compat endpoint reports buckets or 06 caches her.
+  // billing shape. TDW_06 economics sitting: she IS cached now (DONNA_STATIC_PREFIX)
+  // — these carry her live cache writes/reads on the anthropic path, and compat-
+  // endpoint buckets where reported.
   cache_read_tokens: number;
   cache_write_tokens: number;
+  // F-04.87 (TDW_06 economics sitting): her provider downgrade SURFACED — before
+  // this, a failed non-anthropic hand fell back to Haiku with only a console line;
+  // the door's activity write, TurnResult, and every bench were blind to it (the
+  // gauntlet's L3 lane printed a PASS that was Haiku wearing DeepSeek's badge).
+  provider_downgrade?: boolean;
   mutated: boolean;
   view: ViewRow[] | null;   // rows a READ surfaced this segment (the peek's payload)
 };
@@ -364,6 +370,7 @@ export async function runDonnaTurn(
   const record = (name: string, input: unknown, result: string) => { toolCalls.push({ name, input, result }); onAction?.({ name, input, result }); };
   let inTok = 0, outTok = 0, cost = 0, mutated = false;
   let cacheRead = 0, cacheWrite = 0; // 02-HOTFIX: her buckets, priced and surfaced
+  let providerDowngrade = false;     // F-04.87: her fidelity, surfaced on the return
   let view: ViewRow[] | null = null; // last READ's rows win — that's THIS ask's view
 
   const donnaDynamic =
@@ -426,6 +433,7 @@ export async function runDonnaTurn(
       if (transport && transport.provider !== 'anthropic') {
         // eslint-disable-next-line no-console
         console.warn(`[provider_downgrade] donna: ${transport.provider} failed (${(e as Error).message}) — Haiku for the rest of this segment`);
+        providerDowngrade = true; // F-04.87: surfaced, never console-only
         transport = null;
         donnaModel = MODELS.haiku;
         i--;
@@ -566,6 +574,7 @@ export async function runDonnaTurn(
     output_tokens: outTok,
     cache_read_tokens: cacheRead,
     cache_write_tokens: cacheWrite,
+    provider_downgrade: providerDowngrade || undefined, // F-04.87
     mutated,
     view,
   };

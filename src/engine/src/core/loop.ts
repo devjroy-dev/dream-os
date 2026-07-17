@@ -486,7 +486,24 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         console.log(`[H->D #${talks}] ${msg}`);
 
         args.onEvent?.({ type: 'dispatch', to: 'donna', message: msg });
-        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, (args.donnaTransport ?? transport) ?? undefined, args.donnaModelOverride ?? args.modelOverride);
+        // ── F-04.86 CURE (TDW_06 economics sitting; convicted LIVE by the gauntlet's
+        // L2 lane, reproduced at the bench): after a Victor-side provider downgrade
+        // (`transport = null` above), the old wiring handed Donna the NATIVE anthropic
+        // client (`donnaTransport ?? transport` → null → undefined) while STILL passing
+        // `args.modelOverride` — the foreign model string against Anthropic's API, a
+        // hard 404, the turn dead. Spec P5's contract ("Haiku for the rest of this
+        // turn") now covers BOTH hands: on downgrade, a one-model-both-hands route
+        // sends her native-Haiku (transport undefined, model undefined). An explicit
+        // donna split (args.donnaTransport) is untouched — her own catch governs her leg.
+        const donnaTransportForSeg = args.donnaTransport ?? (providerDowngrade ? undefined : (transport ?? undefined));
+        const donnaModelForSeg = args.donnaTransport
+          ? args.donnaModelOverride
+          : (providerDowngrade ? undefined : (args.donnaModelOverride ?? args.modelOverride));
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, donnaTransportForSeg, donnaModelForSeg);
+        // F-04.87 (same sitting): her downgrade folds into the turn's flag — the door's
+        // activity write and TurnResult see BOTH hands' fidelity, and a bench/gauntlet
+        // can void a candidate's turn mechanically instead of trusting a console line.
+        if (donna.provider_downgrade) providerDowngrade = true;
         donnaSession = donna.session; // persist so the next dear_donna_talk RESUMES her
         totalIn += donna.input_tokens;
         totalOut += donna.output_tokens;

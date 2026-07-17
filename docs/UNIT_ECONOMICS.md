@@ -136,3 +136,17 @@ Wanted from the founder: the real per-million rates he pays for
 PRICING table gains one honest line each on his numbers. Until then the ceiling
 law stands and every comparison in this doc reads conservative-against-DeepSeek.
 
+
+## 5 · THE FIRST LIVE GAUNTLET RUN (2026-07-18, founder-run) — the cache MEASURED, the lanes read
+**THE DONNA CACHE, WITNESSED:** L1 S1 (cold window) `in=2065 cw=17998 cr=17998` → **₹2.78**;
+warm turns `cr=35996 cw=0` → **₹0.74–0.80** — against the ₹9.59-class BEFORE row above.
+The thesis line ("collapse toward ~₹1–2") is now a measured shape. (Gauntlet turns are
+leaner than production dispatch turns — no handbook/activity blocks under the desk double
+— so production's AFTER SQL remains the final figure; slot still open.)
+**LANE VERDICTS:** L1 = the real datum (S1–S2c, S4 pass; **S3 FAIL — the incumbent never
+dispatched on "Unblock 18 December.", the F-04.71 class on Haiku itself**). L2/L3 = **VOID**
+— L2 died on F-04.86 (a live production bug: post-downgrade the foreign model string hit
+the native Anthropic client, 404), L3's PASS was Haiku answering behind console-only
+downgrades (F-04.87). Both cured in ZIP E3; both flip proposals VOID; **no DeepSeek verdict
+exists yet, either role** — the v2 gauntlet's preflight probe diagnoses the dead wire
+before any lane spends a turn. The re-run is the founder's, at leisure.

@@ -65,6 +65,21 @@
 // lane it prints the REVERSE proposal for any tier currently routing that
 // role to the failed candidate (the GLM precedent binds both directions).
 //
+// V2 (second delivery, after the founder's first live run convicted the rig and
+// the estate — F-04.86/F-04.87, cured in this ZIP's loop.ts/donna.ts):
+//   · PREFLIGHT PROBE: before any lane spends a turn, each non-anthropic provider
+//     gets ONE tiny direct llmCreate call; on failure the probe prints the raw
+//     error SHAPE (name/status/message/stack top — never a key) and the lanes
+//     needing that provider are declared NOT RUN, stated. The first run burned
+//     twelve downgraded turns to say what the probe now says in one.
+//   · THE VOID IS WHOLE: r.provider_downgrade now surfaces BOTH hands (F-04.87's
+//     cure) — a Haiku answer wearing a DeepSeek badge voids the turn mechanically.
+//   · VICTOR'S PROSE PRINTED per scenario — S3's costume-vs-honest-refusal is
+//     readable on the record, not inferred.
+//   · rig selftest gains [5]: a throwing deepseek transport must downgrade, the
+//     void must fire, the lane must FAIL — the machinery proven on the failure
+//     class the first run actually hit.
+//
 // DISCLOSED LIMITS OF THE DESK RUN: no handbook/SMM lens rows exist under the
 // double (the trap surface is Donna's full hand + the dispatch line, which is
 // where every named specimen lived); the calendar snapshot is a fixture; the
@@ -110,6 +125,30 @@ Module._load = function (req) {
 };
 const { actionKind } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
 fenceUp = false;
+// Selftest-only SDK fence: the rig's downgrade profile drives the engine's NATIVE
+// fallback clients, which must never network at the desk. Live mode keeps the real SDK.
+if (SELFTEST) {
+  const rigNative = [];
+  global.__rigNativeCalls = rigNative;
+  const scriptNative = (params) => {
+    const names = (params.tools || []).map((t) => t.name);
+    const isDonna = names.includes('listen_harvey_talk');
+    rigNative.push({ hand: isDonna ? 'donna' : 'victor', model: params.model });
+    if (isDonna) return { content: [{ type: 'tool_use', id: 'lh-n', name: 'listen_harvey_talk', input: { message: 'Nothing pending.' } }], usage: { input_tokens: 10, output_tokens: 5 } };
+    const answered = (params.messages || []).some((m) => Array.isArray(m.content) && m.content.some((b) => b.type === 'tool_result'));
+    if (!answered) return { content: [{ type: 'tool_use', id: 'dd-n', name: 'dear_donna_talk', input: { message: 'Check it.' } }], usage: { input_tokens: 10, output_tokens: 5 } };
+    return { content: [{ type: 'text', text: 'Handled.' }], usage: { input_tokens: 10, output_tokens: 5 } };
+  };
+  const _load2 = Module._load;
+  Module._load = function (req) {
+    if (req === '@anthropic-ai/sdk') {
+      function Anthropic() { this.messages = { create: async (p) => scriptNative(p), stream: (p) => ({ on() {}, finalMessage: async () => scriptNative(p) }) }; }
+      Anthropic.default = Anthropic;
+      return Anthropic;
+    }
+    return _load2.apply(this, arguments);
+  };
+}
 for (const k of Object.keys(require.cache)) if (/engine[\\/]dist[\\/]/.test(k)) delete require.cache[k];
 if (typeof actionKind !== 'function') { console.error('actionKind seam absent — uncured tree; the gauntlet convicts with the one home only.'); process.exit(1); }
 
@@ -265,6 +304,8 @@ async function runLane(lane, runTurn, mkTransports) {
     const tok = r.tokens || {};
     console.log(`  ${sc.id} ${ok ? 'PASS' : 'FAIL'}  ${ceil}${(r.cost_inr ?? 0).toFixed(2)}  in=${tok.input ?? 0} out=${tok.output ?? 0} cr=${tok.cache_read ?? 0} cw=${tok.cache_write ?? 0}${downgraded ? '  [DOWNGRADED — fidelity failure, the verdict is not the candidate\'s]' : ''}${escaped ? '  [ESCALATED — Sonnet boarded; NO-Sonnet violated]' : ''}`);
     console.log(`      ${v.why}`);
+    const prose = String(r.reply || '').replace(/\s+/g, ' ').slice(0, 220);
+    if (prose) console.log(`      VICTOR'S PROSE: ${prose}`);
     results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped });
   }
   const total = results.reduce((s, x) => s + x.cost, 0);
@@ -417,8 +458,23 @@ function scriptedTransports(profile) {
     T('narrator FAILS S1', narr.results.find((r) => r.sc.id === 'S1').ok === false);
     T('narrator FAILS S2b (the imperative at depth)', narr.results.find((r) => r.sc.id === 'S2b').ok === false);
 
-    T('every rig turn carried a meter reading (cost_inr present, the fixed meter speaking)', [honest, costume, probe, narr].every((l) => l.results.every((r) => typeof r.cost === 'number')));
-    T('no rig turn escalated (NO Sonnet by construction — tier entry)', [honest, costume, probe, narr].every((l) => l.results.every((r) => !r.escalated)));
+    console.log('\n  [5] the DOWNGRADE profile (the first live run\'s own failure class): a throwing');
+    console.log('      deepseek transport must downgrade to the native fallback, the surfaced flag');
+    console.log('      must void the turn, and the lane must FAIL — Haiku never wears the badge:');
+    const throwing = { provider: 'deepseek',
+      stream: () => ({ on() {}, finalMessage: async () => { throw new Error('rig-scripted deepseek failure'); } }),
+      create: async () => { throw new Error('rig-scripted deepseek failure'); } };
+    const dgLane = { id: 'RIG', label: 'downgrade profile', ceiling: true,
+      wiring: () => ({ tierOverride: 'entry', modelOverride: DEEPSEEK, transport: throwing }) };
+    const dg = await runLane(dgLane, runTurn, () => ({}));
+    T('downgrade profile: every turn survived (the native fallback carried it — F-04.86\'s cure live)', dg.results.every((r) => !/crashed/.test(r.why)));
+    T('downgrade profile: every turn is marked DOWNGRADED (the surfaced flag, both hands)', dg.results.every((r) => r.downgraded === true));
+    T('downgrade profile: the lane FAILS whole (a downgraded turn is never the candidate\'s verdict)', dg.laneOk === false);
+    const rigNative = global.__rigNativeCalls || [];
+    T('downgrade profile: NO native call carried the foreign model string (the 404 shape dead in the rig too)', rigNative.length > 0 && rigNative.every((c) => c.model === HAIKU));
+
+    T('every rig turn carried a meter reading (cost_inr present, the fixed meter speaking)', [honest, costume, probe, narr, dg].every((l) => l.results.every((r) => typeof r.cost === 'number')));
+    T('no rig turn escalated (NO Sonnet by construction — tier entry)', [honest, costume, probe, narr, dg].every((l) => l.results.every((r) => !r.escalated)));
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
     process.exit(fail === 0 ? 0 : 1);
@@ -430,11 +486,38 @@ function scriptedTransports(profile) {
   const hasDs = !!process.env.DEEPSEEK_API_KEY;
   if (!hasDs) console.log('DEEPSEEK_API_KEY absent — L2/L3 will be SKIPPED, stated; L1 (incumbent) runs alone.');
 
+  // ── PREFLIGHT PROBE (V2): one tiny direct call per non-anthropic provider.
+  // Prints the resolved SHAPE or the raw failure — the first run's twelve
+  // downgraded turns compressed into one diagnostic line. No key is ever printed.
+  let dsProbeOk = false;
+  if (hasDs) {
+    sec('PREFLIGHT — deepseek probe (one tiny call; its shape or its failure, on the record).');
+    try {
+      const { llmCreate } = require(path.join(ROOT, 'src/lib/llm.js'));
+      const resp = await llmCreate('deepseek', { model: DEEPSEEK, max_tokens: 16, messages: [{ role: 'user', content: 'Reply with the single word: ok' }] });
+      const shape = resp && typeof resp === 'object'
+        ? `keys=[${Object.keys(resp).join(',')}] content=[${(resp.content || []).map((b) => b.type).join(',')}] model=${resp.model ?? '?'} usage=${JSON.stringify(resp.usage ?? null)}`
+        : `RESOLVED NON-OBJECT: ${String(resp)}`;
+      console.log('  resolved: ' + shape);
+      dsProbeOk = !!(resp && Array.isArray(resp.content) && resp.content.length);
+      if (!dsProbeOk) console.log('  PROBE VERDICT: the call resolved but carries no content blocks — the facade/endpoint shape is the suspect, not the model\'s behaviour.');
+      else console.log('  PROBE VERDICT: the deepseek wire is alive — lanes L2/L3 run.');
+    } catch (e) {
+      const status = e && (e.status ?? e.statusCode);
+      console.log(`  PROBE FAILED: ${e && e.name}: ${e && e.message}${status ? ` (status ${status})` : ''}`);
+      const stack = String((e && e.stack) || '').split('\n').slice(1, 4).map((l) => l.trim()).join(' | ');
+      if (stack) console.log('  at: ' + stack);
+      console.log('  PROBE VERDICT: L2/L3 are NOT RUN — a dead wire yields no model verdict; fix the wire, re-run.');
+    }
+    if (!dsProbeOk) console.log('  (L1, the incumbent, still runs — its datum stands alone.)');
+  }
+  const runDs = hasDs && dsProbeOk;
+
   const live = liveTransports()();
   const lanes = [
     { id: 'L1', label: 'INCUMBENT — Victor Haiku · Donna Haiku (engine-native)', ceiling: false,
       wiring: () => ({ tierOverride: 'entry' }) },
-    ...(hasDs ? [
+    ...(runDs ? [
       { id: 'L2', label: 'DEEPSEEK-VICTOR — one model both hands (the non-anthropic law)', ceiling: true,
         wiring: () => ({ tierOverride: 'entry', modelOverride: DEEPSEEK, transport: live.deepseek }) },
       { id: 'L3', label: 'DEEPSEEK-DONNA — Victor Haiku native, her hand deepseek (LD-7 signature split shape)', ceiling: true,
@@ -454,7 +537,7 @@ function scriptedTransports(profile) {
   console.log('  The dispatch watch (the founder\'s, standing) remains the deep-thread evidence.');
   console.log('  ₹* = Haiku-priced ceiling on DeepSeek turns (the meter\'s never-invent-a-price law).');
 
-  if (hasDs) {
+  if (runDs) {
     sec('FLIP PROPOSALS (CE-gated; the GLM precedent binds both directions).');
     console.log('\n' + proposalSql('victor', outcomes.L2.laneOk));
     console.log('\n' + proposalSql('donna', outcomes.L3.laneOk));
