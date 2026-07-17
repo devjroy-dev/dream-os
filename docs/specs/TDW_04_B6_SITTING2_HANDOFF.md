@@ -36,3 +36,9 @@ Tool-verified work held throughout: every code claim in the paper and the filing
 ---
 
 **Next sitting opens on: the surfaces ruling (build S1 per the paper's split, if ruled) · T19's pasted result recorded into census + masterplan · the block handover if R-B6-8's conditions have all landed.**
+
+---
+
+## ADDENDUM — THE SMOKE TAIL (2026-07-17, same day; appended after the founder's live smoke on `7a9f8b3`)
+
+Every open item above except the surfaces ruling is now discharged: **Q-B4-6(b) founder-witnessed live** (the persisted both-halves row) · **T19 sealed `125000 / 3 / 6`** with every row named and one stated form-gap for the CE (no photographed header; four consistent pastes) · **F-04.68's attribution sealed one-to-one** · three new findings filed with block-B convictions (**F-04.69** budget_min read-omission, cure ruled-ready · **F-04.70** the laundered ₹50k → 06 · **F-04.71** the witness-costume fabrication class + the trigger-word dispatch gap → 06) · fixtures closed, Rhea + Nisha standing by founder ruling. Full record: FINDINGS_LOG's "ZIP B SMOKE + BLOCK-CLOSE TAIL" section. **The next sitting is the surfaces build, and it opens on the CE's ruling of `TDW_04_B6_SURFACES_PAPER.md` — nothing else stands between here and the block handover.**

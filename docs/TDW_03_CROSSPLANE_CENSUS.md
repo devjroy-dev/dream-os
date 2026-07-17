@@ -163,6 +163,47 @@ status page itself, either — the absence of an incident banner is evidence, no
 
 **⚠ THE BLOCK-CLOSE RUN REMAINS OWED AND UNDISCHARGED.** 04 is not closed — B4, B5 and 06 remain. **This is not
 that run.** It strengthens the standing baseline from *word* to *witness*; it does not retire the gate.
+**→ DISCHARGED BELOW, 2026-07-17 (B6 sitting 2) — see "T19 — THE BLOCK-CLOSE RUN, SEALED."**
+
+### T19 — THE BLOCK-CLOSE RUN, SEALED (B6 sitting 2, 2026-07-17; R-B6-6 executed — re-derived, the triple never carried)
+
+```
+oracle_outstanding  125000
+oracle_owed_count        3
+oracle_on_calendar       6
+```
+
+**Founder-run against prod, FOUR result sets across the sitting, mutually consistent:** `…/6` pre-cleanup → `…/7`
+mid-smoke (Zoya's shoot booked between runs — fixture motion, named below, not drift) → `…/6` post-cancel → `…/6`
+final, after the last fixture (the 18 Dec block) was mechanically soft-deleted — which cannot move the count:
+`kind='blocked'` was never in the oracle's BOOKED_KINDS leg. **`oracle_outstanding`/`oracle_owed_count` read
+`125000 / 3` in ALL FOUR runs — money untouched through an entire smoke sitting, a fabricated cancel, a fabricated
+₹50k lead figure, and a full fixture cleanup. The oracle's quietest and best sentence, four times.**
+
+**THE DELTA FROM THE SPINE BASELINE (`/4`), EXPLAINED ROW BY ROW — a companion read of the six rows behind the
+count was run and pasted (2026-07-17), so the number explains itself:** the four baseline rows stand (Ananya recce
+25 Jul · Meera trial 2 Aug · **Family wedding 3 Aug — MOVED from the baseline's 25 Jul by the FOUNDER'S OWN HAND
+through the calendar door, ledger-witnessed:** `event_update … 2026-08-03 · via calendar` at 2026-07-16 12:41,
+entity `c7035d2a` — explained, not filed · Meera wedding shoot 22 Nov) **plus two standing fixtures, kept by
+founder ruling recorded 2026-07-17: Rhea Referent Test - shoot (2 Dec) and Nisha Retro Test - recce (8 Dec — T12's
+living witness, in the row itself).** Zoya Persist Test - shoot: cancelled through the mechanical door
+(`event_update … via calendar`, 10:51:31, row `state='cancelled'` witnessed) and correctly absent from the count.
+**Every row in the six is named; nothing is residue.**
+
+**WHAT THIS SEAL WITNESSES, AND WHAT IT DOES NOT — stated because the proof-evidence law is above it.** The
+executor read four pasted result sets and one companion row-set, all from the same founder editor session that ran
+a dozen other prod reads this sitting (each returning live rows only prod holds). **The editor chrome — project /
+role / status banner — was NOT screenshotted for these runs; the executor asked twice and seals on the evidence in
+hand rather than a fifth request, with the limit NAMED: this entry carries pasted rows and cross-run consistency,
+not a photographed header.** The precedent is this file's own superseded-attestation entry: record what exists,
+name what it is, never paper the gap. **→ CE, accept-or-demand:** one screenshot of a re-run (read-only, free)
+upgrades this to the checker-sitting's full form at any time; the CE says whether the seal stands as-is or the
+photo is owed before the block-close handover.
+
+**Census + masterplan updated to this run in the same delivery, per R-B6-6.** **A green oracle is not a clean
+estate. It counts money and rows; it never asks whether a binder's date is a wedding.** This run was green while
+the same sitting's thread held two fabricated "unblocked" dones and one fabricated "Cancelled:" in the door-line's
+own costume (F-04.71). **Green again at block close, and green still does not mean clean.**
 
 **~~⚠ HOW THIS RECORD IS WITNESSED, STATED PLAINLY BECAUSE THE PROOF-EVIDENCE LAW IS ABOVE IT.~~ ❌ SUPERSEDED
 2026-07-16 AT THE CHECKER SITTING (CE-ratified; corrections convention — update in place, nothing deleted). The
