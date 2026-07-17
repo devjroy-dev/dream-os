@@ -263,15 +263,23 @@ const GOOD_JSON = JSON.stringify({ patches: [{ plane: 'typed', table: 'leads', i
     T('§3.3 the word escalation_model survives ONLY in prose (header/comment), never as a route field', !/escalation_model:\s/.test(src));
   }
 
-  sec('§4 — THE CEILING LAW: unknown models price at HAIKU rates (never invent a price).');
+  sec('§4 — THE PRICE LAW: founder-supplied rates are honest; everything else stays at the HAIKU ceiling.');
+  // ── LABELED AMENDMENT (TDW_06 economics sitting, ZIP E7; the R-B6-15 convention):
+  // §4.1 originally asserted deepseek === the Haiku ceiling — THE LAW'S OWN CONDITION
+  // CHANGED when the founder pasted DeepSeek's real per-M page (screenshots on the
+  // record 2026-07-18): never-invent-a-price now has a supplied price for exactly one
+  // model, so §4.1 flips to assert the HONEST rate and §4.4 is added to hold the
+  // ceiling for unknowns. glm (§4.2) stays at the ceiling — no founder number arrived.
   if (!distPresent) {
     console.log('  … skipped with §1 (dist absent) — calcCostInr IS the dist; the law is asserted');
     console.log('    only against the real meter, never a re-implementation.');
   } else {
     const { calcCostInr: c } = require(MODELS_DIST);
-    T('§4.1 deepseek-v4-flash prices at the Haiku ceiling (deliberate-conservative, OVER-stated)', c('deepseek-v4-flash', 1000000, 0, 0, 0) === c(HAIKU, 1000000, 0, 0, 0));
-    T('§4.2 glm-4.7-flash the same', c('glm-4.7-flash', 1000000, 1000, 0, 0) === c(HAIKU, 1000000, 1000, 0, 0));
-    T('§4.3 the cache buckets price at read 0.1x / write 1.25x (the decomposition the doc reads)', Math.abs(c(HAIKU, 0, 0, 1000000, 0) - 10) < 1e-9 && Math.abs(c(HAIKU, 0, 0, 0, 1000000) - 125) < 1e-9);
+    T('§4.1 deepseek-v4-flash prices at the FOUNDER-SUPPLIED rate ($0.14/M in -> ₹14 per M), no longer the ceiling', Math.abs(c('deepseek-v4-flash', 1000000, 0, 0, 0) - 14) < 1e-9 && c('deepseek-v4-flash', 1000000, 0, 0, 0) !== c(HAIKU, 1000000, 0, 0, 0));
+    T('§4.1b …and its AUTO-CACHE hit rate is the real $0.0028/M (₹0.28 per M read — the founder\'s ledger showed live hits)', Math.abs(c('deepseek-v4-flash', 0, 0, 1000000, 0) - 0.28) < 1e-9);
+    T('§4.2 glm-4.7-flash stays at the Haiku ceiling (no founder number — the law standing)', c('glm-4.7-flash', 1000000, 1000, 0, 0) === c(HAIKU, 1000000, 1000, 0, 0));
+    T('§4.3 anthropic cache buckets price at read 0.1x / write 1.25x — BYTE-IDENTICAL to pre-price-line math', Math.abs(c(HAIKU, 0, 0, 1000000, 0) - 10) < 1e-9 && Math.abs(c(HAIKU, 0, 0, 0, 1000000) - 125) < 1e-9);
+    T('§4.4 unknown models still price at the Haiku ceiling (never invent a price, unchanged)', c('never-seen-model-x', 1000000, 500, 0, 0) === c(HAIKU, 1000000, 500, 0, 0));
   }
 
   console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);

@@ -8,7 +8,7 @@ never invent a price) — every glm cost_inr below is OVER-stated.
 |---|---|---|---|---|
 | Full dispatch turn, Donna working | haiku | 48,617 | 9.59 | THE fire alarm: Victor's prefix is cached (his calls bill small); Donna is entirely UNCACHED — her system + ~20 tool schemas + segments bill full-rate 2–6×/turn. Block 06 ("Donna lens + cache + tier×role") owns the fix; this is its price tag. |
 | Snapshot-answered turn, no dispatch | haiku | 582 | 0.49 | The cheap path exists and works — Victor's cache signature (582 billed vs ~40k prefix). |
-| GLM chat turn (advisory) | glm-4.7-flash | 30,272 | 3.05* | cache_control stripped on non-anthropic (z law): the FULL prompt bills every turn. *Haiku-priced; real glm cost is far lower. |
+| GLM chat turn (advisory) | glm-4.7-flash | 30,272 | 3.05* | cache_control stripped on non-anthropic (z law): the FULL prompt is SENT every turn. *Haiku-priced; real glm cost is far lower. **CORRECTED at ZIP E7 (2026-07-18): "bills every turn" was half-true — DeepSeek's context caching is AUTOMATIC server-side (no cache_control needed; the strip never disabled it), and the founder's production ledger shows 30k–121k cache_read_tokens on live deepseek rows billed at the real $0.0028/M hit rate. The full prompt travels; it does not bill full.** |
 | GLM harvest runs | glm-4.7-flash | ~2–3k/run | — | Harvest's lane: small prompts, strict JSON, proven in prod (harvest_patch rows 15:06/15:10 on the GLM route). |
 
 ## Bench verdict (acceptance 6, live, 2026-07-14)
@@ -184,3 +184,25 @@ tombstone. **Zero Sonnet reachable from any tier — b06_sonnet_bench 13/13, fai
 Tier matrix post-E6 (pending the founder's E-1 SQL run): trial anthropic/haiku · essential
 **anthropic-haiku + donna-deepseek split** · signature anthropic-haiku + donna-deepseek (LD-7) ·
 prestige anthropic-haiku (starts haiku, no escalate) · harvest deepseek. Sonnet: unreachable.
+
+## 8 · THE HONEST PRICE LINE + THE THREE PASTES (2026-07-18, founder-run; ZIP E7)
+**The price (founder's paste, api-docs.deepseek.com screenshots on the record):**
+deepseek-v4-flash = **$0.14/M input (cache miss) · $0.0028/M input (cache hit) · $0.28/M
+output** — vs Haiku $1/$5. models.ts now carries it (per-model cache rates; anthropic
+multipliers preserved as defaults, Haiku/Sonnet math byte-identical, benched). The
+never-invent-a-price law STANDS for glm and every unknown. deepseek-chat/-reasoner
+deprecate 2026-07-24 (their page) — not our route, recorded.
+**THE AUTO-CACHE DISCOVERY:** DeepSeek's context caching is AUTOMATIC — the z-law strip
+never disabled it, and the founder's own ledger proves live hits (30k–121k
+cache_read_tokens on production deepseek rows). Real rows restated honestly by the
+cured meter: the 17:08:36 outage-evening row **₹2.24 (ceiling) → ₹0.15 honest**; the
+17:03:45 dispatch-watch row **₹5.46 → ₹0.71**. The split's economics are ~7–15×
+better than even the ceiling record showed.
+**Harvest census:** 0 rows / ₹0 — the meter armed, no WA harvest fired since deploy;
+the stated gap, climbs with the first inbound.
+**The 20-row paste:** a BEFORE-boundary snapshot — every row predates the 23:08
+essential flip; the ₹0.62–0.68 rows match the pre-existing cheap-path shape (identical
+at 16:17:20 pre-deploy), so NO production Donna-cache claim from it (the desk gauntlet's
+cold-₹2.79/warm-₹0.74 measurement stands alone). What it DOES seal: the dispatch-watch
+evening's own ledger rows (17:03–17:32) and the auto-cache proof above. **The true
+production AFTER = the same SQL after a day of chatting on the split config — slot open.**

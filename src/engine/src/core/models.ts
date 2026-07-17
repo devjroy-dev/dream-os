@@ -38,9 +38,24 @@ export function canEscalate(tier: Tier): boolean {
 }
 
 // Pricing (USD per million tokens). USD→INR pinned at 100 (conservative).
-const PRICING: Record<string, { input: number; output: number }> = {
+// PRICING rows may carry per-model ABSOLUTE cache rates (USD per M). When absent,
+// the Anthropic multipliers below apply (read 0.1x input, write 1.25x input) — so
+// every anthropic model's cost math is BYTE-IDENTICAL to the pre-price-line code.
+// ── TDW_06 ECONOMICS SITTING — THE HONEST PRICE LINE (the founder's own paste,
+// api-docs.deepseek.com/quick_start/pricing, screenshots on the record 2026-07-18):
+// deepseek-v4-flash = $0.14/M input (cache miss) · $0.0028/M input (CACHE HIT —
+// DeepSeek's context caching is AUTOMATIC server-side; the founder's production
+// ledger shows 30k–121k cache_read_tokens on live deepseek rows, so the hit rate
+// is REAL money, not theory) · $0.28/M output. No write premium is documented —
+// a miss IS the write, billed as plain input — so cacheWrite = the input rate.
+// The never-invent-a-price law STANDS for every model without a founder-supplied
+// number (glm and all unknowns still price at the Haiku ceiling, deliberately
+// over-stated). deepseek-chat/deepseek-reasoner deprecate 2026-07-24 per the same
+// page — not our route (we route deepseek-v4-flash), recorded.
+const PRICING: Record<string, { input: number; output: number; cacheRead?: number; cacheWrite?: number }> = {
   [MODELS.haiku]: { input: 1.0, output: 5.0 },
   [MODELS.sonnet]: { input: 3.0, output: 15.0 },
+  'deepseek-v4-flash': { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0.14 },
 };
 const USD_TO_INR = 100;
 
@@ -59,10 +74,12 @@ export function calcCostInr(
   cacheWriteTokens = 0,
 ): number {
   const p = PRICING[model] ?? PRICING[MODELS.haiku];
+  const cacheReadRate = p.cacheRead ?? p.input * CACHE_READ_MULT;
+  const cacheWriteRate = p.cacheWrite ?? p.input * CACHE_WRITE_MULT;
   const usd =
     (inputTokens / 1_000_000) * p.input +
-    (cacheReadTokens / 1_000_000) * p.input * CACHE_READ_MULT +
-    (cacheWriteTokens / 1_000_000) * p.input * CACHE_WRITE_MULT +
+    (cacheReadTokens / 1_000_000) * cacheReadRate +
+    (cacheWriteTokens / 1_000_000) * cacheWriteRate +
     (outputTokens / 1_000_000) * p.output;
   return Math.round(usd * USD_TO_INR * 100) / 100;
 }

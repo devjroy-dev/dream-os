@@ -574,10 +574,12 @@ function scriptedTransports(profile) {
       victorModel: 'haiku', donnaModel: 'haiku',
       wiring: () => ({ tierOverride: 'entry' }) },
     ...(runDs ? [
-      { id: 'L2', label: 'DEEPSEEK-VICTOR — one model both hands (the non-anthropic law)', ceiling: true,
+      // ZIP E7: ceiling flags RETIRED for deepseek — the founder's price line landed;
+      // ₹ figures on these lanes are now HONEST rupees from the real meter.
+      { id: 'L2', label: 'DEEPSEEK-VICTOR — one model both hands (the non-anthropic law)', ceiling: false,
         victorModel: 'deepseek', donnaModel: 'deepseek',
         wiring: () => ({ tierOverride: 'entry', modelOverride: DEEPSEEK, transport: live.deepseek }) },
-      { id: 'L3', label: 'DEEPSEEK-DONNA — Victor Haiku native, her hand deepseek (LD-7 signature split shape)', ceiling: true,
+      { id: 'L3', label: 'DEEPSEEK-DONNA — Victor Haiku native, her hand deepseek (LD-7 signature split shape)', ceiling: false,
         victorModel: 'haiku', donnaModel: 'deepseek',
         wiring: () => ({ tierOverride: 'entry', donnaTransport: live.deepseek, donnaModelOverride: DEEPSEEK }) },
     ] : []),
@@ -593,7 +595,8 @@ function scriptedTransports(profile) {
   }
   console.log('\n  Depth disclosure: the aged-thread frame ran at depth 4; the outage broke at 6+.');
   console.log('  The dispatch watch (the founder\'s, standing) remains the deep-thread evidence.');
-  console.log('  ₹* = Haiku-priced ceiling on DeepSeek turns (the meter\'s never-invent-a-price law).');
+  console.log('  ₹ on DeepSeek lanes is HONEST (the founder\'s price line, ZIP E7); ₹* survives only for');
+  console.log('  models without a supplied price (glm-class), per the never-invent-a-price law.');
 
   if (runDs) {
     sec('FLIP PROPOSALS (CE-gated; the GLM precedent binds both directions).');
