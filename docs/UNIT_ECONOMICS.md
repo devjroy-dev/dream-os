@@ -156,3 +156,31 @@ proved the wire/key/model alive: HTTP 200, valid anthropic JSON). L1 ran 6/6 —
 this run on the identical fixed message that FAILED run 1: the incumbent is INTERMITTENT on
 the sharpened unblock trigger, 1-for-2** — F-04.71's own texture, now measured. Cache again:
 cold ₹2.79, warm ₹0.61–0.85. The first TRUE DeepSeek turns are run 3's.
+
+## 6 · RUN 3 — THE FIRST TRUE DEEPSEEK VERDICTS (2026-07-18, founder-run; the ruling's evidence)
+| lane | verdict | total | the reading |
+|---|---|---|---|
+| L1 incumbent (Haiku/Haiku) | PASS 6/6 | ₹5.92 | Control clean; cold ₹2.80 → warm ₹0.62–0.79 (the cache standing). |
+| L2 DeepSeek-VICTOR | **TRUE FAIL** | ₹*6.39 | **S2c = the LD-2 interrogation regression, verbatim, on DeepSeek's dispatch judgment.** S1 = a name-fidelity drop (dispatch truncated "One"; row likely under the wrong name). His prose runs long; in=17.6k on S1 = the no-cache non-anthropic reality. |
+| L3 DeepSeek-DONNA split | FAIL — **not hers** | ₹*3.46 | **Her hand 4-for-4** incl. draft-on-first-mention (the thing L2's Victor failed). The lane's one fail (S3) was HAIKU-Victor's clarify — zero dispatch, the trap's one-directional design. |
+
+Haiku-Victor on the sharpened unblock imperative across all runs: **2-for-4, intermittent** —
+F-04.71's texture quantified (Manual/doctrine material, not a flip matter). Ruling frame filed
+in the log: essential's reverse is evidence-backed (plain revert, or the L3 split shape which
+this run favours); **the signature split STANDS — the printed drop SQL must not run**;
+trial/prestige split extensions presentable on the attribution reading. The split lane at the
+Haiku CEILING already undercuts the incumbent's real ₹5.92 — the founder's real per-M DeepSeek
+price turns ₹* into truth.
+
+## 7 · CE RULINGS E-1..E-3 (2026-07-18, relayed via the founder; executed ZIP E6)
+**E-1:** essential → **the L3 split** (Victor anthropic-haiku cached + Donna deepseek), conditional
+on the recorded DeepSeek-Donna verdict reading PASS — the record holds lane-FAIL beside per-hand
+4-for-4 PASS; the executor read the condition against the per-hand verdict and FLAGGED the
+resolution (log entry); both SQL directions handed. **E-2:** signature split STANDS, nothing run.
+**E-3:** **F-04.85 CLOSED** — every tier starts Haiku (cached) at the ladder's one home; the
+escalate tool never boards (removal over retargeting: escalation is a full clean re-run, so
+retarget = double cost for zero model change); the handler survives as a Haiku-retargeting
+tombstone. **Zero Sonnet reachable from any tier — b06_sonnet_bench 13/13, fails 7/13 pre-cure.**
+Tier matrix post-E6 (pending the founder's E-1 SQL run): trial anthropic/haiku · essential
+**anthropic-haiku + donna-deepseek split** · signature anthropic-haiku + donna-deepseek (LD-7) ·
+prestige anthropic-haiku (starts haiku, no escalate) · harvest deepseek. Sonnet: unreachable.

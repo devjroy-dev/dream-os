@@ -451,7 +451,12 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     const esc = toolUse.find((t) => t.name === 'escalate');
     if (esc && !escalated) {
       escalated = true;
-      model = MODELS.sonnet; // escalate is anthropic-dimension only (mid/top tiers route anthropic)
+      // F-04.85 CLOSED (CE ruling E-3): DEFENSIVE TOMBSTONE. canEscalate is false
+      // for every tier, so the tool never boards and this branch is unreachable on
+      // any lawful turn — it survives only against a foreign injection of an
+      // 'escalate' call (a replayed thread, a compat endpoint's invention), and
+      // even then the re-run stays on Haiku: zero Sonnet reachable, mechanically.
+      model = MODELS.haiku;
       const idx = tools.findIndex((t) => t.name === 'escalate');
       if (idx >= 0) tools.splice(idx, 1);
       messages = [...priorTurns, { role: 'user', content: message }]; // clean re-run on Sonnet

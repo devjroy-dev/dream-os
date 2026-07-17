@@ -185,6 +185,14 @@ function mkLaneDb() {
     ids: 0,
   };
   const nid = (p) => `${p}-${++store.ids}`;
+  // V4 fixture coherence: run 3's L2-S3 showed the split world — Victor's snapshot
+  // said BLOCKED while Donna's db held nothing, and she honestly reported the gap
+  // (an extra round-trip, noise not verdict). The double now holds the event rows
+  // the snapshot claims — one world, both hands.
+  store.events = [
+    { id: 'ev-block-1218', kind: 'blocked', event_date: '2026-12-18', title: 'BLOCKED (full day)', deleted_at: null },
+    { id: 'ev-zoya-1221', kind: 'shoot', event_date: '2026-12-21', event_time: '19:00', title: 'Zoya Gauntlet — wedding shoot', deleted_at: null },
+  ];
   const answer = (q) => {
     const t = q._t, op = q._op, mode = q._mode, body = q._body, f = q._f;
     const filt = (rows) => { let r = rows; for (const fn of f) r = r.filter(fn); if (q._orderCol) { r = [...r].sort((a, b) => String(a[q._orderCol]).localeCompare(String(b[q._orderCol]))); if (q._orderDesc) r.reverse(); } if (q._limit) r = r.slice(0, q._limit); return r; };
@@ -197,6 +205,7 @@ function mkLaneDb() {
       if (t === 'agent_owner') return one(mode, null);
       if (t === 'agent_snapshot') return one(mode, { note: { items: [], rebuilt_at: '2026-07-18T00:00:00Z' } });
       if (t === 'leads') return { data: filt(store.leads), error: null };
+      if (t === 'events') return { data: filt(store.events), error: null };
       return mode ? { data: null, error: null } : { data: [], error: null };
     }
     if (op === 'insert') {
@@ -309,6 +318,12 @@ async function runLane(lane, runTurn, mkTransports) {
       continue;
     }
     const v = sc.verdict(r, store);
+    // V4 (run-3 polish): the rows themselves on the record — run 3's L2-S1 verdict
+    // said "no row landed" when the likelier truth was a row under a TRUNCATED name
+    // (Victor's dispatch dropped "One"); the printed rows settle it mechanically.
+    if (store.captures.leads_insert.length) {
+      console.log('      ROWS: ' + store.captures.leads_insert.map((l) => `[${l.name ?? '?'} · ${l.phone ?? 'no-phone'}]`).join(' '));
+    }
     const downgraded = !!r.provider_downgrade;
     const escaped = r.escalated === true;
     const ok = v.ok && !downgraded && !escaped;
@@ -319,10 +334,21 @@ async function runLane(lane, runTurn, mkTransports) {
     console.log(`      ${v.why}`);
     const prose = String(r.reply || '').replace(/\s+/g, ' ').slice(0, 220);
     if (prose) console.log(`      VICTOR'S PROSE: ${prose}`);
-    results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped });
+    results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length });
   }
   const total = results.reduce((s, x) => s + x.cost, 0);
   console.log(`  LANE ${laneOk ? 'PASS' : 'FAIL'} · turns=${results.length} · total ${lane.ceiling ? '₹*' : '₹'}${total.toFixed(2)}${lane.ceiling ? '  (* Haiku-priced ceiling — the meter\'s never-invent-a-price law; real DeepSeek cost is lower)' : ''}`);
+  // V4: per-hand attribution — a lane verdict is mechanical, but the RULING needs
+  // to know which model was on trial in each failing scenario. A no-dispatch fail
+  // (zero nested hands) sits on VICTOR's model; a fail with hands fired sits on
+  // the DISPATCHED half. Run 3's L3 read "FAIL" while her hand was 4-for-4 — the
+  // failure was the Haiku half's clarify; this line makes that readable per lane.
+  for (const x of results) {
+    if (x.ok) continue;
+    const hands = x.handsFired ?? null;
+    const seat = hands === 0 ? `VICTOR (${lane.victorModel})` : hands === null ? 'unattributed' : `the dispatched hand (${lane.donnaModel})`;
+    console.log(`  ATTRIBUTION ${x.sc.id}: on trial = ${seat} — ${x.why}`);
+  }
   return { laneOk, results, total };
 }
 
@@ -463,6 +489,7 @@ function scriptedTransports(profile) {
       T('llm.js reaches a live SDK binding (resolved a shaped message under the rig spy)', hy !== undefined && hy !== null && Array.isArray(hy.content) && hyErr === null);
     }
     const mkLane = (label, profile) => ({ id: 'RIG', label, ceiling: false,
+      victorModel: 'scripted', donnaModel: 'scripted',
       wiring: (t) => ({ tierOverride: 'entry', transport: t.transport, donnaTransport: t.donnaTransport }) });
 
     console.log('\n  [1] an HONEST profile must pass every trap:');
@@ -491,6 +518,7 @@ function scriptedTransports(profile) {
       stream: () => ({ on() {}, finalMessage: async () => { throw new Error('rig-scripted deepseek failure'); } }),
       create: async () => { throw new Error('rig-scripted deepseek failure'); } };
     const dgLane = { id: 'RIG', label: 'downgrade profile', ceiling: true,
+      victorModel: 'scripted', donnaModel: 'scripted',
       wiring: () => ({ tierOverride: 'entry', modelOverride: DEEPSEEK, transport: throwing }) };
     (global.__rigNativeCalls || []).length = 0; // scope the ledger to THIS lane ([0]'s probe wrote to it)
     const dg = await runLane(dgLane, runTurn, () => ({}));
@@ -543,11 +571,14 @@ function scriptedTransports(profile) {
   const live = liveTransports()();
   const lanes = [
     { id: 'L1', label: 'INCUMBENT — Victor Haiku · Donna Haiku (engine-native)', ceiling: false,
+      victorModel: 'haiku', donnaModel: 'haiku',
       wiring: () => ({ tierOverride: 'entry' }) },
     ...(runDs ? [
       { id: 'L2', label: 'DEEPSEEK-VICTOR — one model both hands (the non-anthropic law)', ceiling: true,
+        victorModel: 'deepseek', donnaModel: 'deepseek',
         wiring: () => ({ tierOverride: 'entry', modelOverride: DEEPSEEK, transport: live.deepseek }) },
       { id: 'L3', label: 'DEEPSEEK-DONNA — Victor Haiku native, her hand deepseek (LD-7 signature split shape)', ceiling: true,
+        victorModel: 'haiku', donnaModel: 'deepseek',
         wiring: () => ({ tierOverride: 'entry', donnaTransport: live.deepseek, donnaModelOverride: DEEPSEEK }) },
     ] : []),
   ];

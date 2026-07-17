@@ -12,13 +12,29 @@ export const MODELS = {
 } as const;
 
 // The model a turn STARTS on for a given tier.
+// ── F-04.85 CLOSED (TDW_06 economics sitting, CE ruling E-3 on the founder's
+// standing zero-Sonnet word): EVERY tier starts on Haiku (cached — the anthropic
+// native path keeps Victor's prompt cache). The tier ladder's SHAPE survives
+// (Tier stays three-valued; a future ruling can reopen the top rung here, at the
+// one home) but no rung routes Sonnet today. Pre-cure: top started Sonnet — the
+// first of F-04.85's two live paths.
 export function startModelForTier(tier: Tier): string {
-  return tier === 'top' ? MODELS.sonnet : MODELS.haiku;
+  void tier; // the ladder's one home keeps its signature; every rung is Haiku by E-3
+  return MODELS.haiku;
 }
 
-// Only the mid tier may self-escalate. Entry stays on Haiku; Top is already Sonnet.
+// ── F-04.85 CLOSED, path two (same ruling): the escalate tool NEVER BOARDS.
+// Mechanism chosen over retargeting, with the code's own evidence: escalation is
+// not a model swap — loop.ts's handler does a FULL CLEAN RE-RUN of the turn
+// (messages rebuilt, Donna's in-turn exchange wiped). With every tier starting
+// Haiku, an escalate-to-Haiku would keep a tool whose only effect is doubling the
+// turn's cost and erasing her exchange for ZERO model change — removal is the
+// honest cure. The handler survives in loop.ts as a defensive tombstone
+// (retargets Haiku if a foreign path ever injects the call). Pre-cure: mid
+// escalated to Sonnet — the second live path.
 export function canEscalate(tier: Tier): boolean {
-  return tier === 'mid';
+  void tier;
+  return false; // E-3: zero Sonnet reachable from any tier
 }
 
 // Pricing (USD per million tokens). USD→INR pinned at 100 (conservative).
