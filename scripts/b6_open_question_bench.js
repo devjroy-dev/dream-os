@@ -115,15 +115,50 @@ const SPECIMEN_TOOLCALLS = [
       { name: 'listen_harvey_talk', input: { message: QUESTION }, result: '(spoken to Harvey)' }] },
   { name: 'listen_harvey_talk', input: { message: 'Find Tara Seal Test — lead or binder.' }, result: `Listen Harvey \u2014 ${QUESTION}` },
 ];
-const MINTED   = `Still open — Donna asked: ${QUESTION}. Answer it and she'll finish the filing.`;
-const RENDERED = `Still open — Operator asked: ${QUESTION}. Answer it and she'll finish the filing.`;
+const MINTED   = `Still open — Donna asked: ${QUESTION} Answer it and she'll finish the filing.`;
+const RENDERED = `Still open — Operator asked: ${QUESTION} Answer it and she'll finish the filing.`;
+// D-9 LABELED AMENDMENT (R-B6-15 convention, the ruling named): the constants
+// above follow D-9's trimmed rendering — no `?.` / `..`; the template's period
+// appends only when her sentence carries no terminal mark. The two live
+// specimens from the founder smoke (F-04.82's filing) ride below VERBATIM as
+// the ruling's named tests.
+const ANANYA_REPORT = 'One follow-up overdue from yesterday: call Ananya. Nothing else due through Sunday.';
+const VERA_QUESTION = 'No binder or lead for Vera Anchor Test. Shall I open one?';
+const VERA_LINE     = `Still open — Donna asked: ${VERA_QUESTION} Answer it and she'll finish the filing.`;
 
 const FILED_CALL = { name: 'dear_donna_talk', input: { message: 'Log the lead.' }, result: '(handed to Donna)',
   donna_calls: [{ name: 'donna_lead', input: { name: 'Ira Fresh Test' }, result: 'Lead saved. id=33333333-3333-4333-8333-333333333333 — Ira Fresh Test filed.' },
     { name: 'listen_harvey_talk', input: { message: 'Filed.' }, result: '(spoken to Harvey)' }] };
 
 (async () => {
-  sec("§1 — THE CE'S NAMED TEST: the 17:08:36 specimen (pendingToolUseId set, zero writes, the line PRESENT).");
+  sec("§1 — D-9'S NAMED TESTS FIRST (the founder smoke's two specimens, VERBATIM), then the 17:08:36 original.");
+  {
+    // D-9 named test 1 — the ANANYA DECLARATIVE (01:59:47, F-04.82's specimen):
+    // Donna answered WHOLE from her snapshot, listen-alone, no tools, no `?`.
+    // The mechanical leg arms (pendingDonnaQuestion carries her report); the
+    // conjunctive filter must silence the line — a report is not a question.
+    const result = { reply: 'You have one commitment this week.', assistant_message_id: MSG_ID,
+      pendingDonnaQuestion: ANANYA_REPORT,
+      tool_calls: [{ name: 'dear_donna_talk', input: { message: "What's on the calendar this week?" }, result: '(handed to Donna)',
+        donna_calls: [{ name: 'listen_harvey_talk', input: { message: ANANYA_REPORT }, result: '(spoken to Harvey)' }] }] };
+    T("D-9 NAMED TEST: the Ananya declarative report carries NO line (the ? filter — F-04.82 reversed)", donnaOpenLine(result) === '');
+    const sink = [];
+    await persistComposedReply(mkReq(sink), result, composedTail({ open: donnaOpenLine(result) }));
+    T('…and nothing persists — the false "still open" costume is dead in storage too', sink.length === 0);
+  }
+  {
+    // D-9 named test 2 — the VERA QUESTION (02:00:31, the true positive): the
+    // line fires, and the rendered form carries NO `?.` and NO `..` (D-9's
+    // same-one-line trim; the surviving line ends on her own `?` + the tail).
+    const result = { reply: 'Vera Anchor Test never came through the door.', assistant_message_id: MSG_ID,
+      pendingDonnaQuestion: VERA_QUESTION,
+      tool_calls: [{ name: 'dear_donna_talk', input: { message: 'Look up Vera Anchor Test.' }, result: '(handed to Donna)',
+        donna_calls: [FIND('Vera Anchor Test'), { name: 'listen_harvey_talk', input: { message: VERA_QUESTION }, result: '(spoken to Harvey)' }] }] };
+    const line = donnaOpenLine(result);
+    T('D-9 NAMED TEST: the Vera question fires the line, byte-exact to the ruled rendering', line === VERA_LINE);
+    T('…with NO "?." and NO ".." anywhere in it (the punctuation seam, trimmed by the same one line)', !line.includes('?.') && !line.includes('..'));
+  }
+  sec("§1b — THE 17:08:36 ORIGINAL, still firing (D-9's own condition).");
   {
     const result = { reply: "Clear — log her as a new lead: Tara Seal Test, and I'll take it from there.",
       tool_calls: SPECIMEN_TOOLCALLS, assistant_message_id: MSG_ID, pendingDonnaQuestion: QUESTION };

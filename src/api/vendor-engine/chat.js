@@ -113,28 +113,44 @@ function donnaWitnessLines(vendorId, result) {
 // when she spoke ALONE (work.length === 0), "she asked and is waiting" — surfaced
 // by loop.ts as TurnResult.pendingDonnaQuestion (her final message text, or empty).
 // No language detection; Q-R-3's aesthetic, one rule further in.
-// THE GUARD (D-6's three clauses, verbatim): turn ended (this post-turn door holds
-// the result) AND pendingDonnaQuestion non-empty AND ZERO WRITE HANDS in the
-// turn's NESTED donna_calls — the only convicting reader, per D-1. The walk reuses
-// the one home's own vocabulary: actionKind decides "write", and her voice
-// (listen_harvey_talk) is fenced by name exactly as chipFiling fences it — it
-// rides donna_calls and actionKind would misread it as a write. The top level is
-// never walked (dear_donna_talk is not a hand).
+// THE GUARD (D-6's three clauses + D-9's fourth): turn ended (this post-turn door
+// holds the result) AND pendingDonnaQuestion non-empty AND her message CARRIES `?`
+// (D-9 — the conjunctive filter, the mechanical signal's OWN false-positive trap)
+// AND ZERO WRITE HANDS in the turn's NESTED donna_calls — the only convicting
+// reader, per D-1. The walk reuses the one home's own vocabulary: actionKind
+// decides "write", and her voice (listen_harvey_talk) is fenced by name exactly
+// as chipFiling fences it — it rides donna_calls and actionKind would misread it
+// as a write. The top level is never walked (dear_donna_talk is not a hand).
+//
+// D-9 (F-04.82, CE-ruled; the §0.2 gloss "she asked and is waiting" RETIRED —
+// the CE's own premise error owned by name in the ruling): listen-ALONE equally
+// means "she answered whole" — the Ananya specimen (01:59:47) was Donna serving
+// the healthiest read the engine has, snapshot-whole, no tools — and the guard
+// dressed her report as an open question. The mechanical leg stays PRIMARY and
+// untouched (pendingToolUseId); prose NARROWS it, never replaces it (Q-R-3's
+// aesthetic intact). THE RULING'S GROUND, the asymmetry: a missed unmarked
+// question = pre-cure silence for that turn (filed-on-sight if witnessed); a
+// false "still open" = an active lie in the witness costume, strictly worse.
 // THE LINE rides the witness machinery's own home: composedTail for persistence
 // (the LAST element — matching its live position on the wire, so the stored and
 // live renderings stay twins in order as well as bytes) and the wire for live.
-// COPY, minted by the CE for the founder's veto (shipped byte-exact here):
-//   Still open — Donna asked: {her question}. Answer it and she'll finish the filing.
+// COPY, minted by the CE for the founder's veto (shipped byte-exact here);
+// D-9's same one line trims the punctuation seam — no `?.` / `..` in the
+// rendered form (the template's period is appended only when her sentence
+// carries no terminal mark of its own; under the filter the surviving lines
+// end `?`, subject to the founder's standing veto):
+//   Still open — Donna asked: {her question} Answer it and she'll finish the filing.
 // RENDERING DISCLOSURE, on the veto set not silently adapted: every rendering of
 // this slot rides scrubText (CE-18/F-04.27, the persona firewall), which rewrites
 // \bDonna\b -> Operator — the vendor reads "Still open — Operator asked: …". Both
 // forms sit in front of the founder at delivery; the builder's bytes are the
 // ruling's own letters.
-const OPEN_QUESTION_LINE = (q) => `Still open — Donna asked: ${q}. Answer it and she'll finish the filing.`;
+const OPEN_QUESTION_LINE = (q) => `Still open — Donna asked: ${q}${/[.?!…]$/.test(q) ? '' : '.'} Answer it and she'll finish the filing.`;
 function donnaOpenLine(result) {
   const q = result && typeof result.pendingDonnaQuestion === 'string'
     ? result.pendingDonnaQuestion.trim() : '';
   if (!q) return '';
+  if (q.indexOf('?') === -1) return ''; // D-9: a report is not a question — the ? filter (F-04.82's cure)
   for (const call of (result && result.tool_calls) || []) {
     for (const dc of (call && call.donna_calls) || []) {
       if (!dc || dc.name === 'listen_harvey_talk') continue; // her voice is not a hand (D-2's fence)
