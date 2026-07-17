@@ -13,6 +13,7 @@ A **reader** = a dreamos-pwa code site that consumes `public.events` row data ar
 **The charter's "57" — DRIFT, RECORDED:** under this predicate the vendor-plane consumption-site count is **19** (table below) plus **4** couple-plane reader pages and **3** named non-readers. A looser grep (`events` identifier hits across the tree) reproduces a number of 57's magnitude, which is almost certainly the count's origin; it counted transport lines, type declarations, and demo fixtures as "readers." Per §3.2 the code is the truth: **the census of record is the table below, with its predicate; the 57 retires with this note.** Nothing was hidden by the tighter predicate — every excluded site is named above.
 
 **The 5:3 blocked-majority ratio — STAGED, NOT CARRIED:** the ratio is a property of a **prod payload**, not of code; R-B6-2 said re-derive, and the executor runs no prod reads. It rides the S1 founder smoke (§4 of the handoff) as one count: blocked vs non-blocked rows in the default `/events` payload. Whatever it says lands here in the delivery that carries the smoke.
+**→ RE-DERIVED, 2026-07-17 (founder-run, the S1 smoke): `7 blocked : 7 other` — the blocked-majority is GONE; today's windowless payload is exactly half refusals.** The B3-era 5:3 retires with this line; the estate moved under it (fixtures created and cleaned across four sittings), which is why R-B6-2 said re-derive and never carry.
 
 ---
 

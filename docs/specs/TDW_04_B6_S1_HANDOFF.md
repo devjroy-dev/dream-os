@@ -57,3 +57,13 @@ Tool-verified work held throughout: every census cell, both drift reports, and e
 ---
 
 **S2 opens on: the batch ruling + the veto answers → `0078` (R-B6-17, enforcement-site proposal from the code) → item 4 → item 6 completed → the amended founder smoke + T19 unmoved-unless-a-fixture-moved-it → the block handover (R-B6-22).**
+
+---
+
+## ADDENDUM — THE S1 SMOKE (2026-07-17, same day; appended after the founder's live run on `a824102`/`3a92fd0`)
+
+**Every S1 item is founder-witnessed live.** Full evidence: FINDINGS_LOG's "SURFACES S1: THE FOUNDER SMOKE." Headlines: horizon PASS (November by `›` alone; the rail unshaken — the two-fetch design witnessed) · tell PASS-by-absence (16 rows, verified both sides) · hedge SEALED with an unscripted synthesis (the sealed checker 409'd the new create door's first-ever live POST; the retry landed `4ed4388b` and rode into the P4.1 month answer) · capacity SEALED all three legs (2 · **0 as 0** · NULL by link; a + -vs-link UX note recorded) · ratio re-derived **7:7**, the 5:3 retired · **F-04.68 witnessed cured in production** on its own killing sequence · the 18 Dec scrollback acquitted by its row.
+
+**Three new filings ride this addendum:** **F-04.72** (row-convicted: the harvest cross-filed the new Kavya's phone + wedding date into the OLD Kavya's money-bearing binder — by name-match, during the exact turn the model was honestly asking "which Kavya?"; disambiguation-hold cure proposed) · **F-04.73** (events cannot file on their essential — the A4 ESSENTIAL table vs the door's required `kind`; amendment is the CE's) · **F-04.74** (→ 05/06: "Network error. Try again." printed over a landed turn — the retry invitation on completed work).
+
+**S2's opening agenda grows by exactly these:** the batch ruling now covers census #7–#10 **+ F-04.72's harvest gate + F-04.73's ESSENTIAL amendment**, and the veto set gains nothing new. The `c66ad01c` restore below is the only outstanding founder action beyond fixture cleanup.
