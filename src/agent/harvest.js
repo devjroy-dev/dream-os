@@ -158,6 +158,41 @@ function questionSegments(replyText) {
     .filter((seg) => seg.includes('?'));
 }
 function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+// ── F-04.79's PRIMARY leg (Q-R-3: the mechanical tool-result-keyed trigger) ──
+// When any same-turn TOOL RESULT carries the door's matched-by-NAME note for an
+// entity, the harvest holds that entity's colliding patches, both planes, that
+// turn. The signal is EMITTED BY THE DOOR ITSELF (donnaLead's Q-R-1 sentence)
+// and already rides `toolCalls` — including the consult wire's nested
+// donna_calls, which is exactly where the Vera-class specimen travelled: the
+// clarify lived in Donna's voice, Victor's outward reply was declarative, the
+// prose detector below never fired, and the harvest filled the cell the door
+// had just withheld (F-04.79's conviction, 17:03:52→17:04:06). A mechanical
+// signal already on the wire beats language detection — Q-R-3's own words,
+// now precedent. The question-mark detector is DEMOTED BY NAME to the weaker
+// second leg; both legs union into one hold set.
+const DOOR_NAME_MATCH_NOTE = 'matched by NAME to the lead already on file';
+function flattenToolResults(toolCalls) {
+  const out = [];
+  for (const tc of Array.isArray(toolCalls) ? toolCalls : []) {
+    if (tc && typeof tc.result === 'string') out.push(tc.result);
+    for (const dc of (tc && Array.isArray(tc.donna_calls)) ? tc.donna_calls : []) {
+      if (dc && typeof dc.result === 'string') out.push(dc.result);
+    }
+  }
+  return out;
+}
+function toolResultHoldKeys(toolCalls) {
+  const held = new Set();
+  for (const r of flattenToolResults(toolCalls)) {
+    if (!r.includes(DOOR_NAME_MATCH_NOTE)) continue;
+    // The door's own display quotes the entity first:
+    //   `Updated existing lead "X" (id=…) — …`  ·  `Lead "X" already on file (id=…) — …`
+    const m = /"([^"]+)"/.exec(r);
+    const key = m ? nameKey(m[1]) : null;
+    if (key) held.add(key);
+  }
+  return held;
+}
 function computeDisambiguationHolds(replyText, labels) {
   const held = new Set();
   const qs = questionSegments(replyText);
@@ -234,12 +269,15 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls, reply
     if (patches === null) { console.warn('[harvest] unparseable twice — gave up'); return; }
     if (!patches.length) { console.log('[harvest] applied=0 dropped=0 (model proposed nothing)'); return; }
 
-    // F-04.72 (R-B6-29 shape (a)): keys under open clarification THIS turn,
-    // computed over BOTH planes' draft labels against the model's own reply.
-    const holds = computeDisambiguationHolds(replyText, [
+    // F-04.72 + F-04.79: keys under open clarification THIS turn. PRIMARY leg
+    // (Q-R-3): the door's own matched-by-NAME note in any same-turn tool result
+    // — mechanical, wire-borne. SECONDARY leg (demoted by name): the prose
+    // question-mark detector over the model's reply. Union; one hold set.
+    const holds = toolResultHoldKeys(toolCalls);
+    for (const k of computeDisambiguationHolds(replyText, [
       ...typed.map((l) => l.name),
       ...recordRows.map((r) => r.client),
-    ]);
+    ])) holds.add(k);
     const holdLogged = new Set();
     const holdPatch = async (key, rowLabel) => {
       if (holdLogged.has(key)) return;
