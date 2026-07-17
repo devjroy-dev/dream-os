@@ -1422,6 +1422,45 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
   }
 });
 
+// ── TDW_06 D-7 — the new-thread endpoint (the PWA rider's backend half). ──────
+// D-4 chartered the button; D-7 rules its machinery: ONE endpoint that closes
+// the active conversation CLEANLY, using memory.ts's OWN abandonment shape —
+// `.update({ state: 'abandoned' })` — the exact write getOrCreateConversation
+// performs when the 30-minute timeout fires (memory.ts, read at HEAD: any
+// state !== 'active' reads as stale and the next turn starts fresh). NEVER a
+// delete: the conversation row and every message under it stand untouched —
+// the scrollback persists on the estate, and the PWA's job is to make that a
+// visible truth (the divider, ZIP 2's PWA half), not a caption claim.
+// Idempotent by construction: no active conversation -> { ok: true, closed: null }
+// (the timeout may already have done the work; tapping twice is harmless).
+// On the vendor's next message, getOrCreateConversation finds nothing active
+// and inserts a fresh thread — the interim relief's mechanism, on demand.
+router.post('/thread/fresh', requireAuth, resolveVendor(), resolveAgent(), async (req, res) => {
+  const eng = req.app.locals.supabase.schema('engine');
+  try {
+    const { data: convo } = await eng.from('conversations')
+      .select('id, state')
+      .eq('agent_id', req.agentId)
+      .order('last_active_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!convo || convo.state !== 'active') {
+      return res.json({ ok: true, closed: null }); // nothing active — already fresh
+    }
+    const { error } = await eng.from('conversations')
+      .update({ state: 'abandoned' }) // memory.ts's own shape — never delete
+      .eq('id', convo.id);
+    if (error) {
+      console.error('[vendor-e chat/thread-fresh] update failed:', error.message);
+      return res.status(500).json({ ok: false, error: 'Could not close the thread.' });
+    }
+    return res.json({ ok: true, closed: convo.id });
+  } catch (err) {
+    console.error('[vendor-e chat/thread-fresh]', err.message);
+    return res.status(500).json({ ok: false, error: 'Could not close the thread.' });
+  }
+});
+
 module.exports = router;
 // ── TEST SEAMS (TDW_04 B4) — occupancy.js's ratified precedent ────────────
 // The bench drives the REAL builders. conflictLines/mutationLines/advisoryLines are
