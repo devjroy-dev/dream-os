@@ -206,3 +206,31 @@ at 16:17:20 pre-deploy), so NO production Donna-cache claim from it (the desk ga
 cold-₹2.79/warm-₹0.74 measurement stands alone). What it DOES seal: the dispatch-watch
 evening's own ledger rows (17:03–17:32) and the auto-cache proof above. **The true
 production AFTER = the same SQL after a day of chatting on the split config — slot open.**
+
+## 9 · E-4 + THE SEAL (2026-07-18, CE via the founder; ZIP E8)
+**E-4 (ruled): THE ARCHITECTURE UNIFIES.** Trial and prestige take the same split as
+essential and signature — **Victor anthropic-haiku (cached) + Donna deepseek** — one
+shape across all four tiers, dormant where a tier is unpopulated. Evidence base three
+deep, all on this document's own record: **(1)** P7's dispatch-fidelity 7/7 (LD-7's
+founding evidence for her hand on DeepSeek); **(2)** the signature split LIVE in
+production since TDW_05, gauntlet-corroborated at E-2; **(3)** run 3's per-hand record —
+DeepSeek-Donna **4-for-4 including draft-on-first-mention**, the lane's one fail
+attributed to Haiku-Victor's clarify (zero hands fired). The SQL is one CE-gated block
+handed to the founder with this delivery (upserts on `model.pwa_vendor.trial` +
+`.prestige`; the revert rides fully commented per the conditional-withheld rule).
+
+**Tier matrix at the seal (pending only the founder's E-4 paste):** trial · essential ·
+signature · prestige ALL = anthropic-haiku Victor + deepseek Donna split; harvest =
+deepseek. Sonnet unreachable (E-3, benched 13/13). Economics of the unified shape, on
+honest prices: Victor's prefix cached at anthropic rates (cold ₹2.78-class, warm
+₹0.61–0.85 measured), Donna's hand at $0.14/$0.0028/$0.28 per M with automatic
+server-side caching (30k–121k live cache reads witnessed) — the ₹9.59 fire-alarm class
+is dead on every tier by construction.
+
+**THE SITTING SEALS at ZIP E8's apply + the founder's E-4 run.** The E-1 flag is
+resolved on the record (the per-hand reading CONFIRMED — the ruling's own chosen shape
+and E-2's corroboration both stand on it; the collapse path is self-refuting, full
+entry in FINDINGS_LOG). **The founder's leisure items stay his and gate nothing:**
+the true production AFTER (the §8 20-row SQL after a real day of chatting on the
+split) and the dispatch watch on his next real evening — both report whenever they
+land; neither is a seal condition.
