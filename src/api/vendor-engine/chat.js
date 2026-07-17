@@ -56,6 +56,54 @@ function actionKind(name) {
   if (/(calendar|event)/i.test(name || '')) return 'calendar';
   return 'write';
 }
+
+// ── TDW_06 sitting 0 — F-04.41's LEAD-PLANE CURE (CE ruling D-2). ONE HOME. ──
+// The question "does this hand of hers wear a witness, and what does it say?" is
+// asked ONCE here and rendered TWICE: as the live CHIP (translateBeat, below) and
+// as the PERSISTED LINE (donnaWitnessLines -> composedTail). A second copy of this
+// branch order would be F-04.36 wearing a chip; there is one.
+// Returns the filing when the hand wears a witness, null when it does not:
+//   · HER VOICE IS NOT A HAND. donna.ts:514 pushes `listen_harvey_talk` with a bare
+//     toolCalls.push — never through record() — so it fires no donna_action and has
+//     never worn a chip. It rides `donna_calls` all the same, and actionKind would
+//     read it as a 'write'. Fenced here, by name, at the one home.
+//   · reads and calendar signals wear no witness (P7-b; G1 caught donna_find dressed
+//     as "Filed") — EXCEPT when the door's own display is an ERROR (F3).
+//   · calendar hands are the chat.js doors' business: bookingLines/mutationLines
+//     already speak for them in this same tail. One act, one line, never two.
+function chipFiling(vendorId, name, input, result) {
+  if (name === 'listen_harvey_talk') return null;
+  const kindOf = actionKind(name);
+  const raw = typeof result === 'string' ? result : '';
+  if (kindOf !== 'write' && !raw.startsWith('ERROR')) return null;
+  return deriveFiling(vendorId, name, input, raw);
+}
+
+// THE CURE ITSELF (D-2). Her hands are read from the turn's OWN nested donna_calls
+// — the chip's existing source of truth, never a new source, NEVER Victor's claim.
+// NESTED ONLY, per the ruling's own fence: at the top level sits `dear_donna_talk`,
+// which actionKind would call a 'write' and which is not one.
+//
+// WHY IT EXISTS, in one line: composedTail patches seven door families and ZERO lead
+// lines — a lead is filed by HER hand inside the engine and no chat.js door ever sees
+// it — so `engine.messages` held "Done. Tara Door Test is logged" (which FILED,
+// 17:03:44) and "Got it. Log Vera Seal Test —" (which filed NOTHING, 17:32:04) as the
+// SAME artifact, forever: for the vendor's refresh AND for loadThread's replay
+// (memory.ts:66 — role/content only; tool evidence never rides).
+// A filed turn now replays WITNESSED; a narrated turn replays BARE. That asymmetry
+// is the cure. Its effect on the dispatch failure is a STATED INFERENCE (D-2),
+// watched and reported — never claimed.
+function donnaWitnessLines(vendorId, result) {
+  const lines = [];
+  for (const call of (result && result.tool_calls) || []) {
+    for (const dc of (call && call.donna_calls) || []) {
+      const filing = chipFiling(vendorId, dc && dc.name, dc && dc.input, dc && dc.result);
+      if (filing && filing.summary) lines.push(filing.summary);
+    }
+  }
+  return lines;
+}
+
 function translateBeat(e, vendorId) {
   if (!e || !e.type) return null;
   switch (e.type) {
@@ -71,18 +119,21 @@ function translateBeat(e, vendorId) {
       // the raw DB text never crosses the wire (it stays in the engine trail).
       // P7-b: filings are for WRITES (and honest errors) only — a read beat never
       // wears a chip. G1 caught donna_find dressed as "Filed".
-      const kindOf = actionKind(e.name);
+      // TDW_06 sitting 0 (D-2): the branch order moved into chipFiling — ONE home,
+      // shared with the persisted witness line. BYTE-IDENTICAL for every reachable
+      // input (the voice hand never reaches this beat: donna.ts:514 skips record()),
+      // asserted both directions in b6_witness_bench §3.
       const raw = typeof e.result === 'string' ? e.result : '';
-      if (kindOf !== 'write' && !raw.startsWith('ERROR')) {
-        return { type: 'operator_action', kind: kindOf, detail: scrubText(raw) };
+      const filing = chipFiling(vendorId, e.name, e.input, e.result);
+      if (!filing) {
+        return { type: 'operator_action', kind: actionKind(e.name), detail: scrubText(raw) };
       }
-      const filing = deriveFiling(vendorId, e.name, e.input, raw);
       if (filing.kind === 'error') {
         return { type: 'operator_action', kind: 'error', detail: filing.summary, summary: filing.summary, retryable: true };
       }
       return {
         type: 'operator_action', kind: actionKind(e.name),
-        detail: scrubText(typeof e.result === 'string' ? e.result : ''),
+        detail: scrubText(raw),
         summary: scrubText(filing.summary),
         record_ref: filing.record_ref,
         undo: filing.undo,
@@ -676,8 +727,22 @@ function mutationLines(done) {
 // copy of the append order: this IS the one ordered list, same order as both
 // routes append (documents · booked · refused · mutated · advised · blocked ·
 // unblocked).
-function composedTail({ documents, booked, refused, mutated, advised, blocked, unblocked }) {
+//
+// TDW_06 sitting 0 (D-2) — `witnessed` joins the list FIRST and is the ONE element
+// the routes do NOT append to the wire: her hands fire INSIDE the turn (before any
+// door below runs), and live they are already rendered as CHIPS by translateBeat.
+// So the live turn shows prose + chip; the stored turn shows prose + the same
+// sentence as text. Two renderings of one witnessed fact — disclosed, because the
+// list above claims to be the routes' order and now carries one line that is
+// storage-only. Everything below it stays byte-identical, both routes.
+// ADDITIVE: absent or empty `witnessed` returns the pre-cure bytes exactly (older
+// callers and the sealed b6_sitting2_bench unaffected — proven both ways).
+function composedTail({ witnessed, documents, booked, refused, mutated, advised, blocked, unblocked }) {
   const parts = [];
+  // scrubText for blockLines' own stated reason: these summaries carry a
+  // vendor-supplied NAME back to the wire, and a name is free text. The chip
+  // scrubs its own summary at translateBeat; the stored twin scrubs here.
+  if (witnessed && witnessed.length) parts.push(scrubText(witnessed.join('\n')));
   if (documents && documents.length) parts.push(invoiceLines(documents));
   if (booked && booked.length)       parts.push(bookingLines(booked));
   if (refused && refused.length)     parts.push(conflictLines(refused));
@@ -1178,7 +1243,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // TDW_04 B6 sitting 2 — Q-B4-6(b): the door lines join the thread's row.
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
       await persistComposedReply(req, result,
-        composedTail({ documents, booked, refused, mutated, advised, blocked, unblocked }));
+        composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked }));
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
@@ -1224,8 +1289,12 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     await logChatActivity(req, result); // TDW_04 B0 item 3
     // TDW_04 B6 sitting 2 — Q-B4-6(b): same call, same order, the JSON route's copy
     // of the SSE line above (the tail builder is the ONE ordered list for both).
+    // TDW_06 sitting 0 (D-2): `witnessed` joins on BOTH routes — the stored row is
+    // the cure's target and both routes store. This route's RETURNED `reply` below
+    // is deliberately untouched (curl/eval bytes are existing behaviour, and this
+    // route has no chip to twin); the divergence is one line, disclosed.
     await persistComposedReply(req, result,
-      composedTail({ documents, booked, refused, mutated, advised, blocked, unblocked }));
+      composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked }));
 
     let reply = scrubText(result.reply); // CE-18: the firewall covers the reply itself
     // F-04.33: this route hand-rolled the invoice line instead of calling the builder —
@@ -1312,3 +1381,12 @@ module.exports.resolveEvent          = resolveEvent;
 // double — a bench that re-implemented the append order would prove its copy.
 module.exports.persistComposedReply  = persistComposedReply;
 module.exports.composedTail          = composedTail;
+// ── TEST SEAMS (TDW_06 sitting 0, D-2) — same precedent, same reason ──────
+// donnaWitnessLines + chipFiling are where F-04.41's lead-plane cure lives, and
+// translateBeat is the chip whose byte-identity the one-home move must prove.
+// b6_witness_bench drives the REAL three (with the REAL deriveFiling and the REAL
+// scrubText behind them) — a bench that re-implemented the branch order would
+// prove its own copy and nothing else.
+module.exports.donnaWitnessLines     = donnaWitnessLines;
+module.exports.chipFiling            = chipFiling;
+module.exports.translateBeat         = translateBeat;
