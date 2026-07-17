@@ -199,6 +199,9 @@ not a photographed header.** The precedent is this file's own superseded-attesta
 name what it is, never paper the gap. **→ CE, accept-or-demand:** one screenshot of a re-run (read-only, free)
 upgrades this to the checker-sitting's full form at any time; the CE says whether the seal stands as-is or the
 photo is owed before the block-close handover.
+**→ DISCHARGED, R-B6-23 (recorded at the S1 sitting open, 2026-07-17): the founder's same-day production
+screenshot — project header visible, the oracle SQL in the editor, 1 row returned, `125000 / 3 / 6` — upgrades
+this seal to the checker-sitting's full form. The form gap is closed; the seal stands whole.**
 
 **Census + masterplan updated to this run in the same delivery, per R-B6-6.** **A green oracle is not a clean
 estate. It counts money and rows; it never asks whether a binder's date is a wedding.** This run was green while

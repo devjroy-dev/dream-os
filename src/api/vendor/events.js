@@ -260,6 +260,14 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     ok:     true,
     events,
     total:  count || 0,
+    // TDW_04 B6-S1 (surfaces paper item 3, the horizon contract — R-B6-16): the cap
+    // stops being SILENT. `countQuery` runs the same filters unlimited; if it counted
+    // more rows than the capped list carries, the wire now says so instead of a busy
+    // studio vanishing without a tell (F-04.47's real cure, second leg — the first leg
+    // is the PWA sending from/to and re-fetching on month-nav, this same delivery).
+    // DEFAULT_WINDOW_DAYS stays 400 for from/to-less callers: existing behaviour is
+    // sacred; the calendar client no longer calls without a window.
+    truncated: (count || 0) > events.length,
   });
 });
 

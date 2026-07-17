@@ -14,6 +14,28 @@ const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
+// TDW_04 B6-S1 (surfaces paper item 2, R-B6-16): the capacity row's ONE-HOME feeds.
+// The settings surface renders the category default and its own applicability from
+// THIS wire — the PWA never carries a copy of CATEGORY_CAPACITY or the profile map
+// (F-04.36's family: a mirrored map is the drift). `??` not `||` everywhere below:
+// 0 is a lawful posture (Q-SP-1), the exact lesson capacityCheck's header teaches.
+const { CATEGORY_CAPACITY, RULED_OFF } = require('../../lib/vendor/occupancy');
+const { profileFor }        = require('../../lib/vendor/categoryProfiles');
+const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
+
+// The stepper is for function artists only (spec P3; timelineType 'event' in the
+// profile's own vocabulary) and never for RULED_OFF categories (planner: occupancy
+// OFF by ruling until 04.5). Computed here, read by the PWA, one home.
+function capacityFacts(category) {
+  const profile = profileFor(category);
+  const applicable = profile.timelineType === 'event'
+    && !RULED_OFF.has(normaliseCategory(category));
+  const def = CATEGORY_CAPACITY[profile.key];
+  return {
+    capacity_applicable: applicable,
+    capacity_default:    def != null ? def : null,   // unmapped -> null (occupancy OFF until the vendor sets a number)
+  };
+}
 
 router.get('/', requireAuth, resolveVendor(), async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -52,6 +74,9 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       discover_preview:        vendor.discover_preview        === true,
       discover_eligible:       vendor.discover_eligible       === true,
       discover_request_state:  vendor.discover_request_state  || 'not_requested',
+      // TDW_04 B6-S1 (item 2): the capacity row's read half. `??` — 0 is a posture.
+      slot_capacity:           vendor.slot_capacity ?? null,
+      ...capacityFacts(vendor.category),
       couture_eligible:        vendor.couture_eligible        === true,
       featured_eligible:       vendor.featured_eligible       === true,
       onboarding_state:        vendor.onboarding_state        || null,
@@ -69,7 +94,12 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
 const LOCKED_FIELDS  = ['phone', 'routing_handle', 'tier', 'founding_cohort', 'onboarding_state', 'category'];
 const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel', 'travel_notes',
                         'instagram_handle', 'upi_id', 'gstin', 'briefing_enabled',
-                        'aesthetic_tags', 'rate_min', 'rate_max'];
+                        'aesthetic_tags', 'rate_min', 'rate_max',
+                        // TDW_04 B6-S1 (surfaces paper item 2, F-04.64's first half, R-B6-16):
+                        // the thirteenth entry — P3's "add it to the existing PATCH allowlist,
+                        // smallest change", B-7's confirmed-viable path. NULL = category
+                        // default; 0 is a lawful posture (Q-SP-1) — validated below, no CHECK.
+                        'slot_capacity'];
 
 router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -110,9 +140,18 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       return errRes(res, 400, 'rate_min cannot exceed rate_max.');
     }
 
+    // slot_capacity guard (B6-S1): null resets to the category default; otherwise a
+    // whole number, 0 included (0 = "hold nothing", a posture — Q-SP-1). Anything
+    // else is a 400 here, never a silent coercion. No upper CHECK, per the ruling.
+    if (update.slot_capacity !== undefined && update.slot_capacity !== null) {
+      if (!Number.isInteger(update.slot_capacity) || update.slot_capacity < 0) {
+        return errRes(res, 400, 'slot_capacity must be a whole number of 0 or more, or null for the category default.');
+      }
+    }
+
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, slot_capacity, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -123,7 +162,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, discover_preview')
+      .from('vendors').select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, slot_capacity, discover_preview')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -142,6 +181,8 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       aesthetic_tags:   updated.aesthetic_tags   || [],
       rate_min:         updated.rate_min         || null,
       rate_max:         updated.rate_max         || null,
+      // B6-S1: `??` not `||` — 0 is a posture (Q-SP-1), the capacityCheck lesson.
+      slot_capacity:    updated.slot_capacity    ?? null,
       discover_preview: updated.discover_preview === true,
     },
   });

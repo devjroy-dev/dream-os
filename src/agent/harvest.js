@@ -33,6 +33,7 @@ const { missingCells } = require('../lib/recordCompleteness');
 const { executeAndPatch } = require('../lib/executeAndPatch');
 const { patchNote } = require('../engine/dist/core/donna');
 const { loadRecords } = require('../engine/dist/core/recordsView');
+const { phoneKey } = require('../engine/dist/core/phoneKey'); // F-04.68's cure (B6-S1, R-B6-24): ST-3b's own key fn, the ONE home
 const { logActivity } = require('../lib/vendor/snapshot');
 
 const { resolveModel } = require('../lib/modelRouter'); // TDW_02 P5: the seam swap
@@ -123,6 +124,14 @@ function leadSnapshotItem(l) {
     text: `${l.name ?? 'unknown'} — lead, ${state}${val}`,
     status: (state === 'booked' || state === 'lost') ? 'confirmed' : 'open',
     horizon: null, ref_type: 'leads', ref_id: l.id,
+    // TDW_04 B6-S1 — F-04.68's CURE (ruled R-B6-24): the fourth writer joins the
+    // other three. patchNote replaces items WHOLESALE, so a key-less item here
+    // stripped ST-3b's fusion keys from every harvest-touched lead; phone_key has
+    // no render fallback, so the STRONG fusion key died silently per touch.
+    // Mirrors leads.js patchLeadSnapshot / donnaLead leadItem / donna.ts rebuild.
+    // Verification line: scripts/b6_s1_bench.js §1.
+    name: l.name ?? null,
+    phone_key: phoneKey(l.phone),
   };
 }
 
