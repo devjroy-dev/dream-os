@@ -637,6 +637,70 @@ function mutationLines(done) {
 // (Q-B3-10, CE-ruled 2026-07-16 — it was shipped twice at B3; "they agree today;
 // I read both" is F-04.36's origin sentence). Leg 1 and leg 3 now import ONE rule.
 
+// ══════════════════════════════════════════════════════════════════════════
+// THE COMPOSED-REPLY SAVE — Q-B4-6(b), F-04.41's CURE. (TDW_04 B6 sitting 2,
+// R-B6-3 CE-confirmed: its own ZIP, after R-B6-1's green — this is that ZIP.)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// F-04.41, in one sentence: loop.ts saves the model's reply BEFORE these
+// post-processors run, so the door lines — the WITNESS — ride only as text_delta
+// and evaporate on refresh, while the model's prose — the GUESS — persists in
+// engine.messages forever. The B6 smoke photographed the full sequence (the 06
+// harvest, item 2): fabricate -> persist -> compound -> BLOCK a real write on
+// the strength of a preserved fabrication. The founder screen-witnessed the
+// refresh-evaporation the same sitting: the honest "Couldn't change that
+// booking" gone, the fabricated "Done. 30 November is locked" standing alone.
+//
+// THE CURE: after every line-producing post-processor has run, the door patches
+// the door lines onto the EXACT row loop.ts saved — result.assistant_message_id,
+// the engine's own witness (never "the latest assistant row", which is a guess).
+// The thread's channel 1 (loadThread, memory.ts — content only) then carries the
+// witnessed lines beside the prose, so a preserved "Done" can no longer stand
+// unopposed and the compounding chain loses its fuel.
+//
+// WHAT IS STORED: `result.reply` (the model half, byte-identical to what loop.ts
+// saved — raw, pre-scrub, exactly as today) + the tail. The tail's strings are
+// the builders' own output, already scrubbed at the seam (F-04.33's cure), which
+// is also the copy-law's storage clause satisfied: no internal name can ride.
+//
+// WHAT IS DELIBERATELY NOT DONE: the model half is not re-scrubbed in storage
+// (0-behaviour-change on what the thread held yesterday); a missing id writes
+// NOTHING (never guess a row); a failed patch warns and never disturbs the
+// response (the reply is already owed — leads.js:224's convention).
+//
+// composedTail RECOMPUTES the builders. Disclosed, and safe by construction:
+// bookingLines/conflictLines/mutationLines/advisoryLines/invoiceLines and the
+// blockHands pair are PURE functions of their inputs — a second call returns a
+// byte-identical string — so the live send/append code above is untouched
+// (0-line diff on the wire paths) and the two routes cannot drift from a third
+// copy of the append order: this IS the one ordered list, same order as both
+// routes append (documents · booked · refused · mutated · advised · blocked ·
+// unblocked).
+function composedTail({ documents, booked, refused, mutated, advised, blocked, unblocked }) {
+  const parts = [];
+  if (documents && documents.length) parts.push(invoiceLines(documents));
+  if (booked && booked.length)       parts.push(bookingLines(booked));
+  if (refused && refused.length)     parts.push(conflictLines(refused));
+  if (mutated && mutated.length)     parts.push(mutationLines(mutated));
+  if (advised && advised.length)     parts.push(advisoryLines(advised));
+  if (blocked && blocked.length)     parts.push(scrubText(blockLines(blocked)));
+  if (unblocked && unblocked.length) parts.push(scrubText(unblockLines(unblocked)));
+  return parts.length ? '\n\n' + parts.join('\n\n') : '';
+}
+
+async function persistComposedReply(req, result, tail) {
+  if (!tail) return; // no door lines this turn — the saved row is already the whole truth
+  const id = result && result.assistant_message_id;
+  if (!id) return;   // the engine did not witness the row — write nothing, never guess one
+  try {
+    const { error } = await req.app.locals.supabase.schema('engine')
+      .from('messages')
+      .update({ content: `${result.reply || ''}${tail}` })
+      .eq('id', id);
+    if (error) console.warn('[vendor-e chat:composed-reply]', error.message);
+  } catch (e) { console.warn('[vendor-e chat:composed-reply]', e.message); }
+}
+
 // Lockstep the other way: when Donna moves a binder's date (donna_date / donna_edit carrying a date),
 // the linked calendar event follows — BUT ONLY IF THAT EVENT IS THE ENGAGEMENT.
 // Half A's binder write is a post-turn door action, never a donna_call in result,
@@ -1108,6 +1172,10 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       await retroLinkOnFile(req, result);
       await lockstepBinderToEvent(req, result);
       await logChatActivity(req, result); // TDW_04 B0 item 3
+      // TDW_04 B6 sitting 2 — Q-B4-6(b): the door lines join the thread's row.
+      // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
+      await persistComposedReply(req, result,
+        composedTail({ documents, booked, refused, mutated, advised, blocked, unblocked }));
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
@@ -1151,6 +1219,10 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     await retroLinkOnFile(req, result);
     await lockstepBinderToEvent(req, result);
     await logChatActivity(req, result); // TDW_04 B0 item 3
+    // TDW_04 B6 sitting 2 — Q-B4-6(b): same call, same order, the JSON route's copy
+    // of the SSE line above (the tail builder is the ONE ordered list for both).
+    await persistComposedReply(req, result,
+      composedTail({ documents, booked, refused, mutated, advised, blocked, unblocked }));
 
     let reply = scrubText(result.reply); // CE-18: the firewall covers the reply itself
     // F-04.33: this route hand-rolled the invoice line instead of calling the builder —
@@ -1231,3 +1303,9 @@ module.exports.advisoryLines  = advisoryLines;
 // assertion runs by regex against THIS function's built output, never a copy.
 module.exports.fetchCalendarSnapshot = fetchCalendarSnapshot;
 module.exports.resolveEvent          = resolveEvent;
+// ── TEST SEAMS (TDW_04 B6 sitting 2, Q-B4-6(b)) — same precedent, same reason ──
+// persistComposedReply is where F-04.41's cure lives; composedTail is the one
+// ordered list. b6_sitting2_bench drives the REAL pair against a capturing
+// double — a bench that re-implemented the append order would prove its copy.
+module.exports.persistComposedReply  = persistComposedReply;
+module.exports.composedTail          = composedTail;

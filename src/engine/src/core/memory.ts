@@ -124,18 +124,39 @@ export async function donnaMessages(conversationId: string, limit = 50): Promise
   return `\n\n[Donna messages — your standing exchange with her in this conversation — what she has surfaced for you, turn by turn:]\n${recent.join('\n')}\n`;
 }
 
+// ── TDW_04 B6 sitting 2 (Q-B4-6(b), R-B6-3 CE-ruled) — THE WITNESS RETURNS ──
+// The composed-reply save needs to UPDATE the exact row this function inserted:
+// F-04.41's disease is that the door lines never reach this table, and its cure
+// is the door patching them onto THIS row — which it can only do if the insert
+// hands back the row's id. Resolving "the latest assistant message" door-side
+// would be a guess about a row; the id is the witness (F-04.28's lesson, one
+// table over). DISCLOSED SIGNATURE WIDENING (Q-B2-7's ratified law): the return
+// goes Promise<void> -> Promise<string | null>; every existing caller ignores
+// the return and is untouched. One behaviour note, also disclosed: the old body
+// discarded the insert's error object entirely — a failed save was silent. It
+// now warns. The insert itself is byte-identical; failure still never throws.
 export async function saveMessage(
   conversationId: string,
   role: 'user' | 'assistant' | 'tool',
   content: string,
   toolCalls?: unknown,
-): Promise<void> {
-  await supabase.from('messages').insert({
-    conversation_id: conversationId,
-    role,
-    content,
-    tool_calls: toolCalls ?? null,
-  });
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      role,
+      content,
+      tool_calls: toolCalls ?? null,
+    })
+    .select('id')
+    .single();
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.warn('[memory] saveMessage failed:', error.message);
+    return null;
+  }
+  return (data as { id?: string } | null)?.id ?? null;
 }
 
 // Load the agent's current (non-superseded) durable facts — its notes.

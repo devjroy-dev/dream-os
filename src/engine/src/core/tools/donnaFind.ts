@@ -317,12 +317,17 @@ export async function executeFindTool(
 
   let rows = (data ?? []) as unknown as FoundRow[];
   if (rows.length === 0) {
-    // A search can still come up empty when the handle itself is gone — e.g. a record's
+    // A search can still come up empty when the NAME itself is gone — e.g. a record's
     // name was overwritten, so searching the old name matches nothing even though the row
     // is right there. An empty result must never be a dead end: fall back to the most
     // recent records (active AND archived, tagged) so the agent can recognise the one she
     // means by its CONTENTS when its name no longer points to it. Recovery comes from
     // surfacing the shelf, because a record whose only key is destroyed can't be reasoned to.
+    // (Word-swept at B6 sitting 2, R-B6-13: "handle" was a second teacher of F-04.66's
+    // word, engine-side — the display string below taught it to the model; this comment
+    // taught it to the next maintainer. Both dropped; the referent is the NAME AS SHOWN.
+    // The zero-match DUMP SIZE — 10 records, raw ids, phones, money — is deliberately
+    // untouched: routed to the Block 06 packet by the same ruling, recorded not acted.)
     const { data: recent } = await supabase
       .from('records')
       .select(FIND_SELECT)
@@ -358,8 +363,8 @@ export async function executeFindTool(
     const reviewTail = reviewHits.length ? `\nAnd in filed reviews:\n${reviewHits.join('\n')}` : '';
     return {
       display:
-        `No record matched${termNote}. The handle you searched may be missing or filed differently — ` +
-        `here are the most recent records (active and archived), so you can spot the one you mean by its contents:\n` +
+        `No record matched${termNote}. The name you searched may have changed or be filed differently — ` +
+        `refer to a record by its name as shown; here are the most recent records (active and archived), so you can spot the one you mean by its contents:\n` +
         recentRows.map((r) => describeRow(r, [])).join('\n') + leadTail + shelfTail + reviewTail,
     };
   }

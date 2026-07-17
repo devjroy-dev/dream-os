@@ -50,6 +50,10 @@ export type TurnResult = {
   cost_inr: number;
   tokens: { input: number; output: number; cache_read?: number; cache_write?: number };
   view: ViewRow[] | null; // rows to show for THIS turn (wakes the peek; fills the carousel)
+  // TDW_04 B6 sitting 2 (Q-B4-6(b), R-B6-3): the id of the assistant row saved at
+  // :523 — the door's composed-reply save (F-04.41's cure) patches the door lines
+  // onto exactly this row, never a guessed one. Absent when the save missed.
+  assistant_message_id?: string;
 };
 
 // Live beats — surfaced as they happen, ONLY when runTurn is handed an onEvent
@@ -520,7 +524,10 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
 
   args.onEvent?.({ type: 'answer', reply });
 
-  await saveMessage(conversationId, 'assistant', reply, toolCalls.length ? toolCalls : undefined);
+  // TDW_04 B6 sitting 2 (Q-B4-6(b)): the id is captured, not discarded — the door's
+  // composed-reply save targets exactly this row. saveMessage's widened return is
+  // null on a missed insert; the field simply stays absent and the door writes nothing.
+  const assistantMessageId = await saveMessage(conversationId, 'assistant', reply, toolCalls.length ? toolCalls : undefined);
   // (d)'s §1.5 guard, CE-ruled: a real reply has landed. Everything below — the
   // agent_owner consult stamp, the usage-ledger insert — can still throw, and if it does
   // the wrapper must NOT tombstone a thread that already holds the true answer.
@@ -576,5 +583,6 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     cost_inr: costInr,
     tokens: { input: totalIn, output: totalOut, cache_read: cacheRead, cache_write: cacheWrite },
     view: turnView,
+    assistant_message_id: assistantMessageId || undefined, // Q-B4-6(b): the row the door may patch
   };
 }

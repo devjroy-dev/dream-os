@@ -238,8 +238,8 @@ sec('4. R-B6-4 (veto = YES) + the schema re-teach — the tool layer, at source.
      'the softened strings are IN (both use the §4-proposed clause verbatim) — founder veto slot = YES, executed');
   ok(!src.includes('it is being placed on the calendar.`') && !src.includes('the day is being taken off the calendar.`'),
      '   the optimistic originals are GONE from the two signal displays');
-  ok((src.match(/sent to the calendar; it will confirm or refuse/g) || []).length === 2,
-     '   exactly two: donna_book_event (:650\'s) and donna_block_date (:660\'s) — donna_unblock_date was never on the veto list and is untouched');
+  ok((src.match(/sent to the calendar; it will confirm or refuse/g) || []).length === 4,
+     '   exactly FOUR — AMENDED AT B6 SITTING 2 (R-B6-15, founder veto = YES): the clause the assertion below guards grew by ruling from two sites (donna_book_event/:650, donna_block_date/:660 — ZIP A) to four (+ donna_edit_event, donna_cancel_event — sitting 2); b6_sitting2_bench §4 owns the pair-level detail, this line keeps the total honest. donna_unblock_date was never on the veto list and stays untouched');
   const schemas = src.slice(src.indexOf('DONNA_EDIT_EVENT_TOOL'), src.indexOf('RECORD_TOOLS'));
   ok(!/handle/i.test(schemas), 'ZERO handle-teaching in the edit/cancel schemas — the description was the teacher (F-04.37\'s class), and it now teaches the referent');
   ok((schemas.match(/on_date/g) || []).length >= 2, '   both schemas gained on_date — the disambiguator the gate\'s leg 2 reads');

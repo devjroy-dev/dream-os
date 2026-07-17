@@ -683,13 +683,22 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       const changed = fields.filter((k) => typeof input[k] === 'string' && (input[k] as string).trim());
       if (changed.length === 0) return { display: 'ERROR: donna_edit_event needs at least one field to change (date, time, title, kind, or note).' };
       // Signal only — the door applies the change to public.events (vendor-scoped) and confirms.
-      return { display: `Change requested to booking ${eid}: ${changed.join(', ')} — it is being updated on the calendar.` };
+      // ── SOFTENED AT B6 SITTING 2 (R-B6-15, founder veto = YES, recorded 2026-07-17) ──
+      // The same clause as donna_book_event/donna_block_date above (R-B6-4's ruled
+      // form, extended by R-B6-15 to the edit/cancel pair): this string returns to
+      // the model BEFORE the door has decided, and "it is being updated" invited
+      // optimistic prose over a refusal not yet heard. Same warrant, same sentence:
+      // the only one true at the instant it is written. THE STRING IS NOT THE CURE —
+      // Q-B4-6(b)'s composed-reply save (this ZIP) is.
+      return { display: `Change requested to booking ${eid}: ${changed.join(', ')} — sent to the calendar; it will confirm or refuse.` };
     }
     case 'donna_cancel_event': {
       const eid = typeof input.event_id === 'string' ? input.event_id.trim() : '';
       if (!eid) return { display: "ERROR: donna_cancel_event needs event_id (the booking's name as shown on the calendar)." };
       // Signal only — the door marks the calendar row cancelled (recoverable) and confirms.
-      return { display: `Cancellation requested for booking ${eid} — it is being called off on the calendar.` };
+      // ── SOFTENED AT B6 SITTING 2 (R-B6-15, founder veto = YES) — same warrant as
+      // donna_edit_event's string above; see that comment.
+      return { display: `Cancellation requested for booking ${eid} — sent to the calendar; it will confirm or refuse.` };
     }
     case 'donna_hide': {
       if (!rid) return { display: 'ERROR: donna_hide needs binder_id.' };
