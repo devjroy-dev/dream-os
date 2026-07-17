@@ -276,6 +276,46 @@ export async function snapshotText(agentId: string): Promise<string> {
 // returned as a DonnaSession so the NEXT call resumes the same conversation — that is
 // what makes the exchange two-way instead of a one-shot.
 const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, LISTEN_HARVEY_TALK_TOOL];
+// ── TDW_06 ECONOMICS SITTING — THE DONNA CACHE (charter item 2; UNIT_ECONOMICS'
+// own fire alarm: her system + ~20 tool schemas + segments billed FULL RATE
+// 2–6×/turn — the ₹9.59-class dispatch turn's whole top end). The cure is the
+// house cost law applied to her the way loop.ts applies it to Harvey: the
+// STATIC prefix — her soul + the cabinet shape + the working shape, identical
+// every segment, every turn, every vendor — is marked cache_control:ephemeral
+// and pays full rate ONCE per ~5-min window; tools (DONNA_TOOLS, the ~20
+// schemas — the bill's biggest block) ride the cached prefix automatically.
+// The DYNAMIC tail — the today line + the owner's scratchpad — is never
+// cached (the today line changes daily and must never be cached stale; the
+// scratchpad is per-owner). ONE DISCLOSED PROMPT CHANGE: the today line moves
+// from between the soul and the cabinet shape to the dynamic tail — the house
+// law's own requirement (cache-stable static prefixes are never touched by
+// dynamic content); every pre-cure sentence survives byte-for-byte, the
+// cache bench asserts both facts. On non-anthropic transports the facade's
+// deep cache_control strip (z law, llm.js) removes the marker untouched here
+// — her DeepSeek hand is byte-lawful, asserted through the REAL translateFor.
+const DONNA_STATIC_PREFIX =
+    DONNA_SOUL +
+    "\n\nTHE SHAPE OF YOUR CABINET — the room you keep, so you always see what your hands touch: " +
+    "one binder is one row, and a binder carries ONE money story — its amount and direction are THE " +
+    "money of that engagement; received, pending and payment status are that story's parts. A different " +
+    "money — a vendor's payable beside a client's contract, a second deal with the same person — is its " +
+    "OWN binder. Money is never silently lost: writing money over a standing figure replaces it and " +
+    "CONFESSES old to new, written into the binder's story and the event trail; deliberate corrections " +
+    "also have their own door, donna_money_edit. " +
+    "The note GROWS — lines added through donna_edit or donna_note_append stack beneath what stands; " +
+    "donna_note alone rewrites it clean. Nothing is ever destroyed: archived binders wait in the cabinet, " +
+    "and every write leaves a dated line in the event trail that donna_history reads back. Figures travel " +
+    "as they arrived — '2.5L', '90k', plain rupees — and the hands compute the zeros, never you. " +
+    "Beside the cabinet stands THE SHELF: documents distilled into Briefs — §-numbered, page-anchored " +
+    "indexes with their gaps declared. donna_shelf shows what's on it; donna_brief_read opens one. " +
+    "A citation from a Brief is §-and-page, always — the chain back to the stored original — and a " +
+    "declared gap is the index admitting blindness, never evidence of absence." +
+    "\n\nYou are working with Harvey, turn by turn. He hands you something — an instruction, or his " +
+    "answer to what you just asked. You do the work against the real records (reconciling against what " +
+    "already exists before you write), and you speak back to him with listen_harvey_talk: hand him your " +
+    "finding, or ask him exactly what you need to finish (which client, which binder) and his answer " +
+    "comes next. Keep each reply to one or two plain lines. You prepare; you never advise — that is his.";
+
 // Bounds Donna's OWN tool-work within one segment (file/search/speak). This is NOT the
 // Harvey<->Donna exchange count — that is fused upstream in the loop.
 const DONNA_WORK_ITERS = 6;
@@ -326,31 +366,14 @@ export async function runDonnaTurn(
   let cacheRead = 0, cacheWrite = 0; // 02-HOTFIX: her buckets, priced and surfaced
   let view: ViewRow[] | null = null; // last READ's rows win — that's THIS ask's view
 
-  const donnaSystem =
-    DONNA_SOUL +
+  const donnaDynamic =
     (today ? `\n\n[${today}] Use this when something is dated relative to now (a deadline, "next Friday", whether a date has passed).` : '') +
-    "\n\nTHE SHAPE OF YOUR CABINET — the room you keep, so you always see what your hands touch: " +
-    "one binder is one row, and a binder carries ONE money story — its amount and direction are THE " +
-    "money of that engagement; received, pending and payment status are that story's parts. A different " +
-    "money — a vendor's payable beside a client's contract, a second deal with the same person — is its " +
-    "OWN binder. Money is never silently lost: writing money over a standing figure replaces it and " +
-    "CONFESSES old to new, written into the binder's story and the event trail; deliberate corrections " +
-    "also have their own door, donna_money_edit. " +
-    "The note GROWS — lines added through donna_edit or donna_note_append stack beneath what stands; " +
-    "donna_note alone rewrites it clean. Nothing is ever destroyed: archived binders wait in the cabinet, " +
-    "and every write leaves a dated line in the event trail that donna_history reads back. Figures travel " +
-    "as they arrived — '2.5L', '90k', plain rupees — and the hands compute the zeros, never you. " +
-    "Beside the cabinet stands THE SHELF: documents distilled into Briefs — §-numbered, page-anchored " +
-    "indexes with their gaps declared. donna_shelf shows what's on it; donna_brief_read opens one. " +
-    "A citation from a Brief is §-and-page, always — the chain back to the stored original — and a " +
-    "declared gap is the index admitting blindness, never evidence of absence." +
-    "\n\nYou are working with Harvey, turn by turn. He hands you something — an instruction, or his " +
-    "answer to what you just asked. You do the work against the real records (reconciling against what " +
-    "already exists before you write), and you speak back to him with listen_harvey_talk: hand him your " +
-    "finding, or ask him exactly what you need to finish (which client, which binder) and his answer " +
-    "comes next. Keep each reply to one or two plain lines. You prepare; you never advise — that is his." +
     // The owner's scratchpad — his own hand, door-fed into Donna's vision (never Harvey's).
     (scratchpad ? `\n\n${scratchpad}` : "");
+  const donnaSystem: Anthropic.TextBlockParam[] = [
+    { type: 'text', text: DONNA_STATIC_PREFIX, cache_control: { type: 'ephemeral' } },
+    ...(donnaDynamic.trim() ? [{ type: 'text', text: donnaDynamic } as Anthropic.TextBlockParam] : []),
+  ];
 
   // Build the message list: resume the prior conversation, or start fresh.
   const messages: Anthropic.MessageParam[] = prior ? [...prior.messages] : [];

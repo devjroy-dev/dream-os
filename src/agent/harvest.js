@@ -34,6 +34,7 @@ const { executeAndPatch } = require('../lib/executeAndPatch');
 const { patchNote } = require('../engine/dist/core/donna');
 const { loadRecords } = require('../engine/dist/core/recordsView');
 const { phoneKey } = require('../engine/dist/core/phoneKey'); // F-04.68's cure (B6-S1, R-B6-24): ST-3b's own key fn, the ONE home
+const { calcCostInr } = require('../engine/dist/core/models'); // TDW_06 meter fix: the ONE cost home, never a second pricing table
 const { logActivity } = require('../lib/vendor/snapshot');
 
 const { resolveModel } = require('../lib/modelRouter'); // TDW_02 P5: the seam swap
@@ -55,16 +56,73 @@ const SYSTEM = [
 
 // ── the P5 seam, SWAPPED (spec P4->P5): route via resolveModel('harvest'); the
 // retry leg stays Haiku direct — the facade's own fallback, and rule 6's floor.
+//
+// TDW_06 ECONOMICS SITTING — THE METER FIX (charter item 1). CONVICTED TWICE:
+// this lane routed config-live (GLM then, DeepSeek now per LD-7/F11) and wrote
+// ZERO engine.usage rows — resp.usage was discarded on the floor. No cost
+// decision ships on a blind meter. Every model call through this function now
+// writes ONE engine.usage row, whatever the provider in llm.js's CONF:
+//   · model        = the RAW routed model string (the provider's fingerprint;
+//                    loop.ts's own convention on routed providers)
+//   · conversation_id = NULL, deliberately — harvest is NOT a turn. The chat
+//                    door's turn-count caps (CE-6) count usage rows per agent;
+//                    they now filter `conversation_id IS NOT NULL` so harvest
+//                    rows meter SPEND (server.ts sums cost_inr — real money,
+//                    correctly counted) without ever inflating TURNS.
+//   · cost_inr     = calcCostInr, the ONE meter home. Its documented law
+//                    stands: unknown models price at HAIKU rates (deliberate-
+//                    conservative ceiling; never invent a price) — deepseek/glm
+//                    rows OVER-state until the founder supplies real rates.
+// BACKFILL: NONE. The pre-fix gap is the gap, stated in UNIT_ECONOMICS.md.
+// The write is best-effort (try/catch, warned) — a meter failure must never
+// cost a vendor his patches; harvest's rule-6 posture governs.
+function harvestMeterRow(resp, model) {
+  const u = (resp && resp.usage) || {};
+  return {
+    model,
+    input_tokens: u.input_tokens ?? 0,
+    output_tokens: u.output_tokens ?? 0,
+    cache_read_tokens: u.cache_read_input_tokens ?? 0,
+    cache_write_tokens: u.cache_creation_input_tokens ?? 0,
+  };
+}
+async function writeHarvestUsage(supabase, agentId, m) {
+  try {
+    const row = {
+      agent_id: agentId,
+      conversation_id: null, // NOT a turn — the caps' count guard keys on exactly this
+      model: m.model,
+      input_tokens: m.input_tokens,
+      output_tokens: m.output_tokens,
+      cost_inr: calcCostInr(m.model, m.input_tokens, m.output_tokens, m.cache_read_tokens, m.cache_write_tokens),
+      escalated: false,
+      cache_read_tokens: m.cache_read_tokens,
+      cache_write_tokens: m.cache_write_tokens,
+    };
+    const { error } = await supabase.schema('engine').from('usage').insert(row);
+    if (error && /cache_(read|write)_tokens/i.test(error.message)) {
+      // loop.ts's own column-guard convention: a pre-DDL database degrades to the
+      // old row shape, honestly logged, and NEVER loses the ledger row.
+      const { cache_read_tokens: _cr, cache_write_tokens: _cw, ...bare } = row;
+      const { error: bareErr } = await supabase.schema('engine').from('usage').insert(bare);
+      if (bareErr) console.warn('[harvest usage] ledger write failed:', bareErr.message);
+    } else if (error) {
+      console.warn('[harvest usage] ledger write failed:', error.message);
+    }
+  } catch (e) { console.warn('[harvest usage] ledger write failed:', e.message); }
+}
 async function callHarvestModel(userPrompt, supabase, opts = {}) {
   const params = { max_tokens: 700, system: SYSTEM, messages: [{ role: 'user', content: userPrompt }] };
   if (opts.forceHaiku) {
     const resp = await anthropic.messages.create({ ...params, model: HAIKU });
+    await writeHarvestUsage(supabase, opts.agentId ?? null, harvestMeterRow(resp, HAIKU));
     return (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
   }
   const route = await resolveModel(supabase, 'harvest', 'default');
   const resp = route.provider === 'anthropic'
     ? await anthropic.messages.create({ ...params, model: route.model })
     : await llmCreate(route.provider, { ...params, model: route.model });
+  await writeHarvestUsage(supabase, opts.agentId ?? null, harvestMeterRow(resp, route.model));
   return (resp.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
 }
 
@@ -302,8 +360,8 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls, reply
 
     // Rule 6: one silent retry, then give up silently.
     let patches = null;
-    try { patches = parsePatches(await callHarvestModel(prompt, pub)); } catch (e) { console.warn('[harvest] routed model failed:', e.message); }
-    if (patches === null) patches = parsePatches(await callHarvestModel(prompt + '\n\nSTRICT JSON ONLY.', pub, { forceHaiku: true }));
+    try { patches = parsePatches(await callHarvestModel(prompt, pub, { agentId })); } catch (e) { console.warn('[harvest] routed model failed:', e.message); }
+    if (patches === null) patches = parsePatches(await callHarvestModel(prompt + '\n\nSTRICT JSON ONLY.', pub, { forceHaiku: true, agentId }));
     if (patches === null) { console.warn('[harvest] unparseable twice — gave up'); return; }
     if (!patches.length) { console.log('[harvest] applied=0 dropped=0 (model proposed nothing)'); return; }
 

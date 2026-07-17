@@ -44,9 +44,15 @@ const DIST = path.join(ROOT, 'src/engine/dist/core/tools/donnaLead.js');
 
 (async () => {
   sec('§1 — the REAL compiled door (the CE\'s named first test: the Tara sequence).');
-  if (!fs.existsSync(DIST)) {
-    console.log('  … dist absent (clean clone) — §1\'s 9 behavioural assertions SKIPPED, stated;');
-    console.log('    the engine gates (tsc + build + smoke) carry behaviour. §2 runs in full.');
+  // D-11 (TDW_06 economics sitting): F-04.83's staleness gate, generalized — this
+  // bench drives dist (the note's own named sibling). Sentinel = `matchedBy`, the
+  // ZIP-J cure's own identifier (6 hits in cured src AND cured dist; absent both
+  // sides pre-J, so an uncured tree still runs §1 and still fails on the cure).
+  const { distGate } = require(path.join(__dirname, 'lib', 'dist_gate'));
+  const gate = distGate({ sentinel: 'matchedBy', srcPath: path.join(ROOT, 'src/engine/src/core/tools/donnaLead.ts'), distPath: DIST, benchCmd: 'scripts/b6_door_rider_bench.js' });
+  if (!gate.runDist) {
+    if (!gate.present) { /* the absent-dist print above already stated the skip */ }
+    console.log('  … §1\'s 9 behavioural assertions SKIPPED per the gate; the engine gates carry behaviour. §2 runs in full.');
   } else {
     // ── the scoped shim: answers ONLY requires issued by the module under test.
     const AGENT = 'agent-door-bench';

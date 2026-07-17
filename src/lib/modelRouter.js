@@ -11,7 +11,6 @@
 const { providerKeyPresent, CONF } = require('./llm');
 
 const HAIKU = 'claude-haiku-4-5-20251001';
-const SONNET = 'claude-sonnet-4-6';
 
 // The default matrix == 0073 seeds (spec P5; tier names are PRODUCT tiers, CE-7).
 const DEFAULTS = {
@@ -22,7 +21,11 @@ const DEFAULTS = {
   'model.pwa_vendor.trial':     { provider: 'anthropic', model: HAIKU },
   'model.pwa_vendor.essential': { provider: 'deepseek',  model: 'deepseek-v4-flash' },
   'model.pwa_vendor.signature': { provider: 'anthropic', model: HAIKU },
-  'model.pwa_vendor.prestige':  { provider: 'anthropic', model: HAIKU, escalation_model: SONNET },
+  // TDW_06 economics sitting (founder-ruled NO Sonnet): the dormant escalation_model
+  // entry removed — nothing in the estate ever read the field (grep-verified at
+  // delivery). The LIVE Sonnet paths (tier-map top start, mid-tier escalate) are a
+  // separate finding, filed not touched — see F-04.85 in FINDINGS_LOG.
+  'model.pwa_vendor.prestige':  { provider: 'anthropic', model: HAIKU },
   'model.harvest.default':      { provider: 'glm',       model: 'glm-4.7-flash' },
 };
 

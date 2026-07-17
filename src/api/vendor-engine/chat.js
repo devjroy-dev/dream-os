@@ -1188,8 +1188,14 @@ async function buildMeta(req, productTier) {
     const monKey = `vendor_pwa_monthly_${productTier}`;
     const [{ data: cfg }, dayRes, monRes] = await Promise.all([
       pub.from('admin_config').select('key, value').in('key', [dayKey, monKey]),
-      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).gte('created_at', istDayStartUtcISO()),
-      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).gte('created_at', istMonthStartUtcISO()),
+      // TDW_06 meter fix: harvest's newly-metered rows carry conversation_id NULL
+      // (they are spend, never turns). Every chat turn's row carries its conversation
+      // (loop.ts sets it unconditionally), so on the pre-fix estate this filter is
+      // count-neutral — the founder's read-only verify (delivery message) witnesses
+      // the zero. Spend caps (server.ts agentSpendTodayInr) deliberately UNFILTERED:
+      // harvest cost is real money and counts.
+      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).not('conversation_id', 'is', null).gte('created_at', istDayStartUtcISO()),
+      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).not('conversation_id', 'is', null).gte('created_at', istMonthStartUtcISO()),
     ]);
     const val = (k, dflt) => { const r = (cfg || []).find((c) => c.key === k); const n = r ? parseInt(r.value, 10) : NaN; return Number.isFinite(n) && n > 0 ? n : dflt; };
     const dayCap = val(dayKey, 25), monCap = val(monKey, 250);
@@ -1511,3 +1517,9 @@ module.exports.translateBeat         = translateBeat;
 // clauses + the minted line). b6_open_question_bench drives the REAL one, with
 // the REAL composedTail, persistComposedReply and scrubText behind it.
 module.exports.donnaOpenLine         = donnaOpenLine;
+// ── TEST SEAM (TDW_06 economics sitting) — same precedent, same reason ─────
+// actionKind is the ONE write/read/calendar vocabulary (D-1: only nested hands
+// convict, and this is the word that classifies a hand). b06_gauntlet.js
+// convicts candidates with the REAL classifier — a gauntlet that re-implemented
+// it would convict against its own copy and nothing else.
+module.exports.actionKind            = actionKind;

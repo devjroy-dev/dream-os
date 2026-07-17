@@ -159,3 +159,6 @@ These bind every session from this date. Where a law amends an earlier section, 
 **Data discipline (restates standing rules for one-stop reading)**
 - **Founder-run SQL is written only against witnessed column lists** (`docs/db/PUBLIC_SCHEMA.md`, `docs/db/ENGINE_SCHEMA.md`) — never against prose (F-04.23/F-04.57).
 - **Count-proofs and state oracles are re-derived at the moment of running with full header + pasted rows, on a green banner — never carried as a remembered triple** (T19's baseline dispute is the specimen).
+
+**D-10 — the verify+git fusion (promoted at the TDW_06 economics sitting; earned by F-04.83's process half, the founder's paste running the git line over a red verify):**
+- **The git line runs only on a green verify.** Every delivered apply block's verify line ends `|| echo "STOP — do not run the git line; paste the output back"`, and the git line stands BENEATH that sentence — the founder reads the STOP before the commit exists. A red verify stops the push mechanically at the paste, never by memory. (§7's three-line format otherwise unchanged; the STOP sentence is instruction text inside the block, not a fourth command.)

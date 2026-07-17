@@ -311,8 +311,11 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // once per ~5-min window; subsequent calls read it ~10% cost. The DYNAMIC tail —
   // this owner's live facts + Donna's snapshot — is never cached (it changes per turn,
   // and the snapshot is re-read mid-turn after a mutation). Tools ride the cached
-  // prefix automatically. Donna is left uncached on purpose: her prompt (~1.1k tokens)
-  // is below the Haiku 2048-token cache minimum, so caching it would no-op.
+  // prefix automatically. TDW_06 economics sitting: Donna is now cached the SAME way
+  // (donna.ts DONNA_STATIC_PREFIX — her soul + cabinet + working shape + her ~20 tool
+  // schemas). The earlier "~1.1k tokens, below the cache minimum" note here was STALE
+  // by an order of magnitude — her tool schemas alone dwarf the 2048-token floor;
+  // UNIT_ECONOMICS' ₹9.59 fire alarm was the receipts. Cured this sitting.
   const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL) + fieldBlock;
   // The clock: today's date, in the owner's timezone, in the DYNAMIC (never-cached)
   // block — it changes daily and must never be cached stale. Reaches Harvey here;
@@ -488,9 +491,10 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         totalIn += donna.input_tokens;
         totalOut += donna.output_tokens;
         // 02-HOTFIX (2026-07-15): her cache buckets fold into the turn totals so the
-        // ledger sees the WHOLE turn's billing shape, not just Victor's. (On the
-        // anthropic path she is uncached today, so these are zero — the seam exists
-        // for the day Block 06 caches her, and for compat endpoints that report buckets.)
+        // ledger sees the WHOLE turn's billing shape, not just Victor's. TDW_06
+        // economics sitting: the day this seam existed for arrived — donna.ts now
+        // caches her static prefix on the anthropic path, so these buckets carry her
+        // cache writes/reads live (and compat-endpoint buckets where reported).
         cacheRead += donna.cache_read_tokens;
         cacheWrite += donna.cache_write_tokens;
         costInr += donna.cost_inr;
