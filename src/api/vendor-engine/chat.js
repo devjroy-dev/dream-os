@@ -346,8 +346,9 @@ async function retroLinkOnFile(req, result) {
 }
 
 // donna_edit_event / donna_cancel_event are Donna's SIGNAL hands for changing the calendar.
-// The door resolves the event (vendor-scoped; only on a full valid handle, so a truncated
-// one reports cleanly instead of hard-erroring — the short-UUID lesson), applies the change,
+// The door resolves the event through the TWO-LEG GATE at resolveEvent (a UUID for any
+// caller that still holds one; otherwise a SAYABLE REFERENT — the booking's title,
+// prefix-tolerant, with exact on_date when given — R-B6-1), applies the change,
 // and confirms. Both now write through eventWrite (TDW_04 B2), so the CRUD door and this
 // one cannot drift: one writer, two doors.
 // ── TDW_04 B0 item 3 (CE extension, 2026-07-15) — THE CHAT LANE JOINS THE LEDGER ──
@@ -436,18 +437,58 @@ async function logChatActivity(req, result) {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-async function resolveEvent(req, eventId) {
+// ── THE TWO-LEG GATE (R-B6-1's known second half, CE-ruled 2026-07-17) ──────
+// The snapshot no longer hands Victor row ids, so a gate that required a UUID
+// would strand every edit/cancel reference. Leg 1 (UUID, byte-identical to the
+// B4-era gate) survives for any caller that still holds a real id. Leg 2 is the
+// SAYABLE-REFERENT leg: vendor-scoped resolution on the booking's TITLE
+// (prefix-tolerant — nameMatches, imported from resolveClientReference.js, the
+// estate's ONE home for the token-boundary prefix rule; the resolver itself is
+// precedent-not-reused because it resolves PEOPLE across clients/leads/invoices
+// and this resolves EVENTS — different entity, different tables, different match
+// shape) plus exact `on_date` when the model supplies it, against LIVE ROWS ONLY
+// (`deleted_at is null` + `state <> 'cancelled'` — the covenant; note leg 1
+// deliberately keeps its original predicate, which does NOT exclude cancelled —
+// 0-behaviour-change on the UUID path, disclosed).
+//
+// AMBIGUITY RESOLVES TO HONESTY, NEVER TO A GUESS (the ruling's own words): two
+// or more candidates return `{ambiguous:[…]}` and mutationLines speaks "tell me
+// which one", listing each by title + date. Returns exactly one of:
+//   { ev }                      resolved
+//   { ambiguous: [{title, event_date}, …] }
+//   { none: true }              nothing matched (the old null)
+async function resolveEvent(req, eventId, onDate) {
   const raw = String(eventId || '').trim();
-  if (!UUID_RE.test(raw)) return null; // not a usable handle -> door reports "tell me which one"
-  const { data, error } = await req.app.locals.supabase
+  if (!raw) return { none: true };
+  if (UUID_RE.test(raw)) {
+    const { data, error } = await req.app.locals.supabase
+      .from('events')
+      .select('id, title, event_date, event_time, kind, state, linked_binder_id')
+      .eq('vendor_id', req.vendor.id)
+      .eq('id', raw)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (error || !data) return { none: true };
+    return { ev: data };
+  }
+  // Leg 2. The ilike is a coarse DB-side prefilter refined by nameMatches —
+  // resolveClientReference.js's own pattern, so "riya" never matches "Priya".
+  const { nameMatches } = require('../../lib/vendor/resolveClientReference');
+  let q = req.app.locals.supabase
     .from('events')
     .select('id, title, event_date, event_time, kind, state, linked_binder_id')
     .eq('vendor_id', req.vendor.id)
-    .eq('id', raw)
     .is('deleted_at', null)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
+    .neq('state', 'cancelled')
+    .ilike('title', `%${raw}%`);
+  const day = String(onDate || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) q = q.eq('event_date', day);
+  const { data, error } = await q;
+  if (error || !data) return { none: true };
+  const hits = data.filter((r) => nameMatches(r.title, raw));
+  if (hits.length === 1) return { ev: hits[0] };
+  if (hits.length > 1) return { ambiguous: hits.map((r) => ({ title: r.title, event_date: r.event_date })) };
+  return { none: true };
 }
 async function mutateEvents(req, result) {
   const edits = [], cancels = [];
@@ -463,7 +504,12 @@ async function mutateEvents(req, result) {
   const done = [];
   for (const e of edits) {
     try {
-      const ev = await resolveEvent(req, e.event_id);
+      const res = await resolveEvent(req, e.event_id, e.on_date);
+      // ── AMBIGUITY (R-B6-1): two candidates resolve to honesty, never a guess.
+      // The outcome carries the candidates so mutationLines can list them by
+      // title + date — F-04.62's law extended: every cause names itself.
+      if (res.ambiguous) { done.push({ action: 'edit', ok: false, reason: 'ambiguous', candidates: res.ambiguous }); continue; }
+      const ev = res.ev;
       // ── F-04.62's CURE (CE-ruled 2026-07-16, filed and cured this ZIP) ────
       // `reason:'unresolved'` is the WHOLE FIX, and it is one word. THREE distinct
       // causes used to collapse into a bare `{ok:false}` here — no single match, a
@@ -513,7 +559,9 @@ async function mutateEvents(req, result) {
   }
   for (const c of cancels) {
     try {
-      const ev = await resolveEvent(req, c.event_id);
+      const res = await resolveEvent(req, c.event_id, c.on_date);
+      if (res.ambiguous) { done.push({ action: 'cancel', ok: false, reason: 'ambiguous', candidates: res.ambiguous }); continue; }
+      const ev = res.ev;
       if (!ev) { done.push({ action: 'cancel', ok: false, reason: 'unresolved' }); continue; }
       // Routed. A cancel is a state write, and state is eventWrite's to set.
       const r = await writeEvent(req.app.locals.supabase, {
@@ -564,6 +612,15 @@ function mutationLines(done) {
       if (m.conflict && m.conflict.message) return m.conflict.message;
       // FAIL-CLOSED's honest, retryable string. Also verbatim; also already true.
       if (m.error) return m.error;
+      // AMBIGUITY (R-B6-1): more than one booking answers to that name. Honesty,
+      // never a guess — each candidate listed by title + date so the vendor can
+      // say which one in his next breath.
+      if (m.reason === 'ambiguous' && Array.isArray(m.candidates) && m.candidates.length) {
+        const list = m.candidates.map((x) => `${x.title} (${x.event_date})`).join(' · ');
+        return m.action === 'cancel'
+          ? `Couldn't cancel that booking — more than one matches: ${list}. Tell me which one.`
+          : `Couldn't change that booking — more than one matches: ${list}. Tell me which one.`;
+      }
       // AND ONLY NOW, the sentence that was always true HERE and nowhere else.
       return m.action === 'cancel'
         ? `Couldn't cancel that booking — I didn't find a single match. Tell me which one.`
@@ -700,10 +757,43 @@ async function lockstepBinderToEvent(req, result) {
 
 // Calendar sight: the door hands Harvey the vendor's upcoming bookings as a compact snapshot,
 // injected into his turn (mirrors the cabinet snapshot). Read-only; the engine stays clean.
+//
+// ── F-04.66's CURE + P4.1, ONE EDIT TO ONE FUNCTION (R-B6-1, CE-ruled 2026-07-17) ──
+// THE IDS LEAVE THIS PROSE AND THE WORD "handle" LEAVES WITH THEM. The old header
+// handed Victor raw row ids, NAMED them "handle", and INSTRUCTED him to use them —
+// F-04.37's signature ("he was not lying — he was obeying"), third instance, and the
+// founder's 2026-07-17 19:43 specimen ("… (handle: 6cde1a36-…)") was the proof. A
+// snapshot line is now a referent Victor can SAY — date + title — and the mutation
+// gate below (resolveEvent) resolves what he says. Scrubbing the id at scrub.js was
+// ruled OUT: scrubText is shared with tool-result renders (chat.js:85 scrubs
+// e.result; donnaLead.ts:259 prints an id into it), so a UUID pattern there scrubs
+// payloads — and a stripped id leaves "(handle: )" while the instruction survives
+// (F-04.27's lesson inverted). The cure is at the source of the hand: this function.
+//
+// P4.1's DATE-PRESSURE LINE lands in the same edit, because it extends this exact
+// function — building it first and curing second would reopen the first (the
+// handoff's "two edits to one function where the second undoes the first").
+// Siting re-ruled at B4 §3 and confirmed at R-B6-1: HERE, one home, door-fed —
+// not donna.ts. Fed by describeWindow, which is fed by describeDate (occupancy.js;
+// the eleven-null warrant in its header governs — OFF is spoken as OFF, unknown as
+// unknown, never as free). Muhurat + enquiry dates are door reads (they are market
+// and pipeline facts, not occupancy's): hot_dates is global (witnessed 8 columns,
+// PUBLIC_SCHEMA.md — date/active/label); leads' open states are new/contacted/quoted
+// — ⚠ that list's home is leads.js:75 ACTIVE_PIPELINE_STATES (a router export, not
+// importable without dragging express); carried here BY VALUE with this pointer.
+// Two homes for one list is F-04.36's shape — named, not hidden; a structural cure
+// (export the constant or bench the agreement) is proposed in the B6 handover.
+const PRESSURE_WINDOW_DAYS = 30; // spec P4.1's own number
+function pressureDateWord(iso) {
+  try {
+    return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  } catch { return iso; }
+}
 async function fetchCalendarSnapshot(req) {
   try {
+    const supabase = req.app.locals.supabase;
     const today = new Date().toISOString().slice(0, 10);
-    const { data, error } = await req.app.locals.supabase
+    const { data, error } = await supabase
       .from('events')
       .select('id, title, event_date, event_time, kind, state')
       .eq('vendor_id', req.vendor.id)
@@ -714,9 +804,82 @@ async function fetchCalendarSnapshot(req) {
     if (error || !data || !data.length) return '';
     const lines = data.map((e) => {
       const when = e.event_time ? `${e.event_date} ${e.event_time}` : e.event_date;
-      return `- [${e.id}] ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`;
+      return `- ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`;
     });
-    return `[Calendar — upcoming, kept for you. The [handle] before each booking is how you reference it to change or cancel it.]\n${lines.join('\n')}`;
+
+    // ── P4.1: the date-pressure line. One dense line, words not tables. ──
+    // Each read is best-effort and HONEST about failure: a failed market read says
+    // "unknown", never "none" (F-04.21's family — absence is only evidence if you
+    // looked). The occupancy half's honesty lives inside windowWords itself.
+    let pressure = '';
+    try {
+      const { describeWindow, windowWords } = require('../../lib/vendor/occupancy');
+      const horizon = new Date(`${today}T00:00:00Z`);
+      horizon.setUTCDate(horizon.getUTCDate() + PRESSURE_WINDOW_DAYS - 1);
+      const to = horizon.toISOString().slice(0, 10);
+
+      // The date-FINDER lives at the DOOR, not in occupancy.js — checker_bench §14
+      // holds that file horizon-free by construction (F-04.47's invariant), and this
+      // window is the DOOR's question. Covenant lines are liveRowsOn's two, verbatim.
+      // Its only power is which dates get asked: a missed date is an omission this
+      // finder owns; every ANSWER still comes out of describeDate, per date.
+      let candidateDates = null; // null = the finder failed -> the window is UNKNOWN
+      try {
+        const { data: cd, error: cdErr } = await supabase
+          .from('events')
+          .select('event_date')
+          .eq('vendor_id', req.vendor.id)
+          .gte('event_date', today)
+          .lte('event_date', to)
+          .is('deleted_at', null)              // F-04.25's covenant — the only lawful
+          .neq('state', 'cancelled');          // non-occupancy, same as liveRowsOn.
+        if (!cdErr) candidateDates = [...new Set((cd || []).map((r) => r.event_date).filter(Boolean))];
+      } catch { candidateDates = null; }
+
+      const win = await describeWindow({ supabase, vendorId: req.vendor.id, from: today, days: PRESSURE_WINDOW_DAYS, candidateDates });
+
+      let muhurat;
+      try {
+        const { data: hd, error: hdErr } = await supabase
+          .from('hot_dates')
+          .select('date')
+          .eq('active', true)
+          .gte('date', today)
+          .lte('date', to)
+          .order('date', { ascending: true });
+        muhurat = hdErr ? null : [...new Set((hd || []).map((r) => r.date))];
+      } catch { muhurat = null; }
+
+      let enquiry;
+      try {
+        const { data: ld, error: ldErr } = await supabase
+          .from('leads')
+          .select('wedding_date')
+          .eq('vendor_id', req.vendor.id)
+          .is('deleted_at', null)
+          .in('state', ['new', 'contacted', 'quoted']) // ACTIVE_PIPELINE_STATES, leads.js:75 — see header
+          .not('wedding_date', 'is', null)
+          .gte('wedding_date', today)
+          .lte('wedding_date', to);
+        enquiry = ldErr ? null : [...new Set((ld || []).map((r) => r.wedding_date))].sort();
+      } catch { enquiry = null; }
+
+      const bits = [windowWords(win)];
+      if (muhurat === null) bits.push('muhurat dates unknown (could not be read)');
+      else if (muhurat.length) bits.push(`muhurat ${muhurat.map(pressureDateWord).join(', ')}`);
+      else bits.push('no muhurat dates');
+      if (enquiry === null) bits.push('enquiry dates unknown (could not be read)');
+      else if (enquiry.length) bits.push(`${enquiry.length} enquiry date${enquiry.length === 1 ? '' : 's'} in play (${enquiry.map(pressureDateWord).join(', ')})`);
+      else bits.push('no enquiry dates in play');
+      pressure = `\n[Next ${PRESSURE_WINDOW_DAYS} days: ${bits.join(' · ')}.]`;
+    } catch (e) {
+      console.warn('[vendor-e chat:date-pressure]', e.message);
+      // A failed pressure read never sinks the snapshot; it is simply absent —
+      // an absent line claims nothing, which is the honest degradation.
+      pressure = '';
+    }
+
+    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it.]\n${lines.join('\n')}${pressure}`;
   } catch (e) {
     console.warn('[vendor-e chat:calendar snapshot]', e.message);
     return '';
@@ -1062,3 +1225,9 @@ module.exports = router;
 module.exports.conflictLines  = conflictLines;
 module.exports.mutationLines  = mutationLines;
 module.exports.advisoryLines  = advisoryLines;
+// ── TEST SEAMS (TDW_04 B6, R-B6-1) — same precedent, same reason ──────────
+// fetchCalendarSnapshot is where F-04.66's cure and P4.1's line live; resolveEvent
+// is the two-leg gate. b6_referent_bench drives the REAL ones: the no-UUID
+// assertion runs by regex against THIS function's built output, never a copy.
+module.exports.fetchCalendarSnapshot = fetchCalendarSnapshot;
+module.exports.resolveEvent          = resolveEvent;

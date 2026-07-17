@@ -487,6 +487,9 @@ module.exports = {
   checkOccupancy, isRefusal, isOverridable,
   // B5: the POSITIVE read. A sibling of checkOccupancy, never a layer over it.
   describeDate,
+  // B6 (R-B6-1): P4.1's feed — the window aggregate fed by describeDate, and the
+  // occupancy half of the date-pressure sentence. See their headers at file end.
+  describeWindow, windowWords,
   CATEGORY_CAPACITY, RULED_OFF, VERIFY_FAILED, SPATIAL_KEYS,
   // test seams — the bench drives the real function; these let it drive the parts.
   effectiveRow, slotOfRow, _unmappedSeen,
@@ -928,4 +931,111 @@ async function describeDate(ctx) {
   }));
 
   return { date, blocked, slots, occupancy: 'on' };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// describeWindow + windowWords — P4.1's feed. (TDW_04 Part B, sitting B6,
+// R-B6-1: "the same edit adds P4.1's date-pressure line … fed by describeDate".)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// FED BY describeDate, LITERALLY: every per-date truth in the summary comes out
+// of describeDate's own return — blocked, held slots, posture, verify_failed.
+// Nothing here re-derives slot arithmetic, the posture ladder, or the covenant
+// verdicts; a second opinion about one calendar would be F-04.36's shape, and
+// describeDate's eleven-null warrant governs (OFF is spoken as OFF, never as
+// free; unknown is spoken as unknown, never as free).
+//
+// ⚠ THIS FILE STAYS HORIZON-FREE, AND THAT IS WHY `candidateDates` IS AN INPUT.
+//   checker_bench §14 asserts no horizon filter exists in this file's code, and
+//   the first cut of this function carried its own `.gte/.lte` date-finder —
+//   THE BENCH REFUSED IT, correctly: occupancy.js answers questions about DATES;
+//   a WINDOW is the caller's question (P4.1's line is a 30-day statement, so the
+//   window is the DOOR's semantics — fetchCalendarSnapshot runs the range scan,
+//   covenant-carried, and hands the dates in). The invariant the bench encodes is
+//   architectural, not cosmetic: F-04.47's disease was a horizon hiding INSIDE the
+//   occupancy plane. Keeping every gte/lte out of this file keeps it impossible.
+//
+// THE CONTRACT ON `candidateDates` (and why a sloppy caller cannot make this lie):
+//   · an ARRAY of ISO dates — each is asked THROUGH describeDate, so a date with
+//     zero live rows contributes zeros by construction (asking a dead date wastes
+//     a read; it never wrongs a count), and a date the caller MISSED is an
+//     omission the caller owns (its finder carries the covenant for accuracy).
+//   · []   — a WITNESSED empty window: posture is still probed on `from` (an OFF
+//     trade with nothing on the books is OFF, not silently open); counts are zero.
+//   · null — the finder itself failed: the whole window is UNKNOWN, spoken as
+//     unknown, never as free.
+async function describeWindow(ctx) {
+  const c = ctx || {};
+  const { supabase, vendorId, candidateDates } = c;
+  const days = Number.isFinite(c.days) && c.days > 0 ? Math.floor(c.days) : 30;
+  const from = typeof c.from === 'string' && c.from ? c.from : new Date().toISOString().slice(0, 10);
+
+  const base = {
+    from, days, occupancy: 'off', reason: null, unknown: false,
+    blockedDates: [], heldSlots: 0, heldDates: [],
+  };
+  if (!supabase || !vendorId) return { ...base, reason: 'no_context' };
+  if (candidateDates === null || candidateDates === undefined) {
+    return { ...base, unknown: true, reason: 'verify_failed' };
+  }
+
+  const dates = [...new Set(candidateDates.filter((d) => typeof d === 'string' && d))].sort();
+  // Posture on an empty window still gets asked — one describeDate call answers it.
+  const askDates = dates.length ? dates : [from];
+  const reads = await Promise.all(askDates.map((date) => describeDate({ supabase, vendorId, date })));
+
+  const out = { ...base };
+  for (let i = 0; i < reads.length; i++) {
+    const d = reads[i];
+    // blocked:null is "I could not see", and it is NOT false — describeDate's
+    // own three-valued contract, carried whole.
+    if (d.blocked === null || d.reason === 'verify_failed') out.unknown = true;
+    if (d.blocked === true) out.blockedDates.push(askDates[i]);
+    if (d.occupancy === 'on' && Array.isArray(d.slots)) {
+      const heldHere = d.slots.filter((s) => s.held > 0).length;
+      if (heldHere > 0) { out.heldSlots += heldHere; out.heldDates.push(askDates[i]); }
+    }
+    // Posture is date-independent (the ladder reads the vendor, never the date),
+    // so the first read that SAW the vendor speaks for the window.
+    if (out.reason === null && out.occupancy === 'off' && d.reason !== 'verify_failed') {
+      out.occupancy = d.occupancy;
+      out.reason = d.occupancy === 'on' ? null : (d.reason || null);
+      if (out.occupancy === 'on') out.reason = null;
+    }
+  }
+  if (out.reason === null && out.occupancy === 'off' && out.unknown) out.reason = 'verify_failed';
+  return out;
+}
+
+// The occupancy HALF of the date-pressure sentence, in words Victor can carry
+// verbatim (spec P4.1 clause 4: sentences authored as he'd speak them; the door
+// appends the market half — muhurat, enquiry dates — because those are not
+// occupancy's to know). This file owns the verdict vocabulary and therefore its
+// sentences (Q-C-3's precedent: capacityMessage lives here for the same reason).
+const OFF_WORDS = {
+  ruled_off: 'day-slot occupancy is off for this trade',
+  delivery:  'a delivery trade — deadlines, not day slots',
+  unmapped:  'day-slot occupancy is off (trade uncategorised)',
+  no_vendor: 'day-slot occupancy is off (no vendor posture on file)',
+  no_context:'the calendar could not be asked',
+};
+function windowWords(w) {
+  const s = w || {};
+  const bits = [];
+  if (s.unknown) {
+    // NEVER NULL-AS-FREE, aggregated: if any date could not be seen, the window
+    // is not clean and the sentence says so before it says anything else.
+    bits.push('part of the calendar could not be read just now — treat unseen days as unknown, never as free');
+  }
+  if (s.occupancy === 'on') {
+    bits.push(s.heldSlots > 0
+      ? `${s.heldSlots} slot${s.heldSlots === 1 ? '' : 's'} held across ${s.heldDates.length} day${s.heldDates.length === 1 ? '' : 's'}`
+      : 'no slots held');
+  } else {
+    bits.push(OFF_WORDS[s.reason] || 'day-slot occupancy is off');
+  }
+  bits.push(s.blockedDates.length > 0
+    ? `${s.blockedDates.length} day${s.blockedDates.length === 1 ? '' : 's'} blocked`
+    : 'no days blocked');
+  return bits.join(' · ');
 }
