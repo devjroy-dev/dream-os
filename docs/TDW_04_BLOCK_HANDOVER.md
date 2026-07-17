@@ -42,7 +42,7 @@
 
 ## §3 — THE PARKED TAIL (each named, each with its re-entry key)
 
-- **THE NAMED 04 TAIL RIDER (the hard floor's landing zone, Q-R-3):** every finding of any class discovered after the F-04.79 mini-rider — including anything the Vera smoke or ordinary production shows — files to THIS rider beside B7/B8, filed-and-routed, chartered when the founder calls it. It opens with: the dist-staleness bench-polish note (the next engine-touching sitting's) and whatever the tail collects.
+- **THE NAMED 04 TAIL RIDER (the hard floor's landing zone, Q-R-3):** every finding of any class discovered after the F-04.79 mini-rider — including anything the Vera smoke or ordinary production shows — files to THIS rider beside B7/B8, filed-and-routed, chartered when the founder calls it. It opens with: **F-04.80** (cross-entity harvest attribution across non-colliding names; entity-anchor cure direction recorded; the holds acquitted by design) · the dist-staleness bench-polish note · and whatever the tail collects.
 - **B7/B8 — imports + Snap-a-Date (`0095` reserved):** 04's parked tail, chartered separately (Addendum B). The reservation is law; the hole is harmless.
 - **The polish rider (R-B6-21):** heat-grid pips + agenda rail, founder-optional, AFTER the block; `describeDate.blocked_slots` and the partial-hold ring (R2-7's interim) wait with this consumer.
 - **The gist constraint (Q-S2-2):** the EXCLUDE-USING-gist closure of the cross-slot block race — **PARKED BY NAME, shape recorded** (btree_gist extension; atomic full_day exclusivity); **re-charterable on a witnessed race.** Until then the residue is one vendor racing himself across two devices, read-before-write, disclosed at `findExistingBlock`'s header.
