@@ -30,6 +30,7 @@
 - **F13/F14-era residue** as inventoried in the succession note; item 3/5 cold re-verify owed from 02-HOTFIX.
 - **The soul half of F-04.66** (whether Victor should voice a handle even when handed one — after B6 he is no longer handed one; the disposition question survives).
 - **The rider's ledger note:** whether `harvest_hold` rows reaching Victor's RECENT ACTIVITY context should shape his voice is a soul question; the mechanical row exists as of ZIP G.
+- **F-04.78 (filed at the rider smoke):** the filing door's recognize-before-create has no different-person path — an ANSWERED disambiguation still enriched the wrong row (identity key cross-filled, the new person's facts silently dropped) and the reply fabricated a two-row estate over the tool's own honest sentence. The door half is a 04/06-seam charter question; the model half is 06's thesis class. Row + code lines in the log.
 
 **06's war in one sentence stands as written: Victor may only claim what a witnessed result proved.**
 
