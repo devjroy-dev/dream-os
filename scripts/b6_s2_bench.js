@@ -96,8 +96,11 @@ sec('§1 — R-B6-17 at the write path (the REAL writeEvent). full_day EXCLUSIVE
 
   const fd = await block(api, '2026-11-22', 'full_day');
   ok(!fd.ok && fd.code === 'ALREADY_BLOCKED', 'full_day over slot blocks -> REFUSED (exclusive, direction 1)');
-  ok(fd.error && /Blocked — the morning/.test(fd.error) && /full-day block can't sit over it/.test(fd.error),
-     '   ...and the refusal NAMES the existing block (R-B6-17\'s own words)');
+  // AMENDED under Q-S2-1 (F-04.77's sentence half, founder-approved "fine as
+  // is") — R-B6-15's convention, the ruling in the label. Pre-rider shape was
+  // `Blocked — the morning, Blocked — the evening` + `can't sit over it`.
+  ok(fd.error && /the morning and the evening are held/.test(fd.error) && /full-day block can't sit over them; unblock them first/.test(fd.error),
+     '   ...and the refusal NAMES the held slots (R-B6-17 + Q-S2-1: the tightened sentence, byte-exact for the default-title pair)');
   ok(db.t.events.filter(r => r.kind === 'blocked').length === 2, '   refused = wrote nothing');
 }
 {

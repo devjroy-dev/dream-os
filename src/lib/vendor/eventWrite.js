@@ -301,12 +301,26 @@ async function findExistingBlock(supabase, vendorId, event_date, slot) {
   if (same) return { existing: same };
 
   // full_day EXCLUSIVE both directions — the refusal NAMES the existing block
-  // (R-B6-17's own words). Copy on the veto-on-sight list.
+  // (R-B6-17's own words). TDW_04 B6 rider — F-04.77's SENTENCE half (Q-S2-1
+  // ADOPTED; founder's veto answer "fine as is" on the proposed shape): the old
+  // composition read `Already blocked — Blocked — the morning, Blocked — the
+  // evening. …` when titles were the default — clumsy, and it overflowed the
+  // one-line toast (the render half is the BlockSheet's inline verdict, sibling
+  // rider). Now: a default-titled block is named by its SLOT alone; a real
+  // title stays (`Out of town — the morning`); number agreement follows the
+  // count. The two-block default specimen renders the founder-approved sentence
+  // byte-for-byte. Copy on the veto-on-sight list (the real-title variant is a
+  // new composition — flagged in the delivery's veto appendix).
   if (want === 'full_day') {
-    const named = live
-      .map((x) => `${x.title} — ${slotWords(x.slot)}`)
-      .join(', ');
-    return { existing: live[0], exclusive: `Already blocked — ${named}. A full-day block can't sit over it; unblock it first.` };
+    const parts = live.map((x) => {
+      const t = String(x.title || '').trim();
+      return (t && t !== 'Blocked') ? `${t} — ${slotWords(x.slot)}` : slotWords(x.slot);
+    });
+    const named = parts.length > 1
+      ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+      : parts[0];
+    const many = parts.length > 1;
+    return { existing: live[0], exclusive: `Already blocked — ${named} ${many ? 'are' : 'is'} held. A full-day block can't sit over ${many ? 'them' : 'it'}; unblock ${many ? 'them' : 'it'} first.` };
   }
   const fullDay = live.find((x) => (x.slot || 'full_day') === 'full_day');
   if (fullDay) {

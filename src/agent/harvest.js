@@ -116,6 +116,65 @@ function recordsDoor(row, cell, value) {
   return null;
 }
 
+// ── F-04.72's CURE (TDW_04 B6 rider; ruled R-B6-29, SHAPE (a)) ────────────────
+// THE DISAMBIGUATION HOLD: when the model's reply in the SAME TURN contains an
+// open entity-clarify ("is this a new person, or the same Kavya already on
+// file?"), the harvest HOLDS every patch whose match key collides with the
+// entity under question — that turn only. The filing layer earned its dedup
+// gate at the identity layer; this extends the same courtesy to the harvest,
+// which cross-filed the new Kavya's phone + wedding date into the OLD Kavya's
+// money-bearing binder DURING the exact turn the model was honestly asking
+// which Kavya (row c66ad01c, founder-pasted, FINDINGS_LOG F-04.72).
+//
+// MECHANICS, code-decides (the model's clarify is prose, so the detector is
+// mechanical over that prose — never a second model call):
+//   · a segment of the reply is "a question" iff it contains '?';
+//   · an entity is "under question" iff a question segment names a draft row's
+//     name key (first name token, lowercased, letters/digits only, >= 2 chars;
+//     word-bounded for ascii keys, substring for non-ascii scripts — stated);
+//   · the hold applies to ALL patches, BOTH planes, whose target row's name
+//     key equals a key under question (shape (b)'s cross-plane collision is
+//     exactly this: lead "Kavya Smoke Test" and binder "Kavya" share key
+//     "kavya" — both hold). Held ≠ dropped-by-rule: held patches are counted
+//     and ledgered (`action:'harvest_hold'`) so the hold is witnessable.
+//   · turn-only by construction: the harvest is stateless and forward-only
+//     (LD-3); the next turn's restated fact re-harvests freely — which is how
+//     turn 2's lawful lead patches landed in the specimen.
+// COST ASYMMETRY, stated: a false hold loses one turn's enrichment on one
+// entity (recoverable next mention); a false pass contaminates a money-bearing
+// record through lawful hands. The detector leans toward holding.
+// If replyText is absent (an older caller), NOTHING holds — behaviour is
+// byte-identical to pre-rider harvest. Verification: scripts/b6_rider_bench.js.
+const HOLD_KEY_MIN = 2;
+function nameKey(label) {
+  const s = String(label || '').trim().toLowerCase();
+  if (!s) return null;
+  const tok = (s.split(/\s+/)[0] || '').replace(/[^\p{L}\p{N}]/gu, '');
+  return tok.length >= HOLD_KEY_MIN ? tok : null;
+}
+function questionSegments(replyText) {
+  return String(replyText || '')
+    .split(/\n+|(?<=[.!?])\s+/)
+    .filter((seg) => seg.includes('?'));
+}
+function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function computeDisambiguationHolds(replyText, labels) {
+  const held = new Set();
+  const qs = questionSegments(replyText);
+  if (!qs.length) return held;
+  for (const label of labels) {
+    const key = nameKey(label);
+    if (!key || held.has(key)) continue;
+    const ascii = /^[a-z0-9]+$/.test(key);
+    const re = ascii ? new RegExp('\\b' + escapeRe(key) + '\\b') : null;
+    if (qs.some((seg) => { const s = seg.toLowerCase(); return ascii ? re.test(s) : s.includes(key); })) {
+      held.add(key);
+    }
+  }
+  return held;
+}
+// ── end F-04.72 cure region ───────────────────────────────────────────────────
+
 function leadSnapshotItem(l) {
   const val = l.budget_max != null ? ` (Rs ${l.budget_max})` : '';
   const state = l.state ?? 'new';
@@ -136,7 +195,7 @@ function leadSnapshotItem(l) {
 }
 
 // ── the entry: everything inside is best-effort, nothing escapes ──────────────
-async function runHarvest({ supabase, vendor, agentId, message, toolCalls }) {
+async function runHarvest({ supabase, vendor, agentId, message, toolCalls, replyText }) {
   try {
     const pub = supabase;
 
@@ -175,7 +234,20 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls }) {
     if (patches === null) { console.warn('[harvest] unparseable twice — gave up'); return; }
     if (!patches.length) { console.log('[harvest] applied=0 dropped=0 (model proposed nothing)'); return; }
 
-    let applied = 0, dropped = 0, crossScope = 0;
+    // F-04.72 (R-B6-29 shape (a)): keys under open clarification THIS turn,
+    // computed over BOTH planes' draft labels against the model's own reply.
+    const holds = computeDisambiguationHolds(replyText, [
+      ...typed.map((l) => l.name),
+      ...recordRows.map((r) => r.client),
+    ]);
+    const holdLogged = new Set();
+    const holdPatch = async (key, rowLabel) => {
+      if (holdLogged.has(key)) return;
+      holdLogged.add(key);
+      await logActivity(pub, { vendorId: vendor.id, surface: 'pwa', action: 'harvest_hold', summary: `harvest held patches for "${rowLabel || key}" — the turn's reply left which-${key} open (F-04.72's gate); restate after answering and it files` });
+    };
+
+    let applied = 0, dropped = 0, crossScope = 0, held = 0;
 
     for (const p of patches) {
       try {
@@ -186,6 +258,8 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls }) {
             await logActivity(pub, { vendorId: vendor.id, surface: 'pwa', action: 'harvest_cross_scope', summary: `harvest dropped a patch for unknown/foreign lead id ${String(p.id).slice(0, 40)}` });
             continue;
           }
+          const tk = nameKey(row.name);                                   // F-04.72: the hold sits
+          if (tk && holds.has(tk)) { held++; await holdPatch(tk, row.name); continue; } // ABOVE the field rules
           const missing = (row.draft_meta && row.draft_meta.missing) || [];
           if (!missing.includes(p.field)) { dropped++; continue; }        // rule 1
           if (row[p.field] != null && row[p.field] !== '') { dropped++; continue; } // rule 2
@@ -218,6 +292,8 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls }) {
             await logActivity(pub, { vendorId: vendor.id, surface: 'pwa', action: 'harvest_cross_scope', summary: `harvest dropped a patch for unknown/foreign binder id ${String(p.id).slice(0, 40)}` });
             continue;
           }
+          const rk = nameKey(row.client);                                 // F-04.72: same hold, other
+          if (rk && holds.has(rk)) { held++; await holdPatch(rk, row.client); continue; } // plane — shape (b)'s case
           if (!missingCells(row).includes(p.cell)) { dropped++; continue; } // rules 1+2 (missing == absent)
           const door = recordsDoor(row, p.cell, p.value);
           if (!door) { dropped++; continue; }                              // rule 4 (records)
@@ -234,10 +310,12 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls }) {
       }
     }
 
-    console.log(`[harvest] applied=${applied} dropped=${dropped} cross_scope=${crossScope}`);
+    console.log(`[harvest] applied=${applied} dropped=${dropped} held=${held} cross_scope=${crossScope}`);
   } catch (e) {
     console.warn('[harvest] run failed (non-fatal, best-effort):', e.message);
   }
 }
 
 module.exports = { runHarvest };
+// F-04.72 bench seam (scripts/b6_rider_bench.js drives the REAL bodies):
+module.exports._disambiguation = { nameKey, questionSegments, computeDisambiguationHolds };

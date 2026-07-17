@@ -988,7 +988,10 @@ function fireHarvest(req, message, result) {
   const vendor = req.vendor; const agentId = req.agentId;
   const toolCalls = (result && result.tool_calls) || [];
   setImmediate(() => {
-    runHarvest({ supabase, vendor, agentId, message, toolCalls })
+    // F-04.72 (R-B6-29 shape (a)): the harvest now sees the turn's MODEL reply —
+    // the disambiguation hold cannot exist without it. Door lines excluded by
+    // design (they never ask); absent reply -> no holds, pre-rider behaviour.
+    runHarvest({ supabase, vendor, agentId, message, toolCalls, replyText: (result && result.reply) || '' })
       .catch((e) => console.warn('[harvest] fire failed:', e.message));
   });
 }
