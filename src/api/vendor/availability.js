@@ -69,7 +69,7 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   const vendor   = req.vendor;
   const body     = req.body || {};
 
-  const result = await blockDate(supabase, vendor.id, body.blocked_date, body.reason || null);
+  const result = await blockDate(supabase, vendor.id, body.blocked_date, body.reason || null, body.slot || null);
   if (!result.ok && result.code === 'ALREADY_BLOCKED') return errRes(res, 409, result.error, result.code);
   if (!result.ok) return errRes(res, 400, result.error);
   return okRes(res, { block: result.block });

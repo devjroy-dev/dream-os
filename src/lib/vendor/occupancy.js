@@ -617,16 +617,41 @@ async function checkOccupancy(ctx) {
 // P3's "blocked consumes all capacity of its slot(s)" is SUPERSEDED ON THE RECORD:
 // a refusal is not capacity arithmetic. Refusals do not participate in force math.
 // That is why this is a verdict of its own and not a capacity number of zero.
+//
+// SLOT-AWARE since 0078 (TDW_04 B6 surfaces S2, R-B6-17): a block refuses the
+// slots it HOLDS, read through rowHolds — the SAME predicate capacityCheck reads
+// holdings with (one convention, not two). A full_day block holds every slot and
+// refuses everything, which is byte-identical to this function's entire pre-0078
+// behaviour (every existing block is full_day — 0075's witnessed backfill). A
+// morning block refuses morning work and lets the evening sell. The booking's
+// own targets mirror capacityCheck :654 exactly: full_day asks every slot; a
+// slotted booking asks its own; a SLOTLESS one asks every slot — defensive and
+// deliberate: a timeline-only entry that names no slot cannot claim to dodge a
+// stated refusal it might land inside. A block with slot NULL cannot exist after
+// 0078's CHECK; if one somehow does, it reads as full_day — fail-closed, a
+// refusal of unknown extent refuses.
 async function blockedCheck(supabase, vendorId, eff, selfId) {
   const r = await liveRowsOn(supabase, vendorId, eff.event_date, selfId, ['blocked']);
   if (r.err) return { err: r.err };
   if (!r.rows.length) return null;
-  const holding = r.rows.map((x) => ({ event_id: x.id, title: x.title, slot: x.slot, kind: x.kind }));
+
+  const targets = eff.slot === 'full_day' ? DAY_SLOTS : (eff.slot ? [eff.slot] : DAY_SLOTS);
+  const inWay = r.rows.filter((x) => {
+    const bSlot = x.slot || 'full_day';   // post-0078: cannot be null; fail-closed anyway
+    return targets.some((t) => rowHolds(bSlot, t));
+  });
+  if (!inWay.length) return null;
+
+  const holding = inWay.map((x) => ({ event_id: x.id, title: x.title, slot: x.slot, kind: x.kind }));
+  // full_day anywhere in the way -> the whole-day sentence, byte-identical to
+  // the pre-0078 wire. Partial blocks name their slot.
+  const whole = inWay.some((x) => (x.slot || 'full_day') === 'full_day');
   return {
     kind: 'date_blocked',
     date: eff.event_date,
     holding,
-    message: blockedMessage(eff.event_date),
+    message: whole ? blockedMessage(eff.event_date)
+                   : blockedSlotMessage(eff.event_date, inWay.map((x) => x.slot)),
   };
 }
 
@@ -768,6 +793,15 @@ function blockedMessage(date) {
   return `You've blocked ${fmtDate(date)}. That one's a no — unblock it first if you want it back.`;
 }
 
+// TDW_04 B6-S2 (0078): the partial-block sentence — names the held slot(s) so a
+// refusal of the morning never claims the day. Vendor-visible through Victor and
+// the 409 body; on the veto-on-sight list.
+function blockedSlotMessage(date, slots) {
+  const words = { morning: 'the morning', noon: 'the noon slot', evening: 'the evening' };
+  const named = (slots || []).map((s) => words[s] || s).join(' and ');
+  return `You've blocked ${named} of ${fmtDate(date)}. That one's a no — unblock it first if you want it back.`;
+}
+
 // ── THE INVITATION CLAUSES ARE STRUCK (CE catch, founder-blessed subject to this
 //    verification, B4 2026-07-16). CORRECTIONS CONVENTION: struck, not deleted. ──
 //
@@ -875,11 +909,11 @@ async function describeDate(ctx) {
   const { supabase, vendorId, date } = c;
 
   const off = (reason, extra) => ({
-    date: date || null, blocked: false, slots: [], occupancy: 'off', reason, ...(extra || {}),
+    date: date || null, blocked: false, blocked_slots: [], slots: [], occupancy: 'off', reason, ...(extra || {}),
   });
   // Unknown is NOT free. Every failure lands here, and `blocked:null` says so.
   const unknown = (reason) => ({
-    date: date || null, blocked: null, slots: [], occupancy: 'off', reason,
+    date: date || null, blocked: null, blocked_slots: [], slots: [], occupancy: 'off', reason,
   });
 
   if (!supabase || !vendorId || !date) return off('no_context');
@@ -889,14 +923,27 @@ async function describeDate(ctx) {
   // vendor's category is: a RULED_OFF planner who blocked the 20th is blocked on
   // the 20th, and checkOccupancy:572 would have said `null` and meant "free".
   // THIS IS THE ORDER THAT MAKES THE FOUR-NULL TABLE SURVIVABLE.
+  //
+  // SLOT-HONEST since 0078 (B6-S2): `blocked` means THE WHOLE DAY IS HELD — a
+  // full_day block (or a pre-0078 null-slot row, read fail-closed as full_day).
+  // Before 0078 every block was full_day, so this is byte-identical for every
+  // existing row. A partial block must NOT read as a blocked day (Victor would
+  // speak a sellable evening as gone — a falsehood in the honest direction, but
+  // a falsehood); it rides the ADDITIVE `blocked_slots` field, which existing
+  // consumers (describeWindow's blocked count, windowWords) ignore by shape —
+  // a morning-blocked day is deliberately not a "blocked day" in the 30-day
+  // pressure line. Speaking partials is a rider's, when a consumer wants it.
   const b = await liveRowsOn(supabase, vendorId, date, null, ['blocked']);
   if (b.err) return unknown('verify_failed');
-  const blocked = b.rows.length > 0;
+  const blockRows = b.rows || [];
+  const blocked = blockRows.some((x) => (x.slot || 'full_day') === 'full_day');
+  const blocked_slots = blocked ? DAY_SLOTS.slice()
+    : blockRows.map((x) => x.slot).filter((s) => s && s !== 'full_day');
 
   // ── 2. THE VENDOR'S POSTURE ─────────────────────────────────────────────
   const v = await readVendor(supabase, vendorId);
-  if (v.err) return { ...unknown('verify_failed'), blocked };   // the block SURVIVES
-  if (!v.vendor) return { ...off('no_vendor'), blocked };
+  if (v.err) return { ...unknown('verify_failed'), blocked, blocked_slots };   // the block SURVIVES
+  if (!v.vendor) return { ...off('no_vendor'), blocked, blocked_slots };
 
   const { normaliseCategory } = require('./categoryFraming');
   const { profileFor }        = require('./categoryProfiles');
@@ -904,9 +951,9 @@ async function describeDate(ctx) {
   const profile = profileFor(v.vendor.category);
 
   // Each of these is a `null` in the checker. Here each is a WORD.
-  if (RULED_OFF.has(norm))               return { ...off('ruled_off'), blocked };
-  if (profile.key === 'other')           return { ...off('unmapped'), blocked };
-  if (profile.timelineType === 'delivery') return { ...off('delivery'), blocked };
+  if (RULED_OFF.has(norm))               return { ...off('ruled_off'), blocked, blocked_slots };
+  if (profile.key === 'other')           return { ...off('unmapped'), blocked, blocked_slots };
+  if (profile.timelineType === 'delivery') return { ...off('delivery'), blocked, blocked_slots };
 
   // ── 3. CAPACITY — capacityCheck's arithmetic, by calling its parts ───────
   // `??` not `||`: 0 is a POSTURE (Q-SP-1, ruled), and `||` would silently promote
@@ -916,10 +963,10 @@ async function describeDate(ctx) {
   const capacity = (v.vendor.slot_capacity != null)
     ? v.vendor.slot_capacity
     : CATEGORY_CAPACITY[profile.key];
-  if (capacity == null) return { ...off('unmapped'), blocked };
+  if (capacity == null) return { ...off('unmapped'), blocked, blocked_slots };
 
   const r = await liveRowsOn(supabase, vendorId, date, null, OCCUPYING_KINDS);
-  if (r.err) return { ...unknown('verify_failed'), blocked };
+  if (r.err) return { ...unknown('verify_failed'), blocked, blocked_slots };
 
   // Legacy rows carry slot=NULL and are not empty air — slotOfRow's four branches,
   // the same ones the door writes with.
@@ -930,7 +977,7 @@ async function describeDate(ctx) {
     capacity,
   }));
 
-  return { date, blocked, slots, occupancy: 'on' };
+  return { date, blocked, blocked_slots, slots, occupancy: 'on' };
 }
 
 // ══════════════════════════════════════════════════════════════════════════

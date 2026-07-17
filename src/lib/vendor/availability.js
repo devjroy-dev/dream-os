@@ -69,7 +69,13 @@ const BLOCK_KIND = 'blocked';
 const BLOCK_SLOT = 'full_day';
 const DEFAULT_TITLE = 'Blocked'; // Q-B1-6, founder-ratified. Utility copy.
 
-const BLOCK_SELECT = 'id, event_date, notes, created_at';
+// TDW_04 B6-S2 (0078, R-B6-17): the day sheet's slot toggles arrive. The wire
+// gains `slot` ADDITIVELY — {id, blocked_date, reason, created_at} is still
+// byte-present, keyed on blocked_date; a field added beside a frozen shape is
+// not a change to it, and the pre-0078 PWA reads it as undefined harmlessly.
+const BLOCK_SLOTS = ['morning', 'noon', 'evening', 'full_day'];
+
+const BLOCK_SELECT = 'id, event_date, notes, created_at, slot';
 
 // events row -> the frozen wire shape. The ONLY place the mapping lives.
 function toBlock(row) {
@@ -78,14 +84,23 @@ function toBlock(row) {
     blocked_date: row.event_date,
     reason:       row.notes == null ? null : row.notes,
     created_at:   row.created_at,
+    slot:         row.slot || BLOCK_SLOT,   // pre-0078 rows are all full_day (0075's witnessed backfill)
   };
 }
 
 // ── blockDate ─────────────────────────────────────────────────────────────
 
-async function blockDate(supabase, vendorId, blocked_date, reason) {
+async function blockDate(supabase, vendorId, blocked_date, reason, slot) {
   if (!blocked_date || !DATE_RE.test(blocked_date)) {
     return { ok: false, error: 'blocked_date is required in YYYY-MM-DD format.' };
+  }
+  // TDW_04 B6-S2: slot is OPTIONAL and defaults to full_day — every existing
+  // caller (the BlockSheet, blockHands' donna_block_date) is byte-identical.
+  // The four values mirror events_slot_check; writeEvent mirrors it again at
+  // its own validation (one sentence, two doors, same DB truth).
+  const blockSlot = slot || BLOCK_SLOT;
+  if (!BLOCK_SLOTS.includes(blockSlot)) {
+    return { ok: false, error: 'slot must be one of: morning, noon, evening, full_day.' };
   }
 
   // Q-B1-6, founder-ratified: title is the reason verbatim, else 'Blocked'. Utility copy.
@@ -104,7 +119,7 @@ async function blockDate(supabase, vendorId, blocked_date, reason) {
     kind:       BLOCK_KIND,   // 0069 widened the CHECK to include 'blocked'
     title,                    // NOT NULL: the reason verbatim, else 'Blocked'
     event_date: blocked_date,
-    slot:       BLOCK_SLOT,   // 0077's column; 0075's CHECK. Branch 1 of slot derivation.
+    slot:       blockSlot,   // 0077's column; 0075's CHECK; 0078's per-slot key. Branch 1 of slot derivation.
     notes:      reason || null,
     state:      'upcoming',
   });

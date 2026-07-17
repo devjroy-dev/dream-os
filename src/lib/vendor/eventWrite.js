@@ -253,20 +253,75 @@ async function findExistingEvent(supabase, vendorId, bk) {
 // deleted_at is null). This read survives as the FRIENDLY path: it turns the
 // common case into a clean 409 instead of a 23505. The insert's 23505 handler
 // below is the RACE path — the one this read cannot close.
-async function findExistingBlock(supabase, vendorId, event_date) {
-  const { data: existing, error: readErr } = await supabase
+// ── SLOT-AWARE since 0078 (TDW_04 B6 surfaces S2, R-B6-17) ────────────────
+// THE ENFORCEMENT SITE, proposed from the code with evidence and ruled in the
+// ZIP's disclosure (§0.2): every block write at HEAD routes through THIS read —
+//   blockDate (lib/vendor/availability.js) is a thin writeEvent caller;
+//   blockHands' donna_block_date routes through blockDate ("inherit, for free,
+//   every ruling blockDate already carries" — its own header);
+//   the CRUD events door refuses kind='blocked' (ALLOWED_KINDS is 12);
+//   the WA engine offers no 'blocked' kind (recordPrimitives: nine kinds) and
+//   chat.js's door erases an invented one.
+// One read, one home. A second copy of this rule anywhere would be F-04.36.
+//
+// THE RULE (R-B6-17, verbatim): one live block per (vendor_id, event_date,
+// slot); full_day EXCLUSIVE both directions, refused at the write path naming
+// the existing block. Concretely:
+//   want full_day  -> ANY existing live block on the date refuses;
+//   want a slot    -> an existing full_day refuses; an existing SAME-slot
+//                     refuses ('Already blocked.', the byte-identical B1 wire —
+//                     today every block is full_day, so full_day-over-full_day
+//                     lands here and the wire cannot tell 0078 happened);
+//   want a slot, a DIFFERENT slot held -> allowed. That is the feature.
+//
+// WHAT THE DATABASE CLOSES vs WHAT THIS READ CLOSES: 0078's widened unique
+// index refuses the same-slot RACE (23505 -> ALREADY_BLOCKED below, unchanged).
+// The CROSS-slot race (concurrent full_day + morning) is this read's alone —
+// read-before-write, non-atomic, disclosed exactly as 0075 disclosed its own
+// pre-index race. The window is one vendor racing himself across two devices.
+async function findExistingBlock(supabase, vendorId, event_date, slot) {
+  const { data: rows, error: readErr } = await supabase
     .from('events')
-    .select('id')
+    .select('id, title, slot')
     .eq('vendor_id', vendorId)
     .eq('kind', 'blocked')
     .eq('event_date', event_date)
-    .is('deleted_at', null)
-    .limit(1)
-    .maybeSingle();
+    .is('deleted_at', null);
   if (readErr) {
     return { err: `Could not check existing blocks (${readErr.message}) — nothing was written.` };
   }
-  return { existing: existing || null };
+  const live = rows || [];
+  if (!live.length) return { existing: null };
+
+  const want = slot || 'full_day';   // blocks always carry a slot (0078's CHECK); a
+                                     // caller that sent none means the whole day.
+  // Same slot held (incl. full_day over full_day — the pre-0078 case, byte-
+  // identical wire): the B1 sentence, untouched.
+  const same = live.find((x) => (x.slot || 'full_day') === want);
+  if (same) return { existing: same };
+
+  // full_day EXCLUSIVE both directions — the refusal NAMES the existing block
+  // (R-B6-17's own words). Copy on the veto-on-sight list.
+  if (want === 'full_day') {
+    const named = live
+      .map((x) => `${x.title} — ${slotWords(x.slot)}`)
+      .join(', ');
+    return { existing: live[0], exclusive: `Already blocked — ${named}. A full-day block can't sit over it; unblock it first.` };
+  }
+  const fullDay = live.find((x) => (x.slot || 'full_day') === 'full_day');
+  if (fullDay) {
+    return { existing: fullDay, exclusive: `Already blocked — the whole day is held (${fullDay.title}). Unblock the day first.` };
+  }
+  // A different slot is held and only that: lawful coexistence.
+  return { existing: null };
+}
+
+// Slot words for vendor-facing sentences. Utility copy, veto-on-sight list.
+function slotWords(slot) {
+  if (slot === 'morning') return 'the morning';
+  if (slot === 'noon')    return 'the noon slot';
+  if (slot === 'evening') return 'the evening';
+  return 'the whole day';
 }
 
 // ── BINDER LINKING — RELOCATED from chat.js:137-152 ───────────────────────
@@ -396,6 +451,12 @@ async function writeEvent(supabase, params) {
   if (state != null && !ALLOWED_STATES.includes(state)) {
     return { ok: false, error: 'Invalid state. Must be one of: ' + ALLOWED_STATES.join(', ') + '.' };
   }
+  // TDW_04 B6-S2: `slot` joins the mirrored CHECKs — the Move picker and the
+  // slot toggles now send it over the wire, and events_slot_check would refuse
+  // a bad value as a raw constraint error. Same job as the kind/state lines.
+  if (params.slot != null && !['morning', 'noon', 'evening', 'full_day'].includes(params.slot)) {
+    return { ok: false, error: 'Invalid slot. Must be one of: morning, noon, evening, full_day.' };
+  }
   if (!isUpdate) {
     if (!title || !String(title).trim())    return { ok: false, error: 'title is required.' };
     if (!event_date || !DATE_RE.test(String(event_date))) {
@@ -413,6 +474,16 @@ async function writeEvent(supabase, params) {
   // caller witnessed correct at HEAD stays witnessed correct. Disclosed, never silent.
   const derivedSlot = deriveSlot({ event_time, slot: params.slot, kind });
 
+  // TDW_04 B6-S2 (0078's events_blocked_slot_check, mirrored as a sentence):
+  // a block must name its slot — deriveSlot returns null for a slotless,
+  // timeless 'blocked' (it is on NEITHER classification list, its own comment
+  // says so), and the DB would refuse the insert as a raw constraint error.
+  // Unreachable from every caller at HEAD (blockDate always sends a slot);
+  // the guard is here because "unreachable" is a claim.
+  if (!isUpdate && kind === 'blocked' && !derivedSlot) {
+    return { ok: false, error: 'A block must name its slot: morning, noon, evening, or full_day.' };
+  }
+
   // The free-text cells are the only ones that can carry a persona name.
   // event_date / event_time / kind are enums and dates — scrubbing them is noise.
   // (F-04.34's rule, F-04.38's home.)
@@ -427,8 +498,14 @@ async function writeEvent(supabase, params) {
     if (kind === 'blocked') {
       // A re-block is a REFUSAL, not an update. force does not reach here, by
       // ruling: a block is a stated refusal, not a conflict.
-      const r = await findExistingBlock(supabase, vendorId, event_date);
+      // SLOT-AWARE since 0078 (R-B6-17): the derived slot rides the read. The
+      // same-slot case keeps the byte-identical B1 wire ('Already blocked.',
+      // ALREADY_BLOCKED -> the door's 409); full_day exclusivity returns the
+      // sentence that NAMES the existing block, same code so the wire's 409
+      // semantics hold for every block collision.
+      const r = await findExistingBlock(supabase, vendorId, event_date, derivedSlot);
       if (r.err)      return { ok: false, error: r.err };
+      if (r.exclusive) return { ok: false, error: r.exclusive, code: 'ALREADY_BLOCKED' };
       if (r.existing) return { ok: false, error: 'Already blocked.', code: 'ALREADY_BLOCKED' };
     } else {
       existing = await findExistingEvent(supabase, vendorId, { title, event_date });

@@ -113,7 +113,13 @@ console.log('\n── 1. IT NEVER RETURNS NULL. THIS IS THE WHOLE POINT. ──'
   assert.strictEqual((await describeDate(noVendor)).reason, 'no_vendor');
   ok('no vendor row -> off/no_vendor');
 
-  assert.deepStrictEqual(await describeDate({}), { date: null, blocked: false, slots: [], occupancy: 'off', reason: 'no_context' });
+  // AMENDED at B6-S2 (0078 / R-B6-17; the R-B6-15 amendment convention — the
+  // ruling named in the label, shipped ratify-or-revert, disclosed in the ZIP):
+  // describeDate gained the ADDITIVE `blocked_slots` field so a partial block
+  // (possible only after 0078) is never spoken as a blocked DAY nor as a free
+  // one. This is the bench's only whole-shape assertion; every other case
+  // asserts named fields and is untouched.
+  assert.deepStrictEqual(await describeDate({}), { date: null, blocked: false, blocked_slots: [], slots: [], occupancy: 'off', reason: 'no_context' });
   ok('no context -> off/no_context, still a shape, still not null');
 
   // ── 3. NEVER NULL-AS-FREE: a failed read is `null`, not `false` ──────────

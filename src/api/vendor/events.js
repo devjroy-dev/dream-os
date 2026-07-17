@@ -150,6 +150,49 @@ function conflictOr400(res, result) {
   return errRes(res, 400, result.error);   // validation + FAIL-CLOSED's honest string
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// TDW_04 B6-S2 — R-B6-25's DOOR GUARDS (the census #8/#9/#10 family, ONE rule)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// THE ROOT DISEASE (census §1): the generic event doors do not know a block is
+// not an engagement. Cancelling a block through /cancel produced the three-way
+// divergence (grid held / checker free / re-block refused — census #8, each leg
+// verified at HEAD); marking one done minted "a completed refusal" (#9); the
+// generic PATCH could move a block's date past the availability door's locks
+// (#10). ONE rule cures the family: a kind='blocked' row is refused at every
+// generic door, 404-SHAPED LIKE THE UNBLOCK DOOR'S LOCK 2 (availability.js —
+// its 404-not-403 reasoning mirrored back: this door does not confirm what the
+// block machinery holds), with a message NAMING that machinery so the vendor
+// is taught the right door, never coerced (F-04.37's class).
+//
+// PLACEMENT, proposed from the code with evidence (§0.2, ruled in the ZIP's
+// disclosure): ONE home, THIS module, applied at both mutating routes below.
+//   - NOT in eventWrite: the LAWFUL block mutations route through the same
+//     writer (unblock = writeEvent + deleted_at; blockDate = writeEvent insert).
+//     A writer-level refusal would need a caller-identity bypass for the
+//     availability door — a fork of one rule into caller classes, F-04.36's
+//     exact shape. The DOORS are where "generic" is a fact, not a flag.
+//   - #9 (mark-done) needs no third site: SliceShell's updateEvent({state:
+//     'done'}) travels PATCH /events/:eventId — the state-update door IS the
+//     generic PATCH (verified: no other state route exists on this router
+//     besides /cancel). Two call sites, one rule, zero copies.
+//   - DELETE /events/:eventId is deliberately NOT guarded: the ruling names
+//     cancel, state-update, and PATCH; a DELETE of a block performs the exact
+//     write unblock performs (soft delete via eventWrite) and diverges nothing.
+//     Named for the CE in the delivery disclosure, not silently widened.
+//
+// The message is vendor-visible utility copy — veto-on-sight list.
+const BLOCK_ROW_SENTENCE =
+  'Event not found. That row is a calendar block, not an engagement — manage it from the calendar (unblock it there if you want the date back).';
+
+function refuseBlockedRow(res, row) {
+  if (row && row.kind === 'blocked') {
+    errRes(res, 404, BLOCK_ROW_SENTENCE);
+    return true;
+  }
+  return false;
+}
+
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
@@ -203,9 +246,20 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   }
 
   // ── Build query ─────────────────────────────────────────────────────
+  // TDW_04 B6-S2 (R-B6-25, the census batch ruling): A BLOCK IS NOT A LISTABLE
+  // ENGAGEMENT — the cure sits at the WIRE. Blocks ride the availability
+  // projection ONLY (listBlocks); this GET excludes them, which cures census #7
+  // (block rows wearing the list slice's full affordance set) at the root and
+  // makes S1's byDate one-liner (ratified, R-B6-25) defence rather than the
+  // wall. Applied to BOTH queries so the truncation tell counts what the list
+  // carries — a tell derived from a different population would be F-04.47's
+  // silence wearing a number. `kindFilter` can never be 'blocked' (ALLOWED_KINDS
+  // is twelve), so the two clauses cannot fight. The couple wire is untouched:
+  // vendor blocks are unreachable there by construction (census §1 #16–19).
   let listQuery = supabase.from('events')
     .select('id, title, kind, event_date, event_time, state, linked_lead_id, linked_binder_id, notes') // linked_binder_id: TDW_04 A3 (L-3) — the cross-chip needs it to name the twin binder
     .eq('vendor_id', vendor.id)
+    .neq('kind', 'blocked')
     .is('deleted_at', null)
     .gte('event_date', from)
     .lte('event_date', to);
@@ -213,6 +267,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   let countQuery = supabase.from('events')
     .select('*', { count: 'exact', head: true })
     .eq('vendor_id', vendor.id)
+    .neq('kind', 'blocked')
     .is('deleted_at', null)
     .gte('event_date', from)
     .lte('event_date', to);
@@ -282,11 +337,16 @@ router.patch('/:eventId/cancel', requireAuth, resolveVendor({ paramName: 'eventI
   const eventId  = req.params.eventId;
 
   const { data: ev, error: fetchErr } = await supabase
-    .from('events').select('id, title, state')
+    .from('events').select('id, title, state, kind')
     .eq('id', eventId).eq('vendor_id', vendor.id).is('deleted_at', null).single();
 
   if (fetchErr?.code === 'PGRST116' || !ev) return errRes(res, 404, 'Event not found.');
   if (fetchErr) return errRes(res, 500, fetchErr.message);
+  // R-B6-25's guard (census #8 — the three-way-divergence door). `kind` joined
+  // the select for exactly this line. Sits ABOVE the already_cancelled shortcut:
+  // a cancelled block is still a block, and this door still has no business
+  // confirming its state.
+  if (refuseBlockedRow(res, ev)) return;
   if (ev.state === 'cancelled') return okRes(res, { already_cancelled: true });
 
   // Routed (TDW_04 B2). The fetch above stays — it is a READ, and its 404 and
@@ -355,14 +415,24 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
     .from('events').select('id, linked_binder_id, kind, event_date')
     .eq('id', eventId).eq('vendor_id', vendor.id).is('deleted_at', null).maybeSingle();
 
+  // R-B6-25's guard (census #9 + #10 — mark-done and edit both travel THIS
+  // door; see the guard's header). The before-read already carried `kind` for
+  // the anchor veto — the guard costs zero extra trips. A null `before` (no
+  // such row) falls through to the writer's own honest 'Event not found.'
+  if (refuseBlockedRow(res, before)) return;
+
   // Routed. `body`'s keys pass through as-is so undefined stays untouched and an
   // explicit null still CLEARS — updateEvent's EDITABLE semantics, preserved exactly.
+  // B6-S2: `slot` joins the routed fields — the day sheet's Move picker sends
+  // date + slot in one PATCH. writeEvent validates it against C2's four values
+  // (the mirrored-CHECK sentence) and deriveSlot's branch 1 honours it verbatim.
   const result = await writeEvent(supabase, {
     vendorId: vendor.id, surface: 'pwa', source: 'crud', event_id: eventId,
     title:      body.title,
     event_date: body.event_date,
     event_time: body.event_time,
     kind:       body.kind,
+    slot:       body.slot,
     notes:      body.notes,
     state:      body.state,
   });
