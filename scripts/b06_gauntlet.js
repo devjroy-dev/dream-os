@@ -125,6 +125,19 @@ Module._load = function (req) {
 };
 const { actionKind } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
 fenceUp = false;
+// V3 — THE FENCE-HYGIENE PURGE (the second live run's own conviction, reproduced
+// at the desk before this line was written): chat.js's load under the fence pulled
+// src/lib/llm.js in WITH A NOOP'D SDK CLASS, and require.cache kept that poisoned
+// module — every "deepseek call" in runs 1 and 2 was a call into a proxy that
+// resolves undefined. DeepSeek was NEVER contacted; the founder's raw curl (200,
+// clean anthropic JSON) proved the wire, the key, and the model string all alive.
+// The cure: everything under src/ that loaded during the fence window is purged,
+// so live requires re-load against the REAL SDK. Deliberate require.cache shims
+// installed BELOW this line (the dist db double) are unaffected. The rig's
+// selftest section [0] asserts this purge exists — it FAILED at the executor's
+// desk when the purge was first mis-applied, which is exactly its job.
+const SRC_PREFIX = path.join(ROOT, 'src') + path.sep;
+for (const k of Object.keys(require.cache)) if (k.startsWith(SRC_PREFIX)) delete require.cache[k];
 // Selftest-only SDK fence: the rig's downgrade profile drives the engine's NATIVE
 // fallback clients, which must never network at the desk. Live mode keeps the real SDK.
 if (SELFTEST) {
@@ -149,7 +162,7 @@ if (SELFTEST) {
     return _load2.apply(this, arguments);
   };
 }
-for (const k of Object.keys(require.cache)) if (/engine[\\/]dist[\\/]/.test(k)) delete require.cache[k];
+// (the old engine-dist-only purge is superseded by the SRC purge above)
 if (typeof actionKind !== 'function') { console.error('actionKind seam absent — uncured tree; the gauntlet convicts with the one home only.'); process.exit(1); }
 
 // A hand that mutates: not her voice, not a read (F10's probe was a 'calendar'
@@ -436,6 +449,19 @@ function scriptedTransports(profile) {
 
   if (SELFTEST) {
     sec('RIG SELF-TEST — the verdict machinery, both directions (no keys, no network).');
+    console.log('\n  [0] fence hygiene (the run-1/run-2 poisoning class, asserted dead): a fresh');
+    console.log('      require of llm.js after the purge must reach a FUNCTIONING SDK binding —');
+    console.log('      llmCreate resolves a shaped message, never undefined:');
+    {
+      const { llmCreate } = require(path.join(ROOT, 'src/lib/llm.js'));
+      process.env.DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'rig-selftest-inert';
+      let hy = null, hyErr = null;
+      try { hy = await llmCreate('deepseek', { model: DEEPSEEK, max_tokens: 8, messages: [{ role: 'user', content: 'hygiene probe' }] }); }
+      catch (e) { hyErr = e; }
+      // Under the selftest SDK fence the spy answers; either a shaped object or a
+      // REAL thrown error passes — ONLY the poisoning signature (resolved undefined) fails.
+      T('llm.js reaches a live SDK binding (resolved a shaped message under the rig spy)', hy !== undefined && hy !== null && Array.isArray(hy.content) && hyErr === null);
+    }
     const mkLane = (label, profile) => ({ id: 'RIG', label, ceiling: false,
       wiring: (t) => ({ tierOverride: 'entry', transport: t.transport, donnaTransport: t.donnaTransport }) });
 
@@ -466,6 +492,7 @@ function scriptedTransports(profile) {
       create: async () => { throw new Error('rig-scripted deepseek failure'); } };
     const dgLane = { id: 'RIG', label: 'downgrade profile', ceiling: true,
       wiring: () => ({ tierOverride: 'entry', modelOverride: DEEPSEEK, transport: throwing }) };
+    (global.__rigNativeCalls || []).length = 0; // scope the ledger to THIS lane ([0]'s probe wrote to it)
     const dg = await runLane(dgLane, runTurn, () => ({}));
     T('downgrade profile: every turn survived (the native fallback carried it — F-04.86\'s cure live)', dg.results.every((r) => !/crashed/.test(r.why)));
     T('downgrade profile: every turn is marked DOWNGRADED (the surfaced flag, both hands)', dg.results.every((r) => r.downgraded === true));

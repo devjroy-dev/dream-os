@@ -150,3 +150,9 @@ the native Anthropic client, 404), L3's PASS was Haiku answering behind console-
 downgrades (F-04.87). Both cured in ZIP E3; both flip proposals VOID; **no DeepSeek verdict
 exists yet, either role** — the v2 gauntlet's preflight probe diagnoses the dead wire
 before any lane spends a turn. The re-run is the founder's, at leisure.
+**Run 2 (v2 gauntlet, founder-run):** preflight caught the rig's own poisoned facade in one
+line (F-RIG-1, cured v3 — DeepSeek was never contacted in either run; the founder's raw curl
+proved the wire/key/model alive: HTTP 200, valid anthropic JSON). L1 ran 6/6 — **S3 PASSED
+this run on the identical fixed message that FAILED run 1: the incumbent is INTERMITTENT on
+the sharpened unblock trigger, 1-for-2** — F-04.71's own texture, now measured. Cache again:
+cold ₹2.79, warm ₹0.61–0.85. The first TRUE DeepSeek turns are run 3's.
