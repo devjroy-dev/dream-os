@@ -50,7 +50,7 @@ function leadItem(row: LeadRow): SnapshotItem {
 export const DONNA_LEAD_TOOL: Anthropic.Tool = {
   name: 'donna_lead',
   description:
-    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name or a figure. If a lead matching that phone or name already exists, this updates it rather than duplicating. Call it immediately; never wait for full details. Leads are enquiries not yet engaged; an engaged client with work underway is a binder (donna_client), not a lead. The id this returns is NOT a binder_id — never point binder hands (follow-ups, money, notes, dates) at it; anything beyond the lead\'s own fields belongs on a binder opened separately. When enriching a lead already on file, pass the name AS FILED — a partner\'s name travels as an explicit name-edit or a note, never as a new spelling of the lead (CE-19).',
+    'Log a lead/enquiry the moment the owner mentions a potential customer — even with just a name or a figure. If a lead matching that phone or name already exists, this updates it rather than duplicating; a name match alone never merges a phone onto the existing lead. Call it immediately; never wait for full details. Leads are enquiries not yet engaged; an engaged client with work underway is a binder (donna_client), not a lead. The id this returns is NOT a binder_id — never point binder hands (follow-ups, money, notes, dates) at it; anything beyond the lead\'s own fields belongs on a binder opened separately. When enriching a lead already on file, pass the name AS FILED — a partner\'s name travels as an explicit name-edit or a note, never as a new spelling of the lead (CE-19).',
   input_schema: {
     type: 'object',
     properties: {
@@ -158,12 +158,18 @@ export async function executeDonnaLead(
   //    old shape discarded the error and fell through to insert — a transient read failure
   //    would silently mint a duplicate. Now: no truthful read, no write, honest ERROR back.
   let existing: LeadRow[] = [];
+  // TDW_04 B6 door rider (Q-R-1, F-04.78): the match KEY is now remembered.
+  // Phone is the identity+merge key (masterplan); a name is the weak key — the
+  // Tara specimen cross-filled a phone through a name-only match after an
+  // ANSWERED disambiguation. Shapes (b)+(c) below hang off this one fact.
+  let matchedBy: 'phone' | 'name' | null = null;
   if (input.contact) {
     const { data, error: readErr } = await pub.from('leads').select(SEL)
       .eq('vendor_id', vendorId).eq('phone', input.contact)
       .is('deleted_at', null).order('created_at', { ascending: false });
     if (readErr) return { display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
     existing = (data as LeadRow[]) || [];
+    if (existing.length) matchedBy = 'phone';
   }
   if (!existing.length && input.name) {
     const { data, error: readErr } = await pub.from('leads').select(SEL)
@@ -171,6 +177,7 @@ export async function executeDonnaLead(
       .is('deleted_at', null).order('created_at', { ascending: false });
     if (readErr) return { display: `ERROR filing lead: could not check existing leads (${readErr.message}) — nothing was written. A truthful read must land before any write; try again in a moment.` };
     existing = (data as LeadRow[]) || [];
+    if (existing.length) matchedBy = 'name';
   }
 
   if (existing.length >= 1) {
@@ -180,7 +187,13 @@ export async function executeDonnaLead(
     const noteAdds: string[] = [];
 
     if (input.name && !cur.name) patch.name = input.name;
-    if (input.contact && !cur.phone) patch.phone = input.contact; // verbatim, no formatting
+    // Q-R-1 SHAPE (b) — F-04.78's cure, half one: a NAME-ONLY match NEVER fills
+    // the phone cell. Identity keys don't merge on the weak key: the Tara row
+    // took person #2's phone through exactly this line. On a phone match the
+    // guard is vacuous (cur.phone equals the key that matched); the fill now
+    // exists only where the strong key already vouched for identity.
+    if (input.contact && !cur.phone && matchedBy === 'phone') patch.phone = input.contact; // verbatim, no formatting
+    const phoneWithheld = matchedBy === 'name' && !!input.contact && !cur.phone; // shape (c) speaks it below
     if (input.wedding_city && !cur.wedding_city) patch.wedding_city = input.wedding_city;
     const parsedDateU = parseWeddingDate(input.wedding_date);
     if (parsedDateU && 'date' in parsedDateU && !cur.wedding_date) {
@@ -200,8 +213,17 @@ export async function executeDonnaLead(
     if (strayWord) noteAdds.push(`stage word from Victor: "${strayWord}"`);
     if (noteAdds.length) patch.notes = growNotes(cur.notes, noteAdds);
 
+    // Q-R-1 SHAPE (c) — half two: the single-match return gains the ambiguous
+    // branch's own honesty (:228's shape). Applied on the WEAK-key match only;
+    // the phone-match branch stays byte-identical (a phone match is the strong
+    // key's own certainty — interpretation disclosed, ratify-or-revert). Both
+    // sentences are minted utility copy — the veto-on-sight list, per ruling.
+    const nameMatchNote = matchedBy === 'name'
+      ? ` Note: matched by NAME to the lead already on file — if this is a different person with the same name, tell me and I'll file them separately.${phoneWithheld ? ` Their phone number was NOT written onto this lead — a name match alone doesn't merge identities; confirm it's the same person and I'll add it.` : ''}`
+      : '';
+
     if (Object.keys(patch).length === 0) {
-      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.`, item: leadItem(cur) };
+      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}`, item: leadItem(cur) };
     }
 
     // Recompute draft state from the merged row (spec P3: every update recomputes).
@@ -226,7 +248,7 @@ export async function executeDonnaLead(
     const row = data ?? ({ ...cur, ...patch } as LeadRow);
     const changed = Object.keys(patch).filter((k) => k !== 'draft_meta').join(', ');
     const flag = ambiguous ? ` Note: ${existing.length} leads matched — updated the most recent; if you meant a different one, tell me which.` : '';
-    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}`, item: leadItem(row) };
+    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}`, item: leadItem(row) };
   }
 
   // ── No match -> create new (the typed-plane draft; thin is welcome).

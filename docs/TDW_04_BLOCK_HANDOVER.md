@@ -13,9 +13,11 @@
 | T19 re-derived green | ✅ SEALED `125000 / 3 / 6`, named rows, money unmoved through S2; form accepted twice (R-B6-23, Q-S2-7) |
 | Smoke card's three inherited items | ✅ F-04.42 · F-04.44 · T12 CLOSED (R-B6-11), witnessed before their seventh sitting |
 | The F-04.72 rider (R-B6-29) | ✅ BUILT + benched 32/32, **delivered not applied** (ZIP G) |
-| The F-04.77 sibling + Q-S2-5 hardening | ✅ BUILT, **delivered not applied** (ZIP H) |
-| The block handover written | ✅ this document |
-| **PENDING — the one act between here and closed** | 🔴 **Founder: apply ZIP G → push (Railway) → apply ZIP H → push (Vercel) → the rider smoke card (delivered with the ZIPs). NO migration this time.** On its pass, TDW_04 is CLOSED and 06 opens. |
+| The F-04.77 sibling + Q-S2-5 hardening | ✅ LIVE (ZIP H applied; the inline verdict founder-witnessed byte-exact; the lazy client's negative witness on the PIN account, positive leg an open witness per Q-S2-4) |
+| The rider smoke's four closures | ✅ the hold's null closed by the Railway line · F-04.78 amended (the consult-relay specimen) · step 3's posture recorded · T19's /7 explained BY NAME and RE-SEALED `125000/3/6` |
+| **The F-04.78 door rider (Q-R-1 — the close's ONE ruled extension, R-B6-29's convention)** | ✅ BUILT + benched 15/15 (the Tara sequence the named first test), **delivered not applied** (ZIP J) |
+| The block handover written | ✅ this document, amended to the ruled close |
+| **PENDING — the one act between here and closed** | 🔴 **Founder: apply ZIP J → push (Railway) → the door-rider smoke (one Tara re-run + one SQL read, on the card). NO migration.** On its pass, TDW_04 is CLOSED and 06 opens. |
 
 **What the block leaves standing on production (one paragraph, the estate):** `eventWrite` is the sole writer of `public.events` on vendor paths; `0078`'s per-slot unique key + null-slot CHECK are live and verified; the checker (`checkOccupancy`) speaks four verdicts slot-aware at BOTH PWA doors and both halves of every reply persist (Q-B4-6(b)); the calendar's surfaces carry the day sheet whole (P5), the windowed horizon with the honest truncation tell, the working-capacity row on the one-home wire, blocks excluded from every engagement reader, and refusals render inline and whole at both sheets; the harvest carries ST-3b's fusion keys at all four writers and, after the rider, extends the model's own dedup courtesy to itself — **the disambiguation hold**. The WA door (`calendarSignals`) remains verdict-EXEMPT by charter until 05, and that exemption was priced when the checker was a stub — 05 reads F-04.65 first.
 
@@ -30,7 +32,7 @@
 - **F13/F14-era residue** as inventoried in the succession note; item 3/5 cold re-verify owed from 02-HOTFIX.
 - **The soul half of F-04.66** (whether Victor should voice a handle even when handed one — after B6 he is no longer handed one; the disposition question survives).
 - **The rider's ledger note:** whether `harvest_hold` rows reaching Victor's RECENT ACTIVITY context should shape his voice is a soul question; the mechanical row exists as of ZIP G.
-- **F-04.78 (filed at the rider smoke):** the filing door's recognize-before-create has no different-person path — an ANSWERED disambiguation still enriched the wrong row (identity key cross-filled, the new person's facts silently dropped) and the reply fabricated a two-row estate over the tool's own honest sentence. The door half is a 04/06-seam charter question; the model half is 06's thesis class. Row + code lines in the log.
+- **F-04.78, both halves named per Q-R-1:** the DOOR half is **CURED in this block** (shapes (b)+(c), ZIP J — a name-only match never fills the phone cell; the single-match return speaks the match and any withheld phone). What rides to 06: **shape (a) BY NAME** (the distinct-person input, deferred beside the relay work — it ships when the model half it depends on is being tuned) **+ the MODEL half** — the consult-relay fabrication (Donna echoed a dispatch back as the result while the row dropped those facts; Harvey compounded it), F-04.71's class at a new location. Row + code + log lines all in FINDINGS_LOG.
 
 **06's war in one sentence stands as written: Victor may only claim what a witnessed result proved.**
 

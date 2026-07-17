@@ -134,6 +134,8 @@ a green status page** — the proof-evidence law ("proofs against ambiguous stat
 
 ### T19 — THE STANDING BASELINE (founder gate, recorded at the spine sitting, 2026-07-16)
 
+> **T19 AT THE B6 RIDER SEAL (2026-07-17, founder-run, green banner): `125000 / 3 / 6` — RE-SEALED.** An interim run read `/7`; the seventh row was named, never averaged: `test date 1` (kind `other`, 29 Jul, created 14:20:19Z — the S2 step-5 three-field-create fixture, minted after that sitting's own T19 run). Retired through the day sheet's cancel; the re-run restored the seal. Money and owed-count unmoved throughout the entire rider sitting. This entry is the census's current triple.
+
 ```
 oracle_outstanding  125000
 oracle_owed_count        3
