@@ -226,9 +226,29 @@ const FILED_CALL = { name: 'dear_donna_talk', input: { message: 'Log the lead.' 
   // ═══════════════════════════════════════════════════════════════════════
   sec('§4 — THE ENGINE LEG: the REAL COMPILED runTurn (dist), db.js the one shim.');
   const DIST = path.join(ROOT, 'src/engine/dist/core/loop.js');
-  if (!fs.existsSync(DIST)) {
-    console.log("  … dist absent (clean clone) — §4's 5 behavioural assertions SKIPPED, stated;");
-    console.log('    the engine gates (tsc + build + smoke) carry behaviour. Source assertions run:');
+  // ── F-04.83's CURE (the dist-staleness note, executed at its recorded trigger):
+  // a dist that DISAGREES with its source on the cure sentinel is STALE — it was
+  // compiled before the source moved (the founder's desk never runs the build;
+  // Railway does, on deploy) and its testimony is about YESTERDAY'S source. A
+  // stale dist must not testify: §4 SKIPS, STATED, with the one-line fix named,
+  // and the source assertions carry. The gate is agree/disagree, NOT presence —
+  // an UNCURED tree (source and dist both lack the sentinel) AGREES, so §4 still
+  // runs there and still FAILS on exactly the cure: the both-ways floor stands.
+  const SENTINEL = 'pendingDonnaQuestion';
+  const srcHasSentinel  = new RegExp(SENTINEL).test(read('src/engine/src/core/loop.ts'));
+  const distHasSentinel = fs.existsSync(DIST) && new RegExp(SENTINEL).test(read('src/engine/dist/core/loop.js'));
+  const distStale = fs.existsSync(DIST) && (srcHasSentinel !== distHasSentinel);
+  if (!fs.existsSync(DIST) || distStale) {
+    if (distStale) {
+      console.log('  … dist is STALE — src/engine/dist/core/loop.js disagrees with loop.ts on the');
+      console.log('    cure sentinel (compiled before the source moved; F-04.83, the founder-terminal');
+      console.log("    27/28). §4's 5 behavioural assertions SKIPPED, stated. THE FIX, one line:");
+      console.log('      npm run build && node scripts/b6_open_question_bench.js');
+      console.log('    (Railway rebuilds dist on every deploy — production is not this desk.)');
+    } else {
+      console.log("  … dist absent (clean clone) — §4's 5 behavioural assertions SKIPPED, stated;");
+      console.log('    the engine gates (tsc + build + smoke) carry behaviour. Source assertions run:');
+    }
     const loopSrc = read('src/engine/src/core/loop.ts');
     T('TurnResult carries pendingDonnaQuestion (D-6 siting, source)', /pendingDonnaQuestion\?: string;/.test(loopSrc));
     T('the assignment keys on donna.session.pendingToolUseId (source)', /pendingDonnaQuestion = donna\.session\.pendingToolUseId \? said : '';/.test(loopSrc));
