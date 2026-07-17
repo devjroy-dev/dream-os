@@ -135,10 +135,17 @@ sec('§1 — R-B6-29 shape (a), the REAL runHarvest. First: THE NAMED FIRST TEST
     T('control: the final line counts held=0', logs.some((l) => /held=0/.test(l)));
   }
   // C — selective hold: the question names Kavya only; Ritu\'s patch still lands.
+  // D-8 LABELED FIXTURE AMENDMENT (R-B6-15 convention, ratify-or-revert): the
+  // message was the placeholder 'msg'; F-04.80's entity anchor now requires the
+  // message to name the entity a patch files to, so the fixture speaks its own
+  // scenario (Ritu's fact with Ritu's name; Kavya's patches are HELD before the
+  // anchor and need no naming). The scenario's question — the hold is per-key,
+  // not per-turn-total — is unchanged; count preserved.
   {
     await run(CLARIFY_REPLY, {
       typed: [LEAD_KAVYA, LEAD_RITU],
       records: [BINDER_KAVYA],
+      message: 'New enquiry: Ritu Malhotra, wedding in Jaipur. And Kavya called about her date again.',
       patches: [
         { plane: 'typed', table: 'leads', id: LEAD_KAVYA.id, field: 'phone', value: '9811001122' },
         { plane: 'typed', table: 'leads', id: LEAD_RITU.id, field: 'wedding_city', value: 'Jaipur' },
@@ -148,15 +155,23 @@ sec('§1 — R-B6-29 shape (a), the REAL runHarvest. First: THE NAMED FIRST TEST
     T('selective: Kavya held, Ritu FILED — the hold is per-key, not per-turn-total', spies.updateLead.length === 1 && spies.updateLead[0].id === LEAD_RITU.id && spies.executeAndPatch.length === 0);
   }
   // D — absent replyText (an older caller): nothing holds; pre-rider behaviour.
+  // D-8 LABELED FIXTURE AMENDMENT (R-B6-15 convention, ratify-or-revert): same
+  // placeholder-'msg' cure as scenario C — the anchor is message-keyed and
+  // applies to every caller, so the fixture names Kavya with her facts. The
+  // scenario's question — absent replyText means the HOLD cannot fire — is
+  // unchanged; count preserved. (The assertion label below now says "nothing
+  // holds" rather than "pre-rider bytes": the hold's older-caller floor is
+  // byte-identical; the anchor is D-8's and message-borne for all callers.)
   {
     await run(undefined, {
       typed: [LEAD_KAVYA], records: [BINDER_KAVYA],
+      message: 'Kavya Smoke Test called — phone 9811001122, wedding 14 Feb 2027.',
       patches: [
         { plane: 'typed', table: 'leads', id: LEAD_KAVYA.id, field: 'phone', value: '9811001122' },
         { plane: 'records', id: BINDER_KAVYA.id, cell: 'date', value: '2027-02-14' },
       ],
     });
-    T('absent replyText: both patches file — older callers keep pre-rider bytes', spies.updateLead.length === 1 && spies.executeAndPatch.length === 1 && !spies.logActivity.some((r) => r.action === 'harvest_hold'));
+    T('absent replyText: both patches file — nothing HOLDS without a reply (the hold\'s older-caller floor)', spies.updateLead.length === 1 && spies.executeAndPatch.length === 1 && !spies.logActivity.some((r) => r.action === 'harvest_hold'));
   }
 
   // ═══════════════════════════════════════════════════════════════════════

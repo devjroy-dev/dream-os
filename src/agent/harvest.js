@@ -210,6 +210,44 @@ function computeDisambiguationHolds(replyText, labels) {
 }
 // ── end F-04.72 cure region ───────────────────────────────────────────────────
 
+// ── F-04.80's CURE — THE ENTITY ANCHOR (the 04 tail rider, ruled D-8) ─────────
+// THE DISEASE (tail ledger, row bdcec6b4): cross-entity fact attribution across
+// NON-colliding names — the vendor's message stated VERA's date and city; NEHA's
+// draft was missing both; the model attributed across the names and rules 1–4
+// all passed because none of them asks WHOSE fact it is. No name collision
+// existed, so neither hold leg could fire and neither should have — the holds
+// are acquitted by design; this rule is their COMPLEMENT.
+// THE RULE, as recorded in the tail ledger and executed here to the letter:
+// a patch applies ONLY if the turn's MESSAGE TEXT names the target row's own
+// entity (its nameKey). A message that never says "Neha" cannot patch Neha.
+// Wire-borne, zero language modeling — Q-R-3's mechanical-signal aesthetic,
+// one rule further in. Key discipline is the hold's own (ONE aesthetic, one
+// helper): first-name token via nameKey; word-bounded for ascii keys,
+// substring for non-ascii scripts.
+// COMPLEMENTARY BY CONSTRUCTION: the hold sits first and fires on collision
+// (same key under question); the anchor runs only on patches the hold passed,
+// and fires on ABSENCE (the key never spoken). The anchor passes where the
+// hold fires, and fires where the hold passes.
+// INTERPRETATION DISCLOSED, ratify-or-revert: a row with NO nameKey (an
+// unnamed draft) has no entity to anchor — the rule is about names, and
+// blocking every enrichment of unnamed drafts would be a regression the
+// ruling never asked for; such rows pass the anchor unchanged.
+// COST ASYMMETRY, the tail entry's own: a false anchor-out loses one turn's
+// enrichment on one entity (recoverable next mention, LD-3 forward-only); a
+// false pass writes one person's facts into another person's row through
+// lawful hands. The rule leans toward blocking.
+// Anchored ≠ dropped-by-rule: anchored-out patches are counted (`anchored=`
+// joins the harvest log line) and LEDGERED (`action:'harvest_anchor'`, the
+// finding named in the row) so the anchor is witnessable — the hold's own
+// witnessability convention, applied to its complement.
+function messageNamesKey(message, key) {
+  if (!key) return true; // unnamed row -> nothing to anchor (disclosed above)
+  const s = String(message || '').toLowerCase();
+  const ascii = /^[a-z0-9]+$/.test(key);
+  return ascii ? new RegExp('\\b' + escapeRe(key) + '\\b').test(s) : s.includes(key);
+}
+// ── end F-04.80 cure region ───────────────────────────────────────────────────
+
 function leadSnapshotItem(l) {
   const val = l.budget_max != null ? ` (Rs ${l.budget_max})` : '';
   const state = l.state ?? 'new';
@@ -284,8 +322,15 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls, reply
       holdLogged.add(key);
       await logActivity(pub, { vendorId: vendor.id, surface: 'pwa', action: 'harvest_hold', summary: `harvest held patches for "${rowLabel || key}" — the turn's reply left which-${key} open (F-04.72's gate); restate after answering and it files` });
     };
+    // F-04.80 (D-8): the anchor's ledger twin — one row per anchored-out entity.
+    const anchorLogged = new Set();
+    const anchorPatch = async (key, rowLabel) => {
+      if (anchorLogged.has(key)) return;
+      anchorLogged.add(key);
+      await logActivity(pub, { vendorId: vendor.id, surface: 'pwa', action: 'harvest_anchor', summary: `harvest declined patches for "${rowLabel || key}" — the message never names ${key}, and a fact is filed only to the entity its message anchors (F-04.80's rule); say the name with the fact and it files` });
+    };
 
-    let applied = 0, dropped = 0, crossScope = 0, held = 0;
+    let applied = 0, dropped = 0, crossScope = 0, held = 0, anchored = 0;
 
     for (const p of patches) {
       try {
@@ -298,6 +343,7 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls, reply
           }
           const tk = nameKey(row.name);                                   // F-04.72: the hold sits
           if (tk && holds.has(tk)) { held++; await holdPatch(tk, row.name); continue; } // ABOVE the field rules
+          if (!messageNamesKey(message, tk)) { anchored++; await anchorPatch(tk, row.name); continue; } // F-04.80 (D-8): the anchor runs on what the hold passed
           const missing = (row.draft_meta && row.draft_meta.missing) || [];
           if (!missing.includes(p.field)) { dropped++; continue; }        // rule 1
           if (row[p.field] != null && row[p.field] !== '') { dropped++; continue; } // rule 2
@@ -332,6 +378,7 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls, reply
           }
           const rk = nameKey(row.client);                                 // F-04.72: same hold, other
           if (rk && holds.has(rk)) { held++; await holdPatch(rk, row.client); continue; } // plane — shape (b)'s case
+          if (!messageNamesKey(message, rk)) { anchored++; await anchorPatch(rk, row.client); continue; } // F-04.80 (D-8): same anchor, other plane
           if (!missingCells(row).includes(p.cell)) { dropped++; continue; } // rules 1+2 (missing == absent)
           const door = recordsDoor(row, p.cell, p.value);
           if (!door) { dropped++; continue; }                              // rule 4 (records)
@@ -348,7 +395,7 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls, reply
       }
     }
 
-    console.log(`[harvest] applied=${applied} dropped=${dropped} held=${held} cross_scope=${crossScope}`);
+    console.log(`[harvest] applied=${applied} dropped=${dropped} held=${held} anchored=${anchored} cross_scope=${crossScope}`);
   } catch (e) {
     console.warn('[harvest] run failed (non-fatal, best-effort):', e.message);
   }
@@ -357,3 +404,5 @@ async function runHarvest({ supabase, vendor, agentId, message, toolCalls, reply
 module.exports = { runHarvest };
 // F-04.72 bench seam (scripts/b6_rider_bench.js drives the REAL bodies):
 module.exports._disambiguation = { nameKey, questionSegments, computeDisambiguationHolds };
+// F-04.80 bench seam (scripts/b6_f80_bench.js drives the REAL bodies):
+module.exports._anchor = { messageNamesKey };
