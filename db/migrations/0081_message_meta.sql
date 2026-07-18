@@ -1,0 +1,63 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Migration 0081 — the message-ledger meta column                          ║
+-- ║  TDW_06 P6a (S-10), the Advisor sitting · 2026-07-18                       ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+--
+-- RULING (0081 GATE, CE, this sitting): "migration 0081 adds engine.messages.meta
+-- jsonb NULL — additive, NO backfill, founder-run, in-file verify SELECTs, revert
+-- fully commented." The column carries two marks, each at its ONE writer seam
+-- (both in this ZIP's code half):
+--   · {"mode":"advisor"} — on advisor ASSISTANT rows only, at saveMessage's insert
+--     (the one seam that fires for EVERY assistant row; the door's composedTail
+--     update is conditional on a tail and never fires for an advisor turn). A
+--     business/consult row carries NO meta — the ASYMMETRY convention: a stamp
+--     always MEANS advisor, its absence is never ambiguous.
+--   · {"tombstone":true} — on the F-04.51 tombstone row, stamped by the wrapper's
+--     catch. loadThread then EXCLUDES stamped rows from replay so a next-turn
+--     Victor can never read (or echo) an outage tombstone as estate (F-06.3's
+--     durable cure). Pre-0081 tombstone rows carry no meta; loadThread's
+--     content-match interim (the blessed TOMBSTONE constant, one home in
+--     memory.ts) catches them until they age out of the 20-row window.
+--
+-- ADDITIVE + NO BACKFILL: every existing row stays meta = NULL, which reads as
+-- "business / untagged" — correct for every historical row. Nothing is rewritten.
+-- The code degrades pre-DDL: saveMessage writes the row without meta (honest log,
+-- never a lost message) and loadThread still excludes tombstones by content-match.
+-- So this migration and its code half are order-independent — neither breaks
+-- waiting for the other.
+
+alter table engine.messages
+  add column if not exists meta jsonb;
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- VERIFY (run each SELECT after the migration; they mutate nothing):
+--
+-- 1) the column exists, jsonb, nullable, no default:
+-- select column_name, data_type, is_nullable, column_default
+--   from information_schema.columns
+--  where table_schema = 'engine' and table_name = 'messages'
+--    and column_name = 'meta';
+-- expect: meta | jsonb | YES | (null)
+--
+-- 2) no row was backfilled — every existing row is still meta = NULL:
+-- select count(*) as total,
+--        count(meta) as with_meta        -- count(col) skips NULLs
+--   from engine.messages;
+-- expect: with_meta = 0 immediately after apply (climbs only as new advisor /
+--         tombstone rows land through the code half).
+--
+-- 3) after a few advisor turns + (if any) an outage, the two marks read cleanly:
+-- select meta->>'mode' as mode, meta->>'tombstone' as tombstone, count(*)
+--   from engine.messages
+--  where meta is not null
+--  group by 1, 2 order by 3 desc;
+-- expect: advisor assistant rows -> mode=advisor; tombstone rows -> tombstone=true.
+-- ──────────────────────────────────────────────────────────────────────────
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- REVERT (fully commented — run ONLY to undo 0081; drops the column and every
+-- mark in it. The code degrades to pre-DDL behaviour with no column present):
+--
+-- alter table engine.messages
+--   drop column if exists meta;
+-- ──────────────────────────────────────────────────────────────────────────

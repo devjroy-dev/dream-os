@@ -11,6 +11,25 @@ const TIMEOUT_MIN = Number(process.env.CONVERSATION_TIMEOUT_MIN ?? 30);
 
 export type ThreadMessage = { role: 'user' | 'assistant'; content: string };
 
+// ── TDW_06 P6a (S-10), 0081 · THE TOMBSTONE CONSTANT — ONE HOME ──────────────
+// F-04.51's tombstone row (written by loop.ts's wrapper on an outage). Its ONE
+// home is here, so the writer (loop.ts imports it) and the reader (loadThread's
+// pre-0081 interim below) share the same blessed string — never two copies to
+// drift apart. The BYTES are unchanged from loop.ts's original: pre-0081
+// tombstone rows already carry exactly this content, which is why the interim
+// content-match catches them until they age out of the 20-row window.
+export const TOMBSTONE = 'ERROR — no reply was generated (provider failure). Nothing was done.';
+
+// 0081 (F-06.3's durable cure): a tombstone row must NEVER re-enter replay — a
+// next-turn Victor read one as estate and ECHOED it verbatim. A post-0081 row
+// carries meta.tombstone === true (the durable mark); a pre-0081 row has no meta,
+// so the content-match on TOMBSTONE catches it (the interim). Both, one predicate.
+function isTombstone(row: { meta?: unknown; content?: unknown }): boolean {
+  const meta = row.meta as { tombstone?: boolean } | null | undefined;
+  if (meta && meta.tombstone === true) return true; // durable mark (post-0081)
+  return row.content === TOMBSTONE;                  // interim (pre-0081 rows)
+}
+
 // Get the agent's active conversation, or start a fresh one if the last is stale.
 // Returns the conversation id + the recent thread (working memory).
 export async function getOrCreateConversation(
@@ -64,16 +83,29 @@ export async function getOrCreateConversation(
 }
 
 async function loadThread(conversationId: string, limit = 20): Promise<ThreadMessage[]> {
-  const { data } = await supabase
+  type Row = { role: string; content: string | null; meta?: unknown };
+  // select() FIRST, then filters (the PostgREST builder order). One helper, two
+  // column shapes, so the pre-0081 degrade re-runs the identical query minus meta.
+  const q = (cols: string) => supabase
     .from('messages')
-    .select('role, content')
+    .select(cols)
     .eq('conversation_id', conversationId)
     .in('role', ['user', 'assistant'])
     .order('created_at', { ascending: false })
     .limit(limit);
-  const rows = (data ?? []).reverse();
+  // 0081: read meta for the tombstone mark. If the column is ABSENT (migration not
+  // yet applied), the select errors on 'meta' — degrade to the pre-0081 shape (no
+  // crash, no lost thread) and let the content-match interim carry the exclusion.
+  let { data, error } = await q('role, content, meta');
+  if (error && /\bmeta\b/i.test(error.message)) {
+    // eslint-disable-next-line no-console
+    console.warn('[memory] messages.meta absent (apply 0081) — reading without it; the tombstone interim still holds');
+    ({ data, error } = await q('role, content'));
+  }
+  const rows = ((data ?? []) as unknown as Row[]).reverse();
   return rows
     .filter((r) => r.content)
+    .filter((r) => !isTombstone(r)) // 0081 (F-06.3): a tombstone never re-enters replay — no next-turn echo
     .map((r) => ({ role: r.role as 'user' | 'assistant', content: r.content as string }));
 }
 
@@ -140,17 +172,26 @@ export async function saveMessage(
   role: 'user' | 'assistant' | 'tool',
   content: string,
   toolCalls?: unknown,
+  meta?: unknown, // 0081: {"mode":"advisor"} on advisor rows, {"tombstone":true} on the wrapper's row; ABSENT (bare) = business/consult — the asymmetry convention
 ): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      role,
-      content,
-      tool_calls: toolCalls ?? null,
-    })
-    .select('id')
-    .single();
+  const row: Record<string, unknown> = {
+    conversation_id: conversationId,
+    role,
+    content,
+    tool_calls: toolCalls ?? null,
+  };
+  // Only ever write the key when there's a mark — a bare row stays bare (asymmetry).
+  if (meta !== undefined && meta !== null) row.meta = meta;
+
+  let { data, error } = await supabase.from('messages').insert(row).select('id').single();
+  // 0081 pre-DDL degrade: if the meta column is absent, drop it and write the row
+  // anyway — a mark is never worth losing a message. Guarded like the usage ledger.
+  if (error && row.meta !== undefined && /\bmeta\b/i.test(error.message)) {
+    // eslint-disable-next-line no-console
+    console.warn('[memory] messages.meta absent (apply 0081) — saved the row without the mark');
+    const { meta: _dropped, ...bare } = row;
+    ({ data, error } = await supabase.from('messages').insert(bare).select('id').single());
+  }
   if (error) {
     // eslint-disable-next-line no-console
     console.warn('[memory] saveMessage failed:', error.message);

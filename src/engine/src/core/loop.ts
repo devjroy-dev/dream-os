@@ -20,14 +20,14 @@ import { CONSULTANT_HARVEY_SOUL } from './consultantHarveySoul.js';
 import { ADVISOR_LENS } from './advisorLens.js';
 import { ESCALATE_TOOL } from './tools/donnaLead.js';
 import { DEAR_DONNA_TALK_TOOL } from './tools/dearDonna.js';
-import { DEAR_DONNA_HANDBOOK_TOOL } from './tools/dearDonnaHandbook.js';
+import { DEAR_DONNA_HANDBOOK_TOOL, ADVISOR_HANDBOOK_TOOL } from './tools/dearDonnaHandbook.js';
 import { JOT_ADVICE_TOOL, executeJotAdvice } from './tools/jotAdvice.js';
 import { snapshotText, runDonnaTurn, type DonnaSession } from './donna.js';
 import type { ViewRow } from './snapshotTypes.js';
 import { todayLine, todayISO } from './today.js';
 import { resolveField, getHandbookIndex, getHandbookFull, getSection } from './handbook.js';
 import {
-  getOrCreateConversation, saveMessage, loadFacts, loadOwner, donnaMessages, type ThreadMessage,
+  getOrCreateConversation, saveMessage, loadFacts, loadOwner, donnaMessages, TOMBSTONE, type ThreadMessage,
 } from './memory.js';
 
 // Outer cap on Harvey's own iterations. Raised from 6 to give room for a multi-exchange
@@ -185,7 +185,8 @@ type TurnCtx = {
 // FOUNDER-BLESSED VERBATIM (2026-07-16), machine-voice deliberate: an outage must not
 // sound like Victor. A persona impersonating health during failure IS the disease.
 // Copy law: no persona name in product chrome. Do not rewrite this string.
-const TOMBSTONE = 'ERROR — no reply was generated (provider failure). Nothing was done.';
+// TDW_06 0081: the constant's ONE HOME moved to memory.ts (imported above) so the
+// writer here and loadThread's pre-0081 interim share the same blessed string.
 
 export async function runTurn(args: RunTurnArgs): Promise<TurnResult> {
   const ctx: TurnCtx = {};
@@ -196,7 +197,7 @@ export async function runTurn(args: RunTurnArgs): Promise<TurnResult> {
     // next turn cannot read the orphan as handled.
     if (ctx.conversationId && !ctx.saved) {
       try {
-        await saveMessage(ctx.conversationId, 'assistant', TOMBSTONE);
+        await saveMessage(ctx.conversationId, 'assistant', TOMBSTONE, undefined, { tombstone: true });
       } catch (tombErr) {
         // The tombstone is a courtesy to the next turn; it NEVER masks the real failure.
         // eslint-disable-next-line no-console
@@ -392,9 +393,11 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   if (isAdvisor) {
     // ADVISOR ROOM (A-3): Donna dispatches DISABLED — no dear_donna_talk, no estate
     // hand, so there is no claim surface. The Codex PULL stays (a codex read is not
-    // an estate read — A-3). The one write is jot_advice. No escalate (E-3 keeps it
-    // off every tier regardless).
-    if (handbook) tools.push(DEAR_DONNA_HANDBOOK_TOOL);
+    // an estate read — A-3), but through the SCOPE-LEGIBLE variant (F-06.5): it reaches
+    // only the TRADE reference; the whole social-media Codex already rides his prefix,
+    // so its description tells him not to pull for SMM. The one write is jot_advice.
+    // No escalate (E-3 keeps it off every tier regardless).
+    if (handbook) tools.push(ADVISOR_HANDBOOK_TOOL);
     tools.push(JOT_ADVICE_TOOL);
   } else if (!isConsult) {
     tools.push(DEAR_DONNA_TALK_TOOL);
@@ -628,7 +631,15 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // TDW_04 B6 sitting 2 (Q-B4-6(b)): the id is captured, not discarded — the door's
   // composed-reply save targets exactly this row. saveMessage's widened return is
   // null on a missed insert; the field simply stays absent and the door writes nothing.
-  const assistantMessageId = await saveMessage(conversationId, 'assistant', reply, toolCalls.length ? toolCalls : undefined);
+  // TDW_06 0081: THE ONE WRITER SEAM for the mode stamp. This insert fires for EVERY
+  // assistant row; the door's composedTail update is conditional on a tail (empty in
+  // the advisor room), so it would MISS every advisor row — this is the only seam that
+  // holds them all. {"mode":"advisor"} on advisor rows ONLY; business/consult stay bare
+  // (undefined -> no meta key) — the asymmetry convention: a stamp always MEANS advisor.
+  const assistantMessageId = await saveMessage(
+    conversationId, 'assistant', reply, toolCalls.length ? toolCalls : undefined,
+    isAdvisor ? { mode: 'advisor' } : undefined,
+  );
   // (d)'s §1.5 guard, CE-ruled: a real reply has landed. Everything below — the
   // agent_owner consult stamp, the usage-ledger insert — can still throw, and if it does
   // the wrapper must NOT tombstone a thread that already holds the true answer.
