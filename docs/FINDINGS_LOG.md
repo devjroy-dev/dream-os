@@ -2303,3 +2303,33 @@ The executor session for succession-note-III §4.1. Three dream-os pushes; the n
 ### ON THE FOUNDER'S VETO (gating nothing):
 - The **WA flip-confirmation words** minted in P7b (`vendorMode.js` `MODE_FLIP_LINES`): advisor/business × changed/no-op — scrubbed, naming the flip; replace any.
 - Item-4 tab label / tap affordance / empty-state line (the `dreamos-pwa` ZIP).
+
+---
+
+## TDW_06 SOUL/LENS TUNING — F-06.9 / F-06.10/12 / F-06.11 / SD-C2 + the delegated-look close (two dream-os ZIPs)
+
+**Landed: `1d211ea` (the tuning chain) · `1787a47` (Q1+Q2 — the delegated-look close + the detector two-arm fix).** Source-only; founder rebuilds dist. Nothing ran against production at ship.
+
+### THE TUNING CHAIN — LANDED & VERIFIED (`1d211ea`):
+- **F-06.11 (donnaFind.ts) — the no-argument recognition door.** A bare `donna_find({})` with records present fell THROUGH the zero-match fallback into the MAIN return (describeRow-whole, both planes). Both sites gated on `tokens.length === 0`: records → `recognitionRow` (:448), leads → `searchLeads(tokens, tokens.length === 0)` (:442); a token-matched search untouched. Bench: `b6_floors_bench` §8 (labeled-amended R-B6-15) over compiled `executeFindTool` — recognition-only both planes, `[ARCHIVED]` survives, matched-contrast whole, fail-at-uncured shown.
+- **F-06.9 (scrub.js + harveySoul.ts) — the id floor under the speaker soul.** CE-ruled uuid-only floor inside `scrubText` (last transform, after the persona firewall): bracketed uuid stripped to nothing, `lead-NN`/`rec-NN` dropped as dead regex, delta-safe. In-file coverage map names the id-strip + its exemption list (nested hands / evidence plane / read paths keep ids whole). Speaker trait (harveySoul:152) strengthened as self — reads the marks, speaks the plain finding. Plane tags left to the soul per the R-2 uuid-only mint.
+- **F-06.10/12 (advisorLens.ts) — the theatre seam.** Crux unifies look-costume with write-costume ("you do not pretend to CONSULT the ledger any more than you pretend to WRITE it") + the classification razor; no model branch (deepseek + Haiku identical). Chartered redirect + jot clause byte-verbatim; position preserved.
+- **SD-C2 (donnaSoul.ts) — draft-first on an update.** Folded low-weight into BALLS OF STEEL: a query is for a real fork, never a toll on a plain addition; an update to an open binder is drafted straight in (LD-2), never held for interrogation.
+- **Gauntlet (b06_gauntlet.js) — the narrated-lookup trap [14].** `NARRATED_LOOKUP_RE` folded into the S5 verdict, disjoint from the honest jot; four Rohan costumes convicted through the real verdict, redirect + counsel + honest jot acquitted, non-vacuity proven.
+
+### GATES (shipped): `build:engine` clean · `typecheck:engine` rc=0 · **floors 47/47** · **gauntlet `--rig-selftest` 62/62** · regression byte-stable (`checker` 101/101, `advisor` 15/15, `advisor-route` 16/16, `referent` 36/36, `s2` 48/48). 0-line guarded set untouched.
+### PRE-EXISTING FLAG (not this sitting): `b06_meter_bench` §3.2 fails at HEAD (28/29) — `modelRouter.js` DEFAULTS drift; stash-confirmed pre-existing, reported for its own ruling.
+
+### ACCEPTANCE EVENING 1 — RED, CURED (`1787a47`):
+Routed-deepseek advisor DELEGATED the look — "That's a cabinet question — let me have Operator check" — then self-corrected. The crux forbade miming the look for the SELF, not via a proxy. The detector carried the matching double fault, both live-exposed: it MISSED the delegated look (false-neg) AND FALSE-CONVICTED an honest paraphrase of the vendor's own ask ("you want to check if he's on file") (false-pos).
+- **Q1 (crux):** the delegated-look close, as self — there is no operator/desk/back-office at your side in this room; invoking one to check is the same fabricated lookup in a borrowed coat; a look you delegate is a look that still never happened. Named bench: the "let me have Operator check" line reading RED on routed deepseek.
+- **Q2 (detector):** a delegated-actor arm (have/ask/get/send Operator|the desk check|look|pull|verify) + a second-person guard so the vendor-ask paraphrase never convicts. Both proven non-vacuous against the shipped `1d211ea` detector in `[14]`. **rig-selftest 62/62** (was 58).
+
+### ACCEPTANCE EVENING 2 — RED. TWO NEW FINDINGS, BOTH OPEN:
+- **F-06.13 — recents money re-enters via bulk `donna_history` (not `donna_find`).** The recents turn fans out into bulk `donna_history` — EIGHT per-record deep-reads in one turn — and the rupee figures rode back in on those. `donna_find({})` itself was recognition-clean: **F-06.11 HOLDS and is EXONERATED** — the leak is not the no-arg dump. The money re-entered through per-record `donna_history`, which carries NO recognition floor. **Specimen: row `21:04:35`** (the fan-out turn). **Cure UNRULED** — dispatch-side (cap/shape the history fan-out) vs tool-side (a recognition floor on `donna_history`) is the next sitting's read-first. **OPEN.**
+- **F6 — a bare absence assertion with no find hand.** "No — Priya Loop Probe is not on file", `tool_calls: null`, business mode: an absence CLAIMED with no `donna_find` hand behind it (§2.1 sentence 3 — a claim the record neither produced nor contradicts). **Specimen: row `20:02:51`.** **OPEN.**
+
+### WITNESSED GREEN (evening 2):
+- **SD-C2 note-step — GREEN live.** The draft-first note filed without interrogation — the "Note added" chip (row `21:04:50`-era). The create was already green evening 1; the note step is now witnessed too.
+
+### ACCEPTANCE CLOCK: the two-green clock stands at **ZERO**. **M-6 exit NOT met.** F-06.13 and F6 are filed OPEN and handed to the next sitting; no closure is claimed for the advisor arc here.
