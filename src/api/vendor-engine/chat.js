@@ -1110,9 +1110,17 @@ async function fetchRecentBlock(req) {
   } catch (e) { console.warn('[vendor-e chat:recent-activity]', e.message); return ''; }
 }
 
+// TDW_06 P6b (F-06.2, CE-ratified): the advisor room yields COUNSEL, not vendor facts —
+// harvest must not mine an advisory turn for lead/binder patches. Gate on the turn's
+// RESOLVED victor_mode (set by the engine on the result at loop.ts:700), so a mid-turn
+// reality wins over the door's read. 'business' and consult (victor_mode absent) harvest
+// byte-identically to today — only 'advisor' is gated.
+const advisorHarvestGate = (result) => !!(result && result.victor_mode === 'advisor');
+
 // TDW_02 P4: harvest, fire-and-forget AFTER the reply is on the wire. Never
 // blocks, never throws to the request (harvest.js is internally best-effort).
 function fireHarvest(req, message, result) {
+  if (advisorHarvestGate(result)) return; // F-06.2: no harvest on the advisor room's counsel
   const supabase = req.app.locals.supabase;
   const vendor = req.vendor; const agentId = req.agentId;
   const toolCalls = (result && result.tool_calls) || [];
@@ -1132,9 +1140,30 @@ const ENGINE_TIER_MAP = { trial: 'entry', essential: 'entry', signature: 'mid', 
 // The turn's llm wiring. Anthropic routes pass NO transport — the engine's own
 // pre-facade path runs byte-identical (acceptance 9). Non-anthropic routes pass
 // the facade transport + one model for both hands.
+// TDW_06 P6b (F-06.4, CE-ratified): the advisor room's model is chosen AT THE DOOR.
+// victor_mode is read from engine.agents by the SERVER-RESOLVED agentId (resolveAgent
+// middleware — the reverse bridge; NEVER a client-supplied id) and, when 'advisor',
+// routes Victor to the model.pwa_vendor.advisor key. A read miss falls to 'business'
+// (no advisor route). Business/consult are byte-identical to before this seam.
+async function readVictorMode(req) {
+  try {
+    const { data } = await req.app.locals.supabase.schema('engine')
+      .from('agents').select('victor_mode').eq('id', req.agentId).maybeSingle();
+    return (data && data.victor_mode) === 'advisor' ? 'advisor' : 'business';
+  } catch (e) {
+    console.warn('[vendor-e chat:victor_mode read]', e.message);
+    return 'business';
+  }
+}
+
 async function buildLlmForTurn(req) {
   const productTier = (req.vendor && req.vendor.tier) || 'trial';
-  const route = await resolveModel(req.app.locals.supabase, 'pwa_vendor', productTier);
+  // F-06.4: the advisor room routes on its own key; every other mode routes on the
+  // product tier exactly as before. The ENGINE tier (capabilities/caps) always follows
+  // the PRODUCT tier — advisor changes only which MODEL serves Victor, not the tier.
+  const victorMode = await readVictorMode(req);
+  const routeTier = victorMode === 'advisor' ? 'advisor' : productTier;
+  const route = await resolveModel(req.app.locals.supabase, 'pwa_vendor', routeTier);
   const tierOverride = ENGINE_TIER_MAP[productTier] || 'entry';
   // TDW_02 P7 (Amendment Two): optional per-role split — donna_provider/donna_model
   // route HER hand separately. Anthropic donna split => no donna transport (her own
@@ -1523,3 +1552,8 @@ module.exports.donnaOpenLine         = donnaOpenLine;
 // convicts candidates with the REAL classifier — a gauntlet that re-implemented
 // it would convict against its own copy and nothing else.
 module.exports.actionKind            = actionKind;
+// TDW_06 P6b (F-06.4/F-06.2): door-seam seams exposed for b06_advisor_route_bench.
+module.exports.buildLlmForTurn       = buildLlmForTurn;
+module.exports.fireHarvest           = fireHarvest;
+module.exports.advisorHarvestGate    = advisorHarvestGate;
+module.exports.readVictorMode        = readVictorMode;

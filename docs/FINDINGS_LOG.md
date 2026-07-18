@@ -2211,3 +2211,37 @@ Both CE rulings returned on the read-first (RIG-DOUBLE-ONLY convicted + the one-
 4. **The crash-hardening guard STAYS** — it still catches the SEPARATE "reading 'type'" model-output crashes (their own rig-void class); the stale §0.2 comment about "needs the CE's held raw output" is updated to note the floor is now chartered + built.
 
 **The BUILD sequence from here: this rig-touch ZIP → the chip pair (routing key `model.pwa_vendor.advisor` + DEFAULTS + `0082_advisor_route_seed.sql` + the door victor_mode read seam; R-1 PATCH; R-2 chip; F-06.2 harvest gate at `fireHarvest`; R-3 notes placement) → WA words + config wire (with the WA-door victor_mode read, per the CE's forward note). 0082 rides whichever ZIP opens first with the founder's run.**
+
+---
+
+## TDW_06 P6c (chip pair — ENGINE/DOOR HALF): mode-scoped routing goes live at the door + the R-1 PATCH + the F-06.2 harvest gate
+
+The chip pair, engine/door half (CE-descoped: PWA chip is the sibling `dreamos-pwa` ZIP; notes-surface resequenced out by the founder). This is the "mode-scoped routing landed" half of F-06.4's redefined gate.
+
+### THE ROUTING (F-06.4, CE-ratified):
+- **`modelRouter.js` DEFAULTS:** new `'model.pwa_vendor.advisor': { provider: 'deepseek', model: 'deepseek-v4-flash' }` — so a pre-seed deploy routes advisor identically, never a silent fall to Haiku. `resolveModel` untouched (advisor rides the tier slot).
+- **`0082_advisor_route_seed.sql`** (founder-run): seeds the advisor row into `public.admin_config`, `ON CONFLICT DO NOTHING`, seed == DEFAULTS, confirmation select + commented revert. Makes the route admin-editable (PATCH 404s on unknown keys, D7).
+- **THE DOOR SEAM (`chat.js buildLlmForTurn`):** `victor_mode` is read from `engine.agents` by the **SERVER-RESOLVED** `req.agentId` (the `resolveAgent` reverse bridge — NEVER a client-supplied id); when `'advisor'`, Victor routes to `model.pwa_vendor.advisor` (deepseek). Business/consult route byte-identically on the product tier. The ENGINE tier (caps/capabilities) always follows the PRODUCT tier — advisor changes only which MODEL serves Victor. A read miss falls to business.
+
+### THE R-1 PATCH (`vendorMode.js`, mounted `/api/v2/vendor-e/mode`):
+- `PATCH { victor_mode: 'business' | 'advisor' }` — server-persisted on `engine.agents.victor_mode`. Chain `requireAuth → resolveVendor → resolveAgent`, so the agent is the reverse-bridge one; the endpoint **never accepts an agentId from the client**. Allowlist=`['victor_mode']` (any other field is a 400, not a silent ignore); value-guard mirrors 0080's CHECK (`IN ('business','advisor')`). me.js is the PATTERN; the HOME is `engine.agents` via `supabase.schema('engine')` (the today.js:37 pattern), not `public.vendors`.
+
+### THE F-06.2 HARVEST GATE (`chat.js fireHarvest`):
+- The advisor room yields COUNSEL, not vendor facts — harvest must not mine it. `fireHarvest` early-returns on `advisorHarvestGate(result)` (`result.victor_mode === 'advisor'`), keyed on the turn's ENGINE-resolved victor_mode (loop.ts:700), so a mid-turn reality wins. Business and consult (victor_mode absent) harvest byte-identically to today.
+
+### GATES (benched AT THE DESK; the live probe is the founder's):
+- **`npm run build:engine` clean** · **rig-selftest ALL PASS 53/53** (unperturbed — the door changes are additive; the rig requires chat.js's `actionKind` and still loads).
+- **NEW `b06_advisor_route_bench.js` → ALL PASS 12/12** (mock supabase, inert keys, no network): §1 the door seam (advisor→deepseek, server-resolved agent, business/consult byte-identical), §2 the harvest gate (advisor skips, business/consult run; fireHarvest wiring spied via setImmediate).
+- **BOTH-WAYS:** reverting the two logic points (the routing flip + the gate) while keeping the bench scaffolding → **9/12**, the three failures being exactly the advisor-route (deepseek + transport) and the advisor-harvest-skip. Restored → 12/12.
+- **Railway green NOT claimed — nothing ran against production.** `0082` is founder-run SQL; no migration executed here. The 0-line guardrail set untouched. Dist not shipped (source only; founder rebuilds).
+
+### RIDER 2 (CE ask — the rig-touch uncured expectation, disambiguated in one line):
+- At the FULL 338de38 tree section [13] does not exist → the selftest prints **46/46** (no both-ways signal there). The floor's both-ways is seen ONLY with the **abcb47c gauntlet + `recordPrimitives.ts` reverted to 338de38**, which prints **`FAILURES  51/53`** with exactly these two lines: `FAIL  the floor caught the raw {null,null} tail — no throw (UNCURED this THROWS: the both-ways proof)` and `FAIL  …and returned the honest "ERROR updating record" string on {null,null} (the version-tail closed)`. [13](a) still passes there (the double fix alone cures the rig-path).
+
+### EXECUTOR DISCLOSURE (each one-word vetoable):
+1. **advisor rides the tier slot** — `model.pwa_vendor.advisor` resolved through resolveModel's existing `tier` argument, so the router is byte-untouched; advisor is orthogonal to the product tier (the engine tier still follows the product tier).
+2. **the harvest gate keys on the RESULT's victor_mode, not the door's read** — the engine sets it at loop.ts:700, so a mid-turn downgrade/consult reality governs harvest, not the door's turn-start read.
+3. **the PATCH rejects unknown fields with a 400** — not a silent ignore (me.js's locked-field discipline, applied as an allowlist).
+4. **buildLlmForTurn/fireHarvest/advisorHarvestGate/readVictorMode are exported** additively for the bench — no behavioural change to the router export.
+
+**Sequence: this engine/door half → the PWA sibling ZIP (`dreamos-pwa`: the R-2 Business·Advisor chip — distinct control, victor_mode vocabulary end to end, zero shared state with the nav ModePill, server-persisted via `PATCH /api/v2/vendor-e/mode`, no localStorage; chip words on the founder's veto, rendered in the delivery). F-06.4 closes on: routing live at origin + the founder's one live probe in the routed room. `0082` rides whichever ZIP opens first with the founder's run.**

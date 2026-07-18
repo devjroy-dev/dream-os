@@ -26,6 +26,11 @@ const DEFAULTS = {
   // delivery). The LIVE Sonnet paths (tier-map top start, mid-tier escalate) are a
   // separate finding, filed not touched — see F-04.85 in FINDINGS_LOG.
   'model.pwa_vendor.prestige':  { provider: 'anthropic', model: HAIKU },
+  // TDW_06 P6b (F-06.4, CE-ratified): the advisor room routes to deepseek at the door.
+  // Keyed by victor_mode='advisor' (not a product tier) — resolved via the tier slot so
+  // resolveModel is untouched. Mirrors 0082_advisor_route_seed.sql; a pre-seed deploy
+  // routes advisor identically here rather than silently falling to Haiku.
+  'model.pwa_vendor.advisor':   { provider: 'deepseek',  model: 'deepseek-v4-flash' },
   'model.harvest.default':      { provider: 'glm',       model: 'glm-4.7-flash' },
 };
 
