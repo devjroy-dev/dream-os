@@ -45,7 +45,7 @@ It cost twice, in two different blocks, both times in SQL a founder had to run b
 4. created_at timestamp with time zone NOT NULL default now()
 ```
 
-## engine.agents  ·  10 columns
+## engine.agents  ·  11 columns
 
 ```
 1. id uuid NOT NULL default gen_random_uuid()
@@ -58,6 +58,7 @@ It cost twice, in two different blocks, both times in SQL a founder had to run b
 8. created_at timestamp with time zone NOT NULL default now()
 9. mode text NOT NULL default 'advisory'::text
 10. cabinet_skin text
+11. victor_mode text NOT NULL default 'business'::text
 ```
 
 ## engine.briefs  ·  10 columns

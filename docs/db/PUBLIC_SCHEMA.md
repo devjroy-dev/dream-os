@@ -885,7 +885,7 @@
 7. updated_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.vendors  ·  37 columns
+## public.vendors  ·  38 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -925,6 +925,7 @@
 43. base_fee_min integer
 44. base_fee_max integer
 45. slot_capacity integer
+46. assistant_name text
 ```
 
 ## public.waitlist_signups  ·  9 columns
