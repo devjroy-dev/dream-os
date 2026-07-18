@@ -1486,26 +1486,41 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
 // (the timeout may already have done the work; tapping twice is harmless).
 // On the vendor's next message, getOrCreateConversation finds nothing active
 // and inserts a fresh thread — the interim relief's mechanism, on demand.
+// TDW_06 P6a (F-06.8, CE-ratified): the mode-flip fresh-thread seam — ONE home, both
+// flip surfaces chain it. A mid-thread mode flip must not leave the next turn reading the
+// prior room's turns (Image-1: advisor-Victor reading the business thread's cabinet). The
+// cure abandons the agent's active conversation (memory.ts's own 'abandoned' state — NEVER
+// a delete; D-4's no-clear law: the rows persist, scrollback stays, the seam renders) so
+// the next turn opens fresh with ZERO prior-room turns. Idempotent: nothing active ->
+// { ok:true, closed:null } — safe to call on a no-op flip. Callers: POST /thread/fresh
+// below (the PWA chip chains it after a successful mode PATCH) and the WA mode-words seam
+// (src/index.js) once item 3 lands. Exported for both and for b06_fresh_thread_bench.
+async function abandonActiveThread(supabase, agentId) {
+  const eng = supabase.schema('engine');
+  const { data: convo } = await eng.from('conversations')
+    .select('id, state')
+    .eq('agent_id', agentId)
+    .order('last_active_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!convo || convo.state !== 'active') {
+    return { ok: true, closed: null }; // nothing active — already fresh
+  }
+  const { error } = await eng.from('conversations')
+    .update({ state: 'abandoned' }) // memory.ts's own shape — never delete
+    .eq('id', convo.id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, closed: convo.id };
+}
+
 router.post('/thread/fresh', requireAuth, resolveVendor(), resolveAgent(), async (req, res) => {
-  const eng = req.app.locals.supabase.schema('engine');
   try {
-    const { data: convo } = await eng.from('conversations')
-      .select('id, state')
-      .eq('agent_id', req.agentId)
-      .order('last_active_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!convo || convo.state !== 'active') {
-      return res.json({ ok: true, closed: null }); // nothing active — already fresh
-    }
-    const { error } = await eng.from('conversations')
-      .update({ state: 'abandoned' }) // memory.ts's own shape — never delete
-      .eq('id', convo.id);
-    if (error) {
-      console.error('[vendor-e chat/thread-fresh] update failed:', error.message);
+    const r = await abandonActiveThread(req.app.locals.supabase, req.agentId);
+    if (!r.ok) {
+      console.error('[vendor-e chat/thread-fresh] update failed:', r.error);
       return res.status(500).json({ ok: false, error: 'Could not close the thread.' });
     }
-    return res.json({ ok: true, closed: convo.id });
+    return res.json({ ok: true, closed: r.closed });
   } catch (err) {
     console.error('[vendor-e chat/thread-fresh]', err.message);
     return res.status(500).json({ ok: false, error: 'Could not close the thread.' });
@@ -1554,6 +1569,7 @@ module.exports.donnaOpenLine         = donnaOpenLine;
 module.exports.actionKind            = actionKind;
 // TDW_06 P6b (F-06.4/F-06.2): door-seam seams exposed for b06_advisor_route_bench.
 module.exports.buildLlmForTurn       = buildLlmForTurn;
+module.exports.abandonActiveThread   = abandonActiveThread; // TDW_06 P6a (F-06.8): shared flip seam
 module.exports.fireHarvest           = fireHarvest;
 module.exports.advisorHarvestGate    = advisorHarvestGate;
 module.exports.readVictorMode        = readVictorMode;
