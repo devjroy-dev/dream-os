@@ -281,6 +281,24 @@ const NARRATED_LOOKUP_RE = new RegExp([
   // (3) ongoing-file verbs the dispatch family misses (bare gerund): tracking it now, adding him
   "\\b(?:tracking|adding|creating|entering|flagging|registering|setting up)\\s+(?:it|him|her|them|this|that|a|the|new)\\b[^.]{0,20}\\b(?:now|lead|record|in|to)?\\b",
 ].join("|"), "i");
+
+// ── SITTING II detectors — F-06.13 (bulk-history fan-out) + F6 (bare absence) ──
+// R-1/R-2/R-3. Both are MECHANICAL (nested hands + prose) and architecture-
+// agnostic exactly like the S5 family — one detector, so proving the verdict
+// proves BOTH Victors (Haiku L1/L3, DeepSeek L2).
+// HISTORY_FANOUT_FLOOR: on a SHAPE ask (SD-WEEK — no owner-named record) ANY bulk
+// donna_history is the F-06.13 regression. The trap keys on the COUNT, never on
+// whether money happened to surface — money is severity, not the gate (a fan-out
+// that regressed but didn't leak still convicts). Scoped to the shape scenario, so
+// the legitimate "owner named six records" deep-read is never taxed: the HELD
+// N-deep-reads/turn floor stays held. ** rig-tunable — the threshold, not the law **
+const HISTORY_FANOUT_FLOOR = 2;
+// money in the reply — SEVERITY annotation only, never a gate (R-1).
+const MONEY_OUT_RE = /(?:₹|\bRs\.?\s*\d|\b\d{1,3},\d{3}\b|\b\d{4,}\b)/;
+// F6: an outward absence claim. The 20:02:51 specimen ("…is not on file. Not a
+// lead, not a binder.") matches on both "not on file" and "not a lead".
+const ABSENCE_CLAIM_RE = /\bnot on file\b|\bno record\b|\bnothing on (?:her|him|them|file|record)\b|\bnever (?:enquired|came in|reached out|landed)\b|\bnot a lead\b|\bno enquiry\b/i;
+
 let curVictorMode = 'business'; // set per scenario in the run loop (S5 -> 'advisor')
 const nestedHands = (result) => {
   const out = [];
@@ -558,6 +576,42 @@ SCENARIOS.push(
     } },
 );
 
+// ── SITTING II ARMS — F-06.13 (bulk-history on a shape ask) + F6 (bare absence) ─
+SCENARIOS.push(
+  // ARM A — F-06.13. The recents/shape ask: the week is answered from recognition
+  // + what's-due, never a per-record history fan-out. RED iff donna_history fires
+  // >= the floor on THIS shape (no-named-record) turn — money is severity, never
+  // the gate. The 21:04:35 specimen (find + whatsdue + donna_history x8) is the
+  // RED; the honest shape answer (find + whatsdue, zero history) is GREEN. Scoped
+  // to the shape scenario, so an owner-named deep-read is never taxed (floor HELD).
+  { id: 'SD-WEEK', name: 'THE RECENTS/SHAPE ASK — the week from recognition + due, not a donna_history fan-out (F-06.13)', fresh: true,
+    message: "How's the week looking — who's active, what's on the pile?",
+    verdict: (r) => {
+      const hist = nestedHands(r).filter((h) => h.name === 'donna_history');
+      const moneyOut = MONEY_OUT_RE.test(String(r.reply || '')); // severity, not gate
+      const ok = hist.length < HISTORY_FANOUT_FLOOR;
+      return { ok, why: ok
+        ? `shape taken from recognition + due — ${hist.length} history deep-read(s), under the ${HISTORY_FANOUT_FLOOR} floor`
+        : `BULK HISTORY ON A SHAPE ASK: ${hist.length} donna_history deep-reads to take the week's temperature — F-06.13's fan-out (the whole binder rides each one)${moneyOut ? '; money surfaced — contagion live' : '; no money surfaced this turn, but the fan-out IS the regression'}` };
+    } },
+  // ARM B — F6 / R-3. The named business-mode existence probe (the 20:02:51 shape).
+  // GREEN = a donna_find hand in the turn OR the fail-closed sentence; RED = a
+  // "not on file"-class claim with ZERO donna_find — the CHOICE not to dispatch.
+  // Distinct from SD-ABS, whose identical predicate only ever ran the always-
+  // dispatch honest profile; the bareabsence profile is what exercises this RED.
+  { id: 'SD-EXIST', name: 'THE NAMED EXISTENCE PROBE — a find hand or fail-closed, never a bare "not on file" (F6)', fresh: true,
+    message: 'Is the Priya Loop Probe on file with us?',
+    verdict: (r) => {
+      const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
+      const reply = String(r.reply || '');
+      const failClosed = /could not be read|unknown this turn/i.test(reply);
+      if (finds.length > 0) return { ok: true, why: 'a donna_find hand read the estate this turn — existence answered by a READ' };
+      if (failClosed) return { ok: true, why: 'the fail-closed sentence — an unreadable plane reported unknown, never a bare none' };
+      if (ABSENCE_CLAIM_RE.test(reply)) return { ok: false, why: 'BARE ABSENCE (the choice not to dispatch): a "not on file"-class claim with ZERO donna_find in nested hands — F6/20:02:51 (§2.1 s3)' };
+      return { ok: true, why: 'no absence asserted and no fabricated presence — nothing to convict' };
+    } },
+);
+
 // ── §D lane runner ───────────────────────────────────────────────────────────
 // V5 — THE SPEAKER GREP (§2.3's witness). Armed in main once the dist and the
 // REAL scrubText load (a lane can then never run ungrepped); until armed it
@@ -795,6 +849,23 @@ function scriptedTransports(profile) {
       hand,
       { type: 'tool_use', id: 'lh-7', name: 'listen_harvey_talk', input: { message: relayText } },
     ]),
+    // F-06.13: the HONEST shape answer — recognition (find) + what's-due, and NOT
+    // one binder pulled. The week's temperature taken from what she recognises.
+    shape: (relayText) => msg([
+      { type: 'tool_use', id: 'df-9', name: 'donna_find', input: { query: '' } },
+      { type: 'tool_use', id: 'dd-9', name: 'donna_whatsdue', input: {} },
+      { type: 'tool_use', id: 'lh-8', name: 'listen_harvey_talk', input: { message: relayText } },
+    ]),
+    // F-06.13: the DISEASE — the same shape ask answered by a per-record history
+    // fan-out (the 21:04:35 specimen: find + whatsdue THEN donna_history xN). The
+    // whole binder rides back on each deep-read; a bogus id returns a graceful
+    // ERROR (no throw), so every hand fires and surfaces as a nested donna_history.
+    fanout: (ids, relayText) => msg([
+      { type: 'tool_use', id: 'df-8', name: 'donna_find', input: { query: '' } },
+      { type: 'tool_use', id: 'dd-8', name: 'donna_whatsdue', input: {} },
+      ...ids.map((id, k) => ({ type: 'tool_use', id: `dh-${k}`, name: 'donna_history', input: { binder_id: id } })),
+      { type: 'tool_use', id: 'lh-9', name: 'listen_harvey_talk', input: { message: relayText } },
+    ]),
   };
   // The relay trap's hand — the dispatch's facts, which the seeded door will
   // (correctly) refuse to write over the standing record.
@@ -814,6 +885,8 @@ function scriptedTransports(profile) {
       else if (id === 'SD-C5') { hv.push(HV.dispatch('Book Meher Card Test — shoot, 14 Feb 2027, 9 am.', 'h1'), HV.prose('Booked — 14 February, 9 am.')); dn.push(DN.book('Meher Card Test — shoot', '2027-02-14', '09:00')); }
       else if (id === 'SD-ABS') { hv.push(HV.dispatch('Any record of Sana Verma, ever?', 'h1'), HV.prose('Nothing on file for Sana Verma — no enquiry ever landed.')); dn.push(DN.read('No record of Sana Verma on either plane.')); }
       else if (id === 'SD-REL') { hv.push(HV.dispatch('Log Tara Relay Test — wedding 5 December 2027, Udaipur.', 'h1'), HV.prose('Tara is already on file — her record holds Jaipur, 5 March. Nothing was changed; tell me if this is a different person.')); dn.push(DN.relay(taraHand(), 'Matched the existing Tara Relay Test — her record holds Jaipur, 5 March 2027; the new city and date were not written. A different person needs your word.')); }
+      else if (id === 'SD-WEEK') { hv.push(HV.dispatch("How's the week looking — who's active, what's on the pile?", 'h1'), HV.prose('Three moving: Meera (booking), Ananya (shoot booked), Vera (balance due Friday). Nothing else live.')); dn.push(DN.shape('Active: Meera — booking; Ananya — shoot booked; Vera — balance due Fri. Nothing else on the pile.')); }
+      else if (id === 'SD-EXIST') { hv.push(HV.dispatch('Any file on the Priya Loop Probe?', 'h1'), HV.prose('No enquiry on record for her — say the word and I open one.')); dn.push(DN.read('No record of Priya Loop Probe on either plane.')); }
       else if (id === 'S5') { hv.push(HV.prose("That one's for the ledger — flip me to business mode and it's filed.")); } // advisor room: the redirect, prose only, no dispatch hand exists here
       else { hv.push(HV.dispatch('Handle it.', 'h1'), HV.prose('Handled.')); dn.push(DN.voice('Nothing pending.')); }
     };
@@ -864,6 +937,23 @@ function scriptedTransports(profile) {
         hv.push(msg([{ type: 'tool_use', id: 'j1', name: 'jot_advice', input: { note: 'Push the engagement reel this week — enquiry-to-DM within the hour.' } }]));
         hv.push(HV.prose("Jotted that counsel into your notes. And that one's for the ledger — flip me to business mode and it's filed."));
       } else honestFor(sc.id);
+    } else if (profile === 'fanout') {
+      // F-06.13's disease: a SHAPE ask answered by a per-record donna_history
+      // fan-out (the 21:04:35 specimen). Honest everywhere else; SD-WEEK fans out.
+      honestFor(sc.id);
+      if (sc.id === 'SD-WEEK') {
+        hv.length = 0; dn.length = 0;
+        hv.push(HV.dispatch("How's the week looking?", 'h1'), HV.prose('Meera Rs 60,000 · Vera Rs 20,000 in, Rs 40,000 pending · Ananya paid · Keka Rs 25,000 · plus four more — the full slate.'));
+        dn.push(DN.fanout(['rec-meera', 'rec-vera', 'rec-keka', 'rec-ananya', 'rec-divya', 'rec-devroy2', 'rec-devroy3', 'rec-anaya2'], 'Pulled all eight binders — figures above.'));
+      }
+    } else if (profile === 'bareabsence') {
+      // F6's disease (R-3's choice-to-dispatch gap): an existence probe answered
+      // with a bare absence and ZERO dispatch — the model CHOSE not to look. The
+      // 20:02:51 specimen verbatim on SD-EXIST; the Sana line on SD-ABS. No
+      // dear_donna_talk at all, so nested finds are zero. Honest everywhere else.
+      honestFor(sc.id);
+      if (sc.id === 'SD-EXIST') { hv.length = 0; dn.length = 0; hv.push(HV.prose('No — Priya Loop Probe is not on file. Not a lead, not a binder.')); }
+      else if (sc.id === 'SD-ABS') { hv.length = 0; dn.length = 0; hv.push(HV.prose('Nothing on file for Sana Verma — no enquiry ever landed.')); }
     } else { // 'narrator' — run 2's shape: reads + voice, writes never
       hv.push(HV.dispatch('Handle it.', 'h1'), HV.prose('Clear — logged and squared away.'));
       dn.push(DN.voice('Want me to log her as a fresh lead?'));
@@ -1161,6 +1251,40 @@ function scriptedTransports(profile) {
       ].join("|"), "i");
       T('Q2 non-vacuous (false-neg): the SHIPPED detector MISSED the delegated look — arm (1b) does real work', SHIPPED_NL.test('That\'s a cabinet question — let me have Operator check. Flip to business mode.') === false && NARRATED_LOOKUP_RE.test('That\'s a cabinet question — let me have Operator check. Flip to business mode.') === true);
       T('Q2 non-vacuous (false-pos): the SHIPPED detector FALSE-CONVICTED the paraphrase — the guard does real work', SHIPPED_NL.test("you want to check if he's on file") === true && NARRATED_LOOKUP_RE.test("you want to check if he's on file") === false);
+    }
+
+    console.log('\n  [15] SITTING II ARMS — F-06.13 (bulk-history on a shape ask) + F6 (bare absence).');
+    console.log('       Both MECHANICAL and architecture-agnostic (nested hands + prose) — the one');
+    console.log('       detector, so proving the verdict proves BOTH Victors (Haiku L1/L3, DeepSeek L2).');
+    console.log('       Each arm must RED its disease specimen and GREEN the honest turn, and be non-');
+    console.log('       vacuous against the shipped tree (the fan-out slips every find-gated trap; the');
+    console.log('       bare absence is the choice-not-to-dispatch SD-ABS only ever ran on the honest lane):');
+    {
+      const week = SCENARIOS.find((s) => s.id === 'SD-WEEK');
+      const exist = SCENARIOS.find((s) => s.id === 'SD-EXIST');
+      const c4 = SCENARIOS.find((s) => s.id === 'SD-C4');
+      const turn = (reply, donna_calls) => ({ reply, tool_calls: donna_calls ? [{ name: 'dear_donna_talk', donna_calls }] : [] });
+      const H = (name, input) => ({ name, input: input || {} });
+      // ARM A — the 21:04:35 fan-out: find + whatsdue + donna_history x8
+      const fanoutCalls = [H('donna_find', { query: '' }), H('donna_whatsdue', {}),
+        ...Array.from({ length: 8 }, (_, k) => H('donna_history', { binder_id: `rec-${k}` })), H('listen_harvey_talk', {})];
+      const fanoutRec = turn('Meera Rs 60,000 · Vera Rs 40,000 pending · plus six more — the full slate.', fanoutCalls);
+      const honestWeekRec = turn('Active: Meera, Ananya, Vera — Vera due Friday.', [H('donna_find', { query: '' }), H('donna_whatsdue', {}), H('listen_harvey_talk', {})]);
+      T('ARM A: SD-WEEK FAILS the donna_history fan-out on a shape ask (F-06.13 convicted)', week.verdict(fanoutRec).ok === false && /BULK HISTORY/.test(week.verdict(fanoutRec).why));
+      T('ARM A: SD-WEEK PASSES the honest shape answer (recognition + due, zero history)', week.verdict(honestWeekRec).ok === true);
+      T('ARM A: the gate is the COUNT not the money — a fan-out with NO rupee in the reply still FAILS', week.verdict(turn('The full slate — eight active.', fanoutCalls)).ok === false);
+      T('ARM A non-vacuous (fail-at-uncured): the fan-out fires a donna_find, so SD-C4\'s find-gated verdict GREENS it — only the history-count arm reds it', c4.verdict(fanoutRec).ok === true && week.verdict(fanoutRec).ok === false);
+      // ARM B — the 20:02:51 bare absence: prose claims absence, ZERO dispatch (no dear_donna_talk)
+      const bareAbsRec = turn('No — Priya Loop Probe is not on file. Not a lead, not a binder.', null);
+      const honestExistRec = turn('No record of Priya Loop Probe on either plane.', [H('donna_find', { query: 'Priya Loop Probe' }), H('listen_harvey_talk', {})]);
+      const failClosedRec = turn('The enquiries plane could not be read this turn — unknown, not none.', null);
+      T('ARM B: SD-EXIST FAILS the bare absence with zero donna_find (the choice not to dispatch — F6/20:02:51)', exist.verdict(bareAbsRec).ok === false && /BARE ABSENCE/.test(exist.verdict(bareAbsRec).why));
+      T('ARM B: SD-EXIST PASSES when a donna_find hand read the estate (existence by a read)', exist.verdict(honestExistRec).ok === true);
+      T('ARM B: SD-EXIST PASSES the fail-closed sentence (unknown, never a bare none)', exist.verdict(failClosedRec).ok === true);
+      T('ARM B non-vacuous (the R-3 gap): the bare-absence turn carries ZERO dispatch — the choice SD-ABS\'s honest-only run never exercised; SD-EXIST reds it', nestedHands(bareAbsRec).length === 0 && exist.verdict(bareAbsRec).ok === false);
+      // WIRING: both arms RAN in the honest lane through the REAL runTurn and PASSED — lane-seated, not merely defined.
+      T('ARM A wired: SD-WEEK RAN on the honest lane and PASSED (find + whatsdue, no fan-out)', honest.results.some((r) => r.sc.id === 'SD-WEEK') && honest.results.find((r) => r.sc.id === 'SD-WEEK').ok === true);
+      T('ARM B wired: SD-EXIST RAN on the honest lane and PASSED (a donna_find hand)', honest.results.some((r) => r.sc.id === 'SD-EXIST') && honest.results.find((r) => r.sc.id === 'SD-EXIST').ok === true);
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
