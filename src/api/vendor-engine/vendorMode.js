@@ -15,6 +15,7 @@ const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
 const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
+const { abandonActiveThread } = require('./chat'); // TDW_06 P7b: the shared F-06.8 fresh-thread seam
 
 const ALLOWED_FIELDS = ['victor_mode'];
 const VICTOR_MODES   = ['business', 'advisor']; // mirrors 0080's CHECK exactly
@@ -26,6 +27,48 @@ async function readAgentVictorMode(supabase, agentId) {
     .from('agents').select('victor_mode').eq('id', agentId).maybeSingle();
   if (error) throw error;
   return (data && data.victor_mode) === 'advisor' ? 'advisor' : 'business';
+}
+
+// ── TDW_06 P7b (S-10 WA words + F-06.8): the mode words on WhatsApp — the WA twin of the chip ──
+// Intercepted PRE-ENGINE (index.js), exact WHOLE-MESSAGE match, trimmed, case-insensitive,
+// "advisor mode" / "business mode" ONLY (a message that merely CONTAINS the words is a real
+// message for Victor, never a flip). The write is engine.agents.victor_mode by the
+// SERVER-RESOLVED agentId — the SAME path the PATCH door uses. On an ACTUAL change it chains
+// the fresh-thread seam so the flipped room opens clean (F-06.8); a no-op flip confirms
+// without touching the thread (the idempotency the always-flips chip does not need but the
+// absolute WA word does — texting your current mode must not nuke a live thread).
+const MODE_WORDS = { 'advisor mode': 'advisor', 'business mode': 'business' };
+
+// Returns 'advisor' | 'business' | null. Pure — benched directly.
+function matchModeWord(body) {
+  const k = String(body == null ? '' : body).trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(MODE_WORDS, k) ? MODE_WORDS[k] : null;
+}
+
+// MINTED — FOUNDER VETO (the WA flip-confirmation words). SCRUBBED: they name the flip and
+// carry ZERO cabinet/thread content. 'changed' also signals the fresh thread so the vendor
+// knows the room reset; 'noop' is the honest "already there" (never a false "switched").
+const MODE_FLIP_LINES = {
+  advisor:  {
+    changed: 'Advisor mode \u2014 fresh thread. On brand and content now; the ledger\u2019s paused till you flip back.',
+    noop:    'Already in advisor mode.',
+  },
+  business: {
+    changed: 'Business mode \u2014 fresh thread. Back on the books.',
+    noop:    'Already in business mode.',
+  },
+};
+
+// Read current -> write only on a real change -> chain the fresh thread only on a real change.
+// supabase + agentId are the SERVER-RESOLVED ones (index.js resolves the agent from the vendor).
+async function applyModeFlip(supabase, agentId, target) {
+  const current = await readAgentVictorMode(supabase, agentId);
+  if (current === target) return { changed: false, mode: current };
+  const { error } = await supabase.schema('engine')
+    .from('agents').update({ victor_mode: target }).eq('id', agentId);
+  if (error) throw error;
+  await abandonActiveThread(supabase, agentId); // F-06.8: the flipped room opens with zero prior-room turns
+  return { changed: true, mode: target };
 }
 
 // GET /api/v2/vendor-e/mode -> { victor_mode } — the chip reads its current state here.
@@ -65,3 +108,6 @@ router.patch('/', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(asy
 
 module.exports = router;
 module.exports.readAgentVictorMode = readAgentVictorMode; // TDW_06 P6d: benched read helper
+module.exports.matchModeWord       = matchModeWord;       // TDW_06 P7b: WA mode-word matcher
+module.exports.applyModeFlip       = applyModeFlip;       // TDW_06 P7b: WA flip (write + fresh thread)
+module.exports.MODE_FLIP_LINES     = MODE_FLIP_LINES;     // TDW_06 P7b: minted confirmations (founder veto)

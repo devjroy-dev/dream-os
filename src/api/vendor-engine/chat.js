@@ -1145,10 +1145,13 @@ const ENGINE_TIER_MAP = { trial: 'entry', essential: 'entry', signature: 'mid', 
 // middleware — the reverse bridge; NEVER a client-supplied id) and, when 'advisor',
 // routes Victor to the model.pwa_vendor.advisor key. A read miss falls to 'business'
 // (no advisor route). Business/consult are byte-identical to before this seam.
-async function readVictorMode(req) {
+// TDW_06 P7b (F-06.1 second limb): PLAIN-ARGS ctx { supabase, agentId } so the WA door can
+// share it — it has no Express req. Moved in LOCKSTEP with buildLlmForTurn (CE correction:
+// buildLlmForTurn's co-dependent must not keep reading req.app or the WA call throws).
+async function readVictorMode({ supabase, agentId }) {
   try {
-    const { data } = await req.app.locals.supabase.schema('engine')
-      .from('agents').select('victor_mode').eq('id', req.agentId).maybeSingle();
+    const { data } = await supabase.schema('engine')
+      .from('agents').select('victor_mode').eq('id', agentId).maybeSingle();
     return (data && data.victor_mode) === 'advisor' ? 'advisor' : 'business';
   } catch (e) {
     console.warn('[vendor-e chat:victor_mode read]', e.message);
@@ -1156,14 +1159,18 @@ async function readVictorMode(req) {
   }
 }
 
-async function buildLlmForTurn(req) {
-  const productTier = (req.vendor && req.vendor.tier) || 'trial';
+// TDW_06 P7b (F-06.1 second limb): PLAIN-ARGS ctx { supabase, vendor, agentId } — the ONE
+// route builder both doors call, so the PWA door and the WA lane route IDENTICALLY (advisor
+// -> deepseek; product tier otherwise). The PWA door passes { supabase: req.app.locals.supabase,
+// vendor: req.vendor, agentId: req.agentId }; the WA lane (index.js) passes the same shape.
+async function buildLlmForTurn({ supabase, vendor, agentId }) {
+  const productTier = (vendor && vendor.tier) || 'trial';
   // F-06.4: the advisor room routes on its own key; every other mode routes on the
   // product tier exactly as before. The ENGINE tier (capabilities/caps) always follows
   // the PRODUCT tier — advisor changes only which MODEL serves Victor, not the tier.
-  const victorMode = await readVictorMode(req);
+  const victorMode = await readVictorMode({ supabase, agentId });
   const routeTier = victorMode === 'advisor' ? 'advisor' : productTier;
-  const route = await resolveModel(req.app.locals.supabase, 'pwa_vendor', routeTier);
+  const route = await resolveModel(supabase, 'pwa_vendor', routeTier);
   const tierOverride = ENGINE_TIER_MAP[productTier] || 'entry';
   // TDW_02 P7 (Amendment Two): optional per-role split — donna_provider/donna_model
   // route HER hand separately. Anthropic donna split => no donna transport (her own
@@ -1284,7 +1291,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
         if (!res.writableEnded) res.write('data: [DONE]\n\n');
         return res.end();
       }
-      const llmWiring = await buildLlmForTurn(req); // TDW_02 P5
+      const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId }); // TDW_02 P5 · P7b ctx
       const calendarSnapshot = await fetchCalendarSnapshot(req);
       const scratchpad = await fetchScratchpad(req);
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
@@ -1374,7 +1381,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     if (metaPre && metaPre.state === 'capped') {
       return res.json({ ok: true, capped: true, reply: CAPPED_LINE(metaPre), tool_calls: [], refresh: false, meta: metaPre });
     }
-    const llmWiring = await buildLlmForTurn(req); // TDW_02 P5
+    const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId }); // TDW_02 P5 · P7b ctx
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
@@ -1486,7 +1493,7 @@ router.get('/history/:vendorId', requireAuth, resolveVendor({ paramName: 'vendor
 // (the timeout may already have done the work; tapping twice is harmless).
 // On the vendor's next message, getOrCreateConversation finds nothing active
 // and inserts a fresh thread — the interim relief's mechanism, on demand.
-// TDW_06 P6a (F-06.8, CE-ratified): the mode-flip fresh-thread seam — ONE home, both
+// TDW_06 P7a (F-06.8, CE-ratified): the mode-flip fresh-thread seam — ONE home, both
 // flip surfaces chain it. A mid-thread mode flip must not leave the next turn reading the
 // prior room's turns (Image-1: advisor-Victor reading the business thread's cabinet). The
 // cure abandons the agent's active conversation (memory.ts's own 'abandoned' state — NEVER
@@ -1569,7 +1576,7 @@ module.exports.donnaOpenLine         = donnaOpenLine;
 module.exports.actionKind            = actionKind;
 // TDW_06 P6b (F-06.4/F-06.2): door-seam seams exposed for b06_advisor_route_bench.
 module.exports.buildLlmForTurn       = buildLlmForTurn;
-module.exports.abandonActiveThread   = abandonActiveThread; // TDW_06 P6a (F-06.8): shared flip seam
+module.exports.abandonActiveThread   = abandonActiveThread; // TDW_06 P7a (F-06.8): shared flip seam
 module.exports.fireHarvest           = fireHarvest;
 module.exports.advisorHarvestGate    = advisorHarvestGate;
 module.exports.readVictorMode        = readVictorMode;

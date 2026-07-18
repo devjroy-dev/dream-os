@@ -28,6 +28,8 @@ const apiRouter    = require('./api/router');
 const { resolveAgentForVendor } = require('./api/middleware/agentBridge'); // 5-A
 const { runTurn } = require('./engine/dist/core/loop');                     // 5-A
 const { fetchCalendarSnapshot, fetchScratchpad, applyCalendarSignals } = require('./lib/vendor/calendarSignals'); // 5-A calendar parity
+const { buildLlmForTurn } = require('./api/vendor-engine/chat'); // TDW_06 P7b: the shared route builder (F-06.1 2nd limb)
+const { matchModeWord, applyModeFlip, MODE_FLIP_LINES } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -879,11 +881,45 @@ app.post('/webhook/whatsapp', async (req, res) => {
     // lacks; deferred (see WHATSAPP_ENGINE_DEFERRED_FEATURES.md). The public.messages
     // audit log is kept (3b) for delivery telemetry; engine.messages carries memory.
     const { agentId } = await resolveAgentForVendor(supabase, vendor, user.auth_user_id);
+
+    // TDW_06 P7b (S-10 WA words + F-06.8): the mode words, intercepted PRE-ENGINE like the
+    // nudge words — exact whole-message "advisor mode" / "business mode" on the vendor_self
+    // lane. Writes victor_mode via the SAME server-resolved path, chains the fresh thread on
+    // an ACTUAL change (P7a's seam), and short-circuits with a scrubbed confirmation NAMING
+    // the flip. A message that merely mentions the words is a real turn — it falls through.
+    const modeTarget = matchModeWord(body);
+    if (modeTarget) {
+      const flip = await applyModeFlip(supabase, agentId, modeTarget);
+      const confirmation = MODE_FLIP_LINES[modeTarget][flip.changed ? 'changed' : 'noop'];
+      const twilioMsg = await sendWhatsApp(phone, confirmation, []);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id, direction: 'outbound', channel: 'whatsapp',
+        body: confirmation, sent_by: 'agent',
+        twilio_sid: twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
+      });
+      await supabase.from('conversations')
+        .update({ last_message_at: new Date().toISOString() }).eq('id', convo.id);
+      console.log(`[agent:mode-word] ${modeTarget} (${flip.changed ? 'flipped' : 'noop'}) agent=${agentId}`);
+      return res.status(200).send('<Response/>');
+    }
+
     // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference
     // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
     const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id);
     const scratchpad = await fetchScratchpad(supabase, vendor.id);
-    const result = await runTurn({ agentId, message: body, calendarSnapshot, scratchpad });
+    // TDW_06 P7b (F-06.1 second limb): the WA door resolves the SAME route the PWA door does —
+    // model.pwa_vendor.<tier> via resolveModel AND victor_mode read at the door — so both
+    // surfaces route identically (advisor -> deepseek; product tier otherwise). Before this
+    // seam the WA lane passed NO overrides and ran the engine's native-anthropic hard path.
+    const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId });
+    const result = await runTurn({
+      agentId, message: body, calendarSnapshot, scratchpad,
+      tierOverride: llmWiring.tierOverride,
+      modelOverride: llmWiring.modelOverride,
+      transport: llmWiring.transport,
+      donnaTransport: llmWiring.donnaTransport,
+      donnaModelOverride: llmWiring.donnaModelOverride,
+    });
     const toolNames = (result.tool_calls || []).map((t) => t.name);
 
     console.log(`[agent:engine] reply: "${result.reply.slice(0, 80)}..."  (${toolNames.length} tool calls)`);

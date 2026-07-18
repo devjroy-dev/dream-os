@@ -62,6 +62,9 @@ function mkSupabase(victorModeById) {
   root.__queried = queried;
   return root;
 }
+// TDW_06 P7b: buildLlmForTurn is plain-args now — ctx { supabase, vendor, agentId }, no req.
+const mkCtx = (supabase, tier, agentId) => ({ supabase, vendor: { id: 'v1', tier }, agentId });
+// fireHarvest (§2) is UNCHANGED — it still takes an Express req (reads req.app/vendor/agentId).
 const mkReq = (supabase, tier, agentId) => ({ app: { locals: { supabase } }, vendor: { id: 'v1', tier }, agentId });
 
 (async () => {
@@ -69,23 +72,23 @@ const mkReq = (supabase, tier, agentId) => ({ app: { locals: { supabase } }, ven
   {
     // advisor: routes to deepseek regardless of product tier
     const sb = mkSupabase({ 'agent-real': 'advisor' });
-    const req = mkReq(sb, 'signature', 'agent-real'); // signature would be anthropic-haiku in business
-    const w = await buildLlmForTurn(req);
+    const ctx = mkCtx(sb, 'signature', 'agent-real'); // signature would be anthropic-haiku in business
+    const w = await buildLlmForTurn(ctx);
     T('advisor routes Victor to deepseek (model.pwa_vendor.advisor), not the signature-tier Haiku', w.route.provider === 'deepseek' && w.route.model === 'deepseek-v4-flash');
     T('…and the deepseek transport + modelOverride are seated (a non-anthropic route)', !!w.transport && w.transport.provider === 'deepseek' && w.modelOverride === 'deepseek-v4-flash');
     T('…and the ENGINE tier still follows the PRODUCT tier (signature -> mid), unchanged by mode', w.tierOverride === 'mid');
-    T('…and the victor_mode read keyed on the SERVER-RESOLVED agentId (req.agentId), never a client id', sb.__queried.agentsIdEq === 'agent-real');
+    T('…and the victor_mode read keyed on the SERVER-RESOLVED agentId (ctx.agentId), never a client id', sb.__queried.agentsIdEq === 'agent-real');
   }
   {
     // business @ signature: byte-identical to today (anthropic haiku, no transport)
     const sb = mkSupabase({ 'agent-real': 'business' });
-    const w = await buildLlmForTurn(mkReq(sb, 'signature', 'agent-real'));
+    const w = await buildLlmForTurn(mkCtx(sb, 'signature', 'agent-real'));
     T('business @ signature stays anthropic-haiku, NO deepseek transport (byte-identical control)', w.route.provider === 'anthropic' && !w.transport);
   }
   {
     // victor_mode absent (consult / unseeded agent): falls to business routing
     const sb = mkSupabase({});
-    const w = await buildLlmForTurn(mkReq(sb, 'essential', 'agent-unseeded'));
+    const w = await buildLlmForTurn(mkCtx(sb, 'essential', 'agent-unseeded'));
     // essential IS deepseek by product tier — assert the route matches the essential default,
     // i.e. the mode read did NOT flip it to the advisor key (both happen to be deepseek, so
     // assert via the tierOverride which advisor never changes and essential maps to 'entry').
