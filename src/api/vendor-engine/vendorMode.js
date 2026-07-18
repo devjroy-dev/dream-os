@@ -98,12 +98,19 @@ router.patch('/', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(asy
     return errRes(res, 400, 'victor_mode must be one of: ' + VICTOR_MODES.join(', ') + '.', 'INVALID_VICTOR_MODE');
   }
 
-  // The agent is the reverse-bridge one (req.agentId), NEVER the client's — scoped write.
-  const { error } = await req.app.locals.supabase.schema('engine')
-    .from('agents').update({ victor_mode: mode }).eq('id', req.agentId);
-  if (error) return errRes(res, 500, 'Could not update victor_mode.');
-
-  return okRes(res, { victor_mode: mode });
+  // TDW_06 P7c (F-06.8 PWA seam): the flip goes through the SHARED applyModeFlip — the SAME
+  // home the WA words call — so both seams change-detect and chain the fresh thread identically
+  // by construction (never a duplicated bare update). The agent is the reverse-bridge one
+  // (req.agentId), NEVER the client's. thread_reset === true iff a REAL flip occurred; the PWA
+  // renders the Fresh-thread seam off that boolean, and a no-op (already in that mode) resets
+  // nothing and renders nothing.
+  try {
+    const result = await applyModeFlip(req.app.locals.supabase, req.agentId, mode);
+    return okRes(res, { victor_mode: result.mode, thread_reset: result.changed });
+  } catch (e) {
+    console.warn('[vendor-e mode PATCH]', e.message);
+    return errRes(res, 500, 'Could not update victor_mode.');
+  }
 }));
 
 module.exports = router;

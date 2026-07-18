@@ -2273,3 +2273,33 @@ Sibling pair (repos never share a terminal): a small **dream-os** addendum (the 
 4. **the words are minted, not final** — 'Business' / 'Advisor' mirror the 0080 vocabulary; the founder's veto governs the rendered words.
 
 **F-06.4 closure now stands on: the founder's one live probe in the routed room (routing + seed already live at origin; S5-on-deepseek satisfied by the rig seating + DeepSeek's 2-for-2).**
+
+---
+
+## TDW_06 CLOSING-RIDERS (P7a·P7b·P7c) — F-06.8 cured on BOTH flip seams; F-06.1 second limb; F-06.2 closed
+
+The executor session for succession-note-III §4.1. Three dream-os pushes; the notes addendum rides a separate `dreamos-pwa` ZIP (point to its own entry). Provenance re-derived from origin at each write.
+
+### THE LEDGER (each ZIP's entry):
+- **P7a `6fc1c87` (F-06.8 item-1 backend):** `abandonActiveThread(supabase, agentId)` extracted from `POST /chat/thread/fresh` — ONE home for the flip seam — and exported. Idempotent no-op (`closed:null` when nothing active); state→`abandoned`, **never delete** (D-4 no-clear). Bench `b06_fresh_thread_bench` **10/10** both ways.
+- **P7b `3075544` (S-10 WA words + F-06.1 second limb):** the WA mode words — `matchModeWord` (exact whole-message, trimmed, case-insensitive) + `applyModeFlip` in `vendorMode.js`, intercepted pre-engine at the `vendor_self` seam (`index.js`, re-derived); write victor_mode by the server-resolved agent, chain the P7a fresh thread on a **real change only** (no-op leaves the live thread). **F-06.1 second limb:** `buildLlmForTurn`+`readVictorMode` refactored to plain-args ctx `{supabase,vendor,agentId}`/`{supabase,agentId}` in LOCKSTEP (CE correction — the co-dependent moved too), so the WA door calls the SAME builder and routes IDENTICALLY to the PWA door (advisor→deepseek; product tier otherwise). Bench `b06_wa_words_bench` **19/19** both directions; `advisor-route` **16/16** unregressed.
+- **P7c (this ZIP — F-06.8 PWA seam):** `PATCH /api/v2/vendor-e/mode` routed through the SHARED `applyModeFlip` (was a bare `update({victor_mode})` — no change-detection, no abandon). Returns `{ victor_mode, thread_reset }`; `thread_reset===true` iff a real flip occurred (the PWA renders D-7's Fresh-thread seam off that boolean). Validation byte-untouched (allowlist/`FIELD_NOT_ALLOWED`, required, `INVALID_VICTOR_MODE`). Bench `b06_pwa_flip_seam_bench` **9/9** — route-level, drives the REAL handler over an ephemeral port (auth/vendor/agent middleware stubbed), both directions + validation; fail-at-uncured-tree SHOWN (reverting the PATCH to `3075544`'s bare update convicts §1/§2 → 5/9).
+
+### F-06.8 — FILING + CURE RECORD (both seams):
+- **Filed 2026-07-18, founder-diagnosed.** Image-1: advisor-mode Victor reading the *business* thread's cabinet turns — a mid-thread mode flip contaminated the room. RULED CURE: a mode flip auto-starts a fresh thread; **both flip seams** chain the shared `abandonActiveThread` (idempotent; scrollback persists with the rendered seam per D-4).
+- **WA seam cured at `3075544` (P7b)** — `applyModeFlip` change-detects and abandons.
+- **PWA chip seam cured at P7c (this ZIP).** THE SEAM THAT WAS STILL LIVE AFTER ITEM 3: item 3 (`3075544`) cured only the WA words; the chip's `PATCH /api/v2/vendor-e/mode` still wrote victor_mode with **no abandon and no change-detection** — F-06.8 was ruled "both seams," so the PWA flip was uncured until here. Both seams now route through the ONE `applyModeFlip` → identical by construction.
+
+### F-06.2 — CLOSURE LINE:
+- **F-06.2 CLOSED.** The harvest never mines the advisory room's counsel: `fireHarvest` short-circuits on `advisorHarvestGate` = `result.victor_mode === 'advisor'` (`chat.js`), keyed on the RESOLVED mode the engine stamps at `loop.ts:700`, so a mid-turn reality wins over the door's turn-start read. Cured at **`4cb45ab`**; benched in `b06_advisor_route_bench` §2 (advisor gated, business/consult harvest byte-identical).
+
+### THE abcb47c UNCURED-SELFTEST DISAMBIGUATION:
+- Already stands in the log — the P6b **RIDER 2 (CE ask)** line (full `338de38` tree prints `46/46`; the floor's both-ways shows only with the abcb47c gauntlet + `recordPrimitives.ts` reverted to `338de38` → `FAILURES 51/53` on the two named lines). **Point-not-transcribe — not duplicated here.**
+
+### GATES (P7c):
+- `node --check` on `vendorMode.js` clean. Bench sweep: `b06_pwa_flip_seam_bench` 9/9 · `b06_wa_words_bench` 19/19 · `b06_fresh_thread_bench` 10/10 · `b06_advisor_route_bench` 16/16 — all green.
+- **0-line guarded set:** `eventWrite.ts`, `occupancy.ts`, `scrub.js`, `calendarSignals.js`, `leads.js` — untouched. **Engine 0-line** (no `src/engine` change). Nothing ran against production; dist not shipped (source only; founder rebuilds).
+
+### ON THE FOUNDER'S VETO (gating nothing):
+- The **WA flip-confirmation words** minted in P7b (`vendorMode.js` `MODE_FLIP_LINES`): advisor/business × changed/no-op — scrubbed, naming the flip; replace any.
+- Item-4 tab label / tap affordance / empty-state line (the `dreamos-pwa` ZIP).
