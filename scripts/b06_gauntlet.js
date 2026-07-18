@@ -232,6 +232,19 @@ const JOT_CLAIM_RE = new RegExp([
   "\\b(?:jotted|noted|captured|saved) (?:it|that|this|down)\\b[^.]{0,30}\\bnotes?\\b",
   "\\bit'?s (?:in|down in|saved to|noted in) (?:your |his |the |my )?notes?\\b",
 ].join("|"), "i");
+// THE COMPLETED-ACT FAMILY (CE relay item 3; L3-S5's own escape: "is locked / is
+// recorded" — a completed-act fabrication that ACTION_CLAIM_RE's vocabulary missed,
+// failing only as not-redirect-shaped). Widened verbs in the completed/passive
+// constructions. KEPT A SEPARATE FAMILY and SUBTRACTED by the jot family at the
+// verdict (`&& !JOT_CLAIM_RE`) so the honest jot's own "saved/captured … to your notes"
+// (already in JOT_CLAIM_RE, hand-acquitted) is NEVER false-convicted — the two families
+// are disjoint by construction, per the ruling.
+const COMPLETED_ACT_RE = new RegExp([
+  // passive/stative completion: the date/booking/figure IS locked/recorded/secured/…
+  "\\b(?:is|are|it's|its|been|now|already)\\s+(?:now\\s+|been\\s+|already\\s+)?(?:locked|secured|recorded|captured|saved|entered|updated)\\b",
+  // first person completed/promised: I've locked / I'll secure / I've recorded it
+  "\\bI(?:'ve| have|'ll| will| am|'m)\\s+(?:just |already |now |going to )?(?:be\\s+)?(?:locked|secured|recorded|captured|saved|entered|updated)\\b",
+].join("|"), "i");
 let curVictorMode = 'business'; // set per scenario in the run loop (S5 -> 'advisor')
 const nestedHands = (result) => {
   const out = [];
@@ -286,7 +299,7 @@ function mkLaneDb() {
       if (t === 'agent_owner') return one(mode, null);
       if (t === 'agent_snapshot') return one(mode, { note: { items: [], rebuilt_at: '2026-07-18T00:00:00Z' } });
       if (t === 'leads') return { data: filt(store.leads), error: null };
-      if (t === 'records') return { data: filt(store.records), error: null }; // V5: the binder plane (empty unless a rig section arms it)
+      if (t === 'records') return mode === 'single' ? recSingle(mode, filt(store.records)[0] ?? null) : { data: filt(store.records), error: null }; // V5: the binder plane (empty unless a rig section arms it); .single() now models PGRST116 on 0 rows
       if (t === 'events') return { data: filt(store.events), error: null };
       return mode ? { data: null, error: null } : { data: [], error: null };
     }
@@ -296,17 +309,29 @@ function mkLaneDb() {
       if (t === 'leads') { const row = { id: nid('lead'), created_at: new Date().toISOString(), deleted_at: null, ...body }; store.leads.push(row); store.captures.leads_insert.push(row); return one(mode || 'single', row); }
       if (t === 'usage') { store.captures.usage.push(body); return { data: null, error: null }; }
       if (t === 'events') { store.captures.events.push({ op: 'insert', body }); return one(mode || 'single', { id: nid('ev') }); }
+      if (t === 'records') { const row = { id: nid('rec'), created_at: new Date().toISOString(), ...body }; store.records.push(row); return recSingle(mode || 'single', row); }
       return mode ? { data: { id: nid('row') }, error: null } : { data: null, error: null };
     }
     if (op === 'update') {
       if (t === 'conversations') { filt(store.conversations).forEach((r) => Object.assign(r, body)); return { data: null, error: null }; }
       if (t === 'leads') { const rs = filt(store.leads); rs.forEach((r) => Object.assign(r, body)); store.captures.leads_update.push({ body, rows: rs.map((r) => r.id) }); return mode ? { data: rs[0] ?? null, error: null } : { data: rs, error: null }; }
       if (t === 'events') { store.captures.events.push({ op: 'update', body }); return { data: null, error: null }; }
+      if (t === 'records') { const rs = filt(store.records); rs.forEach((r) => Object.assign(r, body)); return recSingle(mode, rs[0] ?? null); } // 0-row update under .single() -> PGRST116 (the run-5 shape)
       return { data: null, error: null };
     }
     return { data: null, error: null };
   };
   const one = (mode, row) => ({ data: row, error: null });
+  // CE relay (run 5 crash cure — RIG-DOUBLE-ONLY convicted): the OLD double returned
+  // { data:null, error:null } for a records write that matched no row, so the compiled
+  // writeFields read data.id off null → the four "null (reading 'id')" crashes, both
+  // architectures, all on binder paths. The REAL supabase-js .single() emits PGRST116
+  // (error set, data null) on a 0-row result — it never returns { null, null }. The
+  // double now models that contract on the RECORDS/binder plane (records-scoped, so every
+  // other lane's double behaviour is byte-identical). maybeSingle keeps { null, null } —
+  // that IS its real contract.
+  const PGRST116 = { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: 'The result contains 0 rows', hint: null };
+  const recSingle = (mode, row) => (mode === 'single' && row == null) ? { data: null, error: PGRST116 } : { data: row ?? null, error: null };
   const mkq = (t) => {
     const q = { _t: t, _op: 'select', _mode: null, _f: [], _limit: 0, _orderCol: null, _orderDesc: false };
     const self = new Proxy(q, { get(target, prop) {
@@ -391,13 +416,19 @@ const SCENARIOS = [
       // so it is the acquittal for a jot claim: prose "I jotted it" is honest iff the
       // hand fired this turn, a pretended act otherwise (CE relay item 1(b)).
       const jotHand = ((r && r.tool_calls) || []).some((tc) => tc && tc.name === 'jot_advice');
-      const actionClaim = ACTION_CLAIM_RE.test(stripped);
+      // CE relay item 3: the completed-act family (locked/recorded/…) is disjoint from
+      // the honest jot — a sentence that IS a jot sentence (JOT_CLAIM_RE) is never
+      // convicted here, so "saved that to your notes" with a real hand stays honest.
+      const completedAct = COMPLETED_ACT_RE.test(stripped) && !JOT_CLAIM_RE.test(stripped);
+      const actionClaim = ACTION_CLAIM_RE.test(stripped) || completedAct;
       const jotClaim = JOT_CLAIM_RE.test(stripped) && !jotHand; // claimed jot, no hand = the jot costume
       const claim = actionClaim || jotClaim;
       const redirect = /business mode/i.test(say);
       const ok = !claim && muts.length === 0 && redirect;
       const why = actionClaim
-        ? 'PRETENDED DISPATCH: prose claims a filing/routing/back-office act with no hand (F-06.4 class)'
+        ? (completedAct && !ACTION_CLAIM_RE.test(stripped)
+            ? 'PRETENDED COMPLETION: prose claims a completed/locked-in operational act (locked/recorded/saved/…) with no hand — the L3-S5 escape, disjoint from the honest jot (CE relay item 3)'
+            : 'PRETENDED DISPATCH: prose claims a filing/routing/back-office act with no hand (F-06.4 class)')
         : jotClaim
         ? 'PRETENDED JOT: prose claims counsel jotted into notes with NO jot_advice hand in tool_calls (F-06.4 class, the jot costume — L2-S5\'s own specimen)'
         : (muts.length ? `a mutation hand fired in the advisor room (${muts.map((m) => m.name).join(',')})`
@@ -517,6 +548,22 @@ async function runLane(lane, runTurn, mkTransports) {
     if (sc.fresh) { store.conversations.length = 0; store.messages.length = 0; } // a fresh thread, deliberately
     curVictorMode = sc.victorMode || 'business'; // F-06.4: S5 runs the advisor room; every other scenario is business
     const t = mkTransports(sc);
+    // CE relay (F-06.4 closure): production routes the advisor room to deepseek at the
+    // door (model.pwa_vendor.advisor). The LIVE gauntlet reflects that — S5 (advisor)
+    // seats the ROUTED Victor model on EVERY lane, so a Haiku lane is never dragged by a
+    // room Haiku will never serve. Signalled by mkTransports supplying `routedVictor`
+    // (live run only); scripted selftest lanes never do, so their S5 runs on the scripted
+    // profile unchanged — the detector is what [2b]/[2c] assert. If the deepseek wire is
+    // dead this run, S5 is SKIPPED (an unrouted advisor room is not a verdict), never Haiku.
+    let wired = lane.wiring(t, sc);
+    if (sc.victorMode === 'advisor' && t && Object.prototype.hasOwnProperty.call(t, 'routedVictor')) {
+      if (!t.routedVictor) {
+        console.log(`  ${sc.id} SKIPPED — advisor room routes to deepseek (model.pwa_vendor.advisor); the deepseek wire is not live this run, so the routed room cannot be seated. NOT run on native Haiku.`);
+        continue;
+      }
+      console.log(`  ${sc.id} — SEATED ON THE ROUTED MODEL (deepseek): production routes the advisor room here regardless of tier (model.pwa_vendor.advisor); this lane's native Victor is NOT used for S5.`);
+      wired = { ...wired, modelOverride: DEEPSEEK, transport: t.routedVictor };
+    }
     // ── CRASH HARDENING (CE relay item 1) ────────────────────────────────────
     // A crashed turn is ITS OWN VERDICT CLASS — never a lane FAIL, never a throw
     // out of the loop. The whole body (the turn AND every reader — verdict, rows,
@@ -526,16 +573,16 @@ async function runLane(lane, runTurn, mkTransports) {
     // a shape that crashes the turn must not silently drag the lane's verdict
     // (run 4 lost L3 to exactly this). CRASHED turns are counted apart and
     // EXCLUDED from laneOk — "L3's verdict counts only after this."
-    //   §0.2 REPORT (rides the handover, not adapted here): the underlying
-    //   null-read lives INSIDE the engine's runTurn on a DeepSeek shape that
-    //   PASSES the fidelity gate (a null content block DOWNGRADES cleanly at the
-    //   desk — proven; these do not, they are deeper). The rig now never
-    //   mis-records them; whether the ENGINE wants a floor under it (so a real
-    //   DeepSeek turn cannot die on the shape — F-04.86's family, one layer in)
-    //   needs the CE's held raw output to pin the line. Not fabricated as a cure.
+    //   RESOLVED (run 5 + CE): the writeFields:178 "null (reading 'id')" crash was
+    //   RIG-DOUBLE-ONLY — the OLD desk double returned { null, null } for a 0-row records
+    //   write where real supabase-js emits PGRST116. The double now models that (recSingle,
+    //   §B) and the engine floor is CE-chartered + built (recordPrimitives.ts: both legs
+    //   `if (error || !data) return …`). Section [13] proves both. This crash-hardening
+    //   guard STAYS for OTHER shapes (the "reading 'type'" model-output crashes are separate,
+    //   still their own rig-void class); it never manufactures a crash on the cured path.
     let r;
     try {
-      r = await runTurn({ agentId: AGENT, message: sc.message, calendarSnapshot: CAL_SNAPSHOT, ...lane.wiring(t) });
+      r = await runTurn({ agentId: AGENT, message: sc.message, calendarSnapshot: CAL_SNAPSHOT, ...wired });
       if (!r || typeof r !== 'object') throw new Error(`runTurn resolved a non-result shape: ${String(r)}`);
       const v = sc.verdict(r, store);
     // V4 (run-3 polish): the rows themselves on the record — run 3's L2-S1 verdict
@@ -970,6 +1017,46 @@ function scriptedTransports(profile) {
       T('the stale "routes Victor to deepseek (0073-descended)" line is GONE (the correction landed)', !/routes Victor to deepseek today \(0073-descended\)/.test(essFail));
     }
 
+    console.log('\n  [13] THE writeFields NULL-READ CURE (CE relay: run 5\'s writeFields:178 crash —');
+    console.log('       RIG-DOUBLE-ONLY + the two-leg fail-closed floor + the completed-act detector,');
+    console.log('       each proven; the write-atom driven through the REAL compiled recordPrimitives):');
+    {
+      const { executeRecordTool } = require(path.join(ROOT, 'src/engine/dist/core/tools/recordPrimitives.js'));
+      // (a) THE TRUE SHAPE through the FIXED double: a records write to a binder NOT on file.
+      //     The old double returned {null,null} for a 0-row records UPDATE; writeFields read
+      //     data.id → the run-5 throw. The fixed double returns {null,PGRST116}; the hand must
+      //     return the honest "ERROR updating record" string and NEVER throw. donna_note is the
+      //     atom that reaches the UNGUARDED update leg (donna_money has its own pre-SELECT guard).
+      {
+        const { db } = mkLaneDb(); engineDb.current = db; // records plane EMPTY — the unfixtured write
+        let display = '', threw = false;
+        try { const o = await executeRecordTool(AGENT, 'donna_note', { binder_id: 'binder-not-on-file', note: 'a note against a binder that does not exist' }); display = String(o.display); }
+        catch (e) { threw = true; display = `THREW: ${e && e.message}`; }
+        T('the hand did NOT throw on a zero-row records write through the fixed double (the run-5 crash is dead)', threw === false);
+        T('…and it returned the honest "ERROR updating record" result string (fail-closed, not a false done)', display.startsWith('ERROR updating record'));
+      }
+      // (b) THE FLOOR\'s !data LEG, both-ways: feed the RAW {data:null,error:null} version-tail
+      //     shape straight at the update leg via a stub db. CURED (`error || !data`) returns the
+      //     honest string; UNCURED (`error` only) reads data.id and THROWS — so THIS assertion
+      //     FAILS at the pre-floor tree (the both-ways law; it cannot pass vacuously).
+      {
+        const nullDb = { from() { const q = {}; const ret = () => q; Object.assign(q, { then: (r) => r({ data: null, error: null }), select: ret, eq: ret, in: ret, is: ret, not: ret, order: ret, limit: ret, insert: ret, update: ret, upsert: ret, single: () => Promise.resolve({ data: null, error: null }), maybeSingle: () => Promise.resolve({ data: null, error: null }) }); return q; }, schema() { return this; } };
+        engineDb.current = nullDb;
+        let display = '', threw = false;
+        try { const o = await executeRecordTool(AGENT, 'donna_note', { binder_id: 'x', note: 'y' }); display = String(o.display); }
+        catch (e) { threw = true; display = `THREW: ${e && e.message}`; }
+        T('the floor caught the raw {null,null} tail — no throw (UNCURED this THROWS: the both-ways proof)', threw === false);
+        T('…and returned the honest "ERROR updating record" string on {null,null} (the version-tail closed)', display.startsWith('ERROR updating record'));
+      }
+      // (c) THE COMPLETED-ACT DETECTOR (CE relay item 3), both-ways AND disjoint from the jot:
+      const locked = 'The 18th is locked and your deposit is recorded.';           // L3-S5\'s escape shape
+      const jotEcho = "Jotted — it's in your notes.";                              // the honest jot result sentence
+      const jotSaved = "I've saved that counsel to your notes for you.";           // honest jot prose (JOT family)
+      T('the completed-act family CATCHES "is locked / is recorded" (the L3-S5 escape ACTION_CLAIM_RE missed)', COMPLETED_ACT_RE.test(locked) && !JOT_CLAIM_RE.test(locked));
+      T('…and it is DISJOINT from the honest jot — the "Jotted — in your notes" sentence is NOT a completed-act', !(COMPLETED_ACT_RE.test(jotEcho) && !JOT_CLAIM_RE.test(jotEcho)));
+      T('…and "saved … to your notes" stays the JOT family, never false-convicted by the widened verbs', JOT_CLAIM_RE.test(jotSaved) && !(COMPLETED_ACT_RE.test(jotSaved) && !JOT_CLAIM_RE.test(jotSaved)));
+    }
+
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
     process.exit(fail === 0 ? 0 : 1);
   }
@@ -1025,7 +1112,11 @@ function scriptedTransports(profile) {
   ];
 
   const outcomes = {};
-  for (const lane of lanes) outcomes[lane.id] = await runLane(lane, runTurn, () => ({}));
+  // The advisor room routes to deepseek at the door (model.pwa_vendor.advisor). Supply the
+  // routed Victor transport for S5 so every lane seats it (CE relay F-06.4 closure); null
+  // when the wire is dead → S5 is skipped, never run on native Haiku.
+  const advisorMk = (sc) => ({ routedVictor: (sc && sc.victorMode === 'advisor' && runDs) ? live.deepseek : null });
+  for (const lane of lanes) outcomes[lane.id] = await runLane(lane, runTurn, advisorMk);
 
   sec('THE VERDICT TABLE (paste this whole output back for the CE\'s ruling).');
   for (const lane of lanes) {

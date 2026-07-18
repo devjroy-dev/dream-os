@@ -2174,3 +2174,40 @@ Both `owner_notes` rows witnessed — including the **PROACTIVE jot** (Victor jo
 3. **This docs delivery ships now because it is not gated** — the routing verdict gates the rig-touch/chip/WA ZIPs, never the ledger-and-verbatims fold (the kickoff's deliverable 2, the relay's item 4). Every BUILD ZIP waits on the CE.
 4. **The 05 pointer is a pointer, not a transcription** — P-06.T's clauses live canonical in `TDW_05_TRANSPORT_RULING.md`; the row points, per the rule-precedence convention.
 `leads.js` untouched. Nothing ran against production. **The BUILD sequence from here: read-first (this message) → the CE's rulings + the founder's routing verdict → the rig-touch ZIP (crash cure per branch + detector widening) → the chip pair per the redefined gate → WA words + config wire.**
+
+---
+
+## TDW_06 P6b (rig-touch): the writeFields crash cure + the completed-act detector + the S5 routed-model seating — CE RULINGS RETURNED, BUILT AND VERIFIED AT THE DESK
+
+Both CE rulings returned on the read-first (RIG-DOUBLE-ONLY convicted + the one-line floor CHARTERED; `model.pwa_vendor.advisor` ratified). The founder's routing verdict: **YES to mode-scoped routing.** This ZIP builds the crash cure and the rig side; the chip pair (routing key + PATCH + chip + harvest gate + notes placement) and the WA wire follow in their own ZIPs.
+
+### THE CRASH CURE — `recordPrimitives.ts writeFields`, both legs floored (CE-chartered "both"):
+- **THE FLOOR (engine source, the cure):** the update-leg guard (`:181` era) and the insert-leg guard (`:189` era) become `if (error || !data) return { display: … }` — fail-closed on error **OR** null data. The `!data` complement closes the version-dependent `{ data:null, error:null }` tail so the hand returns its own honest `ERROR …record` result and NEVER reads `id` off null. Prefixes preserved for the dispatcher's `.startsWith('ERROR')` gate. **The engine-floor question CLOSES with this** (F-04.86 family, one layer in).
+- **THE DOUBLE FIX (rig, `b06_gauntlet.js` §B — the convicted cause):** the OLD desk double returned `{ null, null }` for a 0-row `records` write, where real supabase-js `.single()` emits **PGRST116** (error set, data null). The double now models that contract on the records/binder plane (`recSingle`), **records-scoped** so every other lane's double is byte-identical. `maybeSingle` keeps `{ null, null }` — its true contract. This is the run-5 crash's root: RIG-DOUBLE-ONLY, exactly as convicted.
+- **LAWFULNESS:** `recordPrimitives.ts` is NOT in the 0-line guardrail set (CE-confirmed) — the touch is lawful, disclosed here as the finding's cure.
+
+### THE COMPLETED-ACT DETECTOR (CE relay item 3):
+- New `COMPLETED_ACT_RE` catches the L3-S5 escape — `locked|secured|recorded|captured|saved|entered|updated` in completed/passive constructions ("is locked / is recorded") that `ACTION_CLAIM_RE`'s vocabulary missed. **DISJOINT from the honest jot by construction:** wired as `completedAct = COMPLETED_ACT_RE.test(stripped) && !JOT_CLAIM_RE.test(stripped)`, so the jot family's own "saved/captured … to your notes" (already hand-acquitted) is never false-convicted. Distinct 'PRETENDED COMPLETION' why-reason.
+
+### THE S5 ROUTED-MODEL SEATING (F-06.4 closure, per the routing YES):
+- The advisor room routes to deepseek at the door in production (`model.pwa_vendor.advisor`). The **LIVE** gauntlet now reflects that — S5 (victorMode='advisor') seats the ROUTED Victor model on EVERY lane, disclosed in the lane header, so a Haiku lane is no longer dragged by a room Haiku will never serve. If the deepseek wire is dead that run, S5 is **SKIPPED** (an unrouted advisor room is not a verdict), never run on native Haiku. The scripted selftest lanes are untouched (the seating is gated on the live `routedVictor` transport, which scripted lanes never supply — so [2b]/[2c] still assert the detector on scripted prose).
+- **DISCLOSED EDGE (state, cure nothing — CE-accepted):** the F-04.86 downgrade leg means a mid-turn deepseek failure lands an advisor turn on native Haiku — rare, flagged, ledgered, the turn voided from verdicts by standing law.
+
+### THE SELFTEST — section [13] added (drives the REAL compiled `executeRecordTool`):
+- **(a) the true shape through the FIXED double:** `donna_note` against a binder not on file (the unguarded update leg — `donna_money` has its own pre-SELECT guard) → asserts no throw + the honest `ERROR updating record` string.
+- **(b) the floor's `!data` leg, both-ways:** the raw `{ null, null }` version-tail fed straight at the update leg via a stub db → asserts no throw + honest string. **This is the assertion that FAILS at the pre-floor tree** (the both-ways law).
+- **(c) the completed-act detector, both-ways + disjoint:** asserts "is locked / is recorded" caught, the honest jot sentence NOT caught, and "saved … to your notes" stays the JOT family.
+
+### GATES (rig-selftest run AT THE DESK; the LIVE gauntlet is the founder's):
+- **`npm run build:engine` clean (tsc, rc=0)** · **`node scripts/b06_gauntlet.js --rig-selftest` → ALL PASS 53/53** at the cured tree (the prior 46 held — [2b] honest-S5 PASS, [2c] jot-honest PASS, no false-conviction from the widened detector — plus [13]'s 7 new assertions).
+- **BOTH-WAYS PROVEN:** floor reverted to HEAD (double + detector kept) → **51/53**, the two failures being exactly [13](b)'s no-throw + honest-string on the raw `{ null, null }` tail. [13](a) still passes there (the double fix alone cures the rig-path — belt-and-suspenders: the double fixes the rig, the floor closes the version-tail).
+- **Railway green NOT claimed — nothing here ran against production; the LIVE three-lane gauntlet with keys is the founder's run.** No SQL/migration in this ZIP. The 0-line guardrail set (`leads.js` et al.) untouched.
+- **DIST NOT SHIPPED** — the ZIP carries source (`recordPrimitives.ts`, `b06_gauntlet.js`); the founder rebuilds `src/engine/dist/` with `build:engine`.
+
+### EXECUTOR DISCLOSURE (each one-word vetoable):
+1. **The floor's null-branch messages are authored honest sentences** ("id … returned no row (not found or not owned)" / "the insert returned no row.") — chosen to keep the `ERROR …record` prefix the dispatcher gate reads; not a fabricated success.
+2. **The double fix is records-scoped, not global** — a global `.single()`→PGRST116 coercion risked perturbing other tables' lanes (e.g. `agent_owner` returns `{null,null}` under single by design); scoping to the binder plane keeps every existing count byte-identical, verified by 53/53 with the prior 46 intact.
+3. **The S5 seating is live-run only** — gated on the `routedVictor` transport the live `mkTransports` supplies; the scripted selftest lanes never carry it, so the detector tests ([2b]/[2c]) run on scripted prose unchanged.
+4. **The crash-hardening guard STAYS** — it still catches the SEPARATE "reading 'type'" model-output crashes (their own rig-void class); the stale §0.2 comment about "needs the CE's held raw output" is updated to note the floor is now chartered + built.
+
+**The BUILD sequence from here: this rig-touch ZIP → the chip pair (routing key `model.pwa_vendor.advisor` + DEFAULTS + `0082_advisor_route_seed.sql` + the door victor_mode read seam; R-1 PATCH; R-2 chip; F-06.2 harvest gate at `fireHarvest`; R-3 notes placement) → WA words + config wire (with the WA-door victor_mode read, per the CE's forward note). 0082 rides whichever ZIP opens first with the founder's run.**

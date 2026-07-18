@@ -178,7 +178,12 @@ async function writeFields(
       .update(patch)
       .eq('id', recordId).eq('agent_id', agentId)
       .select(SELECT).single();
-    if (error) return { display: `ERROR updating record: ${error.message}` };
+    // F-04.86-family fail-closed floor (run 5's writeFields:178 crash, CE-chartered):
+    // honour BOTH legs. A 0-row update returns { data:null, error:PGRST116 } on the
+    // real client — caught by `error`. The `!data` complement closes the version-dependent
+    // { data:null, error:null } tail so the hand fails honest (its own ERROR result) and
+    // NEVER reads id off null. Prefix kept "ERROR updating record" for the startsWith gate.
+    if (error || !data) return { display: error ? `ERROR updating record: ${error.message}` : `ERROR updating record: id ${recordId} returned no row (not found or not owned).` };
     await logEvent(agentId, 'update', data.id, label);
     return { display: `Updated record ${data.id} — ${label}.\n  binder now reads: ${binderLine(data)}`, item: recordItem(data) };
   }
@@ -186,7 +191,8 @@ async function writeFields(
     .from('records')
     .insert({ agent_id: agentId, ...fields })
     .select(SELECT).single();
-  if (error) return { display: `ERROR creating record: ${error.message}` };
+  // F-04.86-family fail-closed floor (both legs, CE-chartered) — see the update leg.
+  if (error || !data) return { display: error ? `ERROR creating record: ${error.message}` : 'ERROR creating record: the insert returned no row.' };
   await logEvent(agentId, 'create', data.id, label);
   return { display: `Record ${data.id} created — ${label}.\n  binder now reads: ${binderLine(data)}`, item: recordItem(data) };
 }
