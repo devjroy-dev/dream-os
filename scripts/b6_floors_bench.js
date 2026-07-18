@@ -12,10 +12,12 @@
 //     50000). Pre-floor that write LANDED; the bench asserts it now HOLDS —
 //     and that the same hand with the figure honestly spoken ("50k") writes.
 //
-//   M-4 — RECOGNITION LINES (donnaFind.ts): the zero-match dump keeps
-//   name-as-shown · plane/archive tag · stage · id; phones and money DROPPED
-//   from the zero-match payload only; matched payloads untouched; FIND_LIMIT the
-//   named constant at 15 with its reason attached.
+//   M-4 — RECOGNITION LINES (donnaFind.ts): a recents dump keeps name-as-shown ·
+//   plane/archive tag · stage · id; phones and money DROPPED; matched payloads
+//   untouched; FIND_LIMIT the named constant at 15 with its reason attached.
+//   AMENDED (R-B6-15) TDW_06 this sitting: §8 adds F-06.11 — the NO-ARGUMENT recents
+//   dump (donna_find({}) with records present) rides the same recognition shape as
+//   the zero-match dump, the last door that was still leaking describeRow-whole.
 //
 // Runs on the compiled dist (the same bytes production serves) over an in-memory
 // db double — no keys, no network, nothing touches production. The §5 leg drives
@@ -206,6 +208,32 @@ const { runDonnaTurn } = require(path.join(DIST, 'donna.js'));
   const src = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/donnaFind.ts'), 'utf8');
   T('the constant is NAMED in source with its reason attached (the 10-vs-15 drift closed by law, not residue)', /FIND_LIMIT — THE NAMED CONSTANT/.test(src) && /const FIND_LIMIT = 15;/.test(src) && /drift/i.test(src.split('const FIND_LIMIT = 15;')[0].slice(-900)));
   T('the stale "10 records" comment is gone (the drift\u2019s teaching line retired)', !/10 records, raw ids, phones, money/.test(src));
+
+  sec('§8 — F-06.11: the NO-ARGUMENT recents dump rides the recognition shape (the last door)');
+  // donna_find({}) with records present falls THROUGH the zero-match branch (rows.length > 0)
+  // into the MAIN return, which was rendering describeRow-whole — full phones + money, both
+  // planes. The cure gates the main render on tokens.length === 0. Both directions live in
+  // these assertions: at the UNCURED tree describeRow ran here, so "phones gone"/"money gone"
+  // FAIL (phones + Rs present) — they cannot pass vacuously. Matched search on the SAME rows
+  // stays whole, proving the gate is on token-emptiness, not a blanket strip.
+  resetStore();
+  store.records.push(
+    { id: 'rec-r1', agent_id: AGENT, client: 'Vera Recents Test', amount: 60000, direction: 'in', amount_received: 25000, amount_pending: 35000, payment_status: 'part', date: '2027-01-18', stage: 'booked', note: 'advance in', doc_ref: null, phone: '9811022001', reason_for_action: null, hidden: false, updated_at: '2026-07-12' },
+    { id: 'rec-r2', agent_id: AGENT, client: 'Ishaan Recents Test', amount: 90000, direction: 'in', amount_received: null, amount_pending: null, payment_status: null, date: null, stage: 'closed', note: null, doc_ref: null, phone: '9811022002', reason_for_action: null, hidden: true, updated_at: '2026-07-11' },
+  );
+  store.leads.push({ id: 'lead-r9', vendor_id: VENDOR_ID, deleted_at: null, name: 'Nikita Enquiry Recents', phone: '9811022009', state: 'new', budget_max: 55000, wedding_date: '2027-02-14', wedding_city: 'Udaipur', notes: null, created_at: '2026-07-13' });
+  const noarg = await executeFindTool(AGENT, {});
+  const recPart = noarg.display.split('enquiries plane')[0];
+  const leadPart = noarg.display.split('enquiries plane')[1] || '';
+  T('the no-arg dump exists and is a recents list (records present, none searched)', /Found \d+ record/.test(noarg.display));
+  T('recognition lines carry id + name-as-shown + stage', /\[rec-r1\] client="Vera Recents Test" \| stage booked/.test(noarg.display));
+  T('the [ARCHIVED] tag survives on the set-aside row (plane/archive tag load-bearing)', /\[rec-r2\][^\n]*\[ARCHIVED\]/.test(noarg.display));
+  T('PHONES are gone from the NO-ARG dump (UNCURED describeRow ran here \u2014 this FAILED pre-cure)', !/9811022001|9811022002|phone /.test(recPart));
+  T('MONEY is gone from the NO-ARG dump (UNCURED this FAILED \u2014 Rs + received/pending were present)', !/Rs 60000|Rs 90000|received|pending/.test(recPart));
+  T('the tokenless enquiries slice rides RECOGNITION shape too (no budget, no phone, no date)', /\[ENQUIRY\] lead-r9 \u2014 "Nikita Enquiry Recents" \| state new/.test(leadPart) && !/55000|9811022009|2027-02-14/.test(leadPart));
+  const noargMatched = await executeFindTool(AGENT, { client: 'Vera Recents Test' });
+  T('a MATCHED search on the SAME rows is untouched \u2014 money + phone ride describeRow whole', /Rs 60000/.test(noargMatched.display) && /received Rs 25000/.test(noargMatched.display) && /phone 9811022001/.test(noargMatched.display));
+  T('a MATCHED enquiry line on the SAME rows is untouched \u2014 budget + phone still speak', /budget Rs 55000/.test(noargMatched.display) && /phone 9811022009/.test(noargMatched.display));
 
   console.log(`\n${fail === 0 ? '\u2550\u2550 ' + pass + '/' + (pass + fail) + ' PASS \u2550\u2550' : 'FAILURES  ' + pass + '/' + (pass + fail)}`);
   process.exit(fail === 0 ? 0 : 1);

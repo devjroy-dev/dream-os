@@ -137,14 +137,20 @@ function describeRow(r: FoundRow, tokens: string[] = []): string {
   return `[${r.id}] ${bits.join(' | ') || '(empty record)'}${tail}${prov}`;
 }
 
-// M-4 — RECOGNITION LINES (the zero-match dump's ruled shape, seated in the
-// mechanical-floors ZIP): name-as-shown · plane/archive tag · stage · id. The
-// load-bearing pieces and nothing else. Phones and money are DROPPED from this
-// dump ALONE — a dead-end search needs to recognise a record, not to know its
-// budget, and a rich dump of OTHER records' figures is F-04.70's donor pool one
-// layer deeper (the ₹50,000 came from a neighbouring line; the zero-match dump is
-// the same neighbourhood). Matched payloads are untouched: a real match still
-// rides describeRow whole, everything on it.
+// M-4 — RECOGNITION LINES (the ruled recents shape, seated in the mechanical-floors
+// ZIP): name-as-shown · plane/archive tag · stage · id. The load-bearing pieces and
+// nothing else. Phones and money are DROPPED from a recents dump — a dead-end (or
+// no-argument) search needs to RECOGNISE a record, not to know its budget, and a rich
+// dump of OTHER records' figures is F-04.70's donor pool one layer deeper (the ₹50,000
+// came from a neighbouring line; a recents dump is the same neighbourhood). Matched
+// payloads are untouched: a real match still rides describeRow whole, everything on it.
+//
+// TWO DOORS wear this shape, both gated on tokens.length === 0. (1) the ZERO-MATCH
+// fallback (:408) — tokens given, nothing matched. (2) F-06.11 (CE-ruled 2026-07-18)
+// the NO-ARGUMENT recents dump on the MAIN return (:448) — donna_find({}) with records
+// present falls THROUGH the zero-match branch (rows.length > 0) into the main return,
+// where it was riding describeRow whole (full budget/phone, both planes) — the last
+// uncovered door, now floored to match (1).
 function recognitionRow(r: FoundRow): string {
   const bits: string[] = [];
   if (r.client) bits.push(`client="${r.client}"`);
@@ -439,13 +445,28 @@ export async function executeFindTool(
   // TDW_04 B0 item 4a: binders found does NOT mean the enquiry plane is empty — a twin
   // may sit on the typed plane with a different state (the Meera/Keka shape). Both
   // planes, every time, or an honest word about the one that could not be read.
-  const leads = await searchLeads(tokens);
+  // F-06.11 (M-4 rider, CE-ruled 2026-07-18): this is the MAIN return, which a NO-ARGUMENT
+  // call falls through to when the desk holds records (rows.length > 0, so the zero-match
+  // fallback above is never entered). With no tokens this is a recents dump, not a match,
+  // so its leads slice takes the recognition shape too — exactly as the zero-match slice
+  // already does (searchLeads(tokens, tokens.length === 0), :382). Token-MATCHED enquiry
+  // lines stay whole (budget/phone), unchanged: the flag is false whenever a token is present.
+  const leads = await searchLeads(tokens, tokens.length === 0);
   const leadTail = leads.error
     ? `\nEnquiries (typed leads): COULD NOT BE READ — ${leads.error}. Not "none" — unknown. Say so rather than speak for it.`
     : leads.lines.length
       ? `\nOn the enquiries plane as well (typed leads — a binder and an enquiry can be the same person):\n${leads.lines.join('\n')}`
       : '';
-  return { display: `${header}\n${shown.map((r) => describeRow(r, tokens)).join('\n')}${leadTail}${shelfTail}${reviewTail}`, found: shown.map(toViewRow) };
+  // F-06.11 (M-4, CE-ruled 2026-07-18): a NO-ARGUMENT call reaches HERE (not the zero-match
+  // fallback) whenever the desk holds any record — an unranked recents dump wearing the
+  // main-return costume. The recognition shape must reach this last uncovered door: with no
+  // tokens, each record rides recognitionRow (name-as-shown · [ARCHIVED] tag · stage · id —
+  // phones and money DROPPED), the same floor the zero-match dump already stands on (:408).
+  // A real find (tokens present) is UNTOUCHED: it keeps describeRow whole, everything on it,
+  // because a match wanted the payload. The tokeniser is correct; the net is not widened.
+  const recentsShape = tokens.length === 0;
+  const rendered = shown.map((r) => (recentsShape ? recognitionRow(r) : describeRow(r, tokens))).join('\n');
+  return { display: `${header}\n${rendered}${leadTail}${shelfTail}${reviewTail}`, found: shown.map(toViewRow) };
 }
 
 // donna_whatsdue — the records whose follow-up date has arrived (followup_on <= asOf).

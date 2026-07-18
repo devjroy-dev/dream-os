@@ -76,6 +76,36 @@
 
 const { logActivity } = require('./snapshot');
 
+// ── TDW_06 F-06.9 — THE ID FLOOR (CE-ruled 2026-07-18) ──────────────────────────
+// A floor UNDER the speaker soul, the way this firewall floors persona NAMES. The soul
+// already forbids it — harveySoul:152, "his records you speak of by their names as they
+// are shown … never by an internal key or code … a counsel who quotes reference numbers
+// at his owner has mistaken the cabinet for the conversation." But a soul is held by a
+// model, and the live specimen showed a Haiku-Victor speaking a raw id outward anyway. So
+// the wire gets a mechanical floor the model cannot miss: a record/lead id is estate
+// machinery, never a referent the owner reads — the NAME-AS-SHOWN carries the referent.
+//
+// MINT (CE-ruled): the id is STRIPPED to NOTHING — bracket and all. A placeholder token
+// ("[id]", "#ref") would re-introduce the very machinery this floor removes.
+//
+// PATTERN (CE-ruled): uuid ONLY (8-4-4-4-12 hex) — the sole id shape the estate emits
+// (donnaFind renders records/leads/shelf/reviews/whatsdue as `[<uuid>] …`). NO
+// lead-NN/rec-NN pattern: that shape does not occur in the estate (grep-confirmed), and a
+// dead defensive regex is a maintenance lie. uuid is collision-safe on the wire — dates,
+// Rs figures and phone numbers are not uuid-shaped.
+//
+// DELTA-SAFE: scrubText runs per streaming victor_token beat, so this NEVER trims or
+// collapses whitespace globally (that would eat inter-token spaces on the stream). It
+// consumes at most one hugging space around a bracketed id and leaves the rest untouched.
+// Granularity is the persona firewall's own: a uuid split ACROSS two deltas slips this
+// beat exactly as a split "Donna" would — the same disclosed residual, not a new one.
+const _UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const BRACKET_ID_RE = new RegExp(' ?\\[\\s*' + _UUID + '\\s*\\][ \\t]?', 'gi');
+const BARE_UUID_RE = new RegExp(_UUID, 'gi');
+function stripIds(s) {
+  return String(s).replace(BRACKET_ID_RE, ' ').replace(BARE_UUID_RE, '');
+}
+
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
 // The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
 // the older Myra wire (text_delta / handoff / operator_action / operator_report), so the
@@ -110,9 +140,12 @@ function scrubText(text) {
     .replace(/,\s*Donna\b(?=\s*[.,!?;:—–]|\s*$)/g, '')
     // sentence-initial "Donna, pull …" -> "Pull …"
     .replace(/(^|[.!?—–]\s+)Donna,\s*([a-z])/g, (_m, pre, ch) => pre + ch.toUpperCase());
-  return s
+  s = s
     .replace(/\bDonna\b/g, 'Operator')
     .replace(/\bHarvey\b/g, 'Victor');
+  // F-06.9 (CE-ruled 2026-07-18): the id floor runs LAST, after the persona firewall, so
+  // no raw record/lead id can ride outward prose. Under the soul, never instead of it.
+  return stripIds(s);
 }
 
 // ── TDW_04 B1 SEAL RIDER — F-04.34, SCRUB-WITH-WITNESS AT THE WRITE DOOR ────
@@ -168,6 +201,14 @@ function scrubForStorage(supabase, vendorId, surface, value, ctx, field) {
 //                             dispatch beats · bookingLines · mutationLines ·
 //                             invoiceLines
 //   WHATSAPP (calendarSignals.js): bookingLines · mutationLines        [F-04.38, B2]
+//
+// scrubText's ID FLOOR (F-06.9, TDW_06, CE-ruled 2026-07-18) rides EXACTLY the surfaces
+// above — it is the last transform inside scrubText, so every caller of scrubText inherits
+// it and no other. A raw uuid (records/leads/shelf/reviews id) is stripped to nothing from
+// this outward prose; the name-as-shown carries the referent. Because it lives INSIDE
+// scrubText, the NOT-applied list below is its exemption list too: a lawful id inside a
+// nested donna_find hand, on the evidence plane, or on any read path is UNTOUCHED — only
+// the outward wire is floored.
 //
 // scrubForStorage IS applied to (every public.events write these two doors make):
 //   WEB (chat.js):            bookEvents insert title · insert notes · dedupe-patch
