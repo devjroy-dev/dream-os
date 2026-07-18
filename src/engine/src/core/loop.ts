@@ -369,6 +369,17 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     role: m.role,
     content: m.content,
   }));
+  // ── THE PROVENANCE HOLD's corpus (M-2, mechanical-floors ZIP): the vendor's own
+  // words this thread — every user-role message on the working thread plus the
+  // message in hand, assembled once per turn and handed down to Donna's runtime.
+  // A money figure in a WRITE hand must appear here or the hand holds with the
+  // honest question (provenanceHold.ts). Deliberately the OWNER'S words only: the
+  // snapshot, the facts block, and Victor's own prose never vouch for a figure —
+  // F-04.70's ₹50,000 came from exactly those neighbours.
+  const vendorWords = [
+    ...(thread as ThreadMessage[]).filter((m) => m.role === 'user').map((m) => m.content),
+    message,
+  ].join('\n');
   let messages: Anthropic.MessageParam[] = [...priorTurns, { role: 'user', content: message }];
 
   let reply: string | null = null;
@@ -504,7 +515,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         const donnaModelForSeg = args.donnaTransport
           ? args.donnaModelOverride
           : (providerDowngrade ? undefined : (args.donnaModelOverride ?? args.modelOverride));
-        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, donnaTransportForSeg, donnaModelForSeg);
+        const donna = await runDonnaTurn(agentId, msg, donnaSession, today, todayIso, (a) => args.onEvent?.({ type: 'donna_action', name: a.name, input: a.input, result: a.result }), args.scratchpad, message, donnaTransportForSeg, donnaModelForSeg, vendorWords);
         // F-04.87 (same sitting): her downgrade folds into the turn's flag — the door's
         // activity write and TurnResult see BOTH hands' fidelity, and a bench/gauntlet
         // can void a candidate's turn mechanically instead of trusting a console line.

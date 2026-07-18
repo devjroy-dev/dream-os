@@ -28,6 +28,7 @@ import { DONNA_VERDICT_TOOL, executeDonnaVerdict } from './tools/donnaVerdict.js
 import { DONNA_REVIEW_TOOL, executeDonnaReview } from './tools/donnaReview.js';
 import { LISTEN_HARVEY_TALK_TOOL } from './tools/listenHarvey.js';
 import { DONNA_LEAD_TOOL, executeDonnaLead } from './tools/donnaLead.js'; // TDW_02 P1 (Amendment One CE-1)
+import { checkMoneyProvenance } from './provenanceHold.js'; // M-2 — the mechanical-floors ZIP
 import { vendorIdFromAgent } from './vendorIdentity.js'; // TDW_02: rebuild reads the typed lead plane
 import { phoneKey, nameKey } from './phoneKey.js'; // TDW_04 engine-lane (ST-3b): twin annotation at render
 import type { SnapshotItem, ToolOutcome, ViewRow } from './snapshotTypes.js';
@@ -362,6 +363,10 @@ export async function runDonnaTurn(
   rawMessage?: string, // TDW_02 P1: the vendor's raw line, threaded from the loop for donna_lead's raw_message (D9)
   transportIn?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> }, // TDW_02 P5
   modelOverride?: string, // TDW_02 P5: non-anthropic routes run one model, both hands
+  vendorWords?: string, // M-2 (mechanical-floors ZIP): the vendor's own words this thread,
+                        // assembled by loop.ts — the provenance hold's corpus. ABSENT ⇒
+                        // the hold fails CLOSED on any money figure (a caller that cannot
+                        // supply the thread cannot vouch for a figure; F15's direction).
 ): Promise<DonnaTurn> {
   const toolCalls: DonnaTurn['tool_calls'] = [];
   // record() pushes a tool-call AND fires it live, so each of Donna's hands leaves the
@@ -494,6 +499,20 @@ export async function runDonnaTurn(
         // Donna is already working this turn, instead of orphaning a new row. (client
         // opens a binder; attributes attach to it.) An explicit binder_id always wins.
         const input = tu.input as Record<string, unknown>;
+        // ── THE PROVENANCE HOLD (M-2, mechanical-floors ZIP; F-04.70's named floor).
+        // ONE seam, ahead of every write branch below (donna_lead and the record
+        // atoms alike): a rupee figure in this hand must be present in the vendor's
+        // own words this thread, else the hand HOLDS with the honest question — the
+        // F-04.72/79 hold family's shape. No write, no snapshot patch, `mutated`
+        // untouched; the hold's sentence is the tool result, so the model can ask
+        // the owner or re-hand the instruction without the figure, its own choice
+        // (the draft-first path stays open in character, never rewritten in code).
+        const heldMoney = checkMoneyProvenance(tu.name, input, vendorWords);
+        if (heldMoney) {
+          record(tu.name, tu.input, heldMoney.display);
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: heldMoney.display });
+          continue;
+        }
         if (tu.name === 'donna_verdict') {
           // A supervision verdict: filed to donna_audit_verdict, free-form. It is a
           // record, not a snapshot item — it does not touch the near-horizon note.

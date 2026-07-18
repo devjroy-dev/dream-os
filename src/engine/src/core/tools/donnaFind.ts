@@ -88,6 +88,14 @@ type LeadFound = {
 }; // TDW_04 B0 item 4a — public.leads read shape (typed plane, LD-1)
 
 const FIND_SELECT = 'id, amount, client, date, direction, doc_ref, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, hidden';
+// FIND_LIMIT — THE NAMED CONSTANT (M-4, ruled at the manual paper, 2026-07-18): 15,
+// because recognition wants breadth — the zero-match fallback exists so a record
+// whose name no longer points to it can be recognised, and a wider recents list is
+// what makes that recovery real. Ruled into law with the reason attached because
+// the number had already drifted while nobody owned it: the in-file comment said
+// "10 records" while the code said 15 (R-B6-13's own record carried the 10) — a
+// residue number drifts; a named constant with its reason cannot. Governs the
+// matched cap, the zero-match recents, and the leads-plane slice alike.
 const FIND_LIMIT = 15;
 
 // One compact line per row, id first (the id is the whole point — it feeds the next
@@ -127,6 +135,22 @@ function describeRow(r: FoundRow, tokens: string[] = []): string {
   const hit = matchedFields(r, tokens);
   const prov = hit.length ? ` — matched on: ${hit.join(', ')}` : '';
   return `[${r.id}] ${bits.join(' | ') || '(empty record)'}${tail}${prov}`;
+}
+
+// M-4 — RECOGNITION LINES (the zero-match dump's ruled shape, seated in the
+// mechanical-floors ZIP): name-as-shown · plane/archive tag · stage · id. The
+// load-bearing pieces and nothing else. Phones and money are DROPPED from this
+// dump ALONE — a dead-end search needs to recognise a record, not to know its
+// budget, and a rich dump of OTHER records' figures is F-04.70's donor pool one
+// layer deeper (the ₹50,000 came from a neighbouring line; the zero-match dump is
+// the same neighbourhood). Matched payloads are untouched: a real match still
+// rides describeRow whole, everything on it.
+function recognitionRow(r: FoundRow): string {
+  const bits: string[] = [];
+  if (r.client) bits.push(`client="${r.client}"`);
+  if (r.stage) bits.push(`stage ${r.stage}`);
+  const tail = r.hidden ? ' [ARCHIVED]' : '';
+  return `[${r.id}] ${bits.join(' | ') || '(unnamed record)'}${tail}`;
 }
 
 export async function executeFindTool(
@@ -185,7 +209,13 @@ export async function executeFindTool(
   // SCOPE: reach only. Whether the model DISPATCHES this tool before speaking is the
   // confidence-triggered-retrieval gap (SURFACE_TRUTH_AUDIT §2:55) and belongs to Block
   // 06 — untouched here.
-  async function searchLeads(tokenList: string[]): Promise<{ lines: string[]; error: string | null }> {
+  // M-4 rider on the same ruling: when the leads slice rides the ZERO-MATCH dump
+  // with no tokens at all (nothing matched anything — this is a recents dump, not a
+  // match), its lines take the recognition shape too: name-as-shown · [ENQUIRY]
+  // tag · state · id. Token-MATCHED enquiry lines are matches and keep their full
+  // payload unchanged, on either branch ("matched payloads untouched" — the
+  // ruling's own words).
+  async function searchLeads(tokenList: string[], recognitionOnly = false): Promise<{ lines: string[]; error: string | null }> {
     const vendorId = await vendorIdFromAgent(agentId);
     if (!vendorId) {
       return { lines: [], error: 'the owner account for this agent could not be resolved' };
@@ -207,6 +237,11 @@ export async function executeFindTool(
     const rowsL = (data ?? []) as LeadFound[];
     return {
       lines: rowsL.map((l) => {
+        if (recognitionOnly) {
+          const st = l.state ? ` | state ${l.state}` : '';
+          return `  [ENQUIRY] ${l.id} — "${l.name ?? 'unknown'}"${st}` +
+                 ` (typed lead — not a binder; binder hands don't attach to this id)`;
+        }
         const bits: string[] = [];
         if (l.state) bits.push(`state ${l.state}`);
         if (l.budget_max != null) bits.push(`budget Rs ${l.budget_max}`);
@@ -326,8 +361,10 @@ export async function executeFindTool(
     // (Word-swept at B6 sitting 2, R-B6-13: "handle" was a second teacher of F-04.66's
     // word, engine-side — the display string below taught it to the model; this comment
     // taught it to the next maintainer. Both dropped; the referent is the NAME AS SHOWN.
-    // The zero-match DUMP SIZE — 10 records, raw ids, phones, money — is deliberately
-    // untouched: routed to the Block 06 packet by the same ruling, recorded not acted.)
+    // The zero-match DUMP SIZE and payload, routed to Block 06 by the same ruling, were
+    // RULED at the manual paper (M-4, 2026-07-18): FIND_LIMIT is the named constant
+    // above, and this dump returns RECOGNITION LINES — recognitionRow's shape, phones
+    // and money dropped from the zero-match dump only, matched payloads untouched.)
     const { data: recent } = await supabase
       .from('records')
       .select(FIND_SELECT)
@@ -339,8 +376,10 @@ export async function executeFindTool(
     // Search briefs with the same tokens before ever calling this a dead end.
     const shelfHits = await searchShelf(tokens);
     const reviewHits = await searchReviews(tokens);
-    // TDW_04 B0 item 4a: the typed plane, and its fail-closed voice.
-    const leads = await searchLeads(tokens);
+    // TDW_04 B0 item 4a: the typed plane, and its fail-closed voice. M-4: with no
+    // tokens this slice is a recents dump riding the zero-match fallback, so it
+    // takes the recognition shape; with tokens it is a MATCH and stays whole.
+    const leads = await searchLeads(tokens, tokens.length === 0);
     const leadTail = leads.error
       ? `\nEnquiries (typed leads): COULD NOT BE READ — ${leads.error}. This is not "none": the enquiry plane is unknown this turn. Say so rather than speak for it.`
       : leads.lines.length
@@ -364,8 +403,9 @@ export async function executeFindTool(
     return {
       display:
         `No record matched${termNote}. The name you searched may have changed or be filed differently — ` +
-        `refer to a record by its name as shown; here are the most recent records (active and archived), so you can spot the one you mean by its contents:\n` +
-        recentRows.map((r) => describeRow(r, [])).join('\n') + leadTail + shelfTail + reviewTail,
+        `refer to a record by its name as shown; here are the most recent records (active and archived), ` +
+        `by name and stage, so you can spot the one you mean:\n` +
+        recentRows.map((r) => recognitionRow(r)).join('\n') + leadTail + shelfTail + reviewTail,
     };
   }
 

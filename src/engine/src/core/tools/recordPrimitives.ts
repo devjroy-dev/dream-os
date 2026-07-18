@@ -70,7 +70,10 @@ async function logEvent(agentId: string, action: string, recordId: string, summa
 // THE ONLY ARITHMETIC AT THIS BOUNDARY. Donna relays the figure as it arrived —
 // "2.5L", "90k", "1.2cr", or plain rupees — and THIS code does the multiplication,
 // deterministically, never her head. Unparseable → clean refusal, never a guess.
-function parseMoney(v: unknown): number | null {
+// EXPORTED at the mechanical-floors ZIP (M-2): the provenance hold
+// (provenanceHold.ts) normalises the vendor's spoken figures through THIS function,
+// so the floor and the door can never disagree on what '50k' means. One home.
+export function parseMoney(v: unknown): number | null {
   if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return Math.round(v);
   if (typeof v !== 'string') return null;
   const s = v.trim().toLowerCase().replace(/[,₹\s]/g, '').replace(/^rs\.?/, '');
