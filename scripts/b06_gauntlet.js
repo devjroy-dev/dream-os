@@ -565,9 +565,19 @@ async function runLane(lane, runTurn, mkTransports) {
       const seat = lane.victorModel && lane.donnaModel && lane.victorModel !== lane.donnaModel
         ? `Victor ${lane.victorModel} or her hand ${lane.donnaModel}`
         : `the candidate (${lane.victorModel || 'model'})`;
+      // STACK CAPTURE (CE relay item 1a, banking sitting): the CRASHED record keeps the
+      // thrown message AND the top 3 stack frames — run 5's live stacks are what pin the
+      // engine null-read to a line (the §0.2 report the CE deferred the floor on). The
+      // frames are the crash site inside the real compiled runTurn, printed here and
+      // carried on the record so a founder run surfaces them without a second pass.
+      const emsg = e && e.message ? e.message : String(e);
+      const frames = (e && typeof e.stack === 'string')
+        ? e.stack.split('\n').map((s) => s.trim()).filter((s) => /^at /.test(s)).slice(0, 3)
+        : [];
       console.log(`  ${sc.id} CRASHED  (rig-void — a malformed model-output shape; NOT the lane's verdict)`);
-      console.log(`      ${e && e.message ? e.message : String(e)} — seat: ${seat}`);
-      results.push({ sc, ok: false, why: 'turn crashed (rig-void): ' + (e && e.message ? e.message : String(e)), cost: 0, handsFired: null, speaker: [], crashed: true });
+      console.log(`      ${emsg} — seat: ${seat}`);
+      for (const fr of frames) console.log(`        ${fr}`);
+      results.push({ sc, ok: false, why: 'turn crashed (rig-void): ' + emsg, stackTop: frames, cost: 0, handsFired: null, speaker: [], crashed: true });
     }
   }
   const total = results.reduce((s, x) => s + x.cost, 0);
@@ -936,6 +946,7 @@ function scriptedTransports(profile) {
     T('the crashes are GENUINE — each carried a real thrown message from the compiled runTurn (F-RIG-1)', crashedIds.every((id) => /rig-void\):/.test(crashLane.results.find((x) => x.sc.id === id).why) && crashLane.results.find((x) => x.sc.id === id).why.length > 30));
     T('the lane verdict was NOT contaminated — the honest turns\' verdict stands (crashes excluded, not FAIL)', crashLane.laneOk === true);
     T('…and the honest lane carries ZERO crashes (the hardening does not manufacture them)', honest.results.every((r) => !r.crashed));
+    T('each CRASHED record carries the thrown stack top-3 frames (item 1a — run-5 stacks pin the engine line)', crashedIds.every((id) => { const r = crashLane.results.find((x) => x.sc.id === id); return r && Array.isArray(r.stackTop) && r.stackTop.length > 0 && r.stackTop.every((f) => /^at /.test(f)); }));
 
     console.log('\n  [11] THE HANDBOOKS DOUBLE (CE relay item 1, the one-line check owed from run 2\'s era):');
     {
