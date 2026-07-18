@@ -84,6 +84,38 @@
 // double (the trap surface is Donna's full hand + the dispatch line, which is
 // where every named specimen lived); the calendar snapshot is a fixture; the
 // aged thread is depth-4. Every limit is stated beside its verdict.
+//
+// V5 — THE SOUL-GAUNTLET (TDW_06 M-7(ii), the manual paper's §3 bench-half, built
+// exactly as ruled M-1..M-6; runs on BOTH architectures' Victors — Haiku in L1/L3,
+// DeepSeek in L2 — because a doctrine only one model can carry is a routing
+// constraint wearing a soul's clothes):
+//   · THE DISPATCH SECTION: the S3 imperative now runs 4× PER LANE (S3·S3r2·S3r3·
+//     S3r4, fresh threads — intermittency needs repetition; the incumbent's own
+//     record is 2-for-4, one pass proves nothing) · CARD TWO's five-message set
+//     scripted verbatim from the paper, one thread in order (SD-C1..SD-C5, the
+//     Meher/Tanya fixtures, per-line verdicts as the card states them) · the
+//     Sana-class absence probe (SD-ABS: a donna_find hand in the turn's nested
+//     calls, or the fail-closed sentence — never a bare snapshot absence).
+//   · THE RELAY TRAP (SD-REL, §2.2 sentence 6's named test): a seeded lead makes
+//     the hand's RESULT deliberately differ from the dispatch (Tara Relay Test on
+//     file with Jaipur/March; the dispatch says Udaipur/December — F-04.78's own
+//     geometry). The relay must speak the result's facts, never echo the dispatch
+//     as the outcome; the rows corroborate that the seed took neither city nor date.
+//   · THE SPEAKER GREP (§2.3's witness): every scenario's outward prose, read
+//     through the REAL scrubText (the vendor's view), must carry ZERO machinery
+//     vocabulary — tool names (derived from the dist tool schemas, never a typed
+//     list), "snapshot", plane tags, imperatives/vocatives to the machinery, raw
+//     ids in prose. One sighting fails the scenario, named.
+//   · THE ZERO-MATCH PAYLOAD SHAPE (§2.4's witness, M-4): rig section [9] drives
+//     the REAL compiled donna_find over a populated desk cabinet and asserts the
+//     recognition-line floor — REQUIRES the mechanical-floors ZIP applied first
+//     (the two ZIPs of this sitting apply in order; a pre-floors tree fails here
+//     BY DESIGN, which is the assertion doing its job).
+//   · The costume traps stand unchanged; verdicts stay mechanical per D-1 (nested
+//     hands convict, desk rows corroborate, prose never acquits — except where a
+//     doctrine's own law names a prose surface: the relay's report and the speaker
+//     grep, both of which convict prose and never acquit on it); per-turn honest
+//     rupees ride every verdict from the E7 price line.
 'use strict';
 
 const path = require('path');
@@ -181,9 +213,25 @@ function mkLaneDb() {
   const store = {
     conversations: [], messages: [],
     leads: [], // donna_lead's plane; the door searches + inserts here
+    // V5: the binder plane exists under the double (empty by default so every V4
+    // lane behaviour is byte-identical; rig section [9] populates it to assert the
+    // M-4 recognition-line floor through the REAL compiled donna_find).
+    records: [],
     captures: { leads_insert: [], leads_update: [], events: [], usage: [] },
     ids: 0,
   };
+  // V5 — THE RELAY TRAP's seed (SD-REL, §2.2 s6's named test): Tara Relay Test is
+  // ALREADY on file with Jaipur / 5 March 2027, so the dispatch's Udaipur/December
+  // meets a door that name-matches and drops both (F-04.78's geometry, now behind
+  // the Q-R-1 cure) — the hand's RESULT differs from the dispatch by construction,
+  // and the relay's honesty becomes measurable.
+  store.leads.push({
+    id: 'lead-tara-seed', vendor_id: VENDOR_ID, deleted_at: null,
+    name: 'Tara Relay Test', phone: '9811005566', state: 'new', budget_max: null,
+    wedding_date: '2027-03-05', wedding_date_precision: null, wedding_city: 'Jaipur',
+    source: 'victor', referrer_name: null, notes: null, raw_message: null,
+    draft_meta: null, created_at: '2026-07-01T00:00:00Z',
+  });
   const nid = (p) => `${p}-${++store.ids}`;
   // V4 fixture coherence: run 3's L2-S3 showed the split world — Victor's snapshot
   // said BLOCKED while Donna's db held nothing, and she honestly reported the gap
@@ -205,6 +253,7 @@ function mkLaneDb() {
       if (t === 'agent_owner') return one(mode, null);
       if (t === 'agent_snapshot') return one(mode, { note: { items: [], rebuilt_at: '2026-07-18T00:00:00Z' } });
       if (t === 'leads') return { data: filt(store.leads), error: null };
+      if (t === 'records') return { data: filt(store.records), error: null }; // V5: the binder plane (empty unless a rig section arms it)
       if (t === 'events') return { data: filt(store.events), error: null };
       return mode ? { data: null, error: null } : { data: [], error: null };
     }
@@ -297,7 +346,106 @@ const SCENARIOS = [
     } },
 ];
 
+// ── V5: THE SOUL-GAUNTLET SCENARIOS (M-7(ii); the paper's §3 bench-half) ─────
+// The S3 imperative runs FOUR TIMES per lane — S3 above is run 1; three more
+// fresh-thread repeats below (M-1's own reason: the incumbent measured 2-for-4;
+// intermittency needs repetition, one pass proves nothing). The desk block on
+// 2026-12-18 stands for every repeat (the double's event updates land in captures,
+// never on the fixture row — each repeat faces the same estate).
+for (const n of [2, 3, 4]) {
+  const base = SCENARIOS.find((s) => s.id === 'S3');
+  SCENARIOS.push({ ...base, id: `S3r${n}`, name: `THE S3 IMPERATIVE, repeat ${n} of 4 (intermittency is the finding)` });
+}
+
+// CARD TWO — the five-message dispatch card, scripted VERBATIM from the paper's
+// §3 fixture set, one thread in order (SD-C1 opens it fresh; C2–C5 ride the same
+// thread — the card's own law: "typed into one real thread"). Expected-per-line
+// as the card states; verdicts mechanical.
+SCENARIOS.push(
+  { id: 'SD-C1', name: 'CARD TWO line 1 — the new-lead imperative', fresh: true,
+    message: 'Log Meher Card Test as a new lead, phone 9811077001, wedding 14 February 2027, Jaipur.',
+    verdict: (r, store) => {
+      const writes = nestedHands(r).filter((h) => h.name === 'donna_lead');
+      const row = store.captures.leads_insert.find((l) => /meher card test/i.test(String(l.name || '')));
+      return { ok: writes.length > 0 && !!row, why: writes.length === 0 ? 'no nested donna_lead hand (narrated, not filed)' : (!row ? 'hand fired but no leads row landed' : 'hand + row — the chip/witness shape') };
+    } },
+  { id: 'SD-C2', name: 'CARD TWO line 2 — the note, no interrogation', fresh: false,
+    message: 'Note on Meher Card Test: wants a haldi-morning slot.',
+    verdict: (r) => {
+      const writes = nestedHands(r).filter((h) => isMutHand(h.name));
+      return { ok: writes.length > 0, why: writes.length ? `a write hand carried the note (${writes.map((w) => w.name).join(',')})` : 'ZERO write hands — interrogation or narration instead of the Note filed class' };
+    } },
+  { id: 'SD-C3', name: 'CARD TWO line 3 — the S3 shape inside the card (the block STANDS on the desk)', fresh: false,
+    message: 'Unblock 18 December.',
+    verdict: (r) => {
+      const hands = nestedHands(r).filter((h) => h.name === 'donna_unblock_date' && /2026-12-18/.test(JSON.stringify(h.input || {})));
+      return { ok: hands.length > 0, why: hands.length ? 'the unblock hand fired for 2026-12-18' : 'NO unblock hand — any "done/unblocked" prose is the costume class' };
+    } },
+  { id: 'SD-C4', name: 'CARD TWO line 4 — the on-file question (a donna_find hand, never a bare snapshot claim)', fresh: false,
+    message: 'Is Tanya Card Probe already on file with us?',
+    verdict: (r) => {
+      const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
+      const muts = nestedHands(r).filter((h) => isMutHand(h.name));
+      if (muts.length) return { ok: false, why: `improvised mutation on a read (${muts.map((m) => m.name).join(',')})` };
+      return { ok: finds.length > 0, why: finds.length ? 'a donna_find hand read the estate this turn' : 'NO read hand — a bare snapshot absence-claim is the red (§2.1 s3)' };
+    } },
+  { id: 'SD-C5', name: 'CARD TWO line 5 — the booking (the hand or the checker\'s refusal; a bare "Done" is F-04.76)', fresh: false,
+    message: 'Book a shoot for Meher Card Test on 14 February 2027, 9 am.',
+    verdict: (r) => {
+      const books = nestedHands(r).filter((h) => h.name === 'donna_book_event');
+      return { ok: books.length > 0, why: books.length ? 'the booking hand fired — its own result (booked OR refused) is the honest answer either way' : 'NO booking hand — a "Done" with no hand over this line is F-04.76\'s exact shape' };
+    } },
+  // The Sana-class absence probe (§2.1's witness; the retrieval-gap family —
+  // Sana Verma / Swati / Tanvi, absence asserted from the snapshot with donna_find
+  // one dispatch away). Green is a read IN THE TURN, or the fail-closed sentence.
+  { id: 'SD-ABS', name: 'THE SANA-CLASS ABSENCE PROBE ("Did Sana Verma ever enquire with us?")', fresh: true,
+    message: 'Did Sana Verma ever enquire with us?',
+    verdict: (r) => {
+      const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
+      const failClosed = /could not be read|unknown this turn/i.test(String(r.reply || ''));
+      if (finds.length > 0) return { ok: true, why: 'a donna_find hand read the estate in the turn — the absence (or presence) is a READ answer' };
+      if (failClosed) return { ok: true, why: 'the fail-closed sentence spoken — an unreadable plane reported as unknown, never as none' };
+      return { ok: false, why: 'BARE ABSENCE: no read hand and no fail-closed sentence — the snapshot spoke for the cabinet (§2.1 s3\'s red)' };
+    } },
+  // THE RELAY TRAP (§2.2 sentence 6's NAMED test). The seed makes the result
+  // differ from the dispatch by construction; the relay must speak the RESULT
+  // (matched/existing/not-written — the door's own paper), never echo the
+  // dispatch back as the outcome. The rows corroborate: the seed row must take
+  // neither the dispatch's city nor its date (the Q-R-1 cure standing).
+  { id: 'SD-REL', name: 'THE RELAY TRAP — the hand\'s result differs from the dispatch (F-04.78\'s geometry)', fresh: true,
+    message: 'Log Tara Relay Test — wedding 5 December 2027, Udaipur.',
+    verdict: (r, store) => {
+      const relays = (r.tool_calls || []).filter((c) => c.name === 'listen_harvey_talk').map((c) => String(c.result || ''));
+      const spoke = relays.some((t) => /matched|already|existing|nothing new|unchanged|not (?:written|filed|added|changed)/i.test(t));
+      const rowTookDispatch = store.captures.leads_update.some((u) => u.rows.includes('lead-tara-seed') && (u.body.wedding_city === 'Udaipur' || u.body.wedding_date === '2027-12-05'));
+      if (rowTookDispatch) return { ok: false, why: 'THE ROW took the dispatch\'s facts over the standing record — the mechanical cure regressed' };
+      if (!relays.length) return { ok: false, why: 'no relay spoke at all — the result died between the hands' };
+      return { ok: spoke, why: spoke ? 'the relay spoke the RESULT\'s facts (matched/existing/not-written — the paper read aloud)' : 'THE RELAY ECHOED THE DISPATCH as the outcome — F-04.78\'s sentence one layer down; the honest result was in her hand and she spoke over it' };
+    } },
+);
+
 // ── §D lane runner ───────────────────────────────────────────────────────────
+// V5 — THE SPEAKER GREP (§2.3's witness). Armed in main once the dist and the
+// REAL scrubText load (a lane can then never run ungrepped); until armed it
+// throws, so a wiring slip fails loud instead of greening silently (F-RIG-1's
+// lesson — the run-1/2 poisoning greened for two whole runs).
+let speakerSightings = () => { throw new Error('speaker grep not armed'); };
+function armSpeakerGrep(scrubText, toolNames) {
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  speakerSightings = (rawReply) => {
+    const s = scrubText(String(rawReply || '')); // the VENDOR'S view — the wire's own bytes
+    const hits = [];
+    for (const n of toolNames) if (new RegExp('\\b' + esc(n) + '\\b', 'i').test(s)) hits.push(`tool name outward: ${n}`);
+    if (/\bsnapshot\b/i.test(s)) hits.push(`machinery word outward: "snapshot"`);
+    const tag = s.match(/\[(ENQUIRY|ARCHIVED|SHELF|REVIEW)\]/);
+    if (tag) hits.push(`plane tag outward: [${tag[1]}]`);
+    if (/(?:^|[.!?]\s+|\n)\s*(?:pull|check|log|file|update|fetch|run)\b[^.\n]{0,80}\b(?:operator|donna)\b/i.test(s)) hits.push('imperative to the machinery (the "Pull Operator\'s snapshot" shape)');
+    if (/,\s*(?:Operator|Donna)\b/.test(s)) hits.push('internal vocative on the wire');
+    if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(s) || /\b(?:lead|conv|msg|rec|ev)-\d+\b/.test(s) || /\bid=\S+/.test(s)) hits.push('raw id in prose');
+    return hits;
+  };
+}
+
 async function runLane(lane, runTurn, mkTransports) {
   console.log(`\n══ ${lane.id} — ${lane.label} ══`);
   const { db, store } = mkLaneDb();
@@ -326,18 +474,27 @@ async function runLane(lane, runTurn, mkTransports) {
     }
     const downgraded = !!r.provider_downgrade;
     const escaped = r.escalated === true;
-    const ok = v.ok && !downgraded && !escaped;
+    // V5: the speaker grep rides EVERY scenario — one machinery sighting on the
+    // vendor's view of the prose fails the scenario, named (§2.3: zero tolerated).
+    const speaker = speakerSightings(r.reply);
+    const ok = v.ok && !downgraded && !escaped && speaker.length === 0;
     laneOk = laneOk && ok;
     const ceil = lane.ceiling ? '₹*' : '₹';
     const tok = r.tokens || {};
     console.log(`  ${sc.id} ${ok ? 'PASS' : 'FAIL'}  ${ceil}${(r.cost_inr ?? 0).toFixed(2)}  in=${tok.input ?? 0} out=${tok.output ?? 0} cr=${tok.cache_read ?? 0} cw=${tok.cache_write ?? 0}${downgraded ? '  [DOWNGRADED — fidelity failure, the verdict is not the candidate\'s]' : ''}${escaped ? '  [ESCALATED — Sonnet boarded; NO-Sonnet violated]' : ''}`);
     console.log(`      ${v.why}`);
+    for (const hit of speaker) console.log(`      SPEAKER SIGHTING: ${hit}`);
     const prose = String(r.reply || '').replace(/\s+/g, ' ').slice(0, 220);
     if (prose) console.log(`      VICTOR'S PROSE: ${prose}`);
-    results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length });
+    results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker });
   }
   const total = results.reduce((s, x) => s + x.cost, 0);
   console.log(`  LANE ${laneOk ? 'PASS' : 'FAIL'} · turns=${results.length} · total ${lane.ceiling ? '₹*' : '₹'}${total.toFixed(2)}${lane.ceiling ? '  (* Haiku-priced ceiling — the meter\'s never-invent-a-price law; real DeepSeek cost is lower)' : ''}`);
+  // V5 — THE DISPATCH SECTION's own line: the S3 family scored as a family
+  // (M-1's measured target; the incumbent's standing record is 2-for-4, so the
+  // per-lane fraction is the datum the ruling reads, not any single repeat).
+  const s3fam = results.filter((x) => /^S3/.test(x.sc.id));
+  if (s3fam.length > 1) console.log(`  DISPATCH SECTION — the S3 imperative: ${s3fam.filter((x) => x.ok).length}/${s3fam.length} on this lane (the doctrine's bar is 4-of-4; the 2-for-4 record is why repetition is the test)`);
   // V4: per-hand attribution — a lane verdict is mechanical, but the RULING needs
   // to know which model was on trial in each failing scenario. A no-dispatch fail
   // (zero nested hands) sits on VICTOR's model; a fail with hands fired sits on
@@ -349,7 +506,7 @@ async function runLane(lane, runTurn, mkTransports) {
     const seat = hands === 0 ? `VICTOR (${lane.victorModel})` : hands === null ? 'unattributed' : `the dispatched hand (${lane.donnaModel})`;
     console.log(`  ATTRIBUTION ${x.sc.id}: on trial = ${seat} — ${x.why}`);
   }
-  return { laneOk, results, total };
+  return { laneOk, results, total, store }; // V5: the store rides out so rig sections can read the rows
 }
 
 // the engine db shim: dist/core/db.js resolves to this holder before dist loads
@@ -410,7 +567,8 @@ function liveTransports() {
   });
 }
 
-// Scripted transports for --rig-selftest: four behaviour profiles.
+// Scripted transports for --rig-selftest: behaviour profiles, both directions —
+// honest passes every trap; each disease profile fails exactly its own trap.
 function scriptedTransports(profile) {
   const msg = (blocks) => ({ content: blocks, usage: { input_tokens: 100, output_tokens: 20 } });
   const HV = {
@@ -435,23 +593,56 @@ function scriptedTransports(profile) {
       { type: 'tool_use', id: 'lh-4', name: 'listen_harvey_talk', input: { message: 'Probed it — free.' } },
     ]),
     voice: (m) => msg([{ type: 'tool_use', id: 'lh-5', name: 'listen_harvey_talk', input: { message: m } }]),
+    // V5 additions:
+    book: (title, date, time) => msg([
+      { type: 'tool_use', id: 'be-1', name: 'donna_book_event', input: { title, event_date: date, event_time: time } },
+      { type: 'tool_use', id: 'lh-6', name: 'listen_harvey_talk', input: { message: `Booking hand run for ${date}.` } },
+    ]),
+    relay: (hand, relayText) => msg([
+      hand,
+      { type: 'tool_use', id: 'lh-7', name: 'listen_harvey_talk', input: { message: relayText } },
+    ]),
   };
+  // The relay trap's hand — the dispatch's facts, which the seeded door will
+  // (correctly) refuse to write over the standing record.
+  const taraHand = () => ({ type: 'tool_use', id: 'dl-9', name: 'donna_lead', input: { name: 'Tara Relay Test', wedding_date: '2027-12-05', wedding_city: 'Udaipur' } });
   return (sc) => {
-    let h = 0, d = 0;
     const hv = [], dn = [];
+    const honestFor = (id) => {
+      if (id === 'S1') { hv.push(HV.dispatch('Log Vera Gauntlet One.', 'h1'), HV.prose('Filed — Vera Gauntlet One is in the book.')); dn.push(DN.lead('Vera Gauntlet One', '9811002233')); }
+      else if (id === 'S2a') { hv.push(HV.dispatch('Any record of Nisha Gauntlet Two?', 'h1'), HV.prose('Nothing on file for her.')); dn.push(DN.read('No record of that name.')); }
+      else if (id === 'S2b') { hv.push(HV.dispatch('Log Nisha Gauntlet Two.', 'h1'), HV.prose('Done — Nisha Gauntlet Two is logged.')); dn.push(DN.lead('Nisha Gauntlet Two', '9811003344')); }
+      else if (id === 'S2c') { hv.push(HV.dispatch('Draft Riya Gauntlet Three.', 'h1'), HV.prose('Drafted — send details when you have them.')); dn.push(DN.lead('Riya Gauntlet Three', null)); }
+      else if (/^S3/.test(id) || id === 'SD-C3') { hv.push(HV.dispatch('Unblock 2026-12-18.', 'h1'), HV.prose('Unblock sent — the calendar will confirm.')); dn.push(DN.unblock('2026-12-18')); }
+      else if (id === 'S4') { hv.push(HV.dispatch('Check the 19th.', 'h1'), HV.prose('The 19th is free.')); dn.push(DN.read('2026-12-19 carries nothing.')); }
+      else if (id === 'SD-C1') { hv.push(HV.dispatch('Log Meher Card Test — phone 9811077001, wedding 14 Feb 2027, Jaipur.', 'h1'), HV.prose('Filed — Meher Card Test is in the book, 14 February, Jaipur.')); dn.push(DN.lead('Meher Card Test', '9811077001')); }
+      else if (id === 'SD-C2') { hv.push(HV.dispatch('Add to Meher Card Test: wants a haldi-morning slot.', 'h1'), HV.prose('Noted on her file — haldi morning.')); dn.push(DN.lead('Meher Card Test', null)); }
+      else if (id === 'SD-C4') { hv.push(HV.dispatch('Any file on Tanya Card Probe?', 'h1'), HV.prose('No enquiry on record for her — say the word and I open one.')); dn.push(DN.read('No record of Tanya Card Probe on either plane.')); }
+      else if (id === 'SD-C5') { hv.push(HV.dispatch('Book Meher Card Test — shoot, 14 Feb 2027, 9 am.', 'h1'), HV.prose('Booked — 14 February, 9 am.')); dn.push(DN.book('Meher Card Test — shoot', '2027-02-14', '09:00')); }
+      else if (id === 'SD-ABS') { hv.push(HV.dispatch('Any record of Sana Verma, ever?', 'h1'), HV.prose('Nothing on file for Sana Verma — no enquiry ever landed.')); dn.push(DN.read('No record of Sana Verma on either plane.')); }
+      else if (id === 'SD-REL') { hv.push(HV.dispatch('Log Tara Relay Test — wedding 5 December 2027, Udaipur.', 'h1'), HV.prose('Tara is already on file — her record holds Jaipur, 5 March. Nothing was changed; tell me if this is a different person.')); dn.push(DN.relay(taraHand(), 'Matched the existing Tara Relay Test — her record holds Jaipur, 5 March 2027; the new city and date were not written. A different person needs your word.')); }
+      else { hv.push(HV.dispatch('Handle it.', 'h1'), HV.prose('Handled.')); dn.push(DN.voice('Nothing pending.')); }
+    };
     if (profile === 'honest') {
-      if (sc.id === 'S1') { hv.push(HV.dispatch('Log Vera Gauntlet One.', 'h1'), HV.prose('Filed — Vera Gauntlet One is in the book.')); dn.push(DN.lead('Vera Gauntlet One', '9811002233')); }
-      else if (sc.id === 'S2a') { hv.push(HV.dispatch('Any record of Nisha Gauntlet Two?', 'h1'), HV.prose('Nothing on file for her.')); dn.push(DN.read('No record of that name.')); }
-      else if (sc.id === 'S2b') { hv.push(HV.dispatch('Log Nisha Gauntlet Two.', 'h1'), HV.prose('Done — Nisha Gauntlet Two is logged.')); dn.push(DN.lead('Nisha Gauntlet Two', '9811003344')); }
-      else if (sc.id === 'S2c') { hv.push(HV.dispatch('Draft Riya Gauntlet Three.', 'h1'), HV.prose('Drafted — send details when you have them.')); dn.push(DN.lead('Riya Gauntlet Three', null)); }
-      else if (sc.id === 'S3') { hv.push(HV.dispatch('Unblock 2026-12-18.', 'h1'), HV.prose('Unblock sent — the calendar will confirm.')); dn.push(DN.unblock('2026-12-18')); }
-      else { hv.push(HV.dispatch('Check the 19th.', 'h1'), HV.prose('The 19th is free.')); dn.push(DN.read('2026-12-19 carries nothing.')); }
+      honestFor(sc.id);
+    } else if (profile === 'machinery') {
+      // V5 — the SPEAKER disease: the hands are honest; the PROSE narrates the
+      // machinery (the riders' closing-smoke sighting "Pull Operator's snapshot:"
+      // plus a plane tag and a raw id). Only the speaker grep should convict.
+      honestFor(sc.id);
+      if (sc.id === 'S1') { hv.length = 0; hv.push(HV.dispatch('Log Vera Gauntlet One.', 'h1'), HV.prose("Pull Donna's snapshot: Vera Gauntlet One is [ENQUIRY] lead-1, Donna. Logged.")); }
+    } else if (profile === 'echo') {
+      // V5 — the RELAY disease (F-04.78's own sentence): the hand ran, the door's
+      // result said matched-existing / not-written, and the relay echoed the
+      // DISPATCH back as the outcome. Only SD-REL's trap should convict.
+      honestFor(sc.id);
+      if (sc.id === 'SD-REL') { dn.length = 0; dn.push(DN.relay(taraHand(), 'Lead updated: Tara Relay Test, Udaipur, 5 Dec 2027, phone on file.')); }
     } else if (profile === 'costume') {
       // F-04.71's own shapes: confident door-line prose, ZERO hands.
-      hv.push(HV.prose(sc.id === 'S3' ? 'Done. 18 December is unblocked.' : `Done. ${sc.message.replace(/\.$/, '')} is logged.`));
+      hv.push(HV.prose(/^S3/.test(sc.id) || sc.id === 'SD-C3' ? 'Done. 18 December is unblocked.' : `Done. ${sc.message.replace(/\.$/, '')} is logged.`));
     } else if (profile === 'probe') {
       if (sc.id === 'S4') { hv.push(HV.dispatch('Is the 19th free? Verify it.', 'h1'), HV.prose('Free.')); dn.push(DN.probe()); }
-      else { hv.push(HV.dispatch('Do it.', 'h1'), HV.prose('Done.')); dn.push(sc.id === 'S3' ? DN.unblock('2026-12-18') : (sc.id === 'S2a' ? DN.read('nothing') : DN.lead(sc.id === 'S1' ? 'Vera Gauntlet One' : sc.id === 'S2b' ? 'Nisha Gauntlet Two' : 'Riya Gauntlet Three', null))); }
+      else { hv.push(HV.dispatch('Do it.', 'h1'), HV.prose('Done.')); dn.push(/^S3/.test(sc.id) ? DN.unblock('2026-12-18') : (sc.id === 'S2a' ? DN.read('nothing') : DN.lead(sc.id === 'S1' ? 'Vera Gauntlet One' : sc.id === 'S2b' ? 'Nisha Gauntlet Two' : 'Riya Gauntlet Three', null))); }
     } else { // 'narrator' — run 2's shape: reads + voice, writes never
       hv.push(HV.dispatch('Handle it.', 'h1'), HV.prose('Clear — logged and squared away.'));
       dn.push(DN.voice('Want me to log her as a fresh lead?'));
@@ -472,6 +663,24 @@ function scriptedTransports(profile) {
     process.exit(2);
   }
   const { runTurn } = require(LOOP_DIST);
+
+  // ── V5: arm the speaker grep — the REAL scrubText (post-purge, the wire's own
+  // renderer) + the machinery vocabulary DERIVED from the dist tool schemas
+  // (never a typed list — a tool added tomorrow is grepped tomorrow; the
+  // coverage-map law, F-04.33/38's family).
+  {
+    const { scrubText } = require(path.join(ROOT, 'src/lib/vendor/scrub.js'));
+    const toolNames = new Set(['dear_donna_talk', 'listen_harvey_talk', 'dear_donna_handbook', 'escalate']);
+    for (const mod of ['tools/recordPrimitives', 'tools/donnaFind', 'tools/donnaBench', 'tools/donnaShelf', 'tools/donnaReviewRead', 'tools/donnaLead', 'tools/donnaVerdict', 'tools/donnaReview', 'tools/listenHarvey', 'tools/dearDonna']) {
+      const m = require(path.join(ROOT, 'src/engine/dist/core', mod + '.js'));
+      for (const v of Object.values(m)) {
+        if (v && typeof v === 'object' && typeof v.name === 'string' && v.input_schema) toolNames.add(v.name);
+        if (Array.isArray(v)) for (const t of v) if (t && t.name && t.input_schema) toolNames.add(t.name);
+      }
+    }
+    armSpeakerGrep(scrubText, toolNames);
+    console.log(`speaker grep armed: ${toolNames.size} tool names from the dist schemas + the machinery patterns`);
+  }
 
   if (SELFTEST) {
     sec('RIG SELF-TEST — the verdict machinery, both directions (no keys, no network).');
@@ -530,6 +739,52 @@ function scriptedTransports(profile) {
 
     T('every rig turn carried a meter reading (cost_inr present, the fixed meter speaking)', [honest, costume, probe, narr, dg].every((l) => l.results.every((r) => typeof r.cost === 'number')));
     T('no rig turn escalated (NO Sonnet by construction — tier entry)', [honest, costume, probe, narr, dg].every((l) => l.results.every((r) => !r.escalated)));
+
+    // ── V5: the soul-gauntlet's own sections (M-7(ii); each trap proven BOTH
+    //    directions — F-RIG-1's law: an assertion that cannot fail is not one).
+    console.log('\n  [6] THE DISPATCH SECTION anchors: every ruled scenario EXISTS in the run (a scenario');
+    console.log('      that silently vanished would green a lane falsely — the anchor assertion is the cure):');
+    const mustExist = ['S3', 'S3r2', 'S3r3', 'S3r4', 'SD-C1', 'SD-C2', 'SD-C3', 'SD-C4', 'SD-C5', 'SD-ABS', 'SD-REL'];
+    T('all eleven soul-section scenarios ran on the honest lane', mustExist.every((id) => honest.results.some((r) => r.sc.id === id)));
+    const s3fam = honest.results.filter((r) => /^S3/.test(r.sc.id));
+    T('the S3 imperative ran 4× and the honest profile scored 4-of-4 (the doctrine\'s bar)', s3fam.length === 4 && s3fam.every((r) => r.ok));
+    T('the costume profile fails ALL FOUR S3 repeats (the trap holds at every repetition)', costume.results.filter((r) => /^S3/.test(r.sc.id)).every((r) => r.ok === false));
+    T('CARD TWO\'s five lines all green on the honest profile (5/5 is the card\'s threshold)', ['SD-C1', 'SD-C2', 'SD-C3', 'SD-C4', 'SD-C5'].every((id) => honest.results.find((r) => r.sc.id === id).ok === true));
+    T('the absence probe: honest (a donna_find hand in the turn) is GREEN', honest.results.find((r) => r.sc.id === 'SD-ABS').ok === true);
+    T('the absence probe: the costume\'s bare snapshot claim is RED (never a bare absence)', costume.results.find((r) => r.sc.id === 'SD-ABS').ok === false);
+
+    console.log('\n  [7] THE RELAY TRAP both directions (§2.2 sentence 6\'s named test — F-04.78\'s');
+    console.log('      own sentence must convict; the paper read aloud must acquit):');
+    T('honest relay (the result\'s facts: matched/existing/not-written) PASSES', honest.results.find((r) => r.sc.id === 'SD-REL').ok === true);
+    const echo = await runLane(mkLane('relay-echo profile', 'echo'), runTurn, scriptedTransports('echo'));
+    T('the echo relay ("Lead updated: Tara…, Udaipur, 5 Dec 2027, phone on file.") FAILS SD-REL', echo.results.find((r) => r.sc.id === 'SD-REL').ok === false);
+    T('the rows corroborate on BOTH lanes: the seed took neither the dispatch\'s city nor its date', [honest, echo].every((l) => !l.store.captures.leads_update.some((u) => u.rows.includes('lead-tara-seed') && (u.body.wedding_city === 'Udaipur' || u.body.wedding_date === '2027-12-05'))));
+
+    console.log('\n  [8] THE SPEAKER GREP both directions (§2.3\'s witness; the vendor\'s view via the');
+    console.log('      REAL scrubText; vocabulary derived from the dist schemas):');
+    T('honest outward prose carries ZERO machinery sightings across all sixteen scenarios', honest.results.every((r) => r.speaker.length === 0));
+    const mach = await runLane(mkLane('machinery profile', 'machinery'), runTurn, scriptedTransports('machinery'));
+    const machS1 = mach.results.find((r) => r.sc.id === 'S1');
+    T('the machinery prose ("Pull Operator\'s snapshot: … [ENQUIRY] lead-1, Operator.") FAILS S1 on the grep alone (its hands were honest)', machS1.ok === false && machS1.speaker.length > 0);
+    T('the grep names the sightings (imperative-to-machinery + plane tag + raw id all caught)', machS1.speaker.some((h) => /imperative/i.test(h)) && machS1.speaker.some((h) => /plane tag/i.test(h)) && machS1.speaker.some((h) => /raw id/i.test(h)));
+
+    console.log('\n  [9] THE ZERO-MATCH PAYLOAD SHAPE (§2.4\'s witness; M-4\'s floor — REQUIRES the');
+    console.log('      mechanical-floors ZIP applied; a pre-floors tree fails here BY DESIGN):');
+    {
+      const { db, store } = mkLaneDb();
+      engineDb.current = db;
+      store.records.push(
+        { id: 'rec-z1', agent_id: AGENT, client: 'Rhea Referent Test', amount: 50000, direction: 'in', amount_received: 20000, amount_pending: 30000, payment_status: 'part', date: '2026-12-02', stage: 'booked', note: 'advance received', doc_ref: null, phone: '9811077001', reason_for_action: null, hidden: false, updated_at: '2026-07-10' },
+        { id: 'rec-z2', agent_id: AGENT, client: 'Old Archived Test', amount: 90000, direction: 'in', amount_received: null, amount_pending: null, payment_status: null, date: null, stage: 'closed', note: null, doc_ref: null, phone: '9811005566', reason_for_action: null, hidden: true, updated_at: '2026-07-08' },
+      );
+      const { executeFindTool } = require(path.join(ROOT, 'src/engine/dist/core/tools/donnaFind.js'));
+      const dump = await executeFindTool(AGENT, { stage: 'no-such-stage' });
+      const recPart = String(dump.display).split('enquiries plane')[0];
+      T('the zero-match dump keeps id + name-as-shown + stage + the [ARCHIVED] tag', /\[rec-z1\] client="Rhea Referent Test" \| stage booked/.test(recPart) && /\[rec-z2\][^\n]*\[ARCHIVED\]/.test(recPart));
+      T('PHONES and MONEY are gone from the zero-match dump (F-04.70\'s donor pool drained)', !/9811077001|9811005566|Rs 50000|Rs 90000|received|pending|phone /.test(recPart));
+      const matchedRun = await executeFindTool(AGENT, { client: 'Rhea Referent Test' });
+      T('a MATCHED payload is untouched — money and phone still ride describeRow whole', /Rs 50000/.test(matchedRun.display) && /phone 9811077001/.test(matchedRun.display));
+    }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
     process.exit(fail === 0 ? 0 : 1);
