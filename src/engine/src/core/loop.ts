@@ -17,9 +17,11 @@ import {
 } from './models.js';
 import { HARVEY_SOUL } from './harveySoul.js';
 import { CONSULTANT_HARVEY_SOUL } from './consultantHarveySoul.js';
+import { ADVISOR_LENS } from './advisorLens.js';
 import { ESCALATE_TOOL } from './tools/donnaLead.js';
 import { DEAR_DONNA_TALK_TOOL } from './tools/dearDonna.js';
 import { DEAR_DONNA_HANDBOOK_TOOL } from './tools/dearDonnaHandbook.js';
+import { JOT_ADVICE_TOOL, executeJotAdvice } from './tools/jotAdvice.js';
 import { snapshotText, runDonnaTurn, type DonnaSession } from './donna.js';
 import type { ViewRow } from './snapshotTypes.js';
 import { todayLine, todayISO } from './today.js';
@@ -64,6 +66,15 @@ export type TurnResult = {
   // (chat.js::donnaOpenLine) reads it beside the turn's nested donna_calls — the
   // only convicting reader, per D-1.
   pendingDonnaQuestion?: string;
+  // TDW_06 P6a: the room this turn ran in (0080's victor_mode). 'advisor' when the
+  // advisory lens was active, 'business' otherwise; ABSENT for consult (victor_mode
+  // is inert there — A-1's precedence). NOTE (§0.2, reported not improvised): the
+  // spec's "mode stamps message meta" has NO column to land in — engine.messages is
+  // 6 cols with no meta, and 0080 (ruled + applied) added none. The mode is surfaced
+  // HERE for the ledger/bench, and is ALSO row-witnessed by turn shape (an advisor
+  // turn carries jot_advice/handbook hands and ZERO donna dispatches — D-1's own
+  // reader). A dedicated meta column is a CE call; see the delivery disclosure.
+  victor_mode?: 'business' | 'advisor';
 };
 
 // Live beats — surfaced as they happen, ONLY when runTurn is handed an onEvent
@@ -201,7 +212,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
 
   const { data: agent, error } = await supabase
     .from('agents')
-    .select('id, tier, display_name, profession_preset, timezone, mode')
+    .select('id, tier, display_name, profession_preset, timezone, mode, victor_mode')
     .eq('id', agentId)
     .maybeSingle();
   if (error) throw new Error(`agent lookup failed: ${error.message}`);
@@ -220,6 +231,20 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // owner/snapshot/facts, no first-meeting gate — ephemeral. The whole Codex rides as
   // his preparation. Everything advisory does with Donna is skipped below when consult.
   const isConsult = (agent.mode as string | null) === 'consult';
+  // ADVISOR MODE (TDW_06 P6a, S-10; 0080's engine.agents.victor_mode).
+  // PRECEDENCE (A-1, CE-ruled, sited here as ruled): mode='consult' rooms IGNORE
+  // victor_mode — the dreamai consult switch stays sovereign (consultantHarvey, no
+  // Donna, no tools); mode='advisory' rooms are GOVERNED by it. A row is never both,
+  // so isAdvisor is gated on !isConsult by construction. In advisor mode Victor keeps
+  // his soul (harveySoul, untouched) AND his OWNER, gains the advisory lens, carries
+  // the Codex shelf — and LOSES the estate (A-3): no snapshot, facts, calendar,
+  // scratchpad, shelf, or Donna. No claim surface, no neighbouring-line donor pool
+  // (F-04.70's mechanism removed by construction). His only hand is jot_advice; the
+  // dispatch/claim doctrines have no subject in this room.
+  const isAdvisor = !isConsult && (agent.victor_mode as string | null) === 'advisor';
+  // The estate lives ONLY in a business room. Consult is ephemeral (no owner even);
+  // advisor keeps the OWNER but drops all estate. One predicate for the reads below.
+  const estateInRoom = !isConsult && !isAdvisor;
 
   // ── Wake-up read: working thread + durable facts + Donna's snapshot ────────
   const { conversationId, thread } = await getOrCreateConversation(agentId, args.conversationId);
@@ -227,10 +252,10 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   const { block: ownerBlock, consultDone } = isConsult
     ? { block: '', consultDone: true }
     : await loadOwner(agentId); // who he works for — Donna's briefing
-  const wasFirstMeeting = !isConsult && !consultDone; // consult has no first-meeting gate
-  const factsBlock = isConsult ? '' : await loadFacts(agentId);
-  let snapshot = isConsult ? '' : await snapshotText(agentId); // Donna hands Harvey the real state
-  const donnaMsgs = isConsult ? '' : await donnaMessages(conversationId); // his Donna exchange this conversation (session-scoped)
+  const wasFirstMeeting = estateInRoom && !consultDone; // consult has no first-meeting gate; advisor never runs/discharges the owner consult
+  const factsBlock = estateInRoom ? await loadFacts(agentId) : '';
+  let snapshot = estateInRoom ? await snapshotText(agentId) : ''; // Donna hands Harvey the real state — business room only
+  const donnaMsgs = estateInRoom ? await donnaMessages(conversationId) : ''; // his Donna exchange this conversation (session-scoped)
 
   // ── Document Shelf: PASSIVE sight of what Donna holds (Bible 5.1.6). The titles
   //    of every live Brief stand in Harvey's dynamic context each turn — full title
@@ -241,7 +266,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   //    document exists, by name, so he routes and names it cleanly. Dynamic (never
   //    cached): changes when documents are added. Consult mode has no Donna, no shelf.
   let shelfBlock = '';
-  if (!isConsult) {
+  if (estateInRoom) {
     const { data: shelfRows } = await supabase
       .from('briefs')
       .select('title, pages')
@@ -316,15 +341,20 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // schemas). The earlier "~1.1k tokens, below the cache minimum" note here was STALE
   // by an order of magnitude — her tool schemas alone dwarf the 2048-token floor;
   // UNIT_ECONOMICS' ₹9.59 fire alarm was the receipts. Cured this sitting.
-  const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL) + fieldBlock;
+  // ADVISOR MODE (A-3): the lens sits between his soul and the field/Codex block —
+  // static by nature, so it lands in the cached prefix once per window (cache law,
+  // guardrail 3), never touched by dynamic content. The fieldBlock (whole-SMM +
+  // trade index) is the same the business room builds (A-2: whole-SMM stands); the
+  // lens is his RELATIONSHIP to it, not a duplicate of the Codex.
+  const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL) + (isAdvisor ? ADVISOR_LENS : '') + fieldBlock;
   // The clock: today's date, in the owner's timezone, in the DYNAMIC (never-cached)
   // block — it changes daily and must never be cached stale. Reaches Harvey here;
   // Donna reads the same date via todayLine() in her own runtime.
   const today = todayLine(agent.timezone as string | null);
   const todayIso = todayISO(agent.timezone as string | null);
   const buildSystem = (): Anthropic.TextBlockParam[] => {
-    const calBlock = args.calendarSnapshot ? `\n\n${args.calendarSnapshot}` : '';
-    const actBlock = args.recentActivity ? `\n\n${args.recentActivity}` : ''; // TDW_02 P4 (CE-4), never cached
+    const calBlock = (estateInRoom && args.calendarSnapshot) ? `\n\n${args.calendarSnapshot}` : '';
+    const actBlock = (estateInRoom && args.recentActivity) ? `\n\n${args.recentActivity}` : ''; // TDW_02 P4 (CE-4), never cached; estate = business room only
     const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
@@ -359,7 +389,14 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // Consult Harvey has NO Donna and NO tools — he is standalone, all knowledge already
   // in his preparation. Advisory keeps the Donna line, handbook lookup, and escalate.
   const tools: Anthropic.Tool[] = [];
-  if (!isConsult) {
+  if (isAdvisor) {
+    // ADVISOR ROOM (A-3): Donna dispatches DISABLED — no dear_donna_talk, no estate
+    // hand, so there is no claim surface. The Codex PULL stays (a codex read is not
+    // an estate read — A-3). The one write is jot_advice. No escalate (E-3 keeps it
+    // off every tier regardless).
+    if (handbook) tools.push(DEAR_DONNA_HANDBOOK_TOOL);
+    tools.push(JOT_ADVICE_TOOL);
+  } else if (!isConsult) {
     tools.push(DEAR_DONNA_TALK_TOOL);
     if (handbook) tools.push(DEAR_DONNA_HANDBOOK_TOOL);
     if (canEscalate(tier)) tools.push(ESCALATE_TOOL);
@@ -561,6 +598,12 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         const ref = (tu.input as { ref?: string }).ref ?? '';
         const section = await getSection(field, ref);
         result = section ?? `No section "${ref}" found in your reference. Check the index for the right number.`;
+      } else if (tu.name === 'jot_advice') {
+        // The advisory room's ONE hand: one write, zero reads (tools/jotAdvice.ts).
+        // Its result sentence is on the veto list. It is recorded in tool_calls
+        // (D-1's reader) but is NOT a Donna dispatch — an advisor turn carries ZERO
+        // donna_calls by construction, which is exactly how the ledger reads the room.
+        result = await executeJotAdvice(agentId, tu.input as { note?: string });
       } else if (tu.name === 'escalate') {
         result = 'Already escalated.';
       } else {
@@ -643,5 +686,6 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     view: turnView,
     assistant_message_id: assistantMessageId || undefined, // Q-B4-6(b): the row the door may patch
     pendingDonnaQuestion: pendingDonnaQuestion || undefined, // D-6: absent when no open question
+    victor_mode: isConsult ? undefined : (isAdvisor ? 'advisor' : 'business'), // TDW_06 P6a: inert for consult
   };
 }
