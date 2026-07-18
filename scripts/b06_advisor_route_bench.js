@@ -114,6 +114,18 @@ const mkReq = (supabase, tier, agentId) => ({ app: { locals: { supabase } }, ven
     } finally { global.setImmediate = realSI; }
   }
 
+  console.log('\n  [3] THE MODE-DOOR READ (GET /mode, readAgentVictorMode) — the chip reads current state:');
+  {
+    const { readAgentVictorMode } = require(path.join(ROOT, 'src/api/vendor-engine/vendorMode.js'));
+    const adv = mkSupabase({ 'agent-real': 'advisor' });
+    const biz = mkSupabase({ 'agent-real': 'business' });
+    const mis = mkSupabase({});
+    T('reads advisor for an advisor agent', (await readAgentVictorMode(adv, 'agent-real')) === 'advisor');
+    T('reads business for a business agent', (await readAgentVictorMode(biz, 'agent-real')) === 'business');
+    T('defaults to business on a read miss (0080 NOT NULL default)', (await readAgentVictorMode(mis, 'agent-none')) === 'business');
+    T('the read keyed on the passed agentId (server-resolved by the door)', adv.__queried.agentsIdEq === 'agent-real');
+  }
+
   console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
   process.exit(fail === 0 ? 0 : 1);
 })().catch((e) => { console.error('BENCH CRASH:', e && e.stack || e); process.exit(1); });

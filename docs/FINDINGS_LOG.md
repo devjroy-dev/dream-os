@@ -2245,3 +2245,31 @@ The chip pair, engine/door half (CE-descoped: PWA chip is the sibling `dreamos-p
 4. **buildLlmForTurn/fireHarvest/advisorHarvestGate/readVictorMode are exported** additively for the bench — no behavioural change to the router export.
 
 **Sequence: this engine/door half → the PWA sibling ZIP (`dreamos-pwa`: the R-2 Business·Advisor chip — distinct control, victor_mode vocabulary end to end, zero shared state with the nav ModePill, server-persisted via `PATCH /api/v2/vendor-e/mode`, no localStorage; chip words on the founder's veto, rendered in the delivery). F-06.4 closes on: routing live at origin + the founder's one live probe in the routed room. `0082` rides whichever ZIP opens first with the founder's run.**
+
+---
+
+## TDW_06 P6d (chip pair — PWA HALF + the mode-door GET): the Business·Advisor chip, server-persisted
+
+Sibling pair (repos never share a terminal): a small **dream-os** addendum (the mode-door GET, so the chip can read its state) + the **dreamos-pwa** R-2 chip. The engine/door half (P6c) landed at 4cb45ab and the 0082 seed is live at origin (founder-applied) — routing is live; F-06.4 now needs only the founder's one live probe in the routed room.
+
+### DREAM-OS ADDENDUM — the mode-door GET (`vendorMode.js`):
+- `GET /api/v2/vendor-e/mode -> { victor_mode }` (the PATCH door was write-only; the chip needs a read). Same chain `requireAuth → resolveVendor → resolveAgent`; reads `engine.agents.victor_mode` by the server-resolved agentId via the exported `readAgentVictorMode` helper, defaulting to 'business' (0080's NOT NULL default) on a miss.
+- **Bench:** `b06_advisor_route_bench.js` gains section [3] (the read helper: advisor/business/miss + keyed on the passed agentId). **ALL PASS 16/16** (was 12/12).
+
+### DREAMOS-PWA — the R-2 Business·Advisor chip:
+- **`components/vendor/VictorModeChip.tsx`** — a DISTINCT control: zero shared state/types/hooks with the nav ModePill (`useVendorMode`, localStorage 'vendor_app_mode'). victor_mode vocabulary end to end; borrows only the Atelier pill styling for consistency, per R-2.
+- **`hooks/vendor/useVictorMode.ts`** — server-backed, **no localStorage**: reads current mode from the GET on mount, optimistic flip on change, re-reads the server truth on failure so the chip never lies.
+- **`lib/vendor/api/vendor.ts`** — `fetchVictorMode()` (GET) + `setVictorMode()` (PATCH) through the door; distinct types (`VictorMode`, `VictorModeResponse`).
+- **Placement:** rendered on the AI/chat surface (`app/vendor/page.tsx`) just under the Header — where victor_mode governs Victor's room. **Placement AND the chip words ('Business' / 'Advisor') ride the founder's veto** (a render accompanies the delivery).
+
+### GATES:
+- **dream-os:** `build:engine` clean; rig-selftest **53/53** (unperturbed); door bench **16/16**. `0082` already applied by the founder; nothing ran against production; dist not shipped.
+- **dreamos-pwa:** whole-tree **`tsc --noEmit` rc=0** (chip + hook + client + the page edit). No localStorage introduced; the nav ModePill machinery untouched.
+
+### EXECUTOR DISCLOSURE (each one-word vetoable):
+1. **the chip reads the server on mount, never localStorage** — a cached local victor_mode would misreport which room Victor is serving; the server is the sole truth.
+2. **optimistic flip with a server re-read on failure** — the chip shows the change immediately but reconciles to the server if the PATCH fails, never a silent divergence.
+3. **placement is the AI surface under the Header** — victor_mode governs Victor's room, so the chat surface is its natural home; the founder vetoes placement and words.
+4. **the words are minted, not final** — 'Business' / 'Advisor' mirror the 0080 vocabulary; the founder's veto governs the rendered words.
+
+**F-06.4 closure now stands on: the founder's one live probe in the routed room (routing + seed already live at origin; S5-on-deepseek satisfied by the rig seating + DeepSeek's 2-for-2).**

@@ -19,6 +19,25 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const ALLOWED_FIELDS = ['victor_mode'];
 const VICTOR_MODES   = ['business', 'advisor']; // mirrors 0080's CHECK exactly
 
+// Read the agent's victor_mode, defaulting to 'business' (0080's NOT NULL default) on a
+// miss. Exported for the bench. Scoped to the SERVER-RESOLVED agentId by the caller.
+async function readAgentVictorMode(supabase, agentId) {
+  const { data, error } = await supabase.schema('engine')
+    .from('agents').select('victor_mode').eq('id', agentId).maybeSingle();
+  if (error) throw error;
+  return (data && data.victor_mode) === 'advisor' ? 'advisor' : 'business';
+}
+
+// GET /api/v2/vendor-e/mode -> { victor_mode } — the chip reads its current state here.
+router.get('/', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
+  try {
+    const victor_mode = await readAgentVictorMode(req.app.locals.supabase, req.agentId);
+    return okRes(res, { victor_mode });
+  } catch (e) {
+    return errRes(res, 500, 'Could not read victor_mode.');
+  }
+}));
+
 // PATCH /api/v2/vendor-e/mode   body: { "victor_mode": "business" | "advisor" }
 router.patch('/', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(async (req, res) => {
   const body = req.body || {};
@@ -45,3 +64,4 @@ router.patch('/', requireAuth, resolveVendor(), resolveAgent(), asyncHandler(asy
 }));
 
 module.exports = router;
+module.exports.readAgentVictorMode = readAgentVictorMode; // TDW_06 P6d: benched read helper
