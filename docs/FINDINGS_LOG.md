@@ -2516,3 +2516,31 @@ The M2 brief said "delete the retired Twilio code at M2 close and re-baseline `b
 2. **M2b — Twilio sunset** (gated on BOTH lanes confirmed live on Meta): delete `whatsapp.js`'s Twilio path + webhookCore's Twilio functions + the `/webhook/twilio-status` routes; re-baseline `b5_webhookcore` (real count then). **F-05.2 FULLY CLOSES here** (all lanes Meta).
 
 ### Block 05 — F-04.65 · P1 · P2 · P3 (MvA 🟢 · MvB partial 🟢, opener-template test OPEN) · **Transport migration BUILD-COMPLETE 🟢 (both lanes dormant; cutovers + M2b sunset founder-gated)**. F-05.1 🟢 · F-05.2 (cure-built, per-cutover; fully closes at M2b) · F-05.3 · F-05.4 (crew→04.5) · F-05.5 (straggler-template→P4). **PATH: cutovers → M2b (Twilio sunset) → P4 (crons + the F-05.5 content pass) → 05 tail (mechanical engine migration, credit alert) → certification.** The P3 opener-template test stays OPEN throughout.
+
+---
+
+## TDW_05 — OTP/AUTH CUTOVER-SAFETY AUDIT · F-05.6 FILED · BRIDE CUTOVER GATED (CE-34, sixth chair, 2026-07-19)
+
+**Re-derived at origin `f14e5a4` (the audit's tip; HEAD advanced past `a855fa6` via `e7cffe1` (M2 record) + `f14e5a4` (cutover charter) — the founder's pushes). Pre-flight audit caught by the founder before the bride cutover: OTP/auth sends go DIRECT via Twilio and would break signup at cutover.**
+
+### F-05.6 — FILED, OPEN (blocker; fix ruled, build pending). OTP/auth is Twilio-coupled to the migrating lane numbers.
+**Census re-derived at origin — the complete Twilio-bypass surface is exactly FIVE direct `getTwilio().messages.create` sends** (every other outbound routes through `whatsapp.js`/`sendWa`; the dozen other `.messages.create` sites are the Anthropic LLM client, verified — the decisive check for any `getTwilio`/`twilioClient` send outside the five returned NONE):
+1. `couple/auth.js:188` `/send-otp` (login) — from `BRIDE_WA` (`BRIDE_WA_NUMBER`→+14787788550)
+2. `couple/auth.js:241` `/forgot-pin` (reset) — from `BRIDE_WA`
+3. `circle/join.js:144` `/send-otp` (circle_join) — from `BRIDE_WA`
+4. `vendor/auth.js:191` `/send-otp` (login) — from `VENDOR_WA` (`TDW_WA_NUMBER`→+917982159047)
+5. `vendor/auth.js:244` `/forgot-pin` (reset) — from `VENDOR_WA`
+**The hinge:** OTP reads `BRIDE_WA_NUMBER`/`TDW_WA_NUMBER`; the cutover/`metaLaneFor` reads `BRIDE_WHATSAPP_NUMBER`/`VENDOR_WHATSAPP_NUMBER` — divergent var names, same default physical numbers. So by default the OTP from-number IS the migrating lane number. **At cutover the number leaves Twilio; the OTP `messages.create({from: <migrated number>})` is rejected by Twilio (unowned sender) → 500, `otp_session` deleted, signup/login/PIN-reset/circle-join hard-fail.** No SMS fallback exists — WhatsApp-only, breaks hard. Bride cutover breaks sites 1–3; vendor cutover breaks 4–5. Security invariants verified (bcrypt-hashed OTP, phone-only logs) — any fix MUST preserve them.
+**Secondary (kills the naive fix):** re-pointing these through `sendWhatsApp` would NOT work on a Meta-live lane — `sendMetaText` is free-form, and a business-initiated window-closed OTP requires an approved AUTHENTICATION template (none in the registry); the F-05.2 opt-out gate would also wrongly block a transactional OTP. The Meta path needs a purpose-built auth template, not the existing sender.
+
+### CURE — RULED (executor recommendation adopted, verified sound):
+- **(b) NOW — the unblock:** re-point the five sends to a dedicated `OTP_WA_NUMBER` that never migrates (kept on Twilio). No Meta approval on the critical path, decouples signup from every cutover, robust to the env-value ambiguity, clause-3-sanctioned (Twilio as the transactional fallback). ~5-line from-resolution change in the 3 files; all security invariants preserved. **A SEPARATE build sitting implements it; CE re-derives before sealing.**
+- **(a) DURABLE — file early, adopt later:** the Meta AUTHENTICATION-category OTP template (own the transport per clause 1). File now so approval latency is off the critical path (≥2 templates for the Dream Wedding / DreamAI brand split; carve OTP out of the F-05.2 gate; founder veto on the reshaped auth copy). Adopt after (b); not a blocker.
+- **(c) LATER — SMS fallback** (DLT-gated, pure resilience). Trails both cutovers.
+
+### GATE (added to the cutover charter §6):
+- **Before the BRIDE cutover (MUST):** F-05.6 fix (b) for sites 1–3 landed + verified — else +14787788550 leaving Twilio breaks couple login/reset/circle-join.
+- **Before the VENDOR cutover (MUST):** fix (b) for sites 4–5. Can trail the bride cutover.
+- **Env-value note (moot once (b) lands):** the Railway values of `BRIDE_WA_NUMBER`/`TDW_WA_NUMBER` vs `BRIDE_WHATSAPP_NUMBER`/`VENDOR_WHATSAPP_NUMBER` determine current exposure; (b) makes OTP survive any cutover regardless.
+
+### STATE: **the bride cutover is HELD pending F-05.6 fix (b).** Block 05 transport migration stays BUILD-COMPLETE (both lanes dormant); the cutover sequence now runs: F-05.6 (b) build+seal → bride cutover → vendor cutover → M2b (Twilio sunset; F-05.2 fully closes) → P4. F-05.1 🟢 · F-05.2 (per-cutover) · F-05.3 · F-05.4 (crew→04.5) · F-05.5 (straggler→P4) · **F-05.6 (OTP Twilio-coupling; fix (b) ruled, build pending).** P3 opener-template test stays OPEN.

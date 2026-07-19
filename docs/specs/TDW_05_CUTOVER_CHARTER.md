@@ -27,8 +27,9 @@ Witnessed live on the test accounts, watched in the Railway logs:
 Reverse the provisioning act: unset `BRIDE_PHONE_NUMBER_ID` (and/or move the number back to Twilio) and re-point the webhook to `/webhook/whatsapp`. The retained Twilio path resumes byte-identical immediately. Report the red to the CE with the row id / log tell; it files as a finding and the CE charters the fix before re-attempting. **Do not run M2b (the Twilio delete) while any lane can still need rollback.**
 
 ## 6. Gates
+- **Before ANY cutover (MUST — F-05.6):** the lane's OTP/auth Twilio-coupling is cured. The five OTP sends (`couple/auth.js` ×2, `circle/join.js`, `vendor/auth.js` ×2) go direct via Twilio from the lane numbers and would break signup/login/PIN-reset/circle-join at cutover (the migrating number leaves Twilio). Fix (b) — a dedicated non-migrating `OTP_WA_NUMBER` — must land + be verified for sites 1–3 before the BRIDE cutover, and sites 4–5 before the VENDOR cutover. See CE-34 / F-05.6.
 - **Before:** M1a + M1b (bride) sealed — DONE (CE-31/CE-32). Vendor: M2 sealed (CE-33).
-- **After both lanes are cut over and witnessed:** M2b (Twilio sunset) deletes the retained Twilio code and re-baselines `b5_webhookcore`. Not before — rollback safety depends on the Twilio path staying present until both lanes are confirmed live on Meta.
+- **After both lanes are cut over and witnessed:** M2b (Twilio sunset) deletes the retained Twilio code and re-baselines `b5_webhookcore`. Not before — rollback safety depends on the Twilio path staying present until both lanes are confirmed live on Meta. (Note: `OTP_WA_NUMBER` stays on Twilio past M2b — the sunset removes the conversational Twilio transport, not the dedicated OTP number.)
 
 ## 7. Seal
 The CE seals each cutover on the founder's witnessed evidence (log tells + handset delivery + content-identity), records it (CE-NN + masterplan 05-row), and activates F-05.2 for that lane in the record. F-05.2 fully closes at M2b (all lanes Meta).
