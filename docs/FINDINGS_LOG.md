@@ -2389,3 +2389,15 @@ With RIG-2 seating the lens truly, the advisor room (always routed to the DeepSe
 ### GATES: `checker_bench` **101/101 byte-stable** (app doors no regression) · `calendarSignals.js` sealed after the port (0-line across the bench + smoke sittings) · **W-1 absolute — zero prompt/soul/voice diff** · `scrub.js` / `leads.js` / guarded set 0-line · `node --check` clean.
 
 ### SEAL: F-04.65 CLOSED (🟢), F-04.66 CLOSED (🟢, folded). Block 05's mechanical spine begins. **NEXT: P1 — webhookCore + the race fix + dead letters** (the WEBHOOK spec's first phase). The couple-agent soul remains the block's CLOSING sitting (addendum §2). 06's advisor arc (F-06.4) stays PARKED — revisit after 05, per founder sequencing.
+
+---
+
+## TDW_05 P1 + P2 — SEALED (CE-27 · CE-28, fifth chair, 2026-07-19)
+
+### CE-27 — P1 (webhookCore) SEALED.
+Landed & CE-verified: `553f2d2` (Movement A, byte-identical extraction — bench 43/43, non-vacuous by mutation, reference == sealed HEAD) · `edf3551` (Movement B — dedupe `message_sid`+LRU+23505 backstop per RF-1; status-callback race retry 3×2s→`callback_unmatched`; dead letters `failed_turns` + `/api/v2/admin/failed-turns` list/replay/discard; B bench 56/56 non-vacuous; replay safety — auth + config-gate + `isInternalReplay` withheld-by-default) · `6524306` (migrations `0083_failed_turns` + `0084_message_sid_dedupe` committed to match the applied prod schema — the record-behind-prod gap closed; P1→P2 handoff banked). W-1 clean throughout; F-04.65 sealed and untouched. **OPEN, carried forward:** the cross-service replay *re-drive* hop (unexercised until a real thrown turn in prod / a watched synthetic).
+
+### CE-28 — P2 (template registry + Meta submission) SEALED.
+Landed & CE-verified: `a19ca9d` (`docs/TEMPLATES.md` — six bodies, provisional copy, founder-veto) · `1af1bdc` (registry `templates.js` keyed by Meta name+language — **no `twilioTemplateSid`, P-06.T Meta-direct**; `sendWa` gate — window-open→free-form, else approved-template-or-typed-refusal, never a silent drop; brideCron rewired byte-safe in-window; bench 49/49 non-vacuous by `isApproved` mutation) · `5595641` (**all six Meta-approved same-day** — front-loading worked; registry flipped to `approved`; bench re-asserted not weakened). **The live Meta Cloud API send transport is DEFERRED to P3** — `defaultSendTemplate` throws `WaTemplateTransportNotWiredError`, caught by `routeNudge` as a graceful refuse-and-log; out-of-window sends go live when P3 wires the POST. Correct P2/P3 boundary, not a gap.
+
+### STATE AT BANK: Block 05 — F-04.65 (🟢) · P1 (🟢) · P2 (🟢). NEXT: P3 (prospect lane + the live Meta transport swap). Block 06's advisor arc (F-06.4) stays PARKED — revisit Sitting IV after 05. The fifth chair banks here; see `docs/specs/TDW_CE_SUCCESSION_NOTE_5.md`.
