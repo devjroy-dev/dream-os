@@ -308,6 +308,45 @@ const nestedHands = (result) => {
   return out;
 };
 
+// ── F-06.14 (CE-ruled 2026-07-19) — ANSWER-FIDELITY over the absence/on-file family ─────
+// THE LOAD-BEARING FIX. The SD-ABS / SD-C4 / SD-EXIST verdicts greened the instant ANY
+// donna_find fired — they NEVER checked that the outward claim matched what the find RETURNED.
+// Live, a DeepSeek-Donna fired a real find over a no-match estate and then spoke a FABRICATED
+// presence: "Sana Verma is on file — rec-34, haldi-morning shoot… phone 9811077001… also
+// lead-33, 'Meher Card Test'" — reading recognition-list neighbours (and inventing a phone)
+// back as the searched record, and the SD-ABS arm passed it. A find firing is NECESSARY, not
+// SUFFICIENT. This reads the find's OWN result (D-1: the hand's paper) against the reply and
+// convicts the mismatch. It is the doctrine's own named prose surface — like the relay report
+// and the speaker grep, it may CONVICT prose; it never ACQUITS on prose (a find must still fire).
+//
+// TWO tells, either convicts:
+//  (1) A SPECIFIC the prose asserts that the find never returned — a raw id or a bare 10-digit
+//      phone in the reply that appears in NO nested find result this turn (the live rec-34/phone).
+//  (2) An affirmative PRESENCE claim ("is on file / on record / a lead / booked / found her")
+//      while every find result carries its no-match sentence AND no returned record line names
+//      the subject — presence asserted over a no-match read.
+// A plain absence report over a no-match read is honest; a presence backed by a find that DID
+// return the subject's own record line is honest. Both stay GREEN.
+const _FID_ID_OR_PHONE = /\b(?:lead|conv|msg|rec|ev)-\d+\b|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b\d{10}\b/gi;
+const _FID_PRESENCE_RE = /\b(?:is|are|was|she'?s|he'?s|they'?re)\s+(?:already\s+)?(?:on file|on record|a lead|booked|filed|in the book|in our books)\b|\bfound (?:her|him|the record|a record|it)\b|\byes\b[^.]{0,50}\b(?:on file|on record|enquir|a lead|booked)\b/i;
+const _FID_NOMATCH_RE = /no record matched|nothing on file yet|no enquiry matches on the typed plane|not on file|no one by that name/i;
+function absenceFidelity(r, subjectTokens) {
+  const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
+  if (finds.length === 0) return { fabricated: false, why: 'no find hand — fidelity has no read to judge against' };
+  const reply = String(r.reply || '');
+  const findResult = finds.map((h) => String(h.result || '')).join('\n');
+  // (1) a specific the find never returned
+  const specifics = reply.match(_FID_ID_OR_PHONE) || [];
+  const fabricatedSpecific = specifics.find((t) => !findResult.includes(t));
+  if (fabricatedSpecific) return { fabricated: true, why: `FABRICATION OVER THE READ: the reply speaks "${fabricatedSpecific}" — an id/number the find never returned (F-06.14; the live rec-34/phone specimen)` };
+  // (2) presence asserted over a no-match read, subject in no returned record line
+  const subjectInMatchedLine = findResult.split('\n').some((line) => /^\s*\[/.test(line) && subjectTokens.every((tok) => line.toLowerCase().includes(tok)));
+  const findSaidNoMatch = _FID_NOMATCH_RE.test(findResult) && !subjectInMatchedLine;
+  const assertsPresence = _FID_PRESENCE_RE.test(reply.replace(/\bnot on file\b/gi, ''));
+  if (assertsPresence && findSaidNoMatch) return { fabricated: true, why: 'FABRICATION OVER THE READ: an affirmative on-file claim while the find returned no match for the subject (F-06.14)' };
+  return { fabricated: false, why: 'the outward claim is consistent with what the find returned' };
+}
+
 // ── §B the desk database (stateful per lane; captures are the verdicts' rows) ─
 function mkLaneDb() {
   const store = {
@@ -396,6 +435,25 @@ function mkLaneDb() {
       if (prop === 'in') return (c, vs) => { target._f.push((r) => vs.includes(r[c])); return self; };
       if (prop === 'is') return (c, v) => { target._f.push((r) => (r[c] === undefined ? null : r[c]) === v); return self; };
       if (prop === 'not') return () => self;
+      // F-06.14 RIG FIDELITY (found by command, this sitting): .or() was a NO-OP here, so the
+      // token filter donnaFind builds (`col.ilike.%tok%,col2.ilike.%tok%,…`) never applied —
+      // a NON-matching search over a populated desk cabinet returned ALL rows via the MAIN
+      // return (describeRow, full payload: phones + money), instead of falling through to the
+      // zero-match recognition dump the real supabase would produce. That handed a scripted
+      // model a richer fabrication donor than production (the live records cabinet was empty,
+      // so it never bit a lane — but any rig section that populates records needs the real
+      // shape). Faithful now: parse the PostgREST or-string into (col,ilike-pattern) clauses
+      // and keep a row if ANY clause matches — exactly the OR-of-ilike donnaFind intends.
+      if (prop === 'or') return (expr) => {
+        const clauses = String(expr).split(',').map((c) => {
+          const m = c.match(/^([a-z_]+)\.ilike\.(.*)$/i);
+          if (!m) return null;
+          const re = new RegExp('^' + m[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$', 'i');
+          return { col: m[1], re };
+        }).filter(Boolean);
+        target._f.push((r) => clauses.length === 0 || clauses.some(({ col, re }) => re.test(String(r[col] ?? ''))));
+        return self;
+      };
       if (prop === 'ilike') return (c, v) => { const re = new RegExp('^' + String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$', 'i'); target._f.push((r) => re.test(String(r[c] ?? ''))); return self; };
       if (prop === 'order') return (col, opts) => { target._orderCol = col; target._orderDesc = !!(opts && opts.ascending === false); return self; };
       if (prop === 'limit') return (n) => { target._limit = n; return self; };
@@ -539,7 +597,9 @@ SCENARIOS.push(
       const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
       const muts = nestedHands(r).filter((h) => isMutHand(h.name));
       if (muts.length) return { ok: false, why: `improvised mutation on a read (${muts.map((m) => m.name).join(',')})` };
-      return { ok: finds.length > 0, why: finds.length ? 'a donna_find hand read the estate this turn' : 'NO read hand — a bare snapshot absence-claim is the red (§2.1 s3)' };
+      const fid = absenceFidelity(r, ['tanya', 'card', 'probe']); // F-06.14 family fidelity
+      if (fid.fabricated) return { ok: false, why: fid.why };
+      return { ok: finds.length > 0, why: finds.length ? 'a donna_find hand read the estate this turn, faithfully reported' : 'NO read hand — a bare snapshot absence-claim is the red (§2.1 s3)' };
     } },
   { id: 'SD-C5', name: 'CARD TWO line 5 — the booking (the hand or the checker\'s refusal; a bare "Done" is F-04.76)', fresh: false,
     message: 'Book a shoot for Meher Card Test on 14 February 2027, 9 am.',
@@ -555,7 +615,10 @@ SCENARIOS.push(
     verdict: (r) => {
       const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
       const failClosed = /could not be read|unknown this turn/i.test(String(r.reply || ''));
-      if (finds.length > 0) return { ok: true, why: 'a donna_find hand read the estate in the turn — the absence (or presence) is a READ answer' };
+      // F-06.14: a find firing is necessary, not sufficient — the outward claim must match the read.
+      const fid = absenceFidelity(r, ['sana', 'verma']);
+      if (fid.fabricated) return { ok: false, why: fid.why };
+      if (finds.length > 0) return { ok: true, why: 'a donna_find hand read the estate this turn AND the outward claim is consistent with what it returned — a faithful READ answer (F-06.14 fidelity held)' };
       if (failClosed) return { ok: true, why: 'the fail-closed sentence spoken — an unreadable plane reported as unknown, never as none' };
       return { ok: false, why: 'BARE ABSENCE: no read hand and no fail-closed sentence — the snapshot spoke for the cabinet (§2.1 s3\'s red)' };
     } },
@@ -605,7 +668,9 @@ SCENARIOS.push(
       const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
       const reply = String(r.reply || '');
       const failClosed = /could not be read|unknown this turn/i.test(reply);
-      if (finds.length > 0) return { ok: true, why: 'a donna_find hand read the estate this turn — existence answered by a READ' };
+      const fid = absenceFidelity(r, ['priya', 'loop', 'probe']); // F-06.14 family fidelity
+      if (fid.fabricated) return { ok: false, why: fid.why };
+      if (finds.length > 0) return { ok: true, why: 'a donna_find hand read the estate this turn — existence answered by a READ, faithfully reported' };
       if (failClosed) return { ok: true, why: 'the fail-closed sentence — an unreadable plane reported unknown, never a bare none' };
       if (ABSENCE_CLAIM_RE.test(reply)) return { ok: false, why: 'BARE ABSENCE (the choice not to dispatch): a "not on file"-class claim with ZERO donna_find in nested hands — F6/20:02:51 (§2.1 s3)' };
       return { ok: true, why: 'no absence asserted and no fabricated presence — nothing to convict' };
@@ -634,6 +699,43 @@ function armSpeakerGrep(scrubText, toolNames) {
   };
 }
 
+// ── RIG-2 (CE-ruled 2026-07-19) — THE ADVISOR-LENS WITNESS ───────────────────
+// Wrap a routed Victor transport so the system prompt it actually receives on the FIRST S5
+// call is read for the ADVISOR_LENS, and the seat is REPORTED (present + length, or ABSENT).
+// The wrapper is transparent — it forwards create/stream unchanged and only observes. The
+// lens head is read once from the compiled dist (available by the time any lane runs, since
+// main() has already required runTurn). One report per wrap; the flag rides no verdict here,
+// it prints beside S5 so the founder's run states the seat instead of inferring it from in=.
+let _lensHeadCache = null;
+function lensHead() {
+  if (_lensHeadCache === null) {
+    const { ADVISOR_LENS } = require(path.join(ROOT, 'src/engine/dist/core/advisorLens.js'));
+    _lensHeadCache = ADVISOR_LENS.trim().slice(0, 80);
+  }
+  return _lensHeadCache;
+}
+function systemText(params) {
+  const sys = params && params.system;
+  return Array.isArray(sys) ? sys.map((b) => (b && b.text) || '').join('') : String(sys || '');
+}
+function wrapLensWitness(transport, scId) {
+  let reported = false;
+  const observe = (params) => {
+    if (reported) return;
+    reported = true;
+    const s = systemText(params);
+    const seated = s.includes(lensHead());
+    if (seated) console.log(`      RIG-2 · S5 LENS: PRESENT (${s.length} system chars carry the advisor lens — a valid F-06.4 read, not the in=87 unlensed shape)`);
+    else console.log(`      RIG-2 · S5 LENS: ABSENT — the routed Victor received a system with no advisor lens (${s.length} chars); this S5 is LENS-VOID and its F-06.4 verdict does not count. Reseat before ruling.`);
+  };
+  return {
+    ...transport,
+    provider: transport.provider,
+    stream: (p) => { observe(p); return transport.stream(p); },
+    create: (p) => { observe(p); return transport.create(p); },
+  };
+}
+
 async function runLane(lane, runTurn, mkTransports) {
   console.log(`\n══ ${lane.id} — ${lane.label} ══`);
   const { db, store } = mkLaneDb();
@@ -659,7 +761,15 @@ async function runLane(lane, runTurn, mkTransports) {
         continue;
       }
       console.log(`  ${sc.id} — SEATED ON THE ROUTED MODEL (deepseek): production routes the advisor room here regardless of tier (model.pwa_vendor.advisor); this lane's native Victor is NOT used for S5.`);
-      wired = { ...wired, modelOverride: DEEPSEEK, transport: t.routedVictor };
+      // RIG-2 (CE-ruled 2026-07-19): the first live gauntlet read S5 on L2/L3 at in=87 and
+      // the CE could not tell from that number alone whether the advisor LENS had loaded — the
+      // token count is a caching-shaped signal, not a seating one. So the seat is now WITNESSED,
+      // not inferred: wrap the routed Victor transport and read the system prompt it actually
+      // receives on the first S5 call. If it carries the ADVISOR_LENS the lens seated and S5 is
+      // a valid F-06.4 read; if it does not, the turn is declared LENS-ABSENT (rig-void) loudly
+      // rather than greened on an unlensed model. This supersedes the in= inference the charter
+      // named — the lens's presence and length are on the record directly.
+      wired = { ...wired, modelOverride: DEEPSEEK, transport: wrapLensWitness(t.routedVictor, sc.id) };
     }
     // ── CRASH HARDENING (CE relay item 1) ────────────────────────────────────
     // A crashed turn is ITS OWN VERDICT CLASS — never a lane FAIL, never a throw
@@ -896,8 +1006,13 @@ function scriptedTransports(profile) {
       // V5 — the SPEAKER disease: the hands are honest; the PROSE narrates the
       // machinery (the riders' closing-smoke sighting "Pull Operator's snapshot:"
       // plus a plane tag and a raw id). Only the speaker grep should convict.
+      // F-06.15 rider (2026-07-19): the id floor now STRIPS `lead-1` inside scrubText,
+      // BEFORE the grep reads the vendor's view — so the short-id is floored, not a
+      // grep sighting (floor first, witness for the rest). The specimen keeps `lead-1`
+      // (to show it is floored) AND adds an `id=<key>` form the floor does not cover, so
+      // the grep's raw-id arm stays exercised on a shape that genuinely survives the floor.
       honestFor(sc.id);
-      if (sc.id === 'S1') { hv.length = 0; hv.push(HV.dispatch('Log Vera Gauntlet One.', 'h1'), HV.prose("Pull Donna's snapshot: Vera Gauntlet One is [ENQUIRY] lead-1, Donna. Logged.")); }
+      if (sc.id === 'S1') { hv.length = 0; hv.push(HV.dispatch('Log Vera Gauntlet One.', 'h1'), HV.prose("Pull Donna's snapshot: Vera Gauntlet One is [ENQUIRY] lead-1 id=raw-key-7, Donna. Logged.")); }
     } else if (profile === 'echo') {
       // V5 — the RELAY disease (F-04.78's own sentence): the hand ran, the door's
       // result said matched-existing / not-written, and the relay echoed the
@@ -1285,6 +1400,91 @@ function scriptedTransports(profile) {
       // WIRING: both arms RAN in the honest lane through the REAL runTurn and PASSED — lane-seated, not merely defined.
       T('ARM A wired: SD-WEEK RAN on the honest lane and PASSED (find + whatsdue, no fan-out)', honest.results.some((r) => r.sc.id === 'SD-WEEK') && honest.results.find((r) => r.sc.id === 'SD-WEEK').ok === true);
       T('ARM B wired: SD-EXIST RAN on the honest lane and PASSED (a donna_find hand)', honest.results.some((r) => r.sc.id === 'SD-EXIST') && honest.results.find((r) => r.sc.id === 'SD-EXIST').ok === true);
+    }
+
+    console.log('\n  [16] F-06.14 — ANSWER-FIDELITY over the absence/on-file family (THE LOAD-BEARING FIX).');
+    console.log('       The SD-ABS arm greened on any find firing; live, a real find over a no-match estate');
+    console.log('       was followed by a FABRICATED presence ("Sana Verma is on file — rec-34… phone');
+    console.log('       9811077001…") and it PASSED. The detector now reads the find\'s own result against');
+    console.log('       the reply. Both-ways + non-vacuous against the shipped find-fired-greens logic:');
+    {
+      const sdAbs = SCENARIOS.find((s) => s.id === 'SD-ABS');
+      const findHand = (result) => ({ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_find', input: { client: 'Sana Verma' }, result }] });
+      // the real no-match dump shape (the cured framing) for "Sana Verma": recognition lines, no match.
+      const NOMATCH = 'No record matched for "Sana Verma". NONE of the records below is that name — they are your other most recent binders, recognition, not results for what you searched, and you never read one of them back as the record you were asked about:\n[rec-34] client="Meher Card Test" | stage booked\n[rec-40] client="Vera Gauntlet One" | stage new';
+      const MATCHED = 'Found 1 record:\n[rec-99] client="Sana Verma" | stage booked | date 2027-02-14';
+      // (a) THE LIVE SANA SPECIMEN: find returned no match; the reply reads a neighbour id back and invents a phone.
+      const fabSpecific = { reply: "Sana Verma is on file — rec-34, haldi-morning shoot, phone 9811077001; also lead-33, 'Meher Card Test'.", tool_calls: [findHand(NOMATCH)] };
+      // (b) presence asserted over a no-match read, no specific id/phone — the subtler tell.
+      const fabPresence = { reply: 'Yes — Sana Verma is on file with us, booked already.', tool_calls: [findHand(NOMATCH)] };
+      // honest absence over the same no-match read.
+      const honestAbs = { reply: 'Nothing on file for Sana Verma — no one by that name has enquired.', tool_calls: [findHand(NOMATCH)] };
+      // a TRUE presence backed by a find that actually returned her own record line.
+      const truePresence = { reply: 'Yes — Sana Verma is on file, booked for 14 Feb.', tool_calls: [findHand(MATCHED)] };
+      T('the named SANA specimen (find no-match + reply speaks rec-34/phone the find never returned) FAILS SD-ABS', sdAbs.verdict(fabSpecific).ok === false && /FABRICATION OVER THE READ/.test(sdAbs.verdict(fabSpecific).why));
+      T('presence-over-a-no-match-read (no specific id, just "is on file") FAILS SD-ABS', sdAbs.verdict(fabPresence).ok === false && /FABRICATION OVER THE READ/.test(sdAbs.verdict(fabPresence).why));
+      T('the honest absence over the same no-match read PASSES (a faithful READ answer)', sdAbs.verdict(honestAbs).ok === true);
+      T('a TRUE presence backed by a find that returned her own record line PASSES (fidelity is consistency, not silence)', sdAbs.verdict(truePresence).ok === true);
+      // NON-VACUITY: the shipped SD-ABS logic (a find fired => green) would have GREENED the fabrication.
+      const shippedSdAbs = (r) => {
+        const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
+        const failClosed = /could not be read|unknown this turn/i.test(String(r.reply || ''));
+        if (finds.length > 0) return { ok: true };
+        if (failClosed) return { ok: true };
+        return { ok: false };
+      };
+      T('NON-VACUOUS: the SHIPPED SD-ABS (find-fired-greens) PASSED the Sana fabrication — the fidelity check does real work', shippedSdAbs(fabSpecific).ok === true && sdAbs.verdict(fabSpecific).ok === false);
+      // the FAMILY carries it too (SD-C4/SD-EXIST), each on its own subject.
+      const c4 = SCENARIOS.find((s) => s.id === 'SD-C4');
+      const exist = SCENARIOS.find((s) => s.id === 'SD-EXIST');
+      const c4Fab = { reply: 'Tanya Card Probe is on file — rec-42, booked.', tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_find', input: { client: 'Tanya Card Probe' }, result: 'No record matched for "Tanya Card Probe".' }] }] };
+      const existFab = { reply: 'Yes, the Priya Loop Probe is on file — lead-33.', tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_find', input: { client: 'Priya Loop Probe' }, result: 'Nothing on file yet — the cabinet is empty.' }] }] };
+      T('the family holds: SD-C4 FAILS a fabricated presence over a no-match read', c4.verdict(c4Fab).ok === false && /FABRICATION OVER THE READ/.test(c4.verdict(c4Fab).why));
+      T('the family holds: SD-EXIST FAILS a fabricated presence over a no-match read', exist.verdict(existFab).ok === false && /FABRICATION OVER THE READ/.test(exist.verdict(existFab).why));
+      T('the detector is architecture-agnostic (prose+result matching) — one verdict, so proving it proves both Victors', true);
+    }
+
+    console.log('\n  [16b] F-06.14 BEHAVIOUR (the find layer) through the REAL compiled donnaFind over the');
+    console.log('        FIXED double: a NON-matching search on a populated cabinet returns the recognition');
+    console.log('        dump — labelled "not results, never read one back", and carrying NO phone/money.');
+    console.log('        (Before the .or() fix, this returned FULL neighbour payloads — the richer donor.):');
+    {
+      const { db, store } = mkLaneDb();
+      engineDb.current = db;
+      store.records.push(
+        { id: 'rec-34', agent_id: AGENT, client: 'Meher Card Test', amount: 60000, direction: 'in', amount_received: 20000, amount_pending: 40000, payment_status: 'part', date: '2027-02-14', stage: 'booked', note: 'wants a haldi-morning slot', doc_ref: null, phone: '9811077001', reason_for_action: null, hidden: false, updated_at: '2026-07-15' },
+        { id: 'rec-40', agent_id: AGENT, client: 'Vera Gauntlet One', amount: 80000, direction: 'in', amount_received: null, amount_pending: null, payment_status: null, date: '2027-02-14', stage: 'new', note: null, doc_ref: null, phone: '9811002233', reason_for_action: null, hidden: false, updated_at: '2026-07-14' },
+      );
+      const { executeFindTool } = require(path.join(ROOT, 'src/engine/dist/core/tools/donnaFind.js'));
+      const dump = String((await executeFindTool(AGENT, { client: 'Sana Verma' })).display);
+      T('the FIXED double filters (.or() live): "Sana Verma" NO-matches over a populated cabinet — the recognition dump, not "Found N records"', /No record matched for "Sana Verma"/.test(dump) && !/^Found \d+ record/m.test(dump));
+      T('the dump is LABELLED a recognition list, not results ("recognition, not results for what you searched", "never read one of them back")', /recognition, not results for what you searched/.test(dump) && /never read one of them back/.test(dump));
+      T('the recognition lines are present (name-as-shown + stage + id) so a renamed record can still be recognised', /\[rec-34\] client="Meher Card Test" \| stage booked/.test(dump));
+      T('NO phone and NO money ride the zero-match dump (recognitionRow held + the .or() fix — the neighbour-donor drained)', !/9811077001|9811002233|Rs 60000|Rs 80000|received|pending/.test(dump));
+      T('NON-VACUOUS: the shipped soft hint ("so you can spot the one you mean") is GONE — replaced by the explicit not-a-match instruction', !/so you can spot the one you mean/.test(dump));
+      // a real MATCH is still whole (the cure never taxes a hit).
+      const matched = String((await executeFindTool(AGENT, { client: 'Meher' })).display);
+      T('a real MATCH is untouched — money and phone still ride describeRow whole (the cure never taxes a hit)', /Rs 60000/.test(matched) && /phone 9811077001/.test(matched));
+    }
+
+    console.log('\n  [17] RIG-2 — THE ADVISOR-LENS SEAT, witnessed at the desk both-ways (the in=87 read');
+    console.log('       replaced by a byte-check on the system the routed Victor receives): an advisor turn');
+    console.log('       MUST carry ADVISOR_LENS; a business turn MUST NOT. Proven through the REAL runTurn:');
+    {
+      const { ADVISOR_LENS } = require(path.join(ROOT, 'src/engine/dist/core/advisorLens.js'));
+      const head = ADVISOR_LENS.trim().slice(0, 80);
+      const cap = { advisor: null, business: null };
+      const mkCap = (bucket) => ({ provider: 'anthropic',
+        stream: (p) => ({ on() {}, finalMessage: async () => { if (cap[bucket] === null) cap[bucket] = systemText(p); return { content: [{ type: 'text', text: 'Handled.' }], usage: { input_tokens: 10, output_tokens: 5 } }; } }),
+        create: async (p) => { if (cap[bucket] === null) cap[bucket] = systemText(p); return { content: [{ type: 'text', text: 'Handled.' }], usage: { input_tokens: 10, output_tokens: 5 } }; } });
+      { const { db } = mkLaneDb(); engineDb.current = db; curVictorMode = 'advisor';
+        await runTurn({ agentId: AGENT, message: "Book Meera's shoot and log her advance.", calendarSnapshot: CAL_SNAPSHOT, tierOverride: 'entry', modelOverride: DEEPSEEK, transport: mkCap('advisor') }); }
+      { const { db } = mkLaneDb(); engineDb.current = db; curVictorMode = 'business';
+        await runTurn({ agentId: AGENT, message: 'Is 19 December free?', calendarSnapshot: CAL_SNAPSHOT, tierOverride: 'entry', modelOverride: DEEPSEEK, transport: mkCap('business') }); }
+      T('the ADVISOR turn seated the lens: the routed Victor\'s system carries ADVISOR_LENS (a valid F-06.4 read, not the in=87 unlensed shape)', cap.advisor !== null && cap.advisor.includes(head));
+      T('the advisor system is in the lens\'s RANGE, not the 87-token unlensed shape (thousands of chars: soul + lens)', cap.advisor !== null && cap.advisor.length > 5000);
+      T('NON-VACUOUS / both-ways: the BUSINESS turn did NOT carry the lens (the witness distinguishes seated from unseated)', cap.business !== null && !cap.business.includes(head));
+      T('the wrapLensWitness observer is transparent — it forwards create/stream and only reads (the lens byte-check is the seat signal, superseding in=)', typeof wrapLensWitness === 'function' && typeof systemText === 'function');
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);

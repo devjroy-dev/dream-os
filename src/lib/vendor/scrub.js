@@ -88,22 +88,41 @@ const { logActivity } = require('./snapshot');
 // MINT (CE-ruled): the id is STRIPPED to NOTHING — bracket and all. A placeholder token
 // ("[id]", "#ref") would re-introduce the very machinery this floor removes.
 //
-// PATTERN (CE-ruled): uuid ONLY (8-4-4-4-12 hex) — the sole id shape the estate emits
-// (donnaFind renders records/leads/shelf/reviews/whatsdue as `[<uuid>] …`). NO
-// lead-NN/rec-NN pattern: that shape does not occur in the estate (grep-confirmed), and a
-// dead defensive regex is a maintenance lie. uuid is collision-safe on the wire — dates,
-// Rs figures and phone numbers are not uuid-shaped.
+// PATTERN — TWO SHAPES, and why (F-06.9 uuid floor + F-06.15 short-id floor):
+//   (1) uuid (8-4-4-4-12 hex) — the id shape PRODUCTION's own estate emits: records/leads
+//       carry uuid primary keys, and donnaFind renders them as `[<uuid>] …`. F-06.9's floor.
+//   (2) the short id `(?:lead|conv|msg|rec|ev)-<digits>` — F-06.15 (CE-ruled 2026-07-19).
+//       F-06.9 dropped this shape "as a dead defensive regex — that shape does not occur in
+//       the estate (grep-confirmed)." The grep was right about PRODUCTION's OWN rendering
+//       (uuid), and wrong about the WIRE: the floor exists precisely because a MODEL holds
+//       the soul, and the DeepSeek lanes emit exactly this short shape in outward prose —
+//       live specimens `rec-34` (L2 SD-WEEK), `lead-33` (L3 SD-C1), `rec-42` (L3 SD-C5),
+//       raw in the vendor-facing reply. A model-emitted id-shape is not less of a leak for
+//       never having come off the estate's own renderer, and "the estate doesn't render it"
+//       was never the question — "can it ride the wire" is, and it did. So the floor covers
+//       the shape the SPEAKER GREP itself already names a raw id (`\b(?:lead|conv|msg|rec|ev)
+//       -\d+\b`, b06_gauntlet's §2.3 witness) — the floor and the witness now agree, byte for
+//       byte, instead of the witness convicting a shape the floor let through. Collision-safe
+//       on the wire: no vendor-facing date, Rs figure, or phone number carries a `word-digits`
+//       shape with one of these five machinery prefixes.
 //
 // DELTA-SAFE: scrubText runs per streaming victor_token beat, so this NEVER trims or
 // collapses whitespace globally (that would eat inter-token spaces on the stream). It
 // consumes at most one hugging space around a bracketed id and leaves the rest untouched.
-// Granularity is the persona firewall's own: a uuid split ACROSS two deltas slips this
+// Granularity is the persona firewall's own: an id split ACROSS two deltas slips this
 // beat exactly as a split "Donna" would — the same disclosed residual, not a new one.
 const _UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const BRACKET_ID_RE = new RegExp(' ?\\[\\s*' + _UUID + '\\s*\\][ \\t]?', 'gi');
+// F-06.15: the machinery short-id shape the models emit outward — the SAME family the
+// speaker grep counts as a raw id, so the floor strips exactly what the witness convicts.
+const _SHORTID = '(?:lead|conv|msg|rec|ev)-\\d+';
+const BRACKET_UUID_RE = new RegExp(' ?\\[\\s*' + _UUID + '\\s*\\][ \\t]?', 'gi');
 const BARE_UUID_RE = new RegExp(_UUID, 'gi');
+const BRACKET_SHORTID_RE = new RegExp(' ?\\[\\s*' + _SHORTID + '\\s*\\][ \\t]?', 'gi');
+const BARE_SHORTID_RE = new RegExp('\\b' + _SHORTID + '\\b', 'gi');
 function stripIds(s) {
-  return String(s).replace(BRACKET_ID_RE, ' ').replace(BARE_UUID_RE, '');
+  return String(s)
+    .replace(BRACKET_UUID_RE, ' ').replace(BARE_UUID_RE, '')
+    .replace(BRACKET_SHORTID_RE, ' ').replace(BARE_SHORTID_RE, '');
 }
 
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
@@ -202,13 +221,15 @@ function scrubForStorage(supabase, vendorId, surface, value, ctx, field) {
 //                             invoiceLines
 //   WHATSAPP (calendarSignals.js): bookingLines · mutationLines        [F-04.38, B2]
 //
-// scrubText's ID FLOOR (F-06.9, TDW_06, CE-ruled 2026-07-18) rides EXACTLY the surfaces
-// above — it is the last transform inside scrubText, so every caller of scrubText inherits
-// it and no other. A raw uuid (records/leads/shelf/reviews id) is stripped to nothing from
-// this outward prose; the name-as-shown carries the referent. Because it lives INSIDE
-// scrubText, the NOT-applied list below is its exemption list too: a lawful id inside a
-// nested donna_find hand, on the evidence plane, or on any read path is UNTOUCHED — only
-// the outward wire is floored.
+// scrubText's ID FLOOR (F-06.9 uuid + F-06.15 short-id, TDW_06, CE-ruled 2026-07-18/19)
+// rides EXACTLY the surfaces above — it is the last transform inside scrubText, so every
+// caller of scrubText inherits it and no other. Both id shapes are stripped to nothing from
+// this outward prose — a production uuid (records/leads/shelf/reviews) AND the model-emitted
+// short shape `(?:lead|conv|msg|rec|ev)-NN` (F-06.15: the DeepSeek lanes' `rec-34`/`lead-33`
+// specimens) — the name-as-shown carries the referent. Because it lives INSIDE scrubText, the
+// NOT-applied list below is its exemption list too: a lawful id inside a nested donna_find
+// hand, on the evidence plane, or on any read path is UNTOUCHED — only the outward wire is
+// floored.
 //
 // scrubForStorage IS applied to (every public.events write these two doors make):
 //   WEB (chat.js):            bookEvents insert title · insert notes · dedupe-patch

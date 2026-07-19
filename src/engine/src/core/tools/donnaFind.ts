@@ -406,11 +406,24 @@ export async function executeFindTool(
     const termNote = tokens.length ? ` for "${tokens.join(' ')}"` : '';
     const shelfTail = shelfHits.length ? `\nAnd on the shelf:\n${shelfHits.join('\n')}` : '';
     const reviewTail = reviewHits.length ? `\nAnd in filed reviews:\n${reviewHits.join('\n')}` : '';
+    // F-06.14 (CE-ruled 2026-07-19): the zero-match dump is a RECOGNITION LIST, never a
+    // result set. The live Sana specimen — a DeepSeek-Donna reading `[rec-34] Meher Card
+    // Test` off this very list back to Harvey as "Sana Verma is on file, rec-34…" — was this
+    // list misread as matches for the searched name. The framing now says, in the tool's own
+    // voice, exactly what these lines are and are NOT: none of them is the searched name;
+    // they are the owner's other recent binders, shown ONLY so a record whose name changed can
+    // be recognised and re-pointed to; and if the searched name is not among them by its own
+    // words, it is simply not on file — which is the honest answer, spoken as absence, never a
+    // neighbour's line dressed as the searched record. (Phones and money stay dropped here —
+    // recognitionRow, M-4 — so a misread list can at least never carry a neighbour's figure.)
     return {
       display:
-        `No record matched${termNote}. The name you searched may have changed or be filed differently — ` +
-        `refer to a record by its name as shown; here are the most recent records (active and archived), ` +
-        `by name and stage, so you can spot the one you mean:\n` +
+        `No record matched${termNote}. NONE of the records below is that name — they are your other ` +
+        `most recent binders (active and archived), shown only so you can recognise one whose name may ` +
+        `have changed and re-point to it; they are recognition, not results for what you searched, and ` +
+        `you never read one of them back as the record you were asked about. If the name${termNote ? ` (${tokens.join(' ')})` : ''} ` +
+        `is not among these by its own words, it is not on file — say exactly that, and reach for none of ` +
+        `these in its place:\n` +
         recentRows.map((r) => recognitionRow(r)).join('\n') + leadTail + shelfTail + reviewTail,
     };
   }
