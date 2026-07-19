@@ -2333,3 +2333,34 @@ Routed-deepseek advisor DELEGATED the look — "That's a cabinet question — le
 - **SD-C2 note-step — GREEN live.** The draft-first note filed without interrogation — the "Note added" chip (row `21:04:50`-era). The create was already green evening 1; the note step is now witnessed too.
 
 ### ACCEPTANCE CLOCK: the two-green clock stands at **ZERO**. **M-6 exit NOT met.** F-06.13 and F6 are filed OPEN and handed to the next sitting; no closure is claimed for the advisor arc here.
+
+---
+
+## TDW_06 SITTING II + III — the soul cures land, the first live evenings, and F-06.4 reopens (two dream-os packets)
+
+**Landed & CE-verified at origin: `c2e21b1` (Sitting II) · `5ea0153` (Sitting III).** Source-only; founder rebuilds/deploys dist. Two live acceptance evenings run on the routed architectures.
+
+### SITTING II — LANDED & HELD (`c2e21b1`): F-06.13 + F6 cured, both architectures.
+- **F-06.13 (donnaSoul) — recents-discipline, R-1/R-2 as ruled.** A shape/recents ask is answered from recognition + what's-due; the full binder / `donna_history` is reserved for an owner-named record. No mechanical N-deep-reads floor (HELD). LD-5, no rules-list.
+- **F6 (harveySoul) — the existence-reflex, R-3 as ruled.** §2.1 s3 moved to the first move on an existence question ("truth before speed"); harveySoul 0-line otherwise. LD-5.
+- **Gauntlet arms:** SD-WEEK (bulk-history on a shape ask, money as severity not gate) + SD-EXIST (bare absence with zero `donna_find` — the choice not to dispatch). Non-vacuous both ways, both architectures. `--rig-selftest` 62→72.
+- **Held live (evening on `c2e21b1`, then again on the founder's phone post-deploy):** SD-WEEK green all 3 lanes (history under the 2 floor everywhere), SD-EXIST green all 3 lanes (existence answered by a read). The cures do what they were chartered to do.
+
+### SITTING III — LANDED & HELD (`5ea0153`): the fabrication + id-leak + the rig unmasked.
+- **F-06.14 (CE-ratified) — ANSWER-FIDELITY over the absence/on-file family. The load-bearing fix.** Live on the first evening, DeepSeek-Donna fired a real find over a no-match estate then spoke a FABRICATED presence — "Sana Verma is on file — rec-34… phone 9811077001… also lead-33, Meher Card Test" — reading recognition neighbours back as the searched record; the SD-ABS arm passed it because it only checked that a find *fired*, never that the answer matched the read. **Two halves:** (a) the detector now reads the find's own result against the reply and convicts a specific (id/phone) the find never returned or a presence over a no-match read — never acquits on prose, a find must still fire; (b) `donnaFind`'s zero-match dump reframed (the `.or()` filter live) — it now says in its own voice "none of these is that name — recognition, not results — never read one back", phones/money stay dropped (M-4). **Held all 3 lanes on evening 2: the Sana probe returned clean and faithful everywhere — the fabrication did not recur.**
+- **F-06.15 (CE-ratified) — the short-id floor (scrub.js).** F-06.9 dropped `lead-NN`/`rec-NN` "as dead regex", but the DeepSeek lanes emit exactly that shape in outward prose — live specimens `rec-34` (L2 SD-WEEK), `lead-33` (L3 SD-C1), `rec-42` (L3 SD-C5), raw in the vendor reply. Floor restored inside `scrubText` for `(?:lead|conv|msg|rec|ev)-\d+`; the exemption list (nested hands / evidence plane / read paths) kept. **Held: evening 2's speaker grep fired ZERO on the live lanes though the model prose still carried the ids — the scrub strips them before the vendor view. Confirmed by command (`scrubText` drops `lead-33`/`rec-42`).**
+- **RIG-2 — the advisor-lens seat.** The prior evening's S5 ran unlensed (`in=87`), voiding its advisor verdicts. A `wrapLensWitness` byte-check now confirms the advisor turn carries `ADVISOR_LENS` (≈39.6k system chars, cached) — the seat signal supersedes `in=`. S5 is a valid F-06.4 read again on all lanes.
+- **Gates (`5ea0153`):** `build:engine` clean · `typecheck:engine` rc=0 · **`--rig-selftest` 72→90** · floors 47/47 · regression byte-stable (checker 101/101, advisor 15/15, advisor-route 16/16, referent 36/36, s2 48/48). Guarded set / `leads.js` / `consultantHarveySoul` 0-line; harveySoul untouched.
+
+### ACCEPTANCE EVENING (on `5ea0153`) — RED, but the red narrowed. Verdict: L1 FAIL · L2 FAIL · **L3 PASS**.
+- **The production shape passed clean.** L3 (Victor anthropic-haiku native + Donna deepseek — the E-1/E-4 production split) was LANE PASS, all 19 turns. First fully clean lane in the arc.
+- **All four cures held on both architectures.** F-06.13, F6, F-06.14, F-06.15 green across L1/L2/L3; RIG-2 lens seats on all lanes. No cure regressed.
+
+### F-06.4 — REOPENED (advisor redirect unreliable on the routed model). **OPEN. PARKED for Sitting IV.**
+With RIG-2 seating the lens truly, the advisor room (always routed to the DeepSeek `model.pwa_vendor.advisor` model regardless of tier) fails **2 of 3** samples: a soft non-redirect (L1 S5 — "named no room"), a pretended dispatch to Donna (L2 S5 — F-06.4 class), and only one clean "flip me to business mode" (L3 S5). One model, ~1-in-3 clean at the redirect. The prior broken seating had masked this. **Cure UNRULED — the next sitting's read-first.**
+
+### WATCH-ONLY — non-production, off the L3 path (all-Haiku L1 lane; L3 clean on every one):
+- **SD-C2** (Donna-Haiku interrogated instead of filing the note — LD-2), **SD-C5** (Victor "locked in" with no booking hand — F-04.76 costume, driven by Donna-Haiku's interrogation), **SD-REL** (Donna-Haiku echoed the dispatch not the result — F-04.78). Production runs Donna on DeepSeek (L3), which passed all three — evidence *for* the split. Not filed as fixes; re-measure if ever routed to Haiku-Donna.
+
+### ACCEPTANCE CLOCK: two-green clock stands at **ZERO**. **M-6 exit NOT met.** Nothing flipped — both auto-proposed flip SQLs (essential re-assert, trial/prestige split) CE-gated and HELD; the architecture stands (E-4); no flip without a clean full run. No closing ruling record written — the advisor arc is red.
+### FOUNDER SEQUENCING (2026-07-19): the advisor arc is PARKED here. Proceed to block 05; **revisit Sitting IV (F-06.4) after block 05.** F-06.4 carries forward OPEN; the Sitting II/III cures are landed and standing.
