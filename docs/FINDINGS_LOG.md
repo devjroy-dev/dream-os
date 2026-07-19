@@ -2401,3 +2401,31 @@ Landed & CE-verified: `553f2d2` (Movement A, byte-identical extraction — bench
 Landed & CE-verified: `a19ca9d` (`docs/TEMPLATES.md` — six bodies, provisional copy, founder-veto) · `1af1bdc` (registry `templates.js` keyed by Meta name+language — **no `twilioTemplateSid`, P-06.T Meta-direct**; `sendWa` gate — window-open→free-form, else approved-template-or-typed-refusal, never a silent drop; brideCron rewired byte-safe in-window; bench 49/49 non-vacuous by `isApproved` mutation) · `5595641` (**all six Meta-approved same-day** — front-loading worked; registry flipped to `approved`; bench re-asserted not weakened). **The live Meta Cloud API send transport is DEFERRED to P3** — `defaultSendTemplate` throws `WaTemplateTransportNotWiredError`, caught by `routeNudge` as a graceful refuse-and-log; out-of-window sends go live when P3 wires the POST. Correct P2/P3 boundary, not a gap.
 
 ### STATE AT BANK: Block 05 — F-04.65 (🟢) · P1 (🟢) · P2 (🟢). NEXT: P3 (prospect lane + the live Meta transport swap). Block 06's advisor arc (F-06.4) stays PARKED — revisit Sitting IV after 05. The fifth chair banks here; see `docs/specs/TDW_CE_SUCCESSION_NOTE_5.md`.
+
+---
+
+## TDW_05 P3 — MOVEMENT A CE-VERIFIED & SEALED (CE-29, sixth chair, 2026-07-19)
+
+**Re-derived at origin `2011f08` (`origin/main`; code `2609f84` + the `0085` migration commit `2011f08`), from a fresh fetch — the chair holds the clone and ran every check; the executor's declared benches were candidates until run here.**
+
+### ACCEPTED — P3 Movement A (prospect lane + the ruled Meta transport swap).
+- **W-1 clean.** Delta = `0085` + the P3 handoff + `b5c` bench + the marketing/transport lib/service/admin files + the `sendWa`/`brideCron`/`router` edits. No agent/soul/prompt/voice/engine path; the two edited transport files carry only supabase-threading + the swap + the opt-out gate. `prospectCopy` is product copy (holding line + opt-out confirmation) under founder veto, not agent voice.
+- **`0085` matches the ruling byte-for-byte.** prospects → kind-widen (0016 do-block idiom, all six values) → the owner model: `prospect_id` FK `on delete cascade` + drop-if-exists → the explicit boolean-sum 1-of-3 XOR + index; order load-bearing. Section B the W-9 cap seed (JSON-in-text, default 25, `on conflict do nothing`). Two independently-safe sections, reverts in-file, founder-run, not in the ZIP.
+- **Bench floor re-derived here:** `checker_bench` 101 · `b5_wa_door` 32 · `b5_describe` 18 · `b5_webhookcore` 43 · `b5b_movementb` 56 · `b05_p2_sendwa` 49 — byte-stable. **`b5c_prospect_lane_bench` 47/47, non-vacuous** — reverting `sendWa` to the `091c906` throw-stub takes it RED (`template_transport_unwired`, `WaOptedOutError` absent); restored byte-clean → 47/47.
+- **Swap:** POSTs `graph.facebook.com/v21.0/<phone-number-id>/messages` (Bearer from env; template + free-form bodies), refuses `MetaNotConfiguredError` creds-less — cure-precedes-exposure, no faked success. **Inbound adapter:** GET `hub.challenge`, X-Hub-Signature-256, `entry[].changes[].value.{messages,statuses}`, `wamid`. **Opt-out gate:** positive typed refusal on ALL lines (`WaOptedOutError` code `opted_out`, matched by brideCron's catch), prospects-keyed; a missing supabase is a NAMED residual, not a silent pass.
+
+### F-05.1 — FILED + CURED (🟢). The conversations owner model. (First 05-native finding.)
+`conversations_owner_xor` (0014) was unconditional — `check ((vendor_id is null) <> (couple_id is null))` — so a `prospect_marketing` row (both-null) was rejected; the kind-widen alone was necessary-but-insufficient. Surfaced at the executor's read-first; the build was HELD rather than expanded past its bound (the split working). **Cure (ruled into `0085` Section A):** `conversations.prospect_id uuid references prospects(id) on delete cascade` + the 1-of-3 boolean-sum XOR + `conversations_prospect_id_idx`. Cascade is REQUIRED (set-null orphans an all-null row that violates 1-of-3; restrict blocks prospect purges). The built-in is `num_nonnulls` (plural) — the executor's `num_nonnull` singular would have failed the founder's paste; caught at ruling, the explicit `::int` sum shipped and the reason is recorded in-file. Forward-clean for Block-08 conversion (re-own by swapping `prospect_id→vendor_id` keeps the sum at 1). The ONLY expansion; the bound holds.
+
+### F-05.2 — FILED, OPEN → P4. The opt-out gate's reach.
+The cross-line opt-out gate lives in `sendWa`, but `src/index.js` makes **22** direct `sendWhatsApp` calls (0 via `sendWa`) — the legacy vendor/couple agentic replies. An opted-out phone that is also a vendor/couple would still receive those. Not a P3 defect (those sends never went through `sendWa`); **named, not silently open.** Cure = route the legacy direct sends through `sendWa` (thread supabase) — P4. Payment/crew reminder sends (P4) must thread supabase or become a new instance.
+
+### MOVEMENT B — founder-gated, declared-not-claimed.
+No live Meta send has occurred; creds-less sends refuse loudly (`meta_not_configured`). The live send lights when the founder sets `META_WABA_TOKEN` + `MARKETING_PHONE_NUMBER_ID` (+ `META_APP_SECRET`/`META_VERIFY_TOKEN`) on the marketing service, points the Meta webhook at `POST /webhook/meta`, completes the GET verify, and witnesses opener→reply→holding-line→STOP. Reds file to the chair with row ids.
+
+### OPEN FOUNDER STEPS (gate P3's full close, not Movement A's seal):
+1. The live Meta smoke (Movement B).
+2. Regenerate `docs/db/PUBLIC_SCHEMA.md` from `db/queries/public_schema_dump.sql` now that `0085` is applied — the witnessed moment `prospects` + `conversations.prospect_id` enter the dump (the `failed_turns`/P1 precedent; never hand-edited).
+3. Copy veto: the two `prospectCopy` strings + the six template bodies (provisional since P2).
+
+### STATE AT SEAL: Block 05 — F-04.65 · P1 · P2 · **P3 Movement A (🟢, CE-verified)**; Movement B founder-gated. F-05.1 (🟢) · F-05.2 (OPEN → P4). **NEXT: P4 (crons; bride nudge = EXTEND per BRIDE_AUDIT §7) on the founder's word — P3 fully closes at Movement B green.** Then P5 → P6; the couple-agent soul closes 05. Block 06's advisor arc (F-06.4) stays PARKED — Sitting IV after 05.
