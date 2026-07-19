@@ -36,6 +36,7 @@
 'use strict';
 
 const { isApproved, buildTemplatePayload, getTemplate } = require('./templates');
+const { sendMetaTemplate, normalizeTo } = require('./metaCloud');
 
 // ── typed errors ────────────────────────────────────────────────────────────
 class WaError extends Error {
@@ -61,6 +62,12 @@ class WaLineNotConfiguredError extends WaError {
 }
 class WaBadCallError extends WaError {
   constructor(m) { super(m || 'sendWa requires exactly one of {text, templateKey}', 'bad_call'); this.name = 'WaBadCallError'; }
+}
+// TDW_05 P3: cross-line opt-out. STOP/UNSUBSCRIBE on the marketing lane sets prospects.state
+// ='opted_out'; this gate refuses ANY subsequent send to that phone on ANY line — a POSITIVE
+// typed refusal, never a silent drop (CE ruling 2). STOP means STOP, per number, across lines.
+class WaOptedOutError extends WaError {
+  constructor(m) { super(m || 'recipient has opted out; send refused across all lines', 'opted_out'); this.name = 'WaOptedOutError'; }
 }
 
 // ── FROM resolution by line ──────────────────────────────────────────────────
@@ -89,12 +96,44 @@ async function defaultSendText({ from, to, text, mediaUrls }) {
   const { sendWhatsApp } = require('./whatsapp'); // lazy: avoids loading twilio at bench time
   return sendWhatsApp(to, text, mediaUrls || [], from);
 }
-async function defaultSendTemplate({ key }) {
-  // Seam for the Meta Cloud API POST /{phone-number-id}/messages with the template payload.
-  // Deferred to the transport-swap work item (P-06.T). Refuse loudly rather than pretend.
-  throw new WaTemplateTransportNotWiredError(
-    `template '${key}' is approved but the Meta Cloud API send transport is not wired yet`
-  );
+// TDW_05 P3 — THE RULED TRANSPORT SWAP. This seam now POSTs the approved template to the Meta
+// Cloud API (/{phone-number-id}/messages), name+language+components from the registry payload
+// P2 already built. The phone-number-id is resolved by line from env (marketing today; vendor/
+// bride ids are P4's business-initiated sends). metaCloud reads token + id from env and throws
+// MetaNotConfiguredError when either is absent — so a creds-less deploy REFUSES loudly rather
+// than sends to nowhere (cure-precedes-exposure: the live send is founder-gated, Movement B).
+function phoneNumberIdFor(line) {
+  switch (line) {
+    case 'marketing': return process.env.MARKETING_PHONE_NUMBER_ID || null;
+    case 'vendor':    return process.env.VENDOR_PHONE_NUMBER_ID || null;   // P4 seam
+    case 'bride':     return process.env.BRIDE_PHONE_NUMBER_ID  || null;   // P4 seam
+    default:          return null;
+  }
+}
+async function defaultSendTemplate({ to, key, line, payload }) {
+  const phoneNumberId = phoneNumberIdFor(line);
+  // metaCloud.resolveConfig falls back to MARKETING_PHONE_NUMBER_ID; pass the line's id
+  // explicitly so a vendor/bride template (P4) targets the right number, not marketing's.
+  return sendMetaTemplate({ to, payload }, phoneNumberId ? { phoneNumberId } : {});
+}
+
+// ── default cross-line opt-out checker ───────────────────────────────────────
+// Positive gate: returns true iff `to` is a prospect with state='opted_out'. Runs on every line.
+// prospects.phone is stored normalized (digits, country code, no '+', no 'whatsapp:'); we match
+// the send target the same way. Needs a supabase handle; when none is supplied AND no isOptedOut
+// dep is injected, the send CANNOT be checked — that is a NAMED residual (handover census), never
+// a silent open: the marketing lane (where STOP originates) always supplies supabase.
+async function defaultIsOptedOut({ to, supabase }) {
+  if (!supabase) return false; // cannot check here; caller-census residual, not a silent pass
+  const phone = normalizeTo(to);
+  const { data } = await supabase
+    .from('prospects')
+    .select('state')
+    .eq('phone', phone)
+    .eq('state', 'opted_out')
+    .limit(1)
+    .maybeSingle();
+  return !!data;
 }
 async function defaultIsWindowOpen({ conversationId, supabase }) {
   if (!conversationId || !supabase) {
@@ -123,6 +162,7 @@ async function sendWa(opts, deps = {}) {
   const sendText     = deps.sendText     || defaultSendText;
   const sendTemplate = deps.sendTemplate || defaultSendTemplate;
   const isWindowOpen = deps.isWindowOpen || defaultIsWindowOpen;
+  const isOptedOut   = deps.isOptedOut   || defaultIsOptedOut;
 
   if (!line || !to) throw new WaBadCallError('sendWa requires `line` and `to`');
   if (!!text === !!templateKey) {
@@ -131,6 +171,13 @@ async function sendWa(opts, deps = {}) {
 
   const from = resolveFrom(line);
   if (!from) throw new WaLineNotConfiguredError(`line '${line}' has no configured FROM number`);
+
+  // ── cross-line opt-out gate (P3) — positive typed refusal, before any dispatch ──────────────
+  // Runs on ALL lines. An opted-out phone is blocked whether the send is template or free-form,
+  // marketing or bride/vendor. Silent drops are forbidden; refusal is a typed, catchable error.
+  if (await isOptedOut({ to, line, supabase })) {
+    throw new WaOptedOutError(`recipient ${to} has opted out; refusing send on line '${line}'`);
+  }
 
   // ── template path (business-initiated / out-of-window) ──────────────────────
   if (templateKey) {
@@ -177,6 +224,10 @@ module.exports = {
   WaTemplateTransportNotWiredError,
   WaLineNotConfiguredError,
   WaBadCallError,
+  WaOptedOutError,
   // exposed for tests/other callers
   defaultIsWindowOpen,
+  defaultIsOptedOut,
+  defaultSendTemplate,
+  phoneNumberIdFor,
 };

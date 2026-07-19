@@ -45,6 +45,7 @@ router.use('/admin/spotlight',       require('./admin/spotlight').adminRouter);
 router.use('/admin/discover-heroes', require('./admin/discoverHeroes').adminRouter);
 router.use('/admin/conversations',   require('./admin/conversations'));
 router.use('/admin/failed-turns',    require('./admin/failedTurns'));   // TDW_05 P1b: dead-letter list/replay/discard
+router.use('/admin/prospects',       require('./admin/prospects'));     // TDW_05 P3: prospect lane intake/board/cap/actions
 router.use('/admin/waitlist',         require('./admin/waitlist'));
 router.use('/admin/vendors/:vendorId/portfolio', require('./admin/vendorPortfolio'));
 // Public endpoints for content surfaces

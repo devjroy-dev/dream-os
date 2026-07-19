@@ -39,7 +39,14 @@ async function routeNudge({ couple, user, supabase }, deps = {}) {
   if (result.send) {
     // In-window: buildNudge already verified the 24h window is open. Pass windowOpen:true so
     // sendWa sends free-form on the bride line — byte-identical to the pre-P2 direct send.
-    await _sendWa({ line: 'bride', to: phone, text: result.message, windowOpen: true });
+    // P3: supabase threaded so sendWa's cross-line opt-out gate can refuse an opted-out bride.
+    // A non-opted-out phone is byte-identical; only an opted-out phone is blocked (typed refusal).
+    try {
+      await _sendWa({ line: 'bride', to: phone, text: result.message, windowOpen: true, supabase });
+    } catch (err) {
+      if (err && err.code === 'opted_out') return { action: 'refused', reason: 'opted_out', phone };
+      throw err;
+    }
     return { action: 'sent', mode: 'text', phone, message: result.message };
   }
 
@@ -52,6 +59,7 @@ async function routeNudge({ couple, user, supabase }, deps = {}) {
         to: phone,
         templateKey: 'morning_nudge_bride',
         vars: [name, OUT_OF_WINDOW_SUMMARY],
+        supabase,   // P3: opt-out gate; the existing catch already surfaces a typed refusal
       });
       return { action: 'sent', mode: 'template', phone, key: 'morning_nudge_bride' };
     } catch (err) {
