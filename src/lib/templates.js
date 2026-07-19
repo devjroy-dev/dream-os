@@ -27,46 +27,48 @@ const TEMPLATE_LANGUAGE = process.env.WA_TEMPLATE_LANGUAGE || 'en';
 const TEMPLATES = {
   marketing_opener: {
     key: 'marketing_opener',
-    name: 'marketing_opener',
+    name: 'tdw_marketing_opener',
     language: TEMPLATE_LANGUAGE,
     line: 'marketing',
     category: 'MARKETING',
     variables: ['name'],
+    // Couple-facing agent is named Mira (see TEMPLATES.md §5). Filed 2026-07-19.
     body:
-      "Hi {{1}}, this is The Destination Wedding. We run a WhatsApp-based planning " +
-      "assistant that keeps your vendors, payments, and timeline in one place. Reply here " +
-      "and I'll show you how it would work for your wedding. Reply STOP to opt out.",
-    status: 'draft',
+      "Hi {{1}}, this is Mira from The Dream Wedding. We keep your vendors, payments, " +
+      "and timeline in one place. Reply here and I'll show you how it would work for " +
+      "your wedding. Reply STOP to opt out.",
+    status: 'submitted',
   },
 
   morning_nudge_vendor: {
     key: 'morning_nudge_vendor',
-    name: 'morning_nudge_vendor',
+    name: 'tdw_morning_nudge_vendor',
     language: TEMPLATE_LANGUAGE,
     line: 'vendor',
     category: 'UTILITY',
     variables: ['name', 'summary'],
     body:
       "Good morning {{1}}. Here's your day: {{2}}. Reply STOP MORNINGS to pause these updates.",
-    status: 'draft',
+    status: 'approved',
   },
 
   morning_nudge_bride: {
     key: 'morning_nudge_bride',
-    name: 'morning_nudge_bride',
+    name: 'tdw_morning_nudge_bride',
     language: TEMPLATE_LANGUAGE,
     line: 'bride',
     category: 'UTILITY',
     variables: ['name', 'summary'],
+    // First-person "Here's where things stand" is Mira's voice (couple-facing agent).
     body:
       "Good morning {{1}} \uD83C\uDF38 Here's where things stand for your wedding: {{2}}. " +
       "Reply STOP MORNINGS anytime to pause.",
-    status: 'draft',
+    status: 'submitted',
   },
 
   crew_assignment: {
     key: 'crew_assignment',
-    name: 'crew_assignment',
+    name: 'tdw_crew_assignment',
     language: TEMPLATE_LANGUAGE,
     line: 'vendor',
     category: 'UTILITY',
@@ -74,32 +76,39 @@ const TEMPLATES = {
     body:
       "Hi {{1}}, you're on the crew for {{2}}. Open your crew page for the full details " +
       "and checklist: {{3}} — reply here if anything's unclear.",
-    status: 'draft',
+    status: 'approved',
   },
 
   payment_reminder: {
     key: 'payment_reminder',
-    name: 'payment_reminder',
+    // Meta name is tdw_payment_due (NOT tdw_payment_reminder) to avoid colliding with the
+    // pre-existing approved tdw_payment_reminder (4-var legacy) already on the WABA.
+    // Registry KEY stays payment_reminder — callers are unaffected.
+    name: 'tdw_payment_due',
     language: TEMPLATE_LANGUAGE,
     line: 'vendor',
     category: 'UTILITY',
     variables: ['milestone', 'due'],
     body:
       "Reminder: {{1}} is due {{2}}. Reply PAID once it lands and I'll update your books.",
-    status: 'draft',
+    status: 'submitted',
   },
 
   demo_invite: {
     key: 'demo_invite',
-    name: 'demo_invite',
+    name: 'tdw_demo_invite',
     language: TEMPLATE_LANGUAGE,
     line: 'marketing',
+    // Filed as UTILITY (cleared Meta's pre-check after tightening the copy). If Meta's final
+    // verdict bumps it to MARKETING, flip this to 'MARKETING' to keep the registry truthful.
     category: 'UTILITY',
     variables: ['name', 'claim_link'],
+    // Tightened to earn Utility: "set up / access your account" not "explore / take a look".
+    // First-person "reply here if you need any help" is Mira's voice (couple-facing agent).
     body:
-      "Hi {{1}}, your demo workspace is ready to explore. Tap here to claim it and take a " +
-      "look: {{2}} — reply with any questions and I'll help.",
-    status: 'draft',
+      "Hi {{1}}, your demo workspace has been set up and is ready. Open it here to access " +
+      "your account: {{2}} — reply here if you need any help.",
+    status: 'submitted',
   },
 };
 

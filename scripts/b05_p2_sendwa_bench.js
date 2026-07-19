@@ -103,7 +103,7 @@ function spies() {
     eq(r.mode, 'template', 'D approved template → mode template');
     ok(s.rec.template.length === 1 && s.rec.text.length === 0, 'D template transport hit once, text zero');
     const p = s.rec.template[0].payload;
-    eq(p.name, 'morning_nudge_bride', 'D payload.name = template name');
+    eq(p.name, templates.TEMPLATES[key].name, 'D payload.name = registry Meta name');
     eq(p.language, { code: 'en' }, 'D payload.language = {code:en}');
     eq(p.components, [{ type: 'body', parameters: [
       { type: 'text', text: 'Aisha' }, { type: 'text', text: 'summary line' },
@@ -112,13 +112,17 @@ function spies() {
     templates.TEMPLATES[key].status = saved;                // restore
   }
 
-  // ── E. template DRAFT (registry status) → refuse, ZERO sends ──────────────
+  // ── E. template NON-APPROVED (submitted/draft) → refuse, ZERO sends ───────
   {
+    const key = 'morning_nudge_bride';
+    const saved = templates.TEMPLATES[key].status;
+    templates.TEMPLATES[key].status = 'submitted';          // as-shipped non-approved state
     const s = spies();
-    eq(templates.TEMPLATES.morning_nudge_bride.status, 'draft', 'E precondition: ships as draft');
-    await throwsCode(() => wa.sendWa({ line: 'bride', to: '+91999', templateKey: 'morning_nudge_bride', vars: ['A', 'b'] }, s),
-      'template_not_approved', 'E draft template → WaTemplateNotApprovedError');
-    ok(s.rec.template.length === 0, 'E nothing sent for draft template');
+    ok(!templates.isApproved(key), 'E precondition: non-approved (submitted) status');
+    await throwsCode(() => wa.sendWa({ line: 'bride', to: '+91999', templateKey: key, vars: ['A', 'b'] }, s),
+      'template_not_approved', 'E non-approved template → WaTemplateNotApprovedError');
+    ok(s.rec.template.length === 0, 'E nothing sent for non-approved template');
+    templates.TEMPLATES[key].status = saved;
   }
 
   // ── F. UNKNOWN template key → refuse ──────────────────────────────────────
@@ -210,7 +214,7 @@ function spies() {
     eq(out.action, 'sent', 'K3 out-of-window + approved → template sent');
     eq(out.mode, 'template', 'K3 mode template');
     ok(s.rec.template.length === 1, 'K3 template transport hit once');
-    eq(s.rec.template[0].payload.name, 'morning_nudge_bride', 'K3 correct template dispatched');
+    eq(s.rec.template[0].payload.name, templates.TEMPLATES[key].name, 'K3 correct template dispatched');
     eq(s.rec.template[0].payload.components[0].parameters[0].text, 'Cara', 'K3 name var = user name');
     templates.TEMPLATES[key].status = saved;
   }
