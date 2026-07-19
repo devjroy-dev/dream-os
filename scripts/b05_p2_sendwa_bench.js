@@ -185,8 +185,11 @@ function spies() {
     ok(!captured.templateKey, 'K1 no template on the in-window path');
   }
 
-  // K2. out-of-window, template DRAFT → routeNudge refuses via REAL sendWa, logs, no send
+  // K2. out-of-window, template NON-APPROVED → routeNudge refuses via REAL sendWa, logs, no send
   {
+    const key = 'morning_nudge_bride';
+    const saved = templates.TEMPLATES[key].status;
+    templates.TEMPLATES[key].status = 'submitted';          // non-approved fixture (all six are approved on disk)
     const s = spies();
     const realSendWaWithSpies = (a) => wa.sendWa(a, s);
     const buildNudge = async () => ({ send: false, reason: 'window_closed', hours: 40 });
@@ -194,7 +197,8 @@ function spies() {
       { couple: { id: 'c2' }, user: { phone: '+9122', name: 'Bela' } },
       { sendWa: realSendWaWithSpies, buildNudge }
     );
-    eq(out.action, 'refused', 'K2 out-of-window + draft → refused (not skipped, not sent)');
+    templates.TEMPLATES[key].status = saved;                // restore
+    eq(out.action, 'refused', 'K2 out-of-window + non-approved → refused (not skipped, not sent)');
     eq(out.reason, 'template_not_approved', 'K2 refusal reason surfaced');
     ok(s.rec.template.length === 0 && s.rec.text.length === 0, 'K2 nothing left the system');
   }

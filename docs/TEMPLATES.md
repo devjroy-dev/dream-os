@@ -59,20 +59,20 @@ Variables: `{{1}}` = recipient name, `{{2}}` = demo-claim link. First-person "re
 > Hi {{1}}, your demo workspace has been set up and is ready. Open it here to access your account: {{2}} — reply here if you need any help.
 
 Note (W-8): the close path is the **demo-claim link**; invite links/codes are retired. This template carries that link and nothing else.
-Note (category): copy was **tightened at submission** to earn UTILITY — Meta's pre-check flagged the original "ready to explore / take a look" wording as Marketing. Filed as UTILITY; if Meta's final verdict bumps it to MARKETING, flip `category` in the registry to match (a 60-day category-review appeal is available in WhatsApp Manager).
+Note (category): copy was **tightened at submission** to earn UTILITY — Meta's pre-check flagged the original "ready to explore / take a look" wording as Marketing. The tightened "set up / access your account" copy was **approved as UTILITY** on 2026-07-19; no reconciliation needed. (If Meta ever reclassifies it later, a 60-day category-review appeal is available in WhatsApp Manager.)
 
 ## 3. Submission tracker
 
-All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`). `status` mirrors the registry's `status` field in `src/lib/templates.js`. As Meta review completes, flip `submitted → approved` (or `→ rejected`) in **both** this table and the registry — the registry's `approved` flag is the switch `sendWa` reads before it will send a business-initiated (out-of-window) message. Two were already **approved** at filing time.
+All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`) and **all six were approved the same day** (the four in review cleared within minutes). `status` mirrors the registry's `status` field in `src/lib/templates.js`; all six read `approved`. `demo_invite` was approved as **UTILITY** — the tightened copy held, so no category reconciliation was needed.
 
 | # | registry key | Meta name | category | status | submission date |
 |---|------|------|----------|--------|-----------------|
-| 1 | `marketing_opener` | `tdw_marketing_opener` | MARKETING | submitted (in review) | 2026-07-19 |
+| 1 | `marketing_opener` | `tdw_marketing_opener` | MARKETING | **approved** | 2026-07-19 |
 | 2 | `morning_nudge_vendor` | `tdw_morning_nudge_vendor` | UTILITY | **approved** | 2026-07-19 |
-| 3 | `morning_nudge_bride` | `tdw_morning_nudge_bride` | UTILITY | submitted (in review) | 2026-07-19 |
+| 3 | `morning_nudge_bride` | `tdw_morning_nudge_bride` | UTILITY | **approved** | 2026-07-19 |
 | 4 | `crew_assignment` | `tdw_crew_assignment` | UTILITY | **approved** | 2026-07-19 |
-| 5 | `payment_reminder` | `tdw_payment_due` | UTILITY | submitted (in review) | 2026-07-19 |
-| 6 | `demo_invite` | `tdw_demo_invite` | UTILITY (pending — may bump to MARKETING) | submitted (in review) | 2026-07-19 |
+| 5 | `payment_reminder` | `tdw_payment_due` | UTILITY | **approved** | 2026-07-19 |
+| 6 | `demo_invite` | `tdw_demo_invite` | UTILITY (approved as filed) | **approved** | 2026-07-19 |
 
 ## 4. Language code
 

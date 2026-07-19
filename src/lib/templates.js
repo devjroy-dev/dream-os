@@ -37,7 +37,7 @@ const TEMPLATES = {
       "Hi {{1}}, this is Mira from The Dream Wedding. We keep your vendors, payments, " +
       "and timeline in one place. Reply here and I'll show you how it would work for " +
       "your wedding. Reply STOP to opt out.",
-    status: 'submitted',
+    status: 'approved',
   },
 
   morning_nudge_vendor: {
@@ -63,7 +63,7 @@ const TEMPLATES = {
     body:
       "Good morning {{1}} \uD83C\uDF38 Here's where things stand for your wedding: {{2}}. " +
       "Reply STOP MORNINGS anytime to pause.",
-    status: 'submitted',
+    status: 'approved',
   },
 
   crew_assignment: {
@@ -91,7 +91,7 @@ const TEMPLATES = {
     variables: ['milestone', 'due'],
     body:
       "Reminder: {{1}} is due {{2}}. Reply PAID once it lands and I'll update your books.",
-    status: 'submitted',
+    status: 'approved',
   },
 
   demo_invite: {
@@ -99,8 +99,8 @@ const TEMPLATES = {
     name: 'tdw_demo_invite',
     language: TEMPLATE_LANGUAGE,
     line: 'marketing',
-    // Filed as UTILITY (cleared Meta's pre-check after tightening the copy). If Meta's final
-    // verdict bumps it to MARKETING, flip this to 'MARKETING' to keep the registry truthful.
+    // Approved as UTILITY on 2026-07-19 (tightened copy held). If Meta ever reclassifies
+    // it to MARKETING later, flip this to 'MARKETING' to keep the registry truthful.
     category: 'UTILITY',
     variables: ['name', 'claim_link'],
     // Tightened to earn Utility: "set up / access your account" not "explore / take a look".
@@ -108,7 +108,7 @@ const TEMPLATES = {
     body:
       "Hi {{1}}, your demo workspace has been set up and is ready. Open it here to access " +
       "your account: {{2}} — reply here if you need any help.",
-    status: 'submitted',
+    status: 'approved',
   },
 };
 
