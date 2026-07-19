@@ -50,6 +50,15 @@ const BRIDE_WA = process.env.BRIDE_WA_NUMBER
   ? `+${process.env.BRIDE_WA_NUMBER}`
   : '+14787788550';
 
+// F-05.6 fix (b) — decouple OTP/auth from the migrating lane number (CE-34).
+// OTP sends leave from a DEDICATED Twilio number that NEVER migrates, so a
+// Twilio→Meta lane cutover cannot break signup/login/PIN-reset. DORMANT until the
+// founder provisions OTP_WA_NUMBER (bare digits, a Twilio number kept on Twilio);
+// while UNSET this falls back to BRIDE_WA — byte-identical to the pre-fix send.
+const OTP_WA = process.env.OTP_WA_NUMBER
+  ? `+${process.env.OTP_WA_NUMBER}`
+  : BRIDE_WA;
+
 
 // ── Cookie helper — sets couple session cookie for iOS Safari compatibility ──
 function setCoupleCookie(res, token) {
@@ -186,7 +195,7 @@ router.post('/send-otp', async (req, res) => {
 
   try {
     await getTwilio().messages.create({
-      from: `whatsapp:${BRIDE_WA}`,
+      from: `whatsapp:${OTP_WA}`,
       to:   `whatsapp:${cleanPhone}`,
       body: `Your Dream Wedding login code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
     });
@@ -239,7 +248,7 @@ router.post('/forgot-pin', async (req, res) => {
 
   try {
     await getTwilio().messages.create({
-      from: `whatsapp:${BRIDE_WA}`,
+      from: `whatsapp:${OTP_WA}`,
       to:   `whatsapp:${cleanPhone}`,
       body: `Your Dream Wedding PIN reset code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
     });
