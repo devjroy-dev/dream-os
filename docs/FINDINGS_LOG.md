@@ -2429,3 +2429,29 @@ No live Meta send has occurred; creds-less sends refuse loudly (`meta_not_config
 3. Copy veto: the two `prospectCopy` strings + the six template bodies (provisional since P2).
 
 ### STATE AT SEAL: Block 05 — F-04.65 · P1 · P2 · **P3 Movement A (🟢, CE-verified)**; Movement B founder-gated. F-05.1 (🟢) · F-05.2 (OPEN → P4). **NEXT: P4 (crons; bride nudge = EXTEND per BRIDE_AUDIT §7) on the founder's word — P3 fully closes at Movement B green.** Then P5 → P6; the couple-agent soul closes 05. Block 06's advisor arc (F-06.4) stays PARKED — Sitting IV after 05.
+
+---
+
+## TDW_05 P3 — MOVEMENT B PARTIAL LIVE-WITNESS (sandbox smoke) (CE-30, sixth chair, 2026-07-19)
+
+**Re-derived at origin `c405983`. The live smoke is the founder's to witness (he runs smokes); the CE weighs it on the log tells + handset delivery recorded in `TDW_05_P3_MOVEMENT_B_SETUP.md`, and re-derives the deployment finding at the repo.**
+
+### ACCEPTED on the founder's live witness — sandbox smoke (real WhatsApp delivery, handset `+918757788550` → sandbox `+15551775792`, ~22:09–22:10 IST):
+The two hardest first-contact unknowns a bench cannot reach were WIRE-WITNESSED —
+- **Meta inbound: X-Hub-Signature-256 verify + `hub.challenge` handshake + normalize** 🟢. The real signed webhook survived the express middleware and verified (the raw-body capture works against REAL Meta) — the #1 first-contact trap, retired.
+- **The transport swap's free-form Meta send (holding line)** 🟢 — `status=sent → status=read`, handset received it. A real byte crossed; the F-RIG-1 class (green over a never-contacted transport) is retired for the inbound path + free-form send.
+- **F-05.1's owner model, live** — a `prospect_marketing` conversation opened against real inserts (the 1-of-3 XOR holds in prod).
+- **The opt-out cycle** 🟢 — STOP → `opted_out` + confirmation with **exactly one** `status=sent` (no holding line to a stopping user — the logic is real); START → resume; case-insensitive.
+
+### THE ONE OPEN GATE to full P3 closure:
+- **The opener-template send (`tdw_marketing_opener`)** — the SECOND first-contact risk (does Meta accept the approved template's exact payload) — remains UNWITNESSED: the sandbox WABA carries only `hello_world`; the real template lives on the real WABA (`1299109268220358`). Carried to the real-number smoke. Optional: the explicit cross-line refusal proof (skipped when START followed STOP).
+- **P3 reaches full live-witnessed closure when the opener-template send lands on the real number.** Everything else in the lane is now live-witnessed, not benched.
+
+### F-05.3 — FILED, OPEN. The Node-22 / realtime-js fresh-install deploy trap.
+Re-derived at repo: `engines.node` is pinned loose (`>=20.0.0`) and `@supabase/supabase-js ^2.45.0` resolves to 2.105.4, pulling `@supabase/realtime-js` 2.105.4 which hard-requires native WebSocket (Node 22+); `marketingIndex.js` constructs the client at module load → a **fresh** Railway service off this repo crash-loops on Node 20 (`Node.js 20 detected without native WebSocket support`). The older vendor/bride services predate the SDK bump (locked older realtime-js) so they don't show it. **Founder's applied cure (per-service, no repo change):** Railpack builder + `RAILPACK_NODE_VERSION=22` (`NIXPACKS_*` ignored — wrong builder). **Durable cure (founder's call on when):** bump `engines.node` to `>=22` — a repo change that re-deploys all three services on Node 22 (needs a witnessed boot of vendor + bride on 22, expected clean); OR make the realtime client lazy/disabled if the marketing lane uses no realtime channels (executor read-first). NOT a Movement-A regression; a deploy-environment trap for the next fresh service.
+
+### FOR THE REAL-NUMBER SMOKE (the gotcha that would silently fail): the admin **send-opener** route runs on the **vendor/admin service**, and the Meta POST fires wherever `sendWa` runs — so that service needs `META_WABA_TOKEN` + `MARKETING_PHONE_NUMBER_ID`, or send-opener refuses `meta_not_configured`. The setup doc's §6.3 has this right; it is the #1 thing not to miss.
+
+### HYGIENE (noted, not blocking): the setup doc correctly keeps tokens/keys out of the repo (Railway only). The one access-adjacent item banked is the account login phone (sole login vector, no email) — an account identifier, not a secret; if the repo is not private, weigh whether the sole-login detail belongs in-tree. The duplicate empty Meta app (App ID `1073940998303309`) is a harmless stray to archive.
+
+### STATE: Block 05 — F-04.65 · P1 · P2 · P3 Movement A (🟢) · **Movement B PARTIAL live-witness (🟢 inbound + free-form + opt-out cycle; opener-template send OPEN)**. F-05.1 (🟢) · F-05.2 (OPEN → P4) · F-05.3 (OPEN, deploy trap). **P3 fully closes when the opener-template send is witnessed on the real number.** Provisioning + the real-number smoke are the founder's, tomorrow. Then P4 → P5 → P6; the couple-agent soul closes 05; Block 06's advisor arc (F-06.4) stays PARKED for Sitting IV after 05.
