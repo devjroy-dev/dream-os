@@ -2364,3 +2364,28 @@ With RIG-2 seating the lens truly, the advisor room (always routed to the DeepSe
 
 ### ACCEPTANCE CLOCK: two-green clock stands at **ZERO**. **M-6 exit NOT met.** Nothing flipped — both auto-proposed flip SQLs (essential re-assert, trial/prestige split) CE-gated and HELD; the architecture stands (E-4); no flip without a clean full run. No closing ruling record written — the advisor arc is red.
 ### FOUNDER SEQUENCING (2026-07-19): the advisor arc is PARKED here. Proceed to block 05; **revisit Sitting IV (F-06.4) after block 05.** F-06.4 carries forward OPEN; the Sitting II/III cures are landed and standing.
+
+---
+
+## TDW_05 BLOCK 05 — SITTING 1 SEALED: F-04.65 cured + F-04.66 folded (CE-26, fifth chair, 2026-07-19)
+
+**Landed & CE-verified at origin: `a2c593b` (port + first bench) · `8c7bcf6` (bench completion) · `ca1e697` (live smoke). Block 05's first mechanical sitting, per the CE Charter Addendum §1 — no lanes over an unguarded write path. Founder-directed early open (06's advisor arc parked); dependency-clean from it.**
+
+### F-04.65 — CURED (🟢). The WhatsApp calendar door now gets the checker.
+`calendarSignals.js`'s WA write path routes through `writeEvent` (`eventWrite.js`, the ONE writer) exactly as the app chat door does — **verdict-agnostic**: it surfaces whatever `writeEvent` returns on `refused`, printing `conflict.message` verbatim (scrubbed at the F-04.33 seam), regardless of kind. So the SAME verdicts, the SAME honest refusals, the SAME witness discipline the app doors earned in 04 now reach the WA door. The exemption (priced when the checker was a stub, four verdicts deep and never re-quoted) is closed.
+
+### F-04.66 — FOLDED & CURED (🟢). The snapshot stops teaching "handle".
+`fetchCalendarSnapshot` no longer prints raw row ids under a `[handle]` header; the ids and the word "handle" left the prose. Victor references a booking by a **sayable referent** (title + date), resolved by `resolveEvent` (`resolveClientReference.js`'s precedent). The read-first proved the referent gate and the checker port coexist without interference, so it folded here rather than deferring. **Ruled NOT through `scrub.js`** (shared with tool-result renders — a UUID pattern there would scrub payloads); `scrub.js` 0-line. Whether Victor voices a handle *even when handed one* stays 06's (soul) — but he is no longer handed one.
+
+### THE VERDICT SET — CORRECTED BY THE EXECUTOR (the CE's addendum said "five"; the truth is FOUR write-path kinds):
+`occupancy.js` emits `date_blocked`, `capacity`, `appointment_overlap`, `cluster`. Two names the CE addendum listed do NOT apply, each a disclosed finding with code evidence:
+- **`client`** — not a checker verdict; it is a `resolveClientReference` reference kind (`:82`, `{kind:'client'|'lead'|'invoice'}`). No conflict payload carries it.
+- **`cluster`** — a real verdict but **write-unreachable on BOTH surfaces** (faithful parity, not an F-04.65 defect): it keys off `ready_by`, the `donna_book_event`/`donna_edit_event` schemas carry no `ready_by`, and no conversational door (WA or chat) ever writes one. Forcing a case would be fabrication; the executor witnessed it unreachable instead. **Credited — the executor read the checker at HEAD and corrected the chair.**
+
+### PROOF — DESK + LIVE, both non-vacuous:
+- **`b5_wa_door_bench.js` 32/32** over the REAL `calendarSignals` door functions + REAL `writeEvent`/`checkOccupancy` (checker_bench harness). Fail-at-uncured proven by the CE (swap `f4d1754`'s `calendarSignals.js` under the bench → 7/32; §A/§E/§F collapse). Cases: date_blocked (refusal + write-nothing), capacity (refusal + write-nothing), appointment_overlap (ADVISORY — write lands + heads-up rides beside).
+- **`b5_wa_door_smoke.js` 12/12 — founder-run against LIVE Supabase, 2026-07-19.** The three provokable verdicts witnessed with real `conflict.kind` + surfaced line; DB left **byte-clean** (residue check 0). Self-cleaning: isolated throwaway user+vendor (schema-driven — `vendors.user_id` FK, sentinel phone), child-first `finally` hard-delete, idempotent purge-on-start, STOPs rather than touch a row it didn't create. Committed like the gauntlet — a reusable manual WA-door smoke, run with the founder's keys. **CE gated the safety at origin (isolation, cleanup, idempotence, zero real-data writes); did NOT run it against prod.**
+
+### GATES: `checker_bench` **101/101 byte-stable** (app doors no regression) · `calendarSignals.js` sealed after the port (0-line across the bench + smoke sittings) · **W-1 absolute — zero prompt/soul/voice diff** · `scrub.js` / `leads.js` / guarded set 0-line · `node --check` clean.
+
+### SEAL: F-04.65 CLOSED (🟢), F-04.66 CLOSED (🟢, folded). Block 05's mechanical spine begins. **NEXT: P1 — webhookCore + the race fix + dead letters** (the WEBHOOK spec's first phase). The couple-agent soul remains the block's CLOSING sitting (addendum §2). 06's advisor arc (F-06.4) stays PARKED — revisit after 05, per founder sequencing.
