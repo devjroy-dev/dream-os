@@ -36,6 +36,9 @@ const { saveToMuse }     = require('./lib/museSave');
 const { groundedSearch } = require('./lib/groundedSearch');
 const { MODEL_HAIKU }    = require('./agent/models');
 const { startBrideCronJobs } = require('./brideCron');
+const { processBrideInbound, twilioInputsFrom, metaInputsFrom } = require('./lib/brideInbound'); // TDW_05 M1b
+const metaInbound = require('./lib/metaInbound'); // TDW_05 M1b: dormant Meta inbound (bride lane)
+const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle'); // TDW_05 M1b: via deps
 
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
@@ -76,7 +79,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const app = express();
 app.set('trust proxy', true);
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } })); // TDW_05 M1b: rawBody for Meta sig
 
 app.locals.supabase = supabase;
 
@@ -140,29 +143,33 @@ app.get('/', (req, res) => {
 app.post('/webhook/twilio-status', webhookCore.makeTwilioStatusHandler({ supabase, prefix: '[bride-twilio-status]' }));
 
 // ── Inbound WhatsApp webhook ─────────────────────────────────────────
+// ── brideInboundDeps: every seam the shared turn-core needs (M1b) ────────────────
+// The core is transport-agnostic; the real deps here are what production uses. The bench
+// injects fakes. (handle* / build* are hoisted function declarations defined below.)
+const brideInboundDeps = {
+  supabase, anthropic, sendWhatsApp, webhookCore,
+  runBrideAgenticTurn, surfacePendingCircleSessions, saveToMuse,
+  checkImageThrottle, markRejectionSent, handleSurpriseMe, handleCircleMemberMessage,
+  buildCircleGreeting, extractMuseUrl, buildMediaContextNote,
+  DEAD_END_REPLY, CIRCLE_TOKEN_REGEX,
+};
+
+// ── Twilio inbound (unchanged transport; now calls the SHARED core) ──────────────
 app.post('/webhook/whatsapp', async (req, res) => {
   try {
-    const fromRaw     = req.body.From || '';
-    const phone       = fromRaw.replace('whatsapp:', '');
-    const body        = req.body.Body || '';
-    const profileName = req.body.ProfileName || null;
-    const twilioSid   = req.body.MessageSid || null;         // the inbound MessageSid (dedupe key)
-    const internalReplay = webhookCore.isInternalReplay(req); // TDW_05 P1b: admin dead-letter re-drive
-    const sidForPersist  = internalReplay ? null : twilioSid; // null on replay → no self-collision on the durable index
+    const fromRaw        = req.body.From || '';
+    const phone          = fromRaw.replace('whatsapp:', '');
+    const body           = req.body.Body || '';
+    const internalReplay = webhookCore.isInternalReplay(req);
+    const twilioSid      = req.body.MessageSid || null;
 
     webhookCore.logInbound('[bride-whatsapp:in]', phone, body);
 
-    // ── Twilio signature verification (TDW_05 P1a: webhookCore) ────────
-    // TDW_05 P1b: an internal replay carries the shared secret and skips signature + dedupe.
     if (!internalReplay && !webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[bride-webhook]' })) return;
 
-    // ── Media-only / empty-body guard (TDW_05 P1a: webhookCore) ─────
     const { trimmedBody, numMedia, hasMedia } = webhookCore.normalizeMedia(req, body);
     if (webhookCore.isEmptyInbound(res, { trimmedBody, hasMedia, prefix: '[bride-webhook]' })) return;
 
-    // ── Inbound idempotency: MessageSid dedupe (TDW_05 P1b) ──────────
-    // LRU fast path; the durable messages.message_sid unique index is the cross-process
-    // backstop (23505 classified in the outer catch). Replay deliberately re-runs.
     if (!internalReplay) {
       if (webhookCore.sidSeen(twilioSid)) {
         console.log(`[bride-webhook] duplicate MessageSid ${twilioSid} — already processed, dropping`);
@@ -171,483 +178,61 @@ app.post('/webhook/whatsapp', async (req, res) => {
       webhookCore.recordSid(twilioSid);
     }
 
-    // ── Step 5: existing circle member routing ────────────────────────
-    // Check FIRST — before token regex — so an active circle member who
-    // accidentally sends a token-shaped message (e.g. forwarding someone
-    // else's invite link) gets routed correctly rather than hitting the
-    // claim path and receiving a dead-end reply. (M1 audit fix)
-    const { data: activeCircleMember } = await supabase
-      .from('circle_members')
-      .select('id, couple_id, invitee_name, role, status, invitee_phone')
-      .eq('invitee_phone', phone)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (activeCircleMember) {
-      try {
-        await handleCircleMemberMessage({
-          phone,
-          body,
-          trimmedBody,
-          hasMedia,
-          numMedia,
-          req,
-          twilioSid: sidForPersist, // TDW_05 P1b: null on replay / degrades via inboundRow
-          profileName,
-          circleMember: activeCircleMember,
-        });
-        return res.status(200).send('<Response></Response>');
-      } catch (err) {
-        console.error('[bride-webhook] circle-member handler error:', err);
-        // TDW_05 P1b: duplicate-sid → idempotent drop; else dead-letter + graceful line.
-        if (webhookCore.isDuplicateSidError(err)) {
-          console.log(`[bride-webhook] duplicate MessageSid ${twilioSid} hit the durable index — dropping`);
-          return res.status(200).send('<Response></Response>');
-        }
-        try {
-          await webhookCore.captureDeadLetter({ supabase, service: 'bride', phone, payload: req.body, error: err });
-          await sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE);
-        } catch (dlErr) { console.error('[bride-webhook] dead-letter path error:', dlErr && dlErr.message); }
-        return res.status(200).send('<Response></Response>');
-      }
-    }
-
-    // ── Step 5: token-claim path (first message from circle invitee) ─
-    // Only reached if phone is NOT already an active circle member.
-    // If the message body is a CIRCLE-XXXXXX token, attempt to claim the
-    // invite. Successful claim → create user (if needed), create
-    // circle_thread conversation, send the hardcoded greeting, return.
-    if (CIRCLE_TOKEN_REGEX.test(trimmedBody)) {
-      const token = trimmedBody;
-      console.log(`[bride-webhook] token-shaped first message from ${phone}: ${token}`);
-
-      const { data: claimRows, error: claimError } = await supabase.rpc('claim_circle_invite', {
-        p_token:         token,
-        p_invitee_phone: phone,
-      });
-
-      if (claimError) {
-        // Invalid or already-used token → dead-end (privacy: don't tell them why)
-        console.warn(`[bride-webhook] claim_circle_invite failed for ${phone}: ${claimError.message}`);
-        await sendWhatsApp(phone, DEAD_END_REPLY);
-        return res.status(200).send('<Response></Response>');
-      }
-
-      const claim = Array.isArray(claimRows) ? claimRows[0] : claimRows;
-      if (!claim) {
-        console.warn(`[bride-webhook] claim_circle_invite returned no row for ${phone}`);
-        await sendWhatsApp(phone, DEAD_END_REPLY);
-        return res.status(200).send('<Response></Response>');
-      }
-
-      // Ensure a users row exists for this phone. We use the invitee_name from
-      // the claim as the user's display name (best info we have at this point).
-      // H1 fix: if users or conversations insert fails AFTER the RPC has already
-      // consumed the token (status=active), do NOT send dead-end reply.
-      // The member's status is active, so their next message will hit the
-      // activeCircleMember routing path and the conversation heal block will
-      // create the missing circle_thread. Send a soft retry message instead.
-      const CLAIM_RETRY_REPLY = "Something went wrong on our end — please send that message again in a moment.";
-
-      let circleUser;
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('phone', phone)
-        .maybeSingle();
-
-      if (existingUser) {
-        circleUser = existingUser;
-      } else {
-        const safeName = (profileName || claim.invitee_name || '').slice(0, 120);
-        const { data: newUser, error: userErr } = await supabase
-          .from('users')
-          .insert({
-            phone,
-            name: safeName,
-            pronouns: null,
-          })
-          .select()
-          .single();
-        if (userErr) {
-          console.error('[bride-webhook] users insert (circle) failed:', userErr);
-          await sendWhatsApp(phone, CLAIM_RETRY_REPLY);
-          return res.status(200).send('<Response></Response>');
-        }
-        circleUser = newUser;
-      }
-
-      // Create the circle_thread conversation. counterparty_user_id is the
-      // circle member; couple_id is the bride's; the conversation IS scoped
-      // to the bride so messages.cost_inr aggregates to her.
-      const { data: circleConvo, error: convoErr } = await supabase
-        .from('conversations')
-        .insert({
-          couple_id:            claim.couple_id,
-          counterparty_phone:   phone,
-          counterparty_user_id: circleUser.id,
-          kind:                 'circle_thread',
-          state:                'active',
-          mode:                 'auto',
-          last_message_at:      new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (convoErr) {
-        console.error('[bride-webhook] circle_thread conversation insert failed:', convoErr);
-        await sendWhatsApp(phone, CLAIM_RETRY_REPLY);
-        return res.status(200).send('<Response></Response>');
-      }
-
-      // Log the inbound token message for the audit trail
-      // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
-      await supabase.from('messages').insert(webhookCore.inboundRow({
-        conversation_id: circleConvo.id,
-        direction:       'inbound',
-        channel:         'whatsapp',
-        body:            token,
-        sent_by:         'couple',  // circle member messages share the 'couple' tag
-      }, sidForPersist));
-
-      // Send the hardcoded greeting (NOT via agent — locked product copy)
-      const greeting = buildCircleGreeting(claim.bride_name, claim.member_role);
-      let greetMsg = null;
-      try {
-        greetMsg = await sendWhatsApp(phone, greeting);
-      } catch (sendErr) {
-        console.error('[bride-webhook] circle greeting send failed:', sendErr);
-      }
-
-      // Log outbound greeting
-      await supabase.from('messages').insert({
-        conversation_id: circleConvo.id,
-        direction:       'outbound',
-        channel:         'whatsapp',
-        body:            greeting,
-        sent_by:         'agent',
-        twilio_sid:      greetMsg?.sid ?? null,
-      });
-
-      console.log(`[bride-webhook] circle claim complete: member ${claim.invitee_name} → bride ${claim.bride_name}`);
-      return res.status(200).send('<Response></Response>');
-    }
-
-    // ── Phone-as-gate: must already exist in users + couples ────────
-    const { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('phone', phone)
-      .maybeSingle();
-
-    if (!user) {
-      console.log(`[bride-webhook] no user for ${phone} — dead-end reply`);
-      await sendWhatsApp(phone, DEAD_END_REPLY);
-      return res.status(200).send('<Response></Response>');
-    }
-
-    const { data: couple } = await supabase
-      .from('couples')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!couple) {
-      console.log(`[bride-webhook] user ${user.id} has no couples row — dead-end reply`);
-      await sendWhatsApp(phone, DEAD_END_REPLY);
-      return res.status(200).send('<Response></Response>');
-    }
-
-    // Backfill the user's profile name if Twilio sent one and we don't have it yet
-    if (profileName && !user.name) {
-      await supabase.from('users').update({ name: profileName }).eq('id', user.id);
-      user.name = profileName;
-    }
-
-    // ── Ensure conversation row exists (kind = couple_self) ─────────
-    let { data: conversation } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('couple_id', couple.id)
-      .eq('kind', 'couple_self')
-      .maybeSingle();
-
-    if (!conversation) {
-      const { data: newConvo, error: convoError } = await supabase
-        .from('conversations')
-        .insert({
-          couple_id:            couple.id,
-          counterparty_phone:   phone,
-          counterparty_user_id: user.id,
-          kind:                 'couple_self',
-          state:                'new',
-          mode:                 'auto',
-          last_message_at:      new Date().toISOString(),
-        })
-        .select()
-        .single();
-      if (convoError) throw convoError;
-      conversation = newConvo;
-    }
-
-    // ── Detect Muse trigger BEFORE running the engine ───────────────
-    // Two sources:
-    //   (1) Inbound image attachment (Twilio MediaUrl0, media-type image/*)
-    //   (2) Pinterest or Instagram URL inside the text body
-    //
-    // If detected, run the saveToMuse pipeline. On success, synthesize a
-    // mediaContext note for the agent so it can compose a natural reply.
-    // On pipeline failure, the agent still runs but gets a soft-failure note
-    // so it can reply gracefully (Option (a) per Step 4 planning).
-    let mediaContextNote = null;
-    let mediaSaveAttempted = false;
-    let mediaSaveSucceeded = false;
-
-    // Determine the source URL: image media wins over URL in body text.
-    let sourceUrlForMuse = null;
-    let sourceCaption    = trimmedBody || null;
-
-    if (hasMedia && (req.body.MediaContentType0 || '').toLowerCase().startsWith('image/')) {
-      sourceUrlForMuse = req.body.MediaUrl0;
-      // The bride's caption is whatever text she sent alongside the image (may be empty).
-    } else {
-      const linkInBody = extractMuseUrl(trimmedBody);
-      if (linkInBody) {
-        sourceUrlForMuse = linkInBody;
-        // The caption is the rest of the message minus the URL.
-        // Strip the URL out of the body and collapse any double-spaces it leaves behind
-        const captionWithoutUrl = trimmedBody.replace(linkInBody, '').replace(/\s+/g, ' ').trim();
-        sourceCaption = captionWithoutUrl.length > 0 ? captionWithoutUrl : null;
-      }
-    }
-
-    // ── Image throttle (Patch 9) ────────────────────────────────────
-    // Throttle when the source is an actual image attachment (Twilio MediaUrl0).
-    // URLs in the body (Pinterest/IG links) are explicit single actions and
-    // not subject to throttling.
-    if (sourceUrlForMuse && hasMedia && (req.body.MediaContentType0 || '').toLowerCase().startsWith('image/')) {
-      const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle');
-      const throttle = await checkImageThrottle({ supabase, phone, engine: 'bride' });
-      if (!throttle.allowed) {
-        console.log(`[bride-webhook] image throttle: ${phone} count=${throttle.count} notify=${throttle.shouldNotify}`);
-        if (throttle.shouldNotify) {
-          await sendWhatsApp(
-            phone,
-            "I'll be able to process two at a time right now. Send the rest after I respond to these two. Good news though, I'll be able to process multiple images together, very soon! Or upload them all together from the Add button in Muse — much faster for batches. thedreamwedding.in"
-          );
-          await markRejectionSent({ supabase, rowId: throttle.rowId });
-        }
-        return res.status(200).send('<Response></Response>');
-      }
-    }
-
-    if (sourceUrlForMuse) {
-      mediaSaveAttempted = true;
-      const saveResult = await saveToMuse({
-        sourceUrl:         sourceUrlForMuse,
-        couple_id:         couple.id,
-        saved_by_user_id:  user.id,
-        saved_by_role:     'bride',   // Step 5 will extend to circle_member
-        caption:           sourceCaption,
-        supabase,
-        anthropic,
-      });
-
-      if (saveResult.ok && saveResult.classified_as === 'receipt') {
-        // Classifier routed to receipt — call save_receipt immediately then
-        // acknowledge warmly. No questions — receipt is filed as-is. Bride
-        // retrieves it via PWA when she needs it.
-        mediaSaveSucceeded = true;
-        mediaContextNote = `[SYSTEM NOTE] The bride forwarded a receipt. It has been filed to her receipt vault (image_url: ${saveResult.image_url}). Call save_receipt immediately with just the image_url. Then reply with one warm sentence acknowledging the receipt was saved — something like "Got it, filed away!" Do NOT ask for details, label, or amount.`;
-        console.log(`[bride-webhook] image classified as receipt, image_url=${saveResult.image_url}`);
-      } else if (saveResult.ok && saveResult.save?.surface === 'moments') {
-        mediaSaveSucceeded = true;
-        mediaContextNote = `[SYSTEM NOTE] The bride forwarded a personal photo — it has been saved to her Moments (save #${saveResult.save.save_number}). Moments is her personal photo diary — candids, real life, her journey. Reply with one warm sentence acknowledging the moment was saved. Keep it brief and personal, like "Saved to your Moments ✦" or acknowledge what kind of moment it looks like if obvious from context.`;
-        console.log(`[bride-webhook] moment save succeeded: #${saveResult.save.save_number}`);
-      } else if (saveResult.ok) {
-        mediaSaveSucceeded = true;
-        mediaContextNote = buildMediaContextNote(saveResult.save, 'The bride');
-        console.log(`[bride-webhook] muse save succeeded: #${saveResult.save.save_number}`);
-      } else {
-        // Soft failure: agent gets a note about the failed save and replies with a
-        // friendly retry message. The save itself is not retried automatically.
-        mediaContextNote = `[SYSTEM NOTE] The bride forwarded an image or link, but the Muse save pipeline failed (${saveResult.error}). Apologise briefly in BFF voice and suggest she resend in a minute. Do NOT pretend the save happened.`;
-        console.warn(`[bride-webhook] muse save failed: ${saveResult.error}`);
-      }
-    }
-
-    // ── Log inbound message ─────────────────────────────────────────
-    // Body text is logged as-is. If the inbound was image-only or media-only,
-    // synthesize a clear body string so conversation history stays coherent
-    // and the agent reading the audit trail later isn't confused.
-    let bodyForLog;
-    if (trimmedBody.length > 0) {
-      bodyForLog = trimmedBody;
-    } else if (mediaSaveSucceeded) {
-      bodyForLog = '[forwarded an image]';
-    } else if (mediaSaveAttempted) {
-      bodyForLog = '[forwarded an image — save failed]';
-    } else if (hasMedia) {
-      // Media was present but not an image (video, audio, document, etc).
-      // Identify the rough kind for the audit trail.
-      const ct = (req.body.MediaContentType0 || '').toLowerCase();
-      const kind = ct.startsWith('video/') ? 'video'
-                 : ct.startsWith('audio/') ? 'voice note'
-                 : ct.startsWith('application/pdf') ? 'PDF'
-                 : 'media';
-      bodyForLog = `[forwarded a ${kind} — not yet supported]`;
-    } else {
-      bodyForLog = '[empty]';
-    }
-
-    // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
-    await supabase.from('messages').insert(webhookCore.inboundRow({
-      conversation_id: conversation.id,
-      direction:       'inbound',
-      channel:         'whatsapp',
-      body:            bodyForLog,
-      sent_by:         'couple',
-    }, sidForPersist));
-
-    // Bump last_message_at on the conversation
-    await supabase
-      .from('conversations')
-      .update({ last_message_at: new Date().toISOString() })
-      .eq('id', conversation.id);
-
-    // ── Surprise Me intercept ────────────────────────────────────────
-    // Triggered when the bride says "surprise me" (case-insensitive, trimmed).
-    // Short-circuits the normal engine. Handled entirely here — no agent turn.
-    if (trimmedBody.toLowerCase().trim() === 'surprise me') {
-      console.log(`[bride-webhook] surprise me from couple ${couple.id}`);
-
-      // Surface any pending circle session summaries first — same as the normal
-      // engine path. /surprise bypasses runBrideAgenticTurn so we call this here
-      // explicitly to ensure the bride doesn't miss circle activity.
-      const circleSummary = await surfacePendingCircleSessions({
-        couple_id: couple.id,
-        supabase,
-        anthropic,
-      });
-      if (circleSummary && circleSummary.trim()) {
-        let circleMsg = null;
-        try {
-          circleMsg = await sendWhatsApp(phone, circleSummary.trim());
-        } catch (e) {
-          console.error('[bride-webhook] /surprise circle summary send error:', e);
-        }
-        await supabase.from('messages').insert({
-          conversation_id: conversation.id,
-          direction:       'outbound',
-          channel:         'whatsapp',
-          body:            circleSummary.trim(),
-          sent_by:         'agent',
-          twilio_sid:      circleMsg?.sid ?? null,
-        });
-      }
-
-      const surpriseReply = await handleSurpriseMe({ couple, supabase });
-
-      let twilioSurprise = null;
-      try {
-        twilioSurprise = await sendWhatsApp(phone, surpriseReply);
-      } catch (e) {
-        console.error('[bride-webhook] /surprise send error:', e);
-      }
-
-      await supabase.from('messages').insert({
-        conversation_id: conversation.id,
-        direction:       'outbound',
-        channel:         'whatsapp',
-        body:            surpriseReply,
-        sent_by:         'agent',
-        twilio_sid:      twilioSurprise?.sid ?? null,
-      });
-      await supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversation.id);
-
-      return res.status(200).send('<Response></Response>');
-    }
-
-    // ── Run the engine ──────────────────────────────────────────────
-    // Pass the body (which may include the URL — agent reads naturally).
-    // For media-only inbounds, pass the same synthesized string we wrote to
-    // the audit log so the agent's context matches its history.
-    const inboundForEngine = trimmedBody.length > 0 ? trimmedBody : bodyForLog;
-
-    const result = await runBrideAgenticTurn({
-      couple,
-      user,
-      conversation,
-      inboundMessage: inboundForEngine,
-      mediaContext:   mediaContextNote,
-      supabase,
-      anthropic,
-    });
-
-    // Bug #2 fix: circle summary delivered as a separate WhatsApp message
-    // before the agent reply — never injected into the agent context.
-    if (result.circleSummary) {
-      try {
-        const summaryMsg = await sendWhatsApp(phone, result.circleSummary);
-        await supabase.from('messages').insert({
-          conversation_id: conversation.id,
-          direction:       'outbound',
-          channel:         'whatsapp',
-          body:            result.circleSummary,
-          sent_by:         'agent',
-          twilio_sid:      summaryMsg?.sid ?? null,
-        });
-        console.log(`[bride-circle-summary] delivered to ${phone} (${summaryMsg?.sid})`);
-      } catch (summaryErr) {
-        console.error('[bride-circle-summary] send failed (continuing):', summaryErr.message);
-      }
-    }
-
-    // ── Send the reply via Twilio ───────────────────────────────────
-    // result.mediaUrls is populated when list_muse was called with playback.
-    let twilioMsg = null;
-    try {
-      twilioMsg = await sendWhatsApp(phone, result.reply, result.mediaUrls || []);
-    } catch (sendErr) {
-      console.error('[bride-webhook] sendWhatsApp error:', sendErr);
-      // Continue to log the outbound message even if Twilio errored —
-      // we want the audit trail. delivery_status will get 'failed' on callback.
-    }
-
-    // ── Log outbound message with full cost tracking ────────────────
-    await supabase.from('messages').insert({
-      conversation_id: conversation.id,
-      direction:       'outbound',
-      channel:         'whatsapp',
-      body:            result.reply,
-      sent_by:         'agent',
-      twilio_sid:      twilioMsg?.sid ?? null,
-      tool_calls:      result.toolCalls,
-      model:           result.model        ?? null,
-      input_tokens:    result.inputTokens  ?? null,
-      output_tokens:   result.outputTokens ?? null,
-      cost_usd:        result.costUsd      ?? null,
-      cost_inr:        result.costInr      ?? null,
-    });
-
+    const inputs = twilioInputsFrom(req, { internalReplay, trimmedBody, numMedia, hasMedia });
+    await processBrideInbound(inputs, brideInboundDeps);
     return res.status(200).send('<Response></Response>');
   } catch (err) {
+    // The core self-handles turn errors (174-636). This catch covers the parse/sig/dedupe
+    // stage — verbatim-equivalent to the original outer catch, so behavior is unchanged.
     console.error('[bride-webhook] error:', err);
-    // TDW_05 P1b: unique-violation on message_sid = duplicate slipped past LRU → idempotent drop.
     if (webhookCore.isDuplicateSidError(err)) {
       console.log(`[bride-webhook] duplicate MessageSid ${req.body.MessageSid} hit the durable index — dropping`);
       return res.status(200).send('<Response></Response>');
     }
-    // Otherwise dead-letter the payload + give the user the graceful line (best-effort).
     try {
       const phone = (req.body.From || '').replace('whatsapp:', '');
       await webhookCore.captureDeadLetter({ supabase, service: 'bride', phone, payload: req.body, error: err });
       await sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE);
     } catch (dlErr) { console.error('[bride-webhook] dead-letter path error:', dlErr && dlErr.message); }
     return res.status(200).send('<Response></Response>');
+  }
+});
+
+// ── Meta inbound (DORMANT — receives nothing until the bride number is provisioned on
+// Meta and the webhook is pointed here at the founder's cutover). Calls the SAME core, so
+// reply content is byte-identical to the Twilio path (M1b bench proves it). ──────────────
+app.get('/webhook/meta', (req, res) => {
+  if (metaInbound.handleVerifyChallenge(req, res, process.env.META_VERIFY_TOKEN)) return;
+  return res.status(400).send('Bad Request');
+});
+app.post('/webhook/meta', async (req, res) => {
+  if (process.env.DISABLE_META_SIGNATURE_CHECK !== 'true') {
+    const okSig = metaInbound.verifyMetaSignature(req.rawBody, req.headers['x-hub-signature-256'], process.env.META_APP_SECRET);
+    if (!okSig) { console.warn('[bride-webhook:meta] invalid X-Hub-Signature-256'); return res.status(403).send('Forbidden'); }
+  }
+  res.status(200).send('ok'); // Meta wants a fast 200 regardless of downstream work
+
+  try {
+    for (const msg of metaInbound.normalizeMetaInbound(req.body)) {
+      if (!msg.messageId) continue;
+      if (webhookCore.sidSeen(msg.messageId)) { console.log(`[bride-webhook:meta] dup wamid ${msg.messageId}, skipping`); continue; }
+      webhookCore.recordSid(msg.messageId);
+
+      const hasText  = !!(msg.text && msg.text.trim());
+      const hasMedia = Array.isArray(msg.media) && msg.media.length > 0;
+      if (!hasText && !hasMedia) { console.warn(`[bride-webhook:meta] empty inbound from ${msg.from}, dropping`); continue; }
+
+      const inputs = metaInputsFrom(msg, req.body);
+      await processBrideInbound(inputs, brideInboundDeps);
+    }
+    // Delivery receipts (same webhook as inbound). Outbound rows hold the wamid in twilio_sid (M1a).
+    for (const s of metaInbound.extractStatuses(req.body)) {
+      try { await supabase.from('messages').update({ delivery_status: s.status }).eq('twilio_sid', s.id); }
+      catch (_e) { /* status best-effort */ }
+      console.log(`[bride-webhook:meta] status wamid=${s.id} status=${s.status}`);
+    }
+  } catch (err) {
+    console.error('[bride-webhook:meta] inbound processing error:', err && err.message);
   }
 });
 
