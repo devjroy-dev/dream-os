@@ -146,16 +146,30 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const phone       = fromRaw.replace('whatsapp:', '');
     const body        = req.body.Body || '';
     const profileName = req.body.ProfileName || null;
-    const twilioSid   = req.body.MessageSid || null;
+    const twilioSid   = req.body.MessageSid || null;         // the inbound MessageSid (dedupe key)
+    const internalReplay = webhookCore.isInternalReplay(req); // TDW_05 P1b: admin dead-letter re-drive
+    const sidForPersist  = internalReplay ? null : twilioSid; // null on replay → no self-collision on the durable index
 
     webhookCore.logInbound('[bride-whatsapp:in]', phone, body);
 
     // ── Twilio signature verification (TDW_05 P1a: webhookCore) ────────
-    if (!webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[bride-webhook]' })) return;
+    // TDW_05 P1b: an internal replay carries the shared secret and skips signature + dedupe.
+    if (!internalReplay && !webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[bride-webhook]' })) return;
 
     // ── Media-only / empty-body guard (TDW_05 P1a: webhookCore) ─────
     const { trimmedBody, numMedia, hasMedia } = webhookCore.normalizeMedia(req, body);
     if (webhookCore.isEmptyInbound(res, { trimmedBody, hasMedia, prefix: '[bride-webhook]' })) return;
+
+    // ── Inbound idempotency: MessageSid dedupe (TDW_05 P1b) ──────────
+    // LRU fast path; the durable messages.message_sid unique index is the cross-process
+    // backstop (23505 classified in the outer catch). Replay deliberately re-runs.
+    if (!internalReplay) {
+      if (webhookCore.sidSeen(twilioSid)) {
+        console.log(`[bride-webhook] duplicate MessageSid ${twilioSid} — already processed, dropping`);
+        return res.status(200).send('<Response></Response>');
+      }
+      webhookCore.recordSid(twilioSid);
+    }
 
     // ── Step 5: existing circle member routing ────────────────────────
     // Check FIRST — before token regex — so an active circle member who
@@ -178,14 +192,23 @@ app.post('/webhook/whatsapp', async (req, res) => {
           hasMedia,
           numMedia,
           req,
-          twilioSid,
+          twilioSid: sidForPersist, // TDW_05 P1b: null on replay / degrades via inboundRow
           profileName,
           circleMember: activeCircleMember,
         });
         return res.status(200).send('<Response></Response>');
       } catch (err) {
         console.error('[bride-webhook] circle-member handler error:', err);
-        return res.status(500).send('error');
+        // TDW_05 P1b: duplicate-sid → idempotent drop; else dead-letter + graceful line.
+        if (webhookCore.isDuplicateSidError(err)) {
+          console.log(`[bride-webhook] duplicate MessageSid ${twilioSid} hit the durable index — dropping`);
+          return res.status(200).send('<Response></Response>');
+        }
+        try {
+          await webhookCore.captureDeadLetter({ supabase, service: 'bride', phone, payload: req.body, error: err });
+          await sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE);
+        } catch (dlErr) { console.error('[bride-webhook] dead-letter path error:', dlErr && dlErr.message); }
+        return res.status(200).send('<Response></Response>');
       }
     }
 
@@ -278,14 +301,14 @@ app.post('/webhook/whatsapp', async (req, res) => {
       }
 
       // Log the inbound token message for the audit trail
-      await supabase.from('messages').insert({
+      // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
+      await supabase.from('messages').insert(webhookCore.inboundRow({
         conversation_id: circleConvo.id,
         direction:       'inbound',
         channel:         'whatsapp',
         body:            token,
         sent_by:         'couple',  // circle member messages share the 'couple' tag
-        twilio_sid:      twilioSid,
-      });
+      }, sidForPersist));
 
       // Send the hardcoded greeting (NOT via agent — locked product copy)
       const greeting = buildCircleGreeting(claim.bride_name, claim.member_role);
@@ -477,14 +500,14 @@ app.post('/webhook/whatsapp', async (req, res) => {
       bodyForLog = '[empty]';
     }
 
-    await supabase.from('messages').insert({
+    // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
+    await supabase.from('messages').insert(webhookCore.inboundRow({
       conversation_id: conversation.id,
       direction:       'inbound',
       channel:         'whatsapp',
       body:            bodyForLog,
       sent_by:         'couple',
-      twilio_sid:      twilioSid,
-    });
+    }, sidForPersist));
 
     // Bump last_message_at on the conversation
     await supabase
@@ -613,7 +636,18 @@ app.post('/webhook/whatsapp', async (req, res) => {
     return res.status(200).send('<Response></Response>');
   } catch (err) {
     console.error('[bride-webhook] error:', err);
-    return res.status(500).send('error');
+    // TDW_05 P1b: unique-violation on message_sid = duplicate slipped past LRU → idempotent drop.
+    if (webhookCore.isDuplicateSidError(err)) {
+      console.log(`[bride-webhook] duplicate MessageSid ${req.body.MessageSid} hit the durable index — dropping`);
+      return res.status(200).send('<Response></Response>');
+    }
+    // Otherwise dead-letter the payload + give the user the graceful line (best-effort).
+    try {
+      const phone = (req.body.From || '').replace('whatsapp:', '');
+      await webhookCore.captureDeadLetter({ supabase, service: 'bride', phone, payload: req.body, error: err });
+      await sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE);
+    } catch (dlErr) { console.error('[bride-webhook] dead-letter path error:', dlErr && dlErr.message); }
+    return res.status(200).send('<Response></Response>');
   }
 });
 
@@ -828,14 +862,14 @@ async function handleCircleMemberMessage({
         console.error('[circle-handler] cap reply send failed:', e);
       }
       // Log inbound + outbound
-      await supabase.from('messages').insert({
+      // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
+      await supabase.from('messages').insert(webhookCore.inboundRow({
         conversation_id: conversation.id,
         direction:       'inbound',
         channel:         'whatsapp',
         body:            trimmedBody || (hasMedia ? '[forwarded an image — daily cap hit]' : '[empty]'),
         sent_by:         'couple',
-        twilio_sid:      twilioSid,
-      });
+      }, twilioSid));
       await supabase.from('messages').insert({
         conversation_id: conversation.id,
         direction:       'outbound',
@@ -853,14 +887,14 @@ async function handleCircleMemberMessage({
   }
 
   // ── Log inbound message (earliest safe point — after conversation resolved, cap-hit path has returned) ──
-  await supabase.from('messages').insert({
+  // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
+  await supabase.from('messages').insert(webhookCore.inboundRow({
     conversation_id: conversation.id,
     direction:       'inbound',
     channel:         'whatsapp',
     body:            trimmedBody.length > 0 ? trimmedBody : hasMedia ? '[image]' : '[empty]',
     sent_by:         'couple',
-    twilio_sid:      twilioSid,
-  });
+  }, twilioSid));
 
   // ── Open or bump circle_sessions row ──
   // If the most recent session for this member is still "alive" (last_activity
@@ -1001,14 +1035,14 @@ async function handleCircleMemberMessage({
       } catch (e) {
         console.error('[circle-handler] text cap reply send failed:', e);
       }
-      await supabase.from('messages').insert({
+      // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
+      await supabase.from('messages').insert(webhookCore.inboundRow({
         conversation_id: conversation.id,
         direction:       'inbound',
         channel:         'whatsapp',
         body:            trimmedBody,
         sent_by:         'couple',
-        twilio_sid:      twilioSid,
-      });
+      }, twilioSid));
       await supabase.from('messages').insert({
         conversation_id: conversation.id,
         direction:       'outbound',
@@ -1129,5 +1163,6 @@ async function handleCircleMemberMessage({
 app.listen(PORT, () => {
   console.log(`[dream-wedding] listening on :${PORT}`);
   webhookCore.warnIfSignatureCheckDisabled('[dream-wedding]'); // TDW_05 P1a
+  webhookCore.probeMessageSidColumn(supabase, { prefix: '[dream-wedding]' }); // TDW_05 P1b: durable-dedupe capability probe
   startBrideCronJobs({ supabase });
 });

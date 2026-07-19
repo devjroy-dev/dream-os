@@ -152,15 +152,31 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const phone       = fromRaw.replace('whatsapp:', '');
     const body        = req.body.Body || '';
     const profileName = req.body.ProfileName || null;
+    const messageSid  = req.body.MessageSid || null;         // TDW_05 P1b: inbound dedupe key
+    const internalReplay = webhookCore.isInternalReplay(req); // TDW_05 P1b: admin dead-letter re-drive
 
     webhookCore.logInbound('[whatsapp:in]', phone, body);
 
     // ── Twilio signature verification (TDW_05 P1a: webhookCore) ────────
-    if (!webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[webhook]' })) return;
+    // TDW_05 P1b: an internal replay is not from Twilio — it carries the shared secret, so
+    // it skips signature (and dedupe below). Withheld unless INTERNAL_REPLAY_SECRET is set.
+    if (!internalReplay && !webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[webhook]' })) return;
 
     // ── Media-only / empty-body guard (TDW_05 P1a: webhookCore) ─────
     const { trimmedBody, numMedia, hasMedia } = webhookCore.normalizeMedia(req, body);
     if (webhookCore.isEmptyInbound(res, { trimmedBody, hasMedia, prefix: '[webhook]' })) return;
+
+    // ── Inbound idempotency: MessageSid dedupe (TDW_05 P1b) ──────────
+    // LRU fast path — a Twilio webhook retry (same MessageSid) is processed once. The
+    // durable messages.message_sid unique index is the cross-process backstop (its 23505
+    // is classified in the outer catch). Replay deliberately re-runs, so it skips this.
+    if (!internalReplay) {
+      if (webhookCore.sidSeen(messageSid)) {
+        console.log(`[webhook] duplicate MessageSid ${messageSid} — already processed, dropping`);
+        return res.status(200).send('<Response></Response>');
+      }
+      webhookCore.recordSid(messageSid);
+    }
 
     let user;
     const { data: existingUser } = await supabase
@@ -821,13 +837,17 @@ app.post('/webhook/whatsapp', async (req, res) => {
       convo = newConvo;
     }
 
-    await supabase.from('messages').insert({
+    // TDW_05 P1b: carry the inbound MessageSid on the primary inbound row (feeds the
+    // durable messages.message_sid unique-index backstop). inboundRow omits it when the
+    // column isn't migrated yet (graceful degrade) or on an internal replay (avoids a
+    // self-collision on the original turn's sid).
+    await supabase.from('messages').insert(webhookCore.inboundRow({
       conversation_id: convo.id,
       direction: 'inbound',
       channel: 'whatsapp',
       body,
       sent_by: 'vendor',
-    });
+    }, internalReplay ? null : messageSid));
 
     // 5-A — engine dispatch. The same agent the web app talks to, so memory
     // unifies across web + WhatsApp (one mind, two surfaces). PDF attachments and
@@ -950,12 +970,31 @@ app.post('/webhook/whatsapp', async (req, res) => {
     res.status(200).send('<Response/>');
   } catch (err) {
     console.error('[webhook/whatsapp] error:', err);
-    res.status(500).send('error');
+    // TDW_05 P1b: a unique-violation on message_sid means a duplicate slipped past the LRU
+    // (cross-process/restart) — that's an idempotent no-op, not a failure. Drop it quietly.
+    if (webhookCore.isDuplicateSidError(err)) {
+      console.log(`[webhook] duplicate MessageSid ${req.body.MessageSid} hit the durable index — already processed, dropping`);
+      return res.status(200).send('<Response></Response>');
+    }
+    // Otherwise the turn genuinely threw → dead-letter the full payload and give the user a
+    // graceful line (best-effort; never let the dead-letter path mask the original error).
+    try {
+      await webhookCore.captureDeadLetter({
+        supabase, service: 'vendor',
+        phone: (req.body.From || '').replace('whatsapp:', ''),
+        payload: req.body, error: err,
+      });
+      await sendWhatsApp((req.body.From || '').replace('whatsapp:', ''), webhookCore.GRACEFUL_TURN_LINE);
+    } catch (dlErr) {
+      console.error('[webhook/whatsapp] dead-letter path error:', dlErr && dlErr.message);
+    }
+    res.status(200).send('<Response/>');
   }
 });
 
 app.listen(PORT, () => {
   console.log(`[dream-os] listening on :${PORT}`);
   webhookCore.warnIfSignatureCheckDisabled('[dream-os]'); // TDW_05 P1a
+  webhookCore.probeMessageSidColumn(supabase, { prefix: '[dream-os]' }); // TDW_05 P1b: durable-dedupe capability probe
   startCronJobs({ supabase });
 });

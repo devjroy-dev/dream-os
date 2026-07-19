@@ -83,11 +83,19 @@ function isEmptyInbound(res, { trimmedBody, hasMedia, prefix }) {
 // We match on MessageSid and update messages.delivery_status. Returns an express
 // handler bound to this service's supabase client and log prefix.
 //
-// NOTE (the Movement B seam): the "no message row … (callback ignored)" branch is the
-// Session-5.5 race — a callback can arrive before the outbound row is inserted. Movement B
-// replaces that drop with an in-process retry (3 × 2s → callback_unmatched). Kept verbatim
-// here so the extraction proves byte-identical first.
-function makeTwilioStatusHandler({ supabase, prefix }) {
+// TDW_05 P1b (Movement B) — the Session-5.5 status race. A delivery callback can
+// arrive BEFORE the outbound row has been inserted (Twilio is that fast). The pre-B
+// code logged "(callback ignored)" and dropped the status forever. B replaces that
+// single drop with an in-process retry: re-run the matched update up to `maxRetries`
+// times, `retryMs` apart. If a retry lands after the row exists, delivery_status is
+// written and nothing is lost. Only when all retries miss do we log `callback_unmatched`
+// and drop — the terminal, named, greppable outcome (no schema, per the ruling).
+//
+// Timing is injectable so the bench runs deterministically without real 2s waits;
+// production defaults are the chartered 3 × 2000ms. Every other branch (row-found on
+// first try, missing sid/status, db-error, errCode, handler-throw) is unchanged from
+// Movement A and stays byte-identical in the b5 bench.
+function makeTwilioStatusHandler({ supabase, prefix, maxRetries = 3, retryMs = 2000, sleep = _sleep }) {
   return async (req, res) => {
     try {
       const sid     = req.body.MessageSid    || req.body.SmsSid    || null;
@@ -100,16 +108,36 @@ function makeTwilioStatusHandler({ supabase, prefix }) {
         return res.status(200).send('ok');
       }
 
-      const { data, error } = await supabase
+      const runUpdate = () => supabase
         .from('messages')
         .update({ delivery_status: status })
         .eq('twilio_sid', sid)
         .select('id');
 
+      const { data, error } = await runUpdate();
+
       if (error) {
         console.error(`${prefix} db update error:`, error);
       } else if (!data || data.length === 0) {
-        console.log(`${prefix} no message row for sid=${sid} (callback ignored)`);
+        // The race: no row yet. Retry a bounded number of times before giving up.
+        let matched = false;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          await sleep(retryMs);
+          const retry = await runUpdate();
+          if (retry.error) {
+            console.error(`${prefix} db update error:`, retry.error);
+            matched = true; // an error is a terminal, already-logged outcome — stop retrying
+            break;
+          }
+          if (retry.data && retry.data.length > 0) {
+            console.log(`${prefix} sid=${sid} matched on retry ${attempt}/${maxRetries}`);
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          console.log(`${prefix} no message row for sid=${sid} after ${maxRetries} retries (callback_unmatched)`);
+        }
       }
 
       res.status(200).send('ok');
@@ -129,11 +157,159 @@ function warnIfSignatureCheckDisabled(serviceTag) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// TDW_05 P1b — Movement B additions (dedupe, dead letters, replay predicate).
+// All new surface below this line. The Movement-A functions above are unchanged
+// except makeTwilioStatusHandler's deliberate race-branch swap (CE-ruled).
+// ═══════════════════════════════════════════════════════════════════════
+
+function _sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+// ── Graceful line for a thrown inbound turn (dead-letter path) ───────
+// The single user-facing line when a turn throws and is dead-lettered. Verbatim
+// from the spec ("Dead letters" clause).
+const GRACEFUL_TURN_LINE = 'Something hiccuped — say that again in a minute.';
+
+// ── Inbound MessageSid dedupe: the in-process LRU (fast path) ────────
+// The primary idempotency guard. Twilio retries a webhook (same MessageSid) within
+// seconds when our 200 is slow; those retries hit the SAME process almost always, so
+// a bounded in-memory set catches the overwhelming majority with zero DB cost. The
+// durable `messages.message_sid` unique index (migration, founder-run) is the cross-
+// process/-restart backstop — a duplicate that slips past this LRU collides there and
+// is classified in the handler's outer catch (isDuplicateSidError) as an idempotent
+// drop, never a dead letter.
+//
+// A null/absent sid can't be deduped (no key) — sidSeen returns false so the turn runs.
+const _SID_LRU_MAX = 5000;
+let _sidLru = new Map(); // insertion-ordered; evict oldest when over cap
+
+function sidSeen(sid) {
+  if (!sid) return false;
+  return _sidLru.has(sid);
+}
+function recordSid(sid) {
+  if (!sid) return;
+  if (_sidLru.has(sid)) return;
+  _sidLru.set(sid, 1);
+  if (_sidLru.size > _SID_LRU_MAX) {
+    const oldest = _sidLru.keys().next().value;
+    _sidLru.delete(oldest);
+  }
+}
+function _resetSidLru() { _sidLru = new Map(); } // test hook
+
+// ── Postgres error classification ────────────────────────────────────
+// supabase-js surfaces the PostgREST/pg error with a `.code`. We only need two:
+//   23505 — unique_violation  → a duplicate inbound MessageSid hit the durable index.
+//   42703 — undefined_column  → messages.message_sid not migrated yet (graceful degrade).
+//   42P01 — undefined_table   → failed_turns not migrated yet (dead-letter degrade).
+function _errCode(error) {
+  if (!error) return null;
+  return error.code || (error.cause && error.cause.code) || null;
+}
+function isDuplicateSidError(error) { return _errCode(error) === '23505'; }
+function isMissingColumnError(error) { return _errCode(error) === '42703'; }
+function isMissingTableError(error)  { return _errCode(error) === '42P01'; }
+
+// ── Durable dedupe column probe (graceful degrade) ───────────────────
+// Run once at boot. If messages.message_sid exists we attach it on inbound persist
+// (feeding the unique-index backstop); if it doesn't, we run LRU-only and warn once,
+// so an un-migrated deploy keeps working (the CE's conditional-withheld rule). Cached.
+let _sidColumnPresent = null; // null = not yet probed
+async function probeMessageSidColumn(supabase, { prefix = '[webhook]' } = {}) {
+  try {
+    const { error } = await supabase.from('messages').select('message_sid').limit(1);
+    if (error && isMissingColumnError(error)) {
+      _sidColumnPresent = false;
+    } else {
+      _sidColumnPresent = true;
+    }
+  } catch (_e) {
+    _sidColumnPresent = false;
+  }
+  if (_sidColumnPresent === false) {
+    console.warn(`${prefix} durable MessageSid dedupe DEGRADED: messages.message_sid absent — LRU-only until migration lands`);
+  }
+  return _sidColumnPresent;
+}
+function messageSidColumnPresent() { return _sidColumnPresent === true; }
+function _setSidColumnPresent(v) { _sidColumnPresent = v; } // test hook
+
+// Build the inbound-message row, attaching message_sid only when the column exists.
+// Callers spread this: `await supabase.from('messages').insert(inboundRow(base, sid))`.
+function inboundRow(base, messageSid) {
+  if (messageSidColumnPresent() && messageSid) {
+    return { ...base, message_sid: messageSid };
+  }
+  return { ...base };
+}
+
+// ── Dead letters ─────────────────────────────────────────────────────
+// A turn that throws (not a duplicate) → its full inbound payload lands in failed_turns
+// for admin replay/discard. Degrades gracefully if the table isn't migrated yet: we log
+// loudly and return { ok:false, degraded:true } rather than throwing again over the throw.
+async function captureDeadLetter({ supabase, service, phone, payload, error }) {
+  const row = {
+    service,
+    phone: phone || null,
+    payload: payload || {},
+    error: error ? String(error.stack || error.message || error) : null,
+    state: 'dead',
+  };
+  try {
+    const { data, error: insErr } = await supabase.from('failed_turns').insert(row).select('id').single();
+    if (insErr) {
+      if (isMissingTableError(insErr)) {
+        console.error(`[dead-letter] failed_turns absent — cannot persist (service=${service} phone=${phone}); migration pending`);
+        return { ok: false, degraded: true };
+      }
+      console.error('[dead-letter] insert error:', insErr);
+      return { ok: false, degraded: false };
+    }
+    console.warn(`[dead-letter] captured failed turn ${data && data.id} service=${service} phone=${phone}`);
+    return { ok: true, id: data && data.id };
+  } catch (e) {
+    console.error('[dead-letter] capture threw:', e && e.message);
+    return { ok: false, degraded: false };
+  }
+}
+
+// ── Internal replay predicate ────────────────────────────────────────
+// Dead-letter replay re-drives a stored payload through a service's real webhook. That
+// re-POST carries x-internal-replay: <secret>; a request is trusted-internal only when
+// INTERNAL_REPLAY_SECRET is set AND the header matches it. Withheld by default (unset
+// secret ⇒ always false ⇒ no bypass path exists). Internal-replay requests skip the
+// Twilio signature (they're not from Twilio), skip the LRU (they're a deliberate re-run),
+// and persist with a null message_sid (the original row already holds the sid; re-using
+// it would collide on the unique index). This predicate is the single gate for all three.
+function isInternalReplay(req) {
+  const secret = process.env.INTERNAL_REPLAY_SECRET;
+  if (!secret) return false;
+  const header = req.headers && (req.headers['x-internal-replay'] || req.headers['X-Internal-Replay']);
+  return !!header && header === secret;
+}
+
 module.exports = {
+  // Movement A (sealed)
   logInbound,
   verifyTwilioSignature,
   normalizeMedia,
   isEmptyInbound,
   makeTwilioStatusHandler,
   warnIfSignatureCheckDisabled,
+  // Movement B
+  GRACEFUL_TURN_LINE,
+  sidSeen,
+  recordSid,
+  _resetSidLru,
+  isDuplicateSidError,
+  isMissingColumnError,
+  isMissingTableError,
+  probeMessageSidColumn,
+  messageSidColumnPresent,
+  _setSidColumnPresent,
+  inboundRow,
+  captureDeadLetter,
+  isInternalReplay,
+  _sleep,
 };

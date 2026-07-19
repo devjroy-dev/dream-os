@@ -241,10 +241,13 @@ async function main() {
     }
 
     // ── status callback branches ─────────────────────────────────────────
+    // NOTE (TDW_05 P1b): the `no-row-race` cell is intentionally NOT compared orig≡core.
+    // Movement B changes that branch ON PURPOSE (drop → retry → callback_unmatched), so a
+    // byte-identical assertion there would be wrong. It is asserted against B's new contract
+    // below. Every OTHER status branch is unchanged by B and stays byte-identical here.
     const base = { MessageSid: 'SM123', MessageStatus: 'delivered' };
     const statusCases = [
       ['row-found',      base,                                          fakeSupabase({ data: [{ id: 'x' }], error: null })],
-      ['no-row-race',    base,                                          fakeSupabase({ data: [],            error: null })],
       ['missing-sid',    { MessageStatus: 'delivered' },                fakeSupabase({ data: [{ id: 'x' }], error: null })],
       ['missing-status', { MessageSid: 'SM123' },                       fakeSupabase({ data: [{ id: 'x' }], error: null })],
       ['db-error',       base,                                          fakeSupabase({ data: null, error: { message: 'nope' } })],
@@ -255,6 +258,25 @@ async function main() {
       await diffCell(`[${S.name}] status-${cname}`,
         async () => { const res = makeRes(); await origStatusHandler(sb, PFX_ST)(makeReq({ body }), res); return { res: res._calls }; },
         async () => { const res = makeRes(); await core.makeTwilioStatusHandler({ supabase: sb, prefix: PFX_ST })(makeReq({ body }), res); return { res: res._calls }; });
+    }
+
+    // ── status no-row-race — B's NEW contract (was: byte-identical to the old drop) ──
+    // The old behavior emitted "(callback ignored)". B retries `maxRetries` times and, if
+    // still unmatched, emits "after N retries (callback_unmatched)". Assert the new line is
+    // present, the OLD line is gone, and the response is still 200/ok. Fast injected sleep.
+    {
+      const noRow = fakeSupabase({ data: [], error: null });
+      const res = makeRes();
+      const { log } = await capture(async () => {
+        await core.makeTwilioStatusHandler({ supabase: noRow, prefix: PFX_ST, maxRetries: 3, retryMs: 0, sleep: async () => {} })(makeReq({ body: base }), res);
+      });
+      const joined = log.join('\n');
+      ok(joined.includes(`${PFX_ST} no message row for sid=SM123 after 3 retries (callback_unmatched)`),
+         `[${S.name}] status-no-row-race — emits callback_unmatched after retries (B contract)`);
+      ok(!joined.includes('(callback ignored)'),
+         `[${S.name}] status-no-row-race — old "(callback ignored)" drop is GONE`);
+      ok(j(res._calls) === j(['status:200', 'send:ok']),
+         `[${S.name}] status-no-row-race — still answers 200/ok`);
     }
 
     // ── boot warning: flag-set / flag-unset ──────────────────────────────
