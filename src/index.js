@@ -19,6 +19,7 @@ const { runCoupleAgenticTurn } = require('./agent/engine');
 const { buildBriefing } = require('./agent/briefing');
 const { startCronJobs } = require('./cron');
 const { sendWhatsApp } = require('./lib/whatsapp');
+const webhookCore = require('./lib/webhookCore'); // TDW_05 P1a: shared inbound/callback transport
 const { generateInvoiceForBinder } = require('./api/vendor/invoices');
 const { enquiryToBinder } = require('./lib/vendor/enquiryBinder'); // 5-B-2
 const { ensureCoupleRow, captureField } = require('./lib/coupleIdentity');
@@ -134,36 +135,8 @@ app.get('/admin/test-briefing/:vendorId', async (req, res) => {
 // ── Twilio status callback ──────────────────────────────────────────
 // Twilio POSTs here on every delivery state change for outbound WhatsApp messages.
 // We match on MessageSid and update messages.delivery_status.
-app.post('/webhook/twilio-status', async (req, res) => {
-  try {
-    const sid    = req.body.MessageSid    || req.body.SmsSid    || null;
-    const status = req.body.MessageStatus || req.body.SmsStatus || null;
-    const errCode = req.body.ErrorCode || null;
-
-    console.log(`[twilio-status] sid=${sid} status=${status}${errCode ? ` errCode=${errCode}` : ''}`);
-
-    if (!sid || !status) {
-      return res.status(200).send('ok');
-    }
-
-    const { data, error } = await supabase
-      .from('messages')
-      .update({ delivery_status: status })
-      .eq('twilio_sid', sid)
-      .select('id');
-
-    if (error) {
-      console.error('[twilio-status] db update error:', error);
-    } else if (!data || data.length === 0) {
-      console.log(`[twilio-status] no message row for sid=${sid} (callback ignored)`);
-    }
-
-    res.status(200).send('ok');
-  } catch (err) {
-    console.error('[twilio-status] handler error:', err);
-    res.status(200).send('ok');
-  }
-});
+// TDW_05 P1a: handler extracted verbatim to webhookCore (byte-identical; prefix passed in).
+app.post('/webhook/twilio-status', webhookCore.makeTwilioStatusHandler({ supabase, prefix: '[twilio-status]' }));
 
 app.use('/admin', adminRouter);
 app.use('/api/v2', apiRouter);
@@ -180,33 +153,14 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const body        = req.body.Body || '';
     const profileName = req.body.ProfileName || null;
 
-    console.log(`[whatsapp:in] ${phone} -> ${body}`);
+    webhookCore.logInbound('[whatsapp:in]', phone, body);
 
-    // ── Twilio signature verification ─────────────────────────────────
-    if (process.env.DISABLE_TWILIO_SIGNATURE_CHECK !== 'true') {
-      const twilioSignature = req.headers['x-twilio-signature'] || '';
-      const webhookUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      const isValid = twilio.validateRequest(
-        process.env.TWILIO_AUTH_TOKEN,
-        twilioSignature,
-        webhookUrl,
-        req.body,
-      );
-      if (!isValid) {
-        console.warn(`[webhook] invalid Twilio signature from ${phone}, url=${webhookUrl}`);
-        return res.status(403).send('Forbidden');
-      }
-    }
+    // ── Twilio signature verification (TDW_05 P1a: webhookCore) ────────
+    if (!webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[webhook]' })) return;
 
-    // ── Media-only / empty-body guard ──────────────────────────────
-    const trimmedBody = body.trim();
-    const numMedia    = parseInt(req.body.NumMedia || '0', 10);
-    const hasMedia    = numMedia > 0 || !!req.body.MediaUrl0;
-
-    if (!trimmedBody && !hasMedia) {
-      console.warn('[webhook] empty body, no media, dropping');
-      return res.status(200).send('<Response></Response>');
-    }
+    // ── Media-only / empty-body guard (TDW_05 P1a: webhookCore) ─────
+    const { trimmedBody, numMedia, hasMedia } = webhookCore.normalizeMedia(req, body);
+    if (webhookCore.isEmptyInbound(res, { trimmedBody, hasMedia, prefix: '[webhook]' })) return;
 
     let user;
     const { data: existingUser } = await supabase
@@ -1002,8 +956,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[dream-os] listening on :${PORT}`);
-  if (process.env.DISABLE_TWILIO_SIGNATURE_CHECK === 'true') {
-    console.warn('[dream-os] WARNING: DISABLE_TWILIO_SIGNATURE_CHECK=true — Twilio webhook signature verification is OFF. Do not run in production with this flag set.');
-  }
+  webhookCore.warnIfSignatureCheckDisabled('[dream-os]'); // TDW_05 P1a
   startCronJobs({ supabase });
 });
