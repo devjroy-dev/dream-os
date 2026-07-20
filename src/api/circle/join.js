@@ -23,6 +23,7 @@ const router       = express.Router();
 const bcrypt       = require('bcryptjs');
 const twilio       = require('twilio');
 const asyncHandler = require('../../lib/asyncHandler');
+const { sendOtpCode } = require('../../lib/otpSend');
 
 const BCRYPT_ROUNDS = 10;
 const OTP_TTL_MS    = 5 * 60 * 1000;
@@ -150,10 +151,15 @@ router.post('/send-otp', asyncHandler(async (req, res) => {
   }
 
   try {
-    await getTwilio().messages.create({
-      from: `whatsapp:${OTP_WA}`,
-      to:   `whatsapp:${phone}`,
-      body: `Your Dream Wedding circle code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+    // F-05.6 fix (a): Meta AUTHENTICATION template when the bride lane is Meta-live;
+    // else the Twilio (b) send below runs UNCHANGED. Dormant until BRIDE_PHONE_NUMBER_ID.
+    await sendOtpCode({
+      to: phone, code: otp, lane: 'bride', templateKey: 'circle_join_otp',
+      twilioSend: () => getTwilio().messages.create({
+        from: `whatsapp:${OTP_WA}`,
+        to:   `whatsapp:${phone}`,
+        body: `Your Dream Wedding circle code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+      }),
     });
   } catch (err) {
     console.error('[circle/join/send-otp] twilio error:', err.message);

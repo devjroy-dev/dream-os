@@ -110,6 +110,87 @@ const TEMPLATES = {
       "your account: {{2}} — reply here if you need any help.",
     status: 'approved',
   },
+
+  // ── AUTHENTICATION-category OTP templates (Block 05, F-05.6 fix (a), CE-35) ──────
+  // These carry the login / PIN-reset / circle-join one-time codes over the Meta
+  // transport once a lane is Meta-live. They are the PRIMARY OTP path; the dedicated
+  // OTP_WA_NUMBER Twilio send (fix (b)) is the sealed fallback (see src/lib/otpSend.js).
+  //
+  // AUTHENTICATION templates are SPECIAL (verified against Meta's authentication-message
+  // spec, 2026-07): the body text is Meta-PRESET and not author-editable — the business
+  // supplies ONLY the one-time code (the {{1}} body variable) plus optional add-ons
+  // (security-recommendation line, expiry footer, the OTP button). So the brand words
+  // ("Dream Wedding" / "DreamAI") CANNOT live in the template body — brand is carried by
+  // the sending phone number's WhatsApp display name, NOT the copy. Functionally ONE auth
+  // template could serve all five sites; the five keys below are registered per-site for
+  // clean per-site tracking + founder veto, and MAY be collapsed by the founder to fewer
+  // WABA templates (point several keys at one `name`). FOUNDER FILES + APPROVES ON THE
+  // WABA AND SETS THE FINAL NAMES; the `name`s below are PROPOSED (tdw_ convention) and
+  // overridable in one line. `status` starts 'draft'; the founder flips each to 'approved'
+  // after Meta approves (same convention as the six above). The Meta OTP send is gated on
+  // the lane's *_PHONE_NUMBER_ID (see otpSend.js), so these stay dormant until cutover.
+  //
+  // PROPOSED preset add-ons (FOUNDER VETO — filed on the WABA, not shipped as copy here):
+  //   • add_security_recommendation: true   → "For your security, do not share this code."
+  //   • code_expiration_minutes: 5          → "This code expires in 5 minutes." (matches OTP_TTL_MS)
+  //   • OTP button: COPY_CODE, text "Copy Code"
+  //
+  // `variables: ['code']` documents the single body variable; auth payloads are built by
+  // buildAuthTemplatePayload() (below), which ALSO threads the code into the OTP button.
+  couple_login_otp: {
+    key: 'couple_login_otp',
+    name: 'tdw_couple_login_otp',          // PROPOSED — founder-final on the WABA
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',
+    category: 'AUTHENTICATION',
+    variables: ['code'],
+    body: '[Meta preset auth body] {{1}} is your verification code.',  // preset, not author-editable
+    status: 'draft',
+  },
+
+  couple_reset_otp: {
+    key: 'couple_reset_otp',
+    name: 'tdw_couple_reset_otp',          // PROPOSED — founder-final on the WABA
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',
+    category: 'AUTHENTICATION',
+    variables: ['code'],
+    body: '[Meta preset auth body] {{1}} is your verification code.',
+    status: 'draft',
+  },
+
+  circle_join_otp: {
+    key: 'circle_join_otp',
+    name: 'tdw_circle_join_otp',           // PROPOSED — founder-final on the WABA
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',
+    category: 'AUTHENTICATION',
+    variables: ['code'],
+    body: '[Meta preset auth body] {{1}} is your verification code.',
+    status: 'draft',
+  },
+
+  vendor_login_otp: {
+    key: 'vendor_login_otp',
+    name: 'tdw_vendor_login_otp',          // PROPOSED — founder-final on the WABA
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'AUTHENTICATION',
+    variables: ['code'],
+    body: '[Meta preset auth body] {{1}} is your verification code.',
+    status: 'draft',
+  },
+
+  vendor_reset_otp: {
+    key: 'vendor_reset_otp',
+    name: 'tdw_vendor_reset_otp',          // PROPOSED — founder-final on the WABA
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'AUTHENTICATION',
+    variables: ['code'],
+    body: '[Meta preset auth body] {{1}} is your verification code.',
+    status: 'draft',
+  },
 };
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -161,4 +242,38 @@ function buildTemplatePayload(key, vars) {
   };
 }
 
-module.exports = { TEMPLATES, getTemplate, isApproved, buildTemplatePayload };
+// Build the Meta Cloud API `template` payload for an AUTHENTICATION-category template.
+// The one-time `code` is threaded into BOTH components Meta requires for an auth send:
+//   • body   — parameter {{1}} = the code (Meta preset text renders "<code> is your ...")
+//   • button — the OTP button, carrying the code so tapping it copies/autofills the code.
+//
+// BUTTON SHAPE (verified against Meta's authentication-message send spec, 2026-07):
+//   { type:'button', sub_type:'url', index:'0', parameters:[{ type:'text', text:<code> }] }
+// This is Meta's widely-documented COPY_CODE / one-tap send form. A NEWER variant exists
+// for copy-code buttons — sub_type:'copy_code' with parameters:[{ type:'coupon_code',
+// coupon_code:<code> }] — which some stacks now require. Which form Meta accepts depends on
+// the button TYPE the founder files (COPY_CODE vs ONE_TAP). This is a READ-FIRST decision
+// flagged for the chair: if the live send is rejected on the button component, flip THIS
+// one function to the coupon_code form (single site). The body component is identical in
+// both forms. The code NEVER appears in a log line — it travels only as these params.
+function buildAuthTemplatePayload(key, code) {
+  const t = TEMPLATES[key];
+  if (!t) throw new RangeError(`unknown template: ${key}`);
+  if (t.category !== 'AUTHENTICATION') {
+    throw new RangeError(`template ${key} is not an AUTHENTICATION template`);
+  }
+  if (code == null || String(code).length === 0) {
+    throw new RangeError(`auth template ${key} requires a non-empty code`);
+  }
+  const c = String(code);
+  return {
+    name: t.name,
+    language: { code: t.language },
+    components: [
+      { type: 'body',   parameters: [{ type: 'text', text: c }] },
+      { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: c }] },
+    ],
+  };
+}
+
+module.exports = { TEMPLATES, getTemplate, isApproved, buildTemplatePayload, buildAuthTemplatePayload };

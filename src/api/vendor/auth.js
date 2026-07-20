@@ -28,6 +28,7 @@ const bcrypt  = require('bcryptjs');
 const twilio  = require('twilio');
 const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
+const { sendOtpCode } = require('../../lib/otpSend');
 
 const BCRYPT_ROUNDS    = 10;
 const OTP_TTL_MS       = 5 * 60 * 1000;
@@ -197,10 +198,15 @@ router.post('/send-otp', async (req, res) => {
   }
 
   try {
-    await getTwilio().messages.create({
-      from: `whatsapp:${OTP_WA}`,
-      to:   `whatsapp:${cleanPhone}`,
-      body: `Your DreamAI login code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+    // F-05.6 fix (a): Meta AUTHENTICATION template when the vendor lane is Meta-live;
+    // else the Twilio (b) send below runs UNCHANGED. Dormant until VENDOR_PHONE_NUMBER_ID.
+    await sendOtpCode({
+      to: cleanPhone, code: otp, lane: 'vendor', templateKey: 'vendor_login_otp',
+      twilioSend: () => getTwilio().messages.create({
+        from: `whatsapp:${OTP_WA}`,
+        to:   `whatsapp:${cleanPhone}`,
+        body: `Your DreamAI login code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+      }),
     });
   } catch (err) {
     console.error('[vendor:send-otp] twilio error:', err.message);
@@ -250,10 +256,15 @@ router.post('/forgot-pin', async (req, res) => {
   }
 
   try {
-    await getTwilio().messages.create({
-      from: `whatsapp:${OTP_WA}`,
-      to:   `whatsapp:${cleanPhone}`,
-      body: `Your DreamAI PIN reset code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+    // F-05.6 fix (a): Meta AUTHENTICATION template when the vendor lane is Meta-live;
+    // else the Twilio (b) send below runs UNCHANGED. Dormant until VENDOR_PHONE_NUMBER_ID.
+    await sendOtpCode({
+      to: cleanPhone, code: otp, lane: 'vendor', templateKey: 'vendor_reset_otp',
+      twilioSend: () => getTwilio().messages.create({
+        from: `whatsapp:${OTP_WA}`,
+        to:   `whatsapp:${cleanPhone}`,
+        body: `Your DreamAI PIN reset code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+      }),
     });
   } catch (err) {
     console.error('[vendor:forgot-pin] twilio error:', err.message);

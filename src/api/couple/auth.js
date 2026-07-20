@@ -28,6 +28,7 @@ const bcrypt  = require('bcryptjs');
 const twilio  = require('twilio');
 const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
+const { sendOtpCode } = require('../../lib/otpSend');
 
 // Dedicated service-role client for the GoTrue session exchange (mintSession), kept
 // SEPARATE from the shared data client with persistSession/autoRefreshToken OFF, so
@@ -194,10 +195,15 @@ router.post('/send-otp', async (req, res) => {
   }
 
   try {
-    await getTwilio().messages.create({
-      from: `whatsapp:${OTP_WA}`,
-      to:   `whatsapp:${cleanPhone}`,
-      body: `Your Dream Wedding login code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+    // F-05.6 fix (a): Meta AUTHENTICATION template when the bride lane is Meta-live;
+    // else the Twilio (b) send below runs UNCHANGED. Dormant until BRIDE_PHONE_NUMBER_ID.
+    await sendOtpCode({
+      to: cleanPhone, code: otp, lane: 'bride', templateKey: 'couple_login_otp',
+      twilioSend: () => getTwilio().messages.create({
+        from: `whatsapp:${OTP_WA}`,
+        to:   `whatsapp:${cleanPhone}`,
+        body: `Your Dream Wedding login code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+      }),
     });
   } catch (err) {
     console.error('[couple:send-otp] twilio error:', err.message);
@@ -247,10 +253,15 @@ router.post('/forgot-pin', async (req, res) => {
   }
 
   try {
-    await getTwilio().messages.create({
-      from: `whatsapp:${OTP_WA}`,
-      to:   `whatsapp:${cleanPhone}`,
-      body: `Your Dream Wedding PIN reset code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+    // F-05.6 fix (a): Meta AUTHENTICATION template when the bride lane is Meta-live;
+    // else the Twilio (b) send below runs UNCHANGED. Dormant until BRIDE_PHONE_NUMBER_ID.
+    await sendOtpCode({
+      to: cleanPhone, code: otp, lane: 'bride', templateKey: 'couple_reset_otp',
+      twilioSend: () => getTwilio().messages.create({
+        from: `whatsapp:${OTP_WA}`,
+        to:   `whatsapp:${cleanPhone}`,
+        body: `Your Dream Wedding PIN reset code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+      }),
     });
   } catch (err) {
     console.error('[couple:forgot-pin] twilio error:', err.message);
