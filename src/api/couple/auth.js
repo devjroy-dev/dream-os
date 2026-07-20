@@ -29,6 +29,7 @@ const twilio  = require('twilio');
 const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
 const { sendOtpCode } = require('../../lib/otpSend');
+const { ensureAuthIdentity } = require('../../lib/ensureAuthIdentity');
 
 // Dedicated service-role client for the GoTrue session exchange (mintSession), kept
 // SEPARATE from the shared data client with persistSession/autoRefreshToken OFF, so
@@ -332,6 +333,17 @@ router.post('/verify-otp', async (req, res) => {
     await supabase.from('couples')
       .update({ pin_failed_attempts: 0, pin_locked_until: null })
       .eq('id', coupleRow.id);
+  }
+
+  // F-05.9: signup adopts the login path over Meta, so the Supabase Phone-OTP that used
+  // to create the auth.users identity (Twilio, dead) is gone. Create-or-heal the identity
+  // HERE — after the code is proven, before mintSession — so mintSession's find-only
+  // contract stays byte-stable and no identity is ever created for an unverified phone.
+  try {
+    await ensureAuthIdentity({ supabase, authClient, userId: userRow.id, phone: cleanPhone });
+  } catch (err) {
+    console.error('[couple:verify-otp] identity error:', err.message);
+    return res.status(500).json({ error: 'Could not create session. Please try again.' });
   }
 
   let tokens;
