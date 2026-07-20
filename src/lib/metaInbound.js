@@ -136,9 +136,56 @@ function extractStatuses(body) {
   return out;
 }
 
+// ── per-change recipient-PNID surface (TDW_05 Workstream-1 shared receiver) ───
+// ADDITIVE: normalizeMetaInbound is byte-unchanged. The shared-callback fork needs the
+// RECIPIENT number (which TDW line the message was sent TO) = value.metadata.phone_number_id,
+// which the flat normalizer drops. One POST can batch several changes with DIFFERENT recipient
+// PNIDs, so the fork is per-CHANGE, not per-POST. changesWithPnid surfaces { phoneNumberId,
+// entryId, change } for every change, order-preserving; unknown metadata → phoneNumberId:null.
+function changesWithPnid(body) {
+  const out = [];
+  const entries = (body && Array.isArray(body.entry)) ? body.entry : [];
+  for (const entry of entries) {
+    const changes = Array.isArray(entry.changes) ? entry.changes : [];
+    for (const ch of changes) {
+      const md = ch && ch.value && ch.value.metadata;
+      out.push({
+        phoneNumberId: (md && md.phone_number_id) ? String(md.phone_number_id) : null,
+        entryId: (entry && entry.id) || null,
+        change: ch,
+      });
+    }
+  }
+  return out;
+}
+
+// Reconstruct a minimal, valid Meta webhook body carrying exactly ONE change — what the ingress
+// forwards to the owning sibling (which re-runs its own /webhook/meta over normalizeMetaInbound).
+function buildSingleChangeBody(body, entryId, change) {
+  return {
+    object: (body && body.object) || 'whatsapp_business_account',
+    entry: [{ id: entryId || null, changes: [change] }],
+  };
+}
+
+// Recipient-PNID → lane, from env. Matches ONLY when the env var is set (unset → never matches →
+// that lane's inbound is dropped+logged at the ingress, never mis-lane'd). Pure; env injectable.
+function laneForPnid(pnid, env = process.env) {
+  if (!pnid) return null;
+  const p = String(pnid);
+  if (env.MARKETING_PHONE_NUMBER_ID && p === String(env.MARKETING_PHONE_NUMBER_ID)) return 'marketing';
+  if (env.BRIDE_PHONE_NUMBER_ID     && p === String(env.BRIDE_PHONE_NUMBER_ID))     return 'bride';
+  if (env.VENDOR_PHONE_NUMBER_ID    && p === String(env.VENDOR_PHONE_NUMBER_ID))    return 'vendor';
+  return null;
+}
+
 module.exports = {
   handleVerifyChallenge,
   verifyMetaSignature,
   normalizeMetaInbound,
   extractStatuses,
+  // TDW_05 Workstream-1 (additive — shared receiver fork)
+  changesWithPnid,
+  buildSingleChangeBody,
+  laneForPnid,
 };

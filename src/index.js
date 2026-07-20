@@ -208,7 +208,12 @@ app.get('/webhook/meta', (req, res) => {
   return res.status(400).send('Bad Request');
 });
 app.post('/webhook/meta', async (req, res) => {
-  if (process.env.DISABLE_META_SIGNATURE_CHECK !== 'true') {
+  // Two accept-paths: a valid Meta signature, OR a trusted internal-replay. The shared-receiver
+  // ingress verifies the Meta sig once and forwards pre-verified sub-payloads carrying
+  // x-internal-replay. isInternalReplay withholds by default (INTERNAL_REPLAY_SECRET unset ⇒ always
+  // false), so a forged header opens NO spoof path — it still falls through to Meta-sig or 403.
+  const internalReplay = webhookCore.isInternalReplay(req);
+  if (!internalReplay && process.env.DISABLE_META_SIGNATURE_CHECK !== 'true') {
     const okSig = metaInbound.verifyMetaSignature(req.rawBody, req.headers['x-hub-signature-256'], process.env.META_APP_SECRET);
     if (!okSig) { console.warn('[webhook:meta] invalid X-Hub-Signature-256'); return res.status(403).send('Forbidden'); }
   }
