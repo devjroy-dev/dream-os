@@ -2561,3 +2561,25 @@ Grounded at origin: `metaCloud.sendMetaTemplate({to, payload})` already exists (
 ### F-05.6 — cure (a) PRIMARY (build pending) · (b) SEALED FALLBACK. The cutover OTP gate becomes: the lane's auth template(s) approved + OTP wired to `sendMetaTemplate` (minutes to approve — off the critical path), with (b) as the backstop. Security invariants (bcrypt, no OTP in logs) preserved by any build.
 
 ### STATE: Block 05 transport migration BUILD-COMPLETE (both lanes dormant). F-05.6: (a) build pending, (b) fallback sealed. SEQUENCE: (a) OTP-on-Meta build+seal → bride cutover → vendor cutover → M2b (Twilio sunset; F-05.2 fully closes) → P4. F-05.1 🟢 · F-05.2 (per-cutover) · F-05.3 · F-05.4 (crew→04.5) · F-05.5 (straggler→P4) · **F-05.6 ((a) primary pending / (b) fallback sealed)**. P3 opener-template test stays OPEN. (Note: the P3 opener-template proof and these OTP auth templates both exercise the Meta template send path — filing them together spends approval latency once.)
+
+---
+
+## TDW_05 — F-05.6 FIX (a) CE-VERIFIED & SEALED · OTP-ON-META IS THE CUTOVER PATH · F-05.7 FILED (CE-36, sixth chair, 2026-07-19)
+
+**Re-derived at origin `09e56f2` (on the CE-35 record `f4fa914`). OTP now rides Meta AUTHENTICATION templates as the primary path; (b)'s Twilio send is the byte-identical fallback.**
+
+### ACCEPTED — F-05.6 fix (a): OTP over Meta auth templates.
+- **W-1 clean** — the diff is the 3 OTP sites + new `src/lib/otpSend.js` + `templates.js` (5 auth keys + `buildAuthTemplatePayload`) + the bench + handover. No agent/soul/prompt/engine path; the OTP body strings are byte-IDENTICAL to `f654f9e` (only moved into the twilioSend callback — indentation, not content).
+- **Structural F-05.2 bypass (re-derived):** `otpSend.js` requires only `./metaCloud` + `./templates`, calls `sendMetaTemplate` DIRECTLY, and never requires or routes through `whatsapp.js` — where the opt-out gate lives. So OTP is un-gateable by construction (a call-graph property, not carve-out code); the bench asserts `sendWhatsApp` is never invoked on any OTP path.
+- **Routing:** `otpMetaPnid(lane)` → Meta auth template on the lane's phone-number-id when present; else the caller's `twilioSend()` byte-identical. Keys on PNID PRESENCE, not `metaLaneFor(from,…)` — structurally sidesteps the F-05.7 divergence. Dormant per-lane until `*_PHONE_NUMBER_ID` is set.
+- **Security (re-derived):** bcrypt-hash-before-send preserved (3 sites); NO console line interpolates the OTP value on either transport (only `cleanPhone`/`purpose`; "otp" appears solely in log labels); the 500 + `otp_session` delete-on-failure shape intact.
+- **`b05_f056_otp_meta_bench` 33/33, NON-VACUOUS** — CE forced `otpMetaPnid` to always-null (killed the Meta path) → RED; restored byte-clean → 33/33. Meta-live → right template name + code in body/button on the right PNID; not-live → Twilio fallback byte-identical; F-05.2 gate never invoked (spy + source scan).
+- **Byte-stable:** (b) `b05_f056_otp_hotfix_bench` 21/21; migrations 16/6/4; seven sealed 101·32·18·43·56·49·47. The (a) commit touched NO CE docs (clobber-law clean — the executor banked only its own handover).
+
+### F-05.7 — FILED (documented observation, not a defect). The OTP sites read `BRIDE_WA_NUMBER`/`TDW_WA_NUMBER` for the (b) Twilio from-number, while the transport/cutover reads `BRIDE_WHATSAPP_NUMBER`/`VENDOR_WHATSAPP_NUMBER`. Fix (a) sidesteps this by keying Meta-liveness on `*_PHONE_NUMBER_ID` presence (the correct signal), so the divergence has no effect on OTP routing. Reconciling the `*_WA_NUMBER` vs `*_WHATSAPP_NUMBER` var names estate-wide is a separate LOW-PRIORITY cleanup; no cutover depends on it.
+
+### NAMED LIVE-META UNKNOWN (accepted): the auth-button send shape (`sub_type:'url'` vs the `copy_code`/`coupon_code` variant) is proven in OUR payload by the bench but not against real Meta — same class as the P3 opener-template test. Confirmed at the founder's first live OTP send; a one-function flip in `buildAuthTemplatePayload` is ready if Meta rejects. Template count is the founder's call (five keys for tracking/veto; one reused auth template may serve all five).
+
+### CUTOVER READINESS: F-05.6 fully cured — (a) OTP-on-Meta primary (sealed) + (b) Twilio fallback (sealed). The bride cutover's OTP gate is met by provisioning `BRIDE_PHONE_NUMBER_ID` (which simultaneously flips the lane's conversation AND its OTP onto Meta) + the founder filing/approving the couple+circle auth template(s) + one live OTP witness. Same for vendor with `VENDOR_PHONE_NUMBER_ID`.
+
+### STATE: Block 05 transport migration BUILD-COMPLETE (both lanes dormant); F-05.6 CURED ((a) primary + (b) fallback, both sealed). SEQUENCE: bride cutover (conversation + OTP flip together) → vendor cutover → M2b (Twilio sunset; F-05.2 fully closes; OTP_WA_NUMBER survives) → P4. F-05.1 🟢 · F-05.2 (per-cutover) · F-05.3 · F-05.4 (crew→04.5) · F-05.5 (straggler→P4) · F-05.6 🟢 · F-05.7 (var-divergence, low-pri cleanup). P3 opener-template test stays OPEN (files alongside the OTP auth templates — one approval sitting).
