@@ -31,8 +31,9 @@ const { runTurn } = require('./engine/dist/core/loop');                     // 5
 const { fetchCalendarSnapshot, fetchScratchpad, applyCalendarSignals } = require('./lib/vendor/calendarSignals'); // 5-A calendar parity
 const { buildLlmForTurn } = require('./api/vendor-engine/chat'); // TDW_06 P7b: the shared route builder (F-06.1 2nd limb)
 const { matchModeWord, applyModeFlip, MODE_FLIP_LINES } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words
-const { processVendorInbound, twilioInputsFrom, metaInputsFrom } = require('./lib/vendorInbound'); // TDW_05 M2
+const { processVendorInbound, twilioInputsFrom, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M2: dormant Meta inbound (vendor lane)
+const { resolveMetaMedia } = require('./lib/metaMedia'); // TDW_05 MEDIA-SHIM: lane-agnostic Meta media resolver
 const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle'); // TDW_05 M2: via deps
 const { extractCalendarFromImage } = require('./lib/vendorCalendarImage'); // TDW_05 M2: via deps
 
@@ -227,7 +228,14 @@ app.post('/webhook/meta', async (req, res) => {
       const hasText  = !!(msg.text && msg.text.trim());
       const hasMedia = Array.isArray(msg.media) && msg.media.length > 0;
       if (!hasText && !hasMedia) { console.warn(`[webhook:meta] empty inbound from ${msg.from}, dropping`); continue; }
-      const inputs = metaInputsFrom(msg, req.body);
+      // TDW_05 MEDIA-SHIM: resolve the first media item (media-ID -> stable public url) BEFORE
+      // building inputs. resolveVendorMedia returns null on any failure -> mediaUrl stays null ->
+      // the shared core proceeds text-only (never a dead turn). Text turns are untouched.
+      const mediaItem = (Array.isArray(msg.media) && msg.media[0]) || null;
+      const resolvedMedia = mediaItem
+        ? await resolveVendorMedia(mediaItem, { resolveMetaMedia, supabase })
+        : null;
+      const inputs = metaInputsFrom(msg, req.body, resolvedMedia);
       await processVendorInbound(inputs, vendorInboundDeps);
     }
     for (const s of metaInbound.extractStatuses(req.body)) {

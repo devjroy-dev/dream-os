@@ -178,7 +178,7 @@ async function processVendorInbound(inputs, deps) {
     //   (c) vendor calendar branch threw and fell through
     // In all cases, no body text means no agent turn we can run.
     if (!trimmedBody && hasMedia) {
-      console.log(`[webhook] media-only fallback from ${req.body.From} (vendor=${!!vendor}, onboarded=${vendor?.onboarding_state === 'complete'})`);
+      console.log(`[webhook] media-only fallback from ${phone} (vendor=${!!vendor}, onboarded=${vendor?.onboarding_state === 'complete'})`);
       await sendWhatsApp(phone, "I'll be able to process images and voice notes really soon — but for now, please type your message and I'll help.");
       return;
     }
@@ -867,10 +867,12 @@ function twilioInputsFrom(req, { internalReplay, trimmedBody, numMedia, hasMedia
     rawPayload:     req.body,
   };
 }
-// Meta path is TEXT-ONLY at M1: media arrives as a media-ID needing a Meta media fetch (named
-// follow-up), so mediaUrl is null and media inbounds are a declared gap. `from` is normalized to
-// +E164 (the Twilio/DB canonical) so vendor/user lookups + reply target match byte-for-byte.
-function metaInputsFrom(msg, rawBody) {
+// Meta media (TDW_05 MEDIA-SHIM, Shape A): media arrives as a media-ID; the caller resolves it
+// via resolveVendorMedia (below) into a STABLE public url and passes it in as `resolvedMedia`.
+// When resolvedMedia is absent (no media, or resolve failed -> text-only failure shape), mediaUrl
+// stays null and the turn proceeds exactly as the text-only path. `from` is normalized to +E164
+// (the Twilio/DB canonical) so vendor/user lookups + reply target match byte-for-byte.
+function metaInputsFrom(msg, rawBody, resolvedMedia) {
   const trimmedBody = (msg.text || '').trim();
   const media       = Array.isArray(msg.media) ? msg.media : [];
   const phone = msg.from ? (String(msg.from).startsWith('+') ? String(msg.from) : '+' + String(msg.from)) : null;
@@ -881,9 +883,41 @@ function metaInputsFrom(msg, rawBody) {
     messageSid:     msg.messageId,   // wamid -> durable message_sid dedupe home
     internalReplay: false,
     trimmedBody, numMedia: media.length, hasMedia: media.length > 0,
-    mediaUrl:       null,
+    mediaUrl:       (resolvedMedia && resolvedMedia.stableUrl) || null,
     rawPayload:     rawBody,
   };
 }
 
-module.exports = { processVendorInbound, twilioInputsFrom, metaInputsFrom };
+// ── Vendor media adapter (TDW_05 MEDIA-SHIM) ──────────────────────────────────────────
+// Lane policy for the vendor OCR/media path. The resolver (src/lib/metaMedia.js) is
+// lane-agnostic; THIS is where the vendor lane's allowlist + cap live. Returns
+// { stableUrl, mime } on success, or null on ANY failure (-> text-only path, typed log,
+// never a dead turn). The token is env-read here and NEVER logged.
+const VENDOR_MEDIA_ALLOW_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']; // sticker -> image/webp passes
+const VENDOR_MEDIA_MAX_BYTES   = 5 * 1024 * 1024; // 5 MB — WhatsApp image ceiling AND Anthropic Vision per-image limit
+const WA_MEDIA_BUCKET          = 'wa-media';       // PUBLIC bucket; unguessable object paths (see metaMedia.js)
+
+async function resolveVendorMedia(mediaItem, deps) {
+  const { resolveMetaMedia, supabase } = deps;
+  if (!mediaItem || !mediaItem.id) return null;
+  try {
+    const { stableUrl, mime } = await resolveMetaMedia({
+      mediaId:    mediaItem.id,
+      mime:       mediaItem.mime,
+      token:      process.env.META_WABA_TOKEN,
+      supabase,
+      bucket:     WA_MEDIA_BUCKET,
+      allowMimes: VENDOR_MEDIA_ALLOW_MIMES,
+      maxBytes:   VENDOR_MEDIA_MAX_BYTES,
+    });
+    return { stableUrl, mime };
+  } catch (e) {
+    console.log(`[meta-media] resolve failed reason=${e.message} mediaId=${mediaItem.id}`);
+    return null;
+  }
+}
+
+module.exports = {
+  processVendorInbound, twilioInputsFrom, metaInputsFrom,
+  resolveVendorMedia, WA_MEDIA_BUCKET, VENDOR_MEDIA_ALLOW_MIMES, VENDOR_MEDIA_MAX_BYTES,
+};

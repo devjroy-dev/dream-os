@@ -32,7 +32,12 @@ function verbatimDiff() {
     .replace("return res.status(200).send('<Response></Response>');", 'return;')
     .replace("return res.status(200).send('<Response/>');", 'return;')
     .replace("res.status(200).send('<Response/>');", 'return;')
-    .replace('req.body.MediaUrl0', 'mediaUrl');
+    .replace('req.body.MediaUrl0', 'mediaUrl')
+    // TDW_05 F-05.14 (CE-ruled, eighth chair): the media-only fallback log used req.body.From,
+    // which is undefined in the extracted core (req is no param of processVendorInbound) and
+    // crashed the live Meta media-only turn into GRACEFUL_TURN_LINE. Cured to `phone`. This is a
+    // documented mechanical transform, same class as the decoupling swaps above.
+    .replace('media-only fallback from ${req.body.From}', 'media-only fallback from ${phone}');
   const expected = core.map(tf).filter((l) =>
     !l.includes("require('./lib/imageThrottle')") && !l.includes("require('./lib/vendorCalendarImage')"));
   const mod = require('fs').readFileSync(require.resolve('../src/lib/vendorInbound.js'), 'utf8').split('\n');

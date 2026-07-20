@@ -38,27 +38,42 @@ const { MODEL_HAIKU } = require('../agent/models');
 
 const EVENT_KINDS = ['shoot', 'call', 'meeting', 'task', 'reminder', 'recce', 'other'];
 
-// ── Twilio media download (Basic auth) ───────────────────────────────────────
-// Same shape as imagePipeline.js but kept local — vendor calendar flow has
-// no need for Cloudinary, so the muse pipeline isn't on the import path.
+// ── Media download (auth-by-host) ────────────────────────────────────────────
+// TDW_05 MEDIA-SHIM (Shape A): this consumer now receives EITHER a Twilio media url
+// (Basic auth) OR a re-hosted PUBLIC Supabase url (plain GET). Auth is picked by host:
+// only a Twilio host gets Basic auth; everything else is a plain GET. The hard
+// Twilio-env throw is dropped — Twilio creds are required ONLY when the url is actually
+// a Twilio url. extractCalendarFromImage's signature is unchanged; only its downloader
+// call is host-aware now.
 
-async function downloadFromTwilio(url) {
-  const sid   = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  if (!sid || !token) {
-    throw new Error('vendorCalendarImage: TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN not set');
+function isTwilioHost(url) {
+  try {
+    const h = new URL(url).hostname.toLowerCase();
+    return h === 'twilio.com' || h.endsWith('.twilio.com');
+  } catch (_e) {
+    return false;
   }
+}
 
-  const authHeader = 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64');
+async function downloadMedia(url) {
+  const headers = {};
+  if (isTwilioHost(url)) {
+    const sid   = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    if (!sid || !token) {
+      throw new Error('vendorCalendarImage: TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN not set for a Twilio media url');
+    }
+    headers['Authorization'] = 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64');
+  }
 
   const res = await fetch(url, {
     method:   'GET',
-    headers:  { 'Authorization': authHeader },
+    headers,
     redirect: 'follow',
   });
 
   if (!res.ok) {
-    throw new Error(`vendorCalendarImage: Twilio media fetch failed (${res.status})`);
+    throw new Error(`vendorCalendarImage: media fetch failed (${res.status})`);
   }
 
   const contentType = res.headers.get('content-type') || 'image/jpeg';
@@ -124,7 +139,7 @@ async function extractCalendarFromImage({ image_url, caption, anthropic, istToda
   if (!anthropic)  throw new Error('vendorCalendarImage: anthropic client required');
   if (!istToday)   throw new Error('vendorCalendarImage: istToday required');
 
-  const { base64, contentType } = await downloadFromTwilio(image_url);
+  const { base64, contentType } = await downloadMedia(image_url);
 
   // Default to image/jpeg if Twilio reported something Haiku can't handle
   const mediaType = contentType.toLowerCase().startsWith('image/') ? contentType : 'image/jpeg';
@@ -188,4 +203,4 @@ async function extractCalendarFromImage({ image_url, caption, anthropic, istToda
   return { proposals, rawResponse: raw };
 }
 
-module.exports = { extractCalendarFromImage };
+module.exports = { extractCalendarFromImage, downloadMedia, isTwilioHost };
