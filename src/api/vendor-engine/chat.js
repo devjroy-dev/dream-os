@@ -580,14 +580,20 @@ async function resolveEvent(req, eventId, onDate) {
   }
   // Leg 2. The ilike is a coarse DB-side prefilter refined by nameMatches —
   // resolveClientReference.js's own pattern, so "riya" never matches "Priya".
-  const { nameMatches } = require('../../lib/vendor/resolveClientReference');
+  const { nameMatches, nameNeedleTokens } = require('../../lib/vendor/resolveClientReference');
   let q = req.app.locals.supabase
     .from('events')
     .select('id, title, event_date, event_time, kind, state, linked_binder_id')
     .eq('vendor_id', req.vendor.id)
     .is('deleted_at', null)
-    .neq('state', 'cancelled')
-    .ilike('title', `%${raw}%`);
+    .neq('state', 'cancelled');
+  // F-04.98 CURE 2 — token-AND prefilter so the coarse net survives punctuation in
+  // the title: '%Ananya recce%' never matches 'Ananya - recce', but '%ananya%' AND
+  // '%recce%' both hit it. nameMatches refines below unchanged (so "riya" still
+  // never reaches "Priya"). Empty tokens fall back to the single ilike — harmless.
+  const toks = nameNeedleTokens(raw);
+  if (toks.length) { for (const t of toks) q = q.ilike('title', `%${t}%`); }
+  else             q = q.ilike('title', `%${raw}%`);
   const day = String(onDate || '').trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(day)) q = q.eq('event_date', day);
   const { data, error } = await q;

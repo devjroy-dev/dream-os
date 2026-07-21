@@ -24,19 +24,47 @@
 // own using `matches`.
 
 // Normalise a name for comparison: lowercase, collapse whitespace.
+// Used by the dedup keys (name+phone) — NOT punctuation-folded on purpose: two
+// people are "the same" only on a shared phone, never on a re-punctuated name.
 function norm(s) {
   return (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+// TDW_04.5 F-04.98 CURE 2 — the punctuation-blind fold. Lowercase, then collapse
+// every run of NON-alphanumeric characters (punctuation, symbols, AND whitespace)
+// to a single space, and trim. `\p{L}\p{N}` + the `u` flag keep it Unicode-safe —
+// only punctuation/spacing folds, every letter (Devanagari included) survives. This
+// is what lets 'ananya recce' meet the true title 'ananya - recce': the " - " and
+// the " " both fold to one space, so the two strings become byte-identical BEFORE
+// the token discipline below runs. It NEVER loosens that discipline — a fold only
+// re-spaces; it can never turn a mid-word substring into a token prefix, so
+// 'riya' still cannot reach 'priya' (R-B6, held by the tests).
+function foldPunct(s) {
+  return (s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+// The coarse DB-side prefilter's tokens. A `%raw%` ilike cannot survive a hyphen
+// inside the title ('%Ananya recce%' never matches 'Ananya - recce'); an AND of
+// per-token ilikes does ('%ananya%' AND '%recce%' both hit it), and nameMatches
+// refines the coarse net exactly as before. Shared so BOTH resolveEvent copies
+// (chat.js + calendarSignals.js) widen identically — one home, no third drift.
+function nameNeedleTokens(raw) {
+  return foldPunct(raw).split(' ').filter(Boolean);
 }
 
 // Token-boundary match: does the candidate name contain a WORD that starts
 // with the needle? This is what makes "riya" match "Riya Bose" but NOT
 // "Priya" (where "riya" is only a mid-word substring). A multi-word needle
 // ("priya mehta") matches if the full needle is a prefix of the full name.
+// F-04.98 CURE 2: both sides fold punctuation first (foldPunct), so the match is
+// blind to hyphens/dots/slashes between tokens while the token-start discipline —
+// the whole reason "riya" ≠ "Priya" — is preserved untouched.
 function nameMatches(candidateName, needle) {
-  const cn = norm(candidateName);
-  const nd = norm(needle);
+  const cn = foldPunct(candidateName);
+  const nd = foldPunct(needle);
   if (!cn || !nd) return false;
-  // Full-name prefix (handles multi-word needles like "priya m").
+  // Full-name prefix (handles multi-word needles like "priya m", and the folded
+  // 'ananya recce' as a prefix of the folded 'ananya recce').
   if (cn.startsWith(nd)) return true;
   // Any name token starts with the needle (handles "riya" → "Riya Bose",
   // and "mehta" → "Priya Mehta").
@@ -239,7 +267,9 @@ function safeDatePrecision() {
 module.exports = {
   resolveClientReference,
   buildClarifyOptions,
-  findMatches,   // exported for tests
-  nameMatches,   // exported for tests
+  findMatches,        // exported for tests
+  nameMatches,        // exported for tests
+  nameNeedleTokens,   // F-04.98 CURE 2 — the widened event-title prefilter tokens
+  foldPunct,          // exported for tests
   norm,
 };
