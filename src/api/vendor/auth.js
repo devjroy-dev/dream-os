@@ -408,7 +408,7 @@ router.post('/set-pin', async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /pin-login
 // Body:    { phone, pin }
-// Returns: { ok, user_id, vendor_id, access_token, refresh_token }
+// Returns: { ok, user_id, vendor_id, name, category, tier, access_token, refresh_token }
 // ---------------------------------------------------------------------------
 router.post('/pin-login', async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -433,7 +433,7 @@ router.post('/pin-login', async (req, res) => {
   }
 
   const { data: vendorRow } = await supabase
-    .from('vendors').select('id, pin_hash, pin_failed_attempts, pin_locked_until')
+    .from('vendors').select('id, pin_hash, pin_failed_attempts, pin_locked_until, business_name, category, tier, users!inner(name)')
     .eq('user_id', userRow.id).maybeSingle();
   if (!vendorRow) {
     return res.status(403).json({ error: 'This number is not a Maker account.', reason: 'wrong_role' });
@@ -486,11 +486,15 @@ router.post('/pin-login', async (req, res) => {
   }
 
   console.log(`[vendor:pin-login] ok phone=${cleanPhone} vendor_id=${vendorRow.id}`);
+  const vendorName = vendorRow.business_name || vendorRow.users?.name || null;
   setVendorCookie(res, tokens.access_token);
   return res.json({
     ok:            true,
     user_id:       userRow.id,
     vendor_id:     vendorRow.id,
+    name:          vendorName,
+    category:      vendorRow.category || null,
+    tier:          vendorRow.tier || null,
     access_token:  tokens.access_token,
     refresh_token: tokens.refresh_token,
   });
