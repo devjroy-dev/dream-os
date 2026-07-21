@@ -1072,7 +1072,54 @@ async function fetchCalendarSnapshot(req) {
       pressure = '';
     }
 
-    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it.]\n${lines.join('\n')}${pressure}`;
+    // ── 04.5 P1.3: the STAFFING-GAP line. Sibling of the pressure line, beside it —
+    // NOT merged (CE-ruled: its own 21-day window, the spec's "next 3 weeks", distinct
+    // from the pressure line's 30). PLANNER-GATED by the estate's own predicate (the
+    // RULED_OFF family — normaliseCategory === 'planning'); silent for every other craft.
+    // Occupying bookings with no crew on them yet — the gap = occupying && crew empty.
+    // HONESTY LAW, inherited from the block it joins (F-04.21's family): a failed read
+    // renders NO line, never "0 functions" — absence is only evidence if you looked.
+    // ZERO model calls, one DB read — exactly like its sibling. req.vendor is the full
+    // vendors row (resolveVendor select('*')), so category costs no query. The string is
+    // a FOUNDER-VETO proposal (bare shape, singular/plural agreed).
+    let gap = '';
+    try {
+      const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
+      if (normaliseCategory(req.vendor.category) === 'planning') {
+        const { OCCUPYING_KINDS } = require('../../lib/vendor/occupancy');
+        const GAP_WINDOW_DAYS = 21;                        // spec's "next 3 weeks" — its OWN window
+        const gapHorizon = new Date(`${today}T00:00:00Z`);
+        gapHorizon.setUTCDate(gapHorizon.getUTCDate() + GAP_WINDOW_DAYS - 1);
+        const gapTo = gapHorizon.toISOString().slice(0, 10);
+        const { data: gd, error: gErr } = await supabase
+          .from('events')
+          .select('title, event_date, assigned_member_ids')
+          .eq('vendor_id', req.vendor.id)
+          .in('kind', OCCUPYING_KINDS)
+          .gte('event_date', today).lte('event_date', gapTo)
+          .is('deleted_at', null).neq('state', 'cancelled')   // liveRowsOn's two covenant lines
+          .order('event_date', { ascending: true })
+          .limit(50);
+        if (!gErr && gd) {   // gErr -> NO line (honest); empty crew filtered in JS, real+bench alike
+          const gaps = gd.filter((e) => !Array.isArray(e.assigned_member_ids) || e.assigned_member_ids.length === 0);
+          if (gaps.length) {
+            const soonest = gaps[0];
+            const days = Math.round((Date.parse(`${soonest.event_date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
+            const n = gaps.length;
+            const noun = n === 1 ? 'function' : 'functions';
+            const verb = n === 1 ? 'has' : 'have';
+            const on   = n === 1 ? 'it' : 'them';
+            const dw   = days === 1 ? 'day' : 'days';
+            gap = `\n[${n} ${noun} in the next 3 weeks ${verb} no one on ${on} (${soonest.title} — ${days} ${dw}).]`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[vendor-e chat:staffing-gap]', e.message);
+      gap = '';   // a failed read says nothing — never "0 functions"
+    }
+
+    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it.]\n${lines.join('\n')}${pressure}${gap}`;
   } catch (e) {
     console.warn('[vendor-e chat:calendar snapshot]', e.message);
     return '';
