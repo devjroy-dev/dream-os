@@ -2,8 +2,9 @@
 Authored gate-open (CE-45). This charter fixes the SEQUENCE and the LAWS; the exact
 paste-blocks are authored LIVE by the seated CE with the real values at execution
 (the resolution-night §3 precedent — zero placeholders ever ship in runnable form).
-Referred to throughout: THE NUMBER = the fresh Indian SIM the founder procures
-(WhatsApp-clean: never registered on WhatsApp, or cleanly deleted from it).
+**THE NUMBER (canonical, founder-held SIM, CE-52): `+917011788380` — virgin/WhatsApp-clean,
+founder-witnessed.** Every paste-block at execution carries these digits literally.
+(The MARKETING number, same charter pattern: `+918810531764` — see the memo.)
 
 ## 1. WHAT THIS IS
 The bride lane goes live on WABA-DIRECT `1739793260373677` — the same clean-born WABA
