@@ -1,4 +1,5 @@
-# TDW_05 — MARKETING-LANE DECISION MEMO (eighth chair, 2026-07-21 · FOUNDER RULES)
+# TDW_05 — MARKETING-LANE DECISION MEMO (eighth chair, 2026-07-21)
+**RULED 2026-07-21 (CE-51): OPTION 1 — a DEDICATED marketing number (physical +91 SIM in founder hand, virgin/WhatsApp-clean). Fork CLOSED. Cutover rides the bride charter §3 pattern, sequenced with Block 05's remainder strictly after 04.5, executed as a Fable-LE guided hotfix session.**
 The marketing lane sits on WABA-SANDBOX `1023382280673745` (P3's sealed state:
 `MARKETING_PHONE_NUMBER_ID` = sandbox on the marketing service; `tdw_marketing_opener`
 `1336770165243551` APPROVED on WABA-DIRECT since 2026-07-21 — the P3 opener live test

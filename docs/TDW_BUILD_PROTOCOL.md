@@ -179,3 +179,9 @@ These bind every session from this date. Where a law amends an earlier section, 
 6. **CHARTER SLOT** — the committed context by path + hash · the CE addendum (post-handoff rulings the committed docs don't yet carry) · the closing sentence verbatim: **"Sequencing beyond this sitting is the founder's."**
 
 **Format rules:** zero placeholders anywhere; the guardrail sentence "trust evidence over narrative — including this kickoff" is standing (an executor who catches the kickoff wrong is credited, per CE-40); one kickoff = one sitting = one deliverable arc; a kickoff that cannot state its DISEASE with `file:line` evidence is not ready to issue.
+
+## 11. SESSION & WORKSPACE LAW (formalized at CE-50, born of the #4 incident, 2026-07-21)
+- **One sitting = one FRESH workspace.** Never resume a severed or prior session for new work — a resumed session continues its ORIGINAL charter and becomes a concurrent writer on a tree it no longer owns. The #4 two-hand collision is the proof case.
+- **First motion of every sitting:** fresh clone, `git fetch`, `git status` on an expected-clean tree at the charter's stated tip. ANY unexpected dirt or unexpected code = STOP and report before any read-first. Found code follows the provenance protocol (CE-50/Ruling №6): hold byte-untouched → founder accounts → adopt-and-repair with attribution, or discard-without-adoption + security finding.
+- **LE never pushes.** LE containers hold no write credentials BY DESIGN. Banked = at origin through the founder's authenticated hand (deploy ZIP, or `git format-patch -1 <hash> --stdout` → founder `git am` + push for emergency recovery). A commit that exists only in an LE container is EXPOSED, not banked. Bank-at-the-seam (CE-49) is measured at ORIGIN.
+- **Severed-session protocol:** if a sitting dies mid-build, the incoming session's opening message states "the tree may carry the predecessor's unbanked work" — one sentence converts a security event into a handover.
