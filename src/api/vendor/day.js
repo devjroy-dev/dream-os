@@ -59,7 +59,7 @@ router.get('/:vendorId/:date', requireAuth, resolveVendor({ paramName: 'vendorId
   // deleted_at + cancelled: the covenant, read side, every events read.
   const { data: dayRows, error: dayErr } = await supabase
     .from('events')
-    .select('id, title, kind, slot, event_date, event_time, state, notes, linked_binder_id, linked_lead_id')
+    .select('id, title, kind, slot, event_date, event_time, state, notes, linked_binder_id, linked_lead_id, assigned_member_ids')
     .eq('vendor_id', vendor.id)
     .eq('event_date', date)
     .is('deleted_at', null)
@@ -201,6 +201,10 @@ router.get('/:vendorId/:date', requireAuth, resolveVendor({ paramName: 'vendorId
       lead_id:          e.linked_lead_id,
       linked_binder_id: e.linked_binder_id,
       binder_name:      e.linked_binder_id ? (binderNames[e.linked_binder_id] ?? null) : null,
+      // TDW_04.5 P1 #6 (CE Ruling №10, seam b): the crew a row carries, for the picker's
+      // toggle seed + the full-array SET it computes. null/absent -> [] so the client
+      // contract is ALWAYS an array (never undefined on the wire).
+      assigned_member_ids: Array.isArray(e.assigned_member_ids) ? e.assigned_member_ids : [],
     })),
     blocks,
     hot,

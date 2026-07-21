@@ -407,6 +407,15 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
     return errRes(res, 400, 'Invalid kind. Must be one of: ' + ALLOWED_KINDS.join(', ') + '.');
   }
 
+  // TDW_04.5 P1 #6 (CE Ruling №10, seam a): the CRUD crew exposure. The handler adds
+  // NO validation of its own beyond the ARRAY-OR-UNDEFINED SHAPE — a non-array,
+  // non-undefined value is a 400 before the writer, matching the kind guard's register
+  // above. Everything deeper (undefined = untouched · array = SET · [] = clear · every id
+  // ∈ this vendor's active team) is writeEvent's own sealed law (435a0dc), reused whole.
+  if (body.assigned_member_ids !== undefined && !Array.isArray(body.assigned_member_ids)) {
+    return errRes(res, 400, 'assigned_member_ids must be an array of team member ids.');
+  }
+
   // The binder link must be read BEFORE the write: the lockstep leg below needs to know
   // whether this event belongs to a binder, and the patch cannot tell us.
   // TDW_04 B3: `kind` and `event_date` join the select — the anchor veto needs the event's
@@ -435,6 +444,7 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
     slot:       body.slot,
     notes:      body.notes,
     state:      body.state,
+    assigned_member_ids: body.assigned_member_ids,   // TDW_04.5 P1 #6 (№10 seam a): undefined = untouched; array = SET; [] = clear (writeEvent's law)
   });
   if (!result.ok) return conflictOr400(res, result);
 
