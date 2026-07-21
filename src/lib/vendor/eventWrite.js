@@ -143,7 +143,7 @@ const CALENDAR_KINDS = [
 // would have SILENTLY DROPPED the validation and handed a raw 400 to the vendor.
 const ALLOWED_STATES = ['upcoming', 'done', 'cancelled'];
 
-const EVENT_SELECT = 'id, title, event_date, event_time, kind, slot, state, notes, linked_binder_id, linked_lead_id, ready_by, created_at, deleted_at';
+const EVENT_SELECT = 'id, title, event_date, event_time, kind, slot, state, notes, linked_binder_id, linked_lead_id, ready_by, created_at, deleted_at, assigned_member_ids';
 
 // ── SLOT DERIVATION (C2's boundaries) ─────────────────────────────────────
 //
@@ -439,6 +439,7 @@ async function writeEvent(supabase, params) {
     notes, linked_binder_id = null, client_hint = null,
     ready_by, state, force = false, linked_lead_id,
     deleted_at,   // undefined = untouched. Set = SOFT DELETE (update path only).
+    assigned_member_ids,   // 04.5 P1: undefined = crew untouched; array = SET crew ([] clears).
   } = params || {};
 
   // ── undefined vs null: NOT pedantry, a REGRESSION GUARD ──────────────────
@@ -481,6 +482,35 @@ async function writeEvent(supabase, params) {
   if (event_date != null && !DATE_RE.test(String(event_date))) {
     return { ok: false, error: 'event_date must be in YYYY-MM-DD format.' };
   }
+
+  // ── VALIDATE crew (04.5 P1) ──────────────────────────────────────────────
+  // undefined -> the write does not touch crew. An array SETS the crew (incl. [] = clear).
+  // Every id must be a UUID on THIS vendor's ACTIVE team (active=true AND deleted_at IS NULL,
+  // the same set team.js:19-27 lists). Names are resolved HERE, once, and handed to the
+  // checker in ctx.members so occupancy never re-queries them (the door owns the names).
+  let validatedMemberIds;                 // undefined -> column untouched
+  const memberNameById = new Map();
+  if (assigned_member_ids !== undefined) {
+    if (!Array.isArray(assigned_member_ids)) {
+      return { ok: false, error: 'assigned_member_ids must be an array of team member ids.' };
+    }
+    const ids = [...new Set(assigned_member_ids.map((x) => String(x)))];
+    for (const id of ids) {
+      if (!UUID_RE.test(id)) return { ok: false, error: 'assigned_member_ids must be team member UUIDs.' };
+    }
+    if (ids.length) {
+      const r = await supabase.from('team_members')
+        .select('id, name').eq('vendor_id', vendorId).eq('active', true).is('deleted_at', null).in('id', ids);
+      if (r.error) return { ok: false, error: r.error.message };
+      for (const m of (r.data || [])) memberNameById.set(m.id, m.name);
+      const missing = ids.filter((id) => !memberNameById.has(id));
+      if (missing.length) return { ok: false, error: 'One or more of those members are not on your active team.' };
+    }
+    validatedMemberIds = ids;
+  }
+  const membersForCheck = validatedMemberIds
+    ? validatedMemberIds.map((id) => ({ id, name: memberNameById.get(id) || null }))
+    : undefined;
 
   // ── 1. SLOT DERIVATION ──────────────────────────────────────────────────
   // `kind` joins the call: branches 3/4 are the only kind-aware branches and they
@@ -547,6 +577,7 @@ async function writeEvent(supabase, params) {
   const conflict = await checkOccupancy({
     supabase, vendorId, kind, event_date, slot: derivedSlot, event_time,
     ready_by, source, event_id, existing, state, deleted_at,
+    members: membersForCheck,   // 04.5 P1: [{id,name}] being assigned this write, or undefined
   });
 
   // ── THE GATE (Q-C-3, CE-ruled 2026-07-16). THREE LINES, IN THIS ORDER. ──
@@ -590,6 +621,51 @@ async function writeEvent(supabase, params) {
     finalNotes = finalNotes ? `${finalNotes}\n${clash}` : clash;
   }
 
+  // ── crew delta + note-trail (04.5 P1) ────────────────────────────────────
+  // On the assignment path, diff the crew against the current row and append audit lines
+  // to the SAME notes column that holds the event's trail. Read the target once (its crew
+  // AND its notes) so the trail ACCUMULATES rather than replacing — unless the caller is
+  // itself rewriting notes this call, in which case the caller's notes are the base.
+  let assignmentNoteAdded = false;
+  let crewToConfirm = [];
+  if (validatedMemberIds !== undefined) {
+    crewToConfirm = validatedMemberIds;                 // full new set -> pending upsert post-write
+    let oldIds = [], existingNotes = null;
+    const readId = event_id || (existing && existing.id) || null;
+    if (readId) {
+      const cur = await supabase.from('events')
+        .select('assigned_member_ids, notes').eq('id', readId).eq('vendor_id', vendorId)
+        .is('deleted_at', null).maybeSingle();
+      if (!cur.error && cur.data) {
+        if (Array.isArray(cur.data.assigned_member_ids)) oldIds = cur.data.assigned_member_ids.map(String);
+        existingNotes = cur.data.notes || null;
+      }
+    }
+    const newSet = new Set(validatedMemberIds), oldSet = new Set(oldIds);
+    const added   = validatedMemberIds.filter((id) => !oldSet.has(id));
+    const removed = oldIds.filter((id) => !newSet.has(id));
+
+    if (added.length || removed.length) {
+      const needNames = removed.filter((id) => !memberNameById.has(id));
+      if (needNames.length) {   // removed members may be inactive now — name only, no active filter
+        const rn = await supabase.from('team_members').select('id, name').eq('vendor_id', vendorId).in('id', needNames);
+        if (!rn.error) for (const m of (rn.data || [])) memberNameById.set(m.id, m.name);
+      }
+      const now = new Date();
+      const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const stamp = `${now.getUTCDate()} ${MON[now.getUTCMonth()]}`;   // COPY — "14 Jul" per spec; on the veto list
+      const nm = (id) => memberNameById.get(id) || 'Member';
+      const trail = [
+        ...added.map((id)   => `${nm(id)} assigned — ${stamp}`),
+        ...removed.map((id) => `${nm(id)} unassigned — ${stamp}`),
+      ].join('\n');
+      let base = finalNotes;
+      if (notes === undefined && existingNotes) base = base ? `${existingNotes}\n${base}` : existingNotes;
+      finalNotes = base ? `${base}\n${trail}` : trail;
+      assignmentNoteAdded = true;
+    }
+  }
+
   // ── 5. WRITE ────────────────────────────────────────────────────────────
   let event = null, error = null;
 
@@ -605,7 +681,8 @@ async function writeEvent(supabase, params) {
     // ADVISORY would patch notes = null and CLEAR the row's notes. Nothing was
     // forced; the note is untouched. (The undefined-vs-null law at :309-319 is the
     // same trap that once dropped every clear, read from the other side.)
-    if (notes      !== undefined || (conflict && force && isRefusal(conflict))) patch.notes = finalNotes;
+    if (notes      !== undefined || (conflict && force && isRefusal(conflict)) || assignmentNoteAdded) patch.notes = finalNotes;
+    if (validatedMemberIds !== undefined) patch.assigned_member_ids = validatedMemberIds;   // 04.5 P1
     if (derivedSlot != null)      patch.slot       = derivedSlot;
     if (ready_by   !== undefined) patch.ready_by   = ready_by;
     if (state      !== undefined) patch.state      = state;
@@ -642,6 +719,7 @@ async function writeEvent(supabase, params) {
     if (ready_by)    row.ready_by        = ready_by;
     if (linkedBinder) row.linked_binder_id = linkedBinder;
     if (safeLeadId)   row.linked_lead_id   = safeLeadId;
+    if (validatedMemberIds && validatedMemberIds.length) row.assigned_member_ids = validatedMemberIds;   // 04.5 P1
 
     const r = await supabase.from('events').insert(row).select(EVENT_SELECT).single();
     event = r.data; error = r.error;
@@ -659,6 +737,24 @@ async function writeEvent(supabase, params) {
 
   if (error) return { ok: false, error: error.message };
   if (!event) return { ok: false, error: 'Write did not return a row.' };
+
+  // ── 5b. CREW CONFIRMATIONS (04.5 P1.5) ───────────────────────────────────
+  // On EVERY assignment write, upsert (event_id, member_id, 'pending') for the assigned
+  // set. ignoreDuplicates -> on-conflict-do-nothing against unique(event_id, member_id):
+  // a member who ALREADY confirmed is NOT reset to pending; only genuinely-new pairs
+  // insert. events.assigned_member_ids is the source of truth; this is derived response
+  // state. BEST-EFFORT by the estate's own law — the event already landed, and a
+  // confirmations hiccup must never un-do a witnessed write (snapshot.js:112-141's rule,
+  // applied forward). Unassigned members' rows are NOT pruned here (spec-faithful; P3's
+  // crew read gates on assigned_member_ids — flagged in the handover).
+  if (crewToConfirm.length) {
+    try {
+      await supabase.from('crew_confirmations').upsert(
+        crewToConfirm.map((id) => ({ event_id: event.id, member_id: id, status: 'pending' })),
+        { onConflict: 'event_id,member_id', ignoreDuplicates: true },
+      );
+    } catch (_) { /* derived state; the assignment stands */ }
+  }
 
   // ── 6. LOG (Q-B2-1 / §1.4) ──────────────────────────────────────────────
   //

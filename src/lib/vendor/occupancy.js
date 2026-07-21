@@ -224,10 +224,17 @@ async function isWeddingAnchor(supabase, evBefore, binderId) {
 //
 // ══════════════════════════════════════════════════════════════════════════
 
-// The verdict vocabulary. FOUR kinds; the wire is spec :62-66 extended to four
-// by Q-B3-8. No fifth kind, no new wire field — Q-C-3 was cured with predicates,
-// not with vocabulary inflation.
-const REFUSAL_KINDS      = ['capacity', 'date_blocked'];
+// The verdict vocabulary. FOUR kinds through TDW_04; the wire is spec :62-66
+// extended to four by Q-B3-8. Q-C-3 was cured with predicates, not vocabulary.
+//   ⚠ CORRECTED IN PLACE (04.5 P1, CE-ruled eighth chair 2026-07-21): a FIFTH kind,
+//   `member_clash`, lands this block. It is NOT vocabulary inflation of the Q-C-3
+//   kind — it is a NEW OCCUPANCY QUESTION (does this person already have work in this
+//   slot?), orthogonal to the vendor's own capacity, ruled to run for ALL vendors incl.
+//   planners. It carries one kind-specific field, `member:{id,name}`, mirroring
+//   capacity's own `capacity?` optionality (a per-kind field, not a new common wire
+//   field). It is ADVISORY — see REFUSAL_KINDS below: capacity keeps precedence, a
+//   member double-book surfaces but does not itself refuse the write.
+const REFUSAL_KINDS      = ['capacity', 'date_blocked'];  // member_clash is deliberately absent: advisory
 const NON_OVERRIDABLE    = ['date_blocked'];
 
 // Asked POSITIVELY, like every membership question in this file (Q-B3-9's law).
@@ -475,6 +482,25 @@ async function liveRowsOn(supabase, vendorId, date, selfId, kinds) {
   return { rows: data || [] };
 }
 
+// 04.5 P1: the member-clash reader. Sibling of liveRowsOn — SAME non-occupancy law
+// (deleted_at is null, state <> cancelled, exclude self, occupying kinds only) — but
+// it also selects assigned_member_ids so membership can be filtered in JS rather than
+// through a PG array operator (keeps the check testable against the same in-memory
+// double the bench uses, and reads member membership through the same predicate path).
+async function liveMemberRowsOn(supabase, vendorId, date, selfId) {
+  const q = supabase
+    .from('events')
+    .select('id, title, slot, kind, event_time, assigned_member_ids')
+    .eq('vendor_id', vendorId)
+    .eq('event_date', date)
+    .is('deleted_at', null)
+    .neq('state', 'cancelled')
+    .in('kind', OCCUPYING_KINDS);
+  const { data, error } = await excludeSelf(q, selfId);
+  if (error) return { err: VERIFY_FAILED };
+  return { rows: data || [] };
+}
+
 // full_day consumes ALL slots (P3). So a row holds slot S if it IS S or if it is
 // full_day; and a full_day booking must find room in every slot of the day.
 const DAY_SLOTS = ['morning', 'noon', 'evening'];
@@ -493,6 +519,8 @@ module.exports = {
   CATEGORY_CAPACITY, RULED_OFF, VERIFY_FAILED, SPATIAL_KEYS,
   // test seams — the bench drives the real function; these let it drive the parts.
   effectiveRow, slotOfRow, _unmappedSeen,
+  // 04.5 P1 seam — the bench drives memberClashCheck directly over the real reader.
+  memberClashCheck,
 };
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -563,6 +591,21 @@ async function checkOccupancy(ctx) {
 
   if (!eff.event_date && !eff.ready_by) return null;   // nothing dated to ask about
 
+  // ── member_clash (04.5 P1) — HOISTED above the posture gate, HELD. It runs for ALL
+  // vendors incl. planners (RULED_OFF), whose own capacity is silent-off but whose CREW
+  // MATH IS ON (C4/§8, CE-ruled eighth chair). Held — not returned — so a real refusal
+  // below (date_blocked / capacity) still takes precedence for vendors that have one.
+  // Gated exactly as the ruling set it: isOccupying(eff.kind) + members present in ctx.
+  // The RULED_OFF and unmapped early-returns below now return THIS held verdict in place
+  // of a bare null: own-capacity machinery is never entered for those vendors (byte-intact),
+  // only the crew verdict rides out.
+  let memberClash = null;
+  if (isOccupying(eff.kind) && Array.isArray(c.members) && c.members.length) {
+    const mc = await memberClashCheck(supabase, vendorId, eff, selfId, c.members);
+    if (mc && mc.err) return { err: mc.err };            // FAIL-CLOSED, as every read here
+    memberClash = mc;
+  }
+
   // ── 3. THE VENDOR'S POSTURE ─────────────────────────────────────────────
   const v = await readVendor(supabase, vendorId);
   if (v.err) return { err: v.err };                    // FAIL-CLOSED (F15)
@@ -573,8 +616,11 @@ async function checkOccupancy(ctx) {
   const norm    = normaliseCategory(v.vendor.category);
   const profile = profileFor(v.vendor.category);
 
-  // SILENT-OFF: the OFF-ness is a ruling (C4/§8), not an omission. No signal.
-  if (RULED_OFF.has(norm)) return null;
+  // SILENT-OFF: the OFF-ness is a ruling (C4/§8), not an omission. No signal on OWN
+  // capacity. 04.5 P1: crew math is ON for these vendors — return the held member verdict
+  // (null when there is no clash, so the planner no-clash case is behaviourally the old
+  // `return null`). capacityCheck is never reached; own-capacity machinery byte-intact.
+  if (RULED_OFF.has(norm)) return memberClash;
 
   // GENUINELY unmapped -> OFF, and say so once. This is the only reason `other` is
   // reachable at all: profileFor returns a synthetic `other` for everything unmapped.
@@ -584,7 +630,7 @@ async function checkOccupancy(ctx) {
       console.warn('[occupancy_unmapped] vendor=' + vendorId + ' category=' + JSON.stringify(v.vendor.category || null) +
                    ' -> occupancy OFF (no PROFILES key; C4/§8 planner cases are RULED_OFF and silent)');
     }
-    return null;
+    return memberClash;   // 04.5 P1: own capacity OFF, crew math rides out (held verdict)
   }
 
   // ── 4. DELIVERY VENDORS: occupancy OFF, C9 clustering only ──────────────
@@ -602,7 +648,9 @@ async function checkOccupancy(ctx) {
 
   // SLOT ANSWERS WHERE. OCCUPANCY ANSWERS WHETHER. Asked POSITIVELY — on a ternary,
   // "not an appointment" is not "occupying" (Q-B3-9).
-  if (isOccupying(eff.kind))   return await capacityCheck(supabase, vendorId, eff, selfId, v.vendor, profile);
+  // 04.5 P1: capacity is a REFUSAL and keeps precedence; the member advisory surfaces
+  // only when the slot itself is not full (`|| memberClash`). One verdict, priority-ordered.
+  if (isOccupying(eff.kind))   return (await capacityCheck(supabase, vendorId, eff, selfId, v.vendor, profile)) || memberClash;
   if (isAppointment(eff.kind)) return await overlapCheck(supabase, vendorId, eff, selfId);
 
   // `other` — the uncertainty sink (recordPrimitives.ts:403 instructs the model:
@@ -713,6 +761,46 @@ async function overlapCheck(supabase, vendorId, eff, selfId) {
   };
 }
 
+// ── member_clash (04.5 P1) — ADVISORY. A NEW occupancy question, orthogonal to the
+// vendor's OWN capacity: is a person being assigned here ALREADY on other occupying
+// work in a slot this booking holds? Runs for ALL vendors incl. planners (whose own
+// capacity is silent-off) — hence it is COMPUTED in checkOccupancy above the RULED_OFF
+// gate and HELD, so a real refusal (capacity / date_blocked) still takes precedence for
+// the vendors that have one. `members` is [{id,name}] — eventWrite validated the ids ∈
+// the vendor's ACTIVE team and resolved the names once, so this file never re-queries.
+// Targets mirror capacityCheck :654 exactly. First clashing member wins the single
+// payload (the estate's one-verdict model, same as capacity naming its first full slot).
+async function memberClashCheck(supabase, vendorId, eff, selfId, members) {
+  if (!eff.event_date) return null;                     // no date -> no slot -> no clash
+  if (!Array.isArray(members) || !members.length) return null;
+
+  const r = await liveMemberRowsOn(supabase, vendorId, eff.event_date, selfId);
+  if (r.err) return { err: r.err };
+  if (!r.rows.length) return null;
+
+  const targets = eff.slot === 'full_day' ? DAY_SLOTS : (eff.slot ? [eff.slot] : DAY_SLOTS);
+
+  for (const m of members) {
+    const holding = r.rows.filter((x) =>
+      Array.isArray(x.assigned_member_ids) &&
+      x.assigned_member_ids.includes(m.id) &&
+      targets.some((t) => rowHolds(slotOfRow(x), t)));
+    if (holding.length) {
+      return {
+        kind: 'member_clash',
+        member: { id: m.id, name: m.name },
+        slot: eff.slot,
+        date: eff.event_date,
+        holding: holding.map((x) => ({ event_id: x.id, title: x.title, slot: slotOfRow(x), kind: x.kind })),
+        // COPY — founder-veto proposal. Structure matches capacity/overlap; SLOT_WORD is
+        // the estate's own slot register. Slot word = the EXISTING commitment's slot.
+        message: memberClashMessage(m.name, holding[0].title, slotOfRow(holding[0])),
+      };
+    }
+  }
+  return null;
+}
+
 // ── cluster (C9) — ADVISORY, NEVER BLOCKS, once per window ────────────────
 // ">3 ready_by in any rolling 7 days." The window is anchored on THIS deadline and
 // runs both ways: a deadline is crowded by what sits on either side of it, not only
@@ -788,6 +876,14 @@ function fmtDate(ymd) {
   return d + ' ' + MONTHS[m - 1];
 }
 const SLOT_WORD = { morning: 'morning', noon: 'afternoon', evening: 'evening', full_day: 'day' };
+
+// 04.5 P1 — COPY, founder-veto proposal. Spec example verbatim when slot='evening':
+// "Rahul is already on the Sharma sangeet that evening." `when` is the EXISTING
+// commitment's slot word, through the estate's own SLOT_WORD register.
+function memberClashMessage(name, clashTitle, existingSlot) {
+  const when = SLOT_WORD[existingSlot] || 'day';
+  return `${name} is already on the ${clashTitle} that ${when}.`;
+}
 
 function blockedMessage(date) {
   return `You've blocked ${fmtDate(date)}. That one's a no — unblock it first if you want it back.`;
