@@ -14,7 +14,7 @@
 | `docs/SCHEMA.md` §team_members/§team_tasks/§team_payments/§collab_posts + migration 0048 | Exact columns; collab requirement_type CHECK list (16 categories) |
 | `app/vendor/studio/team/page.tsx`, `team-payments/page.tsx`, `app/vendor/collab/*` | Current surfaces being extended |
 | `app/vendor/calendar/page.tsx` post-04 | Grid/toggle mount point for the band view |
-| `src/engine/src/core/donna.ts` snapshot builder post-04 | Where the staffing-gap line joins the date-pressure line |
+| `src/engine/src/core/donna.ts` snapshot builder post-04 | ~~Where the staffing-gap line joins the date-pressure line~~ **CORRECTED 2026-07-21 (CE-48/Ruling №4):** stale pointer — the estate's standing siting ruling (B4 §3, R-B6-1) homes the pressure line at the DOOR (`vendor-engine/chat.js` `fetchCalendarSnapshot`), not donna.ts (note-based, zero event reads). #3 built there (`307f98f`). |
 | `middleware.ts` (dreamos-pwa) | Route matcher — P3's public crew route must not be swallowed by subdomain rewrites |
 
 ## 1. LOCKED FOUNDER DECISIONS (this block)
