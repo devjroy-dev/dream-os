@@ -16,12 +16,16 @@
 //
 // LANE RESOLUTION IS SERVICE-SCOPED AND COLLISION-PROOF (CE §2 refinement). A lane
 // is Meta-live in a process ONLY when that lane's phone-number-id env is present in
-// THAT process. The bride service alone carries BRIDE_PHONE_NUMBER_ID at M1, so a
-// vendor-process send can NEVER resolve to the bride Meta number even though both
-// lanes share the +14787788550 literal fallback — the vendor process simply has no
-// BRIDE_PHONE_NUMBER_ID. VENDOR_PHONE_NUMBER_ID stays unset until M2, so vendor sends
-// remain Twilio automatically ("dormant until provisioned"). BRIDE_WHATSAPP_NUMBER /
-// VENDOR_WHATSAPP_NUMBER make each lane's number explicit at cutover.
+// THAT process AND that lane's number is set EXPLICITLY. Both lanes now demand an
+// explicit *_WHATSAPP_NUMBER (BRIDE_WHATSAPP_NUMBER / VENDOR_WHATSAPP_NUMBER) — there is
+// NO literal/Twilio fallback for either identity. VENDOR_PHONE_NUMBER_ID stays unset until
+// M2, so vendor sends remain Twilio automatically ("dormant until provisioned").
+//
+// F-05.16 (CE-43): PNID-presence ALONE was not collision-proof. A stale BRIDE_PHONE_NUMBER_ID
+// on the vendor service, combined with brideNum inheriting TWILIO_WHATSAPP_NUMBER (the old
+// literal fallback), routed every from-inferred vendor send onto the dead bride PNID → (#200).
+// The cure (CE-ruled): the bride branch mirrors the vendor branch EXACTLY — explicit PNID AND
+// explicit number, or the branch is unreachable. The TWILIO/literal inheritance is dead.
 //
 // F-05.2 CURE LIVES HERE (CE §4), INSIDE the Meta branch: the cross-line opt-out gate
 // runs only when a send resolves to a Meta lane, so the Twilio fallthrough stays BYTE-
@@ -57,10 +61,15 @@ function _bare(n) {
 // else null. Injectable env via `env` for the bench.
 function metaLaneFor(from, env = process.env) {
   const f = _bare(from);
-  const brideNum  = _bare(env.BRIDE_WHATSAPP_NUMBER || env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14787788550');
+  // F-05.16 (CE-43): the bride identity requires an EXPLICIT BRIDE_WHATSAPP_NUMBER,
+  // exactly as vendor requires an explicit VENDOR_WHATSAPP_NUMBER. The old
+  // `|| TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14787788550'` inheritance is DEAD: it let a
+  // stale BRIDE_PHONE_NUMBER_ID on the vendor service collapse brideNum onto the vendor
+  // number and route every from-inferred send onto the dead bride PNID → (#200).
+  const brideNum  = _bare(env.BRIDE_WHATSAPP_NUMBER || '');
   const vendorNum = _bare(env.VENDOR_WHATSAPP_NUMBER || '');
-  // Bride: id present in this process AND from matches the bride number.
-  if (env.BRIDE_PHONE_NUMBER_ID && f && f === brideNum) {
+  // Bride: id present in this process AND an explicit bride number is set AND from matches it.
+  if (env.BRIDE_PHONE_NUMBER_ID && brideNum && f === brideNum) {
     return { line: 'bride', phoneNumberId: env.BRIDE_PHONE_NUMBER_ID };
   }
   // Vendor (M2): only when an explicit distinct vendor number is configured, so it

@@ -132,6 +132,50 @@ Example output:
 ]`;
 }
 
+// ── F-05.15 (CE-43): fenced/prose-tolerant JSON extraction ───────────────────
+// Haiku FENCES + editorializes when it EXPLAINS (no-event images) and returns clean
+// JSON when it EXTRACTS. The old anchored strip (^``` … ```$) only survived a fence
+// with NOTHING outside it: trailing prose broke the $ anchor, leading prose broke the ^
+// anchor → JSON.parse threw → the vendor got the polite refusal instead of the honest
+// empty-events line. Cure (parse-layer ONLY): prefer a fenced block if present, tolerate
+// surrounding prose, and pull the FIRST balanced JSON array/object out of the text.
+// Clean-JSON passthrough is byte-identical (whole-text scan returns exactly what
+// JSON.parse(raw) parsed before). A clean [] is the honest no-events path, not an error.
+
+// String-and-escape-aware scan: first balanced [...] or {...} substring, else null.
+function scanBalanced(s) {
+  let start = -1, open = '', close = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '[' || c === '{') { start = i; open = c; close = c === '[' ? ']' : '}'; break; }
+  }
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === open) depth++;
+    else if (c === close) { depth--; if (depth === 0) return s.slice(start, i + 1); }
+  }
+  return null; // unbalanced → treat as no JSON
+}
+
+// Prefer the body of the first ```json … ``` (or ``` … ```) fence; else scan the raw text.
+function extractFirstJson(text) {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) {
+    const inFence = scanBalanced(fence[1]);
+    if (inFence !== null) return inFence;
+  }
+  return scanBalanced(text);
+}
+
 // ── Haiku Vision call ────────────────────────────────────────────────────────
 
 async function extractCalendarFromImage({ image_url, caption, anthropic, istToday }) {
@@ -164,15 +208,14 @@ async function extractCalendarFromImage({ image_url, caption, anthropic, istToda
     .join('')
     .trim();
 
-  // Strip markdown fences if Haiku leaks them despite the prompt
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
+  // F-05.15: pull the first balanced JSON array/object out of raw, tolerating fences and
+  // surrounding prose. No JSON anywhere → the existing error path below (wording unchanged).
+  const jsonText = extractFirstJson(raw);
 
   let parsed;
   try {
-    parsed = JSON.parse(cleaned);
+    if (jsonText === null) throw new SyntaxError('no json');
+    parsed = JSON.parse(jsonText);
   } catch (err) {
     throw new Error(`vendorCalendarImage: Haiku returned non-JSON: "${raw.slice(0, 200)}"`);
   }

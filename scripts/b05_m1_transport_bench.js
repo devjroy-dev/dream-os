@@ -7,6 +7,13 @@
 //   4. wamid returns in .sid; media-on-Meta is a named refused gap (M1 text-only).
 // No network, no creds, no supabase. deps.twilioCreate is injected here; in prod it defaults to the
 // REAL twilioClient.messages.create (see whatsapp.js) so production behavior is untouched.
+//
+// ── F-05.16 CONTRACT SHIFT (CE-ruled amendment) ──────────────────────────────────────────────
+// The bride Meta lane requires an EXPLICIT BRIDE_WHATSAPP_NUMBER; the TWILIO_WHATSAPP_NUMBER/
+// literal inheritance is dead. The five bride-Meta cases below (each marked "F-05.16") gained an
+// explicit BRIDE_WHATSAPP_NUMBER in their env — ENV ADDITIONS ONLY, semantics preserved (bride
+// still resolves, now under the corrected explicit-number discipline). For the F-05.16 delivery
+// this file is a LABELED AMENDMENT, no longer byte-stable — diff reviewable line-by-line.
 'use strict';
 const assert = require('assert');
 delete require.cache[require.resolve('../src/lib/whatsapp.js')];
@@ -66,7 +73,8 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
     assert.strictEqual(metaLaneFor(BRIDE_LIT, {}), null);
   });
   await t('metaLaneFor: bride id + bride number -> bride lane', () => {
-    assert.deepStrictEqual(metaLaneFor(BRIDE_LIT, { BRIDE_PHONE_NUMBER_ID: 'PBRIDE' }), { line: 'bride', phoneNumberId: 'PBRIDE' });
+    // F-05.16: bride branch now requires an explicit BRIDE_WHATSAPP_NUMBER (literal/Twilio inheritance dead).
+    assert.deepStrictEqual(metaLaneFor(BRIDE_LIT, { BRIDE_PHONE_NUMBER_ID: 'PBRIDE', BRIDE_WHATSAPP_NUMBER: BRIDE_LIT }), { line: 'bride', phoneNumberId: 'PBRIDE' });
   });
   await t('metaLaneFor: COLLISION-PROOF — vendor process (no bride id) + bride literal -> null', () => {
     assert.strictEqual(metaLaneFor(BRIDE_LIT, { VENDOR_PHONE_NUMBER_ID: 'PVEND' }), null);
@@ -82,7 +90,8 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
   await t('Meta path: bride lane -> sendMetaText(bride id); body byte-preserved; wamid in .sid', async () => {
     let seen = null;
     const r = await sendWhatsApp('+919800000001', 'Good morning', [], BRIDE_LIT, {
-      env: { BRIDE_PHONE_NUMBER_ID: 'PBRIDE' }, sendMetaText: async (payload, opts) => { seen = { payload, opts }; return { ok: true, wamid: 'wamid.ABC' }; }, ...noSb,
+      // F-05.16: explicit BRIDE_WHATSAPP_NUMBER now required for the bride Meta lane.
+      env: { BRIDE_PHONE_NUMBER_ID: 'PBRIDE', BRIDE_WHATSAPP_NUMBER: BRIDE_LIT }, sendMetaText: async (payload, opts) => { seen = { payload, opts }; return { ok: true, wamid: 'wamid.ABC' }; }, ...noSb,
     });
     assert.strictEqual(seen.opts.phoneNumberId, 'PBRIDE');
     assert.strictEqual(seen.payload.text, 'Good morning');
@@ -91,7 +100,8 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
   });
   await t('Meta path: media on Meta lane -> named refused gap, NO send (M1 text-only)', async () => {
     let called = false;
-    const r = await sendWhatsApp('+91980', '', ['https://img/x.jpg'], BRIDE_LIT, { env: { BRIDE_PHONE_NUMBER_ID: 'P' }, sendMetaText: async () => { called = true; return { wamid: 'w' }; }, ...noSb });
+    // F-05.16: explicit BRIDE_WHATSAPP_NUMBER now required for the bride Meta lane.
+    const r = await sendWhatsApp('+91980', '', ['https://img/x.jpg'], BRIDE_LIT, { env: { BRIDE_PHONE_NUMBER_ID: 'P', BRIDE_WHATSAPP_NUMBER: BRIDE_LIT }, sendMetaText: async () => { called = true; return { wamid: 'w' }; }, ...noSb });
     assert.strictEqual(called, false);
     assert.strictEqual(r.blocked, 'meta_media_unsupported');
     assert.strictEqual(r.sid, null);
@@ -101,7 +111,8 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
   await t('opt-out: Meta lane + opted-out -> BLOCKED, Meta NOT called', async () => {
     let metaCalled = false;
     const r = await sendWhatsApp('+919800000003', 'hi', [], BRIDE_LIT, {
-      env: { BRIDE_PHONE_NUMBER_ID: 'PBRIDE' }, sendMetaText: async () => { metaCalled = true; return { wamid: 'w' }; }, isOptedOut: async () => true,
+      // F-05.16: explicit BRIDE_WHATSAPP_NUMBER now required for the bride Meta lane.
+      env: { BRIDE_PHONE_NUMBER_ID: 'PBRIDE', BRIDE_WHATSAPP_NUMBER: BRIDE_LIT }, sendMetaText: async () => { metaCalled = true; return { wamid: 'w' }; }, isOptedOut: async () => true,
     });
     assert.strictEqual(metaCalled, false);
     assert.strictEqual(r.blocked, 'opted_out');
@@ -119,7 +130,8 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
   });
   await t('opt-out: Meta lane + NO supabase -> no-op, send proceeds', async () => {
     let sent = false;
-    await sendWhatsApp('+91980', 'hi', [], BRIDE_LIT, { env: { BRIDE_PHONE_NUMBER_ID: 'P' }, sendMetaText: async () => { sent = true; return { wamid: 'w' }; }, supabase: false });
+    // F-05.16: explicit BRIDE_WHATSAPP_NUMBER now required for the bride Meta lane.
+    await sendWhatsApp('+91980', 'hi', [], BRIDE_LIT, { env: { BRIDE_PHONE_NUMBER_ID: 'P', BRIDE_WHATSAPP_NUMBER: BRIDE_LIT }, sendMetaText: async () => { sent = true; return { wamid: 'w' }; }, supabase: false });
     assert.strictEqual(sent, true, 'without supabase the gate must not block');
   });
 
