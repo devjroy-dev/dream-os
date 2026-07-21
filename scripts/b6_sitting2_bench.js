@@ -31,7 +31,8 @@
 //       sentence of F-04.36 — this is the forcing function the CE ruled.)
 //   §4  R-B6-15 (founder veto = YES) — the edit/cancel signal displays carry the
 //       ruled clause VERBATIM at source; the optimistic originals are gone; and
-//       ZIP A's :659/:671 strings are unregressed (four sites, one clause).
+//       the clause now stands at SIX sites, one clause (+ donna_assign_crew's
+//       assign+unassign branches — F-04.90, CE Ruling №9; grew 4→6 by ruling).
 //   §5  R-B6-13 — the donna_find word-sweep: "handle" gone from every string the
 //       model can be handed by that file; the name-as-shown taught in its place.
 //       (The zero-match dump size is 06's by the same ruling — NOT asserted.)
@@ -203,7 +204,7 @@ sec('4. R-B6-15 (veto = YES) — the edit/cancel displays carry the ruled clause
   ok(!src.includes('it is being updated on the calendar') && !src.includes('it is being called off on the calendar'),
      '   the optimistic originals are GONE — both of them');
   const clause = src.split('sent to the calendar; it will confirm or refuse').length - 1;
-  ok(clause === 4, `   FOUR sites, ONE clause (book/block from ZIP A + edit/cancel from this ZIP) — found ${clause}`);
+  ok(clause === 6, `   SIX sites, ONE clause — book/block (ZIP A) + edit/cancel (B6 sitting 2) + donna_assign_crew's assign+unassign branches (TDW_04.5 P1 #4, F-04.90 · CE Ruling №9). GREW 4→6 BY RULING — labeled, attributed, minimal (Ruling №1's class, third instance, after m2/m1): a CE-ruled cure changed a counted contract, so the bench follows the law. Same warrant every site (R-B6-4/R-B6-15: the display returns before the door decides; the door can still refuse). Found ${clause}`);
   ok(src.includes('the day is being put back on the calendar'),
      '   donna_unblock_date UNTOUCHED — never on the veto list, and this line fails if a sweep overreaches into it');
 }

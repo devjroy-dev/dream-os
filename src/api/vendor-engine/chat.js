@@ -597,12 +597,27 @@ async function resolveEvent(req, eventId, onDate) {
   if (hits.length > 1) return { ambiguous: hits.map((r) => ({ title: r.title, event_date: r.event_date })) };
   return { none: true };
 }
+// TDW_04.5 P1 #4 — the crew name matcher. Case-insensitive, WITHIN THE ACTIVE TEAM
+// (the door reads that set with team.js's own predicate before calling this). A member
+// answers to the vendor's word when it is the full name OR any name-token (first or
+// surname) — so "Rahul" reaches both Rahuls and clarify-once fires, while "Rahul Mehra"
+// resolves to one. NOT resolveClientReference.nameMatches: that resolves PEOPLE across
+// clients/leads/invoices; this resolves TEAM MEMBERS, a different set (resolveEvent's own
+// precedent-not-reused note, one layer down).
+function memberNameMatches(name, want) {
+  const n = String(name || '').trim().toLowerCase();
+  const w = String(want || '').trim().toLowerCase();
+  if (!n || !w) return false;
+  if (n === w) return true;                     // exact full name
+  return n.split(/\s+/).includes(w);            // any token — the clarify-once source
+}
 async function mutateEvents(req, result) {
-  const edits = [], cancels = [];
+  const edits = [], cancels = [], assigns = [];
   const collect = (call) => {
     if (!call || !call.input) return;
     if (call.name === 'donna_edit_event' && call.input.event_id) edits.push(call.input);
     if (call.name === 'donna_cancel_event' && call.input.event_id) cancels.push(call.input);
+    if (call.name === 'donna_assign_crew' && call.input.event_id) assigns.push(call.input);
   };
   for (const tc of (result.tool_calls || [])) {
     collect(tc);
@@ -683,6 +698,61 @@ async function mutateEvents(req, result) {
         : { action: 'cancel', ok: false, error: (r && r.error) || null, reason: (r && r.error) ? null : 'unresolved' });
     } catch (err) { console.error('[vendor-e chat:donna_cancel_event]', err.message); done.push({ action: 'cancel', ok: false, reason: 'unresolved' }); }
   }
+  // ── CREW (04.5 P1 #4) — assign / unassign, riding the SAME shared done[] ──────
+  // Mirrors donna_edit_event: the SHARED resolveEvent (untouched) resolves the booking,
+  // then a member is resolved case-insensitively within the ACTIVE team, and the crew SET
+  // is written through writeEvent — the ONE writer (assign = union, unassign = difference;
+  // array = SET semantics). The note-trail + crew_confirmations come FREE from eventWrite's
+  // sealed crew core; nothing is re-implemented here. Every outcome names its own cause
+  // (F-04.62's law): member_unresolved / member_ambiguous / idempotent / guard, and — for
+  // the booking itself — the mirrored event ambiguous / unresolved reasons.
+  const supabase = req.app.locals.supabase;
+  for (const a of assigns) {
+    try {
+      const res = await resolveEvent(req, a.event_id, a.on_date);
+      if (res.ambiguous) { done.push({ action: a.action, ok: false, reason: 'ambiguous', candidates: res.ambiguous }); continue; }
+      const ev = res.ev;
+      if (!ev) { done.push({ action: a.action, ok: false, reason: 'unresolved' }); continue; }
+      // ── member resolution: ACTIVE team, team.js's predicate (active=true AND deleted_at
+      //    IS NULL — the same set eventWrite validates the write against) ──
+      const { data: teamRows, error: teamErr } = await supabase
+        .from('team_members').select('id, name')
+        .eq('vendor_id', req.vendor.id).eq('active', true).is('deleted_at', null);
+      if (teamErr) { done.push({ action: a.action, ok: false, reason: 'unresolved' }); continue; }
+      const matches = (teamRows || []).filter((m) => memberNameMatches(m.name, a.member));
+      if (matches.length === 0) { done.push({ action: a.action, ok: false, reason: 'member_unresolved', memberName: a.member }); continue; }
+      if (matches.length > 1)  { done.push({ action: a.action, ok: false, reason: 'member_ambiguous', memberName: a.member, memberCandidates: matches.map((m) => ({ id: m.id, name: m.name })) }); continue; }
+      const member = { id: matches[0].id, name: matches[0].name };
+      // ── ONE targeted vendor-scoped read of the current crew for ev.id. resolveEvent's
+      //    select stays byte-identical (it never carries assigned_member_ids), so the crew
+      //    read lives HERE, not in the shared resolver. ──
+      const { data: cur } = await supabase
+        .from('events').select('assigned_member_ids')
+        .eq('id', ev.id).eq('vendor_id', req.vendor.id).is('deleted_at', null).maybeSingle();
+      const currentIds = Array.isArray(cur && cur.assigned_member_ids) ? cur.assigned_member_ids.map(String) : [];
+      const isOn = currentIds.includes(member.id);
+      // idempotent-add no-op / remove-guard — THE BRANCH IS THE GUARD, no write fires.
+      if (a.action === 'assign'   &&  isOn) { done.push({ action: 'assign',   ok: false, reason: 'idempotent', member, event: ev }); continue; }
+      if (a.action === 'unassign' && !isOn) { done.push({ action: 'unassign', ok: false, reason: 'guard',      member, event: ev }); continue; }
+      const newSet = a.action === 'assign'
+        ? [...new Set([...currentIds, member.id])]         // union
+        : currentIds.filter((id) => id !== member.id);     // difference
+      const r = await writeEvent(supabase, {
+        vendorId: req.vendor.id, surface: 'pwa', source: 'victor', event_id: ev.id, assigned_member_ids: newSet,
+      });
+      // `conflict` rides on ok:true as an ADVISORY (member_clash), exactly as edit's does —
+      // the advised filter (mutated.filter: m.ok && m.conflict && m.conflict.message) carries
+      // it to advisoryLines, BESIDE the witness, never instead. BYTE-READY-DORMANT (Rulings
+      // 6/7, F-04.88): a crew-only write returns conflict==null TODAY because occupancy.js:551
+      // short-circuits on touchesSpatial BEFORE the member_clash block (SPATIAL_KEYS has no
+      // `members`). This plumbing surfaces the clash THE INSTANT the core cure teaches
+      // touchesSpatial that members are spatial — NO door-side workaround, NO occupancy.js touch.
+      done.push(r && r.ok
+        ? { action: a.action, ok: true,  member, event: r.event || ev, conflict: r.conflict || null }
+        : { action: a.action, ok: false, member, event: ev, conflict: (r && r.conflict) || null,
+            error: (r && !r.conflict && r.error) || null, reason: (r && (r.conflict || r.error)) ? null : 'unresolved' });
+    } catch (err) { console.error('[vendor-e chat:donna_assign_crew]', err.message); done.push({ action: a.action, ok: false, reason: 'unresolved' }); }
+  }
   return done;
 }
 // F-04.33 (same seam, same reason as bookingLines): e.title is DB-sourced and rode raw
@@ -719,6 +789,32 @@ function mutationLines(done) {
       if (m.conflict && m.conflict.message) return m.conflict.message;
       // FAIL-CLOSED's honest, retryable string. Also verbatim; also already true.
       if (m.error) return m.error;
+      // ── CREW (04.5 P1 #4) — the crew-side causes, each naming itself. VERBATIM,
+      //    founder veto (CE Ruling №8). More specific than the event reasons below,
+      //    so they are tested first; the `reason` values do not collide with edit's. ──
+      // Member ambiguity → clarify-once. Honesty, never a guess: the shared word,
+      // then the full names to choose between.
+      if (m.reason === 'member_ambiguous' && Array.isArray(m.memberCandidates) && m.memberCandidates.length > 1) {
+        const names = m.memberCandidates.map((c) => c.name);
+        const plural = String(m.memberName || 'teammate').trim().replace(/\b\w/g, (ch) => ch.toUpperCase());
+        const numWord = { 2: 'two', 3: 'three', 4: 'four' }[names.length] || String(names.length);
+        const joined = names.length === 2
+          ? names.join(' or ')
+          : `${names.slice(0, -1).join(', ')}, or ${names[names.length - 1]}`;
+        return `I have ${numWord} ${plural}s — ${joined}?`;
+      }
+      // Member not on the team — echo the vendor's own word back.
+      if (m.reason === 'member_unresolved') {
+        return `I couldn't find anyone called ${m.memberName} on your team.`;
+      }
+      // Idempotent add — already there, no write fired.
+      if (m.reason === 'idempotent') {
+        return `${m.member.name}'s already on the ${(m.event && m.event.title) || 'booking'}.`;
+      }
+      // Remove-guard — wasn't there to take off, no write fired.
+      if (m.reason === 'guard') {
+        return `${m.member.name} isn't on the ${(m.event && m.event.title) || 'booking'}.`;
+      }
       // AMBIGUITY (R-B6-1): more than one booking answers to that name. Honesty,
       // never a guess — each candidate listed by title + date so the vendor can
       // say which one in his next breath.
@@ -732,6 +828,18 @@ function mutationLines(done) {
       return m.action === 'cancel'
         ? `Couldn't cancel that booking — I didn't find a single match. Tell me which one.`
         : `Couldn't change that booking — I didn't find a single match. Tell me which one.`;
+    }
+    // ── CREW WITNESS (04.5 P1 #4) — the ok:true action-aware branch; THE BRANCH IS
+    //    THE GUARD (CE Ruling №5). Reading A (CE Ruling №8): raw {when}, time-optional,
+    //    mirroring the sibling Updated: line's own event_date-guarded handling EXACTLY —
+    //    one reply, one date voice. Humanizing is parked to the Block 09 estate-wide pass
+    //    (F-04.89, filed). VERBATIM, founder veto. ──
+    if (m.action === 'assign' || m.action === 'unassign') {
+      const ce = m.event || {};
+      const title = ce.title || 'booking';
+      if (m.action === 'unassign') return `${m.member.name}'s off the ${title}.`;
+      const cwhen = ce.event_time ? `${ce.event_date} at ${ce.event_time}` : ce.event_date;
+      return `${m.member.name}'s on the ${title}${ce.event_date ? ` — ${cwhen}` : ''}.`;
     }
     const e = m.event || {};
     const when = e.event_time ? `${e.event_date} at ${e.event_time}` : e.event_date;
@@ -1595,6 +1703,12 @@ module.exports.advisoryLines  = advisoryLines;
 // assertion runs by regex against THIS function's built output, never a copy.
 module.exports.fetchCalendarSnapshot = fetchCalendarSnapshot;
 module.exports.resolveEvent          = resolveEvent;
+// ── TEST SEAM (TDW_04.5 P1 #4) — same precedent, same reason ──────────────
+// mutateEvents is the resolving door leg; b0457_assign_bench drives the REAL one
+// (with the REAL resolveEvent, writeEvent, memberNameMatches and mutationLines behind
+// it) against the sealed crew bench's proven double — a bench that re-implemented the
+// resolve→delta→write path would prove its own copy and nothing else.
+module.exports.mutateEvents          = mutateEvents;
 // ── TEST SEAMS (TDW_04 B6 sitting 2, Q-B4-6(b)) — same precedent, same reason ──
 // persistComposedReply is where F-04.41's cure lives; composedTail is the one
 // ordered list. b6_sitting2_bench drives the REAL pair against a capturing

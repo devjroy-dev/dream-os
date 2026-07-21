@@ -448,6 +448,28 @@ export const DONNA_CANCEL_EVENT_TOOL: Anthropic.Tool = {
   },
 };
 
+// TDW_04.5 P1 #4 — SIGNAL-ONLY, the crew sibling of donna_edit_event/donna_cancel_event.
+// It WRITES NOTHING here: the executor validates and returns {display}; the resolving door
+// leg in vendor-engine/chat.js (mutateEvents) resolves the booking + the member, computes
+// the crew SET (assign = union, unassign = difference) and writes through eventWrite — the
+// ONE writer. Absent from CHAT_MUTATING_TOOLS / WA_MUTATING_TOOLS for the same reason its
+// four siblings are: a signal is a REQUEST, and logging one as a completed fact is F-04.21's
+// disease. The note-trail + crew_confirmations come free from eventWrite's sealed crew core.
+export const DONNA_ASSIGN_CREW_TOOL: Anthropic.Tool = {
+  name: 'donna_assign_crew',
+  description: "Put a team member ON a booking, or take them OFF it — assign or unassign crew for a date already on the calendar. Give event_id — the booking's NAME exactly as it appears on the calendar you can see (a leading part of the name is enough) — plus member (the teammate's name, as the vendor says it), action ('assign' to put them on, 'unassign' to take them off), and on_date (the date the booking sits on, from the same calendar line) whenever you can see it. Use it when the vendor says put someone on a date, send a shooter, assign crew, take them off, or drop someone from a booking. The booking must be one you can see on the calendar; the member must be on the vendor's team. One call, one teammate — for several people, call it once each.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      event_id: { type: 'string', description: "The booking's name as shown on the calendar — exact, or a leading part of it." },
+      member:   { type: 'string', description: "The teammate's name, as the vendor says it. If two teammates answer to it, the vendor will be asked which one." },
+      action:   { type: 'string', description: "'assign' to put the member on the booking, 'unassign' to take them off." },
+      on_date:  { type: 'string', description: 'The date the booking sits on (YYYY-MM-DD), as shown beside it on the calendar. Include it whenever you can see it — it tells same-named bookings apart.' },
+    },
+    required: ['event_id', 'member', 'action'],
+  },
+};
+
 export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_MONEY_TOOL, DONNA_DATE_TOOL, DONNA_CLIENT_TOOL, DONNA_NOTE_TOOL,
   DONNA_PHONE_TOOL, DONNA_DOC_TOOL, DONNA_STAGE_TOOL, DONNA_REASONFORACTION_APPEND_TOOL,
@@ -455,6 +477,7 @@ export const RECORD_TOOLS: Anthropic.Tool[] = [
   DONNA_EDIT_TOOL, DONNA_HIDE_TOOL, DONNA_RETRIEVE_TOOL, DONNA_REPEATFOLLOWUP_TOOL,
   DONNA_MERGE_TOOL, DONNA_SPLIT_TOOL, DONNA_MONEY_EDIT_TOOL,
   DONNA_INVOICE_PDF_TOOL, DONNA_BOOK_EVENT_TOOL, DONNA_EDIT_EVENT_TOOL, DONNA_CANCEL_EVENT_TOOL,
+  DONNA_ASSIGN_CREW_TOOL,                           // TDW_04.5 P1 #4 — signal-only crew sibling
   DONNA_BLOCK_DATE_TOOL, DONNA_UNBLOCK_DATE_TOOL,   // TDW_04 B2 §1.5 — a block is not a booking
 ];
 
@@ -708,6 +731,23 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
       // ── SOFTENED AT B6 SITTING 2 (R-B6-15, founder veto = YES) — same warrant as
       // donna_edit_event's string above; see that comment.
       return { display: `Cancellation requested for booking ${eid} — sent to the calendar; it will confirm or refuse.` };
+    }
+    case 'donna_assign_crew': {
+      const eid = typeof input.event_id === 'string' ? input.event_id.trim() : '';
+      if (!eid) return { display: "ERROR: donna_assign_crew needs event_id (the booking's name as shown on the calendar)." };
+      const member = typeof input.member === 'string' ? input.member.trim() : '';
+      if (!member) return { display: 'ERROR: donna_assign_crew needs member (the teammate\'s name).' };
+      const action = typeof input.action === 'string' ? input.action.trim() : '';
+      if (action !== 'assign' && action !== 'unassign') return { display: "ERROR: donna_assign_crew needs action = 'assign' or 'unassign'." };
+      // Signal only — the door resolves the booking + the member, applies the crew change to
+      // public.events.assigned_member_ids (vendor-scoped, through eventWrite) and confirms.
+      // Future tense for the SAME warrant as donna_edit_event/donna_cancel_event above
+      // (R-B6-15): this string returns to the model BEFORE the door has decided, and the
+      // door can still refuse (member unresolved, ambiguous, a clash on a forced write). The
+      // only sentence true at the instant it is written.
+      return { display: action === 'assign'
+        ? `Crew change requested: ${member} onto booking ${eid} — sent to the calendar; it will confirm or refuse.`
+        : `Crew change requested: ${member} off booking ${eid} — sent to the calendar; it will confirm or refuse.` };
     }
     case 'donna_hide': {
       if (!rid) return { display: 'ERROR: donna_hide needs binder_id.' };
