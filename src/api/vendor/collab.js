@@ -424,9 +424,9 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
 
   if (error) return errRes(res, 500, error.message);
 
-  // Item rows are written ONLY when the caller opted into the item model. A
-  // legacy single-type create touches collab_post_items not at all and is
-  // therefore byte-identical to today, 0096 or no 0096.
+  // Item rows are written whenever the caller supplies `items`. Post-0096 that
+  // is every post; pre-0096 the insert fails and what happens next depends on
+  // WHETHER ANYTHING CAN BE LOST.
   if (multi) {
     const { error: itemErr } = await supabase
       .from('collab_post_items')
@@ -437,15 +437,27 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
         note:             i.note,
       })));
 
-    // REFUSE LOUDLY, NEVER SILENTLY LOSE ITEMS. If the rows cannot land (the
-    // pre-0096 world), a multi-item post would otherwise wrap back to ONE
-    // requirement and quietly discard the rest. Roll the post back instead and
-    // say so. Single-item creates never reach this branch, so the surface the
-    // founder has today keeps working while 0096 is pending.
+    // ── F-04.110 (live regression, founder-caught at the dormancy walk) ─────
+    // The first cut rolled back on ANY item-insert failure. But the PWA's
+    // composer always sends `items` — even for one requirement — so every post
+    // from the live surface took the rollback branch and the vendor could not
+    // post at all until 0096 ran. My bench drove the pre-P4 payload shape,
+    // which no live caller produces any more: a green over an unreachable path.
+    //
+    // The rule the first cut should have stated: REFUSE LOUDLY ONLY WHERE
+    // REFUSING PREVENTS ACTUAL LOSS.
+    //   · 2+ items — items 2..n exist nowhere else. Losing them is silent data
+    //     loss, so roll the post back and say so.
+    //   · 1 item — collab_posts.requirement_type ALREADY carries it (it is
+    //     items[0] by F4's storage rule). Nothing can be lost. The post stands
+    //     and the wrap serves it, byte-identically to every legacy post.
     if (itemErr) {
-      await supabase.from('collab_posts').delete().eq('id', post.id).eq('vendor_id', vendorId);
-      console.error('[collab] multi-item create rolled back:', itemErr.message);
-      return errRes(res, 503, 'Multi-item posts are not available yet. Post one requirement at a time.');
+      if (items.length > 1) {
+        await supabase.from('collab_posts').delete().eq('id', post.id).eq('vendor_id', vendorId);
+        console.error('[collab] multi-item create rolled back:', itemErr.message);
+        return errRes(res, 503, 'Multi-item posts are not available yet. Post one requirement at a time.');
+      }
+      console.warn('[collab:pre-0096] single item not persisted; the post column carries it:', itemErr.message);
     }
   }
 

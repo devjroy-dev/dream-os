@@ -249,9 +249,23 @@ function legacyPost(id, type) {
     ok('a legacy single-type create still succeeds with 0096 unrun', created.status === 200 && created.body?.ok);
     ok('and it wrote no item rows', (db._tables.collab_post_items || []).length === 0);
 
+    // ── THE SHAPE THE PWA ACTUALLY SENDS (F-04.110) ────────────────────────
+    // The composer ALWAYS sends `items`, even for one requirement. The asserts
+    // above drive the pre-P4 payload, which no live caller produces any more —
+    // a green over an unreachable path is not evidence. These two drive the
+    // real one.
+    const before = db._tables.collab_posts.length;
+    const oneItem = await s.call('POST', '/collab', { items: [{ requirement_type: 'venue' }], event_date: FUTURE, city: 'Jaipur' });
+    ok('a ONE-item post in the CLIENT\'s payload shape still succeeds pre-0096', oneItem.status === 200 && oneItem.body?.ok);
+    ok('the post SURVIVES — it is not rolled back', db._tables.collab_posts.length === before + 1);
+    ok('and the post column carries the requirement, so nothing was lost',
+       db._tables.collab_posts[db._tables.collab_posts.length - 1].requirement_type === 'venue');
+
     // A multi-item create must REFUSE, not silently drop items 2..n.
     const multi = await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }, { requirement_type: 'catering' }], event_date: FUTURE, city: 'Jaipur' });
     ok('a multi-item create REFUSES loudly rather than losing items', multi.status === 503);
+    ok('and the refusal SENTENCE reaches the client in the envelope it reads',
+       typeof multi.body?.error === 'string' && multi.body.error.length > 0);
     ok('and the half-made post is rolled back, never left as a silent single',
        db._tables.collab_posts.filter(p => p.requirement_type === 'decor' && p.event_type === undefined).length <= 1);
 
