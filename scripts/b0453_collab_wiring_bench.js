@@ -94,11 +94,19 @@ function makeDb(seed = {}, absent = new Set()) {
     q.lt   = (c, v) => { q._f.push(r => r[c] < v); return q; };
     q.in   = (c, vs) => { q._f.push(r => vs.includes(r[c])); return q; };
     q.order = (col, o) => { q._order = { col, asc: !!(o && o.ascending) }; return q; };
+    // supabase-js's .not(col,'is',null) — the NOT NULL predicate F-04.112 uses.
+    q.not = (c, op, v) => {
+      if (op === 'is' && v === null) q._f.push(r => (r[c] ?? null) !== null);
+      else q._f.push(r => r[c] !== v);
+      return q;
+    };
+    q.limit = (n) => { q._limit = n; return q; };
 
     const settle = (many) => {
       if (gone) return missing(table);
       if (q._badCol) return { data: null, error: { message: 'column does not exist' } };
-      return { data: many ? matched() : (matched()[0] || null), error: null };
+      const rows_ = matched();
+      return { data: many ? (q._limit ? rows_.slice(0, q._limit) : rows_) : (rows_[0] || null), error: null };
     };
     q.maybeSingle = async () => settle(false);
     q.single      = async () => settle(false);
@@ -311,6 +319,80 @@ function legacyPost(id, type) {
     ok('pre-0096 my-posts still answers 200 with the column absent', mine.status === 200);
     ok('and reports no window rather than crashing or inventing one',
        mine.body?.posts?.[0]?.first_look_until === null);
+    await s.close();
+  }
+
+  // ══ §1c — F-04.112: NO AUDIENCE, NO WINDOW ═══════════════════════════════
+  section('§1c F-04.112 — the window is set only when someone could see it');
+  const FUT = { event_date: FUTURE, city: 'Jaipur' };
+  const lastPost = (db) => db._tables.collab_posts[db._tables.collab_posts.length - 1];
+  {
+    // A LINKED member exists — a real audience. The window must be set.
+    const seed = baseSeed();
+    seed.vendor_roster = [{ id: 'r1', owner_vendor_id: POSTER, member_vendor_id: RESP,
+      name: 'Ishaan', phone: '+919000000002', category: 'photography', source: 'collab_accepted' }];
+    const db = makeDb(seed);
+    const s = await serve(db, POSTER);
+    const r = await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }], ...FUT });
+    ok('a post succeeds with a linked roster', r.status === 200);
+    ok('and first_look_until IS SET — there is an audience to protect',
+       !!lastPost(db).first_look_until);
+    await s.close();
+  }
+  {
+    // NO roster at all — the founder's live specimen. No window.
+    const db = makeDb(baseSeed());
+    const s = await serve(db, POSTER);
+    const r = await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }], ...FUT });
+    ok('a post succeeds with an EMPTY roster', r.status === 200);
+    ok('and first_look_until stays NULL — the post reaches the board at once',
+       !lastPost(db).first_look_until);
+    await s.close();
+  }
+  {
+    // THE SHARP CASE: a roster that LOOKS full but is all manual, phone-only
+    // rows. firstLookFilter gates on member_vendor_id, so none of them could
+    // see an in-window post. An empty audience wearing a full list.
+    const seed = baseSeed();
+    seed.vendor_roster = [
+      { id: 'r1', owner_vendor_id: POSTER, member_vendor_id: null, name: 'Vera',
+        phone: '+919876543210', category: 'makeup', source: 'manual' },
+      { id: 'r2', owner_vendor_id: POSTER, member_vendor_id: null, name: 'Meera',
+        phone: '+919876543211', category: 'decor', source: 'manual' },
+    ];
+    const db = makeDb(seed);
+    const s = await serve(db, POSTER);
+    await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }], ...FUT });
+    ok('a MANUAL-ONLY roster sets NO window — it could never have seen the post',
+       !lastPost(db).first_look_until);
+    await s.close();
+  }
+  {
+    // Someone ELSE's linked roster must not open a window on MY post.
+    const seed = baseSeed();
+    seed.vendor_roster = [{ id: 'r1', owner_vendor_id: OUTSIDER, member_vendor_id: RESP,
+      name: 'Ishaan', phone: '+919000000002', category: 'photography', source: 'collab_accepted' }];
+    const db = makeDb(seed);
+    const s = await serve(db, POSTER);
+    await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }], ...FUT });
+    ok('another vendor\'s roster does not count as MY audience',
+       !lastPost(db).first_look_until);
+    await s.close();
+  }
+  {
+    // Mixed: one manual + one linked. The linked one is a real audience.
+    const seed = baseSeed();
+    seed.vendor_roster = [
+      { id: 'r1', owner_vendor_id: POSTER, member_vendor_id: null, name: 'Vera',
+        phone: '+919876543210', category: 'makeup', source: 'manual' },
+      { id: 'r2', owner_vendor_id: POSTER, member_vendor_id: RESP, name: 'Ishaan',
+        phone: '+919000000002', category: 'photography', source: 'collab_accepted' },
+    ];
+    const db = makeDb(seed);
+    const s = await serve(db, POSTER);
+    await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }], ...FUT });
+    ok('ONE linked member among manual rows is enough to open the window',
+       !!lastPost(db).first_look_until);
     await s.close();
   }
 

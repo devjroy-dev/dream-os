@@ -495,14 +495,46 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   );
   const windowHours = Number(hours?.value ?? 12);
   if (Number.isFinite(windowHours) && windowHours > 0) {
-    await tolerate('collab_posts.first_look_until (set)', null, () =>
+    // ── F-04.112 — A WINDOW WITH NO POSSIBLE AUDIENCE PROTECTS NOBODY ───────
+    // Founder-witnessed live at the P4 smoke: a post from a vendor with an
+    // empty roster is not "roster-first", it is INVISIBLE TO EVERYONE for the
+    // full window. The 9:34 post reached nobody, and the walk only continued
+    // because first_look_hours was set to 0.
+    //
+    // That penalty lands hardest on NEW vendors — no roster yet, most dependent
+    // on the open board, and their first-ever post silently reaches no one.
+    // They would reasonably conclude the feature is broken. They would be right.
+    //
+    // THE PREDICATE IS `member_vendor_id IS NOT NULL`, not "roster is empty",
+    // and the sharper form is derived from the shipped gate rather than guessed:
+    // firstLookFilter matches roster edges on `member_vendor_id` (:112), so a
+    // MANUAL phone-only entry cannot see an in-window post no matter what. A
+    // roster of nothing but manual rows is an empty audience wearing a full
+    // list, and it would have reproduced the same silent-invisibility bug.
+    //
+    // NAMED, NOT CURED: linked members who exist but whose categories match no
+    // item on this post are still an audience of zero for this post
+    // specifically. Narrow, honest, and a one-predicate upgrade if the founder
+    // ever wants it — recorded rather than quietly built.
+    const audience = await tolerate('vendor_roster (linked audience)', [], () =>
       supabase
-        .from('collab_posts')
-        .update({ first_look_until: new Date(Date.now() + windowHours * 3600000).toISOString() })
-        .eq('id', post.id)
+        .from('vendor_roster')
         .select('id')
-        .maybeSingle()
+        .eq('owner_vendor_id', vendorId)
+        .not('member_vendor_id', 'is', null)
+        .limit(1)
     );
+
+    if (audience.length > 0) {
+      await tolerate('collab_posts.first_look_until (set)', null, () =>
+        supabase
+          .from('collab_posts')
+          .update({ first_look_until: new Date(Date.now() + windowHours * 3600000).toISOString() })
+          .eq('id', post.id)
+          .select('id')
+          .maybeSingle()
+      );
+    }
   }
 
   return okRes(res, {
