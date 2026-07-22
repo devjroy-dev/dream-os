@@ -75,32 +75,47 @@ async function itemsByPost(supabase, postIds) {
 }
 
 /**
- * FIRST LOOK (CE-59 fork 5: the POSTER'S roster contains the VIEWER).
- * Returns a predicate `(post) => boolean` — true when this viewer may see it.
+ * THE FIRST-LOOK READ — ONE HOME (F-04.111).
  *
- * Two tolerated reads, both absent pre-0096, and absence means "no first-look
- * window exists", i.e. the open feed — today's behaviour exactly.
+ * `first_look_until` is never named in a primary select. PostgREST fails the
+ * WHOLE query on an unknown column, so before 0096 that would have 500'd the
+ * feed and, on the create path, lost the post entirely. It rides here instead,
+ * tolerated, and absence means "no window exists" — the open feed, which is
+ * exactly how posts behaved before this sitting.
  *
- * Ruling (ii)B: `first_look_until` is NOT added to the feed's primary select.
- * PostgREST rejects the WHOLE query with a 400 when a select names an unknown
- * column, which would 500 the feed for every vendor between deploy and the
- * founder's 0096 run. It rides here instead, in its own tolerated query, which
- * also carries `vendor_id` so the primary select stays byte-identical.
+ * TWO readers now: the feed's visibility gate, and my-posts, which needs the
+ * value itself so the poster can be TOLD their post is roster-only. The second
+ * reader is why this is a function rather than four lines inside the filter —
+ * the first cut had the read welded into the gate, my-posts never got the
+ * column, and the two state lines built for it could not render. Founder-caught
+ * on a screenshot showing two windowed posts saying nothing about it.
  */
-async function firstLookFilter(supabase, postIds, viewerVendorId) {
-  if (!postIds || postIds.length === 0) return () => true;
-
-  const meta = await tolerate('collab_posts.first_look_until', [], () =>
+async function firstLookMeta(supabase, postIds) {
+  if (!postIds || postIds.length === 0) return new Map();
+  const rows = await tolerate('collab_posts.first_look_until', [], () =>
     supabase
       .from('collab_posts')
       .select('id, vendor_id, first_look_until')
       .in('id', postIds)
   );
-  if (meta.length === 0) return () => true;
+  return new Map(rows.map(r => [r.id, r]));
+}
+
+/**
+ * FIRST LOOK (CE-59 fork 5: the POSTER'S roster contains the VIEWER).
+ * Returns a predicate `(post) => boolean` — true when this viewer may see it.
+ *
+ * Absent pre-0096, and absence means the open feed — today's behaviour exactly.
+ */
+async function firstLookFilter(supabase, postIds, viewerVendorId) {
+  if (!postIds || postIds.length === 0) return () => true;
+
+  const meta = await firstLookMeta(supabase, postIds);
+  if (meta.size === 0) return () => true;
 
   const now = Date.now();
   // Only posts still inside their window gate anything.
-  const gated = meta.filter(m => m.first_look_until && new Date(m.first_look_until).getTime() > now);
+  const gated = [...meta.values()].filter(m => m.first_look_until && new Date(m.first_look_until).getTime() > now);
   if (gated.length === 0) return () => true;
 
   const posterIds = [...new Set(gated.map(m => m.vendor_id).filter(Boolean))];
@@ -261,7 +276,11 @@ router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, r
   if (error) return errRes(res, 500, error.message);
 
   // Items for the whole page in ONE tolerated read, not one per post.
-  const myItems = await itemsByPost(supabase, (posts || []).map(p => p.id));
+  const myPostIds = (posts || []).map(p => p.id);
+  const myItems   = await itemsByPost(supabase, myPostIds);
+  // F-04.111: and the first-look value, so the poster can be TOLD their post is
+  // roster-only rather than left to infer it from an empty response count.
+  const myWindows = await firstLookMeta(supabase, myPostIds);
 
   // Enrich with response counts
   const enriched = await Promise.all((posts || []).map(async (p) => {
@@ -278,7 +297,12 @@ router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, r
     // the client can render "All filled. This post is closed." from state alone.
     const items = itemsForPost(p, myItems.get(p.id) || []);
 
-    return { ...p, items, interested_count, accepted_count, total_responses: interested_count + accepted_count };
+    // Undefined pre-0096 (tolerated miss) — the client's `inFirstLook` reads
+    // that as "no window", which is the truthful answer when the column is not
+    // there. Explicitly null when the post predates the column.
+    const first_look_until = myWindows.get(p.id)?.first_look_until ?? null;
+
+    return { ...p, items, first_look_until, interested_count, accepted_count, total_responses: interested_count + accepted_count };
   }));
 
   return okRes(res, { posts: enriched });

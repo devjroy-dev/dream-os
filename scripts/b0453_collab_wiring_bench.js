@@ -275,6 +275,45 @@ function legacyPost(id, type) {
     await s.close();
   }
 
+  // ══ §1b — MY-POSTS CARRIES THE FIRST-LOOK VALUE (F-04.111) ═══════════════
+  section('§1b my-posts carries first_look_until — the poster is TOLD, not left to infer');
+  {
+    const inWindow = new Date(Date.now() + 6 * 3600000).toISOString();
+    const past     = new Date(Date.now() - 3600000).toISOString();
+    const seed = baseSeed();
+    seed.collab_posts = [
+      { ...legacyPost('p1', 'photography'), first_look_until: inWindow },
+      { ...legacyPost('p2', 'catering'),    first_look_until: past },
+      { ...legacyPost('p3', 'decor') },     // predates the column entirely
+    ];
+    const s = await serve(makeDb(seed), POSTER);
+    const mine = await s.call('GET', '/collab/my-posts');
+    const byId = Object.fromEntries((mine.body?.posts || []).map(p => [p.id, p]));
+
+    ok('my-posts answers 200', mine.status === 200);
+    ok('a windowed post carries its first_look_until — the state line can render at last',
+       byId.p1?.first_look_until === inWindow);
+    ok('an elapsed window still carries the value, so "Open to everyone." can render',
+       byId.p2?.first_look_until === past);
+    ok('a pre-0096 post carries an explicit null, never undefined-by-omission',
+       byId.p3 && byId.p3.first_look_until === null);
+    ok('and every post still carries its items alongside',
+       (mine.body?.posts || []).every(p => Array.isArray(p.items) && p.items.length >= 1));
+    await s.close();
+  }
+  {
+    // Pre-0096: the column is gone. my-posts must still answer, honestly blank.
+    const absent = new Set(['collab_post_items', 'vendor_roster', 'collab_posts.first_look_until']);
+    const seed = baseSeed();
+    seed.collab_posts = [legacyPost('p1', 'photography')];
+    const s = await serve(makeDb(seed, absent), POSTER);
+    const mine = await s.call('GET', '/collab/my-posts');
+    ok('pre-0096 my-posts still answers 200 with the column absent', mine.status === 200);
+    ok('and reports no window rather than crashing or inventing one',
+       mine.body?.posts?.[0]?.first_look_until === null);
+    await s.close();
+  }
+
   // ══ §2 — DISCOVERY READS ITEMS ═══════════════════════════════════════════
   section('§2 discovery reads items — the census catch');
   {
