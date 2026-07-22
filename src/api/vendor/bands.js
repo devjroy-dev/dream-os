@@ -56,6 +56,7 @@ const asyncHandler   = require('../../lib/asyncHandler');
 const { resolveAgentForVendor } = require('../middleware/agentBridge');
 const { isOccupying }     = require('../../lib/vendor/occupancy');
 const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
+const { binderRecordsByIds, titleOfRecord } = require('../../lib/vendor/binderTitles');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -141,20 +142,13 @@ async function buildBands({ supabase, vendor, from, to, agentId }) {
   // (day.js:145's precedent, cited in its own comment): the board must not fail
   // because an engine agent didn't resolve.
   const binderIds = [...new Set(events.map((e) => e.linked_binder_id).filter(Boolean))];
-  const binderById = new Map();
-  if (agentId && binderIds.length) {
-    try {
-      const { data: recs, error: recErr } = await supabase.schema('engine')
-        .from('records')
-        .select('id, client, amount, direction, amount_received, amount_pending')
-        .eq('agent_id', agentId)
-        .in('id', binderIds);
-      if (recErr) throw recErr;
-      for (const r of (recs || [])) binderById.set(r.id, r);
-    } catch (e) {
-      console.warn('[GET /vendor/bands] binder hop failed (soft):', e.message);
-    }
-  }
+  // P5 (CE ruling, Fork D1): the hop MOVED to src/lib/vendor/binderTitles.js so
+  // the payments plane's `By wedding` grouping asks the same question of the same
+  // organ. Pure move — same query, same columns, same soft-fail. This endpoint's
+  // behaviour is unchanged and b0450 stays 46.
+  const binderById = await binderRecordsByIds(supabase, {
+    agentId, binderIds, label: '[GET /vendor/bands]',
+  });
 
   // ── SHAPE ────────────────────────────────────────────────────────────────
   const fnOf = (ev) => {
@@ -207,7 +201,7 @@ async function buildBands({ supabase, vendor, from, to, agentId }) {
       binder_id: binderId,
       // Null title => the client renders "Untitled wedding" (the vetoed string lives
       // on the client with its siblings; the wire stays honest about absence).
-      title: rec && rec.client ? rec.client : null,
+      title: titleOfRecord(rec),
       span: { start: dates[0], end: dates[dates.length - 1] },
       // THE FOUR RAW CELLS, CE ruling F2(b). Not a money story — the cells the canon
       // eats. `null` here means the hop failed or the binder holds nothing; either way

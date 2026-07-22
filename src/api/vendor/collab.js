@@ -784,7 +784,20 @@ router.post('/:post_id/connect/:response_id', requireAuth, resolveVendor(), asyn
 
   return okRes(res, {
     connected: true,
+    // ── P5 · A3's ENABLING CHANGE (CE-ruled) ────────────────────────────────
+    // The Settle stub offers itself HERE, and `team_payments.team_member_id` is
+    // NOT NULL — so a payout needs the counterparty to be a team_members row.
+    // P4's bridge door (`POST /vendor/roster/:roster_id/bridge`) mints exactly
+    // that, and it is keyed on the ROSTER ROW's id, which this response used to
+    // reduce to a boolean before the client ever saw it. The id now rides too.
+    //
+    // ADDITIVE BY RULING: `roster_edge` STAYS for readers that already read it.
+    // `roster_id` is the poster-side edge (owner = this vendor, member = the
+    // responder) — the only direction the poster can act on. Null when the edge
+    // failed, which is lawful: the edge is the convenience, the connection is
+    // the product (the seam handover's §4.4 disclosure, unchanged).
     roster_edge: !!edges.poster_edge,
+    roster_id: (edges.poster_edge && edges.poster_edge.id) || null,
     filled_item_id: targetId,
     auto_closed: autoClosed,
     responder: {
