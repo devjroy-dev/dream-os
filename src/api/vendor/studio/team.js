@@ -14,6 +14,9 @@ const resolveVendor   = require('../../middleware/resolveVendor');
 const requirePrestige  = require('../../middleware/requirePrestige');
 const asyncHandler    = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
+// TDW_04.5 P4 — the crew page's member-board assembly, reused whole (see the
+// assignments door below). Imported, never re-implemented; byte-untouched there.
+const { buildCrewPage, istToday } = require('../../crew');
 
 const mw = [requireAuth, resolveVendor(), requirePrestige];
 
@@ -49,6 +52,68 @@ router.get('/', ...mw, asyncHandler(async (req, res) => {
   if (error) return errRes(res, 500, error.message);
   return okRes(res, { members: data || [] });
 }));
+
+// ── GET /:memberId/assignments — THE OWNER'S VIEW OF ONE MEMBER'S BOARD ──────
+// TDW_04.5 P4, founder-chartered: clicking a team member told the owner nothing
+// about their assignments — he had to walk the calendar and read the marks. The
+// crew page already renders the exact set for the MEMBER; the owner deserves the
+// same view of his own crew.
+//
+// ONE ASSEMBLY, TWO AUTH WRAPPERS. This calls `buildCrewPage` — the SAME function
+// the token door calls — rather than re-deriving the predicate. That assembly does
+// not merely run a query: it encodes the read gate (belt AND braces, DB `contains`
+// re-asserted in JS) and F7 (`note` is crew_confirmations.note ONLY; events.notes
+// never leaves the vendor plane). A fresh owner-side query would re-derive both
+// from scratch and drift the first time either is edited — F-04.104's class, and
+// the same argument that hoisted the slot-word map at F8(d).
+//
+// THE SHARING CANNOT LOOSEN THE TOKEN DOOR. buildCrewPage is BYTE-UNTOUCHED by
+// this delivery — it already took `{ supabase, member, vendor, today }` with zero
+// auth logic inside it (crew.js:241, exported :534), token resolution living
+// entirely in the route above it. This adds a CALLER, not a change. b0451's
+// capability asserts stay pointed at exactly what they were pointed at.
+//
+// AUTH: requireAuth + resolveVendor + the member must belong to THIS vendor. No
+// capability constraints apply owner-side — it is his own crew, his own calendar —
+// but the response is still built field by named field, never spread.
+router.get('/:memberId/assignments', ...mw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+
+  // The belongs-to check IS the authorization. Scoped by vendor_id, so another
+  // vendor's member id resolves to nothing and answers 404 — the door does not
+  // confirm that a member exists to someone with no claim on them.
+  const { data: member } = await supabase
+    .from('team_members')
+    .select('id, vendor_id, name, active, deleted_at')
+    .eq('id', req.params.memberId)
+    .eq('vendor_id', req.vendor.id)
+    .maybeSingle();
+
+  if (!member) return errRes(res, 404, 'Member not found.');
+
+  const { data: vendor } = await supabase
+    .from('vendors')
+    .select('id, user_id, business_name')
+    .eq('id', req.vendor.id)
+    .maybeSingle();
+
+  if (!vendor) return errRes(res, 404, 'Vendor not found.');
+
+  let payload;
+  try {
+    payload = await buildCrewPage({ supabase, member, vendor, today: istToday() });
+  } catch (e) {
+    console.error('[GET /studio/team/:id/assignments] assembly failed:', e.message);
+    return errRes(res, 500, 'Could not load assignments.');
+  }
+
+  // ASSIGNMENTS ONLY. The assembly also builds `tasks`, and the owner has his own
+  // Tasks screen — echoing them here would put a second source of that truth on a
+  // surface that did not ask for it. The charter named five fields; the assembly
+  // supplies them plus the F7-permitted note, and nothing else travels.
+  return okRes(res, { assignments: payload.assignments });
+}));
+
 
 // POST — add
 router.post('/', ...mw, asyncHandler(async (req, res) => {
