@@ -26,6 +26,7 @@ router.use('/landing-slides',     landingSlidesRouter);
 router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
 router.use('/hot-dates',          require('./public/hotDates'));
+router.use('/crew',               require('./crew'));          // TDW_04.5 P3 — the crew page (public, capability-token; NEVER under /vendor)
 router.use('/vendor/onboarding',  require('./vendor/onboarding'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)
