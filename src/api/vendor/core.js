@@ -37,6 +37,7 @@ router.use('/binders',  require('../vendor-engine/ledger'));      // Phase 4 fli
 router.use('/chat',         require('../vendor-engine/chat'));   // Phase 4 flip -> engine (Victor)
 router.use('/availability', require('./availability'));
 router.use('/day',          require('./day'));      // TDW_04 B6-S2 — the day sheet's one round trip (P5, item 4)
+router.use('/bands',        require('./bands'));    // TDW_04.5 P2 — the wedding-band view's one round trip (spec §P2)
 router.use('/portfolio',   require('./portfolio'));
 router.use('/discover',    require('./discover'));
 router.use('/collab',      require('./collab'));
