@@ -309,6 +309,13 @@ const VERIFY_FAILED = "Couldn't verify the calendar — nothing was changed. Try
 // `state` and `deleted_at` are in this list BECAUSE Item 2(3) and Item 3 name them
 // as part of the effective row — which is why they had to join the context object.
 // See eventWrite.js's ctx, and the handover's door-line table.
+//
+// `members` IS NOT IN THIS LIST AND MUST NOT BE ADDED TO IT (04.5 P6). It is spatial —
+// touchesSpatial says so in its own clause — but it is not a PATCH KEY: ctx.members is
+// a resolved [{id,name}] array, and this list's test is `!== undefined`, which an empty
+// array passes. Added here, an unassign-to-[] would buy a round trip forever to learn
+// that nobody can clash with nobody. The clause below tests LENGTH, which is the whole
+// difference. One rule, one home — see touchesSpatial.
 const SPATIAL_KEYS = ['event_date', 'event_time', 'slot', 'kind', 'state', 'deleted_at', 'ready_by'];
 
 // ⚠ `slot` IS TESTED FOR null, NOT undefined, AND THE WHOLE CLAUSE DIES WITHOUT THIS.
@@ -319,8 +326,28 @@ const SPATIAL_KEYS = ['event_date', 'event_time', 'slot', 'kind', 'state', 'dele
 //   made, the short-circuit never fires once, and a title-only PATCH buys two round
 //   trips forever while the bench that "proves" the clause passes green.
 //   Found by the bench, not by reading. This is the shape §0.1 exists for.
+// ⚠ MEMBERS ARE SPATIAL, AND THIS CLAUSE IS THE WHOLE OF F-04.88's CURE.
+//   A person occupies a date the way a room does. Two functions on one evening are
+//   not a clash for the CALENDAR — a planner may lawfully hold both — but they ARE a
+//   clash for RAHUL, who cannot be in two places at once. That is a spatial question
+//   asked about a body instead of a slot, and this predicate could not see it.
+//
+//   Before the clause: a crew-only assign moved no SPATIAL_KEY, and ctx.slot came back
+//   null from deriveSlot (the patch carried neither slot nor time), so this returned
+//   FALSE and checkOccupancy returned null at :551 — FORTY-THREE LINES ABOVE the
+//   member_clash block at :594, which was built correct and simply never reached.
+//   Nothing downstream could repair it: F-04.88 was convicted twice (severed hand,
+//   then confirmed independently) and proven empirically — a real-door run with the
+//   door-side repair on disk still came back conflict==null. The wall was HERE.
+//
+//   NON-EMPTY is load-bearing, not defensive. An unassign-to-[] clears the crew, and
+//   an empty crew can clash with nobody; buying a round trip to discover that is the
+//   economy this predicate exists to protect. Removing one of two members still
+//   arrives with members.length >= 1 and is checked on the REMAINING set — correct,
+//   because assigned_member_ids is a SET write, and the set is what will be on the row.
 function touchesSpatial(ctx) {
   if (ctx.slot != null) return true;
+  if (Array.isArray(ctx.members) && ctx.members.length) return true;   // 04.5 P6 — F-04.88
   return SPATIAL_KEYS.some((k) => k !== 'slot' && ctx[k] !== undefined);
 }
 

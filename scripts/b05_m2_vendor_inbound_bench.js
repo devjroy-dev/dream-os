@@ -41,7 +41,17 @@ function verbatimDiff() {
     // which is undefined in the extracted core (req is no param of processVendorInbound) and
     // crashed the live Meta media-only turn into GRACEFUL_TURN_LINE. Cured to `phone`. This is a
     // documented mechanical transform, same class as the decoupling swaps above.
-    .replace('media-only fallback from ${req.body.From}', 'media-only fallback from ${phone}');
+    .replace('media-only fallback from ${req.body.From}', 'media-only fallback from ${phone}')
+    // ── TDW_04.5 P6 AMENDMENT (CE-61, ninth chair — Ruling №1's class, 7th instance) ──
+    // Fork A threaded the vendor's CATEGORY into the handset snapshot so the gap and decline
+    // lines can reach the phone. That MODIFIED an original line rather than adding one, so it
+    // is handled HERE and not by the fence below — and the distinction is the guard's own
+    // logic, not a convenience. Splicing a modified original out of `actual` would delete
+    // from comparison a line that DOES have a counterpart, and any future drift on it would
+    // then pass unseen. A transform keeps the line under guard: it is still compared, just
+    // against its known-cured form. Same class as F-05.14's cure and the decoupling swaps
+    // above. Drift anywhere else on this line still REDs.
+    .replace('fetchCalendarSnapshot(supabase, vendor.id);', 'fetchCalendarSnapshot(supabase, vendor.id, vendor.category);');
   const expected = core.map(tf).filter((l) =>
     !l.includes("require('./lib/imageThrottle')") && !l.includes("require('./lib/vendorCalendarImage')"));
   const mod = require('fs').readFileSync(require.resolve('../src/lib/vendorInbound.js'), 'utf8').split('\n');
@@ -65,6 +75,24 @@ function verbatimDiff() {
   const b = core2.indexOf(C3_BEGIN);
   const e = core2.indexOf(C3_END);
   if (b !== -1 && e !== -1 && e > b) core2.splice(b, e - b + 1); // inclusive of both markers
+
+  // ── TDW_04.5 P6 FORK-B FENCE (CE-61, ninth chair — Ruling №1's class, 7th instance) ──
+  // Fork B's vendorCategory thread is post-extraction feature code in TWO places (the resolve
+  // beside llmWiring, and the property inside the runTurn literal), so the filter walks EVERY
+  // marked region rather than the single one C3 needed. Trimmed comparison, because these
+  // markers sit at two different indent depths — the marker text is the contract, not its
+  // leading whitespace. Same jurisdiction as C3's note above: these lines have no counterpart
+  // in the original region and never could. THEIR guard is the sitting's own bench, which
+  // asserts the wiring end to end:  node scripts/b0461_p6_bench.js
+  // No bench is asked to see what another proves.
+  const P6_BEGIN = '// P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)';
+  const P6_END   = '// P6 FORK-B END';
+  for (;;) {
+    const pb = core2.findIndex((l) => l.trim() === P6_BEGIN);
+    const pe = core2.findIndex((l) => l.trim() === P6_END);
+    if (pb === -1 || pe === -1 || pe < pb) break;
+    core2.splice(pb, pe - pb + 1);
+  }
   return { expected, actual: core2 };
 }
 

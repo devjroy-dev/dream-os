@@ -238,17 +238,27 @@ sec('6. RENDERING — clash BESIDE success (constructed done[], REAL member_clas
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-sec('7. DORMANT (F-04.88) — end-to-end crew-only assign onto a clashing member: conflict==null TODAY');
+sec('7. LIVE (F-04.88 CURED) — end-to-end crew-only assign onto a clashing member: the advisory SURFACES');
 {
-  // RAHUL already on an EVENING shoot that day; assigning him (crew-only, no spatial patch)
-  // to ANOTHER evening booking the same day WOULD clash — but occupancy.js:551 short-circuits
-  // on touchesSpatial BEFORE the member_clash block (SPATIAL_KEYS has no `members`), so the
-  // end-to-end door sees conflict==null.
+  // ═══ AMENDED 04.5 P6 (CE-61) — RULING №1's CLASS, SIXTH INSTANCE. ═══════════════
+  // ATTRIBUTION: F-04.88's core cure landed this sitting (occupancy.js touchesSpatial
+  // learns members are spatial). This section was authored at CE-50 as a DORMANT case
+  // asserting conflict==null, with its own header ordering the next hand to UPDATE it
+  // rather than weaken it when the cure shipped. That day is this one, so the four
+  // assertions below are INVERTED to the cured contract. The assertions moved; the
+  // fixture, the section's shape, and the count (4) did not. Nothing was weakened —
+  // each assertion is STRICTLY STRONGER than the null it replaced.
   //
-  // ⚠ THIS CASE GOES RED THE DAY THE CORE CURE LANDS (touchesSpatial learns members are
-  //   spatial — its own chartered future sitting). THAT RED IS A FEATURE: it will demand this
-  //   case's own update. DO NOT weaken the assertion to keep it green; update it when the cure
-  //   ships. The door plumbing above is BYTE-READY so the clash surfaces the instant it does.
+  // This is the bench following the law, never the law following the bench: the case
+  // was a tripwire by design and it fired exactly as its author intended. Its RED was
+  // the pair's own acceptance oracle.
+  // ════════════════════════════════════════════════════════════════════════════════
+  //
+  // RAHUL already on an EVENING shoot that day; assigning him (crew-only, no spatial patch)
+  // to ANOTHER evening booking the same day IS a clash for RAHUL — a person cannot be in two
+  // places at once — and the door now hears it. The write still LANDS: member_clash is
+  // ADVISORY by Ruling №2 (one artist across two adjacent functions is a legitimate choice;
+  // the machine warns, the vendor decides), so the advisory rides out BESIDE the success.
   const OTHER = uuid();
   const { api, db } = makeDb({
     vendor: { id: V, category: 'photographer', slot_capacity: 9 },
@@ -259,10 +269,12 @@ sec('7. DORMANT (F-04.88) — end-to-end crew-only assign onto a clashing member
     ],
   });
   const done = await mutateEvents(fakeReq(api), crewResult({ event_id: 'Verma', member: 'Rahul', action: 'assign' }));
-  ok(done[0].ok === true, 'the crew-only write LANDS (assign succeeds)');
-  ok(done[0].conflict === null, 'conflict == null TODAY (F-04.88 short-circuit) — RED when the core cure lands, by design');
+  ok(done[0].ok === true, 'the crew-only write LANDS (advisory never refuses — Ruling №2)');
+  ok(done[0].conflict && done[0].conflict.kind === 'member_clash',
+     'F-04.88 CURED: a crew-only write now reaches the member_clash block (was null at :551)');
   ok((db.t.events.find(e => e.id === EVID).assigned_member_ids || []).includes(RAHUL), 'RAHUL is now on the Verma reception');
-  ok(done.filter(m => m.ok && m.conflict && m.conflict.message).length === 0, 'no advised line surfaces end-to-end today (dormant)');
+  ok(done.filter(m => m.ok && m.conflict && m.conflict.message).length === 1,
+     'the advised line surfaces end-to-end (the advisory rides BESIDE the success)');
 }
 
 // ─────────────────────────────────────────────────────────────────────────

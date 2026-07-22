@@ -15,7 +15,7 @@ import { supabase } from './db.js';
 import {
   MODELS, startModelForTier, canEscalate, calcCostInr, modelLabel, type Tier,
 } from './models.js';
-import { HARVEY_SOUL } from './harveySoul.js';
+import { HARVEY_SOUL, PRODUCTION_WEAVE } from './harveySoul.js';
 import { CONSULTANT_HARVEY_SOUL } from './consultantHarveySoul.js';
 import { ADVISOR_LENS } from './advisorLens.js';
 import { ESCALATE_TOOL } from './tools/donnaLead.js';
@@ -99,6 +99,13 @@ type RunTurnArgs = {
   calendarSnapshot?: string;
   scratchpad?: string;
   recentActivity?: string; // TDW_02 P4 (CE-4): door-built cross-surface activity block
+  // TDW_04.5 P6 (CE-61, Fork B): the vendor's NORMALISED category, door-computed.
+  // THE DOOR NORMALISES, THE ENGINE COMPARES — `normaliseCategory` keeps its one home in
+  // lib/vendor/categoryFraming.js, which is the whole point of the ruling: Victor's
+  // planner VOICE and Victor's planner GROUND TRUTH (the gap line) gate on the same
+  // predicate's output, so they cannot diverge by construction. ABSENT => no weave, and
+  // the cached prefix is byte-identical to the pre-P6 engine (regression law).
+  vendorCategory?: string | null;
   // TDW_02 P5 — the facade seams (Amendment One CE-7: tier is a read-through at turn
   // start, NEVER a backfill of agents.tier). All optional; ABSENT => the pre-facade
   // anthropic path runs byte-identical (regression law, acceptance 9).
@@ -347,7 +354,23 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // guardrail 3), never touched by dynamic content. The fieldBlock (whole-SMM +
   // trade index) is the same the business room builds (A-2: whole-SMM stands); the
   // lens is his RELATIONSHIP to it, not a duplicate of the Codex.
-  const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL) + (isAdvisor ? ADVISOR_LENS : '') + fieldBlock;
+  // TDW_04.5 P6 (CE-61, Fork B): the production-manager weave, planner-scoped. It sits
+  // with the SOUL — before the lens, before the field block — because it is part of who
+  // he is for this owner, not a relationship to reference material. It is STATIC, so it
+  // lands inside the cached prefix once per window like everything beside it.
+  //
+  // CONSULT IS EXCLUDED DELIBERATELY. Consult-Harvey is standalone with no Donna, no
+  // estate and no tools (see below) — he has no roster to read and no door to signal, so
+  // a production-manager voice there would be a man describing machinery he cannot reach.
+  //
+  // E-1 COST, STATED: for every non-planner this expression is byte-identical to the
+  // pre-P6 prefix, so twenty-four of twenty-five fields see NO cache invalidation. A
+  // planner account pays exactly one prefix re-warm (~Rs 0.93 over a cached read, once
+  // per 5-minute window, until traffic re-warms it).
+  const isPlannerVoice = !isConsult && args.vendorCategory === 'planning';
+  const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL)
+    + (isPlannerVoice ? PRODUCTION_WEAVE : '')
+    + (isAdvisor ? ADVISOR_LENS : '') + fieldBlock;
   // The clock: today's date, in the owner's timezone, in the DYNAMIC (never-cached)
   // block — it changes daily and must never be cached stale. Reaches Harvey here;
   // Donna reads the same date via todayLine() in her own runtime.

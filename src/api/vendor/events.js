@@ -388,8 +388,14 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     notes:          body.notes          || undefined,
   });
 
+  // F-04.92 (04.5 P6): the ADVISORY rides the ok-path. `writeEvent` returns
+  // { ok:true, event, conflict? } and this door used to drop the third field on the
+  // floor — so every advisory (member_clash, appointment_overlap, cluster) starved on
+  // the CRUD rail while the chat door passed it. An advisory is a verdict that does not
+  // refuse; dropping it silently is the app knowing something true and not saying it.
+  // `conflict` is undefined on the ordinary write, so this is additive at the wire.
   if (!result.ok) return conflictOr400(res, result);
-  return okRes(res, { event: result.event });
+  return okRes(res, { event: result.event, conflict: result.conflict });
 }));
 
 // ─── PATCH /api/v2/vendor/events/:eventId ─────────────────────────────
@@ -496,7 +502,12 @@ router.patch('/:eventId', requireAuth, resolveVendor({ paramName: 'eventId', via
   }
 
 
-  return okRes(res, { event: result.event });
+  // F-04.92 (04.5 P6), the PATCH leg — the one the picker walks. This is where the
+  // member_clash advisory reaches the vendor who just put two people on one evening
+  // through the crew sheet, and it is the half that pairs with F-04.88's cure: that
+  // clause makes the verdict EXIST for a crew-only write; this line lets it OUT.
+  // Cure one without the other and the estate has a computed advisory nobody hears.
+  return okRes(res, { event: result.event, conflict: result.conflict });
 }));
 
 // ─── DELETE /api/v2/vendor/events/:eventId ────────────────────────────

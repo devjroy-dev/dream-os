@@ -766,15 +766,29 @@ async function processVendorInbound(inputs, deps) {
     // F-04.98 C3 END
     // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference
     // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
-    const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id);
+    const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id, vendor.category);
     const scratchpad = await fetchScratchpad(supabase, vendor.id);
     // TDW_06 P7b (F-06.1 second limb): the WA door resolves the SAME route the PWA door does —
     // model.pwa_vendor.<tier> via resolveModel AND victor_mode read at the door — so both
     // surfaces route identically (advisor -> deepseek; product tier otherwise). Before this
     // seam the WA lane passed NO overrides and ran the engine's native-anthropic hard path.
     const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId });
+    // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
+    // 04.5 P6: the SAME predicate that gated the gap line two statements above now gates
+    // the VOICE — one home (lib/vendor/categoryFraming), read twice, never forked. That is
+    // the whole of Fork B's principle: facts and voice cannot diverge if they ask the same
+    // question. FAIL-SAFE TO NULL — a Victor without the planner weave is diminished, not
+    // wrong; a Victor wearing it for a lawyer would be wrong.
+    let vendorCategory = null;
+    try {
+      vendorCategory = require('./vendor/categoryFraming').normaliseCategory(vendor.category);
+    } catch (e) { console.warn('[agent:category]', e.message); }
+    // P6 FORK-B END
     const result = await runTurn({
       agentId, message: body, calendarSnapshot, scratchpad,
+      // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
+      vendorCategory,
+      // P6 FORK-B END
       tierOverride: llmWiring.tierOverride,
       modelOverride: llmWiring.modelOverride,
       transport: llmWiring.transport,

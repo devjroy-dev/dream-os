@@ -304,9 +304,12 @@ async function mutateEvents(supabase, vendor, agentId, result) {
   // union, unassign = difference; array = SET semantics). Note-trail + crew_confirmations
   // come FREE from eventWrite's sealed crew core. The ONLY difference from the app door's
   // leg is `surface: S` (whatsapp), exactly as edit/cancel above already differ. Every
-  // outcome names its own cause (F-04.62). conflict is BYTE-READY-DORMANT (F-04.88): a
-  // crew-only write returns conflict==null today (occupancy.js:551 short-circuits on
-  // touchesSpatial before member_clash); it surfaces the instant that core cure lands.
+  // outcome names its own cause (F-04.62). conflict is LIVE as of 04.5 P6 — F-04.88's
+  // cure taught touchesSpatial that members are spatial, so the plumbing below, which
+  // shipped BYTE-READY-DORMANT at CE-53, now carries a real member_clash. Nothing here
+  // changed to switch it on; that was the whole point of shipping it ready. (Historical:
+  // a crew-only write returned conflict==null — occupancy.js:551 short-circuited on
+  // touchesSpatial before ever reaching member_clash.)
   for (const a of assigns) {
     try {
       const res = await resolveEvent(supabase, vendor, a.event_id, a.on_date);
@@ -489,7 +492,17 @@ async function lockstepBinderToEvent(supabase, vendor, result) {
 // used to teach the handle — the SAME header the app door ships since B6 (R-B6-1), so
 // the two surfaces feed the one mind the same instruction. P4.1's date-pressure line is
 // NOT ported here: it is held P4 work, out of this sitting.
-async function fetchCalendarSnapshot(supabase, vendorId) {
+// 04.5 P6 (CE-61, Fork A): `vendorCategory` JOINS THE SIGNATURE, additive and last.
+// The handset is where a planner lives, so the crew-state lines had to reach it — and
+// the gap line's gate needs the vendor's category, which this function never had. The
+// door already holds the vendor row (vendorInbound.js:769 has `vendor` in hand), so the
+// argument carries data that was already there rather than buying a read for it.
+//
+// BACKWARD-COMPATIBLE BY CONSTRUCTION (the BOTH-SIDES CLAUSE, applied): a 2-arg caller
+// passes undefined, normaliseCategory(undefined) is not 'planning', and the snapshot is
+// byte-identical to what it rendered before this sitting. b5_wa_door_bench:181 is exactly
+// such a caller and stays green unchanged — that is the proof, not a hope.
+async function fetchCalendarSnapshot(supabase, vendorId, vendorCategory) {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabase
@@ -505,7 +518,20 @@ async function fetchCalendarSnapshot(supabase, vendorId) {
       const when = e.event_time ? `${e.event_date} ${e.event_time}` : e.event_date;
       return `- ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`;
     });
-    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it. Crew assignments are not shown here — signal donna_assign_crew; the calendar adjudicates. For event_id use the booking's name from the lines below, never a note or description.]\n${lines.join('\n')}`;
+    // 04.5 P6 (CE-61, Fork A): the crew-state lines, from the SAME home the PWA door
+    // reads — so these two snapshots cannot drift apart by editing one of them.
+    // The date-pressure line deliberately does NOT appear here: it stayed PWA-only.
+    let gap = '', decline = '';
+    try {
+      const { fetchCrewState } = require('./crewSnapshot');
+      const crew = await fetchCrewState(supabase, vendorId, vendorCategory, today);
+      gap = crew.gap; decline = crew.decline;
+    } catch (e) {
+      console.warn('[calSignals:crew-state]', e.message);
+      gap = ''; decline = '';   // a failed read says nothing
+    }
+
+    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it. Crew assignments are not shown here — signal donna_assign_crew; the calendar adjudicates. For event_id use the booking's name from the lines below, never a note or description.]\n${lines.join('\n')}${gap}${decline}`;
   } catch (e) {
     console.warn('[calSignals:calendar snapshot]', e.message);
     return '';
