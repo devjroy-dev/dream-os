@@ -71,7 +71,34 @@ router.get('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
       .order('created_at', { ascending: false })
   );
 
-  return okRes(res, { roster, count: roster.length });
+  // ── D1 — WHICH ENTRIES ALREADY HAVE A CREW IDENTITY ───────────────────────
+  // Founder-caught at the P4 smoke: "Add to crew" kept offering itself after it
+  // had been done. The row could not know — the roster read had no idea whether
+  // a bridge row existed, so a completed action went on presenting itself as an
+  // action.
+  //
+  // ONE extra read for the whole page, not one per row. Explicit column list
+  // (F-04.106: team_members `select('*')` is exactly how that finding was born).
+  // Deactivated rows count as bridged: `ensureBridgeMember` REVIVES them rather
+  // than minting a second identity (F8), so the button would be a no-op that
+  // looks like work.
+  const rosterIds = roster.map(r => r.id);
+  let bridgedIds = new Set();
+  if (rosterIds.length > 0) {
+    const { data: bridges } = await tolerate('team_members (bridged set)', [], () =>
+      supabase
+        .from('team_members')
+        .select('id, roster_vendor_id')
+        .eq('vendor_id', req.vendor.id)
+        .in('roster_vendor_id', rosterIds)
+    );
+    bridgedIds = new Set(bridges.map(b => b.roster_vendor_id).filter(Boolean));
+  }
+
+  return okRes(res, {
+    roster: roster.map(r => ({ ...r, bridged: bridgedIds.has(r.id) })),
+    count: roster.length,
+  });
 }));
 
 

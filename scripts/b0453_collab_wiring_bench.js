@@ -576,6 +576,57 @@ function legacyPost(id, type) {
     await s.close();
   }
 
+  // ══ §6b — D1: THE ROSTER GET REPORTS WHAT IS ALREADY DONE ════════════════
+  section('§6b D1 — bridged is reported, so a done action stops offering itself');
+  {
+    const seed = baseSeed();
+    seed.vendor_roster = [
+      { id: 'r1', owner_vendor_id: POSTER, member_vendor_id: RESP, name: 'Ishaan',
+        phone: '+919000000002', category: 'photography', source: 'collab_accepted' },
+      { id: 'r2', owner_vendor_id: POSTER, member_vendor_id: null, name: 'Vera',
+        phone: '+919876543210', category: 'makeup', source: 'manual' },
+    ];
+    const db = makeDb(seed);
+    const s = await serve(db, POSTER);
+
+    const before = await s.call('GET', '/roster');
+    const b0 = Object.fromEntries((before.body?.roster || []).map(r => [r.id, r]));
+    ok('an unbridged entry reports bridged:false', b0.r1?.bridged === false);
+    ok('and so does a second one', b0.r2?.bridged === false);
+
+    await s.call('POST', '/roster/r1/bridge', {});
+
+    const after = await s.call('GET', '/roster');
+    const b1 = Object.fromEntries((after.body?.roster || []).map(r => [r.id, r]));
+    ok('after minting, THAT entry reports bridged:true', b1.r1?.bridged === true);
+    ok('and the untouched entry is still false — the flag is per-row',
+       b1.r2?.bridged === false);
+    ok('the roster count is unchanged — this adds a field, not a row',
+       after.body?.count === 2);
+
+    // F8: a deactivated bridge row still counts. ensureBridgeMember REVIVES it,
+    // so offering "Add to crew" again would be a no-op dressed as work.
+    db._tables.team_members[0].active = false;
+    const after2 = await s.call('GET', '/roster');
+    const b2 = Object.fromEntries((after2.body?.roster || []).map(r => [r.id, r]));
+    ok('a DEACTIVATED bridge row still reports bridged — revival is not minting',
+       b2.r1?.bridged === true);
+    await s.close();
+  }
+  {
+    // Another vendor's bridge rows must not mark MY roster as done.
+    const seed = baseSeed();
+    seed.vendor_roster = [{ id: 'r1', owner_vendor_id: POSTER, member_vendor_id: RESP,
+      name: 'Ishaan', phone: '+919000000002', category: 'photography', source: 'collab_accepted' }];
+    seed.team_members = [{ id: 'tm-x', vendor_id: OUTSIDER, roster_vendor_id: 'r1',
+      name: 'Ishaan', role: 'external_vendor', active: true, page_token: 'tok-x' }];
+    const s = await serve(makeDb(seed), POSTER);
+    const r = await s.call('GET', '/roster');
+    ok('another vendor\'s bridge row does not mark MY entry bridged',
+       r.body?.roster?.[0]?.bridged === false);
+    await s.close();
+  }
+
   // ══ §7 — F8: UNASSIGN NEVER REMOVES ══════════════════════════════════════
   section('§7 F8 — the bridge row is an identity, not an assignment');
   {
