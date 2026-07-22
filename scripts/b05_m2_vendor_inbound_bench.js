@@ -1,7 +1,11 @@
 // scripts/b05_m2_vendor_inbound_bench.js — TDW_05 TRANSPORT MIGRATION M2 (vendor inbound) bench.
 // Proves the vendor inbound cutover is W-1-safe (same three proofs as M1b):
 //   1. VERBATIM-THEN-DIFF: vendorInbound.js's core == the original index.js handler region
-//      (base 3afc4ba, lines 181-970), minus ONLY the mechanical transport-decoupling.
+//      (base 3afc4ba, lines 181-970), minus ONLY the mechanical transport-decoupling — and,
+//      per the TDW_04.5 F-04.98 CE ruling (ninth chair, Ruling №1's class), minus the single
+//      FENCED post-extraction block marked `// F-04.98 C3 BEGIN` … `// F-04.98 C3 END`.
+//      See the jurisdiction note inside verbatimDiff(): the guard is NOT weakened — drift
+//      outside the fence still REDs, and the fenced block carries its own bench.
 //   2. INPUT EQUIVALENCE: twilioInputsFrom() and metaInputsFrom() agree on every content-bearing
 //      field; only the dedupe key differs (sid vs wamid).
 //   3. TWO-PATH BYTE-IDENTITY: one fixture driven through the REAL core over a DETERMINISTIC
@@ -43,7 +47,25 @@ function verbatimDiff() {
   const mod = require('fs').readFileSync(require.resolve('../src/lib/vendorInbound.js'), 'utf8').split('\n');
   const ti = mod.findIndex((l) => l === '  try {');
   const ci = mod.findIndex((l) => l === '  } catch (err) {');
-  return { expected, actual: mod.slice(ti + 1, ci) };
+
+  // ── TDW_04.5 F-04.98 C3 AMENDMENT (CE-ruled, ninth chair — Ruling №1's class, 4th instance) ──
+  // JURISDICTION, stated so no later reader mistakes this for a weakening: this bench guards
+  // the EXTRACTION FIDELITY OF THE ORIGINAL BYTES (base 3afc4ba, 181-970) and continues to.
+  // Drift anywhere OUTSIDE the fence still REDs, including drift on the lines adjacent to it.
+  // The fenced block is POST-EXTRACTION FEATURE CODE — it has no counterpart in the original
+  // region and never could, so asking this bench to see it would be asking it to prove
+  // something it was not built to prove. ITS guard is the sitting's own bench:
+  //   node scripts/b0498_fresh_crew_rider_bench.js
+  // No bench is asked to see what another proves. Symmetric to the `expected`-side filter
+  // below, which drops the two extraction-removed requires: each side drops exactly what the
+  // other side cannot legitimately carry, and nothing more.
+  const C3_BEGIN = '    // F-04.98 C3 BEGIN (CE-ruled, ninth chair — fresh word)';
+  const C3_END   = '    // F-04.98 C3 END';
+  const core2 = mod.slice(ti + 1, ci);
+  const b = core2.indexOf(C3_BEGIN);
+  const e = core2.indexOf(C3_END);
+  if (b !== -1 && e !== -1 && e > b) core2.splice(b, e - b + 1); // inclusive of both markers
+  return { expected, actual: core2 };
 }
 
 // ── deterministic in-memory supabase fake (reaches the real branches; not hollow) ────────
@@ -93,6 +115,13 @@ function makeDeps(sends, reply) {
     matchModeWord: () => null,
     applyModeFlip: async () => ({}),
     MODE_FLIP_LINES: {},
+    // TDW_04.5 F-04.98 C3: the door destructures these three; a missing dep throws mid-turn
+    // and dead-letters. matchFreshWord returns false here so the fixture's text ("send the
+    // invoice to Ramesh" / "x") takes the ENGINE path exactly as before — the two-path
+    // byte-identity proof is untouched, and "fresh" never rides this fixture (disjoint).
+    matchFreshWord: () => false,
+    FRESH_THREAD_LINE: '',
+    abandonActiveThread: async () => ({ ok: true, closed: null }),
     checkImageThrottle: async () => ({ allowed: true }),
     markRejectionSent: async () => {},
     extractCalendarFromImage: async () => ({}),

@@ -29,8 +29,8 @@ const apiRouter    = require('./api/router');
 const { resolveAgentForVendor } = require('./api/middleware/agentBridge'); // 5-A
 const { runTurn } = require('./engine/dist/core/loop');                     // 5-A
 const { fetchCalendarSnapshot, fetchScratchpad, applyCalendarSignals } = require('./lib/vendor/calendarSignals'); // 5-A calendar parity
-const { buildLlmForTurn } = require('./api/vendor-engine/chat'); // TDW_06 P7b: the shared route builder (F-06.1 2nd limb)
-const { matchModeWord, applyModeFlip, MODE_FLIP_LINES } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words
+const { buildLlmForTurn, abandonActiveThread } = require('./api/vendor-engine/chat'); // TDW_06 P7b: the shared route builder (F-06.1 2nd limb) · TDW_04.5 F-04.98 C3: the fresh-thread seam
+const { matchModeWord, applyModeFlip, MODE_FLIP_LINES, matchFreshWord, FRESH_THREAD_LINE } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words · TDW_04.5 F-04.98 C3: WA fresh word
 const { processVendorInbound, twilioInputsFrom, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M2: dormant Meta inbound (vendor lane)
 const { resolveMetaMedia } = require('./lib/metaMedia'); // TDW_05 MEDIA-SHIM: lane-agnostic Meta media resolver
@@ -158,6 +158,7 @@ const vendorInboundDeps = {
   ensureCoupleRow, captureField, buildDisambiguationQuestion, interpretDisambiguationReply,
   vendorDisplayName, resolveAgentForVendor, runTurn, fetchCalendarSnapshot, fetchScratchpad,
   applyCalendarSignals, buildLlmForTurn, matchModeWord, applyModeFlip, MODE_FLIP_LINES,
+  matchFreshWord, FRESH_THREAD_LINE, abandonActiveThread, // TDW_04.5 F-04.98 C3
   checkImageThrottle, markRejectionSent, extractCalendarFromImage, webhookCore, supabase, anthropic,
 };
 

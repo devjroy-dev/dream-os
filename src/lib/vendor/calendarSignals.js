@@ -505,7 +505,7 @@ async function fetchCalendarSnapshot(supabase, vendorId) {
       const when = e.event_time ? `${e.event_date} ${e.event_time}` : e.event_date;
       return `- ${when} · ${e.title}${e.kind ? ` (${e.kind})` : ''}`;
     });
-    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it.]\n${lines.join('\n')}`;
+    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it. Crew assignments are not shown here — signal donna_assign_crew; the calendar adjudicates.]\n${lines.join('\n')}`;
   } catch (e) {
     console.warn('[calSignals:calendar snapshot]', e.message);
     return '';

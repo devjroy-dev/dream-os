@@ -1233,7 +1233,7 @@ async function fetchCalendarSnapshot(req) {
       gap = '';   // a failed read says nothing — never "0 functions"
     }
 
-    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it.]\n${lines.join('\n')}${pressure}${gap}`;
+    return `[Calendar — upcoming, kept for you. Refer to a booking by its name as it appears below (with its date, if two share a name) to change or cancel it. Crew assignments are not shown here — signal donna_assign_crew; the calendar adjudicates.]\n${lines.join('\n')}${pressure}${gap}`;
   } catch (e) {
     console.warn('[vendor-e chat:calendar snapshot]', e.message);
     return '';

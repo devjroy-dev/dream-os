@@ -39,6 +39,7 @@ async function processVendorInbound(inputs, deps) {
     ensureCoupleRow, captureField, buildDisambiguationQuestion, interpretDisambiguationReply,
     vendorDisplayName, resolveAgentForVendor, runTurn, fetchCalendarSnapshot, fetchScratchpad,
     applyCalendarSignals, buildLlmForTurn, matchModeWord, applyModeFlip, MODE_FLIP_LINES,
+    matchFreshWord, FRESH_THREAD_LINE, abandonActiveThread, // TDW_04.5 F-04.98 C3
     checkImageThrottle, markRejectionSent, extractCalendarFromImage, webhookCore, supabase, anthropic,
   } = deps;
   try {
@@ -739,6 +740,30 @@ async function processVendorInbound(inputs, deps) {
       return;
     }
 
+    // F-04.98 C3 BEGIN (CE-ruled, ninth chair — fresh word)
+    // TDW_04.5 F-04.98 C3: the FRESH-THREAD word — the new-thread button WhatsApp never had.
+    // Sited immediately AFTER the mode block (CE ruling F1): the two word-sets are disjoint,
+    // so order is semantically immaterial, and the after-placement keeps the flip path's bytes
+    // literally first — a purely additive diff. This path calls abandonActiveThread DIRECTLY,
+    // never applyModeFlip (F2b): victor_mode is neither READ nor WRITTEN here — a fresh thread
+    // is not a room change, it is the same room, empty. Short-circuits exactly as the flip does
+    // (scrubbed send -> outbound row -> last_message_at -> log -> return): the engine does NOT
+    // run this turn, so the abandoned thread cannot be re-populated by the very turn that
+    // emptied it. A message that merely CONTAINS "fresh" is a real turn — it falls through.
+    if (matchFreshWord(body)) {
+      const closed = await abandonActiveThread(supabase, agentId);
+      const twilioMsg = await sendWhatsApp(phone, FRESH_THREAD_LINE, []);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id, direction: 'outbound', channel: 'whatsapp',
+        body: FRESH_THREAD_LINE, sent_by: 'agent',
+        twilio_sid: twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
+      });
+      await supabase.from('conversations')
+        .update({ last_message_at: new Date().toISOString() }).eq('id', convo.id);
+      console.log(`[agent:fresh-word] thread=${closed && closed.closed ? closed.closed : 'none-active'} agent=${agentId}`);
+      return;
+    }
+    // F-04.98 C3 END
     // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference
     // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
     const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id);

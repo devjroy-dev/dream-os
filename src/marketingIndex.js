@@ -97,8 +97,29 @@ async function processMarketingChange(subBody) {
   }
   // Delivery receipts (P6 renders chips; here we log, no schema).
   for (const s of extractStatuses(subBody)) {
-    console.log(`${SERVICE_TAG} status wamid=${s.id} status=${s.status}${s.errors.length ? ` errors=${s.errors.length}` : ''}`);
+    console.log(statusLogLine(s));
   }
+}
+
+// TDW_05 F-05.19 rider (CE-54): the count alone ("errors=1") named nothing — a 131049
+// (re-engagement window closed) read identically to any other failure, so the log could not
+// tell a template problem from a window problem. extractStatuses already hands over the raw
+// errors[] (metaInbound.js), so this is a PRINT-SITE cure: ZERO extractor lines.
+//
+// Lifted to a named pure function for ONE reason, disclosed: a formatter that lives inline
+// inside an unexported async handler cannot be driven by a bench, and a bench that re-types
+// the format string proves only that the bench can type. This is the same shape matchModeWord
+// already holds in this repo — pure, exported, benched directly. Same file, same site, no
+// behaviour beyond the ruled append.
+//
+// Each error names ITSELF as code:title. A malformed error degrades to '?' rather than
+// printing 'undefined' — a log that lies about the shape of a failure is worse than terse.
+function statusLogLine(s) {
+  const errs = Array.isArray(s && s.errors) ? s.errors : [];
+  const errWords = errs.length
+    ? ` errors=${errs.length} [${errs.map((e) => `${(e && e.code) != null ? e.code : '?'}:${(e && e.title) ? e.title : '?'}`).join(' | ')}]`
+    : '';
+  return `${SERVICE_TAG} status wamid=${s.id} status=${s.status}${errWords}`;
 }
 
 function selfUrlForLane(lane) {
@@ -170,4 +191,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, marketingSendWaDeps };
+module.exports = { app, marketingSendWaDeps, statusLogLine }; // statusLogLine: TDW_05 F-05.19 rider, benched directly

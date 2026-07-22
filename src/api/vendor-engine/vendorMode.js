@@ -59,6 +59,30 @@ const MODE_FLIP_LINES = {
   },
 };
 
+// ── TDW_04.5 F-04.98 C3: THE FRESH-THREAD WORD ──────────────────────────────────────────
+// The disease: before this, a WA vendor's ONLY new-thread button was the 30-minute timeout
+// or a mode flip he did not want. The chip has POST /thread/fresh; WhatsApp had nothing.
+// This word is that button, and it is deliberately NOT a mode word: MODE_WORDS keeps its
+// ('advisor'|'business'|null) contract uncorrupted and matchModeWord stays byte-identical
+// (CE ruling F1). Sibling predicate, same purity, same bench pattern.
+const FRESH_WORD = 'fresh';
+
+// Returns true only on the whole-message word, trimmed, case-insensitive. Pure — benched
+// directly. "fresh" alone is the button; "start fresh tomorrow" is a REAL TURN and falls
+// through, the same both-ways guard matchModeWord carries.
+function matchFreshWord(body) {
+  return String(body == null ? '' : body).trim().toLowerCase() === FRESH_WORD;
+}
+
+// MINTED — FOUNDER VETO (vendor-facing). SCRUBBED class: names the reset, carries ZERO
+// cabinet/thread content. ONE line, never a changed/noop split (CE ruling F2a): the mode
+// words need that split because "switched" would be a FALSE STATE CLAIM on a no-op, while
+// this line states a truth on a live room and an already-fresh room alike. abandonActiveThread
+// is idempotent by construction (chat.js: nothing active -> { ok:true, closed:null }), so the
+// honest word here is the same word either way. Mimicking the split would be pattern without
+// the pattern's reason — LD-5's discipline applied to mechanics.
+const FRESH_THREAD_LINE = 'Fresh thread. What\u2019s on your mind?';
+
 // Read current -> write only on a real change -> chain the fresh thread only on a real change.
 // supabase + agentId are the SERVER-RESOLVED ones (index.js resolves the agent from the vendor).
 async function applyModeFlip(supabase, agentId, target) {
@@ -118,3 +142,5 @@ module.exports.readAgentVictorMode = readAgentVictorMode; // TDW_06 P6d: benched
 module.exports.matchModeWord       = matchModeWord;       // TDW_06 P7b: WA mode-word matcher
 module.exports.applyModeFlip       = applyModeFlip;       // TDW_06 P7b: WA flip (write + fresh thread)
 module.exports.MODE_FLIP_LINES     = MODE_FLIP_LINES;     // TDW_06 P7b: minted confirmations (founder veto)
+module.exports.matchFreshWord      = matchFreshWord;      // TDW_04.5 F-04.98 C3: WA fresh-thread matcher
+module.exports.FRESH_THREAD_LINE   = FRESH_THREAD_LINE;   // TDW_04.5 F-04.98 C3: minted confirmation (founder veto)
