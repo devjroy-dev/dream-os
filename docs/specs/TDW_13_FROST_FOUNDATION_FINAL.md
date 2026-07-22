@@ -33,10 +33,10 @@
 ## 2. PROPOSED — AWAITING FOUNDER RULING
 (none at spec time)
 
-## 3. MIGRATION RESERVATIONS (ladder after 0085 = next 0086; LD-8)
+## 3. MIGRATION RESERVATIONS (RE-HOMED 0086→0097 at CE-59, founder-ruled 2026-07-22 — 0086 stays 05·P4's per F-04.107's cure; LD-8)
 | # | File | Adds |
 |---|---|---|
-| 0086 | `0086_splash_and_bride_theme.sql` | `landing_slides.audience text not null default 'landing' check (audience in ('landing','bride','vendor_fallback'))` (existing rows keep serving the landing page unchanged) · `couples.theme text check (theme in ('frost','dark'))` nullable → app default `frost` (added only if verification finds no server persistence today) |
+| 0097 | `0097_splash_and_bride_theme.sql` | `landing_slides.audience text not null default 'landing' check (audience in ('landing','bride','vendor_fallback'))` (existing rows keep serving the landing page unchanged) · `couples.theme text check (theme in ('frost','dark'))` nullable → app default `frost` (added only if verification finds no server persistence today) |
 
 ---
 
@@ -57,7 +57,7 @@
 Remaining blooms (vendors, circle, and the rest) under the same two-commit law. Circle bloom moves AS-IS — its invite bug is TDW_14's surgery, not this block's (F-1). Closeout: `sanctuary/page.tsx` lands under ~400 lines (conductor only); a map in `docs/FROST_BLOOMS.md` names every bloom file, its data sources, and its write doors — the room-by-room index 14/15 build on.
 
 ### P4 — The splash system (F-2, F-3)
-1. Apply 0086. Admin slides section gains collection tabs (`Landing · Bride · Vendor fallback`) — a scoped rider on the admin content page (10's domain, one tab control; recorded in 10's handover notes).
+1. Apply 0097 (re-homed from 0086 at CE-59). Admin slides section gains collection tabs (`Landing · Bride · Vendor fallback`) — a scoped rider on the admin content page (10's domain, one tab control; recorded in 10's handover notes).
 2. **Bride mount:** AppSplash (03) mounted at the frost root — bride collection slides, same Ken Burns choreography, same min/max/tap-skip, module-scope cold-start flag, silent offline skip. Both bride themes get the same splash (imagery is theme-agnostic; the scrim adapts to the active set).
 3. **Vendor amendment (F-3):** the vendor splash source becomes portfolio-first — fetch own portfolio covers (card variants, first 3 by order); <3 usable → `vendor_fallback` collection; the dated addenda land in TDW_03 and TDW_11 files this sitting. PWA and native share the selection logic (a small pure function in shared lib).
 **Proof:** admin uploads a bride slide → next bride cold-open shows it; a 20-photo vendor sees their own work; a 2-photo vendor sees the fallback collection.
