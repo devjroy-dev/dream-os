@@ -51,13 +51,9 @@ function generateOtp() {
   return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
 }
 
-// Coplanner sends a bare 10-digit number; users/circle_members store E.164.
-function toE164(raw) {
-  const digits = (raw || '').replace(/\D/g, '');
-  if (digits.length === 10) return `+91${digits}`;
-  if (digits.length > 10)   return `+${digits}`;
-  return raw;
-}
+// TDW_04.5 P4 rider F-04.109 — toE164 hoisted to src/lib/phone.js (one home,
+// three importers). Moved byte-identically; behaviour unchanged.
+const { toE164 } = require('../../lib/phone');
 
 function ok(res, data)            { return res.json({ success: true, data }); }
 function fail(res, status, error) { return res.status(status).json({ success: false, error }); }

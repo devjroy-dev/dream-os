@@ -21,6 +21,106 @@ const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { sendWhatsApp } = require('../../lib/whatsapp');
 
+// TDW_04.5 · P4 — the item + roster layer. WIRING ONLY: every seam below is a
+// call into these two libs, which shipped and benched at the seam (b0452 52/52).
+// No discovery, dedup, wrap or auto-close logic is authored in this file.
+const {
+  itemsForPost,
+  groupItemsByPost,
+  postMatchesCategory,
+  allItemsFilled,
+  normaliseItemsInput,
+} = require('../../lib/vendor/collabItems');
+const { addEdgesOnAccept } = require('../../lib/vendor/roster');
+
+// ── THE DORMANCY SEAM (CE-59, ruling (ii)A/(ii)B) ────────────────────────────
+// 0096_collab_planner.sql is WITHHELD and founder-run. This code deploys BEFORE
+// its tables and columns exist at prod, and /feed is a LIVE surface. Every read
+// that touches a 0096 object therefore goes through `tolerate`, which converts
+// "relation does not exist" / "column does not exist" into an ABSENCE rather
+// than a 500.
+//
+// Absence is not a special case here — it is the legacy case. `itemsForPost`
+// turns zero item rows into the post's own requirement_type (F3's wrap), so a
+// tolerated miss makes this file behave EXACTLY as it did before this sitting.
+// The wrap is the gate; there is no feature flag and none is owed.
+//
+// This is deliberately NOT a general error swallow: it returns the fallback and
+// logs once, so a genuine post-0096 outage is visible in the log rather than
+// silently serving a degraded feed forever.
+async function tolerate(label, fallback, fn) {
+  try {
+    const { data, error } = await fn();
+    if (error) {
+      console.warn(`[collab:pre-0096] ${label} unavailable: ${error.message}`);
+      return fallback;
+    }
+    return data ?? fallback;
+  } catch (err) {
+    console.warn(`[collab:pre-0096] ${label} threw: ${err.message}`);
+    return fallback;
+  }
+}
+
+/** Read the item rows for a set of posts, grouped by post_id. Empty pre-0096. */
+async function itemsByPost(supabase, postIds) {
+  if (!postIds || postIds.length === 0) return new Map();
+  const rows = await tolerate('collab_post_items', [], () =>
+    supabase
+      .from('collab_post_items')
+      .select('id, post_id, position, requirement_type, note, filled_by_response_id')
+      .in('post_id', postIds)
+  );
+  return groupItemsByPost(rows);
+}
+
+/**
+ * FIRST LOOK (CE-59 fork 5: the POSTER'S roster contains the VIEWER).
+ * Returns a predicate `(post) => boolean` — true when this viewer may see it.
+ *
+ * Two tolerated reads, both absent pre-0096, and absence means "no first-look
+ * window exists", i.e. the open feed — today's behaviour exactly.
+ *
+ * Ruling (ii)B: `first_look_until` is NOT added to the feed's primary select.
+ * PostgREST rejects the WHOLE query with a 400 when a select names an unknown
+ * column, which would 500 the feed for every vendor between deploy and the
+ * founder's 0096 run. It rides here instead, in its own tolerated query, which
+ * also carries `vendor_id` so the primary select stays byte-identical.
+ */
+async function firstLookFilter(supabase, postIds, viewerVendorId) {
+  if (!postIds || postIds.length === 0) return () => true;
+
+  const meta = await tolerate('collab_posts.first_look_until', [], () =>
+    supabase
+      .from('collab_posts')
+      .select('id, vendor_id, first_look_until')
+      .in('id', postIds)
+  );
+  if (meta.length === 0) return () => true;
+
+  const now = Date.now();
+  // Only posts still inside their window gate anything.
+  const gated = meta.filter(m => m.first_look_until && new Date(m.first_look_until).getTime() > now);
+  if (gated.length === 0) return () => true;
+
+  const posterIds = [...new Set(gated.map(m => m.vendor_id).filter(Boolean))];
+  const edges = await tolerate('vendor_roster (first-look)', [], () =>
+    supabase
+      .from('vendor_roster')
+      .select('owner_vendor_id, member_vendor_id')
+      .in('owner_vendor_id', posterIds)
+      .eq('member_vendor_id', viewerVendorId)
+  );
+  const invitedBy = new Set(edges.map(e => e.owner_vendor_id));
+
+  const gatedById = new Map(gated.map(m => [m.id, m]));
+  return (post) => {
+    const m = gatedById.get(post.id);
+    if (!m) return true;                 // window absent or already elapsed
+    return invitedBy.has(m.vendor_id);   // inside the window: roster only
+  };
+}
+
 // ── GET /feed ────────────────────────────────────────────────────────────────
 // Returns collab posts this vendor is eligible to see.
 // Eligibility: requirement_type matches vendor.category AND
@@ -64,17 +164,43 @@ router.get('/feed', requireAuth, resolveVendor(), asyncHandler(async (req, res) 
     .eq('state', 'open')
     .gt('expires_at', now)
     .neq('vendor_id', vendorId)
-    .eq('requirement_type', me.category)
     .order('created_at', { ascending: false });
 
   if (postsErr) return errRes(res, 500, postsErr.message);
 
+  // ── THE CATEGORY LEG (CE-59 ruling on fork 1, option 1(a); F6 AMENDED) ─────
+  // `.eq('requirement_type', me.category)` is GONE from the query above. It
+  // filtered the POST column, which would have made items 2..8 invisible to
+  // their own categories — the census catch that produced F4-amended.
+  //
+  // It does NOT become an in-query embed. F6 asked for predicates in-query, but
+  // an inner-join embed on collab_post_items excludes every post with no item
+  // rows, which kills F3's fall-through and hides every legacy post from the
+  // feed. Reported under §0.2 rather than adapted; the chair amended F6 for
+  // this leg specifically.
+  //
+  // So the category match runs here, over the bounded open-post window, through
+  // the one home. With zero item rows `postMatchesCategory` reads the post's own
+  // column — byte-identical to the `.eq` it replaces. That identity is also what
+  // closes the pre-0096 leak: a missing items table cannot widen the feed,
+  // because absence degrades to the old predicate rather than to "no predicate".
+  const openWindow = posts || [];
+  const itemsMap   = await itemsByPost(supabase, openWindow.map(p => p.id));
+
+  const matched = openWindow.filter(p =>
+    postMatchesCategory(p, itemsMap.get(p.id) || [], me.category)
+  );
+
   // Filter by city match OR open_to_travel OR open_to_other_cities
-  const eligible = (posts || []).filter(p =>
+  const cityEligible = matched.filter(p =>
     p.city === me.city ||
     me.open_to_travel ||
     p.open_to_other_cities
   );
+
+  // First look — before first_look_until, only the poster's roster sees it.
+  const visible = await firstLookFilter(supabase, cityEligible.map(p => p.id), vendorId);
+  const eligible = cityEligible.filter(visible);
 
   // Filter out posts this vendor already responded to
   const postIds = eligible.map(p => p.id);
@@ -95,13 +221,22 @@ router.get('/feed', requireAuth, resolveVendor(), asyncHandler(async (req, res) 
     .map(p => ({
       id:               p.id,
       requirement_type: p.requirement_type,
+      // Items ALWAYS serialize (spec §P4.1). A legacy post wraps to exactly one
+      // item carrying its own requirement_type, so this array is never empty and
+      // the client needs no legacy branch. `requirement_type` above stays for
+      // back-compat with clients that have not yet learned about items.
+      items:            itemsForPost(p, itemsMap.get(p.id) || []),
       event_date:       p.event_date,
       city:             p.city,
       budget_inr:       p.budget_inr,
       payment_period:   p.payment_period,
       event_type:       p.event_type,
       details:          p.details,
-      // Anonymised poster — category only, no name or handle
+      // Anonymised poster — category only, no name or handle. ANONYMITY IS
+      // BYTE-PRESERVED: it lives here, in what the serializer chooses to emit.
+      // First look is a VISIBILITY predicate upstream — it changes WHO reaches
+      // this map, never WHAT the map reveals. The two compose; neither weakens
+      // the other, and the bench asserts both halves.
       poster_category:  p.vendors?.category || 'vendor',
       posted_ago:       p.created_at,
     }));
@@ -125,6 +260,9 @@ router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, r
 
   if (error) return errRes(res, 500, error.message);
 
+  // Items for the whole page in ONE tolerated read, not one per post.
+  const myItems = await itemsByPost(supabase, (posts || []).map(p => p.id));
+
   // Enrich with response counts
   const enriched = await Promise.all((posts || []).map(async (p) => {
     const { data: responses } = await supabase
@@ -136,7 +274,11 @@ router.get('/my-posts', requireAuth, resolveVendor(), asyncHandler(async (req, r
     const interested_count = (responses || []).filter(r => r.state === 'interested').length;
     const accepted_count   = (responses || []).filter(r => r.state === 'accepted').length;
 
-    return { ...p, interested_count, accepted_count, total_responses: interested_count + accepted_count };
+    // The poster sees their own items — including which are already filled, so
+    // the client can render "All filled. This post is closed." from state alone.
+    const items = itemsForPost(p, myItems.get(p.id) || []);
+
+    return { ...p, items, interested_count, accepted_count, total_responses: interested_count + accepted_count };
   }));
 
   return okRes(res, { posts: enriched });
@@ -230,7 +372,6 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   }
 
   const {
-    requirement_type,
     event_date,
     city,
     open_to_other_cities = false,
@@ -240,7 +381,16 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     details,
   } = req.body;
 
-  if (!requirement_type || !event_date || !city) {
+  // ── ITEMS (spec §P4.1) ────────────────────────────────────────────────────
+  // One home validates and orders them. A body with no `items` key takes the
+  // legacy single-`requirement_type` path and comes back as a one-entry list —
+  // so everything below has exactly one shape to reason about.
+  const parsed = normaliseItemsInput(req.body);
+  if (!parsed.ok) return errRes(res, 400, parsed.error);
+  const items = parsed.items;
+  const multi = Array.isArray(req.body?.items);
+
+  if (!event_date || !city) {
     return errRes(res, 400, 'requirement_type, event_date, city required');
   }
 
@@ -256,7 +406,10 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     .from('collab_posts')
     .insert({
       vendor_id:            vendorId,
-      requirement_type,
+      // STORAGE (F4): the post column mirrors items[0]. NOT NULL is satisfied,
+      // legacy semantics are preserved, and `position` (assigned in
+      // normaliseItemsInput and only there) is what makes items[0] deterministic.
+      requirement_type:     items[0].requirement_type,
       event_date,
       city:                 city || me.city,
       open_to_other_cities,
@@ -271,8 +424,54 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
 
   if (error) return errRes(res, 500, error.message);
 
+  // Item rows are written ONLY when the caller opted into the item model. A
+  // legacy single-type create touches collab_post_items not at all and is
+  // therefore byte-identical to today, 0096 or no 0096.
+  if (multi) {
+    const { error: itemErr } = await supabase
+      .from('collab_post_items')
+      .insert(items.map(i => ({
+        post_id:          post.id,
+        position:         i.position,
+        requirement_type: i.requirement_type,
+        note:             i.note,
+      })));
+
+    // REFUSE LOUDLY, NEVER SILENTLY LOSE ITEMS. If the rows cannot land (the
+    // pre-0096 world), a multi-item post would otherwise wrap back to ONE
+    // requirement and quietly discard the rest. Roll the post back instead and
+    // say so. Single-item creates never reach this branch, so the surface the
+    // founder has today keeps working while 0096 is pending.
+    if (itemErr) {
+      await supabase.from('collab_posts').delete().eq('id', post.id).eq('vendor_id', vendorId);
+      console.error('[collab] multi-item create rolled back:', itemErr.message);
+      return errRes(res, 503, 'Multi-item posts are not available yet. Post one requirement at a time.');
+    }
+  }
+
+  // FIRST LOOK — set as its own tolerated UPDATE, never as a column in the
+  // insert above. Same reason as the feed's second query: naming an unknown
+  // column would fail the whole statement, and here that would mean no post at
+  // all. Pre-0096 this is a no-op and the post simply has no window: open feed,
+  // exactly as posts behave today.
+  const hours = await tolerate('admin_config collab.first_look_hours', null, () =>
+    supabase.from('admin_config').select('value').eq('key', 'collab.first_look_hours').maybeSingle()
+  );
+  const windowHours = Number(hours?.value ?? 12);
+  if (Number.isFinite(windowHours) && windowHours > 0) {
+    await tolerate('collab_posts.first_look_until (set)', null, () =>
+      supabase
+        .from('collab_posts')
+        .update({ first_look_until: new Date(Date.now() + windowHours * 3600000).toISOString() })
+        .eq('id', post.id)
+        .select('id')
+        .maybeSingle()
+    );
+  }
+
   return okRes(res, {
     post,
+    items,
     message: `Posted. We'll notify matching vendors in ${city}.`,
   });
 }));
@@ -286,7 +485,7 @@ router.post('/:post_id/respond', requireAuth, resolveVendor(), asyncHandler(asyn
   const supabase   = req.app.locals.supabase;
   const vendorId   = req.vendor.id;
   const { post_id } = req.params;
-  const { action }  = req.body; // 'interested' or 'passed'
+  const { action, item_id }  = req.body; // 'interested' or 'passed'
 
   if (!['interested', 'passed'].includes(action)) {
     return errRes(res, 400, 'action must be interested or passed');
@@ -315,6 +514,27 @@ router.post('/:post_id/respond', requireAuth, resolveVendor(), asyncHandler(asyn
 
   if (error) return errRes(res, 500, error.message);
 
+  // ── item_id ON RESPOND — DECLARED GAP, NOT AN ASSUMPTION ──────────────────
+  // Spec §P4.1 says "respond gains item_id". Which column carries it lives in
+  // 0096, which is WITHHELD and which I have neither read nor authored; under
+  // the SQL-provenance law a column with no witness is an assumption, so this
+  // write is TOLERATED rather than asserted. If 0096 names the column, the
+  // responder's choice persists and connect prefers it. If it does not, this is
+  // a no-op and connect still works — the poster chooses the item at connect
+  // time, which is the path the auto-close actually depends on. Either way the
+  // feature stands up; only the convenience varies. Named in the handover.
+  if (action === 'interested' && item_id) {
+    await tolerate('collab_responses.item_id', null, () =>
+      supabase
+        .from('collab_responses')
+        .update({ item_id })
+        .eq('post_id', post_id)
+        .eq('responder_vendor_id', vendorId)
+        .select('id')
+        .maybeSingle()
+    );
+  }
+
   // Notify poster via WhatsApp when interested — non-fatal if it fails
   if (action === 'interested') {
     try {
@@ -333,7 +553,9 @@ router.post('/:post_id/respond', requireAuth, resolveVendor(), asyncHandler(asyn
 
         await sendWhatsApp(
           posterPhone,
-          `A ${responderCategory} on The Dream Wedding is interested in your ${post.requirement_type} collab for ${dateStr}.\n\nOpen DreamAi to view their profile and connect.`
+          // VETO LEDGER (founder YES, CE-59): "Open DreamAi…" → the line below.
+          // Product copy, changed only because the founder ruled the exact bytes.
+          `A ${responderCategory} on The Dream Wedding is interested in your ${post.requirement_type} collab for ${dateStr}.\n\nOpen The Dream Wedding to view their profile and connect.`
         );
 
         await supabase
@@ -362,7 +584,7 @@ router.post('/:post_id/connect/:response_id', requireAuth, resolveVendor(), asyn
   // Verify poster owns this post
   const { data: post } = await supabase
     .from('collab_posts')
-    .select('id, vendor_id, requirement_type, event_date')
+    .select('id, vendor_id, requirement_type, event_date, state')
     .eq('id', post_id)
     .single();
 
@@ -402,6 +624,74 @@ router.post('/:post_id/connect/:response_id', requireAuth, resolveVendor(), asyn
     .eq('id', vendorId)
     .single();
 
+  // ── THE ROSTER EDGE (spec §P4.2) ──────────────────────────────────────────
+  // Born HERE, in the same breath that sets contact_shared_at above and hands
+  // out phone numbers below. That siting is the anonymity proof: an edge cannot
+  // exist before anonymity lifts, because this is the line where it lifts.
+  // Never fatal — the connection is the product, the edge the convenience.
+  const edges = await addEdgesOnAccept(supabase, {
+    poster: {
+      vendor_id: vendorId,
+      name:      poster?.users?.name,
+      phone:     poster?.users?.phone,
+      category:  poster?.category,
+    },
+    responder: {
+      vendor_id: response.responder_vendor_id,
+      name:      response.vendors?.users?.name,
+      phone:     response.vendors?.users?.phone,
+      category:  response.vendors?.category,
+    },
+  });
+  if (edges.error) console.error('[collab] roster edge failed:', edges.error);
+
+  // ── FILL THE ITEM, THEN AUTO-CLOSE (spec §P4.1) ───────────────────────────
+  // Which item this connection fills: the poster may name it, else the
+  // responder's declared choice, else items[0] — which is deterministic because
+  // `position` is assigned in one place.
+  const currentItems = itemsForPost(post, (await itemsByPost(supabase, [post.id])).get(post.id) || []);
+
+  // The responder's declared choice is read HERE, tolerated, for the same
+  // reason it was written tolerated: the response select above cannot safely
+  // name a column whose existence lives in the withheld 0096.
+  const declared = await tolerate('collab_responses.item_id (read)', null, () =>
+    supabase.from('collab_responses').select('item_id').eq('id', response_id).maybeSingle()
+  );
+
+  const targetId = req.body?.item_id
+    || declared?.item_id
+    || currentItems.find(i => !i.filled_by_response_id && i.id)?.id
+    || null;
+
+  let autoClosed = false;
+  if (targetId) {
+    await tolerate('collab_post_items.filled_by_response_id', null, () =>
+      supabase
+        .from('collab_post_items')
+        .update({ filled_by_response_id: response_id })
+        .eq('id', targetId)
+        .eq('post_id', post.id)
+        .select('id')
+        .maybeSingle()
+    );
+  }
+
+  // Re-read after the fill — never predict the state, assert it.
+  const afterItems = (await itemsByPost(supabase, [post.id])).get(post.id) || [];
+  if (afterItems.length > 0 && allItemsFilled(post, afterItems)) {
+    // THE EXISTING TERMINAL STATE. 0048's CHECK list carries no 'accepted' post
+    // state — the spec's "current open/accepted semantics" is drift, filed at
+    // the seam and confirmed by command here. Nothing is widened; this is the
+    // same flip the poster's own "Mark Filled" performs.
+    const { error: closeErr } = await supabase
+      .from('collab_posts')
+      .update({ state: 'filled' })
+      .eq('id', post.id)
+      .eq('vendor_id', vendorId);
+    if (closeErr) console.error('[collab] auto-close failed:', closeErr.message);
+    else autoClosed = true;
+  }
+
   const dateStr       = new Date(post.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   const responderPhone = response.vendors?.users?.phone;
   const responderName  = response.vendors?.users?.name;
@@ -426,6 +716,9 @@ router.post('/:post_id/connect/:response_id', requireAuth, resolveVendor(), asyn
 
   return okRes(res, {
     connected: true,
+    roster_edge: !!edges.poster_edge,
+    filled_item_id: targetId,
+    auto_closed: autoClosed,
     responder: {
       name:     responderName,
       category: response.vendors?.category,

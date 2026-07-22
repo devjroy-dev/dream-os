@@ -19,12 +19,9 @@ const bcrypt  = require('bcryptjs');
 
 const PIN_RE = /^\d{4}$/;
 
-function toE164(raw) {
-  const digits = (raw || '').replace(/\D/g, '');
-  if (digits.length === 10) return `+91${digits}`;
-  if (digits.length > 10)   return `+${digits}`;
-  return raw;
-}
+// TDW_04.5 P4 rider F-04.109 — toE164 hoisted to src/lib/phone.js (one home,
+// three importers). Moved byte-identically; behaviour unchanged.
+const { toE164 } = require('../../lib/phone');
 
 router.post('/', async (req, res) => {
   const supabase = req.app.locals.supabase;

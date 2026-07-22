@@ -41,6 +41,7 @@ router.use('/bands',        require('./bands'));    // TDW_04.5 P2 — the weddi
 router.use('/portfolio',   require('./portfolio'));
 router.use('/discover',    require('./discover'));
 router.use('/collab',      require('./collab'));
+router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
 router.use('/couture',     require('./couture'));
 router.use('/featured',    require('./featured'));
 router.use('/studio',      require('./studio/index'));

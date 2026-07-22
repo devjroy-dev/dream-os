@@ -30,19 +30,13 @@
 // persistence is the estate's existing posture, now symmetric.
 'use strict';
 
-// ⚠ DISCLOSED — the THIRD copy of toE164 in this repo, byte-identical to
-// src/api/circle/join.js:55 and src/api/circle/verifyPin.js:22 (both read and
-// compared by command at 9984dd2; they do not diverge). It is reproduced rather
-// than forked because a DIVERGENT normalizer is exactly the defect M1b caught
-// pre-deploy. The hoist to one home is FILED as an observation and proposed as
-// its own small item — it touches the circle/bride auth plane, which is outside
-// this sitting's charter (§8 scope law). Ratify-or-revert.
-function toE164(raw) {
-  const digits = (raw || '').replace(/\D/g, '');
-  if (digits.length === 10) return `+91${digits}`;
-  if (digits.length > 10)   return `+${digits}`;
-  return raw;
-}
+// F-04.109 CURED (CE-59 ratified the seam executor's disclosure). The third copy
+// that lived here is GONE; toE164 now has ONE home at src/lib/phone.js, with
+// three importers — this file plus circle/join.js and circle/verifyPin.js. The
+// function moved byte-identically. F9's phone-keyed dedup predicate below now
+// provably agrees with the auth plane's normaliser, because it IS that
+// normaliser.
+const { toE164 } = require('../phone');
 
 /**
  * Add or refresh ONE roster edge. Returns { row, created } — never throws on a
