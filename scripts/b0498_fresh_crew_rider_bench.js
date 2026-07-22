@@ -36,6 +36,28 @@
 //      print site's console.log through a captured console, against a real extractStatuses
 //      payload — the extractor itself is proven 0-line (its output shape is asserted intact).
 //
+//   §6 F-04.101 THE JOINT (added this sitting, CE-ruled R1) — §1-§3 prove the PARTS; this
+//      proves the WIRING. The REAL processVendorInbound is driven end-to-end with a "fresh"
+//      fixture, over the b05_m2 bench's own deterministic-supabase-fake pattern, through BOTH
+//      transports (twilioInputsFrom AND metaInputsFrom) — the m2 two-path doctrine applied to
+//      the fence, so a transport that skipped the short-circuit could not hide behind the one
+//      that took it. The short-circuit is asserted WHOLE: the outbound row's body IS
+//      FRESH_THREAD_LINE, the conversation's last_message_at is bumped, the thread is
+//      abandoned via the real seam, and runTurn is NEVER invoked (stubbed with a call counter,
+//      asserted zero). Before this section the fence could be killed dead —
+//      `matchFreshWord(body)` -> `false && matchFreshWord(body)` — and the ENTIRE floor stayed
+//      green: no bench drove processVendorInbound through it (b05_m2 correctly cannot see
+//      in-fence code; jurisdiction, R1). That named mutation is this section's uncured test.
+//      vendorInbound.js is 0-LINE for this cure: the fence is DRIVEN, never edited.
+//
+//   §7 Q2(a) THE PLANE CLAUSE (added this sitting, CE-ruled R2/R3) — the C4 header gains a
+//      referent-plane constraint naming which string is an event_id (the booking's name, never
+//      a note or description). §4 witnesses the header by SUBSTRING (.includes(BLIND)), which
+//      an appended clause slides straight past — so the clause would ship unguarded. This
+//      section witnesses the FULL BRACKET BYTES-EXACT at both homes instead, which both guards
+//      the clause and makes any future header edit a Ruling №1 labeled amendment against an
+//      exact-byte witness rather than a silent pass.
+//
 // DISCLOSED RIG: a mock supabase modelling engine.conversations (for the thread seam) and
 // public.events (for the two snapshots). Every write op is witnessed so a stray delete
 // convicts. No live model call, no DB, no network.
@@ -65,6 +87,12 @@ const {
   fetchCalendarSnapshot: waSnapshot,
 } = require(path.join(ROOT, 'src/lib/vendor/calendarSignals.js'));
 const { extractStatuses } = require(path.join(ROOT, 'src/lib/metaInbound.js'));
+// F-04.101 (this sitting): the JOINT. The real door and the real transport adapters — the
+// fence lives inside processVendorInbound, so nothing short of driving it proves the wiring.
+const {
+  processVendorInbound, twilioInputsFrom, metaInputsFrom,
+} = require(path.join(ROOT, 'src/lib/vendorInbound.js'));
+const webhookCore = require(path.join(ROOT, 'src/lib/webhookCore.js'));
 // Same uncured-tree legibility shim as the vendorMode exports: absent on the pre-cure tree,
 // and the sentinel can never green a case (it carries no code, no title, no count).
 const _mkt = require(path.join(ROOT, 'src/marketingIndex.js'));
@@ -73,6 +101,104 @@ const statusLogLine = typeof _mkt.statusLogLine === 'function'
 
 let pass = 0, fail = 0;
 const T = (label, cond) => { if (cond) { pass++; console.log('    PASS  ' + label); } else { fail++; console.log('    FAIL  ' + label); } };
+
+// ── F-04.101 JOINT RIG (this sitting) ────────────────────────────────────────────────────
+// The b05_m2 bench's deterministic-supabase-fake pattern, extended with WRITE CAPTURE: the
+// short-circuit's whole evidence is what it WROTE (an outbound row) and what it DIDN'T (an
+// engine turn). Only the LLM turn and the sender are stubbed — every branch from the door's
+// entry down to the fence runs for real, and engine.conversations is served too so the REAL
+// abandonActiveThread does its real read-then-update rather than a stub's say-so.
+const J_VUSER  = { id: 'vu1', auth_user_id: 'au1', phone: '', name: 'Vendor Owner' };
+const J_VENDOR = { id: 'v1', user_id: 'vu1', business_name: 'Priya Films', category: 'photographer', onboarding_state: 'complete', agent_id: 'ag1' };
+const J_CONVO  = { id: 'convo1', vendor_id: 'v1', kind: 'vendor_self' };
+
+function mkJointSupabase(ops, engineConvos) {
+  const publicBuilder = (table) => {
+    const b = {
+      select: () => b, eq: () => b, in: () => b, order: () => b, not: () => b, is: () => b,
+      gte: () => b, lte: () => b, limit: () => b,
+      insert: (row) => { ops.inserts.push({ table, row }); return b; },
+      update: (patch) => { ops.updates.push({ table, patch }); return b; },
+      delete: () => { ops.deletes.push({ table }); return b; },
+      maybeSingle: () => Promise.resolve({
+        data: table === 'users' ? { ...J_VUSER }
+            : table === 'vendors' ? { ...J_VENDOR }
+            : table === 'conversations' ? { ...J_CONVO } : null,
+        error: null,
+      }),
+      single: () => Promise.resolve({ data: null, error: null }),
+      then: (res, rej) => Promise.resolve({ data: null, error: null }).then(res, rej),
+    };
+    return b;
+  };
+  // engine.conversations — the real abandonActiveThread's own territory.
+  const engineBuilder = (table) => {
+    const q = { _eq: {} };
+    const chain = {
+      select: () => chain, order: () => chain, limit: () => chain,
+      eq(col, val) { q._eq[col] = val; return chain; },
+      maybeSingle: () => Promise.resolve({
+        data: table === 'conversations'
+          ? (engineConvos.filter((c) => c.agent_id === q._eq.agent_id)[0] || null) : null,
+        error: null,
+      }),
+      update(patch) {
+        return { eq: (col, val) => {
+          ops.engineUpdates.push({ id: val, patch });
+          const c = engineConvos.find((x) => x.id === val); if (c) Object.assign(c, patch);
+          return Promise.resolve({ error: null });
+        } };
+      },
+      delete() { return { eq: (col, val) => { ops.engineDeletes.push({ id: val }); return Promise.resolve({ error: null }); } }; },
+    };
+    return chain;
+  };
+  return { from: publicBuilder, schema: () => ({ from: engineBuilder }), rpc: () => Promise.resolve({ data: null, error: null }) };
+}
+
+function mkJointDeps() {
+  const noop = async () => ({});
+  const ops = { inserts: [], updates: [], deletes: [], engineUpdates: [], engineDeletes: [], sends: [], turns: 0 };
+  const engineConvos = [{ id: 'ec1', agent_id: 'ag1', state: 'active' }];
+  const deps = {
+    supabase: mkJointSupabase(ops, engineConvos),
+    anthropic: {},
+    sendWhatsApp: async (phone, text, media) => { ops.sends.push({ phone, text, media: media || [] }); return { sid: 'SMout' }; },
+    webhookCore,
+    // THE COUNTER. The fence's whole promise is that the engine does not run this turn.
+    runTurn: async () => { ops.turns++; return { reply: '<<ENGINE RAN — THE FENCE LEAKED>>', tool_calls: [] }; },
+    runCoupleAgenticTurn: async () => { ops.turns++; return { reply: '<<ENGINE RAN>>', tool_calls: [] }; },
+    resolveAgentForVendor: async () => ({ agentId: 'ag1' }),
+    fetchCalendarSnapshot: async () => ({}),
+    fetchScratchpad: async () => ({}),
+    buildLlmForTurn: async () => ({ tierOverride: null, modelOverride: null, transport: null, donnaTransport: null, donnaModelOverride: null }),
+    applyCalendarSignals: async () => ({ suffix: '' }),
+    generateInvoiceForBinder: noop,
+    enquiryToBinder: noop,
+    ensureCoupleRow: async () => ({ id: 'cpl1' }),
+    captureField: noop,
+    buildDisambiguationQuestion: () => 'disambig?',
+    interpretDisambiguationReply: () => ({}),
+    vendorDisplayName: (v) => (v && v.business_name) || 'vendor',
+    matchModeWord, // the REAL one — the disjointness of the two word-sets is load-bearing here
+    applyModeFlip: async () => ({}),
+    MODE_FLIP_LINES: {},
+    // The three the fence destructures: all REAL. A stubbed predicate would prove nothing.
+    matchFreshWord, FRESH_THREAD_LINE, abandonActiveThread,
+    checkImageThrottle: async () => ({ allowed: true }),
+    markRejectionSent: async () => {},
+    extractCalendarFromImage: async () => ({}),
+  };
+  return { deps, ops, engineConvos };
+}
+
+const J_PHONE = '919812300077';
+const jTwilioReq = (text) => ({ body: { From: `whatsapp:+${J_PHONE}`, Body: text, ProfileName: 'Vendor Owner', MessageSid: 'SMfresh', NumMedia: '0' } });
+const jMetaMsg   = (text) => ({ from: J_PHONE, text, messageId: 'wamid.FRESH', type: 'text', media: [] });
+const jInputs = {
+  twilio: (text) => twilioInputsFrom(jTwilioReq(text), { internalReplay: false, trimmedBody: text, numMedia: 0, hasMedia: false }),
+  meta:   (text) => metaInputsFrom(jMetaMsg(text), { entry: [] }),
+};
 
 // ── mock supabase: engine.conversations (thread seam) + public.events (snapshots) ──────────
 function mkSupabase(convos, events) {
@@ -267,6 +393,90 @@ const SEED = [
     T('the extractor is 0-line: metaInbound is untouched by this rider',
       require('fs').readFileSync(path.join(ROOT, 'src/lib/metaInbound.js'), 'utf8')
         .includes('errors: Array.isArray(s.errors) ? s.errors : []'));
+  }
+
+  // ── [6] F-04.101 THE JOINT — the fence DRIVEN, both transports ─────────────────────────
+  // LABELED, F-04.101-attributed (CE ruling R1, this sitting). Sections [1]-[3] prove the
+  // parts; nothing proved they were wired together. The chair's mutation
+  //   `if (matchFreshWord(body))` -> `if (false && matchFreshWord(body))`
+  // is the NAMED uncured test for this section and must RED here — and, before this section
+  // existed, RED nowhere at all.
+  console.log('\n  [6] F-04.101 THE JOINT — the real processVendorInbound, driven through the fence:');
+  {
+    for (const transport of ['twilio', 'meta']) {
+      const { deps, ops, engineConvos } = mkJointDeps();
+      await processVendorInbound(jInputs[transport]('fresh'), deps);
+
+      const outbound = ops.inserts.filter((i) => i.table === 'messages' && i.row.direction === 'outbound');
+      T(`${transport}: the door replies exactly ONCE (the short-circuit, not a turn)`,
+        ops.sends.length === 1 && outbound.length === 1);
+      T(`${transport}: the outbound ROW's body IS the minted line (what the vendor keeps)`,
+        outbound.length === 1 && outbound[0].row.body === FRESH_THREAD_LINE);
+      T(`${transport}: …and the SENT bytes are that same line (row and wire agree)`,
+        ops.sends.length === 1 && ops.sends[0].text === FRESH_THREAD_LINE);
+      T(`${transport}: the conversation's last_message_at is bumped (the room stays current)`,
+        ops.updates.some((u) => u.table === 'conversations' && typeof u.patch.last_message_at === 'string'));
+      T(`*** ${transport}: runTurn is NEVER invoked — the engine cannot re-populate the room it just emptied ***`,
+        ops.turns === 0);
+      T(`${transport}: the thread is ABANDONED through the real seam (state, never a delete)`,
+        engineConvos[0].state === 'abandoned' && ops.engineDeletes.length === 0);
+      T(`${transport}: the inbound row is still written (the audit log is not skipped)`,
+        ops.inserts.some((i) => i.table === 'messages' && i.row.direction === 'inbound' && i.row.body === 'fresh'));
+    }
+    // The both-ways limb, driven the same way: a message that merely CONTAINS the word is a
+    // REAL TURN. If the fence ever widened to contains(), the engine would stop running for
+    // ordinary sentences — this case convicts that, at the JOINT rather than at the predicate.
+    {
+      const { deps, ops, engineConvos } = mkJointDeps();
+      await processVendorInbound(jInputs.twilio('start fresh tomorrow'), deps);
+      T('a sentence merely CONTAINING the word falls THROUGH to the engine (runTurn ran)',
+        ops.turns === 1);
+      T('…and that turn abandoned nothing — the room is untouched',
+        engineConvos[0].state === 'active');
+      T('…and no fresh-line row was written on that turn',
+        !ops.inserts.some((i) => i.table === 'messages' && i.row.body === FRESH_THREAD_LINE));
+    }
+    // Cross-transport identity: one fence, two doors. The m2 doctrine, applied to the joint.
+    {
+      const a = mkJointDeps(); await processVendorInbound(jInputs.twilio('fresh'), a.deps);
+      const b = mkJointDeps(); await processVendorInbound(jInputs.meta('fresh'), b.deps);
+      T('*** BOTH TRANSPORTS TAKE THE FENCE IDENTICALLY (byte-identical send sequence) ***',
+        JSON.stringify(a.ops.sends) === JSON.stringify(b.ops.sends) && a.ops.sends.length === 1);
+    }
+    // §6c — the fence's file is 0-LINE for this cure. The bench DRIVES it; it does not edit it.
+    const fs6 = require('fs');
+    const vi = fs6.readFileSync(path.join(ROOT, 'src/lib/vendorInbound.js'), 'utf8');
+    T('§6c the fence stands unedited in production (guarded predicate, both markers present)',
+      vi.includes('if (matchFreshWord(body)) {') &&
+      vi.includes('// F-04.98 C3 BEGIN') && vi.includes('// F-04.98 C3 END'));
+  }
+
+  // ── [7] Q2(a) THE PLANE CLAUSE — the header witnessed BYTES-EXACT at both homes ─────────
+  // LABELED, Q2(a)/F-04.101-attributed (CE ruling R2, this sitting). Section [4] witnesses the
+  // header by substring, which an appended clause slides past unguarded — so this section
+  // takes the FULL BRACKET as an exact-byte witness. A one-byte drift at either home REDs
+  // here; a future header edit is therefore a Ruling №1 labeled amendment, by construction.
+  console.log('\n  [7] Q2(a) THE PLANE CLAUSE — full bracket, bytes-exact, both homes:');
+  {
+    const HEADER = '[Calendar \u2014 upcoming, kept for you. Refer to a booking by its name as it '
+      + 'appears below (with its date, if two share a name) to change or cancel it. Crew '
+      + 'assignments are not shown here \u2014 signal donna_assign_crew; the calendar adjudicates. '
+      + 'For event_id use the booking\'s name from the lines below, never a note or description.]';
+    const bracketOf = (s) => { const m = s.match(/\[Calendar[^\]]*\]/); return m ? m[0] : ''; };
+    const waSb = mkSupabase([], SEED);
+    const wa = bracketOf(await waSnapshot(waSb, V));
+    const pwaSb = mkSupabase([], SEED);
+    const pwa = bracketOf(await pwaSnapshot({ app: { locals: { supabase: pwaSb } }, vendor: { id: V, tier: 'signature' } }));
+    T('WA door: the built header is the expected bytes, EXACTLY (no drift, no near-miss)', wa === HEADER);
+    T('app door: the built header is the expected bytes, EXACTLY', pwa === HEADER);
+    T('*** THE TWO HOMES ARE BYTE-IDENTICAL ON THE FULL BRACKET (F-04.65, exact witness) ***',
+      wa === pwa && wa.length > 0);
+    T('the clause names the PLANE: an event_id is the booking\'s name, never a note or description',
+      wa.includes("For event_id use the booking's name from the lines below, never a note or description."));
+    T('…and it rides INSIDE the bracket (context the model reads, not a stray trailing line)',
+      wa.endsWith('description.]') && (wa.match(/\]/g) || []).length === 1);
+    T('the C4 blindness disclosure survives beside it (no regression on the older cure)',
+      wa.includes('Crew assignments are not shown here') && pwa.includes('Crew assignments are not shown here'));
   }
 
   console.log(`\n  \u2500\u2500 ${pass}/${pass + fail} PASS \u2500\u2500\n`);
