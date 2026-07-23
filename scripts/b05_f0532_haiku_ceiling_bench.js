@@ -143,15 +143,7 @@ const driveBride = withCapturedLog(async () => {
   return { model: calls[0], calls };
 });
 
-const driveVendor = withCapturedLog(async () => {
-  seedSupabaseModule();
-  delete require.cache[ENGINE];
-  const { runAgenticTurn } = require(ENGINE);
-  const calls = [];
-  await runAgenticTurn({ vendor: { ...VENDOR }, user: { ...VUSER }, conversation: { ...CONVO },
-    inboundMessage: MONEY_MSG, supabase: makeSupabase(), anthropic: makeAnthropic(calls) });
-  return { model: calls[0], calls };
-});
+// driveVendor RETIRED AT M5 with the runAgenticTurn site it drove.
 
 const driveCouple = withCapturedLog(async () => {
   seedSupabaseModule();
@@ -164,29 +156,51 @@ const driveCouple = withCapturedLog(async () => {
   return { model: calls[0], calls };
 });
 
-// Asserts BOTH halves: the classifier really said complex, and the wire really carried Haiku.
-function assertHaikuOnComplex(r, prefix) {
+// ══ LABELED RE-BASELINE — ARC M5 (C6 / F-05.44, CE ruling R-M5-3). ══
+// COUNTS DISCLOSED IN THE HANDOVER. THE ARC'S ONLY FLOOR MOVE, F4-ledger.
+//
+// TWO THINGS CHANGED UNDER ME, BOTH BY CHARTER, NEITHER BY DRIFT:
+// (1) The `(complex)` LOG TOKEN IS GONE from both surviving sites. It was the sole
+//     consumer of a paid Haiku classifier round-trip per turn, and M5 deleted the
+//     call. This assertion's second half therefore cannot be kept as written — it
+//     demanded evidence the estate has deliberately stopped producing. It is NOT
+//     dropped: it re-aims at what still proves the same property, that the log line
+//     names Haiku on the wire it actually used.
+// (2) The `agent` (runAgenticTurn) SITE IS GONE — the function was deleted whole,
+//     zero callers, ask-gate included. Its cell is RETIRED BY NAME rather than
+//     quietly dropped, per Ruling №1's bench-follows-the-law.
+// STILL TRUE AND STILL ASSERTED: §3's classifier cells drive classifier.js directly.
+// That file SURVIVES INTACT as a defused island — it EXISTS AND IS UNCALLED — so
+// those cells now assert the behaviour of a live, reachable-by-require module that
+// no production path invokes. That is deliberate (R-M5-3's revival pointer), and
+// saying so here is the difference between a kept cell and a stale one.
+function assertHaikuOnTheWire(r, prefix) {
   assert.ok(r.model, `no agent API call was made — the turn never reached the model (log:\n${r.log})`);
   assert.strictEqual(r.model, HAIKU, `the API call carried ${r.model}, not Haiku`);
   assert.notStrictEqual(r.model, SONNET, 'Sonnet reached the wire');
-  assert.ok(new RegExp(`\\[${prefix}\\] model selected: ${HAIKU} \\(complex`).test(r.log),
-    `the production log line did not read Haiku-on-complex — VACUOUS GREEN RISK. log:\n${r.log}`);
+  assert.ok(new RegExp(`\\[${prefix}\\] model selected: ${HAIKU}`).test(r.log),
+    `the production log line did not name Haiku on the wire — VACUOUS GREEN RISK. log:\n${r.log}`);
 }
 
 // ── §2's mutant: the exact pre-cure byte, restored into the real source ──────────────────
-const TERNARY = 'complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU';
+// RE-BASELINED AT M5: the pre-cure byte was a TERNARY on the classifier's verdict.
+// M5 deleted the verdict, so that byte cannot be restored — `complexity` no longer
+// exists to compare. The mutant becomes MODEL_SONNET DIRECT: the identical disease
+// (Sonnet on the wire) expressed in the world that now exists. A mutant that cannot
+// compile is not a weaker mutant, it is no mutant at all.
+const TERNARY = 'MODEL_SONNET';
 const SITES = [
   { name: 'brideEngine.js:172 (runBrideAgenticTurn)', file: BRIDE_ENGINE, prefix: 'bride-agent',
     cured: '  const modelToUse = MODEL_HAIKU;\n  console.log(`[bride-agent] model selected:',
     mutant: `  const modelToUse = ${TERNARY};\n  console.log(\`[bride-agent] model selected:` },
-  { name: 'engine.js:159 (runAgenticTurn)', file: ENGINE, prefix: 'agent',
-    cured: '  const modelToUse  = MODEL_HAIKU;\n  console.log(`[agent] model selected:',
-    mutant: `  const modelToUse  = ${TERNARY};\n  console.log(\`[agent] model selected:` },
+  // RETIRED BY NAME AT M5: the `agent` site was runAgenticTurn, deleted whole
+  // (zero callers, ask-gate included). A cell guarding a function that no longer
+  // exists is not a weaker cell — it is a green over nothing.
   { name: 'engine.js:488 (runCoupleAgenticTurn)', file: ENGINE, prefix: 'couple-agent',
     cured: '  const modelToUse  = MODEL_HAIKU;\n  console.log(`[couple-agent] model selected:',
     mutant: `  const modelToUse  = ${TERNARY};\n  console.log(\`[couple-agent] model selected:` },
 ];
-const DRIVERS = { 'bride-agent': driveBride, 'agent': driveVendor, 'couple-agent': driveCouple };
+const DRIVERS = { 'bride-agent': driveBride, 'couple-agent': driveCouple }; // 'agent' retired at M5
 
 const ORIGINAL = new Map([[BRIDE_ENGINE, fs.readFileSync(BRIDE_ENGINE, 'utf8')],
                           [ENGINE,       fs.readFileSync(ENGINE, 'utf8')]]);
@@ -207,35 +221,33 @@ function mutate(sites) {
     section('§1 — the Haiku ceiling holds on a REAL complex verdict (real functions, real classifier)');
 
     await t('§1.1 bride wire (brideEngine:172) — the convicted lane: complex verdict, Haiku on the wire', async () => {
-      assertHaikuOnComplex(await driveBride(), 'bride-agent');
+      assertHaikuOnTheWire(await driveBride(), 'bride-agent');
     });
-    await t('§1.2 vendor wire (engine:159): complex verdict, Haiku on the wire', async () => {
-      assertHaikuOnComplex(await driveVendor(), 'agent');
-    });
+    // §1.2 RETIRED BY NAME AT M5 with runAgenticTurn, the wire it drove.
     await t('§1.3 couple wire (engine:488): complex verdict, Haiku on the wire', async () => {
-      assertHaikuOnComplex(await driveCouple(), 'couple-agent');
+      assertHaikuOnTheWire(await driveCouple(), 'couple-agent');
     });
-    await t('§1.4 THE VACUITY GUARD BITES: a simple verdict is NOT accepted as proof of the cure', async () => {
-      // Same production code, classifier answering 'simple'. Haiku is still selected — and the
-      // guard must still REFUSE it, because pre-cure code would have selected Haiku here too.
-      const lines = []; const real = console.log;
-      console.log = (...a) => lines.push(a.map(String).join(' '));
-      let model;
-      try {
-        seedSupabaseModule(); delete require.cache[BRIDE_ENGINE];
-        const { runBrideAgenticTurn } = require(BRIDE_ENGINE);
-        const calls = [];
-        const simpleAnthropic = { messages: { create: async (p) => {
-          if (p.max_tokens === 5 || p.max_tokens === 8) return textResp('simple');
-          calls.push(p.model); return textResp('Noted.');
-        } } };
-        await runBrideAgenticTurn({ couple: { ...COUPLE }, user: { ...CUSER }, conversation: { ...CONVO },
-          inboundMessage: 'ok thanks', supabase: makeSupabase(), anthropic: simpleAnthropic });
-        model = calls[0];
-      } finally { console.log = real; }
-      assert.strictEqual(model, HAIKU, 'sanity: a simple verdict still selects Haiku');
-      assert.throws(() => assertHaikuOnComplex({ model, log: lines.join('\n') }, 'bride-agent'),
-        'the vacuity guard MUST reject a green earned on a simple verdict');
+    await t('§1.4 THE CEILING IS STRUCTURAL NOW — no verdict, no branch (RE-BASELINED AT M5)', async () => {
+      // RETIRED AND REPLACED, not dropped. As shipped, §1.4 drove a SIMPLE verdict and
+      // required the assertion to REFUSE it — because pre-cure code would have picked
+      // Haiku on a simple message anyway, so only a COMPLEX verdict proved the ceiling.
+      // That guard depended on a classifier verdict being readable. M5 deleted the
+      // classifier calls, so the evidence it demanded CANNOT EXIST — the same shape as
+      // CE-66's S2 cell that "demanded evidence that cannot exist".
+      // WHAT REPLACES IT IS STRONGER: the ceiling was a BRANCH that always chose Haiku;
+      // it is now the ABSENCE of a branch. A conditional cannot pick Sonnet if no
+      // conditional is left to pick anything. Asserted on the source, both survivors.
+      const fs2 = require('fs');
+      for (const [f, label] of [[BRIDE_ENGINE, 'brideEngine'], [ENGINE, 'engine']]) {
+        const src = fs2.readFileSync(f, 'utf8').split('\n')
+          .filter(l => !l.trim().startsWith('//')).join('\n');
+        assert.ok(/const modelToUse\s*=\s*MODEL_HAIKU;/.test(src),
+          `${label}: the ceiling must be an unconditional assignment`);
+        assert.ok(!/\?\s*MODEL_SONNET/.test(src) && !/MODEL_SONNET\s*:/.test(src),
+          `${label}: a conditional reaching MODEL_SONNET survived the deletion`);
+        assert.ok(!/classifyMessage\(|classifyVendorMessage\(/.test(src),
+          `${label}: a classifier call survived M5 — the verdict is supposed to be gone`);
+      }
     });
 
     // ═══ §2 — NON-VACUITY, BY MUTATING THE PRODUCTION SOURCE ═══
@@ -246,7 +258,7 @@ function mutate(sites) {
         mutate([site]);
         const r = await DRIVERS[site.prefix]();
         assert.strictEqual(r.model, SONNET, `mutant did not route Sonnet — the cell is not load-bearing (got ${r.model})`);
-        assert.throws(() => assertHaikuOnComplex(r, site.prefix), 'the cured assertion MUST fail on the mutant');
+        assert.throws(() => assertHaikuOnTheWire(r, site.prefix), 'the cured assertion MUST fail on the mutant');
         restoreAll();
       });
     }
@@ -254,11 +266,9 @@ function mutate(sites) {
     await t('§2.2 a restored site leaves its SIBLINGS green — the three cells are independent', async () => {
       mutate([SITES[0]]);
       const bride = await driveBride();
-      const vendor = await driveVendor();
-      const couple = await driveCouple();
+      const couple = await driveCouple();   // 'agent' retired at M5 with its function
       assert.strictEqual(bride.model, SONNET, 'the mutated site must route Sonnet');
-      assertHaikuOnComplex(vendor, 'agent');
-      assertHaikuOnComplex(couple, 'couple-agent');
+      assertHaikuOnTheWire(couple, 'couple-agent');
       restoreAll();
     });
 

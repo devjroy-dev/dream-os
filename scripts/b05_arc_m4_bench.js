@@ -108,11 +108,27 @@ t('§3.2 *** the fix is fenced against its own failure mode ***', () => {
 H('§4 — *** THE WALL WAS SHUT EVERYWHERE ELSE ***');
 
 t('§4.1 exactly the enumerated set changed — no fourth soul byte rode in', () => {
+  // ══ LABELED AMENDMENT — ARC M5 (CE ruling R-M5-5). COUNT PRESERVED. ══
+  // THE DEFECT, chair-caught, mine: this cell read `git diff --name-only HEAD` — the
+  // WORKING TREE — so at any clean checkout after the push it compares [] against the
+  // expected three and is RED FOREVER. The content was innocent; the REFERENT was
+  // wrong. It is the fourth instance of the class this same movement fixed three
+  // times, shipped inside the fix.
+  // RE-AIMED with BOTH halves named, because pinning the base alone would break again
+  // the moment M5's and M6's files entered the diff: the base is pinned to M4's own
+  // base hash AND the pathspec is scoped to the guarded soul/prompt set. The cell now
+  // asserts, permanently: SINCE M4's BASE, THE ONLY SOUL BYTES THAT CHANGED ARE THE
+  // TWO THE FOUNDER APPROVED. Any later movement touching a soul file fires it —
+  // which is the guard finally doing its actual job instead of its apparent one.
+  // (loop.ts leaves the assertion as the pathspec narrows to soul/prompt files; its
+  // comment death is asserted on its own at §5.1, where it belongs.)
   const { execSync } = require('child_process');
-  const changed = execSync('git diff --name-only HEAD', { cwd: ROOT }).toString()
-    .split('\n').map(s => s.trim()).filter(Boolean).filter(f => !f.startsWith('scripts/') && !f.startsWith('docs/'));
-  assert.deepStrictEqual(changed.sort(),
-    ['src/agent/brideTools.js', 'src/agent/miraSoul.js', 'src/engine/src/core/loop.ts'],
+  const GUARDED = ['src/agent/miraSoul.js', 'src/agent/brideSystemPrompt.js',
+                   'src/agent/circleSystemPrompt.js', 'src/agent/coupleSystemPrompt.js',
+                   'src/agent/brideTools.js', 'src/agent/brideOnboarding.js'];
+  const changed = execSync(`git diff --name-only 6acafd2 -- ${GUARDED.join(' ')}`, { cwd: ROOT })
+    .toString().split('\n').map(x => x.trim()).filter(Boolean);
+  assert.deepStrictEqual(changed.sort(), ['src/agent/brideTools.js', 'src/agent/miraSoul.js'],
     `the wall opened wider than the veto: ${changed.join(', ')}`);
 });
 

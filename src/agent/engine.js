@@ -10,7 +10,6 @@ const { buildInvoiceMessage }     = require('../lib/invoiceMessage');
 const { waNumberFor }             = require('../lib/waNumbers');   // F5 rider
 const { generateInvoicePdf }     = require('../lib/invoicePdf');
 const { formatRs }               = require('../lib/format');
-const { classifyMessage, classifyVendorMessage } = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { resolveOrCreateClient } = require('../lib/clients');
 const { sendWhatsApp }          = require('../lib/whatsapp');
@@ -34,340 +33,16 @@ const HISTORY_LIMIT  = 5;
 // WhatsApp vendor session boundary: vendor's pace, short bursts. 10 minutes.
 const VENDOR_SESSION_IDLE_MS = 10 * 60 * 1000;
 
-// ── Vendor agentic turn ───────────────────────────────────────────
-// `channel` defaults to 'whatsapp' so existing callers (src/index.js WhatsApp
-// handler) don't need to pass it. The PWA chat endpoint passes 'web', which
-// suppresses cross-surface side effects (e.g. the holding-pattern WhatsApp
-// notification inside record_payment). Surface that initiated the action
-// owns the confirmation — no cross-channel notifications.
-async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supabase, anthropic, channel = 'whatsapp' }) {
-
-  // ── Onboarding routing ──────────────────────────────────────────
-  if (vendor.onboarding_state && vendor.onboarding_state !== 'complete') {
-    return await handleOnboarding({ vendor, user, conversation, inboundMessage, supabase, anthropic });
-  }
-
-  // ── Load working memory ─────────────────────────────────────────
-  // ── IST today (used by snapshot fetches below) ─────────────────
-  const istOffsetMs = 5.5 * 60 * 60 * 1000;
-  const istNow      = new Date(Date.now() + istOffsetMs);
-  const istToday    = istNow.toISOString().split('T')[0];
-  const ist14days   = new Date(istNow.getTime() + 30 * 86400000).toISOString().split('T')[0];
-
-  // ── Baked snapshot — shared builder (Phase 1.5) ─────────────────
-  // Same definition the PWA Business Manager uses, so both surfaces read
-  // identical numbers. Followed by cross-surface recent activity.
-  const {
-    state,
-    recentNotes,
-    openLeadsCount,
-    upcomingEvents,
-    pendingInvoices,
-    pendingEnquiries,
-  } = await buildVendorSnapshot(supabase, vendor.id, istToday, ist14days);
-
-  // Cross-surface activity — what happened on the app recently, so the PA
-  // knows what the Business Manager just did.
-  const recentActivity = await fetchRecentActivity(supabase, vendor.id);
-  const waActivityBlock = formatActivityBlock(recentActivity, 'whatsapp');
-
-  // ── Load conversation history (session-bounded) ───────────────────
-  // Older messages belong to a prior session — start fresh.
-  const sessionCutoff = new Date(Date.now() - VENDOR_SESSION_IDLE_MS).toISOString();
-
-  const { data: recentMessages } = await supabase
-    .from('messages')
-    .select('direction, body, sent_by, created_at')
-    .eq('conversation_id', conversation.id)
-    .gte('created_at', sessionCutoff)
-    .order('created_at', { ascending: false })
-    .limit(HISTORY_LIMIT + 1);
-
-  const history = (recentMessages || [])
-    .reverse()
-    .filter(m => m.body !== inboundMessage || m.direction !== 'inbound')
-    .filter(m => m.body && m.body.trim().length > 0)
-    .filter(m => m.sent_by !== 'system')   // system notifications are not real turns; live in PENDING ALERTS instead
-    .slice(-HISTORY_LIMIT)
-    .map(m => ({
-      role: m.direction === 'inbound' ? 'user' : 'assistant',
-      content: m.body || '',
-    }))
-    .reduce((acc, msg) => {
-      if (acc.length === 0) return [msg];
-      if (acc[acc.length - 1].role === msg.role) return acc;
-      return [...acc, msg];
-    }, []);
-
-  // ── Pending lead pings (recently active leads for pronoun resolution) ──
-  // Reads pings from the last 10 minutes that haven't been acknowledged.
-  // These are NOT history rows — they're working memory injected into the
-  // dynamic context so pronouns ("tell her") resolve to the right lead
-  // even when history truncation pushes older context out.
-  const PING_WINDOW_MS = 10 * 60 * 1000;
-  const pingCutoff = new Date(Date.now() - PING_WINDOW_MS).toISOString();
-  const { data: activePings } = await supabase
-    .from('pending_lead_pings')
-    .select('id, lead_id, lead_name, bride_message, intent_summary, source, created_at')
-    .eq('vendor_id', vendor.id)
-    .is('acknowledged_at', null)
-    .gte('created_at', pingCutoff)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  // ── Active calendar-image proposals (Patch 8) ──────────────────────
-  // 30-minute window — vendor confirms screenshot OCR via next message.
-  const PROPOSAL_WINDOW_MS = 30 * 60 * 1000;
-  const proposalCutoff = new Date(Date.now() - PROPOSAL_WINDOW_MS).toISOString();
-  const { data: activeProposals } = await supabase
-    .from('pending_event_proposals')
-    .select('id, proposals, caption, created_at')
-    .eq('vendor_id', vendor.id)
-    .is('resolved_at', null)
-    .gte('created_at', proposalCutoff)
-    .order('created_at', { ascending: false })
-    .limit(3);
-
-  // ── Build system prompt ─────────────────────────────────────────
-  let dynamicContext = buildDynamicContext({
-    vendor,
-    user,
-    state,
-    recentNotes:           recentNotes      || [],
-    openLeadsCount:        openLeadsCount   || 0,
-    upcomingEvents:        upcomingEvents   || [],
-    pendingInvoices:       pendingInvoices  || [],
-    pendingEnquiries:      pendingEnquiries || [],
-    pendingPings:          activePings      || [],
-    pendingEventProposals: activeProposals  || [],
-    istToday,
-  });
-  // Cross-surface activity block (Phase 1.5) — prepend so the PA opens with
-  // awareness of what the Business Manager just did on the app.
-  if (waActivityBlock) dynamicContext = `${waActivityBlock}\n\n${dynamicContext}`;
-
-  const messages = [
-    ...history,
-    { role: 'user', content: inboundMessage },
-  ];
-
-  // ── Classify complexity + ambiguity (Phase 1.4) ─────────────────
-  // ONE Haiku call returns both verdicts. Pass last 2 history turns so the
-  // classifier has context ("same Priya", a reply to a prior clarify, etc.).
-  const classifierHistory = history.slice(-2);
-  const { complexity, ambiguity } = await classifyVendorMessage(inboundMessage, classifierHistory, anthropic);
-  // F-05.32 + E-3: the agent lane's ceiling is Haiku; the classifier's verdict no longer escalates.
-  const modelToUse  = MODEL_HAIKU;
-  console.log(`[agent] model selected: ${modelToUse} (${complexity}/${ambiguity})`);
-
-  // ── Ambiguity gate (Phase 1.4) ──────────────────────────────────
-  // Structural guarantee for the AMBIGUOUS OR FORWARDED CONTENT rule: if the
-  // inbound is a bare forward / name+number / contextless fragment, do NOT run
-  // the main agent (which could silently auto-create the wrong thing). Ask one
-  // clarifying question and end the turn. The vendor's framed reply ("lead" /
-  // "note" / "ignore") flows through normally next turn — by then the message
-  // has context, so the classifier returns 'clear' and the agent proceeds.
-  //
-  // Skipped when there's recent session history (the message is likely a reply
-  // to something already in flight, not a cold contextless drop) — we only gate
-  // genuinely cold ambiguous inbounds.
-  //
-  // EXCEPTION (Phase 3): if there's an active bride ping, "her"/"she"/"tell her
-  // X" has an obvious referent — the bride who just messaged. Gating here would
-  // wrongly intercept a send_to_couple instruction ("tell her not available")
-  // and silently drop it. So when a ping is active, never gate — let the agent
-  // run, see the PENDING ALERT, and act (resolve the lead, send the reply).
-  const hasActivePing = Array.isArray(activePings) && activePings.length > 0;
-  if (ambiguity === 'ambiguous' && history.length === 0 && !hasActivePing) {
-    const gateReply = 'Is this a lead to log, a note to save, or something else?';
-    console.log(`[agent] ambiguity gate fired — asking instead of auto-acting | "${inboundMessage.slice(0, 60)}"`);
-    return {
-      reply:        gateReply,
-      toolCalls:    [],
-      attachments:  [],
-      iterations:   0,
-      model:        MODEL_HAIKU,
-      inputTokens:  0,
-      outputTokens: 0,
-      costUsd:      null,
-      costInr:      null,
-    };
-  }
-
-  // ── Agentic loop ────────────────────────────────────────────────
-  let iterations     = 0;
-  let finalReply     = null;
-  let isClarify      = false;   // Phase 1.2 — true when finalReply is a clarify question (skip the ?-strip)
-  let totalInputTok  = 0;
-  let totalOutputTok = 0;
-  const toolCallsAudit = [];
-  // attachments collector — tools that produce files (currently just
-  // record_payment's PDF) push their URLs here. runAgenticTurn returns this
-  // array; src/index.js then forwards them as Twilio mediaUrls so the vendor
-  // receives the PDF attached to the WhatsApp message instead of as a long
-  // signed-URL embedded in the message body.
-  const attachments    = [];
-
-  while (iterations < MAX_ITERATIONS) {
-    iterations++;
-
-    const response = await anthropic.messages.create({
-      model: modelToUse,
-      max_tokens: 1024,
-      system: [
-        {
-          type: 'text',
-          text: STATIC_SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },  // 1-hour cache — saves ~6,600 tokens per call
-        },
-        {
-          type: 'text',
-          text: dynamicContext,                   // vendor-specific — never cached
-        },
-      ],
-      tools: TOOLS,
-      messages,
-    });
-
-    // Accumulate token usage across all iterations
-    totalInputTok  += response.usage?.input_tokens  || 0;
-    totalOutputTok += response.usage?.output_tokens || 0;
-
-    console.log(`[agent] iteration ${iterations}, stop_reason: ${response.stop_reason}`);
-
-    const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
-
-    if (toolUseBlocks.length === 0) {
-      if (!finalReply) {
-        const textBlocks = response.content.filter(b => b.type === 'text');
-        finalReply = textBlocks.map(b => b.text).join('\n').trim() || 'Got it.';
-      }
-      break;
-    }
-
-    const toolResults = [];
-    for (const toolUse of toolUseBlocks) {
-      const result = await executeTool({
-        name: toolUse.name,
-        input: toolUse.input,
-        vendor,
-        conversation,
-        supabase,
-        channel,
-        attachments,
-      });
-
-      toolCallsAudit.push({ name: toolUse.name, input: toolUse.input, result });
-
-      // Cross-surface activity log (Phase 1.5) — record successful mutations
-      // so the PWA Business Manager knows what the PA just did. Name-based
-      // allowlist (the WhatsApp executor returns plain strings, no mutated
-      // flag). Skip when the result string signals an error. Fire-and-forget.
-      if (WA_MUTATING_TOOLS.has(toolUse.name)) {
-        const resStr = typeof result === 'string' ? result : JSON.stringify(result);
-        const looksLikeError = /^error|error:|failed|not found|already (exists|lost)/i.test(resStr);
-        if (!looksLikeError) {
-          logActivity(supabase, {
-            vendorId:   vendor.id,
-            surface:    'whatsapp',
-            action:     toolUse.name,
-            summary:    resStr.slice(0, 280),
-            entityType: null,
-            entityId:   null,
-          });
-        }
-      }
-
-      if (toolUse.name === 'respond_to_vendor') {
-        finalReply = toolUse.input.message;
-      }
-
-      // ── clarify (Phase 1.2) ──────────────────────────────────────
-      // WhatsApp has no tappable chips, so a clarification becomes the
-      // text reply itself: the question followed by a numbered list of
-      // options. Setting finalReply here ends the turn — the vendor
-      // answers in their next message. isClarify guards this reply from
-      // the first-question-mark strip below (which would otherwise chop
-      // off the numbered options after the "?").
-      if (toolUse.name === 'clarify') {
-        const q    = (toolUse.input.question || '').trim();
-        const opts = Array.isArray(toolUse.input.options) ? toolUse.input.options : [];
-        const numbered = opts.map((o, i) => `${i + 1}. ${o}`).join('\n');
-        finalReply = numbered ? `${q}\n${numbered}` : q;
-        isClarify  = true;
-      }
-
-      toolResults.push({
-        type: 'tool_result',
-        tool_use_id: toolUse.id,
-        content: typeof result === 'string' ? result : JSON.stringify(result),
-      });
-    }
-
-    messages.push({ role: 'assistant', content: response.content });
-    messages.push({ role: 'user', content: toolResults });
-
-    if (finalReply !== null) break;
-  }
-
-  // ── Refresh recent_notes cache ──────────────────────────────────
-  const { data: latestNotes } = await supabase
-    .from('notes')
-    .select('content, tags, created_at')
-    .eq('vendor_id', vendor.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  await supabase.from('vendor_state').upsert({
-    vendor_id: vendor.id,
-    recent_notes: latestNotes || [],
-    updated_at: new Date().toISOString(),
-  });
-
-  // Strip any commentary after the first sentence-ending question mark.
-  // A sentence-ending "?" is followed by a space, newline, or end-of-string.
-  // A URL query separator "?" is followed by alphanumeric characters — we do NOT strip those.
-  // EXCEPTION (Phase 1.2): a clarify reply is "Question?\n1. ...\n2. ..." — stripping
-  // at the first "?" would delete the numbered options. Skip the strip for clarify.
-  if (finalReply && !isClarify) {
-    const sentenceEndQ = /\?(?=\s|$)/;
-    const match = sentenceEndQ.exec(finalReply);
-    if (match) {
-      finalReply = finalReply.slice(0, match.index + 1).trim();
-    }
-  }
-
-  // ── Honest fallback (Phase 1.1) ────────────────────────────────
-  // Two distinct cases were previously collapsed into 'Got it.':
-  //   (a) The loop ended cleanly but the model produced no text (finalReply
-  //       was set to '' / 'Got it.' at the no-tool-use break). Harmless.
-  //   (b) The loop hit MAX_ITERATIONS still wanting to call tools and NEVER
-  //       set finalReply (still null here). In that case 'Got it.' is a LIE —
-  //       it confirms success when the work may not have completed.
-  // We only reach this return with finalReply === null in case (b). Replace
-  // the false confirmation with honest uncertainty so the vendor retries
-  // instead of trusting a phantom success.
-  if (finalReply === null) {
-    console.warn(`[agent] hit MAX_ITERATIONS (${iterations}) without a final reply — sending honest fallback`);
-    finalReply = "Something slowed down on my end and I'm not sure that went through. Send that again?";
-  }
-
-  // ── Calculate and return cost data ────────────────────────────
-  const cost = calculateCost(modelToUse, totalInputTok, totalOutputTok);
-  console.log(`[agent] tokens: ${totalInputTok} in / ${totalOutputTok} out | cost: $${cost?.cost_usd ?? '?'} / Rs ${cost?.cost_inr ?? '?'}`);
-
-  return {
-    reply:        finalReply,
-    toolCalls:    toolCallsAudit,
-    attachments,
-    iterations,
-    model:        modelToUse,
-    inputTokens:  totalInputTok,
-    outputTokens: totalOutputTok,
-    costUsd:      cost?.cost_usd  ?? null,
-    costInr:      cost?.cost_inr  ?? null,
-  };
-}
+// ── Vendor agentic turn — DELETED AT ARC M5 (C6 / F-05.44, CE ruling R-M5-3) ──
+// `runAgenticTurn` lived here, 43-374, with ZERO callers anywhere in src/**. The
+// live vendor wire is the TS engine (vendorInbound.js -> runTurn), so this JS twin
+// had been unreachable since before E-1. The census closed one level deeper than the
+// charter knew: the ambiguity ask-gate the charter protected BY NAME lived INSIDE
+// this function, and so did the only call site of classifyVendorMessage — "a real
+// consumer" was true in the code sense and false in the reachability sense.
+// classifier.js SURVIVES INTACT as a defused island (R-M5-3): the ambiguity logic is
+// the only home that logic has anywhere, and a JS-wire revival is imaginable. Whoever
+// revives this function will find its classifier waiting, uncalled and whole.
 
 // ── Couple agentic turn ───────────────────────────────────────────
 // Runs on couple_thread conversations.
@@ -483,12 +158,12 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     },
   ];
 
-  // ── Classify complexity → pick model ─────────────────────────────
-  const classifierHistory = history.slice(-2);
-  const complexity  = await classifyMessage(inboundMessage, classifierHistory, anthropic);
-  // F-05.32 + E-3: the agent lane's ceiling is Haiku; the classifier's verdict no longer escalates.
+  // ── Model: the Haiku ceiling ──────────────────────────────────────
+  // F-05.32 + E-3: this lane's ceiling is Haiku. The classifier call that stood here
+  // fed NOTHING but the log token below (M5 / C6) — a paid Haiku round-trip per turn
+  // buying one word of console output. Deleted; the turn is untouched.
   const modelToUse  = MODEL_HAIKU;
-  console.log(`[couple-agent] model selected: ${modelToUse} (${complexity})`);
+  console.log(`[couple-agent] model selected: ${modelToUse}`);
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -1827,4 +1502,4 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
   }
 }
 
-module.exports = { runAgenticTurn, runCoupleAgenticTurn };
+module.exports = { runCoupleAgenticTurn };

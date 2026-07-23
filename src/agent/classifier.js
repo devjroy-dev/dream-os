@@ -1,3 +1,14 @@
+// ══ DEFUSED ISLAND — ZERO CALLERS SINCE ARC M5 (CE ruling R-M5-3, 2026-07-24) ══
+// Nothing in src/** calls either export. The three call sites that existed were all
+// deleted by M5's census: engine.js:158 (inside runAgenticTurn, itself orphaned),
+// engine.js:488 and brideEngine.js:203 (both zero-consumer — their verdicts fed only
+// a log token). This file is KEPT WHOLE and deliberately: the ambiguity limb below is
+// the only home that logic has anywhere in the estate, and a revival of the JS vendor
+// wire is imaginable. CE-66's dead-code-defusal precedent governs — the same reasoning
+// that kept the :159 Sonnet flip readable for whoever comes next.
+// REVIVAL POINTER: classifyVendorMessage's ambiguity half fed an ask-gate that refused
+// to auto-act on a cold, contextless inbound. If the JS vendor turn is ever rebuilt,
+// that gate is the thing to rebuild with it.
 // ─────────────────────────────────────────────────────────────────────────────
 // src/agent/classifier.js
 // Lightweight task classifier. Runs before the main agent call on the

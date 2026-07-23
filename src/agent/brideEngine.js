@@ -33,7 +33,6 @@ const { STATIC_SYSTEM_PROMPT, buildDynamicContext } = require('./brideSystemProm
 const { MIRA_REGISTER } = require('./miraSoul');
 const { nextBrideOnboardingMessage } = require('./brideOnboarding');
 const { BRIDE_TOOLS } = require('./brideTools');
-const { classifyMessage } = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { groundedSearch } = require('../lib/groundedSearch');
 const { appendWitness } = require('../lib/witnessLine');   // ARC M1 / C2 — one home, both seams
@@ -198,12 +197,12 @@ async function runBrideAgenticTurn({
     inboundMessage,
   ].join('\n');
 
-  // ── Classify complexity → pick model ─────────────────────────────
-  const classifierHistory = history.slice(-2);
-  const complexity = await classifyMessage(inboundMessage, classifierHistory, anthropic);
-  // F-05.32 + E-3: the agent lane's ceiling is Haiku; the classifier's verdict no longer escalates.
+  // ── Model: the Haiku ceiling ──────────────────────────────────────
+  // F-05.32 + E-3: this lane's ceiling is Haiku. The classifier call that stood here
+  // fed NOTHING but the log token below (M5 / C6) — a paid Haiku round-trip per turn
+  // buying one word of console output. Deleted; the turn is untouched.
   const modelToUse = MODEL_HAIKU;
-  console.log(`[bride-agent] model selected: ${modelToUse} (${complexity})`);
+  console.log(`[bride-agent] model selected: ${modelToUse}`);
 
   // ── Agentic loop ──────────────────────────────────────────────────
   let iterations     = 0;
