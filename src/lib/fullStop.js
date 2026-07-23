@@ -78,4 +78,22 @@ async function recordFullStart({ supabase, phone }) {
   return { changed: true, prospect: updated };
 }
 
-module.exports = { matchFullStopWord, recordFullStop, recordFullStart };
+// ── THE ACKNOWLEDGMENT BYPASS — ONE HOME, F-05.27 ───────────────────────────
+// Every opt-out/resume acknowledgment on every lane must go out THROUGH the gate
+// it may have just closed. The estate settled this on the marketing lane first
+// (prospects.js:132-134, "a single deliberate, documented bypass for the opt-out
+// acknowledgement only"); F-05.27 is what happened when the bride and vendor
+// nudge branches shipped without it: STOP MORNINGS from an already-fully-stopped
+// number wrote correctly and then answered with SILENCE. Witnessed live at
+// 10:03:21 on 2026-07-23 — "BLOCKED opted_out ... (F-05.2 cross-line gate)".
+//
+// WHY THIS IS NOT A HOLE IN THE FULL STOP: the full stop governs BUSINESS-
+// INITIATED messaging. An acknowledgment is a reply to a message the human sent
+// seconds ago and is asking to be answered. Refusing it does not honour the opt-
+// out; it just makes the product look broken to someone who is still using it.
+//
+// ONE CONSTANT so no future branch can forget it and no two branches can drift.
+// The bench asserts every getNudgeCopy send on both cores carries it (§9.11).
+const ACK_BYPASS = { isOptedOut: async () => false };
+
+module.exports = { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS };

@@ -627,6 +627,53 @@ t('§9.10 the resume line no longer wears a provisional flag (founder ratified a
   assert.ok(/RATIFIED AS SHIPPED/.test(block));
 });
 
+t('§9.11 *** EVERY ACKNOWLEDGMENT CARRIES THE BYPASS *** (F-05.27, found by the smoke)', () => {
+  // THE DEFECT THIS CELL EXISTS FOR: the nudge branch shipped its two acks WITHOUT
+  // the bypass, so a number already fully opted out wrote its pause correctly and
+  // then answered with SILENCE — the gate blocking a reply to a message the human
+  // sent seconds earlier. Live at 10:03:21 on 2026-07-23:
+  //   "[whatsapp:out->meta] BLOCKED opted_out to=... line=bride (F-05.2 gate)"
+  // Asserted STRUCTURALLY over EVERY ack site, not over the four that exist today,
+  // so a branch added later cannot quietly reintroduce it.
+  for (const f of ['src/lib/brideInbound.js', 'src/lib/vendorInbound.js']) {
+    const code = fs.readFileSync(path.join(ROOT, f), 'utf8')
+      .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    const sends = code.split('\n').filter(l => /sendWhatsApp\(phone, getNudgeCopy\(/.test(l));
+    assert.ok(sends.length >= 4, `${f}: expected every ack site, found ${sends.length}`);
+    for (const line of sends)
+      assert.ok(/ACK_BYPASS/.test(line),
+        `${f}: an acknowledgment without the bypass — it will be swallowed for an opted-out number:\n        ${line.trim()}`);
+  }
+});
+
+t('§9.12 the bypass has ONE home and is not re-declared inline anywhere', () => {
+  const fsCode = fs.readFileSync(path.join(ROOT, 'src/lib/fullStop.js'), 'utf8');
+  assert.ok(/const ACK_BYPASS = \{ isOptedOut: async \(\) => false \};/.test(fsCode),
+    'fullStop.js must own the constant');
+  for (const f of ['src/lib/brideInbound.js', 'src/lib/vendorInbound.js']) {
+    const code = fs.readFileSync(path.join(ROOT, f), 'utf8')
+      .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/isOptedOut: async \(\) => false/.test(code),
+      `${f} re-declares the bypass inline — one home, or the next edit drifts`);
+    assert.ok(/ACK_BYPASS.*require\('\.\/fullStop'\)|require\('\.\/fullStop'\).*ACK_BYPASS/.test(code),
+      `${f} must import the constant`);
+  }
+});
+
+t('§9.13 the ratified full-stop line no longer wears a provisional flag', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/lib/nudgeCopy.js'), 'utf8');
+  const i = src.indexOf('full_stop_confirmation:');
+  const block = src.slice(Math.max(0, i - 1500), i);
+  assert.ok(/RATIFIED/.test(block), 'the founder ratified it by name');
+  assert.ok(!/NOT YET FOUNDER-RATIFIED|AWAITING VETO/.test(block),
+    'a ratified line wearing a provisional flag is the stale-comment class');
+});
+
+t('§9.14 F-05.26 — the dead app/ copy is GONE from dream-os', () => {
+  assert.ok(!fs.existsSync(path.join(ROOT, 'app')),
+    'the 264K stale duplicate of the pwa\'s live page must not survive: a second home for the same facts goes stale silently');
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);
 if (fail === 0) {

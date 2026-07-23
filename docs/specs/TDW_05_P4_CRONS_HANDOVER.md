@@ -213,3 +213,61 @@ declaration. Corrected; the twin regions are now byte-identical modulo the lane 
 nothing. It is the estate's own named hazard — *a second home for the same facts is a home that goes
 stale silently* (`format_public_schema.js` header). It made F-05.24 look like a dream-os finding when
 the live site was always the pwa's. Deletion is the obvious cure and is **not** taken unruled.
+
+---
+
+# SECOND MICRO — F-05.27 + F-05.26 (founder-ruled, 2026-07-23)
+
+**Base:** `072b948` · **Bench:** `b05_p4_crons_bench` **48/48** · **both-ways 27/27** across three
+harnesses · floor twelve-for-twelve · `tsc` clean.
+
+## F-05.27 — every acknowledgment now carries the bypass
+
+**Found by the smoke, in the micro's own witness.** At `10:03:21` on 2026-07-23:
+
+```
+[whatsapp:out->meta] BLOCKED opted_out to=919625759924 line=bride (F-05.2 cross-line gate)
+[bride-webhook] nudge-class OPT-OUT recorded for +919625759924 (lane=bride)
+```
+
+The write landed; the acknowledgment was swallowed. A number already fully opted out could pause its
+morning messages correctly and receive **silence**.
+
+The asymmetry was exact and mine: `prospects.js:132-138` carries the bypass with its reasoning
+written out, the full-stop branch carried it, and the four nudge-branch acknowledgments — shipped at
+`6c3e71e` — did not. It survived a 44-cell bench and twenty mutations because no test sequenced a
+full STOP *before* a STOP MORNINGS. The founder's smoke did.
+
+**Cure:** `ACK_BYPASS` gets ONE home in `fullStop.js` and is applied at all **eight** acknowledgment
+sites across both cores. `full_start_confirmation` is included even though it already worked —
+it was correct only *by ordering* (`recordFullStart` flips to `'replied'` before the send), and
+correct-by-accident is one reorder away from broken.
+
+**Why this is not a hole in the full stop:** the full stop governs *business-initiated* messaging.
+An acknowledgment answers a message the human sent seconds ago. Refusing it does not honour the
+opt-out; it makes the product look broken to someone still using it. The estate settled this on the
+marketing lane first; F-05.27 is what happened when two lanes shipped without the settlement.
+
+**§9.11 asserts it STRUCTURALLY** — over every `getNudgeCopy` send found on either core, not over
+the eight that exist today — so a branch added later cannot quietly reintroduce it.
+
+## F-05.26 — the dead copy removed
+
+`dream-os/app/**` deleted: exactly **one file**, 264K, landed in a single commit (`acf0114`, a
+TypeScript strict-build fix) and never touched again. **Zero requires, zero config references, no
+build path** — `dream-os` has no `next.config` and builds only the engine. The live twin is the
+pwa's, 659 lines diverged. It made F-05.24 read as a dream-os finding when the served page was
+always elsewhere. `tsc` clean after removal; §9.14 asserts it stays gone.
+
+`dream-os` now has **zero** runtime occurrences of the dead sandbox literal anywhere in the repo —
+only the taught-anti-pattern comments.
+
+## Copy
+
+`full_stop_confirmation` — **RATIFIED by name** (founder, after two live handset witnesses). Marker
+struck.
+
+`full_start_confirmation` — **HELD, NARROWLY.** It was proposed alongside the stop line and witnessed
+on the same handset, but was not named in the ratification. The marker is held rather than assumed
+struck: reading a founder's veto as broader than its own words is how copy ships that nobody
+approved. One word closes it.

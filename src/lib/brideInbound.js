@@ -31,7 +31,7 @@
 'use strict';
 
 const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
-const { matchFullStopWord, recordFullStop, recordFullStart } = require('./fullStop'); // F-05.25
+const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
 
 async function processBrideInbound(inputs, deps) {
@@ -63,11 +63,11 @@ async function processBrideInbound(inputs, deps) {
       try {
         if (nudgeWord === 'stop') {
           await setNudgeOptout({ supabase, phone, lane, state: 'opted_out' });
-          await sendWhatsApp(phone, getNudgeCopy('opt_out_confirmation'));
+          await sendWhatsApp(phone, getNudgeCopy('opt_out_confirmation'), [], undefined, ACK_BYPASS);
           console.log(`[bride-webhook] nudge-class OPT-OUT recorded for ${phone} (lane=${lane})`);
         } else {
           await setNudgeOptout({ supabase, phone, lane, state: 'resumed', source: 'inbound_stop_mornings' });
-          await sendWhatsApp(phone, getNudgeCopy('resume_confirmation'));
+          await sendWhatsApp(phone, getNudgeCopy('resume_confirmation'), [], undefined, ACK_BYPASS);
           console.log(`[bride-webhook] nudge-class RESUME recorded for ${phone} (lane=${lane})`);
         }
       } catch (nudgeErr) {
@@ -95,12 +95,12 @@ async function processBrideInbound(inputs, deps) {
       try {
         if (fullStopWord === 'stop') {
           await recordFullStop({ supabase, phone });
-          await sendWhatsApp(phone, getNudgeCopy('full_stop_confirmation'), [], undefined, { isOptedOut: async () => false });
+          await sendWhatsApp(phone, getNudgeCopy('full_stop_confirmation'), [], undefined, ACK_BYPASS);
           console.log(`[bride-webhook] FULL STOP recorded for ${phone} (lane=bride)`);
         } else {
           const r = await recordFullStart({ supabase, phone });
           if (r.changed) {
-            await sendWhatsApp(phone, getNudgeCopy('full_start_confirmation'));
+            await sendWhatsApp(phone, getNudgeCopy('full_start_confirmation'), [], undefined, ACK_BYPASS);
             console.log(`[bride-webhook] FULL START recorded for ${phone} (lane=bride)`);
             return;
           }

@@ -38,9 +38,10 @@ const NUDGE_COPY = {
   resume_confirmation:
     "Morning messages are back on — you'll get the next one tomorrow. Reply STOP MORNINGS any time to pause them again.",
 
-  // ── F-05.25 · THE BARE-STOP ACKNOWLEDGMENT · PROPOSED, AWAITING VETO ──────
-  // ⚠ NOT YET FOUNDER-RATIFIED. Proposed with the closing micro per the relay's
-  // instruction; the founder's word closes it before the micro completes.
+  // ── F-05.25 · THE BARE-STOP ACKNOWLEDGMENT · RATIFIED (founder, 2026-07-23) ─
+  // Ratified BY NAME after being witnessed twice on a live handset in the closing
+  // micro's smoke. The provisional marker was struck in the second micro; a
+  // ratified line wearing a provisional flag is the stale-comment class.
   //
   // TERMINAL REGISTER, and that is the ruled point. What a bride or vendor gets
   // TODAY for typing STOP is a chatty agent turn — "Got it. What's up?" — which
@@ -60,9 +61,12 @@ const NUDGE_COPY = {
   full_stop_confirmation:
     "You're opted out — I won't message you again, about anything. If you only wanted to pause the daily updates, reply START and then STOP MORNINGS instead.",
 
-  // The resume acknowledgment for a full STOP. Same PROPOSED status: it is the
-  // other half of one exchange, and vetoing a stop line without its start line
-  // would leave the same trap the founder named for nudges.
+  // The resume acknowledgment for a full STOP.
+  // ⚠ HELD, NARROWLY. The founder ratified "full stop confirmation" BY NAME; this
+  // sibling was proposed alongside it and witnessed on the same handset, but was
+  // not named in the ratification. It is live and it works — the marker is held
+  // rather than assumed struck, because reading a founder's veto as broader than
+  // its own words is how copy ships that nobody approved. One word closes it.
   full_start_confirmation:
     "You're back on — I'll message you again when there's something worth saying.",
 };
