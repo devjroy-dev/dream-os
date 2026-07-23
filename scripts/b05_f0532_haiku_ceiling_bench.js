@@ -218,13 +218,13 @@ function mutate(sites) {
 (async () => {
   try {
     // ═══ §1 — THE CURE, BEHAVIOURALLY, ON A REAL COMPLEX VERDICT ═══
-    section('§1 — the Haiku ceiling holds on a REAL complex verdict (real functions, real classifier)');
+    section('§1 — the Haiku ceiling holds on the REAL functions on the wire (M5: the verdict is gone; the ceiling is structural)');
 
-    await t('§1.1 bride wire (brideEngine:172) — the convicted lane: complex verdict, Haiku on the wire', async () => {
+    await t('§1.1 bride wire — the convicted lane: Haiku on the wire', async () => {
       assertHaikuOnTheWire(await driveBride(), 'bride-agent');
     });
     // §1.2 RETIRED BY NAME AT M5 with runAgenticTurn, the wire it drove.
-    await t('§1.3 couple wire (engine:488): complex verdict, Haiku on the wire', async () => {
+    await t('§1.3 couple wire: Haiku on the wire', async () => {
       assertHaikuOnTheWire(await driveCouple(), 'couple-agent');
     });
     await t('§1.4 THE CEILING IS STRUCTURAL NOW — no verdict, no branch (RE-BASELINED AT M5)', async () => {
@@ -311,7 +311,7 @@ function mutate(sites) {
 
   console.log(`\nb05_f0532_haiku_ceiling_bench: ${pass} passed, ${fail} failed`);
   if (fail === 0) {
-    console.log('GREEN — the agent lane\'s ceiling is Haiku on a REAL complex verdict, all three wires;');
+    console.log('GREEN — the agent lane\'s ceiling is Haiku on the real wires (two survive M5);');
     console.log('        non-vacuous by production mutation; the classifier survives whole.');
     console.log('        SCOPE: the agent lane only. distill.ts:112 is F-06.16, homed to Block 06.');
   }

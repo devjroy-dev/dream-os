@@ -13,8 +13,14 @@
 const PROSPECT_COPY = {
   // TDW_05 §P3 verbatim. Provisional — founder veto pass may reshape; 06 replaces the whole
   // in-session answer with the Closer's soul at the same seam, no transport change.
+  // ── SOFTENED ON THE FOUNDER'S RULING (ARC M6, veto closed 2026-07-24) ──
+  // CE-66's marketing observation: this line promised "I'll come back to you
+  // properly" with NOTHING BUILT TO COME BACK — F-05.22's promise-with-no-machinery
+  // class, fourth instance. The founder ruled soften-now; the follow-up machinery is
+  // chartered at the first live campaign and is NOT built here. The replacement bytes
+  // are HIS, pasted verbatim — nothing minted at this seam.
   holding_line:
-    "Good to hear from you — give me a moment and I'll come back to you properly.",
+    "Good to hear from you — thanks for reaching out! Tell me a bit about your business whenever you like.",
 
   // Opt-out confirmation. STOP means STOP, per number, across all lines (compliance-correct).
   opt_out_confirmation:

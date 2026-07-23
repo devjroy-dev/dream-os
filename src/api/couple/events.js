@@ -6,6 +6,7 @@
 
 'use strict';
 
+const { insertCoupleEvent, updateCoupleEvent, deleteCoupleEvent } = require('../../lib/coupleEventWrite'); // ARC M6 / C9(a)
 const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
@@ -61,19 +62,18 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
   ]);
   const resolvedKind = ALLOWED_KINDS.has(kind) ? kind : 'other';
 
-  const { data, error } = await supabase
-    .from('events')
-    .insert({
-      couple_id,
+  const { data, error } = await insertCoupleEvent(supabase, {
+    coupleId: couple_id,
+    row: {
       title: title.trim().slice(0, 200),
       event_date,
       event_time: event_time || null,
       kind: resolvedKind,
       notes: notes ? String(notes).trim().slice(0, 500) : null,
       state: 'upcoming',
-    })
-    .select('id, title, event_date, event_time, kind, state, notes, created_at')
-    .single();
+    },
+    select: 'id, title, event_date, event_time, kind, state, notes, created_at',
+  });
 
   if (error) {
     console.error('[POST /couple/events] insert error:', error.message);
@@ -134,13 +134,10 @@ router.patch('/:eventId', asyncHandler(async (req, res) => {
   }
   if (Object.keys(updates).length === 0) return errRes(res, 400, 'No fields to update.');
 
-  const { data, error } = await supabase
-    .from('events')
-    .update(updates)
-    .eq('id', eventId)
-    .eq('couple_id', couple_id)
-    .select('id, title, event_date, event_time, kind, state, notes')
-    .single();
+  const { data, error } = await updateCoupleEvent(supabase, {
+    coupleId: couple_id, eventId, updates,
+    select: 'id, title, event_date, event_time, kind, state, notes',
+  });
 
   if (error) {
     if (error.code === 'PGRST116') return errRes(res, 404, 'Event not found.');
@@ -158,13 +155,10 @@ router.patch('/:eventId/state', asyncHandler(async (req, res) => {
   const VALID = ['upcoming', 'done', 'cancelled'];
   if (!VALID.includes(state)) return errRes(res, 400, 'state must be upcoming, done, or cancelled.');
 
-  const { data, error } = await supabase
-    .from('events')
-    .update({ state })
-    .eq('id', req.params.eventId)
-    .eq('couple_id', couple_id)
-    .select('id, state')
-    .single();
+  const { data, error } = await updateCoupleEvent(supabase, {
+    coupleId: couple_id, eventId: req.params.eventId, updates: { state },
+    select: 'id, state',
+  });
 
   if (error) {
     if (error.code === 'PGRST116') return errRes(res, 404, 'Event not found.');
@@ -179,13 +173,10 @@ router.delete('/:eventId', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { couple_id } = req.coupleUser;
 
-  const { data, error } = await supabase
-    .from('events')
-    .delete()
-    .eq('id', req.params.eventId)
-    .eq('couple_id', couple_id)
-    .select('id')
-    .single();
+  const { data, error } = await deleteCoupleEvent(supabase, {
+    coupleId: couple_id, eventId: req.params.eventId,
+    select: 'id',
+  });
 
   if (error) {
     if (error.code === 'PGRST116') return errRes(res, 404, 'Event not found.');

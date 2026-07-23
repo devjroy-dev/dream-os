@@ -369,14 +369,25 @@ async function _processVendorInbound(inputs, deps) {
               thread = newThread;
             }
 
+        // ── F-05.51 CURED (ARC M6) · RF-1's DURABLE HALF REACHES THIS LANE ──
+        // All FOUR couple-thread inbound inserts were bare objects: no message_sid,
+        // so the unique index RF-1 relies on never saw the wamid and only the
+        // per-process LRU stood between a Meta redelivery and a doubled turn — a
+        // restart is all it took. The vendor-self path had done this right since P1b
+        // (its one inboundRow call); the couple doors never inherited it.
+        // THE CHARTER NAMED ONE SITE. THE WORLD WAS A SET OF FOUR — the executor's
+        // own banked class at CE-63, caught here by the census that the trio
+        // discipline demands. Curing the filed site alone would have shipped a green
+        // over three live holes.
+
             // Log the original message as the actual inbound (we deferred it earlier)
-            await supabase.from('messages').insert({
+            await supabase.from('messages').insert(webhookCore.inboundRow({
               conversation_id: thread.id,
               direction: 'inbound',
               channel: 'whatsapp',
               body: originalMessage,
               sent_by: 'couple',
-            });
+            }, internalReplay ? null : messageSid));
 
             const { data: vendorUser } = await supabase
               .from('users').select('*').eq('id', thread.vendors.user_id).maybeSingle();
@@ -478,13 +489,13 @@ async function _processVendorInbound(inputs, deps) {
         if (stickyThread) {
           console.log(`[routing:sticky] ${phone} -> vendor ${stickyVendorId} (until ${stickyUntil})`);
 
-          await supabase.from('messages').insert({
+          await supabase.from('messages').insert(webhookCore.inboundRow({
             conversation_id: stickyThread.id,
             direction: 'inbound',
             channel: 'whatsapp',
             body,
             sent_by: 'couple',
-          });
+          }, internalReplay ? null : messageSid));
 
           const { data: vendorUser } = await supabase
             .from('users').select('*').eq('id', stickyThread.vendors.user_id).maybeSingle();
@@ -571,13 +582,13 @@ async function _processVendorInbound(inputs, deps) {
           coupleThread = newThread;
         }
 
-        await supabase.from('messages').insert({
+        await supabase.from('messages').insert(webhookCore.inboundRow({
           conversation_id: coupleThread.id,
           direction: 'inbound',
           channel: 'whatsapp',
           body,
           sent_by: 'couple',
-        });
+        }, internalReplay ? null : messageSid));
 
         // 5-B-2 — land the enquiry in the engine cabinet (was a public.leads insert).
         // enquiryToBinder dedups by phone and opens the binder as a lead; the
@@ -694,13 +705,13 @@ async function _processVendorInbound(inputs, deps) {
         const existingThread = existingThreads[0];
         console.log(`[routing:single_thread] ${phone} -> vendor ${existingThread.vendor_id}`);
 
-        await supabase.from('messages').insert({
+        await supabase.from('messages').insert(webhookCore.inboundRow({
           conversation_id: existingThread.id,
           direction: 'inbound',
           channel: 'whatsapp',
           body,
           sent_by: 'couple',
-        });
+        }, internalReplay ? null : messageSid));
 
         // Fetch full vendor row first so we have user_id for the user lookup
         const { data: fullVendor } = await supabase

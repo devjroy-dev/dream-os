@@ -35,7 +35,8 @@ const { nextBrideOnboardingMessage } = require('./brideOnboarding');
 const { BRIDE_TOOLS } = require('./brideTools');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { groundedSearch } = require('../lib/groundedSearch');
-const { appendWitness } = require('../lib/witnessLine');   // ARC M1 / C2 — one home, both seams
+const { appendWitness } = require('../lib/witnessLine');
+const { insertCoupleEvent, updateCoupleEvent, deleteCoupleEvent } = require('../lib/coupleEventWrite'); // ARC M6 / C9(a) — the couple plane's ONE writer   // ARC M1 / C2 — one home, both seams
 const { checkBrideMoneyProvenance, moneyFigureOf, moneyClaimKey, claimMoneyWrite, spentDisplay } = require('../lib/moneyGuard'); // ARC M2 / F-05.35 + F-05.41
 
 const MAX_ITERATIONS = 5;
@@ -570,19 +571,18 @@ async function execAddEvent({ input, couple, supabase }) {
     }
   }
 
-  const { data, error } = await supabase
-    .from('events')
-    .insert({
-      couple_id:  couple.id,
+  const { data, error } = await insertCoupleEvent(supabase, {
+    coupleId: couple.id,
+    row: {
       title:      title.trim().slice(0, 200),
       event_date,
       event_time: timeValue,
       kind,
       notes:      notes && typeof notes === 'string' ? notes.trim().slice(0, 500) : null,
       state:      'upcoming',
-    })
-    .select('id, title, event_date, kind')
-    .single();
+    },
+    select: 'id, title, event_date, kind',
+  });
 
   if (error) {
     console.error('[bride-tool:add_event] insert error:', error);
@@ -1040,13 +1040,10 @@ async function execUpdateEvent({ input, couple, supabase }) {
     return { ok: false, error: 'no fields to update' };
   }
 
-  const { data, error } = await supabase
-    .from('events')
-    .update(updates)
-    .eq('id', event_id)
-    .eq('couple_id', couple.id)
-    .select('id, title, event_date, event_time, kind, state, notes')
-    .single();
+  const { data, error } = await updateCoupleEvent(supabase, {
+    coupleId: couple.id, eventId: event_id, updates,
+    select: 'id, title, event_date, event_time, kind, state, notes',
+  });
 
   if (error) {
     if (error.code === 'PGRST116') {
@@ -1068,13 +1065,10 @@ async function execDeleteEvent({ input, couple, supabase }) {
 
   // L2 canonical delete pattern: atomic single-call .delete().eq().select().single()
   // PGRST116 means zero rows matched — either doesn't exist or belongs to another couple.
-  const { data, error } = await supabase
-    .from('events')
-    .delete()
-    .eq('id', event_id)
-    .eq('couple_id', couple.id)
-    .select('id, title, event_date, event_time, kind, state')
-    .single();
+  const { data, error } = await deleteCoupleEvent(supabase, {
+    coupleId: couple.id, eventId: event_id,
+    select: 'id, title, event_date, event_time, kind, state',
+  });
 
   if (error) {
     if (error.code === 'PGRST116') {
@@ -1956,7 +1950,12 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
               .insert({
                 conversation_id: convRow.id,
                 direction:       'outbound',
-                channel:         'whatsapp',
+                // F-05.49 CURED (ARC M6): this row was stamped 'whatsapp' for a summary
+                // that is DELIVERED ON THE WEB — the sanctuary reads it from the thread;
+                // no WhatsApp send happens on this path at all. Every channel-keyed read
+                // and every future analytic inherited the lie. 'web' is the estate's own
+                // second value (live at eight sites), derived not invented.
+                channel:         'web',
                 body:            summary,
                 sent_by:         'agent',
               })

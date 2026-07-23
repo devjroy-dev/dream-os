@@ -184,7 +184,21 @@ async function main() {
   ok(conv && conv.kind === 'prospect_marketing' && conv.prospect_id === 'pr', 'conversation opened kind=prospect_marketing, owned by prospect_id');
   ok(sb.db.prospects[0].session_opened_at, 'session_opened_at stamped');
   ok(sb.db.messages.some((m) => m.direction === 'inbound' && m.sent_by === 'prospect') && sb.db.messages.some((m) => m.direction === 'outbound' && m.sent_by === 'system'), 'inbound + outbound messages logged');
-  ok(calls.length === 1 && calls[0].body.type === 'text' && /give me a moment/i.test(calls[0].body.text.body), 'holding line sent free-form via Meta');
+  // ══ LABELED AMENDMENT — ARC M6. COUNT PRESERVED (one cell, in place). ══
+  // UNCHARTERED AND DISCLOSED: this is the arc's THIRD floor move; the CE chartered
+  // only f0532's display strings and arc_m4 §4.1. It is FORCED by the founder-closed
+  // copy rider (CE ruling §4): the holding line's old wording — "I'll come back to
+  // you properly" — was the promise-with-no-machinery this arc filed against, and it
+  // was replaced with the founder's own bytes. This cell matched on that promise.
+  // Left unamended it would forbid the estate from shipping the copy the founder just
+  // ruled in, and would report green about a promise the machinery still cannot keep.
+  // CE-63's B2 class again; handled in the open, ratify-or-revert.
+  // RE-AIMED to what the cell was ALWAYS for — a free-form Meta text carrying THE
+  // holding line — asserted against prospectCopy's own constant rather than a phrase
+  // copied into the bench, so this can never drift from the shipped bytes again.
+  ok(calls.length === 1 && calls[0].body.type === 'text'
+     && calls[0].body.text.body === require('../src/lib/prospectCopy').PROSPECT_COPY.holding_line,
+     'holding line sent free-form via Meta');
 
   // ═══ 6. Opt-out cross-line (STOP → opted_out → refuse on ALL lines) ═══
   section('Opt-out cross-line');

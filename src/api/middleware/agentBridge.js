@@ -17,6 +17,31 @@ async function resolveAgentForVendor(supabase, vendor, authUserId) {
   if (!authUserId || !vendor) {
     throw new Error('resolveAgentForVendor: missing authUserId or vendor');
   }
+  // ── REJECT LOUDLY (ARC M6, CE-ruled shape (a) — F-05.47's permanent fence) ──
+  // M3 cured the one deviant caller; this is the fence so the next one cannot be
+  // born quietly. THE CHECK IS THE ONLY ONE THAT EXISTS: the app role cannot read
+  // the auth schema (zero call sites estate-wide; PostgREST does not expose it), so
+  // "is this a real auth id?" is unanswerable by lookup. What IS readable is the
+  // vendor's own users.auth_user_id — and a passed id that isn't it is, by
+  // definition, the wrong plane.
+  // WHY THROW RATHER THAN SILENTLY RESOLVE: a resolver that repairs its callers'
+  // mistakes makes the next F-05.47 unfindable. That finding was only findable
+  // because the wrong value reached a constraint and the constraint said no. This
+  // throw is that constraint, moved one layer earlier and given words.
+  {
+    const { data: pu } = await supabase
+      .from('users').select('auth_user_id').eq('id', vendor.user_id).maybeSingle();
+    const expected = pu && pu.auth_user_id;
+    if (expected && authUserId !== expected) {
+      throw new Error(
+        `resolveAgentForVendor: WRONG IDENTITY PLANE — was handed ${authUserId}, but ` +
+        `vendor ${vendor.id}'s auth identity is ${expected}. A public.users.id (or any ` +
+        `other id) in an auth.users.id's place is F-05.47: it reaches ` +
+        `engine.users.auth_user_id, whose FK to auth.users(id) rejects it and kills the ` +
+        `turn. Pass resolveAuthUserId(supabase, vendor.user_id), never vendor.user_id.`);
+    }
+  }
+
   const eng = supabase.schema('engine');
 
   // 1 — engine.users by auth_user_id (upsert is safe; auth_user_id is unique).
