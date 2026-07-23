@@ -351,9 +351,26 @@ t('§4.6 READS are never witnessed — only hands that filed', () => {
   assert.strictEqual(witness.witnessFooter([{ name: 'list_events', input: {}, result: { ok: true, events: [] } }]), null);
 });
 
-t('§4.7 DECLARED GAP: update_/delete_ carry no footer (the locked set has no honest verb)', () => {
-  assert.strictEqual(witness.witnessFooter([{ name: 'delete_event', input: { event_id: 'e1' }, result: { ok: true } }]), null);
-  assert.ok(/DECLARED GAP/.test(read('src/lib/witnessLine.js')), 'and the gap must be named in-file, not buried');
+t('§4.7 the create vocabulary never speaks for a change (AMENDED — V-5 closed M1\'s gap)', () => {
+  // ══ LABELED AMENDMENT — ARC M2 (V-5, founder 「 A 」). ONE cell amended in place. ══
+  // AS SHIPPED AT M1 this cell asserted that delete_event gets NO footer at all —
+  // the DECLARED GAP, correct then, because "Saved:" is a false word for a deletion
+  // and the honest verbs were copy nobody had approved. V-5 approved them. Left
+  // unamended, the cell would now forbid the receipt the founder just ruled in, and
+  // would report green about a gap that no longer exists. CE-63's B2 class, second
+  // instance in this arc; handled the same way, in the open.
+  //
+  // The cell's PURPOSE is preserved exactly — no filing may wear a false verb — and
+  // is now asserted the only way that still means something: the create vocabulary
+  // and the change vocabulary must not overlap, and a change must never render as
+  // "Saved:". §8.1-§8.7 assert the receipts themselves.
+  const del = witness.witnessFooter([{ name: 'delete_event', input: { event_id: 'e1' },
+    result: { ok: true, deleted_event: { title: 'sangeet', event_date: '2026-12-20' } } }]);
+  assert.ok(del && !del.includes(witness.PREFIX),
+    'a deletion rendered under "Saved:" — the false word this cell has always existed to stop');
+  assert.ok(del.startsWith(witness.REMOVED_PREFIX), 'and it must use its own ruled verb');
+  assert.ok(!/DECLARED GAP/.test(read('src/lib/witnessLine.js')),
+    'the in-file gap notice must go with the gap — a cured finding wearing an open flag is the stale-comment class');
 });
 
 await ta('§4.8 the witness reaches the WIRE and the PERSISTED ROW as one body', async () => {
@@ -477,6 +494,72 @@ t('§6.5 the :1892 pre-insert has NO gated Class-C caller — asserted, not assu
   }
   assert.deepStrictEqual([...new Set(callers)].sort(), ['src/agent/brideEngine.js', 'src/lib/brideInbound.js'],
     `a NEW caller of the circle pre-insert appeared: ${callers.join(', ')} — if it is proactive it can now mint a row for a send the full stop gates, and the :1892 shape must be built`);
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// §8 — LABELED EXTENSION (ARC M2's ZIP, V-5 founder-locked 「 A 」).
+// COUNT DISCLOSED: this bench moves 46 -> 53. Seven cells ADDED, ONE AMENDED
+// (§4.7, labeled at its own site — V-5 closed the gap it asserted), zero removed — M1's own thirty-six and its eight mutations plus §7.0 stand
+// byte-identical. The extension lands here rather than in M2's bench because the
+// witness footer is M1's machinery; V-5 only widened its vocabulary.
+H('§8 — V-5: THE UPDATE AND REMOVAL RECEIPTS (labeled extension, 46 -> 53)');
+
+t('§8.1 an update renders the SPECIFIC form from the row the door returned', () => {
+  assert.strictEqual(witness.witnessFooter([{ name: 'update_booking',
+    input: { booking_id: 'b1', amount_total: 90000 },
+    result: { ok: true, booking: { vendor_name: 'DJ Nashaa', amount_total: 90000 } } }]),
+    '— Updated: DJ Nashaa, Rs 90,000');
+});
+
+t('§8.2 a removal renders the SPECIFIC form — the ruling\'s own worked example', () => {
+  // delete_event's ARGUMENTS are event_id alone (brideTools.js:281). This line is
+  // producible only from the returned row, which is why the render-from-args law
+  // is read as "the witnessed toolCall record", stated in witnessLine.js.
+  assert.strictEqual(witness.witnessFooter([{ name: 'delete_event',
+    input: { event_id: 'e1' },
+    result: { ok: true, deleted_event: { title: 'sangeet', event_date: '2026-12-20' } } }]),
+    '— Removed: sangeet, 20 Dec');
+});
+
+t('§8.3 *** DEGRADE: no clean entity -> the BARE form, never a guess ***', () => {
+  assert.strictEqual(witness.witnessFooter([{ name: 'delete_event',
+    input: { event_id: 'e1' }, result: { ok: true, deleted_event: { event_date: '2026-12-20' } } }]),
+    '— Removed from your file.');
+  assert.strictEqual(witness.witnessFooter([{ name: 'update_event',
+    input: { event_id: 'e1' }, result: { ok: true, event: {} } }]),
+    '— Updated your file.');
+});
+
+t('§8.4 DEGRADE: a hand whose door returns no row at all still gets its receipt', () => {
+  assert.strictEqual(witness.witnessFooter([{ name: 'delete_muse_save',
+    input: { save_id: 's1' }, result: { ok: true } }]), '— Removed from your file.');
+});
+
+t('§8.5 RENDER-FROM-ARGS: model prose can never reach the footer', () => {
+  // The reply text is not an input to the derivation at any seam. A turn that says
+  // "Removed the sangeet." with an ERRORED hand gets nothing at all.
+  assert.strictEqual(witness.witnessFooter([{ name: 'delete_event',
+    input: { event_id: 'e1' }, result: { ok: false, error: 'not found' } }]), null);
+  assert.strictEqual(witness.appendWitness('Removed the sangeet.',
+    [{ name: 'delete_event', input: { event_id: 'e1' }, result: { ok: false, error: 'x' } }]),
+    'Removed the sangeet.');
+});
+
+t('§8.6 the four V-5 strings ship BYTE-EXACT as locked', () => {
+  assert.strictEqual(witness.UPDATED_PREFIX, '— Updated: ');
+  assert.strictEqual(witness.REMOVED_PREFIX, '— Removed: ');
+  assert.strictEqual(witness.UPDATED_BARE,   '— Updated your file.');
+  assert.strictEqual(witness.REMOVED_BARE,   '— Removed from your file.');
+});
+
+t('§8.7 the hand census is enumerated from brideTools.js, not guessed', () => {
+  const tools = read('src/agent/brideTools.js');
+  for (const h of [...Object.keys(witness.UPDATE_HANDS), ...Object.keys(witness.REMOVE_HANDS)])
+    assert.ok(tools.includes(`name: '${h}'`), `${h} is not a tool at this tip`);
+  // Every create hand keeps "Saved:" — the vocabularies must not overlap or one
+  // filing would render under two verbs.
+  for (const h of Object.keys(witness.UPDATE_HANDS))
+    assert.ok(!witness.FILING_HANDS.has(h), `${h} is in both vocabularies`);
 });
 
 // ══════════════════════════════════════════════════════════════════════════

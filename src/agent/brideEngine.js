@@ -37,6 +37,7 @@ const { classifyMessage } = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { groundedSearch } = require('../lib/groundedSearch');
 const { appendWitness } = require('../lib/witnessLine');   // ARC M1 / C2 — one home, both seams
+const { checkBrideMoneyProvenance, moneyFigureOf, moneyClaimKey, claimMoneyWrite, spentDisplay } = require('../lib/moneyGuard'); // ARC M2 / F-05.35 + F-05.41
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 5;
@@ -183,6 +184,20 @@ async function runBrideAgenticTurn({
     { role: 'user', content: inboundMessage },
   ];
 
+  // ── M2 · THE PROVENANCE HOLD's CORPUS, ported from loop.ts:442-445 ────────
+  // HER OWN WORDS this thread — every user-role message on the working thread plus
+  // the message in hand, assembled once per turn and handed down to the write seam.
+  // A money figure in a WRITE hand must appear here or the hand holds with the
+  // honest question. DELIBERATELY HERS ONLY: the system prompt, the dynamic context
+  // block, and Mira's own prose never vouch for a figure — on the vendor lane the
+  // fabricated Rs 50,000 came from exactly those neighbours (F-04.70), and the
+  // couple lane's own 10x write (F-05.35) had her real "4 lakhs" sitting one line
+  // away from the wrong number. Neighbourhood is the donor pool; this excludes it.
+  const brideWords = [
+    ...history.filter(m => m.role === 'user').map(m => m.content),
+    inboundMessage,
+  ].join('\n');
+
   // ── Classify complexity → pick model ─────────────────────────────
   const classifierHistory = history.slice(-2);
   const complexity = await classifyMessage(inboundMessage, classifierHistory, anthropic);
@@ -245,6 +260,7 @@ async function runBrideAgenticTurn({
         supabase,
         anthropic,
         mediaUrlsToReturn,    // mutable — list_muse pushes URLs here when playback requested
+        brideWords,           // ARC M2: the provenance corpus — hers only
       });
 
       toolCallsAudit.push({ name: toolUse.name, input: toolUse.input, result });
@@ -292,7 +308,38 @@ async function runBrideAgenticTurn({
 // ── Tool executors ───────────────────────────────────────────────────
 // Switch-case dispatcher (mirrors vendor engine.js pattern).
 
-async function executeBrideTool({ name, input, couple, user, conversation, supabase, anthropic, mediaUrlsToReturn }) {
+// ── M2 · THE MONEY GUARD SITS HERE, AT THE ONE SHARED WRITE SEAM ───────────
+// Derived at 0da540a: executeBrideTool has TWO callers — brideEngine.js:239 (the
+// bride agent) and circleEngine.js:148 (the circle agent). Seating the guard
+// INSIDE the function covers both by construction; seating it at the bride call
+// site would have left the circle door open. Today the circle lane whitelists only
+// list_muse / delete_muse_save (circleEngine.js:30), so the guard is a no-op there
+// — but a circle money hand added next block cannot be born outside the floor.
+//
+// `brideWords` is her own words this thread. A caller that does not supply them
+// FAILS CLOSED (the hold fires) rather than vouching by silence — F15's direction,
+// and provenanceHold's own posture. circleEngine passes none and reaches no money
+// hand, so it is unaffected either way; the fail-closed default is what makes that
+// true by construction instead of by inspection.
+async function executeBrideTool({ name, input, couple, user, conversation, supabase, anthropic, mediaUrlsToReturn, brideWords }) {
+  // ── M2 / F-05.35 · PROVENANCE: her figure, or the honest question ─────────
+  const held = checkBrideMoneyProvenance(name, input, brideWords);
+  if (held) {
+    console.warn(`[bride-money-guard] HELD ${name}.${held.field}=${held.figure} — not in her words this thread`);
+    return { ok: false, held: true, error: held.display };
+  }
+  // ── M2 / F-05.41 · CONFIRM-CONSUMED-ONCE: spent exactly once ─────────────
+  // Runs AFTER provenance so an unvouched figure never spends a claim it was
+  // never entitled to, and only for hands that actually carry a figure.
+  const figure = moneyFigureOf(name, input);
+  if (figure != null) {
+    const key = moneyClaimKey({ conversationId: conversation && conversation.id, name, input, figure });
+    if (!claimMoneyWrite(key)) {
+      console.warn(`[bride-money-guard] SPENT ${key} — refusing the duplicate write`);
+      return { ok: false, held: true, error: spentDisplay(figure) };
+    }
+  }
+
   switch (name) {
 
     case 'note_to_self': {

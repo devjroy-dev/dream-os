@@ -43,14 +43,11 @@
 // That is why money renders in INDIAN grouping here — 4,00,000 reads as four lakh to
 // the person who has to catch it, and 400,000 does not.
 //
-// ── DECLARED GAP, NAMED NOT BURIED ──────────────────────────────────────────
-//
-// The footer covers CREATE hands only. update_* and delete_* file real work and get
-// NO footer this movement, because "Saved:" is a false word for a deletion and the
-// honest words ("Updated:", "Removed:") would be NEW bride-readable copy outside the
-// four strings M1 was ruled to build byte-exact. Minting unapproved copy to widen a
-// cure is how unapproved copy ships. The gap is one veto slot wide and it is the
-// CE's to close.
+// ── THE GAP M1 DECLARED IS CLOSED (V-5, founder 「 A 」, CE relay) ───────────
+// M1 shipped creates only and said so: "Saved:" is a false word for a deletion, and
+// minting the honest verbs to widen a cure would have been shipping copy nobody
+// approved. The gate closed on Proposal A, so update_* and delete_* now carry their
+// own ruled receipts below, under the render-from-args law.
 'use strict';
 
 // The CREATE hands, enumerated from brideTools.js at this HEAD — never guessed.
@@ -166,6 +163,100 @@ function describeHand(call) {
 
 const PREFIX = '— Saved: ';
 
+// ── V-5 (founder-locked, CE relay: 「 A 」) · THE UPDATE AND REMOVAL RECEIPTS ─
+//
+// M1 shipped creates only, because "Saved:" is a false word for a deletion and the
+// honest verbs would have been copy nobody had approved. The gate is now closed on
+// Proposal A, and these two prefixes are LOCKED alongside their degrade forms.
+//
+// ── THE RENDER-FROM-ARGS LAW (the ruling's own words, and its teeth) ────────
+// The footer derives ONLY from the hand's own WITNESSED toolCall record — its
+// arguments and the row the door handed back — and NEVER from model prose. Where
+// the renderer cannot produce an entity cleanly, it DEGRADES to the bare form.
+// SPECIFIC-AND-TRUE OR BARE, NEVER SPECIFIC-AND-WRONG: a receipt naming the wrong
+// sangeet is worse than a receipt naming none, because it spends her trust to tell
+// her a lie she has no reason to check.
+//
+// READING STATED, because the ruling's phrasing and its own worked example pull in
+// different directions and building on the wrong one would be silent adaptation:
+// "arguments" is read as THE WITNESSED TOOLCALL RECORD (input AND result), never
+// prose. The ruling's own example — "— Removed: sangeet, 20 Dec" — settles it:
+// delete_event's arguments are `event_id` ALONE (brideTools.js:281, required:
+// ['event_id']), so that example is unproducible from input and can only come from
+// the returned row. The row is also the MORE witnessed of the two: input is what
+// was asked for, the row is what the database did. M1's result-first discipline is
+// therefore extended unchanged rather than inverted.
+const UPDATED_PREFIX = '— Updated: ';
+const REMOVED_PREFIX = '— Removed: ';
+const UPDATED_BARE   = '— Updated your file.';
+const REMOVED_BARE   = '— Removed from your file.';
+
+// tool -> the row key the door hands back on success. Enumerated by command at
+// 0da540a from the executors' own returns, never guessed:
+//   update_event:1060 event · delete_event:1088 deleted_event
+//   update_booking:1331 booking · delete_booking:1360 deleted_booking
+//   update_task:824 task · complete_task:760 task · delete_task:857 deleted_task
+//   delete_receipt:1536 deleted_receipt
+const UPDATE_HANDS = {
+  update_event:   'event',
+  update_booking: 'booking',
+  update_task:    'task',
+  complete_task:  'task',
+};
+const REMOVE_HANDS = {
+  delete_event:    'deleted_event',
+  delete_booking:  'deleted_booking',
+  delete_task:     'deleted_task',
+  delete_receipt:  'deleted_receipt',
+  delete_muse_save: null,          // returns no row — bare by construction
+};
+
+// The entity a row names, and the detail worth reading beside it. Returns null for
+// the entity when the row cannot supply one — which is what triggers the degrade.
+function rowEntity(row) {
+  if (!row || typeof row !== 'object') return null;
+  return clip(row.title || row.vendor_name || row.label) || null;
+}
+function rowDetail(name, row, input) {
+  if (!row || typeof row !== 'object') return null;
+  // For an UPDATE the detail is the NEW value, and it must come from the row the
+  // door returned — the arguments carry what was requested, not what landed.
+  if (name === 'update_booking') {
+    return rupees(row.amount_total) || rupees(row.amount_advance) || null;
+  }
+  if (name === 'complete_task') return 'done';
+  if (row.event_date) return shortDate(row.event_date);
+  if (row.due_date)   return shortDate(row.due_date);
+  if (row.amount_total != null) return rupees(row.amount_total);
+  void input;
+  return null;
+}
+
+// One update/removal hand -> its receipt line, or null if it is neither.
+// Never returns null for an ok'd update/removal: it degrades to the bare form
+// instead, because a filed change with NO receipt is the indistinguishability
+// F-05.34 exists to end.
+function describeChange(call) {
+  if (!call || typeof call !== 'object') return null;
+  const name = call.name;
+  const isUpdate = Object.prototype.hasOwnProperty.call(UPDATE_HANDS, name);
+  const isRemove = Object.prototype.hasOwnProperty.call(REMOVE_HANDS, name);
+  if (!isUpdate && !isRemove) return null;
+
+  const r = call.result;
+  if (!r || typeof r !== 'object' || r.ok !== true) return null;
+
+  const key = isUpdate ? UPDATE_HANDS[name] : REMOVE_HANDS[name];
+  const row = key ? r[key] : null;
+  const entity = rowEntity(row);
+  if (!entity) return isUpdate ? UPDATED_BARE : REMOVED_BARE;   // DEGRADE
+
+  const detail = rowDetail(name, row, call.input);
+  const prefix = isUpdate ? UPDATED_PREFIX : REMOVED_PREFIX;
+  return detail ? `${prefix}${entity}, ${detail}` : `${prefix}${entity}`;
+}
+
+
 // toolCalls (the audit array, or the jsonb column read back) -> the footer, or null.
 // One line per filed hand; null when nothing filed. A narrated turn — tool_calls []
 // or null, F-05.34's own specimen — returns null here at BOTH seams, which is the
@@ -175,7 +266,10 @@ function witnessFooter(toolCalls) {
   const lines = [];
   for (const call of toolCalls) {
     const d = describeHand(call);
-    if (d) lines.push(PREFIX + d);
+    if (d) { lines.push(PREFIX + d); continue; }
+    // V-5: updates and removals carry their own prefixes and their own degrade.
+    const c = describeChange(call);
+    if (c) lines.push(c);
   }
   return lines.length ? lines.join('\n') : null;
 }
@@ -183,7 +277,8 @@ function witnessFooter(toolCalls) {
 // Does this body already carry a witness footer? Guards the replay reconstruction
 // against double-marking a row that was persisted with one.
 function hasWitnessFooter(body) {
-  return String(body == null ? '' : body).includes(PREFIX);
+  const t = String(body == null ? '' : body);
+  return [PREFIX, UPDATED_PREFIX, REMOVED_PREFIX, UPDATED_BARE, REMOVED_BARE].some(p => t.includes(p));
 }
 
 // Append the footer to a reply body. Returns the body UNCHANGED when nothing filed —
@@ -199,6 +294,8 @@ function appendWitness(body, toolCalls) {
 
 module.exports = {
   FILING_HANDS, PREFIX,
+  UPDATED_PREFIX, REMOVED_PREFIX, UPDATED_BARE, REMOVED_BARE,
+  UPDATE_HANDS, REMOVE_HANDS, describeChange,
   shortDate, rupees, describeHand,
   witnessFooter, hasWitnessFooter, appendWitness,
 };
