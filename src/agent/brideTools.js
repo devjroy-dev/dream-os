@@ -74,7 +74,7 @@ const BRIDE_TOOLS = [
         kind: {
           type: 'string',
           enum: ['shoot', 'call', 'fitting', 'trial', 'meeting', 'task', 'reminder', 'recce', 'family', 'ceremony', 'social', 'other'],
-          description: 'Event category. Use shoot for any photo or video shoot (pre-wedding, engagement, bridal, portfolio shoots with photographer/MUA/designer). Use call for scheduled phone consultations with vendors or planners. Use fitting for outfit fittings. Use trial for hair/makeup/menu trials. Use meeting for in-person vendor or planner meetings. Use recce for venue visits. Use family for family events (mehndi, haldi, sangeet). Use ceremony for the wedding day and reception. Use social for brunches/lunches/dinners/coffee/shopping. Use task for to-dos with a date. Use reminder for things she wants flagged. Use other if nothing else fits.',
+          description: 'Event category. Use shoot for any photo or video shoot (pre-wedding, engagement, bridal, portfolio shoots with photographer/MUA/designer). Use call for scheduled phone consultations with vendors or planners. Use fitting for outfit fittings. Use trial for hair/makeup/menu trials. Use meeting for in-person vendor or planner meetings. Use recce for venue visits. Use ceremony for EVERY wedding ritual — mehndi, haldi, sangeet, the wedding day itself, reception. Use family for family occasions that are NOT rituals — relatives arriving or staying, a lunch at home for the visiting side. Use social for brunches/lunches/dinners/coffee/shopping. Use task for to-dos with a date. Use reminder for things she wants flagged. Use other if nothing else fits.',
         },
         notes: {
           type: 'string',

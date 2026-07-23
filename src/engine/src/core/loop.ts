@@ -533,7 +533,7 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
       model = MODELS.haiku;
       const idx = tools.findIndex((t) => t.name === 'escalate');
       if (idx >= 0) tools.splice(idx, 1);
-      messages = [...priorTurns, { role: 'user', content: message }]; // clean re-run on Sonnet
+      messages = [...priorTurns, { role: 'user', content: message }]; // clean re-run, on Haiku (see :528-532)
       donnaSession = null; // fresh exchange on the re-run
       talks = 0;
       pendingDonnaQuestion = ''; // D-6: the re-run's exchange starts clean too
