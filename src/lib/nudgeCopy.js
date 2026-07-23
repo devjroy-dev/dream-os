@@ -28,16 +28,43 @@ const NUDGE_COPY = {
   opt_out_confirmation:
     "Done — no more morning messages. Everything else stays as it is; this isn't a full STOP. Reply START MORNINGS whenever you want them back.",
 
-  // ── THE RESUME LINE · PROVISIONAL — NAMED FOR THE VETO PASS ───────────────
-  // ⚠ NOT founder-ratified. The relay chartered the START MORNINGS branch in and
-  // ratified the line that PROMISES it, but no copy was given for the
-  // acknowledgement itself. Authored here as the plain mirror of the ratified
-  // pause line rather than left silent — a resume that answers with nothing
-  // reads as a resume that failed, and would send the recipient back to STOP.
-  // Disclosed in the handover under the founder's standing copy veto; reshaping
-  // it is a one-line change with no code consequence.
+  // ── THE RESUME LINE · RATIFIED AS SHIPPED (founder, CE-63 relay ②) ────────
+  // Authored by the executor as the mirror of the ratified pause line — a resume
+  // that answers with nothing reads as a resume that FAILED, and would send the
+  // recipient back to STOP. Witnessed on a real handset in the P4 smoke and
+  // ratified verbatim; the provisional marker was struck in the closing micro,
+  // because a ratified line wearing a provisional flag is the stale-comment class
+  // this block already exists to warn about.
   resume_confirmation:
     "Morning messages are back on — you'll get the next one tomorrow. Reply STOP MORNINGS any time to pause them again.",
+
+  // ── F-05.25 · THE BARE-STOP ACKNOWLEDGMENT · PROPOSED, AWAITING VETO ──────
+  // ⚠ NOT YET FOUNDER-RATIFIED. Proposed with the closing micro per the relay's
+  // instruction; the founder's word closes it before the micro completes.
+  //
+  // TERMINAL REGISTER, and that is the ruled point. What a bride or vendor gets
+  // TODAY for typing STOP is a chatty agent turn — "Got it. What's up?" — which
+  // is the estate answering a compliance keyword as if it were small talk.
+  //
+  // VOCABULARY DERIVED FROM THE MARKETING LANE, not invented. Its own line
+  // (prospectCopy.js:20-21) reads:
+  //     "You're opted out — you won't hear from us again. Reply START any time
+  //      if you change your mind."
+  // Three properties carried across: the flat past-tense declaration, the
+  // absoluteness ("won't hear from us again"), and START as the single named way
+  // back. Two properties added for these lanes, where the marketing line's
+  // assumptions do not hold: this is a product the recipient is USING, not a
+  // campaign she received, so the line names what stops (everything, not a
+  // category) and distinguishes itself from STOP MORNINGS — otherwise the two
+  // opt-outs shipped in one block would be indistinguishable from the handset.
+  full_stop_confirmation:
+    "You're opted out — I won't message you again, about anything. If you only wanted to pause the daily updates, reply START and then STOP MORNINGS instead.",
+
+  // The resume acknowledgment for a full STOP. Same PROPOSED status: it is the
+  // other half of one exchange, and vetoing a stop line without its start line
+  // would leave the same trap the founder named for nudges.
+  full_start_confirmation:
+    "You're back on — I'll message you again when there's something worth saying.",
 };
 
 function getNudgeCopy(key) {

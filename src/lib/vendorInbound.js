@@ -30,6 +30,7 @@
 'use strict';
 
 const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
+const { matchFullStopWord, recordFullStop, recordFullStart } = require('./fullStop'); // F-05.25
 const { getNudgeCopy } = require('./nudgeCopy');
 
 async function processVendorInbound(inputs, deps) {
@@ -74,6 +75,42 @@ async function processVendorInbound(inputs, deps) {
         console.error('[webhook] nudge-class branch error:', nudgeErr && nudgeErr.message);
       }
       return;
+    }
+
+    // ── TDW_05 P4 closing micro / F-05.25 — THE FULL STOP (vendor lane) ────
+    // SECOND, and the ordering is LOAD-BEARING: isStopWord matches the FIRST
+    // TOKEN ONLY, so isStopWord('STOP MORNINGS') is TRUE. Running this before
+    // the nudge branch would swallow every pause and convert it into a terminal
+    // opt-out — F-05.22's cure destroyed by its own sibling. Nudge first, always.
+    //
+    // Writes through prospects.js's EXISTING writer pair (findOrCreate + update),
+    // which already upserts; this path introduces no second writer. The
+    // confirmation then goes out through the gate it just closed, using the same
+    // single documented bypass the marketing lane uses for the same reason
+    // (prospects.js:132-134) — an acknowledgement the recipient never receives
+    // reads as an opt-out that did not register.
+    const fullStopWord = matchFullStopWord(trimmedBody);
+    if (fullStopWord) {
+      try {
+        if (fullStopWord === 'stop') {
+          await recordFullStop({ supabase, phone });
+          await sendWhatsApp(phone, getNudgeCopy('full_stop_confirmation'), [], undefined, { isOptedOut: async () => false });
+          console.log(`[webhook] FULL STOP recorded for ${phone} (lane=vendor)`);
+        } else {
+          const r = await recordFullStart({ supabase, phone });
+          if (r.changed) {
+            await sendWhatsApp(phone, getNudgeCopy('full_start_confirmation'));
+            console.log(`[webhook] FULL START recorded for ${phone} (lane=vendor)`);
+            return;
+          }
+          // Never opted out — fall through to the normal turn, exactly as the
+          // marketing lane does (prospects.js:151-152). START is not a keyword
+          // for someone who never stopped.
+        }
+      } catch (stopErr) {
+        console.error('[webhook] full-stop branch error:', stopErr && stopErr.message);
+      }
+      if (fullStopWord === 'stop') return;
     }
 
     let user;

@@ -60,6 +60,12 @@ function fakeSupabase(seed = {}) {
         const hit = (db[name] || []).find(r => filters.every(([c, v]) => r[c] === v));
         return { data: hit || null, error: hit ? null : { message: 'no row' } };
       },
+      insert(row) {
+        calls.push({ op: 'insert', table: name, row });
+        const stored = { id: `id_${(db[name] || []).length + 1}`, ...row };
+        (db[name] = db[name] || []).push(stored);
+        return { select: () => ({ single: async () => ({ data: stored, error: null }) }) };
+      },
       upsert(row, opts) {
         calls.push({ op: 'upsert', table: name, row, opts });
         const keys = String(opts?.onConflict || 'id').split(',').map(s => s.trim());
@@ -71,11 +77,26 @@ function fakeSupabase(seed = {}) {
       },
       update(patch) {
         calls.push({ op: 'update', table: name, patch });
+        // FAITHFUL TO PostgREST'S REAL SHAPE: .update().eq() is both awaitable AND
+        // chainable into .select().single() — prospects.js:82-85 uses the chained form,
+        // brideCron's stamper uses the awaited one. A fake that supported only the
+        // awaited form failed four §9 cells; the fix is fidelity, never a stub.
+        const apply = (col, val) => {
+          const r = (db[name] || []).find(x => x[col] === val);
+          if (r) Object.assign(r, patch);
+          return r;
+        };
         return {
           eq(col, val) {
-            const r = (db[name] || []).find(x => x[col] === val);
-            if (r) Object.assign(r, patch);
-            return Promise.resolve({ data: r ? [r] : [], error: null });
+            const r = apply(col, val);
+            const res = { data: r ? [r] : [], error: null };
+            return {
+              select: () => ({
+                single:      async () => ({ data: r || null, error: r ? null : { message: 'no row' } }),
+                maybeSingle: async () => ({ data: r || null, error: null }),
+              }),
+              then: (res1, rej) => Promise.resolve(res).then(res1, rej),
+            };
           },
         };
       },
@@ -303,25 +324,54 @@ t('§5.1 prospects.js still owns the full stop, unedited by this sitting', () =>
     'the full-stop module must not have learned about the nudge class');
 });
 
-t('§5.2 neither inbound core imports the full-stop machinery (no coupling introduced)', () => {
+t('§5.2 the cores reach the full stop through ONE hop, never directly (F-05.25 micro)', () => {
+  // AMENDED AT THE CLOSING MICRO. Before F-05.25 this cell asserted NO coupling at
+  // all, which was right then and would now pass for the WRONG REASON — the cores
+  // do reach prospects.js, deliberately, via fullStop.js. Left unamended it would
+  // be a cell surviving its own subject: the vacuous class this bench has already
+  // convicted itself of once. What must hold now is the SHAPE of the coupling.
   for (const f of ['src/lib/brideInbound.js', 'src/lib/vendorInbound.js']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.ok(!/require\(['"].\/prospects['"]\)/.test(src), `${f} must not reach into the full stop`);
+    assert.ok(!/require\(['"]\.\/prospects['"]\)/.test(src),
+      `${f} must NOT import prospects directly — one hop, through fullStop.js`);
+    assert.ok(src.includes("require('./fullStop')"), `${f} must carry the full-stop branch`);
     assert.ok(src.includes("require('./nudgeOptout')"), `${f} must carry the nudge branch`);
   }
+  // COMMENT-STRIPPED, for the fourth time this arc: the raw file DESCRIBES the very
+  // property being asserted ("holds no `.update()` of its own"), so reading it raw
+  // convicts the file on its own disclaimer. Assertions read CODE.
+  const fsCode = fs.readFileSync(path.join(ROOT, 'src/lib/fullStop.js'), 'utf8')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/\.update\(|\.upsert\(|\.insert\(/.test(fsCode),
+    'fullStop.js must hold NO writer of its own — it CALLS the marketing lane\'s pair');
 });
 
-t('§5.3 the two lanes carry the SAME branch — the only difference is the lane string', () => {
+t('§5.3 the two lanes carry the SAME branches — BOTH of them — modulo the lane string', () => {
+  // EXTENDED AT THE CLOSING MICRO. The first form sliced only from matchNudgeWord to
+  // its first `return;`, so the NEW full-stop branch sat outside the guarded region
+  // entirely — mutation N10 drifted the vendor lane and this cell stayed GREEN. The
+  // slice now runs from the first branch to the last, covering both.
   const grab = (f) => {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    const i = src.indexOf('const nudgeWord = matchNudgeWord(trimmedBody);');
-    assert.ok(i > 0, `${f} missing the branch`);
-    return src.slice(i, src.indexOf('return;', i) + 7)
+    const a = src.indexOf('const nudgeWord = matchNudgeWord(trimmedBody);');
+    const b = src.indexOf('const fullStopWord = matchFullStopWord(trimmedBody);');
+    assert.ok(a > 0 && b > a, `${f} missing a branch, or they are out of order`);
+    // The slice must run to the branch's CLOSING BRACE, not to its last statement:
+    // mutation N10 appended a comment AFTER that statement and landed outside an
+    // end-at-the-statement slice, leaving this cell green on a drifted twin.
+    const tail = "if (fullStopWord === 'stop') return;";
+    const end = src.indexOf(tail, b);
+    assert.ok(end > b, `${f} missing the full-stop branch tail`);
+    const close = src.indexOf('\n    }', end);
+    assert.ok(close > end, `${f} missing the full-stop branch's closing brace`);
+    return src.slice(a, close + '\n    }'.length)
               .replace(/\[bride-webhook\]|\[webhook\]/g, '[LOG]')
-              .replace(/'bride'|'vendor'/g, "'LANE'");
+              .replace(/'bride'|'vendor'/g, "'LANE'")
+              .replace(/lane=bride|lane=vendor/g, 'lane=LANE')
+              .replace(/\(bride lane\)|\(vendor lane\)/g, '(LANE lane)');
   };
   assert.strictEqual(grab('src/lib/brideInbound.js'), grab('src/lib/vendorInbound.js'),
-    'the twins have drifted — that is how one lane silently loses the cure');
+    'the twins have drifted — that is how one lane silently loses a cure');
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -473,12 +523,119 @@ t('§8.3 no src/** file re-declares an inline wa.me fallback (one home, or none)
 });
 
 // ══════════════════════════════════════════════════════════════════════════
+H('§9 — F-05.25: THE FULL STOP REACHES BRIDE AND VENDOR (closing micro)');
+
+const { matchFullStopWord, recordFullStop, recordFullStart } = require('../src/lib/fullStop');
+
+t('§9.1 the words are the MARKETING LANE\'S OWN — imported, never re-declared', () => {
+  for (const w of ['STOP', 'stop', 'Stop.', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'STOPALL'])
+    assert.strictEqual(matchFullStopWord(w), 'stop', `${JSON.stringify(w)} must be a full stop`);
+  for (const w of ['START', 'UNSTOP', 'RESUME'])
+    assert.strictEqual(matchFullStopWord(w), 'start');
+  const src = fs.readFileSync(path.join(ROOT, 'src/lib/fullStop.js'), 'utf8');
+  assert.ok(/require\(['"]\.\/prospects['"]\)/.test(src) && !/STOP_WORDS\s*=/.test(src),
+    'the word set must be IMPORTED from prospects.js, not re-declared — one home, three lanes');
+});
+
+await ta('§9.2 *** THE DERIVATION *** — a number with NO prospects row still lands one', async () => {
+  const sb = fakeSupabase({ prospects: [] });
+  await recordFullStop({ supabase: sb, phone: '+919625759924' });
+  assert.strictEqual(sb.__db.prospects.length, 1, 'the row the gates read must come into existence');
+  assert.strictEqual(sb.__db.prospects[0].phone, '919625759924', 'stored NORMALIZED');
+  assert.strictEqual(sb.__db.prospects[0].state, 'opted_out');
+  const ops = sb.__calls.filter(c => c.table === 'prospects').map(c => c.op);
+  assert.deepStrictEqual(ops, ['insert', 'update'],
+    'findOrCreate + update — the existing PAIR, which already upserts. No new writer.');
+});
+
+await ta('§9.3 an EXISTING prospect is flipped, not duplicated', async () => {
+  const sb = fakeSupabase({ prospects: [{ id: 'p1', phone: '919625759924', state: 'in_session' }] });
+  await recordFullStop({ supabase: sb, phone: '+919625759924' });
+  assert.strictEqual(sb.__db.prospects.length, 1);
+  assert.strictEqual(sb.__db.prospects[0].state, 'opted_out');
+});
+
+await ta('§9.4 the gate the estate already had now SEES a bride full-stop', async () => {
+  const sb = fakeSupabase({ prospects: [] });
+  await recordFullStop({ supabase: sb, phone: '+919625759924' });
+  const { defaultIsOptedOut } = require('../src/lib/sendWa');
+  assert.strictEqual(await defaultIsOptedOut({ to: '+919625759924', supabase: sb }), true,
+    'the read gate was always faithful; before the micro nothing on this lane fed it');
+});
+
+t('§9.5 *** ORDER IS LOAD-BEARING *** — the nudge branch runs FIRST on both cores', () => {
+  // isStopWord matches the FIRST TOKEN ONLY, so isStopWord('STOP MORNINGS') is TRUE.
+  // If the full-stop branch ran first it would swallow every pause into a terminal
+  // opt-out: F-05.22's cure destroyed by its own sibling. Asserted on POSITION, not
+  // on an outcome that a reordering could still fake.
+  assert.strictEqual(matchFullStopWord('STOP MORNINGS'), 'stop',
+    'the hazard is real: the full-stop matcher DOES claim the pause phrase');
+  for (const f of ['src/lib/brideInbound.js', 'src/lib/vendorInbound.js']) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const nudgeAt = src.indexOf('const nudgeWord = matchNudgeWord(trimmedBody);');
+    const stopAt  = src.indexOf('const fullStopWord = matchFullStopWord(trimmedBody);');
+    assert.ok(nudgeAt > 0 && stopAt > 0, `${f} missing a branch`);
+    assert.ok(nudgeAt < stopAt, `${f}: the full stop runs BEFORE the nudge — pauses become terminal`);
+  }
+});
+
+await ta('§9.6 STOP MORNINGS still writes nudge-class ONLY, prospects untouched', async () => {
+  const sb = fakeSupabase();
+  assert.strictEqual(matchNudgeWord('STOP MORNINGS'), 'stop');
+  await setNudgeOptout({ supabase: sb, phone: '+919625759924', lane: 'bride', state: 'opted_out' });
+  assert.strictEqual(sb.__db.prospects.length, 0,
+    'a pause must never touch the full stop\'s table');
+  assert.deepStrictEqual([...new Set(sb.__calls.map(c => c.table))], ['nudge_optout']);
+});
+
+await ta('§9.7 START resumes a stopped number; START from a never-stopped one is a NO-OP', async () => {
+  const sb = fakeSupabase({ prospects: [{ id: 'p1', phone: '919625759924', state: 'opted_out' }] });
+  const r1 = await recordFullStart({ supabase: sb, phone: '+919625759924' });
+  assert.strictEqual(r1.changed, true);
+  assert.strictEqual(sb.__db.prospects[0].state, 'replied', 'the marketing lane\'s own post-stop state');
+
+  const sb2 = fakeSupabase({ prospects: [{ id: 'p2', phone: '919625759924', state: 'in_session' }] });
+  const r2 = await recordFullStart({ supabase: sb2, phone: '+919625759924' });
+  assert.strictEqual(r2.changed, false, 'START must not re-write someone who never stopped');
+  assert.strictEqual(sb2.__db.prospects[0].state, 'in_session');
+});
+
+t('§9.8 THE MARKETING LANE IS BYTE-STABLE — prospects.js unedited by this micro', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/lib/prospects.js'), 'utf8');
+  assert.ok(src.includes("const STOP_WORDS  = new Set(['STOP', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'STOPALL']);"));
+  assert.ok(src.includes("await updateProspect(supabase, prospect.id, { state: 'opted_out' });"));
+  assert.ok(!src.includes('fullStop') && !src.includes('nudgeOptout'),
+    'the writer must not have learned about its new callers');
+});
+
+t('§9.9 the full-stop copy reads TERMINAL and names the way back', () => {
+  const line = getNudgeCopy('full_stop_confirmation');
+  assert.ok(/opted out/i.test(line), 'terminal register, mirroring the marketing lane');
+  assert.ok(/won't message you again/i.test(line), 'it must state the absoluteness');
+  assert.ok(/START/.test(line), 'START is the single named way back');
+  assert.ok(/STOP MORNINGS/.test(line),
+    'it must distinguish itself from the pause — two opt-outs shipped in one block');
+  assert.ok(getNudgeCopy('full_start_confirmation'), 'a stop line without its start line is a trap');
+});
+
+t('§9.10 the resume line no longer wears a provisional flag (founder ratified as shipped)', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/lib/nudgeCopy.js'), 'utf8');
+  const i = src.indexOf('resume_confirmation:');
+  const block = src.slice(Math.max(0, i - 700), i);
+  assert.ok(!/PROVISIONAL/.test(block),
+    'a ratified line wearing a provisional flag is the stale-comment class');
+  assert.ok(/RATIFIED AS SHIPPED/.test(block));
+});
+
+// ══════════════════════════════════════════════════════════════════════════
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);
 if (fail === 0) {
   console.log('GREEN — the nudge fires on its predicate · nudge_optout honoured PER LANE ·');
-  console.log('STOP MORNINGS narrow, STOP alone still terminal · START MORNINGS resumes with');
-  console.log('zero gate change · F4 routes a closed window · the rider grep-zero on runtime');
-  console.log('values · the mis-route cannot recur. Live send declared-not-claimed.\n');
+  console.log('STOP MORNINGS narrow and nudge-class only · BARE STOP NOW TERMINAL on bride and');
+  console.log('vendor through the ONE existing writer, nudge branch first so a pause can never');
+  console.log('become an opt-out · START resumes both classes · F4 routes a closed window · the');
+  console.log('rider grep-zero on runtime values · the mis-route cannot recur · the marketing');
+  console.log('lane byte-stable. Live send declared-not-claimed.\n');
 }
 process.exit(fail === 0 ? 0 : 1);
 
