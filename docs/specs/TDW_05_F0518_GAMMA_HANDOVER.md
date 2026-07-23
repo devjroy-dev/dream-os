@@ -175,3 +175,92 @@ verify.
 The couple soul (05's chartered closing sitting), on the founder's sequence. F-05.28 and
 F-05.13's coordinated pass remain open and unscheduled. Sequencing beyond this sitting is
 the founder's.
+
+---
+
+## 8. THE RUN RECORD — appended after the founder's walk, 2026-07-23
+
+**The walk went S0 → S6. Six green, one red, and the red was not on delivered code.**
+
+| step | result |
+|---|---|
+| S0 | 🟢 `0100` applied. Readback 23 rows; the first 21 matched the witnessed list one-for-one in order, every default included. |
+| S0.5 | 🟢 Both test accounts reset, one row each, verified. |
+| S1 | 🟢 Invite/OTP path reached the onboarding screen. OTP from the bride line as `tdw_couple_login_otp`. |
+| S2 | 🟢 The contract landed on three planes — see the row below. |
+| S2.5 | 🟢 PIN set. |
+| S3 | 🟢 The rail exists. Affordance reads exactly `Forgot PIN?`; `/couple/pin-reset` opened with the number prefilled; reset OTP from the bride line as `tdw_couple_reset_otp`. |
+| S4 | 🟢 **F-05.11-δ holding on the couple lane** — new PIN, landed sanctuary, no 401, no bounce. |
+| S5 | 🔴 **F-05.29**, below. Delivered code exonerated. |
+| S6 | 🟢 Free regression: sanctuary `wa.me` → the bride line. First live tap of CE-63's F-05.24 cure. |
+
+**The witnessed row (`+919625759924`):**
+
+```
+user_name        Dev Test 23     ← fork B1's third write, on users.name
+residence_city   Delhi           ← 0100, new
+wedding_style    hindu           ← 0100, new, lowercased as sent
+wedding_city     Mumbai          ← overwrote 'Delhi for sure'
+onboarding_state complete
+budget_total     2000000         ← UNTOUCHED
+```
+
+`notes` carried exactly **one** new row — `Wedding city: Mumbai` — and nothing naming
+residence or style. §4's disclosed silence, visible in production data.
+
+**The cell nobody designed.** `budget_total` survived a full write at 20,00,000. The web
+form has no budget field and sends none; that value came from an earlier WhatsApp
+onboarding. The all-optional contract updated what it was given and blanked nothing it
+wasn't. It became testable only when the founder explained where two earlier `notes` rows
+came from — it was not in the card. Equally: **Delhi in residence, Mumbai in wedding, not
+crossed** — two identical-looking dropdowns three keys apart, where a swap would have been
+invisible to every green thing in §3.
+
+---
+
+### F-05.29 — FILED, NOT CURED (found by the smoke, out of this sitting's scope)
+
+**The bride surface's front door ignores the cookie mirror the whole lane maintains.**
+
+`sanctuary/page.tsx:181–182` reads localStorage only, on both legs, with no cookie
+fallback. Meanwhile `lib/frost-api/_base.ts:134` **writes** `tdw_couple_token` on every
+token read and `:138` reads it back — precisely so iOS Safari's ITP cannot strand a bride.
+
+**Evidence:** after `localStorage.clear()`, `document.cookie` still carried
+`tdw_couple_token` — the mirror survived — and the guard bounced to landing anyway.
+
+**Consequence:** an iPhone bride who does not open the app for seven days is signed out
+while holding valid credentials. A seatbelt bolted to a car with no seat.
+
+**Scope:** `sanctuary/page.tsx` is 0-line in both ZIPs of this delivery; the guard predates
+the sitting. The cookie's own survival is what exonerates the reset rail's session write.
+The cure is small — give the guard the fallback `getAccessToken()` already has — but it
+touches the front door of the entire bride surface, so it is a ruling, not an executor's
+improvisation.
+
+**Observation riding alongside, chair to rule whether it is a finding at all:** three sites
+carry a cross-lane cookie fallback — `_base.ts:138`, `requireCoupleAuth.js:14`,
+`requireAuth.js:18`. Server-side this is defensible (the token resolves to a user, a
+vendor-only identity gets 403, and one human being both vendor and couple is a supported
+state). Client-side, after an ITP wipe, `getAccessToken()` falls through to the **vendor**
+cookie and sends that JWT to couple endpoints — on a shared device, one person's token
+driving another person's session. Narrow, real, and it reads as a convenience rather than
+a decision.
+
+---
+
+### Also banked from the walk
+
+- **Canonical test account changed, founder-directed:** `+919625759924` (user `2900c661` /
+  couple `9f1f84d5`) **supersedes** `+919431101193` from CE-54. The bride-cutover charter
+  and every smoke card lean on that fact.
+- **The register divergence, witnessed twice:** the bride agent writes conversational prose
+  into a typed column (`Delhi for sure`) while the web form writes a clean dropdown value
+  (`Mumbai`). Not a defect — the column is free text and always was. It **is** evidence the
+  `user_segment` sitting needs: `isIndiaCity('Delhi for sure')` returns false, so a Delhi
+  bride would derive as `global`. Derive-on-read must cope with two registers in one column.
+- **Two lanes, one notes plane:** WhatsApp onboarding and web onboarding write the same
+  `['onboarding','city']` tag vocabulary. Nobody designed that; it holds.
+- **The 503:** one occurrence on the first sanctuary load, in a preserved-log buffer that
+  never gained a second across five subsequent loads. Consistent with Railway rebuilding
+  from the push. Named, not closed.
