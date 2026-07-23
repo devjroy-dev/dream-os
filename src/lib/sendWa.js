@@ -37,6 +37,7 @@
 
 const { isApproved, buildTemplatePayload, getTemplate } = require('./templates');
 const { sendMetaTemplate, normalizeTo } = require('./metaCloud');
+const { isNudgeOptedOut } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
 
 // ── typed errors ────────────────────────────────────────────────────────────
 class WaError extends Error {
@@ -68,6 +69,15 @@ class WaBadCallError extends WaError {
 // typed refusal, never a silent drop (CE ruling 2). STOP means STOP, per number, across lines.
 class WaOptedOutError extends WaError {
   constructor(m) { super(m || 'recipient has opted out; send refused across all lines', 'opted_out'); this.name = 'WaOptedOutError'; }
+}
+// TDW_05 P4: NUDGE-CLASS opt-out (F-05.22). A SEPARATE, NARROWER refusal from the one
+// above and deliberately a separate error class — the two must never be caught by one
+// handler. WaOptedOutError means "this number is out of the estate, all lines". This one
+// means only "this number paused MORNING MESSAGES on THIS lane"; every other send to it,
+// including on the other lane, proceeds untouched. Fires only when the caller declares
+// `nudgeClass: true`; no existing call site does, so every current path is byte-identical.
+class WaNudgeOptedOutError extends WaError {
+  constructor(m) { super(m || 'recipient paused nudge-class messages on this line', 'nudge_opted_out'); this.name = 'WaNudgeOptedOutError'; }
 }
 
 // ── FROM resolution by line ──────────────────────────────────────────────────
@@ -168,12 +178,14 @@ async function sendWa(opts, deps = {}) {
   const {
     line, to, text, templateKey, vars,
     windowOpen, conversationId, supabase, mediaUrls,
+    nudgeClass,   // TDW_05 P4 / F-05.22 — opt-in flag; absent ⇒ pre-cure behaviour
   } = opts || {};
 
-  const sendText     = deps.sendText     || defaultSendText;
-  const sendTemplate = deps.sendTemplate || defaultSendTemplate;
-  const isWindowOpen = deps.isWindowOpen || defaultIsWindowOpen;
-  const isOptedOut   = deps.isOptedOut   || defaultIsOptedOut;
+  const sendText       = deps.sendText       || defaultSendText;
+  const sendTemplate   = deps.sendTemplate   || defaultSendTemplate;
+  const isWindowOpen   = deps.isWindowOpen   || defaultIsWindowOpen;
+  const isOptedOut     = deps.isOptedOut     || defaultIsOptedOut;
+  const isNudgeOptedOutFn = deps.isNudgeOptedOut || isNudgeOptedOut;
 
   if (!line || !to) throw new WaBadCallError('sendWa requires `line` and `to`');
   if (!!text === !!templateKey) {
@@ -188,6 +200,14 @@ async function sendWa(opts, deps = {}) {
   // marketing or bride/vendor. Silent drops are forbidden; refusal is a typed, catchable error.
   if (await isOptedOut({ to, line, supabase })) {
     throw new WaOptedOutError(`recipient ${to} has opted out; refusing send on line '${line}'`);
+  }
+
+  // ── nudge-class gate (P4, F-05.22) — narrower, and LANE-SCOPED ───────────────────────────────
+  // ORDER IS LOAD-BEARING: the full stop is checked FIRST and keeps its own error. A number that
+  // is both fully opted out and nudge-paused refuses as WaOptedOutError, the stronger and truer
+  // fact. This gate only ever runs for a caller that declared itself nudge-class.
+  if (nudgeClass && await isNudgeOptedOutFn({ supabase, phone: to, lane: line })) {
+    throw new WaNudgeOptedOutError(`recipient ${to} paused morning messages on line '${line}'`);
   }
 
   // ── template path (business-initiated / out-of-window) ──────────────────────
@@ -236,6 +256,7 @@ module.exports = {
   WaLineNotConfiguredError,
   WaBadCallError,
   WaOptedOutError,
+  WaNudgeOptedOutError,
   // exposed for tests/other callers
   defaultIsWindowOpen,
   defaultIsOptedOut,

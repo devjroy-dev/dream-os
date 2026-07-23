@@ -7,8 +7,13 @@
 
 const { layout } = require('./layout');
 
-const VENDOR_WA = process.env.TDW_WA_NUMBER      || '917982159047';
-const BRIDE_WA  = process.env.BRIDE_WA_NUMBER     || '14787788550';
+// F5 rider: BRIDE_WA previously fell back to the DEAD sandbox literal '14787788550'.
+// Both lanes now resolve through the one ruled home. BRIDE_WA_NUMBER is kept as the
+// first-read env name here (it is what Railway carries for this surface today);
+// waNumberFor supplies the floor when it is unset.
+const { waNumberFor, BRIDE_WA_NUMBER: BRIDE_FALLBACK } = require('../../lib/waNumbers');
+const VENDOR_WA = waNumberFor('vendor');
+const BRIDE_WA  = process.env.BRIDE_WA_NUMBER || BRIDE_FALLBACK;
 
 function unifiedInvitePage({ result, error } = {}) {
 

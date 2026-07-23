@@ -11,7 +11,8 @@ const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
-const ENQUIRE_BASE = 'https://wa.me/917982159047?text=TDW-';
+const { waNumberFor } = require('../../lib/waNumbers');
+const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
 // ── GET /feed ─────────────────────────────────────────────────────────────────
 // Returns real vendors (discover_eligible=true) UNION demo vendors

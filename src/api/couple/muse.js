@@ -10,6 +10,7 @@
 const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
+const { waNumberFor } = require('../../lib/waNumbers');   // F5 rider
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
 // ── POST /save ────────────────────────────────────────────────────────────────
@@ -179,7 +180,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not fetch saves.');
   }
 
-  const ENQUIRE_BASE = 'https://wa.me/917982159047?text=TDW-';
+  const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
   const shaped = (saves || []).map(s => ({
     id:                    s.id,

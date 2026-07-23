@@ -29,6 +29,13 @@ function t(name, fn) {
 // Tonight's real values (CE-43): the vendor number was BOTH VENDOR_WHATSAPP_NUMBER and the
 // process TWILIO_WHATSAPP_NUMBER; the bride literal is the number the old fallback inherited.
 const VENDOR_NUM = '+917982159047';
+// ── LABELED AMENDMENT · TDW_05 P4 (CE-63, Ruling №1) ────────────────────────────────────
+// The literal `14787788550` below is a PROTECTED SPECIMEN, not an oversight. P4's F5 rider
+// drove the dead Twilio sandbox number to grep-zero across src/** RUNTIME VALUES; the
+// re-scope ratified at CE-63 NAMES four classes where it deliberately survives, and this
+// fixture is one of them: the assertion beneath it EXISTS TO PROVE THE NUMBER'S ABSENCE.
+// Delete the literal and the assertion stops testing anything while still reporting green —
+// a vacuous cell is worse than a missing one. Do not "clean this up."
 const BRIDE_NUM  = 'whatsapp:+14787788550';
 const STALE_BRIDE_PNID = '1131327136726341'; // the convicted stale residue
 

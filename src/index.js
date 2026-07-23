@@ -9,6 +9,7 @@ if (!globalThis.WebSocket) globalThis.WebSocket = require('ws');
 // Session 5.5: couple-facing agent on Mode 1 + Mode 2
 
 const express      = require('express');
+const { waNumberFor } = require('./lib/waNumbers');   // F5 rider
 const cors         = require('cors');
 const ws           = require('ws');
 const cookieParser = require('cookie-parser');
@@ -39,7 +40,7 @@ const { extractCalendarFromImage } = require('./lib/vendorCalendarImage'); // TD
 const PORT                       = process.env.PORT || 3000;
 const SUPABASE_URL               = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TDW_WA_NUMBER              = process.env.TDW_WA_NUMBER || '14787788550';
+const TDW_WA_NUMBER              = waNumberFor('vendor');   // F5 rider: was the DEAD sandbox literal
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   realtime: { transport: ws },

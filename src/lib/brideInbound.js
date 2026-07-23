@@ -30,6 +30,9 @@
 // path — funnel fully through this core and are the byte-stability fixture.
 'use strict';
 
+const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
+const { getNudgeCopy } = require('./nudgeCopy');
+
 async function processBrideInbound(inputs, deps) {
   const {
     phone, body, profileName, sidForPersist, internalReplay, messageId,
@@ -43,6 +46,37 @@ async function processBrideInbound(inputs, deps) {
     DEAD_END_REPLY, CIRCLE_TOKEN_REGEX,
   } = deps;
   try {
+    // ── TDW_05 P4 / F-05.22 — THE NUDGE-CLASS BRANCH (bride lane) ─────
+    // FIRST, and pre-engine: no model call, no DB write beyond the one row, no cost.
+    // tdw_morning_nudge_bride has been telling brides "Reply STOP MORNINGS anytime to
+    // pause" since the template was approved, and until this branch nothing read those
+    // words. This is the first structurally possible bride opt-out in the estate.
+    //
+    // NARROW BY CONSTRUCTION. matchNudgeWord returns null for bare "STOP" — that word
+    // belongs to the full stop and its machinery is untouched here. Only the qualified
+    // two-token phrase reaches this block, and it writes nudge_optout and nothing else.
+    // Identical in shape to the vendor twin in vendorInbound.js; only the lane differs.
+    const nudgeWord = matchNudgeWord(trimmedBody);
+    if (nudgeWord) {
+      const lane = 'bride';
+      try {
+        if (nudgeWord === 'stop') {
+          await setNudgeOptout({ supabase, phone, lane, state: 'opted_out' });
+          await sendWhatsApp(phone, getNudgeCopy('opt_out_confirmation'));
+          console.log(`[bride-webhook] nudge-class OPT-OUT recorded for ${phone} (lane=${lane})`);
+        } else {
+          await setNudgeOptout({ supabase, phone, lane, state: 'resumed', source: 'inbound_stop_mornings' });
+          await sendWhatsApp(phone, getNudgeCopy('resume_confirmation'));
+          console.log(`[bride-webhook] nudge-class RESUME recorded for ${phone} (lane=${lane})`);
+        }
+      } catch (nudgeErr) {
+        // Never let this branch swallow the turn silently. The write is attempted first,
+        // so a failure here is most often the confirmation send — logged, not hidden.
+        console.error('[bride-webhook] nudge-class branch error:', nudgeErr && nudgeErr.message);
+      }
+      return;
+    }
+
     // ── Step 5: existing circle member routing ────────────────────────
     // Check FIRST — before token regex — so an active circle member who
     // accidentally sends a token-shaped message (e.g. forwarding someone

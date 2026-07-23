@@ -29,6 +29,9 @@
 // vendor calendar-OCR / media branches are a declared Meta gap. TEXT turns funnel fully through.
 'use strict';
 
+const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
+const { getNudgeCopy } = require('./nudgeCopy');
+
 async function processVendorInbound(inputs, deps) {
   const {
     phone, body, profileName, messageSid, internalReplay,
@@ -43,6 +46,36 @@ async function processVendorInbound(inputs, deps) {
     checkImageThrottle, markRejectionSent, extractCalendarFromImage, webhookCore, supabase, anthropic,
   } = deps;
   try {
+    // ── TDW_05 P4 / F-05.22 — THE NUDGE-CLASS BRANCH (vendor lane) ────
+    // FIRST, and pre-engine: no model call, no user row created, no cost. The twin of the
+    // bride branch in brideInbound.js — identical in shape so the two lanes cannot drift;
+    // only the lane string differs. tdw_morning_nudge_vendor has carried "Reply STOP
+    // MORNINGS to pause these updates" since approval with nothing reading it.
+    //
+    // NARROW BY CONSTRUCTION. matchNudgeWord returns null for bare "STOP"; that word is the
+    // full stop's and its machinery is untouched here. It also runs BEFORE the users upsert,
+    // so a pause from a number with no vendor row still lands rather than creating one.
+    const nudgeWord = matchNudgeWord(trimmedBody);
+    if (nudgeWord) {
+      const lane = 'vendor';
+      try {
+        if (nudgeWord === 'stop') {
+          await setNudgeOptout({ supabase, phone, lane, state: 'opted_out' });
+          await sendWhatsApp(phone, getNudgeCopy('opt_out_confirmation'));
+          console.log(`[webhook] nudge-class OPT-OUT recorded for ${phone} (lane=${lane})`);
+        } else {
+          await setNudgeOptout({ supabase, phone, lane, state: 'resumed', source: 'inbound_stop_mornings' });
+          await sendWhatsApp(phone, getNudgeCopy('resume_confirmation'));
+          console.log(`[webhook] nudge-class RESUME recorded for ${phone} (lane=${lane})`);
+        }
+      } catch (nudgeErr) {
+        // Never let this branch swallow the turn silently. The write is attempted first,
+        // so a failure here is most often the confirmation send — logged, not hidden.
+        console.error('[webhook] nudge-class branch error:', nudgeErr && nudgeErr.message);
+      }
+      return;
+    }
+
     let user;
     const { data: existingUser } = await supabase
       .from('users').select('*').eq('phone', phone).maybeSingle();

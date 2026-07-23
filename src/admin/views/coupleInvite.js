@@ -2,7 +2,20 @@
 // Mirrors invite.js (vendor invite) for couples.
 
 const { layout } = require('./layout');
-const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER_BRIDE || process.env.TDW_WA_NUMBER || '917982159047';
+const { waNumberFor } = require('../../lib/waNumbers');
+
+// ── F5 RIDER · THE MIS-ROUTE, CURED (TDW_05 P4) ─────────────────────────────
+// This line previously read:
+//     process.env.TDW_WA_NUMBER_BRIDE || process.env.TDW_WA_NUMBER || '917982159047'
+// On the COUPLE invite page. Both tail terms are the VENDOR lane: the env var and
+// the literal. So unless TDW_WA_NUMBER_BRIDE happened to be set, an admin inviting
+// a BRIDE handed her a link to the VENDOR line — she would have messaged the wrong
+// assistant on her first contact with the product. The variable name (TDW_WA_NUMBER,
+// the vendor's name) is what let it read as correct for as long as it did.
+// waNumberFor('bride') resolves TDW_WA_NUMBER_BRIDE || 917011788380 and deliberately
+// does NOT fall through to the vendor var — preserving that fall-through would be
+// preserving the bug's mechanism.
+const TDW_WA_NUMBER = waNumberFor('bride');
 
 function coupleInvitePage({ success, successName, error } = {}) {
   const waLink = successName

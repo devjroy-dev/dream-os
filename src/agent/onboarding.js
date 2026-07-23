@@ -20,7 +20,8 @@
 const { MODEL_HAIKU }                    = require('./models');
 const { VENDOR_CATEGORIES, CATEGORY_ALIASES } = require('./categories');
 
-const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '14787788550';
+const { waNumberFor } = require('../lib/waNumbers');
+const TDW_WA_NUMBER = waNumberFor('vendor');   // F5 rider: was the DEAD sandbox literal
 
 // Categories whose work is made-and-delivered before the wedding. These get the
 // craft -> reach -> price sub-flow instead of travel -> rate.

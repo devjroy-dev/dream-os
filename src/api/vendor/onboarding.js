@@ -18,7 +18,8 @@ const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
-const VENDOR_WA = process.env.TDW_WA_NUMBER || '917982159047';
+const { waNumberFor } = require('../../lib/waNumbers');
+const VENDOR_WA = waNumberFor('vendor');   // F5 rider: one home for the pair
 
 async function generateHandle(supabase, vendorId, user) {
   const { data: v } = await supabase

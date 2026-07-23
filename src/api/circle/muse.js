@@ -12,7 +12,8 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 
-const ENQUIRE_BASE = 'https://wa.me/917982159047?text=TDW-';
+const { waNumberFor } = require('../../lib/waNumbers');
+const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
 // ── Validate circle member helper ─────────────────────────────────────────────
 async function getCircleMember(supabase, memberUserId, coupleId) {

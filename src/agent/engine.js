@@ -7,6 +7,7 @@ const { buildCoupleSystemPrompt } = require('./coupleSystemPrompt');
 const { nextOnboardingMessage }   = require('./onboarding');
 const { TOOLS }                   = require('./tools');
 const { buildInvoiceMessage }     = require('../lib/invoiceMessage');
+const { waNumberFor }             = require('../lib/waNumbers');   // F5 rider
 const { generateInvoicePdf }     = require('../lib/invoicePdf');
 const { formatRs }               = require('../lib/format');
 const { classifyMessage, classifyVendorMessage } = require('./classifier');
@@ -1272,7 +1273,7 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
       if (error) return `Error updating handle: ${error.message}`;
 
       console.log(`[tool:update_routing_handle] vendor ${vendor.id} -> ${cleaned}`);
-      return `Handle updated to ${cleaned}. New TDW link: wa.me/${process.env.TDW_WA_NUMBER || '14787788550'}?text=TDW-${cleaned}`;
+      return `Handle updated to ${cleaned}. New TDW link: wa.me/${waNumberFor('vendor')}?text=TDW-${cleaned}`;
     }
 
     case 'get_my_tdw_link': {
@@ -1286,7 +1287,7 @@ async function executeTool({ name, input, vendor, conversation, supabase, channe
         return 'No TDW handle is set for this vendor. This is unexpected — escalate to Dev.';
       }
 
-      const tdwNumber = process.env.TDW_WA_NUMBER || '14787788550';
+      const tdwNumber = waNumberFor('vendor');   // F5 rider: was the DEAD sandbox literal
       const link = `wa.me/${tdwNumber}?text=TDW-${v.routing_handle}`;
       console.log(`[tool:get_my_tdw_link] vendor ${vendor.id} -> ${link}`);
       return `TDW link: ${link}`;

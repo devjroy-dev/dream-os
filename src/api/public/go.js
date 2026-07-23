@@ -6,6 +6,7 @@
 const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
+const { waNumberFor } = require('../../lib/waNumbers');   // F5 rider
 
 // GET /go/:handle — public, no auth
 router.get('/:handle', asyncHandler(async (req, res) => {
@@ -19,7 +20,7 @@ router.get('/:handle', asyncHandler(async (req, res) => {
   });
 
   const text = encodeURIComponent(`TDW-${handle}`);
-  return res.redirect(302, `https://wa.me/917982159047?text=${text}`);
+  return res.redirect(302, `https://wa.me/${waNumberFor('vendor')}?text=${text}`);
 }));
 
 module.exports = router;

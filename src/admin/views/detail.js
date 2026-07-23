@@ -1,6 +1,7 @@
 // src/admin/views/detail.js
 
-const TDW_WA_NUMBER = process.env.TDW_WA_NUMBER || '917982159047';
+const { waNumberFor } = require('../../lib/waNumbers');
+const TDW_WA_NUMBER = waNumberFor('vendor');   // F5 rider: one home for the pair
 
 function renderDetail({ vendor, user, state, messages, notes, leads, enquiries = [], monthCostInr = '0.00', costByModel = {}, invoices = [], expenses = [], totalBilled = 0, totalPaid = 0, totalOutstanding = 0, totalExpenses = 0, clients = [] }) {
   const name = user?.name || vendor.id.slice(0, 8);

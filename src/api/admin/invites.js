@@ -18,8 +18,10 @@ function generateCode() {
   return code;
 }
 
-const VENDOR_WA_NUMBER = process.env.TDW_WA_NUMBER   || '917982159047';
-const COUPLE_WA_NUMBER = process.env.BRIDE_WA_NUMBER || '14787788550';
+// F5 rider: COUPLE_WA_NUMBER previously fell back to the DEAD sandbox literal.
+const { waNumberFor, BRIDE_WA_NUMBER: BRIDE_FALLBACK } = require('../../lib/waNumbers');
+const VENDOR_WA_NUMBER = waNumberFor('vendor');
+const COUPLE_WA_NUMBER = process.env.BRIDE_WA_NUMBER || BRIDE_FALLBACK;
 
 // GET /whatsapp-links
 router.get('/whatsapp-links', requireAdmin, asyncHandler(async (req, res) => {

@@ -9,6 +9,7 @@
 'use strict';
 
 const express        = require('express');
+const { waNumberFor } = require('../../lib/waNumbers');   // F5 rider
 const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
@@ -211,7 +212,7 @@ router.patch('/routing-handle', requireAuth, resolveVendor(), asyncHandler(async
     .from('vendors').update({ routing_handle: cleaned }).eq('id', vendor.id);
   if (error) return errRes(res, 500, error.message);
 
-  const tdwNumber = process.env.TDW_WA_NUMBER || '14787788550';
+  const tdwNumber = waNumberFor('vendor');   // F5 rider: was the DEAD sandbox literal
   const wa_link   = 'https://wa.me/' + tdwNumber + '?text=TDW-' + cleaned;
   console.log('[me:routing-handle] ' + vendor.id + ' -> ' + cleaned);
   return okRes(res, { routing_handle: cleaned, wa_link });

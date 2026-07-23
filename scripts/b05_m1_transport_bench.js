@@ -25,6 +25,13 @@ async function t(name, fn) {
   catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 }
 
+// ── LABELED AMENDMENT · TDW_05 P4 (CE-63, Ruling №1) ────────────────────────────────────
+// The literal `14787788550` below is a PROTECTED SPECIMEN, not an oversight. P4's F5 rider
+// drove the dead Twilio sandbox number to grep-zero across src/** RUNTIME VALUES; the
+// re-scope ratified at CE-63 NAMES four classes where it deliberately survives, and this
+// fixture is one of them: the assertion beneath it EXISTS TO PROVE THE NUMBER'S ABSENCE.
+// Delete the literal and the assertion stops testing anything while still reporting green —
+// a vacuous cell is worse than a missing one. Do not "clean this up."
 const BRIDE_LIT = 'whatsapp:+14787788550';
 const noSb = { supabase: false };                      // opt-out gate degrades to no-op
 
