@@ -30,12 +30,10 @@ const ROOT = path.resolve(__dirname, '..');
 const AUTH_REL = 'src/api/vendor/auth.js';
 const AUTH_ABS = path.join(ROOT, AUTH_REL);
 
-// ── stub twilio (never fires on the pin-login path) ──────────────────────────────────
-const twilioPath = require.resolve('twilio');
-require.cache[twilioPath] = {
-  id: twilioPath, filename: twilioPath, loaded: true,
-  exports: (_sid, _tok) => ({ messages: { create: async () => ({ sid: 'SM_fake' }) } }),
-};
+// M2b (CE-62): the twilio module stub is DELETED. It existed so route modules that did
+// `require('twilio')` could load without the real SDK. No module requires twilio any more
+// and the package is purged from package.json, so require.resolve('twilio') now THROWS —
+// the stub had become the only thing in this bench that still needed Twilio to exist.
 
 // ── stub metaCloud (import-chain safety; unused on pin-login) ─────────────────────────
 const metaPath = require.resolve(path.join(ROOT, 'src/lib/metaCloud.js'));

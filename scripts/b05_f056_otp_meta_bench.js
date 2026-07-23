@@ -31,19 +31,16 @@ process.env.SUPABASE_URL              = process.env.SUPABASE_URL              ||
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy_service_role';
 process.env.TWILIO_ACCOUNT_SID        = 'ACdummy';
 process.env.TWILIO_AUTH_TOKEN         = 'dummy';
-delete process.env.OTP_WA_NUMBER;
 delete process.env.BRIDE_WA_NUMBER; delete process.env.TDW_WA_NUMBER;
 delete process.env.BRIDE_PHONE_NUMBER_ID; delete process.env.VENDOR_PHONE_NUMBER_ID;
 
 const ROOT = path.resolve(__dirname, '..');
 
-// ── stub twilio at the module boundary; capture messages.create params ──────────────
-const twilioPath = require.resolve('twilio');
-const CAP = { twilio: null };
-require.cache[twilioPath] = {
-  id: twilioPath, filename: twilioPath, loaded: true,
-  exports: (_sid, _tok) => ({ messages: { create: async (p) => { CAP.twilio = p; return { sid: 'SM_fake' }; } } }),
-};
+// M2b (CE-62): the twilio module stub is DELETED. It existed so route modules that did
+// `require('twilio')` could load without the real SDK. No module requires twilio any more
+// and the package is purged from package.json, so require.resolve('twilio') now THROWS —
+// the stub had become the only thing in this bench that still needed Twilio to exist.
+const CAP = { meta: null };  // M2b: the `twilio` capture slot died with the stub
 
 // ── stub metaCloud at the module boundary; capture sendMetaTemplate(args, opts) ──────
 const metaPath = require.resolve(path.join(ROOT, 'src/lib/metaCloud.js'));
@@ -136,27 +133,33 @@ async function runSite(site) {
 
 // ── site matrix ─────────────────────────────────────────────────────────────────────
 const PHONE = '+919800000001';
+// ── W-1 DISCLOSURE (M2b, CE-62) ───────────────────────────────────────────────────────
+// `fallback` and `expectBody` are GONE from this fixture, and the reason is founder-facing:
+// the five OTP body strings they asserted lived ONLY inside the twilioSend closures, which
+// the founder's gate (ii) deleted. `git grep "login code is" -- src` is now ZERO.
+//
+// The words did not MOVE and no new copy was authored — the branch that held them died, per
+// the ruling. But the copy a user now receives comes from the Meta AUTHENTICATION templates
+// on the WABA (tdw_couple_login_otp, tdw_couple_reset_otp, tdw_circle_join_otp,
+// tdw_vendor_login_otp, tdw_vendor_reset_otp), NOT from this repo. The founder's copy veto
+// over OTP wording is therefore exercised in Meta's template manager from here on, and no
+// bench in this estate can assert those bytes. Named, not buried.
 const SITES = [
   { name: 'couple /send-otp (login)',   file: '../src/api/couple/auth.js', path: '/send-otp',   lane: 'bride',
-    pnidVar: 'BRIDE_PHONE_NUMBER_ID', tmplName: 'tdw_couple_login_otp', fallback: '+14787788550',
-    body: { phone: PHONE }, rows: { users: { id: 'u1', name: 'T' }, vendors: null, couples: { id: 'c1' } },
-    expectBody: (c) => `Your Dream Wedding login code is: ${c}. Valid for 5 minutes. Do not share this code.` },
+    pnidVar: 'BRIDE_PHONE_NUMBER_ID', tmplName: 'tdw_couple_login_otp',
+    body: { phone: PHONE }, rows: { users: { id: 'u1', name: 'T' }, vendors: null, couples: { id: 'c1' } } },
   { name: 'couple /forgot-pin (reset)', file: '../src/api/couple/auth.js', path: '/forgot-pin', lane: 'bride',
-    pnidVar: 'BRIDE_PHONE_NUMBER_ID', tmplName: 'tdw_couple_reset_otp', fallback: '+14787788550',
-    body: { phone: PHONE }, rows: { users: { id: 'u1' }, couples: { id: 'c1' } },
-    expectBody: (c) => `Your Dream Wedding PIN reset code is: ${c}. Valid for 5 minutes. Do not share this code.` },
+    pnidVar: 'BRIDE_PHONE_NUMBER_ID', tmplName: 'tdw_couple_reset_otp',
+    body: { phone: PHONE }, rows: { users: { id: 'u1' }, couples: { id: 'c1' } } },
   { name: 'circle /send-otp (join)',    file: '../src/api/circle/join.js', path: '/send-otp',   lane: 'bride',
-    pnidVar: 'BRIDE_PHONE_NUMBER_ID', tmplName: 'tdw_circle_join_otp', fallback: '+14787788550',
-    body: { token: 'CIRCLE-ABCD', phone: PHONE }, rows: { circle_members: { id: 'm1', status: 'pending', expires_at: null } },
-    expectBody: (c) => `Your Dream Wedding circle code is: ${c}. Valid for 5 minutes. Do not share this code.` },
+    pnidVar: 'BRIDE_PHONE_NUMBER_ID', tmplName: 'tdw_circle_join_otp',
+    body: { token: 'CIRCLE-ABCD', phone: PHONE }, rows: { circle_members: { id: 'm1', status: 'pending', expires_at: null } } },
   { name: 'vendor /send-otp (login)',   file: '../src/api/vendor/auth.js', path: '/send-otp',   lane: 'vendor',
-    pnidVar: 'VENDOR_PHONE_NUMBER_ID', tmplName: 'tdw_vendor_login_otp', fallback: '+917982159047',
-    body: { phone: PHONE }, rows: { users: { id: 'u1', name: 'T' }, couples: null, vendors: { id: 'v1' } },
-    expectBody: (c) => `Your DreamAI login code is: ${c}. Valid for 5 minutes. Do not share this code.` },
+    pnidVar: 'VENDOR_PHONE_NUMBER_ID', tmplName: 'tdw_vendor_login_otp',
+    body: { phone: PHONE }, rows: { users: { id: 'u1', name: 'T' }, couples: null, vendors: { id: 'v1' } } },
   { name: 'vendor /forgot-pin (reset)', file: '../src/api/vendor/auth.js', path: '/forgot-pin', lane: 'vendor',
-    pnidVar: 'VENDOR_PHONE_NUMBER_ID', tmplName: 'tdw_vendor_reset_otp', fallback: '+917982159047',
-    body: { phone: PHONE }, rows: { users: { id: 'u1' }, vendors: { id: 'v1' } },
-    expectBody: (c) => `Your DreamAI PIN reset code is: ${c}. Valid for 5 minutes. Do not share this code.` },
+    pnidVar: 'VENDOR_PHONE_NUMBER_ID', tmplName: 'tdw_vendor_reset_otp',
+    body: { phone: PHONE }, rows: { users: { id: 'u1' }, vendors: { id: 'v1' } } },
 ];
 
 const PNID = { bride: 'PNID_BRIDE_123', vendor: 'PNID_VENDOR_456' };
@@ -204,22 +207,43 @@ const codeFromTwilio = (p) => { const m = /(\d{6})/.exec(String(p && p.body || '
   }
 
   // ── (ii) lane NOT Meta-live -> Twilio (b) fallback byte-identical; Meta silent ───────
+  // ══ (ii) TWILIO fallback — RETIRED AT M2b (CE-62, founder gate (ii)) ═══════════════
+  // Five cells proved the Twilio else-branch stayed byte-identical while the Meta primary
+  // was dormant. The founder ruled full sunset: the else-branch is deleted, so these cells
+  // assert a transport that no longer exists. Replaced by the no-fallback floor below.
+
+  // ══ THE NO-FALLBACK FLOOR — the founder's ruled case (gate (ii)) ═══════════════════
+  // 'PNID absent -> a LOUD, HONEST failure, never a silent success and never a resurrection.'
   for (const site of SITES) {
-    await t(`(ii) TWILIO ${site.name} -> fallback from=whatsapp:${site.fallback}, body byte-identical`, async () => {
-      delete process.env[site.pnidVar]; // dormant
-      const r = await runSite(site);
-      assert.ok(r.twilio != null, 'Twilio fallback did not execute'); // non-vacuous
-      assert.strictEqual(r.meta, null, 'Meta path fired on a non-Meta lane');
-      assert.strictEqual(r.twilio.from, `whatsapp:${site.fallback}`);
-      const code = codeFromTwilio(r.twilio);
-      assert.ok(code, 'no 6-digit code in Twilio body');
-      assert.strictEqual(r.twilio.body, site.expectBody(code)); // body oracle byte-identical
+    await t(`(ii) NO-FALLBACK ${site.name} -> PNID absent throws by name; NO send, NO silent success`, async () => {
+      delete process.env[site.pnidVar];
+      const { sendOtpCode } = require('../src/lib/otpSend.js');
+      let threw = null;
+      try {
+        await sendOtpCode({ to: PHONE, code: '123456', lane: site.lane, templateKey: site.tmplName, deps: { env: {} } });
+      } catch (e) { threw = e; }
+      assert.ok(threw, 'an unresolvable lane MUST throw, not resolve');
+      assert.ok(/no Meta phone-number-id/.test(threw.message), `throw must name the cause, got: ${threw && threw.message}`);
+      assert.ok(/no Twilio fallback/.test(threw.message), 'and must state that no fallback exists (no resurrection)');
+      assert.ok(new RegExp(site.pnidVar).test(threw.message), `and must name the missing var ${site.pnidVar}`);
     });
   }
+  await t('(ii) NO-FALLBACK vacuity: a PRESENT PNID does NOT throw (the floor is not always-throw)', async () => {
+    const { sendOtpCode } = require('../src/lib/otpSend.js');
+    const r = await sendOtpCode({
+      to: PHONE, code: '123456', lane: 'bride', templateKey: SITES[0].tmplName,
+      deps: {
+        env: { BRIDE_PHONE_NUMBER_ID: 'PNID_B' },
+        templates: { buildAuthTemplatePayload: () => ({ name: SITES[0].tmplName, components: [] }) },
+        metaCloud: { sendMetaTemplate: async () => ({ ok: true }) },
+      },
+    });
+    assert.strictEqual(r.transport, 'meta', 'a configured lane must ride Meta');
+  });
 
   // ── (iii) bcrypt-before-send + no-OTP-in-logs, on BOTH transports ────────────────────
   for (const site of SITES) {
-    for (const mode of ['META', 'TWILIO']) {
+    for (const mode of ['META']) {  // TWILIO leg retired at M2b
       await t(`(iii) ${mode} ${site.name} -> OTP bcrypt-hashed before send, never logged`, async () => {
         if (mode === 'META') process.env[site.pnidVar] = PNID[site.lane];
         else                 delete process.env[site.pnidVar];
@@ -241,7 +265,7 @@ const codeFromTwilio = (p) => { const m = /(\d{6})/.exec(String(p && p.body || '
 
   // ── (iv) F-05.2 gate BYPASS: sendWhatsApp never fires on any OTP path ────────────────
   for (const site of SITES) {
-    for (const mode of ['META', 'TWILIO']) {
+    for (const mode of ['META']) {  // TWILIO leg retired at M2b
       await t(`(iv) ${mode} ${site.name} -> whatsapp.js F-05.2 gate never invoked`, async () => {
         if (mode === 'META') process.env[site.pnidVar] = PNID[site.lane];
         else                 delete process.env[site.pnidVar];

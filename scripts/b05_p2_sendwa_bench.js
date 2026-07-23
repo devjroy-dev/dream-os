@@ -53,18 +53,57 @@ function spies() {
   // ── FROM resolution ──────────────────────────────────────────────────────
   const savedEnv = {
     TWILIO_WHATSAPP_NUMBER: process.env.TWILIO_WHATSAPP_NUMBER,
+    BRIDE_WHATSAPP_NUMBER: process.env.BRIDE_WHATSAPP_NUMBER,
     VENDOR_WHATSAPP_NUMBER: process.env.VENDOR_WHATSAPP_NUMBER,
     MARKETING_WHATSAPP_NUMBER: process.env.MARKETING_WHATSAPP_NUMBER,
   };
-  delete process.env.TWILIO_WHATSAPP_NUMBER;
-  delete process.env.VENDOR_WHATSAPP_NUMBER;
-  delete process.env.MARKETING_WHATSAPP_NUMBER;
+  const clearFrom = () => {
+    delete process.env.TWILIO_WHATSAPP_NUMBER;
+    delete process.env.BRIDE_WHATSAPP_NUMBER;
+    delete process.env.VENDOR_WHATSAPP_NUMBER;
+    delete process.env.MARKETING_WHATSAPP_NUMBER;
+  };
+  clearFrom();
 
-  eq(wa.resolveFrom('bride'),  'whatsapp:+14787788550', 'FROM bride defaults to shared sender');
-  eq(wa.resolveFrom('vendor'), 'whatsapp:+14787788550', 'FROM vendor falls back to shared sender');
+  // ══ FROM resolution — THE M2b INVERSION (F3 / B-1, CE-62) ═══════════════════════════
+  // Pre-M2b, bride read TWILIO_WHATSAPP_NUMBER exclusively and both lanes tailed onto the
+  // hardcoded 'whatsapp:+14787788550'. That made a RETIRING transport var load-bearing for
+  // Meta lane resolution on a LIVE lane: delete the var and metaLaneFor collapses to null on
+  // every default-from send. These cells assert the inversion that fixes it, and they assert
+  // the transition shape too — because the whole point is that no deploy may depend on an
+  // env change landing in the same breath.
+  eq(wa.resolveFrom('bride'),  null, 'FROM bride unset → null (the dead sandbox literal is GONE)');
+  eq(wa.resolveFrom('vendor'), null, 'FROM vendor unset → null (the dead sandbox literal is GONE)');
   eq(wa.resolveFrom('marketing'), null, 'FROM marketing has NO fallback (null when unset)');
+
+  // the new convention is read FIRST
+  process.env.BRIDE_WHATSAPP_NUMBER  = 'whatsapp:+919990000001';
+  process.env.VENDOR_WHATSAPP_NUMBER = 'whatsapp:+919990000002';
+  eq(wa.resolveFrom('bride'),  'whatsapp:+919990000001', 'FROM bride reads BRIDE_WHATSAPP_NUMBER');
+  eq(wa.resolveFrom('vendor'), 'whatsapp:+919990000002', 'FROM vendor reads VENDOR_WHATSAPP_NUMBER');
+
+  // TRANSITION-SAFE: old name alone still resolves, so the deploy can precede the env edit
+  clearFrom();
+  process.env.TWILIO_WHATSAPP_NUMBER = 'whatsapp:+919990000009';
+  eq(wa.resolveFrom('bride'),  'whatsapp:+919990000009', 'TRANSITION: bride falls back to the old name when the new one is absent');
+  eq(wa.resolveFrom('vendor'), 'whatsapp:+919990000009', 'TRANSITION: vendor falls back to the old name when the new one is absent');
+
+  // PRECEDENCE: with both present the NEW name wins, so the founder's post-smoke deletion
+  // of the old var is a no-op rather than a cutover.
+  process.env.BRIDE_WHATSAPP_NUMBER  = 'whatsapp:+919990000001';
+  process.env.VENDOR_WHATSAPP_NUMBER = 'whatsapp:+919990000002';
+  eq(wa.resolveFrom('bride'),  'whatsapp:+919990000001', 'PRECEDENCE: new name beats TWILIO_WHATSAPP_NUMBER (bride)');
+  eq(wa.resolveFrom('vendor'), 'whatsapp:+919990000002', 'PRECEDENCE: new name beats TWILIO_WHATSAPP_NUMBER (vendor)');
+
+  clearFrom();
   process.env.MARKETING_WHATSAPP_NUMBER = 'whatsapp:+10000000001';
   eq(wa.resolveFrom('marketing'), 'whatsapp:+10000000001', 'FROM marketing resolves when set');
+
+  // Standing env for the sections below: both production lanes configured under the new
+  // convention, which is what Railway carries. Pre-M2b these sections leaned on the
+  // hardcoded literal; leaning on a real configured lane is the honest shape.
+  process.env.BRIDE_WHATSAPP_NUMBER  = 'whatsapp:+919990000001';
+  process.env.VENDOR_WHATSAPP_NUMBER = 'whatsapp:+919990000002';
 
   // ── A. free-form, window OPEN → sends via text transport ──────────────────
   {
@@ -72,7 +111,7 @@ function spies() {
     const r = await wa.sendWa({ line: 'bride', to: '+91999', text: 'hi', windowOpen: true }, s);
     eq(r.mode, 'text', 'A free-form open → mode text');
     ok(s.rec.text.length === 1 && s.rec.template.length === 0, 'A text transport hit once, template zero');
-    eq(s.rec.text[0].from, 'whatsapp:+14787788550', 'A text FROM = bride sender');
+    eq(s.rec.text[0].from, 'whatsapp:+919990000001', 'A text FROM = bride sender');
     eq(s.rec.text[0].to, '+91999', 'A text TO passed through');
     eq(s.rec.text[0].text, 'hi', 'A text body passed through');
   }

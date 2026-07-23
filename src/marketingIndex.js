@@ -22,7 +22,7 @@ const {
   changesWithPnid, buildSingleChangeBody, laneForPnid,
 } = require('./lib/metaInbound');
 const {
-  sidSeen, recordSid, captureDeadLetter, GRACEFUL_TURN_LINE, warnIfSignatureCheckDisabled,
+  sidSeen, recordSid, captureDeadLetter, GRACEFUL_TURN_LINE,
 } = require('./lib/webhookCore');
 const { sendWa } = require('./lib/sendWa');
 const { sendMetaText } = require('./lib/metaCloud');
@@ -184,7 +184,6 @@ app.post('/webhook/meta', async (req, res) => {
 });
 
 if (require.main === module) {
-  warnIfSignatureCheckDisabled(SERVICE_TAG);
   scheduleMarketingCrons({ supabase, sendWa, sendWaDeps: marketingSendWaDeps });
   app.listen(PORT, () => {
     console.log(`${SERVICE_TAG} marketing service listening on :${PORT}`);

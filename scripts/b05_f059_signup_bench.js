@@ -33,13 +33,11 @@ process.env.VENDOR_PHONE_NUMBER_ID    = 'PNID_VENDOR_456';
 
 const ROOT = path.resolve(__dirname, '..');
 
-// ── stub twilio (must NOT fire on the Meta path) ─────────────────────────────────────
-const twilioPath = require.resolve('twilio');
-const CAP = { twilio: null, meta: null, store: null };
-require.cache[twilioPath] = {
-  id: twilioPath, filename: twilioPath, loaded: true,
-  exports: (_sid, _tok) => ({ messages: { create: async (p) => { CAP.twilio = p; return { sid: 'SM_fake' }; } } }),
-};
+// M2b (CE-62): the twilio module stub is DELETED. It existed so route modules that did
+// `require('twilio')` could load without the real SDK. No module requires twilio any more
+// and the package is purged from package.json, so require.resolve('twilio') now THROWS —
+// the stub had become the only thing in this bench that still needed Twilio to exist.
+const CAP = { meta: null, store: null };  // M2b: the `twilio` capture slot died with the stub
 
 // ── stub metaCloud; capture the auth-template send (carries the plaintext code) ──────
 const metaPath = require.resolve(path.join(ROOT, 'src/lib/metaCloud.js'));

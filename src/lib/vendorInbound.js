@@ -893,24 +893,12 @@ async function processVendorInbound(inputs, deps) {
   }
 }
 
-// ── Transport-specific input normalizers (the ONLY per-transport front-half) ──────────
-function twilioInputsFrom(req, { internalReplay, trimmedBody, numMedia, hasMedia }) {
-  return {
-    phone:          (req.body.From || '').replace('whatsapp:', ''),
-    body:           req.body.Body || '',
-    profileName:    req.body.ProfileName || null,
-    messageSid:     req.body.MessageSid || null,
-    internalReplay,
-    trimmedBody, numMedia, hasMedia,
-    mediaUrl:       req.body.MediaUrl0 || null,
-    rawPayload:     req.body,
-  };
-}
+// ── Input normalizer (M2b: Meta is the only transport; twilioInputsFrom deleted) ──────
 // Meta media (TDW_05 MEDIA-SHIM, Shape A): media arrives as a media-ID; the caller resolves it
 // via resolveVendorMedia (below) into a STABLE public url and passes it in as `resolvedMedia`.
 // When resolvedMedia is absent (no media, or resolve failed -> text-only failure shape), mediaUrl
 // stays null and the turn proceeds exactly as the text-only path. `from` is normalized to +E164
-// (the Twilio/DB canonical) so vendor/user lookups + reply target match byte-for-byte.
+// (the DB canonical, inherited from the Twilio era) so vendor/user lookups + reply target match.
 function metaInputsFrom(msg, rawBody, resolvedMedia) {
   const trimmedBody = (msg.text || '').trim();
   const media       = Array.isArray(msg.media) ? msg.media : [];
@@ -957,6 +945,6 @@ async function resolveVendorMedia(mediaItem, deps) {
 }
 
 module.exports = {
-  processVendorInbound, twilioInputsFrom, metaInputsFrom,
+  processVendorInbound, metaInputsFrom,
   resolveVendorMedia, WA_MEDIA_BUCKET, VENDOR_MEDIA_ALLOW_MIMES, VENDOR_MEDIA_MAX_BYTES,
 };

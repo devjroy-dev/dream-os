@@ -1,68 +1,42 @@
-// src/lib/webhookCore.js — TDW_05 Block 05, P1a (Movement A).
+// src/lib/webhookCore.js — shared inbound/callback surface for the vendor,
+// bride, and marketing services.
 //
-// VERBATIM extraction of the shared inbound/callback transport logic that lived
-// twice — once in src/index.js (vendor, "dream-os") and once in src/brideIndex.js
-// (bride, "dream-wedding"). The two copies were byte-identical in LOGIC and differed
-// only in the log-prefix tokens they printed:
+// ORIGIN (TDW_05 P1a, Movement A): a VERBATIM extraction of logic that lived twice,
+// once in src/index.js and once in src/brideIndex.js, differing only in log-prefix
+// tokens — so the tokens became parameters and the emitted output stayed byte-identical.
+// Movement B then added the dedupe / dead-letter / replay surface below.
 //
-//     vendor                 bride
-//     ------                 -----
-//     [whatsapp:in]          [bride-whatsapp:in]
-//     [webhook]              [bride-webhook]
-//     [twilio-status]        [bride-twilio-status]
-//     [dream-os]             [dream-wedding]
+// TDW_05 M2b — THE TWILIO SUNSET (CE-62, per CE-33's enumeration). Three functions are
+// DELETED here because the transport they served no longer exists:
+//   · verifyTwilioSignature      — X-Twilio-Signature validation. Meta's inbound is
+//                                  verified by metaInbound.verifyMetaSignature instead.
+//   · normalizeMedia             — read req.body.NumMedia / MediaUrl0, a Twilio form
+//                                  shape. Meta inbound is normalized by metaInbound.
+//   · makeTwilioStatusHandler    — the /webhook/twilio-status delivery callback. Meta
+//                                  statuses arrive on /webhook/meta (extractStatuses).
+//   · warnIfSignatureCheckDisabled — deleted with them: its entire content was a warning
+//                                  about Twilio signature verification, gated on
+//                                  DISABLE_TWILIO_SIGNATURE_CHECK. After the sunset it
+//                                  would have warned about a check that does not exist,
+//                                  on three services including marketing (never on
+//                                  Twilio at all). A log line that describes a deleted
+//                                  mechanism is not a safety net, it is a false one.
+//                                  FILED, not fixed here: DISABLE_META_SIGNATURE_CHECK
+//                                  — the flag that IS live — has no boot warning. That
+//                                  is a new finding, not a deletion sitting's business.
 //
-// So the extraction takes those tokens as parameters: each service passes its own,
-// and the emitted output stays byte-identical to what the inline code produced. No
-// logic change, no new env, no renamed flag — the existing DISABLE_TWILIO_SIGNATURE_CHECK
-// guard and its startup warning are preserved exactly. (The features — MessageSid
-// dedupe, the status-callback race fix, dead letters — are Movement B, gated on the
-// CE verifying this extraction byte-identical.)
-//
-// Proof of byte-identity: scripts/b5_webhookcore_bench.js runs the pre-refactor inline
-// blocks (kept verbatim in the bench as reference) and these functions over the same
-// matrix and diffs every console line + response. Same output, RED on any drift.
+// WHAT STAYS, and why (CE-33 named this shape): logInbound and isEmptyInbound are
+// transport-agnostic — they take already-extracted fields and emit/decide on them.
+// The whole Movement-B surface (LRU + durable dedupe, dead letters, replay predicate,
+// pg error classification) is RF-1's dedupe estate and is keyed on a message id, not
+// on a provider: Twilio MessageSid and Meta wamid both flow through it unchanged.
 'use strict';
-
-const twilio = require('twilio');
 
 // ── Structured logging: the inbound line ─────────────────────────────
 // Was: console.log(`[whatsapp:in] ${phone} -> ${body}`)   (vendor)
 //      console.log(`[bride-whatsapp:in] ${phone} -> ${body}`) (bride)
 function logInbound(prefix, phone, body) {
   console.log(`${prefix} ${phone} -> ${body}`);
-}
-
-// ── Twilio signature verification ────────────────────────────────────
-// Preserves the DISABLE_TWILIO_SIGNATURE_CHECK guard exactly. Returns true when the
-// request may proceed; on an invalid signature it writes the 403 and returns false,
-// so the caller does: `if (!verifyTwilioSignature(req, res, { phone, prefix })) return;`
-function verifyTwilioSignature(req, res, { phone, prefix }) {
-  if (process.env.DISABLE_TWILIO_SIGNATURE_CHECK !== 'true') {
-    const twilioSignature = req.headers['x-twilio-signature'] || '';
-    const webhookUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-    const isValid = twilio.validateRequest(
-      process.env.TWILIO_AUTH_TOKEN,
-      twilioSignature,
-      webhookUrl,
-      req.body,
-    );
-    if (!isValid) {
-      console.warn(`${prefix} invalid Twilio signature from ${phone}, url=${webhookUrl}`);
-      res.status(403).send('Forbidden');
-      return false;
-    }
-  }
-  return true;
-}
-
-// ── Media normalization: the one shape both engines consume ──────────
-// Pure. Returns { trimmedBody, numMedia, hasMedia } from the raw Twilio body.
-function normalizeMedia(req, body) {
-  const trimmedBody = body.trim();
-  const numMedia    = parseInt(req.body.NumMedia || '0', 10);
-  const hasMedia    = numMedia > 0 || !!req.body.MediaUrl0;
-  return { trimmedBody, numMedia, hasMedia };
 }
 
 // ── Empty-payload guard ──────────────────────────────────────────────
@@ -78,89 +52,10 @@ function isEmptyInbound(res, { trimmedBody, hasMedia, prefix }) {
   return false;
 }
 
-// ── Twilio status callback handler ───────────────────────────────────
-// Twilio POSTs here on every delivery state change for outbound WhatsApp messages.
-// We match on MessageSid and update messages.delivery_status. Returns an express
-// handler bound to this service's supabase client and log prefix.
-//
-// TDW_05 P1b (Movement B) — the Session-5.5 status race. A delivery callback can
-// arrive BEFORE the outbound row has been inserted (Twilio is that fast). The pre-B
-// code logged "(callback ignored)" and dropped the status forever. B replaces that
-// single drop with an in-process retry: re-run the matched update up to `maxRetries`
-// times, `retryMs` apart. If a retry lands after the row exists, delivery_status is
-// written and nothing is lost. Only when all retries miss do we log `callback_unmatched`
-// and drop — the terminal, named, greppable outcome (no schema, per the ruling).
-//
-// Timing is injectable so the bench runs deterministically without real 2s waits;
-// production defaults are the chartered 3 × 2000ms. Every other branch (row-found on
-// first try, missing sid/status, db-error, errCode, handler-throw) is unchanged from
-// Movement A and stays byte-identical in the b5 bench.
-function makeTwilioStatusHandler({ supabase, prefix, maxRetries = 3, retryMs = 2000, sleep = _sleep }) {
-  return async (req, res) => {
-    try {
-      const sid     = req.body.MessageSid    || req.body.SmsSid    || null;
-      const status  = req.body.MessageStatus || req.body.SmsStatus || null;
-      const errCode = req.body.ErrorCode || null;
-
-      console.log(`${prefix} sid=${sid} status=${status}${errCode ? ` errCode=${errCode}` : ''}`);
-
-      if (!sid || !status) {
-        return res.status(200).send('ok');
-      }
-
-      const runUpdate = () => supabase
-        .from('messages')
-        .update({ delivery_status: status })
-        .eq('twilio_sid', sid)
-        .select('id');
-
-      const { data, error } = await runUpdate();
-
-      if (error) {
-        console.error(`${prefix} db update error:`, error);
-      } else if (!data || data.length === 0) {
-        // The race: no row yet. Retry a bounded number of times before giving up.
-        let matched = false;
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-          await sleep(retryMs);
-          const retry = await runUpdate();
-          if (retry.error) {
-            console.error(`${prefix} db update error:`, retry.error);
-            matched = true; // an error is a terminal, already-logged outcome — stop retrying
-            break;
-          }
-          if (retry.data && retry.data.length > 0) {
-            console.log(`${prefix} sid=${sid} matched on retry ${attempt}/${maxRetries}`);
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
-          console.log(`${prefix} no message row for sid=${sid} after ${maxRetries} retries (callback_unmatched)`);
-        }
-      }
-
-      res.status(200).send('ok');
-    } catch (err) {
-      console.error(`${prefix} handler error:`, err);
-      res.status(200).send('ok');
-    }
-  };
-}
-
-// ── Startup warning ──────────────────────────────────────────────────
-// Printed at boot only when the signature check is disabled. serviceTag is the
-// service's own bracket token ([dream-os] / [dream-wedding]).
-function warnIfSignatureCheckDisabled(serviceTag) {
-  if (process.env.DISABLE_TWILIO_SIGNATURE_CHECK === 'true') {
-    console.warn(`${serviceTag} WARNING: DISABLE_TWILIO_SIGNATURE_CHECK=true — Twilio webhook signature verification is OFF. Do not run in production with this flag set.`);
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════
 // TDW_05 P1b — Movement B additions (dedupe, dead letters, replay predicate).
-// All new surface below this line. The Movement-A functions above are unchanged
-// except makeTwilioStatusHandler's deliberate race-branch swap (CE-ruled).
+// All new surface below this line. Transport-agnostic in full: keyed on a message id,
+// never on a provider — which is why the sunset leaves it untouched.
 // ═══════════════════════════════════════════════════════════════════════
 
 function _sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -290,13 +185,9 @@ function isInternalReplay(req) {
 }
 
 module.exports = {
-  // Movement A (sealed)
+  // Movement A (sealed; the three Twilio fns + the Twilio boot warning deleted at M2b)
   logInbound,
-  verifyTwilioSignature,
-  normalizeMedia,
   isEmptyInbound,
-  makeTwilioStatusHandler,
-  warnIfSignatureCheckDisabled,
   // Movement B
   GRACEFUL_TURN_LINE,
   sidSeen,

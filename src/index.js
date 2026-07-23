@@ -11,7 +11,6 @@ if (!globalThis.WebSocket) globalThis.WebSocket = require('ws');
 const express      = require('express');
 const cors         = require('cors');
 const ws           = require('ws');
-const twilio       = require('twilio');
 const cookieParser = require('cookie-parser');
 const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
@@ -31,7 +30,7 @@ const { runTurn } = require('./engine/dist/core/loop');                     // 5
 const { fetchCalendarSnapshot, fetchScratchpad, applyCalendarSignals } = require('./lib/vendor/calendarSignals'); // 5-A calendar parity
 const { buildLlmForTurn, abandonActiveThread } = require('./api/vendor-engine/chat'); // TDW_06 P7b: the shared route builder (F-06.1 2nd limb) · TDW_04.5 F-04.98 C3: the fresh-thread seam
 const { matchModeWord, applyModeFlip, MODE_FLIP_LINES, matchFreshWord, FRESH_THREAD_LINE } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words · TDW_04.5 F-04.98 C3: WA fresh word
-const { processVendorInbound, twilioInputsFrom, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
+const { processVendorInbound, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M2: dormant Meta inbound (vendor lane)
 const { resolveMetaMedia } = require('./lib/metaMedia'); // TDW_05 MEDIA-SHIM: lane-agnostic Meta media resolver
 const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle'); // TDW_05 M2: via deps
@@ -137,12 +136,6 @@ app.get('/admin/test-briefing/:vendorId', async (req, res) => {
   }
 });
 
-// ── Twilio status callback ──────────────────────────────────────────
-// Twilio POSTs here on every delivery state change for outbound WhatsApp messages.
-// We match on MessageSid and update messages.delivery_status.
-// TDW_05 P1a: handler extracted verbatim to webhookCore (byte-identical; prefix passed in).
-app.post('/webhook/twilio-status', webhookCore.makeTwilioStatusHandler({ supabase, prefix: '[twilio-status]' }));
-
 app.use('/admin', adminRouter);
 app.use('/api/v2', apiRouter);
 
@@ -162,49 +155,9 @@ const vendorInboundDeps = {
   checkImageThrottle, markRejectionSent, extractCalendarFromImage, webhookCore, supabase, anthropic,
 };
 
-// ── Vendor Twilio inbound (unchanged transport; now calls the SHARED core) ───────
-app.post('/webhook/whatsapp', async (req, res) => {
-  try {
-    const fromRaw        = req.body.From || '';
-    const phone          = fromRaw.replace('whatsapp:', '');
-    const body           = req.body.Body || '';
-    const messageSid     = req.body.MessageSid || null;
-    const internalReplay = webhookCore.isInternalReplay(req);
-
-    if (!internalReplay && !webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[webhook]' })) return;
-
-    const { trimmedBody, numMedia, hasMedia } = webhookCore.normalizeMedia(req, body);
-
-    if (!internalReplay) {
-      if (webhookCore.sidSeen(messageSid)) {
-        console.log(`[webhook] duplicate MessageSid ${messageSid} — already processed, dropping`);
-        return res.status(200).send('<Response></Response>');
-      }
-      webhookCore.recordSid(messageSid);
-    }
-
-    const inputs = twilioInputsFrom(req, { internalReplay, trimmedBody, numMedia, hasMedia });
-    await processVendorInbound(inputs, vendorInboundDeps);
-    return res.status(200).send('<Response/>');
-  } catch (err) {
-    // The core self-handles turn errors (181-970). This catch covers the parse/sig/dedupe
-    // stage — verbatim-equivalent to the original outer catch, so behavior is unchanged.
-    console.error('[webhook/whatsapp] error:', err);
-    if (webhookCore.isDuplicateSidError(err)) {
-      console.log(`[webhook] duplicate MessageSid ${req.body.MessageSid} hit the durable index — already processed, dropping`);
-      return res.status(200).send('<Response></Response>');
-    }
-    try {
-      await webhookCore.captureDeadLetter({ supabase, service: 'vendor', phone: (req.body.From || '').replace('whatsapp:', ''), payload: req.body, error: err });
-      await sendWhatsApp((req.body.From || '').replace('whatsapp:', ''), webhookCore.GRACEFUL_TURN_LINE);
-    } catch (dlErr) { console.error('[webhook/whatsapp] dead-letter path error:', dlErr && dlErr.message); }
-    return res.status(200).send('<Response/>');
-  }
-});
-
-// ── Vendor Meta inbound (DORMANT — receives nothing until the vendor number is provisioned
-// on Meta and the webhook is pointed here at the founder's cutover). Calls the SAME core, so
-// reply content is byte-identical to the Twilio path (M2 bench proves it). ───────────────
+// ── Vendor inbound — Meta Cloud API, the only inbound (M2b). The Twilio /webhook/whatsapp
+// and /webhook/twilio-status routes are DELETED; both now answer 404, which is the sunset's
+// witnessed proof. Delivery statuses arrive here via extractStatuses. ────────────────────
 app.get('/webhook/meta', (req, res) => {
   if (metaInbound.handleVerifyChallenge(req, res, process.env.META_VERIFY_TOKEN)) return;
   return res.status(400).send('Bad Request');
@@ -251,7 +204,6 @@ app.post('/webhook/meta', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[dream-os] listening on :${PORT}`);
-  webhookCore.warnIfSignatureCheckDisabled('[dream-os]'); // TDW_05 P1a
   webhookCore.probeMessageSidColumn(supabase, { prefix: '[dream-os]' }); // TDW_05 P1b: durable-dedupe capability probe
   startCronJobs({ supabase });
 });

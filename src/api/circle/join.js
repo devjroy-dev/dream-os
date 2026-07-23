@@ -21,7 +21,6 @@
 const express      = require('express');
 const router       = express.Router();
 const bcrypt       = require('bcryptjs');
-const twilio       = require('twilio');
 const asyncHandler = require('../../lib/asyncHandler');
 const { sendOtpCode } = require('../../lib/otpSend');
 
@@ -30,22 +29,10 @@ const OTP_TTL_MS    = 5 * 60 * 1000;
 const PIN_RE        = /^\d{4}$/;
 const TOKEN_RE      = /^CIRCLE-[A-Z0-9]{4,12}$/i;
 
-const BRIDE_WA = process.env.BRIDE_WA_NUMBER
-  ? `+${process.env.BRIDE_WA_NUMBER}`
-  : '+14787788550';
+// TDW_05 M2b (CE-62, founder-ruled option (ii)): the OTP Twilio fallback is GONE.
+// BRIDE_WA / OTP_WA existed only to address that dead transport; OTP now rides this
+// lane's own Meta phone-number-id via sendOtpCode. No `from` is derived here at all.
 
-// F-05.6 fix (b) — decouple OTP/auth from the migrating lane number (CE-34).
-// The circle-join code leaves from a DEDICATED Twilio number that NEVER migrates,
-// so a Twilio→Meta lane cutover cannot break circle-join. DORMANT until the founder
-// provisions OTP_WA_NUMBER (bare digits, a Twilio number kept on Twilio); while
-// UNSET this falls back to BRIDE_WA — byte-identical to the pre-fix send.
-const OTP_WA = process.env.OTP_WA_NUMBER
-  ? `+${process.env.OTP_WA_NUMBER}`
-  : BRIDE_WA;
-
-function getTwilio() {
-  return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-}
 
 function generateOtp() {
   return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
@@ -147,18 +134,13 @@ router.post('/send-otp', asyncHandler(async (req, res) => {
   }
 
   try {
-    // F-05.6 fix (a): Meta AUTHENTICATION template when the bride lane is Meta-live;
-    // else the Twilio (b) send below runs UNCHANGED. Dormant until BRIDE_PHONE_NUMBER_ID.
+    // M2b: Meta AUTHENTICATION template on this lane's PNID. No fallback exists;
+    // an unresolvable lane throws into the catch below (session deleted, 500).
     await sendOtpCode({
       to: phone, code: otp, lane: 'bride', templateKey: 'circle_join_otp',
-      twilioSend: () => getTwilio().messages.create({
-        from: `whatsapp:${OTP_WA}`,
-        to:   `whatsapp:${phone}`,
-        body: `Your Dream Wedding circle code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
-      }),
     });
   } catch (err) {
-    console.error('[circle/join/send-otp] twilio error:', err.message);
+    console.error('[circle/join/send-otp] otp send error:', err.message);
     await supabase.from('otp_sessions').delete().eq('phone', phone);
     return fail(res, 500, 'Could not send WhatsApp code. Please try again.');
   }

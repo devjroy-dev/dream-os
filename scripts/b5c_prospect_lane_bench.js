@@ -100,6 +100,12 @@ async function main() {
   process.env.META_WABA_TOKEN = 'test-token';
   process.env.MARKETING_PHONE_NUMBER_ID = 'PNID_TEST';
   process.env.MARKETING_WHATSAPP_NUMBER = 'whatsapp:+10000000000';
+  // M2b (CE-62): resolveFrom no longer tails onto the dead 'whatsapp:+14787788550' sandbox
+  // literal, so the bride/vendor cross-line cells must configure their lanes explicitly —
+  // otherwise they'd refuse with line_not_configured and never reach the opt-out gate they
+  // exist to prove. The assertion's intent is unchanged; only the fixture's honesty improved.
+  process.env.BRIDE_WHATSAPP_NUMBER  = 'whatsapp:+919990000001';
+  process.env.VENDOR_WHATSAPP_NUMBER = 'whatsapp:+919990000002';
   process.env.META_APP_SECRET = 'app-secret';
   process.env.META_VERIFY_TOKEN = 'verify-token';
   const marketingDeps = { sendText: async ({ to, text }) => metaCloud.sendMetaText({ to, text }) };

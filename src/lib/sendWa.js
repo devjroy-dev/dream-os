@@ -71,19 +71,30 @@ class WaOptedOutError extends WaError {
 }
 
 // ── FROM resolution by line ──────────────────────────────────────────────────
-// Today ALL outbound leaves via the single Twilio sender (TWILIO_WHATSAPP_NUMBER).
-// Bride resolves to that exact value → the bride free-form path is byte-identical to
-// today's `sendWhatsApp(phone, msg)`. Vendor may later get its own send number; until
-// then it also uses the shared sender (no behavior change). Marketing has NO fallback —
-// W-2/§3 forbid it borrowing a production FROM; unset → typed error, never a wrong send.
+// M2b / F3 (CE-62) — THE INVERSION. Every lane now reads its OWN *_WHATSAPP_NUMBER
+// FIRST; TWILIO_WHATSAPP_NUMBER survives only as the transitional fallback so this
+// deploy does not depend on an env change landing in the same breath (founder adds
+// the new names before deploy, deletes the old after the smoke).
+//
+// Pre-M2b, `bride` read TWILIO_WHATSAPP_NUMBER exclusively — which made a retiring
+// transport var the load-bearing key for Meta lane resolution on a LIVE lane. That
+// inversion is the whole point of this edit.
+//
+// DISCLOSED BEHAVIOR CHANGE: the hardcoded 'whatsapp:+14787788550' tail is GONE from
+// both lanes. It is the dead Twilio sandbox literal (F-05.20's second fallback), and
+// silently defaulting a production lane onto a number that no longer answers is the
+// exact failure this sitting exists to remove. Unset now yields null →
+// WaLineNotConfiguredError, the same typed loud refusal marketing has always had.
 function resolveFrom(line) {
   switch (line) {
     case 'bride':
-      return process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14787788550';
+      return process.env.BRIDE_WHATSAPP_NUMBER
+          || process.env.TWILIO_WHATSAPP_NUMBER
+          || null;
     case 'vendor':
       return process.env.VENDOR_WHATSAPP_NUMBER
           || process.env.TWILIO_WHATSAPP_NUMBER
-          || 'whatsapp:+14787788550';
+          || null;
     case 'marketing':
       return process.env.MARKETING_WHATSAPP_NUMBER || null;
     default:
@@ -93,7 +104,7 @@ function resolveFrom(line) {
 
 // ── default transports (real; lazily required so this module loads with no deps) ─────────
 async function defaultSendText({ from, to, text, mediaUrls }) {
-  const { sendWhatsApp } = require('./whatsapp'); // lazy: avoids loading twilio at bench time
+  const { sendWhatsApp } = require('./whatsapp'); // lazy: keeps this module dependency-light at bench time
   return sendWhatsApp(to, text, mediaUrls || [], from);
 }
 // TDW_05 P3 — THE RULED TRANSPORT SWAP. This seam now POSTs the approved template to the Meta

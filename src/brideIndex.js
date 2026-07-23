@@ -1,7 +1,7 @@
 // brideIndex.js — bride webhook server, Railway service "dream-wedding"
 //
 // Entry point for inbound WhatsApp messages from brides on +14787788550.
-// Twilio POSTs to /webhook/whatsapp; this file routes through the gate,
+// Meta POSTs to /webhook/meta; this file routes through the gate,
 // logs the message, runs the engine, and sends the reply.
 //
 // Mirrors src/index.js (vendor service) in shape but stripped down:
@@ -24,7 +24,6 @@
 
 const express      = require('express');
 const ws           = require('ws');
-const twilio       = require('twilio');
 const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn, surfacePendingCircleSessions } = require('./agent/brideEngine');
@@ -36,7 +35,7 @@ const { saveToMuse }     = require('./lib/museSave');
 const { groundedSearch } = require('./lib/groundedSearch');
 const { MODEL_HAIKU }    = require('./agent/models');
 const { startBrideCronJobs } = require('./brideCron');
-const { processBrideInbound, twilioInputsFrom, metaInputsFrom } = require('./lib/brideInbound'); // TDW_05 M1b
+const { processBrideInbound, metaInputsFrom } = require('./lib/brideInbound'); // TDW_05 M1b
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M1b: dormant Meta inbound (bride lane)
 const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle'); // TDW_05 M1b: via deps
 
@@ -135,14 +134,6 @@ app.get('/', (req, res) => {
   res.json({ status: 'alive', service: 'dream-wedding', version });
 });
 
-// ── Twilio status callback ───────────────────────────────────────────
-// Twilio POSTs here on every delivery state change for outbound WhatsApp messages.
-// We match on MessageSid and update messages.delivery_status.
-// Mirrors vendor src/index.js handler line-for-line.
-// TDW_05 P1a: handler extracted verbatim to webhookCore (byte-identical; prefix passed in).
-app.post('/webhook/twilio-status', webhookCore.makeTwilioStatusHandler({ supabase, prefix: '[bride-twilio-status]' }));
-
-// ── Inbound WhatsApp webhook ─────────────────────────────────────────
 // ── brideInboundDeps: every seam the shared turn-core needs (M1b) ────────────────
 // The core is transport-agnostic; the real deps here are what production uses. The bench
 // injects fakes. (handle* / build* are hoisted function declarations defined below.)
@@ -154,53 +145,9 @@ const brideInboundDeps = {
   DEAD_END_REPLY, CIRCLE_TOKEN_REGEX,
 };
 
-// ── Twilio inbound (unchanged transport; now calls the SHARED core) ──────────────
-app.post('/webhook/whatsapp', async (req, res) => {
-  try {
-    const fromRaw        = req.body.From || '';
-    const phone          = fromRaw.replace('whatsapp:', '');
-    const body           = req.body.Body || '';
-    const internalReplay = webhookCore.isInternalReplay(req);
-    const twilioSid      = req.body.MessageSid || null;
-
-    webhookCore.logInbound('[bride-whatsapp:in]', phone, body);
-
-    if (!internalReplay && !webhookCore.verifyTwilioSignature(req, res, { phone, prefix: '[bride-webhook]' })) return;
-
-    const { trimmedBody, numMedia, hasMedia } = webhookCore.normalizeMedia(req, body);
-    if (webhookCore.isEmptyInbound(res, { trimmedBody, hasMedia, prefix: '[bride-webhook]' })) return;
-
-    if (!internalReplay) {
-      if (webhookCore.sidSeen(twilioSid)) {
-        console.log(`[bride-webhook] duplicate MessageSid ${twilioSid} — already processed, dropping`);
-        return res.status(200).send('<Response></Response>');
-      }
-      webhookCore.recordSid(twilioSid);
-    }
-
-    const inputs = twilioInputsFrom(req, { internalReplay, trimmedBody, numMedia, hasMedia });
-    await processBrideInbound(inputs, brideInboundDeps);
-    return res.status(200).send('<Response></Response>');
-  } catch (err) {
-    // The core self-handles turn errors (174-636). This catch covers the parse/sig/dedupe
-    // stage — verbatim-equivalent to the original outer catch, so behavior is unchanged.
-    console.error('[bride-webhook] error:', err);
-    if (webhookCore.isDuplicateSidError(err)) {
-      console.log(`[bride-webhook] duplicate MessageSid ${req.body.MessageSid} hit the durable index — dropping`);
-      return res.status(200).send('<Response></Response>');
-    }
-    try {
-      const phone = (req.body.From || '').replace('whatsapp:', '');
-      await webhookCore.captureDeadLetter({ supabase, service: 'bride', phone, payload: req.body, error: err });
-      await sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE);
-    } catch (dlErr) { console.error('[bride-webhook] dead-letter path error:', dlErr && dlErr.message); }
-    return res.status(200).send('<Response></Response>');
-  }
-});
-
-// ── Meta inbound (DORMANT — receives nothing until the bride number is provisioned on
-// Meta and the webhook is pointed here at the founder's cutover). Calls the SAME core, so
-// reply content is byte-identical to the Twilio path (M1b bench proves it). ──────────────
+// ── Bride inbound — Meta Cloud API, the only inbound (M2b). The Twilio /webhook/whatsapp
+// and /webhook/twilio-status routes are DELETED; both now answer 404, which is the sunset's
+// witnessed proof. Delivery statuses arrive here via extractStatuses. ────────────────────
 app.get('/webhook/meta', (req, res) => {
   if (metaInbound.handleVerifyChallenge(req, res, process.env.META_VERIFY_TOKEN)) return;
   return res.status(400).send('Bad Request');
@@ -752,7 +699,6 @@ async function handleCircleMemberMessage({
 
 app.listen(PORT, () => {
   console.log(`[dream-wedding] listening on :${PORT}`);
-  webhookCore.warnIfSignatureCheckDisabled('[dream-wedding]'); // TDW_05 P1a
   webhookCore.probeMessageSidColumn(supabase, { prefix: '[dream-wedding]' }); // TDW_05 P1b: durable-dedupe capability probe
   startBrideCronJobs({ supabase });
 });

@@ -4,49 +4,36 @@
 //
 // B2: added optional mediaUrls parameter for outbound media.
 // Block 05 P2: added optional `from` parameter so a caller can resolve the FROM
-// number per line (bride/vendor/marketing). Defaults to TWILIO_WHATSAPP_NUMBER.
+// number per line (bride/vendor/marketing). See the default-from note below (M2b).
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// TDW_05 TRANSPORT MIGRATION — M1 (bride lane), CE-ruled §4 (body-rewire).
+// TDW_05 M2b — THE TWILIO SUNSET (CE-62). Twilio is GONE from this module.
 // ───────────────────────────────────────────────────────────────────────────
-// This module's BODY now routes a send to the Meta Cloud API when `from` resolves
-// to a Meta-live lane IN THIS PROCESS; otherwise it falls through to Twilio,
-// BYTE-IDENTICAL to the pre-migration sender. The ~80 call sites are unchanged —
-// they inherit the transport from here (CE §4: rewire the body, not the sites).
+// Both lanes have answered on Meta for weeks. The Twilio fallthrough that lived
+// beneath this sender is DELETED: there is no second transport to fall to, so a
+// send that cannot resolve a Meta lane is a LOUD, TYPED refusal — never a silent
+// drop and never a resurrection. The refusal keeps the sentinel shape the callers
+// already handle ({ sid:null, blocked, sent:false }); no new throw, so W-1 holds.
 //
-// LANE RESOLUTION IS SERVICE-SCOPED AND COLLISION-PROOF (CE §2 refinement). A lane
-// is Meta-live in a process ONLY when that lane's phone-number-id env is present in
-// THAT process AND that lane's number is set EXPLICITLY. Both lanes now demand an
-// explicit *_WHATSAPP_NUMBER (BRIDE_WHATSAPP_NUMBER / VENDOR_WHATSAPP_NUMBER) — there is
-// NO literal/Twilio fallback for either identity. VENDOR_PHONE_NUMBER_ID stays unset until
-// M2, so vendor sends remain Twilio automatically ("dormant until provisioned").
+// F-05.2 CLOSES HERE. The cross-line opt-out gate used to live INSIDE the Meta
+// branch so the Twilio fallthrough could stay byte-identical. With the fallthrough
+// gone the gate is simply on the only path there is — every free-form send in the
+// estate now passes it. (OTP is the one deliberate exemption and never routes
+// through this module: AUTHENTICATION templates are opt-out-exempt by design and
+// otpSend.js calls metaCloud directly. See otpSend.js's header.)
 //
-// F-05.16 (CE-43): PNID-presence ALONE was not collision-proof. A stale BRIDE_PHONE_NUMBER_ID
-// on the vendor service, combined with brideNum inheriting TWILIO_WHATSAPP_NUMBER (the old
-// literal fallback), routed every from-inferred vendor send onto the dead bride PNID → (#200).
-// The cure (CE-ruled): the bride branch mirrors the vendor branch EXACTLY — explicit PNID AND
-// explicit number, or the branch is unreachable. The TWILIO/literal inheritance is dead.
-//
-// F-05.2 CURE LIVES HERE (CE §4), INSIDE the Meta branch: the cross-line opt-out gate
-// runs only when a send resolves to a Meta lane, so the Twilio fallthrough stays BYTE-
-// IDENTICAL (no new round-trip). The cure is thus the shared-sender MECHANISM and
-// activates per-lane at each cutover (bride at M1, vendor at M2) — "all sites in one
-// place" because every migrated lane inherits this single gate. An opted-out recipient
-// is BLOCKED with a loud log line and a typed sentinel return ({ sid:null,
-// blocked:'opted_out' }); the caller's control flow is unchanged (no new throw → W-1-safe).
-// The gate DEGRADES TO A NO-OP when no supabase is reachable (no env / bench).
+// F3 / B-1 (CE-62) — THE DEFAULT-FROM INVERSION. The default `from` used to be
+// TWILIO_WHATSAPP_NUMBER, which made a retiring transport var load-bearing for Meta
+// lane resolution: delete it and metaLaneFor collapses to null on every default-from
+// send, on both live lanes. The default now reads the *_WHATSAPP_NUMBER convention
+// FIRST and keeps TWILIO_WHATSAPP_NUMBER only as a TRANSITIONAL fallback, so no
+// deploy depends on an env change landing in the same breath. The founder adds the
+// new names before deploy and deletes the old only after the smoke proves green.
 //
 // W-1: transport only. Message BODY bytes are never touched here.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const twilio = require('twilio');
 const { sendMetaText, normalizeTo } = require('./metaCloud');
-
-const TWILIO_ACCOUNT_SID     = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN      = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14787788550';
-
-const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
 // ── digits-only normalizer for number comparison (strip 'whatsapp:' and '+') ──
 function _bare(n) {
@@ -80,7 +67,19 @@ function metaLaneFor(from, env = process.env) {
   return null;
 }
 
-// ── lazy supabase for the opt-out gate (Meta + Twilio paths; no-op without env) ─
+// ── Default FROM resolution (F3 / B-1, CE-62) ────────────────────────────────
+// THIS process's own lane number. Reads the *_WHATSAPP_NUMBER convention first and
+// keeps TWILIO_WHATSAPP_NUMBER only as the transitional fallback (deleted post-smoke,
+// founder-hand). Vendor is probed before bride deliberately: F-05.16's bug was a STALE
+// BRIDE_PHONE_NUMBER_ID sitting on the vendor service, and vendor-first means the
+// vendor process resolves its own identity even if that stale var is still present.
+function defaultFrom(env = process.env) {
+  if (env.VENDOR_PHONE_NUMBER_ID && env.VENDOR_WHATSAPP_NUMBER) return env.VENDOR_WHATSAPP_NUMBER;
+  if (env.BRIDE_PHONE_NUMBER_ID  && env.BRIDE_WHATSAPP_NUMBER)  return env.BRIDE_WHATSAPP_NUMBER;
+  return env.TWILIO_WHATSAPP_NUMBER || '';
+}
+
+// ── lazy supabase for the opt-out gate (no-op without env) ────────────────────
 let _sb = null;
 function _supabase() {
   if (_sb !== null) return _sb;               // cached (may be `false` = unavailable)
@@ -112,22 +111,21 @@ async function _isOptedOut(to, deps = {}) {
 //
 // toPhone   : string  — recipient phone (E.164 or whatsapp:E.164)
 // body      : string  — message text
-// mediaUrls : string[] — optional public image URLs (Twilio path)
-// from      : string  — optional sender; defaults to TWILIO_WHATSAPP_NUMBER
+// mediaUrls : string[] — optional public image URLs (refused on Meta; named gap)
+// from      : string  — optional sender; omitted ⇒ defaultFrom(env) (this lane's number)
 // deps      : object  — test injection: { sendMetaText, isOptedOut, supabase, env }
-async function sendWhatsApp(toPhone, body, mediaUrls = [], from = TWILIO_WHATSAPP_NUMBER, deps = {}) {
+async function sendWhatsApp(toPhone, body, mediaUrls = [], from = undefined, deps = {}) {
   const _sendMetaText = deps.sendMetaText || sendMetaText;
   const _optedOut     = deps.isOptedOut   || ((to) => _isOptedOut(to, deps));
   const env           = deps.env || process.env;
 
-  const lane = metaLaneFor(from, env);
+  const _from = (from === undefined || from === null || from === '') ? defaultFrom(env) : from;
+  const lane  = metaLaneFor(_from, env);
 
-  // ── Meta path (bride at M1; vendor at M2) ────────────────────────────────────
-  // DORMANT until the lane's phone-number-id is provisioned. The F-05.2 opt-out gate
-  // lives HERE (inside the Meta branch), NOT before it, so the Twilio fallthrough below
-  // stays BYTE-IDENTICAL — no new round-trip, no behavior change (chair's #1 re-derivation).
-  // The cure therefore activates per-lane at each cutover; it is "all sites in one place"
-  // because every migrated lane inherits this single gate.
+  // ── Meta path — the only path (M2b) ─────────────────────────────────────────
+  // M2b: this is now the ONLY path. The F-05.2 opt-out gate below is therefore on every
+  // free-form send in the estate — the closure the finding claimed, delivered by deletion
+  // of the alternative rather than by duplication of the gate.
   if (lane) {
     // F-05.2 cross-line opt-out gate (degrades to no-op without supabase).
     if (await _optedOut(toPhone)) {
@@ -147,20 +145,12 @@ async function sendWhatsApp(toPhone, body, mediaUrls = [], from = TWILIO_WHATSAP
     return { sid: wamid, wamid, meta: true, line: lane.line, result: res, sent: true };
   }
 
-  // ── Twilio path (unmigrated lanes — BYTE-IDENTICAL to pre-migration) ──────────
-  const to        = toPhone.startsWith('whatsapp:') ? toPhone : `whatsapp:${toPhone}`;
-  const fromAddr  = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
-
-  const params = { from: fromAddr, to, body };
-  if (Array.isArray(mediaUrls) && mediaUrls.length > 0) {
-    params.mediaUrl = mediaUrls.slice(0, 10);
-  }
-
-  const _twilioCreate = deps.twilioCreate || ((p) => twilioClient.messages.create(p));
-  const msg = await _twilioCreate(params);
-  const mediaCount = params.mediaUrl ? params.mediaUrl.length : 0;
-  console.log(`[whatsapp:out] ${to} <- ${body.slice(0, 60)}${mediaCount ? ` [+${mediaCount} media]` : ''} (${msg.sid})`);
-  return msg;
+  // ── No lane resolved — the sunset's loud floor (M2b) ─────────────────────────
+  // Pre-M2b this fell through to Twilio. There is no Twilio. A send that cannot name
+  // its Meta lane is REFUSED with the sentinel the callers already handle, and the
+  // reason is printed with the resolved `from` so the env fault is greppable on sight.
+  console.error(`[whatsapp:out] REFUSED — no Meta lane for from='${_bare(_from)}' to=${_bare(toPhone)}; check this service's *_PHONE_NUMBER_ID + *_WHATSAPP_NUMBER (M2b: no Twilio fallback exists)`);
+  return { sid: null, blocked: 'no_meta_lane', sent: false };
 }
 
-module.exports = { sendWhatsApp, metaLaneFor, _setSupabase, _isOptedOut };
+module.exports = { sendWhatsApp, metaLaneFor, defaultFrom, _setSupabase, _isOptedOut };

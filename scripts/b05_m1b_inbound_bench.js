@@ -1,21 +1,27 @@
-// scripts/b05_m1b_inbound_bench.js — TDW_05 TRANSPORT MIGRATION M1b (bride inbound) bench.
-// Proves the inbound cutover is W-1-safe:
-//   1. VERBATIM-THEN-DIFF: brideInbound.js's core == the original brideIndex.js handler region
-//      (base 693ce8e), minus ONLY the mechanical transport-decoupling. RED on any content drift.
-//   2. INPUT EQUIVALENCE: twilioInputsFrom() and metaInputsFrom() agree on every content-bearing
-//      field for the same logical message (only the dedupe key differs — sid vs wamid, correct).
-//   3. TWO-PATH BYTE-IDENTITY: one fixture driven through the REAL core over a faithful in-memory
-//      supabase fake (only the LLM turn + the sender are stubbed; ALL branching runs for real) via
-//      BOTH transports' inputs — the outbound reply bytes are identical. Plus a circle-member and a
-//      dead-end fixture to prove the branch routing is transport-agnostic too.
-// SCOPE DISCLOSED: the fixtures exercise the TEXT path (the common, fully-shared path) + circle +
-// dead-end. Media inbound is a declared Meta gap at M1 (text-only) — not a hollow green, a named gap.
+// scripts/b05_m1b_inbound_bench.js — TDW_05 bride inbound, META-PATH WIRING bench.
+//
+// ═══ THE VERBATIM GUARD'S LIFE AND DEATH (CE-62, M2b) ═════════════════════════════════
+// BORN at M1b. Its job: prove brideInbound.js's core was a byte-faithful extraction of
+// src/brideIndex.js's Twilio handler region (base 693ce8e), so the bride cutover onto Meta
+// could not smuggle a behavior change in under cover of a refactor. It did that job, and it
+// caught two real bugs pre-deploy while doing it (a bare `req` reference and a `+E164`
+// normalization divergence).
+//
+// DIED at M2b, same reason as its vendor twin in b05_m2: the guard proved EXTRACTION
+// FIDELITY against a Twilio-era original. With the Twilio handler deleted there is no second
+// implementation to drift from, and re-baselining would make it assert that today matches
+// today — a green by construction, which reads like protection and is not.
+//
+// COUNT: 6 -> 4, disclosed (CE-62 F4's ledger).
+// RETIRED: the verbatim guard · twilio-vs-meta input equivalence.
+// STAYS, re-shaped Meta-only: the three routing paths this bench actually protects — the
+// engine reply, circle-member routing, and the dead-end — plus the mutation guard that keeps
+// them non-vacuous. They were written as two-path comparisons; they are wiring assertions now.
 'use strict';
 const assert = require('assert');
-const { execSync } = require('child_process');
 
 delete require.cache[require.resolve('../src/lib/brideInbound.js')];
-const { processBrideInbound, twilioInputsFrom, metaInputsFrom } = require('../src/lib/brideInbound.js');
+const { processBrideInbound, metaInputsFrom } = require('../src/lib/brideInbound.js');
 const webhookCore = require('../src/lib/webhookCore.js');
 
 let pass = 0, fail = 0;
@@ -25,22 +31,6 @@ async function t(name, fn) {
 }
 
 // ── 1. VERBATIM-THEN-DIFF ────────────────────────────────────────────────────────────────
-function verbatimDiff() {
-  const orig = execSync('git show 693ce8e:src/brideIndex.js', { encoding: 'utf8' }).split('\n');
-  const core = orig.slice(173, 636); // 174..636
-  const tf = (l) => l
-    .replace("return res.status(200).send('<Response></Response>');", 'return;')
-    .replace('payload: req.body,', 'payload: rawPayload,')
-    .replace("(req.body.MediaContentType0 || '')", "(mediaContentType || '')")
-    .replace('req.body.MediaUrl0', 'mediaUrl')
-    .replace('          req,', '          req: { body: { MediaContentType0: mediaContentType, MediaUrl0: mediaUrl } },');
-  const expected = core.map(tf).filter((l) => !l.includes("require('./lib/imageThrottle')"));
-  const mod = require('fs').readFileSync(require.resolve('../src/lib/brideInbound.js'), 'utf8').split('\n');
-  const ti = mod.findIndex((l) => l === '  try {');
-  const ci = mod.findIndex((l) => l === '  } catch (err) {');
-  const actual = mod.slice(ti + 1, ci);
-  return { expected, actual };
-}
 
 // ── faithful in-memory supabase fake (reaches the real branches; not hollow) ──────────────
 function makeSupabase(perTable) {
@@ -91,55 +81,28 @@ const COUPLE = { id: 'c1', user_id: 'u1', wedding_date: null };
 const CONVO  = { id: 'conv1', couple_id: 'c1' };
 
 // Twilio raw payload and the EQUIVALENT Meta payload for the SAME logical text message.
-function twilioReq(text) {
-  return { body: { From: `whatsapp:+${PHONE}`, Body: text, ProfileName: 'Test Bride', MessageSid: 'SMxxxx', NumMedia: '0' } };
-}
 function metaMsg(text) {
   return { from: PHONE, text, messageId: 'wamid.XXX', type: 'text', timestamp: '1', media: [] };
 }
 
 (async () => {
   // 1. verbatim
-  await t('VERBATIM: brideInbound core == original brideIndex region (minus decoupling)', () => {
-    const { expected, actual } = verbatimDiff();
-    assert.strictEqual(actual.length, expected.length, `line count ${actual.length} vs ${expected.length}`);
-    for (let i = 0; i < expected.length; i++) {
-      assert.strictEqual(actual[i], expected[i], `drift at core line ${i + 1}:\n  exp: ${expected[i]}\n  act: ${actual[i]}`);
-    }
-  });
-
-  // 2. input equivalence
-  await t('INPUT EQUIVALENCE: twilio vs meta agree on content-bearing fields', () => {
-    const text = 'hey can you show me my events';
-    const ti = twilioInputsFrom(twilioReq(text), { internalReplay: false, trimmedBody: text, numMedia: 0, hasMedia: false });
-    const mi = metaInputsFrom(metaMsg(text), { entry: [] });
-    for (const k of ['phone', 'body', 'profileName', 'trimmedBody', 'hasMedia', 'numMedia', 'mediaContentType', 'mediaUrl']) {
-      if (k === 'profileName') continue; // Twilio may carry ProfileName; Meta null — not reply-content-bearing
-      assert.deepStrictEqual(ti[k], mi[k], `field '${k}' differs: ${JSON.stringify(ti[k])} vs ${JSON.stringify(mi[k])}`);
-    }
-    assert.notStrictEqual(ti.messageId, mi.messageId, 'dedupe key SHOULD differ (sid vs wamid)');
-  });
-
-  // 3a. TWO-PATH BYTE-IDENTITY — text path
-  await t('BYTE-IDENTITY (text): same reply bytes via Twilio-inputs and Meta-inputs', async () => {
+  // 3a. META WIRING — the engine reply reaches the sender
+  await t('META WIRING (text): the engine reply reaches the sender intact', async () => {
     const text = 'what is due this week';
-    const reply = 'Here is what is due this week ✦ (₹80k to Priya on Thursday)';
-    const sT = [], sM = [];
+    const reply = 'Here is what is due this week — (80k to Priya on Thursday)';
+    const sM = [];
     webhookCore._resetSidLru && webhookCore._resetSidLru();
-    await processBrideInbound(twilioInputsFrom(twilioReq(text), { internalReplay: false, trimmedBody: text, numMedia: 0, hasMedia: false }),
-      makeDeps({ user: USER, couple: COUPLE, conversation: CONVO, sends: sT, engineReply: reply }));
     await processBrideInbound(metaInputsFrom(metaMsg(text), { entry: [] }),
       makeDeps({ user: USER, couple: COUPLE, conversation: CONVO, sends: sM, engineReply: reply }));
-    assert.strictEqual(sT.length, 1, `twilio path sent ${sT.length}, expected 1 reply`);
     assert.strictEqual(sM.length, 1, `meta path sent ${sM.length}, expected 1 reply`);
-    assert.deepStrictEqual(sT[0], sM[0], 'reply {phone,text,media} must be byte-identical across transports');
-    assert.strictEqual(sT[0].text, reply);
+    assert.strictEqual(sM[0].text, reply);
   });
 
   // 3a-MUTATION: guard against a hollow assertion
-  await t('BYTE-IDENTITY MUTATION: a diverged reply WOULD be caught', async () => {
+  await t('NON-VACUOUS: a diverged reply WOULD be caught', async () => {
     const sT = [], sM = [];
-    await processBrideInbound(twilioInputsFrom(twilioReq('x'), { internalReplay: false, trimmedBody: 'x', numMedia: 0, hasMedia: false }),
+    await processBrideInbound(metaInputsFrom(metaMsg('x'), { entry: [] }),
       makeDeps({ user: USER, couple: COUPLE, conversation: CONVO, sends: sT, engineReply: 'AAA' }));
     await processBrideInbound(metaInputsFrom(metaMsg('x'), { entry: [] }),
       makeDeps({ user: USER, couple: COUPLE, conversation: CONVO, sends: sM, engineReply: 'BBB' }));
@@ -147,29 +110,26 @@ function metaMsg(text) {
   });
 
   // 3b. circle-member routing is transport-agnostic
-  await t('BYTE-IDENTITY (circle): active member routes to handleCircleMemberMessage identically', async () => {
+  await t('META WIRING (circle): active member routes to handleCircleMemberMessage', async () => {
     const member = { id: 'm1', couple_id: 'c1', invitee_name: 'Aunt', role: 'family', status: 'active', invitee_phone: PHONE };
     const sT = [], sM = [];
-    await processBrideInbound(twilioInputsFrom(twilioReq('hi'), { internalReplay: false, trimmedBody: 'hi', numMedia: 0, hasMedia: false }),
-      makeDeps({ user: USER, couple: COUPLE, conversation: CONVO, sends: sT, engineReply: 'r', circleMember: member }));
     await processBrideInbound(metaInputsFrom(metaMsg('hi'), { entry: [] }),
       makeDeps({ user: USER, couple: COUPLE, conversation: CONVO, sends: sM, engineReply: 'r', circleMember: member }));
-    assert.deepStrictEqual(sT[0], { circleHandled: true, phone: '+' + PHONE, body: 'hi' });
-    assert.deepStrictEqual(sT[0], sM[0], 'circle routing identical across transports');
+    assert.deepStrictEqual(sM[0], { circleHandled: true, phone: '+' + PHONE, body: 'hi' });
+    void sT;
   });
 
   // 3c. dead-end (no user) is transport-agnostic
-  await t('BYTE-IDENTITY (dead-end): unknown phone gets the SAME DEAD_END_REPLY on both', async () => {
+  await t('META WIRING (dead-end): unknown phone gets the DEAD_END_REPLY', async () => {
     const sT = [], sM = [];
     const deadDeps = (sends) => makeDeps({ user: null, couple: null, conversation: CONVO, sends, engineReply: 'r' });
-    await processBrideInbound(twilioInputsFrom(twilioReq('hello'), { internalReplay: false, trimmedBody: 'hello', numMedia: 0, hasMedia: false }), deadDeps(sT));
     await processBrideInbound(metaInputsFrom(metaMsg('hello'), { entry: [] }), deadDeps(sM));
-    assert.strictEqual(sT.length, 1);
-    assert.deepStrictEqual(sT[0], sM[0], 'dead-end reply identical across transports');
-    assert.ok(sT[0].text.includes('invite list'), 'is the dead-end reply');
+    assert.strictEqual(sM.length, 1);
+    assert.ok(sM[0].text.includes('invite list'), 'is the dead-end reply');
+    void sT;
   });
 
   console.log(`\nb05_m1b_inbound_bench: ${pass} passed, ${fail} failed`);
-  if (fail === 0) console.log('GREEN — verbatim core · input equivalence · two-path byte-identity (text/circle/dead-end) over the REAL core + faithful supabase fake. Meta media = declared M1 gap. Live send declared-not-claimed.');
+  if (fail === 0) console.log('GREEN — Meta-path wiring (text/circle/dead-end) over the REAL core + faithful supabase fake, non-vacuous. Verbatim guard RETIRED at M2b (see header). Live send declared-not-claimed.');
   process.exit(fail === 0 ? 0 : 1);
 })();

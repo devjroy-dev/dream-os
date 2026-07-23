@@ -1,9 +1,9 @@
 // src/lib/metaInbound.js — Meta WhatsApp Cloud API INBOUND adapter (Block 05, P3).
 //
-// WHY THIS EXISTS (read-first finding, CE-ruled into P3): webhookCore's inbound helpers are
+// WHY THIS EXISTS (read-first finding, CE-ruled into P3): webhookCore's inbound helpers WERE
 // Twilio-shaped — verifyTwilioSignature (X-Twilio-Signature), normalizeMedia (req.body.NumMedia),
-// makeTwilioStatusHandler (Twilio status form). The marketing lane's inbound is Meta Cloud API
-// webhooks, which are a different animal:
+// makeTwilioStatusHandler (Twilio status form). All three were DELETED at M2b (CE-62) once this
+// adapter carried every lane. Meta Cloud API webhooks are a different animal:
 //   • a GET verification handshake (hub.mode / hub.verify_token / hub.challenge) at subscribe time
 //   • POST bodies signed with X-Hub-Signature-256 = 'sha256=' + HMAC_SHA256(rawBody, APP_SECRET)
 //   • a nested payload: entry[].changes[].value.{messages[],statuses[]}, message id = wamid

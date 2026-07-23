@@ -113,8 +113,9 @@ const TEMPLATES = {
 
   // ── AUTHENTICATION-category OTP templates (Block 05, F-05.6 fix (a), CE-35) ──────
   // These carry the login / PIN-reset / circle-join one-time codes over the Meta
-  // transport once a lane is Meta-live. They are the PRIMARY OTP path; the dedicated
-  // OTP_WA_NUMBER Twilio send (fix (b)) is the sealed fallback (see src/lib/otpSend.js).
+  // transport. At M2b (CE-62, founder gate (ii)) they became the ONLY OTP path: the
+  // OTP_WA_NUMBER Twilio fallback was deleted, so a lane with no PNID now throws rather
+  // than degrading to a second transport (see src/lib/otpSend.js).
   //
   // AUTHENTICATION templates are SPECIAL (verified against Meta's authentication-message
   // spec, 2026-07): the body text is Meta-PRESET and not author-editable — the business

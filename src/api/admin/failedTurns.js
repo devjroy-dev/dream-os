@@ -10,7 +10,20 @@
 // admin API sub-router (cookie or x-admin-password).
 //
 // REPLAY is configuration-withheld (the CE's conditional-withheld rule): it re-POSTs to
-// `${SELF_URL}/webhook/whatsapp` carrying `x-internal-replay: INTERNAL_REPLAY_SECRET`.
+// `${SELF_URL}/webhook/meta` carrying `x-internal-replay: INTERNAL_REPLAY_SECRET`.
+//
+// TDW_05 M2b (CE-62) — RETARGETED. This POSTed to /webhook/whatsapp, which the Twilio sunset
+// DELETED; left alone, every replay would have hit a 404. The break carried no `twilio` string
+// anywhere in this file, so the deletion census could not see it — it surfaced from the
+// post-delete route sweep instead. Filed as F-05.21.
+//
+// TWO DISCLOSED LIMITS of the retarget, neither silent:
+//   1. Pre-M2b dead letters hold TWILIO-SHAPED payloads (From/Body/MessageSid). Replayed at
+//      /webhook/meta, normalizeMetaInbound yields ZERO messages and the turn no-ops. Replay of
+//      legacy Twilio-era rows is a DECLARED GAP, not a working path.
+//   2. /webhook/meta answers 200 BEFORE processing (Meta demands a fast ack), so `upstream.ok`
+//      confirms DELIVERY, not that the turn ran. It always did for the Meta route; it now
+//      applies to replay too. The dead-letter row's own state is the real signal.
 // The target webhook trusts that header (webhookCore.isInternalReplay) ONLY when the
 // secret is set and matches — so with the secret unset there is no bypass path at all,
 // and replay returns a typed `replay_not_configured` rather than silently half-working.
@@ -93,7 +106,7 @@ router.post('/:id/replay', requireAdmin, asyncHandler(async (req, res) => {
 
   let upstream;
   try {
-    upstream = await doFetch(`${base}/webhook/whatsapp`, {
+    upstream = await doFetch(`${base}/webhook/meta`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-internal-replay': secret },
       body: JSON.stringify(row.payload || {}),

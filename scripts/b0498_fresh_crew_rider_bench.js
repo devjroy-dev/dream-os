@@ -39,7 +39,7 @@
 //   §6 F-04.101 THE JOINT (added this sitting, CE-ruled R1) — §1-§3 prove the PARTS; this
 //      proves the WIRING. The REAL processVendorInbound is driven end-to-end with a "fresh"
 //      fixture, over the b05_m2 bench's own deterministic-supabase-fake pattern, through BOTH
-//      transports (twilioInputsFrom AND metaInputsFrom) — the m2 two-path doctrine applied to
+//      the Meta transport (metaInputsFrom) — the two-path doctrine RETIRED at M2b, applied to
 //      the fence, so a transport that skipped the short-circuit could not hide behind the one
 //      that took it. The short-circuit is asserted WHOLE: the outbound row's body IS
 //      FRESH_THREAD_LINE, the conversation's last_message_at is bumped, the thread is
@@ -90,7 +90,7 @@ const { extractStatuses } = require(path.join(ROOT, 'src/lib/metaInbound.js'));
 // F-04.101 (this sitting): the JOINT. The real door and the real transport adapters — the
 // fence lives inside processVendorInbound, so nothing short of driving it proves the wiring.
 const {
-  processVendorInbound, twilioInputsFrom, metaInputsFrom,
+  processVendorInbound, metaInputsFrom,
 } = require(path.join(ROOT, 'src/lib/vendorInbound.js'));
 const webhookCore = require(path.join(ROOT, 'src/lib/webhookCore.js'));
 // Same uncured-tree legibility shim as the vendorMode exports: absent on the pre-cure tree,
@@ -193,10 +193,10 @@ function mkJointDeps() {
 }
 
 const J_PHONE = '919812300077';
-const jTwilioReq = (text) => ({ body: { From: `whatsapp:+${J_PHONE}`, Body: text, ProfileName: 'Vendor Owner', MessageSid: 'SMfresh', NumMedia: '0' } });
 const jMetaMsg   = (text) => ({ from: J_PHONE, text, messageId: 'wamid.FRESH', type: 'text', media: [] });
+// M2b: Meta is the only transport. The twilio leg and the cross-transport identity case
+// RETIRED with it (CE-62 F4's ledger) — a green over a dead path retires, not retains.
 const jInputs = {
-  twilio: (text) => twilioInputsFrom(jTwilioReq(text), { internalReplay: false, trimmedBody: text, numMedia: 0, hasMedia: false }),
   meta:   (text) => metaInputsFrom(jMetaMsg(text), { entry: [] }),
 };
 
@@ -403,7 +403,7 @@ const SEED = [
   // existed, RED nowhere at all.
   console.log('\n  [6] F-04.101 THE JOINT — the real processVendorInbound, driven through the fence:');
   {
-    for (const transport of ['twilio', 'meta']) {
+    for (const transport of ['meta']) {
       const { deps, ops, engineConvos } = mkJointDeps();
       await processVendorInbound(jInputs[transport]('fresh'), deps);
 
@@ -428,7 +428,7 @@ const SEED = [
     // ordinary sentences — this case convicts that, at the JOINT rather than at the predicate.
     {
       const { deps, ops, engineConvos } = mkJointDeps();
-      await processVendorInbound(jInputs.twilio('start fresh tomorrow'), deps);
+      await processVendorInbound(jInputs.meta('start fresh tomorrow'), deps);
       T('a sentence merely CONTAINING the word falls THROUGH to the engine (runTurn ran)',
         ops.turns === 1);
       T('…and that turn abandoned nothing — the room is untouched',
@@ -436,13 +436,7 @@ const SEED = [
       T('…and no fresh-line row was written on that turn',
         !ops.inserts.some((i) => i.table === 'messages' && i.row.body === FRESH_THREAD_LINE));
     }
-    // Cross-transport identity: one fence, two doors. The m2 doctrine, applied to the joint.
-    {
-      const a = mkJointDeps(); await processVendorInbound(jInputs.twilio('fresh'), a.deps);
-      const b = mkJointDeps(); await processVendorInbound(jInputs.meta('fresh'), b.deps);
-      T('*** BOTH TRANSPORTS TAKE THE FENCE IDENTICALLY (byte-identical send sequence) ***',
-        JSON.stringify(a.ops.sends) === JSON.stringify(b.ops.sends) && a.ops.sends.length === 1);
-    }
+    // RETIRED at M2b: cross-transport identity (one fence, two doors). There is one door now.
     // §6c — the fence's file is 0-LINE for this cure. The bench DRIVES it; it does not edit it.
     const fs6 = require('fs');
     const vi = fs6.readFileSync(path.join(ROOT, 'src/lib/vendorInbound.js'), 'utf8');

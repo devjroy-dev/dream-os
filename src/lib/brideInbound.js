@@ -523,25 +523,7 @@ async function processBrideInbound(inputs, deps) {
   }
 }
 
-// ── Transport-specific input normalizers (the ONLY per-transport front-half) ──────────
-// Both produce the SAME content-bearing fields for the same logical message; only the
-// dedupe key differs by transport (Twilio MessageSid vs Meta wamid), which is correct.
-// The bench asserts twilioInputsFrom(...) and metaInputsFrom(...) agree on content.
-function twilioInputsFrom(req, { internalReplay, trimmedBody, numMedia, hasMedia }) {
-  const twilioSid = req.body.MessageSid || null;
-  return {
-    phone:            (req.body.From || '').replace('whatsapp:', ''),
-    body:             req.body.Body || '',
-    profileName:      req.body.ProfileName || null,
-    sidForPersist:    internalReplay ? null : twilioSid,
-    internalReplay,
-    messageId:        twilioSid,
-    trimmedBody, numMedia, hasMedia,
-    mediaContentType: req.body.MediaContentType0 || null,
-    mediaUrl:         req.body.MediaUrl0 || null,
-    rawPayload:       req.body,
-  };
-}
+// ── Input normalizer (M2b: Meta is the only transport; twilioInputsFrom deleted) ──────
 // Meta path is TEXT-ONLY at M1: media arrives as a media-ID needing a Meta media fetch (a
 // named follow-up), so mediaContentType/mediaUrl are null and media inbounds are a declared gap.
 function metaInputsFrom(msg, rawBody) {
@@ -565,4 +547,4 @@ function metaInputsFrom(msg, rawBody) {
   };
 }
 
-module.exports = { processBrideInbound, twilioInputsFrom, metaInputsFrom };
+module.exports = { processBrideInbound, metaInputsFrom };

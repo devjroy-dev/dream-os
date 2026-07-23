@@ -6,7 +6,7 @@
 //   3. The F-05.2 opt-out gate runs ONLY on the Meta lane (Twilio path never gated → byte-identical).
 //   4. wamid returns in .sid; media-on-Meta is a named refused gap (M1 text-only).
 // No network, no creds, no supabase. deps.twilioCreate is injected here; in prod it defaults to the
-// REAL twilioClient.messages.create (see whatsapp.js) so production behavior is untouched.
+// M2b: the Twilio sender is DELETED; whatsapp.js has one path (Meta) and one floor (refusal).
 //
 // ── F-05.16 CONTRACT SHIFT (CE-ruled amendment) ──────────────────────────────────────────────
 // The bride Meta lane requires an EXPLICIT BRIDE_WHATSAPP_NUMBER; the TWILIO_WHATSAPP_NUMBER/
@@ -39,34 +39,35 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
 }
 
 (async () => {
-  // ── 1. Twilio byte-identity: new branch == reference oracle across a matrix ──────────────
-  const bigMedia = Array.from({ length: 13 }, (_, i) => `https://img/${i}.jpg`); // >10 → truncation
-  const matrix = [
-    ['+919800000002', 'hello there', [], BRIDE_LIT],
-    ['whatsapp:+919800000002', 'prefixed to', [], BRIDE_LIT],
-    ['+919800000002', '', ['https://img/a.jpg'], BRIDE_LIT],
-    ['+919800000002', 'trunc', bigMedia, BRIDE_LIT],
-    ['919800000002', 'no-plus from', [], '14155550000'],       // unprefixed from → 'whatsapp:' added
-    ['+919800000002', 'empty-from-default', [], undefined],    // default from = TWILIO_WHATSAPP_NUMBER
-  ];
-  for (let i = 0; i < matrix.length; i++) {
-    const [to, body, media, from] = matrix[i];
-    await t(`Twilio byte-identity [${i}] params == pre-migration oracle`, async () => {
-      let params = null;
-      const fromArg = from === undefined ? undefined : from;
-      const r = await sendWhatsApp(to, body, media, fromArg, {
-        env: {}, twilioCreate: async (p) => { params = p; return { sid: 'SM_' + i }; }, ...noSb,
-      });
-      const effFrom = fromArg === undefined ? (process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14787788550') : fromArg;
-      assert.deepStrictEqual(params, originalTwilioParams(to, body, media, effFrom));
-      assert.strictEqual(r.sid, 'SM_' + i, 'raw Twilio msg.sid passthrough unchanged');
+  // ══ 1. Twilio byte-identity — RETIRED AT M2b (CE-62) ═══════════════════════════════
+  // Seven cells lived here: a six-case matrix diffing sendWhatsApp's Twilio params against
+  // originalTwilioParams (the pre-migration reference oracle), plus its vacuity mutation.
+  // They existed to prove the Meta branch could be added WITHOUT disturbing the Twilio
+  // fallthrough beneath it. That fallthrough is deleted; the oracle describes an
+  // implementation that no longer exists. A green over a dead path retires, not retains.
+  //
+  // REPLACED BY the no-lane floor below: the behaviour that now occupies that ground.
+  await t('NO-LANE FLOOR: an unresolvable lane is REFUSED loudly, never silently dropped', async () => {
+    let metaCalled = false;
+    const r = await sendWhatsApp('+919800000002', 'hello', [], 'whatsapp:+10000000000', {
+      env: {}, sendMetaText: async () => { metaCalled = true; return { wamid: 'w' }; }, ...noSb,
     });
-  }
-  await t('Twilio byte-identity MUTATION: a corrupted body WOULD fail (guards vacuity)', async () => {
-    let params = null;
-    await sendWhatsApp('+91980', 'real body', [], BRIDE_LIT, { env: {}, twilioCreate: async (p) => { params = p; return { sid: 's' }; }, ...noSb });
-    assert.throws(() => assert.deepStrictEqual(params, originalTwilioParams('+91980', 'WRONG', [], BRIDE_LIT)));
+    assert.strictEqual(metaCalled, false, 'no lane resolved -> Meta must NOT be called');
+    assert.strictEqual(r.sent, false, 'the refusal is typed as not-sent');
+    assert.strictEqual(r.blocked, 'no_meta_lane', 'and names WHY, greppably');
+    assert.strictEqual(r.sid, null, 'no sid is fabricated for a send that did not happen');
   });
+  await t('NO-LANE FLOOR MUTATION: a configured lane DOES send (the floor is not always-refuse)', async () => {
+    let metaCalled = false;
+    const env = { BRIDE_PHONE_NUMBER_ID: 'PNID_B', BRIDE_WHATSAPP_NUMBER: BRIDE_LIT };
+    const r = await sendWhatsApp('+919800000002', 'hello', [], BRIDE_LIT, {
+      env, sendMetaText: async () => { metaCalled = true; return { wamid: 'wamid.X' }; }, ...noSb,
+    });
+    assert.strictEqual(metaCalled, true, 'a real lane must reach Meta');
+    assert.strictEqual(r.sent, true);
+    assert.strictEqual(r.sid, 'wamid.X', 'wamid still lands in .sid');
+  });
+
 
   // ── 2. metaLaneFor: collision-proof, service-scoped ──────────────────────────────────────
   await t('metaLaneFor: no id env -> null (dormant until provisioned)', () => {
@@ -118,16 +119,9 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
     assert.strictEqual(r.blocked, 'opted_out');
     assert.strictEqual(r.sent, false);
   });
-  await t('opt-out: Twilio path NEVER consults the gate (byte-identical) — gate fake would throw', async () => {
-    let sent = false;
-    // isOptedOut throws if called; the Twilio path must not call it at all.
-    const r = await sendWhatsApp('+91980', 'hi', [], BRIDE_LIT, {
-      env: {}, twilioCreate: async () => { sent = true; return { sid: 's' }; },
-      isOptedOut: async () => { throw new Error('gate must NOT run on the Twilio path'); },
-    });
-    assert.strictEqual(sent, true);
-    assert.strictEqual(r.sid, 's');
-  });
+  // RETIRED at M2b: 'the Twilio path never consults the opt-out gate'. There is no Twilio
+  // path. The gate is now on the only path there is — which is F-05.2's closure, and is
+  // asserted positively by the two opt-out cells that bracket this comment.
   await t('opt-out: Meta lane + NO supabase -> no-op, send proceeds', async () => {
     let sent = false;
     // F-05.16: explicit BRIDE_WHATSAPP_NUMBER now required for the bride Meta lane.
@@ -136,6 +130,6 @@ function originalTwilioParams(toPhone, body, mediaUrls, from) {
   });
 
   console.log(`\nb05_m1_transport_bench: ${pass} passed, ${fail} failed`);
-  if (fail === 0) console.log('GREEN — Twilio byte-identical (oracle+matrix) · Meta routing collision-proof · F-05.2 gate Meta-only · wamid in .sid · media gap named. Live send declared-not-claimed.');
+  if (fail === 0) console.log('GREEN — no-lane floor refuses loudly · Meta routing collision-proof · F-05.2 gate on the only path · wamid in .sid · media gap named. Twilio oracle RETIRED at M2b. Live send declared-not-claimed.');
   process.exit(fail === 0 ? 0 : 1);
 })();

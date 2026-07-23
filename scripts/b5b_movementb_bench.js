@@ -54,7 +54,7 @@ function makeRes() {
   const res = { status(c) { calls.push('status:' + c); return res; }, send(b) { calls.push('send:' + b); return res; } };
   res._calls = calls; return res;
 }
-function makeReq({ body = {}, headers = {} } = {}) { return { body, headers, get() { return 'x.test'; }, protocol: 'https', originalUrl: '/webhook/twilio-status' }; }
+function makeReq({ body = {}, headers = {} } = {}) { return { body, headers, get() { return 'x.test'; }, protocol: 'https', originalUrl: '/webhook/meta' }; }
 
 // supabase double whose update().eq().select() yields a SEQUENCE of results (one per call).
 function sequencedSupabase(results) {
@@ -89,50 +89,12 @@ async function main() {
   ok(core.sidSeen('NEVER') === false, 'lru mutation-probe: never-recorded sid is false');
   core._resetSidLru();
 
-  // ══ 2. Status race retry ══════════════════════════════════════════════════════════
-  const fastSleep = async () => {}; const PFX = '[twilio-status]';
-  const noRow = { data: [], error: null }, hasRow = { data: [{ id: 'x' }], error: null };
-  const base = { MessageSid: 'SM123', MessageStatus: 'delivered' };
-
-  // (a) never appears → 3 retries → callback_unmatched
-  {
-    const sb = sequencedSupabase([noRow]); const res = makeRes();
-    const { log } = await capture(() => core.makeTwilioStatusHandler({ supabase: sb, prefix: PFX, maxRetries: 3, retryMs: 0, sleep: fastSleep })(makeReq({ body: base }), res));
-    const joined = log.join('\n');
-    ok(joined.includes('after 3 retries (callback_unmatched)'), 'race: unmatched after retries → callback_unmatched');
-    ok(!joined.includes('(callback ignored)'), 'race: old drop wording gone');
-    ok(j(res._calls) === j(['status:200', 'send:ok']), 'race: still 200/ok');
-  }
-  // (b) appears on retry 2 → matched, no unmatched
-  {
-    const sb = sequencedSupabase([noRow, noRow, hasRow]); const res = makeRes();
-    const { log } = await capture(() => core.makeTwilioStatusHandler({ supabase: sb, prefix: PFX, maxRetries: 3, retryMs: 0, sleep: fastSleep })(makeReq({ body: base }), res));
-    const joined = log.join('\n');
-    ok(joined.includes('matched on retry 2/3'), 'race: row appears on retry 2 → matched log');
-    ok(!joined.includes('callback_unmatched'), 'race: matched → no unmatched log');
-  }
-  // (c) row on first try → no retry, no matched/unmatched noise
-  {
-    const sb = sequencedSupabase([hasRow]); const res = makeRes();
-    const { log } = await capture(() => core.makeTwilioStatusHandler({ supabase: sb, prefix: PFX, maxRetries: 3, retryMs: 0, sleep: fastSleep })(makeReq({ body: base }), res));
-    const joined = log.join('\n');
-    ok(!joined.includes('retry') && !joined.includes('callback_unmatched'), 'race: first-try hit → no retry noise');
-  }
-  // (d) db-error during retry → logged, stops (does not spin to unmatched)
-  {
-    const sb = sequencedSupabase([noRow, { data: null, error: { message: 'boom', code: 'XX000' } }]); const res = makeRes();
-    const { log } = await capture(() => core.makeTwilioStatusHandler({ supabase: sb, prefix: PFX, maxRetries: 3, retryMs: 0, sleep: fastSleep })(makeReq({ body: base }), res));
-    const joined = log.join('\n');
-    ok(joined.includes('db update error:'), 'race: db error mid-retry → logged');
-    ok(!joined.includes('callback_unmatched'), 'race: db error is terminal, no unmatched');
-  }
-  // MUTATION PROBE: with maxRetries:0 there is no retry loop, so an ever-missing row must
-  // emit callback_unmatched "after 0 retries" — and NEVER the matched line.
-  {
-    const sb = sequencedSupabase([noRow]); const res = makeRes();
-    const { log } = await capture(() => core.makeTwilioStatusHandler({ supabase: sb, prefix: PFX, maxRetries: 0, retryMs: 0, sleep: fastSleep })(makeReq({ body: base }), res));
-    ok(log.join('\n').includes('after 0 retries (callback_unmatched)'), 'race mutation-probe: maxRetries=0 → immediate unmatched');
-  }
+  // ── 2. Status race retry — RETIRED AT M2b (CE-62) ─────────────────────────────
+  // Nine cells lived here, all driving makeTwilioStatusHandler: the Session-5.5 delivery
+  // race on /webhook/twilio-status, its bounded retry, and its callback_unmatched terminal.
+  // The handler and both routes are DELETED — Meta delivery statuses arrive on /webhook/meta
+  // and are applied by extractStatuses. A green over a dead path retires, not retains.
+  // COUNT: 56 -> 47, disclosed. The Meta status apply is witnessed in the founder's smoke.
 
   // ══ 3. Error classifiers ══════════════════════════════════════════════════════════
   ok(core.isDuplicateSidError({ code: '23505' }) === true,  'classify: 23505 → duplicate');
@@ -197,7 +159,7 @@ async function main() {
     fails.forEach((f) => console.log('   ·', f));
     process.exit(1);
   }
-  console.log('GREEN — Movement B: dedupe, race-retry, dead-letters, replay, and admin endpoints all hold, non-vacuously.');
+  console.log('GREEN — Movement B: dedupe, dead-letters, replay, and admin endpoints all hold, non-vacuously. Status-race cells RETIRED at M2b with the Twilio handler they drove.');
 }
 
 // ── admin endpoints: spin the real router on an ephemeral port, hit with fetch ───────
@@ -286,7 +248,7 @@ async function runAdminEndpointBench() {
     process.env.BRIDE_SELF_URL = 'http://bride.internal';
     r = await fetch(`${BASE}/T-bride/replay`, { method: 'POST', headers: authH }); body = await r.json();
     ok(r.status === 200 && body.state === 'replayed', 'admin: configured replay → replayed');
-    ok(lastReplay && lastReplay.url === 'http://bride.internal/webhook/whatsapp', 'admin: replay dispatched to BRIDE_SELF_URL');
+    ok(lastReplay && lastReplay.url === 'http://bride.internal/webhook/meta', 'admin: replay dispatched to BRIDE_SELF_URL (M2b: retargeted off the deleted Twilio route)');
     ok(lastReplay.opts.headers['x-internal-replay'] === 'sekret', 'admin: replay carries the internal secret header');
     ok(j(JSON.parse(lastReplay.opts.body)) === j({ From: 'whatsapp:+1777', Body: 'yo' }), 'admin: replay re-POSTs the stored payload');
 
