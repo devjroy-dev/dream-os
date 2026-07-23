@@ -147,8 +147,23 @@ if(!process.env.M6_BENCH_CHILD){
      to:"  const { data, error } = await supabase.from('events').delete().eq('id', event_id).eq('couple_id', couple.id).select('id').single(); const _u = ({"},
     {cell:'§1.4',why:'the gate goes optional — a writer whose ownership check is optional is a suggestion',
      file:'src/lib/coupleEventWrite.js', from:'  if (!coupleId) return', to:'  if (false) return'},
+    // ══ LABELED AMENDMENT · F-05.55 / CE R2 · COUNT PRESERVED (20), zero cells added ══
+    // THE DEFECT WAS LATENT AND MINE TO INHERIT: this anchor was the bare substring
+    // '.insert(webhookCore.inboundRow({', and String.replace with a string pattern
+    // replaces THE FIRST OCCURRENCE ONLY. That first occurrence used to be couple door
+    // #1. F-05.55 adds the media GUARD ROW above every couple door, so the first
+    // occurrence became a `sent_by: 'vendor'` row — the mutation went on mutating
+    // something, just not this cell's subject, and §2.1 (which scans `sent_by: 'couple'`
+    // rows alone) stayed GREEN over a tree it was supposed to convict. The bench caught
+    // it on the floor run, which is the floor doing its job.
+    // RE-AIMED to a COUPLE DOOR BY NAME: `thread.id` is door #1's own conversation
+    // referent and appears nowhere else, so this anchor cannot drift onto a neighbour
+    // however many inbound writers this file grows. The mutation's subject is now
+    // pinned to the thing the cell asserts — the referent lesson, third application.
     {cell:'§2.1',why:'one couple door reverts to a sid-less row — RF-1 blind on that door',
-     file:'src/lib/vendorInbound.js', from:'.insert(webhookCore.inboundRow({', to:'.insert(({'},
+     file:'src/lib/vendorInbound.js',
+     from:".insert(webhookCore.inboundRow({\n              conversation_id: thread.id,",
+     to:".insert(({\n              conversation_id: thread.id,"},
     {cell:'§3.1',why:"the mislabel returns — a web summary stamped whatsapp",
      file:'src/agent/brideEngine.js', from:"                channel:         'web',", to:"                channel:         'whatsapp',"},
     {cell:'§4.1',why:'the fence goes silent — the next deviant caller becomes unfindable',

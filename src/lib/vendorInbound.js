@@ -172,11 +172,91 @@ async function _processVendorInbound(inputs, deps) {
     if (vendor && vendor.onboarding_state === 'complete' && hasMedia && mediaUrl) {
       try {
 
+        // ══ F-05.55 CURED · THE GUARD ROW, WRITTEN BEFORE THE SPEND ═══════════════
+        // THE DISEASE (CE-67 §B, finder the LE, chair-verified): this branch wrote its
+        // audit pair as BARE objects and RETURNED before the file's only vendor-lane
+        // inboundRow call. RF-1's durable half — messages.message_sid plus the partial
+        // unique index messages_message_sid_uidx — never saw a media turn, so the only
+        // dedupe was webhookCore's per-process LRU, which a restart empties. A
+        // redelivered calendar image was a DOUBLE OCR TURN: double Vision spend,
+        // double proposal staging, double audit rows.
+        //
+        // WHY THE ROW MOVED AND DID NOT MERELY GAIN A SID (CE ruling R2). The pair was
+        // written AFTER extractCalendarFromImage and AFTER the preview send. Handing
+        // that row a wamid would have cured the duplicate AUDIT rows and nothing the
+        // finding is about — the Vision call and the vendor's second message have
+        // already happened by then. That shape buys a bench green, a byte-clean diff,
+        // a sealed micro, and a redelivered image that still OCRs twice. So the
+        // INBOUND half moves to branch entry and becomes a GUARD: the first thing this
+        // branch does is claim the wamid. The OUTBOUND half stays where it lives,
+        // byte-untouched and taking NO message_sid (R3) — 0084's contract is
+        // inbound-only, and an outbound wamid in that keyspace invites a
+        // cross-direction collision on a column whose whole meaning is inbound
+        // identity. The two-insert split is the disclosed structural consequence.
+        //
+        // WHY THE {error} IS READ HERE, AND ONLY HERE (F-05.61, CE ruling R1).
+        // supabase-js does not throw on a PostgREST error; it RETURNS {data, error}.
+        // Every inboundRow call site in this estate awaits bare and discards it, so the
+        // outer catch's isDuplicateSidError has never once been reached FROM an insert:
+        // the durable half has been a column, an index, and a catch that nothing could
+        // reach. Proven by command at the lockfile-pinned @supabase/supabase-js 2.105.4
+        // against a real 409/23505. The ten-site sweep is CHARTERED SEPARATELY (the
+        // RF-1 coherence sitting, with F-05.62's bride reorder); this micro reads the
+        // error at ITS OWN NEW SITE ONLY, per R1's scope ruling. Do not widen this by
+        // analogy — that sweep is a kickoff, not a convenience.
+        //
+        // THE MECHANISM IS WITNESSED, NOT ASSUMED: the founder's pg_indexes paste
+        // (2026-07-24, banked in the CE addendum) shows messages_message_sid_uidx live
+        // on public.messages as CREATE UNIQUE INDEX ... USING btree (message_sid) WHERE
+        // (message_sid IS NOT NULL) — byte-matching 0084:24-25. Committed AND applied.
+        //
+        // A REDELIVERY AFTER A FAILED VISION CALL IS ALSO DROPPED, and that is correct:
+        // a redelivery is Meta re-sending one message, never a retry channel for our
+        // failures. The vendor was already answered on the first pass.
+        const caption = trimmedBody.length > 0 ? trimmedBody : null;
+
+        // ── F-05.55 GUARD ROW · BEGIN ──
+        const { data: vendorSelfConvo } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('vendor_id', vendor.id)
+          .eq('kind', 'vendor_self')
+          .maybeSingle();
+
+        if (vendorSelfConvo) {
+          const { error: guardErr } = await supabase.from('messages').insert(webhookCore.inboundRow({
+            conversation_id: vendorSelfConvo.id,
+            direction: 'inbound',
+            channel:   'whatsapp',
+            body:      caption || '[calendar image]',
+            sent_by:   'vendor',
+            media_url: mediaUrl,
+          }, internalReplay ? null : messageSid));
+
+          if (webhookCore.isDuplicateSidError(guardErr)) {
+            console.log(`[webhook:vendor-image] duplicate wamid ${messageSid} hit messages_message_sid_uidx — already processed, dropping BEFORE the Vision call`);
+            return;
+          }
+          if (guardErr) {
+            // Any other error stays best-effort, exactly as this write has always been:
+            // an audit row must never kill the vendor's turn. Logged, never hidden.
+            console.error('[webhook:vendor-image] guard row insert failed (audit best-effort, turn continues):', guardErr.message || guardErr);
+          }
+        } else {
+          // DECLARED GAP, named rather than widened: a vendor whose FIRST-EVER message
+          // is an image has no vendor_self conversation yet — it is created on the text
+          // path in the vendor-path block below. No conversation means no row to claim
+          // the wamid with, so that one turn is UNDEDUPED. Creating the conversation
+          // here would make this branch a second writer on that plane, which is unruled
+          // and outside this micro's charter. Pre-existing shape preserved exactly.
+          console.warn(`[webhook:vendor-image] no vendor_self conversation for vendor=${vendor.id} — guard row skipped, this turn is UNDEDUPED (declared)`);
+        }
+        // ── F-05.55 GUARD ROW · END ──
+
         // IST today for date inference inside the Vision prompt
         const istOffsetMs = 5.5 * 60 * 60 * 1000;
         const istToday = new Date(Date.now() + istOffsetMs).toISOString().split('T')[0];
 
-        const caption = trimmedBody.length > 0 ? trimmedBody : null;
         const { proposals } = await extractCalendarFromImage({
           image_url: mediaUrl,
           caption,
@@ -220,32 +300,20 @@ async function _processVendorInbound(inputs, deps) {
 
         const sent = await sendWhatsApp(phone, previewMsg);
 
-        // Log inbound + outbound to vendor_self for audit + agent history
-        const { data: vendorSelfConvo } = await supabase
-          .from('conversations')
-          .select('id')
-          .eq('vendor_id', vendor.id)
-          .eq('kind', 'vendor_self')
-          .maybeSingle();
+        // Log the OUTBOUND half to vendor_self for audit + agent history. The INBOUND
+        // half is the F-05.55 guard row above — written before the spend, not after it,
+        // which is the whole cure. This half is byte-untouched from the pair it left
+        // (same five fields, same values, same order) and takes NO message_sid: R3.
+        // The vendor_self lookup now lives at branch entry with the guard.
         if (vendorSelfConvo) {
-          await supabase.from('messages').insert([
-            {
-              conversation_id: vendorSelfConvo.id,
-              direction: 'inbound',
-              channel:   'whatsapp',
-              body:      caption || '[calendar image]',
-              sent_by:   'vendor',
-              media_url: mediaUrl,
-            },
-            {
-              conversation_id: vendorSelfConvo.id,
-              direction: 'outbound',
-              channel:   'whatsapp',
-              body:      previewMsg,
-              sent_by:   'agent',
-              twilio_sid: sent && sent.sid ? sent.sid : null,
-            },
-          ]);
+          await supabase.from('messages').insert({
+            conversation_id: vendorSelfConvo.id,
+            direction: 'outbound',
+            channel:   'whatsapp',
+            body:      previewMsg,
+            sent_by:   'agent',
+            twilio_sid: sent && sent.sid ? sent.sid : null,
+          });
         }
 
         console.log(`[webhook:vendor-image] proposal ${proposalRow.id} staged with ${proposals.length} events`);

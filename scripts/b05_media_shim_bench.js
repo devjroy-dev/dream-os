@@ -232,7 +232,20 @@ const CAP_5MB   = 5 * 1024 * 1024;
     await processVendorInbound(inputs, deps);
     assert.deepStrictEqual(captured.extractCalls, [STABLE], 'extractCalendarFromImage got the stable url as image_url');
     assert.strictEqual(captured.proposals[0].source_image_url, STABLE, 'pending_event_proposals.source_image_url = stableUrl');
-    const inboundRow = captured.messages[0].find((m) => m.direction === 'inbound');
+    // ══ LABELED AMENDMENT · F-05.55 / CE R2 · COUNT PRESERVED (14), zero cells added ══
+    // THE BOTH-SIDES CLAUSE (CE-59). This cell read `captured.messages[0].find(...)`,
+    // which encoded the media branch's OLD contract: ONE insert carrying an ARRAY of two
+    // rows, written after the OCR. F-05.55's cure splits that pair — the inbound half is
+    // now a GUARD ROW written at branch entry, its own insert, before the Vision call —
+    // so `messages[0]` is an object and `.find` was a TypeError waiting on apply.
+    // RE-AIMED at the NEW caller's payload, and the old shape's green is RETIRED, not
+    // retained: this asserts the split explicitly rather than tolerating either form,
+    // because a green over a shape nobody sends is indistinguishable from no test at all.
+    // The media_shim property under test is unchanged — the stable url still reaches
+    // messages.media_url. Its durable-dedupe siblings live in b05_f0555_media_dedupe_bench.
+    assert.strictEqual(captured.messages.length, 2, 'the cure ships TWO inserts: guard row, then outbound');
+    const inboundRow = captured.messages[0];
+    assert.strictEqual(inboundRow.direction, 'inbound', 'the FIRST write is the inbound guard row');
     assert.strictEqual(inboundRow.media_url, STABLE, 'messages.media_url = stableUrl');
     assert.ok(sent.some((m) => /I found 1 event/.test(m)), 'preview sent');
   });
