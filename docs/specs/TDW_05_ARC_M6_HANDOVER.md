@@ -21,8 +21,23 @@
 ## 5. THE CENSUS QUESTION — ANSWERED, AND IT IS A TRUE HOLE
 **The vendor MEDIA path never reaches `inboundRow`.** `vendorInbound:230` writes the audit PAIR (inbound + outbound) as bare objects, and the branch **`return`s before `:790`**, the file's only `inboundRow` call on the vendor lane. So a redelivered media webhook has **no durable dedupe** — only the per-process LRU, which a restart empties. **A redelivered calendar image is a double OCR turn today.** Vendor lane, not F-05.51's couple set. **Reported, not cured** — the chair homes it.
 
+## 5b. FINDINGS FILED FROM THIS MOVEMENT
+**F-05.55 — THE VENDOR MEDIA LANE HAS NO DURABLE DEDUPE.** Filed at CE ruling R-2, chair-verified at `a80dac8`; finder the LE. `vendorInbound:230–248` writes the media audit pair as bare objects and the branch **`return`s at :251**; `:790` is the file's only vendor-lane `inboundRow` and the media path cannot reach it. The only dedupe is the per-process LRU, emptied by restart. **A redelivered vendor media webhook is a double OCR turn today** — double Vision spend, double proposal staging, double audit rows. RF-1's class on the vendor media lane; F-05.51's disease one lane over, independently born.
+
+**HOMED: its own micro, post-arc, chartered-unsequenced beside the F-05.50 micro — the founder sequences. M6 carries ZERO bytes for it.** Severity stated honestly for that sequencing: at three test accounts with no live campaigns the exposure is **cost-and-noise, not corruption** — the double turn writes duplicate *proposals*, which stage rather than commit. The cure's likely shape (route the media path through `inboundRow`, or write one sid-bearing row before the OCR turn) is that micro's read-first to derive, not this movement's to fix.
+
 ## 6. PROVEN
-`b05_arc_m6_bench` **20/20**, five production mutations RED. **Floor: 23 harnesses, all rc=0** — f0532=9 · arc_m4=18 · arc_m5=11 · arc_m1=53 · arc_m2=27 · arc_m3=11 · crons=48 · sendwa=55 · prospect=47 · checker=101 · all others unchanged. W-1 clean. `node --check` clean on all six touched sources. SQL: **zero** — no migration, no founder-run SQL, 0101 unreserved.
+`b05_arc_m6_bench` **20/20**, five production mutations RED. **THE FLOOR AT DELIVERY, in the form R-1 directs:**
+`prospect 47 (amended-in-place, labeled)` · `f0532 9` · `arc_m4 18` · `arc_m5 11` · **all others byte-stable** — arc_m1 53 · arc_m2 27 · arc_m3 11 · arc_m6 20 · crons 48 · sendwa 55 · webhookcore 11 · otp_meta 24 · b0498 58 · punct 17 · movementb 47 · transport 10 · m1b 4 · m2v 2 · checker 101 · onboarding 27 · couple_soul 21 · b06_sonnet · b06_advisor. **23 harnesses, all rc=0.**
+
+**THE ARC'S THREE FLOOR MOVES, the complete list:** `f0532` (chartered, R-M5-6) · `arc_m4 §4.1` (chartered, R-M5-5) · `b5c` (**unchartered, forced by §4's rider, ratified at R-1**). W-1 clean. `node --check` clean on all six touched sources. SQL: **zero** — no migration, no founder-run SQL, 0101 unreserved.
 
 ## 7. THE ARC IS BUILT
 M1–M6 complete. **The founder's arc-seal smoke card walks ONCE, now.**
+
+
+## 8. THE EXECUTOR'S REGISTER — ONE CLASS, TWO INSTANCES, BOTH MINE
+**"The shape looked right and the REFERENT was wrong."**
+· `arc_m4 §4.1` diffed against `HEAD` — a live-tree guard with no base, structurally red at any clean checkout. Chair-caught. I had fixed three instances of that exact class in the same movement and shipped a fourth inside the fix.
+· The duplicate-booking SELECT shipped with `'9f1f84d5-...'::uuid` — **a bracketed placeholder, in a paste block, under the one law that says zero placeholders ever.** Founder-caught on his own screen; the block was unauthored, not debuggable. Re-issued keyed on `vendor_name` so nothing had to be filled in.
+Both had correct shape and a wrong referent. Both were caught by someone other than me. The estate's own sentence covers it and I helped write part of it: **trust evidence over narrative, including your own.**

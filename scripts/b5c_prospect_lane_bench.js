@@ -184,7 +184,9 @@ async function main() {
   ok(conv && conv.kind === 'prospect_marketing' && conv.prospect_id === 'pr', 'conversation opened kind=prospect_marketing, owned by prospect_id');
   ok(sb.db.prospects[0].session_opened_at, 'session_opened_at stamped');
   ok(sb.db.messages.some((m) => m.direction === 'inbound' && m.sent_by === 'prospect') && sb.db.messages.some((m) => m.direction === 'outbound' && m.sent_by === 'system'), 'inbound + outbound messages logged');
-  // ══ LABELED AMENDMENT — ARC M6. COUNT PRESERVED (one cell, in place). ══
+  // ══ LABELED AMENDMENT — ARC M6, RATIFIED BY CE RULING R-1 (11th chair,
+  //    2026-07-24), forced by the same ruling block's §4 copy rider.
+  //    COUNT PRESERVED (one cell, in place). ══
   // UNCHARTERED AND DISCLOSED: this is the arc's THIRD floor move; the CE chartered
   // only f0532's display strings and arc_m4 §4.1. It is FORCED by the founder-closed
   // copy rider (CE ruling §4): the holding line's old wording — "I'll come back to
@@ -193,6 +195,9 @@ async function main() {
   // Left unamended it would forbid the estate from shipping the copy the founder just
   // ruled in, and would report green about a promise the machinery still cannot keep.
   // CE-63's B2 class again; handled in the open, ratify-or-revert.
+  // R-1 RATIFIED THE RE-AIM AS THE STRONGER SHAPE — the cell witnesses the SHIPPED
+  // BYTES rather than a copy of them, so it cannot drift again; the same referent
+  // reasoning as arc_m4 §4.1's own fix.
   // RE-AIMED to what the cell was ALWAYS for — a free-form Meta text carrying THE
   // holding line — asserted against prospectCopy's own constant rather than a phrase
   // copied into the bench, so this can never drift from the shipped bytes again.
