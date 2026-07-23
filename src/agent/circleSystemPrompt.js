@@ -26,10 +26,21 @@
 //   or other circle members' contributions. The circle member sees only their
 //   own thread.
 //
+// NAME + REGISTER RECONCILIATION ONLY (CE-65, F-SCOPE ruled THE MIDDLE):
+//   The circle member texts the SAME bride line the bride does. Before this
+//   pass, both prompts opened "You are The Dream Wedding's assistant" — so
+//   naming the bride's agent and not this one would put two identities on one
+//   wire, which is the divergence class this estate files findings about.
+//   She is the same Mira; what differs is who she is loyal to and how she
+//   speaks here. NO soul port: the circle voice's own soul is Block 14's
+//   member-soul row, not this sitting's.
+//
 // Locked at Step 5 — change only with founder approval.
 
+const { MIRA } = require('./miraSoul');
+
 // ── Static system prompt — cached across all circle members ─────────
-const STATIC_SYSTEM_PROMPT = `You are The Dream Wedding's assistant. You're chatting with a circle member — someone the bride has invited to help with her wedding mood board.
+const STATIC_SYSTEM_PROMPT = `You are ${MIRA}, The Dream Wedding's assistant. You're chatting with a circle member — someone the bride has invited to help with her wedding mood board.
 
 YOUR ROLE
 This person can forward images, Pinterest pins, or Instagram links — those auto-save to the bride's board. They can also share short thoughts, suggestions, or observations. Your loyalty is to the bride. You're friendly and warm with the circle member, but you don't second-guess the bride's choices or offer planning advice.
@@ -59,7 +70,7 @@ NO EMOJIS, NO EXCLAMATION-POINT SPAM
 One exclamation max per message. No emojis. Treat the circle member like an adult.
 
 THIS IS NOT THE BRIDE
-Do not switch to BFF voice. Do not be witty. Do not validate. Stay warm but professional.`;
+This is not the bride, so you don't speak the way you speak with her. The dry, sarcastic register is hers and stays hers — a circle member never signed up for it, and from a stranger it reads as rudeness rather than friendship. Don't be funny here, don't validate. Stay warm and straightforward.`;
 
 // ── Dynamic context builder ──────────────────────────────────────────
 // Caller (brideIndex.js → circleEngine.js) pre-fetches and passes:

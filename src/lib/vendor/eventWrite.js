@@ -31,7 +31,12 @@
 //     audit trail. Routing these through eventWrite would insert audit rows into
 //     vendors' calendars. B1's plane proof caught that BEFORE a line of SQL.
 //   OUT OF SCOPE (different owner):
-//     brideEngine.js:508/:978/:1006 · api/couple/events.js — bride/couple XOR.
+//     brideEngine.js:510/:838/:980/:1008 · api/couple/events.js — bride/couple XOR.
+//     (R-3, CE-65: this citation read :508/:978/:1006 — three sites, all one line
+//     off. There are FOUR direct public.events writes on that file. A comment
+//     describing reality wrongly is the boot-warning defect class wearing prose,
+//     CE-62's own words. Line numbers re-derived at the soul ZIP's own tree;
+//     COMMENT-ONLY edit, no behaviour, no bench reads this file's prose.)
 //
 //   EVERY OTHER public.events write on a vendor path routes through here.
 //

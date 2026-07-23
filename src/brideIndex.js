@@ -28,6 +28,9 @@ const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn, surfacePendingCircleSessions } = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
+// The one register, for the /surprise composer below — a bare Haiku call with
+// no system prompt, which used to describe the voice for itself (CE-65 fold).
+const { MIRA_REGISTER } = require('./agent/miraSoul');
 const { DAILY_CAP_IMAGES, DAILY_CAP_TEXTS } = require('./agent/circleSystemPrompt');
 const { sendWhatsApp }   = require('./lib/whatsapp');
 const webhookCore = require('./lib/webhookCore'); // TDW_05 P1a: shared inbound/callback transport
@@ -124,7 +127,7 @@ function buildMediaContextNote(save, saved_by_label) {
   return [
     `[SYSTEM NOTE] ${saved_by_label} just forwarded a ${sourceKind} and it was automatically saved to the bride's Muse as save ${save.save_number}.`,
     `Aesthetic tags: ${tagsString}.${captionString}`,
-    `Compose a natural reply acknowledging the save — do NOT call any save tool. The save already happened. Stay in BFF voice. Don't list the tags robotically; reference them lightly if relevant. If the caption is rich enough, you can engage with it. Once in a while (roughly every 4th-5th save, not every time, never twice in a row), you can lightly mention she can see her full board at thedreamwedding.in — keep it casual, one short clause, never the whole reply.`,
+    `Compose a natural reply acknowledging the save — do NOT call any save tool. The save already happened. Don't list the tags robotically; reference them lightly if relevant. If the caption is rich enough, you can engage with it. Once in a while (roughly every 4th-5th save, not every time, never twice in a row), you can lightly mention she can see her full board at thedreamwedding.in — keep it casual, one short clause, never the whole reply.`,
   ].join(' ');
 }
 
@@ -194,13 +197,13 @@ app.post('/webhook/meta', async (req, res) => {
 // Triggered when the bride sends exactly "/surprise".
 // Reads her muse_saves.aesthetic_tags, finds the most frequent tags,
 // queries Gemini for internet results matching that aesthetic, then
-// composes a BFF-voice reply via Haiku.
+// composes the reply via Haiku on the one authored register (miraSoul).
 //
 // Pattern: Gemini retrieves → Haiku composes. Gemini never writes the reply.
 //
 // Edge cases:
 //   - Fewer than 3 Muse saves → polite fallback, no Gemini call
-//   - Gemini errors → graceful BFF fallback
+//   - Gemini errors → graceful in-register fallback
 //   - No dominant tags → fallback
 //
 // Returns the reply string. Never throws — all errors caught internally.
@@ -261,12 +264,14 @@ async function handleSurpriseMe({ couple, supabase }) {
     return FALLBACK_GEMINI_ERR;
   }
 
-  // ── 4. Compose BFF reply via Haiku ───────────────────────────────
+  // ── 4. Compose the reply via Haiku, on the one register ───────────────────
   const sourcesText = sources.length > 0
     ? sources.map((s, i) => `${i + 1}. ${s.title} — ${s.url}`).join('\n')
     : '';
 
-  const composePrompt = `You are a bride's BFF planning assistant — witty, warm, dry, non-judgmental. The bride sent "/surprise" and you pulled inspiration from the internet based on her mood board.
+  const composePrompt = `${MIRA_REGISTER}
+
+The bride sent "/surprise" and you pulled inspiration from the internet based on her mood board.
 
 Her top aesthetic tags from her board: ${tagString}
 
@@ -274,7 +279,7 @@ Here's what you found online (Gemini grounded search result):
 ${answer}
 ${sourcesText ? `\nSources:\n${sourcesText}` : ''}
 
-Write a short BFF-voice reply (3-5 sentences max) sharing these results with her. Reference her specific aesthetic tags naturally. Be specific — mention actual results, not just vibes. End with one question or nudge. Do NOT use bullet points. Do NOT say "based on your board" — just tell her what you found.`;
+Write a short reply (3-5 sentences max) sharing these results with her. Reference her specific aesthetic tags naturally. Be specific — mention actual results, not just vibes. End with one question or nudge. Do NOT use bullet points. Do NOT say "based on your board" — just tell her what you found.`;
 
   try {
     const haiku = await anthropic.messages.create({

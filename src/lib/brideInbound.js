@@ -413,7 +413,7 @@ async function processBrideInbound(inputs, deps) {
       } else {
         // Soft failure: agent gets a note about the failed save and replies with a
         // friendly retry message. The save itself is not retried automatically.
-        mediaContextNote = `[SYSTEM NOTE] The bride forwarded an image or link, but the Muse save pipeline failed (${saveResult.error}). Apologise briefly in BFF voice and suggest she resend in a minute. Do NOT pretend the save happened.`;
+        mediaContextNote = `[SYSTEM NOTE] The bride forwarded an image or link, but the Muse save pipeline failed (${saveResult.error}). Apologise briefly and suggest she resend in a minute. Do NOT pretend the save happened.`;
         console.warn(`[bride-webhook] muse save failed: ${saveResult.error}`);
       }
     }

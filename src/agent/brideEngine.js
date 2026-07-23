@@ -28,6 +28,9 @@
 // session_id to playback that session's saves only.
 
 const { STATIC_SYSTEM_PROMPT, buildDynamicContext } = require('./brideSystemPrompt');
+// The one register, for the separate composer call below that runs WITHOUT the
+// static prompt and used to re-describe the voice from memory (CE-65 fold).
+const { MIRA_REGISTER } = require('./miraSoul');
 const { nextBrideOnboardingMessage } = require('./brideOnboarding');
 const { BRIDE_TOOLS } = require('./brideTools');
 const { classifyMessage } = require('./classifier');
@@ -1935,7 +1938,7 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
 }
 
 // Compose a single session's summary by passing all its activity rows
-// (saves + notes) to Haiku with a BFF-voice instruction.
+// (saves + notes) to Haiku behind the one authored register (miraSoul).
 
 async function summarizeOneSession({ session, supabase, anthropic }) {
   // Look up the member's name + role
@@ -2005,11 +2008,13 @@ async function summarizeOneSession({ session, supabase, anthropic }) {
   ];
   const digest = digestLines.join('\n');
 
-  const prompt = `${memberName} (a ${memberRole} circle member) just spent some time on the bride's wedding mood board. Here's exactly what they did:
+  const prompt = `${MIRA_REGISTER}
+
+${memberName} (a ${memberRole} circle member) just spent some time on the bride's wedding mood board. Here's exactly what they did:
 
 ${digest}
 
-Write a 1-2 sentence summary FOR THE BRIDE in BFF voice — informal, friendly, natural. Mention ${memberName} by name. Capture the gist of what they added or said. Don't list every save individually unless there are very few. Don't add a closing question; the agent will add one after.
+Write a 1-2 sentence summary FOR THE BRIDE in your own voice — informal, friendly, natural. Mention ${memberName} by name. Capture the gist of what they added or said. Don't list every save individually unless there are very few. Don't add a closing question; the agent will add one after.
 
 EXAMPLES of the voice:
 - "Quick update — your mom just added 3 cream-and-gold decor shots and said she's leaning OTT for the mehndi."
@@ -2144,7 +2149,8 @@ async function execReadPages({ input, couple, supabase }) {
 
 // ── factual_search executor ──────────────────────────────────────────
 // Gemini retrieves internet results for factual market questions.
-// Haiku composes the BFF-voice reply from those results.
+// Haiku composes the reply from those results, in Mira's own voice (the static
+// prompt carries the soul on this path — no second register needed here).
 // Gemini never composes the reply — retrieval-only (locked architecture).
 //
 // Failure path: if Gemini errors, returns a graceful fallback so the

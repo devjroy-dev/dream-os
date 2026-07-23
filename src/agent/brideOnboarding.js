@@ -10,8 +10,16 @@
 // (parallel to vendor side using Haiku at asked_category).
 //
 // Locked at B1 — never change script text without founder approval.
+// AMENDED AT CE-65 (founder gates G1/G2, stage-2 veto): the greeting's
+// demo-fixture clause DROPPED (F-05.31) and Mira named at the two introduction sites; the
+// dodge composer folded onto the one authored register. Everything else in
+// this file — the five questions, the five extraction/classification calls —
+// is out of scope by ruling and byte-untouched.
 
 const { MODEL_HAIKU } = require('./models');
+// The soul's one home: the name given at the greeting/completion sites, and
+// the register the dodge composer reads instead of re-describing the voice.
+const { MIRA, MIRA_REGISTER } = require('./miraSoul');
 
 // ── Locked script text — exact wording approved by founder ───────────────────
 
@@ -20,11 +28,19 @@ const LOCKED = {
   // Triggered when couples.onboarding_state = 'new'.
   // Takes the bride's first name. If name is missing/empty, falls back to
   // the no-name version so the greeting still works for legacy invites.
+  // F-05.31 (CE-65, founder gate G2: "DROP THE LINE"): this opener used to name a
+  // DEMO/FIXTURE VENDOR — hardcoded into every real bride's first message. The name
+  // itself is deliberately not repeated here (grep-zero is the check anyone runs;
+  // a comment carrying the corpse makes that check lie). It is on the record in
+  // docs/FINDINGS_LOG.md at CE-65. It dated from the invite-only bride app;
+  // that era is over. Replacement authored by the executor, founder-confirmed at
+  // the stage-2 veto. This is also where Mira's name is given for the first
+  // time — the one introduction her soul allows.
   greeting: (name) => {
     const firstName = (name || '').trim().split(' ')[0];
     return firstName
-      ? `Hi ${firstName} — Swati said you'd be texting. Glad you're here. Before we begin, when is the big day?`
-      : `Swati said you'd be texting. Glad you're here. Before we begin, when is the big day?`;
+      ? `Hi ${firstName} — ${MIRA} here, from The Dream Wedding. Glad you're here. So: when is the big day?`
+      : `Hi — ${MIRA} here, from The Dream Wedding. Glad you're here. So: when is the big day?`;
   },
 
   // Bare question text used by the dodge classifier to ground its judgement.
@@ -47,7 +63,7 @@ const LOCKED = {
   // After budget captured. Completes onboarding. Ends with the vendor-listing
   // question — her next message routes to the agent loop's first-turn handler.
   complete: (name) =>
-    `So ${name || 'there'}, you're all set. I'm not just here to remind you of things, I'm here to help you decide whatever you need to for the wedding. Starting from your outfit to what songs to play for your special dance performance (I really hope you are doing one).\n\nAnd to have the best possible experience at the TDW, check out thedreamwedding.in. It's already waiting for you to sign in.\n\nLet's start with you telling me what all vendors you've already booked, or do you want to do that later?`
+    `So ${name || 'there'}, you're all set. I'm ${MIRA} — and I'm not just here to remind you of things, I'm here to help you decide whatever you need to for the wedding. Starting from your outfit to what songs to play for your special dance performance (I really hope you are doing one).\n\nAnd to have the best possible experience at the TDW, check out thedreamwedding.in. It's already waiting for you to sign in.\n\nLet's start with you telling me what all vendors you've already booked, or do you want to do that later?`
 };
 
 // ── Dodge detection — Haiku-based intent classification ─────────────────────
@@ -292,7 +308,7 @@ Message: "${inboundMessage}"`;
   }
 }
 
-// ── Dodge transition composer — Haiku in BFF voice ──────────────────────────
+// ── Dodge transition composer — Haiku on the one register (CE-65 fold) ──────────────────────────
 // When the bride dodges an onboarding question, we still want a graceful
 // one-line transition before the next question. The transition is composed
 // by Haiku so each one feels natural rather than scripted.
@@ -321,7 +337,7 @@ async function composeDodgeTransition(dodgedField, nextQuestion, anthropic) {
 
   const fieldDesc = fieldDescriptions[dodgedField] || "that question";
 
-  const prompt = `You are the bride's WhatsApp assistant. Voice: BFF with wit. Informal, brief, dry. No therapy voice, no cheerleader voice, no emojis.
+  const prompt = `${MIRA_REGISTER}
 
 The bride just dodged a question about ${fieldDesc} during onboarding — she said something like "I don't know yet" or "not sure". She's not pressing for help, she just doesn't want to answer right now.
 
