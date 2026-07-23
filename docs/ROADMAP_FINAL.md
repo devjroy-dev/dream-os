@@ -17,6 +17,8 @@
 | 0.11.0-alpha | Phase 2 complete | Both PWA shells live. Profile completion. Threads view. DreamAi chat tab. |
 | 1.0.0 | Phase 3 complete | Discover live. Public launch. Both products connected. |
 
+> **CE-62 addendum (2026-07-23, founder-ruled):** Discover's vendor storefront gains **Instagram portfolio import + photo management** — spec at `docs/specs/TDW_07_IG_IMPORT_ADDENDUM.md` (import-and-mirror, professional-account gate, manual upload the permanent fallback; rides the main Meta app's App-LIVE review beside the Embedded Signup / Tech Provider track).
+
 ---
 
 ## Why this roadmap was rewritten
