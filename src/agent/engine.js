@@ -156,7 +156,8 @@ async function runAgenticTurn({ vendor, user, conversation, inboundMessage, supa
   // classifier has context ("same Priya", a reply to a prior clarify, etc.).
   const classifierHistory = history.slice(-2);
   const { complexity, ambiguity } = await classifyVendorMessage(inboundMessage, classifierHistory, anthropic);
-  const modelToUse  = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
+  // F-05.32 + E-3: the agent lane's ceiling is Haiku; the classifier's verdict no longer escalates.
+  const modelToUse  = MODEL_HAIKU;
   console.log(`[agent] model selected: ${modelToUse} (${complexity}/${ambiguity})`);
 
   // ── Ambiguity gate (Phase 1.4) ──────────────────────────────────
@@ -485,7 +486,8 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   // ── Classify complexity → pick model ─────────────────────────────
   const classifierHistory = history.slice(-2);
   const complexity  = await classifyMessage(inboundMessage, classifierHistory, anthropic);
-  const modelToUse  = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
+  // F-05.32 + E-3: the agent lane's ceiling is Haiku; the classifier's verdict no longer escalates.
+  const modelToUse  = MODEL_HAIKU;
   console.log(`[couple-agent] model selected: ${modelToUse} (${complexity})`);
 
   while (iterations < MAX_ITERATIONS) {

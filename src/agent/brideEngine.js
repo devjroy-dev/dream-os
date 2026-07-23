@@ -169,7 +169,8 @@ async function runBrideAgenticTurn({
   // ── Classify complexity → pick model ─────────────────────────────
   const classifierHistory = history.slice(-2);
   const complexity = await classifyMessage(inboundMessage, classifierHistory, anthropic);
-  const modelToUse = complexity === COMPLEXITY.COMPLEX ? MODEL_SONNET : MODEL_HAIKU;
+  // F-05.32 + E-3: the agent lane's ceiling is Haiku; the classifier's verdict no longer escalates.
+  const modelToUse = MODEL_HAIKU;
   console.log(`[bride-agent] model selected: ${modelToUse} (${complexity})`);
 
   // ── Agentic loop ──────────────────────────────────────────────────

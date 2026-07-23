@@ -82,7 +82,7 @@ async function classifyMessage(inboundMessage, recentHistory, anthropic) {
       .toLowerCase();
 
     if (raw === COMPLEXITY.COMPLEX) {
-      console.log(`[classifier] complex → Sonnet | message: "${inboundMessage.slice(0, 60)}"`);
+      console.log(`[classifier] complex | message: "${inboundMessage.slice(0, 60)}"`);
       return COMPLEXITY.COMPLEX;
     }
 
