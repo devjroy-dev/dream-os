@@ -28,13 +28,46 @@
 // NAMED follow-up; the Meta handler passes mediaContentType/mediaUrl = null for media
 // inbounds at M1, so the media branches are a declared Meta gap. TEXT turns — the common
 // path — funnel fully through this core and are the byte-stability fixture.
+//
+// ── THE COUPLE-LANE MECHANICAL ARC, M1 (CE-67) — WHAT CHANGED HERE ──────────
+//   C5  every turn on one phone runs behind the previous one (turnLock.js).
+//   C1  send results are READ. A refusal is a refusal, spoken, not silence.
+//   C2  a filed turn carries its witness in the body the bride actually reads.
+//   C10 the stale "via Twilio" comment dies on a Meta-only estate.
+//   F-05.42 the dead-letter net's own TDZ, folded in at the founder's word.
+// The nudge/full-stop branch and its four acknowledgment sites below are BYTE-
+// UNTOUCHED and deliberately so: b05_p4_crons_bench §5.3 asserts this region is
+// byte-identical to its vendor twin, and §9.11 asserts every ack site carries
+// ACK_BYPASS literally. Both cells are right. The frame-wide `send` covers
+// everything else; the acks keep the explicit constant they were built with.
 'use strict';
 
 const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
 const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
+const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
+const { makeInboundSend, REFUSAL } = require('./sendOutcome');         // ARC M1 / F-05.33
+const { appendWitness } = require('./witnessLine');                    // ARC M1 / F-05.34
 
+// ── THE TYPED REFUSAL (V-3, founder-locked at CE-67's gates) ────────────────
+// F-04.62's class, one lane over: a DELIBERATE refusal must stop wearing a
+// transport error's clothes — and, under G-A, must LAND REGARDLESS. It rides an
+// explicit bypass of its own so the one message explaining the silence is never
+// itself silenced. Reached only if a reply is refused as opted_out despite the
+// frame bypass — defence in depth, and the honest sentence if it ever fires.
+const OPTED_OUT_REFUSAL_REPLY =
+  "I've got that — but you're opted out, so I can't send you anything right now. Reply START and I'll pick this straight up.";
+
+// ── C5 · THE TURN LOCK SITS HERE, NOT AT THE ROUTE ─────────────────────────
+// Wrapping the CORE rather than the webhook handler means every caller inherits
+// it — the Meta route, the dead-letter replay, and any future ingress — instead
+// of each door remembering to. The body is unchanged below; this is the whole
+// wiring. F-05.41's two turns 1.1s apart become two turns, in order, one Rs 45,000.
 async function processBrideInbound(inputs, deps) {
+  return withTurnLock(turnKey('bride', inputs && inputs.phone), () => _processBrideInbound(inputs, deps));
+}
+
+async function _processBrideInbound(inputs, deps) {
   const {
     phone, body, profileName, sidForPersist, internalReplay, messageId,
     trimmedBody, numMedia, hasMedia, mediaContentType, mediaUrl, rawPayload,
@@ -46,6 +79,16 @@ async function processBrideInbound(inputs, deps) {
     buildCircleGreeting, extractMuseUrl, buildMediaContextNote,
     DEAD_END_REPLY, CIRCLE_TOKEN_REGEX,
   } = deps;
+
+  // ── C1 / F2(b) · THE STRUCTURAL BYPASS, ONE WRAPPER ───────────────────────
+  // G-A: STOP silences everything Mira INITIATES; her answers to the bride's own
+  // messages always deliver. Every send below this line is inside an inbound call
+  // frame, which IS the mechanical definition of an answer — so the bypass is
+  // carried BY CONSTRUCTION rather than by a list of sites someone must keep
+  // current. `send` also RETURNS a read outcome instead of a discarded sentinel:
+  // { delivered, sid, refusal, error }. It never throws.
+  const send = makeInboundSend(sendWhatsApp);
+
   try {
     // ── TDW_05 P4 / F-05.22 — THE NUDGE-CLASS BRANCH (bride lane) ─────
     // FIRST, and pre-engine: no model call, no DB write beyond the one row, no cost.
@@ -129,6 +172,10 @@ async function processBrideInbound(inputs, deps) {
     if (activeCircleMember) {
       try {
         await handleCircleMemberMessage({
+          // M-C, ratified at CE-67: the circle wire is not a third door — it runs
+          // INSIDE this frame and therefore inherits the bypass. Threading `send`
+          // down is how "by inclusion" is made mechanical rather than asserted.
+          send,
           phone,
           body,
           trimmedBody,
@@ -149,7 +196,7 @@ async function processBrideInbound(inputs, deps) {
         }
         try {
           await webhookCore.captureDeadLetter({ supabase, service: 'bride', phone, payload: rawPayload, error: err });
-          await sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE);
+          await send(phone, webhookCore.GRACEFUL_TURN_LINE);
         } catch (dlErr) { console.error('[bride-webhook] dead-letter path error:', dlErr && dlErr.message); }
         return;
       }
@@ -172,14 +219,14 @@ async function processBrideInbound(inputs, deps) {
       if (claimError) {
         // Invalid or already-used token → dead-end (privacy: don't tell them why)
         console.warn(`[bride-webhook] claim_circle_invite failed for ${phone}: ${claimError.message}`);
-        await sendWhatsApp(phone, DEAD_END_REPLY);
+        await send(phone, DEAD_END_REPLY);
         return;
       }
 
       const claim = Array.isArray(claimRows) ? claimRows[0] : claimRows;
       if (!claim) {
         console.warn(`[bride-webhook] claim_circle_invite returned no row for ${phone}`);
-        await sendWhatsApp(phone, DEAD_END_REPLY);
+        await send(phone, DEAD_END_REPLY);
         return;
       }
 
@@ -214,7 +261,7 @@ async function processBrideInbound(inputs, deps) {
           .single();
         if (userErr) {
           console.error('[bride-webhook] users insert (circle) failed:', userErr);
-          await sendWhatsApp(phone, CLAIM_RETRY_REPLY);
+          await send(phone, CLAIM_RETRY_REPLY);
           return;
         }
         circleUser = newUser;
@@ -239,7 +286,7 @@ async function processBrideInbound(inputs, deps) {
 
       if (convoErr) {
         console.error('[bride-webhook] circle_thread conversation insert failed:', convoErr);
-        await sendWhatsApp(phone, CLAIM_RETRY_REPLY);
+        await send(phone, CLAIM_RETRY_REPLY);
         return;
       }
 
@@ -257,7 +304,7 @@ async function processBrideInbound(inputs, deps) {
       const greeting = buildCircleGreeting(claim.bride_name, claim.member_role);
       let greetMsg = null;
       try {
-        greetMsg = await sendWhatsApp(phone, greeting);
+        greetMsg = await send(phone, greeting);
       } catch (sendErr) {
         console.error('[bride-webhook] circle greeting send failed:', sendErr);
       }
@@ -285,7 +332,7 @@ async function processBrideInbound(inputs, deps) {
 
     if (!user) {
       console.log(`[bride-webhook] no user for ${phone} — dead-end reply`);
-      await sendWhatsApp(phone, DEAD_END_REPLY);
+      await send(phone, DEAD_END_REPLY);
       return;
     }
 
@@ -297,7 +344,7 @@ async function processBrideInbound(inputs, deps) {
 
     if (!couple) {
       console.log(`[bride-webhook] user ${user.id} has no couples row — dead-end reply`);
-      await sendWhatsApp(phone, DEAD_END_REPLY);
+      await send(phone, DEAD_END_REPLY);
       return;
     }
 
@@ -373,7 +420,7 @@ async function processBrideInbound(inputs, deps) {
       if (!throttle.allowed) {
         console.log(`[bride-webhook] image throttle: ${phone} count=${throttle.count} notify=${throttle.shouldNotify}`);
         if (throttle.shouldNotify) {
-          await sendWhatsApp(
+          await send(
             phone,
             "I'll be able to process two at a time right now. Send the rest after I respond to these two. Good news though, I'll be able to process multiple images together, very soon! Or upload them all together from the Add button in Muse — much faster for batches. thedreamwedding.in"
           );
@@ -474,7 +521,7 @@ async function processBrideInbound(inputs, deps) {
       if (circleSummary && circleSummary.trim()) {
         let circleMsg = null;
         try {
-          circleMsg = await sendWhatsApp(phone, circleSummary.trim());
+          circleMsg = await send(phone, circleSummary.trim());
         } catch (e) {
           console.error('[bride-webhook] /surprise circle summary send error:', e);
         }
@@ -492,7 +539,7 @@ async function processBrideInbound(inputs, deps) {
 
       let twilioSurprise = null;
       try {
-        twilioSurprise = await sendWhatsApp(phone, surpriseReply);
+        twilioSurprise = await send(phone, surpriseReply);
       } catch (e) {
         console.error('[bride-webhook] /surprise send error:', e);
       }
@@ -533,7 +580,7 @@ async function processBrideInbound(inputs, deps) {
     // before the agent reply — never injected into the agent context.
     if (result.circleSummary) {
       try {
-        const summaryMsg = await sendWhatsApp(phone, result.circleSummary);
+        const summaryMsg = await send(phone, result.circleSummary);
         await supabase.from('messages').insert({
           conversation_id: conversation.id,
           direction:       'outbound',
@@ -548,15 +595,37 @@ async function processBrideInbound(inputs, deps) {
       }
     }
 
-    // ── Send the reply via Twilio ───────────────────────────────────
+    // ── C2 · THE WITNESS RIDES THE BODY ─────────────────────────────
+    // Composed from the turn's own hands, never from its prose. A turn that filed
+    // nothing gets its reply back byte-identical; a turn that filed carries the
+    // line the bride reads and the next replay reads with her. This is what makes
+    // a filed turn and a narrated turn different objects instead of two sentences.
+    const replyBody = appendWitness(result.reply, result.toolCalls);
+
+    // ── C1 · SEND THE REPLY, AND READ WHAT THE SEND SAID ────────────
+    // C10: the "via Twilio" heading that stood here died with the transport at M2b.
     // result.mediaUrls is populated when list_muse was called with playback.
-    let twilioMsg = null;
-    try {
-      twilioMsg = await sendWhatsApp(phone, result.reply, result.mediaUrls || []);
-    } catch (sendErr) {
-      console.error('[bride-webhook] sendWhatsApp error:', sendErr);
-      // Continue to log the outbound message even if Twilio errored —
-      // we want the audit trail. delivery_status will get 'failed' on callback.
+    const out = await send(phone, replyBody, result.mediaUrls || []);
+    if (!out.delivered) {
+      if (out.refusal) {
+        // A DELIBERATE REFUSAL. This is the sentence F-05.33 never got to say: the
+        // work landed, the reply did not, and until now the bride learned that by
+        // receiving nothing and sending her message again — which is how one
+        // Rs 45,000 yes became two rows.
+        console.warn(`[bride-webhook] reply REFUSED (${out.refusal}) to ${phone} — work landed, delivery did not`);
+        if (out.refusal === REFUSAL.OPTED_OUT) {
+          // Lands regardless, on its own explicit bypass: the message that explains
+          // the silence must never be the message the silence swallows.
+          await send(phone, OPTED_OUT_REFUSAL_REPLY);
+        }
+      } else {
+        // A genuine transport failure stays a genuine transport failure — the two
+        // are not collapsed in either direction (F-04.62, both ways).
+        console.error('[bride-webhook] sendWhatsApp error:', out.error);
+      }
+      // Either way the outbound row is still written below: the audit trail is the
+      // reason we know any of this, and a refused turn is exactly the turn worth
+      // being able to read afterwards.
     }
 
     // ── Log outbound message with full cost tracking ────────────────
@@ -564,9 +633,9 @@ async function processBrideInbound(inputs, deps) {
       conversation_id: conversation.id,
       direction:       'outbound',
       channel:         'whatsapp',
-      body:            result.reply,
+      body:            replyBody,
       sent_by:         'agent',
-      twilio_sid:      twilioMsg?.sid ?? null,
+      twilio_sid:      out.sid ?? null,
       tool_calls:      result.toolCalls,
       model:           result.model        ?? null,
       input_tokens:    result.inputTokens  ?? null,
@@ -583,13 +652,21 @@ async function processBrideInbound(inputs, deps) {
       console.log(`[bride-webhook] duplicate MessageSid ${messageId} hit the durable index — dropping`);
       return;
     }
-    // Otherwise dead-letter the payload + give the user the graceful line (best-effort).
+    // ── F-05.42 CURED · THE NET THAT DIED WHEN IT WAS NEEDED ──────────────────
+    // This block read `const phone = phone;` — a block-scoped const initialised from
+    // ITSELF, inside its own temporal dead zone. Every entry threw
+    // "Cannot access 'phone' before initialization" on line one, so captureDeadLetter
+    // never ran and the graceful line never went out: the safety net crashed with the
+    // turn it existed to record, and the outage's two killed turns left ZERO
+    // dead-letter rows. The shadow declaration did nothing but hide the outer binding
+    // that was already correct — vendorInbound's twin has no such line and its net
+    // worked the same day (turn 634ece1b), which is how the contrast was witnessed.
+    // Filed against brideIndex.js:181; the M2b sunset had moved the site here, and
+    // the arc's read-first re-anchored it. Founder's word to fold: "fold it thenn".
     try {
-      const phone = phone;
       await webhookCore.captureDeadLetter({ supabase, service: 'bride', phone, payload: rawPayload, error: err });
-      await sendWhatsApp(phone, webhookCore.GRACEFUL_TURN_LINE);
+      await send(phone, webhookCore.GRACEFUL_TURN_LINE);
     } catch (dlErr) { console.error('[bride-webhook] dead-letter path error:', dlErr && dlErr.message); }
-    return;
     return;
   }
 }

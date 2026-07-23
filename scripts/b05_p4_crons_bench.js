@@ -609,9 +609,29 @@ t('§9.8 THE MARKETING LANE IS BYTE-STABLE — prospects.js unedited by this mic
 });
 
 t('§9.9 the full-stop copy reads TERMINAL and names the way back', () => {
+  // ══ LABELED AMENDMENT — ARC M1 (CE-67). COUNT UNCHANGED (one cell, in place). ══
+  // WHY, and it is not a weakening: this cell asserted /won't message you again/,
+  // which was the true absoluteness of the machine when P4 shipped it. F-05.33's
+  // cure was then ruled shape (b)+(c) — G-A, the founder's word "YOUR SUGGESTION" —
+  // and that ruling RETIRED the semantic this regex bound. STOP now silences what
+  // Mira INITIATES; her answers to the bride's own messages always deliver. Left
+  // unamended, the cell would forbid the estate from shipping the line its own
+  // ruling requires, and would do it while reporting green about a promise the
+  // machine no longer keeps. That is the CE-63 B2 class, and the estate's answer to
+  // it is a labeled amendment, not a silent edit: Ruling №1 (bench-follows-the-law,
+  // the executor's hold credited) and CE-63's four fixture amendments are the
+  // precedents; this amendment is REPORTED in the delivery, ratify-or-revert.
+  //
+  // The absoluteness is not dropped — it is RE-AIMED at what actually stops, and a
+  // NEW assertion is added for the half the ruling created, because under (b)+(c) a
+  // line that states only the silence is lying in the other direction. The cell is
+  // strictly stronger than it was: it now binds BOTH halves of the ruled semantics.
   const line = getNudgeCopy('full_stop_confirmation');
   assert.ok(/opted out/i.test(line), 'terminal register, mirroring the marketing lane');
-  assert.ok(/won't message you again/i.test(line), 'it must state the absoluteness');
+  assert.ok(/won't message you first/i.test(line),
+    'it must state the absoluteness OF INITIATION — the thing G-A actually stops');
+  assert.ok(/if you write to me/i.test(line) && /still answer/i.test(line),
+    'under (b)+(c) it must ALSO promise the answer, or it lies in the other direction');
   assert.ok(/START/.test(line), 'START is the single named way back');
   assert.ok(/STOP MORNINGS/.test(line),
     'it must distinguish itself from the pause — two opt-outs shipped in one block');

@@ -319,7 +319,16 @@ Write a short reply (3-5 sentences max) sharing these results with her. Referenc
 //
 // Does NOT touch the bride's couple thread. Circle member's view of the world
 // is contained in their own circle_thread conversation.
+// ── M-C (CE-67): THE CIRCLE WIRE INHERITS THE BYPASS BY INCLUSION ───────────
+// This handler is not a third door. It is called from INSIDE processBrideInbound
+// (brideInbound.js, step 5), so every message it answers is a message the human
+// sent seconds earlier — G-A's own definition of an answer. `send` is threaded in
+// from that frame rather than closed over from this module, and it is REQUIRED,
+// not defaulted: a default falling back to the bare sendWhatsApp would restore the
+// exact silence this arc cures, and would do it invisibly. The only caller is
+// brideInbound.js:175 (chair- and grep-verified).
 async function handleCircleMemberMessage({
+  send,
   phone, body, trimmedBody, hasMedia, numMedia, req, twilioSid,
   profileName, circleMember,
 }) {
@@ -390,7 +399,7 @@ async function handleCircleMemberMessage({
       // defaulting to 0 and allowing unlimited saves through.
       console.error('[circle-handler] daily cap count query failed (blocking conservatively):', capErr.message);
       const capErrReply = "Something went wrong on our end — please try again in a moment.";
-      await sendWhatsApp(phone, capErrReply);
+      await send(phone, capErrReply);
       return;
     }
 
@@ -399,7 +408,7 @@ async function handleCircleMemberMessage({
       const capReply = `You've reached today's limit of ${DAILY_CIRCLE_IMAGE_CAP} images. Send more tomorrow — they'll land on the board then.`;
       let capMsg = null;
       try {
-        capMsg = await sendWhatsApp(phone, capReply);
+        capMsg = await send(phone, capReply);
       } catch (e) {
         console.error('[circle-handler] cap reply send failed:', e);
       }
@@ -564,7 +573,7 @@ async function handleCircleMemberMessage({
 
     if (textCapErr) {
       console.error('[circle-handler] text cap count query failed (blocking conservatively):', textCapErr.message);
-      await sendWhatsApp(phone, "Something went wrong on our end — please try again in a moment.");
+      await send(phone, "Something went wrong on our end — please try again in a moment.");
       return;
     }
 
@@ -573,7 +582,7 @@ async function handleCircleMemberMessage({
       const textCapReply = `You've sent ${DAILY_CIRCLE_TEXT_CAP} notes today — the limit resets tomorrow. Keep saving images in the meantime!`;
       let capMsg = null;
       try {
-        capMsg = await sendWhatsApp(phone, textCapReply);
+        capMsg = await send(phone, textCapReply);
       } catch (e) {
         console.error('[circle-handler] text cap reply send failed:', e);
       }
@@ -681,7 +690,7 @@ async function handleCircleMemberMessage({
   // ── Send reply ──
   let twilioMsg = null;
   try {
-    twilioMsg = await sendWhatsApp(phone, result.reply, result.mediaUrls || []);
+    twilioMsg = await send(phone, result.reply, result.mediaUrls || []);
   } catch (sendErr) {
     console.error('[circle-handler] sendWhatsApp error:', sendErr);
   }

@@ -58,15 +58,35 @@ const NUDGE_COPY = {
   // campaign she received, so the line names what stops (everything, not a
   // category) and distinguishes itself from STOP MORNINGS — otherwise the two
   // opt-outs shipped in one block would be indistinguishable from the handset.
+  //
+  // ── RECONCILED TO THE G-A RULING · V-1 RATIFIED (founder, CE-67: "yes to all") ─
+  // THE LINE HAD TO CHANGE, and the reason is that the machine changed underneath
+  // it. F-05.33's cure was ruled shape (b)+(c) — the founder's word "YOUR
+  // SUGGESTION" — which means STOP now silences everything Mira INITIATES while
+  // her answers to the bride's OWN messages always deliver. From that ruling
+  // forward, "I won't message you again, about anything" was no longer the truth
+  // of the machine: she WILL be answered the moment she writes. An acknowledgment
+  // that promises more silence than the estate delivers is F-05.22's class exactly
+  // — a promise with no machinery — pointed the other way.
+  //
+  // What the rewrite preserves, deliberately: the flat past-tense declaration, an
+  // absoluteness (now of INITIATION, which is the thing that actually stops), and
+  // START as the single named way back. What it ADDS is the second half the ruling
+  // created — that writing to her still works — because a line that states only
+  // the silence would now be lying in the other direction. The STOP-vs-STOP
+  // MORNINGS distinction survives untouched; two opt-outs shipped in one block
+  // still must not read as one.
   full_stop_confirmation:
-    "You're opted out — I won't message you again, about anything. If you only wanted to pause the daily updates, reply START and then STOP MORNINGS instead.",
+    "You're opted out — I won't message you first about anything. If you write to me I'll still answer; reply START to turn messages back on. If you only wanted to pause the daily updates, reply START and then STOP MORNINGS instead.",
 
   // The resume acknowledgment for a full STOP.
-  // ⚠ HELD, NARROWLY. The founder ratified "full stop confirmation" BY NAME; this
-  // sibling was proposed alongside it and witnessed on the same handset, but was
-  // not named in the ratification. It is live and it works — the marker is held
-  // rather than assumed struck, because reading a founder's veto as broader than
-  // its own words is how copy ships that nobody approved. One word closes it.
+  // ── V-2 · THE CE-63 HOLD IS CLOSED BY RATIFICATION (founder, CE-67) ─────────
+  // This sibling shipped live and worked, but was never NAMED in the F-05.25
+  // ratification, so CE-63 held its marker rather than assume the founder's veto
+  // reached further than his own words — reading a veto broader than it was given
+  // is how copy ships that nobody approved. It has now been ratified by name and
+  // the string stands BYTE-EXACT: nothing about it needed to change, because this
+  // is the one state in which "I'll message you again" was always true.
   full_start_confirmation:
     "You're back on — I'll message you again when there's something worth saying.",
 };

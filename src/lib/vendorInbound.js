@@ -32,8 +32,21 @@
 const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
 const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
+const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
 
+// ── C5 · THE TURN LOCK, THE ONE THING THIS BRIDE ARC TOUCHES ON THIS FILE ───
+// The fence was widened deliberately and narrowly at CE-67: this file may be
+// touched for LOCK WIRING ALONE — the import above and the wrapper below, zero
+// other vendor bytes. F-05.41 was witnessed on the bride lane, but the anatomy is
+// SHARED: index.js:166 and brideIndex.js:158 are the same handler shape, each
+// answering 200 before its turn finishes, so two POSTs one second apart race here
+// exactly as they raced there. Curing one lane and leaving its twin racy would be
+// a knowing half-cure. Nothing below this wrapper changed.
 async function processVendorInbound(inputs, deps) {
+  return withTurnLock(turnKey('vendor', inputs && inputs.phone), () => _processVendorInbound(inputs, deps));
+}
+
+async function _processVendorInbound(inputs, deps) {
   const {
     phone, body, profileName, messageSid, internalReplay,
     trimmedBody, numMedia, hasMedia, mediaUrl, rawPayload,

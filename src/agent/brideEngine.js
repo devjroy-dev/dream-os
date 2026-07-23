@@ -36,6 +36,7 @@ const { BRIDE_TOOLS } = require('./brideTools');
 const { classifyMessage } = require('./classifier');
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { groundedSearch } = require('../lib/groundedSearch');
+const { appendWitness } = require('../lib/witnessLine');   // ARC M1 / C2 — one home, both seams
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 5;
@@ -138,10 +139,20 @@ async function runBrideAgenticTurn({
   }
 
   // Load conversation history (session-bounded)
+  //
+  // ── ARC M1 / C2 (CE-67) · tool_calls JOINS THE SELECT ──────────────────────
+  // F-05.34's second-order finding: a narrated turn ("Saved that." with tool_calls
+  // []) sat in the NEXT turn's history byte-indistinguishable from a filed one, and
+  // taught the shape. The row always knew the difference — brideInbound persists
+  // result.toolCalls faithfully — but this select never asked for it, so the model
+  // read its own past as prose and could not tell what it had actually done. The
+  // indistinguishability was the SELECT, one layer earlier than the finding placed it.
+  // SQL-PROVENANCE: `tool_calls jsonb` is column 8 of public.messages, witnessed at
+  // docs/db/PUBLIC_SCHEMA.md:601 (snapshot 2026-07-23, ladder tip 0099).
   const brideSessionCutoff = new Date(Date.now() - BRIDE_SESSION_IDLE_MS).toISOString();
   const { data: recentMessages } = await supabase
     .from('messages')
-    .select('direction, body, sent_by, created_at')
+    .select('direction, body, sent_by, created_at, tool_calls')
     .eq('conversation_id', conversation.id)
     .gte('created_at', brideSessionCutoff)
     .order('created_at', { ascending: false })
@@ -149,13 +160,19 @@ async function runBrideAgenticTurn({
 
   // Reverse to chronological, filter empties, drop the inbound we're about
   // to add (last one is usually the inbound that just landed and was logged).
+  //
+  // Assistant turns are marked from THEIR OWN HANDS, never from their prose —
+  // appendWitness is the same one home that composes the line at the outbound seam,
+  // so a row persisted before this cure shipped is reconstructed identically to one
+  // persisted after it, and a row that filed nothing is returned untouched. Inbound
+  // rows are never marked: the bride's own words are hers.
   const history = (recentMessages || [])
     .reverse()
     .filter(m => m.body && m.body.trim().length > 0)
     .slice(-HISTORY_LIMIT)
     .map(m => ({
       role: m.direction === 'inbound' ? 'user' : 'assistant',
-      content: m.body,
+      content: m.direction === 'inbound' ? m.body : appendWitness(m.body, m.tool_calls),
     }))
     // Drop the inbound message if it's already the last history item;
     // we add it explicitly below.
