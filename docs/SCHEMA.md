@@ -1251,24 +1251,59 @@ Indexes: `lead_intent_summary_lead_idx` on (lead_id). `lead_intent_summary_expir
 
 ### pending_lead_pings
 
-10-minute acknowledgement window for un-acked vendor lead pings. Created when a new lead arrives (create_lead tool) or when a returning bride makes first contact after a gap. Consumed when vendor replies or 10 minutes elapses. Drives the "she/her" disambiguation pattern — vendor agent reads pending pings before composing any outbound WhatsApp message to ensure pronouns are set correctly.
+> **CORRECTED 2026-07-24 (F-05.57, CE-68 R5).** This section previously described a
+> table that does not exist. It named three phantom columns (`ping_type`, `bride_name`,
+> `expires_at`), a `UNIQUE (vendor_id, lead_id)` constraint, two indexes
+> (`pending_lead_pings_vendor_idx`, `pending_lead_pings_expires_idx`) and an 03:30 IST
+> purge cron — **none of which are real**. It is rewritten below against the TWO
+> AGREEING WITNESSES: `db/migrations/0050_pending_lead_pings.sql:16-30` and
+> `docs/db/PUBLIC_SCHEMA.md:723-735 / :1502-1508 / :2668-2675`. Nothing here is prose;
+> every row below is in one of those two witnesses. (SQL-provenance law: a column with
+> no witness is an assumption.)
+
+Ten-minute pronoun-referent window. A ping records a recently-active lead the vendor's
+agent should treat as the default referent for "tell her" / "reply to her". Written on a
+bride's couple-thread message (first contact and returning), and by the vendor agent's
+own `create_lead` hand.
 
 | Column | Type | Notes |
 |---|---|---|
-| id | uuid PK | gen_random_uuid() |
-| vendor_id | uuid FK vendors | ON DELETE CASCADE |
-| lead_id | uuid FK leads | ON DELETE CASCADE |
-| ping_type | text NOT NULL | CHECK: new_lead / returning_bride / first_contact. Determines notification copy and urgency. |
-| bride_name | text | Snapshot of lead.name at ping time. Survives lead.name updates. |
-| created_at | timestamptz NOT NULL | default now() |
-| expires_at | timestamptz NOT NULL | default now() + 10 minutes |
-| acknowledged_at | timestamptz | NULL = unacknowledged. Stamped on first vendor reply or explicit dismiss. |
+| id | uuid PK NOT NULL | default `gen_random_uuid()` |
+| vendor_id | uuid NOT NULL | FK `vendors(id)` ON DELETE CASCADE |
+| lead_id | uuid NOT NULL | FK `leads(id)` ON DELETE CASCADE |
+| lead_name | text | the name as known at ping time; nullable |
+| bride_message | text | her inbound message, as sent |
+| intent_summary | text | the cached Haiku summary, returning-bride pings only |
+| source | text NOT NULL | CHECK `source IN ('bride_message','vendor_create_lead')` |
+| created_at | timestamptz NOT NULL | default `now()` |
+| acknowledged_at | timestamptz | NULL = un-drained. Stamped when a turn surfaces it. |
 
-Constraint: UNIQUE (vendor_id, lead_id) — one pending ping per vendor per lead at a time. Re-triggered by upserting with new expires_at.
+**There is no `expires_at`.** "Active" is computed, not stored: `acknowledged_at IS NULL
+AND created_at >= now() - 10 minutes`. That is 0050's own definition and the one the
+reader implements.
 
-Indexes: `pending_lead_pings_vendor_idx` on (vendor_id, expires_at) WHERE acknowledged_at IS NULL. `pending_lead_pings_expires_idx` on (expires_at).
+Constraints: PRIMARY KEY (id) and the `source` CHECK. **There is no UNIQUE on
+(vendor_id, lead_id)** — a vendor can hold several open pings at once, which is why the
+block below has a more-than-one form.
 
-**Cleanup:** Expired un-acked pings are purged by cron at 03:30 IST daily. No user-visible effect — they simply expire silently.
+Indexes: `pending_lead_pings_pkey` on (id), and the partial
+`idx_pending_pings_vendor_open` on (vendor_id, created_at DESC) WHERE `acknowledged_at
+IS NULL` — which serves the reader's predicate exactly as written.
+
+**Cleanup:** there is no purge cron; `src/cron.js` does not touch this table. Rows are
+retained; `acknowledged_at` and the ten-minute window together decide what is active.
+
+**WRITERS (3 textual, 2 live).** `src/agent/engine.js:332` (first contact) and `:424`
+(returning bride), both inside `runCoupleAgenticTurn` — live. `src/agent/engine.js:543`
+(the `create_lead` hand inside `executeTool`) — **DEAD since arc M5 orphaned its only
+caller; see F-05.56 and the defused-island header in that file.**
+
+**READER (1).** `src/lib/vendor/leadPings.js` — `fetchLeadPings(supabase, vendorId)`,
+the F-05.50(b) drain. It reads the active pings at the WhatsApp vendor door
+(`src/lib/vendorInbound.js`), renders them into Victor's dynamic system tail via
+`runTurn({ leadPings })`, and **stamps `acknowledged_at` at read** — surfacing is
+draining (CE-68 R2, shape L1). Between arc M5 and F-05.50(b) this table had **zero**
+readers and three standing promises with nothing performing them.
 
 ---
 

@@ -55,6 +55,7 @@ async function _processVendorInbound(inputs, deps) {
     runCoupleAgenticTurn, sendWhatsApp, generateInvoiceForBinder, enquiryToBinder,
     ensureCoupleRow, captureField, buildDisambiguationQuestion, interpretDisambiguationReply,
     vendorDisplayName, resolveAgentForVendor, runTurn, fetchCalendarSnapshot, fetchScratchpad,
+    fetchLeadPings, // TDW_05 F-05.50(b) — the enquiry-ping drain, a door-built turn input
     applyCalendarSignals, buildLlmForTurn, matchModeWord, applyModeFlip, MODE_FLIP_LINES,
     matchFreshWord, FRESH_THREAD_LINE, abandonActiveThread, // TDW_04.5 F-04.98 C3
     checkImageThrottle, markRejectionSent, extractCalendarFromImage, webhookCore, supabase, anthropic,
@@ -862,6 +863,16 @@ async function _processVendorInbound(inputs, deps) {
     // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
     const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id, vendor.category);
     const scratchpad = await fetchScratchpad(supabase, vendor.id);
+    // TDW_05 F-05.50(b) BEGIN — THE ENQUIRY-PING DRAIN, door-built like its two
+    // siblings above. This is the READER pending_lead_pings has never had: three
+    // writers, zero readers since M5 (arc_m5 §3.1). The drain is DOOR-side because
+    // it must be — the engine's client is bound to schema 'engine' (db.ts:16) and
+    // cannot see public.pending_lead_pings; here both planes are in scope. The call
+    // also STAMPS the pings drained (R2/L1) — surfacing is draining — so it fires
+    // exactly once per turn, on the turn that consumes it. Fail-safe to '' inside
+    // the module; a failed drain never costs the vendor his answer.
+    const leadPings = await fetchLeadPings(supabase, vendor.id);
+    // TDW_05 F-05.50(b) END
     // TDW_06 P7b (F-06.1 second limb): the WA door resolves the SAME route the PWA door does —
     // model.pwa_vendor.<tier> via resolveModel AND victor_mode read at the door — so both
     // surfaces route identically (advisor -> deepseek; product tier otherwise). Before this
@@ -880,6 +891,7 @@ async function _processVendorInbound(inputs, deps) {
     // P6 FORK-B END
     const result = await runTurn({
       agentId, message: body, calendarSnapshot, scratchpad,
+      leadPings, // TDW_05 F-05.50(b) — an opaque string, the recentActivity contract
       // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
       vendorCategory,
       // P6 FORK-B END

@@ -441,6 +441,40 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
   };
 }
 
+// ╔════════════════════════════════════════════════════════════════════════════╗
+// ║  F-05.56 — EVERYTHING BELOW THIS LINE HAS ZERO CALLERS SINCE ARC M5.        ║
+// ║  DEFUSED ISLAND. Filed + ruled at CE-68 (F-05.50(b) micro). Label only.     ║
+// ╚════════════════════════════════════════════════════════════════════════════╝
+//
+// `handleOnboarding` (below) and `executeTool` (below it) run to the end of this
+// file and are UNREACHABLE. Neither is exported — `module.exports` is
+// `{ runCoupleAgenticTurn }` alone — and neither is called anywhere in `src/**` or
+// `scripts/**`. Verified by command at 2028a0d and asserted at
+// `b05_f0550_ping_drain_bench` §4.
+//
+// HOW THEY DIED: M5 deleted `runAgenticTurn` (the JS vendor loop, formerly :43-374)
+// as an orphan, and these two were ITS callees. M5's census walked the orphan and
+// its classifier and named `classifier.js` a defused island — correctly — but it did
+// not walk one level further out to the functions the orphan had been the last
+// caller of. So ~1,059 lines went dark in the same act and were never named. This is
+// the CE-67 §C class exactly ("the charter protected a survivor living inside the
+// corpse"), one ring wider.
+//
+// WHY THE LABEL MATTERS TO A READER WHO IS NOT LOOKING FOR IT: `executeTool` contains
+// the THIRD writer of `pending_lead_pings` (the `create_lead` hand). `b05_arc_m5_bench`
+// §3.1 counted three writers by text and called them "live"; one of them has been dead
+// since M5. F-05.50(b)'s drain reads only what the two LIVE writers
+// (`runCoupleAgenticTurn`, :332 and :424) put there. Anyone reading this file for the
+// ping story must know which writers can still fire.
+//
+// DELETION IS NOT THIS MICRO'S. CE-68 ruled defuse-and-label here and said the
+// deletion takes its OWN ruling — M5's own two-step, and its precedent governs
+// (`classifier.js`'s header, `src/agent/classifier.js`). REVIVAL-OR-DELETION POINTER:
+// whoever revives the JS vendor wire needs `runAgenticTurn` back from history
+// (`git show a80dac8^:src/agent/engine.js`), and it will need these two and
+// `classifier.js` waiting — which is why they are kept whole rather than gutted.
+// Whoever deletes instead should take the three together, in one ruled act.
+//
 // ── Onboarding handler ────────────────────────────────────────────
 async function handleOnboarding({ vendor, user, conversation, inboundMessage, supabase, anthropic }) {
   const result = await nextOnboardingMessage({

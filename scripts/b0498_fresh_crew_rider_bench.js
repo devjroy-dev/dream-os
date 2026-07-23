@@ -171,6 +171,14 @@ function mkJointDeps() {
     resolveAgentForVendor: async () => ({ agentId: 'ag1' }),
     fetchCalendarSnapshot: async () => ({}),
     fetchScratchpad: async () => ({}),
+    // LABELED AMENDMENT · F-05.50(b) / CE-68 · COUNT PRESERVED, zero assertion changes.
+    // THE BOTH-SIDES CLAUSE (CE-59): the door's dep contract gained fetchLeadPings, so
+    // this stub follows the NEW caller shape. It returns '' — no active pings — which is
+    // byte-identically the world these cells already asserted. The alternative was to make
+    // the dep optional in production so old stubs stayed green; that would let a wiring
+    // regression land silently, which is the very disease F-05.50(b) cures. The door
+    // fails LOUD on a missing dep and the stubs follow it.
+    fetchLeadPings: async () => '',
     buildLlmForTurn: async () => ({ tierOverride: null, modelOverride: null, transport: null, donnaTransport: null, donnaModelOverride: null }),
     applyCalendarSignals: async () => ({ suffix: '' }),
     generateInvoiceForBinder: noop,

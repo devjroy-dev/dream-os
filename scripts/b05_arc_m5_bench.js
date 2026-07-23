@@ -57,19 +57,37 @@ t('§2.3 the island DECLARES itself, with its revival pointer', () => {
   assert.ok(/REVIVAL POINTER/.test(h), 'and the next reader needs the pointer');
 });
 
-H('§3 — READER-ZERO, NAMED NOT CURED (R-M5-4)');
-t('§3.1 pending_lead_pings: three live writers, ZERO readers post-M5', () => {
+// ── LABELED AMENDMENT, F-05.50(b) / CE-68 R4 · COUNT PRESERVED (1 cell, 11 total) ──
+// TWO WORDS IN THE ORIGINAL LABEL WERE DOING WORK THE ASSERTION DID NOT DO, and both
+// are corrected here rather than left to mislead the next reader:
+//   1. "three LIVE writers" — this cell counts TEXTUAL occurrences in src/agent/*.js.
+//      One of the three (engine.js's create_lead hand, inside `executeTool`) has been
+//      DEAD since M5 orphaned it: F-05.56, filed and labeled in engine.js this ZIP.
+//      Two writers can still fire, both inside runCoupleAgenticTurn.
+//   2. "ZERO readers" — still TRUE, and it must be read with its SWEEP WORLD named.
+//      This loop reads src/agent/*.js and nothing else. The drain F-05.50(b) shipped
+//      lives at src/lib/vendor/leadPings.js — OUTSIDE that world by design, because
+//      the read is a DOOR concern (the engine's client cannot see the public plane).
+//      So the zero below is honest about src/agent and would be a LIE about the
+//      estate; §3.1b asserts where the real reader is, in this same cell, so the two
+//      facts can never again be read apart.
+H('§3 — READER-ZERO IN src/agent, NAMED AT M5 · THE READER SHIPPED AT F-05.50(b) (R-M5-4, amended)');
+t('§3.1 pending_lead_pings: three TEXTUAL writers in src/agent (one DEAD, F-05.56), ZERO readers in THIS sweep world — the drain lives at src/lib/vendor/leadPings.js', () => {
   let readers = 0, writers = 0;
   for (const f of fs.readdirSync(P('src/agent')).filter(x => x.endsWith('.js')))
     for (const l of code('src/agent/' + f).split('\n')) {
       if (/from\('pending_lead_pings'\)\.insert/.test(l)) writers++;
       else if (/from\('pending_lead_pings'\)/.test(l)) readers++;
     }
-  assert.strictEqual(readers, 0, `expected the reader to have died with the orphan, found ${readers}`);
-  assert.strictEqual(writers, 3, `expected three live writers, found ${writers}`);
-  // NO CURE SHIPS. F-05.50's homing letter is an open founder letter and the cure
-  // belongs to whichever home he names. This cell exists so the state is a FACT on
-  // the record rather than a sentence in a handover nobody re-reads.
+  assert.strictEqual(readers, 0, `src/agent still holds a reader — the drain's home is lib/vendor, found ${readers}`);
+  assert.strictEqual(writers, 3, `expected three textual writers, found ${writers}`);
+  // §3.1b — THE REFERENT, ASSERTED NOT NARRATED (§4.1's own lesson, arc M5 §8).
+  // A "zero" whose scope lives only in a comment is one refactor away from a lie.
+  const drain = 'src/lib/vendor/leadPings.js';
+  assert.ok(fs.existsSync(P(drain)), `the zero above is only honest because the reader lives at ${drain} — and it does not`);
+  const d = code(drain);
+  assert.ok(/from\('pending_lead_pings'\)/.test(d), 'the drain must actually read the table it drains');
+  assert.ok(/acknowledged_at/.test(d), 'and stamp it (R2/L1) — surfacing is draining');
 });
 
 H('§4 — W-1 AND PURITY');

@@ -99,6 +99,13 @@ type RunTurnArgs = {
   calendarSnapshot?: string;
   scratchpad?: string;
   recentActivity?: string; // TDW_02 P4 (CE-4): door-built cross-surface activity block
+  // TDW_05 F-05.50(b) (CE-68, R1(a)): the ACTIVE-LEAD PING block — door-built, the
+  // pronoun referent for a bride who just enquired. An OPAQUE STRING here by design:
+  // the engine's client is bound to schema 'engine' (db.ts) and cannot read
+  // public.pending_lead_pings, so construction lives at the door
+  // (lib/vendor/leadPings.js) exactly as recentActivity's does. ABSENT => the pre-cure
+  // dynamic block is byte-identical (regression law).
+  leadPings?: string;
   // TDW_04.5 P6 (CE-61, Fork B): the vendor's NORMALISED category, door-computed.
   // THE DOOR NORMALISES, THE ENGINE COMPARES — `normaliseCategory` keeps its one home in
   // lib/vendor/categoryFraming.js, which is the whole point of the ruling: Victor's
@@ -379,7 +386,22 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   const buildSystem = (): Anthropic.TextBlockParam[] => {
     const calBlock = (estateInRoom && args.calendarSnapshot) ? `\n\n${args.calendarSnapshot}` : '';
     const actBlock = (estateInRoom && args.recentActivity) ? `\n\n${args.recentActivity}` : ''; // TDW_02 P4 (CE-4), never cached; estate = business room only
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock;
+    // TDW_05 F-05.50(b) (CE-68, R1(a)): the enquiry-ping block, actBlock's structural
+    // sibling — DYNAMIC, NEVER CACHED (it changes the minute a bride writes).
+    // GATED ON estateInRoom AND NOT ON ITS OWN: an advisor room LOSES the estate by
+    // ruling A-3 (see :246-251 above) precisely so no neighbouring-line donor pool
+    // stands beside Victor — F-04.70's mechanism, removed by construction. A ping
+    // carries a bride's own sentence, rupee figures and all; exempting it from this
+    // gate would re-open the pool the ruling closed.
+    // AND IT IS *HERE*, IN THE SYSTEM TAIL, NOT IN THE MESSAGE STREAM. That siting is
+    // the whole provenance property: `vendorWords` below (:441-446) is built from
+    // user-role thread messages plus the message in hand — the OWNER'S words only —
+    // and the provenance hold vouches a money figure only if it appears there. A
+    // bride's figure reaching Victor as CONTEXT can inform him; reaching him as a
+    // user-roled message would let it VOUCH for a write, which is F-04.70 exactly.
+    // b05_f0550_ping_drain_bench §2 asserts the absence structurally and functionally.
+    const pingBlock = (estateInRoom && args.leadPings) ? `\n\n${args.leadPings}` : '';
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];
