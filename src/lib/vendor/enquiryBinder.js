@@ -16,6 +16,7 @@
 
 const { executeRecordTool }      = require('../../engine/dist/core/tools/recordPrimitives');
 const { resolveAgentForVendor }  = require('../../api/middleware/agentBridge');
+const { resolveAuthUserId }      = require('../resolveUsersId'); // ARC M3 / F-05.47
 
 const isErr = (r) => !!r && typeof r.display === 'string' && r.display.startsWith('ERROR');
 
@@ -29,7 +30,34 @@ async function enquiryToBinder(supabase, vendorId, params) {
   const { data: vendor } = await supabase
     .from('vendors').select('*').eq('id', vendorId).maybeSingle();
   if (!vendor) return { ok: false, error: 'vendor not found' };
-  const { agentId } = await resolveAgentForVendor(supabase, vendor, vendor.user_id);
+  // ── F-05.47 CURED · THE PLANE SWAP, AND THE THROW IT BECAME ───────────────
+  // THIS LINE READ: resolveAgentForVendor(supabase, vendor, vendor.user_id).
+  // `vendors.user_id` is a public.users.id. The bridge writes whatever it is
+  // handed into engine.users.auth_user_id, which carries a FOREIGN KEY to
+  // auth.users(id) — so every call raised 23503 and threw. The couple door calls
+  // this ONE STEP BEFORE the agent turn (vendorInbound.js:586, and again at :624),
+  // neither guarded, so the cabinet write killed the conversation: a bride sent a
+  // TDW code and got a hiccup line instead of an answer, three times.
+  //
+  // The value was correct code once. Pre-auth-mint, users.id WAS the identity and
+  // the two planes were one; 0063 split them and the FK made the difference fatal.
+  // Seven of the eight resolveAgentForVendor call sites already pass a genuine auth
+  // id (six web sites pass req.auth.user_id — requireAuth.js:45's getUser().id —
+  // and vendorInbound.js:803 passes users.auth_user_id). This was the lone deviant;
+  // the census is in the handover, because the cure covers the SET, not the specimen.
+  const authUserId = await resolveAuthUserId(supabase, vendor.user_id);
+  if (!authUserId) {
+    // THE OTHER MODE OF THE SAME SEAM. resolveAgentForVendor throws on a falsy id
+    // (agentBridge.js:17-19), and an uncaught throw here is the same dead
+    // conversation by a different route. This module's OWN contract is
+    // { ok:false, error } — the one at :31 — so the honest failure travels the way
+    // this file already says failures travel, and the bride still gets her answer.
+    // No live subject exists today: both auth-less users own no vendor (founder
+    // probe P3). The bench drives this mode synthetically and says so.
+    console.error(`[enquiry-binder] vendor ${vendor.id} has no auth identity (users.id ${vendor.user_id}) — cabinet skipped, conversation continues`);
+    return { ok: false, error: 'vendor has no auth identity' };
+  }
+  const { agentId } = await resolveAgentForVendor(supabase, vendor, authUserId);
   const eng = supabase.schema('engine');
 
   // Dedupe by phone — the engine equivalent of the old binder phone check.
