@@ -34,6 +34,42 @@ const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = requi
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
 
+// ── BLOCK 06 M-0 · F-05.60 CURED (A1, founder-ruled 「 a1 」) ──────────────────
+// THE LINE THIS REPLACES: `inboundMessage: firstWord.startsWith('TDW-') ? 'hi' : body`.
+// A TDW-prefixed message was SUBSTITUTED with the literal 'hi' before the couple
+// agent, both ping writers, the vendor notification and the intent extractor saw
+// it — so a bride asking a substantive question was recorded, notified and
+// summarised as having said hello. Seven consumers, one falsified input.
+//
+// A1 IS NOT "STOP SUBSTITUTING". The substitution was answering a real question:
+// a first contact is often the bare routing token alone, and handing the agent
+// `TDW-DROY550` asks it to answer a code. A1 separates the two cases the old
+// line could not tell apart — strip the ROUTING TOKEN, keep the SENTENCE, and
+// fall back to a greeting only when stripping leaves nothing at all.
+//
+// THE CASE TRAP, AND WHY THIS SLICES BY LENGTH (A-case, chair-binding).
+// `firstWord` at the call site is UPPERCASED (`body.trim().split(/\s+/)[0]
+// .toUpperCase()`), which is why the disease fires on `tdw-droy550` as readily
+// as on `TDW-DROY550`. Any cure that removed the token by matching `firstWord`
+// against the raw body would therefore MISS every lowercase and mixed-case
+// send — curing the loud half and leaving the quiet half alive. This function
+// never looks at the uppercased value: it re-splits the RAW text and removes
+// the first token BY ITS OWN LENGTH, so case is irrelevant by construction.
+//
+// SITED FOR THE BRANCH THAT KNOWS. Called only where the first token has already
+// matched a `routing_handle` — prefixed or bare — so "the first token is a
+// routing token" is a fact at the call site, never a guess here.
+//
+// PRECEDENT, NOT INVENTION: the bride lane has run this discipline since M1b —
+// `brideInbound.js:567`, `trimmedBody.length > 0 ? trimmedBody : bodyForLog`,
+// a fallback that fires only on emptiness. This puts both lanes on one law.
+function stripRoutingToken(rawBody) {
+  const trimmed = String(rawBody == null ? '' : rawBody).trim();
+  if (!trimmed) return '';
+  const firstToken = trimmed.split(/\s+/)[0];
+  return trimmed.slice(firstToken.length).trim();
+}
+
 // ── C5 · THE TURN LOCK, THE ONE THING THIS BRIDE ARC TOUCHES ON THIS FILE ───
 // The fence was widened deliberately and narrowly at CE-67: this file may be
 // touched for LOCK WIRING ALONE — the import above and the wrapper below, zero
@@ -663,10 +699,38 @@ async function _processVendorInbound(inputs, deps) {
         // enquiryToBinder dedups by phone and opens the binder as a lead; the
         // post-agent call below enriches its note with the vendor summary. The
         // marketplace is just another caller.
-        await enquiryToBinder(supabase, matchedByTdw.id, {
+        //
+        // ── B0 (BLOCK 06 M-0, CE-ruled NAME-ONLY) · THE ONE-BRANCH ASYMMETRY ──
+        // THIS is the only one of four couple paths that leaves an engine-plane
+        // trace. The disambiguation-resume (:500), sticky (:608) and existing-
+        // thread (:876) branches all run a couple turn and write NO binder, so a
+        // vendor's cabinet holds his TDW-link enquiries and not his others.
+        // NAMED, NOT CURED: adding binder writes to three uncharted branches is a
+        // live change to the vendor's cabinet, and this sitting's purpose is
+        // making EXISTING data true. Recorded here so it is not rediscovered.
+        //
+        // ── F-05.59 / F-05.54 CURED (C1) · THE CLAIM AND THE VERDICT ─────────
+        // `noteIfNew`, not `note`: this sentence asserts PRIMACY, and primacy is
+        // true only of a binder this enquiry opened. Passed as an always-note it
+        // was appended on every dedupe hit, so a repeat enquiry stored a
+        // first-message claim about a message that was not the first (specimen:
+        // binder 1e774015, the sentence stored twice). The bytes are unchanged;
+        // only the key changed, and with it the path it is written on.
+        const preTurnBinder = await enquiryToBinder(supabase, matchedByTdw.id, {
           phone,
-          note: `Enquiry via your TDW link. First message: ${body}`,
+          noteIfNew: `Enquiry via your TDW link. First message: ${body}`,
         });
+        // The verdict is READ. It used to be spoken to nobody — a bare await on a
+        // function whose whole contract is { ok, binder, deduped } (F-05.54, and
+        // F-05.61's family: a return value discarded is a failure that never
+        // happened). A cabinet write can fail while the bride's turn continues
+        // correctly, which is exactly why it must be loud rather than fatal.
+        if (!preTurnBinder || preTurnBinder.ok !== true) {
+          console.error(
+            `[enquiry-binder:pre-turn] FAILED for vendor ${matchedByTdw.id} / ${phone} — ` +
+            `${(preTurnBinder && preTurnBinder.error) || 'no result returned'}. ` +
+            `The bride's turn continues; her enquiry has NO binder in this vendor's cabinet.`);
+        }
 
         const result = await runCoupleAgenticTurn({
           vendor: matchedByTdw,
@@ -674,7 +738,14 @@ async function _processVendorInbound(inputs, deps) {
           conversation: coupleThread,
           couplePhone: phone,
           coupleId: brideCoupleId,
-          inboundMessage: firstWord.startsWith('TDW-') ? 'hi' : body,
+          // A1 — the sentence survives the routing token; the greeting fires only
+          // when the token was the whole message. See stripRoutingToken above.
+          inboundMessage: stripRoutingToken(body) || 'hi',
+          // A-dedupe(α) — the engine's history filter compares against what the
+          // audit row at :690 actually stored, not against this derived value.
+          // Without it the stripped remainder and the stored body disagree and her
+          // sentence reaches the model TWICE (once as history, once in hand).
+          rawInboundBody: body,
           supabase,
           anthropic,
         });
@@ -701,10 +772,23 @@ async function _processVendorInbound(inputs, deps) {
 
         // Enrich the engine binder's note with the vendor summary (dedup -> note_append).
         if (result.vendorNotification) {
-          await enquiryToBinder(supabase, matchedByTdw.id, {
+          // D1-lite — the name, now that one exists. The pre-turn call above had
+          // none to give (she had not spoken yet), so it opened the binder under
+          // enquiryBinder's nameless default AND SAID SO. By here the turn has
+          // resolved a name if the bride offered one, and enquiryToBinder fills it
+          // in — but ONLY over that untouched default, never over a name the
+          // vendor set himself (the never-clobber guard, enquiryBinder.js).
+          const postTurnBinder = await enquiryToBinder(supabase, matchedByTdw.id, {
             phone,
+            name: result.leadName || null,
             note: result.vendorNotification,
           });
+          if (!postTurnBinder || postTurnBinder.ok !== true) {
+            console.error(
+              `[enquiry-binder:post-turn] FAILED for vendor ${matchedByTdw.id} / ${phone} — ` +
+              `${(postTurnBinder && postTurnBinder.error) || 'no result returned'}. ` +
+              `The vendor summary did NOT reach his cabinet; his handset still got the message.`);
+          }
         }
 
         await supabase.from('conversations')
@@ -1119,6 +1203,6 @@ async function resolveVendorMedia(mediaItem, deps) {
 }
 
 module.exports = {
-  processVendorInbound, metaInputsFrom,
+  processVendorInbound, metaInputsFrom, stripRoutingToken, // stripRoutingToken: BLOCK 06 M-0 / F-05.60 — exported so the bench drives the shipped function, never a copy (Q-SP-5)
   resolveVendorMedia, WA_MEDIA_BUCKET, VENDOR_MEDIA_ALLOW_MIMES, VENDOR_MEDIA_MAX_BYTES,
 };

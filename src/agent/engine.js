@@ -47,7 +47,24 @@ const VENDOR_SESSION_IDLE_MS = 10 * 60 * 1000;
 // ── Couple agentic turn ───────────────────────────────────────────
 // Runs on couple_thread conversations.
 // Collects event details, updates lead, notifies vendor with summary.
-async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, supabase, anthropic }) {
+// ── BLOCK 06 M-0 · A-dedupe(α) — `rawInboundBody`, OPTIONAL AND DEFAULTING ────
+// The history de-dupe at :83 exists to stop the message-in-hand appearing TWICE
+// in the model's context: once as the audit row the door just wrote, once as the
+// user turn appended at :135. It compared against `inboundMessage` — which was
+// true only while `inboundMessage` and the stored row's body were the same
+// string. F-05.60's substitution broke that silently (body='TDW-X what's your
+// rate', inboundMessage='hi' → no match → her real sentence leaked back in, which
+// is the ONLY reason the falsified turns still answered correctly: two defects
+// cancelling). A1's strip does NOT restore the match — it replaces one mismatch
+// with another — so the filter is given the value it was always asking for.
+// DEFAULTS to `inboundMessage`: every caller that passes the body unchanged
+// (vendorInbound :464/:572/:792) is byte-identical, asserted at the bench.
+async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePhone, coupleId, inboundMessage, rawInboundBody, supabase, anthropic }) {
+  // The row the door wrote holds what she ACTUALLY sent (γ refused: the audit row
+  // is never rewritten to match a derived value). This is the string to filter on.
+  const inboundBodyAsStored = (rawInboundBody === undefined || rawInboundBody === null)
+    ? inboundMessage
+    : rawInboundBody;
 
   // ── Load conversation history (session-bounded) ───────────────────
   const coupleSessionCutoff = new Date(Date.now() - VENDOR_SESSION_IDLE_MS).toISOString();
@@ -62,7 +79,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   const history = (recentMessages || [])
     .reverse()
-    .filter(m => m.body !== inboundMessage || m.direction !== 'inbound')
+    .filter(m => m.body !== inboundBodyAsStored || m.direction !== 'inbound')
     .filter(m => m.body && m.body.trim().length > 0)
     .slice(-HISTORY_LIMIT)
     .map(m => ({
@@ -85,6 +102,14 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   const isReturningBride = !!existingLeadForCouple?.name;
   const leadName = existingLeadForCouple?.name || null;
+
+  // ── BLOCK 06 M-0 · D1-lite — the name this turn RESOLVED, handed back ────────
+  // The capture branch computes `resolvedName` inside the tool loop and nothing
+  // outside that branch could see it, so the door's binder was opened nameless
+  // ('Dream Wedding enquiry', enquiryBinder.js:79) on every enquiry — structurally,
+  // not by accident. Lifted to turn scope and returned; the door names the binder
+  // with it AFTER the turn, when a name exists to give.
+  let capturedLeadName = null;
 
   // Phase 3.5 Layer 1: inherit the bride's wedding SHAPE if she has a couple
   // record (from bride onboarding). Linked by phone via users. Many enquiring
@@ -216,6 +241,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
         // Upsert lead — dedup on (vendor_id, phone)
         const resolvedName = input.name || knownBrideName || null;
+        if (resolvedName) capturedLeadName = resolvedName; // D1-lite — see :90
         const { data: existingLead } = await supabase
           .from('leads')
           .select('id')
@@ -438,6 +464,10 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     toolCalls: toolCallsAudit,
     iterations,
     vendorNotification: isReturningBride ? returningBrideNotif : firstContactNotif,
+    // D1-lite (BLOCK 06 M-0) — ADDITIVE. The name this turn resolved, else the
+    // name already on file, else null. The door reads it to name the binder;
+    // every existing reader of this object is untouched.
+    leadName: capturedLeadName || leadName,
   };
 }
 

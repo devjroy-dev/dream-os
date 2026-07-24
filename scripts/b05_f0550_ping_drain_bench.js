@@ -288,11 +288,38 @@ await t('§4.2 the defused-island header is present, cites its ruling, and point
   assert.ok(i < e.indexOf('async function handleOnboarding'), 'the header must stand ABOVE the span it labels');
 });
 
-await t('§4.3 the label is COMMENT-ONLY — engine.js\'s executable lines are untouched', () => {
+await t('§4.3 the label is COMMENT-ONLY — the DEFUSED ISLAND\'s executable lines are untouched', () => {
+  // ── LABELED AMENDMENT (BLOCK 06 M-0), COUNT PRESERVED · RATIFY-OR-REVERT ────
+  // THIS CELL READ: strip(git show HEAD:src/agent/engine.js) === strip(working copy),
+  // i.e. THE WHOLE FILE. That is an OPEN-ENDED GUARD — the arc_m4 §4.1 disease and
+  // the one the f0555 handover predicted in writing: green on the day it shipped,
+  // structurally RED the moment any chartered sitting lawfully touches ANY part of
+  // engine.js, and green again the moment the founder commits that same delivery.
+  // A guard that flips on push timing is not asserting a property, it is asserting
+  // a schedule. M-0 is the predicted collision: α and D1-lite move executable bytes
+  // in `runCoupleAgenticTurn`, ~400 lines ABOVE the island, and this cell reddened.
+  //
+  // RE-AIMED TO THE PROPERTY IT EXISTS FOR, by the arc_m4 cure's own shape:
+  //   BASE PINNED to 5335bb2 — the commit that authored and proved the defusal —
+  //   instead of a moving HEAD; and
+  //   SCOPED to the ISLAND — from F-05.56's banner to module.exports — instead of
+  //   the whole file, anchored on a string that occurs once and cannot drift onto
+  //   a neighbour however many functions this file grows.
+  // The assertion is now true FOREVER unless someone edits the defused code, which
+  // is precisely what the deletion ruling exists to authorise.
   const { execFileSync } = require('child_process');
-  const before = execFileSync('git', ['show', 'HEAD:src/agent/engine.js'], { cwd: ROOT, encoding: 'utf8' });
-  const strip = (s) => s.split('\n').filter(l => l.trim() && !l.trim().startsWith('//')).join('\n');
-  assert.strictEqual(strip(before), strip(read('src/agent/engine.js')), 'a defusal that moves an executable byte is not a defusal');
+  const BASE = '5335bb2';
+  const BANNER = 'F-05.56 — EVERYTHING BELOW THIS LINE HAS ZERO CALLERS';
+  const END = 'module.exports = { runCoupleAgenticTurn };';
+  const island = (s) => {
+    const i = s.indexOf(BANNER), j = s.indexOf(END);
+    assert.ok(i !== -1 && j !== -1 && j > i, 'the island anchors have drifted — re-derive before trusting this cell');
+    return s.slice(i, j).split('\n').filter((l) => l.trim() && !l.trim().startsWith('//')).join('\n');
+  };
+  const before = execFileSync('git', ['show', `${BASE}:src/agent/engine.js`], { cwd: ROOT, encoding: 'utf8' });
+  const a = island(before), b = island(read('src/agent/engine.js'));
+  assert.ok(a.split('\n').length > 500, 'the island shrank to nothing — the scope anchor is wrong, not the code');
+  assert.strictEqual(a, b, 'a defusal that moves an executable byte is not a defusal');
 });
 
 H('§5 — THE WIRE: DOOR-BUILT, WA-ONLY, AS RULED');

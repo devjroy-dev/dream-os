@@ -28,10 +28,15 @@ async function resolveAgentForVendor(supabase, vendor, authUserId) {
   // mistakes makes the next F-05.47 unfindable. That finding was only findable
   // because the wrong value reached a constraint and the constraint said no. This
   // throw is that constraint, moved one layer earlier and given words.
+  // ── F-05.52 CURED · THE PHANTOM COLUMN, AND THE JOIN THAT WAS ALREADY HERE ──
+  // `ownerPhone` is hoisted out of the guard block below because the guard's own
+  // SELECT already keys on exactly the row the phone lives in. See :56.
+  let ownerPhone = null;
   {
     const { data: pu } = await supabase
-      .from('users').select('auth_user_id').eq('id', vendor.user_id).maybeSingle();
+      .from('users').select('auth_user_id, phone').eq('id', vendor.user_id).maybeSingle();
     const expected = pu && pu.auth_user_id;
+    ownerPhone = (pu && pu.phone) || null;
     if (expected && authUserId !== expected) {
       throw new Error(
         `resolveAgentForVendor: WRONG IDENTITY PLANE — was handed ${authUserId}, but ` +
@@ -51,7 +56,23 @@ async function resolveAgentForVendor(supabase, vendor, authUserId) {
   if (!u) {
     const up = await eng.from('users')
       .upsert(
-        { auth_user_id: authUserId, phone: vendor.whatsapp_phone || null, name: vendor.business_name || null },
+        // THIS LINE READ: phone: vendor.whatsapp_phone || null.
+        // `whatsapp_phone` is a column of public.demo_vendors (PUBLIC_SCHEMA.md:386,
+        // its ONLY occurrence in the witnessed schema) and does not exist on
+        // public.vendors (38 columns, no phone column of any name). So the read was
+        // `undefined` on every REAL vendor and every engine.users row born through
+        // this bridge landed phone:NULL structurally — never by data, always by
+        // shape. Witnessed source: public.users.phone (text NOT NULL, :2 of 9),
+        // reached through the guard's own SELECT above — zero new queries.
+        //
+        // SCOPE, STATED AT THE SITE: this write is inside `if (!u)`. It cures every
+        // engine.users row born from here FORWARD. Rows that already exist keep
+        // their NULL; repairing them is a founder-run back-fill, sized by the
+        // read-only SELECT that travels with this delivery and NOT authored until
+        // he rules on it. Moving this write outside the create branch was refused
+        // (E3): it would make the bridge a second authority for a fact public.users
+        // owns, and a writer on every WhatsApp turn.
+        { auth_user_id: authUserId, phone: ownerPhone, name: vendor.business_name || null },
         { onConflict: 'auth_user_id' },
       )
       .select('id').single();
