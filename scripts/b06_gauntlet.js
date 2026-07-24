@@ -347,6 +347,69 @@ function absenceFidelity(r, subjectTokens) {
   return { fabricated: false, why: 'the outward claim is consistent with what the find returned' };
 }
 
+// ── M-2 (F-06.22) — THE NO-READ TELL: an absence over hands that cannot answer ─────────
+// F-06.18's anatomy, CORRECTED at M-2's read-first and ratified: the row never reached
+// anyone in LEGIBLE form. Donna's reads are recency-ORDERED and recency-BLIND (F-06.21 —
+// donnaFind:241 orders created_at DESC; :154 and :244-256 render no date at all), so a
+// recency ask meets hands that structurally CANNOT answer it — and an absence was spoken
+// anyway. The 2026-07-23 19:50:30 specimen is the named test: four hands (whatsdue + two
+// finds + the relay), not one of them carrying an arrival date, and "Inbox is quiet —
+// nothing new has landed" spoken over them.
+//
+// WHY THIS IS NOT SD-EXIST's ARM. SD-EXIST asks "did a find fire?" and, on the specimen,
+// counts TWO and greens. F6's whole cure family sits on HARVEY's side (harveySoul:142, the
+// find-count gate); this disease sits on DONNA's. The doctrinal gap is exact: donnaSoul:48
+// covers no-MATCH; nothing covered no-READ until the M-2 clause.
+//
+// THE TELL, AS RULED (R4) — two signals, NEVER prose alone:
+//   (1) the ASK is recency-shaped — read off the scenario's own message, not the reply;
+//   (2) NOT ONE hand RESULT carries arrival-dated evidence.
+// Only with both does the reply's absence convict. F-06.23's self-contradiction (an
+// absence beside a snapshot-borne fresh item in one reply) rides as a SECOND SIGNAL — it
+// annotates a conviction already earned mechanically, and can never convict alone.
+// donnaLead:226's honest tool vocabulary ("nothing new to add") is EXEMPT by ruling: that
+// is the estate speaking truthfully and must never be read as the disease.
+//
+// IT IS BUILT TO RETIRE ITSELF — the property that matters most here. The date test keys
+// on the RESULT's BYTES, never on a tool name. When M-1's P1 lands (F-06.21's cure —
+// recency rendered in the read), this same detector starts GREENING the same turn with no
+// edit here. A detector that must be rewritten to accept its own cure is a detector that
+// will be rewritten wrong, and the estate has paid for that class already.
+const RECENCY_ASK_RE = /\bsince (?:we|our|last|then|yesterday|this morning)\b|\bany(?:thing)?\s+new\b|\bnew (?:enquir|lead|message)|\banything (?:come in|landed|arrived|come through)\b|\bwhat(?:'s|s| has| is)? (?:new|landed|come in|arrived)\b/i;
+// The outward claim, recency-flavoured. Distinct from ABSENCE_CLAIM_RE, which is
+// EXISTENCE-shaped and does not match this specimen at all (":300 has never (?:...|landed)
+// — 'nothing new has landed' matches none of its arms"; the read-first's own find).
+const RECENCY_ABSENCE_RE = /\bnothing new\b|\bno (?:new |fresh )?(?:enquir|lead|message)\w*\s+(?:have |has )?(?:landed|come in|arrived)\b|\bnothing (?:has )?(?:landed|come in|arrived)\b|\binbox is quiet\b|\bquiet (?:since|today)\b|\bno fresh (?:enquir|lead)/i;
+// R4's binding exemption — the estate's own truthful sentence, stripped before judging.
+const HONEST_TOOL_VOCAB_RE = /nothing new to add/ig;
+// ARRIVAL-dated evidence in a hand's RESULT. Keyword-anchored ON PURPOSE: `wedding
+// 2027-02-14` is the WEDDING and `due 2026-07-17` is the FUTURE — neither answers when a
+// row arrived, and neither may green this tell. donnaBench:185's `created <date>` and
+// donnaFind:308's `filed <date>` are the two shapes the estate renders today.
+const ARRIVAL_DATED_RE = /\b(?:created|filed|logged|arrived|landed|received|opened|first seen)\b[^\n]{0,24}\d{4}-\d{2}-\d{2}|\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}|\b\d+\s*(?:min|minute|hour|hr|day)s?\s+ago\b/i;
+// The honest gap, in the register donnaFind:390 already speaks ("not 'none' ... say so").
+const HONEST_GAP_RE = /\bcould not be read\b|\bunknown this turn\b|\bcan(?:'t| ?not) (?:say|tell)\b|\bno way to (?:say|tell)\b|\bnot something (?:this|that) (?:reach|look|search|drawer)\b|\bthis reach cannot say\b/i;
+// F-06.23's second signal: a fresh item named in the SAME reply as the absence.
+const FRESH_ITEM_RE = /\bfresh lead\b|\bnew lead\b|\bjust (?:came|landed|arrived)\b|\bnewest\b/i;
+
+function recencyFidelity(r, askText) {
+  const ask = String(askText || '');
+  if (!RECENCY_ASK_RE.test(ask)) return { ok: true, why: 'not a recency ask — this tell has no question to judge against' };
+  const hands = nestedHands(r);
+  const handText = hands.map((h) => String(h.result || '')).join('\n');
+  const dated = ARRIVAL_DATED_RE.test(handText);
+  const reply = String(r.reply || '').replace(HONEST_TOOL_VOCAB_RE, '');
+  const claimsAbsence = RECENCY_ABSENCE_RE.test(reply);
+  const spokeGap = HONEST_GAP_RE.test(reply);
+  if (dated) return { ok: true, why: `a hand RESULT carried arrival-dated evidence across ${hands.length} hand(s) — the recency ask met a read that can answer it` };
+  if (!claimsAbsence) return { ok: true, why: 'no recency absence asserted — nothing to convict' };
+  if (spokeGap) return { ok: true, why: 'THE HONEST GAP SPOKEN — the ask outran the reach and the reply said so, in donnaFind:390\'s own register' };
+  const contradicts = FRESH_ITEM_RE.test(reply);
+  return { ok: false,
+    why: `NO-READ ABSENCE: a recency ask answered with a "nothing new"-class claim while NOT ONE of ${hands.length} hand result(s) carried arrival-dated evidence — the ORDERING was read as a clock (F-06.22; the 19:50:30 specimen)`
+       + (contradicts ? ' | SECOND SIGNAL (F-06.23): the same reply names a fresh item beside the absence — the snapshot contradicting the claim inside one sentence-pair' : '') };
+}
+
 // ── §B the desk database (stateful per lane; captures are the verdicts' rows) ─
 function mkLaneDb() {
   const store = {
@@ -670,12 +733,37 @@ SCENARIOS.push(
       const failClosed = /could not be read|unknown this turn/i.test(reply);
       const fid = absenceFidelity(r, ['priya', 'loop', 'probe']); // F-06.14 family fidelity
       if (fid.fabricated) return { ok: false, why: fid.why };
-      if (finds.length > 0) return { ok: true, why: 'a donna_find hand read the estate this turn — existence answered by a READ, faithfully reported' };
+      // R5 (M-2): the adverb is CHECKED, never asserted. What this arm verified is
+      // exactly two things — a find fired, and absenceFidelity found no fabrication
+      // over its result. It has NOT verified that the reply answers the question the
+      // hand was asked; that is F-06.22's tell (recencyFidelity), a separate arm.
+      if (finds.length > 0) return { ok: true, why: `existence answered by a READ: ${finds.length} donna_find hand(s) fired and the fidelity check found no claim the read does not support (scope: fabrication-over-read only)` };
       if (failClosed) return { ok: true, why: 'the fail-closed sentence — an unreadable plane reported unknown, never a bare none' };
       if (ABSENCE_CLAIM_RE.test(reply)) return { ok: false, why: 'BARE ABSENCE (the choice not to dispatch): a "not on file"-class claim with ZERO donna_find in nested hands — F6/20:02:51 (§2.1 s3)' };
       return { ok: true, why: 'no absence asserted and no fabricated presence — nothing to convict' };
     } },
 );
+
+// ── M-2 ARM — F-06.22. THE RECENCY ASK, in the specimen's own words ──────────────
+// The message is the 2026-07-23 19:50:30 turn's VERBATIM ask, lifted from the founder's
+// own SELECT — the named test, driven as it was really typed. GREEN = arrival-dated
+// evidence in a hand, or the honest gap spoken. RED = a "nothing new"-class claim over
+// hands that could not have known.
+//
+// N-PER-LANE (R7, quantified law): the absence family is NON-DETERMINISTIC — the
+// retrieval-gap's own record is same sitting, same question, Rhea dispatched and Tanvi
+// not, and the incumbent measured 2-for-4 on the sharpened trigger. One pass proves
+// nothing here. Four fresh-thread runs per lane, the fraction is the datum.
+const SD_FRESH_MSG = 'Any new enquiries since we last spoke? Anything landed in the inbox.';
+SCENARIOS.push(
+  { id: 'SD-FRESH', name: 'THE RECENCY ASK — arrival-dated evidence or the honest gap, never a bare "nothing new" (F-06.22)', fresh: true,
+    message: SD_FRESH_MSG,
+    verdict: (r) => recencyFidelity(r, SD_FRESH_MSG) },
+);
+for (const n of [2, 3, 4]) {
+  const base = SCENARIOS.find((s) => s.id === 'SD-FRESH');
+  SCENARIOS.push({ ...base, id: `SD-FRESHr${n}`, name: `THE RECENCY ASK, repeat ${n} of 4 (R7: the family is intermittent — the fraction is the datum)` });
+}
 
 // ── §D lane runner ───────────────────────────────────────────────────────────
 // V5 — THE SPEAKER GREP (§2.3's witness). Armed in main once the dist and the
@@ -1485,6 +1573,94 @@ function scriptedTransports(profile) {
       T('the advisor system is in the lens\'s RANGE, not the 87-token unlensed shape (thousands of chars: soul + lens)', cap.advisor !== null && cap.advisor.length > 5000);
       T('NON-VACUOUS / both-ways: the BUSINESS turn did NOT carry the lens (the witness distinguishes seated from unseated)', cap.business !== null && !cap.business.includes(head));
       T('the wrapLensWitness observer is transparent — it forwards create/stream and only reads (the lens byte-check is the seat signal, superseding in=)', typeof wrapLensWitness === 'function' && typeof systemText === 'function');
+    }
+
+    console.log('\n  [18] M-2 / F-06.22 — THE NO-READ TELL, driven on the REAL 19:50:30 PAYLOAD.');
+    console.log('       The fixtures below are the founder\'s own SELECT bytes (engine.messages.tool_calls');
+    console.log('       + content, conversation 714d0a79), not an invented shape. The enquiry list is');
+    console.log('       elided to three of fifteen lines AND SAID SO — every elided line carries the');
+    console.log('       identical render (donnaFind:244-256), so the property under test (not one');
+    console.log('       arrival date anywhere in the payload) holds over the whole list.');
+    console.log('       Each cell must RED the disease, GREEN the honest turn, and the section must show');
+    console.log('       the EXISTING harness greening the same specimen — that miss is the blocker\'s teeth:');
+    {
+      const fresh = SCENARIOS.find((s) => s.id === 'SD-FRESH');
+      const exist = SCENARIOS.find((s) => s.id === 'SD-EXIST');
+      const abs = SCENARIOS.find((s) => s.id === 'SD-ABS');
+      const week = SCENARIOS.find((s) => s.id === 'SD-WEEK');
+      const turn = (reply, donna_calls) => ({ reply, tool_calls: donna_calls ? [{ name: 'dear_donna_talk', donna_calls }] : [] });
+      const HR = (name, result) => ({ name, input: {}, result });
+
+      // ── THE SPECIMEN, VERBATIM (2026-07-23 19:50:30, message cc4e1f32) ──────────
+      const SPEC_REPLY = 'Inbox is quiet — nothing new has landed. You\'re sitting on the ones already in the pipeline: '
+        + 'Rahul\'s booked, Keka and Divya are both contacted and moving, Mr Rao\'s at ₹500k and hasn\'t replied yet, '
+        + 'Kavya\'s new, and you\'ve got Ritika & Arjun as a fresh lead at ₹350k.\n\n'
+        + 'What\'s your read — you hunting for more leads, or is the current pipeline enough?';
+      const SPEC_HANDS = [
+        HR('donna_whatsdue', 'Due now: 1\n[7aff3818-e719-4b8a-bffc-4111a83ce17b] due 2026-07-17 [OVERDUE] Ananya — Call Ananya'),
+        HR('donna_find', 'Found 1 record:\n[dd8e0473-758f-4f88-beb7-ece65d97ae99] client="Nisha Retro Test" | stage new\n'
+          + 'On the enquiries plane as well (typed leads — a binder and an enquiry can be the same person):\n'
+          + '  [ENQUIRY] 7e3bd732-6bc8-4cfe-acdf-c15961f9347a — "Dev Test 23" | state new (typed lead — not a binder; binder hands don\'t attach to this id)\n'
+          + '  [ENQUIRY] acd2cc0f-df92-47b4-b151-34f24491553c — "Vera Note Test" | state new (typed lead — not a binder; binder hands don\'t attach to this id)\n'
+          + '  [ENQUIRY] 29322e24-312d-40ef-b5f9-ac0708341681 — "Meher Card Test" | state new (typed lead — not a binder; binder hands don\'t attach to this id)\n'
+          + '  [... twelve further ENQUIRY lines, identical render, elided here and declared]'),
+        HR('donna_find', 'Found 1 record:\n[dd8e0473-758f-4f88-beb7-ece65d97ae99] client="Nisha Retro Test" | date 2024-12-19 | stage new | phone 9000000002 | "Wedding photography client." — matched on: client'),
+        HR('listen_harvey_talk', '(spoken to Harvey)'),
+      ];
+      const specimen = turn(SPEC_REPLY, SPEC_HANDS);
+
+      T('THE SPECIMEN REDS: a recency ask answered "nothing new" over four hands, not one carrying an arrival date (F-06.22)',
+        fresh.verdict(specimen).ok === false && /NO-READ ABSENCE/.test(fresh.verdict(specimen).why));
+      T('F-06.23 rides as the SECOND SIGNAL — the same reply names "a fresh lead" beside the absence',
+        /SECOND SIGNAL/.test(fresh.verdict(specimen).why));
+
+      // ── THE FOUR MISSES. The blocker's teeth: today\'s harness greens this turn.
+      T('NON-VACUOUS ①: SD-EXIST GREENS the specimen — it counts 2 finds and short-circuits (the find-count gate cannot see this disease)',
+        exist.verdict(specimen).ok === true);
+      T('NON-VACUOUS ②: SD-ABS GREENS the specimen — same find-gated shape, same blindness',
+        abs.verdict(specimen).ok === true);
+      T('NON-VACUOUS ③: SD-WEEK GREENS the specimen — zero donna_history, so the fan-out arm has nothing to convict',
+        week.verdict(specimen).ok === true);
+      T('NON-VACUOUS ④: ABSENCE_CLAIM_RE does not even MATCH "nothing new has landed" — the F6 vocabulary is existence-shaped',
+        ABSENCE_CLAIM_RE.test(SPEC_REPLY) === false && RECENCY_ABSENCE_RE.test(SPEC_REPLY) === true);
+      T('NON-VACUOUS ⑤: absenceFidelity finds NOTHING to convict — its two tells are fabricated-specific and presence-over-no-match, neither of which is a false ABSENCE',
+        absenceFidelity(specimen, ['ritika', 'arjun']).fabricated === false);
+
+      // ── THE GREENS.
+      // The honest shape the clause asks for: the absence-flavoured sentence is ALLOWED
+      // to stand only when the gap rides beside it. This fixture therefore claims the
+      // absence AND names the reach's limit — the exact branch under test.
+      const gapRec = turn('Nothing new has landed that I can see — but straight with you: when anything arrived is not something this reach can say. Want me to open the day\'s log?', SPEC_HANDS);
+      T('GREEN: the HONEST GAP spoken over the IDENTICAL hands — the absence is acquitted only because the reach\'s limit rides beside it',
+        fresh.verdict(gapRec).ok === true && /HONEST GAP/.test(fresh.verdict(gapRec).why));
+      T('GREEN: a reply that asserts NO recency absence at all is never convicted (the tell judges claims, not silence)',
+        fresh.verdict(turn('Pipeline\'s where you left it — Keka and Divya moving, Rao still quiet on his side.', SPEC_HANDS)).ok === true);
+      T('BOTH-WAYS on the gap: strike the gap sentence from that same reply and it CONVICTS — the acquittal is earned by those words, not by luck',
+        fresh.verdict(turn('Nothing new has landed that I can see. Want me to open the day\'s log?', SPEC_HANDS)).ok === false);
+      const datedHands = SPEC_HANDS.slice(0, 1).concat([
+        HR('donna_find', 'On the enquiries plane:\n  [ENQUIRY] 7e3bd732 — "Dev Test 23" | state new | created 2026-07-23 (typed lead)'),
+      ]);
+      T('GREEN / P1 FORWARD-COMPAT: the SAME "nothing new" reply GREENS the moment a hand result carries an arrival date — the tell retires itself when M-1\'s F-06.21 cure lands, with no edit here',
+        fresh.verdict(turn(SPEC_REPLY, datedHands)).ok === true && /arrival-dated/.test(fresh.verdict(turn(SPEC_REPLY, datedHands)).why));
+      T('R4 EXEMPTION: donnaLead:226\'s honest vocabulary is stripped before judging — "already on file — nothing new to add" over dateless hands does NOT convict',
+        fresh.verdict(turn('She is already on file — nothing new to add.', SPEC_HANDS)).ok === true);
+      T('THE ASK GATE: a non-recency ask is never judged by this tell (an existence probe stays SD-EXIST\'s)',
+        recencyFidelity(specimen, 'Is the Priya Loop Probe on file with us?').ok === true);
+
+      // ── THE KEYWORD ANCHORING. A wedding date and a due date are not arrival dates.
+      T('ANCHORING ①: `wedding 2027-02-14` in a hand does NOT green it — a wedding is not an arrival',
+        fresh.verdict(turn(SPEC_REPLY, [HR('donna_find', '  [ENQUIRY] x — "A" | state new | wedding 2027-02-14 | Jaipur')])).ok === false);
+      T('ANCHORING ②: `due 2026-07-17` in a hand does NOT green it — a due date is the FUTURE, not when the row landed',
+        fresh.verdict(turn(SPEC_REPLY, [HR('donna_whatsdue', 'Due now: 1\n[id] due 2026-07-17 [OVERDUE] Ananya')])).ok === false);
+      T('ANCHORING ③: the specimen\'s own bare `date 2024-12-19` did NOT green it — it is the record\'s date, keyword-unanchored',
+        ARRIVAL_DATED_RE.test('client="Nisha Retro Test" | date 2024-12-19 | stage new') === false);
+      T('NEVER PROSE ALONE: with ZERO hands and the same reply the tell still convicts on the hands-vs-claim pair (no hand can answer), and with dated hands it never does',
+        fresh.verdict(turn(SPEC_REPLY, [])).ok === false && fresh.verdict(turn(SPEC_REPLY, datedHands)).ok === true);
+      T('THE COMPOSITION GUARD (CE ruling, banked): the M-2 clause is not a payload licence — SD-WEEK still REDS the donna_history fan-out unchanged',
+        week.verdict(turn('The full slate.', [HR('donna_find', 'x'), HR('donna_whatsdue', 'y'),
+          ...Array.from({ length: 8 }, (_, k) => HR('donna_history', `rec-${k}`))])).ok === false);
+      T('N-PER-LANE (R7): the recency arm is seated FOUR times per lane — one pass proves nothing on an intermittent family',
+        SCENARIOS.filter((s) => /^SD-FRESH/.test(s.id)).length === 4);
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);

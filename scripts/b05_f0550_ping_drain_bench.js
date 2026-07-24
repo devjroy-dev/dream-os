@@ -346,10 +346,23 @@ await t('§5.3 WA-ONLY as ruled — the PWA door ships zero bytes this micro', (
 
 H('§6 — W-1 AND PURITY');
 
-await t('§6.1 zero soul/prompt/voice bytes', () => {
+// ── LABELED AMENDMENT (TDW_06 M-2, 2026-07-24 — PROPOSED, AWAITING CHAIR RATIFICATION).
+// This cell asserted NINE soul surfaces 0-line against 2028a0d. M-2's CE ruling opened
+// W-1 for ONE enumerated rider — a donnaSoul paragraph (the no-read law, F-06.22) — so a
+// permanent 0-line assertion over donnaSoul would now convict a chartered act, and this
+// cell would read RED for the rest of the estate's life on a base-pinned diff.
+// THE AMENDMENT IS NARROWED, NOT WEAKENED, AND THE COUNT IS PRESERVED (one cell, one
+// name): the other EIGHT surfaces stay asserted 0-line exactly as before, and donnaSoul
+// is asserted LOSSLESS — the rider may ADD, and may never remove or rewrite a byte of
+// what F-05.50's micro was protecting. A soul that only grows cannot have lost the
+// sentence this bench was built to guard.
+await t('§6.1 zero soul/prompt/voice bytes (AMENDED M-2: eight surfaces 0-line; donnaSoul LOSSLESS under the chartered rider)', () => {
   const { execSync } = require('child_process');
-  const out = execSync('git diff --name-only 2028a0d -- src/agent/miraSoul.js src/agent/brideSystemPrompt.js src/agent/circleSystemPrompt.js src/agent/coupleSystemPrompt.js src/agent/brideTools.js src/agent/brideOnboarding.js src/engine/src/core/harveySoul.ts src/engine/src/core/donnaSoul.ts src/engine/src/core/advisorLens.ts', { cwd: ROOT }).toString().trim();
+  const out = execSync('git diff --name-only 2028a0d -- src/agent/miraSoul.js src/agent/brideSystemPrompt.js src/agent/circleSystemPrompt.js src/agent/coupleSystemPrompt.js src/agent/brideTools.js src/agent/brideOnboarding.js src/engine/src/core/harveySoul.ts src/engine/src/core/advisorLens.ts', { cwd: ROOT }).toString().trim();
   assert.strictEqual(out, '', `W-1 BREACH: ${out}`);
+  const stat = execSync('git diff --numstat 2028a0d -- src/engine/src/core/donnaSoul.ts', { cwd: ROOT }).toString().trim();
+  const deletions = stat ? Number(stat.split(/\s+/)[1]) : 0;
+  assert.strictEqual(deletions, 0, `donnaSoul LOST bytes — the chartered rider is ADDITIVE by ruling, never a rewrite: ${stat}`);
 });
 
 await t('§6.2 engine.js:353 — Mira\'s closing line stands BYTE-UNTOUCHED (R7)', () => {

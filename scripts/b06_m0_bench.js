@@ -443,11 +443,26 @@ await t('§6.5 E3 REFUSED, STRUCTURALLY — the phone write stays inside the cre
 // ════════════════════════════════════════════════════════════════════════════
 H('§7 — SCOPE: W-1, THE GUARDED FILES, AND THE SQL POSTURE');
 
-await t('§7.1 W-1 ABSOLUTE — zero soul/prompt/lens bytes', () => {
+// ── LABELED AMENDMENT (TDW_06 M-2, 2026-07-24 — PROPOSED, AWAITING CHAIR RATIFICATION).
+// M-0 ran under an ABSOLUTE W-1 and this cell is its guard. M-2's CE ruling opened W-1
+// for ONE enumerated rider — a donnaSoul paragraph (F-06.22's no-read law) — and this
+// cell reads the WORKING TREE against HEAD, so it convicts that rider in the window
+// between the founder's apply and his commit: exactly the window D-10's verify runs in.
+// NARROWED, NOT WEAKENED, COUNT PRESERVED: every other soul/prompt/lens surface stays
+// forbidden outright, and donnaSoul is admitted ONLY as a lossless addition. Post-commit
+// this exception is inert — the diff against HEAD is empty and the cell reads as it
+// always did.
+await t('§7.1 W-1 ABSOLUTE — zero soul/prompt/lens bytes (AMENDED M-2: donnaSoul admitted LOSSLESS under the chartered rider)', () => {
   const { execFileSync } = require('child_process');
+  const CHARTERED_RIDER = 'src/engine/src/core/donnaSoul.ts'; // CE-71 / M-2, the single enumerated exception
   const names = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-  const forbidden = names.filter((f) => /donnaSoul|harveySoul|advisorLens|consultantHarveySoul|Prompt|soul/i.test(f));
+  const forbidden = names.filter((f) => /donnaSoul|harveySoul|advisorLens|consultantHarveySoul|Prompt|soul/i.test(f) && f !== CHARTERED_RIDER);
   assert.deepStrictEqual(forbidden, [], `soul/prompt surfaces moved: ${forbidden.join(', ')}`);
+  if (names.includes(CHARTERED_RIDER)) {
+    const stat = execFileSync('git', ['diff', '--numstat', 'HEAD', '--', CHARTERED_RIDER], { cwd: ROOT, encoding: 'utf8' }).trim();
+    const deletions = stat ? Number(stat.split(/\s+/)[1]) : 0;
+    assert.strictEqual(deletions, 0, `the chartered rider REWROTE the soul instead of adding to it: ${stat}`);
+  }
 });
 
 await t('§7.2 the guarded files are 0-line', () => {
