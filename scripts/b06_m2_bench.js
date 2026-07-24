@@ -68,7 +68,14 @@ function liftBlock(needle) {
   }
   throw new Error(`unbalanced braces lifting "${needle}"`);
 }
-const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE', 'HONEST_GAP_RE', 'FRESH_ITEM_RE'];
+// ── LABELED FLOOR AMENDMENT A1 (TDW_06 M-1, F-06.26). COUNT PRESERVED: 39 cells, none
+// added, none retired. M-1's re-aim gave recencyFidelity a seventh constant
+// (REPLY_ARRIVAL_RE — the MOUTH's own arrival vocabulary, distinct from the HAND's), so
+// the lift must carry it or every cell below dies of a ReferenceError inside the lifted
+// function — a bench going red for a reason that is not the disease. Widening the lift
+// is not weakening it: the lift's whole property (§1.2 — the evaluated source is a
+// SUBSTRING of the shipped file) is unchanged and still asserted over all seven.
+const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE', 'REPLY_ARRIVAL_RE', 'HONEST_GAP_RE', 'FRESH_ITEM_RE'];
 let LIFTED = null, liftErr = null;
 try {
   const body = [liftBlock('const nestedHands ='), ...CONSTS.map(liftConst), liftBlock('function recencyFidelity(')].join('\n');
@@ -157,11 +164,23 @@ t('§3.6 the exemption is SURGICAL — a reply carrying BOTH the honest tool phr
 // ════════════════════════════════════════════════════════════════════════════
 H('§4 — THE ANCHORING: an arrival date is not any date');
 
-t('§4.1 `wedding 2027-02-14` does not green it — a wedding is not an arrival', () => {
+// ── LABELED FLOOR AMENDMENT A5 (TDW_06 M-1, F-06.26). COUNT PRESERVED; BOTH CELLS
+// REPLACED STRONGER. They asserted the anchor on the HAND, because under the old
+// ordering a dated hand ACQUITTED and the anchor was the only thing standing between a
+// wedding date and a false green. The re-aim removed that door entirely — a hand can no
+// longer acquit anything — so the hand-side assertion became TRUE BY CONSTRUCTION, which
+// is to say vacuous, which is to say a green that proves nothing. The anchor did not
+// stop mattering; it MOVED, to the mouth (REPLY_ARRIVAL_RE), where an arrival claim is
+// now the only thing that can bound an absence. Each cell therefore asserts BOTH sides:
+// the hand-side property it always named, AND the reply-side property that now carries
+// the teeth. Nothing is dropped; the mutation below follows the anchor to where it lives.
+t('§4.1 `wedding 2027-02-14` does not green it — a wedding is not an arrival, in the hand OR in the mouth', () => {
   assert.strictEqual(V(SPEC_REPLY, [hr('donna_find', '  [ENQUIRY] x — "A" | state new | wedding 2027-02-14 | Jaipur')]).ok, false);
+  assert.strictEqual(V('Nothing new has landed. Your only upcoming wedding 2027-02-14 is Ritika & Arjun.', SPEC_HANDS).ok, false);
 });
-t('§4.2 `due 2026-07-17` does not green it — a due date is the future, not when the row landed', () => {
+t('§4.2 `due 2026-07-17` does not green it — a due date is the future, not when the row landed, in the hand OR in the mouth', () => {
   assert.strictEqual(V(SPEC_REPLY, [hr('donna_whatsdue', 'Due now: 1\n[id] due 2026-07-17 [OVERDUE] Ananya')]).ok, false);
+  assert.strictEqual(V('Nothing new has landed. Ananya is due 2026-07-17 and overdue.', SPEC_HANDS).ok, false);
 });
 t('§4.3 the specimen\'s own bare `date 2024-12-19` is keyword-unanchored and does not green it', () => {
   assert.strictEqual(ARRIVAL_DATED_RE.test('client="Nisha Retro Test" | date 2024-12-19 | stage new'), false);
@@ -239,9 +258,15 @@ t('§6.5 the sitting\'s whole delta is SIX repo files and no seventh — soul, g
   // Tracked delta PLUS untracked files: between the founder's apply and his commit this
   // bench is untracked, and after the commit it is tracked. The cell must read the same
   // in both worlds or it is a cell that only passes on one side of a push.
-  const tracked = execFileSync('git', ['diff', '--name-only', BASE], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-  const all = [...new Set([...tracked, ...untracked])];
+  // ── LABELED FLOOR AMENDMENT A4 (TDW_06 M-1). COUNT PRESERVED; THE CELL IS REPLACED
+  // STRONGER, not narrowed. It read BASE..worktree, which made it a cell about whatever
+  // sitting happened to be open — M-1 legitimately widens the tree and the cell went red
+  // for a reason that was not a breach. Re-pinned to M-2's OWN SEAL RANGE, it now asserts
+  // a HISTORICAL FACT that no later sitting can move: what M-2 shipped was these six
+  // files and no seventh, for good. That is the property the cell always meant (CE-67
+  // §C's re-pin, and §4.1's REPLACED-STRONGER precedent, applied to a delta cell).
+  const SEAL = 'c736a7e'; // M-2's seal — "the no-read law + the re-aimed absence detector"
+  const all = execFileSync('git', ['diff', '--name-only', BASE, SEAL], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   // The two floor cells below asserted donnaSoul 0-line on a pinned base and against
   // HEAD. The chair's W-1 opening makes a chartered act look like a breach to them; both
   // are NARROWED to lossless-not-zero, labeled in-file, counts preserved. Naming them
@@ -257,7 +282,7 @@ t('§6.5 the sitting\'s whole delta is SIX repo files and no seventh — soul, g
   // scripts/, docs/ or db/ is exactly what this cell exists to catch.
   const OWNED = /^(src|scripts|docs|db)\//;
   const strays = all.filter((f) => OWNED.test(f) && !expected.includes(f));
-  assert.deepStrictEqual(strays, [], `delta drifted inside the repo's own trees: ${strays.join(', ')}`);
+  assert.deepStrictEqual(strays, [], `M-2's SEALED delta is not what this cell names: ${strays.join(', ')}`);
 });
 t('§6.6 SQL POSTURE — no migration rides this sitting; 0101 stays unreserved', () => {
   assert.ok(!fs.readdirSync(P('db/migrations')).some((f) => /^0101/.test(f)), '0101 was taken');
@@ -305,14 +330,27 @@ if (!process.env.B06_M2_BENCH_CHILD) {
     { cell: '§3.5', why: 'the R4 exemption stops firing — the estate\'s own truthful sentence convicts',
       from: ".replace(HONEST_TOOL_VOCAB_RE, '')", to: '.replace(/(?!x)x/g, \'\')' },
     { cell: '§4.1', why: 'the date test loses its keyword anchor — a WEDDING date greens a recency claim',
-      from: "const ARRIVAL_DATED_RE = /\\b(?:created|filed|logged|arrived|landed|received|opened|first seen)\\b[^\\n]{0,24}\\d{4}-\\d{2}-\\d{2}",
-      to: "const ARRIVAL_DATED_RE = /\\d{4}-\\d{2}-\\d{2}" },
+      // LABELED FLOOR AMENDMENT A2 (M-1): the anchor follows the shipped bytes, which
+      // gained the founder's dd-mm-yy register. The MUTATION'S MEANING IS UNCHANGED —
+      // strip the keyword anchor and a WEDDING date greens a recency claim. Re-aimed at
+      // the referent, not re-aimed to stay green (§4.1's own referent lesson).
+      // A5's other half: the mutation follows the anchor to the MOUTH, the only place it
+      // still decides a verdict. Meaning unchanged — strip the keyword anchor and a
+      // WEDDING date greens a recency absence.
+      from: "const REPLY_ARRIVAL_RE = /\\b(?:created|filed|logged|arrived|landed|received|opened|first seen)\\b[^\\n]{0,24}(?:\\d{4}-\\d{2}-\\d{2}|\\d{2}-\\d{2}-\\d{2})",
+      to: "const REPLY_ARRIVAL_RE = /(?:\\d{4}-\\d{2}-\\d{2}|\\d{2}-\\d{2}-\\d{2})" },
     { cell: '§3.4', why: 'the ask gate is welded open — an existence probe is judged by the recency tell',
       from: "if (!RECENCY_ASK_RE.test(ask)) return { ok: true,", to: 'if (false) return { ok: true,' },
     { cell: '§2.3', why: 'the second signal is promoted to a conviction of its own — prose alone convicts, against R4',
       from: 'const contradicts = FRESH_ITEM_RE.test(reply);', to: 'const contradicts = true;' },
+    // LABELED FLOOR AMENDMENT A3 (M-1): the bare phrase now occurs TWICE — M-1 cured
+    // SD-C4's twin adverb with the same wording, and SD-C4 is seated FIRST, so a
+    // first-match replace would have mutated the wrong scenario while the cell still
+    // went red. A green (or a red) landing on a referent nobody named is the class this
+    // estate keeps convicting; the anchor is lengthened to bind SD-EXIST alone.
     { cell: '§5.5', why: 'SD-EXIST\'s asserted adverb returns — an unchecked "faithfully reported" back in the verdict table',
-      from: 'scope: fabrication-over-read only', to: 'existence answered by a READ, faithfully reported' },
+      from: 'existence answered by a READ: ${finds.length} donna_find hand(s) fired and the fidelity check found no claim the read does not support (scope: fabrication-over-read only)',
+      to: 'existence answered by a READ, faithfully reported' },
   ];
   const abs = P(GAUNTLET), orig = fs.readFileSync(abs, 'utf8');
   for (const m of M) {

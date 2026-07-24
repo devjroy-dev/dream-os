@@ -26,6 +26,7 @@ export function recordItem(row: {
   id: string; amount?: number | null; client?: string | null; date?: string | null;
   direction?: string | null; note?: string | null; phone?: string | null; stage?: string | null;
   amount_received?: number | null; amount_pending?: number | null; payment_status?: string | null;
+  created_at?: string | null; // TDW_06 M-1 (P1): rides the row so the snapshot line carries its clock
 }): SnapshotItem {
   const bits: string[] = [];
   if (row.client) bits.push(row.client);
@@ -48,10 +49,13 @@ export function recordItem(row: {
     // ST-3b: twin-annotation match keys (annotation-only, never drive a write).
     name: row.client ?? null,
     phone_key: phoneKey(row.phone),
+    // TDW_06 M-1 (P1). Absent on a caller that did not read the column — which renders
+    // NO stamp, never a fabricated one; the next rebuildSnapshot fills it from the row.
+    arrived_at: row.created_at ?? null,
   };
 }
 
-const SELECT = 'id, amount, client, date, direction, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, followup_on, followup_note, repeat_every';
+const SELECT = 'id, amount, client, date, direction, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, followup_on, followup_note, repeat_every, created_at'; // created_at: TDW_06 M-1 (P1)
 
 // The event log — one dated line per confirmed write, into the `events` audit table.
 // Best-effort by design: the write is the truth and never fails because the log

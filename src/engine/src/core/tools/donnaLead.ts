@@ -18,13 +18,14 @@ import { phoneKey } from '../phoneKey.js'; // TDW_04 engine-lane (ST-3b)
 // Columns read back on every write — draft_meta INCLUDED (enrich reads the standing
 // provenance). Pre-0072 resilience lives in writeLead's column-guarded retry below,
 // not in this SELECT. (Comment corrected to code truth, 02-HOTFIX 2026-07-15.)
-const SEL = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, notes, raw_message, draft_meta';
+const SEL = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, notes, raw_message, draft_meta, created_at'; // created_at: TDW_06 M-1 (P1)
 
 type LeadRow = {
   id: string; name?: string | null; phone?: string | null;
   wedding_date?: string | null; wedding_date_precision?: string | null; wedding_city?: string | null;
   budget_max?: number | null; state?: string | null; source?: string | null;
   referrer_name?: string | null; notes?: string | null; raw_message?: string | null;
+  created_at?: string | null; // TDW_06 M-1 (P1)
 };
 
 // Build the snapshot item for a lead row (open pipeline item, sourced from truth).
@@ -44,6 +45,7 @@ function leadItem(row: LeadRow): SnapshotItem {
     // (annotation-only — never drive a write; the R1(b)/R2 boundary holds).
     name: row.name ?? null,
     phone_key: phoneKey(row.phone),
+    arrived_at: row.created_at ?? null, // TDW_06 M-1 (P1) — see recordItem's note
   };
 }
 

@@ -18,6 +18,19 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '../db.js';
 import type { ToolOutcome, ViewRow } from '../snapshotTypes.js';
+import { arrivalStamp } from '../today.js'; // TDW_06 M-1 (P1 + F-06.27): the estate's ONE arrival derivation
+
+// TDW_06 M-1. THE ZONE, AND WHY IT IS A CONSTANT HERE AND NOT THE OWNER'S FIELD.
+// loop.ts:384 renders the clock from `agent.timezone` because the loop already holds
+// the agent row (:230). A tool does not — it is handed an agentId and nothing else,
+// and buying the owner's zone would cost a query on every hand. The estate's shipped
+// precedent for exactly this position is consultAccess.ts:14 (`const IST =
+// 'Asia/Kolkata'`), and it is followed rather than invented. DISCLOSED, NOT HIDDEN:
+// if a non-IST owner ever lands, these stamps render in IST while the clock line
+// renders in his zone — a divergence with no live subject today (the estate is
+// India-only) whose real cure is threading the owner's zone to the tool layer, a
+// wider change than M-1 charters. Named here so nobody re-derives it as a surprise.
+const IST = 'Asia/Kolkata';
 
 export const DONNA_TALLY_TOOL: Anthropic.Tool = {
   name: 'donna_tally',
@@ -182,10 +195,19 @@ export async function executeHistory(agentId: string, input: Record<string, unkn
     lines.push('  diary (reason-for-action, in order):');
     for (const ln of r.reason_for_action.split('\n')) if (ln.trim()) lines.push(`    · ${ln.trim()}`);
   }
-  lines.push(`  created ${r.created_at.slice(0, 10)} · last touched ${r.updated_at.slice(0, 10)}${r.hidden_at ? ` · set aside ${r.hidden_at.slice(0, 10)}` : ''}`);
+  // TDW_06 M-1 · P1 + F-06.27. Was three raw `.slice(0, 10)` UTC slices; every row
+  // born 00:00–05:30 IST read as YESTERDAY. Now the estate's one tz-correct stamp,
+  // in the founder's locked register (dd-mm-yy HH:MM IST). The minute matters here and
+  // not only the day: this hand is what lets a recency ask be answered honestly, and a
+  // date alone cannot tell 35 minutes from 20 hours — CE-71's own words. A row whose
+  // timestamp will not parse renders NO stamp rather than a wrong one.
+  const createdAt = arrivalStamp(r.created_at, IST);
+  const touchedAt = arrivalStamp(r.updated_at, IST);
+  const asideAt = arrivalStamp(r.hidden_at, IST);
+  lines.push(`  created ${createdAt ?? 'unknown'} · last touched ${touchedAt ?? 'unknown'}${asideAt ? ` · set aside ${asideAt}` : ''}`);
   if (events.length) {
     lines.push('  writes (the event log, oldest first):');
-    for (const e of events) lines.push(`    ${e.created_at.slice(0, 10)} — ${e.summary || e.action || 'write'}`);
+    for (const e of events) lines.push(`    ${arrivalStamp(e.created_at, IST) ?? 'unknown'} — ${e.summary || e.action || 'write'}`);
   } else {
     lines.push('  writes: no event log on this binder yet (logging began with this bench — older writes predate it).');
   }

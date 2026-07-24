@@ -30,7 +30,8 @@ import { LISTEN_HARVEY_TALK_TOOL } from './tools/listenHarvey.js';
 import { DONNA_LEAD_TOOL, executeDonnaLead } from './tools/donnaLead.js'; // TDW_02 P1 (Amendment One CE-1)
 import { checkMoneyProvenance } from './provenanceHold.js'; // M-2 — the mechanical-floors ZIP
 import { vendorIdFromAgent } from './vendorIdentity.js'; // TDW_02: rebuild reads the typed lead plane
-import { phoneKey, nameKey } from './phoneKey.js'; // TDW_04 engine-lane (ST-3b): twin annotation at render
+import { phoneKey, nameKey } from './phoneKey.js';
+import { arrivalStamp } from './today.js'; // TDW_06 M-1 (P1, shape b2)
 import type { SnapshotItem, ToolOutcome, ViewRow } from './snapshotTypes.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -77,7 +78,7 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
     const { data: leads } = await supabase
       .schema('public')
       .from('leads')
-      .select('id, name, phone, state, budget_max') // phone: TDW_04 engine-lane (ST-3b match key)
+      .select('id, name, phone, state, budget_max, created_at') // phone: TDW_04 engine-lane (ST-3b match key); created_at: TDW_06 M-1 (P1)
       .eq('vendor_id', vendorId)
       .is('deleted_at', null)
       .not('state', 'in', '("booked","lost")')
@@ -92,6 +93,7 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
         // TDW_04 engine-lane (ST-3b): match keys, mirroring donnaLead's leadItem.
         name: l.name ?? null,
         phone_key: phoneKey(l.phone as string | null),
+        arrived_at: (l as { created_at?: string | null }).created_at ?? null, // TDW_06 M-1 (P1)
       });
     }
   }
@@ -106,7 +108,7 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
   // rebuilt and patched entries read identically (the standing register law).
   const { data: recs } = await supabase
     .from('records')
-    .select('id, client, amount, amount_received, amount_pending, payment_status, direction, date, stage, note, phone')
+    .select('id, client, amount, amount_received, amount_pending, payment_status, direction, date, stage, note, phone, created_at') // created_at: TDW_06 M-1 (P1)
     .eq('agent_id', agentId)
     .eq('hidden', false)
     .order('updated_at', { ascending: false })
@@ -216,6 +218,8 @@ function itemMatchKeys(it: SnapshotItem): { phone: string | null; name: string |
   };
 }
 
+const SNAPSHOT_TZ = 'Asia/Kolkata'; // TDW_06 M-1 — consultAccess.ts:14's precedent; see donnaBench.ts's disclosure
+
 export async function snapshotText(agentId: string): Promise<string> {
   const note = await getNote(agentId);
   if (!note.items.length) {
@@ -261,11 +265,22 @@ export async function snapshotText(agentId: string): Promise<string> {
     for (const t of twins) joinedIds.add(t.item.id);
   }
 
+  // ── TDW_06 M-1 · P1, shape (b2) — THE ARRIVAL STAMP RENDERED AT READ TIME ──────
+  // The clock is stored on the item (snapshotTypes' arrived_at) and rendered HERE, not
+  // baked into `text` at write time, so it is true at whatever distance the line is read.
+  // WHAT THIS DOES AND DOES NOT BUY, stated plainly because the distinction is the whole
+  // sitting: a dated snapshot lets Harvey say WHAT IS HERE AND SINCE WHEN honestly. It
+  // does NOT make an absence claim honest — this note is a 12-capped, state-filtered,
+  // hidden-filtered projection (rebuildSnapshot above), so what is missing from it was
+  // never established to be missing from the cabinet. That half is the harveySoul rider's,
+  // not this render's, and no amount of dating can move it.
+  const stampOf = (it: SnapshotItem): string =>
+    (arrivalStamp(it.arrived_at, SNAPSHOT_TZ) ? ` — filed ${arrivalStamp(it.arrived_at, SNAPSHOT_TZ)}` : '');
   const lines: string[] = [];
   for (const it of note.items) {
     if (twinLineById.has(it.id)) { lines.push(twinLineById.get(it.id) as string); continue; }
     if (joinedIds.has(it.id)) continue; // a record already folded into its twin's joined line
-    lines.push(`- ${it.text}`);
+    lines.push(`- ${it.text}${stampOf(it)}`);
   }
   return `\n\n[Donna's snapshot — what's open and near, kept true for you]\n${lines.join('\n')}\n`;
 }

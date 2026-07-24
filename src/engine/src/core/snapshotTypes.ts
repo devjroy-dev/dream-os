@@ -18,6 +18,24 @@ export type SnapshotItem = {
   // the person's name as written. Annotation-only — these fields never drive a write.
   name?: string | null;
   phone_key?: string | null;
+  // ── TDW_06 M-1 · P1, shape (b2) — THE ARRIVAL CLOCK ON THE SNAPSHOT ────────────
+  // F-06.25: Harvey pre-loads snapshotText every business turn (loop.ts:272) and can
+  // answer "anything new?" off it without ever dispatching — 3 of the walk's 4 runs did
+  // exactly that, in 1–2 seconds, tool_calls null. The snapshot was ordered newest-first
+  // and carried no clock, so it wore the identical disease as the reads one layer up.
+  //
+  // WHY A FIELD AND NOT A DATE BAKED INTO `text` (the ruled fork, b2 over b1): `text` is
+  // FROZEN at write time and read back turns — or hours — later. A relative form frozen
+  // into it is a lie the moment it is read ("35 minutes ago", six hours on), and even an
+  // absolute one cannot be re-rendered if the register ever moves. The clock is DATA;
+  // it renders at READ time, in snapshotText, like every other honest stamp in the estate.
+  //
+  // OPTIONAL, on phone_key's own precedent above: items written before this sitting lack
+  // it, and a line with no arrival renders WITHOUT one rather than with a guess. Note the
+  // asymmetry that buys — it is deliberate: a half-dated snapshot is only safe because the
+  // undated lines are legacy and drain out on the next rebuild, and because a missing
+  // stamp is silence, never "old". ISO 8601 as stored; the render is today.ts's business.
+  arrived_at?: string | null;
 };
 
 // A tool execution returns a human-readable line for Harvey AND, when it wrote

@@ -15,6 +15,25 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '../db.js';
 import { vendorIdFromAgent } from '../vendorIdentity.js'; // TDW_04 B0 item 4a: the reverse bridge, mirroring donnaLead's plane
 import type { ToolOutcome, ViewRow } from '../snapshotTypes.js';
+import { arrivalStamp } from '../today.js'; // TDW_06 M-1 (P1 + F-06.27)
+
+// TDW_06 M-1 · P1 — ARRIVAL TIME, RENDERED. THE WHOLE REASON THIS FILE CHANGED.
+//
+// F-06.21: this file's reads were sorted by recency with the recency stripped out of
+// the text — `:241`/`:354`/`:378` all order newest-first, and not one render carried a
+// date. Donna was handed the answer in the ORDERING and denied it in the WORDS,
+// because an ordering is not legible as information. Four live runs on the founder's
+// handset said "inbox is quiet" over a row filed minutes earlier (CE-71's walk).
+// So: every line this file hands back now says WHEN the thing arrived, in the estate's
+// one register (today.ts's arrivalStamp — dd-mm-yy HH:MM IST, tz-correct per F-06.27).
+//
+// THE COMPOSITION LAW, HONOURED EXPLICITLY (M-2's seal, restated at M-1's charter):
+// this is a SMALL PER-LINE ADDITION and nothing else. It is NOT a licence to widen a
+// payload. The recognition shape stays recognition — name, plane, stage, id, and now
+// the arrival stamp; phones and money stay dropped from a recents dump exactly as
+// M-4 ruled. The fan-out floor still governs volume. One field, one register, no
+// second helping of anything.
+const IST = 'Asia/Kolkata'; // consultAccess.ts:14's precedent — see donnaBench.ts's note
 
 // Map a found row to the shell's ViewRow (drops internal-only fields).
 function toViewRow(r: { id: string; client: string | null; direction: string | null;
@@ -79,15 +98,16 @@ type FoundRow = {
   payment_status: string | null;
   reason_for_action: string | null;
   hidden: boolean | null;
+  created_at: string | null; // TDW_06 M-1 (P1): the arrival clock, rendered on every line
 };
 
 type LeadFound = {
   id: string; name: string | null; phone: string | null; state: string | null;
   budget_max: number | null; wedding_date: string | null; wedding_city: string | null;
-  notes: string | null;
+  notes: string | null; created_at: string | null; // created_at: TDW_06 M-1 (P1)
 }; // TDW_04 B0 item 4a — public.leads read shape (typed plane, LD-1)
 
-const FIND_SELECT = 'id, amount, client, date, direction, doc_ref, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, hidden';
+const FIND_SELECT = 'id, amount, client, date, direction, doc_ref, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, hidden, created_at'; // created_at: TDW_06 M-1 (P1) — one column, the arrival clock
 // FIND_LIMIT — THE NAMED CONSTANT (M-4, ruled at the manual paper, 2026-07-18): 15,
 // because recognition wants breadth — the zero-match fallback exists so a record
 // whose name no longer points to it can be recognised, and a wider recents list is
@@ -131,6 +151,13 @@ function describeRow(r: FoundRow, tokens: string[] = []): string {
   if (r.doc_ref) bits.push(`doc ${r.doc_ref}`);
   if (r.note) bits.push(`"${r.note}"`);
   if (r.reason_for_action) bits.push(`self:"${r.reason_for_action}"`);
+  // TDW_06 M-1 (P1) — DISCLOSED ADJACENCY, beyond the charter's two named anchors
+  // (:154 and the enquiry renders). It is here because a HALF-DATED file is worse
+  // than an undated one: if recognition lines carry a stamp and matched payloads do
+  // not, an undated match reads as "old" by contrast — the exact false inference
+  // F-06.22 punishes, re-created by the cure. One register everywhere, or none.
+  const filedAt = arrivalStamp(r.created_at, IST);
+  if (filedAt) bits.push(`filed ${filedAt}`);
   const tail = r.hidden ? ' [ARCHIVED]' : '';
   const hit = matchedFields(r, tokens);
   const prov = hit.length ? ` — matched on: ${hit.join(', ')}` : '';
@@ -155,6 +182,11 @@ function recognitionRow(r: FoundRow): string {
   const bits: string[] = [];
   if (r.client) bits.push(`client="${r.client}"`);
   if (r.stage) bits.push(`stage ${r.stage}`);
+  // TDW_06 M-1 (P1). The arrival stamp joins the load-bearing pieces, because on a
+  // recents dump WHEN is load-bearing — it is the whole of what a recency ask asks.
+  // A row whose stamp will not derive contributes NOTHING here rather than a guess.
+  const filed = arrivalStamp(r.created_at, IST);
+  if (filed) bits.push(`filed ${filed}`);
   const tail = r.hidden ? ' [ARCHIVED]' : '';
   return `[${r.id}] ${bits.join(' | ') || '(unnamed record)'}${tail}`;
 }
@@ -229,7 +261,7 @@ export async function executeFindTool(
     const pub = supabase.schema('public');
     let lq = pub
       .from('leads')
-      .select('id, name, phone, state, budget_max, wedding_date, wedding_city, notes')
+      .select('id, name, phone, state, budget_max, wedding_date, wedding_city, notes, created_at') // created_at: TDW_06 M-1 (P1)
       .eq('vendor_id', vendorId)
       .is('deleted_at', null);
     if (tokenList.length > 0) {
@@ -245,7 +277,8 @@ export async function executeFindTool(
       lines: rowsL.map((l) => {
         if (recognitionOnly) {
           const st = l.state ? ` | state ${l.state}` : '';
-          return `  [ENQUIRY] ${l.id} — "${l.name ?? 'unknown'}"${st}` +
+          const fl = arrivalStamp(l.created_at, IST); // TDW_06 M-1 (P1)
+          return `  [ENQUIRY] ${l.id} — "${l.name ?? 'unknown'}"${st}${fl ? ` | filed ${fl}` : ''}` +
                  ` (typed lead — not a binder; binder hands don't attach to this id)`;
         }
         const bits: string[] = [];
@@ -254,6 +287,8 @@ export async function executeFindTool(
         if (l.wedding_date) bits.push(`wedding ${l.wedding_date}`);
         if (l.wedding_city) bits.push(l.wedding_city);
         if (l.phone) bits.push(`phone ${l.phone}`);
+        const fl = arrivalStamp(l.created_at, IST); // TDW_06 M-1 (P1)
+        if (fl) bits.push(`filed ${fl}`);
         return `  [ENQUIRY] ${l.id} — "${l.name ?? 'unknown'}"${bits.length ? ' | ' + bits.join(' | ') : ''}` +
                ` (typed lead — not a binder; binder hands don't attach to this id)`;
       }),
@@ -305,7 +340,12 @@ export async function executeFindTool(
     const rowsR = (revs ?? []) as { id: string; client: string | null; work_ref: string | null; status: string | null; disposition: string | null; created_at: string }[];
     return rowsR.map((r) => {
       const label = [r.client, r.work_ref].filter((x) => x && String(x).trim()).join(' / ') || '(unlabelled review)';
-      const tail = `${r.status ? ` · ${r.status}` : ''} · filed ${String(r.created_at).slice(0, 10)}`;
+      // TDW_06 M-1 · F-06.27: was a raw UTC `.slice(0, 10)` — a review filed 01:30 IST
+      // dated itself YESTERDAY. Now the estate's one tz-correct stamp. This site is
+      // also P1's own precedent: `filed <date>` was already this file's register for
+      // an arrival, so the new sites adopted its word rather than minting one.
+      const filedRev = arrivalStamp(r.created_at, IST);
+      const tail = `${r.status ? ` · ${r.status}` : ''}${filedRev ? ` · filed ${filedRev}` : ''}`;
       return `  [REVIEW] ${r.id} — "${label}"${tail} (read it with donna_review_read)`;
     });
   }
