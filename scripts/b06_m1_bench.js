@@ -295,13 +295,29 @@ t('§6.7 the riding cells landed — SD-C4\'s adverb is CHECKED, and the recency
   assert.ok(/'SD-FRESH', 'SD-FRESHr2', 'SD-FRESHr3', 'SD-FRESHr4'/.test(gsrc), 'the +3 cell is not anchored');
 });
 
-t('§6.8 the sitting\'s whole delta is TWELVE repo files and no thirteenth', () => {
-  // Tracked delta PLUS untracked: between the founder's apply and his commit the new
-  // files are untracked, and after the commit they are tracked. The cell must read the
-  // same in both worlds or it is a cell that only passes on one side of a push.
-  const tracked = execFileSync('git', ['diff', '--name-only', BASE], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-  const all = [...new Set([...tracked, ...untracked])];
+// ── LABELED AMENDMENT · BLOCK 06 M-3 · F-06.34 CURED (CE-ruled 2026-07-25, R4) ──────
+// THE DEFECT THIS CELL HAD: it measured the delta from BASE to the WORKING TREE — a
+// floating tip. That is true for exactly as long as nothing else lands. CE-72's own
+// seal push (`7ceb4ef`) touched `docs/FINDINGS_LOG.md` and `docs/TDW_00_MASTERPLAN.md`,
+// which protocol §7 REQUIRES of every seal, and this cell went red on the very commit
+// that sealed the sitting it guards — and stayed red. Measured: 45/0 at `ab011c1`
+// (M-1's code seal), 44/1 at `7ceb4ef`, 44/1 at `981e9ba`. The count in the record was
+// honest at its own commit and unreachable ever after; M-3's charter inherited it as a
+// floor number no executor could meet.
+//
+// THE CLASS, banked so no future cell is authored this way: A DELIVERY-SHAPE ASSERTION
+// PINNED TO A BASE OUTLIVES ITS OWN DELIVERY. The shape of a delivery is a HISTORICAL
+// fact about a commit RANGE, not a live fact about a working tree.
+//
+// THE CURE, the estate's own re-pin precedent: measure `BASE..SEAL` — the range M-1
+// actually shipped in. Twelve files and no thirteenth IN THAT RANGE is a fact no later
+// push can move, so this cell now asserts what it always meant to assert and greens
+// forever. The untracked leg is RETIRED WITH ITS REASON: it existed to make the cell
+// read the same before and after the founder's commit, which a committed RANGE makes
+// unnecessary — the range only exists once the commit does.
+const SEAL = 'ab011c1'; // M-1's seal — the range's far end, fixed for good
+t('§6.8 M-1\'s whole delta was TWELVE repo files and no thirteenth (RANGE-PINNED, F-06.34)', () => {
+  const all = execFileSync('git', ['diff', '--name-only', `${BASE}..${SEAL}`], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   const expected = [
     TODAY, DONNA, TYPES, FIND, HIST,
     'src/engine/src/core/tools/donnaLead.ts', 'src/engine/src/core/tools/recordPrimitives.ts',

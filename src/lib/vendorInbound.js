@@ -33,6 +33,7 @@ const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05
 const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
+const { scrubText } = require('./vendor/scrub');                      // BLOCK 06 M-3 / F-06.29 — the persona firewall reaches this lane at last
 
 // ── BLOCK 06 M-0 · F-05.60 CURED (A1, founder-ruled 「 a1 」) ──────────────────
 // THE LINE THIS REPLACES: `inboundMessage: firstWord.startsWith('TDW-') ? 'hi' : body`.
@@ -68,6 +69,56 @@ function stripRoutingToken(rawBody) {
   if (!trimmed) return '';
   const firstToken = trimmed.split(/\s+/)[0];
   return trimmed.slice(firstToken.length).trim();
+}
+
+// ── BLOCK 06 M-3 · F-06.17 + F-06.29 · THE SPLIT SCRUB (CE-ruled 2026-07-25, R3) ──
+// 「 internal only 」 is the founder's standing word: Donna is INTERNAL-ONLY on the
+// vendor surface, EVERY mode. F-06.29 is its mechanical half — `scrub.js` declares
+// "one home, every caller" and this lane was NOT a caller, so three name bleeds rode
+// one evening's wire while the firewall sat one require away.
+//
+// THE FOUR NOTIFICATION SITES ARE THE HARD ONES, and this function exists for them.
+// `result.vendorNotification` reaches a VENDOR's phone (:524 · :632 · :770 · :900) but
+// is authored on the COUPLE lane, and it comes in two shapes (engine.js):
+//   :403  firstContactNotif    — the model's own `vendor_notification` message, whole
+//   :418  returningBrideNotif  — `${summary}\n\nHer message: "${inboundMessage}"`
+//   :407  its fallback         — `${name} just messaged: "${inboundMessage}"`
+// The second and third carry THE BRIDE'S OWN SENTENCE, quoted. Scrubbing those whole
+// would rewrite HER words — and that is not a hypothetical: it is the vocative family's
+// exact disease (scrub.js:136-161, where a blind replacement turned "…here, Donna."
+// into a sentence aimed at the wrong person and nobody noticed, because it still read
+// fine). A firewall that edits the witness to clean the pipe has stopped being a
+// firewall. Her words are hers, on the same law that refuses to rewrite the audit row:
+// if SHE writes "Donna", the quote carries it honestly.
+//
+// SO: THE FRAME SCRUBS, THE QUOTE PASSES BYTE-EXACT.
+//
+// WHY THE VERBATIM IS A PARAMETER AND NOT A PATTERN. The caller knows exactly what was
+// handed to the model as `inboundMessage` — and it is NOT the same value at every site
+// (:770's turn receives `stripRoutingToken(body) || 'hi'`, the others `body` or
+// `originalMessage`). Deriving the quote here by regex would be guessing at a boundary
+// the door already holds as a fact; each call site passes the value it actually sent.
+//
+// WHY THE SPLIT ANCHORS ON `"<quote>"` AND NOT ON THE BARE QUOTE. Splitting on the bare
+// text is unsafe for SHORT messages: a verbatim of `on` occurs inside `Donna`, and
+// splitting there would hand scrubText the fragments `D` and `na`, neither of which
+// matches `\bDonna\b` — the firewall would open precisely because the bride was terse.
+// The quoted token is the frame's own rendering (both shapes above), and only the LAST
+// occurrence is preserved, so exactly one region passes and everything around it is
+// judged. No quoted token found (firstContactNotif's shape, or any drift in the frame)
+// ⇒ the whole string scrubs: the fail-safe direction is the firewall CLOSED.
+//
+// EXPORTED so the bench drives the shipped function, never a copy (Q-SP-5) — the
+// stripRoutingToken precedent above, same file, same reason.
+function scrubModelFrame(text, verbatim) {
+  if (text == null) return text;
+  const s = String(text);
+  const q = verbatim == null ? '' : String(verbatim);
+  if (!q) return scrubText(s);
+  const token = '"' + q + '"';
+  const at = s.lastIndexOf(token);
+  if (at === -1) return scrubText(s);
+  return scrubText(s.slice(0, at)) + token + scrubText(s.slice(at + token.length));
 }
 
 // ── C5 · THE TURN LOCK, THE ONE THING THIS BRIDE ARC TOUCHES ON THIS FILE ───
@@ -521,7 +572,9 @@ async function _processVendorInbound(inputs, deps) {
             });
 
             if (result.vendorNotification && vendorUser?.phone) {
-              await sendWhatsApp(vendorUser.phone, result.vendorNotification);
+              // M-3 R3: the model's frame scrubs, her quoted sentence passes byte-exact.
+              // This turn was handed `originalMessage` (:557) — the quote is that value.
+              await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, originalMessage));
             }
 
             await supabase.from('conversations')
@@ -629,7 +682,8 @@ async function _processVendorInbound(inputs, deps) {
           });
 
           if (result.vendorNotification && vendorUser?.phone) {
-            await sendWhatsApp(vendorUser.phone, result.vendorNotification);
+            // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:665).
+            await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body));
           }
 
           // Refresh sticky window — each interaction extends stickiness
@@ -763,8 +817,12 @@ async function _processVendorInbound(inputs, deps) {
         });
 
         const vendorPhone = vendorUser?.phone;
+        // M-3 R3: the model half scrubs (frame only — this turn was handed
+        // `stripRoutingToken(body) || 'hi'` at :794, so THAT is the quote); the fallback
+        // is founder-vetoed fixed copy and is left byte-unchanged, never scrubbed.
         const notif = result.vendorNotification
-          || `New enquiry via your TDW link from ${phone}. I'm collecting their details now.`;
+          ? scrubModelFrame(result.vendorNotification, stripRoutingToken(body) || 'hi')
+          : `New enquiry via your TDW link from ${phone}. I'm collecting their details now.`;
 
         if (vendorPhone) {
           await sendWhatsApp(vendorPhone, notif);
@@ -897,7 +955,8 @@ async function _processVendorInbound(inputs, deps) {
         });
 
         if (result.vendorNotification && vendorUser?.phone) {
-          await sendWhatsApp(vendorUser.phone, result.vendorNotification);
+          // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:933).
+          await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body));
         }
 
         await supabase.from('conversations')
@@ -1086,7 +1145,17 @@ async function _processVendorInbound(inputs, deps) {
     }
 
     // Message 1 — Victor's reply + a NUMBER-ONLY confirmation line per invoice (no URL).
-    let replyText = result.reply;
+    // BLOCK 06 M-3 · F-06.29 CURED (CE-ruled 2026-07-25, R2) — THE FIREWALL REACHES
+    // THE VENDOR LANE. The web door has scrubbed the model's prose since CE-18
+    // (`chat.js:1580`, "the firewall covers the reply itself"); this door — the LIVE
+    // WhatsApp wire, the one the founder actually reads — never did, and three persona
+    // names crossed it in a single evening. Sited on `result.reply` ALONE, mirroring the
+    // precedent byte-for-shape: the invoice confirmation lines appended below carry
+    // founder-vetoed copy and a stored client name, and `cal.suffix` arrives already
+    // floored (calendarSignals scrubs its own lines at :117/:129/:360/:425/:578/:579).
+    // Widening this to the composed `replyText` would put a rewriter over strings the
+    // founder's veto owns, to catch a leak that cannot originate there.
+    let replyText = scrubText(result.reply);
     if (invoiceDocs.length) {
       replyText += '\n\n' + invoiceDocs.map((d) =>
         `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} — sending the PDF now.`
@@ -1204,5 +1273,6 @@ async function resolveVendorMedia(mediaItem, deps) {
 
 module.exports = {
   processVendorInbound, metaInputsFrom, stripRoutingToken, // stripRoutingToken: BLOCK 06 M-0 / F-05.60 — exported so the bench drives the shipped function, never a copy (Q-SP-5)
+  scrubModelFrame,                                         // BLOCK 06 M-3 / F-06.17+F-06.29 — same reason, same law
   resolveVendorMedia, WA_MEDIA_BUCKET, VENDOR_MEDIA_ALLOW_MIMES, VENDOR_MEDIA_MAX_BYTES,
 };

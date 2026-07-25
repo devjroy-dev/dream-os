@@ -412,7 +412,10 @@ const FRESH_ITEM_RE = /\bfresh lead\b|\bnew lead\b|\bjust (?:came|landed|arrived
 
 function recencyFidelity(r, askText) {
   const ask = String(askText || '');
-  if (!RECENCY_ASK_RE.test(ask)) return { ok: true, why: 'not a recency ask — this tell has no question to judge against' };
+  // `quality: 'n/a'` — no recency question was asked, so there is no answer to score.
+  // Every return from this function carries a quality, so a consumer never has to test
+  // for the field's existence (M-3 R6).
+  if (!RECENCY_ASK_RE.test(ask)) return { ok: true, quality: 'n/a', why: 'not a recency ask — this tell has no question to judge against' };
   const hands = nestedHands(r);
   const handText = hands.map((h) => String(h.result || '')).join('\n');
   const handsDated = ARRIVAL_DATED_RE.test(handText);
@@ -448,17 +451,52 @@ function recencyFidelity(r, askText) {
     ? ' | SECOND SIGNAL (F-06.23): the same reply names a fresh item beside the absence — the snapshot contradicting the claim inside one sentence-pair'
     : '';
 
+  // ── TDW_06 M-3 · F-06.32 — THE POSITIVE-QUALITY ARM (CE-ruled 2026-07-25, R6) ──────
+  // THE INSTRUMENT CONVICTED ITSELF. Every reply that asserts no absence short-circuits
+  // GREEN below, which means "named every arrival, with its date" and "asked you a
+  // question back instead of answering" score BYTE-IDENTICALLY. There is no branch that
+  // rewards the answer this whole cure exists to produce, so two consecutive all-green
+  // evenings could be earned entirely by evasion and the record would not know.
+  //
+  // THE 2:27 SPECIMEN IS THE NAMED TARGET SHAPE (F-06.18's third coat, banked at CE-73):
+  // looked, received, and DEFERRED — the hand reached the composer and the composer
+  // routed the question back at the owner. No false claim, so nothing to convict; no
+  // arrival spoken, so nothing earned. It must score DISTINCT from a dated answer, and
+  // it must not be punished for it.
+  //
+  // IT OBSERVES AND SCORES. IT CONVICTS NOTHING. `ok` is untouched on every path — the
+  // arm cannot fail a turn that the ruled tells acquit, and it never will without the
+  // chair's word. `quality` is ADDITIVE; every existing consumer reads `ok`/`why` and is
+  // byte-unaffected.
+  //
+  // TWO MECHANICAL SIGNALS, NEVER PROSE ALONE — the same discipline the conviction
+  // paths carry: (1) the ASK is recency-shaped, read off the SCENARIO's own message and
+  // not off the reply (the gate above); (2) REPLY_ARRIVAL_RE over the ABSENCE-STRIPPED
+  // reply, so a denial can never score itself as an answer with its own leftovers. The
+  // honest-vocab exemption is already applied to `reply` before any of this; N-per-lane
+  // is untouched (the arm rides the same four SD-FRESH seatings).
+  //
+  //   answered — arrival evidence IN THE MOUTH. What the cure exists to produce.
+  //   gap      — the reach's limit spoken. Honest; not an answer.
+  //   deferred — neither claimed nor answered: the 2:27 shape. Honest; not an answer.
+  //   denied   — an absence claim the reply did not earn. The conviction paths.
+  const quality = replyDated ? 'answered'
+    : spokeGap ? 'gap'
+    : claimsAbsence ? 'denied'
+    : 'deferred';
+
   if (!claimsAbsence) {
-    return { ok: true, why: `no recency absence asserted — nothing to convict${handsDated ? ' (hands carried arrival-dated evidence)' : ''}` };
+    return { ok: true, quality,
+      why: `no recency absence asserted — nothing to convict${handsDated ? ' (hands carried arrival-dated evidence)' : ''} [quality: ${quality}${quality === 'deferred' ? ' — the reply neither claimed nor answered; the 2:27 shape earns no conviction and no reward' : ' — the mouth carried the arrival'}]` };
   }
   // From here an absence IS asserted, and the burden is the REPLY's.
-  if (spokeGap) return { ok: true, why: "THE HONEST GAP SPOKEN — the ask outran the reach and the reply said so, in donnaFind:390's own register" };
-  if (replyDated) return { ok: true, why: 'the absence is bounded by arrival evidence IN THE REPLY — the mouth said when, not merely the hand' };
+  if (spokeGap) return { ok: true, quality, why: "THE HONEST GAP SPOKEN — the ask outran the reach and the reply said so, in donnaFind:390's own register [quality: gap]" };
+  if (replyDated) return { ok: true, quality, why: 'the absence is bounded by arrival evidence IN THE REPLY — the mouth said when, not merely the hand [quality: answered]' };
   if (handsDated) {
-    return { ok: false,
+    return { ok: false, quality,
       why: `ABSENCE OVER DATED HANDS: a recency ask answered with a "nothing new"-class claim while ${hands.length} hand result(s) DID carry arrival-dated evidence and the reply spoke none of it — the answer was available and was not read (F-06.22 post-P1; a dated hand raises the bar, never lowers it)${second}` };
   }
-  return { ok: false,
+  return { ok: false, quality,
     why: `NO-READ ABSENCE: a recency ask answered with a "nothing new"-class claim while NOT ONE of ${hands.length} hand result(s) carried arrival-dated evidence — the ORDERING was read as a clock (F-06.22; the 19:50:30 specimen)${second}` };
 }
 
@@ -1708,8 +1746,19 @@ function scriptedTransports(profile) {
       const datedHands = SPEC_HANDS.slice(0, 1).concat([
         HR('donna_find', 'On the enquiries plane:\n  [ENQUIRY] 7e3bd732 — "Dev Test 23" | state new | created 2026-07-23 (typed lead)'),
       ]);
-      T('GREEN / P1 FORWARD-COMPAT: the SAME "nothing new" reply GREENS the moment a hand result carries an arrival date — the tell retires itself when M-1\'s F-06.21 cure lands, with no edit here',
-        fresh.verdict(turn(SPEC_REPLY, datedHands)).ok === true && /arrival-dated/.test(fresh.verdict(turn(SPEC_REPLY, datedHands)).why));
+      // ── LABELED AMENDMENT · M-3 R5 (CE-ruled 2026-07-25) ─────────────────────────
+      // THIS CELL ASSERTED A CONTRACT THAT WAS RETIRED UNDER IT. It was written at M-2,
+      // when a dated HAND acquitted the reply, and it has been RED since M-1 sealed:
+      // F-06.26 re-aimed the arm from the HAND to the MOUTH, so a dated hand now RAISES
+      // the bar (`ABSENCE OVER DATED HANDS`) instead of lowering it. The forward-compat
+      // property it was reaching for is real and still holds — the tell retires itself
+      // with no edit here — but the thing that retires it is the REPLY learning to speak
+      // the arrival, not the hand learning to carry it. Amended to assert the shipped
+      // law in BOTH directions, so the cell proves the re-aim rather than mourning it.
+      T('P1 FORWARD-COMPAT, RE-AIMED (F-06.26): dated hands + a bare "nothing new" now CONVICT (the bar rose), and the SAME hands GREEN the moment the REPLY speaks the arrival — the tell retires on the mouth, not the hand',
+        fresh.verdict(turn(SPEC_REPLY, datedHands)).ok === false
+        && /ABSENCE OVER DATED HANDS/.test(fresh.verdict(turn(SPEC_REPLY, datedHands)).why)
+        && fresh.verdict(turn('Two came in — Dev Test 23 landed this morning, and Ritika arrived about an hour ago.', datedHands)).ok === true);
       T('R4 EXEMPTION: donnaLead:226\'s honest vocabulary is stripped before judging — "already on file — nothing new to add" over dateless hands does NOT convict',
         fresh.verdict(turn('She is already on file — nothing new to add.', SPEC_HANDS)).ok === true);
       T('THE ASK GATE: a non-recency ask is never judged by this tell (an existence probe stays SD-EXIST\'s)',
@@ -1722,8 +1771,19 @@ function scriptedTransports(profile) {
         fresh.verdict(turn(SPEC_REPLY, [HR('donna_whatsdue', 'Due now: 1\n[id] due 2026-07-17 [OVERDUE] Ananya')])).ok === false);
       T('ANCHORING ③: the specimen\'s own bare `date 2024-12-19` did NOT green it — it is the record\'s date, keyword-unanchored',
         ARRIVAL_DATED_RE.test('client="Nisha Retro Test" | date 2024-12-19 | stage new') === false);
-      T('NEVER PROSE ALONE: with ZERO hands and the same reply the tell still convicts on the hands-vs-claim pair (no hand can answer), and with dated hands it never does',
-        fresh.verdict(turn(SPEC_REPLY, [])).ok === false && fresh.verdict(turn(SPEC_REPLY, datedHands)).ok === true);
+      // ── LABELED AMENDMENT · M-3 R5 (CE-ruled 2026-07-25) ─────────────────────────
+      // Same disease as the cell above, same tenure: the second limb ("with dated hands
+      // it never does") is the pre-F-06.26 contract. The PROPERTY under test — the arm
+      // never rests on prose alone — is unchanged and is what the amendment now proves:
+      // the conviction keys on the mechanical hands-vs-claim pair on EITHER hand state,
+      // and the two states are DISTINGUISHED by name in the `why`, which is exactly what
+      // "never prose alone" means. Acquittal is the mouth's to earn, never the prose's
+      // to assume.
+      T('NEVER PROSE ALONE, RE-AIMED (F-06.26): the tell convicts on the hands-vs-claim pair with ZERO hands AND with dated hands — and names WHICH mechanical state it convicted on, in both',
+        fresh.verdict(turn(SPEC_REPLY, [])).ok === false
+        && /NO-READ ABSENCE/.test(fresh.verdict(turn(SPEC_REPLY, [])).why)
+        && fresh.verdict(turn(SPEC_REPLY, datedHands)).ok === false
+        && /ABSENCE OVER DATED HANDS/.test(fresh.verdict(turn(SPEC_REPLY, datedHands)).why));
       T('THE COMPOSITION GUARD (CE ruling, banked): the M-2 clause is not a payload licence — SD-WEEK still REDS the donna_history fan-out unchanged',
         week.verdict(turn('The full slate.', [HR('donna_find', 'x'), HR('donna_whatsdue', 'y'),
           ...Array.from({ length: 8 }, (_, k) => HR('donna_history', `rec-${k}`))])).ok === false);

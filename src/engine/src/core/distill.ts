@@ -109,6 +109,37 @@ async function runClerk(agentId: string, docId: string, storageRef: string, file
   // non-streaming ceiling, so it refuses to even start unstreamed. Same call, same
   // instruction — the engine just collects the stream into one final message.
   const stream = anthropic.messages.stream({
+    // ── THE CLERK'S SONNET CARVE-OUT — LAWFUL, AND DECLARED HERE (F-06.16, CE-ruled
+    // 2026-07-25, TDW_06 M-3 R1) ────────────────────────────────────────────────────
+    // E-1 ("Victor on Anthropic Haiku cached · Donna on DeepSeek · Sonnet permanently
+    // out") governs the TALK planes — the conversational wires a vendor or a bride
+    // reaches. The clerk is not one of them: it is a DOCUMENT-PREPARATION BATCH JOB,
+    // hired per document and dismissed, reached only through server.ts's `/de-upload`
+    // (:169) and `/de-redistill` (:186) doors. It holds no thread, speaks to no owner,
+    // and its output is a Brief on a shelf that Donna's hands then read on Haiku
+    // forever. ~Rs 30-40 once per monster document (see CLERK_MAX_TOKENS above), then
+    // never again for that document.
+    //
+    // THIS CARVE-OUT IS THE CLARIFICATION OF E-1, NOT AN EXCEPTION BY STEALTH. It was
+    // inherited from before E-1 and had never been RULED either way; it is ruled now,
+    // at its own site, so no future reader has to guess whether a survivor is a lawful
+    // exemption or a missed sweep.
+    //
+    // THE ALLOWLIST IS EXACTLY THREE SITES, and b06_m3_bench §1 REDs on a fourth. They
+    // are named by STATEMENT, not by line number — F-06.34, filed in the same sitting, is
+    // what an assertion pinned to a coordinate becomes after the next edit (this very
+    // comment pushed the two below down the file as it was written):
+    //   · this call                          — the clerk's model
+    //   · `calcCostInr(MODELS.sonnet, ...)`  — the clerk's own cost math, below
+    //   · models.ts's Sonnet PRICE ROW, which is this carve-out's HONESTY:
+    //                       calcCostInr falls back to `PRICING[MODELS.haiku]` for any
+    //                       unpriced model, so deleting that row would not remove the
+    //                       Sonnet spend — it would silently UNDER-REPORT it at the
+    //                       Haiku rate. The price row is load-bearing FOR the clerk.
+    // The bench greps the CONSTANT `MODELS.sonnet`, never `modelLabel()` — :87-88
+    // returns 'sonnet' for any model string lacking 'haiku', which would false-positive
+    // on deepseek-v4-flash. Any FOURTH reference to the constant anywhere under
+    // src/engine/src/** REDs the floor, which is the whole point of declaring this one.
     model: MODELS.sonnet,
     max_tokens: CLERK_MAX_TOKENS,
     system: CLERK_INSTRUCTION,
