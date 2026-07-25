@@ -14,6 +14,7 @@ import { vendorIdFromAgent } from '../vendorIdentity.js';
 import { leadDraftMeta } from '../draftContracts.js';
 import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
 import { phoneKey } from '../phoneKey.js'; // TDW_04 engine-lane (ST-3b)
+import { rs } from './recordPrimitives.js'; // TDW_06 M-4 (R2-B) — the house money register, one grouped home
 
 // Columns read back on every write — draft_meta INCLUDED (enrich reads the standing
 // provenance). Pre-0072 resilience lives in writeLead's column-guarded retry below,
@@ -30,7 +31,7 @@ type LeadRow = {
 
 // Build the snapshot item for a lead row (open pipeline item, sourced from truth).
 function leadItem(row: LeadRow): SnapshotItem {
-  const val = row.budget_max != null ? ` (Rs ${row.budget_max})` : '';
+  const val = row.budget_max != null ? ` (${rs(row.budget_max)})` : ''; // TDW_06 M-4 (R2-B)
   const state = row.state ?? 'new';
   const closed = state === 'booked' || state === 'lost';
   return {

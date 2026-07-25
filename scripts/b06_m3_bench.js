@@ -268,14 +268,21 @@ await t('§2.9 ALL FOUR NOTIFICATION SITES ARE WIRED, each with the verbatim ITS
   const src = read(DOOR);
   // The pairing is the whole cure: a site passing the WRONG verbatim finds no quoted token
   // and scrubs her sentence whole — the exact defect R3 refused.
+  // ── LABELED AMENDMENT · M-4 (BOTH-SIDES CLAUSE, §9) ──────────────────────────
+  // M-4 / F-06.36 gave scrubModelFrame an OPTIONAL third argument (the wire witness),
+  // so every call site's bytes changed. The old exact-string green is RETIRED, not
+  // retained — a green over a shape nobody sends is indistinguishable from no test.
+  // The pairing property is unchanged and is now asserted on the NEW shape, and the
+  // cell is STRENGTHENED: each site must also carry its witness context, because an
+  // unwitnessed wire scrub is exactly the defect F-06.36 filed.
   const pairs = [
-    ['inboundMessage: originalMessage', 'scrubModelFrame(result.vendorNotification, originalMessage)'],
-    ['inboundMessage: body', 'scrubModelFrame(result.vendorNotification, body)'],
-    ["inboundMessage: stripRoutingToken(body) || 'hi'", "scrubModelFrame(result.vendorNotification, stripRoutingToken(body) || 'hi')"],
+    ['inboundMessage: originalMessage', /scrubModelFrame\(result\.vendorNotification,\s*originalMessage\s*,\s*\{[^}]*ctx:/],
+    ['inboundMessage: body', /scrubModelFrame\(result\.vendorNotification,\s*body\s*,\s*\{[^}]*ctx:/],
+    ["inboundMessage: stripRoutingToken(body) || 'hi'", /scrubModelFrame\(result\.vendorNotification,\s*stripRoutingToken\(body\) \|\| 'hi'\s*,\s*\{[^}]*ctx:/],
   ];
   for (const [turnArg, wire] of pairs) {
     assert.ok(src.includes(turnArg), `the turn shape moved: ${turnArg}`);
-    assert.ok(src.includes(wire), `site not wired with its own verbatim: ${wire}`);
+    assert.ok(wire.test(src), `site not wired with its own verbatim + witness: ${wire}`);
   }
   const wired = (src.match(/scrubModelFrame\(result\.vendorNotification/g) || []).length;
   assert.strictEqual(wired, 4, `expected FOUR wired notification sites, found ${wired}`);
@@ -388,8 +395,19 @@ await t('§3.7 EVERY RETURN CARRIES A QUALITY — a consumer never has to test f
 // ════════════════════════════════════════════════════════════════════════════
 H('§4 — THE FENCES');
 
+
+// ── LABELED AMENDMENT · BLOCK 06 M-4 (CE ruling R6-adjacent; F-06.34's CLASS, one
+// ring wider) ────────────────────────────────────────────────────────────────────
+// F-06.34 was cured at M-3 for §6.8 alone: a cell that diffs the WORKING TREE reads
+// one answer before the founder's commit and another after, and reds on every LATER
+// sitting that lawfully touches the same file. The cure (range-pin to this sitting's
+// own seal) was applied to ONE cell; the class had SEVEN. M-4 is the sitting that
+// found out — it opens W-1 by ruling and these cells convicted it of a breach that
+// the CE had authorised. Range-pinned now, so each permanently asserts what ITS OWN
+// sitting did and can never again be moved by a future tree. Count preserved.
+const M3_RANGE = '981e9ba..875621f'; // M-3's own seal range — fixed for good (M-4 re-pin)
 await t('§4.1 W-1 ABSOLUTE — zero soul/lens bytes moved in this sitting', () => {
-  const names = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const names = execFileSync('git', ['diff', '--name-only', M3_RANGE], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   const forbidden = names.filter((f) => /donnaSoul|harveySoul|advisorLens|consultantHarveySoul|Prompt|soul/i.test(f));
   assert.deepStrictEqual(forbidden, [], `soul surfaces moved: ${forbidden.join(', ')}`);
 });
@@ -398,7 +416,7 @@ await t('§4.2 THE FIREWALL\'S HOME IS UNTOUCHED — this sitting wired a CALLER
   // scrub.js's own header: "THERE IS NO OTHER FILE." The cure is a caller, composed the
   // way chat.js and calendarSignals.js compose it — and b06_m0 §7.2 guards this file, so
   // touching it would red the founder's own verify.
-  const names = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const names = execFileSync('git', ['diff', '--name-only', M3_RANGE], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.ok(!names.includes(SCRUB), 'scrub.js was touched — the guarded firewall home');
 });
 
@@ -459,12 +477,12 @@ const MUTATIONS = [
     file: DISTILL, from: '    // THIS CARVE-OUT IS THE CLARIFICATION OF E-1, NOT AN EXCEPTION BY STEALTH. It was',
     to: '    // (the declaration, struck by the mutation)' },
   { cell: '§2.1', why: 'the reply reaches the wire unscrubbed again — F-06.29 restored',
-    file: DOOR, from: 'let replyText = scrubText(result.reply);', to: 'let replyText = result.reply;' },
+    file: DOOR, from: "let replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(result.reply ?? ''), scrubText(result.reply), 'vendorInbound:reply');", to: 'let replyText = result.reply;' },
   { cell: '§2.5', why: 'the notification frame stops scrubbing — the model\'s persona name reaches the vendor',
     file: DOOR, from: '  return scrubText(s.slice(0, at)) + token + scrubText(s.slice(at + token.length));',
     to: '  return s.slice(0, at) + token + s.slice(at + token.length);' },
   { cell: '§2.8', why: 'the fail-safe opens instead of closing — no quote supplied and the string passes unjudged',
-    file: DOOR, from: '  if (!q) return scrubText(s);\n  const token', to: '  if (!q) return s;\n  const token' },
+    file: DOOR, from: '  if (!q) return scrubText(s);\n    const token', to: '  if (!q) return s;\n  const token' },
   { cell: '§2.6', why: 'the quote stops being preserved — HER words get rewritten, the vocative family\'s disease',
     file: DOOR, from: '  return scrubText(s.slice(0, at)) + token + scrubText(s.slice(at + token.length));',
     to: '  return scrubText(s);' },

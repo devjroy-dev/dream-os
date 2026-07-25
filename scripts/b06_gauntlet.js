@@ -347,6 +347,109 @@ function absenceFidelity(r, subjectTokens) {
   return { fabricated: false, why: 'the outward claim is consistent with what the find returned' };
 }
 
+// ── M-4 (F-06.31) — THE NAME-PROVENANCE WATCH-ARM (CE-ruled 2026-07-25, R4) ────────────
+// THE SPECIMEN: "Nena Bansal" — a person with no referent anywhere in the estate, offered
+// for filing and attributed to the founder's own mind. F-04.70's fabrication family on a
+// new plane: not a fabricated FIGURE, a fabricated PERSON. The discriminator SELECT run
+// at M-4 sharpened it — `donna_find {"client":"nena bansal"}` fired in TWO SEPARATE
+// conversations (02:35:19 conv 17016260, 02:42:58 conv dc64e548), so the name persisted
+// across threads rather than dying with one turn.
+//
+// WHY THIS SCORES AND DOES NOT HOLD, ruled: the estate already holds FIGURES at the write
+// seam (provenanceHold.ts — a rupee figure must live in the owner's words this thread).
+// A name hold at that strictness would be wrong, and the asymmetry is the reason: a figure
+// the owner never said is almost always an error, while a NAME he never said this
+// conversation is routine — he forwards a message, pastes an enquiry, refers back to last
+// week. Holding on that would stop most lawful filings to catch one rare fabrication.
+// So this arm OBSERVES. It never fails a lane and never blocks a hand; it reports, so the
+// evenings can count instances. Cure only on a second witnessed instance (the ruling).
+//
+// SIGNALS, NEVER PROSE ALONE: the judgment is mechanical — the offered name against the
+// turn's own corpus (the owner's words this turn + everything the reads actually returned).
+// A name present in neither is UNSOURCED. That is a signal, not a verdict.
+function nameProvenance(r, vendorWords) {
+  const hands = nestedHands(r);
+  const offered = hands
+    .filter((h) => h && typeof h.input === 'object' && h.input)
+    .map((h) => (typeof h.input.name === 'string' ? h.input.name : (typeof h.input.client === 'string' ? h.input.client : null)))
+    .filter((n) => n && n.trim().length >= 3);
+  if (offered.length === 0) return { unsourced: [], why: 'no named hand this turn — nothing to source' };
+  // The corpus: what the owner actually said this turn, plus every byte the reads returned.
+  const corpus = (String(vendorWords || '') + '\n' + hands.map((h) => String(h.result || '')).join('\n')).toLowerCase();
+  const unsourced = [];
+  for (const name of offered) {
+    // A name is SOURCED if any of its words of 3+ chars appears in the corpus — deliberately
+    // generous in the acquitting direction, because this arm must not cry wolf on a
+    // legitimate filing whose spelling drifted.
+    const words = name.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3);
+    if (words.length === 0) continue;
+    if (!words.some((w) => corpus.includes(w))) unsourced.push(name);
+  }
+  return unsourced.length
+    ? { unsourced, why: `NAME WITH NO SOURCE THIS TURN: ${unsourced.join(', ')} — present in neither the owner's words nor any read this turn (F-06.31, watch-arm: observed, never held)` }
+    : { unsourced: [], why: 'every named hand traces to the owner\'s words or a read this turn' };
+}
+
+// ── M-4 (THE ELIZA OPENER) — THE ANSWER-FIRST SCORER ──────────────────────────────────
+// THE FOUNDER'S RULING, executed: first contact ANSWERS AND QUALIFIES ALONGSIDE.
+// 「 we topple on this decission 」. The specimen: the 50k question receiving the
+// questionnaire instead of an answer.
+//
+// A DECLARED GAP, STATED BEFORE THE FUNCTION SO NOBODY MISREADS ITS REACH: this rig
+// drives the VENDOR lane (Harvey/Donna). The opener lives on the COUPLE lane
+// (runCoupleAgenticTurn -> coupleSystemPrompt), which has no live rig in this estate. So
+// this arm is NOT seated in a scenario here and NOTHING in the gauntlet's live run scores
+// it today. It exists because the founder's walk needs a MECHANICAL verdict rather than an
+// eyeball — signals, never prose alone — and because a couple-lane rig, when one is
+// chartered, should find its arm already written and already driven both ways. Calling it
+// seated would be the hollow green this block exists to refuse.
+//
+// WHAT IT JUDGES, and why each limb: a first reply to a SUBSTANTIVE opening question
+// passes only if the ANSWER LEADS. Not "contains an answer somewhere" — leads. The
+// disease was never that the agent refused to answer eventually; it was that the
+// questionnaire came FIRST and the answer never came at all.
+const _OPENER_DEFLECT_RE = /\b(let me check with|i'?ll check with|get back to you)\b/i;
+const _OPENER_QUESTION_RE = /\?/;
+function openerFidelity(reply, ask) {
+  const r = String(reply || '').trim();
+  if (!r) return { ok: false, quality: 'empty', why: 'no reply to judge' };
+  // Only a SUBSTANTIVE opening ask is in scope — a bare "hi" is the fused-line path and
+  // the ruling explicitly preserves it.
+  const substantive = /\?/.test(String(ask || '')) || /\b(\d+\s*(k|l|lakh|lakhs|cr|crore)|price|cost|budget|available|availability|free on|do you|can you|how much)\b/i.test(String(ask || ''));
+  if (!substantive) return { ok: true, quality: 'n/a', why: 'not a substantive opening ask — the fused greeting line is the ruled path here' };
+
+  // A GREETING IS NOT AN ANSWER. The specimen's own bytes are "Hi! I'm Swati's assistant
+  // — [question]", so splitting on sentence punctuation makes "Hi!" the first sentence and
+  // the arm greens a reply that answered nothing. Strip the greeting and the identity
+  // clause the ruled opener still permits, THEN ask what leads. (Caught by this cell
+  // refusing to convict its own named specimen — which is the cell's job.)
+  const substance = r
+    .replace(/^\s*(hi|hey|hello|namaste)\b[^—\-.!?]*[!,.]?\s*/i, '')
+    .replace(/^\s*i'?m\s+[^—\-.!?]*?\bassistant\b[^—\-.!?]*[—\-,.]?\s*/i, '')
+    .trim();
+  const leadClause = (substance.split(/(?<=[.!?])\s+/)[0] || substance).trim();
+  const opensWithQuestion = _OPENER_QUESTION_RE.test(leadClause) && !_OPENER_DEFLECT_RE.test(leadClause);
+  const bareDeflection = _OPENER_DEFLECT_RE.test(r) && r.replace(_OPENER_DEFLECT_RE, '').replace(/[^\p{L}\p{N}]/gu, '').length < 25;
+
+  // (1) THE SPECIMEN'S OWN SHAPE: the reply opens by asking her something instead of
+  //     answering what she asked. This is the 50k turn, exactly.
+  if (opensWithQuestion) {
+    return { ok: false, quality: 'questionnaire',
+      why: 'THE 50K SHAPE: a substantive opening question met with a question — the qualifier came INSTEAD of the answer, not beside it' };
+  }
+  // (2) THE DEFLECTION STANDING ALONE, in front of a question it never touched.
+  if (bareDeflection) {
+    return { ok: false, quality: 'bare-deflection',
+      why: 'a bare "let me check and get back to you" over an untouched question — the ruled demotion says name it as the vendor\'s WITH THE REASON, never a door closing' };
+  }
+  // (3) THE RULED SHAPE: something answered first, and the qualifier riding beside it.
+  const qualifies = _OPENER_QUESTION_RE.test(r);
+  return { ok: true, quality: qualifies ? 'answered+qualified' : 'answered',
+    why: qualifies
+      ? 'the answer leads and the qualifying question rides beside it — the founder\'s ruling as executed'
+      : 'answered first; no qualifier this turn (lawful, but the enquiry still needs one before capture)' };
+}
+
 // ── M-2 (F-06.22) — THE NO-READ TELL: an absence over hands that cannot answer ─────────
 // F-06.18's anatomy, CORRECTED at M-2's read-first and ratified: the row never reached
 // anyone in LEGIBLE form. Donna's reads are recency-ORDERED and recency-BLIND (F-06.21 —
@@ -1416,11 +1519,24 @@ function scriptedTransports(profile) {
       );
       const { executeFindTool } = require(path.join(ROOT, 'src/engine/dist/core/tools/donnaFind.js'));
       const dump = await executeFindTool(AGENT, { stage: 'no-such-stage' });
-      const recPart = String(dump.display).split('enquiries plane')[0];
+      // ── LABELED AMENDMENT · M-4 / F-06.30 (CE-ruled 2026-07-25) ───────────────
+      // The withholding tell now rides this dump, and it NAMES the fields it withholds
+      // ("Money and phone numbers are deliberately NOT rendered"). The cell's property is
+      // that no RECORD's figures ride the recognition LINES — so it must grep the lines,
+      // not the tell that explains their absence. Counting the tell's own vocabulary as a
+      // leak would convict the cure of the disease it cures. Count preserved.
+      const recPart = String(dump.display).split('enquiries plane')[0]
+        .split('WHAT THESE LINES DO NOT CARRY:')[0];
       T('the zero-match dump keeps id + name-as-shown + stage + the [ARCHIVED] tag', /\[rec-z1\] client="Rhea Referent Test" \| stage booked/.test(recPart) && /\[rec-z2\][^\n]*\[ARCHIVED\]/.test(recPart));
       T('PHONES and MONEY are gone from the zero-match dump (F-04.70\'s donor pool drained)', !/9811077001|9811005566|Rs 50000|Rs 90000|received|pending|phone /.test(recPart));
       const matchedRun = await executeFindTool(AGENT, { client: 'Rhea Referent Test' });
-      T('a MATCHED payload is untouched — money and phone still ride describeRow whole', /Rs 50000/.test(matchedRun.display) && /phone 9811077001/.test(matchedRun.display));
+      // LABELED AMENDMENT · M-4 (BOTH-SIDES CLAUSE): the matched path still carries money
+      // and phone — unchanged property — but the figure now wears the HOUSE REGISTER
+      // (grouped, founder-ruled 「 forbids both 」). The ungrouped expectation is RETIRED;
+      // this line is now also the register cure's proof on the matched path.
+      T('a MATCHED payload is untouched — money and phone still ride describeRow whole (register: grouped)', /Rs 50,000/.test(matchedRun.display) && /phone 9811077001/.test(matchedRun.display));
+      T('THE WITHHOLDING TELL rides the recognition dump and NOT the matched payload (M-4 / F-06.30)',
+        /WHAT THESE LINES DO NOT CARRY:/.test(String(dump.display)) && !/WHAT THESE LINES DO NOT CARRY:/.test(matchedRun.display));
     }
 
     console.log('\n  [10] CRASH HARDENING (CE relay item 1 — run 4\'s three unattributed crashes): a');
@@ -1658,7 +1774,8 @@ function scriptedTransports(profile) {
       T('NON-VACUOUS: the shipped soft hint ("so you can spot the one you mean") is GONE — replaced by the explicit not-a-match instruction', !/so you can spot the one you mean/.test(dump));
       // a real MATCH is still whole (the cure never taxes a hit).
       const matched = String((await executeFindTool(AGENT, { client: 'Meher' })).display);
-      T('a real MATCH is untouched — money and phone still ride describeRow whole (the cure never taxes a hit)', /Rs 60000/.test(matched) && /phone 9811077001/.test(matched));
+      // LABELED AMENDMENT · M-4: same property, house register (grouped).
+      T('a real MATCH is untouched — money and phone still ride describeRow whole (the cure never taxes a hit)', /Rs 60,000/.test(matched) && /phone 9811077001/.test(matched));
     }
 
     console.log('\n  [17] RIG-2 — THE ADVISOR-LENS SEAT, witnessed at the desk both-ways (the in=87 read');
@@ -1729,6 +1846,46 @@ function scriptedTransports(profile) {
         week.verdict(specimen).ok === true);
       T('NON-VACUOUS ④: ABSENCE_CLAIM_RE does not even MATCH "nothing new has landed" — the F6 vocabulary is existence-shaped',
         ABSENCE_CLAIM_RE.test(SPEC_REPLY) === false && RECENCY_ABSENCE_RE.test(SPEC_REPLY) === true);
+      // ── M-4 / THE OPENER SCORER, driven BOTH WAYS on the specimen's own shapes ────
+      {
+        const ask50k = 'hi, do you do packages around 50k?';
+        const questionnaire = "Hi! I'm Swati's assistant — is this for a wedding or a pre-wedding shoot?";
+        const bareDeflect = 'Let me check with Swati and get back to you.';
+        const ruled = "Swati prices on the number of functions, so 50k depends on how many days you're covering — I'll get your dates to her today. How many functions are you planning?";
+        T('OPENER ①: the 50k specimen CONVICTS — a substantive question met with a question',
+          openerFidelity(questionnaire, ask50k).ok === false && openerFidelity(questionnaire, ask50k).quality === 'questionnaire');
+        T('OPENER ②: the bare deflection CONVICTS — a door closing in front of an untouched question',
+          openerFidelity(bareDeflect, ask50k).ok === false && openerFidelity(bareDeflect, ask50k).quality === 'bare-deflection');
+        T('OPENER ③: the RULED shape passes — answer leads, qualifier beside',
+          openerFidelity(ruled, ask50k).ok === true && openerFidelity(ruled, ask50k).quality === 'answered+qualified');
+        T('OPENER ④: a bare greeting is OUT OF SCOPE — the fused line is the ruled path there, not a defect',
+          openerFidelity(questionnaire, 'hi').quality === 'n/a');
+        // THE DISCRIMINATING CASE: the ruled opener still MAY greet and name itself. An arm
+        // that punished the greeting would convict the cure's own product — the same shape
+        // as M-1's re-aim hollowing two cells. Greeting-tolerant, answer-strict.
+        const ruledGreeted = "Hi! I'm Swati's assistant — 50k depends on how many functions you're covering, so she'll want your dates before quoting. I'll get this to her today. How many functions are you planning?";
+        T('OPENER ⑤: the SAME ruled answer wearing a greeting still passes — the arm judges the ANSWER, not the manners',
+          openerFidelity(ruledGreeted, ask50k).quality === 'answered+qualified');
+      }
+
+      // ── M-4 / F-06.31 — THE NAME-PROVENANCE WATCH-ARM, driven BOTH WAYS ──────────
+      {
+        const nenaTurn = { tool_calls: [{ name: 'dear_donna_talk', donna_calls: [
+          { name: 'donna_find', input: { client: 'nena bansal' }, result: 'No record matched. NONE of the records below is that name' },
+          { name: 'donna_lead', input: { name: 'Nena Bansal', stage: 'new' }, result: 'filed' },
+        ] }], reply: 'Filed Nena Bansal as a new lead.' };
+        const lawful = { tool_calls: [{ name: 'dear_donna_talk', donna_calls: [
+          { name: 'donna_lead', input: { name: 'Priya M2 Fresh', stage: 'new' }, result: 'filed' },
+        ] }], reply: 'Filed.' };
+        T('F-06.31 ARM ①: a name in NEITHER the owner\'s words NOR any read this turn is flagged UNSOURCED',
+          nameProvenance(nenaTurn, 'log the enquiry that just came in').unsourced.includes('Nena Bansal'));
+        T('F-06.31 ARM ②: a name the OWNER said this turn is clean — the arm does not cry wolf on a lawful filing',
+          nameProvenance(lawful, 'file Priya M2 Fresh as a new lead').unsourced.length === 0);
+        T('F-06.31 ARM ③: a name a READ returned is clean — sourced by the estate, not the mouth',
+          nameProvenance(lawful, 'file her').unsourced.length === 0 || nameProvenance({ tool_calls: [{ name: 'dear_donna_talk', donna_calls: [ { name: 'donna_find', input: {}, result: '[rec-9] client="Priya M2 Fresh" | stage new' }, { name: 'donna_lead', input: { name: 'Priya M2 Fresh' }, result: 'filed' } ] }], reply: 'ok' }, 'file her').unsourced.length === 0);
+        T('F-06.31 ARM ④: IT OBSERVES, IT NEVER HOLDS — the arm returns a report and no verdict field',
+          !('ok' in nameProvenance(nenaTurn, '')) && Array.isArray(nameProvenance(nenaTurn, '').unsourced));
+      }
       T('NON-VACUOUS ⑤: absenceFidelity finds NOTHING to convict — its two tells are fabricated-specific and presence-over-no-match, neither of which is a false ABSENCE',
         absenceFidelity(specimen, ['ritika', 'arjun']).fabricated === false);
 

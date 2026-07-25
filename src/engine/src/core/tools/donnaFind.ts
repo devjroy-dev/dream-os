@@ -16,6 +16,7 @@ import { supabase } from '../db.js';
 import { vendorIdFromAgent } from '../vendorIdentity.js'; // TDW_04 B0 item 4a: the reverse bridge, mirroring donnaLead's plane
 import type { ToolOutcome, ViewRow } from '../snapshotTypes.js';
 import { arrivalStamp } from '../today.js'; // TDW_06 M-1 (P1 + F-06.27)
+import { rs } from './recordPrimitives.js'; // TDW_06 M-4 (R2-B) — the house money register, one grouped home
 
 // TDW_06 M-1 · P1 — ARRIVAL TIME, RENDERED. THE WHOLE REASON THIS FILE CHANGED.
 //
@@ -141,9 +142,11 @@ function matchedFields(r: FoundRow, tokens: string[]): string[] {
 function describeRow(r: FoundRow, tokens: string[] = []): string {
   const bits: string[] = [];
   if (r.client) bits.push(`client="${r.client}"`);
-  if (r.amount != null) bits.push(`Rs ${r.amount}${r.direction ? ' ' + r.direction : ''}`);
-  if (r.amount_received != null) bits.push(`received Rs ${r.amount_received}`);
-  if (r.amount_pending != null) bits.push(`pending Rs ${r.amount_pending}`);
+  // TDW_06 M-4 (R2-B): the house register — grouped, never a raw digit string. The
+  // model reads these lines and re-voices them; an ungrouped hand teaches an ungrouped mouth.
+  if (r.amount != null) bits.push(`${rs(r.amount)}${r.direction ? ' ' + r.direction : ''}`);
+  if (r.amount_received != null) bits.push(`received ${rs(r.amount_received)}`);
+  if (r.amount_pending != null) bits.push(`pending ${rs(r.amount_pending)}`);
   if (r.payment_status) bits.push(`payment ${r.payment_status}`);
   if (r.date) bits.push(`date ${r.date}`);
   if (r.stage) bits.push(`stage ${r.stage}`);
@@ -190,6 +193,41 @@ function recognitionRow(r: FoundRow): string {
   const tail = r.hidden ? ' [ARCHIVED]' : '';
   return `[${r.id}] ${bits.join(' | ') || '(unnamed record)'}${tail}`;
 }
+
+// ── TDW_06 M-4 · F-06.30 · THE WITHHOLDING TELL (CE-ruled 2026-07-25) ───────────
+// THE DISEASE, settled on the columns by the discriminator SELECT: two cold
+// conversations 54 seconds apart, both dispatching donna_find, different argument
+// shapes. 02:38:57 (conv 09e8f9c0) called `{"stage":"new"}` — and `stage` is NOT a
+// token (:356 builds tokens from client+note ALONE), so tokens.length === 0, so the
+// recognition path fired and recognitionRow dropped money by design. The reply:
+// "all fresh, none with budget stated yet." 02:39:51 (conv 6ff91618) carried client
+// tokens, took the matched path, and spoke a budget in the same estate.
+//
+// The payload's SHAPE hid the money and the payload's WORDS never said so. The
+// framing above tells the model what this list is NOT *by identity* ("none of these
+// is the name you searched") — it never said a FIELD had been withheld. So a designed
+// silence read as the record's emptiness, and a man was told he had no budgets on
+// file while a Rs 4,00,000 lead sat right there.
+//
+// THE CURE IS M-1's P1 PRECEDENT EXACTLY, and it is MECHANICAL — zero soul bytes.
+// P1 made arrival-time legible because a recency-blind payload could not answer a
+// recency ask. This makes the WITHHOLDING legible, because a money-blind payload
+// cannot answer a money ask — and the honest thing a payload can do about a fact it
+// is not carrying is SAY it is not carrying it. A model cannot infer a deliberate
+// omission; it can only read one it is told about.
+//
+// SITED ON BOTH RECOGNITION GATES AND NEITHER MATCHED PATH: :382's zero-match dump
+// and :523's recentsShape main return both wear recognitionRow, so both wear this.
+// A token-MATCHED find still shows budget honestly and is untouched — the tell would
+// be a lie there, because nothing is withheld there.
+const RECOGNITION_WITHHOLDING_TELL =
+  'WHAT THESE LINES DO NOT CARRY: they are recognition only — name, stage, arrival. ' +
+  'Money and phone numbers are deliberately NOT rendered on them. So this list cannot ' +
+  'tell you whether a budget is on file for anyone on it: a missing figure above is ' +
+  'this list withholding it, never the record lacking it. Do not read this list as ' +
+  '"no budgets on file" or "none with a budget stated" — that is a claim about the ' +
+  'cabinet, and this list is not the cabinet. Name a record and look again, or say ' +
+  'plainly that this reach cannot see the figures.';
 
 export async function executeFindTool(
   agentId: string,
@@ -283,7 +321,7 @@ export async function executeFindTool(
         }
         const bits: string[] = [];
         if (l.state) bits.push(`state ${l.state}`);
-        if (l.budget_max != null) bits.push(`budget Rs ${l.budget_max}`);
+        if (l.budget_max != null) bits.push(`budget ${rs(l.budget_max)}`); // TDW_06 M-4 (R2-B)
         if (l.wedding_date) bits.push(`wedding ${l.wedding_date}`);
         if (l.wedding_city) bits.push(l.wedding_city);
         if (l.phone) bits.push(`phone ${l.phone}`);
@@ -464,7 +502,9 @@ export async function executeFindTool(
         `you never read one of them back as the record you were asked about. If the name${termNote ? ` (${tokens.join(' ')})` : ''} ` +
         `is not among these by its own words, it is not on file — say exactly that, and reach for none of ` +
         `these in its place:\n` +
-        recentRows.map((r) => recognitionRow(r)).join('\n') + leadTail + shelfTail + reviewTail,
+        recentRows.map((r) => recognitionRow(r)).join('\n') +
+        `\n${RECOGNITION_WITHHOLDING_TELL}` + // TDW_06 M-4 / F-06.30 — gate 1 of 2
+        leadTail + shelfTail + reviewTail,
     };
   }
 
@@ -519,7 +559,10 @@ export async function executeFindTool(
   // because a match wanted the payload. The tokeniser is correct; the net is not widened.
   const recentsShape = tokens.length === 0;
   const rendered = shown.map((r) => (recentsShape ? recognitionRow(r) : describeRow(r, tokens))).join('\n');
-  return { display: `${header}\n${rendered}${leadTail}${shelfTail}${reviewTail}`, found: shown.map(toViewRow) };
+  // TDW_06 M-4 / F-06.30 — gate 2 of 2. The tell rides ONLY the recognition shape;
+  // a token-matched find carries its figures and must not claim to be hiding them.
+  const withholdingTell = recentsShape ? `\n${RECOGNITION_WITHHOLDING_TELL}` : '';
+  return { display: `${header}\n${rendered}${withholdingTell}${leadTail}${shelfTail}${reviewTail}`, found: shown.map(toViewRow) };
 }
 
 // donna_whatsdue — the records whose follow-up date has arrived (followup_on <= asOf).

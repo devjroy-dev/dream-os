@@ -25,6 +25,7 @@
 // admin_config 0073 routes surface `harvest` to glm-4.7-flash. P5 replaces
 // exactly this one function's body. Cost until then: Haiku (logged in handover).
 'use strict';
+const { rupees } = require('../lib/witnessLine'); // TDW_06 M-4 (R2-B) — the CJS wire's one grouped money home
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { updateLead } = require('../lib/vendor/leads');
@@ -307,7 +308,7 @@ function messageNamesKey(message, key) {
 // ── end F-04.80 cure region ───────────────────────────────────────────────────
 
 function leadSnapshotItem(l) {
-  const val = l.budget_max != null ? ` (Rs ${l.budget_max})` : '';
+  const val = l.budget_max != null ? ` (${rupees(l.budget_max) || `Rs ${l.budget_max}`})` : ''; // TDW_06 M-4 (R2-B)
   const state = l.state ?? 'new';
   return {
     id: `lead:${l.id}`, kind: 'lead',

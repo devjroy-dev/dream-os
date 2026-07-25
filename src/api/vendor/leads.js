@@ -29,6 +29,7 @@
 //   - No schema migration needed.
 
 'use strict';
+const { rupees } = require('../../lib/witnessLine'); // TDW_06 M-4 (R2-B) — the CJS wire's one grouped money home
 
 const express        = require('express');
 const router         = express.Router();
@@ -246,7 +247,7 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
 // create (below), state PATCH, field-edit PATCH, DELETE (removal).
 async function patchLeadSnapshot(req, lead) {
   try {
-    const val = lead.budget_max != null ? ` (Rs ${lead.budget_max})` : '';
+    const val = lead.budget_max != null ? ` (${rupees(lead.budget_max) || `Rs ${lead.budget_max}`})` : ''; // TDW_06 M-4 (R2-B)
     const state = lead.state || 'new';
     await patchNote(req.agentId, {
       display: 'lead snapshot sync (door)',

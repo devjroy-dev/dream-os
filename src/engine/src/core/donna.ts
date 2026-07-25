@@ -19,7 +19,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { supabase } from './db.js';
 import { MODELS, calcCostInr } from './models.js';
 import { DONNA_SOUL } from './donnaSoul.js';
-import { RECORD_TOOLS, executeRecordTool, recordItem } from './tools/recordPrimitives.js'; // recordItem: TDW_04 engine-lane (ST-3a)
+import { RECORD_TOOLS, executeRecordTool, recordItem, rs } from './tools/recordPrimitives.js'; // recordItem: TDW_04 engine-lane (ST-3a) · rs: TDW_06 M-4 (R2-B) the house money register
 import { READ_TOOLS, READ_TOOL_NAMES, executeFindTool, executeWhatsDue } from './tools/donnaFind.js';
 import { BENCH_READ_TOOLS, BENCH_READ_NAMES, executeTally, executeHistory } from './tools/donnaBench.js';
 import { SHELF_READ_TOOLS, SHELF_READ_NAMES, executeShelf, executeBriefRead } from './tools/donnaShelf.js';
@@ -85,7 +85,7 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
       .order('created_at', { ascending: false })
       .limit(12);
     for (const l of leads ?? []) {
-      const val = l.budget_max != null ? ` (Rs ${l.budget_max})` : '';
+      const val = l.budget_max != null ? ` (${rs(l.budget_max)})` : ''; // TDW_06 M-4 (R2-B)
       items.push({
         id: `lead:${l.id}`, kind: 'lead',
         text: `${l.name ?? 'unknown'} — lead, ${l.state ?? 'new'}${val}`,
@@ -163,8 +163,8 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
         id: `money:${m.id}`,
         kind: overdue ? 'payment_due' : 'money',
         text: overdue
-          ? `You haven't confirmed Rs ${m.amount}${who} — was due ${new Date(m.due_at as string).toDateString()}`
-          : `Rs ${m.amount}${who} — ${m.direction === 'in' ? 'due in' : 'due out'}, ${m.status}, ${m.verification_status}`,
+          ? `You haven't confirmed ${rs(m.amount as number)}${who} — was due ${new Date(m.due_at as string).toDateString()}`
+          : `${rs(m.amount as number)}${who} — ${m.direction === 'in' ? 'due in' : 'due out'}, ${m.status}, ${m.verification_status}`,
         status: overdue ? 'overdue' : 'open',
         horizon: m.due_at ?? null, ref_type: 'money_entries', ref_id: m.id,
       });

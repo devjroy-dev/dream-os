@@ -34,7 +34,7 @@ const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { OCCUPYING_KINDS, isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set + the one rule (Q-B3-10, CE-ratified)
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
-const { scrubText } = require('../../lib/vendor/scrub');        // TDW_04 B2 — F-04.38
+const { scrubText, witnessWireScrub } = require('../../lib/vendor/scrub'); // TDW_04 B2 — F-04.38 · witnessWireScrub: TDW_06 M-4 / F-06.36
 const { writeEvent } = require('../../lib/vendor/eventWrite');  // TDW_04 B2 — the ONE writer
 const { blockDates, unblockDates, blockLines, unblockLines } = require('../../lib/vendor/blockHands'); // TDW_04 B2 §1.5
 
@@ -1577,7 +1577,11 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     await persistComposedReply(req, result,
       composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
 
-    let reply = scrubText(result.reply); // CE-18: the firewall covers the reply itself
+    // CE-18: the firewall covers the reply itself. TDW_06 M-4 / F-06.36: and now it
+    // leaves a witness. Wired here as well as on the WhatsApp door because this file's
+    // twin-miss is the exact disease scrub.js's own header (:19-25) exists to refuse —
+    // curing one shape and missing its twin is how the class survives.
+    let reply = witnessWireScrub(req.app.locals.supabase, req.vendor.id, 'pwa', String(result.reply ?? ''), scrubText(result.reply), 'chat.js:reply');
     // F-04.33: this route hand-rolled the invoice line instead of calling the builder —
     // precisely how a seam gets missed. One builder, one scrub, both routes.
     if (documents.length) reply += '\n\n' + invoiceLines(documents);

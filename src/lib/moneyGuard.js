@@ -52,6 +52,7 @@
 //     'budget_total' exactly as ruled. The NORMALISATION is shared; only the
 //     SELECTION is this lane's. The vendor file is untouched.
 'use strict';
+const { rupees } = require('./witnessLine'); // TDW_06 M-4 (R2-B) — the CJS wire's one grouped money home
 
 // Lazily resolved once, then cached. See divergence (1) above.
 let _engineMoney = null;
@@ -123,7 +124,7 @@ function checkBrideMoneyProvenance(name, input, brideWords) {
     return {
       figure, field, hand: name,
       display:
-        `HELD — the figure Rs ${figure} is not in her own words this conversation, ` +
+        `HELD — the figure ${rupees(figure) || `Rs ${figure}`} is not in her own words this conversation, ` +
         `so nothing was written. A figure enters the record because she said it, or ` +
         `it does not enter at all. Ask her to confirm the amount — or hand the ` +
         `instruction back without the figure and the rest files clean.`,
@@ -177,7 +178,7 @@ function claimMoneyWrite(key, now = Date.now()) {
 }
 
 function spentDisplay(figure) {
-  return `HELD — Rs ${figure} was just written for this on the previous turn and ` +
+  return `HELD — ${rupees(figure) || `Rs ${figure}`} was just written for this on the previous turn and ` +
          `that confirmation is spent. Nothing was written twice. If she means a ` +
          `second, separate payment, say so and it files.`;
 }

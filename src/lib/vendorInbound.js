@@ -33,7 +33,7 @@ const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05
 const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
-const { scrubText } = require('./vendor/scrub');                      // BLOCK 06 M-3 / F-06.29 — the persona firewall reaches this lane at last
+const { scrubText, witnessWireScrub } = require('./vendor/scrub');    // BLOCK 06 M-3 / F-06.29 — the firewall reaches this lane · M-4 / F-06.36 — and now it leaves a witness
 
 // ── BLOCK 06 M-0 · F-05.60 CURED (A1, founder-ruled 「 a1 」) ──────────────────
 // THE LINE THIS REPLACES: `inboundMessage: firstWord.startsWith('TDW-') ? 'hi' : body`.
@@ -110,15 +110,25 @@ function stripRoutingToken(rawBody) {
 //
 // EXPORTED so the bench drives the shipped function, never a copy (Q-SP-5) — the
 // stripRoutingToken precedent above, same file, same reason.
-function scrubModelFrame(text, verbatim) {
+// TDW_06 M-4 / F-06.36: `witness` is OPTIONAL and additive — { supabase, vendorId,
+// surface, ctx }. The SPLITTER'S LOGIC BELOW IS BYTE-UNCHANGED; the witness only reads
+// the whole-in/whole-out pair and files a row when the firewall actually caught
+// something. Omit it and this function behaves exactly as M-3 shipped it.
+function scrubModelFrame(text, verbatim, witness = null) {
   if (text == null) return text;
   const s = String(text);
-  const q = verbatim == null ? '' : String(verbatim);
-  if (!q) return scrubText(s);
-  const token = '"' + q + '"';
-  const at = s.lastIndexOf(token);
-  if (at === -1) return scrubText(s);
-  return scrubText(s.slice(0, at)) + token + scrubText(s.slice(at + token.length));
+  const out = (() => {
+    const q = verbatim == null ? '' : String(verbatim);
+    if (!q) return scrubText(s);
+    const token = '"' + q + '"';
+    const at = s.lastIndexOf(token);
+    if (at === -1) return scrubText(s);
+    return scrubText(s.slice(0, at)) + token + scrubText(s.slice(at + token.length));
+  })();
+  if (witness) {
+    witnessWireScrub(witness.supabase, witness.vendorId, witness.surface || 'whatsapp', s, out, witness.ctx || 'scrubModelFrame');
+  }
+  return out;
 }
 
 // ── C5 · THE TURN LOCK, THE ONE THING THIS BRIDE ARC TOUCHES ON THIS FILE ───
@@ -574,7 +584,7 @@ async function _processVendorInbound(inputs, deps) {
             if (result.vendorNotification && vendorUser?.phone) {
               // M-3 R3: the model's frame scrubs, her quoted sentence passes byte-exact.
               // This turn was handed `originalMessage` (:557) — the quote is that value.
-              await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, originalMessage));
+              await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, originalMessage, { supabase, vendorId: interp.matched_vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(disambiguated)' }));
             }
 
             await supabase.from('conversations')
@@ -683,7 +693,7 @@ async function _processVendorInbound(inputs, deps) {
 
           if (result.vendorNotification && vendorUser?.phone) {
             // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:665).
-            await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body));
+            await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: stickyThread.vendors?.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(sticky)' }));
           }
 
           // Refresh sticky window — each interaction extends stickiness
@@ -821,7 +831,7 @@ async function _processVendorInbound(inputs, deps) {
         // `stripRoutingToken(body) || 'hi'` at :794, so THAT is the quote); the fallback
         // is founder-vetoed fixed copy and is left byte-unchanged, never scrubbed.
         const notif = result.vendorNotification
-          ? scrubModelFrame(result.vendorNotification, stripRoutingToken(body) || 'hi')
+          ? scrubModelFrame(result.vendorNotification, stripRoutingToken(body) || 'hi', { supabase, vendorId: matchedByTdw.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(tdw-link)' })
           : `New enquiry via your TDW link from ${phone}. I'm collecting their details now.`;
 
         if (vendorPhone) {
@@ -956,7 +966,7 @@ async function _processVendorInbound(inputs, deps) {
 
         if (result.vendorNotification && vendorUser?.phone) {
           // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:933).
-          await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body));
+          await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: matchedByTdw.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)' }));
         }
 
         await supabase.from('conversations')
@@ -1155,7 +1165,9 @@ async function _processVendorInbound(inputs, deps) {
     // floored (calendarSignals scrubs its own lines at :117/:129/:360/:425/:578/:579).
     // Widening this to the composed `replyText` would put a rewriter over strings the
     // founder's veto owns, to catch a leak that cannot originate there.
-    let replyText = scrubText(result.reply);
+    // TDW_06 M-4 / F-06.36: the same scrub, now with a witness. The string is
+    // unchanged; the ledger stops being blind to the surface that actually bleeds.
+    let replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(result.reply ?? ''), scrubText(result.reply), 'vendorInbound:reply');
     if (invoiceDocs.length) {
       replyText += '\n\n' + invoiceDocs.map((d) =>
         `Invoice ${d.invoice_number}${d.client ? ' for ' + d.client : ''} — sending the PDF now.`

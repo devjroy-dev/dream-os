@@ -286,7 +286,8 @@ t('§6.5 THE SNAPSHOT IS STILL A PROJECTION, and the code says so where it rende
 t('§6.6 W-1 HOLDS — donnaSoul, harveySoul, advisorLens and consultantHarveySoul are 0-line this sitting', () => {
   const guarded = ['src/engine/src/core/donnaSoul.ts', 'src/engine/src/core/harveySoul.ts',
                    'src/engine/src/core/advisorLens.ts', 'src/engine/src/core/consultantHarveySoul.ts'];
-  const changed = execFileSync('git', ['diff', '--name-only', BASE, '--', ...guarded], { cwd: ROOT, encoding: 'utf8' }).trim();
+  // M-4 re-pin (F-06.34's class): the far end is M-1's own seal, not the live tree.
+  const changed = execFileSync('git', ['diff', '--name-only', `${BASE}..ab011c1`, '--', ...guarded], { cwd: ROOT, encoding: 'utf8' }).trim();
   assert.strictEqual(changed, '', `a guarded soul moved without its own ruling: ${changed}`);
 });
 t('§6.7 the riding cells landed — SD-C4\'s adverb is CHECKED, and the recency family is lane-anchored', () => {

@@ -452,14 +452,25 @@ H('§7 — SCOPE: W-1, THE GUARDED FILES, AND THE SQL POSTURE');
 // forbidden outright, and donnaSoul is admitted ONLY as a lossless addition. Post-commit
 // this exception is inert — the diff against HEAD is empty and the cell reads as it
 // always did.
+
+// ── LABELED AMENDMENT · BLOCK 06 M-4 (CE ruling R6-adjacent; F-06.34's CLASS, one
+// ring wider) ────────────────────────────────────────────────────────────────────
+// F-06.34 was cured at M-3 for §6.8 alone: a cell that diffs the WORKING TREE reads
+// one answer before the founder's commit and another after, and reds on every LATER
+// sitting that lawfully touches the same file. The cure (range-pin to this sitting's
+// own seal) was applied to ONE cell; the class had SEVEN. M-4 is the sitting that
+// found out — it opens W-1 by ruling and these cells convicted it of a breach that
+// the CE had authorised. Range-pinned now, so each permanently asserts what ITS OWN
+// sitting did and can never again be moved by a future tree. Count preserved.
+const M0_RANGE = '94598d7..4811c35'; // M-0's own seal range — fixed for good (M-4 re-pin)
 await t('§7.1 W-1 ABSOLUTE — zero soul/prompt/lens bytes (AMENDED M-2: donnaSoul admitted LOSSLESS under the chartered rider)', () => {
   const { execFileSync } = require('child_process');
   const CHARTERED_RIDER = 'src/engine/src/core/donnaSoul.ts'; // CE-71 / M-2, the single enumerated exception
-  const names = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const names = execFileSync('git', ['diff', '--name-only', M0_RANGE], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   const forbidden = names.filter((f) => /donnaSoul|harveySoul|advisorLens|consultantHarveySoul|Prompt|soul/i.test(f) && f !== CHARTERED_RIDER);
   assert.deepStrictEqual(forbidden, [], `soul/prompt surfaces moved: ${forbidden.join(', ')}`);
   if (names.includes(CHARTERED_RIDER)) {
-    const stat = execFileSync('git', ['diff', '--numstat', 'HEAD', '--', CHARTERED_RIDER], { cwd: ROOT, encoding: 'utf8' }).trim();
+    const stat = execFileSync('git', ['diff', '--numstat', M0_RANGE, '--', CHARTERED_RIDER], { cwd: ROOT, encoding: 'utf8' }).trim();
     const deletions = stat ? Number(stat.split(/\s+/)[1]) : 0;
     assert.strictEqual(deletions, 0, `the chartered rider REWROTE the soul instead of adding to it: ${stat}`);
   }
@@ -467,7 +478,8 @@ await t('§7.1 W-1 ABSOLUTE — zero soul/prompt/lens bytes (AMENDED M-2: donnaS
 
 await t('§7.2 the guarded files are 0-line', () => {
   const { execFileSync } = require('child_process');
-  const names = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  // M-4 re-pin (F-06.34's class, 7th cell): M-0's own range, never the live tree.
+  const names = execFileSync('git', ['diff', '--name-only', M0_RANGE], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   for (const g of ['src/lib/vendor/scrub.js', 'src/lib/eventWrite.js', 'src/lib/coupleEventWrite.js', 'src/lib/calendarSignals.js', 'src/api/vendor/leads.js']) {
     assert.ok(!names.includes(g), `${g} was touched`);
   }

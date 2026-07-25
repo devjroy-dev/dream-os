@@ -30,9 +30,10 @@ export function recordItem(row: {
 }): SnapshotItem {
   const bits: string[] = [];
   if (row.client) bits.push(row.client);
-  if (row.amount != null) bits.push(`Rs ${row.amount}${row.direction ? ' ' + row.direction : ''}`);
-  if (row.amount_received != null) bits.push(`received Rs ${row.amount_received}`);
-  if (row.amount_pending != null) bits.push(`pending Rs ${row.amount_pending}`);
+  // TDW_06 M-4 (R2-B): the house register — grouped, never a raw digit string.
+  if (row.amount != null) bits.push(`${rs(row.amount)}${row.direction ? ' ' + row.direction : ''}`);
+  if (row.amount_received != null) bits.push(`received ${rs(row.amount_received)}`);
+  if (row.amount_pending != null) bits.push(`pending ${rs(row.amount_pending)}`);
   if (row.payment_status) bits.push(`payment ${row.payment_status}`);
   if (row.date) bits.push(row.date);
   if (row.stage) bits.push(`stage ${row.stage}`);
@@ -97,6 +98,29 @@ function inr(n: number): string {
   if (s.length <= 3) return s;
   const head = s.slice(0, -3), tail = s.slice(-3);
   return head.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + tail;
+}
+
+// ── TDW_06 M-4 · THE HOUSE MONEY REGISTER (founder-ruled 2026-07-25: 「 forbids
+// both 」 — Rs X,XX,XXX forbids the ₹ glyph AND the ungrouped/k form) ────────────
+// `inr()` above was already the TS engine's Indian-grouping home; it had no door.
+// Every payload site in this engine rendered `Rs ${n}` raw — so the model read
+// `Rs 500000` off its own hands and re-voiced it as `₹500k`. A formatter cannot
+// reach model prose (that is the soul's clause), but it CAN stop handing the model
+// an off-register digit string to copy. This is that door.
+//
+// GLOSS-FREE BY RULING: `moneyWords` keeps its lakh/CRORE gloss — that is an
+// engine-internal reading aid and the capitalised CRORE is a misplaced-zero alarm
+// worth keeping. The VENDOR-facing register is the clean grouped form alone
+// ("Rs 4,00,000", never "Rs 4,00,000 (4 lakh)"). One home, two doors.
+//
+// PER-RUNTIME, no cross-runtime reach invented (CE ruling R2-B): TS engine sites
+// use this; CJS wire sites use `witnessLine.rupees` (src/lib/witnessLine.js:77).
+// The two homes converge on ONE output form and are asserted to agree in the bench.
+export function rs(n: number | null | undefined): string | null {
+  if (n == null) return null;
+  const v = Number(n);
+  if (!Number.isFinite(v)) return null;
+  return `Rs ${inr(v)}`;
 }
 
 // Money spoken back in words — the echo her judgment reads. Crore is CAPITALISED

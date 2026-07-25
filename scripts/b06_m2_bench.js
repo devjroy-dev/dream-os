@@ -226,12 +226,23 @@ const GUARDED = [
   'src/engine/src/core/advisorLens.ts',
   'src/engine/src/core/consultantHarveySoul.ts',
 ];
+
+// ── LABELED AMENDMENT · BLOCK 06 M-4 (CE ruling R6-adjacent; F-06.34's CLASS, one
+// ring wider) ────────────────────────────────────────────────────────────────────
+// F-06.34 was cured at M-3 for §6.8 alone: a cell that diffs the WORKING TREE reads
+// one answer before the founder's commit and another after, and reds on every LATER
+// sitting that lawfully touches the same file. The cure (range-pin to this sitting's
+// own seal) was applied to ONE cell; the class had SEVEN. M-4 is the sitting that
+// found out — it opens W-1 by ruling and these cells convicted it of a breach that
+// the CE had authorised. Range-pinned now, so each permanently asserts what ITS OWN
+// sitting did and can never again be moved by a future tree. Count preserved.
+const M2_SEAL = 'c736a7e'; // M-2's seal — the far end, fixed for good (M-4 re-pin)
 t('§6.1 the guarded soul set is 0-line against the chartered base — W-1 opened for ONE rider and one only', () => {
-  for (const f of GUARDED) assert.strictEqual(read(f), gitShow(BASE, f), `${f} MOVED — W-1 breach`);
+  for (const f of GUARDED) assert.strictEqual(gitShow(M2_SEAL, f), gitShow(BASE, f), `${f} MOVED — W-1 breach`);
 });
 t('§6.2 the donnaSoul delta is purely ADDITIVE — every line at the base survives, in order', () => {
   const before = gitShow(BASE, SOUL).split('\n');
-  const after = read(SOUL).split('\n');
+  const after = gitShow(M2_SEAL, SOUL).split('\n'); // M-4 re-pin: M-2's seal, not the live tree
   let i = 0;
   for (const line of before) {
     const at = after.indexOf(line, i);

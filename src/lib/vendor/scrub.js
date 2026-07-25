@@ -154,14 +154,33 @@ function scrubText(text) {
   // the vendor's wire; that is the speaker, and it is Block 06's (routed there, top
   // shelf, beside F-04.21's head (a)). This only stops the PRODUCT from actively
   // re-aiming his sentences at the vendor.
+  // ── TDW_06 M-4 · F-06.35 — THE CASE GAP (CE-ruled 2026-07-25, shape (a)) ─────
+  // These four patterns carried /g while stripIds (:118-121) carried /gi. The model
+  // writes the form that gets caught; a model writing lowercase writes the form that
+  // does not. The firewall's whole job is to not depend on which case a model chose,
+  // so all four now carry the flag stripIds already had. The charter named two sites
+  // (:163/:164); the vocative pair below is the same gap one layer up and is fixed
+  // with them — a lowercase ", donna." would otherwise survive the vocative collapse
+  // and then be re-aimed by the bare replacement, which is the F-04.27 disease exactly.
+  //
+  // THE SPLITTER'S LAW IS UNTOUCHED, and structurally so: scrubModelFrame
+  // (vendorInbound.js:113-122) locates her quoted verbatim and calls this function on
+  // the FRAME HALVES ONLY, concatenating her span back byte-exact. Her sentence never
+  // enters scrubText, so no flag here can reach it. A lowercase `donna` in HER words
+  // still passes — benched both ways, not hoped.
+  //
+  // DISCLOSED CONSEQUENCE of the ruled shape (a), fixed replacement: a mid-sentence
+  // lowercase "donna" now renders as capitalised "Operator". The alternative
+  // (case-preserving replacement) was the rejected fork; a slightly odd capital in a
+  // model's own frame is cheaper than a persona name reaching the vendor.
   s = s
     // ", Donna." / ", Donna —" / ", Donna," / ", Donna?" / ", Donna" at end
-    .replace(/,\s*Donna\b(?=\s*[.,!?;:—–]|\s*$)/g, '')
+    .replace(/,\s*Donna\b(?=\s*[.,!?;:—–]|\s*$)/gi, '')
     // sentence-initial "Donna, pull …" -> "Pull …"
-    .replace(/(^|[.!?—–]\s+)Donna,\s*([a-z])/g, (_m, pre, ch) => pre + ch.toUpperCase());
+    .replace(/(^|[.!?—–]\s+)Donna,\s*([a-z])/gi, (_m, pre, ch) => pre + ch.toUpperCase());
   s = s
-    .replace(/\bDonna\b/g, 'Operator')
-    .replace(/\bHarvey\b/g, 'Victor');
+    .replace(/\bDonna\b/gi, 'Operator')
+    .replace(/\bHarvey\b/gi, 'Victor');
   // F-06.9 (CE-ruled 2026-07-18): the id floor runs LAST, after the persona firewall, so
   // no raw record/lead id can ride outward prose. Under the soul, never instead of it.
   return stripIds(s);
@@ -208,6 +227,35 @@ function scrubForStorage(supabase, vendorId, surface, value, ctx, field) {
   return clean;
 }
 
+// ── TDW_06 M-4 · F-06.36 — THE SILENT WIRE SCRUB (CE-ruled 2026-07-25, shape (b)) ──
+// M-3 wired scrubText to the live vendor WhatsApp lane and it CAUGHT FOUR PERSONA
+// LEAKS IN ONE DAY. `persona_scrub_on_write` recorded ZERO of them — because that row
+// is written by scrubForStorage (:196) and no wire site calls it. This file's own
+// header (:16) calls that ledger "Block 06's live evidence feed"; the feed was blind
+// to the surface that was actually bleeding, and the day's proof existed only because
+// someone hand-compared two planes.
+//
+// WHY A SIBLING AND NOT A REUSE (the ruled fork): calling scrubForStorage at a send
+// site would file a row whose action says `on_write` about a plane that is not a
+// write. That is a small lie in the one artifact that exists because a silent fix was
+// refused (:183-188). Two planes, two names, one feed — a reader can now ask "was this
+// caught before storage or before the wire?" and the column answers.
+//
+// FAIL-SAFE, like its sibling: logActivity never blocks (snapshot.js:112-141), the
+// witness never changes the returned string, and a missing supabase/vendorId simply
+// skips the row. A reply must never fail because a ledger row didn't land.
+function witnessWireScrub(supabase, vendorId, surface, raw, clean, ctx) {
+  if (clean === raw) return clean;              // nothing caught, nothing to witness
+  if (!supabase || !vendorId) return clean;     // no plane to write to — never throw
+  logActivity(supabase, {
+    vendorId,
+    surface,
+    action:   'persona_scrub_on_wire',
+    summary:  `${ctx}: internal persona name scrubbed at the wire — model produced "${String(raw).slice(0, 140)}"`,
+  }).catch(() => {});
+  return clean;
+}
+
 // ── COVERAGE MAP ───────────────────────────────────────────────────────────
 // Published per the protocol candidate F-04.33 created and B2 is the first sitting
 // to honour with a firewall in its charter: "any sitting that touches a firewall
@@ -251,4 +299,4 @@ function scrubForStorage(supabase, vendorId, surface, value, ctx, field) {
 //     SURFACE_TRUTH_AUDIT §3.5): it is the turn log and the trail 06 exists to
 //     read. Rewriting it would destroy the record of the defect.
 
-module.exports = { scrubText, scrubForStorage };
+module.exports = { scrubText, scrubForStorage, witnessWireScrub }; // witnessWireScrub: TDW_06 M-4 / F-06.36

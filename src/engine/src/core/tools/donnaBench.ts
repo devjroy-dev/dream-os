@@ -19,6 +19,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '../db.js';
 import type { ToolOutcome, ViewRow } from '../snapshotTypes.js';
 import { arrivalStamp } from '../today.js'; // TDW_06 M-1 (P1 + F-06.27): the estate's ONE arrival derivation
+import { rs } from './recordPrimitives.js'; // TDW_06 M-4 (R2-B) — the house money register, one grouped home
 
 // TDW_06 M-1. THE ZONE, AND WHY IT IS A CONSTANT HERE AND NOT THE OWNER'S FIELD.
 // loop.ts:384 renders the clock from `agent.timezone` because the loop already holds
@@ -132,16 +133,17 @@ export async function executeTally(agentId: string, input: Record<string, unknow
 
   const lines: string[] = [];
   lines.push(`TALLY (${slice}) — computed over ${rows.length} record${rows.length === 1 ? '' : 's'}:`);
-  lines.push(`  money in: Rs ${sumIn} · money out: Rs ${sumOut} · received: Rs ${sumReceived} · pending: Rs ${sumPending}`);
+  // TDW_06 M-4 (R2-B): the house register on every totals line too.
+  lines.push(`  money in: ${rs(sumIn)} · money out: ${rs(sumOut)} · received: ${rs(sumReceived)} · pending: ${rs(sumPending)}`);
   if (withoutAmount > 0) lines.push(`  note: ${withoutAmount} record${withoutAmount === 1 ? '' : 's'} in this slice carry no amount — counted above, excluded from money totals.`);
   if (rows.length >= TALLY_FETCH_LIMIT) lines.push(`  note: computation capped at ${TALLY_FETCH_LIMIT} rows — narrow the slice for an exact total.`);
   const listed = rows.slice(0, TALLY_LIST_LIMIT);
   for (const r of listed) {
     const bits: string[] = [];
     if (r.client) bits.push(r.client);
-    if (r.amount != null) bits.push(`Rs ${r.amount}${r.direction ? ' ' + r.direction : ''}`);
-    if (r.amount_received != null) bits.push(`recv Rs ${r.amount_received}`);
-    if (r.amount_pending != null) bits.push(`pend Rs ${r.amount_pending}`);
+    if (r.amount != null) bits.push(`${rs(r.amount)}${r.direction ? ' ' + r.direction : ''}`);
+    if (r.amount_received != null) bits.push(`recv ${rs(r.amount_received)}`);
+    if (r.amount_pending != null) bits.push(`pend ${rs(r.amount_pending)}`);
     if (r.date) bits.push(r.date);
     if (r.hidden) bits.push('[ARCHIVED]');
     lines.push(`  - ${r.id} — ${bits.join(' · ') || 'record'}`);
@@ -180,9 +182,9 @@ export async function executeHistory(agentId: string, input: Record<string, unkn
   lines.push(`BINDER ${r.id}${r.hidden ? ' [ARCHIVED]' : ''} — the story as it stands:`);
   const cells: string[] = [];
   if (r.client) cells.push(`client "${r.client}"`);
-  if (r.amount != null) cells.push(`Rs ${r.amount}${r.direction ? ' ' + r.direction : ''}`);
-  if (r.amount_received != null) cells.push(`received Rs ${r.amount_received}`);
-  if (r.amount_pending != null) cells.push(`pending Rs ${r.amount_pending}`);
+  if (r.amount != null) cells.push(`${rs(r.amount)}${r.direction ? ' ' + r.direction : ''}`);
+  if (r.amount_received != null) cells.push(`received ${rs(r.amount_received)}`);
+  if (r.amount_pending != null) cells.push(`pending ${rs(r.amount_pending)}`);
   if (r.payment_status) cells.push(`payment ${r.payment_status}`);
   if (r.date) cells.push(`date ${r.date}`);
   if (r.stage) cells.push(`stage ${r.stage}`);

@@ -22,7 +22,7 @@
 // reads): a caller that cannot supply the thread's vendor words cannot vouch for a
 // figure — the hold fires. loop.ts assembles and supplies the corpus every turn;
 // the floors bench asserts the seam through the REAL runDonnaTurn.
-import { parseMoney } from './tools/recordPrimitives.js';
+import { parseMoney, rs } from './tools/recordPrimitives.js'; // rs: TDW_06 M-4 (R2-B)
 
 // The money-bearing WRITE hands and their rupee fields — enumerated from the tool
 // schemas at this HEAD (recordPrimitives.ts, donnaLead.ts), never guessed:
@@ -94,7 +94,7 @@ export function checkMoneyProvenance(
       figure,
       field,
       display:
-        `HELD — the figure Rs ${figure} is not in the owner's words this conversation, ` +
+        `HELD — the figure ${rs(figure)} is not in the owner's words this conversation, ` +
         `so nothing was written. A figure enters the record because the owner said it, ` +
         `or it does not enter at all. Ask him to confirm the amount — or hand the ` +
         `instruction back without the figure and the rest files clean.`,

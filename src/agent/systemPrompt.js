@@ -1,3 +1,42 @@
+// ╔════════════════════════════════════════════════════════════════════════════╗
+// ║  F-06.37 — THIS WHOLE FILE HAS ZERO READERS. DEFUSED ISLAND. Label only.    ║
+// ╚════════════════════════════════════════════════════════════════════════════╝
+//
+// FILED AND LABELED at TDW_06 M-4 (CE-ruled 2026-07-25, R8). Both exports are dead:
+// `STATIC_SYSTEM_PROMPT` and `buildDynamicContext` have exactly ONE importer,
+// `src/agent/engine.js:5`, and engine.js NEVER USES EITHER BINDING — verified by
+// command at 72b0418 (`grep -n 'STATIC_SYSTEM_PROMPT\|buildDynamicContext'
+// src/agent/engine.js` returns the import line and nothing else). engine.js exports
+// `{ runCoupleAgenticTurn }` alone.
+//
+// HOW IT DIED: the same act that created F-05.56's island. Arc M5 deleted
+// `runAgenticTurn` (the JS vendor loop) as an orphan; this file was ITS prompt. M5's
+// census walked the orphan and its classifier; F-05.56 walked one ring out to
+// `handleOnboarding`/`executeTool` inside engine.js. Nobody walked to the SEPARATE
+// FILE the orphan was the last reader of. So ~400 more lines went dark and, unlike
+// the island inside engine.js, carried no warning at all.
+//
+// WHY THE LABEL MATTERS TO A READER WHO IS NOT LOOKING FOR IT: this file is where a
+// maintainer would naturally come to learn how the estate frames MONEY to a couple —
+// :159-161's "₹4 lakh" examples and :378's QUOTE FRAMING block. Both are corpses,
+// and both are now off-register under the house money law founder-ruled at M-4
+// (「 forbids both 」 — Rs, grouped, never the glyph). Reading them as live guidance
+// would teach the wrong register from a file that cannot execute. They are LEFT
+// BYTE-UNCHANGED here rather than quietly corrected, because correcting dead copy
+// manufactures a false impression that it runs.
+//
+// ITS ONLY LIVE COLLABORATOR, per-EXPORT: `categoryFraming.framingFor()` (:283) dies
+// with this file — its sole caller is here. `normaliseCategory` and `offeringNoun`
+// from that SAME module are very much alive (12 callers). Liveness is per export,
+// never per file; do not read "categoryFraming is dead" out of this note.
+//
+// DELETION IS NOT M-4's. It is homed to F-05.56's own unhurried deletion ruling as
+// its sibling — whoever takes that one takes this one, `classifier.js`, and
+// engine.js:477-1569 together, in one ruled act. REVIVAL POINTER: whoever revives the
+// JS vendor wire needs `runAgenticTurn` back from history
+// (`git show a80dac8^:src/agent/engine.js`) and will need this file waiting, which is
+// why it is kept whole rather than gutted.
+//
 // systemPrompt.js — the agent's instructions and tone
 // Session 4: teaches agent to recognise and capture enquiries as leads
 // Session 8.2: split into STATIC_SYSTEM_PROMPT (cacheable) + buildDynamicContext()
