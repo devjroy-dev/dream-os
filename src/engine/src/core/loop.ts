@@ -15,7 +15,7 @@ import { supabase } from './db.js';
 import {
   MODELS, startModelForTier, canEscalate, calcCostInr, modelLabel, type Tier,
 } from './models.js';
-import { HARVEY_SOUL, PRODUCTION_WEAVE } from './harveySoul.js';
+import { HARVEY_SOUL, PRODUCTION_WEAVE, NO_MACHINERY_LAW } from './harveySoul.js';
 import { CONSULTANT_HARVEY_SOUL } from './consultantHarveySoul.js';
 import { ADVISOR_LENS } from './advisorLens.js';
 import { ESCALATE_TOOL } from './tools/donnaLead.js';
@@ -374,9 +374,41 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // pre-P6 prefix, so twenty-four of twenty-five fields see NO cache invalidation. A
   // planner account pays exactly one prefix re-warm (~Rs 0.93 over a cached read, once
   // per 5-minute window, until traffic re-warms it).
+  // TDW_06 F-06.58 (CE-ruled 2026-07-27): NO_MACHINERY_LAW is composed for EVERY VENDOR-
+  // BUSINESS ROOM, category-independently — that is the whole cure. (Consult is the one
+  // exclusion and it is reasoned at the foot of this comment, not assumed.)
+  // The law used to ride inside PRODUCTION_WEAVE — not by any
+  // ruling, but because `2b89b5c` honoured 「 move it 」 as "terminal in the file" and the
+  // file's last export happened to be the planner-gated constant. The law inherited a
+  // gate it was never ruled under, so every category but 'planning' composed a Victor
+  // with no delegation/curtain prohibition. The gate reads `=== 'planning'` by string
+  // equality, so the exposure was every other category, whatever the ladder holds.
+  //
+  // ORDER IS LOAD-BEARING, not incidental. For a PLANNER this expression is BYTE-
+  // IDENTICAL to the pre-cure prefix: weave-then-law is exactly the concatenation
+  // `2b89b5c` produced, so the planner's cached prefix does not move at all. The LENS
+  // still follows, lawfully — it carries its own machinery clause, floor-asserted
+  // TERMINAL in its paragraph at `b06_m4c` §2.1, so nothing displaces anything.
+  //
+  // CONSULT IS EXCLUDED, AND THE EXCLUSION IS NOT A SECOND GATE — it is the SAME
+  // predicate the soul ternary on the line below already turns on. F-06.58's disease was
+  // a law riding a CATEGORY gate nobody ruled; this is a law declining to enter a
+  // DIFFERENT SOUL. Deviation from the ruling's literal "unconditional", disclosed in the
+  // handover with its evidence, ratify-or-reverse the chair's:
+  //   `consultantHarveySoul.ts:6` — "NO DONNA. He has no operator, no back office, no
+  //   records, no books." · `:21` — "NO NAMED INTERNAL CAST. No Donna, no named partner."
+  //   · `:37` — his character IS the solitude: "you work alone… Overhead breeds
+  //   compromise… Your isolation is not loneliness — it is armor."
+  // The law's own bytes say "Whatever passes between you and Donna is the two of you at
+  // work behind the curtain." Composed into that room it would not be inert; it would
+  // HAND A NAMED COLLEAGUE to a man whose entire soul is that he has none — a soul
+  // contradiction shipped into a live room, on a file this sitting was never chartered
+  // to touch. The prohibition also protects nothing there: no Donna, no estate, no tools,
+  // so there is no machinery to narrate and no wire to delegate on.
   const isPlannerVoice = !isConsult && args.vendorCategory === 'planning';
   const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL)
     + (isPlannerVoice ? PRODUCTION_WEAVE : '')
+    + (isConsult ? '' : NO_MACHINERY_LAW)
     + (isAdvisor ? ADVISOR_LENS : '') + fieldBlock;
   // The clock: today's date, in the owner's timezone, in the DYNAMIC (never-cached)
   // block — it changes daily and must never be cached stale. Reaches Harvey here;

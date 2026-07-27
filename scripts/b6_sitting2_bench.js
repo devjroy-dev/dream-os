@@ -219,12 +219,35 @@ sec('5. R-B6-13 — the donna_find word-sweep. The word left the strings; the na
   const codeOnly = src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
   ok(!/handle/i.test(codeOnly),
      '*** ZERO "handle" outside comments *** — the second teacher of F-04.66\'s word is swept (engine-side)');
-  ok(src.includes('refer to a record by its name as shown'),
-     '   the zero-match prose teaches the NAME-AS-SHOWN in its place (the ruling\'s own words)');
+  // ══ LABELED AMENDMENT — TDW_06 F-06.57 (CE-ruled 2026-07-27 §5.1, cure diagnosed at
+  // ══ the floor re-pin micro CE-80 §F-06.57). TWO CELLS AMENDED IN PLACE. COUNT 22.
+  //
+  // THE DIAGNOSIS, re-derived at this sitting's own tip by testing both predicates
+  // against `git show <c>:src/engine/src/core/tools/donnaFind.ts` — no bench runs needed:
+  //
+  //   1d211ea  GREEN GREEN        5ea0153  RED RED   ← first red, both cells
+  //   5ea0153^ GREEN GREEN        HEAD     RED RED
+  //
+  // BOTH DEAD PREDICATES CAME FROM ONE SENTENCE, at `5ea0153^:donnaFind.ts:412`:
+  //   "refer to a record by its name as shown; here are the most recent records
+  //    (active and archived), "
+  // F-06.14's own chartered no-match reframe (CE-25, TDW_06 Sitting III, 2026-07-19)
+  // rewrote that sentence whole — "records" became "binders" and the framing became the
+  // recognition-not-results paragraph the Sana specimen earned. The cells asserted the
+  // PRE-reframe sentences VERBATIM and the sitting that rewrote them never amended them.
+  // RED FOR EIGHT DAYS across CE-25 → CE-79, undisclosed in every floor record — the
+  // exact class the floor re-pin micro exists to kill, one arc older than that micro.
+  //
+  // THE AMENDMENT: assert the PROPERTY, never the wording. The living prose is at
+  // `donnaFind.ts:515-521`. A cell pinned to a sentence agrees with that sentence's next
+  // rewrite; a cell pinned to the property survives every lawful re-authoring, which is
+  // the estate's standing bench law (LD-5: benches assert behaviour, never wording).
+  ok(/by its own words, it is not on file/.test(src) && /recognise one whose name may/.test(src),
+     '   the zero-match prose teaches RECOGNITION-BY-ITS-OWN-WORDS in the handle\'s place (F-06.14\'s reframe, the property not the sentence)');
   ok(!src.includes('The handle you searched'),
      '   the old sentence is gone verbatim');
-  ok(/most recent records \(active and archived\)/.test(src),
-     '   the recovery fallback itself is untouched — the sweep changed the WORD, not the mechanism (the dump-size question is 06\'s, recorded not acted)');
+  ok(/most recent binders \(active and archived\)/.test(src),
+     '   the recovery fallback itself is untouched — the reframe changed the WORDS, not the mechanism (the dump-size question is 06\'s, recorded not acted)');
 }
 
 // ─────────────────────────────────────────────────────────────────────────

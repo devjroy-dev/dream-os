@@ -205,6 +205,46 @@ Currency is always "Rs", never the symbol. Plain Indian English. No filler, no "
 // what this must never become: a completion narrated ahead of the result that earns it.
 export const PRODUCTION_WEAVE = `
 
-A wedding is a production, and a production runs on people. You read a roster the way you read a P&L: who is on what, who has said yes, and who has said no and is still standing on the call sheet anyway — because that last one is a hole nobody has noticed yet. A gap nine days out is not the ninth day's problem, it is today's; the good ones are already booked by then. So you say it once, plainly, with the move already in your mouth — the name, the roster, the ask. One nudge, never a checklist. A man who needs a list from you doesn't need you.
+A wedding is a production, and a production runs on people. You read a roster the way you read a P&L: who is on what, who has said yes, and who has said no and is still standing on the call sheet anyway — because that last one is a hole nobody has noticed yet. A gap nine days out is not the ninth day's problem, it is today's; the good ones are already booked by then. So you say it once, plainly, with the move already in your mouth — the name, the roster, the ask. One nudge, never a checklist. A man who needs a list from you doesn't need you.`;
+
+// ── TDW_06 F-06.58 — THE NO-MACHINERY LAW, ITS OWN CONSTANT (CE-ruled 2026-07-27) ──
+//
+// WHY THIS EXPORT EXISTS AT ALL, and it is not a style choice:
+// At `2b89b5c` the founder ruled 「 move it 」 and this cluster was moved TERMINAL. The
+// move was honoured as terminal IN THE FILE — and the file's last export was
+// `PRODUCTION_WEAVE`, which `loop.ts` appends only when the vendor's category is
+// 'planning'. So a CONSTANT-BOUNDARY CROSSING wore a position move's clothes, and the
+// law inherited a gate nobody ever ruled it under: every category but planning ran
+// without the delegation/curtain prohibition. Filed F-06.58; derived two worlds by
+// command (pre: the cluster greps TRUE in HARVEY_SOUL, weave 549 · post: FALSE, weave
+// 1060 — 509 chars plus its separators, the arithmetic closing to the byte).
+//
+// THE SHAPE RULED, and why the two obvious ones were refused:
+//   · Returning the cluster to HARVEY_SOUL's close would displace "Every reply is simply
+//     the next line in an ongoing relationship." — the voice-run terminal CE-77's
+//     founder-vetoed revert restored and `b06_m4c` §2.3 guards. No cure of F-06.58 may
+//     be bought with CE-77's revert. Measured, not argued: that shape REDs five cells
+//     across two benches.
+//   · Returning it to its pre-`2b89b5c` MID-PARAGRAPH splice reverses 「 move it 」.
+// So the law gets its own name and its own home. It is neither soul-flavour nor
+// planner-voice; it is a law, and a law addressed by proximity can be re-gated by the
+// next well-meant move. Now it cannot: it is composed UNCONDITIONALLY.
+//
+// THE BYTES ARE THE FOUNDER'S OWN RULED BYTES, TRAVELLING BYTE-IDENTICAL. This is a
+// position/scope act, not an authoring act — W-1 opened for exactly that and no more.
+//
+// COMPOSITION, and the property worth knowing: `loop.ts` composes
+//   SOUL + (planner ? PRODUCTION_WEAVE : '') + NO_MACHINERY_LAW + (advisor ? LENS : '')
+// so for a PLANNER the concatenation is BYTE-IDENTICAL to the pre-cure prefix — the
+// roster then the law, in that order, exactly as `2b89b5c` left it. Nothing about the
+// planner's cached prefix changes. Every OTHER category gains the law it was ruled for.
+// E-1 cost, stated honestly: the 24 non-planner fields DO take one prefix re-warm each,
+// once — the law is +511 chars inside the cached static prefix. That is the price of
+// the cure and it is paid once per account, not per turn.
+//
+// LD-5 holds: character with the reason attached. Not one byte below is a rules-list,
+// and no bench asserts its wording — `b06_f0658_bench` asserts the law's PRESENCE in a
+// composed non-planner prefix and the ruled ORDER, never a sentence.
+export const NO_MACHINERY_LAW = `
 
 The owner hired a counsel, not a control room: he hears what you concluded, never how. No delegating on his wire, no narrating your machinery, no reading him the workings of the back office — narrating the machinery is billing the client for your own filing cabinet, and you would sooner go silent than send him a sentence addressed to anyone but him. Whatever passes between you and Donna is the two of you at work behind the curtain; the sentence that crosses to the owner is yours, spoken to him, finished.`;

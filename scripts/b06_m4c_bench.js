@@ -66,25 +66,60 @@ H('§1 — THE REVERT LANDED ON THE EXACT PRE-M-4 BYTES');
 // The property it guarded (the M-4 register sentence is gone) survives and is asserted
 // exactly; what is retired is the whole-file byte-equality, which would now convict a
 // ruled change. A cell that greens only until the next ruled edit is not a floor.
+// ── LABELED AMENDMENT · F-06.60 — THE INSTRUMENT IS CURED, NOT THE FIXTURE
+// ── (CE-ruled 2026-07-27 §2, at the F-06.58 micro). COUNT PRESERVED (1 cell, 1 cell).
+//
+// THE DEFECT, found by the F-06.58 read-first while measuring forks on scratch trees:
+// this cell's own comment claimed it tested "what the model READS, not where the
+// template happens to close" — AND THAT IS NOT WHAT IT ASSERTED. The old normaliser
+// split the WHOLE FILE on sentence boundaries `(?<=[.!?])\s+` and stripped `` `; ``
+// only at token-end. A constant boundary sits mid-file, and the characters before its
+// whitespace are `` `; `` — not [.!?] — so the split never fires there and the
+// terminator FUSES with everything after it into one token:
+//
+//   "…relationship.`;\n\n// ── TDW_04.5 P6 — THE PRODUCTION-MANAGER WEAVE…"
+//
+// So a cell advertised as position-insensitive REDs on any change to WHERE A CONSTANT
+// CLOSES, even when not one readable byte moved. Both candidate shapes for F-06.58's
+// cure tripped it, and neither had a content delta — that is a false conviction, the
+// same class as F-06.55's law-convicting-the-floor, one instrument deeper.
+//
+// THE CURE, and why it is stronger and not merely quieter: compare the READABLE CONTENT
+// — the BODIES of the exported template literals, which is exactly and only what the
+// model is handed — as a SET. Comments, declarations and terminators are not prompt
+// bytes and never were; they are now excluded BY CONSTRUCTION rather than by a regex
+// that hoped to catch them. The cell is boundary-insensitive because it never reads a
+// boundary. Its teeth are unchanged and proven by §5's own mutation: delete or edit a
+// readable sentence and this still REDs.
 t('§1.1 V-1 harveySoul — M-4\'s register sentence is GONE, and the pre-existing law survived', () => {
   const src = read(HARVEY), pre = gitShow(PRE_M4, HARVEY);
   assert.ok(!/grouped the Indian way/.test(src), 'M-4\'s reverted grouping sentence is still present');
   assert.ok(/Currency is always "Rs", never the symbol\. Plain Indian English\./.test(src),
     'the pre-existing symbol law was destroyed, or the voice run is split again');
-  // Every byte of the pre-M-4 file must still be ACCOUNTED FOR: the only licensed delta is
-  // the no-machinery paragraph's relocation, so the two files must be equal as SETS of
-  // sentences even though they differ in order.
-  // The template terminator (backtick + semicolon) rides whichever sentence ends the
-  // literal, so it moves with the paragraph and would show as a false content delta.
-  // Strip it before comparing: we are testing what the model READS, not where the
-  // template happens to close.
-  const norm = (x) => x
-    .replace(/`;\s*$/, '')
+  // Every readable byte of the pre-M-4 file must still be ACCOUNTED FOR. The licensed
+  // deltas are POSITION ONLY (F-06.52's move, then F-06.58's re-home), so the two files
+  // must be equal as SETS of sentences even though they differ in order and in which
+  // constant holds them.
+  const bodies = (x) => {
+    const out = [];
+    const re = /export const [A-Z_]+ = `/g;
+    let m;
+    while ((m = re.exec(x))) {
+      const start = m.index + m[0].length;
+      const end = x.indexOf('`;', start);
+      if (end > start) out.push(x.slice(start, end));
+    }
+    return out;
+  };
+  const norm = (x) => bodies(x)
+    .join('\n\n')
     .split(/(?<=[.!?])\s+/)
-    .map((l) => l.trim().replace(/`;?$/, ''))
+    .map((l) => l.trim())
     .filter(Boolean).sort().join('\n');
+  assert.ok(bodies(src).length >= 2 && bodies(pre).length >= 2,
+    'the exported-constant extraction found fewer than two literals — re-derive before trusting this cell');
   assert.strictEqual(norm(src), norm(pre),
-    'harveySoul gained or lost content — the position move must MOVE bytes, never edit them');
+    'harveySoul gained or lost READABLE content — a position move must MOVE bytes, never edit them');
 });
 
 for (const [label, f] of [['V-2 donnaSoul', DONNA], ['V-3 advisorLens', LENS]]) {

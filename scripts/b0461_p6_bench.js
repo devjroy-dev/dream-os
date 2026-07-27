@@ -256,6 +256,7 @@ sec('8. THE VOICE GATE — the weave reaches Victor, and only a planner');
   // through scrubText before shipping (guardrail 4). The soul can be echoed, so it counts.
   const { scrubText } = require(path.join(ROOT, 'src/lib/vendor/scrub.js'));
   const weave = soulSrc.match(/export const PRODUCTION_WEAVE = `([\s\S]*?)`;/)[1];
+  const law   = soulSrc.match(/export const NO_MACHINERY_LAW = `([\s\S]*?)`;/)[1];
   // ══ LABELED AMENDMENT — TDW_06 FLOOR RE-PIN MICRO (F-06.56, CE-ruled 2026-07-27 §5).
   // ══ TWO CELLS AMENDED IN PLACE. COUNT PRESERVED.
   //
@@ -283,9 +284,44 @@ sec('8. THE VOICE GATE — the weave reaches Victor, and only a planner');
   // ≈ ~130 tokens, and the weave sits inside the cached static prefix, so the marginal
   // cost is cache-stable and negligible. Raised to 1200 with headroom, not removed —
   // an unbounded soul constant is how a static prefix stops being cheap.
-  ok(!/Donna/.test(scrubText(weave)),
-     'the FIREWALL clears the weave — no persona name survives to the vendor wire (F-06.52 two-layer doctrine)');
-  ok(weave.length <= 1200, `the weave is within spec §P6's cap, raised to 1200 at 「 move it 」 (${weave.length})`);
+  //
+  // ══ LABELED AMENDMENT — TDW_06 F-06.58 MICRO (CE-ruled 2026-07-27 §4).
+  // ══ ONE CELL RE-AIMED, ONE CELL ADDED. COUNT 24 → 25.
+  //
+  // WHAT MOVED, AND WHY THE RE-AIM ABOVE WOULD OTHERWISE HAVE GONE VACUOUS: F-06.58
+  // found that `2b89b5c`'s 「 move it 」 crossed a CONSTANT BOUNDARY — the no-machinery
+  // law landed inside this planner-gated weave and so ran for one category out of the
+  // ladder. The cure re-homes those exact 509 bytes to their own unconditional export,
+  // `NO_MACHINERY_LAW`. The weave returns to its pre-`2b89b5c` bytes (549) and no longer
+  // contains the word "Donna" at all — which would leave the wire assertion above
+  // matching a string that can no longer fail it. THAT IS F-06.54's OWN FINDING ONE ARC
+  // LATER: "a negative that cannot match is not a floor; it is a green with nothing
+  // behind it." So:
+  //
+  // CELL 1 — THE WIRE ASSERTION FOLLOWS THE DONNA-BEARING STRING. It was never about the
+  // weave; it was about whatever soul constant names the persona inside its own law. That
+  // is now `NO_MACHINERY_LAW`, so the firewall is asserted THERE. `/Donna/` case-exact
+  // BY RULING, carried forward unchanged: F-06.35's lowercase gap rides its own cure
+  // elsewhere and a `/i` here would quietly become that finding's bench and mask it.
+  //
+  // CELL 2, NEW — THE PLANNER VOICE MUST NOT NAME HER AT ALL, asserted on RAW SOURCE.
+  // The weave is roster talk; it has no law inside it that needs to name what it forbids,
+  // so the two-layer doctrine's licence (soul may name the persona INSIDE its own law)
+  // does not extend here. `/Donna/i` IS correct in this cell and does not mask F-06.35,
+  // because it asserts SOURCE CONTENT — what the weave says — never scrub BEHAVIOUR.
+  // The two cells now judge two different things: one the firewall, one the author.
+  ok(!/Donna/.test(scrubText(law)),
+     'the FIREWALL clears the law — no persona name survives to the vendor wire (F-06.52 two-layer doctrine)');
+  ok(!/Donna/i.test(weave),
+     'the PLANNER VOICE names no persona in raw source — roster talk carries no law that must name her');
+  // THE CAP, ANNOTATED — NOT RE-ASKED. 1200 was ruled at the floor re-pin micro (F-06.56)
+  // and confirmed by the founder 「 ok 」; that number STANDS and this sitting does not
+  // reopen a cost number he already signed. What changed underneath it: the +511 chars
+  // the cap was raised to accommodate have LEFT this constant for `NO_MACHINERY_LAW`, so
+  // the weave is back to 549 and the headroom is now large. Stated rather than lowered —
+  // re-tightening a founder-confirmed cap without asking is the same discourtesy as
+  // raising one without asking, in the other direction.
+  ok(weave.length <= 1200, `the weave is within spec §P6's cap, 1200 founder-confirmed and unchanged; the law's 511 chars left this constant at F-06.58 (${weave.length})`);
   ok(!/\bDone\b/.test(weave) && !/\bfiled\b/i.test(weave),
      'the weave teaches no completion vocabulary — F-04.100/F-04.102 as anti-spec');
 }
