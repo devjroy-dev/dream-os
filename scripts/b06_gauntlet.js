@@ -862,6 +862,95 @@ function recencyFidelity(r, askText) {
     why: `NO-READ ABSENCE: a recency ask answered with a "nothing new"-class claim while NOT ONE of ${hands.length} hand result(s) carried arrival-dated evidence — the ORDERING was read as a clock (F-06.22; the 19:50:30 specimen)${second}` };
 }
 
+// ── §B0 THE CODEX FIXTURE (TDW_06 F-06.68, CE-ruled 2026-07-27) ──────────────
+//
+// WHY THIS EXISTS, and it is the sitting's whole first half. Until this ZIP the desk
+// double served ZERO `domain_handbooks` rows, so `getHandbookFull`/`getHandbookIndex`
+// returned null and `fieldBlock` composed as the EMPTY STRING on every path — live runs
+// included (`runLane` arms this same double at :1289; the require.cache shim at :1444).
+// Consequence, ruled: every S5 verdict ever taken — CE-25's reopening and Evening One's
+// 1-of-3 — was measured on a prompt where ADVISOR_LENS is ~18.6% of the prefix and
+// TERMINAL, against a production prompt where it is ~5.5% with >=70% of the text after
+// it. The rig was not wrong about what it measured; it was measuring a DIFFERENT ROOM.
+//
+// THE INSTRUMENT'S OWN DISCLOSURE WAS THE UNREAD EVIDENCE: [11] below has said since
+// run 2's era that the desk cold write (cw~17,998) is smaller than production's
+// (cw~32,491) "by exactly the absent handbook/SMM codex payload". The estate read that
+// as a COST note for two sittings. It was a SCORING defect.
+//
+// WHAT THIS FIXTURE IS, stated honestly so nobody mistakes it for the Codex:
+//   · SIZE-FAITHFUL, not content-faithful. Lengths are the committed census figures
+//     (CE_FIELD_NOTE_2026-07-18 §3: social_media_management 95,253 · photographer
+//     52,402), hit to the byte, so the POSITION and DILUTION properties F-06.67 is
+//     about are reproduced exactly. The prose is generated, not the real Codex — the
+//     real bodies live only in production and no desk can hold them.
+//   · DETERMINISTIC. No randomness, no clock: the same bytes every run, so a prefix
+//     length is a stable number and a cache window behaves.
+//   · DELIBERATELY DONOR-FREE. Not one rupee figure, phone-shaped digit run, or person
+//     name appears below. A fixture that carried them would hand the model a
+//     fabrication-by-neighbour pool the rig invented (F-04.70's mechanism, manufactured
+//     by the instrument), and every money/absence trap in this file would be scoring
+//     the fixture instead of the model. Disclosed rather than assumed safe.
+const CODEX_TOPICS = [
+  'positioning and the promise you make before anyone asks',
+  'the enquiry funnel, end to end',
+  'portfolio construction and what to leave out',
+  'pricing structure and the anatomy of a quote',
+  'the seasonal calendar and its quiet months',
+  'client communication cadence',
+  'the referral engine and why it is not luck',
+  'reviews, proof and social evidence',
+  'operations: turnaround, handover, and the after-sale',
+  'the platform mechanics that actually move reach',
+  'collaboration with adjacent trades',
+  'scaling past yourself without losing the work',
+  'the discovery call and its failure modes',
+  'contracts, scope and the conversation before the work',
+  'brand voice and consistency across surfaces',
+  'measurement: what to count and what to ignore',
+];
+const CODEX_PARAS = [
+  'The work here is judged less on effort than on legibility. A client cannot evaluate craft they do not understand, so the practitioners who climb are the ones who make their reasoning visible at the moment the decision is being made, not afterwards in a summary nobody reads.',
+  'Most of the ground lost in this area is lost early and quietly. The gap is rarely a skill gap; it is a sequencing gap, where the right move is made two weeks after the window in which it would have mattered. Treat timing as part of the craft rather than a scheduling detail beneath it.',
+  'There is a durable trap in optimising the visible surface while the underlying offer stays vague. Polish applied to an unclear promise makes the confusion look deliberate. Settle what is actually being sold, in one sentence, before spending a single hour on presentation.',
+  'The honest benchmark is not the best example in the trade; it is the median example the client has already seen this week. Everything is read comparatively, and the comparison set is whatever happened to cross their feed, not a curated shortlist of the field.',
+  'Consistency outperforms intensity over any horizon longer than a season. A modest cadence held for a year beats a burst held for a month, and the compounding is real rather than motivational: the audience learns when to expect you and stops having to be recaptured each time.',
+  'When something stalls here, the first question is whether the step before it ever completed. Stalls are usually inherited from an upstream ambiguity that was tolerated because it was not yet expensive. Trace backwards before adding anything forward.',
+  'The material advantage available in this area is patience applied structurally: a system that keeps working on a slow week. Motivation is not a system. Write the sequence down, make it survive a bad month, and the good months take care of themselves.',
+  'Do not confuse activity with position. Volume produces motion and occasionally produces momentum, but position is what determines whether the motion compounds. Ask what changes about how you are described if this works, and if nothing changes, it is activity.',
+];
+function mkCodexFixture(field, title, targetChars) {
+  const paras = [];
+  let n = 0;
+  const heads = [];
+  while (true) {
+    n += 1;
+    const topic = CODEX_TOPICS[(n - 1) % CODEX_TOPICS.length];
+    const head = `## \u00a7${n} \u2014 ${topic}`;
+    heads.push(`\u00a7${n} \u2014 ${topic}`);
+    const block = [head];
+    for (let k = 0; k < 4; k++) {
+      block.push(`### ${n}.${k + 1}`);
+      block.push(CODEX_PARAS[(n * 4 + k) % CODEX_PARAS.length]);
+    }
+    paras.push(block.join('\n\n'));
+    const sofar = paras.join('\n\n').length;
+    if (sofar >= targetChars) break;
+    if (n > 4000) break; // structural fuse; the loop is bounded by construction
+  }
+  let full = `# ${title}\n\n${paras.join('\n\n')}`;
+  // Hit the census length EXACTLY: pad with the section separator, or trim the tail.
+  if (full.length > targetChars) full = full.slice(0, targetChars);
+  while (full.length < targetChars) full += '.';
+  const index_md = heads.map((h) => `- ${h}`).join('\n');
+  return { field, title, index_md, full_md: full };
+}
+const CODEX_SEED = [
+  // Census lengths, CE_FIELD_NOTE_2026-07-18 \u00a73 \u2014 quoted, not invented.
+  mkCodexFixture('social_media_management', "The Operator's Codex", 95253),
+  mkCodexFixture('photographer', 'THE FRAME', 52402),
+].map((r, i) => ({ id: `hb-${i + 1}`, agent_id: null, body: null, ...r }));
+
 // ── §B the desk database (stateful per lane; captures are the verdicts' rows) ─
 function mkLaneDb() {
   const store = {
@@ -871,6 +960,9 @@ function mkLaneDb() {
     // lane behaviour is byte-identical; rig section [9] populates it to assert the
     // M-4 recognition-line floor through the REAL compiled donna_find).
     records: [],
+    // F-06.68: the Codex shelf, at production scale. Shared read-only rows (no lane
+    // ever writes domain_handbooks), so one seed serves every lane byte-identically.
+    handbooks: CODEX_SEED,
     captures: { leads_insert: [], leads_update: [], events: [], usage: [] },
     ids: 0,
   };
@@ -899,7 +991,12 @@ function mkLaneDb() {
     const t = q._t, op = q._op, mode = q._mode, body = q._body, f = q._f;
     const filt = (rows) => { let r = rows; for (const fn of f) r = r.filter(fn); if (q._orderCol) { r = [...r].sort((a, b) => String(a[q._orderCol]).localeCompare(String(b[q._orderCol]))); if (q._orderDesc) r.reverse(); } if (q._limit) r = r.slice(0, q._limit); return r; };
     if (op === 'select') {
-      if (t === 'agents') return one(mode, { id: AGENT, user_id: OWNER_USER, tier: 'entry', display_name: 'Gauntlet Vendor', profession_preset: null, timezone: 'Asia/Kolkata', mode: 'advisory', victor_mode: curVictorMode });
+      // F-06.68: `profession_preset` was NULL, so `resolveField` returned null, no trade
+      // index composed, and `if (handbook)` at loop.ts:477/:481 never armed the handbook
+      // hand — the rig's advisor room held ONE tool where production holds TWO (finding
+      // delta). 'photographer' is the CE-81-ruled non-planner fixture and resolves to a
+      // censused Codex field, so the seat now composes the room production ships.
+      if (t === 'agents') return one(mode, { id: AGENT, user_id: OWNER_USER, tier: 'entry', display_name: 'Gauntlet Vendor', profession_preset: 'photographer', timezone: 'Asia/Kolkata', mode: 'advisory', victor_mode: curVictorMode });
       if (t === 'users') return one(mode, filt([{ id: OWNER_USER, auth_user_id: AUTH_USER }])[0] ?? null);
       if (t === 'vendors') return { data: filt([{ id: VENDOR_ID, user_id: OWNER_USER }]), error: null };
       if (t === 'conversations') return one(mode, filt(store.conversations)[0] ?? null);
@@ -909,6 +1006,9 @@ function mkLaneDb() {
       if (t === 'leads') return { data: filt(store.leads), error: null };
       if (t === 'records') return mode === 'single' ? recSingle(mode, filt(store.records)[0] ?? null) : { data: filt(store.records), error: null }; // V5: the binder plane (empty unless a rig section arms it); .single() now models PGRST116 on 0 rows
       if (t === 'events') return { data: filt(store.events), error: null };
+      // F-06.68: the Codex shelf. handbook.ts reads it with .eq('field', …).maybeSingle();
+      // [11] reads it bare. Both shapes served, never a throw on a missing field.
+      if (t === 'domain_handbooks') return mode ? one(mode, filt(store.handbooks)[0] ?? null) : { data: filt(store.handbooks), error: null };
       return mode ? { data: null, error: null } : { data: [], error: null };
     }
     if (op === 'insert') {
@@ -1264,6 +1364,18 @@ function lensHead() {
 function systemText(params) {
   const sys = params && params.system;
   return Array.isArray(sys) ? sys.map((b) => (b && b.text) || '').join('') : String(sys || '');
+}
+// F-06.67: the CACHED block alone — `loop.ts:438` marks the static prefix
+// cache_control:ephemeral and pushes the dynamic tail as a second, unmarked block. The
+// lens's position claim is about THE PREFIX, so a helper that reads the whole `system`
+// (systemText, above) cannot witness it: the dynamic tail always follows. This one
+// returns the marked block, or '' if the shape ever changes — never a silent fallback
+// to the joined text, which would green the position cell vacuously.
+function staticText(params) {
+  const sys = params && params.system;
+  if (!Array.isArray(sys)) return '';
+  const cached = sys.find((b) => b && b.cache_control && b.cache_control.type === 'ephemeral');
+  return (cached && cached.text) || '';
 }
 function wrapLensWitness(transport, scId) {
   let reported = false;
@@ -1853,16 +1965,30 @@ function scriptedTransports(profile) {
     T('…and the honest lane carries ZERO crashes (the hardening does not manufacture them)', honest.results.every((r) => !r.crashed));
     T('each CRASHED record carries the thrown stack top-3 frames (item 1a — run-5 stacks pin the engine line)', crashedIds.every((id) => { const r = crashLane.results.find((x) => x.sc.id === id); return r && Array.isArray(r.stackTop) && r.stackTop.length > 0 && r.stackTop.every((f) => /^at /.test(f)); }));
 
-    console.log('\n  [11] THE HANDBOOKS DOUBLE (CE relay item 1, the one-line check owed from run 2\'s era):');
+    console.log('\n  [11] THE HANDBOOKS DOUBLE — ⚑ LABELED AMENDMENT (F-06.68, CE-ruled 2026-07-27).');
+    console.log('       COUNT MOVES 1 -> 3, disclosed. THE OLD CELL ASSERTED THE DEFECT AS A PROPERTY:');
+    console.log('       it greened on "the desk db double serves ZERO domain_handbooks rows" and printed,');
+    console.log('       directly beneath itself, that the desk cold write (cw~17,998) was smaller than');
+    console.log('       production (cw~32,491) "by exactly the absent handbook/SMM codex payload". That');
+    console.log('       sentence was read as a COST disclosure for two sittings. It was a SCORING defect:');
+    console.log('       the prefix it described is the prefix every S5 verdict was measured on, and in it');
+    console.log('       the advisor lens is ~18.6% and TERMINAL where production ships ~5.5% with >=70%');
+    console.log('       of the text after it. The instrument could not compose the room it scored.');
+    console.log('       Re-aimed to the cured property; the cw arithmetic survives as the reason, not the finding:');
     {
       const { db } = mkLaneDb();
       const hb = await db.from('domain_handbooks').select('id, agent_id, field, body');
-      T('the desk db double serves ZERO domain_handbooks rows (the codex shelf is absent under the double)', Array.isArray(hb.data) ? hb.data.length === 0 : (hb.data == null));
-      console.log('       DISCLOSURE: with no handbook rows under the double, the desk cold-cache write');
-      console.log('       (cw≈17,998) is SMALLER than production (cw≈32,491) by exactly the absent');
-      console.log('       handbook/SMM codex payload — the cw gap is a RIG-WORLD disclosure, not a');
-      console.log('       defect (the trap surface is Donna\'s full hand + the dispatch line, which the');
-      console.log('       double serves whole; the codex shelf lives only in production).');
+      T('the desk db double SERVES the Codex shelf — the seeded handbook rows are readable (the absence that made the rig unfaithful is gone)', Array.isArray(hb.data) && hb.data.length === 2);
+      const { getHandbookFull, getHandbookIndex, resolveField } = require(path.join(ROOT, 'src/engine/dist/core/handbook.js'));
+      const smm = await getHandbookFull('social_media_management');
+      const trade = await getHandbookIndex(resolveField('photographer'));
+      T('…and the REAL compiled handbook.ts reads them: getHandbookFull(SMM) + getHandbookIndex(trade) both return, so loop.ts composes a non-empty fieldBlock', !!(smm && smm.full_md && smm.full_md.length > 90000) && !!(trade && trade.index_md));
+      T('NON-VACUOUS: an UNSEEDED field still returns null — the double did not become a yes-machine that answers every field', (await getHandbookFull('a_field_with_no_codex')) === null);
+      console.log('       DISCLOSURE, kept and re-pointed: the pre-ZIP desk cold write (cw~17,998) vs');
+      console.log('       production (cw~32,491) was the absent Codex payload. Seeded, the desk pays it');
+      console.log('       too — the live run costs MORE per cold window than Evening One did, and that');
+      console.log('       is the price of scoring the right room. Business-lane numbers from earlier');
+      console.log('       evenings are NOT byte-comparable to numbers taken after this ZIP.');
     }
 
     console.log('\n  [12] THE ESSENTIAL FLIP PROPOSAL (CE relay item 1(a)): a Victor-lane FAIL must');
@@ -2085,9 +2211,17 @@ function scriptedTransports(profile) {
       const { ADVISOR_LENS } = require(path.join(ROOT, 'src/engine/dist/core/advisorLens.js'));
       const head = ADVISOR_LENS.trim().slice(0, 80);
       const cap = { advisor: null, business: null };
+      const pre = { advisor: null, business: null }; // F-06.67: the CACHED prefix alone
+      const tools = { advisor: null, business: null }; // finding delta: the room's hands
+      const grab = (bucket, p) => {
+        if (cap[bucket] !== null) return;
+        cap[bucket] = systemText(p);
+        pre[bucket] = staticText(p);
+        tools[bucket] = ((p && p.tools) || []).map((x) => x && x.name).filter(Boolean).sort();
+      };
       const mkCap = (bucket) => ({ provider: 'anthropic',
-        stream: (p) => ({ on() {}, finalMessage: async () => { if (cap[bucket] === null) cap[bucket] = systemText(p); return { content: [{ type: 'text', text: 'Handled.' }], usage: { input_tokens: 10, output_tokens: 5 } }; } }),
-        create: async (p) => { if (cap[bucket] === null) cap[bucket] = systemText(p); return { content: [{ type: 'text', text: 'Handled.' }], usage: { input_tokens: 10, output_tokens: 5 } }; } });
+        stream: (p) => ({ on() {}, finalMessage: async () => { grab(bucket, p); return { content: [{ type: 'text', text: 'Handled.' }], usage: { input_tokens: 10, output_tokens: 5 } }; } }),
+        create: async (p) => { grab(bucket, p); return { content: [{ type: 'text', text: 'Handled.' }], usage: { input_tokens: 10, output_tokens: 5 } }; } });
       { const { db } = mkLaneDb(); engineDb.current = db; curVictorMode = 'advisor';
         await runTurn({ agentId: AGENT, message: "Book Meera's shoot and log her advance.", calendarSnapshot: CAL_SNAPSHOT, tierOverride: 'entry', modelOverride: DEEPSEEK, transport: mkCap('advisor') }); }
       { const { db } = mkLaneDb(); engineDb.current = db; curVictorMode = 'business';
@@ -2096,6 +2230,33 @@ function scriptedTransports(profile) {
       T('the advisor system is in the lens\'s RANGE, not the 87-token unlensed shape (thousands of chars: soul + lens)', cap.advisor !== null && cap.advisor.length > 5000);
       T('NON-VACUOUS / both-ways: the BUSINESS turn did NOT carry the lens (the witness distinguishes seated from unseated)', cap.business !== null && !cap.business.includes(head));
       T('the wrapLensWitness observer is transparent — it forwards create/stream and only reads (the lens byte-check is the seat signal, superseding in=)', typeof wrapLensWitness === 'function' && typeof systemText === 'function');
+
+      // ── F-06.68 · THE RIG NOW COMPOSES THE ROOM IT SCORES ────────────────────
+      // Everything above this line greened for two sittings on a prefix with NO
+      // handbook. These cells are the repair, asserted through the SAME real runTurn.
+      const SMM_TITLE = "The Operator's Codex";
+      const TRADE_TITLE = 'THE FRAME';
+      T('F-06.68 (a) the ADVISOR prefix now carries the whole SMM Codex — the tail that was absent for every S5 verdict ever taken', pre.advisor !== null && pre.advisor.includes(SMM_TITLE) && pre.advisor.length > 100000);
+      T('F-06.68 (b) …and the TRADE Codex index with it (the two-handbook lens production composes)', pre.advisor !== null && pre.advisor.includes(TRADE_TITLE));
+      T('F-06.68 (c) the BUSINESS room composes it too — the repair is not advisor-scoped, so no second divergence is minted', pre.business !== null && pre.business.includes(SMM_TITLE) && pre.business.length > 100000);
+      T('F-06.68 (d) delta CLOSED — the advisor room now holds BOTH hands (handbook + jot), the tool-set production ships', Array.isArray(tools.advisor) && tools.advisor.join(',') === 'dear_donna_handbook,jot_advice');
+      T('F-06.68 (e) …and the business room arms its own handbook hand off the same seeded field (loop.ts:481)', Array.isArray(tools.business) && tools.business.includes('dear_donna_handbook') && tools.business.includes('dear_donna_talk'));
+      T('F-06.68 (f) the fixture is DONOR-FREE by construction — no rupee figure, no phone-shaped digit run anywhere in the seeded Codex bodies', CODEX_SEED.every((r) => !/Rs\s?\d|\u20b9|\b\d{6,}\b/.test(r.full_md + r.index_md)));
+      T('F-06.68 (g) the seed is SIZE-FAITHFUL to the committed census, to the byte (95,253 / 52,402)', CODEX_SEED[0].full_md.length === 95253 && CODEX_SEED[1].full_md.length === 52402);
+
+      // ── F-06.67 · THE LENS IS TERMINAL IN THE PROMPT ─────────────────────────
+      // The cell that could not have been written before (f) and (a): with an EMPTY
+      // fieldBlock the old order and the new order produce the SAME string, so this
+      // assertion was vacuous under the old double and is load-bearing under the new one.
+      const iLens = pre.advisor === null ? -1 : pre.advisor.indexOf(head);
+      const iCodex = pre.advisor === null ? -1 : pre.advisor.indexOf(SMM_TITLE);
+      T('F-06.67 the lens CLOSES the composed advisor prefix — nothing stands after it', pre.advisor !== null && pre.advisor.trimEnd().endsWith(ADVISOR_LENS.trimEnd()));
+      T('F-06.67 NON-VACUOUS: the Codex payload sits BEFORE the lens, so "terminal" is a real ordering and not an empty tail', iCodex >= 0 && iLens > iCodex && iLens > 90000);
+      T('F-06.67 the CRUX is the last paragraph of the prompt, which is what three re-authorings believed and none had', pre.advisor !== null && /the wall between thinking and doing so that neither one is ever done badly — or worse, only pretended\.\s*$/.test(pre.advisor));
+      T('F-06.67 the prefix is still WHOLLY STATIC — the cache law is untouched, nothing dynamic crossed the breakpoint (the dynamic tail is its own unmarked block)', cap.advisor !== null && pre.advisor !== null && cap.advisor.length > pre.advisor.length && !pre.advisor.includes('[Document Shelf'));
+      console.log(`       PREFIX CENSUS (advisor, seeded): ${pre.advisor.length} chars · lens opens at ${iLens} · post-lens tail ${pre.advisor.length - iLens - ADVISOR_LENS.trim().length} chars.`);
+      console.log('       Pre-ZIP the same seat composed ~39,611 chars with a ZERO-char tail. The rate');
+      console.log('       measured there is not comparable to the rate measured here; that is the point.');
     }
 
     console.log('\n  [18] M-2 / F-06.22 — THE NO-READ TELL, driven on the REAL 19:50:30 PAYLOAD.');

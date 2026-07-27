@@ -81,7 +81,14 @@ function compose({ vendorCategory, isConsult = false, isAdvisor = false }) {
   assert.ok(HARVEY_SOUL && PRODUCTION_WEAVE && ADVISOR_LENS && CONSULTANT_HARVEY_SOUL,
     'a soul constant did not extract — re-derive');
   const args = { vendorCategory };
-  const fieldBlock = '\n\n[FIELD BLOCK]';
+  // ── LABELED AMENDMENT · F-06.67 (CE-ruled 2026-07-27, sitting 2). NOT A CELL CHANGE:
+  // the FIXTURE was a 15-char stub, '\n\n[FIELD BLOCK]', and a stub that size cannot
+  // witness an ordering. Production's fieldBlock carries the whole SMM Codex (95,253
+  // chars, CE_FIELD_NOTE §3) plus the trade index; with the stub, a lens sitting before
+  // it and a lens sitting after it look like the same 15-char difference, and §1.4 read
+  // "the field block is not last" as a harmless line of a ruled order for two sittings.
+  // Sized to the census now, so this harness composes at the scale it claims to model.
+  const fieldBlock = '\n\n[FIELD BLOCK]\n' + 'x'.repeat(95253);
   // eslint-disable-next-line no-eval
   const isPlannerVoice = eval(gate);
   // eslint-disable-next-line no-eval
@@ -123,10 +130,20 @@ t('§1.3 the ADVISOR room carries it on both category sides', () => {
   }
 });
 
-t('§1.4 ⚑ THE RULED ORDER — soul, then roster, then law, then lens', () => {
+t('§1.4 ⚑ THE RULED ORDER — soul, then roster, then law, then field, then lens', () => {
   // Position is instruction (CE-77). The law must sit AFTER the roster it governs and
   // BEFORE the lens, which carries its own machinery clause floor-asserted terminal in
   // its own paragraph (b06_m4c §2.1) — so nothing in this order displaces anything.
+  //
+  // ── LABELED AMENDMENT · F-06.67 (CE-ruled 2026-07-27, sitting 2). COUNT PRESERVED
+  // ── (1 cell, 1 cell). THE PROPERTY SURVIVES; ONE LIMB INVERTS, BY RULING.
+  // This cell's last line asserted `iField > iLens` — "the field block is not last" —
+  // and it was RIGHT about the code and WRONG about the prompt. The lens's crux was
+  // re-authored three times, each header recording "maximum recency preserved", while
+  // >=95k chars of Codex composed downstream of it. F-06.67 re-sites the lens TERMINAL
+  // in the composed prefix; the limb inverts to iLens > iField and the sitting's own
+  // proof bench (b06_f0667) carries the position property whole, both-ways by
+  // production mutation. Everything else this cell guards is unchanged.
   const p = compose({ vendorCategory: 'planning', isAdvisor: true });
   const iSoul = p.indexOf('You are Victor Hart');
   const iRoster = p.indexOf('A wedding is a production, and a production runs on people');
@@ -135,8 +152,8 @@ t('§1.4 ⚑ THE RULED ORDER — soul, then roster, then law, then lens', () => 
   const iField = p.indexOf('[FIELD BLOCK]');
   assert.ok(iSoul >= 0 && iRoster > iSoul, 'the roster does not follow the soul');
   assert.ok(iLaw > iRoster, 'the law does not follow the roster — for a planner the law must close the voice');
-  assert.ok(iLens > iLaw, 'the lens does not follow the law');
-  assert.ok(iField > iLens, 'the field block is not last');
+  assert.ok(iField > iLaw, 'the field block does not follow the law');
+  assert.ok(iLens > iField, 'the lens is not last — F-06.67, the position the prompt never had');
 });
 
 t('§1.5 ⚑ THE PLANNER PREFIX IS BYTE-IDENTICAL TO THE PRE-CURE COMPOSITION', () => {

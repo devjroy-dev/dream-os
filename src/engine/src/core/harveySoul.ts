@@ -234,8 +234,14 @@ A wedding is a production, and a production runs on people. You read a roster th
 // position/scope act, not an authoring act — W-1 opened for exactly that and no more.
 //
 // COMPOSITION, and the property worth knowing: `loop.ts` composes
-//   SOUL + (planner ? PRODUCTION_WEAVE : '') + NO_MACHINERY_LAW + (advisor ? LENS : '')
-// so for a PLANNER the concatenation is BYTE-IDENTICAL to the pre-cure prefix — the
+//   SOUL + (planner ? PRODUCTION_WEAVE : '') + NO_MACHINERY_LAW + fieldBlock
+//     + (advisor ? LENS : '')
+// (F-06.67, CE-ruled 2026-07-27: this comment previously stopped at the lens and ELIDED
+// `fieldBlock` entirely — the tail that carries the whole SMM Codex, >=95k chars. A
+// composition note that omits 70% of the prompt is how a position claim survives three
+// re-authorings unchecked. The lens now CLOSES the prefix; the law's own position is
+// untouched by that move and b06_m4d §2.1 still holds it terminal in this file.)
+// So for a PLANNER the concatenation is BYTE-IDENTICAL to the pre-cure prefix — the
 // roster then the law, in that order, exactly as `2b89b5c` left it. Nothing about the
 // planner's cached prefix changes. Every OTHER category gains the law it was ruled for.
 // E-1 cost, stated honestly: the 24 non-planner fields DO take one prefix re-warm each,

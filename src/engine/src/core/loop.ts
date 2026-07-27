@@ -356,11 +356,12 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // schemas). The earlier "~1.1k tokens, below the cache minimum" note here was STALE
   // by an order of magnitude — her tool schemas alone dwarf the 2048-token floor;
   // UNIT_ECONOMICS' ₹9.59 fire alarm was the receipts. Cured this sitting.
-  // ADVISOR MODE (A-3): the lens sits between his soul and the field/Codex block —
+  // ADVISOR MODE (A-3): the lens closes the prefix, AFTER the field/Codex block —
   // static by nature, so it lands in the cached prefix once per window (cache law,
   // guardrail 3), never touched by dynamic content. The fieldBlock (whole-SMM +
   // trade index) is the same the business room builds (A-2: whole-SMM stands); the
-  // lens is his RELATIONSHIP to it, not a duplicate of the Codex.
+  // lens is his RELATIONSHIP to it, not a duplicate of the Codex. It sits AFTER that
+  // material and not before it — F-06.67, reasoned at the compose expression below.
   // TDW_04.5 P6 (CE-61, Fork B): the production-manager weave, planner-scoped. It sits
   // with the SOUL — before the lens, before the field block — because it is part of who
   // he is for this owner, not a relationship to reference material. It is STATIC, so it
@@ -405,11 +406,45 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
   // contradiction shipped into a live room, on a file this sitting was never chartered
   // to touch. The prohibition also protects nothing there: no Donna, no estate, no tools,
   // so there is no machinery to narrate and no wire to delegate on.
+  // ── TDW_06 F-06.67 — THE LENS IS TERMINAL IN THE PROMPT, NOT MERELY IN ITS FILE ──
+  // (CE-ruled 2026-07-27, sitting 2; fork B1 adopted over a fourth prose re-authoring.)
+  //
+  // THE FINDING, derived by arithmetic at `2c24959` and not argued: `fieldBlock` used to
+  // close this expression, so the lens's crux paragraph — re-authored THREE times, each
+  // time recording "position (last paragraph, maximum recency) preserved" — sat with the
+  // whole Codex payload downstream of it. Measured, photography advisor, trade index
+  // excluded so these are FLOORS:
+  //   HARVEY_SOUL 31,717 + NO_MACHINERY_LAW 511 + ADVISOR_LENS 7,383 (crux 4,216)
+  //   + SMM header/codex >=95,536  =>  prefix >=135,147
+  //   the crux occupied 35,395..39,611 — >=70.7% of the prompt stood AFTER it,
+  //   and the lens was 5.5% of the room it governs.
+  // "Maximum recency" was true of advisorLens.ts and false of the composed prompt. That
+  // is F-06.58's own sentence one file down ("true of the FILE and false of the always-on
+  // PROMPT"), and CE-77's position doctrine — position is instruction — is what makes it
+  // load-bearing rather than cosmetic. THREE re-authorings were tuned against a terminal
+  // position the prompt never had.
+  //
+  // THE CURE IS THIS ORDER AND NOTHING ELSE. Zero model-voiced bytes move: advisorLens.ts
+  // is byte-untouched (b06_m4c §1.3's byte-identity holds), the founder's veto slot stays
+  // unfired, and the chartered redirect sentence is not opened.
+  //
+  // BUSINESS AND CONSULT ARE BYTE-IDENTICAL ACROSS THIS CHANGE, mechanically and not by
+  // inspection: with isAdvisor false the lens term is the empty string, and
+  // `'' + fieldBlock === fieldBlock + ''`. Only the advisor room's prefix moves at all.
+  // b06_f0667_bench proves both halves on the LIFTED real expression, both-ways.
+  //
+  // COST, STATED: one prefix re-warm per advisor account, once — +0 chars, the same
+  // priced precedent F-06.58 paid. The prefix is still wholly static, so the cache law
+  // (guardrail 3) is untouched: nothing dynamic crossed the breakpoint.
+  //
+  // F-06.4 DOES NOT CLOSE HERE. It closes at 4-of-4 on a gauntlet seat that composes the
+  // production room — which is F-06.68's repair (the desk double now serves the handbook
+  // rows), not this line. The live verdict is the founder's and is declared, never claimed.
   const isPlannerVoice = !isConsult && args.vendorCategory === 'planning';
   const staticPrefix = (isConsult ? CONSULTANT_HARVEY_SOUL : HARVEY_SOUL)
     + (isPlannerVoice ? PRODUCTION_WEAVE : '')
     + (isConsult ? '' : NO_MACHINERY_LAW)
-    + (isAdvisor ? ADVISOR_LENS : '') + fieldBlock;
+    + fieldBlock + (isAdvisor ? ADVISOR_LENS : '');
   // The clock: today's date, in the owner's timezone, in the DYNAMIC (never-cached)
   // block — it changes daily and must never be cached stale. Reaches Harvey here;
   // Donna reads the same date via todayLine() in her own runtime.
