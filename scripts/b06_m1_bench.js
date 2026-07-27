@@ -343,12 +343,18 @@ if (!process.env.B06_M1_BENCH_CHILD) {
   const M = [
     { file: GAUNTLET, cell: '§2.1', why: 'F-06.26 ITSELF, restored: the date short-circuit returns and a dated hand acquits a verbatim "nothing new"',
       from: '  if (!claimsAbsence) {', to: '  if (handsDated) return { ok: true, why: `a hand RESULT carried arrival-dated evidence` };\n  if (!claimsAbsence) {' },
+    // ── LABELED FLOOR AMENDMENT · F-06.86 (CE R-1, 2026-07-28): the three needles below
+    // follow the shipped bytes into the per-mouth loop (`text`/`dated`/`fresh` — the arm
+    // now judges every mouth on the wire's chain, Victor's prose first). EACH MUTATION'S
+    // MEANING IS UNCHANGED — strip order reversed / date test off / signal un-hoisted —
+    // re-aimed at the referent, not re-aimed to stay green (§4.1's own lesson, A2's form).
+    // Count preserved: 45. Ratify-or-revert.
     { file: GAUNTLET, cell: '§2.6', why: 'the strip order is reversed — the vocabulary eats the negator and a denial acquits itself on its own leftovers',
-      from: "reply.replace(NEGATED_ARRIVAL_G, ' ').replace(ABSENCE_G, ' ')", to: "reply.replace(ABSENCE_G, ' ').replace(NEGATED_ARRIVAL_G, ' ')" },
+      from: "text.replace(NEGATED_ARRIVAL_G, ' ').replace(ABSENCE_G, ' ')", to: "text.replace(ABSENCE_G, ' ').replace(NEGATED_ARRIVAL_G, ' ')" },
     { file: GAUNTLET, cell: '§2.3', why: 'the mouth stops being read — an honest reply that names the arrival is convicted alongside the dishonest one',
-      from: 'const replyDated = REPLY_ARRIVAL_RE.test(stripped);', to: 'const replyDated = false;' },
+      from: 'const dated = REPLY_ARRIVAL_RE.test(stripped);', to: 'const dated = false;' },
     { file: GAUNTLET, cell: '§2.7', why: 'F-06.23\'s signal is un-hoisted back onto one path — it goes dark on the dated conviction',
-      from: 'const contradicts = FRESH_ITEM_RE.test(reply);', to: 'const contradicts = false;' },
+      from: 'const fresh = FRESH_ITEM_RE.test(text);', to: 'const fresh = false;' },
     { file: GAUNTLET, cell: '§6.7', why: 'SD-C4\'s asserted adverb returns — an unchecked "faithfully reported" back in the verdict table',
       from: 'the on-file question answered by a READ: ${finds.length}', to: 'a donna_find hand read the estate this turn, faithfully reported' },
     { file: TODAY, cell: '§5.1', why: 'F-06.27 ITSELF, restored: the clock hand-slices UTC again and a 01:30 IST row dates itself yesterday',

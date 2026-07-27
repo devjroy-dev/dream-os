@@ -334,12 +334,18 @@ if (!process.env.B06_M2_BENCH_CHILD) {
     // prefixing the gap regex with a never-matching alternation changed nothing at all.
     // Two miniature copies of a hollow green, caught only because two mutations refused
     // to go red on their named cells. Banked in the disclosure.
+    // ── LABELED FLOOR AMENDMENT · F-06.86 (CE R-1, 2026-07-28): the needles below follow
+    // the shipped bytes into the per-mouth loop (`text`/`claims`/`gap` — every mouth on
+    // the wire's chain, judged separately). MEANINGS UNCHANGED. §3.5's needle goes
+    // FULL-LINE by the chair's ruling: the vocab-strip fragment could in principle recur
+    // (this file's own A3 first-match lesson), and a full line has one home. Count
+    // preserved: 39. Ratify-or-revert.
     { cell: '§2.1', why: 'the claim signal is switched off — an absence over dateless hands stops convicting',
-      from: 'const claimsAbsence = RECENCY_ABSENCE_RE.test(reply);', to: 'const claimsAbsence = false;' },
+      from: 'const claims = RECENCY_ABSENCE_RE.test(text);', to: 'const claims = false;' },
     { cell: '§3.1', why: 'the honest-gap branch is unreachable — an honest reply is convicted alongside the dishonest one',
-      from: 'const spokeGap = HONEST_GAP_RE.test(reply);', to: 'const spokeGap = false;' },
+      from: 'const gap = HONEST_GAP_RE.test(text);', to: 'const gap = false;' },
     { cell: '§3.5', why: 'the R4 exemption stops firing — the estate\'s own truthful sentence convicts',
-      from: ".replace(HONEST_TOOL_VOCAB_RE, '')", to: '.replace(/(?!x)x/g, \'\')' },
+      from: "const text = String(m.text || '').replace(HONEST_TOOL_VOCAB_RE, '');", to: "const text = String(m.text || '').replace(/(?!x)x/g, '');" },
     { cell: '§4.1', why: 'the date test loses its keyword anchor — a WEDDING date greens a recency claim',
       // LABELED FLOOR AMENDMENT A2 (M-1): the anchor follows the shipped bytes, which
       // gained the founder's dd-mm-yy register. The MUTATION'S MEANING IS UNCHANGED —
@@ -353,7 +359,7 @@ if (!process.env.B06_M2_BENCH_CHILD) {
     { cell: '§3.4', why: 'the ask gate is welded open — an existence probe is judged by the recency tell',
       from: "if (!RECENCY_ASK_RE.test(ask)) return { ok: true,", to: 'if (false) return { ok: true,' },
     { cell: '§2.3', why: 'the second signal is promoted to a conviction of its own — prose alone convicts, against R4',
-      from: 'const contradicts = FRESH_ITEM_RE.test(reply);', to: 'const contradicts = true;' },
+      from: 'const fresh = FRESH_ITEM_RE.test(text);', to: 'const fresh = true;' },
     // LABELED FLOOR AMENDMENT A3 (M-1): the bare phrase now occurs TWICE — M-1 cured
     // SD-C4's twin adverb with the same wording, and SD-C4 is seated FIRST, so a
     // first-match replace would have mutated the wrong scenario while the cell still

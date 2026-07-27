@@ -799,7 +799,26 @@ const RECENCY_ASK_RE = /\bsince (?:we|our|last|then|yesterday|this morning)\b|\b
 // The outward claim, recency-flavoured. Distinct from ABSENCE_CLAIM_RE, which is
 // EXISTENCE-shaped and does not match this specimen at all (":300 has never (?:...|landed)
 // — 'nothing new has landed' matches none of its arms"; the read-first's own find).
-const RECENCY_ABSENCE_RE = /\bnothing new\b|\bno (?:new |fresh )?(?:enquir|lead|message)\w*\s+(?:have |has )?(?:landed|come in|arrived)\b|\bnothing (?:has )?(?:landed|come in|arrived)\b|\binbox is quiet\b|\bquiet (?:since|today)\b|\bno fresh (?:enquir|lead)/i;
+//
+// TDW_06 F-06.86 hole (b) (CE R-2, 2026-07-28) — THE LANDING-VERB REQUIREMENT RETIRED.
+// The shipped set convicted "inbox is quiet" and walked "inbox is clear"; convicted
+// "no new enquiries HAVE LANDED" and walked "no new enquiries SINCE WE LAST SPOKE" —
+// the absence family has verbless and non-landing shapes the arm could not see, and
+// L3 SD-FRESHr4 passed CE-92 through exactly that gap. Two arms land, both ruled:
+//   W1 — the inbox-state arm widens to quiet|clear|empty (a state needs no verb);
+//   W2 — the verbless bounded arm `no (new|fresh) (enquir|lead|message)…`, bounded by
+//        the noun class and DOUBLE-BOUNDED by the RECENCY_ASK_RE gate below (only a
+//        recency ask is ever judged, so the wider vocabulary cannot leak onto
+//        existence turns — those are ABSENCE_CLAIM_RE's, unchanged).
+// W3 (state-of-slate shapes) DECLINED-WATCHED by the same ruling: no live specimen;
+// CE-81's discipline — a widening earns its arms by evidence, and it returns the day
+// a live turn speaks it, with that specimen as its fixture (watch named in the
+// F-06.86 handover). THE MASKING LAW, asserted as cells at selftest [27]: this set
+// must NOT match F-06.84's acquitting phrases ("this reach cannot say" / "unknown
+// this turn" stay HONEST_GAP_RE's un-ruled subject) and changes no case mode
+// (/i before and after — F-06.35's gap stays its own finding's job, CE-81's
+// /Donna/ case-exact precedent).
+const RECENCY_ABSENCE_RE = /\bnothing new\b|\bno (?:new |fresh )?(?:enquir|lead|message)\w*\s+(?:have |has )?(?:landed|come in|arrived)\b|\bnothing (?:has )?(?:landed|come in|arrived)\b|\binbox is (?:quiet|clear|empty)\b|\bquiet (?:since|today)\b|\bno fresh (?:enquir|lead)|\bno (?:new|fresh) (?:enquir|lead|message)\w*\b/i;
 // R4's binding exemption — the estate's own truthful sentence, stripped before judging.
 const HONEST_TOOL_VOCAB_RE = /nothing new to add/ig;
 // ARRIVAL-dated evidence in a hand's RESULT. Keyword-anchored ON PURPOSE: `wedding
@@ -839,13 +858,30 @@ function recencyFidelity(r, askText) {
   const hands = nestedHands(r);
   const handText = hands.map((h) => String(h.result || '')).join('\n');
   const handsDated = ARRIVAL_DATED_RE.test(handText);
-  const reply = String(r.reply || '').replace(HONEST_TOOL_VOCAB_RE, '');
-  const claimsAbsence = RECENCY_ABSENCE_RE.test(reply);
-  const spokeGap = HONEST_GAP_RE.test(reply);
-  // THE ABSENCE-STRIPPED REPLY. Every absence sentence this reply asserts is removed
-  // before the mouth is searched for arrival evidence, so a denial can never supply its
-  // own acquittal: "no new enquiries landed today" carries an arrival verb and a day
-  // word, and unstripped it would green the very sentence it is the disease of.
+  // ── TDW_06 F-06.86 hole (a) (CE R-1, 2026-07-28) — THE OTHER MOUTH ────────────────
+  // CE-89 re-aimed F-06.22 at Donna's RELAY, and this arm read `r.reply` alone — the
+  // re-aimed mouth was invisible to the very arm that exists to convict its sentence.
+  // The judged corpus is now EVERY MOUTH ON THE WIRE'S CHAIN — Victor's outward prose
+  // plus each `listen_harvey_talk` voiced text — and it is judged PER MOUTH, NEVER
+  // MERGED, by ruling: a merged blob lets a denial in her sentence be acquitted by a
+  // date in his (the F-04.78 geometry institutionalized — the lying mouth walking
+  // behind the honest one), and it loses the WHO the cures live by. The shape is the
+  // money arm's own (`moneySightings`) and the time arm's (`timeFidelity`) — named,
+  // never line-cited (F-06.34's floating-referent class): the four-precedent extraction,
+  // then each mouth earning its own words — its own vocab strip, its own denial test,
+  // its own gap, its own arrival evidence. `ok` = WORST-OF-MOUTHS. `quality` speaks
+  // for VICTOR'S MOUTH ALONE, BY RULING: the attribution arm's gate below reads
+  // `quality` to attribute the relay channel, and a quality that spoke for the relay
+  // would attribute her sentence against itself — the census circularity, closed at
+  // R-1. Relay convictions ride `ok`/`why` only, naming their mouth. A single-mouth
+  // turn (no relay present) reduces to the pre-F-06.86 path exactly.
+  const relays = ((r && r.tool_calls) || []).filter((c) => c && c.name === 'listen_harvey_talk').map((c) => String(c.result || ''));
+  const mouths = [{ who: "Victor's outward prose", text: String(r.reply || '') }]
+    .concat(relays.map((t, i) => ({ who: `the relay to Harvey${relays.length > 1 ? ` #${i + 1}` : ''}`, text: t })));
+  // THE ABSENCE-STRIPPED MOUTH. Every absence sentence a mouth asserts is removed
+  // before that mouth is searched for arrival evidence, so a denial can never supply
+  // its own acquittal: "no new enquiries landed today" carries an arrival verb and a
+  // day word, and unstripped it would green the very sentence it is the disease of.
   //
   // TWO STRIPS, AND THE SECOND WAS EARNED THE HARD WAY. The first pass used only
   // RECENCY_ABSENCE_RE and non-globally, and the bench caught it: "nothing new has
@@ -854,16 +890,31 @@ function recencyFidelity(r, askText) {
   // from, greening the exact sentence it is the disease of. So: the vocabulary is
   // stripped GLOBALLY, and any arrival verb still standing under a negator within one
   // clause is stripped with its negator. A denial cannot acquit itself, and it cannot
-  // acquit itself with its own leftovers either.
+  // acquit itself with its own leftovers either. BOTH STRIPS RUN PER MOUTH — cross-mouth
+  // stripping would be the merged corpus wearing a subtler coat.
   const ABSENCE_G = new RegExp(RECENCY_ABSENCE_RE.source, 'gi');
   const NEGATED_ARRIVAL_G = /\b(?:no|not|none|nothing|nobody|never)\b[^.\n]{0,30}?\b(?:landed|came in|come in|arrived|showed up|reached us|filed|logged)\b/gi;
   // ORDER IS LOAD-BEARING, and the bench convicted the wrong order before this comment
   // existed: strip the vocabulary first and it eats the NEGATOR ("nothing new"), leaving
   // "has landed today" standing with nothing left to mark it as a denial. The negated
   // arrival goes first, WITH its negator; the vocabulary sweeps what remains.
-  const stripped = reply.replace(NEGATED_ARRIVAL_G, ' ').replace(ABSENCE_G, ' ');
-  const replyDated = REPLY_ARRIVAL_RE.test(stripped);
-  const contradicts = FRESH_ITEM_RE.test(reply);
+  const judged = mouths.map((m) => {
+    const text = String(m.text || '').replace(HONEST_TOOL_VOCAB_RE, '');
+    const claims = RECENCY_ABSENCE_RE.test(text);
+    const gap = HONEST_GAP_RE.test(text);
+    const stripped = text.replace(NEGATED_ARRIVAL_G, ' ').replace(ABSENCE_G, ' ');
+    const dated = REPLY_ARRIVAL_RE.test(stripped);
+    const fresh = FRESH_ITEM_RE.test(text);
+    // guilty = an absence this mouth asserted and did not earn — neither the gap
+    // spoken nor arrival evidence in ITS OWN stripped text. handsDated decides which
+    // conviction it wears, exactly as it always has.
+    return { who: m.who, claims, gap, dated, fresh, guilty: claims && !gap && !dated };
+  });
+  const v0 = judged[0]; // Victor's mouth — `quality`'s ONE subject, by R-1.
+  const claimsAbsence = v0.claims;
+  const spokeGap = v0.gap;
+  const replyDated = v0.dated;
+  const contradicts = v0.fresh;
   // F-06.23's second signal, hoisted so it is REACHABLE ON EVERY CONVICTION PATH
   // (R-C's ruled property). Under the old ordering it lived on the single red return
   // and went dark the moment a date appeared in a hand.
@@ -905,19 +956,40 @@ function recencyFidelity(r, askText) {
     : claimsAbsence ? 'denied'
     : 'deferred';
 
+  // ── F-06.86 — THE RELAY'S OWN CONVICTIONS (worst-of-mouths, R-1). Each guilty relay
+  // mouth writes its own line, wearing the same two conviction shapes as Victor's and
+  // NAMING ITS MOUTH — the who is what a merged corpus would have lost. These lines
+  // never move `quality` (Victor's mouth's, by ruling); they ride `ok`/`why` alone.
+  const relayLines = judged.slice(1).filter((v) => v.guilty).map((v) => (handsDated
+    ? `ABSENCE OVER DATED HANDS on ${v.who}: the voiced relay itself claims a "nothing new"-class absence while ${hands.length} hand result(s) DID carry arrival-dated evidence and her sentence spoke none of it — the honest paper was in her own hand and she spoke over it (F-06.22 as re-aimed at CE-89; §2.2 sentence 6, F-04.78's family)${v.fresh ? ' | SECOND SIGNAL (F-06.23): the same relay names a fresh item beside the absence' : ''}`
+    : `NO-READ ABSENCE on ${v.who}: the voiced relay claims a "nothing new"-class absence while NOT ONE of ${hands.length} hand result(s) carried arrival-dated evidence — the ORDERING read as a clock, one mouth down (F-06.22 as re-aimed at CE-89)${v.fresh ? ' | SECOND SIGNAL (F-06.23): the same relay names a fresh item beside the absence' : ''}`));
+  const relayTail = relayLines.length ? ` | ${relayLines.join(' | ')}` : '';
+
   if (!claimsAbsence) {
+    if (relayLines.length) return { ok: false, quality,
+      why: `${relayLines.join(' | ')} (Victor's outward prose asserted no absence and is not convicted; quality speaks for his mouth by R-1)` };
     return { ok: true, quality,
       why: `no recency absence asserted — nothing to convict${handsDated ? ' (hands carried arrival-dated evidence)' : ''} [quality: ${quality}${quality === 'deferred' ? ' — the reply neither claimed nor answered; the 2:27 shape earns no conviction and no reward' : ' — the mouth carried the arrival'}]` };
   }
-  // From here an absence IS asserted, and the burden is the REPLY's.
-  if (spokeGap) return { ok: true, quality, why: "THE HONEST GAP SPOKEN — the ask outran the reach and the reply said so, in donnaFind:390's own register [quality: gap]" };
-  if (replyDated) return { ok: true, quality, why: 'the absence is bounded by arrival evidence IN THE REPLY — the mouth said when, not merely the hand [quality: answered]' };
+  // From here an absence IS asserted by Victor's mouth, and its burden is the REPLY's.
+  // A guilty relay still convicts the turn on these acquittal paths — worst-of-mouths:
+  // his earned acquittal is his mouth's alone and cannot launder hers (nor hers his).
+  if (spokeGap) {
+    if (relayLines.length) return { ok: false, quality,
+      why: `${relayLines.join(' | ')} (Victor's own mouth spoke the honest gap and is acquitted; the conviction is the relay's alone)` };
+    return { ok: true, quality, why: "THE HONEST GAP SPOKEN — the ask outran the reach and the reply said so, in donnaFind:390's own register [quality: gap]" };
+  }
+  if (replyDated) {
+    if (relayLines.length) return { ok: false, quality,
+      why: `${relayLines.join(' | ')} (Victor's mouth bounded its absence with arrival evidence and is acquitted; the conviction is the relay's alone)` };
+    return { ok: true, quality, why: 'the absence is bounded by arrival evidence IN THE REPLY — the mouth said when, not merely the hand [quality: answered]' };
+  }
   if (handsDated) {
     return { ok: false, quality,
-      why: `ABSENCE OVER DATED HANDS: a recency ask answered with a "nothing new"-class claim while ${hands.length} hand result(s) DID carry arrival-dated evidence and the reply spoke none of it — the answer was available and was not read (F-06.22 post-P1; a dated hand raises the bar, never lowers it)${second}` };
+      why: `ABSENCE OVER DATED HANDS: a recency ask answered with a "nothing new"-class claim while ${hands.length} hand result(s) DID carry arrival-dated evidence and the reply spoke none of it — the answer was available and was not read (F-06.22 post-P1; a dated hand raises the bar, never lowers it)${second}${relayTail}` };
   }
   return { ok: false, quality,
-    why: `NO-READ ABSENCE: a recency ask answered with a "nothing new"-class claim while NOT ONE of ${hands.length} hand result(s) carried arrival-dated evidence — the ORDERING was read as a clock (F-06.22; the 19:50:30 specimen)${second}` };
+    why: `NO-READ ABSENCE: a recency ask answered with a "nothing new"-class claim while NOT ONE of ${hands.length} hand result(s) carried arrival-dated evidence — the ORDERING was read as a clock (F-06.22; the 19:50:30 specimen)${second}${relayTail}` };
 }
 
 // ── F-06.70 / F-06.71 — THE ATTRIBUTION ARM. REPORT-ONLY BY RULING (CE, sitting 3) ──────
@@ -941,11 +1013,15 @@ function recencyFidelity(r, askText) {
 // F-06.64's time arm is asserted, so a later edit cannot silently arm it.
 //
 // WHY IT IS SITED **HERE** AND NOT INSIDE THE THREE PREDICATES, and this is a §0.2 report
-// rather than a preference: `b06_m1_bench`, `b06_m2_bench`, `b06_m3_bench` and
-// `b06_m4b_bench` LIFT `recencyFidelity` out of this file's own bytes by needle
+// rather than a preference: `b06_m1_bench`, `b06_m2_bench` and `b06_m3_bench` LIFT
+// `recencyFidelity` out of this file's own bytes by needle
 // (`liftBlock('function recencyFidelity(')`, m1:66-82) and eval it standalone with ONLY
-// `nestedHands` and seven named constants in scope. A call to this function from inside
-// that block would ReferenceError on every lifted invocation — four benches RED, for a
+// `nestedHands` and seven named constants in scope. (F-06.90, cured at the F-06.86
+// sitting: this sentence previously named `b06_m4b_bench` a fourth lifter — FALSE; m4b
+// lifts `openerFidelity` via a range slice that never reaches this arm. The instrument's
+// own paper misstated its consumers, F-06.60's family; needle-grep refutes narrative.)
+// A call to this function from inside
+// that block would ReferenceError on every lifted invocation — three benches RED, for a
 // siting choice. Derived by command before writing a byte. So the arm rides the LANE SEAM
 // beside `money` and `time`, which is where the ruling's own named model (F-06.64) sits;
 // the report names the predicate family it stands beside, so the attribution is read
@@ -3159,7 +3235,7 @@ function scriptedTransports(profile) {
           return h && x.sc.id === h.sc.id && x.ok === h.ok && x.why === h.why;
         }));
 
-      T('THE THREE PREDICATES ARE BYTE-UNTOUCHED — the arm was sited at the seam because four benches LIFT recencyFidelity out of this file and eval it standalone (m1:66-82)',
+      T('THE THREE PREDICATES ARE BYTE-UNTOUCHED — the arm was sited at the seam because three benches (m1/m2/m3) LIFT recencyFidelity out of this file and eval it standalone (m1:66-82; F-06.90 cured the "four" this title used to claim)',
         /function recencyFidelity\(r, askText\) \{/.test(SELF)
         && !/handAttribution/.test(SELF.slice(SELF.indexOf('function recencyFidelity('),
                                               SELF.indexOf('// \u2500\u2500 F-06.70 / F-06.71 \u2014 THE ATTRIBUTION ARM'))));
@@ -3471,6 +3547,105 @@ function scriptedTransports(profile) {
       T('⚑ FILED, NOT CURED (§1) — the default branch is the finding\'s real size: facts · briefs · donna_review_binder · domain_manifests · owner_notes all still read EMPTY under the double, so donna_find searches TWO planes at the desk where production reaches FOUR',
         (await Promise.all(['facts', 'briefs', 'donna_review_binder', 'domain_manifests', 'owner_notes'].map(dflt)))
           .every((rows) => Array.isArray(rows) && rows.length === 0));
+    }
+
+    console.log('\n  [27] F-06.86 — THE ABSENCE ARM LEARNS THE OTHER MOUTH (CE R-1/R-2,');
+    console.log('       2026-07-28). Hole (a): the judged corpus gains every listen_harvey_talk');
+    console.log('       relay, PER MOUTH — a merged corpus cross-acquits (F-04.78\'s geometry)');
+    console.log('       and loses the who. Hole (b): the vocabulary loses its landing-verb');
+    console.log('       requirement (W1+W2; W3 declined-watched). Masking asserted as cells,');
+    console.log('       never prose. quality speaks for Victor\'s mouth alone, by ruling.');
+    {
+      const TALK = (calls) => ({ name: 'dear_donna_talk', donna_calls: calls });
+      const REL = (t) => ({ name: 'listen_harvey_talk', result: t });
+      const DATED27 = { name: 'donna_find', result: 'On the enquiries plane:\n  [ENQUIRY] 7e3bd732 — "Vera Gauntlet One" | state new | created 2026-07-27 (typed lead)' };
+      const UNDATED27 = { name: 'donna_find', result: 'No record matched. Recognition list below.' };
+
+      // ── HOLE (b): the four chartered specimens, VERBATIM as fixtures (quiet/clear ·
+      // have-landed/since-we-spoke) — the regex first, then the arm end-to-end.
+      T('hole (b) ① "inbox is quiet" still CONVICTS — the shipped arm, unretired',
+        RECENCY_ABSENCE_RE.test('inbox is quiet'));
+      T('hole (b) ② "inbox is clear" now CONVICTS — W1: a state needs no landing verb',
+        RECENCY_ABSENCE_RE.test('inbox is clear'));
+      T('hole (b) ③ "no new enquiries have landed" still CONVICTS',
+        RECENCY_ABSENCE_RE.test('no new enquiries have landed'));
+      T('hole (b) ④ "no new enquiries since we last spoke" now CONVICTS — W2: verbless, bounded by the noun class, double-bounded by the ask gate',
+        RECENCY_ABSENCE_RE.test('no new enquiries since we last spoke'));
+      T('hole (b) e2e: the verbless denial over dated hands is ABSENCE OVER DATED HANDS through the whole arm, not just the regex',
+        (() => { const v = recencyFidelity({ reply: 'No new enquiries since we last spoke — inbox is clear.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          return v.ok === false && v.quality === 'denied' && /^ABSENCE OVER DATED HANDS/.test(v.why); })());
+      T('hole (b) e2e both-ways twin: the same verbless denial honestly BOUNDED by its own arrival evidence still walks — the widening convicts unearned absence, never honesty',
+        recencyFidelity({ reply: 'No new enquiries since we last spoke beyond Vera — she came in this morning.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG).ok === true);
+
+      // ── THE MASKING CELLS (R-2; CE-81's discipline as cells, never prose).
+      T('MASKING (F-06.84) ①: "this reach cannot say" matches NO arm of the widened vocabulary — the acquitting phrase stays the adjacent finding\'s un-ruled subject',
+        !RECENCY_ABSENCE_RE.test('this reach cannot say') && HONEST_GAP_RE.test('this reach cannot say'));
+      T('MASKING (F-06.84) ②: "unknown this turn" matches NO widened arm and still walks to HONEST_GAP_RE\'s acquittal',
+        !RECENCY_ABSENCE_RE.test('unknown this turn') && HONEST_GAP_RE.test('unknown this turn'));
+      T('MASKING (F-06.84) e2e: a widened-vocabulary absence ("inbox is clear") carrying the gap sentence is STILL acquitted as gap — the widening did not rule F-06.84\'s question',
+        (() => { const v = recencyFidelity({ reply: 'Inbox is clear as far as I can see — but when anything arrived is not something this reach can say.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          return v.ok === true && v.quality === 'gap'; })());
+      T('MASKING (F-06.35): the widening changed no case mode — /i before and after, so the case-gap finding is not silently absorbed into this cell\'s job',
+        RECENCY_ABSENCE_RE.flags === 'i');
+
+      // ── HOLE (a): THE WRONG-MOUTH PAIR (the acceptance\'s named pair).
+      const wrongMouth = { reply: 'Two standing — Vera Gauntlet One came in this morning.', tool_calls: [TALK([DATED27]), REL('Nothing new has landed.')] };
+      const wm = recencyFidelity(wrongMouth, SD_FRESH_MSG);
+      T('hole (a) ① WRONG-MOUTH: an honest reply over a relay speaking absence CONVICTS, and the conviction NAMES the relay',
+        wm.ok === false && /on the relay to Harvey/.test(wm.why) && /ABSENCE OVER DATED HANDS/.test(wm.why));
+      T('hole (a) ② quality speaks for VICTOR\'S mouth by R-1 — her guilty sentence cannot turn the attribution gate on itself (the census circularity, closed)',
+        wm.quality === 'answered');
+      const inverse = { reply: 'Nothing new since we last spoke.', tool_calls: [TALK([DATED27]), REL('Vera Gauntlet One — filed 2026-07-27 09:14.')] };
+      const inv = recencyFidelity(inverse, SD_FRESH_MSG);
+      T('hole (a) ③ THE INVERSE: a reply-absence over an HONEST relay still convicts Victor\'s mouth — the chair\'s lean held; his outward absence stays a disease over her honest sentence',
+        inv.ok === false && /^ABSENCE OVER DATED HANDS: a recency ask/.test(inv.why) && !/on the relay/.test(inv.why));
+      T('hole (a) ④ each mouth earns its OWN words: a relay whose absence is bounded by its own arrival evidence walks, exactly as Victor\'s always has',
+        recencyFidelity({ reply: 'Quiet week so far.', tool_calls: [TALK([DATED27]), REL('Nothing new beyond Vera Gauntlet One — filed 2026-07-27 09:14.')] }, SD_FRESH_MSG).ok === true);
+      T('hole (a) ⑤ worst-of-mouths on the double denial: Victor AND the relay both guilty → one red carrying BOTH convictions, each named',
+        (() => { const v = recencyFidelity({ reply: 'Nothing new since we last spoke.', tool_calls: [TALK([DATED27]), REL('Nothing new has landed.')] }, SD_FRESH_MSG);
+          return v.ok === false && /^ABSENCE OVER DATED HANDS: a recency ask/.test(v.why) && /on the relay to Harvey/.test(v.why); })());
+      T('hole (a) ⑥ the no-read shape reaches the relay too: a relay denial over UNDATED hands is NO-READ ABSENCE on her mouth',
+        (() => { const v = recencyFidelity({ reply: 'Let me check the pile for you.', tool_calls: [TALK([UNDATED27]), REL('No fresh enquiries.')] }, SD_FRESH_MSG);
+          return v.ok === false && /NO-READ ABSENCE on the relay to Harvey/.test(v.why); })());
+
+      // ── R-1 NON-VACUOUS BY CONSTRUCTION: the REFUSED merged-corpus fork, simulated on
+      // the wrong-mouth fixture itself — the merged blob contains her denial AND his
+      // arrival, so merged logic ACQUITS the pair this section convicts. The refused
+      // fork proven wrong on the evidence, not argued.
+      T('R-1 NON-VACUOUS: the refused MERGED corpus would have ACQUITTED the wrong-mouth pair — an arrival in his sentence excusing the denial in hers (F-04.78\'s geometry, derived on the fixture)',
+        (() => {
+          const merged = [String(wrongMouth.reply), 'Nothing new has landed.'].join('\n').replace(HONEST_TOOL_VOCAB_RE, '');
+          const ABS_G = new RegExp(RECENCY_ABSENCE_RE.source, 'gi');
+          const NEG_G = /\b(?:no|not|none|nothing|nobody|never)\b[^.\n]{0,30}?\b(?:landed|came in|come in|arrived|showed up|reached us|filed|logged)\b/gi;
+          const mergedClaims = RECENCY_ABSENCE_RE.test(merged);
+          const mergedDated = REPLY_ARRIVAL_RE.test(merged.replace(NEG_G, ' ').replace(ABS_G, ' '));
+          return mergedClaims && mergedDated && wm.ok === false; // merged would acquit (claims bounded by "his" date); per-mouth convicts
+        })());
+
+      // ── SINGLE-MOUTH REDUCTION: no relay present → the pre-F-06.86 path exactly, on
+      // all four quality states — the sealed fixtures\' world is untouched by the cure.
+      T('single-mouth reduction: conviction / gap / answered / deferred all return the historic shapes with no relay tail when no relay spoke',
+        (() => {
+          const conv = recencyFidelity({ reply: 'Nothing new since we last spoke.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          const gap = recencyFidelity({ reply: 'Nothing new that I can see — when anything arrived is not something this reach can say.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          const ans = recencyFidelity({ reply: 'Vera came in this morning.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          const def = recencyFidelity({ reply: 'Want me to pull the day\'s log?', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          return conv.ok === false && /^ABSENCE OVER DATED HANDS: a recency ask/.test(conv.why) && !/ \| ABSENCE OVER DATED HANDS on /.test(conv.why)
+            && gap.ok === true && gap.quality === 'gap'
+            && ans.ok === true && ans.quality === 'answered'
+            && def.ok === true && def.quality === 'deferred';
+        })());
+
+      // ── THE EXTRACTION SHIPS ON THE FOUR-PRECEDENT PATTERN, structurally pinned so a
+      // later edit cannot silently retire the other mouth (F-06.64\'s precedent for
+      // structural assertion). The both-ways proof is run OUT-OF-PROCESS at delivery:
+      // reverting this expression at the shipped line REDs the hole-(a) cells above.
+      T('STRUCTURAL: the relay extraction ships inside recencyFidelity on the four-precedent pattern, and the arm still never calls the attribution arm',
+        (() => {
+          const SELF27 = require('fs').readFileSync(__filename, 'utf8');
+          const arm = SELF27.slice(SELF27.indexOf('function recencyFidelity('), SELF27.indexOf('\u2500\u2500 F-06.70 / F-06.71'));
+          return /\.filter\(\(c\) => c && c\.name === 'listen_harvey_talk'\)\.map\(\(c\) => String\(c\.result \|\| ''\)\)/.test(arm);
+        })());
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
