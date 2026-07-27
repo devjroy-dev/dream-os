@@ -108,7 +108,7 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
   // rebuilt and patched entries read identically (the standing register law).
   const { data: recs } = await supabase
     .from('records')
-    .select('id, client, amount, amount_received, amount_pending, payment_status, direction, date, stage, note, phone, created_at') // created_at: TDW_06 M-1 (P1)
+    .select('id, client, amount, amount_received, amount_pending, payment_status, direction, date, stage, note, phone, created_at, updated_at') // created_at: TDW_06 M-1 (P1) · updated_at: TDW_06 F-06.97 — the column this read has ORDERED by since ST-3a and never carried
     .eq('agent_id', agentId)
     .eq('hidden', false)
     .order('updated_at', { ascending: false })
@@ -303,8 +303,24 @@ export async function snapshotText(agentId: string): Promise<string> {
   // hidden-filtered projection (rebuildSnapshot above), so what is missing from it was
   // never established to be missing from the cabinet. That half is the harveySoul rider's,
   // not this render's, and no amount of dating can move it.
-  const stampOf = (it: SnapshotItem): string =>
-    (arrivalStamp(it.arrived_at, SNAPSHOT_TZ) ? ` — filed ${arrivalStamp(it.arrived_at, SNAPSHOT_TZ)}` : '');
+  const stampOf = (it: SnapshotItem): string => {
+    const filed = arrivalStamp(it.arrived_at, SNAPSHOT_TZ);
+    // ── TDW_06 · F-06.97 (CE R-3) — THE MOVEMENT CLOCK ON HARVEY'S OWN BRIEFING ────
+    // rebuildSnapshot orders these twelve lines by `updated_at` (:114) and, until this
+    // commit, said only when each ARRIVED. So the largest breadth surface in the estate —
+    // the one Harvey pre-loads every business turn without dispatching anything — was
+    // sorted by movement and worded in arrival, and "who's active" was legible in its
+    // ORDER and in none of its words. donnaFind's :449/:473 wore the identical shape and
+    // are cured in the same delivery; one register across both, per M-1's half-dated
+    // hazard (donnaFind:157-161) — a half-dated file is worse than an undated one.
+    //
+    // WHAT THIS DOES AND DOES NOT BUY, on P1's own sentence above: a moved-stamped
+    // snapshot lets Harvey say WHAT MOVED AND WHEN honestly. It still does NOT make an
+    // absence claim honest — this note remains a 12-capped, state-filtered, hidden-
+    // filtered projection, and no amount of dating moves that half.
+    const touched = arrivalStamp(it.touched_at, SNAPSHOT_TZ);
+    return `${filed ? ` — filed ${filed}` : ''}${touched ? ` · touched ${touched}` : ''}`;
+  };
   const lines: string[] = [];
   for (const it of note.items) {
     if (twinLineById.has(it.id)) { lines.push(twinLineById.get(it.id) as string); continue; }

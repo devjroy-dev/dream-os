@@ -3783,6 +3783,133 @@ function scriptedTransports(profile) {
             && (SELF28.match(/^function relayMouths\(r\) \{/mg) || []).length === 1; })());
     }
 
+
+    console.log('\n  [29] F-06.97 — THE TOUCH-ORDERED, ARRIVAL-WORDED ESTATE (CE R-1..R-4,');
+    console.log('       2026-07-28). Three breadth surfaces — the snapshot rebuild, the matched');
+    console.log('       find and the zero-match recents — were ALL ordered by `updated_at` and');
+    console.log('       none of them selected it, said it, or could answer with it. "Who\'s active"');
+    console.log('       sat in the ordering of three and the words of none; donna_history was the');
+    console.log('       only hand in the estate that spoke last-touched, one whole binder at a time.');
+    console.log('       F-06.21\'s disease one field over: M-1 cured arrival, touch stayed dark —');
+    console.log('       and THAT is the hunger under F-06.13\'s eight-binder fan-out.');
+    {
+      const fs29 = require('fs');
+      const FIND_SRC29 = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/donnaFind.ts'), 'utf8');
+      const DONNA_SRC29 = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/donna.ts'), 'utf8');
+      const TYPES_SRC29 = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/snapshotTypes.ts'), 'utf8');
+      const PRIM_SRC29 = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/recordPrimitives.ts'), 'utf8');
+
+      // ── ① THE DISEASE IS DEAD AT ITS OWN SITE: the sort key is now in the payload.
+      T('① THE ORDER KEY IS SELECTED: donnaFind ordered by `updated_at` at two sites and never selected it — FIND_SELECT now carries it',
+        /const FIND_SELECT = '[^']*updated_at'/.test(FIND_SRC29)
+        && (FIND_SRC29.match(/\.order\('updated_at', \{ ascending: false \}\)/g) || []).length === 2);
+      T('① THE SNAPSHOT\'S ORDER KEY LIKEWISE: rebuildSnapshot has ordered by `updated_at` since ST-3a — its select now carries it too',
+        /\.select\('id, client, amount[^']*created_at, updated_at'\)/.test(DONNA_SRC29)
+        && /\.order\('updated_at', \{ ascending: false \}\)/.test(DONNA_SRC29));
+
+      // ── ② BEHAVIOUR through the REAL COMPILED donnaFind over the double ([16b]'s own
+      // technique). Two records with DISTINCT arrival and movement clocks: the one filed
+      // FIRST was touched LAST. If only arrival were spoken, the shape answer would name
+      // the wrong record as the active one — which is the disease, stated as a fixture.
+      const { db: db29, store: store29 } = mkLaneDb();
+      engineDb.current = db29;
+      store29.records.push(
+        { id: 'rec-old-moved', agent_id: AGENT, client: 'Meera Touch Test', amount: 60000, direction: 'in',
+          amount_received: null, amount_pending: null, payment_status: null, date: '2027-02-14', stage: 'booking',
+          note: null, doc_ref: null, phone: '9811077001', reason_for_action: null, hidden: false,
+          created_at: '2026-07-01T04:00:00Z', updated_at: '2026-07-27T04:00:00Z' },
+        { id: 'rec-new-still', agent_id: AGENT, client: 'Vera Touch Control', amount: 80000, direction: 'in',
+          amount_received: null, amount_pending: null, payment_status: null, date: '2027-02-14', stage: 'new',
+          note: null, doc_ref: null, phone: '9811002233', reason_for_action: null, hidden: false,
+          created_at: '2026-07-20T04:00:00Z', updated_at: '2026-07-20T04:00:00Z' },
+      );
+      const { executeFindTool: EF29 } = require(path.join(ROOT, 'src/engine/dist/core/tools/donnaFind.js'));
+      const recents29 = String((await EF29(AGENT, {})).display);
+      const matched29 = String((await EF29(AGENT, { client: 'Meera Touch Test' })).display);
+
+      T('② THE RECOGNITION LINE NOW SPEAKS MOVEMENT: the no-argument recents dump carries `touched` on both lines',
+        (recents29.match(/\| touched \d{2}-\d{2}-\d{2} \d{2}:\d{2} IST/g) || []).length === 2);
+      T('② AND IT IS THE MOVEMENT CLOCK, NOT A SECOND ARRIVAL: the record filed FIRST (01-07) carries the LATEST touch (27-07) — the fact no breadth payload could state before',
+        /\[rec-old-moved\][^\n]*filed 01-07-26[^\n]*touched 27-07-26/.test(recents29)
+        && /\[rec-new-still\][^\n]*filed 20-07-26[^\n]*touched 20-07-26/.test(recents29));
+      T('② THE MATCHED PATH TOO (describeRow, R-3\'s derivation — it joined because every pin cost zero)',
+        /\| touched 27-07-26/.test(matched29) && /Rs 60,000/.test(matched29) && /phone 9811077001/.test(matched29));
+
+      // ── ③ §2.4's PRECEDENT, ASSERTED AS THE PAYLOAD SHAPE — recognition, never
+      // enrichment. This is b06_m4_bench:343's OWN predicate, run here against the
+      // shipped body so the cure is convicted by the floor's own rule, not by a new one.
+      const recBody29 = (() => {
+        const st = FIND_SRC29.indexOf('function recognitionRow');
+        return FIND_SRC29.slice(st, FIND_SRC29.indexOf('\n}', st) + 2).split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+      })();
+      T('③ RECOGNITION, NEVER ENRICHMENT (m4:343\'s own predicate as a cell): the movement stamp adds no amount, no budget, no phone to recognitionRow',
+        /touched \$\{touched\}/.test(recBody29) && !/amount|budget|phone/.test(recBody29));
+      T('③ AND THE LIVE PAYLOAD AGREES: zero money and zero phone ride the recents dump that now carries movement — no new donor pool (F-04.70\'s axis untouched)',
+        !/9811077001|9811002233|Rs 60,000|Rs 80,000|received|pending/.test(recents29));
+      T('③ THE TELL STAYS TRUE TO ITS OWN PAYLOAD: it enumerates what the line carries, and the line now carries movement (F-06.60\'s family — a paper misstating its payload)',
+        /name, stage, arrival and movement/.test(FIND_SRC29)
+        && /Money and phone numbers are deliberately NOT rendered/.test(FIND_SRC29));
+
+      // ── ④ PLACEMENT WAS A DERIVATION, NOT A PREFERENCE (CE-94's precedent). Both
+      // windowed pins in b06_m1_bench END on the `filed` push; appending after it leaves
+      // them byte-exact and their counts unmoved. Asserted with the pins' OWN regexes.
+      T('④ THE :254 WINDOW SURVIVES: b06_m1_bench\'s recognitionRow pin still matches the shipped source byte-exact — no amendment, no count move',
+        /function recognitionRow[\s\S]{0,600}arrivalStamp\(r\.created_at[\s\S]{0,120}if \(filed\) bits\.push\(`filed \$\{filed\}`\)/.test(FIND_SRC29));
+      T('④ THE :255 WINDOW SURVIVES: b06_m1_bench\'s describeRow pin likewise — the movement push sits AFTER the window\'s last anchor',
+        /function describeRow[\s\S]{0,1400}arrivalStamp\(r\.created_at[\s\S]{0,120}if \(filedAt\) bits\.push\(`filed \$\{filedAt\}`\)/.test(FIND_SRC29));
+      T('④ ONE DERIVATION, m1 §5.6\'s floor: the movement stamp goes through arrivalStamp — no site re-slices a timestamp by hand',
+        /const touchedStamp = \(r: FoundRow\): string \| null => arrivalStamp\(r\.updated_at, IST\)/.test(FIND_SRC29)
+        && /arrivalStamp\(it\.touched_at, SNAPSHOT_TZ\)/.test(DONNA_SRC29));
+
+      // ── ⑤ THE SNAPSHOT HALF (R-3, mandatory) — the largest breadth surface in the
+      // estate, the one Harvey pre-loads every business turn without dispatching.
+      T('⑤ THE MOVEMENT CLOCK IS DATA ON THE ITEM, rendered at READ time — b2\'s ruled shape, not baked into a frozen `text`',
+        /touched_at\?: string \| null;/.test(TYPES_SRC29)
+        && /const touched = arrivalStamp\(it\.touched_at, SNAPSHOT_TZ\);/.test(DONNA_SRC29));
+      T('⑤ THE SNAPSHOT LINE INTERPOLATION IS UNMOVED (m1:272\'s pin): the movement stamp renders INSIDE stampOf, never as a second interpolation',
+        /lines\.push\(`- \$\{it\.text\}\$\{stampOf\(it\)\}`\)/.test(DONNA_SRC29));
+      T('⑤ recordItem CARRIES IT on arrived_at\'s own contract — absent renders NO stamp, never a guess; a surgical patch supplies the row it just wrote',
+        /arrived_at: row\.created_at \?\? null,/.test(PRIM_SRC29) && /touched_at: row\.updated_at \?\? null,/.test(PRIM_SRC29)
+        && /const SELECT = '[^']*created_at, updated_at'/.test(PRIM_SRC29));
+
+      // ── ⑥ THE ARM IS NOT TOUCHED, AND THE LAWFUL DEEP READ IS NOT TAXED. F-06.60's
+      // class is a cure that passes by moving its own grader; this one cannot, because
+      // SD-WEEK gates on the COUNT of donna_history hands and never reads a find payload.
+      const week29 = SCENARIOS.find((s) => s.id === 'SD-WEEK');
+      const H29 = (name, input) => ({ name, input: input || {} });
+      const turn29 = (reply, donna_calls) => ({ reply, tool_calls: [{ name: 'dear_donna_talk', donna_calls }] });
+      T('⑥ SD-WEEK IS BYTE-UNTOUCHED BY THIS SITTING and reads no find payload — it gates on the donna_history COUNT alone (CE-91\'s grader precedent, structural)',
+        (() => { const SELF29 = fs29.readFileSync(__filename, 'utf8');
+          const arm = SELF29.slice(SELF29.indexOf("{ id: 'SD-WEEK'"), SELF29.indexOf("// ARM B \u2014 F6 / R-3"));
+          return /HISTORY_FANOUT_FLOOR/.test(arm) && !/touched|updated_at|recognitionRow|describeRow/.test(arm); })());
+      T('⑥ THE FAN-OUT STILL REDS: the affordance cannot green the disease — eight deep-reads on a shape ask convict exactly as before',
+        week29.verdict(turn29('The full slate.', [H29('donna_find'), H29('donna_whatsdue'),
+          ...Array.from({ length: 8 }, (_, k) => H29('donna_history', { binder_id: `rec-${k}` }))])).ok === false);
+      // THE PROTECTION IS THE SCOPING, and it is asserted as the scoping. The floor lives
+      // in exactly ONE verdict body, and that verdict belongs to a message carrying no
+      // owner-named record ("How's the week looking — who's active, what's on the pile?").
+      // So an owner-named multi-record turn — "where do Meera's and Vera's stand?", a
+      // provenance chain, a reconciliation across two engagements — is never reached by
+      // this gate at all. That is what "the HELD N-deep-reads floor stays held" means:
+      // no cure in this delivery taxes a deep read that a NAME asked for.
+      T('⑥ THE LAWFUL DEEP READ IS UNTAXED: the history-count gate lives in SD-WEEK\'s verdict ALONE, and SD-WEEK\'s message names no record — an owner-named multi-record turn is never graded by it (the HELD N-deep-reads floor stays held)',
+        SCENARIOS.filter((s) => s.id !== 'SD-WEEK').every((s) => !/HISTORY_FANOUT_FLOOR/.test(String(s.verdict)))
+        && /HISTORY_FANOUT_FLOOR/.test(String(week29.verdict))
+        && !/Meera|Vera|Meher|Priya|Tara/.test(week29.message));
+
+      // ── ⑦ W-1, COMMAND-ASSERTED. The soul was NOT re-authored: fork 1(c) was the
+      // executor's own refusal and the chair RATIFIED it. donnaSoul's temperature-of-the-
+      // week law is the paragraph this render is the MECHANISM for (F-06.85), and it is
+      // byte-untouched — the affordance feeds the law rather than rewriting it.
+      T('⑦ W-1 HELD SHUT: the temperature-of-the-week law is byte-present and byte-unchanged — this sitting fed it a paper, it did not re-author it (1(c) refused, chair-ratified)',
+        (() => { const soul = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/donnaSoul.ts'), 'utf8');
+          return /HOW YOU TAKE THE TEMPERATURE OF THE WEEK — RECOGNITION, NOT THE WHOLE DRAWER/.test(soul)
+            && /without opening a single thing/.test(soul) && !/touched|updated_at|F-06\.97/.test(soul); })());
+      T('⑦ AND THE STATIC PREFIX DID NOT MOVE: DONNA_STATIC_PREFIX is composed from DONNA_SOUL + the cabinet text, untouched — the cache window is not invalidated by this delivery',
+        /const DONNA_STATIC_PREFIX =\n    DONNA_SOUL \+/.test(DONNA_SRC29)
+        && !/touched/.test(DONNA_SRC29.slice(DONNA_SRC29.indexOf('const DONNA_STATIC_PREFIX ='), DONNA_SRC29.indexOf('// Bounds Donna'))));
+    }
+
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
     process.exit(fail === 0 ? 0 : 1);
   }

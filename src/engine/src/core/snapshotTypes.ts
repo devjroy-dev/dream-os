@@ -36,6 +36,18 @@ export type SnapshotItem = {
   // undated lines are legacy and drain out on the next rebuild, and because a missing
   // stamp is silence, never "old". ISO 8601 as stored; the render is today.ts's business.
   arrived_at?: string | null;
+  // ── TDW_06 · F-06.97 — THE MOVEMENT CLOCK, arrived_at's sibling (CE R-3) ──────────
+  // rebuildSnapshot (donna.ts:114) has ordered this note by `updated_at` since ST-3a and
+  // has never once selected or rendered it: the twelve lines Harvey pre-loads every
+  // business turn are sorted by movement and worded in arrival. Same disease as the reads
+  // one layer up (donnaFind's :449/:473), same cure, same register.
+  //
+  // OPTIONAL, on arrived_at's own precedent above and for its own reason: items written
+  // before this sitting lack it, and a line with no movement stamp renders WITHOUT one
+  // rather than with a guess. The asymmetry is legacy and drains out on the next rebuild;
+  // a missing stamp is silence, never "untouched". ISO 8601 as stored; the render is
+  // today.ts's business, at READ time, exactly as b2 ruled for the arrival clock.
+  touched_at?: string | null;
 };
 
 // A tool execution returns a human-readable line for Harvey AND, when it wrote

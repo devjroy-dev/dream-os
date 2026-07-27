@@ -100,6 +100,7 @@ type FoundRow = {
   reason_for_action: string | null;
   hidden: boolean | null;
   created_at: string | null; // TDW_06 M-1 (P1): the arrival clock, rendered on every line
+  updated_at: string | null; // TDW_06 F-06.97: the MOVEMENT clock — the column this file already ordered by
 };
 
 type LeadFound = {
@@ -108,7 +109,7 @@ type LeadFound = {
   notes: string | null; created_at: string | null; // created_at: TDW_06 M-1 (P1)
 }; // TDW_04 B0 item 4a — public.leads read shape (typed plane, LD-1)
 
-const FIND_SELECT = 'id, amount, client, date, direction, doc_ref, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, hidden, created_at'; // created_at: TDW_06 M-1 (P1) — one column, the arrival clock
+const FIND_SELECT = 'id, amount, client, date, direction, doc_ref, note, phone, stage, amount_received, amount_pending, payment_status, reason_for_action, hidden, created_at, updated_at'; // created_at: TDW_06 M-1 (P1) — the arrival clock · updated_at: TDW_06 F-06.97 — the movement clock (this file has ORDERED by it since birth and never selected it)
 // FIND_LIMIT — THE NAMED CONSTANT (M-4, ruled at the manual paper, 2026-07-18): 15,
 // because recognition wants breadth — the zero-match fallback exists so a record
 // whose name no longer points to it can be recognised, and a wider recents list is
@@ -139,6 +140,50 @@ function matchedFields(r: FoundRow, tokens: string[]): string[] {
   return hit;
 }
 
+// ── TDW_06 · F-06.97 — THE TOUCH-ORDERED, ARRIVAL-WORDED ESTATE (CE R-1/R-2/R-3) ──
+//
+// THE DISEASE, derived by command at read-first and stated as the census that found it.
+// Three breadth surfaces — the snapshot rebuild (donna.ts:114), this file's matched read
+// (:449) and its zero-match recents (:473) — are ALL `.order('updated_at', desc)`. Not one
+// of them SELECTED that column, and not one of them said the word. `updated_at` was read
+// as an ORDER key at four sites in the engine core and RENDERED at exactly one:
+// donnaBench.ts:207/:209 — `donna_history`, one binder at a time.
+//
+// So "who's active" sat in the ordering of three surfaces and the words of none. That is
+// F-06.21's disease VERBATIM, one field over — this file's own comment at :23 already
+// wrote the law for it: "Donna was handed the answer in the ORDERING and denied it in the
+// WORDS, because an ordering is not legible as information." M-1/P1 cured that for
+// ARRIVAL. Touch stayed dark, and the only hand that could speak it opened a whole binder
+// — every figure, the payment status, and the phone — to say one timestamp. That is the
+// structural hunger under F-06.13's fan-out: eight financial dossiers hauled out to answer
+// a question whose real subject was eight timestamps.
+//
+// THE CURE IS M-1's PRECEDENT APPLIED ONE FIELD OVER, and it is §2.4-clean BY
+// CONSTRUCTION: a timestamp is a RECOGNITION field, never an enrichment one — M-4 already
+// ruled a stamp onto the recognition line for exactly this reason (":192 — on a recents
+// dump WHEN is load-bearing"). Zero money, zero phones, no new donor pool. F-04.70's
+// contagion axis is untouched.
+//
+// ALWAYS RENDERED, NEVER CONDITIONAL — the fork, priced and declined in the open. A
+// conditional stamp (print `touched` only where it differs from `filed`) is terser and was
+// the first draft. It was DECLINED because it manufactures exactly the defect F-06.30 was
+// filed for: a designed silence that the payload never declares, read by the model as the
+// record's own emptiness. A line with no `touched` would mean "never moved" — a real claim
+// about the cabinet — and nothing on the page would say so. Symmetry costs ~26 characters
+// a line and owes no explanatory sentence; the silence would have owed one.
+//
+// A row whose timestamp will not parse renders NO stamp rather than a wrong one — the
+// arrivalStamp contract, and m1 §5.6's floor: every stamp in this estate is ONE derivation.
+//
+// THE SOUL SENTENCE THIS AFFORDANCE NOW STANDS UNDER (F-06.85's obligation, discharged in
+// the direction W-1 leaves open): donnaSoul's "HOW YOU TAKE THE TEMPERATURE OF THE WEEK"
+// paragraph tells her she knows who is moving "without opening a single thing". Until this
+// commit no breadth payload could tell her who had moved. If this stamp is ever removed,
+// moved, or made conditional, THAT PARAGRAPH MUST BE RE-READ BEFORE SHIPPING — it is the
+// law this render is the mechanism for. W-1 was shut this sitting, so the pointer lives
+// here, on the mechanism's side, and the reverse pointer is filed for the chair.
+const touchedStamp = (r: FoundRow): string | null => arrivalStamp(r.updated_at, IST);
+
 function describeRow(r: FoundRow, tokens: string[] = []): string {
   const bits: string[] = [];
   if (r.client) bits.push(`client="${r.client}"`);
@@ -161,6 +206,12 @@ function describeRow(r: FoundRow, tokens: string[] = []): string {
   // F-06.22 punishes, re-created by the cure. One register everywhere, or none.
   const filedAt = arrivalStamp(r.created_at, IST);
   if (filedAt) bits.push(`filed ${filedAt}`);
+  // TDW_06 F-06.97. AFTER the filed push, by derivation and not by taste: b06_m1_bench:255
+  // pins this function with a windowed regex that ENDS on the `filed` push, so appending
+  // here leaves the pin byte-exact and its count unmoved. Any other placement amends it.
+  // (CE-94's placement precedent, applied: where a pin ends, an append is free.)
+  const touchedAt = touchedStamp(r);
+  if (touchedAt) bits.push(`touched ${touchedAt}`);
   const tail = r.hidden ? ' [ARCHIVED]' : '';
   const hit = matchedFields(r, tokens);
   const prov = hit.length ? ` — matched on: ${hit.join(', ')}` : '';
@@ -190,6 +241,15 @@ function recognitionRow(r: FoundRow): string {
   // A row whose stamp will not derive contributes NOTHING here rather than a guess.
   const filed = arrivalStamp(r.created_at, IST);
   if (filed) bits.push(`filed ${filed}`);
+  // TDW_06 F-06.97 — THE HUNGER'S TRUE SITE. This list is the shape answer's whole
+  // material, and it is sorted by `updated_at` (:449/:473) — so the answer to "who's
+  // active" was already IN this list, in its order, and nowhere in its words. The
+  // movement stamp is the load-bearing piece M-1's arrival stamp is the sibling of.
+  // Appended AFTER the filed push: b06_m1_bench:254's window ends there (see describeRow).
+  // NOT enrichment — no money, no phone, and b06_m4_bench:343's own predicate
+  // (!/amount|budget|phone/) is asserted as a cell against this very body.
+  const touched = touchedStamp(r);
+  if (touched) bits.push(`touched ${touched}`);
   const tail = r.hidden ? ' [ARCHIVED]' : '';
   return `[${r.id}] ${bits.join(' | ') || '(unnamed record)'}${tail}`;
 }
@@ -221,7 +281,13 @@ function recognitionRow(r: FoundRow): string {
 // A token-MATCHED find still shows budget honestly and is untouched — the tell would
 // be a lie there, because nothing is withheld there.
 const RECOGNITION_WITHHOLDING_TELL =
-  'WHAT THESE LINES DO NOT CARRY: they are recognition only — name, stage, arrival. ' +
+  // TDW_06 F-06.97 — THREE WORDS, AND THEY ARE OWED. This sentence enumerates what the
+  // line carries; the line now also carries `touched`. A paper that misstates its own
+  // payload is F-06.60's family and F-06.85's law both — and this tell exists precisely
+  // because an undeclared payload shape gets read as the record's own emptiness. Only
+  // the enumeration moved; every clause m4 §5.3 pins is byte-unchanged. Disclosed as
+  // ratify-or-revert in the handover with both forms side by side.
+  'WHAT THESE LINES DO NOT CARRY: they are recognition only — name, stage, arrival and movement. ' +
   'Money and phone numbers are deliberately NOT rendered on them. So this list cannot ' +
   'tell you whether a budget is on file for anyone on it: a missing figure above is ' +
   'this list withholding it, never the record lacking it. Do not read this list as ' +
