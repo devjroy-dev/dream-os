@@ -170,12 +170,26 @@ await t('§2.4 THE DONOR POOL IS DRAINED — the payload the model READS carries
   assert.ok(!/Rs 500000\b/.test(text), `the raw digit string survived: ${text}`);
 });
 
-await t('§2.5 THE SOUL CARRIES THE LAW WITH ITS REASON (LD-5) — and names BOTH forbidden shapes', () => {
+
+// ── LABELED AMENDMENT · THE CE-77 REVERT (CE-ruled 2026-07-25) ──────────────────
+// This cell asserted the M-4 register SOUL bytes (V-1/V-2/V-3). CE-77 reverted them:
+// the wire arm carries the guarantee mechanically, so those sentences bought nothing
+// the arm doesn't secure — and they cost the voice by displacing terminal clauses
+// (harveySoul's voice run split; advisorLens's machinery clause pushed off-terminal;
+// donnaSoul's own closing line displaced). The PROPERTY the cell existed for — money
+// renders in the house form on the wire — did not go away; it MOVED PLANES, and is
+// now asserted at b06_m4b §1 against the walk's own bytes. Re-pointed, not deleted:
+// a cell that asserts a reverted byte is a cell asserting the past.
+await t('§2.5 THE REGISTER GUARANTEE LIVES ON THE WIRE, AND THE PRE-EXISTING LAW IS UNTOUCHED', () => {
   const soul = read(HARVEY);
-  assert.ok(/never the symbol/.test(soul), 'the glyph half of the law is gone');
-  assert.ok(/grouped the Indian way/.test(soul), 'the grouping half never landed');
-  assert.ok(/Rs 4,00,000, never Rs 400000 and never Rs 400k/.test(soul), 'the law does not show the reader both forbidden shapes');
-  assert.ok(/count the zeros/.test(soul), 'LD-5: the law was written as a rule with no reason attached');
+  // The symbol clause PREDATES M-4 (CE-67's breach happened under it) and must survive
+  // the revert byte-for-byte: the revert undid M-4's addition, never the standing law.
+  assert.ok(/never the symbol/.test(soul), 'the pre-existing symbol law was destroyed by the revert');
+  // And M-4's ADDITION must be gone — a cell that lets it linger would green a half-revert.
+  assert.ok(!/grouped the Indian way/.test(soul), 'the reverted grouping sentence is still present');
+  // The guarantee it was minted for now lives here, mechanically:
+  const { registerScrub } = require(P('src/lib/vendor/scrub.js'));
+  assert.strictEqual(registerScrub('advance of ₹4 lakh'), 'advance of Rs 4,00,000');
 });
 
 await t('§2.6 F-06.38 — brideSystemPrompt no longer teaches against itself', () => {

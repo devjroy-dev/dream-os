@@ -104,7 +104,7 @@ type FoundRow = {
 
 type LeadFound = {
   id: string; name: string | null; phone: string | null; state: string | null;
-  budget_max: number | null; wedding_date: string | null; wedding_city: string | null;
+  budget_min: number | null; budget_max: number | null; wedding_date: string | null; wedding_city: string | null; // budget_min: TDW_06 F-06.49
   notes: string | null; created_at: string | null; // created_at: TDW_06 M-1 (P1)
 }; // TDW_04 B0 item 4a — public.leads read shape (typed plane, LD-1)
 
@@ -299,7 +299,7 @@ export async function executeFindTool(
     const pub = supabase.schema('public');
     let lq = pub
       .from('leads')
-      .select('id, name, phone, state, budget_max, wedding_date, wedding_city, notes, created_at') // created_at: TDW_06 M-1 (P1)
+      .select('id, name, phone, state, budget_min, budget_max, wedding_date, wedding_city, notes, created_at') // created_at: TDW_06 M-1 (P1)
       .eq('vendor_id', vendorId)
       .is('deleted_at', null);
     if (tokenList.length > 0) {
@@ -321,7 +321,24 @@ export async function executeFindTool(
         }
         const bits: string[] = [];
         if (l.state) bits.push(`state ${l.state}`);
-        if (l.budget_max != null) bits.push(`budget ${rs(l.budget_max)}`); // TDW_06 M-4 (R2-B)
+        // ── TDW_06 · F-06.49 — THE RENDERER WAS BLIND TO budget_min (CE-ruled 2026-07-25) ──
+        // THE SPECIMEN, from the 27 Jul walk: Droy's lead 7e3bd732 carried budget_min
+        // 400000 with budget_max NULL, so this line rendered NOTHING and the payload read
+        // budget-less. Harvey then said "No budgeted enquiries on file yet" — and was
+        // BLAMED for it (F-06.47, quantifier inflation) until the columns showed he had
+        // reported exactly what he was handed. The disease was here, in the select and this
+        // render, never in his mouth. F-06.47 is withdrawn; this is its true home.
+        //
+        // A lead carries a RANGE. Rendering only its ceiling silently drops every lead that
+        // has a floor and no ceiling — and public.leads carries both columns for a reason.
+        if (l.budget_min != null || l.budget_max != null) {
+          const lo = l.budget_min, hi = l.budget_max;
+          bits.push(
+            lo != null && hi != null
+              ? (lo === hi ? `budget ${rs(lo)}` : `budget ${rs(lo)}-${rs(hi)}`)
+              : lo != null ? `budget from ${rs(lo)}` : `budget up to ${rs(hi as number)}`,
+          ); // register: TDW_06 M-4 (R2-B) · range: F-06.49
+        }
         if (l.wedding_date) bits.push(`wedding ${l.wedding_date}`);
         if (l.wedding_city) bits.push(l.wedding_city);
         if (l.phone) bits.push(`phone ${l.phone}`);

@@ -174,10 +174,15 @@ t('§4.2 ITS THREE CALL SITES ARE UNCHANGED — the cure is the renderer, not th
 H('§5 — LD-5: THE LAW IS NOT DECORATIVE (CE R4)');
 
 t('§5.1 harveySoul:179 AND ITS MIRRORS SURVIVE — the soul is the intent, the arm the floor', () => {
+  // LABELED AMENDMENT (CE-77): M-4's grouping sentence was REVERTED — it displaced
+  // harveySoul's voice run and the arm made it redundant. What must survive is the
+  // PRE-EXISTING symbol law, which predates M-4 and which the revert must not touch.
+  // The doctrine is unchanged: the soul carries the intent, the arm carries the floor.
   const soul = read(HARVEY);
-  assert.ok(/never the symbol/.test(soul) && /grouped the Indian way/.test(soul),
-    'the register law was deleted once the arm landed — the arm is a floor UNDER the law, not a replacement');
-  assert.ok(/count the zeros/.test(soul), 'LD-5: the reason attached to the law was lost');
+  assert.ok(/Currency is always "Rs", never the symbol\./.test(soul),
+    'the pre-existing register law was destroyed — the arm is a floor UNDER a law, not a replacement for one');
+  assert.ok(!/grouped the Indian way/.test(soul),
+    'M-4\'s reverted grouping sentence is still present — the revert did not complete');
 });
 
 t('§5.2 THE ARM STATES ITS OWN TWO-LAYER DOCTRINE — a future reader cannot mistake it', () => {
