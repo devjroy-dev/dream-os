@@ -251,18 +251,30 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
         if (existingLead) {
           // Update existing lead with collected details
-          await supabase.from('leads').update({
-            name:         resolvedName,
-            wedding_date: event_date,
-            wedding_city: input.event_city   || null,
-            event_types:  input.occasion ? [input.occasion] : null,
-            budget_min:   input.budget_min   || null,
-            budget_max:   input.budget_max   || null,
-            function_count: input.function_count || null,
-            wedding_days:   input.wedding_days   || null,
-            functions:      input.functions      || null,
-            notes:        input.notes        || null,
-          }).eq('id', existingLead.id);
+          // ── TDW_06 · F-06.48 — THE MATCHED-LEAD UPDATE WAS DESTRUCTIVE ─────────────
+          // Every field above read `input.x || null`, so a re-capture NULLED whatever the
+          // model did not re-supply this turn. A bride who returns and says only "actually
+          // make it the 14th" wiped her own city, budget, function count and notes — the
+          // create path never had this problem because there was nothing to lose.
+          //
+          // Found while deriving F-06.48 on Droy's lead 7e3bd732 (walk, 27 Jul): its
+          // budget_min 400000 SURVIVED an 11:53 touch, which is how we learned this update
+          // had not run — had it run, the four lakh would have been erased. The defect was
+          // latent, not firing, and one capture away from silent data loss.
+          //
+          // A partial update writes what it KNOWS and leaves the rest alone. Absence of a
+          // field in one turn's extraction is not the owner saying the field is empty.
+          const leadPatch = { name: resolvedName };
+          if (event_date)           leadPatch.wedding_date   = event_date;
+          if (input.event_city)     leadPatch.wedding_city   = input.event_city;
+          if (input.occasion)       leadPatch.event_types    = [input.occasion];
+          if (input.budget_min)     leadPatch.budget_min     = input.budget_min;
+          if (input.budget_max)     leadPatch.budget_max     = input.budget_max;
+          if (input.function_count) leadPatch.function_count = input.function_count;
+          if (input.wedding_days)   leadPatch.wedding_days   = input.wedding_days;
+          if (input.functions)      leadPatch.functions      = input.functions;
+          if (input.notes)          leadPatch.notes          = input.notes;
+          await supabase.from('leads').update(leadPatch).eq('id', existingLead.id);
           leadCaptured = existingLead.id;
         } else {
           // Create new lead

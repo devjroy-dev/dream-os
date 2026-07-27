@@ -184,7 +184,16 @@ const db = { from: (t) => mkq(t), schema: () => db };
     T('§2.2 dear_donna_talk IS offered (Donna enabled — the business path is unchanged)', first.tools.includes('dear_donna_talk'));
     T('§2.3 jot_advice is NOT offered in the business room', !first.tools.includes('jot_advice'));
     T('§2.4 the advisor lens is NOT in the business prompt (mode-gated, not global)', !/THE ADVISORY ROOM/.test(first.system));
-    T('§2.5 the ESTATE is present — [Donna\'s snapshot] rides the business prompt', /\[Donna's snapshot/.test(first.system));
+    // ── LABELED AMENDMENT · F-06.52 (CE-ruled 2026-07-25) ────────────────────────
+    // This cell asserted the estate's presence by its LABEL — "[Donna's snapshot]" — and
+    // that label was the disease: the context handed the model the exact machinery
+    // vocabulary harveySoul's no-machinery law forbids, and the model echoed it back to
+    // the vendor. The frame is cured; the PROPERTY this cell guards (the estate rides the
+    // business prompt while the advisor lens does not) is unchanged and is now asserted on
+    // the frame's cured name. Re-pointed, not retired — and note the cell did its job:
+    // it caught the cure by name and forced this amendment.
+    T('§2.5 the ESTATE is present — the live picture rides the business prompt', /\[What's open and near/.test(first.system));
+    T('§2.5b AND IT CARRIES NO MACHINERY VOCABULARY (F-06.52)', !/\[Donna|\[Operator|Donna's snapshot/.test(first.system));
     T('§2.6 no advisor note was written (jot_advice unreachable here)', store.ownerNotes.length === 0);
   }
 

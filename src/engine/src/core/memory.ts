@@ -153,7 +153,11 @@ export async function donnaMessages(conversationId: string, limit = 50): Promise
   }
   if (!lines.length) return '';
   const recent = lines.slice(-limit); // last `limit` exchange-lines, chronological
-  return `\n\n[Donna messages — your standing exchange with her in this conversation — what she has surfaced for you, turn by turn:]\n${recent.join('\n')}\n`;
+  // TDW_06 F-06.52 — framing only; every surfaced line below is byte-identical. The old
+  // header named the colleague and the exchange, handing the model the exact vocabulary
+  // harveySoul's sentence 36 forbids. It arrives now as what it is to him: things already
+  // established this conversation.
+  return `\n\n[Established this conversation — what you already know, turn by turn:]\n${recent.join('\n')}\n`;
 }
 
 // ── TDW_04 B6 sitting 2 (Q-B4-6(b), R-B6-3 CE-ruled) — THE WITNESS RETURNS ──

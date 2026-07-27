@@ -59,7 +59,35 @@ function closingClause(src) {
 // ════════════════════════════════════════════════════════════════════════════
 H('§1 — THE REVERT LANDED ON THE EXACT PRE-M-4 BYTES');
 
-for (const [label, f] of [['V-1 harveySoul', HARVEY], ['V-2 donnaSoul', DONNA], ['V-3 advisorLens', LENS]]) {
+
+// ── LABELED AMENDMENT · F-06.52's POSITION MOVE (CE-ruled 2026-07-25) ────────────
+// §1.1 asserted harveySoul byte-identical to daacf4f^ — correct at the CE-77 revert, and
+// WRONG the moment the no-machinery law was moved to terminal by the chair's own ruling.
+// The property it guarded (the M-4 register sentence is gone) survives and is asserted
+// exactly; what is retired is the whole-file byte-equality, which would now convict a
+// ruled change. A cell that greens only until the next ruled edit is not a floor.
+t('§1.1 V-1 harveySoul — M-4\'s register sentence is GONE, and the pre-existing law survived', () => {
+  const src = read(HARVEY), pre = gitShow(PRE_M4, HARVEY);
+  assert.ok(!/grouped the Indian way/.test(src), 'M-4\'s reverted grouping sentence is still present');
+  assert.ok(/Currency is always "Rs", never the symbol\. Plain Indian English\./.test(src),
+    'the pre-existing symbol law was destroyed, or the voice run is split again');
+  // Every byte of the pre-M-4 file must still be ACCOUNTED FOR: the only licensed delta is
+  // the no-machinery paragraph's relocation, so the two files must be equal as SETS of
+  // sentences even though they differ in order.
+  // The template terminator (backtick + semicolon) rides whichever sentence ends the
+  // literal, so it moves with the paragraph and would show as a false content delta.
+  // Strip it before comparing: we are testing what the model READS, not where the
+  // template happens to close.
+  const norm = (x) => x
+    .replace(/`;\s*$/, '')
+    .split(/(?<=[.!?])\s+/)
+    .map((l) => l.trim().replace(/`;?$/, ''))
+    .filter(Boolean).sort().join('\n');
+  assert.strictEqual(norm(src), norm(pre),
+    'harveySoul gained or lost content — the position move must MOVE bytes, never edit them');
+});
+
+for (const [label, f] of [['V-2 donnaSoul', DONNA], ['V-3 advisorLens', LENS]]) {
   t(`§1.${f === HARVEY ? 1 : f === DONNA ? 2 : 3} ${label} is BYTE-IDENTICAL to ${PRE_M4}`, () => {
     assert.strictEqual(read(f), gitShow(PRE_M4, f),
       `${f} does not match its pre-M-4 bytes — the revert is partial, and a partial revert of a soul is a third version nobody ruled`);
@@ -217,9 +245,12 @@ for (const m of MUTATIONS) {
 }
 
 t('§5.0 every mutated file is restored BYTE-IDENTICAL', () => {
-  for (const f of [LENS, DONNA, HARVEY]) {
+  for (const f of [LENS, DONNA]) {
     assert.strictEqual(read(f), gitShow(PRE_M4, f), `a mutation survived in ${f}`);
   }
+  // harveySoul lawfully differs from PRE_M4 by the position move (F-06.52), so restoration
+  // is asserted on the moved law's terminal placement instead of whole-file equality.
+  assert.ok(/spoken to him, finished\.`;$/.test(read(HARVEY).trim()), 'a mutation survived in harveySoul');
   assert.ok(read(COUPLE).includes('11. Any rupee figure you write'), 'a mutation survived in the couple prompt');
   assert.ok(read(FIND).includes('if (l.budget_min != null || l.budget_max != null) {'), 'a mutation survived in the renderer');
   assert.ok(read(SCRUB).includes('  k: 1e3, thousand: 1e3,'), 'a mutation survived in the scale table');

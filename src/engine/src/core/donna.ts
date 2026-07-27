@@ -176,6 +176,35 @@ export async function rebuildSnapshot(agentId: string): Promise<Note> {
   return note;
 }
 
+// ── TDW_06 · F-06.52 — THE MACHINERY-LABELED CONTEXT (CE-ruled 2026-07-25) ────────
+// THE DERIVATION THAT LOCATED THIS: harveySoul's live prompt FORBIDS narrating the
+// machinery — sentence 36, "no narrating your machinery, no reading him the workings of
+// the back office — narrating the machinery is billing the client for your own filing
+// cabinet." The law exists, it is live, and it is in the business room where the
+// specimens occurred (loop.ts:378 composes HARVEY_SOUL there). It was ignored anyway:
+// 22 Jul "Donna's snapshot shows", 27 Jul 12:29 "Let me pull the fresh leads from
+// Donna's snapshot", 13:37 "I'm reading the snapshot Operator keeps" — the first two
+// witnessed on the columns via persona_scrub_on_wire, so the MODEL wrote her name and
+// the wire-scrub converted it. A stronger sentence was not the answer; the register
+// arc had already proved that.
+//
+// WHY IT WAS IGNORED, and this is the whole finding: WE HAND HIM THE VOCABULARY. The
+// context injected two inches above that law was labeled "[Donna's snapshot]". The model
+// is not inventing machinery-talk; it is ECHOING A LABEL WE WROTE. The soul was fighting
+// its own context, and context wins that fight every time.
+//
+// THE CURE IS THE P1 FAMILY INVERTED: P1 ADDED a legible line so a payload could answer
+// a question its shape hid. Here we REMOVE a leaky label so a payload stops teaching a
+// vocabulary the soul forbids. Both are the same principle — the payload should carry
+// what it means and nothing it doesn't.
+//
+// FRAMING ONLY, CONTENT UNTOUCHED — the register arm's value-invariance logic applied to
+// labels: every item, figure, stamp and line below is byte-identical; only the header
+// changes. The estate's own model of a clean frame is next door: memory.ts:230 already
+// says "[Your owner — the one person you work for]", not "[the owner note Donna keeps]".
+// It arrives as HIS standing knowledge, which is what it actually is.
+//
+// W-1: these are injection frames in machinery files, not soul bytes. The wall stays shut.
 async function getNote(agentId: string): Promise<Note> {
   const existing = await readNoteRow(agentId);
   if (existing && Array.isArray(existing.items)) return existing;
@@ -223,7 +252,7 @@ const SNAPSHOT_TZ = 'Asia/Kolkata'; // TDW_06 M-1 — consultAccess.ts:14's prec
 export async function snapshotText(agentId: string): Promise<string> {
   const note = await getNote(agentId);
   if (!note.items.length) {
-    return "\n\n[Donna's snapshot] Nothing open or near yet — clean slate.\n";
+    return "\n\n[What's open and near] Nothing open or near yet — clean slate.\n";
   }
 
   const leads   = note.items.filter((it) => it.kind === 'lead');
@@ -282,7 +311,7 @@ export async function snapshotText(agentId: string): Promise<string> {
     if (joinedIds.has(it.id)) continue; // a record already folded into its twin's joined line
     lines.push(`- ${it.text}${stampOf(it)}`);
   }
-  return `\n\n[Donna's snapshot — what's open and near, kept true for you]\n${lines.join('\n')}\n`;
+  return `\n\n[What's open and near — your live picture, kept true]\n${lines.join('\n')}\n`;
 }
 
 // ── Donna, resumable: working WITH Harvey turn by turn ───────────────────────
