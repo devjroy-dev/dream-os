@@ -902,7 +902,7 @@ function recencyFidelity(r, askText) {
 // tried — a relay that quotes the payload verbatim and a relay that speaks it in her own
 // words must both count as CARRIED. Reading her sentence with the payload regex alone
 // would manufacture a "dropped" verdict out of a relay that did its job.
-function handAttribution(r) {
+function handAttribution(r, askText) {
   const calls = (r && r.tool_calls) || [];
   const talks = calls.filter((c) => c && c.name === 'dear_donna_talk');
   const relays = calls.filter((c) => c && c.name === 'listen_harvey_talk').map((c) => String(c.result || ''));
@@ -911,9 +911,27 @@ function handAttribution(r) {
   const relayText = relays.join('\n');
   const handsDated = ARRIVAL_DATED_RE.test(handText);
   const relayDated = ARRIVAL_DATED_RE.test(relayText) || REPLY_ARRIVAL_RE.test(relayText);
+  // ── THE GATE (F-06.73, CE-85 §3.1). ONE HOME, AND IT IS NOT THIS FUNCTION'S.
+  // The shipped arm gated limb 2 on `handsDated` ALONE, so it spoke its attribution
+  // conclusion on six honest turns per lane where no absence had been claimed at all —
+  // S4's "The 19th is free." drew "an absence claim downstream is HER relay's loss."
+  // F-06.55's class inverted: a positive that always matches is not a signal, and a
+  // report tuned out is a report that cannot sharpen the evening it exists for.
+  //
+  // THE PREDICATE IS `recencyFidelity`'s OWN, ASKED OF `recencyFidelity` — never a second
+  // copy of its vocabulary here, which would be two authorities on one question and drift
+  // by the next sitting. Its `quality` field is the answer: `denied` is the ONE state in
+  // which an absence was claimed AND the reply did not earn it — i.e. the only state where
+  // the verdict turns on what the hands held, and therefore the only state where "whose
+  // loss was it" is a question with a subject. `n/a` (not a recency ask), `deferred`
+  // (nothing claimed), `gap` and `answered` (the reply earned its own acquittal) all leave
+  // nothing for attribution to attribute.
+  const verdictTurnsOnIt = recencyFidelity(r, askText).quality === 'denied';
   const lines = [];
   // ── LIMB 1 (F-06.71): the zero-hand world, split. Emitted only where the ambiguity
-  // actually bites — a turn with hands has nothing to disambiguate.
+  // actually bites — a turn with hands has nothing to disambiguate. UNGATED by the above
+  // and deliberately so: "did he dispatch" is answerable and load-bearing on every
+  // zero-hand turn, whatever was asked, and it is the limb that settles CE-82's gate #3.
   if (hands.length === 0) {
     if (talks.length === 0) {
       lines.push('DISPATCH ABSENT — Victor emitted no dear_donna_talk this turn, so a "no hand" verdict is HIS choice not to dispatch (§2.1 sentence 1), not her leg coming back empty (F-06.71).');
@@ -921,15 +939,26 @@ function handAttribution(r) {
       lines.push(`DISPATCH PRESENT (${talks.length}) BUT ZERO HANDS RETURNED — Victor handed the work over and her leg produced no tool call, so a "no hand" verdict is DONNA'S, not his (F-06.71). The same sentence has been reporting both worlds.`);
     }
   }
-  // ── LIMB 2 (F-06.70): the relay channel, only where there was something to lose.
+  // ── LIMB 2 (F-06.70): the relay channel, only where there was something to lose —
+  // and, now, only CONCLUDING where something was claimed.
   if (handsDated) {
-    if (relays.length === 0) {
-      lines.push('DATES STRANDED — hand result(s) carried arrival-dated evidence and NO relay reached Victor at all, so his composer received none of it (F-06.70).');
-    } else if (!relayDated) {
-      lines.push(`DATES DROPPED IN THE RELAY — ${hands.length} hand result(s) carried arrival-dated evidence and not one of the ${relays.length} voiced sentence(s) carries any, so Victor's composer NEVER RECEIVED THE DATES (loop.ts:710 hands him the voiced text alone). An absence claim downstream is HER relay's loss (§2.2 sentence 6, F-04.78's family), not F-06.22 as filed (F-06.70).`);
-    } else {
-      lines.push('DATES SURVIVED THE RELAY — the voiced text Victor actually received carries arrival evidence, so an absence claim downstream is VICTOR\'S composition over evidence in his own hands (F-06.22 as filed) (F-06.70).');
+    const lost = relays.length === 0 ? 'STRANDED' : (relayDated ? null : 'DROPPED');
+    if (verdictTurnsOnIt) {
+      if (lost === 'STRANDED') {
+        lines.push(`DATES STRANDED — ${hands.length} hand result(s) carried arrival-dated evidence and NO relay reached Victor at all, so his composer received none of it. The unearned absence is not his to have earned (F-06.70).`);
+      } else if (lost === 'DROPPED') {
+        lines.push(`DATES DROPPED IN THE RELAY — ${hands.length} hand result(s) carried arrival-dated evidence and not one of the ${relays.length} voiced sentence(s) carries any, so Victor's composer NEVER RECEIVED THE DATES (loop.ts:710 hands him the voiced text alone). This unearned absence is HER relay's loss (§2.2 sentence 6, F-04.78's family), not F-06.22 as filed (F-06.70).`);
+      } else {
+        lines.push("DATES SURVIVED THE RELAY — the voiced text Victor actually received carries arrival evidence, so this unearned absence is VICTOR'S composition over evidence in his own hands (F-06.22 as filed) (F-06.70).");
+      }
+    } else if (lost) {
+      // NEUTRAL, BY RULING (CE-85 §3.1): the loss is real and worth seeing — it is the
+      // mechanism F-06.70 named, and its frequency is data — but no absence was claimed
+      // this turn, so NO ATTRIBUTION FOLLOWS and none is written. Observation, not verdict.
+      lines.push(`DATES ${lost} (observation only — no unearned absence was claimed this turn, so nothing is attributed): ${hands.length} hand result(s) carried arrival-dated evidence and the voiced text carried none of it onward.`);
     }
+    // SURVIVED with nothing claimed says nothing at all: no loss, no claim, no subject.
+    // Disclosed as the one place this arm is quieter than the ruling's floor required.
   }
   // NO `ok`, NO `verdict`, NO severity. The arm cannot fail a turn even by accident —
   // asserted structurally at [23], F-06.32's shape and F-06.64's precedent.
@@ -1564,7 +1593,7 @@ async function runLane(lane, runTurn, mkTransports) {
     // ── F-06.70 / F-06.71 — REPORT-ONLY, at the same seam and for the same reason.
     // It names WHICH MOUTH a zero-hand or absence verdict belongs to. `ok` below does
     // NOT read `attrib`, by ruling; [23] asserts that structurally.
-    const attrib = handAttribution(r);
+    const attrib = handAttribution(r, sc.message);
     const ok = v.ok && !downgraded && !escaped && speaker.length === 0 && money.length === 0;
     laneOk = laneOk && ok;
     const ceil = lane.ceiling ? '₹*' : '₹';
@@ -1574,7 +1603,7 @@ async function runLane(lane, runTurn, mkTransports) {
     for (const hit of speaker) console.log(`      SPEAKER SIGHTING: ${hit}`);
     for (const hit of money) console.log(`      MONEY SIGHTING: ${hit}`);
     for (const hit of time.drift) console.log(`      TIME DRIFT [REPORT-ONLY, verdict untouched]: ${hit}`);
-    for (const hit of attrib) console.log(`      ATTRIBUTION [REPORT-ONLY, verdict untouched]: ${hit}`);
+    for (const hit of attrib) console.log(`      MOUTH ATTRIBUTION [REPORT-ONLY, verdict untouched]: ${hit}`);
       const prose = String(r.reply || '').replace(/\s+/g, ' ').slice(0, 220);
       if (prose) console.log(`      VICTOR'S PROSE: ${prose}`);
       results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, timeDrift: time.drift, attrib, seatedVictor, seatedDonna, crashed: false });
@@ -1624,10 +1653,10 @@ async function runLane(lane, runTurn, mkTransports) {
     // EVERY lane by :1073's own line; the old lane-derived string printed VICTOR (haiku) for
     // a deepseek failure, in the one cell where attribution decides a model ruling.
     const { sv, sd, routed } = seatFor(x, lane);
-    if (x.crashed) { console.log(`  ATTRIBUTION ${x.sc.id}: CRASHED (rig-void — a malformed model-output shape; NOT ${sv}/${sd}'s verdict)${routed} — ${x.why}`); continue; }
+    if (x.crashed) { console.log(`  SEAT ATTRIBUTION ${x.sc.id}: CRASHED (rig-void — a malformed model-output shape; NOT ${sv}/${sd}'s verdict)${routed} — ${x.why}`); continue; }
     const hands = x.handsFired ?? null;
     const seat = hands === 0 ? `VICTOR (${sv})${routed}` : hands === null ? 'unattributed' : `the dispatched hand (${sd})`;
-    console.log(`  ATTRIBUTION ${x.sc.id}: on trial = ${seat} — ${x.why}`);
+    console.log(`  SEAT ATTRIBUTION ${x.sc.id}: on trial = ${seat} — ${x.why}`);
   }
   return { laneOk, results, total, store }; // V5: the store rides out so rig sections can read the rows
 }
@@ -1830,6 +1859,33 @@ function scriptedTransports(profile) {
         hv.length = 0; dn.length = 0;
         hv.push(HV.dispatch("How's the week looking?", 'h1'), HV.prose('Meera Rs 60,000 · Vera Rs 20,000 in, Rs 40,000 pending · Ananya paid · Keka Rs 25,000 · plus four more — the full slate.'));
         dn.push(DN.fanout(['rec-meera', 'rec-vera', 'rec-keka', 'rec-ananya', 'rec-divya', 'rec-devroy2', 'rec-devroy3', 'rec-anaya2'], 'Pulled all eight binders — figures above.'));
+      }
+    } else if (profile === 'relaydrop' || profile === 'relaycarry') {
+      // ── F-06.74 (CE-85 §3.2) — LIMB 2's OWN FAMILY, EXERCISED AT LANE LEVEL.
+      // THE GAP THIS CLOSES, self-filed: SD-FRESH and its three repeats fell through
+      // `honestFor`'s default to `DN.voice('Nothing pending.')` — no read hand, so no dated
+      // payload, so limb 2 was SILENT on the one family F-06.70 exists to disambiguate.
+      // [23]'s cells are unit fixtures over hand-built turn objects; unit coverage is not
+      // lane coverage, and an arm first exercised during the evening it must sharpen is an
+      // arm the evening is testing rather than using.
+      //
+      // THE PAIR IS THE POINT, and the two profiles differ in ONE STRING — the voiced text:
+      //   relaydrop  — her relay carries no arrival evidence => the dates die at loop.ts:710
+      //   relaycarry — her relay speaks the arrival           => they reach his composer
+      // Victor's PROSE and the donna_find hand are byte-identical across both, so
+      // recencyFidelity returns the SAME `ok` and the SAME `why` on both lanes and only the
+      // MOUTH ATTRIBUTION line moves. That is the discriminator's whole claim, proven at the
+      // seam it actually runs at. Both lanes FAIL by design (the reply claims an unearned
+      // absence over dated hands — the F-06.22 conviction, correct on both); the question
+      // this arm answers is WHOSE, and it is a different question from WHETHER.
+      honestFor(sc.id);
+      if (/^SD-FRESH/.test(sc.id)) {
+        hv.length = 0; dn.length = 0;
+        hv.push(HV.dispatch('Anything new in since we last spoke?', 'h1'),
+                HV.prose('Nothing new since we last spoke.'));
+        dn.push(DN.read(profile === 'relaycarry'
+          ? 'Tara Relay Test — filed 01-07-26. Nothing else.'
+          : 'Nothing pending.'));
       }
     } else if (profile === 'bareabsence') {
       // F6's disease (R-3's choice-to-dispatch gap): an existence probe answered
@@ -2689,16 +2745,16 @@ function scriptedTransports(profile) {
       const neverDispatched = { reply: 'Nothing new.', tool_calls: [] };
       const dispatchedEmpty = { reply: 'Nothing new.', tool_calls: [TALK([]), REL('Nothing pending.')] };
       T('WORLD 1 — DISPATCH ABSENT: no dear_donna_talk, so a "no hand" verdict is VICTOR\'S choice not to dispatch',
-        /DISPATCH ABSENT/.test(handAttribution(neverDispatched).join('|')));
+        /DISPATCH ABSENT/.test(handAttribution(neverDispatched, SD_FRESH_MSG).join('|')));
       T('WORLD 2 — DISPATCH PRESENT, ZERO HANDS: he handed it over and HER leg came back empty — the other world, named',
-        /DISPATCH PRESENT \(1\) BUT ZERO HANDS/.test(handAttribution(dispatchedEmpty).join('|')));
+        /DISPATCH PRESENT \(1\) BUT ZERO HANDS/.test(handAttribution(dispatchedEmpty, SD_FRESH_MSG).join('|')));
       T('NON-VACUOUS: the two worlds produce DIFFERENT sentences — which is the whole finding (one sentence reported both for an evening)',
-        handAttribution(neverDispatched).join('|') !== handAttribution(dispatchedEmpty).join('|'));
+        handAttribution(neverDispatched, SD_FRESH_MSG).join('|') !== handAttribution(dispatchedEmpty, SD_FRESH_MSG).join('|'));
       T('…and unblockVerdict STILL reports "NO unblock hand" for BOTH — the predicate is untouched, the arm stands beside it',
         unblockVerdict(neverDispatched, '2026-12-18').why === unblockVerdict(dispatchedEmpty, '2026-12-18').why
         && unblockVerdict(neverDispatched, '2026-12-18').ok === false && unblockVerdict(dispatchedEmpty, '2026-12-18').ok === false);
       T('A turn WITH hands gets no limb-1 line — the arm speaks only where the ambiguity actually bites',
-        !/DISPATCH (ABSENT|PRESENT)/.test(handAttribution({ reply: 'ok', tool_calls: [TALK([UNDATED]), REL('Nothing pending.')] }).join('|')));
+        !/DISPATCH (ABSENT|PRESENT)/.test(handAttribution({ reply: 'ok', tool_calls: [TALK([UNDATED]), REL('Nothing pending.')] }, SD_FRESH_MSG).join('|')));
 
       // ── LIMB 2 (F-06.70): the relay channel, where the dates are lost or survive.
       const dropped = { reply: 'Nothing new since we last spoke.', tool_calls: [TALK([DATED]), REL('Nothing pending on the pile.')] };
@@ -2706,21 +2762,21 @@ function scriptedTransports(profile) {
       const survivedSpoken = { reply: 'Nothing new since we last spoke.', tool_calls: [TALK([DATED]), REL('Vera came in this morning.')] };
       const stranded = { reply: 'Nothing new.', tool_calls: [TALK([DATED])] };
       T('WORLD 3 — DATES DROPPED IN THE RELAY: the hand carried arrival evidence, her voiced text carries none — Victor NEVER RECEIVED the dates',
-        /DATES DROPPED IN THE RELAY/.test(handAttribution(dropped).join('|')));
+        /DATES DROPPED IN THE RELAY/.test(handAttribution(dropped, SD_FRESH_MSG).join('|')));
       T('WORLD 4 — DATES SURVIVED (quoted): she read the payload back, so an absence downstream is VICTOR\'S composition',
-        /DATES SURVIVED THE RELAY/.test(handAttribution(survivedQuoted).join('|')));
+        /DATES SURVIVED THE RELAY/.test(handAttribution(survivedQuoted, SD_FRESH_MSG).join('|')));
       T('WORLD 4b — DATES SURVIVED (SPOKEN, not quoted): the relay is a MOUTH, read with the mouth\'s regex — "came in this morning" is carried evidence, not a drop',
-        /DATES SURVIVED THE RELAY/.test(handAttribution(survivedSpoken).join('|')));
+        /DATES SURVIVED THE RELAY/.test(handAttribution(survivedSpoken, SD_FRESH_MSG).join('|')));
       T('THE STRANDED CASE is its own sentence: dated hands and NO relay reached him at all',
-        /DATES STRANDED/.test(handAttribution(stranded).join('|')));
+        /DATES STRANDED/.test(handAttribution(stranded, SD_FRESH_MSG).join('|')));
       T('NON-VACUOUS: dropped and survived produce DIFFERENT sentences over the SAME dated hand and the SAME reply',
-        handAttribution(dropped).join('|') !== handAttribution(survivedQuoted).join('|'));
+        handAttribution(dropped, SD_FRESH_MSG).join('|') !== handAttribution(survivedQuoted, SD_FRESH_MSG).join('|'));
       T('NOTHING TO LOSE, NOTHING SAID: undated hands produce no relay limb — the arm never invents a loss',
-        !/DATES /.test(handAttribution({ reply: 'Nothing new.', tool_calls: [TALK([UNDATED]), REL('Nothing pending.')] }).join('|')));
+        !/DATES /.test(handAttribution({ reply: 'Nothing new.', tool_calls: [TALK([UNDATED]), REL('Nothing pending.')] }, SD_FRESH_MSG).join('|')));
 
       // ── ** REPORT-ONLY, ASSERTED STRUCTURALLY (the ruling's own demand). **
       T('THE ARM RETURNS A BARE ARRAY — no `ok`, no `verdict`, no severity: it cannot fail a turn even by accident',
-        Array.isArray(handAttribution(dropped)) && !('ok' in handAttribution(dropped)) && !('verdict' in handAttribution(dropped)));
+        Array.isArray(handAttribution(dropped, SD_FRESH_MSG)) && !('ok' in handAttribution(dropped, SD_FRESH_MSG)) && !('verdict' in handAttribution(dropped, SD_FRESH_MSG)));
       T('THE VERDICT IS IDENTICAL ACROSS ALL FOUR WORLDS — recencyFidelity\'s ok AND its why byte-for-byte, so counts and strings stay comparable',
         [dropped, survivedQuoted, survivedSpoken, stranded].every((w) => {
           const a = recencyFidelity(w, SD_FRESH_MSG), b = recencyFidelity(dropped, SD_FRESH_MSG);
@@ -2730,6 +2786,45 @@ function scriptedTransports(profile) {
         /const ok = v\.ok && !downgraded && !escaped && speaker\.length === 0 && money\.length === 0;/.test(SELF));
       T('AND THE LANE CARRIES IT: every honest-lane result holds an attrib record, and every one of them still PASSED',
         honest.results.every((x) => Array.isArray(x.attrib)) && honest.results.every((x) => x.ok === true));
+      // ── ⚑ F-06.73 (CE-85 §3.1) — THE GATE. Limb 2 CONCLUDES only where the verdict
+      // turns on it. The shipped arm spoke its conclusion on six honest turns per lane
+      // where nothing had been claimed; these cells hold the gate both ways.
+      const s4Shape = { reply: 'The 19th is free.', tool_calls: [TALK([DATED]), REL('2026-12-19 carries nothing.')] };
+      T('⚑ GATE — THE SHIPPED DEFECT, NAMED: S4\'s own shape ("The 19th is free.") drew a HER-relay\'s-loss conclusion over a calendar probe. It no longer does.',
+        !/HER relay's loss|VICTOR'S composition/.test(handAttribution(s4Shape, 'Is 19 December free for a shoot?').join('|')));
+      T('⚑ GATE — and the LOSS is still reported, neutrally: the dates did die in that relay and the reader still learns it, with NO attribution attached',
+        /DATES DROPPED \(observation only/.test(handAttribution(s4Shape, 'Is 19 December free for a shoot?').join('|')));
+      T('⚑ GATE — NON-VACUOUS: the SAME turn under a RECENCY ask with an unearned absence DOES conclude — the gate reads the claim, not the shape',
+        /HER relay's loss/.test(handAttribution(dropped, SD_FRESH_MSG).join('|')));
+      T('⚑ GATE — a recency ask with NOTHING claimed (the 2:27 deferred shape) draws no conclusion either',
+        !/HER relay's loss|VICTOR'S composition/.test(handAttribution({ reply: 'Handled.', tool_calls: [TALK([DATED]), REL('Nothing pending.')] }, SD_FRESH_MSG).join('|')));
+      T('⚑ GATE — an absence the reply EARNED (the honest gap) draws no conclusion: it acquitted itself, so there is nothing to attribute',
+        recencyFidelity({ reply: "Nothing new that I can see — this reach cannot say what never reached the drawer.", tool_calls: [TALK([DATED]), REL('Nothing pending.')] }, SD_FRESH_MSG).quality !== 'denied');
+      T('⚑ GATE — ONE HOME, ASSERTED ON THE SOURCE: the gate ASKS recencyFidelity for its quality; it never re-copies the vocabulary here',
+        /const verdictTurnsOnIt = recencyFidelity\(r, askText\)\.quality === 'denied';/.test(SELF));
+      T('⚑ GATE — LIMB 1 IS DELIBERATELY UNGATED: "did he dispatch" is answerable on any zero-hand turn, and it is the limb that settles CE-82\'s gate #3',
+        /DISPATCH ABSENT/.test(handAttribution({ reply: 'Done. 18 December is unblocked.', tool_calls: [] }, 'Unblock 18 December.').join('|')));
+
+      // ── ⚑ F-06.74 (CE-85 §3.2) — LANE-LEVEL COVERAGE for limb 2's own family.
+      // Unit fixtures are not lane coverage; SD-FRESH fell through honestFor's default and
+      // limb 2 never fired on it. Two lanes, differing in ONE STRING — her voiced text.
+      const relayDrop = await runLane(mkLane('relay-drop profile', 'relaydrop'), runTurn, scriptedTransports('relaydrop'));
+      const relayCarry = await runLane(mkLane('relay-carry profile', 'relaycarry'), runTurn, scriptedTransports('relaycarry'));
+      const fam = (lane) => lane.results.filter((x) => /^SD-FRESH/.test(x.sc.id));
+      T('⚑ LANE — the SD-FRESH family now RUNS limb 2: all four turns on the drop lane carry a MOUTH ATTRIBUTION line (it was silent on this family before)',
+        fam(relayDrop).length === 4 && fam(relayDrop).every((x) => x.attrib.some((l) => /DATES DROPPED IN THE RELAY/.test(l))));
+      T('⚑ LANE — the carry lane names the OTHER mouth on the identical family: her relay spoke the arrival, so the unearned absence is VICTOR\'S',
+        fam(relayCarry).length === 4 && fam(relayCarry).every((x) => x.attrib.some((l) => /DATES SURVIVED THE RELAY/.test(l))));
+      T('⚑ LANE — ⚑ THE DISCRIMINATOR\'S WHOLE CLAIM, AT THE SEAM: the two lanes return the IDENTICAL verdict (ok AND why) on every turn of the family — only the attribution moves',
+        fam(relayDrop).every((x, i) => x.ok === fam(relayCarry)[i].ok && x.why === fam(relayCarry)[i].why));
+      T('⚑ LANE — and that shared verdict is the F-06.22 conviction, correctly RED on both: the arm answers WHOSE, never WHETHER',
+        fam(relayDrop).every((x) => x.ok === false && /ABSENCE OVER DATED HANDS/.test(x.why)));
+      T('⚑ LANE — the rest of each lane is byte-identical to the honest profile: only the SD-FRESH family was re-scripted',
+        relayDrop.results.filter((x) => !/^SD-FRESH/.test(x.sc.id)).every((x, i) => {
+          const h = honest.results.filter((y) => !/^SD-FRESH/.test(y.sc.id))[i];
+          return h && x.sc.id === h.sc.id && x.ok === h.ok && x.why === h.why;
+        }));
+
       T('THE THREE PREDICATES ARE BYTE-UNTOUCHED — the arm was sited at the seam because four benches LIFT recencyFidelity out of this file and eval it standalone (m1:66-82)',
         /function recencyFidelity\(r, askText\) \{/.test(SELF)
         && !/handAttribution/.test(SELF.slice(SELF.indexOf('function recencyFidelity('),
