@@ -122,12 +122,49 @@ t('§1.1 V-1 harveySoul — M-4\'s register sentence is GONE, and the pre-existi
     'harveySoul gained or lost READABLE content — a position move must MOVE bytes, never edit them');
 });
 
-for (const [label, f] of [['V-2 donnaSoul', DONNA], ['V-3 advisorLens', LENS]]) {
-  t(`§1.${f === HARVEY ? 1 : f === DONNA ? 2 : 3} ${label} is BYTE-IDENTICAL to ${PRE_M4}`, () => {
-    assert.strictEqual(read(f), gitShow(PRE_M4, f),
-      `${f} does not match its pre-M-4 bytes — the revert is partial, and a partial revert of a soul is a third version nobody ruled`);
-  });
-}
+// ── LABELED AMENDMENT · F-06.81 / F-06.79 — THE FOURTH INSTANCE OF THE CLASS THIS
+// ── FILE HAS ALREADY ESCAPED TWICE (the relay law sitting, 2026-07-27). COUNT
+// ── PRESERVED (one cell per surface, as before). Ratification owed — the CE ruling
+// ── named only f0550 §6.1 leg 2 as this sitting's re-pin; this cell fired too, and
+// ── CE-80's standing law ("re-pin-with-attribution is a REQUIRED step of any
+// ── soul-touching seal") is the authority it is amended under. DISCLOSED, NOT QUIET.
+//
+// THE DEFECT is the one §1.1's own amendment already names two dozen lines above:
+// WHOLE-FILE BYTE-EQUALITY CONVICTS A RULED CHANGE, and "a cell that greens only until
+// the next ruled edit is not a floor." §1.1 was narrowed for harveySoul at F-06.52 and
+// again at F-06.60; donnaSoul was simply the surface that had not moved yet. It moved
+// tonight under a founder-vetoed, CE-ruled cure, and this cell convicted it.
+//
+// THE CURE, following §1.1's own shape and not inventing a second one: the property V-2
+// guarded — the pre-M-4 soul's readable content is all still ACCOUNTED FOR — is kept and
+// asserted more precisely than byte-equality ever did. What may differ is ENUMERATED BY
+// RULING, and any fourth difference REDs. V-3 advisorLens is untouched by this sitting
+// and keeps whole-file equality exactly as before.
+t('§1.2 V-2 donnaSoul — every pre-M-4 readable sentence is ACCOUNTED FOR; only the three RULED deltas differ', () => {
+  const sentences = (x) => x.split(/(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean);
+  const src = new Set(sentences(read(DONNA)));
+  const pre = sentences(gitShow(PRE_M4, DONNA));
+  const lost = pre.filter((s) => !src.has(s));
+
+  // The three licensed deltas, each named to the ruling that authorised it. A pre-M-4
+  // sentence may be absent ONLY if it is one of these; anything else is a partial revert
+  // or an unruled edit, which is what this cell has always existed to catch.
+  const ALLOW = [
+    [/is not a reach that hands you a clock/, 'F-06.81 clause 4 — the stale premise, founder-approved re-draft'],
+    [/this reach cannot say/, 'F-06.81 clause 6b — the stale conclusion, founder-approved replacement'],
+    [/two clients named Rhea/, 'F-06.79 Fork 3A — the exemplar line, EXTENDED by insertion (halves proven surviving in b05_f0550 §6.1)'],
+  ];
+  const unexplained = lost.filter((s) => !ALLOW.some(([re]) => re.test(s)));
+  assert.deepStrictEqual(unexplained, [],
+    `donnaSoul lost pre-M-4 readable content OUTSIDE the ruled boundary — a partial revert of a soul is a third version nobody ruled:\n       ${unexplained.map((s) => JSON.stringify(s.slice(0, 80))).join('\n       ')}`);
+  assert.strictEqual(lost.length, ALLOW.length,
+    `expected exactly ${ALLOW.length} ruled deltas, found ${lost.length} — re-derive before trusting this cell`);
+});
+
+t('§1.3 V-3 advisorLens is BYTE-IDENTICAL to ' + PRE_M4, () => {
+  assert.strictEqual(read(LENS), gitShow(PRE_M4, LENS),
+    `${LENS} does not match its pre-M-4 bytes — the revert is partial, and a partial revert of a soul is a third version nobody ruled`);
+});
 
 // ════════════════════════════════════════════════════════════════════════════
 H('§2 — ⚑ POSITION IS NOW A MECHANICAL PROPERTY (the CE-77 doctrine as a floor)');
@@ -280,9 +317,12 @@ for (const m of MUTATIONS) {
 }
 
 t('§5.0 every mutated file is restored BYTE-IDENTICAL', () => {
-  for (const f of [LENS, DONNA]) {
-    assert.strictEqual(read(f), gitShow(PRE_M4, f), `a mutation survived in ${f}`);
-  }
+  assert.strictEqual(read(LENS), gitShow(PRE_M4, LENS), `a mutation survived in ${LENS}`);
+  // donnaSoul lawfully differs from PRE_M4 by F-06.81's two ruled clauses and F-06.79's
+  // exemplar insertion (§1.2's amendment), so restoration is asserted on THIS section's
+  // own mutation target — the closing purpose line — instead of whole-file equality.
+  // Same treatment harveySoul already receives two lines below, same reason.
+  assert.ok(/He does the rest\.`;$/.test(read(DONNA).trim()), `a mutation survived in ${DONNA}`);
   // harveySoul lawfully differs from PRE_M4 by the position move (F-06.52), so restoration
   // is asserted on the moved law's terminal placement instead of whole-file equality.
   assert.ok(/spoken to him, finished\.`;$/.test(read(HARVEY).trim()), 'a mutation survived in harveySoul');

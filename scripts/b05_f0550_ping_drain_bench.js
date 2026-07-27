@@ -377,13 +377,62 @@ H('§6 — W-1 AND PURITY');
 // donnaSoul-lossless tripwire is a genuinely live guard, currently green at 2+/0−, and
 // a chartered rider that may only ADD is a property worth watching forward. Named
 // residual: it reds on any future donnaSoul DELETION — which is the point of it.
-await t('§6.1 zero soul/prompt/voice bytes (AMENDED M-2: eight surfaces 0-line; donnaSoul LOSSLESS under the chartered rider)', () => {
+//
+// ── LABELED AMENDMENT №3 (TDW_06 THE RELAY LAW SITTING, F-06.81 + F-06.79;
+//    CE-ruled 2026-07-27 §1/§8, founder's veto discharged whole 「 approved 」).
+//    COUNT PRESERVED — one cell, one name, both legs still inside it.
+//    LIVE-PINNED AT 2028a0d STILL. The base does NOT move: a base moved to a seal
+//    that does not exist at bench-writing time is F-06.34's floating-referent family,
+//    which this very cell has already been amended twice to escape.
+//
+// THE ATTRIBUTION, AND IT NAMES THE TRUE CAUSE — NOT THE ASSUMED ONE. Both the CE's
+// kickoff and this executor's read-first predicted that F-06.81's clause replacement
+// (donnaSoul :50, clauses 4 and 6b) would trip this tripwire. IT DOES NOT, and the
+// derivation is the finding: the third-paper paragraph was AUTHORED at c736a7e, which
+// POSTDATES this cell's pin base 2028a0d — so the paragraph does not exist at the base
+// and rewriting inside it is still purely additive against it. Measured by isolation at
+// delivery: :50 + the F-06.85 comment alone = 13 insertions, ZERO deletions.
+//
+// THE ONE DELETION IS F-06.79's EXEMPLAR, and nothing else: the fourth dated exemplar
+// (Fork 3A) was INSERTED INTO the closing paragraph's exemplar line, a line that DOES
+// exist at 2028a0d — so that line reads as removed-and-re-added. 14+/1−.
+// Consequence banked so nobody re-litigates: had the CE ruled 1B WITHOUT 3A, no re-pin
+// would have been owed at all. The additive-vs-replacement bench argument that shaped
+// Fork 1 was arguing over a constraint that never bound the clause cure.
+//
+// THE AMENDMENT IS NARROWED, NOT WEAKENED. The count-only assertion is REPLACED by a
+// stricter property: exactly ONE base line may be absent, it must be THAT exemplar line
+// by name, and BOTH of its halves must survive in the live file — so the chartered act
+// is provably an INSERTION INTO it, never a rewrite of it. Any other deletion, and any
+// loss of either half, REDs. The tripwire keeps biting, on more teeth than before.
+await t('§6.1 zero soul/prompt/voice bytes (AMENDED M-2 + №3: eight surfaces 0-line; donnaSoul LOSSLESS, the ONE chartered absence named and its halves proven surviving)', () => {
   const { execSync } = require('child_process');
   const out = execSync('git diff --name-only 2028a0d..5335bb2 -- src/agent/miraSoul.js src/agent/brideSystemPrompt.js src/agent/circleSystemPrompt.js src/agent/coupleSystemPrompt.js src/agent/brideTools.js src/agent/brideOnboarding.js src/engine/src/core/harveySoul.ts src/engine/src/core/advisorLens.ts', { cwd: ROOT }).toString().trim();
   assert.strictEqual(out, '', `W-1 BREACH: ${out}`);
-  const stat = execSync('git diff --numstat 2028a0d -- src/engine/src/core/donnaSoul.ts', { cwd: ROOT }).toString().trim();
-  const deletions = stat ? Number(stat.split(/\s+/)[1]) : 0;
-  assert.strictEqual(deletions, 0, `donnaSoul LOST bytes — the chartered rider is ADDITIVE by ruling, never a rewrite: ${stat}`);
+
+  // Every base line that is absent from the live tree, derived from the diff itself.
+  const removed = execSync('git diff -U0 2028a0d -- src/engine/src/core/donnaSoul.ts', { cwd: ROOT })
+    .toString().split('\n')
+    .filter((l) => l.startsWith('-') && !l.startsWith('---'))
+    .map((l) => l.slice(1));
+
+  assert.strictEqual(removed.length, 1,
+    `donnaSoul LOST base lines beyond the ONE chartered by F-06.79 — the soul may only GROW: ${JSON.stringify(removed.map((r) => r.slice(0, 70)))}`);
+
+  // The one permitted absence is the exemplar line, and no other.
+  const gone = removed[0];
+  assert.ok(gone.includes('two clients named Rhea'),
+    `the absent base line is NOT F-06.79's exemplar line — an unchartered deletion: ${JSON.stringify(gone.slice(0, 90))}`);
+
+  // ...and it is absent only because it was INSERTED INTO. Both halves must survive.
+  const live = read('src/engine/src/core/donnaSoul.ts');
+  const cut = gone.indexOf('which."') + 'which."'.length;
+  const head = gone.slice(0, cut);
+  const tail = gone.slice(cut).trim();
+  assert.ok(head && live.includes(head),
+    'the exemplar line LOST its head — F-06.79 was chartered as an insertion, never a rewrite');
+  assert.ok(tail && live.includes(tail),
+    'the exemplar line LOST its tail — F-06.79 was chartered as an insertion, never a rewrite');
 });
 
 await t('§6.2 engine.js:353 — Mira\'s closing line stands BYTE-UNTOUCHED (R7)', () => {

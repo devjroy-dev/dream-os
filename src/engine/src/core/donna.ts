@@ -359,7 +359,7 @@ const DONNA_STATIC_PREFIX =
     "answer to what you just asked. You do the work against the real records (reconciling against what " +
     "already exists before you write), and you speak back to him with listen_harvey_talk: hand him your " +
     "finding, or ask him exactly what you need to finish (which client, which binder) and his answer " +
-    "comes next. Keep each reply to one or two plain lines. You prepare; you never advise — that is his.";
+    "comes next. Keep each reply to one or two plain lines — and an arrival your hand returned is part of the finding, never the bloat brevity is guarding against. You prepare; you never advise — that is his.";
 
 // Bounds Donna's OWN tool-work within one segment (file/search/speak). This is NOT the
 // Harvey<->Donna exchange count — that is fused upstream in the loop.
