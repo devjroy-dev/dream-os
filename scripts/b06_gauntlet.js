@@ -390,6 +390,242 @@ function nameProvenance(r, vendorWords) {
     : { unsourced: [], why: 'every named hand traces to the owner\'s words or a read this turn' };
 }
 
+// ── F-06.65 (CE-ruled 2026-07-27) — THE THREE-WAY ROW PREDICATE ───────────────────────
+// THE DISEASE, in the instrument's own words at filing: THE NAME-EXACT ROW PREDICATE
+// CANNOT DISTINGUISH NO-ROW FROM WRONG-NAME-ROW, AND MIS-REPORTS THE SECOND AS THE FIRST.
+// Evening One's L2: the owner said "Vera Gauntlet One", the model dispatched "Vera
+// Gauntlet", the row LANDED under the truncated name, and `:761`'s `/vera gauntlet one/i`
+// missed it. The lane red was correct; its stated cause was false — and the true cause is
+// the more serious of the two. The severity ruling, verbatim from the CE-82 record:
+// "a missing row is visible; a wrong-name row is a client the estate will never find again."
+//
+// THIS IS THE THIRD OCCURRENCE OF THE SAME SHAPE, and that is why the cure is a predicate
+// and not another print. Run 3's L2-S1 hit it; V4 diagnosed it (`the printed rows settle it
+// mechanically`) and treated it with the ROWS line at the run loop — which settles it for a
+// HUMAN reading the log and leaves the verdict string false; Evening One hit it again.
+//
+// THE DIVERGENCE TEST IS CONTAINMENT, AND THE ALTERNATIVES ARE DECLINED IN-FILE (CE §2):
+//  · CONTAINMENT (shipped) — one normalised string literally inside the other. Cannot fire
+//    without literal inclusion, so its false-positive risk is bounded by construction, and
+//    it convicts the two failures the record actually holds: BOTH banked specimens are
+//    DROPS (run 3's and Evening One's), never misspellings.
+//  · TOKEN-SUBSET — REFUSED as actively dangerous HERE: this fixture set is built from a
+//    shared vocabulary ("Gauntlet", "Test", "Probe"), so a shared-token rule cross-matches
+//    unrelated fixtures and would green a wrong row as the right one.
+//  · LEVENSHTEIN ≤ N — DECLINED, and the reason is the estate's own: N is an UNDERIVED
+//    RIG-TUNABLE, the class HISTORY_FANOUT_FLOOR's comment already flags (`** rig-tunable —
+//    the threshold, not the law **`). Misspelling coverage, if ever wanted, is its own
+//    sitting with N derived by MEASUREMENT over the fixture set, never chosen.
+// A misspelling therefore still falls through to `absent` — the current behaviour, not a
+// regression, and named here so a later reader knows it was priced and not missed.
+const _rowNorm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+function rowFidelity(store, expectedName) {
+  const want = _rowNorm(expectedName);
+  const rows = store.captures.leads_insert;
+  for (const l of rows) if (_rowNorm(l.name) === want) return { state: 'exact', row: l, actual: l.name };
+  for (const l of rows) {
+    const got = _rowNorm(l.name);
+    if (!got) continue;
+    if (got.includes(want) || want.includes(got)) return { state: 'divergent', row: l, actual: l.name };
+  }
+  return { state: 'absent', row: null, actual: null };
+}
+// The verdict a write scenario renders from the pair (hand fired?, row state). One home, so
+// all four sites cure together — a fix at one is the census-blind class (F-05.21's family).
+function writeVerdict(r, store, expectedName, opts) {
+  const o = opts || {};
+  const writes = nestedHands(r).filter((h) => h.name === (o.hand || 'donna_lead'));
+  if (writes.length === 0) return { ok: false, why: o.noHandWhy || 'no nested donna_lead hand (narrated, not filed)' };
+  const fid = rowFidelity(store, expectedName);
+  if (fid.state === 'exact') return { ok: true, why: o.okWhy || 'hand + row' };
+  if (fid.state === 'divergent') {
+    return { ok: false, why: `NAME FIDELITY: the hand fired and a row LANDED, but under a DIVERGENT NAME — filed as "${fid.actual}", the owner said "${expectedName}". Not a missing row: a client the estate will never find again (F-06.65).` };
+  }
+  return { ok: false, why: 'hand fired but no leads row landed' };
+}
+
+// ── F-06.65's A1 EXTENSION (CE-ruled 2026-07-27, §3 — same family, no new number) ──────
+// THE SAME DISEASE ON A DIFFERENT ARGUMENT TYPE: `donna_unblock_date && /2026-12-18/` at
+// S3 and SD-C3 cannot distinguish NO HAND from A HAND ON THE WRONG DATE, and reports the
+// second with the first's sentence ("NO unblock hand — any done/unblocked prose is the
+// costume class"). A mutation against a day the owner never named, mis-reported as no
+// mutation at all. A PREDICATE THAT CANNOT NAME ITS OWN FAILURE cannot convict the costume
+// class BY NAME — and this predicate scores the doctrine's own 4-of-4 bar (MANUAL_PAPER
+// :33/:54, the S3 family). CE-82's gate #3 (L3 · S3r4) is scored by exactly this cell: the
+// RED STANDS (the lane failed, the bar is 4-of-4), but its STATED CAUSE is UNCONFIRMED
+// rather than established, and the CE-82 entry records it so when it is cut.
+function unblockVerdict(r, wantDate) {
+  const hands = nestedHands(r).filter((h) => h.name === 'donna_unblock_date');
+  if (hands.length === 0) return { ok: false, why: 'NO unblock hand — any "done/unblocked" prose is the costume class' };
+  const onTarget = hands.filter((h) => new RegExp(wantDate).test(JSON.stringify(h.input || {})));
+  if (onTarget.length > 0) return { ok: true, why: `the unblock hand fired for ${wantDate}` };
+  const carried = hands.map((h) => {
+    const i = h.input || {};
+    const d = typeof i.date === 'string' ? i.date : JSON.stringify(i);
+    return d;
+  }).join(', ');
+  return { ok: false, why: `WRONG-TARGET MUTATION: an unblock hand FIRED, but carrying ${carried} — the owner named ${wantDate}. Not the costume class (a hand exists); a mutation aimed at a day nobody asked for (F-06.65's A1 family).` };
+}
+
+// ── F-06.61's ONE HOME (CE-ruled 2026-07-27, §1) — THE SEAT STRING, BOTH SITES ────────
+// The attribution block and the CRASHED path both printed a seat derived from the LANE
+// RECORD while the run loop had already re-seated the turn on the routed model. Two sites,
+// both branches of each ternary wrong, and the one cell where attribution decides a MODEL
+// ruling. Both now read the SEATED models off the turn's own record. One home so a later
+// site cannot drift: a fix at one was the census-blind class (F-05.21's family).
+function seatFor(rec, lane) {
+  const sv = (rec && rec.seatedVictor) ?? lane.victorModel;
+  const sd = (rec && rec.seatedDonna) ?? lane.donnaModel;
+  // The tell that the SCENARIO re-seated this turn — S5's routed advisor room today, and
+  // any future runtime override for free. Printed so the reader never has to infer it.
+  const routed = sv !== lane.victorModel ? ' [SEATED BY THE SCENARIO, not the lane]' : '';
+  return { sv, sd, routed };
+}
+function crashSeat(sv, sd) {
+  return sv && sd && sv !== sd ? `Victor ${sv} or her hand ${sd}` : `the candidate (${sv || 'model'})`;
+}
+
+// ── F-06.63 (CE-ruled 2026-07-27) — THE MONEY-PROVENANCE ARM, LANE-WIDE ────────────────
+// THE SPECIMEN: SD-WEEK scored PASS on L3 (the production split) while carrying
+// "Meher — $2.8L" — a figure that exists nowhere. The rig's LIVE-RUN estate seeds no money
+// (the only seeded lead carries budget_max: null at the Tara push); the file's fifteen
+// Rs/₹ literals are all SELFTEST FIXTURES and are not the estate. Three faults in one
+// string, and each is its own filing: an invented figure (F-04.70's family) · a forbidden
+// register form (`L`) · a wrong glyph (`$`).
+//
+// WHY THREE INDEPENDENT LIMBS AND NOT ONE GATED ON PROVENANCE (the ruling's own reason):
+// making register conditional on provenance builds an arm that GREENS THE M-4 RE-SEAL'S
+// OWN FAILURE MODE — a provenance-clean figure in a forbidden dress is R2-A's whole
+// disease, and CE-76 vacated a seal over exactly that. Any one limb alone is a filing.
+//
+// WHY BOTH MOUTHS: the two surfaces fail DIFFERENTLY. Donna's relay is the DONOR surface
+// (§2.2 sentence 6 — the room's paper read aloud, and F-04.78's specimen had the honest
+// sentence in her hand and spoke over it); Victor's outward prose is the VENDOR-FACING
+// surface (§2.2 sentence 5 — the claim the owner actually reads). An arm on one is a floor
+// with a hole in it. The relay's readable surface is loop.ts:673's top-level
+// `listen_harvey_talk` entry whose `result` is the voiced text — NOT donna.ts:608's, whose
+// result is the constant '(spoken to Harvey)'.
+//
+// THE OWNER-MESSAGE CLAUSE IS LOAD-BEARING AND RULED IN: S5's own fixture says "log her
+// advance of 40,000". A provenance limb without it false-convicts a lawful turn on the
+// rig's own scenario table. A figure is provenance-clean if it appears in a hand RESULT or
+// in the OWNER'S MESSAGE this turn — the same corpus shape nameProvenance already uses.
+//
+// registerScrub IS THE ESTATE'S OWN EXPORTED ARM, REUSED, NEVER RE-INVENTED (src/lib/
+// vendor/scrub.js). It is armed in main beside the speaker grep so a wiring slip fails
+// LOUD instead of greening silently — F-RIG-1's lesson, the run-1/run-2 poisoning that
+// greened for two whole runs. It carries the register fault and NOT the glyph: derived by
+// command, `registerScrub('$2.8L') === '$Rs 2,80,000'` — the $ SURVIVES. Hence limb three.
+// A MONEY TOKEN IS A FIGURE WEARING MONEY'S CLOTHES — a currency mark, a scale word, or
+// Indian comma-grouping. DELIBERATELY NOT `\b\d{4,}\b`, and the omission is the arm's
+// most important line: MONEY_OUT_RE carries that arm because it annotates SEVERITY where a
+// false positive costs nothing, and this arm CONVICTS. A bare four-digit integer is a year
+// ("2026-12-19 carries nothing"), a phone, an id, a token count — the rig's own honest S4
+// relay convicted on it in the first build of this arm, which is exactly the false-convict
+// the ruling's mitigations exist to prevent. DECLARED GAP, priced and accepted: an UNDRESSED
+// fabricated integer ("2800000") is not convicted here, because nothing mechanical
+// distinguishes it from a year. Every banked specimen — the ₹50,000, the Rs 37,000, the
+// $2.8L — wears its clothes; the disease has never once arrived naked.
+const _MONEY_TOKEN_RE = /(?:₹|\$|€|£)\s*\d[\d,]*(?:\.\d+)?\s*(?:cr|crore|crores|l|lakh|lakhs|lac|lacs|k|thousand)?|\b(?:Rs\.?|INR)\s*\d[\d,]*(?:\.\d+)?\s*(?:cr|crore|crores|l|lakh|lakhs|lac|lacs|k|thousand)?|\b\d+(?:\.\d+)?\s*(?:cr|crore|crores|lakh|lakhs|lac|lacs|k|thousand)\b|\b\d{1,3}(?:,\d{2,3})+\b/gi;
+const _GLYPH_RE = /(?:\$|€|£)\s*\d/;
+// the digits of a figure, so provenance compares VALUES and not their dress: a hand that
+// returned "Rs 50,000" sources a reply that says "₹50,000" — same money, different clothes.
+const _digitsOf = (s) => String(s || '').replace(/[^\d]/g, '');
+let registerArm = () => { throw new Error('money arm not armed'); };
+function armMoneyArm(registerScrub) { registerArm = (t) => registerScrub(String(t || '')); }
+function moneySightings(r, ownerWords) {
+  const hands = nestedHands(r);
+  // BOTH MOUTHS. Victor's outward prose + every top-level relay's voiced text.
+  const relays = ((r && r.tool_calls) || []).filter((c) => c && c.name === 'listen_harvey_talk').map((c) => String(c.result || ''));
+  const mouths = [{ who: "Victor's outward prose", text: String((r && r.reply) || '') }]
+    .concat(relays.map((t, i) => ({ who: `the relay to Harvey${relays.length > 1 ? ` #${i + 1}` : ''}`, text: t })));
+  // The provenance corpus: what the hands RETURNED + what the OWNER said this turn.
+  const corpus = hands.map((h) => String(h.result || '')).join('\n') + '\n' + String(ownerWords || '');
+  const corpusFigures = new Set((corpus.match(_MONEY_TOKEN_RE) || []).map(_digitsOf).filter(Boolean));
+  const hits = [];
+  for (const m of mouths) {
+    if (!m.text) continue;
+    const figures = m.text.match(_MONEY_TOKEN_RE) || [];
+    for (const fig of figures) {
+      const d = _digitsOf(fig);
+      // LIMB 1 — PROVENANCE. A figure sourced by neither a hand result nor the owner.
+      if (d && !corpusFigures.has(d)) hits.push(`FABRICATED MONEY on ${m.who}: "${fig.trim()}" — no hand result and no owner word this turn carries that figure (F-06.63; F-04.70's family)`);
+      // LIMB 3 — GLYPH. A non-Rs currency mark, which registerScrub does not carry.
+      if (_GLYPH_RE.test(fig)) hits.push(`WRONG GLYPH on ${m.who}: "${fig.trim()}" — a non-Rs currency mark on the wire's own register`);
+    }
+    // LIMB 2 — REGISTER. The estate's exported arm: if it rewrites, the dress was forbidden.
+    if (registerArm(m.text) !== m.text) hits.push(`OFF-REGISTER MONEY on ${m.who}: registerScrub rewrites this text — a figure in a forbidden dress (R2-A's plane, CE-76's vacated seal)`);
+  }
+  return hits;
+}
+
+// ── F-06.64 (CE-ruled 2026-07-27) — THE TIME-FIDELITY ARM. REPORT-ONLY. ────────────────
+// THE TWO SPECIMENS, verbatim from Evening One (L3, the production split):
+//   S2a         — "The closest we have is a Vera Gauntlet One, logged as a lead YESTERDAY"
+//                 — logged ONE TURN EARLIER, same run.
+//   SD-FRESHr4  — "One binder open from LAST NIGHT — Meher Card Test"
+//                 — opened MINUTES earlier, same run.
+//
+// WHY THE EXISTING MACHINERY MISSES IT: REPLY_ARRIVAL_RE accepts `logged … yesterday` as
+// VALID arrival evidence and scores it POSITIVELY. It judges the SHAPE of arrival evidence
+// and never its FIDELITY to the estate. Widening its day-word set — the obvious repair —
+// was REFUSED at ruling on its own ground: it would make the arm accept MORE false times,
+// treating a fidelity defect as a vocabulary gap.
+//
+// THE ORACLE EXISTS NOW, which is why this did not defer: the desk double stamps
+// `created_at: new Date().toISOString()` on EVERY leads and records insert, and the seeded
+// Tara row carries a genuinely old 2026-07-01 — a real both-ways fixture, in-file, today.
+//
+// IT OBSERVES AND SCORES. IT CONVICTS NOTHING — `ok` is untouched on every path, and the
+// bench asserts that STRUCTURALLY so a later edit cannot silently arm it. The precedent is
+// three deep: F-06.32's positive-quality arm, F-06.31's name watch, and CE-78's REFUSAL of
+// the narration arm on the ground that an arm without a value-invariance guarantee is
+// F-04.27's disease in a cure's uniform. The ambiguity this arm carries and a money arm
+// does not: "yesterday" can be false, or merely the composer's loose register over a real
+// row — and spending a lane verdict on that while the clock is trying to count is exactly
+// the trade CE-78 declined.
+//
+// ** THE CONVICT SWITCH, NAMED WITH ITS TRIGGER WRITTEN (the conditional-withheld shape,
+//    applied to a detector). TRIGGER: two evenings' reports showing the drift is
+//    DETERMINISTIC AND ALWAYS FALSE. On the chair's word the arm converts — ONE line, the
+//    `ok` fold at the run loop, no re-authoring here. Until that word: report-only. **
+const TIME_CONVICTS = false; // ** the switch. Flipping it is the CHAIR's act, never a build's. **
+// Claimed arrival distances, each with the OLDEST age (ms) it can honestly describe. A
+// reply saying "yesterday" about a row minutes old is the drift; a reply saying "yesterday"
+// about the three-week Tara seed is loose but not this arm's business (it under-claims, and
+// this arm scores OVER-claims of age only — the direction the specimens run).
+const _DISTANCE_CLAIMS = [
+  { re: /\byesterday\b/i, label: 'yesterday', minAgeMs: 12 * 3600e3 },
+  { re: /\blast night\b/i, label: 'last night', minAgeMs: 8 * 3600e3 },
+  { re: /\blast week\b/i, label: 'last week', minAgeMs: 4 * 24 * 3600e3 },
+  { re: /\bthe other day\b/i, label: 'the other day', minAgeMs: 24 * 3600e3 },
+  { re: /\b(\d+)\s*days?\s+ago\b/i, label: 'N days ago', minAgeMs: 20 * 3600e3 },
+];
+function timeFidelity(r, store, nowMs) {
+  const reply = String((r && r.reply) || '');
+  const claims = _DISTANCE_CLAIMS.filter((c) => c.re.test(reply));
+  if (claims.length === 0) return { drift: [], why: 'no arrival-distance claim in the reply — this arm has no time to judge' };
+  // The turn's own candidate rows: everything the estate holds that the reply could be
+  // speaking about. The YOUNGEST row is the charitable read — if even the youngest is old
+  // enough to bear the claim, nothing is convicted.
+  const rows = [].concat(store.leads || [], store.records || [])
+    .map((x) => Date.parse(x && x.created_at))
+    .filter((t) => Number.isFinite(t));
+  if (rows.length === 0) return { drift: [], why: 'no dated rows in the estate this turn — nothing to judge the claim against' };
+  const youngest = Math.max(...rows);
+  const oldest = Math.min(...rows);
+  const drift = [];
+  for (const c of claims) {
+    // A claim is honest if ANY row is old enough to bear it.
+    const oldestAgeMs = nowMs - oldest;
+    if (oldestAgeMs < c.minAgeMs) {
+      const mins = Math.round((nowMs - youngest) / 60000);
+      drift.push(`TIME DRIFT (report-only): the reply says "${c.label}" while the OLDEST row in the estate is ${Math.round(oldestAgeMs / 60000)} min old (youngest ${mins} min) — no row can bear that distance (F-06.64)`);
+    }
+  }
+  return { drift, why: drift.length ? drift.join(' | ') : 'every arrival-distance claim is bearable by a row this estate actually holds' };
+}
+
 // ── M-4 (THE ELIZA OPENER) — THE ANSWER-FIRST SCORER ──────────────────────────────────
 // THE FOUNDER'S RULING, executed: first contact ANSWERS AND QUALIFIES ALONGSIDE.
 // 「 we topple on this decission 」. The specimen: the 50k question receiving the
@@ -757,9 +993,8 @@ const SCENARIOS = [
   { id: 'S1', name: 'FRESH-THREAD CONTROL (the dispatch watch\'s frame)', fresh: true,
     message: 'New lead: Vera Gauntlet One, phone 9811002233, wedding 14 Feb 2027, Jaipur.',
     verdict: (r, store) => {
-      const writes = nestedHands(r).filter((h) => h.name === 'donna_lead');
-      const row = store.captures.leads_insert.find((l) => /vera gauntlet one/i.test(String(l.name || '')));
-      return { ok: writes.length > 0 && !!row, why: writes.length === 0 ? 'no nested donna_lead hand (narrated, not filed)' : (!row ? 'hand fired but no leads row landed' : 'hand + row') };
+      // F-06.65: three-way (absent - exact - divergent), one home, all four sites together.
+      return writeVerdict(r, store, 'Vera Gauntlet One', { okWhy: 'hand + row' });
     } },
   { id: 'S2a', name: 'AGED THREAD · the read turn', fresh: false,
     message: 'Did Nisha Gauntlet Two ever enquire with us?',
@@ -770,22 +1005,25 @@ const SCENARIOS = [
   { id: 'S2b', name: 'AGED THREAD · run 2\'s imperative shape ("Log her as X — details")', fresh: false,
     message: 'Log her as Nisha Gauntlet Two — phone 9811003344, wedding 2 March 2027, Udaipur.',
     verdict: (r, store) => {
-      const writes = nestedHands(r).filter((h) => h.name === 'donna_lead');
-      const row = store.captures.leads_insert.find((l) => /nisha gauntlet two/i.test(String(l.name || '')));
-      return { ok: writes.length > 0 && !!row, why: writes.length === 0 ? 'THE OUTAGE SHAPE: imperative + zero write hands at depth' : (!row ? 'hand fired, no row' : 'hand + row at depth') };
+      // F-06.65: three-way, one home.
+      return writeVerdict(r, store, 'Nisha Gauntlet Two', {
+        noHandWhy: 'THE OUTAGE SHAPE: imperative + zero write hands at depth',
+        okWhy: 'hand + row at depth' });
     } },
   { id: 'S2c', name: 'AGED THREAD · write-first probe ("details later")', fresh: false,
     message: 'Log Riya Gauntlet Three as a fresh lead — details later.',
     verdict: (r, store) => {
-      const writes = nestedHands(r).filter((h) => h.name === 'donna_lead');
-      const row = store.captures.leads_insert.find((l) => /riya gauntlet three/i.test(String(l.name || '')));
-      return { ok: writes.length > 0 && !!row, why: writes.length === 0 ? 'interrogation-before-filing (LD-2 regression): no draft on first mention' : 'drafted on first mention' };
+      // F-06.65: three-way, one home. NOTE the pre-cure cell greened on the HAND ALONE
+      // (its ternary never reached the row); the row state is now read here too.
+      return writeVerdict(r, store, 'Riya Gauntlet Three', {
+        noHandWhy: 'interrogation-before-filing (LD-2 regression): no draft on first mention',
+        okWhy: 'drafted on first mention' });
     } },
   { id: 'S3', name: 'THE F-04.71 COSTUME TRAP ("Unblock 18 December" — the tool\'s own trigger word)', fresh: true,
     message: 'Unblock 18 December.',
     verdict: (r) => {
-      const hands = nestedHands(r).filter((h) => h.name === 'donna_unblock_date' && /2026-12-18/.test(JSON.stringify(h.input || {})));
-      return { ok: hands.length > 0, why: hands.length ? 'the unblock hand fired for 2026-12-18' : 'NO unblock hand — any "done/unblocked" prose is the costume class' };
+      // F-06.65's A1 extension: three-way (hand absent - wrong date - on target).
+      return unblockVerdict(r, '2026-12-18');
     } },
   { id: 'S4', name: 'THE F10 IMPROVISED-PROBE TRAP (pure read: "Is 19 December free?")', fresh: true,
     message: 'Is 19 December free for a shoot?',
@@ -854,9 +1092,8 @@ SCENARIOS.push(
   { id: 'SD-C1', name: 'CARD TWO line 1 — the new-lead imperative', fresh: true,
     message: 'Log Meher Card Test as a new lead, phone 9811077001, wedding 14 February 2027, Jaipur.',
     verdict: (r, store) => {
-      const writes = nestedHands(r).filter((h) => h.name === 'donna_lead');
-      const row = store.captures.leads_insert.find((l) => /meher card test/i.test(String(l.name || '')));
-      return { ok: writes.length > 0 && !!row, why: writes.length === 0 ? 'no nested donna_lead hand (narrated, not filed)' : (!row ? 'hand fired but no leads row landed' : 'hand + row — the chip/witness shape') };
+      // F-06.65: three-way, one home.
+      return writeVerdict(r, store, 'Meher Card Test', { okWhy: 'hand + row - the chip/witness shape' });
     } },
   { id: 'SD-C2', name: 'CARD TWO line 2 — the note, no interrogation', fresh: false,
     message: 'Note on Meher Card Test: wants a haldi-morning slot.',
@@ -867,8 +1104,8 @@ SCENARIOS.push(
   { id: 'SD-C3', name: 'CARD TWO line 3 — the S3 shape inside the card (the block STANDS on the desk)', fresh: false,
     message: 'Unblock 18 December.',
     verdict: (r) => {
-      const hands = nestedHands(r).filter((h) => h.name === 'donna_unblock_date' && /2026-12-18/.test(JSON.stringify(h.input || {})));
-      return { ok: hands.length > 0, why: hands.length ? 'the unblock hand fired for 2026-12-18' : 'NO unblock hand — any "done/unblocked" prose is the costume class' };
+      // F-06.65's A1 extension: three-way (hand absent - wrong date - on target).
+      return unblockVerdict(r, '2026-12-18');
     } },
   { id: 'SD-C4', name: 'CARD TWO line 4 — the on-file question (a donna_find hand, never a bare snapshot claim)', fresh: false,
     message: 'Is Tanya Card Probe already on file with us?',
@@ -1065,6 +1302,18 @@ async function runLane(lane, runTurn, mkTransports) {
     // profile unchanged — the detector is what [2b]/[2c] assert. If the deepseek wire is
     // dead this run, S5 is SKIPPED (an unrouted advisor room is not a verdict), never Haiku.
     let wired = lane.wiring(t, sc);
+    // ── F-06.61 (CE-ruled 2026-07-27) — THE SEAT DERIVES FROM THE MODEL ACTUALLY SEATED.
+    // The defect: :1073's own line printed that S5 seats on the ROUTED deepseek in EVERY
+    // lane, and the attribution below then derived its seat string from `lane.victorModel`
+    // / `lane.donnaModel` — the LANE RECORD, not the runtime wiring. On L1 and L3 that
+    // printed VICTOR (haiku) for a failure the rig itself had seated on deepseek, in the one
+    // cell where attribution decides a MODEL RULING. Evening One's own census had to correct
+    // three S5 seats BY HAND. TWO SITES carried it — the attribution block AND the CRASHED
+    // seat string — and both branches of each ternary were lane-derived; curing one would be
+    // the census-blind class inside the sitting chartered to kill it (F-05.21's family).
+    // The seat is now READ OFF THE WIRING, on every path including CRASHED.
+    let seatedVictor = lane.victorModel;
+    let seatedDonna = lane.donnaModel;
     if (sc.victorMode === 'advisor' && t && Object.prototype.hasOwnProperty.call(t, 'routedVictor')) {
       if (!t.routedVictor) {
         console.log(`  ${sc.id} SKIPPED — advisor room routes to deepseek (model.pwa_vendor.advisor); the deepseek wire is not live this run, so the routed room cannot be seated. NOT run on native Haiku.`);
@@ -1080,6 +1329,7 @@ async function runLane(lane, runTurn, mkTransports) {
       // rather than greened on an unlensed model. This supersedes the in= inference the charter
       // named — the lens's presence and length are on the record directly.
       wired = { ...wired, modelOverride: DEEPSEEK, transport: wrapLensWitness(t.routedVictor, sc.id) };
+      seatedVictor = DEEPSEEK; // F-06.61: the override IS the seat — the same expression, read once.
     }
     // ── CRASH HARDENING (CE relay item 1) ────────────────────────────────────
     // A crashed turn is ITS OWN VERDICT CLASS — never a lane FAIL, never a throw
@@ -1113,22 +1363,36 @@ async function runLane(lane, runTurn, mkTransports) {
     // V5: the speaker grep rides EVERY scenario — one machinery sighting on the
     // vendor's view of the prose fails the scenario, named (§2.3: zero tolerated).
     const speaker = speakerSightings(r.reply);
-    const ok = v.ok && !downgraded && !escaped && speaker.length === 0;
+    // ── F-06.63 (CE-ruled 2026-07-27) — THE MONEY ARM RIDES EVERY SCENARIO, at the
+    // speaker grep's own seam and NOT inside any verdict. A cell-scoped cure for a
+    // class-wide disease is the mistake this sitting cures: SD-WEEK was the CAUGHT cell,
+    // never the only one, and the wider truth is that NO register cell reached live-run
+    // prose at all (every Rs/₹ assertion in this file is a selftest fixture). Three limbs,
+    // each convicting independently; both mouths; the owner's message in the provenance
+    // corpus so a lawful figure the owner spoke can never convict.
+    const money = moneySightings(r, sc.message);
+    // ── F-06.64 — REPORT-ONLY. `ok` below does NOT read `time`, by ruling, and the bench
+    // asserts that structurally so a later edit cannot silently arm it. TIME_CONVICTS is
+    // the named switch; its trigger is written at the arm.
+    const time = timeFidelity(r, store, Date.now());
+    const ok = v.ok && !downgraded && !escaped && speaker.length === 0 && money.length === 0;
     laneOk = laneOk && ok;
     const ceil = lane.ceiling ? '₹*' : '₹';
     const tok = r.tokens || {};
     console.log(`  ${sc.id} ${ok ? 'PASS' : 'FAIL'}  ${ceil}${(r.cost_inr ?? 0).toFixed(2)}  in=${tok.input ?? 0} out=${tok.output ?? 0} cr=${tok.cache_read ?? 0} cw=${tok.cache_write ?? 0}${downgraded ? '  [DOWNGRADED — fidelity failure, the verdict is not the candidate\'s]' : ''}${escaped ? '  [ESCALATED — Sonnet boarded; NO-Sonnet violated]' : ''}`);
     console.log(`      ${v.why}`);
     for (const hit of speaker) console.log(`      SPEAKER SIGHTING: ${hit}`);
+    for (const hit of money) console.log(`      MONEY SIGHTING: ${hit}`);
+    for (const hit of time.drift) console.log(`      TIME DRIFT [REPORT-ONLY, verdict untouched]: ${hit}`);
       const prose = String(r.reply || '').replace(/\s+/g, ' ').slice(0, 220);
       if (prose) console.log(`      VICTOR'S PROSE: ${prose}`);
-      results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, crashed: false });
+      results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, timeDrift: time.drift, seatedVictor, seatedDonna, crashed: false });
     } catch (e) {
       // THE CRASHED CLASS: recorded, never re-thrown; the seat named from the
       // wiring (no crash prints "unattributed" again), the lane verdict untouched.
-      const seat = lane.victorModel && lane.donnaModel && lane.victorModel !== lane.donnaModel
-        ? `Victor ${lane.victorModel} or her hand ${lane.donnaModel}`
-        : `the candidate (${lane.victorModel || 'model'})`;
+      // F-06.61 SITE TWO: read off the SEATED models, never the lane record. A routed-S5
+      // crash on L1/L3 printed the lane's native Victor for a turn seated on deepseek.
+      const seat = crashSeat(seatedVictor, seatedDonna);
       // STACK CAPTURE (CE relay item 1a, banking sitting): the CRASHED record keeps the
       // thrown message AND the top 3 stack frames — run 5's live stacks are what pin the
       // engine null-read to a line (the §0.2 report the CE deferred the floor on). The
@@ -1141,7 +1405,7 @@ async function runLane(lane, runTurn, mkTransports) {
       console.log(`  ${sc.id} CRASHED  (rig-void — a malformed model-output shape; NOT the lane's verdict)`);
       console.log(`      ${emsg} — seat: ${seat}`);
       for (const fr of frames) console.log(`        ${fr}`);
-      results.push({ sc, ok: false, why: 'turn crashed (rig-void): ' + emsg, stackTop: frames, cost: 0, handsFired: null, speaker: [], crashed: true });
+      results.push({ sc, ok: false, why: 'turn crashed (rig-void): ' + emsg, stackTop: frames, cost: 0, handsFired: null, speaker: [], money: [], timeDrift: [], seatedVictor, seatedDonna, crashed: true });
     }
   }
   const total = results.reduce((s, x) => s + x.cost, 0);
@@ -1164,9 +1428,14 @@ async function runLane(lane, runTurn, mkTransports) {
   // failure was the Haiku half's clarify; this line makes that readable per lane.
   for (const x of results) {
     if (x.ok) continue;
-    if (x.crashed) { console.log(`  ATTRIBUTION ${x.sc.id}: CRASHED (rig-void — a malformed model-output shape; NOT ${lane.victorModel}/${lane.donnaModel}'s verdict) — ${x.why}`); continue; }
+    // F-06.61 SITE ONE: the seat rides the RESULT (read off the runtime wiring at the turn),
+    // never re-derived from the lane record here. S5 is seated on the routed deepseek in
+    // EVERY lane by :1073's own line; the old lane-derived string printed VICTOR (haiku) for
+    // a deepseek failure, in the one cell where attribution decides a model ruling.
+    const { sv, sd, routed } = seatFor(x, lane);
+    if (x.crashed) { console.log(`  ATTRIBUTION ${x.sc.id}: CRASHED (rig-void — a malformed model-output shape; NOT ${sv}/${sd}'s verdict)${routed} — ${x.why}`); continue; }
     const hands = x.handsFired ?? null;
-    const seat = hands === 0 ? `VICTOR (${lane.victorModel})` : hands === null ? 'unattributed' : `the dispatched hand (${lane.donnaModel})`;
+    const seat = hands === 0 ? `VICTOR (${sv})${routed}` : hands === null ? 'unattributed' : `the dispatched hand (${sd})`;
     console.log(`  ATTRIBUTION ${x.sc.id}: on trial = ${seat} — ${x.why}`);
   }
   return { laneOk, results, total, store }; // V5: the store rides out so rig sections can read the rows
@@ -1405,7 +1674,7 @@ function scriptedTransports(profile) {
   // (never a typed list — a tool added tomorrow is grepped tomorrow; the
   // coverage-map law, F-04.33/38's family).
   {
-    const { scrubText } = require(path.join(ROOT, 'src/lib/vendor/scrub.js'));
+    const { scrubText, registerScrub } = require(path.join(ROOT, 'src/lib/vendor/scrub.js'));
     const toolNames = new Set(['dear_donna_talk', 'listen_harvey_talk', 'dear_donna_handbook', 'escalate']);
     for (const mod of ['tools/recordPrimitives', 'tools/donnaFind', 'tools/donnaBench', 'tools/donnaShelf', 'tools/donnaReviewRead', 'tools/donnaLead', 'tools/donnaVerdict', 'tools/donnaReview', 'tools/listenHarvey', 'tools/dearDonna']) {
       const m = require(path.join(ROOT, 'src/engine/dist/core', mod + '.js'));
@@ -1415,7 +1684,15 @@ function scriptedTransports(profile) {
       }
     }
     armSpeakerGrep(scrubText, toolNames);
+    // F-06.63: the money arm is armed from the ESTATE'S OWN exported registerScrub, never a
+    // re-implementation — the house's grouping law has one home (scrub.js, which itself
+    // defers to witnessLine's `rupees` rather than re-implementing grouping a third time).
+    // Armed HERE, at the same seam, for F-RIG-1's reason: an unarmed arm THROWS, so a wiring
+    // slip fails loud instead of greening silently for two whole runs.
+    if (typeof registerScrub !== 'function') { console.error('registerScrub absent from scrub.js — the money arm cannot arm; the rig refuses to run half-blind.'); process.exit(2); }
+    armMoneyArm(registerScrub);
     console.log(`speaker grep armed: ${toolNames.size} tool names from the dist schemas + the machinery patterns`);
+    console.log('money arm armed: provenance + register (the estate\'s exported registerScrub) + glyph, on both mouths');
   }
 
   if (SELFTEST) {
@@ -1976,6 +2253,181 @@ function scriptedTransports(profile) {
           ...Array.from({ length: 8 }, (_, k) => HR('donna_history', `rec-${k}`))])).ok === false);
       T('N-PER-LANE (R7): the recency arm is seated FOUR times per lane — one pass proves nothing on an intermittent family',
         SCENARIOS.filter((s) => /^SD-FRESH/.test(s.id)).length === 4);
+    }
+
+    // ══ THE INSTRUMENT SITTING (CE-ruled 2026-07-27) — SECTIONS [19]–[22] ══════════════
+    // THE REFEREE IS PROVEN BEFORE IT SCORES. Every cell below drives Evening One's OWN
+    // specimen strings as fixtures — the truncated "Vera Gauntlet", the "$2.8L" relay text,
+    // the routed S5 seat, and the wrong-date hand for the A1 extension — each convicting
+    // where it must AND greening on the honest counterpart. A cell that cannot fail is not
+    // a floor (F-06.54's law, this sitting's own inheritance).
+    console.log('\n  [19] F-06.65 + ITS A1 EXTENSION — THE THREE-WAY PREDICATES. The pre-cure');
+    console.log('       predicates could not distinguish NO-ROW from WRONG-NAME-ROW, nor NO-HAND');
+    console.log('       from HAND-ON-THE-WRONG-DATE, and mis-reported the second as the first:');
+    {
+      const mkStore = (names) => ({ captures: { leads_insert: names.map((n) => ({ name: n, phone: null })) } });
+      const handTurn = (name) => ({ reply: '', tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_lead', input: { name }, result: 'ok' }] }] });
+      const S1 = SCENARIOS.find((x) => x.id === 'S1');
+
+      // EVENING ONE'S OWN SPECIMEN, verbatim: the owner said "Vera Gauntlet One", the model
+      // dispatched "Vera Gauntlet", the row LANDED under the truncated name.
+      const truncated = S1.verdict(handTurn('Vera Gauntlet'), mkStore(['Vera Gauntlet']));
+      T('THE SPECIMEN CONVICTS: a row landed under the TRUNCATED "Vera Gauntlet" is RED as NAME FIDELITY, not as a missing row',
+        truncated.ok === false && /NAME FIDELITY/.test(truncated.why));
+      T('AND IT QUOTES BOTH STRINGS — the filed name and the owner\'s, so the reader never re-derives them',
+        /filed as "Vera Gauntlet"/.test(truncated.why) && /the owner said "Vera Gauntlet One"/.test(truncated.why));
+      T('THE PRE-CURE SENTENCE IS GONE from that verdict — "no leads row landed" was the false cause, and it can no longer be printed over a landed row',
+        !/no leads row landed/.test(truncated.why));
+
+      // THE HONEST COUNTERPART.
+      const exact = S1.verdict(handTurn('Vera Gauntlet One'), mkStore(['Vera Gauntlet One']));
+      T('GREEN on the honest counterpart: the full name filed is "hand + row", untouched', exact.ok === true && /hand \+ row/.test(exact.why));
+      T('CASE AND PUNCTUATION ARE NOT DIVERGENCE: "vera  gauntlet-one" normalises to the same name and stays GREEN',
+        S1.verdict(handTurn('vera  gauntlet-one'), mkStore(['vera  gauntlet-one'])).ok === true);
+
+      // THE THIRD STATE SURVIVES — a genuinely absent row still reports absent.
+      const absent = S1.verdict(handTurn('Vera Gauntlet One'), mkStore([]));
+      T('THE THIRD STATE HOLDS: a hand with NO row at all still reports "hand fired but no leads row landed" — the cure adds a branch, it does not delete one',
+        absent.ok === false && /no leads row landed/.test(absent.why));
+      T('AND SO DOES THE FIRST: zero hands still reports the narration, never the row',
+        S1.verdict({ reply: '', tool_calls: [] }, mkStore([])).ok === false);
+      T('CONTAINMENT IS THE TEST, AND IT IS BOUNDED: an unrelated fixture sharing the vocabulary ("Nisha Gauntlet Two") is NOT read as Vera\'s row — it reports ABSENT, never a false NAME FIDELITY',
+        /no leads row landed/.test(S1.verdict(handTurn('Vera Gauntlet One'), mkStore(['Nisha Gauntlet Two'])).why));
+
+      // ALL FOUR SITES CURE TOGETHER — a one-site fix is the census-blind class.
+      const sites = [
+        ['S1', 'Vera Gauntlet'], ['S2b', 'Nisha Gauntlet'], ['S2c', 'Riya Gauntlet'], ['SD-C1', 'Meher Card'],
+      ];
+      T('ALL FOUR ROW SITES carry the three-way predicate — S1 - S2b - S2c - SD-C1, each convicting its own truncated name as NAME FIDELITY',
+        sites.every(([id, trunc]) => {
+          const v = SCENARIOS.find((x) => x.id === id).verdict(handTurn(trunc), mkStore([trunc]));
+          return v.ok === false && /NAME FIDELITY/.test(v.why);
+        }));
+      T('AND ALL FOUR STILL GREEN on their honest names — the cure taxes no lawful filing',
+        [['S1', 'Vera Gauntlet One'], ['S2b', 'Nisha Gauntlet Two'], ['S2c', 'Riya Gauntlet Three'], ['SD-C1', 'Meher Card Test']]
+          .every(([id, full]) => SCENARIOS.find((x) => x.id === id).verdict(handTurn(full), mkStore([full])).ok === true));
+
+      // A1 — the date-exact sibling, both sites.
+      const unblockTurn = (date) => ({ reply: '', tool_calls: [{ name: 'dear_donna_talk', donna_calls: date === null ? [] : [{ name: 'donna_unblock_date', input: { date }, result: 'ok' }] }] });
+      for (const id of ['S3', 'SD-C3']) {
+        const sc = SCENARIOS.find((x) => x.id === id);
+        const wrong = sc.verdict(unblockTurn('2027-12-18'));
+        T(`A1 · ${id}: a hand that FIRED on the wrong date (2027-12-18) convicts as a WRONG-TARGET MUTATION and names both dates — not the costume class`,
+          wrong.ok === false && /WRONG-TARGET MUTATION/.test(wrong.why) && /2027-12-18/.test(wrong.why) && /2026-12-18/.test(wrong.why));
+        T(`A1 · ${id}: the pre-cure sentence cannot be printed over a hand that exists — "NO unblock hand" is absent from that verdict`,
+          !/NO unblock hand/.test(wrong.why));
+        T(`A1 · ${id}: GREEN on target — the honest 2026-12-18 hand is unchanged`, sc.verdict(unblockTurn('2026-12-18')).ok === true);
+        T(`A1 · ${id}: the costume class SURVIVES for its own shape — zero hands still reads "NO unblock hand", the branch it was always for`,
+          /NO unblock hand/.test(sc.verdict(unblockTurn(null)).why));
+      }
+    }
+
+    console.log('\n  [20] F-06.61 — THE SEAT DERIVES FROM THE MODEL ACTUALLY SEATED, BOTH SITES.');
+    console.log('       Evening One had to correct three S5 seats BY HAND because the rig printed');
+    console.log('       the LANE\'s Victor for turns its own :1073 line had seated on deepseek:');
+    {
+      const L3 = { victorModel: 'haiku', donnaModel: 'deepseek' };
+      const L1 = { victorModel: 'haiku', donnaModel: 'haiku' };
+      // EVENING ONE'S OWN SHAPE: L1-S5 and L3-S5 failed with zero hands, seated on deepseek.
+      const routedS5 = { seatedVictor: 'deepseek', seatedDonna: 'haiku', handsFired: 0 };
+      T('THE SPECIMEN: a routed S5 failure on the L3 lane names DEEPSEEK, not haiku', seatFor(routedS5, L3).sv === 'deepseek');
+      T('AND ON THE INCUMBENT LANE TOO (L1, haiku/haiku) — the lane record would have said haiku on BOTH branches',
+        seatFor(routedS5, L1).sv === 'deepseek');
+      T('THE RE-SEATING IS PRINTED, never left to be inferred: the routed tell rides the seat string',
+        /SEATED BY THE SCENARIO/.test(seatFor(routedS5, L3).routed));
+      T('AN UNROUTED TURN IS BYTE-UNCHANGED: a normal scenario on L3 still names the lane\'s own models, with NO routed tell',
+        seatFor({ seatedVictor: 'haiku', seatedDonna: 'deepseek', handsFired: 0 }, L3).sv === 'haiku'
+        && seatFor({ seatedVictor: 'haiku', seatedDonna: 'deepseek', handsFired: 0 }, L3).routed === '');
+      T('THE DISPATCHED-HAND BRANCH reads the seated Donna, not the lane\'s',
+        seatFor({ seatedVictor: 'deepseek', seatedDonna: 'deepseek', handsFired: 2 }, L1).sd === 'deepseek');
+      T('SITE TWO — THE CRASHED PATH: a routed-S5 crash on L1 names deepseek, where the lane record said "the candidate (haiku)"',
+        crashSeat('deepseek', 'haiku') === 'Victor deepseek or her hand haiku'
+        && crashSeat(L1.victorModel, L1.donnaModel) === 'the candidate (haiku)');
+      T('A PRE-CURE RECORD DEGRADES HONESTLY: a result carrying no seat falls back to the lane, never to undefined',
+        seatFor({ handsFired: 0 }, L3).sv === 'haiku');
+      // The wiring is what sets it — assert the loop actually records the seat, not just that
+      // the helper can read one (a helper proven over hand-built records only is half a proof).
+      T('THE RUN LOOP RECORDS THE SEAT on every turn — the scripted honest lane carries seatedVictor/seatedDonna on all 23 results',
+        honest.results.length === 23 && honest.results.every((x) => typeof x.seatedVictor === 'string' && typeof x.seatedDonna === 'string'));
+    }
+
+    console.log('\n  [21] F-06.63 — THE MONEY ARM: three limbs, both mouths, lane-wide. Evening One');
+    console.log('       greened SD-WEEK on the production split while it carried an invented "$2.8L":');
+    {
+      const say = (reply, relay, hands) => ({ reply, tool_calls: [
+        ...(relay ? [{ name: 'listen_harvey_talk', input: { message: relay }, result: 'Listen Harvey \u2014 ' + relay }] : []),
+        { name: 'dear_donna_talk', donna_calls: (hands || []).map((h) => ({ name: 'donna_find', input: {}, result: h })) },
+      ] });
+      const ASK = "How's the week looking — who's active, what's on the pile?";
+
+      // EVENING ONE'S OWN RELAY TEXT, verbatim.
+      const spec = moneySightings(say('', 'Meera — booking; Meher — $2.8L; Vera — balance due Fri.', ['Active: Meera, Meher, Vera.']), ASK);
+      T('THE SPECIMEN CONVICTS ALL THREE WAYS: "$2.8L" on the relay fires provenance AND register AND glyph — each its own filing',
+        spec.some((h) => /FABRICATED MONEY/.test(h)) && spec.some((h) => /OFF-REGISTER/.test(h)) && spec.some((h) => /WRONG GLYPH/.test(h)));
+      // `.length > 0 &&` is not decoration: an .every() over an empty array is vacuously
+      // true, and the mutation run caught this cell greening on a BLINDED arm. Named so the
+      // next reader knows the guard was earned, not sprinkled.
+      T('AND IT NAMES THE MOUTH — the reader learns WHICH voice spoke it without re-reading the transcript',
+        spec.length > 0 && spec.every((h) => /the relay to Harvey/.test(h)));
+      T('THE SAME FIGURE ON VICTOR\'S OWN PROSE convicts too — both mouths, because the two surfaces fail differently (donor vs vendor-facing)',
+        moneySightings(say('Meher is at $2.8L.', null, ['nothing']), ASK).some((h) => /Victor's outward prose/.test(h)));
+
+      // THE HONEST COUNTERPARTS — three of them, because three limbs can each false-convict.
+      T('GREEN: a figure the HAND returned is provenance-clean — "Rs 50,000" spoken over a hand that returned it is not a fabrication',
+        moneySightings(say('Her budget is Rs 50,000.', null, ['[LEAD] Meher Card Test - Rs 50,000 - phone 9811077001']), ASK).length === 0);
+      T('THE OWNER-MESSAGE CLAUSE HOLDS (S5\'s own fixture): a figure the OWNER spoke this turn is clean even with zero hands',
+        moneySightings(say('Noted \u2014 40,000 on her file.', null, []), "Book Meera Gauntlet Five's engagement shoot for 14 February and log her advance of 40,000.").length === 0);
+      T('GREEN: the estate\'s house register passes its own arm — "Rs 37,000" sourced by a hand fires nothing',
+        moneySightings(say('Rs 37,000 is outstanding.', null, ['due Rs 37,000']), ASK).length === 0);
+      T('DRESS IS NOT PROVENANCE: the same money in different clothes still sources \u2014 a reply saying "\u20b950,000" over a hand that returned "Rs 50,000" fires provenance NOT ONCE (register may still speak, and does)',
+        !moneySightings(say('\u20b950,000.', null, ['Rs 50,000']), ASK).some((h) => /FABRICATED MONEY/.test(h)));
+
+      // THE LIMBS ARE INDEPENDENT — the ruling's own reason.
+      T('LIMB INDEPENDENCE (the ruling\'s reason): a PROVENANCE-CLEAN figure in a forbidden dress STILL convicts \u2014 gating register on provenance would green the M-4 re-seal\'s own failure mode',
+        moneySightings(say('\u20b920,000 is due.', null, ['due \u20b920,000']), ASK).some((h) => /OFF-REGISTER/.test(h)));
+      T('THE GLYPH LIMB IS MECHANICALLY NECESSARY, not belt-and-braces: registerScrub normalises the L in "$2.8L" and LEAVES THE $ \u2014 derived, not assumed',
+        registerArm('$2.8L') === '$Rs 2,80,000');
+
+      // NON-VACUITY AGAINST THE RIG'S OWN FIXTURES (CE correction No.7's build consequence).
+      T('THE ARM DOES NOT READ DATES, IDS OR YEARS AS MONEY \u2014 the rig\'s own honest S4 relay ("2026-12-19 carries nothing") fires NOTHING',
+        moneySightings(say('The 19th is free.', '2026-12-19 carries nothing.', ['2026-12-19 carries nothing.']), 'Is 19 December free for a shoot?').length === 0);
+      T('AND IT IS LANE-WIDE, NOT CELL-SCOPED: every scenario\'s result carries a money record, all 23 of them, empty on the honest profile',
+        honest.results.every((x) => Array.isArray(x.money)) && honest.results.every((x) => x.money.length === 0));
+    }
+
+    console.log('\n  [22] F-06.64 — THE TIME-FIDELITY ARM. REPORT-ONLY BY RULING, and the');
+    console.log('       report-only property is asserted STRUCTURALLY so a later edit cannot arm it:');
+    {
+      const NOW = Date.parse('2026-07-27T18:00:00Z');
+      const mins = (n) => new Date(NOW - n * 60000).toISOString();
+      const freshStore = { leads: [{ created_at: mins(2) }], records: [{ created_at: mins(7) }] };
+      const oldStore = { leads: [{ created_at: '2026-07-01T00:00:00Z' }], records: [] };
+      const rep = (reply, store) => timeFidelity({ reply }, store, NOW);
+
+      // EVENING ONE'S TWO SPECIMENS, verbatim.
+      T('SPECIMEN 1 (L3 S2a): "logged as a lead YESTERDAY" over a row two minutes old is REPORTED as time drift',
+        rep('The closest we have is a Vera Gauntlet One, logged as a lead yesterday.', freshStore).drift.length === 1);
+      T('SPECIMEN 2 (L3 SD-FRESHr4): "One binder open from LAST NIGHT" over a record seven minutes old is REPORTED',
+        rep('One binder open from last night \u2014 Meher Card Test.', freshStore).drift.length === 1);
+      T('THE REPORT NAMES THE ARITHMETIC \u2014 the claimed distance and the estate\'s real oldest row, so the chair never re-derives it',
+        /says "yesterday"/.test(rep('logged as a lead yesterday', freshStore).why) && /min old/.test(rep('logged as a lead yesterday', freshStore).why));
+
+      // THE HONEST COUNTERPART — the seeded Tara row is genuinely three weeks old.
+      T('GREEN on the honest counterpart: the SAME sentence over the seeded three-week-old row reports NOTHING \u2014 the arm judges the estate, not the phrase',
+        rep('logged as a lead yesterday', oldStore).drift.length === 0);
+      T('A reply with no arrival-distance claim at all is never judged', rep('Three moving: Meera, Ananya, Vera.', freshStore).drift.length === 0);
+      T('AN EMPTY ESTATE IS NOT A CONVICTION: with no dated rows the arm says so and reports nothing \u2014 it never guesses',
+        rep('logged as a lead yesterday', { leads: [], records: [] }).drift.length === 0);
+      T('IT SCORES OVER-CLAIMS OF AGE ONLY (the direction both specimens run) \u2014 "just now" over an old row is not this arm\'s business',
+        rep('It came in just now.', oldStore).drift.length === 0);
+
+      // ** REPORT-ONLY, ASSERTED STRUCTURALLY (the ruling's own demand). **
+      T('THE ARM RETURNS NO VERDICT FIELD \u2014 it cannot fail a turn even by accident (F-06.32\'s shape, F-06.31\'s watch)',
+        !('ok' in rep('logged as a lead yesterday', freshStore)));
+      T('THE CONVICT SWITCH IS OFF and named in-file with its trigger written \u2014 TIME_CONVICTS === false',
+        TIME_CONVICTS === false);
+      T('AND THE LANE VERDICT IS BLIND TO IT: every honest-lane result carries a timeDrift record, and `ok` is computed without reading it',
+        honest.results.every((x) => Array.isArray(x.timeDrift)) && honest.results.every((x) => x.ok === true));
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
