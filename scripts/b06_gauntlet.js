@@ -429,7 +429,30 @@ function openerFidelity(reply, ask) {
     .trim();
   const leadClause = (substance.split(/(?<=[.!?])\s+/)[0] || substance).trim();
   const opensWithQuestion = _OPENER_QUESTION_RE.test(leadClause) && !_OPENER_DEFLECT_RE.test(leadClause);
-  const bareDeflection = _OPENER_DEFLECT_RE.test(r) && r.replace(_OPENER_DEFLECT_RE, '').replace(/[^\p{L}\p{N}]/gu, '').length < 25;
+  // ── F-06.45 (CE-ruled 2026-07-25) — THE DEFLECTION LIMB, WIDENED ─────────────────
+  // THE DEFECT, found by this arm failing to convict its own named specimen at the M-4
+  // walk: the old test required the residual under 25 characters, so a deflection wearing
+  // a fat qualifier walked straight through. The 24 Jul specimen — "Let me check with dev
+  // and get back to you. In the meantime, is this for a wedding, and roughly how many
+  // functions…" — scored PASS. The arm caught the questionnaire shape and not the
+  // deflection shape, and the M-4 handover overstated its convicting power on the strength
+  // of that.
+  //
+  // THE RE-AIM: length was the wrong question. What convicts is that the deflection LEADS
+  // and nothing before it engaged what she asked. A long tail of MORE QUESTIONS is not an
+  // answer — it is the questionnaire arriving behind the door closing, which is the 50k
+  // disease wearing two coats. So: does the lead clause deflect, and is everything after
+  // it interrogative rather than substantive?
+  const deflectLeads = _OPENER_DEFLECT_RE.test(leadClause);
+  const afterDeflect = substance.replace(_OPENER_DEFLECT_RE, ' ');
+  // Substantive residue = the words that are NOT part of a question. If every clause after
+  // the deflection ends in '?', she was handed a door and a form, nothing else.
+  const nonQuestionResidue = afterDeflect
+    .split(/(?<=[.!?])\s+/)
+    .filter((c) => !/\?\s*$/.test(c.trim()))
+    .join(' ')
+    .replace(/[^\p{L}\p{N}]/gu, '');
+  const bareDeflection = deflectLeads && nonQuestionResidue.length < 25;
 
   // (1) THE SPECIMEN'S OWN SHAPE: the reply opens by asking her something instead of
   //     answering what she asked. This is the 50k turn, exactly.
@@ -1864,6 +1887,13 @@ function scriptedTransports(profile) {
         // that punished the greeting would convict the cure's own product — the same shape
         // as M-1's re-aim hollowing two cells. Greeting-tolerant, answer-strict.
         const ruledGreeted = "Hi! I'm Swati's assistant — 50k depends on how many functions you're covering, so she'll want your dates before quoting. I'll get this to her today. How many functions are you planning?";
+        // F-06.45: the 24 Jul walk specimen — a deflection with a fat qualifier tail. The
+        // old limb PASSED it; the widened limb convicts it. Driven both ways below.
+        const paddedDeflect = 'Let me check with dev and get back to you. In the meantime, is this for a wedding, and roughly how many functions are you planning and over how many days?';
+        T('OPENER ⑥ (F-06.45): a PADDED deflection convicts — a door closing with a form behind it is not an answer',
+          openerFidelity(paddedDeflect, ask50k).ok === false && openerFidelity(paddedDeflect, ask50k).quality === 'bare-deflection');
+        T('OPENER ⑦ (F-06.45): a deflection that ANSWERS FIRST still passes — the limb judges the lead, not the phrase',
+          openerFidelity("Swati prices on the number of functions, so she'll want your dates before quoting — let me check with her and get back to you today. How many functions?", ask50k).ok === true);
         T('OPENER ⑤: the SAME ruled answer wearing a greeting still passes — the arm judges the ANSWER, not the manners',
           openerFidelity(ruledGreeted, ask50k).quality === 'answered+qualified');
       }

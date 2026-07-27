@@ -125,6 +125,81 @@ function stripIds(s) {
     .replace(BRACKET_SHORTID_RE, ' ').replace(BARE_SHORTID_RE, '');
 }
 
+// ── TDW_06 M-4 RE-SEAL · registerScrub — THE REGISTER FLOOR (CE-ruled 2026-07-25) ──
+// WHY THIS IS AN ARM AND NOT A THIRD SENTENCE. CE-67 filed a ₹500k breach that happened
+// UNDER harveySoul:179's symbol-only clause. M-4 strengthened that sentence — added the
+// grouping law and three mirrors — and the walk caught the model minting ₹20,000 at
+// 11:55 on 27 Jul while its own hands had just handed it "Rs 37,000". The discriminator
+// swept every ₹ in live src: seven hits, all STRIPPERS or the law itself, ZERO emitters.
+// The engine cannot physically hand a model that character. So the model minted it, twice
+// across two sittings, against a law it was already being told.
+//
+// A third restatement is the same losing bet a third time. THE ESTATE'S OWN PRECEDENT
+// GOVERNS: scrub.js exists because persona names leaked despite soul instructions, and
+// the ruled answer then was a firewall at the wire. The glyph rode that same wire
+// untouched while "Donna"→"Operator" was caught — for the plain reason that this file
+// had no register arm. It has one now.
+//
+// LD-5's OBJECTION, RULED NOT WAVED (CE R4): harveySoul:179 and its three mirrors are NOT
+// decorative and must never be read as dead. Two layers, same as persona: the SOUL carries
+// the character (why a figure grouped is a kindness to a man who shouldn't have to count
+// zeros); the ARM carries the guarantee (the wire is clean even when the model lapses).
+// The law is the intent; this is the floor under it. Delete the law and the arm's output
+// reads as sanitation instead of as Harvey.
+//
+// ── IT RE-DRESSES, IT NEVER RE-COMPUTES (CE R3, constraint 1) ────────────────────────
+// A mis-grouped figure is the RIGHT NUMBER wrongly dressed. ₹20,000 becomes Rs 20,000 —
+// never Rs 2,00,000. The k/L/Cr forms expand to the value they already denote (50k =
+// 50,000; 4.5L = 4,50,000; 1.2Cr = 1,20,00,000) and nothing else. The bench asserts the
+// numeric value is invariant across the whole battery, and a value-changing mutation REDs.
+// This is the one thing an arm on money must never get wrong: a wrong figure spoken
+// confidently is worse than an ugly one.
+//
+// ── IT NEVER TOUCHES HER QUOTED SPAN (CE R3, constraint 2) ──────────────────────────
+// By CONSTRUCTION, not by care: scrubModelFrame (vendorInbound.js) splits on her quoted
+// verbatim and calls scrubText on the FRAME HALVES ONLY, concatenating her span back
+// byte-exact. This arm lives inside scrubText, so her sentence never reaches it. A bride
+// who writes "₹50k" in her own words keeps every byte — the same law the persona arms
+// live under, inherited for free. Benched both ways.
+
+// The Indian grouping home for this runtime. Deliberately NOT re-implemented: witnessLine
+// owns the CJS wire's grouping (TDW_06 M-4 R2-B, per-runtime, no cross-reach invented).
+const { rupees: _rupeesHome } = require('../witnessLine');
+
+// A figure wearing any forbidden dress. Ordered widest-first so "1.2Cr" is not eaten by
+// the bare-digit arm. The leading (?:₹|Rs\.?|INR)? is optional because "50k" rides alone.
+const REGISTER_RE = new RegExp(
+  [
+    // ₹/Rs/INR + number + optional scale word  ·  OR a bare number + scale word
+    String.raw`(?:₹|\bRs\.?|\bINR)\s*([\d,]+(?:\.\d+)?)(?:\s*(cr|crore|crores|l|lakh|lakhs|lac|lacs|k|thousand)\b)?`,
+    String.raw`\b(\d+(?:\.\d+)?)\s*(cr|crore|crores|l|lakh|lakhs|lac|lacs|k|thousand)\b`,
+  ].join('|'),
+  'gi',
+);
+
+const SCALE = {
+  k: 1e3, thousand: 1e3,
+  l: 1e5, lakh: 1e5, lakhs: 1e5, lac: 1e5, lacs: 1e5,
+  cr: 1e7, crore: 1e7, crores: 1e7,
+};
+
+function registerScrub(text) {
+  if (!text) return text;
+  return String(text).replace(REGISTER_RE, (whole, n1, s1, n2, s2) => {
+    const raw = n1 != null ? n1 : n2;
+    const scale = (n1 != null ? s1 : s2) || '';
+    if (raw == null) return whole;
+    const n = Number(String(raw).replace(/,/g, ''));
+    if (!Number.isFinite(n)) return whole;              // never guess at a value
+    const mult = scale ? SCALE[scale.toLowerCase()] : 1;
+    if (scale && !mult) return whole;                   // unknown scale word — leave it alone
+    const value = n * mult;
+    if (!Number.isInteger(value)) return whole;         // a fractional rupee is not ours to round
+    const dressed = _rupeesHome(value);
+    return dressed || whole;                            // the home declined — leave the bytes
+  });
+}
+
 // ── Publication firewall: engine beats -> the wire names the PWA already reads ───
 // The engine speaks victor_token / dispatch / donna_action / donna_report. The PWA reads
 // the older Myra wire (text_delta / handoff / operator_action / operator_report), so the
@@ -181,6 +256,10 @@ function scrubText(text) {
   s = s
     .replace(/\bDonna\b/gi, 'Operator')
     .replace(/\bHarvey\b/gi, 'Victor');
+  // TDW_06 M-4 RE-SEAL: the register floor runs after the persona arms and BEFORE the id
+  // floor — it must see whole figures, and stripIds' short-id patterns must not have
+  // eaten a digit run first. Under the soul, never instead of it.
+  s = registerScrub(s);
   // F-06.9 (CE-ruled 2026-07-18): the id floor runs LAST, after the persona firewall, so
   // no raw record/lead id can ride outward prose. Under the soul, never instead of it.
   return stripIds(s);
@@ -299,4 +378,4 @@ function witnessWireScrub(supabase, vendorId, surface, raw, clean, ctx) {
 //     SURFACE_TRUTH_AUDIT §3.5): it is the turn log and the trail 06 exists to
 //     read. Rewriting it would destroy the record of the defect.
 
-module.exports = { scrubText, scrubForStorage, witnessWireScrub }; // witnessWireScrub: TDW_06 M-4 / F-06.36
+module.exports = { scrubText, scrubForStorage, witnessWireScrub, registerScrub }; // registerScrub: TDW_06 M-4 re-seal // witnessWireScrub: TDW_06 M-4 / F-06.36

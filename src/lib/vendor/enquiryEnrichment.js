@@ -35,12 +35,26 @@
 
 'use strict';
 
+// ── TDW_06 M-4 RE-SEAL · F-06.42 — THE OFF-REGISTER NOTIFICATION DONOR ─────────
+// This function rendered `Rs 50k` / `Rs 4.5L` / `Rs 1.2Cr` — the two forms the founder
+// forbade (「 forbids both 」) — straight into the LIVE vendor notification (:153, :156,
+// :160 via buildEnquiryEnrichment). Witnessed on the wire 27 Jul 11:29: `💰 Her budget:
+// Rs 50k.`
+//
+// HOW IT SURVIVED M-4's CENSUS, stated so the class does not repeat: the census asked
+// whether this was the donor for CE-67's specimen `₹500k`, found it renders `Rs 5L` at
+// 500,000, and cleared it — WITHOUT ever asking the second question, whether it was
+// itself off-register. A census that clears a site for the wrong question has not
+// censused it. The short forms were deliberate once; the register ruling retired them.
+//
+// The name is kept (its callers read as "short money") but the output is now the house
+// form. The registerScrub arm at the wire would also catch this — belt and suspenders,
+// and the arm is the belt. A donor that hands the model a clean figure is still worth
+// having: the model copies what it is given.
+const { rupees } = require('../witnessLine'); // the CJS wire's one grouped money home
 function fmtRsShort(n) {
   if (!n && n !== 0) return null;
-  if (n >= 10000000) return `Rs ${(n / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`;
-  if (n >= 100000)   return `Rs ${(n / 100000).toFixed(1).replace(/\.0$/, '')}L`;
-  if (n >= 1000)     return `Rs ${Math.round(n / 1000)}k`;
-  return `Rs ${n}`;
+  return rupees(n) || `Rs ${n}`;
 }
 
 // Mid-point of a min/max range (or the single value if only one is present).
