@@ -122,13 +122,46 @@ t('§4.1 exactly the enumerated set changed — no fourth soul byte rode in', ()
   // which is the guard finally doing its actual job instead of its apparent one.
   // (loop.ts leaves the assertion as the pathspec narrows to soul/prompt files; its
   // comment death is asserted on its own at §5.1, where it belongs.)
+  // ══ LABELED AMENDMENT №2 — TDW_06 FLOOR RE-PIN MICRO (F-06.53, CE-ruled 2026-07-27 §1a1).
+  // ══ COUNT PRESERVED. THE BASE DOES NOT MOVE AND THE FAR END STAYS LIVE — BY RULING.
+  //
+  // READ THIS BEFORE YOU "FIX" A RED HERE. This cell is the estate's ONE live-forward
+  // W-1 guard. Three sibling cells (b05_arc_m1 §6.2/§6.4, b05_arc_m2 §5.3) were re-aimed
+  // to their own delivered-file lists precisely so that this cell could keep the job
+  // alone, "where an exact expected file list makes it meaningful" — their words. So:
+  // FIRING ON LAWFUL SOUL WORK IS THE DESIGN, NOT THE DEFECT. The cell is asking for the
+  // founder's ratification to be written down. Re-pin-with-attribution is therefore a
+  // REQUIRED STEP OF ANY SOUL-TOUCHING SEAL — you extend the list below, in the same ZIP
+  // that moves the byte, naming the ruling that moved it. You do not range-pin this cell
+  // away; the other three already carry the historical form.
+  //
+  // WHY IT FIRED THIS TIME: the M-4 arc added two more surfaces to the diff, lawfully.
+  // Derived by `git log 6acafd2..origin/main` over this exact pathspec — three commits,
+  // no fourth. Each entry below is attributed to the ruling that authorised it:
+  //
+  //   src/agent/brideTools.js      → 4eff7f6  ARC M4's two ratified riders (this cell's
+  //   src/agent/miraSoul.js        → 4eff7f6  original expectation, unchanged)
+  //   src/agent/brideSystemPrompt.js → daacf4f          TDW_06 M-4, founder-vetoed
+  //   src/agent/coupleSystemPrompt.js → daacf4f/c35f84f TDW_06 M-4 + the CE-77 revert
+  //
+  // (2b89b5c touches only harveySoul.ts, which is outside this cell's GUARDED pathspec.)
+  //
+  // NAMED FORWARD so no future session relitigates it: F-06.51's chartered bride-lane
+  // register sitting WILL fire this cell when it lands. That is the ritual working. That
+  // sitting amends here, with attribution, as part of its own seal.
   const { execSync } = require('child_process');
   const GUARDED = ['src/agent/miraSoul.js', 'src/agent/brideSystemPrompt.js',
                    'src/agent/circleSystemPrompt.js', 'src/agent/coupleSystemPrompt.js',
                    'src/agent/brideTools.js', 'src/agent/brideOnboarding.js'];
+  const RATIFIED = [
+    'src/agent/brideSystemPrompt.js',   // daacf4f — TDW_06 M-4, founder-vetoed
+    'src/agent/brideTools.js',          // 4eff7f6 — ARC M4 rider
+    'src/agent/coupleSystemPrompt.js',  // daacf4f + c35f84f — M-4 arc + CE-77 revert
+    'src/agent/miraSoul.js',            // 4eff7f6 — ARC M4 rider
+  ].sort();
   const changed = execSync(`git diff --name-only 6acafd2 -- ${GUARDED.join(' ')}`, { cwd: ROOT })
     .toString().split('\n').map(x => x.trim()).filter(Boolean);
-  assert.deepStrictEqual(changed.sort(), ['src/agent/brideTools.js', 'src/agent/miraSoul.js'],
+  assert.deepStrictEqual(changed.sort(), RATIFIED,
     `the wall opened wider than the veto: ${changed.join(', ')}`);
 });
 

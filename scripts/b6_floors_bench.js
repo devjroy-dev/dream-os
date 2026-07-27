@@ -19,6 +19,37 @@
 //   dump (donna_find({}) with records present) rides the same recognition shape as
 //   the zero-match dump, the last door that was still leaking describeRow-whole.
 //
+// ══ LABELED AMENDMENT — TDW_06 FLOOR RE-PIN MICRO (CE-ruled 2026-07-27 §3). ═══════
+// ELEVEN CELLS AMENDED IN PLACE. COUNTS PRESERVED — no cell added, none removed.
+//
+// F-06.54 — THE REGISTER CURE'S BENCH WAKE (nine cells). daacf4f/c35f84f shipped the
+// house money register on both wires (「 forbids both 」: Rs X,XX,XXX, never ₹, never
+// k/L/Cr), and c35f84f's F-06.49 cure re-worded the enquiry budget render. Every
+// figure this bench spoke about therefore changed shape. SEVEN of the eleven were the
+// loud half — cells REDding against correct production code:
+//   :118 the vendor hold display · :199/:235 matched money · :200/:236 matched budget
+//   · and the two below.
+// FOUR were the SILENT half, and they are the more dangerous half: negatives whose
+// patterns went DEAD and so passed vacuously — :196/:232 (Rs 50000|Rs 125000|…, which
+// can never match a grouped render, leaving only received|pending with teeth) and
+// :197/:233 (bare 40000|55000, same). A negative that cannot match is not a floor; it
+// is a green with nothing behind it. All four re-armed on the grouped literals.
+// The literals are written out, never computed from rs()/rupees() inside the cell —
+// a bench that derives its expectation from the function under test agrees with that
+// function's next bug. arc_m1 §4.4 is the estate's ratified form of this choice.
+// :200/:236 assert `budget[^|]*Rs 40,000` rather than the full "budget up to Rs …":
+// the FIGURE and its REGISTER are what this cell is entitled to judge; the connective
+// is product copy and moved lawfully at c35f84f. Disclosed, not silent.
+//
+// F-06.55 — THE LABEL-TOKEN NEGATIVE (two cells, :195 and :231). These asserted the
+// withholding by grepping the bare token `phone ` — and the recognition dump's own
+// withholding LAW says, in prose, "Money and phone numbers are deliberately NOT
+// rendered on them." The law announcing the floor convicted the floor. The VALUE was
+// never present; only the WORD was. Re-aimed to `phone \d{6,}` — a phone number, not
+// the word "phone" — which keeps every tooth (the matched-block positives at :199/:235
+// still require `phone 9811077001` / `phone 9811022001` and still convict a leak) and
+// stops the cell from forbidding the estate to explain itself.
+//
 // Runs on the compiled dist (the same bytes production serves) over an in-memory
 // db double — no keys, no network, nothing touches production. The §5 leg drives
 // the REAL runDonnaTurn so the hold is proven at the seam a real caller reaches
@@ -115,7 +146,7 @@ const { runDonnaTurn } = require(path.join(DIST, 'donna.js'));
   const F0470_MSG = 'book a shoot for Zoya Persist Test on 18 December, 7 pm.';
   const named = checkMoneyProvenance('donna_lead', { value_estimate: 50000 }, F0470_MSG);
   T('the hand HOLDS — the figure the vendor never uttered cannot ride a lawful hand', !!named && named.figure === 50000);
-  T('the hold speaks the honest question (the figure named, nothing written, ask the owner)', !!named && /HELD/.test(named.display) && /Rs 50000/.test(named.display) && /nothing was written/i.test(named.display) && /confirm the amount/i.test(named.display));
+  T('the hold speaks the honest question (the figure named, nothing written, ask the owner)', !!named && /HELD/.test(named.display) && /Rs 50,000/.test(named.display) && /nothing was written/i.test(named.display) && /confirm the amount/i.test(named.display));
   T('the same hand with the figure honestly spoken ("50k") PASSES — the floor is provenance, not money-phobia', checkMoneyProvenance('donna_lead', { value_estimate: 50000 }, F0470_MSG + '\nBudget is 50k she said.') === null);
 
   sec('§3 — COVERAGE: every money field on every write hand; nothing else ever held');
@@ -192,12 +223,12 @@ const { runDonnaTurn } = require(path.join(DIST, 'donna.js'));
   T('the zero-match dump exists (recovery kept \u2014 M-4 keeps the fallback, reshapes it)', /No record matched|most recent records/.test(dump.display));
   T('recognition lines carry id + name-as-shown + stage', /\[rec-a1\] client="Rhea Referent Test" \| stage booked/.test(dump.display));
   T('the [ARCHIVED] tag survives (plane/archive tag is load-bearing)', /\[rec-a3\][^\n]*\[ARCHIVED\]/.test(dump.display));
-  T('PHONES are gone from the zero-match dump', !/9811077001|9811003344|9811005566|phone /.test(dump.display.split('enquiries plane')[0]));
-  T('MONEY is gone from the zero-match dump', !/Rs 50000|Rs 125000|Rs 90000|received|pending/.test(dump.display.split('enquiries plane')[0]));
-  T('the tokenless enquiries slice rides in RECOGNITION shape too (no budget, no phone, no date)', (() => { const tail = dump.display.split('enquiries plane')[1] || ''; return /\[ENQUIRY\] lead-z9 \u2014 "Tanvi Enquiry Test" \| state new/.test(tail) && !/40000|9811009900|2027-02-14/.test(tail); })());
+  T('PHONES are gone from the zero-match dump', !/9811077001|9811003344|9811005566|phone \\d{6,}/.test(dump.display.split('enquiries plane')[0]));
+  T('MONEY is gone from the zero-match dump', !/Rs 50,000|Rs 1,25,000|Rs 90,000|received|pending/.test(dump.display.split('enquiries plane')[0]));
+  T('the tokenless enquiries slice rides in RECOGNITION shape too (no budget, no phone, no date)', (() => { const tail = dump.display.split('enquiries plane')[1] || ''; return /\[ENQUIRY\] lead-z9 \u2014 "Tanvi Enquiry Test" \| state new/.test(tail) && !/Rs 40,000|9811009900|2027-02-14/.test(tail); })());
   const matched = await executeFindTool(AGENT, { client: 'Rhea Referent Test' });
-  T('a MATCHED payload is untouched \u2014 money still rides describeRow whole', /Rs 50000/.test(matched.display) && /received Rs 20000/.test(matched.display) && /phone 9811077001/.test(matched.display));
-  T('a MATCHED enquiry line is untouched \u2014 budget and phone still speak on the match branch', /budget Rs 40000/.test(matched.display) && /phone 9811009900/.test(matched.display));
+  T('a MATCHED payload is untouched \u2014 money still rides describeRow whole', /Rs 50,000/.test(matched.display) && /received Rs 20,000/.test(matched.display) && /phone 9811077001/.test(matched.display));
+  T('a MATCHED enquiry line is untouched \u2014 budget and phone still speak on the match branch', /budget[^|]*Rs 40,000/.test(matched.display) && /phone 9811009900/.test(matched.display));
 
   sec('§7 — FIND_LIMIT: the named constant at 15, reason attached, behaviour proven');
   resetStore();
@@ -228,12 +259,12 @@ const { runDonnaTurn } = require(path.join(DIST, 'donna.js'));
   T('the no-arg dump exists and is a recents list (records present, none searched)', /Found \d+ record/.test(noarg.display));
   T('recognition lines carry id + name-as-shown + stage', /\[rec-r1\] client="Vera Recents Test" \| stage booked/.test(noarg.display));
   T('the [ARCHIVED] tag survives on the set-aside row (plane/archive tag load-bearing)', /\[rec-r2\][^\n]*\[ARCHIVED\]/.test(noarg.display));
-  T('PHONES are gone from the NO-ARG dump (UNCURED describeRow ran here \u2014 this FAILED pre-cure)', !/9811022001|9811022002|phone /.test(recPart));
-  T('MONEY is gone from the NO-ARG dump (UNCURED this FAILED \u2014 Rs + received/pending were present)', !/Rs 60000|Rs 90000|received|pending/.test(recPart));
-  T('the tokenless enquiries slice rides RECOGNITION shape too (no budget, no phone, no date)', /\[ENQUIRY\] lead-r9 \u2014 "Nikita Enquiry Recents" \| state new/.test(leadPart) && !/55000|9811022009|2027-02-14/.test(leadPart));
+  T('PHONES are gone from the NO-ARG dump (UNCURED describeRow ran here \u2014 this FAILED pre-cure)', !/9811022001|9811022002|phone \\d{6,}/.test(recPart));
+  T('MONEY is gone from the NO-ARG dump (UNCURED this FAILED \u2014 Rs + received/pending were present)', !/Rs 60,000|Rs 90,000|received|pending/.test(recPart));
+  T('the tokenless enquiries slice rides RECOGNITION shape too (no budget, no phone, no date)', /\[ENQUIRY\] lead-r9 \u2014 "Nikita Enquiry Recents" \| state new/.test(leadPart) && !/Rs 55,000|9811022009|2027-02-14/.test(leadPart));
   const noargMatched = await executeFindTool(AGENT, { client: 'Vera Recents Test' });
-  T('a MATCHED search on the SAME rows is untouched \u2014 money + phone ride describeRow whole', /Rs 60000/.test(noargMatched.display) && /received Rs 25000/.test(noargMatched.display) && /phone 9811022001/.test(noargMatched.display));
-  T('a MATCHED enquiry line on the SAME rows is untouched \u2014 budget + phone still speak', /budget Rs 55000/.test(noargMatched.display) && /phone 9811022009/.test(noargMatched.display));
+  T('a MATCHED search on the SAME rows is untouched \u2014 money + phone ride describeRow whole', /Rs 60,000/.test(noargMatched.display) && /received Rs 25,000/.test(noargMatched.display) && /phone 9811022001/.test(noargMatched.display));
+  T('a MATCHED enquiry line on the SAME rows is untouched \u2014 budget + phone still speak', /budget[^|]*Rs 55,000/.test(noargMatched.display) && /phone 9811022009/.test(noargMatched.display));
 
   console.log(`\n${fail === 0 ? '\u2550\u2550 ' + pass + '/' + (pass + fail) + ' PASS \u2550\u2550' : 'FAILURES  ' + pass + '/' + (pass + fail)}`);
   process.exit(fail === 0 ? 0 : 1);

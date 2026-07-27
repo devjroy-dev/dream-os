@@ -91,9 +91,30 @@ t('§3.1 pending_lead_pings: three TEXTUAL writers in src/agent (one DEAD, F-05.
 });
 
 H('§4 — W-1 AND PURITY');
+// ══ LABELED AMENDMENT — TDW_06 FLOOR RE-PIN MICRO (F-06.53, CE-ruled 2026-07-27 §1). ══
+// COUNT PRESERVED. Two defects cured in one move, both this cell's own:
+//
+// (1) THE REFERENT. The base was pinned and the far end was the LIVE TREE, so the cell
+//     asserted "no soul byte moves, ever, anywhere in the estate" — a property ARC M5
+//     has no standing to claim. The M-4 arc did lawful founder-vetoed soul work
+//     (daacf4f · c35f84f) and this cell convicted it on brideSystemPrompt and
+//     coupleSystemPrompt. F-06.34's family, and the third bench in this arc to wear it.
+// (2) THE SUBSTRING HAZARD. `out.includes('brideTools')` over a FULL-TREE, name-only
+//     diff matches any path containing that text — a future `brideToolsHelper.js` or a
+//     doc named for the file would fire a W-1 breach that never happened. arc_m4 §4.1's
+//     own amendment named this and fixed it with a pathspec; this cell inherits the fix.
+//
+// THE CURE, per b06_m1_bench:288's precedent: RANGE-PINNED 8560ca0..a80dac8 — ARC M5's
+// own base and ARC M5's own seal, both ends fixed — AND pathspec-scoped to the six
+// guarded files by path, so the diff can only ever contain what it is entitled to judge.
+// The cell now asserts what it always meant: ARC M5 SHIPPED NO SOUL BYTE. Historical,
+// unmovable, green forever. Derived EMPTY over the range before this amendment shipped.
 t('§4.1 zero soul/prompt bytes', () => {
   const { execSync } = require('child_process');
-  const out = execSync('git diff --name-only 8560ca0', { cwd: ROOT }).toString();
+  const GUARDED = ['src/agent/miraSoul.js', 'src/agent/brideSystemPrompt.js',
+                   'src/agent/circleSystemPrompt.js', 'src/agent/coupleSystemPrompt.js',
+                   'src/agent/brideTools.js', 'src/agent/brideOnboarding.js'];
+  const out = execSync(`git diff --name-only 8560ca0..a80dac8 -- ${GUARDED.join(' ')}`, { cwd: ROOT }).toString();
   for (const f of ['miraSoul','brideSystemPrompt','circleSystemPrompt','coupleSystemPrompt','brideTools','brideOnboarding'])
     assert.ok(!out.includes(f), `W-1 BREACH: ${f}`);
 });

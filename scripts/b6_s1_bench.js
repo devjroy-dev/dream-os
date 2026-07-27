@@ -52,9 +52,23 @@ if (fnMatch) {
     const digits = String(p).replace(/\D/g, '');
     return digits.length >= 10 ? digits.slice(-10) : null;
   };
+  // ══ LABELED AMENDMENT — TDW_06 FLOOR RE-PIN MICRO (F-06.54, CE-ruled 2026-07-27 §3).
+  // COUNT PRESERVED — an injection, not a cell.
+  // THE DEFECT: this bench evaluates the REAL leadSnapshotItem body out of harvest.js
+  // source, so the eval scope must carry every free name that body uses. daacf4f gave
+  // the body a second one — `rupees`, the house register (`TDW_06 M-4 (R2-B)` at
+  // harvest.js:311) — and the eval had only `phoneKey`. The bench did not go red; it
+  // CRASHED on a bare ReferenceError and took its own remaining cells with it, which is
+  // strictly worse than a red: a crash reports nothing.
+  // THE CURE, phoneKey's own pattern: inject from the ONE HOME. `rupees` is required
+  // here from `src/lib/witnessLine` — the exact module harvest.js:28 imports it from, so
+  // the eval and production normalise money through the same bytes and cannot diverge.
+  // (witnessLine is a leaf CJS module: no engine/dist, no SDK, no credentials — the
+  // reason the phoneKey contract had to be re-stated by hand does not apply to it.)
+  const { rupees } = require(path.join(ROOT, 'src/lib/witnessLine.js'));
   // eslint-disable-next-line no-eval
-  const leadSnapshotItem = eval('(function(phoneKey){ return ' +
-    fnMatch[0].replace('function leadSnapshotItem', 'function') + '; })')(phoneKey);
+  const leadSnapshotItem = eval('(function(phoneKey, rupees){ return ' +
+    fnMatch[0].replace('function leadSnapshotItem', 'function') + '; })')(phoneKey, rupees);
 
   const item = leadSnapshotItem({
     id: 'abc-123', name: 'Rhea Referent Test', phone: '+91 98765 43210',
@@ -62,7 +76,13 @@ if (fnMatch) {
   });
   T('legacy shape unregressed: id',        item.id === 'lead:abc-123');
   T('legacy shape unregressed: kind',      item.kind === 'lead');
-  T('legacy shape unregressed: text',      item.text === 'Rhea Referent Test — lead, new (Rs 50000)');
+  // AMENDED with the injection above (F-06.54): the cell under the crash. daacf4f put
+  // the snapshot text through the house register, so the legacy shape's money now reads
+  // grouped. The SHAPE this cell guards — name — kind, state (figure) — is unregressed;
+  // only the figure's dress moved, and it moved by ruling. Literal, not rupees(50000):
+  // the register is the subject here, and a bench must not derive it from the function
+  // it is judging (arc_m1 §4.4's ratified form).
+  T('legacy shape unregressed: text',      item.text === 'Rhea Referent Test — lead, new (Rs 50,000)');
   T('legacy shape unregressed: status',    item.status === 'open');
   T('legacy shape unregressed: ref wiring', item.ref_type === 'leads' && item.ref_id === 'abc-123');
   T('THE CURE: name key present',          item.name === 'Rhea Referent Test');

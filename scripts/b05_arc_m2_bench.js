@@ -71,7 +71,31 @@ await ta('§1.1 *** prose "4 lakhs", hand 4000000 -> HELD, NOTHING WRITTEN ***',
   });
   assert.strictEqual(r.ok, false, 'the 10x write went through with ok:true — F-05.35 alive');
   assert.strictEqual(r.held, true);
-  assert.ok(/HELD/.test(r.error) && /4000000/.test(r.error), 'the hold must name the figure it refused');
+  // ══ LABELED AMENDMENT — TDW_06 FLOOR RE-PIN MICRO (F-06.54, CE-ruled 2026-07-27 §2).
+  // ══ COUNT PRESERVED — amended in place, one cell, one name.
+  // CE-45 Ruling №1's class: the bench follows the law. This cell's INTENT was always
+  // right — the hold must NAME the figure it refused, because a refusal that hides the
+  // number teaches nothing. Its BYTE-EXPECTATION went stale: daacf4f re-dressed
+  // moneyGuard.js:127 to `${rupees(figure) || `Rs ${figure}`}` under the founder's
+  // 「 forbids both 」 register law, so the display now reads "Rs 40,00,000" and the raw
+  // /4000000/ can never match. The production code is correct; this line was not.
+  //
+  // THE AMENDED FORM ASSERTS THREE PROPERTIES, and the literal is deliberate:
+  //   NAMED           — the figure appears, by the exact grouped literal
+  //   REGISTER-TRUE   — grouped house form, and the negative on BOTH forbidden shapes
+  //                     (no ₹ glyph, no k/L/Cr short form) — 「 forbids both 」
+  //   VALUE-UNCHANGED — commas stripped, the digits are still 4000000 and not 400000
+  // The expectation is the LITERAL 'Rs 40,00,000', never `rupees(4000000)` computed
+  // inside the cell: deriving the expectation from the same function under test makes
+  // the bench agree with any future bug in it. arc_m1 §4.4 is the estate's ratified
+  // form of this exact choice, and it is followed here.
+  assert.ok(/HELD/.test(r.error), 'the hold must announce itself');
+  assert.ok(r.error.includes('Rs 40,00,000'),
+    'the hold must NAME the figure it refused, in the house register (「 forbids both 」)');
+  assert.ok(r.error.replace(/,/g, '').includes('4000000'),
+    'and the VALUE must survive the register: Rs 40,00,000 IS 4000000, not 400000');
+  assert.ok(!/₹/.test(r.error) && !/\b40\s*(?:L|Cr|lakh|lakhs|crore)\b/i.test(r.error),
+    'neither forbidden form may reach the display — no glyph, no short form');
   assert.deepStrictEqual(sink.filter(s => s.op === 'insert'), [],
     'the guard held and the row was written anyway — the hold must precede the door, not follow it');
 });

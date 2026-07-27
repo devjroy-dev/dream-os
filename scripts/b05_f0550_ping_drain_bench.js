@@ -356,9 +356,30 @@ H('§6 — W-1 AND PURITY');
 // is asserted LOSSLESS — the rider may ADD, and may never remove or rewrite a byte of
 // what F-05.50's micro was protecting. A soul that only grows cannot have lost the
 // sentence this bench was built to guard.
+// ── LABELED AMENDMENT №2 (TDW_06 FLOOR RE-PIN MICRO, F-06.53, CE-ruled 2026-07-27 §1).
+// COUNT PRESERVED — one cell, one name, both legs still inside it.
+//
+// THE DEFECT, in leg 1 this time: the M-2 amendment above foresaw exactly this failure
+// for donnaSoul and narrowed leg 2 to LOSSLESS — and left leg 1 pinned BASE..LIVE-TREE.
+// The M-4 arc then did lawful, founder-vetoed soul work (daacf4f · c35f84f · 2b89b5c,
+// derived by `git log 2028a0d..origin/main` over exactly this pathspec — those three and
+// no fourth), and leg 1 convicted it: brideSystemPrompt.js, coupleSystemPrompt.js,
+// harveySoul.ts. Third instance of F-06.34's floating-referent family.
+//
+// THE CURE, the estate's own §6.8/§6.6 precedent (b06_m1_bench:288 — "the far end is
+// M-1's own seal, not the live tree"): RANGE-PIN, both ends fixed. This micro's charter
+// was never "no soul byte ever moves again"; it was "F-05.50(b) touched no soul byte."
+// That is a HISTORICAL fact about 2028a0d..5335bb2 — this micro's own base and its own
+// seal — true forever and unmovable by any later push. Derived EMPTY over all eight
+// surfaces at the range's far end before this amendment shipped.
+//
+// LEG 2 IS DELIBERATELY LEFT LIVE-PINNED at 2028a0d, byte-untouched (CE ruling §1): the
+// donnaSoul-lossless tripwire is a genuinely live guard, currently green at 2+/0−, and
+// a chartered rider that may only ADD is a property worth watching forward. Named
+// residual: it reds on any future donnaSoul DELETION — which is the point of it.
 await t('§6.1 zero soul/prompt/voice bytes (AMENDED M-2: eight surfaces 0-line; donnaSoul LOSSLESS under the chartered rider)', () => {
   const { execSync } = require('child_process');
-  const out = execSync('git diff --name-only 2028a0d -- src/agent/miraSoul.js src/agent/brideSystemPrompt.js src/agent/circleSystemPrompt.js src/agent/coupleSystemPrompt.js src/agent/brideTools.js src/agent/brideOnboarding.js src/engine/src/core/harveySoul.ts src/engine/src/core/advisorLens.ts', { cwd: ROOT }).toString().trim();
+  const out = execSync('git diff --name-only 2028a0d..5335bb2 -- src/agent/miraSoul.js src/agent/brideSystemPrompt.js src/agent/circleSystemPrompt.js src/agent/coupleSystemPrompt.js src/agent/brideTools.js src/agent/brideOnboarding.js src/engine/src/core/harveySoul.ts src/engine/src/core/advisorLens.ts', { cwd: ROOT }).toString().trim();
   assert.strictEqual(out, '', `W-1 BREACH: ${out}`);
   const stat = execSync('git diff --numstat 2028a0d -- src/engine/src/core/donnaSoul.ts', { cwd: ROOT }).toString().trim();
   const deletions = stat ? Number(stat.split(/\s+/)[1]) : 0;

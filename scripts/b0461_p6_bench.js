@@ -256,8 +256,36 @@ sec('8. THE VOICE GATE — the weave reaches Victor, and only a planner');
   // through scrubText before shipping (guardrail 4). The soul can be echoed, so it counts.
   const { scrubText } = require(path.join(ROOT, 'src/lib/vendor/scrub.js'));
   const weave = soulSrc.match(/export const PRODUCTION_WEAVE = `([\s\S]*?)`;/)[1];
-  ok(scrubText(weave) === weave, 'the weave passes scrubText BYTE-IDENTICAL — no machinery leaks');
-  ok(weave.length <= 600, `the weave is within spec §P6's 600-char cap (${weave.length})`);
+  // ══ LABELED AMENDMENT — TDW_06 FLOOR RE-PIN MICRO (F-06.56, CE-ruled 2026-07-27 §5).
+  // ══ TWO CELLS AMENDED IN PLACE. COUNT PRESERVED.
+  //
+  // WHAT MOVED: at 2b89b5c the founder ruled 「 move it 」 and the no-machinery law was
+  // moved TERMINAL in harveySoul — and terminal in harveySoul means inside this weave.
+  // The weave went 549 → 1060 chars and, for the first time, NAMES the persona in its
+  // own law ("Whatever passes between you and Donna is the two of you at work behind
+  // the curtain"). Both cells below then RED against a founder-ruled act, which is this
+  // sitting's exact class.
+  //
+  // CELL 1 — THE PREMISE DIED, and this is the honest place to say so. "The weave must
+  // pass scrubText BYTE-IDENTICAL" was a good proxy for "no machinery leaks" only while
+  // no soul law needed to name Donna. F-06.52 ended that: THE LAW MUST NAME WHAT IT
+  // FORBIDS — a curtain law that cannot say "Donna" cannot forbid narrating her. The
+  // two-layer doctrine resolves it without weakening anything: the SOUL carries
+  // character (and may name the persona inside its own law), the FIREWALL carries the
+  // floor. So the cell is re-aimed from a source property to the WIRE property, which
+  // is the one that ever protected a vendor: whatever this weave is, nothing the vendor
+  // can read carries the persona's name.
+  // /Donna/ and NOT /donna/i BY RULING: the lowercase gap is F-06.35's own filed
+  // finding, riding its own cure elsewhere. A case-insensitive assertion here would
+  // quietly become that finding's bench and mask whether it was ever cured.
+  //
+  // CELL 2 — the cap is a COST number, so it is stated rather than deleted: +511 chars
+  // ≈ ~130 tokens, and the weave sits inside the cached static prefix, so the marginal
+  // cost is cache-stable and negligible. Raised to 1200 with headroom, not removed —
+  // an unbounded soul constant is how a static prefix stops being cheap.
+  ok(!/Donna/.test(scrubText(weave)),
+     'the FIREWALL clears the weave — no persona name survives to the vendor wire (F-06.52 two-layer doctrine)');
+  ok(weave.length <= 1200, `the weave is within spec §P6's cap, raised to 1200 at 「 move it 」 (${weave.length})`);
   ok(!/\bDone\b/.test(weave) && !/\bfiled\b/i.test(weave),
      'the weave teaches no completion vocabulary — F-04.100/F-04.102 as anti-spec');
 }
