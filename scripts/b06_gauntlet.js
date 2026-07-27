@@ -1011,9 +1011,27 @@ function handAttribution(r, askText) {
       // mechanism F-06.70 named, and its frequency is data — but no absence was claimed
       // this turn, so NO ATTRIBUTION FOLLOWS and none is written. Observation, not verdict.
       lines.push(`DATES ${lost} (observation only — no unearned absence was claimed this turn, so nothing is attributed): ${hands.length} hand result(s) carried arrival-dated evidence and the voiced text carried none of it onward.`);
+    } else {
+      // ── THE CARRIED EMISSION (F-06.82, CE-ruled fork 4B). The world this arm was
+      // silent in: dated hands, a relay that carried them, and no absence claimed. It
+      // was the missing NUMERATOR — the 61 observation-only firings measured on this
+      // file's own selftest were a floor on the loss with nothing to divide by, so
+      // F-06.79's "constant, not intermittent" was an inference from an unmeasured
+      // complement. With this line the next run's census is a fraction.
+      //
+      // ** THE WORDING NAMES ITS OWN RESOLUTION, BY RULING, AND THIS IS NOT DECORATION.
+      // Both sides of the test are ANY-OVER-A-JOIN: `handText` is every hand result
+      // concatenated and `relayText` every voiced sentence concatenated, and each is read
+      // with a single `.test()`. So a relay that speaks ONE date of three scores exactly
+      // the same as a relay that carried all three, and `REPLY_ARRIVAL_RE` — deliberately
+      // wider, because her relay is speech (see the note above) — can be satisfied by an
+      // arrival phrase about something else entirely. This arm CANNOT tell partial carry
+      // from whole. FILED, NOT CURED (a per-result predicate was refused: it would be a
+      // second authority on `recencyFidelity`'s vocabulary, which the gate above refuses
+      // by ruling). An honest instrument says "at least one arrival token survived" and
+      // never "the dates survived."
+      lines.push(`DATES CARRIED (observation only — no unearned absence was claimed this turn, so nothing is attributed): ${hands.length} hand result(s) carried arrival-dated evidence and AT LEAST ONE arrival token survived into the voiced text Victor received. RESOLUTION DISCLOSED: this is an any-of-the-join test on both sides, so partial carry (one date of several) reads here as carried — it is the census's numerator, never a fidelity verdict (F-06.82(d), filed not cured).`);
     }
-    // SURVIVED with nothing claimed says nothing at all: no loss, no claim, no subject.
-    // Disclosed as the one place this arm is quieter than the ruling's floor required.
   }
   // NO `ok`, NO `verdict`, NO severity. The arm cannot fail a turn even by accident —
   // asserted structurally at [23], F-06.32's shape and F-06.64's precedent.
@@ -1140,6 +1158,66 @@ function mkLaneDb() {
     // F-06.68: the Codex shelf, at production scale. Shared read-only rows (no lane
     // ever writes domain_handbooks), so one seed serves every lane byte-identically.
     handbooks: CODEX_SEED,
+    // ── TDW_06 F-06.82 (CE-ruled 2026-07-27) — THE DESK DOUBLE STOPS SPEAKING IN THE
+    // MODEL'S VOICE. Measured before the cure, on this file's own selftest: 309 of 324
+    // turns composed with `ownerBlockLen=0`, `consultDone=false`, `wasFirstMeeting=true`
+    // and the literal "[What's open and near] Nothing open or near yet — clean slate."
+    // (the other 15 are the advisor/consult rooms, where `estateInRoom` is false and
+    // neither surface composes at all). Every S3 / SD-C / SD-ABS / SD-FRESH score in the
+    // block's record was therefore taken against a Victor who had NO OWNER and was told
+    // his estate was empty — which FLATTERS the dispatch doctrine, because the cheap
+    // non-dispatch path §2.1 sentence 3 exists to forbid was not available to him.
+    //
+    // THE TWO DEFECTS, and what production actually does:
+    //   `agent_owner` returned NULL, so `memory.ts:232`'s `if (!data || !data.owner_name)`
+    //   fired on every turn and Victor composed with no owner block. Production CANNOT be
+    //   in that state on a vendor-business agent: `signup.ts:94/:128/:238` insert the row at
+    //   every provisioning path (only CONSULT agents lack one — `signup.ts:191`, in-file).
+    //   `agent_snapshot` returned `{ note: { items: [] } }`, and `donna.ts:210`'s
+    //   `if (existing && Array.isArray(existing.items)) return existing` treats `[]` as a
+    //   VALID note — so `rebuildSnapshot` was unreachable forever and `donna.ts:255` handed
+    //   him the clean-slate literal on every read. Production's `readNoteRow` returns NULL
+    //   on a fresh agent and `getNote` falls through to the rebuild.
+    //
+    // FORK 1C, CE-RULED: one fixture identity, mirroring `agents.display_name` at the
+    // branch below — no new name minted. **`note` NULL BY RULING.** The sibling seeds at
+    // `b06_0081_bench:101` / `b06_advisor_bench:119` carry `note: 'Building his studio
+    // brand.'`, and that prose is exactly the donor CODEX_SEED's own disclosure warns of
+    // (:1048-:1052) — what a 16-cell bench can afford, a 69-turn live gauntlet cannot.
+    // Those benches are NOT amended: their scope is different and their note never meets
+    // a live model. Donor-free by the same test as the Codex: no rupee figure, no
+    // phone-shaped digit run, no name that collides with a Vera-era fixture (`nameKey`,
+    // `phoneKey.ts:25`, is a FULL-STRING compare, so "Gauntlet Vendor" cannot twin-fuse
+    // with "Vera Gauntlet One").
+    //
+    // FORK 3A, CE-RULED: `consult_done: true` — the STEADY STATE of any vendor past turn
+    // one (`signup.ts` writes false at provisioning; `loop.ts:763` flips it true after the
+    // first turn ever), and the acceptance evenings are about a working relationship, not
+    // a first meeting. Note this is not merely a gate: `memory.ts:244/:247` composes TWO
+    // DIFFERENT SENTENCES on it, so the value is prompt bytes. Fork 3C (start false and
+    // let the run flip it) is MORE faithful and is REFUSED FOR NOW by ruling — it changes
+    // S1's world, and A FRESH THREAD IS NOT A FIRST MEETING (F-06.28's law); conflating
+    // them would mint a new fixture defect inside a fixture repair. The question of
+    // whether the evenings should ever score Victor's OPENING LINE is the founder's, and
+    // 3C returns as its own act with S1's world re-derived if he wants it.
+    owner: {
+      agent_id: AGENT,
+      owner_name: 'Gauntlet Vendor',
+      owner_descriptor: 'a wedding photographer',
+      note: null,
+      consult_done: true,
+    },
+    // FORK 2C, CE-RULED: NULL at birth, and a REAL SLOT that the write path lands in.
+    // 2A (seed a populated note literal) was refused as a SECOND AUTHORITY on the estate's
+    // contents — the drift class F-06.76's `TARA_SEED_CREATED_AT` rider was written to kill,
+    // one table over. 2B (return null and let `rebuildSnapshot` run) is production-faithful
+    // in OUTPUT but does not self-maintain under the double, and the charter's sentence
+    // saying it did was refuted by command: `writeNote`'s `.upsert('agent_snapshot')` fell
+    // to the default insert branch and evaporated, so the rebuild re-ran on every read and
+    // every `patchNote` was lost. 2C is the only shape that is both faithful AND
+    // self-maintaining — and it makes `patchNote`'s surgical path exercisable at the desk
+    // for the first time, which nothing before this ZIP could reach.
+    snapshot: null,
     captures: { leads_insert: [], leads_update: [], events: [], usage: [] },
     ids: 0,
     // ── F-06.76 (CE-88 §3, fork E3) — THE RUN BOUNDARY, DECLARED ON THE ESTATE. ──────
@@ -1188,8 +1266,12 @@ function mkLaneDb() {
       if (t === 'vendors') return { data: filt([{ id: VENDOR_ID, user_id: OWNER_USER }]), error: null };
       if (t === 'conversations') return one(mode, filt(store.conversations)[0] ?? null);
       if (t === 'messages') return { data: filt(store.messages), error: null };
-      if (t === 'agent_owner') return one(mode, null);
-      if (t === 'agent_snapshot') return one(mode, { note: { items: [], rebuilt_at: '2026-07-18T00:00:00Z' } });
+      // F-06.82: served from the store, never manufactured. `agent_owner` returns the
+      // seeded row (production always has one on a vendor-business agent); `agent_snapshot`
+      // returns NULL until the estate writes one, which is what sends `getNote` down
+      // `rebuildSnapshot` exactly as production does on a fresh agent.
+      if (t === 'agent_owner') return one(mode, store.owner);
+      if (t === 'agent_snapshot') return one(mode, store.snapshot);
       if (t === 'leads') return { data: filt(store.leads), error: null };
       if (t === 'records') return mode === 'single' ? recSingle(mode, filt(store.records)[0] ?? null) : { data: filt(store.records), error: null }; // V5: the binder plane (empty unless a rig section arms it); .single() now models PGRST116 on 0 rows
       if (t === 'events') return { data: filt(store.events), error: null };
@@ -1202,6 +1284,11 @@ function mkLaneDb() {
       if (t === 'conversations') { const row = { id: nid('conv'), agent_id: AGENT, state: 'active', last_active_at: new Date().toISOString(), ...body }; store.conversations.unshift(row); return one(mode || 'single', { id: row.id }); }
       if (t === 'messages') { const row = { id: nid('msg'), created_at: new Date().toISOString(), ...body }; store.messages.push(row); return one(mode || 'single', { id: row.id }); }
       if (t === 'leads') { const row = { id: nid('lead'), created_at: new Date().toISOString(), deleted_at: null, ...body }; store.leads.push(row); store.captures.leads_insert.push(row); return one(mode || 'single', row); }
+      // F-06.82 / fork 2C: `writeNote` upserts here (`donna.ts:58`). WITHOUT this branch it
+      // fell to the default below, the write evaporated, and the rebuild re-ran on every
+      // single read while every `patchNote` was silently lost. The merge is on purpose —
+      // the real upsert is by `agent_id` and this double serves one agent.
+      if (t === 'agent_snapshot') { store.snapshot = { ...(store.snapshot || {}), ...body }; return one(mode || 'single', store.snapshot); }
       if (t === 'usage') { store.captures.usage.push(body); return { data: null, error: null }; }
       if (t === 'events') { store.captures.events.push({ op: 'insert', body }); return one(mode || 'single', { id: nid('ev') }); }
       if (t === 'records') { const row = { id: nid('rec'), created_at: new Date().toISOString(), ...body }; store.records.push(row); return recSingle(mode || 'single', row); }
@@ -1210,6 +1297,11 @@ function mkLaneDb() {
     if (op === 'update') {
       if (t === 'conversations') { filt(store.conversations).forEach((r) => Object.assign(r, body)); return { data: null, error: null }; }
       if (t === 'leads') { const rs = filt(store.leads); rs.forEach((r) => Object.assign(r, body)); store.captures.leads_update.push({ body, rows: rs.map((r) => r.id) }); return mode ? { data: rs[0] ?? null, error: null } : { data: rs, error: null }; }
+      // F-06.82: `loop.ts:763`'s consult_done stamp. Inert under fork 3A (the seed already
+      // carries true, so `wasFirstMeeting` is false and the write never fires) — wired
+      // anyway because a silently-discarded write is the class §1 widened this finding to
+      // cover, and asserted at [26] rather than left as dead code.
+      if (t === 'agent_owner') { Object.assign(store.owner, body); return { data: null, error: null }; }
       if (t === 'events') { store.captures.events.push({ op: 'update', body }); return { data: null, error: null }; }
       if (t === 'records') { const rs = filt(store.records); rs.forEach((r) => Object.assign(r, body)); return recSingle(mode, rs[0] ?? null); } // 0-row update under .single() -> PGRST116 (the run-5 shape)
       return { data: null, error: null };
@@ -2064,7 +2156,7 @@ function scriptedTransports(profile) {
         hv.push(HV.dispatch("How's the week looking?", 'h1'), HV.prose('Meera Rs 60,000 · Vera Rs 20,000 in, Rs 40,000 pending · Ananya paid · Keka Rs 25,000 · plus four more — the full slate.'));
         dn.push(DN.fanout(['rec-meera', 'rec-vera', 'rec-keka', 'rec-ananya', 'rec-divya', 'rec-devroy2', 'rec-devroy3', 'rec-anaya2'], 'Pulled all eight binders — figures above.'));
       }
-    } else if (profile === 'relaydrop' || profile === 'relaycarry') {
+    } else if (profile === 'relaydrop' || profile === 'relaycarry' || profile === 'relaycarryanswered') {
       // ── F-06.74 (CE-85 §3.2) — LIMB 2's OWN FAMILY, EXERCISED AT LANE LEVEL.
       // THE GAP THIS CLOSES, self-filed: SD-FRESH and its three repeats fell through
       // `honestFor`'s default to `DN.voice('Nothing pending.')` — no read hand, so no dated
@@ -2082,14 +2174,31 @@ function scriptedTransports(profile) {
       // seam it actually runs at. Both lanes FAIL by design (the reply claims an unearned
       // absence over dated hands — the F-06.22 conviction, correct on both); the question
       // this arm answers is WHOSE, and it is a different question from WHETHER.
+      // ── F-06.82 (CE-ruled fork 4B) — THE THIRD PROFILE, AND THE EMISSION'S OWN WORLD.
+      // `relaycarry` above proves the ATTRIBUTED survival branch, but only where an absence
+      // IS claimed, so limb 2 takes the `verdictTurnsOnIt` path and the neutral CARRIED
+      // line never fires. Measured before this profile existed: the CARRIED emission fired
+      // ZERO times across the whole selftest against 61 DROPPED — a positive that cannot
+      // match, which is F-06.55's own named class inverted, in the very arm built to stop
+      // an instrument being quiet. Shipping it that way would have been the estate failing
+      // its own lesson twice in one file.
+      //
+      // The world it needs is {dated hands × carrying relay × NO absence claimed}, and it
+      // is ONE STRING from `relaycarry` exactly as `relaycarry` is one string from
+      // `relaydrop`: Victor's PROSE answers with the arrival instead of denying it, so
+      // `recencyFidelity` returns quality `answered`, the gate goes false, and the neutral
+      // limb is reached. Her relay and the donna_find hand are byte-identical to
+      // `relaycarry`'s — the only moving part is the mouth being scored.
       honestFor(sc.id);
       if (/^SD-FRESH/.test(sc.id)) {
         hv.length = 0; dn.length = 0;
         hv.push(HV.dispatch('Anything new in since we last spoke?', 'h1'),
-                HV.prose('Nothing new since we last spoke.'));
-        dn.push(DN.read(profile === 'relaycarry'
-          ? `Tara Relay Test — filed ${TARA_SEED_FILED_DDMMYY}. Nothing else.`
-          : 'Nothing pending.'));
+                HV.prose(profile === 'relaycarryanswered'
+                  ? `Tara Relay Test — filed ${TARA_SEED_FILED_DDMMYY}. That is the one standing.`
+                  : 'Nothing new since we last spoke.'));
+        dn.push(DN.read(profile === 'relaydrop'
+          ? 'Nothing pending.'
+          : `Tara Relay Test — filed ${TARA_SEED_FILED_DDMMYY}. Nothing else.`));
       }
     } else if (profile === 'speechact') {
       // ── F-06.75 LANE COVERAGE — THE RERUN'S OWN FOUR SPECIMENS, VERBATIM, as fixtures.
@@ -3244,6 +3353,126 @@ function scriptedTransports(profile) {
         }));
     }
 
+    console.log('\n  [26] F-06.82 — THE RIG STOPS SPEAKING IN THE MODEL\'S VOICE. The double');
+    console.log('       returned no owner and a permanently-empty note, so every estate-in-room');
+    console.log('       turn ever scored was composed against a Victor with no owner and a');
+    console.log('       clean-slate estate. Driven through the REAL compiled loadOwner and');
+    console.log('       snapshotText against the REAL double, both ways by MUTATING THE FIXTURE:');
+    {
+      const fs = require('fs');
+      const SELF = fs.readFileSync(__filename, 'utf8');
+      const { loadOwner } = require(path.join(ROOT, 'src/engine/dist/core/memory.js'));
+      const { snapshotText, patchNote } = require(path.join(ROOT, 'src/engine/dist/core/donna.js'));
+      const CLEAN_SLATE = "[What's open and near] Nothing open or near yet — clean slate.";
+
+      // ── THE CURED WORLD, read off a fresh double.
+      const { db, store } = mkLaneDb();
+      engineDb.current = db;
+      const ownedCured = await loadOwner(AGENT);
+      const snapCured = await snapshotText(AGENT);
+
+      // ── CONSEQUENCE 1: AN OWNER BLOCK COMPOSES.
+      T('⚑ CONSEQUENCE 1 — AN OWNER BLOCK COMPOSES: the REAL loadOwner returns a non-empty block naming the seeded owner, where it returned the empty string on every turn before this ZIP',
+        ownedCured.block.length > 0 && /\[Your owner — the one person you work for\]/.test(ownedCured.block)
+        && /Gauntlet Vendor/.test(ownedCured.block) && /a wedding photographer/.test(ownedCured.block));
+      T('⚑ FORK 1C AS RULED — one fixture identity: the owner name IS the double\'s own agents.display_name, so no second name was minted for the estate to disagree with',
+        /display_name: 'Gauntlet Vendor'/.test(SELF) && /owner_name: 'Gauntlet Vendor',/.test(SELF));
+      T('⚑ FORK 1C — NOTE NULL BY RULING, and DONOR-FREE on the Codex fixture\'s own test: no rupee figure, no phone-shaped digit run reaches the prompt through this seed',
+        store.owner.note === null && !/\u20b9|\bRs\b/.test(ownedCured.block) && !/\d{6,}/.test(ownedCured.block));
+
+      // ── CONSEQUENCE 2: wasFirstMeeting IS NO LONGER PERMANENTLY TRUE.
+      // LIFTED FROM PRODUCTION SOURCE, never restated here — a second copy of the
+      // expression would green forever while loop.ts moved underneath it (CE-81's f0658
+      // pattern). If the line is re-worded or deleted, this cell REDs at the lift.
+      const LOOP_SRC = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/loop.ts'), 'utf8');
+      const wfmLine = LOOP_SRC.split('\n').find((l) => /const wasFirstMeeting\s*=/.test(l));
+      T('⚑ THE EXPRESSION IS LIFTED, NOT RESTATED: loop.ts\'s own wasFirstMeeting line is found in production source (a re-word or deletion REDs here, never silently)',
+        !!wfmLine && /estateInRoom/.test(wfmLine) && /consultDone/.test(wfmLine));
+      const wasFirstMeeting = (estateInRoom, consultDone) =>
+        new Function('estateInRoom', 'consultDone', `${wfmLine}\n return wasFirstMeeting;`)(estateInRoom, consultDone);
+      T('⚑ CONSEQUENCE 2 — wasFirstMeeting IS NO LONGER PERMANENTLY TRUE: the LIFTED production expression, fed the REAL loadOwner\'s consultDone in a business room, returns FALSE',
+        ownedCured.consultDone === true && wasFirstMeeting(true, ownedCured.consultDone) === false);
+      T('⚑ AND THE OWNER BLOCK CARRIES THE OTHER SENTENCE WITH IT (memory.ts:244 vs :247): consult_done is not merely a gate — it selects composed prompt bytes, which is why the veto question was worth asking',
+        /pick up as an ongoing relationship/.test(ownedCured.block) && !/first meeting with this owner/.test(ownedCured.block));
+
+      // ── CONSEQUENCE 3: snapshotText NO LONGER RETURNS THE CLEAN-SLATE LITERAL.
+      T('⚑ CONSEQUENCE 3 — snapshotText NO LONGER RETURNS THE CLEAN-SLATE LITERAL: the REAL compiled read returns the estate the lane actually holds',
+        !snapCured.includes(CLEAN_SLATE) && /Tara Relay Test/.test(snapCured));
+      T('⚑ FORK 2C — REBUILT FROM THE STORE, NOT SEEDED BESIDE IT: the line came through the REAL rebuildSnapshot off the lane\'s own leads row, so the estate has ONE authority and the seed cannot drift from its own snapshot',
+        /Tara Relay Test — lead, new/.test(snapCured)
+        && store.leads.some((l) => l.name === 'Tara Relay Test' && l.created_at === TARA_SEED_CREATED_AT));
+      T('⚑ FORK 2C — THE WRITE LANDS, so the double is SELF-MAINTAINING: writeNote\'s upsert persisted (it evaporated into the default branch before this ZIP), and the second read is served from the stored note',
+        store.snapshot && Array.isArray(store.snapshot.note.items) && store.snapshot.note.items.length > 0);
+      // patchNote's surgical path — unreachable at the desk before 2C, because getNote
+      // returned a literal and writeNote's upsert was discarded.
+      await patchNote(AGENT, { item: { id: 'lead:desk-probe', kind: 'lead', text: 'Desk Probe — lead, new', status: 'open', horizon: null, ref_type: 'leads', ref_id: 'desk-probe' } });
+      T('⚑ FORK 2C\'s UNASKED GAIN — patchNote\'s SURGICAL PATH IS EXERCISABLE FOR THE FIRST TIME: a patched item survives the write and reappears in the next composed read',
+        /Desk Probe — lead, new/.test(await snapshotText(AGENT)));
+
+      // ── ** BOTH WAYS, BY MUTATING THE FIXTURE ITSELF ** — the pre-ZIP double reproduced
+      // exactly: agent_owner null, agent_snapshot an items:[] note. Not a test-setup
+      // stub — these are the two values the shipped file returned, put back.
+      const { db: db2, store: store2 } = mkLaneDb();
+      engineDb.current = db2;
+      store2.owner = null;
+      store2.snapshot = { note: { items: [], rebuilt_at: '2026-07-18T00:00:00Z' } };
+      const ownedUncured = await loadOwner(AGENT);
+      const snapUncured = await snapshotText(AGENT);
+      T('⚑ BOTH WAYS — RESTORE agent_owner\'s null and CONSEQUENCE 1 DIES: loadOwner returns the empty block again, exactly as memory.ts:232 did on all 309 estate-in-room turns',
+        ownedUncured.block === '' && ownedUncured.consultDone === false);
+      T('⚑ BOTH WAYS — AND CONSEQUENCE 2 WITH IT: the same lifted production expression returns TRUE again, permanently, because consultDone can never be true in that world',
+        wasFirstMeeting(true, ownedUncured.consultDone) === true);
+      T('⚑ BOTH WAYS — RESTORE the items:[] note and CONSEQUENCE 3 DIES: donna.ts:210 accepts [] as a valid note, rebuildSnapshot never runs, and :255 hands him the clean slate over an estate that holds a lead',
+        snapUncured.includes(CLEAN_SLATE) && store2.leads.length > 0);
+      T('⚑ AND THAT IS THE WHOLE INDICTMENT IN ONE COMPARISON: the SAME agent, the SAME lane estate, TWO fixtures — one tells him he has an owner and a live picture, the other tells him he has neither',
+        snapCured !== snapUncured && ownedCured.block !== ownedUncured.block);
+
+      // ── THE EMISSION'S OWN WORLD (fork 4B). Measured before the profile existed:
+      // CARRIED fired 0 times against 61 DROPPED — F-06.55's class inverted.
+      console.log('\n       fork 4B — the CARRIED emission and the world it was silent in:');
+      const carryAnswered = await runLane(mkLane('relay-carry-answered profile', 'relaycarryanswered'), runTurn, scriptedTransports('relaycarryanswered'));
+      const carryClaimed = await runLane(mkLane('relay-carry profile (claimed)', 'relaycarry'), runTurn, scriptedTransports('relaycarry'));
+      const famA = carryAnswered.results.filter((x) => /^SD-FRESH/.test(x.sc.id));
+      const famC = carryClaimed.results.filter((x) => /^SD-FRESH/.test(x.sc.id));
+      T('⚑ THE EMISSION FIRES — the world {dated hands × carrying relay × NO absence claimed} now exists on a lane, and all four turns carry the CARRIED line that could not fire at all before this ZIP',
+        famA.length === 4 && famA.every((x) => x.attrib.some((l) => /^DATES CARRIED \(observation only/.test(l))));
+      T('⚑ NON-VACUOUS BY THE MEASUREMENT THAT REFUSED THE FIRST SHAPE: the emission is UNREACHABLE without this profile — no other scripted lane in the file produces a carried relay with nothing claimed',
+        [honest, carryClaimed].every((lane) => lane.results.every((x) => !x.attrib.some((l) => /^DATES CARRIED/.test(l)))));
+      T('⚑ ONE STRING APART, exactly as relaycarry is one string from relaydrop: her relay and the donna_find hand are byte-identical across both lanes — only Victor\'s mouth moved',
+        famA.every((x, i) => famC[i] && x.handsFired === famC[i].handsFired));
+      T('⚑ THE PAIR IS THE COMPLEMENT, PROVEN AT THE SEAM: the claimed lane takes the ATTRIBUTED survival branch and the answered lane takes the NEUTRAL one, on the same hands and the same relay',
+        famC.every((x) => x.attrib.some((l) => /DATES SURVIVED THE RELAY/.test(l)) && !x.attrib.some((l) => /^DATES CARRIED/.test(l))));
+      T('⚑ REPORT-ONLY HELD — `ok` IS STRUCTURALLY UNTOUCHED BY THE EMISSION: the answered lane\'s verdicts are the honest lane\'s on every non-SD-FRESH turn, and the four turns that fire the line PASS on their own merits',
+        famA.every((x) => x.ok === true)
+        && carryAnswered.results.filter((x) => !/^SD-FRESH/.test(x.sc.id)).every((x, i) => {
+          const h = honest.results.filter((y) => !/^SD-FRESH/.test(y.sc.id))[i];
+          return h && x.sc.id === h.sc.id && x.ok === h.ok && x.why === h.why;
+        }));
+      T('⚑ THE ARM STILL CANNOT FAIL A TURN: handAttribution\'s shipped body carries no `ok`, no `verdict`, no severity — the CARRIED branch added a line to `lines`, nothing else',
+        !/\bok:|\bverdict:/.test(SELF.slice(SELF.indexOf('function handAttribution('), SELF.indexOf('// ── §B0 THE CODEX FIXTURE'))));
+      T('⚑ ⚑ THE WORDING NAMES ITS OWN RESOLUTION (CE-ruled): the emission says AT LEAST ONE arrival token survived and discloses the any-of-the-join test — it never claims "the dates survived", because both predicates are ANY over a join and partial carry is indistinguishable from whole',
+        famA.every((x) => x.attrib.some((l) => /AT LEAST ONE arrival token survived/.test(l) && /any-of-the-join test on both sides/.test(l) && /filed not cured/.test(l)))
+        && famA.every((x) => x.attrib.every((l) => !/the dates survived/i.test(l))));
+
+      // ── THE agent_owner UPDATE BRANCH: wired, inert under 3A, asserted so it is not
+      // dead code. loop.ts:763's stamp is discarded by the default branch without it.
+      const { db: db3, store: store3 } = mkLaneDb();
+      engineDb.current = db3;
+      store3.owner = { ...store3.owner, consult_done: false };
+      await db3.from('agent_owner').update({ consult_done: true }).eq('agent_id', AGENT);
+      T('⚑ THE consult_done STAMP IS NO LONGER SWALLOWED (loop.ts:763): an agent_owner update lands on the store, where it fell to the default branch and vanished before this ZIP — inert under fork 3A, wired because a discarded write is §1\'s widened class',
+        store3.owner.consult_done === true);
+
+      // ── §1's WIDENED CLASS, ASSERTED AS FILED-NOT-CURED so the handover cannot drift
+      // from the code. These tables are still served by the default branch.
+      const { db: db4 } = mkLaneDb();
+      engineDb.current = db4;
+      const dflt = async (t) => (await db4.from(t).select('*').eq('agent_id', AGENT)).data;
+      T('⚑ FILED, NOT CURED (§1) — the default branch is the finding\'s real size: facts · briefs · donna_review_binder · domain_manifests · owner_notes all still read EMPTY under the double, so donna_find searches TWO planes at the desk where production reaches FOUR',
+        (await Promise.all(['facts', 'briefs', 'donna_review_binder', 'domain_manifests', 'owner_notes'].map(dflt)))
+          .every((rows) => Array.isArray(rows) && rows.length === 0));
+    }
+
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
     process.exit(fail === 0 ? 0 : 1);
   }
@@ -3261,10 +3490,31 @@ function scriptedTransports(profile) {
   console.log('      32,228 chars to >=127,764, and every business turn now chooses from TWO tools');
   console.log('      (dear_donna_talk + dear_donna_handbook) where Evening One\'s chose from ONE.');
   console.log('      On a dispatch-doctrine scenario that is a changed decision, not a changed cost.');
+  console.log('    · F-06.82 (this ZIP) — ⚑ THE HEAVIEST OF THE THREE, AND IT IS NOT A COST NOTE.');
+  console.log('      Until now the desk double returned NO agent_owner row and a permanently-empty');
+  console.log('      agent_snapshot note. Measured on this file\'s own selftest before the cure:');
+  console.log('      309 of 324 turns composed with an EMPTY owner block and the literal');
+  console.log('      "Nothing open or near yet — clean slate." (the other 15 are the advisor and');
+  console.log('      consult rooms, where neither surface composes). So EVERY S3, SD-C, SD-ABS and');
+  console.log('      SD-FRESH score in this block\'s record — Evening One included — was taken');
+  console.log('      against a Victor who had no owner and was told his estate was empty.');
+  console.log('      ** THAT FLATTERED THE DISPATCH DOCTRINE. ** The cheap non-dispatch path that');
+  console.log('      §2.1 sentence 3 exists to forbid — answering existence off the snapshot —');
+  console.log('      was NOT AVAILABLE TO HIM, because there was nothing in it to answer from.');
+  console.log('      From this ZIP he has an owner block, a live estate line, and consult_done');
+  console.log('      true, so wasFirstMeeting is no longer permanently true either.');
+  console.log('      RULED: THIS RUN\'S NUMBERS ARE NOT BYTE-COMPARABLE TO ANY RUN BEFORE IT.');
+  console.log('      A red here that was green before may be the doctrine failing on the estate');
+  console.log('      production actually serves — read it as a first measurement, not a regression.');
   console.log('    · NEW THIS RUN: the ATTRIBUTION arm (F-06.70/71) is REPORT-ONLY — it changes no');
   console.log('      verdict and no count. Where a turn returns zero hands or claims an absence, it');
   console.log('      names WHICH MOUTH the failure belongs to. That is the question this run exists');
   console.log('      to answer; the reds themselves are being RE-MEASURED, not cured.');
+  console.log('    · AND IT NOW HAS A NUMERATOR (F-06.82 fork 4B): a relay that CARRIED the dates');
+  console.log('      onward with nothing claimed emits a neutral DATES CARRIED line, where the arm');
+  console.log('      was silent. The census is a fraction from this run on, not a floor on the loss.');
+  console.log('      Its resolution is disclosed in the line itself: both sides test ANY-over-a-join,');
+  console.log('      so partial carry reads as carried. It is a census, never a fidelity verdict.');
   if (!process.env.ANTHROPIC_API_KEY) { console.error('ANTHROPIC_API_KEY absent — the incumbent lane cannot run. Set it in this shell (never paste it anywhere else) and re-run.'); process.exit(2); }
   const hasDs = !!process.env.DEEPSEEK_API_KEY;
   if (!hasDs) console.log('DEEPSEEK_API_KEY absent — L2/L3 will be SKIPPED, stated; L1 (incumbent) runs alone.');
