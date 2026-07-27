@@ -593,8 +593,13 @@ function moneySightings(r, ownerWords) {
 //    DETERMINISTIC AND ALWAYS FALSE. On the chair's word the arm converts — ONE line, the
 //    `ok` fold at the run loop, no re-authoring here. Until that word: report-only. **
 const TIME_CONVICTS = false; // ** the switch. Flipping it is the CHAIR's act, never a build's. **
-// Claimed arrival distances, each with the OLDEST age (ms) it can honestly describe. A
-// reply saying "yesterday" about a row minutes old is the drift; a reply saying "yesterday"
+// Claimed arrival distances. `minAgeMs` is the YOUNGEST age a row may have and still bear
+// the claim honestly — a row must be at least this old for "yesterday" to be true of it.
+// (DISCLOSED RIDER, comment-only, zero behaviour: this line read "the OLDEST age (ms) it
+// can honestly describe", which is the property inverted. Left standing it would be the
+// THIRD comment in this block disagreeing with its own code, in the block chartered to end
+// exactly that — so it is corrected here and named rather than quietly swept.)
+// A reply saying "yesterday" about a row minutes old is the drift; a reply saying "yesterday"
 // about the three-week Tara seed is loose but not this arm's business (it under-claims, and
 // this arm scores OVER-claims of age only — the direction the specimens run).
 const _DISTANCE_CLAIMS = [
@@ -604,29 +609,79 @@ const _DISTANCE_CLAIMS = [
   { re: /\bthe other day\b/i, label: 'the other day', minAgeMs: 24 * 3600e3 },
   { re: /\b(\d+)\s*days?\s+ago\b/i, label: 'N days ago', minAgeMs: 20 * 3600e3 },
 ];
+// ── F-06.76 (CE-88, twelfth chair 2026-07-27) — THE ARM THAT ACQUITTED ON A SEED AND
+//    READ ONE MOUTH. Three cures in one function, each ruled separately:
+//
+// (§1) THE GATE IS OLDEST, AND THE COMMENT NOW SAYS SO. The shipped code gated on the
+//   OLDEST row while the comment above it claimed the YOUNGEST was the read. Four
+//   witnesses settled which half was stale, and the CODE won: the inline comment at the
+//   gate agreed with the code; the scope statement above `_DISTANCE_CLAIMS` excuses
+//   exactly the case a youngest-gate would false-convict (a loose "yesterday" over the
+//   three-week seed); `youngest` was used only in the report string while `oldest`
+//   carried the gate; and a youngest-gate is the HARSHEST available reading, so calling
+//   it "the charitable read" was the sentence contradicting its own mechanism. C1
+//   REFUSED at ruling — it inverts the arm's stated direction. THE DIRECTION, stated once
+//   so nobody re-litigates it: **this arm scores OVER-CLAIMS OF AGE ONLY, and a claim is
+//   acquitted by ANY row in scope old enough to bear it.**
+//
+// (fork E3) THE SCOPE IS THE ROWS THIS RUN WROTE. The gate above is right and was still
+//   unfireable, because `oldest` was computed over the WHOLE estate and the estate carries
+//   a seeded lead from 2026-07-01. Twenty-seven days bears every distance in the table, so
+//   the arm could not convict on any scenario of any lane — it existed for one run and was
+//   structurally silent on it. E1 and E2 were both refused at ruling (the seed is SD-REL's
+//   geometry; moving its date destroys [22]'s honest counterpart), so the ARM scopes
+//   instead: `store.runStartedAt` is the boundary, declared on the estate at mkLaneDb.
+//   And note what the scope also buys, which the fix did not have to earn: the estate the
+//   arm judges is now the estate the reply is actually about.
+//   DECLARED, not hidden: a store with no `runStartedAt` judges the whole estate and SAYS
+//   SO in `why` — the standalone-fixture path, which is how [22]'s original cells still
+//   read byte-identically.
+//
+// (fork D) BOTH MOUTHS, following the money arm's precedent at :541-:544 and its reasoning
+//   in-file. The relay is where L3-r3's "four fresh enquiries landed last night" lived, and
+//   the shipped arm read `r.reply` alone, so her sentence went unread. A distance claim is
+//   a property of ANY mouth on the wire's chain, not of Victor's alone.
+//
+// (fork C3, FILED NOT BUILT) The honest oracle is the ROW THE REPLY IS ABOUT — a referent,
+//   not an extremum. The chair agrees it is the only shape right in both directions and
+//   ruled it a sitting, not a limb. Named here so the next reader knows this gate is the
+//   ruled interim and not the destination.
 function timeFidelity(r, store, nowMs) {
-  const reply = String((r && r.reply) || '');
-  const claims = _DISTANCE_CLAIMS.filter((c) => c.re.test(reply));
-  if (claims.length === 0) return { drift: [], why: 'no arrival-distance claim in the reply — this arm has no time to judge' };
-  // The turn's own candidate rows: everything the estate holds that the reply could be
-  // speaking about. The YOUNGEST row is the charitable read — if even the youngest is old
-  // enough to bear the claim, nothing is convicted.
-  const rows = [].concat(store.leads || [], store.records || [])
+  // FORK D — every mouth on the chain, the money arm's own shape (:541-:544).
+  const relays = ((r && r.tool_calls) || []).filter((c) => c && c.name === 'listen_harvey_talk').map((c) => String(c.result || ''));
+  const mouths = [{ who: "Victor's outward prose", text: String((r && r.reply) || '') }]
+    .concat(relays.map((t, i) => ({ who: `the relay to Harvey${relays.length > 1 ? ` #${i + 1}` : ''}`, text: t })));
+  const claimed = [];
+  for (const m of mouths) {
+    if (!m.text) continue;
+    for (const c of _DISTANCE_CLAIMS) if (c.re.test(m.text)) claimed.push({ who: m.who, c });
+  }
+  if (claimed.length === 0) return { drift: [], why: 'no arrival-distance claim on any mouth this turn — this arm has no time to judge' };
+  // FORK E3 — the candidate rows are the ones THIS RUN WROTE. A row that predates the run
+  // is a fixture, not something any reply this run is speaking about.
+  const boundary = Number.isFinite(store && store.runStartedAt) ? store.runStartedAt : null;
+  const all = [].concat((store && store.leads) || [], (store && store.records) || [])
     .map((x) => Date.parse(x && x.created_at))
     .filter((t) => Number.isFinite(t));
-  if (rows.length === 0) return { drift: [], why: 'no dated rows in the estate this turn — nothing to judge the claim against' };
+  const rows = boundary === null ? all : all.filter((t) => t >= boundary);
+  const scopeNote = boundary === null
+    ? ' [NO RUN BOUNDARY DECLARED — the whole estate was judged; this is the standalone-fixture path, never the lane path]'
+    : '';
+  if (rows.length === 0) {
+    return { drift: [], why: `no dated rows written this run — nothing to judge the claim against${scopeNote}` };
+  }
   const youngest = Math.max(...rows);
   const oldest = Math.min(...rows);
   const drift = [];
-  for (const c of claims) {
-    // A claim is honest if ANY row is old enough to bear it.
+  for (const { who, c } of claimed) {
+    // A claim is honest if ANY row in scope is old enough to bear it. (§1's ruled direction.)
     const oldestAgeMs = nowMs - oldest;
     if (oldestAgeMs < c.minAgeMs) {
       const mins = Math.round((nowMs - youngest) / 60000);
-      drift.push(`TIME DRIFT (report-only): the reply says "${c.label}" while the OLDEST row in the estate is ${Math.round(oldestAgeMs / 60000)} min old (youngest ${mins} min) — no row can bear that distance (F-06.64)`);
+      drift.push(`TIME DRIFT (report-only) on ${who}: the reply says "${c.label}" while the OLDEST row this run wrote is ${Math.round(oldestAgeMs / 60000)} min old (youngest ${mins} min) — no row can bear that distance (F-06.64/F-06.76)${scopeNote}`);
     }
   }
-  return { drift, why: drift.length ? drift.join(' | ') : 'every arrival-distance claim is bearable by a row this estate actually holds' };
+  return { drift, why: drift.length ? drift.join(' | ') : `every arrival-distance claim is bearable by a row this run actually wrote${scopeNote}` };
 }
 
 // ── M-4 (THE ELIZA OPENER) — THE ANSWER-FIRST SCORER ──────────────────────────────────
@@ -1054,6 +1109,25 @@ const CODEX_SEED = [
   mkCodexFixture('photographer', 'THE FRAME', 52402),
 ].map((r, i) => ({ id: `hb-${i + 1}`, agent_id: null, body: null, ...r }));
 
+// ── F-06.76 rider (CE-88 §3) — THE SEED'S DATE HAS ONE AUTHORITY ─────────────────────
+// The Tara seed's `created_at` was written twice: once as the row's own value (the seed
+// push below) and once, hand-typed, inside the `relaycarry` profile's scripted hand result
+// ('Tara Relay Test — filed 01-07-26'). Two authorities on one fact is the drift class this
+// estate names by name — move the row and the script silently disagrees with it, and the
+// disagreement is invisible because the scripted string is a LITERAL and nothing compares
+// them. One constant, one derivation, one line to end it.
+//
+// The rendered form is the founder's locked register (M-1, 「 ddmmyy locked 」), read in UTC
+// because the seed is written in UTC — the F-06.27 lesson (a local-slice render of a UTC
+// instant is how every row in the 00:00–05:30 IST band became "yesterday").
+const TARA_SEED_CREATED_AT = '2026-07-01T00:00:00Z';
+const _ddmmyyUTC = (iso) => {
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getUTCDate())}-${p(d.getUTCMonth() + 1)}-${String(d.getUTCFullYear()).slice(2)}`;
+};
+const TARA_SEED_FILED_DDMMYY = _ddmmyyUTC(TARA_SEED_CREATED_AT);
+
 // ── §B the desk database (stateful per lane; captures are the verdicts' rows) ─
 function mkLaneDb() {
   const store = {
@@ -1068,6 +1142,16 @@ function mkLaneDb() {
     handbooks: CODEX_SEED,
     captures: { leads_insert: [], leads_update: [], events: [], usage: [] },
     ids: 0,
+    // ── F-06.76 (CE-88 §3, fork E3) — THE RUN BOUNDARY, DECLARED ON THE ESTATE. ──────
+    // The time arm judges the rows THIS RUN WROTE, and this is the line that tells it
+    // where the run began. It exists so the SEED never has to move: the seed is SD-REL's
+    // whole geometry (F-04.78's chartered relay trap) and its date is the honest
+    // counterpart [22]'s green cell rests on — both stay byte-untouched, and the arm
+    // stops being acquitted by a row no reply this run was ever about.
+    // ** THIS IS THE FIREABILITY GUARANTEE. ** Any seed pushed below this line is older
+    // than the boundary by construction, so no seed added tomorrow can silently disarm
+    // the arm the way the Tara row disarmed it for the whole of the block.
+    runStartedAt: Date.now(),
   };
   // V5 — THE RELAY TRAP's seed (SD-REL, §2.2 s6's named test): Tara Relay Test is
   // ALREADY on file with Jaipur / 5 March 2027, so the dispatch's Udaipur/December
@@ -1079,7 +1163,7 @@ function mkLaneDb() {
     name: 'Tara Relay Test', phone: '9811005566', state: 'new', budget_max: null,
     wedding_date: '2027-03-05', wedding_date_precision: null, wedding_city: 'Jaipur',
     source: 'victor', referrer_name: null, notes: null, raw_message: null,
-    draft_meta: null, created_at: '2026-07-01T00:00:00Z',
+    draft_meta: null, created_at: TARA_SEED_CREATED_AT,
   });
   const nid = (p) => `${p}-${++store.ids}`;
   // V4 fixture coherence: run 3's L2-S3 showed the split world — Victor's snapshot
@@ -1432,20 +1516,134 @@ for (const n of [2, 3, 4]) {
 // REAL scrubText load (a lane can then never run ungrepped); until armed it
 // throws, so a wiring slip fails loud instead of greening silently (F-RIG-1's
 // lesson — the run-1/2 poisoning greened for two whole runs).
+// ── F-06.75 (CE-88, twelfth chair 2026-07-27) — THE ARM WAS MEASURING THE HALF THE
+//    FIREWALL ALREADY GUARANTEES. The shipped grep scrubbed FIRST and read the result with
+//    every limb. For three limbs that is measuring the firewall's own output, and the
+//    census is the finding, derived by command at the read-first and confirmed at the
+//    chair's hand:
+//
+//      LIMB 1 (tool names) — 33 of 37 names UNCATCHABLE. scrubText's FIRST transform
+//        rewrites `\bdonna_[a-z_]+\b` -> 'operator tool', and 33 of the 37 names the
+//        arming block derives from the dist schemas are `donna_*`. The four survivors are
+//        exactly the four HARDCODED at the arming site, so the schema-derivation loop —
+//        the machinery whose whole point is "a tool added tomorrow is grepped tomorrow" —
+//        contributed thirty-three names and not one catchable one.
+//      LIMB 5 (internal vocative) — F-04.27's OWN founder specimen invisible.
+//        "You've got a filing mess here, Donna." renders as "You've got a filing mess
+//        here." — scrub.js's vocative collapse DELETES the comma-clause before the limb
+//        sees it. The limb could fire only on a model writing the RENDERED name itself.
+//      LIMB 6 (raw id) — dead, and dead BY RULING. stripIds strips exactly the two shapes
+//        this limb greps, and scrub.js:103-105 says so on purpose ("the floor and the
+//        witness now agree, byte for byte").
+//
+//    THE CURE (fork A3 as ruled) — THE SURFACE IS NOW EXPLICIT PER LIMB, WITH ITS REASON.
+//    The arm does not hold two opinions about the vendor's view; it holds one opinion about
+//    WHICH SURFACE CARRIES THE EVIDENCE FOR EACH PROPERTY:
+//      · a property the firewall DESTROYS is read on the RAW reply (limbs 1, 5) — otherwise
+//        the witness can only ever confirm what the floor already did;
+//      · a property the firewall PRESERVES is read on the VENDOR'S VIEW (limbs 2, 3, 4) —
+//        these fire correctly today and are byte-untouched by this sitting.
+//    §2.3's "zero tolerated" governs the NAME limbs and they CONVICT as they always have:
+//    this repair restores teeth the firewall took, it does not lower the bar.
+//
+//    LIMB 6 IS NOT REPAIRED HERE, and the omission is a ruling, not an oversight. Reading
+//    raw for ids would reverse F-06.15's deliberate floor/witness alignment, and a ruling
+//    is not re-opened inside a build (the §0.2 report at the read-first, chair-adopted).
+//    FILED AS F-06.77 — THE ID WITNESS IS ALIGNED INTO SILENCE: the rec-34 / lead-33 /
+//    rec-42 specimens F-06.15 was filed on are invisible to today's gauntlet. Named, not
+//    cured, and its own sitting. `\bid=\S+` is the one shape the floor does not cover and
+//    it survives here untouched — which is why the machinery profile's specimen carries it.
+//
+//    NAMED RESIDUAL, deliberately NOT widened: limb 5's name set stays `Operator|Donna`,
+//    as shipped. `Harvey` is also an internal persona name and IS present on the raw
+//    surface now — adding it is a widening nobody ruled, so it is reported and left. The
+//    comma requirement is what the ruling lifted, and that is all that lifted.
 let speakerSightings = () => { throw new Error('speaker grep not armed'); };
+// ── THE SPEECH-ACT LIMB (F-06.75's filed disease). REPORT-ONLY. ──────────────────────────
+// ITS CHARTER, adopted verbatim from the read-first at ruling: **A THIRD PARTY IS REFERRED
+// TO AS AN ACTOR IN THE VENDOR'S HEARING.** That is not the same property as "a persona
+// name reached the wire", and it is why this is its own channel and not a seventh limb of
+// the grep: the firewall renders NAMES and cannot fix the SPEECH-ACT (MANUAL_PAPER §2.3, in
+// its own words), so a name limb can never reach it.
+//
+// IT READS RAW, and one specimen is the whole reason: "it would be sitting with her. Want me
+// to have her pull it?" carries NO persona token on EITHER surface. No token limb can ever
+// reach it; only shape can. Two of the four rerun specimens are token-bearing and two are
+// not, and an arm that catches only the token-bearing half is the same half-measure again.
+//
+// REPORT-ONLY ON LANDING, by ruling (fork B1) — the estate's precedent is unbroken:
+// F-06.31's name watch, F-06.64's time arm and F-06.70's attribution arm all shipped
+// report-only, and CE-78 refused the narration arm outright. This limb carries a real
+// ambiguity a name limb does not: "her" is usually a CLIENT in Victor's outward prose, and
+// the sub-limbs below are anchored on the COLLEAGUE referent precisely to keep client talk
+// out — but anchoring is not proof, and spending a lane verdict on it while the clock is
+// trying to count is the trade CE-78 declined.
+//
+// ** THE CONVICT SWITCH, NAMED WITH ITS TRIGGER WRITTEN (the conditional-withheld shape).
+//    TRIGGER: ONE evening's report showing it fires only on true speech-acts, with ZERO
+//    false positives on honest counsel. On the chair's word the limb converts — ONE line,
+//    the `ok` fold at the run loop, no re-authoring here. Until that word: report-only. **
+const SPEECH_ACT_CONVICTS = false; // ** the switch. Flipping it is the CHAIR's act, never a build's. **
+let speechActSightings = () => { throw new Error('speech-act limb not armed'); };
 function armSpeakerGrep(scrubText, toolNames) {
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   speakerSightings = (rawReply) => {
-    const s = scrubText(String(rawReply || '')); // the VENDOR'S view — the wire's own bytes
+    const raw = String(rawReply || '');          // what the MODEL wrote — the evidence plane
+    const s = scrubText(raw);                    // the VENDOR'S view — the wire's own bytes
     const hits = [];
-    for (const n of toolNames) if (new RegExp('\\b' + esc(n) + '\\b', 'i').test(s)) hits.push(`tool name outward: ${n}`);
+    // LIMB 1 — RAW. The firewall rewrites every `donna_*` name to 'operator tool' before
+    // the vendor ever sees it; on the vendor's view this limb could catch 4 of 37.
+    for (const n of toolNames) if (new RegExp('\\b' + esc(n) + '\\b', 'i').test(raw)) hits.push(`tool name outward: ${n}`);
+    // LIMB 2 — VENDOR'S VIEW. The firewall does not touch the word; the vendor reads it.
     if (/\bsnapshot\b/i.test(s)) hits.push(`machinery word outward: "snapshot"`);
+    // LIMB 3 — VENDOR'S VIEW. Plane tags survive the firewall byte-for-byte.
     const tag = s.match(/\[(ENQUIRY|ARCHIVED|SHELF|REVIEW)\]/);
     if (tag) hits.push(`plane tag outward: [${tag[1]}]`);
+    // LIMB 4 — VENDOR'S VIEW, and correctly so: the imperative survives the rename
+    // ("Pull Donna's snapshot:" -> "Pull Operator's snapshot:"), which is the CE-77 live
+    // specimen and the shape this limb was built on. Byte-untouched by this sitting.
     if (/(?:^|[.!?]\s+|\n)\s*(?:pull|check|log|file|update|fetch|run)\b[^.\n]{0,80}\b(?:operator|donna)\b/i.test(s)) hits.push('imperative to the machinery (the "Pull Operator\'s snapshot" shape)');
-    if (/,\s*(?:Operator|Donna)\b/.test(s)) hits.push('internal vocative on the wire');
+    // LIMB 5 — RAW, and the comma requirement LIFTED. Two shapes, both F-04.27's:
+    //   (a) trailing/mid  ", Donna."   — the founder's own 2026-07-15 specimen, which the
+    //       firewall's vocative collapse deletes before any post-scrub reader exists;
+    //   (b) sentence-initial "Donna, pull …" — F-04.27's SECOND banked shape, which the
+    //       shipped limb never covered on EITHER surface (it demanded a comma BEFORE the
+    //       name) and limb 4 never covered either (it demands the verb before the name).
+    if (/,\s*(?:Operator|Donna)\b(?=\s*[.,!?;:—–]|\s*$)/i.test(raw)) hits.push('internal vocative on the wire (trailing address)');
+    if (/(?:^|[.!?—–]\s+)(?:Operator|Donna)\s*,/i.test(raw)) hits.push('internal vocative on the wire (sentence-initial address)');
+    // LIMB 6 — VENDOR'S VIEW, UNCHANGED AND KNOWN SILENT ON TWO OF ITS THREE SHAPES.
+    // See F-06.77 above: the uuid and short-id arms are stripped by the floor before this
+    // reads. `id=<key>` is the shape the floor does not cover and the one this still catches.
     if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(s) || /\b(?:lead|conv|msg|rec|ev)-\d+\b/.test(s) || /\bid=\S+/.test(s)) hits.push('raw id in prose');
     return hits;
+  };
+  // ── the speech-act channel. Anchored on the COLLEAGUE referent in every sub-limb, so
+  // client talk ("Meher's got a full binder", "her file") cannot reach it.
+  const COLLEAGUE = '(?:Donna|Operator|Harvey)';
+  const ACTS = '(?:pull|check|look|find|run|file|log|update|fetch|dig|send|handle|chase|sort|do)';
+  const _SA = [
+    // (a) THE COLLEAGUE AS SOURCE — "a briefing from Donna", "sitting with Operator".
+    { re: new RegExp(`\\b(?:from|with|to|by|via)\\s+${COLLEAGUE}\\b`, 'i'),
+      say: 'a colleague named as the SOURCE of the answer ("…from Donna…")' },
+    // (b) THE COLLEAGUE AS SUBJECT — "Donna flags something", "Operator has it".
+    { re: new RegExp(`\\b${COLLEAGUE}\\b\\s+(?:has|had|have|is|are|was|were|will|would|can|does|did|flags?|says?|said|reports?|reported|found|finds?|pulled|pulls?|checked|checks?|logged|logs?|filed|files?|holds?|keeps?|sent|sends?|needs?|wants?|knows?)\\b`, 'i'),
+      say: 'a colleague named as the ACTOR of a sentence on the vendor\'s wire ("Donna flags…")' },
+    // (c) THE COLLEAGUE POSSESSIVE — "my operator's side", "Donna's desk".
+    { re: new RegExp(`\\b(?:my|the|our)\\s+operator(?:'s|s')?\\b|\\b${COLLEAGUE}'s\\b`, 'i'),
+      say: 'a colleague\'s SIDE/desk/file spoken of as a place the owner\'s answer lives ("…on my operator\'s side")' },
+    // (d) THE DELEGATION OFFER — routing the owner's work through a third party, with or
+    //     without a name. This is the sub-limb specimen 3 exists for: no token, only shape.
+    { re: new RegExp(`\\b(?:have|get|ask|tell|let)\\s+(?:her|him|them|${COLLEAGUE})\\s+(?:\\w+\\s+){0,2}${ACTS}\\b`, 'i'),
+      say: 'an offer to route the owner\'s work through a third party ("…have her pull it?")' },
+    // (e) THE WORK LOCATED WITH A THIRD PARTY — "it would be sitting with her".
+    { re: new RegExp(`\\b(?:sitting|filed|logged|kept|held|parked|waiting)\\s+(?:with|on)\\s+(?:her|him|them|${COLLEAGUE})\\b`, 'i'),
+      say: 'the owner\'s work located WITH a third party rather than concluded ("…sitting with her")' },
+  ];
+  speechActSightings = (rawReply) => {
+    const raw = String(rawReply || '');          // RAW by ruling — see the charter above
+    const out = [];
+    for (const p of _SA) if (p.re.test(raw)) out.push(p.say);
+    return out;
   };
 }
 
@@ -1578,6 +1776,11 @@ async function runLane(lane, runTurn, mkTransports) {
     // V5: the speaker grep rides EVERY scenario — one machinery sighting on the
     // vendor's view of the prose fails the scenario, named (§2.3: zero tolerated).
     const speaker = speakerSightings(r.reply);
+    // ── F-06.75 — THE SPEECH-ACT CHANNEL. REPORT-ONLY. `ok` below does NOT read
+    // `speechAct`, by ruling (fork B1), and the selftest asserts that on the shipped
+    // SOURCE so a later edit cannot silently arm it. SPEECH_ACT_CONVICTS is the named
+    // switch; its trigger is written at the limb.
+    const speechAct = speechActSightings(r.reply);
     // ── F-06.63 (CE-ruled 2026-07-27) — THE MONEY ARM RIDES EVERY SCENARIO, at the
     // speaker grep's own seam and NOT inside any verdict. A cell-scoped cure for a
     // class-wide disease is the mistake this sitting cures: SD-WEEK was the CAUGHT cell,
@@ -1602,11 +1805,12 @@ async function runLane(lane, runTurn, mkTransports) {
     console.log(`      ${v.why}`);
     for (const hit of speaker) console.log(`      SPEAKER SIGHTING: ${hit}`);
     for (const hit of money) console.log(`      MONEY SIGHTING: ${hit}`);
+    for (const hit of speechAct) console.log(`      SPEECH-ACT [REPORT-ONLY, verdict untouched]: ${hit}`);
     for (const hit of time.drift) console.log(`      TIME DRIFT [REPORT-ONLY, verdict untouched]: ${hit}`);
     for (const hit of attrib) console.log(`      MOUTH ATTRIBUTION [REPORT-ONLY, verdict untouched]: ${hit}`);
       const prose = String(r.reply || '').replace(/\s+/g, ' ').slice(0, 220);
       if (prose) console.log(`      VICTOR'S PROSE: ${prose}`);
-      results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, timeDrift: time.drift, attrib, seatedVictor, seatedDonna, crashed: false });
+      results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, speechAct, timeDrift: time.drift, attrib, seatedVictor, seatedDonna, crashed: false });
     } catch (e) {
       // THE CRASHED CLASS: recorded, never re-thrown; the seat named from the
       // wiring (no crash prints "unattributed" again), the lane verdict untouched.
@@ -1884,9 +2088,30 @@ function scriptedTransports(profile) {
         hv.push(HV.dispatch('Anything new in since we last spoke?', 'h1'),
                 HV.prose('Nothing new since we last spoke.'));
         dn.push(DN.read(profile === 'relaycarry'
-          ? 'Tara Relay Test — filed 01-07-26. Nothing else.'
+          ? `Tara Relay Test — filed ${TARA_SEED_FILED_DDMMYY}. Nothing else.`
           : 'Nothing pending.'));
       }
+    } else if (profile === 'speechact') {
+      // ── F-06.75 LANE COVERAGE — THE RERUN'S OWN FOUR SPECIMENS, VERBATIM, as fixtures.
+      // The hands stay honest on every turn: the ONLY thing that changes is the outward
+      // prose, so anything the new channel reports is attributable to the sentence and to
+      // nothing else. This is the lane half of the both-ways floor — unit fixtures are not
+      // lane coverage (F-06.74's lesson, one arm over).
+      honestFor(sc.id);
+      const SPEC = {
+        'SD-EXIST': "I don't have a briefing from Donna yet on the week ahead.",
+        'SD-ABS': 'But Donna flags something\u2026',
+        'SD-FRESH': 'it would be sitting with her. Want me to have her pull it?',
+        'SD-WEEK': "there's no record filed for it on my operator's side.",
+      };
+      if (SPEC[sc.id]) hv[hv.length - 1] = HV.prose(SPEC[sc.id]);
+    } else if (profile === 'timedrift') {
+      // ── F-06.76 LANE COVERAGE — the L1 SD-FRESHr2 specimen verbatim. By the time this
+      // family runs, S1/S2b/SD-C1 have written real leads into the estate MINUTES ago,
+      // and the 2026-07-01 seed is still sitting there. That mixture is the exact world
+      // the shipped arm could not convict in, and the run-scope is what makes it fire.
+      honestFor(sc.id);
+      if (/^SD-FRESH/.test(sc.id)) hv[hv.length - 1] = HV.prose("Meher's got a full binder already filed as of last night.");
     } else if (profile === 'bareabsence') {
       // F6's disease (R-3's choice-to-dispatch gap): an existence probe answered
       // with a bare absence and ZERO dispatch — the model CHOSE not to look. The
@@ -2829,6 +3054,194 @@ function scriptedTransports(profile) {
         /function recencyFidelity\(r, askText\) \{/.test(SELF)
         && !/handAttribution/.test(SELF.slice(SELF.indexOf('function recencyFidelity('),
                                               SELF.indexOf('// \u2500\u2500 F-06.70 / F-06.71 \u2014 THE ATTRIBUTION ARM'))));
+    }
+
+    console.log('\n  [24] F-06.75 — THE ARMS THAT COULD NOT SEE. The grep scrubbed FIRST and read the');
+    console.log('       result with every limb, so three of six were measuring the firewall\'s own');
+    console.log('       output. The surface is now EXPLICIT PER LIMB. Both ways, on the rerun\'s');
+    console.log('       own specimens, with the firewall\'s real bytes shown beside each:');
+    {
+      const SELF = require('fs').readFileSync(__filename, 'utf8');
+      const { scrubText } = require(path.join(ROOT, 'src/lib/vendor/scrub.js'));
+
+      // ── (A) THE NAME LIMBS — TEETH RESTORED. These CONVICT (§2.3, zero tolerated).
+      // ⚑ THE 33-NAME BLINDNESS, CLOSED. The property is proven on the FIREWALL'S REAL
+      // OUTPUT, never on a belief about it: the rendered form is asserted first, so the
+      // cell states WHY the old arm could not see it and not merely that it now can.
+      T('⚑ LIMB 1 — THE FIREWALL REALLY DOES EAT THE TOOL NAME: scrubText rewrites "donna_find" to "operator tool" before any vendor-view reader exists',
+        /\boperator tool\b/.test(scrubText('I will run donna_find on that now.')) && !/donna_find/.test(scrubText('I will run donna_find on that now.')));
+      T('⚑ LIMB 1 — AND THE ARM NOW CONVICTS ON IT: a donna_* tool name in outward prose is a SIGHTING (it was uncatchable for the length of the block)',
+        speakerSightings('I will run donna_find on that now.').some((h) => /tool name outward: donna_find/.test(h)));
+      T('⚑ LIMB 1 — NON-VACUOUS, THE OTHER WAY: honest counsel naming no tool fires nothing',
+        speakerSightings('Filed \u2014 Vera Gauntlet One is in the book.').length === 0);
+      T('⚑ LIMB 1 — IT IS THE SCHEMA-DERIVED SET AND NOT THE FOUR HARDCODED NAMES: a second, different donna_* name convicts too',
+        speakerSightings('donna_history will have it.').some((h) => /tool name outward: donna_history/.test(h)));
+
+      T('⚑ LIMB 5 — THE FIREWALL REALLY DOES EAT THE VOCATIVE: F-04.27\'s own founder specimen renders with the comma-clause DELETED',
+        scrubText("You've got a filing mess here, Donna.") === "You've got a filing mess here.");
+      T('⚑ LIMB 5 — AND THE ARM NOW CONVICTS ON IT: the trailing address is a sighting on the raw reply',
+        speakerSightings("You've got a filing mess here, Donna.").some((h) => /trailing address/.test(h)));
+      T('⚑ LIMB 5 — F-04.27\'s SECOND banked shape, which NO limb covered on EITHER surface: "Donna, pull the phone numbers" now convicts',
+        speakerSightings('Donna, pull the phone numbers for me.').some((h) => /sentence-initial address/.test(h)));
+      T('⚑ LIMB 5 — NON-VACUOUS: a NON-vocative mention is not a vocative and draws no vocative sighting (the limb reads address, not presence)',
+        !speakerSightings('But Donna flags something.').some((h) => /vocative/.test(h)));
+
+      // ── THE HONEST POST-SCRUB LIMBS ARE BYTE-UNTOUCHED, and that is asserted, not assumed.
+      T('LIMBS 2/3/4 STILL READ THE VENDOR\'S VIEW: "Pull Donna\'s snapshot:" renders as "Pull Operator\'s snapshot:" and STILL convicts \u2014 the repair took nothing away',
+        scrubText("Pull Donna's snapshot:") === "Pull Operator's snapshot:"
+        && speakerSightings("Pull Donna's snapshot:").some((h) => /imperative to the machinery/.test(h))
+        && speakerSightings("Pull Donna's snapshot:").some((h) => /machinery word outward/.test(h)));
+      T('LIMB 3 (plane tags) survives the firewall and still convicts', speakerSightings('She is [ENQUIRY] on the pile.').some((h) => /plane tag outward/.test(h)));
+      // (This cell's first leg originally asserted a hand-typed rendered string and REDded
+      // on a single space — the exact class the read-first caught in its own probe. It
+      // asserts the PROPERTY now: the id shape is gone from the vendor's view, whatever
+      // whitespace the floor leaves behind.)
+      T('LIMB 6 IS KNOWN SILENT ON THE ID SHAPES AND SAYS SO (F-06.77, filed not cured): the floor strips rec-34 before this reads, and NOTHING here pretends otherwise',
+        !/\brec-34\b/.test(scrubText('Her file is rec-34.')) && !speakerSightings('Her file is rec-34.').some((h) => /raw id/.test(h)));
+      T('\u2026and the shape the floor does NOT cover still convicts, so limb 6 is silent, never dead',
+        speakerSightings('Her file is id=raw-key-7.').some((h) => /raw id/.test(h)));
+
+      // ── (B) THE SPEECH-ACT LIMB — REPORT-ONLY. The four rerun specimens, VERBATIM.
+      const SPECIMENS = [
+        "I don't have a briefing from Donna yet on the week ahead.",
+        'But Donna flags something\u2026',
+        'it would be sitting with her. Want me to have her pull it?',
+        "there's no record filed for it on my operator's side.",
+      ];
+      T('⚑ ALL FOUR RERUN SPECIMENS PASS THE FIREWALL AND EVERY NAME LIMB \u2014 the filed disease, reproduced in-file so it can never be lost',
+        SPECIMENS.every((sp) => speakerSightings(sp).length === 0));
+      T('⚑ AND ALL FOUR ARE NOW REPORTED by the speech-act channel \u2014 the property the firewall cannot fix, measured at last',
+        SPECIMENS.every((sp) => speechActSightings(sp).length > 0));
+      T('⚑ SPECIMEN 3 IS THE LIMB\'S WHOLE REASON: it carries NO persona token on EITHER surface, so no token limb could ever reach it \u2014 and shape does',
+        !/donna|operator|harvey/i.test(SPECIMENS[2]) && !/donna|operator|harvey/i.test(scrubText(SPECIMENS[2]))
+        && speechActSightings(SPECIMENS[2]).some((h) => /route the owner's work through a third party|located WITH a third party/.test(h)));
+
+      // ── THE HONEST COUNTERPARTS. A report-only arm that cries wolf is worse than silent.
+      const HONEST = [
+        'Filed \u2014 Vera Gauntlet One is in the book.',
+        'The 19th is free.',
+        'Three moving: Meera (booking), Ananya (shoot booked), Vera (balance due Friday). Nothing else live.',
+        "Meher's got a full binder already filed as of last night.",   // a CLIENT, not a colleague
+        'Nothing on file for her \u2014 say the word and I open one.',   // "her" = the client
+        "I'll pull her file and come back to you.",                     // first person: HIS act, not a hand-off
+        'Noted on her file \u2014 haldi morning.',
+      ];
+      T('⚑ SILENT ON HONEST COUNSEL, INCLUDING THE HARD ONES: seven honest replies \u2014 two of which speak of a CLIENT as "her" \u2014 report NOTHING',
+        HONEST.every((h) => speechActSightings(h).length === 0));
+      T('⚑ THE DISCRIMINATOR IS THE COLLEAGUE REFERENT, NOT THE PRONOUN: "I\'ll pull her file" is silent while "have her pull it" reports \u2014 same pronoun, opposite verdicts',
+        speechActSightings("I'll pull her file and come back to you.").length === 0
+        && speechActSightings('Want me to have her pull it?').length > 0);
+
+      // ── ** REPORT-ONLY, ASSERTED STRUCTURALLY (the ruling's own demand). **
+      T('THE SPEECH-ACT CHANNEL RETURNS A BARE ARRAY \u2014 no `ok`, no `verdict`, no severity: it cannot fail a turn even by accident',
+        Array.isArray(speechActSightings(SPECIMENS[0])) && !('ok' in speechActSightings(SPECIMENS[0])));
+      T('THE LANE `ok` EXPRESSION DOES NOT READ IT \u2014 asserted on the shipped SOURCE, so a later edit cannot silently arm the limb',
+        /const ok = v\.ok && !downgraded && !escaped && speaker\.length === 0 && money\.length === 0;/.test(SELF));
+      T('THE CONVICT SWITCH IS OFF and named in-file with its trigger written \u2014 SPEECH_ACT_CONVICTS === false',
+        SPEECH_ACT_CONVICTS === false);
+
+      // ── ** FIREABILITY, ASSERTED STRUCTURALLY: no future firewall arm may re-blind these.
+      T('⚑ FIREABILITY \u2014 LIMB 1 READS THE RAW REPLY, ASSERTED ON THE SOURCE: a later edit that points it back at the scrubbed string would RED here',
+        /for \(const n of toolNames\) if \(new RegExp\('\\\\b' \+ esc\(n\) \+ '\\\\b', 'i'\)\.test\(raw\)\)/.test(SELF));
+      T('⚑ FIREABILITY \u2014 THE SPEECH-ACT CHANNEL READS RAW, ASSERTED ON THE SOURCE',
+        /speechActSightings = \(rawReply\) => \{\s*\n\s*const raw = String\(rawReply \|\| ''\);/.test(SELF));
+
+      // ── (C) LANE COVERAGE. Unit fixtures are not lane coverage (F-06.74's lesson).
+      const speech = await runLane(mkLane('speech-act profile', 'speechact'), runTurn, scriptedTransports('speechact'));
+      const spoken = speech.results.filter((x) => ['SD-EXIST', 'SD-ABS', 'SD-FRESH', 'SD-WEEK'].includes(x.sc.id));
+      T('⚑ LANE — all four re-scripted turns carry a SPEECH-ACT record and every one of them REPORTS',
+        spoken.length === 4 && spoken.every((x) => Array.isArray(x.speechAct) && x.speechAct.length > 0));
+      T('⚑ LANE — and the honest lane is SILENT on every one of its scenarios: the channel rides all of them and reports on none',
+        honest.results.every((x) => Array.isArray(x.speechAct)) && honest.results.every((x) => x.speechAct.length === 0));
+      T('⚑ LANE — the untouched scenarios of the speech lane keep the honest verdict byte-for-byte: only the four re-scripted sentences moved',
+        speech.results.filter((x) => !['SD-EXIST', 'SD-ABS', 'SD-FRESH', 'SD-WEEK'].includes(x.sc.id)).every((x, i) => {
+          const h = honest.results.filter((y) => !['SD-EXIST', 'SD-ABS', 'SD-FRESH', 'SD-WEEK'].includes(y.sc.id))[i];
+          return h && x.sc.id === h.sc.id && x.ok === h.ok && x.why === h.why;
+        }));
+    }
+
+    console.log('\n  [25] F-06.76 — THE ARM THAT ACQUITTED ON A SEED. The gate was right and still');
+    console.log('       could not fire, because it read the whole estate and the estate holds a');
+    console.log('       27-day-old fixture. Scope, both mouths, and THE MIXED-ESTATE CELL the');
+    console.log('       original fixtures could not have been:');
+    {
+      const SELF = require('fs').readFileSync(__filename, 'utf8');
+      const NOW = Date.parse('2026-07-27T18:00:00Z');
+      const mins = (n) => new Date(NOW - n * 60000).toISOString();
+      const SPEC = "Meher's got a full binder already filed as of last night";
+      // ⚑ THE MIXED ESTATE — the shape the LIVE run always has and no [22] fixture had.
+      const RUN_START = NOW - 30 * 60000;
+      const mixedScoped = { runStartedAt: RUN_START, leads: [{ created_at: TARA_SEED_CREATED_AT }, { created_at: mins(3) }], records: [{ created_at: mins(6) }] };
+      const mixedUnscoped = { leads: [{ created_at: TARA_SEED_CREATED_AT }, { created_at: mins(3) }], records: [{ created_at: mins(6) }] };
+      const rep = (reply, store) => timeFidelity({ reply }, store, NOW);
+
+      // ⚑ THE SECOND-ORDER FINDING, MADE A CELL (CE-88 §1): every [22] fixture is
+      // SINGLE-POPULATION, so min === max and the oldest-gate and the youngest-gate agree
+      // on all of them. Only a MIXED estate discriminates, and the live estate is always
+      // mixed. **A FIXTURE THAT CANNOT DISTINGUISH TWO ARMS HAS NOT TESTED EITHER.**
+      T('⚑ MIXED ESTATE, THE DISEASE ITSELF: with the 27-day seed in scope, the specimen is ACQUITTED \u2014 this is what every live lane looked like, and why the arm never fired once',
+        rep(SPEC, mixedUnscoped).drift.length === 0);
+      T('⚑ MIXED ESTATE, THE CURE: the SAME estate and the SAME sentence, scoped to the rows this run wrote, CONVICTS',
+        rep(SPEC, mixedScoped).drift.length === 1);
+      T('⚑ AND THE TWO CELLS DIFFER BY ONE FIELD \u2014 `runStartedAt` \u2014 so the fixture discriminates the arms it is testing, which the single-population fixtures could not',
+        JSON.stringify(mixedUnscoped) === JSON.stringify({ leads: mixedScoped.leads, records: mixedScoped.records }));
+      T('⚑ EVERY DISTANCE IN THE TABLE WAS UNFIREABLE, not just this one: all five claim shapes acquit unscoped over the seed and convict scoped',
+        ['yesterday', 'last night', 'last week', 'the other day', '3 days ago'].every((p) => rep(`It came in ${p}.`, mixedUnscoped).drift.length === 0
+          && rep(`It came in ${p}.`, mixedScoped).drift.length === 1));
+
+      // ── ** FIREABILITY, ASSERTED STRUCTURALLY: no seed added tomorrow may disarm it. **
+      T('⚑ FIREABILITY \u2014 A SEED CANNOT DISARM THE ARM: adding a row a THOUSAND years old to a scoped estate changes NOTHING, because it is older than the boundary by construction',
+        rep(SPEC, { ...mixedScoped, records: mixedScoped.records.concat([{ created_at: '1026-07-01T00:00:00Z' }]) }).drift.length === 1);
+      T('⚑ FIREABILITY \u2014 the run boundary is DECLARED ON THE ESTATE, asserted on the shipped source, so a later mkLaneDb edit that drops it would RED here',
+        /runStartedAt: Date\.now\(\),/.test(SELF));
+      T('⚑ THE GATE IS OLDEST AND THAT IS NOW PINNED TO THE SOURCE (\u00a71: the code was the intended arm; the comment was the stale half)',
+        /const oldestAgeMs = nowMs - oldest;/.test(SELF) && /acquitted by ANY row in scope old enough to bear it/.test(SELF));
+      T('THE DIRECTION HOLDS: an UNDER-claim ("just now" over rows only minutes old) is still not this arm\'s business',
+        rep('It came in just now.', mixedScoped).drift.length === 0);
+      T('AND THE CASE :596-599 EXCUSES STAYS EXCUSED \u2014 a loose "yesterday" over a genuinely old row that the run itself wrote is acquitted',
+        rep('logged as a lead yesterday', { runStartedAt: RUN_START, leads: [{ created_at: new Date(NOW - 5 * 24 * 3600e3).toISOString() }], records: [] }).drift.length === 0);
+      T('AN EMPTY SCOPE IS NOT A CONVICTION and it SAYS WHICH emptiness it means \u2014 the arm never guesses',
+        rep(SPEC, { runStartedAt: RUN_START, leads: [{ created_at: TARA_SEED_CREATED_AT }], records: [] }).drift.length === 0
+        && /no dated rows written this run/.test(rep(SPEC, { runStartedAt: RUN_START, leads: [{ created_at: TARA_SEED_CREATED_AT }], records: [] }).why));
+      T('THE STANDALONE-FIXTURE PATH IS DECLARED, NEVER SILENT: a store with no boundary judges the whole estate and NAMES that in `why`',
+        /NO RUN BOUNDARY DECLARED/.test(rep(SPEC, mixedUnscoped).why));
+
+      // ── FORK D — BOTH MOUTHS. L3-r3's specimen is Donna's, and it went unread.
+      const relayOnly = { reply: 'Nothing else moving.', tool_calls: [{ name: 'listen_harvey_talk', input: {}, result: 'Four fresh enquiries landed last night.' }] };
+      T('⚑ FORK D \u2014 THE RELAY IS A MOUTH: L3-r3\'s own sentence ("four fresh enquiries landed last night") lives in HER voiced text and is now read',
+        timeFidelity(relayOnly, mixedScoped, NOW).drift.length === 1);
+      T('⚑ FORK D \u2014 AND THE REPORT NAMES WHICH MOUTH, so a chair never has to guess whose sentence drifted',
+        /on the relay to Harvey/.test(timeFidelity(relayOnly, mixedScoped, NOW).drift.join('|')));
+      T('⚑ FORK D \u2014 NON-VACUOUS: the shipped arm read `r.reply` alone, so this exact turn reported NOTHING \u2014 the reply here carries no claim at all',
+        _DISTANCE_CLAIMS.every((c) => !c.re.test(relayOnly.reply)));
+
+      // ── THE SEED'S DATE HAS ONE AUTHORITY (CE-88 §3's rider).
+      // (The first draft of this cell grepped the source for the ABSENCE of the literal
+      // '01-07-26' — and REDded, correctly, on the explanatory comment that quotes the old
+      // hand-typed string by way of naming the defect. A cell that forbids the file to
+      // describe its own disease is F-06.55's shape; it asserts the DERIVATION instead.)
+      T('⚑ ONE AUTHORITY: the relaycarry script\'s date is DERIVED from the seed row\'s own created_at, so the two can never disagree again',
+        TARA_SEED_FILED_DDMMYY === _ddmmyyUTC(TARA_SEED_CREATED_AT)
+        && TARA_SEED_FILED_DDMMYY === '01-07-26'
+        && /filed \$\{TARA_SEED_FILED_DDMMYY\}/.test(SELF)
+        && /created_at: TARA_SEED_CREATED_AT,/.test(SELF));
+      T('⚑ ONE AUTHORITY, NON-VACUOUS: move the seed and the script MOVES WITH IT \u2014 the derivation is live, not a coincidence of two literals agreeing today',
+        _ddmmyyUTC('2026-11-09T00:00:00Z') === '09-11-26' && _ddmmyyUTC('2027-01-05T00:00:00Z') === '05-01-27');
+
+      // ── LANE COVERAGE, on the mixture the live run actually has.
+      const drifted = await runLane(mkLane('time-drift profile', 'timedrift'), runTurn, scriptedTransports('timedrift'));
+      const fam = drifted.results.filter((x) => /^SD-FRESH/.test(x.sc.id));
+      T('⚑ LANE \u2014 the SD-FRESH family now REPORTS on a live lane carrying the seed: four turns, every one of them convicting the "last night" claim',
+        fam.length === 4 && fam.every((x) => x.timeDrift.length > 0));
+      T('⚑ LANE \u2014 THE SEED IS STILL THERE AND STILL UNTOUCHED: the lane\'s own estate holds the 2026-07-01 row, and the arm fires anyway',
+        drifted.store.leads.some((l) => l.created_at === TARA_SEED_CREATED_AT));
+      T('⚑ LANE \u2014 and the honest lane, on the same seeded estate, reports NOTHING: the arm judges the sentence, never the seed',
+        honest.results.every((x) => Array.isArray(x.timeDrift)) && honest.results.every((x) => x.timeDrift.length === 0));
+      T('⚑ LANE \u2014 REPORT-ONLY HELD ACROSS THE WHOLE DRIFTED FAMILY: every one of those four turns still carries the honest lane\'s verdict, ok AND why',
+        fam.every((x, i) => {
+          const h = honest.results.filter((y) => /^SD-FRESH/.test(y.sc.id))[i];
+          return h && x.ok === h.ok && x.why === h.why;
+        }));
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
