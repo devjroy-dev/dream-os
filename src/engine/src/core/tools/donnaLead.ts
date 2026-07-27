@@ -112,6 +112,31 @@ function parseWeddingDate(s?: string): { date: string; precision: string | null 
   return { noteWord: w };
 }
 
+// ── TDW_06 · F-06.92 (CE-ruled 2026-07-28, R-1 fork 1(e)) — PLAIN SPEECH FOR A
+// STORED DATE, AND THE PRECISION IS NOT INVENTED. ───────────────────────────────
+// This renders a wedding date for the `notWrittenNote` below, which Donna reads
+// aloud and Harvey repeats. TWO laws are load-bearing here and both were paid for:
+//  (1) PRECISION. `parseWeddingDate` above stores a MONTH-precision date as the
+//      1st-of-month SENTINEL (`2027-03` -> `2027-03-01`, precision 'month'). A
+//      renderer blind to `wedding_date_precision` prints "1 March 2027" for a row
+//      that only ever held "March 2027" — a day the estate never had, minted
+//      inside the very cure that exists to kill false certainty. So the precision
+//      column decides the shape: 'month' -> "March 2027"; anything else -> the day.
+//  (2) NO `Date` OBJECT. F-06.27's UTC slice: `new Date('2027-03-05')` is UTC
+//      midnight and formats to the previous day west of Greenwich. The parts are
+//      read off the string and never round-trip through a clock.
+// Returns null when the value is not a plain ISO date — the caller then says
+// nothing rather than guessing, which is the same law one layer up.
+const WEDDING_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+function humanWeddingDate(iso?: string | null, precision?: string | null): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ''));
+  if (!m) return null;
+  const monthName = WEDDING_MONTHS[Number(m[2]) - 1];
+  if (!monthName) return null;
+  return precision === 'month' ? `${monthName} ${m[1]}` : `${Number(m[3])} ${monthName} ${m[1]}`;
+}
+
 // Append lines to a notes value without losing what stands.
 function growNotes(existing: string | null | undefined, additions: string[]): string | null {
   const adds = additions.filter(Boolean);
@@ -225,8 +250,57 @@ export async function executeDonnaLead(
       ? ` Note: matched by NAME to the lead already on file — if this is a different person with the same name, tell me and I'll file them separately.${phoneWithheld ? ` Their phone number was NOT written onto this lead — a name match alone doesn't merge identities; confirm it's the same person and I'll add it.` : ''}`
       : '';
 
+    // ── TDW_06 · F-06.92 (CE-ruled 2026-07-28, R-1 fork 1(e)) — THE PAPER STATES
+    // WHAT IT REFUSED. ────────────────────────────────────────────────────────────
+    // THE DISEASE, derived at read-first through this door's own bytes: every enrich
+    // guard above is `if (input.X && !cur.X)` — a SILENT no-op. On the F-04.78 / SD-REL
+    // specimen this door returned `Updated existing lead "Tara Relay Test" (id=…) —
+    // raw_message.` and said NOTHING about Jaipur, nothing about 5 March 2027, and
+    // nothing about Udaipur / 5 December having been refused. Donna is ordered by
+    // donnaSoul's relay paragraph to speak the result's own sentence AND, in the same
+    // paragraph, to speak "no workings, no machinery" — and the only substantive thing
+    // in that paper was a column key. The two clauses could not both be obeyed, so the
+    // mouth completed from the only meaningful facts left in its context: THE DISPATCH'S.
+    // F-04.78's relay is not a disobedience; it is a paper that cannot support an
+    // honest sentence. This note is that paper's missing half.
+    //
+    // SCOPE, ruled: OWNER-MEANINGFUL fields only — name, city, wedding date, referrer.
+    // `source` and `raw_message` are Victor-set plumbing and are EXCLUDED BY RULING:
+    // putting them in the paper re-admits the machinery that caused the disease. The
+    // phone is excluded too — Q-R-1 shape (c) above already speaks it, and saying it
+    // twice is bloat, not honesty. A field is reported ONLY where the two values
+    // actually DIFFER: where the owner re-sent what already stands, nothing was
+    // refused and there is nothing to report.
+    //
+    // COPY: founder-vetoed 2026-07-28, the chair-amended plain-speech form, his bytes.
+    // EXECUTOR INTERPRETATION, DISCLOSED (ratify-or-revert): the approved sentence was
+    // rendered on a TWO-refusal specimen ("If either should change"); the one-refusal
+    // and three-or-more forms below are the executor's grammatical extension of his
+    // bytes, nothing else changed.
+    const notWritten: string[] = [];
+    if (input.name && cur.name && input.name.trim().toLowerCase() !== cur.name.trim().toLowerCase()) {
+      notWritten.push(`the name stays ${cur.name} (you said ${input.name.trim()})`);
+    }
+    if (input.wedding_city && cur.wedding_city && input.wedding_city.trim().toLowerCase() !== cur.wedding_city.trim().toLowerCase()) {
+      notWritten.push(`the city stays ${cur.wedding_city} (you said ${input.wedding_city.trim()})`);
+    }
+    if (parsedDateU && 'date' in parsedDateU && cur.wedding_date && parsedDateU.date !== cur.wedding_date) {
+      const stands = humanWeddingDate(cur.wedding_date, cur.wedding_date_precision);
+      const given = humanWeddingDate(parsedDateU.date, parsedDateU.precision);
+      // Both halves must render, or the clause is dropped whole — a half-spoken
+      // comparison is worse than silence.
+      if (stands && given) notWritten.push(`the wedding date stays ${stands} (you said ${given})`);
+    }
+    if (input.referrer && cur.referrer_name && input.referrer.trim().toLowerCase() !== cur.referrer_name.trim().toLowerCase()) {
+      notWritten.push(`the referrer stays ${cur.referrer_name} (you said ${input.referrer.trim()})`);
+    }
+    const notWrittenTail = notWritten.length === 1 ? 'If that should change' : notWritten.length === 2 ? 'If either should change' : 'If any should change';
+    const notWrittenNote = notWritten.length
+      ? ` Not written — the record already stands: ${notWritten.join(', ')}. ${notWrittenTail}, say so and I'll change it.`
+      : '';
+
     if (Object.keys(patch).length === 0) {
-      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}`, item: leadItem(cur) };
+      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}${notWrittenNote}`, item: leadItem(cur) };
     }
 
     // Recompute draft state from the merged row (spec P3: every update recomputes).
@@ -251,7 +325,7 @@ export async function executeDonnaLead(
     const row = data ?? ({ ...cur, ...patch } as LeadRow);
     const changed = Object.keys(patch).filter((k) => k !== 'draft_meta').join(', ');
     const flag = ambiguous ? ` Note: ${existing.length} leads matched — updated the most recent; if you meant a different one, tell me which.` : '';
-    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}`, item: leadItem(row) };
+    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}${notWrittenNote}`, item: leadItem(row) };
   }
 
   // ── No match -> create new (the typed-plane draft; thin is welcome).

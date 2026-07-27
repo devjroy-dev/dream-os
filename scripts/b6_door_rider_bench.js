@@ -29,6 +29,25 @@
 
 'use strict';
 
+// ── TDW_06 · F-06.94 (CE-minted 2026-07-28, chair-reproduced) — THE FLOOR WAS
+// UNDER-COUNTING ITSELF. ─────────────────────────────────────────────────────────
+// This bench was recorded as the estate's NAMED CREDENTIAL-DROP SPECIMEN — carried as
+// permanently un-runnable through CE-80's own floor-method law, NOTE_12 §3 and two
+// committed handovers. It was never a credential need. `dist/core/db.js` throws at
+// MODULE LOAD if the two vars are absent; the bench itself reads and writes NOTHING
+// live — §1 runs wholly on the in-memory double below (`makePub`), and the module
+// under test has `../db.js` stubbed out from under it by the scoped `Module._load`
+// shim. Two placeholder strings and it is 15/15. It had been declared skipped while
+// guarding exactly the surface F-06.92 opens, which is how a floor comes to claim
+// coverage it does not have.
+// THE STUB IS DISCLOSED, NOT HIDDEN: the URL points at a dead loopback port on
+// purpose — if any code path ever did try to reach a real Supabase through it, the
+// bench would fail loudly rather than quietly talk to something. A real environment's
+// vars are never overwritten. From this delivery the bench JOINS THE SEALED FLOOR at
+// 15/15 and the "named specimen" language retires from floor records.
+if (!process.env.SUPABASE_URL) process.env.SUPABASE_URL = 'http://127.0.0.1:1/f0694-stub-never-reached';
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) process.env.SUPABASE_SERVICE_ROLE_KEY = 'f0694-stub-never-reached';
+
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');

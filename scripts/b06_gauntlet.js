@@ -330,11 +330,54 @@ const nestedHands = (result) => {
 const _FID_ID_OR_PHONE = /\b(?:lead|conv|msg|rec|ev)-\d+\b|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b\d{10}\b/gi;
 const _FID_PRESENCE_RE = /\b(?:is|are|was|she'?s|he'?s|they'?re)\s+(?:already\s+)?(?:on file|on record|a lead|booked|filed|in the book|in our books)\b|\bfound (?:her|him|the record|a record|it)\b|\byes\b[^.]{0,50}\b(?:on file|on record|enquir|a lead|booked)\b/i;
 const _FID_NOMATCH_RE = /no record matched|nothing on file yet|no enquiry matches on the typed plane|not on file|no one by that name/i;
+// ── TDW_06 F-06.91 (CE R-2, 2026-07-28) — THE EXISTENCE FAMILY LEARNS THE OTHER
+// MOUTH. ──────────────────────────────────────────────────────────────────────────
+// F-06.86 taught `recencyFidelity` that the wire has two mouths; the EXISTENCE family
+// never learned it. `absenceFidelity` and the two fail-closed tests below all read
+// `r.reply` alone, so a relay fabricating presence or absence — F-04.78's family one
+// layer down, and the exact geometry SD-REL exists to convict — was invisible to all
+// three sites. Measured before it was cured: on a fixture whose reply is honest and
+// whose relay claims a subject the find returned no match for, the pre-cure arm
+// returned `fabricated: false`. The blindness was total, not partial.
+//
+// THE SHAPE IS R-1's, PORTED, NOT REINVENTED: the four-precedent extraction, then
+// each mouth judged on ITS OWN words — never merged, because a merged blob lets a
+// fabrication in her sentence be acquitted by an honest clause in his, and loses the
+// WHO the cures live by. `fabricated` is WORST-OF-MOUTHS and the conviction NAMES its
+// mouth. `findResult` is shared: the hands are the estate's, not a mouth's. A
+// single-mouth turn (no relay) reduces to the pre-F-06.91 path exactly.
+//
+// SCALARS UNTOUCHED BY RULING, and the masking discipline with them: `_FID_*`,
+// `ABSENCE_CLAIM_RE` and every vocabulary constant are byte-unchanged — this cure
+// widens the CORPUS, never the words. SD-REL's verdict is not touched by this arm and
+// is not touched by this sitting (CE-91's don't-re-aim-the-grader precedent, honoured
+// by construction and asserted as a cell).
+function relayMouths(r) {
+  const relays = ((r && r.tool_calls) || []).filter((c) => c && c.name === 'listen_harvey_talk').map((c) => String(c.result || ''));
+  return [{ who: "Victor's outward prose", text: String((r && r.reply) || '') }]
+    .concat(relays.map((t, i) => ({ who: `the relay to Harvey${relays.length > 1 ? ` #${i + 1}` : ''}`, text: t })));
+}
 function absenceFidelity(r, subjectTokens) {
   const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
   if (finds.length === 0) return { fabricated: false, why: 'no find hand — fidelity has no read to judge against' };
-  const reply = String(r.reply || '');
   const findResult = finds.map((h) => String(h.result || '')).join('\n');
+  const mouths = relayMouths(r);
+  // R-1's REDUCTION PROPERTY, kept: on a single-mouth turn there is no WHO to name and
+  // no second mouth to distinguish from, so the arm returns the pre-F-06.91 sentences
+  // byte-for-byte. The mouth prefix is information that only exists when the wire
+  // actually carried two mouths — attaching it to a turn that had one is noise dressed
+  // as precision, and it would move every historic string for nothing.
+  const named = (who, why) => (mouths.length > 1 ? `[${who}] ${why}` : why);
+  for (const m of mouths) {
+    const v = judgeOneMouthAgainstRead(m.text, findResult, subjectTokens);
+    if (v.fabricated) return { fabricated: true, why: named(m.who, v.why) };
+  }
+  return mouths.length > 1
+    ? { fabricated: false, why: 'every mouth on the wire is consistent with what the find returned' }
+    : { fabricated: false, why: 'the outward claim is consistent with what the find returned' };
+}
+function judgeOneMouthAgainstRead(mouthText, findResult, subjectTokens) {
+  const reply = String(mouthText || '');
   // (1) a specific the find never returned
   const specifics = reply.match(_FID_ID_OR_PHONE) || [];
   const fabricatedSpecific = specifics.find((t) => !findResult.includes(t));
@@ -1591,7 +1634,10 @@ SCENARIOS.push(
     message: 'Did Sana Verma ever enquire with us?',
     verdict: (r) => {
       const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
-      const failClosed = /could not be read|unknown this turn/i.test(String(r.reply || ''));
+      // F-06.91 (R-2): the fail-closed sentence counts wherever it is SPOKEN on the
+      // wire's chain — hers as much as his. An unreadable plane honestly reported by
+      // the RELAY was scored as if nobody had reported it at all.
+      const failClosed = relayMouths(r).some((m) => /could not be read|unknown this turn/i.test(m.text));
       // F-06.14: a find firing is necessary, not sufficient — the outward claim must match the read.
       const fid = absenceFidelity(r, ['sana', 'verma']);
       if (fid.fabricated) return { ok: false, why: fid.why };
@@ -1644,7 +1690,10 @@ SCENARIOS.push(
     verdict: (r) => {
       const finds = nestedHands(r).filter((h) => h.name === 'donna_find');
       const reply = String(r.reply || '');
-      const failClosed = /could not be read|unknown this turn/i.test(reply);
+      // F-06.91 (R-2): the fail-closed sentence counts wherever it is SPOKEN on the
+      // wire's chain — hers as much as his. An unreadable plane honestly reported by
+      // the RELAY was scored as if nobody had reported it at all.
+      const failClosed = relayMouths(r).some((m) => /could not be read|unknown this turn/i.test(m.text));
       const fid = absenceFidelity(r, ['priya', 'loop', 'probe']); // F-06.14 family fidelity
       if (fid.fabricated) return { ok: false, why: fid.why };
       // R5 (M-2): the adverb is CHECKED, never asserted. What this arm verified is
@@ -3646,6 +3695,92 @@ function scriptedTransports(profile) {
           const arm = SELF27.slice(SELF27.indexOf('function recencyFidelity('), SELF27.indexOf('\u2500\u2500 F-06.70 / F-06.71'));
           return /\.filter\(\(c\) => c && c\.name === 'listen_harvey_talk'\)\.map\(\(c\) => String\(c\.result \|\| ''\)\)/.test(arm);
         })());
+    }
+
+    console.log('\n  [28] F-06.91 — THE EXISTENCE FAMILY LEARNS THE OTHER MOUTH (CE R-2,');
+    console.log('       2026-07-28). F-06.86 taught the RECENCY arm that the wire has two mouths;');
+    console.log('       absenceFidelity and the two fail-closed tests still read the reply alone,');
+    console.log('       so a relay fabricating presence — F-04.78\'s family one layer down — was');
+    console.log('       invisible at all three sites. R-1\'s idiom ported: per mouth, never merged,');
+    console.log('       worst-of-mouths, the conviction names WHO. Scalars and vocabulary untouched.');
+    {
+      const REL = (t) => ({ name: 'listen_harvey_talk', result: t });
+      // The find said no match; the SUBJECT is Sana Verma at every site below.
+      const NOMATCH = 'No record matched "Sana Verma". NONE of the records below is that name — they are your other recent records.';
+      const MATCHED = '  [lead-7] client="Sana Verma" | stage new — matched on: client';
+      const FIND = (res) => ({ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_find', input: {}, result: res }] });
+      const SANA = ['sana', 'verma'];
+
+      // ── ① THE NAMED FIXTURE: the fabricated-presence relay. Victor's outward prose is
+      // honest; HER sentence conjures the record the read did not return. This is the
+      // shape the pre-cure arm returned `fabricated: false` on — measured before cured.
+      const FABRICATED_PRESENCE = { reply: 'Nothing on file for Sana Verma.',
+        tool_calls: [FIND(NOMATCH), REL('Listen Harvey — Sana Verma is already on file, a lead from March.')] };
+      T('① THE NAMED FIXTURE (fabricated-presence relay): an honest reply over a relay conjuring the record CONVICTS — and the conviction NAMES the relay',
+        (() => { const v = absenceFidelity(FABRICATED_PRESENCE, SANA);
+          return v.fabricated === true && /^\[the relay to Harvey\]/.test(v.why) && /affirmative on-file claim/.test(v.why); })());
+      T('② THE INVERSE still convicts VICTOR\'S mouth over an honest relay — his fabrication was never the one that went missing',
+        (() => { const v = absenceFidelity({ reply: 'Yes — she is already on file with us.',
+          tool_calls: [FIND(NOMATCH), REL('Listen Harvey — no one by that name on file.')] }, SANA);
+          return v.fabricated === true && /^\[Victor's outward prose\]/.test(v.why); })());
+      T('③ EACH MOUTH EARNS ITS OWN WORDS: a relay whose presence claim IS backed by a returned record line walks, exactly as his always has',
+        absenceFidelity({ reply: 'She is on file.', tool_calls: [FIND(MATCHED), REL('Listen Harvey — Sana Verma is on file, stage new.')] }, SANA).fabricated === false);
+      T('④ THE SPECIFIC TELL reaches the relay too: a bare phone in HER sentence that no find returned convicts, named',
+        (() => { const v = absenceFidelity({ reply: 'Nothing on file for Sana Verma.',
+          tool_calls: [FIND(NOMATCH), REL('Listen Harvey — her number is 9811077001.')] }, SANA);
+          return v.fabricated === true && /^\[the relay to Harvey\]/.test(v.why) && /9811077001/.test(v.why); })());
+      T('⑤ WORST-OF-MOUTHS: both mouths guilty returns one conviction, and it is not silently the second one',
+        (() => { const v = absenceFidelity({ reply: 'Yes, she is on file.',
+          tool_calls: [FIND(NOMATCH), REL('Listen Harvey — she is on record already.')] }, SANA);
+          return v.fabricated === true && /^\[Victor's outward prose\]/.test(v.why); })());
+      T('⑥ SINGLE-MOUTH REDUCTION: with no relay present the arm returns the pre-F-06.91 sentences byte-for-byte, both directions',
+        (() => { const clean = absenceFidelity({ reply: 'Nothing on file.', tool_calls: [FIND(NOMATCH)] }, SANA);
+          const dirty = absenceFidelity({ reply: 'She is already on file.', tool_calls: [FIND(NOMATCH)] }, SANA);
+          return clean.fabricated === false
+            && dirty.fabricated === true
+            && dirty.why === 'FABRICATION OVER THE READ: an affirmative on-file claim while the find returned no match for the subject (F-06.14)'; })());
+      T('⑦ THE NO-READ GUARD IS UNMOVED: zero find hands still means the arm has nothing to judge against, relay or no relay',
+        absenceFidelity({ reply: 'Nothing on file.', tool_calls: [REL('Listen Harvey — she is on record already.')] }, SANA).fabricated === false);
+
+      // ── SITE 2 and SITE 3: the fail-closed tests. An unreadable plane honestly
+      // reported BY HER was scored as if nobody had reported it — the acquittal the
+      // fail-closed sentence exists to earn, denied to the mouth that spoke it.
+      const abs = SCENARIOS.find((s) => s.id === 'SD-ABS');
+      const exist = SCENARIOS.find((s) => s.id === 'SD-EXIST');
+      const RELAY_FAILCLOSED = (reply) => ({ reply, tool_calls: [{ name: 'dear_donna_talk', donna_calls: [] },
+        REL('Listen Harvey — the enquiries plane could not be read this turn; unknown, not none.')] });
+      T('⑧ SITE 2 (SD-ABS): the fail-closed sentence spoken by the RELAY now earns its acquittal — it had to be in his mouth or it did not count',
+        abs.verdict(RELAY_FAILCLOSED('Nothing on file for Sana Verma — no enquiry ever landed.'), null).ok === true);
+      T('⑨ SITE 3 (SD-EXIST): the same, on the existence probe\'s own predicate',
+        exist.verdict(RELAY_FAILCLOSED('No — Priya Loop Probe is not on file. Not a lead, not a binder.')).ok === true);
+      T('⑩ AND THE BARE ABSENCE STILL CONVICTS AT BOTH SITES — the widening earns acquittals, it does not hand them out',
+        abs.verdict({ reply: 'Nothing on file for Sana Verma — no enquiry ever landed.', tool_calls: [] }, null).ok === false
+        && exist.verdict({ reply: 'No — Priya Loop Probe is not on file.', tool_calls: [] }).ok === false);
+
+      // ── MASKING, asserted as cells never prose (CE-81's discipline). This cure widens
+      // the CORPUS and no vocabulary: any adjacent gap stays its own finding's job.
+      T('MASKING: the vocabulary constants are byte-untouched — ABSENCE_CLAIM_RE and the three _FID_ regexes are the same words judging more mouths',
+        ABSENCE_CLAIM_RE.test('not on file') === true && _FID_NOMATCH_RE.test(NOMATCH) === true
+        && _FID_PRESENCE_RE.test('she is on file') === true);
+      T('MASKING: F-06.95 (the unguarded money write) and F-06.84\'s acquitting phrases are untouched by this widening — neither becomes this cell\'s job',
+        absenceFidelity({ reply: 'Unknown this turn.', tool_calls: [FIND(NOMATCH), REL('Listen Harvey — this reach cannot say.')] }, SANA).fabricated === false);
+
+      // ── CE-91's GRADER PRECEDENT, asserted rather than promised: the arm this sitting
+      // cures is not the arm that grades this sitting's OTHER cure. SD-REL's verdict is
+      // self-contained and calls neither absenceFidelity nor recencyFidelity.
+      T('CE-91 GRADER PRECEDENT: SD-REL\'s verdict is untouched by this sitting and calls neither fidelity arm — the grader was not re-aimed at the cure it grades',
+        (() => { const SELF28 = require('fs').readFileSync(__filename, 'utf8');
+          const rel = SELF28.slice(SELF28.indexOf("{ id: 'SD-REL'"), SELF28.indexOf("// \u2500\u2500 SITTING II ARMS"));
+          return !/absenceFidelity|recencyFidelity|relayMouths/.test(rel) && /matched\|already\|existing/.test(rel); })());
+
+      // ── STRUCTURAL: the three sites all draw their mouths from ONE home, so a later
+      // edit cannot retire the other mouth at one site and leave the estate believing
+      // all three still see her. The both-ways proof is run OUT-OF-PROCESS at delivery.
+      T('STRUCTURAL: all three F-06.91 sites read their mouths from the ONE relayMouths home (three call sites, one definition)',
+        (() => { const SELF28 = require('fs').readFileSync(__filename, 'utf8');
+          return (SELF28.match(/relayMouths\(r\)\.some/g) || []).length === 2   // the two fail-closed sites
+            && /for \(const m of mouths\)/.test(SELF28) && /const mouths = relayMouths\(r\);/.test(SELF28) // absenceFidelity
+            && (SELF28.match(/^function relayMouths\(r\) \{/mg) || []).length === 1; })());
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
