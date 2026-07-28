@@ -184,6 +184,41 @@ function matchedFields(r: FoundRow, tokens: string[]): string[] {
 // here, on the mechanism's side, and the reverse pointer is filed for the chair.
 const touchedStamp = (r: FoundRow): string | null => arrivalStamp(r.updated_at, IST);
 
+// ── FORK C · THE READ-CLASS PLAIN CLAUSE (TDW_06 Donna cure sitting, 2026-07-28;
+// CE R-2/R-8). ARRIVAL EVIDENCE ONLY, and nothing whatsoever else.
+//
+// THE SPECIMEN IT ANSWERS — SD-FRESHr4: the relay claimed "Inbox is quiet" over FIVE
+// dated hands, and F-06.70's attribution line proved the mechanism in the rig's own
+// words: Victor's composer never received the dates. Fork C hands him the dates. This
+// is the field that carries them.
+//
+// WHAT IS DELIBERATELY ABSENT, and why the absence is the design (R-2, ruled): NO
+// money, NO phones, NO ids, NO stage, NO notes, NO whole rows. F-06.13's fan-out is
+// OPEN and firing live on the production split with money surfaced; a read-class
+// payload that carried rows into Victor's composer would re-inject that disease one
+// layer up and hand F-04.70's donor pool a fresh channel. Recognition-grade means the
+// NAME and WHEN — exactly what a recency ask asks and not one byte more. The whole
+// argument recognitionRow makes for dropping phones and money from a recents dump
+// applies here with more force, because this payload reaches a mouth that speaks
+// outward.
+//
+// A row whose stamps will not derive contributes NOTHING rather than a guess — the
+// same fail-closed discipline recognitionRow already keeps, and R-8's law for the
+// carrier: a door with nothing plain to say says nothing.
+function plainArrival(rows: FoundRow[]): string | undefined {
+  const lines: string[] = [];
+  for (const r of rows) {
+    const filed = arrivalStamp(r.created_at, IST);
+    const touched = touchedStamp(r);
+    if (!filed && !touched) continue;
+    const who = (r.client && String(r.client).trim()) || null;
+    if (!who) continue;
+    const when = [filed ? `filed ${filed}` : null, touched ? `touched ${touched}` : null].filter(Boolean).join(', ');
+    lines.push(`${who} — ${when}`);
+  }
+  return lines.length ? lines.join('\n') : undefined;
+}
+
 function describeRow(r: FoundRow, tokens: string[] = []): string {
   const bits: string[] = [];
   if (r.client) bits.push(`client="${r.client}"`);
@@ -645,7 +680,7 @@ export async function executeFindTool(
   // TDW_06 M-4 / F-06.30 — gate 2 of 2. The tell rides ONLY the recognition shape;
   // a token-matched find carries its figures and must not claim to be hiding them.
   const withholdingTell = recentsShape ? `\n${RECOGNITION_WITHHOLDING_TELL}` : '';
-  return { display: `${header}\n${rendered}${withholdingTell}${leadTail}${shelfTail}${reviewTail}`, found: shown.map(toViewRow) };
+  return { display: `${header}\n${rendered}${withholdingTell}${leadTail}${shelfTail}${reviewTail}`, found: shown.map(toViewRow), plain: plainArrival(shown) };
 }
 
 // donna_whatsdue — the records whose follow-up date has arrived (followup_on <= asOf).

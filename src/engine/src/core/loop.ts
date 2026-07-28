@@ -47,7 +47,7 @@ export type TurnResult = {
   conversation_id: string;
   model: string; // TDW_02 P5: widened — non-anthropic routes carry their real model string
   escalated: boolean;
-  tool_calls: { name: string; input: unknown; result: string; donna_calls?: { name: string; input: unknown; result: string }[] }[];
+  tool_calls: { name: string; input: unknown; result: string; donna_calls?: { name: string; input: unknown; result: string; plain?: string | null }[] }[];
   provider_downgrade?: boolean; // TDW_02 P5: a non-anthropic hand failed mid-turn; door logs it
   cost_inr: number;
   tokens: { input: number; output: number; cache_read?: number; cache_write?: number };
@@ -83,7 +83,7 @@ export type TurnResult = {
 export type TurnEvent =
   | { type: 'dispatch'; to: 'donna'; message: string }
   | { type: 'victor_token'; text: string }
-  | { type: 'donna_action'; name: string; input: unknown; result: string }
+  | { type: 'donna_action'; name: string; input: unknown; result: string; plain?: string | null }
   | { type: 'donna_report'; message: string }
   | { type: 'answer'; reply: string }
   | { type: 'done'; conversation_id: string; cost_inr: number; view: ViewRow[] | null };
@@ -703,11 +703,67 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
           name: 'dear_donna_talk',
           input: tu.input,
           result: '(handed to Donna)',
-          donna_calls: donna.tool_calls.map((dc) => ({ name: dc.name, input: dc.input, result: dc.result })),
+          donna_calls: donna.tool_calls.map((dc) => ({ name: dc.name, input: dc.input, result: dc.result, ...(dc.plain ? { plain: dc.plain } : {}) })),
         });
         toolCalls.push({ name: 'listen_harvey_talk', input: { message: msg }, result: voiced });
 
-        results.push({ type: 'tool_result', tool_use_id: tu.id, content: voiced });
+        // ── FORK C (TDW_06 Donna cure sitting, 2026-07-28; CE-99 chartered, R-1/R-2
+        // ruled). THE DOOR'S OWN PLAIN SPEECH REACHES VICTOR'S COMPOSER BESIDE HER
+        // VOICED SENTENCE — so a relay that echoes the dispatch, or drops a date, is no
+        // longer the ONLY thing he ever sees.
+        //
+        // THE SPECIMENS: SD-REL 3-for-3 on L3 (the relay echoed the dispatch OVER the
+        // honest F-06.92 receipt in her own hand — the paper cure made honesty
+        // PRODUCIBLE and producible turned out not to be SPOKEN on the cheap hand); and
+        // SD-FRESHr4 ("Inbox is quiet" over five dated hands). Refused twice before this
+        // — NOTE_12 §7's two grounds — and both are answered, by derivation, not by
+        // waiting them out:
+        //
+        //   GROUND 1, F-06.52's donor shape: the disease was MACHINERY VOCABULARY in the
+        //   model's context — headers were merely its commonest carrier. F-06.102 (minted
+        //   this sitting) proved a second carrier is live: `dc.result` ships `(id=<uuid>)`,
+        //   raw column keys and binder-machinery clauses. So this seam reads `plain` AND
+        //   ONLY `plain` — the door-authored clause, machinery-free BY CONSTRUCTION, with
+        //   NO FALLBACK to `result`. A door that authored no plain clause contributes
+        //   nothing. That absence is the cure (R-8).
+        //
+        //   GROUND 2, "it dissolves the mouth-attribution arm's subject": derived FALSE.
+        //   `handAttribution` reads `relays` (listen_harvey_talk results) and
+        //   `nestedHands` (donna_calls) — this seam touches NEITHER. Its STRANDED /
+        //   DROPPED / SURVIVED classification is byte-stable across this change. What
+        //   dies is not the arm's subject but its EXCLUSIVITY: a dropped relay beside a
+        //   dateless Victor reply is now BOTH her loss and his, where the old sentence
+        //   acquitted him for free. The per-mouth geometry (F-04.78, F-06.86/91) judges
+        //   each mouth on its own words regardless of what the other holds, and it still
+        //   does. The arm got sharper, not emptier.
+        //
+        // UNLABELED, per F-06.52's own law: the receipt is appended to the SAME content
+        // block her voiced sentence arrives in — no header, no frame, no "receipt:"
+        // prefix. Knowledge arrives as knowledge. b06_f0692_bench asserts the composed
+        // content carries no framing banner, both directions.
+        //
+        // LIVE-TURN ONLY, and priced: `loadThread` (memory.ts:85-109) selects role and
+        // content and maps to {role, content} — tool evidence never replays — and
+        // `persistComposedReply` writes only `reply + tail`. So this costs ~50 tokens
+        // ONCE, on the turn, on write-class turns, and never compounds across a thread.
+        // `:706`'s donna_calls persistence gains `plain` additively; every consumer of
+        // `result` (chipFiling, donnaWitnessLines, nestedHands, D-1's law) is untouched.
+        //
+        // F-06.85, BOTH DIRECTIONS — THE ARM THIS SEAM NOW CONDITIONS. b06_gauntlet's
+        // `handAttribution` limb 2 used to say, in the rig's own words, "Victor's
+        // composer NEVER RECEIVED THE DATES (loop.ts:710 hands him the voiced text
+        // alone)". THAT SENTENCE DIED THE MOMENT THIS SHIPPED, and it has been re-aimed
+        // at b06_gauntlet.js (the DROPPED and STRANDED branches both). IF THIS SEAM IS
+        // EVER REVERTED, NARROWED, OR ITS PAYLOAD SCOPE CHANGED, RE-READ BOTH BRANCHES
+        // BEFORE SHIPPING — they are conditioned on this line and will otherwise fail
+        // silently, which is precisely the class F-06.85 exists to prevent.
+        const plainReceipts = donna.tool_calls
+          .map((dc) => (dc.plain ? String(dc.plain).trim() : ''))
+          .filter((t) => t.length > 0);
+        const composedForVictor = plainReceipts.length
+          ? `${voiced}\n\n${plainReceipts.join('\n\n')}`
+          : voiced;
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: composedForVictor });
         continue;
       } else if (tu.name === 'dear_donna_handbook') {
         const ref = (tu.input as { ref?: string }).ref ?? '';

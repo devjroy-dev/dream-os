@@ -78,4 +78,32 @@ export type ToolOutcome = {
   item?: SnapshotItem | null;     // upsert this item into the note
   remove?: string | null;         // remove the item with this id from the note
   found?: ViewRow[];              // rows a READ surfaced — the turn's view payload
+  // ── TDW_06 FORK C · R-8's CARRIER (CE-99 sitting, 2026-07-28) — THE PLAIN CLAUSE.
+  // `display` is what DONNA reads. `plain` is what VICTOR'S COMPOSER may be handed
+  // beside her voiced sentence at loop.ts:710. They are NOT the same string and the
+  // difference is the whole cure.
+  //
+  // WHY (F-06.102, minted this sitting): CE-99's Fork C premise held that the payload
+  // was already unlabeled plain speech "since CE-94's receipt". True of the RECEIPT —
+  // `notWrittenNote`'s "the city stays Kochi (you said Goa)" carries no machinery at
+  // all. FALSE of the DISPLAY that carries it: donnaLead's update line ships
+  // `(id=<uuid>)`, the raw column-key join (`wedding_city, wedding_date`) and the
+  // typed-lead binder clause. Handing Victor `display` would deliver F-06.52's
+  // machinery-donor under CE-94's name, and F-04.66's raw ids with it.
+  //
+  // FAIL-CLOSED BY CONSTRUCTION (R-8, ruled): the Fork C seam reads `plain` AND ONLY
+  // `plain`. THERE IS NO FALLBACK TO `display`. A door that has not authored a plain
+  // clause contributes NOTHING to Victor's payload — silence, never a scrubbed
+  // machinery string. That absence IS the cure: a fallback would re-admit F-06.102's
+  // disease through the back door on every door not yet upgraded, and a post-hoc
+  // regex laundering of `display` into "plain speech" is the same disease wearing the
+  // cure's uniform (the §2.4 lesson, and F-04.27's value-invariance risk on its face).
+  //
+  // WHAT MAY GO IN IT: owner-meaningful plain speech only. Zero tool names, zero
+  // `id=`, zero uuids, zero column keys, zero binder-machinery clauses, zero framing
+  // headers — asserted mechanically, both directions, in b06_f0692_bench. Write-class
+  // doors contribute their refusal/standing-value clause family; read-class doors
+  // contribute their ARRIVAL-STAMP line only (recognition-grade — never rows, never
+  // money, never phones: F-06.13's re-entry door stays welded shut, ruled at R-2).
+  plain?: string | null;
 };

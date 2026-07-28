@@ -299,8 +299,33 @@ export async function executeDonnaLead(
       ? ` Not written — the record already stands: ${notWritten.join(', ')}. ${notWrittenTail}, say so and I'll change it.`
       : '';
 
+    // ── FORK C · THE PLAIN CLAUSE (TDW_06 Donna cure sitting, 2026-07-28; CE R-2/R-8).
+    // THE SAME SENTENCE AS `notWrittenNote`, AND NOTHING ELSE. This is the field
+    // Victor's composer may be handed at loop.ts:710 beside her voiced line, so that a
+    // relay which echoes the dispatch cannot be the only thing he ever sees (SD-REL,
+    // 3-for-3 on L3 — the return condition CE-99 ruled met).
+    //
+    // WHY IT IS NOT `display` — F-06.102, minted this sitting: `display` ships
+    // `(id=${cur.id})`, the raw column-key join `${changed}` and the typed-lead binder
+    // clause. Those are F-06.52's machinery donor and F-04.66's raw ids; handing them to
+    // a mouth is the disease this block exists to kill. The RECEIPT is clean plain
+    // speech; the DISPLAY that carries it is not. Only the receipt travels.
+    //
+    // F-06.85 BOTH DIRECTIONS: donnaSoul's header binds the founder-vetoed WORKED
+    // EXAMPLE 1 to this clause family — its receipt line mirrors this shape and its tail
+    // is `notWrittenTail`'s TWO-refusal arm. IF THIS CLAUSE FORM, ITS JOIN, OR THAT
+    // TERNARY CHANGES, RE-READ EXAMPLE 1 IN donnaSoul.ts BEFORE SHIPPING — and if the
+    // example is re-authored, re-read this. Neither may drift alone; b06_f0681 §5.3c
+    // asserts the binding mechanically so neither can drift silently either.
+    //
+    // Leading space stripped: `notWrittenNote` is a TAIL appended to a sentence, this is
+    // a sentence in its own right. Empty stays undefined, never '' — fail-closed means a
+    // door with nothing plain to say says nothing (R-8), and `plain: ''` would be a door
+    // claiming it had spoken.
+    const plainClause = notWritten.length ? notWrittenNote.trim() : undefined;
+
     if (Object.keys(patch).length === 0) {
-      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}${notWrittenNote}`, item: leadItem(cur) };
+      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}${notWrittenNote}`, item: leadItem(cur), plain: plainClause };
     }
 
     // Recompute draft state from the merged row (spec P3: every update recomputes).
@@ -325,7 +350,7 @@ export async function executeDonnaLead(
     const row = data ?? ({ ...cur, ...patch } as LeadRow);
     const changed = Object.keys(patch).filter((k) => k !== 'draft_meta').join(', ');
     const flag = ambiguous ? ` Note: ${existing.length} leads matched — updated the most recent; if you meant a different one, tell me which.` : '';
-    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}${notWrittenNote}`, item: leadItem(row) };
+    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}${notWrittenNote}`, item: leadItem(row), plain: plainClause };
   }
 
   // ── No match -> create new (the typed-plane draft; thin is welcome).

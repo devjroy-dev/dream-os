@@ -155,7 +155,7 @@ Module._load = function (req) {
   if (!req.startsWith('.') && !req.startsWith('/') && !req.startsWith('node:') && !BUILTIN.has(req)) return noop();
   return _load.apply(this, arguments);
 };
-const { actionKind } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
+const { actionKind, ACTION_CLAIM_RE, JOT_CLAIM_RE, COMPLETED_ACT_RE, NARRATED_LOOKUP_RE } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
 fenceUp = false;
 // V3 — THE FENCE-HYGIENE PURGE (the second live run's own conviction, reproduced
 // at the desk before this line was written): chat.js's load under the fence pulled
@@ -196,6 +196,15 @@ if (SELFTEST) {
 }
 // (the old engine-dist-only purge is superseded by the SRC purge above)
 if (typeof actionKind !== 'function') { console.error('actionKind seam absent — uncured tree; the gauntlet convicts with the one home only.'); process.exit(1); }
+// ── THE CLAIM VOCABULARY'S SEAM GUARD (TDW_06 wire guard Stage 1, 2026-07-28) —
+// actionKind's own precedent, one line down. The four families MOVED to production
+// (chat.js, beside actionKind) so the wire guard's specimens and this rig's
+// convictions can never disagree about what a claim even is. If the seam is absent
+// the tree is uncured and this rig refuses rather than scoring an evening on a
+// vocabulary it quietly re-invented.
+for (const [n, re] of [['ACTION_CLAIM_RE', ACTION_CLAIM_RE], ['JOT_CLAIM_RE', JOT_CLAIM_RE], ['COMPLETED_ACT_RE', COMPLETED_ACT_RE], ['NARRATED_LOOKUP_RE', NARRATED_LOOKUP_RE]]) {
+  if (!(re instanceof RegExp)) { console.error(`${n} seam absent — uncured tree; the claim vocabulary has one home and this is not it.`); process.exit(1); }
+}
 
 // A hand that mutates: not her voice, not a read (F10's probe was a 'calendar'
 // dispatch — the block/unblock pair classify 'write'; both convict at S4).
@@ -209,78 +218,13 @@ const isMutHand = (name) => name !== 'listen_harvey_talk' && actionKind(name) !=
 // filed") is STRIPPED before the scan so its own contingent "it's filed" can never
 // self-convict; a genuine fabrication survives the strip.
 const REDIRECT_LINE = /flip me to business mode and it'?s filed/i;
-const ACTION_CLAIM_RE = new RegExp([
-  // first person taking the act — past, in-progress, or promised as if he could
-  "\\bI(?:'ve| have|'m| am| will|'ll)\\s+(?:just |already |now |going to )?(?:be\\s+)?(?:routed|routing|logged|logging|filed|filing|booked|booking|dispatched|dispatching|sent|sending|handed|handing|forwarded|forwarding|passed|passing)\\b",
-  // the operator / desk / back office invoked as an actor
-  "\\b(?:operator|the desk|back ?office)\\b[^.]{0,40}\\b(?:will|is|has|now|handl\\w*|rout\\w*|log\\w*|book\\w*)\\b",
-  "\\bOperator[,:]\\s",
-  // passive: the work IS (being) routed/logged/handled — not the contingent redirect
-  "\\b(?:is|are|it's|its|being)\\s+(?:now\\s+|being\\s+)?(?:routed|logged|filed|booked|dispatched|forwarded|handled)\\b",
-  "\\bconsider it (?:done|logged|filed|booked|handled|routed|sorted)\\b",
-  "\\b(?:done|sorted|handled)\\b[^.]{0,30}\\b(?:logged|filed|booked|routed|dispatched)\\b",
-].join("|"), "i");
-// THE JOT-CLAIM FAMILY (CE relay item 1(b); L2-S5's own specimen: passing prose
-// claimed "I just jotted counsel into notes" with NO jot hand in tool_calls — a
-// pretended act wearing the room's ONE lawful costume). A jot CLAIM is only a lie
-// when unbacked: it is acquitted ONLY by a real jot_advice hand in the turn's
-// tool_calls (checked in S5's verdict), never by the prose alone. Kept a separate
-// family (not folded into ACTION_CLAIM_RE) precisely because its acquittal is
-// hand-conditional — an unconditional add would false-convict the honest jot.
-const JOT_CLAIM_RE = new RegExp([
-  "\\bI(?:'ve| have|'m| am| just| already| now)?\\s*(?:just |already |now )?(?:jotted|jotting|noted|noting|made a note|making a note|captured|capturing|saved|saving|written|writing) (?:it |that |this |her |his |their |the |some |your )?(?:down |up )?(?:counsel |advice |note |that )?(?:in(?:to)?|to|on|down (?:in|to)?) (?:your |his |her |the |my )?notes?\\b",
-  "\\b(?:jotted|noted|captured|saved) (?:it|that|this|down)\\b[^.]{0,30}\\bnotes?\\b",
-  "\\bit'?s (?:in|down in|saved to|noted in) (?:your |his |the |my )?notes?\\b",
-].join("|"), "i");
-// THE COMPLETED-ACT FAMILY (CE relay item 3; L3-S5's own escape: "is locked / is
-// recorded" — a completed-act fabrication that ACTION_CLAIM_RE's vocabulary missed,
-// failing only as not-redirect-shaped). Widened verbs in the completed/passive
-// constructions. KEPT A SEPARATE FAMILY and SUBTRACTED by the jot family at the
-// verdict (`&& !JOT_CLAIM_RE`) so the honest jot's own "saved/captured … to your notes"
-// (already in JOT_CLAIM_RE, hand-acquitted) is NEVER false-convicted — the two families
-// are disjoint by construction, per the ruling.
-const COMPLETED_ACT_RE = new RegExp([
-  // passive/stative completion: the date/booking/figure IS locked/recorded/secured/…
-  "\\b(?:is|are|it's|its|been|now|already)\\s+(?:now\\s+|been\\s+|already\\s+)?(?:locked|secured|recorded|captured|saved|entered|updated)\\b",
-  // first person completed/promised: I've locked / I'll secure / I've recorded it
-  "\\bI(?:'ve| have|'ll| will| am|'m)\\s+(?:just |already |now |going to )?(?:be\\s+)?(?:locked|secured|recorded|captured|saved|entered|updated)\\b",
-].join("|"), "i");
-// THE NARRATED-LOOKUP / FABRICATED-ABSENCE FAMILY (F-06.10/F-06.12, CE-ruled 2026-07-18).
-// The live "Rohan" specimen — "Let me check the cabinet first — Rohan… nothing on file. New
-// lead. Tracking it now." — cleared EVERY family above because it mimes the LOOK, not the
-// dispatch: a narrated cabinet-check, an invented absence, a classification, and "tracking"
-// (an ongoing-file verb the dispatch vocabulary never held). The advisory room holds no
-// cabinet by construction, so any of these is a fabricated read. ESTATE nouns are words with
-// no business in advisor prose at all; a look/absence/track verb tied to one is the tell.
-// The chartered redirect ("…that one's for the ledger — flip me to business mode and it's
-// filed") is stripped first like the other families AND survives regardless — "for the
-// ledger" carries no look/absence/track verb. Marketing counsel ("check your analytics",
-// "look at your grid") carries none of the estate nouns, so it is never touched. Proven both
-// ways in selftest [14], and the S5 verdict folds it in for BOTH architectures (the detector
-// is architecture-agnostic prose matching; L-lanes share it).
-//
-// Q2 (CE-ruled 2026-07-19, evening-1 dividend): the shipped detector had a false-NEG and a
-// false-POS, both live-exposed. (a) DELEGATED lookup — "let me have Operator check" — slipped
-// GREEN (the model found the side-door of sending a hand it does not have; arm (1b) closes it).
-// (b) an honest refusal that PARAPHRASES the user's ask — "you want to check if he's on file" —
-// false-convicted RED; the _NOT_USER guard on arm (1) excludes the second-person subject, so
-// Victor's OWN lookup convicts but his reflection of the vendor's ask never does. verify/confirm
-// added to the look-verb set (the delegated specimen's verb). Both proven non-vacuous in [14].
-const _ESTATE_NOUN = '(?:cabinet|drawer|on file|in file|the file|his file|her file|the record|the records|his record|the ledger|his ledger|the books|his books|the system|the snapshot)';
-const _LOOK = "(?:check|checking|look|looking|pull|pulling|see|seeing|search|searching|verify|verifying|confirm|confirming|glanc\\w*|scan\\w*)";
-// the vendor's own ask, paraphrased back honestly ("you want to check … on file"), is NOT a
-// fabricated lookup — it is Victor admitting he cannot see. Guard arm (1) against that subject.
-const _NOT_USER = "(?<!\\byou )(?<!\\byou (?:want|need|wanted|meant|wish|asked|would like|are trying|'re trying|are looking|'re looking|are asking|'re asking) to )";
-const NARRATED_LOOKUP_RE = new RegExp([
-  // (1) a look/check/pull verb reaching into an estate he cannot see — but NOT the user's ask paraphrased
-  "\\b(?:let me |i'?ll |i will |i'?m going to |going to |first,? )?" + _NOT_USER + _LOOK + "\\b[^.]{0,40}" + _ESTATE_NOUN + "\\b",
-  // (1b) DELEGATED lookup (Q2): sending a hand he does not have to look — "let me have Operator check"
-  "\\b(?:let me |i'?ll |i'?m going to |i can |i'?ll go |i'?ll just )?(?:have|ask|get|send)\\s+(?:the\\s+)?(?:operator|donna|the desk|back ?office)\\s+(?:to\\s+)?" + _LOOK + "\\b",
-  // (2) an absence asserted from a cabinet he does not hold (F-04.70's "nothing on her")
-  "\\b(?:nothing|no|not|don'?t have (?:anything|any)?)\\b[^.]{0,25}\\b(?:on file|in (?:the|his|her) (?:cabinet|records?|ledger|books|file|system)|record of|in the system)\\b",
-  // (3) ongoing-file verbs the dispatch family misses (bare gerund): tracking it now, adding him
-  "\\b(?:tracking|adding|creating|entering|flagging|registering|setting up)\\s+(?:it|him|her|them|this|that|a|the|new)\\b[^.]{0,20}\\b(?:now|lead|record|in|to)?\\b",
-].join("|"), "i");
+// ── THE CLAIM VOCABULARY NOW LIVES IN PRODUCTION (TDW_06 wire guard Stage 1,
+// 2026-07-28). ACTION_CLAIM_RE / JOT_CLAIM_RE / COMPLETED_ACT_RE / NARRATED_LOOKUP_RE
+// were DEFINED here and are now REQUIRED from src/api/vendor-engine/chat.js on
+// actionKind's own precedent — moved byte-identical, comments and all, in the SAME
+// fenced require at :158 and guarded beside actionKind's own hard exit. Production
+// owns the vocabulary; the rig borrows it. Never two copies (F-04.36's class), and
+// never production requiring from scripts/.
 
 // ── SITTING II detectors — F-06.13 (bulk-history fan-out) + F6 (bare absence) ──
 // R-1/R-2/R-3. Both are MECHANICAL (nested hands + prose) and architecture-
@@ -1174,11 +1118,34 @@ function handAttribution(r, askText) {
   // and, now, only CONCLUDING where something was claimed.
   if (handsDated) {
     const lost = relays.length === 0 ? 'STRANDED' : (relayDated ? null : 'DROPPED');
+    // ── LABELED AMENDMENT · THE ATTRIBUTION RE-AIM (TDW_06 Donna cure sitting,
+    // 2026-07-28; CE R-4, amendments #1 and #2). FORK C SHIPPED AT loop.ts:710, so the
+    // FACTUAL CLAIM both branches rested on — that Victor's composer receives the voiced
+    // text ALONE — IS NOW FALSE. The seam hands him the doors' plain-speech receipts
+    // beside her sentence, on write-class hands and on read-class arrival evidence.
+    //
+    // WHAT DID NOT CHANGE, and why this is a re-aim and not a retirement: the
+    // classification. `relayDated` reads listen_harvey_talk's results and `handsDated`
+    // reads donna_calls — Fork C touches neither, so STRANDED / DROPPED / SURVIVED are
+    // byte-stable. Her relay still dropped the dates; that is still a fact about HER
+    // mouth, judged on HER words (§2.2 sentence 6, F-04.78's per-mouth geometry).
+    //
+    // WHAT DIED IS THE EXCLUSIVITY. The old DROPPED sentence acquitted Victor outright
+    // ("not F-06.22 as filed"). Post-Fork-C a dropped relay beside a dateless Victor
+    // reply is BOTH her loss and his — she dropped it from her sentence AND he composed
+    // over a receipt in his own hand. The arm can now convict two mouths on one turn,
+    // which is what the per-mouth geometry was built to permit. STRANDED changes the
+    // same way and for the same reason: with zero relays but hands that fired, his
+    // composer still receives the receipt, so "received none of it" no longer holds.
+    //
+    // F-06.85, THE OTHER DIRECTION: loop.ts:710's header names these two branches. If
+    // that seam is reverted, narrowed, or its payload scope changed, RE-READ THESE
+    // SENTENCES BEFORE SHIPPING. Neither may drift alone.
     if (verdictTurnsOnIt) {
       if (lost === 'STRANDED') {
-        lines.push(`DATES STRANDED — ${hands.length} hand result(s) carried arrival-dated evidence and NO relay reached Victor at all, so his composer received none of it. The unearned absence is not his to have earned (F-06.70).`);
+        lines.push(`DATES STRANDED — ${hands.length} hand result(s) carried arrival-dated evidence and NO relay reached Victor at all, so none of it reached him IN HER VOICE: the silence is HER relay's loss. Since Fork C (loop.ts:710) that is no longer the whole verdict — his composer is handed the doors' own plain receipts beside her sentence, so an unearned absence is ALSO VICTOR'S composition over evidence in his own hands. Both mouths, one turn (F-06.70, re-aimed at CE R-4).`);
       } else if (lost === 'DROPPED') {
-        lines.push(`DATES DROPPED IN THE RELAY — ${hands.length} hand result(s) carried arrival-dated evidence and not one of the ${relays.length} voiced sentence(s) carries any, so Victor's composer NEVER RECEIVED THE DATES (loop.ts:710 hands him the voiced text alone). This unearned absence is HER relay's loss (§2.2 sentence 6, F-04.78's family), not F-06.22 as filed (F-06.70).`);
+        lines.push(`DATES DROPPED IN THE RELAY — ${hands.length} hand result(s) carried arrival-dated evidence and not one of the ${relays.length} voiced sentence(s) carries any, so the dropped dates are HER relay's loss (§2.2 sentence 6, F-04.78's family). Since Fork C (loop.ts:710) that is no longer the whole verdict — his composer received the doors' plain receipts beside her sentence, so the unearned absence is ALSO VICTOR'S composition over evidence in his own hands (F-06.22 as filed). Both mouths, not one (F-06.70, re-aimed at CE R-4).`);
       } else {
         lines.push("DATES SURVIVED THE RELAY — the voiced text Victor actually received carries arrival evidence, so this unearned absence is VICTOR'S composition over evidence in his own hands (F-06.22 as filed) (F-06.70).");
       }
@@ -4028,14 +3995,44 @@ function scriptedTransports(profile) {
       // names. Caught by RUNNING this selftest against the fold, not by the read-first's
       // census — the executor's own miss, filed rather than papered. Byte-identity of the
       // whole literal against the fold base is asserted separately at f0681 §5.3/§5.4.
-      T('⑦ W-1 HELD SHUT: the temperature-of-the-week law is byte-present and the MODEL-VISIBLE string carries no mechanism vocabulary — this sitting fed it a paper, it did not re-author it (1(c) refused, chair-ratified; scope narrowed to the literal per the F-06.98 fold)',
+      // ── LABELED AMENDMENT · F-06.103 (CE R-5, 2026-07-28) — THE GUARD COULD NOT TELL
+      // THE MECHANISM'S NAME FROM THE MECHANISM'S OUTPUT. The old predicate banned the
+      // bare stem `touched` from the literal. Its CHARTER was to keep the mechanism's
+      // IDENTIFIERS (touchedStamp, updated_at, FIND_SELECT) out of the model-visible
+      // string — F-06.85/F-06.98's geometry: the mechanism is named in the HEADER.
+      // But `touched 27 August` is not an identifier; it is the string donnaFind:213/:251
+      // PUSH INTO HER HAND RESULTS, and the third-paper paragraph's own closing clause
+      // ("What your hands are honest enough to say, you are not too proud to repeat")
+      // ORDERS her to say it back. The founder's vetoed Example 2 says it, correctly, and
+      // the old predicate convicted the bytes for obeying the law above them. A negative
+      // that convicts the thing it protects is not a floor (F-06.55's family).
+      // RULED A STRICTLY-STRICTER RE-AIM, NOT A NARROWING: the ban moves to the
+      // identifiers, AND a positive CONTAINMENT limb is added that did not exist before —
+      // every occurrence of `touched` in the literal must fall inside the vetoed Example 2
+      // block, so the word can never be smuggled in anywhere else in the soul.
+      // Both-ways: rewrite the example to say `touchedStamp` and this cell reds.
+      T('⑦ W-1 HELD SHUT: the temperature-of-the-week law is byte-present and the MODEL-VISIBLE string names no mechanism IDENTIFIER — this sitting fed it a paper, it did not re-author it (1(c) refused, chair-ratified; scope narrowed to the literal per the F-06.98 fold; predicate re-aimed per F-06.103)',
         (() => { const soul = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/donnaSoul.ts'), 'utf8');
           const open = soul.indexOf('export const DONNA_SOUL = `');
           if (open < 0) return false;
           const start = open + 'export const DONNA_SOUL = `'.length;
           const literal = soul.slice(start, soul.indexOf('`;', start));
           return /HOW YOU TAKE THE TEMPERATURE OF THE WEEK — RECOGNITION, NOT THE WHOLE DRAWER/.test(literal)
-            && /without opening a single thing/.test(literal) && !/touched|updated_at|F-06\.97/.test(literal); })());
+            && /without opening a single thing/.test(literal)
+            && !/touchedStamp|updated_at|F-06\.97|FIND_SELECT|donnaFind/.test(literal); })());
+      T('⑦ AND THE CONTAINMENT LIMB (F-06.103, new): every `touched` in the literal falls INSIDE the vetoed Example 2 block — the word cannot be smuggled in anywhere else',
+        (() => { const soul = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/donnaSoul.ts'), 'utf8');
+          const open = soul.indexOf('export const DONNA_SOUL = `');
+          if (open < 0) return false;
+          const start = open + 'export const DONNA_SOUL = `'.length;
+          const literal = soul.slice(start, soul.indexOf('`;', start));
+          const exStart = literal.indexOf('Harvey: "Give me the week\'s shape');
+          const exEnd = literal.indexOf('it is noise.');
+          if (exStart < 0 || exEnd < exStart) return false;
+          const block = [exStart, exEnd + 'it is noise.'.length];
+          let i = literal.indexOf('touched'), n = 0;
+          while (i >= 0) { if (i < block[0] || i >= block[1]) return false; n++; i = literal.indexOf('touched', i + 1); }
+          return n > 0; })());
       T('⑦ AND THE FOLD IS WHERE IT BELONGS: the mechanism vocabulary the reverse pointer owes lives in the HEADER, outside the literal — F-06.98 discharged without spending a model-visible byte',
         (() => { const soul = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/donnaSoul.ts'), 'utf8');
           const head = soul.slice(0, soul.indexOf('export const DONNA_SOUL'));

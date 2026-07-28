@@ -230,11 +230,53 @@ const soulLiteral = (src) => {
   return src.slice(start, end);
 };
 
-t('§5.3 THE STRING IS BYTE-IDENTICAL TO THE FOLD BASE — the comments moved, the soul did not', () => {
-  const now = soulLiteral(read(SOUL));
+// ── LABELED AMENDMENT · RE-PIN BY EXCISION-IDENTITY (CE R-6, 2026-07-28; the
+// re-pin-with-attribution law, CE-80). W-1 was SHUT when §5.3 was authored, so a
+// flat byte-identity against the fold base was the whole truth. This sitting has
+// W-1 OPEN BY RULING for exactly one authored pass: the two founder-vetoed worked
+// examples (CE-99 chartered; 「 i m good with both the recomendations. please
+// proceed 」). A MOVED HASH WOULD PROVE NOTHING — it would green on any soul edit
+// made in the same commit. So the pin is re-formed, not re-pointed: excise the two
+// example blocks from the CURRENT literal and assert the remainder is byte-identical
+// to the base. That proves the authored pass touched the soul in EXACTLY two places
+// and nowhere else, which is strictly more than the old form ever proved. Ruled the
+// house pattern for any future W-1 pass whose additions are enumerable.
+const VETOED_EXAMPLES = [
+  ['\nHarvey: "Log an update to Kavya Menon', 'false certainty wearing your voice.\n'],
+  ['\nHarvey: "Give me the week\'s shape',      'not thoroughness — it is noise.\n'],
+];
+const exciseVetoed = (literal) => VETOED_EXAMPLES.reduce((acc, [open, close]) => {
+  const i = acc.indexOf(open);
+  assert.ok(i >= 0, `the vetoed example opening ${JSON.stringify(open)} is absent — the locked bytes moved; re-derive before trusting §5.3`);
+  assert.strictEqual(acc.split(open).length - 1, 1, 'the example opening is not unique in the literal — the anchor cannot be trusted');
+  const j = acc.indexOf(close, i);
+  assert.ok(j > i, `the vetoed example closing ${JSON.stringify(close)} is absent or misordered — re-derive`);
+  return acc.slice(0, i) + acc.slice(j + close.length);
+}, literal);
+
+t('§5.3 THE STRING IS BYTE-IDENTICAL TO THE FOLD BASE ONCE THE TWO VETOED EXAMPLES ARE EXCISED — the one authored pass touched exactly two places and nowhere else', () => {
+  const now = exciseVetoed(soulLiteral(read(SOUL)));
   const base = soulLiteral(gitShow(FOLD_BASE, SOUL));
-  assert.strictEqual(now.length, base.length, `the soul changed length by ${now.length - base.length} bytes — a comment-only fold cannot do that`);
-  assert.strictEqual(now, base, 'W-1 BREACH: the fold reached model-visible bytes');
+  assert.strictEqual(now.length, base.length, `the soul changed length by ${now.length - base.length} bytes OUTSIDE the vetoed examples — the authored pass reached further than its veto`);
+  assert.strictEqual(now, base, 'W-1 BREACH: this pass reached model-visible bytes outside the two vetoed examples');
+});
+
+t('§5.3b AND THE EXAMPLES ARE ACTUALLY THERE, BYTE-EXACT — the excision cell cannot green by them being absent', () => {
+  const lit = soulLiteral(read(SOUL));
+  assert.ok(lit.includes("the city stays Kochi (you said Goa), the wedding date stays 12 September 2027 (you said 9 October 2027). If either should change, say so and I'll change it."),
+    "Example 1's locked receipt bytes are not present verbatim");
+  assert.ok(lit.includes("Ritu Sharma, filed 2 August, touched 27 August — she's the one moving. Aman Khatri, nothing since 20 July. Divya Nair, filed 27 August, new. One follow-up due Friday, on Ritu. Nothing else has stirred."),
+    "Example 2's locked briefing bytes are not present verbatim");
+  assert.strictEqual(lit.length - exciseVetoed(lit).length, 1654, 'the vetoed blocks changed size — the founder bytes were edited');
+});
+
+t('§5.3c EXAMPLE 1 IS BOUND TO donnaLead\'s LIVE PAPER, BOTH DIRECTIONS (F-06.85) — the tail is the notWrittenTail ternary\'s TWO-refusal arm, and the header comment says so', () => {
+  const lead = read('src/engine/src/core/tools/donnaLead.ts');
+  assert.ok(/If either should change/.test(lead), 'the two-refusal tail left donnaLead — Example 1 now quotes a form the door no longer speaks; re-read both');
+  assert.ok(/Not written — the record already stands: /.test(lead), "notWrittenNote's clause preamble moved — re-read Example 1 before shipping");
+  const head = read(SOUL).slice(0, read(SOUL).indexOf('export const DONNA_SOUL'));
+  assert.ok(/notWrittenNote/.test(head) && /notWrittenTail/.test(head), 'the F-06.85 binding comment does not name the mechanism it is conditioned on');
+  assert.ok(/PARAPHRASE|paraphrase/.test(head), 'the header does not disclose that Example 1\'s opener is deliberate id-free paraphrase — a later sitting will "correct" it toward a raw uuid');
 });
 
 t('§5.4 AND THE COMPILED ARTEFACT AGREES — what the model reads equals what the source holds', () => {

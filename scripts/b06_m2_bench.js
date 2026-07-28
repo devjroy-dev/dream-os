@@ -330,12 +330,47 @@ H('§7 — THE COMPOSITION GUARD (the CE\'s banked reading, not amended)');
 // licence. c2e21b1's recents-discipline still governs HOW MUCH travels; the M-2 clause
 // governs whether the QUIET is honest. The two compose — proven, not asserted.
 
-t('§7.1 the F-06.13 recents-discipline paragraph is BYTE-UNCHANGED by this sitting', () => {
+// ── LABELED AMENDMENT · RE-PIN BY EXCISION-IDENTITY (CE R-6, 2026-07-28; CE-80's
+// re-pin-with-attribution law). This cell pins the window HOW YOU TAKE THE
+// TEMPERATURE OF THE WEEK → BALLS OF STEEL, and the founder's vetoed Example 2
+// (CE-99 chartered, 「 i m good with both the recomendations. please proceed 」)
+// lands INSIDE that window by construction — it is the worked example of the very
+// law this window holds, sited there by CE R-3. W-1 was shut when §7.1 was written;
+// it is open by ruling for this one pass. The pin is RE-FORMED, not relaxed: excise
+// the vetoed block and the window must still be byte-identical to BASE, so the
+// authored pass is proven to have touched this paragraph in exactly one place and
+// changed not one byte of the F-06.13 recents-discipline prose itself.
+//
+// FOUND BY RUNNING, NOT BY READING — filed as the executor's own read-first miss
+// (CE R-7): the read-first census enumerated the attribution amendments and never
+// censused the soul-literal pins. This cell was invisible to a read because it pins
+// an anchor-to-anchor SLICE, not a named string. R-7's standing law is the cure:
+// any sitting that opens W-1 censuses the soul pins by RUNNING candidate bytes on a
+// scratch tree.
+const EX2_OPEN = '\nHarvey: "Give me the week\'s shape';
+const EX2_CLOSE = 'not thoroughness — it is noise.\n';
+
+t('§7.1 the F-06.13 recents-discipline paragraph is BYTE-UNCHANGED by this sitting ONCE the vetoed Example 2 is excised — the authored pass added one block and edited no prose', () => {
   const before = gitShow(BASE, SOUL);
   const head = 'HOW YOU TAKE THE TEMPERATURE OF THE WEEK';
   const grab = (s) => s.slice(s.indexOf(head), s.indexOf('BALLS OF STEEL'));
   assert.ok(grab(before).length > 100, 'the recents-discipline anchor moved — re-derive before trusting this cell');
-  assert.strictEqual(grab(read(SOUL)), grab(before));
+  const now = grab(read(SOUL));
+  const i = now.indexOf(EX2_OPEN);
+  assert.ok(i >= 0, 'the vetoed Example 2 is not inside the recents-discipline window — the siting moved; re-derive');
+  assert.strictEqual(now.split(EX2_OPEN).length - 1, 1, 'the example opening is not unique in the window — the anchor cannot be trusted');
+  const j = now.indexOf(EX2_CLOSE, i);
+  assert.ok(j > i, 'the vetoed Example 2 closing is absent or misordered — re-derive');
+  const excised = now.slice(0, i) + now.slice(j + EX2_CLOSE.length);
+  assert.strictEqual(excised, grab(before), 'the authored pass reached the recents-discipline prose itself, not just the example block');
+});
+
+t('§7.1b AND EXAMPLE 2 IS ACTUALLY IN THAT WINDOW, BYTE-EXACT — §7.1 cannot green by the example being absent', () => {
+  const now = read(SOUL).slice(read(SOUL).indexOf('HOW YOU TAKE THE TEMPERATURE OF THE WEEK'), read(SOUL).indexOf('BALLS OF STEEL'));
+  assert.ok(now.includes("Ritu Sharma, filed 2 August, touched 27 August — she's the one moving."),
+    "Example 2's locked briefing bytes are not present verbatim inside the law they work");
+  assert.ok(/Emptying the cabinet to take a week's temperature is not thoroughness — it is noise\./.test(now),
+    "Example 2's closing clause is not present verbatim");
 });
 t('§7.2 the rider sits BEFORE that paragraph and does not interleave with it', () => {
   const s = read(SOUL);

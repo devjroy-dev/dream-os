@@ -1180,6 +1180,35 @@ async function _processVendorInbound(inputs, deps) {
       const cal = await applyCalendarSignals(supabase, vendor, agentId, result);
       if (cal.suffix) replyText += cal.suffix;
     } catch (e) { console.error('[whatsapp:calendar-signals]', e.message); }
+    // ── TDW_06 WIRE GUARD · STAGE 1 — THE WHATSAPP SEAT (2026-07-28; CE R-10).
+    // DERIVED, NOT ASSUMED: this lane calls the SAME `runTurn` (:1113) and holds the
+    // SAME `result` — `result.reply` and `result.tool_calls[].donna_calls` — that the
+    // PWA door hands the guard. The guard is one function of (supabase, vendorId,
+    // result); this lane holds all three. NO NEW MACHINERY AND NO NEW READERS: the
+    // classifier, the vocabulary, the hand census and the landing site are literally
+    // the same code, required from its one home. R-10's rule is therefore met and the
+    // WA seat SHIPS IN THIS SITTING rather than deferring as Stage 1b.
+    //
+    // WHY THAT MATTERS AND IS NOT A NICETY: the vendors this guard exists for live on
+    // WhatsApp. A Stage 1 seated only at the PWA door would have produced an EMPTY
+    // specimen log through Evening Three's card walks — and an empty log read as a
+    // clean bill is the hollow-green shape this block exists to refuse.
+    //
+    // THE ONE DISCLOSED ADAPTATION (Q-B2-7's relocation precedent — the signature bends,
+    // stated, never silently): the guard was first written as (req, result) against the
+    // PWA door's shape. This lane has no `req`. It now takes (supabase, vendorId, result)
+    // and the PWA sites pass `req.app.locals.supabase, req.vendor.id` — the exact two
+    // values the req-shaped body used to dereference internally. Same readers, same
+    // behaviour, one home.
+    //
+    // REPORT-ONLY, HERE TOO: this call is placed AFTER `replyText` is fully composed and
+    // BEFORE nothing — it reads and returns. `replyText` is already sent-shaped and is
+    // not passed to the guard at all; the guard reads `result.reply`, mutates nothing,
+    // and cannot alter one byte of what this vendor receives.
+    try {
+      const { wireGuardSpecimen } = require('../api/vendor-engine/chat');
+      await wireGuardSpecimen(supabase, vendor.id, result); // wire guard Stage 1 — report only, WA seat
+    } catch (e) { console.warn('[wire-guard stage1 wa]', e.message); }
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
     await supabase.from('messages').insert({
       conversation_id: convo.id,

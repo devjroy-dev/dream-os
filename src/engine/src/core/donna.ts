@@ -393,7 +393,7 @@ export type DonnaSession = {
 export type DonnaTurn = {
   message: string;          // what she said back to Harvey this segment
   session: DonnaSession;    // her conversation so far, for resume
-  tool_calls: { name: string; input: unknown; result: string }[];
+  tool_calls: { name: string; input: unknown; result: string; plain?: string | null }[];
   cost_inr: number;
   input_tokens: number;
   output_tokens: number;
@@ -418,7 +418,7 @@ export async function runDonnaTurn(
   prior: DonnaSession | null,
   today?: string,
   todayIso?: string,
-  onAction?: (a: { name: string; input: unknown; result: string }) => void,
+  onAction?: (a: { name: string; input: unknown; result: string; plain?: string | null }) => void,
   scratchpad?: string,
   rawMessage?: string, // TDW_02 P1: the vendor's raw line, threaded from the loop for donna_lead's raw_message (D9)
   transportIn?: { provider: string; stream: (p: unknown) => any; create: (p: unknown) => Promise<any> }, // TDW_02 P5
@@ -432,7 +432,11 @@ export async function runDonnaTurn(
   // record() pushes a tool-call AND fires it live, so each of Donna's hands leaves the
   // engine the instant it completes (stream cadence for the pair-at-work view) instead of
   // batched at return. onAction is a no-op on the non-streaming path (the door passes none).
-  const record = (name: string, input: unknown, result: string) => { toolCalls.push({ name, input, result }); onAction?.({ name, input, result }); };
+  // R-8's carrier: `plain` rides beside `result`, ADDITIVELY and OPTIONALLY. Every
+  // existing consumer of result (chipFiling, donnaWitnessLines, the gauntlet's
+  // nestedHands, D-1's "only nested hands convict") is byte-untouched by an extra key.
+  // Fork C's seam reads `plain` and only `plain` — see snapshotTypes' ToolOutcome.
+  const record = (name: string, input: unknown, result: string, plain?: string | null) => { toolCalls.push({ name, input, result, ...(plain ? { plain } : {}) }); onAction?.({ name, input, result, ...(plain ? { plain } : {}) }); };
   let inTok = 0, outTok = 0, cost = 0, mutated = false;
   let cacheRead = 0, cacheWrite = 0; // 02-HOTFIX: her buckets, priced and surfaced
   let providerDowngrade = false;     // F-04.87: her fidelity, surfaced on the return
@@ -569,6 +573,11 @@ export async function runDonnaTurn(
         // (the draft-first path stays open in character, never rewritten in code).
         const heldMoney = checkMoneyProvenance(tu.name, input, vendorWords);
         if (heldMoney) {
+          // FAIL-CLOSED, DELIBERATELY (R-8): a ProvenanceHold is not a door outcome and
+          // authors NO plain clause — nothing was written, and its sentence is a question
+          // aimed at Donna, not a receipt for Harvey. So it contributes NOTHING to Fork C's
+          // payload. This is the fail-closed law doing its job at the first seam that tested
+          // it: no fallback to `display`, and therefore no machinery smuggled onward.
           record(tu.name, tu.input, heldMoney.display);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: heldMoney.display });
           continue;
@@ -577,7 +586,7 @@ export async function runDonnaTurn(
           // A supervision verdict: filed to donna_audit_verdict, free-form. It is a
           // record, not a snapshot item — it does not touch the near-horizon note.
           outcome = await executeDonnaVerdict(agentId, input as Parameters<typeof executeDonnaVerdict>[1]);
-          record(tu.name, tu.input, outcome.display);
+          record(tu.name, tu.input, outcome.display, outcome.plain);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;
         }
@@ -585,7 +594,7 @@ export async function runDonnaTurn(
           // The review binder: the container for a supervision review. Verdicts point
           // to it. A record, not a snapshot item.
           outcome = await executeDonnaReview(agentId, input as Parameters<typeof executeDonnaReview>[1]);
-          record(tu.name, tu.input, outcome.display);
+          record(tu.name, tu.input, outcome.display, outcome.plain);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;
         }
@@ -596,7 +605,7 @@ export async function runDonnaTurn(
           outcome = await executeDonnaLead(agentId, input as Parameters<typeof executeDonnaLead>[1], rawMessage);
           mutated = true;
           await patchNote(agentId, outcome);
-          record(tu.name, tu.input, outcome.display);
+          record(tu.name, tu.input, outcome.display, outcome.plain);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;
         }
@@ -614,7 +623,7 @@ export async function runDonnaTurn(
         if (outcome.item?.ref_id) currentBinderId = outcome.item.ref_id;
       }
       if (outcome.found && outcome.found.length) view = outcome.found; // a read surfaced rows -> this turn has a view
-      record(tu.name, tu.input, outcome.display);
+      record(tu.name, tu.input, outcome.display, outcome.plain);
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
     }
 
