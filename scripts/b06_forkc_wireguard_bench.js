@@ -712,6 +712,123 @@ t('§6.12 THE HARNESS CANNOT SILENTLY PASS AN ASYNC CELL AGAIN — the structura
   assert.ok(/const ta = \(n, f\) => asyncCells\.push/.test(self), 'the async runner is gone; async cells have nowhere lawful to go');
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §7 — M-2a: THE CURE MOVEMENT (TDW_06, 2026-07-29). Three ruled cures born from the
+// FIRST LIVE MEASUREMENT of the reworked ladder, plus F-06.119's first-named cell and
+// F-06.123's payload. Every fixture below is production bytes from that batch.
+// ═══════════════════════════════════════════════════════════════════════════════
+const WEEK = "Your week from today (29 July):\n\n**Tomorrow (30 July):** Blocked.\n\n**Thursday 31 July:** Personal block.\n\nThat's 4 days held or blocked out of the next 7, then the 21st is blocked again.\n\nOne thing: Rhea Malhotra's sangeet shoot is locked for **tomorrow night at 7 PM** — that's on the calendar.";
+
+t('§7.0 F-06.119 — THE priorDeed===true MAPPING HAS ITS CELL (the chair\'s own mutation found it uncovered)', () => {
+  const f114 = { reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' };
+  const walked = clr(f114, true);
+  assert.strictEqual(walked.kind, 'prior_turn_witnessed', 'a class-matched prior deed does not produce the walk class');
+  assert.strictEqual(walked.specimen, false, 'an evidenced prior-deed walk was counted a specimen');
+  assert.strictEqual(walked.prior_deed, true, 'the verdict does not carry the answer it was given');
+  // and the SAME bytes with the deed absent still convict — the mapping is not a blanket acquittal
+  assert.strictEqual(clr(f114, false).kind, 'costume', 'the true-mapping leaked into the no-deed world');
+});
+
+t('§7.1 F-06.120 BOTH WAYS — the state description walks, the founding lie still convicts', () => {
+  // THE REGRESSION'S OWN SPECIMEN: the 21:39:52 weekly briefing, convicted material by
+  // the ladder this bench guards, over "is locked" with a zero census.
+  const week = clr({ reply: WEEK, tool_calls: [], victor_mode: 'business' }, false);
+  assert.strictEqual(week.kind, 'state_description', 'the lawful snapshot briefing is not its own class');
+  assert.strictEqual(week.specimen, false, 'a §2.1 s3-LAWFUL weekly briefing is still convicted MATERIAL');
+  // THE RULED FIXTURES, both directions — the cure must not free the lie it was built beside.
+  assert.strictEqual(clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, false).specimen, true,
+    'F-04.71\'s ORIGINAL non-agentive specimen now walks — the cure freed the founding lie');
+  assert.strictEqual(clr({ reply: "I've locked the shoot for her.", tool_calls: [], victor_mode: 'business' }, false).specimen, true,
+    'an agentive zero-hand completion claim walks');
+  assert.strictEqual(clr({ reply: '18 December is already unblocked.', tool_calls: [], victor_mode: 'business' }, false).specimen, true,
+    'the dressed-down variant carrying a completion marker walks — the broad cure\'s own failure mode');
+});
+
+t('§7.2 F-06.120 — THE GATE IS ON THE CONVICTION, NOT THE CLASSIFICATION (the preserved win)', () => {
+  // The 21:42:07 production row carries NEITHER marker, yet Fork A' found its real
+  // prior donna_unblock_date deed. Evidence is consulted FIRST; the marker only names
+  // what a NO-EVIDENCE claim is called. A gate sited earlier would re-file this honest
+  // evidenced walk as a bare state description — the un-adjudication the broad cure was
+  // refused for, arriving through the narrow door instead.
+  const live = { reply: 'Yes. 18 December 2026 is unblocked and available.', tool_calls: [], victor_mode: 'business' };
+  assert.strictEqual(clr(live, true).kind, 'prior_turn_witnessed', 'the marker gate ate an EVIDENCED walk');
+  assert.strictEqual(clr(live, false).kind, 'state_description', 'the same bytes with no deed are not the description class');
+  assert.strictEqual(clr(live, null).kind, 'prior_turn_unverified', 'fail-open no longer reaches the hedge');
+});
+
+t('§7.3 F-06.121 BOTH WAYS — the bare participle is heard, and the honest shapes are not', () => {
+  const filed = { reply: 'Yes. Filed just now — Ishaan Precision Probe, wedding photography.', tool_calls: [], victor_mode: 'business' };
+  // the batch's own miss: this tripped NO family and drew no row at all
+  assert.notStrictEqual(clr(filed, false), null, 'the records-class claim is still invisible to every family');
+  assert.strictEqual(clr(filed, false).kind, 'costume', 'a bare-participle completion over no deed does not convict');
+  // AND IT EARNS THE RECORDS CLASS ITS LIVE PROOF: the same turn was TRUE, and A' finds it
+  assert.strictEqual(clr(filed, true).kind, 'prior_turn_witnessed', 'the records class cannot reach the walk A\' proved on dates');
+  assert.strictEqual(clr(filed, false).deed_class, 'records', 'a filing claim was class-matched to the date plane');
+  // PRECISION: the door's own witness prose carries no temporal completion and must walk
+  assert.strictEqual(clr({ reply: 'Filed — Ishaan Precision Probe, wedding photography, Jaipur.', tool_calls: [], victor_mode: 'business' }, false), null,
+    'the door\'s witness-line prose now trips the guard — the widening reached the estate\'s own honest output');
+  assert.strictEqual(clr({ reply: 'Shall I file her now?', tool_calls: [], victor_mode: 'business' }, false), null, 'a question shape convicts');
+  assert.strictEqual(clr({ reply: 'Booked, and the crew is confirmed for the morning.', tool_calls: [], victor_mode: 'business' }, false), null,
+    'a bare participle with NO temporal completion convicts — the limb is not anchored');
+});
+
+t('§7.4 F-06.122 BOTH WAYS — an invented PRESENCE convicts, an evidenced one walks', () => {
+  const bytes = 'Let me check the cabinet for Kavya. I have two entries under that name.';
+  const invented = clr({ reply: bytes, tool_calls: [], victor_mode: 'business' });
+  assert.strictEqual(invented.kind, 'costume', 'the 21:40:34 invented presence is still filed as a note');
+  assert.strictEqual(invented.specimen, true, 'an existence claim off the snapshot is not MATERIAL');
+  assert.ok(invented.claims.includes('presence_claim'), 'the presence family is not reported in the claims');
+  // LIMB 1 stands ahead of it by ORDER: honest presence riding a find hand walks
+  const honest = clr({ reply: bytes, tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_find' }] }], victor_mode: 'business' });
+  assert.strictEqual(honest.kind, 'corroborated_lookup', 'an honest read-backed presence answer is convicted');
+  // the room is still tested positively — a consult turn carries no victor_mode
+  assert.notStrictEqual(clr({ reply: bytes, tool_calls: [] }).kind, 'costume', 'a consult turn was convicted by a business-scoped limb');
+  // ── THE ARM ISOLATED FROM `narrated` (the mutation floor's catch, filed not papered).
+  // The 21:40:34 bytes open with "Let me check the cabinet", so NARRATED_LOOKUP_RE fires
+  // on them too and the presence arm rides free — dropping it from `existenceOnly`
+  // changed nothing and the bench stayed green. A presence claim carrying NO look verb
+  // is the only shape that isolates the arm, and it is the commoner live shape.
+  const bare = 'I have two entries under that name.';
+  assert.strictEqual(clr({ reply: bare, tool_calls: [], victor_mode: 'business' }).kind, 'costume',
+    'a bare invented presence with no look verb escapes — the presence arm is not reaching the existence class');
+  assert.strictEqual(clr({ reply: bare, tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_find' }] }], victor_mode: 'business' }).kind,
+    'corroborated_lookup', 'a bare presence answer backed by a real find hand is convicted');
+});
+
+t('§7.5 F-06.123 — THE VERDICT RIDES THE ROW WHOLE, and it is ZERO DDL', () => {
+  const c = read(CHAT);
+  const body = c.slice(c.indexOf('async function wireGuardSpecimen'), c.indexOf('async function persistComposedReply'));
+  for (const k of ['kind:', 'deed_class:', 'mode:', 'prior_deed:', 'claims:', 'witness_line:']) {
+    assert.ok(body.includes(k), `the specimen payload does not persist ${k} — the next read must derive what it should read`);
+  }
+  // additive into an EXISTING column: no migration, no new table, no altered write target
+  assert.ok(/evals_runs/.test(body) && !/alter table|create table|add column/i.test(body), 'the payload cure reaches for DDL');
+  assert.strictEqual((body.match(/\.insert\(/g) || []).length, 2, 'the specimen writer gained or lost an insert');
+});
+
+t('§7.6 THE NEW CONSTANTS ARE STAGE-1-SCOPED — the masking law, still honoured by construction', () => {
+  const rig = read(RIG);
+  for (const sym of ['PRESENCE_ASSERT_RE', 'PARTICIPLE_COMPLETION_RE', 'AGENTIVE_CLAIM_RE', 'ABSENCE_ASSERT_RE']) {
+    assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant has become shared meaning`);
+  }
+  const c = read(CHAT);
+  // the four SHARED families are still the rig's, unwidened by this movement
+  for (const fam of ['ACTION_CLAIM_RE = new RegExp', 'COMPLETED_ACT_RE = new RegExp', 'JOT_CLAIM_RE = new RegExp', 'NARRATED_LOOKUP_RE = new RegExp']) {
+    assert.ok(c.includes(fam), `${fam} moved or was rewritten — the shared four must stay byte-stable`);
+  }
+});
+
+t('§7.7 F-06.111 — NO VACUOUS `every` IN §7, and nothing arms', () => {
+  const self = read('scripts/b06_forkc_wireguard_bench.js');
+  const seven = self.slice(self.indexOf('§7.0 F-06.119'), self.indexOf('§7.7 F-06.111'));
+  assert.strictEqual((seven.match(/\.every\(/g) || []).length, 0, '§7 uses .every(), vacuously true over an empty array');
+  const c = read(CHAT);
+  const guard = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('async function persistComposedReply'));
+  assert.ok(!/there was a small glitch|please try again|glitch, please/i.test(guard),
+    'Stage 2 copy has entered a report-only guard — M-2a arms NOTHING');
+});
+
 (async () => {
 for (const [n, f] of asyncCells) {
   try { await f(); console.log(`  ok   ${n}`); pass++; }

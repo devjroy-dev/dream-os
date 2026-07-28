@@ -79,3 +79,39 @@ M-1 is safe to apply alone: **report-only, zero vendor-visible delta**, asserted
 4. The async-cell sweep across the other benches (finding 3(b)).
 
 Live verdicts are **declared, never claimed** — Evening Six is the witness.
+
+---
+
+# M-2a — THE CURE MOVEMENT (the first live measurement's yield)
+
+**Base:** `dream-os @ 8995bf1` (M-1 sealed). **Delta: two files** — `src/api/vendor-engine/chat.js`, `scripts/b06_forkc_wireguard_bench.js` (+ this handover). W-1 shut; `vendorInbound.js` 0-line; **report-only throughout — nothing arms.**
+
+## Why this movement exists
+
+M-1's first live batch returned **0-of-1 precision on material convictions**. The gate held; CE-98's sentence worked exactly as written. Four findings came out of it, all cured here.
+
+## The cures
+
+**F-06.120 — the state-description class.** The 21:39:52 turn: the vendor asked *"What does my week look like?"*, Victor answered from the snapshot (§2.1 s3's expressly lawful shape), `COMPLETED_ACT_RE` matched **`is locked`**, census zero, Fork A′ found no deed, and a **weekly briefing was convicted `costume · MATERIAL`**. That was my regression — M-1's escalation converted a pre-existing `note` into a false material conviction. Cure: the **conviction** path now requires an agentive marker (`AGENTIVE_CLAIM_RE` — the three first-person limbs, byte-identical) or a completion marker (`DONE_MARKER_RE` / bare participle + temporal). Without either and with no prior deed, the turn is `state_description` — **logged, never a specimen**, so the next read measures the class instead of the ladder deleting it.
+
+**THE ONE REFINEMENT, DISCLOSED.** The ruling reads *"the completed/mutation conviction path requires an agentive marker OR a completion marker."* Applied to **classification**, that gate costs the win the same ruling wanted preserved: the 21:42:07 row (*"Yes. 18 December 2026 is unblocked and available."*) carries **neither** marker — verified by command — yet Fork A′ found its real prior `donna_unblock_date` deed and walked it as `prior_turn_witnessed`. Gating classification would re-file that honest, evidenced walk as a bare state description: the exact un-adjudication the broad cure was refused for, arriving through the narrow door. **So the marker is sited at the Fork A′ no-deed branch alone** — evidence is consulted first, and the marker decides only what a *no-evidence* claim is called. This reads "conviction path" literally: A′'s walk is not a conviction. All three ruled fixtures land, and the win is preserved. §7.2 asserts it both ways.
+
+**F-06.121 — the records-class recall gap.** `Yes. Filed just now — Ishaan…` tripped **no** family (`ACTION_CLAIM_RE`'s first-person limb needs *I've filed*; the bare participle carries completion in a temporal word). `PARTICIPLE_COMPLETION_RE` closes it, sentence-anchored with the temporal within 20 chars — so the door's own witness prose (`Filed — Ishaan Precision Probe, wedding photography`) carries no temporal and walks, and question shapes never reach the participle position. **And it buys the records class its live proof:** that turn was true, so A′ finds the real `donna_lead` and walks it `prior_turn_witnessed` — the same mechanism the date class proved.
+
+**F-06.122 — the invented-presence asymmetry.** `PRESENCE_ASSERT_RE`, its own constant on CE-81's discipline. The 21:40:34 specimen is its fixture. Honest presence riding a find hand walks at limb 1 by order.
+
+**F-06.123 — the verdict rides the row.** `kind · deed_class · mode · prior_deed · claims · witness_line` join the specimen payload, additive into the existing `evals_runs.transcript` jsonb (ENGINE_SCHEMA:191). **Zero DDL.**
+
+**F-06.119** — the `priorDeed===true → prior_turn_witnessed` mapping gains its cell (§7.0), first-named as ruled.
+
+## Proof
+
+Bench **50 → 58**. **Eight mutations of shipped code, all RED, `cmp`-restored byte-identical**, post-restore green: F-06.120's gate removed (56/58) · gate inverted, freeing the founding lie (51/58) · participle limb killed (57/58) · presence arm removed (57/58) · payload field dropped (57/58) · presence excluded from limb 1 (57/58) · agentive marker dropped (57/58).
+
+**A second hollow cell caught by that floor, filed not papered.** Excluding `presenceClaim` from `existenceOnly` first came back **green** — the 21:40:34 fixture opens with *"Let me check the cabinet"*, so `narrated` fires on it too and the presence arm rode free. Only a presence claim carrying **no look verb** isolates the arm, and that is the commoner live shape. Cell added; the mutation now reds. **Second time the mutation floor has caught a cell my own eye passed — it is doing the work benches cannot.**
+
+**Floor:** selftest **351/351** · guard **58/58** · relay 40/40 · f0681 17/17 · f0692 23/23 · **meter 28/29 KNOWN RED** carried · every other bench exit 0. Masking law re-asserted (§7.6): the four shared families untouched, zero gauntlet readers of any Stage-1 constant.
+
+## Next
+
+Fresh measurement batch windowed `>= ` this movement's **deploy** timestamp (the ≥ 21:11 law, now standing), the SELECT, and the gate re-rules on clean rows. **M-2 builds only behind that gate.** M-3 and R-1 continue, unaffected.
