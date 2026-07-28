@@ -23,6 +23,17 @@ const read = (r) => fs.readFileSync(P(r), 'utf8');
 let pass = 0, fail = 0;
 const t = (n, f) => { try { f(); console.log(`  ok   ${n}`); pass++; } catch (e) { console.log(`  FAIL ${n}\n       ${e.message}`); fail++; } };
 const H = (s) => console.log(`\n${s}`);
+// ── ASYNC CELLS (TDW_06 guard-ladder rework, 2026-07-29 — the executor's own defect,
+// FILED NOT PAPERED). `t` above calls `f()` and never awaits it. An `async` callback
+// returns a promise INSTANTLY, so the try/catch sees no throw and the cell is counted
+// GREEN having executed ZERO assertions. Two cells of the rework's first cut (the Fork A'
+// class-match and its fail-open) passed exactly that way, and NOTHING caught it except
+// the both-ways mutation floor: two mutations of shipped code came back green, which is
+// the definition of a hollow cell — F-06.111's own class, minted by the sitting that was
+// benching against it. `ta` queues async cells and the tail AWAITS them before the
+// summary; §6.12 is the structural tripwire that stops this recurring.
+const asyncCells = [];
+const ta = (n, f) => asyncCells.push([n, f]);
 
 const SOUL = 'src/engine/src/core/donnaSoul.ts';
 const LOOP = 'src/engine/src/core/loop.ts';
@@ -332,7 +343,7 @@ H('§5 — WIRE GUARD STAGE 1: report only, one home, both sites, zero vendor de
 // (b06_gauntlet.js:146-158) — noop the foreign requires, take the real seams, drop the
 // fence, then PURGE everything under src/ that loaded inside the window so nothing
 // poisoned survives in require.cache (the V3 fence-hygiene lesson, honoured here).
-const cl0 = (x) => chat.wireGuardClassify(null, x);
+const cl0 = (x, priorDeed) => chat.wireGuardClassify(null, x, priorDeed);
 const chat = (() => {
   const Module = require('module');
   const _load = Module._load;
@@ -399,11 +410,21 @@ t('§5.5 ZERO VENDOR-VISIBLE DELTA: the guard writes no reply bytes, sends nothi
 });
 
 t('§5.6 THE HONEST CLASSES ARE LOGGED DISTINCTLY AND NEVER SUPPRESSED — precision is measured, not presumed', () => {
-  const cl = (x) => chat.wireGuardClassify(null, x);
+  // LABELED AMENDMENT (TDW_06 guard-ladder rework, 2026-07-29; CE Addendum №2 — the
+  // bench follows the law, CE-80's discipline). COUNT PRESERVED; every assertion below
+  // keeps its original meaning. WHAT CHANGED: the ladder now takes Fork A's answer as a
+  // third argument, so an act-class claim with no write hand returns `prior_deed_pending`
+  // until it is supplied. Each call below now states the world it always meant:
+  //   · the costume cells pass `false` — "the conversation holds no prior deed", which is
+  //     precisely the world in which those specimens were always the costume;
+  //   · the unverified cell passes `null` — "the lookup could not run", which is now the
+  //     exact and only meaning of `prior_turn_unverified` (fail-open).
+  // The rework's NEW behaviour is proven in §6, not smuggled in here.
+  const cl = (x, priorDeed) => chat.wireGuardClassify(null, x, priorDeed);
   const REL = (name, result) => ({ name, result });
   const turn = (reply, donna_calls) => ({ reply, tool_calls: [{ name: 'dear_donna_talk', donna_calls }] });
   // the costume: a completed act, hands present, NONE of them a write, no witness
-  const costume = cl(turn("Done — that's filed.", [REL('donna_find', 'no rows')]));
+  const costume = cl(turn("Done — that's filed.", [REL('donna_find', 'no rows')]), false);
   assert.strictEqual(costume.kind, 'costume', 'the costume specimen was not convicted');
   assert.strictEqual(costume.specimen, true, 'the costume was not marked a specimen');
   // the acknowledgement: present-tense intent, no completed act — §2.2 sentence 3's LAWFUL shape
@@ -416,7 +437,7 @@ t('§5.6 THE HONEST CLASSES ARE LOGGED DISTINCTLY AND NEVER SUPPRESSED — preci
   assert.strictEqual(honest.specimen, false, 'a claim backed by a write hand was convicted');
   assert.strictEqual(honest.kind, 'witnessed_hand', 'the honest hand-backed class is not named distinctly');
   // the class the instrument CANNOT settle from one turn is logged UNVERIFIED, never as a specimen
-  const prior = cl(turn('Already done — that was filed.', []));
+  const prior = cl(turn('Already done — that was filed.', []), null);
   assert.strictEqual(prior.kind, 'prior_turn_unverified', 'the zero-hand completed claim was not filed as unverified');
   assert.strictEqual(prior.specimen, false, 'a claim the instrument cannot disprove was counted as a specimen — CE-82 gate #3 forbids it');
 });
@@ -429,7 +450,9 @@ t('§5.6b F-06.104 CLOSED — the block\'s FOUNDING lie is heard: "Done. 18 Dece
   // architectures), and shipping the vendor-protection guard deaf to it would be a
   // coverage report wearing a cure's uniform. The cell now asserts the CLOSURE.
   const turn = (reply, dc) => ({ reply, tool_calls: [{ name: 'dear_donna_talk', donna_calls: dc }] });
-  const v = cl0(turn('Done — 18 December is unblocked.', [{ name: 'donna_find', result: 'x' }]));
+  // LABELED AMENDMENT (rework): `false` = the conversation holds no prior unblock deed —
+  // the world this founding specimen was always asserted in. Meaning preserved exactly.
+  const v = cl0(turn('Done — 18 December is unblocked.', [{ name: 'donna_find', result: 'x' }]), false);
   assert.ok(v, 'F-06.104 REGRESSED: the founding specimen draws nothing again');
   assert.strictEqual(v.kind, 'costume', 'the founding specimen is no longer convicted as the costume');
   assert.ok(v.claims.includes('mutation_claim'), 'the mutation claim is not named distinctly in the finding');
@@ -472,10 +495,13 @@ t('§5.7 BOTH-WAYS ON THE DETECTOR: a reply with no claim at all draws NOTHING �
 });
 
 t('§5.8 D-1 HELD: only NESTED hands census, and her voice is never counted as one', () => {
-  const cl = (x) => chat.wireGuardClassify(null, x);
-  const v = cl({ reply: 'Done — it is recorded.', tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'listen_harvey_talk', result: 'said it' }] }] });
+  // LABELED AMENDMENT (rework): both probes are act-class claims with no write hand, so
+  // they now need Fork A's answer to reach a terminal kind. `false` supplied; the cells
+  // assert the HAND CENSUS, which is what D-1's fence is about, and it is untouched.
+  const cl = (x, priorDeed) => chat.wireGuardClassify(null, x, priorDeed);
+  const v = cl({ reply: 'Done — it is recorded.', tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'listen_harvey_talk', result: 'said it' }] }] }, false);
   assert.strictEqual(v.hand_census.write, 0, 'listen_harvey_talk was counted as a write hand — the fence chipFiling keeps by name is not kept here');
-  const top = cl({ reply: 'Done — it is recorded.', tool_calls: [{ name: 'dear_donna_talk', result: '(handed to Donna)' }] });
+  const top = cl({ reply: 'Done — it is recorded.', tool_calls: [{ name: 'dear_donna_talk', result: '(handed to Donna)' }] }, false);
   assert.strictEqual(top.hand_census.total, 0, 'the top-level dear_donna_talk was counted as a hand — actionKind would call it a write and it is not one');
 });
 
@@ -508,6 +534,189 @@ t('§5.9 STAGE 2 IS NOT HERE — no interception, no rewrite, no substitute repl
     'Stage 2 vocabulary is present in a Stage 1 guard — interception was explicitly out of scope');
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §6 — THE GUARD-LADDER REWORK (TDW_06, 2026-07-29; CE Addendum №2: Fork A'
+// single-source + Fork B's five limbs). NEW SECTION, additive; §1–§5 above stand
+// with five labeled amendments, count preserved.
+//
+// THE FIXTURES' PROVENANCE, DISCLOSED RATHER THAN IMPLIED: the founder's SELECT
+// returned nine rows of (created_at, claim, severity, truth_status, evidence_ref,
+// scenario, run_type) — it did NOT return reply bytes or hand censuses. So each
+// fixture below is HAND-CENSUS-SHAPED FROM ITS OWN RECORDED truth_status under the
+// SHIPPED (pre-rework) ladder, which is a derivation and not a guess: `costume`
+// entails hands>0 with zero writes and no witness; `prior_turn_unverified` entails
+// zero hands; `witnessed_hand` entails a write hand. The ONE row whose production
+// bytes are on the record — 19:48:29, F-06.114 — uses them VERBATIM.
+// ═══════════════════════════════════════════════════════════════════════════════
+const clr = (x, priorDeed) => chat.wireGuardClassify(null, x, priorDeed);
+const nest = (...names) => ({ tool_calls: [{ name: 'dear_donna_talk', donna_calls: names.map((n) => ({ name: n, input: {}, result: 'ok' })) }] });
+
+t('§6.1 THE NINE ROWS, EACH TO ITS RULED CLASS — the guard\'s own production log as the fixture set', () => {
+  // 19:50:05 · 15:16:00 · 14:44:06 — the THREE honest read-backed lookups convicted
+  // `material · costume` by the shipped ladder. Under LIMB 1 they WALK.
+  for (const at of ['19:50:05', '15:16:00', '14:44:06']) {
+    const v = clr({ reply: 'Let me check the cabinet — nothing on file for her.', ...nest('donna_find'), victor_mode: 'business' });
+    assert.strictEqual(v.kind, 'corroborated_lookup', `${at}: an honest read-backed lookup is still convicted`);
+    assert.strictEqual(v.specimen, false, `${at}: an honest read-backed lookup is still a specimen`);
+  }
+  // 19:48:29 — F-06.114, the ORIGINAL costume, VERBATIM bytes, tool_calls null.
+  // Shipped ladder: `note · prior_turn_unverified`. Ruled: MATERIAL.
+  const f114 = { reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' };
+  assert.strictEqual(clr(f114).kind, 'prior_deed_pending', 'the founding lie does not even reach Fork A\'s limb');
+  const convicted = clr(f114, false);
+  assert.strictEqual(convicted.kind, 'costume', 'F-06.114 is not convicted when the conversation holds no unblock deed');
+  assert.strictEqual(convicted.specimen, true, 'F-06.114 is not MATERIAL — the night\'s conviction is still a note');
+  assert.strictEqual(convicted.deed_class, 'date', 'the unblock claim was not class-matched to the DATE plane');
+  // 14:43:35 — a lookup claim with ZERO hands in business. Shipped: note. Ruled: the F6 class.
+  const f6 = clr({ reply: 'Nothing on file for her.', tool_calls: [], victor_mode: 'business' });
+  assert.strictEqual(f6.kind, 'costume', 'the bare absence assertion (F6) still walks');
+  assert.strictEqual(f6.specimen, true, 'the bare absence assertion is not MATERIAL');
+  // 19:49:08 · 14:43:18 · 14:42:44 — the witnessed_hand rows. UNCHANGED by the rework.
+  const wh = clr({ reply: "Done — that's filed.", ...nest('donna_lead'), victor_mode: 'business' });
+  assert.strictEqual(wh.kind, 'witnessed_hand', 'a real write hand no longer acquits — the rework broke an honest class');
+  assert.strictEqual(wh.specimen, false, 'a hand-backed claim was convicted');
+});
+
+t('§6.2 THE INVERSION IS CURED, STATED AS THE CONTRAST IT WAS — the hand that proves honesty no longer convicts', () => {
+  const lookup = { reply: 'Let me check the cabinet — nothing on file for her.', victor_mode: 'business' };
+  const withRead = clr({ ...lookup, ...nest('donna_find') });
+  const withNone = clr({ ...lookup, tool_calls: [] });
+  // The whole disease in two lines: corroborated walks, uncorroborated convicts. The
+  // shipped ladder did the exact opposite on these two shapes.
+  assert.strictEqual(withRead.specimen, false, 'the corroborated lookup is convicted — the inversion survives');
+  assert.strictEqual(withNone.specimen, true, 'the uncorroborated lookup is acquitted — the inversion survives');
+  assert.ok(withRead.hand_census.read > 0 && withNone.hand_census.total === 0, 'the census does not distinguish the two shapes');
+});
+
+t('§6.3 LIMB 1 BOTH WAYS — a READ hand corroborates a LOOKUP claim and nothing else', () => {
+  const lookup = { reply: 'Let me check the cabinet — nothing on file for her.', victor_mode: 'business' };
+  assert.strictEqual(clr({ ...lookup, ...nest('donna_find') }).kind, 'corroborated_lookup', 'a read hand does not corroborate a lookup');
+  // AND THE LIMB IS NOT A BLANKET ACQUITTAL: a read hand must NOT rescue an ACT claim.
+  const act = clr({ reply: "Done — that's filed.", ...nest('donna_find'), victor_mode: 'business' }, false);
+  assert.strictEqual(act.kind, 'costume', 'a READ hand acquitted an ACT claim — limb 1 has leaked into the act class');
+});
+
+t('§6.4 LIMB 2 BOTH WAYS — a bare absence convicts in business, and the lawful shapes still walk', () => {
+  const bare = { reply: 'Nothing on file for her.', tool_calls: [] };
+  assert.strictEqual(clr({ ...bare, victor_mode: 'business' }).specimen, true, 'the F6 class does not convict in business mode');
+  // consult carries NO victor_mode (inert by A-1's precedence) — the limb tests its room
+  // POSITIVELY, so a consult turn falls through rather than being convicted on a guess.
+  assert.notStrictEqual(clr({ ...bare }).kind, 'costume', 'a consult turn was convicted by a limb scoped to the business room');
+  // §2.2 s3's lawful intent shape is NOT an absence claim and must not be swept up.
+  const intent = clr({ reply: "I'll check the cabinet and come back to you.", tool_calls: [], victor_mode: 'business' });
+  assert.strictEqual(intent.specimen, false, 'lawful present/future intent was convicted as a fabricated lookup');
+  // a bare look verb with no absence asserted is likewise not a claim to have looked
+  const bareLook = clr({ reply: 'Let me pull her file.', tool_calls: [], victor_mode: 'business' });
+  assert.strictEqual(bareLook.specimen, false, 'a stated intention to look was convicted as an absence claim');
+});
+
+t('§6.5 LIMB 4 BOTH WAYS — F-06.4\'s prey convicts in the advisor room, and the room\'s honest speech walks', () => {
+  const claim = { reply: "I've logged that against her record.", tool_calls: [] };
+  const advisor = clr({ ...claim, victor_mode: 'advisor' });
+  assert.strictEqual(advisor.kind, 'costume', 'the advisor room\'s pretended dispatch still acquits — F-06.4 uncured');
+  assert.strictEqual(advisor.specimen, true, 'the advisor pretended dispatch is not MATERIAL');
+  // NON-VACUITY: the limb must be the ROOM's doing, not the claim's. The identical bytes
+  // in business mode reach Fork A' instead of being convicted on sight.
+  assert.strictEqual(clr({ ...claim, victor_mode: 'business' }).kind, 'prior_deed_pending',
+    'the advisor limb is convicting outside the advisor room — it is not room-scoped at all');
+});
+
+t('§6.6 LIMB 5 BOTH WAYS — the ONE census widening: the honest jot walks, the jot costume convicts', () => {
+  const jot = { reply: 'I jotted that into your notes.', victor_mode: 'advisor' };
+  const honest = clr({ ...jot, tool_calls: [{ name: 'jot_advice', input: {} }] });
+  assert.strictEqual(honest.kind, 'witnessed_jot', 'the honest jot is still misfiled — the top-level census did not widen');
+  assert.strictEqual(honest.specimen, false, 'the honest jot was convicted');
+  const costume = clr({ ...jot, tool_calls: [] });
+  assert.strictEqual(costume.kind, 'costume', 'a jot claim with no jot hand walks — the widening became a blanket acquittal');
+  assert.strictEqual(honest.hand_census.jot, true, 'the census does not report the jot hand it now reads');
+  // THE WIDENING IS JOT-SCOPED: D-1's nested-only fence is untouched for every other
+  // question, so a TOP-LEVEL non-jot hand is still not a hand.
+  assert.strictEqual(honest.hand_census.total, 0, 'the top-level widening leaked into the general hand census — D-1\'s fence is breached');
+});
+
+ta('§6.7 FORK A\' IS NON-VACUOUS PER CLASS, BOTH DIRECTIONS — the vacuity lesson, benched', async () => {
+  const rowsWith = (...names) => [{ id: 'prior', created_at: 'x', tool_calls: [{ name: 'dear_donna_talk', donna_calls: names.map((n) => ({ name: n })) }] }];
+  const stub = (rows, error) => ({ schema: () => ({ from: () => { const q = { select: () => q, eq: () => q, not: () => q, order: () => q, limit: () => Promise.resolve({ data: rows, error: error || null }) }; return q; } }) });
+  const R = { conversation_id: 'c1', assistant_message_id: 'self' };
+  // MUTATION CLASS — the deed present walks, the SAME fixture with the deed removed escalates.
+  assert.strictEqual(await chat.priorDeedLookup(stub(rowsWith('donna_unblock_date')), R, 'date'), true, 'a real prior unblock deed is not found — the walk branch is vacuous');
+  assert.strictEqual(await chat.priorDeedLookup(stub([]), R, 'date'), false, 'an empty conversation did not escalate');
+  // RECORDS CLASS — same both ways.
+  assert.strictEqual(await chat.priorDeedLookup(stub(rowsWith('donna_lead')), R, 'records'), true, 'a real prior records deed is not found');
+  assert.strictEqual(await chat.priorDeedLookup(stub([]), R, 'records'), false, 'an empty conversation did not escalate for the records class');
+  // THE CLASS-MATCH IS REAL, not "any prior write": a filed lead does NOT witness an unblock.
+  assert.strictEqual(await chat.priorDeedLookup(stub(rowsWith('donna_lead')), R, 'date'), false,
+    'a records deed acquitted a DATE claim — the match is not class-scoped and the precision is fake');
+  // A READ hand is never a deed, in either class.
+  assert.strictEqual(await chat.priorDeedLookup(stub(rowsWith('donna_find')), R, 'date'), false, 'a read hand was counted as a deed');
+});
+
+ta('§6.8 FORK A\' FENCES — D-1 nested-only, self-exclusion, and FAIL-OPEN on every failure path', async () => {
+  const stub = (rows, error) => ({ schema: () => ({ from: () => { const q = { select: () => q, eq: () => q, not: () => q, order: () => q, limit: () => Promise.resolve({ data: rows, error: error || null }) }; return q; } }) });
+  const R = { conversation_id: 'c1', assistant_message_id: 'self' };
+  // D-1's fence holds in the LOOKUP too: a deed at the TOP level is not a hand.
+  assert.strictEqual(await chat.priorDeedLookup(stub([{ id: 'p', tool_calls: [{ name: 'donna_unblock_date' }] }]), R, 'date'), false,
+    'a top-level name was counted as a prior deed — D-1\'s fence is not kept in the lookup');
+  // This turn is never its own prior deed.
+  assert.strictEqual(await chat.priorDeedLookup(stub([{ id: 'self', tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_unblock_date' }] }] }]), R, 'date'), false,
+    'the turn under judgement acquitted itself');
+  // FAIL-OPEN, every path: query error · no client · no conversation_id · a throwing client.
+  assert.strictEqual(await chat.priorDeedLookup(stub([], { message: 'boom' }), R, 'date'), null, 'a query error did not fail open');
+  assert.strictEqual(await chat.priorDeedLookup({}, R, 'date'), null, 'an absent engine client did not fail open');
+  assert.strictEqual(await chat.priorDeedLookup(stub([]), { conversation_id: null }, 'date'), null, 'a missing conversation_id did not fail open');
+  assert.strictEqual(await chat.priorDeedLookup({ schema: () => { throw new Error('x'); } }, R, 'date'), null, 'a throwing client did not fail open');
+  // and the fail-open answer reaches the LADDER as the honest hedge, never a conviction.
+  const hedged = clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, null);
+  assert.strictEqual(hedged.kind, 'prior_turn_unverified', 'a failed lookup did not fall to the hedge');
+  assert.strictEqual(hedged.specimen, false, 'a failed lookup CONVICTED — the guard convicts on a database hiccup');
+  assert.ok(Number.isInteger(chat.PRIOR_DEED_LOOKBACK) && chat.PRIOR_DEED_LOOKBACK <= 25, 'the lookback is not a small bounded N');
+});
+
+t('§6.9 THE LADDER IS NOT A POSITIVE THAT ALWAYS MATCHES — and no limb fires without its claim', () => {
+  assert.strictEqual(clr({ reply: 'The 19th is free.', tool_calls: [], victor_mode: 'business' }), null, 'a plain read answer drew a verdict');
+  assert.strictEqual(clr({ reply: 'Which of the two Rheas did you mean?', tool_calls: [], victor_mode: 'advisor' }), null, 'an honest clarify drew a verdict in the advisor room');
+  assert.strictEqual(clr({ reply: 'Happy to help — what date are you thinking?', tool_calls: [], victor_mode: 'business' }), null, 'ordinary prose drew a verdict');
+});
+
+t('§6.10 F-06.111 — NO VACUOUS `every` IN THE NEW CELLS, and the new predicates are reachable', () => {
+  const self = read('scripts/b06_forkc_wireguard_bench.js');
+  // sliced to END at this cell, so the grep never matches its OWN regex literal (the
+  // first run did exactly that and reported itself — the self-match, filed not papered)
+  const six = self.slice(self.indexOf('§6.1 THE NINE ROWS'), self.indexOf('§6.10 F-06.111'));
+  const vacuous = six.match(/\.every\([^)]*\)/g) || [];
+  assert.strictEqual(vacuous.length, 0, `§6 uses .every(), which is vacuously true over an empty array: ${vacuous.join(' · ')}`);
+  const c = read(CHAT);
+  // the shipped predicates the rework stands on must all be REACHABLE from the ladder
+  for (const sym of ['corroborated_lookup', 'prior_turn_witnessed', 'witnessed_jot', 'prior_deed_pending', 'isDeedOfClass', 'priorDeedLookup']) {
+    assert.ok(c.includes(sym), `the shipped ladder does not contain ${sym}`);
+  }
+});
+
+t('§6.11 F-06.108 — THE SAMPLING SHAPE IS DISCLOSED AND BEHAVIOUR IS UNCHANGED (zero seat divergence invented)', () => {
+  const c = read(CHAT);
+  assert.ok(/F-06\.108[\s\S]{0,1200}?SAMPLING/i.test(c), 'the F-06.108 sampling disclosure is not in the guard\'s own file');
+  assert.ok(/THERE IS NO CODE DONOR/i.test(c), 'the disclosure does not state the derived finding it rests on');
+  // ZERO BEHAVIOURAL CHANGE: there is exactly one classify home and no seat is named in it.
+  const body = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('// ── FORK A\''));
+  assert.ok(!/vendorInbound|whatsapp|wa_seat|pwa/i.test(body), 'the ladder now branches on the SEAT — the rework invented the asymmetry it was told not to');
+  assert.strictEqual((c.match(/^function wireGuardClassify\(/gm) || []).length, 1, 'there is more than one classify home');
+});
+
+
+t('§6.12 THE HARNESS CANNOT SILENTLY PASS AN ASYNC CELL AGAIN — the structural tripwire', () => {
+  const self = read('scripts/b06_forkc_wireguard_bench.js');
+  const smuggled = self.match(/\bt\((?:'|`)[^\n]*?,\s*async\s/g) || [];
+  assert.strictEqual(smuggled.length, 0,
+    `an async cell is registered on the SYNC runner and will pass having asserted nothing: ${smuggled.join(' · ')}`);
+  assert.ok(/const ta = \(n, f\) => asyncCells\.push/.test(self), 'the async runner is gone; async cells have nowhere lawful to go');
+});
+
+(async () => {
+for (const [n, f] of asyncCells) {
+  try { await f(); console.log(`  ok   ${n}`); pass++; }
+  catch (e) { console.log(`  FAIL ${n}\n       ${e.message}`); fail++; }
+}
 console.log(`\n${fail === 0 ? 'GREEN' : 'RED'} — b06_forkc_wireguard_bench ${pass}/${pass + fail}`);
 if (fail === 0) {
   console.log(`       The door's own plain speech reaches his composer, and the machinery that`);
@@ -515,3 +724,4 @@ if (fail === 0) {
   console.log(`       THE LIVE VERDICT IS EVENING THREE'S — declared here, never claimed.`);
 }
 process.exit(fail === 0 ? 0 : 1);
+})();
