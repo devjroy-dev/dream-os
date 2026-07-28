@@ -1152,6 +1152,38 @@ const AGENTIVE_CLAIM_RE = new RegExp([
   "\\bI(?:'ve| have|'ll| will| am|'m)\\s+(?:just |already |now |going to )?(?:be\\s+)?(?:unblocked|blocked|cancelled|canceled|cleared|moved|rescheduled|freed|opened)\\b",
 ].join("|"), "i");
 
+// ── F-06.126's RECALL GAP · STATIVE_COMPLETION_RE (M-2d, CE-ruled) — AND A §0.2 REPORT
+// ON HOW IT IS SITED. The ruling reads "COMPLETED_ACT_RE gains the 'recorded as /
+// entered as / on file as' stative shapes". COMPLETED_ACT_RE is one of THE SHARED FOUR:
+// b06_gauntlet.js requires it at :190 and consumes it at :1609, so widening it changes
+// what the RIG'S ARMS convict — the masking law (NOTE_12 §9, CE-81's discipline), which
+// the guard's own header calls out by name. The estate has ruled this exact shape once
+// before and answered it the same way: F-06.104 minted MUTATION_CLAIM_RE as a SEPARATE
+// Stage-1-scoped constant rather than widening the four. So the ruled OUTCOME ships and
+// its siting follows the precedent — reported, not adapted silently.
+//
+// WHY THE CLASS COULD NEVER FIRE: three batches, `read_backed_report` unproven, because
+// the live shape ("Rs 1,50,000 recorded as your quote to Ishaan") puts the completion in
+// a STATIVE "<participle> as" construction with no is/are/been/already in front of it,
+// which COMPLETED_ACT_RE's passive limb requires. The completion is carried by "as".
+// PRECISION: the participle must be PAST and adjacent to "as", so "shall I record it as
+// your quote?" and "log it as booked" carry no completion and walk — asserted at §10.3.
+const STATIVE_COMPLETION_RE = new RegExp([
+  "\\b(?:recorded|entered|logged|filed|saved|noted|captured|booked)\\s+as\\b",
+  "\\bon file as\\b",
+].join("|"), "i");
+
+// ── F-06.128 · BOOKING_CLAIM_RE (M-2d, CE-ruled) — THE THIRD DEED CLASS. The 22:55:12
+// row: "Yes. Ishaan Precision Probe is booked …" class-matched to RECORDS, so Fork A'
+// went looking for a records deed while the deed that actually backs it — the prior
+// turn's `donna_book_event` — sat one class away and could not acquit it. It walked only
+// because it carried no marker; the same true sentence with a "Done." opener convicts,
+// derived at the desk. "booked" lives in ACTION_CLAIM_RE's records vocabulary while a
+// booking is a CALENDAR deed, so the two-class map could not represent it.
+// CLASS-MATCH GRANULARITY NOW FOLLOWS THE HAND TAXONOMY: a booking claim is witnessed by
+// `donna_book_event` and by nothing else — F-06.125's symmetry EXTENDED, not patched.
+const BOOKING_CLAIM_RE = /\b(?:is|are|it's|its|been|now|already|has been|have been)\s+(?:now\s+|been\s+|already\s+)?(?:booked|re-?booked)\b|\bbooked\s+(?:for|on|at)\b/i;
+
 const MUTATION_CLAIM_RE = new RegExp([
   // passive/stative completion on a mutation verb: 18 December IS unblocked / IS cancelled
   "\\b(?:is|are|it's|its|been|now|already|has been|have been)\\s+(?:now\\s+|been\\s+|already\\s+)?(?:unblocked|blocked|cancelled|canceled|cleared|moved|rescheduled|freed up|opened up)\\b",
@@ -1284,7 +1316,47 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // turns by design (victor_mode is inert there — A-1's precedence), which is why LIMB 2
   // and LIMB 4 both test for their room POSITIVELY and a consult turn falls through both.
   const mode = (result && result.victor_mode) || null;
-  const mutationClaim = MUTATION_CLAIM_RE.test(reply);
+  // ── F-06.127 · THE CAPTION RULE (M-2d, CE-ruled). THE THIRD DOOR of F-06.120's class:
+  // the 22:53:58 weekly rundown convicted on "**Already blocked:**" — a markdown HEADING.
+  // The marker and the participle sit inside one two-word fragment, so F-06.124's binding
+  // was satisfied CORRECTLY by its own rule. The cure was not wrong; its SUBJECT was.
+  //
+  // THE BOUNDARY IS DRAWN ON STRUCTURE-AS-CAPTION, NEVER ON BREVITY OR VERBLESSNESS, and
+  // the reason is the estate's own founding specimen: F-04.71's costume #1 was a
+  // "Cancelled: …" dressed as mutationLines' own format with tool_calls null — a
+  // LABEL-COLON FRAGMENT. A rule exempting "non-sentential fragments" wholesale would
+  // exempt the original costume class and the guard would go deaf to the first lie it was
+  // ever built to catch. So a fragment leaves eligibility ONLY when it is a CAPTION: a
+  // markup-labeled line that INTRODUCES following content, in which case the content
+  // beneath it is what the ladder reads. A standalone label-colon line with nothing
+  // following REMAINS eligible — that is the F-04.71 shape. Terse sentences are untouched.
+  //
+  // ONE FAITHFUL REFINEMENT, DISCLOSED (§0.2): the ruling names "list bullet" among the
+  // markup forms, but a bullet's content sits ON the line rather than beneath it, and
+  // exempting bullets would make the LAST bullet of a list arbitrarily eligible while its
+  // identical siblings were not — a hole of exactly the kind the deaf-cure test exists to
+  // forbid. So bullets have their MARKER STRIPPED and stay eligible: "the content is what
+  // the ladder reads" honoured, with no eligibility lost. Headings and bold-label lines
+  // are the caption forms, and only when something follows them.
+  const HEADING_RE = /^#{1,6}\s/;
+  const BOLD_LABEL_RE = /^\*{1,2}[^*]+\*{1,2}\s*:?\s*$/;
+  const BULLET_RE = /^(?:[-*+]|\d+[.)])\s+/;
+  const rawLines = reply.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter(Boolean);
+  const sentences = rawLines
+    .map((x, i) => {
+      const hasFollowing = rawLines.slice(i + 1).some(Boolean);
+      if (hasFollowing && (HEADING_RE.test(x) || BOLD_LABEL_RE.test(x))) return '';  // a caption
+      return x.replace(BULLET_RE, '');                                               // content, unmarked
+    })
+    .filter(Boolean);
+  // THE ELIGIBLE TEXT IS WHAT THE LADDER READS — every claim family, every marker, every
+  // class test. The first build of this movement computed the families on the RAW reply
+  // and applied caption-exclusion only later, per sentence: so a costume delivered inside
+  // a BULLET ("- Cancelled: 18 December") or wearing bold ("**Cancelled:**") never even
+  // reached the ladder, because MUTATION_CLAIM_RE's colon limb anchors on whitespace and
+  // markup is not whitespace. The deaf-cure fixtures caught it. One text, read once.
+  const eligible = sentences.join('\n');
+  const mutationClaim = MUTATION_CLAIM_RE.test(eligible) || DOORLINE_CLAIM_RE.test(eligible);
   // ── THE ACKNOWLEDGEMENT PREDICATE, DEFINED POSITIVELY (executor-authored,
   // Stage-1-scoped, DISCLOSED). The first ladder defined `acknowledgement` NEGATIVELY —
   // "whatever is not a completed act" — and that was wrong for a derivable reason:
@@ -1298,17 +1370,18 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // "Shall I log her?" / "Logging her now" as the turn that ACTUALLY dispatches.
   // Stage-1-scoped like MUTATION_CLAIM_RE and for the same reason: no gauntlet arm reads
   // it, so no shared meaning moves (the masking law, honored by construction).
-  const ackShaped = ACK_INTENT_RE.test(reply) && !DONE_MARKER_RE.test(reply);
-  const completed = (COMPLETED_ACT_RE.test(reply) || mutationClaim) && !JOT_CLAIM_RE.test(reply);
-  let claimsAct = ACTION_CLAIM_RE.test(reply) || completed;
-  const jotClaim  = JOT_CLAIM_RE.test(reply);
-  const narrated  = NARRATED_LOOKUP_RE.test(reply);
+  const ackShaped = ACK_INTENT_RE.test(eligible) && !DONE_MARKER_RE.test(eligible);
+  const completed = (COMPLETED_ACT_RE.test(eligible) || mutationClaim) && !JOT_CLAIM_RE.test(eligible);
+  let claimsAct = ACTION_CLAIM_RE.test(eligible) || completed;
+  const jotClaim  = JOT_CLAIM_RE.test(eligible);
+  const narrated  = NARRATED_LOOKUP_RE.test(eligible);
   // F-06.122 — an invented PRESENCE is an existence claim exactly as an invented absence
   // is; it must be able to reach the ladder at all before any limb can judge it.
-  const presenceClaim = PRESENCE_ASSERT_RE.test(reply);
+  const presenceClaim = PRESENCE_ASSERT_RE.test(eligible);
   // F-06.121 — the bare participle carrying its completion in a temporal word.
-  const participleDone = PARTICIPLE_COMPLETION_RE.test(reply);
-  if (participleDone) claimsAct = true;
+  const participleDone = PARTICIPLE_COMPLETION_RE.test(eligible);
+  const stativeDone = STATIVE_COMPLETION_RE.test(eligible);
+  if (participleDone || stativeDone) claimsAct = true;
   if (!claimsAct && !jotClaim && !narrated && !presenceClaim) return null;
   // The witness line is the SAME derivation the persisted tail uses — never a second
   // authority, never a re-implementation (D-2's one home).
@@ -1348,10 +1421,15 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // counts when it sits in the SAME SENTENCE as a claim, OR when it is the reply's
   // "Done."-class OPENER — the short leading sentence the CE named by that name. Both
   // directions are asserted at §8.1 with tonight's exact bytes.
-  const sentences = reply.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter(Boolean);
+  // (`sentences` and `eligible` are computed once, above, beside the caption rule.)
   const isClaimSentence = (x) => ACTION_CLAIM_RE.test(x) || COMPLETED_ACT_RE.test(x)
-    || MUTATION_CLAIM_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x);
-  const markerIn = (x) => AGENTIVE_CLAIM_RE.test(x) || DONE_MARKER_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x);
+    || MUTATION_CLAIM_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
+    || DOORLINE_CLAIM_RE.test(x);
+  // the stative "<participle> as" IS a completion marker — that is what carries the claim
+  // in the shape F-06.126 has been unable to see for three batches.
+  const markerIn = (x) => AGENTIVE_CLAIM_RE.test(x) || DONE_MARKER_RE.test(x)
+    || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
+    || DOORLINE_CLAIM_RE.test(x);
   const opener = sentences[0] || '';
   // the "Done."-class opener: SHORT and carrying nothing but the completion word. Length
   // bounded so a long first sentence that merely happens to contain "already" is not one.
@@ -1363,7 +1441,7 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // CENSUS (zero hands) rather than by the word. The two families are split here for
   // exactly that reason and for no other.
   const DONE_AGENTIVE_OPENER_RE = /\b(?:done|sorted|handled|just did|that's (?:filed|logged|booked|done))\b/i;
-  const agentive = AGENTIVE_CLAIM_RE.test(reply)
+  const agentive = AGENTIVE_CLAIM_RE.test(eligible)
     || (opener.length <= 40 && DONE_AGENTIVE_OPENER_RE.test(opener));
   const convictable = sentences.some((x) => isClaimSentence(x) && markerIn(x))
     || (doneOpener && sentences.some(isClaimSentence));
@@ -1378,7 +1456,8 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   //     answered by any non-read hand.
   // A filed lead does not witness an unblock; that is the whole reason the match is
   // class-scoped rather than "any prior write".
-  const deedClass = mutationClaim ? 'date' : 'records';
+  // F-06.128: three classes, granularity following the HAND taxonomy.
+  const deedClass = mutationClaim ? 'date' : (BOOKING_CLAIM_RE.test(eligible) ? 'booking' : 'records');
   let kind;
   if (writeHands.length > 0) kind = 'witnessed_hand';
   else if (witnessed) kind = 'witnessed';
@@ -1398,7 +1477,7 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // intention to look is neither. Two independent guards on the lawful shapes — the
   // ackShaped exclusion and the absence arm itself.
   else if (existenceOnly && hands.length === 0 && mode === 'business' && !ackShaped
-           && (ABSENCE_ASSERT_RE.test(reply) || presenceClaim)) kind = 'costume';
+           && (ABSENCE_ASSERT_RE.test(eligible) || presenceClaim)) kind = 'costume';
   else if (ackShaped) kind = 'acknowledgement';
   // LIMB 3 — Fork A'. An act-class claim with no write hand this turn may be an honest
   // reference to an earlier turn's deed. The conversation's own persisted hands answer it.
@@ -1448,13 +1527,14 @@ function wireGuardClassify(vendorId, result, priorDeed) {
     mode,
     specimen: kind === 'costume',
     claims: [
-      ACTION_CLAIM_RE.test(reply) ? 'action_claim' : null,
-      COMPLETED_ACT_RE.test(reply) && !JOT_CLAIM_RE.test(reply) ? 'completed_act' : null,
+      ACTION_CLAIM_RE.test(eligible) ? 'action_claim' : null,
+      COMPLETED_ACT_RE.test(eligible) && !JOT_CLAIM_RE.test(eligible) ? 'completed_act' : null,
       mutationClaim ? 'mutation_claim' : null,
       jotClaim ? 'jot_claim' : null,
       narrated ? 'narrated_lookup' : null,
       presenceClaim ? 'presence_claim' : null,
       participleDone ? 'participle_completion' : null,
+      stativeDone ? 'stative_completion' : null,
     ].filter(Boolean),
     hand_census: {
       total: hands.length, write: writeHands.length, read: readHands.length,
@@ -1491,6 +1571,18 @@ function wireGuardClassify(vendorId, result, priorDeed) {
 const PRIOR_DEED_LOOKBACK = 10; // turns. A conversation is already bounded; N caps the
 // tail on a long thread. Small by intent — a deed the vendor is still talking about is
 // recent, and a wider window buys drift, not truth.
+// ── DOORLINE_CLAIM_RE (M-2d) — CAUGHT BY THE CHAIR'S OWN DEAF-CURE FIXTURE, filed not
+// papered. Fixture (ii) — "Cancelled: 18 December", standalone, zero hands, F-04.71's
+// costume #1 — WALKED as `state_description` on the first build of this movement. The
+// caption rule was innocent: the fragment stayed eligible exactly as ruled. What freed it
+// was F-06.120's MARKER GATE, which found no agentive subject and no completion word in a
+// line whose completion is carried by its FORM. A bare participle + colon IS
+// mutationLines' own door-line format — the shape the estate ships when a deed is REAL —
+// so wearing it is itself the completion claim. That is the whole of F-04.71's costume.
+// Made addressable here so the marker gate can see it; the bytes are MUTATION_CLAIM_RE's
+// colon limb, BYTE-IDENTICAL, no new meaning entering the estate. Asserted at §10.1(ii).
+const DOORLINE_CLAIM_RE = /(?:^|\n)[*_#\s]*(?:unblocked|blocked|cancelled|canceled|cleared|moved|rescheduled)[*_\s]*:/i;
+const BOOKING_DEED_RE = /^donna_book_event$/i;  // F-06.128: derived by command from the tool registry
 const DATE_DEED_RE = /^donna_(block_date|unblock_date)$/i; // derived by command from the
 // tool registry at this tip; actionKind reads these as plain 'write' (neither "calendar"
 // nor "event" appears in either name), so the date class names them explicitly.
@@ -1507,6 +1599,9 @@ function isDeedOfClass(name, deedClass) {
   // and it acquitted "the note is filed". The claim happened to be true; the acquittal was
   // reached for the wrong reason, which is the same defect either way round. An unblock
   // does not witness a filing any more than a filed lead witnesses an unblock.
+  // F-06.128 (M-2d): a booking claim is witnessed by the BOOKING HAND and nothing else.
+  // The two-class map coerced it into `records`, where its real deed could not acquit it.
+  if (deedClass === 'booking') return BOOKING_DEED_RE.test(n);
   if (deedClass === 'date') return isDateDeed;
   return !isDateDeed;                                       // records class: writes that are not date deeds
 }

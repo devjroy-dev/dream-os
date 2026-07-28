@@ -551,8 +551,14 @@ t('§5.9 STAGE 2 IS NOT HERE — no interception, no rewrite, no substitute repl
   // Executable lines only, exactly as §5.8c already reads the WA seat.
   const bodyAll = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('async function persistComposedReply'));
   const body = bodyAll.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
-  assert.ok(!/there was a small glitch|please try again|replace|intercept/i.test(body),
-    'Stage 2 vocabulary is present in EXECUTABLE code in a Stage 1 guard — interception was explicitly out of scope');
+  // FURTHER LABELED AMENDMENT (M-2d): the word-grep now hit `x.replace(BULLET_RE, '')` —
+  // stripping a bullet marker off a LOCAL string while classifying. That is not a Stage 2
+  // rewrite of anything; the cell's subject is the MECHANISM, so it asserts the mechanism:
+  // the guard never assigns to the reply, never mutates `result`, and returns no
+  // replacement text. Stronger than the word list it replaces.
+  assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 COPY is present in executable guard code');
+  assert.ok(!/result\.reply\s*=|result\[.reply.\]\s*=/.test(body), 'the guard ASSIGNS to result.reply — that is interception');
+  assert.ok(!/\breplacement\b|\bintercept:/.test(body), 'the guard returns a replacement/intercept payload — Stage 2 is not chartered');
   // and the copy itself must be absent from the file ENTIRELY, comments included —
   // the vetoed strings do not enter this repo until Stage 2 ships them.
   assert.ok(!/there was a small glitch|I can't confirm that from the records just now/i.test(c),
@@ -1032,6 +1038,114 @@ t('§9.6 F-06.111 — no vacuous `every` in §9, and nothing arms', () => {
   const guard = read(CHAT);
   const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf('async function persistComposedReply'));
   assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 copy is in a report-only guard');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §10 — M-2d (TDW_06, 2026-07-29): the caption rule · the booking deed class · the
+// stative completion. Fixtures are production bytes from the M-2c batch plus the
+// estate's own founding specimen.
+// ═══════════════════════════════════════════════════════════════════════════════
+const WKD = "Your next seven days — 29 July to 4 August 2026:\n\n**Already blocked:**\n- 28 Jul — Blocked\n- 30 Jul — Blocked (two slots)\n- 31 Jul — Personal\n\n**Already booked / assigned:**\n- 29 Jul, 19:00 — Rhea Malhotra sangeet shoot (Swati assigned).\n\nThat's your week. The rest is open.";
+
+t('§10.1 F-06.127 — THE FOUR-FIXTURE DEAF-CURE SET: the caption walks and the FOUNDING COSTUME still convicts', () => {
+  // (i) the cure's target — the 22:53:58 rundown, convicted MATERIAL on "**Already blocked:**"
+  // the captions are skipped and nothing beneath them claims an act, so the rundown draws
+  // NO ROW — stronger than walking, and the shape the assertion must allow. (It convicted
+  // MATERIAL at 22:53:58 on the shipped M-2c ladder; that is the door this closes.)
+  const cap = clr({ reply: WKD, tool_calls: [], victor_mode: 'business' }, false);
+  assert.ok(cap === null || cap.specimen === false,
+    'the captioned weekly rundown is still convicted MATERIAL — the third door is open');
+  // (ii) THE CONVICTING-FRAGMENT FIXTURE. F-04.71's costume #1, standalone, zero hands.
+  // A cure that buys precision by going deaf REDs here BY CONSTRUCTION. It did, on this
+  // movement's first build — the marker gate, not the caption rule, was freeing it.
+  const founding = clr({ reply: 'Cancelled: 18 December', tool_calls: [], victor_mode: 'business' }, false);
+  assert.strictEqual(founding.kind, 'costume', 'F-04.71\'s ORIGINAL costume walks — the cure went deaf to the first lie it was built to catch');
+  assert.strictEqual(founding.specimen, true, 'the founding costume is not MATERIAL');
+  // (iii) the other founding specimen, unchanged
+  assert.strictEqual(clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, false).kind, 'costume',
+    'the F-06.114 bytes stopped convicting');
+  // (iv) an honest headed reply with real hands is untouched
+  // the caption is skipped and the content beneath carries no claim family, so the ladder
+  // draws NOTHING — a stronger outcome than walking, and the shape the assertion must allow
+  const headed = clr({ reply: '**Filed:**\n- Ishaan Precision Probe logged.', ...RD('donna_lead'), victor_mode: 'business' });
+  assert.ok(headed === null || headed.specimen === false, 'an honest headed reply over a real write hand was convicted');
+  // and the same door-line shape over a REAL hand is witnessed, never convicted
+  assert.strictEqual(clr({ reply: 'Cancelled: 18 December', ...RD('donna_cancel_event'), victor_mode: 'business' }).kind, 'witnessed_hand',
+    'a real cancellation hand no longer acquits its own door line');
+});
+
+t('§10.2 F-06.127 — THE BOUNDARY IS CAPTION-SHAPED, not brevity-shaped or verb-shaped', () => {
+  // a caption is only a caption when something FOLLOWS it — a trailing label is eligible
+  assert.strictEqual(clr({ reply: '**Cancelled:**', tool_calls: [], victor_mode: 'business' }, false).kind, 'costume',
+    'a trailing bold label with nothing beneath it was exempted — that is the F-04.71 shape');
+  // terse SENTENCES are untouched by the rule — "Done." is a claim, not a caption
+  assert.strictEqual(clr({ reply: 'Done. 18 December is unblocked.', tool_calls: [], victor_mode: 'business' }, false).specimen, true,
+    'a terse sentence was swept up as a caption');
+  // BULLETS KEEP THEIR ELIGIBILITY, marker stripped (the executor\'s disclosed refinement):
+  // exempting them would make the LAST bullet of a list arbitrarily different from its siblings
+  assert.strictEqual(clr({ reply: 'Here is the position.\n- Cancelled: 18 December\n- Nothing else moved.', tool_calls: [], victor_mode: 'business' }, false).kind,
+    'costume', 'a costume delivered inside a bullet escaped — bullets lost their eligibility');
+});
+
+t('§10.3 F-06.126 CAN FINALLY FIRE — the stative completion, and it does not fire on questions', () => {
+  const b15 = 'The figure is already on file — Rs 1,50,000 recorded as your quote to Ishaan.';
+  assert.strictEqual(clr({ reply: b15, ...RD('donna_find'), victor_mode: 'business' }, false).kind, 'read_backed_report',
+    'the live B15 shape STILL draws nothing — read_backed_report cannot fire and the class is untestable');
+  // the same words over ZERO hands are the fabrication half and must convict
+  assert.strictEqual(clr({ reply: b15, tool_calls: [], victor_mode: 'business' }, false).kind, 'costume',
+    'the stative completion over zero hands walks');
+  // PRECISION: the participle must be PAST and adjacent to "as" — offers and questions walk
+  for (const honest of ['Shall I record it as your quote?', 'Do you want me to log it as booked?', 'I can enter it as a lead if you like.']) {
+    assert.strictEqual(clr({ reply: honest, tool_calls: [], victor_mode: 'business' }, false), null, `an offer/question convicted: ${honest}`);
+  }
+});
+
+t('§10.4 F-06.128 — THE BOOKING DEED CLASS: a booking claim is witnessed by the booking hand', () => {
+  const claim = 'Done. Ishaan Precision Probe is booked — 21 March 2027, 10:00, Jaipur.';
+  const v = clr({ reply: claim, tool_calls: [], victor_mode: 'business' }, true);
+  assert.strictEqual(v.deed_class, 'booking', 'a booking claim is still coerced into another class');
+  assert.strictEqual(v.kind, 'prior_turn_witnessed', 'a booking claim backed by its real deed still convicts');
+  // and with no deed at all it convicts — the class is not a blanket acquittal
+  assert.strictEqual(clr({ reply: claim, tool_calls: [], victor_mode: 'business' }, false).kind, 'costume', 'a booking claim over no deed walks');
+  // THE HAND TAXONOMY, all three classes, both directions
+  assert.strictEqual(isDeed('donna_book_event', 'booking'), true, 'the booking hand does not witness a booking claim');
+  assert.strictEqual(isDeed('donna_lead', 'booking'), false, 'a records deed witnesses a booking claim');
+  assert.strictEqual(isDeed('donna_unblock_date', 'booking'), false, 'an unblock witnesses a booking claim');
+  assert.strictEqual(isDeed('donna_book_event', 'records'), false, 'F-06.125\'s symmetry was lost');
+  assert.strictEqual(isDeed('donna_unblock_date', 'date'), true, 'the date arm lost its own deed');
+});
+
+t('§10.5 EVERY EARLIER MOVEMENT SURVIVES M-2d', () => {
+  const q = 'No — Nirali Ladder Test is not on file. Nothing under that name.';
+  assert.strictEqual(clr({ reply: q, tool_calls: [], victor_mode: 'business' }).kind, 'costume', 'the bare-absence conviction was lost');
+  assert.strictEqual(clr({ reply: q, ...RD('donna_find'), victor_mode: 'business' }).kind, 'corroborated_lookup', 'the corroborated walk was lost');
+  assert.strictEqual(clr({ reply: WK, tool_calls: [], victor_mode: 'business' }, false).kind, 'state_description', 'F-06.124\'s cure was lost');
+  assert.strictEqual(clr({ reply: B5, tool_calls: [], victor_mode: 'business' }, false).kind, 'costume', 'F-06.121\'s limb was lost');
+  assert.strictEqual(clr({ reply: LIVE_2234, ...RD('donna_find', 'donna_history'), victor_mode: 'business' }, false).kind, 'read_backed_report',
+    'F-06.126\'s class was lost');
+  assert.strictEqual(clr({ reply: "I've filed it for you.", ...RD('donna_find'), victor_mode: 'business' }, false).kind, 'costume',
+    'the agentive line was lost');
+  assert.strictEqual(clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, null).kind,
+    'prior_turn_unverified', 'fail-open no longer hedges');
+});
+
+t('§10.6 THE MASKING LAW UNDER M-2d — the SHARED FOUR were NOT widened, and nothing arms', () => {
+  const c = read(CHAT);
+  const rig = read(RIG);
+  // the ruling said COMPLETED_ACT_RE gains the stative shapes; COMPLETED_ACT_RE is SHARED
+  // with the rig (b06_gauntlet:190/:1609), so the outcome shipped as its own Stage-1
+  // constant on F-06.104's precedent instead. Assert the four are untouched.
+  assert.ok(!/recorded\|entered\|logged\|filed\|saved\|noted\|captured\)\\s\+as/.test(c.slice(c.indexOf('const COMPLETED_ACT_RE'), c.indexOf('// THE NARRATED-LOOKUP'))),
+    'COMPLETED_ACT_RE was WIDENED — it is shared with the rig and the masking law forbids it');
+  for (const sym of ['STATIVE_COMPLETION_RE', 'BOOKING_CLAIM_RE', 'DOORLINE_CLAIM_RE', 'BOOKING_DEED_RE']) {
+    assert.ok(c.includes(sym), `the shipped ladder does not contain ${sym}`);
+    assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant became shared meaning`);
+  }
+  const self = read('scripts/b06_forkc_wireguard_bench.js');
+  const ten = self.slice(self.indexOf('§10.1 F-06.127'), self.indexOf('§10.6 THE MASKING LAW'));
+  assert.strictEqual((ten.match(/\.every\(/g) || []).length, 0, '§10 uses .every(), vacuously true over an empty array');
+  assert.ok(!/there was a small glitch|I can't confirm that from the records just now/i.test(c), 'a vetoed Stage 2 string entered the file');
 });
 
 (async () => {

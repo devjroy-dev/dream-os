@@ -185,3 +185,43 @@ Bench **63 → 69**, one **labeled amendment** (§5.9, count preserved). That ce
 ## Next
 
 Fresh batch windowed `>=` this seal, **terminal transcript beside the SELECT** per the new measurement-read law, Blocks 4 and 5 pinned to the classes they exercise. What M-2c must earn: 22:34:44's shape walking as `read_backed_report`, and the still-unproven `state_description` and linking-verb cells finally firing.
+
+---
+
+# M-2d — THE CAPTION RULE · THE BOOKING DEED CLASS · THE STATIVE COMPLETION
+
+**Base:** `dream-os @ e4573bc`. **Delta: two files** + this handover. W-1 shut; `vendorInbound.js` 0-line; **report-only — nothing arms.**
+
+## F-06.127 — the caption rule, drawn on structure
+
+The third door of F-06.120's class: the 22:53:58 rundown convicted on **`**Already blocked:**`**, a markdown heading. F-06.124's binding was satisfied *correctly* — the marker and the participle sit inside one two-word fragment. The cure was not wrong; its **subject** was.
+
+Boundary as ruled: a fragment leaves eligibility **only when it is a CAPTION** — a markup-labeled line that *introduces following content*, in which case the content beneath it is what the ladder reads. A standalone label-colon line **remains eligible**: that is F-04.71's costume #1. Terse sentences untouched.
+
+**One disclosed refinement (§0.2).** The ruling names "list bullet" among the markup forms, but a bullet's content sits *on* the line, and exempting bullets would make the **last** bullet of a list arbitrarily eligible while its identical siblings were not — a hole of exactly the kind the deaf-cure test forbids. So bullets have their **marker stripped** and stay eligible.
+
+## F-06.128 — the booking deed class
+
+The 22:55:12 row class-matched a **booking** claim to `records`, so Fork A′ hunted a records deed while the real `donna_book_event` sat one class away. Third class added; class-match granularity now follows the **hand taxonomy**. F-06.125's symmetry extended, not patched.
+
+## F-06.126's recall gap — and a §0.2 report on its siting
+
+The ruling reads *"COMPLETED_ACT_RE gains the stative shapes."* **`COMPLETED_ACT_RE` is one of the SHARED FOUR** — `b06_gauntlet.js` requires it at `:190` and consumes it at `:1609` — so widening it moves what the **rig's arms** convict (the masking law, NOTE_12 §9). The estate ruled this exact shape once before and answered it the same way: **F-06.104 minted a separate Stage-1-scoped constant rather than widening the four.** So the ruled *outcome* ships as `STATIVE_COMPLETION_RE`, sited on that precedent. Reported, not adapted silently. §10.6 asserts the four are untouched.
+
+## TWO DEFECTS OF MY OWN, both caught by the chair's fixtures
+
+**(a) The deaf-cure fixture worked exactly as designed.** On this movement's first build, fixture (ii) — `Cancelled: 18 December`, standalone, zero hands, **F-04.71's founding costume** — **walked** as `state_description`. The caption rule was innocent; **F-06.120's marker gate** freed it, finding no agentive subject and no completion word in a line whose completion is carried by its **form**. A bare participle + colon *is* `mutationLines`' own door-line format — the shape the estate ships when a deed is real — so wearing it **is** the completion claim. Cured with `DOORLINE_CLAIM_RE` (MUTATION_CLAIM_RE's colon limb, byte-identical, made addressable).
+
+**(b) A structural mismatch in my own build, caught by fixtures (ii) and the bullet cell.** The claim-family gate ran on the **raw** reply while caption-exclusion and bullet-stripping happened later, per-sentence. So a costume delivered inside a bullet, or wearing bold, **never reached the ladder at all** — `MUTATION_CLAIM_RE`'s colon limb anchors on whitespace, and markup is not whitespace. Cured by computing the **eligible text once** and reading every family, marker and class test from it: **17 family tests re-pointed.**
+
+## Proof
+
+Bench **69 → 75**, two labeled amendments (both count-preserved): §5.9 now asserts the **mechanism** (no assignment to `result.reply`, no replacement payload) rather than word-grepping, because `x.replace(BULLET_RE, '')` is bullet-stripping, not interception; and two §10 cells allow `null`, because the ladder correctly draws **no row** for a captioned rundown and for an honest headed reply — stronger than walking.
+
+**Seven mutations of shipped code, all RED, `cmp`-restored byte-identical:** caption rule removed (74/75) · caption ignores "introduces content" (74/75) · bullets exempted instead of stripped (74/75) · **doorline neutered — deaf to F-04.71 (73/75)** · booking class coerced to records (74/75) · stative completion removed (74/75) · eligible text reverted to raw reply (74/75). **Three mutations reported anchor misses and were re-run correctly rather than counted.**
+
+**Floor:** selftest **351/351** · guard **75/75** · relay 40/40 · f0681 17/17 · f0692 23/23 · **meter 28/29 KNOWN RED** · every other bench exit 0.
+
+## Next — the convergence bar
+
+The gate opens on a batch with **zero false positives AND every known class exercised at least once**: `state_description` live on its own shape · `read_backed_report` fired · the booking walk · the caption/doorline pair. Precision without coverage is the hollow number. Next batch seats on chair-minted virgin fixtures **Oorja Gate Probe** and **Sameer Marker Test**, SQL pre-flighted both planes; `Ishaan Precision Probe` is **burned**.
