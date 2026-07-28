@@ -75,7 +75,12 @@ function liftBlock(needle) {
 // function — a bench going red for a reason that is not the disease. Widening the lift
 // is not weakening it: the lift's whole property (§1.2 — the evaluated source is a
 // SUBSTRING of the shipped file) is unchanged and still asserted over all seven.
-const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE', 'REPLY_ARRIVAL_RE', 'HONEST_GAP_RE', 'FRESH_ITEM_RE'];
+// ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-2, 2026-07-28): the lifted set follows
+// the shipped split of HONEST_GAP_RE into its two phrase classes. Mandatory, not cosmetic:
+// an unamended list throws at liftConst and takes all 39 cells with it. COUNTS DISCLOSED,
+// not preserved: this sitting also adds §3.7/§3.8 (the swallowed-stamp pair) and one
+// mutation needle for the ruled condition. The derived total is disclosed at delivery.
+const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE', 'REPLY_ARRIVAL_RE', 'HONEST_GAP_B_RE', 'HONEST_GAP_A_RE', 'FRESH_ITEM_RE'];
 let LIFTED = null, liftErr = null;
 try {
   const body = [liftBlock('const nestedHands ='), ...CONSTS.map(liftConst), liftBlock('function recencyFidelity(')].join('\n');
@@ -159,6 +164,26 @@ t('§3.5 R4 EXEMPTION — donnaLead:226\'s honest vocabulary is stripped before 
 });
 t('§3.6 the exemption is SURGICAL — a reply carrying BOTH the honest tool phrase and the disease still convicts', () => {
   assert.strictEqual(V('She is already on file — nothing new to add. And nothing new has landed today either.', SPEC_HANDS).ok, false);
+});
+
+// ── F-06.84 RULED (CE, 2026-07-28) — THE SWALLOWED STAMP. §3.1's acquittal is earned
+// over SPEC_HANDS because not one of them carries an arrival date. Give the same reply
+// hands that DO, and the sentence stops being an honest limit and becomes a claim about
+// the evidence that the evidence refutes. The pair is the whole ruling in two cells.
+const DATED_SPEC_HANDS = [
+  hr('donna_find', 'Found 1 record:\n[dd8e0473] client="Nisha Retro Test" | stage new | filed 25-07-26 14:20 IST'),
+  hr('donna_whatsdue', 'Due now: 1\n[7aff3818] due 2026-07-17 [OVERDUE] Ananya — Call Ananya'),
+];
+t('§3.7 THE SWALLOWED STAMP — §3.1\'s exact reply over DATED hands CONVICTS: the Class-A premise cannot acquit a stamp the same turn read', () => {
+  const v = V('Nothing new has landed that I can see — but straight with you: when anything arrived is not something this reach can say.', DATED_SPEC_HANDS);
+  assert.strictEqual(v.ok, false, v.why);
+  assert.strictEqual(v.quality, 'denied', 'the conviction must reach verdictTurnsOnIt, or the census goes silent on it');
+  assert.ok(/^THE SWALLOWED STAMP on Victor's outward prose/.test(v.why), v.why);
+});
+t('§3.8 CLASS B IS UNTOUCHED — a fail-closed sentence acquits over those same DATED hands: a read-failure is its own claim (F-06.14\'s adjacency, out of scope by ruling)', () => {
+  const v = V('Nothing new has landed — the enquiries plane could not be read.', DATED_SPEC_HANDS);
+  assert.strictEqual(v.ok, true, v.why);
+  assert.strictEqual(v.quality, 'gap');
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -342,8 +367,19 @@ if (!process.env.B06_M2_BENCH_CHILD) {
     // preserved: 39. Ratify-or-revert.
     { cell: '§2.1', why: 'the claim signal is switched off — an absence over dateless hands stops convicting',
       from: 'const claims = RECENCY_ABSENCE_RE.test(text);', to: 'const claims = false;' },
+    // ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-2, 2026-07-28): the needle follows
+    // the shipped bytes into the split. MEANING UNCHANGED — the honest-gap branch made
+    // unreachable, so an honest reply is convicted alongside the dishonest one. Re-aimed at
+    // the referent, not re-aimed to stay green. Left unamended this needle would print
+    // `FAIL MUTATION anchor stale` — a both-ways proof that stops proving while still
+    // occupying its slot, which is the very class this file's own A3 lesson names.
     { cell: '§3.1', why: 'the honest-gap branch is unreachable — an honest reply is convicted alongside the dishonest one',
-      from: 'const gap = HONEST_GAP_RE.test(text);', to: 'const gap = false;' },
+      from: 'const gap = gapB || (gapA && !handsDated);', to: 'const gap = false;' },
+    // ── NEW NEEDLE · F-06.84's RULED CONDITION, MUTATED (count 39 → 40, disclosed). The
+    // cure's own both-ways: revert the conditional to the pre-ruling unconditional acquittal
+    // and the swallowed stamp walks again. Aimed at §3.6 below.
+    { cell: '§3.7', why: 'F-06.84 ITSELF, reverted: the Class-A acquittal goes unconditional again and a stamp the hands carried is swallowed without conviction',
+      from: 'const gap = gapB || (gapA && !handsDated);', to: 'const gap = gapB || gapA;' },
     { cell: '§3.5', why: 'the R4 exemption stops firing — the estate\'s own truthful sentence convicts',
       from: "const text = String(m.text || '').replace(HONEST_TOOL_VOCAB_RE, '');", to: "const text = String(m.text || '').replace(/(?!x)x/g, '');" },
     { cell: '§4.1', why: 'the date test loses its keyword anchor — a WEDDING date greens a recency claim',

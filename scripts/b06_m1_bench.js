@@ -74,15 +74,21 @@ function liftBlock(needle) {
   }
   throw new Error(`unbalanced braces lifting "${needle}"`);
 }
+// ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-2, 2026-07-28): HONEST_GAP_RE was
+// SPLIT BY PHRASE CLASS at the shipped file, so the lifted set follows it. This is not
+// cosmetic: recencyFidelity is lifted as BYTES and evaluated with only these names in
+// scope, so an unamended list does not degrade the bench — liftConst throws "shipped
+// const HONEST_GAP_RE is GONE" and all 45 cells collapse. MEANINGS UNCHANGED; the set
+// grows by one because one constant became two. Count preserved: 45. Ratify-or-revert.
 const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE',
-                'REPLY_ARRIVAL_RE', 'HONEST_GAP_RE', 'FRESH_ITEM_RE'];
+                'REPLY_ARRIVAL_RE', 'HONEST_GAP_B_RE', 'HONEST_GAP_A_RE', 'FRESH_ITEM_RE'];
 let LIFTED = null, liftErr = null;
 try {
   const body = [liftBlock('const nestedHands ='), ...CONSTS.map(liftConst), liftBlock('function recencyFidelity(')].join('\n');
   LIFTED = new Function(`${body}\nreturn { recencyFidelity, nestedHands, ${CONSTS.join(', ')} };`)();
 } catch (e) { liftErr = e; }
 
-t('§1.1 the re-aimed detector lifts clean — seven constants and both functions found by name', () => {
+t('§1.1 the re-aimed detector lifts clean — EIGHT constants (F-06.84 split the gap by phrase class) and both functions found by name', () => {
   assert.ok(!liftErr, liftErr && liftErr.message);
   assert.strictEqual(typeof LIFTED.recencyFidelity, 'function');
 });

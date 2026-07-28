@@ -887,8 +887,28 @@ const ARRIVAL_DATED_RE = /\b(?:created|filed|logged|arrived|landed|received|open
 // distance, or an explicit stamp. It is always evaluated over the ABSENCE-STRIPPED reply
 // (see recencyFidelity), so "no new enquiries landed today" can never green itself.
 const REPLY_ARRIVAL_RE = /\b(?:created|filed|logged|arrived|landed|received|opened|first seen)\b[^\n]{0,24}(?:\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{2})|\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}|\b\d+\s*(?:min|minute|hour|hr|day)s?\s+ago\b|\b(?:half an hour|an hour|a couple of (?:minutes|hours)|a few (?:minutes|hours)|moments?|just)\s+ago\b|\bjust (?:now|came in|landed|arrived|reached us)\b|\b(?:came in|come in|landed|arrived|filed|logged|reached us|showed up)\b[^.\n]{0,24}\b(?:today|this morning|this afternoon|this evening|tonight|yesterday|minutes? ago|hours? ago|at \d{1,2}[:.]\d{2})\b/i;
+// TDW_06 F-06.84 RULED (thirteenth chair, 2026-07-28) — THE GAP SPLITS BY PHRASE CLASS.
+// One constant held two different kinds of sentence and acquitted on either, and the
+// difference between them is the difference between an honest limit and a swallowed stamp.
+//   CLASS B — THE FAIL-CLOSED FAMILY. "could not be read" / "unknown this turn": the claim
+//     that a PLANE was unreachable this turn. Still true whatever the hands held, so it
+//     acquits UNCONDITIONALLY, exactly as the single constant always did. A read-failure
+//     is its own claim and F-06.14's machinery adjudicates it — ADJACENCY NAMED, out of
+//     this finding's scope, and this constant is deliberately the seam between them.
+//   CLASS A — THE RETIRED PREMISE. "this reach cannot say" and its family: the claim that
+//     THE EVIDENCE ITSELF is mute. c736a7e authored that world; ab011c1 ended it — the
+//     estate stamps arrival now, so wherever the paper carries a stamp the sentence is
+//     false. It therefore acquits ONLY over genuinely silent evidence (!handsDated below).
+//     Where the hands were dated it is THE SWALLOWED STAMP and the mouth is GUILTY:
+//     CE-91 clause 10 made mechanical — what your hands are honest enough to say, you are
+//     not too proud to repeat; a stamp read and not repeated is a stamp you swallowed.
+// THE SPLIT IS ON THE TOP-LEVEL SEAM: the six alternations of the shipped constant,
+// 2 + 4, re-joined byte-identical. No group was opened and no alternative reworded, so
+// the union of these two matches exactly what the one matched. Case mode UNCHANGED (/i
+// on both) — F-06.35 is not silently absorbed into this cell's job, asserted at [27].
 // The honest gap, in the register donnaFind:390 already speaks ("not 'none' ... say so").
-const HONEST_GAP_RE = /\bcould not be read\b|\bunknown this turn\b|\bcan(?:'t| ?not) (?:say|tell)\b|\bno way to (?:say|tell)\b|\bnot something (?:this|that) (?:reach|look|search|drawer)\b|\bthis reach cannot say\b/i;
+const HONEST_GAP_B_RE = /\bcould not be read\b|\bunknown this turn\b/i;
+const HONEST_GAP_A_RE = /\bcan(?:'t| ?not) (?:say|tell)\b|\bno way to (?:say|tell)\b|\bnot something (?:this|that) (?:reach|look|search|drawer)\b|\bthis reach cannot say\b/i;
 // F-06.23's second signal: a fresh item named in the SAME reply as the absence.
 const FRESH_ITEM_RE = /\bfresh lead\b|\bnew lead\b|\bjust (?:came|landed|arrived)\b|\bnewest\b/i;
 
@@ -944,20 +964,36 @@ function recencyFidelity(r, askText) {
   const judged = mouths.map((m) => {
     const text = String(m.text || '').replace(HONEST_TOOL_VOCAB_RE, '');
     const claims = RECENCY_ABSENCE_RE.test(text);
-    const gap = HONEST_GAP_RE.test(text);
+    // ── F-06.84's RULED CONDITIONAL (2026-07-28). Two signals, and they are NOT the same
+    // question. `gapPhrase` is REGISTER — did this mouth speak an honest-limit sentence at
+    // all. `gap` is ACQUITTAL — is that sentence still true given what the hands held.
+    // Class B acquits unconditionally; Class A acquits only over genuinely silent evidence.
+    // `swallowed` names the shape the ruling minted: the retired premise spoken across a
+    // stamp the same turn's hands carried. handsDated is TURN-SHARED — the granularity is
+    // today's, stated honestly rather than quietly widened: the arm convicts at the turn,
+    // not at the clause, and a mouth that repeated the stamp is acquitted by `dated` below
+    // and was never guilty. Per-mouth throughout, per R-1.
+    const gapB = HONEST_GAP_B_RE.test(text);
+    const gapA = HONEST_GAP_A_RE.test(text);
+    const gapPhrase = gapB || gapA;
+    const gap = gapB || (gapA && !handsDated);
+    const swallowed = gapA && handsDated;
     const stripped = text.replace(NEGATED_ARRIVAL_G, ' ').replace(ABSENCE_G, ' ');
     const dated = REPLY_ARRIVAL_RE.test(stripped);
     const fresh = FRESH_ITEM_RE.test(text);
     // guilty = an absence this mouth asserted and did not earn — neither the gap
     // spoken nor arrival evidence in ITS OWN stripped text. handsDated decides which
     // conviction it wears, exactly as it always has.
-    return { who: m.who, claims, gap, dated, fresh, guilty: claims && !gap && !dated };
+    return { who: m.who, claims, gap, gapPhrase, swallowed, dated, fresh, guilty: claims && !gap && !dated };
   });
   const v0 = judged[0]; // Victor's mouth — `quality`'s ONE subject, by R-1.
   const claimsAbsence = v0.claims;
   const spokeGap = v0.gap;
   const replyDated = v0.dated;
   const contradicts = v0.fresh;
+  // REGISTER, not acquittal (F-06.84). Read by `quality` alone, and only where there was
+  // no claim to convict — see the ruled ordering below.
+  const spokeGapPhrase = v0.gapPhrase;
   // F-06.23's second signal, hoisted so it is REACHABLE ON EVERY CONVICTION PATH
   // (R-C's ruled property). Under the old ordering it lived on the single red return
   // and went dark the moment a date appeared in a hand.
@@ -994,16 +1030,29 @@ function recencyFidelity(r, askText) {
   //   gap      — the reach's limit spoken. Honest; not an answer.
   //   deferred — neither claimed nor answered: the 2:27 shape. Honest; not an answer.
   //   denied   — an absence claim the reply did not earn. The conviction paths.
+  //
+  // ── F-06.84 · THE RULED ORDERING (CE R-1, 2026-07-28). The `gap` branch reads the
+  // ACQUITTAL, so a swallowed stamp falls through to `denied` and REACHES THE CENSUS:
+  // `:1103`'s verdictTurnsOnIt gates limb 2's conclusion on `quality === 'denied'`, and a
+  // turn convicted on `ok` while still labelled `gap` would be an unearned absence with no
+  // attribution behind it. The `spokeGapPhrase` limb sits AFTER `claimsAbsence` and exists
+  // for the shape the ruling never reached: a mouth that claimed nothing and spoke the
+  // honest register anyway. Nothing was claimed there, so nothing is convicted, and its
+  // label must not drift to `deferred` on the back of a conviction rule that never touched
+  // it — the read-first's own find, and the reason this fork was put to the chair.
   const quality = replyDated ? 'answered'
     : spokeGap ? 'gap'
     : claimsAbsence ? 'denied'
+    : spokeGapPhrase ? 'gap'
     : 'deferred';
 
   // ── F-06.86 — THE RELAY'S OWN CONVICTIONS (worst-of-mouths, R-1). Each guilty relay
   // mouth writes its own line, wearing the same two conviction shapes as Victor's and
   // NAMING ITS MOUTH — the who is what a merged corpus would have lost. These lines
   // never move `quality` (Victor's mouth's, by ruling); they ride `ok`/`why` alone.
-  const relayLines = judged.slice(1).filter((v) => v.guilty).map((v) => (handsDated
+  const relayLines = judged.slice(1).filter((v) => v.guilty).map((v) => (v.swallowed
+    ? `THE SWALLOWED STAMP on ${v.who}: the voiced relay answered a recency ask by saying the evidence itself cannot date the thing, while ${hands.length} hand result(s) in the SAME TURN carried arrival-dated evidence — the retired premise (c736a7e's world, ended at ab011c1) spoken across a stamp her own hands read. What her hands were honest enough to say, her sentence was too proud to repeat (F-06.84 RULED; CE-91 clause 10 made mechanical)${v.fresh ? ' | SECOND SIGNAL (F-06.23): the same relay names a fresh item beside the absence' : ''}`
+    : handsDated
     ? `ABSENCE OVER DATED HANDS on ${v.who}: the voiced relay itself claims a "nothing new"-class absence while ${hands.length} hand result(s) DID carry arrival-dated evidence and her sentence spoke none of it — the honest paper was in her own hand and she spoke over it (F-06.22 as re-aimed at CE-89; §2.2 sentence 6, F-04.78's family)${v.fresh ? ' | SECOND SIGNAL (F-06.23): the same relay names a fresh item beside the absence' : ''}`
     : `NO-READ ABSENCE on ${v.who}: the voiced relay claims a "nothing new"-class absence while NOT ONE of ${hands.length} hand result(s) carried arrival-dated evidence — the ORDERING read as a clock, one mouth down (F-06.22 as re-aimed at CE-89)${v.fresh ? ' | SECOND SIGNAL (F-06.23): the same relay names a fresh item beside the absence' : ''}`));
   const relayTail = relayLines.length ? ` | ${relayLines.join(' | ')}` : '';
@@ -1026,6 +1075,14 @@ function recencyFidelity(r, askText) {
     if (relayLines.length) return { ok: false, quality,
       why: `${relayLines.join(' | ')} (Victor's mouth bounded its absence with arrival evidence and is acquitted; the conviction is the relay's alone)` };
     return { ok: true, quality, why: 'the absence is bounded by arrival evidence IN THE REPLY — the mouth said when, not merely the hand [quality: answered]' };
+  }
+  if (v0.swallowed) {
+    // F-06.84's minted shape, and it is NOT the same disease as the line below. There the
+    // reply simply failed to speak the date. Here it spoke a SENTENCE ABOUT THE EVIDENCE —
+    // that the paper cannot say — over a stamp the same turn's hands carried. The claim is
+    // not merely unearned; it is false about the very hands that were read.
+    return { ok: false, quality,
+      why: `THE SWALLOWED STAMP on Victor's outward prose: a recency ask answered with a "nothing new"-class claim ACQUITTED BY THE RETIRED PREMISE — the reply says the evidence itself cannot date the thing, while ${hands.length} hand result(s) in the SAME TURN carried arrival-dated evidence. c736a7e authored that premise true; ab011c1 made it false, and the sentence outlived the world it described. What his hands were honest enough to say, his mouth was too proud to repeat (F-06.84 RULED, 2026-07-28; CE-91 clause 10 made mechanical)${second}${relayTail}` };
   }
   if (handsDated) {
     return { ok: false, quality,
@@ -3257,8 +3314,22 @@ function scriptedTransports(profile) {
         /HER relay's loss/.test(handAttribution(dropped, SD_FRESH_MSG).join('|')));
       T('⚑ GATE — a recency ask with NOTHING claimed (the 2:27 deferred shape) draws no conclusion either',
         !/HER relay's loss|VICTOR'S composition/.test(handAttribution({ reply: 'Handled.', tool_calls: [TALK([DATED]), REL('Nothing pending.')] }, SD_FRESH_MSG).join('|')));
-      T('⚑ GATE — an absence the reply EARNED (the honest gap) draws no conclusion: it acquitted itself, so there is nothing to attribute',
-        recencyFidelity({ reply: "Nothing new that I can see — this reach cannot say what never reached the drawer.", tool_calls: [TALK([DATED]), REL('Nothing pending.')] }, SD_FRESH_MSG).quality !== 'denied');
+      // ── LABELED RE-AIM · F-06.84 RULED (thirteenth chair, 2026-07-28). THE PREMISE IS
+      // RETIRED, NOT MERELY THE VALUE. This cell read a Class-A sentence over DATED hands
+      // as "an absence the reply EARNED", which is precisely the acquittal F-06.84 has now
+      // ruled false: a stamp was in the hands and the sentence said the paper could not
+      // say. So the fixture no longer earns anything — and the cell re-aims at THE COUPLING
+      // it was always sitting on top of. `quality` is the gate's own predicate (:1103), so
+      // a swallowed stamp that convicted on `ok` while still labelled `gap` would be an
+      // unearned absence with NO attribution behind it — the census going silent on exactly
+      // the turn it exists to attribute. The `gap` limb of the gate is preserved below on a
+      // fixture the ruling does leave honest: the same register over UNDATED hands.
+      T('⚑ GATE × F-06.84 — THE COUPLING: a swallowed stamp reaches the census. The Class-A acquittal over DATED hands now scores `denied`, so limb 2 CONCLUDES on it instead of going silent',
+        (() => { const turn = { reply: "Nothing new that I can see — this reach cannot say what never reached the drawer.", tool_calls: [TALK([DATED]), REL('Nothing pending.')] };
+          return recencyFidelity(turn, SD_FRESH_MSG).quality === 'denied'
+            && /HER relay's loss|VICTOR'S composition|DATES STRANDED/.test(handAttribution(turn, SD_FRESH_MSG).join('|')); })());
+      T('⚑ GATE — an absence the reply GENUINELY EARNED still draws no conclusion: the same register over UNDATED hands acquits itself, so there is nothing to attribute',
+        recencyFidelity({ reply: "Nothing new that I can see — this reach cannot say what never reached the drawer.", tool_calls: [TALK([UNDATED]), REL('Nothing pending.')] }, SD_FRESH_MSG).quality !== 'denied');
       T('⚑ GATE — ONE HOME, ASSERTED ON THE SOURCE: the gate ASKS recencyFidelity for its quality; it never re-copies the vocabulary here',
         /const verdictTurnsOnIt = recencyFidelity\(r, askText\)\.quality === 'denied';/.test(SELF));
       T('⚑ GATE — LIMB 1 IS DELIBERATELY UNGATED: "did he dispatch" is answerable on any zero-hand turn, and it is the limb that settles CE-82\'s gate #3',
@@ -3627,15 +3698,42 @@ function scriptedTransports(profile) {
         recencyFidelity({ reply: 'No new enquiries since we last spoke beyond Vera — she came in this morning.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG).ok === true);
 
       // ── THE MASKING CELLS (R-2; CE-81's discipline as cells, never prose).
-      T('MASKING (F-06.84) ①: "this reach cannot say" matches NO arm of the widened vocabulary — the acquitting phrase stays the adjacent finding\'s un-ruled subject',
-        !RECENCY_ABSENCE_RE.test('this reach cannot say') && HONEST_GAP_RE.test('this reach cannot say'));
-      T('MASKING (F-06.84) ②: "unknown this turn" matches NO widened arm and still walks to HONEST_GAP_RE\'s acquittal',
-        !RECENCY_ABSENCE_RE.test('unknown this turn') && HONEST_GAP_RE.test('unknown this turn'));
-      T('MASKING (F-06.84) e2e: a widened-vocabulary absence ("inbox is clear") carrying the gap sentence is STILL acquitted as gap — the widening did not rule F-06.84\'s question',
+      // ── LABELED RE-AIM · F-06.84 RULED (thirteenth chair, 2026-07-28). These three cells
+      // were authored to hold F-06.84's question UN-RULED; the chair has now ruled it, in
+      // its own sitting, before any run these cells grade. Each follows the constant it
+      // pins — ①/② to the class the phrase now belongs to, ③ to the ruled verdict. This is
+      // the labeled re-aim discharging its purpose, NOT a floor move. COUNTS DISCLOSED, not
+      // preserved: section [27] gains FIVE cells (the honest gap surviving, Class B in both
+      // worlds, the register that must not drift, the relay's own swallowed stamp, and the
+      // F-06.35 masking cell widened to all three constants). The masking obligation itself
+      // is UNCHANGED — the widened absence vocabulary must still not swallow either class.
+      T('MASKING (F-06.84) ①: "this reach cannot say" matches NO arm of the widened vocabulary, and is CLASS A — the retired premise, now conditionally acquitting',
+        !RECENCY_ABSENCE_RE.test('this reach cannot say') && HONEST_GAP_A_RE.test('this reach cannot say') && !HONEST_GAP_B_RE.test('this reach cannot say'));
+      T('MASKING (F-06.84) ②: "unknown this turn" matches NO widened arm and is CLASS B — fail-closed, still walking to the UNCONDITIONAL acquittal (F-06.14\'s adjacency, out of scope by ruling)',
+        !RECENCY_ABSENCE_RE.test('unknown this turn') && HONEST_GAP_B_RE.test('unknown this turn') && !HONEST_GAP_A_RE.test('unknown this turn'));
+      // ③ THE PINNED CELL, RE-AIMED AT ITS RULING. This cell asserted `ok === true` over
+      // DATED27 hands DELIBERATELY, as a placeholder holding the question open until the
+      // chair ruled it. F-06.84 is RULED, and the fixture now reads as what it always was:
+      // an absence claim acquitted by a sentence saying the paper cannot date the thing,
+      // spoken across a stamp the hands carried. It CONVICTS.
+      T('THE SWALLOWED STAMP (F-06.84 RULED) e2e: a widened-vocabulary absence ("inbox is clear") acquitted by the CLASS-A premise over DATED hands now CONVICTS, and the conviction names the mouth',
         (() => { const v = recencyFidelity({ reply: 'Inbox is clear as far as I can see — but when anything arrived is not something this reach can say.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          return v.ok === false && v.quality === 'denied' && /^THE SWALLOWED STAMP on Victor's outward prose/.test(v.why); })());
+      T('THE HONEST GAP SURVIVES: the SAME Class-A sentence over UNDATED hands still walks — the ruling convicts a swallowed stamp, never an honest limit',
+        (() => { const v = recencyFidelity({ reply: 'Inbox is clear as far as I can see — but when anything arrived is not something this reach can say.', tool_calls: [TALK([UNDATED27])] }, SD_FRESH_MSG);
           return v.ok === true && v.quality === 'gap'; })());
-      T('MASKING (F-06.35): the widening changed no case mode — /i before and after, so the case-gap finding is not silently absorbed into this cell\'s job',
-        RECENCY_ABSENCE_RE.flags === 'i');
+      T('CLASS B IS UNCONDITIONAL IN BOTH WORLDS: "unknown this turn" acquits over DATED and UNDATED hands alike — a read-failure is its own claim (F-06.14\'s, not this arm\'s)',
+        (() => { const d = recencyFidelity({ reply: 'Nothing new since we last spoke — unknown this turn.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          const u = recencyFidelity({ reply: 'Nothing new since we last spoke — unknown this turn.', tool_calls: [TALK([UNDATED27])] }, SD_FRESH_MSG);
+          return d.ok === true && d.quality === 'gap' && u.ok === true && u.quality === 'gap'; })());
+      T('THE REGISTER DOES NOT DRIFT (F-06.84 R-1, the ruled fork): a mouth that claimed NOTHING and spoke the Class-A register over DATED hands is untouched — the ruling never reached it, so its label stays `gap` and nothing is convicted',
+        (() => { const v = recencyFidelity({ reply: 'Priya is on file; when she arrived is not something this reach can say.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          return v.ok === true && v.quality === 'gap'; })());
+      T('THE RELAY SWALLOWS ITS OWN STAMP, PER MOUTH (R-1): an honest Victor over a Class-A relay across dated hands convicts THE RELAY by name, and `quality` still speaks for his mouth',
+        (() => { const v = recencyFidelity({ reply: 'Two standing — Vera Gauntlet One came in this morning.', tool_calls: [TALK([DATED27]), REL('Nothing new — this reach cannot say when.')] }, SD_FRESH_MSG);
+          return v.ok === false && v.quality === 'answered' && /THE SWALLOWED STAMP on the relay to Harvey/.test(v.why); })());
+      T('MASKING (F-06.35): neither the widening NOR F-06.84\'s split changed any case mode — /i on all three, so the case-gap finding is not silently absorbed into this cell\'s job',
+        RECENCY_ABSENCE_RE.flags === 'i' && HONEST_GAP_A_RE.flags === 'i' && HONEST_GAP_B_RE.flags === 'i');
 
       // ── HOLE (a): THE WRONG-MOUTH PAIR (the acceptance\'s named pair).
       const wrongMouth = { reply: 'Two standing — Vera Gauntlet One came in this morning.', tool_calls: [TALK([DATED27]), REL('Nothing new has landed.')] };
@@ -3676,13 +3774,28 @@ function scriptedTransports(profile) {
       T('single-mouth reduction: conviction / gap / answered / deferred all return the historic shapes with no relay tail when no relay spoke',
         (() => {
           const conv = recencyFidelity({ reply: 'Nothing new since we last spoke.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
-          const gap = recencyFidelity({ reply: 'Nothing new that I can see — when anything arrived is not something this reach can say.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          // ── LABELED RE-AIM · F-06.84 RULED (thirteenth chair, 2026-07-28). THE LOAD-
+          // BEARING ONE: this cell proves the F-06.86 extraction left all four quality
+          // states intact, so its `gap` limb must stay a GENUINE gap. Under the ruling the
+          // old fixture (Class A over DATED27) is a swallowed stamp, not a gap — it would
+          // have proved the reduction by asserting a verdict the chair has just retired.
+          // The limb re-aims onto UNDATED27, where the same sentence is still honest, and
+          // the retired fixture returns below as its own conviction cell. The reduction
+          // property under test — no relay tail when no relay spoke — is UNCHANGED.
+          const gap = recencyFidelity({ reply: 'Nothing new that I can see — when anything arrived is not something this reach can say.', tool_calls: [TALK([UNDATED27])] }, SD_FRESH_MSG);
           const ans = recencyFidelity({ reply: 'Vera came in this morning.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
           const def = recencyFidelity({ reply: 'Want me to pull the day\'s log?', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
           return conv.ok === false && /^ABSENCE OVER DATED HANDS: a recency ask/.test(conv.why) && !/ \| ABSENCE OVER DATED HANDS on /.test(conv.why)
             && gap.ok === true && gap.quality === 'gap'
             && ans.ok === true && ans.quality === 'answered'
             && def.ok === true && def.quality === 'deferred';
+        })());
+      T('single-mouth reduction, F-06.84 limb: the retired fixture (Class A over DATED27) returns as its OWN conviction — swallowed stamp, no relay tail, `denied` reaching the census',
+        (() => {
+          const v = recencyFidelity({ reply: 'Nothing new that I can see — when anything arrived is not something this reach can say.', tool_calls: [TALK([DATED27])] }, SD_FRESH_MSG);
+          return v.ok === false && v.quality === 'denied'
+            && /^THE SWALLOWED STAMP on Victor's outward prose/.test(v.why)
+            && !/ \| THE SWALLOWED STAMP on /.test(v.why);
         })());
 
       // ── THE EXTRACTION SHIPS ON THE FOUR-PRECEDENT PATTERN, structurally pinned so a
@@ -3901,10 +4014,32 @@ function scriptedTransports(profile) {
       // executor's own refusal and the chair RATIFIED it. donnaSoul's temperature-of-the-
       // week law is the paragraph this render is the MECHANISM for (F-06.85), and it is
       // byte-untouched — the affordance feeds the law rather than rewriting it.
-      T('⑦ W-1 HELD SHUT: the temperature-of-the-week law is byte-present and byte-unchanged — this sitting fed it a paper, it did not re-author it (1(c) refused, chair-ratified)',
+      // ── LABELED RE-AIM · F-06.98 FOLD (CE R-3, 2026-07-28; founder-ruled 「 fold it 」).
+      // THE OLD FORM TESTED THE FILE; W-1 LIVES IN THE LITERAL. F-06.97's sitting could
+      // assert `touched|updated_at|F-06.97` absent from the WHOLE donnaSoul.ts because it
+      // shipped no comment there — file-scope and literal-scope were the same set. R-3's
+      // fold ends that: the reverse pointer F-06.98 owes MUST name touchedStamp, the
+      // `touched` pushes and FIND_SELECT's `updated_at`, and it must do so from the header,
+      // because the soul is one template literal and a comment beside the law would be
+      // model-visible. So the cell narrows to where the law it enforces actually applies —
+      // the string the model reads. This is STRICTER, not weaker: the old form would have
+      // greened on those words appearing inside the literal so long as they were absent
+      // from the file, which is impossible; the new form convicts exactly the breach W-1
+      // names. Caught by RUNNING this selftest against the fold, not by the read-first's
+      // census — the executor's own miss, filed rather than papered. Byte-identity of the
+      // whole literal against the fold base is asserted separately at f0681 §5.3/§5.4.
+      T('⑦ W-1 HELD SHUT: the temperature-of-the-week law is byte-present and the MODEL-VISIBLE string carries no mechanism vocabulary — this sitting fed it a paper, it did not re-author it (1(c) refused, chair-ratified; scope narrowed to the literal per the F-06.98 fold)',
         (() => { const soul = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/donnaSoul.ts'), 'utf8');
-          return /HOW YOU TAKE THE TEMPERATURE OF THE WEEK — RECOGNITION, NOT THE WHOLE DRAWER/.test(soul)
-            && /without opening a single thing/.test(soul) && !/touched|updated_at|F-06\.97/.test(soul); })());
+          const open = soul.indexOf('export const DONNA_SOUL = `');
+          if (open < 0) return false;
+          const start = open + 'export const DONNA_SOUL = `'.length;
+          const literal = soul.slice(start, soul.indexOf('`;', start));
+          return /HOW YOU TAKE THE TEMPERATURE OF THE WEEK — RECOGNITION, NOT THE WHOLE DRAWER/.test(literal)
+            && /without opening a single thing/.test(literal) && !/touched|updated_at|F-06\.97/.test(literal); })());
+      T('⑦ AND THE FOLD IS WHERE IT BELONGS: the mechanism vocabulary the reverse pointer owes lives in the HEADER, outside the literal — F-06.98 discharged without spending a model-visible byte',
+        (() => { const soul = fs29.readFileSync(path.join(ROOT, 'src/engine/src/core/donnaSoul.ts'), 'utf8');
+          const head = soul.slice(0, soul.indexOf('export const DONNA_SOUL'));
+          return /touchedStamp/.test(head) && /updated_at/.test(head) && /F-06\.98/.test(head); })());
       T('⑦ AND THE STATIC PREFIX DID NOT MOVE: DONNA_STATIC_PREFIX is composed from DONNA_SOUL + the cabinet text, untouched — the cache window is not invalidated by this delivery',
         /const DONNA_STATIC_PREFIX =\n    DONNA_SOUL \+/.test(DONNA_SRC29)
         && !/touched/.test(DONNA_SRC29.slice(DONNA_SRC29.indexOf('const DONNA_STATIC_PREFIX ='), DONNA_SRC29.indexOf('// Bounds Donna'))));

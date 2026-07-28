@@ -23,15 +23,66 @@
 
 // F-06.81 / F-06.85 (the relay law sitting, 2026-07-27): the third-paper
 // paragraph's arrival clauses are CONDITIONED ON A MECHANISM — today.ts's
-// arrivalStamp, rendered as `filed <dd-mm-yy HH:MM IST>` at donnaFind
-// :163/:192/:319/:346/:403 and donna.ts:307. c736a7e authored this paragraph
-// telling her the reach could not say when a thing arrived; ab011c1 made the
-// reach say it, ten hours later, and nothing pointed here. THE LAW (F-06.85):
-// a soul sentence conditioned on a mechanical fact NAMES THE MECHANISM HERE,
-// so the mechanism's next sitting is forced to re-read the sentence. If
-// arrivalStamp changes, moves, or stops stamping — re-read clauses 4 and 6b
-// of this paragraph BEFORE shipping, and clause 5's undated guard with them.
+// arrivalStamp, rendered as `filed <dd-mm-yy HH:MM IST>`. c736a7e authored
+// this paragraph telling her the reach could not say when a thing arrived;
+// ab011c1 made the reach say it, ten hours later, and nothing pointed here.
+// THE LAW (F-06.85): a soul sentence conditioned on a mechanical fact NAMES
+// THE MECHANISM HERE, so the mechanism's next sitting is forced to re-read
+// the sentence. If arrivalStamp changes, moves, or stops stamping — re-read
+// clauses 4 and 6b of this paragraph BEFORE shipping, and clause 5's undated
+// guard with them.
+//
+// THE SITES, RE-POINTED (TDW_06 F-06.84 sitting, 2026-07-28 — the drift cure,
+// named here so the NEXT shift is caught rather than discovered). This comment
+// shipped citing donnaFind :163/:192/:319/:346/:403; those line numbers went
+// stale as the file grew, which is the same rot F-06.85 exists to prevent, one
+// level down. Derived at 76f4376: the `filed` renders are donnaFind :207
+// (describeRow), :242 (recognitionRow), :384 and :411 (the enquiry-plane
+// lines), :468 (the reverse lookup), and donna.ts:307 (the snapshot). A cite
+// that has drifted is a pointer that no longer points; re-derive before
+// trusting these, and re-point them when you do.
+//
+// CLAUSE 5 × F-06.84 (RULED 2026-07-28, thirteenth chair) — THE CROSS-
+// REFERENCE. Clause 5's undated guard describes the world "where the paper
+// carries no date", and that world is no longer merely described: it is
+// MECHANICALLY ADJUDICATED. b06_gauntlet's recencyFidelity now splits the
+// honest-gap vocabulary by phrase class — the fail-closed family acquits
+// unconditionally, but clause 5's own register ("this reach cannot say" and
+// its family) acquits ONLY where the turn's hands carried no arrival evidence.
+// Spoken across a stamp her hands read, that sentence is convicted as THE
+// SWALLOWED STAMP. The two now condition each other: if clause 5 is reworded,
+// re-read the Class-A constant before shipping; if that constant moves, class,
+// or retires, re-read clause 5. Neither may drift alone.
 
+// ── F-06.98 DISCHARGED (TDW_06, 2026-07-28) — THE REVERSE POINTER OWED.
+// F-06.97 shipped the forward half at donnaFind :178–:184: the render names
+// the soul paragraph it is now the mechanism for. This is the other half, and
+// it is owed because the paragraph cannot name the mechanism from inside a
+// W-1-shut string. THE LAW IT ANSWERS TO IS "HOW YOU TAKE THE TEMPERATURE OF
+// THE WEEK — RECOGNITION, NOT THE WHOLE DRAWER" (the heading below, inside the
+// literal — which is why this comment sits in the header and not above the
+// line: the soul is ONE template literal, and a comment placed adjacent to the
+// law would be model-visible bytes, which the charter forbids).
+//
+// THE MECHANISM IT IS NOW CONDITIONED ON. That law tells her the week's shape
+// is answerable from recognition alone — who is moving, what is active — and
+// that pulling every binder to answer "how are we doing" is not thoroughness.
+// "Who is MOVING" only became answerable from recognition at F-06.97, which
+// added the MOVEMENT clock to the recognition surfaces:
+//   · donnaFind:185  touchedStamp — arrivalStamp over updated_at, one derivation
+//   · donnaFind:213  the `touched <stamp>` push in describeRow
+//   · donnaFind:251  the same push in recognitionRow
+//   · donna.ts:321–322  the snapshot line's touched clause (stampOf)
+//   · donnaFind:112  FIND_SELECT's `updated_at` — the column this file had
+//     ORDERED by since birth and never selected until F-06.97
+// Before those, all three breadth surfaces were SORTED by movement and WORDED
+// in arrival: the ordering knew who was moving and the words did not say it.
+//
+// SO: if touchedStamp changes, moves, or stops stamping — or if `updated_at`
+// leaves FIND_SELECT, or the ordering behind these surfaces changes — RE-READ
+// THE TEMPERATURE-OF-THE-WEEK LAW BEFORE SHIPPING. It is a promise about what
+// recognition can answer, and it is only true while recognition carries the
+// movement clock. This is F-06.85's law applied to its second sentence.
 export const DONNA_SOUL = `You are Donna — Harvey's confidante, and the keeper of the room. Harvey is the one in the room with the client: the voice, the judgment, the aura. You are the one who makes sure he is never caught flat — and you are the thing that makes his whole gift possible, because the room of knowledge he draws on is yours. You hold it, you keep it current, you are the only door into it. He reaches it through you, and only you.
 
 You are the single soul alive who knows the truth of how Harvey does what he does. Every man like him has one — the confidante in on the secret, who guards it harder than he ever could. That is you. The world never knows you exist, because the moment you are seen the room is seen, and the room is the whole of his power. You hold that secret dearer than your own life. You never address the client, never appear, never sign your name to anything. You are the engine in the hood — unseen, and treasured by the one you serve.

@@ -208,6 +208,72 @@ t('§5.2 the named mechanism is REAL and still stamps — a comment naming a dea
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// LABELED FLOOR AMENDMENT · F-06.98 DISCHARGED + F-06.85 EXTENDED (CE R-3,
+// 2026-07-28; founder-ruled 「 fold it 」). Counts DISCLOSED, not preserved:
+// §5.3–§5.5 are new. The fold is TWO comment blocks in donnaSoul's header — the
+// reverse pointer owed to the temperature-of-the-week law, and the F-06.85
+// block extended with the re-pointed site cites plus F-06.84's cross-reference.
+// W-1's letter is honored by THIS CELL; its spirit by the zero bytes.
+H('§5b — THE FOLD COST ZERO MODEL-VISIBLE BYTES (F-06.98 · W-1)');
+
+// The soul is a single template literal with NO interpolation, so the string the
+// model reads is the literal's body verbatim. That makes byte-identity provable
+// on both sides at once: source against the fold's base, and source against the
+// compiled artefact the loop actually hands to the model.
+const FOLD_BASE = '76f4376';
+const soulLiteral = (src) => {
+  const open = src.indexOf('export const DONNA_SOUL = `');
+  assert.ok(open > 0, 'the soul literal could not be located — re-derive before trusting §5b');
+  const start = open + 'export const DONNA_SOUL = `'.length;
+  const end = src.indexOf('`;', start);
+  assert.ok(end > start, 'the soul literal is unterminated — re-derive before trusting §5b');
+  return src.slice(start, end);
+};
+
+t('§5.3 THE STRING IS BYTE-IDENTICAL TO THE FOLD BASE — the comments moved, the soul did not', () => {
+  const now = soulLiteral(read(SOUL));
+  const base = soulLiteral(gitShow(FOLD_BASE, SOUL));
+  assert.strictEqual(now.length, base.length, `the soul changed length by ${now.length - base.length} bytes — a comment-only fold cannot do that`);
+  assert.strictEqual(now, base, 'W-1 BREACH: the fold reached model-visible bytes');
+});
+
+t('§5.4 AND THE COMPILED ARTEFACT AGREES — what the model reads equals what the source holds', () => {
+  const dist = P('src/engine/dist/core/donnaSoul.js');
+  assert.ok(fs.existsSync(dist), 'engine dist absent — run npm run build; this cell reads what the model reads');
+  delete require.cache[require.resolve(dist)];
+  const { DONNA_SOUL } = require(dist);
+  // The raw literal carries backslash escapes (\" inside the template), so it must be
+  // EVALUATED before comparison — comparing raw source to a compiled string compares two
+  // different things and would red on escapes alone. Safe to evaluate because the literal
+  // has no interpolation, and that is ASSERTED rather than assumed: with any `${}` present
+  // this cell would be executing the soul's own expressions instead of reading it.
+  const raw = soulLiteral(read(SOUL));
+  assert.ok(!raw.includes('${'),
+    'the soul gained an interpolation — §5.4 no longer compares like for like; re-derive');
+  // eslint-disable-next-line no-new-func
+  const evaluated = new Function('return `' + raw + '`;')();
+  assert.strictEqual(DONNA_SOUL, evaluated,
+    'the compiled soul and the source literal have diverged — the build is stale or the fold reached the string');
+});
+
+t('§5.5 THE FOLD IS PRESENT AND POINTS AT LIVE MECHANISM — a pointer to a dead name is worse than none', () => {
+  const head = read(SOUL).slice(0, read(SOUL).indexOf('export const DONNA_SOUL'));
+  // F-06.98's half: the reverse pointer names the MOVEMENT clock, not merely arrival.
+  assert.ok(/touchedStamp/.test(head), 'F-06.98 UNDISCHARGED: the temperature-of-the-week law names no movement mechanism');
+  assert.ok(/updated_at/.test(head), 'the movement column is unnamed — a reader cannot find what the law depends on');
+  const find = read('src/engine/src/core/tools/donnaFind.ts');
+  assert.ok(/const touchedStamp = /.test(find),
+    'touchedStamp is gone or renamed — F-06.98 fires: RE-READ the temperature-of-the-week law BEFORE shipping');
+  assert.ok(/updated_at/.test(find) && /FIND_SELECT/.test(find),
+    'the movement column left the select — the law promises recognition can answer "who is moving"; re-read it');
+  // F-06.84's half: the clause-5 cross-reference, and the constant it points at.
+  assert.ok(/F-06\.84/.test(head), 'the clause-5 cross-reference is gone — the arm and the clause can drift apart again');
+  assert.ok(/HONEST_GAP_A_RE|Class-A/.test(head), 'the cross-reference names no constant — it points nowhere');
+  assert.ok(/const HONEST_GAP_A_RE = /.test(read('scripts/b06_gauntlet.js')),
+    'the Class-A constant is gone or renamed — F-06.84 fires: RE-READ clause 5 of the third-paper paragraph BEFORE shipping');
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 console.log(`\n${fail ? 'RED' : 'GREEN'} — b06_f0681_bench ${pass}/${pass + fail}`);
 if (!fail) {
   console.log('       The paragraph says one thing again. What it says is the founder\'s;');

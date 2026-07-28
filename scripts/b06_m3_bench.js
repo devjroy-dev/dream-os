@@ -311,8 +311,11 @@ function liftBlock(needle) {
   }
   throw new Error(`unbalanced braces lifting "${needle}"`);
 }
+// ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-2, 2026-07-28): the lifted set follows
+// the shipped split of HONEST_GAP_RE into its two phrase classes. Mandatory, not cosmetic:
+// an unamended list throws at liftConst and takes all 37 cells with it. Count preserved: 37.
 const CONSTS = ['RECENCY_ASK_RE', 'RECENCY_ABSENCE_RE', 'HONEST_TOOL_VOCAB_RE', 'ARRIVAL_DATED_RE',
-                'REPLY_ARRIVAL_RE', 'HONEST_GAP_RE', 'FRESH_ITEM_RE'];
+                'REPLY_ARRIVAL_RE', 'HONEST_GAP_B_RE', 'HONEST_GAP_A_RE', 'FRESH_ITEM_RE'];
 let LIFTED = null, liftErr = null;
 try {
   const body = [liftBlock('const nestedHands ='), ...CONSTS.map(liftConst), liftBlock('function recencyFidelity(')].join('\n');
@@ -488,8 +491,16 @@ const MUTATIONS = [
     to: '  return scrubText(s);' },
   { cell: '§2.7', why: 'the anchor drops its quotes — a two-letter message shatters the frame and opens the firewall',
     file: DOOR, from: "  const token = '\"' + q + '\"';", to: '  const token = q;' },
+  // ── LABELED FLOOR AMENDMENT · F-06.84 RULED (CE R-1, 2026-07-28): the needle follows the
+  // shipped bytes. The ruled ordering inserts the `spokeGapPhrase` limb between
+  // `claimsAbsence` and the default, so the two-line tail this needle matched no longer
+  // exists. MEANING UNCHANGED — the DEFAULT arm is redirected, so a deferral scores as an
+  // answer and the arm stops distinguishing evasion from the cure's own product. Re-aimed
+  // at the referent, not re-aimed to stay green. CAUGHT BY RUNNING, not by census: this
+  // needle was NOT in the read-first's enumeration, and unamended it printed
+  // `MUTATION ANCHOR MISSING` — the executor's own miss, filed rather than papered.
   { cell: '§3.2', why: 'the deferral scores as an answer — the arm stops distinguishing evasion from the cure\'s own product',
-    file: GAUNTLET, from: "    : claimsAbsence ? 'denied'\n    : 'deferred';", to: "    : claimsAbsence ? 'denied'\n    : 'answered';" },
+    file: GAUNTLET, from: "    : spokeGapPhrase ? 'gap'\n    : 'deferred';", to: "    : spokeGapPhrase ? 'gap'\n    : 'answered';" },
   { cell: '§3.6', why: 'the score reads the RAW reply — a denial acquits itself with its own leftovers',
     file: GAUNTLET, from: "  const quality = replyDated ? 'answered'",
     to: "  const quality = (replyDated || REPLY_ARRIVAL_RE.test(reply)) ? 'answered'" },
