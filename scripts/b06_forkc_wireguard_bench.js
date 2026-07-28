@@ -468,8 +468,20 @@ t('§5.6c THE MASKING LAW HONORED BY CONSTRUCTION — the shared four are byte-i
     'a gauntlet arm now reads F-06.104\'s constant — it is Stage-1-scoped BY RULING, and a shared reader is exactly how an adjacent gap gets masked (CE-81/NOTE_12 §9)');
   const code = read(CHAT).split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.strictEqual((code.match(/const MUTATION_CLAIM_RE = new RegExp/g) || []).length, 1, 'the constant is defined more than once');
-  assert.strictEqual((code.match(/MUTATION_CLAIM_RE\.test\(/g) || []).length, 1,
-    'F-06.104\'s constant has more than ONE consumer — it is Stage-1-scoped by ruling, and a second reader is how a shared meaning starts to move');
+  // LABELED AMENDMENT (M-2b, 2026-07-29 — the bench follows the law, CE-80's discipline).
+  // COUNT PRESERVED; the cell's MEANING is unchanged and its guard is now stronger.
+  // WHAT CHANGED: F-06.124's clause-binding must ask "is THIS SENTENCE a claim sentence",
+  // which reads the constant a second time. The old assertion counted readers (=== 1) and
+  // so convicted a second reader INSIDE the guard — but the ruling scopes the constant to
+  // Stage 1, not to a single call site. A second reader in `wireGuardClassify` moves no
+  // shared meaning; a reader ANYWHERE ELSE does. So the cell now asserts the thing the
+  // law actually protects: every consumer lives inside the guard's own body.
+  const guardBody = code.slice(code.indexOf('function wireGuardClassify'), code.indexOf('async function wireGuardSpecimen'));
+  const readersAll = (code.match(/MUTATION_CLAIM_RE\.test\(/g) || []).length;
+  const readersInGuard = (guardBody.match(/MUTATION_CLAIM_RE\.test\(/g) || []).length;
+  assert.ok(readersAll > 0, 'F-06.104\'s constant has no consumer at all — the founding lie is unheard');
+  assert.strictEqual(readersAll, readersInGuard,
+    'F-06.104\'s constant is read OUTSIDE wireGuardClassify — it is Stage-1-scoped by ruling, and a reader beyond the guard is how a shared meaning starts to move');
   assert.ok(/module\.exports\.MUTATION_CLAIM_RE/.test(code), 'the constant is not exported for bench read');
 });
 
@@ -550,6 +562,7 @@ t('§5.9 STAGE 2 IS NOT HERE — no interception, no rewrite, no substitute repl
 // bytes are on the record — 19:48:29, F-06.114 — uses them VERBATIM.
 // ═══════════════════════════════════════════════════════════════════════════════
 const clr = (x, priorDeed) => chat.wireGuardClassify(null, x, priorDeed);
+const isDeed = (n, cls) => chat.isDeedOfClass(n, cls);
 const nest = (...names) => ({ tool_calls: [{ name: 'dear_donna_talk', donna_calls: names.map((n) => ({ name: n, input: {}, result: 'ok' })) }] });
 
 t('§6.1 THE NINE ROWS, EACH TO ITS RULED CLASS — the guard\'s own production log as the fixture set', () => {
@@ -827,6 +840,98 @@ t('§7.7 F-06.111 — NO VACUOUS `every` IN §7, and nothing arms', () => {
   const guard = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('async function persistComposedReply'));
   assert.ok(!/there was a small glitch|please try again|glitch, please/i.test(guard),
     'Stage 2 copy has entered a report-only guard — M-2a arms NOTHING');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §8 — M-2b (TDW_06, 2026-07-29). Three cures, every fixture PRODUCTION BYTES from
+// the M-2a measurement batch — the first cure set in this arc whose fixtures are all
+// live rows rather than desk constructions.
+// ═══════════════════════════════════════════════════════════════════════════════
+const WK = "Your week runs lean and tight. Rahul and Keka are booked, Roy's got the Rs 35k locked in, Meera Kapoor's November wedding is booked. What's the priority — do you want the crew situation on tonight sorted, or shall we clean up the file first?";
+const B5 = "Yes — Ishaan Precision Probe landed as booked, Rs 1,50,000 wedding 21 March 2027, Jaipur.";
+
+t('§8.1 F-06.124 BOTH WAYS — the marker binds to the claim clause, and the founding lie is NOT freed', () => {
+  // THE LIVE FALSE POSITIVE (22:11:03): a lawful weekly briefing convicted MATERIAL
+  // because "sorted" sat in a closing OFFER-QUESTION. One word, verdict flipped.
+  assert.strictEqual(clr({ reply: WK, tool_calls: [], victor_mode: 'business' }, false).kind, 'state_description',
+    'the "sorted"-in-an-offer briefing is still convicted — the marker is still floating free');
+  assert.strictEqual(clr({ reply: 'Rahul and Keka are booked. I already told you the rest.', tool_calls: [], victor_mode: 'business' }, false).kind,
+    'state_description', '"already" in a non-claim filler clause still convicts');
+  // THE TRAP THE BINDING MUST NOT WALK INTO: strict same-sentence binding would FREE
+  // F-04.71's original specimen, whose marker is its own sentence and whose claim is the
+  // next one. The "Done."-class opener is why it still convicts.
+  assert.strictEqual(clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, false).kind, 'costume',
+    'the binding FREED THE FOUNDING LIE — the "Done."-class opener is not being honoured');
+  // and the marker inside the claim clause still convicts, both families
+  assert.strictEqual(clr({ reply: "I've locked the shoot for her.", tool_calls: [], victor_mode: 'business' }, false).kind, 'costume', 'an agentive claim walks');
+  assert.strictEqual(clr({ reply: '18 December is already unblocked.', tool_calls: [], victor_mode: 'business' }, false).kind, 'costume', 'the dressed-down variant walks');
+  // the opener is LENGTH-BOUNDED — a long first sentence merely containing a marker is not one
+  assert.strictEqual(clr({ reply: 'I have already given you a long preamble about the week ahead and the crew. Rahul and Keka are booked.', tool_calls: [], victor_mode: 'business' }, false).kind,
+    'state_description', 'a long leading sentence carrying a stray marker is being read as a "Done."-class opener');
+});
+
+t('§8.2 F-06.125 BOTH WAYS — the deed class is symmetric; a calendar deed no longer witnesses a filing', () => {
+  // THE LIVE CONTAMINATION (22:13:38, conversation a633b2c7): the only prior non-read
+  // hand was a `donna_unblock_date`, and it acquitted "the note is filed".
+  assert.strictEqual(isDeed('donna_unblock_date', 'records'), false, 'a calendar deed still acquits a records claim');
+  assert.strictEqual(isDeed('donna_book_event', 'records'), false, 'a booking still acquits a records claim');
+  assert.strictEqual(isDeed('donna_lead', 'date'), false, 'a records deed acquits a date claim — the other direction broke');
+  // and each class still finds its OWN deed — the symmetry must not empty either arm
+  assert.strictEqual(isDeed('donna_lead', 'records'), true, 'the records arm no longer finds a records deed');
+  assert.strictEqual(isDeed('donna_money', 'records'), true, 'a money write is not seen as a records deed');
+  assert.strictEqual(isDeed('donna_unblock_date', 'date'), true, 'the date arm no longer finds an unblock');
+  assert.strictEqual(isDeed('donna_book_event', 'date'), true, 'the date arm no longer finds a booking');
+  assert.strictEqual(isDeed('donna_find', 'records'), false, 'a read hand counts as a deed');
+});
+
+t('§8.3 F-06.121 BOTH WAYS — the live miss now draws its row, and the door\'s own prose still walks', () => {
+  // THE LIVE MISS (Block 5): drew NO ROW. Derived at the desk, the em-dash was only half
+  // the reason — the participle slot held a SUBJECT and the bytes carry no temporal word.
+  assert.notStrictEqual(clr({ reply: B5, tool_calls: [], victor_mode: 'business' }, false), null,
+    'the "landed as booked" completion is still invisible to every claim family');
+  assert.strictEqual(clr({ reply: B5, tool_calls: [], victor_mode: 'business' }, false).kind, 'costume',
+    'the linking-verb completion over no deed does not convict');
+  // PRECISION, the limb's whole risk: the door's OWN witness prose has the participle in
+  // position and NO temporal and NO linking verb. It must walk, or the guard convicts the
+  // estate's honest output.
+  assert.strictEqual(clr({ reply: 'Filed — Ishaan Precision Probe, wedding photography, Jaipur.', tool_calls: [], victor_mode: 'business' }, false), null,
+    'the door\'s witness-line prose now trips the guard');
+  assert.strictEqual(clr({ reply: 'Booked, and the crew is confirmed for the morning.', tool_calls: [], victor_mode: 'business' }, false), null,
+    'a bare participle with neither temporal nor linking verb convicts');
+  assert.strictEqual(clr({ reply: 'Shall I file her now?', tool_calls: [], victor_mode: 'business' }, false), null, 'a question shape convicts');
+  // the temporal path still works, through the widened anchor
+  assert.strictEqual(clr({ reply: 'Yes. Filed just now — Ishaan Precision Probe, wedding photography.', tool_calls: [], victor_mode: 'business' }, false).kind,
+    'costume', 'the temporal participle path broke under the re-anchor');
+});
+
+t('§8.4 THE M-2a WINS SURVIVE M-2b — no cure of this movement undoes a proven one', () => {
+  // the discriminating pair, live bytes: identical question, opposite verdicts by hand alone
+  const q = 'No — Nirali Ladder Test is not on file. Nothing under that name.';
+  assert.strictEqual(clr({ reply: q, tool_calls: [], victor_mode: 'business' }).kind, 'costume', 'the bare-absence conviction was lost');
+  assert.strictEqual(clr({ reply: q, tool_calls: [{ name: 'dear_donna_talk', donna_calls: [{ name: 'donna_find' }] }], victor_mode: 'business' }).kind,
+    'corroborated_lookup', 'the read-corroborated walk was lost');
+  // prior_turn_witnessed, both classes, still reachable
+  assert.strictEqual(clr({ reply: 'Yes — 18 December 2026 is open. It is unblocked and available.', tool_calls: [], victor_mode: 'business' }, true).kind,
+    'prior_turn_witnessed', 'the date-class walk was lost');
+  assert.strictEqual(clr({ reply: "It's already logged — Ishaan Precision Probe, booked. The note is filed.", tool_calls: [], victor_mode: 'business' }, true).kind,
+    'prior_turn_witnessed', 'the records-class walk was lost');
+  // fail-open still reaches the hedge, never a conviction
+  assert.strictEqual(clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, null).kind, 'prior_turn_unverified',
+    'a failed lookup no longer hedges');
+});
+
+t('§8.5 F-06.111 — no vacuous `every` in §8, the constants stay Stage-1-scoped, nothing arms', () => {
+  const self = read('scripts/b06_forkc_wireguard_bench.js');
+  const eight = self.slice(self.indexOf('§8.1 F-06.124'), self.indexOf('§8.5 F-06.111'));
+  assert.strictEqual((eight.match(/\.every\(/g) || []).length, 0, '§8 uses .every(), vacuously true over an empty array');
+  const rig = read(RIG);
+  for (const sym of ['AGENTIVE_CLAIM_RE', 'PARTICIPLE_COMPLETION_RE', 'PRESENCE_ASSERT_RE', 'ABSENCE_ASSERT_RE']) {
+    assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant became shared meaning`);
+  }
+  const guard = read(CHAT);
+  const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf('async function persistComposedReply'));
+  assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 copy is in a report-only guard');
 });
 
 (async () => {

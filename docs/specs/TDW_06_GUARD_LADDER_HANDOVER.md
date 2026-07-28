@@ -115,3 +115,39 @@ Bench **50 → 58**. **Eight mutations of shipped code, all RED, `cmp`-restored 
 ## Next
 
 Fresh measurement batch windowed `>= ` this movement's **deploy** timestamp (the ≥ 21:11 law, now standing), the SELECT, and the gate re-rules on clean rows. **M-2 builds only behind that gate.** M-3 and R-1 continue, unaffected.
+
+---
+
+# M-2b — THE THREE NARROW CURES (the M-2a measurement's yield)
+
+**Base:** `dream-os @ bc9f009`. **Delta: two files** + this handover. W-1 shut; `vendorInbound.js` 0-line; **report-only — nothing arms.**
+
+M-2a measured **2 true of 3 material**. Every fixture below is **production bytes from that batch** — the first cure set in this arc whose fixtures are all live rows rather than desk constructions.
+
+## F-06.124 — the completion marker, bound to the claim clause
+
+The live false positive (22:11:03): a lawful weekly briefing convicted MATERIAL because **`sorted`** sat in a closing *offer-question* — "do you want the crew situation on tonight sorted?". Isolated by removing that one word; the verdict flipped `costume → state_description`. `already` in any filler clause did the same.
+
+**The trap the binding must not walk into:** strict same-sentence binding would **free the founding lie** — `Done. 18 December 2026 is unblocked.` puts the marker in its own sentence and the claim in the next. So a marker counts when it sits in the **same sentence as a claim**, **or** when it is the reply's **"Done."-class opener** (the short leading sentence the CE named by that name, length-bounded so a long first sentence carrying a stray marker is not one). §8.1 asserts every direction including the trap.
+
+## F-06.125 — the deed class, symmetric both directions
+
+Derived: `isDeedOfClass('donna_unblock_date','records')` returned **true**. The first cut guarded one way only. Live consequence, conversation `a633b2c7`: the only prior non-read hand was a `donna_unblock_date`, and it acquitted *"the note is filed"*. The claim was true; the acquittal was reached for the wrong reason. **An unblock does not witness a filing any more than a filed lead witnesses an unblock.** Both arms still find their own deeds — the symmetry must not empty either, asserted at §8.2.
+
+## F-06.121 — the participle limb, and a §0.2 report inside the cure
+
+The ruling said *"re-anchored past the em-dash shape."* **Derived at the desk before building: the re-anchor alone cannot reach its own named fixture.** In `Yes — Ishaan Precision Probe landed as booked, …` the participle slot after the anchor holds a **subject**, and the bytes carry **no temporal word anywhere**. Reported, then cured to the **ruled outcome** with the minimal widening the fixture demands, in three parts: the anchor accepts the dash/colon shapes after "Yes"; a bounded **subject slot** (≤4 words) may sit between anchor and participle; and a separate **linking-verb limb** (`landed as booked`, `went in as filed`) whose completion is carried by the verb rather than a temporal.
+
+**That third part is a widening beyond the ruled wording and is named as such.** Its precision guard is exactly what the door's own witness prose lacks: `Filed — Ishaan Precision Probe, wedding photography` has the participle in position but neither a temporal nor a linking verb, so it still walks — asserted at §8.3, along with question shapes and bare participles.
+
+## Proof
+
+Bench **58 → 63**, one **labeled amendment** (§5.6c, count preserved): F-06.124's clause-binding reads `MUTATION_CLAIM_RE` a second time, and the old cell counted readers (`=== 1`) rather than asserting what the masking law protects. It now asserts **every consumer lives inside the guard's own body** — a stronger guard, and the correct one: a second reader in `wireGuardClassify` moves no shared meaning; a reader anywhere else does.
+
+**Six mutations of shipped code, all RED, `cmp`-restored byte-identical:** marker unbound (62/63) · "Done."-opener dropped, freeing the lie (59/63) · opener length bound removed (62/63) · deed asymmetry restored (62/63) · date arm inverted (61/63) · linking-verb limb killed (62/63). **One mutation first reported an anchor miss and was re-run correctly rather than counted** — a mutation that did not apply is not a proof.
+
+**Floor:** selftest **351/351** · guard **63/63** · relay 40/40 · f0681 17/17 · f0692 23/23 · **meter 28/29 KNOWN RED** carried · every other bench exit 0. Masking law re-asserted; Stage-1 constants unread by the rig.
+
+## Next
+
+Fresh batch windowed `>=` this movement's deploy, the SELECT, the gate re-rules. **What M-2b must earn:** the briefing walking as `state_description`, the records-class `prior_turn_witnessed` re-earned **clean** (F-06.121's contaminated proof was vacated), and the "landed as booked" turn drawing its row. **M-2 builds only behind that gate.** M-3 and R-1 unaffected.

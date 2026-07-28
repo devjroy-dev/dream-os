@@ -1107,8 +1107,25 @@ const PRESENCE_ASSERT_RE = new RegExp([
 // prose ("Filed — Ishaan Precision Probe, wedding photography") carries no temporal and
 // walks, and question shapes ("Shall I file it?") never reach the participle position.
 // Both directions asserted at §7.3.
-const PARTICIPLE_COMPLETION_RE = new RegExp(
-  "(?:^|[.!?]\\s+|\\n|\\byes[,.]?\\s+)(?:filed|logged|booked|noted|recorded|saved|updated|blocked|unblocked|cancelled|canceled|moved)\\b[^.]{0,20}\\b(?:just now|already|a moment ago|earlier|now)\\b", "i");
+// M-2b (F-06.121's record grown): RE-ANCHORED, and the anchor was only half the gap.
+// The measurement's own fixture — "Yes — Ishaan Precision Probe landed as booked, …" —
+// drew NO ROW AT ALL, and the em-dash was only the first reason: derived at the desk,
+// the participle slot after the anchor held a SUBJECT ("Ishaan Precision Probe"), and
+// the bytes carry NO temporal word anywhere. So the ruled re-anchor alone could not
+// reach its own named fixture. Reported, and cured to the RULED OUTCOME with the
+// minimal widening the fixture demands, in three parts:
+//   (1) the anchor accepts the dash/colon shapes after "Yes", not just comma/period;
+//   (2) a bounded SUBJECT SLOT (≤4 words, no sentence end) may sit between the anchor
+//       and the participle — "Yes — <name> filed just now";
+//   (3) a separate LINKING-VERB limb for the completion carried by a verb rather than a
+//       temporal ("landed as booked", "went in as filed"). This limb needs no temporal
+//       BECAUSE the linking verb is itself the completion, which is exactly what the
+//       door's own witness prose ("Filed — Ishaan Precision Probe, wedding photography")
+//       lacks — so that prose still walks, asserted both ways at §8.3.
+const PARTICIPLE_COMPLETION_RE = new RegExp([
+  "(?:^|[.!?]\\s+|\\n|\\byes\\s*[,.:—–-]?\\s+)(?:[A-Za-z][\\w']*\\s+){0,4}(?:filed|logged|booked|noted|recorded|saved|updated|blocked|unblocked|cancelled|canceled|moved)\\b[^.]{0,20}\\b(?:just now|already|a moment ago|earlier|now)\\b",
+  "\\b(?:landed|went in|came in|went through)\\s+(?:as\\s+)?(?:filed|logged|booked|noted|recorded|saved|updated)\\b",
+].join("|"), "i");
 
 // ── F-06.120 · AGENTIVE_CLAIM_RE — THE STATE-DESCRIPTION GATE (TDW_06 M-2a; CE-ruled,
 // minted from THIS EXECUTOR'S OWN REGRESSION, self-convicted by the instrument it built).
@@ -1317,7 +1334,30 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // state description — the precise un-adjudication the broad cure was refused for.
   // So evidence is consulted FIRST; the marker decides only what a NO-EVIDENCE claim is
   // called. Asserted both ways at §7.1/§7.2.
-  const convictable = AGENTIVE_CLAIM_RE.test(reply) || DONE_MARKER_RE.test(reply) || participleDone;
+  // ── F-06.124 (M-2b, CE-ruled) — THE COMPLETION MARKER IS BOUND TO THE CLAIM CLAUSE.
+  // M-2a scanned the WHOLE reply for a marker, and the measurement convicted a lawful
+  // weekly briefing because the word "sorted" appeared in a closing OFFER-QUESTION
+  // ("do you want the crew situation on tonight sorted?"). Isolated at the desk by
+  // removing that one word: verdict flipped costume -> state_description. "already" in
+  // any filler clause did the same. A marker floating anywhere in a long honest reply
+  // is not evidence that the CLAIM was a completion claim.
+  //
+  // THE BINDING, and the trap it must not walk into: strict same-sentence binding would
+  // FREE THE FOUNDING LIE, because "Done. 18 December 2026 is unblocked." puts the
+  // marker in its own sentence and the claim in the next. So the rule is: a marker
+  // counts when it sits in the SAME SENTENCE as a claim, OR when it is the reply's
+  // "Done."-class OPENER — the short leading sentence the CE named by that name. Both
+  // directions are asserted at §8.1 with tonight's exact bytes.
+  const sentences = reply.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter(Boolean);
+  const isClaimSentence = (x) => ACTION_CLAIM_RE.test(x) || COMPLETED_ACT_RE.test(x)
+    || MUTATION_CLAIM_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x);
+  const markerIn = (x) => AGENTIVE_CLAIM_RE.test(x) || DONE_MARKER_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x);
+  const opener = sentences[0] || '';
+  // the "Done."-class opener: SHORT and carrying nothing but the completion word. Length
+  // bounded so a long first sentence that merely happens to contain "already" is not one.
+  const doneOpener = opener.length <= 40 && DONE_MARKER_RE.test(opener);
+  const convictable = sentences.some((x) => isClaimSentence(x) && markerIn(x))
+    || (doneOpener && sentences.some(isClaimSentence));
   // THE CLASS-MATCH for Fork A' (chair: "like compared to like"). Two deed classes, both
   // decided by the guard's own actionKind so no second authority on what a write is:
   //   · a MUTATION claim (unblock/block/cancel/move/reschedule) is answered only by a
@@ -1421,8 +1461,16 @@ function isDeedOfClass(name, deedClass) {
   if (!n || n === 'listen_harvey_talk') return false;      // D-1: her voice is not a hand
   const kind = actionKind(n);
   if (kind === 'read') return false;
-  if (deedClass === 'date') return kind === 'calendar' || DATE_DEED_RE.test(n);
-  return true;                                              // records class: any write
+  const isDateDeed = kind === 'calendar' || DATE_DEED_RE.test(n);
+  // M-2b (F-06.125): SYMMETRIC BOTH DIRECTIONS. The first cut guarded only one way — a
+  // records deed could not acquit a date claim, but a DATE deed acquitted any records
+  // claim, because the records arm read "any non-read hand". The measurement caught it
+  // live: in conversation a633b2c7 the only prior non-read hand was a `donna_unblock_date`,
+  // and it acquitted "the note is filed". The claim happened to be true; the acquittal was
+  // reached for the wrong reason, which is the same defect either way round. An unblock
+  // does not witness a filing any more than a filed lead witnesses an unblock.
+  if (deedClass === 'date') return isDateDeed;
+  return !isDateDeed;                                       // records class: writes that are not date deeds
 }
 async function priorDeedLookup(supabase, result, deedClass) {
   try {
