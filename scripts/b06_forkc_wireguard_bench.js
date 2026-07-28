@@ -541,9 +541,22 @@ t('§5.8c THE WA SEAT IS REPORT-ONLY TOO — it reads `result`, never `replyText
 
 t('§5.9 STAGE 2 IS NOT HERE — no interception, no rewrite, no substitute reply anywhere in the guard', () => {
   const c = read(CHAT);
-  const body = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('async function persistComposedReply'));
+  // LABELED AMENDMENT (M-2c, 2026-07-29 — the bench follows the law, CE-80's discipline).
+  // COUNT PRESERVED; the cell's MEANING is unchanged and its guard is now stronger.
+  // WHAT CHANGED: this cell grepped the guard's WHOLE body, comments included, for Stage 2
+  // vocabulary. M-2c's in-file comment states the CE's standing law — that Stage 2, when
+  // it arms, intercepts `costume` alone and every walk class earns its exemption by
+  // measurement — and the word "intercepts" in that sentence tripped a cell whose subject
+  // is MECHANISM, not prose. Writing the law down is the opposite of shipping it.
+  // Executable lines only, exactly as §5.8c already reads the WA seat.
+  const bodyAll = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('async function persistComposedReply'));
+  const body = bodyAll.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.ok(!/there was a small glitch|please try again|replace|intercept/i.test(body),
-    'Stage 2 vocabulary is present in a Stage 1 guard — interception was explicitly out of scope');
+    'Stage 2 vocabulary is present in EXECUTABLE code in a Stage 1 guard — interception was explicitly out of scope');
+  // and the copy itself must be absent from the file ENTIRELY, comments included —
+  // the vetoed strings do not enter this repo until Stage 2 ships them.
+  assert.ok(!/there was a small glitch|I can't confirm that from the records just now/i.test(c),
+    'a vetoed Stage 2 string has entered the file ahead of its movement');
 });
 
 
@@ -929,6 +942,93 @@ t('§8.5 F-06.111 — no vacuous `every` in §8, the constants stay Stage-1-scop
   for (const sym of ['AGENTIVE_CLAIM_RE', 'PARTICIPLE_COMPLETION_RE', 'PRESENCE_ASSERT_RE', 'ABSENCE_ASSERT_RE']) {
     assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant became shared meaning`);
   }
+  const guard = read(CHAT);
+  const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf('async function persistComposedReply'));
+  assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 copy is in a report-only guard');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §9 — M-2c: F-06.126, THE READ-BACKED REPORT (TDW_06, 2026-07-29). The M-2b
+// measurement's single material conviction was TRUE-and-read-backed; this class is
+// its cure, with its boundary pinned by ruling before it ever runs live.
+// ═══════════════════════════════════════════════════════════════════════════════
+const RD = (...names) => ({ tool_calls: [{ name: 'dear_donna_talk', donna_calls: names.map((n) => ({ name: n })) }] });
+const LIVE_2234 = 'Already there. The Rs 1,50,000 quoted figure for Ishaan Precision Probe is filed and affirmed from you — entered 29 July at 03:12.';
+
+t('§9.1 F-06.126 BOTH WAYS — the stative read-backed report walks, the same bytes over ZERO hands convict', () => {
+  const walked = clr({ reply: LIVE_2234, ...RD('donna_find', 'donna_history'), victor_mode: 'business' }, false);
+  assert.strictEqual(walked.kind, 'read_backed_report', 'the live true, read-backed report is still convicted MATERIAL');
+  assert.strictEqual(walked.specimen, false, 'a read-backed report is counted a specimen');
+  // THE DISCRIMINATOR IS THE CENSUS, not the word "already": the identical sentence with
+  // no hand at all is F-04.51's compounding signature and must still convict.
+  const bare = clr({ reply: LIVE_2234, tool_calls: [], victor_mode: 'business' }, false);
+  assert.strictEqual(bare.kind, 'costume', '"already … is filed" over ZERO hands walks — F-04.51\'s signature is freed');
+  assert.strictEqual(bare.specimen, true, 'the zero-hand "already" claim is not MATERIAL');
+});
+
+t('§9.2 THE AGENTIVE LINE — "Done." is a compressed first-person act claim and reads never rescue it', () => {
+  // F-04.71's ORIGINAL specimen, with and without incidental reads. Both convict.
+  for (const hands of [{ tool_calls: [] }, RD('donna_find'), RD('donna_find', 'donna_history')]) {
+    const v = clr({ reply: 'Done. 18 December 2026 is unblocked.', ...hands, victor_mode: 'business' }, false);
+    assert.strictEqual(v.kind, 'costume', 'the founding lie was rescued by an incidental read — "Done." is not being read as agentive');
+  }
+  // an explicit first-person act claim is agentive however many reads ride with it
+  assert.strictEqual(clr({ reply: "I've filed it for you.", ...RD('donna_find'), victor_mode: 'business' }, false).kind, 'costume',
+    'a READ hand rescued an AGENTIVE act claim — a read proves nothing about a write');
+  // and the "already"-family opener is NOT agentive on its own — that is the whole split
+  assert.strictEqual(clr({ reply: 'Already logged. The figure is filed.', ...RD('donna_find'), victor_mode: 'business' }, false).kind,
+    'read_backed_report', 'the "already" family is being read as agentive — the split did not land');
+});
+
+t('§9.3 THE PINNED EXPOSURE, LABELED HONESTLY — presence-of-read, not content-corroboration', () => {
+  // THIS CELL EXISTS TO NAME A KNOWN WEAKNESS, NOT TO ASSERT A VIRTUE. The ladder does
+  // not read the hand's RESULT, so a non-agentive state report riding an UNRELATED read
+  // walks. That is the class's boundary, pinned here so the next measurement MEASURES it
+  // rather than a reader discovering it. Truth adjudication stays CARD ONE's and the
+  // per-mouth arms' one home (F-04.36) and is deliberately not duplicated in the guard.
+  assert.strictEqual(clr({ reply: '18 December is already unblocked.', ...RD('donna_find'), victor_mode: 'business' }, false).kind,
+    'read_backed_report', 'the pinned exposure has moved — the boundary is no longer where it was ruled');
+  // with no marker at all it is the state-description class, reads or not (F-06.120)
+  assert.strictEqual(clr({ reply: '18 December is unblocked.', ...RD('donna_find'), victor_mode: 'business' }, false).kind,
+    'state_description', 'a bare state report with no marker changed class');
+});
+
+t('§9.4 STANDING LAW — only `costume` is ever a specimen; every walk class earns exemption by MEASUREMENT', () => {
+  const code = read(CHAT);
+  assert.ok(/specimen: kind === 'costume'/.test(code),
+    'the specimen predicate is no longer `costume` alone — Stage 2 would intercept a class that never earned it by measurement');
+  // every walk class the ladder can produce, asserted non-specimen by construction
+  const walks = [
+    ['witnessed_hand', clr({ reply: "Done — that's filed.", ...RD('donna_lead'), victor_mode: 'business' })],
+    ['corroborated_lookup', clr({ reply: 'No — Nirali Ladder Test is not on file.', ...RD('donna_find'), victor_mode: 'business' })],
+    ['prior_turn_witnessed', clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, true)],
+    ['state_description', clr({ reply: 'Rahul and Keka are booked.', tool_calls: [], victor_mode: 'business' }, false)],
+    ['read_backed_report', clr({ reply: LIVE_2234, ...RD('donna_find'), victor_mode: 'business' }, false)],
+    ['prior_turn_unverified', clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, null)],
+  ];
+  for (const [name, v] of walks) {
+    assert.ok(v, `${name} produced no verdict at all`);
+    assert.strictEqual(v.kind, name, `the ${name} fixture no longer produces its class (got ${v.kind})`);
+    assert.strictEqual(v.specimen, false, `${name} is marked a specimen — Stage 2 would intercept it`);
+  }
+});
+
+t('§9.5 M-2a AND M-2b SURVIVE M-2c — no earlier proven cure is undone', () => {
+  const q = 'No — Nirali Ladder Test is not on file. Nothing under that name.';
+  assert.strictEqual(clr({ reply: q, tool_calls: [], victor_mode: 'business' }).kind, 'costume', 'the bare-absence conviction was lost');
+  assert.strictEqual(clr({ reply: q, ...RD('donna_find'), victor_mode: 'business' }).kind, 'corroborated_lookup', 'the corroborated walk was lost');
+  assert.strictEqual(clr({ reply: WK, tool_calls: [], victor_mode: 'business' }, false).kind, 'state_description', 'F-06.124\'s briefing cure was lost');
+  assert.strictEqual(isDeed('donna_book_event', 'records'), false, 'F-06.125\'s symmetry was lost');
+  assert.strictEqual(clr({ reply: B5, tool_calls: [], victor_mode: 'business' }, false).kind, 'costume', 'F-06.121\'s linking-verb limb was lost');
+  assert.strictEqual(clr({ reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [], victor_mode: 'business' }, null).kind,
+    'prior_turn_unverified', 'fail-open no longer hedges');
+});
+
+t('§9.6 F-06.111 — no vacuous `every` in §9, and nothing arms', () => {
+  const self = read('scripts/b06_forkc_wireguard_bench.js');
+  const nine = self.slice(self.indexOf('§9.1 F-06.126'), self.indexOf('§9.6 F-06.111'));
+  assert.strictEqual((nine.match(/\.every\(/g) || []).length, 0, '§9 uses .every(), vacuously true over an empty array');
   const guard = read(CHAT);
   const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf('async function persistComposedReply'));
   assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 copy is in a report-only guard');

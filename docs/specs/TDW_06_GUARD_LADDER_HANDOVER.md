@@ -151,3 +151,37 @@ Bench **58 → 63**, one **labeled amendment** (§5.6c, count preserved): F-06.1
 ## Next
 
 Fresh batch windowed `>=` this movement's deploy, the SELECT, the gate re-rules. **What M-2b must earn:** the briefing walking as `state_description`, the records-class `prior_turn_witnessed` re-earned **clean** (F-06.121's contaminated proof was vacated), and the "landed as booked" turn drawing its row. **M-2 builds only behind that gate.** M-3 and R-1 unaffected.
+
+---
+
+# M-2c — F-06.126, THE READ-BACKED REPORT
+
+**Base:** `dream-os @ f4e3f20`. **Delta: two files** + this handover. W-1 shut; `vendorInbound.js` 0-line; **report-only — nothing arms.**
+
+**Standing riders CONFIRMED SHIPPED, not re-claimed:** F-06.119's cell landed in M-2a (§7.0, present at origin) and F-06.123's verdict persistence landed with it — proven live, since the M-2b rows carry populated `deed_class`, `mode` and `prior_deed`. Neither rides here.
+
+## The cure
+
+M-2b's single material conviction (22:34:44) was **true and read-backed**: *"Already there. The Rs 1,50,000 quoted figure … is filed and affirmed from you."* — two read hands, zero writes, the claim correct. Limb 1's rule that a read hand must not rescue an act claim is right for the **agentive** shape (*"I've filed it"* — a read proves nothing about a write) and wrong for the **stative** one (*"it is already filed"* — a report of pre-existing state, corroborated by exactly the reads §2.1 s3 demands).
+
+**Provenance, recorded honestly:** F-06.125's cure *caused* that conviction, by correctly refusing an acquittal a calendar deed had no business granting. A cure exposing a missing mechanism is not a cure breaking.
+
+**The agentive line, pinned as ruled.** `Done.` counts **agentive** — it is a compressed first-person act claim, F-04.51's own signature — so the F-06.114 bytes convict with or without incidental reads. The `already` family is **not** agentive on its own: it is the commonest honest marker of *"I did not do this now"*, and its fabrication half is discriminated by the **census** (zero hands), not by the word.
+
+**The honest limit, in-file:** this walk is **presence-of-read, not content-corroboration**. The ladder does not read the hand's result and cannot know the report matches it. Truth adjudication stays CARD ONE's and the per-mouth arms' one home (F-04.36), deliberately not duplicated in the guard.
+
+**The pinned exposure, its own labeled cell (§9.3):** a non-agentive state report riding an *unrelated* read walks. That is the class's boundary, shipped named so the next measurement measures it rather than a reader discovering it.
+
+**STANDING LAW, in-file and benched (§9.4):** Stage 2, whenever it arms, intercepts **`costume` alone**. Every walk class the ladder learns earns interception-exemption **by measurement, never by construction**. All six walk classes asserted non-specimen.
+
+## Proof
+
+Bench **63 → 69**, one **labeled amendment** (§5.9, count preserved). That cell grepped the guard's whole body — comments included — for Stage 2 vocabulary, and the word *"intercepts"* inside the sentence stating the CE's standing law tripped a cell whose subject is **mechanism, not prose**. Writing the law down is the opposite of shipping it. Now executable lines only (§5.8c's precedent in this same file), **plus a new stricter arm**: the vetoed Stage 2 strings must be absent from the file entirely, comments included.
+
+**Five mutations of shipped code, all RED, `cmp`-restored byte-identical:** read-backed class removed (65/69) · agentive line dropped, freeing the lie (65/69) · read requirement dropped (63/69) · `Done.`-opener no longer agentive (65/69) · a walk class marked specimen (67/69). **One mutation first reported an anchor miss and was re-run correctly rather than counted.**
+
+**Floor:** selftest **351/351** · guard **69/69** · relay 40/40 · f0681 17/17 · f0692 23/23 · **meter 28/29 KNOWN RED** carried · every other bench exit 0.
+
+## Next
+
+Fresh batch windowed `>=` this seal, **terminal transcript beside the SELECT** per the new measurement-read law, Blocks 4 and 5 pinned to the classes they exercise. What M-2c must earn: 22:34:44's shape walking as `read_backed_report`, and the still-unproven `state_description` and linking-verb cells finally firing.

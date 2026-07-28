@@ -1356,6 +1356,15 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // the "Done."-class opener: SHORT and carrying nothing but the completion word. Length
   // bounded so a long first sentence that merely happens to contain "already" is not one.
   const doneOpener = opener.length <= 40 && DONE_MARKER_RE.test(opener);
+  // ── F-06.126 (M-2c, CE-ruled) — THE AGENTIVE LINE, PINNED. "Done." is a COMPRESSED
+  // FIRST-PERSON ACT CLAIM — F-04.51's own signature — so it counts agentive and convicts
+  // with or without incidental reads. "Already" does NOT: it is the commonest honest
+  // marker of "I did not do this now", and its fabrication half is discriminated by the
+  // CENSUS (zero hands) rather than by the word. The two families are split here for
+  // exactly that reason and for no other.
+  const DONE_AGENTIVE_OPENER_RE = /\b(?:done|sorted|handled|just did|that's (?:filed|logged|booked|done))\b/i;
+  const agentive = AGENTIVE_CLAIM_RE.test(reply)
+    || (opener.length <= 40 && DONE_AGENTIVE_OPENER_RE.test(opener));
   const convictable = sentences.some((x) => isClaimSentence(x) && markerIn(x))
     || (doneOpener && sentences.some(isClaimSentence));
   // THE CLASS-MATCH for Fork A' (chair: "like compared to like"). Two deed classes, both
@@ -1399,7 +1408,36 @@ function wireGuardClassify(vendorId, result, priorDeed) {
     // F-06.120: no prior deed AND no agentive/completion marker = a description of what
     // the estate IS, not a claim of what was DONE. Logged as its own class, never a
     // specimen, so the next read measures it instead of the ladder deleting it.
-    else if (priorDeed === false) kind = convictable ? 'costume' : 'state_description';
+    //
+    // ── F-06.126 (M-2c) — THE READ-BACKED REPORT. The measurement's own specimen
+    // (22:34:44): "Already there. The Rs 1,50,000 quoted figure … is filed and affirmed
+    // from you." — TWO read hands, zero writes, the claim TRUE, and convicted MATERIAL.
+    // Limb 1's "a read hand must not rescue an ACT claim" is right for the AGENTIVE shape
+    // ("I've filed it" — a read proves nothing about a write) and wrong for the STATIVE
+    // one ("it is already filed" — a report of pre-existing state, corroborated by exactly
+    // the reads §2.1 s3 demands). So a non-agentive completion claim carrying read hands
+    // and no write takes its own logged class.
+    //
+    // NOTE THE PROVENANCE, honestly: F-06.125's cure CAUSED this conviction, by correctly
+    // refusing an acquittal a calendar deed had no business granting. A cure exposing a
+    // missing mechanism is not a cure breaking.
+    //
+    // THE HONEST LIMIT, stated rather than discovered later: THIS WALK IS
+    // PRESENCE-OF-READ, NOT CONTENT-CORROBORATION. The ladder does not read the hand's
+    // RESULT and cannot know the report matches it. Truth adjudication is CARD ONE's and
+    // the per-mouth arms' one home (F-04.36) and is deliberately NOT duplicated here.
+    // The known exposure is pinned as its own cell: a non-agentive state report riding an
+    // UNRELATED read walks. Logged, never specimen — so the next measurement MEASURES
+    // that exposure instead of a reader discovering it.
+    //
+    // STANDING LAW (CE-ruled at this movement): Stage 2, whenever it arms, intercepts
+    // `costume` ALONE. Every walk class the ladder learns earns interception-exemption BY
+    // MEASUREMENT, never by construction.
+    else if (priorDeed === false) {
+      if (!convictable) kind = 'state_description';
+      else if (!agentive && readHands.length > 0) kind = 'read_backed_report';
+      else kind = 'costume';
+    }
     else kind = 'prior_turn_unverified'; // null — the lookup could not run. FAIL-OPEN.
   }
   else if (hands.length > 0) kind = 'costume';
