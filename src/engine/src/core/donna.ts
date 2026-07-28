@@ -22,6 +22,9 @@ import { DONNA_SOUL } from './donnaSoul.js';
 import { RECORD_TOOLS, executeRecordTool, recordItem, rs } from './tools/recordPrimitives.js'; // recordItem: TDW_04 engine-lane (ST-3a) · rs: TDW_06 M-4 (R2-B) the house money register
 import { READ_TOOLS, READ_TOOL_NAMES, executeFindTool, executeWhatsDue } from './tools/donnaFind.js';
 import { BENCH_READ_TOOLS, BENCH_READ_NAMES, executeTally, executeHistory } from './tools/donnaBench.js';
+// TDW_06 THE DETERMINISTIC SITTING (forks A-1(b)/A-2(b)) — the history gate's one home.
+import { makeHistoryGateContext, historyRefusal, isBreadthFind, HISTORY_REFUSED_HAND } from './historyGate.js';
+import type { RefusedFact } from './relaySeam.js';
 import { SHELF_READ_TOOLS, SHELF_READ_NAMES, executeShelf, executeBriefRead } from './tools/donnaShelf.js';
 import { REVIEW_READ_TOOLS, REVIEW_READ_NAMES, executeReviewRead } from './tools/donnaReviewRead.js';
 import { DONNA_VERDICT_TOOL, executeDonnaVerdict } from './tools/donnaVerdict.js';
@@ -393,7 +396,7 @@ export type DonnaSession = {
 export type DonnaTurn = {
   message: string;          // what she said back to Harvey this segment
   session: DonnaSession;    // her conversation so far, for resume
-  tool_calls: { name: string; input: unknown; result: string; plain?: string | null }[];
+  tool_calls: { name: string; input: unknown; result: string; plain?: string | null; refused?: RefusedFact[] | null }[];
   cost_inr: number;
   input_tokens: number;
   output_tokens: number;
@@ -436,7 +439,13 @@ export async function runDonnaTurn(
   // existing consumer of result (chipFiling, donnaWitnessLines, the gauntlet's
   // nestedHands, D-1's "only nested hands convict") is byte-untouched by an extra key.
   // Fork C's seam reads `plain` and only `plain` — see snapshotTypes' ToolOutcome.
-  const record = (name: string, input: unknown, result: string, plain?: string | null) => { toolCalls.push({ name, input, result, ...(plain ? { plain } : {}) }); onAction?.({ name, input, result, ...(plain ? { plain } : {}) }); };
+  const record = (name: string, input: unknown, result: string, plain?: string | null, refused?: RefusedFact[] | null) => {
+    // TDW_06 fork B-1(a): `refused` rides beside `plain`, ADDITIVELY and OPTIONALLY,
+    // exactly as `plain` rides beside `result`. Every existing consumer of either key
+    // is byte-untouched by a third; absent means silence, never an empty claim.
+    const extra = { ...(plain ? { plain } : {}), ...(refused && refused.length ? { refused } : {}) };
+    toolCalls.push({ name, input, result, ...extra }); onAction?.({ name, input, result, ...extra });
+  };
   let inTok = 0, outTok = 0, cost = 0, mutated = false;
   let cacheRead = 0, cacheWrite = 0; // 02-HOTFIX: her buckets, priced and surfaced
   let providerDowngrade = false;     // F-04.87: her fidelity, surfaced on the return
@@ -480,6 +489,13 @@ export async function runDonnaTurn(
     'donna_invoice_pdf',
   ]);
 
+  // ── THE HISTORY GATE'S CONTEXT (TDW_06, fork A-1(b): THE WORK LOOP, ruled).
+  // The predicate's evidence — the ask, the chain, the ids' provenance — exists at
+  // this seam and nowhere else without invented plumbing: `executeHistory` is handed
+  // an agentId and an input, has exactly ONE caller (below), and could only learn
+  // any of this as parameters threaded down from here. Built once per segment and
+  // fed by each find as it returns, so the chain is read where it is formed.
+  const gateCtx = makeHistoryGateContext(harveyMessage);
   let transport = transportIn ?? null;
   let donnaModel = modelOverride ?? MODELS.haiku; // anthropic path: Donna is ALWAYS Haiku (unchanged)
   for (let i = 0; i < DONNA_WORK_ITERS; i++) {
@@ -550,6 +566,33 @@ export async function runDonnaTurn(
         } else if (tu.name === 'donna_tally') {
           outcome = await executeTally(agentId, tu.input as Record<string, unknown>);
         } else if (tu.name === 'donna_history') {
+          // ── THE SD-WEEK MECHANICAL FLOOR (TDW_06, F-06.13; CE-25's HOLD founder-
+          // REVERSED on Evening Four's repetition data — 2-of-5 with money riding).
+          // The predicate is chain-shaped and count-blind (fork A-2(b)) and it FAILS
+          // OPEN on every ambiguity; the four lawful deep-read shapes are untaxed by
+          // construction. See historyGate.ts for the whole derivation, F-04.27's
+          // enumerated false-refusal risks and F-04.62's discharge.
+          //
+          // THE CONTRAST WITH ITS NEIGHBOUR, STATED WHERE BOTH ARE READ: the
+          // provenance hold sits at this same seam a few lines below and fails
+          // CLOSED, because a false pass there writes a fabricated figure into the
+          // record. This gate fails OPEN, because the asymmetry runs the other way —
+          // a false refusal costs the owner an answer he asked for, and a false pass
+          // costs one fan-out that Evening Five's SD-WEEK catches.
+          const refusal = historyRefusal(String((tu.input as { binder_id?: unknown }).binder_id ?? ''), gateCtx);
+          if (refusal) {
+            // Recorded under its OWN hand name, never `donna_history`: every reader in
+            // the estate that counts `donna_history` means by it "a deep read actually
+            // happened". Keeping the name would leave the count intact over a wire that
+            // refused correctly — a hollow RED, the mirror of the hollow green this
+            // block exists to refuse. Under its own name the refusal is still AMONG THE
+            // HANDS while the deep-read count honestly reads zero. A-3, ruled: NO plain
+            // clause is authored, so this paper cannot reach Victor's composer or a
+            // vendor by any path.
+            record(HISTORY_REFUSED_HAND, tu.input, refusal);
+            results.push({ type: 'tool_result', tool_use_id: tu.id, content: refusal });
+            continue;
+          }
           outcome = await executeHistory(agentId, tu.input as Record<string, unknown>);
         } else if (tu.name === 'donna_whatsdue') {
           // "What's due" needs the bare ISO date to compare/range against — NOT the
@@ -557,6 +600,18 @@ export async function runDonnaTurn(
           outcome = await executeWhatsDue(agentId, todayIso ?? new Date().toISOString().slice(0, 10), tu.input as Record<string, unknown>);
         } else {
           outcome = await executeFindTool(agentId, tu.input as Record<string, unknown>);
+          // THE CHAIN, recorded where it is formed. A find carrying search terms is a
+          // NAMED find and every id it returns is lawful under L4 for the rest of the
+          // segment; a find with nothing given is the recents SWEEP donnaFind's own
+          // contract describes, and its ids are the only ones this gate can refuse.
+          // The names travel too, so L1 can recognise a record the owner named.
+          const ids = (outcome.found ?? []).map((r) => String(r.id));
+          const breadth = isBreadthFind(tu.input as Record<string, unknown>);
+          for (const r of outcome.found ?? []) if (r.client) gateCtx.knownNames.set(String(r.id), String(r.client));
+          for (const id of ids) (breadth ? gateCtx.breadthIds : gateCtx.namedIds).add(id);
+          // A named find OUTRANKS an earlier sweep on the same id: once the chain has
+          // narrowed by name, it has narrowed. The reverse is never true.
+          if (!breadth) for (const id of ids) gateCtx.breadthIds.delete(id);
         }
       } else {
         // OPEN-BINDER DEFAULT: an attribute atom with no binder_id lands on the binder
@@ -605,7 +660,7 @@ export async function runDonnaTurn(
           outcome = await executeDonnaLead(agentId, input as Parameters<typeof executeDonnaLead>[1], rawMessage);
           mutated = true;
           await patchNote(agentId, outcome);
-          record(tu.name, tu.input, outcome.display, outcome.plain);
+          record(tu.name, tu.input, outcome.display, outcome.plain, outcome.refused);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;
         }
@@ -623,7 +678,7 @@ export async function runDonnaTurn(
         if (outcome.item?.ref_id) currentBinderId = outcome.item.ref_id;
       }
       if (outcome.found && outcome.found.length) view = outcome.found; // a read surfaced rows -> this turn has a view
-      record(tu.name, tu.input, outcome.display, outcome.plain);
+      record(tu.name, tu.input, outcome.display, outcome.plain, outcome.refused);
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
     }
 

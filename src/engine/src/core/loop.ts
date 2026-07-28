@@ -24,6 +24,8 @@ import { DEAR_DONNA_HANDBOOK_TOOL, ADVISOR_HANDBOOK_TOOL } from './tools/dearDon
 import { JOT_ADVICE_TOOL, executeJotAdvice } from './tools/jotAdvice.js';
 import { snapshotText, runDonnaTurn, type DonnaSession } from './donna.js';
 import type { ViewRow } from './snapshotTypes.js';
+// TDW_06 THE DETERMINISTIC SITTING (fork B-2(α)) — the relay deed seam's ONE home.
+import { echoedRefusals, appendDeedTail } from './relaySeam.js';
 import { todayLine, todayISO } from './today.js';
 import { resolveField, getHandbookIndex, getHandbookFull, getSection } from './handbook.js';
 import {
@@ -695,17 +697,74 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         // that resolved her (work+listen, or a fresh segment) writes '' here.
         pendingDonnaQuestion = donna.session.pendingToolUseId ? said : '';
         const voiced = /^listen[,\s]+harvey/i.test(said) ? said : `Listen Harvey \u2014 ${said}`;
+
+        // ── THE RELAY-SEAM DEED LINE (TDW_06 THE DETERMINISTIC SITTING, 2026-07-28;
+        // CE fork B-2(α), amended from (c) on the executor's §2 blocking report and
+        // the chair's correction №1). HER VOICED SENTENCE IS CHECKED AGAINST HER OWN
+        // HAND'S RECEIPT, AND A DETECTED CONTRADICTION CARRIES THE DEED'S SENTENCE.
+        //
+        // THE DISEASE: SD-REL. The door refuses to overwrite a standing fact, says so
+        // in a receipt in her own hand — and the relay speaks the DISPATCH back as the
+        // outcome anyway. CE-94 made the honest sentence producible; Evening One proved
+        // producible is not spoken; CE-100 carried the receipt to Victor's composer;
+        // Evening Four proved the residual is a COIN-FLIP and architecture-indifferent.
+        // Cures that ask a mouth to choose cannot clear an every-cell-twice bar.
+        //
+        // WHY THE APPEND FORM AND NOT AN ADJACENT ENTRY — derived, reported, ruled.
+        // SD-REL's verdict reads exactly one surface: the `listen_harvey_talk` results
+        // (`b06_gauntlet.js`, the `relays` line). Its verdict is BYTE-UNTOUCHED by
+        // ruling (CE-91's don't-re-aim-the-grader precedent). So a deed sentence filed
+        // as its own separate entry would repair the thread and leave SD-REL exactly as
+        // intermittent as Evening Four found it — the one outcome Path A exists to
+        // prevent. The append is the composedTail/deed-line precedent, thrice shipped:
+        // the model's words and the door's line in ONE field, the door's attributable
+        // by its seam. HER BYTES ARE VERBATIM-FIRST AND BYTE-EXACT; nothing of hers is
+        // edited, reordered or dropped, and an honest relay is returned UNTOUCHED.
+        //
+        // THE SEPARABILITY THIS BUYS AND OWES: because the tail is door speech living
+        // inside a relay field, every per-mouth arm MUST strip at the seam before
+        // judging, or an appended honest tail could ACQUIT a fabricating relay (the
+        // hazard was enumerated in advance, not discovered). `RELAY_DEED_SEAM` has ONE
+        // home in relaySeam.ts and `stripDeedTail` is imported by the arms from it;
+        // both directions are asserted as cells.
+        //
+        // THE PREDICATE READS STRUCTURED FIELDS, NEVER PROSE (F-06.102): `dc.refused`
+        // is the door's own already-evaluated guard conditions as data. A hand with no
+        // `refused` array can never be detected and its relay ships byte-identical —
+        // FAIL-OPEN by construction, no inference fallback, and none may be added. The
+        // coverage boundary is stated as law in relaySeam.ts: `refused` today is
+        // authored at TWO sites (donnaLead's single-match returns), which is NOT the
+        // same set as `plain`'s three.
+        //
+        // THE DISTIL CONSEQUENCE, which is half the point: `memory.ts`'s
+        // `donnaMessages` re-injects `listen_harvey_talk.result` into Harvey's context
+        // on EVERY later turn of the conversation. An uncorrected echo is therefore
+        // re-taught for the life of the thread — this block's founding conviction, that
+        // the thread teaches the shape. Because the annotated text IS the persisted
+        // result, the correction re-teaches instead, and `donnaMessages` needs NO
+        // change at all: zero reader bytes ship, asserted as a cell.
+        const echoedPlain: string[] = [];
+        for (const dc of donna.tool_calls) {
+          if (!dc.refused || !dc.refused.length) continue; // fail OPEN: no structure, no detection
+          if (!dc.plain) continue;                          // no authored sentence, nothing to carry
+          if (echoedRefusals(voiced, dc.refused).length) echoedPlain.push(String(dc.plain).trim());
+        }
+        const deedSentence = Array.from(new Set(echoedPlain)).join(' ');
+        // A CLEAN TURN APPENDS NOTHING AND PERSISTS NOTHING — the cost fires only on a
+        // detected contradiction (cell). `voicedOut === voiced` byte-exact otherwise.
+        const voicedOut = deedSentence ? appendDeedTail(voiced, deedSentence) : voiced;
+
         // eslint-disable-next-line no-console
-        console.log(`[D->H #${talks}] ${voiced}`);
-        args.onEvent?.({ type: 'donna_report', message: voiced });
+        console.log(`[D->H #${talks}] ${voicedOut}`);
+        args.onEvent?.({ type: 'donna_report', message: voicedOut });
 
         toolCalls.push({
           name: 'dear_donna_talk',
           input: tu.input,
           result: '(handed to Donna)',
-          donna_calls: donna.tool_calls.map((dc) => ({ name: dc.name, input: dc.input, result: dc.result, ...(dc.plain ? { plain: dc.plain } : {}) })),
+          donna_calls: donna.tool_calls.map((dc) => ({ name: dc.name, input: dc.input, result: dc.result, ...(dc.plain ? { plain: dc.plain } : {}), ...(dc.refused && dc.refused.length ? { refused: dc.refused } : {}) })),
         });
-        toolCalls.push({ name: 'listen_harvey_talk', input: { message: msg }, result: voiced });
+        toolCalls.push({ name: 'listen_harvey_talk', input: { message: msg }, result: voicedOut });
 
         // ── FORK C (TDW_06 Donna cure sitting, 2026-07-28; CE-99 chartered, R-1/R-2
         // ruled). THE DOOR'S OWN PLAIN SPEECH REACHES VICTOR'S COMPOSER BESIDE HER
@@ -757,12 +816,18 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
         // EVER REVERTED, NARROWED, OR ITS PAYLOAD SCOPE CHANGED, RE-READ BOTH BRANCHES
         // BEFORE SHIPPING — they are conditioned on this line and will otherwise fail
         // silently, which is precisely the class F-06.85 exists to prevent.
+        //
+        // TDW_06 DETERMINISTIC SITTING: a receipt already carried at the relay seam is
+        // NOT repeated here — Victor would otherwise read the same sentence twice in
+        // one payload. The seam's copy wins because it is the one SD-REL and the thread
+        // both see; Fork C keeps every receipt the seam did not carry, unchanged.
+        const carriedAtSeam = new Set(echoedPlain);
         const plainReceipts = donna.tool_calls
           .map((dc) => (dc.plain ? String(dc.plain).trim() : ''))
-          .filter((t) => t.length > 0);
+          .filter((t) => t.length > 0 && !carriedAtSeam.has(t));
         const composedForVictor = plainReceipts.length
-          ? `${voiced}\n\n${plainReceipts.join('\n\n')}`
-          : voiced;
+          ? `${voicedOut}\n\n${plainReceipts.join('\n\n')}`
+          : voicedOut;
         results.push({ type: 'tool_result', tool_use_id: tu.id, content: composedForVictor });
         continue;
       } else if (tu.name === 'dear_donna_handbook') {

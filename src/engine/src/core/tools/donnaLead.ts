@@ -12,7 +12,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '../db.js';
 import { vendorIdFromAgent } from '../vendorIdentity.js';
 import { leadDraftMeta } from '../draftContracts.js';
-import type { ToolOutcome, SnapshotItem } from '../snapshotTypes.js';
+import type { ToolOutcome, SnapshotItem, RefusedFact } from '../snapshotTypes.js';
 import { phoneKey } from '../phoneKey.js'; // TDW_04 engine-lane (ST-3b)
 import { rs } from './recordPrimitives.js'; // TDW_06 M-4 (R2-B) — the house money register, one grouped home
 
@@ -277,22 +277,43 @@ export async function executeDonnaLead(
     // rendered on a TWO-refusal specimen ("If either should change"); the one-refusal
     // and three-or-more forms below are the executor's grammatical extension of his
     // bytes, nothing else changed.
+    //
+    // ── TDW_06 THE DETERMINISTIC SITTING · fork B-1(a) (CE-ruled 2026-07-28). THE
+    // SAME REFUSALS, ALSO AS DATA. `refusedFacts` is built from the IDENTICAL guard
+    // conditions in the identical order — one evaluation, two renderings — so there
+    // is no second home to drift (fork (b), re-deriving at the seam, was refused on
+    // F-04.36's class). The prose array below is what the OWNER hears; this array is
+    // what the relay seam's contradiction predicate READS, so that predicate never
+    // has to regex a display string (F-06.102's law). `stands`/`said` carry the same
+    // human-rendered values the sentence carries — never a column value, never a
+    // sentinel date. See relaySeam.ts for the guard and its coverage boundary.
+    const refusedFacts: RefusedFact[] = [];
     const notWritten: string[] = [];
     if (input.name && cur.name && input.name.trim().toLowerCase() !== cur.name.trim().toLowerCase()) {
       notWritten.push(`the name stays ${cur.name} (you said ${input.name.trim()})`);
+      refusedFacts.push({ field: 'name', stands: String(cur.name), said: input.name.trim() });
     }
     if (input.wedding_city && cur.wedding_city && input.wedding_city.trim().toLowerCase() !== cur.wedding_city.trim().toLowerCase()) {
       notWritten.push(`the city stays ${cur.wedding_city} (you said ${input.wedding_city.trim()})`);
+      refusedFacts.push({ field: 'city', stands: String(cur.wedding_city), said: input.wedding_city.trim() });
     }
     if (parsedDateU && 'date' in parsedDateU && cur.wedding_date && parsedDateU.date !== cur.wedding_date) {
       const stands = humanWeddingDate(cur.wedding_date, cur.wedding_date_precision);
       const given = humanWeddingDate(parsedDateU.date, parsedDateU.precision);
       // Both halves must render, or the clause is dropped whole — a half-spoken
       // comparison is worse than silence.
-      if (stands && given) notWritten.push(`the wedding date stays ${stands} (you said ${given})`);
+      if (stands && given) {
+        notWritten.push(`the wedding date stays ${stands} (you said ${given})`);
+        // The PRECISION-HONEST forms, never the sentinel: `humanWeddingDate` is the
+        // same renderer the sentence uses, so a month-precision row can never enter
+        // the structured fact as a day the estate never had (the F-06.92 cure's own
+        // law, carried into the carrier).
+        refusedFacts.push({ field: 'wedding date', stands, said: given });
+      }
     }
     if (input.referrer && cur.referrer_name && input.referrer.trim().toLowerCase() !== cur.referrer_name.trim().toLowerCase()) {
       notWritten.push(`the referrer stays ${cur.referrer_name} (you said ${input.referrer.trim()})`);
+      refusedFacts.push({ field: 'referrer', stands: String(cur.referrer_name), said: input.referrer.trim() });
     }
     const notWrittenTail = notWritten.length === 1 ? 'If that should change' : notWritten.length === 2 ? 'If either should change' : 'If any should change';
     const notWrittenNote = notWritten.length
@@ -323,9 +344,14 @@ export async function executeDonnaLead(
     // door with nothing plain to say says nothing (R-8), and `plain: ''` would be a door
     // claiming it had spoken.
     const plainClause = notWritten.length ? notWrittenNote.trim() : undefined;
+    // Fail-OPEN, deliberately and symmetrically with `plain`'s fail-closed: no
+    // refusal ⇒ no array ⇒ the relay seam can never detect anything on this hand,
+    // and her voiced text ships byte-untouched. `refused: []` would be a door
+    // claiming it had refused nothing, which is a different assertion from silence.
+    const refusedOut = refusedFacts.length ? refusedFacts : undefined;
 
     if (Object.keys(patch).length === 0) {
-      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}${notWrittenNote}`, item: leadItem(cur), plain: plainClause };
+      return { display: `Lead "${cur.name ?? cur.phone ?? 'unknown'}" already on file (id=${cur.id}) — nothing new to add.${nameMatchNote}${notWrittenNote}`, item: leadItem(cur), plain: plainClause, refused: refusedOut };
     }
 
     // Recompute draft state from the merged row (spec P3: every update recomputes).
@@ -350,7 +376,7 @@ export async function executeDonnaLead(
     const row = data ?? ({ ...cur, ...patch } as LeadRow);
     const changed = Object.keys(patch).filter((k) => k !== 'draft_meta').join(', ');
     const flag = ambiguous ? ` Note: ${existing.length} leads matched — updated the most recent; if you meant a different one, tell me which.` : '';
-    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}${notWrittenNote}`, item: leadItem(row), plain: plainClause };
+    return { display: `Updated existing lead "${row.name ?? 'unknown'}" (id=${cur.id}) — ${changed}. (Typed lead — this id is not a binder; binder hands like follow-ups, money or notes don't attach to it.)${flag}${nameMatchNote}${notWrittenNote}`, item: leadItem(row), plain: plainClause, refused: refusedOut };
   }
 
   // ── No match -> create new (the typed-plane draft; thin is welcome).

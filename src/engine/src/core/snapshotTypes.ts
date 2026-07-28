@@ -2,6 +2,12 @@
 // Shared by the tools (which build an item from the row they just wrote) and
 // donna.ts (which patches the note with it). One item = one open/near thing
 // Harvey should see at a glance.
+//
+// TDW_06 (fork B-1(a)): RefusedFact is re-exported, never redefined — relaySeam.ts
+// is its ONE home, and a second declaration would let the carrier and the guard that
+// reads it drift apart silently.
+import type { RefusedFact } from './relaySeam.js';
+export type { RefusedFact };
 
 export type SnapshotItem = {
   id: string;        // stable key: "lead:<uuid>" | "claim:<uuid>" | "money:<uuid>"
@@ -106,4 +112,20 @@ export type ToolOutcome = {
   // contribute their ARRIVAL-STAMP line only (recognition-grade — never rows, never
   // money, never phones: F-06.13's re-entry door stays welded shut, ruled at R-2).
   plain?: string | null;
+  // ── TDW_06 THE DETERMINISTIC SITTING · fork B-1(a) (CE-ruled 2026-07-28) — THE
+  // STRUCTURED REFUSED FACTS. `plain` is the door's SENTENCE; `refused` is the same
+  // refusal as DATA, so the relay seam's contradiction predicate can read fields
+  // instead of regexing prose (F-06.102's law: never prose-scrubbing).
+  //
+  // ADDITIVE AND FAIL-OPEN, the same construction as `plain` is additive and
+  // fail-closed: a door that authors no `refused` array can never be detected, and
+  // its relay ships BYTE-UNTOUCHED. There is no inference fallback and none may be
+  // added — deriving refusals from a display string would re-admit exactly the
+  // disease `plain` exists to keep out.
+  //
+  // COVERAGE, STATED SO IT CANNOT BE CONFLATED (fork B-3): `refused` is authored at
+  // TWO sites (donnaLead's two single-match returns); `plain` at THREE (those two
+  // plus donnaFind's arrival line). They are different carriers with different
+  // reach. See relaySeam.ts for the guard this field feeds and the boundary law.
+  refused?: RefusedFact[] | null;
 };

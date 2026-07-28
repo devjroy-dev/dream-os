@@ -159,18 +159,29 @@ t('§2.1 ToolOutcome carries the optional plain field, and it is OPTIONAL — a 
   assert.ok(/plain\?: string \| null;/.test(ty), 'ToolOutcome has no plain field');
 });
 
+// ⚑ LABELED AMENDMENT (TDW_06 THE DETERMINISTIC SITTING, 2026-07-28; CE forks
+// B-1(a)/B-2(α)). THE CARRIER GAINED A THIRD KEY AND THE COMPOSITION GAINED A
+// PRECEDING STEP — the pins follow the law rather than pinning a shape the law has
+// moved past (CE-80's floor-method precedent). NOTHING IS SOFTENED: every clause
+// these cells asserted still holds, and each pin below is STRICTER than its
+// predecessor because it now also names the key or step that arrived.
 t('§2.2 THE CARRIER IS ADDITIVE AT ALL FOUR SITES — every existing consumer of `result` is untouched', () => {
   const d = read(DONNA), l = read(LOOP);
-  assert.ok(/tool_calls: \{ name: string; input: unknown; result: string; plain\?: string \| null \}\[\];/.test(d), 'DonnaTurn.tool_calls did not widen');
+  // ⚑ AMENDED (see the header note above): `refused` joined `plain` as a second
+  // additive key. Both are now named, so a future sitting that drops EITHER reds here.
+  assert.ok(/tool_calls: \{ name: string; input: unknown; result: string; plain\?: string \| null; refused\?: RefusedFact\[\] \| null \}\[\];/.test(d), 'DonnaTurn.tool_calls did not widen');
   assert.ok(/onAction\?: \(a: \{ name: string; input: unknown; result: string; plain\?: string \| null \}\) => void,/.test(d), 'onAction did not widen');
-  assert.ok(/const record = \(name: string, input: unknown, result: string, plain\?: string \| null\)/.test(d), 'record() did not widen');
+  assert.ok(/const record = \(name: string, input: unknown, result: string, plain\?: string \| null, refused\?: RefusedFact\[\] \| null\)/.test(d), 'record() did not widen');
   assert.ok(/donna_calls\?: \{ name: string; input: unknown; result: string; plain\?: string \| null \}\[\]/.test(l), 'donna_calls did not widen');
   assert.ok(/result: string;/.test(d) && /result: dc\.result/.test(l), '`result` stopped riding — the witness machinery reads it and must be undisturbed');
 });
 
 t('§2.3 :706 PERSISTS plain ADDITIVELY — the key appears only when a door authored one', () => {
-  assert.ok(/donna_calls: donna\.tool_calls\.map\(\(dc\) => \(\{ name: dc\.name, input: dc\.input, result: dc\.result, \.\.\.\(dc\.plain \? \{ plain: dc\.plain \} : \{\}\) \}\)\)/.test(read(LOOP)),
-    'the :706 persistence does not carry plain, or does not carry it additively');
+  // ⚑ AMENDED: the persistence carries `refused` too, and BOTH are spread-guarded —
+  // a key appears only when a door authored it. The pin names both spreads.
+  const persisted = read(LOOP);
+  assert.ok(/donna_calls: donna\.tool_calls\.map\(\(dc\) => \(\{ name: dc\.name, input: dc\.input, result: dc\.result, \.\.\.\(dc\.plain \? \{ plain: dc\.plain \} : \{\}\), \.\.\.\(dc\.refused && dc\.refused\.length \? \{ refused: dc\.refused \} : \{\}\) \}\)\)/.test(persisted),
+    'the :706 persistence does not carry plain and refused additively');
 });
 
 t('§2.4 FAIL-CLOSED, THE GREP-SHAPED NEGATIVE: the Fork C seam NEVER reads `result` and has NO fallback to it', () => {
@@ -185,10 +196,16 @@ t('§2.4 FAIL-CLOSED, THE GREP-SHAPED NEGATIVE: the Fork C seam NEVER reads `res
 
 t('§2.5 FAIL-CLOSED, THE BEHAVIOURAL PROOF: the SHIPPED expression, extracted and run — a hand with no plain contributes NOTHING', () => {
   const l = read(LOOP);
-  const i = l.indexOf('const plainReceipts = donna.tool_calls');
+  // ⚑ AMENDED: the composition is now preceded by the relay seam's dedupe step
+  // (`carriedAtSeam`), so the extraction starts there and the sandbox is handed the
+  // seam's two outputs. The CLEAN-TURN values are used — `echoedPlain` empty and
+  // `voicedOut === voiced` — which is exactly the state every pre-cure turn was in,
+  // so this cell still proves what it always proved, on a strictly larger slice of
+  // shipped bytes.
+  const i = l.indexOf('const carriedAtSeam = new Set(echoedPlain);');
   const j = l.indexOf('results.push({ type: \'tool_result\'', i);
   const shipped = l.slice(i, j);
-  const run = (calls, voiced) => new Function('donna', 'voiced', `${shipped}\nreturn composedForVictor;`)({ tool_calls: calls }, voiced);
+  const run = (calls, voiced) => new Function('donna', 'voiced', 'echoedPlain', 'voicedOut', `${shipped}\nreturn composedForVictor;`)({ tool_calls: calls }, voiced, [], voiced);
   // a door with a plain clause: it reaches the composer
   assert.ok(run([{ name: 'donna_lead', result: 'MACHINERY (id=abc) — wedding_city', plain: 'the city stays Kochi (you said Goa)' }], 'Listen Harvey — done.')
     .includes('the city stays Kochi (you said Goa)'), 'the plain clause did not reach the composer');
@@ -205,10 +222,16 @@ t('§2.5 FAIL-CLOSED, THE BEHAVIOURAL PROOF: the SHIPPED expression, extracted a
 
 t('§2.6 UNLABELED (F-06.52): the composition carries NO framing header, NO banner, NO machinery vocabulary', () => {
   const l = read(LOOP);
-  const i = l.indexOf('const plainReceipts = donna.tool_calls');
+  // ⚑ AMENDED: the composition is now preceded by the relay seam's dedupe step
+  // (`carriedAtSeam`), so the extraction starts there and the sandbox is handed the
+  // seam's two outputs. The CLEAN-TURN values are used — `echoedPlain` empty and
+  // `voicedOut === voiced` — which is exactly the state every pre-cure turn was in,
+  // so this cell still proves what it always proved, on a strictly larger slice of
+  // shipped bytes.
+  const i = l.indexOf('const carriedAtSeam = new Set(echoedPlain);');
   const j = l.indexOf('results.push({ type: \'tool_result\'', i);
   const shipped = l.slice(i, j);
-  const run = (calls, voiced) => new Function('donna', 'voiced', `${shipped}\nreturn composedForVictor;`)({ tool_calls: calls }, voiced);
+  const run = (calls, voiced) => new Function('donna', 'voiced', 'echoedPlain', 'voicedOut', `${shipped}\nreturn composedForVictor;`)({ tool_calls: calls }, voiced, [], voiced);
   const out = run([{ name: 'donna_lead', result: 'x', plain: 'the city stays Kochi (you said Goa)' }], 'Listen Harvey — done.');
   assert.ok(!/\[[^\]]*\]/.test(out), 'a bracketed label reached the composition — F-06.52\'s exact donor shape');
   assert.ok(!/receipt|the door|tool result|hand result|snapshot|Operator/i.test(out), 'machinery vocabulary reached the composition');

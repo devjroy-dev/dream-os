@@ -119,7 +119,39 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const ROOT = path.resolve(__dirname, '..');
+
+// ── TDW_06 THE DETERMINISTIC SITTING (fork B-2(α)) — THE SEAM, BORROWED FROM ITS ONE
+// HOME. `RELAY_DEED_SEAM` is declared once, in src/engine/src/core/relaySeam.ts, and
+// the composer imports it there. The rig cannot `require` it: this file's own hygiene
+// fence NOOPs every `engine/dist/` request (the F-RIG-1 cure, :153), so a require would
+// hand the rig `undefined` and silently blind every per-mouth arm — the exact class the
+// fence exists to prevent, one layer over. So the LITERAL is lifted from the shipped
+// source, the `liftConst` precedent b06_m1/m2/m3_bench already use on this file, and a
+// drift THROWS ("stale, not the code") instead of degrading. EXECUTOR SITING, DISCLOSED.
+const RELAY_SEAM_SRC = path.join(ROOT, 'src/engine/src/core/relaySeam.ts');
+const RELAY_DEED_SEAM = (() => {
+  const src = fs.readFileSync(RELAY_SEAM_SRC, 'utf8');
+  const m = src.match(/^export const RELAY_DEED_SEAM = '((?:[^'\\]|\\.)*)';$/m);
+  if (!m) throw new Error('RELAY_DEED_SEAM is GONE from relaySeam.ts — the lift is stale, not the code');
+  return m[1].replace(/\\n/g, '\n');
+})();
+// THE STRIP THE ARMS USE. Everything from the seam onward is the DOOR's attributable
+// speech and belongs to no model's mouth; what precedes it is hers, byte-exact. Without
+// this, an appended honest tail could ACQUIT a fabricating relay — the hazard was
+// enumerated before the cure shipped, and both directions are asserted as cells.
+const stripDeedTail = (t) => { const s = String(t || ''); const i = s.indexOf(RELAY_DEED_SEAM); return i < 0 ? s : s.slice(0, i); };
+// The refusal paper and the hand's two genuine ERROR forms, both borrowed from their
+// production homes (never re-typed): the rig asserts F-04.62's distinguishability on
+// the SHIPPED bytes, so a copy edit that blurred the two registers would red here.
+const HISTORY_REFUSAL_PAPER_SRC = (() => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/historyGate.ts'), 'utf8');
+  const m = src.match(/export const HISTORY_REFUSAL_PAPER =\n([\s\S]*?);\n/);
+  if (!m) throw new Error('HISTORY_REFUSAL_PAPER is GONE from historyGate.ts — the lift is stale, not the code');
+  return m[1].split('\n').map((l) => l.trim().replace(/^'|'$/g, '').replace(/'\s*\+$/, '')).join('').replace(/\\'/g, "'");
+})();
+const BENCH_SRC30 = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/donnaBench.ts'), 'utf8');
 const SELFTEST = process.argv.includes('--rig-selftest');
 
 let pass = 0, fail = 0;
@@ -297,7 +329,11 @@ const _FID_NOMATCH_RE = /no record matched|nothing on file yet|no enquiry matche
 // is not touched by this sitting (CE-91's don't-re-aim-the-grader precedent, honoured
 // by construction and asserted as a cell).
 function relayMouths(r) {
-  const relays = ((r && r.tool_calls) || []).filter((c) => c && c.name === 'listen_harvey_talk').map((c) => String(c.result || ''));
+  // TDW_06 (fork B-2(α)): stripped at RELAY_DEED_SEAM before judging — the arms judge
+  // HER MOUTH ALONE. The door's deed line lives in the same field by ruling (SD-REL's
+  // verdict reads only this surface and may not be re-aimed), so the strip is what
+  // keeps F-04.78's per-mouth geometry intact across the change.
+  const relays = ((r && r.tool_calls) || []).filter((c) => c && c.name === 'listen_harvey_talk').map((c) => stripDeedTail(String(c.result || '')));
   return [{ who: "Victor's outward prose", text: String((r && r.reply) || '') }]
     .concat(relays.map((t, i) => ({ who: `the relay to Harvey${relays.length > 1 ? ` #${i + 1}` : ''}`, text: t })));
 }
@@ -1942,6 +1978,11 @@ async function runLane(lane, runTurn, mkTransports) {
   const { db, store } = mkLaneDb();
   // the engine's db is module-state; the shim below was installed before dist load
   engineDb.current = db;
+  // TDW_06 DETERMINISTIC SITTING — ADDITIVE SEED HOOK, disclosed. A lane may seed its
+  // own store before the first turn, so a cure whose predicate depends on what a find
+  // ACTUALLY RETURNS can be exercised through the real wire instead of a hand-built
+  // record. No existing lane supplies one, so every pre-existing lane is byte-identical.
+  if (typeof lane.seed === 'function') lane.seed(store);
   const results = [];
   let laneOk = true;
   for (const sc of SCENARIOS) {
@@ -2051,7 +2092,10 @@ async function runLane(lane, runTurn, mkTransports) {
     for (const hit of attrib) console.log(`      MOUTH ATTRIBUTION [REPORT-ONLY, verdict untouched]: ${hit}`);
       const prose = String(r.reply || '').replace(/\s+/g, ' ').slice(0, 220);
       if (prose) console.log(`      VICTOR'S PROSE: ${prose}`);
-      results.push({ sc, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, speechAct, timeDrift: time.drift, attrib, seatedVictor, seatedDonna, crashed: false });
+      // TDW_06 DETERMINISTIC SITTING: the raw turn rides the result ADDITIVELY, so a
+      // lane cell can assert on the wire's actual bytes (the relay's seam, the refusal
+      // paper among the hands) instead of re-deriving them. No existing reader is touched.
+      results.push({ sc, rec: r, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, speechAct, timeDrift: time.drift, attrib, seatedVictor, seatedDonna, crashed: false });
     } catch (e) {
       // THE CRASHED CLASS: recorded, never re-thrown; the seat named from the
       // wiring (no crash prints "unattributed" again), the lane verdict untouched.
@@ -2305,6 +2349,24 @@ function scriptedTransports(profile) {
         hv.push(HV.dispatch("How's the week looking?", 'h1'), HV.prose('Meera Rs 60,000 · Vera Rs 20,000 in, Rs 40,000 pending · Ananya paid · Keka Rs 25,000 · plus four more — the full slate.'));
         dn.push(DN.fanout(['rec-meera', 'rec-vera', 'rec-keka', 'rec-ananya', 'rec-divya', 'rec-devroy2', 'rec-devroy3', 'rec-anaya2'], 'Pulled all eight binders — figures above.'));
       }
+    } else if (profile === 'lawfulread') {
+      // TDW_06 THE DETERMINISTIC SITTING — THE LAWFUL DEEP READ, THROUGH THE SAME WIRE.
+      // The gate's whole claim is that it refuses ONE shape and taxes nothing else, so
+      // the claim must be exercised on the wire and not only in a unit. Here SD-WEEK's
+      // seat carries an ask that NAMES a record and asks for provenance (L1 and L2), and
+      // the id arrives from a NAMED find (L4) — three lawful openers on one turn. The
+      // deep read must RUN: a `donna_history` hand, never a refusal.
+      honestFor(sc.id);
+      if (sc.id === 'SD-WEEK') {
+        hv.length = 0; dn.length = 0;
+        hv.push(HV.dispatch('Open Ishita Gateprobe\u2019s file — how do you know that figure?', 'h1'),
+                HV.prose('Her file opens on the advance; the trail is dated.'));
+        dn.push(msg([
+          { type: 'tool_use', id: 'df-30', name: 'donna_find', input: { query: 'Ishita Gateprobe' } },
+          { type: 'tool_use', id: 'dh-30', name: 'donna_history', input: { binder_id: 'rec-gate-1' } },
+          { type: 'tool_use', id: 'lh-30', name: 'listen_harvey_talk', input: { message: 'Her binder opens: the advance, dated, with the trail behind it.' } },
+        ]));
+      }
     } else if (profile === 'relaydrop' || profile === 'relaycarry' || profile === 'relaycarryanswered') {
       // ── F-06.74 (CE-85 §3.2) — LIMB 2's OWN FAMILY, EXERCISED AT LANE LEVEL.
       // THE GAP THIS CLOSES, self-filed: SD-FRESH and its three repeats fell through
@@ -2527,7 +2589,38 @@ function scriptedTransports(profile) {
     console.log('      own sentence must convict; the paper read aloud must acquit):');
     T('honest relay (the result\'s facts: matched/existing/not-written) PASSES', honest.results.find((r) => r.sc.id === 'SD-REL').ok === true);
     const echo = await runLane(mkLane('relay-echo profile', 'echo'), runTurn, scriptedTransports('echo'));
-    T('the echo relay ("Lead updated: Tara…, Udaipur, 5 Dec 2027, phone on file.") FAILS SD-REL', echo.results.find((r) => r.sc.id === 'SD-REL').ok === false);
+    // ⚑ LABELED AMENDMENT (TDW_06 THE DETERMINISTIC SITTING, 2026-07-28; CE fork
+    // B-2(α)). THE EXPECTATION MOVED BECAUSE THE WIRE DID, and this cell is where it
+    // is recorded rather than quietly re-typed. Pre-cure it read: `the echo relay …
+    // FAILS SD-REL` — and it was true for four evenings. The relay seam now checks her
+    // voiced sentence against her own hand's structured receipt and, on a detected
+    // echo-over-refusal contradiction, carries the door's already-vetoed deed sentence
+    // in the same field after RELAY_DEED_SEAM. SD-REL's verdict is BYTE-UNTOUCHED
+    // (CE-91's grader precedent): it greens because the wire refuses to ship the echo
+    // alone. THE PRE-CURE CONVICTION IS NOT LOST — it is preserved by mutation: kill
+    // the detection in loop.ts and this lane REDs again, which is the both-ways floor
+    // this amendment ships with. The three cells below are the amendment's substance.
+    {
+      const echoRel = echo.results.find((r) => r.sc.id === 'SD-REL');
+      const echoRelay = ((echoRel.rec && echoRel.rec.tool_calls) || [])
+        .filter((c) => c.name === 'listen_harvey_talk').map((c) => String(c.result || ''))[0] || '';
+      T('AMENDED: the echo relay now PASSES SD-REL — the deed line rides it (the wire cured, the grader untouched)',
+        echoRel.ok === true);
+      T('AND HER BYTES ARE VERBATIM-FIRST, BYTE-EXACT: stripping at the seam returns the echo she actually spoke, unedited',
+        echoRelay.includes(RELAY_DEED_SEAM)
+        && stripDeedTail(echoRelay) === 'Listen Harvey \u2014 Lead updated: Tara Relay Test, Udaipur, 5 Dec 2027, phone on file.');
+      T('AND THE TAIL IS THE DOOR\'S OWN VETOED SENTENCE, carrying both standing facts and naming both refusals',
+        /^— from the file: Not written — the record already stands: /.test(echoRelay.slice(echoRelay.indexOf(RELAY_DEED_SEAM) + 1))
+        && /the city stays Jaipur \(you said Udaipur\)/.test(echoRelay)
+        && /If either should change/.test(echoRelay));
+      T('AND THE ARMS STILL JUDGE HER MOUTH ALONE: relayMouths strips the tail, so the door\'s honest speech can never acquit her relay',
+        relayMouths(echoRel.rec).every((m) => !m.text.includes(RELAY_DEED_SEAM))
+        && relayMouths(echoRel.rec).some((m) => /Udaipur/.test(m.text) && !/Not written/.test(m.text)));
+      T('AND A CLEAN TURN APPENDS NOTHING: the honest lane\'s SD-REL relay carries no seam at all (the cost fires only on a detected contradiction)',
+        (((honest.results.find((r) => r.sc.id === 'SD-REL').rec || {}).tool_calls) || [])
+          .filter((c) => c.name === 'listen_harvey_talk')
+          .every((c) => !String(c.result || '').includes(RELAY_DEED_SEAM)));
+    }
     T('the rows corroborate on BOTH lanes: the seed took neither the dispatch\'s city nor its date', [honest, echo].every((l) => !l.store.captures.leads_update.some((u) => u.rows.includes('lead-tara-seed') && (u.body.wedding_city === 'Udaipur' || u.body.wedding_date === '2027-12-05'))));
 
     console.log('\n  [8] THE SPEAKER GREP both directions (§2.3\'s witness; the vendor\'s view via the');
@@ -4040,6 +4133,84 @@ function scriptedTransports(profile) {
       T('⑦ AND THE STATIC PREFIX DID NOT MOVE: DONNA_STATIC_PREFIX is composed from DONNA_SOUL + the cabinet text, untouched — the cache window is not invalidated by this delivery',
         /const DONNA_STATIC_PREFIX =\n    DONNA_SOUL \+/.test(DONNA_SRC29)
         && !/touched/.test(DONNA_SRC29.slice(DONNA_SRC29.indexOf('const DONNA_STATIC_PREFIX ='), DONNA_SRC29.indexOf('// Bounds Donna'))));
+    }
+
+    console.log('\n  [30] TDW_06 THE DETERMINISTIC SITTING — THE SD-WEEK MECHANICAL FLOOR ON THE WIRE');
+    console.log('       (CE forks A-1(b)/A-2(b)/A-3 + C-1). CE-25\'s HELD floor, founder-REVERSED on');
+    console.log('       Evening Four\'s repetition data. The gate is exercised through runLane — not');
+    console.log('       a hand-built record — because a unit-only both-ways would leave the estate');
+    console.log('       believing a wire it never drove. The fan-out profile existed in this file for');
+    console.log('       a tenure and was never lane-run; that gap was the read-first\'s find:');
+    {
+      // The seed is the point: the gate refuses ids a BREADTH sweep supplied, so the ids
+      // the fan-out pulls must be ids the find actually returned. Full-name-disjoint
+      // fixtures (R-7's census law), no rupee figure, no phone-shaped run, and none of
+      // Evening Four's banked-unburned kit.
+      const GATE_IDS = ['rec-meera', 'rec-vera', 'rec-keka', 'rec-ananya', 'rec-divya', 'rec-devroy2', 'rec-devroy3', 'rec-anaya2'];
+      const GATE_NAMES = ['Ishita Gateprobe', 'Nandita Sweepcheck', 'Ruchira Floorwitness', 'Damini Breadthcase',
+        'Kalyani Chainwalk', 'Sumitra Openfail', 'Trishala Untaxed', 'Vasudha Refusepaper'];
+      const seed = (store) => {
+        GATE_IDS.forEach((id, k) => store.records.push({
+          id, agent_id: AGENT, client: GATE_NAMES[k], amount: null, direction: null,
+          amount_received: null, amount_pending: null, payment_status: null, date: null,
+          stage: 'enquiry', note: null, doc_ref: null, phone: null, reason_for_action: null,
+          hidden: false, created_at: '2026-07-20T04:00:00Z', updated_at: '2026-07-2' + (k % 8) + 'T04:00:00Z',
+        }));
+      };
+      const gateLane = (label, profile) => ({ id: 'RIG', label, ceiling: false, seed,
+        victorModel: 'scripted', donnaModel: 'scripted',
+        wiring: (t) => ({ tierOverride: 'entry', transport: t.transport, donnaTransport: t.donnaTransport }) });
+
+      const fan = await runLane(gateLane('history-gate · breadth fan-out', 'fanout'), runTurn, scriptedTransports('fanout'));
+      const fanWeek = fan.results.find((r) => r.sc.id === 'SD-WEEK');
+      const fanHands = nestedHands(fanWeek.rec);
+      const refusals = fanHands.filter((h) => h.name === 'donna_history_refused');
+
+      T('① THE BREADTH EXCESS IS REFUSED AT THE DOOR, IN-SIM, EXACTLY AS LIVE: eight sweep-supplied deep reads, eight refusals, ZERO donna_history executed',
+        refusals.length === 8 && fanHands.filter((h) => h.name === 'donna_history').length === 0);
+      T('② THE REFUSAL PAPER IS AMONG THE HANDS, byte-exact, and states what it refused and why',
+        // the length limb is not decoration: an `every` over an empty array is vacuously
+        // true, and M-A caught exactly that on this cell's first draft.
+        refusals.length === 8
+        && refusals.every((h) => String(h.result || '') === HISTORY_REFUSAL_PAPER_SRC)
+        && /the binder was not opened/.test(HISTORY_REFUSAL_PAPER_SRC)
+        && /came from a recents sweep rather than a search by name/.test(HISTORY_REFUSAL_PAPER_SRC));
+      T('② F-04.62: a deliberate refusal is NEVER reported as a search failure — the paper opens REFUSED and disowns the failure reading; the hand\'s two genuine ERROR forms are byte-unchanged and structurally distinguishable',
+        /^REFUSED, and this is not a failure:/.test(HISTORY_REFUSAL_PAPER_SRC)
+        && !/^ERROR/.test(HISTORY_REFUSAL_PAPER_SRC)
+        && /ERROR: donna_history needs binder_id\./.test(BENCH_SRC30)
+        && /ERROR opening history: /.test(BENCH_SRC30));
+      T('③ THE F-06.13 ARM GREENS ON THE CURED WIRE — SD-WEEK\'s own verdict, byte-untouched, run against the REAL turn: the count honestly reads zero because the reads did not happen',
+        SCENARIOS.find((x) => x.id === 'SD-WEEK').verdict(fanWeek.rec).ok === true
+        && /0 history deep-read\(s\), under the 2 floor/.test(SCENARIOS.find((x) => x.id === 'SD-WEEK').verdict(fanWeek.rec).why));
+      // ③b THE HONEST SIDE-EFFECT, RECORDED RATHER THAN TIDIED. The fan-out profile's
+      // prose was authored to quote the eight binders it pulled ("Meera Rs 60,000 · Vera
+      // Rs 20,000 in…"). With the binders unopened those figures have no hand behind them,
+      // so F-06.63's money arm CONVICTS the lane — correctly, and by a different arm than
+      // the one this cure touches. The lane's aggregate `ok` therefore stays false and the
+      // cell above asserts the ARM, never the aggregate. Naming it here so no later reader
+      // mistakes a red lane for a failed gate: this is the contagion axis the fan-out
+      // existed to feed, now visible because the fan-out stopped feeding it.
+      T('③b AND THE CONVICTION THAT REMAINS IS A DIFFERENT ARM\'S, NAMED: the profile\'s binder-quoted figures have no hand behind them once the binders are not opened, and the money arm says so',
+        fanWeek.ok === false && fanWeek.money.some((m) => /FABRICATED MONEY/.test(String(m))));
+      T('③ A-3, RULED: the refusal is DONNA-FACING ONLY — it authors no plain clause, reaches Victor\'s composer through no path, and appears nowhere in the outward reply',
+        !String(fanWeek.rec.reply || '').includes('REFUSED, and this is not a failure')
+        && fanHands.every((h) => !String(h.plain || '').includes('REFUSED')));
+
+      const lawful = await runLane(gateLane('history-gate · lawful named read', 'lawfulread'), runTurn, scriptedTransports('lawfulread'));
+      const lawWeek = lawful.results.find((r) => r.sc.id === 'SD-WEEK');
+      const lawHands = nestedHands(lawWeek.rec);
+      T('④ THE LAWFUL SHAPE PASSES UNTAXED THROUGH THE SAME WIRE: an ask that names the record, asks provenance, and takes its id from a NAMED find — the deep read RUNS, zero refusals (L1+L2+L4)',
+        lawHands.filter((h) => h.name === 'donna_history').length === 1
+        && lawHands.filter((h) => h.name === 'donna_history_refused').length === 0
+        && lawWeek.ok === true);
+
+      T('⑤ PIN SURVIVAL (CE acceptance): HISTORY_FANOUT_FLOOR is BYTE-UNMOVED at 2 — b06_m1_bench:187-188 and b06_m2_bench:380-382 pin it full-line, and this cure moved the wire, never the grader',
+        /^const HISTORY_FANOUT_FLOOR = 2;$/m.test(fs.readFileSync(__filename, 'utf8')));
+      T('⑤ AND SD-WEEK\'S VERDICT BODY IS BYTE-UNTOUCHED BY THIS SITTING (CE-91\'s grader precedent, structural): it still gates on the donna_history COUNT and knows nothing of the gate',
+        (() => { const SELF30 = fs.readFileSync(__filename, 'utf8');
+          const arm = SELF30.slice(SELF30.indexOf("{ id: 'SD-WEEK'"), SELF30.indexOf('// ARM B \u2014 F6 / R-3'));
+          return /HISTORY_FANOUT_FLOOR/.test(arm) && !/historyRefusal|donna_history_refused|REFUSED/.test(arm); })());
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
