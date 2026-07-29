@@ -3,7 +3,13 @@
 'use strict';
 
 const { portfolioSummary } = require('./portfolio');
-const MIN_PORTFOLIO_IMAGES = 5;
+// TDW_07 P2 · D-2's floor RAISED 5 -> 6 at the ONE constant, CE-ruled at the P2 charter.
+// This single byte moves BOTH consumers by construction: the server-side approval gate at
+// :17 below, and src/lib/vendor/profileScore.js's photo term, which imports this name
+// rather than minting a second copy. The pwa's own display of the number reads it from
+// getDiscoverStatus's `min_portfolio_images` (added this sitting) — so no third copy of
+// the number exists anywhere, in digits or in words.
+const MIN_PORTFOLIO_IMAGES = 6;
 
 async function requestDiscover(supabase, vendorId, body) {
   const { rate_min, rate_max, aesthetic_tags, pitch, instagram_handle, sample_image_ids } = body;
@@ -13,6 +19,15 @@ async function requestDiscover(supabase, vendorId, body) {
   if (!aesthetic_tags?.length)              return { ok: false, error: 'At least one aesthetic tag required.' };
   if (aesthetic_tags.length > 10)           return { ok: false, error: 'Maximum 10 aesthetic tags.' };
 
+  // F-07.4 RECONCILED (CE ruling, Fork 2(b)): the GATE counts every row (summary.total),
+  // the SCORE and the FEED count approved rows only. Both readings are kept, deliberately:
+  //   · total at the gate keeps requesting Discover SELF-SERVE. Photo approval is a
+  //     standalone admin queue (src/api/admin/photos.js:37/48/60) with zero coupling to the
+  //     discover request (src/api/admin/discover.js names no portfolio), so gating on
+  //     `approved` would turn "upload six and ask" into "upload six and wait for an admin".
+  //   · approved in the score/feed because a couple sees approved rows only, and a score
+  //     crediting invisible photos would rank a card above what it renders.
+  // The two numbers never contradict on screen because the Studio's gate line SHOWS BOTH.
   const summary = await portfolioSummary(supabase, vendorId);
   if (summary.total < MIN_PORTFOLIO_IMAGES) {
     return { ok: false, error: `Need at least ${MIN_PORTFOLIO_IMAGES} portfolio images. You have ${summary.total}.` };
@@ -64,6 +79,12 @@ async function getDiscoverStatus(supabase, vendorId) {
 
   return {
     ok: true,
+    // TDW_07 P2 · CE ruling §F: the SERVER carries the floor, so the pwa's rendering of it
+    // is display-only truth rather than a second authority. Before this, the pwa held the
+    // number twice on its own (a branch gate `< 5` and the WORD "five" in vendor copy) and
+    // the raise would have left both lying while the server rejected. Comment-binding ships
+    // as the fallback layer; THIS field is the mechanism.
+    min_portfolio_images:   MIN_PORTFOLIO_IMAGES,
     discover_request_state: vendor?.discover_request_state || 'not_requested',
     discover_eligible:      vendor?.discover_eligible || false,
     portfolio_summary:      summary,

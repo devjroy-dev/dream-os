@@ -98,8 +98,17 @@ if (fnMatch) {
 console.log('\n§2 — Capacity row (me.js): allowlist, guard, one home');
 const me = read('src/api/vendor/me.js');
 
+// LABELED AMENDMENT — TDW_07 P2, CE-ruled scope. COUNT PRESERVED, MEANING RESTORED.
+// The predicate required 'slot_capacity' to be the allowlist's LAST entry: it matched
+// through to the CLOSING BRACKET, so the cell was really asserting "slot_capacity is
+// allowlisted AND nothing has been added after it". P2 lawfully adds three entries
+// (about · rate_display · discover_paused) and this cell reddened — 23/24 — on a
+// property it never meant to guard. That is B6-S1's own R-B6-16 precedent ("the
+// smallest change is a list entry") being punished by a bench written against the
+// list's shape rather than its content. Re-aimed at membership, which is the claim
+// the cell's own NAME makes; the array boundary is asserted, the tail position is not.
 T('slot_capacity IS in ALLOWED_FIELDS',
-  /ALLOWED_FIELDS = \[[\s\S]*?'slot_capacity'\]/.test(me));
+  /ALLOWED_FIELDS = \[[\s\S]*?'slot_capacity'[\s\S]*?\];/.test(me));
 T('slot_capacity is NOT in LOCKED_FIELDS',
   !/LOCKED_FIELDS\s*=\s*\[[^\]]*slot_capacity/.test(me));
 T('the guard exists: integer >= 0 or null, 400 otherwise',

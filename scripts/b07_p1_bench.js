@@ -151,6 +151,12 @@ section('§2 · THE COMPLETENESS SCORE (profileScore.js, the one home)');
     approvedPhotoCount: profileScore.MIN_PORTFOLIO_IMAGES,
     hasHero: true, about: 'We shoot weddings.', aestheticTags: ['candid', 'royal', 'moody'],
     rateMin: 100000, rateMax: 300000, instagramHandle: 'studio.one',
+    // LABELED AMENDMENT (TDW_07 P2, CE-ruled). COUNT PRESERVED — one field, same cell.
+    // The travel term joined profileScore this sitting and the weights re-normalised, so a
+    // fixture that omits it is no longer a COMPLETE profile and 1.0 became unreachable. The
+    // cell's meaning is untouched: "everything filled scores exactly 1.0". Every other §2
+    // cell is written relative to TERM_WEIGHTS and survives the re-normalisation unedited.
+    travelNotes: 'Delhi NCR and destination, travel billed at cost.',
   });
   ok('§2.3 a complete profile scores exactly 1.0', Math.abs(full - 1) < 1e-9, `got ${full}`);
 
@@ -395,8 +401,15 @@ section('§3 · THE WEIGHTS LOADER (admin_config, cached 60s)');
   ok('§8.2 the Meta name is tdw_demo_lead_alert', t && t.name === 'tdw_demo_lead_alert');
   ok('§8.3 it rides the MARKETING line — outreach, and therefore STOP + the 25/day cap',
     t && t.line === 'marketing');
-  ok('§8.4 THE GATE HOLDS: isApproved is FALSE, so nothing can send before Meta speaks',
-    templates.isApproved('demo_lead_alert') === false);
+  // LABELED AMENDMENT (TDW_07 P2, CE ruling §B). COUNT PRESERVED — one cell, both directions.
+  // At P1 this asserted isApproved === false, which was the whole truth then: the template was
+  // filed and Meta had not spoken. Meta approved it on 2026-07-29 and P2 flipped the field, so
+  // the OLD assertion would now be red for the best possible reason. The cell is re-aimed at
+  // the stronger property, per the ruling: the gate PASSES the approved key AND still REFUSES
+  // an unapproved one — a gate that only ever saw one answer was never tested.
+  ok('§8.4 THE GATE DISCRIMINATES: the approved template passes, an unapproved one still refuses',
+    templates.isApproved('demo_lead_alert') === true
+    && templates.isApproved('__no_such_template__') !== true);
   ok('§8.5 the body does NOT begin with a variable (TEMPLATES.md §1 — the spec\'s own draft did)',
     body.slice(0, 2) !== '{{');
   ok('§8.6 the body does NOT end with a variable', body.slice(-2) !== '}}');
@@ -424,7 +437,9 @@ section('§3 · THE WEIGHTS LOADER (admin_config, cached 60s)');
   console.log('      M-5  couple/discover.js: featured source → `v.featured_eligible`      ⇒ §5.1/§5.3 RED');
   console.log('      M-6  couple/discover.js: normalizeIgHandle `replace(/^@+/,\'\')` removed ⇒ §6.1 RED');
   console.log('      M-7  couple/discover.js: `rankVendors(...)` → the plain filter         ⇒ §7.1/§7.4 RED');
-  console.log('      M-8  templates.js demo_lead_alert.status: \'pending\' → \'approved\'       ⇒ §8.4 RED');
+  console.log('      M-8  templates.js demo_lead_alert.status: \'approved\' → \'pending\'       ⇒ §8.4 RED');
+  console.log('           (M-8 INVERTED at TDW_07 P2 — post-flip the honest mutation is the');
+  console.log('            un-approval; the pre-flip direction would now assert the old world.)');
 
   console.log('');
   const total = pass + fail;

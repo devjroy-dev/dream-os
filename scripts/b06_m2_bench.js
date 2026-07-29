@@ -47,6 +47,10 @@ const SOUL = 'src/engine/src/core/donnaSoul.ts';
 // The base this sitting was chartered at. Pinned, never HEAD — a floating base lets a
 // later commit quietly widen the delta and keep §6 green (arc_m4 §4.1's tuition).
 const BASE = 'd686bed';
+// M-2's own seal. HOISTED to file scope at CE ruling, TDW_07 P2 (F-07.5's cure):
+// §6.6 needs the same range-pin §6.5 already uses, and one hash spelled twice is
+// the F-05.20 class (eleven fallbacks, one of them wrong). One home, two readers.
+const SEAL = 'c736a7e'; // "the no-read law + the re-aimed absence detector"
 
 // ════════════════════════════════════════════════════════════════════════════
 H('§1 — THE LIFT: the detector under test is the SHIPPED one, not a copy');
@@ -301,7 +305,6 @@ t('§6.5 the sitting\'s whole delta is SIX repo files and no seventh — soul, g
   // a HISTORICAL FACT that no later sitting can move: what M-2 shipped was these six
   // files and no seventh, for good. That is the property the cell always meant (CE-67
   // §C's re-pin, and §4.1's REPLACED-STRONGER precedent, applied to a delta cell).
-  const SEAL = 'c736a7e'; // M-2's seal — "the no-read law + the re-aimed absence detector"
   const all = execFileSync('git', ['diff', '--name-only', BASE, SEAL], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   // The two floor cells below asserted donnaSoul 0-line on a pinned base and against
   // HEAD. The chair's W-1 opening makes a chartered act look like a breach to them; both
@@ -320,8 +323,18 @@ t('§6.5 the sitting\'s whole delta is SIX repo files and no seventh — soul, g
   const strays = all.filter((f) => OWNED.test(f) && !expected.includes(f));
   assert.deepStrictEqual(strays, [], `M-2's SEALED delta is not what this cell names: ${strays.join(', ')}`);
 });
-t('§6.6 SQL POSTURE — no migration rides this sitting; 0101 stays unreserved', () => {
-  assert.ok(!fs.readdirSync(P('db/migrations')).some((f) => /^0101/.test(f)), '0101 was taken');
+// LABELED AMENDMENT — RE-SCOPED AT CE RULING, TDW_07 P2 (F-07.5's cure). COUNT PRESERVED.
+// Same disease as b06_m0_bench §7.3 and b05_f0550 §6.4, a class of exactly three (censused
+// across scripts/*.js; there is no fourth). The cell asserted a true fact about M-2's own
+// scope with a predicate over the LIVE migrations directory, so TDW_07 P1's lawful 0101
+// reddened it. No production byte of M-2 is implicated. Range-pinned to BASE..SEAL — the
+// same range §6.5 above already uses — so it now asserts what rode M-2, permanently.
+// Title re-worded with it: "0101 stays unreserved" is no longer true and a green cell must
+// not stand under a false claim (CE ruling §A).
+t('§6.6 SQL POSTURE — no migration rode this sitting (sealed range d686bed..c736a7e)', () => {
+  const names = execFileSync('git', ['diff', '--name-only', BASE, SEAL, '--', 'db/migrations'],
+    { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  assert.deepStrictEqual(names, [], `a migration rode M-2: ${names.join(', ')}`);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

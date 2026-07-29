@@ -485,8 +485,20 @@ await t('§7.2 the guarded files are 0-line', () => {
   }
 });
 
-await t('§7.3 SQL POSTURE — 0101 stays unreserved; no DDL rides this sitting', () => {
-  assert.ok(!fs.readdirSync(P('db/migrations')).some((f) => /^0101/.test(f)), '0101 was taken');
+// LABELED AMENDMENT — RE-SCOPED AT CE RULING, TDW_07 P2 (F-07.5's cure). COUNT PRESERVED.
+// The cell asserted a TRUE fact about M-0's own scope ("no DDL rode this sitting") using a
+// predicate over the LIVE db/migrations directory. That predicate is only true until ANYONE
+// takes 0101 — which TDW_07 P1 lawfully did (0081 occupied, tail 0100, renumbering forbidden).
+// Any Block-07 migration would have fired this cell whatever it contained; no production byte
+// of M-0 is implicated. Range-pinned now to M0_RANGE (the §7.1/§7.2 precedent in this very
+// file): what rode M-0 is a HISTORICAL fact, true forever, unmovable by any future push.
+// The title moves with it — "0101 stays unreserved" became false the moment the founder ran
+// it, and a green cell under a false title is a small hollow green (CE ruling §A).
+await t('§7.3 SQL POSTURE — no DDL rode this sitting (sealed range 94598d7..4811c35)', () => {
+  const { execFileSync } = require('child_process');
+  const names = execFileSync('git', ['diff', '--name-only', M0_RANGE, '--', 'db/migrations'],
+    { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  assert.deepStrictEqual(names, [], `a migration rode M-0: ${names.join(', ')}`);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

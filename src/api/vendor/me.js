@@ -82,6 +82,29 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       featured_eligible:       vendor.featured_eligible       === true,
       onboarding_state:        vendor.onboarding_state        || null,
       instagram_handle:        vendor.instagram_handle        || null,
+      // ── TDW_07 P2 ────────────────────────────────────────────────────────────
+      // (1) F-07.9's CURE, server half. hooks/vendor/useSettings.ts:63-75 hardcoded
+      //     five fields blank on load because THIS response never carried them —
+      //     style_notes, travel_notes, briefing_enabled, invoice_prefix, and (worst)
+      //     instagram_handle, which the response DID carry and the hook dropped
+      //     anyway. Witnessed live on the test account: the routing HANDLE rendered
+      //     populated two cards below an Instagram field showing its placeholder,
+      //     while the column held 'Makeupbyswatiroy'. A screen cannot round-trip a
+      //     value it is never told. Every field the vendor can edit now travels.
+      // (2) Discover Profile reads its whole state from this one call — an editor
+      //     that cannot render current state is an editor that clobbers.
+      style_notes:             vendor.style_notes             || null,
+      travel_notes:            vendor.travel_notes            || null,
+      about:                   vendor.about                   || null,
+      invoice_prefix:          vendor.invoice_prefix          || null,
+      // `!== false` not `=== true`: briefing_enabled is NOT NULL DEFAULT true in the
+      // schema, so a missing value means ON, and the hook's old hardcoded `true` was
+      // right by accident and wrong on every opted-out vendor.
+      briefing_enabled:        vendor.briefing_enabled        !== false,
+      // 0101's two columns. Both NOT NULL with defaults, so `=== true`/`!== false`
+      // are exact, never a guess about "not yet decided".
+      rate_display:            vendor.rate_display            !== false,
+      discover_paused:         vendor.discover_paused         === true,
     },
   });
 });
@@ -100,7 +123,27 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // the thirteenth entry — P3's "add it to the existing PATCH allowlist,
                         // smallest change", B-7's confirmed-viable path. NULL = category
                         // default; 0 is a lawful posture (Q-SP-1) — validated below, no CHECK.
-                        'slot_capacity'];
+                        'slot_capacity',
+                        // ── TDW_07 P2 · THREE ADDITIVE ENTRIES, the same R-B6-16 path ────
+                        // A dedicated route was proposed and REFUSED at the CE ruling: this
+                        // handler already scopes every write with .eq('id', vendor.id), so
+                        // there is no cross-vendor reach to expose, and all three are the
+                        // vendor's OWN posture — pausing themselves, hiding their own rate,
+                        // writing their own copy. A second route would owe a second copy of
+                        // the locked-field checks and the rate guard for nothing.
+                        //
+                        // `about` is F-07.8's cure: vendors.about is SCORED at 0.135 by
+                        // profileScore and RENDERED on the Discover card, and until this line
+                        // it had ZERO writers anywhere in the estate — the exact "term nobody
+                        // can raise" that profileScore's own header warns against, live since
+                        // P1. Discover Profile's About section is its first writer.
+                        'about', 'rate_display', 'discover_paused'];
+
+// The three booleans the vendor may now set. Guarded on the slot_capacity pattern
+// (:147 below): a 400 here, never a silent coercion. Without this, {"discover_paused":
+// "maybe"} reaches Postgres raw and the answer to "am I hidden?" becomes whatever the
+// driver decided that day.
+const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused'];
 
 router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -150,9 +193,15 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       }
     }
 
+    for (const b of BOOLEAN_FIELDS) {
+      if (update[b] !== undefined && typeof update[b] !== 'boolean') {
+        return errRes(res, 400, `'${b}' must be true or false.`);
+      }
+    }
+
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, slot_capacity, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -163,7 +212,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, open_to_travel, upi_id, gstin, aesthetic_tags, rate_min, rate_max, slot_capacity, discover_preview')
+      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -185,6 +234,17 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       // B6-S1: `??` not `||` — 0 is a posture (Q-SP-1), the capacityCheck lesson.
       slot_capacity:    updated.slot_capacity    ?? null,
       discover_preview: updated.discover_preview === true,
+      // TDW_07 P2: the write's own echo. Discover Profile confirms from THIS shape, so
+      // every field it can send comes back — a save that cannot be read back is a save
+      // the screen has to take on faith.
+      style_notes:      updated.style_notes      || null,
+      travel_notes:     updated.travel_notes     || null,
+      instagram_handle: updated.instagram_handle || null,
+      about:            updated.about            || null,
+      invoice_prefix:   updated.invoice_prefix   || null,
+      briefing_enabled: updated.briefing_enabled !== false,
+      rate_display:     updated.rate_display     !== false,
+      discover_paused:  updated.discover_paused  === true,
     },
   });
 }));

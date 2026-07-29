@@ -86,7 +86,7 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 4 | `crew_assignment` | `tdw_crew_assignment` | UTILITY | **approved** | 2026-07-19 |
 | 5 | `payment_reminder` | `tdw_payment_due` | UTILITY | **approved** | 2026-07-19 |
 | 6 | `demo_invite` | `tdw_demo_invite` | UTILITY (approved as filed) | **approved** | 2026-07-19 |
-| 7 | `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY (proposed) | **pending** | — (founder files; steps in the P1 handover) |
+| 7 | `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY | **approved** | 2026-07-29 — Meta approved ~17:31 UTC, Utility retained (dashboard: Active – Quality pending). Flipped in `src/lib/templates.js` at TDW_07 P2. |
 
 ## 4. Language code
 

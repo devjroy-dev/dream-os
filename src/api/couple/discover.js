@@ -71,7 +71,12 @@ router.get('/feed', asyncHandler(async (req, res) => {
   // is the failure this predicate exists to prevent.
   let realQuery = supabase
     .from('vendors')
-    .select('id, business_name, category, city, routing_handle, rate_min, rate_max, aesthetic_tags, about, instagram_handle, rate_display, discover_paused', { count: 'exact' })
+    // TDW_07 P2: two more columns, both witnessed in docs/db/PUBLIC_SCHEMA.md ·
+    // public.vendors — open_to_travel (17) and travel_notes (18). The travel TERM joins
+    // profileScore this sitting; a term whose column never reaches the call scores zero
+    // for everyone by OMISSION rather than by truth, which is the F-07.8 class one column
+    // over. Read here so the score reads reality.
+    .select('id, business_name, category, city, routing_handle, rate_min, rate_max, aesthetic_tags, about, instagram_handle, rate_display, discover_paused, open_to_travel, travel_notes', { count: 'exact' })
     .eq('discover_eligible', true)
     .eq('discover_paused', false);   // P1 item 4 — the 0101 predicate. Approval retained.
 
@@ -170,6 +175,8 @@ router.get('/feed', asyncHandler(async (req, res) => {
       rateMin:            v.rate_min,
       rateMax:            v.rate_max,
       instagramHandle:    v.instagram_handle,
+      // The STATED policy, never the boolean — see profileScore.js's header for the ruling.
+      travelNotes:        v.travel_notes,
     });
     const terms = {
       spotlight:    spotlightNorm(v.id, spotlightIds),

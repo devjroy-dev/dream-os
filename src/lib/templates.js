@@ -14,11 +14,17 @@
 //   variables  — ordered semantic names; body {{1}} = variables[0], {{2}} = variables[1], …
 //   body       — the exact body filed with Meta (kept in sync with docs/TEMPLATES.md)
 //   status     — 'draft' | 'submitted' | 'pending' | 'approved'
-//                ('pending' added TDW_07 P1 for `demo_lead_alert`, CE-ruled wording:
-//                 filed with Meta, awaiting its word. The gate below is unchanged —
-//                 it tests `=== 'approved'` and nothing else, so every non-approved
-//                 value refuses identically. The enum is documentation; the gate is
-//                 the mechanism, and only the gate decides.)
+//                ('pending' added TDW_07 P1 for `demo_lead_alert` — filed with Meta,
+//                 awaiting its word. That wait ENDED: Meta approved tdw_demo_lead_alert
+//                 on 2026-07-29 at ~17:31 UTC, Utility retained, and TDW_07 P2 flipped
+//                 the field. The value survives in this enum because the state is real
+//                 and the next template filed will pass through it. The gate is unchanged
+//                 — it tests `=== 'approved'` and nothing else, so every non-approved
+//                 value refuses identically. The enum is documentation; the gate is the
+//                 mechanism, and only the gate decides.)
+//                 [F-06.85: this paragraph is conditioned on a MECHANICAL fact — Meta's
+//                  review state — so it is re-read whenever that fact moves. It has moved
+//                  once, at TDW_07 P2. Mechanism: `isApproved` at the bottom of this file.]
 //                sendWa will ONLY send a business-initiated message when status==='approved'.
 //                All six ship 'draft'; the founder flips each to 'approved' after Meta approves.
 //
@@ -143,9 +149,12 @@ const TEMPLATES = {
   // draft (a), which does not.
   //
   // STATUS 'pending' — HONEST. Meta has not spoken. sendWa's gate is `isApproved`
-  // (templates.js:17 / the `status === 'approved'` test), so this template CANNOT send
-  // until the founder flips it after Meta's approval. The registry never claims a
-  // review outcome it has not been told.
+  // TDW_07 P2 — META HAS SPOKEN. Approved 2026-07-29 ~17:31 UTC, category UTILITY
+  // RETAINED (dashboard state "Active – Quality pending"; the quality tag is merely
+  // unsent-yet and is not an approval condition). `status` flips to 'approved' below and
+  // `sendWa`'s gate now PASSES this template. The category byte is untouched, as ruled.
+  // The registry still never claims a review outcome it has not been told — it was told.
+  // [F-06.85: conditioned on Meta's review state; mechanism = isApproved.]
   demo_lead_alert: {
     key: 'demo_lead_alert',
     name: 'tdw_demo_lead_alert',
@@ -158,7 +167,7 @@ const TEMPLATES = {
       "Hi {{1}}, a couple just asked about your work for their {{2}} wedding on The Dream " +
       "Wedding. Their enquiry is waiting in your ready account: {{3}} — reply here if you " +
       "need any help.",
-    status: 'pending',
+    status: 'approved',
   },
 
   // ── AUTHENTICATION-category OTP templates (Block 05, F-05.6 fix (a), CE-35) ──────

@@ -446,9 +446,18 @@ await t('§6.3 the notice rows STAY (R3, shape K) — telemetry was never the me
   assert.strictEqual((e.match(/sent_by: 'system',/g) || []).length, 2, 'both audit rows stand; (M) was rejected as F-04.71\'s costume class');
 });
 
+// LABELED AMENDMENT — RE-SCOPED AT CE RULING, TDW_07 P2 (F-07.5's cure). COUNT PRESERVED.
+// The third and last of the class (b06_m0 §7.3 · b06_m2 §6.6 · this cell — censused across
+// scripts/*.js, there is no fourth). TITLE UNTOUCHED, deliberately: unlike its two siblings
+// this cell's title never named 0101 — only its ASSERTION MESSAGE did, and only that string
+// moves. The predicate re-pins to this micro's OWN range (2028a0d..5335bb2, its base and its
+// seal — the same pair §6.8's comment already names), so "zero migrations rode F-05.50(b)"
+// is a historical fact no later ladder entry can falsify.
 await t('§6.4 zero migrations — the columns and the index already carry this cure', () => {
-  const ladder = fs.readdirSync(P('db/migrations'));
-  assert.ok(!ladder.some((f) => /^0101/.test(f)), '0101 stays unreserved; no DDL rides this micro');
+  const { execFileSync } = require('child_process');
+  const names = execFileSync('git', ['diff', '--name-only', '2028a0d..5335bb2', '--', 'db/migrations'],
+    { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  assert.deepStrictEqual(names, [], `a migration rode this micro: ${names.join(', ')}`);
 });
 
 H('§7 — NON-VACUOUS: RED AT THE UNCURED TREE, BY PRODUCTION MUTATION');
