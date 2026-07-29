@@ -29,7 +29,7 @@
 // vendor calendar-OCR / media branches are a declared Meta gap. TEXT turns funnel fully through.
 'use strict';
 
-const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
+const { matchNudgeWord, setNudgeOptout, matchGlitchWord } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22 · TDW_06 F-06.130
 const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
@@ -1084,6 +1084,37 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       return;
     }
     // F-04.98 C3 END
+
+    // ── TDW_06 F-06.130 — THE GLITCH-REPORT WORD (the promise V-W has been making) ──────
+    // Sited THIRD in the pre-engine word trio and for the trio's own reason: no model call,
+    // no cost, and a vendor complaining about a fabrication must not have his complaint
+    // routed through the fabricator. The escape hatch cannot depend on the thing it exists
+    // to escape (FORK 2 -> 2a, the CE's wording).
+    //
+    // It sits AFTER mode and fresh because the three word-sets are disjoint (derived: the
+    // matchers return false on each other's words), so order is semantically immaterial and
+    // after-placement keeps the earlier paths' bytes literally first — a purely additive diff,
+    // the same reason the fresh word was sited after the mode block.
+    //
+    // Short-circuits in the trio's exact shape: send -> outbound row -> last_message_at ->
+    // log -> return. `fileGlitchReport` is the ONE home both legs call (FORK 6b) and it owns
+    // the choice of sentence: the filed line ONLY when a finding row actually landed, the
+    // no-context line otherwise. This branch never composes a claim of its own.
+    if (matchGlitchWord(body)) {
+      const { fileGlitchReport } = require('../api/vendor-engine/chat');
+      const r = await fileGlitchReport(supabase, agentId);
+      const twilioMsg = await sendWhatsApp(phone, r.message, []);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id, direction: 'outbound', channel: 'whatsapp',
+        body: r.message, sent_by: 'agent',
+        twilio_sid: twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
+      });
+      await supabase.from('conversations')
+        .update({ last_message_at: new Date().toISOString() }).eq('id', convo.id);
+      console.log(`[agent:glitch-word] filed=${r.filed} run=${r.run_id || 'none'} agent=${agentId}`);
+      return;
+    }
+
     // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference
     // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
     const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id, vendor.category);
@@ -1225,10 +1256,13 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     //   · the retry throws → fail-open to the glitch line, exactly as the un-retried path
     //     behaves. A retry that breaks must never be worse than no retry.
     let s2line = null;
+    let s2run = null;   // F-06.130: the specimen row this seat will patch with what SHIPPED
+    let s2arm = null;   // which of Fork D's three outcomes actually resolved
     try {
-      const { wireGuardSpecimen, stage2Intercept } = require('../api/vendor-engine/chat');
-      const verdict = await wireGuardSpecimen(supabase, vendor.id, result);
+      const { wireGuardSpecimen, stage2Intercept, stage2RecordDelivery, STAGE2_WA_REPORT } = require('../api/vendor-engine/chat');
+      const verdict = await wireGuardSpecimen(supabase, vendor.id, result, agentId);
       s2line = stage2Intercept(verdict, true);
+      if (s2line) { s2run = (verdict && verdict.run_id) || null; s2arm = 'glitch_line'; }
       if (s2line && !_noRetry) {
         try {
           const retry = await runTurn({
@@ -1249,10 +1283,23 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             // firewall the first reply went through. No glitch line, no chip word.
             replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(retry.reply ?? ''), scrubText(retry.reply), 'vendorInbound:reply(retry)');
             s2line = null;
+            s2arm = 'retry_landed';
             console.log('[wire-guard stage2 wa] retry landed the act; original specimen stands logged');
           } else {
             // outcome 2 — a second costume must never ship.
-            s2line = "That didn't land — nothing was changed.";
+            // TDW_06 F-06.130, SLOT TWO, founder-vetoed 「 accept all 」 — THE AFFORDANCE TRAVELS
+            // HERE. This vendor experienced the failure most worth flagging and, until this
+            // movement, was the one arm handed no way to flag it: the report word rode only the
+            // rarest outcome (a retry that THREW), which is F-04.27 inverted.
+            // V-W's bytes are VERBATIM and unchanged — the travel is the act, not a re-wording,
+            // and the constant is read, never retyped.
+            // THE SHARED HOME (undoContract.js:31) STAYS 0-LINE, and that is derived, not
+            // stylistic: deriveFiling feeds donnaWitnessLines (the stored twin, BOTH doors) and
+            // translateBeat (chat.js:256, live on the SSE wire), so appending a WhatsApp
+            // reply-word there would print "reply REPORT" onto a screen that has no reply wire —
+            // the cure for F-04.27's class minting F-04.27's class.
+            s2line = `That didn't land — nothing was changed.\n\n${STAGE2_WA_REPORT}`;
+            s2arm = 'second_costume';
             console.warn('[wire-guard stage2 wa] retry produced no write hand; F3 sentence shipped');
           }
         } catch (retryErr) {
@@ -1262,6 +1309,19 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       }
     } catch (e) { console.warn('[wire-guard stage2 wa]', e.message); }
     if (s2line) replyText = s2line;
+    // ── THE DELIVERY WITNESS (FORK 3a) — recorded at FORK D'S RESOLUTION POINT, which is
+    // exactly here: the retry has decided, `replyText` is final, and `sendWhatsApp` is the
+    // next statement. `delivered` is the EXACT bytes in the DELIVERED form (V-W included on
+    // this seat), or null when the retry landed the act and nothing was replaced — so a turn
+    // the vendor never saw a glitch line for is correctly not reportable. This is the field
+    // the REPORT catcher reads; `stage2_delivered` above it is a classification echo and is
+    // documented at its own site as never to be read as a witness.
+    if (s2run) {
+      try {
+        const { stage2RecordDelivery } = require('../api/vendor-engine/chat');
+        await stage2RecordDelivery(supabase, s2run, { arm: s2arm, delivered: s2line, seat: 'wa' });
+      } catch (e) { console.warn('[wire-guard stage2 wa delivery]', e.message); }
+    }
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
     await supabase.from('messages').insert({
       conversation_id: convo.id,

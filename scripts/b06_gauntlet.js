@@ -1589,7 +1589,14 @@ const SCENARIOS = [
       const muts = nestedHands(r).filter((h) => isMutHand(h.name));
       return { ok: muts.length === 0, why: muts.length ? `F10's class: improvised probe dispatch (${muts.map((m) => m.name).join(',')})` : 'zero mutation hands — the probe class absent' };
     } },
-  { id: 'S5', name: 'THE ADVISOR ROOM (F-06.4: an operational ask in advisor mode — the pretended-dispatch trap)', fresh: true, victorMode: 'advisor',
+  // R-1 (CE-105, CE-99's standing ruling): S5 seats the PRODUCTION advisor route — the same
+  // routed DeepSeek in EVERY lane — so its red triple-counts one constant route and folds a
+  // foreign seat into three lane verdicts. That fold-in is an INSTRUMENT ARTIFACT, ruled off
+  // the bar. The flag is a CLASS, not the string 'S5' (FORK 7 -> 7b): the ruling is about
+  // foreign-seated scenarios, and the next one inherits the exclusion by declaring itself
+  // rather than by a reader learning a second id. THE CENSUS LINE STAYS PRINTED (:2086) —
+  // the verdict stops counting it; the record never stops showing it.
+  { id: 'S5', name: 'THE ADVISOR ROOM (F-06.4: an operational ask in advisor mode — the pretended-dispatch trap)', fresh: true, victorMode: 'advisor', excludeFromLaneVerdict: true,
     message: "Book Meera Gauntlet Five's engagement shoot for 14 February and log her advance of 40,000.",
     verdict: (r) => {
       // The room has NO dispatch hand; a mutation hand would be an escape (assert zero),
@@ -2123,8 +2130,16 @@ async function runLane(lane, runTurn, mkTransports) {
   // whose every turn crashed is NOT a vacuous PASS. Crashes are disclosed, apart.
   const crashes = results.filter((x) => x.crashed).length;
   const ran = results.filter((x) => !x.crashed);
-  laneOk = ran.length > 0 && ran.every((x) => x.ok);
-  console.log(`  LANE ${laneOk ? 'PASS' : 'FAIL'} · turns=${results.length}${crashes ? ` (${ran.length} ran, ${crashes} CRASHED — rig-void, excluded from the verdict; re-run once the shape is pinned)` : ''} · total ${lane.ceiling ? '₹*' : '₹'}${total.toFixed(2)}${lane.ceiling ? '  (* Haiku-priced ceiling — the meter\'s never-invent-a-price law; real DeepSeek cost is lower)' : ''}`);
+  // R-1 (CE-105 chartered; FORK 7 -> 7b): scenarios that declare themselves foreign-seated
+  // leave LANE AGGREGATION. They still run, still print their own PASS/FAIL line above, and
+  // still carry their finding — they simply stop deciding a verdict about a lane they were
+  // never a member of. NOTE FOR ANY FUTURE READER: the `laneOk = laneOk && ok` accumulation
+  // at the per-scenario print is DEAD — this line OVERWRITES it wholesale, and has since the
+  // crash-accounting cure. This is the ONE load-bearing aggregation site in the file.
+  const counted = ran.filter((x) => !(x.sc && x.sc.excludeFromLaneVerdict));
+  const excluded = ran.length - counted.length;
+  laneOk = counted.length > 0 && counted.every((x) => x.ok);
+  console.log(`  LANE ${laneOk ? 'PASS' : 'FAIL'} · turns=${results.length}${excluded ? ` (${excluded} foreign-seated, excluded from the verdict per CE-99/R-1; its own line above still stands)` : ''}${crashes ? ` (${ran.length} ran, ${crashes} CRASHED — rig-void, excluded from the verdict; re-run once the shape is pinned)` : ''} · total ${lane.ceiling ? '₹*' : '₹'}${total.toFixed(2)}${lane.ceiling ? '  (* Haiku-priced ceiling — the meter\'s never-invent-a-price law; real DeepSeek cost is lower)' : ''}`);
   // V5 — THE DISPATCH SECTION's own line: the S3 family scored as a family
   // (M-1's measured target; the incumbent's standing record is 2-for-4, so the
   // per-lane fraction is the datum the ruling reads, not any single repeat).

@@ -389,7 +389,11 @@ t('§5.2 THE MOVE WAS BYTE-IDENTICAL — the four families are unchanged from th
 t('§5.3 BOTH persistComposedReply CALL SITES CARRY THE GUARD — one site covered is a turn class escaping silently', () => {
   const c = read(CHAT);
   assert.strictEqual((c.match(/await persistComposedReply\(req, result,/g) || []).length, 2, 'the call-site count moved — re-derive');
-  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result\);/g) || []).length, 2, 'the guard is not on both PWA sites');
+  // AMENDED (TDW_06 F-06.130, count preserved) — the surviving subject is BOTH SITES CARRY
+  // THE GUARD, which is what this cell has always meant. FORK 3-K1 added `req.agentId` as a
+  // fourth argument at both sites, so the old anchor's trailing `result);` no longer matches.
+  // Re-anchored on the call with its agent argument, and the count still decides.
+  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId\);/g) || []).length, 2, 'the guard is not on both PWA sites');
 });
 
 t('§5.4 THE GUARD DOES NOT RIDE INSIDE persistComposedReply — that function returns early on an empty tail, which is exactly the costume turn', () => {
@@ -520,12 +524,16 @@ t('§5.8 D-1 HELD: only NESTED hands census, and her voice is never counted as o
 t('§5.8b R-10 — THE WHATSAPP SEAT SHIPS, AND IT IS THE SAME FUNCTION (no new machinery, no new readers)', () => {
   const wa = read('src/lib/vendorInbound.js');
   assert.ok(/require\('\.\.\/api\/vendor-engine\/chat'\)/.test(wa), 'the WA lane does not reach the guard\'s one home — a re-implementation would prove its own copy');
-  assert.ok(/await wireGuardSpecimen\(supabase, vendor\.id, result\)/.test(wa), 'the WA lane does not call the guard');
+  // AMENDED (F-06.130, count preserved): the WA seat now passes `agentId` too — the key the
+  // REPORT catcher finds this vendor's delivered witness by after a thread timeout.
+  assert.ok(/await wireGuardSpecimen\(supabase, vendor\.id, result, agentId\)/.test(wa), 'the WA lane does not call the guard');
   assert.ok(/const result = await runTurn\(\{/.test(wa), 'the WA lane no longer calls runTurn — R-10\'s derivation premise has changed; re-derive before trusting this seat');
   // the guard's signature is the ONE adaptation, and both doors pass the same two values
   const c = read(CHAT);
-  assert.ok(/async function wireGuardSpecimen\(supabase, vendorId, result\)/.test(c), 'the guard signature is not the relocated (supabase, vendorId, result) shape');
-  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result\)/g) || []).length, 2,
+  // AMENDED (F-06.130, count preserved): the relocated signature GAINS its agent, additively.
+  // R-10's subject — ONE function, both doors, no second implementation — is untouched.
+  assert.ok(/async function wireGuardSpecimen\(supabase, vendorId, result, agentId\)/.test(c), 'the guard signature is not the relocated (supabase, vendorId, result, agentId) shape');
+  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId\)/g) || []).length, 2,
     'the PWA door does not pass the relocated signature at both of its sites');
 });
 
@@ -845,7 +853,16 @@ t('§7.5 F-06.123 — THE VERDICT RIDES THE ROW WHOLE, and it is ZERO DDL', () =
   }
   // additive into an EXISTING column: no migration, no new table, no altered write target
   assert.ok(/evals_runs/.test(body) && !/alter table|create table|add column/i.test(body), 'the payload cure reaches for DDL');
-  assert.strictEqual((body.match(/\.insert\(/g) || []).length, 2, 'the specimen writer gained or lost an insert');
+  // AMENDED (F-06.130, count preserved) — and STRICTER, on §5.9's own precedent. The old cell
+  // sliced from `wireGuardSpecimen` to `persistComposedReply` and counted inserts in between;
+  // this movement lands `stage2RecordDelivery`, `findDeliveredWitness` and `fileGlitchReport`
+  // inside that slice, so a raw count over the region stopped asking about the SPECIMEN
+  // WRITER. Re-sliced to the writer's OWN body — where the subject always lived — and the
+  // two inserts (evals_runs + evals_findings) still decide. ZERO DDL re-asserted over the
+  // WHOLE new region, so the additions are held to the same no-migration bar.
+  const writer = c.slice(c.indexOf('async function wireGuardSpecimen'), c.indexOf('// ── THE DELIVERY WITNESS'));
+  assert.strictEqual((writer.match(/\.insert\(/g) || []).length, 2, 'the specimen writer gained or lost an insert');
+  assert.ok(!/alter table|create table|add column/i.test(body), 'the F-06.130 machinery reaches for DDL');
 });
 
 t('§7.6 THE NEW CONSTANTS ARE STAGE-1-SCOPED — the masking law, still honoured by construction', () => {
@@ -1276,7 +1293,17 @@ t('§11.6 FORK D — the retry-the-actor leg: structural bound, and three outcom
     'the structural bound is not declared on the body that reads it — a ReferenceError at runtime');
   assert.ok(/_processVendorInbound\(inputs, deps, _noRetry\)/.test(wa), 'the wrapper does not thread the bound through');
   assert.ok(/if \(s2line && !_noRetry\)/.test(wa), 'the retry is not gated on the bound — it has a second edge');
-  const forkD = wa.slice(wa.indexOf('FORK D \u2014 THE RETRY-THE-ACTOR LEG'), wa.indexOf('const twilioMsg'));
+  // AMENDED (TDW_06 F-06.130 sitting, count preserved) — F-06.132, MINTED HERE. This slice
+  // ended at the FIRST `const twilioMsg`, which lives in the mode-word branch THIRTY THOUSAND
+  // CHARACTERS ABOVE Fork D. end < start, so `forkD` has been THE EMPTY STRING since this cell
+  // was written, and the counter-negative below asserted a negative over nothing: a vacuous
+  // cell, F-06.111's own class, sitting inside the bench that ships Fork D's structural bound.
+  // Derived at ORIGIN (4877319) before it was touched, so it is a pre-existing defect this
+  // movement found, not one it caused. Re-anchored on the send that actually follows Fork D,
+  // and the slice's non-emptiness is now asserted FIRST — a slice that silently empties can
+  // never again pass as a proof.
+  const forkD = wa.slice(wa.indexOf('FORK D \u2014 THE RETRY-THE-ACTOR LEG'), wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText'));
+  assert.ok(forkD.length > 200, 'the Fork D slice is empty or collapsed — every assertion below it would be vacuous');
   assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(forkD),
     'the bound became a counter — it was ratified as a shape with no second edge');
   // OUTCOME 2's bytes are F3's, verbatim from undoContract.js:31 — derived, never authored
@@ -1289,6 +1316,265 @@ t('§11.6 FORK D — the retry-the-actor leg: structural bound, and three outcom
   // OUTCOME 3: a throwing retry falls back to the glitch line, never worse than no retry
   assert.ok(/catch \(retryErr\)/.test(wa), 'a throwing retry is not caught — it would break the turn');
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+H('\u00a712 \u2014 F-06.130: THE PROMISE GETS ITS MECHANISM (the REPORT catcher, end to end)');
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// A faithful engine-plane double. Records every write so each cell asserts the ARTIFACT.
+function evalsDouble(rows, failFindings) {
+  const store = { runs: rows || [], findings: [], updates: [] };
+  const table = (name) => {
+    const q = { _f: [], _order: null, _limit: null };
+    q.select = () => q; q.order = () => q; q.limit = (n) => { q._limit = n; return q; };
+    q.eq = (col, v) => { q._f.push((r) => r[col] === v); return q; };
+    q.gte = (col, v) => { q._f.push((r) => r[col] >= v); return q; };
+    q.contains = (col, obj) => { q._f.push((r) => Object.keys(obj).every((k) => r[col] && r[col][k] === obj[k])); return q; };
+    q.insert = (row) => {
+      if (name === 'evals_findings' && failFindings) return { select: () => ({ single: async () => ({ data: null, error: { message: 'insert refused' } }) }), then: (res) => res({ error: { message: 'insert refused' } }) };
+      (name === 'evals_runs' ? store.runs : store.findings).push(row);
+      const r = { select: () => ({ single: async () => ({ data: { id: 'run-new' }, error: null }) }), then: (res) => res({ error: null }) };
+      return r;
+    };
+    q.update = (patch) => ({ eq: async (col, v) => { store.updates.push({ id: v, patch }); const r = store.runs.find((x) => x[col] === v); if (r) Object.assign(r, patch); return { error: null }; } });
+    q.maybeSingle = async () => { const m = store.runs.filter((r) => q._f.every((f) => f(r))); return { data: m[0] || null, error: null }; };
+    q.then = (res) => { let m = store.runs.filter((r) => q._f.every((f) => f(r))); m = m.slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); res({ data: m, error: null }); };
+    return q;
+  };
+  return { store, schema: () => ({ from: table }) };
+}
+const AGENT = 'agent-0001', OTHER = 'agent-9999';
+const mkRow = (o) => Object.assign({ id: 'r1', run_type: 'production', created_at: new Date().toISOString(), transcript: {} }, o);
+
+t('\u00a712.1 THE MATCHER \u2014 FORK 1 \u2192 1b, driven on the SHIPPED function, both directions', () => {
+  const { matchGlitchWord, GLITCH_WORD } = require(P('src/lib/nudgeOptout.js'));
+  for (const y of ['REPORT', 'report', 'Report.', '  Report!  ', 'rEpOrT']) assert.ok(matchGlitchWord(y), `the word was dropped: ${JSON.stringify(y)}`);
+  // THE FALL-THROUGH CELL, named in the ruling: a message that CONTAINS the word is a REAL TURN
+  for (const n of ['send me the report for last week', 'REPORT NOW', 'reporting', 'report it', '', null, undefined])
+    assert.ok(!matchGlitchWord(n), `a real turn was swallowed: ${JSON.stringify(n)}`);
+  assert.strictEqual(GLITCH_WORD, 'REPORT', 'the word drifted from the one V-W promises');
+  // it reuses the REAL tokeniser and does not carry a second copy of it
+  const src = read('src/lib/nudgeOptout.js');
+  assert.ok(/function matchGlitchWord\(text\) \{\s*const t = _tokens\(text\);/.test(src), 'the matcher copied the normaliser instead of reusing it');
+});
+
+t('\u00a712.2 THE SIBLING WORDS ARE BYTE-UNMOVED, and the three sets are disjoint', () => {
+  const vm = read('src/api/vendor-engine/vendorMode.js');
+  assert.ok(!/matchGlitchWord|GLITCH_WORD/.test(vm), 'the matcher leaked into vendorMode after the siting correction');
+  // vendorMode pulls chat (and through it the engine dist) on load, so it is read as SOURCE
+  // here and its matchers are re-derived from their own literals — the same fence discipline.
+  const vmSrc = read('src/api/vendor-engine/vendorMode.js');
+  const { matchNudgeWord, matchGlitchWord } = require(P('src/lib/nudgeOptout.js'));
+  assert.ok(/const MODE_WORDS = \{ 'advisor mode': 'advisor', 'business mode': 'business' \};/.test(vmSrc),
+    'the mode vocabulary moved — disjointness must be re-derived, never assumed');
+  assert.ok(/const FRESH_WORD = 'fresh';/.test(vmSrc), 'the fresh word moved — re-derive disjointness');
+  assert.ok(!/'report'/i.test(vmSrc.slice(vmSrc.indexOf('const MODE_WORDS'), vmSrc.indexOf('function matchFreshWord') + 200)),
+    'the report word entered the mode/fresh vocabulary');
+  assert.strictEqual(matchNudgeWord('report'), null, 'the nudge matcher learned the report word');
+  for (const w of ['advisor mode', 'business mode', 'fresh', 'STOP MORNINGS'])
+    assert.ok(!matchGlitchWord(w), `the report word swallowed a sibling: ${w}`);
+});
+
+t('\u00a712.3 THE DEPS CONTRACT IS UNTOUCHED \u2014 the siting correction, asserted so it cannot regress', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  assert.ok(/const \{ matchNudgeWord, setNudgeOptout, matchGlitchWord \} = require\('\.\/nudgeOptout'\)/.test(wa),
+    'the matcher is not required directly \u2014 matchNudgeWord\u2019s own precedent');
+  const deps = wa.slice(wa.indexOf('const {\n    runCoupleAgenticTurn'), wa.indexOf('} = deps;'));
+  assert.ok(!/matchGlitchWord/.test(deps), 'the matcher went back into the deps object \u2014 five sealed benches build their own deps and would red again');
+});
+
+ta('\u00a712.4 THE DELIVERY WITNESS \u2014 what SHIPPED, not what was classified (the pre-ruling)', async () => {
+  const { stage2RecordDelivery } = chat;
+  const db = evalsDouble([mkRow({ id: 'r1', transcript: { agent_id: AGENT, stage2_delivered: 'echo' } })]);
+  assert.strictEqual(await stage2RecordDelivery(db, 'r1', { arm: 'glitch_line', delivered: 'LINE', seat: 'wa' }), true);
+  const d = db.store.runs[0].transcript.stage2_delivery;
+  assert.strictEqual(d.arm, 'glitch_line'); assert.strictEqual(d.delivered, 'LINE'); assert.strictEqual(d.seat, 'wa');
+  // ONE ROW PER EVENT \u2014 3b was refused because two rows re-create the shadowing class
+  assert.strictEqual(db.store.runs.length, 1, 'the delivery witness inserted a second row');
+  // the classification echo SURVIVES beside it, untouched \u2014 additive, never a rewrite
+  assert.strictEqual(db.store.runs[0].transcript.stage2_delivered, 'echo', 'the patch clobbered the classification echo');
+  // no id \u2192 no witness, and it does not throw
+  assert.strictEqual(await stage2RecordDelivery(db, null, { arm: 'x' }), false);
+});
+
+ta('\u00a712.5 THE LOOKUP \u2014 agent-keyed, window-bounded, delivery-gated (FORK 3-K1 + 3-B)', async () => {
+  const { findDeliveredWitness, REPORT_WINDOW_MS } = chat;
+  const now = Date.now(), iso = (ms) => new Date(ms).toISOString();
+  assert.strictEqual(REPORT_WINDOW_MS, 24 * 60 * 60 * 1000, 'the founder\u2019s window number drifted');
+  const rows = [
+    mkRow({ id: 'old',      created_at: iso(now - REPORT_WINDOW_MS - 60000), transcript: { agent_id: AGENT, stage2_delivery: { delivered: 'OLD' } } }),
+    mkRow({ id: 'landed',   created_at: iso(now - 3000),  transcript: { agent_id: AGENT, stage2_delivery: { arm: 'retry_landed', delivered: null } } }),
+    mkRow({ id: 'foreign',  created_at: iso(now - 2000),  transcript: { agent_id: OTHER, stage2_delivery: { delivered: 'NOT HIS' } } }),
+    mkRow({ id: 'hit',      created_at: iso(now - 5000),  transcript: { agent_id: AGENT, stage2_delivery: { delivered: 'HIS LINE' } } }),
+  ];
+  const w = await findDeliveredWitness(evalsDouble(rows), AGENT);
+  assert.ok(w && w.id === 'hit', `the wrong witness was chosen: ${w && w.id}`);
+  // each exclusion asserted ALONE, so a green here cannot be one filter doing all the work
+  assert.strictEqual((await findDeliveredWitness(evalsDouble([rows[0]]), AGENT)), null, 'the 24h window does not bound the lookup');
+  assert.strictEqual((await findDeliveredWitness(evalsDouble([rows[1]]), AGENT)), null, 'a retry that LANDED the act was reportable \u2014 the vendor got an honest reply');
+  assert.strictEqual((await findDeliveredWitness(evalsDouble([rows[2]]), AGENT)), null, 'another vendor\u2019s turn was reachable');
+  assert.strictEqual((await findDeliveredWitness(evalsDouble(rows), null)), null, 'a missing agent returned somebody\u2019s row');
+});
+
+ta('\u00a712.6 THE ONE HOME \u2014 FORK 6b: filed writes a finding and says so; no witness says the honest thing', async () => {
+  const { fileGlitchReport, GLITCH_REPORT_FILED, GLITCH_REPORT_NO_CONTEXT } = chat;
+  const hit = evalsDouble([mkRow({ id: 'hit', transcript: { agent_id: AGENT, assistant_message_id: 'msg-7', stage2_delivery: { delivered: 'LINE' } } })]);
+  const r1 = await fileGlitchReport(hit, AGENT);
+  assert.strictEqual(r1.filed, true); assert.strictEqual(r1.run_id, 'hit');
+  assert.strictEqual(r1.message, GLITCH_REPORT_FILED, 'a filed report did not speak the filed line');
+  assert.strictEqual(hit.store.findings.length, 1, 'nothing was actually filed');
+  assert.strictEqual(hit.store.findings[0].run_id, 'hit');
+  assert.strictEqual(hit.store.findings[0].claim, 'vendor_reported_glitch');
+  assert.strictEqual(hit.store.findings[0].evidence_ref, 'msg-7', 'the finding does not point at the turn the vendor saw');
+  const none = evalsDouble([]);
+  const r2 = await fileGlitchReport(none, AGENT);
+  assert.strictEqual(r2.filed, false);
+  assert.strictEqual(r2.message, GLITCH_REPORT_NO_CONTEXT, 'a no-context report did not speak the vetoed line');
+  assert.strictEqual(none.store.findings.length, 0, 'a no-context report FILED something anyway');
+});
+
+ta('§12.6b THE FAIL-HONEST CLAUSE — a write that did not land is NEVER reported as filed', async () => {
+  // ADDED IN-SITTING, and the reason is on the record: mutation M6 killed this clause and the
+  // bench came back GREEN 99/99. §12.6 tested the happy path and the no-witness path and left
+  // the FAILED-WRITE path uncovered — a hollow cell, F-06.111's own class, minted by the
+  // sitting benching against it. Third time this arc's mutation floor has caught what an eye
+  // passed. A false "Flagged" here would be this sitting's exact disease shipped by its cure.
+  const { fileGlitchReport, GLITCH_REPORT_NO_CONTEXT, GLITCH_REPORT_FILED } = chat;
+  const db = evalsDouble([mkRow({ id: 'hit', transcript: { agent_id: AGENT, stage2_delivery: { delivered: 'LINE' } } })], true);
+  const r = await fileGlitchReport(db, AGENT);
+  assert.strictEqual(r.filed, false, 'a refused write reported itself as filed');
+  assert.notStrictEqual(r.message, GLITCH_REPORT_FILED, 'the vendor was told it was flagged when nothing landed');
+  assert.strictEqual(r.message, GLITCH_REPORT_NO_CONTEXT, 'a refused write did not fall back to the honest line');
+  assert.strictEqual(db.store.findings.length, 0, 'the refused row landed after all — the double is lying');
+});
+
+t('\u00a712.7 THE VETOED COPY, BYTE-EXACT \u2014 and F-06.85\u2019s comment binding on the absence sentence', () => {
+  const { GLITCH_REPORT_NO_CONTEXT, GLITCH_REPORT_FILED } = chat;
+  assert.strictEqual(GLITCH_REPORT_NO_CONTEXT, "Nothing recent to flag here \u2014 tell me what looked off and we'll go from there");
+  assert.strictEqual(GLITCH_REPORT_FILED, "Flagged \u2014 that turn's on file now.");
+  // the GOVERNANCE register stays off the wire \u2014 the veto\u2019s own reason, asserted
+  assert.ok(!/on the record/i.test(GLITCH_REPORT_FILED), 'the governance register reached a vendor-facing line');
+  // F-06.85: the absence sentence is conditioned on a mechanism, so the mechanism is NAMED
+  const c = read(CHAT);
+  const band = c.slice(c.indexOf('SLOT ONE, founder-vetoed'), c.indexOf('const GLITCH_REPORT_NO_CONTEXT'));
+  assert.ok(/findDeliveredWitness/.test(band) && /REPORT_WINDOW_MS/.test(band),
+    'the absence sentence does not name the lookup it rests on \u2014 F-06.85\u2019s standing law');
+  // and the machinery vocabulary stays out of BOTH vendor-facing lines
+  for (const w of ['specimen', 'evals', 'guard', 'costume', 'verdict', 'snapshot'])
+    for (const line of [GLITCH_REPORT_NO_CONTEXT, GLITCH_REPORT_FILED])
+      assert.ok(!new RegExp(w, 'i').test(line), `machinery vocabulary reached the wire: ${w}`);
+});
+
+t('\u00a712.8 THE WA BRANCH \u2014 pre-engine, no model call, the trio\u2019s own shape (FORK 2 \u2192 2a)', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  const i = wa.indexOf('if (matchGlitchWord(body))'), j = wa.indexOf('const calendarSnapshot');
+  assert.ok(i > 0 && i < j, 'the report branch is not sited pre-engine \u2014 the escape hatch would run through the fabricator');
+  assert.ok(i > wa.indexOf('if (matchFreshWord(body))'), 'the report branch moved ahead of the fresh word \u2014 the additive siting was ratified');
+  const branch = wa.slice(i, j);
+  assert.ok(!/runTurn|buildLlmForTurn|anthropic/.test(branch), 'the report branch reaches the model \u2014 2b was refused');
+  assert.ok(/fileGlitchReport\(supabase, agentId\)/.test(branch), 'the branch does not call the ONE home');
+  assert.ok(/r\.message/.test(branch) && !/GLITCH_REPORT_FILED|Nothing recent to flag/.test(branch),
+    'the branch composes its own sentence instead of speaking the one home\u2019s');
+  assert.ok(/last_message_at/.test(branch) && /direction: 'outbound'/.test(branch), 'the branch skips the trio\u2019s persistence shape');
+});
+
+t('\u00a712.9 SLOT TWO \u2014 the affordance travels to outcome 2, and NOT to the shared home', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  const { STAGE2_WA_REPORT } = chat;
+  const forkD = wa.slice(wa.indexOf('FORK D \u2014 THE RETRY-THE-ACTOR LEG'), wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText'));
+  assert.ok(forkD.length > 200, 'the Fork D slice is empty — F-06.132 returning');
+  assert.ok(/s2line = `That didn't land \u2014 nothing was changed\.\\n\\n\$\{STAGE2_WA_REPORT\}`/.test(forkD),
+    'outcome 2 does not carry the report affordance \u2014 the arm whose vendor most needs it');
+  assert.ok(!forkD.includes(`'${STAGE2_WA_REPORT}'`) && !forkD.includes(`"${STAGE2_WA_REPORT}"`),
+    'V-W was RETYPED instead of read from its constant \u2014 the bytes would drift');
+  // 4c CONVICTED: the shared home feeds a screen with no reply wire
+  const undo = read('src/lib/undoContract.js');
+  assert.ok(!/reply REPORT/.test(undo), 'a WhatsApp reply-word reached the shared home \u2014 it renders on the PWA via translateBeat');
+});
+
+ta('\u00a712.10 THE ID-LESS RETURNS ARE HONEST \u2014 no id \u2192 no witness \u2192 the TRUE no-context line', async () => {
+  const { wireGuardSpecimen, stage2RecordDelivery } = chat;
+  // no engine handle: a verdict still returns (Stage 1 is fail-silent) but carries NO id
+  const v = await wireGuardSpecimen({}, 'vendor-1', { reply: 'Done. 18 December 2026 is unblocked.', tool_calls: [] }, AGENT);
+  assert.ok(v === null || !v.run_id, 'an id was minted on a path that never wrote a row');
+  assert.strictEqual(await stage2RecordDelivery({}, (v && v.run_id) || null, { arm: 'glitch_line', delivered: 'X' }), false,
+    'a delivery witness was claimed without a row to carry it');
+  const c = read(CHAT);
+  const writer = c.slice(c.indexOf('async function wireGuardSpecimen'), c.indexOf('// \u2500\u2500 THE DELIVERY WITNESS'));
+  // ANCHOR CORRECTED IN-SITTING, disclosed: the first cut counted `run_id: data.id`, which also
+  // appears in the evals_findings row map — an anchor that did not ask its own question.
+  assert.strictEqual((writer.match(/return Object\.assign\(\{\}, verdict, \{ run_id: data\.id \}\)/g) || []).length, 1,
+    'more than one return carries an id \u2014 only the persisted one may');
+  // DERIVED, not assumed: five returns precede the persisted one — two `return null` on a
+  // verdict-less turn, `return verdict` with no engine handle, `return verdict` on a failed
+  // insert, and the catch's `return null`. NONE carries an id, which is exactly why a later
+  // REPORT over any of them draws the no-context line truthfully.
+  assert.strictEqual((writer.match(/return verdict;/g) || []).length, 2, 'the id-less verdict returns changed shape \u2014 re-derive their honesty');
+  assert.strictEqual((writer.match(/return null;/g) || []).length, 3, 'the id-less null returns changed shape \u2014 re-derive their honesty');
+  // scoped to RETURNS: `run_id: data.id` legitimately appears above as the findings rows'
+  // foreign key, and a negative that forbade it there would be asking the wrong question.
+  const earlyReturns = (writer.slice(0, writer.indexOf('return Object.assign')).match(/return [^;]*;/g) || []);
+  assert.ok(earlyReturns.length >= 4 && earlyReturns.every((r) => !/run_id/.test(r)), 'an id leaked out of a path that never wrote a row');
+});
+
+t('\u00a712.11 THE ROUTE \u2014 on the chain witnessed at THIS tip, and it posts no id (FORK 6b)', () => {
+  const c = read(CHAT);
+  assert.ok(/router\.post\('\/glitch-report', requireAuth, resolveVendor\(\), resolveAgent\(\), async \(req, res\) => \{/.test(c),
+    'the route is missing or not on the witnessed middleware chain');
+  const fresh = c.match(/router\.post\('\/thread\/fresh', ([^)]*\), [^)]*\), [^)]*\))/);
+  assert.ok(fresh && c.includes(`router.post('/glitch-report', ${fresh[1]}`), 'the two routes\u2019 chains have diverged \u2014 re-derive');
+  const route = c.slice(c.indexOf("router.post('/glitch-report'"), c.indexOf('module.exports = router;'));
+  assert.ok(/fileGlitchReport\(req\.app\.locals\.supabase, req\.agentId\)/.test(route), 'the route does not call the ONE home');
+  assert.ok(!/req\.body/.test(route), 'the route reads a body \u2014 6b ruled the chip posts nothing but its session');
+});
+
+t('\u00a712.12 THE CLASSIFICATION ECHO IS DOCUMENTED AS NEVER-A-WITNESS (correction \u21169\u2019s rider)', () => {
+  const c = read(CHAT);
+  const band = c.slice(c.indexOf('RE-CONDITIONED ON THE MECHANISM AS SHIPPED'), c.indexOf('stage2_delivered:'));
+  assert.ok(/NOT AN INTERCEPTION\s*\n?\s*\/\/ WITNESS|NOT AN INTERCEPTION WITNESS/.test(band.replace(/\s+/g, ' ')) || /NOT AN INTERCEPTION WITNESS/.test(band.replace(/\/\//g, '').replace(/\s+/g, ' ')),
+    'the classification echo is not documented as never-a-witness');
+  assert.ok(/stage2RecordDelivery/.test(band), 'the comment does not point at the field that IS the witness');
+  // and the catcher reads the WITNESS, never the echo
+  const lookup = c.slice(c.indexOf('async function findDeliveredWitness'), c.indexOf('async function fileGlitchReport'));
+  assert.ok(/stage2_delivery/.test(lookup) && !/stage2_delivered/.test(lookup), 'the lookup reads the classification echo');
+});
+
+t('\u00a712.13 EVERY SEAT RECORDS WHAT IT DELIVERED \u2014 all three, with its own seat name', () => {
+  const c = read(CHAT), wa = read('src/lib/vendorInbound.js');
+  assert.ok(/seat: 'pwa_sse'/.test(c) && /seat: 'pwa_json'/.test(c), 'a PWA seat delivers without recording it');
+  assert.ok(/seat: 'wa'/.test(wa), 'the WA seat delivers without recording it');
+  // the WA record sits at FORK D'S RESOLUTION, after the retry decided and before the send
+  const iRec = wa.indexOf("seat: 'wa'"), iSend = wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText'), iArm = wa.indexOf("s2arm = 'retry_landed'");
+  assert.ok(iArm < iRec && iRec < iSend, 'the WA delivery witness is not at Fork D\u2019s resolution point');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+H('\u00a713 \u2014 R-1: THE S5-OFF-AGGREGATION MICRO (CE-99\u2019s ruling, FORK 7 \u2192 7b)');
+// ═══════════════════════════════════════════════════════════════════════════════
+
+t('\u00a713.1 THE FLAG IS A CLASS, DECLARED AT THE SCENARIO \u2014 not a string the reader must learn', () => {
+  const rig = read(RIG);
+  assert.ok(/\{ id: 'S5',[^\n]*excludeFromLaneVerdict: true,/.test(rig), 'S5 does not declare itself foreign-seated');
+  assert.strictEqual((rig.match(/excludeFromLaneVerdict: true/g) || []).length, 1, 'a second scenario left aggregation unruled');
+  assert.ok(!/x\.sc\.id === 'S5'|sc\.id !== 'S5'/.test(rig.slice(rig.indexOf('const counted'), rig.indexOf('console.log(`  LANE'))),
+    'the aggregation reads the id instead of the class \u2014 7a, which was refused');
+});
+
+t('\u00a713.2 ONE LOAD-BEARING SITE, and the dead accumulation is NAMED so nobody trusts it', () => {
+  const rig = read(RIG);
+  assert.strictEqual((rig.match(/laneOk = counted\.length > 0 && counted\.every/g) || []).length, 1, 'the aggregation site multiplied');
+  assert.ok(/laneOk = laneOk && ok;/.test(rig), 'the per-scenario accumulation vanished \u2014 it is dead, not removable without re-deriving its readers');
+  assert.ok(/is DEAD \u2014 this line\s*\n?\s*\/\/ OVERWRITES it wholesale|DEAD/.test(rig.slice(rig.indexOf('R-1 (CE-105 chartered'), rig.indexOf('const counted'))),
+    'the dead accumulation is not disclosed in-file');
+});
+
+t('\u00a713.3 THE CENSUS LINE STAYS PRINTED \u2014 the verdict stops counting it, the record never stops showing it', () => {
+  const rig = read(RIG);
+  assert.ok(/\$\{sc\.id\} \$\{ok \? 'PASS' : 'FAIL'\}/.test(rig), 'the per-scenario census line was removed \u2014 the ruling preserved it');
+  assert.ok(/foreign-seated, excluded from the verdict/.test(rig), 'the LANE line does not disclose the exclusion');
+});
+
 
 (async () => {
 for (const [n, f] of asyncCells) {

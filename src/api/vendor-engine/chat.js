@@ -1670,6 +1670,31 @@ const STAGE2_LINE_LOOKUP   = "There was a small glitch — I can't confirm that 
 // `matchNudgeWord` precedent, three-deep in this estate). Appended on the WA seat ONLY.
 const STAGE2_WA_REPORT     = 'reply REPORT to flag this turn';
 
+// ── TDW_06 F-06.130 — THE PROMISE GETS ITS MECHANISM (CE-ruled; founder-vetoed copy) ──
+// The disease this cures: `STAGE2_WA_REPORT` above shipped in the M-2 engine half and
+// `matchGlitchWord` had ZERO instances in the tree. A live vendor-facing promise with no
+// mechanism behind it is F-04.27's own class — minted by the guard whose entire subject is
+// claims that outrun their mechanism.
+//
+// SLOT ONE, founder-vetoed 「 accept all 」. THE F-06.85 BINDING, and it is the reason this
+// comment exists: this sentence is an ABSENCE ASSERTION, and under MANUAL_PAPER §2.1 s3 an
+// absence may only be spoken on the back of a REAL READ. It is — `fileGlitchReport` below
+// calls `findDeliveredWitness`, which queries `engine.evals_runs` for this agent inside
+// REPORT_WINDOW_MS, and this line ships ONLY on that query returning nothing. THE MECHANISM
+// IS NAMED HERE SO ITS NEXT SITTING IS FORCED TO RE-READ THIS SENTENCE: change the lookup,
+// re-read the line, or the line becomes a fabricated absence — the exact class it serves.
+const GLITCH_REPORT_NO_CONTEXT = "Nothing recent to flag here \u2014 tell me what looked off and we'll go from there";
+// SLOT THREE, founder-vetoed. Ships ONLY after the finding row is written — past tense is
+// lawful here by §2.2 s1 because the write happened before the sentence composed, which is
+// the whole doctrine stated in one line. "on file" is the estate's own owner-facing idiom
+// (harveySoul:142/:152, donnaLead:250/:354, memory.ts:289); "on the record" was REFUSED at
+// the veto as the estate's GOVERNANCE register, which has zero vendor-facing instances.
+const GLITCH_REPORT_FILED      = "Flagged \u2014 that turn's on file now.";
+// FORK 3-B, the founder's product number, a named constant at ONE home. A REPORT with no
+// bound would file against a week-old turn and poison the very week the charter calls
+// continuing measurement.
+const REPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 // Which line a specimen earns. The lookup line is for a costume whose ONLY claim is an
 // existence/lookup claim; anything asserting an act takes the mutation line.
 function stage2Line(verdict, forWhatsApp) {
@@ -1705,7 +1730,7 @@ function stage2Intercept(verdict, forWhatsApp) {
 //
 // FAIL-SILENT BY DESIGN: every path is caught and warns. A report-only guard that could
 // throw into the reply path would be a guard that hurts the vendor to watch the model.
-async function wireGuardSpecimen(supabase, vendorId, result) {
+async function wireGuardSpecimen(supabase, vendorId, result, agentId) {
   try {
     // TWO-PHASE, so the ladder stays sync and pure: classify once; if and only if it
     // reaches Fork A's limb does the lookup run, and the ladder is re-entered with the
@@ -1734,7 +1759,18 @@ async function wireGuardSpecimen(supabase, vendorId, result) {
       transcript: {
         // STAGE 2 (arming condition 2): the delivered line rides the specimen row, so the
         // weekly precision read sees exactly what the vendor saw, never an inference.
+        // F-06.130 / correction No.9 — RE-CONDITIONED ON THE MECHANISM AS SHIPPED. This field
+        // is a CLASSIFICATION ECHO and nothing more: it is written HERE, before Fork D has
+        // resolved, with forWhatsApp=false, and it stays populated even when the retry lands
+        // the act and the vendor never sees a glitch line at all. IT IS NOT AN INTERCEPTION
+        // WITNESS AND MUST NEVER BE READ AS ONE. What actually shipped is recorded by
+        // `stage2RecordDelivery` at Fork D's resolution point, under `stage2_delivery`, and
+        // that is the only field the REPORT catcher reads.
         stage2_delivered: verdict.specimen && stage2Armed() ? stage2Line(verdict, false) : null,
+        // FORK 3-K1: the agent, ADDITIVE beside the conversation. The conversation key alone
+        // loses the affordance's core case — a vendor who texts REPORT after the 30-minute
+        // thread timeout is complaining about a turn his new conversation cannot see.
+        agent_id: agentId || null,
         conversation_id: (result && result.conversation_id) || null,
         assistant_message_id: (result && result.assistant_message_id) || null,
         reply: (result && result.reply) || '',
@@ -1760,8 +1796,94 @@ async function wireGuardSpecimen(supabase, vendorId, result) {
       const { error: fErr } = await eng.from('evals_findings').insert(rows);
       if (fErr) console.warn('[wire-guard stage1 findings]', fErr.message);
     }
-    return verdict;
+    // FORK 3a: the row id rides the verdict out, so the seats can patch THIS row with what
+    // they actually delivered. Only THIS return carries an id — every earlier return above
+    // (no verdict / no engine handle / insert failed) is deliberately id-less, and that
+    // honesty is load-bearing: no id -> no delivery witness -> a later REPORT finds nothing
+    // and draws the no-context line, which is TRUE. Benched as its own cell.
+    return Object.assign({}, verdict, { run_id: data.id });
   } catch (e) { console.warn('[wire-guard stage1]', e && e.message); return null; }
+}
+
+// ── THE DELIVERY WITNESS (FORK 3a; the CE's delivery-witness principle) ──────────────────
+// The catcher keys on WHAT SHIPPED, never on what was classified. Called at Fork D's
+// RESOLUTION POINT — after the retry has decided — so the row records which arm fired and
+// the exact bytes the vendor received, in the delivered form. ONE row per event: this
+// PATCHES the specimen row rather than inserting a second, because two rows for one event
+// re-creates the shadowing class the chair convicted.
+//
+// Writes beside `wireGuardSpecimen` on the same engine handle (correction No.8): the guard's
+// specimens have ONE writer and it is this file. `recordEval` is a different writer with a
+// typed shape that has no field for this, and is deliberately not reached.
+async function stage2RecordDelivery(supabase, runId, delivery) {
+  if (!runId || !delivery) return false;
+  try {
+    const eng = supabase && typeof supabase.schema === 'function' ? supabase.schema('engine') : null;
+    if (!eng) return false;
+    const { data, error } = await eng.from('evals_runs').select('transcript').eq('id', runId).maybeSingle();
+    if (error || !data) { console.warn('[wire-guard stage2 delivery]', error && error.message); return false; }
+    const transcript = Object.assign({}, data.transcript || {}, {
+      stage2_delivery: {
+        arm:       delivery.arm || null,          // retry_landed | second_costume | glitch_line
+        delivered: delivery.delivered || null,    // the EXACT bytes, or null when nothing shipped
+        seat:      delivery.seat || null,         // wa | pwa_json | pwa_sse
+        at:        new Date().toISOString(),
+      },
+    });
+    const { error: uErr } = await eng.from('evals_runs').update({ transcript }).eq('id', runId);
+    if (uErr) { console.warn('[wire-guard stage2 delivery]', uErr.message); return false; }
+    return true;
+  } catch (e) { console.warn('[wire-guard stage2 delivery]', e && e.message); return false; }
+}
+
+// The newest DELIVERED witness for this agent inside the window. `delivered` non-null is the
+// whole predicate — a turn whose retry landed the act carries arm `retry_landed` and a null
+// `delivered`, and is correctly NOT reportable: the vendor received an honest reply.
+async function findDeliveredWitness(supabase, agentId) {
+  if (!agentId) return null;
+  try {
+    const eng = supabase && typeof supabase.schema === 'function' ? supabase.schema('engine') : null;
+    if (!eng) return null;
+    const since = new Date(Date.now() - REPORT_WINDOW_MS).toISOString();
+    const { data, error } = await eng.from('evals_runs')
+      .select('id, created_at, transcript')
+      .eq('run_type', 'production')
+      .gte('created_at', since)
+      .contains('transcript', { agent_id: agentId })
+      .order('created_at', { ascending: false })
+      .limit(25);
+    if (error || !data || !data.length) return null;
+    for (const row of data) {
+      const d = row && row.transcript && row.transcript.stage2_delivery;
+      if (d && d.delivered) return row;
+    }
+    return null;
+  } catch (e) { console.warn('[wire-guard report lookup]', e && e.message); return null; }
+}
+
+// FORK 6b — ONE RESOLUTION PATH, ONE HOME, ONE FAILURE MODE. The WhatsApp word and the app
+// chip both land here; neither carries a run id on the wire and neither owns a second lookup.
+async function fileGlitchReport(supabase, agentId) {
+  const witness = await findDeliveredWitness(supabase, agentId);
+  if (!witness) return { filed: false, run_id: null, message: GLITCH_REPORT_NO_CONTEXT };
+  try {
+    const eng = supabase && typeof supabase.schema === 'function' ? supabase.schema('engine') : null;
+    if (!eng) return { filed: false, run_id: null, message: GLITCH_REPORT_NO_CONTEXT };
+    const { error } = await eng.from('evals_findings').insert({
+      run_id: witness.id,
+      claim: 'vendor_reported_glitch',
+      evidence_ref: (witness.transcript && witness.transcript.assistant_message_id) || null,
+      severity: 'material',
+      truth_status: 'vendor_reported',
+    });
+    // FAIL-HONEST, not fail-silent: if the write did not land, the vendor is NOT told it did.
+    // A false "Flagged" here would be this sitting's own disease shipped by its own cure.
+    if (error) { console.warn('[wire-guard report file]', error.message); return { filed: false, run_id: null, message: GLITCH_REPORT_NO_CONTEXT }; }
+    return { filed: true, run_id: witness.id, message: GLITCH_REPORT_FILED };
+  } catch (e) {
+    console.warn('[wire-guard report file]', e && e.message);
+    return { filed: false, run_id: null, message: GLITCH_REPORT_NO_CONTEXT };
+  }
 }
 
 async function persistComposedReply(req, result, tail) {
@@ -2353,7 +2475,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
       await persistComposedReply(req, result,
         composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-      const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result); // wire guard — PWA site 1 of 2 (SSE)
+      const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId); // wire guard — PWA site 1 of 2 (SSE)
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       // ── STAGE 2, SSE SEAT — REPLACE-AT-DONE (CE-ruled). The model's body has already
@@ -2363,7 +2485,12 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // is this additive payload; the pwa client swaps the message text on the flag.
       const s2sse = stage2Intercept(guardVerdict, false);
       const done = { type: 'done', tool_calls: s2sse ? [] : toolNames, refresh: s2sse ? false : toolNames.length > 0 };
-      if (s2sse) done.intercept = { replaced: true, text: s2sse };
+      if (s2sse) {
+        done.intercept = { replaced: true, text: s2sse };
+        // F-06.130: the delivery witness. This seat has no Fork D, so its resolution point IS
+        // the decision to emit the payload — the bytes below are what the client swaps in.
+        await stage2RecordDelivery(req.app.locals.supabase, guardVerdict && guardVerdict.run_id, { arm: 'glitch_line', delivered: s2sse, seat: 'pwa_sse' });
+      }
       // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
       if (result.view && result.view.length) done.view = result.view.map((r) => ({ ...r, missing_cells: missingCells(r) }));
       done.meta = await buildMeta(req, productTier); // TDW_02 P5: the meter, every turn
@@ -2417,7 +2544,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const openLine = donnaOpenLine(result);
     await persistComposedReply(req, result,
       composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-    const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result); // wire guard — PWA site 2 of 2 (JSON)
+    const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId); // wire guard — PWA site 2 of 2 (JSON)
 
     // CE-18: the firewall covers the reply itself. TDW_06 M-4 / F-06.36: and now it
     // leaves a witness. Wired here as well as on the WhatsApp door because this file's
@@ -2432,6 +2559,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     // speech about hands that actually fired, and a costume has none, so nothing is lost.
     const s2 = stage2Intercept(guardVerdict, false);
     if (s2) {
+      // F-06.130: the delivery witness, recorded before the bytes leave — this route's
+      // pre-delivery seam is the resolution point, and nothing intervenes after it.
+      await stage2RecordDelivery(req.app.locals.supabase, guardVerdict && guardVerdict.run_id, { arm: 'glitch_line', delivered: s2, seat: 'pwa_json' });
       return res.json({
         ok: true, reply: s2, tool_calls: [], refresh: false,
         meta: await buildMeta(req, productTier),
@@ -2558,6 +2688,27 @@ router.post('/thread/fresh', requireAuth, resolveVendor(), resolveAgent(), async
   }
 });
 
+// ── TDW_06 F-06.130 — THE GLITCH-REPORT ROUTE (the chip's missing endpoint) ─────────────
+// Sited on the EXACT middleware chain witnessed one route above (`/thread/fresh`), and the
+// chain is cited fresh at this tip rather than carried from an earlier ruling's `:1991` —
+// the Stage-2 additions moved it, and a chain quoted from memory is the class this estate
+// files findings about.
+//
+// FORK 6b: the chip posts NOTHING but its session. It carries no run id on the wire, because
+// one resolution path with one failure mode is worth more than the round trip a uuid saves —
+// and it is the SAME `fileGlitchReport` the WhatsApp word calls, so the two legs can never
+// disagree about which turn a vendor is complaining about.
+router.post('/glitch-report', requireAuth, resolveVendor(), resolveAgent(), async (req, res) => {
+  try {
+    const r = await fileGlitchReport(req.app.locals.supabase, req.agentId);
+    console.log(`[vendor-e chat/glitch-report] filed=${r.filed} run=${r.run_id || 'none'} agent=${req.agentId}`);
+    return res.json({ ok: true, filed: r.filed, message: r.message });
+  } catch (err) {
+    console.error('[vendor-e chat/glitch-report]', err.message);
+    return res.status(500).json({ ok: false, error: 'Could not file that.' });
+  }
+});
+
 module.exports = router;
 // ── TEST SEAMS (TDW_04 B4) — occupancy.js's ratified precedent ────────────
 // The bench drives the REAL builders. conflictLines/mutationLines/advisoryLines are
@@ -2613,6 +2764,13 @@ module.exports.stage2Line            = stage2Line;
 module.exports.STAGE2_LINE_MUTATION  = STAGE2_LINE_MUTATION;
 module.exports.STAGE2_LINE_LOOKUP    = STAGE2_LINE_LOOKUP;
 module.exports.STAGE2_WA_REPORT      = STAGE2_WA_REPORT;
+// TDW_06 F-06.130 — the REPORT catcher's seams. The bench drives the REAL ones (Q-SP-5).
+module.exports.stage2RecordDelivery  = stage2RecordDelivery;  // the delivery witness, Fork D's resolution
+module.exports.findDeliveredWitness  = findDeliveredWitness;  // the windowed, agent-keyed lookup
+module.exports.fileGlitchReport      = fileGlitchReport;      // FORK 6b: the ONE home, both legs
+module.exports.GLITCH_REPORT_NO_CONTEXT = GLITCH_REPORT_NO_CONTEXT; // SLOT ONE (founder-vetoed)
+module.exports.GLITCH_REPORT_FILED      = GLITCH_REPORT_FILED;      // SLOT THREE (founder-vetoed)
+module.exports.REPORT_WINDOW_MS         = REPORT_WINDOW_MS;         // FORK 3-B (founder's number)
 module.exports.isDeedOfClass         = isDeedOfClass;      // Fork A' class-match test seam
 module.exports.PRIOR_DEED_LOOKBACK   = PRIOR_DEED_LOOKBACK;
 // ── WIRE GUARD STAGE 1 · THE CLAIM VOCABULARY'S ONE HOME (2026-07-28). Exported on

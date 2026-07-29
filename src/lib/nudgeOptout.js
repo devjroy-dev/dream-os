@@ -138,4 +138,39 @@ async function setNudgeOptout({ supabase, phone, lane, state, source }) {
   return data;
 }
 
-module.exports = { matchNudgeWord, isNudgeOptedOut, setNudgeOptout, LANES };
+// ── TDW_06 F-06.130: THE GLITCH-REPORT WORD (the promise V-W has been making) ────────────
+// THE DISEASE THIS CURES: `STAGE2_WA_REPORT` — 'reply REPORT to flag this turn' — has been
+// appended to the WA leg's intercept since the M-2 engine half shipped, and `matchGlitchWord`
+// had ZERO instances in the tree. A live vendor-facing promise with no mechanism behind it is
+// F-04.27's own class, made by the guard whose whole subject is claims that outrun mechanism.
+//
+// SITED HERE, and the siting is a CORRECTED one, disclosed rather than quietly fixed. It was
+// first written into vendorMode.js beside matchFreshWord on topical symmetry, and reached
+// _processVendorInbound through the `deps` object its two siblings use. That broke FIVE sealed
+// benches at once with `matchGlitchWord is not a function` — every bench that drives the real
+// processVendorInbound builds its OWN deps object, and none of them carry a key that did not
+// exist when they were written. That is CE-59's both-sides clause arriving as a red: changing
+// one side of a contract obliges the other side's payload. The mechanical evidence overrode
+// the topical instinct. THE RIGHT HOME WAS ALWAYS HERE — `matchNudgeWord`, the precedent this
+// cure cites, is required DIRECTLY at vendorInbound.js:32 and has never been a dep, and this
+// is where `_tokens` already lives, so the tokeniser is REUSED rather than exported or copied.
+// The deps contract is byte-identical to origin and no sealed bench sees this movement.
+//
+// FORK 1 -> 1b, CE-ruled: the nudge tokeniser AT LENGTH ONE — punctuation-stripped and
+// case-insensitive. V-W instructs in caps on the house convention (STOP MORNINGS), but BOTH
+// shipped matchers are case-insensitive, and a keyboard that autocapitalises also
+// autopunctuates: `Report.` and `report` must both land. 1a would drop `Report.`; 1c would
+// drop `report` and break the pattern both siblings set.
+//
+// NARROW BY CONSTRUCTION, matchFreshWord's own reason restated: exactly ONE token, so a
+// message that merely CONTAINS the word is a REAL TURN and falls through — "send me the
+// report for last week" reaches the engine untouched, benched as its own cell. No collision
+// exists: unlike bare STOP, `report` is claimed by no other machinery in this estate.
+const GLITCH_WORD = 'REPORT';
+
+function matchGlitchWord(text) {
+  const t = _tokens(text);
+  return t.length === 1 && t[0] === GLITCH_WORD;
+}
+
+module.exports = { matchNudgeWord, isNudgeOptedOut, setNudgeOptout, LANES, matchGlitchWord, GLITCH_WORD };
