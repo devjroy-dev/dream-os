@@ -463,14 +463,21 @@ if (!process.env.F0550_BENCH_CHILD) {
       file: 'src/lib/vendor/leadPings.js', from: "      .update({ acknowledged_at: new Date().toISOString() })", to: "      .update({ })" },
     { cell: '§1.7', why: 'the vendor scope drops — one vendor sees another vendor\'s bride (B-3)',
       file: 'src/lib/vendor/leadPings.js', from: "      .eq('vendor_id', vendorId)\n", to: "" },
+    // LABELED AMENDMENT (TDW_06 M-2, 2026-07-29 — the bench follows the law, CE-80).
+    // COUNT PRESERVED. Fork D's retry-the-actor leg calls runTurn a SECOND time and
+    // passes `leadPings` too — correctly, since a retried turn must see the same inputs.
+    // That second reader MASKED this mutation: commenting the first left the second, and
+    // the cell went green over a disease it was built to detect. Caught by the mutation
+    // floor, filed not papered. The mutation now removes the identifier at BOTH readers,
+    // which is what "the door stops handing it over" always meant.
     { cell: '§5.1', why: 'the door stops handing it over — the reader exists and nobody reads it, the disease exactly',
-      file: 'src/lib/vendorInbound.js', from: '      leadPings, // TDW_05 F-05.50(b)', to: '      // leadPings, // TDW_05 F-05.50(b)' },
+      file: 'src/lib/vendorInbound.js', from: 'leadPings', to: '_leadPingsRemoved', all: true },
   ];
   for (const m of M) {
     const abs = P(m.file), orig = fs.readFileSync(abs, 'utf8');
     try {
       if (!orig.includes(m.from)) { console.log(`  FAIL MUTATION anchor stale in ${m.file}`); fail++; continue; }
-      fs.writeFileSync(abs, orig.replace(m.from, m.to));
+      fs.writeFileSync(abs, m.all ? orig.split(m.from).join(m.to) : orig.replace(m.from, m.to));
       let red = false, out = '';
       try { execFileSync(process.execPath, [P('scripts/b05_f0550_ping_drain_bench.js')], { env: { ...process.env, F0550_BENCH_CHILD: '1' }, encoding: 'utf8', stdio: 'pipe' }); }
       catch (e) { red = true; out = String(e.stdout || ''); }

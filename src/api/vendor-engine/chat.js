@@ -1635,6 +1635,66 @@ async function priorDeedLookup(supabase, result, deedClass) {
   } catch (e) { console.warn('[wire-guard prior-deed]', e && e.message); return null; }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TDW_06 · WIRE GUARD STAGE 2 — THE INTERCEPTION (CE-98 chartered; the gate OPENED
+// 2026-07-29 on the coverage batch: zero false positives across two consecutive
+// batches, the booking walk and state_description live, read_backed_report watched).
+//
+// WHAT IT DOES: on a `costume` specimen — and ONLY on `costume` — the vendor receives
+// the founder's vetoed line instead of the fabrication. The intercepted costume never
+// reaches a human on the seats where a pre-delivery seam exists.
+//
+// THE ARMING CONDITIONS, standing law, encoded here rather than remembered:
+//   (1) `costume` ALONE. Every walk class the ladder has learned — witnessed_hand ·
+//       witnessed · witnessed_jot · corroborated_lookup · prior_turn_witnessed ·
+//       state_description · read_backed_report · acknowledgement · prior_turn_unverified
+//       — is exempt BY CONSTRUCTION, never by a list that could drift. The predicate is
+//       `verdict.specimen`, which is `kind === 'costume'` at its one home.
+//   (2) The first live week IS continuing measurement: every interception is still
+//       logged as a specimen exactly as Stage 1 logged it, with the delivered line
+//       recorded beside it, so the weekly precision read sees what the vendor saw.
+//   (3) ONE FALSE INTERCEPTION IS A STOP. `WIRE_GUARD_STAGE2` is read from the
+//       environment at call time and defaults OFF-on-absence being FALSE only when
+//       explicitly set to 'off' — the founder's disarm is one Railway variable and a
+//       redeploy, with no code change and no ZIP. F-04.27 binds: the line says a glitch
+//       happened, which is TRUE (a claim was made with no hand behind it) and claims
+//       nothing else.
+//
+// THE COPY IS THE FOUNDER'S, VETOED 「 accept all 5 recomendations 」, BYTE-EXACT.
+// Two classes, because one line cannot serve both: a mutation-class costume asserts an
+// act that did not happen (retry is the right instruction); a lookup-class costume
+// asserts a fact that was never read (retry buys nothing, so it points at the screens).
+const STAGE2_LINE_MUTATION = 'There was a small glitch, please try again or use the app screens for this action';
+const STAGE2_LINE_LOOKUP   = "There was a small glitch — I can't confirm that from the records just now, please use the app screens to check this one";
+// The WhatsApp leg has no chip, so the report affordance is a reply word (the
+// `matchNudgeWord` precedent, three-deep in this estate). Appended on the WA seat ONLY.
+const STAGE2_WA_REPORT     = 'reply REPORT to flag this turn';
+
+// Which line a specimen earns. The lookup line is for a costume whose ONLY claim is an
+// existence/lookup claim; anything asserting an act takes the mutation line.
+function stage2Line(verdict, forWhatsApp) {
+  const claims = (verdict && verdict.claims) || [];
+  const lookupOnly = claims.length > 0
+    && claims.every((cl) => cl === 'narrated_lookup' || cl === 'presence_claim');
+  const base = lookupOnly ? STAGE2_LINE_LOOKUP : STAGE2_LINE_MUTATION;
+  return forWhatsApp ? `${base}\n\n${STAGE2_WA_REPORT}` : base;
+}
+
+// ARMED? Read at call time, never cached, so the founder's disarm needs no deploy of
+// this file. Absent → armed (the gate is open); 'off'/'0'/'false' → disarmed.
+function stage2Armed() {
+  const v = String(process.env.WIRE_GUARD_STAGE2 || '').trim().toLowerCase();
+  return !(v === 'off' || v === '0' || v === 'false');
+}
+
+// The one home for "should this turn be intercepted, and with what". Returns null when
+// the turn walks — which is every class except `costume`, by construction.
+function stage2Intercept(verdict, forWhatsApp) {
+  if (!verdict || !verdict.specimen) return null;   // (1) costume alone
+  if (!stage2Armed()) return null;                  // (3) the founder's tripwire
+  return stage2Line(verdict, !!forWhatsApp);
+}
+
 // The landing site is engine.evals_runs + engine.evals_findings — LIVE TABLES WITH A
 // LIVE WRITER (recordEval, src/engine/src/core/evals.ts) and a live read route. ZERO
 // DDL, zero migration, no founder-run SQL for this sitting: run_type 'production' was
@@ -1672,6 +1732,9 @@ async function wireGuardSpecimen(supabase, vendorId, result) {
       // error-prone one. Additive into an EXISTING jsonb column (evals_runs.transcript,
       // witnessed at docs/db/ENGINE_SCHEMA.md:191) — ZERO DDL, zero migration.
       transcript: {
+        // STAGE 2 (arming condition 2): the delivered line rides the specimen row, so the
+        // weekly precision read sees exactly what the vendor saw, never an inference.
+        stage2_delivered: verdict.specimen && stage2Armed() ? stage2Line(verdict, false) : null,
         conversation_id: (result && result.conversation_id) || null,
         assistant_message_id: (result && result.assistant_message_id) || null,
         reply: (result && result.reply) || '',
@@ -2290,10 +2353,17 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
       await persistComposedReply(req, result,
         composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-      await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result); // wire guard Stage 1 — report only, PWA site 1 of 2
+      const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result); // wire guard — PWA site 1 of 2 (SSE)
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
-      const done = { type: 'done', tool_calls: toolNames, refresh: toolNames.length > 0 };
+      // ── STAGE 2, SSE SEAT — REPLACE-AT-DONE (CE-ruled). The model's body has already
+      // streamed as text_delta by the time the guard runs, so interception here cannot
+      // be a never-reached; it is a transient glimpse replaced at `done`. That product
+      // texture was put to the founder and ACCEPTED at the veto round. The backend half
+      // is this additive payload; the pwa client swaps the message text on the flag.
+      const s2sse = stage2Intercept(guardVerdict, false);
+      const done = { type: 'done', tool_calls: s2sse ? [] : toolNames, refresh: s2sse ? false : toolNames.length > 0 };
+      if (s2sse) done.intercept = { replaced: true, text: s2sse };
       // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
       if (result.view && result.view.length) done.view = result.view.map((r) => ({ ...r, missing_cells: missingCells(r) }));
       done.meta = await buildMeta(req, productTier); // TDW_02 P5: the meter, every turn
@@ -2347,12 +2417,27 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const openLine = donnaOpenLine(result);
     await persistComposedReply(req, result,
       composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-    await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result); // wire guard Stage 1 — report only, PWA site 2 of 2
+    const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result); // wire guard — PWA site 2 of 2 (JSON)
 
     // CE-18: the firewall covers the reply itself. TDW_06 M-4 / F-06.36: and now it
     // leaves a witness. Wired here as well as on the WhatsApp door because this file's
     // twin-miss is the exact disease scrub.js's own header (:19-25) exists to refuse —
     // curing one shape and missing its twin is how the class survives.
+    // ── STAGE 2, PWA JSON SEAT. The guard ran immediately above; this route assembles
+    // its returned `reply` HERE, after it — which is why the JSON route has a real
+    // pre-delivery seam and the SSE route does not (there the model's body has already
+    // streamed token-by-token, so its leg is the replace-at-done payload below).
+    // On a costume the vendor receives the founder's vetoed line INSTEAD of the
+    // fabrication; the door lines appended afterwards are the estate's own honest
+    // speech about hands that actually fired, and a costume has none, so nothing is lost.
+    const s2 = stage2Intercept(guardVerdict, false);
+    if (s2) {
+      return res.json({
+        ok: true, reply: s2, tool_calls: [], refresh: false,
+        meta: await buildMeta(req, productTier),
+        intercept: { replaced: true },
+      });
+    }
     let reply = witnessWireScrub(req.app.locals.supabase, req.vendor.id, 'pwa', String(result.reply ?? ''), scrubText(result.reply), 'chat.js:reply');
     // F-04.33: this route hand-rolled the invoice line instead of calling the builder —
     // precisely how a seam gets missed. One builder, one scrub, both routes.
@@ -2522,6 +2607,12 @@ module.exports.actionKind            = actionKind;
 module.exports.wireGuardClassify     = wireGuardClassify;  // wire guard Stage 1 test seam
 module.exports.wireGuardSpecimen     = wireGuardSpecimen;  // wire guard Stage 1 test seam
 module.exports.priorDeedLookup       = priorDeedLookup;    // Fork A' test seam (rework)
+module.exports.stage2Intercept       = stage2Intercept;   // wire guard Stage 2 — the ONE predicate
+module.exports.stage2Armed           = stage2Armed;
+module.exports.stage2Line            = stage2Line;
+module.exports.STAGE2_LINE_MUTATION  = STAGE2_LINE_MUTATION;
+module.exports.STAGE2_LINE_LOOKUP    = STAGE2_LINE_LOOKUP;
+module.exports.STAGE2_WA_REPORT      = STAGE2_WA_REPORT;
 module.exports.isDeedOfClass         = isDeedOfClass;      // Fork A' class-match test seam
 module.exports.PRIOR_DEED_LOOKBACK   = PRIOR_DEED_LOOKBACK;
 // ── WIRE GUARD STAGE 1 · THE CLAIM VOCABULARY'S ONE HOME (2026-07-28). Exported on

@@ -225,3 +225,49 @@ Bench **69 → 75**, two labeled amendments (both count-preserved): §5.9 now as
 ## Next — the convergence bar
 
 The gate opens on a batch with **zero false positives AND every known class exercised at least once**: `state_description` live on its own shape · `read_backed_report` fired · the booking walk · the caption/doorline pair. Precision without coverage is the hollow number. Next batch seats on chair-minted virgin fixtures **Oorja Gate Probe** and **Sameer Marker Test**, SQL pre-flighted both planes; `Ishaan Precision Probe` is **burned**.
+
+---
+
+# M-2 — STAGE 2, THE INTERCEPTION (the gate opened)
+
+**Base:** `dream-os @ 868cdb5`. **Delta: five files** — `chat.js` · `vendorInbound.js` · three benches. W-1 shut; zero soul bytes.
+
+**SCOPE DECLARED: this ZIP is M-2's ENGINE HALF ALONE. M-3 (the pwa pair) and R-1 (the rig micro) DO NOT SHIP HERE** — see §Declared gap below. Nothing is silently dropped.
+
+## The three arming conditions, encoded rather than remembered
+
+1. **`costume` ALONE.** The predicate is `verdict.specimen`, which is `kind === 'costume'` at its one home — never a class list that could drift. All nine walk classes asserted exempt (§11.1).
+2. **The first week IS measurement.** Every interception still logs its specimen, and `stage2_delivered` carries the line the vendor actually received, so the weekly read sees what he saw (§11.4).
+3. **One false interception is a STOP.** `WIRE_GUARD_STAGE2=off` disarms at **call time** — one Railway variable and a redeploy, no code change, no ZIP (§11.3).
+
+## The copy, byte-exact as vetoed 「 accept all 5 recomendations 」
+
+V-M (mutation class) · V-L (lookup class, no "try again" — retrying a fabricated read buys nothing) · V-W (`reply REPORT to flag this turn`, WA leg only). A mixed costume takes V-M, the higher-harm instruction. One home each (§11.2, §5.9b).
+
+## The seats
+
+**WA** (`vendorInbound.js`) — full interception before `sendWhatsApp`. **PWA JSON** — interception before the reply is assembled. **PWA SSE** — replace-at-done, the additive `intercept` payload on the `done` event; the transient glimpse was put to the founder and accepted.
+
+## Fork D — retry-the-actor, as ratified
+
+Armed on the WA seat only, on `costume` (⇒ zero write hands ⇒ nothing to duplicate — the intercept's own predicate is the safety proof). **Structural bound**: `_noRetry` threaded through the wrapper into the body, no counter. Three outcomes: the retry lands the act → its reply ships through the same firewall, the first turn's specimen still logged · the retry is a costume again → **F3's verbatim bytes**, no second costume ever ships · the retry throws → fail-open to the glitch line, never worse than no retry.
+
+## Two defects of my own, filed
+
+**(a) A live `ReferenceError`.** `_noRetry` first landed on the wrapper while the body that reads it had no such parameter. Caught at the desk before packaging; threaded correctly and benched (§11.6 asserts the declaration).
+
+**(b) MY NEW CODE MASKED TWO SEALED BENCHES, and only the floor found it.** `b06_m3_bench §4.4` counts firewall sites in `vendorInbound.js` and found **11 where its ledger held 10** — the retry leg's own `scrubText(retry.reply)`, which is *correct* (a retried reply must cross the persona firewall) and simply unaccounted. Worse, `b05_f0550 §5.1` mutates away the door's `leadPings` reader and expects RED — **it went GREEN**, because the retry call passes `leadPings` too and satisfied the assertion after the primary was removed. **A cell built to detect a disease was masked by my own addition.** Both amended by label, counts preserved: the m3 ledger accounts the 11th site; the f0550 mutation now removes the identifier at **both** readers, which is what "the door stops handing it over" always meant.
+
+## Proof
+
+Bench **75 → 83**, with labeled amendments to every cell superseded by the gate opening (§5.8c/d, §5.9/b, §7.7, §8.5, §9.6, §10.6) — each preserving its surviving subject: **the CLASSIFIER stays pure**, copy and interception live at the Stage 2 block and the seats, never in the ladder.
+
+**Six mutations across both shipped files, all RED, `cmp`-restored byte-identical:** costume-alone gate removed · disarm tripwire removed · V-L collapsed into V-M · WA report affordance dropped · Fork D's bound removed · WA interception disabled. **The last one first came back GREEN** — an order-check matched `if (false) replyText = s2line;` — cell strengthened to assert the statement itself, then RED.
+
+**Floor:** selftest **351/351** · guard **83/83** · relay 40/40 · m3 37 · f0550 31 · f0681 17 · f0692 23 · wa_words 19 · **meter 28/29 KNOWN RED** · every other bench exit 0.
+
+## DECLARED GAP — M-3 and R-1 do not ship in this ZIP
+
+The chair released M-2 + M-3 + R-1 as a paired landing. **This delivery carries M-2's engine half only.** The SSE backend payload is here; **the pwa client half (the `intercept` field on `StreamDonePayload`, the done-branch forward, the `useChat` replacement expression, the Report chip) and the `glitch-report` route + `matchGlitchWord` are NOT built**, and neither is R-1.
+
+**Consequence, stated plainly so it is not discovered:** the WA seat and the PWA JSON route intercept fully and are safe to run. **The SSE route emits `done.intercept` that no client reads yet — the costume streams and is not replaced there.** That is a *smaller* coverage than the ruling describes, never a wrong behaviour, and it is why this is declared rather than absorbed. `WIRE_GUARD_STAGE2=off` disarms everything if the founder prefers to wait for the pair.

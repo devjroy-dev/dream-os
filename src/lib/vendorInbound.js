@@ -139,11 +139,15 @@ function scrubModelFrame(text, verbatim, witness = null) {
 // answering 200 before its turn finishes, so two POSTs one second apart race here
 // exactly as they raced there. Curing one lane and leaving its twin racy would be
 // a knowing half-cure. Nothing below this wrapper changed.
-async function processVendorInbound(inputs, deps) {
-  return withTurnLock(turnKey('vendor', inputs && inputs.phone), () => _processVendorInbound(inputs, deps));
+// `_noRetry` — FORK D'S STRUCTURAL BOUND (M-2, CE-ratified). Not a depth counter: the
+// retry calls `runTurn` directly and never re-enters this function, so the retried turn
+// has NO SECOND EDGE by construction. The parameter exists so a future caller that DOES
+// re-enter cannot accidentally create one, and so the bench can assert the property.
+async function processVendorInbound(inputs, deps, _noRetry) {
+  return withTurnLock(turnKey('vendor', inputs && inputs.phone), () => _processVendorInbound(inputs, deps, _noRetry));
 }
 
-async function _processVendorInbound(inputs, deps) {
+async function _processVendorInbound(inputs, deps, _noRetry) {
   const {
     phone, body, profileName, messageSid, internalReplay,
     trimmedBody, numMedia, hasMedia, mediaUrl, rawPayload,
@@ -1201,14 +1205,63 @@ async function _processVendorInbound(inputs, deps) {
     // values the req-shaped body used to dereference internally. Same readers, same
     // behaviour, one home.
     //
-    // REPORT-ONLY, HERE TOO: this call is placed AFTER `replyText` is fully composed and
-    // BEFORE nothing — it reads and returns. `replyText` is already sent-shaped and is
-    // not passed to the guard at all; the guard reads `result.reply`, mutates nothing,
-    // and cannot alter one byte of what this vendor receives.
+    // ── STAGE 2 IS ARMED ON THIS SEAT (the gate opened 2026-07-29). This is the ONLY
+    // seat with a true pre-delivery seam: the guard runs here, `sendWhatsApp` is the very
+    // next statement, and `replyText` has not left the process. The PWA JSON route has
+    // the same property; the SSE route does not (its body has already streamed) and takes
+    // replace-at-done instead.
+    //
+    // FORK D — THE RETRY-THE-ACTOR LEG, as ratified. On a costume the act did not happen,
+    // and the intercept's OWN PREDICATE is the retry's safety proof: `costume` entails
+    // zero write hands, so there is nothing to duplicate. The turn re-runs ONCE so the
+    // deed can actually land, and the bound is STRUCTURAL, not a counter — `_noRetry`
+    // is threaded into the retried call, so the retry path has no second edge.
+    // THREE OUTCOMES, all explicit:
+    //   · the retry produces write hands → the act happened; its reply ships, the vendor
+    //     never sees a glitch line, and the FIRST turn's specimen still stands logged
+    //     (the costume is evidence whether or not the rescue worked);
+    //   · the retry is a costume again → NO SECOND COSTUME EVER SHIPS. F3's sentence goes
+    //     out instead, byte-derived from undoContract.js:31;
+    //   · the retry throws → fail-open to the glitch line, exactly as the un-retried path
+    //     behaves. A retry that breaks must never be worse than no retry.
+    let s2line = null;
     try {
-      const { wireGuardSpecimen } = require('../api/vendor-engine/chat');
-      await wireGuardSpecimen(supabase, vendor.id, result); // wire guard Stage 1 — report only, WA seat
-    } catch (e) { console.warn('[wire-guard stage1 wa]', e.message); }
+      const { wireGuardSpecimen, stage2Intercept } = require('../api/vendor-engine/chat');
+      const verdict = await wireGuardSpecimen(supabase, vendor.id, result);
+      s2line = stage2Intercept(verdict, true);
+      if (s2line && !_noRetry) {
+        try {
+          const retry = await runTurn({
+            agentId, message: body, calendarSnapshot, scratchpad, leadPings, vendorCategory,
+            tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride,
+            transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport,
+            donnaModelOverride: llmWiring.donnaModelOverride,
+          });
+          const retryVerdict = await wireGuardSpecimen(supabase, vendor.id, retry);
+          const retryHands = [];
+          for (const tc of (retry.tool_calls || [])) {
+            for (const dc of ((tc && tc.donna_calls) || [])) {
+              if (dc && dc.name && dc.name !== 'listen_harvey_talk') retryHands.push(dc);
+            }
+          }
+          if (retryHands.length > 0 && !(retryVerdict && retryVerdict.specimen)) {
+            // outcome 1 — the act landed. Ship the retry's own reply, through the same
+            // firewall the first reply went through. No glitch line, no chip word.
+            replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(retry.reply ?? ''), scrubText(retry.reply), 'vendorInbound:reply(retry)');
+            s2line = null;
+            console.log('[wire-guard stage2 wa] retry landed the act; original specimen stands logged');
+          } else {
+            // outcome 2 — a second costume must never ship.
+            s2line = "That didn't land — nothing was changed.";
+            console.warn('[wire-guard stage2 wa] retry produced no write hand; F3 sentence shipped');
+          }
+        } catch (retryErr) {
+          // outcome 3 — never worse than no retry.
+          console.warn('[wire-guard stage2 wa retry]', retryErr.message);
+        }
+      }
+    } catch (e) { console.warn('[wire-guard stage2 wa]', e.message); }
+    if (s2line) replyText = s2line;
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
     await supabase.from('messages').insert({
       conversation_id: convo.id,

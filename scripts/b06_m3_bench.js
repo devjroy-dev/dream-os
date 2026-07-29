@@ -449,6 +449,14 @@ await t('§4.4 THE FIREWALL\'S REACH IN THIS FILE IS FULLY ACCOUNTED — no scru
     'scrubText(s)': 2,                                    // scrubModelFrame's two fail-safe returns
     'scrubText(s.slice(': 2,                              // the frame either side of the quote
     'scrubText(result.reply)': 1,                         // R2 — the vendor-self reply
+    // LABELED AMENDMENT (TDW_06 M-2, 2026-07-29 — the bench follows the law, CE-80).
+    // COUNT PRESERVED; the ledger's MEANING is unchanged and its reach is now complete.
+    // Fork D's retry-the-actor leg composes a SECOND reply when a costume's retry lands
+    // the act, and that reply must cross the persona firewall exactly as the first does.
+    // An unaccounted scrub is the thing this cell exists to catch, so it is accounted:
+    // this is a scrub on MODEL PROSE, never on founder-vetoed copy (the Stage 2 lines are
+    // constants and are shipped unscrubbed by construction).
+    'scrubText(retry.reply)': 1,                          // M-2 — Fork D's landed-retry reply
     'scrubModelFrame(result.vendorNotification': 4,       // R3 — the four notification sites
     'function scrubModelFrame(': 1,                       // the declaration itself
   };

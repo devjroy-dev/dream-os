@@ -529,40 +529,49 @@ t('§5.8b R-10 — THE WHATSAPP SEAT SHIPS, AND IT IS THE SAME FUNCTION (no new 
     'the PWA door does not pass the relocated signature at both of its sites');
 });
 
-t('§5.8c THE WA SEAT IS REPORT-ONLY TOO — it reads `result`, never `replyText`, and cannot touch what the vendor receives', () => {
-  const wa = read('src/lib/vendorInbound.js');
-  const i = wa.indexOf('THE WHATSAPP SEAT');
-  const seat = wa.slice(i, wa.indexOf('const twilioMsg = await sendWhatsApp', i))
-    .split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');  // executable lines only — the comment names replyText to explain why it is untouched
-  assert.ok(!/replyText/.test(seat), 'the WA seat touches replyText — Stage 1 delivers nothing and alters nothing');
-  assert.ok(!/sendWhatsApp/.test(seat), 'the WA seat sends outbound');
-  assert.ok(/catch \(e\)/.test(seat), 'the WA seat can throw into the reply path — a report-only guard must never hurt the vendor to watch the model');
+t('§5.8c THE WA SEAT INTERCEPTS BEFORE THE SEND — and only ever on a costume', () => {
+  // LABELED AMENDMENT (M-2 — the gate OPENED; the bench follows the law). COUNT PRESERVED.
+  // This cell asserted the WA seat was report-only, true for four movements and now
+  // superseded by ruling. Its surviving subject is the property that still protects the
+  // vendor: the interception must sit BEFORE `sendWhatsApp`, and it must be reachable
+  // only through `stage2Intercept`, which is `costume`-alone by construction.
+  const w = read('src/lib/vendorInbound.js');
+  assert.ok(w.indexOf('if (s2line) replyText = s2line;') < w.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText, [])'),
+    'the WA interception is after the send — the costume reaches the vendor');
+  assert.ok(/stage2Intercept\(verdict, true\)/.test(w), 'the WA seat writes replyText from something other than the one predicate');
+  assert.ok(/catch \(e\) \{ console\.warn\('\[wire-guard stage2 wa\]'/.test(w),
+    'the seat can throw into the reply path — a guard must never hurt the vendor to watch the model');
 });
 
-t('§5.9 STAGE 2 IS NOT HERE — no interception, no rewrite, no substitute reply anywhere in the guard', () => {
-  const c = read(CHAT);
-  // LABELED AMENDMENT (M-2c, 2026-07-29 — the bench follows the law, CE-80's discipline).
-  // COUNT PRESERVED; the cell's MEANING is unchanged and its guard is now stronger.
-  // WHAT CHANGED: this cell grepped the guard's WHOLE body, comments included, for Stage 2
-  // vocabulary. M-2c's in-file comment states the CE's standing law — that Stage 2, when
-  // it arms, intercepts `costume` alone and every walk class earns its exemption by
-  // measurement — and the word "intercepts" in that sentence tripped a cell whose subject
-  // is MECHANISM, not prose. Writing the law down is the opposite of shipping it.
-  // Executable lines only, exactly as §5.8c already reads the WA seat.
-  const bodyAll = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('async function persistComposedReply'));
-  const body = bodyAll.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
-  // FURTHER LABELED AMENDMENT (M-2d): the word-grep now hit `x.replace(BULLET_RE, '')` —
-  // stripping a bullet marker off a LOCAL string while classifying. That is not a Stage 2
-  // rewrite of anything; the cell's subject is the MECHANISM, so it asserts the mechanism:
-  // the guard never assigns to the reply, never mutates `result`, and returns no
-  // replacement text. Stronger than the word list it replaces.
-  assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 COPY is present in executable guard code');
-  assert.ok(!/result\.reply\s*=|result\[.reply.\]\s*=/.test(body), 'the guard ASSIGNS to result.reply — that is interception');
-  assert.ok(!/\breplacement\b|\bintercept:/.test(body), 'the guard returns a replacement/intercept payload — Stage 2 is not chartered');
-  // and the copy itself must be absent from the file ENTIRELY, comments included —
-  // the vetoed strings do not enter this repo until Stage 2 ships them.
-  assert.ok(!/there was a small glitch|I can't confirm that from the records just now/i.test(c),
-    'a vetoed Stage 2 string has entered the file ahead of its movement');
+t('§5.8d THE REPORT-ONLY ERA, RETIRED BY RULING — recorded, not silently dropped', () => {
+  // The WA seat WAS report-only through M-1..M-2d and is now armed by CE ruling at the
+  // gate. The property is retired, not violated; this tombstone records that a cell was
+  // removed by ruling rather than by convenience, and pins the ruling's own condition:
+  // the seat may write replyText ONLY from stage2Intercept's return.
+  const w = read('src/lib/vendorInbound.js');
+  const seat = w.slice(w.indexOf('STAGE 2 IS ARMED ON THIS SEAT'), w.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText, [])'));
+  const writes = (seat.match(/replyText = /g) || []).length;
+  assert.strictEqual(writes, 2, 'the seat writes replyText from an unexpected number of places (retry reply + glitch line = 2)');
+});
+
+t('§5.9 STAGE 2 IS SCOPED — the CLASSIFIER stays pure; interception lives at the seats alone', () => {
+  // LABELED AMENDMENT (M-2, 2026-07-29 — the gate OPENED; the bench follows the law).
+  // COUNT PRESERVED. This cell asserted Stage 2 was absent, which was true for four
+  // movements and is now superseded by ruling. Its SURVIVING subject is the one that
+  // still matters: the LADDER must stay a pure classifier. `wireGuardClassify` returns a
+  // verdict and nothing else; interception is the SEATS' business, gated on
+  // `verdict.specimen`. A classifier that knew about copy could drift into deciding.
+  const cc = read(CHAT);
+  const cls = cc.slice(cc.indexOf('function wireGuardClassify'), cc.indexOf("// ── FORK A'"));
+  assert.ok(!/glitch|please try again|STAGE2_LINE|stage2Intercept/i.test(cls),
+    'Stage 2 vocabulary has entered the CLASSIFIER — the ladder must stay pure');
+});
+
+t('§5.9b THE STAGE-1-ONLY ERA, RETIRED BY RULING — and the copy has exactly one home', () => {
+  const cc = read(CHAT);
+  assert.strictEqual((cc.match(/const STAGE2_LINE_MUTATION\s*= /g) || []).length, 1, 'V-M is declared more than once');
+  assert.strictEqual((cc.match(/const STAGE2_LINE_LOOKUP\s*= /g) || []).length, 1, 'V-L is declared more than once');
+  assert.strictEqual((cc.match(/function stage2Intercept/g) || []).length, 1, 'the arming predicate has more than one home');
 });
 
 
@@ -851,14 +860,18 @@ t('§7.6 THE NEW CONSTANTS ARE STAGE-1-SCOPED — the masking law, still honoure
   }
 });
 
-t('§7.7 F-06.111 — NO VACUOUS `every` IN §7, and nothing arms', () => {
+t('§7.7 F-06.111 — NO VACUOUS `every` IN §7, and the CLASSIFIER stays pure', () => {
   const self = read('scripts/b06_forkc_wireguard_bench.js');
   const seven = self.slice(self.indexOf('§7.0 F-06.119'), self.indexOf('§7.7 F-06.111'));
   assert.strictEqual((seven.match(/\.every\(/g) || []).length, 0, '§7 uses .every(), vacuously true over an empty array');
   const c = read(CHAT);
-  const guard = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('async function persistComposedReply'));
-  assert.ok(!/there was a small glitch|please try again|glitch, please/i.test(guard),
-    'Stage 2 copy has entered a report-only guard — M-2a arms NOTHING');
+  // LABELED AMENDMENT (M-2, gate open): "nothing arms" held for four movements and is
+  // superseded by ruling. The surviving subject is the LADDER's purity — the slice ends
+  // at Fork A' rather than at persistComposedReply, so it covers the classifier and not
+  // the Stage 2 block that now lawfully sits beside it.
+  const guard = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf("// \u2500\u2500 FORK A'"));
+  assert.ok(!/there was a small glitch|please try again|stage2Intercept/i.test(guard),
+    'Stage 2 vocabulary has entered the CLASSIFIER — the ladder must stay a pure classifier');
 });
 
 
@@ -949,8 +962,12 @@ t('§8.5 F-06.111 — no vacuous `every` in §8, the constants stay Stage-1-scop
     assert.ok(!rig.includes(sym), `the gauntlet reads ${sym} — a Stage-1 constant became shared meaning`);
   }
   const guard = read(CHAT);
-  const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf('async function persistComposedReply'));
-  assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 copy is in a report-only guard');
+  // LABELED AMENDMENT (M-2): "nothing arms" was true for four movements and is now
+  // superseded by ruling. The surviving subject: the CLASSIFIER stays pure — copy and
+  // interception live at the Stage 2 block and the seats, never inside the ladder.
+  const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf("// \u2500\u2500 FORK A'"));
+  assert.ok(!/there was a small glitch|please try again|stage2Intercept/i.test(body),
+    'Stage 2 vocabulary has entered the CLASSIFIER — the ladder must stay pure');
 });
 
 
@@ -1036,8 +1053,12 @@ t('§9.6 F-06.111 — no vacuous `every` in §9, and nothing arms', () => {
   const nine = self.slice(self.indexOf('§9.1 F-06.126'), self.indexOf('§9.6 F-06.111'));
   assert.strictEqual((nine.match(/\.every\(/g) || []).length, 0, '§9 uses .every(), vacuously true over an empty array');
   const guard = read(CHAT);
-  const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf('async function persistComposedReply'));
-  assert.ok(!/there was a small glitch|please try again/i.test(body), 'Stage 2 copy is in a report-only guard');
+  // LABELED AMENDMENT (M-2): "nothing arms" was true for four movements and is now
+  // superseded by ruling. The surviving subject: the CLASSIFIER stays pure — copy and
+  // interception live at the Stage 2 block and the seats, never inside the ladder.
+  const body = guard.slice(guard.indexOf('function wireGuardClassify'), guard.indexOf("// \u2500\u2500 FORK A'"));
+  assert.ok(!/there was a small glitch|please try again|stage2Intercept/i.test(body),
+    'Stage 2 vocabulary has entered the CLASSIFIER — the ladder must stay pure');
 });
 
 
@@ -1145,7 +1166,128 @@ t('§10.6 THE MASKING LAW UNDER M-2d — the SHARED FOUR were NOT widened, and n
   const self = read('scripts/b06_forkc_wireguard_bench.js');
   const ten = self.slice(self.indexOf('§10.1 F-06.127'), self.indexOf('§10.6 THE MASKING LAW'));
   assert.strictEqual((ten.match(/\.every\(/g) || []).length, 0, '§10 uses .every(), vacuously true over an empty array');
-  assert.ok(!/there was a small glitch|I can't confirm that from the records just now/i.test(c), 'a vetoed Stage 2 string entered the file');
+  // amended at M-2: the vetoed strings now ship BY RULING. They must live ONLY in the
+  // Stage 2 block — one home — never scattered through the ladder or the seats.
+  assert.strictEqual((c.match(/There was a small glitch, please try again/g) || []).length, 1, 'V-M has more than one home');
+  assert.strictEqual((c.match(/I can't confirm that from the records just now/g) || []).length, 1, 'V-L has more than one home');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §11 — STAGE 2 (M-2, 2026-07-29; the gate OPENED on the coverage batch). The three
+// arming conditions, each asserted, plus the copy's byte-identity to the founder's veto.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+t('§11.1 ARMING CONDITION 1 — `costume` ALONE is intercepted; every walk class is exempt BY CONSTRUCTION', () => {
+  const V = (kind) => ({ kind, specimen: kind === 'costume', claims: ['action_claim'] });
+  assert.ok(chat.stage2Intercept(V('costume'), false), 'a costume is not intercepted — Stage 2 is inert');
+  for (const walk of ['witnessed_hand', 'witnessed', 'witnessed_jot', 'corroborated_lookup',
+                      'prior_turn_witnessed', 'state_description', 'read_backed_report',
+                      'acknowledgement', 'prior_turn_unverified']) {
+    assert.strictEqual(chat.stage2Intercept(V(walk), false), null, `${walk} WOULD BE INTERCEPTED — it never earned that by measurement`);
+  }
+  // the predicate reads `specimen`, which is `kind === 'costume'` at its ONE home — never
+  // a list of class names that could drift out of step with the ladder.
+  const cc = read(CHAT);
+  const fn = cc.slice(cc.indexOf('function stage2Intercept'), cc.indexOf('// The landing site is'));
+  assert.ok(/verdict\.specimen/.test(fn), 'the arming predicate does not read `specimen`');
+  assert.ok(!/'witnessed_hand'|'state_description'|'corroborated_lookup'/.test(fn),
+    'the arming predicate enumerates class names — it must read `specimen`, the one home');
+});
+
+t('§11.2 THE COPY IS THE FOUNDER\'S, BYTE-EXACT, and the two classes are not interchangeable', () => {
+  assert.strictEqual(chat.STAGE2_LINE_MUTATION,
+    'There was a small glitch, please try again or use the app screens for this action',
+    'V-M is not the vetoed bytes');
+  assert.strictEqual(chat.STAGE2_LINE_LOOKUP,
+    "There was a small glitch — I can't confirm that from the records just now, please use the app screens to check this one",
+    'V-L is not the vetoed bytes');
+  assert.strictEqual(chat.STAGE2_WA_REPORT, 'reply REPORT to flag this turn', 'V-W is not the vetoed bytes');
+  // V-M says "try again" — correct where an ACT did not happen. V-L must NOT, because
+  // retrying a fabricated lookup buys nothing. That distinction is the whole reason the
+  // founder's flag was right that one line cannot serve both.
+  assert.ok(!/try again/i.test(chat.STAGE2_LINE_LOOKUP), 'the lookup line tells the vendor to retry a read that never happened');
+  const lookup = chat.stage2Line({ specimen: true, claims: ['narrated_lookup'] }, false);
+  const act = chat.stage2Line({ specimen: true, claims: ['mutation_claim'] }, false);
+  assert.strictEqual(lookup, chat.STAGE2_LINE_LOOKUP, 'a lookup-only costume did not take the lookup line');
+  assert.strictEqual(act, chat.STAGE2_LINE_MUTATION, 'an act costume did not take the mutation line');
+  // a costume claiming BOTH takes the act line — the higher-harm instruction
+  assert.strictEqual(chat.stage2Line({ specimen: true, claims: ['narrated_lookup', 'mutation_claim'] }, false),
+    chat.STAGE2_LINE_MUTATION, 'a mixed costume took the softer line');
+  // the WA leg alone carries the report word
+  assert.ok(chat.stage2Line({ specimen: true, claims: ['mutation_claim'] }, true).endsWith(chat.STAGE2_WA_REPORT),
+    'the WA leg lost its report affordance');
+  assert.ok(!act.includes(chat.STAGE2_WA_REPORT), 'the PWA leg carries a WhatsApp reply-word it cannot honour');
+});
+
+t('§11.3 ARMING CONDITION 3 — ONE FALSE INTERCEPTION IS A STOP: the disarm is an env var, no deploy', () => {
+  const prev = process.env.WIRE_GUARD_STAGE2;
+  try {
+    for (const off of ['off', 'OFF', '0', 'false']) {
+      process.env.WIRE_GUARD_STAGE2 = off;
+      assert.strictEqual(chat.stage2Armed(), false, `WIRE_GUARD_STAGE2=${off} did not disarm`);
+      assert.strictEqual(chat.stage2Intercept({ kind: 'costume', specimen: true, claims: [] }, false), null,
+        `a costume was still intercepted with WIRE_GUARD_STAGE2=${off}`);
+    }
+    delete process.env.WIRE_GUARD_STAGE2;
+    assert.strictEqual(chat.stage2Armed(), true, 'absent env disarms — the gate is open and it must arm');
+    process.env.WIRE_GUARD_STAGE2 = 'on';
+    assert.strictEqual(chat.stage2Armed(), true, 'an explicit on did not arm');
+  } finally {
+    if (prev === undefined) delete process.env.WIRE_GUARD_STAGE2; else process.env.WIRE_GUARD_STAGE2 = prev;
+  }
+  // read at CALL time, never cached at module load — the founder's disarm needs no code change
+  const cc = read(CHAT);
+  const fn = cc.slice(cc.indexOf('function stage2Armed'), cc.indexOf('function stage2Intercept'));
+  assert.ok(/process\.env\.WIRE_GUARD_STAGE2/.test(fn), 'the arming flag is not read from the environment at call time');
+});
+
+t('§11.4 ARMING CONDITION 2 — every interception is still LOGGED, with the delivered line beside it', () => {
+  const cc = read(CHAT);
+  const spec = cc.slice(cc.indexOf('async function wireGuardSpecimen'), cc.indexOf('async function persistComposedReply'));
+  assert.ok(/stage2_delivered/.test(spec), 'the delivered line does not ride the specimen row — the weekly read cannot see what the vendor saw');
+  assert.ok(/evals_runs/.test(spec) && /evals_findings/.test(spec), 'interception silenced the specimen log');
+});
+
+t('§11.5 THE SEATS — the two pre-delivery seams intercept, and the SSE seat takes replace-at-done', () => {
+  const cc = read(CHAT);
+  const wa = read('src/lib/vendorInbound.js');
+  // WA: the guard runs, then the line replaces replyText, then sendWhatsApp
+  assert.ok(/stage2Intercept\(verdict, true\)/.test(wa), 'the WA seat does not arm');
+  // THE STATEMENT ITSELF, not merely its presence — the mutation floor caught this cell
+  // passing over `if (false) replyText = s2line;`, which contains the same substring an
+  // indexOf order-check finds. Filed not papered.
+  assert.ok(/\n\s*if \(s2line\) replyText = s2line;/.test(wa),
+    'the WA interception statement is disabled or reshaped — the costume ships');
+  assert.ok(wa.indexOf('if (s2line) replyText = s2line;') < wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText, [])'),
+    'the WA interception happens AFTER the send — the costume reaches the vendor');
+  // PWA JSON: the interception returns before the reply is assembled
+  assert.ok(/const s2 = stage2Intercept\(guardVerdict, false\)/.test(cc), 'the PWA JSON seat does not arm');
+  assert.ok(cc.indexOf('const s2 = stage2Intercept(guardVerdict, false)') < cc.indexOf("let reply = witnessWireScrub(req.app.locals.supabase"),
+    'the JSON interception happens after the reply is assembled');
+  // SSE: replace-at-done, additive on the done event
+  assert.ok(/done\.intercept = \{ replaced: true, text: s2sse \}/.test(cc), 'the SSE seat has no replace-at-done payload');
+});
+
+t('§11.6 FORK D — the retry-the-actor leg: structural bound, and three outcomes with F3\'s verbatim bytes', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  // THE BOUND IS STRUCTURAL — a parameter, not a counter, threaded to the body that reads it
+  assert.ok(/async function _processVendorInbound\(inputs, deps, _noRetry\)/.test(wa),
+    'the structural bound is not declared on the body that reads it — a ReferenceError at runtime');
+  assert.ok(/_processVendorInbound\(inputs, deps, _noRetry\)/.test(wa), 'the wrapper does not thread the bound through');
+  assert.ok(/if \(s2line && !_noRetry\)/.test(wa), 'the retry is not gated on the bound — it has a second edge');
+  const forkD = wa.slice(wa.indexOf('FORK D \u2014 THE RETRY-THE-ACTOR LEG'), wa.indexOf('const twilioMsg'));
+  assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(forkD),
+    'the bound became a counter — it was ratified as a shape with no second edge');
+  // OUTCOME 2's bytes are F3's, verbatim from undoContract.js:31 — derived, never authored
+  const f3src = read('src/lib/undoContract.js');
+  const F3_SENTENCE = "That didn't land \u2014 nothing was changed.";
+  assert.ok(f3src.includes(F3_SENTENCE), 'F3 bytes drifted at their own home');
+  assert.ok(wa.includes(F3_SENTENCE), 'the retry-failed path does not speak F3\'s verbatim sentence');
+  // OUTCOME 1: a landed retry ships its OWN reply through the same firewall, no glitch line
+  assert.ok(/vendorInbound:reply\(retry\)/.test(wa), 'the retry\'s reply bypasses the persona firewall');
+  // OUTCOME 3: a throwing retry falls back to the glitch line, never worse than no retry
+  assert.ok(/catch \(retryErr\)/.test(wa), 'a throwing retry is not caught — it would break the turn');
 });
 
 (async () => {
