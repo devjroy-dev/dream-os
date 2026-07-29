@@ -367,9 +367,25 @@ t('§5.1 THE VOCABULARY HAS ONE HOME, AND IT IS PRODUCTION\'S', () => {
     assert.ok(chat[k] instanceof RegExp, `${k} is not exported from chat.js`);
   }
   const rig = read(RIG);
-  assert.ok(/const \{ actionKind, ACTION_CLAIM_RE, JOT_CLAIM_RE, COMPLETED_ACT_RE, NARRATED_LOOKUP_RE \} = require\(/.test(rig),
-    'the rig does not require the vocabulary from production');
-  assert.ok(!/const ACTION_CLAIM_RE = new RegExp/.test(rig), 'the rig still DEFINES the vocabulary — there are two homes, which is one too many');
+  // ── LABELED AMENDMENT (TDW_06 CLOSING ARC, the through-door movement; count PRESERVED).
+  // WHY: this cell pinned the destructure's LITERAL SHAPE — the five names in that exact
+  // order inside one `const { … } = require(`. The through-door movement EXTENDS that same
+  // destructure (the door's Stage-2 bindings ride the same one require), and the literal
+  // stopped matching while the LAW it protects was never touched. A cell that reds on a
+  // widening of the thing it approves of is asking the wrong question.
+  // THE SURVIVING SUBJECT IS UNCHANGED AND NOW STRICTER: each of the four families must be
+  // REQUIRED from chat.js by name, and the rig must DEFINE none of them. The old form
+  // asserted the four names in one fixed sequence; this asserts each one individually
+  // (so dropping any single name now reds, where before only a shape change did) and keeps
+  // the two-homes guard on all four rather than on `ACTION_CLAIM_RE` alone.
+  const CHAT_REQUIRE_RE = /=\s*require\(path\.join\(ROOT,\s*'src\/api\/vendor-engine\/chat\.js'\)\)/;
+  assert.ok(CHAT_REQUIRE_RE.test(rig), 'the rig does not require anything from production chat.js');
+  const destructure = rig.slice(rig.lastIndexOf('const {', rig.search(CHAT_REQUIRE_RE)), rig.search(CHAT_REQUIRE_RE));
+  assert.ok(/\bactionKind\b/.test(destructure), 'actionKind is not required from production');
+  for (const k of ['ACTION_CLAIM_RE', 'JOT_CLAIM_RE', 'COMPLETED_ACT_RE', 'NARRATED_LOOKUP_RE']) {
+    assert.ok(new RegExp('\\b' + k + '\\b').test(destructure), `${k} is not required from production — the rig has lost the one home`);
+    assert.ok(!new RegExp('const ' + k + ' = new RegExp').test(rig), `the rig still DEFINES ${k} — there are two homes, which is one too many`);
+  }
 });
 
 t('§5.2 THE MOVE WAS BYTE-IDENTICAL — the four families are unchanged from their pre-move source', () => {

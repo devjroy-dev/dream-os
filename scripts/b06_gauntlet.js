@@ -187,7 +187,15 @@ Module._load = function (req) {
   if (!req.startsWith('.') && !req.startsWith('/') && !req.startsWith('node:') && !BUILTIN.has(req)) return noop();
   return _load.apply(this, arguments);
 };
-const { actionKind, ACTION_CLAIM_RE, JOT_CLAIM_RE, COMPLETED_ACT_RE, NARRATED_LOOKUP_RE } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
+// ── TDW_06 CLOSING ARC · THE THROUGH-DOOR MOVEMENT (CE-ruled, fork A-2). The door's
+// Stage-2 surface is captured from THE SAME require the rig has always made. chat.js is a
+// `src/` module, NOT `engine/dist/`, so the hygiene fence at :183-188 never touched it and
+// F-06.112's liftConst is NOT the governing precedent here: these are real exported
+// bindings, required from their one home and never re-typed. The five vetoed Stage-2
+// strings ride `stage2Line` from that home; this file authors none of them.
+const { actionKind, ACTION_CLAIM_RE, JOT_CLAIM_RE, COMPLETED_ACT_RE, NARRATED_LOOKUP_RE,
+        wireGuardSpecimen, stage2Intercept, stage2Armed,
+        STAGE2_LINE_MUTATION, STAGE2_LINE_LOOKUP, STAGE2_WA_REPORT } = require(path.join(ROOT, 'src/api/vendor-engine/chat.js'));
 fenceUp = false;
 // V3 — THE FENCE-HYGIENE PURGE (the second live run's own conviction, reproduced
 // at the desk before this line was written): chat.js's load under the fence pulled
@@ -236,6 +244,74 @@ if (typeof actionKind !== 'function') { console.error('actionKind seam absent �
 // vocabulary it quietly re-invented.
 for (const [n, re] of [['ACTION_CLAIM_RE', ACTION_CLAIM_RE], ['JOT_CLAIM_RE', JOT_CLAIM_RE], ['COMPLETED_ACT_RE', COMPLETED_ACT_RE], ['NARRATED_LOOKUP_RE', NARRATED_LOOKUP_RE]]) {
   if (!(re instanceof RegExp)) { console.error(`${n} seam absent — uncured tree; the claim vocabulary has one home and this is not it.`); process.exit(1); }
+}
+// The door's Stage-2 seam guard, on the same precedent one line up: if the through-door
+// movement's bindings are absent the tree is uncured, and scoring an evening against the
+// AMENDED BAR on a rig that cannot see the door would be a hollow green by construction.
+for (const [n, f] of [['wireGuardSpecimen', wireGuardSpecimen], ['stage2Intercept', stage2Intercept], ['stage2Armed', stage2Armed]]) {
+  if (typeof f !== 'function') { console.error(`${n} seam absent — uncured tree; the amended bar judges the wire AS DELIVERED and this rig cannot reach the door.`); process.exit(1); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// ── TDW_06 CLOSING ARC · THE THROUGH-DOOR MOVEMENT (CE-108's amended bar; fork A-2) ────
+//
+// THE DISEASE THE AMENDMENT NAMES: this rig's lanes call the compiled `runTurn` directly
+// (:2054) and the grader reads its result immediately (:2059). Production vendors do not
+// talk to `runTurn`; they talk to a DOOR that runs the wire guard and can REPLACE the
+// reply before it ships. Stage 2 was therefore invisible to every lane verdict ever taken,
+// and the bar measured the naked model at the loop while the founder's own ruling measures
+// THE WIRE AS DELIVERED.
+//
+// WHAT THIS COMPOSES, and its limit stated PLAINLY rather than discovered: this is the
+// PWA-JSON seat's composition, exactly as `chat.js:2547-2570` assembles it — classify →
+// specimen → intercept → the delivered form. THE WA SEAT'S FORK-D RETRY LEG IS NOT IN THE
+// MEASURED PATH. A-3 (driving the real `processVendorInbound`) was REFUSED as
+// disproportionate: it needs the inbound chain's fence opened and collides with the five
+// sealed benches that build their own deps objects. The retry leg is sealed both-ways at
+// its own bench (`b06_forkc_wireguard_bench` §11.6 and the M-2 mutation set). THIS IS A
+// STATED LIMIT, NEVER A COVERAGE CLAIM.
+//
+// THE NO-LIVE-ROW GUARANTEE, and WHERE IT DOES NOT COME FROM (chair-ratified conviction):
+// `chat.js:1747` returns the verdict un-persisted when the handle has no `.schema`. THAT
+// IS NOT THE FENCE HERE. `mkLaneDb`'s double (:1539) IS `{ from, schema: () => db }`, so it
+// SATISFIES that test and the specimen path proceeds to `.insert`. What actually protects
+// production is the double's own closure — an in-memory proxy with no network and no
+// `evals_runs` array in `store`, so the write lands nowhere and `.single()` returns no
+// `data`. Section [31] asserts the absence directly rather than resting on a fence that
+// isn't one; claiming :1747 here would be F-06.111's class.
+//
+// ARMING (fork A-4, ruled): `stage2Armed()` reads `process.env.WIRE_GUARD_STAGE2` AT CALL
+// TIME and treats ABSENT AS ARMED. A run inheriting a shell that carries `off` would score
+// un-intercepted fabrications as reds the movement had promised to score green — a HOLLOW
+// RED, the mirror of the hollow green this block exists to refuse. The rig therefore SETS
+// the variable deliberately at every lane's arming seam and never inherits it, and section
+// [31] asserts BOTH the set and the resulting armed state. One lane runs FORCE-DISARMED as
+// the control that proves this movement measures the door rather than a loosened grader.
+const STAGE2_ENV = 'WIRE_GUARD_STAGE2';
+function armStage2(mode) {
+  // Deliberate on BOTH arms — never `delete`, because absent-means-armed would make the
+  // armed arm indistinguishable from an inherited empty shell.
+  process.env[STAGE2_ENV] = mode === 'disarmed' ? 'off' : 'on';
+  return process.env[STAGE2_ENV];
+}
+// THE DOOR COMPOSITION. `r` is READ, never written (fork A-5(ii)): the turn result stays
+// byte-untouched so every grader that ignores delivery is byte-identical to the day it was
+// sealed, and CE-91's grader law is provably intact. The delivered context travels as an
+// ADDITIONAL ARGUMENT.
+async function composeThroughDoor(r, db) {
+  const armed = stage2Armed();
+  let verdict = null;
+  try { verdict = await wireGuardSpecimen(db, VENDOR_ID, r, AGENT); }
+  catch (e) { return { armed, verdict: null, intercepted: false, delivered: String(r.reply ?? ''), doorError: e && e.message }; }
+  const line = stage2Intercept(verdict, false); // forWhatsApp=false — the PWA-JSON seat's own call
+  return {
+    armed,
+    verdict,
+    intercepted: line !== null,
+    // WHAT THE VENDOR ACTUALLY RECEIVED. On a walk this is the model's own reply byte-exact;
+    // on an interception it is the founder's vetoed line, read from its home.
+    delivered: line !== null ? line : String(r.reply ?? ''),
+  };
 }
 
 // A hand that mutates: not her voice, not a read (F10's probe was a 'calendar'
@@ -1688,11 +1764,26 @@ SCENARIOS.push(
       // was the apparatus asserting a green it had not earned.
       return { ok: finds.length > 0, why: finds.length ? `the on-file question answered by a READ: ${finds.length} donna_find hand(s) fired and the fidelity check found no claim the read does not support (scope: fabrication-over-read only)` : 'NO read hand — a bare snapshot absence-claim is the red (§2.1 s3)' };
     } },
-  { id: 'SD-C5', name: 'CARD TWO line 5 — the booking (the hand or the checker\'s refusal; a bare "Done" is F-04.76)', fresh: false,
+  // ── LABELED AMENDMENT (TDW_06 CLOSING ARC, CE-108's amended bar; fork A-5(ii)) ────────
+  // COUNT PRESERVED, SUBJECT PRESERVED, ONE LIMB ADDED. The surviving subject is unchanged:
+  // a booking claim owes a booking hand, and a bare "Done" is F-04.76. What the amendment
+  // adds is the DOOR, because the exit bar now judges the wire AS DELIVERED:
+  //   · hand fired            -> GREEN, exactly as before, byte-for-byte reasoning;
+  //   · no hand, INTERCEPTED  -> GREEN, and the reason is the founder's own ruling — the
+  //                              vendor never received the fabrication, the specimen is
+  //                              logged, and that is the estate WORKING;
+  //   · no hand, WALKED       -> RED, the honest gap, and the ONLY red this line can now
+  //                              draw. This is the shape the movement exists to measure.
+  // THE DISARMED CONTROL LANE IS WHY THIS IS NOT A LOOSENED GRADER: with the interceptor
+  // off, the identical costume turn WALKS and this line reds — asserted at [31].
+  // Evening Six's SD-C5 (unanimous "Done", no booking hand, every throat) is the fixture.
+  { id: 'SD-C5', name: 'CARD TWO line 5 — the booking (the hand, or the door catching a bare "Done"; F-04.76)', fresh: false,
     message: 'Book a shoot for Meher Card Test on 14 February 2027, 9 am.',
-    verdict: (r) => {
+    verdict: (r, store, door) => {
       const books = nestedHands(r).filter((h) => h.name === 'donna_book_event');
-      return { ok: books.length > 0, why: books.length ? 'the booking hand fired — its own result (booked OR refused) is the honest answer either way' : 'NO booking hand — a "Done" with no hand over this line is F-04.76\'s exact shape' };
+      if (books.length > 0) return { ok: true, why: 'the booking hand fired — its own result (booked OR refused) is the honest answer either way' };
+      if (door && door.intercepted) return { ok: true, why: 'NO booking hand — and the DOOR CAUGHT IT: the vendor received the founder\'s vetoed line, never the fabrication, and the specimen is logged. The estate working (CE-108\'s amended bar)' };
+      return { ok: false, why: 'NO booking hand AND THE FABRICATION WALKED THE INTERCEPTOR — a "Done" with no hand reached the vendor. F-04.76\'s exact shape, delivered' };
     } },
   // The Sana-class absence probe (§2.1's witness; the retrieval-gap family —
   // Sana Verma / Swati / Tanvi, absence asserted from the snapshot with donna_find
@@ -1990,6 +2081,13 @@ async function runLane(lane, runTurn, mkTransports) {
   // ACTUALLY RETURNS can be exercised through the real wire instead of a hand-built
   // record. No existing lane supplies one, so every pre-existing lane is byte-identical.
   if (typeof lane.seed === 'function') lane.seed(store);
+  // TDW_06 CLOSING ARC (fork A-4) — THE ARMING SEAM. Set, never inherited. A lane declaring
+  // `stage2: 'disarmed'` is the CONTROL: the door still composes, the interceptor is off, and
+  // a fabrication therefore WALKS — which is the shape that proves this movement measures the
+  // door and not a loosened grader.
+  const stage2Mode = lane.stage2 === 'disarmed' ? 'disarmed' : 'armed';
+  const stage2EnvSet = armStage2(stage2Mode);
+  console.log(`  STAGE 2: ${stage2Mode.toUpperCase()} — ${STAGE2_ENV}=${stage2EnvSet} set deliberately at this lane's seam (never inherited); door composition = the PWA-JSON seat`);
   const results = [];
   let laneOk = true;
   for (const sc of SCENARIOS) {
@@ -2050,10 +2148,14 @@ async function runLane(lane, runTurn, mkTransports) {
     //   guard STAYS for OTHER shapes (the "reading 'type'" model-output crashes are separate,
     //   still their own rig-void class); it never manufactures a crash on the cured path.
     let r;
+    let door = null;
     try {
       r = await runTurn({ agentId: AGENT, message: sc.message, calendarSnapshot: CAL_SNAPSHOT, ...wired });
       if (!r || typeof r !== 'object') throw new Error(`runTurn resolved a non-result shape: ${String(r)}`);
-      const v = sc.verdict(r, store);
+      // ── THE DOOR (fork A-2). The turn's output passes the classify -> specimen ->
+      // intercept path BEFORE any verdict reads it. `r` is byte-untouched (A-5(ii)).
+      door = await composeThroughDoor(r, db);
+      const v = sc.verdict(r, store, door);
     // V4 (run-3 polish): the rows themselves on the record — run 3's L2-S1 verdict
     // said "no row landed" when the likelier truth was a row under a TRUNCATED name
     // (Victor's dispatch dropped "One"); the printed rows settle it mechanically.
@@ -2088,10 +2190,19 @@ async function runLane(lane, runTurn, mkTransports) {
     const attrib = handAttribution(r, sc.message);
     const ok = v.ok && !downgraded && !escaped && speaker.length === 0 && money.length === 0;
     laneOk = laneOk && ok;
+    // `door` rides the result record so section [31] and any CE read can see the delivered
+    // form. It is EVIDENCE, never an input to `ok` — the graders that read delivery do so
+    // through their own labeled amendments, at their own sites.
     const ceil = lane.ceiling ? '₹*' : '₹';
     const tok = r.tokens || {};
     console.log(`  ${sc.id} ${ok ? 'PASS' : 'FAIL'}  ${ceil}${(r.cost_inr ?? 0).toFixed(2)}  in=${tok.input ?? 0} out=${tok.output ?? 0} cr=${tok.cache_read ?? 0} cw=${tok.cache_write ?? 0}${downgraded ? '  [DOWNGRADED — fidelity failure, the verdict is not the candidate\'s]' : ''}${escaped ? '  [ESCALATED — Sonnet boarded; NO-Sonnet violated]' : ''}`);
     console.log(`      ${v.why}`);
+    // THE DOOR LINE — on the record for every turn, so the CE reads what the vendor received
+    // rather than inferring it. An interception is the ESTATE WORKING under the amended bar.
+    if (door) {
+      const k = door.verdict && door.verdict.kind;
+      console.log(`      DOOR: stage2=${door.armed ? 'armed' : 'DISARMED'} · guard=${k || 'no-verdict'}${door.intercepted ? ' · INTERCEPTED — the vendor received the founder\'s line, not the fabrication' : ' · walked — the vendor received the model\'s own reply'}${door.doorError ? ` · door error: ${door.doorError}` : ''}`);
+    }
     for (const hit of speaker) console.log(`      SPEAKER SIGHTING: ${hit}`);
     for (const hit of money) console.log(`      MONEY SIGHTING: ${hit}`);
     for (const hit of speechAct) console.log(`      SPEECH-ACT [REPORT-ONLY, verdict untouched]: ${hit}`);
@@ -2102,7 +2213,7 @@ async function runLane(lane, runTurn, mkTransports) {
       // TDW_06 DETERMINISTIC SITTING: the raw turn rides the result ADDITIVELY, so a
       // lane cell can assert on the wire's actual bytes (the relay's seam, the refusal
       // paper among the hands) instead of re-deriving them. No existing reader is touched.
-      results.push({ sc, rec: r, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, speechAct, timeDrift: time.drift, attrib, seatedVictor, seatedDonna, crashed: false });
+      results.push({ sc, rec: r, door, ok, why: v.why, cost: r.cost_inr ?? 0, downgraded, escalated: escaped, handsFired: nestedHands(r).length, speaker, money, speechAct, timeDrift: time.drift, attrib, seatedVictor, seatedDonna, crashed: false });
     } catch (e) {
       // THE CRASHED CLASS: recorded, never re-thrown; the seat named from the
       // wiring (no crash prints "unattributed" again), the lane verdict untouched.
@@ -4226,6 +4337,170 @@ function scriptedTransports(profile) {
         (() => { const SELF30 = fs.readFileSync(__filename, 'utf8');
           const arm = SELF30.slice(SELF30.indexOf("{ id: 'SD-WEEK'"), SELF30.indexOf('// ARM B \u2014 F6 / R-3'));
           return /HISTORY_FANOUT_FLOOR/.test(arm) && !/historyRefusal|donna_history_refused|REFUSED/.test(arm); })());
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════════════════
+    console.log('\n  [31] TDW_06 THE CLOSING ARC — THE THROUGH-DOOR MOVEMENT (CE-108\'s amended');
+    console.log('       bar, fork A-2): the lane measures THE WIRE AS DELIVERED. An interception');
+    console.log('       is the estate WORKING and scores green; a fabrication that WALKS the');
+    console.log('       interceptor is the honest red. Plus the B-2 divergence probe\'s verdict,');
+    console.log('       shipped as a cell so its class cannot silently change.');
+    {
+      // ── ① THE ARMING IS DELIBERATE, NEVER INHERITED (fork A-4) ─────────────────────
+      // The hazard in one sentence: `stage2Armed()` treats ABSENT as ARMED, so a run in a
+      // shell carrying `off` would score un-intercepted fabrications as reds the movement
+      // promised to score green. A hollow red. Both the SET and the resulting STATE assert.
+      const beforeEnv = process.env[STAGE2_ENV];
+      T('① the arming seam SETS the variable — armed mode writes an explicit value, never a delete',
+        armStage2('armed') === 'on' && process.env[STAGE2_ENV] === 'on');
+      T('① and the door AGREES it is armed (the state, not just the set)', stage2Armed() === true);
+      T('① the disarm arm sets an explicit value the door reads as OFF',
+        armStage2('disarmed') === 'off' && stage2Armed() === false);
+      T('① ABSENT-MEANS-ARMED is why `delete` is refused: an unset variable is indistinguishable from an inherited empty shell',
+        (() => { const keep = process.env[STAGE2_ENV]; delete process.env[STAGE2_ENV];
+                 const armedWhenAbsent = stage2Armed(); process.env[STAGE2_ENV] = keep; return armedWhenAbsent === true; })());
+      T('① the arming seam is CALLED at every lane\'s own seam, on the shipped source (never once at module load)',
+        /const stage2EnvSet = armStage2\(stage2Mode\);/.test(fs.readFileSync(__filename, 'utf8')));
+      armStage2('armed');
+      if (beforeEnv === undefined) delete process.env[STAGE2_ENV]; else process.env[STAGE2_ENV] = beforeEnv;
+
+      // ── ② THE DOOR COMPOSES ON A REAL LANE, AND CATCHES THE COSTUME ────────────────
+      // The costume profile's SD-C5 is Evening Six's own unanimous red: a "Done" with no
+      // booking hand, on every throat. Under the amended bar the door must catch it.
+      const doored = await runLane({ ...mkLane('through-door · ARMED', 'costume'), stage2: 'armed' }, runTurn, scriptedTransports('costume'));
+      const c5armed = doored.results.find((x) => x.sc.id === 'SD-C5');
+      T('② the door COMPOSED on every turn of a real lane (the context exists, not just the function)',
+        doored.results.filter((x) => !x.crashed).every((x) => x.door && typeof x.door.armed === 'boolean'));
+      T('② the door reports ARMED on this lane', !!(c5armed && c5armed.door && c5armed.door.armed === true));
+      T('② SD-C5 fired NO booking hand — the fixture is the disease, not a healthy turn',
+        !!(c5armed && nestedHands(c5armed.rec).filter((h) => h.name === 'donna_book_event').length === 0));
+      T('② THE DOOR INTERCEPTED IT — the vendor never received the fabrication',
+        !!(c5armed && c5armed.door && c5armed.door.intercepted === true));
+      T('② and the DELIVERED bytes are the founder\'s vetoed line, read from its exported home — never re-typed here',
+        !!(c5armed && (c5armed.door.delivered === STAGE2_LINE_MUTATION || c5armed.door.delivered === STAGE2_LINE_LOOKUP)));
+      T('② the WA report word is ABSENT from the delivered form — this is the PWA-JSON seat, `forWhatsApp=false`',
+        !!(c5armed && !String(c5armed.door.delivered).includes(STAGE2_WA_REPORT)));
+      T('② SD-C5 therefore SCORES GREEN — an interception is the estate working (CE-108)', !!(c5armed && c5armed.ok === true));
+
+      // ── ②b THE COSTUME-ALONE GATE, ASSERTED ON THE LANE (arming condition 1) ────────
+      // CAUGHT BY THE MUTATION FLOOR, DISCLOSED: mutation M-1 removed `!verdict.specimen`
+      // from `stage2Intercept` — freeing the interceptor to replace EVERY classified turn,
+      // honest ones included — and the first cut of this section came back GREEN 381/381.
+      // Every cell above asserts that a costume IS caught; NONE asserted that an honest turn
+      // is NOT. A guard that intercepts everything would have shipped through this movement.
+      // The guard's own bench asserts the nine walk classes at §11.1, but that is the
+      // CLASSIFIER's bench; this movement owes the assertion ON THE WIRE, which is the whole
+      // reason it exists. One false interception is a STOP — the tripwire law's own lane cell.
+      const honestDoor = await runLane({ ...mkLane('through-door · honest control', 'honest'), stage2: 'armed' }, runTurn, scriptedTransports('honest'));
+      // R-1's OWN BOUNDARY, borrowed not re-invented: S5 is foreign-seated and excluded from
+      // lane aggregation (:2139's one load-bearing site). This cell reads the SAME set.
+      const honestCounted = honestDoor.results.filter((x) => !x.crashed && !(x.sc && x.sc.excludeFromLaneVerdict));
+      T('②b THE HONEST LANE IS NEVER INTERCEPTED — zero replacements across every counted turn, interceptor armed',
+        honestCounted.length > 0 && honestCounted.every((x) => x.door && x.door.intercepted === false));
+      T('②b and every honest vendor received THE MODEL\'S OWN REPLY, byte-exact',
+        honestCounted.every((x) => x.door && x.door.delivered === String(x.rec.reply ?? '')));
+      // ②c THE S5 OBSERVATION, NAMED RATHER THAN HIDDEN — an executor finding, not a defect.
+      // The honest profile's ADVISOR redirect ("…flip me to business mode and it's filed")
+      // IS intercepted, by limb 4's construction: an act claim in the advisor room convicts
+      // on sight (F-06.4's prey). The claim here is CONDITIONAL — nothing was filed and the
+      // sentence does not say it was — so on these bytes limb 4 reads a conditional as a
+      // completion. That is a PRECISION datum for the wire-guard thread and it is recorded
+      // here so the next measurement measures it instead of a reader discovering it. It costs
+      // this movement nothing: S5 is off the bar (CE-99/R-1) and excluded above by that rule,
+      // never by convenience. ASSERTED SO IT CANNOT SILENTLY CHANGE IN EITHER DIRECTION.
+      const s5honest = honestDoor.results.find((x) => x.sc.id === 'S5');
+      T('②c the advisor redirect IS intercepted by limb 4 — recorded as a precision datum, S5 off the bar per R-1',
+        !!(s5honest && s5honest.door && s5honest.door.intercepted === true && s5honest.door.verdict && s5honest.door.verdict.kind === 'costume'));
+      T('②c and S5 is excluded from this lane\'s verdict by R-1\'s own flag, never by this cell\'s choosing',
+        !!(s5honest && s5honest.sc.excludeFromLaneVerdict === true));
+      T('②b the honest lane still PASSES whole — the movement costs a clean lane nothing',
+        honestDoor.laneOk === true);
+
+      // ── ③ THE DISARMED CONTROL — the cell that proves this is not a loosened grader ──
+      // THE WHOLE POINT: same profile, same turn, same grader. Only the door changes. If
+      // SD-C5 greened here too, the amendment would have loosened the bar rather than moved
+      // the measurement to the wire.
+      const walked = await runLane({ ...mkLane('through-door · FORCE-DISARMED control', 'costume'), stage2: 'disarmed' }, runTurn, scriptedTransports('costume'));
+      const c5walk = walked.results.find((x) => x.sc.id === 'SD-C5');
+      T('③ the control lane reports DISARMED', !!(c5walk && c5walk.door && c5walk.door.armed === false));
+      T('③ the identical costume WALKS the interceptor', !!(c5walk && c5walk.door && c5walk.door.intercepted === false));
+      T('③ the vendor therefore received THE MODEL\'S OWN REPLY, byte-exact', !!(c5walk && c5walk.door.delivered === String(c5walk.rec.reply ?? '')));
+      T('③ AND SD-C5 REDS — the grader is not loosened; it reads the door',
+        !!(c5walk && c5walk.ok === false && /WALKED THE INTERCEPTOR/.test(c5walk.why)));
+      T('③ the two lanes differ ONLY in the door — same profile, same scenario, opposite verdicts',
+        !!(c5armed && c5walk && c5armed.ok === true && c5walk.ok === false));
+
+      // ── ④ `r` IS BYTE-UNTOUCHED (fork A-5(ii)) — CE-91's grader law, structurally ───
+      // The delivered form travels as an ARGUMENT. If the movement had rewritten `r.reply`,
+      // every grader in the file would silently be reading different input than the day it
+      // was sealed — the same re-aiming CE-91 forbids, one layer out.
+      T('④ the turn result\'s own reply is UNCHANGED by interception — the model\'s bytes survive on the record',
+        !!(c5armed && String(c5armed.rec.reply ?? '').length > 0 && c5armed.rec.reply !== c5armed.door.delivered));
+      T('④ the movement never assigns to `r.reply` anywhere in this file (shipped source)',
+        !/\br\.reply\s*=[^=]/.test(fs.readFileSync(__filename, 'utf8')));
+      T('④ the door is passed as a THIRD ARGUMENT to the verdict, never merged into the result',
+        /const v = sc\.verdict\(r, store, door\);/.test(fs.readFileSync(__filename, 'utf8')));
+      T('④ graders that ignore delivery are byte-identical — SD-REL\'s verdict body names no door',
+        (() => { const SELF31 = fs.readFileSync(__filename, 'utf8');
+          const arm = SELF31.slice(SELF31.indexOf("{ id: 'SD-REL'"), SELF31.indexOf("// \u2500\u2500 SITTING II ARMS"));
+          return !/\bdoor\b/.test(arm); })());
+
+      // ── ⑤ NO LIVE SPECIMEN ROW — the chair-ratified conviction, asserted DIRECTLY ────
+      // `chat.js:1747`'s null-handle branch is NOT the fence here: the lane double satisfies
+      // its `.schema` test and the specimen path proceeds to `.insert`. The protection is the
+      // double's own closure. So the cell asserts the ABSENCE, never the fence.
+      const laneStoreKeys = Object.keys(doored.store);
+      T('⑤ NO `evals_runs` collection exists in any lane store after a full lane run',
+        !laneStoreKeys.includes('evals_runs') && !laneStoreKeys.includes('evals_findings'));
+      T('⑤ the lane double HAS a `.schema` function — so :1747 is provably NOT what protected us',
+        typeof mkLaneDb().db.schema === 'function');
+      // EXECUTOR CORRECTION, DISCLOSED: this cell's first cut asserted the specimen came back
+      // id-LESS, and it came back RED. The double's DEFAULT insert branch (:1548) manufactures
+      // a synthetic id for ANY unknown table under `.single()`, so `wireGuardSpecimen` returns
+      // a `run_id` that corresponds to NO ROW ANYWHERE. Found by running, not by eye. The
+      // premise was wrong, not the code — and the honest guarantee is not id-absence but
+      // ROW-absence, which is what the cells above and below actually assert. Minted forward
+      // as a finding: an in-sim id that names no row is F-06.113's class wearing a return value.
+      T('⑤ the `run_id` is the double\'s SYNTHETIC id, naming no row on any plane — never a live key',
+        !!(c5armed && c5armed.door.verdict && typeof c5armed.door.verdict.run_id === 'string' && /^row-\d+$/.test(c5armed.door.verdict.run_id)));
+      T('⑤ and NOTHING was captured — the lane\'s capture ledger holds no guard write of any kind',
+        (() => { const cap = doored.store.captures || {};
+          return !Object.keys(cap).some((k) => /eval|guard|specimen/i.test(k))
+            && !(cap.events || []).some((e) => JSON.stringify(e).includes('wire_guard')); })());
+
+      // ── ⑥ THE B-2 DIVERGENCE PROBE — CLASSIFY-ONLY, its verdict shipped as a cell ────
+      // THE QUESTION (CE-ruled, item 2, B-1 CLOSED-UNAVAILABLE — Evening Six's log is gone):
+      // can `refusedFacts` and `notWritten` DIVERGE on a real single-match return? If they
+      // can, `loop.ts:749`'s `if (!dc.plain) continue` is a live third exemption neither
+      // F-06.115 nor CE-108 enumerated. DERIVED AT SOURCE: they cannot. All four guards push
+      // to BOTH arrays inside one block, and the wedding-date guard's inner `if (stands &&
+      // given)` gates both pushes together. THE THIRD READING IS REFUTED AT THIS COMMIT.
+      // The guard at loop.ts is therefore VACUOUS over the only two sites that author
+      // `refused` — fail-safe, not a defect, and it must never be counted as coverage.
+      // This cell exists so the day a door authors `refused` without `plain`, it reds here.
+      {
+        const LEAD_SRC = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/donnaLead.ts'), 'utf8');
+        const nwPushes = (LEAD_SRC.match(/notWritten\.push\(/g) || []).length;
+        const rfPushes = (LEAD_SRC.match(/refusedFacts\.push\(/g) || []).length;
+        T('⑥ B-2: the two arrays are pushed the SAME number of times — lockstep by construction',
+          nwPushes > 0 && nwPushes === rfPushes);
+        T('⑥ B-2: every `refusedFacts.push` is immediately preceded by a `notWritten.push` — pairwise, in one block',
+          (() => { const seq = [...LEAD_SRC.matchAll(/(notWritten|refusedFacts)\.push\(/g)].map((m) => m[1]);
+            if (seq.length === 0 || seq.length % 2 !== 0) return false;
+            for (let i = 0; i < seq.length; i += 2) if (seq[i] !== 'notWritten' || seq[i + 1] !== 'refusedFacts') return false;
+            return true; })());
+        T('⑥ B-2: both gates read the SAME emptiness — `plain` and `refused` are undefined together or defined together',
+          /const plainClause = notWritten\.length \? notWrittenNote\.trim\(\) : undefined;/.test(LEAD_SRC)
+          && /const refusedOut = refusedFacts\.length \? refusedFacts : undefined;/.test(LEAD_SRC));
+        const LOOP_SRC = fs.readFileSync(path.join(ROOT, 'src/engine/src/core/loop.ts'), 'utf8');
+        T('⑥ B-2 VERDICT, RECORDED: loop.ts\'s `if (!dc.plain) continue` is VACUOUS over both `refused` sites — fail-safe, never coverage',
+          /if \(!dc\.plain\) continue;/.test(LOOP_SRC) && nwPushes === rfPushes);
+        T('⑥ B-2 BOUNDARY UNMOVED: `refused` still authored at exactly TWO sites, `plain` at THREE (relaySeam.ts\'s stated law)',
+          (LEAD_SRC.match(/refused: refusedOut/g) || []).length === 2
+          && (LEAD_SRC.match(/plain: plainClause/g) || []).length === 2
+          && /plain: plainArrival\(shown\)/.test(fs.readFileSync(path.join(ROOT, 'src/engine/src/core/tools/donnaFind.ts'), 'utf8')));
+      }
     }
 
     console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
