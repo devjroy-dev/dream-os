@@ -1,0 +1,1 @@
+{"ok":true,"reply":"Done.\n\n2026-12-18 wasn't blocked. Nothing changed.","tool_calls":["dear_donna_talk","listen_harvey_talk"],"refresh":true,"meta":{"tier":"prestige","turns_used":3,"turns_cap":100,"window":"day","state":"ok","upgrade":{"label":"Upgrade","href":"/vendor/settings#tier"}}}

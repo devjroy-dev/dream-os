@@ -574,8 +574,20 @@ t('§5.8d THE REPORT-ONLY ERA, RETIRED BY RULING — recorded, not silently drop
   // the seat may write replyText ONLY from stage2Intercept's return.
   const w = read('src/lib/vendorInbound.js');
   const seat = w.slice(w.indexOf('STAGE 2 IS ARMED ON THIS SEAT'), w.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText, [])'));
+  //
+  // LABELED AMENDMENT (TDW_06 F-06.136, CE-110's last charter; COUNT PRESERVED). The
+  // imperative arm adds a THIRD writer: a landed imperative-retry ships its own reply,
+  // firewalled, exactly as the costume-retry's landing does. The bare count 2 stopped
+  // matching while the property it guards — NOTHING WRITES replyText EXCEPT A RETRY'S OWN
+  // REPLY OR THE INTERCEPTION LINE — was untouched. A bare number could not tell a lawful
+  // third writer from a smuggled one, so it is re-authored STRICTER: each writer is named
+  // by its witness label, and an unnamed fourth reds. Note what is NOT here and must never
+  // be: the imperative arm's SECOND-REFUSAL outcome writes nothing at all.
   const writes = (seat.match(/replyText = /g) || []).length;
-  assert.strictEqual(writes, 2, 'the seat writes replyText from an unexpected number of places (retry reply + glitch line = 2)');
+  assert.strictEqual(writes, 3, 'the seat writes replyText from an unexpected number of places (costume-retry reply + imperative-retry reply + glitch line = 3)');
+  assert.ok(/vendorInbound:reply\(retry\)/.test(seat), 'writer 1 — the costume-retry landing — is gone');
+  assert.ok(/vendorInbound:reply\(imperative-retry\)/.test(seat), 'writer 2 — the imperative-retry landing — is gone or unfirewalled');
+  assert.ok(/if \(s2line\) replyText = s2line;/.test(seat), 'writer 3 — the interception line — is gone');
 });
 
 t('§5.9 STAGE 2 IS SCOPED — the CLASSIFIER stays pure; interception lives at the seats alone', () => {
@@ -1308,7 +1320,16 @@ t('§11.6 FORK D — the retry-the-actor leg: structural bound, and three outcom
   assert.ok(/async function _processVendorInbound\(inputs, deps, _noRetry\)/.test(wa),
     'the structural bound is not declared on the body that reads it — a ReferenceError at runtime');
   assert.ok(/_processVendorInbound\(inputs, deps, _noRetry\)/.test(wa), 'the wrapper does not thread the bound through');
-  assert.ok(/if \(s2line && !_noRetry\)/.test(wa), 'the retry is not gated on the bound — it has a second edge');
+  // LABELED AMENDMENT (TDW_06 F-06.136, CE-110's last charter; COUNT PRESERVED). This
+  // pinned the literal `if (s2line && !_noRetry)`. The charter WIDENS that predicate to
+  // `specimen OR imperative-miss`, so the literal stopped matching while the law it
+  // protects — THE RETRY IS GATED ON THE STRUCTURAL BOUND — was untouched. Re-authored
+  // STRICTER: the bound must gate the widened predicate AND the old narrow form must be
+  // gone, so a future revert cannot silently re-narrow the arm and still pass this cell.
+  assert.ok(/if \(\(s2line \|\| impMiss\) && !_noRetry\)/.test(wa),
+    'the retry is not gated on the bound, or the arming predicate did not widen — it has a second edge');
+  assert.ok(!/if \(s2line && !_noRetry\)/.test(wa),
+    'the narrow arming predicate survives beside the widened one — two authorities on when the actor re-runs');
   // AMENDED (TDW_06 F-06.130 sitting, count preserved) — F-06.132, MINTED HERE. This slice
   // ended at the FIRST `const twilioMsg`, which lives in the mode-word branch THIRTY THOUSAND
   // CHARACTERS ABOVE Fork D. end < start, so `forkD` has been THE EMPTY STRING since this cell
@@ -1589,6 +1610,286 @@ t('\u00a713.3 THE CENSUS LINE STAYS PRINTED \u2014 the verdict stops counting it
   const rig = read(RIG);
   assert.ok(/\$\{sc\.id\} \$\{ok \? 'PASS' : 'FAIL'\}/.test(rig), 'the per-scenario census line was removed \u2014 the ruling preserved it');
   assert.ok(/foreign-seated, excluded from the verdict/.test(rig), 'the LANE line does not disclose the exclusion');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+H('\u00a714 \u2014 F-06.136: THE IMPERATIVE ARM (CE-110\u2019s last charter, item 1)');
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVERY BEHAVIOURAL CELL BELOW DRIVES THE REAL `imperativeMiss` out of chat.js — never a
+// restatement of it. The fixtures are EVENING SEVEN'S OWN BYTES, taken from the founder's
+// engine.messages read of account 9888294440 (agent d02c7a9a…, 2026-07-29 12:23), not
+// from any log entry's paraphrase. Card Two's line 2 and line 5 are the RED direction;
+// the same walk's lines 1 and 3 are the GREEN direction, and they are the strongest
+// untaxed proof available because they are in-family imperatives on the same wire, the
+// same minute, that DID draw a hand.
+const HARVEY_SOUL = 'src/engine/src/core/harveySoul.ts';
+
+// ── EVENING SEVEN, THE FOUNDER'S WIRE, VERBATIM ──────────────────────────────────
+const E7_L1_MSG = 'Log Kunal Dhillon as a new lead, phone 9811077563, wedding 7 March 2027, Jodhpur.';
+const E7_L2_MSG = 'Note on Kunal Dhillon: wants a lakeside baraat start.';
+const E7_L3_MSG = 'Unblock 18 December.';
+const E7_L4_MSG = 'Is Ritesh Bajwa already on file with us?';
+const E7_L5_MSG = 'Book a shoot for Kunal Dhillon on 7 March 2027, 9 am.';
+const E7_L6_MSG = 'Did Diya Saluja ever enquire with us?';
+// A turn shaped exactly as the engine hands it to the seat: nested donna_calls under a
+// top-level dear_donna_talk, her voice riding beside the hands. D-1's geometry, not a
+// convenience shape — a flat list here would prove nothing about the fence.
+const turn = (reply, handNames) => ({
+  reply,
+  tool_calls: handNames === null ? null : [{
+    name: 'dear_donna_talk',
+    donna_calls: handNames.map((n) => ({ name: n })),
+  }],
+});
+
+t('\u00a714.1 THE SOUL IS QUOTED AT THE PREDICATE\u2019S HOME AND NOT EDITED \u2014 W-1 SHUT, F-06.85\u2019s binding', () => {
+  const c = read(CHAT), soul = read(HARVEY_SOUL);
+  const home = c.slice(c.indexOf('F-06.136 \u2014 THE OWNER-IMPERATIVE FAMILY'), c.indexOf('function imperativeMiss'));
+  assert.ok(home.length > 500, 'the F-06.136 comment slice is empty or collapsed \u2014 every assertion below it would be vacuous');
+  assert.ok(/harveySoul\.ts:98/.test(home) && /harveySoul\.ts:100/.test(home),
+    'the mechanism does not name the soul sentence it is conditioned on \u2014 F-06.85\u2019s standing law');
+  // THE QUOTE IS THE SOUL'S OWN BYTES, derived from the file rather than trusted: three
+  // load-bearing fragments must appear in BOTH places. A drift at either end reds here.
+  for (const frag of ['never parked behind a question', 'Completeness never gates the hand',
+                      'log it as it stands']) {
+    assert.ok(soul.includes(frag), `the soul fragment drifted at its own home: ${frag}`);
+    assert.ok(home.includes(frag), `the in-comment quote does not carry: ${frag}`);
+  }
+});
+
+t('\u00a714.2 THE NINE STEMS ARE THE SOUL\u2019S NINE \u2014 derived from harveySoul:98, never a tenth', () => {
+  const soul = read(HARVEY_SOUL);
+  const para = soul.split('\n')[97]; // :98, 1-indexed
+  assert.ok(/And when the owner\u2019s message IS the act|And when the owner's message IS the act/.test(para),
+    'harveySoul:98 is no longer the imperative paragraph \u2014 re-derive the line before trusting this cell');
+  const stems = String(chat.IMPERATIVE_STEMS).split('|');
+  assert.strictEqual(stems.length, 9, 'the stem count moved \u2014 the soul names nine and cousins were ruled OUT (fork F4(a))');
+  // Every stem must be readable in the soul's own sentence, in some inflected form.
+  for (const s of stems) {
+    assert.ok(new RegExp('\\b' + s, 'i').test(para), `stem "${s}" is not taught at harveySoul:98 \u2014 it was invented here`);
+  }
+  // And the reverse: the paragraph's own nine verbs are all present as stems.
+  for (const v of ['log', 'file', 'book', 'block', 'unblock', 'cancel', 'move', 'note', 'update']) {
+    assert.ok(stems.includes(v), `the soul teaches "${v}" and the predicate cannot hear it`);
+  }
+});
+
+t('\u00a714.3 RED DIRECTION \u2014 Evening Seven\u2019s L2 and L5 ARM the retry, on their own bytes', () => {
+  // L2: "Note on Kunal Dhillon: …" answered with a consultative gate, tool_calls null.
+  assert.strictEqual(chat.imperativeMiss(E7_L2_MSG, turn(
+    "I need to attach that note to the actual binder once Kunal moves from lead to booking.", null)), true,
+    'Card Two line 2 does not arm \u2014 the disease F-06.136 was minted for walks straight through');
+  // L5: "Book a shoot for Kunal Dhillon …" answered with the invented lead-vs-client gate.
+  assert.strictEqual(chat.imperativeMiss(E7_L5_MSG, turn(
+    "I can't book a shoot for Kunal yet \u2014 he's still a lead, not a client. No contract, no scope, no budget locked.", null)), true,
+    'Card Two line 5 does not arm \u2014 the night\u2019s conviction is invisible to the cure');
+  // NON-VACUITY OF THE HAND LEG, on these same two bytes: give either turn a real filing
+  // hand and the arm must fall silent. A predicate that armed on the verb ALONE would
+  // pass the two assertions above and tax every honest dispatch in the estate.
+  assert.strictEqual(chat.imperativeMiss(E7_L2_MSG, turn('ok', ['donna_note'])), false,
+    'the hand leg is dead \u2014 the predicate arms on the verb alone');
+  assert.strictEqual(chat.imperativeMiss(E7_L5_MSG, turn('ok', ['donna_calendar_book'])), false,
+    'the hand leg is dead on the calendar class \u2014 actionKind\u2019s \u2018calendar\u2019 is a matching hand');
+});
+
+t('\u00a714.4 GREEN DIRECTION \u2014 the SAME walk\u2019s honest dispatches are UNTAXED, in-family and one minute apart', () => {
+  // L1 12:23:06 \u2014 "Log …" with donna_find + donna_lead nested. An in-family imperative
+  // that DID draw a hand: the sharpest untaxed proof there is, because the verb leg fires.
+  assert.strictEqual(chat.ownerImperative(E7_L1_MSG), true, 'L1\u2019s verb leg does not even fire \u2014 this cell proves nothing');
+  assert.strictEqual(chat.imperativeMiss(E7_L1_MSG, turn('Done. Kunal Dhillon is down',
+    ['donna_find', 'donna_lead', 'listen_harvey_talk'])), false, 'the honest lead filing would be re-run and re-billed');
+  // L3 12:23:34 \u2014 "Unblock 18 December." with donna_unblock_date. NOTE, deliberately: this
+  // turn also carries F-06.134\u2019s "Done. / Filed" prefix above an honest "wasn\u2019t blocked"
+  // line. The arm MUST stay silent anyway \u2014 a hand fired, and the false prefix is a
+  // different disease on the founder\u2019s backlog, not this arm\u2019s to touch.
+  assert.strictEqual(chat.imperativeMiss(E7_L3_MSG, turn(
+    "Done.\n\nFiled\n\n2026-12-18 wasn't blocked. Nothing changed.", ['donna_unblock_date', 'listen_harvey_talk'])), false,
+    'F-06.134\u2019s shape arms the retry \u2014 the arm reached past its own charter');
+  // L4 and L6 \u2014 existence questions, no family verb at a clause head. Silent on both legs.
+  for (const m of [E7_L4_MSG, E7_L6_MSG]) {
+    assert.strictEqual(chat.ownerImperative(m), false, `an existence question armed the verb leg: ${m}`);
+    assert.strictEqual(chat.imperativeMiss(m, turn('No.', ['donna_find'])), false, `a read-backed absence armed the retry: ${m}`);
+  }
+});
+
+t('\u00a714.5 S3\u2019S FOUR HONEST DISPATCHES UNTAXED \u2014 driven off the RIG\u2019S OWN fixture, not a retyped one', () => {
+  const rig = read(RIG);
+  // The message is EXTRACTED from the gauntlet so a fixture drift reds here rather than
+  // silently proving a string this bench invented.
+  const m = rig.match(/id: 'S3',[\s\S]{0,400}?message: '([^']+)'/);
+  assert.ok(m, 'S3\u2019s fixture could not be extracted from the rig \u2014 re-derive before trusting this cell');
+  const S3_MSG = m[1];
+  assert.strictEqual(chat.ownerImperative(S3_MSG), true, 'S3\u2019s imperative is not in the family \u2014 the trap and the soul disagree');
+  // S3 runs FOUR times per lane (S3 \u00b7 S3r2 \u00b7 S3r3 \u00b7 S3r4). All four are the same shape,
+  // and on an honest dispatch the unblock hand fires \u2014 so all four are untaxed by the
+  // predicate itself, never by an exemption list.
+  const repeats = rig.match(/S3r\$\{n\}|S3r/g) || [];
+  assert.ok(repeats.length > 0, 'the S3 repeat family is gone \u2014 the dispatch section it belongs to has moved');
+  for (let i = 0; i < 4; i++) {
+    assert.strictEqual(chat.imperativeMiss(S3_MSG, turn('Done \u2014 18 December is back on the calendar.',
+      ['donna_unblock_date', 'listen_harvey_talk'])), false, `S3 run ${i + 1} would be re-run \u2014 the dispatch section pays twice`);
+  }
+});
+
+t('\u00a714.6 THE INFLECTIONS CANNOT ARM \u2014 the \\b after the alternation, proven not asserted', () => {
+  // Risk (4)'s second limb from the predicate's own enumeration. If a future edit drops
+  // the word boundary, every one of these starts arming and the estate pays for it.
+  for (const m of ['Booking is confirmed.', 'She booked it already.', 'Blocked the morning myself.',
+                   'Files are attached.', 'Noted, thanks.', 'Updated the sheet.', 'Cancelled it yesterday.',
+                   'Moves like this always slip.', 'Logging out now.']) {
+    assert.strictEqual(chat.ownerImperative(m), false, `an inflected form armed the verb leg: ${m}`);
+  }
+  // And risk (4)'s first limb: in-family verbs away from a clause head stay silent.
+  for (const m of ['Should I block that date?', 'can we move things around', 'I think we should cancel']) {
+    assert.strictEqual(chat.ownerImperative(m), false, `a non-clause-head verb armed: ${m}`);
+  }
+  // What DOES arm, so the cell is not one-directional: clause heads, incl. after a stop.
+  for (const m of ['Log her.', 'please just log her', 'Fine. Cancel it.', 'Update it, would you']) {
+    assert.strictEqual(chat.ownerImperative(m), true, `a real owner-imperative did not arm: ${m}`);
+  }
+});
+
+t('\u00a714.7 A READ HAND IS NOT A FILING \u2014 actionKind decides, and there is no second authority', () => {
+  // donna_find is 'read' at actionKind's one home; a turn that only LOOKED has not filed
+  // the thing the owner asked for, and calling that a landing is how a hollow green is born.
+  assert.strictEqual(chat.imperativeMiss('Cancel it.', turn('Let me check.', ['donna_find'])), true,
+    'a read hand acquitted an imperative-miss \u2014 the matching-hand test reads the wrong vocabulary');
+  assert.strictEqual(chat.imperativeMiss('Cancel it.', turn('Done.', ['donna_find', 'donna_cancel'])), false,
+    'a real write hand beside a read did not acquit');
+  // D-1's fence, both limbs: her voice is not a hand, and the top level is never walked.
+  assert.strictEqual(chat.imperativeMiss('Log her.', turn('ok', ['listen_harvey_talk'])), true,
+    'listen_harvey_talk counted as a hand \u2014 D-2\u2019s fence is open');
+  assert.strictEqual(chat.imperativeMiss('Log her.', { reply: 'ok', tool_calls: [{ name: 'donna_lead' }] }), true,
+    'a TOP-LEVEL name counted as a hand \u2014 D-1\u2019s nested-only law is broken');
+  assert.deepStrictEqual(chat.matchingHands(turn('x', ['donna_find', 'listen_harvey_talk'])).map((h) => h.name), [],
+    'the matching-hand census does not fence reads and her voice');
+});
+
+t('\u00a714.8 THE ARMING SEAM \u2014 widened, INSIDE the tripwire, and the costume path still governs first', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  assert.ok(/\n\s*impMiss = !s2line && stage2Armed\(\) && imperativeMiss\(body, result\);/.test(wa),
+    'the second arm is not gated on !s2line + the tripwire \u2014 fork F2(a) and the order ruling');
+  assert.ok(/stage2Armed,\s*imperativeMiss,\s*recordImperativeRetry/.test(wa.replace(/\s+/g, ' ')),
+    'the seat does not require the REAL predicate from its one home \u2014 a second copy is a second authority');
+  // ORDER: a turn that is BOTH costume and imperative-miss takes the costume path, so
+  // every byte of Fork D's sealed behaviour is preserved. `impMiss` requires `!s2line`
+  // above; here we assert the LIMB ORDER too \u2014 the imperative branch is tested FIRST and
+  // is unreachable when s2line is set, which is what keeps outcome 1/2's bytes untouched.
+  const forkD = wa.slice(wa.indexOf('FORK D \u2014 THE RETRY-THE-ACTOR LEG'), wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText'));
+  assert.ok(forkD.length > 200, 'the Fork D slice is empty or collapsed \u2014 F-06.132 returning');
+  assert.ok(forkD.indexOf('if (impMiss) {') < forkD.indexOf('} else if (retryHands.length > 0'),
+    'the imperative limb does not precede the costume limb \u2014 the else-if chain was reshaped');
+  assert.ok(/} else if \(retryHands\.length > 0 && !\(retryVerdict && retryVerdict\.specimen\)\) \{/.test(forkD),
+    'the costume outcome-1 test was rewritten \u2014 Fork D\u2019s sealed behaviour is not preserved');
+});
+
+t('\u00a714.9 THE IMPERATIVE ARM OWNS NO SENTENCE \u2014 F3 and the glitch lines are unreachable from it', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  const start = wa.indexOf('if (impMiss) {');
+  const end = wa.indexOf('} else if (retryHands.length > 0');
+  assert.ok(start > 0 && end > start, 'the imperative limb slice is empty \u2014 every assertion below it would be vacuous');
+  const limb = wa.slice(start, end);
+  assert.ok(!/s2line\s*=/.test(limb), 'the imperative limb assigns s2line \u2014 it can now replace what the vendor reads');
+  assert.ok(!/That didn't land/.test(limb) && !/STAGE2_WA_REPORT/.test(limb),
+    'F3\u2019s sentence or the report word reached a limb that intercepts nothing');
+  assert.ok(!/small glitch/.test(limb), 'a glitch line reached the imperative limb');
+  // OUTCOME B: replyText is NOT reassigned \u2014 Victor\u2019s own words ship. The only
+  // assignment in the limb is outcome A's, and it is the retry's own reply, firewalled.
+  const assigns = limb.match(/replyText\s*=/g) || [];
+  assert.strictEqual(assigns.length, 1, 'the imperative limb writes replyText more than once \u2014 outcome B must ship his reply untouched');
+  assert.ok(/vendorInbound:reply\(imperative-retry\)/.test(limb),
+    'the landed retry\u2019s reply bypasses the persona firewall, or its witness label is missing');
+});
+
+t('\u00a714.10 THE SPEND BOUND \u2014 exactly ONE extra actor run, structural, no counter', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  const forkD = wa.slice(wa.indexOf('FORK D \u2014 THE RETRY-THE-ACTOR LEG'), wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText'));
+  assert.ok(forkD.length > 200, 'the Fork D slice is empty \u2014 the bound cannot be asserted over nothing');
+  // ONE runTurn inside the whole leg, for BOTH arms. Widening the predicate must not have
+  // widened the spend: the worst case for any turn is one duplicated turn, and this is the
+  // cell the charter asked for as the measured spend cost.
+  const runs = forkD.match(/await runTurn\(/g) || [];
+  assert.strictEqual(runs.length, 1, 'the leg calls runTurn more than once \u2014 the spend bound is not one duplicated turn');
+  assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(forkD),
+    'the bound became a counter \u2014 it was ratified as a shape with no second edge');
+  assert.ok(/if \(\(s2line \|\| impMiss\) && !_noRetry\)/.test(wa), 'the widened predicate is not under the structural bound');
+});
+
+t('\u00a714.11 THE LANDING TEST IS THE PREDICATE RE-ASKED \u2014 not retryHands, which counts reads', () => {
+  const wa = read('src/lib/vendorInbound.js');
+  const limb = wa.slice(wa.indexOf('if (impMiss) {'), wa.indexOf('} else if (retryHands.length > 0'));
+  assert.ok(/if \(!imperativeMiss\(body, retry\) && !\(retryVerdict && retryVerdict\.specimen\)\)/.test(limb),
+    'the imperative arm\u2019s landing test is not the predicate re-asked of the retry');
+  // THE CLOSING ARC'S OWN LESSON, honoured: a strict grep must read CODE, not prose. The
+  // limb's comments are stripped first rather than the cell being loosened.
+  const limbCode = limb.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(!/retryHands/.test(limbCode), 'the imperative arm reads the costume census \u2014 a retry that only LOOKED would score as a landing');
+  // BEHAVIOURAL, through the REAL predicate: a retry whose only hand is a read has NOT
+  // landed; one with a write has. This is the difference the cell above pins in source.
+  assert.strictEqual(chat.imperativeMiss(E7_L5_MSG, turn('Let me look.', ['donna_find'])), true,
+    'a look-only retry would be scored as a landing');
+  assert.strictEqual(chat.imperativeMiss(E7_L5_MSG, turn('Booked.', ['donna_calendar_book'])), false,
+    'a real booking retry would be scored as a second refusal');
+});
+
+t('\u00a714.12 THE ROW \u2014 fork F3(b): its own scenario, zero DDL, FAIL-OPEN by construction', () => {
+  const c = read(CHAT);
+  const fn = c.slice(c.indexOf('async function recordImperativeRetry'), c.indexOf('// The newest DELIVERED witness'));
+  assert.ok(fn.length > 300, 'the recordImperativeRetry slice is empty \u2014 every assertion below it would be vacuous');
+  assert.ok(/run_type: 'production'/.test(fn), 'the row does not ride the already-allowed run_type \u2014 that would need DDL');
+  assert.ok(/scenario: `imperative_retry:\$\{arm\}`/.test(fn), 'the arm is not on the row \u2014 the weekly read cannot tell rescue from refusal');
+  assert.ok(/evals_runs/.test(fn) && !/create table|alter table/i.test(fn), 'the row landed somewhere that needs a migration');
+  // FAIL-OPEN: every path caught, and the seat AWAITS it but the function itself can never
+  // throw into the reply path. A measurement that hurts the vendor to watch the model is
+  // the exact inversion this estate refuses.
+  assert.ok(/catch \(e\) \{ console\.warn\('\[imperative-retry\]'/.test(fn), 'the row writer can throw into the reply path');
+  assert.ok(/if \(error\) \{ console\.warn/.test(fn), 'an insert error is not swallowed \u2014 the wire would carry a measurement failure');
+  assert.ok(/verdict: arm === 'imperative_retry_landed' \? 'pass' : 'fail'/.test(fn),
+    'the verdict word does not key on the arm');
+  // AND THE SEAT CALLS IT ON BOTH OUTCOMES, never only the sad one \u2014 a denominator-less
+  // numerator is not a measurement (F-06.82\u2019s census lesson, one thread along).
+  const wa = read('src/lib/vendorInbound.js');
+  const limb = wa.slice(wa.indexOf('if (impMiss) {'), wa.indexOf('} else if (retryHands.length > 0'));
+  const calls = limb.match(/recordImperativeRetry\(/g) || [];
+  assert.strictEqual(calls.length, 1, 'the row is written per-branch instead of once at the arm\u2019s resolution \u2014 or not at all');
+  assert.ok(limb.lastIndexOf('recordImperativeRetry(') > limb.lastIndexOf("s2arm = 'imperative_second_refusal'"),
+    'the row is written before the arm resolved \u2014 it would record the wrong arm');
+});
+
+t('\u00a714.13 F-06.111\u2019S GREP \u2014 no vacuous `every` anywhere in this movement\u2019s own bytes', () => {
+  // The standing shape: an `every` over a filtered array with no length limb greens the
+  // cured tree AND the mutated one. This movement is asserted clean of it, at both files
+  // it touched and in this section, so the class cannot re-enter through its own cure.
+  // SCOPED TO THIS MOVEMENT'S OWN BYTES, deliberately. F-06.111 is a tree-wide sweep on
+  // the instrument shelf and is NOT this sitting's (the list is closed); what binds here
+  // is that the cure cannot re-introduce the class it was benched against. The three
+  // slices are exactly what this movement authored.
+  const cAll = read(CHAT), waAll = read('src/lib/vendorInbound.js'), meAll = read('scripts/b06_forkc_wireguard_bench.js');
+  const slices = [
+    ['chat.js/predicate',   cAll.slice(cAll.indexOf('F-06.136 \u2014 THE OWNER-IMPERATIVE FAMILY'), cAll.indexOf('function imperativeMiss') + 400)],
+    ['chat.js/row',         cAll.slice(cAll.indexOf('async function recordImperativeRetry'), cAll.indexOf('// The newest DELIVERED witness'))],
+    ['vendorInbound/limb',  waAll.slice(waAll.indexOf('if (impMiss) {'), waAll.indexOf('} else if (retryHands.length > 0'))],
+    // NOTE the anchor: this file escapes its own unicode, so the raw bytes carry
+    // `\u00a714 \u2014 ...` and never the rendered characters. Anchored on ASCII that
+    // actually exists on disk — the class of mistake §11.6's F-06.132 was minted for.
+    ['bench/s14',           meAll.slice(meAll.indexOf('F-06.136: THE IMPERATIVE ARM'))],
+  ];
+  for (const [name, src] of slices) {
+    assert.ok(src && src.length > 200, `the ${name} slice is empty \u2014 this cell would assert a negative over nothing`);
+    let i = src.indexOf('.every(');
+    while (i !== -1) {
+      // The limb: an `every` is only non-vacuous when a length check governs it nearby.
+      assert.ok(/\.length/.test(src.slice(Math.max(0, i - 240), i + 120)),
+        `an \`every\` with no length limb in reach \u2014 F-06.111\u2019s class, in ${name}`);
+      i = src.indexOf('.every(', i + 1);
+    }
+  }
+  // And the predicate itself uses no `every` at all \u2014 it counts, which cannot go vacuous.
+  const c = read(CHAT);
+  const pred = c.slice(c.indexOf('function matchingHands'), c.indexOf('function imperativeMiss') + 300);
+  assert.ok(!/\.every\(/.test(pred), 'the predicate reaches for `every` \u2014 use a count, per F-06.111');
+  assert.ok(/matchingHands\(result\)\.length === 0/.test(pred), 'the miss test is not a count');
 });
 
 

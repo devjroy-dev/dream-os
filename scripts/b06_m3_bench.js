@@ -456,7 +456,14 @@ await t('§4.4 THE FIREWALL\'S REACH IN THIS FILE IS FULLY ACCOUNTED — no scru
     // An unaccounted scrub is the thing this cell exists to catch, so it is accounted:
     // this is a scrub on MODEL PROSE, never on founder-vetoed copy (the Stage 2 lines are
     // constants and are shipped unscrubbed by construction).
-    'scrubText(retry.reply)': 1,                          // M-2 — Fork D's landed-retry reply
+    // LABELED AMENDMENT (TDW_06 F-06.136, CE-110's last charter; COUNT PRESERVED — this
+    // is the same ledger entry, its number moved from 1 to 2 and the second instance is
+    // named). The imperative arm adds a SECOND landed-retry reply: when an owner-imperative
+    // drew no hand and the re-run of the actor files it, that reply ships instead of the
+    // first and must cross the persona firewall exactly as both siblings do. Same class,
+    // same argument, MODEL PROSE — never founder-vetoed copy. The arm's OTHER outcome
+    // writes nothing at all, which is why this number is 2 and not 3.
+    'scrubText(retry.reply)': 2,                          // M-2 Fork D's landed retry + F-06.136's
     'scrubModelFrame(result.vendorNotification': 4,       // R3 — the four notification sites
     'function scrubModelFrame(': 1,                       // the declaration itself
   };

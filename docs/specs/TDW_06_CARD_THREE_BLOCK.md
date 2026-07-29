@@ -22,6 +22,18 @@ The Evening Six seat's block convicted this line:
 
 ---
 
+## 1b · THE SECOND FALSE POSITIVE THIS BLOCK CORRECTS — **CHECK 6 CONVICTED ITSELF**
+
+**Authority:** CE-110's last charter, item 3, fork **F6(a)** (2026-07-29). Ruled at Evening Seven from the seat's own report.
+
+CHECK 6 hunts raw ids in **Victor's outward prose** — F-04.66's disease, an owner reading a UUID he can do nothing with. But the check ran its grep over the **whole pasted SELECT output**, and that output's first two columns are `row_id` and `conversation_id`, both UUIDs by definition. **The check convicted the block's own machinery, every evening, by construction.** Evening Seven's seat caught it and refused to score its own hollow green.
+
+**The cure is a SCOPE, never a widening and never a blunting.** The UUID limb **keeps its teeth** — a raw UUID in prose is exactly what this limb exists to catch, and dropping it (the cheap fix) would have handed back a corrected-looking block that had stopped working. Instead CHECK 6 now reads a **prose-only paste**: a second read-only SELECT that returns `m.content` and nothing else. Every other check is untouched and still reads `e7_card3.scanned.txt` — their patterns never matched an id column, so they never had this problem.
+
+**Cost, stated:** Card Three now takes **two pastes** instead of one. That is the price of scoping to the prose column literally rather than trying to parse columns out of a text dump, which fails the moment a reply spans lines — and replies span lines constantly.
+
+---
+
 ## 2 · THE BLOCK — run it whole, paste the whole output
 
 Read-only. Zero writes. Scoped to the **standing test account 9888294440** — vendor `23165e38-6510-4639-ab6a-9f35bab93742`, agent `d02c7a9a-8622-4543-aa40-13d0911faf9b` (founder-resolved 2026-07-29, banked at the closing arc's ruling).
@@ -46,7 +58,27 @@ WHERE c.agent_id = 'd02c7a9a-8622-4543-aa40-13d0911faf9b'
 ORDER BY m.created_at ASC;
 ```
 
-Save that output to a file, then run the checks over it:
+Save that output to a file as `e7_card3.txt`.
+
+**Then run this SECOND read-only SELECT and save its output as `e7_card3.prose.txt`.** It returns the prose column and nothing else — no row id, no conversation id, no timestamp. CHECK 6 reads this file and only this file (§1b).
+
+```sql
+-- TDW_06 CARD THREE — THE PROSE COLUMN ALONE. READ-ONLY. No DDL, no writes.
+-- CE-110 item 3, fork F6(a): CHECK 6's input, scoped. The first SELECT above carries
+-- row_id and conversation_id so a sighting can be FILED to its row; this one carries
+-- neither, so the id-hunting check cannot convict the block's own machinery.
+-- Witness: ENGINE_SCHEMA.md "## engine.messages · 7 columns" (content, role, created_at,
+-- conversation_id) and "## engine.conversations" (agent_id). Same window as above.
+SELECT m.content AS outward_prose
+FROM engine.messages m
+JOIN engine.conversations c ON c.id = m.conversation_id
+WHERE c.agent_id = 'd02c7a9a-8622-4543-aa40-13d0911faf9b'
+  AND m.role = 'assistant'
+  AND m.created_at >= (now() - interval '12 hours')
+ORDER BY m.created_at ASC;
+```
+
+Then run the checks:
 
 ```bash
 # TDW_06 CARD THREE — THE NAMED CHECKS. Paste the SELECT's output into e7_card3.txt first.
@@ -72,7 +104,12 @@ echo "── CHECK 5 · internal vocative (both shapes) ──"
 grep -nEi ',\s*(Operator|Donna)\s*[.,!?;:—–]|(^|[.!?—–]\s+)(Operator|Donna)\s*,' e7_card3.scanned.txt
 
 echo "── CHECK 6 · raw ids in prose ──"
-grep -nE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b(lead|conv|msg|rec|ev)-[0-9]+\b|\bid=[^ ]+' e7_card3.scanned.txt
+# SCOPED, CE-110 item 3 / fork F6(a) (§1b): this check reads e7_card3.prose.txt — the
+# PROSE-ONLY paste — and never e7_card3.txt, whose row_id and conversation_id columns are
+# UUIDs by construction and convicted this check every evening. THE PATTERN IS UNCHANGED
+# AND KEEPS ITS TEETH; only its input narrowed. No sed strip here: the one sanctioned
+# template carries no id of any kind, so there is nothing for the exclusion to do.
+grep -nE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b(lead|conv|msg|rec|ev)-[0-9]+\b|\bid=[^ ]+' e7_card3.prose.txt
 
 echo "── CARD THREE: zero output above = GREEN. Any hit = a sighting; file it with its row id. ──"
 ```
@@ -100,14 +137,40 @@ grep -nEi ',\s*(Operator|Donna)\s*[.,!?;:—–]|(^|[.!?—–]\s+)(Operator|Don
 # EXPECT: exactly one hit — "Operator, pull the phone numbers for me."
 ```
 
-**Fixture (i) is F-06.131's cure proving itself. Fixture (ii) is the deaf-cure test** — the estate's standing discipline since M-2d: a correction that silences a false positive must be shown *not* to have silenced the true one beside it.
+```bash
+# TDW_06 CARD THREE — THE CHECK-6 FIXTURE (CE-110 item 3, fork F6(a)). Both directions.
+# THE CORRECTION MUST PROVE IT DID NOT BLUNT THE LIMB. Fixture (iii) is a UUID sitting in
+# Victor's PROSE — F-04.66's actual disease — and it must still convict. Fixture (iv) is
+# the block's OWN machinery column, and it must never be seen by the check again.
+cat > /tmp/c6prose.txt <<'EOF'
+Booked — the binder is 3f2a9c11-4b7e-4d51-9a02-8c6e1b7d0e44, tell her that reference.
+EOF
+cat > /tmp/c6cols.txt <<'EOF'
+3f2a9c11-4b7e-4d51-9a02-8c6e1b7d0e44,2026-07-29 12:23:18+00,9a02-...,Done. Kunal is down.
+EOF
+
+echo "── FIXTURE (iii) A UUID IN PROSE MUST STILL CONVICT ──"
+grep -nE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b(lead|conv|msg|rec|ev)-[0-9]+\b|\bid=[^ ]+' /tmp/c6prose.txt
+# EXPECT: exactly one hit — the limb kept its teeth.
+
+echo "── FIXTURE (iv) THE MACHINERY COLUMNS ARE OUT OF SCOPE ──"
+echo "Done. Kunal is down." | grep -cE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+# EXPECT: 0 — a prose-only line carries no id column, so CHECK 6 cannot convict the block.
+
+echo "── FIXTURE (iv-b) AND HERE IS THE OLD DEFECT, SO IT IS NEVER RE-INVENTED ──"
+grep -cE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' /tmp/c6cols.txt
+# EXPECT: 1 — the SAME grep over a row that carries the id COLUMNS. That hit is what
+# CHECK 6 reported as a sighting every evening before this correction.
+```
+
+**Fixture (i) is F-06.131's cure proving itself. Fixture (iii)/(iv) are CHECK 6's, added at CE-110. Fixture (ii) is the deaf-cure test** — the estate's standing discipline since M-2d: a correction that silences a false positive must be shown *not* to have silenced the true one beside it.
 
 ---
 
 ## 4 · WHAT THIS FILE DOES NOT DO
 
 - It does **not** amend `speakerSightings` in `scripts/b06_gauntlet.js`. That code never carried the defect (§1), and D-2 — siting the block in the rig — was **refused at ruling on the rig's own boundary**: the gauntlet scores lanes, it does not compile evening records.
-- It does **not** widen any check. The single exclusion is one door-authored template, stripped by name.
+- It does **not** widen any check. The single exclusion is one door-authored template, stripped by name; CHECK 6's CE-110 correction is a SCOPE on its input, not a change to its pattern — the pattern is byte-identical to the committed original.
 - It carries **no vendor-facing bytes**. Every string here is either estate machinery or a check pattern.
 
 **Evening Seven's kit points here. If a future seat re-authors this block in chat, that is F-06.131's fourth instance and it should be filed as one.**

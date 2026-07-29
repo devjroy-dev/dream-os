@@ -1255,15 +1255,44 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     //     out instead, byte-derived from undoContract.js:31;
     //   · the retry throws → fail-open to the glitch line, exactly as the un-retried path
     //     behaves. A retry that breaks must never be worse than no retry.
+    //
+    // ── TDW_06 F-06.136 — THE ARMING PREDICATE WIDENS: `specimen` → `specimen OR
+    // imperative-miss` (CE-110's last charter, the closed list's item 1).
+    //
+    // THE SECOND ARM AND HOW IT DIFFERS FROM THE FIRST, because the difference is the
+    // whole safety argument: a COSTUME is a lie already composed, so Fork D above must
+    // REPLACE it. An IMPERATIVE-MISS is not a lie at all — Victor answered honestly, he
+    // simply invented a gate his own soul forbids (harveySoul.ts:98, quoted verbatim at
+    // the predicate's home in chat.js). There is nothing to intercept and nothing to
+    // replace. So this arm re-runs the actor ONCE and then, if the second run refuses
+    // too, DELIVERS VICTOR'S ORIGINAL REPLY UNTOUCHED. It owns no sentence of its own;
+    // F3's line and the glitch lines are unreachable from here, by construction.
+    //
+    // INSIDE THE TRIPWIRE (fork F2(a), CE-ruled): `stage2Armed()` gates this arm too, so
+    // `WIRE_GUARD_STAGE2=off` + a redeploy stops EVERYTHING Stage-2-shaped in one act.
+    // The founder should never have to remember, mid-incident, which arm survives the
+    // switch. The counter-argument was heard and recorded at ruling: this arm replaces
+    // nothing, so the tripwire's stated subject (one false INTERCEPTION is a STOP) does
+    // not literally reach it. Ruled the other way deliberately.
+    //
+    // THE SPEND BOUND IS THE SAME STRUCTURAL ONE, not a second mechanism: `_noRetry`
+    // threads through, the retried call goes to `runTurn` directly and never re-enters
+    // this body, so the worst case for any turn is EXACTLY ONE duplicated actor run.
     let s2line = null;
     let s2run = null;   // F-06.130: the specimen row this seat will patch with what SHIPPED
     let s2arm = null;   // which of Fork D's three outcomes actually resolved
+    let impMiss = false; // F-06.136: the second arm, live only when the first did not fire
     try {
-      const { wireGuardSpecimen, stage2Intercept, stage2RecordDelivery, STAGE2_WA_REPORT } = require('../api/vendor-engine/chat');
+      const { wireGuardSpecimen, stage2Intercept, stage2RecordDelivery, STAGE2_WA_REPORT,
+              stage2Armed, imperativeMiss, recordImperativeRetry } = require('../api/vendor-engine/chat');
       const verdict = await wireGuardSpecimen(supabase, vendor.id, result, agentId);
       s2line = stage2Intercept(verdict, true);
       if (s2line) { s2run = (verdict && verdict.run_id) || null; s2arm = 'glitch_line'; }
-      if (s2line && !_noRetry) {
+      // ORDER IS LOAD-BEARING: a turn that is BOTH a costume and an imperative-miss is
+      // governed by the costume path, byte-for-byte as it was before this movement. The
+      // second arm is live ONLY where the first did not fire — existing behaviour sacred.
+      impMiss = !s2line && stage2Armed() && imperativeMiss(body, result);
+      if ((s2line || impMiss) && !_noRetry) {
         try {
           const retry = await runTurn({
             agentId, message: body, calendarSnapshot, scratchpad, leadPings, vendorCategory,
@@ -1278,7 +1307,34 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
               if (dc && dc.name && dc.name !== 'listen_harvey_talk') retryHands.push(dc);
             }
           }
-          if (retryHands.length > 0 && !(retryVerdict && retryVerdict.specimen)) {
+          if (impMiss) {
+            // ── F-06.136 · THE IMPERATIVE ARM'S TWO OUTCOMES. This whole limb is
+            // UNREACHABLE when the costume path armed (`impMiss` requires `!s2line`), so
+            // every byte of Fork D's three outcomes below is preserved exactly as sealed.
+            //
+            // The landing test is THE PREDICATE ITSELF, re-asked of the retry — not a new
+            // authority and not `retryHands`, which counts read hands too. A retry whose
+            // hands are all reads has still not filed the thing the owner asked for, and
+            // calling that a landing is how a hollow green is born. Plus the costume gate:
+            // a retry that FILED-in-prose-only must never ship in place of an honest refusal.
+            if (!imperativeMiss(body, retry) && !(retryVerdict && retryVerdict.specimen)) {
+              // outcome A — the second run filed it. Ship the retry's own reply through the
+              // same firewall the first reply went through. s2line was already null; nothing
+              // is replaced and no line of this arm's own exists to replace it with.
+              replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(retry.reply ?? ''), scrubText(retry.reply), 'vendorInbound:reply(imperative-retry)');
+              s2arm = 'imperative_retry_landed';
+              console.log('[wire-guard stage2 wa] imperative-miss retry landed the hand; the honest first reply was never sent');
+            } else {
+              // outcome B — A SECOND REFUSAL SHIPS VICTOR'S OWN WORDS, UNTOUCHED. `replyText`
+              // is not reassigned, `s2line` stays null, and the F3 sentence is not reachable
+              // from this limb. He may have been RIGHT to refuse (harveySoul:100's
+              // establish-it-first distinction is real and this arm cannot tell the two
+              // apart) — so the estate records the miss and delivers his sentence whole.
+              s2arm = 'imperative_second_refusal';
+              console.warn('[wire-guard stage2 wa] imperative-miss survived the retry; Victor\'s own reply ships untouched');
+            }
+            await recordImperativeRetry(supabase, vendor.id, agentId, s2arm, result, retry);
+          } else if (retryHands.length > 0 && !(retryVerdict && retryVerdict.specimen)) {
             // outcome 1 — the act landed. Ship the retry's own reply, through the same
             // firewall the first reply went through. No glitch line, no chip word.
             replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(retry.reply ?? ''), scrubText(retry.reply), 'vendorInbound:reply(retry)');

@@ -57,6 +57,101 @@ function actionKind(name) {
   return 'write';
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TDW_06 · F-06.136 — THE OWNER-IMPERATIVE FAMILY (CE-110's last charter, fork F1(a):
+// this vocabulary lives HERE, beside actionKind and the four claim families, because
+// production owns the vocabulary and the rig and the WA seat borrow it. One home.)
+//
+// THE DISEASE (Evening Seven, Card Two lines 2 and 5, the founder's own wire): Victor
+// answered TWO owner-imperatives with a consultative gate and ZERO hands —
+//   L2  owner: "Note on Kunal Dhillon: wants a lakeside baraat start."
+//       Victor: "I need to attach that note to the actual binder once Kunal moves from
+//                lead to booking…"                                    tool_calls: null
+//   L5  owner: "Book a shoot for Kunal Dhillon on 7 March 2027, 9 am."
+//       Victor: "I can't book a shoot for Kunal yet — he's still a lead, not a client.
+//                No contract, no scope, no budget locked."            tool_calls: null
+// That gate is taught NOWHERE. It is the exact inverse of what his own soul teaches.
+//
+// THE SOUL, QUOTED VERBATIM FROM `src/engine/src/core/harveySoul.ts:98` — W-1 SHUT, this
+// is a QUOTE and the soul is not edited by this movement. Re-read it before touching the
+// stems below; if the paragraph ever moves, this comment is the thing that must move too
+// (F-06.85's binding: a mechanism conditioned on a soul sentence NAMES it in-comment so
+// the mechanism's next sitting is forced to re-read the sentence):
+//
+//   "And when the owner's message IS the act — log her, file this, book the date, block
+//    the morning, unblock it, cancel it, move it, note it, update it, or any plain cousin
+//    of those words — you hear it for exactly what it is: work, the moment it is spoken.
+//    … So it goes to Donna in the same turn it arrived — never parked behind a question,
+//    never held for a missing detail. … Asking INSTEAD of handing is a clerk stalling the
+//    work to look careful … Completeness never gates the hand"
+//
+// and `harveySoul.ts:100` closes the ONE exception in the owner's favour:
+//   "And if your owner says log it as it stands, you do, marked for what it lacks; his
+//    word is always the last."
+//
+// THE NINE STEMS ARE THE SOUL'S OWN, AND ONLY THE SOUL'S OWN (fork F4(a), CE-ruled).
+// "any plain cousin of those words" is an instruction to VICTOR, not a machine-derivable
+// list; every cousin added here is a false arm paid for in a duplicated model turn on a
+// turn he may have answered honestly. Cousins wait for evidence from the production row
+// this arm now writes. Narrow first.
+const IMPERATIVE_STEMS = 'unblock|block|log|file|book|cancel|move|note|update';
+// Tolerated lead-ins. These do not change the mood — "please log her" is "log her".
+const IMPERATIVE_POLITE = '(?:please|pls|plz|kindly|just|can you|could you|would you|can u)';
+//
+// THE FALSE-ARM RISKS, ENUMERATED ON THE PREDICATE'S FACE (F-04.27's precedent — a guard
+// that cannot say what it will get wrong has not been read). Every one of them costs at
+// most ONE duplicated actor run and CANNOT change a byte the vendor sees, because the
+// second-refusal outcome ships Victor's original reply untouched:
+//   (1) THE NOUN-AT-CLAUSE-HEAD. "Note on Kunal: …" reads as a label as easily as an
+//       imperative; so does "Update: they moved the date." Both arm. Accepted knowingly —
+//       L2's specimen is itself this exact shape, and the estate wants it armed.
+//   (2) THE QUOTED OWNER. "She said cancel it" does not arm (not clause-head); "Cancel it,
+//       she said" does. Accepted: the hand test acquits it the instant a hand fires.
+//   (3) THE RHETORICAL. "Book a shoot before there's a contract? No chance." arms. One
+//       retry, then his own words ship. Named, not cured.
+//   (4) WHAT DOES NOT ARM, deliberately: any family verb NOT at a clause head ("should I
+//       block that date?", "can we move things around"), every past/third-person/gerund
+//       form (blocked · books · noting · updated · cancelled · filed), and every cousin.
+// The `\b` after the alternation is what excludes (4)'s second limb by construction: in
+// "blocked", "booking", "noted", "moves", "filed" there is no word boundary after the
+// stem, so the stem cannot match. That is a property of the regex, not a list to maintain.
+const OWNER_IMPERATIVE_RE = new RegExp(
+  '(?:^|[.!?;\\n]\\s*)' +                       // CLAUSE HEAD ONLY — risk (4)'s first limb
+  '(?:' + IMPERATIVE_POLITE + '\\s+){0,2}' +    // "please just log her"
+  '(?:' + IMPERATIVE_STEMS + ')\\b',            // bare stem, never an inflection
+  'i'
+);
+function ownerImperative(message) {
+  return OWNER_IMPERATIVE_RE.test(String(message || ''));
+}
+
+// D-1's fence, reused and NOT re-authored: only NESTED donna_calls are hands, and her
+// voice (listen_harvey_talk) is not one. `actionKind` above decides what a write is —
+// no second authority on that question, exactly as donnaOpenLine and wireGuardClassify
+// read it. A MATCHING hand is a write or a calendar hand; a read hand is not a filing.
+function matchingHands(result) {
+  const hands = [];
+  for (const tc of ((result && result.tool_calls) || [])) {
+    for (const dc of ((tc && tc.donna_calls) || [])) {
+      if (dc && dc.name && dc.name !== 'listen_harvey_talk') hands.push(dc);
+    }
+  }
+  return hands.filter((h) => actionKind(h.name) !== 'read');
+}
+
+// THE PREDICATE. An owner-imperative from the soul's own family with ZERO matching hands
+// in the turn. Mechanical on both legs — verb family on one side, actionKind over the
+// turn's nested hands on the other. No prose reading of Victor's reply happens here AT
+// ALL, and that is deliberate: his refusal may be perfectly lawful (harveySoul:100's
+// establish-it-first distinction), and the arm does not judge it — it re-runs the actor
+// once and then lets his own sentence stand. A lawful refusal costs one turn and ships
+// unchanged; an invented gate gets a second chance to file. That asymmetry is the whole
+// design, and it is why this arm can never ship a lie: it has no sentence of its own.
+function imperativeMiss(message, result) {
+  if (!ownerImperative(message)) return false;
+  return matchingHands(result).length === 0;
+}
+
 // ── TDW_06 WIRE GUARD STAGE 1 — THE CLAIM VOCABULARY, ONE HOME (2026-07-28; CE-98/99
 // chartered, ruled at the Donna cure sitting). These four families MOVED HERE
 // BYTE-IDENTICAL from scripts/b06_gauntlet.js, where they had lived since the S5
@@ -1836,6 +1931,66 @@ async function stage2RecordDelivery(supabase, runId, delivery) {
   } catch (e) { console.warn('[wire-guard stage2 delivery]', e && e.message); return false; }
 }
 
+// ── TDW_06 F-06.136 · THE IMPERATIVE ARM'S OWN ROW (CE-110, fork F3(b) ruled).
+// WHY A ROW AND NOT A LOG LINE: production opens on the standing instruments, and the
+// weekly precision read is one of them. An arm that fires on a live wire and leaves no
+// trace is an arm nobody is measuring — the empty-log hollow-green this block refused at
+// the WA seat's Stage 1 siting, one layer along. The row answers three questions the
+// console cannot: how often the gate is invented, how often the second run rescues it,
+// and what the arm cost.
+//
+// ZERO DDL, ZERO MIGRATION, and that is derived, not assumed: `run_type: 'production'`
+// is already in recordEval's allowed set, `transcript` is already the jsonb the Stage 1
+// specimen rides (witness: docs/db/ENGINE_SCHEMA.md, engine.evals_runs.transcript), and
+// this writes the SAME two columns the specimen seat beside it writes. It is not a new
+// module and not a new table — it is the existing landing site, one scenario further.
+//
+// FAIL-OPEN, ASSERTED AS A CELL: every path is caught and warns. A measurement that could
+// throw into the reply path would be a measurement that hurts the vendor to watch the
+// model — the same law the Stage 1 writer states at its own site.
+//
+// THE VERDICT WORD IS THE ARM'S, NOT VICTOR'S: `pass` = the second run filed the thing;
+// `fail` = it refused twice and HIS OWN SENTENCE SHIPPED UNTOUCHED. A `fail` here is NOT
+// a lie delivered — nothing was replaced, nothing was fabricated. It is the estate
+// recording that a hand the soul demanded never arrived. Read it that way or not at all.
+async function recordImperativeRetry(supabase, vendorId, agentId, arm, first, retry) {
+  try {
+    const eng = supabase && typeof supabase.schema === 'function' ? supabase.schema('engine') : null;
+    if (!eng) return false;
+    const names = (r) => {
+      const out = [];
+      for (const tc of ((r && r.tool_calls) || [])) {
+        for (const dc of ((tc && tc.donna_calls) || [])) {
+          if (dc && dc.name && dc.name !== 'listen_harvey_talk') out.push(dc.name);
+        }
+      }
+      return out;
+    };
+    const { error } = await eng.from('evals_runs').insert({
+      run_type: 'production',
+      scenario: `imperative_retry:${arm}`,
+      discipline: 'claim_doctrine',
+      verdict: arm === 'imperative_retry_landed' ? 'pass' : 'fail',
+      source_note: 'F-06.136 imperative-miss retry (one extra actor run; nothing replaced, no line of its own)',
+      transcript: {
+        agent_id: agentId || null,
+        vendor_id: vendorId || null,
+        conversation_id: (first && first.conversation_id) || null,
+        assistant_message_id: (first && first.assistant_message_id) || null,
+        first_reply:  (first && first.reply) || '',
+        retry_reply:  (retry && retry.reply) || '',
+        first_hands:  names(first),
+        retry_hands:  names(retry),
+        seat: 'wa',
+        at: new Date().toISOString(),
+      },
+      anonymized: false,
+    });
+    if (error) { console.warn('[imperative-retry]', error.message); return false; }
+    return true;
+  } catch (e) { console.warn('[imperative-retry]', e && e.message); return false; }
+}
+
 // The newest DELIVERED witness for this agent inside the window. `delivered` non-null is the
 // whole predicate — a turn whose retry landed the act carries arm `retry_landed` and a null
 // `delivered`, and is correctly NOT reportable: the vendor received an honest reply.
@@ -2771,6 +2926,15 @@ module.exports.fileGlitchReport      = fileGlitchReport;      // FORK 6b: the ON
 module.exports.GLITCH_REPORT_NO_CONTEXT = GLITCH_REPORT_NO_CONTEXT; // SLOT ONE (founder-vetoed)
 module.exports.GLITCH_REPORT_FILED      = GLITCH_REPORT_FILED;      // SLOT THREE (founder-vetoed)
 module.exports.REPORT_WINDOW_MS         = REPORT_WINDOW_MS;         // FORK 3-B (founder's number)
+// ── TDW_06 F-06.136 — the imperative arm's seams. Exported on actionKind's own precedent
+// and for its reason: the bench drives the REAL predicate, so a bench green and a live
+// arming can never disagree about what an owner-imperative even is.
+module.exports.imperativeMiss        = imperativeMiss;     // the ONE arming predicate
+module.exports.ownerImperative       = ownerImperative;    // the verb-family leg alone
+module.exports.matchingHands         = matchingHands;      // the D-1-fenced hand leg alone
+module.exports.OWNER_IMPERATIVE_RE   = OWNER_IMPERATIVE_RE;
+module.exports.IMPERATIVE_STEMS      = IMPERATIVE_STEMS;
+module.exports.recordImperativeRetry = recordImperativeRetry;
 module.exports.isDeedOfClass         = isDeedOfClass;      // Fork A' class-match test seam
 module.exports.PRIOR_DEED_LOOKBACK   = PRIOR_DEED_LOOKBACK;
 // ── WIRE GUARD STAGE 1 · THE CLAIM VOCABULARY'S ONE HOME (2026-07-28). Exported on
