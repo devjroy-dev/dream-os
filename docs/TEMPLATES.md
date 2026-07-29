@@ -23,7 +23,7 @@ The webhook spec (`TDW_05_WEBHOOK_FINAL.md`, authored 2026-07-14) described **Tw
 - The **opt-out line** (`Reply STOP to opt out.`) is present on `marketing_opener` only. The nudges carry a functional pause instruction (`STOP MORNINGS`), which is a service control, not a marketing opt-out.
 - Variable **values** supplied at send time must themselves contain no newline, tab, or run of 4+ spaces (Meta rejects those in parameters). The registry's summary vars are built as single-line strings for this reason.
 
-## 2. The six bodies
+## 2. The bodies (six from Block 05 P2, plus `demo_lead_alert` from Block 07 P1)
 
 ### 1 · `marketing_opener`  — MARKETING · marketing line · Meta name **`tdw_marketing_opener`**
 Variables: `{{1}}` = recipient first name.
@@ -61,6 +61,19 @@ Variables: `{{1}}` = recipient name, `{{2}}` = demo-claim link. First-person "re
 Note (W-8): the close path is the **demo-claim link**; invite links/codes are retired. This template carries that link and nothing else.
 Note (category): copy was **tightened at submission** to earn UTILITY — Meta's pre-check flagged the original "ready to explore / take a look" wording as Marketing. The tightened "set up / access your account" copy was **approved as UTILITY** on 2026-07-19; no reconciliation needed. (If Meta ever reclassifies it later, a 60-day category-review appeal is available in WhatsApp Manager.)
 
+### 7 · `demo_lead_alert`  — UTILITY · marketing line · Meta name **`tdw_demo_lead_alert`**
+**Added TDW_07 P1 (Block 07 sitting one, 2026-07-29) — D-6's demo-lead relay.** Variables: `{{1}}` = vendor name, `{{2}}` = wedding month, `{{3}}` = demo-claim link.
+
+> Hi {{1}}, a couple just asked about your work for their {{2}} wedding on The Dream Wedding. Their enquiry is waiting in your ready account: {{3}} — reply here if you need any help.
+
+**Copy provenance:** founder-vetoed 2026-07-29, draft (a), verbatim 「 1. the first one 」. The spec's own draft (`TDW_07_DISCOVER_FINAL.md` §P5.2) **opened on a variable** and would have been filed against §1's third rule; the veto took the compliant draft. Recorded so the divergence from the spec is a decision on the record, not a drift.
+
+**Transport (supersession, named):** the spec says "submitted to Twilio same day". That wording predates **P-06.T** and the CE-36 seal and is **historical**. This template is filed **with Meta**, on the marketing line — Twilio is fallback-only at zero balance and M2b deleted the transport (CE-62).
+
+**Governance:** marketing line ⇒ the STOP gate and the 25/day marketing cap apply (spec §3). The registry ships `status: 'pending'` and `sendWa` refuses every non-`approved` template, so **nothing can send until the founder flips it after Meta's word**.
+
+**Note (08):** `TDW_08_DEMO_FINAL.md` §P1 amends this body with a remove line ("Don't want this? {remove_link} — one tap, gone.") and re-submits. Not pulled forward; named so 08's executor finds the pointer here.
+
 ## 3. Submission tracker
 
 All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`) and **all six were approved the same day** (the four in review cleared within minutes). `status` mirrors the registry's `status` field in `src/lib/templates.js`; all six read `approved`. `demo_invite` was approved as **UTILITY** — the tightened copy held, so no category reconciliation was needed.
@@ -73,6 +86,7 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 4 | `crew_assignment` | `tdw_crew_assignment` | UTILITY | **approved** | 2026-07-19 |
 | 5 | `payment_reminder` | `tdw_payment_due` | UTILITY | **approved** | 2026-07-19 |
 | 6 | `demo_invite` | `tdw_demo_invite` | UTILITY (approved as filed) | **approved** | 2026-07-19 |
+| 7 | `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY (proposed) | **pending** | — (founder files; steps in the P1 handover) |
 
 ## 4. Language code
 

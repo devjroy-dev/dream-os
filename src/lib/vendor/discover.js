@@ -86,4 +86,8 @@ async function withdrawRequest(supabase, vendorId) {
   return { ok: true };
 }
 
-module.exports = { requestDiscover, getDiscoverStatus, withdrawRequest };
+// MIN_PORTFOLIO_IMAGES is EXPORTED (TDW_07 P1) so src/lib/vendor/profileScore.js reads
+// the enforced floor rather than minting a second copy of the number. Behaviour here is
+// unchanged — this line adds a name to the export object and nothing else. P2 raises the
+// constant at :6 from 5 to 6 and BOTH the gate and the completeness score move together.
+module.exports = { requestDiscover, getDiscoverStatus, withdrawRequest, MIN_PORTFOLIO_IMAGES };

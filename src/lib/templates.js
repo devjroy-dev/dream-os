@@ -13,7 +13,12 @@
 //   category   — 'UTILITY' | 'MARKETING' (Meta category)
 //   variables  — ordered semantic names; body {{1}} = variables[0], {{2}} = variables[1], …
 //   body       — the exact body filed with Meta (kept in sync with docs/TEMPLATES.md)
-//   status     — 'draft' | 'submitted' | 'approved'
+//   status     — 'draft' | 'submitted' | 'pending' | 'approved'
+//                ('pending' added TDW_07 P1 for `demo_lead_alert`, CE-ruled wording:
+//                 filed with Meta, awaiting its word. The gate below is unchanged —
+//                 it tests `=== 'approved'` and nothing else, so every non-approved
+//                 value refuses identically. The enum is documentation; the gate is
+//                 the mechanism, and only the gate decides.)
 //                sendWa will ONLY send a business-initiated message when status==='approved'.
 //                All six ship 'draft'; the founder flips each to 'approved' after Meta approves.
 //
@@ -109,6 +114,51 @@ const TEMPLATES = {
       "Hi {{1}}, your demo workspace has been set up and is ready. Open it here to access " +
       "your account: {{2}} — reply here if you need any help.",
     status: 'approved',
+  },
+
+  // TDW_07 · D-6 · the sitting-one rider. The demo-lead relay: a couple enquires on a
+  // demo card, and the unregistered vendor hears about it on WhatsApp with a claim link.
+  // AUTHORED AND SUBMITTED IN SITTING ONE regardless of phase progress, because Meta's
+  // approval latency must never sit on P5's critical path (P-06.T clause 5, the same
+  // reason all six Block 05 bodies were filed same-day).
+  //
+  // TRANSPORT: submitted to META, not Twilio. The spec's D-4/P5 wording ("submitted to
+  // Twilio same day") predates P-06.T and the CE-36 seal and is HISTORICAL — Twilio is
+  // fallback-only at zero balance, and M2b deleted the transport outright (CE-62).
+  //
+  // LINE: 'marketing' — it is outreach to a business that has not signed up. It rides
+  // MARKETING_PHONE_NUMBER_ID via sendWa's phoneNumberIdFor (sendWa.js:128) and is
+  // therefore subject to the STOP gate and the 25/day marketing governance, per spec §3.
+  //
+  // CATEGORY 'UTILITY' follows the demo_invite precedent (:97 above), which cleared as
+  // UTILITY on 2026-07-19 with "set up / access your account" phrasing: this body is the
+  // same shape — an account that exists, an enquiry that is waiting, a link to reach it.
+  // If Meta reclassifies it MARKETING, flip this one field to keep the registry truthful
+  // (the demo_invite comment records that same escape hatch).
+  //
+  // COMPLIANCE, checked against docs/TEMPLATES.md §1 line by line: variables numbered
+  // 1..3 with no gaps · the body neither BEGINS nor ENDS with a variable · no two
+  // variables adjacent · single line, no '\n' anywhere. The spec's draft body opened on
+  // {Name} and would have been filed against our own rule; the founder's veto took
+  // draft (a), which does not.
+  //
+  // STATUS 'pending' — HONEST. Meta has not spoken. sendWa's gate is `isApproved`
+  // (templates.js:17 / the `status === 'approved'` test), so this template CANNOT send
+  // until the founder flips it after Meta's approval. The registry never claims a
+  // review outcome it has not been told.
+  demo_lead_alert: {
+    key: 'demo_lead_alert',
+    name: 'tdw_demo_lead_alert',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'UTILITY',
+    variables: ['name', 'month', 'claim_link'],
+    // FOUNDER-VETOED 2026-07-29, draft (a), verbatim 「 1. the first one 」.
+    body:
+      "Hi {{1}}, a couple just asked about your work for their {{2}} wedding on The Dream " +
+      "Wedding. Their enquiry is waiting in your ready account: {{3}} — reply here if you " +
+      "need any help.",
+    status: 'pending',
   },
 
   // ── AUTHENTICATION-category OTP templates (Block 05, F-05.6 fix (a), CE-35) ──────

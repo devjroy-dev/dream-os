@@ -14,6 +14,32 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const { waNumberFor } = require('../../lib/waNumbers');
 const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
+// TDW_07 P1 — the ranking terms and their one homes.
+const {
+  spotlightNorm, freshnessNorm, rankScore, rankVendors, loadWeights, FRESHNESS_HORIZON_MS,
+} = require('../../lib/discover/ranking');
+const { computeCompleteness } = require('../../lib/vendor/profileScore');
+
+// D-3 — the IG handle as the client will use it. Vendors type the handle a dozen ways;
+// the deep link takes a bare username. Strips a leading '@', a full profile URL, and any
+// trailing slash. Returns null for anything that isn't a plausible handle, so the chip
+// renders on truth or not at all — never on a fragment that deep-links nowhere.
+// Mirrors the 0005 convention the spec names (P2's Studio "strips @, mirrors 0005").
+function normalizeIgHandle(raw) {
+  if (typeof raw !== 'string') return null;
+  let h = raw.trim();
+  if (h === '') return null;
+  h = h.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '');
+  h = h.replace(/^@+/, '');
+  h = h.replace(/[/?#].*$/, '');
+  h = h.trim();
+  if (h === '') return null;
+  // Instagram usernames: letters, digits, period, underscore. Anything else is not a
+  // handle we can build a working link from.
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(h)) return null;
+  return h;
+}
+
 // ── GET /feed ─────────────────────────────────────────────────────────────────
 // Returns real vendors (discover_eligible=true) UNION demo vendors
 // (discover_eligible=true AND active=true). Fully filtered on both sides —
@@ -31,10 +57,23 @@ router.get('/feed', asyncHandler(async (req, res) => {
   const offset   = page * limit;
 
   // ── 1. Real vendors ────────────────────────────────────────────────────────
+  // TDW_07 P1: the select gains three columns, all landed by 0101 or witnessed at
+  // fea5e4d in docs/db/PUBLIC_SCHEMA.md · public.vendors:
+  //   instagram_handle (col 16, EXISTING)  → D-3's chip
+  //   rate_display     (NEW, 0101)         → D-1's show/hide starting price
+  //   discover_paused  (NEW, 0101)         → D-1's pause; the exclusion predicate below
+  //
+  // ⚠ DEPLOY ORDER IS LOAD-BEARING: this query names two columns that do not exist
+  // until 0101 runs. Deployed ahead of the migration, PostgREST 400s and the feed goes
+  // dark. The handover's smoke card runs 0101 BEFORE the git push for exactly this
+  // reason, and says so in those words. This is stated, never worked around: a silent
+  // retry-without-the-predicate would be a feed quietly serving paused vendors, which
+  // is the failure this predicate exists to prevent.
   let realQuery = supabase
     .from('vendors')
-    .select('id, business_name, category, city, routing_handle, rate_min, aesthetic_tags, about', { count: 'exact' })
-    .eq('discover_eligible', true);
+    .select('id, business_name, category, city, routing_handle, rate_min, rate_max, aesthetic_tags, about, instagram_handle, rate_display, discover_paused', { count: 'exact' })
+    .eq('discover_eligible', true)
+    .eq('discover_paused', false);   // P1 item 4 — the 0101 predicate. Approval retained.
 
   if (category) realQuery = realQuery.eq('category', category);
   if (city)     realQuery = realQuery.ilike('city', `%${city}%`);
@@ -49,13 +88,19 @@ router.get('/feed', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Feed unavailable.');
   }
 
-  // Fetch approved portfolio photos for real vendors
+  // Fetch approved portfolio photos for real vendors.
+  // TDW_07 P1: the same rows now also feed the completeness score — the FULL approved
+  // count and whether a hero exists. The display list stays capped at 5 exactly as
+  // before; the count is taken from every row, because a vendor's completeness is not
+  // capped by what the card happens to show.
   const realIds = (realVendors || []).map(v => v.id);
   let photoMap = {};
+  const approvedPhotoCount = {};
+  const hasHero = {};
   if (realIds.length > 0) {
     const { data: photos } = await supabase
       .from('vendor_portfolio')
-      .select('vendor_id, image_url')
+      .select('vendor_id, image_url, is_hero')
       .in('vendor_id', realIds)
       .eq('approval_state', 'approved')
       .order('is_hero', { ascending: false })
@@ -64,22 +109,95 @@ router.get('/feed', asyncHandler(async (req, res) => {
     (photos || []).forEach(p => {
       if (!photoMap[p.vendor_id]) photoMap[p.vendor_id] = [];
       if (photoMap[p.vendor_id].length < 5) photoMap[p.vendor_id].push(p.image_url);
+      approvedPhotoCount[p.vendor_id] = (approvedPhotoCount[p.vendor_id] || 0) + 1;
+      if (p.is_hero) hasHero[p.vendor_id] = true;
     });
   }
 
-  const shapedReal = (realVendors || []).map(v => ({
-    id:             v.id,
-    name:           v.business_name  || null,
-    category:       v.category       || null,
-    city:           v.city           || null,
-    routing_handle: v.routing_handle || null,
-    starting_price: v.rate_min       || null,
-    photos:         photoMap[v.id]   || [],
-    vibe_tags:      v.aesthetic_tags || [],
-    about:          v.about          || null,
-    enquire_link:   v.routing_handle ? `${ENQUIRE_BASE}${v.routing_handle}` : null,
-    is_demo:        false,
-  }));
+  // ── 1b. The three ranking inputs (TDW_07 P1 · D-5) ─────────────────────────
+  // Each read is best-effort and fails to the neutral value: a ranking input that
+  // cannot be read contributes ZERO for everyone, which leaves the existing
+  // created_at-desc order standing. A feed does not 500 because a signal is missing.
+  const spotlightIds  = new Set();
+  const featuredIds   = new Set();
+  const lastActiveAt  = {};
+  const nowIso        = new Date().toISOString();
+
+  if (realIds.length > 0) {
+    const freshnessCutoff = new Date(Date.now() - FRESHNESS_HORIZON_MS).toISOString();
+
+    const [spotRes, featRes, actRes] = await Promise.all([
+      // Spotlight: presence of an ACTIVE card. `active` IS the editorial decay
+      // (admin/spotlight.js:57 is the retire flip) — see ranking.js's term-1 note.
+      supabase.from('spotlight').select('vendor_id').eq('active', true).in('vendor_id', realIds),
+      // FEATURED-now (CE ruling §C/F5): an APPROVED submission whose scheduled window
+      // contains this instant. vendors.featured_eligible answers ELIGIBILITY, a
+      // different question, and is deliberately not read here.
+      supabase.from('vendor_featured_submissions')
+        .select('vendor_id, scheduled_start, scheduled_end')
+        .eq('state', 'approved')
+        .in('vendor_id', realIds)
+        .lte('scheduled_start', nowIso)
+        .gte('scheduled_end', nowIso),
+      // Freshness: MAX(created_at) per vendor from the live cross-surface activity log.
+      // Ordered desc and taken first-wins, so one pass yields the max per vendor.
+      supabase.from('vendor_activity_log')
+        .select('vendor_id, created_at')
+        .in('vendor_id', realIds)
+        .gte('created_at', freshnessCutoff)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (spotRes.error) console.warn('[GET /discover/feed] spotlight read failed (non-fatal):', spotRes.error.message);
+    else (spotRes.data || []).forEach(r => { if (r.vendor_id) spotlightIds.add(r.vendor_id); });
+
+    if (featRes.error) console.warn('[GET /discover/feed] featured read failed (non-fatal):', featRes.error.message);
+    else (featRes.data || []).forEach(r => { if (r.vendor_id) featuredIds.add(r.vendor_id); });
+
+    if (actRes.error) console.warn('[GET /discover/feed] activity read failed (non-fatal):', actRes.error.message);
+    else (actRes.data || []).forEach(r => { if (r.vendor_id && !lastActiveAt[r.vendor_id]) lastActiveAt[r.vendor_id] = r.created_at; });
+  }
+
+  const weights = await loadWeights(supabase);
+  const rankNow = Date.now();
+
+  const shapedReal = (realVendors || []).map(v => {
+    const completeness = computeCompleteness({
+      approvedPhotoCount: approvedPhotoCount[v.id] || 0,
+      hasHero:            !!hasHero[v.id],
+      about:              v.about,
+      aestheticTags:      v.aesthetic_tags,
+      rateMin:            v.rate_min,
+      rateMax:            v.rate_max,
+      instagramHandle:    v.instagram_handle,
+    });
+    const terms = {
+      spotlight:    spotlightNorm(v.id, spotlightIds),
+      freshness:    freshnessNorm(lastActiveAt[v.id] || null, rankNow),
+      completeness: completeness,
+    };
+    return {
+      id:             v.id,
+      name:           v.business_name  || null,
+      category:       v.category       || null,
+      city:           v.city           || null,
+      routing_handle: v.routing_handle || null,
+      // D-1's rate-display toggle. `rate_display` is NOT NULL DEFAULT true in 0101, so
+      // every existing vendor keeps today's behaviour; only an explicit false hides.
+      starting_price: v.rate_display === false ? null : (v.rate_min || null),
+      photos:         photoMap[v.id]   || [],
+      vibe_tags:      v.aesthetic_tags || [],
+      about:          v.about          || null,
+      enquire_link:   v.routing_handle ? `${ENQUIRE_BASE}${v.routing_handle}` : null,
+      is_demo:        false,
+      // D-3: the chip's source. Stripped of a leading '@' so the client builds
+      // instagram://user?username=X without minting a double sigil.
+      instagram_handle: normalizeIgHandle(v.instagram_handle),
+      // Manual honesty law: marked, always — and marked only where F5's ruling is true.
+      featured:       featuredIds.has(v.id),
+      _rank_score:    rankScore(terms, weights),
+    };
+  });
 
   // ── 2. Demo vendors (discover_eligible=true AND active=true only) ──────────
   let demoQuery = supabase
@@ -120,6 +238,16 @@ router.get('/feed', asyncHandler(async (req, res) => {
       about:          v.about        || null,
       enquire_link:   v.ig_handle ? `${ENQUIRE_BASE}${v.ig_handle}` : null,
       is_demo:        true,
+      // D-3: "Demo vendors: same chip from their IG-sourced handle (it's the truest
+      // thing on the card)." demo_vendors.ig_handle is lowercased at insert
+      // (admin/demoAdmin.js:50) and is the demo card's identity.
+      instagram_handle: normalizeIgHandle(v.ig_handle),
+      // Demo cards are never FEATURED: featured-ness is a vendor_featured_submissions
+      // row and demo vendors have no row in that table by construction (its vendor_id
+      // references the real vendors plane). Stated as a constant so the field's absence
+      // is never mistaken for an unread signal.
+      featured:       false,
+      _rank_score:    0,
     };
   });
 
@@ -130,7 +258,12 @@ router.get('/feed', asyncHandler(async (req, res) => {
   const interleaved = [];
   let di = 0;
   const demoOnly  = combined.filter(v => v.is_demo);
-  const realOnly  = combined.filter(v => !v.is_demo);
+  // TDW_07 P1 · D-5, order of operations ruled at CE §C/F4: RANK FIRST, INTERLEAVE
+  // AFTER. rankVendors orders the REAL leg only and is stable, so an all-zero-score
+  // feed comes out in exactly today's created_at-desc order. The every-5th position
+  // law below is byte-unchanged — ranking decides WHICH real vendor sits in a slot,
+  // never where the demo slots fall.
+  const realOnly  = rankVendors(combined.filter(v => !v.is_demo));
   realOnly.forEach((v, i) => {
     interleaved.push(v);
     if ((i + 1) % 5 === 0 && di < demoOnly.length) {
@@ -141,7 +274,13 @@ router.get('/feed', asyncHandler(async (req, res) => {
   while (di < demoOnly.length) interleaved.push(demoOnly[di++]);
 
   const total    = interleaved.length;
-  const paginated = interleaved.slice(offset, offset + limit);
+  // `_rank_score` is ORDERING MACHINERY, not contract. It is stripped here so the
+  // response carries no field lib/types/discover.ts does not declare — F-07.3's disease
+  // (a type behind its own wire) is cured in this sitting and not re-minted in it.
+  // The smoke card's step ④ evidence is the ORDER, which is what a weight flip moves.
+  const paginated = interleaved
+    .slice(offset, offset + limit)
+    .map(({ _rank_score, ...card }) => card);   // eslint-disable-line no-unused-vars
 
   return okRes(res, {
     vendors:  paginated,
