@@ -135,10 +135,28 @@ async function disconnect(supabase, vendorId) {
   return { ok: true };
 }
 
+/**
+ * Find a connection by the INSTAGRAM-scoped user id.
+ *
+ * TDW_07 P4a ZIP 2: Meta's deauthorize and data-deletion callbacks identify the
+ * person by `user_id` and nothing else — there is no vendor id in a signed
+ * request and no session to read one from. This is the only bridge from Meta's
+ * name for the vendor to ours. It selects the vendor_id ALONE; the token stays
+ * behind readToken(), because a lookup is not a reason to hold a secret.
+ */
+async function findByIgUserId(supabase, igUserId) {
+  const { data, error } = await supabase
+    .from(TABLE).select('vendor_id, ig_user_id').eq('ig_user_id', String(igUserId)).maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: 'not_found' };
+  return { ok: true, vendorId: data.vendor_id };
+}
+
 module.exports = {
   TABLE,
   SAFE_COLUMNS,
   getConnection,
+  findByIgUserId,
   readToken,
   armState,
   spendState,

@@ -36,6 +36,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const igImport = require('../../lib/vendor/igImport');
 const igOAuth  = require('../../lib/vendor/igOAuth');
 const igConn   = require('../../lib/vendor/igConnection');
+const igSigned = require('../../lib/vendor/igSignedRequest');
 
 // The pwa lives on a different origin from the API, so the callback cannot
 // simply render — it must hand the browser back to the app. One home for that
@@ -228,5 +229,144 @@ router.delete('/disconnect', requireAuth, resolveVendor(), asyncHandler(async (r
   // dependency — mirrored bytes are the estate's own and outlive the connection.
   return okRes(res, { disconnected: true });
 }));
+
+// ═══════════════════════════════════════════════════════════════════════════
+// META'S TWO CALLBACKS — registered in Business login settings, 2026-07-30.
+//
+// Both are UNAUTHENTICATED BY NECESSITY, for the same reason /callback is:
+// Meta's servers call them, and Meta's servers hold no vendor session. The
+// `signed_request` is the authentication — HMAC-SHA256 under the Instagram app
+// secret, verified in igSignedRequest.js before one byte is trusted.
+//
+// THE PATHS ARE REGISTERED WITH META AND ARE THEREFORE FROZEN. Renaming either
+// one silently breaks a compliance obligation, which is the worst kind of break:
+// nothing errors, and nobody finds out until an audit.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── POST /deauthorize ────────────────────────────────────────────────────────
+// Fired when a vendor removes our app from THEIR Instagram settings. Their
+// intent is unambiguous: stop having access. So the connection dies here — the
+// token is not merely marked dead, the row is deleted, because a revoked token
+// is a secret with no remaining purpose.
+//
+// The mirrored PHOTOS ARE NOT TOUCHED, and that is the addendum's own law:
+// Instagram is a SOURCE, never a dependency. A vendor disconnecting Instagram
+// must not wake up to an empty storefront.
+router.post('/deauthorize', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const parsed = igSigned.parseSignedRequest((req.body || {}).signed_request);
+  if (!parsed.ok) {
+    console.warn('[ig:deauthorize] refused:', parsed.error);
+    // 200 to a bad signature would tell a prober its guess was accepted.
+    return res.status(parsed.error === 'not_configured' ? 503 : 403).json({ ok: false });
+  }
+
+  const found = await igConn.findByIgUserId(supabase, parsed.userId);
+  if (!found.ok) {
+    // Already gone, or never ours. Meta does not need our bookkeeping, and
+    // "no such user" and "deleted" are the same outcome from here.
+    console.log('[ig:deauthorize] nothing to disconnect for ig_user', parsed.userId);
+    return res.json({ ok: true });
+  }
+
+  const d = await igConn.disconnect(supabase, found.vendorId);
+  if (!d.ok) {
+    console.error('[ig:deauthorize] disconnect failed for vendor', found.vendorId, d.error);
+    return res.status(500).json({ ok: false });
+  }
+  console.log('[ig:deauthorize] disconnected vendor', found.vendorId);
+  return res.json({ ok: true });
+}));
+
+// ── POST /data-deletion ──────────────────────────────────────────────────────
+// Meta's contract, and it is exact: respond with JSON carrying `url` and
+// `confirmation_code`. The url must be reachable and must tell the person the
+// status of their request.
+//
+// ┌─ SCOPE OF DELETION — A FOUNDER RULING IS OWED BEFORE APP REVIEW ──────────┐
+// │ WHAT THIS ENDPOINT DELETES TODAY: the connection row — the access token   │
+// │ and the Instagram-scoped user id. That is unambiguously platform data and │
+// │ its deletion is not a judgment call.                                      │
+// │                                                                           │
+// │ WHAT IT DELIBERATELY DOES NOT DELETE: the mirrored photos. They are the   │
+// │ vendor's own portfolio, copied into the estate's storage with their       │
+// │ explicit pick-by-pick consent, and they are load-bearing for a live       │
+// │ storefront. Silently emptying a paying vendor's Discover profile on a     │
+// │ callback is not a thing an executor should decide.                        │
+// │                                                                           │
+// │ THE TENSION IS REAL AND IS NOT PAPERED: a strict reading of "delete data  │
+// │ obtained through the platform" reaches the photos too. The status page    │
+// │ therefore STATES what was deleted and what was kept, and gives a route to │
+// │ remove the photos — so the answer is honest either way while the ruling   │
+// │ is outstanding. Filed as F-07.20.                                         │
+// └───────────────────────────────────────────────────────────────────────────┘
+router.post('/data-deletion', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const parsed = igSigned.parseSignedRequest((req.body || {}).signed_request);
+  if (!parsed.ok) {
+    console.warn('[ig:data-deletion] refused:', parsed.error);
+    return res.status(parsed.error === 'not_configured' ? 503 : 403).json({ ok: false });
+  }
+
+  const found = await igConn.findByIgUserId(supabase, parsed.userId);
+  if (found.ok) {
+    const d = await igConn.disconnect(supabase, found.vendorId);
+    if (!d.ok) {
+      console.error('[ig:data-deletion] delete failed for vendor', found.vendorId, d.error);
+      return res.status(500).json({ ok: false });
+    }
+    console.log('[ig:data-deletion] connection deleted for vendor', found.vendorId);
+  } else {
+    console.log('[ig:data-deletion] nothing held for ig_user', parsed.userId);
+  }
+
+  // The code is derived from the ig user id and the moment, so the status page
+  // can echo the request back without a second store. It carries no secret:
+  // the ig user id is Meta's own identifier for a person WE were already told
+  // about, and the token is nowhere near it.
+  const confirmationCode = `igdel_${parsed.userId}_${Date.now()}`;
+  const base = process.env.IG_REDIRECT_URI
+    ? new URL(process.env.IG_REDIRECT_URI).origin
+    : 'https://dream-os-production.up.railway.app';
+
+  return res.json({
+    url: `${base}/api/v2/vendor/ig/deletion-status?code=${encodeURIComponent(confirmationCode)}`,
+    confirmation_code: confirmationCode,
+  });
+}));
+
+// ── GET /deletion-status ─────────────────────────────────────────────────────
+// The page the confirmation url points at. Public and unauthenticated by
+// design — the person arriving may have no account with us at all, which is
+// rather the point of a deletion request.
+//
+// It states plainly what was removed and what was kept. A status page that says
+// only "done" over a partial deletion is the costume class in compliance
+// clothing.
+router.get('/deletion-status', (req, res) => {
+  const code = String(req.query.code || '').slice(0, 120);
+  res.type('html').send(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data deletion request &middot; The Dream Wedding</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       max-width:34rem;margin:0 auto;padding:3rem 1.5rem;color:#1c1917;line-height:1.6}
+  h1{font-weight:400;font-size:1.5rem;margin:0 0 1.5rem}
+  code{background:#f5f5f4;padding:.15rem .4rem;border-radius:3px;font-size:.85em}
+  .k{color:#57534e;font-size:.95rem}
+</style></head><body>
+<h1>Your data deletion request</h1>
+<p><strong>Your Instagram connection has been deleted.</strong> The access token
+and the Instagram account identifier we held for you are gone from our systems.</p>
+<p class="k">Photos you imported into your portfolio were copied into your own
+Dream Wedding account at the time you selected them, and they remain part of
+your portfolio &mdash; disconnecting Instagram does not take down your profile.
+You can remove any of them yourself from your Portfolio page, or write to
+<a href="mailto:hello@thedreamwedding.in">hello@thedreamwedding.in</a> and we
+will remove them for you.</p>
+${code ? `<p class="k">Reference: <code>${code.replace(/[<>&"]/g, '')}</code></p>` : ''}
+</body></html>`);
+});
 
 module.exports = router;

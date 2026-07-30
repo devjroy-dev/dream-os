@@ -478,6 +478,107 @@ section('§10 · W-1 — zero soul bytes');
   ok('§10.3 no IG file mentions a soul, lens or loop module', !/donnaSoul|harveySoul|advisorLens|loop\.ts/.test(all));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+section('§11 · META\'S signed_request — the only thing authenticating two doors');
+
+{
+  const S = require(path.join(ROOT, 'src/lib/vendor/igSignedRequest.js'));
+  const crypto = require('crypto');
+  const b64 = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const secret = process.env.IG_APP_SECRET;
+  const mk = (payloadObj, key = secret) => {
+    const p = b64(JSON.stringify(payloadObj));
+    const sig = b64(crypto.createHmac('sha256', key).update(p).digest());
+    return `${sig}.${p}`;
+  };
+  const good = { algorithm: 'HMAC-SHA256', user_id: '178414', issued_at: 1 };
+
+  ok('§11.1 a correctly signed request verifies and yields the ig user id',
+     (() => { const r = S.parseSignedRequest(mk(good)); return r.ok && r.userId === '178414'; })());
+
+  ok('§11.2 a request signed with the WRONG secret is refused',
+     S.parseSignedRequest(mk(good, 'not-the-secret')).ok === false);
+
+  // THE ALGORITHM-CONFUSION ATTACK. The payload names its own algorithm; a
+  // verifier that obeys that field lets `none` walk in. This cell is the proof
+  // that we read the field only in order to refuse on it.
+  ok('§11.3 `algorithm: none` is REFUSED, not honoured — the JWT-family defect',
+     S.parseSignedRequest(mk({ ...good, algorithm: 'none' })).ok === false);
+
+  // Signature computed over the DECODED json rather than the encoded payload —
+  // the exact mistake the header warns about, from the attacker's side.
+  {
+    const p = b64(JSON.stringify(good));
+    const wrongSig = b64(crypto.createHmac('sha256', secret).update(JSON.stringify(good)).digest());
+    ok('§11.4 a signature over the DECODED payload is refused — the HMAC covers '
+       + 'the ENCODED string', S.parseSignedRequest(`${wrongSig}.${p}`).ok === false);
+  }
+
+  ok('§11.5 a truncated signature is refused, NOT a crash',
+     S.parseSignedRequest('abc.' + b64(JSON.stringify(good))).ok === false);
+  ok('§11.6 garbage is refused, NOT a crash', S.parseSignedRequest('nonsense').ok === false);
+  ok('§11.7 a payload with no user_id is refused',
+     S.parseSignedRequest(mk({ algorithm: 'HMAC-SHA256' })).ok === false);
+  ok('§11.8 with no app secret configured it refuses rather than verifying nothing',
+     S.parseSignedRequest(mk(good), '').ok === false);
+}
+{
+  const db = makeDb();
+  await C.saveToken(db, VENDOR, { igUserId: '178414', accessToken: 'LONG', expiresAt: new Date(Date.now() + 60 * 86400000).toISOString() });
+  const f = await C.findByIgUserId(db, '178414');
+  ok('§11.9 a connection is findable by the IG user id — the only bridge from '
+     + 'Meta\'s name for a vendor to ours', f.ok && f.vendorId === VENDOR);
+  // ── §11.10 · RE-AIMED. VACUOUS ON THE FIRST TAKE, CAUGHT BY N-16. ────────
+  // It read `f.accessToken === undefined` — but findByIgUserId returns
+  // { ok, vendorId } and never surfaces a token no matter WHAT it selects. The
+  // cell asserted the return shape while claiming to assert the query. Widening
+  // the select to pull the secret out of the database left it green.
+  // Fourth vacuity of this sitting; re-aimed at the SELECT STRING itself,
+  // scoped to this function's own body.
+  {
+    const conn = codeOf('src/lib/vendor/igConnection.js');
+    const a = conn.indexOf('async function findByIgUserId');
+    const b = conn.indexOf('module.exports');
+    const body = a >= 0 && b > a ? conn.slice(a, b) : '';
+    ok('§11.10 findByIgUserId\'s SELECT does not name access_token — a lookup is '
+       + 'not a reason to pull a secret out of the database',
+       body.length > 0 && !body.includes('access_token'), `${body.length} chars`);
+  }
+  const miss = await C.findByIgUserId(db, '999999');
+  ok('§11.11 an unknown ig user is not_found, never a silent match', miss.ok === false);
+}
+{
+  const rtr = codeOf('src/api/vendor/ig.js');
+  ok('§11.12 /deauthorize exists and is unauthenticated by necessity (Meta calls it)',
+     /router\.post\(\s*'\/deauthorize',\s*asyncHandler/.test(rtr));
+  ok('§11.13 /data-deletion exists and is likewise unauthenticated',
+     /router\.post\(\s*'\/data-deletion',\s*asyncHandler/.test(rtr));
+  ok('§11.14 /deletion-status exists — the confirmation url must be reachable',
+     /router\.get\(\s*'\/deletion-status'/.test(rtr));
+
+  // Each door VERIFIES BEFORE IT ACTS. Sliced per handler, not file-wide —
+  // §8.5's tuition applied before the same defect could recur.
+  const slice = (start, end) => {
+    const a = rtr.indexOf(start), b = end ? rtr.indexOf(end) : rtr.length;
+    return a >= 0 && b > a ? rtr.slice(a, b) : '';
+  };
+  const deauth = slice("router.post('/deauthorize'", "router.post('/data-deletion'");
+  const del    = slice("router.post('/data-deletion'", "router.get('/deletion-status'");
+  ok('§11.15 /deauthorize verifies the signature BEFORE any delete',
+     deauth.indexOf('parseSignedRequest') > 0
+       && deauth.indexOf('parseSignedRequest') < deauth.indexOf('disconnect'));
+  ok('§11.16 /data-deletion verifies the signature BEFORE any delete',
+     del.indexOf('parseSignedRequest') > 0
+       && del.indexOf('parseSignedRequest') < del.indexOf('disconnect'));
+  ok('§11.17 a refused signature answers 403, never 200 — a 200 tells a prober '
+     + 'its guess landed', /status\(parsed\.error === 'not_configured' \? 503 : 403\)/.test(deauth));
+  ok('§11.18 /data-deletion returns Meta\'s exact contract: url + confirmation_code',
+     /confirmation_code:/.test(del) && /url:/.test(del));
+  ok('§11.19 the mirrored photos are NOT deleted by either door — the addendum\'s '
+     + 'law: Instagram is a source, never a dependency',
+     !/vendor_portfolio/.test(deauth) && !/vendor_portfolio/.test(del));
+}
+
 console.log('\n' + '─'.repeat(72));
 console.log('  MUTATION LEDGER — every line a PRODUCTION byte, each cmp-restored.');
 console.log('    N-1  igOAuth.js     verifyState skips the TTL check         ⇒ §1.8 RED');
@@ -492,6 +593,10 @@ console.log('    N-9  igOAuth.js     AUTHORIZE_URL back to instagram.com     ⇒
 console.log('    N-10 ig.js          spendState moved AFTER exchangeCode     ⇒ §8.1 RED');
 console.log('    N-11 ig.js          /import stops asserting the connection  ⇒ §8.5 RED');
 console.log('    N-12 igImport.js    a refusal returns { ok:true, items:[] } ⇒ §8.3 of b07_p3 RED');
+console.log('    N-13 igSignedRequest  the HMAC compare skipped              ⇒ §11.2/§11.4 RED');
+console.log('    N-14 igSignedRequest  the payload\'s own algorithm honoured  ⇒ §11.3 RED');
+console.log('    N-15 ig.js          /deauthorize trusts the body unverified ⇒ §11.15 RED');
+console.log('    N-16 igConnection.js findByIgUserId also selects the token  ⇒ §11.10 RED');
 console.log('─'.repeat(72));
 
 console.log('\n' + (fail === 0 ? 'GREEN' : 'RED') + ` — b07_p4a_ig_bench ${pass}/${pass + fail}`);
