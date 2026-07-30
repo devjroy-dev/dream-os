@@ -29,49 +29,63 @@
 // elsewhere and did not think to look for HERE.
 //
 // WHAT IT COST: the founder's iOS walk failed with the Instagram app opening to
-// a blank error. The extra hop was a fresh navigation into a host the Instagram
-// app claims, so removing it removed one interception point.
+// a blank error. CONJECTURE, and now known to be at best incomplete: the extra
+// hop was read at the time as the interception point. The 2026-07-30 walk shows
+// a plain tap is claimed with NO extra hop at all, so the hop was never the
+// whole disease and may have been no part of it. The host correction stands on
+// Meta's documentation, which is why it survives this being wrong.
 //
-// ── AMENDED AT P4b, 2026-07-30 (CE-ruled). THE PHYSICS, REFINED. ────────────
-// This paragraph previously read: "Apple suppresses Universal Links on
-// JavaScript-initiated navigation — so window.location.href to Instagram is
-// safe." THAT SENTENCE WAS WRONG, and it was wrong in the direction that hurts:
-// it declared the surviving path safe and thereby closed the investigation.
+// ══ NO DEVICE IN THE LOOP — THE FILE'S STANDING HEADER (CE-ruled, P4b) ══════
+// EVERY NAVIGATION-PHYSICS CLAIM IN THIS FILE CITES A FOUNDER-WITNESSED
+// SCREENSHOT BY DATE, OR CARRIES THE WORD CONJECTURE.
 //
-// The refined model, which the founder's two on-device experiments and F-07.7
-// together support:
-//   · a navigation made INSIDE a user activation (a real link tap) is
-//     SUPPRESSED — iOS keeps it in the browser
-//   · a navigation made OUTSIDE one — a script assignment after an await, a
-//     timer, a server 302 — is CLAIMABLE by the app that owns the domain
+// This header exists because the paragraph below has now been wrong THREE
+// TIMES, written by THREE DIFFERENT AUTHORS — the retired seat, the chair, and
+// the P4b executor — and every one of those was a confident sentence about how
+// iOS behaves, authored by someone with no iPhone in front of them. The class is
+// not carelessness. It is that nobody in this loop can run the experiment, and
+// deviceless reasoning about Universal Links has a perfect record of being
+// inverted. Correction №21 is jointly the executor's and the chair's.
 //
-// The pwa's connect control was the second kind and did not look like it: an
-// async handler that awaited /ig/authorize and only THEN assigned
-// window.location.href. The await spends the activation. What reached iOS was a
-// script-initiated navigation wearing a tap's clothes.
+// ── THE PHYSICS, AS THE SCREENSHOTS PROVE IT (founder walk, 2026-07-30) ─────
+// TWO facts, and NOTHING ELSE IS KNOWN:
 //
-// F-07.7 IS THE SAME PHYSICS ON A DIFFERENT SITE, and it was already in the
-// FINDINGS_LOG when this file was written: the IG chip's web fallback fires
-// inside a 300ms timer, outside the tap's transient activation, and collects a
-// popup prompt for it. The estate had paid for this lesson once already.
+//   1. A PLAIN ANCHOR TAP on https://www.instagram.com/oauth/authorize IS
+//      CLAIMED by the Instagram app, which opens to a blank error and cannot
+//      render an OAuth consent screen.
+//      WITNESS: founder screenshot, 2026-07-30 22:41.
 //
-// THE CURE LIVES IN THE PWA, NOT HERE (F-07.22, cure (b)): the authorize URL is
-// minted before render and the control is a real <a href>, so the tap is the
-// suppressed kind and nothing awaits inside the activation window. See
-// app/vendor/portfolio/page.tsx.
+//   2. LONG-PRESS → "Open in New Tab" ESCAPES the claim. Safari keeps the
+//      navigation, the consent screen renders, Allow works, and the import
+//      completes end to end.
+//      WITNESS: founder screenshot, 2026-07-30 22:41 — Safari address bar
+//      reading instagram.com with the Smart App Banner offering the app.
+//
+// EVERY OTHER NAVIGATION FORM IS UNKNOWN. Whether target="_blank", window.open,
+// or a bare window.location.href assignment escapes the claim is CONJECTURE
+// until the ?igprobe=1 ladder returns from the founder's handset. No sentence
+// in this file may assume any of them.
+//
+// F-07.7 STAYS CITED AS THE FAMILY, with its status corrected: the IG chip's web
+// fallback fires inside a 300ms timer, outside the tap's transient activation,
+// and collects a popup prompt for it. It is the same SUBJECT — iOS deciding what
+// to do with a navigation toward Instagram — and it remains the nearest prior
+// evidence this estate owns. What it is NOT is a proof of direction: it was read
+// at slice 1 as supporting the inverted model, and that reading was wrong. It is
+// a neighbouring datum, not a lemma.
+//
+// WHERE THE CURE LIVES, AND WHERE THE PROBE LIVES: both in the pwa, at
+// app/vendor/portfolio/page.tsx. This file mints the URL and nothing else
+// decides how a browser is sent to it.
+//
+// WHAT THE SAME WALK EXONERATED, and this matters as much as the conviction:
+// the request, the config, the signed state, the scope, the redirect_uri and
+// the vendor's account are ALL CLEAN. The identical URL succeeds when only the
+// navigation form changes. The values below are correct.
 //
 // A SERVER START ROUTE THAT 302s TO INSTAGRAM WAS PROPOSED AND REFUSED, and the
-// refusal belongs in this file because this file is where the argument lives:
-// that is precisely the hop F-07.23 deleted. Building it back would re-arm the
-// interception point deliberately. If the shape is ever reconsidered, it is
-// reconsidered against this paragraph.
-//
-// STATED AS A HYPOTHESIS, NOT A CURE — the same posture as before, and it has
-// already been useful once. The value in AUTHORIZE_URL below is correct by
-// Meta's documentation either way, so it stands on its own. If the founder's
-// one-tap retest on the cured pwa STILL fails, navigation form is cleanly
-// eliminated as a variable — that is a FINDING, not a failure, and this comment
-// is amended again rather than quietly left standing.
+// refusal stands after the walk: it is the hop F-07.23 deleted, and a server
+// redirect is not among the two forms now known to escape.
 //
 // ── THE SECRETS LAW, AT FULL WEIGHT ─────────────────────────────────────────
 // IG_APP_SECRET and every access token are secrets. NOTHING in this file writes

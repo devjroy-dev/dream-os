@@ -32,22 +32,33 @@ const IGAPI = 'src/api/vendor/ig.js';
 const O = raw(OAUTH);
 const A = raw(IGAPI);
 
-sec('§1 · THE FALSE SENTENCE IS GONE (CE-ruled amendment)');
+// ── LABELED AMENDMENT, P4b probe (counts preserved 7→7) ─────────────────────
+// §1 ASSERTED THE SLICE-1 WORDING of the physics paragraph. The founder's walk
+// convicted that wording — it was INVERTED — and the chair ruled the paragraph
+// amended a third time to state ONLY what two dated screenshots prove.
+//
+// SO THE CELLS FOLLOW THE LAW, which is the standing rule and not a convenience:
+// a bench that pinned the old wording would now be defending a sentence the
+// estate has proven false, and greens over a false doctrine are the worst kind.
+// The count is preserved and each cell asserts the same PROPERTY it always did —
+// that the paragraph is dated, sourced, and honest about its own limits.
+sec('§1 · THE PHYSICS PARAGRAPH, THIRD AMENDMENT (CE-ruled)');
 ok('§1.1 the "window.location.href to Instagram is safe" claim no longer stands',
   !/`window\.location\.href` to Instagram is safe/.test(O),
   'the sentence that closed the investigation is still in the file');
-ok('§1.2 the amendment is DATED and attributed, not a silent rewrite',
-  /AMENDED AT P4b, 2026-07-30/.test(O));
-ok('§1.3 the refined physics names the SUPPRESSED case (inside a user activation)',
-  /INSIDE a user activation/.test(O) && /SUPPRESSED/.test(O));
-ok('§1.4 and the CLAIMABLE case (script-initiated, timer, server 302)',
-  /CLAIMABLE/.test(O) && /server 302/.test(O));
-ok('§1.5 F-07.7 is cited as the same physics on a different site',
+ok('§1.2 nor does the INVERTED replacement slice 1 shipped',
+  !/a real link tap\) is\s*\n\/\/\s*SUPPRESSED/.test(O),
+  'the inverted sentence survives');
+ok('§1.3 the paragraph is DATED and its witness named',
+  (O.match(/WITNESS: founder screenshot, 2026-07-30/g) || []).length === 2);
+ok('§1.4 the two proven facts are stated as facts',
+  /A PLAIN ANCHOR TAP/.test(O) && /LONG-PRESS → "Open in New Tab" ESCAPES/.test(O));
+ok('§1.5 F-07.7 stays cited as the family',
   /F-07\.7/.test(O));
 ok('§1.6 the comment points at where the cure actually lives',
   /app\/vendor\/portfolio\/page\.tsx/.test(O));
-ok('§1.7 the hypothesis posture survives — it earned its keep once already',
-  /HYPOTHESIS, NOT A CURE/.test(O));
+ok('§1.7 the unknowns are named CONJECTURE rather than guessed',
+  /is CONJECTURE/.test(O) && /EVERY OTHER NAVIGATION FORM IS UNKNOWN/.test(O));
 
 sec('§2 · FORK (a) WAS REFUSED, AND THE REFUSAL IS RECORDED WHERE THE ARGUMENT LIVES');
 ok('§2.1 the refused server-302 start route is named as refused',
