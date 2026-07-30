@@ -2,7 +2,8 @@
 // Discover request business logic.
 'use strict';
 
-const { portfolioSummary } = require('./portfolio');
+const { portfolioSummary, MAX_PORTFOLIO_IMAGES } = require('./portfolio');
+const igImport = require('./igImport');
 // TDW_07 P2 · D-2's floor RAISED 5 -> 6 at the ONE constant, CE-ruled at the P2 charter.
 // This single byte moves BOTH consumers by construction: the server-side approval gate at
 // :17 below, and src/lib/vendor/profileScore.js's photo term, which imports this name
@@ -85,6 +86,15 @@ async function getDiscoverStatus(supabase, vendorId) {
     // the raise would have left both lying while the server rejected. Comment-binding ships
     // as the fallback layer; THIS field is the mechanism.
     min_portfolio_images:   MIN_PORTFOLIO_IMAGES,
+    // TDW_07 P3 · CAP SITE 4 (Fork 6, the SURFACE half). Same law as the floor
+    // above, one sitting later: the pwa renders the server's number so "20" never
+    // exists twice. The constant's home is src/lib/vendor/portfolio.js.
+    max_portfolio_images:   MAX_PORTFOLIO_IMAGES,
+    // CE §B — the IG entry is CONFIG-GATED. The surface asks the server whether
+    // the seam is wired rather than holding its own opinion, so the button
+    // appears when the founder sets the variables and never before. GATED-DARK
+    // is the walk's word for the state this field reports as false.
+    ig_import_enabled:      igImport.isConfigured(),
     discover_request_state: vendor?.discover_request_state || 'not_requested',
     discover_eligible:      vendor?.discover_eligible || false,
     portfolio_summary:      summary,

@@ -108,11 +108,30 @@ router.get('/feed', asyncHandler(async (req, res) => {
       .select('vendor_id, image_url, is_hero')
       .in('vendor_id', realIds)
       .eq('approval_state', 'approved')
-      .order('is_hero', { ascending: false })
+      // ── TDW_07 P3 · Fork 1(a): `position` (0102) IS THE ORDER. ─────────────
+      // This replaced `.order('is_hero', desc).order('created_at', desc)`, and it
+      // is INVISIBLE at apply by construction: 0102 backfilled every vendor's
+      // positions using exactly that old expression, so the first fetch after the
+      // migration returns the identical sequence. That equality is the chair's
+      // ruled acceptance property for the migration, and this is the query it is
+      // a property of. is_hero is no longer an ordering key here because the row
+      // at position 0 IS the cover (Fork 2(b) keeps them written by one hand);
+      // it is still read below for the score's hero term, and its other three
+      // consumers — :378's heroPhotoMap, src/api/vendor/collab.js:364, and the
+      // pwa's meter — are untouched.
+      .order('position',   { ascending: true })
       .order('created_at', { ascending: false });
 
     (photos || []).forEach(p => {
       if (!photoMap[p.vendor_id]) photoMap[p.vendor_id] = [];
+      // ── TDW_07 P3 · Fork 7(b), CHAIR-RULED: THE FEED STAYS AT FIVE. ───────
+      // D-2 raises the portfolio to twenty; twenty does NOT land here. The feed
+      // is a swipe deck and quadrupling every card's payload is the jank the
+      // spec's own measure exists to catch. The twenty live on the detail
+      // lookbook, which is where P3's jank measure points. INHERITED DECISION,
+      // NAMED FOR P6: the in-card horizontal paging P6 builds will page through
+      // THESE FIVE unless P6 re-rules the payload — written here so P6's chair
+      // finds a decision rather than a surprise.
       if (photoMap[p.vendor_id].length < 5) photoMap[p.vendor_id].push(p.image_url);
       approvedPhotoCount[p.vendor_id] = (approvedPhotoCount[p.vendor_id] || 0) + 1;
       if (p.is_hero) hasHero[p.vendor_id] = true;

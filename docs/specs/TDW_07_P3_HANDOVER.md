@@ -1,0 +1,166 @@
+# TDW_07 P3 — HANDOVER
+**repo:** `devjroy-dev/dream-os` · **built at:** `fe140b8` (dream-os) + `301ab4d` (dreamos-pwa), both chair-stated and executor-re-derived fetch-first at sitting open
+**sitting:** P3 — the twenty-photo cap, Cloudinary delivery discipline, the portfolio manager, the IG mirror
+**executor:** Opus-LE · **chair:** the fifteenth · **date:** 2026-07-29
+
+---
+
+## 1 · WHAT SHIPPED
+
+**dream-os (7 paths)**
+
+| path | change |
+|---|---|
+| `src/lib/vendor/portfolio.js` | `MAX_PORTFOLIO_IMAGES = 20` born · `canAcceptMore` (one count, one refusal sentence, three doors) · `writeOrder` — **the one hand** · `currentOrder` · `reorderImages` fail-closed · delete re-indexes · **F-07.12's export** · **F-07.14's loud log, sited before the credential check** |
+| `src/lib/vendor/igImport.js` | **NEW** — the mirror, `isConfigured()`, the Meta seam as a loud refusal |
+| `src/lib/vendor/discover.js` | cap site 4 (`max_portfolio_images`) · `ig_import_enabled` plumbing |
+| `src/api/vendor/portfolio.js` | cap site 3 · `PATCH /reorder`, sited above `/:imageId` |
+| `src/api/admin/vendorPortfolio.js` | cap sites 2+3 · position on insert · cover through the one hand · delete re-indexes · the `:17` import **unchanged** |
+| `src/api/couple/discover.js` | feed orders by `position` · Fork 7(b)'s five with its reason and the P6 inheritance |
+| `scripts/b07_p3_bench.js` | **NEW** — 49 cells |
+
+**dreamos-pwa (7 paths)**
+
+| path | change |
+|---|---|
+| `lib/img.ts` | **NEW** — the ONE variant table, the LQIP chain, the pass-through rule |
+| `lib/frost-api/img.ts`, `lib/vendor/img.ts` | **NEW** — addresses only, `export * from '../img'` |
+| `app/vendor/portfolio/page.tsx` | the manager: grid, pointer drag, cover, caption, delete-with-confirm, cap, vetoed copy |
+| `lib/vendor/api/vendor.ts` | `reorderPortfolio` |
+| `lib/vendor/types/vendor.ts` | `position?`, `max_portfolio_images?`, `ig_import_enabled?` |
+| `app/(frost)/frost/canvas/discover/page.tsx` | variants + LQIP, **render-only** |
+| `scripts/tdw07_p3_portfolio.proof.mjs` | **NEW** — 61 cells |
+
+**Untouched, by law:** every soul/lens/loop/engine file (W-1, zero soul bytes) · the interceptor, tripwire and vendor-engine wire · `src/api/vendor/collab.js` (the fourth `is_hero` consumer) · `:378`'s `heroPhotoMap` selector · `src/api/demo/*` · `src/api/admin/discover.js` · `sendWa` (P5's) · P4's `VendorProfileView` — **nothing here renders a profile detail; P4's fence is intact.**
+
+---
+
+## 2 · THE FLOOR
+
+`npm ci` + `npm run build` green before any bench ran.
+
+**82 benches · 80 exit-0 · exactly the two known-reds:**
+- `b05_f0555_media_dedupe_bench` — **22 passed, 1 failed** (F-07.11, own micro). Count derived by command, not carried from P2's page.
+- `b06_meter_bench 28/29` (F-06.41).
+
+**The P-series — the paired statement is now required on the p1 line:**
+```
+b07_p1_bench         72/72   PAIRED (dreamos-pwa present as a sibling tree)
+b07_p2_bench         48/48
+b07_p3_bench         49/49   NEW
+tdw07_p1_discover    35/35
+tdw07_p2_profile     36/36
+tdw07_p3_portfolio   61/61   NEW
+```
+`b07_p1_bench` prints **68/68** unpaired and says so loudly; a p1 number without the paired word is unreadable.
+
+**pwa:** `tsc --noEmit` ZERO, installed tree, `.next` cleared. **dream-os:** `node --check` clean on every touched file.
+
+---
+
+## 3 · THE MUTATION LEDGERS — every line a production byte, every one `cmp`-restored
+
+**Backend (12):** M-1 cap 20→21 ⇒ §1.1/§1.6 · M-2 `held`→0 ⇒ §1.4/§1.6/§1.7 · M-3 position→0 ⇒ §2.1 · M-4 `writeOrder` drops `is_hero` ⇒ §3.2/§3.5/§3.6/**§5.2** · M-5 completeness check defanged ⇒ §4.1/§4.4 · M-6 delete stops re-indexing ⇒ §5.1 · M-7 export removed ⇒ §6.1 FAIL then `TypeError: P.deleteFromCloudinary is not a function` · M-8 warn neutered ⇒ §7.1 · M-9 `isEstateUrl`→true ⇒ §8.2 · M-10 seam returns `[]` ⇒ §8.3 · M-11 `approval_state` raw ⇒ §9.3 · M-12 feed order reverted ⇒ §10.1/§10.2. **All red.**
+
+**pwa (10):** W-1 `w_800`→`w_400` · W-2 the `^v\d+$` rule dropped · W-3 the twin re-declares a table · W-4 badge keyed on `is_hero` · W-5 cap hard-coded · W-6′ a rendered H1 reappears · W-7′ the config flag read again · W-8 a layer loses `pointerEvents` · plus the two originals re-run after re-aiming. **All red.**
+
+**M-7 is the one to keep:** removing F-07.12's cure reproduces the production symptom byte-for-byte.
+
+---
+
+## 4 · FINDINGS CLOSED AND OPEN
+
+- **F-07.12 — CLOSED.** `deleteFromCloudinary` joins the export list. The `:17` import stands as its author wrote it. Both delete paths run the one URL-taking function. Benched both-ways with a round trip (§6.4). *Chair correction №13: the originally ruled swap to `src/lib/admin/cloudinary.js` would have fed a URL to an id-taking function and turned a loud 500 into a silent permanent orphan.*
+- **F-07.13 — HELD OPEN, honoured.** `in_carousel` is surfaced nowhere in the manager (§5.5 asserts the absence). Retire-or-wire is its own founder-sequenced micro. The admin toggle labelled *active* still writes a column no query filters on — **unchanged and still wrong, deliberately not touched here.**
+- **F-07.14 — CLOSED, and the cure was itself wrong once.** The parse-skip log now runs *before* `ensureCloudinary()`. Sited after it, the credential throw was swallowed by the function's own bare `catch` and the warning never fired on any machine without keys — the silent skip cured into a silent skip one line lower. §7.1 caught it before ship.
+- **F-07.11** — untouched, still red, own micro.
+
+---
+
+## 5 · DECLARED CONSEQUENCES AND DEVIATIONS
+
+**(a) THE SCORE MOVES ON A REAL ACCOUNT — NAMED FOR THE WALK.** `writeOrder` maintains `position 0 ⟺ is_hero` on every **ordering** act (drag, star, delete's promotion) and confers it on **no append**. Consequence: **Swati Roy holds 2 photos and 0 hero rows today, so her profile score gains 0.135 the first time she orders her photos.** Chair-ratified with its boundary in law. It is honest (she now has a stated cover) and bounded (an ordering act, never an upload — so the hero term does not collapse into "has any photo", which was Fork 2(a)'s refused price). **The founder should observe this in the walk, not discover it later.**
+
+**(b) NEW UPLOADS APPEND.** Before 0102 the newest row sorted first, so every upload silently seized the cover. With an explicit order that would reshuffle a curated grid on each upload. 0102's invisible backfill is what makes appending safe: nothing moves at apply; from then on the vendor's order is the vendor's.
+
+**(c) THE IG BLOCK DOES NOT RENDER — CE §B, tightened.** Not H1, not an explainer, not a connect. The rendering binds to **the action's existence**, never to configuration; `ig_import_enabled` reaches the status and the pwa deliberately ignores it. Built and benched behind the absence: the whole mirror, the cap's governance of an import, Fork 4(b)'s approved-on-arrival, the gate. Missing: one connect action. The four founder-vetoed IG strings are **parked in `COPY`, unrendered**, so the action sitting inherits an executed veto rather than re-running the founder's card. The binding rule is stated in-file at the render site.
+
+**(d) `codeOf()` — PROPOSED FOR PROMOTION, WITH ITS ORDER RULE.** Line comments must be stripped **first**, block comments second. Stripping blocks first lets a *line* comment containing `/wedding/auth/*` open a phantom block that closes ten thousand characters later — in `app/vendor/layout.tsx` it swallowed the live `startsWith('/vendor/portfolio')` and reddened a true cell. The `(^|[^:])` guard keeps `https://` out of the line pass. Both copies carry the reason in-file. **Do not promote a stripper without this rule.**
+
+**(e) THREE VACUITY CLASSES, for the family's record.** A cell may grep a field *name* that survives in a type cast · `indexOf` without a presence check treats a **deleted** token as "before everything" (the −1 class) · a token-count threshold survives removal when the file already used the token elsewhere. All three greened under their own mutation and were re-aimed.
+
+**(f) KICKOFF CORRECTIONS, chair-owned as №7–№12.** The upload is **signed**, not unsigned · `vendor_portfolio` stores **no** `cloudinary_public_id` · there is **no column 9** (13 columns at ordinals 1–8, 10–14; a gap is a dropped column's fingerprint per `db/queries/public_schema_dump.sql:119`) · the feed's order lived at `:111/:112` · the inbound-edge census is **eleven**, not nine · the feed ships **five** photos, so twenty reach only the detail lookbook.
+
+**(g) A HARNESS ERROR, DISCLOSED.** My first mutation runner leaked a `cd /tmp`, so M-2/M-3/M-4's anchors missed and three identical `43/49` readings were all still M-1. Tree restored, verified byte-identical and green, ledger re-run with absolute paths and a restore-check after every step.
+
+---
+
+## 6 · 0102 — THE FOUNDER BLOCK
+
+Ships as **one commented block**, founder-run in the Supabase SQL editor, provenance per statement. Ladder tail derived by command: `…0099, 0100, 0101` → **0102**.
+
+Self-proving posture: `position` is a PostgreSQL keyword of the non-reserved class and is lawful as a column name, but no database was reachable from the executor's container, so **it is not claimed** — if the identifier were unlawful, statement 1 fails at the founder's paste before one row moves, and readback A reads the column back by name. **Readback C is the chair's acceptance property as a query:** contiguous `0..n-1` per vendor with the hero at 0, printing `ok_contiguous`/`ok_cover` booleans. Any `false` is a failed backfill — STOP and paste it.
+
+---
+
+## 7 · THE WITNESS WALK — fixture-derived, not assumed
+
+**Fixture state at authoring:** the founder's test account **9888294440 holds 0 portfolio rows**; **Swati holds 2** (both approved, **zero hero rows**). Production is LIVE and Swati's profile may fill mid-walk — **re-run the fixture SELECT if staleness is suspected.**
+
+**Order matters. Do 0102 first, then the walk.**
+
+1. **Before 0102** — open Discover as a couple and note the first photo on Swati's card. **After 0102** — reload. **The card must look identical.** That is the invisible-migration property; a changed cover is a failed backfill.
+2. `/vendor/portfolio` on 9888294440 — empty state. Upload **4** photos one at a time. Each: `Uploading…` → `Photo added — with our team for review`. Each new tile appears **last**.
+3. The counter reads `4 of 20 photos`. The reorder hint and the approved/pending sentence are both present.
+4. Press and drag tile 3 to first. Toast `Order saved`. The `COVER` badge is now on it. **The score moves here** — this is (a) in the flesh.
+5. Tap a tile → sheet. Type a caption → `Save caption` → `Caption saved`. Reopen: it persisted.
+6. On a non-cover tile: `Make this the cover` → `Cover photo set`. The badge moves. Exactly one badge exists.
+7. `Remove` → the confirm appears. `Keep` → nothing happens. `Remove` again → `Remove` → `Photo removed`, and the remaining tiles stay a contiguous run with the cover on the first.
+8. **The cap.** This costs tapping: upload to **20**. At 20 the Upload control is disabled and `You've reached 20 photos. Remove one to add another.` shows. Then try `curl`-ing the register door directly — the server refuses with the same sentence, which is cap sites 1 and 3 speaking.
+9. **The jank step — the founder's own, on his mid-range Android.** Two subjects: (i) normal feed scroll, which still ships five per card, and (ii) **the detail lookbook at a 20-photo vendor**, which is where the twenty live per Fork 7(b). Declare what you see; do not let me claim it.
+10. **Admin delete — F-07.12's round trip.** In `/admin/vendors/portfolio`, delete a photo. **Before this sitting that returned 500 and the row survived.** It should now delete, and the surviving positions stay contiguous.
+11. **GATED-DARK:** every IG step is dark this sitting. There is nothing to click and nothing should appear.
+
+---
+
+## 8 · SEQUENCING — the chair's §E correction carried
+
+The App-Review screencast needs a **working connect**, which needs the action, which needed §D's values. So: **the review cannot be filed off P3 alone.** The order is: P3 deploys → the action micro (P3.5, or riding P4 — founder's word) → dev-mode demo working → **then** file. The founder holds sequencing.
+
+**Inherited for P6, named so its chair finds a decision not a surprise:** the in-card horizontal paging P6 builds will page through **the feed's five** unless P6 re-rules the payload.
+
+---
+
+## 9 · THE APP-REVIEW PACKET
+
+Chair-supplied values (§D). The executor did not verify Meta's surface independently and does not claim to; **U-5 stays self-proving at the action sitting** — dev-mode wiring proves the CDN fetch live before anything ships, 0102's posture applied to a network fact.
+
+**Product:** Business Login for Instagram. The vendor authenticates with Instagram directly — **no Facebook account in the loop.**
+**Scope requested: `instagram_business_basic` ALONE.** Least-privilege is load-bearing: requesting scopes the demo does not visibly exercise is a common rejection reason. The pre-2025 scope names were deprecated 2025-01-27; the current names are mandatory.
+**Accounts:** PROFESSIONAL only (business or creator). Personal accounts cannot be supported and the copy says so.
+
+**Env vars the founder sets (the gate arms itself, no redeploy):**
+```
+IG_APP_ID=
+IG_APP_SECRET=
+IG_REDIRECT_URI=
+```
+
+**Numbered clicks — filing:**
+1. Meta App Dashboard → the **MAIN** app (the one carrying Embedded Signup / Tech Provider). **Not** the parked 06.5 app, which stays never-App-LIVE.
+2. Add the **Instagram** product → **Business Login** → set the redirect URI to exactly the value in `IG_REDIRECT_URI`.
+3. **Roles →** add yourself and one vendor account as **tester/developer**. In development mode the app can authenticate assigned accounts — enough to build and to film.
+4. Complete Business Verification if not already done for the WABA.
+5. **App Review → Permissions →** request `instagram_business_basic` and nothing else.
+6. Write the use-case description **per permission**: what the vendor does, what data is read, where it is stored, why the scope is necessary.
+7. **Record the screencast** — the whole flow, unedited: vendor taps Import from Instagram → the Instagram consent screen → the picker → photos appearing in the portfolio. **This requires the connect action, which is §8's sequencing.**
+8. Submit. Expect **1–4 weeks per round.**
+9. On approval: set the three env vars in Railway. **The entry appears; nothing redeploys.**
+
+**Facts to state in the submission, all true of this build:** photos are **copied into the estate's own storage, never hotlinked** (asserted at the write path, §8.5) · manual upload is a **permanent** alternative, never a wall · the portfolio is capped at 20 and the import respects it · no Instagram data is used for anything but the vendor's own portfolio.
+
+---
+
+## 10 · CHARTER SLOT FOR THE NEXT CHAIR
+
+Built at `fe140b8` / `301ab4d`. Nothing pushed by the executor. **Final verification at origin belongs to the chair after the founder's push.** Open: F-07.11 (own micro) · F-07.13 (retire-or-wire micro) · the IG connect action (P3.5 or P4) · `codeOf()`'s promotion with its order rule · P4's `VendorProfileView`, fence intact.
