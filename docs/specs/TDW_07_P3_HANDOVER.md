@@ -108,7 +108,7 @@ tdw07_p3_portfolio  110/110  NEW
 
 **(k·i) CURE B — AND THE DOCTRINE, chair-ruled, this sitting's structural answer to the affordance class.** *When an interaction cannot be witnessed from the build container, the surface ships a deterministic equivalent that CAN be proven by cells, and the gesture is the enhancement layered on top — never the only path.* The photo sheet gains **Move up** / **Move down**. Move-to-front is deliberately **not** a third control: under the one-hand law position 0 ⟺ cover, so "make it first" IS E2's existing cover action, and a second set of words for one act would be two authorities in copy form. B is keyboard- and screen-reader-reachable by construction. Its arithmetic was extracted to `lib/vendor/reorder.ts` as a pure function **specifically so it could be executed by the harness** — §12.1–§12.10 run it, including an exhaustive permutation check. **B is the half of this feature I can actually prove; A is the half only the founder's thumb can settle.** If A fails a third time, reordering still works and the sitting is not blocked.
 
-**(k·ii) ONE VETO OUTSTANDING.** `Move up` and `Move down` are **chair-worded, not founder-vetoed** — the ruling named the bytes without routing them through the copy card. They are the only two vendor-facing strings in this sitting carrying the chair's word and not the founder's.
+**(k·ii) THE LAST VETO, DISCHARGED.** `Move up` / `Move down` were chair-worded when they shipped; the founder vetoed them **KEEP** at the walk (2026-07-30). **Every vendor-facing string in this sitting now carries the founder's word.**
 
 **(g) A HARNESS ERROR, DISCLOSED.** My first mutation runner leaked a `cd /tmp`, so M-2/M-3/M-4's anchors missed and three identical `43/49` readings were all still M-1. Tree restored, verified byte-identical and green, ledger re-run with absolute paths and a restore-check after every step.
 
@@ -119,6 +119,30 @@ tdw07_p3_portfolio  110/110  NEW
 Ships as **one commented block**, founder-run in the Supabase SQL editor, provenance per statement. Ladder tail derived by command: `…0099, 0100, 0101` → **0102**.
 
 Self-proving posture: `position` is a PostgreSQL keyword of the non-reserved class and is lawful as a column name, but no database was reachable from the executor's container, so **it is not claimed** — if the identifier were unlawful, statement 1 fails at the founder's paste before one row moves, and readback A reads the column back by name. **Readback C is the chair's acceptance property as a query:** contiguous `0..n-1` per vendor with the hero at 0, printing `ok_contiguous`/`ok_cover` booleans. Any `false` is a failed backfill — STOP and paste it.
+
+---
+
+## 6.5 · THE WALK'S VERDICT — FOUNDER-WITNESSED, 2026-07-30
+
+Every line below is the founder's declaration on his own device. **Nothing here is an executor claim**, and the two that could only ever have been his are marked.
+
+| | witness |
+|---|---|
+| 0102 readbacks A/B/C | **PASS** — column readable, index present, contiguity true. `ok_cover` passed **vacuously** (no hero row exists in production to test), named rather than banked |
+| `position` lawful as an identifier | **SETTLED AT APPLY** — statement 1 did not error; proven, never trusted |
+| the invisible-migration property | **PASS** — Swati's Frost card order identical pre/post-0102 |
+| upload, append order, counter, hints | **PASS** |
+| caption, cover star, delete-with-confirm | **PASS** |
+| filter tabs + the drag interlock | **PASS** |
+| batch upload (F-2) | **PASS** |
+| **drag-to-reorder (Cure A)** | **PASS — AFFORDANCE WITNESS.** Third shape. No cell in either harness could settle this |
+| **Move up / Move down (Cure B)** | **PASS — AFFORDANCE WITNESS.** The provable equivalent; the reason the sitting was never hostage to A |
+| **scroll survives Cure A** | **PASS** — thumb starting **on a photo**, swiping immediately, scrolls normally. The lazy cure (blanket touch-block) would have failed exactly here |
+| **admin delete (F-07.12)** | **PASS** — live round trip. The path had 500'd and orphaned rows for the whole life of the admin surface |
+| IG surface dark | **PASS** — nothing rendered |
+| **the 20-cap** | **NAMED SKIP, NOT WITNESSED.** Reason: twenty uploads is real founder tapping. Bench-proven at all four enforcement sites (`b07_p3_bench` §1.1–§1.8), non-vacuous under M-1 and M-2. Floor-method law: declared, never silent |
+
+**The gesture took three shapes and the first two shipped green.** The third landed not because the gesture was finally right, but because **Cure B removed the sitting's dependence on it being right** — the provable-equivalent doctrine earning its keep on its first instance.
 
 ---
 
