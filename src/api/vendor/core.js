@@ -40,6 +40,13 @@ router.use('/day',          require('./day'));      // TDW_04 B6-S2 — the day 
 router.use('/bands',        require('./bands'));    // TDW_04.5 P2 — the wedding-band view's one round trip (spec §P2)
 router.use('/portfolio',   require('./portfolio'));
 router.use('/discover',    require('./discover'));
+// TDW_07 P4a — the Instagram connect action. THIS MOUNT IS LOAD-BEARING: it plus
+// ig.js's '/callback' produce '/api/v2/vendor/ig/callback', which is the exact
+// string igOAuth.IG_CALLBACK_PATH holds and igImport.isConfigured() asserts
+// IG_REDIRECT_URI against. Move this line and the config assertion goes false
+// and the entry goes dark — which is the intended failure, loudly, rather than a
+// silent Instagram error page.
+router.use('/ig',          require('./ig'));
 router.use('/collab',      require('./collab'));
 router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
 router.use('/couture',     require('./couture'));

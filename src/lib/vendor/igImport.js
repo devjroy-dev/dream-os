@@ -6,6 +6,9 @@
 
 const crypto = require('crypto');
 const { canAcceptMore, registerImage, MAX_PORTFOLIO_IMAGES } = require('./portfolio');
+// TDW_07 P4a: the wire constants live in igOAuth.js and are IMPORTED, never
+// re-declared. GRAPH_HOST in two files would be the F-05.20 class in miniature.
+const { GRAPH_HOST, IG_CALLBACK_PATH } = require('./igOAuth');
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dccso5ljv';
 const API_KEY    = process.env.CLOUDINARY_API_KEY;
@@ -17,7 +20,31 @@ const API_SECRET = process.env.CLOUDINARY_API_SECRET;
 const ESTATE_IMAGE_HOST = 'res.cloudinary.com';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// THE META LEG IS DECLARED UNKNOWN — READ THIS BEFORE WIRING IT.
+// TDW_07 P4a — THE SEAM IS WIRED. THE UNKNOWNS ARE SETTLED, ONE BY ONE.
+//
+// P3 left five values DECLARED UNKNOWN rather than guessing them. P4a settles
+// them from Meta's own current documentation, derived at authoring:
+//   U-1  SETTLED — api.instagram.com/oauth/authorize · scope
+//        `instagram_business_basic` ALONE (igOAuth.js, which also carries the
+//        chair correction: the charter's host was missing the `api.` subdomain).
+//   U-2  SETTLED — POST api.instagram.com/oauth/access_token for the code
+//        exchange; GET graph.instagram.com/access_token?grant_type=
+//        ig_exchange_token for the 60-day long-lived token.
+//   U-3  SETTLED — graph.instagram.com/me/media, `fields` as the constant below,
+//        cursor-paged through `paging.next`. Wired at listInstagramMedia().
+//   U-4  SETTLED at the packet — `instagram_business_basic` alone is the review
+//        ask; the founder files it, and the walkthrough carries the clicks.
+//   U-5  STILL SELF-PROVING, DELIBERATELY. Whether Meta's CDN URLs are fetchable
+//        server-side by Cloudinary is a NETWORK FACT, and this container cannot
+//        witness it. It proves itself at the founder's dev-mode demo: if the
+//        mirror works, U-5 is true; if Cloudinary refuses, mirrorOne returns its
+//        honest refusal and no row is written. 0102's posture applied to a fact
+//        no amount of reading can settle. NOTHING CLAIMS IT UNTIL THE DEMO RUNS.
+//
+// The P3 header's original text is preserved below, because the reasoning that
+// produced a declared unknown is worth more than the unknown was.
+//
+// ── THE ORIGINAL P3 DECLARATION ─────────────────────────────────────────────
 //
 // The P3 charter is explicit: "Meta's IG-API surface as documented in the
 // addendum only (no invented API claims — anything the addendum doesn't state
@@ -50,14 +77,80 @@ const ESTATE_IMAGE_HOST = 'res.cloudinary.com';
 // Everything downstream of the seam — the mirror, the cap, the ordering, the
 // approval state, the never-hotlink property — is real, wired and benched now.
 // ─────────────────────────────────────────────────────────────────────────────
-async function listInstagramMedia(/* accessToken, opts */) {
-  const e = new Error(
-    'Instagram media listing is not wired: U-1..U-5 in src/lib/vendor/igImport.js ' +
-    'are DECLARED UNKNOWN pending the founder/chair settling Meta\'s current API surface. ' +
-    'The mirror pipeline below is built and benched; only this seam is open.'
-  );
-  e.code = 'IG_SEAM_UNSET';
-  throw e;
+// U-3, SETTLED. The fields are a named constant: the `fields` parameter is not
+// cosmetic — omit `media_url` and the mirror has nothing to copy, and Meta
+// returns a 200 with the field simply absent rather than an error.
+//
+// `thumbnail_url` is requested because VIDEO items carry no usable `media_url`
+// for a still portfolio; the still lives in the thumbnail. `media_type` is what
+// lets us choose between them without guessing from the URL's shape.
+const IG_MEDIA_FIELDS = 'id,caption,media_type,media_url,thumbnail_url,timestamp';
+
+// Meta's page size. Named because a silent default is a number nobody can find
+// when the paging behaviour surprises someone.
+const IG_PAGE_SIZE = 25;
+
+// A ceiling on how many pages we will walk. The portfolio cap is 20, so a vendor
+// never NEEDS more than one page — this exists so a malformed `paging.next`
+// cannot spin the request forever, which is a liveness bug wearing a loop's
+// clothes. Named, not magic.
+const IG_MAX_PAGES = 8;
+
+/**
+ * List the vendor's own Instagram media, cursor-paged.
+ *
+ * FAIL-LOUD IS PRESERVED FROM P3, and the reason has not changed: an import that
+ * silently finds nothing is indistinguishable from a vendor with no posts, and
+ * the estate has paid for that class of silence before (F-04.113). A network
+ * failure REFUSES; only a genuinely empty account returns an empty list, and the
+ * caller can tell the two apart because a refusal carries ok:false.
+ */
+async function listInstagramMedia(accessToken, opts = {}) {
+  if (!accessToken) return { ok: false, error: 'No Instagram connection.' };
+
+  const limit = Number(opts.limit) > 0 ? Number(opts.limit) : IG_PAGE_SIZE;
+  const q = new URLSearchParams({
+    fields:       IG_MEDIA_FIELDS,
+    limit:        String(limit),
+    access_token: accessToken,
+  });
+  let url = `${GRAPH_HOST}/me/media?${q.toString()}`;
+
+  const items = [];
+  for (let page = 0; page < IG_MAX_PAGES; page++) {
+    const res = await fetch(url);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const code = body && body.error && (body.error.code || body.error.type);
+      // THE SECRETS LAW: the URL carries the access token, so the URL never
+      // travels into the error. Status and Meta's own code, nothing more.
+      return {
+        ok: false,
+        error: `Instagram refused the photo list (${res.status}${code ? `, ${code}` : ''}).`,
+        http_status: res.status,
+      };
+    }
+    for (const m of (body && Array.isArray(body.data) ? body.data : [])) {
+      // VIDEO and CAROUSEL_ALBUM entries can carry a null media_url for our
+      // purposes; the still is the thumbnail. An item with neither is skipped
+      // rather than mirrored as a broken row.
+      const src = m.media_type === 'VIDEO' ? (m.thumbnail_url || null) : (m.media_url || m.thumbnail_url || null);
+      if (!src) continue;
+      items.push({
+        id:         m.id,
+        caption:    typeof m.caption === 'string' ? m.caption : null,
+        media_type: m.media_type || null,
+        source_url: src,
+        timestamp:  m.timestamp || null,
+      });
+    }
+    const next = body && body.paging && body.paging.next;
+    if (!next) return { ok: true, items, pages: page + 1, truncated: false };
+    url = next;
+  }
+  // Ceiling hit. TRUNCATION IS ANNOUNCED, never silent — the same law the batch
+  // upload learned at P3 (F2-3): take what fits and SAY SO.
+  return { ok: true, items, pages: IG_MAX_PAGES, truncated: true };
 }
 
 // ── THE CONFIG GATE (CE §B) ──────────────────────────────────────────────────
@@ -75,8 +168,50 @@ async function listInstagramMedia(/* accessToken, opts */) {
 // THE VARIABLE NAMES ARE THE ESTATE'S TO MINT AND ARE MINTED HERE; their VALUES
 // and the scopes they authorize are U-1..U-5 above — still declared unknown, and
 // nothing in this file guesses them.
+//
+// ── TDW_07 P4a · F3's RULED ADDITION: THE PATH ASSERTION ────────────────────
+// Presence of the three variables is NOT sufficient. Meta matches redirect_uri
+// byte-for-byte against the App Dashboard registration, so a redirect pointing
+// anywhere but this estate's canonical callback path is a config that CANNOT
+// work — and arming the entry on it ships the vendor a button whose only
+// possible outcome is Instagram's own error page. That is F-07.13's dead control
+// with an extra step. The chair ruled the dead-control law applies to
+// configuration too: mismatch ⇒ false, and say so loudly.
+let _pathWarnedFor = null;
+function redirectMatchesCanonicalPath(uri) {
+  if (typeof uri !== 'string' || uri === '') return false;
+  let parsed;
+  // A URL that will not parse cannot be byte-matched by Meta either.
+  try { parsed = new URL(uri); } catch { return false; }
+  // Compared on the PARSED PATHNAME, not with endsWith on the raw string: a raw
+  // suffix test passes on a query string that merely ends in the right letters,
+  // and fails on a legitimate trailing '?'. The pathname is the thing Meta
+  // matches, so the pathname is the thing asserted.
+  return parsed.pathname === IG_CALLBACK_PATH;
+}
+
 function isConfigured() {
-  return Boolean(process.env.IG_APP_ID && process.env.IG_APP_SECRET && process.env.IG_REDIRECT_URI);
+  const haveKeys = Boolean(process.env.IG_APP_ID && process.env.IG_APP_SECRET);
+  const uri      = process.env.IG_REDIRECT_URI || '';
+  if (!haveKeys || !uri) return false;
+
+  if (!redirectMatchesCanonicalPath(uri)) {
+    // Warn ONCE per distinct value. getDiscoverStatus calls isConfigured on
+    // every status read, and a per-request warning would bury itself. The
+    // secrets law holds: the redirect URI is not a secret and travels; the app
+    // id and secret do not appear.
+    if (_pathWarnedFor !== uri) {
+      _pathWarnedFor = uri;
+      console.warn(
+        `[igImport] IG_REDIRECT_URI does not end at the canonical callback path. ` +
+        `Expected pathname "${IG_CALLBACK_PATH}", got "${uri}". ` +
+        `Instagram matches this value byte-for-byte, so the connect flow would fail ` +
+        `silently — the entry stays DARK until this is corrected.`
+      );
+    }
+    return false;
+  }
+  return true;
 }
 
 function ensureCloudinary() {
@@ -197,7 +332,11 @@ async function importSelected(supabase, vendorId, sourceUrls) {
 
 module.exports = {
   isConfigured,
+  redirectMatchesCanonicalPath,
   listInstagramMedia,
+  IG_MEDIA_FIELDS,
+  IG_PAGE_SIZE,
+  IG_MAX_PAGES,
   importSelected,
   mirrorOne,
   isEstateUrl,

@@ -232,10 +232,46 @@ section('§7 · F-07.14 — THE DESTROY NO LONGER SKIPS IN SILENCE');
 section('§8 · THE IG MIRROR — NEVER HOTLINK (the addendum\'s own capitals)');
 ok('§8.1 an estate url is recognised', IG.isEstateUrl('https://res.cloudinary.com/dccso5ljv/image/upload/v1/x.jpg') === true);
 ok('§8.2 an Instagram CDN url is NOT', IG.isEstateUrl('https://scontent.cdninstagram.com/v/t51/1_n.jpg') === false);
+// ── §8.3 · LABELED AMENDMENT, TDW_07 P4a ────────────────────────────────────
+// COUNT DISCLOSED, NOT PRESERVED: 1 cell → 2 cells, so b07_p3_bench reads 50/50
+// where the P3 seal recorded 49/49. The floor-method law asks for the number to
+// be said out loud, not for the number to be held still. (My first draft of this
+// comment claimed "count preserved 1 → 1" and was simply wrong — corrected here
+// rather than left as a tidy-looking falsehood.)
+// WAS: `listInstagramMedia()` throws IG_SEAM_UNSET.
+// WHY IT MOVED: that cell asserted a SITTING-SCOPED POSTURE — "the seam is not
+// wired yet" — and P4a is the sitting chartered to wire it. Leaving it would
+// make a correct build red; deleting it would drop the property it was protecting.
+// Same class as F-07.5's "0101 stays unreserved" cells, re-scoped rather than
+// removed, per the M0_RANGE precedent.
+//
+// THE LAW IT WAS REALLY PROTECTING HAS NOT CHANGED, and is what it now asserts:
+// an import that cannot reach Instagram must REFUSE, never return an empty list,
+// because a silent empty is indistinguishable from a vendor with no posts
+// (F-04.113's class). The mechanism moved from a throw to an ok:false; the
+// property is identical and is now tested against the REAL function over a
+// stubbed fetch rather than against its unwired stub.
+// TITLE RE-AUTHORED TOO: a green cell under a false title is a small hollow
+// green — P2's own words, and the reason this comment names the change.
 {
-  let code = null;
-  try { await IG.listInstagramMedia(); } catch (e) { code = e.code; }
-  ok('§8.3 the Meta seam REFUSES LOUDLY rather than returning an empty list', code === 'IG_SEAM_UNSET', String(code));
+  const realFetch = global.fetch;
+  // No token at all → refusal, and it never touches the network.
+  const noTok = await IG.listInstagramMedia(null);
+  ok('§8.3a a missing connection REFUSES rather than returning an empty list',
+     noTok.ok === false, JSON.stringify(noTok));
+
+  // Meta refuses (401). The cell proves the refusal travels AND that the
+  // access token never appears in the error text — the secrets law, benched.
+  global.fetch = async () => ({
+    ok: false, status: 401,
+    json: async () => ({ error: { code: 190, type: 'OAuthException' } }),
+  });
+  const refused = await IG.listInstagramMedia('SEKRET-TOKEN-VALUE');
+  global.fetch = realFetch;
+  ok('§8.3 a Meta refusal REFUSES LOUDLY rather than returning an empty list',
+     refused.ok === false && refused.http_status === 401
+       && !JSON.stringify(refused).includes('SEKRET-TOKEN-VALUE'),
+     JSON.stringify(refused));
 }
 {
   const src = fs.readFileSync(path.join(ROOT, 'src/lib/vendor/igImport.js'), 'utf8');
@@ -309,7 +345,7 @@ console.log('    M-6  portfolio.js   deleteImage stops re-indexing         ⇒ �
 console.log('    M-7  portfolio.js   deleteFromCloudinary off the exports  ⇒ §6.1/§6.4 RED');
 console.log('    M-8  portfolio.js   the F-07.14 warn line deleted         ⇒ §7.1 RED');
 console.log('    M-9  igImport.js    isEstateUrl returns true always       ⇒ §8.2 RED');
-console.log('    M-10 igImport.js    the seam returns [] instead of throwing⇒ §8.3 RED');
+console.log('    M-10 igImport.js    the seam returns [] instead of refusing  ⇒ §8.3 RED  [P4a labeled amendment]');
 console.log('    M-11 portfolio.js   approval_state passed through raw     ⇒ §9.3 RED');
 console.log('    M-12 couple/discover.js  order reverted to is_hero desc   ⇒ §10.1/§10.2 RED');
 console.log('─'.repeat(72));
