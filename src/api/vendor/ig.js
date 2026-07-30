@@ -77,6 +77,9 @@ router.get('/status', requireAuth, resolveVendor(), asyncHandler(async (req, res
     // `expired` is H11's state and travels as its own word so the pwa renders
     // "connect again" rather than a generic failure.
     connection_state: connected ? (decision === 'expired' ? 'expired' : 'live') : 'none',
+    // The vendor's own public handle. This is the value the App Review
+    // submission promises is visible in the Import section (F-07.24).
+    ig_username:      conn?.ig_username      || null,
     connected_at:     conn?.connected_at     || null,
     expires_at:       conn?.token_expires_at || null,
   });
@@ -139,8 +142,16 @@ router.get('/callback', asyncHandler(async (req, res) => {
     return backToPortfolio(res, { ig: 'failed', reason: 'exchange' });
   }
 
+  // F-07.24 — read the handle so the surface can show WHICH account is linked.
+  // Deliberately NOT fatal: a profile read that fails leaves a working
+  // connection with no display name, which is strictly better than refusing a
+  // valid token over a cosmetic string.
+  const profile = await igOAuth.fetchProfile(long.accessToken);
+  if (!profile.ok) console.warn('[ig:callback] profile read failed, continuing:', profile.error);
+
   const saved = await igConn.saveToken(supabase, v.vendorId, {
     igUserId:    short.igUserId,
+    igUsername:  profile.ok ? profile.username : null,
     accessToken: long.accessToken,
     expiresAt:   long.expiresAt,
   });

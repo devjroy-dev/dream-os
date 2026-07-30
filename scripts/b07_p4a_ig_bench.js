@@ -466,12 +466,86 @@ section('§9 · 0103 — the migration as an artifact');
   ok('§9.4 the readback ships with the file (the settling witness)', /information_schema\.columns/.test(sql));
   ok('§9.5 the file NAMES the missing-0102 divergence rather than papering it',
      /0102/.test(sql) && /ladder/.test(sql));
-  // The ladder tail, derived here rather than trusted: no 0102 file exists, and no
-  // 0103 existed before this sitting.
+  // ── §9.6 · LABELED AMENDMENT, 2026-07-30. F-07.19 FOUNDER-RULED: CLOSE IT. ──
+  // WAS: "db/migrations still has NO 0102 file". That asserted the DEFECT, which
+  // was the right thing to assert while it stood unruled — 0103 had to be able to
+  // prove the hole was real and not a misreading. The founder then ruled it
+  // closed, so the cell now asserts the CURE and the ladder's continuity.
   const files = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => /^\d{4}_/.test(f));
-  ok('§9.6 db/migrations still has NO 0102 file — the divergence is real, not a '
-     + 'misreading', files.filter(f => f.startsWith('0102')).length === 0);
+  ok('§9.6 the ladder is CONTINUOUS — 0102 has a file again (F-07.19 closed)',
+     files.filter(f => f.startsWith('0102')).length === 1);
+  {
+    const f0102 = fs.readFileSync(path.join(ROOT, 'db/migrations/0102_vendor_portfolio_position.sql'), 'utf8');
+    // THE THREE PROPERTIES THAT MAKE A RECORDED MIGRATION SAFE TO SHIP.
+    ok('§9.6a it declares itself ALREADY APPLIED, so nobody re-runs it believing '
+       + 'it is pending', /ALREADY APPLIED IN PRODUCTION/.test(f0102));
+    ok('§9.6b it declares itself a RECONSTRUCTION — the original bytes are not '
+       + 'recoverable and pretending otherwise would be the worse defect',
+       /RECONSTRUCTION, NOT THE ORIGINAL BYTES/.test(f0102));
+    ok('§9.6c every statement is IDEMPOTENT — a recorded migration that would '
+       + 'damage production if run is worse than the gap it closes',
+       /add column if not exists/.test(f0102)
+         && /create index if not exists/.test(f0102)
+         && /where position is null/.test(f0102));
+    ok('§9.6d it ships its own verification, because a reconstruction owes a way '
+       + 'to be checked against the live schema', /information_schema\.columns/.test(f0102)
+         && /pg_indexes/.test(f0102) && /ok_contiguous/.test(f0102));
+  }
   ok('§9.7 exactly one 0103 exists', files.filter(f => f.startsWith('0103')).length === 1);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+section('§12 · F-07.24 — THE HANDLE THE SUBMISSION PROMISED IS VISIBLE');
+
+{
+  const realFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, status: 200,
+    json: async () => ({ user_id: '178414', username: 'makeupbyswatiroy' }) });
+  const r = await O.fetchProfile('LONG');
+  global.fetch = realFetch;
+  ok('§12.1 the profile read yields the vendor\'s own handle',
+     r.ok && r.username === 'makeupbyswatiroy', JSON.stringify(r));
+}
+{
+  // NON-FATAL BY DESIGN. A refused profile read must leave a WORKING connection —
+  // trading a valid token for a missing display string would be the worse trade.
+  const realFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ user_id: '1' }) });
+  const r = await O.fetchProfile('LONG');
+  global.fetch = realFetch;
+  ok('§12.2 a response with no username still succeeds — the connection survives a '
+     + 'cosmetic gap', r.ok === true && r.username === null);
+}
+{
+  const rtr = codeOf('src/api/vendor/ig.js');
+  const a = rtr.indexOf("router.get('/callback'");
+  const b = rtr.indexOf('async function tokenForCall');
+  const cb = a >= 0 && b > a ? rtr.slice(a, b) : '';
+  ok('§12.3 the callback reads the profile BEFORE persisting, so the handle lands '
+     + 'with the token', cb.indexOf('fetchProfile') > 0 && cb.indexOf('fetchProfile') < cb.indexOf('saveToken'));
+  ok('§12.4 a failed profile read does NOT abort the connect',
+     /profile read failed, continuing/.test(cb));
+
+  const st = rtr.slice(rtr.indexOf("router.get('/status'"), rtr.indexOf("router.get('/authorize'"));
+  ok('§12.5 /status serves ig_username — the value the submission promises is '
+     + 'visible', /ig_username:/.test(st));
+}
+{
+  ok('§12.6 ig_username is a DISPLAY string and joins SAFE_COLUMNS…',
+     C.SAFE_COLUMNS.includes('ig_username'));
+  ok('§12.7 …while access_token still does NOT — the secrets law is unmoved',
+     !C.SAFE_COLUMNS.includes('access_token'));
+}
+{
+  const files = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => /^\d{4}_/.test(f));
+  ok('§12.8 0104 exists and adds the column additively',
+     files.filter(f => f.startsWith('0104')).length === 1);
+  const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0104_vendor_ig_username.sql'), 'utf8');
+  ok('§12.9 it is an ADD COLUMN IF NOT EXISTS, nullable — a NOT NULL would turn a '
+     + 'cosmetic failure into a broken connect',
+     /add column if not exists ig_username text;/.test(sql) && !/not null/i.test(sql.split('-- ── 2')[0].split('alter table')[1]));
+  ok('§12.10 the file names F-07.19 rather than deriving its number from `ls`',
+     /0102/.test(sql) && /APPLIED ladder/.test(sql));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -615,6 +689,8 @@ console.log('    N-13 igSignedRequest  the HMAC compare skipped              ⇒
 console.log('    N-14 igSignedRequest  the payload\'s own algorithm honoured  ⇒ §11.3 RED');
 console.log('    N-15 ig.js          /deauthorize trusts the body unverified ⇒ §11.15 RED');
 console.log('    N-16 igConnection.js findByIgUserId also selects the token  ⇒ §11.10 RED');
+console.log('    N-17 ig.js          a failed profile read aborts the connect  ⇒ §12.4 RED');
+console.log('    N-18 igConnection.js ig_username dropped from SAFE_COLUMNS    ⇒ §12.6 RED');
 console.log('─'.repeat(72));
 
 console.log('\n' + (fail === 0 ? 'GREEN' : 'RED') + ` — b07_p4a_ig_bench ${pass}/${pass + fail}`);

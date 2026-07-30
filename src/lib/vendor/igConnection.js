@@ -24,7 +24,10 @@ const TABLE = 'vendor_ig_connections';
 // TALK to Instagram use readToken() below, which is named so that reaching for a
 // secret is a visible act in a diff rather than a field that arrived by accident
 // in a wide select.
-const SAFE_COLUMNS = 'vendor_id, ig_user_id, connected_at, token_expires_at, last_refreshed_at';
+// ig_username is a DISPLAY string, not a secret — it is the vendor's own public
+// handle and the whole point is that they can read it. It joins the safe list;
+// access_token still does not.
+const SAFE_COLUMNS = 'vendor_id, ig_user_id, ig_username, connected_at, token_expires_at, last_refreshed_at';
 
 /** The vendor-facing connection state. Never carries the token. */
 async function getConnection(supabase, vendorId) {
@@ -93,11 +96,12 @@ async function spendState(supabase, vendorId, nonce) {
 }
 
 /** Persist a freshly-minted long-lived token. */
-async function saveToken(supabase, vendorId, { igUserId, accessToken, expiresAt }) {
+async function saveToken(supabase, vendorId, { igUserId, igUsername, accessToken, expiresAt }) {
   const now = new Date().toISOString();
   const { error } = await supabase.from(TABLE).upsert({
     vendor_id:        vendorId,
     ig_user_id:       igUserId,
+    ig_username:      igUsername || null,
     access_token:     accessToken,
     token_expires_at: expiresAt,
     connected_at:     now,

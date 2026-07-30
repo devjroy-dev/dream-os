@@ -279,6 +279,39 @@ async function refreshLongLived(accessToken) {
 }
 
 /**
+ * Read the connected account's own profile.
+ *
+ * WHY THIS EXISTS — F-07.24, and it is a correction to a claim I made to META.
+ * The App Review submission states, twice, that the connected Instagram username
+ * is shown to the vendor in the "Import from Instagram" section. IT WAS NOT. I
+ * wrote that paragraph from Meta's screencast requirement ("show profile
+ * information like username") without checking the surface against it, and the
+ * founder submitted it in good faith. A written claim that the app does not
+ * match is a rejection with no argument available.
+ *
+ * It is also simply better: a vendor about to copy photographs into their public
+ * storefront should be able to see WHICH account is linked. The claim was wrong;
+ * the feature it described was right.
+ *
+ * `username` is inside instagram_business_basic's allowed usage — Meta's own
+ * text names "basic metadata ... for example username and ID" — so this adds no
+ * scope and changes nothing about the submission's least-privilege posture.
+ */
+async function fetchProfile(accessToken) {
+  const q = new URLSearchParams({ fields: 'user_id,username', access_token: accessToken });
+  const res  = await fetch(`${GRAPH_HOST}/me?${q.toString()}`);
+  const body = await res.json().catch(() => null);
+  if (!res.ok) return metaRefusal('profile read', res, body);
+
+  const username = body && body.username ? String(body.username) : null;
+  // A MISSING USERNAME IS NOT A FAILED CONNECT. The token is valid, the media
+  // will list, and refusing the whole connection over a display string would
+  // trade a working import for a cosmetic one. The caller stores null and the
+  // surface simply omits the line.
+  return { ok: true, username, igUserId: body && body.user_id ? String(body.user_id) : null };
+}
+
+/**
  * REFRESH-ON-USE (F2, CE-ruled). Pure decision, no I/O — so the bench can prove
  * every branch by execution rather than by reading the caller.
  *
@@ -317,4 +350,5 @@ module.exports = {
   exchangeForLongLived,
   refreshLongLived,
   refreshDecision,
+  fetchProfile,
 };
