@@ -29,17 +29,49 @@
 // elsewhere and did not think to look for HERE.
 //
 // WHAT IT COST: the founder's iOS walk failed with the Instagram app opening to
-// a blank error. Apple suppresses Universal Links on JavaScript-initiated
-// navigation — so `window.location.href` to Instagram is safe — but the SERVER
-// 302 that our wrong host forced is a fresh navigation, unsuppressed, and the
-// Instagram app claims www.instagram.com. The extra hop WAS the bug. Removing it
-// removes the interception point.
+// a blank error. The extra hop was a fresh navigation into a host the Instagram
+// app claims, so removing it removed one interception point.
 //
-// STATED AS A HYPOTHESIS, NOT A CURE: the mechanism is coherent and the value is
-// correct by documentation either way, so this ships regardless of whether it
-// fixes iOS. If the founder's next iOS walk still fails, the diagnosis is wrong
-// and the next suspect is the consent page itself — and this comment should be
-// amended rather than quietly left standing.
+// ── AMENDED AT P4b, 2026-07-30 (CE-ruled). THE PHYSICS, REFINED. ────────────
+// This paragraph previously read: "Apple suppresses Universal Links on
+// JavaScript-initiated navigation — so window.location.href to Instagram is
+// safe." THAT SENTENCE WAS WRONG, and it was wrong in the direction that hurts:
+// it declared the surviving path safe and thereby closed the investigation.
+//
+// The refined model, which the founder's two on-device experiments and F-07.7
+// together support:
+//   · a navigation made INSIDE a user activation (a real link tap) is
+//     SUPPRESSED — iOS keeps it in the browser
+//   · a navigation made OUTSIDE one — a script assignment after an await, a
+//     timer, a server 302 — is CLAIMABLE by the app that owns the domain
+//
+// The pwa's connect control was the second kind and did not look like it: an
+// async handler that awaited /ig/authorize and only THEN assigned
+// window.location.href. The await spends the activation. What reached iOS was a
+// script-initiated navigation wearing a tap's clothes.
+//
+// F-07.7 IS THE SAME PHYSICS ON A DIFFERENT SITE, and it was already in the
+// FINDINGS_LOG when this file was written: the IG chip's web fallback fires
+// inside a 300ms timer, outside the tap's transient activation, and collects a
+// popup prompt for it. The estate had paid for this lesson once already.
+//
+// THE CURE LIVES IN THE PWA, NOT HERE (F-07.22, cure (b)): the authorize URL is
+// minted before render and the control is a real <a href>, so the tap is the
+// suppressed kind and nothing awaits inside the activation window. See
+// app/vendor/portfolio/page.tsx.
+//
+// A SERVER START ROUTE THAT 302s TO INSTAGRAM WAS PROPOSED AND REFUSED, and the
+// refusal belongs in this file because this file is where the argument lives:
+// that is precisely the hop F-07.23 deleted. Building it back would re-arm the
+// interception point deliberately. If the shape is ever reconsidered, it is
+// reconsidered against this paragraph.
+//
+// STATED AS A HYPOTHESIS, NOT A CURE — the same posture as before, and it has
+// already been useful once. The value in AUTHORIZE_URL below is correct by
+// Meta's documentation either way, so it stands on its own. If the founder's
+// one-tap retest on the cured pwa STILL fails, navigation form is cleanly
+// eliminated as a variable — that is a FINDING, not a failure, and this comment
+// is amended again rather than quietly left standing.
 //
 // ── THE SECRETS LAW, AT FULL WEIGHT ─────────────────────────────────────────
 // IG_APP_SECRET and every access token are secrets. NOTHING in this file writes
