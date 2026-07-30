@@ -72,6 +72,17 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       aesthetic_tags:    vendor.aesthetic_tags    || [],
       rate_min:          vendor.rate_min          || null,
       rate_max:          vendor.rate_max          || null,
+      // ── TDW_07 P4b · F-07.17 — `discover_preview` IS RETIRED BY COMMENT, ZERO DDL. ──
+      // 0034 minted it as an ADMIN toggle meaning "show this vendor in the bride Discover
+      // FEED preview". P4b gives the vendor his OWN preview at /vendor/discover/preview,
+      // built from his own row through the feed's own shaper — a different thing entirely,
+      // owned by the vendor rather than by an admin, and reachable pre-approval by design.
+      // Two fields whose names both say "preview" and whose meanings do not overlap is how
+      // a later reader wires the wrong one. The column is NOT dropped (zero DDL this
+      // sitting) and the value is still reported here truthfully, because rows carry it and
+      // hiding live data is its own dishonesty. What is retired is its FUTURE: nothing new
+      // reads it, nothing new writes it, and no P4b surface consumes it.
+      // Retire-or-drop is founder-sequenced; a DDL drop would be its own micro.
       discover_preview:        vendor.discover_preview        === true,
       discover_eligible:       vendor.discover_eligible       === true,
       discover_request_state:  vendor.discover_request_state  || 'not_requested',
@@ -118,7 +129,17 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
 const LOCKED_FIELDS  = ['phone', 'routing_handle', 'tier', 'founding_cohort', 'onboarding_state', 'category'];
 const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel', 'travel_notes',
                         'instagram_handle', 'upi_id', 'gstin', 'briefing_enabled',
-                        'aesthetic_tags', 'rate_min', 'rate_max',
+                        'aesthetic_tags', 'rate_min',
+                        // TDW_07 P4b · F4 — 'rate_max' RETIRED FROM THE ALLOWLIST, dormant
+                        // by comment rather than deleted, and ZERO DDL: the column stays,
+                        // its CHECK is null-tolerant, and rows that already carry a value
+                        // keep it untouched. Removing the name from this array is what
+                        // stops NEW writes: PATCH bodies carrying rate_max are now ignored
+                        // by the :173 allowlist loop rather than rejected, so an old client
+                        // cached in a browser degrades quietly instead of erroring.
+                        // Re-arming is this one string — deliberately one byte, so a future
+                        // sitting that needs an upper bound restores it knowingly.
+                        // 'rate_max',
                         // TDW_04 B6-S1 (surfaces paper item 2, F-04.64's first half, R-B6-16):
                         // the thirteenth entry — P3's "add it to the existing PATCH allowlist,
                         // smallest change", B-7's confirmed-viable path. NULL = category
@@ -177,12 +198,16 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If only name was provided, skip vendors update but still return success
   let updated = null;
   if (Object.keys(update).length > 0) {
-    // rate_min <= rate_max guard
-    const rMin = update.rate_min !== undefined ? update.rate_min : vendor.rate_min;
-    const rMax = update.rate_max !== undefined ? update.rate_max : vendor.rate_max;
-    if (rMin != null && rMax != null && rMin > rMax) {
-      return errRes(res, 400, 'rate_min cannot exceed rate_max.');
-    }
+    // TDW_07 P4b · F4 (WIDENED) — THE rate_min <= rate_max GUARD IS RETIRED.
+    // It compared against a bound the estate no longer collects: the submit form no longer
+    // sends `rate_max`, the request gate no longer asks for it, and requestDiscover no
+    // longer writes it. A guard whose right-hand side is a field nothing populates is not a
+    // weaker guard — it is an unreachable one, and leaving it standing would tell the next
+    // reader that an upper bound is still part of the estate's rate model.
+    //
+    // The `rMin`/`rMax` derivations that fed it retire WITH it, per the CE ruling on the
+    // executor's §0.2 report: dead bindings are not dormancy. Nothing else read them —
+    // derived by grep across this file before removal, not assumed.
 
     // slot_capacity guard (B6-S1): null resets to the category default; otherwise a
     // whole number, 0 included (0 = "hold nothing", a posture — Q-SP-1). Anything
@@ -233,6 +258,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       rate_max:         updated.rate_max         || null,
       // B6-S1: `??` not `||` — 0 is a posture (Q-SP-1), the capacityCheck lesson.
       slot_capacity:    updated.slot_capacity    ?? null,
+      // F-07.17 — reported, not consumed. See the retirement note at the GET shape above.
       discover_preview: updated.discover_preview === true,
       // TDW_07 P2: the write's own echo. Discover Profile confirms from THIS shape, so
       // every field it can send comes back — a save that cannot be read back is a save

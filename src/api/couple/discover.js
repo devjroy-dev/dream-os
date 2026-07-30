@@ -11,8 +11,12 @@ const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
-const { waNumberFor } = require('../../lib/waNumbers');
-const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
+// TDW_07 P4b · F1b — the couple-facing shape, the enquire base and the handle normalizer
+// all moved to ONE home so the vendor's preview mount eats the identical function.
+// See src/lib/discover/shapeVendor.js for the boundary and what deliberately stayed here.
+const {
+  shapeVendorForDiscover, normalizeIgHandle, DISPLAY_PHOTO_LIMIT, ENQUIRE_BASE,
+} = require('../../lib/discover/shapeVendor');
 
 // TDW_07 P1 — the ranking terms and their one homes.
 const {
@@ -20,25 +24,9 @@ const {
 } = require('../../lib/discover/ranking');
 const { computeCompleteness } = require('../../lib/vendor/profileScore');
 
-// D-3 — the IG handle as the client will use it. Vendors type the handle a dozen ways;
-// the deep link takes a bare username. Strips a leading '@', a full profile URL, and any
-// trailing slash. Returns null for anything that isn't a plausible handle, so the chip
-// renders on truth or not at all — never on a fragment that deep-links nowhere.
-// Mirrors the 0005 convention the spec names (P2's Studio "strips @, mirrors 0005").
-function normalizeIgHandle(raw) {
-  if (typeof raw !== 'string') return null;
-  let h = raw.trim();
-  if (h === '') return null;
-  h = h.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '');
-  h = h.replace(/^@+/, '');
-  h = h.replace(/[/?#].*$/, '');
-  h = h.trim();
-  if (h === '') return null;
-  // Instagram usernames: letters, digits, period, underscore. Anything else is not a
-  // handle we can build a working link from.
-  if (!/^[A-Za-z0-9._]{1,30}$/.test(h)) return null;
-  return h;
-}
+// D-3's handle normalizer now lives at src/lib/discover/shapeVendor.js and is imported
+// above. It was MOVED, not copied: the demo leg below and the preview mount both call the
+// same one, so a card chip and a preview chip cannot disagree about a vendor's handle.
 
 // ── GET /feed ─────────────────────────────────────────────────────────────────
 // Returns real vendors (discover_eligible=true) UNION demo vendors
@@ -124,15 +112,14 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
     (photos || []).forEach(p => {
       if (!photoMap[p.vendor_id]) photoMap[p.vendor_id] = [];
-      // ── TDW_07 P3 · Fork 7(b), CHAIR-RULED: THE FEED STAYS AT FIVE. ───────
-      // D-2 raises the portfolio to twenty; twenty does NOT land here. The feed
-      // is a swipe deck and quadrupling every card's payload is the jank the
-      // spec's own measure exists to catch. The twenty live on the detail
-      // lookbook, which is where P3's jank measure points. INHERITED DECISION,
-      // NAMED FOR P6: the in-card horizontal paging P6 builds will page through
-      // THESE FIVE unless P6 re-rules the payload — written here so P6's chair
-      // finds a decision rather than a surprise.
-      if (photoMap[p.vendor_id].length < 5) photoMap[p.vendor_id].push(p.image_url);
+      // ── TDW_07 P4b · F1b: THE FIVE-PHOTO RULE MOVED, IT DID NOT CHANGE. ──
+      // Fork 7(b)'s "the feed stays at five" now lives at ONE home — shapeVendor.js's
+      // DISPLAY_PHOTO_LIMIT — because the preview mount must obey the identical rule or
+      // it teaches the vendor his card shows more than it does. This loop therefore
+      // accumulates EVERY approved row and the shaper slices. Rendered output is
+      // byte-identical: same first five, same `position` order. Disclosed rather than
+      // silent, because the intermediate array did get longer.
+      photoMap[p.vendor_id].push(p.image_url);
       approvedPhotoCount[p.vendor_id] = (approvedPhotoCount[p.vendor_id] || 0) + 1;
       if (p.is_hero) hasHero[p.vendor_id] = true;
     });
@@ -202,26 +189,17 @@ router.get('/feed', asyncHandler(async (req, res) => {
       freshness:    freshnessNorm(lastActiveAt[v.id] || null, rankNow),
       completeness: completeness,
     };
+    // TDW_07 P4b · F1b — the shape is the shaper's word, not this file's. Everything the
+    // couple sees is decided at src/lib/discover/shapeVendor.js and the preview mount
+    // calls the identical function on the identical input shape. `_rank_score` is appended
+    // HERE and only here: the preview has no rank, so rank cannot live in a function both
+    // mounts call.
     return {
-      id:             v.id,
-      name:           v.business_name  || null,
-      category:       v.category       || null,
-      city:           v.city           || null,
-      routing_handle: v.routing_handle || null,
-      // D-1's rate-display toggle. `rate_display` is NOT NULL DEFAULT true in 0101, so
-      // every existing vendor keeps today's behaviour; only an explicit false hides.
-      starting_price: v.rate_display === false ? null : (v.rate_min || null),
-      photos:         photoMap[v.id]   || [],
-      vibe_tags:      v.aesthetic_tags || [],
-      about:          v.about          || null,
-      enquire_link:   v.routing_handle ? `${ENQUIRE_BASE}${v.routing_handle}` : null,
-      is_demo:        false,
-      // D-3: the chip's source. Stripped of a leading '@' so the client builds
-      // instagram://user?username=X without minting a double sigil.
-      instagram_handle: normalizeIgHandle(v.instagram_handle),
-      // Manual honesty law: marked, always — and marked only where F5's ruling is true.
-      featured:       featuredIds.has(v.id),
-      _rank_score:    rankScore(terms, weights),
+      ...shapeVendorForDiscover(v, {
+        photos:   photoMap[v.id] || [],
+        featured: featuredIds.has(v.id),
+      }),
+      _rank_score: rankScore(terms, weights),
     };
   });
 
@@ -247,8 +225,12 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
   const shapedDemo = (demoVendors || []).map(v => {
     // photos is a JSONB array of {url, is_hero, cloudinary_id}
+    // TDW_07 P4b · F1b — the demo leg does not call the shaper (different table, different
+    // columns; the reasoning is stated in shapeVendor.js's header), but the NUMBER is the
+    // same number. It reads from the shaper's constant so a future change to the display
+    // rule cannot move the real card and leave the demo card at a stale literal.
     const photoUrls = (Array.isArray(v.photos) ? v.photos : [])
-      .slice(0, 5)
+      .slice(0, DISPLAY_PHOTO_LIMIT)
       .map(p => (typeof p === 'string' ? p : p?.url))
       .filter(Boolean);
 

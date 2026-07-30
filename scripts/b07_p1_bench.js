@@ -168,9 +168,31 @@ section('§2 · THE COMPLETENESS SCORE (profileScore.js, the one home)');
   ok('§2.5 photos above the floor do not exceed their term\'s weight',
     Math.abs(over - profileScore.TERM_WEIGHTS.photos) < 1e-9, `got ${over}`);
 
-  const halfRate = profileScore.computeCompleteness({ rateMin: 100000, rateMax: null });
-  ok('§2.6 a HALF-SET rate scores 0 — requestDiscover requires both bounds, so half is not a valid shape',
-    halfRate === 0, `got ${halfRate}`);
+  // ── LABELED AMENDMENT (TDW_07 P4b · F4, WIDENED) — TITLE RE-AUTHORED, NOT RELAXED. ──
+  // This cell asserted the RETIRED law: that a rate with only a minimum scored ZERO because
+  // requestDiscover demanded both bounds. P4b retires `rate_max` from the estate's rate
+  // model — the gate is min-only, the submit form drops the field, and the write no longer
+  // stores it — so a min-only rate is now the COMPLETE shape, not a half one. The old title
+  // is false at this tree and is re-authored rather than left describing a world that ended.
+  // The assertion is INVERTED, not weakened: it still pins an exact value, and it still
+  // fails if the term's arithmetic drifts.
+  const minOnlyRate = profileScore.computeCompleteness({ rateMin: 100000, rateMax: null });
+  ok('§2.6 a MIN-ONLY rate earns the rate term in full — F4 retired the upper bound from completeness',
+    Math.abs(minOnlyRate - profileScore.TERM_WEIGHTS.rate) < 1e-9, `got ${minOnlyRate}`);
+
+  // §2.6b — the retirement must not have quietly re-weighted the term. 0.135 by ruling.
+  ok('§2.6b the rate term still weighs exactly 0.135 — F4 changed WHEN it is earned, never what it is worth',
+    Math.abs(profileScore.TERM_WEIGHTS.rate - 0.135) < 1e-12, `got ${profileScore.TERM_WEIGHTS.rate}`);
+
+  // §2.6c — `rate_max` is now inert in the score. Passing it must change nothing at all.
+  const withMax = profileScore.computeCompleteness({ rateMin: 100000, rateMax: 400000 });
+  ok('§2.6c passing rate_max changes NOTHING — the field is accepted and ignored, never read',
+    Math.abs(withMax - minOnlyRate) < 1e-12, `got ${withMax} vs ${minOnlyRate}`);
+
+  // §2.6d — fail-closed on shape. The empty-string hole the executor shipped and self-caught.
+  const emptyRate = profileScore.computeCompleteness({ rateMin: '' });
+  ok('§2.6d an EMPTY-STRING rate earns nothing — Number("") is 0 and finite, and that is the trap',
+    emptyRate === 0, `got ${emptyRate}`);
 
   const twoTags = profileScore.computeCompleteness({ aestheticTags: ['a', 'b'] });
   const three   = profileScore.computeCompleteness({ aestheticTags: ['a', 'b', 'c'] });

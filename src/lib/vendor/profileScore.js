@@ -67,6 +67,10 @@
 'use strict';
 
 const { MIN_PORTFOLIO_IMAGES } = require('./discover');
+// TDW_07 P4b · F4 — the rate predicate lives in a LEAF module (nothing imported by it), so
+// the request gate can share the identical function without closing a require cycle through
+// this file. See rateMet.js's header for the cycle defect that decided its siting.
+const { rateMet } = require('./rateMet');
 
 // ── THE WEIGHTS WITHIN THE SCORE ──────────────────────────────────────────────────
 // These are the score's INTERNAL shape and are deliberately NOT admin-tunable: the
@@ -111,6 +115,7 @@ function hasText(v) {
   return typeof v === 'string' && v.trim() !== '';
 }
 
+
 /**
  * The completeness score, 0–1.
  *
@@ -119,8 +124,11 @@ function hasText(v) {
  * @param {boolean} p.hasHero            any approved row with is_hero=true
  * @param {string|null} p.about          vendors.about
  * @param {Array|null} p.aestheticTags   vendors.aesthetic_tags
- * @param {number|null} p.rateMin        vendors.rate_min
- * @param {number|null} p.rateMax        vendors.rate_max
+ * @param {number|null} p.rateMin        vendors.rate_min — the ONLY bound completeness reads
+ * @param {number|null} p.rateMax        vendors.rate_max — TDW_07 P4b · F4: RETIRED from the
+ *        score. Still accepted and still ignored, so an existing caller passing it is not a
+ *        crash; `rateMet` never reads it. Named rather than deleted from the signature so a
+ *        reader of an old call site finds the retirement instead of a silent no-op.
  * @param {string|null} p.instagramHandle vendors.instagram_handle
  * @param {string|null} p.travelNotes     vendors.travel_notes — the STATED policy
  * @returns {number} 0–1
@@ -132,7 +140,10 @@ function computeCompleteness(p = {}) {
     about              = null,
     aestheticTags      = null,
     rateMin            = null,
-    rateMax            = null,
+    // `rateMax` is deliberately NOT destructured here any more (TDW_07 P4b · F4). It is
+    // still accepted in the object — callers passing it are unaffected — but binding a
+    // name nothing reads is how a retired field looks alive to the next reader.
+    
     instagramHandle    = null,
     travelNotes        = null,
   } = p;
@@ -148,10 +159,9 @@ function computeCompleteness(p = {}) {
 
   const aboutTerm = hasText(about) ? 1 : 0;
   const tagsTerm  = clamp01(tagCount(aestheticTags) / MIN_TAGS);
-  // Rate is set only when BOTH bounds exist — requestDiscover (discover.js:11-12)
-  // requires both and rejects min>max, so a half-set rate is not a state the estate
-  // considers valid. Scoring it as half-complete would credit an invalid shape.
-  const rateTerm  = (rateMin != null && rateMax != null) ? 1 : 0;
+  // TDW_07 P4b · F4 — the rate term reads the ONE predicate. See rateMet's header for
+  // why `rate_max` stopped being part of the question.
+  const rateTerm  = rateMet({ rateMin }) ? 1 : 0;
   const heroTerm  = hasHero ? 1 : 0;
   const igTerm    = hasText(instagramHandle) ? 1 : 0;
   // See the header: the STATED policy, never the boolean. `open_to_travel` is deliberately
@@ -180,7 +190,10 @@ function completenessBreakdown(p = {}) {
     photos: { have: approvedPhotoCount, need: MIN_PORTFOLIO_IMAGES, met: approvedPhotoCount >= MIN_PORTFOLIO_IMAGES },
     about:  { met: hasText(p.about) },
     tags:   { have: tagCount(p.aestheticTags), need: MIN_TAGS, met: tagCount(p.aestheticTags) >= MIN_TAGS },
-    rate:   { met: p.rateMin != null && p.rateMax != null },
+    // TDW_07 P4b · F4 — the SAME predicate the score uses. Before this, the meter's hint
+    // and the score each re-authored the rule inline, so a change to one taught the vendor
+    // a gap the other did not score. One function, two callers, no drift.
+    rate:   { met: rateMet({ rateMin: p.rateMin }) },
     hero:   { met: !!p.hasHero },
     ig:     { met: hasText(p.instagramHandle) },
     travel: { met: hasText(p.travelNotes) },
@@ -225,6 +238,10 @@ function meterHints(p = {}, limit = 3) {
 module.exports = {
   computeCompleteness,
   completenessBreakdown,
+  // TDW_07 P4b · F4 — RE-EXPORTED from ./rateMet so the two consumers the ruling names
+  // (:154's score term and :183's breakdown) and any existing caller reaching for
+  // `profileScore.rateMet` all find one function. The declaration lives in the leaf.
+  rateMet,
   meterHints,
   SECTION_ORDER,
   TERM_WEIGHTS,

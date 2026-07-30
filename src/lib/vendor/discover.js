@@ -4,6 +4,18 @@
 
 const { portfolioSummary, MAX_PORTFOLIO_IMAGES } = require('./portfolio');
 const igImport = require('./igImport');
+// TDW_07 P4b · F1b — the ONE shaper. The preview mount below calls the identical function
+// the public feed calls; see src/lib/discover/shapeVendor.js for why parity had to become
+// a property of a shared call rather than of two payload builders agreeing.
+const { shapeVendorForDiscover } = require('../discover/shapeVendor');
+// TDW_07 P4b · F4 — the ONE rate predicate, shared with the completeness score so the gate
+// and the meter cannot drift on "is this vendor's rate set?". It lives in a LEAF module
+// (src/lib/vendor/rateMet.js) precisely so this import cannot close a cycle: profileScore.js
+// already requires THIS file for MIN_PORTFOLIO_IMAGES, and importing profileScore back left
+// one direction holding a stale empty exports object — the gate threw
+// `profileScore.rateMet is not a function` under the reversed load order. Caught by running
+// both orders. The leaf has no edges out, so no cycle can form through it.
+const { rateMet } = require('./rateMet');
 // TDW_07 P2 · D-2's floor RAISED 5 -> 6 at the ONE constant, CE-ruled at the P2 charter.
 // This single byte moves BOTH consumers by construction: the server-side approval gate at
 // :17 below, and src/lib/vendor/profileScore.js's photo term, which imports this name
@@ -13,10 +25,21 @@ const igImport = require('./igImport');
 const MIN_PORTFOLIO_IMAGES = 6;
 
 async function requestDiscover(supabase, vendorId, body) {
-  const { rate_min, rate_max, aesthetic_tags, pitch, instagram_handle, sample_image_ids } = body;
+  // TDW_07 P4b · F4 (WIDENED) — `rate_max` is no longer destructured. The submit form no
+  // longer sends it, the gate no longer asks for it, and :47's write no longer stores it.
+  // A body that still carries the key is accepted and ignored rather than rejected, so an
+  // old client cached in someone's browser does not start failing on a field we retired.
+  const { rate_min, aesthetic_tags, pitch, instagram_handle, sample_image_ids } = body;
 
-  if (rate_min == null || rate_max == null) return { ok: false, error: 'rate_min and rate_max are required.' };
-  if (Number(rate_min) > Number(rate_max))  return { ok: false, error: 'rate_min cannot exceed rate_max.' };
+  // THE GATE IS MIN-ONLY. Couples read a STARTING price; `rate_max` never reached a couple
+  // surface for a real vendor. Requiring an upper bound to request Discover was asking the
+  // vendor to invent a number nobody would read, and then blocking him on it.
+  //
+  // The min>max check retires WITH the bound it compared against — a comparison against a
+  // field the estate no longer collects is not a weaker guard, it is an unreachable one.
+  // `rateMet` is the same predicate the completeness score uses (profileScore.js), so the
+  // gate and the meter cannot disagree about whether this vendor's rate is set.
+  if (!rateMet({ rateMin: rate_min })) return { ok: false, error: 'rate_min is required.' };
   if (!aesthetic_tags?.length)              return { ok: false, error: 'At least one aesthetic tag required.' };
   if (aesthetic_tags.length > 10)           return { ok: false, error: 'Maximum 10 aesthetic tags.' };
 
@@ -44,7 +67,11 @@ async function requestDiscover(supabase, vendorId, body) {
   }
 
   // Update vendor profile fields
-  const vendorUpdate = { rate_min: Number(rate_min), rate_max: Number(rate_max), aesthetic_tags, discover_request_state: 'requested' };
+  // TDW_07 P4b · F4 — `rate_max` DROPPED from the write. The column is not dropped (ZERO
+  // DDL this sitting, and its CHECK is null-tolerant); it simply stops being written. Rows
+  // that already carry a max keep it untouched — this is a retirement, not a migration, and
+  // nothing here reaches back over existing data.
+  const vendorUpdate = { rate_min: Number(rate_min), aesthetic_tags, discover_request_state: 'requested' };
   if (instagram_handle) vendorUpdate.instagram_handle = instagram_handle;
   await supabase.from('vendors').update(vendorUpdate).eq('id', vendorId);
 
@@ -104,6 +131,83 @@ async function getDiscoverStatus(supabase, vendorId) {
   };
 }
 
+// ── TDW_07 P4b · F1b/F5 — THE PREVIEW'S DATA, THROUGH THE FEED'S OWN FUNCTION ──────────
+//
+// "See your profile as couples do" is only true if the sentence is mechanically true. This
+// function therefore does NOT build a vendor-shaped payload that resembles a card; it
+// assembles the same INPUT the public feed assembles and hands it to the same shaper
+// (src/lib/discover/shapeVendor.js). Parity is a property of the call, not of two
+// implementations being kept in step by attention.
+//
+// WHY THIS IS SERVER-SIDE AT ALL. The obvious cheap build is to let the pwa read /me plus
+// the portfolio and assemble the card itself. That is a second implementation of the
+// shape, in another language, in another repo, where nothing can prove it agrees — the
+// exact failure the spec's §3 guardrail names. One HTTP call that runs the real function
+// in the real process is the only version of this feature that cannot silently drift.
+//
+// WHAT THE PREVIEW SHOWS THAT THE FEED CANNOT. The feed's query filters
+// `discover_paused = false` and `discover_eligible = true`, so a paused or unapproved
+// vendor has no row to shape. His preview must still render — that is the whole of F5's
+// "reachable pre-approval". So this function reads the vendor's row directly and reports
+// the two truths the surface renders around the card:
+//   · `discover_paused`  → the pause banner (copy ⑤)
+//   · `is_live`          → whether couples can actually reach this card right now
+// Both are FACTS about production state, not preview-only decoration. A preview that
+// rendered a paused vendor as live would be the costume class one surface over.
+async function getDiscoverPreview(supabase, vendor) {
+  const vendorId = vendor.id;
+
+  // The approved rows, in `position` order — the identical query the feed runs at
+  // src/api/couple/discover.js, including the 0102 ordering authority. The shaper applies
+  // DISPLAY_PHOTO_LIMIT, so this is deliberately uncapped: capping here would be a second
+  // home for the five-photo rule, which is the thing F1b exists to prevent.
+  const { data: photos, error: photoErr } = await supabase
+    .from('vendor_portfolio')
+    .select('image_url, is_hero, position')
+    .eq('vendor_id', vendorId)
+    .eq('approval_state', 'approved')
+    .order('position',   { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (photoErr) {
+    // A preview with no photos is a HONEST preview of a profile whose photos could not be
+    // read — but it must not be mistaken for "this vendor has no photos". Reported, never
+    // swallowed into an empty array that looks like truth.
+    return { ok: false, error: 'Could not read your portfolio.' };
+  }
+
+  // FEATURED is read the same way the feed reads it — a live vendor_featured_submissions
+  // row — because the Manual honesty law is about the flag being TRUE, not about which
+  // mount asked. A vendor who is featured sees the eyebrow in his preview.
+  const { data: featRow } = await supabase
+    .from('vendor_featured_submissions')
+    .select('vendor_id')
+    .eq('vendor_id', vendorId)
+    .eq('state', 'approved')
+    .limit(1)
+    .maybeSingle();
+
+  const card = shapeVendorForDiscover(vendor, {
+    photos:   (photos || []).map(p => p.image_url).filter(Boolean),
+    featured: !!featRow,
+  });
+
+  return {
+    ok: true,
+    vendor: card,
+    // The two production truths the preview chrome renders. Named, not inferred from the
+    // card — the card is what couples see, these are the conditions under which they see it.
+    discover_paused:   vendor.discover_paused === true,
+    discover_eligible: vendor.discover_eligible === true,
+    is_live:           vendor.discover_eligible === true && vendor.discover_paused !== true,
+    // The approved count is the FULL count, not the displayed five. The preview's own
+    // footer tells the vendor how many of his photos reached the card, and that sentence
+    // needs both numbers to be honest.
+    approved_photo_count: (photos || []).length,
+    displayed_photo_count: card.photos.length,
+  };
+}
+
 async function withdrawRequest(supabase, vendorId) {
   const { data: req } = await supabase.from('vendor_discover_requests')
     .select('id, state').eq('vendor_id', vendorId)
@@ -121,4 +225,4 @@ async function withdrawRequest(supabase, vendorId) {
 // the enforced floor rather than minting a second copy of the number. Behaviour here is
 // unchanged — this line adds a name to the export object and nothing else. P2 raises the
 // constant at :6 from 5 to 6 and BOTH the gate and the completeness score move together.
-module.exports = { requestDiscover, getDiscoverStatus, withdrawRequest, MIN_PORTFOLIO_IMAGES };
+module.exports = { requestDiscover, getDiscoverStatus, getDiscoverPreview, withdrawRequest, MIN_PORTFOLIO_IMAGES };

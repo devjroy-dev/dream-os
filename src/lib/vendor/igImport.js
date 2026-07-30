@@ -24,9 +24,17 @@ const ESTATE_IMAGE_HOST = 'res.cloudinary.com';
 //
 // P3 left five values DECLARED UNKNOWN rather than guessing them. P4a settles
 // them from Meta's own current documentation, derived at authoring:
-//   U-1  SETTLED — api.instagram.com/oauth/authorize · scope
-//        `instagram_business_basic` ALONE (igOAuth.js, which also carries the
-//        chair correction: the charter's host was missing the `api.` subdomain).
+//   U-1  SETTLED — www.instagram.com/oauth/authorize · scope
+//        `instagram_business_basic` ALONE (igOAuth.js:122 holds the live constant).
+//        CORRECTED AT P4b (F-07.23): this line read `api.instagram.com` and was WRONG.
+//        The P4a seat "corrected" the charter's `instagram.com` to `api.instagram.com`,
+//        benched it, and wrote a mutation that reddened if anyone changed it back. Meta
+//        documents `www.instagram.com` for AUTHORIZE; `api.instagram.com` serves the TOKEN
+//        EXCHANGE only (:123). The wrong host survived a whole sitting because it does not
+//        404 — it 302s onward to the right place. A wrong value that works is more
+//        dangerous than one that fails. Production has been correct since the F-07.23 cure
+//        landed in igOAuth.js; this comment was the last copy of the wrong value, sitting
+//        one file away from the constant that disproves it.
 //   U-2  SETTLED — POST api.instagram.com/oauth/access_token for the code
 //        exchange; GET graph.instagram.com/access_token?grant_type=
 //        ig_exchange_token for the 60-day long-lived token.

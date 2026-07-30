@@ -8,12 +8,27 @@ const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-const { requestDiscover, getDiscoverStatus, withdrawRequest } = require('../../lib/vendor/discover');
+const { requestDiscover, getDiscoverStatus, getDiscoverPreview, withdrawRequest } = require('../../lib/vendor/discover');
 
 // GET /status
 router.get('/status', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const result   = await getDiscoverStatus(supabase, req.vendor.id);
+  return okRes(res, result);
+}));
+
+// ── GET /preview — TDW_07 P4b · F5 ────────────────────────────────────────────────────
+// The vendor's own card, shaped by the FEED'S function. Reachable pre-approval by design:
+// the spec's F5 calls that "the strongest self-serve motivation to hit the 6-photo floor",
+// so there is deliberately NO eligibility guard here. Auth + ownership only — a vendor may
+// always look at his own profile, in any state it is in.
+//
+// resolveVendor() attaches the FULL vendors row (select('*')), so the shaper receives the
+// same columns the public feed query selects without a second read.
+router.get('/preview', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const result   = await getDiscoverPreview(supabase, req.vendor);
+  if (!result.ok) return errRes(res, 500, result.error);
   return okRes(res, result);
 }));
 
