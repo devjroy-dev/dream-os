@@ -283,22 +283,27 @@ router.post('/deauthorize', asyncHandler(async (req, res) => {
 // `confirmation_code`. The url must be reachable and must tell the person the
 // status of their request.
 //
-// ┌─ SCOPE OF DELETION — A FOUNDER RULING IS OWED BEFORE APP REVIEW ──────────┐
-// │ WHAT THIS ENDPOINT DELETES TODAY: the connection row — the access token   │
-// │ and the Instagram-scoped user id. That is unambiguously platform data and │
-// │ its deletion is not a judgment call.                                      │
+// ┌─ SCOPE OF DELETION — F-07.20, FOUNDER-RULED 2026-07-30 ───────────────────┐
+// │ THE RULING: 「 delete only the connection not the photos 」                 │
 // │                                                                           │
-// │ WHAT IT DELIBERATELY DOES NOT DELETE: the mirrored photos. They are the   │
-// │ vendor's own portfolio, copied into the estate's storage with their       │
-// │ explicit pick-by-pick consent, and they are load-bearing for a live       │
-// │ storefront. Silently emptying a paying vendor's Discover profile on a     │
-// │ callback is not a thing an executor should decide.                        │
+// │ DELETED: the connection row — the access token and the Instagram-scoped   │
+// │ user id. Unambiguously platform data; its deletion was never a judgment   │
+// │ call.                                                                     │
 // │                                                                           │
-// │ THE TENSION IS REAL AND IS NOT PAPERED: a strict reading of "delete data  │
-// │ obtained through the platform" reaches the photos too. The status page    │
-// │ therefore STATES what was deleted and what was kept, and gives a route to │
-// │ remove the photos — so the answer is honest either way while the ruling   │
-// │ is outstanding. Filed as F-07.20.                                         │
+// │ KEPT: the mirrored photos. They are the vendor's own portfolio, copied    │
+// │ into the estate's storage with their explicit pick-by-pick consent, and   │
+// │ they are load-bearing for a live storefront. This is the addendum's law   │
+// │ reaching its logical end — Instagram is a SOURCE, never a dependency —    │
+// │ and a deletion callback that emptied a paying vendor's Discover profile   │
+// │ would make Instagram a dependency retroactively.                          │
+// │                                                                           │
+// │ THE TENSION IS REAL AND STAYS NAMED: a strict reading of "delete data     │
+// │ obtained through the platform" reaches the photos too. The ruling is that │
+// │ consent-copied content becomes the vendor's own, not Meta's. So the       │
+// │ status page STATES what was deleted and what was kept and offers a route  │
+// │ to remove the photos — the honest posture under a ruling, not a hedge     │
+// │ against an absent one. If Meta ever disputes the reading, the argument is │
+// │ recorded here rather than reconstructed.                                  │
 // └───────────────────────────────────────────────────────────────────────────┘
 router.post('/data-deletion', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
