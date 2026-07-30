@@ -47,6 +47,7 @@ admin_config additive keys (no migration if KV): `discover.rank.w_spotlight`, `.
 4. Feed excludes `discover_paused` (0081 predicate).
 
 ### P2 — The Profile Studio (vendor-side control room)
+> **SUPERSESSION (CE-114, founder-ruled in-session at P2):** the surface shipped as **"Discover Profile"** at `/vendor/discover/profile` — 「 And discover profile is perfect 」 (Studio already names a tab). Every "Profile Studio" reference below reads as Discover Profile.
 `app/vendor/profile/page.tsx` (new; portfolio page folds in or redirects — executor maps existing routes and preserves deep links):
 - **Sections:** Hero image · About (editorial measure, char guidance not limits) · Portfolio (P3's manager) · Aesthetic tags (chip picker from the canonical tag set) · Services list · Travel policy · Starting rate + **show/hide toggle** (D-1) · IG handle (strips @, mirrors 0005 convention) · **Pause profile** switch with plain consequences copy ("Hidden from Discover. Your approval stays. Enquiries already in flight still reach you.")
 - **Spotlight meter:** the score as a brass arc + up to three actionable hints, each computed from real gaps ("Add {6−n} more photos" · "Complete your travel policy" · "Your last enquiry sat {n}h — faster replies raise your score"). Hints map 1:1 to sections below — tap scrolls.
