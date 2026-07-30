@@ -25,7 +25,7 @@
 |---|---|
 | `lib/img.ts` | **NEW** — the ONE variant table, the LQIP chain, the pass-through rule |
 | `lib/frost-api/img.ts`, `lib/vendor/img.ts` | **NEW** — addresses only, `export * from '../img'` |
-| `app/vendor/portfolio/page.tsx` | the manager: grid, pointer drag, cover, caption, delete-with-confirm, cap, vetoed copy |
+| `app/vendor/portfolio/page.tsx` | the manager: grid, pointer drag, cover, caption, delete-with-confirm, cap, vetoed copy, **the four state filter tabs (retained) + the filter/drag interlock** |
 | `lib/vendor/api/vendor.ts` | `reorderPortfolio` |
 | `lib/vendor/types/vendor.ts` | `position?`, `max_portfolio_images?`, `ig_import_enabled?` |
 | `app/(frost)/frost/canvas/discover/page.tsx` | variants + LQIP, **render-only** |
@@ -50,7 +50,7 @@ b07_p2_bench         48/48
 b07_p3_bench         49/49   NEW
 tdw07_p1_discover    35/35
 tdw07_p2_profile     36/36
-tdw07_p3_portfolio   61/61   NEW
+tdw07_p3_portfolio   70/70   NEW
 ```
 `b07_p1_bench` prints **68/68** unpaired and says so loudly; a p1 number without the paired word is unreadable.
 
@@ -62,7 +62,7 @@ tdw07_p3_portfolio   61/61   NEW
 
 **Backend (12):** M-1 cap 20→21 ⇒ §1.1/§1.6 · M-2 `held`→0 ⇒ §1.4/§1.6/§1.7 · M-3 position→0 ⇒ §2.1 · M-4 `writeOrder` drops `is_hero` ⇒ §3.2/§3.5/§3.6/**§5.2** · M-5 completeness check defanged ⇒ §4.1/§4.4 · M-6 delete stops re-indexing ⇒ §5.1 · M-7 export removed ⇒ §6.1 FAIL then `TypeError: P.deleteFromCloudinary is not a function` · M-8 warn neutered ⇒ §7.1 · M-9 `isEstateUrl`→true ⇒ §8.2 · M-10 seam returns `[]` ⇒ §8.3 · M-11 `approval_state` raw ⇒ §9.3 · M-12 feed order reverted ⇒ §10.1/§10.2. **All red.**
 
-**pwa (10):** W-1 `w_800`→`w_400` · W-2 the `^v\d+$` rule dropped · W-3 the twin re-declares a table · W-4 badge keyed on `is_hero` · W-5 cap hard-coded · W-6′ a rendered H1 reappears · W-7′ the config flag read again · W-8 a layer loses `pointerEvents` · plus the two originals re-run after re-aiming. **All red.**
+**pwa (19):** W-1 `w_800`→`w_400` · W-2 the `^v\d+$` rule dropped · W-3 the twin re-declares a table · W-4 badge keyed on `is_hero` · W-5 cap hard-coded · W-6′ a rendered H1 reappears · W-7′ the config flag read again · W-8 a layer loses `pointerEvents` · plus the two originals re-run after re-aiming · **T-1 tabs deleted again ⇒ §9.1** · T-2 the read stops honouring the filter ⇒ §9.2 · T-3 the interlock always permits ⇒ §9.3 · T-4/T-5 the pointer handlers stop consulting it ⇒ §9.4 · T-6 G3 never renders ⇒ §9.6 · T-7 the ruled string reworded ⇒ §9.7 · T-8 the badge keys on `is_hero` again ⇒ §4.3 · T-9 the sheet reverts to the render index ⇒ §4.7. **All red.**
 
 **M-7 is the one to keep:** removing F-07.12's cure reproduces the production symptom byte-for-byte.
 
@@ -91,6 +91,12 @@ tdw07_p3_portfolio   61/61   NEW
 
 **(f) KICKOFF CORRECTIONS, chair-owned as №7–№12.** The upload is **signed**, not unsigned · `vendor_portfolio` stores **no** `cloudinary_public_id` · there is **no column 9** (13 columns at ordinals 1–8, 10–14; a gap is a dropped column's fingerprint per `db/queries/public_schema_dump.sql:119`) · the feed's order lived at `:111/:112` · the inbound-edge census is **eleven**, not nine · the feed ships **five** photos, so twenty reach only the detail lookbook.
 
+**(h) I DELETED A LIVE CONTROL AND DID NOT REPORT IT — filed as the law requires.** The live surface carried state filter tabs (`STATE_FILTERS = ['all','approved','pending','rejected']`, line 30, driving `fetchPortfolio(vendorId, filter)`). My first rewrite had none and hard-coded `'all'`. There was a real conflict underneath — a filtered grid holds a subset, so a drag would post an incomplete id list, which the server correctly fail-closes on — **and I resolved it by deletion instead of by report. That is §0.2's exact subject.** None of the then-61 cells could catch it, because a bench asserts only what it was told to look for. **The founder's screenshot surfaced it, not the process.** Chair ruling (a): tabs restored, drag inert under any non-`all` filter, with the founder's vetoed line `Switch to All to reorder — filters show only some of your photos.` rendering only while a filter is active. Nine mutations (T-1…T-9) now guard the answer, T-1 being the deletion itself.
+
+**(h·i) MINTED PRACTICE — THE CONTROL INVENTORY.** Any rewrite of a live surface must carry, in its read-first, an inventory of **every interactive control on the page it replaces**, each accounted as *kept*, *moved*, or *removed-by-ruling*. A bench cannot catch what nobody told it to look for; an inventory makes "nobody told it" impossible. For the docs ZIP.
+
+**(h·ii) TWO INDEX BUGS THE RESTORATION EXPOSED.** With tabs back, `idx === 0` is no longer the cover — under a filter, render index 0 is just the first *visible* tile. The grid badge and both of the sheet's cover checks now key on the **row's own `position`**, the server's word, rather than on a render index. `§4.3`/`§4.7` guard it, T-8/T-9 redden it. **These were latent in the tab-less build and would have shipped as a wrong badge the moment tabs ever returned.**
+
 **(g) A HARNESS ERROR, DISCLOSED.** My first mutation runner leaked a `cd /tmp`, so M-2/M-3/M-4's anchors missed and three identical `43/49` readings were all still M-1. Tree restored, verified byte-identical and green, ledger re-run with absolute paths and a restore-check after every step.
 
 ---
@@ -104,6 +110,8 @@ Self-proving posture: `position` is a PostgreSQL keyword of the non-reserved cla
 ---
 
 ## 7 · THE WITNESS WALK — fixture-derived, not assumed
+
+**FOUNDER WITNESSES RECORDED (2026-07-30, production):** 0102 applied — readback A implied by C's successful select of `position`; **readback B green** (`vendor_portfolio_vendor_position_idx`, one row); **readback C green** on the one vendor holding photos (`2, 0, 1, true, true`). Statement 1 did not error, which **settles the sitting's one named unknown by the self-proving route: `position` is lawful as a column name here, proven at apply rather than trusted.** `ok_cover` passed **vacuously** — its `bool_or(is_hero) = false` branch was satisfied because no hero row exists anywhere in production, so the hero-at-position-0 property was not exercised by the migration; it is proven mechanically at `b07_p3_bench` §3.1/§3.4/§5.2 and live at walk step 4. **The couple-facing card check PASSED — Swati's Frost card order identical pre/post-0102, so the invisible-migration acceptance property holds on production.** One authoring error of mine: the in-file comment predicted "two rows"; only one vendor holds photos, and `9888294440` correctly does not appear at all — which the comment's own next clause said, contradicting its own expectation line.
 
 **Fixture state at authoring:** the founder's test account **9888294440 holds 0 portfolio rows**; **Swati holds 2** (both approved, **zero hero rows**). Production is LIVE and Swati's profile may fill mid-walk — **re-run the fixture SELECT if staleness is suspected.**
 
@@ -119,7 +127,8 @@ Self-proving posture: `position` is a PostgreSQL keyword of the non-reserved cla
 8. **The cap.** This costs tapping: upload to **20**. At 20 the Upload control is disabled and `You've reached 20 photos. Remove one to add another.` shows. Then try `curl`-ing the register door directly — the server refuses with the same sentence, which is cap sites 1 and 3 speaking.
 9. **The jank step — the founder's own, on his mid-range Android.** Two subjects: (i) normal feed scroll, which still ships five per card, and (ii) **the detail lookbook at a 20-photo vendor**, which is where the twenty live per Fork 7(b). Declare what you see; do not let me claim it.
 10. **Admin delete — F-07.12's round trip.** In `/admin/vendors/portfolio`, delete a photo. **Before this sitting that returned 500 and the row survived.** It should now delete, and the surviving positions stay contiguous.
-11. **GATED-DARK:** every IG step is dark this sitting. There is nothing to click and nothing should appear.
+11. **The tabs and the interlock.** Tap `PENDING`. The grid filters. The reorder hint is replaced by `Switch to All to reorder — filters show only some of your photos.` **Try to drag — nothing should lift.** Tap `ALL`: the hint returns and drag works again. Check the `COVER` badge sits on the right photo in **both** views.
+12. **GATED-DARK:** every IG step is dark this sitting. There is nothing to click and nothing should appear.
 
 ---
 
