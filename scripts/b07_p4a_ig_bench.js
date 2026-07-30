@@ -375,9 +375,27 @@ section('§7 · LEAST PRIVILEGE + THE SECRETS LAW, as source properties');
 {
   ok('§7.1 exactly ONE scope is requested', O.IG_SCOPE === 'instagram_business_basic', O.IG_SCOPE);
   const url = O.authorizeUrl('STATE');
-  ok('§7.2 the authorize URL uses api.instagram.com — the charter said instagram.com '
-     + 'and was wrong by one subdomain (chair correction №5)',
-     url.startsWith('https://api.instagram.com/oauth/authorize?'), url.slice(0, 60));
+  // ── §7.2 · RE-AUTHORED. THE CELL WAS ENFORCING MY OWN ERROR (F-07.23). ────
+  // It read `api.instagram.com` and cited "chair correction №5". That correction
+  // was itself wrong: Meta documents www.instagram.com/oauth/authorize as the
+  // authorize endpoint, and api.instagram.com as the TOKEN EXCHANGE host only.
+  // The wrong value never failed a test because it 302s to the right place — so
+  // the desktop walk passed and only the founder's iOS device exposed it, the
+  // extra redirect hop being where the Instagram app hijacked the navigation.
+  //
+  // A CELL THAT ASSERTS A CONSTANT AGAINST ITSELF CANNOT CATCH A WRONG CONSTANT.
+  // §7.2a below is the cell that could have: it names the ONE host that must not
+  // appear, sourced from documentation rather than from the source under test.
+  ok('§7.2 the authorize URL uses www.instagram.com — Meta\'s documented endpoint',
+     url.startsWith('https://www.instagram.com/oauth/authorize?'), url.slice(0, 60));
+  ok('§7.2a the authorize URL is NOT api.instagram.com — that host serves the '
+     + 'token exchange, and routing authorize through it forces a 302 that iOS '
+     + 'hands to the Instagram app (F-07.23)',
+     !url.includes('api.instagram.com'), url.slice(0, 60));
+  ok('§7.2b the three hosts stay distinct and correctly assigned',
+     O.AUTHORIZE_URL.includes('www.instagram.com')
+       && O.TOKEN_URL.includes('api.instagram.com')
+       && O.GRAPH_HOST.includes('graph.instagram.com'));
   ok('§7.3 the authorize URL carries response_type=code and the state', url.includes('response_type=code') && url.includes('state=STATE'));
   ok('§7.4 THE APP SECRET IS NEVER IN THE AUTHORIZE URL — that URL is a browser '
      + 'navigation and lands in history, referrers and screenshots',
@@ -589,7 +607,7 @@ console.log('    N-5  igImport.js    isConfigured drops the path assertion   ⇒
 console.log('    N-6  igOAuth.js     refreshDecision returns refresh on dead ⇒ §5.4 RED');
 console.log('    N-7  igImport.js    listInstagramMedia ignores paging.next  ⇒ §6.1/§6.2 RED');
 console.log('    N-8  igImport.js    IG_MAX_PAGES ceiling removed            ⇒ §6.6 RED');
-console.log('    N-9  igOAuth.js     AUTHORIZE_URL back to instagram.com     ⇒ §7.2 RED');
+console.log('    N-9  igOAuth.js     AUTHORIZE_URL back to api.instagram.com ⇒ §7.2/§7.2a RED');
 console.log('    N-10 ig.js          spendState moved AFTER exchangeCode     ⇒ §8.1 RED');
 console.log('    N-11 ig.js          /import stops asserting the connection  ⇒ §8.5 RED');
 console.log('    N-12 igImport.js    a refusal returns { ok:true, items:[] } ⇒ §8.3 of b07_p3 RED');

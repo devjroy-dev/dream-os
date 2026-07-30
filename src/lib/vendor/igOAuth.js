@@ -10,13 +10,36 @@
 // from Meta's own current documentation at authoring rather than recalled, and
 // it is the ONE home for every Instagram network call that carries a secret.
 //
-// ── CHAIR CORRECTION, OWNED AND CARRIED (P4a read-first, №5) ─────────────────
+// ── F-07.23 · MY CORRECTION WAS THE ERROR. RECORDED IN FULL. ────────────────
 // The P4 charter's §D gave the authorize host as `instagram.com/oauth/authorize`.
-// IT IS WRONG BY ONE SUBDOMAIN. The host is `api.instagram.com`. A byte-exact URL
-// that is wrong does not degrade — it 404s, and the failure surfaces to the
-// vendor as a dead button. Derived at authoring from Meta's Business Login
-// documentation and two independent 2026 references; recorded here rather than
-// silently corrected, per CE-40.
+// At read-first I "corrected" it to `api.instagram.com/oauth/authorize`, filed
+// that as chair correction №5, benched it at §7.2, and wrote a mutation (N-9)
+// that reddened if anyone changed it back. THE CHARTER WAS CLOSER TO RIGHT THAN
+// I WAS: it was missing only `www.`.
+//
+// META'S OWN DOCUMENTATION: `https://www.instagram.com/oauth/authorize` is the
+// authorize endpoint. `api.instagram.com` serves the TOKEN EXCHANGE only.
+//
+// WHY THE WRONG VALUE LOOKED RIGHT FOR A WHOLE SITTING: api.instagram.com/oauth/
+// authorize does not 404 — it 302s onward to www.instagram.com/consent/. So the
+// desktop walk passed, the consent screen rendered, and the app id in the URL
+// matched. A wrong value that WORKS is far more dangerous than one that fails,
+// because nothing in the bench could see it: every cell asserted the constant
+// against itself, which is the tautology class this sitting found three times
+// elsewhere and did not think to look for HERE.
+//
+// WHAT IT COST: the founder's iOS walk failed with the Instagram app opening to
+// a blank error. Apple suppresses Universal Links on JavaScript-initiated
+// navigation — so `window.location.href` to Instagram is safe — but the SERVER
+// 302 that our wrong host forced is a fresh navigation, unsuppressed, and the
+// Instagram app claims www.instagram.com. The extra hop WAS the bug. Removing it
+// removes the interception point.
+//
+// STATED AS A HYPOTHESIS, NOT A CURE: the mechanism is coherent and the value is
+// correct by documentation either way, so this ships regardless of whether it
+// fixes iOS. If the founder's next iOS walk still fails, the diagnosis is wrong
+// and the next suspect is the consent page itself — and this comment should be
+// amended rather than quietly left standing.
 //
 // ── THE SECRETS LAW, AT FULL WEIGHT ─────────────────────────────────────────
 // IG_APP_SECRET and every access token are secrets. NOTHING in this file writes
@@ -50,7 +73,7 @@ const IG_CALLBACK_PATH = '/api/v2/vendor/ig/callback';
 // moved them once already (Basic Display is dead), and the next reader must find
 // one place to change rather than eleven — the F-05.20 class, which this estate
 // has paid for.
-const AUTHORIZE_URL   = 'https://api.instagram.com/oauth/authorize';
+const AUTHORIZE_URL   = 'https://www.instagram.com/oauth/authorize';
 const TOKEN_URL       = 'https://api.instagram.com/oauth/access_token';
 const GRAPH_HOST      = 'https://graph.instagram.com';
 
