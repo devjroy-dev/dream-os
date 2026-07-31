@@ -308,23 +308,25 @@ section('§10 · THE FEED (Fork 1(a) invisible-migration + Fork 7(b))');
   ok('§10.3 but is_hero SURVIVES as the score\'s input — the term is untouched',
     /if \(p\.is_hero\) hasHero\[p\.vendor_id\] = true;/.test(feed));
   ok('§10.4 :378\'s heroPhotoMap selector is untouched', /\.eq\('is_hero', true\)/.test(feed));
-  // ── LABELED AMENDMENT (TDW_07 P4b · F1b) — RE-AIMED AT THE RULE'S NEW HOME, AND
-  // STRENGTHENED FROM A GREP TO A BEHAVIOUR. Fork 7(b) is unchanged in substance: the feed
-  // still ships FIVE. What changed is WHERE the rule lives — it moved out of the feed's
-  // accumulation loop into shapeVendor.js's DISPLAY_PHOTO_LIMIT so the vendor's preview
-  // mount obeys the identical rule. The old cell grepped the loop's `< 5` literal and would
-  // now redden over a move that changed no output, which is the false-title class. It is
-  // re-authored, and it now EXECUTES the shaper instead of reading it: a grep can be
-  // satisfied by a constant nobody applies.
-  const { shapeVendorForDiscover, DISPLAY_PHOTO_LIMIT } = require(path.join(ROOT, 'src/lib/discover/shapeVendor'));
+  // ── LABELED AMENDMENT, SECOND TIME (TDW_07 MICRO-2) — FORK 7(b) IS SUPERSEDED. ───────
+  // P3 ruled "the feed stays at five" and this cell defended it. P4b moved that five to one
+  // home and the cell was re-aimed. The FOUNDER has now retired the rule itself — "couples
+  // should be able to see all approved photos on discover" — so the doctrine this cell was
+  // built to protect no longer stands.
+  //
+  // A bench defending a superseded ruling is the worst kind of green, so the cells invert
+  // rather than soften: they now assert the cap is GONE, at the shaper and at both legs of
+  // the feed. P3's own ruling is named as superseded rather than quietly dropped, because a
+  // future reader finding Fork 7(b) in the P3 handover needs to find its end here.
+  const { shapeVendorForDiscover } = require(path.join(ROOT, 'src/lib/discover/shapeVendor'));
   const twentyPhotos = Array.from({ length: 20 }, (_, i) => `https://cdn.example/p${i}.jpg`);
   const shapedTwenty = shapeVendorForDiscover({ id: 'v', rate_display: true }, { photos: twentyPhotos });
-  ok('§10.5 Fork 7(b) — a twenty-photo vendor still ships FIVE to the card, proven by running the shaper',
-    shapedTwenty.photos.length === 5 && DISPLAY_PHOTO_LIMIT === 5, `got ${shapedTwenty.photos.length}`);
-  ok('§10.5b the five are the FIRST five in position order — the cap takes the front, never a sample',
-    shapedTwenty.photos.join(',') === twentyPhotos.slice(0, 5).join(','));
-  ok('§10.5c the rule has ONE home — the feed loop no longer carries its own cap literal',
-    !/photoMap\[p\.vendor_id\]\.length < 5/.test(feed) && /DISPLAY_PHOTO_LIMIT/.test(feedRaw));
+  ok('§10.5 Fork 7(b) SUPERSEDED — a twenty-photo vendor ships all twenty, proven by running the shaper',
+    shapedTwenty.photos.length === 20, `got ${shapedTwenty.photos.length}`);
+  ok('§10.5b order is preserved exactly — the shaper passes through, it does not sample',
+    shapedTwenty.photos.join(',') === twentyPhotos.join(','));
+  ok('§10.5c NO cap literal survives anywhere in the feed — not the loop, not the demo leg',
+    !/photoMap\[p\.vendor_id\]\.length < 5/.test(feed) && !/DISPLAY_PHOTO_LIMIT/.test(feed));
 }
 {
   const collab = codeOf('src/api/vendor/collab.js');

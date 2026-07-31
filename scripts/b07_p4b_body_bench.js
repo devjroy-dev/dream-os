@@ -61,15 +61,21 @@ sec('§1 · THE SHAPER EXISTS AND IS THE ONE AUTHOR (F1b)');
 
 ok('§1.1 shapeVendorForDiscover is exported and callable',
   typeof shaper.shapeVendorForDiscover === 'function');
-ok('§1.2 DISPLAY_PHOTO_LIMIT is the five-photo rule at ONE named constant',
-  shaper.DISPLAY_PHOTO_LIMIT === 5, `got ${shaper.DISPLAY_PHOTO_LIMIT}`);
+// ── LABELED AMENDMENT (TDW_07 MICRO-2) — THE CAP IS OVERTURNED BY FOUNDER RULING. ──────
+// This asserted DISPLAY_PHOTO_LIMIT === 5. The founder retired the rule outright
+// ("couples should be able to see all approved photos on discover"), superseding P3's
+// Fork 7(b). The cell is INVERTED, not deleted: it now pins that the constant is GONE
+// rather than zeroed or renamed, because a retired rule left exported at a sentinel value
+// is how it gets re-consumed by accident.
+ok('§1.2 DISPLAY_PHOTO_LIMIT is RETIRED — the constant is absent, not set to some sentinel',
+  !('DISPLAY_PHOTO_LIMIT' in shaper), `still exported as ${shaper.DISPLAY_PHOTO_LIMIT}`);
 ok('§1.3 the feed IMPORTS the shaper rather than shaping inline',
   /require\('\.\.\/\.\.\/lib\/discover\/shapeVendor'\)/.test(F) &&
   /\.\.\.shapeVendorForDiscover\(v, \{/.test(F));
 ok('§1.4 the feed no longer carries its own cap literal — the rule has one home',
   !/photoMap\[p\.vendor_id\]\.length < 5/.test(F));
-ok('§1.5 the demo leg reads the SAME constant, not a second literal 5',
-  /\.slice\(0, DISPLAY_PHOTO_LIMIT\)/.test(F) && !/\.slice\(0, 5\)/.test(F));
+ok('§1.5 the demo leg carries NO cap either — the rule died on both legs, not just the real one',
+  !/\.slice\(0, DISPLAY_PHOTO_LIMIT\)/.test(F) && !/\.slice\(0, 5\)/.test(F));
 ok('§1.6 normalizeIgHandle was MOVED, not copied — one definition in the estate',
   !/^function normalizeIgHandle/m.test(F) && /^function normalizeIgHandle/m.test(S));
 ok('§1.7 _rank_score is appended at the FEED, never inside the shared shaper',
@@ -86,10 +92,18 @@ const vRow = {
 };
 
 const shapedFull = shaper.shapeVendorForDiscover(vRow, { photos: twenty, featured: false });
-ok('§2.1 a twenty-photo vendor ships exactly FIVE to the card',
-  shapedFull.photos.length === 5, `got ${shapedFull.photos.length}`);
-ok('§2.2 the five are the FIRST five in order — the cap takes the front, never a sample',
-  shapedFull.photos.join(',') === twenty.slice(0, 5).join(','));
+// LABELED AMENDMENT (MICRO-2) — the founder's ruling inverts these two. They asserted the
+// cap; they now assert its absence, and they are STRONGER for it: an off-by-one or a stray
+// slice anywhere in the shaper reddens, where the old pair would have passed on any
+// truncation to five.
+ok('§2.1 a twenty-photo vendor ships ALL TWENTY to the card — the cap is gone',
+  shapedFull.photos.length === 20, `got ${shapedFull.photos.length}`);
+ok('§2.2 order is preserved exactly — pass-through, never a reordering or a sample',
+  shapedFull.photos.join(',') === twenty.join(','));
+// The ceiling is the PORTFOLIO's, not the card's. Nothing in the shaper asserts a number,
+// so a vendor holding fewer than twenty is bounded by his own rows and nothing else.
+ok('§2.2b a nine-photo vendor ships nine — no floor, no pad, no cap',
+  shaper.shapeVendorForDiscover(vRow, { photos: twenty.slice(0, 9) }).photos.length === 9);
 ok('§2.3 the handle is normalised — the "@" never reaches a deep link',
   shapedFull.instagram_handle === 'swati.roy', `got ${shapedFull.instagram_handle}`);
 ok('§2.4 the enquire link is built from the routing handle',
@@ -215,6 +229,35 @@ ok('§5.25 rate_max is DORMANT-BY-COMMENT in ALLOWED_FIELDS, not deleted from hi
   /\/\/ 'rate_max',/.test(M) && !/'aesthetic_tags', 'rate_min', 'rate_max',/.test(M));
 ok('§5.26 ZERO DDL — this sitting adds no migration',
   fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => /^01(0[5-9]|[1-9]\d)/.test(f)).length === 0);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+sec('§5b · MICRO-2 — THE FOUNDER-CHOSEN GATE STRING, AND THE CAP\'S SUPERSESSION');
+
+// A veto is on the BYTES. Asserted verbatim, not by shape.
+ok('§5b.1 the gate speaks the founder\'s string, byte-exact',
+  V.includes("'Add your starting rate to request Discover.'"));
+ok('§5b.2 the technical placeholder it replaced is gone',
+  !/'rate_min is required\.'/.test(V));
+// SELF-CAUGHT, SECOND INSTANCE OF ONE DEFECT, DISCLOSED RATHER THAN QUIETLY FIXED.
+// This cell first read `!/rate_min is required/.test(V)` against RAW text and failed —
+// because the cure's own comment QUOTES the placeholder it replaced. Prose read as
+// mechanism: the exact defect §3.4 hit last sitting, which is why `codeOf()` exists twenty
+// lines up in this same file. I wrote the bug again with the cure already in hand.
+// It is also re-aimed at something worth asserting: the original was a restatement of
+// §5b.2, and a cell that repeats its neighbour buys nothing.
+const V_CODE_GATE = codeOf(VDISC);
+ok('§5b.3 the retired placeholder survives ONLY in the comment that explains it, never in code',
+  !/rate_min is required/.test(V_CODE_GATE) && /rate_min is required/.test(V));
+
+// The supersession must be findable FROM the shaper, or a future reader re-derives Fork 7(b)
+// from the P3 handover and re-caps the card. F-06.85's standing law: a sentence conditioned
+// on a mechanical fact names the mechanism in-comment.
+ok('§5b.4 the shaper records WHICH rulings the founder\'s overturn supersedes',
+  /Fork 7\(b\)/.test(S) && /SUPERSEDED/.test(S) && /P6/.test(S));
+ok('§5b.5 the payload delta is DERIVED in-file, not hand-waved',
+  /rolling window of two|ROLLING WINDOW OF TWO/i.test(S) && /46\.9KB|11\.7KB/.test(S));
+ok('§5b.6 the ceiling is named as the portfolio\'s, not re-asserted by the card',
+  /MAX_PORTFOLIO_IMAGES/.test(S) && /portfolio\.js:24/.test(S));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 sec('§6 · F-07.17 · α · AND THE COMMITTED HANDOVER');

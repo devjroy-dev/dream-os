@@ -39,7 +39,13 @@ async function requestDiscover(supabase, vendorId, body) {
   // field the estate no longer collects is not a weaker guard, it is an unreachable one.
   // `rateMet` is the same predicate the completeness score uses (profileScore.js), so the
   // gate and the meter cannot disagree about whether this vendor's rate is set.
-  if (!rateMet({ rateMin: rate_min })) return { ok: false, error: 'rate_min is required.' };
+  // TDW_07 MICRO-2 — FOUNDER-CHOSEN STRING, byte-exact. The P4b seat shipped the technical
+  // register ("rate_min is required.") as a §0.2 surface awaiting veto; this is the veto.
+  // It names the ACTION and the CONSEQUENCE — a vendor reads what to do and why — where a
+  // column name told him only which field the server disliked.
+  if (!rateMet({ rateMin: rate_min })) {
+    return { ok: false, error: 'Add your starting rate to request Discover.' };
+  }
   if (!aesthetic_tags?.length)              return { ok: false, error: 'At least one aesthetic tag required.' };
   if (aesthetic_tags.length > 10)           return { ok: false, error: 'Maximum 10 aesthetic tags.' };
 

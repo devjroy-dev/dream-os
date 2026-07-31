@@ -41,23 +41,45 @@ const { waNumberFor } = require('../waNumbers');
 // different number than the live card would be a lie the vendor could not see.
 const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
-// ── THE FIVE-PHOTO DISPLAY RULE — ONE HOME (TDW_07 P3 · Fork 7(b), chair-ruled) ────────
-// D-2 raises the portfolio to twenty; twenty does NOT reach a card. Before P4b this cap
-// lived inside the feed's photo-accumulation loop (couple/discover.js:135). It moved here
-// because the preview must obey the identical rule: a vendor holding ten approved photos
-// must see FIVE in his preview, exactly as a couple sees five, or the preview teaches him
-// his card shows more than it does.
+// ── THE DISPLAY CAP IS OVERTURNED — FOUNDER RULING, TDW_07 MICRO-2 ───────────────────
+// FOUNDER'S WORD, 2026-07-31: "couples should be able to see all approved photos on
+// discover". The card carries EVERY approved photo. There is no display cap.
 //
-// CONSEQUENCE, DISCLOSED: the feed's `photoMap` now accumulates every approved row rather
-// than stopping at five, and this function slices. The rendered output is byte-identical —
-// the same first five in the same `position` order — but the intermediate array is longer.
-// That is the price of one home, and it is the right price: the alternative is capping in
-// two loops and calling the agreement a rule.
+// WHAT THIS SUPERSEDES, NAMED SO NOBODY RE-DERIVES THE OLD RULE:
+//   · P3's Fork 7(b) ("the feed stays at five", chair-ruled) — SUPERSEDED.
+//   · P4b's DISPLAY_PHOTO_LIMIT, which moved that five to one home — the home was right,
+//     the number is now gone. The constant is retired with the rule it held.
+//   · P6's twice-named inheritance ("in-card paging pages through THESE FIVE unless P6
+//     re-rules the payload") — RESOLVED IN ADVANCE BY FOUNDER RULING. P6 inherits the full
+//     set, and does not need to re-rule the payload.
 //
-// INHERITED DECISION, NAMED FOR P6 (carried forward verbatim in substance from the site
-// this moved from): P6's in-card horizontal paging pages through THESE FIVE unless P6
-// re-rules the payload.
-const DISPLAY_PHOTO_LIMIT = 5;
+// THE CEILING STILL EXISTS, BY CONSTRUCTION RATHER THAN BY CAP: a vendor cannot hold more
+// than MAX_PORTFOLIO_IMAGES (20, src/lib/vendor/portfolio.js:24) approved rows, so "all
+// approved" is bounded at twenty without this file asserting a number. That is the right
+// place for the bound — the portfolio owns how many photos exist; the card does not get a
+// second opinion about how many of them count.
+//
+// ── THE PAYLOAD DELTA, DERIVED NOT ASSUMED ───────────────────────────────────────────
+// P3 capped at five because "quadrupling every card's payload is the jank the spec's own
+// measure exists to catch". Measured at this tip, that reasoning was aimed at the wrong
+// quantity, and the founder's overturn is better founded than the cap was:
+//
+//   · The JSON delta is URL TEXT. A page is 20 vendors (couple/discover.js:44) and a
+//     storage URL is ~120 bytes, so the worst case — every vendor at the 20-photo ceiling —
+//     moves the page from ~11.7KB to ~46.9KB of photo URLs. Real, bounded, and small
+//     against a single card image.
+//   · IMAGE BYTES DO NOT MOVE ON CARD LOAD. The deck preloads a ROLLING WINDOW OF TWO
+//     (canvas page.tsx:652, `imageIdx+1 .. imageIdx+3`), never the whole set. It always
+//     did. So "quadrupling the payload" described bytes the deck was never fetching.
+//   · The real cost is PER-SWIPE, not per-card: a couple who swipes through twenty photos
+//     fetches twenty images, one window at a time. That is the honest jank surface, and it
+//     is a founder walk step (Swati's full set, swiped on device) — not something a bench
+//     can witness.
+//
+// The preview mount stays SINGLE-PHOTO by ruling (§2(a), option iii): the DATA parity is
+// exact — both mounts receive the identical full array from this function — and the
+// affordance gap (the preview cannot swipe) is P6's pager to close, named in its charter.
+
 
 // D-3 — the IG handle as the client will use it. Vendors type the handle a dozen ways;
 // the deep link takes a bare username. Strips a leading '@', a full profile URL, and any
@@ -90,8 +112,8 @@ function normalizeIgHandle(raw) {
  *                         query selects: id, business_name, category, city, routing_handle,
  *                         rate_min, aesthetic_tags, about, instagram_handle, rate_display.
  * @param {object} ctx
- * @param {string[]} ctx.photos   approved image_urls ALREADY in `position` order, uncapped.
- *                                This function applies DISPLAY_PHOTO_LIMIT.
+ * @param {string[]} ctx.photos   approved image_urls ALREADY in `position` order. Passed
+ *                                through whole — MICRO-2 retired the display cap.
  * @param {boolean}  ctx.featured whether a vendor_featured_submissions row makes this
  *                                vendor FEATURED right now. Passed, never derived here —
  *                                the two mounts read it from different queries and the
@@ -118,7 +140,9 @@ function shapeVendorForDiscover(vendor, ctx = {}) {
     // fixture ledger names Swati Roy (rate_display=false) as the witness for. One line,
     // one author, and the two mounts cannot disagree.
     starting_price: v.rate_display === false ? null : (v.rate_min || null),
-    photos:         photos.slice(0, DISPLAY_PHOTO_LIMIT),
+    // Every approved photo, in `position` order. No slice: the founder ruled the cap away
+    // and the portfolio's own ceiling is the only bound.
+    photos:         photos,
     vibe_tags:      v.aesthetic_tags || [],
     about:          v.about          || null,
     enquire_link:   handle ? `${ENQUIRE_BASE}${handle}` : null,
@@ -134,6 +158,7 @@ function shapeVendorForDiscover(vendor, ctx = {}) {
 module.exports = {
   shapeVendorForDiscover,
   normalizeIgHandle,
-  DISPLAY_PHOTO_LIMIT,
+  // DISPLAY_PHOTO_LIMIT is GONE, not zeroed — MICRO-2 retired the rule, and a constant left
+  // exported at some sentinel value is how a retired rule gets re-consumed by accident.
   ENQUIRE_BASE,
 };

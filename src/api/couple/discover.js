@@ -15,7 +15,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 // all moved to ONE home so the vendor's preview mount eats the identical function.
 // See src/lib/discover/shapeVendor.js for the boundary and what deliberately stayed here.
 const {
-  shapeVendorForDiscover, normalizeIgHandle, DISPLAY_PHOTO_LIMIT, ENQUIRE_BASE,
+  shapeVendorForDiscover, normalizeIgHandle, ENQUIRE_BASE,
 } = require('../../lib/discover/shapeVendor');
 
 // TDW_07 P1 — the ranking terms and their one homes.
@@ -112,13 +112,11 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
     (photos || []).forEach(p => {
       if (!photoMap[p.vendor_id]) photoMap[p.vendor_id] = [];
-      // ── TDW_07 P4b · F1b: THE FIVE-PHOTO RULE MOVED, IT DID NOT CHANGE. ──
-      // Fork 7(b)'s "the feed stays at five" now lives at ONE home — shapeVendor.js's
-      // DISPLAY_PHOTO_LIMIT — because the preview mount must obey the identical rule or
-      // it teaches the vendor his card shows more than it does. This loop therefore
-      // accumulates EVERY approved row and the shaper slices. Rendered output is
-      // byte-identical: same first five, same `position` order. Disclosed rather than
-      // silent, because the intermediate array did get longer.
+      // TDW_07 MICRO-2 — every approved row reaches the card. P4b moved Fork 7(b)'s
+      // five-cap to one home; the founder then retired the rule itself
+      // ("couples should be able to see all approved photos on discover"), so this loop
+      // accumulates the full set and the shaper no longer slices. The bound is the
+      // portfolio's own 20-image ceiling, not a number this file or the shaper asserts.
       photoMap[p.vendor_id].push(p.image_url);
       approvedPhotoCount[p.vendor_id] = (approvedPhotoCount[p.vendor_id] || 0) + 1;
       if (p.is_hero) hasHero[p.vendor_id] = true;
@@ -225,12 +223,13 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
   const shapedDemo = (demoVendors || []).map(v => {
     // photos is a JSONB array of {url, is_hero, cloudinary_id}
-    // TDW_07 P4b · F1b — the demo leg does not call the shaper (different table, different
-    // columns; the reasoning is stated in shapeVendor.js's header), but the NUMBER is the
-    // same number. It reads from the shaper's constant so a future change to the display
-    // rule cannot move the real card and leave the demo card at a stale literal.
+    // TDW_07 MICRO-2 — the demo leg follows the real card: no display cap. It does not call
+    // the shaper (different table, different columns — the reasoning is in shapeVendor.js's
+    // header), but the RULE is the same rule, and a demo card capped at five while the live
+    // card carries twenty would misprice the product to exactly the audience the demo
+    // exists to convince. demo_vendors.photos is authored content, so its length is its own
+    // bound.
     const photoUrls = (Array.isArray(v.photos) ? v.photos : [])
-      .slice(0, DISPLAY_PHOTO_LIMIT)
       .map(p => (typeof p === 'string' ? p : p?.url))
       .filter(Boolean);
 
