@@ -250,8 +250,27 @@ router.post('/:handle/claim', async (req, res) => {
     console.log(`[demo/claim] ${handle} claimed by ${phone}`);
     return res.json({ ok: true });
   } catch (err) {
-    // Fallback — still return ok so vendor sees success screen
-    console.error('[demo/claim] insert failed:', err.message, '— still returning ok');
-    return res.json({ ok: true });
+    // ── F-07.37 CURED · SUCCESS-ON-FAILURE, CONFESSED BY ITS OWN COMMENT ────
+    // THIS BLOCK READ:
+    //     // Fallback — still return ok so vendor sees success screen
+    //     console.error('[demo/claim] insert failed:', ... '— still returning ok');
+    //     return res.json({ ok: true });
+    // A vendor whose claim did NOT land was shown a success screen. He then
+    // waited for a call that could never come, because the row the founder's
+    // queue reads (GET /admin/demo/claims) was never written. The comment names
+    // the trade and takes the wrong side of it: a success screen is not worth a
+    // vendor believing he is in a pipeline he is not in.
+    //
+    // This is the founding-lie family — the class the wire guard was built to
+    // intercept on the model's mouth (TDW_06). It has no business being authored
+    // deliberately in a route handler. `.throwOnError()` above already makes the
+    // failure reachable; this returns it.
+    //
+    // P5 raises the stakes: demo_lead_alert's {{3}} sends real vendors here.
+    console.error(`[demo/claim] FAILED for ${handle} / ${phone}: ${err.message} — reporting failure`);
+    return res.status(502).json({
+      ok: false,
+      error: 'Could not save your claim. Please try again.',
+    });
   }
 });

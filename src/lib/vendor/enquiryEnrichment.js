@@ -104,12 +104,22 @@ async function buildEnquiryEnrichment(supabase, opts = {}) {
     // No availability_blocks table exists; the meaningful signal is whether an
     // event (shoot/booking/etc) is already on the calendar that day.
     if (weddingDate) {
+      // ── TDW_07 P5 · THE deleted_at CURE (CE-ruled 2026-07-31, fork F5) ────
+      // THIS QUERY LACKED `.is('deleted_at', null)`.
+      // `public.events` carries a soft-delete column (PUBLIC_SCHEMA.md, events
+      // §col 14) and every other reader of this table honours it. This one did
+      // not, so a vendor who DELETED an event still had it quoted back at him as
+      // a reason to hesitate — "you already have Kapoor - mehendi on that date"
+      // about a thing he had removed. A small lie, but it carries his own
+      // calendar's name and it fires at the exact moment he is deciding whether
+      // to take a booking. One predicate; the same three rows otherwise.
       const { data: clash } = await supabase
         .from('events')
         .select('title, kind')
         .eq('vendor_id', vendorId)
         .eq('event_date', weddingDate)
         .eq('state', 'upcoming')
+        .is('deleted_at', null)
         .limit(3);
       if (clash && clash.length > 0) {
         const first = clash[0];

@@ -263,7 +263,26 @@ async function runConversionMatchJob({ supabase, now }) {
         await updateProspect(supabase, p.id, { state: 'converted' });
         converted.push(p.id);
       }
-    } catch (_e) { /* vendor lookup shape is 08's to finalise; skip, never throw */ }
+    } catch (e) {
+      // ── F-07.38 · THE SILENT CATCH GOES LOUD (CE-ruled 2026-07-31) ────────
+      // THIS CATCH READ: `catch (_e) { /* ... skip, never throw */ }`.
+      // The SELECT above reads `vendors.claimed_at`. THAT COLUMN DOES NOT EXIST —
+      // it appears in no migration (db/migrations/*.sql, grepped whole) and in no
+      // snapshot (PUBLIC_SCHEMA.md, public.vendors). So PostgREST refuses the
+      // request, the refusal lands here, and this job has converted NOTHING since
+      // the day it was written — silently, on every nightly run.
+      //
+      // The comment was right that the shape is 08's to finalise. It was wrong to
+      // make the failure invisible while waiting: a job that cannot work should
+      // say so every time it runs, or nobody ever learns it is dead. The cure for
+      // the COLUMN is deferred to the claim rework (Block 08 defines what
+      // "claimed" means); the cure for the SILENCE is this line, now.
+      console.error(
+        `[prospects:conversion] lookup FAILED for prospect ${p.id} / demo_vendor_ref ${p.demo_vendor_ref}: ` +
+        `${e.message} — this prospect was NOT converted. ` +
+        '(F-07.38: vendors.claimed_at does not exist; conversion is inert until Block 08 defines claimed-truth.)'
+      );
+    }
   }
   return { converted: converted.length, ids: converted, stampedAt: stamp };
 }

@@ -146,7 +146,23 @@ router.post('/cloudinary-sign', requireAdminPassword, async (req, res) => {
 module.exports = router;
 
 // GET /admin/demo/claims — list all claim requests newest first
-router.get('/claims', async (req, res) => {
+// ── F-07.36 CURED · THE MIDDLEWARE EVERY SIBLING ALREADY HAD ────────────────
+// These two routes carried NO `requireAdminPassword` while every other route in
+// this file does (:27 · :38 · :61 · :99 · :114). `demo_claim_requests` holds
+// vendor NAMES and PHONE NUMBERS (PUBLIC_SCHEMA.md:348-356) — an unauthenticated
+// GET listed the estate's entire claim pipeline to anyone who knew the path, and
+// an unauthenticated PATCH let them mark claims contacted.
+//
+// It mattered before this sitting and it matters more after it: TDW_07 P5 points
+// `demo_lead_alert`'s {{3}} at the claim landing, so every demo alert we send
+// drives a real vendor's phone number into this table.
+//
+// (These two handlers are declared BELOW `module.exports = router` at :146. That
+// is ugly but not a defect — the export holds the router by reference and later
+// `router.get`/`router.patch` calls mutate the same object, so both routes do
+// register. Verified, and left where it stands: moving them is a diff that looks
+// like a fix and changes nothing. The missing middleware was the defect.)
+router.get('/claims', requireAdminPassword, async (req, res) => {
   const supabase = req.app.locals.supabase;
   try {
     const { data, error } = await supabase
@@ -162,7 +178,7 @@ router.get('/claims', async (req, res) => {
 });
 
 // PATCH /admin/demo/claims/:id/contacted — toggle contacted flag
-router.patch('/claims/:id/contacted', async (req, res) => {
+router.patch('/claims/:id/contacted', requireAdminPassword, async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { id } = req.params;
   const { contacted } = req.body || {};
