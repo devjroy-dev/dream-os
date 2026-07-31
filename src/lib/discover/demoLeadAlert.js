@@ -190,6 +190,67 @@ async function sendDemoLeadAlert(supabase, opts) {
     return { ok: false, sent: false, reason: 'no_whatsapp_phone' };
   }
 
+  // ── F-07.49 CURED · THE REGISTERED-USER GUARD (fork (a), CE-ruled) ────────
+  // FOUNDER-CAUGHT, in one sentence, against the walk card that was about to
+  // aim this template at his own vendor number: 「 why will 94440 get demo
+  // alert when its already a registered user 」.
+  //
+  // THE GAP. Nothing in the demo species asked who a phone belonged to. This
+  // module read ONE table (`prospects`). The feed selects `demo_vendors` with
+  // no reconciliation. The claim route takes a phone from the request body.
+  // So a scraped photographer who had since SIGNED UP would receive
+  // "Their enquiry is waiting in your ready account: {claim_link}" — an
+  // existing customer told to claim an account he already holds — on the
+  // MARKETING lane, whose governance, opt-out semantics and prospect plane all
+  // assume the recipient is not a customer. That is the CE-98 costume class
+  // with a real human on the other end.
+  //
+  // Dormant only because `demo_vendors.whatsapp_phone` is NULL on all six
+  // discover-eligible rows, which is exactly what the walk was about to change.
+  //
+  // WHERE THE GUARD SITS AND WHY. Here — before the prospect read, before the
+  // send — because this is where the falsehood would be VOICED. Consequences,
+  // all ruled: the couple's enquiry is still STORED by the caller (the
+  // demo_leads insert is independent of `alert.sent`), so she loses nothing;
+  // NO prospects row is minted for a customer, because this returns above both
+  // the read and the insert; and the refusal is LOUD and TYPED, never silent.
+  //
+  // PHONE FORMAT, DECLARED NOT ASSUMED. `users.phone` has 117 touch sites in
+  // this estate and no single normalizer governing writes, so its canonical
+  // form is NOT derived. The chair's own founder-run SELECT shows the '+' form
+  // ('+919625759924'). Rather than assume one shape, the guard matches BOTH the
+  // normalized and '+'-prefixed forms. A guard that misses is worse than no
+  // guard, because it reads as protection.
+  let registeredUser = null;
+  try {
+    const { data } = await supabase
+      .from('users')
+      .select('id, phone')
+      .in('phone', [phone, `+${phone}`])
+      .limit(1)
+      .maybeSingle();
+    registeredUser = data || null;
+  } catch (err) {
+    // A failed lookup must not become a silent OPEN. We cannot prove the phone
+    // is unregistered, so we do not send — the F-07.38 direction, applied to a
+    // gate rather than a catch.
+    console.error(
+      `[demo-lead-alert] registered-user check FAILED for demo vendor ${demoVendor.id}: ` +
+      `${err.message} — REFUSING the alert rather than risk telling a customer to claim ` +
+      'an account he already has (F-07.49). Enquiry still stored.'
+    );
+    return { ok: false, sent: false, reason: 'registered_check_failed' };
+  }
+  if (registeredUser) {
+    console.error(
+      `[demo-lead-alert] REFUSED — demo vendor ${demoVendor.id} (${demoVendor.ig_handle || 'no-handle'}) ` +
+      `carries a phone that already belongs to registered user ${registeredUser.id}. ` +
+      'The claim-your-account template would be a lie to an existing customer. ' +
+      'Enquiry stored and visible in the studio; NO ALERT SENT, NO PROSPECT ROW (F-07.49).'
+    );
+    return { ok: false, sent: false, reason: 'registered_user' };
+  }
+
   const claimLink = claimLinkFor(demoVendor.ig_handle);
   if (!claimLink) {
     console.error(`[demo-lead-alert] demo vendor ${demoVendor.id} has no ig_handle — cannot form claim link, NO ALERT SENT`);

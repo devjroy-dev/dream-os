@@ -182,14 +182,27 @@ const TEMPLATES = {
   //   payment_reminder — "{{1}} is due {{2}}" claims a payment.
   // All three rejected as costume, twice now, by two independent derivations.
   //
-  // So this key is filed. It ships 'pending': `isApproved` tests === 'approved'
-  // and nothing else, so sendWa REFUSES it with a typed
-  // WaTemplateNotApprovedError until the founder flips this one byte after Meta's
-  // word — the same convention the six above shipped under, and the same flip
-  // TDW_07 P2 performed for demo_lead_alert. The wiring at enquire.js is LIVE
-  // now; only the send is gated. That ordering is deliberate: the clock starts
-  // at filing, and the code is not what anyone should be waiting on.
+  // FILED AND APPROVED. The founder filed it 2026-07-31 and Meta returned
+  // ACTIVE the same day (WhatsApp Manager, template_details for
+  // tdw_enquiry_alert_vendor: "Active – Quality pending", Utility, English —
+  // founder screenshot on the chat record). "Quality pending" is the QUALITY
+  // RATING, not the review state; Active is the approval. So this ships
+  // 'approved' and sendWa's gate now PASSES it: an out-of-window vendor is
+  // reached by template instead of being a logged gap.
   //
+  // The body below is BYTE-IDENTICAL to what was filed — verified against the
+  // founder's own screenshot, which renders it with the review samples
+  // substituted ("Hi Swati, ... from Priya ... /vendor/leads"). A registry whose
+  // body has drifted from the filed one builds a payload Meta rejects at send
+  // time, which is why this is checked rather than assumed.
+  //
+  // NAMED RESIDUAL, NOT DERIVED: the WABA language code. Meta's UI says
+  // "English", which is ambiguous between 'en' and 'en_US'. TEMPLATE_LANGUAGE
+  // defaults to 'en' and demo_lead_alert sends live on that same value, which is
+  // the strongest evidence available without the API — but it is evidence about
+  // a DIFFERENT template. If the first real send returns a Meta 132001
+  // (template name/language mismatch), the language is the suspect and
+  // WA_TEMPLATE_LANGUAGE is the one-env-var cure.  //
   // Shaped to docs/TEMPLATES.md §1: single line, no adjacent variables, none at
   // body start or end. Deliberately parallel to demo_lead_alert so a vendor who
   // is prospected and then joins reads one product, not two.
@@ -209,7 +222,7 @@ const TEMPLATES = {
     body:
       "Hi {{1}}, a new enquiry just came in from {{2}} on The Dream Wedding. Open your " +
       "Leads to see the details: {{3}} — reply here if you need any help.",
-    status: 'pending',
+    status: 'approved',
   },
 
   // ── AUTHENTICATION-category OTP templates (Block 05, F-05.6 fix (a), CE-35) ──────

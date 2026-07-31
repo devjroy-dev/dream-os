@@ -91,3 +91,97 @@ is now historical rather than load-bearing — either form is safe.
 Founder runs Block A → Block B resolved zero-placeholder → the walk. The Meta filing
 clock on `tdw_enquiry_alert_vendor`. F-07.46's micro and F-07.48's fold, both
 founder-sequenced.
+
+---
+
+# ADDENDUM — F-07.49, THE REGISTERED-USER GUARD (same ZIP)
+
+**Founder-caught** against the walk card that was about to aim `demo_lead_alert`
+at his own vendor number. Fork (a) as ruled; (b) chartered to P6.
+
+## WHAT SHIPPED
+`src/lib/discover/demoLeadAlert.js` — the guard, above the prospect read and the
+send. `scripts/b07_p5_bench.js` — §11 (5 cells).
+
+## PROOF
+```
+CURED    b07_p5_bench  80 passed, 0 failed  (80)
+UNCURED  b07_p5_bench  76 passed, 4 failed  (80)
+```
+§11.4 (an unregistered phone still alerts) passes both — a **guard cell proving the
+cure is not a blanket refusal**, named rather than counted as a cure proof.
+
+## TWO FIXTURE AMENDMENTS, LABELED
+The guard added a `users` read, and TWO pre-existing bench planes went red on the
+CURED tree because they did not model it:
+1. `prospectPlane` (§10) threw on an unexpected table → all five §10 cells red.
+2. `fakeSupabase` (§1) lacked `.in()` / `.limit()` → the chain threw → the guard
+   fail-closed → §1.3/§1.4 red.
+
+Both widened to answer `users` with `null` (unregistered), which leaves each
+section's original meaning untouched. **The fixtures were behind production, not
+the reverse** — and the reddening was the guard working exactly as designed: an
+unprovable phone is refused, never assumed safe. Disclosed rather than silently
+widened.
+
+## DECLARED, NOT DERIVED
+`users.phone`'s canonical storage format is NOT derived — 117 touch sites, no
+single governing normalizer. The chair's founder-run SELECT shows the `+` form.
+The guard therefore matches BOTH forms (`.in([phone, '+'+phone])`) rather than
+assume one. **A guard that misses is worse than no guard, because it reads as
+protection.** §11.3 pins the pair.
+
+## A FAILED LOOKUP REFUSES
+If the users query throws, the alert is refused (`registered_check_failed`), not
+sent. We cannot prove the phone is unregistered, so we do not speak. §11.5 drives it.
+
+---
+
+# ADDENDUM 2 — F-07.40 CLOSED: THE TEMPLATE IS APPROVED (same ZIP)
+
+**Meta returned ACTIVE on 2026-07-31**, same day as filing (WhatsApp Manager →
+template_details, `tdw_enquiry_alert_vendor`, "Active – Quality pending", Utility,
+English — founder screenshot on the chat record). *Quality pending* is the quality
+RATING, not the review state.
+
+`status: 'pending'` → `'approved'`. sendWa's gate now passes it, so an out-of-window
+vendor is reached by template instead of being a logged gap. **F-07.40 is CLOSED.**
+
+## THREE CELLS INVERTED, NONE DELETED — the P2 §8.4 precedent
+1. **§7.6** asserted `isApproved === false`. Green for the right reason while Meta
+   held it; green over a STALE TRUTH afterwards. Now asserts APPROVED, plus pins the
+   BODY and the WABA `name` — a registry body drifted from the filed one builds a
+   payload Meta rejects at send time.
+2. **§7.7** proved sendWa REFUSED the pending template. Re-aimed at the DISPATCH:
+   the template reaches the transport, `mode:'template'`, payload name
+   `tdw_enquiry_alert_vendor`.
+3. **§7.8 WENT RED ON ITS OWN, AND WAS RIGHT TO.** It asserted the approved
+   vendor-line set was exactly three and none mentioned an enquiry — a tripwire whose
+   written purpose was to redden if a template ever joined that set. Meta approved
+   one and it tripped on precisely that event. Re-authored to the new truth (four
+   approved; exactly ONE carrier may speak of an enquiry; the carrier must never
+   acquire a STOP instruction — the `morning_nudge_vendor` trap), tripwire still live
+   for a fifth.
+
+**A cell that reddens at the event it was written to catch is the cheapest evidence
+this estate produces. It is re-aimed, never deleted.**
+
+## PROOF
+```
+CURED    b07_p5_bench  80 passed, 0 failed  (80)
+UNCURED  b07_p5_bench  72 passed, 8 failed  (80)   ← at 629e759
+```
+
+## NAMED RESIDUAL, NOT DERIVED
+The WABA **language code**. Meta's UI says "English", ambiguous between `en` and
+`en_US`. `TEMPLATE_LANGUAGE` defaults to `en`, and `demo_lead_alert` sends live on
+that value — the strongest available evidence, but it is evidence about a DIFFERENT
+template. If the first real send returns Meta **132001** (name/language mismatch),
+the language is the suspect and `WA_TEMPLATE_LANGUAGE` is the one-env-var cure.
+Recorded so the walk does not mistake it for a code defect.
+
+## THE WALK'S TWO NUMBERS, FOUNDER-CONFIRMED
+`8595986978` — NEW, no TDW account → step 6 half one, receives the demo alert.
+`8595356978` — REGISTERED user → step 6 half two, witnesses F-07.49 REFUSING.
+The chair's earlier `…6978` was `8595356978`; the collision was in the last four
+digits only. Settled by the founder's word, not by inference.

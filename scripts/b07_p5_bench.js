@@ -72,6 +72,14 @@ function fakeSupabase({ prospect = null, insertErr = null, updateErr = null }) {
       return {
         select() { return this; },
         eq() { return this; },
+        // LABELED AMENDMENT (F-07.49): `.in()` and `.limit()` added because the
+        // guard queries users with both phone forms. This plane already answers
+        // non-prospects tables with `null` — i.e. UNREGISTERED — so §1's
+        // meaning is unchanged; without these two the chain threw, the guard
+        // fail-closed as designed, and §1.3/§1.4 went red on the CURED tree.
+        // The fixture was behind production, not the other way round.
+        in() { return this; },
+        limit() { return this; },
         maybeSingle: async () => ({ data: table === 'prospects' ? prospect : null }),
         insert(row) {
           log.inserted = { table, row };
@@ -644,36 +652,63 @@ t('§7.1 the door imports sendWa, NOT the raw transport (F-07.45 transport arm)'
 // — the 24h-ceiling mutation could not turn the cell red because the cell was
 // never running. Disclosed rather than quietly relocated.
 
-t('§7.6 F-07.40: enquiry_alert_vendor is REGISTERED on the vendor line and NOT approved', () => {
+// M-INVERTED 2026-07-31: this cell asserted `isApproved === false` and was
+// GREEN for the right reason while Meta held the template. Meta returned ACTIVE,
+// so the old assertion would now be green over a STALE TRUTH — the P2 precedent
+// (§8.4 reconciled to assert the NEW truth both directions). Re-authored to
+// assert APPROVED, so that a regression of the flip reddens this cell.
+t('§7.6 F-07.40: enquiry_alert_vendor is REGISTERED on the vendor line and APPROVED', () => {
   const { TEMPLATES, isApproved } = require(SRC('src/lib/templates.js'));
   const tpl = TEMPLATES.enquiry_alert_vendor;
   assert.ok(tpl, 'enquiry_alert_vendor is not in the registry — the fallback has no carrier');
   assert.strictEqual(tpl.line, 'vendor');
   assert.strictEqual(tpl.category, 'UTILITY');
   // The gate, not the enum, is the mechanism (templates.js header). Assert the GATE.
-  assert.strictEqual(isApproved('enquiry_alert_vendor'), false,
-    'the template reports APPROVED before Meta has said so — sendWa would send it');
+  assert.strictEqual(isApproved('enquiry_alert_vendor'), true,
+    'the template is not approved — the out-of-window vendor is unreachable again');
+  // The BODY is pinned to what Meta approved. A registry body that drifts from
+  // the filed one builds a payload Meta rejects at send time.
+  assert.ok(tpl.body.startsWith('Hi {{1}}, a new enquiry just came in from {{2}}'),
+    'the approved body has drifted');
+  assert.deepStrictEqual(tpl.variables, ['name', 'bride', 'link']);
 });
 
 // §7.7 is ASYNC and lives in the async re-drive, for the same reason §7.2-§7.5
 // do. It was registered here on the first take and reported a vacuous green;
 // the awaited form then failed for a real reason (see the env note in §0).
 
-t('§7.8 F-07.40 re-derived: no APPROVED vendor-line template honestly carries an enquiry', () => {
+// M-INVERTED 2026-07-31. THIS CELL DID ITS JOB AND WENT RED. It asserted the
+// approved vendor-line set was exactly three and that NONE of them mentioned an
+// enquiry — a tripwire whose stated purpose was "if a future template joins the
+// vendor line as approved, this goes RED and F-07.40 is re-opened for a human to
+// re-read the bodies; the gap is not allowed to close by accident." Meta approved
+// tdw_enquiry_alert_vendor and the tripwire tripped on precisely that event.
+// Re-authored to the NEW truth, keeping the tripwire live for a FIFTH template.
+t('§7.8 F-07.40 CLOSED: exactly one approved vendor-line template carries an enquiry', () => {
   const { TEMPLATES } = require(SRC('src/lib/templates.js'));
   const approvedVendor = Object.values(TEMPLATES)
     .filter(v => v.line === 'vendor' && v.status === 'approved')
-    .map(v => v.key);
-  // The derivation is the POINT of this cell: if a future template joins the
-  // vendor line as approved, this goes RED and F-07.40 is re-opened for a human
-  // to re-read the bodies — the gap is not allowed to close by accident.
-  assert.deepStrictEqual(approvedVendor.sort(),
-    ['crew_assignment', 'morning_nudge_vendor', 'payment_reminder'],
+    .map(v => v.key).sort();
+  assert.deepStrictEqual(approvedVendor,
+    ['crew_assignment', 'enquiry_alert_vendor', 'morning_nudge_vendor', 'payment_reminder'],
     'the approved vendor-line set MOVED — re-derive F-07.40 by hand before trusting the fallback');
+  // THE CARRIER, and only it, may speak of an enquiry. The other three were
+  // rejected as costume twice by derivation; if one of them ever acquires the
+  // word, that is a body edit nobody benched and this reddens.
+  const CARRIER = 'enquiry_alert_vendor';
   for (const k of approvedVendor) {
-    assert.ok(!/enquir/i.test(TEMPLATES[k].body),
-      `${k} now mentions an enquiry — re-read F-07.40`);
+    const mentions = /enquir/i.test(TEMPLATES[k].body);
+    if (k === CARRIER) {
+      assert.ok(mentions, 'the carrier no longer mentions the enquiry it exists to announce');
+    } else {
+      assert.ok(!mentions, `${k} now mentions an enquiry — re-read F-07.40`);
+    }
   }
+  // The STOP hazard that disqualified morning_nudge_vendor must never reach the
+  // carrier: an enquiry alert a vendor can silence by pausing MORNINGS is the
+  // defect the whole finding was about.
+  assert.ok(!/STOP/i.test(TEMPLATES[CARRIER].body),
+    'the enquiry carrier has acquired a STOP instruction — the morning_nudge trap');
 });
 
 t('§7.9 SURFACE ARM: `ok` is bound to the lead write, not hardcoded true', () => {
@@ -711,12 +746,12 @@ H('§8 — MUTATION for §7 (PRODUCTION code broken, then restored)');
 // inside the async foot — `mutate()` is synchronous and would score it vacuous.
 
 mutate('src/lib/templates.js',
-  "    status: 'pending',\n  },",
-  "    status: 'approved',\n  },",
+  "    status: 'approved',\n  },\n\n  // ── AUTHENTICATION",
+  "    status: 'revoked',\n  },\n\n  // ── AUTHENTICATION",
   '§7.6 (the approval gate)',
   () => {
     const { isApproved } = require(SRC('src/lib/templates.js'));
-    assert.strictEqual(isApproved('enquiry_alert_vendor'), false);
+    assert.strictEqual(isApproved('enquiry_alert_vendor'), true);
   });
 
 mutate('src/api/couple/enquire.js',
@@ -798,6 +833,16 @@ function prospectPlane({ existingNormalized = null } = {}) {
   return {
     log,
     from(table) {
+      // F-07.49 grew a users read ABOVE the prospect read. This plane predates
+      // it and threw on the new table, reddening all five §10 cells on the
+      // CURED tree — a fixture failing to keep up with production, disclosed
+      // rather than quietly widened. Unregistered is the right default here:
+      // §10 is about phone NORMALIZATION, not about the guard, which §11 owns.
+      if (table === 'users') {
+        const q = {}; q.select = () => q; q.in = () => q; q.limit = () => q;
+        q.maybeSingle = async () => ({ data: null });
+        return q;
+      }
       if (table !== 'prospects') throw new Error(`unexpected table ${table}`);
       const q = {};
       q.select = () => q;
@@ -868,6 +913,87 @@ asyncQueue.push(
   }],
 );
 
+
+// ═════════════════════════════════════════════════════════════════════════════
+H('§11 — F-07.49: the demo alert never speaks to a registered user');
+
+// A plane that serves BOTH tables the guard now touches. `usersRow` is what the
+// users lookup returns; null = the phone is not registered.
+function guardPlane({ usersRow = null, usersThrows = false } = {}) {
+  const log = { usersQueriedWith: null, prospectRead: false, inserted: 0 };
+  return {
+    log,
+    from(table) {
+      if (table === 'users') {
+        const q = {};
+        q.select = () => q;
+        q.in = (_c, vals) => { log.usersQueriedWith = vals; return q; };
+        q.limit = () => q;
+        q.maybeSingle = async () => {
+          if (usersThrows) throw new Error('users plane down');
+          return { data: usersRow };
+        };
+        return q;
+      }
+      if (table === 'prospects') {
+        const q = {};
+        q.select = () => q;
+        q.eq = () => { log.prospectRead = true; return q; };
+        q.maybeSingle = async () => ({ data: null });
+        q.insert = () => { log.inserted += 1;
+          return { select: () => ({ single: async () => ({ data: { id: 'p' }, error: null }) }) }; };
+        q.update = () => ({ eq: () => ({ select: () => ({ single: async () => ({ data: {}, error: null }) }) }) });
+        return q;
+      }
+      throw new Error(`unexpected table ${table}`);
+    },
+  };
+}
+
+asyncQueue.push(
+  ['§11.1 THE FINDING: a phone belonging to a registered user is REFUSED, nothing sent', async () => {
+    const s = sender(); const sb = guardPlane({ usersRow: { id: 'u-1', phone: '+919888294440' } });
+    const r = await sendDemoLeadAlert(sb, {
+      demoVendor: { ...PLUS_VENDOR, whatsapp_phone: '919888294440' }, now: NOW, deps: s.deps });
+    assert.strictEqual(r.sent, false);
+    assert.strictEqual(r.reason, 'registered_user');
+    assert.strictEqual(s.calls.length, 0, 'the template reached the transport anyway');
+  }],
+
+  ['§11.2 NO PROSPECT ROW is minted for a customer (the guard returns above both sites)', async () => {
+    const s = sender(); const sb = guardPlane({ usersRow: { id: 'u-1', phone: '+919888294440' } });
+    await sendDemoLeadAlert(sb, {
+      demoVendor: { ...PLUS_VENDOR, whatsapp_phone: '919888294440' }, now: NOW, deps: s.deps });
+    assert.strictEqual(sb.log.inserted, 0, 'a prospects row was minted for a registered user');
+    assert.strictEqual(sb.log.prospectRead, false, 'the prospect plane was touched at all');
+  }],
+
+  ['§11.3 BOTH phone forms are checked — a "+"-stored user cannot slip the guard', async () => {
+    const s = sender(); const sb = guardPlane();
+    await sendDemoLeadAlert(sb, {
+      demoVendor: { ...PLUS_VENDOR, whatsapp_phone: '919888294440' }, now: NOW, deps: s.deps });
+    assert.deepStrictEqual(sb.log.usersQueriedWith, ['919888294440', '+919888294440'],
+      `the guard queried ${JSON.stringify(sb.log.usersQueriedWith)}`);
+  }],
+
+  ['§11.4 an UNREGISTERED phone still alerts — the guard is not a blanket refusal', async () => {
+    const s = sender(); const sb = guardPlane({ usersRow: null });
+    const r = await sendDemoLeadAlert(sb, {
+      demoVendor: { ...PLUS_VENDOR, whatsapp_phone: '918595986978' }, now: NOW, deps: s.deps });
+    assert.strictEqual(r.sent, true, `unregistered phone was refused: ${r.reason}`);
+    assert.strictEqual(s.calls.length, 1);
+  }],
+
+  ['§11.5 a FAILED lookup refuses rather than assuming unregistered', async () => {
+    const s = sender(); const sb = guardPlane({ usersThrows: true });
+    const r = await sendDemoLeadAlert(sb, {
+      demoVendor: { ...PLUS_VENDOR, whatsapp_phone: '919888294440' }, now: NOW, deps: s.deps });
+    assert.strictEqual(r.sent, false);
+    assert.strictEqual(r.reason, 'registered_check_failed');
+    assert.strictEqual(s.calls.length, 0);
+  }],
+);
+
 // ═════════════════════════════════════════════════════════════════════════════
 (async () => {
   // §1's async cells were registered synchronously above via t(); re-drive the
@@ -895,17 +1021,27 @@ asyncQueue.push(
       assert.strictEqual(r.open, false); assert.strictEqual(r.reason, 'window_closed'); }],
     ['§7.5', async () => { const r = await W().vendorWindowOpen({ from() { throw new Error('plane down'); } }, 'v1');
       assert.strictEqual(r.open, false); assert.ok(/window_check_threw/.test(r.reason)); }],
-    ['§7.7', async () => {
-      const { sendWa, WaTemplateNotApprovedError } = require(SRC('src/lib/sendWa.js'));
-      const calls = []; let threw = null;
-      try {
-        await sendWa({ line: 'vendor', to: '919888294440', templateKey: 'enquiry_alert_vendor', vars: ['A','B','C'] },
-          { sendTemplate: async (a) => { calls.push(a); return { ok: true }; },
-            sendText:     async (a) => { calls.push(a); return { ok: true }; },
-            isOptedOut:   async () => false });
-      } catch (e) { threw = e; }
-      assert.ok(threw instanceof WaTemplateNotApprovedError, `got ${threw && threw.name}`);
-      assert.strictEqual(calls.length, 0, 'a refusal still reached the transport'); }],
+    // M-INVERTED 2026-07-31 with §7.6: this cell proved sendWa REFUSED the pending
+  // template. Meta approved it, so the refusal is no longer the truth to assert —
+  // the DISPATCH is. A cell left asserting the old refusal would have gone red at
+  // the flip and been "fixed" by deleting it; it is re-aimed instead.
+  ['§7.7', async () => {
+    const { sendWa } = require(SRC('src/lib/sendWa.js'));
+    const calls = [];
+    const r = await sendWa(
+      { line: 'vendor', to: '919888294440', templateKey: 'enquiry_alert_vendor',
+        vars: ['Swati', 'Priya', 'https://thedreamwedding.in/vendor/leads'] },
+      { sendTemplate: async (a) => { calls.push(a); return { ok: true }; },
+        sendText:     async (a) => { calls.push(a); return { ok: true }; },
+        isOptedOut:   async () => false },
+    );
+    assert.strictEqual(r.sent, true, 'the approved template did not dispatch');
+    assert.strictEqual(r.mode, 'template');
+    assert.strictEqual(calls.length, 1, 'the template did not reach the transport');
+    assert.strictEqual(calls[0].key, 'enquiry_alert_vendor');
+    // The payload Meta will actually receive, built from the registry.
+    assert.strictEqual(calls[0].payload.name, 'tdw_enquiry_alert_vendor',
+      'the WABA name does not match what the founder filed'); }],
   );
 
   H('§4 — ASYNC RE-DRIVE (the awaited form of §1\'s promise cells)');
