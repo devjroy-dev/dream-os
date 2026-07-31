@@ -99,7 +99,7 @@ Counts moved **up** in every case: p1 72→75, p3 50→52, tdw07_p1 35→35, tdw
 
 ---
 
-## 5 · WHAT I GOT WRONG — seven, all self-caught or caught by my own benches
+## 5 · WHAT I GOT WRONG — eight; seven self-caught, one caught by the founder's paste
 
 1. **`rateMet` earned the term on an empty string.** `Number('') === 0`, which is finite, so `''` scored full credit while the comment three lines above forbade it. Found by *exercising* the predicate across its shapes, not by reading it.
 
@@ -113,7 +113,15 @@ Counts moved **up** in every case: p1 72→75, p3 50→52, tdw07_p1 35→35, tdw
 
 6. **Two pwa cells passed under mutation.** `§2.1/§2.2` matched `<VendorProfileView` as a **prefix**, so renaming the element to `<VendorProfileViewX` passed green — the cell asserted a substring, not a mount. `§5.9` tested presence of `F-07.27` where the file has **two** mentions, so blanking one passed. Both cured (element-boundary match; count pinned), both now redden.
 
-7. **I missed three money sites, and my own register cell caught them.** Sanctuary carried a **third** local formatter at `:3792` plus two `L onwards` renders my enumeration had not reached. This is the argument for a repo-wide cell over a site list.
+7. **I authored a SQL column that does not exist, and the founder's paste is what found it.** The walk card's Step 0 read `v.phone`. **`public.vendors` has 38 columns and none of them is `phone`** — a vendor's phone lives on `public.users`, reached through `vendors.user_id`. The founder ran the block and got `ERROR 42703: column v.phone does not exist`.
+
+   **The process failure is more precise than "I guessed", and worth naming exactly.** I did run a command. I ran `sed -n '980,1030p' PUBLIC_SCHEMA.md | grep -i phone` and it printed `4. phone text NOT NULL`, so I recorded the identifier as derived. But I had guessed the line *range*, and the range straddled a section boundary: line 980 is inside `public.vendors`, and the `phone` hit came from a **different table further down the window**. `public.vendors`' actual column 4 is `category`. The command answered a question I had not asked. This is the same family as the vacuous cells in items 5 and 6 — **true, and true about the wrong thing** — and the SQL-provenance law's "the derivation is SHOWN, never claimed" does not protect against it, because I did show a derivation. It just was not a derivation of the thing I said.
+
+   **The cure is mechanical, not attentional.** Every column in the corrected block is now verified by a script that parses the SQL, extracts each `alias.column`, resolves the alias to its table, and checks it against the witnessed snapshot section — bounded by the `## public.<table>` header rather than by a guessed line range — falling through to the migration files for the four post-snapshot columns. It reports the witness per column. Run against the original block, it flags `v.phone` as MISSING. That check is recorded here rather than left as a habit.
+
+   **The shipped code is unaffected** — derived, not assumed: `phone` appears twice in the delta's files (`me.js:129`'s LOCKED_FIELDS, a comment in `igImport.js:317`) and `git diff` confirms neither line is in this sitting's diff. **The defect was confined to a document.**
+
+8. **I missed three money sites, and my own register cell caught them.** Sanctuary carried a **third** local formatter at `:3792` plus two `L onwards` renders my enumeration had not reached. This is the argument for a repo-wide cell over a site list.
 
 ---
 
@@ -157,12 +165,35 @@ Fixture-derived. **Step 0's SELECT runs FIRST and the card is read against its r
 
 ```sql
 -- TDW_07 P4b BODY · fixture state. READ-ONLY: no INSERT, UPDATE or DELETE.
--- Provenance: vendors.rate_display + discover_paused ← db/migrations/0101_profile_controls.sql:65,:75
---             vendor_portfolio.position              ← db/migrations/0102_vendor_portfolio_position.sql
---             all other columns                      ← docs/db/PUBLIC_SCHEMA.md (public.vendors, public.vendor_portfolio)
+--
+-- CORRECTED 2026-07-31 after the founder's paste returned
+--   ERROR 42703: column v.phone does not exist
+-- The first version of this block read `v.phone`. THERE IS NO phone COLUMN ON
+-- public.vendors. Correction owned in §5(8); the identifier is derived below.
+--
+-- PROVENANCE (SQL-provenance law — the witness, not the claim):
+--   users.phone            ← docs/db/PUBLIC_SCHEMA.md "public.users · 9 columns", col 2.
+--                            vendors is 38 columns and NONE of them is phone; the vendor's
+--                            phone is reached through users, joined on vendors.user_id.
+--   vendors.user_id        ← same doc, public.vendors col 2
+--   vendors.rate_min/max   ← same doc, cols 27/28
+--   vendors.discover_eligible ← same doc, col 30
+--   vendors.rate_display   ← db/migrations/0101_profile_controls.sql:65
+--   vendors.discover_paused← db/migrations/0101_profile_controls.sql:75
+--                            (both post-date the PUBLIC_SCHEMA snapshot, so they are
+--                            witnessed at the migration AND by the live feed query at
+--                            src/api/couple/discover.js:67, which selects them in production)
+--   vendor_portfolio.vendor_id / is_hero / approval_state
+--                          ← docs/db/PUBLIC_SCHEMA.md "public.vendor_portfolio · 13 columns",
+--                            cols 2 / 5 / 8
+--
+-- THE MATCH IS DIGITS-ONLY AND RIGHT-ANCHORED. The fixture ledger carries one number
+-- as +918595356978 and the other as 9888294440 — two formats for the same kind of thing.
+-- Matching the last ten digits of the stripped string finds both regardless of how the
+-- country code or spacing was stored, instead of guessing a storage convention.
 select
+  u.phone,
   v.business_name,
-  v.phone,
   v.rate_min,
   v.rate_max,
   v.rate_display,
@@ -172,17 +203,19 @@ select
   count(p.id) filter (where p.approval_state = 'pending')  as pending_photos,
   count(p.id) filter (where p.is_hero)                     as hero_rows
 from public.vendors v
+join public.users u on u.id = v.user_id
 left join public.vendor_portfolio p on p.vendor_id = v.id
-where v.phone in ('9888294440', '+918595356978')
-group by v.id, v.business_name, v.phone, v.rate_min, v.rate_max,
+where right(regexp_replace(u.phone, '[^0-9]', '', 'g'), 10) in ('8595356978', '9888294440')
+group by u.phone, v.id, v.business_name, v.rate_min, v.rate_max,
          v.rate_display, v.discover_paused, v.discover_eligible
-order by v.phone;
+order by u.phone;
 ```
 
 ```sql
--- The retirement moves no live score. If this returns 0, no vendor in the estate holds a
--- min without a max, so F4 changes nobody's ranking on the day it ships. A non-zero answer
--- is not a failure — it is the list of vendors whose score RISES, and it should be named.
+-- The retirement moves no live score.
+-- FOUNDER-RUN 2026-07-31: this returned 0. WITNESSED, not predicted — no vendor in the
+-- estate holds a min without a max, so F4 changes nobody's ranking on the day it ships.
+-- The charter's `min_only=0` claim is now a measurement rather than an inherited number.
 select count(*) as min_only_vendors
 from public.vendors
 where rate_min is not null and rate_max is null;
