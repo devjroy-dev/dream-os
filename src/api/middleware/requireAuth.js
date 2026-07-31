@@ -14,8 +14,18 @@ async function requireAuth(req, res, next) {
   const supabase = req.app.locals.supabase;
 
   const header = req.headers['authorization'] || '';
-  // Cookie fallback — iOS Safari may have cleared localStorage but cookie persists
-  const cookieToken = req.cookies?.tdw_vendor_token || req.cookies?.tdw_couple_token || '';
+  // Cookie fallback — iOS Safari may have cleared localStorage but cookie persists.
+  // ── F-07.65 CURED · EDGE 2 OF 4 · THE MIRROR CROSSING ───────────────────────
+  // THIS READ `|| req.cookies?.tdw_couple_token`. The auth sitting's census found
+  // the crossing was BIDIRECTIONAL at the server: requireCoupleAuth:14 accepted a
+  // vendor cookie AND this line accepted a couple cookie. Only the first was in
+  // the charter; this one was found by census and is cured in the same motion by
+  // ruling, because a cure that closes one direction leaves the estate exactly as
+  // crossable from the other side.
+  //
+  // The lane's OWN cookie is untouched: `tdw_vendor_token` still carries a vendor
+  // through an ITP wipe, which is what the fallback was built for.
+  const cookieToken = req.cookies?.tdw_vendor_token || '';
   
   let token = '';
   if (header.startsWith('Bearer ')) {

@@ -52,6 +52,7 @@ const { createLead }   = require('../../lib/vendor/leads');
 const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld: enquiries → binders
 const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5: the free-lead hook
 const { bandCeiling, normalizeFunctions } = require('../../lib/discover/enquiryFields');
+const { resolveCoupleIfPresent } = require('../../lib/resolveCoupleIfPresent'); // F-07.62's cure
 
 // ── F-07.50 CURED · THE {{3}} LINK POINTED AT A 404 ──────────────────────────
 // THIS READ: 'https://thedreamwedding.in/vendor/leads' — a path I authored from
@@ -109,6 +110,35 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(400).json({ ok: false, error: 'vendor_id required' });
   }
 
+  // ── F-07.62 CURED (fork 2(a), CE-ruled at the auth sitting) ────────────────
+  // THE IDENTITY IS RESOLVED ONCE, HERE, AND BOTH LEGS RECEIVE THE RESULT. The
+  // posted `couple_id` was previously believed outright: it hydrated her name
+  // and phone into the vendor's ping (:205 real leg, :521 demo leg) AND it chose
+  // the row her enquiry was stored against (:252 binder, :438-450
+  // `couple_enquiries`). Forging it put a real bride's name and phone into a
+  // stranger's ping and his cabinet — the disease's two halves, one value.
+  //
+  // Resolving at the ENTRY rather than at each hydration site is deliberate:
+  // there is one identity per request, so there is one place to decide it. A
+  // per-site cure would have left the storage sites believing the body while the
+  // hydration sites believed the token — one request, two identities, which is
+  // the shape of the next finding rather than the end of this one.
+  //
+  // THE THREE ANSWERS AND WHAT EACH PRESERVES (helper's own header has the law):
+  //   present:false            → the LOGGED-OUT bride. `couple_id` from the body,
+  //                              byte-for-byte the old behaviour. Her door is a
+  //                              product feature and this cure does not touch it.
+  //   present:true + a coupleId → the authenticated bride. Her token WINS over
+  //                              anything posted; forgery is discarded unread.
+  //   present:true + null       → a credential resolving to no couple (the
+  //                              founder's vendor-on-a-couple-surface specimen).
+  //                              Identity is null: NOTHING hydrates, NOTHING is
+  //                              stored against a couple. Deliberately NOT a
+  //                              fallback to the posted id — that would let
+  //                              anyone holding any valid JWT forge freely.
+  const coupleAuth = await resolveCoupleIfPresent(req, supabase);
+  const identityCoupleId = coupleAuth.present ? coupleAuth.coupleId : (couple_id || null);
+
   // ── SPECIES RESOLUTION — FROM THE DATABASE, NEVER FROM THE BODY ───────────
   // The Discover card carries `is_demo` (discover.js:247) and the client could
   // send it. It is not asked for and would not be believed if it were: an
@@ -134,7 +164,8 @@ router.post('/', asyncHandler(async (req, res) => {
     .maybeSingle();
 
   if (vendor) {
-    return await handleRealVendor({ supabase, res, vendor, couple_id, bride_name, bride_phone,
+    return await handleRealVendor({ supabase, res, vendor, couple_id: identityCoupleId,
+                                    bride_name, bride_phone,
                                     postedFunctions, wedding_date, city, postedBudgetMax });
   }
 
@@ -147,7 +178,7 @@ router.post('/', asyncHandler(async (req, res) => {
     .maybeSingle();
 
   if (demoVendor) {
-    return await handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_date, city });
+    return await handleDemoVendor({ supabase, res, demoVendor, couple_id: identityCoupleId, wedding_date, city });
   }
 
   return res.status(404).json({ ok: false, error: 'Vendor not found.' });
@@ -180,14 +211,14 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   // away at `couples.user_id` -> `public.users` (9 columns, :872-884).
   //
   // HYDRATED WINS, BODY IS THE FALLBACK — deliberately the OPPOSITE of the
-  // date/city rule at :467-468, and the reason is the door itself: this route is
+  // date/city rule below, and the reason is the door itself: this route is still
   // UNAUTHENTICATED (router.js:59 mounts it with no middleware), so `bride_name`
   // in the body is caller-supplied and her account is the truer witness. The
   // posted value still serves the logged-OUT bride, who has no couple_id at all.
   // ── THE TWO PRECEDENCES ARE OPPOSITE ON PURPOSE (CE-ruled STANDING LAW) ─────
   // IDENTITY fields (name, phone) — HYDRATED wins, posted is the fallback.
   // UTTERANCE fields (date, city) — POSTED wins, hydrated is the fallback
-  //                                 (the demo leg's rule, enquire.js :467-468).
+  //                                 (the demo leg's rule, in handleDemoVendor).
   //
   // The reason, so no future sitting "harmonizes" the two into one rule: her
   // ACCOUNT is the truer witness of WHO she is; her KEYSTROKES are the truer
@@ -195,12 +226,41 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   // wedding her profile still calls undated, and that posted date is the truth of
   // the enquiry. She may not rename herself at an unauthenticated door.
   //
-  // [F-06.85: this paragraph is conditioned on a MECHANICAL fact — that this
-  //  route carries NO auth middleware. Mechanism: src/api/router.js:59, which
-  //  mounts '/discover/enquire' bare. If a guard ever appears there, the identity
-  //  half's justification changes and this sentence must be re-read. The forged-
-  //  couple_id exposure this trust implies is F-07.62, deferred to the AUTH
-  //  SITTING by ruling — not cured here, and not to be quietly cured here either.]
+  // ── [F-06.85] THE MECHANISM MOVED. THIS SENTENCE HAS BEEN RE-READ. ──────────
+  // The previous text of this block conditioned the identity half on a mechanical
+  // fact — "this route carries NO auth middleware" — and named router.js:59 as
+  // the mechanism so that the mechanism's next sitting would be FORCED back here.
+  // The auth sitting is that sitting, and the convention worked: this paragraph
+  // was re-read because the note demanded it, not because anyone remembered.
+  //
+  // WHAT CHANGED, EXACTLY. The route is STILL mounted bare at router.js:59 — no
+  // middleware, no guard, and the logged-out enquiry survives untouched, which is
+  // the product feature the CE addendum protects by name. What changed is that
+  // `couple_id` no longer arrives from the body unexamined: the handler resolves
+  // identity ONCE at its entry through resolveCoupleIfPresent (F-07.62's cure,
+  // fork 2(a)), and the value reaching this line is the RESOLVED one.
+  //
+  // WHY THE PRECEDENCE SURVIVES THE CHANGE — and this is the part a future
+  // sitting must not get wrong. The rule "hydrated wins over posted" was
+  // originally justified by the door being unauthenticated: the body was the
+  // weaker witness because ANY caller could write it. That justification is now
+  // STRONGER, not weaker. When she is authenticated the hydration source is her
+  // TOKEN rather than a posted id, so hydrated-wins is no longer a defensive
+  // preference over an untrusted body — it is the only identity in the request
+  // with a proof behind it. When she is logged out, nothing hydrates and the
+  // posted name/phone serve her exactly as before. The precedence holds in both
+  // states, for a better reason in one of them.
+  //
+  // THE NEW MECHANICAL CONDITION, for the next sitting that moves it: this block
+  // now depends on `couple_id` being the RESOLVED identity, not the posted one.
+  // Mechanism: the `identityCoupleId` binding at this file's POST entry, and
+  // resolveCoupleIfPresent's three-answer contract. If either is changed — if the
+  // helper is removed, if the entry stops substituting, or if a guard is finally
+  // mounted at router.js:59 — this paragraph must be re-read again, because the
+  // sentence "her account is the truer witness" would no longer be describing the
+  // code underneath it. That is the whole of the F-06.85 convention: a soul
+  // sentence conditioned on a mechanical fact names the mechanism, so the
+  // mechanism cannot move in silence.
   let hydratedName = null, hydratedPhone = null;
   if (couple_id) {
     try {
