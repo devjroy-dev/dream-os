@@ -375,6 +375,30 @@ mutate('src/api/admin/demoAdmin.js',
     assert.strictEqual(routes.filter(r => !/requireAdminPassword/.test(r)).length, 0);
   });
 
+mutate('src/lib/discover/enquiryFields.js',
+  // NOTE: `bandCeiling` is defended TWICE — the '' early-return AND `n > 0`,
+  // which also rejects Number('')===0. The first mutation attempted here broke
+  // one guard and changed no behaviour, so it was not a probe at all. This one
+  // breaks the contract at a single point that the other guard cannot cover.
+  "  if (s === '') return null;",
+  "  if (s === '') return 0;",
+  '§6.6 (the zero-ceiling trap)',
+  () => {
+    delete require.cache[require.resolve(SRC('src/lib/discover/enquiryFields.js'))];
+    const { bandCeiling } = require(SRC('src/lib/discover/enquiryFields.js'));
+    assert.strictEqual(bandCeiling(''), null);
+  });
+
+mutate('src/api/couple/enquire.js',
+  "      weddingDate: wedding_date || undefined,",
+  "      weddingDate: undefined,",
+  '§6.3 (her word reaching the clash predicate)',
+  () => {
+    const e = code(read('src/api/couple/enquire.js'));
+    const enrich = e.slice(e.indexOf('buildEnquiryEnrichment(supabase'));
+    assert.ok(/weddingDate:\s*wedding_date/.test(enrich.slice(0, 600)));
+  });
+
 mutate('src/lib/demo/maskDemoLead.js',
   "return `${parts[0]} ${surnameInitial.toUpperCase()}.`;",
   "return s;",
@@ -492,6 +516,59 @@ t('§5.10 the logged-out path is ALERT-ONLY and cannot form a row', () => {
   const e = code(read('src/api/couple/enquire.js'));
   assert.ok(/if \(brideName && bridePhone\)/.test(e),
     'the row must be gated on the two NOT NULL columns, so an anonymous tap cannot form one');
+});
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+H("§6 — THE SHEET'S FOUR FIELDS: accepted, landed, and never edit-and-discarded");
+
+const enq6 = code(read('src/api/couple/enquire.js'));
+
+t('§6.1 the door ACCEPTS all four', () => {
+  ['functions', 'wedding_date', 'city', 'budget_band'].forEach((f) => {
+    assert.ok(new RegExp(`\\b${f},`).test(enq6), `the door must accept \`${f}\``);
+  });
+});
+
+t('§6.2 REAL leg — every accepted field lands on a witnessed leads column', () => {
+  const leg = enq6.slice(enq6.indexOf('createLead(supabase, vendor.id'));
+  assert.ok(/event_types:\s*postedFunctions/.test(leg), 'functions -> leads.event_types');
+  assert.ok(/wedding_date:\s*wedding_date/.test(leg), 'wedding_date -> leads.wedding_date');
+  assert.ok(/wedding_city:\s*city\s*\|\|/.test(leg), 'city -> leads.wedding_city, hers first');
+  assert.ok(/budget_max:\s*postedBudgetMax/.test(leg), 'budget_band -> leads.budget_max');
+});
+
+t('§6.3 HER WORD REACHES THE CLASH PREDICATE (the ruling\'s point)', () => {
+  const enrich = enq6.slice(enq6.indexOf('buildEnquiryEnrichment(supabase'));
+  assert.ok(/weddingDate:\s*wedding_date/.test(enrich.slice(0, 600)),
+    'a corrected date must reach the availability hint, or the vendor is told about the wrong day');
+});
+
+t('§6.4 DEMO leg — posted OVERRIDES hydrated, on both fields it can hold', () => {
+  assert.ok(/weddingDate = wedding_date \|\| couple\?\.wedding_date/.test(enq6), 'posted date wins');
+  assert.ok(/weddingCity = city\s*\|\| couple\?\.wedding_city/.test(enq6), 'posted city wins');
+});
+
+t('§6.5 DEMO leg NEVER accepts functions or budget — no column exists to hold them', () => {
+  const leg = enq6.slice(enq6.indexOf('async function handleDemoVendor'));
+  assert.ok(!/postedFunctions/.test(leg), 'functions has no demo_leads column; it must not be threaded here');
+  assert.ok(!/postedBudgetMax/.test(leg), 'budget has no demo_leads column; it must not be threaded here');
+});
+
+t("§6.6 the open-ended band is NO CEILING, not a zero (REAL production fn)", () => {
+  const { bandCeiling } = require(SRC('src/lib/discover/enquiryFields.js'));
+  assert.strictEqual(bandCeiling(''), null, "the top band ('') means no ceiling");
+  assert.strictEqual(bandCeiling(null), null);
+  assert.strictEqual(bandCeiling('300000'), 300000);
+  assert.notStrictEqual(bandCeiling(''), 0, 'Number("") is 0 — the richest band must not become the poorest lead');
+});
+
+t('§6.7 an empty functions array is null, not an empty ARRAY write (REAL production fn)', () => {
+  const { normalizeFunctions } = require(SRC('src/lib/discover/enquiryFields.js'));
+  assert.strictEqual(normalizeFunctions([]), null);
+  assert.strictEqual(normalizeFunctions(undefined), null);
+  assert.strictEqual(normalizeFunctions(['  ', '']), null, 'blank entries must not become phantom functions');
+  assert.deepStrictEqual(normalizeFunctions([' Mehendi ', 'Sangeet']), ['Mehendi', 'Sangeet']);
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -42,10 +42,36 @@ const { sendWhatsApp } = require('../../lib/whatsapp');
 const { createLead }   = require('../../lib/vendor/leads');
 const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld: enquiries → binders
 const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5: the free-lead hook
+const { bandCeiling, normalizeFunctions } = require('../../lib/discover/enquiryFields');
 
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { vendor_id, couple_id, bride_name, bride_phone } = req.body || {};
+  const {
+    vendor_id, couple_id, bride_name, bride_phone,
+    // ── THE SHEET'S FOUR FIELDS (CE-ruled 2026-07-31) ────────────────────────
+    // All OPTIONAL. Session hydration remains the default; a POSTed value
+    // OVERRIDES it, because her explicit word beats her stored profile.
+    //
+    // WHY THIS RULING EXISTS. The sheet shows these four, prefilled, and lets
+    // her edit them. A door that accepted the tap and discarded the edits would
+    // be the costume class in form-shape: she corrects her wedding date, the
+    // correction is thrown away, and the vendor's brief — and his availability
+    // clash line — carry the OLD date while she believes she fixed it. Nothing
+    // in the interface would ever say otherwise.
+    //
+    // The rule is symmetric and absolute: a field this door cannot honestly
+    // land is rendered READ-ONLY on the sheet, never editable-and-dropped.
+    functions,      // string[] — her wedding functions
+    wedding_date,   // 'YYYY-MM-DD'
+    city,           // text
+    budget_band,    // the band's `value` — whole-rupee ceiling as a string, '' = no ceiling
+  } = req.body || {};
+
+  // Parsed at ONE home (src/lib/discover/enquiryFields.js) so the bench can drive
+  // the real functions. These were inline here until the both-ways run proved the
+  // cells written for them were tautologies — see that file's header.
+  const postedBudgetMax = bandCeiling(budget_band);
+  const postedFunctions = normalizeFunctions(functions);
 
   if (!vendor_id) {
     return res.status(400).json({ ok: false, error: 'vendor_id required' });
@@ -76,7 +102,8 @@ router.post('/', asyncHandler(async (req, res) => {
     .maybeSingle();
 
   if (vendor) {
-    return await handleRealVendor({ supabase, res, vendor, couple_id, bride_name, bride_phone });
+    return await handleRealVendor({ supabase, res, vendor, couple_id, bride_name, bride_phone,
+                                    postedFunctions, wedding_date, city, postedBudgetMax });
   }
 
   const { data: demoVendor } = await supabase
@@ -88,7 +115,7 @@ router.post('/', asyncHandler(async (req, res) => {
     .maybeSingle();
 
   if (demoVendor) {
-    return await handleDemoVendor({ supabase, res, demoVendor, couple_id });
+    return await handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_date, city });
   }
 
   return res.status(404).json({ ok: false, error: 'Vendor not found.' });
@@ -97,7 +124,8 @@ router.post('/', asyncHandler(async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // THE REAL SPECIES
 // ─────────────────────────────────────────────────────────────────────────────
-async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, bride_phone }) {
+async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, bride_phone,
+                                  postedFunctions, wedding_date, city, postedBudgetMax }) {
   const { data: user } = await supabase
     .from('users')
     .select('phone')
@@ -124,6 +152,13 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       vendorId: vendor.id,
       vendor,
       coupleId: couple_id,
+      // HER WORD REACHES THE CLASH PREDICATE. The builder's own contract already
+      // ranks these above coupleId hydration ("takes precedence", :25, honoured
+      // at :90), so passing them is the whole implementation of the override —
+      // and it is what makes a corrected date produce a corrected clash line
+      // rather than a confidently wrong one about the date she just fixed.
+      weddingDate: wedding_date || undefined,
+      budgetMax:   postedBudgetMax != null ? postedBudgetMax : undefined,
     });
   } catch (err) {
     console.warn('[enquire] enrichment failed (non-fatal):', err.message);
@@ -186,8 +221,17 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
     const leadRes = await createLead(supabase, vendor.id, {
       name:        bride_name  || 'Dream Wedding enquiry',
       phone:       bride_phone || null,
-      wedding_city: vendor.city || null,
       source:      'discover',
+      // THE SHEET'S FOUR, EACH ON ITS OWN WITNESSED COLUMN (PUBLIC_SCHEMA.md,
+      // public.leads): event_types ARRAY · wedding_date date · wedding_city text
+      // · budget_max integer. All four are accepted by createLead's own params
+      // (src/lib/vendor/leads.js:17-19) — nothing is invented here.
+      event_types:  postedFunctions,
+      wedding_date: wedding_date || null,
+      // Her typed city beats the vendor's city, which was only ever a stand-in
+      // for a value this door could not previously receive.
+      wedding_city: city || vendor.city || null,
+      budget_max:   postedBudgetMax,
       raw_message: `${bride_name || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
       notes:       'Discover enquiry — she found you on the feed.',
     });
@@ -264,7 +308,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
 // ─────────────────────────────────────────────────────────────────────────────
 // THE DEMO SPECIES — the free-lead hook
 // ─────────────────────────────────────────────────────────────────────────────
-async function handleDemoVendor({ supabase, res, demoVendor, couple_id }) {
+async function handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_date, city }) {
   // ── SERVER-SIDE HYDRATION (CE-ruled 2026-07-31, Ask 3) ────────────────────
   // The sheet collects NEITHER a name NOR a phone. It prefills from her profile,
   // so her session IS the source, and asking a logged-in bride to retype what we
@@ -274,7 +318,7 @@ async function handleDemoVendor({ supabase, res, demoVendor, couple_id }) {
   // PUBLIC_SCHEMA.md — no `name`, no `phone`). The identity is one hop away:
   // `couples.user_id` → `public.users`, which carries `name` and `phone`. This is
   // the same hop the real-vendor leg already makes for the vendor's own number.
-  let weddingDate = null, weddingCity = null, brideName = null, bridePhone = null;
+  let weddingDate = wedding_date || null, weddingCity = city || null, brideName = null, bridePhone = null;
   if (couple_id) {
     try {
       const { data: couple } = await supabase
@@ -282,8 +326,13 @@ async function handleDemoVendor({ supabase, res, demoVendor, couple_id }) {
         .select('wedding_date, wedding_city, user_id')
         .eq('id', couple_id)
         .maybeSingle();
-      weddingDate = couple?.wedding_date || null;
-      weddingCity = couple?.wedding_city || null;
+      // POSTED OVERRIDES HYDRATED — the same rule as the real leg, applied to the
+      // only two of the four that `demo_leads` can honestly hold. `functions` and
+      // `budget_band` have NO column on that table (13 cols, PUBLIC_SCHEMA.md), so
+      // they are never accepted here and the sheet renders those two READ-ONLY on
+      // a demo card. Display-and-confirm is honest; edit-and-discard is not.
+      weddingDate = wedding_date || couple?.wedding_date || null;
+      weddingCity = city         || couple?.wedding_city || null;
       if (couple?.user_id) {
         const { data: u } = await supabase
           .from('users')
