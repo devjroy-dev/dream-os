@@ -31,8 +31,8 @@
 ## 2 · PROOF
 
 ```
-b07_p5_bench       124 passed, 0 failed  (total 124)
-  83 at charter  +28 cells  +13 both-ways mutation proofs  = 124   (derived by
+b07_p5_bench       126 passed, 0 failed  (total 126)
+  83 at charter  +29 cells  +14 both-ways mutation proofs  = 126   (derived by
   counting the run's own output, after the chair caught a broken prose sum;
   the last cell+mutation pair is §18.8, born of the founder's walk below)
 node --check       5/5 OK
@@ -82,6 +82,16 @@ NOT FLOOR — excluded by name, per the floor-method law:
    duplicate. **A presence-cell is structurally blind to duplication.** Cured,
    and §18.8 now COUNTS the line, proven both ways. Standing lesson: wherever a
    surface can repeat a string, a presence-cell must be paired with a count-cell.
+   **SECOND WALK CATCH, same family:** Fork B leaves the sheet mounted, and the
+   card panel behind it was only ever hidden by the sheet's HEIGHT. The done-state
+   is far shorter than the form, so the panel re-emerged below it and the surface
+   read as TWO stacked cards with two drag handles. Cured by `visible={panelOpen
+   && !sheetOpen}` — the panel slides away while the sheet is up and returns on
+   close; `panelOpen` itself is untouched. §18.9 pins it, proven both ways.
+   **THE STANDING LESSON:** changing a surface's HEIGHT changes what it occludes.
+   Every element a surface used to cover by size must be re-accounted when that
+   size changes — the control-inventory law's blind spot, and neither §18's cells
+   nor tsc can see it. Only a device can.
 8. **The F-07.56 cite list was short by four.** The finding named three consumers; the real leg had seven — the lead row's name/phone, the binder's `raw_message`, the prospect's name/phone/note. Curing three would have left the cabinet, binder and prospect saying "a couple" while the ping said her name.
 
 ## 6 · PATH-NOTES (bare filenames were ambiguous; each derived by command)

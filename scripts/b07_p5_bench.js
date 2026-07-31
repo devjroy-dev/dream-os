@@ -1381,6 +1381,15 @@ if (!PWA_VISIBLE) {
     assert.strictEqual(n, 1, `the expectation line renders ${n} times, not once`);
   });
 
+  // BORN OF THE FOUNDER'S WALK (second catch): Fork B leaves the sheet up, and
+  // the card panel behind it is only hidden by the sheet's HEIGHT. The done-state
+  // is short, so the panel re-emerged and the surface showed two stacked cards.
+  t('\u00a718.9 the card panel stands down while the sheet is up', () => {
+    const sanct = code(PREAD(SANCT_R));
+    assert.ok(/visible=\{panelOpen && !sheetOpen\}/.test(sanct),
+      'the panel is still visible behind the sheet — two stacked cards');
+  });
+
   t('§18.3 the affordance renders ONLY when a lawful address exists', () => {
     assert.ok(/\{enquireLink && \(/.test(sheet),
       'the affordance is unconditional — a demo card would render a dead control');
@@ -1447,6 +1456,11 @@ if (!PWA_VISIBLE) {
   mutatePwa(SANCT_R, "setEnquiryToast('Could not send. Try again.');", '',
     '§18.7 (failure toast firing)',
     (src) => { assert.ok(code(src).includes("setEnquiryToast('Could not send. Try again.')")); });
+
+  // INVERSE 5 — leave the panel visible behind the sheet. Must redden.
+  mutatePwa(SANCT_R, 'visible={panelOpen && !sheetOpen}', 'visible={panelOpen}',
+    '\u00a718.9 (the stacked panel)',
+    (src) => { assert.ok(/visible=\{panelOpen && !sheetOpen\}/.test(code(src))); });
 
   // INVERSE 4 — put the duplicate expectation line back. Must redden.
   mutatePwa(SHEET_R, '{enquireLink && (',
