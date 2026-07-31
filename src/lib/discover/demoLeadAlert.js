@@ -39,6 +39,7 @@
 'use strict';
 
 const { sendWa }        = require('../sendWa');
+const { normalizeTo }   = require('../metaCloud');   // F-07.47 — the estate's one phone normalizer
 const { updateProspect } = require('../prospects');
 
 // The batch window. The spec's own number: "repeat enquiries within 48h batch
@@ -148,7 +149,39 @@ async function sendDemoLeadAlert(supabase, opts) {
   // it is why it logs at error rather than warn: a demo card that can be
   // enquired on but never alerts its vendor is the product failing silently,
   // which is the exact class this sitting exists to end.
-  const phone = demoVendor.whatsapp_phone;
+  // ── F-07.47 CURED · THE PHONE IS NORMALIZED AT ITS DERIVATION ─────────────
+  // THIS READ: `const phone = demoVendor.whatsapp_phone;` — the RAW column value,
+  // then used at all three sites below (the prospect READ :172, sendWa's `to`,
+  // and the prospect INSERT :239).
+  //
+  // THE DEFECT. `prospects.phone` is stored NORMALIZED across the estate —
+  // digits, country code, no '+', no 'whatsapp:' — the convention declared at
+  // sendWa.js:143-145 and enforced there by `normalizeTo` before the opt-out
+  // lookup. This module matched and wrote the raw column instead. A
+  // `whatsapp_phone` stored as '+919888294440' would therefore:
+  //   1. MISS an existing normalized prospect row and INSERT a second one for
+  //      the same human being, and
+  //   2. anchor its 48h batch on that second row, so the batch state diverges
+  //      from the marketing lane's for the same number.
+  // Consistent within this module alone — which is exactly why no bench caught
+  // it: every read and write here agreed with every other read and write here.
+  // Found while deriving the walk fixture, not by a test.
+  //
+  // THE CURE IS AT THE DERIVATION, NOT AT THE TWO WRITE SITES. The chair ruled
+  // ':172/:239 normalize'; normalizing once where `phone` is BORN satisfies both
+  // and also fixes sendWa's `to`, with one line instead of two. DEVIATION NAMED:
+  // one site cured, not two, because two would have re-introduced the split this
+  // finding is about. `normalizeTo` is idempotent and metaCloud normalizes the
+  // wire again downstream, so the outbound byte is unchanged.
+  //
+  // MECHANISM NAMED (F-06.85): the normalizer is `normalizeTo`, DEFINED at
+  // src/lib/metaCloud.js:57-62 and imported by sendWa — the ruling's
+  // sendWa.js:143-145 cite is its USAGE site, not its home. If that function
+  // moves, this paragraph and the import below are re-read together.
+  //
+  // Normalizing BEFORE the guard is deliberate: a whitespace-only column now
+  // collapses to '' and is caught by the same falsy check, instead of being sent.
+  const phone = normalizeTo(demoVendor.whatsapp_phone);
   if (!phone) {
     console.error(
       `[demo-lead-alert] demo vendor ${demoVendor.id} (${demoVendor.ig_handle || 'no-handle'}) ` +

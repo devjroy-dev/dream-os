@@ -577,6 +577,10 @@ t('§6.7 an empty functions array is null, not an empty ARRAY write (REAL produc
   assert.deepStrictEqual(normalizeFunctions([' Mehendi ', 'Sangeet']), ['Mehendi', 'Sangeet']);
 });
 
+// F-07.47's cells are async; they queue here and are driven in the async foot,
+// per the async-on-sync vacuity this bench already paid for once.
+const asyncQueue = [];
+
 // ═════════════════════════════════════════════════════════════════════════════
 H('§7 — F-07.45: the transport arm and the surface arm');
 
@@ -784,6 +788,87 @@ if (!fs.existsSync(CANVAS)) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+H('§10 — F-07.47: the phone is normalized before it touches prospects');
+
+// A prospects plane that RECORDS what it was asked for, so a cell can assert the
+// exact value used at the read and at the insert — the two sites the finding is
+// about. `existing` is stored under the NORMALIZED key, as the estate stores it.
+function prospectPlane({ existingNormalized = null } = {}) {
+  const log = { readPhone: null, insertedPhone: null, inserted: 0 };
+  return {
+    log,
+    from(table) {
+      if (table !== 'prospects') throw new Error(`unexpected table ${table}`);
+      const q = {};
+      q.select = () => q;
+      q.eq = (_col, val) => { log.readPhone = val; return q; };
+      q.maybeSingle = async () => ({
+        data: (existingNormalized && log.readPhone === existingNormalized)
+          ? { id: 'p-existing', phone: existingNormalized, state: 'templated',
+              notes: 'demo_lead', demo_vendor_ref: 'demo-1', last_template_at: null }
+          : null,
+      });
+      q.insert = (row) => {
+        log.inserted += 1; log.insertedPhone = row.phone;
+        return { select: () => ({ single: async () => ({ data: { id: 'p-new' }, error: null }) }) };
+      };
+      q.update = () => ({ eq: () => ({ select: () => ({ single: async () => ({ data: {}, error: null }) }) }) });
+      return q;
+    },
+  };
+}
+
+const PLUS_VENDOR = {
+  id: 'demo-1', ig_handle: 'swati', display_name: 'Swati',
+  category: 'Photography', city: 'Delhi',
+  whatsapp_phone: '+919888294440',        // the '+' form a founder fixture would type
+};
+const NORMALIZED = '919888294440';
+
+asyncQueue.push(
+  ['§10.1 a "+"-form column is NORMALIZED before the prospects READ', async () => {
+    const s = sender(); const sb = prospectPlane();
+    await sendDemoLeadAlert(sb, { demoVendor: PLUS_VENDOR, now: NOW, deps: s.deps });
+    assert.strictEqual(sb.log.readPhone, NORMALIZED,
+      `the prospect read used '${sb.log.readPhone}', not the normalized form`);
+  }],
+
+  ['§10.2 a "+"-form column is NORMALIZED before the prospects INSERT', async () => {
+    const s = sender(); const sb = prospectPlane();
+    await sendDemoLeadAlert(sb, { demoVendor: PLUS_VENDOR, now: NOW, deps: s.deps });
+    assert.strictEqual(sb.log.insertedPhone, NORMALIZED,
+      `the prospect row was written as '${sb.log.insertedPhone}'`);
+  }],
+
+  ['§10.3 THE FINDING ITSELF: a "+"-form fixture MINTS NO SECOND ROW', async () => {
+    // The existing prospect is stored normalized, as every other writer stores
+    // it. Uncured, the raw '+' value misses it and inserts a duplicate. This is
+    // the cell the finding was minted for.
+    const s = sender(); const sb = prospectPlane({ existingNormalized: NORMALIZED });
+    await sendDemoLeadAlert(sb, { demoVendor: PLUS_VENDOR, now: NOW, deps: s.deps });
+    assert.strictEqual(sb.log.inserted, 0,
+      'a SECOND prospects row was minted for a number that already existed normalized');
+  }],
+
+  ['§10.4 an already-normalized column is unchanged (the normalizer is idempotent)', async () => {
+    const s = sender(); const sb = prospectPlane();
+    await sendDemoLeadAlert(sb, {
+      demoVendor: { ...PLUS_VENDOR, whatsapp_phone: NORMALIZED }, now: NOW, deps: s.deps });
+    assert.strictEqual(sb.log.readPhone, NORMALIZED);
+    assert.strictEqual(sb.log.insertedPhone, NORMALIZED);
+  }],
+
+  ['§10.5 a whitespace-only column is REFUSED, not sent (normalize-before-guard)', async () => {
+    const s = sender(); const sb = prospectPlane();
+    const r = await sendDemoLeadAlert(sb, {
+      demoVendor: { ...PLUS_VENDOR, whatsapp_phone: '   ' }, now: NOW, deps: s.deps });
+    assert.strictEqual(r.sent, false);
+    assert.strictEqual(r.reason, 'no_whatsapp_phone');
+    assert.strictEqual(s.calls.length, 0, 'a whitespace phone reached the transport');
+  }],
+);
+
+// ═════════════════════════════════════════════════════════════════════════════
 (async () => {
   // §1's async cells were registered synchronously above via t(); re-drive the
   // async ones explicitly so their assertions are actually awaited.
@@ -856,6 +941,11 @@ if (!fs.existsSync(CANVAS)) {
       if (wentRed) { pass++; console.log('  ok   §8 §7.4 (the 24h ceiling) goes RED when its production code is broken'); }
       else { fail++; fails.push('§8 §7.4 async mutation'); console.log('  FAIL §8 §7.4 (the 24h ceiling) passed over broken production code — vacuous'); }
     }
+  }
+
+  for (const [n, fn] of asyncQueue) {
+    try { await fn(); pass++; console.log(`  ok   ${n}`); }
+    catch (e) { fail++; fails.push(n); console.log(`  FAIL ${n}\n         ${e.message}`); }
   }
 
   console.log(`\n${'─'.repeat(66)}`);
