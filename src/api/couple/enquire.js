@@ -31,14 +31,23 @@
 // which of them happened.
 //
 // Body: { vendor_id, couple_id?, bride_name?, bride_phone? }
-// Returns: { ok, species, sent, lead_created, enquiry_saved, batched? }
+// Returns: { ok, species, sent, vendor_notified, notify_mode, notify_refusal,
+//            lead_created, enquiry_saved, batched? }
+//   ok              = the enquiry EXISTS where the vendor will find it (the row).
+//   vendor_notified = the WhatsApp PING left. The two are independent facts and
+//                     the response states both — F-07.45's surface arm.
 
 'use strict';
 
 const express       = require('express');
 const router        = express.Router();
 const asyncHandler  = require('../../lib/asyncHandler');
-const { sendWhatsApp } = require('../../lib/whatsapp');
+// ── F-07.45 TRANSPORT ARM — sendWa, not the raw transport ────────────────────
+// `sendWhatsApp` (src/lib/whatsapp.js) is the TRANSPORT. `sendWa`
+// (src/lib/sendWa.js) is the GATE that sits above it. This door used the
+// transport directly; see the block at the send site for what that cost.
+const { sendWa, WaWindowClosedError } = require('../../lib/sendWa');
+const { vendorWindowOpen } = require('../../lib/vendor/waWindow');
 const { createLead }   = require('../../lib/vendor/leads');
 const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld: enquiries → binders
 const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5: the free-lead hook
@@ -167,35 +176,109 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   const enrichBlock = enrichment ? `\n\n${enrichment}` : '';
   const body = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}${enrichBlock}\n\nShe found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
 
-  // ── F-07.40 CURED (in part) · THE SWALLOW GOES LOUD ───────────────────────
-  // THIS CATCH READ: console.error(...); sent = false;  — and `sent` was
-  // returned to a caller that never looked at it (the sole caller, sanctuary
-  // page.tsx:1582, does not read the response at all). So a free-form send
-  // refused outside Meta's 24h customer-service window produced: no delivery, no
-  // alarm, and a success-shaped response. That is the whole defect — the vendor
-  // never hears, and neither does anyone else.
+  // ── F-07.45 CURED · THE TRANSPORT ARM ─────────────────────────────────────
   //
-  // WHAT THIS CURE DOES AND DOES NOT DO. It makes the failure LOUD (error-level,
-  // named, with the vendor id) and TRUE ON THE WIRE (`sent` is reported and the
-  // caller now reads it). It does NOT deliver the message: no approved
-  // vendor-lane template can honestly carry an enquiry alert — derived at
-  // 133d709 against the registry, all three candidates rejected as costume
-  // (morning_nudge_vendor claims a morning and carries a STOP that would
-  // disable enquiry alerts; crew_assignment claims a crew; payment_reminder is
-  // unrelated). The fallback template ships DRAFTED in this sitting's handover
-  // for the founder's veto and Meta filing at seal — the P1 rider pattern.
-  // Until it is approved, an out-of-window vendor is a KNOWN, LOGGED gap.
-  let sent = true;
+  // WHAT THIS CODE READ, AND WHY IT WAS WRONG. It called `sendWhatsApp` — the
+  // raw transport — inside a try/catch, set `sent = false` in the catch, and
+  // trusted that to be the whole truth. It was not, because `sendWhatsApp` has
+  // THREE refusal shapes and only ONE of them throws:
+  //
+  //   opted out            → RETURNS {blocked:'opted_out',   sent:false}   (whatsapp.js:131-134)
+  //   no Meta lane         → RETURNS {blocked:'no_meta_lane', sent:false}  (whatsapp.js:152-153)
+  //   window closed / API  → THROWS MetaSendError                          (metaCloud.js:87-95)
+  //
+  // The return value was discarded. So on two of the three, `sent` stayed TRUE
+  // and this door reported a delivery that never happened. F-07.40's "loud
+  // swallow" cure was VACUOUS on exactly the paths it was minted to close.
+  //
+  // WHAT F-07.45 IS **NOT**. It was minted as a "LIVE STOP BREACH" — that
+  // framing is retracted at the chair's own correction №29. `sendWhatsApp`
+  // carries the F-05.2 cross-line opt-out gate ITSELF (whatsapp.js:131, its own
+  // comment at :126-128 declaring the closure). STOP was never bypassed here.
+  // The cure rides for the CORRECTED reasons alone.
+  //
+  // WHY sendWa, THEN. Three capabilities the transport genuinely lacks:
+  //   1. TYPED refusals for all three shapes — every one THROWS a catchable
+  //      WaError with a `.code`, so a caller cannot discard a refusal by
+  //      forgetting to read a return value. The class of bug above becomes
+  //      structurally unavailable.
+  //   2. WINDOW DETERMINATION — the transport posts free-form text and lets Meta
+  //      reject it. sendWa refuses BEFORE the wire and names why.
+  //   3. THE TEMPLATE PATH — the only honest way to reach an out-of-window
+  //      vendor, wired below.
+  // The STOP gate transfers equivalently (sendWa.js:201-203, WaOptedOutError).
+  // Nothing is lost in the move; the estate's "sendWa is the only outbound" law
+  // (spec §3, TDW_05) is now true at this door instead of nearly true.
+  //
+  // The window is determined by the CALLER and passed as a boolean — the cron
+  // precedent (cron.js:76), because sendWa's own default checker takes a single
+  // conversationId and a vendor's inbound may land on any of his vendor_self
+  // threads. The predicate lives at one home: src/lib/vendor/waWindow.js.
+  let vendorNotified = false;
+  let notifyMode     = null;   // 'text' | 'template' | null
+  let notifyRefusal  = null;   // the typed code, for the log and the walk
+
+  const win = await vendorWindowOpen(supabase, vendor.id);
   try {
-    await sendWhatsApp(user.phone, body);
+    await sendWa({
+      line: 'vendor',
+      to: user.phone,
+      text: body,
+      windowOpen: win.open,
+      supabase,
+    });
+    vendorNotified = true;
+    notifyMode = 'text';
   } catch (err) {
-    sent = false;
+    notifyRefusal = (err && err.code) || 'unknown';
+
+    // ── F-07.40 · THE FALLBACK, WIRED ───────────────────────────────────────
+    // A closed window is the ONE refusal a template can answer. Every other
+    // refusal (opted out, line not configured, bad call) is a refusal a template
+    // would not fix and MUST NOT paper over — an opted-out vendor is not
+    // reachable by changing message format.
+    //
+    // `enquiry_alert_vendor` is in the registry at status 'pending'
+    // (templates.js). sendWa's own gate therefore refuses it with
+    // WaTemplateNotApprovedError until the founder flips the byte after Meta's
+    // word. That refusal is TYPED and LOGGED, never silent, and the wiring does
+    // not have to be built again on approval day.
+    if (err instanceof WaWindowClosedError) {
+      try {
+        await sendWa({
+          line: 'vendor',
+          to: user.phone,
+          templateKey: 'enquiry_alert_vendor',
+          vars: [
+            vendor.business_name || 'there',
+            bride_name || 'a couple',
+            'https://thedreamwedding.in/vendor/leads',
+          ],
+          supabase,
+        });
+        vendorNotified = true;
+        notifyMode = 'template';
+        notifyRefusal = null;
+      } catch (tplErr) {
+        notifyRefusal = (tplErr && tplErr.code) || 'template_unknown';
+      }
+    }
+  }
+
+  if (!vendorNotified) {
     console.error(
-      `[enquire] VENDOR NOT NOTIFIED — vendor ${vendor.id}: ${err.message}. ` +
+      `[enquire] VENDOR NOT NOTIFIED — vendor ${vendor.id}: refusal '${notifyRefusal}' ` +
+      `(window ${win.open ? 'open' : 'closed'}: ${win.reason}). ` +
       'The lead is stored and visible in his Leads tab; the WhatsApp ping did not leave. ' +
-      '(F-07.40: no approved vendor-lane fallback template exists yet.)'
+      '(F-07.40: enquiry_alert_vendor is filed but not yet approved by Meta.)'
     );
   }
+
+  // `sent` is retained as the wire name existing callers already read; it now
+  // means what it always claimed to mean. `vendor_notified` is its successor and
+  // carries the same fact under the name the response should have used from the
+  // start. Both are emitted; neither is a guess.
+  const sent = vendorNotified;
 
   // ── 2. The lead. public.leads, source 'discover'. ─────────────────────────
   //
@@ -291,15 +374,42 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
     console.error('[enquire] enquiry_taps insert error:', err.message);
   }
 
-  // THE RESPONSE CARRIES THE TRUTH, FIELD BY FIELD. The sheet reads these to
-  // decide what to tell her, and it can only be honest about what it is told.
-  // `enquiry_saved` is false for a logged-out bride BY DESIGN — there is no
-  // couple row to hang it on — and the surface must not promise a saved link
-  // when this says false (V6's split, founder-vetoed 2026-07-31).
+  // ── F-07.45 CURED · THE SURFACE ARM ───────────────────────────────────────
+  //
+  // THIS READ `ok: true` UNCONDITIONALLY. Every caller branches on `ok`
+  // (EnquirySheet.tsx checks `data.ok === false`; sanctuary reads `!r.ok` for
+  // the failure toast), so a constant `true` meant V6's failure line was
+  // UNREACHABLE BY CONSTRUCTION — a vetoed string that could never render, over
+  // a door that could genuinely fail its writes. The toast was not wrong; it was
+  // never asked.
+  //
+  // `ok` NOW MEANS: THE ENQUIRY EXISTS WHERE THE VENDOR WILL FIND IT.
+  // That is `leadCreated` — the public.leads row his Leads tab reads and the row
+  // `pending_lead_pings.lead_id` FKs to (0050:19). It is deliberately NOT:
+  //   • `enquiry_saved` — false for a logged-out bride BY DESIGN, and she is
+  //     still a real enquiry to the vendor. Requiring it would make V6's failure
+  //     toast fire on the estate's most common anonymous path.
+  //   • the binder — Donna's cabinet, the other plane. Its absence does not stop
+  //     the vendor seeing the enquiry.
+  //   • `vendor_notified` — RULED. The WhatsApp ping is a NOTIFICATION of a
+  //     thing that already exists, not the thing itself. "Enquiry sent ✦ saved
+  //     in Vendors" stays TRUE when the row landed and the ping was refused: the
+  //     toast claims the ROW, not the PING, and the vendor finds it in his Leads
+  //     tab either way. Binding `ok` to the ping would make her toast lie in the
+  //     OTHER direction — telling her nothing happened when her enquiry is
+  //     sitting in front of him.
+  //
+  // `vendor_notified` rides beside it carrying what the PING proved, so the fact
+  // is on the wire and witnessable rather than inferred. This is the demo leg's
+  // own pattern (:382 `notified_vendor: alert.sent === true`) — the asymmetry
+  // between the two species closes toward the honest one.
   return res.json({
-    ok: true,
+    ok: leadCreated,
     species: 'real',
     sent,
+    vendor_notified: vendorNotified,
+    notify_mode: notifyMode,
+    notify_refusal: notifyRefusal,
     lead_created: leadCreated,
     enquiry_saved: enquirySaved,
   });
@@ -419,10 +529,24 @@ async function handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_
   // couple_enquiries row for a demo vendor — that table's `vendor_id` references
   // the real vendors plane. Her Journey therefore will not list a demo enquiry,
   // and that is a TRUE absence, stated here so no surface invents it.
+  //
+  // ── F-07.45 SURFACE ARM, THE DEMO HALF ────────────────────────────────────
+  // This leg also read `ok: true` unconditionally. Its `ok` now means the same
+  // thing as the real leg's: the enquiry EXISTS where the vendor will find it —
+  // here, the `demo_leads` row a claiming vendor lands on. The alert-only path
+  // (no name/phone, logged out) is NOT a failure: the row is refused by the
+  // schema, by design, and V6's logged-out toast already promises strictly less.
+  // So `ok` is false ONLY when a store was ATTEMPTED and FAILED — the one case
+  // where the vendor is about to be told about an enquiry he cannot find, which
+  // is precisely the sentence the loud log at :387 is already shouting about.
+  const storeAttempted = !!(brideName && bridePhone);
   return res.json({
-    ok: true,
+    ok: storeAttempted ? leadStored : true,
     species: 'demo',
     sent: alert.sent,
+    vendor_notified: alert.sent === true,
+    notify_mode: alert.sent === true ? 'template' : null,
+    notify_refusal: alert.sent === true ? null : (alert.reason || 'unknown'),
     lead_created: leadStored,
     enquiry_saved: false,
     batched: alert.reason === 'batched_48h',

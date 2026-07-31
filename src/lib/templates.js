@@ -170,6 +170,48 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── TDW_07 P5 · F-07.40 — THE VENDOR-LANE ENQUIRY CARRIER ──────────────────
+  // RE-DERIVED AT 9b84c6d (this sitting, by command against this registry, not
+  // carried from the prior sitting's claim). The vendor line's approved set is
+  // exactly three, and NOT ONE of them can honestly carry a new enquiry:
+  //   morning_nudge_vendor — "Good morning {{1}}. Here's your day: {{2}}." claims
+  //     a morning that is not happening, AND carries "Reply STOP MORNINGS to
+  //     pause these updates". Wearing it would let a vendor who paused MORNINGS
+  //     silently lose his ENQUIRY ALERTS. That is worse than the gap it fills.
+  //   crew_assignment — "you're on the crew for {{2}}" claims a crew.
+  //   payment_reminder — "{{1}} is due {{2}}" claims a payment.
+  // All three rejected as costume, twice now, by two independent derivations.
+  //
+  // So this key is filed. It ships 'pending': `isApproved` tests === 'approved'
+  // and nothing else, so sendWa REFUSES it with a typed
+  // WaTemplateNotApprovedError until the founder flips this one byte after Meta's
+  // word — the same convention the six above shipped under, and the same flip
+  // TDW_07 P2 performed for demo_lead_alert. The wiring at enquire.js is LIVE
+  // now; only the send is gated. That ordering is deliberate: the clock starts
+  // at filing, and the code is not what anyone should be waiting on.
+  //
+  // Shaped to docs/TEMPLATES.md §1: single line, no adjacent variables, none at
+  // body start or end. Deliberately parallel to demo_lead_alert so a vendor who
+  // is prospected and then joins reads one product, not two.
+  //
+  // [F-06.85: conditioned on a MECHANICAL fact — Meta's review state for
+  //  tdw_enquiry_alert_vendor. Mechanism: isApproved at the bottom of this file.
+  //  When that fact moves, this paragraph and `status` are re-read together.]
+  enquiry_alert_vendor: {
+    key: 'enquiry_alert_vendor',
+    name: 'tdw_enquiry_alert_vendor',      // PROPOSED — founder-final on the WABA
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['name', 'bride', 'link'],
+    // DRAFTED BY THE RETIRED SEAT, carried forward VERBATIM per the chair's
+    // ruling; routes to the founder's veto and files with Meta immediately.
+    body:
+      "Hi {{1}}, a new enquiry just came in from {{2}} on The Dream Wedding. Open your " +
+      "Leads to see the details: {{3}} — reply here if you need any help.",
+    status: 'pending',
+  },
+
   // ── AUTHENTICATION-category OTP templates (Block 05, F-05.6 fix (a), CE-35) ──────
   // These carry the login / PIN-reset / circle-join one-time codes over the Meta
   // transport. At M2b (CE-62, founder gate (ii)) they became the ONLY OTP path: the

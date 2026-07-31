@@ -37,6 +37,12 @@ const read = (p) => fs.readFileSync(SRC(p), 'utf8');
 // set on the PROCESS, not in any shipped file, and the §1.8 refusal cell proves
 // the refusal path still works when a send is genuinely rejected.
 process.env.MARKETING_WHATSAPP_NUMBER = process.env.MARKETING_WHATSAPP_NUMBER || '+918810531764';
+// F-07.45's §7.7 needs the VENDOR lane's FROM for the same reason: sendWa
+// resolves the lane BEFORE it reaches the template-approval gate (sendWa.js:195),
+// so without this the cell refuses as WaLineNotConfiguredError and proves nothing
+// about the approval gate it was written to prove. Process-level only; no shipped
+// file carries it. The first take omitted it and the awaited cell failed honestly.
+process.env.VENDOR_WHATSAPP_NUMBER = process.env.VENDOR_WHATSAPP_NUMBER || '+917011788380';
 
 // Comment-stripped view of a source file. §3 caught the whole-file grep as
 // VACUOUS: `source: 'discover'` appears in this sitting's own explanatory
@@ -572,6 +578,212 @@ t('§6.7 an empty functions array is null, not an empty ARRAY write (REAL produc
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+H('§7 — F-07.45: the transport arm and the surface arm');
+
+// ── the window predicate, driven as production code ──────────────────────────
+let winMod = null, winLoadErr = null;
+try { winMod = require(SRC('src/lib/vendor/waWindow.js')); }
+catch (e) { winLoadErr = e.message; }
+function W() {
+  if (!winMod) throw new Error(`waWindow module absent (uncured tree): ${winLoadErr}`);
+  return winMod;
+}
+
+// A fake plane shaped to the two queries waWindow makes, and NOTHING else — if
+// the module reaches for a column this does not serve, the cell fails loudly
+// rather than passing over an accidental undefined.
+function winSupabase({ convos = [{ id: 'c1' }], lastInboundAgoH = null, convoError = null, msgError = null } = {}) {
+  return {
+    from(table) {
+      if (table === 'conversations') {
+        const q = {
+          select: () => q, eq: () => q,
+          then: undefined,
+        };
+        q.eq = () => q;
+        q.select = () => q;
+        // terminal: the module awaits the builder itself after two .eq()
+        return Object.assign(q, {
+          then: (res) => res({ data: convoError ? null : convos, error: convoError }),
+        });
+      }
+      if (table === 'messages') {
+        const q = {};
+        q.select = () => q; q.eq = () => q; q.in = () => q; q.order = () => q; q.limit = () => q;
+        q.maybeSingle = async () => ({
+          data: msgError || lastInboundAgoH === null
+            ? null
+            : { created_at: new Date(Date.now() - lastInboundAgoH * 3600e3).toISOString() },
+          error: msgError,
+        });
+        return q;
+      }
+      throw new Error(`waWindow reached an unexpected table: ${table}`);
+    },
+  };
+}
+
+t('§7.1 the door imports sendWa, NOT the raw transport (F-07.45 transport arm)', () => {
+  const src = code(read('src/api/couple/enquire.js'));
+  assert.ok(/require\(['"]\.\.\/\.\.\/lib\/sendWa['"]\)/.test(src),
+    'enquire.js does not require sendWa');
+  assert.ok(!/require\(['"]\.\.\/\.\.\/lib\/whatsapp['"]\)/.test(src),
+    'enquire.js still requires the raw transport — the bypass survives');
+  assert.ok(!/\bsendWhatsApp\s*\(/.test(src),
+    'enquire.js still CALLS sendWhatsApp');
+});
+
+// §7.2-§7.5 are ASYNC and are driven in the async re-drive at the foot of this
+// file. They are NOT registered here: `t()` is synchronous and returns before an
+// async cell's assertions ever run, so registering them here would have counted
+// four greens over code nobody executed. My own §8 mutation caught exactly that
+// — the 24h-ceiling mutation could not turn the cell red because the cell was
+// never running. Disclosed rather than quietly relocated.
+
+t('§7.6 F-07.40: enquiry_alert_vendor is REGISTERED on the vendor line and NOT approved', () => {
+  const { TEMPLATES, isApproved } = require(SRC('src/lib/templates.js'));
+  const tpl = TEMPLATES.enquiry_alert_vendor;
+  assert.ok(tpl, 'enquiry_alert_vendor is not in the registry — the fallback has no carrier');
+  assert.strictEqual(tpl.line, 'vendor');
+  assert.strictEqual(tpl.category, 'UTILITY');
+  // The gate, not the enum, is the mechanism (templates.js header). Assert the GATE.
+  assert.strictEqual(isApproved('enquiry_alert_vendor'), false,
+    'the template reports APPROVED before Meta has said so — sendWa would send it');
+});
+
+// §7.7 is ASYNC and lives in the async re-drive, for the same reason §7.2-§7.5
+// do. It was registered here on the first take and reported a vacuous green;
+// the awaited form then failed for a real reason (see the env note in §0).
+
+t('§7.8 F-07.40 re-derived: no APPROVED vendor-line template honestly carries an enquiry', () => {
+  const { TEMPLATES } = require(SRC('src/lib/templates.js'));
+  const approvedVendor = Object.values(TEMPLATES)
+    .filter(v => v.line === 'vendor' && v.status === 'approved')
+    .map(v => v.key);
+  // The derivation is the POINT of this cell: if a future template joins the
+  // vendor line as approved, this goes RED and F-07.40 is re-opened for a human
+  // to re-read the bodies — the gap is not allowed to close by accident.
+  assert.deepStrictEqual(approvedVendor.sort(),
+    ['crew_assignment', 'morning_nudge_vendor', 'payment_reminder'],
+    'the approved vendor-line set MOVED — re-derive F-07.40 by hand before trusting the fallback');
+  for (const k of approvedVendor) {
+    assert.ok(!/enquir/i.test(TEMPLATES[k].body),
+      `${k} now mentions an enquiry — re-read F-07.40`);
+  }
+});
+
+t('§7.9 SURFACE ARM: `ok` is bound to the lead write, not hardcoded true', () => {
+  const src = code(read('src/api/couple/enquire.js'));
+  assert.ok(/ok:\s*leadCreated/.test(src),
+    'the real leg no longer binds ok to leadCreated');
+  // The literal `ok: true` must not survive on either species' RESPONSE. The
+  // 400/404 guards legitimately use `ok: false`, so only the true-literal is
+  // forbidden here.
+  assert.ok(!/return res\.json\(\{\s*\n?\s*ok:\s*true,/.test(src),
+    'a response still returns a hardcoded ok:true — the false-done survives');
+});
+
+t('§7.10 SURFACE ARM: vendor_notified rides BOTH legs, carrying the ping fact', () => {
+  const src = code(read('src/api/couple/enquire.js'));
+  const hits = src.match(/vendor_notified:/g) || [];
+  assert.strictEqual(hits.length, 2,
+    `vendor_notified appears on ${hits.length} legs, expected 2 (real + demo)`);
+  assert.ok(/vendor_notified:\s*vendorNotified/.test(src), 'the real leg does not carry the ping fact');
+  assert.ok(/vendor_notified:\s*alert\.sent === true/.test(src), 'the demo leg does not carry the alert fact');
+});
+
+t('§7.11 the fallback is wired ONLY on a closed window, never over other refusals', () => {
+  const src = code(read('src/api/couple/enquire.js'));
+  assert.ok(/instanceof WaWindowClosedError/.test(src),
+    'the template fallback is not gated on WaWindowClosedError');
+  assert.ok(/templateKey:\s*'enquiry_alert_vendor'/.test(src),
+    'the fallback does not reach for the filed template');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+H('§8 — MUTATION for §7 (PRODUCTION code broken, then restored)');
+
+// The waWindow mutation is ASYNC (the predicate is), so it is queued and driven
+// inside the async foot — `mutate()` is synchronous and would score it vacuous.
+
+mutate('src/lib/templates.js',
+  "    status: 'pending',\n  },",
+  "    status: 'approved',\n  },",
+  '§7.6 (the approval gate)',
+  () => {
+    const { isApproved } = require(SRC('src/lib/templates.js'));
+    assert.strictEqual(isApproved('enquiry_alert_vendor'), false);
+  });
+
+mutate('src/api/couple/enquire.js',
+  'ok: leadCreated,',
+  'ok: true,',
+  '§7.9 (the surface arm)',
+  () => {
+    const src = code(read('src/api/couple/enquire.js'));
+    assert.ok(/ok:\s*leadCreated/.test(src));
+  });
+
+mutate('src/api/couple/enquire.js',
+  "const { sendWa, WaWindowClosedError } = require('../../lib/sendWa');",
+  "const { sendWhatsApp } = require('../../lib/whatsapp');",
+  '§7.1 (the transport arm)',
+  () => {
+    const src = code(read('src/api/couple/enquire.js'));
+    assert.ok(/require\(['"]\.\.\/\.\.\/lib\/sendWa['"]\)/.test(src));
+  });
+
+// ═════════════════════════════════════════════════════════════════════════════
+H('§9 — ARRIVAL STATE (cross-repo, chair-ruled buildable statically)');
+
+// THE CONVENTION IS NOT NEW. `b07_p1_bench.js:349` already reaches a sibling
+// dreamos-pwa checkout and SKIPS with a named reason when it is absent. The P5
+// F-A handover declined this cell believing a cross-repo read would be a
+// smuggled grep; the estate had already settled the honest form, and this
+// follows it exactly. The skip is DISCLOSED, never a silently preserved count
+// (floor-method law).
+const CANVAS = path.join(ROOT, '..', 'dreamos-pwa', 'app/(frost)/frost/canvas/discover/page.tsx');
+if (!fs.existsSync(CANVAS)) {
+  console.log('  skip §9.1–§9.3 — the dreamos-pwa tree is not beside this one; these three');
+  console.log('       cells assert the canvas closed-frame render source and cannot run here.');
+} else {
+  const canvas = code(fs.readFileSync(CANVAS, 'utf8'));
+
+  t('§9.1 the closed frame renders IDENTITY at t=0 (name · category·city · price)', () => {
+    assert.ok(/vendor\.name/.test(canvas),        'no name token on the canvas');
+    assert.ok(/vendor\.category/.test(canvas),    'no category token on the canvas');
+    assert.ok(/vendor\.city/.test(canvas),        'no city token on the canvas');
+    assert.ok(/formatRs\(vendor\.starting_price\)/.test(canvas),
+      'no starting-price token — D-1 governed price is absent from the closed frame');
+  });
+
+  t('§9.2 the info layer does not steal the swipe surface', () => {
+    // The whole cure is additive-and-inert: a container that takes pointer
+    // events would change the deck's gesture, which the spec forbids outright
+    // ("Frost gesture mechanics byte-identical through P1/P6").
+    // The container OPENS above the token it wraps, so the window looks
+    // BACKWARD from the render site. The first take looked forward and went
+    // red against correct code — a cell aimed at the wrong side of its anchor.
+    const at  = canvas.indexOf('vendor.category');
+    const seg = canvas.slice(Math.max(0, at - 900), at);
+    assert.ok(/pointerEvents:\s*'none'/.test(seg),
+      'the info layer is not pointerEvents:none — the swipe surface moved');
+  });
+
+  t('§9.3 blind is reachable ONLY through its toggle — it is never the arrival state', () => {
+    // NOT a slice from the first occurrence: `code()` strips only lines that
+    // BEGIN with a comment marker, so a JSX block comment's continuation lines
+    // survive and the first `isBlindMode` hit is prose about the diagnosis. A
+    // cell a comment can satisfy — or defeat — is not testing code (§3's law,
+    // this time in the other direction). Anchor on the declaration.
+    assert.ok(/isBlindMode[^\n]{0,80}useState\(false\)/.test(canvas),
+      'isBlindMode does not default false — blind could be the arrival state');
+    assert.ok(!/localStorage[\s\S]{0,80}blind/i.test(canvas),
+      'blind has acquired a persistence path — arrival state is no longer derivable');
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 (async () => {
   // §1's async cells were registered synchronously above via t(); re-drive the
   // async ones explicitly so their assertions are actually awaited.
@@ -588,10 +800,62 @@ t('§6.7 an empty functions array is null, not an empty ARRAY write (REAL produc
       const r = await sendDemoLeadAlert(sb, { demoVendor: DEMO, now: NOW, deps: s.deps });
       assert.strictEqual(r.ok, false); assert.strictEqual(sb.log.inserted, null); }],
   ];
+  // ── F-07.45's async cells, driven where they actually run ────────────────
+  asyncCells.push(
+    ['§7.2', async () => { const r = await W().vendorWindowOpen(winSupabase({ convos: [] }), 'v1');
+      assert.strictEqual(r.open, false); assert.strictEqual(r.reason, 'no_conversation'); }],
+    ['§7.3', async () => { const r = await W().vendorWindowOpen(winSupabase({ lastInboundAgoH: 1 }), 'v1');
+      assert.strictEqual(r.open, true); assert.strictEqual(r.reason, 'in_window'); }],
+    ['§7.4', async () => { const r = await W().vendorWindowOpen(winSupabase({ lastInboundAgoH: 30 }), 'v1');
+      assert.strictEqual(r.open, false); assert.strictEqual(r.reason, 'window_closed'); }],
+    ['§7.5', async () => { const r = await W().vendorWindowOpen({ from() { throw new Error('plane down'); } }, 'v1');
+      assert.strictEqual(r.open, false); assert.ok(/window_check_threw/.test(r.reason)); }],
+    ['§7.7', async () => {
+      const { sendWa, WaTemplateNotApprovedError } = require(SRC('src/lib/sendWa.js'));
+      const calls = []; let threw = null;
+      try {
+        await sendWa({ line: 'vendor', to: '919888294440', templateKey: 'enquiry_alert_vendor', vars: ['A','B','C'] },
+          { sendTemplate: async (a) => { calls.push(a); return { ok: true }; },
+            sendText:     async (a) => { calls.push(a); return { ok: true }; },
+            isOptedOut:   async () => false });
+      } catch (e) { threw = e; }
+      assert.ok(threw instanceof WaTemplateNotApprovedError, `got ${threw && threw.name}`);
+      assert.strictEqual(calls.length, 0, 'a refusal still reached the transport'); }],
+  );
+
   H('§4 — ASYNC RE-DRIVE (the awaited form of §1\'s promise cells)');
   for (const [n, fn] of asyncCells) {
     try { await fn(); pass++; console.log(`  ok   ${n} awaited`); }
     catch (e) { fail++; fails.push(`${n} awaited`); console.log(`  FAIL ${n} awaited\n         ${e.message}`); }
+  }
+
+
+  // ── ASYNC MUTATION: the 24h ceiling, broken in PRODUCTION code ───────────
+  // `mutate()` is synchronous and scored this vacuous on the first run — the
+  // cell it drove returned a promise nobody awaited, so breaking the constant
+  // could not turn it red. This is the awaited form.
+  {
+    const abs = SRC('src/lib/vendor/waWindow.js');
+    const from = 'const WINDOW_HOURS = 24;';
+    const to   = 'const WINDOW_HOURS = 99999;';
+    if (!fs.existsSync(abs) || !fs.readFileSync(abs, 'utf8').includes(from)) {
+      fail++; fails.push('§8 §7.4 async mutation');
+      console.log('  FAIL §8 §7.4 (the 24h ceiling) — mutation anchor absent (uncured tree)');
+    } else {
+      const original = fs.readFileSync(abs, 'utf8');
+      fs.writeFileSync(abs, original.replace(from, to));
+      let wentRed = false;
+      try {
+        delete require.cache[require.resolve(abs)];
+        const m = require(abs);
+        const r = await m.vendorWindowOpen(winSupabase({ lastInboundAgoH: 30 }), 'v1');
+        assert.strictEqual(r.reason, 'window_closed');
+      } catch (_e) { wentRed = true; }
+      fs.writeFileSync(abs, original);
+      delete require.cache[require.resolve(abs)];
+      if (wentRed) { pass++; console.log('  ok   §8 §7.4 (the 24h ceiling) goes RED when its production code is broken'); }
+      else { fail++; fails.push('§8 §7.4 async mutation'); console.log('  FAIL §8 §7.4 (the 24h ceiling) passed over broken production code — vacuous'); }
+    }
   }
 
   console.log(`\n${'─'.repeat(66)}`);
