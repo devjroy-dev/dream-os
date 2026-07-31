@@ -781,8 +781,27 @@ H('§9 — ARRIVAL STATE (cross-repo, chair-ruled buildable statically)');
 // smuggled grep; the estate had already settled the honest form, and this
 // follows it exactly. The skip is DISCLOSED, never a silently preserved count
 // (floor-method law).
-const CANVAS = path.join(ROOT, '..', 'dreamos-pwa', 'app/(frost)/frost/canvas/discover/page.tsx');
-if (!fs.existsSync(CANVAS)) {
+// ── THE ONE CROSS-REPO GUARD (F-07.51) ───────────────────────────────────────
+// §9 probed a FILE; §12 probed a DIRECTORY. A `/workspaces/dreamos-pwa` that
+// exists but is empty, partial, or is some other checkout made §9 SKIP and §12
+// RUN — and fail — in the SAME run. The founder's paste is the specimen: 80
+// cells (§9's three skipped) with §12.2 red. Two guards asking two questions
+// about one fact is how a bench reports a defect the tree does not have.
+//
+// ONE question, asked once, keyed on the WITNESSED package name — the same
+// string the repo head-guard law (§10) puts in every apply block. A directory
+// that cannot produce that byte is not the pwa tree, whatever it is called.
+const PWA_ROOT = path.join(ROOT, '..', 'dreamos-pwa');
+function pwaTreeVisible() {
+  try {
+    const pkg = path.join(PWA_ROOT, 'package.json');
+    return fs.existsSync(pkg) && /"name":\s*"web"/.test(fs.readFileSync(pkg, 'utf8'));
+  } catch (_e) { return false; }
+}
+const PWA_VISIBLE = pwaTreeVisible();
+
+const CANVAS = path.join(PWA_ROOT, 'app/(frost)/frost/canvas/discover/page.tsx');
+if (!PWA_VISIBLE) {
   console.log('  skip §9.1–§9.3 — the dreamos-pwa tree is not beside this one; these three');
   console.log('       cells assert the canvas closed-frame render source and cannot run here.');
 } else {
@@ -993,6 +1012,35 @@ asyncQueue.push(
     assert.strictEqual(s.calls.length, 0);
   }],
 );
+
+// ═════════════════════════════════════════════════════════════════════════════
+H('§12 — F-07.50: the link inside the approved template resolves');
+
+t('§12.1 the Leads URL lives at ONE named home, not inline in the vars array', () => {
+  const src = code(read('src/api/couple/enquire.js'));
+  assert.ok(/const VENDOR_LEADS_URL = 'https:\/\/thedreamwedding\.in\/vendor\/discover\/leads';/.test(src),
+    'the Leads URL constant is missing or has drifted');
+  assert.ok(!/'https:\/\/thedreamwedding\.in\/vendor\/leads'/.test(src),
+    'the DEAD /vendor/leads path is still present — it 404s and ships in an approved template');
+});
+
+// Cross-repo, b07_p1_bench.js:349 convention: sibling tree or a named skip.
+if (!PWA_VISIBLE) {
+  console.log('  skip §12.2–§12.3 — the dreamos-pwa tree is not beside this one; these two');
+  console.log('       cells resolve the template link against the real route table.');
+} else {
+  t('§12.2 that URL resolves to a REAL Next route (a page.tsx exists there)', () => {
+    assert.ok(fs.existsSync(path.join(PWA_ROOT, 'app/vendor/discover/leads/page.tsx')),
+      'the Leads route moved — the approved template now points at a 404');
+  });
+
+  t('§12.3 the dead path has NOT quietly acquired a route (this cell is the tripwire)', () => {
+    // If /vendor/leads is ever created, this cell reddens and a human decides
+    // which of the two is canonical — rather than two Leads pages drifting apart.
+    assert.ok(!fs.existsSync(path.join(PWA_ROOT, 'app/vendor/leads/page.tsx')),
+      '/vendor/leads now exists too — decide which is canonical before shipping both');
+  });
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 (async () => {

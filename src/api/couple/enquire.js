@@ -53,6 +53,29 @@ const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld:
 const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5: the free-lead hook
 const { bandCeiling, normalizeFunctions } = require('../../lib/discover/enquiryFields');
 
+// ── F-07.50 CURED · THE {{3}} LINK POINTED AT A 404 ──────────────────────────
+// THIS READ: 'https://thedreamwedding.in/vendor/leads' — a path I authored from
+// the shape of the sentence, never from the route table. IT DOES NOT EXIST.
+// Derived by command against dreamos-pwa @ 5c16261: `find app/vendor -name
+// page.tsx` lists /vendor/discover/leads and NO /vendor/leads; there is no
+// rewrite or redirect in next.config.ts or middleware.ts; and the app's own
+// BottomNav.tsx:104 links Leads to '/vendor/discover/leads'.
+//
+// SEVERITY: this value ships inside tdw_enquiry_alert_vendor, which Meta
+// APPROVED on 2026-07-31 and which sendWa now dispatches. Every out-of-window
+// vendor would have received a real message containing a dead link — the
+// costume class delivered by an approved template, which is worse than the
+// silence F-07.40 was minted to end.
+//
+// THE FIX IS CODE, NOT META. {{3}} is a template VARIABLE, so the approved body
+// is untouched and no refiling is needed; only the value passed here changes.
+//
+// ONE HOME, and it is checked. The bench pins this constant against the pwa's
+// actual route table (cross-repo, skipped-with-reason where the sibling tree is
+// absent) so the next person to move that page reddens a cell instead of
+// shipping a 404 to a vendor's phone.
+const VENDOR_LEADS_URL = 'https://thedreamwedding.in/vendor/discover/leads';
+
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const {
@@ -252,7 +275,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
           vars: [
             vendor.business_name || 'there',
             bride_name || 'a couple',
-            'https://thedreamwedding.in/vendor/leads',
+            VENDOR_LEADS_URL,
           ],
           supabase,
         });
