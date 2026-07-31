@@ -1372,6 +1372,15 @@ if (!PWA_VISIBLE) {
     assert.ok(sheet.includes(`'${FROZEN_PLAIN}'`), 'the plain arm drifted from the vetoed bytes');
   });
 
+  // BORN OF THE FOUNDER'S WALK. Presence-cells cannot see duplication: §18.1
+  // asserted the confirmation was there, and it was — beneath a second copy of
+  // the expectation line the header already renders. Cells that assert PRESENCE
+  // must be paired with cells that assert COUNT wherever a surface can repeat.
+  t('§18.8 the expectation line renders EXACTLY ONCE (it is the header\'s)', () => {
+    const n = (code(sheet).match(/\{EXPECTATION\}/g) || []).length;
+    assert.strictEqual(n, 1, `the expectation line renders ${n} times, not once`);
+  });
+
   t('§18.3 the affordance renders ONLY when a lawful address exists', () => {
     assert.ok(/\{enquireLink && \(/.test(sheet),
       'the affordance is unconditional — a demo card would render a dead control');
@@ -1438,6 +1447,12 @@ if (!PWA_VISIBLE) {
   mutatePwa(SANCT_R, "setEnquiryToast('Could not send. Try again.');", '',
     '§18.7 (failure toast firing)',
     (src) => { assert.ok(code(src).includes("setEnquiryToast('Could not send. Try again.')")); });
+
+  // INVERSE 4 — put the duplicate expectation line back. Must redden.
+  mutatePwa(SHEET_R, '{enquireLink && (',
+    '<div>{EXPECTATION}</div>\n            {enquireLink && (',
+    '\u00a718.8 (the duplicate expectation line)',
+    (src) => { assert.strictEqual((code(src).match(/\{EXPECTATION\}/g) || []).length, 1); });
 
   // INVERSE 3 — restore F1(b)'s auto-fire. Must redden.
   mutatePwa(SHEET_R, 'if (result.ok) setDone(result);',

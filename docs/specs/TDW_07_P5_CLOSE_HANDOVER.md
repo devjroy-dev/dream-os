@@ -31,9 +31,10 @@
 ## 2 · PROOF
 
 ```
-b07_p5_bench       122 passed, 0 failed  (total 122)
-  83 at charter  +27 cells  +12 both-ways mutation proofs  = 122   (derived by
-  counting the run's own output, after the chair caught a broken prose sum)
+b07_p5_bench       124 passed, 0 failed  (total 124)
+  83 at charter  +28 cells  +13 both-ways mutation proofs  = 124   (derived by
+  counting the run's own output, after the chair caught a broken prose sum;
+  the last cell+mutation pair is §18.8, born of the founder's walk below)
 node --check       5/5 OK
 tsc (pwa)          ZERO on cleared .next, deps pinned via npm ci
 tdw07_p1_discover  37/37   (was 36/37 — F-07.52)
@@ -73,7 +74,15 @@ NOT FLOOR — excluded by name, per the floor-method law:
 4. **§18.5 was my own bad slice boundary** — `indexOf('return (')` searched from 0 and matched an effect-cleanup return above `submit`, slicing backwards to nothing. The cell was wrong, not the code.
 5. **I created residue: an unnecessary `../dreamos-pwa` symlink that landed INSIDE the pwa tree** and showed as `?? dreamos-pwa`. It would have ridden the ZIP. Removed, and 122/122 re-verified AFTER removal rather than assuming removal was harmless — the repos are already siblings and `PWA_VISIBLE` resolves natively.
 6. **The 39-red first floor** (law 3 above).
-7. **The F-07.56 cite list was short by four.** The finding named three consumers; the real leg had seven — the lead row's name/phone, the binder's `raw_message`, the prospect's name/phone/note. Curing three would have left the cabinet, binder and prospect saying "a couple" while the ping said her name.
+7. **THE FOUNDER'S WALK CAUGHT A DEFECT THE BENCH COULD NOT.** My done-state
+   re-rendered the expectation line that the sheet header already renders
+   unconditionally (`:298`), so "Replies on WhatsApp, usually within a day."
+   appeared **twice** — once under the vendor name, once under "Enquiry sent".
+   §18.1 asserted the frozen confirmation was PRESENT, and it was: beneath a
+   duplicate. **A presence-cell is structurally blind to duplication.** Cured,
+   and §18.8 now COUNTS the line, proven both ways. Standing lesson: wherever a
+   surface can repeat a string, a presence-cell must be paired with a count-cell.
+8. **The F-07.56 cite list was short by four.** The finding named three consumers; the real leg had seven — the lead row's name/phone, the binder's `raw_message`, the prospect's name/phone/note. Curing three would have left the cabinet, binder and prospect saying "a couple" while the ping said her name.
 
 ## 6 · PATH-NOTES (bare filenames were ambiguous; each derived by command)
 
