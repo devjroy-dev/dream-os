@@ -970,7 +970,23 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
 
         if (result.vendorNotification && vendorUser?.phone) {
           // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:933).
-          await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: matchedByTdw.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)' }));
+          //
+          // ── F-07.57 CURED (CE rider) · THIS LINE READ A NULL ─────────────────
+          // It passed `matchedByTdw.id`. Every other use of that variable sits
+          // INSIDE `if (matchedByTdw)` at :728; this was the sole use outside it,
+          // and this branch is reachable ONLY when Step B found nothing — so the
+          // variable is null here BY CONSTRUCTION and the read threw. No catch
+          // encloses it, so the throw killed the vendor's notification AND the
+          // `last_message_at` update below — the very column Step C orders by
+          // (:915). Her reply had already sent (:959) and stored (:961), so the
+          // failure was invisible from her side: F-07.55's family, one layer down.
+          //
+          // THE IDENTITY IS THE BRANCH'S OWN. `existingThread.vendor_id` is what
+          // `fullVendor` was fetched BY (:943) — the same vendor, but it cannot be
+          // null, whereas `fullVendor` can (the code already guards it at :946
+          // with `fullVendor?.user_id`). Deviation from the ruling's wording named:
+          // "the branch's own fetched vendor" and this value are the same id.
+          await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: existingThread.vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)' }));
         }
 
         await supabase.from('conversations')

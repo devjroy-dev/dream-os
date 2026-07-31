@@ -226,6 +226,17 @@ async function sendWa(opts, deps = {}) {
       throw new WaTemplateVarsError(e.message);
     }
     const res = await sendTemplate({ from, to, key: templateKey, line, payload });
+    // ── F-07.55 CURED (CE-ruled labeled amendment to a SEALED transport) ────────
+    // Every template send in this estate was INVISIBLE: this file carried zero
+    // console statements and so did metaCloud.js, while the free-form path has
+    // logged at whatsapp.js:143 since M1. A vendor could report a message that
+    // never arrived and the estate had no line to read. ONE line, at the dispatch
+    // seam, mirroring :143's shape exactly — bare number · template key · wamid ·
+    // line. `normalizeTo` is this file's own import (:39), not a new dependency;
+    // the wamid is sendTemplate's own return (metaCloud.js:99), never inferred.
+    // The BODY is deliberately absent: a template body is the registry's, not the
+    // caller's, and logging rendered vars would put customer data in the log.
+    console.log(`[sendWa:template] ${normalizeTo(to)} <- ${templateKey} (${res && res.wamid ? res.wamid : null}) [line=${line}]`);
     return { sent: true, mode: 'template', key: templateKey, from, to, payload, result: res };
   }
 

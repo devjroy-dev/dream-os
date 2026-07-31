@@ -1043,6 +1043,414 @@ if (!PWA_VISIBLE) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §13 — F-07.54: THE DEMO SPECIES CARRIES NO ROUTING TOKEN
+// The disease is an UNRESOLVABLE token on TDW's own line, never a wa.me link as
+// such. vendorInbound resolves `vendors.routing_handle` and never reads
+// demo_vendors, so a demo `ig_handle` shipped as a token misses Step B, skips
+// Step B.5 (guard: !startsWith('TDW-')) and lands in Step C — dead end at zero
+// threads, MISROUTE into an unrelated vendor at one.
+// ═══════════════════════════════════════════════════════════════════════════
+H('§13 — F-07.54: the demo species carries no routing token');
+
+const DISC6 = code(fs.readFileSync(SRC('src/api/couple/discover.js'), 'utf8'));
+const DEMOV = code(fs.readFileSync(SRC('src/api/demo/vendor.js'), 'utf8'));
+const demoBranch = DISC6.slice(0, DISC6.indexOf('routing_handle: v.routing_handle'));
+
+t('§13.1 mint 1 — the Frost feed demo branch emits routing_handle: null', () => {
+  assert.ok(/routing_handle:\s*null/.test(demoBranch), 'demo branch still mints a token');
+  assert.ok(!/routing_handle:\s*v\.ig_handle/.test(DISC6), 'ig_handle still shipped as a token');
+});
+
+t('§13.2 mint 1 — the Frost feed demo branch emits enquire_link: null', () => {
+  assert.ok(!/enquire_link:\s*v\.ig_handle\s*\?/.test(DISC6), 'demo enquire_link still built from ig_handle');
+});
+
+t('§13.3 D-3 SURVIVES — the demo branch still emits instagram_handle for the chip', () => {
+  assert.ok(/instagram_handle:\s*normalizeIgHandle\(v\.ig_handle\)/.test(DISC6),
+    'the IG chip lost its feed — the cure over-reached');
+});
+
+t('§13.4 mint 2 — the demodiscover feed emits routing_handle: null', () => {
+  assert.ok(!/routing_handle:\s*v\.ig_handle/.test(DEMOV), 'second mint still ships a token');
+});
+
+// GUARD CELL, NAMED (§11.4 convention): this passes on BOTH trees by design. The
+// chair EXEMPTED demo/vendor.js's enquire_link — it is a direct-phone link to the
+// demo vendor's OWN number, tokenless, and carries none of F-07.54's disease.
+// The cell exists so a later sitting cannot "finish the job" by deleting it.
+t('§13.5 GUARD — the demodiscover direct-phone link is left ALIVE by ruling', () => {
+  assert.ok(/enquire_link:\s*v\.whatsapp_phone\s*\?/.test(DEMOV),
+    'the exempted direct-phone link was removed — that is a Block 08 surface');
+});
+
+if (!PWA_VISIBLE) {
+  console.log('  skip §13.6–§13.9 — the dreamos-pwa tree is not beside this one; the four');
+  console.log('       mount-watching cells read consumer sources and cannot run here.');
+} else {
+  // THE MOUNTS ARE WATCHED, NOT TOUCHED (CE-ruled). Each rebuilds a TDW-line link
+  // ONLY from `routing_handle`, so nulling that field at the mints is sufficient.
+  // These cells redden if any mount acquires a SECOND source for that link —
+  // which is the only way the mint-side cure could be silently defeated.
+  const M = (rel) => fs.readFileSync(path.join(PWA_ROOT, rel), 'utf8');
+  const SANCT_SRC = M('app/(frost)/frost/canvas/sanctuary/page.tsx');
+  const CANVAS_SRC = M('app/(frost)/frost/canvas/discover/page.tsx');
+  const DEMOD_SRC = M('app/demodiscover/page.tsx');
+
+  t('§13.6 sanctuary\'s sheet mount derives its link ONLY from routing_handle', () => {
+    assert.ok(/enquireLink=\{vendor\.enquire_link\|\|\(vendor\.routing_handle\?/.test(code(SANCT_SRC)),
+      'the sanctuary mount acquired a second link source');
+  });
+  t('§13.7 canvas\'s enquireLink helper derives ONLY from routing_handle', () => {
+    assert.ok(/\(vendor\.routing_handle \? makeEnquireLink\(vendor\.routing_handle\) : null\)/.test(code(CANVAS_SRC)),
+      'the canvas helper acquired a second link source');
+  });
+  t('§13.8 canvas\'s sheet mount derives its link ONLY from routing_handle', () => {
+    assert.ok(/enquireLink=\{vendor\.enquire_link \|\| \(vendor\.routing_handle \?/.test(code(CANVAS_SRC)),
+      'the canvas mount acquired a second link source');
+  });
+  t('§13.9 demodiscover derives its TDW-line fallback ONLY from routing_handle', () => {
+    const c = code(DEMOD_SRC);
+    assert.ok(/vendor\.routing_handle \? `https:\/\/wa\.me\/917982159047\?text=TDW-\$\{vendor\.routing_handle\}`/.test(c),
+      'the demodiscover fallback acquired a second token source');
+    assert.ok(!/ig_handle/.test(c), 'demodiscover began reading ig_handle directly');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §14 — F-07.55: template sends are no longer invisible
+// ═══════════════════════════════════════════════════════════════════════════
+H('§14 — F-07.55: the template dispatch is visible');
+
+const SENDWA = fs.readFileSync(SRC('src/lib/sendWa.js'), 'utf8');
+
+// SELF-CAUGHT BY §17's MUTATION: the first take counted RAW `console.`
+// occurrences, so commenting the line out still satisfied it — the same disease
+// F-07.52 was minted for, reproduced in my own cell. Cells judge CODE.
+t('§14.1 sendWa carries exactly ONE console statement (was zero)', () => {
+  const n = (code(SENDWA).match(/console\./g) || []).length;
+  assert.strictEqual(n, 1, `expected exactly one log line, found ${n}`);
+});
+
+t('§14.2 the line names bare number · template key · wamid · line', () => {
+  const c = code(SENDWA);
+  assert.ok(/\[sendWa:template\]/.test(c), 'no template log tag');
+  assert.ok(/normalizeTo\(to\)/.test(c), 'the number is not bared');
+  assert.ok(/\$\{templateKey\}/.test(c), 'the template key is not named');
+  assert.ok(/wamid/.test(c), 'the wamid is not carried');
+  assert.ok(/\[line=\$\{line\}\]/.test(c), 'the lane is not named');
+});
+
+// THE PRIVACY EXCLUSION IS THE LINE'S STATED LAW (CE-ratified, F-07.41's family).
+// Template vars carry customer data — her name, her wedding month. A later
+// sitting "improving" this log by rendering them reddens here.
+t('§14.3 the line does NOT log the rendered payload or vars', () => {
+  const logLine = code(SENDWA).split('\n').find(l => l.includes('[sendWa:template]'));
+  assert.ok(logLine, 'the log line vanished');
+  assert.ok(!/payload|vars/.test(logLine), 'customer data entered the log');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §15 — F-07.56: the real leg hydrates her identity too
+// ═══════════════════════════════════════════════════════════════════════════
+H('§15 — F-07.56: the real leg speaks her name');
+
+const ENQ = fs.readFileSync(SRC('src/api/couple/enquire.js'), 'utf8');
+const realLeg = ENQ.slice(ENQ.indexOf('async function handleRealVendor'),
+                         ENQ.indexOf('async function handleDemoVendor'));
+const realCode = code(realLeg);
+
+t('§15.1 the real leg makes the couples -> users hop', () => {
+  assert.ok(/from\('couples'\)[\s\S]{0,200}user_id/.test(realCode), 'no couples hop');
+  assert.ok(/from\('users'\)[\s\S]{0,200}select\('name, phone'\)/.test(realCode), 'no users hop');
+});
+
+t('§15.2 HYDRATED wins, posted is the fallback (identity precedence)', () => {
+  assert.ok(/hydratedName\s*\|\|\s*bride_name/.test(realCode), 'posted still overrides identity');
+  assert.ok(/hydratedPhone\s*\|\|\s*bride_phone/.test(realCode), 'posted still overrides phone');
+});
+
+// THE SEVEN-SITE CURE. The finding named three consumers; the leg had seven.
+// Curing three would leave the cabinet, binder and prospect saying "a couple"
+// while the ping said her name — a hollow green inside the vendor's own drawer.
+t('§15.3 ZERO raw bride_name/bride_phone consumers remain in the real leg', () => {
+  const body = realCode.split('\n').slice(1).join('\n');   // drop the signature
+  const raw = body.split('\n').filter(l =>
+    /\bbride_name\b|\bbride_phone\b/.test(l) &&
+    !/brideNameFinal|bridePhoneFinal|hydratedName|hydratedPhone/.test(l));
+  assert.strictEqual(raw.length, 0, `raw consumers still present:\n${raw.join('\n')}`);
+});
+
+// GUARD CELL, NAMED: the UTTERANCE precedence must NOT be harmonized to match the
+// identity one. Passes on both trees; it exists to hold the distinction.
+t('§15.4 GUARD — the demo leg keeps POSTED-over-HYDRATED for date and city', () => {
+  const demoLeg = code(ENQ.slice(ENQ.indexOf('async function handleDemoVendor')));
+  assert.ok(/wedding_date \|\| couple\?\.wedding_date/.test(demoLeg), 'date precedence flipped');
+  assert.ok(/city\s*\|\| couple\?\.wedding_city/.test(demoLeg), 'city precedence flipped');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §16 — F-07.57: the returning-bride notification read a null
+// ═══════════════════════════════════════════════════════════════════════════
+H('§16 — F-07.57: the single-thread branch uses its OWN vendor identity');
+
+const VIN = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+
+t('§16.1 the returning notification is keyed on the branch\'s own thread vendor', () => {
+  const line = code(VIN).split('\n').find(l => l.includes("vendorInbound:notification(returning)"));
+  assert.ok(line, 'the returning-notification site vanished');
+  assert.ok(/vendorId: existingThread\.vendor_id/.test(line),
+    'the notification still reads a variable that is null in this branch');
+});
+
+t('§16.2 no use of matchedByTdw survives OUTSIDE its own guard block', () => {
+  const c = code(VIN);
+  const lines = c.split('\n');
+  const guardAt = lines.findIndex(l => /if \(matchedByTdw\) \{/.test(l));
+  assert.ok(guardAt > 0, 'the Step B guard vanished');
+  // the sticky/binder uses live inside the block; the single-thread branch is far below.
+  const afterBranch = lines.slice(lines.findIndex(l => /if \(threadCount === 1\)/.test(l)));
+  const leaks = afterBranch.filter(l => /matchedByTdw/.test(l));
+  assert.strictEqual(leaks.length, 0, `unguarded use(s) remain:\n${leaks.join('\n')}`);
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §17 — BOTH-WAYS: every §13–§16 cell RED at the uncured tree, by mutating
+// PRODUCTION code. §13–§16 read their sources into consts at module load, so
+// the §3 `mutate()` helper (which busts require-cache) would be VACUOUS for
+// them — the const would still hold pre-mutation bytes and the cell would pass
+// over broken code. This helper re-reads the file inside the closure, which is
+// the only form that can turn these particular cells red.
+// ═══════════════════════════════════════════════════════════════════════════
+H('§17 — both-ways: the §13–§16 cells over BROKEN production code');
+
+function mutateSrc(rel, from, to, cellName, assertOnFresh) {
+  const abs = SRC(rel);
+  const original = fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : null;
+  if (original === null || !original.includes(from)) {
+    t(`§17 ${cellName} goes RED when its production code is broken`, () => {
+      throw new Error(`mutation anchor absent (uncured tree): ${rel} <- ${from}`);
+    });
+    return;
+  }
+  fs.writeFileSync(abs, original.replace(from, to));
+  let wentRed = false;
+  try { assertOnFresh(fs.readFileSync(abs, 'utf8')); } catch (_e) { wentRed = true; }
+  fs.writeFileSync(abs, original);
+  assert.strictEqual(fs.readFileSync(abs, 'utf8'), original, `${rel} not restored byte-identical`);
+  t(`§17 ${cellName} goes RED when its production code is broken`, () => {
+    assert.ok(wentRed, `${cellName} passed over broken production code — the cell is vacuous`);
+  });
+}
+
+// F-07.54 mint 1 — put the token back.
+mutateSrc('src/api/couple/discover.js',
+  'routing_handle: null,', 'routing_handle: v.ig_handle || null,',
+  '§13.1 (mint 1 token)', (src) => {
+    const c = code(src);
+    const branch = c.slice(0, c.indexOf('routing_handle: v.routing_handle'));
+    assert.ok(/routing_handle:\s*null/.test(branch));
+    assert.ok(!/routing_handle:\s*v\.ig_handle/.test(c));
+  });
+
+// F-07.54 mint 1 — put the link back.
+mutateSrc('src/api/couple/discover.js',
+  'enquire_link:   null,', 'enquire_link:   v.ig_handle ? `${ENQUIRE_BASE}${v.ig_handle}` : null,',
+  '§13.2 (mint 1 link)', (src) => {
+    assert.ok(!/enquire_link:\s*v\.ig_handle\s*\?/.test(code(src)));
+  });
+
+// D-3 — take the chip's feed away. This must redden, or the cure could silently
+// starve the chip and no cell would notice.
+mutateSrc('src/api/couple/discover.js',
+  'instagram_handle: normalizeIgHandle(v.ig_handle)', 'instagram_handle: null',
+  '§13.3 (the chip feed)', (src) => {
+    assert.ok(/instagram_handle:\s*normalizeIgHandle\(v\.ig_handle\)/.test(code(src)));
+  });
+
+// F-07.54 mint 2 — put the second token back.
+mutateSrc('src/api/demo/vendor.js',
+  'routing_handle: null,', 'routing_handle: v.ig_handle,',
+  '§13.4 (mint 2 token)', (src) => {
+    assert.ok(!/routing_handle:\s*v\.ig_handle/.test(code(src)));
+  });
+
+// F-07.55 — remove the log line entirely.
+mutateSrc('src/lib/sendWa.js',
+  'console.log(`[sendWa:template]', '// console.log(`[sendWa:template]',
+  '§14.1 (the log line)', (src) => {
+    // MIRRORS THE HARDENED CELL EXACTLY. The first take asserted on raw text
+    // while the cell asserts on stripped code — a mutation that does not ask
+    // the cell's own question proves nothing about the cell.
+    assert.strictEqual((code(src).match(/console\./g) || []).length, 1);
+  });
+
+// F-07.55 — the privacy law: log the payload and this must redden.
+mutateSrc('src/lib/sendWa.js',
+  '[line=${line}]`);', '[line=${line}] ${JSON.stringify(payload)}`);',
+  '§14.3 (the privacy exclusion)', (src) => {
+    const logLine = code(src).split('\n').find(l => l.includes('[sendWa:template]'));
+    assert.ok(logLine && !/payload|vars/.test(logLine));
+  });
+
+// F-07.56 — flip the identity precedence back to posted-first.
+mutateSrc('src/api/couple/enquire.js',
+  'const brideNameFinal  = hydratedName  || bride_name  || null;',
+  'const brideNameFinal  = bride_name  || hydratedName  || null;',
+  '§15.2 (identity precedence)', (src) => {
+    const leg = code(src.slice(src.indexOf('async function handleRealVendor'),
+                              src.indexOf('async function handleDemoVendor')));
+    assert.ok(/hydratedName\s*\|\|\s*bride_name/.test(leg));
+  });
+
+// F-07.56 — restore ONE of the seven raw consumers. The seven-site cure must be
+// provable as seven, not three: reverting a single site has to redden.
+mutateSrc('src/api/couple/enquire.js',
+  "raw_message: `${brideNameFinal || 'A bride'} enquired",
+  "raw_message: `${bride_name || 'A bride'} enquired",
+  '§15.3 (the seventh consumer)', (src) => {
+    const leg = code(src.slice(src.indexOf('async function handleRealVendor'),
+                               src.indexOf('async function handleDemoVendor')));
+    const body = leg.split('\n').slice(1).join('\n');
+    const raw = body.split('\n').filter(l =>
+      /\bbride_name\b|\bbride_phone\b/.test(l) &&
+      !/brideNameFinal|bridePhoneFinal|hydratedName|hydratedPhone/.test(l));
+    assert.strictEqual(raw.length, 0);
+  });
+
+// F-07.57 — put the null read back. THE FIXTURE DRIVES THIS, not production:
+// the demo-null cure removes production's dominant source of unresolvable
+// tokens, so the trigger is manufactured here rather than waited for.
+mutateSrc('src/lib/vendorInbound.js',
+  "vendorId: existingThread.vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)'",
+  "vendorId: matchedByTdw.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)'",
+  '§16.1 (the null read)', (src) => {
+    const line = code(src).split('\n').find(l => l.includes("vendorInbound:notification(returning)"));
+    assert.ok(line && /vendorId: existingThread\.vendor_id/.test(line));
+  });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §18 — FORK B: the done-state is the confirming surface
+// BOTH HALVES, per the chair's bench note: the frozen string PRESENT in the
+// done-state, AND the success-toast suppression conditioned on the sheet path,
+// with the FAILURE toast's firing asserted UNCHANGED. Both inverse mutations
+// must redden: un-suppressing success, and suppressing failure.
+// ═══════════════════════════════════════════════════════════════════════════
+H('§18 — Fork B: the done-state confirms, the success toast stands down');
+
+if (!PWA_VISIBLE) {
+  console.log('  skip §18.1–§18.8 — the dreamos-pwa tree is not beside this one; these cells');
+  console.log('       read the sheet and both mounts and cannot run here.');
+} else {
+  const PREL  = (rel) => path.join(PWA_ROOT, rel);
+  const PREAD = (rel) => fs.readFileSync(PREL(rel), 'utf8');
+  const SHEET_R = 'components/frost/EnquirySheet.tsx';
+  const SANCT_R = 'app/(frost)/frost/canvas/sanctuary/page.tsx';
+  const CANV_R  = 'app/(frost)/frost/canvas/discover/page.tsx';
+
+  // The vetoed bytes, written here as the CONTRACT rather than read from the
+  // file — a cell that reads its expectation from the thing under test proves
+  // nothing. These are the founder's words: V6's two success arms, and the one
+  // new string vetoed 2026-07-31.
+  const FROZEN_SAVED = "Enquiry sent \u2726 saved in Vendors";
+  const FROZEN_PLAIN = "Enquiry sent";
+  const FROZEN_FAIL  = "Could not send. Try again.";
+  const VETOED_NEW   = "Continue on WhatsApp";
+
+  const sheet = PREAD(SHEET_R);
+
+  t('§18.1 the done-state renders the frozen confirmation, same enquiry_saved conditional', () => {
+    assert.ok(/done\.enquiry_saved \? CONFIRM_SAVED : CONFIRM_PLAIN/.test(code(sheet)),
+      'the done-state does not carry the frozen conditional');
+  });
+
+  t('§18.2 the frozen strings are BYTE-IDENTICAL to the toast arms they re-home', () => {
+    assert.ok(sheet.includes(`'${FROZEN_SAVED}'`), 'the saved arm drifted from the vetoed bytes');
+    assert.ok(sheet.includes(`'${FROZEN_PLAIN}'`), 'the plain arm drifted from the vetoed bytes');
+  });
+
+  t('§18.3 the affordance renders ONLY when a lawful address exists', () => {
+    assert.ok(/\{enquireLink && \(/.test(sheet),
+      'the affordance is unconditional — a demo card would render a dead control');
+  });
+
+  t('§18.4 the affordance carries the vetoed label, byte-exact', () => {
+    assert.ok(sheet.includes(`'${VETOED_NEW}'`), 'the vetoed string drifted');
+  });
+
+  // F1(b): the auto-fire is dead. The link survives as a tapped affordance only.
+  t('§18.5 submit no longer opens a second channel unasked', () => {
+    // SELF-CAUGHT: the first take took `indexOf('return (')` from position 0,
+    // which matched an effect-cleanup `return () => ...` ABOVE submit and sliced
+    // backwards to nothing. The boundary must be searched FROM the function head.
+    const c = code(sheet);
+    const from = c.indexOf('async function submit');
+    const submit = c.slice(from, c.indexOf('return (', from));
+    assert.ok(!/window\.open/.test(submit), 'the auto-fire is still in the submit handler');
+    assert.ok(/if \(result\.ok\) setDone\(result\)/.test(submit), 'success does not raise the done-state');
+  });
+
+  for (const [label, rel] of [['sanctuary', SANCT_R], ['canvas', CANV_R]]) {
+    const src = PREAD(rel);
+    t(`§18.6 ${label}: the SUCCESS toast stands down when the sheet confirms`, () => {
+      assert.ok(/if \(r\.ok\) return;/.test(code(src)),
+        `${label} still raises a toast over the done-state`);
+    });
+    t(`§18.7 ${label}: the FAILURE toast fires UNCHANGED, byte-exact`, () => {
+      assert.ok(code(src).includes(`setEnquiryToast('${FROZEN_FAIL}')`),
+        `${label}'s failure arm drifted — it is F-07.45's arm and must not move`);
+      assert.ok(/setTimeout\(\(\) => setEnquiryToast\(null\), 2600\)|setTimeout\(\(\)=>setEnquiryToast\(null\),2600\)/.test(code(src)),
+        `${label}'s failure toast lost its dismissal`);
+    });
+  }
+
+  // ── BOTH INVERSE MUTATIONS, on PWA production code ────────────────────────
+  // mutateSrc() is dream-os-rooted; this is its PWA twin. Same law (promoted at
+  // this sitting): a mutation helper must bust whatever caching the cell's read
+  // path uses — here the read is inside the closure, so a fresh read suffices.
+  function mutatePwa(rel, from, to, cellName, assertOnFresh) {
+    const abs = PREL(rel);
+    const original = fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : null;
+    if (original === null || !original.includes(from)) {
+      t(`§18 ${cellName} goes RED when its production code is broken`, () => {
+        throw new Error(`mutation anchor absent: ${rel} <- ${from}`);
+      });
+      return;
+    }
+    fs.writeFileSync(abs, original.replace(from, to));
+    let wentRed = false;
+    try { assertOnFresh(fs.readFileSync(abs, 'utf8')); } catch (_e) { wentRed = true; }
+    fs.writeFileSync(abs, original);
+    assert.strictEqual(fs.readFileSync(abs, 'utf8'), original, `${rel} not restored byte-identical`);
+    t(`§18 ${cellName} goes RED when its production code is broken`, () => {
+      assert.ok(wentRed, `${cellName} passed over broken production code — vacuous`);
+    });
+  }
+
+  // INVERSE 1 — un-suppress the success toast. Must redden.
+  mutatePwa(SANCT_R, 'if (r.ok) return;', '', '§18.6 (success suppression)',
+    (src) => { assert.ok(/if \(r\.ok\) return;/.test(code(src))); });
+
+  // INVERSE 2 — suppress the FAILURE toast. Must redden: it is F-07.45's arm.
+  mutatePwa(SANCT_R, "setEnquiryToast('Could not send. Try again.');", '',
+    '§18.7 (failure toast firing)',
+    (src) => { assert.ok(code(src).includes("setEnquiryToast('Could not send. Try again.')")); });
+
+  // INVERSE 3 — restore F1(b)'s auto-fire. Must redden.
+  mutatePwa(SHEET_R, 'if (result.ok) setDone(result);',
+    "if (enquireLink) { try { window.open(enquireLink, '_blank'); } catch {} }",
+    '§18.5 (the auto-fire death)',
+    (src) => {
+      const c = code(src);
+      const submit = c.slice(c.indexOf('async function submit'), c.indexOf('return ('));
+      assert.ok(!/window\.open/.test(submit));
+      assert.ok(/if \(result\.ok\) setDone\(result\)/.test(submit));
+    });
+}
+
 (async () => {
   // §1's async cells were registered synchronously above via t(); re-drive the
   // async ones explicitly so their assertions are actually awaited.

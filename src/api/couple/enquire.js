@@ -169,9 +169,67 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
     return res.status(422).json({ ok: false, error: 'Vendor phone not available.' });
   }
 
+  // ── F-07.56 CURED (CE-ruled) · THE REAL LEG HYDRATES TOO ────────────────────
+  // The demo leg has hydrated her identity server-side since P5 (:455-477) and
+  // the real leg never did — so the SAME bride reached a demo vendor as
+  // "Dev Test 23" and a real, paying vendor as "a couple". The asymmetry was
+  // witnessed live in production (demo_leads.bride_name, Legacy Jewellers).
+  //
+  // THE JOIN IS THE DEMO LEG'S, UNCHANGED: neither `name` nor `phone` lives on
+  // `couples` (21 columns, PUBLIC_SCHEMA.md:280-304); the identity is one hop
+  // away at `couples.user_id` -> `public.users` (9 columns, :872-884).
+  //
+  // HYDRATED WINS, BODY IS THE FALLBACK — deliberately the OPPOSITE of the
+  // date/city rule at :467-468, and the reason is the door itself: this route is
+  // UNAUTHENTICATED (router.js:59 mounts it with no middleware), so `bride_name`
+  // in the body is caller-supplied and her account is the truer witness. The
+  // posted value still serves the logged-OUT bride, who has no couple_id at all.
+  // ── THE TWO PRECEDENCES ARE OPPOSITE ON PURPOSE (CE-ruled STANDING LAW) ─────
+  // IDENTITY fields (name, phone) — HYDRATED wins, posted is the fallback.
+  // UTTERANCE fields (date, city) — POSTED wins, hydrated is the fallback
+  //                                 (the demo leg's rule, enquire.js :467-468).
+  //
+  // The reason, so no future sitting "harmonizes" the two into one rule: her
+  // ACCOUNT is the truer witness of WHO she is; her KEYSTROKES are the truer
+  // witness of WHAT she asked. A bride may enquire about a December date for a
+  // wedding her profile still calls undated, and that posted date is the truth of
+  // the enquiry. She may not rename herself at an unauthenticated door.
+  //
+  // [F-06.85: this paragraph is conditioned on a MECHANICAL fact — that this
+  //  route carries NO auth middleware. Mechanism: src/api/router.js:59, which
+  //  mounts '/discover/enquire' bare. If a guard ever appears there, the identity
+  //  half's justification changes and this sentence must be re-read. The forged-
+  //  couple_id exposure this trust implies is F-07.62, deferred to the AUTH
+  //  SITTING by ruling — not cured here, and not to be quietly cured here either.]
+  let hydratedName = null, hydratedPhone = null;
+  if (couple_id) {
+    try {
+      const { data: couple } = await supabase
+        .from('couples')
+        .select('user_id')
+        .eq('id', couple_id)
+        .maybeSingle();
+      if (couple?.user_id) {
+        const { data: u } = await supabase
+          .from('users')
+          .select('name, phone')
+          .eq('id', couple.user_id)
+          .maybeSingle();
+        hydratedName  = u?.name  || null;
+        hydratedPhone = u?.phone || null;
+      }
+    } catch (err) {
+      // Never fatal: a vendor hearing "a couple" is the OLD behaviour, not a new
+      // failure, and refusing her enquiry over a name lookup would be worse.
+      console.warn('[enquire:real] bride hydration failed (falling back to posted):', err.message);
+    }
+  }
+  const brideNameFinal  = hydratedName  || bride_name  || null;
+  const bridePhoneFinal = hydratedPhone || bride_phone || null;
+
   // ── 1. The vendor's ping, carrying the availability hint ──────────────────
-  const brideLine = bride_name ? `Bride: ${bride_name}` : 'A bride on The Dream Wedding';
-  const phoneLine = bride_phone ? `\nBride contact: ${bride_phone}` : '';
+  const brideLine = brideNameFinal ? `Bride: ${brideNameFinal}` : 'A bride on The Dream Wedding';
+  const phoneLine = bridePhoneFinal ? `\nBride contact: ${bridePhoneFinal}` : '';
 
   // The 04 availability hint lives in ONE builder and is reused, never
   // re-derived (P5 fork F5, CE-ruled). Its clash predicate is
@@ -274,7 +332,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
           templateKey: 'enquiry_alert_vendor',
           vars: [
             vendor.business_name || 'there',
-            bride_name || 'a couple',
+            brideNameFinal || 'a couple',
             VENDOR_LEADS_URL,
           ],
           supabase,
@@ -325,8 +383,8 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   let leadCreated = false;
   try {
     const leadRes = await createLead(supabase, vendor.id, {
-      name:        bride_name  || 'Dream Wedding enquiry',
-      phone:       bride_phone || null,
+      name:        brideNameFinal  || 'Dream Wedding enquiry',
+      phone:       bridePhoneFinal || null,
       source:      'discover',
       // THE SHEET'S FOUR, EACH ON ITS OWN WITNESSED COLUMN (PUBLIC_SCHEMA.md,
       // public.leads): event_types ARRAY · wedding_date date · wedding_city text
@@ -338,7 +396,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       // for a value this door could not previously receive.
       wedding_city: city || vendor.city || null,
       budget_max:   postedBudgetMax,
-      raw_message: `${bride_name || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
+      raw_message: `${brideNameFinal || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
       notes:       'Discover enquiry — she found you on the feed.',
     });
     leadCreated = !!(leadRes && leadRes.ok);
@@ -358,9 +416,9 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   let vendorLeadId = null;
   try {
     const binderRes = await enquiryToBinder(supabase, vendor.id, {
-      name:  bride_name || 'Dream Wedding enquiry',
-      phone: bride_phone || null,
-      note:  `${bride_name || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
+      name:  brideNameFinal || 'Dream Wedding enquiry',
+      phone: bridePhoneFinal || null,
+      note:  `${brideNameFinal || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
     });
     vendorLeadId = binderRes?.binder?.id || null;
   } catch (err) {

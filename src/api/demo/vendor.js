@@ -227,7 +227,16 @@ router.get('/', async (req, res) => {
       name:           v.display_name,
       category:       v.category,
       city:           v.city,
-      routing_handle: v.ig_handle,
+      // ── F-07.54 CURED · THE SECOND MINT (CE census correction) ──────────
+      // This route (`router.get('/', …)` above) is the demodiscover FEED, and
+      // its consumer rebuilds a TDW-line link from this field when
+      // `enquire_link` is null (demodiscover/page.tsx:187, hardcoded against
+      // 917982159047). `ig_handle` is not a routing token — vendorInbound
+      // resolves `vendors.routing_handle` only — so the rebuilt link is
+      // unresolvable by construction. Nulled at the mint, same as
+      // couple/discover.js's demo branch. This surface renders no IG chip and
+      // never received `instagram_handle`, so nothing here is displaced.
+      routing_handle: null,
       starting_price: null,
       photos:         Array.isArray(v.photos) ? v.photos.map(p => (typeof p === 'string' ? p : p.url)).filter(Boolean) : [],
       vibe_tags:      [],

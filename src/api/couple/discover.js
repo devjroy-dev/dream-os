@@ -238,12 +238,32 @@ router.get('/feed', asyncHandler(async (req, res) => {
       name:           v.display_name || null,
       category:       v.category     || null,
       city:           v.city         || null,
-      routing_handle: v.ig_handle    || null,
+      // ── F-07.54 CURED (CE ruled, Option 3) · THE DEMO SPECIES CARRIES NO TOKEN ──
+      // `ig_handle` is NOT a routing token. The inbound resolver matches
+      // `vendors.routing_handle` (vendorInbound.js:723-725) and NEVER reads
+      // demo_vendors — the reader census is agentBridge · demoAdmin · demo/vendor ·
+      // enquire · discover · shapeVendor · demoLeadAlert, and vendorInbound is
+      // absent from it. So a bride arriving on TDW's vendor line with
+      // `TDW-<ig_handle>` misses Step B, skips Step B.5 (its guard requires
+      // !startsWith('TDW-')) and lands in Step C: a dead-end reply at zero
+      // threads, or her enquiry delivered into an UNRELATED vendor's thread at one.
+      //
+      // NULLED HERE, AT THE MINT, NOT AT THE MOUNTS. Four couple-facing mounts
+      // rebuild the link from this field when `enquire_link` is null
+      // (sanctuary:1793 · canvas:354 · canvas:929 · demodiscover:187), so nulling
+      // `enquire_link` alone would have been a green cell over an unchanged bride.
+      //
+      // THE D-3 CHIP IS UNAFFECTED: it reads `instagram_handle` exclusively
+      // (canvas:854 · VendorProfileView:216), emitted below as its own field.
+      routing_handle: null,
       starting_price: null,           // rate_display is a string; client shows it via about
       photos:         photoUrls,
       vibe_tags:      [],
       about:          v.about        || null,
-      enquire_link:   v.ig_handle ? `${ENQUIRE_BASE}${v.ig_handle}` : null,
+      // F-07.54's other half. ENQUIRE_BASE is TDW's OWN vendor line
+      // (shapeVendor.js:42) and the demo species has no lawful address on it.
+      // Both fields null together: one of them alone is not a cure.
+      enquire_link:   null,
       is_demo:        true,
       // D-3: "Demo vendors: same chip from their IG-sourced handle (it's the truest
       // thing on the card)." demo_vendors.ig_handle is lowercased at insert
