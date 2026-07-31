@@ -11,12 +11,20 @@
 //   4. couple_enquiries row → her "Enquired" list.
 //   5. enquiry_taps analytics row.
 //
-// DEMO VENDOR (a public.demo_vendors row — no account, no user, no leads):
+// DEMO VENDOR (a public.demo_vendors row — no account, no user yet):
 //   1. The demo_lead_alert template on the marketing lane.        [P5, NEW]
 //   2. A prospects row, state 'templated', notes 'demo_lead'.     [P5, NEW]
-//   3. enquiry_taps analytics row.
-//   The other three have nowhere to land: there is no vendor row to own a lead,
-//   no engine agent to own a binder. That absence is stated, not worked around.
+//   3. A demo_leads row — the enquiry stored against the demo     [P5, NEW]
+//      vendor, hydrated server-side from her session. Everything a
+//      public surface may read from it is masked at one home
+//      (src/lib/demo/maskDemoLead.js); bride_phone reaches none.
+//      LOGGED-OUT TAPS ARE ALERT-ONLY: bride_name/bride_phone are
+//      NOT NULL, so an anonymous enquiry cannot form a row. Stated
+//      at the branch, not worked around.
+//   4. enquiry_taps analytics row.
+//   What still has nowhere to land: no couple_enquiries row (that table's
+//   vendor_id references the REAL vendors plane) and no engine binder (no agent
+//   exists until the vendor claims). Both absences are true and stated.
 //
 // No JWT (discover is public). couple_id arrives in the body when the bride is
 // logged in; the rows that need her are best-effort on it, and the response says
@@ -257,23 +265,86 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
 // THE DEMO SPECIES — the free-lead hook
 // ─────────────────────────────────────────────────────────────────────────────
 async function handleDemoVendor({ supabase, res, demoVendor, couple_id }) {
-  // Her date, when we know it — the template's {{2}}. Read here rather than in
-  // the alert module so that module stays a sender and not a profile reader.
-  let weddingDate = null;
+  // ── SERVER-SIDE HYDRATION (CE-ruled 2026-07-31, Ask 3) ────────────────────
+  // The sheet collects NEITHER a name NOR a phone. It prefills from her profile,
+  // so her session IS the source, and asking a logged-in bride to retype what we
+  // already hold would be a worse sheet and a second copy of one fact.
+  //
+  // THE JOIN, WITNESSED: neither column lives on `couples` (21 columns,
+  // PUBLIC_SCHEMA.md — no `name`, no `phone`). The identity is one hop away:
+  // `couples.user_id` → `public.users`, which carries `name` and `phone`. This is
+  // the same hop the real-vendor leg already makes for the vendor's own number.
+  let weddingDate = null, weddingCity = null, brideName = null, bridePhone = null;
   if (couple_id) {
     try {
       const { data: couple } = await supabase
         .from('couples')
-        .select('wedding_date')
+        .select('wedding_date, wedding_city, user_id')
         .eq('id', couple_id)
         .maybeSingle();
       weddingDate = couple?.wedding_date || null;
+      weddingCity = couple?.wedding_city || null;
+      if (couple?.user_id) {
+        const { data: u } = await supabase
+          .from('users')
+          .select('name, phone')
+          .eq('id', couple.user_id)
+          .maybeSingle();
+        brideName  = u?.name  || null;
+        bridePhone = u?.phone || null;
+      }
     } catch (err) {
-      console.warn('[enquire:demo] couple date read failed (alert still fires):', err.message);
+      console.warn('[enquire:demo] hydration failed (alert still fires):', err.message);
     }
   }
 
   const alert = await sendDemoLeadAlert(supabase, { demoVendor, weddingDate });
+
+  // ── THE ENQUIRY IS STORED AGAINST THE DEMO VENDOR (spec §P5.2) ────────────
+  // `demo_leads` was purpose-built for this — its own `notified_vendor` column is
+  // this sitting's alert flag. Everything a public surface can read from it is
+  // masked at one home (src/lib/demo/maskDemoLead.js); `bride_phone` reaches no
+  // surface and no model context.
+  //
+  // This is what makes the APPROVED, BYTE-FROZEN template's promise true:
+  // "their enquiry is waiting in your ready account." Without the row a claiming
+  // vendor would arrive to an empty account holding a message that said otherwise.
+  //
+  // ── THE LOGGED-OUT BRANCH, STATED WHERE IT HAPPENS ────────────────────────
+  // `bride_name` and `bride_phone` are both NOT NULL. An anonymous tap supplies
+  // neither, so the row is IMPOSSIBLE — not skipped by preference, refused by the
+  // schema. That path is ALERT-ONLY: the vendor still hears, and the hook still
+  // fires, but there is no stored enquiry and nothing downstream pretends there
+  // is. V6's logged-out toast already promises strictly less ("Enquiry sent",
+  // without the saved-link half), so the surface and the storage agree.
+  let leadStored = false;
+  if (brideName && bridePhone) {
+    try {
+      const { error } = await supabase.from('demo_leads').insert({
+        demo_vendor_id:     demoVendor.id,
+        demo_vendor_handle: demoVendor.ig_handle,
+        bride_name:         brideName,
+        bride_phone:        bridePhone,
+        bride_wedding_date: weddingDate,
+        bride_wedding_city: weddingCity,
+        // The alert's OWN result, never an assumption. If the template was
+        // batched, refused, or had no target, this is false and the founder's
+        // admin queue can see which vendors were never actually told.
+        notified_vendor:    alert.sent === true,
+      });
+      if (error) throw error;
+      leadStored = true;
+    } catch (err) {
+      console.error(
+        `[enquire:demo] demo_lead STORE FAILED for demo vendor ${demoVendor.id}: ${err.message} — ` +
+        'the alert fired but the enquiry is NOT stored; a claiming vendor will find an empty account'
+      );
+    }
+  } else if (couple_id) {
+    console.warn(
+      `[enquire:demo] couple ${couple_id} has no name/phone on users — alert-only path, no demo_lead row`
+    );
+  }
 
   // The tap is recorded on BOTH species — the demo leg's only durable analytics.
   try {
@@ -303,7 +374,7 @@ async function handleDemoVendor({ supabase, res, demoVendor, couple_id }) {
     ok: true,
     species: 'demo',
     sent: alert.sent,
-    lead_created: false,
+    lead_created: leadStored,
     enquiry_saved: false,
     batched: alert.reason === 'batched_48h',
   });

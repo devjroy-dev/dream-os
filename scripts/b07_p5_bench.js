@@ -375,6 +375,25 @@ mutate('src/api/admin/demoAdmin.js',
     assert.strictEqual(routes.filter(r => !/requireAdminPassword/.test(r)).length, 0);
   });
 
+mutate('src/lib/demo/maskDemoLead.js',
+  "return `${parts[0]} ${surnameInitial.toUpperCase()}.`;",
+  "return s;",
+  '§5.1 (V8 the vetoed mask)',
+  () => {
+    const m = require(SRC('src/lib/demo/maskDemoLead.js'));
+    assert.strictEqual(m.maskName('Priya Sharma'), 'Priya S.');
+  });
+
+mutate('src/api/demo/vendor.js',
+  "const leadLines = maskedLeadLines(leads);",
+  "const leadLines = (leads || []).map(l => `- ${l.bride_name}`).join('\\n');",
+  '§5.8 (the model context mask)',
+  () => {
+    const v = read('src/api/demo/vendor.js');
+    const chat = v.slice(v.indexOf("router.post('/:handle/chat'"));
+    assert.ok(!/l\.bride_name/.test(chat));
+  });
+
 mutate('src/lib/vendor/enquiryEnrichment.js',
   ".is('deleted_at', null)\n        .limit(3);",
   ".limit(3);",
@@ -384,6 +403,96 @@ mutate('src/lib/vendor/enquiryEnrichment.js',
     const q = s.slice(s.indexOf("from('events')"), s.indexOf("from('events')") + 400);
     assert.ok(/\.is\('deleted_at',\s*null\)/.test(q));
   });
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+H('§5 — F-07.41 / F-07.42: THE MASK, ITS COVERAGE, AND THE PHANTOM COLUMNS');
+
+let maskMod = null, maskErr = null;
+try { maskMod = require(SRC('src/lib/demo/maskDemoLead.js')); }
+catch (e) { maskErr = e.message; }
+function K() { if (!maskMod) throw new Error(`mask module absent (uncured tree): ${maskErr}`); return maskMod; }
+
+const ROW = {
+  id: 'l1', demo_vendor_id: 'demo-1',
+  bride_name: 'Priya Sharma', bride_phone: '919625759924',
+  bride_email: 'priya@example.com', bride_ig_handle: 'priyas',
+  bride_wedding_date: '2026-12-04', bride_wedding_city: 'Delhi',
+  created_at: '2026-07-31T00:00:00.000Z',
+};
+
+t('§5.1 V8 — the vetoed masked form: first name + surname initial', () => {
+  assert.strictEqual(K().maskName('Priya Sharma'), 'Priya S.');
+  assert.strictEqual(K().maskName('  priya   sharma  '), 'priya S.');
+  assert.strictEqual(K().maskName('Priya'), 'Priya', 'a single name has no surname to initial');
+  assert.strictEqual(K().maskName(''), K().FALLBACK_NAME);
+});
+
+t('§5.2 PII IS ABSENT BY CONSTRUCTION — phone/email/ig cannot appear', () => {
+  const m = K().maskDemoLead(ROW);
+  const flat = JSON.stringify(m);
+  assert.ok(!/919625759924/.test(flat), 'bride_phone must never be served');
+  assert.ok(!/priya@example\.com/.test(flat), 'bride_email must never be served');
+  assert.ok(!/priyas/.test(flat), 'bride_ig_handle must never be served');
+  assert.ok(!('bride_phone' in m) && !('bride_email' in m), 'the keys must not exist at all');
+});
+
+t('§5.3 V9 — month + year, never the exact day', () => {
+  const m = K().maskDemoLead(ROW);
+  assert.strictEqual(m.wedding_when, 'December 2026');
+  assert.ok(!/2026-12-04/.test(JSON.stringify(m)), 'the exact date must not survive');
+});
+
+t('§5.4 the mask BUILDS, never spreads — a new PII column cannot leak by default', () => {
+  const withNewSecret = { ...ROW, bride_passport: 'X1234567' };
+  const flat = JSON.stringify(K().maskDemoLead(withNewSecret));
+  assert.ok(!/X1234567/.test(flat), 'a column added tomorrow must not reach a public surface');
+});
+
+t('§5.5 F-07.42 — the model is told only what the table holds', () => {
+  const lines = K().maskedLeadLines([ROW]);
+  assert.ok(!/status/.test(lines), '`state` does not exist; the model must not be told one');
+  assert.ok(!/message:/.test(lines), '`raw_message` does not exist; the model must not be told one');
+  assert.ok(/Priya S\./.test(lines) && /December 2026/.test(lines), 'it must still say what is true');
+  assert.ok(!/919625759924/.test(lines), 'PII must not reach the model context');
+});
+
+t('§5.6 F-07.42 — the summary counts only what is derivable', () => {
+  const sum = K().maskedLeadSummary([ROW, ROW]);
+  assert.strictEqual(sum.total, 2);
+  assert.ok(!('new' in sum) && !('booked' in sum), 'permanently-zero counters must not exist');
+});
+
+t('§5.7 THE COVERAGE MAP IS APPLIED — zero select(*) on demo_leads in the public router', () => {
+  const v = read('src/api/demo/vendor.js');
+  const blocks = v.split("from('demo_leads')").slice(1);
+  assert.strictEqual(blocks.length, 3, `expected 3 public demo_leads readers, found ${blocks.length}`);
+  blocks.forEach((b, i) => {
+    const head = b.slice(0, 200);
+    assert.ok(/MASKED_SELECT/.test(head), `demo_leads reader #${i + 1} does not use MASKED_SELECT`);
+    assert.ok(!/select\('\*'\)/.test(head), `demo_leads reader #${i + 1} still selects *`);
+  });
+});
+
+t('§5.8 the MODEL CONTEXT goes through the mask (the ruling\'s center)', () => {
+  const v = read('src/api/demo/vendor.js');
+  const chat = v.slice(v.indexOf("router.post('/:handle/chat'"));
+  assert.ok(/maskedLeadLines\(/.test(chat), 'the chat route must build its context from masked rows');
+  assert.ok(!/l\.bride_name/.test(chat), 'no raw row field may be interpolated into the model context');
+});
+
+t('§5.9 the enquiry IS stored against the demo vendor, with notified_vendor from the alert', () => {
+  const e = code(read('src/api/couple/enquire.js'));
+  assert.ok(/from\('demo_leads'\)\.insert/.test(e), 'the demo enquiry must be stored');
+  assert.ok(/notified_vendor:\s*alert\.sent === true/.test(e), 'the flag must come from the alert result');
+  assert.ok(/from\('users'\)/.test(e) && /couple\.user_id/.test(e), 'hydration joins couples.user_id -> users');
+});
+
+t('§5.10 the logged-out path is ALERT-ONLY and cannot form a row', () => {
+  const e = code(read('src/api/couple/enquire.js'));
+  assert.ok(/if \(brideName && bridePhone\)/.test(e),
+    'the row must be gated on the two NOT NULL columns, so an anonymous tap cannot form one');
+});
 
 // ═════════════════════════════════════════════════════════════════════════════
 (async () => {

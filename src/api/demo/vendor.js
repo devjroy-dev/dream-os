@@ -12,6 +12,11 @@
 
 'use strict';
 
+// TDW_07 P5 — F-07.41 / F-07.42. Every read of `demo_leads` on THIS (public,
+// unauthenticated) router goes through the masking home. The coverage map lives
+// there; if you add a fourth reader below, add it to that map too.
+const { maskDemoLeads, maskedLeadLines, maskedLeadSummary, MASKED_SELECT } = require('../../lib/demo/maskDemoLead');
+
 const express   = require('express');
 const router    = express.Router();
 
@@ -75,13 +80,15 @@ router.get('/:handle/leads', async (req, res) => {
   try {
     const vendor = await getDemoVendor(supabase, req.params.handle);
     if (!vendor) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    // MASKED (F-07.41). This route is unauthenticated; `bride_phone` and
+    // `bride_email` are not selected and cannot be served.
     const { data: leads, error } = await supabase
       .from('demo_leads')
-      .select('*')
+      .select(MASKED_SELECT)
       .eq('demo_vendor_id', vendor.id)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return res.json({ ok: true, leads: leads || [] });
+    return res.json({ ok: true, leads: maskDemoLeads(leads) });
   } catch (err) {
     console.error('[demo/vendor/:handle/leads]', err.message);
     return res.status(500).json({ ok: false, error: 'Server error.' });
@@ -94,22 +101,23 @@ router.get('/:handle/context', async (req, res) => {
   try {
     const vendor = await getDemoVendor(supabase, req.params.handle);
     if (!vendor) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    // MASKED (F-07.41) + F-07.42: `l.state` was read here against a table that
+    // has no such column, so every lead reported as "new" forever.
     const { data: leads } = await supabase
       .from('demo_leads')
-      .select('*')
+      .select(MASKED_SELECT)
       .eq('demo_vendor_id', vendor.id)
       .order('created_at', { ascending: false });
-    const leadList = (leads || []).map(l =>
-      `- ${l.bride_name} | ${l.bride_wedding_city || '?'} | ${l.bride_wedding_date || 'TBD'} | ${l.state || 'new'}`
-    ).join('\n');
+    const leadList = maskedLeadLines(leads);
     return res.json({
       ok: true,
       vendor: { name: vendor.display_name, category: vendor.category, city: vendor.city, about: vendor.about, rate_display: vendor.rate_display },
+      // F-07.42: `new` and `booked` filtered on a column that does not exist and
+      // were therefore permanently 0 while reading as measurements. Only `total`
+      // is derivable, so only `total` is claimed.
       leads_summary: {
-        total:  (leads || []).length,
-        new:    (leads || []).filter(l => l.state === 'new').length,
-        booked: (leads || []).filter(l => l.state === 'booked').length,
-        leads:  leads || [],
+        total:  maskedLeadSummary(leads).total,
+        leads:  maskDemoLeads(leads),
       },
       context_text: `Vendor: ${vendor.display_name} | ${vendor.category} | ${vendor.city}\nRate: ${vendor.rate_display || 'not set'}\nAbout: ${vendor.about || 'not set'}\n\nLeads (${(leads||[]).length} total):\n${leadList || 'No leads yet.'}`,
     });
@@ -134,17 +142,26 @@ router.post('/:handle/chat', async (req, res) => {
     const vendor = await getDemoVendor(supabase, req.params.handle);
     if (!vendor) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
 
+    // ── THE CENTER OF THE F-07.41 RULING ─────────────────────────────────────
+    // This is the MODEL's context, on an UNAUTHENTICATED route. Masking the two
+    // JSON payloads and leaving this raw would be the scrub-that-exists-but-
+    // isn't-applied class (F-04.33): a visitor could not read the leads, but
+    // could ASK THE MODEL, and the model would be holding real names, exact
+    // dates, and — via `select('*')` — phone numbers and email addresses.
+    //
+    // F-07.42 dies in the same lines: `l.state` and `l.raw_message` do not exist
+    // on this table, so the model was told, as fact, that every lead's status was
+    // "new" and every message was empty — invented state handed to a language
+    // model and then spoken aloud in the vendor's own studio.
     const { data: leads } = await supabase
       .from('demo_leads')
-      .select('*')
+      .select(MASKED_SELECT)
       .eq('demo_vendor_id', vendor.id)
       .order('created_at', { ascending: false });
 
-    const leadLines = (leads || []).map(l =>
-      `- ${l.bride_name} | ${l.bride_wedding_city || '?'} | ${l.bride_wedding_date || 'TBD'} | status: ${l.state || 'new'} | message: "${l.raw_message || ''}"`
-    ).join('\n');
+    const leadLines = maskedLeadLines(leads);
 
-    const dynamicContext = `VENDOR: ${vendor.display_name} | ${vendor.category} | ${vendor.city}\nRATE: ${vendor.rate_display || 'not set'}\nABOUT: ${vendor.about || 'not set'}\n\nLEADS (${(leads||[]).length} total):\n${leadLines || 'No leads yet.'}`;
+    const dynamicContext = `VENDOR: ${vendor.display_name} | ${vendor.category} | ${vendor.city}\nRATE: ${vendor.rate_display || 'not set'}\nABOUT: ${vendor.about || 'not set'}\n\nLEADS (${(leads||[]).length} total):\n${leadLines}`;  // maskedLeadLines returns its own empty-state line
 
     const messages = [
       ...(history || []).map(h => ({ role: h.role, content: h.content })),
