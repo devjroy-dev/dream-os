@@ -31,8 +31,8 @@
 ## 2 · PROOF
 
 ```
-b07_p5_bench       126 passed, 0 failed  (total 126)
-  83 at charter  +29 cells  +14 both-ways mutation proofs  = 126   (derived by
+b07_p5_bench       134 passed, 0 failed  (total 134)
+  83 at charter  +33 cells  +18 both-ways mutation proofs  = 134   (derived by
   counting the run's own output, after the chair caught a broken prose sum;
   the last cell+mutation pair is §18.8, born of the founder's walk below)
 node --check       5/5 OK
@@ -93,6 +93,33 @@ NOT FLOOR — excluded by name, per the floor-method law:
    size changes — the control-inventory law's blind spot, and neither §18's cells
    nor tsc can see it. Only a device can.
 8. **The F-07.56 cite list was short by four.** The finding named three consumers; the real leg had seven — the lead row's name/phone, the binder's `raw_message`, the prospect's name/phone/note. Curing three would have left the cabinet, binder and prospect saying "a couple" while the ping said her name.
+
+## 5.5 · THE FOUNDER VETO OF 2026-08-01 — FOUR VENDOR-FACING STRINGS
+
+**Born of a defect my own cure created.** F-07.56 activated a latent copy fault:
+`Bride: ` was written when the named arm was DEAD (the real leg never hydrated,
+so the fallback ran on every real enquiry and read correctly). Hydration made the
+named arm the default, and `"Bride: Dev Test 23 is interested in your work."`
+reached a real vendor's phone — witnessed in Railway before anyone read the code.
+A mechanically correct cure degraded the copy.
+
+| # | Before | After (founder-approved, frozen at these bytes) |
+|---|---|---|
+| 1 | `Bride: ${name} is interested in your work.` | `${name} is interested in your work.` |
+| 2 | `A bride on The Dream Wedding` | `A couple on The Dream Wedding` |
+| 3 | `Bride contact: ${phone}` | `Contact: ${phone}` |
+| 4 | `She found you on the Discover feed. …` | `They found you on the Discover feed. …` |
+
+Internal identifiers (`brideLine`, `bride_name`, the columns) keep the internal
+register **by the founder's word**. Only vendor-facing bytes moved. §19 pins all
+four, each proven both ways — restoring any one of the four reddens.
+
+**A FIFTH STRING IS FLAGGED, NOT TOUCHED.** `enquire.js:407` (`leads.raw_message`)
+and `:429` (the binder note) both render `${brideNameFinal || 'A bride'} enquired
+via the Discover feed…`. The veto named four strings and four shipped. This one
+reaches the vendor's CABINET rather than his phone, and it now carries the same
+`A bride` register the ping just retired — so the two surfaces disagree. Left for
+the founder's word rather than folded in silently: a veto covers what it names.
 
 ## 6 · PATH-NOTES (bare filenames were ambiguous; each derived by command)
 

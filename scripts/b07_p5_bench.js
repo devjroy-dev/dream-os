@@ -1480,6 +1480,67 @@ if (!PWA_VISIBLE) {
     });
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §19 — THE VENDOR PING'S FOUR VETOED STRINGS (founder-approved 2026-08-01)
+// Frozen at these BYTES. F-07.56 activated a latent copy defect: the label was
+// written when the named arm was dead, and hydration made it the default —
+// "Bride: Dev Test 23 is interested in your work." reached a real vendor.
+// ═══════════════════════════════════════════════════════════════════════════
+H('§19 — the vendor ping: four vetoed strings, frozen');
+
+const ENQ19 = () => fs.readFileSync(SRC('src/api/couple/enquire.js'), 'utf8');
+const realLeg19 = (src) => code(src.slice(src.indexOf('async function handleRealVendor'),
+                                          src.indexOf('async function handleDemoVendor')));
+
+t('§19.1 the NAMED arm renders the hydrated name BARE — no label', () => {
+  const leg = realLeg19(ENQ19());
+  assert.ok(/brideNameFinal \? `\$\{brideNameFinal\}`/.test(leg),
+    'the named arm is not bare — a label is spliced into the sentence again');
+  assert.ok(!/`Bride: \$\{brideNameFinal\}`/.test(leg), 'the Bride: label is back');
+});
+
+t('§19.2 the FALLBACK arm says COUPLE, not bride', () => {
+  const leg = realLeg19(ENQ19());
+  assert.ok(leg.includes("'A couple on The Dream Wedding'"), 'the fallback drifted');
+  assert.ok(!leg.includes("'A bride on The Dream Wedding'"), 'the bride form survives');
+});
+
+t('§19.3 the contact line is `Contact:`, unlabelled by role', () => {
+  const leg = realLeg19(ENQ19());
+  assert.ok(/\\nContact: \$\{bridePhoneFinal\}/.test(leg), 'the contact line drifted');
+  assert.ok(!/Bride contact:/.test(leg), 'the old contact label survives');
+});
+
+t('§19.4 the closing sentence reads THEY, not she', () => {
+  const leg = realLeg19(ENQ19());
+  assert.ok(leg.includes('They found you on the Discover feed. Reply on WhatsApp to connect.'),
+    'the closing sentence drifted from the vetoed bytes');
+  assert.ok(!leg.includes('She found you on the Discover feed'), 'the she form survives');
+});
+
+// BOTH-WAYS: each vetoed string's mutation must REDDEN. Vetoed copy is frozen at
+// the BYTE (the §18.2 law) — a drift that renders "close enough" is still drift.
+mutateSrc('src/api/couple/enquire.js',
+  'brideNameFinal ? `${brideNameFinal}` : ', 'brideNameFinal ? `Bride: ${brideNameFinal}` : ',
+  '\u00a719.1 (the bare named arm)',
+  (src) => { const l = realLeg19(src); assert.ok(/brideNameFinal \? `\$\{brideNameFinal\}`/.test(l) && !/`Bride: \$\{brideNameFinal\}`/.test(l)); });
+
+mutateSrc('src/api/couple/enquire.js',
+  "'A couple on The Dream Wedding'", "'A bride on The Dream Wedding'",
+  '\u00a719.2 (the couple fallback)',
+  (src) => { const l = realLeg19(src); assert.ok(l.includes("'A couple on The Dream Wedding'") && !l.includes("'A bride on The Dream Wedding'")); });
+
+mutateSrc('src/api/couple/enquire.js',
+  '\\nContact: ${bridePhoneFinal}', '\\nBride contact: ${bridePhoneFinal}',
+  '\u00a719.3 (the contact line)',
+  (src) => { const l = realLeg19(src); assert.ok(/\\nContact: \$\{bridePhoneFinal\}/.test(l) && !/Bride contact:/.test(l)); });
+
+mutateSrc('src/api/couple/enquire.js',
+  'They found you on the Discover feed.', 'She found you on the Discover feed.',
+  '\u00a719.4 (the closing sentence)',
+  (src) => { const l = realLeg19(src); assert.ok(l.includes('They found you on the Discover feed.') && !l.includes('She found you on the Discover feed')); });
+
 (async () => {
   // §1's async cells were registered synchronously above via t(); re-drive the
   // async ones explicitly so their assertions are actually awaited.

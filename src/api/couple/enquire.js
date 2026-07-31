@@ -228,8 +228,16 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   const bridePhoneFinal = hydratedPhone || bride_phone || null;
 
   // ── 1. The vendor's ping, carrying the availability hint ──────────────────
-  const brideLine = brideNameFinal ? `Bride: ${brideNameFinal}` : 'A bride on The Dream Wedding';
-  const phoneLine = bridePhoneFinal ? `\nBride contact: ${bridePhoneFinal}` : '';
+  // ── FOUNDER VETO, 2026-08-01 · FOUR STRINGS FROZEN AT THESE BYTES ─────────
+  // The label was written when this line was DEAD: the real leg never hydrated,
+  // so the fallback ran on every real enquiry and read correctly. F-07.56 made
+  // the named arm the default and it rendered "Bride: Dev Test 23 is interested
+  // in your work." — a form label spliced mid-sentence, live on a vendor's phone.
+  // The name now renders BARE. Internal identifiers (`brideLine`, `bride_name`,
+  // the columns) keep the internal register by the founder's word; only the
+  // VENDOR-FACING bytes moved.
+  const brideLine = brideNameFinal ? `${brideNameFinal}` : 'A couple on The Dream Wedding';
+  const phoneLine = bridePhoneFinal ? `\nContact: ${bridePhoneFinal}` : '';
 
   // The 04 availability hint lives in ONE builder and is reused, never
   // re-derived (P5 fork F5, CE-ruled). Its clash predicate is
@@ -255,7 +263,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   }
 
   const enrichBlock = enrichment ? `\n\n${enrichment}` : '';
-  const body = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}${enrichBlock}\n\nShe found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
+  const body = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}${enrichBlock}\n\nThey found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
 
   // ── F-07.45 CURED · THE TRANSPORT ARM ─────────────────────────────────────
   //
