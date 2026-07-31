@@ -1307,9 +1307,13 @@ mutateSrc('src/api/couple/enquire.js',
 
 // F-07.56 — restore ONE of the seven raw consumers. The seven-site cure must be
 // provable as seven, not three: reverting a single site has to redden.
+// ANCHOR RE-AIMED AT v5: §20 retired the `A bride` fallback, so this mutation's
+// original anchor ceased to exist and mutateSrc reported it ABSENT — loudly, as
+// a failure, which is why the coupling surfaced instead of going vacuous. The
+// question is unchanged: revert ONE of the seven consumers and §15.3 must redden.
 mutateSrc('src/api/couple/enquire.js',
-  "raw_message: `${brideNameFinal || 'A bride'} enquired",
-  "raw_message: `${bride_name || 'A bride'} enquired",
+  "raw_message: `${brideNameFinal || 'A couple'} enquired",
+  "raw_message: `${bride_name || 'A couple'} enquired",
   '§15.3 (the seventh consumer)', (src) => {
     const leg = code(src.slice(src.indexOf('async function handleRealVendor'),
                                src.indexOf('async function handleDemoVendor')));
@@ -1540,6 +1544,48 @@ mutateSrc('src/api/couple/enquire.js',
   'They found you on the Discover feed.', 'She found you on the Discover feed.',
   '\u00a719.4 (the closing sentence)',
   (src) => { const l = realLeg19(src); assert.ok(l.includes('They found you on the Discover feed.') && !l.includes('She found you on the Discover feed')); });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §20 — THE FIFTH VETOED STRING: the CABINET's register (founder-approved)
+// The ping retired "A bride" while the lead row and the binder note still
+// carried it — his phone and his drawer disagreeing about how the estate refers
+// to her. Two sites, one register. Flagged not-touched at v4, ruled at v5.
+// ═══════════════════════════════════════════════════════════════════════════
+H('§20 — the cabinet speaks the same register as the ping');
+
+t('§20.1 the lead row\'s fallback says COUPLE at :407', () => {
+  const leg = realLeg19(ENQ19());
+  assert.ok(/raw_message: `\$\{brideNameFinal \|\| 'A couple'\}/.test(leg),
+    'the lead row still says bride');
+});
+
+t('§20.2 the binder note\'s fallback says COUPLE at :429', () => {
+  const leg = realLeg19(ENQ19());
+  assert.ok(/note:  `\$\{brideNameFinal \|\| 'A couple'\}/.test(leg),
+    'the binder note still says bride');
+});
+
+// TRIPWIRE: no `A bride` survives anywhere in the real leg. This is the cell
+// that would have caught the fifth string at v4 had it existed — a per-site
+// cell sees its own site; only a census sees the ones nobody named.
+t('§20.3 ZERO `A bride` fallbacks survive anywhere in the real leg', () => {
+  const leg = realLeg19(ENQ19());
+  const hits = leg.split('\n').filter(l => /'A bride'/.test(l));
+  assert.strictEqual(hits.length, 0, `bride register survives:\n${hits.join('\n')}`);
+});
+
+// BOTH-WAYS, each site independently — `String.replace` takes the FIRST match,
+// so the two anchors must be distinguishable or one mutation silently drives both.
+mutateSrc('src/api/couple/enquire.js',
+  "raw_message: `${brideNameFinal || 'A couple'}", "raw_message: `${brideNameFinal || 'A bride'}",
+  '\u00a720.1 (the lead row)',
+  (src) => { assert.ok(/raw_message: `\$\{brideNameFinal \|\| 'A couple'\}/.test(realLeg19(src))); });
+
+mutateSrc('src/api/couple/enquire.js',
+  "note:  `${brideNameFinal || 'A couple'}", "note:  `${brideNameFinal || 'A bride'}",
+  '\u00a720.2 (the binder note)',
+  (src) => { assert.ok(/note:  `\$\{brideNameFinal \|\| 'A couple'\}/.test(realLeg19(src))); });
 
 (async () => {
   // §1's async cells were registered synchronously above via t(); re-drive the

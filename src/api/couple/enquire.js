@@ -404,7 +404,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       // for a value this door could not previously receive.
       wedding_city: city || vendor.city || null,
       budget_max:   postedBudgetMax,
-      raw_message: `${brideNameFinal || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
+      raw_message: `${brideNameFinal || 'A couple'} enquired via the Discover feed on The Dream Wedding.`,
       notes:       'Discover enquiry — she found you on the feed.',
     });
     leadCreated = !!(leadRes && leadRes.ok);
@@ -426,7 +426,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
     const binderRes = await enquiryToBinder(supabase, vendor.id, {
       name:  brideNameFinal || 'Dream Wedding enquiry',
       phone: bridePhoneFinal || null,
-      note:  `${brideNameFinal || 'A bride'} enquired via the Discover feed on The Dream Wedding.`,
+      note:  `${brideNameFinal || 'A couple'} enquired via the Discover feed on The Dream Wedding.`,
     });
     vendorLeadId = binderRes?.binder?.id || null;
   } catch (err) {

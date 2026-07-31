@@ -31,8 +31,8 @@
 ## 2 · PROOF
 
 ```
-b07_p5_bench       134 passed, 0 failed  (total 134)
-  83 at charter  +33 cells  +18 both-ways mutation proofs  = 134   (derived by
+b07_p5_bench       139 passed, 0 failed  (total 139)
+  83 at charter  +36 cells  +20 both-ways mutation proofs  = 139   (derived by
   counting the run's own output, after the chair caught a broken prose sum;
   the last cell+mutation pair is §18.8, born of the founder's walk below)
 node --check       5/5 OK
@@ -114,12 +114,27 @@ Internal identifiers (`brideLine`, `bride_name`, the columns) keep the internal
 register **by the founder's word**. Only vendor-facing bytes moved. §19 pins all
 four, each proven both ways — restoring any one of the four reddens.
 
-**A FIFTH STRING IS FLAGGED, NOT TOUCHED.** `enquire.js:407` (`leads.raw_message`)
-and `:429` (the binder note) both render `${brideNameFinal || 'A bride'} enquired
-via the Discover feed…`. The veto named four strings and four shipped. This one
-reaches the vendor's CABINET rather than his phone, and it now carries the same
-`A bride` register the ping just retired — so the two surfaces disagree. Left for
-the founder's word rather than folded in silently: a veto covers what it names.
+**THE FIFTH STRING — FLAGGED AT v4, RULED AT v5.** `enquire.js:407`
+(`leads.raw_message`) and `:429` (the binder note) both rendered `${brideNameFinal
+|| 'A bride'} enquired via the Discover feed…` — his phone and his drawer
+disagreeing about how the estate refers to her. Founder-approved verbatim: the
+fallback at BOTH sites becomes **`A couple enquired via the Discover feed on The
+Dream Wedding.`** Named arm untouched; internal identifiers untouched. §20 pins
+both sites independently (`String.replace` takes the FIRST match, so the two
+anchors are deliberately distinguishable or one mutation would silently drive
+both), plus **§20.3, a census tripwire**: zero `A bride` fallbacks survive
+anywhere in the real leg. That census is the cell that would have caught the
+fifth string at v4 — a per-site cell sees its own site; only a census sees the
+sites nobody named. **Holding the fifth string back at v4 was correct: a veto
+covers what it names, and folding it in because it resembled the other four is
+how vetoed copy quietly becomes executor copy.**
+
+**A COUPLING THE BENCH CAUGHT AT v5.** §20's cure retired the `A bride` bytes that
+§15.3's MUTATION anchored on. `mutateSrc` reported the anchor ABSENT as a
+failure — loudly — rather than passing over it, so the coupling surfaced instead
+of shipping a vacuous proof. Re-aimed; the question is unchanged. **Standing
+note: a cure in one section can invalidate another section's mutation anchor, and
+only an anchor-absent-is-a-FAILURE helper makes that visible.**
 
 ## 6 · PATH-NOTES (bare filenames were ambiguous; each derived by command)
 
