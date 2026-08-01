@@ -12,6 +12,20 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 
 // ─── GET /api/v2/admin/conversations/vendors ─────────────────────────────────
 // Most recent vendor_self conversations (vendor ↔ agent on WhatsApp or PWA).
+//
+// ── F-a CURED — THE PHANTOM COLUMN ───────────────────────────────────────────
+// THIS SELECT READ: `id, kind, channel, state, last_message_at, created_at`.
+// `public.conversations` has TWELVE columns and `channel` is not one of them —
+// witness docs/db/PUBLIC_SCHEMA.md:190-205, settled on the wire by the founder's
+// own network capture: {"ok":false,"error":"column conversations.channel does
+// not exist"}. `channel` is a `messages` column (PUBLIC_SCHEMA:597); the field
+// list was copied across tables.
+//
+// Postgres refuses the WHOLE select on one bad column, so this screen has been
+// 500ing for as long as the line has existed. Nobody saw it because the route
+// ALSO 403'd from the rotation until F-07.85 was cured — the outage was hiding
+// it. The sibling at :brides never selected `channel` and never broke, and that
+// asymmetry is what named the defect.
 router.get('/vendors', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const limit    = Math.min(parseInt(req.query.limit) || 20, 50);
@@ -20,7 +34,7 @@ router.get('/vendors', requireAdmin, asyncHandler(async (req, res) => {
   const { data, error } = await supabase
     .from('conversations')
     .select(`
-      id, kind, channel, state, last_message_at, created_at,
+      id, kind, state, last_message_at, created_at,
       vendors(id, business_name, category, city, tier, users(name, phone))
     `)
     .eq('kind', 'vendor_self')
