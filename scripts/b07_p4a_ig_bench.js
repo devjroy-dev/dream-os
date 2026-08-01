@@ -21,6 +21,7 @@ process.env.IG_REDIRECT_URI = 'https://dream-os-production.up.railway.app/api/v2
 
 const O  = require(path.join(ROOT, 'src/lib/vendor/igOAuth.js'));
 const IG = require(path.join(ROOT, 'src/lib/vendor/igImport.js'));
+const { stripComments, NAIVE_RETIRED } = require('./lib/stripComments');
 
 let pass = 0, fail = 0;
 
@@ -28,9 +29,13 @@ let pass = 0, fail = 0;
 // FIRST, block comments SECOND. Stripping blocks first lets a line comment
 // containing a `/*`-looking token open a phantom block that swallows live code.
 // The `(^|[^:])` guard keeps `https://` out of the line pass.
-const codeOf = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
-  .split('\n').map(l => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n')
-  .replace(/\/\*[\s\S]*?\*\//g, '');
+// ── F-07.74 CURED · THE ONE STRIPPER (CE-ruled F1→(b1), F2→(a)) ──────────────
+// This bench carried its own copy of the naive rule. Six copies lived in this
+// repo and eleven in dreamos-pwa, and every one of them treated the `/*` inside
+// `accept="image/*"` as a comment open. The definition now lives at
+// scripts/lib/stripComments.js and nowhere else; §0 carries the canaries.
+// TDW_STRIPPER_CANARY
+const codeOf = (rel) => stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 const ok = (name, cond, detail) => {
   if (cond) { pass++; console.log('  ok   ' + name); }
@@ -87,6 +92,24 @@ const C = require(path.join(ROOT, 'src/lib/vendor/igConnection.js'));
 const VENDOR = '11111111-2222-3333-4444-555555555555';
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ── §0 · TDW_STRIPPER_CANARY — the stripper itself, driven directly ─────────
+// F-07.74: the retired rule treated the `/*` inside `accept="image/*"` as a
+// comment open and deleted to the next real `*/`. The cells below drive the
+// STRIPPER, not the sources — a planted `image/*` in production code is
+// correctly harmless now, so the regression to catch is the RULE reverting.
+// §0.Z is F-07.99's cell: a definition with no call-site fooled this estate for
+// a whole block, so the call-site is asserted rather than assumed.
+{
+  const _spec = 'const a = 1;\nconst input = { accept: "image/*" };\nconst KEEP_ME = 2;\n/* real */\nconst ALSO_KEEP = 3;\n';
+  ok('§0.X the stripper does NOT open a block on a mid-token /* — F-07.74 cured',
+    stripComments(_spec).includes('KEEP_ME') && stripComments(_spec).includes('ALSO_KEEP'));
+  ok('§0.Y VACUITY TWIN — the RETIRED naive rule WOULD swallow that specimen',
+    !NAIVE_RETIRED(_spec).includes('KEEP_ME'));
+  ok('§0.Z INVOCATION (F-07.99) — this bench really CALLS its stripper',
+    (() => { const self = stripComments(require('fs').readFileSync(__filename, 'utf8'));
+              return (self.match(/\bcodeOf\s*\(/g) || []).length >= 2; })());
+}
+
 section('§1 · THE STATE — signed, vendor-bound, short-TTL');
 
 {

@@ -16,6 +16,7 @@
 'use strict';
 const fs   = require('fs');
 const path = require('path');
+const { stripComments, NAIVE_RETIRED } = require('./lib/stripComments');
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
@@ -36,9 +37,13 @@ const raw = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 // true about the wrong thing: it was reading prose as if it were mechanism. That is the
 // P4a seat's "true, and true about the wrong thing" class, caught here by the cell's own
 // first run rather than by a later reader.
-const codeOf = (rel) => raw(rel)
-  .replace(/(^|[^:])\/\/.*$/gm, '$1')
-  .replace(/\/\*[\s\S]*?\*\//g, '');
+// ── F-07.74 CURED · THE ONE STRIPPER (CE-ruled F1→(b1), F2→(a)) ──────────────
+// This bench carried its own copy of the naive rule. Six copies lived in this
+// repo and eleven in dreamos-pwa, and every one of them treated the `/*` inside
+// `accept="image/*"` as a comment open. The definition now lives at
+// scripts/lib/stripComments.js and nowhere else; §0 carries the canaries.
+// TDW_STRIPPER_CANARY
+const codeOf = (rel) => stripComments(raw(rel));
 
 const SHAPER  = 'src/lib/discover/shapeVendor.js';
 const RATEMET = 'src/lib/vendor/rateMet.js';
@@ -57,6 +62,24 @@ const rateMetMod   = require(path.join(ROOT, RATEMET));
 const profileScore = require(path.join(ROOT, SCORE));
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ── §0 · TDW_STRIPPER_CANARY — the stripper itself, driven directly ─────────
+// F-07.74: the retired rule treated the `/*` inside `accept="image/*"` as a
+// comment open and deleted to the next real `*/`. The cells below drive the
+// STRIPPER, not the sources — a planted `image/*` in production code is
+// correctly harmless now, so the regression to catch is the RULE reverting.
+// §0.Z is F-07.99's cell: a definition with no call-site fooled this estate for
+// a whole block, so the call-site is asserted rather than assumed.
+{
+  const _spec = 'const a = 1;\nconst input = { accept: "image/*" };\nconst KEEP_ME = 2;\n/* real */\nconst ALSO_KEEP = 3;\n';
+  ok('§0.X the stripper does NOT open a block on a mid-token /* — F-07.74 cured',
+    stripComments(_spec).includes('KEEP_ME') && stripComments(_spec).includes('ALSO_KEEP'));
+  ok('§0.Y VACUITY TWIN — the RETIRED naive rule WOULD swallow that specimen',
+    !NAIVE_RETIRED(_spec).includes('KEEP_ME'));
+  ok('§0.Z INVOCATION (F-07.99) — this bench really CALLS its stripper',
+    (() => { const self = stripComments(require('fs').readFileSync(__filename, 'utf8'));
+              return (self.match(/\bcodeOf\s*\(/g) || []).length >= 2; })());
+}
+
 sec('§1 · THE SHAPER EXISTS AND IS THE ONE AUTHOR (F1b)');
 
 ok('§1.1 shapeVendorForDiscover is exported and callable',
@@ -79,7 +102,7 @@ ok('§1.5 the demo leg carries NO cap either — the rule died on both legs, not
 ok('§1.6 normalizeIgHandle was MOVED, not copied — one definition in the estate',
   !/^function normalizeIgHandle/m.test(F) && /^function normalizeIgHandle/m.test(S));
 ok('§1.7 _rank_score is appended at the FEED, never inside the shared shaper',
-  /_rank_score: rankScore\(terms, weights\)/.test(F) && !/_rank_score/.test(S.replace(/\/\/.*$/gm, '')));
+  /_rank_score: rankScore\(terms, weights\)/.test(F) && !/_rank_score/.test(stripComments(S)));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 sec('§2 · THE SHAPER\'S BEHAVIOUR — run, never grepped');

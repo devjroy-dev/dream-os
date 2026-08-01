@@ -4,6 +4,7 @@
 //
 // Runnable from ANY working directory (protocol §9: "a cure nobody can re-run
 // quietly stops being a cure"). Paths resolve from __dirname, never from cwd.
+const { stripComments, NAIVE_RETIRED } = require('./lib/stripComments');
 //
 //   node scripts/b07_p6_bench.js
 //
@@ -40,9 +41,35 @@ const ok = (n, c, d) => { if (c) { pass++; console.log('  ok   ' + n); } else { 
 const sec = (t) => console.log('\n' + t);
 
 const FEED = 'src/api/couple/discover.js';
-const strip = (s) => s.replace(/(^|[^:])\/\/.*$/gm, '$1').replace(/\/\*[\s\S]*?\*\//g, '');
+// ── F-07.74 CURED · THE ONE STRIPPER (CE-ruled F1→(b1), F2→(a)) ──────────────
+// This bench carried its own copy of the naive rule. Six copies lived in this
+// repo and eleven in dreamos-pwa, and every one of them treated the `/*` inside
+// `accept="image/*"` as a comment open. The definition now lives at
+// scripts/lib/stripComments.js and nowhere else; §0 carries the canaries.
+// TDW_STRIPPER_CANARY
+const strip = stripComments;
 
 console.log('\n════════  TDW_07 P6 — F-07.49(b), THE FEED-SUPPRESSION HALF  ════════');
+
+// ── §0 · TDW_STRIPPER_CANARY — the stripper itself, driven directly ─────────
+// F-07.74: the retired rule treated the `/*` inside `accept="image/*"` as a
+// comment open and deleted to the next real `*/`. The cells below drive the
+// STRIPPER, not the sources — a planted `image/*` in production code is
+// correctly harmless now, so the regression to catch is the RULE reverting.
+// §0.Z is F-07.99's cell: a definition with no call-site fooled this estate for
+// a whole block, so the call-site is asserted rather than assumed.
+{
+  const _spec = 'const a = 1;\nconst input = { accept: "image/*" };\nconst KEEP_ME = 2;\n/* real */\nconst ALSO_KEEP = 3;\n';
+  ok('§0.X the stripper does NOT open a block on a mid-token /* — F-07.74 cured',
+    stripComments(_spec).includes('KEEP_ME') && stripComments(_spec).includes('ALSO_KEEP'));
+  ok('§0.Y VACUITY TWIN — the RETIRED naive rule WOULD swallow that specimen',
+    !NAIVE_RETIRED(_spec).includes('KEEP_ME'));
+  ok('§0.Z INVOCATION (F-07.99) — this bench really CALLS its stripper',
+    (() => { const self = stripComments(require('fs').readFileSync(__filename, 'utf8'));
+              return (self.match(/\bstrip\s*\(/g) || []).length >= 2; })());
+}
+
+
 
 // ── THE PREDICATE, LIFTED AS THE ROUTE PERFORMS IT ───────────────────────────
 // Re-derived from the shipped source rather than re-typed, so a change to the

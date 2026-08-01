@@ -25,6 +25,7 @@
 const assert = require('assert');
 const path   = require('path');
 const bcrypt = require('bcryptjs');
+const { stripComments, NAIVE_RETIRED } = require('./lib/stripComments');
 
 // ── base env: dummy creds so route modules load; lane PNIDs unset by default ────────
 process.env.SUPABASE_URL              = process.env.SUPABASE_URL              || 'http://localhost:54321';
@@ -276,11 +277,34 @@ const codeFromTwilio = (p) => { const m = /(\d{6})/.exec(String(p && p.body || '
     }
   }
 
+  // ── §0 · TDW_STRIPPER_CANARY — the stripper itself, driven directly ─────────
+  // F-07.74: the retired rule treated the `/*` inside `accept="image/*"` as a
+  // comment open and deleted to the next real `*/`. The cells below drive the
+  // STRIPPER, not the sources — a planted `image/*` in production code is
+  // correctly harmless now, so the regression to catch is the RULE reverting.
+  // §0.Z is F-07.99's cell: a definition with no call-site fooled this estate for
+  // a whole block, so the call-site is asserted rather than assumed.
+  await t('§0.X/§0.Y/§0.Z the stripper, its vacuity twin, and its call-site', () => {
+    const _spec = 'const a = 1;\nconst input = { accept: "image/*" };\nconst KEEP_ME = 2;\n/* real */\nconst ALSO_KEEP = 3;\n';
+    assert.ok(stripComments(_spec).includes('KEEP_ME') && stripComments(_spec).includes('ALSO_KEEP'),
+      '§0.X the stripper opened a block on a mid-token /* — F-07.74 has returned');
+    assert.ok(!NAIVE_RETIRED(_spec).includes('KEEP_ME'),
+      '§0.Y the retired rule no longer swallows — §0.X would be vacuous');
+    const self = stripComments(require('fs').readFileSync(__filename, 'utf8'));
+    assert.ok((self.match(/\bstripComments\s*\(/g) || []).length >= 2,
+      '§0.Z this bench holds a stripper it does not call — F-07.99 class');
+  });
+
   // ── (iv-static) otpSend.js never requires whatsapp / references the opt-out gate ─────
   await t('(iv) static: otpSend.js does not require whatsapp / reference the opt-out gate', () => {
     const src = require('fs').readFileSync(path.join(ROOT, 'src/lib/otpSend.js'), 'utf8');
-    // strip the comment-only mentions before scanning executable intent
-    const code = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    // ── F-07.100 CURED · THE GUARDLESS LINE PASS ────────────────────────────
+    // This site was the worst stripper shape in either repo: `/\/\/.*$/gm` with
+    // no `(^|[^:])` guard, so it deleted from the `//` of every `https://` to the
+    // end of that line — inside string literals, inside URLs, anywhere — and then
+    // ran the naive block rule on top. The module scans characters and touches
+    // neither. TDW_STRIPPER_CANARY
+    const code = stripComments(src);
     assert.ok(!/require\(['"][^'"]*whatsapp['"]\)/.test(code), "otpSend requires whatsapp — the gate could leak in");
     assert.ok(!/sendWhatsApp/.test(code), 'otpSend references sendWhatsApp');
     assert.ok(!/optedOut|opted_out|isOptedOut/.test(code), 'otpSend references the opt-out gate');

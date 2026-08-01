@@ -4,6 +4,7 @@
 // F-05.48 SLICE ONE (F-07.76) + F-07.77 — THE DOORS READ THEIR RESULTS, AND THE
 // TRAPDOORS DIE.
 //
+const { stripComments, NAIVE_RETIRED } = require('./lib/stripComments');
 // Runnable from any working directory (Q-SP-5): every path resolves off __dirname.
 //
 // ── WHAT THIS BENCH IS FOR ───────────────────────────────────────────────────
@@ -50,24 +51,14 @@ const read = (f) => fs.readFileSync(f, 'utf8');
 // ── THE STRIPPER, AMENDED PER F-07.74 ────────────────────────────────────────
 // A `/*` opens a block comment ONLY at line start or after a delimiter — never
 // mid-token, so `accept="image/*"` and `${x}/*y*/` cannot open a false block.
-function strip(src) {
-  let out = '';
-  let i = 0, inBlock = false, inLine = false, inStr = null;
-  while (i < src.length) {
-    const c = src[i], n = src[i + 1];
-    if (inLine) { if (c === '\n') { inLine = false; out += c; } i++; continue; }
-    if (inBlock) { if (c === '*' && n === '/') { inBlock = false; i += 2; } else { if (c === '\n') out += c; i++; } continue; }
-    if (inStr) { if (c === '\\') { out += c + (n || ''); i += 2; continue; } if (c === inStr) inStr = null; out += c; i++; continue; }
-    if (c === '"' || c === "'" || c === '`') { inStr = c; out += c; i++; continue; }
-    if (c === '/' && n === '/') { inLine = true; i += 2; continue; }
-    if (c === '/' && n === '*') {
-      const prev = out.replace(/[ \t]+$/, '').slice(-1);
-      if (prev === '' || '(){};,=:+&|?!\n[<'.includes(prev)) { inBlock = true; i += 2; continue; }
-    }
-    out += c; i++;
-  }
-  return out;
-}
+// ── F-07.74 · THE DEFINITION IS PROMOTED OUT OF THIS BENCH ───────────────────
+// This function was the estate's FIRST correct answer to F-07.74 and it sat in
+// one bench while sixteen other benches across two repos kept the broken rule.
+// It now lives at scripts/lib/stripComments.js and is imported here like
+// everywhere else. Not one byte of its mechanism changed; only its address did.
+// §0.X/§0.Y below — the stripper-aimed pair this bench invented — are the pattern
+// every other bench in both repos now carries. TDW_STRIPPER_CANARY
+const strip = stripComments;
 
 let pass = 0, fail = 0;
 const t = (name, fn) => {
@@ -113,13 +104,36 @@ t('§0.X the amended stripper does NOT open a block on a mid-token /*', () => {
     'the stripper swallowed live code from an accept="image/*" — F-07.74 reproduced in this very bench');
 });
 t('§0.Y vacuity: the NAIVE rule WOULD swallow that specimen', () => {
-  const naive = 'const a = 1;\nconst input = { accept: "image/*" };\nconst KEEP_ME = 2;\n/* real */\nconst ALSO_KEEP = 3;\n'
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+  // F-07.74 · the retired rule is EXPORTED from the module as NAIVE_RETIRED and
+  // exists nowhere else in either repo. A vacuity twin that re-types the rule is
+  // a second definition of the thing being retired.
+  const naive = NAIVE_RETIRED('const a = 1;\nconst input = { accept: "image/*" };\nconst KEEP_ME = 2;\n/* real */\nconst ALSO_KEEP = 3;\n');
   assert.ok(!naive.includes('KEEP_ME'),
     'the naive rule no longer swallows — §0.X would be vacuous and this bench would be lying');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// ── §0 · TDW_STRIPPER_CANARY — the stripper itself, driven directly ─────────
+// F-07.74: the retired rule treated the `/*` inside `accept="image/*"` as a
+// comment open and deleted to the next real `*/`. The cells below drive the
+// STRIPPER, not the sources — a planted `image/*` in production code is
+// correctly harmless now, so the regression to catch is the RULE reverting.
+// §0.Z is F-07.99's cell: a definition with no call-site fooled this estate for
+// a whole block, so the call-site is asserted rather than assumed.
+{
+  const _spec = 'const a = 1;\nconst input = { accept: "image/*" };\nconst KEEP_ME = 2;\n/* real */\nconst ALSO_KEEP = 3;\n';
+  t('§0.X the stripper does NOT open a block on a mid-token /* — F-07.74 cured', () => {
+    assert.ok(stripComments(_spec).includes('KEEP_ME') && stripComments(_spec).includes('ALSO_KEEP'));
+  });
+  t('§0.Y VACUITY TWIN — the RETIRED naive rule WOULD swallow that specimen', () => {
+    assert.ok(!NAIVE_RETIRED(_spec).includes('KEEP_ME'));
+  });
+  t('§0.Z INVOCATION (F-07.99) — this bench really CALLS its stripper', () => {
+    const self = stripComments(require('fs').readFileSync(__filename, 'utf8'));
+    assert.ok((self.match(/\bstrip\s*\(/g) || []).length >= 2);
+  });
+}
+
 section('§1 · THE TRANSPORT CONTRACT — derived, never assumed');
 // ═════════════════════════════════════════════════════════════════════════════
 const wa = strip(read(WHATSAPP));
