@@ -5,12 +5,17 @@
 const express      = require('express');
 const router       = express.Router();
 const requireAdmin = require('./requireAdmin');
-const requireAuth  = require('../middleware/requireAuth');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
 // POST /eligible/:vendorId
-router.post('/eligible/:vendorId', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+// ── F-07.91 CURED — THE UNSATISFIABLE GUARD STACK ────────────────────────────
+// EVERY ROUTE BELOW READ: `requireAuth, requireAdmin`. `requireAuth` verifies a
+// SUPABASE USER JWT (src/api/middleware/requireAuth.js:13) and stood FIRST, so
+// it 401'd every admin before `requireAdmin` ran. The Featured queue and its
+// approve/reject actions were unreachable from the panel. See the full reasoning
+// at api/admin/discover.js's header — one disease, three files, ten routes.
+router.post('/eligible/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const eligible  = (req.body || {}).eligible === true;
   const { error } = await supabase.from('vendors').update({ featured_eligible: eligible }).eq('id', req.params.vendorId);
@@ -19,7 +24,7 @@ router.post('/eligible/:vendorId', requireAuth, requireAdmin, asyncHandler(async
 }));
 
 // GET /queue
-router.get('/queue', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.get('/queue', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { data, error } = await supabase.from('vendor_featured_submissions')
     .select('id, vendor_id, slot_kind, caption, proposed_start_date, proposed_end_date, fee_inr, state, created_at, vendor:vendors(business_name, routing_handle, user:users(name))')
@@ -30,7 +35,7 @@ router.get('/queue', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
 }));
 
 // POST /:submissionId/approve
-router.post('/:submissionId/approve', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/:submissionId/approve', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const body     = req.body || {};
   if (!body.scheduled_start || !body.scheduled_end) return errRes(res, 400, 'scheduled_start and scheduled_end required.');
@@ -47,7 +52,7 @@ router.post('/:submissionId/approve', requireAuth, requireAdmin, asyncHandler(as
 }));
 
 // POST /:submissionId/reject
-router.post('/:submissionId/reject', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/:submissionId/reject', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const reason   = (req.body || {}).reason || null;
   const { error } = await supabase.from('vendor_featured_submissions').update({

@@ -5,7 +5,6 @@
 const express      = require('express');
 const router       = express.Router();
 const requireAdmin = require('./requireAdmin');
-const requireAuth  = require('../middleware/requireAuth');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
@@ -17,7 +16,24 @@ async function logAction(supabase, action, targetId, metadata = {}) {
 }
 
 // GET /requests
-router.get('/requests', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+// ── F-07.91 CURED — THE UNSATISFIABLE GUARD STACK ────────────────────────────
+// EVERY ROUTE BELOW READ: `requireAuth, requireAdmin`.
+// `requireAuth` (src/api/middleware/requireAuth.js:13) verifies a SUPABASE USER
+// JWT. It stood FIRST, so it answered 401 before `requireAdmin` was ever
+// reached — and an admin holds no user JWT. The whole Discover approval queue
+// was therefore unreachable from the panel: not just the list, but grant, deny
+// and revoke. Founder-captured on the wire; PRE-EXISTING, older than the panel
+// fold that made it visible.
+//
+// A guard nobody can satisfy is a LOCK WITH NO KEY, not a second factor.
+// Removing it is not a weakening: `requireAdmin` alone is the identical
+// protection every other /api/v2/admin/* route in this estate carries. The
+// second factor it gestured at is real and wanted — it is chartered as F-07.92
+// so the want survives the cure rather than dying with the broken lock.
+//
+// REFUSED IN INK (CE, on the LE's own grounds): teaching the panel to hold a
+// user JWT would re-cross the lane geometry F-07.65 closed. Never proposed again.
+router.get('/requests', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const state    = req.query.state || 'requested';
   let q = supabase.from('vendor_discover_requests')
@@ -30,7 +46,7 @@ router.get('/requests', requireAuth, requireAdmin, asyncHandler(async (req, res)
 }));
 
 // POST /grant/:vendorId
-router.post('/grant/:vendorId', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/grant/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const vendorId  = req.params.vendorId;
   await supabase.from('vendors').update({ discover_eligible: true, discover_request_state: 'approved' }).eq('id', vendorId);
@@ -42,7 +58,7 @@ router.post('/grant/:vendorId', requireAuth, requireAdmin, asyncHandler(async (r
 }));
 
 // POST /deny/:vendorId
-router.post('/deny/:vendorId', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/deny/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendorId = req.params.vendorId;
   const reason   = (req.body || {}).reason || null;
@@ -55,7 +71,7 @@ router.post('/deny/:vendorId', requireAuth, requireAdmin, asyncHandler(async (re
 }));
 
 // POST /revoke/:vendorId
-router.post('/revoke/:vendorId', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post('/revoke/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendorId = req.params.vendorId;
   const reason   = (req.body || {}).reason || null;
