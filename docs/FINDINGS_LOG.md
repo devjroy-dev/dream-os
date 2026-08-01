@@ -27,10 +27,10 @@ section. Append-only. Status updated as findings are resolved. Never deleted.
 
 ### Finding #1 — Admin password hardcoded in dreamos-pwa (public repo)
 
-**What:** `Mira@2551354` appears hardcoded in 25 files across `app/admin/**` in the
+**What:** the then-live admin password (REDACTED 2026-08-01, F-07.83) appeared hardcoded in 25 files across `app/admin/**` in the
 public GitHub repo `devjroy-dev/dreamos-pwa`. Two variants:
-  - `const PWD = 'Mira@2551354'` (~21 files)
-  - `const ADMIN_PASSWORD = 'Mira@2551354'` (cover, login, discover-heroes)
+  - `const PWD = '<REDACTED — F-07.83>'` (~21 files)
+  - `const ADMIN_PASSWORD = '<REDACTED — F-07.83>'` (cover, login, discover-heroes)
 The value is in git history permanently.
 
 **Where:** `app/admin/**/*.tsx` — all 25 admin page files.
@@ -314,7 +314,7 @@ Phone-tested 2026-05-18. JWT issued and verified against /api/v2/_test/whoami.
 
 ### Finding #12 — Admin password source-code residue (dreamos-pwa public repo)
 
-**What:** Finding #1 from P2-2 noted Mira@2551354 hardcoded in 25 files of public dreamos-pwa repo.
+**What:** Finding #1 from P2-2 noted the then-live admin password (REDACTED 2026-08-01, F-07.83) hardcoded in 25 files of public dreamos-pwa repo.
 Admin password was rotated in Railway (P2-4 session). Source-code residue remains in dreamos-pwa.
 The 25 hardcoded references are now stale (do not match live password) but still exist in git history.
 

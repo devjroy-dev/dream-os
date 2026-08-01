@@ -100,7 +100,7 @@
 - **`/api/v2/vendor/onboarding` endpoint doesn't exist** — frontend routes to it when `!pin_set && !name`. Now bypassed because verify-otp returns `name`. But if a vendor somehow has no name in DB, they'll see "Could not save." Build this endpoint if it becomes an issue.
 - **`/api/v2/couple/onboarding` endpoint doesn't exist** — same situation for couples.
 - **Invite code web flow for new users (no WA)** — now works because generate pre-creates user row.
-- **Admin password changed** — now `Liza@2551354` (was `Mira@2551354`). Update Railway env if needed.
+- **Admin password changed** — the live value lives in Railway (`ADMIN_PASSWORD`) ONLY. Both the then-new and previous literals were REDACTED from this file on 2026-08-01 (F-07.83); the passwords they named are retired.
 
 ### Migration status
 
@@ -123,7 +123,7 @@
 | Test vendor handle | DEV550 |
 | Test vendor PIN | 1234 |
 | Test vendor tier | prestige |
-| Admin password | Liza@2551354 |
+| Admin password | see Railway `ADMIN_PASSWORD` (never recorded in this repo — F-07.83) |
 | Admin URL | thedreamwedding.in/admin |
 | Supabase | nvzkbagqxbysoeszxent (Mumbai, ap-south-1) |
 | Railway | https://dream-os-production.up.railway.app |
@@ -329,7 +329,7 @@ Read this first. Then ROADMAP_FINAL.md. Then SCHEMA.md. Then API_CONTRACTS.md.
 | Railway | https://dream-os-production.up.railway.app |
 | Admin | https://dream-os-production.up.railway.app/admin |
 | Vercel dreamai | https://thedreamai.in |
-| Admin password | Mira@2551354 |
+| Admin password | see Railway `ADMIN_PASSWORD` (never recorded in this repo — F-07.83) |
 
 ---
 

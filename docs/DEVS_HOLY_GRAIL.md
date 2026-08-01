@@ -43,7 +43,7 @@
 - Test vendor PIN: `1234`
 - Swati vendor UUID: `e036ea4d-3f9a-4ec5-ba89-a5defa3a042b`, handle: `SWATI978`
 - Test couple phone: `+919625759924`
-- Admin password: `Liza@2551354`
+- Admin password: see Railway `ADMIN_PASSWORD` (never recorded in this repo — F-07.83)
 
 ---
 
