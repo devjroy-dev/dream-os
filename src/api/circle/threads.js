@@ -48,7 +48,7 @@ router.get('/:brideId/:threadId/messages', asyncHandler(async (req, res) => {
 
   const { data: messages, error } = await supabase
     .from('messages')
-    .select('id, body, sent_by, direction, created_at')
+    .select('id, body, sent_by, sender_name, sender_user_id, direction, created_at')
     .eq('conversation_id', convoId)
     .order('created_at', { ascending: true })
     .limit(limit);
@@ -58,14 +58,34 @@ router.get('/:brideId/:threadId/messages', asyncHandler(async (req, res) => {
     return res.json({ success: false, error: 'Could not fetch messages.' });
   }
 
+  // ── F-07.107 / F-07.109 — THE READ SHAPE STOPS LYING ABOUT ITS AUTHOR ──────
+  // `sender_name` was `m.sent_by` — the ROLE, rendered by the co-planner as the
+  // speaker's name, which is how a bubble came to read "COUPLE". It now carries
+  // 0105's column, and NULL where no author was recorded (every row written
+  // before this delivery, and any send that carried no credential). The client
+  // renders a null-name bubble with no name line at all: falling back to the role
+  // would reprint the exact string this cure exists to remove, and on live data
+  // that string is `couple` over a member's own words (F-07.112's record).
+  //
+  // `sender_user_id` is NEW here and is not a rename: no response on this lane
+  // has ever emitted it, while the co-planner has compared against it since it
+  // was written (page.tsx:139), so `mine` was permanently false and every bubble
+  // — including the reader's own — took the stranger branch. The field is now
+  // real rather than the client being bent around its absence.
+  //
+  // `sender_role` and `actor_role` keep carrying `sent_by` deliberately: they are
+  // roles, they are labelled as roles, and no surface renders them as a name. The
+  // co-planner's ROLE_LABEL map dies in the pwa half of this delivery (F-07.110)
+  // because its keys never once matched this value space.
   const shaped = (messages || []).map(m => ({
-    id:          m.id,
-    body:        m.body     || null,
-    content:     m.body     || null,
-    sender_name: m.sent_by  || null,
-    sender_role: m.sent_by  || null,
-    actor_role:  m.sent_by  || null,
-    created_at:  m.created_at,
+    id:             m.id,
+    body:           m.body     || null,
+    content:        m.body     || null,
+    sender_name:    m.sender_name    || null,
+    sender_user_id: m.sender_user_id || null,
+    sender_role:    m.sent_by  || null,
+    actor_role:     m.sent_by  || null,
+    created_at:     m.created_at,
   }));
 
   return res.json({ success: true, data: shaped });
@@ -108,7 +128,7 @@ router.get('/:brideId', asyncHandler(async (req, res) => {
 
   const threads = await Promise.all((convos || []).map(async (c) => {
     const { data: lastMsg } = await supabase
-      .from('messages').select('body, sent_by, created_at')
+      .from('messages').select('body, sent_by, sender_name, created_at')
       .eq('conversation_id', c.id)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
 
@@ -116,11 +136,16 @@ router.get('/:brideId', asyncHandler(async (req, res) => {
       thread_id:   `dm:${c.id}`,
       kind:        'dm',
       label:       null,
+      // F-07.107 SITE 4 — CURED THOUGH INERT. This preview's only consumer,
+      // app/coplanner/threads/page.tsx, declares `sender_name` at :14 and renders
+      // only `last_message.content` at :119, so the role-as-name never reached a
+      // screen from here. Cured anyway, by ruling: a shape that lies to a type
+      // nobody reads is one screen change away from lying to a reader.
       last_message: lastMsg ? {
-        content:    lastMsg.body       || null,
-        sender_name:lastMsg.sent_by    || null,
-        sender_role:lastMsg.sent_by    || null,
-        created_at: lastMsg.created_at || null,
+        content:     lastMsg.body        || null,
+        sender_name: lastMsg.sender_name || null,
+        sender_role: lastMsg.sent_by     || null,
+        created_at:  lastMsg.created_at  || null,
       } : null,
       last_active: c.last_message_at || c.updated_at || null,
     };

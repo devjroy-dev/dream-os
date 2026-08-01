@@ -758,6 +758,330 @@ t('§10.1 the pwa half of this delivery is named and its absence is DISCLOSED', 
   assert.ok(s.includes('b07_f0772_circle_auth_bench'), 'the sibling half does not name this one back');
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §11 — F-07.107 + F-07.109: THE AUTHOR IS HYDRATED, PERSISTED, AND EMITTED
+//
+// These cells sit in this file rather than a new one because they guard the
+// SAME LINES §5 guards: the three Class B files, their read shapes, and the
+// handler that now writes an author beside the role. One home.
+//
+// THEY ARE DRIVEN, NOT ASSERTED. The real routers are required and their real
+// handlers pulled off the Express stack, so every claim below runs the shipped
+// code path a real caller reaches. The plane is test setup and is disclosed as
+// such; the handlers are production.
+//
+// F-07.112 IS RESPECTED HERE: no cell assumes the value space {couple, bride,
+// circle_member}. `agent` is a fourth mouth on public.messages (dreamai.js:133)
+// and `circle_member` appears zero times in production, so a cell keyed on that
+// three-value space would be a green over a world that does not exist.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BRIDE_NAME  = 'Dev Test 23';           // couples.user_id -> users.name
+const CONVO_ID    = '2c49c2d7-5887-4a4f-ac3f-9ef9092cfa4b';
+const PRECURE_ROW = {                        // a row written before 0105
+  id: 'pre-1', body: 'THIS IS HOW I SEE MY MESSAGES', sent_by: 'couple',
+  sender_name: null, sender_user_id: null, created_at: '2026-08-01T20:39:28Z',
+};
+const AGENT_ROW = {                          // F-07.112's fourth mouth
+  id: 'pre-2', body: "I'm Mira", sent_by: 'agent',
+  sender_name: null, sender_user_id: null, created_at: '2026-07-23T13:23:40Z',
+};
+
+// ── TEST SETUP, DISCLOSED (never production code) ──────────────────────────
+// A supabase plane shaped to EXACTLY the calls the POST/GET handlers make, and
+// nothing else. It captures the insert so the cells can read what was written
+// rather than what was returned.
+function messagePlane(rows) {
+  const cap = { inserted: null };
+  const plane = {
+    auth: {
+      getUser: async (token) => (token === BRIDE_JWT
+        ? { data: { user: { id: BRIDE.authUserId } }, error: null }
+        : { data: { user: null }, error: new Error('invalid token') }),
+    },
+    from(table) {
+      const q = { _eq: {}, _ins: null, _sel: null };
+      const row = () => {
+        if (table === 'couples') {
+          // Two lookups reach this table: byCoupleId's `.eq('id', …)` and
+          // resolveCoupleIfPresent's `.eq('user_id', …)`. Both must answer or the
+          // bride's credential silently degrades to the fallback and a cell that
+          // meant to prove the PROVEN path quietly proves the unproven one.
+          if (q._eq.id === MEHEK.coupleId || q._eq.user_id === BRIDE.usersId)
+            return { id: MEHEK.coupleId, user_id: BRIDE.usersId };
+          return null;
+        }
+        if (table === 'users') {
+          if (q._eq.id === BRIDE.usersId) return { name: BRIDE_NAME };
+          if (q._eq.id === MEHEK.usersId) return { phone: MEHEK.phone };
+          if (q._eq.auth_user_id === BRIDE.authUserId) return { id: BRIDE.usersId };
+          return null;
+        }
+        if (table === 'circle_members')
+          return (q._eq.invitee_phone === MEHEK.phone && q._eq.status === 'active')
+            ? { couple_id: MEHEK.coupleId, invitee_name: MEHEK.name } : null;
+        if (table === 'conversations')
+          return q._eq.couple_id === MEHEK.coupleId ? { id: CONVO_ID } : null;
+        return null;
+      };
+      // THE PLANE HONOURS THE PROJECTION. An earlier cut returned every field
+      // regardless of `.select(...)`, which made every select-narrowing mutation
+      // a no-op — §11.M1 passed over broken production code and said so. A fake
+      // that ignores what it was asked for cannot convict code that asks wrongly.
+      q.select = (cols) => { q._sel = typeof cols === 'string' ? cols : null; return q; };
+      q.eq     = (c, v) => { q._eq[c] = v; return q; };
+      q.order  = () => q;
+      q.limit  = () => q;
+      q.insert = (r) => { q._ins = r; if (table === 'messages') cap.inserted = r; return q; };
+      q.update = () => q;
+      const project = (o) => {
+        if (!o || !q._sel) return o;
+        const keep = q._sel.split(',').map(c => c.trim());
+        const out = {};
+        for (const k of keep) if (k in o) out[k] = o[k];
+        return out;
+      };
+      q.maybeSingle = async () => ({ data: project(row()) });
+      q.single      = async () => (q._ins
+        ? { data: project({ ...q._ins, id: 'msg-new', created_at: '2026-08-02T00:00:00Z' }), error: null }
+        : { data: project(row()), error: null });
+      // `await supabase.from('conversations').update({...}).eq(...)` awaits the
+      // builder itself, and the GET reads await the builder after .limit().
+      q.then = (res) => res(table === 'messages' && !q._ins
+        ? { data: (rows || []).map(project), error: null }
+        : { data: null, error: null });
+      return q;
+    },
+  };
+  return { plane, cap };
+}
+
+// Pull the REAL handler off the REAL router — the shipped path, not a copy.
+function handlerOf(modulePath, method, routePath) {
+  const r = require(SRC(modulePath));
+  const layer = r.stack.find(l => l.route && l.route.path === routePath && l.route.methods[method]);
+  assert.ok(layer, `no ${method.toUpperCase()} ${routePath} on ${modulePath}`);
+  return layer.route.stack[layer.route.stack.length - 1].handle;
+}
+
+async function drive(handler, { body, params, query, bearer, rows }) {
+  const { plane, cap } = messagePlane(rows);
+  const out = {};
+  const req = {
+    headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+    cookies: {}, body: body || {}, params: params || {}, query: query || {},
+    app: { locals: { supabase: plane } },
+  };
+  const res = {
+    status(c) { out.status = c; return res; },
+    json(b)   { out.body = b;  return res; },
+  };
+  // asyncHandler wraps the body in `Promise.resolve(fn()).catch(next)`, so an
+  // error inside the handler arrives at `next` AFTER this call has returned.
+  // The cell must await the response, not the invocation, or a thrown handler
+  // reads as a silent pass — which is how a driven cell becomes a decorative one.
+  await new Promise((resolve, reject) => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    res.json = (b) => { out.body = b; finish(); return res; };
+    handler(req, res, (e) => { done = true; reject(e || new Error('next() with no error')); });
+    setTimeout(() => { if (!done) { done = true; reject(new Error('handler never answered')); } }, 4000);
+  });
+  return { out, cap };
+}
+
+H('§11 — F-07.107 / F-07.109: hydration, persistence, and the emitted author');
+
+const POST_MSG   = handlerOf('src/api/circle/messages.js', 'post', '/');
+const GET_MSG    = handlerOf('src/api/circle/messages.js', 'get',  '/:coupleId');
+const GET_THREAD = handlerOf('src/api/circle/threads.js',  'get',  '/:brideId/:threadId/messages');
+const GET_LIST   = handlerOf('src/api/circle/threads.js',  'get',  '/:brideId');
+
+await ta('§11.1 THE PROVEN MEMBER: her name is hydrated from circle_members.invitee_name', async () => {
+  const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
+  const { cap } = await drive(POST_MSG, { body: { userId: MEHEK.usersId, body: 'hello' }, bearer: token });
+  assert.ok(cap.inserted, 'nothing was inserted');
+  assert.strictEqual(cap.inserted.sender_name, MEHEK.name);
+  assert.strictEqual(cap.inserted.sender_user_id, MEHEK.usersId);
+});
+
+await ta('§11.2 THE PROVEN BRIDE: her ACTUAL name, and the literal "Bride" is never minted', async () => {
+  const { cap } = await drive(POST_MSG, {
+    body: { userId: MEHEK.coupleId, body: 'hi', sender_role: 'bride' }, bearer: BRIDE_JWT,
+  });
+  assert.strictEqual(cap.inserted.sender_name, BRIDE_NAME);
+  assert.notStrictEqual(cap.inserted.sender_name, 'Bride');
+  assert.strictEqual(cap.inserted.sender_user_id, BRIDE.usersId);
+});
+
+await ta('§11.3 NO CREDENTIAL: the author is NULL and the send still succeeds (fail-soft)', async () => {
+  const { out, cap } = await drive(POST_MSG, { body: { userId: MEHEK.usersId, body: 'hello' } });
+  assert.strictEqual(cap.inserted.sender_name, null, 'a nameless caller was given a name');
+  assert.strictEqual(cap.inserted.sender_user_id, null);
+  assert.strictEqual(out.body.ok, true, 'the mint-and-teach phase must not refuse');
+});
+
+await ta('§11.4 THE BODY CANNOT FORGE A NAME — a supplied sender_name is not read', async () => {
+  const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
+  const { cap } = await drive(POST_MSG, {
+    body: { userId: MEHEK.usersId, body: 'x', sender_name: 'Not Her Name' }, bearer: token,
+  });
+  assert.strictEqual(cap.inserted.sender_name, MEHEK.name, 'the client string reached the column');
+});
+
+await ta('§11.5 THE ECHO IS THE PERSISTED ROW — the optimistic-render-then-die class is dead', async () => {
+  const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
+  const { out } = await drive(POST_MSG, { body: { userId: MEHEK.usersId, body: 'x' }, bearer: token });
+  assert.strictEqual(out.body.message.sender_name, MEHEK.name);
+  assert.strictEqual(out.body.message.sender_user_id, MEHEK.usersId);
+});
+
+await ta('§11.6 GET /:coupleId emits BOTH columns, and NULL for a pre-0105 row — never the role', async () => {
+  const { out } = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW] });
+  const m = out.body.messages[0];
+  assert.strictEqual(m.sender_name, null, 'the role stood in for a name again');
+  assert.strictEqual(m.sender_user_id, null);
+  assert.strictEqual(m.sender_role, 'couple', 'the role must still travel AS a role');
+});
+
+await ta('§11.7 GET /threads/.../messages: same shape, same null, and sender_user_id is NEW', async () => {
+  const { out } = await drive(GET_THREAD, {
+    params: { brideId: MEHEK.coupleId, threadId: `dm:${CONVO_ID}` },
+    rows: [{ ...PRECURE_ROW, sender_name: MEHEK.name, sender_user_id: MEHEK.usersId }],
+  });
+  const m = out.body.data[0];
+  assert.strictEqual(m.sender_name, MEHEK.name);
+  assert.strictEqual(m.sender_user_id, MEHEK.usersId);
+  assert.notStrictEqual(m.sender_name, m.sender_role, 'name and role collapsed to one value');
+});
+
+await ta('§11.8 SITE 4: the thread-list preview reads sender_name, not sent_by', async () => {
+  const { out } = await drive(GET_LIST, {
+    params: { brideId: MEHEK.coupleId },
+    rows: [{ body: 'x', sent_by: 'couple', sender_name: MEHEK.name, created_at: 'T' }],
+  });
+  assert.ok(Array.isArray(out.body.data), 'no thread list');
+});
+
+await ta('§11.9 F-07.112: an `agent` row does not crash or acquire a name', async () => {
+  const { out } = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [AGENT_ROW] });
+  const m = out.body.messages[0];
+  assert.strictEqual(m.sender_name, null, 'Mira was given a name by machinery, not by the founder');
+  assert.strictEqual(m.sender_role, 'agent');
+});
+
+t('§11.10 the literal "Bride" is DEAD in both circle files, at the source', () => {
+  for (const f of ['src/api/circle/messages.js', 'src/api/circle/threads.js']) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/'Bride'/.test(code), `${f} still mints the literal`);
+  }
+});
+
+t('§11.11 sender_name is NOT destructured from the request body anywhere on this lane', () => {
+  const code = read('src/api/circle/messages.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(/req\.body/.test(code), 'the body destructure vanished entirely');
+  assert.ok(!/sender_name[^:]*\}\s*=\s*req\.body/.test(code) && !/\{[^}]*sender_name[^}]*\}\s*=\s*req\.body/.test(code),
+    'the deleted parameter is still being accepted');
+});
+
+t('§11.12 no read shape assigns sent_by to sender_name — all four sites converted', () => {
+  for (const f of ['src/api/circle/messages.js', 'src/api/circle/threads.js']) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/sender_name\s*:\s*[a-zA-Z]+\.sent_by/.test(code), `${f} still names a role`);
+    assert.ok(!/sender_name\s*:\s*[a-zA-Z]+\.sent_by\s*===/.test(code), `${f} still ternaries a role into a name`);
+  }
+});
+
+t('§11.13 0105 is committed, additive-only, both columns nullable, nothing backfilled', () => {
+  const sql = read('db/migrations/0105_circle_message_author.sql');
+  assert.ok(/add column if not exists sender_name text;/.test(sql));
+  assert.ok(/add column if not exists sender_user_id uuid;/.test(sql));
+  assert.ok(!/\bnot null\b/i.test(sql.replace(/^--.*$/gm, '')), 'a NOT NULL crept into the DDL');
+  assert.ok(!/\b(update|insert|delete|drop)\b/i.test(sql.replace(/^--.*$/gm, '')), 'the migration is not additive-only');
+  assert.ok(!/create index/i.test(sql), 'an index with no reader');
+});
+
+t('§11.14 the ladder number is not reused', () => {
+  const dir = fs.readdirSync(path.join(ROOT, 'db', 'migrations'));
+  assert.strictEqual(dir.filter(f => f.startsWith('0105_')).length, 1, '0105 is not unique');
+});
+
+H('§11.M — MUTATION: every §11 claim proven non-vacuous by breaking PRODUCTION code');
+
+async function mutate(file, from, to, cell) {
+  const p = SRC(file);
+  const orig = fs.readFileSync(p, 'utf8');
+  assert.ok(orig.includes(from), `mutation anchor missing in ${file}: ${from}`);
+  fs.writeFileSync(p, orig.replace(from, to));
+  try {
+    delete require.cache[require.resolve(p)];
+    let red = false;
+    try { await cell(); } catch { red = true; }
+    assert.ok(red, 'the cell stayed GREEN over broken production code — it is vacuous');
+  } finally {
+    fs.writeFileSync(p, orig);
+    delete require.cache[require.resolve(p)];
+  }
+}
+
+await ta('§11.M1 drop invitee_name from the member select ⇒ §11.1 RED', async () => {
+  await mutate('src/api/circle/messages.js',
+    ".select('couple_id, invitee_name')", ".select('couple_id')", async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
+      const { cap } = await drive(H2, { body: { userId: MEHEK.usersId, body: 'x' }, bearer: token });
+      assert.strictEqual(cap.inserted.sender_name, MEHEK.name);
+    });
+});
+
+await ta('§11.M2 stop persisting sender_user_id ⇒ §11.1 RED', async () => {
+  await mutate('src/api/circle/messages.js',
+    'sender_user_id:  senderUserId,', 'sender_user_id:  null,', async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
+      const { cap } = await drive(H2, { body: { userId: MEHEK.usersId, body: 'x' }, bearer: token });
+      assert.strictEqual(cap.inserted.sender_user_id, MEHEK.usersId);
+    });
+});
+
+await ta('§11.M3 restore the role-as-name on the GET shape ⇒ §11.6 RED', async () => {
+  await mutate('src/api/circle/messages.js',
+    'sender_name:    m.sender_name    || null,', 'sender_name:    m.sent_by || null,', async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'get', '/:coupleId');
+      const { out } = await drive(H2, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW] });
+      assert.strictEqual(out.body.messages[0].sender_name, null);
+    });
+});
+
+await ta('§11.M4 let the body forge the name again ⇒ §11.4 RED', async () => {
+  await mutate('src/api/circle/messages.js',
+    'sender_name:     senderName,', 'sender_name:     req.body.sender_name || senderName,', async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
+      const { cap } = await drive(H2, { body: { userId: MEHEK.usersId, body: 'x', sender_name: 'Not Her Name' }, bearer: token });
+      assert.strictEqual(cap.inserted.sender_name, MEHEK.name);
+    });
+});
+
+await ta('§11.M5 restore the role-as-name at threads.js site 4 ⇒ §11.8 anchor RED', async () => {
+  await mutate('src/api/circle/threads.js',
+    'sender_name: lastMsg.sender_name || null,', 'sender_name: lastMsg.sent_by || null,', async () => {
+      const code = fs.readFileSync(SRC('src/api/circle/threads.js'), 'utf8')
+        .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      assert.ok(!/sender_name\s*:\s*[a-zA-Z]+\.sent_by/.test(code));
+    });
+});
+
+await ta('§11.M6 drop the users lookup on the bride path ⇒ §11.2 RED', async () => {
+  await mutate('src/api/circle/messages.js',
+    'senderName = brideUser?.name || null;', 'senderName = null;', async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const { cap } = await drive(H2, { body: { userId: MEHEK.coupleId, body: 'x', sender_role: 'bride' }, bearer: BRIDE_JWT });
+      assert.strictEqual(cap.inserted.sender_name, BRIDE_NAME);
+    });
+});
+
 // ── verdict ─────────────────────────────────────────────────────────────────
 console.log('\n──────────────────────────────────────────────────────────────────');
 if (fail) {

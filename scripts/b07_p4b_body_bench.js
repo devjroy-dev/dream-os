@@ -250,8 +250,23 @@ ok('§5.24 its dead rMin/rMax bindings went with it (CE ruling (b))',
   !/const rMin = update\.rate_min/.test(M) && !/const rMax = update\.rate_max/.test(M));
 ok('§5.25 rate_max is DORMANT-BY-COMMENT in ALLOWED_FIELDS, not deleted from history',
   /\/\/ 'rate_max',/.test(M) && !/'aesthetic_tags', 'rate_min', 'rate_max',/.test(M));
-ok('§5.26 ZERO DDL — this sitting adds no migration',
-  fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => /^01(0[5-9]|[1-9]\d)/.test(f)).length === 0);
+// ── LABELED AMENDMENT, COUNT-PRESERVED (F-07.107's delivery, 2026-08-02) ──────
+// This cell read: `…filter(/^01(0[5-9]|[1-9]\d)/).length === 0` — "no migration
+// numbered 0105 or higher exists". That pinned the LADDER TAIL, not P4b's claim.
+// It was true at P4b's seal and became false the instant ANY later sitting shipped
+// DDL: `0105_circle_message_author.sql` did, for F-07.107/F-07.109, on
+// public.messages — a table P4b never touches. A cell that reddens because the
+// estate moved forward is asserting the wrong thing, and silently deleting it
+// would drop P4b's real guarantee. Re-aimed to what it always meant: the ladder
+// may grow, but NOTHING IN IT IS P4b's. Address changed, behaviour and count
+// unchanged; it still reddens the day a P4b-shaped migration appears.
+ok('§5.26 ZERO DDL — P4b added no migration, and no later one is P4b\'s',
+  (() => {
+    const dir = path.join(ROOT, 'db/migrations');
+    return fs.readdirSync(dir)
+      .filter(f => /^01(0[5-9]|[1-9]\d)/.test(f))
+      .every(f => !/rate_min|rate_max|public\.vendors|P4b/i.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+  })());
 
 // ═══════════════════════════════════════════════════════════════════════════════
 sec('§5b · MICRO-2 — THE FOUNDER-CHOSEN GATE STRING, AND THE CAP\'S SUPERSESSION');

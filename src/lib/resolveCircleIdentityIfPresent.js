@@ -7,12 +7,22 @@
 // CLIENT census showed that three of those doors are not the co-planner's at
 // all — they are SHARED, and their second caller is the BRIDE:
 //
-//   GET  /frost/circle/threads/:brideId                  coplanner + journey.ts:438
+//   GET  /frost/circle/threads/:brideId                  coplanner (+ journey.ts)
 //   GET  /frost/circle/threads/:brideId/:threadId/messages
-//                                                        coplanner + journey.ts:448
-//   POST /frost/circle/messages                          coplanner + journey.ts:458
-//                                                                 + sanctuary:2895
+//                                                        coplanner (+ journey.ts)
+//   POST /frost/circle/messages                          coplanner + sanctuary:2901
 //   GET  /frost/circle/messages/:coupleId                sanctuary:2585 (bride only)
+//
+// ── CITATION CORRECTED, F-07.107's read-first (one comment, zero behaviour) ──
+// The first cut of this list cited `journey.ts:438/:448/:458` as the bride's live
+// second caller and `sanctuary:2895` for the POST. Two drifts, both derived:
+// the POST's fetch is at sanctuary:2901, not :2895; and journey.ts's three circle
+// helpers — fetchCircleThreads, fetchThreadMessages, sendThreadMessage — have
+// ZERO consumers anywhere in the pwa tree (F-07.97's class, second direction).
+// THE RULING THIS FILE RESTS ON IS UNHARMED: sanctuary:2585 and :2901 are live,
+// they are the bride's, and they are why a circle-member guard would lock her out
+// of her own conversation. Only the breadth of the citation was wrong, and a
+// dead call site cited as a live one is how a reader inherits a false census.
 //
 // `src/api/circle/messages.js:27-46` was built for exactly that: "The bride
 // passes her couple_id directly; a circle member passes their users.id." A BRIDE
