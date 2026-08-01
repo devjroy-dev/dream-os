@@ -30,6 +30,9 @@ router.use('/crew',               require('./crew'));          // TDW_04.5 P3 â€
 router.use('/vendor/onboarding',  require('./vendor/onboarding'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)
+// F-2 RULED (a): the json login door for Panel B. Mounted FIRST among the
+// admin routes so no later '/admin' mount can shadow it.
+router.use('/admin/login',           require('./admin/login'));
 router.use('/admin/discover',        require('./admin/discover'));
 router.use('/admin/photos',          require('./admin/photos'));
 router.use('/admin/couture',         require('./admin/couture'));

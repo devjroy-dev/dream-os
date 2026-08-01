@@ -84,9 +84,16 @@ section('§0 · THE CANARY — the stripper must not swallow live code (CE-120 l
 const CANARIES = [
   [CONCIERGE, ["const express          = require('express')", 'const waBody = [', 'module.exports = router;']],
   [COLLAB,    ["const { sendWhatsApp } = require('../../lib/whatsapp')", "if (action === 'interested') {", 'module.exports = router;']],
-  [DEMOADMIN, ["const express = require('express')", 'function requireAdminPassword(req, res, next) {', 'module.exports = router;']],
-  [REQADMIN,  ['function signSession(password) {', 'function requireAdmin(req, res, next) {', 'module.exports = requireAdmin;']],
-  [ADMINMW,   ['function signSession(password) {', 'function handleLogin(req, res) {', 'module.exports = { requireAuth, handleLogin };']],
+  // ── RE-AIMED, F-07.84/.82 fold (labeled per the both-sides clause, CE-59) ──
+  // Three waist anchors named functions this delivery DELETED: demoAdmin's
+  // private guard (F-6(b)) and BOTH signSession twins (F-07.82). An anchor is a
+  // canary, not a subject — it must be live code that exists, and code that no
+  // longer exists cannot testify that a stripper spared it. Re-anchored to
+  // surviving live code in the SAME files, at the same head/waist/tail spread.
+  // The section's subject is unchanged: the stripper must not swallow.
+  [DEMOADMIN, ["const express = require('express')", "router.get('/vendors', requireAdminPassword,", 'module.exports = router;']],
+  [REQADMIN,  ['const { COOKIE_NAME, verifyAdminSession, bearerFrom }', 'function requireAdmin(req, res, next) {', 'module.exports = requireAdmin;']],
+  [ADMINMW,   ['const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;', 'function handleLogin(req, res) {', 'module.exports = { requireAuth, handleLogin };']],
 ];
 for (const [f, anchors] of CANARIES) {
   const stripped = strip(read(f));
@@ -272,58 +279,101 @@ section('§6 · FAIL-CLOSED — every door refuses when its env is absent');
 // re-types the guard proves the bench's opinion of the guard, never the guard.
 // The expression is now EXTRACTED from concierge.js and evaluated as a function of
 // (adminPw, adminWant), so any weakening of the shipped condition reddens here.
-function conciergeGuard() {
-  const m = strip(read(CONCIERGE)).match(/if\s*\(([^)]*adminWant[^)]*)\)\s*\{/);
-  assert.ok(m, 'the concierge admin guard could not be extracted — the cell is blind, not green');
-  // eslint-disable-next-line no-new-func
-  return new Function('adminPw', 'adminWant', `return !!(${m[1]});`);   // true === REFUSED
+// ── §6.1-6.8 RE-AIMED A SECOND TIME, F-07.84/.85 fold (labeled) ─────────────
+// SLICE ONE'S SUBJECTS ARE UNCHANGED: every door must refuse when its env is
+// absent, and must admit a correct credential (non-vacuity). What changed is the
+// CONTRACT they guard. Slice one's cells extracted expressions written in terms
+// of `adminPw`/`ADMIN_PASSWORD`/`SESSION_SECRET` and a raw `x-admin-password`
+// header. This delivery deleted the header limb estate-wide (CE F-3 end-state)
+// and moved signing into src/lib/adminSession.js. Per the BOTH-SIDES CLAUSE
+// (CE-59): the old shape's green is RETIRED, not retained — a green over a
+// header nobody sends is indistinguishable from no test at all.
+//
+// The cells below drive the NEW caller's payload: a real minted session token.
+// They are BEHAVIOURAL against the shipped module, not textual.
+const SESSHOME = path.join(ROOT, 'src/lib/adminSession.js');
+
+function freshSession() {
+  delete require.cache[require.resolve(SESSHOME)];
+  return require(SESSHOME);
 }
-t('§6.1 concierge /requests: no env, no header -> REFUSED (M-7 convicts here)', () => {
-  assert.ok(conciergeGuard()(undefined, undefined),
-    'the SHIPPED guard OPENS with no env and no header — the fail-open returned');
+
+t('§6.1 concierge /requests: no secret -> REFUSED (the fail-open cannot return)', () => {
+  const keep = process.env.ADMIN_SESSION_SECRET;
+  delete process.env.ADMIN_SESSION_SECRET;
+  const S = freshSession();
+  const refused = !S.verifyAdminSession('anything');
+  process.env.ADMIN_SESSION_SECRET = keep;
+  assert.ok(refused, 'the shipped verifier admits with no secret set');
 });
-t('§6.2 concierge /requests: no env, header supplied -> REFUSED', () => {
-  assert.ok(conciergeGuard()('anything', undefined), 'the SHIPPED guard opens to a guessed header');
+t('§6.2 concierge /requests: secret absent, token supplied -> REFUSED', () => {
+  const keep = process.env.ADMIN_SESSION_SECRET;
+  process.env.ADMIN_SESSION_SECRET = 'bench-a';
+  let tok = freshSession().mintAdminSession();
+  delete process.env.ADMIN_SESSION_SECRET;
+  const refused = !freshSession().verifyAdminSession(tok);
+  process.env.ADMIN_SESSION_SECRET = keep;
+  assert.ok(refused, 'a token survives the disappearance of the secret that signed it');
 });
-t('§6.3 concierge /requests: env set, right header -> ADMITTED (non-vacuity)', () => {
-  assert.ok(!conciergeGuard()('S', 'S'), 'the SHIPPED guard refuses a correct credential — it is not a door');
+t('§6.3 secret set, right token -> ADMITTED (non-vacuity — it is still a door)', () => {
+  const keep = process.env.ADMIN_SESSION_SECRET;
+  process.env.ADMIN_SESSION_SECRET = 'bench-b';
+  const S = freshSession();
+  const admitted = S.verifyAdminSession(S.mintAdminSession());
+  process.env.ADMIN_SESSION_SECRET = keep;
+  assert.ok(admitted, 'the shipped verifier refuses its own mint — it is not a door');
 });
-t('§6.3b concierge /requests: env set, WRONG header -> REFUSED', () => {
-  assert.ok(conciergeGuard()('wrong', 'S'), 'the SHIPPED guard admits a wrong password');
+t('§6.3b secret set, WRONG token -> REFUSED', () => {
+  const keep = process.env.ADMIN_SESSION_SECRET;
+  process.env.ADMIN_SESSION_SECRET = 'bench-c';
+  const S = freshSession();
+  const tok = S.mintAdminSession();
+  const refused = !S.verifyAdminSession(tok.slice(0, -3) + 'zzz');
+  process.env.ADMIN_SESSION_SECRET = keep;
+  assert.ok(refused, 'the shipped verifier admits a forged mac');
 });
-t('§6.4 demoAdmin: no env -> REFUSED at the new explicit limb', () => {
+t('§6.4 demoAdmin: the private guard is gone and the ONE guard is imported', () => {
   const src = strip(read(DEMOADMIN));
-  assert.ok(/if\s*\(\s*!ADMIN_PASSWORD\s*\)/.test(src), 'demoAdmin lost its explicit absent-env refusal');
+  assert.ok(!/function requireAdminPassword/.test(src), 'the private guard returned — two authorities again');
+  assert.ok(/require\('\.\/requireAdmin'\)/.test(src), 'demoAdmin does not ride the one guard');
 });
-t('§6.5 requireAdmin: cookie limb refuses when either secret is absent', () => {
+t('§6.5 requireAdmin refuses when the signing secret is absent', () => {
   const src = strip(read(REQADMIN));
-  assert.ok(/if\s*\(\s*!ADMIN_PASSWORD\s*\|\|\s*!SESSION_SECRET\s*\)/.test(src),
-    'requireAdmin would sign a cookie with an absent secret');
+  assert.ok(/if\s*\(\s*!process\.env\.ADMIN_SESSION_SECRET\s*\)/.test(src),
+    'requireAdmin would verify against an absent secret');
 });
-t('§6.6 requireAdmin: header limb refuses when ADMIN_PASSWORD is absent', () => {
+t('§6.6 requireAdmin has NO header limb — the credential left the client', () => {
   const src = strip(read(REQADMIN));
-  assert.ok(/!ADMIN_PASSWORD\s*\|\|\s*header\s*!==\s*ADMIN_PASSWORD/.test(src), 'the header limb lost its presence check');
+  assert.ok(!/x-admin-password/.test(src), 'the header limb returned');
+  assert.ok(/bearerFrom\(req\)/.test(src), 'the bearer limb is missing');
 });
-t('§6.7 admin/middleware handleLogin: no env -> NO cookie minted (the second fail-open)', () => {
+t('§6.7 admin/middleware handleLogin: no env -> NO cookie minted (the second fail-open stays dead)', () => {
   const src = strip(read(ADMINMW));
-  assert.ok(/ADMIN_PASSWORD\s*&&\s*SESSION_SECRET\s*&&\s*password\s*&&\s*password\s*===\s*ADMIN_PASSWORD/.test(src),
-    'handleLogin mints an admin cookie for an empty post with no env set');
+  assert.ok(/!ADMIN_PASSWORD \|\| !process\.env\.ADMIN_SESSION_SECRET/.test(src),
+    'handleLogin lost its absent-env refusal');
+  assert.ok(/typeof password === 'string' && safeEquals\(password, ADMIN_PASSWORD\)/.test(src),
+    'handleLogin can mint a cookie for a non-string post again');
 });
 t('§6.8 admin/middleware verifySession: no env -> false', () => {
   const src = strip(read(ADMINMW));
-  assert.ok(/if\s*\(\s*!ADMIN_PASSWORD\s*\|\|\s*!SESSION_SECRET\s*\)\s*\{[\s\S]{0,320}?return false;/.test(src),
-    'verifySession compares against a secret derived from "undefined"');
+  assert.ok(/if\s*\(\s*!ADMIN_PASSWORD\s*\|\|\s*!process\.env\.ADMIN_SESSION_SECRET\s*\)\s*\{[\s\S]{0,340}?return false;/.test(src),
+    'verifySession no longer refuses with the env absent');
 });
 
-// ═════════════════════════════════════════════════════════════════════════════
-section('§7 · F-07.82 — minted, named in-file, deliberately NOT cured here');
 // ═════════════════════════════════════════════════════════════════════════════
 t('§7.1 the reversible-encoding defect is named at its own function', () => {
   assert.ok(/F-07\.82/.test(read(REQADMIN)), 'F-07.82 is not named where signSession lives');
 });
-t('§7.2 signSession is STILL base64 — this delivery did not silently cure it', () => {
-  assert.ok(/Buffer\.from\(raw\)\.toString\('base64'\)/.test(strip(read(REQADMIN))),
-    'signSession changed shape — that is F-07.82s chartered micro, not this one');
+// RE-AIMED, and this one is a CLOSURE, not a drift (labeled): slice one asserted
+// signSession was STILL base64 so that delivery could not be mistaken for having
+// cured F-07.82. Its micro is THIS sitting. The cell keeps its subject — the
+// state of the mint — and states the new truth, so a REGRESSION to reversible
+// encoding reddens here exactly as the old cell would have.
+t('§7.2 F-07.82 CLOSED — the reversible encoding is gone and the twins are consolidated', () => {
+  const src = strip(read(REQADMIN));
+  assert.ok(!/Buffer\.from\(raw\)\.toString\('base64'\)/.test(src), 'the reversible encoding returned');
+  assert.ok(!/function\s+signSession/.test(src), 'a second sign implementation reappeared in the guard');
+  assert.ok(/require\('\.\.\/\.\.\/lib\/adminSession'\)/.test(src), 'the guard does not ride the one home');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

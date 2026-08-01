@@ -1,6 +1,6 @@
 // src/api/admin/demoAdmin.js
 // Admin endpoints for managing demo vendor profiles.
-// Protected by x-admin-password header.
+// Protected by requireAdmin (bearer or cookie) — F-07.86, the private guard died.
 //
 //   GET    /api/v2/admin/demo/vendors         — list all demo vendors
 //   POST   /api/v2/admin/demo/vendors         — create demo vendor
@@ -15,31 +15,25 @@ const express = require('express');
 const router  = express.Router();
 const crypto  = require('crypto');
 
-// ── F-07.77 · THE TRAPDOOR DIES HERE TOO ──────────────────────────────────────
-// THIS READ: `process.env.ADMIN_PASSWORD || '<a literal>'` — a live admin password
-// in the clear in a PUBLIC repository. Rotated and env-set at CE-120; the literal
-// was the surviving trapdoor. Env-only now, the shape of api/admin/requireAdmin.js:5.
+// ── F-07.86 · THE PRIVATE GUARD DIES (CE ruling F-6(b)) ──────────────────────
+// THIS FILE CARRIED ITS OWN `requireAdminPassword` — a header-only guard with
+// no cookie limb, reading `x-admin-password` and comparing it against
+// ADMIN_PASSWORD. Two authorities guarding one panel was the disease's second
+// face: a fold that cured `requireAdmin` alone would have left these ten routes
+// dark, or worse, still admitting a raw credential over the wire after the
+// credential had left every other client.
 //
-// FAIL-CLOSED, AND WHY THIS SITE NEEDED NO SECOND CHANGE: the guard below already
-// carries the `!pw ||` presence limb, so with the env absent every caller is refused
-// — `!pw` catches the no-header case and no supplied string equals `undefined`. The
-// sibling site at api/couple/concierge.js had NO such limb and would have gone
-// FAIL-OPEN under this same deletion; it received the limb in the same delivery.
-// Two sites, one disease, two different patches — the asymmetry law, in the flesh.
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-function requireAdminPassword(req, res, next) {
-  const pw = req.headers['x-admin-password'];
-  if (!ADMIN_PASSWORD) {
-    console.error(
-      '[demoAdmin] ADMIN_PASSWORD is not set on this service — REFUSING every caller. ' +
-      'This door fails CLOSED by design (F-07.77); set the env to restore it.'
-    );
-    return res.status(401).json({ ok: false, error: 'Unauthorized.' });
-  }
-  if (!pw || pw !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, error: 'Unauthorized.' });
-  next();
-}
+// It now imports the ONE guard. Its ten routes ride the same bearer and cookie
+// limbs as every other /api/v2/admin/* route, and the `x-admin-password` header
+// is dead estate-wide.
+//
+// F-07.77's fail-closed behaviour is NOT lost in the swap — it moved home.
+// requireAdmin refuses every session when ADMIN_SESSION_SECRET is absent, and
+// says so on a named log line, exactly as this file's own guard did for
+// ADMIN_PASSWORD. The refusal STATUS changes from 401 to 401/403 depending on
+// which limb was attempted; that is disclosed rather than papered, because a
+// caller reading for 401 specifically will now see 403 on a bad token.
+const requireAdminPassword = require('./requireAdmin');
 
 // GET /admin/demo/vendors
 router.get('/vendors', requireAdminPassword, async (req, res) => {

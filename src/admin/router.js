@@ -2,6 +2,7 @@ const express  = require('express');
 const router   = express.Router();
 
 const { requireAuth, handleLogin } = require('./middleware');
+const { COOKIE_NAME } = require('../lib/adminSession');
 const { loginPage }   = require('./views/login');
 const { vendorsPage } = require('./views/vendors');
 const { invitePage }  = require('./views/invite');
@@ -20,7 +21,7 @@ router.get('/login', (req, res) => {
 router.post('/login', express.urlencoded({ extended: true }), handleLogin);
 
 router.get('/logout', (req, res) => {
-  res.setHeader('Set-Cookie', 'dream_admin_session=; Max-Age=0; Path=/admin');
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=; Max-Age=0; Path=/admin`);
   res.redirect('/admin/login');
 });
 

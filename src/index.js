@@ -25,6 +25,7 @@ const { enquiryToBinder } = require('./lib/vendor/enquiryBinder'); // 5-B-2
 const { ensureCoupleRow, captureField } = require('./lib/coupleIdentity');
 const { buildDisambiguationQuestion, interpretDisambiguationReply, vendorDisplayName } = require('./agent/disambiguation');
 const adminRouter  = require('./admin/router');
+const requireAdmin = require('./api/admin/requireAdmin');
 const apiRouter    = require('./api/router');
 const { resolveAgentForVendor } = require('./api/middleware/agentBridge'); // 5-A
 const { runTurn } = require('./engine/dist/core/loop');                     // 5-A
@@ -84,7 +85,10 @@ app.use(cors({
     return cb(null, false);  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password', 'Accept'],
+  // F-07.85 (CE F-3 end-state): `x-admin-password` REMOVED. The credential has
+  // left the client, so the header it travelled in is no longer allowlisted —
+  // a browser that tried to send it now fails preflight, which is the point.
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
 
 // CORS error handler — return 403 JSON, not 500 HTML
@@ -105,7 +109,21 @@ app.locals.anthropic = anthropic;
 // ── Briefing test endpoint (manual trigger, no WhatsApp send) ──────
 // Usage: GET /admin/test-briefing/:vendorId
 // Returns the briefing message that would be sent, or the skip reason.
-app.get('/admin/test-briefing/:vendorId', async (req, res) => {
+// ── F-07.87 CURED — GUARDED, NOT DELETED ─────────────────────────────────────
+// THIS ROUTE WAS UNAUTHENTICATED. It is registered HERE, above the
+// `app.use('/admin', adminRouter)` mount below, so Express matched it first and
+// Panel A's `requireAuth` never ran. Any caller holding a vendor UUID received
+// the vendor row, the user row (name AND phone), and a generated briefing.
+//
+// GUARD, not delete — the caller census decided it. Derived by command across
+// BOTH repos: ZERO code callers anywhere (dream-os `grep -rn test-briefing` finds
+// only this file's own three lines; dreamos-pwa finds none). Its only caller is
+// a human with a curl. But `buildBriefing` itself is LIVE — src/cron.js:70 is
+// its production caller — so this is a working diagnostic for a shipping code
+// path, and deleting an operator's tool that nobody asked to delete is scope
+// the founder did not grant. It gets the guard the mount below would have given
+// it if it had been registered on the other side of the line.
+app.get('/admin/test-briefing/:vendorId', requireAdmin, async (req, res) => {
   try {
     const { vendorId } = req.params;
 

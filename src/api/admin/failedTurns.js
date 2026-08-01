@@ -7,7 +7,7 @@
 //
 // Mounted at /api/v2/admin/failed-turns (admin service = vendor; bride turns are
 // replayed cross-service over HTTP). Auth is the same requireAdmin gate as every other
-// admin API sub-router (cookie or x-admin-password).
+// admin API sub-router (bearer or cookie — the header limb died at F-07.85).
 //
 // REPLAY is configuration-withheld (the CE's conditional-withheld rule): it re-POSTs to
 // `${SELF_URL}/webhook/meta` carrying `x-internal-replay: INTERNAL_REPLAY_SECRET`.

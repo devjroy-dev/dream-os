@@ -6,6 +6,9 @@
 
 'use strict';
 
+const { verifyAdminSession, bearerFrom, COOKIE_NAME: ADMIN_COOKIE_NAME } =
+  require('../../lib/adminSession');
+
 const express          = require('express');
 const router           = express.Router();
 const asyncHandler     = require('../../lib/asyncHandler');
@@ -211,15 +214,32 @@ router.get('/requests', asyncHandler(async (req, res) => {
   //
   // THE SHAPE, matching api/admin/requireAdmin.js:5 and demoAdmin.js:22: env-only,
   // and BOTH limbs required — a missing secret refuses, a missing header refuses.
-  const adminPw   = req.headers['x-admin-password'];
-  const adminWant = process.env.ADMIN_PASSWORD;
-  if (!adminWant || !adminPw || adminPw !== adminWant) {
-    if (!adminWant) {
-      console.error(
-        '[concierge/requests] ADMIN_PASSWORD is not set on this service — REFUSING every ' +
-        'caller. This door fails CLOSED by design (F-07.77); set the env to restore it.'
-      );
-    }
+  // ── F-07.85 AMENDMENT (this sitting) — A THIRD AUTHORITY, FOUND AND FOLDED ──
+  // The paragraph above is slice one's and its reasoning stands. What it could
+  // not know: this file was the THIRD place in the estate that read
+  // `x-admin-password` directly, and the F-07.85 census — which searched
+  // app/admin/** on the pwa — could never have found it, because it is a COUPLE
+  // route. It surfaced only when the header was swept estate-wide after the
+  // limb was deleted from requireAdmin. Disclosed, not papered.
+  //
+  // The header limb is dead here too (CE F-3 end-state). This door now verifies
+  // the SAME session material every other admin door verifies. The couple-auth
+  // mount at api/couple/core.js:13 is untouched and still stands above this
+  // handler, so the door remains admin-inside-couple-auth exactly as before —
+  // only the credential's shape changed, never the door's position.
+  //
+  // FAIL-CLOSED CARRIED: verifyAdminSession returns false with the signing
+  // secret absent, so the missing-env case still refuses. The named log line is
+  // kept because slice one's cure earned it.
+  const adminToken = bearerFrom(req) || (req.cookies ? req.cookies[ADMIN_COOKIE_NAME] : undefined);
+  if (!process.env.ADMIN_SESSION_SECRET) {
+    console.error(
+      '[concierge/requests] ADMIN_SESSION_SECRET is not set on this service — REFUSING every ' +
+      'caller. This door fails CLOSED by design (F-07.77); set the env to restore it.'
+    );
+    return res.status(401).json({ ok: false, error: 'Unauthorized.' });
+  }
+  if (!adminToken || !verifyAdminSession(adminToken)) {
     return res.status(401).json({ ok: false, error: 'Unauthorized.' });
   }
 
