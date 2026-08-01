@@ -15,10 +15,28 @@ const express = require('express');
 const router  = express.Router();
 const crypto  = require('crypto');
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Liza@2551354';
+// ── F-07.77 · THE TRAPDOOR DIES HERE TOO ──────────────────────────────────────
+// THIS READ: `process.env.ADMIN_PASSWORD || '<a literal>'` — a live admin password
+// in the clear in a PUBLIC repository. Rotated and env-set at CE-120; the literal
+// was the surviving trapdoor. Env-only now, the shape of api/admin/requireAdmin.js:5.
+//
+// FAIL-CLOSED, AND WHY THIS SITE NEEDED NO SECOND CHANGE: the guard below already
+// carries the `!pw ||` presence limb, so with the env absent every caller is refused
+// — `!pw` catches the no-header case and no supplied string equals `undefined`. The
+// sibling site at api/couple/concierge.js had NO such limb and would have gone
+// FAIL-OPEN under this same deletion; it received the limb in the same delivery.
+// Two sites, one disease, two different patches — the asymmetry law, in the flesh.
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 function requireAdminPassword(req, res, next) {
   const pw = req.headers['x-admin-password'];
+  if (!ADMIN_PASSWORD) {
+    console.error(
+      '[demoAdmin] ADMIN_PASSWORD is not set on this service — REFUSING every caller. ' +
+      'This door fails CLOSED by design (F-07.77); set the env to restore it.'
+    );
+    return res.status(401).json({ ok: false, error: 'Unauthorized.' });
+  }
   if (!pw || pw !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, error: 'Unauthorized.' });
   next();
 }

@@ -619,18 +619,46 @@ router.post('/:post_id/respond', requireAuth, resolveVendor(), asyncHandler(asyn
           day: 'numeric', month: 'long', year: 'numeric',
         });
 
-        await sendWhatsApp(
+        // ── F-05.48 SLICE ONE · FORK 2(b) RULED — THE CLAIMED-TRUTH STAMP ────
+        //
+        // THIS READ: the send's return value DISCARDED, and then `poster_notified_at`
+        // STAMPED unconditionally on the next statement. Three of `sendWhatsApp`'s
+        // four exits return `{sent:false}` without throwing (whatsapp.js:133/139/153),
+        // so an opted-out poster, or a service with no Meta lane resolved, produced a
+        // database column asserting a notification THAT NEVER LEFT. This is the worse
+        // half of the slice: a log line lies to whoever reads the log, a column lies
+        // to every future query, and nothing downstream can tell the difference.
+        //
+        // THE PATTERN, stated: src/lib/discover/demoLeadAlert.js:311-318 — "send
+        // first, stamp second," the stamp written ONLY after a send that actually
+        // happened, with its ordering reasoned in-comment. This site now follows it.
+        // `sent === true` strictly: `.sid` carries a nullable wamid (whatsapp.js:142)
+        // and is not a success oracle.
+        //
+        // [F-06.85: conditioned on the mechanical fact that `sendWhatsApp` reports
+        //  refusal by RETURN as well as by throw. Mechanism: src/lib/whatsapp.js
+        //  :133, :139, :153. If the transport is ever changed to throw on every
+        //  refusal, this comment's premise moves and must be re-read.]
+        const notifyOut = await sendWhatsApp(
           posterPhone,
           // VETO LEDGER (founder YES, CE-59): "Open DreamAi…" → the line below.
           // Product copy, changed only because the founder ruled the exact bytes.
           `A ${responderCategory} on The Dream Wedding is interested in your ${post.requirement_type} collab for ${dateStr}.\n\nOpen The Dream Wedding to view their profile and connect.`
         );
 
-        await supabase
-          .from('collab_responses')
-          .update({ poster_notified_at: new Date().toISOString() })
-          .eq('post_id', post_id)
-          .eq('responder_vendor_id', vendorId);
+        if (notifyOut && notifyOut.sent === true) {
+          await supabase
+            .from('collab_responses')
+            .update({ poster_notified_at: new Date().toISOString() })
+            .eq('post_id', post_id)
+            .eq('responder_vendor_id', vendorId);
+        } else {
+          console.error(
+            `[collab] poster notify REFUSED (${(notifyOut && notifyOut.blocked) || 'unknown'}) ` +
+            `for post ${post_id} / responder ${vendorId} — poster_notified_at LEFT NULL. ` +
+            'The interest IS recorded; the poster was not told.'
+          );
+        }
       }
     } catch (notifyErr) {
       console.error('[collab] poster notification failed:', notifyErr.message);
