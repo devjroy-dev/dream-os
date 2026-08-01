@@ -299,7 +299,12 @@ router.get('/feed', asyncHandler(async (req, res) => {
     }
   }
 
-  const shapedDemo = (demoVendors || []).filter(v => !suppressedDemoIds.has(v.id)).map(v => {
+  // ── ONE DEMO SHAPE, TWO CALLERS (Fork 5(b)) ─────────────────────────────────
+  // Hoisted at P6 so the cold-start widening below emits IDENTICAL cards to the
+  // primary leg. A second inline shape would be a second implementation of the
+  // wire — F-07.68's disease, one plane over — and the couple would receive two
+  // subtly different card species depending on how thin her city was.
+  const shapeDemoRow = (v) => {
     // photos is a JSONB array of {url, is_hero, cloudinary_id}
     // TDW_07 MICRO-2 — the demo leg follows the real card: no display cap. It does not call
     // the shaper (different table, different columns — the reasoning is in shapeVendor.js's
@@ -354,7 +359,11 @@ router.get('/feed', asyncHandler(async (req, res) => {
       featured:       false,
       _rank_score:    0,
     };
-  });
+  };
+
+  const shapedDemo = (demoVendors || [])
+    .filter(v => !suppressedDemoIds.has(v.id))
+    .map(shapeDemoRow);
 
   // ── 3. Merge, shuffle slightly so demos don't always cluster, paginate ─────
   const combined = [...shapedReal, ...shapedDemo];
@@ -378,6 +387,63 @@ router.get('/feed', asyncHandler(async (req, res) => {
   // Append any remaining demo vendors
   while (di < demoOnly.length) interleaved.push(demoOnly[di++]);
 
+  // ── FORK 5(b) CURED · THE COLD-START REPORT — THE SERVER SAYS IF IT SUBSTITUTED ──
+  //
+  // Spec P6 asks for an editorial line over a nearest/demo mix instead of an empty
+  // grid. The line the founder vetoed makes a CLAIM about what she is now looking at:
+  // "The {city} list is still being curated. / MEANWHILE — THE CLOSEST TO YOU".
+  //
+  // WHY THIS IS SERVER-SIDE AND NOT A CLIENT GUESS. The client can see that it received
+  // few cards. It CANNOT see whether those cards are the city she asked for or a
+  // substitute — only the thing that ran the query knows that. A client that rendered
+  // "the closest to you" over an unwidened result would be asserting a substitution that
+  // never happened, and a guessing editorial line is the founding-lie family in a serif.
+  // So the widening happens here and is REPORTED here; the client renders the founder's
+  // sentence only when this object says the substitution is real.
+  //
+  // THE WIDENING DROPS THE CITY AND NOTHING ELSE. Category, budget and vibes are things
+  // she chose about the WORK; city is a thing she chose about geography, and geography is
+  // the axis the estate can honestly relax ("the closest to you"). Widening category
+  // would hand a couple looking for a photographer a florist and call it curation.
+  const COLD_START_FLOOR = 3;
+  let coldStart = { substituted: false, city: null, matched_in_city: null };
+
+  if (city && interleaved.length < COLD_START_FLOOR) {
+    const seen = new Set(interleaved.map(v => v.id));
+    coldStart = { substituted: false, city, matched_in_city: interleaved.length };
+    try {
+      let wideDemo = supabase
+        .from('demo_vendors')
+        .select('id, display_name, category, city, ig_handle, rate_display, photos, about, whatsapp_phone')
+        .eq('discover_eligible', true)
+        .eq('active', true);
+      if (category) wideDemo = wideDemo.eq('category', category);
+      const { data: wideRows, error: wideErr } = await wideDemo
+        .order('created_at', { ascending: false });
+      if (wideErr) throw new Error(wideErr.message);
+
+      const extra = (wideRows || [])
+        .filter(v => !suppressedDemoIds.has(v.id))   // F-07.49(b) governs the wide leg too
+        .map(shapeDemoRow)
+        .filter(v => !seen.has(v.id));
+
+      if (extra.length > 0) {
+        interleaved.push(...extra);
+        coldStart.substituted = true;
+      }
+    } catch (err) {
+      // FAIL QUIET, AND THE FLAG STAYS FALSE. A failed widening means she sees the thin
+      // real list — today's behaviour exactly. What must NEVER happen is `substituted`
+      // going true on a widening that did not occur: that is the client rendering a
+      // sentence about cards it did not receive.
+      console.error(
+        `[GET /discover/feed] cold-start widening failed: ${err.message} — ` +
+        'serving the unwidened list and reporting substituted:false.'
+      );
+      coldStart.substituted = false;
+    }
+  }
+
   const total    = interleaved.length;
   // `_rank_score` is ORDERING MACHINERY, not contract. It is stripped here so the
   // response carries no field lib/types/discover.ts does not declare — F-07.3's disease
@@ -392,6 +458,10 @@ router.get('/feed', asyncHandler(async (req, res) => {
     page,
     has_more: total > offset + limit,
     total,
+    // Fork 5(b) — the substitution report. `substituted` is true ONLY when this
+    // handler actually widened and got rows back; the client's editorial line is
+    // conditioned on it, never on a low card count.
+    cold_start: coldStart,
   });
 }));
 
