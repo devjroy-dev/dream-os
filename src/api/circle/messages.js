@@ -20,31 +20,34 @@
 //
 // No JWT — coplanner/bride send no Authorization header. couple_id scopes everything.
 //
-// CANONICAL THREAD MODEL — AND F-07.112, WHICH SAYS THIS PARAGRAPH IS FALSE
-//   The intent below is unchanged and the sentence is left standing so the next
-//   reader sees what was believed: there is meant to be exactly ONE circle_thread
-//   conversation per couple (the group chat), resolved (or created once) by
-//   getOrCreateCircleThread(), so the bride and every circle member see one
-//   continuous thread. Prior bug: thread_id='circle_group' never matched a UUID,
-//   so every send spawned a NEW conversation and nothing was ever re-read.
+// CANONICAL THREAD MODEL — RE-AUTHORED AT F-07.112'S CURE (F-06.85)
+//   THE DISCRIMINATOR IS `counterparty_user_id`, AND IT IS THE WHOLE MODEL.
+//   Two different conversations share kind='circle_thread' and always have:
+//     counterparty_user_id IS NULL      → THE GROUP CHAT. One per couple. The
+//         bride and every circle member read and write this one row.
+//     counterparty_user_id = <users.id> → A MEMBER'S PRIVATE AI THREAD, minted
+//         at src/api/circle/dreamai.js:93 and read there by that same column.
+//         It is her conversation with Mira and no other human may see it.
+//   Every selector in this file AND in threads.js therefore carries the NULL
+//   filter. `couple_id + kind` alone does not name a thread — it names a lane
+//   holding both, and for a block it resolved to whichever row was born first.
 //
-//   IT IS NOT WHAT HAPPENS. F-07.112, minted 2026-08-02 and OPEN: the resolver at
-//   getOrCreateCircleThread selects on `couple_id + kind='circle_thread'`, oldest
-//   first, with NO `counterparty_user_id is null` filter — while
-//   `src/api/circle/dreamai.js:83-85` mints the MEMBER'S PRIVATE Mira conversation
-//   with that same `kind` and a `counterparty_user_id` set. Whichever row is born
-//   first is adopted as "the group chat". In production exactly one circle_thread
-//   row exists, its counterparty_user_id is a member's users.id, and it was born
-//   166ms before its first message arrived from dreamai.js:105 — so the group chat
-//   has never existed as its own row and every group message on both surfaces has
-//   ridden a member's private AI conversation since 2026-07-23.
+//   WHAT THIS REPLACED, RECORDED SO THE NEXT READER SEES THE COST
+//   The paragraph here said there was exactly ONE circle_thread row per couple.
+//   True by count, false in meaning: F-07.112 found the only such row in
+//   production was a member's PRIVATE thread with Mira, adopted as "the group
+//   chat" since 2026-07-23 — so the bride's group sends landed in that member's
+//   private AI history, and this file's GET served that history to any caller.
+//   Invisible from the dreamai side, which had always read by the discriminator.
+//   FOUR selectors carried the defect, not one; they cure together. A cure at
+//   this resolver alone would have birthed the real group row and left
+//   threads.js:117 still LISTING the private one to every member.
 //
-//   THE CURE IS NOT IN THIS DELIVERY, DELIBERATELY. Its code half is one predicate
-//   here; its data half — messages stranded in the private thread, the group chat
-//   opening empty on both surfaces — is a write against production rows and is the
-//   founder's alone. F-07.112 carries its own micro. This file's F-07.107 work
-//   below is orthogonal to it: names and ids attach to MESSAGES, whichever
-//   conversation they sit in, so the two cures do not collide in either order.
+//   THE DATA HALF WAS THE FOUNDER'S AND HE RULED 「 leave them 」. The messages
+//   written into the private thread before this cure STAY there. The group chat
+//   opens EMPTY on both surfaces and that is the DESIGNED OUTCOME: moving them
+//   is a write against production rows and would re-stage the private history
+//   this cure exists to close. Nothing backfilled, nothing migrated.
 
 'use strict';
 
@@ -164,27 +167,44 @@ async function byMemberUsersId(supabase, usersId) {
   };
 }
 
-// Get (or create once) the single canonical circle_thread conversation for a couple.
+// ── F-07.112 · SITE C-1 · THE GROUP THREAD, AND ONLY THE GROUP THREAD ────────
+// Get (or create once) the single canonical GROUP circle_thread conversation
+// for a couple. The `.is('counterparty_user_id', null)` below is the cure: see
+// the CANONICAL THREAD MODEL note at the head of this file for what it fixes
+// and what it cost. Without it this select returned whichever circle_thread row
+// was born first, which in production was a member's private thread with Mira.
+//
+// A NOTE ON WHO CALLS THIS: both the POST and the GET do (:244 / :330), so the
+// READ PATH CREATES. sanctuary polls the GET every ten seconds, which makes the
+// bride's poll — not a second send — the likeliest party to a create race.
 async function getOrCreateCircleThread(supabase, coupleId) {
-  const { data: existing } = await supabase
+  const selectGroupThread = () => supabase
     .from('conversations')
     .select('id')
     .eq('couple_id', coupleId)
     .eq('kind', 'circle_thread')
+    .is('counterparty_user_id', null)   // F-07.112 — the discriminator
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
 
+  const { data: existing } = await selectGroupThread();
   if (existing) return existing.id;
 
-  const { data: created, error } = await supabase
+  const { error } = await supabase
     .from('conversations')
     .insert({
-      couple_id:       coupleId,
-      kind:            'circle_thread',
-      state:           'new',
-      mode:            'auto',
-      last_message_at: new Date().toISOString(),
+      couple_id:            coupleId,
+      // F-07.112 — WRITTEN EXPLICITLY, and not because the database needs it:
+      // the column is nullable and omitting it produced NULL before this cure
+      // and would still. It is written because the selector three lines above
+      // now READS this column, and a reader must see the two halves agree
+      // without walking the schema to learn what an omission means.
+      counterparty_user_id: null,
+      kind:                 'circle_thread',
+      state:                'new',
+      mode:                 'auto',
+      last_message_at:      new Date().toISOString(),
     })
     .select('id')
     .single();
@@ -193,7 +213,30 @@ async function getOrCreateCircleThread(supabase, coupleId) {
     console.error('[circle/messages] create thread error:', error.message);
     return null;
   }
-  return created.id;
+
+  // ── F-07.112 · FORK R-a · SELECT-AFTER-INSERT ──────────────────────────────
+  // Derived at the read-first: public.conversations carries NO unique
+  // constraint that would stop two concurrent first-callers from both
+  // inserting (PUBLIC_SCHEMA.md index block — pkey plus five single-column
+  // indexes; the ladder agrees at 0001:60-62, 0014:33, 0085:77). So this does
+  // NOT return the row it just wrote. It re-runs the discriminated oldest-first
+  // select, and every racer converges on the same winner; a loser's row is left
+  // orphaned and empty rather than silently swallowing a message.
+  //
+  // COST, DISCLOSED: one extra round trip, on the create path only — once per
+  // couple for the life of the couple.
+  //
+  // THE DURABLE COMPLEMENT IS NOT HERE, AND THAT IS A RULING: a partial unique
+  // index on (couple_id) WHERE kind='circle_thread' AND counterparty_user_id IS
+  // NULL is DDL, this sitting is chartered no-DDL, and it belongs beside the
+  // partial unique index already conditional-withheld at CE-125. Sequenced with
+  // that one by the founder, or not at all — never smuggled in here.
+  const { data: settled } = await selectGroupThread();
+  if (!settled) {
+    console.error('[circle/messages] thread created but not re-readable for couple', coupleId);
+    return null;
+  }
+  return settled.id;
 }
 
 // ── POST / — send a message into the canonical circle thread ─────────────────
@@ -231,12 +274,23 @@ router.post('/', asyncHandler(async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Could not resolve circle for this user.' });
   }
 
+  // ── F-07.112 · SITE C-2 · A CLIENT-NAMED THREAD IS A WRITE TARGET ──────────
+  // This lookup validated `couple_id + kind` and nothing else, so a send
+  // carrying `thread_id='dm:<a member's private conversation uuid>'` was
+  // ACCEPTED and the message was written into that member's private AI history.
+  // The co-planner supplies this value straight from the thread list
+  // (app/coplanner/threads/[threadId]/page.tsx), and until C-4 below the list
+  // handed out private uuids — so this was reachable by a real caller, not a
+  // theoretical forge. The discriminator makes the private rows unnameable
+  // here; a `dm:` pointing at one now finds nothing and falls through to the
+  // group thread on the line below, which is the honest destination.
   let targetConvoId = null;
   if (thread_id && /^dm:[0-9a-f-]{36}$/i.test(thread_id)) {
     const convoId = thread_id.replace(/^dm:/, '');
     const { data: convo } = await supabase
       .from('conversations').select('id')
       .eq('id', convoId).eq('couple_id', coupleId).eq('kind', 'circle_thread')
+      .is('counterparty_user_id', null)   // F-07.112 — the discriminator
       .maybeSingle();
     targetConvoId = convo?.id || null;
   }

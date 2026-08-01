@@ -38,10 +38,19 @@ router.get('/:brideId/:threadId/messages', asyncHandler(async (req, res) => {
   const convoId = threadId.replace(/^dm:/, '');
   const limit   = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
 
-  // Confirm conversation belongs to this couple
+  // ── F-07.112 · SITE C-3 · "BELONGS TO THIS COUPLE" WAS NEVER ENOUGH ────────
+  // A member's PRIVATE thread with Mira also belongs to this couple and also
+  // carries kind='circle_thread' (dreamai.js:93). This lookup checked both and
+  // therefore served that private history — every question she asked the agent —
+  // to any caller of this door who knew its uuid, which until C-4 below the
+  // thread list published. The discriminator is the whole fix: see the
+  // CANONICAL THREAD MODEL note at src/api/circle/messages.js:23. A private id
+  // now finds nothing and this handler answers with an empty list, exactly as
+  // it does for any conversation that is not the couple's.
   const { data: convo } = await supabase
     .from('conversations').select('id')
     .eq('id', convoId).eq('couple_id', brideId).eq('kind', 'circle_thread')
+    .is('counterparty_user_id', null)   // F-07.112 — the discriminator
     .maybeSingle();
 
   if (!convo) return res.json({ success: true, data: [] });
@@ -114,11 +123,27 @@ router.get('/:brideId', asyncHandler(async (req, res) => {
   //   if (!req.circleIdentity.coupleId) return res.status(401)...
   req.circleIdentity = await resolveCircleIdentityIfPresent(req, supabase);
 
+  // ── F-07.112 · SITE C-4 · THE ENUMERATION SURFACE, AND THE WORST OF THE FOUR ─
+  // This list returned EVERY circle_thread row for the couple — which means
+  // every member's private AI thread with Mira, handed to every other member
+  // and to the bride, each one rendered identically ("Chat with {bride}",
+  // :137's hardcoded kind:'dm' + threads/page.tsx:35) and each one TAPPABLE
+  // into C-3 above. It is why a cure at the messages.js resolver alone would
+  // have made the estate worse: born the real group row, then listed the
+  // private one beside it as a second, indistinguishable, openable entry.
+  //
+  // `counterparty_user_id` LEAVES THE PROJECTION as it enters the predicate.
+  // It was selected here and never read by a single line below — the defect
+  // standing next to its own cure. Now that the filter guarantees it is NULL on
+  // every returned row, selecting it would be asking the database for a
+  // constant no reader consumes. Zero behavioural change: no shaped field ever
+  // carried it.
   const { data: convos, error } = await supabase
     .from('conversations')
-    .select('id, kind, last_message_at, updated_at, counterparty_user_id')
+    .select('id, kind, last_message_at, updated_at')
     .eq('couple_id', brideId)
     .eq('kind', 'circle_thread')
+    .is('counterparty_user_id', null)   // F-07.112 — the discriminator
     .order('last_message_at', { ascending: false, nullsFirst: false });
 
   if (error) {

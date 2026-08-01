@@ -801,7 +801,20 @@ function messagePlane(rows) {
         : { data: { user: null }, error: new Error('invalid token') }),
     },
     from(table) {
-      const q = { _eq: {}, _ins: null, _sel: null };
+      // LABELED AMENDMENT (F-07.112, 2026-08-02) — `_is` and `q.is` are NEW.
+      // F-07.112's cure adds `.is('counterparty_user_id', null)` to four
+      // selectors; a builder with no `.is` would throw inside the shipped
+      // handler and every §11 cell would redden for a reason that has nothing
+      // to do with what §11 claims. This is TEST SETUP catching up to
+      // production, not a claim being weakened: the filter is honoured, not
+      // swallowed — see `passesIs` below — and every §11 count is preserved.
+      const q = { _eq: {}, _is: {}, _ins: null, _sel: null };
+      const passesIs = (o) => {
+        for (const k of Object.keys(q._is)) {
+          if (q._is[k] === null) { if (o && o[k] != null) return false; }
+        }
+        return true;
+      };
       const row = () => {
         if (table === 'couples') {
           // Two lookups reach this table: byCoupleId's `.eq('id', …)` and
@@ -831,6 +844,7 @@ function messagePlane(rows) {
       // that ignores what it was asked for cannot convict code that asks wrongly.
       q.select = (cols) => { q._sel = typeof cols === 'string' ? cols : null; return q; };
       q.eq     = (c, v) => { q._eq[c] = v; return q; };
+      q.is     = (c, v) => { q._is[c] = v; return q; };   // F-07.112 amendment
       q.order  = () => q;
       q.limit  = () => q;
       q.insert = (r) => { q._ins = r; if (table === 'messages') cap.inserted = r; return q; };
@@ -842,7 +856,8 @@ function messagePlane(rows) {
         for (const k of keep) if (k in o) out[k] = o[k];
         return out;
       };
-      q.maybeSingle = async () => ({ data: project(row()) });
+      const gated = () => { const o = row(); return passesIs(o) ? o : null; };
+      q.maybeSingle = async () => ({ data: project(gated()) });
       q.single      = async () => (q._ins
         ? { data: project({ ...q._ins, id: 'msg-new', created_at: '2026-08-02T00:00:00Z' }), error: null }
         : { data: project(row()), error: null });
@@ -1079,6 +1094,393 @@ await ta('§11.M6 drop the users lookup on the bride path ⇒ §11.2 RED', async
       const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
       const { cap } = await drive(H2, { body: { userId: MEHEK.coupleId, body: 'x', sender_role: 'bride' }, bearer: BRIDE_JWT });
       assert.strictEqual(cap.inserted.sender_name, BRIDE_NAME);
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §12 — F-07.112: THE THREAD COLLISION. FOUR SELECTORS, ONE DISCRIMINATOR.
+//
+// The disease: `couple_id + kind='circle_thread'` does not name a thread. It
+// names a LANE holding two different conversations — the group chat
+// (counterparty_user_id IS NULL) and each member's PRIVATE thread with Mira
+// (counterparty_user_id = her users.id, minted at dreamai.js:93). Four
+// selectors read that lane without the discriminator, and in production the
+// only row in it was PRIVATE.
+//
+// THE GEOMETRY BELOW IS THE FOUNDER'S OWN, from the fixture SELECT of
+// 2026-08-02: one circle_thread row in the entire database, PRIVATE, born
+// 2026-07-23 13:23:18.636264, 15 messages, last written 2026-08-01 21:56. The
+// private row is therefore always the OLDER one in these fixtures — which is
+// exactly why oldest-first adopted it, and a fixture that got that order wrong
+// would prove nothing about the world.
+//
+// WHY THESE CELLS ARE HERE AND NOT IN A NEW FILE: they guard the same four
+// handlers §5 and §11 guard, in the same two files. One home.
+//
+// F-07.112's OWN PREMISE-REFUTATION IS HONOURED (CE-126): no cell keys on the
+// value space {couple, bride, circle_member}. `agent` is a fourth mouth and
+// `circle_member` appears zero times live; §12.12 drives the fourth mouth
+// deliberately.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const GROUP_ID   = '7b1e4c90-1111-4aaa-8bbb-000000000001';
+const RACER_ID   = '7b1e4c90-1111-4aaa-8bbb-000000000002';
+const PRIVATE_ID = CONVO_ID;   // 2c49c2d7… — the founder's real private row
+
+const PRIVATE_CONVO = {
+  id: PRIVATE_ID, couple_id: MEHEK.coupleId, counterparty_user_id: MEHEK.usersId,
+  kind: 'circle_thread', state: 'active', mode: 'auto',
+  created_at: '2026-07-23T13:23:18.636264Z', last_message_at: '2026-08-01T21:56:56.754Z',
+};
+const GROUP_CONVO = {
+  id: GROUP_ID, couple_id: MEHEK.coupleId, counterparty_user_id: null,
+  kind: 'circle_thread', state: 'new', mode: 'auto',
+  created_at: '2026-08-02T09:00:00.000Z', last_message_at: '2026-08-02T09:00:00.000Z',
+};
+const PRIVATE_MSG = {
+  id: 'p-1', conversation_id: PRIVATE_ID, sent_by: 'couple',
+  body: 'Mira, what should I be asking the decorator?',
+  sender_name: null, sender_user_id: null, created_at: '2026-07-23T13:23:18.802113Z',
+};
+const PRIVATE_AGENT_MSG = {
+  id: 'p-2', conversation_id: PRIVATE_ID, sent_by: 'agent',
+  body: 'Start with what is already booked.',
+  sender_name: null, sender_user_id: null, created_at: '2026-07-23T13:23:40.000Z',
+};
+const GROUP_MSG = {
+  id: 'g-1', conversation_id: GROUP_ID, sent_by: 'bride', body: 'hello circle',
+  sender_name: BRIDE_NAME, sender_user_id: BRIDE.usersId, created_at: '2026-08-02T09:05:00.000Z',
+};
+
+// ── TEST SETUP, DISCLOSED (never production code) ──────────────────────────
+// A conversations/messages plane with REAL FILTER SEMANTICS. The §11 plane
+// answers one row per table and could not tell two circle_thread rows apart,
+// which is precisely the distinction this section exists to prove — so it gets
+// its own plane rather than a widened shared one. `.eq`, `.is`, `.order` and
+// `.limit` are all honoured; a plane that swallowed `.is` would make every cell
+// below vacuous in the same way §11's projection bug once did.
+function threadPlane({ convos = [], messages = [], raceInsert = false } = {}) {
+  const state = {
+    convos:  convos.map(c => ({ ...c })),
+    messages: messages.map(m => ({ ...m })),
+    convoInserts: [], msgInserts: [],
+  };
+  let seq = 1;
+  const project = (o, sel) => {
+    if (!o || !sel) return o;
+    const out = {};
+    for (const k of sel.split(',').map(c => c.trim())) if (k in o) out[k] = o[k];
+    return out;
+  };
+  const plane = {
+    auth: {
+      getUser: async (token) => (token === BRIDE_JWT
+        ? { data: { user: { id: BRIDE.authUserId } }, error: null }
+        : { data: { user: null }, error: new Error('invalid token') }),
+    },
+    from(table) {
+      const q = { _eq: {}, _is: {}, _sel: null, _ins: null, _order: null, _limit: null };
+      q.select = (cols) => { q._sel = typeof cols === 'string' ? cols : null; return q; };
+      q.eq     = (c, v) => { q._eq[c] = v; return q; };
+      q.is     = (c, v) => { q._is[c] = v; return q; };
+      q.order  = (c, o) => { q._order = { c, asc: !o || o.ascending !== false }; return q; };
+      q.limit  = (n) => { q._limit = n; return q; };
+      q.update = () => q;
+      q.insert = (r) => { q._ins = r; return q; };
+
+      const base = () => {
+        if (table === 'conversations') return state.convos;
+        if (table === 'messages')      return state.messages;
+        if (table === 'couples')       return [{ id: MEHEK.coupleId, user_id: BRIDE.usersId }];
+        if (table === 'users')         return [
+          { id: BRIDE.usersId, name: BRIDE_NAME, auth_user_id: BRIDE.authUserId },
+          { id: MEHEK.usersId, name: MEHEK.name, phone: MEHEK.phone },
+        ];
+        if (table === 'circle_members') return [{
+          id: MEHEK.memberId, couple_id: MEHEK.coupleId, invitee_phone: MEHEK.phone,
+          status: 'active', invitee_name: MEHEK.name, role: MEHEK.role,
+        }];
+        return [];
+      };
+      const filtered = () => {
+        let rows = base().filter((r) => {
+          for (const k of Object.keys(q._eq)) if (r[k] !== q._eq[k]) return false;
+          for (const k of Object.keys(q._is)) if (q._is[k] === null && r[k] != null) return false;
+          return true;
+        });
+        if (q._order) {
+          const c = q._order.c;
+          rows = rows.slice().sort((a, b) => {
+            const av = String(a[c] ?? ''), bv = String(b[c] ?? '');
+            const d = av < bv ? -1 : av > bv ? 1 : 0;
+            return q._order.asc ? d : -d;
+          });
+        }
+        if (q._limit != null) rows = rows.slice(0, q._limit);
+        return rows;
+      };
+      const doInsert = () => {
+        if (table === 'conversations') {
+          const row = {
+            id: `ins-${seq++}`,
+            couple_id:            q._ins.couple_id ?? null,
+            counterparty_user_id: q._ins.counterparty_user_id ?? null,
+            kind: q._ins.kind, state: q._ins.state, mode: q._ins.mode,
+            created_at: '2026-08-02T10:00:00.000Z',
+            last_message_at: q._ins.last_message_at || null,
+          };
+          state.convoInserts.push({ ...q._ins });
+          state.convos.push(row);
+          // THE RACE, SIMULATED. A concurrent first-caller's group row lands
+          // with an OLDER created_at than the one we just wrote. R-a must
+          // converge on THAT row; returning our own insert is the defect.
+          if (raceInsert) state.convos.push({ ...row, id: RACER_ID, created_at: '2026-08-02T09:59:00.000Z' });
+          return row;
+        }
+        if (table === 'messages') {
+          const row = { id: `msg-${seq++}`, created_at: '2026-08-02T10:00:01.000Z', ...q._ins };
+          state.msgInserts.push({ ...q._ins });
+          state.messages.push(row);
+          return row;
+        }
+        return { ...q._ins, id: `x-${seq++}` };
+      };
+
+      q.maybeSingle = async () => ({ data: project(filtered()[0] || null, q._sel), error: null });
+      q.single      = async () => (q._ins
+        ? { data: project(doInsert(), q._sel), error: null }
+        : { data: project(filtered()[0] || null, q._sel), error: null });
+      q.then = (resolve) => {
+        if (q._ins) { doInsert(); return resolve({ data: null, error: null }); }
+        return resolve({ data: filtered().map(r => project(r, q._sel)), error: null });
+      };
+      return q;
+    },
+  };
+  return { plane, state };
+}
+
+async function drive12(handler, { plane, body, params, query, bearer }) {
+  const out = {};
+  const req = {
+    headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+    cookies: {}, body: body || {}, params: params || {}, query: query || {},
+    app: { locals: { supabase: plane } },
+  };
+  const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+  await new Promise((resolve, reject) => {
+    let done = false;
+    res.json = (b) => { out.body = b; if (!done) { done = true; resolve(); } return res; };
+    handler(req, res, (e) => { done = true; reject(e || new Error('next() with no error')); });
+    setTimeout(() => { if (!done) { done = true; reject(new Error('handler never answered')); } }, 4000);
+  });
+  return out;
+}
+
+H('§12 — F-07.112: the group thread is a row of its own, and the private one is unreachable');
+
+await ta('§12.1 C-1 THE PRIVATE ROW IS NOT ADOPTED: a group send lands in the group row', async () => {
+  const { plane, state } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG] });
+  await drive12(POST_MSG, { plane, bearer: BRIDE_JWT, body: { userId: MEHEK.coupleId, body: 'hello circle', sender_role: 'bride' } });
+  assert.strictEqual(state.msgInserts.length, 1, 'the send did not write');
+  assert.strictEqual(state.msgInserts[0].conversation_id, GROUP_ID);
+  assert.notStrictEqual(state.msgInserts[0].conversation_id, PRIVATE_ID,
+    "the bride's group message landed inside a member's private AI history");
+});
+
+await ta('§12.2 THE GROUP ROW IS CREATED, with counterparty_user_id explicitly NULL', async () => {
+  const { plane, state } = threadPlane({ convos: [PRIVATE_CONVO], messages: [PRIVATE_MSG] });
+  await drive12(POST_MSG, { plane, bearer: BRIDE_JWT, body: { userId: MEHEK.coupleId, body: 'first ever', sender_role: 'bride' } });
+  assert.strictEqual(state.convoInserts.length, 1, 'no group row was born — the private one was adopted');
+  const ins = state.convoInserts[0];
+  assert.ok('counterparty_user_id' in ins, 'the discriminator is omitted, not written');
+  assert.strictEqual(ins.counterparty_user_id, null);
+  assert.strictEqual(ins.kind, 'circle_thread');
+  assert.strictEqual(ins.couple_id, MEHEK.coupleId);
+  assert.notStrictEqual(state.msgInserts[0].conversation_id, PRIVATE_ID);
+});
+
+await ta('§12.3 FORK R-a: two first-callers CONVERGE — the returned row is the oldest, not our insert', async () => {
+  const { plane, state } = threadPlane({ convos: [PRIVATE_CONVO], raceInsert: true });
+  await drive12(POST_MSG, { plane, bearer: BRIDE_JWT, body: { userId: MEHEK.coupleId, body: 'racing', sender_role: 'bride' } });
+  assert.strictEqual(state.msgInserts[0].conversation_id, RACER_ID,
+    'the loser kept its own row and the message is invisible to the winner');
+});
+
+await ta('§12.4 C-2 A CLIENT-NAMED PRIVATE THREAD IS NOT A WRITE TARGET', async () => {
+  const { plane, state } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG] });
+  await drive12(POST_MSG, { plane, bearer: BRIDE_JWT, body: { userId: MEHEK.coupleId, thread_id: `dm:${PRIVATE_ID}`, body: 'aimed at her private thread', sender_role: 'bride' } });
+  assert.strictEqual(state.msgInserts[0].conversation_id, GROUP_ID);
+  assert.notStrictEqual(state.msgInserts[0].conversation_id, PRIVATE_ID,
+    'a supplied dm: uuid still writes into a private AI conversation');
+});
+
+await ta('§12.5 C-3 THE PRIVATE THREAD IS UNREADABLE AT THE THREADS DOOR', async () => {
+  const { plane } = threadPlane({
+    convos: [PRIVATE_CONVO, GROUP_CONVO],
+    messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG],
+  });
+  const out = await drive12(GET_THREAD, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${PRIVATE_ID}` } });
+  assert.deepStrictEqual(out.body.data, [], 'her private history was served to this door');
+  assert.ok(!JSON.stringify(out.body).includes('asking the decorator'), 'a private message body reached the wire');
+});
+
+await ta('§12.6 …and the GROUP thread still reads normally (the cure is not a wall)', async () => {
+  const { plane } = threadPlane({
+    convos: [PRIVATE_CONVO, GROUP_CONVO],
+    messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG],
+  });
+  const out = await drive12(GET_THREAD, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${GROUP_ID}` } });
+  assert.strictEqual(out.body.data.length, 1);
+  assert.strictEqual(out.body.data[0].content, 'hello circle');
+});
+
+await ta('§12.7 C-4 THE LIST DOES NOT ENUMERATE PRIVATE THREADS — the negative privacy proof', async () => {
+  const { plane } = threadPlane({
+    convos: [PRIVATE_CONVO, GROUP_CONVO],
+    messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG],
+  });
+  const out = await drive12(GET_LIST, { plane, params: { brideId: MEHEK.coupleId } });
+  const ids = out.body.data.map(t => t.thread_id);
+  assert.deepStrictEqual(ids, [`dm:${GROUP_ID}`]);
+  assert.ok(!ids.includes(`dm:${PRIVATE_ID}`), "a member's private thread is tappable from the co-planner");
+});
+
+// ── §12.8 IS NOT DRIVEN, AND THE REASON IS DISCLOSED RATHER THAN HIDDEN ─────
+// The honest cell here would drive dreamai.js's history handler and watch it
+// still return her fifteen rows. It does not, because `require`ing that router
+// executes `src/agent/circleEngine` (dreamai.js:14), which is a W-1 protected
+// surface AND constructs a client at import — the first cut of this cell died
+// on "supabaseUrl is required" and would only have been revivable by seeding
+// credentials to load a soul module this sitting is forbidden to open.
+//
+// SO THE CLAIM IS NARROWED TO WHAT CAN BE PROVEN, and the gap is named: the
+// private lane's READ keys on counterparty_user_id and this delivery changes
+// zero bytes in that file. The unproven remainder — that the handler behaves
+// at runtime — is the FOUNDER'S, and it is step 6 of the smoke card, which is
+// the one step of that card that is not optional.
+t('§12.8 NON-REGRESSION: the dreamai reader still keys on the owner, and is untouched here', () => {
+  const code = read('src/api/circle/dreamai.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(/\.eq\('counterparty_user_id',\s*userId\)/.test(code), 'the history read lost its owner key');
+  assert.ok(/\.eq\('counterparty_user_id',\s*user_id\)/.test(code), 'the chat read lost its owner key');
+  assert.ok(!/\.is\(\s*'counterparty_user_id'/.test(code),
+    'the private lane was given the GROUP discriminator — this cure would have closed the leak by breaking Mira');
+});
+
+await ta('§12.9 the FOURTH MOUTH survives the cured read shape (CE-126, no three-value space)', async () => {
+  const AGENT_IN_GROUP = { ...PRIVATE_AGENT_MSG, id: 'g-2', conversation_id: GROUP_ID };
+  const { plane } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [AGENT_IN_GROUP] });
+  const out = await drive12(GET_THREAD, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${GROUP_ID}` } });
+  assert.strictEqual(out.body.data[0].sender_role, 'agent');
+  assert.strictEqual(out.body.data[0].sender_name, null, 'machinery gave Mira a name');
+});
+
+t('§12.10 ALL FOUR SELECTORS carry the discriminator — none left behind', () => {
+  for (const f of ['src/api/circle/messages.js', 'src/api/circle/threads.js']) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    const eqs = (code.match(/\.eq\(\s*'kind'\s*,\s*'circle_thread'\s*\)/g) || []).length;
+    const iss = (code.match(/\.is\(\s*'counterparty_user_id'\s*,\s*null\s*\)/g) || []).length;
+    assert.strictEqual(eqs, 2, `${f}: expected two circle_thread selectors, found ${eqs}`);
+    assert.strictEqual(iss, eqs, `${f}: ${eqs - iss} selector(s) still read the lane without the discriminator`);
+  }
+});
+
+t('§12.11 the create writes the discriminator EXPLICITLY, not by omission', () => {
+  const code = read('src/api/circle/messages.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(/counterparty_user_id:\s*null,/.test(code), 'the insert relies on omission; the selector above it reads the column');
+});
+
+t('§12.12 the PRIVATE lane is untouched — its three sites still key on counterparty_user_id', () => {
+  const sites = [
+    ['src/api/circle/dreamai.js',   /counterparty_user_id:\s*user_id/],
+    ['src/brideIndex.js',           /counterparty_user_id:\s*user\.id/],
+    ['src/lib/brideInbound.js',     /counterparty_user_id:\s*circleUser\.id/],
+  ];
+  for (const [f, re] of sites) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(re.test(code), `${f} no longer mints the private row with its owner`);
+  }
+});
+
+t('§12.13 the F-06.85 header names the mechanism and the finding it re-reads', () => {
+  const head = read('src/api/circle/messages.js').split('\n').slice(0, 60).join('\n');
+  assert.ok(/CANONICAL THREAD MODEL — RE-AUTHORED AT F-07\.112/.test(head), 'the false header still stands');
+  assert.ok(/counterparty_user_id IS NULL/.test(head), 'the discriminator is not named in the header');
+  assert.ok(/leave them/.test(head), "the founder's data ruling is not recorded where the next reader will look");
+});
+
+t('§12.14 NO DATA HALF: this delivery writes nothing to production rows', () => {
+  const dir = fs.readdirSync(path.join(ROOT, 'db', 'migrations'));
+  assert.strictEqual(dir.filter(f => f.startsWith('0106_')).length, 0, 'a migration rode a no-DDL sitting');
+  for (const f of ['src/api/circle/messages.js', 'src/api/circle/threads.js']) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/\.delete\(/.test(code), `${f} gained a delete`);
+    assert.ok(!/conversation_id:\s*\w+\s*\}\s*\)\s*\.eq\('conversation_id'/.test(code), `${f} gained a re-parent`);
+  }
+});
+
+H('§12.M — MUTATION: every §12 cure cell proven non-vacuous by breaking PRODUCTION code');
+
+// ── ANCHORS ARE SITE-QUALIFIED, AND THAT COST ONE ROUND ─────────────────────
+// The four cured selectors carry the SAME line. `mutate` uses String.replace,
+// which takes the FIRST occurrence, so the first cut of §12.M5 aimed at the
+// list and broke the per-thread read instead — §12.7 stayed green over broken
+// production code and the mutation cell convicted its own author. CE-125's
+// fifth bench fault, second instance, in the same file. Every anchor below now
+// carries the line ABOVE it, which differs at every site.
+const IS_LINE = ".is('counterparty_user_id', null)   // F-07.112 — the discriminator";
+
+await ta('§12.M1 drop the discriminator from the group resolver ⇒ §12.1 RED', async () => {
+  await mutate('src/api/circle/messages.js',
+    `.eq('couple_id', coupleId)\n    .eq('kind', 'circle_thread')\n    ${IS_LINE}`,
+    ".eq('couple_id', coupleId)\n    .eq('kind', 'circle_thread')", async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const { plane, state } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG] });
+      await drive12(H2, { plane, bearer: BRIDE_JWT, body: { userId: MEHEK.coupleId, body: 'x', sender_role: 'bride' } });
+      assert.strictEqual(state.msgInserts[0].conversation_id, GROUP_ID);
+    });
+});
+
+await ta('§12.M2 settle newest-first instead of oldest-first ⇒ §12.3 RED (R-a is not decoration)', async () => {
+  await mutate('src/api/circle/messages.js',
+    ".order('created_at', { ascending: true })", ".order('created_at', { ascending: false })", async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const { plane, state } = threadPlane({ convos: [PRIVATE_CONVO], raceInsert: true });
+      await drive12(H2, { plane, bearer: BRIDE_JWT, body: { userId: MEHEK.coupleId, body: 'x', sender_role: 'bride' } });
+      assert.strictEqual(state.msgInserts[0].conversation_id, RACER_ID);
+    });
+});
+
+await ta('§12.M3 drop the discriminator from the dm: write target ⇒ §12.4 RED', async () => {
+  await mutate('src/api/circle/messages.js',
+    `.eq('id', convoId).eq('couple_id', coupleId).eq('kind', 'circle_thread')\n      ${IS_LINE}`,
+    ".eq('id', convoId).eq('couple_id', coupleId).eq('kind', 'circle_thread')", async () => {
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const { plane, state } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG] });
+      await drive12(H2, { plane, bearer: BRIDE_JWT, body: { userId: MEHEK.coupleId, thread_id: `dm:${PRIVATE_ID}`, body: 'x', sender_role: 'bride' } });
+      assert.notStrictEqual(state.msgInserts[0].conversation_id, PRIVATE_ID);
+    });
+});
+
+await ta('§12.M4 drop the discriminator from the per-thread read ⇒ §12.5 RED', async () => {
+  await mutate('src/api/circle/threads.js',
+    `.eq('id', convoId).eq('couple_id', brideId).eq('kind', 'circle_thread')\n    ${IS_LINE}`,
+    ".eq('id', convoId).eq('couple_id', brideId).eq('kind', 'circle_thread')", async () => {
+      const H2 = handlerOf('src/api/circle/threads.js', 'get', '/:brideId/:threadId/messages');
+      const { plane } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG] });
+      const out = await drive12(H2, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${PRIVATE_ID}` } });
+      assert.deepStrictEqual(out.body.data, []);
+    });
+});
+
+await ta('§12.M5 drop the discriminator from the thread LIST ⇒ §12.7 RED', async () => {
+  await mutate('src/api/circle/threads.js',
+    `.eq('couple_id', brideId)\n    .eq('kind', 'circle_thread')\n    ${IS_LINE}`,
+    ".eq('couple_id', brideId)\n    .eq('kind', 'circle_thread')", async () => {
+      const H2 = handlerOf('src/api/circle/threads.js', 'get', '/:brideId');
+      const { plane } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG, GROUP_MSG] });
+      const out = await drive12(H2, { plane, params: { brideId: MEHEK.coupleId } });
+      assert.deepStrictEqual(out.body.data.map(t => t.thread_id), [`dm:${GROUP_ID}`]);
     });
 });
 
