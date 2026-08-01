@@ -373,6 +373,76 @@ await mutateSrc('src/api/couple/enquire.js',
     assert.ok(s.includes('[F-06.85] THE MECHANISM MOVED. THIS SENTENCE HAS BEEN RE-READ.'));
   });
 
+
+H('§6 — THE TRIANGLE (F-07.72): a THIRD lane joined the estate and must not cross');
+
+// F-07.65 proved the couple and vendor lanes do not accept each other's
+// credentials. F-07.72 added the CIRCLE lane, and a two-lane bench cannot catch
+// a three-lane crossing: the very benches that exist to catch this class would
+// have gone on passing while the new lane crossed both of them. Extended by CE
+// ruling §3(4), and the count movement is DISCLOSED, never smoothed.
+//
+// The secrets below live only inside this process and are never printed.
+process.env.ADMIN_SESSION_SECRET  = process.env.ADMIN_SESSION_SECRET  || 'bench-admin-secret';
+process.env.CIRCLE_SESSION_SECRET = process.env.CIRCLE_SESSION_SECRET || 'bench-circle-secret';
+const circleSession = require(SRC('src/lib/circleSession'));
+const CIRCLE_TOKEN  = circleSession.mintCircleSession({
+  userId:   '3c8eb9e0-e746-4d95-9630-17897aa64f05',   // Mehek, the one live member
+  coupleId: '9f1f84d5-e688-4d4f-9e44-9f5da6315e52',
+});
+
+await ta('§6.1 a CIRCLE token is refused on the COUPLE lane', async () => {
+  const mw  = require(SRC('src/api/middleware/requireCoupleAuth'));
+  const req = fakeReq({ header: `Bearer ${CIRCLE_TOKEN}` });
+  const res = fakeRes();
+  let nexted = false;
+  await mw(req, res, () => { nexted = true; });
+  assert.strictEqual(nexted, false, 'a circle member was admitted to a couple-protected door');
+  assert.strictEqual(res.code, 401);
+});
+
+await ta('§6.2 a CIRCLE token is refused on the VENDOR lane', async () => {
+  const mw  = require(SRC('src/api/middleware/requireAuth'));
+  const req = fakeReq({ header: `Bearer ${CIRCLE_TOKEN}` });
+  const res = fakeRes();
+  let nexted = false;
+  await mw(req, res, () => { nexted = true; });
+  assert.strictEqual(nexted, false, 'a circle member was admitted to a vendor-protected door');
+});
+
+t('§6.3 a COUPLE JWT is refused by the circle verifier — the mirror direction', () => {
+  assert.strictEqual(circleSession.verifyCircleSession(BRIDE_JWT), null);
+});
+
+t('§6.4 a VENDOR JWT is refused by the circle verifier', () => {
+  assert.strictEqual(circleSession.verifyCircleSession(VENDOR_JWT), null);
+});
+
+t('§6.5 an ADMIN token is refused by the circle verifier, and the circle token by the admin one', () => {
+  const admin = require(SRC('src/lib/adminSession'));
+  assert.strictEqual(circleSession.verifyCircleSession(admin.mintAdminSession()), null);
+  assert.strictEqual(admin.verifyAdminSession(CIRCLE_TOKEN), false);
+});
+
+t('§6.6 THE LANES ARE THREE AND THE BENCH KNOWS IT — a fourth would be undefended', () => {
+  // A census, not a vibe: every mounted lane guard in the estate is named here,
+  // so adding a guard without adding its crossing cells REDDENS this line.
+  // The predicate is CREDENTIAL-VERIFYING guards, derived from the files rather
+  // than listed from memory: a lane guard is one that verifies a caller's
+  // credential. The other four files in that directory are resolvers and tier
+  // gates (agentBridge · requirePrestige · resolveAgent · resolveVendor) — they
+  // route or gate a caller already identified, and they hold no verifier.
+  // Derived by command so the census cannot rot into a hand-kept list.
+  const dir = SRC('src/api/middleware');
+  const guards = fs.readdirSync(dir).filter(f => f.endsWith('.js')).filter((f) => {
+    const body = fs.readFileSync(path.join(dir, f), 'utf8');
+    return /supabase\.auth\.getUser\(/.test(body) || /verifyCircleSession\(/.test(body);
+  }).sort();
+  assert.deepStrictEqual(guards,
+    ['requireAuth.js', 'requireCircleMemberAuth.js', 'requireCoupleAuth.js'],
+    'the credential-verifying guard census moved — a new lane needs its own crossing cells here');
+});
+
 H('§5 — the sibling half, named (F-07.50 cross-repo precedent)');
 
 t('§5.1 the client half of this proof is named and its absence is DISCLOSED, never silently passed', () => {

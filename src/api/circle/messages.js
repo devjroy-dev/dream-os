@@ -21,6 +21,7 @@
 const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
+const { resolveCircleIdentityIfPresent } = require('../../lib/resolveCircleIdentityIfPresent');
 
 // Resolve the couple_id for a given userId. The bride passes her couple_id directly;
 // a circle member passes their users.id, which we map via circle_members.invitee_phone.
@@ -81,6 +82,24 @@ async function getOrCreateCircleThread(supabase, coupleId) {
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { userId, thread_id, body, sender_name, sender_role } = req.body || {};
+
+  // ── F-07.72 · CLASS B · THE RESOLVER IS MOUNTED AND ACCEPTS, NEVER REQUIRES ─
+  // This delivery is the MINT-AND-TEACH phase: the lane learns to issue and
+  // carry a session and ENFORCES NOTHING. Every answer below — proven, forged,
+  // absent — leaves this handler's behaviour byte-identical to the tree before
+  // it, and `req.circleIdentity` is written and not yet read.
+  //
+  // IT IS CALLED ANYWAY, AND THAT IS THE POINT. F-07.72 is itself the finding
+  // that a fully-written guard sat unmounted for a block because nothing called
+  // it; F-07.99 is the same lesson one plane over. A resolver shipped without a
+  // call site would be this sitting reproducing its own disease inside its own
+  // cure. Mounting it here makes the enforcement ZIP a REFUSAL LINE beneath this
+  // one, on a path already proven to execute, instead of a first mount on a live
+  // door.
+  //
+  // THE ENFORCEMENT LINE GOES HERE, and it is deliberately not written yet:
+  //   if (!req.circleIdentity.coupleId) return res.status(401)...
+  req.circleIdentity = await resolveCircleIdentityIfPresent(req, supabase);
 
   if (!body || !body.trim()) {
     return res.status(400).json({ ok: false, error: 'body is required.' });
@@ -151,6 +170,24 @@ router.post('/', asyncHandler(async (req, res) => {
 router.get('/:coupleId', asyncHandler(async (req, res) => {
   const supabase     = req.app.locals.supabase;
   const { coupleId } = req.params;
+
+  // ── F-07.72 · CLASS B · THE RESOLVER IS MOUNTED AND ACCEPTS, NEVER REQUIRES ─
+  // This delivery is the MINT-AND-TEACH phase: the lane learns to issue and
+  // carry a session and ENFORCES NOTHING. Every answer below — proven, forged,
+  // absent — leaves this handler's behaviour byte-identical to the tree before
+  // it, and `req.circleIdentity` is written and not yet read.
+  //
+  // IT IS CALLED ANYWAY, AND THAT IS THE POINT. F-07.72 is itself the finding
+  // that a fully-written guard sat unmounted for a block because nothing called
+  // it; F-07.99 is the same lesson one plane over. A resolver shipped without a
+  // call site would be this sitting reproducing its own disease inside its own
+  // cure. Mounting it here makes the enforcement ZIP a REFUSAL LINE beneath this
+  // one, on a path already proven to execute, instead of a first mount on a live
+  // door.
+  //
+  // THE ENFORCEMENT LINE GOES HERE, and it is deliberately not written yet:
+  //   if (!req.circleIdentity.coupleId) return res.status(401)...
+  req.circleIdentity = await resolveCircleIdentityIfPresent(req, supabase);
   const limit        = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
 
   const { data: couple } = await supabase

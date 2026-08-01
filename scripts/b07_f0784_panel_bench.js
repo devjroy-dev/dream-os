@@ -59,13 +59,32 @@ sec('§1 · F-07.82 — the reversible encoding is dead and the twins are consol
 {
   const home = read('src/lib/adminSession.js');
   const hs   = stripComments(home);
+  // ── LABELED AMENDMENT (F-07.72) · TWO CELLS RE-AIMED, COUNT PRESERVED 59 ───
+  // §1.2 and §1.5 asserted that HMAC-SHA256 and timingSafeEqual appeared in THIS
+  // FILE. F-07.72 extracted that machinery to `src/lib/signedSession.js` — one
+  // implementation, two callers — because the circle lane needed a second signed
+  // token and copying this mint would have re-planted the second-implementation
+  // disease this very bench exists to forbid. The two cells went RED at that
+  // extraction: not because the cure regressed, but because they were aimed at
+  // the mechanism's ADDRESS rather than its BEHAVIOUR. CE-119's "a true cell
+  // aimed one surface over", caught by the floor exactly as designed.
+  //
+  // RE-AIMED, and STRENGTHENED rather than merely relocated: each cell now
+  // asserts the property is present SOMEWHERE ON THE PATH THIS FILE ACTUALLY
+  // USES (here or in the one home it delegates to) AND drives the behaviour
+  // through the real exports. An address can move again; the behaviour cannot
+  // move without breaking.
+  const oneHome = stripComments(read('src/lib/signedSession.js'));
+  const onPath  = hs + oneHome;
   ok('§1.1 the one home exists', fs.existsSync(R('src/lib/adminSession.js')));
-  ok('§1.2 it signs with HMAC-SHA256', /createHmac\(\s*['"]sha256['"]/.test(hs));
+  ok('§1.2 it signs with HMAC-SHA256 (on the path this file uses)',
+     /createHmac\(\s*['"]sha256['"]/.test(onPath));
   ok('§1.3 base64 encoding of a secret is GONE from the mint',
      !/Buffer\.from\([^)]*SECRET[^)]*\)\s*\.toString\(\s*['"]base64['"]\s*\)/.test(hs));
   ok('§1.4 the mint takes NO password argument (a signature that cannot accept the secret cannot leak it)',
      /function mintAdminSession\(\s*ttlMs/.test(hs));
-  ok('§1.5 verification is constant-time', /timingSafeEqual/.test(hs));
+  ok('§1.5 verification is constant-time (on the path this file uses)',
+     /timingSafeEqual/.test(onPath));
 
   // Both twins gone — the second-implementation disease does not reappear.
   const mw = stripComments(read('src/admin/middleware.js'));

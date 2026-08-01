@@ -23,6 +23,7 @@ const router       = express.Router();
 const bcrypt       = require('bcryptjs');
 const asyncHandler = require('../../lib/asyncHandler');
 const { sendOtpCode } = require('../../lib/otpSend');
+const { mintCircleSession, CIRCLE_TTL_MS } = require('../../lib/circleSession');
 
 const BCRYPT_ROUNDS = 10;
 const OTP_TTL_MS    = 5 * 60 * 1000;
@@ -44,6 +45,41 @@ const { toE164 } = require('../../lib/phone');
 
 function ok(res, data)            { return res.json({ success: true, data }); }
 function fail(res, status, error) { return res.status(status).json({ success: false, error }); }
+
+// ── F-07.72 · ONE NUMBER, ONE CIRCLE ────────────────────────────────────────
+// Founder-ruled 2026-08-02, verbatim: one phone co-plans exactly ONE wedding.
+//
+// WHY IT IS ENFORCED HERE AND NOT ONLY IN THE DATABASE. The durable enforcement
+// is a partial unique index on (invitee_phone) WHERE status='active', and it is
+// founder-run SQL travelling in its own later message under the conditional-
+// withheld rule. This code leg exists so the refusal is a SENTENCE THE INVITEE
+// CAN READ rather than a 23505 the door turns into "Something went wrong."
+// Both legs ship; neither is the other's substitute.
+//
+// WHAT IT PROTECTED BEFORE IT WAS A RULE. `public.circle_members` has no
+// `user_id` column and `circle_members_phone_idx` is a PLAIN index, so every
+// door's `.maybeSingle()` on (invitee_phone, status='active') was 1:1 by luck.
+// The founder's SELECT of 2026-08-02 returned ZERO rows for a phone active in
+// more than one circle, so nothing existing is broken by this refusal — it
+// closes a door that was open and unused.
+//
+// Returns the offending row when the phone is already active in a DIFFERENT
+// circle, or null. Being active in THIS circle is not this check's business:
+// that is the already-claimed path, which each route answers in its own words.
+async function activeElsewhere(supabase, phone, thisCoupleId) {
+  if (!phone) return null;
+  const { data: rows } = await supabase
+    .from('circle_members')
+    .select('id, couple_id')
+    .eq('invitee_phone', phone)
+    .eq('status', 'active');
+  return (rows || []).find(r => r.couple_id !== thisCoupleId) || null;
+}
+
+// The founder's byte, frozen 2026-08-02. Held at one home so the three doors
+// that speak it cannot drift into three wordings.
+const ONE_CIRCLE_REFUSAL =
+  'This number is already helping plan another wedding. One number, one circle.';
 
 // ── POST /validate ────────────────────────────────────────────────────────
 // Looks up a pending, unexpired invite. Returns bride + invitee names for the
@@ -109,7 +145,7 @@ router.post('/send-otp', asyncHandler(async (req, res) => {
   // Confirm the invite is still claimable before sending a code.
   const { data: member } = await supabase
     .from('circle_members')
-    .select('id, status, expires_at')
+    .select('id, couple_id, status, expires_at')
     .eq('invite_token', token)
     .maybeSingle();
 
@@ -118,6 +154,13 @@ router.post('/send-otp', asyncHandler(async (req, res) => {
   if (member.status === 'removed')return fail(res, 410, 'This invite is no longer active.');
   if (member.expires_at && new Date(member.expires_at) < new Date()) {
     return fail(res, 410, 'This invite link has expired.');
+  }
+
+  // F-07.72 — refuse BEFORE the code is sent. Sending an OTP to a phone that
+  // cannot complete the join spends a WhatsApp template on a dead end and
+  // teaches the invitee she is one step from an app she can never enter.
+  if (await activeElsewhere(supabase, phone, member.couple_id)) {
+    return fail(res, 409, ONE_CIRCLE_REFUSAL);
   }
 
   const otp     = generateOtp();
@@ -181,6 +224,18 @@ router.post('/accept', asyncHandler(async (req, res) => {
   // OTP good — consume it
   await supabase.from('otp_sessions').delete().eq('phone', phone);
 
+  // F-07.72 — the second gate, on the far side of the OTP. /send-otp's check
+  // can be minutes old by the time the code comes back, and the claim RPC is
+  // atomic-and-irreversible: a refusal after activation would be a row to undo.
+  const { data: inviteRow } = await supabase
+    .from('circle_members')
+    .select('couple_id')
+    .eq('invite_token', token)
+    .maybeSingle();
+  if (inviteRow && await activeElsewhere(supabase, phone, inviteRow.couple_id)) {
+    return fail(res, 409, ONE_CIRCLE_REFUSAL);
+  }
+
   // 2. Claim the invite atomically (validate + activate + activity feed)
   const { data: claimRows, error: claimErr } = await supabase.rpc('claim_circle_invite', {
     p_token:         token,
@@ -228,9 +283,16 @@ router.post('/accept', asyncHandler(async (req, res) => {
     .eq('id', claim.couple_id)
     .maybeSingle();
 
+  // F-07.72 — the lane's SECOND mint point. A member who has just joined holds
+  // a session, not a bare id: without this she would walk out of the join flow
+  // credential-less and the enforcement ZIP would meet her at the first door.
+  const sessionToken = mintCircleSession({ userId, coupleId: claim.couple_id });
+
   console.log(`[circle/join/accept] claimed member=${claim.member_id} user=${userId} couple=${claim.couple_id}`);
 
   return ok(res, {
+    token:        sessionToken || null,
+    expires_at:   sessionToken ? Date.now() + CIRCLE_TTL_MS : null,
     user_id:      userId,
     co_planner_id:claim.member_id,
     couple_id:    claim.couple_id,
