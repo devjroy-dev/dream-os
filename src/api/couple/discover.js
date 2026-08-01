@@ -204,7 +204,11 @@ router.get('/feed', asyncHandler(async (req, res) => {
   // ── 2. Demo vendors (discover_eligible=true AND active=true only) ──────────
   let demoQuery = supabase
     .from('demo_vendors')
-    .select('id, display_name, category, city, ig_handle, rate_display, photos, about')
+    // F-07.49(b) — `whatsapp_phone` joins the select. It is NEVER emitted (see the
+    // suppression block below); it is read so the mint can ask who this phone belongs
+    // to. Column witnessed: docs/db/PUBLIC_SCHEMA.md · public.demo_vendors · 14 columns,
+    // col 6 `whatsapp_phone text` (nullable).
+    .select('id, display_name, category, city, ig_handle, rate_display, photos, about, whatsapp_phone')
     .eq('discover_eligible', true)
     .eq('active', true);
 
@@ -221,7 +225,81 @@ router.get('/feed', asyncHandler(async (req, res) => {
     console.error('[GET /discover/feed] demo vendors error:', demoError.message);
   }
 
-  const shapedDemo = (demoVendors || []).map(v => {
+  // ── F-07.49(b) CURED · THE FEED-SUPPRESSION HALF (Fork 4(a), CE-ruled) ──────
+  //
+  // F-07.49's first half stopped the LIE: `demoLeadAlert.js:244` refuses to send
+  // "claim your ready account" to a phone that already belongs to a registered
+  // user. That guard is correct and stays. What it cannot do is stop the CARD.
+  //
+  // THE RESIDUAL HARM, stated plainly. A demo card whose phone resolves to a
+  // registered user still renders in the couple feed, still takes her enquiry,
+  // and still stores it — and then the send-time guard correctly refuses, so
+  // NOBODY IS EVER TOLD. The couple's enquiry lands in a silence that looks
+  // exactly like a vendor who has not replied yet. The first half prevents a
+  // falsehood; without this half the estate simply fails quietly instead.
+  //
+  // SITED AT THE MINT, NOT AT THE MOUNTS — F-07.54's geometry, one finding over.
+  // Four couple-facing surfaces read this payload; a filter applied at any one of
+  // them is a cure for one screen. The row must not leave here.
+  //
+  // BOTH PHONE FORMS, because `users.phone` has no single normalizer governing
+  // writes (117 touch sites; the shape is DECLARED, never derived — the same
+  // sentence demoLeadAlert.js:219 carries). This matches `phone` and `+phone`
+  // exactly as the send-time guard does, so the two halves cannot disagree about
+  // who counts as registered.
+  //
+  // ── THE FAIL DIRECTION IS *OPPOSITE* TO THE SEND GUARD'S, AND DELIBERATELY ──
+  // The send guard fails CLOSED: a failed lookup means no send, because that is
+  // where a falsehood would be VOICED and silence costs the estate nothing.
+  // HERE, a failed lookup that suppressed everything would empty the couple feed
+  // of five of its six cards on a transient blip — a large, visible, self-
+  // inflicted outage in exchange for re-exposing a harm that is BOUNDED BY THE
+  // SEND GUARD ANYWAY (a card that slips through still cannot produce a lie; it
+  // can only produce the silence that already exists today). So this fails OPEN
+  // and says so loudly. The asymmetry is reasoned, not inherited: two guards on
+  // one finding, failing in opposite directions, each toward the smaller harm.
+  //
+  // Columns witnessed: PUBLIC_SCHEMA.md · public.users · 9 columns (id, phone).
+  let suppressedDemoIds = new Set();
+  const demoPhones = (demoVendors || [])
+    .map(v => v.whatsapp_phone)
+    .filter(p => typeof p === 'string' && p.trim() !== '');
+  if (demoPhones.length > 0) {
+    const phoneForms = [];
+    for (const p of demoPhones) { phoneForms.push(p, `+${p}`); }
+    try {
+      const { data: registered, error: regError } = await supabase
+        .from('users')
+        .select('id, phone')
+        .in('phone', phoneForms);
+      if (regError) throw new Error(regError.message);
+      const registeredPhones = new Set((registered || []).map(u => u.phone));
+      suppressedDemoIds = new Set(
+        (demoVendors || [])
+          .filter(v => v.whatsapp_phone &&
+            (registeredPhones.has(v.whatsapp_phone) || registeredPhones.has(`+${v.whatsapp_phone}`)))
+          .map(v => v.id)
+      );
+      if (suppressedDemoIds.size > 0) {
+        console.error(
+          `[GET /discover/feed] F-07.49(b) — SUPPRESSED ${suppressedDemoIds.size} demo card(s) ` +
+          `whose phone belongs to a registered user: ${[...suppressedDemoIds].join(', ')}. ` +
+          'A registered user\'s demo card would absorb enquiries the send-guard then refuses to relay.'
+        );
+      }
+    } catch (err) {
+      // FAIL OPEN, LOUDLY. See the fail-direction paragraph above — the send-time
+      // guard remains the backstop for the voiced half.
+      console.error(
+        `[GET /discover/feed] F-07.49(b) registered-user reconciliation FAILED: ${err.message} — ` +
+        'serving demo cards UNSUPPRESSED this fetch. No alert can be sent to a registered ' +
+        'user regardless (demoLeadAlert.js:244); the exposure is silence, not a falsehood.'
+      );
+      suppressedDemoIds = new Set();
+    }
+  }
+
+  const shapedDemo = (demoVendors || []).filter(v => !suppressedDemoIds.has(v.id)).map(v => {
     // photos is a JSONB array of {url, is_hero, cloudinary_id}
     // TDW_07 MICRO-2 — the demo leg follows the real card: no display cap. It does not call
     // the shaper (different table, different columns — the reasoning is in shapeVendor.js's

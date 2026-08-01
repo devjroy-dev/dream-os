@@ -800,7 +800,14 @@ function pwaTreeVisible() {
 }
 const PWA_VISIBLE = pwaTreeVisible();
 
-const CANVAS = path.join(PWA_ROOT, 'app/(frost)/frost/canvas/discover/page.tsx');
+// ── LABELED AMENDMENT · TDW_07 P6 · F-07.43 「 F-D 」 (CE-ruled) ──────────────────────
+// THE CANVAS DECK IS FOLDED AND GONE. Its route is a redirect; sanctuary's Discover room
+// is the couple Discover surface. Every cell reading this handle asserted a P5 law — the
+// closed-frame identity render, the inert info layer, blind's arrival state, the
+// routing_handle-only link, the toast pair — against a deck with ZERO inbound navigation.
+// The laws are unchanged and are re-aimed at the surface the founder actually walks.
+// This is a STRENGTHENING: P5's guarantees were being checked on a page no couple opened.
+const CANVAS = path.join(PWA_ROOT, 'app/(frost)/frost/canvas/sanctuary/page.tsx');
 if (!PWA_VISIBLE) {
   console.log('  skip §9.1–§9.3 — the dreamos-pwa tree is not beside this one; these three');
   console.log('       cells assert the canvas closed-frame render source and cannot run here.');
@@ -815,18 +822,19 @@ if (!PWA_VISIBLE) {
       'no starting-price token — D-1 governed price is absent from the closed frame');
   });
 
-  t('§9.2 the info layer does not steal the swipe surface', () => {
-    // The whole cure is additive-and-inert: a container that takes pointer
-    // events would change the deck's gesture, which the spec forbids outright
-    // ("Frost gesture mechanics byte-identical through P1/P6").
-    // The container OPENS above the token it wraps, so the window looks
-    // BACKWARD from the render site. The first take looked forward and went
-    // red against correct code — a cell aimed at the wrong side of its anchor.
-    const at  = canvas.indexOf('vendor.category');
-    const seg = canvas.slice(Math.max(0, at - 900), at);
-    assert.ok(/pointerEvents:\s*'none'/.test(seg),
-      'the info layer is not pointerEvents:none — the swipe surface moved');
-  });
+  // ── §9.2 RETIRED · TDW_07 P6 (count disclosed 139 → 136, never padded) ─────
+  // It asserted the closed-frame info layer was pointerEvents:'none' — additive
+  // and inert, so the deck's swipe surface was untouched. That was TRUE of the
+  // canvas deck, where the identity line was pure overlay.
+  //
+  // IT DOES NOT TRANSFER, AND FORCING IT WOULD BE A LIE. Sanctuary's identity
+  // line is DELIBERATELY interactive: it carries the `Tap ▲` affordance and is
+  // the room's documented way into the panel (cursor:'pointer', its own onClick,
+  // its own stopPropagation). Re-aiming this cell would redden correct code;
+  // weakening it to pass would assert nothing. The underlying law — the SWIPE
+  // surface is unchanged — is held elsewhere and better: tdw07_p6_fold §3.3
+  // (band container pointerEvents:none) and §8.2 (both img layers inert).
+  // Retired with its reason, its replacement named.
 
   t('§9.3 blind is reachable ONLY through its toggle — it is never the arrival state', () => {
     // NOT a slice from the first occurrence: `code()` strips only lines that
@@ -834,8 +842,10 @@ if (!PWA_VISIBLE) {
     // survive and the first `isBlindMode` hit is prose about the diagnosis. A
     // cell a comment can satisfy — or defeat — is not testing code (§3's law,
     // this time in the other direction). Anchor on the declaration.
-    assert.ok(/isBlindMode[^\n]{0,80}useState\(false\)/.test(canvas),
-      'isBlindMode does not default false — blind could be the arrival state');
+    // Re-aimed: sanctuary spells it `isBlind`. Same law, same direction — blind is
+    // never the arrival state, and it has no persistence path to become one.
+    assert.ok(/isBlind[^\n]{0,80}React\.useState\(false\)/.test(canvas),
+      'isBlind does not default false — blind could be the arrival state');
     assert.ok(!/localStorage[\s\S]{0,80}blind/i.test(canvas),
       'blind has acquired a persistence path — arrival state is no longer derivable');
   });
@@ -1095,21 +1105,23 @@ if (!PWA_VISIBLE) {
   // which is the only way the mint-side cure could be silently defeated.
   const M = (rel) => fs.readFileSync(path.join(PWA_ROOT, rel), 'utf8');
   const SANCT_SRC = M('app/(frost)/frost/canvas/sanctuary/page.tsx');
-  const CANVAS_SRC = M('app/(frost)/frost/canvas/discover/page.tsx');
+  // Re-aimed by the P6 fold — see the amendment at the CANVAS handle above.
+  const CANVAS_SRC = M('app/(frost)/frost/canvas/sanctuary/page.tsx');
   const DEMOD_SRC = M('app/demodiscover/page.tsx');
 
   t('§13.6 sanctuary\'s sheet mount derives its link ONLY from routing_handle', () => {
     assert.ok(/enquireLink=\{vendor\.enquire_link\|\|\(vendor\.routing_handle\?/.test(code(SANCT_SRC)),
       'the sanctuary mount acquired a second link source');
   });
-  t('§13.7 canvas\'s enquireLink helper derives ONLY from routing_handle', () => {
-    assert.ok(/\(vendor\.routing_handle \? makeEnquireLink\(vendor\.routing_handle\) : null\)/.test(code(CANVAS_SRC)),
-      'the canvas helper acquired a second link source');
-  });
-  t('§13.8 canvas\'s sheet mount derives its link ONLY from routing_handle', () => {
-    assert.ok(/enquireLink=\{vendor\.enquire_link \|\| \(vendor\.routing_handle \?/.test(code(CANVAS_SRC)),
-      'the canvas mount acquired a second link source');
-  });
+  // ── §13.7 AND §13.8 RETIRED · TDW_07 P6 ────────────────────────────────────
+  // Both asserted the CANVAS deck's enquire link derived only from routing_handle.
+  // After the fold, `CANVAS_SRC` and `SANCT_SRC` are the SAME FILE — so re-aiming
+  // them would produce two exact duplicates of §13.6, which already asserts that
+  // law on that file. Two cells asserting a third cell's assertion inflate a count
+  // and prove nothing; the floor-method law says name the loss instead.
+  // The law itself is UNWEAKENED — §13.6 holds it, and §13.9 still holds
+  // demodiscover's separate copy (F-07.29's deferred surface).
+
   t('§13.9 demodiscover derives its TDW-line fallback ONLY from routing_handle', () => {
     const c = code(DEMOD_SRC);
     assert.ok(/vendor\.routing_handle \? `https:\/\/wa\.me\/917982159047\?text=TDW-\$\{vendor\.routing_handle\}`/.test(c),
@@ -1353,7 +1365,7 @@ if (!PWA_VISIBLE) {
   const PREAD = (rel) => fs.readFileSync(PREL(rel), 'utf8');
   const SHEET_R = 'components/frost/EnquirySheet.tsx';
   const SANCT_R = 'app/(frost)/frost/canvas/sanctuary/page.tsx';
-  const CANV_R  = 'app/(frost)/frost/canvas/discover/page.tsx';
+  const CANV_R  = 'app/(frost)/frost/canvas/sanctuary/page.tsx';
 
   // The vetoed bytes, written here as the CONTRACT rather than read from the
   // file — a cell that reads its expectation from the thing under test proves
