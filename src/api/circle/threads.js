@@ -2,8 +2,9 @@
 // GET /api/v2/frost/circle/threads/:brideId                         — thread list
 // GET /api/v2/frost/circle/threads/:brideId/:threadId/messages      — messages
 //
-// No JWT — coplanner sends no Authorization header.
-// brideId = couple.id. No per-user auth — returns threads for the couple.
+// CLASS B — dual-lane (co-planner + bride). Enforced in-handler on the
+// resolver's three answers, NOT by `requireCircleMemberAuth`. `:brideId` is no
+// longer read on either handler: the couple is the one the credential proved.
 
 'use strict';
 
@@ -14,26 +15,28 @@ const { resolveCircleIdentityIfPresent } = require('../../lib/resolveCircleIdent
 
 // ── GET /:brideId/:threadId/messages — more specific, before /:brideId ────────
 router.get('/:brideId/:threadId/messages', asyncHandler(async (req, res) => {
-  const supabase              = req.app.locals.supabase;
-  const { brideId, threadId } = req.params;
+  const supabase     = req.app.locals.supabase;
+  const { threadId } = req.params;
 
-  // ── F-07.72 · CLASS B · THE RESOLVER IS MOUNTED AND ACCEPTS, NEVER REQUIRES ─
-  // This delivery is the MINT-AND-TEACH phase: the lane learns to issue and
-  // carry a session and ENFORCES NOTHING. Every answer below — proven, forged,
-  // absent — leaves this handler's behaviour byte-identical to the tree before
-  // it, and `req.circleIdentity` is written and not yet read.
-  //
-  // IT IS CALLED ANYWAY, AND THAT IS THE POINT. F-07.72 is itself the finding
-  // that a fully-written guard sat unmounted for a block because nothing called
-  // it; F-07.99 is the same lesson one plane over. A resolver shipped without a
-  // call site would be this sitting reproducing its own disease inside its own
-  // cure. Mounting it here makes the enforcement ZIP a REFUSAL LINE beneath this
-  // one, on a path already proven to execute, instead of a first mount on a live
-  // door.
-  //
-  // THE ENFORCEMENT LINE GOES HERE, and it is deliberately not written yet:
-  //   if (!req.circleIdentity.coupleId) return res.status(401)...
+  // ── F-07.72 ZIP 2 · CLASS B · REFUSE-ON-NEITHER ────────────────────────────
+  // The line ZIP 1 wrote as a comment is now code. NOT guarded by
+  // `requireCircleMemberAuth` and it must not be: this door is SHARED with the
+  // bride, who is not a `circle_members` row. The resolver admits her JWT
+  // (arm 2) and the member's lane token (arm 1) alike and refuses only a caller
+  // who proves NEITHER — including the third answer, a present-but-unusable
+  // credential, which by `resolveCoupleIfPresent.js:54-57`'s ruling never
+  // demotes to the logged-out path. `coupleId` is the whole gate.
   req.circleIdentity = await resolveCircleIdentityIfPresent(req, supabase);
+  if (!req.circleIdentity.coupleId) {
+    return res.status(401).json({ success: false, error: 'Unauthorised.' });
+  }
+
+  // `:brideId` IS NO LONGER READ — the thread is scoped to the couple the
+  // credential PROVED, never to the one the path claimed. Combined with
+  // F-07.112's discriminator on the line below, a caller can name neither
+  // another couple's thread nor a member's private one.
+  const brideId = req.circleIdentity.coupleId;
+
 
   const convoId = threadId.replace(/^dm:/, '');
   const limit   = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
@@ -102,26 +105,24 @@ router.get('/:brideId/:threadId/messages', asyncHandler(async (req, res) => {
 
 // ── GET /:brideId — thread list ───────────────────────────────────────────────
 router.get('/:brideId', asyncHandler(async (req, res) => {
-  const supabase    = req.app.locals.supabase;
-  const { brideId } = req.params;
+  const supabase = req.app.locals.supabase;
 
-  // ── F-07.72 · CLASS B · THE RESOLVER IS MOUNTED AND ACCEPTS, NEVER REQUIRES ─
-  // This delivery is the MINT-AND-TEACH phase: the lane learns to issue and
-  // carry a session and ENFORCES NOTHING. Every answer below — proven, forged,
-  // absent — leaves this handler's behaviour byte-identical to the tree before
-  // it, and `req.circleIdentity` is written and not yet read.
-  //
-  // IT IS CALLED ANYWAY, AND THAT IS THE POINT. F-07.72 is itself the finding
-  // that a fully-written guard sat unmounted for a block because nothing called
-  // it; F-07.99 is the same lesson one plane over. A resolver shipped without a
-  // call site would be this sitting reproducing its own disease inside its own
-  // cure. Mounting it here makes the enforcement ZIP a REFUSAL LINE beneath this
-  // one, on a path already proven to execute, instead of a first mount on a live
-  // door.
-  //
-  // THE ENFORCEMENT LINE GOES HERE, and it is deliberately not written yet:
-  //   if (!req.circleIdentity.coupleId) return res.status(401)...
+  // ── F-07.72 ZIP 2 · CLASS B · REFUSE-ON-NEITHER ────────────────────────────
+  // The line ZIP 1 wrote as a comment is now code. NOT guarded by
+  // `requireCircleMemberAuth` and it must not be: this door is SHARED with the
+  // bride, who is not a `circle_members` row. The resolver admits her JWT
+  // (arm 2) and the member's lane token (arm 1) alike and refuses only a caller
+  // who proves NEITHER — including the third answer, a present-but-unusable
+  // credential, which by `resolveCoupleIfPresent.js:54-57`'s ruling never
+  // demotes to the logged-out path. `coupleId` is the whole gate.
   req.circleIdentity = await resolveCircleIdentityIfPresent(req, supabase);
+  if (!req.circleIdentity.coupleId) {
+    return res.status(401).json({ success: false, error: 'Unauthorised.' });
+  }
+
+  // `:brideId` IS NO LONGER READ — see the sibling handler above.
+  const brideId = req.circleIdentity.coupleId;
+
 
   // ── F-07.112 · SITE C-4 · THE ENUMERATION SURFACE, AND THE WORST OF THE FOUR ─
   // This list returned EVERY circle_thread row for the couple — which means

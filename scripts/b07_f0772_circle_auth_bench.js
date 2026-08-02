@@ -425,18 +425,40 @@ t('§5.2 EVERY Class B handler is covered, not merely every file (5 handlers, 5 
   assert.strictEqual(n, 5, `expected 5 mounts across the three Class B files, found ${n}`);
 });
 
-t('§5.3 ENFORCE NOTHING — no Class B door refuses on the resolver this delivery', () => {
+// ── §5.3 / §5.4 RE-AIMED AT ZIP 2, AND THE POLARITY IS THE WHOLE POINT ──────
+// These two cells asserted ENFORCE NOTHING: that no Class B door carried a 401
+// and that the guard stayed unmounted. Both were TRUE cells about a phase that
+// has ended. Under §9's BOTH-SIDES CLAUSE the old shape's green is RETIRED, not
+// retained — a green over a phase nobody is in is indistinguishable from no test
+// at all — so each is inverted in place rather than deleted, which keeps the
+// count honest and leaves the transition legible to the next reader.
+t('§5.3 EVERY Class B door now refuses on the resolver — the comment became code', () => {
   for (const f of ['src/api/circle/feed.js', 'src/api/circle/threads.js', 'src/api/circle/messages.js']) {
     const body = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-    assert.ok(!/circleIdentity[\s\S]{0,80}?res\.status\(401\)/.test(body),
-      `${f} enforces — this ZIP mints and teaches only`);
+    assert.ok(/circleIdentity[\s\S]{0,120}?res\.status\(401\)/.test(body),
+      `${f} does NOT refuse — ZIP 2 enforces`);
+    assert.ok(!/THE ENFORCEMENT LINE GOES HERE/.test(read(f)),
+      `${f} still carries ZIP 1's placeholder comment beside real enforcement`);
   }
 });
 
-t('§5.4 the guard is STILL UNMOUNTED at this tip, and the confession still stands', () => {
+t('§5.4 the guard IS mounted on the three Class A files, and the confession is discharged', () => {
   const r = read('src/api/router.js');
-  assert.ok(!/^\s*router\.use\([^)]*requireCircleMemberAuth/m.test(r), 'ZIP 1 must not mount the guard');
-  assert.ok(r.includes('No requireCircleMemberAuth'), 'the confession comment vanished without a mount');
+  const code = r.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  for (const mount of ['/circle/session', '/circle/muse', '/dreamai']) {
+    assert.ok(new RegExp(`router\\.use\\('${mount}',\\s*requireCircleMemberAuth`).test(code),
+      `${mount} is not guarded`);
+  }
+  // The mint points and the dual-lane doors must NOT be guarded — a mint that
+  // required a credential could never issue the first one, and a member guard on
+  // a shared door locks the bride out of her own conversation.
+  for (const open of ['/auth/verify-pin', '/circle/join', '/frost/circle/feed',
+                      '/frost/circle/threads', '/frost/circle/messages']) {
+    assert.ok(!new RegExp(`router\\.use\\('${open}',\\s*requireCircleMemberAuth`).test(code),
+      `${open} must NOT carry the member guard`);
+  }
+  assert.ok(!/^\s*\/\/ No requireCircleMemberAuth/m.test(r),
+    'the confession comment survived its own discharge');
 });
 
 H('§6 — verify-pin: the mint, and the founder\'s frozen bytes');
@@ -725,9 +747,15 @@ await mutateSrc('src/api/circle/join.js',
   });
 
 // INVERSE 9 — put the phone back in the session response. §8.2 must redden.
+// RE-AIMED AT ZIP 2, COUNT PRESERVED. The anchor `member.couple_id` was the
+// hand-rolled block's local; that block collapsed into `req.circleMember` when
+// the guard mounted, so the line no longer exists. The CELL IS UNCHANGED IN WHAT
+// IT CLAIMS — put the phone back in the response and §8.2 must redden — only its
+// address moved. CE-119's "a true cell aimed one surface over", the class
+// F-07.72 ZIP 1 already paid for once at `b07_f0784_panel`.
 await mutateSrc('src/api/circle/session.js',
-  '      couple_id: member.couple_id,',
-  '      phone:     userRow.phone,\n      couple_id: member.couple_id,',
+  '      couple_id: me.couple_id,',
+  '      phone:     me.phone,\n      couple_id: me.couple_id,',
   'the minimisation of the session response',
   async () => {
     const s = read('src/api/circle/session.js');
@@ -930,11 +958,17 @@ await ta('§11.2 THE PROVEN BRIDE: her ACTUAL name, and the literal "Bride" is n
   assert.strictEqual(cap.inserted.sender_user_id, BRIDE.usersId);
 });
 
-await ta('§11.3 NO CREDENTIAL: the author is NULL and the send still succeeds (fail-soft)', async () => {
+// ── §11.3 INVERTED AT ZIP 2 — the cell that measured the gap now measures the cure
+// It read: NO CREDENTIAL, the author is NULL and the send still SUCCEEDS. That
+// was ZIP 1's honest boundary and it is exactly what ZIP 2 came to end. Under
+// §9's BOTH-SIDES CLAUSE the old green is retired rather than kept beside the new
+// one: a nameless row is no longer written because a nameless caller is no longer
+// served. The `{ ok: false }` envelope is asserted deliberately — F-07.117.
+await ta('§11.3 NO CREDENTIAL: the send is REFUSED 401 and NO ROW is written', async () => {
   const { out, cap } = await drive(POST_MSG, { body: { userId: MEHEK.usersId, body: 'hello' } });
-  assert.strictEqual(cap.inserted.sender_name, null, 'a nameless caller was given a name');
-  assert.strictEqual(cap.inserted.sender_user_id, null);
-  assert.strictEqual(out.body.ok, true, 'the mint-and-teach phase must not refuse');
+  assert.strictEqual(out.status, 401, 'a credential-less send was served');
+  assert.strictEqual(out.body.ok, false, 'the refusal spoke the wrong envelope family');
+  assert.strictEqual(cap.inserted, null, 'a refused send still reached public.messages');
 });
 
 await ta('§11.4 THE BODY CANNOT FORGE A NAME — a supplied sender_name is not read', async () => {
@@ -953,7 +987,10 @@ await ta('§11.5 THE ECHO IS THE PERSISTED ROW — the optimistic-render-then-di
 });
 
 await ta('§11.6 GET /:coupleId emits BOTH columns, and NULL for a pre-0105 row — never the role', async () => {
-  const { out } = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW] });
+  // ZIP 2 — the cell now drives a PROVEN caller. The couple is no longer taken
+  // from `:coupleId`; the param is left in place to prove it is ignored, and the
+  // bride's JWT is what selects the thread.
+  const { out } = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW], bearer: BRIDE_JWT });
   const m = out.body.messages[0];
   assert.strictEqual(m.sender_name, null, 'the role stood in for a name again');
   assert.strictEqual(m.sender_user_id, null);
@@ -961,9 +998,11 @@ await ta('§11.6 GET /:coupleId emits BOTH columns, and NULL for a pre-0105 row 
 });
 
 await ta('§11.7 GET /threads/.../messages: same shape, same null, and sender_user_id is NEW', async () => {
+  const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
   const { out } = await drive(GET_THREAD, {
     params: { brideId: MEHEK.coupleId, threadId: `dm:${CONVO_ID}` },
     rows: [{ ...PRECURE_ROW, sender_name: MEHEK.name, sender_user_id: MEHEK.usersId }],
+    bearer: token,
   });
   const m = out.body.data[0];
   assert.strictEqual(m.sender_name, MEHEK.name);
@@ -972,15 +1011,17 @@ await ta('§11.7 GET /threads/.../messages: same shape, same null, and sender_us
 });
 
 await ta('§11.8 SITE 4: the thread-list preview reads sender_name, not sent_by', async () => {
+  const token = circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
   const { out } = await drive(GET_LIST, {
     params: { brideId: MEHEK.coupleId },
     rows: [{ body: 'x', sent_by: 'couple', sender_name: MEHEK.name, created_at: 'T' }],
+    bearer: token,
   });
   assert.ok(Array.isArray(out.body.data), 'no thread list');
 });
 
 await ta('§11.9 F-07.112: an `agent` row does not crash or acquire a name', async () => {
-  const { out } = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [AGENT_ROW] });
+  const { out } = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [AGENT_ROW], bearer: BRIDE_JWT });
   const m = out.body.messages[0];
   assert.strictEqual(m.sender_name, null, 'Mira was given a name by machinery, not by the founder');
   assert.strictEqual(m.sender_role, 'agent');
@@ -1064,7 +1105,7 @@ await ta('§11.M3 restore the role-as-name on the GET shape ⇒ §11.6 RED', asy
   await mutate('src/api/circle/messages.js',
     'sender_name:    m.sender_name    || null,', 'sender_name:    m.sent_by || null,', async () => {
       const H2 = handlerOf('src/api/circle/messages.js', 'get', '/:coupleId');
-      const { out } = await drive(H2, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW] });
+      const { out } = await drive(H2, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW], bearer: BRIDE_JWT });
       assert.strictEqual(out.body.messages[0].sender_name, null);
     });
 });
@@ -1320,7 +1361,7 @@ await ta('§12.5 C-3 THE PRIVATE THREAD IS UNREADABLE AT THE THREADS DOOR', asyn
     convos: [PRIVATE_CONVO, GROUP_CONVO],
     messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG],
   });
-  const out = await drive12(GET_THREAD, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${PRIVATE_ID}` } });
+  const out = await drive12(GET_THREAD, { plane, bearer: BRIDE_JWT, params: { brideId: MEHEK.coupleId, threadId: `dm:${PRIVATE_ID}` } });
   assert.deepStrictEqual(out.body.data, [], 'her private history was served to this door');
   assert.ok(!JSON.stringify(out.body).includes('asking the decorator'), 'a private message body reached the wire');
 });
@@ -1330,7 +1371,7 @@ await ta('§12.6 …and the GROUP thread still reads normally (the cure is not a
     convos: [PRIVATE_CONVO, GROUP_CONVO],
     messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG],
   });
-  const out = await drive12(GET_THREAD, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${GROUP_ID}` } });
+  const out = await drive12(GET_THREAD, { plane, bearer: BRIDE_JWT, params: { brideId: MEHEK.coupleId, threadId: `dm:${GROUP_ID}` } });
   assert.strictEqual(out.body.data.length, 1);
   assert.strictEqual(out.body.data[0].content, 'hello circle');
 });
@@ -1340,7 +1381,7 @@ await ta('§12.7 C-4 THE LIST DOES NOT ENUMERATE PRIVATE THREADS — the negativ
     convos: [PRIVATE_CONVO, GROUP_CONVO],
     messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG],
   });
-  const out = await drive12(GET_LIST, { plane, params: { brideId: MEHEK.coupleId } });
+  const out = await drive12(GET_LIST, { plane, bearer: BRIDE_JWT, params: { brideId: MEHEK.coupleId } });
   const ids = out.body.data.map(t => t.thread_id);
   assert.deepStrictEqual(ids, [`dm:${GROUP_ID}`]);
   assert.ok(!ids.includes(`dm:${PRIVATE_ID}`), "a member's private thread is tappable from the co-planner");
@@ -1370,7 +1411,7 @@ t('§12.8 NON-REGRESSION: the dreamai reader still keys on the owner, and is unt
 await ta('§12.9 the FOURTH MOUTH survives the cured read shape (CE-126, no three-value space)', async () => {
   const AGENT_IN_GROUP = { ...PRIVATE_AGENT_MSG, id: 'g-2', conversation_id: GROUP_ID };
   const { plane } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [AGENT_IN_GROUP] });
-  const out = await drive12(GET_THREAD, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${GROUP_ID}` } });
+  const out = await drive12(GET_THREAD, { plane, bearer: BRIDE_JWT, params: { brideId: MEHEK.coupleId, threadId: `dm:${GROUP_ID}` } });
   assert.strictEqual(out.body.data[0].sender_role, 'agent');
   assert.strictEqual(out.body.data[0].sender_name, null, 'machinery gave Mira a name');
 });
@@ -1468,7 +1509,7 @@ await ta('§12.M4 drop the discriminator from the per-thread read ⇒ §12.5 RED
     ".eq('id', convoId).eq('couple_id', brideId).eq('kind', 'circle_thread')", async () => {
       const H2 = handlerOf('src/api/circle/threads.js', 'get', '/:brideId/:threadId/messages');
       const { plane } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG, PRIVATE_AGENT_MSG, GROUP_MSG] });
-      const out = await drive12(H2, { plane, params: { brideId: MEHEK.coupleId, threadId: `dm:${PRIVATE_ID}` } });
+      const out = await drive12(H2, { plane, bearer: BRIDE_JWT, params: { brideId: MEHEK.coupleId, threadId: `dm:${PRIVATE_ID}` } });
       assert.deepStrictEqual(out.body.data, []);
     });
 });
@@ -1479,8 +1520,661 @@ await ta('§12.M5 drop the discriminator from the thread LIST ⇒ §12.7 RED', a
     ".eq('couple_id', brideId)\n    .eq('kind', 'circle_thread')", async () => {
       const H2 = handlerOf('src/api/circle/threads.js', 'get', '/:brideId');
       const { plane } = threadPlane({ convos: [PRIVATE_CONVO, GROUP_CONVO], messages: [PRIVATE_MSG, GROUP_MSG] });
-      const out = await drive12(H2, { plane, params: { brideId: MEHEK.coupleId } });
+      const out = await drive12(H2, { plane, bearer: BRIDE_JWT, params: { brideId: MEHEK.coupleId } });
       assert.deepStrictEqual(out.body.data.map(t => t.thread_id), [`dm:${GROUP_ID}`]);
+    });
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §13 — F-07.72 ZIP 2: ENFORCEMENT. THE LANE STOPS TRUSTING SUPPLIED IDENTIFIERS.
+//
+// ZIP 1 minted a token and taught fourteen client call sites to carry it while
+// refusing nothing. This section is the other half. The decisive pair, on every
+// guarded door, is: A FORGED ID REFUSED and THE REAL CALLER ADMITTED — and the
+// order matters, because a bench that only proved the refusal would be equally
+// green over a lane that refused everyone.
+//
+// TWO ENFORCEMENT SHAPES, AND THEY ARE NOT INTERCHANGEABLE:
+//   CLASS A — `requireCircleMemberAuth` at the mount. Co-planner only.
+//   CLASS B — refuse-on-neither inside each handler, on the resolver's three
+//     answers, because the second caller is THE BRIDE and a circle-member guard
+//     would answer her own circle chat with "Not a circle member."
+//
+// F-07.117 SHAPES THIS SECTION (CE ruling §3): a bench asserts the status code,
+// and the status code is not what the user experiences. So every refusal cell
+// below asserts the ENVELOPE FAMILY its client actually parses — `{success}` for
+// feed/threads, `{ok}` for messages — and not merely the 401.
+// ═══════════════════════════════════════════════════════════════════════════
+
+H('§13 — ZIP 2: the guard, the refusals, and the callers who must still get through');
+
+const guard = require(SRC('src/api/middleware/requireCircleMemberAuth'));
+const SESSION_GET = handlerOf('src/api/circle/session.js', 'get', '/:userId');
+const MUSE_GET    = handlerOf('src/api/circle/muse.js',    'get',  '/:brideId');
+const MUSE_SAVE   = handlerOf('src/api/circle/muse.js',    'post', '/save');
+const FEED_GET    = handlerOf('src/api/circle/feed.js',    'get',  '/:brideId');
+
+// ── TEST SETUP, DISCLOSED (never production code) ──────────────────────────
+// A plane shaped to exactly the guard's two lookups plus the couples/muse/feed
+// reads the Class A handlers make. `memberStatus` and `memberCouple` are knobs
+// so §13.6 and §13.7 can drive a revoked member and a couple-mismatch without a
+// second plane.
+function guardPlane({ memberStatus = 'active', memberCouple = MEHEK.coupleId, userExists = true,
+                      saves = [], activity = [] } = {}) {
+  const cap = { inserted: [], activity: [] };
+  const plane = {
+    auth: {
+      getUser: async (token) => (token === BRIDE_JWT
+        ? { data: { user: { id: BRIDE.authUserId } }, error: null }
+        : { data: { user: null }, error: new Error('invalid token') }),
+    },
+    from(table) {
+      const q = { _eq: {}, _sel: null, _ins: null };
+      q.select = (c) => { q._sel = typeof c === 'string' ? c : null; return q; };
+      q.eq = (c, v) => { q._eq[c] = v; return q; };
+      q.is = () => q; q.order = () => q; q.limit = () => q; q.update = () => q;
+      q.range = async () => ({ data: activity, error: null });
+      q.insert = (r) => { q._ins = r; if (table === 'muse_saves') cap.inserted.push(r);
+                          if (table === 'circle_activity') cap.activity.push(r); return q; };
+      q.maybeSingle = async () => {
+        if (table === 'users') {
+          if (q._eq.id === MEHEK.usersId && userExists)
+            return { data: { id: MEHEK.usersId, phone: MEHEK.phone, name: MEHEK.name } };
+          if (q._eq.auth_user_id === BRIDE.authUserId) return { data: { id: BRIDE.usersId } };
+          return { data: null };
+        }
+        if (table === 'circle_members') {
+          // THE PLANE HONOURS THE FILTER RATHER THAN SWALLOWING IT. An earlier
+          // cut compared `q._eq.status === memberStatus` unconditionally, so a
+          // mutation that DELETED `.eq('status','active')` left the comparison
+          // false and still produced a 403 — §13.M4 passed over broken
+          // production code. A fake that ignores what it was asked for cannot
+          // convict code that fails to ask (§11's own tuition, second instance).
+          const asked = q._eq.status;
+          if (q._eq.invitee_phone === MEHEK.phone && (asked === undefined || asked === memberStatus))
+            return { data: { id: MEHEK.memberId, couple_id: memberCouple, role: MEHEK.role,
+                             invitee_name: MEHEK.name, status: memberStatus } };
+          return { data: null };
+        }
+        if (table === 'couples') {
+          if (q._eq.id === MEHEK.coupleId || q._eq.user_id === BRIDE.usersId)
+            return { data: { id: MEHEK.coupleId, user_id: BRIDE.usersId, users: { name: BRIDE_NAME } } };
+          return { data: null };
+        }
+        if (table === 'muse_saves') return { data: saves[0] || null };
+        return { data: null };
+      };
+      q.single = async () => ({ data: { id: 'save-1' }, error: null });
+      q.then = undefined;
+      return q;
+    },
+  };
+  return { plane, cap };
+}
+
+function runGuard(bearer, planeOpts) {
+  const { plane, cap } = guardPlane(planeOpts);
+  const req = {
+    headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+    cookies: {}, body: {}, params: {}, query: {},
+    app: { locals: { supabase: plane } },
+  };
+  const out = {};
+  const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = () => { if (!done) { done = true; resolve({ out, req, cap, plane }); } };
+    res.json = (b) => { out.body = b; fin(); return res; };
+    guard(req, res, () => { out.passed = true; fin(); });
+    setTimeout(fin, 4000);
+  });
+}
+
+async function driveA(handler, { bearer, params, query, body, planeOpts }) {
+  const { plane, cap } = guardPlane(planeOpts);
+  const req = {
+    headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+    cookies: {}, body: body || {}, params: params || {}, query: query || {},
+    app: { locals: { supabase: plane } },
+  };
+  const out = {};
+  const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+  await new Promise((resolve, reject) => {
+    let done = false;
+    res.json = (b) => { out.body = b; if (!done) { done = true; resolve(); } return res; };
+    const next = (e) => {
+      if (e) { done = true; return reject(e); }
+      Promise.resolve(handler(req, res, (err) => { done = true; reject(err || new Error('next() with no error')); }));
+    };
+    guard(req, res, next);
+    setTimeout(() => { if (!done) { done = true; reject(new Error('never answered')); } }, 4000);
+  });
+  return { out, req, cap };
+}
+
+const MEHEK_TOKEN = () => circleSession.mintCircleSession({ userId: MEHEK.usersId, coupleId: MEHEK.coupleId });
+
+// ── THE GUARD ITSELF ────────────────────────────────────────────────────────
+
+t('§13.1 the guard verifies the LANE-NATIVE token — supabase.auth.getUser is GONE (axis 1)', () => {
+  const g = read('src/api/middleware/requireCircleMemberAuth.js');
+  const code = g.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/supabase\.auth\.getUser/.test(code),
+    'the guard still asks the auth plane for a credential this lane does not mint');
+  assert.ok(/verifyCircleSession/.test(code) && /circleTokenFrom/.test(code),
+    'the guard does not go through circleSession');
+});
+
+t('§13.2 axis 2 is dead: no raw .eq(\'id\', user.id) against an AUTH-plane identity', () => {
+  const code = read('src/api/middleware/requireCircleMemberAuth.js')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/\.eq\('id',\s*user\.id\)/.test(code), 'the 0063 plane collision survived the re-authoring');
+  assert.ok(/\.eq\('id',\s*claim\.user_id\)/.test(code),
+    'the guard no longer resolves the bound user at all');
+});
+
+// §13.3 — THE CELL THAT REDDENS IF THE CREDENTIAL EVER CARRIES AN AUTH-PLANE ID.
+// The guard skips `resolveUsersId` because the token's first bound field IS a
+// public users id: `verifyPin.js` mints from a `public.users` row and `join.js`
+// from the row it has just provisioned there. That is a claim about two OTHER
+// files, so it is asserted against them — if either mint ever binds an auth id,
+// axis 2 comes back to life silently and this cell is what says so.
+t('§13.3 both mint points bind a PUBLIC users id — which is why no plane hop is owed', () => {
+  const vp = read('src/api/circle/verifyPin.js');
+  assert.ok(vp.includes("mintCircleSession({ userId: userRow.id, coupleId: member.couple_id })"),
+    'verify-pin no longer mints from the public users row');
+  assert.ok(/\.from\('users'\)[\s\S]{0,200}?\.eq\('phone', e164Phone\)/.test(vp),
+    "verify-pin's userRow no longer comes from public.users");
+  const jn = read('src/api/circle/join.js');
+  assert.ok(jn.includes('mintCircleSession({ userId'), 'join/accept no longer mints');
+  assert.ok(!/auth_user_id/.test(jn.split('\n').filter(l => !l.trim().startsWith('//')).join('\n')),
+    'join now touches the auth plane — the no-hop argument needs re-deriving');
+});
+
+await ta('§13.4 NO CREDENTIAL ⇒ 401 at the guard, and nothing downstream runs', async () => {
+  const { out } = await runGuard(null);
+  assert.strictEqual(out.status, 401);
+  assert.strictEqual(out.body.success, false);
+  assert.ok(!out.passed, 'the guard called next() for a caller with no credential');
+});
+
+await ta('§13.5 A SUPABASE JWT IS REFUSED AT A CLASS A DOOR — the crossover, both shapes', async () => {
+  const { out } = await runGuard(BRIDE_JWT);
+  assert.strictEqual(out.status, 401, "the bride's JWT bought a co-planner session");
+  assert.ok(!out.passed);
+});
+
+await ta('§13.6 A TAMPERED TOKEN ⇒ 401 — the subject is inside the mac', async () => {
+  const tok = MEHEK_TOKEN();
+  const parts = tok.split('.');
+  parts[0] = FORGED[0];                        // swap the bound user for a real non-member
+  const { out } = await runGuard(parts.join('.'));
+  assert.strictEqual(out.status, 401, 'a re-subjected token passed the guard');
+});
+
+await ta('§13.7 AN EXPIRED TOKEN ⇒ 401 — a 90-day TTL is still a TTL', async () => {
+  const expired = signed.mintSigned({
+    secret: process.env.CIRCLE_SESSION_SECRET,
+    subject: [MEHEK.usersId, MEHEK.coupleId], ttlMs: 1,
+  });
+  await new Promise(r => setTimeout(r, 5));
+  const { out } = await runGuard(expired);
+  assert.strictEqual(out.status, 401);
+});
+
+await ta('§13.8 REVOCATION IS LIVE ON EVERY REQUEST ⇒ a valid token over an inactive row is 403', async () => {
+  const { out } = await runGuard(MEHEK_TOKEN(), { memberStatus: 'removed' });
+  assert.strictEqual(out.status, 403, 'a removed member kept her access for the token\'s lifetime');
+  assert.ok(!out.passed);
+});
+
+await ta('§13.9 THE BINDING IS LOAD-BEARING ⇒ token couple != membership couple is 403', async () => {
+  const { out } = await runGuard(MEHEK_TOKEN(), { memberCouple: OTHER_COUPLE });
+  assert.strictEqual(out.status, 403, 'a phone active in a second circle could ride the wrong token');
+});
+
+await ta('§13.10 401 AND 403 ARE DIFFERENT ANSWERS, and the client acts on the difference', async () => {
+  const noCred  = await runGuard(null);
+  const revoked = await runGuard(MEHEK_TOKEN(), { memberStatus: 'removed' });
+  assert.strictEqual(noCred.out.status, 401);
+  assert.strictEqual(revoked.out.status, 403);
+  assert.notStrictEqual(noCred.out.status, revoked.out.status,
+    'a revoked membership would send her to a PIN screen that cannot restore it');
+});
+
+await ta('§13.11 THE REAL CALLER IS ADMITTED — req.circleMember carries the proven row', async () => {
+  const { out, req } = await runGuard(MEHEK_TOKEN());
+  assert.ok(out.passed, 'the one live member was refused by her own lane');
+  assert.strictEqual(req.circleMember.user_id, MEHEK.usersId);
+  assert.strictEqual(req.circleMember.couple_id, MEHEK.coupleId);
+  assert.strictEqual(req.circleMember.co_planner_id, MEHEK.memberId);
+  assert.strictEqual(req.circleMember.name, MEHEK.name);
+});
+
+t('§13.12 NO TOKEN BYTES ARE LOGGED IN THE GUARD — not the value, not a prefix, not a length', () => {
+  const code = read('src/api/middleware/requireCircleMemberAuth.js')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const logs = code.match(/console\.[a-z]+\([^)]*\)/g) || [];
+  assert.strictEqual(logs.length, 0, `the guard logs: ${logs.join(' | ')}`);
+  assert.ok(!/token\.(length|slice|substring)/.test(code), 'a token length or prefix is derived somewhere');
+});
+
+// ── FORK E: THE PERMISSION BLOCK'S ONE HOME ─────────────────────────────────
+
+t('§13.13 FORK E — the permission block has ONE definition and TWO readers', () => {
+  const home = read('src/lib/circlePermissions.js');
+  assert.ok(home.includes('dreamai_access_granted: false'), 'the one home does not carry the block');
+  for (const f of ['src/api/middleware/requireCircleMemberAuth.js', 'src/api/circle/session.js']) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/can_contribute_muse:\s*true/.test(code),
+      `${f} still carries its own literal copy of the block`);
+  }
+  assert.ok(read('src/api/middleware/requireCircleMemberAuth.js').includes("require('../../lib/circlePermissions')"));
+  assert.ok(read('src/api/circle/session.js').includes('me.permissions'),
+    'session.js no longer serves the guard-resolved block');
+});
+
+t('§13.14 [F-06.85] F-07.115 IS DECLARED AT THE ONE HOME, by number and by mechanism', () => {
+  const home = read('src/lib/circlePermissions.js');
+  assert.ok(home.includes('F-07.115'), 'the keyless lock is not named where it lives');
+  assert.ok(/PUBLIC_SCHEMA\.md:74-89/.test(home), 'the column witness is not cited');
+});
+
+// ── CLASS A DOORS, DRIVEN END TO END ────────────────────────────────────────
+
+await ta('§13.15 SESSION: the three banked FORGED ids are REFUSED — the disease, dead', async () => {
+  for (const id of FORGED) {
+    const { out } = await driveA(SESSION_GET, { params: { userId: id } });
+    assert.strictEqual(out.status, 401, `${id} still bought a session`);
+    assert.ok(!JSON.stringify(out.body).includes(MEHEK.name), "a member's name reached a forged caller");
+  }
+});
+
+await ta('§13.16 SESSION: the real caller is served HER OWN session, and :userId is ignored', async () => {
+  // The param is a stranger's id ON PURPOSE. The proven identity wins
+  // (`resolveCircleIdentityIfPresent.js:50-51`), so she receives herself.
+  const { out } = await driveA(SESSION_GET, { bearer: MEHEK_TOKEN(), params: { userId: FORGED[2] } });
+  assert.strictEqual(out.body.success, true, 'the live member was refused');
+  assert.strictEqual(out.body.data.user_id, MEHEK.usersId, 'the path id decided the answer');
+  assert.strictEqual(out.body.data.couple_id, MEHEK.coupleId);
+  assert.strictEqual(out.body.data.bride.name, BRIDE_NAME, 'the one remaining query stopped running');
+});
+
+await ta('§13.17 SESSION stays MINIMISED under the guard — phone and pin_set never return', async () => {
+  const { out } = await driveA(SESSION_GET, { bearer: MEHEK_TOKEN(), params: { userId: MEHEK.usersId } });
+  const wire = JSON.stringify(out.body);
+  for (const gone of ['phone', 'pin_set', 'co_planner_id', 'wedding_date', 'partner_name']) {
+    assert.ok(!wire.includes(gone), `${gone} came back with the guard`);
+  }
+  assert.ok(!wire.includes(MEHEK.phone), "the member's phone number reached the wire");
+});
+
+t('§13.18 F-07.106\'s DECLARATION SURVIVED THE COLLAPSE — the paragraph is untouchable', () => {
+  const s2 = read('src/api/circle/session.js');
+  assert.ok(s2.includes('DECLARED PARTIAL — F-07.106'), "the declaration was collapsed with the block");
+  assert.ok(s2.includes('src/api/couple/profile.js:41-50'), 'the named mechanism left the paragraph');
+  assert.ok(s2.includes('[F-06.85]'), 'the law-tag that forces the re-read is gone');
+});
+
+await ta('§13.19 FORK D — MUSE GET: refused without a credential, and :brideId is ignored with one', async () => {
+  const bare = await driveA(MUSE_GET, { params: { brideId: MEHEK.coupleId } });
+  assert.strictEqual(bare.out.status, 401, 'the door with no check of any kind still has none');
+
+  const ok = await driveA(MUSE_GET, { bearer: MEHEK_TOKEN(), params: { brideId: OTHER_COUPLE } });
+  assert.strictEqual(ok.out.body.success, true, 'the member cannot see her own board');
+  // She asked for ANOTHER couple's board and received her own — the param is dead.
+  assert.ok(Array.isArray(ok.out.body.data));
+});
+
+await ta('§13.20 MUSE SAVE: the WRITE is attributed to the PROVEN member, never to the body', async () => {
+  const { out, cap } = await driveA(MUSE_SAVE, {
+    bearer: MEHEK_TOKEN(),
+    body: { image_url: 'https://x/y.jpg', memberUserId: FORGED[0] },   // a forged attribution
+  });
+  assert.strictEqual(out.body.success, true);
+  assert.strictEqual(cap.inserted[0].saved_by_user_id, MEHEK.usersId, 'the body forged the saver');
+  assert.strictEqual(cap.inserted[0].couple_id, MEHEK.coupleId);
+  assert.strictEqual(cap.activity[0].actor_user_id, MEHEK.usersId, 'the body forged the actor');
+});
+
+// The scanner skips ITSELF, and that exclusion is named rather than regexed
+// away: this cell's own name contains the dead identifier, so a census that
+// counted its own accusation would never go green. Every other file in `src/`
+// and `scripts/` is walked, comment-stripped through the same discipline
+// §12.10 uses — a census counting prose as code is F-07.74's class.
+const SELF = 'scripts/b07_f0772_circle_auth_bench.js';
+t('§13.21 F-07.116 CURED BY DELETION — getCircleMember is gone from the estate', () => {
+  const hits = [];
+  for (const dir of ['src', 'scripts']) {
+    const walk = (d) => {
+      for (const e of fs.readdirSync(SRC(d), { withFileTypes: true })) {
+        const rel = path.posix.join(d, e.name);
+        if (e.isDirectory()) { if (e.name !== 'node_modules' && e.name !== 'dist') walk(rel); }
+        else if (/\.(js|ts|mjs)$/.test(e.name) && rel !== SELF) {
+          const body = read(rel).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+          if (/\bgetCircleMember\b/.test(body)) hits.push(rel);
+        }
+      }
+    };
+    walk(dir);
+  }
+  assert.deepStrictEqual(hits, [], `the dead helper is still live code in: ${hits.join(', ')}`);
+});
+
+t('§13.22 CLASS A source: no door reads an identity out of a param or a body any more', () => {
+  for (const f of ['src/api/circle/session.js', 'src/api/circle/muse.js', 'src/api/circle/dreamai.js']) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/memberUserId/.test(code), `${f} still reads memberUserId`);
+    assert.ok(!/primary_user_id/.test(code), `${f} still reads primary_user_id`);
+    assert.ok(/req\.circleMember/.test(code), `${f} never reads the proven member`);
+  }
+});
+
+// ── §13.23 IS SOURCE-LEVEL, AND THE REASON IS DISCLOSED (§12.8's class) ─────
+// The honest cell would drive dreamai.js's two handlers. It does not, for the
+// same reason §12.8 does not: `require`ing that router executes
+// `src/agent/circleEngine` at import (dreamai.js:14), a W-1 surface that builds
+// a client at load. The claim is therefore NARROWED to source, and the remainder
+// travels to the founder's card, where the door is exercised by curl.
+t('§13.23 DREAMAI (source-level, narrowed): guarded at the mount, body identity dead', () => {
+  const r = read('src/api/router.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(/router\.use\('\/dreamai',\s*requireCircleMemberAuth/.test(r), '/dreamai is unguarded');
+  const d = read('src/api/circle/dreamai.js');
+  const code = d.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(/const \{ message \} = req\.body/.test(code), 'the body destructure still takes an identity');
+  assert.ok(/me\.co_planner_id/.test(code) && /invitee_name: me\.name/.test(code),
+    'the circleEngine payload is no longer assembled from the proven member');
+  assert.ok(d.includes('brideIndex.js:677'), "Fork C's reasoning left the file it justifies");
+});
+
+// ── CLASS B: REFUSE ON NEITHER, ADMIT BOTH LANES ────────────────────────────
+
+async function driveFeed({ bearer }) {
+  const { plane } = guardPlane({ activity: [] });
+  const out = {};
+  const req = { headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+                cookies: {}, body: {}, params: { brideId: MEHEK.coupleId }, query: {},
+                app: { locals: { supabase: plane } } };
+  const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+  await new Promise((resolve, reject) => {
+    let done = false;
+    res.json = (b) => { out.body = b; if (!done) { done = true; resolve(); } return res; };
+    FEED_GET(req, res, (e) => { done = true; reject(e || new Error('next()')); });
+    setTimeout(() => { if (!done) { done = true; reject(new Error('never answered')); } }, 4000);
+  });
+  return out;
+}
+
+await ta('§13.24 CLASS B refuses a credential-less caller at ALL FIVE handlers', async () => {
+  const feed = await driveFeed({});
+  assert.strictEqual(feed.status, 401);
+  assert.strictEqual(feed.body.success, false, 'feed spoke the wrong envelope family');
+
+  const list = await drive(GET_LIST, { params: { brideId: MEHEK.coupleId } });
+  assert.strictEqual(list.out.status, 401);
+  assert.strictEqual(list.out.body.success, false);
+
+  const thr = await drive(GET_THREAD, { params: { brideId: MEHEK.coupleId, threadId: `dm:${CONVO_ID}` } });
+  assert.strictEqual(thr.out.status, 401);
+  assert.strictEqual(thr.out.body.success, false);
+
+  const get = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW] });
+  assert.strictEqual(get.out.status, 401);
+  assert.strictEqual(get.out.body.ok, false, 'the messages GET spoke {success} — F-07.117');
+
+  const post = await drive(POST_MSG, { body: { userId: MEHEK.coupleId, body: 'x' } });
+  assert.strictEqual(post.out.status, 401);
+  assert.strictEqual(post.out.body.ok, false);
+});
+
+await ta('§13.25 THE BRIDE IS ADMITTED at every Class B door she reaches — the hazard, closed', async () => {
+  // She is NOT a circle_members row. Arm 2 is the only thing standing between
+  // her and a refusal on her own conversation, and this is the cell that says so.
+  const get = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW], bearer: BRIDE_JWT });
+  assert.strictEqual(get.out.body.ok, true, 'the bride was locked out of her own circle chat');
+  assert.strictEqual(get.out.body.messages.length, 1);
+
+  const post = await drive(POST_MSG, { body: { body: 'hello circle', sender_role: 'bride' }, bearer: BRIDE_JWT });
+  assert.strictEqual(post.out.body.ok, true, 'the bride could not send into her own circle');
+  assert.strictEqual(post.cap.inserted.sender_name, BRIDE_NAME);
+
+  const feed = await driveFeed({ bearer: BRIDE_JWT });
+  assert.strictEqual(feed.body.success, true);
+});
+
+await ta('§13.26 THE MEMBER IS ADMITTED at Class B with her lane-native token', async () => {
+  const token = MEHEK_TOKEN();
+  const get = await drive(GET_MSG, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW], bearer: token });
+  assert.strictEqual(get.out.body.ok, true, 'the member was refused on the shared door');
+
+  const post = await drive(POST_MSG, { body: { body: 'x' }, bearer: token });
+  assert.strictEqual(post.out.body.ok, true);
+  assert.strictEqual(post.cap.inserted.sender_name, MEHEK.name);
+  assert.strictEqual(post.cap.inserted.sender_user_id, MEHEK.usersId);
+
+  const feed = await driveFeed({ bearer: token });
+  assert.strictEqual(feed.body.success, true);
+});
+
+await ta('§13.27 THE PARAM CANNOT CROSS COUPLES — a proven caller asking for another couple gets her own', async () => {
+  const token = MEHEK_TOKEN();
+  const get = await drive(GET_MSG, { params: { coupleId: OTHER_COUPLE }, rows: [PRECURE_ROW], bearer: token });
+  assert.strictEqual(get.out.body.ok, true);
+  assert.strictEqual(get.out.body.thread_id, `dm:${CONVO_ID}`, 'the supplied couple id chose the thread');
+});
+
+await ta('§13.28 THE BODY\'S userId IS DEAD — a forged identity beside a real token authors nothing', async () => {
+  const token = MEHEK_TOKEN();
+  const post = await drive(POST_MSG, { body: { userId: FORGED[1], body: 'x' }, bearer: token });
+  assert.strictEqual(post.cap.inserted.sender_user_id, MEHEK.usersId, 'the body chose the author');
+  assert.strictEqual(post.cap.inserted.sender_name, MEHEK.name);
+});
+
+t('§13.29 the mint-and-teach fallback is DELETED, not left unreachable', () => {
+  const code = read('src/api/circle/messages.js')
+    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/bodyUserId/.test(code), 'the dead fallback is still standing');
+  assert.ok(/async function resolveAuthor\(supabase, identity\)/.test(code),
+    'resolveAuthor still takes a body identity');
+});
+
+// ── F-07.113: THE THIRD ANSWER STOPS BEING SILENT ───────────────────────────
+
+await ta('§13.30 F-07.113: a PRESENT-but-unresolvable credential is refused AND SPEAKS', async () => {
+  // A Bearer that is not a circle token and not a resolvable JWT. Arm 1 falls
+  // through; arm 2 answers {present:true, coupleId:null} — the third answer,
+  // live-witnessed at CE-126 on the founder's own stale sign-in.
+  const lines = [];
+  const warn = console.warn;
+  console.warn = (...a) => lines.push(a.join(' '));
+  let post;
+  try {
+    post = await drive(POST_MSG, { body: { body: 'x' }, bearer: 'stale.jwt.value' });
+  } finally { console.warn = warn; }
+  assert.strictEqual(post.out.status, 401, 'the third answer was served');
+  assert.strictEqual(post.cap.inserted, null);
+  const hit = lines.find(l => l.includes('[circle/messages]'));
+  assert.ok(hit, 'the third answer is still silent at the write seam — F-07.113 uncured');
+  assert.ok(hit.includes('source=couple'), 'the log line does not name its source');
+  assert.ok(hit.includes('coupleId=null'), 'the log line does not name the null');
+});
+
+await ta('§13.31 F-07.113\'s line carries ZERO credential bytes — a length is a value', async () => {
+  const SECRET_TOKEN = 'stale.jwt.value';
+  const lines = [];
+  const warn = console.warn;
+  console.warn = (...a) => lines.push(a.join(' '));
+  try { await drive(POST_MSG, { body: { body: 'x' }, bearer: SECRET_TOKEN }); }
+  finally { console.warn = warn; }
+  const hit = lines.find(l => l.includes('[circle/messages]')) || '';
+  assert.ok(!hit.includes(SECRET_TOKEN), 'the token value reached a log');
+  assert.ok(!hit.includes(SECRET_TOKEN.slice(0, 6)), 'a token prefix reached a log');
+  assert.ok(!/length|len=|\b15\b/.test(hit), 'a token length reached a log');
+  assert.ok(!hit.includes('x'), 'the message body reached a log');
+});
+
+await ta('§13.32 an ABSENT credential does NOT fire the line — it reports a mechanism, not traffic', async () => {
+  const lines = [];
+  const warn = console.warn;
+  console.warn = (...a) => lines.push(a.join(' '));
+  try { await drive(POST_MSG, { body: { body: 'x' } }); }
+  finally { console.warn = warn; }
+  assert.ok(!lines.some(l => l.includes('[circle/messages] POST refused')),
+    'the line fires on every logged-out request and is therefore noise');
+});
+
+H('§13.M — MUTATION: every §13 cell proven non-vacuous by breaking PRODUCTION code');
+
+// ── ANCHORS ARE SITE-QUALIFIED. CE-127's fault, third instance in this file:
+// `mutate` uses String.replace and takes the FIRST occurrence, and the refusal
+// line below is byte-identical at three Class B sites. Every anchor carries the
+// line above it, which differs at every site.
+await ta('§13.M1 make the guard trust the auth plane again ⇒ §13.1 RED (axis 1 restored)', async () => {
+  await mutate('src/api/middleware/requireCircleMemberAuth.js',
+    '  const claim = verifyCircleSession(token);',
+    '  const claim = await supabase.auth.getUser(token);', async () => {
+      const code = read('src/api/middleware/requireCircleMemberAuth.js')
+        .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      assert.ok(!/supabase\.auth\.getUser/.test(code));
+    });
+});
+
+await ta('§13.M2 drop the credential check ⇒ §13.4 RED (the lane trusts anyone again)', async () => {
+  // The first cut of this cell replaced the predicate with `if (false)`, which
+  // left `token` null, let `verifyCircleSession(null)` answer null, and produced
+  // a 401 anyway — the cell passed for the WRONG REASON, exactly CE-125's third
+  // bench fault (a mutation that makes two halves agree on a broken world). The
+  // mutation that actually opens the hole is the one that lets a credential-less
+  // caller THROUGH.
+  await mutate('src/api/middleware/requireCircleMemberAuth.js',
+    "  if (!token) {\n    return res.status(401).json({ success: false, error: 'Unauthorised.' });\n  }\n\n  // `verifySigned` answers NULL",
+    "  if (!token) {\n    return next();\n  }\n\n  // `verifySigned` answers NULL", async () => {
+      delete require.cache[require.resolve(SRC('src/api/middleware/requireCircleMemberAuth'))];
+      const g2 = require(SRC('src/api/middleware/requireCircleMemberAuth'));
+      const { plane } = guardPlane();
+      const req = { headers: {}, cookies: {}, app: { locals: { supabase: plane } } };
+      const out = {};
+      const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+      await new Promise((r) => { let d = false; const f = () => { if (!d) { d = true; r(); } };
+        res.json = (b) => { out.body = b; f(); return res; };
+        g2(req, res, () => { out.passed = true; f(); }); setTimeout(f, 2000); });
+      assert.strictEqual(out.status, 401);
+    });
+});
+
+await ta('§13.M3 drop the couple binding check ⇒ §13.9 RED (a phone in two circles rides either token)', async () => {
+  await mutate('src/api/middleware/requireCircleMemberAuth.js',
+    '  if (member.couple_id !== claim.couple_id) {',
+    '  if (false) {', async () => {
+      delete require.cache[require.resolve(SRC('src/api/middleware/requireCircleMemberAuth'))];
+      const g2 = require(SRC('src/api/middleware/requireCircleMemberAuth'));
+      const { plane } = guardPlane({ memberCouple: OTHER_COUPLE });
+      const req = { headers: { authorization: `Bearer ${MEHEK_TOKEN()}` }, cookies: {},
+                    app: { locals: { supabase: plane } } };
+      const out = {};
+      const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+      await new Promise((r) => { let d = false; const f = () => { if (!d) { d = true; r(); } };
+        res.json = (b) => { out.body = b; f(); return res; };
+        g2(req, res, () => { out.passed = true; f(); }); setTimeout(f, 2000); });
+      assert.strictEqual(out.status, 403);
+    });
+});
+
+await ta('§13.M4 drop the active-status filter ⇒ §13.8 RED (revocation stops being live)', async () => {
+  await mutate('src/api/middleware/requireCircleMemberAuth.js',
+    "    .eq('invitee_phone', userRow.phone)\n    .eq('status', 'active')",
+    "    .eq('invitee_phone', userRow.phone)", async () => {
+      delete require.cache[require.resolve(SRC('src/api/middleware/requireCircleMemberAuth'))];
+      const g2 = require(SRC('src/api/middleware/requireCircleMemberAuth'));
+      const { plane } = guardPlane({ memberStatus: 'removed' });
+      const req = { headers: { authorization: `Bearer ${MEHEK_TOKEN()}` }, cookies: {},
+                    app: { locals: { supabase: plane } } };
+      const out = {};
+      const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+      await new Promise((r) => { let d = false; const f = () => { if (!d) { d = true; r(); } };
+        res.json = (b) => { out.body = b; f(); return res; };
+        g2(req, res, () => { out.passed = true; f(); }); setTimeout(f, 2000); });
+      assert.strictEqual(out.status, 403);
+      assert.ok(!out.passed, 'a removed member was admitted');
+    });
+});
+
+await ta('§13.M5 unmount the guard from /circle/session ⇒ §13.15 RED (the three forged ids work again)', async () => {
+  await mutate('src/api/router.js',
+    "router.use('/circle/session',        requireCircleMemberAuth, require('./circle/session'));   // CLASS A",
+    "router.use('/circle/session',        require('./circle/session'));   // CLASS A", async () => {
+      const r = read('src/api/router.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      assert.ok(/router\.use\('\/circle\/session',\s*requireCircleMemberAuth/.test(r));
+    });
+});
+
+await ta('§13.M6 let MUSE GET read :brideId again ⇒ §13.19 RED (Fork D undone)', async () => {
+  await mutate('src/api/circle/muse.js',
+    '  const brideId = req.circleMember.couple_id;',
+    '  const brideId = req.params.brideId;', async () => {
+      const code = read('src/api/circle/muse.js')
+        .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      assert.ok(!/req\.params\.brideId/.test(code));
+    });
+});
+
+await ta('§13.M7 let MUSE SAVE take the body\'s attribution again ⇒ §13.20 RED', async () => {
+  await mutate('src/api/circle/muse.js',
+    '      saved_by_user_id: me.user_id,',
+    '      saved_by_user_id: req.body.memberUserId || me.user_id,', async () => {
+      delete require.cache[require.resolve(SRC('src/api/circle/muse.js'))];
+      const H2 = handlerOf('src/api/circle/muse.js', 'post', '/save');
+      const { cap } = await driveA(H2, {
+        bearer: MEHEK_TOKEN(),
+        body: { image_url: 'https://x/y.jpg', memberUserId: FORGED[0] },
+      });
+      assert.strictEqual(cap.inserted[0].saved_by_user_id, MEHEK.usersId);
+    });
+});
+
+await ta('§13.M8 drop the refusal from the MESSAGES GET ⇒ §13.24 RED (site-qualified anchor)', async () => {
+  await mutate('src/api/circle/messages.js',
+    "  if (!req.circleIdentity.coupleId) {\n    return res.status(401).json({ ok: false, error: 'Unauthorised.' });\n  }\n  // `:coupleId` IS NO LONGER READ.",
+    "  // `:coupleId` IS NO LONGER READ.", async () => {
+      delete require.cache[require.resolve(SRC('src/api/circle/messages.js'))];
+      const H2 = handlerOf('src/api/circle/messages.js', 'get', '/:coupleId');
+      const { out } = await drive(H2, { params: { coupleId: MEHEK.coupleId }, rows: [PRECURE_ROW] });
+      assert.strictEqual(out.status, 401);
+    });
+});
+
+await ta('§13.M9 drop the refusal from FEED ⇒ §13.24 RED', async () => {
+  await mutate('src/api/circle/feed.js',
+    "  if (!req.circleIdentity.coupleId) {\n    return res.status(401).json({ success: false, error: 'Unauthorised.' });\n  }",
+    "  // refusal removed", async () => {
+      delete require.cache[require.resolve(SRC('src/api/circle/feed.js'))];
+      const H2 = handlerOf('src/api/circle/feed.js', 'get', '/:brideId');
+      const { plane } = guardPlane({ activity: [] });
+      const out = {};
+      const req = { headers: {}, cookies: {}, body: {}, params: { brideId: MEHEK.coupleId }, query: {},
+                    app: { locals: { supabase: plane } } };
+      const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+      await new Promise((r, j) => { let d = false;
+        res.json = (b) => { out.body = b; if (!d) { d = true; r(); } return res; };
+        H2(req, res, (e) => { d = true; j(e || new Error('next()')); });
+        setTimeout(() => { if (!d) { d = true; j(new Error('never answered')); } }, 3000); });
+      assert.strictEqual(out.status, 401);
+    });
+});
+
+await ta('§13.M10 silence F-07.113\'s line ⇒ §13.30 RED (the third answer goes dark again)', async () => {
+  await mutate('src/api/circle/messages.js',
+    "    console.warn('[circle/messages] POST refused — credential present, resolved to no couple:',",
+    "    void ('[circle/messages] POST refused — credential present, resolved to no couple:',", async () => {
+      delete require.cache[require.resolve(SRC('src/api/circle/messages.js'))];
+      const H2 = handlerOf('src/api/circle/messages.js', 'post', '/');
+      const lines = [];
+      const warn = console.warn;
+      console.warn = (...a) => lines.push(a.join(' '));
+      try { await drive(H2, { body: { body: 'x' }, bearer: 'stale.jwt.value' }); }
+      finally { console.warn = warn; }
+      assert.ok(lines.some(l => l.includes('[circle/messages]')));
     });
 });
 
@@ -1492,8 +2186,8 @@ if (fail) {
   process.exitCode = 1;
 } else {
   console.log(`b07_f0772_circle_auth_bench: ${pass} passed, 0 failed  (total ${pass})`);
-  console.log('GREEN — one implementation with two callers, a token that binds the couple it');
-  console.log('claims, a resolver that admits the bride and the member alike, two mint points,');
-  console.log('and NOTHING ENFORCED. The enforcement cells arrive with the enforcement ZIP.');
+  console.log('GREEN — the lane no longer trusts a supplied identifier. Six Class A doors');
+  console.log('behind the re-authored guard, five Class B doors refusing on neither, the');
+  console.log('bride and the member both still admitted, and the third answer speaking.');
 }
 })();

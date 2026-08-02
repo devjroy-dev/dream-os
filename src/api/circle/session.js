@@ -48,6 +48,25 @@
 // pulling it into F-07.72 would re-open the logged-out-enquiry ground F-07.62
 // settled. If F-07.106 is ever cured, or if that door is guarded, RE-READ THIS
 // PARAGRAPH: it is a claim about a file that is not this one.
+//
+// ── F-07.72 ZIP 2 · THE GUARD IS MOUNTED AND THIS BODY IS ITS CONSEQUENCE ────
+// The sentence four paragraphs up — "The enforcement ZIP puts a guard in front
+// of it" — is TRUE as of this delivery. `requireCircleMemberAuth` runs at
+// `router.js`'s mount for `/circle/session`, and everything this handler used to
+// compute for itself now arrives on `req.circleMember`, proven rather than
+// supplied. The hand-rolled block that stood here (user by the SUPPLIED id →
+// member by phone → the permission literal) is gone: three of its four steps
+// were the guard's job and the fourth is below.
+//
+// `:userId` IS NOW IGNORED, AND THAT IS THE FIX, NOT A REGRESSION. The route
+// keeps its shape so no client changes and no bookmark breaks, but the id in the
+// path decides nothing. `resolveCircleIdentityIfPresent.js:50-51` states the law
+// this obeys — THE PROVEN IDENTITY WINS over anything the request supplied in a
+// param or a body — and this door is the reason that law needed writing: it
+// returned, for ANY supplied id and with no credential at all, a member's name
+// and phone, her couple and role, and the bride's name, wedding date and partner
+// name. A member who calls it with a stranger's id in the path now receives her
+// OWN session, because that is the only session she can prove.
 'use strict';
 
 const express      = require('express');
@@ -55,58 +74,30 @@ const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 
 router.get('/:userId', asyncHandler(async (req, res) => {
-  const supabase   = req.app.locals.supabase;
-  const { userId } = req.params;
+  const supabase = req.app.locals.supabase;
+  const me       = req.circleMember;
 
-  // 1. Get user row
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('id, name, phone')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (!userRow) {
-    return res.json({ success: false, error: 'User not found.' });
-  }
-
-  // 2. Find active circle_member by E.164 phone (same format in both tables)
-  //    `phone` is still SELECTed above because it is the join key to this row —
-  //    it is read here and never returned.
-  const { data: member } = await supabase
-    .from('circle_members')
-    .select('id, couple_id, role, status, invitee_name')
-    .eq('invitee_phone', userRow.phone)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  if (!member) {
-    return res.json({ success: false, error: 'Not an active circle member.' });
-  }
-
-  // 3. Get the bride's name — and only the bride's name. `pin_hash`,
-  //    `wedding_date` and `partner_name` are no longer read (see the header).
+  // The bride's name — and only the bride's name. `pin_hash`, `wedding_date`
+  // and `partner_name` are not read (see the minimisation header above). This
+  // is the ONE query the guard does not already answer, which is why it is the
+  // only query left in this file.
   const { data: couple } = await supabase
     .from('couples')
     .select('id, users(name)')
-    .eq('id', member.couple_id)
+    .eq('id', me.couple_id)
     .maybeSingle();
-
-  const permissions = {
-    dreamai_access_granted: false,
-    can_see_budget:         false,
-    can_see_guests:         false,
-    can_see_vendors:        false,
-    can_contribute_muse:    true,
-  };
 
   return res.json({
     success: true,
     data: {
-      user_id:   userRow.id,
-      name:      userRow.name || member.invitee_name || null,
-      couple_id: member.couple_id,
-      role:      member.role,
-      permissions,
+      user_id:   me.user_id,
+      name:      me.name,
+      couple_id: me.couple_id,
+      role:      me.role,
+      // FORK E — the permission literal that stood here is now
+      // `src/lib/circlePermissions.js`, written once and read by the guard and
+      // by this response. F-07.115's declaration lives in that file's header.
+      permissions: me.permissions,
       bride: {
         name: couple?.users?.name || null,
       },

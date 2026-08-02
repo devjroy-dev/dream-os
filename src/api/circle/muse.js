@@ -1,10 +1,31 @@
 // src/api/circle/muse.js
-// GET  /api/v2/circle/muse/:brideId?memberUserId=   — bride's Muse board
-// POST /api/v2/circle/muse/save                     — add image to bride's Muse
-// POST /api/v2/circle/muse/:saveId/comment          — comment on a specific save
+// GET  /api/v2/circle/muse/:brideId    — the bride's Muse board
+// POST /api/v2/circle/muse/save        — add an image to the bride's Muse
+// POST /api/v2/circle/muse/:saveId/comment
 //
-// No JWT — coplanner sends no Authorization header.
-// Auth: validate memberUserId is active circle_member of brideId couple.
+// ── F-07.72 ZIP 2 · CLASS A · GUARDED, AND ONE OF THESE DOORS HAD NOTHING ────
+// `requireCircleMemberAuth` runs at this file's mount (`router.js`). The proven
+// member arrives on `req.circleMember`; `memberUserId` is no longer read from a
+// body or a query anywhere in this file, and `:brideId` no longer decides which
+// couple's board is served.
+//
+// THE GET WAS THE LARGEST BEHAVIOURAL DELTA IN THIS ZIP AND THE CE RULED IT
+// WALKED EXPLICITLY (FORK D). `GET /:brideId` had NO validation of any kind —
+// not a token, not a membership check, not even the `memberUserId` the file's
+// own header claimed it validated. It took a couple id and returned that
+// couple's entire Muse board: every saved image, every vendor name, city,
+// category and starting price, to anyone. The other two doors at least
+// hand-rolled a membership lookup. This one is the reason "it worked before"
+// carries no information here — before, it worked for everyone.
+//
+// ── THE QUERY/BODY PARAMETER IS DELETED, NOT IGNORED (F-07.56's law) ────────
+// `?memberUserId=` and `body.memberUserId` were a client-supplied identity used
+// to attribute a WRITE — `muse_saves.saved_by_user_id` and
+// `circle_activity.actor_user_id` both took it straight from the caller. An
+// accepted-but-unproven identity is a forgeable address; the same ruling that
+// deleted `sender_name` from `messages.js` at F-07.107 applies here. The client
+// still sends the query string (zero pwa bytes move for it) and the server no
+// longer reads it.
 
 'use strict';
 
@@ -15,49 +36,34 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { waNumberFor } = require('../../lib/waNumbers');
 const ENQUIRE_BASE = `https://wa.me/${waNumberFor('vendor')}?text=TDW-`;
 
-// ── Validate circle member helper ─────────────────────────────────────────────
-async function getCircleMember(supabase, memberUserId, coupleId) {
-  if (!memberUserId) return null;
-  // Get user's phone
-  const { data: userRow } = await supabase
-    .from('users').select('phone, name').eq('id', memberUserId).maybeSingle();
-  if (!userRow) return null;
-  // Find active circle_member by phone
-  const { data: member } = await supabase
-    .from('circle_members')
-    .select('id, couple_id, role, invitee_name, status')
-    .eq('invitee_phone', userRow.phone)
-    .eq('couple_id', coupleId)
-    .eq('status', 'active')
-    .maybeSingle();
-  if (!member) return null;
-  return { ...member, user_id: memberUserId, name: userRow.name || member.invitee_name };
-}
+// ── F-07.116 CURED BY DELETION — THE HELPER NOBODY CALLED ───────────────────
+// `getCircleMember(supabase, memberUserId, coupleId)` stood here: 17 lines,
+// fully written, with ZERO callers anywhere in `src/` or `scripts/` — one
+// occurrence in the whole estate, its own definition. The two POST handlers
+// below re-implemented its body inline and the GET called nothing at all.
+//
+// F-07.99's class, third instance, and it was found inside the file this ZIP
+// came to guard. The lesson that file taught is why it dies here rather than in
+// a return trip: a definition nobody calls eventually gets called by accident,
+// and this one would have been the obvious thing to reach for the next time
+// someone needed a membership check — after the guard had already made one
+// unnecessary.
 
 // ── POST /save — before /:brideId ────────────────────────────────────────────
 router.post('/save', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { memberUserId, image_url } = req.body || {};
+  const { image_url } = req.body || {};
 
-  if (!memberUserId || !image_url) {
-    return res.status(400).json({ success: false, error: 'memberUserId and image_url are required.' });
+  if (!image_url) {
+    return res.status(400).json({ success: false, error: 'image_url is required.' });
   }
 
-  // Get user phone to find circle_member
-  const { data: userRow } = await supabase
-    .from('users').select('phone, name').eq('id', memberUserId).maybeSingle();
-  if (!userRow) return res.status(403).json({ success: false, error: 'User not found.' });
-
-  const { data: member } = await supabase
-    .from('circle_members')
-    .select('id, couple_id, invitee_name, status')
-    .eq('invitee_phone', userRow.phone)
-    .eq('status', 'active')
-    .maybeSingle();
-  if (!member) return res.status(403).json({ success: false, error: 'Not an active circle member.' });
-
-  const couple_id  = member.couple_id;
-  const memberName = userRow.name || member.invitee_name || 'Circle member';
+  // F-07.72 ZIP 2 — the two lookups that stood here (users by the SUPPLIED
+  // memberUserId, then circle_members by that row's phone) are the guard's, and
+  // the guard already ran. The attribution below is the PROVEN member's.
+  const me         = req.circleMember;
+  const couple_id  = me.couple_id;
+  const memberName = me.name || 'Circle member';
 
   // Next save_number
   const { data: last } = await supabase
@@ -75,7 +81,7 @@ router.post('/save', asyncHandler(async (req, res) => {
       save_number,
       source_type:      'image',
       image_url,
-      saved_by_user_id: memberUserId,
+      saved_by_user_id: me.user_id,
       saved_by_role:    'circle_member',
     })
     .select('id').single();
@@ -88,7 +94,7 @@ router.post('/save', asyncHandler(async (req, res) => {
   // Write circle_activity
   await supabase.from('circle_activity').insert({
     couple_id,
-    actor_user_id:  memberUserId,
+    actor_user_id:  me.user_id,
     actor_name:     memberName,
     actor_role:     'circle_member',
     activity_type:  'save_added',
@@ -104,35 +110,30 @@ router.post('/save', asyncHandler(async (req, res) => {
 router.post('/:saveId/comment', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { saveId } = req.params;
-  const { memberUserId, content } = req.body || {};
+  const { content } = req.body || {};
 
   if (!content || !content.trim()) {
     return res.status(400).json({ success: false, error: 'content is required.' });
   }
 
-  const { data: userRow } = await supabase
-    .from('users').select('phone, name').eq('id', memberUserId).maybeSingle();
-  if (!userRow) return res.status(403).json({ success: false, error: 'User not found.' });
+  // F-07.72 ZIP 2 — the membership half is the guard's. THE CHECK BELOW STAYS:
+  // "does this save belong to the couple whose circle she is in" is a DIFFERENT
+  // question from "is she a member", and the guard answers only the second. This
+  // is the one Class A door where the guard LAYERS rather than replaces.
+  const me = req.circleMember;
 
-  const { data: member } = await supabase
-    .from('circle_members')
-    .select('id, couple_id, invitee_name, status')
-    .eq('invitee_phone', userRow.phone).eq('status', 'active').maybeSingle();
-  if (!member) return res.status(403).json({ success: false, error: 'Not an active circle member.' });
-
-  // Confirm save belongs to this couple
   const { data: save } = await supabase
     .from('muse_saves').select('id')
-    .eq('id', saveId).eq('couple_id', member.couple_id).maybeSingle();
+    .eq('id', saveId).eq('couple_id', me.couple_id).maybeSingle();
   if (!save) return res.status(404).json({ success: false, error: 'Save not found.' });
 
-  const memberName = userRow.name || member.invitee_name || 'Circle member';
+  const memberName = me.name || 'Circle member';
 
   const { data: activity, error: actErr } = await supabase
     .from('circle_activity')
     .insert({
-      couple_id:      member.couple_id,
-      actor_user_id:  memberUserId,
+      couple_id:      me.couple_id,
+      actor_user_id:  me.user_id,
       actor_name:     memberName,
       actor_role:     'circle_member',
       activity_type:  'comment',
@@ -153,8 +154,13 @@ router.post('/:saveId/comment', asyncHandler(async (req, res) => {
 
 // ── GET /:brideId ─────────────────────────────────────────────────────────────
 router.get('/:brideId', asyncHandler(async (req, res) => {
-  const supabase    = req.app.locals.supabase;
-  const { brideId } = req.params;
+  const supabase = req.app.locals.supabase;
+
+  // FORK D — THE DOOR THAT HAD NOTHING. `:brideId` used to select the couple
+  // whose board was returned, unvalidated, to an unauthenticated caller. It is
+  // read no longer: the board served is the board of the couple the token bound.
+  // The route keeps its shape so no client byte moves.
+  const brideId = req.circleMember.couple_id;
 
   const limit  = Math.min(100, Math.max(1, parseInt(req.query.limit,  10) || 50));
   const offset = Math.max(0,              parseInt(req.query.offset, 10) || 0);

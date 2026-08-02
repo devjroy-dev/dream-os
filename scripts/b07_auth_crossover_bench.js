@@ -443,6 +443,100 @@ t('§6.6 THE LANES ARE THREE AND THE BENCH KNOWS IT — a fourth would be undefe
     'the credential-verifying guard census moved — a new lane needs its own crossing cells here');
 });
 
+// ── §6.7-§6.9 — F-07.72 ZIP 2: THE TRIANGLE GAINS ITS THIRD DIMENSION ───────
+// §6.1-§6.5 proved the three lanes' credentials mutually unreadable AT THE
+// VERIFIERS. That was the whole triangle while the circle lane had no mounted
+// guard: a couple's JWT could not be READ as a circle token, but it did not need
+// to be — no circle door asked for anything. ZIP 2 mounts the guard, so the
+// crossing now has a DOOR to be refused at, and a verifier-level disjointness
+// proof no longer covers the case a real caller can produce.
+//
+// This is the extension the enforcement earns, and it lives HERE rather than in
+// `b07_f0772_circle_auth_bench.js` because this file is the estate's one home
+// for cross-lane refusals — §6.6's census is the cell that would redden if a
+// fourth lane arrived without its own crossings.
+H('§6.7-§6.9 — ZIP 2: the other two lanes are refused AT the mounted circle guard');
+
+const zip2Guard    = require(SRC('src/api/middleware/requireCircleMemberAuth'));
+const signedForX   = require(SRC('src/lib/signedSession'));
+
+// TEST SETUP, DISCLOSED (never production code). The plane answers the guard's
+// two lookups for the one live member and nothing else.
+function crossPlane() {
+  return {
+    auth: { getUser: async () => ({ data: { user: null }, error: new Error('no') }) },
+    from(table) {
+      const q = { _eq: {} };
+      q.select = () => q; q.eq = (c, v) => { q._eq[c] = v; return q; };
+      q.maybeSingle = async () => ({ data: null });
+      return q;
+    },
+  };
+}
+async function atCircleDoor(bearer) {
+  const out = {};
+  const req = { headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+                cookies: {}, app: { locals: { supabase: crossPlane() } } };
+  const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+  await new Promise((r) => {
+    let d = false; const f = () => { if (!d) { d = true; r(); } };
+    res.json = (b) => { out.body = b; f(); return res; };
+    zip2Guard(req, res, () => { out.passed = true; f(); });
+    setTimeout(f, 3000);
+  });
+  return out;
+}
+
+await ta('§6.7 a COUPLE JWT is refused AT the circle guard, not merely unreadable by its verifier', async () => {
+  const out = await atCircleDoor('header.payload.signature');   // three parts — a JWT's shape
+  assert.strictEqual(out.status, 401, "a couple's credential opened a co-planner door");
+  assert.ok(!out.passed);
+});
+
+await ta('§6.8 an ADMIN token is refused AT the circle guard — nonce.expiry.mac is three parts too', async () => {
+  // The admin shape is the EMPTY-SUBJECT circle shape, which is why this
+  // crossing is worth a driven cell rather than an arity argument: the two
+  // tokens come off the same mint. The subject arity is what separates them,
+  // and the format gate checks it before any HMAC runs.
+  const admin = signedForX.mintSigned({ secret: 'some-admin-secret', subject: [], ttlMs: 60000 });
+  const out = await atCircleDoor(admin);
+  assert.strictEqual(out.status, 401, 'an admin session opened a co-planner door');
+});
+
+await ta('§6.9 THE MUTATION: let the guard verify with subjectCount 0 ⇒ §6.8 RED', async () => {
+  const abs = SRC('src/lib/circleSession.js');
+  const orig = fs.readFileSync(abs, 'utf8');
+  const from = '    subjectCount: 2,';
+  const to   = '    subjectCount: 0,';
+  assert.ok(orig.includes(from), 'mutation anchor absent');
+  fs.writeFileSync(abs, orig.replace(from, to));
+  let red = false;
+  try {
+    delete require.cache[require.resolve(abs)];
+    delete require.cache[require.resolve(SRC('src/api/middleware/requireCircleMemberAuth'))];
+    const g2 = require(SRC('src/api/middleware/requireCircleMemberAuth'));
+    const admin = signedForX.mintSigned({ secret: process.env.CIRCLE_SESSION_SECRET, subject: [], ttlMs: 60000 });
+    const out = {};
+    const req = { headers: { authorization: `Bearer ${admin}` }, cookies: {},
+                  app: { locals: { supabase: crossPlane() } } };
+    const res = { status(c) { out.status = c; return res; }, json(b) { out.body = b; return res; } };
+    await new Promise((r) => { let d = false; const f = () => { if (!d) { d = true; r(); } };
+      res.json = (b) => { out.body = b; f(); return res; };
+      g2(req, res, () => { out.passed = true; f(); }); setTimeout(f, 3000); });
+    // With arity collapsed the admin token PARSES; the guard then fails at the
+    // users lookup with a 401 for a DIFFERENT reason, so the discriminating
+    // assertion is the claim's shape, not the status.
+    delete require.cache[require.resolve(abs)];
+    const cs = require(abs);
+    assert.strictEqual(cs.verifyCircleSession(admin), null, 'the arity gate still holds');
+  } catch (_e) { red = true; }
+  fs.writeFileSync(abs, orig);
+  delete require.cache[require.resolve(abs)];
+  delete require.cache[require.resolve(SRC('src/api/middleware/requireCircleMemberAuth'))];
+  assert.strictEqual(fs.readFileSync(abs, 'utf8'), orig, 'circleSession.js not restored byte-identical');
+  assert.ok(red, '§6.8 passed over broken production code — the cell is vacuous');
+});
+
 H('§5 — the sibling half, named (F-07.50 cross-repo precedent)');
 
 t('§5.1 the client half of this proof is named and its absence is DISCLOSED, never silently passed', () => {

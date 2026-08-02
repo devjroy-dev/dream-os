@@ -2,10 +2,11 @@
 // POST /api/v2/frost/circle/messages              — send a message to the circle thread
 // GET  /api/v2/frost/circle/messages/:coupleId    — read the circle thread (bride side)
 //
-// Body (POST): { userId, thread_id?, body, sender_role? }
-//   userId      = couple_id (bride) OR a circle member's user id — used to scope/resolve.
-//   thread_id   = optional. 'circle_group' or 'dm:<uuid>' or omitted → canonical couple thread.
+// Body (POST): { thread_id?, body, sender_role? }
+//   thread_id   = optional. 'dm:<uuid>' or omitted → the canonical group thread.
 //   sender_role = 'bride' | 'circle_member' (defaults to 'couple' for back-compat).
+//   userId      = ACCEPTED AND UNREAD as of F-07.72 ZIP 2. It used to scope and
+//                 resolve; the credential does both now.
 //
 // ── F-07.107 · `sender_name` IS NO LONGER ACCEPTED, AND THAT IS THE CURE ─────
 // This door used to take a `sender_name` string from the client, echo it in the
@@ -18,7 +19,10 @@
 // passing one — the co-planner thread, sanctuary, and journey.ts — and all three
 // stop in the same serial delivery as this file.
 //
-// No JWT — coplanner/bride send no Authorization header. couple_id scopes everything.
+// CLASS B — dual-lane. Enforced in-handler on the resolver's three answers, NOT
+// by `requireCircleMemberAuth`: the bride is not a `circle_members` row and a
+// member guard would lock her out of her own conversation. `:coupleId` on the
+// GET is no longer read; the POST's `userId` fallback is DEAD (see resolveAuthor).
 //
 // CANONICAL THREAD MODEL — RE-AUTHORED AT F-07.112'S CURE (F-06.85)
 //   THE DISCRIMINATOR IS `counterparty_user_id`, AND IT IS THE WHOLE MODEL.
@@ -79,20 +83,18 @@ const { resolveCircleIdentityIfPresent } = require('../../lib/resolveCircleIdent
 //   future session reading a query-count graph.
 //
 // ── WHICH IDENTITY WINS ──────────────────────────────────────────────────────
-// The PROVEN caller, when there is one. `resolveCircleIdentityIfPresent` states
-// the law in its own header (:38-41): the proven couple wins over anything the
-// request supplied in a param or a body. So a credential decides the author, and
-// the body's `userId` is the fallback for the mint-and-teach phase ONLY, where
-// most requests still arrive with no credential at all. That fallback is the last
-// place on this door where a client's word about who it is still counts, and the
-// enforcement ZIP deletes it by refusing the credential-less request outright.
+// THE PROVEN CALLER, AND THERE IS ALWAYS ONE NOW. `resolveCircleIdentityIfPresent`
+// states the law in its own header (:38-41): the proven couple wins over anything
+// the request supplied in a param or a body. At ZIP 1 the body was still a
+// fallback for routing, because most requests carried no credential; at ZIP 2 the
+// door refuses those requests outright, so the fallback is gone and this function
+// answers from the credential alone.
 //
-// A CREDENTIAL-LESS SEND THEREFORE WRITES A NULL AUTHOR, AND THAT IS CORRECT.
-// 0105's columns are nullable for exactly this. A null degrades to precisely
-// today's behaviour — the bubble takes the stranger branch and carries no name —
-// so nothing regresses, nothing is invented, and the gap closes at ZIP 2 rather
-// than being filled with a guess now.
-async function resolveAuthor(supabase, bodyUserId, identity) {
+// 0105's columns stay NULLABLE and that is not vestigial: every row written
+// before this arc has NULL/NULL by the history-stays-NULL ruling, the bride's own
+// `users.name` is nullable at the witness, and F-07.113's third answer still
+// exists upstream — it is now refused rather than written, and logged either way.
+async function resolveAuthor(supabase, identity) {
   const NONE = { coupleId: null, senderName: null, senderUserId: null };
 
   // ── the proven member: her token binds her users.id ────────────────────────
@@ -105,27 +107,26 @@ async function resolveAuthor(supabase, bodyUserId, identity) {
     return byCoupleId(supabase, identity.coupleId);
   }
 
-  // ── mint-and-teach fallback: THE BODY MAY ROUTE, IT MAY NEVER AUTHOR ───────
-  // Order preserved from `resolveCoupleId`: couples first (the bride passes her
-  // couple_id directly), then users -> circle_members (a member passes users.id).
-  // The couple_id is taken so the message still reaches the right thread — that
-  // is byte-for-byte today's behaviour and nothing about routing regresses.
+  // ── THE MINT-AND-TEACH FALLBACK IS DEAD, AS ITS OWN COMMENT PROMISED ───────
+  // What stood here read the body's `userId` — couples first, then users ->
+  // circle_members — and took a couple_id off it so a credential-less send still
+  // reached the right thread. It carried the author fields STRIPPED (the bench
+  // caught an earlier cut returning a body-hydrated name at §11.3) and it ended
+  // with the sentence: "the fallback exists for routing alone and dies whole at
+  // the enforcement ZIP."
   //
-  // THE AUTHOR FIELDS ARE STRIPPED. The rows would happily yield a name here, and
-  // an earlier cut of this function returned it — the bench caught it (§11.3) and
-  // the ruling is literal: sender_user_id is written from the RESOLVED CALLER,
-  // never the body. A body-hydrated name is not safer for coming off an owner row;
-  // it is an identity chosen by whoever typed the userId, which is exactly the
-  // forgeable address F-07.56 named. So a credential-less send writes a NULL
-  // author, the bubble renders with no name line, and nothing is invented. The
-  // fallback exists for routing alone and dies whole at the enforcement ZIP.
-  if (!bodyUserId) return NONE;
-
-  const asCouple = await byCoupleId(supabase, bodyUserId);
-  if (asCouple.coupleId) return { ...NONE, coupleId: asCouple.coupleId };
-
-  const asMember = await byMemberUsersId(supabase, bodyUserId);
-  return { ...NONE, coupleId: asMember.coupleId };
+  // THIS IS THAT ZIP, AND IT IS DELETED RATHER THAN LEFT UNREACHABLE. Both
+  // callers refuse before this function runs unless `coupleId` is non-null, and
+  // a non-null `coupleId` arrives only as `source:'circle'` with a bound userId
+  // or `source:'couple'` with a bound couple — the two branches above. A branch
+  // that cannot execute is not a safety margin; it is a reader's false comfort
+  // and the next sitting's unexplained line. `resolveCircleIdentityIfPresent`
+  // deleted its own dead arm on exactly this reasoning at ZIP 1 and said so in
+  // the same words.
+  //
+  // THE BODY'S `userId` IS THEREFORE READ NOWHERE ON THIS DOOR. It was the last
+  // place where a client's word about who it is still counted.
+  return NONE;
 }
 
 // couple_id -> { the couple, the bride's users.id, the bride's name }
@@ -244,33 +245,64 @@ router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   // F-07.107 — `sender_name` is deliberately NOT destructured. See the contract
   // note at the head of this file: the parameter is deleted, not ignored.
-  const { userId, thread_id, body, sender_role } = req.body || {};
+  // F-07.72 ZIP 2 — `userId` is deliberately NOT destructured. See `resolveAuthor`
+  // below: the body's identity claim is dead, and an accepted-but-unread field is
+  // the same lie in the API contract that `sender_name` was at F-07.107. Clients
+  // still send it; the server no longer reads it, and zero pwa bytes move for it.
+  const { thread_id, body, sender_role } = req.body || {};
 
-  // ── F-07.72 · CLASS B · THE RESOLVER IS MOUNTED AND ACCEPTS, NEVER REQUIRES ─
-  // This delivery is the MINT-AND-TEACH phase: the lane learns to issue and
-  // carry a session and ENFORCES NOTHING. Every answer below — proven, forged,
-  // absent — leaves this handler's behaviour byte-identical to the tree before
-  // it, and `req.circleIdentity` is written and not yet read.
+  // ── F-07.72 ZIP 2 · CLASS B · REFUSE-ON-NEITHER, AND F-07.113'S LOG LINE ───
+  // The line ZIP 1 wrote as a comment is now code. NOT guarded by
+  // `requireCircleMemberAuth` and it must not be: this door is SHARED with the
+  // bride, who is not a `circle_members` row. The resolver admits her JWT
+  // (arm 2) and the member's lane token (arm 1) alike, and refuses only a caller
+  // who proves NEITHER.
   //
-  // IT IS CALLED ANYWAY, AND THAT IS THE POINT. F-07.72 is itself the finding
-  // that a fully-written guard sat unmounted for a block because nothing called
-  // it; F-07.99 is the same lesson one plane over. A resolver shipped without a
-  // call site would be this sitting reproducing its own disease inside its own
-  // cure. Mounting it here makes the enforcement ZIP a REFUSAL LINE beneath this
-  // one, on a path already proven to execute, instead of a first mount on a live
-  // door.
-  //
-  // THE ENFORCEMENT LINE GOES HERE, and it is deliberately not written yet:
-  //   if (!req.circleIdentity.coupleId) return res.status(401)...
+  // THE REFUSAL ENVELOPE IS `{ ok: false }` AND NOT `{ success: false }` — this
+  // door speaks `ok` and `feed`/`threads` speak `success`. Two families, and
+  // F-07.117 (minted at this ZIP's read-first, accepted open) is the finding
+  // that they should be one. Uniforming them would touch every reader in the
+  // estate and is NOT this sitting's; matching each door's own family is.
   req.circleIdentity = await resolveCircleIdentityIfPresent(req, supabase);
+
+  // ── F-07.113 CURED · THE THIRD ANSWER STOPS BEING SILENT ───────────────────
+  // [F-06.85] THIS LINE IS CONDITIONED ON A MECHANISM AND NAMES IT: a request
+  // carrying a credential that resolves to no couple returns
+  // `{present:true, coupleId:null}` — the THIRD ANSWER, and by the resolver's own
+  // ruling it never demotes to `present:false`. Live-witnessed at CE-126 on the
+  // founder's own walk: a stale JWT reached `auth.getUser`, failed, and the write
+  // landed with NULL/NULL — byte-indistinguishable at the row from a pre-0105
+  // row, with no log and no warn. Every layer behaved exactly as specified over a
+  // broken input; THE GAP WAS OBSERVABILITY, and it is the one case enforcement
+  // cannot see, because the third answer is precisely a request that HAS a
+  // credential.
+  //
+  // It fires BEFORE the refusal below, deliberately: after the refusal this
+  // request produces no row, no reply and no other trace, so if the line does not
+  // speak here it never speaks at all.
+  //
+  // NO CREDENTIAL BYTES. No token, no prefix, no LENGTH — a length is a value,
+  // and F-07.108's rotation exists because one value reached a screenshot. No
+  // message body, no phone, no name: this line reports a mechanism, never a
+  // conversation.
+  if (req.circleIdentity.present && !req.circleIdentity.coupleId) {
+    console.warn('[circle/messages] POST refused — credential present, resolved to no couple:',
+      `source=${req.circleIdentity.source} coupleId=null`);
+  }
+
+  if (!req.circleIdentity.coupleId) {
+    return res.status(401).json({ ok: false, error: 'Unauthorised.' });
+  }
 
   if (!body || !body.trim()) {
     return res.status(400).json({ ok: false, error: 'body is required.' });
   }
 
   const { coupleId, senderName, senderUserId } =
-    await resolveAuthor(supabase, userId, req.circleIdentity);
+    await resolveAuthor(supabase, req.circleIdentity);
   if (!coupleId) {
+    // Reachable only when a PROVEN identity's owner row has since vanished —
+    // the signature outlives the row it names. Kept, and shaped as it always was.
     return res.status(400).json({ ok: false, error: 'Could not resolve circle for this user.' });
   }
 
@@ -355,27 +387,31 @@ router.post('/', asyncHandler(async (req, res) => {
 
 // ── GET /:coupleId — read the canonical circle thread (bride side) ───────────
 router.get('/:coupleId', asyncHandler(async (req, res) => {
-  const supabase     = req.app.locals.supabase;
-  const { coupleId } = req.params;
+  const supabase = req.app.locals.supabase;
 
-  // ── F-07.72 · CLASS B · THE RESOLVER IS MOUNTED AND ACCEPTS, NEVER REQUIRES ─
-  // This delivery is the MINT-AND-TEACH phase: the lane learns to issue and
-  // carry a session and ENFORCES NOTHING. Every answer below — proven, forged,
-  // absent — leaves this handler's behaviour byte-identical to the tree before
-  // it, and `req.circleIdentity` is written and not yet read.
+  // ── F-07.72 ZIP 2 · CLASS B · REFUSE-ON-NEITHER ────────────────────────────
+  // The line ZIP 1 wrote as a comment is now code. This is THE BRIDE'S OWN DOOR
+  // — `sanctuary:2585` polls it every ten seconds — and it is the reason the CE
+  // ruled Fork A(c): under enforcement a bride whose JWT has gone stale, or who
+  // is signed out entirely, is refused here, and her client would show her the
+  // last known messages forever while her sends vanished. The pwa half of this
+  // delivery gives that refusal a landing. Enforcement without a landing is a
+  // security fix that breaks a real person's screen.
   //
-  // IT IS CALLED ANYWAY, AND THAT IS THE POINT. F-07.72 is itself the finding
-  // that a fully-written guard sat unmounted for a block because nothing called
-  // it; F-07.99 is the same lesson one plane over. A resolver shipped without a
-  // call site would be this sitting reproducing its own disease inside its own
-  // cure. Mounting it here makes the enforcement ZIP a REFUSAL LINE beneath this
-  // one, on a path already proven to execute, instead of a first mount on a live
-  // door.
-  //
-  // THE ENFORCEMENT LINE GOES HERE, and it is deliberately not written yet:
-  //   if (!req.circleIdentity.coupleId) return res.status(401)...
+  // Envelope `{ ok: false }`, matching this door's family — see the POST above
+  // and F-07.117.
   req.circleIdentity = await resolveCircleIdentityIfPresent(req, supabase);
-  const limit        = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+
+  if (!req.circleIdentity.coupleId) {
+    return res.status(401).json({ ok: false, error: 'Unauthorised.' });
+  }
+  // `:coupleId` IS NO LONGER READ. It selected which couple's circle thread was
+  // returned, on the caller's own word, with no credential — the disease this
+  // ZIP exists to end, on the door F-07.112 found serving a member's private
+  // conversation with Mira. The thread served is the thread of the couple the
+  // credential PROVED.
+  const coupleId = req.circleIdentity.coupleId;
+  const limit    = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
 
   const { data: couple } = await supabase
     .from('couples').select('id').eq('id', coupleId).maybeSingle();
