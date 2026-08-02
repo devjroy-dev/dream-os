@@ -164,6 +164,43 @@ async function handleMarketingInbound({ supabase, from, text, messageId, sendWa,
   // ── START → resume from opted_out ─────────────────────────────────────────────────────────
   if (isStartWord(text)) {
     const prospect = await findProspectByPhone(supabase, phone);
+
+    // ── TDW_08 · F-08.24 · THE START ARM ─────────────────────────────────────
+    // THE EXACT MIRROR of the STOP arm at :142-150, and it runs OUTSIDE the
+    // opted_out guard below on purpose. The guard returns early, so a limb
+    // placed inside it would be unreachable on a SECOND start — and that is not
+    // hypothetical: on the founder's walk of 2026-08-02 the first START lifted
+    // the prospect out of `opted_out` and the second fell straight through this
+    // guard. An arm keyed on the PROSPECT'S state restores once and then never
+    // again, while the demo it was meant to raise stays down.
+    //
+    // IT RUNS FIRST, and the ordering is the opposite of STOP's for the same
+    // reason STOP's is what it is. There, the opt-out write goes first because
+    // blocking sends is the safe failure. Here, the safe failure is leaving the
+    // opt-out STANDING — so the demo half runs before the lift, and if this
+    // module is wrong the human is still protected. It cannot throw outward.
+    //
+    // FAIL-OPEN, exactly as the STOP arm: restore() returns TYPED refusals for
+    // business conditions and is idempotent by its own `state !== 'removed'`
+    // check, so `no_linked_demo` (a handset with no demo) and
+    // `illegal_transition` (a demo that is already live) are the NORMAL answers
+    // here and are not logged as anomalies. Only a genuine infrastructure fault
+    // reaches the catch, and it is loud and swallowed.
+    //
+    // LAZY REQUIRE for the same cycle reason as :143 — demoLifecycle requires
+    // this module, and a top-level require would resolve against a half-built
+    // exports object.
+    try {
+      const r = await require('./demoLifecycle').restoreByPhone(supabase, phone);
+      if (r.ok === false && r.reason !== 'no_linked_demo' && r.reason !== 'illegal_transition') {
+        console.log(`[prospects:start] demo restore no-op: ${r.reason}`);
+      }
+    } catch (e) {
+      console.error(`[prospects:start] DEMO RESTORE FAILED for ${phone}: ${e.message} — ` +
+        'the opt-out lift below still stands; the demo card did not come back and must be ' +
+        'raised by the admin Activate route');
+    }
+
     if (prospect && prospect.state === 'opted_out') {
       await updateProspect(supabase, prospect.id, { state: 'replied' });
       return { action: 'resumed', phone, prospectId: prospect.id };

@@ -537,7 +537,7 @@ const ALERT_PATH = require.resolve(SRC('src/lib/discover/demoLeadAlert.js'));
 // is stubbed because auth is F-07.86's sitting, not this one; the SEND is stubbed
 // because a bench that reaches Meta is not a bench. Everything else — the
 // pre-check, the ordering, the module call, the response shape — is production.
-function loadInviteRoute(sendWaImpl) {
+function loadInviteRoute(sendWaImpl, routePath = '/vendors/:id/invite') {
   const calls = [];
   for (const p of [WA_PATH, GUARD_PATH, ADMIN_PATH, LC_PATH, ALERT_PATH,
                    require.resolve(SRC('src/lib/prospects.js'))]) {
@@ -554,8 +554,8 @@ function loadInviteRoute(sendWaImpl) {
     exports: (req, res, next) => next(),
   };
   const router = require(ADMIN_PATH);
-  const layer = router.stack.find((l) => l.route && l.route.path === '/vendors/:id/invite');
-  if (!layer) throw new Error('the invite route is not registered on demoAdmin');
+  const layer = router.stack.find((l) => l.route && l.route.path === routePath);
+  if (!layer) throw new Error(`route not registered on demoAdmin: ${routePath}`);
   const handle = layer.route.stack[layer.route.stack.length - 1].handle;
   return { handle, calls };
 }
@@ -591,6 +591,17 @@ function fakeRes() {
     _out: out,
   };
   return res;
+}
+
+// The activate route takes no transport, so it needs no sendWa impl — but it
+// rides the same loader so the guard stub and the require-cache bust stay in one
+// place rather than being reinvented per route.
+async function fireRoute({ db, id, routePath }) {
+  const { handle } = loadInviteRoute(async () => ({ sid: 'unused' }), routePath);
+  const res = fakeRes();
+  await handle({ params: { id }, body: {}, app: { locals: { supabase: db } } }, res);
+  for (const p of [WA_PATH, GUARD_PATH, ADMIN_PATH]) delete require.cache[p];
+  return res._out;
 }
 
 async function fireInvite({ db, id, sendWaImpl }) {
@@ -835,6 +846,235 @@ t('§14.2 the route reads the module\'s list and never re-implements it', () => 
     'the route does not read the frozen list');
   assert.ok(!/\['legacy',\s*'built'\]/.test(code),
     'the route re-implemented the transition rule as a literal — two authorities again');
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// §15 · F-08.24 — THE START ARM. The defect these cells exist for was found on
+// the founder's walk and NOT by this bench: restore() was written, exported and
+// celled, and nothing called it. Every cell below therefore drives a CALLER.
+// ══════════════════════════════════════════════════════════════════════════
+H('§15 — F-08.24: the START arm, driven through handleMarketingInbound');
+
+const PROS_PATH = require.resolve(SRC('src/lib/prospects.js'));
+
+function freshProspects() {
+  delete require.cache[PROS_PATH];
+  delete require.cache[LC_PATH];
+  return require(PROS_PATH);
+}
+
+// A demo taken down by STOP, with its prospect linkage intact — the exact shape
+// the founder's walk left behind at 22:04:25.
+function removedSeed(over) {
+  return {
+    demo_vendors: [seedVendor(Object.assign({
+      state: 'removed', active: false, discover_eligible: true,
+      invited_at: iso(Date.now() - 3 * HOUR),
+      opened_at:  iso(Date.now() - 2 * HOUR),
+      engaged_at: iso(Date.now() - 1 * HOUR),
+      expires_at: iso(Date.now() - 30 * 60 * 1000),   // already past — restore must land on `expired`
+      removed_at: iso(Date.now() - 5 * 60 * 1000),
+    }, over || {}))],
+    prospects: [{ id: 'p1', phone: '919888294440', state: 'opted_out', demo_vendor_ref: 'demo-1' }],
+  };
+}
+
+await ta('§15.1 START restores the demo AND lifts the opt-out', async () => {
+  const pros = freshProspects();
+  const db = makeDb(removedSeed());
+  const res = await pros.handleMarketingInbound({
+    supabase: db, from: '919888294440', text: 'START',
+    sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+  });
+  assert.strictEqual(res.action, 'resumed');
+  const row = db._tables.demo_vendors[0];
+  assert.strictEqual(row.state, 'expired',
+    'the demo did not come back — F-08.24 reproduced');
+  assert.strictEqual(row.active, true);
+  assert.notStrictEqual(db._tables.prospects[0].state, 'opted_out',
+    'the handset was left opted out');
+});
+
+await ta('§15.2 THE WALK\'S ACTUAL FAILURE — a SECOND START still restores', async () => {
+  // On 2026-08-02 the founder sent START twice. The first lifted the prospect out
+  // of `opted_out`; the second fell through the caller's guard. An arm keyed on
+  // the PROSPECT'S state restores once and never again. This cell is that walk.
+  const pros = freshProspects();
+  const seed = removedSeed();
+  seed.prospects[0].state = 'replied';        // already lifted by an earlier START
+  const db = makeDb(seed);
+  await pros.handleMarketingInbound({
+    supabase: db, from: '919888294440', text: 'START',
+    sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+  });
+  assert.strictEqual(db._tables.demo_vendors[0].state, 'expired',
+    'the limb is keyed on the prospect state — it restores on the FIRST start only');
+  assert.strictEqual(db._tables.demo_vendors[0].active, true);
+});
+
+await ta('§15.3 restore DERIVES from the ladder stamps — expired, never legacy', async () => {
+  const pros = freshProspects();
+  const db = makeDb(removedSeed());
+  await pros.handleMarketingInbound({
+    supabase: db, from: '919888294440', text: 'START',
+    sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+  });
+  assert.strictEqual(db._tables.demo_vendors[0].state, 'expired',
+    'the row landed in a state it was never in');
+  // A row with NO ladder stamp is the only one that may fall to `legacy`.
+  const pros2 = freshProspects();
+  const bare = removedSeed({ invited_at: null, opened_at: null, engaged_at: null, expires_at: null });
+  const db2 = makeDb(bare);
+  await pros2.handleMarketingInbound({
+    supabase: db2, from: '919888294440', text: 'START',
+    sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+  });
+  assert.strictEqual(db2._tables.demo_vendors[0].state, 'legacy');
+});
+
+await ta('§15.4 IDEMPOTENT — a START on a LIVE demo writes nothing', async () => {
+  const pros = freshProspects();
+  const seed = removedSeed();
+  seed.demo_vendors[0].state = 'engaged';
+  seed.demo_vendors[0].active = true;
+  const db = makeDb(seed);
+  const before = JSON.stringify(db._tables.demo_vendors[0]);
+  await pros.handleMarketingInbound({
+    supabase: db, from: '919888294440', text: 'START',
+    sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+  });
+  assert.strictEqual(JSON.stringify(db._tables.demo_vendors[0]), before,
+    'a START on a live demo mutated the row');
+});
+
+await ta('§15.5 a handset with NO linked demo is a typed refusal, not a fault', async () => {
+  const pros = freshProspects();
+  const db = makeDb({
+    demo_vendors: [],
+    prospects: [{ id: 'p1', phone: '919888294440', state: 'opted_out', demo_vendor_ref: null }],
+  });
+  const res = await pros.handleMarketingInbound({
+    supabase: db, from: '919888294440', text: 'START',
+    sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+  });
+  assert.strictEqual(res.action, 'resumed', 'the opt-out lift did not survive an unlinked handset');
+});
+
+await ta('§15.6 FAIL-OPEN — the opt-out lift stands when the demo half THROWS', async () => {
+  // The mirror of THE RULED CELL for STOP. The demo half must never cost the
+  // human-facing write.
+  delete require.cache[PROS_PATH];
+  delete require.cache[LC_PATH];
+  require.cache[LC_PATH] = {
+    id: LC_PATH, filename: LC_PATH, loaded: true, exports: {
+      restoreByPhone: async () => { throw new Error('injected lifecycle fault'); },
+    },
+  };
+  const pros = require(PROS_PATH);
+  const db = makeDb({
+    demo_vendors: [], prospects: [{ id: 'p1', phone: '919888294440', state: 'opted_out' }],
+  });
+  const res = await pros.handleMarketingInbound({
+    supabase: db, from: '919888294440', text: 'START',
+    sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+  });
+  delete require.cache[LC_PATH];
+  assert.strictEqual(res.action, 'resumed', 'the injected fault propagated and cost the opt-out lift');
+  assert.strictEqual(db._tables.prospects[0].state, 'replied');
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// §16 · THE ACTIVATE ROUTE — the deactivate button's inverse (CE-153 §4)
+// ══════════════════════════════════════════════════════════════════════════
+H('§16 — the twelfth route: activate');
+
+await ta('§16.1 an absent row is 404 with the siblings\' own string', async () => {
+  const out = await fireRoute({ db: makeDb({ demo_vendors: [] }), id: 'nope',
+    routePath: '/vendors/:id/activate' });
+  assert.strictEqual(out.code, 404);
+  assert.strictEqual(out.body.error, 'Demo vendor not found.');
+});
+
+await ta('§16.2 a LIVE row is 409 illegal_transition and is not mutated', async () => {
+  const db = makeDb({ demo_vendors: [seedVendor({ state: 'engaged', active: true })] });
+  const before = JSON.stringify(db._tables.demo_vendors[0]);
+  const out = await fireRoute({ db, id: 'demo-1', routePath: '/vendors/:id/activate' });
+  assert.strictEqual(out.code, 409);
+  assert.strictEqual(out.body.error, 'illegal_transition');
+  assert.strictEqual(JSON.stringify(db._tables.demo_vendors[0]), before);
+});
+
+await ta('§16.3 a removed row is restored — 200, SIBLING shape, derived state', async () => {
+  const db = makeDb(removedSeed());
+  const out = await fireRoute({ db, id: 'demo-1', routePath: '/vendors/:id/activate' });
+  assert.strictEqual(out.code, 200);
+  assert.deepStrictEqual(Object.keys(out.body.vendor).sort(),
+    ['discover_eligible', 'display_name', 'id'],
+    'the response shape drifted from its siblings');
+  assert.strictEqual(out.body.state, 'expired');
+  assert.strictEqual(out.body.derived_from_stamps, true);
+  assert.strictEqual(db._tables.demo_vendors[0].active, true);
+});
+
+await ta('§16.4 the route reaches a CONSOLE removal, which the START arm cannot', async () => {
+  // CE-153 §4's whole point: a demo deactivated from the console never touched a
+  // prospect, so no phone can raise it. This row has NO prospect at all.
+  const seed = removedSeed();
+  seed.prospects = [];
+  const db = makeDb(seed);
+  const out = await fireRoute({ db, id: 'demo-1', routePath: '/vendors/:id/activate' });
+  assert.strictEqual(out.code, 200);
+  assert.strictEqual(db._tables.demo_vendors[0].state, 'expired');
+});
+
+await ta('§16.5 restore KEEPS removed_at — a history stamp is never cleared', async () => {
+  const seed = removedSeed();
+  const stamp = seed.demo_vendors[0].removed_at;
+  const db = makeDb(seed);
+  await fireRoute({ db, id: 'demo-1', routePath: '/vendors/:id/activate' });
+  assert.strictEqual(db._tables.demo_vendors[0].removed_at, stamp,
+    'removed_at was cleared — harmonised with discover_eligible_at, the one thing forbidden');
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// §17 · THE ORPHAN-LIMB CENSUS, ASSERTED (CE-153 §3)
+//
+// Taken on REACHABILITY, not call-site syntax: a qualified-call regex
+// (`\.fn\(`) under-reports internal calls, and onRemoved and readSunsetDays
+// would both be mis-filed as orphans by one — the executor's own first pass did
+// exactly that. An under-reporting census produces a cure that wires a limb
+// already reached, which is second-writer birth from the opposite direction.
+// ══════════════════════════════════════════════════════════════════════════
+H('§17 — the orphan-limb census');
+
+t('§17.1 restore() NOW HAS TWO CALLERS — the START arm and the activate route', () => {
+  const lc    = read('src/lib/demoLifecycle.js');
+  const admin = read('src/api/admin/demoAdmin.js').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  const pros  = read('src/lib/prospects.js').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(/demoLifecycle\.restore\(supabase, req\.params\.id\)/.test(admin),
+    'the activate route does not call restore');
+  assert.ok(/restoreByPhone\(supabase, phone\)/.test(pros),
+    'the START arm does not call restoreByPhone');
+  assert.ok(/return restore\(supabase, p\.demo_vendor_ref\)/.test(lc),
+    'restoreByPhone does not delegate to restore — a second derivation was born');
+});
+
+t('§17.2 onClaimed is DECLARED-UNREACHED — P2 owns its caller, and P2 is unbuilt', () => {
+  // NOT a defect and NOT silently absent. This cell exists so the next sitting
+  // that wires P2 is FORCED to notice the limb, and so nobody re-discovers the
+  // orphan from scratch the way F-08.24 was discovered — on a founder's walk.
+  const src = ['src/lib/demoLifecycle.js', 'src/lib/prospects.js', 'src/cron.js',
+               'src/api/admin/demoAdmin.js', 'src/api/demo/vendor.js', 'src/api/couple/enquire.js'];
+  let callers = 0;
+  for (const rel of src) {
+    const code = read(rel).split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+    // The DEFINITION and the export list are not callers.
+    const hits = (code.match(/onClaimed\s*\(/g) || []).length
+      - (/async function onClaimed\s*\(/.test(code) ? 1 : 0);
+    callers += Math.max(0, hits);
+  }
+  assert.strictEqual(callers, 0,
+    'onClaimed gained a caller — update this cell and the ORPHAN-LIMB census with it');
 });
 
 // ── §10 · shape cells over production source ───────────────────────────────
@@ -1164,6 +1404,58 @@ await mutateAndDrive('src/lib/demoLifecycle.js',
     const db = makeDb({ demo_vendors: [seedVendor({ created_at: iso(Date.now() - 200 * DAY) })] });
     await lc.runSunsetSweep(db);
     assert.ok(db._tables.demo_vendors[0].sunset_at);
+  });
+
+await mutateAndDrive('src/lib/prospects.js',
+  "      const r = await require('./demoLifecycle').restoreByPhone(supabase, phone);",
+  "      const r = { ok: false, reason: 'no_linked_demo' };",
+  'F-08.24 the START arm exists at all',
+  async () => {
+    const pros = freshProspects();
+    const db = makeDb(removedSeed());
+    await pros.handleMarketingInbound({
+      supabase: db, from: '919888294440', text: 'START',
+      sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+    });
+    assert.strictEqual(db._tables.demo_vendors[0].state, 'expired');
+  });
+
+await mutateAndDrive('src/lib/demoLifecycle.js',
+  "  if (!p || !p.demo_vendor_ref) return _refuse('no_linked_demo', phone);\n  return restore(supabase, p.demo_vendor_ref);",
+  "  if (!p || !p.demo_vendor_ref || p.state !== 'opted_out') return _refuse('no_linked_demo', phone);\n  return restore(supabase, p.demo_vendor_ref);",
+  'THE WALK\'S DEFECT — the arm keyed on the PROSPECT state restores once only',
+  async () => {
+    const pros = freshProspects();
+    const seed = removedSeed();
+    seed.prospects[0].state = 'replied';
+    const db = makeDb(seed);
+    await pros.handleMarketingInbound({
+      supabase: db, from: '919888294440', text: 'START',
+      sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
+    });
+    assert.strictEqual(db._tables.demo_vendors[0].state, 'expired');
+  });
+
+await mutateAndDrive('src/api/admin/demoAdmin.js',
+  '    const r = await demoLifecycle.restore(supabase, req.params.id);',
+  "    const r = { ok: false, reason: 'not_found' };",
+  'the activate route reaches restore()',
+  async () => {
+    const db = makeDb(removedSeed());
+    const out = await fireRoute({ db, id: 'demo-1', routePath: '/vendors/:id/activate' });
+    assert.strictEqual(out.code, 200);
+  });
+
+await mutateAndDrive('src/lib/demoLifecycle.js',
+  "  const updated = await _write(supabase, row.id, { state: target, active: true });",
+  "  const updated = await _write(supabase, row.id, { state: target, active: true, removed_at: null });",
+  'restore KEEPS removed_at (the history-stamp idiom)',
+  async () => {
+    const seed = removedSeed();
+    const stamp = seed.demo_vendors[0].removed_at;
+    const db = makeDb(seed);
+    await fireRoute({ db, id: 'demo-1', routePath: '/vendors/:id/activate' });
+    assert.strictEqual(db._tables.demo_vendors[0].removed_at, stamp);
   });
 
 // ── close ──────────────────────────────────────────────────────────────────

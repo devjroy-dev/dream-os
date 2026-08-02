@@ -397,6 +397,30 @@ async function removeByPhone(supabase, phone) {
   return onRemoved(supabase, p.demo_vendor_ref, 'stop');
 }
 
+// ── The START arm (F-08.24) ──────────────────────────────────────────────────
+// The exact inverse of removeByPhone above, and it exists because its absence was
+// LIVE HARM: `handleMarketingInbound`'s START branch lifted the opt-out and called
+// no demo limb at all, so a vendor who replied STOP and reconsidered had his card
+// down permanently and only an admin's hand could raise it. Found on the founder's
+// own walk, 2026-08-02, not by any bench — every restore() cell passed, because
+// the module was correct and the WIRING was absent. Same disease onInvited carried
+// into that sitting, same module, one sitting apart.
+//
+// IDEMPOTENT BY THE CALLEE, not by a flag here. restore() refuses anything whose
+// state is not `removed` (:423), so a second START, a START on a live demo, and a
+// START from a handset that never had one all return typed refusals and write
+// nothing. That is why this arm needs no guard of its own.
+//
+// KEYED ON THE DEMO ROW'S STATE, NEVER THE PROSPECT'S (CE-151 §1). The founder's
+// second START on the walk found the prospect already lifted out of `opted_out`
+// and fell through the caller's guard — so an arm keyed on the prospect state
+// would restore on the FIRST start only, which is the defect wearing a cure.
+async function restoreByPhone(supabase, phone) {
+  const p = await prospects.findProspectByPhone(supabase, phone);
+  if (!p || !p.demo_vendor_ref) return _refuse('no_linked_demo', phone);
+  return restore(supabase, p.demo_vendor_ref);
+}
+
 // ── restore (CE-134 §3 — the walk must not be one-way) ───────────────────────
 // Target DERIVED from the ladder stamps this module already kept, never guessed:
 // engaged_at -> engaged, opened_at -> opened, invited_at -> invited, and past
@@ -599,6 +623,6 @@ module.exports = {
   STATES, INVITE_STATES, CLOCK_STATES, SUNSET_STATES, PRESENCE_COLUMNS,
   buildInsertPatch,
   onInvited, onOpened, onEnquiry, onClaimed, onRemoved,
-  removeByPhone, restore, setDiscoverEligible, deactivate,
+  removeByPhone, restoreByPhone, restore, setDiscoverEligible, deactivate,
   runExpirySweep, runSunsetSweep,
 };

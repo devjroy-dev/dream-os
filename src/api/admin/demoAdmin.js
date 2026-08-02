@@ -109,6 +109,48 @@ router.delete('/vendors/:id', requireAdminPassword, async (req, res) => {
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
 
+// POST /admin/demo/vendors/:id/activate — THE DEACTIVATE BUTTON'S INVERSE
+//
+// WHY IT EXISTS (CE-153 §4). The DELETE route above calls deactivate -> onRemoved
+// and had NO inverse, so a demo taken down from the console was dead by a SECOND
+// road that the STOP/START arm does not reach: START restores through the
+// prospect linkage, and a console removal never touched a prospect. The founder's
+// own button had a dead end.
+//
+// TWO CALLERS, ONE AUTHORITY. This route and restoreByPhone both call restore()
+// and neither re-derives its target. restore() reads the ladder stamps the
+// lifecycle already kept — engaged_at -> engaged, opened_at -> opened, invited_at
+// -> invited, past its window -> expired, and `legacy` only where no stamp exists
+// — so the row returns to exactly its prior presence rather than to a guess. That
+// derivation living in one place is the whole reason this lane has a module.
+//
+// THIS ROUTE CARRIES restore()'s FIRST LIVE EXECUTION (CE-153 §5). The function
+// has been written, exported and benched since P1 and has never run against
+// production: the walk's final state was written by the founder's hand because
+// this route did not exist. It is the easier of the two callers to witness — a
+// press, no handset, no STOP prerequisite — so it walks first.
+router.post('/vendors/:id/activate', requireAdminPassword, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  try {
+    const r = await demoLifecycle.restore(supabase, req.params.id);
+    if (r.ok === false && r.reason === 'not_found') {
+      return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    }
+    // `illegal_transition` here means the row is not `removed` — already live.
+    // 409 matches the grant/revoke siblings' refusal status, and the detail names
+    // the state so the console can say which, rather than only that.
+    if (r.ok === false) {
+      return res.status(409).json({ ok: false, error: r.reason, detail: r.detail });
+    }
+    return res.json({
+      ok: true,
+      vendor: { id: r.row.id, display_name: r.row.display_name, discover_eligible: r.row.discover_eligible },
+      state: r.state,
+      derived_from_stamps: r.derived_from_stamps === true,
+    });
+  } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
+});
+
 // GET /admin/demo/leads
 router.get('/leads', requireAdminPassword, async (req, res) => {
   const supabase = req.app.locals.supabase;

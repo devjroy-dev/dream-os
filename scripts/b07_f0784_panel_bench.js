@@ -195,7 +195,13 @@ sec('§4 · F-6(b) — two authorities became one');
   // string), and this one. Each is a sealed bench asserting a fact about the
   // ESTATE'S FUTURE rather than about its own delivery. Filed as F-08.20; the
   // class is F-08.15's.
-  ok(`§4.3 all eleven routes still carry a guard (${mounts - 1} mounts + 1 import)`, mounts === 12);
+  // ── LABELLED RE-AIM #2, F-08.24 MICRO (2026-08-02) · COUNT 12 -> 13 ───────
+  // The micro added the TWELFTH route (POST /vendors/:id/activate, the deactivate
+  // button's missing inverse), so the guard appears 12 times as middleware plus
+  // once as the import = 13. Second amendment to this line in one day, which is
+  // itself the F-08.20 evidence: a census cell reds on every lawful route
+  // addition, and each amendment must travel in the act that caused it.
+  ok(`§4.3 all twelve routes still carry a guard (${mounts - 1} mounts + 1 import)`, mounts === 13);
   ok('§4.4 no route lost its guard', (ds.match(/router\.(get|post|delete|patch|put)\(/g) || []).length === mounts - 1);
 }
 
