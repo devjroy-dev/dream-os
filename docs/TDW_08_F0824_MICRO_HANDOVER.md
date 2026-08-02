@@ -56,44 +56,41 @@ Re-derived at `eca59ee`, taken on **reachability**, not call-site syntax (CE-153
 
 ---
 
-## 5 · THE WITNESS CARD — TWO STEPS, THE EASY ONE FIRST (CE-153 §5)
+## 5 · THE WITNESS — STEP A WALKED, STEP B DEFERRED-NAMED (CE-153 §5, CE-154 §1-2)
 
-**`restore()` has never executed against production.** The walk's final state was written by the founder's hand because this route did not exist. These steps are its first run.
+### STEP A — WALKED AND SEALED, 2026-08-02, founder-witnessed on production
 
-### STEP A — THE ACTIVATE ROUTE. A press, no handset, no STOP prerequisite.
+**`restore()` executed against production for the first time in this estate's history at `23:43:27 IST`**, deploy `51230039`. It had been written, exported and celled since P1 and had never once run outside a bench, because until this micro it had no caller.
 
-**A1 · Take the walk row down from the console** (this is the console road the START arm cannot reach):
+| | Result |
+|---|---|
+| **A1** console removal (`DELETE /vendors/:id`) | `{"ok":true}` · log `expired -> removed (reason=admin)` at 23:42:17 |
+| **A2** activate (`POST /vendors/:id/activate`) | `{"ok":true,"vendor":{id,display_name,discover_eligible},"state":"expired","derived_from_stamps":true}` · log `removed -> expired (restored; derived_from_stamps=true, removed_at kept)` at 23:43:27 |
+| **A3** second press | `{"ok":false,"error":"illegal_transition","detail":"expired -> restore"}` — refused, nothing written |
+| readback | `expired · active true · discover_eligible true` · `removed_at` 2026-08-02 18:12:16.417+00 (= 23:42:16 IST) · `expires_at` unmoved 14:38:14.750086+00 · ladder intact · **leads 9** |
 
-```bash
-curl -s -X DELETE "$API/api/v2/admin/demo/vendors/bafc94f9-e26c-4f81-8c93-0b1fdd353b72" \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-Expect `{"ok":true}`. The card leaves Discover.
+**WHAT THE ROUND TRIP PROVED, and it is the answer to CE-152.** `derived_from_stamps: true` is the flag: `restore()` read `engaged_at`, targeted `engaged`, saw `expires_at` was past, demoted to `expired`. At 16:34 the executor performed that same derivation BY HAND and wrote its output; at 23:43 the function performed it and produced the identical state. **A hand copying a function and the function itself are indistinguishable by their output** — which is exactly why the chair could not settle the question by reading the row, and exactly why running it settled it. Live witness over inference, demonstrated on a chair's own error.
 
-**A2 · Raise it with the new route:**
+**`removed_at` MOVED TO A1's STAMP AND WAS NOT CLEARED** by the restore — the HISTORY-stamp idiom (CE-136 §3 clause 5) witnessed live rather than only celled. **`reason=admin`, not `reason=stop`** — the console road and the handset road stayed distinguishable through a full down-and-up cycle. **Leads held at 9** across a removal and a restore; `demo_leads_demo_vendor_id_fkey` cascades on delete and no P1 path issues one.
 
-```bash
-curl -s -X POST "$API/api/v2/admin/demo/vendors/bafc94f9-e26c-4f81-8c93-0b1fdd353b72/activate" \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-Expect `{"ok":true,"vendor":{...},"state":"expired","derived_from_stamps":true}`.
+**One process note, disclosed:** A0.5 — the pre-flight that was meant to prove the route existed BEFORE the card came down — was skipped, so the route's existence was discovered with the row already removed. No harm resulted (worst case was a second hand-restore) but the ordering existed for a reason and it was not honoured.
 
-**A3 · Fire it twice** — the second must answer `409 illegal_transition`, proving idempotency at the route.
+### STEP B — DEFERRED WITNESS. NOT DROPPED, NOT WALKED, NOT PAPERED.
 
-**Railway (`dream-os`) must carry `restore()`'s first line in the estate's history:**
-```
-[demoLifecycle] legacy_jewellers removed -> expired (restored; derived_from_stamps=true, removed_at kept)
-```
+**THE START LIMB INSIDE `handleMarketingInbound` HAS NOT BEEN WALKED.** Step A does not touch it: A2 calls `restore()` directly from the route and never goes near a prospect. **Step A's green must not be read as covering the arm that actually caused F-08.24.**
 
-### STEP B — THE START LIMB. The handset, and the arm that actually caused F-08.24.
+**Ruled a DEFERRED WITNESS at CE-154 §2**, on the estate's own precedent — F-07.55's, banked one day earlier. The cure ships; the witness follows; the deferral is INKED with its return condition rather than held in chat, because a parked step that lives only in a transcript evaporates at the next seating.
 
-**B1** Send `STOP` from the handset. Row → `removed`, `active:false`, prospect `opted_out`.
-**B2** Send `START`. Row → `expired`, `active:true`, prospect lifted.
-**B3** Send `START` **again**. The prospect is no longer `opted_out`, so this is the exact second-START that fell through on 2026-08-02. The row is already live, so `restore()` refuses and **nothing moves** — that is the pass, not a failure.
+**RETURN CONDITION:** the founder's handset, which was unavailable at delivery. The walk is:
+- **B1** send `STOP` → row `removed`, `active:false`, prospect `opted_out`
+- **B2** send `START` → row `expired`, `active:true`, prospect lifted
+- **B3** send `START` **again** → **nothing moves.** The prospect is no longer `opted_out`, so this is the exact second-START that fell through on 2026-08-02. The row is already live, `restore()` refuses, and **that refusal is the pass.**
 
-**Watch `dream-os-marketing`, not `dream-os`** — the marketing service owns the inbound webhook.
+**B3 is the step and it is not negotiable (CE-154 §2)** — it is the one case a bench can prove and a walk can disprove. Watch **`dream-os-marketing`**, which owns the inbound webhook, not `dream-os`.
 
-### THE READBACK, after both steps
+**WHAT STANDS IN THE MEANTIME:** six behavioural cells driving `handleMarketingInbound` with a real START (§15.1-15.6), including the fail-open mirror of THE RULED CELL, plus a `§M2` mutation that **reproduces the walk's own defect** — the arm keyed on the prospect's state, restoring once and never again — and reds correctly. Both-ways, over production source. **Proven, not witnessed.**
+
+### THE READBACK FOR STEP B, when it walks
 
 ```sql
 select * from (
@@ -138,8 +135,8 @@ Additive only — a new module function, a new route, one limb inside an existin
 
 ## 7 · WHAT THIS DOES NOT FIX
 
-**F-08.17 stands** — two production demos share one handset, `demo_vendor_ref` is single-valued, and `restoreByPhone` inherits that ambiguity exactly as `removeByPhone` does. A shared-handset START raises whichever demo the linkage last named. Wants a linkage table.
+**⚠ THE CONSOLE CARRIES A DESTRUCTIVE CONTROL WHOSE RECOVERY IS CURL-ONLY (CE-154 §4).** `app/admin/demo/page.tsx` has a **Deactivate** button wired to `DELETE /vendors/:id`. The activate route now exists, but **no Activate button does** — Step A was walked by curl. A screen with a destructive control and no undo is worse than a screen with neither, and the asymmetry is on a LIVE admin surface today. Same shape as F-08.9's missing dial: the backend is complete and the affordance is one PWA byte this micro is chartered not to touch. **Founder's fork, open:** one PWA byte now (it pairs an existing control rather than adding a capability), or curl until P4 builds the board.
 
-**The console still has no Activate button.** The route exists; the affordance is a PWA byte, with the demo board — same shape as F-08.9's dial.
+**F-08.17 stands** — two production demos share one handset, `demo_vendor_ref` is single-valued, and `restoreByPhone` inherits that ambiguity exactly as `removeByPhone` does. A shared-handset START raises whichever demo the linkage last named. Wants a linkage table.
 
 **F-08.9 · F-08.11 · F-08.12 · F-08.13/14/20 · F-08.19 · F-08.22 · F-08.23** are unchanged by this micro.
