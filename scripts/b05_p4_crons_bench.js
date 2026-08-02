@@ -436,11 +436,28 @@ t('§6.6 the TZ rewrite preserved the WALL CLOCK — asserted on CODE, expr↔tz
   const re = /cron\.schedule\(\s*'([^']+)'[\s\S]*?\}\s*,\s*\{\s*\n\s*timezone:\s*'([^']+)'/g;
   let m; while ((m = re.exec(code)) !== null) jobs.push([m[1], m[2]]);
 
+  // ── LABELLED RE-AIM, TDW_08 P1 (2026-08-02) · COUNT MOVEMENT 4 -> 6 ────────
+  // DISCLOSED, NEVER SMOOTHED. This cell is a CLOSED-WORLD assertion over every
+  // cron.schedule in the file, so it reds whenever a job is ADDED — which is the
+  // behaviour we want and is exactly what happened: TDW_08 P1 added the demo
+  // lifecycle's two jobs. The cell's MEANING is unchanged (an expression is only
+  // correct beside the timezone that makes it correct, and exactly one job stays
+  // on UTC); only its expected table grew, and it grew by derivation from the
+  // file rather than from a charter number (CE-119).
+  //
+  // The two new rows carry NO "was" note because they preserve no prior instant:
+  // they are new jobs, not TZ rewrites. Row 3 and row 5 share an expression by
+  // coincidence — row 3 is F-08.6's PHANTOM job (it updates vendors.demo_active,
+  // a column that does not exist; filed this sitting, not cured), row 5 is the
+  // real demo lifecycle expiry. They are not the same job and must not be
+  // deduplicated into one row by a later tidy.
   const expected = [
     ["0 3 * * *",   "Asia/Kolkata"],   // contracts   03:00 IST == 21:30 UTC (was '30 21 * * *')
     ["30 2 * * *",  "UTC"],            // briefing    UNTOUCHED — 02:30 UTC == 08:00 IST
-    ["30 * * * *",  "Asia/Kolkata"],   // demo expiry :30 IST     == :00 UTC  (was '0 * * * *')
+    ["30 * * * *",  "Asia/Kolkata"],   // demo expiry :30 IST     == :00 UTC  (was '0 * * * *') — F-08.6 PHANTOM
     ["15 3 * * *",  "Asia/Kolkata"],   // collab      03:15 IST   == 21:45 UTC (was '45 21 * * *')
+    ["30 * * * *",  "Asia/Kolkata"],   // TDW_08 P1 · demo LIFECYCLE expiry, hourly :30 IST
+    ["45 3 * * *",  "Asia/Kolkata"],   // TDW_08 P1 · demo sunset, nightly 03:45 IST
   ];
   assert.deepStrictEqual(jobs, expected,
     'every cron.schedule must carry its expression AND the timezone that preserves its instant');

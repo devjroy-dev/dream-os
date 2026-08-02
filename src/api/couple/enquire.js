@@ -654,6 +654,27 @@ async function handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_
     );
   }
 
+  // ── TDW_08 P1 · G-1 · THE ENQUIRY REFRESH ──────────────────────────────────
+  // engaged + a fresh 72h clock. FAIL-OPEN BY CONSTRUCTION and deliberately so:
+  // the lead is already stored and the alert has already fired, and no fault in
+  // the lifecycle engine may cost a couple her enquiry. demoLifecycle returns a
+  // TYPED REFUSAL rather than throwing for business conditions, so the catch
+  // here is for infrastructure faults only.
+  //
+  // EXPECT A REFUSAL TODAY, and that is correct: every production demo row is
+  // `legacy` until FORK F's ruled caller first fires, and engaging a row that
+  // was never invited would stamp `engaged_at` over a contact that never
+  // happened. The refusal is logged, not swallowed.
+  try {
+    const lc = await require('../../lib/demoLifecycle').onEnquiry(supabase, demoVendor.id);
+    if (lc.ok === false) {
+      console.log(`[enquire:demo] lifecycle no-op for ${demoVendor.ig_handle}: ${lc.reason} (${lc.detail})`);
+    }
+  } catch (err) {
+    console.error(`[enquire:demo] lifecycle FAILED for ${demoVendor.id}: ${err.message} — ` +
+      'the enquiry stands; only the clock did not move');
+  }
+
   // The tap is recorded on BOTH species — the demo leg's only durable analytics.
   try {
     await supabase.from('enquiry_taps').insert({

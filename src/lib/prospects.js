@@ -129,6 +129,25 @@ async function handleMarketingInbound({ supabase, from, text, messageId, sendWa,
     const prospect = await findOrCreateProspectByPhone(supabase, phone);
     // Record opt-out FIRST so future sends are blocked even if the confirmation send fails.
     await updateProspect(supabase, prospect.id, { state: 'opted_out' });
+    // ── TDW_08 P1 · G-1 · THE STOP ARM (CE-135 §3, ruled (ii)) ───────────────
+    // STRICTLY AFTER the opt-out write above, never before, never inside an
+    // await chain that could reorder relative to it. FAIL-OPEN on the demo half:
+    // a throw is logged loudly and never propagates, so the worst case degrades
+    // to exactly today's behaviour — the person is opted out, the demo row stays
+    // live. The opt-out write stands unconditionally.
+    //
+    // The require is LAZY on purpose: demoLifecycle requires this module, and a
+    // top-level require here would make the cycle resolve against a half-built
+    // exports object.
+    try {
+      const r = await require('./demoLifecycle').removeByPhone(supabase, phone);
+      if (r.ok === false && r.reason !== 'no_linked_demo') {
+        console.log(`[prospects:stop] demo takedown no-op: ${r.reason}`);
+      }
+    } catch (e) {
+      console.error(`[prospects:stop] DEMO TAKEDOWN FAILED for prospect ${prospect.id}: ${e.message} — ` +
+        'the opt-out STANDS; the demo card did not come down and must be taken down by hand');
+    }
     // The confirmation itself must go out THROUGH the now-opted-out gate — a single deliberate,
     // documented bypass for the opt-out acknowledgement only (isOptedOut → false for this send).
     let confirmSent = false, confirmError = null;

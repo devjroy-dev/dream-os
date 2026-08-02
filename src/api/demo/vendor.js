@@ -250,6 +250,72 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ── TDW_08 P1 · G-1 · THE OPEN BEACON ────────────────────────────────────────
+// POST /api/v2/demo/vendor/:handle/opened — A PURE ANALYTICS BEACON. It stamps
+// `opened_at` and moves `invited -> opened`. IT MUTATES NO CLOCK: the first-open
+// +72h extension was RETIRED by the founder on 2026-08-02 (CE-137 §1), and the
+// 72h window is now set at `engaged` and nowhere else. Unauthenticated BY CONSTITUTION (G-6: no login wall before
+// claim), and it is the SEVENTH unauthenticated door on this surface, not the
+// first — GET /:handle, /:handle/leads, /:handle/context, POST /:handle/chat,
+// GET / and POST /:handle/claim all precede it. It leaks nothing GET /:handle's
+// own 404 does not already leak, which is what distinguishes it from
+// F-07.105/106's identity oracles; its nearest relative is F-07.64.
+//
+// TWO PUBLIC URLS, DECLARED NOT DISCOVERED: router.js mounts THIS router at both
+// `/api/v2/demo/vendor` (:147) and `/api/v2/demo/discover` (:148), so this route
+// answers at both paths whether or not that is wanted. Stated here because a
+// limiter keyed per-IP is unaffected but anyone counting doors must count two.
+//
+// THE PRIMARY BOUND IS STRUCTURAL, NOT THE LIMITER: idempotency binds to
+// `opened_at IS NULL` (CE-137 §2). The first hit stamps; every later hit changes
+// no byte. So a flood buys ONE timestamp and then nothing but write load.
+//
+// THE LIMITER'S JUSTIFICATION, RESTATED HONESTLY RATHER THAN INHERITED: it was
+// adopted at CE-135 when this door moved a business clock. It no longer does —
+// it writes one timestamp — so the case for it is WEAKER than the case that
+// bought it. It stays because it is built, driven and proven against crew's real
+// exports, and removing working code to save nothing is churn. Anyone reading
+// this later should know the reasoning changed under it (CE-137 §2).
+//
+// THE LIMITER IS NOT NEW (CE-135 §2). It is `crew.js`'s
+// CE-ruled hand-rolled bucket, reused rather than rebuilt, at crew's OWN
+// `LIMIT_IP_MISS` budget — 30 / 10 min / IP — because that is crew's budget for
+// "the only brute-force surface" and this door is the same shape: unauthenticated,
+// handle-keyed, publicly enumerable. `app.set('trust proxy', true)`
+// (src/index.js:55) makes req.ip the real client.
+//
+// CREW'S PER-PROCESS DISCLOSURE IS INHERITED VERBATIM, because a limiter whose
+// limits are not what they appear is worse than none if nobody says so: this
+// ceiling is PER PROCESS. Railway can run more than one instance of this service
+// and each would hold its own buckets, so the effective global ceiling is
+// (limit x instances), and a restart forgets every bucket.
+//
+// FILED, NOT CURED, AND IT IS THE LARGER DOOR: POST /:handle/chat at :131 is
+// unauthenticated on this same surface and burns model tokens per request with
+// no limiter at all. Bigger exposure than this one; not this sitting's.
+router.post('/:handle/opened', async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { hit, LIMIT_IP_MISS } = require('../crew');
+  const gate = hit(`demo_opened:${req.ip}`, LIMIT_IP_MISS);
+  if (!gate.allowed) {
+    res.set('Retry-After', String(gate.retryAfter));
+    return res.status(429).json({ ok: false, code: 'rate_limited' });
+  }
+  try {
+    const r = await require('../../lib/demoLifecycle').onOpened(supabase, req.params.handle);
+    if (r.ok === false && r.reason === 'not_found') {
+      return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    }
+    // A refusal on state is a 200: the landing is a public page and a visitor
+    // opening an expired or removed demo is not an error they can act on. The
+    // beacon reports what happened and never becomes a second 404 surface.
+    return res.json({ ok: true, state: r.ok ? r.state : null, extended: r.extended === true });
+  } catch (err) {
+    console.error('[demo/opened]', err.message);
+    return res.status(500).json({ ok: false, error: 'Server error.' });
+  }
+});
+
 module.exports = router;
 
 // POST /demo/vendor/:handle/claim — vendor claims their demo studio

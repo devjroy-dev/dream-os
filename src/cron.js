@@ -228,6 +228,53 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // TDW_08 P1 · THE DEMO LIFECYCLE JOBS (G-1 hourly expiry · G-2 nightly sunset)
+  //
+  // ⚠ READ THIS BEFORE EDITING EITHER JOB BELOW, AND DO NOT CONFUSE THEM WITH
+  // THE JOB AT :193. That job is titled "Demo expiry — hourly" and is NOT these:
+  // it updates `vendors.demo_active` filtered on `vendors.demo_handle`, and
+  // NEITHER COLUMN EXISTS in the witnessed 38-column public.vendors. It has
+  // therefore failed on every hourly tick, forever, into an empty `catch {}`
+  // with an empty success branch, reporting nothing. FILED this sitting, NOT
+  // cured — it is an unchartered finding and deleting it is not this charter's.
+  // The two jobs below are the real ones and they act on `public.demo_vendors`.
+  //
+  // BOTH PREDICATES ARE POSITIVE ENUMERATIONS, ruled binding at CE-133 §3, and
+  // they live in demoLifecycle (CLOCK_STATES / SUNSET_STATES) rather than here.
+  // A negated predicate (`state != 'claimed'`) would sweep `legacy` rows — rows
+  // with no clock and no recorded history — and is a bench RED, not a style note.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── Demo LIFECYCLE expiry — hourly, :30 IST (G-1) ─────────────────────────
+  // Expired demos STAY IN DISCOVER. The feed is `discover_eligible AND active`
+  // and this job moves neither. Only the clock dies; the sunset job below is
+  // what eventually rotates a card out.
+  cron.schedule('30 * * * *', async () => {
+    try {
+      await require('./lib/demoLifecycle').runExpirySweep(supabase);
+    } catch (err) {
+      console.error('[cron:demoLifecycle:expiry] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
+  // ── Demo 30-day sunset — nightly 3:45am IST (G-2) ─────────────────────────
+  // Quiet rotation out of Discover, content retained, resurrectable by an admin
+  // grant. NOT a takedown: `state` is left alone and `active` stays true, so a
+  // sunset row and a removed row stay distinguishable to P6's deletion queue.
+  // 03:45 IST sits after the 03:00 / 03:15 jobs above and shares their band.
+  cron.schedule('45 3 * * *', async () => {
+    try {
+      await require('./lib/demoLifecycle').runSunsetSweep(supabase);
+    } catch (err) {
+      console.error('[cron:demoLifecycle:sunset] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
 }
 
 module.exports = { startCronJobs, routeBriefing };

@@ -35,6 +35,14 @@ const crypto  = require('crypto');
 // caller reading for 401 specifically will now see 403 on a bad token.
 const requireAdminPassword = require('./requireAdmin');
 
+// ── TDW_08 P1 · FORK E (ENFORCE) ─────────────────────────────────────────────
+// The four presence WRITERS in this file moved behind demoLifecycle. They are
+// the create (:61), the deactivate (:76), and the discover grant/revoke
+// (:115/:130) as they stood at 3d47041. The five demo_vendors READERS in this
+// file are deliberately UNCHANGED — FORK A(b) keeps presence on the booleans and
+// this sitting was chartered to move writers, not predicates.
+const demoLifecycle = require('../../lib/demoLifecycle');
+
 // GET /admin/demo/vendors
 router.get('/vendors', requireAdminPassword, async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -59,7 +67,10 @@ router.post('/vendors', requireAdminPassword, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('demo_vendors')
-      .insert({ ig_handle: ig_handle.toLowerCase().trim(), display_name: display_name.trim(), category, city, whatsapp_phone: whatsapp_phone || null, about: about || null, rate_display: rate_display || null, photos, active: true, created_by: 'admin' })
+      // demoLifecycle.buildInsertPatch supplies ALL FOUR presence fields
+      // (active, discover_eligible, discover_eligible_at, state:'built') so this
+      // route never authors presence itself.
+      .insert(demoLifecycle.buildInsertPatch({ ig_handle: ig_handle.toLowerCase().trim(), display_name: display_name.trim(), category, city, whatsapp_phone: whatsapp_phone || null, about: about || null, rate_display: rate_display || null, photos, created_by: 'admin' }))
       .select().single();
     if (error) throw error;
     return res.json({ ok: true, vendor: data, demo_url: `https://demo.thedreamwedding.in/vendor/${data.ig_handle}` });
@@ -73,8 +84,14 @@ router.post('/vendors', requireAdminPassword, async (req, res) => {
 router.delete('/vendors/:id', requireAdminPassword, async (req, res) => {
   const supabase = req.app.locals.supabase;
   try {
-    const { error } = await supabase.from('demo_vendors').update({ active: false }).eq('id', req.params.id);
-    if (error) throw error;
+    // Was `.update({ active: false })` — presence written in the route. The
+    // module now owns it. The EFFECT is unchanged: removal flips `active` only
+    // (CE-136 §3), because `active=false` already hides the row from both the
+    // couple feed (`discover_eligible AND active`) and the demo lane (`active`
+    // alone), and leaving `discover_eligible` untouched is what lets restore()
+    // return the row to its prior presence without guessing.
+    const r = await demoLifecycle.deactivate(supabase, req.params.id);
+    if (r.ok === false && r.reason === 'not_found') return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
     return res.json({ ok: true });
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
@@ -112,13 +129,12 @@ router.post('/vendors/:id/discover-grant', requireAdminPassword, async (req, res
   const supabase = req.app.locals.supabase;
   try {
     const { data, error } = await supabase
-      .from('demo_vendors')
-      .update({ discover_eligible: true, discover_eligible_at: new Date().toISOString() })
-      .eq('id', req.params.id)
-      .select('id, display_name, discover_eligible')
-      .single();
+      .from('demo_vendors').select('id').eq('id', req.params.id).maybeSingle();
     if (error) throw error;
-    return res.json({ ok: true, vendor: data });
+    if (!data) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    const r = await demoLifecycle.setDiscoverEligible(supabase, req.params.id, true);
+    if (r.ok === false) return res.status(409).json({ ok: false, error: r.reason });
+    return res.json({ ok: true, vendor: { id: r.row.id, display_name: r.row.display_name, discover_eligible: r.row.discover_eligible } });
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
 
@@ -127,13 +143,13 @@ router.post('/vendors/:id/discover-revoke', requireAdminPassword, async (req, re
   const supabase = req.app.locals.supabase;
   try {
     const { data, error } = await supabase
-      .from('demo_vendors')
-      .update({ discover_eligible: false })
-      .eq('id', req.params.id)
-      .select('id, display_name, discover_eligible')
-      .single();
+      .from('demo_vendors').select('id').eq('id', req.params.id).maybeSingle();
     if (error) throw error;
-    return res.json({ ok: true, vendor: data });
+    if (!data) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    // THE C-2 CURE lands here: the module CLEARS discover_eligible_at on revoke.
+    const r = await demoLifecycle.setDiscoverEligible(supabase, req.params.id, false);
+    if (r.ok === false) return res.status(409).json({ ok: false, error: r.reason });
+    return res.json({ ok: true, vendor: { id: r.row.id, display_name: r.row.display_name, discover_eligible: r.row.discover_eligible } });
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
 
