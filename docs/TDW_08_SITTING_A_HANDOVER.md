@@ -63,11 +63,28 @@ It is not. What it buys is not the end state but **the absence of a window**: wi
 
 **F-08.11 · THE NAME IS THE DEFECT, uncured.** `prospects.last_template_at` is named globally and used module-scoped: four writers, one reader (`demoLeadAlert.js:117-123`) that means something narrower than the name. The invite deliberately does **not** stamp it, and the write site says why in-comment. A rename or a split is not this sitting's.
 
+**F-08.24 · STOP TAKES A DEMO DOWN AND NOTHING PUTS IT BACK. MINTED ON THE WALK, LIVE HARM, NOT CURED.** `src/lib/prospects.js:164-172` — the START branch lifts the opt-out (`opted_out → replied`) and **calls no demo limb at all.** The STOP branch at `:142-150` lazily requires `demoLifecycle` and calls `removeByPhone`; START calls nothing. `restore()` is written, exported and benched **with no production caller** — precisely the disease `onInvited` carried before this sitting, in the same module, found the same way. **A real vendor who replies STOP and reconsiders is permanently down**; the only way back is an admin's hand. Proven on the walk: STOP produced a paired lifecycle line, START produced only the inbound, twice, with nothing behind it. No bench could have caught this — every `restore()` cell passes, because the module is correct and the caller is absent. **The cure needs a ruling the walk already forced:** the founder's second START found the prospect no longer `opted_out` and fell through `:166`'s guard, so a naive limb restores on the FIRST START only. Wants its own charter, not a paragraph.
+
+**F-08.22 · A 503 ON THE DEMO LANDING.** First load of `thedreamwedding.in/demo/vendor/legacy_jewellers` returned one `503` in console; the page rendered and the beacon landed. Second load clean. Deploy `7d6384c6` had gone Active 18 minutes earlier, so a cold start is plausible and **unproven**. Watch item, not diagnosed, not a defect.
+
+**F-08.23 · ELEVEN `401`s ON `/api/v2/couple/*`.** From an incognito Discover session that was never logged in — `me`, `muse`, `pages`, `bookings`, `circle`, `events`, several twice. The refusals are almost certainly correct, but the request URLs carry a `couple_id`, so **something client-side believes it holds an identity the server denies.** Observation only; the couple lane is neither the demo lifecycle nor the invite caller. Belongs with the auth family.
+
 **Also filed:** `_read`/`_write`'s select lists do not include `sunset_at`, so no P1 caller sees it in a returned row. Nothing needs it in P1; named so its absence is not read as an oversight later.
 
 ---
 
-## 5 · THE FOUNDER'S SMOKE CARD
+## 5 · THE FOUNDER'S SMOKE CARD — **WALKED 2026-08-02, founder-witnessed. See §8 for the result.**
+
+> **TWO CORRECTIONS EARNED ON THE WALK, folded in rather than left for the next reader.**
+> **(a) STEPS 7 AND 8 LOG TO `dream-os-marketing`, NOT `dream-os`.** The marketing
+> service owns the inbound WhatsApp webhook, so the STOP/START lifecycle lines
+> appear there. The card originally sent the founder to the backend service, whose
+> log ends at the expiry sweep — it looks like a failed step and is not one. Only
+> the founder's own instinct to open the second service caught the lines.
+> **(b) STEP 8 ASSERTED A PATH THAT IS NOT WIRED.** It read "state must be
+> `expired` or `restore()` guessed". `restore()` never runs — see F-08.24. The
+> assertion was written against a caller that does not exist.
+
 
 **The receiving handset is the founder's mother's** (authorised CE-134) — which is why **STOP is last** and **START restores it**.
 
@@ -155,6 +172,53 @@ git revert --no-edit <this sitting's commit hash>
 
 ---
 
-## 7 · NEXT
+## 8 · THE WALK — FOUNDER-WITNESSED, 2026-08-02
 
-`sunset_at`'s live witness banks itself on/after **2026-08-27**. The dial needs its PWA byte with the demo board. F-08.13 / F-08.14 / F-08.20 are one class and want one sitting. F-08.17 wants a linkage table before any second shared-handset row is invited. Sequencing is the founder's.
+**Seven of eight steps GREEN on production, on a real handset. The eighth is F-08.24.**
+Declared, not claimed: every row below is the founder's own pasted grid or his own Railway log.
+
+| # | Step | Result |
+|---|---|---|
+| 0 | Preconditions | batch window clear · row `legacy` · refusal target derived |
+| 1 | Invite (admit) + phoneless (refuse) | `invited`, `prospect_linked:true`, **no clock** · `no_phone`, nothing spent |
+| 2 | Open, twice, real device | `opened`, `expires_at` null, `extension_used` false |
+| 3 | Enquiry | `engaged`, **72.0 hours exactly**, leads 8→9, alert fired |
+| 4 | Force the clock | one row, state untouched by the UPDATE |
+| 5 | Hourly sweep 21:30:09 IST | `expired` — `active` AND `discover_eligible` untouched |
+| 6 | Feed | the expired card still browsable |
+| 7 | STOP | `removed`, `active:false`, **9 leads intact**, prospect `opted_out` |
+| 8 | START | **RED — the opt-out lifted, the demo did not (F-08.24)** |
+
+**WHAT THE WALK PROVED THAT NO DOCUMENT COULD.**
+· The 72h clock starts at the ENQUIRY, not the invite — `72.0`, not `71.4`. The founder's ruling is in the code, not only in the log.
+· `last_template_at` froze through the invite so the alert COULD fire, then moved when the alert stamped it. Same column, opposite expectations two steps apart, both correct — CE-146 §2 executing in the field rather than being argued.
+· A takedown left **nine real enquiries** standing behind `demo_leads_demo_vendor_id_fkey`, which is `ON DELETE CASCADE`.
+· Expiry and removal stayed two distinguishable exits: expiry killed the clock and left presence alone; removal flipped `active` only and left `discover_eligible` standing, which is what made the row restorable rather than reconstructable.
+· `sunset_at` stayed null throughout — the expiry and sunset jobs share a file and a table and touched entirely different columns.
+
+**TWO WITNESSES BANKED BEYOND THE CARD.**
+· **F-07.55's deferred witness is BANKED** — the estate's first live `[sendWa:template]` line: `918700521064 <- demo_invite (wamid.…) [line=marketing]`. Number, key, wamid, line, and **no body, no vars, no name**, exactly as the privacy law specifies.
+· Meta-confirmed `sent → delivered → read` on BOTH templates (`demo_invite` read 20:58:38, `demo_lead_alert` read 22:03:35) — receipt, not merely acceptance.
+
+**THE WALK'S LOG SPINE**, founder's Railway, two services:
+```
+dream-os            20:57:01  demo_invite sent      → legacy -> invited (no clock)
+                    20:59:22                          invited -> opened (no clock touched)
+                    21:06:26  demo_lead_alert sent  → opened -> engaged (clock to 08-05T15:36)
+                    21:30:09  [cron:demoLifecycle:expiry] expired 1 demo(s): legacy_jewellers
+dream-os-marketing  22:04:25  918700521064 -> Stop  → expired -> removed (reason=stop)
+                    22:09:00  918700521064 -> Start → (nothing — F-08.24)
+                    22:09:20  918700521064 -> START → (nothing — fell through the guard)
+```
+
+**THE ROW WAS RESTORED BY HAND** at the founder's paste, reproducing `restore()`'s derivation (engaged_at set, expires_at past ⇒ `expired`), `removed_at` kept: `legacy_jewellers · expired · true · true · 2026-08-02 16:34:23.816+00`.
+
+**NAMED SKIPS.** G-6's device matrix — iOS Safari, Android Chrome, the Instagram in-app browser — is NOT witnessed. Steps 2, 3 and 6 were walked in a 555×900 responsive viewport under Fast-4G throttling; step 2 was additionally confirmed on the founder's own phone by his declaration, without a capture. The beacon's double-load idempotency IS witnessed (founder-confirmed, `opened_at` unmoved across two loads on a real device).
+
+**TWO EXECUTOR MISSES ON THE RECORD.** The card sent the founder to the wrong Railway service for STOP/START; only his own instinct to open the marketing service surfaced the lines. And step 8's grid asserted `restore()`'s derivation over a caller that does not exist — the assertion was written from the module, not from the wiring.
+
+---
+
+## 9 · NEXT
+
+`sunset_at`'s live witness banks itself on/after **2026-08-27**. **F-08.24 wants its own charter** — it is live harm on a vendor-facing path and the START-guard question is already forced by the walk. The dial needs its PWA byte with the demo board. F-08.13 / F-08.14 / F-08.20 are one class and want one sitting. F-08.17 wants a linkage table before any second shared-handset row is invited. F-08.22 and F-08.23 are watch items, not work. Sequencing is the founder's.
