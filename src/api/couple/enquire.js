@@ -178,7 +178,10 @@ router.post('/', asyncHandler(async (req, res) => {
     .maybeSingle();
 
   if (demoVendor) {
-    return await handleDemoVendor({ supabase, res, demoVendor, couple_id: identityCoupleId, wedding_date, city });
+    // TDW_08 P3 — `postedBudgetMax` is THREADED, not reached for. It is derived at :106
+    // in this handler's scope; the demo species is a separate function and a value that
+    // is not in a parameter list is not in scope. Passing it is the only honest way in.
+    return await handleDemoVendor({ supabase, res, demoVendor, couple_id: identityCoupleId, wedding_date, city, postedBudgetMax });
   }
 
   return res.status(404).json({ ok: false, error: 'Vendor not found.' });
@@ -567,7 +570,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
 // ─────────────────────────────────────────────────────────────────────────────
 // THE DEMO SPECIES — the free-lead hook
 // ─────────────────────────────────────────────────────────────────────────────
-async function handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_date, city }) {
+async function handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_date, city, postedBudgetMax }) {
   // ── SERVER-SIDE HYDRATION (CE-ruled 2026-07-31, Ask 3) ────────────────────
   // The sheet collects NEITHER a name NOR a phone. It prefills from her profile,
   // so her session IS the source, and asking a logged-in bride to retype what we
@@ -586,10 +589,33 @@ async function handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_
         .eq('id', couple_id)
         .maybeSingle();
       // POSTED OVERRIDES HYDRATED — the same rule as the real leg, applied to the
-      // only two of the four that `demo_leads` can honestly hold. `functions` and
-      // `budget_band` have NO column on that table (13 cols, PUBLIC_SCHEMA.md), so
-      // they are never accepted here and the sheet renders those two READ-ONLY on
-      // a demo card. Display-and-confirm is honest; edit-and-discard is not.
+      // three of the four that `demo_leads` can honestly hold.
+      //
+      // ── TDW_08 P3 · THIS PARAGRAPH WAS HALF-TRUE AND IS NOW AMENDED (F-06.85) ──
+      // It used to read: "`functions` and `budget_band` have NO column on that table
+      // (13 cols, PUBLIC_SCHEMA.md)". Two things were wrong with that sentence and
+      // one of them is still right.
+      //
+      // THE COUNT WAS WRONG AND ITS SOURCE WAS THE REASON. `demo_leads` was already
+      // FOURTEEN columns when that comment was read — `0106_demo_lifecycle.sql:69`
+      // added `converted_lead_id`. `PUBLIC_SCHEMA.md` says thirteen because its own
+      // header (:4) prints its ladder tip as `0099` and the tail is `0108`. It is a
+      // STARTING witness; `information_schema` is the settling one. The table is
+      // FIFTEEN columns now, cited to THE LADDER and not to the doc (F-08.33).
+      //
+      // THE BUDGET HALF IS DEAD. `0108_demo_lead_budget.sql` mints
+      // `demo_leads.budget_max integer` on the founder's own amendment to G-4
+      // 「 budget should be visible. contact blurred 」. It IS accepted here now.
+      //
+      // THE FUNCTIONS HALF SURVIVES AND IS THE STRONGER CLAIM. There is still no
+      // function/event-type column on this table, none was asked for, and G-4's
+      // functions clause is STRUCK. So `functions` remains genuinely columnless and
+      // is still never accepted here.
+      //
+      // THE SHEET STAYS READ-ONLY ON BUDGET, AND POSTS IT. Read-only was never about
+      // the column — it is display-and-confirm: the couple sees the band she already
+      // chose upstream and confirms it rather than authoring it a second time. The
+      // discard is what stops; the shape does not.
       weddingDate = wedding_date || couple?.wedding_date || null;
       weddingCity = city         || couple?.wedding_city || null;
       if (couple?.user_id) {
@@ -635,6 +661,10 @@ async function handleDemoVendor({ supabase, res, demoVendor, couple_id, wedding_
         bride_phone:        bridePhone,
         bride_wedding_date: weddingDate,
         bride_wedding_city: weddingCity,
+        // TDW_08 P3 — the band's CEILING, the same integer `bandCeiling` hands the
+        // real plane at :106. NULL when she chose no band, and NULL is the honest
+        // answer: every surface OMITS the budget line rather than blanking it.
+        budget_max:         postedBudgetMax,
         // The alert's OWN result, never an assumption. If the template was
         // batched, refused, or had no target, this is false and the founder's
         // admin queue can see which vendors were never actually told.

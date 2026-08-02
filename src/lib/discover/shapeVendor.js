@@ -29,8 +29,9 @@
 // THE DEMO LEG DOES NOT CALL THIS. demo_vendors is a different table with different
 // columns (`display_name`, `ig_handle`, a string `rate_display`, JSONB `photos`) and its
 // own constant-`false` featured reasoning. Folding it in would mean a parameter selecting
-// which table the caller meant, which is two functions in one body. It stays at :248–:279,
-// named here so a later reader finds a decision instead of an oversight.
+// which table the caller meant, which is two functions in one body. It lives at
+// src/lib/discover/shapeDemoRow.js, named here so a later reader finds a decision instead
+// of an oversight.
 
 'use strict';
 

@@ -58,7 +58,22 @@ const { monthPhrase } = require('../discover/demoLeadAlert');
 // masking could have run. Narrowing the SELECT means the secret is never in
 // process memory on those paths at all — masking then shapes what remains.
 // A mask over a `select('*')` is one forgotten spread operator away from a leak.
-const MASKED_SELECT = 'id, demo_vendor_id, bride_name, bride_wedding_date, bride_wedding_city, created_at';
+//
+// ── TDW_08 P3 · `budget_max` JOINS THE LIST, BY THE FOUNDER'S OWN AMENDMENT ───
+// 「 budget should be visible. contact blurred 」 — Dev, 2026-08-03, amending G-4.
+// G-4 as written promised month + city + FUNCTION WORDS visible and contact +
+// budget blurred. `demo_leads` had neither a budget nor a function column: the
+// spec was written against `public.leads` (the real plane, which carries
+// `event_types`, `budget_min`, `budget_max`, `raw_message`) and applied to this
+// smaller table — F-08.31, the Plane Doctrine's own failure mode. `0108` mints
+// `budget_max` here; the FUNCTION half of G-4 is STRUCK and stays struck, because
+// no column exists and none was asked for.
+//
+// `bride_phone`, `bride_email` and `bride_ig_handle` are STILL ABSENT from this
+// list. That is the "contact blurred" half, and it is honoured the only way
+// acceptance §5 accepts — the secret never leaves the database, so the blur is
+// over data that is genuinely not on the wire rather than over CSS.
+const MASKED_SELECT = 'id, demo_vendor_id, bride_name, bride_wedding_date, bride_wedding_city, budget_max, created_at';
 
 /**
  * The vendor-facing masked name. FOUNDER-VETOED 2026-07-31, form (a), 「 a. confirmed 」:
@@ -105,8 +120,32 @@ function maskDemoLead(row) {
     bride_name:   maskName(row.bride_name),
     // V9: month + year, never the exact day. An exact date plus a city plus a
     // vendor is close to an identification even without a name.
-    wedding_when: monthPhrase(row.bride_wedding_date),
+    //
+    // ── TDW_08 P3 · NULL IN, NULL OUT. THE PLACEHOLDER DIES HERE, NOT AT monthPhrase ──
+    // `monthPhrase` returns the literal word 'upcoming' twice — on a null date
+    // (demoLeadAlert.js:85) and on an unparseable one (:87) — and BOTH RETURNS ARE
+    // CORRECT WHERE THEY LIVE: that function serves an approved WhatsApp template and
+    // Meta rejects empty template variables outright (demoLeadAlert.js:82), so the
+    // fallback is structural, not decorative. It is byte-untouched by ruling.
+    //
+    // But a WhatsApp-lane fallback eaten by a WEB surface is a word nobody vetoed
+    // printed under "This is how couples see you." — and it is the MAJORITY case, not
+    // an edge: on `legacy_jewellers`, the account this sitting walks, EIGHT of NINE
+    // leads carry no wedding date (founder-pasted census, 2026-08-03: 9 leads / 9
+    // cities / 1 month). Eight of nine cards would have read "Priya S. · upcoming ·
+    // Delhi NCR".
+    //
+    // So this payload tells the truth and every surface omits on null — the SAME rule
+    // the founder's `budget_max` carries and the same rule `wedding_city` carries.
+    // Three nulls, one rule: OMIT THE LINE. Never a blank, never a dash, never a
+    // shimmer over nothing.
+    wedding_when: row.bride_wedding_date ? monthPhrase(row.bride_wedding_date) : null,
     wedding_city: row.bride_wedding_city || null,
+    // The band's CEILING in whole rupees, not a figure she named (enquire.js:100/:106).
+    // NULL on every row created before 0108, which today is all nineteen of them.
+    // Renders through `formatRs` — the register is Rs X,XX,XXX, and the glyph and the
+    // k/L/Cr forms are forbidden.
+    budget_max:   row.budget_max == null ? null : row.budget_max,
     created_at:   row.created_at,
   };
 }
@@ -138,7 +177,20 @@ function maskedLeadLines(rows) {
   const masked = maskDemoLeads(rows);
   if (!masked.length) return 'No leads yet.';
   return masked
-    .map((l) => `- ${l.bride_name} | ${l.wedding_city || 'city not given'} | ${l.wedding_when}`)
+    // ── TDW_08 P3 · 'city not given' DIES HERE, AND IT NEVER FIRED ────────────
+    // 19 of 19 leads carry a city (founder-pasted census, 2026-08-03), so this
+    // placeholder has never rendered. Dormant is not absent: it is the identical
+    // shape as `monthPhrase`'s 'upcoming', in the identical module, and the day a
+    // city came back null it would have handed a language model a phrase as though
+    // it were a fact — which is F-07.42's disease, in the file that cured it.
+    // Omission is the one rule: what the table does not hold is not mentioned.
+    //
+    // `budget_max` DELIBERATELY DOES NOT JOIN THIS LINE. It reaches the TEASE by
+    // ruling; nobody ruled it into the model's window, the register donor for
+    // model-voiced money is a Block 06 seam, and an unruled money field inside a
+    // model context is not P3's to add. Declared, not overlooked.
+    .map((l) => [l.bride_name, l.wedding_city, l.wedding_when].filter(Boolean).join(' | '))
+    .map((line) => `- ${line}`)
     .join('\n');
 }
 

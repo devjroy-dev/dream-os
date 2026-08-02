@@ -24,6 +24,11 @@ const {
 } = require('../../lib/discover/ranking');
 const { computeCompleteness } = require('../../lib/vendor/profileScore');
 
+// TDW_08 P3 — the demo species' shape left this file for src/lib/discover/shapeDemoRow.js
+// when the demo landing became its third caller. Byte-identical move; see that file's
+// header for why it is a sibling of shapeVendor.js rather than a function inside it.
+const { shapeDemoRow } = require('../../lib/discover/shapeDemoRow');
+
 // D-3's handle normalizer now lives at src/lib/discover/shapeVendor.js and is imported
 // above. It was MOVED, not copied: the demo leg below and the preview mount both call the
 // same one, so a card chip and a preview chip cannot disagree about a vendor's handle.
@@ -299,67 +304,22 @@ router.get('/feed', asyncHandler(async (req, res) => {
     }
   }
 
-  // ── ONE DEMO SHAPE, TWO CALLERS (Fork 5(b)) ─────────────────────────────────
+  // ── ONE DEMO SHAPE, THREE CALLERS (Fork 5(b), widened at TDW_08 P3) ─────────
   // Hoisted at P6 so the cold-start widening below emits IDENTICAL cards to the
   // primary leg. A second inline shape would be a second implementation of the
   // wire — F-07.68's disease, one plane over — and the couple would receive two
   // subtly different card species depending on how thin her city was.
-  const shapeDemoRow = (v) => {
-    // photos is a JSONB array of {url, is_hero, cloudinary_id}
-    // TDW_07 MICRO-2 — the demo leg follows the real card: no display cap. It does not call
-    // the shaper (different table, different columns — the reasoning is in shapeVendor.js's
-    // header), but the RULE is the same rule, and a demo card capped at five while the live
-    // card carries twenty would misprice the product to exactly the audience the demo
-    // exists to convince. demo_vendors.photos is authored content, so its length is its own
-    // bound.
-    const photoUrls = (Array.isArray(v.photos) ? v.photos : [])
-      .map(p => (typeof p === 'string' ? p : p?.url))
-      .filter(Boolean);
-
-    return {
-      id:             v.id,
-      name:           v.display_name || null,
-      category:       v.category     || null,
-      city:           v.city         || null,
-      // ── F-07.54 CURED (CE ruled, Option 3) · THE DEMO SPECIES CARRIES NO TOKEN ──
-      // `ig_handle` is NOT a routing token. The inbound resolver matches
-      // `vendors.routing_handle` (vendorInbound.js:723-725) and NEVER reads
-      // demo_vendors — the reader census is agentBridge · demoAdmin · demo/vendor ·
-      // enquire · discover · shapeVendor · demoLeadAlert, and vendorInbound is
-      // absent from it. So a bride arriving on TDW's vendor line with
-      // `TDW-<ig_handle>` misses Step B, skips Step B.5 (its guard requires
-      // !startsWith('TDW-')) and lands in Step C: a dead-end reply at zero
-      // threads, or her enquiry delivered into an UNRELATED vendor's thread at one.
-      //
-      // NULLED HERE, AT THE MINT, NOT AT THE MOUNTS. Four couple-facing mounts
-      // rebuild the link from this field when `enquire_link` is null
-      // (sanctuary:1793 · canvas:354 · canvas:929 · demodiscover:187), so nulling
-      // `enquire_link` alone would have been a green cell over an unchanged bride.
-      //
-      // THE D-3 CHIP IS UNAFFECTED: it reads `instagram_handle` exclusively
-      // (canvas:854 · VendorProfileView:216), emitted below as its own field.
-      routing_handle: null,
-      starting_price: null,           // rate_display is a string; client shows it via about
-      photos:         photoUrls,
-      vibe_tags:      [],
-      about:          v.about        || null,
-      // F-07.54's other half. ENQUIRE_BASE is TDW's OWN vendor line
-      // (shapeVendor.js:42) and the demo species has no lawful address on it.
-      // Both fields null together: one of them alone is not a cure.
-      enquire_link:   null,
-      is_demo:        true,
-      // D-3: "Demo vendors: same chip from their IG-sourced handle (it's the truest
-      // thing on the card)." demo_vendors.ig_handle is lowercased at insert
-      // (admin/demoAdmin.js:50) and is the demo card's identity.
-      instagram_handle: normalizeIgHandle(v.ig_handle),
-      // Demo cards are never FEATURED: featured-ness is a vendor_featured_submissions
-      // row and demo vendors have no row in that table by construction (its vendor_id
-      // references the real vendors plane). Stated as a constant so the field's absence
-      // is never mistaken for an unread signal.
-      featured:       false,
-      _rank_score:    0,
-    };
-  };
+  //
+  // THE THIRD CALLER IS src/api/demo/vendor.js — the demo landing's mirror card
+  // (TDW_08 P3). The same sentence above is the reason it shares this function
+  // rather than shaping its own: the vendor's landing renders the couple's own
+  // renderer under the words "This is how couples see you", so a second shape
+  // would make that sentence false at the data layer while it read true on the
+  // screen. THE MECHANISM: `VendorProfileView` requires a `DiscoverVendor` and
+  // `DemoVendor` is not one — four required fields absent, `photos` a different
+  // type, two renames. The function itself moved to
+  // src/lib/discover/shapeDemoRow.js, byte-identical, when it gained that caller;
+  // it is required at the head of this file.
 
   const shapedDemo = (demoVendors || [])
     .filter(v => !suppressedDemoIds.has(v.id))

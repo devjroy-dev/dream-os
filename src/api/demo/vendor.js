@@ -16,6 +16,11 @@
 // unauthenticated) router goes through the masking home. The coverage map lives
 // there; if you add a fourth reader below, add it to that map too.
 const { maskDemoLeads, maskedLeadLines, maskedLeadSummary, MASKED_SELECT } = require('../../lib/demo/maskDemoLead');
+// TDW_08 P3 — the mirror eats the couple's own card shape. THE SAME function the couple
+// feed calls, not a copy of it: the landing renders `components/shared/VendorProfileView`
+// under the words "This is how couples see you", and a second shape would make that
+// sentence false at the data layer while it read true on the screen.
+const { shapeDemoRow } = require('../../lib/discover/shapeDemoRow');
 
 const express   = require('express');
 const router    = express.Router();
@@ -54,6 +59,25 @@ router.get('/:handle', async (req, res) => {
   try {
     const vendor = await getDemoVendor(supabase, req.params.handle);
     if (!vendor) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    // ── TDW_08 P3 · THE MIRROR CARD, ADDED BESIDE `vendor` AND NOT INSTEAD OF IT ──
+    // `vendor` is BYTE-UNTOUCHED. Three surfaces already read it by name
+    // (app/demo/vendor/[handle]/page.tsx, /discover, /portfolio) and existing
+    // behaviour is sacred (protocol §8). `card` is additive: the couple-shaped
+    // `DiscoverVendor` the mirror requires, from the ONE shaper the couple feed uses.
+    //
+    // `_rank_score` IS STRIPPED HERE, AT THIS CALLER'S OWN SEAM. The shaper emits it
+    // because the feed needs it to order; this route never interleaves, so it would
+    // reach the wire as a field `lib/types/discover.ts` does not declare — F-07.3's
+    // disease, re-minted in the sitting that inherited its cure.
+    //
+    // CITED BY PATH, NOT BY RANGE, AND THE DEVIATION IS DECLARED: CE ruled this
+    // comment carry `couple/discover.js:448-450`. This delivery's own extraction moved
+    // that rationale to :408-410, so the frozen range would have shipped already wrong —
+    // the exact failure THE PATH-OVER-RANGE LAW was promoted to end, in the delivery
+    // that promoted it. The anchor is the sentence, which does not drift:
+    //   src/api/couple/discover.js — "`_rank_score` is ORDERING MACHINERY, not contract."
+    const { _rank_score, ...card } = shapeDemoRow(vendor);   // eslint-disable-line no-unused-vars
+
     return res.json({
       ok: true,
       vendor: {
@@ -67,6 +91,7 @@ router.get('/:handle', async (req, res) => {
         photos:        vendor.photos || [],
         whatsapp_phone: vendor.whatsapp_phone,
       },
+      card,
     });
   } catch (err) {
     console.error('[demo/vendor/:handle]', err.message);

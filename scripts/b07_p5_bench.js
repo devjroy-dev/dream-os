@@ -563,10 +563,22 @@ t('§6.4 DEMO leg — posted OVERRIDES hydrated, on both fields it can hold', ()
   assert.ok(/weddingCity = city\s*\|\| couple\?\.wedding_city/.test(enq6), 'posted city wins');
 });
 
-t('§6.5 DEMO leg NEVER accepts functions or budget — no column exists to hold them', () => {
+// ── LABELED AMENDMENT · TDW_08 P3 · THE BUDGET HALF IS RETIRED, NOT LOOSENED ──
+// This cell asserted that NEITHER functions NOR budget is threaded into the demo leg,
+// on the true premise that `demo_leads` had a column for neither. The founder amended
+// G-4 on 2026-08-03 —「 budget should be visible. contact blurred 」— and `0108` mints
+// `demo_leads.budget_max integer`. The budget half now asserts a world that no longer
+// exists, and §9's BOTH-SIDES CLAUSE is explicit: the old shape's green is RETIRED,
+// never retained. It is INVERTED rather than deleted, because "budget is threaded" is
+// exactly as load-bearing now as "budget is not threaded" was then.
+//
+// THE FUNCTIONS HALF IS UNTOUCHED AND IS THE STRONGER CLAIM: there is still no
+// function/event-type column on `demo_leads`, G-4's functions clause is STRUCK, and a
+// future sitting that threads `postedFunctions` here still reds. Cell count unchanged.
+t('§6.5 DEMO leg accepts BUDGET (0108) and still NEVER functions — one column exists, one does not', () => {
   const leg = enq6.slice(enq6.indexOf('async function handleDemoVendor'));
   assert.ok(!/postedFunctions/.test(leg), 'functions has no demo_leads column; it must not be threaded here');
-  assert.ok(!/postedBudgetMax/.test(leg), 'budget has no demo_leads column; it must not be threaded here');
+  assert.ok(/postedBudgetMax/.test(leg), 'budget HAS a column since 0108 and must be threaded, not discarded');
 });
 
 t("§6.6 the open-ended band is NO CEILING, not a zero (REAL production fn)", () => {
@@ -1064,9 +1076,21 @@ if (!PWA_VISIBLE) {
 // ═══════════════════════════════════════════════════════════════════════════
 H('§13 — F-07.54: the demo species carries no routing token');
 
-const DISC6 = code(fs.readFileSync(SRC('src/api/couple/discover.js'), 'utf8'));
+// ── LABELED AMENDMENT · TDW_08 P3 · THE SPECIES MOVED FILE; THE MECHANISM DID NOT ──
+// F-07.54's mint-1 cells read the demo shape inside `couple/discover.js`, where it was an
+// inline closure. TDW_08 P3 extracted it BYTE-IDENTICAL to `src/lib/discover/shapeDemoRow.js`
+// (FORK B(ii)-β) because the demo landing became its third caller. These cells are re-aimed
+// AT THE MECHANISM, not at resemblance: the assertions are character-identical, only the
+// file they read changed. CE-119's law — a true cell aimed one surface over.
+//
+// The `demoBranch` slice is RETIRED with its reason stated: it existed to isolate the demo
+// shape from the REAL shape when both lived in one file. The new file holds the demo species
+// alone, so the isolation is structural instead of textual — a stronger guarantee, not a
+// weaker one. Cell count unchanged; `b08_p3_seeing_surface_bench.js` §1.2 proves the moved
+// bytes are the same bytes.
+const DISC6 = code(fs.readFileSync(SRC('src/lib/discover/shapeDemoRow.js'), 'utf8'));
 const DEMOV = code(fs.readFileSync(SRC('src/api/demo/vendor.js'), 'utf8'));
-const demoBranch = DISC6.slice(0, DISC6.indexOf('routing_handle: v.routing_handle'));
+const demoBranch = DISC6;
 
 t('§13.1 mint 1 — the Frost feed demo branch emits routing_handle: null', () => {
   assert.ok(/routing_handle:\s*null/.test(demoBranch), 'demo branch still mints a token');
@@ -1258,17 +1282,16 @@ function mutateSrc(rel, from, to, cellName, assertOnFresh) {
 }
 
 // F-07.54 mint 1 — put the token back.
-mutateSrc('src/api/couple/discover.js',
+mutateSrc('src/lib/discover/shapeDemoRow.js',
   'routing_handle: null,', 'routing_handle: v.ig_handle || null,',
   '§13.1 (mint 1 token)', (src) => {
     const c = code(src);
-    const branch = c.slice(0, c.indexOf('routing_handle: v.routing_handle'));
-    assert.ok(/routing_handle:\s*null/.test(branch));
+    assert.ok(/routing_handle:\s*null/.test(c));
     assert.ok(!/routing_handle:\s*v\.ig_handle/.test(c));
   });
 
 // F-07.54 mint 1 — put the link back.
-mutateSrc('src/api/couple/discover.js',
+mutateSrc('src/lib/discover/shapeDemoRow.js',
   'enquire_link:   null,', 'enquire_link:   v.ig_handle ? `${ENQUIRE_BASE}${v.ig_handle}` : null,',
   '§13.2 (mint 1 link)', (src) => {
     assert.ok(!/enquire_link:\s*v\.ig_handle\s*\?/.test(code(src)));
@@ -1276,7 +1299,7 @@ mutateSrc('src/api/couple/discover.js',
 
 // D-3 — take the chip's feed away. This must redden, or the cure could silently
 // starve the chip and no cell would notice.
-mutateSrc('src/api/couple/discover.js',
+mutateSrc('src/lib/discover/shapeDemoRow.js',
   'instagram_handle: normalizeIgHandle(v.ig_handle)', 'instagram_handle: null',
   '§13.3 (the chip feed)', (src) => {
     assert.ok(/instagram_handle:\s*normalizeIgHandle\(v\.ig_handle\)/.test(code(src)));

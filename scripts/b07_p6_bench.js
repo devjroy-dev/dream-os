@@ -141,11 +141,14 @@ ok('§2.3 the filter runs at the MINT — before shaping, so no mount can re-adm
 // convicted correct code. The property is unchanged: the phone is read at the mint and
 // never appears in the object the couple receives. Asserted on the shaper's body, which
 // IS the emitted shape.
+// LABELED AMENDMENT · TDW_08 P3 — the shape moved to src/lib/discover/shapeDemoRow.js
+// (FORK B(ii)-β, byte-identical). The property asserted is unchanged and is now stronger:
+// the file holds the emitted shape ALONE, so "inside the emitted shape" no longer needs a
+// textual slice to mean it. Cell count unchanged.
 {
-  const from = FEED_CODE.indexOf('const shapeDemoRow');
-  const body = FEED_CODE.slice(from, FEED_CODE.indexOf('const shapedDemo'));
+  const SHAPE_CODE = strip(read('src/lib/discover/shapeDemoRow.js'));
   ok('§2.4 whatsapp_phone never appears inside the EMITTED demo shape — read at the mint, never on the wire',
-    from > 0 && !/whatsapp_phone/.test(body));
+    SHAPE_CODE.length > 0 && !/whatsapp_phone/.test(SHAPE_CODE));
 }
 ok('§2.5 the emitted demo shape has no spread that could leak it',
   !/\.\.\.v\b/.test(FEED_CODE.slice(FEED_CODE.indexOf('const shapedDemo'))));
@@ -185,8 +188,16 @@ ok('§4.3 the widening drops CITY only — category, budget and vibes are her ch
 // matching one shape matched whichever survived. Two legs, two filters, asserted as two.
 ok('§4.4 F-07.49(b) governs BOTH legs — a suppressed card cannot re-enter by the back door',
   (FEED_CODE.match(/\.filter\(v => !suppressedDemoIds\.has\(v\.id\)\)/g) || []).length === 2);
+// LABELED AMENDMENT · TDW_08 P3 — this counted THREE `shapeDemoRow` tokens: one inline
+// declaration plus two call sites. After β the declaration is a require, and a require names
+// the symbol AND its path, so the same correct tree now counts four. A cell keyed on a token
+// total was measuring the declaration's SPELLING, not the property. Re-aimed at the mechanism
+// it always meant: exactly TWO legs call exactly ONE shaper, imported rather than declared
+// here. Cell count unchanged.
 ok('§4.5 both legs emit the SAME shape — one shaper, two callers, no second card species',
-  (FEED_CODE.match(/shapeDemoRow/g) || []).length === 3);
+  (FEED_CODE.match(/\.map\(shapeDemoRow\)/g) || []).length === 2 &&
+  (FEED_CODE.match(/require\('\.\.\/\.\.\/lib\/discover\/shapeDemoRow'\)/g) || []).length === 1 &&
+  !/const shapeDemoRow = \(v\) => \{/.test(FEED_CODE));
 ok('§4.6 a failed widening reports substituted:FALSE — never a sentence about cards she did not get',
   /coldStart\.substituted = false;/.test(FEED_CODE));
 

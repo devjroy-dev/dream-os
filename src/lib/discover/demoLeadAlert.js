@@ -81,6 +81,21 @@ const STATE_AFTER_SEND = 'templated';
  *
  * Meta rejects empty template variables outright, so a fallback is not a nicety.
  */
+// ── TDW_08 P3 · THE TWO 'upcoming' RETURNS, NAMED (F-06.85) ──────────────────
+// BOTH RETURNS BELOW ARE CORRECT AND BYTE-UNTOUCHED BY RULING. They exist because
+// Meta rejects empty template variables outright (see the paragraph above), so on
+// this lane the fallback is structural.
+//
+// THEY ARE NOT CONSUMED BY THE WEB TEASE. `src/lib/demo/maskDemoLead.js` calls this
+// only when `bride_wedding_date` is non-null and emits `wedding_when: null`
+// otherwise, because a WhatsApp-lane fallback printed on a vendor-facing screen
+// under "This is how couples see you." is a word the founder never vetoed — and it
+// is the majority case, not an edge (8 of 9 leads on the walked account carry no
+// date). The tease OMITS the line; it does not consume these strings.
+//
+// SO: change either return and you change the approved template's {{2}}, not the
+// screen. If a future sitting wants the screen to say something on a null date,
+// that is a copy question for the founder at the render seam — not an edit here.
 function monthPhrase(weddingDate) {
   if (!weddingDate) return 'upcoming';
   const d = new Date(weddingDate);
