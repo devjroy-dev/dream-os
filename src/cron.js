@@ -187,26 +187,6 @@ function startCronJobs({ supabase }) {
     timezone: 'UTC',
   });
 
-  // ── Demo expiry — hourly ──────────────────────────────────────────
-  // Was '0 * * * *' with no timezone (:00 of each UTC hour). IST is +5:30, so
-  // :30 Asia/Kolkata IS :00 UTC — the same instants, hourly cadence unchanged.
-  cron.schedule('30 * * * *', async () => {
-    try {
-      const { data: expired, error } = await supabase
-        .from('vendors')
-        .update({ demo_active: false })
-        .eq('demo_active', true)
-        .not('demo_handle', 'is', null)
-        .select('id, demo_handle');
-
-      if (expired?.length > 0) {
-      }
-    } catch (err) {
-    }
-  }, {
-    timezone: 'Asia/Kolkata',
-  });
-
   // ── Collab post expiry — 3:15am IST ───────────────────────────────
   // Was '45 21 * * *' with no timezone (21:45 UTC). 03:15 Asia/Kolkata IS 21:45 UTC.
   cron.schedule('15 3 * * *', async () => {
@@ -231,13 +211,27 @@ function startCronJobs({ supabase }) {
   // ══════════════════════════════════════════════════════════════════════════
   // TDW_08 P1 · THE DEMO LIFECYCLE JOBS (G-1 hourly expiry · G-2 nightly sunset)
   //
-  // ⚠ READ THIS BEFORE EDITING EITHER JOB BELOW, AND DO NOT CONFUSE THEM WITH
-  // THE JOB AT :193. That job is titled "Demo expiry — hourly" and is NOT these:
-  // it updates `vendors.demo_active` filtered on `vendors.demo_handle`, and
-  // NEITHER COLUMN EXISTS in the witnessed 38-column public.vendors. It has
-  // therefore failed on every hourly tick, forever, into an empty `catch {}`
-  // with an empty success branch, reporting nothing. FILED this sitting, NOT
-  // cured — it is an unchartered finding and deleting it is not this charter's.
+  // ⚠ THE TOMBSTONE — F-08.6, DELETED 2026-08-02. READ BEFORE EDITING EITHER JOB
+  // BELOW, because the thing this warns about is gone and the warning is what is
+  // left of it.
+  //
+  // A job titled "Demo expiry — hourly" stood immediately above these two, on the
+  // same '30 * * * *' Asia/Kolkata expression, one character of intent from the
+  // real hourly job below. It updated `demo_active` on `vendors`, filtered on
+  // `demo_handle` — and NEITHER COLUMN EXISTS in the witnessed 38-column
+  // `public.vendors`. The supabase driver returns column errors in the response
+  // object rather than throwing, and the job carried an empty success branch and
+  // an empty `catch {}`, so it did not crash into silence: it SUCCEEDED into
+  // silence, on every hourly tick, forever, reporting nothing to anyone.
+  //
+  // WHY THE MARKER OUTLIVES THE JOB. A reader who finds no job and no explanation
+  // re-derives the whole question — and the next hand to want an hourly demo job
+  // would write the same one again. This paragraph is the answer to a question
+  // that would otherwise be asked twice. Two benches assert against it by name
+  // (b08_p1_lifecycle_bench and b05_p4_crons_bench), and both were amended in the
+  // same act as the deletion, because a deletion that reddens a bench nobody
+  // amended is floor drift wearing a cure's clothes.
+  //
   // The two jobs below are the real ones and they act on `public.demo_vendors`.
   //
   // BOTH PREDICATES ARE POSITIVE ENUMERATIONS, ruled binding at CE-133 §3, and

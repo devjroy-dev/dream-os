@@ -43,6 +43,19 @@ const requireAdminPassword = require('./requireAdmin');
 // this sitting was chartered to move writers, not predicates.
 const demoLifecycle = require('../../lib/demoLifecycle');
 
+// ── TDW_08 SITTING A · THE INVITE CALLER'S TWO DEPENDENCIES ─────────────────
+// sendWa is the SINGLE outbound gate (spec §3). The route never touches a
+// transport directly, so the cross-line STOP gate and the isApproved gate bind
+// this send exactly as they bind every other one.
+//
+// claimLinkFor is IMPORTED, never re-derived. The founder gave that URL shape
+// verbatim on 2026-07-31 and demoLeadAlert.js:49-55 is where it lives; this file
+// already carries a SECOND, DIFFERENT demo URL shape at the create route
+// (`demo.thedreamwedding.in/vendor/...`, :76) which has no such provenance.
+// Writing the literal here would have made three shapes in one estate.
+const { sendWa } = require('../../lib/sendWa');
+const { claimLinkFor } = require('../../lib/discover/demoLeadAlert');
+
 // GET /admin/demo/vendors
 router.get('/vendors', requireAdminPassword, async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -150,6 +163,124 @@ router.post('/vendors/:id/discover-revoke', requireAdminPassword, async (req, re
     const r = await demoLifecycle.setDiscoverEligible(supabase, req.params.id, false);
     if (r.ok === false) return res.status(409).json({ ok: false, error: r.reason });
     return res.json({ ok: true, vendor: { id: r.row.id, display_name: r.row.display_name, discover_eligible: r.row.discover_eligible } });
+  } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// POST /admin/demo/vendors/:id/invite — THE INVITE CALLER (TDW_08 Sitting A)
+//
+// WHY THIS ROUTE EXISTS. demoLifecycle.onInvited has been complete, correct and
+// UNREACHABLE since it shipped: nothing in the estate called it, so every
+// production row stayed `legacy`, onEnquiry refused every real enquiry, and the
+// lifecycle logged a no-op on a machine that could not be entered. This is the
+// door. Founder ruling: 「 I fire invites through admin console 」.
+//
+// THE ORDER IS LOAD-BEARING — PRE-CHECK, then SEND, then STATE (CE-146 §5).
+//   · pre-check BEFORE the send, because a template is a real message to a real
+//     handset and spending one on a row the module will then refuse is not a
+//     recoverable mistake.
+//   · state AFTER the send, because `invited` ASSERTS that a template was sent.
+//     That is CE-135 §4(2)'s principle — the same argument that makes onInvited
+//     refuse a phoneless row — applied one layer out. A refused or failed send
+//     must leave the row exactly as it was.
+//
+// THE PRE-CHECK READS THE MODULE'S OWN FROZEN LIST, never a literal. Duplicating
+// `['legacy','built']` here would make this file a second authority on a
+// transition rule, which is precisely the drift demoLifecycle was built to end.
+// One authority (demoLifecycle.INVITE_STATES), two readers.
+//
+// THIS SEND IS tdw_demo_invite's FIRST EVER. Approved 2026-07-19 and never
+// called by any code path until this route — the template was approved, paid
+// for and unreachable, exactly as tdw_morning_nudge_vendor was before F4.
+//
+// ⚠ TWO THINGS THIS ROUTE DOES NOT DO, declared rather than discovered:
+//   · IT DOES NOT CONSULT THE 25/day CAP (F-08.12). readDailyCap's only consumers
+//     are runOpenerJob (prospects.js:213) and the admin cap route
+//     (api/admin/prospects.js:109) — the cap governs the cold-prospect BATCH
+//     SWEEP and nothing else. Spec §3's "25/day governance owns invite volume"
+//     describes a volume control that does not exist for hand-fired sends.
+//     Pressing this eleven times sends eleven templates. The cure belongs with
+//     the bulk build, where volume actually arises.
+//   · IT DOES NOT DECLARE nudgeClass, so WaNudgeOptedOutError can never fire here
+//     (sendWa.js:209 gates that limb on the caller's own declaration). An invite
+//     is not a nudge. The FULL cross-line opt-out still binds and is handled.
+//
+// ⚠ F-08.17 — TWO PRODUCTION DEMO ROWS SHARE ONE HANDSET (founder SELECT,
+// 2026-08-02). `prospects` holds one row per phone and `demo_vendor_ref` is
+// single-valued, so inviting the second of a shared-phone pair OVERWRITES the
+// first's linkage and STOP from that handset then reaches only the second. Filed,
+// not cured — the fix is a linkage table and it is not this sitting's. Until it
+// is, this route must not be fired on both rows of a shared-phone pair.
+router.post('/vendors/:id/invite', requireAdminPassword, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  try {
+    // ── 1 · PRE-CHECK. Mirrors the grant/revoke sibling shape at :131-134 and
+    //        :145-148, widened from an existence probe to the two facts that
+    //        decide whether a template may be spent.
+    const { data: row, error } = await supabase
+      .from('demo_vendors')
+      .select('id, ig_handle, display_name, whatsapp_phone, state')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!row) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
+    if (demoLifecycle.INVITE_STATES.includes(row.state) === false) {
+      return res.status(409).json({ ok: false, error: 'illegal_transition', detail: `${row.state} -> invited` });
+    }
+    if (!row.whatsapp_phone) {
+      return res.status(409).json({ ok: false, error: 'no_phone', detail: row.ig_handle });
+    }
+
+    // ── 2 · THE SEND. Through the one gate, on the marketing line
+    //        (templates.js:112), which routes via MARKETING_PHONE_NUMBER_ID and
+    //        carries the cross-line STOP gate. The body is founder-frozen; this
+    //        route supplies only the two declared variables.
+    const claimLink = claimLinkFor(row.ig_handle);
+    if (!claimLink) {
+      return res.status(409).json({ ok: false, error: 'no_handle', detail: row.id });
+    }
+    try {
+      await sendWa({
+        line: 'marketing',
+        to: row.whatsapp_phone,
+        templateKey: 'demo_invite',
+        vars: { name: row.display_name, claim_link: claimLink },
+        supabase,
+      });
+    } catch (e) {
+      const code = (e && e.code) || 'send_failed';
+      if (code === 'opted_out') {
+        console.log(`[admin/demo/invite] REFUSED ${row.ig_handle} — recipient has opted out; no state written`);
+        return res.status(409).json({ ok: false, error: 'opted_out', detail: row.ig_handle });
+      }
+      console.error(`[admin/demo/invite] SEND FAILED for ${row.ig_handle}: ${code} — ${e && e.message} `
+        + '(no state written; the row is exactly as it was)');
+      return res.status(502).json({ ok: false, error: code, detail: e && e.message });
+    }
+
+    // ── 3 · THE STATE. Only now, and only through the module.
+    const r = await demoLifecycle.onInvited(supabase, row.id, { via: 'admin_console' });
+    if (r.ok === false) {
+      // Unreachable after the pre-check unless the row moved between the two
+      // reads. LOUD, never papered: a template has already reached a handset and
+      // the row does not say so, which is the one inconsistency this route's
+      // whole ordering exists to prevent.
+      console.error(`[admin/demo/invite] SENT BUT NOT STAMPED for ${row.ig_handle}: ${r.reason} `
+        + `(${r.detail}) — the vendor has the message and the row does not record it`);
+      return res.status(500).json({ ok: false, error: 'sent_not_stamped', detail: r.reason });
+    }
+
+    // A FAILED LINKAGE IS A 200 WITH A FLAG, NOT AN ERROR (CE-147 §4). The send
+    // happened and the state is true; answering 409 while the vendor's handset is
+    // buzzing would be the house's "never a false done" inverted into a false
+    // failure. The flag is what the founder reads, and onInvited has already
+    // logged the reason loudly.
+    return res.json({
+      ok: true,
+      vendor: { id: r.row.id, display_name: r.row.display_name, discover_eligible: r.row.discover_eligible },
+      state: r.state,
+      prospect_linked: r.prospect_linked === true,
+    });
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
 

@@ -87,6 +87,15 @@ const STATES = Object.freeze([
   'legacy', 'built', 'invited', 'opened', 'engaged', 'claimed', 'expired', 'removed',
 ]);
 
+// The two states an invite may be fired FROM. POSITIVE ENUMERATION, same family
+// as the two lists below. It exists as an EXPORT rather than as a literal inside
+// onInvited because the admin invite route must refuse an ineligible row BEFORE
+// it spends a real template on it (CE-146 §5: a refused send must not stamp
+// `invited`, and a send that will be refused must not happen at all). Two readers,
+// ONE frozen authority — the alternative is the route re-implementing the rule and
+// the two drifting, which is the disease this whole module was built against.
+const INVITE_STATES = Object.freeze(['legacy', 'built']);
+
 // The live clock states — the ones the hourly sweep may expire. POSITIVE
 // ENUMERATION, ruled binding at CE-133 §3. A negated predicate here
 // (`state != 'claimed'`) would sweep `legacy` rows, which have no clock and no
@@ -191,7 +200,7 @@ function buildInsertPatch(fields) {
 async function onInvited(supabase, demoVendorId, opts) {
   const row = await _read(supabase, demoVendorId);
   if (!row) return _refuse('not_found', demoVendorId);
-  if (row.state !== 'legacy' && row.state !== 'built') {
+  if (INVITE_STATES.includes(row.state) === false) {
     return _refuse('illegal_transition', `${row.state} -> invited`);
   }
   if (!row.whatsapp_phone) {
@@ -213,10 +222,49 @@ async function onInvited(supabase, demoVendorId, opts) {
 
   // The linkage. Fail-open: a demo IS invited even if the prospect row could not
   // be reached, and the refusal is loud rather than silent.
+  //
+  // ── F-08.10 · CREATE-OR-PROMOTE (CE-147 §3) ────────────────────────────────
+  // THE DEFECT THIS CURES, and it was live in this module's first hour:
+  // findOrCreateProspectByPhone defaults `state:'cold'` (prospects.js:74) and
+  // runOpenerJob harvests exactly `.eq('state','cold')` (prospects.js:218-220).
+  // So inviting a vendor made his handset eligible for an UNRELATED
+  // marketing_opener on the next opener tick. The estate already knew the shape:
+  // demoLeadAlert.js:67 says in its own words that `templated` "keeps the row out
+  // of runOpenerJob's harvest" — the alert path was protected and the invite path
+  // was not.
+  //
+  // TWO LIMBS, because the fixture proved a seed-only cure never fires: the walk
+  // row's handset ALREADY carries a prospect (founder SELECT, 2026-08-02), and
+  // findOrCreateProspectByPhone returns an existing row untouched. So the create
+  // limb seeds `templated`, and the find limb PROMOTES `cold -> templated` and
+  // nothing else. `replied`, `in_session` and `converted` are further along and
+  // are not walked backwards; `opted_out` is TERMINAL and its only reversal is the
+  // founder's START, never ours.
+  //
+  // `templated` is literally true here: FORK A arm (b) means a template was sent
+  // before this function was reached.
+  //
+  // ⚠ THE DECLARED ASYMMETRY (CE-146 §2, F-08.11). Every other site in the estate
+  // writes `{ state:'templated', last_template_at: stamp }` as ONE act
+  // (prospects.js:233, api/admin/prospects.js:172, demoLeadAlert.js:325 and :345).
+  // THIS SITE WRITES THE STATE AND NOT THE STAMP, on purpose. demoLeadAlert.js:100-105
+  // states the column's invariant in its own words — "stamped only after a send
+  // THIS MODULE actually made" — and reads it at :117-123 to suppress a demo-lead
+  // alert for 48h. The column's meaning is MODULE-SCOPED; only its name is global.
+  // A second stamper would silently convert "have we alerted this phone" into "has
+  // anyone templated this phone", and the cost is not a bench inconvenience: invite
+  // a vendor, a couple enquires three hours later, and the vendor never hears about
+  // the lead — the exact conversion moment demo_lead_alert exists for, failing
+  // silently in the field. The next hand that reaches for consistency reads this
+  // first. F-08.11 is the finding on the NAME; it is not cured here.
   let linked = false;
   try {
-    const p = await prospects.findOrCreateProspectByPhone(supabase, row.whatsapp_phone);
-    await prospects.updateProspect(supabase, p.id, { demo_vendor_ref: row.id });
+    const p = await prospects.findOrCreateProspectByPhone(
+      supabase, row.whatsapp_phone, { state: 'templated' },
+    );
+    const patch = { demo_vendor_ref: row.id };
+    if (p.state === 'cold') patch.state = 'templated';
+    await prospects.updateProspect(supabase, p.id, patch);
     linked = true;
   } catch (e) {
     console.error(`[demoLifecycle:onInvited] LINKAGE FAILED for ${row.ig_handle}: ${e.message} — `
@@ -472,6 +520,20 @@ async function readSunsetDays(supabase) {
 // legacy row's `invited_at` is NULL and would have failed the old date clause.
 // Neither half works alone; that is why they shipped in one act (CE-142 §1).
 //
+// THE SUNSET MARKER (F-08.7, 0107). This job also stamps `sunset_at`, and it is
+// the ONLY writer of that column. A swept row used to be byte-identical to a row
+// an admin revoked by hand, and to one revoked eight weeks ago — no marker, no
+// WHEN — so spec P6's "purged after the 7-day resurrect window" had nothing to
+// compute the window FROM. The stamp is a HISTORY stamp in `removed_at`'s family:
+// set on a rotation, NEVER cleared when setDiscoverEligible grants the row back,
+// because the rotation having been undone does not un-happen it. It is
+// deliberately NOT `discover_eligible_at`'s family — see the two-idiom warning at
+// the head of this file, which is the whole argument and is not repeated here.
+// Idempotent by the same clause that makes the counts mean something: only rows
+// still carrying `discover_eligible = true` are touched, so a row cannot be
+// re-stamped on the next tick, and a re-granted row's next sunset legitimately
+// overwrites the stamp with the later date.
+//
 // SUNSET FLIPS `discover_eligible` ONLY AND WRITES NO STATE. Two exits, two
 // flags, no overlap: removal flips `active` (out of everything), sunset flips
 // `discover_eligible` (out of Discover, content retained). The row keeps
@@ -505,7 +567,7 @@ async function runSunsetSweep(supabase, now) {
   // and it is caught on the next tick. Self-correcting, once a night, harmless.
   const base = () => supabase
     .from('demo_vendors')
-    .update({ discover_eligible: false, discover_eligible_at: null })
+    .update({ discover_eligible: false, discover_eligible_at: null, sunset_at: _iso(at) })
     .in('state', SUNSET_STATES)
     .is('claimed_at', null)
     .eq('discover_eligible', true);
@@ -534,7 +596,7 @@ async function runSunsetSweep(supabase, now) {
 
 module.exports = {
   WINDOW_HOURS, DEFAULT_SUNSET_DAYS, SUNSET_CONFIG_KEY, readSunsetDays,
-  STATES, CLOCK_STATES, SUNSET_STATES, PRESENCE_COLUMNS,
+  STATES, INVITE_STATES, CLOCK_STATES, SUNSET_STATES, PRESENCE_COLUMNS,
   buildInsertPatch,
   onInvited, onOpened, onEnquiry, onClaimed, onRemoved,
   removeByPhone, restore, setDiscoverEligible, deactivate,

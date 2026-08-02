@@ -179,7 +179,23 @@ sec('§4 · F-6(b) — two authorities became one');
   ok('§4.1 the private guard is no longer DEFINED', !/function requireAdminPassword/.test(ds));
   ok('§4.2 it imports the one guard', /require\(['"]\.\/requireAdmin['"]\)/.test(ds));
   const mounts = (ds.match(/requireAdminPassword/g) || []).length;
-  ok(`§4.3 all ten routes still carry a guard (${mounts - 1} mounts + 1 import)`, mounts === 11);
+  // ── LABELLED RE-AIM, TDW_08 SITTING A (2026-08-02) · COUNT 11 -> 12 ────────
+  // DISCLOSED, NEVER SMOOTHED. This is a CLOSED-WORLD count and that is the
+  // point: it reds whenever a route joins this router without a guard — and it
+  // also reds when a route joins WITH one, which is how this sitting learned the
+  // cell existed. TDW_08 Sitting A added the ELEVENTH route
+  // (POST /vendors/:id/invite), so the guard appears 11 times as middleware plus
+  // once as the import = 12. §4.4 below carries the cell's real INVARIANT
+  // relationally (routes === mounts - 1) and needed no edit; this line carries
+  // the census, and a census is amended by derivation from the file, never by a
+  // charter number (CE-119).
+  //
+  // THIRD INSTANCE OF THE SAME CLASS IN ONE SITTING — F-08.13 (a bench keyed on
+  // the next ladder number), F-08.14 (a bench scanning later migrations for a
+  // string), and this one. Each is a sealed bench asserting a fact about the
+  // ESTATE'S FUTURE rather than about its own delivery. Filed as F-08.20; the
+  // class is F-08.15's.
+  ok(`§4.3 all eleven routes still carry a guard (${mounts - 1} mounts + 1 import)`, mounts === 12);
   ok('§4.4 no route lost its guard', (ds.match(/router\.(get|post|delete|patch|put)\(/g) || []).length === mounts - 1);
 }
 

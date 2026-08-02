@@ -445,16 +445,29 @@ t('§6.6 the TZ rewrite preserved the WALL CLOCK — asserted on CODE, expr↔tz
   // on UTC); only its expected table grew, and it grew by derivation from the
   // file rather than from a charter number (CE-119).
   //
-  // The two new rows carry NO "was" note because they preserve no prior instant:
-  // they are new jobs, not TZ rewrites. Row 3 and row 5 share an expression by
-  // coincidence — row 3 is F-08.6's PHANTOM job (it updates vendors.demo_active,
-  // a column that does not exist; filed this sitting, not cured), row 5 is the
-  // real demo lifecycle expiry. They are not the same job and must not be
-  // deduplicated into one row by a later tidy.
+  // The two TDW_08 rows carry NO "was" note because they preserve no prior
+  // instant: they are new jobs, not TZ rewrites.
+  //
+  // ── LABELLED RE-AIM #2, TDW_08 SITTING A (2026-08-02) · COUNT 6 -> 5 ───────
+  // DISCLOSED, NEVER SMOOTHED. The old row 3 was F-08.6's PHANTOM job — it
+  // updated `demo_active` on `vendors` filtered on `demo_handle`, neither column
+  // existing, succeeding into silence on every tick. It was DELETED this sitting
+  // (src/cron.js, the tombstone above the two real demo jobs records it), so the
+  // closed-world table loses it and the count drops by one.
+  //
+  // THE PREVIOUS COMMENT HERE WARNED AGAINST DEDUPLICATING ROWS 3 AND 5, which
+  // shared '30 * * * *' by coincidence. That warning is now spent: only ONE job
+  // holds that expression and it is the real demo lifecycle expiry. The warning
+  // is REPLACED rather than left standing, because a guard protecting a thing
+  // that no longer exists is the next reader's wasted hour.
+  //
+  // THIS CELL IS STILL CLOSED-WORLD AND THAT IS STILL THE POINT: it reds whenever
+  // a job is added OR removed, which is exactly why the deletion could not ship
+  // without touching this line. A deletion that reddens a bench nobody amended is
+  // floor drift, and the amendment travels in the same act as the byte.
   const expected = [
     ["0 3 * * *",   "Asia/Kolkata"],   // contracts   03:00 IST == 21:30 UTC (was '30 21 * * *')
     ["30 2 * * *",  "UTC"],            // briefing    UNTOUCHED — 02:30 UTC == 08:00 IST
-    ["30 * * * *",  "Asia/Kolkata"],   // demo expiry :30 IST     == :00 UTC  (was '0 * * * *') — F-08.6 PHANTOM
     ["15 3 * * *",  "Asia/Kolkata"],   // collab      03:15 IST   == 21:45 UTC (was '45 21 * * *')
     ["30 * * * *",  "Asia/Kolkata"],   // TDW_08 P1 · demo LIFECYCLE expiry, hourly :30 IST
     ["45 3 * * *",  "Asia/Kolkata"],   // TDW_08 P1 · demo sunset, nightly 03:45 IST
