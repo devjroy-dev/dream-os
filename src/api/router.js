@@ -82,8 +82,8 @@ router.use('/couple',         require('./couple/core'));
 // TWO CLASSES, AND THE SPLIT IS NOT COSMETIC:
 //
 //   CLASS A — the co-planner's own doors. Every caller is a circle member and
-//   the census proves it (eleven client call sites, all inside app/coplanner
-//   plus the join page). These take the GUARD: no token, no answer.
+//   the census proves it (client call sites all inside app/coplanner plus the
+//   join page). These take the GUARD: no token, no answer.
 //
 //   CLASS B — /frost/circle/feed · /threads · /messages. These are SHARED and
 //   their second caller is THE BRIDE, who is not a `circle_members` row. A
@@ -96,12 +96,46 @@ router.use('/couple',         require('./couple/core'));
 // doors that ISSUE the credential. A mint that required a credential could never
 // issue the first one, and `/circle/join/set-pin` is the invite token's own leg
 // (CE ruling §4, confirmed).
+//
+// ── F-07.115 · ELEVEN DOORS BECAME NINE, AND THE DISTINCTION IS THE POINT ────
+//
+// `router.use('/dreamai', requireCircleMemberAuth, require('./circle/dreamai'))`
+// stood here from F-07.72 ZIP 2 until this delivery, carrying TWO Class A doors
+// (`/dreamai/circle-member-history/:userId` and `/dreamai/circle-member-chat`).
+// It is DELETED, with the file behind it. So the lane's count moves:
+//   Class A   six → FOUR       Class B   five (unmoved)      TOTAL  eleven → NINE
+//
+// READ THAT MOVEMENT CORRECTLY, because a count falling is what a regression
+// looks like from a distance and this is its opposite: NO DOOR LOST ITS GUARD.
+// Two doors CEASED TO EXIST. Every door that was guarded at `f8cd7de` and still
+// exists is still guarded, and `§5.4`/`§13.23` assert both halves separately so
+// the difference cannot be papered over by a tally.
+//
+// WHY THEY WENT, since ZIP 2's own header argued for keeping them. Fork C is
+// SUPERSEDED, not contradicted. It was ruled when this door was UNGUARDED and
+// the surface's deletion was hypothetical, and its decisive fact — the door
+// outlives the surface — is answered by retiring the door WITH the surface. What
+// remained after ZIP 2 was a door that was guarded, client-less (its only two
+// callers lived in `app/coplanner/dreamai/page.tsx`, deleted this arc), and
+// UNDRIVABLE by any cell, because requiring this router executes `circleEngine`
+// at import — a W-1 surface. Guarded + client-less + unbenchable is the worst of
+// the three states: nothing would ever notice its guard regressing.
+//
+// AND KEEPING THEM AGAINST A FUTURE WEB CLIENT IS AN OPTION THE FOUNDER HAS
+// CLOSED: circle members do not get Mira in the PWA, by ruling. Choosing to keep
+// a live door purely to keep the number eleven byte-stable would be preserving a
+// number over a truth.
+//
+// MIRA IS NOT DELETED WITH HER DOORS. `runCircleAgenticTurn` is called DIRECTLY
+// at `src/brideIndex.js:677` on the WhatsApp lane — no HTTP hop was ever
+// involved — which is why removing these routes cannot reach her. That is the
+// non-regression claim of this whole arc and it is asserted by cell and walked
+// by the founder's own thumb.
 const requireCircleMemberAuth = require('./middleware/requireCircleMemberAuth');
 router.use('/auth/verify-pin',       require('./circle/verifyPin'));   // public — THE MINT
 router.use('/circle/join',           require('./circle/join'));         // public — invite token validates, THE SECOND MINT
 router.use('/circle/session',        requireCircleMemberAuth, require('./circle/session'));   // CLASS A
 router.use('/circle/muse',           requireCircleMemberAuth, require('./circle/muse'));      // CLASS A
-router.use('/dreamai',               requireCircleMemberAuth, require('./circle/dreamai'));   // CLASS A
 router.use('/frost/circle/feed',     require('./circle/feed'));         // CLASS B — dual-lane, refuses in-handler
 router.use('/frost/circle/threads',  require('./circle/threads'));      // CLASS B — dual-lane, refuses in-handler
 router.use('/frost/circle/messages', require('./circle/messages'));     // CLASS B — dual-lane, refuses in-handler

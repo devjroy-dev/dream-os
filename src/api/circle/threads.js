@@ -43,7 +43,10 @@ router.get('/:brideId/:threadId/messages', asyncHandler(async (req, res) => {
 
   // ── F-07.112 · SITE C-3 · "BELONGS TO THIS COUPLE" WAS NEVER ENOUGH ────────
   // A member's PRIVATE thread with Mira also belongs to this couple and also
-  // carries kind='circle_thread' (dreamai.js:93). This lookup checked both and
+  // carries kind='circle_thread' (minted on the WhatsApp lane at
+  // brideIndex.js:369 and brideInbound.js:278/:371 — this line named
+  // `dreamai.js:93` until F-07.115 retired that file with the co-planner's Dream
+  // AI surface; the discriminator itself is untouched). This lookup checked both and
   // therefore served that private history — every question she asked the agent —
   // to any caller of this door who knew its uuid, which until C-4 below the
   // thread list published. The discriminator is the whole fix: see the

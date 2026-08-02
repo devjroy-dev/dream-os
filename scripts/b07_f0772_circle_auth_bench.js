@@ -442,10 +442,14 @@ t('§5.3 EVERY Class B door now refuses on the resolver — the comment became c
   }
 });
 
-t('§5.4 the guard IS mounted on the three Class A files, and the confession is discharged', () => {
+t('§5.4 the guard IS mounted on the two surviving Class A files, and the confession is discharged', () => {
   const r = read('src/api/router.js');
   const code = r.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-  for (const mount of ['/circle/session', '/circle/muse', '/dreamai']) {
+  // F-07.115 — `/dreamai` left this list because it left the router. Its own
+  // retirement is asserted separately at §14.1 rather than by its absence here,
+  // so a mount that silently lost its guard can never be mistaken for a door
+  // that was deliberately retired.
+  for (const mount of ['/circle/session', '/circle/muse']) {
     assert.ok(new RegExp(`router\\.use\\('${mount}',\\s*requireCircleMemberAuth`).test(code),
       `${mount} is not guarded`);
   }
@@ -770,6 +774,88 @@ await mutateSrc('src/api/circle/session.js',
   async () => {
     assert.ok(read('src/api/circle/session.js').includes('Filed as F-07.106'),
       'the minimisation stopped naming the door it did not close');
+  });
+
+// ── F-07.115's INVERSES. Every one breaks PRODUCTION SOURCE, never test setup,
+// and every one is restored byte-identical by mutateSrc's own cmp.
+
+// INVERSE 11 — put the retired mount back. §14.2 and §14.3's arithmetic must
+// redden: a third guarded circle mount means the retirement did not happen.
+await mutateSrc('src/api/router.js',
+  "router.use('/frost/circle/feed',     require('./circle/feed'));",
+  "router.use('/dreamai',               requireCircleMemberAuth, require('./circle/dreamai'));\n" +
+  "router.use('/frost/circle/feed',     require('./circle/feed'));",
+  'the retirement of the /dreamai mount',
+  async () => {
+    const code = read('src/api/router.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/router\.use\('\/dreamai'/.test(code), 'the /dreamai mount is still on the router');
+    const guarded = (code.match(/router\.use\('[^']+',\s*requireCircleMemberAuth/g) || []).length;
+    assert.strictEqual(guarded, 2, `expected exactly two guarded circle mounts, found ${guarded}`);
+  });
+
+// INVERSE 12 — take a SURVIVING door's guard off. This is the mutation that
+// separates the two facts §14.3 exists to keep apart: the door count is right
+// and a door is nevertheless unguarded. If this passed, "nine doors" would be a
+// tally standing over a hole.
+await mutateSrc('src/api/router.js',
+  "router.use('/circle/muse',           requireCircleMemberAuth, require('./circle/muse'));",
+  "router.use('/circle/muse',           require('./circle/muse'));",
+  'a surviving Class A door keeping its guard through the retirement',
+  async () => {
+    const code = read('src/api/router.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(/router\.use\('\/circle\/muse',\s*requireCircleMemberAuth/.test(code),
+      '/circle/muse lost its guard in the retirement');
+  });
+
+// INVERSE 13 — bring the keyless flag back to the one home. §13.14's INVERSION
+// must redden; a cell that only asserted absence by no longer running could not.
+await mutateSrc('src/lib/circlePermissions.js',
+  '  can_see_budget:         false,',
+  '  dreamai_access_granted: false,\n  can_see_budget:         false,',
+  "F-07.115's closure by deletion at the one home",
+  async () => {
+    const code = read('src/lib/circlePermissions.js')
+      .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/dreamai_access_granted/.test(code), 'the keyless flag is back in the permission block');
+  });
+
+// INVERSE 14 — strip the closure record while leaving the deletion in place.
+// The field being gone is not the whole cure: F-06.85's law is that the
+// paragraph conditioned on the mechanism records what happened to it.
+await mutateSrc('src/lib/circlePermissions.js',
+  'THIS IS THAT SITTING, AND THIS IS THAT RE-READ',
+  'The flag was removed',
+  "the F-06.85 record of F-07.115's re-read",
+  async () => {
+    assert.ok(/THIS IS THAT SITTING, AND THIS IS THAT RE-READ/.test(read('src/lib/circlePermissions.js')),
+      'the paragraph no longer records that its own re-read instruction was discharged');
+  });
+
+// INVERSE 15 — restore the stale pointer at the thread model. A comment naming a
+// deleted file is how the next reader learns a wrong mechanism, which is the
+// exact disease F-06.85 exists to prevent.
+await mutateSrc('src/api/circle/messages.js',
+  '//         `src/brideIndex.js:369` and `src/lib/brideInbound.js:278/:371`.',
+  '//         `src/api/circle/dreamai.js:93`.',
+  "the re-derived mint-site pointer in messages.js",
+  async () => {
+    const msg = read('src/api/circle/messages.js');
+    assert.ok(/brideIndex\.js:369/.test(msg) && /brideInbound\.js:278/.test(msg),
+      "messages.js's thread model still points at the deleted file");
+  });
+
+// INVERSE 16 — sever the WhatsApp lane's direct call to the engine. §14.5 is the
+// non-regression claim of the whole arc; if it passed over a broken brideIndex
+// the founder's walk would be the only thing standing between a retirement and
+// a dead Mira.
+await mutateSrc('src/brideIndex.js',
+  "const { runCircleAgenticTurn } = require('./agent/circleEngine');",
+  "const runCircleAgenticTurn = null; // severed",
+  "the WhatsApp lane's direct call to Mira's engine",
+  async () => {
+    const bi = read('src/brideIndex.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(/require\('\.\/agent\/circleEngine'\)/.test(bi),
+      'brideIndex no longer requires the circle engine');
   });
 
 H('§10 — the sibling half, named (F-07.50 cross-repo precedent)');
@@ -1387,25 +1473,27 @@ await ta('§12.7 C-4 THE LIST DOES NOT ENUMERATE PRIVATE THREADS — the negativ
   assert.ok(!ids.includes(`dm:${PRIVATE_ID}`), "a member's private thread is tappable from the co-planner");
 });
 
-// ── §12.8 IS NOT DRIVEN, AND THE REASON IS DISCLOSED RATHER THAN HIDDEN ─────
-// The honest cell here would drive dreamai.js's history handler and watch it
-// still return her fifteen rows. It does not, because `require`ing that router
-// executes `src/agent/circleEngine` (dreamai.js:14), which is a W-1 protected
-// surface AND constructs a client at import — the first cut of this cell died
-// on "supabaseUrl is required" and would only have been revivable by seeding
-// credentials to load a soul module this sitting is forbidden to open.
+// ── §12.8 RE-AIMED AT F-07.115 — THE FILE IT WATCHED IS GONE ────────────────
+// WHAT THIS CELL USED TO SAY: that `dreamai.js`'s two reads still keyed on
+// `counterparty_user_id`, narrowed to source because requiring that router
+// executed `circleEngine` at import (a W-1 surface building a client at load).
+// That narrowing is now moot: the file is DELETED with the co-planner's Dream AI
+// surface, so there is no reader there to regress.
 //
-// SO THE CLAIM IS NARROWED TO WHAT CAN BE PROVEN, and the gap is named: the
-// private lane's READ keys on counterparty_user_id and this delivery changes
-// zero bytes in that file. The unproven remainder — that the handler behaves
-// at runtime — is the FOUNDER'S, and it is step 6 of the smoke card, which is
-// the one step of that card that is not optional.
-t('§12.8 NON-REGRESSION: the dreamai reader still keys on the owner, and is untouched here', () => {
-  const code = read('src/api/circle/dreamai.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-  assert.ok(/\.eq\('counterparty_user_id',\s*userId\)/.test(code), 'the history read lost its owner key');
-  assert.ok(/\.eq\('counterparty_user_id',\s*user_id\)/.test(code), 'the chat read lost its owner key');
-  assert.ok(!/\.is\(\s*'counterparty_user_id'/.test(code),
-    'the private lane was given the GROUP discriminator — this cure would have closed the leak by breaking Mira');
+// THE CLAIM IS RE-AIMED, NOT DROPPED, because the QUESTION it asked still
+// matters and now has a better answer: does the private lane still key on its
+// owner? It does, and it does so on the WhatsApp lane — the only lane that ever
+// mattered, since `runCircleAgenticTurn` is called directly at
+// `brideIndex.js:677` and never went through the retired doors. Retiring an HTTP
+// surface must not touch the discriminator F-07.112 made load-bearing, and this
+// cell is where that is asserted.
+t('§12.8 RE-AIMED: the PRIVATE lane still keys on its owner — on the lane that survived', () => {
+  for (const f of ['src/brideIndex.js', 'src/lib/brideInbound.js']) {
+    const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(/counterparty_user_id/.test(code), `${f} lost the private lane's discriminator`);
+    assert.ok(!/\.is\(\s*'counterparty_user_id'/.test(code),
+      `${f} was given the GROUP discriminator — that would close the leak by breaking Mira`);
+  }
 });
 
 await ta('§12.9 the FOURTH MOUTH survives the cured read shape (CE-126, no three-value space)', async () => {
@@ -1431,9 +1519,12 @@ t('§12.11 the create writes the discriminator EXPLICITLY, not by omission', () 
   assert.ok(/counterparty_user_id:\s*null,/.test(code), 'the insert relies on omission; the selector above it reads the column');
 });
 
-t('§12.12 the PRIVATE lane is untouched — its three sites still key on counterparty_user_id', () => {
+t('§12.12 the PRIVATE lane is untouched — its TWO surviving mint sites still key on the owner', () => {
+  // F-07.115 — `src/api/circle/dreamai.js` was the THIRD site in this list and
+  // is deleted with the surface. THE COUNT FELL BECAUSE A FILE WENT, not because
+  // a site lost its discriminator; §14.4 asserts the deletion itself so the two
+  // facts can never be confused for one another.
   const sites = [
-    ['src/api/circle/dreamai.js',   /counterparty_user_id:\s*user_id/],
     ['src/brideIndex.js',           /counterparty_user_id:\s*user\.id/],
     ['src/lib/brideInbound.js',     /counterparty_user_id:\s*circleUser\.id/],
   ];
@@ -1764,7 +1855,7 @@ t('§13.12 NO TOKEN BYTES ARE LOGGED IN THE GUARD — not the value, not a prefi
 
 t('§13.13 FORK E — the permission block has ONE definition and TWO readers', () => {
   const home = read('src/lib/circlePermissions.js');
-  assert.ok(home.includes('dreamai_access_granted: false'), 'the one home does not carry the block');
+  assert.ok(home.includes('can_contribute_muse:    true'), 'the one home does not carry the block');
   for (const f of ['src/api/middleware/requireCircleMemberAuth.js', 'src/api/circle/session.js']) {
     const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
     assert.ok(!/can_contribute_muse:\s*true/.test(code),
@@ -1775,10 +1866,34 @@ t('§13.13 FORK E — the permission block has ONE definition and TWO readers', 
     'session.js no longer serves the guard-resolved block');
 });
 
-t('§13.14 [F-06.85] F-07.115 IS DECLARED AT THE ONE HOME, by number and by mechanism', () => {
+// ── §13.14 IS INVERTED AT F-07.115, AND THE INVERSION IS THE WHOLE POINT ────
+// This cell asserted that `dreamai_access_granted: false` WAS CARRIED at the one
+// home, and that F-07.115 was named there by number and mechanism. F-07.115 is
+// now CLOSED BY DELETION, so an assertion of presence would be an assertion that
+// the cure did not happen.
+//
+// A CELL THAT MERELY STOPS BEING RUN CANNOT CATCH A RE-INTRODUCTION. This one
+// watches for the field's return instead — at the one home AND at both readers,
+// because Fork E's guarantee is that there is nowhere else for it to come back.
+// If a real Dream-AI permission is ever wanted it will arrive as a COLUMN with a
+// migration behind it, and it will have to red this cell on its way in, which is
+// exactly the conversation we want it to force.
+t('§13.14 [F-06.85] F-07.115 CLOSED BY DELETION — the flag is ABSENT, and its record is not', () => {
   const home = read('src/lib/circlePermissions.js');
-  assert.ok(home.includes('F-07.115'), 'the keyless lock is not named where it lives');
-  assert.ok(/PUBLIC_SCHEMA\.md:74-89/.test(home), 'the column witness is not cited');
+  const code = home.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/dreamai_access_granted/.test(code),
+    'the keyless flag is back in the permission block — it needs a column and a migration, not a literal');
+  for (const f of ['src/api/middleware/requireCircleMemberAuth.js', 'src/api/circle/session.js']) {
+    const c = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    assert.ok(!/dreamai_access_granted/.test(c), `${f} re-declared the retired flag`);
+  }
+  // The RECORD survives the field. F-06.85's law is that a sentence conditioned
+  // on a mechanism names it; the closure is that mechanism's next state, and the
+  // paragraph must still carry both the number and the witness it was decided on.
+  assert.ok(home.includes('F-07.115'), 'the closure is not recorded where the flag lived');
+  assert.ok(/PUBLIC_SCHEMA\.md:74-89/.test(home), 'the column witness left the record');
+  assert.ok(/THIS IS THAT SITTING, AND THIS IS THAT RE-READ/.test(home),
+    'the paragraph no longer records that its own re-read instruction was discharged');
 });
 
 // ── CLASS A DOORS, DRIVEN END TO END ────────────────────────────────────────
@@ -1863,7 +1978,10 @@ t('§13.21 F-07.116 CURED BY DELETION — getCircleMember is gone from the estat
 });
 
 t('§13.22 CLASS A source: no door reads an identity out of a param or a body any more', () => {
-  for (const f of ['src/api/circle/session.js', 'src/api/circle/muse.js', 'src/api/circle/dreamai.js']) {
+  // F-07.115 — `src/api/circle/dreamai.js` was the third file here and is
+  // deleted. Two Class A files remain; §14.1 asserts the deletion so this
+  // list's shrinking cannot pass for a door quietly dropping out of scope.
+  for (const f of ['src/api/circle/session.js', 'src/api/circle/muse.js']) {
     const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
     assert.ok(!/memberUserId/.test(code), `${f} still reads memberUserId`);
     assert.ok(!/primary_user_id/.test(code), `${f} still reads primary_user_id`);
@@ -1871,21 +1989,112 @@ t('§13.22 CLASS A source: no door reads an identity out of a param or a body an
   }
 });
 
-// ── §13.23 IS SOURCE-LEVEL, AND THE REASON IS DISCLOSED (§12.8's class) ─────
-// The honest cell would drive dreamai.js's two handlers. It does not, for the
-// same reason §12.8 does not: `require`ing that router executes
-// `src/agent/circleEngine` at import (dreamai.js:14), a W-1 surface that builds
-// a client at load. The claim is therefore NARROWED to source, and the remainder
-// travels to the founder's card, where the door is exercised by curl.
-t('§13.23 DREAMAI (source-level, narrowed): guarded at the mount, body identity dead', () => {
-  const r = read('src/api/router.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-  assert.ok(/router\.use\('\/dreamai',\s*requireCircleMemberAuth/.test(r), '/dreamai is unguarded');
-  const d = read('src/api/circle/dreamai.js');
-  const code = d.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-  assert.ok(/const \{ message \} = req\.body/.test(code), 'the body destructure still takes an identity');
-  assert.ok(/me\.co_planner_id/.test(code) && /invitee_name: me\.name/.test(code),
-    'the circleEngine payload is no longer assembled from the proven member');
-  assert.ok(d.includes('brideIndex.js:677'), "Fork C's reasoning left the file it justifies");
+// ── §13.23 IS RE-AUTHORED AT F-07.115: THE DOOR IT GUARDED IS RETIRED ───────
+// This cell asserted `/dreamai` was guarded at the mount and that its handlers
+// had stopped reading identity out of a body — narrowed to source, because
+// requiring that router executed `circleEngine` at import (a W-1 surface). The
+// door is now DELETED, so the guarded-ness claim has no subject. It is replaced
+// by §14 below, which asserts the retirement itself and — more importantly —
+// asserts that retiring it did NOT cost the lane a guard anywhere else.
+H('§14 — F-07.115: the doors are retired, and eleven becomes nine HONESTLY');
+
+t('§14.1 THE FILE IS DELETED — not emptied, not stubbed, gone from the tree', () => {
+  assert.ok(!fs.existsSync(path.join(ROOT, 'src/api/circle/dreamai.js')),
+    'the retired router survives its own retirement');
+});
+
+t('§14.2 THE MOUNT IS GONE, and nothing else requires the deleted module', () => {
+  const r = read('src/api/router.js');
+  const code = r.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/router\.use\('\/dreamai'/.test(code), 'the /dreamai mount is still on the router');
+  // A require of a deleted module is a boot crash, not a lint nit. Swept over
+  // the whole of src/ rather than the router alone.
+  const hits = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
+      const rel = path.join(d, e.name);
+      if (e.isDirectory()) { walk(rel); continue; }
+      if (!/\.(js|ts)$/.test(e.name)) continue;
+      const body = read(rel).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      if (/circle\/dreamai/.test(body)) hits.push(rel);
+    }
+  };
+  walk('src');
+  assert.deepStrictEqual(hits, [], `the deleted module is still required in: ${hits.join(', ')}`);
+});
+
+// ── THE CELL THIS WHOLE MOVEMENT EXISTS TO EARN ─────────────────────────────
+// A door count FALLING is what a regression looks like from a distance, and it
+// is the opposite of what happened. The distinction is asserted mechanically so
+// it can never be settled by a tally: EVERY DOOR THAT EXISTED AT `f8cd7de` AND
+// STILL EXISTS IS STILL GUARDED. Two doors ceased to exist. No door lost a guard.
+t('§14.3 NO DOOR LOST ITS GUARD — the surviving Class A set is guarded, the Class B set refuses in-handler', () => {
+  const code = read('src/api/router.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+
+  const CLASS_A_SURVIVING = ['/circle/session', '/circle/muse'];
+  const CLASS_B           = ['/frost/circle/feed', '/frost/circle/threads', '/frost/circle/messages'];
+  const MINTS             = ['/auth/verify-pin', '/circle/join'];
+
+  for (const m of CLASS_A_SURVIVING) {
+    assert.ok(new RegExp(`router\\.use\\('${m}',\\s*requireCircleMemberAuth`).test(code),
+      `${m} lost its guard in the retirement`);
+  }
+  for (const m of [...CLASS_B, ...MINTS]) {
+    assert.ok(!new RegExp(`router\\.use\\('${m}',\\s*requireCircleMemberAuth`).test(code),
+      `${m} must NOT carry the member guard`);
+  }
+  // The mount count is the arithmetic, asserted rather than narrated: two guarded
+  // Class A mounts (four doors: session ×1, muse ×3), three Class B mounts (five
+  // doors), two unguarded mints. Nine enforced doors, down from eleven.
+  const guarded = (code.match(/router\.use\('[^']+',\s*requireCircleMemberAuth/g) || []).length;
+  assert.strictEqual(guarded, 2, `expected exactly two guarded circle mounts, found ${guarded}`);
+});
+
+t('§14.4 THE PRIVATE-THREAD MINT CENSUS MOVED FIVE → FOUR, and the record says so', () => {
+  // F-07.112 made `counterparty_user_id` load-bearing across five mint sites.
+  // `dreamai.js` was one of them and is deleted, so the collision surface that
+  // finding cured got SMALLER. A future reader counting five is reading ink that
+  // predates this delivery, which is why both notes below were re-derived.
+  const hits = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
+      const rel = path.join(d, e.name);
+      if (e.isDirectory()) { walk(rel); continue; }
+      if (!/\.(js|ts)$/.test(e.name)) continue;
+      const body = read(rel).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      if (/counterparty_user_id:\s*\w/.test(body)) hits.push(rel);
+    }
+  };
+  walk('src');
+  assert.ok(!hits.includes('src/api/circle/dreamai.js'), 'the retired mint site is still minting');
+
+  const msg = read('src/api/circle/messages.js');
+  assert.ok(/brideIndex\.js:369/.test(msg) && /brideInbound\.js:278/.test(msg),
+    "messages.js's thread model still points at the deleted file for the private lane's mint");
+  // THE HISTORICAL CITE IS ALLOWED TO SURVIVE AND THE PRESENT-TENSE CLAIM IS NOT.
+  // Both notes deliberately record that they used to name `dreamai.js:93` — that
+  // is what "records what it replaced and the cost" means, and a bare `!/:93/`
+  // would forbid the estate from remembering its own corrections. What must not
+  // survive is the sentence asserting that file mints anything TODAY.
+  assert.ok(!/minted\s*\n?\s*\/\/\s*at src\/api\/circle\/dreamai/.test(msg) &&
+            !/minted at src\/api\/circle\/dreamai/.test(msg),
+    'messages.js still asserts the deleted file as a live mint site');
+  assert.ok(!/carries kind='circle_thread' \(dreamai\.js:93\)/.test(read('src/api/circle/threads.js')),
+    'threads.js still asserts the deleted file as a live mint site');
+});
+
+t('§14.5 MIRA OUTLIVES HER DOORS — the WhatsApp lane calls the engine DIRECTLY', () => {
+  // The non-regression claim of the entire arc, and the one the founder walks.
+  // The retired doors were an HTTP wrapper; the WhatsApp lane never used them.
+  const bi = read('src/brideIndex.js').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(/require\('\.\/agent\/circleEngine'\)/.test(bi),
+    'brideIndex no longer requires the circle engine');
+  assert.ok(/runCircleAgenticTurn\(\{/.test(bi),
+    'brideIndex no longer calls runCircleAgenticTurn directly');
+  assert.ok(!/\/dreamai\//.test(bi), 'the WhatsApp lane acquired a dependency on the retired doors');
+  // And the engine itself is untouched: W-1 holds through a deletion.
+  assert.ok(fs.existsSync(path.join(ROOT, 'src/agent/circleEngine.js')),
+    "Mira's engine was deleted with her doors");
 });
 
 // ── CLASS B: REFUSE ON NEITHER, ADMIT BOTH LANES ────────────────────────────
@@ -2186,8 +2395,10 @@ if (fail) {
   process.exitCode = 1;
 } else {
   console.log(`b07_f0772_circle_auth_bench: ${pass} passed, 0 failed  (total ${pass})`);
-  console.log('GREEN — the lane no longer trusts a supplied identifier. Six Class A doors');
+  console.log('GREEN — the lane no longer trusts a supplied identifier. FOUR Class A doors');
   console.log('behind the re-authored guard, five Class B doors refusing on neither, the');
   console.log('bride and the member both still admitted, and the third answer speaking.');
+  console.log('NINE enforced doors, not eleven: F-07.115 retired the two /dreamai doors');
+  console.log('with the surface they served. No door lost its guard — two ceased to exist.');
 }
 })();

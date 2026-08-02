@@ -724,16 +724,17 @@ Coplanner sends **no Authorization header**. Auth is by param:
 
 ### Permissions
 
-No `permissions` column on `circle_members`. All active members get hardcoded defaults:
+No `permissions` column on `circle_members`. All active members get hardcoded defaults, written once at `src/lib/circlePermissions.js` (Fork E's one home) and read there by both the guard and the session door:
 ```json
 {
-  "dreamai_access_granted": false,
   "can_see_budget": false,
   "can_see_guests": false,
   "can_see_vendors": false,
   "can_contribute_muse": true
 }
 ```
+
+`dreamai_access_granted: false` stood in this block until **F-07.115** (closed 2026-08-02). It was a hardcoded `false` that no column could ever make true, gating a co-planner Dream AI surface that has therefore never rendered. The founder ruled the lock right and the feature wrong for that surface: circle members reach Mira on **WhatsApp**, and the co-planner home now carries a tip saying so. The flag, the tab, and the page were deleted together; the bench cell that once asserted this field's presence now asserts its **absence**, so a re-introduction reddens rather than passing quietly.
 
 ## Known schema debt
 

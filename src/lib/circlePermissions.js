@@ -15,19 +15,45 @@
 // is the one that renders, so a drift between them would be a screen and a door
 // disagreeing about the same member's rights, silently.
 //
-// ── [F-06.85] THIS BLOCK IS CONDITIONED ON A MECHANISM AND NAMES IT ─────────
-// `dreamai_access_granted` is a HARDCODED `false` and no column backs it.
-// `public.circle_members` has THIRTEEN columns at the witness
-// (`docs/db/PUBLIC_SCHEMA.md:74-89`) and none of them is a permission;
-// `dreamai_access` appears zero times in that document. THE FLAG CANNOT BE TRUE
-// FOR ANYONE, EVER — that is F-07.115, minted at CE-127, and it gates the Dream
-// AI surface twice on the client (`TabBar.tsx:25` removes the tab,
-// `dreamai/page.tsx:43,:73` blanks the page) while the doors behind it are fully
-// alive. F-07.72 was doors with no lock; F-07.115 is a lock with no key.
+// ── [F-06.85] F-07.115 IS CLOSED, BY DELETION — AND THIS IS THE RE-READ ─────
 //
-// F-07.115's CURE IS THE NEXT SITTING'S, NOT THIS ONE'S. When it lands it lands
-// HERE, once, and both readers move together. RE-READ THIS PARAGRAPH THEN: the
-// sentence above is a claim about a column that does not exist yet.
+// THE PARAGRAPH THAT STOOD HERE said: `dreamai_access_granted` is a HARDCODED
+// `false`, no column backs it, `public.circle_members` has THIRTEEN columns at
+// the witness (`docs/db/PUBLIC_SCHEMA.md:74-89`) and none is a permission, so
+// THE FLAG CANNOT BE TRUE FOR ANYONE, EVER. It then instructed the next reader:
+// *"F-07.115's CURE IS THE NEXT SITTING'S. When it lands it lands HERE, once,
+// and both readers move together. RE-READ THIS PARAGRAPH THEN."*
+//
+// THIS IS THAT SITTING, AND THIS IS THAT RE-READ. The claim was re-derived at
+// the executor's own tip before a byte moved — thirteen columns, still none a
+// permission — and every consequence it predicted was checked rather than
+// inherited. The law worked exactly as designed: a soul-adjacent sentence
+// conditioned on a mechanical fact named its mechanism, and the mechanism's next
+// sitting was forced to read the sentence before touching it.
+//
+// AND THE CURE WAS NOT THE ONE THE PARAGRAPH IMPLIED. It reads as though the
+// missing column were the defect and the fix were to add one. The founder ruled
+// otherwise: THE LOCK WAS RIGHT AND THE FEATURE DID NOT BELONG THERE. Circle
+// members reach Mira on WhatsApp — they always could, and that is the intended
+// shape — so the flag dies with the surface it gated rather than gaining a key.
+//
+// WHAT WENT, all five sites, in one arc:
+//   · this literal
+//   · `dreamos-pwa app/coplanner/CircleSessionContext.tsx` — the type field
+//   · `dreamos-pwa app/coplanner/TabBar.tsx:25`             — the tab gate
+//   · `dreamos-pwa app/coplanner/dreamai/page.tsx`          — the page, whole
+//   · `docs/SCHEMA.md`                                      — the sample payload
+// The two readers of THIS file (`requireCircleMemberAuth.js:142`,
+// `session.js:98`) reach the block by CALL, never by field name, and both took a
+// zero-line diff — which is Fork E's one home paying for itself the first time
+// it was asked to.
+//
+// THE BENCH CELL IS INVERTED, DELIBERATELY. `§13.13` asserted that this file
+// CARRIED the flag; it now asserts the flag is ABSENT. A cell that merely stops
+// being run cannot catch a re-introduction; a cell that watches for the field's
+// return can. If a real Dream-AI permission is ever wanted here it will arrive
+// as a COLUMN with a migration behind it, and it will have to red this cell on
+// its way in — which is the conversation we want it to force.
 //
 // ── WHY FROZEN, AND WHY A FACTORY ────────────────────────────────────────────
 // `Object.freeze` so no handler can mutate the shared block and change what a
@@ -38,7 +64,8 @@
 'use strict';
 
 const CIRCLE_PERMISSIONS = Object.freeze({
-  dreamai_access_granted: false,   // F-07.115 — no column backs this. See above.
+  // F-07.115 — `dreamai_access_granted: false` stood here. Deleted, not keyed.
+  // See the declaration above before adding anything to this block.
   can_see_budget:         false,
   can_see_guests:         false,
   can_see_vendors:        false,

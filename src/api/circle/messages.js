@@ -29,9 +29,17 @@
 //   Two different conversations share kind='circle_thread' and always have:
 //     counterparty_user_id IS NULL      → THE GROUP CHAT. One per couple. The
 //         bride and every circle member read and write this one row.
-//     counterparty_user_id = <users.id> → A MEMBER'S PRIVATE AI THREAD, minted
-//         at src/api/circle/dreamai.js:93 and read there by that same column.
-//         It is her conversation with Mira and no other human may see it.
+//     counterparty_user_id = <users.id> → A MEMBER'S PRIVATE AI THREAD, read by
+//         that same column wherever it is read. It is her conversation with Mira
+//         and no other human may see it.
+//         MINT SITES, RE-DERIVED AT F-07.115 (this pointer previously named
+//         `src/api/circle/dreamai.js:93`, which is DELETED — the co-planner's
+//         Dream AI surface and its two HTTP doors were retired whole): the
+//         private lane is now minted by the WHATSAPP LANE ALONE —
+//         `src/brideIndex.js:369` and `src/lib/brideInbound.js:278/:371`.
+//         FOUR mint sites across the estate carry this discriminator now, not
+//         five; the collision surface F-07.112 cured got SMALLER, and a reader
+//         counting five is reading ink that predates this delivery.
 //   Every selector in this file AND in threads.js therefore carries the NULL
 //   filter. `couple_id + kind` alone does not name a thread — it names a lane
 //   holding both, and for a block it resolved to whichever row was born first.
