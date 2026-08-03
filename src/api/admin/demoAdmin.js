@@ -186,6 +186,21 @@ router.get('/vendors', requireAdminPassword, async (req, res) => {
         ...r,
         shared_handset: p ? (phoneCount.get(p) || 0) > 1 : false,
         linkage_held_by: heldBy && heldBy !== r.ig_handle ? heldBy : null,
+        // ── F-08.40 (CE-ruled (a)) — THE HANDSET KEY RIDES THE WIRE ──────────
+        // The board's batch label must count DISTINCT HANDSETS, not rows: two
+        // rows on one phone send ONE template, because the per-row guard refuses
+        // the second. Counting rows made the label promise a number it would not
+        // send.
+        //
+        // THE KEY IS SENT RATHER THAN COMPUTED CLIENT-SIDE, and that is the
+        // whole point. Grouping by phone means normalizing by phone, and the
+        // estate has ONE normalizer (F-07.47). A second one in a React component
+        // would drift from this one the first time either moved, and the drift
+        // would be invisible — a label quietly counting a different set from the
+        // set the route refuses. Same shape as `min_portfolio_images` and
+        // `states` above: the surface renders the server's answer and holds no
+        // opinion it could contradict with.
+        handset_key: p || null,
       };
     });
 
@@ -575,7 +590,7 @@ async function _inviteOne(supabase, id) {
   //        existence probe to the facts that decide whether a template may be spent.
   const { data: row, error } = await supabase
     .from('demo_vendors')
-    .select('id, ig_handle, display_name, whatsapp_phone, state')
+    .select('id, ig_handle, display_name, whatsapp_phone, state, active')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -583,6 +598,42 @@ async function _inviteOne(supabase, id) {
   if (demoLifecycle.INVITE_STATES.includes(row.state) === false) {
     return { status: 409, body: { ok: false, error: 'illegal_transition', detail: `${row.state} -> invited` } };
   }
+
+  // ── 1a · F-08.39 · THE INACTIVE REFUSAL (CE-ruled (c), MECHANISM LIMB) ─────
+  // src/api/demo/vendor.js gates the public landing on `active = true`. Without
+  // this check the route spends a REAL template on a REAL handset carrying a
+  // claim link to a page that returns nothing — the vendor is invited to a door
+  // that is already locked.
+  //
+  // THE HOLE IS BOUNDED, AND THE BOUND IS WHY THIS IS A GUARD AND NOT A PANIC.
+  // DELETE -> `deactivate` -> `onRemoved` lands a row in `removed`, which
+  // `INVITE_STATES` already refuses. So only rows whose inactivity PREDATES the
+  // TDW_08 P1 lifecycle fold can be simultaneously `active=false` and
+  // invite-eligible. Production holds at least one (`@swati`: legacy, inactive).
+  //
+  // THE HOLE IS SITTING A'S; P4 IS WHAT PUT A DOOR ON IT. A defect that becomes
+  // reachable is not a defect the sitting created — recorded so the ledger reads
+  // the provenance correctly.
+  //
+  // ── THE TWO-LAYER SHAPE, NAMED (F-06.85) ──────────────────────────────────
+  // This guard is the MECHANISM limb; the board's `invitable` filter is the
+  // PRESENTATION limb, and NEITHER STANDS ALONE. It is the same pattern the
+  // photo floor was ruled into in this very sitting: the enforcing constant
+  // lives server-side and the surface renders what the server sends, so the
+  // client cannot contradict a rule it does not own.
+  //   · presentation alone → the card button stays armed and the founder meets
+  //     a refusal at a control that looked ready.
+  //   · mechanism alone → the founder presses a button that was always going
+  //     to fail, and learns the rule from an error.
+  // [F-06.85: this paragraph is conditioned on a MECHANICAL fact — that the
+  //  public landing REQUIRES `active`. Mechanism: `getDemoVendor` in
+  //  src/api/demo/vendor.js filters `.eq('active', true)`. If that filter is
+  //  ever relaxed, an inactive demo renders, this refusal becomes wrong, and
+  //  both limbs must be re-read together rather than one of them patched.]
+  if (row.active === false) {
+    return { status: 409, body: { ok: false, error: 'inactive_demo', detail: row.ig_handle } };
+  }
+
   if (!row.whatsapp_phone) {
     return { status: 409, body: { ok: false, error: 'no_phone', detail: row.ig_handle } };
   }

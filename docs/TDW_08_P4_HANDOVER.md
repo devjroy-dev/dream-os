@@ -114,3 +114,45 @@ Fixture state **must** come from your pasted rows first (FIXTURE-STATE law). Blo
 3. **A ruling on the two sealed-bench re-aims** (§5), both disclosed rather than papered.
 
 Sequencing beyond this sitting is the founder's.
+
+---
+
+# ADDENDUM · ZIP 2 OF THIS SITTING — F-08.39 / F-08.40
+
+**Base:** `dream-os ca8f0fd` · `dreamos-pwa c5a66bb`. Both findings surfaced by the founder's walk on the delivered tree, not by a bench.
+
+## A1 · F-08.39 — RULED (c), BOTH LIMBS SHIPPED
+
+**MECHANISM** (`_inviteOne`): `active` joins the pre-check select and an `active=false` row is refused **`inactive_demo`** before any template is spent. It sits at the single point both the card route and the batch route pass through — a guard that lived at the route would inherit nowhere.
+
+**PRESENTATION** (`page.tsx`): `invitable` and the per-card button both filter `active`, so the founder never meets that refusal at a control that looked armed.
+
+**THE TWO-LAYER SYMMETRY IS NAMED IN-COMMENT ON BOTH SIDES** per the ruling, tied to the photo floor's own shape and conditioned on the mechanical fact that `getDemoVendor` filters `.eq('active', true)` — F-06.85 form, so the next hand to relax that filter is forced to re-read both limbs together rather than patch one.
+
+**The bound is asserted, not asserted-about**: `§8.7` proves a `removed` row was already refused as an illegal transition and still is. The finding only ever reached rows whose inactivity predates the P1 fold.
+
+## A2 · F-08.40 — RULED (a), (b) RETAINED, (c) REFUSED
+
+The label counts **distinct handsets**; the batch still sends **all ids**, because the per-row guard produces one sent and one refused where group-refusal would send zero. The confirm dialog counts handsets too, so the number approved is the number that sends. The toast's `Sent 1 · refused 1` reconciliation stands.
+
+**THE CE RIDER IS SATISFIED WITHOUT A FOUNDER STOP.** `Send {n} invite{s}` is byte-identical; only `{n}`'s source moved from rows to handsets. Arithmetic, not copy.
+
+**The key is the SERVER's.** `handset_key` (the normalized phone) rides the vendors response so the surface groups by handset without owning a normalizer — a second one in a React component would drift from `normalizeTo` invisibly, and the label would quietly count a different set from the one the route refuses. Same shape as `min_portfolio_images` and `states`.
+
+## A3 · TWO HARNESS DEFECTS OWNED, BOTH CAUGHT BY MY OWN CELLS
+
+**THE FAKE SUPABASE DID NOT PROJECT.** `§M.13` mutates `active` back out of the pre-check select and expected a red. It stayed green — because `select()` was a no-op returning every column regardless of what was asked for. **A harness that cannot witness a missing column cannot convict F-08.39, which WAS a missing column.** The fake now projects on the select list. That cell's tuition, recorded in-file.
+
+**TWO OF MY OWN PWA CELLS ANCHORED ON A LITERAL EXPRESSION.** `§5.4` and `§M.7` encoded the exact text `!v.linkage_held_by).map(v => v.id)` and broke the moment the filter legitimately grew its third clause. Re-aimed onto the property. **Same lesson as `f0784` §4.3, one delivery later, in a bench I wrote after learning it.**
+
+## A4 · THE FLOOR AT THE CURED TREE
+
+**dream-os** — selftest **386/386** · sweep **101 scripts, EIGHT non-zero, the same eight**, none added · `b08_p4_factory` **83/83** (was 68; +15 over F-08.39/40) · `b08_p1` **106** · `b08_p3` **61** · `p5` **136** · `p6` **29** · `f0784` **59** · `f0791` **38**. Tree clean after the sweep; local LE commit first.
+
+**dreamos-pwa** — `tsc` **TRUE-EXIT ZERO** on cleared `.next` · **all 21 proofs rc=0** · `tdw08_p4_factory` **45/45** (was 36) · `p3_landing` **88**.
+
+## A5 · THE WALK RESUMES
+
+Steps 1–5 unchanged. **Step 6 is now one press:** `SEND 1 INVITE` on the legacy column — the label reads 1 because `@swati` is inactive and no longer in the batch, leaving `@makeupbyswatiroy` alone on that handset. One template, to the row whose landing actually renders.
+
+`@swati`'s card no longer carries a Send invite button at all. If it still does after deploy, the PWA has not rebuilt.

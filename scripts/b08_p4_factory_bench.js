@@ -106,8 +106,23 @@ async function okMutate(name, rel, anchor, replacement, predicate, label) {
 function makeSupabase(tables) {
   const writes = [];
   class Q {
-    constructor(t) { this.t = t; this.f = []; this.ins = null; }
-    select() { return this; }
+    constructor(t) { this.t = t; this.f = []; this.ins = null; this.cols = null; }
+    // THE FAKE PROJECTS. A select() that returns every column regardless of what
+    // was asked for cannot witness a MISSING COLUMN — and a missing column in a
+    // pre-check select is exactly what F-08.39 was. §M.13 caught this harness
+    // proving nothing on its first run; the projection is that cell's tuition.
+    select(cols) {
+      if (typeof cols === 'string' && cols.trim() && cols.trim() !== '*') {
+        this.cols = cols.split(',').map(c => c.trim()).filter(Boolean);
+      }
+      return this;
+    }
+    _project(r) {
+      if (!r || !this.cols) return r;
+      const out = {};
+      for (const c of this.cols) if (c in r) out[c] = r[c];
+      return out;
+    }
     order()  { return this; }
     limit()  { return this; }
     not()    { this.f.push(['__notnull', true]); return this; }
@@ -122,7 +137,7 @@ function makeSupabase(tables) {
       }
       return rows;
     }
-    async maybeSingle() { return { data: this._rows()[0] || null, error: null }; }
+    async maybeSingle() { const r = this._rows()[0]; return { data: r ? this._project(r) : null, error: null }; }
     async single() {
       if (this.ins) {
         const dup = (tables[this.t] || []).some(r => r.ig_handle && r.ig_handle === this.ins.ig_handle);
@@ -130,11 +145,12 @@ function makeSupabase(tables) {
         const row = { id: 'id-' + ((tables[this.t] || []).length + 1), ...this.ins };
         (tables[this.t] = tables[this.t] || []).push(row);
         writes.push({ table: this.t, row });
-        return { data: row, error: null };
+        return { data: this._project(row), error: null };
       }
-      return { data: this._rows()[0] || null, error: null };
+      const r = this._rows()[0];
+      return { data: r ? this._project(r) : null, error: null };
     }
-    then(res, rej) { return Promise.resolve({ data: this._rows(), error: null }).then(res, rej); }
+    then(res, rej) { return Promise.resolve({ data: this._rows().map(r => this._project(r)), error: null }).then(res, rej); }
   }
   return { supabase: { from: (t) => new Q(t) }, writes, tables };
 }
@@ -530,6 +546,86 @@ async function createWith(n, tables = { demo_vendors: [] }) {
     /ALSO CREATE PROSPECTS.*IS NOT BUILT/s.test(read(ADMIN)) && /F-08\.10/.test(read(ADMIN)));
   ok('§7.4 and no prospect row is created at BUILD time by any bulk path',
     !/from\('prospects'\)[\s\S]{0,200}\.insert\(/.test(code(ADMIN)));
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  H('§8 · F-08.39 — AN INACTIVE DEMO IS NOT INVITED TO A DOOR THAT IS LOCKED');
+
+  ok('§8.1 the public landing REQUIRES active — the fact this refusal is conditioned on',
+    /\.eq\('active', true\)/.test(code('src/api/demo/vendor.js')));
+  ok('§8.2 the invite pre-check now READS active',
+    /\.select\('id, ig_handle, display_name, whatsapp_phone, state, active'\)/.test(code(ADMIN)));
+
+  const inactive = (over) => ({
+    demo_vendors: [{ id: 'v2', ig_handle: 'swati', display_name: 'Swati', whatsapp_phone: '919888294440', state: 'legacy', active: false, ...over }],
+    prospects: [],
+  });
+
+  {
+    const out = await invite(inactive({}));
+    eq('§8.3 an inactive, invite-eligible row is REFUSED', out.status, 409);
+    eq('§8.4 by name', out.body.error, 'inactive_demo');
+    eq('§8.5 NO TEMPLATE WAS SPENT on a landing that would not render', sends, 0);
+  }
+  {
+    const out = await invite(inactive({ active: true }));
+    ok('§8.6 the same row ACTIVE is not refused as inactive', out.body.error !== 'inactive_demo');
+  }
+  {
+    // THE BOUND, ASSERTED. `removed` was already refused before this cure; the
+    // finding only ever reached rows whose inactivity predates the P1 fold.
+    const out = await invite(inactive({ state: 'removed' }));
+    eq('§8.7 THE BOUND: a removed row was already refused, and still is, as an illegal transition',
+      out.body.error, 'illegal_transition');
+  }
+  {
+    const h = makeSupabase(inactive({}));
+    call._sb = h.supabase;
+    sends = 0;
+    const out = await call(freshRouter(), 'post', '/invite-batch', { body: { ids: ['v2'] } });
+    eq('§8.8 the BATCH inherits the refusal — one home, two doors', out.body.refused[0].error, 'inactive_demo');
+    eq('§8.9 spending nothing', sends, 0);
+  }
+
+  await okMutate('§M.12 §8.3 reds if the inactive guard is removed',
+    ADMIN, '  if (row.active === false) {', '  if (false) {',
+    async () => {
+      const out = await invite(inactive({}));
+      assert.strictEqual(out.body.error, 'inactive_demo');
+    }, '§8.3');
+
+  await okMutate('§M.13 §8.3 reds if `active` falls back out of the pre-check select',
+    ADMIN, ".select('id, ig_handle, display_name, whatsapp_phone, state, active')",
+    ".select('id, ig_handle, display_name, whatsapp_phone, state')",
+    async () => {
+      const out = await invite(inactive({}));
+      assert.strictEqual(out.body.error, 'inactive_demo');
+    }, '§8.3');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  H('§9 · F-08.40 — THE HANDSET KEY RIDES THE WIRE SO NO SECOND NORMALIZER EXISTS');
+
+  {
+    const out = await listWith({ demo_vendors: [
+      { id: 'v1', ig_handle: 'alpha', whatsapp_phone: '+919888294440', state: 'built', photos: [], created_at: '2026-08-01' },
+      { id: 'v2', ig_handle: 'beta',  whatsapp_phone: '919888294440',  state: 'built', photos: [], created_at: '2026-08-01' },
+      { id: 'v3', ig_handle: 'gamma', whatsapp_phone: null,            state: 'built', photos: [], created_at: '2026-08-01' },
+    ], prospects: [] });
+    const byId = Object.fromEntries(out.body.vendors.map(v => [v.id, v]));
+    eq('§9.1 the key is the NORMALIZED phone, so two notations collapse to one handset',
+      byId.v1.handset_key, byId.v2.handset_key);
+    eq('§9.2 and it is the estate normalizer\'s own answer', byId.v1.handset_key, '919888294440');
+    eq('§9.3 a phoneless row carries no key rather than an empty one', byId.v3.handset_key, null);
+  }
+
+  await okMutate('§M.14 §9.1 reds if the key stops being normalized',
+    ADMIN, '        handset_key: p || null,', '        handset_key: r.whatsapp_phone || null,',
+    async () => {
+      const out = await listWith({ demo_vendors: [
+        { id: 'v1', ig_handle: 'alpha', whatsapp_phone: '+919888294440', state: 'built', photos: [], created_at: '2026-08-01' },
+        { id: 'v2', ig_handle: 'beta',  whatsapp_phone: '919888294440',  state: 'built', photos: [], created_at: '2026-08-01' },
+      ], prospects: [] });
+      assert.strictEqual(out.body.vendors[0].handset_key, out.body.vendors[1].handset_key);
+    }, '§9.1');
 
   // ═════════════════════════════════════════════════════════════════════════
   console.log(`\n══ b08_p4_factory_bench: ${pass} passed, ${fail} failed, 0 skipped ══\n`);
