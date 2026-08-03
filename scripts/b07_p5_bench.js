@@ -1305,8 +1305,17 @@ mutateSrc('src/lib/discover/shapeDemoRow.js',
     assert.ok(/instagram_handle:\s*normalizeIgHandle\(v\.ig_handle\)/.test(code(src)));
   });
 
-// F-07.54 mint 2 — put the second token back.
-mutateSrc('src/api/demo/vendor.js',
+// ── LABELLED AMENDMENT · TDW_08 P3 · MINT 2 MOVED WITH THE SHAPE THAT CARRIED IT ──
+// F-07.54's SECOND mint nulled `routing_handle` in the demodiscover feed's own INLINE
+// shape. That inline shape is gone: the feed was the fourth demo shaper in the estate and
+// it now calls `shapeDemoRow` like every other caller, so the null it used to author is
+// the null the shared shaper authors. The mutation is re-aimed at the surviving home.
+//
+// The cell's QUESTION is unchanged and its reach is now WIDER, not narrower: breaking the
+// token in one place used to redden one surface and now reddens every demo card in the
+// estate. §13.1 mutates the same byte for mint 1, which is the point — one byte, one home,
+// two mints that used to need two. Cell count unchanged.
+mutateSrc('src/lib/discover/shapeDemoRow.js',
   'routing_handle: null,', 'routing_handle: v.ig_handle,',
   '§13.4 (mint 2 token)', (src) => {
     assert.ok(!/routing_handle:\s*v\.ig_handle/.test(code(src)));

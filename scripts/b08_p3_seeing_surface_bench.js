@@ -399,6 +399,42 @@ t('§9.3 BOTH LEGS NOW CARRY BOTH FLAGS — the parity is asserted, not assumed'
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+H('§10 · THE DEMO SPECIES HAS ONE AUTHOR — AND ONE STATED DEVIATION');
+
+t('§10.1 the demodiscover feed shapes through shapeDemoRow, not its own inline copy', () => {
+  const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+  assert.ok(/shapeDemoRow\(v\)/.test(feed), 'the feed shapes its own cards again');
+});
+
+t('§10.2 ZERO inline demo shapes survive anywhere in the file', () => {
+  assert.strictEqual((read(DEMOAPI).match(/name:\s+v\.display_name/g) || []).length, 0,
+    'a second demo shaper is back in the file that calls the first');
+});
+
+t('§10.3 it strips _rank_score at its own seam too — this route never interleaves', () => {
+  const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+  assert.ok(/const \{ _rank_score, \.\.\.card \} = shapeDemoRow\(v\)/.test(feed));
+});
+
+t('§10.4 THE DEVIATION IS AT THE CALLER, NOT IN THE SHAPE — enquire_link overridden here', () => {
+  const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+  assert.ok(/enquire_link: v\.whatsapp_phone \?/.test(feed), 'the override is gone');
+  const { shapeDemoRow: s2 } = require(SRC(SHAPER));
+  assert.strictEqual(s2({ ...ROW, whatsapp_phone: '919888294440' }).enquire_link, null,
+    'the SHAPE was forked instead — the landing would inherit a live enquire target');
+});
+
+// FOUNDER DESIGN RULING, 2026-08-03: real vendors stay OUT of demodiscover. The couple
+// feed interleaves both species by design; this surface is demo-only by design. Asserted
+// so a future sitting that "helpfully" interleaves them reds instead of shipping.
+t('§10.5 the demo feed reads demo_vendors and NEVER the real vendors table', () => {
+  const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+  assert.ok(/\.from\('demo_vendors'\)/.test(feed));
+  assert.ok(!/\.from\('vendors'\)/.test(feed),
+    'the real vendors table entered a surface ruled demo-only');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 H('§M · MUTATIONS OVER PRODUCTION SOURCE — RED AT THE BROKEN TREE, BOTH WAYS');
 
 t('§M.1 §1.2 goes RED when the extracted body drifts by one character', () => {
@@ -464,6 +500,22 @@ t('§M.9 §9.1 goes RED if the demo feed drops the eligibility filter', () => {
       const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
       assert.ok(/\.eq\('discover_eligible', true\)/.test(feed));
     }, '§9.1');
+});
+
+t('§M.10 §10.4 goes RED if the deviation is pushed into the SHAPE instead of the caller', () => {
+  mutate(SHAPER, 'enquire_link:   null,', 'enquire_link:   v.whatsapp_phone || null,', () => {
+    delete require.cache[require.resolve(SRC(SHAPER))];
+    const { shapeDemoRow: s2 } = require(SRC(SHAPER));
+    assert.strictEqual(s2({ ...ROW, whatsapp_phone: '919888294440' }).enquire_link, null);
+  }, '§10.4');
+});
+
+t('§M.11 §10.5 goes RED if the real vendors table enters the demo feed', () => {
+  mutate(DEMOAPI, "      .from('demo_vendors')\n      .select('*')", "      .from('vendors')\n      .select('*')",
+    () => {
+      const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+      assert.ok(!/\.from\('vendors'\)/.test(feed));
+    }, '§10.5');
 });
 
 t('§M.8 §8.2 goes RED when postedBudgetMax stops being threaded (the scope defect itself)', () => {

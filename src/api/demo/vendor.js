@@ -258,27 +258,31 @@ router.get('/', async (req, res) => {
       .eq('discover_eligible', true)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    const shaped = (vendors || []).map(v => ({
-      id:             v.id,
-      name:           v.display_name,
-      category:       v.category,
-      city:           v.city,
-      // ── F-07.54 CURED · THE SECOND MINT (CE census correction) ──────────
-      // This route (`router.get('/', …)` above) is the demodiscover FEED, and
-      // its consumer rebuilds a TDW-line link from this field when
-      // `enquire_link` is null (demodiscover/page.tsx:187, hardcoded against
-      // 917982159047). `ig_handle` is not a routing token — vendorInbound
-      // resolves `vendors.routing_handle` only — so the rebuilt link is
-      // unresolvable by construction. Nulled at the mint, same as
-      // couple/discover.js's demo branch. This surface renders no IG chip and
-      // never received `instagram_handle`, so nothing here is displaced.
-      routing_handle: null,
-      starting_price: null,
-      photos:         Array.isArray(v.photos) ? v.photos.map(p => (typeof p === 'string' ? p : p.url)).filter(Boolean) : [],
-      vibe_tags:      [],
-      about:          v.about,
-      enquire_link:   v.whatsapp_phone ? `https://wa.me/${v.whatsapp_phone.replace(/[^0-9]/g, '')}` : null,
-    }));
+    // ── TDW_08 P3 · ONE SHAPER, ONE STATED DEVIATION ──────────────────────────
+    // This route used to shape its own cards inline — a SECOND demo shaper living in the
+    // same file as a caller of the one shaper, disagreeing with it on `enquire_link`.
+    // FORK B(ii)-β extracted `shapeDemoRow` precisely so the demo species would have one
+    // author, and `shapeDemoRow.js`'s header says "A FOURTH MUST ADD ITSELF TO THIS LIST".
+    // A fourth shape was already sitting in one of the two files that header names, and it
+    // was not seen. Converged here.
+    //
+    // `_rank_score` is stripped at this seam for the same reason the landing strips it:
+    // this route never interleaves, so it would reach the wire as a field
+    // `lib/types/discover.ts` does not declare (F-07.3).
+    //
+    // THE ONE DELIBERATE DEVIATION, STATED RATHER THAN INHERITED. `shapeDemoRow` nulls
+    // `enquire_link` because the LANDING is a vendor looking at his own card and must not
+    // carry a live enquire target (F-07.54, and FORK D withholds the handler besides).
+    // demodiscover is the opposite surface: a COUPLE browsing, who should be able to
+    // enquire. So the link is re-attached HERE, at the caller, where the difference
+    // belongs — not by forking the shape. One author, one overridden field, one reason.
+    const shaped = (vendors || []).map(v => {
+      const { _rank_score, ...card } = shapeDemoRow(v);
+      return {
+        ...card,
+        enquire_link: v.whatsapp_phone ? `https://wa.me/${v.whatsapp_phone.replace(/[^0-9]/g, '')}` : null,
+      };
+    });
     return res.json({ ok: true, vendors: shaped, page: 0, has_more: false, total: shaped.length });
   } catch (err) {
     console.error('[demo/discover]', err.message);
