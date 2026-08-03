@@ -378,22 +378,31 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   const vendorId = req.vendor.id;
 
   // Fetch tier + city for validation
+  // ── THE TIER GATE IS RETIRED — FOUNDER RULING, 2026-08-04 ────────────────────
+  //   「 collab will be open to everyone including essential 」
+  //
+  // This site carried `allowedTiers = ['signature','prestige','trial']` and a 403
+  // `upgrade_required`. With every product tier admitted, an allowlist is a rule
+  // that pretends to exist, so the check comes OUT rather than growing a fourth
+  // member. THE OPENNESS IS A DECISION, NOT AN OMISSION — a later reader finding
+  // no gate here is reading the ruling, not a missing guard.
+  //
+  // The client's own duplicate of this predicate (`canPost`, dreamos-pwa
+  // app/vendor/collab/page.tsx) retired in the same act; a client-side copy of a
+  // retired server rule is this same object one layer up. No bench or proof
+  // asserted this gate at either tree, which is also why nothing would have caught
+  // a half-cure — see docs/TDW_08_P5_PHASE2_HANDOVER.md.
+  //
+  // The SELECT is narrowed to `city` in the same ruling: `tier` was read only by
+  // the retired check, and a selected-but-unread column is the drift class.
+  // `me.city` remains load-bearing below (the city fallback on insert).
   const { data: me } = await supabase
     .from('vendors')
-    .select('tier, city')
+    .select('city')
     .eq('id', vendorId)
     .single();
 
   if (!me) return errRes(res, 404, 'Vendor not found');
-
-  const allowedTiers = ['signature', 'prestige', 'trial'];
-  if (!allowedTiers.includes(me.tier)) {
-    return res.status(403).json({
-      ok: false,
-      error: 'upgrade_required',
-      message: 'Upgrade to Signature to post collab requirements.',
-    });
-  }
 
   const {
     event_date,
