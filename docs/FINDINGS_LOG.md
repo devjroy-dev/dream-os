@@ -3619,3 +3619,32 @@ The executor's §0.2 report dissolved a chair ruling: **Addendum 1 had retired b
 **OPEN AT THIS SEAL — twenty-four items, derived not repeated:** F-08.2 · .3 · .9 · .11 · .12 · .19 · .22 · .23 · .30 · .32 · .33 · .34 · .35 (chartered after Block 08 closes) · .37 · .38 · .41 · .43 · **.47** (declared gap, own charter) · **.48** (arms E/F, own sitting) · **.49** · **.50** · **.51** (the orphan class, board-level) · the error-toast contrast (`T.danger` on `#2A1010`, visible only because limb 1 stopped hiding it) · the three stored off-register rows · the two `middleware.ts` items · P6 · P2 (founder-deferred).
 
 **NEXT, FOUNDER-RULED 「 we absorb closer and limbs 2 and 3 」: P5 ABSORBS THE CLOSER.** One sitting carrying the Closer's soul build (S-4/S-5, the marketing lane's first AI, every byte through the founder's veto), the demo block in its context, the relay-batching verification against the new lifecycle, and `demo_invite`'s move onto the lifecycle — **the two-phase write at `demoAdmin.js` where `await sendWa(...)` and `await demoLifecycle.onInvited(...)` are sequential and a failure between them leaves a vendor holding an invite while the board reads `built`.** The P5 walk is unblocked: the founder repointed the prospect linkage to `swatitomar_p4b`, which becomes the board's first row where `bulk_filter_would_send` is true.
+
+---
+
+## CE-187 — THE ORPHANED SOULS FOLD INTO ONE ARC (twentieth chair, 2026-08-04)
+
+**FOUNDER RULING, verbatim: 「 yes. i want them both folded in one. 」** — amending CE-186's 「 we absorb closer and limbs 2 and 3 」.
+
+**THE QUESTION THAT PRODUCED IT, and it was the founder's:** *"isn't Eliza the closer herself?"* Derived rather than answered from the seal's own text. **They are two agents and the 06 spec separates them at the soul table:**
+
+- **THE CONCIERGE (Eliza)** — S-2 (never volunteers being AI, never lies when asked; the admission authored graceful and brand-positive) · S-3 (name configurable per vendor) · `0080`'s `vendors.assistant_name text`, the column that makes her per-vendor, superseded on the name by 「 THE COUPLE AGENT FOR BOOKINGS AND QUERY WILL BE ELIZA 」 (LOG:2821). **She answers COUPLES on an existing vendor's behalf, about bookings and queries.**
+- **THE CLOSER** — S-4 (reveal by the agent's own judgment; self-deciding, human-sounding, conversational never interrogating, never a form; always reveals before the close, never as a gotcha; two unanswered nudges then a gracious exit) · S-5 (NO engineered escalation — the model decides) · S-6 (close path: demo-claim link primary, direct PWA link else, invite codes retired per W-8) · **S-7, his own knowledge source: THE TDW MANUAL, the canonical what-it-is/what-it-can-do document, the single source of product truth.** **He sells TDW ITSELF to PROSPECTS — people who are not vendors yet — on the marketing number.**
+
+**The distinction is which side of the sale each stands on.** Eliza works FOR a vendor who already pays; the Closer works for the house, on someone who does not yet. Different audience, different lane, different knowledge source, different soul rulings. **F-08.51's two specimens stand as filed — two unbuilt agents, not one thing counted twice.**
+
+**AND THE FOUNDER'S INSTINCT WAS THE USEFUL ONE ANYWAY.** Both were Block 06's, both were orphaned by the same early close, both are now unhomed, and both need a register, a Manual-grade knowledge source, and a veto ledger. **Chartering one and leaving the other beside it would orphan Eliza a second time, in the same block, by the same mechanism F-08.51 exists to name.**
+
+**RULED: P5 CARRIES BOTH SOULS AS ONE ARC.** The sitting is no longer "the Closer plus two mechanical limbs." It is:
+
+1. **THE CLOSER** — S-4 · S-5 · S-6 · S-7, on the live marketing number, at the seam `src/lib/prospects.js:5` holds open (`prospectCopy.js:22`'s static `holding_line` is the one-line swap). **The marketing lane's first AI: `grep` for any model call across `marketingIndex.js` and `prospects.js` returns nothing today.**
+2. **THE CONCIERGE (ELIZA)** — S-2 · S-3, default `vendors.assistant_name ?? 'Eliza'`, per-vendor rename surviving. `0080` is applied and never edited; **zero readers exist.**
+3. **THE DEMO BLOCK** in the Closer's context — state, waiting-enquiry count, days left, per spec §P5. Note **G-2 AMENDED, 30 → 90 days**: the spec's own sunset sentence is superseded by row 08 and the clock line reads the amended window.
+4. **RELAY BATCHING + the warm-note convention** verified against the new lifecycle — `demoLeadAlert.js`, one alert per enquiry, 48h batching intact, `engaged` firing.
+5. **`demo_invite` ONTO THE LIFECYCLE** — the two-phase write at `demoAdmin.js`'s `_inviteOne`, where `await sendWa({… templateKey: 'demo_invite' …})` and `await demoLifecycle.onInvited(…)` are SEQUENTIAL. A send that succeeds followed by a transition that fails leaves a vendor holding the invite while the board reads `built`, and the founder can send again. **A live defect at one row or ten thousand, population-independent.**
+
+**THE CHAIR'S RECOMMENDATION TO THE NEXT CHAIR, on the record and NOT a ruling: this is a MULTI-SITTING ARC, not one sitting.** Two souls with two registers, two audiences, two knowledge sources and two veto ledgers, plus a mechanical defect. Mira's single-soul equivalent in Block 05 took two evenings and five acceptance cards. §10's "one kickoff = one sitting = one deliverable arc" is a format law, and an arc this size wants a phase table inside the charter with the mechanical limbs sequenced FIRST — limb 5 is a defect and should not wait behind a soul. **The founder sequences; the chair states the shape.**
+
+**S-7 IS A PREREQUISITE AND IT DOES NOT EXIST.** `TDW_CE_SUCCESSION_NOTE_2.md:31` already warned that two documents share the name "Manual" and that the PRODUCT manual — the Closer's single source of truth — was NOT done while the honesty doctrine was. **It is still not done.** A Closer without S-7 either invents product facts or hedges everything; the first is the fabrication class this estate spent Block 06 killing. **The Manual is the arc's first deliverable or the arc has no ground truth.** Not chartered here — named so it is not discovered mid-sitting.
+
+**F-08.51's SWEEP RE-STATED AS THE BOARD'S:** two specimens found, no third swept for. Every closed block's spec against what actually shipped. Row 06 reads CLOSED and has been inherited as done by six chairs.

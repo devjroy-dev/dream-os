@@ -60,7 +60,7 @@ A discrepancy against this table is a FINDING, not a bounce. Expect staleness.
 
 ## §5 · P5 — WHAT YOU ARE ACTUALLY CHARTERING
 
-**Read this before writing a line of that kickoff. The spec is wrong about its own premise.**
+**AMENDED AT CE-187, FOUNDER-RULED 「 yes. i want them both folded in one. 」 — P5 CARRIES BOTH ORPHANED SOULS. Read this whole section before writing a line of that kickoff. The spec is wrong about its own premise, and the charter is now larger than the spec describes.**
 
 `docs/specs/TDW_08_DEMO_FINAL.md` §P5 says the Closer's dynamic context **"gains"** the demo block, and its dependency line reads "Depends on: … TDW_06 (Closer context…)". Both sentences assume Block 06 built the Closer. **It did not.** Block 06 closed at CE-112 under the founder's CE-110 terms and the Closer was its unbuilt P2. `src/lib/prospects.js:5` says so in the code's own words. **There is no AI on the marketing lane at all** — `grep` for any model call across `marketingIndex.js` and `prospects.js` returns nothing, and `prospectCopy.js:22`'s `holding_line` is a static string.
 
@@ -72,6 +72,12 @@ The other two limbs are small and one is a live defect:
 - **`demo_invite` onto the lifecycle — A TWO-PHASE WRITE, and this is a real defect.** In `demoAdmin.js`'s `_inviteOne`, `await sendWa({… templateKey: 'demo_invite' …})` and `await demoLifecycle.onInvited(…)` are SEQUENTIAL. A send that succeeds followed by a transition that fails leaves a vendor holding the invite while the board reads `built` — and the founder can send again. The spec's own line is the cure: *the invited transition IS the send, one path, no drift.* **This exists at one row or ten thousand and has nothing to do with population.**
 
 **THE WALK IS UNBLOCKED.** The founder repointed the prospect linkage (`prospects.id 1d7892c1-a981-4de7-89f1-57c9b46293c9`) from `swatitomar_p4` to `swatitomar_p4b`, which becomes the board's FIRST row where `bulk_filter_would_send` is true — the first genuinely sendable row in the estate. The restore value if he ever wants it back is `0bb665ab-ff21-4a7b-8754-aaccd43173ba`. **Re-derive the board state before you author a card; do not trust this paragraph.**
+
+**AND ELIZA RIDES WITH HIM — CE-187.** The founder asked whether Eliza *was* the Closer. She is not: S-2/S-3 make the Concierge per-vendor (`vendors.assistant_name`, `0080` applied, ZERO readers) and she answers COUPLES on an existing vendor's behalf, while S-4/S-5/S-6/S-7 make the Closer the house's own seller to PROSPECTS on the marketing number. Different audience, different lane, different knowledge source. **But both were 06's, both were orphaned by the same close, and chartering one would orphan the other a second time by the same mechanism — so he folded them.** P5 is now: the Closer · Eliza · the demo block · the relay verification · the lifecycle defect.
+
+**S-7 IS A PREREQUISITE AND IT DOES NOT EXIST.** `TDW_CE_SUCCESSION_NOTE_2.md:31` warned two tenures ago that the PRODUCT Manual — the Closer's single source of truth, distinct from the honesty doctrine that shares its name — was not done. **It is still not done.** A Closer without it invents product facts or hedges everything, and the first is the fabrication class Block 06 spent itself killing. **The Manual is the arc's first deliverable or the arc has no ground truth.**
+
+**MY RECOMMENDATION, NOT A RULING, AND THE FOUNDER SEQUENCES:** charter this as a MULTI-SITTING ARC with a phase table inside it. Two souls means two registers, two audiences, two knowledge sources, two veto ledgers. §10's "one kickoff = one sitting" is a format law and this does not fit it. **Sequence the mechanical limbs FIRST — the lifecycle defect is live and should not wait behind a soul.** Mira's single-soul equivalent took two evenings and five cards.
 
 **AND DO NOT REPEAT THE STRATEGIC LINE.** Two notes carried "nine of twelve rows carry no phone, the invite machine reaches none, P5 builds on a population near zero." I confirmed the arithmetic and sharpened the framing, and the founder retired it: **those nine are Discover display fixtures, built so the marketplace has a look and feel. They were never an invite population.** The arithmetic was always right and the inference was always wrong. Inherit the rows AND what they are for.
 
