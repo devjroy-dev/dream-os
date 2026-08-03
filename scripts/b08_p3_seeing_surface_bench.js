@@ -375,6 +375,30 @@ t('§8.4 the half-true suppression comment is amended, and the FUNCTIONS half su
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+H('§9 · THE TWO DISCOVER LEGS ASK THE SAME QUESTION');
+
+// The demodiscover feed filtered on `active` alone while the couple leg filtered on
+// `active` AND `discover_eligible`, so eight vendors showed on a surface built to
+// demonstrate a feed that lists five. Three were visible to a vendor and unreachable
+// by every real couple. Founder-ruled 2026-08-03.
+t('§9.1 the demodiscover feed filters on discover_eligible', () => {
+  const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+  assert.ok(/\.eq\('discover_eligible', true\)/.test(feed),
+    'the demo feed lists vendors no couple can reach');
+});
+
+t('§9.2 it still filters on active — the new flag ADDS, never replaces', () => {
+  const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+  assert.ok(/\.eq\('active', true\)/.test(feed));
+});
+
+t('§9.3 BOTH LEGS NOW CARRY BOTH FLAGS — the parity is asserted, not assumed', () => {
+  const couple = read(FEED);
+  assert.ok(/\.eq\('discover_eligible', true\)/.test(couple) && /\.eq\('active', true\)/.test(couple),
+    'the couple leg lost a flag — the legs disagree again, in the other direction');
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 H('§M · MUTATIONS OVER PRODUCTION SOURCE — RED AT THE BROKEN TREE, BOTH WAYS');
 
 t('§M.1 §1.2 goes RED when the extracted body drifts by one character', () => {
@@ -432,6 +456,14 @@ t('§M.7 §6.1 goes RED when a filter appears on `about` — F-08.32 half-cured'
       const dirty = 'Packages from ₹50K onwards';
       assert.strictEqual(s({ ...ROW, about: dirty }).about, dirty);
     }, '§6.1');
+});
+
+t('§M.9 §9.1 goes RED if the demo feed drops the eligibility filter', () => {
+  mutate(DEMOAPI, "      .eq('discover_eligible', true)\n      .order('created_at'", "      .order('created_at'",
+    () => {
+      const feed = read(DEMOAPI).slice(read(DEMOAPI).indexOf("router.get('/'"));
+      assert.ok(/\.eq\('discover_eligible', true\)/.test(feed));
+    }, '§9.1');
 });
 
 t('§M.8 §8.2 goes RED when postedBudgetMax stops being threaded (the scope defect itself)', () => {

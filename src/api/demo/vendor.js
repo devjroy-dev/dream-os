@@ -245,6 +245,17 @@ router.get('/', async (req, res) => {
       .from('demo_vendors')
       .select('*')
       .eq('active', true)
+      // ── TDW_08 P3 · `discover_eligible` JOINS THE FILTER, BY FOUNDER RULING ────
+      // This feed showed EIGHT vendors while the couple's own Discover showed FIVE,
+      // because the couple leg filters on BOTH flags (couple/discover.js:378-379) and
+      // this one filtered on `active` alone. Three rows — active, not eligible — were
+      // visible here and invisible to every real couple.
+      //
+      // demodiscover exists to show a vendor what Discover looks like. A feed that
+      // lists vendors no couple can reach teaches him something false, which is the
+      // same disease as a mirror that renders a card the couple never sees. The two
+      // legs now answer the same question with the same filter.
+      .eq('discover_eligible', true)
       .order('created_at', { ascending: false });
     if (error) throw error;
     const shaped = (vendors || []).map(v => ({
