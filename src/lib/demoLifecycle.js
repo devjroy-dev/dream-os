@@ -142,7 +142,7 @@ async function _write(supabase, id, patch) {
     .update(patch)
     .eq('id', id)
     .select('id, ig_handle, display_name, whatsapp_phone, state, active, discover_eligible, discover_eligible_at, '
-          + 'invited_at, opened_at, engaged_at, claimed_at, removed_at, expires_at, claim_token')
+          + 'invited_at, opened_at, engaged_at, claimed_at, removed_at, expires_at, claim_token, invite_sent_at')
     .maybeSingle();
   if (error) throw error;
   return data;
@@ -152,7 +152,7 @@ async function _read(supabase, id) {
   const { data, error } = await supabase
     .from('demo_vendors')
     .select('id, ig_handle, display_name, whatsapp_phone, state, active, discover_eligible, discover_eligible_at, '
-          + 'invited_at, opened_at, engaged_at, claimed_at, removed_at, expires_at, claim_token')
+          + 'invited_at, opened_at, engaged_at, claimed_at, removed_at, expires_at, claim_token, invite_sent_at')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -163,7 +163,7 @@ async function _readByHandle(supabase, handle) {
   const { data, error } = await supabase
     .from('demo_vendors')
     .select('id, ig_handle, display_name, whatsapp_phone, state, active, discover_eligible, discover_eligible_at, '
-          + 'invited_at, opened_at, engaged_at, claimed_at, removed_at, expires_at, claim_token')
+          + 'invited_at, opened_at, engaged_at, claimed_at, removed_at, expires_at, claim_token, invite_sent_at')
     .eq('ig_handle', String(handle || '').toLowerCase().trim())
     .maybeSingle();
   if (error) throw error;
@@ -181,6 +181,55 @@ function buildInsertPatch(fields) {
     discover_eligible_at: null,
     state: 'built',
   });
+}
+
+// ── THE SPENT MARKER (TDW_08 P5 · Phase 1 · FORK C(i), CE-ruled 2026-08-04) ──
+// Stamps `invite_sent_at`: "a demo_invite template was DESPATCHED to this row's
+// handset, at this moment." One column, one fact, one writer.
+//
+// WHY IT IS NOT A TRANSITION, and why it lives beside onInvited rather than
+// inside it. The invite is TWO acts — the send, then the state — and the disease
+// this cures is exactly what happens when the second fails after the first
+// succeeded: the row stays `built`, INVITE_STATES still admits it, and nothing
+// anywhere records the spend, so the founder can send the same vendor a second
+// template. `state` cannot carry that fact BECAUSE state is the write that
+// failed. So the spend gets its own column, stamped between the two acts.
+//
+// WHY IT IS IN THIS MODULE AT ALL. §3 GUARDRAILS pairs two sole-ownership rules —
+// "demoLifecycle is the only state writer · sendWa the only outbound" — and FORK
+// A was ruled A(ii): the TRANSPORT stays at the caller, so this module still
+// requires no sendWa and holds no template. But the WRITE is a write to
+// demo_vendors, and a write to demo_vendors that skipped `_write` would be the
+// fifth-writer disease this whole file exists to prevent. Hence: the caller sends,
+// this module stamps.
+//
+// NARROW BY CONSTRUCTION. It writes ONE column and touches no presence field, no
+// state, and no prospect row. `_write`'s guard admits it on the `_at` clause,
+// which is checked here rather than assumed: PRESENCE_COLUMNS does not contain
+// it, so the guard's `k.endsWith('_at')` arm is the one that lets it through, and
+// that arm is what a future rename of this column would have to survive.
+//
+// IT REFUSES A RE-STAMP. A row already carrying the marker returns
+// `already_stamped` rather than overwriting: the column is a HISTORY stamp
+// (0109's own comment; removed_at's family) and the FIRST despatch is the one
+// that matters. Overwriting would quietly move the record of when a real
+// template reached a real handset.
+//
+// THE REFUSAL DOCTRINE HOLDS: business conditions return typed refusals, genuine
+// infrastructure faults still throw out of `_read`/`_write`. The caller catches
+// BOTH — see the try/catch around this call in _inviteOne (FORK B(ii)) — because
+// by the time this function runs the template is already spent, and a caller that
+// crashes there would answer byte-indistinguishably from one that never sent.
+async function markInviteSent(supabase, demoVendorId, opts) {
+  const row = await _read(supabase, demoVendorId);
+  if (!row) return _refuse('not_found', demoVendorId);
+  if (row.invite_sent_at) return _refuse('already_stamped', row.invite_sent_at);
+
+  const updated = await _write(supabase, row.id, { invite_sent_at: _iso(_now()) });
+  console.log(`[demoLifecycle] ${row.ig_handle} invite_sent_at stamped — a demo_invite template `
+    + 'was despatched to this handset'
+    + (opts && opts.via ? ` via=${opts.via}` : ''));
+  return _done(row.state, updated, { invite_sent_at: updated && updated.invite_sent_at });
 }
 
 // ── legacy | built -> invited ────────────────────────────────────────────────
@@ -622,6 +671,7 @@ module.exports = {
   WINDOW_HOURS, DEFAULT_SUNSET_DAYS, SUNSET_CONFIG_KEY, readSunsetDays,
   STATES, INVITE_STATES, CLOCK_STATES, SUNSET_STATES, PRESENCE_COLUMNS,
   buildInsertPatch,
+  markInviteSent,
   onInvited, onOpened, onEnquiry, onClaimed, onRemoved,
   removeByPhone, restoreByPhone, restore, setDiscoverEligible, deactivate,
   runExpirySweep, runSunsetSweep,

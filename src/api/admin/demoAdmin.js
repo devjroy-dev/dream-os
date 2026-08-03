@@ -667,11 +667,36 @@ async function _inviteOne(supabase, id) {
   //        existence probe to the facts that decide whether a template may be spent.
   const { data: row, error } = await supabase
     .from('demo_vendors')
-    .select('id, ig_handle, display_name, whatsapp_phone, state, active')
+    .select('id, ig_handle, display_name, whatsapp_phone, state, active, invite_sent_at')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
   if (!row) return { status: 404, body: { ok: false, error: 'Demo vendor not found.' } };
+  // ── 1-0 · THE SPENT REFUSAL (TDW_08 P5 · Phase 1 · FORK C(i)) ─────────────
+  // FIRST, and ahead of the state check, because it is the only pre-check that
+  // can be TRUE OF A ROW THE STATE MACHINE STILL CALLS ELIGIBLE. That is the
+  // whole defect: send succeeds, the transition fails, the row stays `built`,
+  // `INVITE_STATES` admits it, and nothing records the spend — so the founder
+  // sends the same vendor a second real template. The state check cannot catch
+  // that row; only this one can.
+  //
+  // THE ORDER IS THE CORRECTNESS (CE-146 §5's sentence, extended one rung).
+  // ROW-INTRINSIC BEFORE CROSS-ROW (CE-183's siting principle): this reads a
+  // column already in hand from the pre-check SELECT — zero queries, no network,
+  // no second opinion — so it is the cheapest true fact available and it sits
+  // above the reads that need the wire.
+  //
+  // A ROW REFUSED HERE IS A RECOVERY CASE, NOT A BUG REPORT. `invite_sent_at`
+  // set beside `state = 'built'` says precisely: the vendor holds the message,
+  // the board does not know it. Recovery is founder-SQL by ruling (FORK D(ii),
+  // 2026-08-04); no route clears this column and none stamps the state for it.
+  // The board carries the tell so the founder meets it on the card.
+  if (row.invite_sent_at) {
+    console.log(`[admin/demo/invite] REFUSED ${row.ig_handle} — a demo_invite template was already `
+      + `despatched to this handset at ${row.invite_sent_at}; no second template spent`);
+    return { status: 409, body: { ok: false, error: 'invite_already_sent', detail: row.invite_sent_at } };
+  }
+
   if (demoLifecycle.INVITE_STATES.includes(row.state) === false) {
     return { status: 409, body: { ok: false, error: 'illegal_transition', detail: `${row.state} -> invited` } };
   }
@@ -786,17 +811,93 @@ async function _inviteOne(supabase, id) {
     return { status: 502, body: { ok: false, error: code, detail: e && e.message } };
   }
 
-  // ── 3 · THE STATE. Only now, and only through the module.
-  const r = await demoLifecycle.onInvited(supabase, row.id, { via: 'admin_console' });
-  if (r.ok === false) {
-    // Unreachable after the pre-check unless the row moved between the two
-    // reads. LOUD, never papered: a template has already reached a handset and
-    // the row does not say so, which is the one inconsistency this caller's
-    // whole ordering exists to prevent.
-    console.error(`[admin/demo/invite] SENT BUT NOT STAMPED for ${row.ig_handle}: ${r.reason} `
-      + `(${r.detail}) — the vendor has the message and the row does not record it`);
-    return { status: 500, body: { ok: false, error: 'sent_not_stamped', detail: r.reason } };
+  // ── 3 · THE SPEND, THEN THE STATE — one guarded stretch (TDW_08 P5 · Phase 1)
+  //
+  // EVERYTHING BELOW THIS LINE RUNS WITH A REAL TEMPLATE ALREADY ON A REAL
+  // HANDSET. That is the whole reason for the shape: from here on there is no
+  // failure that means "nothing happened", so there is no failure that may be
+  // reported as if nothing happened.
+  //
+  // ── FORK B(ii) (CE-ruled 2026-08-04) · THE THROW IS CAUGHT HERE ───────────
+  // WHAT THIS CURES, in the executor's own words at the read-first and adopted
+  // by the chair as the finding's true texture: a throw out of these calls did
+  // NOT crash the estate — the single door's own catch (the `router.post`
+  // handler for '/vendors/:id/invite' below) answered a generic 500, and the
+  // bulk door filed `{error:'threw'}` per id. IT ERASED THE TRUTH. Both catches
+  // answered byte-indistinguishably from a
+  // PRE-SEND failure, and the loud SENT BUT NOT STAMPED line never printed. The
+  // operator could not tell a template that was spent from one that was not.
+  //
+  // So the two post-send acts are wrapped HERE, beneath the send, and any throw
+  // converts to the SAME loud path a not-ok return takes. The bulk door's
+  // 'threw' bucket now carries only PRE-send throws, which is what it always
+  // claimed to mean.
+  //
+  // onInvited's own module contract is UNCHANGED (B(i) refused: a per-function
+  // throw asymmetry inside demoLifecycle would be a second contract wearing one
+  // module's name). DISCLOSED RESIDUAL: a future caller reaching
+  // markInviteSent/onInvited directly inherits neither this guard nor the
+  // ordering — see the F-06.85 note below.
+  //
+  // ── F-06.85 · THIS BODY IS THE ONLY PATH, AND THE MECHANISM IS NAMED ──────
+  // FORK A was ruled A(ii): `_inviteOne` stays the one fused body and both
+  // routes funnel it. "One path" is a convention a future caller could bypass —
+  // so the guarantee is made STRUCTURAL by the pre-check at 1-0 above:
+  // `invite_sent_at` refuses a second send whether it arrives through this body
+  // or any other. MECHANISM: `demoLifecycle.markInviteSent` in
+  // src/lib/demoLifecycle.js is the sole writer of that column, and the refusal
+  // that reads it is `if (row.invite_sent_at)` in this function. IF EITHER MOVES
+  // — the stamp made clearable, the pre-check relaxed, the column defaulted —
+  // this paragraph is FALSE and both must be re-read together rather than one
+  // of them patched.
+  // WITNESSED, NEVER PREDICTED. The recovery line below states whether the spend
+  // was RECORDED, and it reads this flag — set only after markInviteSent returned
+  // ok — rather than a timestamp minted before the call. A log that guesses which
+  // of two states the database is in is the same class of lie as a false done.
+  let spendRecorded = false;
+  let stampedAt = null;
+  let r;
+  try {
+    // ── 3a · THE SPEND IS RECORDED BEFORE THE TRANSITION (FORK C(i)) ────────
+    // Order matters and is deliberate. The stamp is the fact that survives a
+    // failed transition; writing it second would leave the exact window this
+    // cure exists to close. Through the module, per §3 GUARDRAILS — transport
+    // stays here, writes stay there.
+    const m = await demoLifecycle.markInviteSent(supabase, row.id, { via: 'admin_console' });
+    if (m.ok === false) {
+      throw new Error(`markInviteSent refused: ${m.reason} (${m.detail})`);
+    }
+    spendRecorded = true;
+    stampedAt = m.invite_sent_at || null;
+
+    // ── 3b · THE STATE. Only now, and only through the module.
+    r = await demoLifecycle.onInvited(supabase, row.id, { via: 'admin_console' });
+    if (r.ok === false) {
+      // Reachable if the row moved between the two reads. LOUD, never papered:
+      // a template has already reached a handset and the row does not say so,
+      // which is the one inconsistency this caller's whole ordering exists to
+      // prevent.
+      throw new Error(`onInvited refused: ${r.reason} (${r.detail})`);
+    }
+  } catch (e) {
+    const detail = (e && e.message) || 'unknown';
+    console.error(`[admin/demo/invite] SENT BUT NOT STAMPED for ${row.ig_handle}: ${detail} `
+      + '— THE TEMPLATE WAS SPENT and reached the handset; the row does not record the transition. '
+      + (spendRecorded
+        ? `invite_sent_at IS recorded (${stampedAt}), so the route will refuse a re-send: `
+          + 'the board shows a stamped row still reading its old state.'
+        : 'THE SPEND IS NOT RECORDED — markInviteSent did not land, so this log line is the ONLY '
+          + 'record that a template reached this handset, and the route WILL allow a re-send.')
+      + ' Recovery is founder-SQL (FORK D(ii)); nothing here retries.');
+    return { status: 500, body: { ok: false, error: 'sent_not_stamped', detail } };
   }
+  // THE RESIDUAL, NAMED AND NOT PAPERED (CE ruling §3, FORK C): the window
+  // between send-success and stamp-success is ONE DB WRITE WIDE and cannot be
+  // closed from this side of the network — no transaction spans WhatsApp and
+  // Postgres. What the cure guarantees is that every failure inside it is LOUD
+  // and that its log line states the template WAS spent. It is smaller than the
+  // window it replaces (which spanned the send, the stamp and the transition,
+  // and was silent on two of the three paths), and it is not zero.
 
   // A FAILED LINKAGE IS A 200 WITH A FLAG, NOT AN ERROR (CE-147 §4). The send
   // happened and the state is true; answering 409 while the vendor's handset is

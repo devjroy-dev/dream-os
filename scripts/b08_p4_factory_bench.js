@@ -552,8 +552,23 @@ async function createWith(n, tables = { demo_vendors: [] }) {
 
   ok('§8.1 the public landing REQUIRES active — the fact this refusal is conditioned on',
     /\.eq\('active', true\)/.test(code('src/api/demo/vendor.js')));
+  // ── LABELED AMENDMENT ① (TDW_08 P5 · Phase 1, 2026-08-04) · COUNT PRESERVED ─
+  // WHAT MOVED AND WHY. This cell pinned the pre-check's ENTIRE column list as a
+  // frozen literal. P5 Phase 1's FORK C(i) adds `invite_sent_at` to that select
+  // — a legitimate additive growth ruled by the CE — and the cell went RED over
+  // a change it was never written to police. The cell's SUBJECT is that the
+  // pre-check READS `active`; the column list's exact contents were never its
+  // question.
+  // THE AMENDMENT IS STRICTLY STRONGER, not merely tolerant. The old form would
+  // have passed on a select that read `active` and then had it REORDERED away
+  // from `state` in a later edit, and would have failed on any additive column
+  // forever after. The new form pins the prefix THROUGH `active` — so `active`
+  // cannot be dropped, renamed, or moved out of the pre-check's own select —
+  // while `[^']*` admits columns appended after it. It also still anchors on
+  // `.select(` rather than a bare /active/, so a stray mention of the word
+  // elsewhere in the file cannot satisfy it.
   ok('§8.2 the invite pre-check now READS active',
-    /\.select\('id, ig_handle, display_name, whatsapp_phone, state, active'\)/.test(code(ADMIN)));
+    /\.select\('id, ig_handle, display_name, whatsapp_phone, state, active[^']*'\)/.test(code(ADMIN)));
 
   const inactive = (over) => ({
     demo_vendors: [{ id: 'v2', ig_handle: 'swati', display_name: 'Swati', whatsapp_phone: '919888294440', state: 'legacy', active: false, ...over }],
@@ -593,9 +608,21 @@ async function createWith(n, tables = { demo_vendors: [] }) {
       assert.strictEqual(out.body.error, 'inactive_demo');
     }, '§8.3');
 
+  // ── LABELED AMENDMENT ② (TDW_08 P5 · Phase 1, 2026-08-04) · COUNT PRESERVED ─
+  // WHAT MOVED AND WHY. The anchor was the pre-check's whole column literal and
+  // it stopped matching (found 0) when FORK C(i) appended `invite_sent_at` — the
+  // mutation could not be applied at all, so the cell reported a missing anchor
+  // rather than a verdict. THE MUTATION IS THE SAME MUTATION: drop `active` out
+  // of the pre-check select and prove §8.3 goes RED.
+  // THE AMENDMENT IS STRICTLY STRONGER for the same reason as ①: the anchor is
+  // now the TERM UNDER TEST (`, state, active`) rather than a frozen list that
+  // happened to contain it, so it survives every future additive column and
+  // still breaks loudly if `active` itself moves. Uniqueness re-derived by
+  // command at authoring: `grep -c ', state, active' src/api/admin/demoAdmin.js`
+  // returns 1, so okMutate's exactly-once guard (CE-127) still bites.
   await okMutate('§M.13 §8.3 reds if `active` falls back out of the pre-check select',
-    ADMIN, ".select('id, ig_handle, display_name, whatsapp_phone, state, active')",
-    ".select('id, ig_handle, display_name, whatsapp_phone, state')",
+    ADMIN, ", state, active",
+    ", state",
     async () => {
       const out = await invite(inactive({}));
       assert.strictEqual(out.body.error, 'inactive_demo');
