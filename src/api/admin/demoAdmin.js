@@ -105,6 +105,40 @@ const { DEMO_INVITE_BATCH_MAX, readDemoInviteBatchMax } = require('../../lib/dem
 // miss a collision the prospect lane can see.
 const { normalizeTo } = require('../../lib/metaCloud');
 
+// ── F-08.44 · THE TYPED-MONEY DOOR ───────────────────────────────────────────
+// `rate_display` and `about` are free text with no gate anywhere, and both are
+// handed to a model as grounded context (src/api/demo/vendor.js, symbols
+// carrying `context_text` and `dynamicContext`). CE-ruled 4-C: REJECTION AT THE
+// DOOR, both columns, nothing silently rewritten.
+//
+// THE DOOR IS THE WHOLE GATE, and that is derived rather than assumed. The two
+// inserts in this file are the ONLY writers of either column on `demo_vendors`
+// in the estate; every other writer goes through src/lib/demoLifecycle.js,
+// symbol _write, which THROWS BY NAME on any column outside PRESENCE_COLUMNS
+// that does not end `_at`. Neither column can reach the table by that route.
+//
+// The gate's own home carries the F-08.47 asymmetry ruling: it is wired HERE
+// and nowhere else, by founder word 「 demo plane only 」.
+const {
+  checkRateDisplay, checkAbout,
+  RATE_REGISTER_KEY, RATE_REGISTER_MESSAGE,
+  ABOUT_REGISTER_KEY, ABOUT_REGISTER_MESSAGE,
+} = require('../../lib/moneyRegisterGate');
+
+// ── THE GATE, ONE HOME, TWO CALLERS (single create and bulk) ─────────────────
+// Returns null when both columns are lawful, or `{ error, detail }` naming the
+// first offending column. ABSENCE PASSES — the gate refuses malformed money and
+// never requires money.
+function _registerGate(rate, about) {
+  if (checkRateDisplay(rate).ok === false) {
+    return { error: RATE_REGISTER_KEY, detail: RATE_REGISTER_MESSAGE };
+  }
+  if (checkAbout(about).ok === false) {
+    return { error: ABOUT_REGISTER_KEY, detail: ABOUT_REGISTER_MESSAGE };
+  }
+  return null;
+}
+
 // ── TDW_08 P4 · THE PHOTO GATE, ONE HOME FOR TWO ROUTES ─────────────────────
 // The create route and the bulk route enforce the SAME two numbers with the SAME
 // two founder-frozen strings. Writing the gate twice is how the demo plane came
@@ -216,6 +250,18 @@ router.get('/vendors', requireAdminPassword, async (req, res) => {
       // second authority on the state machine — the drift demoLifecycle was
       // built to end.
       states: demoLifecycle.STATES,
+      // ── F-08.45 / FORK 3(c) — THE INVITE SUBSET RIDES TOO ─────────────────
+      // `states` has ridden since P4 for the reason stated directly above, and
+      // `INVITE_STATES` is the one member of that family that did not — so the
+      // board hand-wrote `state === 'built' || state === 'legacy'` TWICE, at
+      // its bulk filter and at its per-card button, and the two drifted. That
+      // is precisely the second-authority drift `_inviteOne`'s own header
+      // names ("One authority (demoLifecycle.INVITE_STATES), two readers"),
+      // which could not be honoured while the constant stayed in this repo.
+      // Now it can: the console renders the SERVER's subset and holds no
+      // opinion it could contradict. Same shape as `states`, `handset_key` and
+      // `min_portfolio_images` — one authority, two readers.
+      invite_states: demoLifecycle.INVITE_STATES,
       // ── THE FLOOR RIDES THE WIRE. THE CEILING DELIBERATELY DOES NOT ───────
       // The client renders the floor (the builder must be told what it needs
       // BEFORE it submits) and holds NO opinion about the ceiling — it is not
@@ -235,6 +281,19 @@ router.post('/vendors', requireAdminPassword, async (req, res) => {
   if (!ig_handle || !display_name || !category || !city) {
     return res.status(400).json({ ok: false, error: 'ig_handle, display_name, category, city are required.' });
   }
+  // ROW-INTRINSIC CHECKS BEFORE EVERYTHING ELSE (CE-ruled siting). A bad rate is
+  // a fact about this row's own bytes; judge the row before doing photo work.
+  // NAMED WITNESS GAP: this refusal is unreachable by hand on THIS path. The
+  // console pre-checks the photo floor client-side (app/admin/demo/page.tsx,
+  // symbol handleCreate) and never POSTs without six images, so the founder
+  // cannot meet this line here without staging a portfolio first. It is proven
+  // by cell (scripts/b08_console_bench.js §2) and walked on the BULK path,
+  // which has no such pre-check. Declared rather than discovered — and NOT
+  // cured by putting the predicate in the console, which would make the surface
+  // a second authority on a rule this route owns.
+  const reg = _registerGate(rate_display, about);
+  if (reg) return res.status(400).json({ ok: false, error: reg.error, detail: reg.detail });
+
   const gate = _photoGate(photos);
   if (gate.ok === false) return res.status(400).json({ ok: false, error: gate.error });
   try {
@@ -345,6 +404,24 @@ router.post('/bulk', requireAdminPassword, async (req, res) => {
       failed.push({ input: raw, error: 'ig_handle, display_name, category, city are required.' });
       continue;
     }
+
+    // ── ROW-INTRINSIC BEFORE CROSS-ROW (CE-ruled siting) ────────────────────
+    // A bad rate is a fact about this row's own bytes and is fixable by editing
+    // that row. A handset collision is a fact about the BATCH. Judge the row,
+    // then the batch — so the operator is told what is wrong with the line he
+    // can actually edit before he is told about a neighbour.
+    //
+    // DISCLOSED BEHAVIOUR DELTA: a row failing BOTH this gate and a later one
+    // (the intra-batch handset scan, or the photo floor) now reports the
+    // register reason where it previously reported the other. The row is
+    // refused either way; only the named reason moves.
+    //
+    // THIS IS THE WALKABLE PATH FOR BOTH REFUSALS. `handleBulk` performs no
+    // photo pre-check, so a four-column paste with a malformed rate and zero
+    // photo URLs reaches this line and the refusal renders on screen. Zero
+    // rows written, zero templates spent.
+    const reg = _registerGate(r.rate_display, r.about);
+    if (reg) { failed.push({ ig_handle, error: reg.error, detail: reg.detail }); continue; }
 
     const norm = rawPhone ? normalizeTo(rawPhone) : '';
     if (norm && (phoneSeen.get(norm) || 0) > 1) {
