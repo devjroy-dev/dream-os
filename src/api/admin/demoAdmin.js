@@ -8,6 +8,12 @@
 //   GET    /api/v2/admin/demo/leads           — list all demo leads
 //   POST   /api/v2/admin/demo/leads           — seed a mock lead
 //   POST   /api/v2/admin/demo/cloudinary-sign — sign a Cloudinary upload
+//   POST   /api/v2/admin/demo/bulk            — sheet-shaped bulk build (P4)
+//   POST   /api/v2/admin/demo/invite-batch    — bulk invite, per-run bounded (P4)
+//
+// This list is PARTIAL and always has been; it is a reading aid, not a census.
+// Said out loud so the next hand does not mistake it for one — the census is the
+// router table itself.
 
 'use strict';
 
@@ -19,11 +25,16 @@ const crypto  = require('crypto');
 // THIS FILE CARRIED ITS OWN `requireAdminPassword` — a header-only guard with
 // no cookie limb, reading `x-admin-password` and comparing it against
 // ADMIN_PASSWORD. Two authorities guarding one panel was the disease's second
-// face: a fold that cured `requireAdmin` alone would have left these ten routes
-// dark, or worse, still admitting a raw credential over the wire after the
-// credential had left every other client.
+// face: a fold that cured `requireAdmin` alone would have left every route in
+// this file dark, or worse, still admitting a raw credential over the wire after
+// the credential had left every other client.
 //
-// It now imports the ONE guard. Its ten routes ride the same bearer and cookie
+// F-08.38 (P4, corrected ON CONTACT): both sentences said "these ten routes"
+// against a file that held twelve, and P4 makes it fourteen. A count that must be
+// maintained by hand is the same species as a line number that must be. The
+// PATH-OVER-RANGE LAW's cure applies to cardinals too — name the set, not its size.
+//
+// It now imports the ONE guard. Its routes ride the same bearer and cookie
 // limbs as every other /api/v2/admin/* route, and the `x-admin-password` header
 // is dead estate-wide.
 //
@@ -56,6 +67,69 @@ const demoLifecycle = require('../../lib/demoLifecycle');
 const { sendWa } = require('../../lib/sendWa');
 const { claimLinkFor } = require('../../lib/discover/demoLeadAlert');
 
+// ── TDW_08 P4 · FORK B(a) — THE PHOTO PLANE COMES TO PARITY, BY IMPORT ───────
+// The demo plane held THREE numbers where the spec has two, and none of them
+// matched the real plane: this file rejected below THREE, the pwa mirrored that
+// in copy, and the pwa hid "+ Add Photo" above TEN. There was NO server-side
+// ceiling at all — this route accepted five hundred photos.
+//
+// THE CURE IS THE IMPORT, NEVER THE DIGIT. Re-typing 6 and 20 here is exactly
+// how 3 and 10 got here: a second author writing a number a first author already
+// owned. `MIN_PORTFOLIO_IMAGES` lives at src/lib/vendor/discover.js and
+// `MAX_PORTFOLIO_IMAGES` at src/lib/vendor/portfolio.js, and those two files
+// ENFORCE the numbers for real vendors. One home, now four readers.
+//
+// [F-06.85: the two founder-approved strings below are conditioned on a
+//  MECHANICAL fact — that these constants are the enforcing ones, not copies.
+//  Mechanism: `MIN_PORTFOLIO_IMAGES` gates requestDiscover in discover.js and
+//  `MAX_PORTFOLIO_IMAGES` gates canAcceptMore in portfolio.js. If either number
+//  is ever read from somewhere that does not enforce it, the strings below
+//  promise a floor nobody holds and must be re-read.]
+const { MIN_PORTFOLIO_IMAGES } = require('../../lib/vendor/discover');
+const { MAX_PORTFOLIO_IMAGES } = require('../../lib/vendor/portfolio');
+
+// ── TDW_08 P4 · FORK C(a) — THE DEMO INVITE BATCH MAX, ITS OWN HOME ─────────
+// Demo invites do NOT share `marketing.daily_template_cap`. Two populations:
+// cold prospects on a scheduled sweep versus warm demo rows fired by hand or in
+// bulk, and sharing would let one bulk run silently eat the other's budget.
+//
+// THE NAMING RIDER IS ABSOLUTE (CE ruling, F-08.37): this is a PER-RUN BATCH
+// SIZE and it is not called a daily cap in any identifier, comment or label,
+// because it does not count a day. `readDailyCap`'s own number does not either —
+// runOpenerJob applies it as `.limit()` with no date predicate, so two runs in
+// one day send fifty. A real daily meter is a separate act.
+const { DEMO_INVITE_BATCH_MAX, readDemoInviteBatchMax } = require('../../lib/demoInviteBatch');
+
+// ── TDW_08 P4 · FORK D(c) — the phone normalizer, for the shared-handset gate.
+// F-07.47: the estate has ONE. A second normalization here would let the gate
+// miss a collision the prospect lane can see.
+const { normalizeTo } = require('../../lib/metaCloud');
+
+// ── TDW_08 P4 · THE PHOTO GATE, ONE HOME FOR TWO ROUTES ─────────────────────
+// The create route and the bulk route enforce the SAME two numbers with the SAME
+// two founder-frozen strings. Writing the gate twice is how the demo plane came
+// to hold three numbers in the first place; the bulk route is the second author
+// this file has ever had over this rule, and it gets a function, not a copy.
+//
+// Both strings are FOUNDER-APPROVED VERBATIM (2026-08-03, 「 approve 」) and are
+// near-mirrors of the real plane's own, so a demo builder and a real vendor are
+// refused in the same words:
+//   src/lib/vendor/discover.js  — `Need at least ${MIN} portfolio images. You have ${n}.`
+//   src/lib/vendor/portfolio.js — `Your portfolio holds ${MAX} photos, the maximum. ...`
+// C4 says "demo" where the real one says "portfolio" — the one deliberate word of
+// difference, approved as put, because on that screen the founder is building a
+// demo and not editing a portfolio.
+function _photoGate(photos) {
+  const n = Array.isArray(photos) ? photos.length : 0;
+  if (n < MIN_PORTFOLIO_IMAGES) {
+    return { ok: false, error: `Need at least ${MIN_PORTFOLIO_IMAGES} portfolio images. You have ${n}.` };
+  }
+  if (n > MAX_PORTFOLIO_IMAGES) {
+    return { ok: false, error: `Your demo holds ${MAX_PORTFOLIO_IMAGES} photos, the maximum. Remove one to add another.` };
+  }
+  return { ok: true };
+}
+
 // GET /admin/demo/vendors
 router.get('/vendors', requireAdminPassword, async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -63,7 +137,79 @@ router.get('/vendors', requireAdminPassword, async (req, res) => {
     const { data, error } = await supabase
       .from('demo_vendors').select('*').order('created_at', { ascending: false });
     if (error) throw error;
-    return res.json({ ok: true, vendors: data || [] });
+    const rows = data || [];
+
+    // ── TDW_08 P4 · FORK D(c) — THE SHARED-HANDSET FACTS, DERIVED HERE ───────
+    // F-08.17: `prospects` holds one row per phone and `demo_vendor_ref` is
+    // single-valued, so a second demo row on the same handset OVERWRITES the
+    // first's linkage and STOP then reaches only the survivor. The route refuses
+    // that send (see the invite caller below), and the BOARD shows the cause so
+    // the founder meets it on the card rather than at the button.
+    //
+    // TWO DIFFERENT FACTS, deliberately not merged:
+    //   shared_handset      — another DEMO ROW carries this phone. Derived from
+    //                         the rows already in hand: zero extra queries.
+    //   linkage_held_by     — the ig_handle the phone's PROSPECT currently points
+    //                         at, when that is some OTHER row. This is the one
+    //                         that explains a refusal, and it is the ruling's
+    //                         "derived from prospects".
+    // A row can be shared-but-unlinked (no prospect yet, nothing to overwrite) or
+    // linked-elsewhere; collapsing them into one badge would tell the founder a
+    // send will refuse when it will succeed.
+    const phoneCount = new Map();
+    for (const r of rows) {
+      const p = normalizeTo(r.whatsapp_phone || '');
+      if (p) phoneCount.set(p, (phoneCount.get(p) || 0) + 1);
+    }
+
+    let linkByPhone = new Map();
+    try {
+      const { data: links } = await supabase
+        .from('prospects').select('phone, demo_vendor_ref').not('demo_vendor_ref', 'is', null);
+      const byId = new Map(rows.map(r => [r.id, r.ig_handle]));
+      for (const l of (links || [])) {
+        const p = normalizeTo(l.phone || '');
+        if (p) linkByPhone.set(p, byId.get(l.demo_vendor_ref) || null);
+      }
+    } catch (_e) {
+      // A prospects read that fails must not take the board down with it. The
+      // badge goes dark and the ROUTE still refuses — the gate is the invite
+      // caller's, never the board's. DISCLOSED rather than papered: an operator
+      // seeing no badge on a degraded read is seeing less, not seeing a lie.
+      linkByPhone = new Map();
+    }
+
+    const vendors = rows.map((r) => {
+      const p = normalizeTo(r.whatsapp_phone || '');
+      const heldBy = p ? (linkByPhone.get(p) || null) : null;
+      return {
+        ...r,
+        shared_handset: p ? (phoneCount.get(p) || 0) > 1 : false,
+        linkage_held_by: heldBy && heldBy !== r.ig_handle ? heldBy : null,
+      };
+    });
+
+    return res.json({
+      ok: true,
+      vendors,
+      // ── THE BOARD'S COLUMNS RIDE THE WIRE, NOT THE COMPONENT ──────────────
+      // demoLifecycle.STATES is the FROZEN authority and the pwa lives in a
+      // different repository, so a cross-repo import is impossible. The estate
+      // already ruled this exact shape for the photo floor (TDW_07 P3, CAP SITE
+      // 4): the surface renders the SERVER's list so the eight states never
+      // exist twice. Re-enumerating them in the component would make the board a
+      // second authority on the state machine — the drift demoLifecycle was
+      // built to end.
+      states: demoLifecycle.STATES,
+      // ── THE FLOOR RIDES THE WIRE. THE CEILING DELIBERATELY DOES NOT ───────
+      // The client renders the floor (the builder must be told what it needs
+      // BEFORE it submits) and holds NO opinion about the ceiling — it is not
+      // sent, so the surface cannot render it, cannot gate on it, and cannot
+      // drift from it. The ceiling is enforced server-side and announced in the
+      // refusal, which is exactly what app/vendor/portfolio/page.tsx does: "this
+      // screen holds no opinion about the cap".
+      min_portfolio_images: MIN_PORTFOLIO_IMAGES,
+    });
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
 
@@ -74,9 +220,8 @@ router.post('/vendors', requireAdminPassword, async (req, res) => {
   if (!ig_handle || !display_name || !category || !city) {
     return res.status(400).json({ ok: false, error: 'ig_handle, display_name, category, city are required.' });
   }
-  if (!Array.isArray(photos) || photos.length < 3) {
-    return res.status(400).json({ ok: false, error: 'Minimum 3 photos required.' });
-  }
+  const gate = _photoGate(photos);
+  if (gate.ok === false) return res.status(400).json({ ok: false, error: gate.error });
   try {
     const { data, error } = await supabase
       .from('demo_vendors')
@@ -91,6 +236,155 @@ router.post('/vendors', requireAdminPassword, async (req, res) => {
     if (err.code === '23505') return res.status(409).json({ ok: false, error: 'A demo vendor with this IG handle already exists.' });
     return res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// POST /admin/demo/bulk — THE BULK BUILD (TDW_08 P4 · FORK A(c), CE-ruled)
+//
+// SHEET-SHAPED, mirroring the prospect lane's own bulk (api/admin/prospects.js):
+// { demos: [ {ig_handle, display_name, category, city, whatsapp_phone, about,
+//             rate_display, photos}, ... ] }
+// → { insertedCount, skippedCount, failedCount, inserted, skipped, failed }
+// Duplicates by ig_handle are SKIPPED, not errored, so a re-run is idempotent —
+// the founder re-uploads a corrected sheet without hand-pruning the rows that
+// already landed.
+//
+// THE MOUNT IS SINGULAR. The spec names `POST /api/v2/admin/demos/bulk`; the
+// router mounts this file at `/admin/demo` (src/api/router.js). The spec was
+// written against a namespace that never landed — same miss as its
+// `app/admin/demos/page.tsx`. The route lives under the path that exists.
+//
+// ── ⚠ THE IG PIPELINE FETCH IS NOT BUILT, AND IT IS NOT STRUCK ─────────────
+// Spec §P4: "IG handle in → pipeline fetch (the n8n/RapidAPI contract; manual
+// photo-URL paste fallback)". `grep -rl "rapidapi\|n8n" src/` returns exactly ONE
+// file — api/admin/prospects.js — and its only hit is a comment describing the
+// SHEET flow. There is no demo ingestion contract in either repository: no
+// provider, no credential, no client, no env.
+//
+// CE ruling FORK A(c): the fetch is neither built nor struck. It is MINTED with
+// its missing contract enumerated, so a struck clause never quietly becomes a
+// decision nobody made. WHAT AN IG FETCH WOULD NEED BEFORE ANYONE BUILDS IT:
+//   1. PROVIDER      — which API, and whether it is Meta's Graph (requires the
+//                      handle's owner to have authorised us) or a scraper
+//                      reseller (does not, and that is the problem).
+//   2. CREDENTIAL    — a key, its home in the env, its rotation, and which of the
+//                      three Railway services holds it.
+//   3. RATE LIMIT    — the per-hour ceiling and what the bulk route does when it
+//                      is hit mid-batch, which is a partial-completion question
+//                      this route currently never has to answer.
+//   4. IG ToS POSTURE — pulling a stranger's photos onto a page that markets to
+//                      them is a legal and reputational act, not a technical one.
+//                      The founder rules that, not an executor.
+// UNNUMBERED AT THIS DELIVERY — the CE ruling minted it without assigning a
+// finding number, and an executor does not mint numbers. Named in the handover
+// for the chair to number.
+//
+// ── ⚠ §0.2 REPORT — "ALSO CREATE PROSPECTS" IS NOT BUILT, AND HERE IS WHY ──
+// Spec §P4: 'one upload can feed both, checkbox "also create prospects"'. There
+// is NO TRUTHFUL STATE to create those rows in, and this is a finding rather
+// than a gap:
+//   · `cold` walks straight into F-08.10, which was MINTED AND CURED three
+//     sittings ago: onInvited seeded `cold` and put demo vendors directly into
+//     runOpenerJob's harvest, so a vendor with a demo built for him received
+//     cold-outreach openers. Building the same seed here re-opens the cured
+//     finding through a different door.
+//   · `templated` is what onInvited uses (demoLifecycle.js) and it is literally
+//     true THERE — a template was sent immediately before. At BUILD time nothing
+//     has been sent, so the state would assert a send that did not happen, and
+//     `last_template_at`'s module-scoped meaning (F-08.11) would start lying to
+//     demoLeadAlert's 48h suppression.
+// REPORTED, NOT WORKED AROUND. A prospect state that means "known to us, never
+// contacted, not harvestable" does not exist and minting one is a lane decision,
+// not a route's.
+router.post('/bulk', requireAdminPassword, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const rows = Array.isArray(req.body && req.body.demos) ? req.body.demos : null;
+  if (!rows) return res.status(400).json({ ok: false, error: 'body.demos must be an array.' });
+
+  // ── THE INTRA-BATCH PHONE PRE-SCAN (FORK D(c)) ───────────────────────────
+  // F-08.17's hazard is two demo rows on one handset. Cross-batch that condition
+  // ALREADY EXISTS in production and refusing it here would forbid what the
+  // estate already contains — so this scan is deliberately INTRA-BATCH only, and
+  // the cross-batch case is surfaced on the board (`shared_handset`) and refused
+  // at the invite, never at the build.
+  //
+  // EVERY MEMBER OF A COLLIDING GROUP IS REFUSED, not all-but-the-first. Picking
+  // a winner would be this route deciding which of the founder's two rows is the
+  // real one, which nobody ruled and which he cannot see happening.
+  const phoneSeen = new Map();
+  for (const raw of rows) {
+    const p = normalizeTo(String((raw && raw.whatsapp_phone) || '').trim());
+    if (p) phoneSeen.set(p, (phoneSeen.get(p) || 0) + 1);
+  }
+
+  const inserted = [], skipped = [], failed = [];
+  for (const raw of rows) {
+    const r = raw || {};
+    const ig_handle    = String(r.ig_handle || '').toLowerCase().trim();
+    const display_name = String(r.display_name || '').trim();
+    const category     = String(r.category || '').trim();
+    const city         = String(r.city || '').trim();
+    const rawPhone     = String(r.whatsapp_phone || '').trim();
+
+    if (!ig_handle || !display_name || !category || !city) {
+      failed.push({ input: raw, error: 'ig_handle, display_name, category, city are required.' });
+      continue;
+    }
+
+    const norm = rawPhone ? normalizeTo(rawPhone) : '';
+    if (norm && (phoneSeen.get(norm) || 0) > 1) {
+      failed.push({ ig_handle, error: 'shared_handset_in_batch', detail: norm });
+      continue;
+    }
+
+    // MANUAL PASTE, the only ingestion path this sitting has. Accepts either the
+    // console's object shape or a bare list of URLs, because a sheet column holds
+    // strings. The hero defaults to the first when none is flagged — the same
+    // rule the single-create console applies client-side.
+    const photos = (Array.isArray(r.photos) ? r.photos : [])
+      .map((p) => (typeof p === 'string' ? { url: p } : (p || {})))
+      .filter((p) => p && typeof p.url === 'string' && p.url.trim())
+      .map((p, i, all) => ({
+        url: p.url.trim(),
+        is_hero: all.some((q) => q.is_hero) ? p.is_hero === true : i === 0,
+        cloudinary_id: p.cloudinary_id || null,
+      }));
+
+    // THE SAME GATE THE CONSOLE FIRES. One home, two callers.
+    const gate = _photoGate(photos);
+    if (gate.ok === false) { failed.push({ ig_handle, error: gate.error }); continue; }
+
+    try {
+      const { data, error } = await supabase
+        .from('demo_vendors')
+        // buildInsertPatch supplies ALL FOUR presence fields, exactly as the
+        // single create does. This route never authors presence itself.
+        .insert(demoLifecycle.buildInsertPatch({
+          ig_handle, display_name, category, city,
+          whatsapp_phone: rawPhone || null,
+          about: r.about ? String(r.about).trim() : null,
+          rate_display: r.rate_display ? String(r.rate_display).trim() : null,
+          photos, created_by: 'admin_bulk',
+        }))
+        .select('id, ig_handle').single();
+      if (error) {
+        if (error.code === '23505') skipped.push(ig_handle);
+        else failed.push({ ig_handle, error: error.message });
+      } else {
+        inserted.push(data);
+      }
+    } catch (e) {
+      failed.push({ ig_handle, error: (e && e.message) || 'insert threw' });
+    }
+  }
+
+  return res.json({
+    ok: true,
+    insertedCount: inserted.length,
+    skippedCount: skipped.length,
+    failedCount: failed.length,
+    inserted, skipped, failed,
+  });
 });
 
 // DELETE /admin/demo/vendors/:id
@@ -236,13 +530,29 @@ router.post('/vendors/:id/discover-revoke', requireAdminPassword, async (req, re
 // for and unreachable, exactly as tdw_morning_nudge_vendor was before F4.
 //
 // ⚠ TWO THINGS THIS ROUTE DOES NOT DO, declared rather than discovered:
-//   · IT DOES NOT CONSULT THE 25/day CAP (F-08.12). readDailyCap's only consumers
-//     are runOpenerJob (prospects.js:213) and the admin cap route
-//     (api/admin/prospects.js:109) — the cap governs the cold-prospect BATCH
+//   · IT DOES NOT CONSULT THE MARKETING CAP (F-08.12). readDailyCap's only
+//     consumers are `runOpenerJob` (src/lib/prospects.js) and the admin cap route
+//     (src/api/admin/prospects.js) — that number governs the cold-prospect BATCH
 //     SWEEP and nothing else. Spec §3's "25/day governance owns invite volume"
-//     describes a volume control that does not exist for hand-fired sends.
-//     Pressing this eleven times sends eleven templates. The cure belongs with
-//     the bulk build, where volume actually arises.
+//     describes a volume control that did not exist for hand-fired sends.
+//     [F-08.38, corrected ON CONTACT: this block cited `prospects.js:213` for
+//      runOpenerJob's cap read. The function is declared at :247 and reads the cap
+//      at :250; the cite was stale by a P1 line shift and pointed at nothing. Now
+//      PATH PLUS SYMBOL, no line number — the form that cannot rot.]
+//
+//     P4 ANSWERS THIS, and it answers it in the shape the CE ruled (FORK C(a)):
+//     demo invites hold their OWN key in their OWN home
+//     (src/lib/demoInviteBatch.js) and never share the marketing lane's number.
+//     THE HAND-FIRED ROUTE REMAINS UNBOUNDED BY DESIGN — pressing it eleven times
+//     still sends eleven templates, because a per-run bound over a batch of one is
+//     not a governance, it is a speed bump on a button the founder is looking at.
+//     Volume arises in the BULK route and that is where the bound lives.
+//
+//     [F-06.85: the sentence above is conditioned on a MECHANICAL fact — that
+//      `demoInviteBatch`'s number bounds ONE request and counts no day. Mechanism:
+//      `POST /invite-batch` compares `ids.length` against `readDemoInviteBatchMax`
+//      and refuses; nothing anywhere reads a send ledger. If a daily meter is ever
+//      built, this paragraph is false and must be re-read. F-08.37.]
 //   · IT DOES NOT DECLARE nudgeClass, so WaNudgeOptedOutError can never fire here
 //     (sendWa.js:209 gates that limb on the caller's own declaration). An invite
 //     is not a nudge. The FULL cross-line opt-out still binds and is handled.
@@ -253,76 +563,187 @@ router.post('/vendors/:id/discover-revoke', requireAdminPassword, async (req, re
 // first's linkage and STOP from that handset then reaches only the second. Filed,
 // not cured — the fix is a linkage table and it is not this sitting's. Until it
 // is, this route must not be fired on both rows of a shared-phone pair.
-router.post('/vendors/:id/invite', requireAdminPassword, async (req, res) => {
-  const supabase = req.app.locals.supabase;
+// ── TDW_08 P4 · THE INVITE BODY MOVES INTO ONE HOME ─────────────────────────
+// P4 adds a BULK invite. The single route and the bulk route must fire the SAME
+// pre-check, the SAME send, and the SAME state write in the SAME order, because
+// the order is the correctness (CE-146 §5) — a second implementation would be a
+// second opinion about when a template may be spent. So the body moves here and
+// both routes call it. It returns `{ status, body }` rather than touching `res`,
+// which is what lets the bulk caller collect outcomes instead of answering.
+async function _inviteOne(supabase, id) {
+  // ── 1 · PRE-CHECK. Mirrors the grant/revoke sibling shape, widened from an
+  //        existence probe to the facts that decide whether a template may be spent.
+  const { data: row, error } = await supabase
+    .from('demo_vendors')
+    .select('id, ig_handle, display_name, whatsapp_phone, state')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!row) return { status: 404, body: { ok: false, error: 'Demo vendor not found.' } };
+  if (demoLifecycle.INVITE_STATES.includes(row.state) === false) {
+    return { status: 409, body: { ok: false, error: 'illegal_transition', detail: `${row.state} -> invited` } };
+  }
+  if (!row.whatsapp_phone) {
+    return { status: 409, body: { ok: false, error: 'no_phone', detail: row.ig_handle } };
+  }
+
+  // ── 1b · THE SHARED-HANDSET REFUSAL (TDW_08 P4 · FORK D(c), F-08.17) ───────
+  // BEFORE the send, and for the same reason every other pre-check is: a
+  // template is a real message to a real handset. `prospects` holds one row per
+  // phone and `demo_vendor_ref` is single-valued, so inviting the second of a
+  // shared-phone pair OVERWRITES the first's linkage and STOP from that handset
+  // then reaches only the second — the first becomes un-removable by the one
+  // word the vendor is most likely to send.
+  //
+  // THIS IS A GUARD, NOT THE CURE. The cure is a linkage table and it is ruled
+  // OUT of this sitting; until it lands, the route refuses rather than silently
+  // relinking, and the board shows the cause (see GET /vendors above).
+  //
+  // DISCLOSED, NOT PAPERED: this guard sees the linkage that EXISTS at read
+  // time. `demoLeadAlert.js` also writes `demo_vendor_ref` on an enquiry, with
+  // no admin action at all, so a collision can still be created between this
+  // read and any later moment. F-08.17 is amended to name all three writers;
+  // one door cannot close a hazard that has three.
+  //
+  // THE GUARD'S REACH IS THE NORMALIZER'S REACH, and that is a DECLARED limit
+  // rather than one to be met in the field. `normalizeTo` strips a `whatsapp:`
+  // prefix and a leading `+` and does nothing else — it does NOT infer a country
+  // code. A demo row held as `9888294440` and one held as `919888294440` are
+  // different handsets to this estate, HERE and in the prospect lane alike, so
+  // this guard will not see those two collide. Widening it would mean a second
+  // opinion about phone identity, which F-07.47 exists to prevent and which is
+  // not a route's to hold. Benched as a NAMED LIMIT, not as a pass:
+  // scripts/b08_p4_factory_bench.js §2.8.
+  {
+    const phone = normalizeTo(row.whatsapp_phone);
+    const { data: held } = await supabase
+      .from('prospects').select('demo_vendor_ref').eq('phone', phone)
+      .not('demo_vendor_ref', 'is', null).maybeSingle();
+    if (held && held.demo_vendor_ref && held.demo_vendor_ref !== row.id) {
+      const { data: other } = await supabase
+        .from('demo_vendors').select('ig_handle').eq('id', held.demo_vendor_ref).maybeSingle();
+      console.log(`[admin/demo/invite] REFUSED ${row.ig_handle} — handset already linked to `
+        + `${(other && other.ig_handle) || held.demo_vendor_ref} (F-08.17); no template spent`);
+      return {
+        status: 409,
+        body: { ok: false, error: 'shared_handset', detail: (other && other.ig_handle) || held.demo_vendor_ref },
+      };
+    }
+  }
+
+  // ── 2 · THE SEND. Through the one gate, on the marketing line
+  //        (templates.js:112), which routes via MARKETING_PHONE_NUMBER_ID and
+  //        carries the cross-line STOP gate. The body is founder-frozen; this
+  //        caller supplies only the two declared variables.
+  const claimLink = claimLinkFor(row.ig_handle);
+  if (!claimLink) {
+    return { status: 409, body: { ok: false, error: 'no_handle', detail: row.id } };
+  }
   try {
-    // ── 1 · PRE-CHECK. Mirrors the grant/revoke sibling shape at :131-134 and
-    //        :145-148, widened from an existence probe to the two facts that
-    //        decide whether a template may be spent.
-    const { data: row, error } = await supabase
-      .from('demo_vendors')
-      .select('id, ig_handle, display_name, whatsapp_phone, state')
-      .eq('id', req.params.id)
-      .maybeSingle();
-    if (error) throw error;
-    if (!row) return res.status(404).json({ ok: false, error: 'Demo vendor not found.' });
-    if (demoLifecycle.INVITE_STATES.includes(row.state) === false) {
-      return res.status(409).json({ ok: false, error: 'illegal_transition', detail: `${row.state} -> invited` });
+    await sendWa({
+      line: 'marketing',
+      to: row.whatsapp_phone,
+      templateKey: 'demo_invite',
+      vars: { name: row.display_name, claim_link: claimLink },
+      supabase,
+    });
+  } catch (e) {
+    const code = (e && e.code) || 'send_failed';
+    if (code === 'opted_out') {
+      console.log(`[admin/demo/invite] REFUSED ${row.ig_handle} — recipient has opted out; no state written`);
+      return { status: 409, body: { ok: false, error: 'opted_out', detail: row.ig_handle } };
     }
-    if (!row.whatsapp_phone) {
-      return res.status(409).json({ ok: false, error: 'no_phone', detail: row.ig_handle });
-    }
+    console.error(`[admin/demo/invite] SEND FAILED for ${row.ig_handle}: ${code} — ${e && e.message} `
+      + '(no state written; the row is exactly as it was)');
+    return { status: 502, body: { ok: false, error: code, detail: e && e.message } };
+  }
 
-    // ── 2 · THE SEND. Through the one gate, on the marketing line
-    //        (templates.js:112), which routes via MARKETING_PHONE_NUMBER_ID and
-    //        carries the cross-line STOP gate. The body is founder-frozen; this
-    //        route supplies only the two declared variables.
-    const claimLink = claimLinkFor(row.ig_handle);
-    if (!claimLink) {
-      return res.status(409).json({ ok: false, error: 'no_handle', detail: row.id });
-    }
-    try {
-      await sendWa({
-        line: 'marketing',
-        to: row.whatsapp_phone,
-        templateKey: 'demo_invite',
-        vars: { name: row.display_name, claim_link: claimLink },
-        supabase,
-      });
-    } catch (e) {
-      const code = (e && e.code) || 'send_failed';
-      if (code === 'opted_out') {
-        console.log(`[admin/demo/invite] REFUSED ${row.ig_handle} — recipient has opted out; no state written`);
-        return res.status(409).json({ ok: false, error: 'opted_out', detail: row.ig_handle });
-      }
-      console.error(`[admin/demo/invite] SEND FAILED for ${row.ig_handle}: ${code} — ${e && e.message} `
-        + '(no state written; the row is exactly as it was)');
-      return res.status(502).json({ ok: false, error: code, detail: e && e.message });
-    }
+  // ── 3 · THE STATE. Only now, and only through the module.
+  const r = await demoLifecycle.onInvited(supabase, row.id, { via: 'admin_console' });
+  if (r.ok === false) {
+    // Unreachable after the pre-check unless the row moved between the two
+    // reads. LOUD, never papered: a template has already reached a handset and
+    // the row does not say so, which is the one inconsistency this caller's
+    // whole ordering exists to prevent.
+    console.error(`[admin/demo/invite] SENT BUT NOT STAMPED for ${row.ig_handle}: ${r.reason} `
+      + `(${r.detail}) — the vendor has the message and the row does not record it`);
+    return { status: 500, body: { ok: false, error: 'sent_not_stamped', detail: r.reason } };
+  }
 
-    // ── 3 · THE STATE. Only now, and only through the module.
-    const r = await demoLifecycle.onInvited(supabase, row.id, { via: 'admin_console' });
-    if (r.ok === false) {
-      // Unreachable after the pre-check unless the row moved between the two
-      // reads. LOUD, never papered: a template has already reached a handset and
-      // the row does not say so, which is the one inconsistency this route's
-      // whole ordering exists to prevent.
-      console.error(`[admin/demo/invite] SENT BUT NOT STAMPED for ${row.ig_handle}: ${r.reason} `
-        + `(${r.detail}) — the vendor has the message and the row does not record it`);
-      return res.status(500).json({ ok: false, error: 'sent_not_stamped', detail: r.reason });
-    }
-
-    // A FAILED LINKAGE IS A 200 WITH A FLAG, NOT AN ERROR (CE-147 §4). The send
-    // happened and the state is true; answering 409 while the vendor's handset is
-    // buzzing would be the house's "never a false done" inverted into a false
-    // failure. The flag is what the founder reads, and onInvited has already
-    // logged the reason loudly.
-    return res.json({
+  // A FAILED LINKAGE IS A 200 WITH A FLAG, NOT AN ERROR (CE-147 §4). The send
+  // happened and the state is true; answering 409 while the vendor's handset is
+  // buzzing would be the house's "never a false done" inverted into a false
+  // failure. The flag is what the founder reads, and onInvited has already
+  // logged the reason loudly.
+  return {
+    status: 200,
+    body: {
       ok: true,
       vendor: { id: r.row.id, display_name: r.row.display_name, discover_eligible: r.row.discover_eligible },
       state: r.state,
       prospect_linked: r.prospect_linked === true,
-    });
+      ig_handle: row.ig_handle,
+    },
+  };
+}
+
+// POST /admin/demo/vendors/:id/invite — THE SINGLE DOOR (F-08.36's cure rides
+// the pwa; this route has existed and been callable since Sitting A, with no
+// control on the console that reached it).
+router.post('/vendors/:id/invite', requireAdminPassword, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  try {
+    const out = await _inviteOne(supabase, req.params.id);
+    return res.status(out.status).json(out.body);
+  } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// POST /admin/demo/invite-batch — THE BULK INVITE (TDW_08 P4 · FORK C(a))
+//
+// { ids: [uuid, ...] } → fires _inviteOne over each, IN ORDER, and reports every
+// outcome. It does NOT stop at the first refusal: a batch that halts on one
+// ineligible row would leave the founder guessing which of the rest were sent.
+//
+// THE BATCH MAX IS A PER-RUN BOUND AND IS NAMED AS ONE. Over-length is REFUSED
+// rather than truncated — silently sending the first N of a longer list and
+// answering 200 is a false done, and the founder cannot tell a truncation from a
+// completion by looking at the screen.
+//
+// SEQUENTIAL BY CONSTRUCTION, never Promise.all: each iteration spends a real
+// template on a real handset, and the shared-handset guard inside _inviteOne
+// reads `prospects` — two sends racing on one phone would both read "unlinked"
+// and both write, which is the exact overwrite F-08.17 names.
+router.post('/invite-batch', requireAdminPassword, async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids : null;
+  if (!ids) return res.status(400).json({ ok: false, error: 'body.ids must be an array.' });
+  try {
+    const batchMax = await readDemoInviteBatchMax(supabase);
+    if (ids.length > batchMax) {
+      return res.status(400).json({
+        ok: false,
+        error: 'batch_too_large',
+        detail: `This run holds ${ids.length} invites; the per-run maximum is ${batchMax}.`,
+        batch_max: batchMax,
+      });
+    }
+
+    const sent = [], refused = [];
+    for (const id of ids) {
+      let out;
+      try {
+        out = await _inviteOne(supabase, id);
+      } catch (e) {
+        // A THROW IS AN OUTCOME, NOT AN ABORT. One row's database error must not
+        // hide the verdicts of the rows already sent above it.
+        refused.push({ id, error: 'threw', detail: (e && e.message) || 'unknown' });
+        continue;
+      }
+      if (out.status === 200) sent.push({ id, ig_handle: out.body.ig_handle, prospect_linked: out.body.prospect_linked });
+      else refused.push({ id, error: out.body.error, detail: out.body.detail || null });
+    }
+    return res.json({ ok: true, batch_max: batchMax, sentCount: sent.length, refusedCount: refused.length, sent, refused });
   } catch (err) { return res.status(500).json({ ok: false, error: err.message }); }
 });
 

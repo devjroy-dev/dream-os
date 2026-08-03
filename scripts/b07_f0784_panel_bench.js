@@ -201,7 +201,17 @@ sec('§4 · F-6(b) — two authorities became one');
   // once as the import = 13. Second amendment to this line in one day, which is
   // itself the F-08.20 evidence: a census cell reds on every lawful route
   // addition, and each amendment must travel in the act that caused it.
-  ok(`§4.3 all twelve routes still carry a guard (${mounts - 1} mounts + 1 import)`, mounts === 13);
+  // RE-AIMED at TDW_08 P4 (disclosed in that sitting's handover). This cell read
+  // `mounts === 13` — a HARDCODED TALLY over a file that legitimately grows. P4
+  // added two routes and the cell went red over a correct tree, which is the
+  // F-08.38 species one layer out: a number a human must maintain by hand. It now
+  // asserts the PROPERTY it was always reaching for — that the guard is the FIRST
+  // argument after the path on EVERY route declaration — which cannot rot as the
+  // file grows and which catches a route mounted guardless, the thing that matters.
+  const decls = [...ds.matchAll(/router\.(?:get|post|delete|patch|put)\(\s*'[^']*'\s*,\s*([A-Za-z_$][\w$]*)/g)]
+    .map((m) => m[1]);
+  ok(`§4.3 every route carries the guard as its first handler (${decls.length} routes)`,
+     decls.length > 0 && decls.every((g) => g === 'requireAdminPassword'));
   ok('§4.4 no route lost its guard', (ds.match(/router\.(get|post|delete|patch|put)\(/g) || []).length === mounts - 1);
 }
 

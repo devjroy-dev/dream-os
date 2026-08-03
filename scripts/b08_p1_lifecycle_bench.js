@@ -1340,7 +1340,7 @@ async function mutateAndDrive(rel, from, to, cellName, driveAndAssert) {
 }
 
 await mutateAndDrive('src/api/admin/demoAdmin.js',
-  '    if (demoLifecycle.INVITE_STATES.includes(row.state) === false) {',
+  'if (demoLifecycle.INVITE_STATES.includes(row.state) === false) {',
   '    if (false) {',
   'the pre-check refuses an ineligible row BEFORE the template is spent',
   async () => {
@@ -1350,8 +1350,8 @@ await mutateAndDrive('src/api/admin/demoAdmin.js',
   });
 
 await mutateAndDrive('src/api/admin/demoAdmin.js',
-  "      const code = (e && e.code) || 'send_failed';",
-  "      const code = (e && e.code) || 'send_failed';\n      await demoLifecycle.onInvited(supabase, row.id, { via: 'admin_console' });",
+  "const code = (e && e.code) || 'send_failed';",
+  "const code = (e && e.code) || 'send_failed';\n    await demoLifecycle.onInvited(supabase, row.id, { via: 'admin_console' });",
   'a REFUSED send writes no state (the order is the design)',
   async () => {
     const db = makeDb({ demo_vendors: [seedVendor()], prospects: [] });
