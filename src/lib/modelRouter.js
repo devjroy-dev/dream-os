@@ -54,8 +54,73 @@ const DEFAULTS = {
   // MATRIX, so 0111 must be run or wakes silently follow replies.
   'model.wa_marketing.default':  { provider: 'anthropic', model: HAIKU,
                                    nudge_provider: 'deepseek', nudge_model: 'deepseek-v4-flash' },
+  // TDW_08 P5 Phase 4 — THE COUPLE LANE'S ROUTE (Eliza, the concierge on a
+  // vendor's line). A COUPLE HAS NO TIER: she is not a vendor and holds no
+  // `vendors` row, so the tier slot is `default` — `wa_marketing` is the
+  // structural precedent here, not `pwa_vendor`. Seeded anthropic/haiku, which
+  // is the literal this lane carried at `engine.js` since Session 5.5, so the
+  // facade join changed the MECHANISM and not one routed byte. MIRRORS
+  // `0112_couple_route_and_flag.sql` so a pre-seed deploy routes IDENTICALLY;
+  // the seed row exists to make the route admin-editable (the PATCH door 404s
+  // on a key with no row, D7).
+  'model.wa_couple.default':    { provider: 'anthropic', model: HAIKU },
   'model.harvest.default':      { provider: 'glm',       model: 'glm-4.7-flash' },
 };
+
+// ── F-08.84 — THE PER-SURFACE ALLOW-SET ─────────────────────────────────────
+// THE FINDING. `guardKeys` below guards PROVIDERS and KEYS. It has never
+// guarded MODELS, and nothing else does either. Every wa-lane that joins this
+// facade therefore trades a COMPILE-TIME model ceiling for an admin_config row:
+// one UPDATE puts Sonnet on a customer-facing wire, with no deploy, no review,
+// and no bench able to see it. That is F-05.32 — Sonnet convicted on live bride
+// turns at 3x Haiku's rate — re-enabled by the transport of its own cure.
+//
+// THE HOLE WAS ALREADY LIVE. `model.wa_marketing.default` joined this facade at
+// Phase 3 and has been open ever since; the couple lane's join would have been
+// the second door, not the first. Minted at F-08.84 — the ledger's next free
+// address DERIVED BY COMMAND at bfcb88e (F-08 runs to .83 and stops), never
+// taken from a count. The chair's own ".86" was loose arithmetic; opening two
+// silent holes on it would have been F-08.56 repeated.
+//
+// THE CURE, CE-RULED. Each customer-facing surface declares the model FAMILIES
+// it admits. A resolved model outside its surface's set is REFUSED LOUDLY and
+// the surface falls to its own DEFAULTS entry. The 60-second DeepSeek flip
+// survives untouched, because DeepSeek is in the set. Sonnet on a customer wire
+// goes back to requiring a code change AND a bench amendment, which is exactly
+// the guarantee F-05.32 bought and this facade would otherwise have spent.
+//
+// A surface with NO entry here is UNCONSTRAINED, deliberately: `pwa_vendor`
+// carries Victor's own haiku<->sonnet self-escalation mechanics (S-8), which are
+// ruled behaviour and not this finding's business. Silence here means "not
+// governed", never "governed by an empty set" — a distinction stated because an
+// empty set would refuse every route and fail this lane closed by accident.
+const HAIKU_CLASS    = ['claude-haiku-4-5-20251001'];
+const DEEPSEEK_CLASS = ['deepseek-v4-flash'];
+const SURFACE_ALLOW = {
+  wa_couple:    new Set([...HAIKU_CLASS, ...DEEPSEEK_CLASS]),
+  wa_marketing: new Set([...HAIKU_CLASS, ...DEEPSEEK_CLASS]),
+};
+
+// Applied to the PRIMARY model and to any role-split model on the same route
+// (`nudge_model`, `donna_model`), because a split is a second model reaching the
+// same wire and a guard that covers one is F-04.38's class: a cure landing on
+// one door while its twin sits one field away.
+function enforceAllowSet(surface, route) {
+  const allow = SURFACE_ALLOW[surface];
+  if (!allow) return route;
+  const fallback = DEFAULTS[`model.${surface}.default`] || { provider: 'anthropic', model: HAIKU };
+  let out = route;
+  for (const field of ['model', 'nudge_model', 'donna_model']) {
+    const m = out[field];
+    if (m == null) continue;
+    if (allow.has(m)) continue;
+    console.warn(`[model_refused] ${surface}.${field}="${m}" is outside this surface's allow-set `
+      + `(F-08.84) — falling back to ${fallback.model}`);
+    out = { ...out, [field]: fallback.model, refused: true };
+    if (field === 'model') out.provider = fallback.provider;
+  }
+  return out;
+}
 
 const CACHE_MS = 60_000;
 const cache = new Map(); // key -> { at, val }
@@ -110,7 +175,7 @@ async function resolveModel(supabase, surface, tier) {
   const forced = String(process.env.LLM_PROVIDER || '').trim();
   if (forced && CONF[forced]) {
     const base = DEFAULTS[key] || { model: HAIKU };
-    return guardKeys({ provider: forced, model: forced === 'anthropic' ? (base.provider === 'anthropic' ? base.model : HAIKU) : CONF[forced].model(''), forced: true });
+    return enforceAllowSet(surface, guardKeys({ provider: forced, model: forced === 'anthropic' ? (base.provider === 'anthropic' ? base.model : HAIKU) : CONF[forced].model(''), forced: true }));
   }
 
   const hit = cache.get(key);
@@ -126,7 +191,7 @@ async function resolveModel(supabase, surface, tier) {
   // 3 — the default matrix.
   if (!route) route = DEFAULTS[key] || { provider: 'anthropic', model: HAIKU };
 
-  const val = guardKeys({ ...route });
+  const val = enforceAllowSet(surface, guardKeys({ ...route }));
   cache.set(key, { at: Date.now(), val });
   return val;
 }
@@ -139,4 +204,4 @@ async function resolveModel(supabase, surface, tier) {
 // estate's own precedent for this shape. Production never calls it.
 function _resetRouteCache() { cache.clear(); }
 
-module.exports = { resolveModel, DEFAULTS, _resetRouteCache };
+module.exports = { resolveModel, DEFAULTS, SURFACE_ALLOW, _resetRouteCache };

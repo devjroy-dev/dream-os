@@ -10,7 +10,17 @@ const { buildInvoiceMessage }     = require('../lib/invoiceMessage');
 const { waNumberFor }             = require('../lib/waNumbers');   // F5 rider
 const { generateInvoicePdf }     = require('../lib/invoicePdf');
 const { formatRs }               = require('../lib/format');
-const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
+// TDW_08 P5 Phase 4 — THE FACADE JOIN (FORK 3(a), CE-ruled). `MODEL_HAIKU`,
+// `MODEL_SONNET`, `calculateCost` and `COMPLEXITY` were selected here and read
+// NOWHERE in this file except `MODEL_HAIKU` at the couple lane's one model line,
+// which now resolves through the router. Derived by command at bfcb88e: three of
+// the four were ALREADY selected-but-unread — each occurred exactly once, in the
+// import itself. The whole selection is retired rather than trimmed to a name
+// nothing reads. `models.js` keeps its exports: `brideEngine.js:36` is a real
+// reader of MODEL_SONNET and is untouched by this sitting.
+const { resolveModel }  = require('../lib/modelRouter');
+const { llmCreate }     = require('../lib/llm');
+const { readLaneFlag }  = require('../lib/laneFlags');
 const { resolveOrCreateClient } = require('../lib/clients');
 const { sendWhatsApp }          = require('../lib/whatsapp');
 const { captureField }          = require('../lib/coupleIdentity');
@@ -135,7 +145,21 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
   console.log(`[couple-agent] isReturningBride=${isReturningBride} phone=${couplePhone}${leadName ? ` name=${leadName}` : ''}`);
 
-  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName });
+  // ── THE LANE GATE (FORK 5(a), CE-ruled) ─────────────────────────────────────
+  // ONE gate, inside the turn, because `vendorInbound.js` reaches this function
+  // from FOUR sites (:565, :675, :803, :948) and four gates is four drifts. The
+  // file's own comment at :548 records the last sitting that learned this here:
+  // "THE CHARTER NAMED ONE SITE. THE WORLD WAS A SET OF FOUR."
+  //
+  // F-08.56 — the lane-enable flag; see `src/lib/laneFlags.js` for the law. OFF
+  // is yesterday's lane, byte for byte: `buildCoupleSystemPrompt` with
+  // `useEliza:false` is proven identical to the pre-cure composer across 112
+  // permutations. The flip is one admin_config row and sixty seconds, and it is
+  // the founder's hand.
+  const useEliza = await readLaneFlag(supabase, 'couple.eliza_enabled');
+  console.log(`[couple-agent] lane=${useEliza ? 'eliza' : 'legacy'}`);
+
+  const systemPrompt = buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza });
 
   const messages = [
     ...history,
@@ -183,17 +207,32 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     },
   ];
 
-  // ── Model: the Haiku ceiling ──────────────────────────────────────
+  // ── Model: the Haiku ceiling, now RESOLVED rather than typed ──────
   // F-05.32 + E-3: this lane's ceiling is Haiku. The classifier call that stood here
   // fed NOTHING but the log token below (M5 / C6) — a paid Haiku round-trip per turn
   // buying one word of console output. Deleted; the turn is untouched.
-  const modelToUse  = MODEL_HAIKU;
-  console.log(`[couple-agent] model selected: ${modelToUse}`);
+  //
+  // TDW_08 P5 Phase 4 (FORK 3(a)): the literal became a route. `0112` seeds
+  // `model.wa_couple.default` to anthropic/haiku and `modelRouter.DEFAULTS`
+  // matches, so a pre-seed deploy routes IDENTICALLY. The 60-second DeepSeek flip
+  // is one admin_config row.
+  //
+  // ⚠ AND THE CEILING IS NOW ENFORCED ONE LAYER UP, WHICH IS F-08.84. Before this
+  // join, "Haiku on this wire" was a compile-time fact. A route is an
+  // admin_config row, and `guardKeys` guards PROVIDERS and KEYS, never MODELS —
+  // so the join would have opened a config-time door through a compile-time
+  // ceiling. `modelRouter`'s per-surface ALLOW-SET closes it: a resolved model
+  // outside `wa_couple`'s set is refused loudly and falls to the surface's
+  // default. `b05_f0532_haiku_ceiling_bench`'s couple-agent cell was re-based to
+  // assert the RESOLVED ROUTE rather than the literal.
+  const route       = await resolveModel(supabase, 'wa_couple', 'default');
+  const modelToUse  = route.model;
+  console.log(`[couple-agent] model selected: ${modelToUse} (provider=${route.provider})`);
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
 
-    const response = await anthropic.messages.create({
+    const response = await llmCreate(route.provider, {
       model: modelToUse,
       max_tokens: 512,
       system: systemPrompt,

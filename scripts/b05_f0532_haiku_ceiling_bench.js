@@ -145,14 +145,39 @@ const driveBride = withCapturedLog(async () => {
 
 // driveVendor RETIRED AT M5 with the runAgenticTurn site it drove.
 
+// ── LABELED AMENDMENT · TDW_08 P5 PHASE 4 · CE-RULED ARM (α) ───────────────
+// THE DRIVER MOVED WITH THE SEAM IT DRIVES. The couple turn no longer calls the
+// injected `anthropic` dep — fork 3(a) joined it to the llm facade — so a
+// capture bound to `anthropic.messages.create` sees NOTHING and this cell would
+// have measured an empty array while the wire carried whatever it liked. The
+// capture moves to `llmCreate`, which IS the seam now, and the `anthropic` dep
+// is still passed so the signature stays production's.
+//
+// This is the same law that re-based the mutant above: an instrument aimed at a
+// seam the code no longer uses is not a weaker instrument, it is no instrument
+// at all. F-08.65's sentence, one lane over.
 const driveCouple = withCapturedLog(async () => {
   seedSupabaseModule();
   delete require.cache[ENGINE];
-  const { runCoupleAgenticTurn } = require(ENGINE);
+  const LLM = require.resolve(require('path').join(ROOT, 'src/lib/llm.js'));
+  const realLlm = require(LLM);
   const calls = [];
-  await runCoupleAgenticTurn({ vendor: { ...VENDOR }, vendorUser: { ...VUSER }, conversation: { ...CONVO },
-    couplePhone: '919625759924', coupleId: 'cpl1',
-    inboundMessage: MONEY_MSG, supabase: makeSupabase(), anthropic: makeAnthropic(calls) });
+  require.cache[LLM].exports = {
+    ...realLlm,
+    llmCreate: async (_provider, params) => {
+      calls.push(params.model);
+      return { stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok' }],
+               usage: { input_tokens: 1, output_tokens: 1 } };
+    },
+  };
+  try {
+    const { runCoupleAgenticTurn } = require(ENGINE);
+    await runCoupleAgenticTurn({ vendor: { ...VENDOR }, vendorUser: { ...VUSER }, conversation: { ...CONVO },
+      couplePhone: '919625759924', coupleId: 'cpl1',
+      inboundMessage: MONEY_MSG, supabase: makeSupabase(), anthropic: makeAnthropic([]) });
+  } finally {
+    require.cache[LLM].exports = realLlm;
+  }
   return { model: calls[0], calls };
 });
 
@@ -196,9 +221,32 @@ const SITES = [
   // RETIRED BY NAME AT M5: the `agent` site was runAgenticTurn, deleted whole
   // (zero callers, ask-gate included). A cell guarding a function that no longer
   // exists is not a weaker cell — it is a green over nothing.
-  { name: 'engine.js:488 (runCoupleAgenticTurn)', file: ENGINE, prefix: 'couple-agent',
-    cured: '  const modelToUse  = MODEL_HAIKU;\n  console.log(`[couple-agent] model selected:',
-    mutant: `  const modelToUse  = ${TERNARY};\n  console.log(\`[couple-agent] model selected:` },
+  // ── LABELED AMENDMENT · TDW_08 P5 PHASE 4 (ELIZA) · CE-RULED ARM (α) ──────
+  // COUNT PRESERVED. The couple lane joined the llm facade (fork 3(a)): the
+  // literal `MODEL_HAIKU` became `resolveModel(supabase,'wa_couple','default')`,
+  // and this site's cured anchor CEASED TO EXIST. The bench went 9/0 -> 3/6 on
+  // the ruled build, proven by probe before a byte shipped and reported under
+  // §0.2 rather than discovered at delivery.
+  //
+  // THE AMENDMENT IS THE BENCH'S OWN M5 PRECEDENT, CITED WITH ATTRIBUTION:
+  // when the classifier verdict was deleted, the ternary mutant could no longer
+  // compile and this file re-based it to MODEL_SONNET DIRECT, writing
+  // "a mutant that cannot compile is not a weaker mutant, it is no mutant at
+  // all." The same move, one architecture later.
+  //
+  // WHAT THE CELL NOW ASSERTS: the RESOLVED ROUTE is Haiku — not the literal.
+  // That is strictly stronger, because the literal could only ever be wrong in
+  // one place while the route can be wrong from an admin_config row.
+  //
+  // THE MUTANT TYPES SONNET PAST THE ROUTER, deliberately. Feeding Sonnet
+  // THROUGH the router no longer reproduces the disease — F-08.84's allow-set
+  // refuses it and the route falls back to Haiku, which is the cure working.
+  // A mutant a sibling cure defeats proves the sibling, not this cell. So the
+  // mutant bypasses the router entirely and puts Sonnet on the wire the only
+  // way that is still possible: by hand.
+  { name: 'engine.js (runCoupleAgenticTurn) — POST-FACADE', file: ENGINE, prefix: 'couple-agent',
+    cured: "  const route       = await resolveModel(supabase, 'wa_couple', 'default');\n  const modelToUse  = route.model;",
+    mutant: `  const route       = await resolveModel(supabase, 'wa_couple', 'default');\n  const modelToUse  = '${SONNET}';` },
 ];
 const DRIVERS = { 'bride-agent': driveBride, 'couple-agent': driveCouple }; // 'agent' retired at M5
 
@@ -238,11 +286,26 @@ function mutate(sites) {
       // it is now the ABSENCE of a branch. A conditional cannot pick Sonnet if no
       // conditional is left to pick anything. Asserted on the source, both survivors.
       const fs2 = require('fs');
+      // AMENDED, TDW_08 P5 PHASE 4: the two survivors no longer share a shape.
+      // brideEngine still TYPES the ceiling; the couple lane RESOLVES it. The
+      // property is identical and the assertion is per-lane rather than shared —
+      // a single regex over two architectures would have to weaken to fit both,
+      // and a weakened guard on the convicted lane is the wrong trade.
       for (const [f, label] of [[BRIDE_ENGINE, 'brideEngine'], [ENGINE, 'engine']]) {
         const src = fs2.readFileSync(f, 'utf8').split('\n')
           .filter(l => !l.trim().startsWith('//')).join('\n');
-        assert.ok(/const modelToUse\s*=\s*MODEL_HAIKU;/.test(src),
-          `${label}: the ceiling must be an unconditional assignment`);
+        if (label === 'brideEngine') {
+          assert.ok(/const modelToUse\s*=\s*MODEL_HAIKU;/.test(src),
+            `${label}: the ceiling must be an unconditional assignment`);
+        } else {
+          assert.ok(/const modelToUse\s*=\s*route\.model;/.test(src),
+            `${label}: the ceiling must be the resolved route, unconditionally`);
+          assert.ok(!new RegExp(`['"\`]${SONNET}['"\`]`).test(src),
+            `${label}: a Sonnet literal was typed past the router`);
+          const router = fs2.readFileSync(require('path').join(ROOT, 'src/lib/modelRouter.js'), 'utf8');
+          assert.ok(/SURFACE_ALLOW/.test(router) && /wa_couple:/.test(router),
+            `${label}: the route is unconstrained — F-08.84's allow-set is what makes a route as safe as a literal`);
+        }
         assert.ok(!/\?\s*MODEL_SONNET/.test(src) && !/MODEL_SONNET\s*:/.test(src),
           `${label}: a conditional reaching MODEL_SONNET survived the deletion`);
         assert.ok(!/classifyMessage\(|classifyVendorMessage\(/.test(src),

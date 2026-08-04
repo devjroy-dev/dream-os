@@ -1,18 +1,131 @@
-// coupleSystemPrompt.js — system prompt for the couple-facing agent
+// coupleSystemPrompt.js — ELIZA'S ASSEMBLY SHELL.
 // Session 5.5: agent talks to couples on vendor's behalf.
 // Phase 3.5: rebuilt fresh — category-aware intake (via categoryProfiles),
 // conditional wedding-shape capture, ballpark budget, no price-quoting.
+// TDW_08 P5 Phase 4: F-08.52 CURED. This file stops being a persona and becomes
+// the shell that assembles one.
 //
 // This agent runs on couple_thread conversations. It is NOT the vendor agent.
 // Goal: take a SHORT, qualified enquiry (category-specific), then hand off.
+//
+// ═══ WHAT CHANGED, AND WHY THE FILE SURVIVED (FORK 1(a), CE-ruled) ═══════════
+// F-08.52: this file instructed the live couple-facing agent "Never mention that
+// you are an AI" at TWO sites — the returning-bride branch and the first-contact
+// branch. Both are gone. In their place: ELIZA_SOUL (the character, authored at
+// `souls/elizaSoul.js` under LD-5) and ELIZA_ADMISSION (the founder-sealed byte
+// she actually sends when asked).
+//
+// The FILE stays as the assembly shell rather than being deleted, which was the
+// 06 spec's own P3 shape and is what fork 1(a) ruled. Deleting it would have
+// taken the `categoryProfiles` wiring with it and reddened `b05_couple_soul_bench
+// §7.2`, which reads this path by name.
+//
+// ═══ FORK 2(d)'s SHAPE — WHERE THE PER-VENDOR BYTES LIVE ════════════════════
+// ELIZA_SOUL is NAME-FREE and SHARED: no studio name, no assistant name, no
+// category, no city, zero interpolations. EVERY per-vendor byte is assembled
+// HERE. No cache breakpoint ships this phase — both composed branches measured
+// UNDER Anthropic's 2,048-token minimum cacheable prefix at bfcb88e, so there is
+// nothing to cache at any name placement. The shape exists so that the day
+// turn-volume justifies it, the breakpoint is one line at this seam.
+//
+// ═══ FORK 7, CE-ruled: BOTH BRANCHES ════════════════════════════════════════
+// One soul, two modes. The returning bride is CONTEXT, not a second character —
+// she gets the same person with more knowledge. Curing first contact alone would
+// have left the honesty defect exactly where trust is highest.
+//
+// ═══ THE NAME ═══════════════════════════════════════════════════════════════
+// `vendors.assistant_name ?? ELIZA` — LOG:2821, 「 THE COUPLE AGENT FOR BOOKINGS
+// AND QUERY WILL BE ELIZA 」, superseding S-3's 'Mira' fallback per CE-65. The
+// column shipped at 0080 with ZERO readers; this is its first. The literal has
+// ONE HOME at `souls/elizaSoul.js` and is imported, never re-declared.
+//
+// ⚠ §0.2 — A DUPLICATION SHIPPED KNOWINGLY, DISCLOSED RATHER THAN PAPERED.
+// The HARD RULES list below predates the soul architecture. Several of its
+// numbered rules now restate, as fences, things ELIZA_SOUL says with reasons
+// attached — the price rule, the re-asking rule, the hesitation rule. The clean
+// act is dissolving them into the soul. It is NOT done here, for one mechanical
+// reason and one scope reason: removing a rule renumbers the list, and
+// `b06_m4c_bench §2.4` plus its own mutation anchor on the literals
+// `11. Any rupee figure` and `12. If she clearly wants to stop` — so a
+// dissolution is a bench act as much as a prose act; and the ruling chartered
+// F-08.52's cure, not a re-authoring of the shell's machinery. PROPOSED AS A
+// RIDER, named here so it is inherited rather than rediscovered.
 
-function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName }) {
+const { ELIZA, ELIZA_SOUL, ELIZA_ADMISSION, HONESTY_RULE } = require('./souls/elizaSoul');
+
+// ═══ THE GATE'S PARAMETER — `useEliza`, DEFAULT FALSE ═══════════════════════
+// The default MIRRORS PRODUCTION'S DEFAULT, which is `couple.eliza_enabled` OFF
+// at 0112 — the same discipline `modelRouter.DEFAULTS` follows against its seed
+// rows, so a pre-seed deploy and a pre-flip caller behave identically. A caller
+// that does not pass the flag gets yesterday's lane, which is what "push is not
+// speak" means at this seam.
+//
+// ⚠ §0.2 — TWO THINGS THE RULING DID NOT SETTLE, REPORTED NOT DECIDED.
+// (1) THE SEQUENCE PUTS THE FLIP AFTER THE FOUNDER'S EVENING, but the evening is
+//     a walk against Eliza and the flag holds her shut. As built, the flip is
+//     what OPENS the evening and the walk is what ratifies leaving it open —
+//     which is coherent, and is what the 60-second reversal buys — but it is not
+//     what the sequence says. Named rather than quietly re-ordered.
+// (2) WITH THE FLAG OFF, F-08.52's BYTES ARE STILL WHAT THE LANE SENDS. The
+//     legacy rule below is preserved for the OFF path, so a known lie is live
+//     behind a gate until the flip. The alternative arm, unbuilt and proposed:
+//     delete the lie unconditionally (a live falsehood is not a thing to gate)
+//     and let the flag carry only the PERSONA — the name, the soul, the
+//     register. That splits F-08.52's cure from Eliza, which the omnibus ruled
+//     were one thing, so it is the chair's to rule and not mine to take.
+function buildCoupleSystemPrompt({ vendor, vendorUser, isReturningBride, leadName, weddingShape, knownBrideName, useEliza = false }) {
   const vendorName     = vendorUser?.name || vendor?.business_name || 'this vendor';
   const vendorCategory = vendor?.category || 'creative professional';
   const vendorCity     = vendor?.city || 'India';
   const travelsText    = vendor?.open_to_travel ? 'They are open to travelling.' : `They are based in ${vendorCity}.`;
 
-  const header = `You are a friendly assistant for ${vendorName}, a ${vendorCategory} based in ${vendorCity}. ${travelsText}`;
+  // THE PER-VENDOR NAME (0080's first reader). Null, empty and whitespace-only
+  // all fall to ELIZA — a vendor who cleared the field has not renamed her to
+  // nothing. Trimmed because the column has no normalizer governing writes.
+  const assistantName = (vendor?.assistant_name && vendor.assistant_name.trim())
+    ? vendor.assistant_name.trim()
+    : ELIZA;
+
+  // The sealed admission byte, with its one token substituted. Declared once
+  // here so the wire and the bench read the same sentence.
+  const admissionLine = ELIZA_ADMISSION.replace('{studio}', vendorName);
+
+  const elizaHeader = `You are ${assistantName}, the assistant for ${vendorName}, a ${vendorCategory} based in ${vendorCity}. ${travelsText}
+
+${ELIZA_SOUL}
+
+WHO THE STUDIO IS, CONCRETELY
+The studio above is ${vendorName} — a ${vendorCategory}, based in ${vendorCity}. ${travelsText} That, and whatever she tells you in this conversation, is the whole of what you hold.
+
+IF SHE ASKS WHETHER YOU ARE A PERSON
+Your answer, in your own rhythm: "${admissionLine}" Then carry straight on with what she actually asked.`;
+
+  const legacyHeader = `You are a friendly assistant for ${vendorName}, a ${vendorCategory} based in ${vendorCity}. ${travelsText}`;
+
+  const header = useEliza ? elizaHeader : legacyHeader;
+
+  // ── F-08.52's TWO SITES — CURED UNCONDITIONALLY, ON BOTH SIDES OF THE GATE ──
+  // THIS SLOT USED TO READ: "Never mention that you are an AI. You are
+  // ${vendorName}'s assistant." (returning branch) and "Never mention you are an
+  // AI. You are ${vendorName}'s assistant." (first-contact branch). Both are
+  // gone at both flag states, per the CE's ruling on the build report §4: a flag
+  // that holds Eliza shut must not also hold a live instruction to lie alive.
+  // The lane-enable flag carries exactly one cargo — the PERSONA — and this
+  // sentence is not part of it.
+  //
+  // Replaced IN PLACE at their original rule numbers. Removing a rule would
+  // renumber the list, and `b06_m4c_bench §2.4` plus its own mutation anchor on
+  // the literals `11. Any rupee figure` / `12. If she clearly wants to stop`
+  // read those numbers — so a deletion here is a bench act as much as a prose
+  // act, and the dissolution rider owns it.
+  //
+  // ONE BYTE, ONE HOME: `HONESTY_RULE` is the chair-sealed line and both slots
+  // and both flag states read it, so the two sides of the gate cannot drift
+  // into two different honesties. The Eliza path carries this AND the soul's
+  // reasoning AND the sealed admission sentence; the OFF path carries this
+  // alone, which is the minimum that makes the estate stop lying today.
+  const honestyRuleReturning = HONESTY_RULE;
+  const honestyRuleFirst     = HONESTY_RULE;
 
   // ── Returning bride (details already on file) — unchanged, preserved ──
   if (isReturningBride) {
@@ -27,7 +140,7 @@ CONVERSATION RULES
 3. Maximum 2 sentences per reply.
 4. NEVER ask "what's the occasion" or any onboarding question. Their details are on file.
 5. Never promise pricing or availability — you don't know the vendor's calendar.
-6. Never mention that you are an AI. You are ${vendorName}'s assistant.
+6. ${honestyRuleReturning}
 7. ALWAYS end your turn with respond_to_couple tool. Never write the reply as plain text.
 8. Use ${leadName ? leadName : 'their'} name if natural, but don't force it.
 
@@ -127,7 +240,7 @@ HARD RULES — FOLLOW EXACTLY
 2. ONE short question per turn. One sentence where possible. Warm but BRIEF — no "Oh how lovely!", no gushing, no padding.
 3. NEVER state, guess, quote, or imply ${vendorName}'s PRICE — not "starts from X", not "around Y", nothing. You do NOT know ${vendorName}'s pricing. Inventing a number is a serious error. (You DO ask HER budget — that's different and required.)
 4. Never answer FOR ${vendorName} on what only they can settle — their price, their availability, whether they'll take a particular job. Answer what you do hold, name the rest as theirs with the reason it's theirs, and tell her you're getting it to them today. Then continue.
-5. Never mention you are an AI. You are ${vendorName}'s assistant.
+5. ${honestyRuleFirst}
 6. Plain text only. No markdown, no bullets.
 7. ALWAYS end your turn with the respond_to_couple tool.
 8. Use this category's words naturally: ${p.vocabulary}.

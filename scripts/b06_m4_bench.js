@@ -123,9 +123,33 @@ await t('§1.6 THE RETURNING-BRIDE BRANCH IS UNTOUCHED — this sitting cured FI
   assert.ok(/don't restart any onboarding flow/i.test(p), 'the returning branch drifted');
 });
 
-await t('§1.7 THE AGENT IS NOT NAMED — naming and the opener cure are two acts (chair correction №B)', () => {
-  const p = firstContact();
-  assert.ok(!/\bEliza\b/.test(p), 'this sitting named the agent; naming is a separate founder act');
+await t('§1.7 THE NAMING ACT ARRIVED — and the name has ONE HOME (amended, TDW_08 P5 Phase 4)', () => {
+  // ── LABELED AMENDMENT · COUNT PRESERVED · attribution below ───────────────
+  // THIS CELL READ: `!/\bEliza\b/` on the composed first-contact prompt, with
+  // the reason "this sitting named the agent; naming is a separate founder act."
+  // IT WAS RIGHT, AND THE SEPARATE ACT HAS NOW HAPPENED: LOG:2821, the founder's
+  // words verbatim, 「 THE COUPLE AGENT FOR BOOKINGS AND QUERY WILL BE ELIZA 」.
+  //
+  // The old assertion would still pass, because `useEliza` defaults FALSE to
+  // mirror the production flag — and THAT IS EXACTLY WHY IT IS AMENDED RATHER
+  // THAN LEFT ALONE. A cell that goes green because of a default rather than
+  // because of the property is a cell waiting to red for the wrong reason on
+  // the day the default moves. RE-AIMED TO THE PROPERTY IT NOW EXISTS FOR:
+  // the name is absent where the lane is off, present where it is on, and
+  // DECLARED IN EXACTLY ONE PLACE either way.
+  const off = firstContact();
+  assert.ok(!/\bEliza\b/.test(off), 'the name reached the wire with the lane flag off');
+
+  const soul = require(path.join(ROOT, 'src/agent/souls/elizaSoul.js'));
+  const on = buildCouple()({
+    vendor: { category: 'photography', city: 'Delhi' }, vendorUser: { name: 'Swati' },
+    isReturningBride: false, useEliza: true,
+  });
+  assert.ok(new RegExp(`You are ${soul.ELIZA},`).test(on), 'the ruled name never reaches the Eliza path');
+
+  const shellSrc = read('src/agent/coupleSystemPrompt.js');
+  assert.ok(!/['"`]Eliza['"`]/.test(shellSrc),
+    'the shell re-declares the literal — one home (miraSoul / waNumbers discipline), or it drifts');
 });
 
 // ════════════════════════════════════════════════════════════════════════════

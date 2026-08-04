@@ -165,11 +165,43 @@ t('§4.1 exactly the enumerated set changed — no fourth soul byte rode in', ()
     `the wall opened wider than the veto: ${changed.join(', ')}`);
 });
 
-t('§4.2 brideSystemPrompt, the couple prompt and the circle prompt are 0-line', () => {
+t('§4.2 brideSystemPrompt, the circle prompt and brideOnboarding are 0-line (amended, TDW_08 P5 Phase 4)', () => {
+  // ── LABELED AMENDMENT · COUNT PRESERVED · THE RITUAL WORKING AS WRITTEN ────
+  // THIS CELL'S OWN NOTE AT §4.1 PREDICTED THIS MESSAGE AND PRESCRIBED THIS FIX:
+  // "NAMED FORWARD so no future session relitigates it: F-06.51's chartered
+  // bride-lane register sitting WILL fire this cell when it lands. That is the
+  // ritual working. That sitting amends here, with attribution, as part of its
+  // own seal." A different chartered sitting arrived first and the prescription
+  // is the same.
+  //
+  // `coupleSystemPrompt.js` is REMOVED FROM THIS LIST, and only that file. The
+  // W-1 wall was lawfully opened for it by the TDW_08 P5 Phase 4 omnibus ruling
+  // (fork 1(a)): F-08.52 — the live instruction to the couple-facing agent never
+  // to admit being an AI, at two sites — is cured there, and the file becomes
+  // Eliza's assembly shell. Proven by mutation before the amendment was written:
+  // appending ONE comment line to that file moved this bench 18/0 -> 17/1 and
+  // moved no other bench in a seven-bench census.
+  //
+  // THE GUARD IS AMENDED, NEVER LOOSENED. The other three files keep their
+  // 0-line requirement unchanged, and the cell below is ADDED so the opening is
+  // bounded rather than merely widened: the couple prompt may change, and it may
+  // not change into something that reaches for another lane's soul.
   const { execSync } = require('child_process');
   const out = execSync('git diff --name-only HEAD', { cwd: ROOT }).toString();
-  for (const f of ['brideSystemPrompt.js', 'coupleSystemPrompt.js', 'circleSystemPrompt.js', 'brideOnboarding.js'])
+  for (const f of ['brideSystemPrompt.js', 'circleSystemPrompt.js', 'brideOnboarding.js'])
     assert.ok(!out.includes(f), `${f} changed — outside the enumerated opening`);
+});
+
+t('§4.2b THE COUPLE PROMPT\'S OPENING IS BOUNDED — it took Eliza, not another lane\'s soul', () => {
+  // The wall opened for ONE cure. This cell is what keeps "opened" from meaning
+  // "open": the shell may import Eliza and nothing else wearing a soul's name.
+  // F-SCOPE's ruling stands — `coupleSystemPrompt` speaks FOR a vendor, with
+  // inverted loyalty, and Mira is OUT BY NAME.
+  const src = read('src/agent/coupleSystemPrompt.js');
+  assert.ok(/require\('\.\/souls\/elizaSoul'\)/.test(src),
+    'the shell no longer reads Eliza — the opening was spent on something else');
+  assert.ok(!/miraSoul|MIRA_SOUL|closerSoul|brideSystemPrompt/.test(src),
+    'another lane\'s soul reached the couple shell — different principal, inverted loyalty');
 });
 
 H('§5 — C10-loop: THE STALE COMMENT DIES');
