@@ -191,6 +191,11 @@ async function buildProspectContext(supabase, prospect, opts) {
   if (handle)   lines.push(`Instagram: ${handle}`);
   if (category) lines.push(`Trade: ${category}`);
   if (city)     lines.push(`City: ${city}`);
+  // THE TWO FACTS §3's CLASSES NEED, published on the opts object the builder
+  // already owns — the same named side channel as `o.demoLink`. Deriving them a
+  // second time at the seam would be a second opinion about the same row.
+  o.blindToTheirWork = !handle && !category && !city;
+  o.discoverable     = !!(demo && demo.discover_eligible === true && demo.active !== false);
   if (!handle && !category && !city) {
     // ── LIMB 3 (F-08.83) · THE OTHER HALF ─────────────────────────────────
     // THIS LINE ALONE MADE INTERROGATION THE COMPLIANT MOVE. On the founder's
@@ -843,7 +848,12 @@ const WATCH_CLASSES = [
   // CLAIM about where they came from, never a denial of knowing.
   ['provenance', /\b(got (?:it|your number|you) from|found you (?:through|on|via)|we found your|came across your|looking at your work|publicly available|business listing|instagram profile|bought your|your (?:\w+ )?portfolio is the thing|your studio came up)\b/i],
   ['link',       /thedreamwedding\.in\/demo\//i],
-  ['post_exit',  /\b(conversation is closed|already sent|i don'?t send a third|no third message)\b/i],
+  // NARROWED at the 9b6e3ca read (§4). `already sent` fired on a legitimate
+  // nudge two — "I've already sent you the demo link" — which is a REFERENCE to
+  // a send, not a send after the exit. The class exists for the message that
+  // should not have existed, so it now matches the SHAPE of a post-exit send
+  // rather than any mention of a previous one. First precision datum on it.
+  ['post_exit',  /\b(conversation is closed|i don'?t send a third|no third message|this is my last message|i said i would stop)\b/i],
 ];
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -900,6 +910,49 @@ const WAKE_COSTUME_TELLS = [
 function wakeCostumeTells(text) {
   const t = String(text || '');
   return WAKE_COSTUME_TELLS.filter(c => c[1].test(t)).map(c => c[0]);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// §3 · THE TWO CONTEXT-DERIVED CLASSES (CE-ruled at the 9b6e3ca read)
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// THE TRADE THIS ARC JUST MADE, NAMED. F-08.83's cure gave her something to
+// lead with, and the ×3 that proved it also produced six fabrications she had
+// never made while she was empty-handed. **An agent that sells invents material
+// when it has none.** Two of the six had a class already (a tier price, an
+// invented provenance) and the watcher caught both. Four had none.
+//
+// THESE TWO ARE DIFFERENT IN KIND FROM EVERY OTHER WATCH CLASS: they cannot be
+// decided from the text alone. "We saw your work" is TRUE on a row carrying an
+// ig_handle and a lie on a bare one; "your work is on our marketplace" is true
+// on a discover_eligible demo and false on every other row. So they are derived
+// from the CONTEXT the turn was actually given, compared against what went out
+// — which is the only place both facts exist at once.
+//
+//   seen_work            — a claim to have looked at their work, on a row with
+//                          no handle, no category and no city. Specimens at
+//                          9b6e3ca: "we saw your work" and "those shots are
+//                          genuinely stunning", both on rows she had never been
+//                          shown a photograph of.
+//   marketplace_presence — a claim that their work is IN FRONT of couples, when
+//                          the context said the opposite. Specimen: "your work
+//                          is actually in front of couples right now on our
+//                          marketplace" on a demo the context called NOT
+//                          discoverable. The generic true form — couples are
+//                          browsing and your work is NOT there — is the green
+//                          specimen's own shape and must not flag.
+//
+// REPORT-ONLY, as always. Nothing below blocks.
+const SEEN_WORK_RE = /\b(?:we|i)\s+(?:saw|found|looked at|have seen|checked out|been through)\s+(?:your|their)\b|\b(?:your|those|these|the)\s+(?:\w+\s+){0,2}(?:shots|photographs|photos|portfolio|gallery|set|images|frames)\b[^.!?]{0,40}\b(?:stunning|beautiful|gorgeous|exceptional|lovely|incredible)\b/i;
+const MARKETPLACE_PRESENT_RE = /\byour work is (?:already |actually )?(?:on|in front of|live on)\b|\b(?:on|in front of) (?:our |the )?marketplace (?:right now|already)\b/i;
+
+function contextFlags(text, opts) {
+  const t = String(text || '');
+  const o = opts || {};
+  const f = [];
+  if (o.blindToTheirWork && SEEN_WORK_RE.test(t)) f.push('seen_work');
+  if (!o.discoverable && MARKETPLACE_PRESENT_RE.test(t)) f.push('marketplace_presence');
+  return f;
 }
 
 function watchFlags(text) {
@@ -1119,7 +1172,8 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
 
   // THE WATCHER — after every correction, because what it must witness is what
   // the PROSPECT receives, not what the model first produced.
-  const flags = watchFlags(text).concat(regFlags);
+  const flags = watchFlags(text).concat(regFlags)
+    .concat(contextFlags(text, ctxOpts));
   if (flags.length) {
     console.warn(`[closer:watch] prospect=${prospect && prospect.id} conv=${conversationId} `
       + `classes=${flags.join(',')} signed=${signedOut.signed} normalized=${fixed.corrected} `
@@ -1279,7 +1333,8 @@ module.exports = {
   nudgesStandingFrom, countNudgesStanding, isRegisteredUser, readNudgeHours,
   normalizeDemoLinks, truncateAtLastInbound, unansweredSendsFrom, DEMO_LINK_RE,
   appendLinkSignature, LINK_SIGNATURE, PARTIAL_SIGNOFF_RE, isNothing, NOTHING_TOKEN,
-  watchFlags, WATCH_CLASSES, wakeCostumeTells, WAKE_COSTUME_TELLS,
+  watchFlags, WATCH_CLASSES, contextFlags, SEEN_WORK_RE, MARKETPLACE_PRESENT_RE,
+  wakeCostumeTells, WAKE_COSTUME_TELLS,
   normalizeRegister, registerFlags, RUPEE_GLYPH_RE,
   isExitWake, gateExitLink, EXIT_LINE,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,

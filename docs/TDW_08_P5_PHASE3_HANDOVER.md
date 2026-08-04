@@ -1565,3 +1565,106 @@ byte-untouched until he files.
 3. **The opener candidates** — the founder's bytes, his filing.
 4. Unchanged: arm 1's three resolutions · F-08.76's arms · the sign-off upgrade ·
    the `'closer'` token · F-08.73 · the media-dedupe red · F-08.81 · F-08.82.
+
+---
+
+# ADDENDUM 12 · THE ×3 AT `9b6e3ca` — SELLING BROUGHT FABRICATION WITH IT (2026-08-04)
+
+**Base:** dream-os `9b6e3ca`. **Ruled to:** the CE ×3 ruling, §1–§5.
+
+## 99 · ⚠ THE DELIVERY IS SPLIT, AND THE BENCH SPLIT IT
+
+**§3 and §4 are machinery and ship now. §1 and §2 are soul prose and are HELD.**
+
+The two soul amendments measure **13,817** against a ratified **13,600**, and the
+const-independence law forbids the cap moving in the same commit as the text it
+caps. **The bench refused the delivery on its own** — four ceiling cells red — and
+that is the first time this estate's ceiling has stopped anything. It was minted
+this evening on seven specimens of it failing to.
+
+**The §1/§2 bench cells are not in this ZIP either.** Cells land in the same
+commit as the bytes they assert; shipping them now would red a correct tree.
+
+## 100 · THE RATIFY REQUEST — 13,600 → 13,850
+
+**MEASURED: 13,817** after one tightening pass (13,822 before). **+250 over 13,567.**
+
+| chars | what |
+|---|---|
+| **~95** | §1 — *"Room governs your length and your tone, never whether you put one true thing on the table — a bare hello gets one too."* The `bare_row_cold` red was **0/9 claim=false**, and the mechanism is soul-internal: "Hi" reads as almost no room, and the claim rule lost to the room rule on exactly the shortest inbounds. |
+| **~155** | §2 — *"When you know nothing about their work, the product is what you have — 'we saw your work' when you haven't is the fastest way to prove you never looked at all."* This resolves the collision the ×3 exposed: lead with something, and don't invent, were in tension on a bare row and the model resolved it by inventing. |
+
+**Neither cuts.** §1 is the entire cure for a 0/9; §2 is the only thing standing
+between "lead with something" and the six fabrications below.
+
+**Cost unchanged and production-measured:** `cache_read=7,471` on every warm turn
+of tonight's run.
+
+## 101 · THE TRADE THIS ARC MADE, NAMED
+
+F-08.83's cure gave her something to lead with. **The same ×3 that proved it
+produced six fabrications she never made while she was empty-handed.** An agent
+that sells invents material when it has none.
+
+Two of six had a class and the watcher caught both (a tier price; an invented
+provenance). **Four had none** — and those four are what §3 adds.
+
+## 102 · §3 — TWO CLASSES THAT CANNOT BE DECIDED FROM TEXT ALONE
+
+**This is a new kind of watch class in this estate.** *"We saw your work"* is
+**true** on a row carrying a handle and a **lie** on a bare one. *"Your work is on
+our marketplace"* is true on a discoverable demo and false on every other row.
+Neither can be judged from the outbound; both need the **context the turn was
+actually given**.
+
+So `buildProspectContext` publishes `blindToTheirWork` and `discoverable` on the
+opts object it already owns — the same named side channel as `o.demoLink` — and
+`contextFlags` compares them against what went out. **Deriving them again at the
+seam would be a second opinion about the same row.**
+
+**Non-vacuity runs three ways and each has a cell:** the specimen flags · **the
+same sentence on a row with a handle flags nothing** · and **the true generic
+pitch — *"couples are browsing and your work is not on it yet"* — is untouched**,
+because that is the shape limb 4 exists to produce.
+
+## 103 · §4 — post_exit NARROWS
+
+`already sent` fired on a legitimate nudge two — *"I've already sent you the demo
+link"* — which is a **reference** to a send, not a send after the exit. First
+precision datum on that class. Narrowed to the shape it exists for; both
+directions celled.
+
+## 104 · ⚠ §0.2 — A MUTATION COLLISION I CAUSED
+
+`clock_uncond` anchored on the bare string `demo.discover_eligible === true &&`.
+**§3's new `o.discoverable` line contains the same expression and sits ABOVE the
+clock**, so the mutation started taking the first match and mutating the wrong
+predicate — and came back green. **CE-127's exact class: a bare anchor is a coin
+flip, and adding a second occurrence anywhere flips it.** Caught by the sweep,
+re-anchored on the clock's own multi-line shape.
+
+## 105 · THE FLOOR
+
+```
+b08_p5_closer_bench  235  (226 → 235) · 56 mutations, 56 clean reds, ZERO stale
+b08_p5_prospect_intake 13 · b5c 47 · b08_p1 106 · console 71 · factory 83
+b07_p1 75 · b07_p5 136 · b05_couple_soul 21
+```
+
+**W-1: ZERO soul bytes in this ZIP.** `closerSoul.js` is byte-identical to
+`9b6e3ca`.
+
+## 106 · COPY INVENTORY
+
+**ZERO user-facing bytes.** Two watch classes and one narrowed regex — all
+machinery, all report-only, nothing blocks. **The held prose is the only copy in
+flight and it is not in this delivery.**
+
+## 107 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The ratify at 13,850**, then the const in its own commit, then the prose.
+2. **The named read the chair ordered:** the second pitch after "not interested"
+   — conduct, not machinery, and it goes on the next ×3's read list.
+3. **§5 is already in the founder's hands:** the console has the handle and city
+   fields, and a row added with them opens with specifics instead of generics.
+   **The bare row should become the exception, not the default.**

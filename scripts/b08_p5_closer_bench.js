@@ -52,7 +52,15 @@ const MUTATIONS = {
   guard_closed: ['src/agent/closerEngine.js',     s => s.replace('    return false;\n  }\n}\n\n// ═', '    return true;\n  }\n}\n\n// ═')],
   nudge_count:  ['src/agent/closerEngine.js',     s => s.replace('return Math.max(0, run - 1);', 'return run;')],
   nudge_cap:    ['src/agent/closerEngine.js',     s => s.replace('const MAX_NUDGES = 2;', 'const MAX_NUDGES = 99;')],
-  clock_uncond: ['src/agent/closerEngine.js',     s => s.replace('demo.discover_eligible === true &&', 'true &&')],
+  // ⚠ RE-ANCHORED, AND I CAUSED THE COLLISION. §3's `o.discoverable` line reads
+  // `demo.discover_eligible === true` too, and it sits ABOVE the clock — so the
+  // bare anchor started taking the FIRST match and mutated the wrong predicate.
+  // CE-127's exact class: String.replace takes the first hit, so a bare anchor
+  // is a coin flip, and adding a second occurrence anywhere flips it. Anchored
+  // on the clock's own multi-line shape, which is unique.
+  clock_uncond: ['src/agent/closerEngine.js',     s => s.replace(
+    '    const inSweepPopulation =\n      demo.discover_eligible === true &&',
+    '    const inSweepPopulation =\n      true &&')],
   zero_shows:   ['src/agent/closerEngine.js',     s => s.replace('if (count && count > 0) {', 'if (count >= 0) {')],
   // RE-ANCHORED (F-08.66): the truncation moved inside a block that also
   // publishes the cut sends. The old anchor no longer exists and a mutation
@@ -112,6 +120,21 @@ const MUTATIONS = {
   prov_wide: ['src/agent/closerEngine.js', s => s.replace(
     "  ['provenance', /\\b(got (?:it|your number|you) from",
     "  ['provenance', /\\b(where.{0,12}number|got (?:it|your number|you) from")],
+  // §3 — the seen-work class blinded.
+  seen_work_blind: ['src/agent/closerEngine.js', s => s.replace(
+    "  if (o.blindToTheirWork && SEEN_WORK_RE.test(t)) f.push('seen_work');", '')],
+  // §3 — the class made CONTEXT-BLIND: it would fire on rows where the claim is true.
+  seen_work_contextless: ['src/agent/closerEngine.js', s => s.replace(
+    '  if (o.blindToTheirWork && SEEN_WORK_RE.test(t))', '  if (SEEN_WORK_RE.test(t))')],
+  // §3 — the marketplace-presence class blinded.
+  marketplace_blind: ['src/agent/closerEngine.js', s => s.replace(
+    "  if (!o.discoverable && MARKETPLACE_PRESENT_RE.test(t)) f.push('marketplace_presence');", '')],
+  // §3 — the context facts never published: both classes go dark at the seam.
+  no_context_facts: ['src/agent/closerEngine.js', s => s.replace(
+    '  o.blindToTheirWork = !handle && !category && !city;', '  o.blindToTheirWork = false;')],
+  // §4 — post_exit widened back: the legitimate nudge-two flags again.
+  post_exit_wide: ['src/agent/closerEngine.js', s => s.replace(
+    "|i don'?t send a third", "|already sent|i don'?t send a third")],
   // F-08.83 — the pitch section removed: she is empty-handed on a bare row again.
   soul_no_pitch: ['src/agent/souls/closerSoul.js', s => s.replace('WHAT YOU HAVE TO SELL', 'WHAT YOU ONCE HAD')],
   // F-08.83 — the question counterweight removed.
@@ -1408,6 +1431,59 @@ function fakeSupabase(db) {
      'F-08.83 limb 5 — and every transcript line now carries the selling read');
   ok(/DOES SHE SELL\?/.test(harn6),
      'F-08.83 limb 5 — the READ_FOR asks the question nine of eleven never asked');
+
+  // ═══ 19 · THE ×3 AT 9b6e3ca — SELLING BROUGHT FABRICATION WITH IT ════════
+  section('19 · the claim beats the room, and the two classes that need context');
+
+  // ⚠ §1 AND §2's CELLS ARE NOT HERE, AND THAT IS THE LAW WORKING. Those two
+  // limbs are SOUL PROSE, they measure 13,817 against a ratified 13,600, and the
+  // const-independence law forbids the cap moving in the same commit as the text
+  // it caps. The prose is HELD with its ratify request; §3 and §4 are machinery
+  // and ship now. The cells land in the same commit as the bytes they assert.
+  // ── §3 · THE TWO CLASSES THAT CANNOT BE DECIDED FROM TEXT ALONE ─────────
+  // TONIGHT'S SIX SPECIMENS ARE THE FIXTURE. Four of them had no class at all
+  // until this delivery, and every one is a verbatim outbound from 9b6e3ca.
+  const BARE  = { blindToTheirWork: true,  discoverable: false };
+  const KNOWN = { blindToTheirWork: false, discoverable: false };
+  const LIVE  = { blindToTheirWork: false, discoverable: true  };
+
+  ok(closer.contextFlags('We saw your work and thought you might be interested', BARE)
+       .indexOf('seen_work') !== -1,
+     '§3 — "we saw your work" on a row she was shown nothing of');
+  ok(closer.contextFlags('those shots are genuinely stunning', BARE).indexOf('seen_work') !== -1,
+     '§3 — and the adjective form, which is the same lie wearing a compliment');
+  // NON-VACUITY: the SAME sentence on a row that carries a handle is TRUE.
+  ok(closer.contextFlags('We saw your work and thought you might be interested', KNOWN).length === 0,
+     '§3 — the same words on a row with a handle flag NOTHING: the class is the context, not the text');
+
+  ok(closer.contextFlags('your work is actually in front of couples right now on our marketplace', KNOWN)
+       .indexOf('marketplace_presence') !== -1,
+     '§3 — a presence claim against a context that said the opposite');
+  ok(closer.contextFlags('your work is actually in front of couples right now on our marketplace', LIVE).length === 0,
+     '§3 — and on a discoverable row it is true, so it flags nothing');
+  // THE GREEN SPECIMEN'S OWN SHAPE MUST SURVIVE — it is the cure, not the disease.
+  ok(closer.contextFlags('Couples are browsing our marketplace right now and your work is not on it yet', BARE).length === 0,
+     '§3 — the TRUE generic pitch is untouched: it is the shape limb 4 exists to produce');
+
+  // DELIVERED — the flags must reach the turn's own record, not just the reader.
+  const bareSb = fakeSupabase({ messages: [
+    { id: 'z1', conversation_id: 'cZ', direction: 'inbound', body: 'Hi', created_at: '2026-08-04T01:00:00Z' },
+  ] });
+  const seenLlm = async () => ({ content: [{ type: 'text', text: 'We saw your work and thought you might be interested.' }], usage: {} });
+  const bareOut = await closer.runCloserTurn({
+    supabase: bareSb,
+    prospect: { id: 'pZ', phone: '919000777888', name: null, ig_handle: null,
+                category: null, city: null, notes: null, demo_vendor_ref: null },
+    conversationId: 'cZ', phone: '919000777888', wakeReason: 'reply', llm: seenLlm,
+  });
+  ok((bareOut.flags || []).indexOf('seen_work') !== -1,
+     '§3 DELIVERED — the context facts are derived by the builder and reach the turn\'s flags');
+
+  // ── §4 · post_exit NARROWS TO SENDS, NOT REFERENCES ─────────────────────
+  ok(closer.watchFlags("I've already sent you the demo link").indexOf('post_exit') === -1,
+     '§4 — the false positive: referring to a previous send is not a send after the exit');
+  ok(closer.watchFlags('The conversation is closed.').indexOf('post_exit') !== -1,
+     '§4 — and the shape the class exists for still fires');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);
