@@ -192,7 +192,14 @@ async function buildProspectContext(supabase, prospect, opts) {
   if (category) lines.push(`Trade: ${category}`);
   if (city)     lines.push(`City: ${city}`);
   if (!handle && !category && !city) {
-    lines.push('You know nothing about their work yet. Do not guess at it — ask, or wait for them to say.');
+    // ── LIMB 3 (F-08.83) · THE OTHER HALF ─────────────────────────────────
+    // THIS LINE ALONE MADE INTERROGATION THE COMPLIANT MOVE. On the founder's
+    // own live row — no handle, no category, no city, no demo — the machinery
+    // told her what she could not say and never what she could, and she asked
+    // three questions and claimed nothing. The prohibition was right and the
+    // silence beside it was the defect.
+    lines.push('You know nothing about their work yet. Do not guess at it — ask, or wait for them to say. '
+      + 'What you always have is the product itself.');
   }
 
   // WARM, and the word is derived not invented. `demoLeadAlert.js` writes

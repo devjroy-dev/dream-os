@@ -47,6 +47,7 @@ const ROOT = path.resolve(__dirname, '..');
 
 const { llmCreate }   = require(path.join(ROOT, 'src/lib/llm.js'));
 const { _resetRouteCache } = require(path.join(ROOT, 'src/lib/modelRouter.js'));
+const { hasProductClaim } = require(path.join(__dirname, 'closerReads.js'));
 const closer          = require(path.join(ROOT, 'src/agent/closerEngine.js'));
 const { CLOSER_SOUL, CLOSER_SOUL_VERSION } = require(path.join(ROOT, 'src/agent/souls/closerSoul.js'));
 const { MIRA } = require(path.join(ROOT, 'src/agent/miraSoul.js'));
@@ -147,6 +148,21 @@ const SCENARIOS = {
   manual_truth_3:       ['can it post to my instagram for me'],
   register_money:       ['whats the cheapest plan and the priciest'],
   two_nudge_silence:    ['__NUDGE__', '__NUDGE__', '__NUDGE__'],
+  // F-08.83 · THE FOUNDER'S OWN EVENING, AS A SCENARIO. Seeded exactly as his
+  // live row was: no handle, no category, no city, NO DEMO — the state every
+  // other scenario here has never once been in, and the state a manually-added
+  // prospect is in by default. Three turns, verbatim from 918595986978 on
+  // 2026-08-04. The uncured soul answered all three with a question and no
+  // claim; that is the RED this scenario exists to make impossible to miss.
+  bare_row_cold:        ['Hi', 'I got a message', 'From this number'],
+};
+
+// F-08.83 — the BARE prospect. Everything the other scenarios hand her is gone:
+// this row is what the console creates when the founder types a phone number and
+// nothing else, which is what he actually did.
+const BARE_PROSPECT = {
+  id: 'prospect_bare', phone: FIXTURE_PHONE, name: 'Swati Outreach', ig_handle: null,
+  category: null, city: null, notes: null, demo_vendor_ref: null,
 };
 
 // ── What the founder reads for, per scenario. Printed beside every transcript
@@ -163,6 +179,7 @@ const READ_FOR = {
   manual_truth_3:       'not in the Manual. she goes to the founder rather than inventing a feature.',
   register_money:       'Rs 999 and Rs 5,999, grouped, no glyph. nothing invented about what a tier contains.',
   two_nudge_silence:    'nudge 1 adds something new. nudge 2 lighter. THEN the exit — no guilt, no last pitch. and NOTHING after it.',
+  bare_row_cold:        'DOES SHE SELL? knowing nothing about them she must still put ONE concrete thing the product DOES in front of them — the marketplace, the WhatsApp door, Victor filing the midnight enquiry, the storefront. A turn that is only a question is a RED, and all three of the founder\'s live turns were.',
 };
 
 async function runScenario(name, laneName) {
@@ -302,7 +319,8 @@ async function runScenario(name, laneName) {
       return r;
     };
     const turn = await closer.runCloserTurn({
-      supabase: sb, prospect: FIXTURE_PROSPECT, conversationId: CONV_ID,
+      supabase: sb, prospect: name === 'bare_row_cold' ? BARE_PROSPECT : FIXTURE_PROSPECT,
+      conversationId: CONV_ID,
       phone: FIXTURE_PHONE, wakeReason: isNudge ? 'nudge' : 'reply', llm: laneLlm,
     });
     const text = turn.text;
@@ -323,6 +341,7 @@ async function runScenario(name, laneName) {
       + ` signed=${turn.signed}${turn.upgraded ? '(upgraded)' : ''} normalized=${turn.normalized || 0}`
       + ` exit_gated=${!!turn.exitGated}`
       + (turn.wakeTells ? ` WAKE_DROPPED=${turn.wakeTells.join(',')}` : '')
+      + ` claim=${text ? hasProductClaim(text) : 'n/a'}`
       + ` flags=${(turn.flags || []).join(',') || 'none'}`
       + ` in=${usage.input_tokens} out=${usage.output_tokens} cache_read=${usage.cache_read_input_tokens || 0}`);
   }

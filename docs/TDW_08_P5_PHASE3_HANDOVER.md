@@ -1434,3 +1434,134 @@ witness at the turn.
    last-ratified 12,250.
 3. **F-08.73** and the media-dedupe red, and the unproposed arm: a floor runner
    that fails loudly on any non-green bench.
+
+---
+
+# ADDENDUM 11 · F-08.83 — THE ESTATE MEASURED HONESTY AND NEVER SELLING (2026-08-04)
+
+**Base:** dream-os `1fe17c0` · dreamos-pwa `2a63c0b`. **TWO ZIPS.**
+**Ruled to:** the CE F-08.83 ruling, five limbs.
+
+## 91 · ⚠ THE FINDING NUMBER COLLIDES — RENUMBERED
+
+The ruling mints this as **F-08.80**. **F-08.80 is taken** — it is the harness
+blindness, filed in Addendum 9 and committed at `dcdc8f1`. My live sequence:
+`.75` opener · `.76` opener unlogged · `.77` boundary · `.78` register ·
+`.79` tell · `.80` instrument · `.81` guardKeys exempts its own fallback
+(proposed) · `.82` the dead-lettered graceful line is never logged (proposed).
+
+**This finding is filed as F-08.83** throughout the delivery. CE-40 class; the
+chair's number, corrected at the executor's tip.
+
+## 92 · WHAT SHIPPED
+
+| Limb | Where | What |
+|---|---|---|
+| **1** | `docs/TDW_08_P5_OPENER_CANDIDATES.md` | two candidate bodies, both COMPLIANT by command · **drafts, not filed** |
+| **2** | pwa `app/admin/prospects/page.tsx` | Instagram · Trade · City on the form; the paste goes positional across five columns; **the board names a bare row in words** |
+| **3** | `closerEngine.js` | the bare-row line gains *"What you always have is the product itself."* |
+| **4** | `closerSoul.js` | **WHAT YOU HAVE TO SELL** · the question counterweight · WHERE IT BEGINS carries a claim |
+| **5** | `scripts/closerReads.js` NEW · bench · harness | the selling read, the `bare_row_cold` scenario, `claim=` on every transcript line |
+
+## 93 · ⚠ LIMB 4 IS DELIVERED AND **HELD** — PAST THE 13,000 LINE
+
+**MEASURED: 13,567** after one tightening pass (13,626 before). The ruling:
+*"past 13,000 the ratify request returns here with its arithmetic before
+shipping."* **So the ZIP applies and the git line waits on the chair.**
+
+**THE ARITHMETIC, +774 over 12,793:**
+
+| | chars | what |
+|---|---|---|
+| WHAT YOU HAVE TO SELL | ~640 | the four true things and the lead-with-ONE rule — limb 4's entire substance |
+| the counterweight | ~115 | the chair's adopted verbatim |
+| WHERE IT BEGINS | ~35 | *"and carrying one concrete thing we do"* |
+
+**Why it cannot come down further:** cutting any of the four leaves her
+empty-handed on the axis she was empty-handed on tonight, and the lead-with-ONE
+rule is what stops the cure becoming a brochure — the disease's own opposite
+failure. **If the chair refuses:** the WHERE IT BEGINS amendment (~35) first,
+then the closing brochure line (~110). **The four things do not cut.**
+
+**The cost argument is now PRODUCTION-measured, not benched:** the founder's own
+live turn at 12:49 UTC returned `cache_read=7,295` on the second inbound of a
+real conversation.
+
+## 94 · LIMB 5 — WHAT THE ELEVEN NEVER ASKED
+
+Nine of eleven `READ_FOR` lines are **negative specs**. The opening scenario's
+read is *"specific, short, about them. no adjective paragraph, no booking link"*
+— a spec for what **not** to do. **Not one cell in this arc asked whether a
+photographer reading the message would want to know more.**
+
+`scripts/closerReads.js` asks one mechanical question: **does this message put a
+concrete thing the product DOES in front of the reader, or is it only an
+enquiry?** It does not score persuasion or warmth — those are the founder's read
+and always will be. **A cell cannot score charm; it can notice an empty hand.**
+
+**THE RED FIXTURE IS THE FOUNDER'S OWN EVENING.** All three live turns from
+`918595986978`, verbatim, and the cell asserts **all three score false.** They
+are the fixture *because* they are what a perfectly honest agent produced —
+**every other cell in this bench would have passed them.**
+
+Non-vacuity runs both ways: a real claim scores, and **adjectives score nothing**
+— *"Your stunning portfolio is genuinely exceptional"* is false, by design, and a
+cell says so.
+
+`bare_row_cold` joins the eleven, seeded exactly as his row: no handle, no trade,
+no city, **no demo**. The state a manually-added prospect is in by default, and
+the state no scenario in this arc had ever been in.
+
+## 95 · LIMB 2 — THE BOARD NAMES THE GAP
+
+A bare row now says, on the board: **"No handle, trade or city — Mira has nothing
+of theirs to work with."** Absence is the signal, and a mutation removing it
+reddens. The founder can see what he is handing her before he sends.
+
+The paste parser goes **positional** across five columns as ruled — and the
+two-field digit swap survives as a forgiving fallback, because
+`Kanupriya, 919000000123` is what a person actually types. **Beyond two fields
+the order is the order:** guessing across five columns would be a screen
+inventing data.
+
+## 96 · THE FLOOR — PAIRED, BOTH REPOS
+
+```
+dream-os
+  b08_p5_closer_bench       225  (…209→225) · 51 mutations, 51 clean reds, ZERO stale
+  b08_p5_prospect_intake     13  byte-stable
+  b5c 47 · b08_p1 106 · b08_p3 61 · console 71 · factory 83 · invite 35
+  b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+  b05_couple_soul 21 · b06_meter 28/29 ⚠ PRE-EXISTING (F-08.73)
+dreamos-pwa
+  tsc 0 lines · tdw08_p5_prospects_console 54 (was 45) · 28 .mjs green · 7 .ts green
+  tdw_f0774_vacuity_probe refuses a dirty tree BY DESIGN; green once committed
+```
+
+**Already banked, not re-shipped:** the watcher `provider=` line (`1fe17c0`) and
+the open-arms packet (`dcdc8f1`). The three production-mode transcripts ride the
+founder's `git add -A`.
+
+## 97 · COPY INVENTORY
+
+**MODEL-VOICED, delegated veto, founder override standing:** the WHAT YOU HAVE TO
+SELL section · the question counterweight · the WHERE IT BEGINS clause · limb 3's
+one context sentence (machinery-visible, never wire-visible).
+
+**FOUNDER'S OWN BYTES, DRAFTED NOT MINTED:** the two opener candidates. **Neither
+is filed and neither ships in code.**
+
+**OPERATOR COPY:** three field labels, one hint, one paste placeholder, and the
+bare-row line on the board.
+
+**No prospect-facing byte ships in this delivery.** The opener stands
+byte-untouched until he files.
+
+## 98 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The ceiling ratify (§93)** — this delivery does not push without it.
+2. **The ×3 in production mode, including `bare_row_cold`.** The read that
+   matters: `claim=true` on the opening turns. Tonight's baseline is **0/3**.
+3. **The opener candidates** — the founder's bytes, his filing.
+4. Unchanged: arm 1's three resolutions · F-08.76's arms · the sign-off upgrade ·
+   the `'closer'` token · F-08.73 · the media-dedupe red · F-08.81 · F-08.82.

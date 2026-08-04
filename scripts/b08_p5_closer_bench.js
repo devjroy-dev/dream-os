@@ -112,6 +112,15 @@ const MUTATIONS = {
   prov_wide: ['src/agent/closerEngine.js', s => s.replace(
     "  ['provenance', /\\b(got (?:it|your number|you) from",
     "  ['provenance', /\\b(where.{0,12}number|got (?:it|your number|you) from")],
+  // F-08.83 — the pitch section removed: she is empty-handed on a bare row again.
+  soul_no_pitch: ['src/agent/souls/closerSoul.js', s => s.replace('WHAT YOU HAVE TO SELL', 'WHAT YOU ONCE HAD')],
+  // F-08.83 — the question counterweight removed.
+  soul_no_counterweight: ['src/agent/souls/closerSoul.js', s => s.replace(
+    'A question after you have given something is a conversation; a question instead of giving something is an interview',
+    'A conversation where every reply ends in a question is an interview')],
+  // F-08.83 — limb 3 reverts to a pure prohibition: the interrogation returns.
+  bare_row_prohibition_only: ['src/agent/closerEngine.js', s => s.replace(
+    "      + 'What you always have is the product itself.');", "      );")],
   // F-08.78 — the glyph swap neutered: the register reaches the wire again.
   register_off: ['src/agent/closerEngine.js', s => s.replace(
     "  const out = String(text).replace(RUPEE_GLYPH_RE, () => { corrected++; return 'Rs '; });",
@@ -1096,18 +1105,19 @@ function fakeSupabase(db) {
   const soulSrc = fs.readFileSync(path.join(ROOT, 'src/agent/souls/closerSoul.js'), 'utf8');
   ok(/a ceiling that travels with the thing it caps\n\/\/            is not a cap|is not a cap/.test(soulSrc),
      '§6 — the ladder records the 12,007-over-11,750 breach and names its failure mode');
-  // ── LABELED AMENDMENT · COUNT +1 · THE CONST-INDEPENDENCE LAW ────────────
-  // RATIFIED at <=13,600, and the same ruling minted the law this cell has to
-  // survive: **`SOUL_CHAR_CEILING` may never move in the same commit as the
+  // ── LABELED AMENDMENT ⑯ · COUNT PRESERVED — THE CONST-INDEPENDENCE LAW ───
+  // RATIFIED at <=13,600, and the same ruling minted the law this cell now has
+  // to survive: **`SOUL_CHAR_CEILING` may never move in the same commit as the
   // prose it caps.** Seven moves, and the const travelled with the text every
   // one of them — which is exactly how 12,007 shipped over a ratified 11,750
   // with a green bench: the cap was a label riding its own cargo.
   //
-  // A CELL THAT PINS BOTH NUMBERS CANNOT BE GREEN AT COMMIT ONE, where the
-  // const arrives alone and the prose is still the old length. So it asserts
-  // the two things true at EVERY commit under the law: the ratified number, and
-  // that the prose fits inside it. Here that reads 12,793 <= 13,600; at the
-  // next commit, 13,567 <= 13,600.
+  // MY FIRST DRAFT OF THIS CELL PINNED BOTH NUMBERS, and under the new law that
+  // is a cell that CANNOT be green at commit one — the const arrives alone, the
+  // prose is still the old length, and an equality on both would red a correct
+  // tree. So it asserts the two things that are true at EVERY commit under the
+  // law: the ratified number, and that the prose fits inside it. At commit one
+  // that reads 12,793 <= 13,600; at commit two, 13,567 <= 13,600.
   ok(soul.SOUL_CHAR_CEILING === 13600,
      '§6 — the ratified ceiling, 13,600, and it arrives in its own commit (const-independence law)');
   ok(soul.CLOSER_SOUL.length <= soul.SOUL_CHAR_CEILING,
@@ -1335,6 +1345,69 @@ function fakeSupabase(db) {
      'F-08.80 — the transcript says which lane gates, so a reader cannot mistake a diagnostic for the gate');
   ok(/DEEPSEEK_API_KEY ABSENT/.test(harn5),
      'F-08.80 — a missing key collapses the split silently, so the run says so rather than being read as evidence');
+
+  // ═══ 18 · F-08.83 — THE ESTATE MEASURED HONESTY AND NEVER SELLING ════════
+  section('18 · the selling read, and the four things she always has');
+
+  const reads = require(path.join(__dirname, 'closerReads.js'));
+
+  // ── THE RED FIXTURE: the founder's own three live turns, verbatim ────────
+  // 918595986978, 2026-08-04, the first evening this lane ever ran. Three
+  // questions, zero claims. They are the fixture BECAUSE they are what a
+  // perfectly honest agent produced — every other cell in this bench would have
+  // passed them.
+  const TONIGHT = [
+    "Hey! I'm Mira.\nWhat brings you here?",
+    'Got it — so this landed in your inbox. What was the message about?',
+    "Ah, so you're wondering where this came from. I don't know where your number "
+      + "landed on our list — that part I genuinely can't see. But I can tell you that "
+      + "replying STOP ends these messages permanently, if that's what you'd rather do.\n"
+      + "Or if you're curious what this is about, I'm here.",
+  ];
+  ok(TONIGHT.every(t => reads.hasProductClaim(t) === false),
+     'F-08.83 — the read CONVICTS all three of the founder\'s live turns: no claim in any of them');
+  ok(reads.isEnquiryOnly(TONIGHT[0]) && reads.isEnquiryOnly(TONIGHT[1]),
+     'F-08.83 — and names the shape: a trailing question with nothing given');
+  // NON-VACUITY IN THE OTHER DIRECTION — a read that reds everything is not a read.
+  ok(reads.hasProductClaim('Your work is not on our marketplace yet, and couples are browsing it right now.'),
+     'F-08.83 — a real claim scores, so a red means something');
+  ok(reads.hasProductClaim('Victor files the enquiry that lands at midnight as a real lead.'),
+     'F-08.83 — and so does the midnight enquiry, which is the Manual\'s own strongest sentence');
+  ok(!reads.hasProductClaim('Your stunning portfolio is genuinely exceptional.'),
+     'F-08.83 — ADJECTIVES SCORE NOTHING: the terms are the Manual\'s nouns, never its praise');
+
+  // ── LIMB 4 · THE SOUL NOW HAS SOMETHING TO LEAD WITH ────────────────────
+  ok(/WHAT YOU HAVE TO SELL/.test(soul.CLOSER_SOUL),
+     'F-08.83 limb 4 — the section exists: she is no longer told only what she may not say');
+  ok(/marketplace/.test(soul.CLOSER_SOUL) && /runs from WhatsApp/.test(soul.CLOSER_SOUL)
+     && /lands at midnight/.test(soul.CLOSER_SOUL) && /storefront can exist in minutes/.test(soul.CLOSER_SOUL),
+     'F-08.83 limb 4 — all four ruled things are in her hands');
+  ok(/Lead with ONE/.test(soul.CLOSER_SOUL),
+     'F-08.83 limb 4 — and ONE of them, because four at once is the brochure she is not');
+  ok(/a question after you have given something is a conversation/i.test(soul.CLOSER_SOUL),
+     'F-08.83 limb 4 — the question rule gains its counterweight, the chair\'s adopted words');
+  ok(/carrying one concrete thing we do/.test(soul.CLOSER_SOUL),
+     'F-08.83 limb 4 — and the OPENING itself must carry a claim, not only avoid a pitch');
+
+  // ── LIMB 3 · THE BARE ROW STOPS BEING ONLY A PROHIBITION ────────────────
+  const bareCtx = await closer.buildProspectContext(fakeSupabase({}),
+    { id: 'pB2', phone: '919000444555', name: null, ig_handle: null, category: null,
+      city: null, notes: null, demo_vendor_ref: null }, { wakeReason: 'reply' });
+  ok(/Do not guess at it/.test(bareCtx) && /What you always have is the product itself/.test(bareCtx),
+     'F-08.83 limb 3 — the bare row keeps its prohibition AND gains its other half');
+  ok(bareCtx.indexOf(closer.PRODUCT_LINK) !== -1,
+     'F-08.83 limb 3 — and a prospect with no demo still has somewhere to be sent');
+
+  // ── LIMB 5b · THE SCENARIO THE ELEVEN NEVER HAD ─────────────────────────
+  const harn6 = fs.readFileSync(path.join(ROOT, 'scripts/b08_p5_closer_scenarios.js'), 'utf8');
+  ok(/bare_row_cold:\s*\['Hi', 'I got a message', 'From this number'\]/.test(harn6),
+     'F-08.83 limb 5 — the founder\'s own evening enters the eleven, verbatim');
+  ok(/demo_vendor_ref: null/.test(harn6) && /BARE_PROSPECT/.test(harn6),
+     'F-08.83 limb 5 — seeded BARE: no handle, no category, no city, no demo');
+  ok(/claim=\$\{text \? hasProductClaim\(text\) : 'n\/a'\}/.test(harn6),
+     'F-08.83 limb 5 — and every transcript line now carries the selling read');
+  ok(/DOES SHE SELL\?/.test(harn6),
+     'F-08.83 limb 5 — the READ_FOR asks the question nine of eleven never asked');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);
