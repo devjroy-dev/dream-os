@@ -125,6 +125,12 @@ const MUTATIONS = {
   scheme_required: ['src/agent/closerEngine.js', s => s.replace(
     'const DEMO_LINK_RE = /(?<![\\w@.-])(?:https?:\\/\\/)?(?:[a-z0-9-]+\\.)*thedreamwedding\\.in\\/[^\\s<>()\\[\\]"\']*/gi;',
     'const DEMO_LINK_RE = /https?:\\/\\/[^\\s<>()\\[\\]"\']*thedreamwedding\\.in\\/[^\\s<>()\\[\\]"\']*/gi;')],
+  // THE SEAL, NORMALIZED — the exact class the copy-veto law forbids: an em-dash
+  // for the hyphen, a middle dot, an apostrophe-s. Every one of these looks like
+  // a tidy-up and every one of these is a founder byte edited by a sitting.
+  seal_normalized: ['src/agent/closerEngine.js', s => s.replace(
+    'const LINK_SIGNATURE = `${MIRA}- The Dream Wedding AI Team`;',
+    "const LINK_SIGNATURE = `— ${MIRA} · The Dream Wedding's AI`;")],
   // §5 — the partial sign-off is no longer absorbed: the double-sign returns.
   sign_no_upgrade: ['src/agent/closerEngine.js', s => s.replace(
     "const PARTIAL_SIGNOFF_RE = new RegExp('\\\\n+\\\\s*[—–-]\\\\s*' + MIRA + '\\\\s*$');",
@@ -571,13 +577,26 @@ function fakeSupabase(db) {
   const SL = 'https://thedreamwedding.in/demo/vendor/swatitomar_p4b';
 
   // THE LINK SIGNATURE — the structural floor under S-4
-  // ── LABELED AMENDMENT ⑫ · COUNT PRESERVED (F-08.75) ──────────────────────
-  // ⚠ THE SIGNATURE IS PENDING-FOUNDER-SEAL. These bytes REPLACE a sealed
-  // string and ship only on his word. The cell asserts the SLOT — the name
-  // resolved from its one home — so the moment he seals different bytes this
-  // fails loudly instead of drifting.
-  ok(closer.LINK_SIGNATURE === `— ${mira.MIRA} · The Dream Wedding's AI`,
-     'the signature slot resolves from the one home (PENDING FOUNDER SEAL)');
+  // ── LABELED AMENDMENT ⑬ · COUNT PRESERVED (F-08.75, the seal) ────────────
+  // The slot CLOSED: founder-sealed 2026-08-04. This cell was the
+  // pending-slot assertion; it becomes the byte-exactness assertion, which is
+  // the stronger form and the one the copy-veto law actually wants.
+  //
+  // DRIVEN ON A LITERAL, DELIBERATELY, AND THIS IS NOT THE SECOND-HOME
+  // VIOLATION IT LOOKS LIKE: a cell that rebuilds the expected string from the
+  // same const it is checking proves nothing (INDEPENDENT-METHOD clause 1 —
+  // a verification that reproduces the method under test is not a
+  // verification). The point of a sealed byte is that ONE place spells it out
+  // and everything else derives; that place is this cell, in a bench, where a
+  // drift fails loudly. The one-home law governs the SOURCE of the name, and
+  // the const still interpolates it.
+  ok(closer.LINK_SIGNATURE === 'Mira- The Dream Wedding AI Team',
+     'the signature is the founder-sealed bytes, exact — hyphen-minus, no middle dot, "AI Team"');
+  ok(closer.LINK_SIGNATURE.length === 31 && closer.LINK_SIGNATURE.indexOf(mira.MIRA) === 0
+     && !/[—–·]/.test(closer.LINK_SIGNATURE) && !/['’]/.test(closer.LINK_SIGNATURE),
+     'nothing was normalized: the exact separator, casing and length he sealed');
+  ok(/AI/.test(closer.LINK_SIGNATURE),
+     'F-08.58 SURVIVES THE RESEAL — the reveal still rides every link that leaves');
   const sg = closer.appendLinkSignature('here you go ' + SL, SL);
   ok(sg.signed && sg.text.endsWith(closer.LINK_SIGNATURE),
      'F-08.58 — a message carrying the link leaves signed, by construction');

@@ -980,3 +980,102 @@ Meta and nothing needs to be.**
 5. **F-08.73 and the media-dedupe red** — two known-red benches, outside charter.
 6. **`b5c` and `b08_p1` still stub `source: 'maya'`** — harmless (they never
    reach the engine) but stale-named. Named, not fixed: outside the file list.
+
+---
+
+# ADDENDUM 7 · THE SIGNATURE SEAL (2026-08-04)
+
+**Base:** dream-os `5f29457` · dreamos-pwa `19978c7` (**ZERO pwa bytes**).
+**Ruled to:** the CE SEAL, 2026-08-04. **Two files.**
+
+## 60 · THE SEALED BYTES
+
+```
+Mira- The Dream Wedding AI Team
+```
+
+**Thirty-one characters, derived by command before they were typed** — codepoints
+read, not eyeballed. The shape is deliberate and the source comment says so, in
+the words a future reader will need before they "fix" it:
+
+- the separator is **HYPHEN-MINUS (U+002D)**, directly after the name, **no space
+  before it**
+- **no middle dot**, **no em-dash**, **no apostrophe-s**
+- it reads **"AI Team"**, not "AI"
+
+**Nothing normalized.** This supersedes both the retired Maya seal and the
+chair's proposed Mira form. **The pending-slot is CLOSED — nothing in the rename
+build now waits on any founder word.**
+
+## 61 · THE NAME IS STILL INTERPOLATED, AND THAT COSTS NOTHING
+
+`const LINK_SIGNATURE = \`${MIRA}- The Dream Wedding AI Team\`;`
+
+The rendered bytes are identical either way, so interpolation buys two things
+free: the signature cannot drift from the persona, and `b05_couple_soul_bench`
+§4.1 — the estate's own no-second-literal census — **stays green (21/21)**.
+
+**Idempotence re-keyed by construction.** The check tests the const, so it moved
+to the new substring the moment the bytes did; nothing in that function knows the
+words. The **upgrade path is unchanged and still correct**: her own trailing
+`— Mira` is absorbed and the sealed line takes its position, so a message carries
+one sign-off, not two. Proven by command on all four shapes — append, upgrade,
+idempotent, watcher-quiet.
+
+## 62 · F-08.58 SURVIVES THE RESEAL, AND A CELL SAYS SO
+
+The signature exists so a link never leaves without the reveal on it. **"AI Team"
+carries that.** A cell asserts the letters are present, and the source comment
+states the consequence plainly: **if a future seal ever drops them, this floor
+stops being a floor and F-08.58 reopens.** Named now rather than discovered then.
+
+## 63 · THE BENCH — 180 → 182
+
+**LABELED AMENDMENT ⑬, count preserved in intent:** the pending-slot cell becomes
+the **byte-exactness** cell, which is the stronger form and the one the copy-veto
+law actually wants. Three cells now: the exact string, the exact separator/
+casing/length, and F-08.58's survival.
+
+**Driven on a literal, deliberately.** A cell that rebuilds the expected string
+from the same const it is checking proves nothing — INDEPENDENT-METHOD clause 1,
+*a verification that reproduces the method under test is not a verification*. A
+sealed byte wants exactly one place that spells it out and everything else
+deriving; **that place is a bench cell, where a drift fails loudly.**
+
+**NEW MUTATION `seal_normalized`** — swaps the hyphen for an em-dash, adds the
+middle dot and the apostrophe-s. **The exact class the copy-veto law forbids:
+every one of those looks like a tidy-up and every one is a founder byte edited by
+a sitting.** It reddens both byte-exactness cells.
+
+**36 mutations, 36 clean reds, zero stale anchors.**
+
+## 64 · THE FLOOR — PAIRED
+
+```
+b08_p5_closer_bench  182  (…171→180→182) · 36 mutations, 36 clean reds
+b5c 47 · b08_p1 106 · b08_p3 61 · console 71 · factory 83 · invite 35
+b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+b05_couple_soul 21/21 · arc_m1 53 · m2 27 · m3 11 · m4 18 · m5 11 · ping_drain 31
+b05_f0555_media_dedupe 22 + 1 ⚠ PRE-EXISTING · b06_meter 28/29 ⚠ PRE-EXISTING (F-08.73)
+dreamos-pwa (ZERO bytes): unchanged since the last seal
+```
+
+`node --check` clean on both touched files. **Two known-red benches remain,
+unchanged and outside charter, disclosed rather than preserved silently.**
+
+## 65 · COPY INVENTORY
+
+**One byte, and it is the founder's own:** `Mira- The Dream Wedding AI Team`.
+**Nothing minted. Nothing else moved.** No soul byte, no template byte, no Meta
+act.
+
+## 66 · WHAT REMAINS
+
+**Nothing waits on a founder word.** The next act is the eleven ×3 on the sealed
+tree, counts against `39087f4`'s — with one read that has changed meaning: a
+reintroduction in nudge one is now a **repetition of the opener**, which the wire
+genuinely sent, not a switchboard tic.
+
+Still unruled and unchanged: **arm 1's three resolutions** · **F-08.76's three
+arms** · the ceiling at 12,800 · the sign-off upgrade · the `'closer'` source
+token · F-08.73 and the media-dedupe red.

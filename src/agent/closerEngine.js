@@ -633,13 +633,26 @@ function normalizeDemoLinks(text, expectedLink, igHandle) {
 //
 // IDEMPOTENT: if the signature is already in the message she wrote it herself
 // and it is not doubled.
-// ⚠ PENDING FOUNDER SEAL (F-08.75). These bytes REPLACE a founder-sealed string
-// ("— Maya · The Dream Wedding's AI") and are built against the slot on the
-// chair's word, not shipped on mine. The name inside them is the one home's
-// literal, interpolated rather than typed, so the signature cannot drift from
-// the persona. If the founder seals different bytes, this one line changes and
-// nothing else does.
-const LINK_SIGNATURE = `— ${MIRA} · The Dream Wedding's AI`;
+// ── FOUNDER-SEALED 2026-08-04, BYTE-EXACT, NOTHING NORMALIZED ─────────────
+// The slot is CLOSED. His own bytes, superseding both the retired Maya seal
+// ("— Maya · The Dream Wedding's AI") and the chair's proposed Mira form.
+// Recorded here because the shape is deliberate and a future reader will want
+// to "fix" it: the separator is a HYPHEN-MINUS (U+002D) directly after the
+// name with no space before it, there is no middle dot, there is no
+// apostrophe-s, and it reads "AI Team" rather than "AI". Thirty-one
+// characters, derived by command before they were typed. The copy-veto law
+// says nothing is normalized, and nothing is.
+//
+// THE NAME IS STILL INTERPOLATED FROM ITS ONE HOME. The rendered bytes are
+// identical either way, so interpolation costs nothing and buys two things:
+// the signature cannot drift from the persona, and `b05_couple_soul_bench`
+// §4.1 — the estate's own no-second-literal census — stays green.
+//
+// F-08.58 SURVIVES THE RESEAL, and it is worth stating: the floor exists so a
+// link never leaves without the reveal on it. "AI Team" carries that. If a
+// future seal ever drops the letters A and I, this floor stops being a floor
+// and the finding reopens.
+const LINK_SIGNATURE = `${MIRA}- The Dream Wedding AI Team`;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // THE EXIT GATE (CE-ruled at the post-cure read) — STRUCTURAL, NOT PROSE
@@ -693,6 +706,8 @@ const PARTIAL_SIGNOFF_RE = new RegExp('\\n+\\s*[—–-]\\s*' + MIRA + '\\s*$');
 function appendLinkSignature(text, expectedLink) {
   if (!text || !expectedLink) return { text, signed: false };
   if (text.indexOf(expectedLink) === -1) return { text, signed: false };  // no link, no floor
+  // IDEMPOTENCE RE-KEYS WITH THE SEAL: this tests the const, so the check moved
+  // to the new substring the moment the bytes did. Nothing here knows the words.
   if (text.indexOf(LINK_SIGNATURE) !== -1) return { text, signed: false }; // already said, in full
   const trimmed = text.replace(PARTIAL_SIGNOFF_RE, '');
   return { text: trimmed + '\n\n' + LINK_SIGNATURE, signed: true, upgraded: trimmed !== text };
