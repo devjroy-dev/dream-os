@@ -136,6 +136,17 @@ async function runScenario(name, laneName) {
   const out = [];
   const sb = makeFixtureSupabase(laneName);
 
+  // A NUDGE ONLY EVER FOLLOWS A REPLY. Production reaches `in_session` because
+  // the prospect wrote something; a nudge scenario that opens cold has no
+  // history at all, and the API refuses an empty message list. Seeding the reply
+  // that got them here is not padding the fixture — it is the fixture matching
+  // the only state production can be in when this job fires.
+  if (turns[0] === '__NUDGE__') {
+    sb.db.messages.push({ id: 'm0', conversation_id: CONV_ID, direction: 'inbound',
+      body: 'ok tell me more', created_at: new Date(Date.now() - 60000).toISOString() });
+    out.push('  THEM: ok tell me more   [seeded: a nudge only ever follows a reply]');
+  }
+
   for (let i = 0; i < turns.length; i++) {
     const t = turns[i];
     const isNudge = t === '__NUDGE__';
@@ -164,9 +175,20 @@ async function runScenario(name, laneName) {
     // corrections. The model call is injected through the `llm` seam that
     // already existed for the bench, so the LANE is still chosen here and
     // everything else is production.
+    // ── THE LANE IS PINNED ON BOTH HALVES, AND DISAGREEMENT IS LOUD ─────────
+    // THIS READ `llmCreate(provider, ...)` — the provider RESOLVED, the model
+    // OVERRIDDEN. When `guardKeys` fell back to anthropic for a missing DeepSeek
+    // key, Anthropic was handed `deepseek-v4-flash` and returned 404 eleven
+    // times a run. A harness whose job is to pin a lane must pin both halves,
+    // and must say so out loud when the route disagrees rather than emitting a
+    // cross-provider request nobody asked for.
     let usage = {};
-    const laneLlm = async (provider, params) => {
-      const r = await llmCreate(provider, Object.assign({}, params, { model: lane.model }));
+    const laneLlm = async (resolvedProvider, params) => {
+      if (resolvedProvider !== lane.provider) {
+        console.warn(`  [lane] route resolved ${resolvedProvider}, forcing ${lane.provider} `
+          + `— check the provider key is present in this process`);
+      }
+      const r = await llmCreate(lane.provider, Object.assign({}, params, { model: lane.model }));
       usage = r.usage || {};
       return r;
     };

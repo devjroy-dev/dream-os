@@ -395,8 +395,14 @@ function fakeSupabase(db) {
      'F-08.57 RUNTIME — but an empty REPLY still throws: a human just spoke, silence is the rudest answer');
 
   const normLlm = async () => ({ content: [{ type: 'text', text: 'open https://thedreamwedding.in/demo/swatitomar_p4b' }], usage: {} });
+  // SEEDED, and the seeding is the point: a REPLY turn with no history now
+  // throws by design (there is no reply without something to reply to), so a
+  // fixture with an empty messages table was testing a state production cannot
+  // reach. Caught by the guard crashing this bench rather than by a review.
   const normOut = await closer.runCloserTurn({
-    supabase: fakeSupabase({ demo_vendors: [baseDemo], messages: [] }),
+    supabase: fakeSupabase({ demo_vendors: [baseDemo], messages: [
+      { id: 'i1', conversation_id: 'cL', direction: 'inbound', body: 'how do i see it', created_at: '2026-08-04T01:00:00Z' },
+    ] }),
     prospect, conversationId: 'cL', phone: '919999000444', wakeReason: 'reply', llm: normLlm,
   });
   // The expected text now carries the signature too, because the signature is
@@ -465,7 +471,14 @@ function fakeSupabase(db) {
   let nothingOut = null, nothingThrew = null;
   try {
     nothingOut = await closer.runCloserTurn({
-      supabase: fakeSupabase({ messages: [] }), prospect: { id: 'p', demo_vendor_ref: null },
+      // SEEDED FOR NON-VACUITY: with an empty history this turn short-circuits
+      // to no_send BEFORE the model is called, so the token was never exercised
+      // and the cell passed for the wrong reason. A conversation must exist for
+      // [NOTHING] to be the thing under test.
+      supabase: fakeSupabase({ messages: [
+        { id: 'i2', conversation_id: 'cT', direction: 'inbound', body: 'ok', created_at: '2026-08-04T01:00:00Z' },
+        { id: 'o2', conversation_id: 'cT', direction: 'outbound', body: 'said my piece', created_at: '2026-08-04T02:00:00Z' },
+      ] }), prospect: { id: 'p', demo_vendor_ref: null },
       conversationId: 'cT', phone: '919999000555', wakeReason: 'nudge',
       llm: async () => ({ content: [{ type: 'text', text: '[NOTHING]' }], usage: {} }),
     });
@@ -507,6 +520,29 @@ function fakeSupabase(db) {
      'F-08.65 — the instrument that gates deploy routes through the production turn');
   ok(!/const text = \(resp\.content \|\| \[\]\)/.test(harnessSrc),
      'F-08.65 — it no longer reads raw model blocks; a transcript is what a prospect receives');
+
+  // THE EMPTY-HISTORY GUARD, both arms — added because it crashed this bench
+  // on its first run and nothing here had been asserting it.
+  let ehNudge = null, ehThrew = null;
+  try {
+    ehNudge = await closer.runCloserTurn({
+      supabase: fakeSupabase({ messages: [] }), prospect: { id: 'p', demo_vendor_ref: null },
+      conversationId: 'cE', phone: '919999000666', wakeReason: 'nudge',
+      llm: async () => { throw new Error('the model must never be reached'); },
+    });
+  } catch (e) { ehThrew = e; }
+  ok(!ehThrew && ehNudge && ehNudge.source === 'no_send',
+     'a nudge with no conversation behind it takes the no-send path and never reaches the model');
+  let ehReplyThrew = false;
+  try {
+    await closer.runCloserTurn({
+      supabase: fakeSupabase({ messages: [] }), prospect: { id: 'p', demo_vendor_ref: null },
+      conversationId: 'cE', phone: '919999000666', wakeReason: 'reply',
+      llm: async () => ({ content: [{ type: 'text', text: 'hi' }], usage: {} }),
+    });
+  } catch (e) { ehReplyThrew = true; }
+  ok(ehReplyThrew,
+     'but an empty history on a REPLY is a genuine fault and throws — there is no reply without something to reply to');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);

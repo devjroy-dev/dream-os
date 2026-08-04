@@ -592,6 +592,19 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   const dynamic = await buildProspectContext(supabase, prospect, ctxOpts);
   const system = buildStaticSystem().concat([{ type: 'text', text: dynamic }]);
 
+  // AN EMPTY HISTORY CANNOT BE SENT. Removing the user-role wake removed the
+  // one message that was propping this call up on a cold conversation, and the
+  // API refuses a request with no messages. On a nudge that is not an error — it
+  // is nothing to nudge about — so it takes the no-send path. On a reply it is a
+  // genuine fault and throws, because a human just spoke.
+  if (!messages.length) {
+    if (isNudge) {
+      console.log('[closer] no-send — a nudge with no conversation behind it has nothing to say');
+      return { text: '', source: 'no_send', model: route.model, provider: route.provider };
+    }
+    throw new Error('closer turn reached the model with an empty history');
+  }
+
   const resp = await _create(route.provider, {
     model:      route.model,
     max_tokens: MAX_TOKENS,
