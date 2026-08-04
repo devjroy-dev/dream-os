@@ -346,8 +346,29 @@ Then it ends, and the parting line is not yours to write. The house sends one pl
 //            amendment (~35) and then the closing "All four at once is a
 //            brochure" line (~110) — in that order. The four things do not cut.
 //
-// Growth past 13,600 returns to the CE.
-const SOUL_CHAR_CEILING = 13600;
+//   13,850 — CE-RATIFIED, 2026-08-04, at the ×3 read. The request came BEFORE
+//            shipping with its arithmetic, as the law requires, and the chair
+//            ruled it. ⚠ AND THIS CONST ARRIVES IN ITS OWN COMMIT — the
+//            const-independence law, second application, first one that was
+//            routine rather than newly minted.
+//            MEASURED: **13,817** after one tightening pass (13,822 before).
+//            THE ARITHMETIC, +250 over 13,567:
+//              ~95   §1 — room governs length and tone, NEVER whether she puts
+//                    one true thing on the table; a bare hello gets one too.
+//                    The entire cure for `bare_row_cold` scoring 0/9 claim=false
+//                    at 9b6e3ca: "Hi" reads as almost no room, and the claim
+//                    rule lost to the room rule on exactly the shortest inbounds.
+//              ~155  §2 — on a bare row she leads with THE PRODUCT, which is
+//                    always true and always available. This is the only thing
+//                    standing between "lead with something" and the six
+//                    fabrications the selling cure produced in one ×3.
+//            NEITHER CUTS. §1 is the whole of a 0/9; §2 is the resolution of the
+//            collision that 0/9's cure created.
+//            Cost unchanged and production-measured: cache_read=7,471 on every
+//            warm turn of the 9b6e3ca run.
+//
+// Growth past 13,850 returns to the CE.
+const SOUL_CHAR_CEILING = 13850;
 
 // MIRA is deliberately NOT re-exported: one home, at miraSoul.js. Anything that
 // needs the name imports it there, exactly as this module does.
