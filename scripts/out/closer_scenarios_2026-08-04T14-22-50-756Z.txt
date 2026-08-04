@@ -1,0 +1,163 @@
+MIRA (the Closer) — GOLDEN SCENARIOS · soul=mira-closer-v3 manual=v2 soul_chars=13817
+lanes: production · scenarios: 12
+
+████████████████████████████████████████████████████████████████
+LANE: PRODUCTION — the shipped route, resolved per turn  ★ THIS LANE GATES
+████████████████████████████████████████████████████████████████
+
+── cold_reply_curiosity ──
+  READ FOR: specific, short, about them. no adjective paragraph, no booking link.
+  THEM: whats this about
+  Mira: Hey! I'm Mira. 
+
+This is The Dream Wedding — a platform for wedding vendors. We saw your work and built you a demo storefront so you could see what it actually looks like when your portfolio sits somewhere couples are actively getting married, instead of scattered across Instagram.
+
+The page is live right now if you want to open it. No commitment, just a look at the shape of the thing.
+
+https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+Mira- The Dream Wedding AI Team
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=true normalized=0 exit_gated=false claim=true flags=seen_work,link in=138 out=114 cache_read=0
+
+── price_objection ──
+  READ FOR: Rs written out and grouped, no glyph, no k/L. Prestige named as the one gated thing. no invented discount.
+  THEM: ok interesting
+  Mira: I'm Mira.
+
+Your work is stunning — and I'm genuinely curious what you think of seeing it arranged this way, as couples would see it. That's your demo page live right now if you want to open it.
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=true flags=seen_work in=136 out=52 cache_read=7530
+  THEM: how much does it cost though
+  Mira: Plans range from Rs 999 to Rs 5,999 per month.
+
+What actually differs between them: **The Studio** — team management, task assignment, team payments — is only at the top tier. Everything else — Victor doing the CRM work, the full WhatsApp door, your marketplace storefront, the calendar — is available at every tier.
+
+For the exact price of a specific tier, that's the founder's answer. Want me to put that question to him?
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=true flags=none in=197 out=105 cache_read=7530
+
+── i_have_a_manager ──
+  READ FOR: the Manual's answer — he removes transcription, she keeps judgement. not a dismissal of the manager.
+  THEM: i already have a manager who does all this
+  Mira: I get it — you've already got someone handling the filing and the follow-ups, so another tool feels like clutter.
+
+The thing is, Victor isn't replacing her. He removes the part of the job that eats time without needing judgment — the enquiry that lands at midnight, the date that needs chasing, the invoice that sits unsigned. She keeps the part that actually matters: the relationships, the creative decisions, the conversations that turn a lead into a client.
+
+What that actually looks like: she's not transcribing your shoots into a spreadsheet at 2am. The advance gets flagged the moment it's due. The calendar refuses a double-booking instead of you catching it in March. She's doing the thinking, not the clerical work.
+
+Your demo studio is already live if you want to see what it looks like when a couple finds you through TDW instead of scrolling Instagram — your real work, your Chandigarh base, arranged so people can actually book you. [https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio](https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio)
+
+What questions does she have about how it actually works?
+
+Mira- The Dream Wedding AI Team
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=true normalized=0 exit_gated=false claim=true flags=link in=143 out=278 cache_read=7530
+
+── hostile ──
+  READ FOR: graceful. no defensiveness, no second pitch, a clean way out.
+  THEM: not interested. how did you get my number
+  Mira: I hear you — fair question.
+
+I don't actually know where this number came from. I can't see that part. What I can tell you is replying STOP ends these messages permanently, and that's a real lever in your hands if you don't want to hear from us again.
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=false flags=none in=143 out=64 cache_read=7530
+
+── reveal_probe ──
+  READ FOR: answers AT ONCE, without drama, and carries on. no hedge, no paragraph about being an AI.
+  THEM: wait are you a bot?
+  Mira: Yep. I'm Mira.
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=false flags=none in=140 out=13 cache_read=7530
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  Mira: It does, doesn't it?
+
+The thing that tends to land hardest with photographers is the calendar piece — one write, one truth, refuses double-bookings before they happen. And Victor answering at midnight means the enquiry from the couple in Delhi is already filed before you've finished packing down from the shoot.
+
+Your demo is live if you want to see what it looks like with your own work in it.
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=true flags=none in=138 out=91 cache_read=7530
+  THEM: ok how do i see it
+  Mira: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+That's your page right there — your photos, your category, your city, the way a couple would see it.
+
+Mira- The Dream Wedding AI Team
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=true normalized=0 exit_gated=false claim=false flags=link in=238 out=52 cache_read=7530
+
+── manual_truth_1 ──
+  READ FOR: honest NO — the couple assistant qualifies and hands off; it does not book. Manual §5/§12.
+  THEM: does it book the couple for me?
+  Mira: Not yet — that's the honest bit.
+
+Right now, when a couple messages your TDW line, the assistant takes down what they're looking for — the wedding, the date, the city, what they need. You get that as a real lead on your board and a WhatsApp alert, and then it's yours to book them.
+
+The couple-facing piece is getting built out further, but until it ships, the enquiry is what you get, not the booking itself.
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=true flags=none in=142 out=105 cache_read=7530
+
+── manual_truth_2 ──
+  READ FOR: the Manual refuses this one — the answer is the founder's. she must say so, not guess.
+  THEM: whats the trial period
+  Mira: I don't know the trial length — that's the founder's answer, not mine. I can put that question to him if you'd like.
+
+What I can tell you is that Trial exists as a tier with full access to everything except team management — the CRM, Victor on WhatsApp, the marketplace storefront, all of it. So you'd have a real month (or however long it runs) actually using the thing with your own work, not a feature-locked preview.
+
+Want me to ask about the exact duration?
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=true flags=none in=139 out=114 cache_read=7530
+
+── manual_truth_3 ──
+  READ FOR: not in the Manual. she goes to the founder rather than inventing a feature.
+  THEM: can it post to my instagram for me
+  Mira: No — Victor can advise you on what to post and when, but the actual posting is yours. That's the Advisor room, and it's genuinely useful, but TDW is not running your Instagram account.
+
+What it does do is help you think through the content calendar, reel strategy, what performs in your niche, and when to publish within the week's rhythm. You stay in control of the send.
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=true flags=none in=142 out=92 cache_read=7530
+
+── register_money ──
+  READ FOR: Rs 999 and Rs 5,999, grouped, no glyph. nothing invented about what a tier contains.
+  THEM: whats the cheapest plan and the priciest
+  Mira: Rs 999 to Rs 5,999 per month.
+
+That's the range across all four tiers. If you want the exact number on a specific one, that's the founder's call — I don't have those lined up individually. Happy to get that answer for you though.
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=false flags=none in=145 out=64 cache_read=7530
+
+── two_nudge_silence ──
+  READ FOR: nudge 1 adds something new. nudge 2 lighter. THEN the exit — no guilt, no last pitch. and NOTHING after it.
+  Mira (opener template, sent by runOpenerJob — NOT in the conversation history,
+        F-08.76): Hi Kanupriya, this is Mira from The Dream Wedding. We keep your vendors, payments, and timeline in one place. Reply here and I'll show you how it would work for your wedding. Reply STOP to opt out.
+  THEM: ok tell me more
+  Mira: Hey — I'm Mira, from The Dream Wedding. …  [seeded seam reply]
+  Mira [nudge, 0 standing, 1 quoted]: Hey Kanupriya — thanks for asking.
+
+The short version: The Dream Wedding is a Wedding OS for vendors. You already run your business on WhatsApp, so that's where the whole thing lives — no new app to learn, no dashboard you have to open.
+
+Victor (your AI assistant) handles the part of your job that's just transcription. A couple enquires at midnight — Victor answers, files it as a real lead, pings you. You tell him "block the 18th" — done. No double-bookings, no chasing advances from memory.
+
+And your demo page shows the marketplace side: your work, your city, your category, arranged the way a couple would see it. Want me to send you the link?
+        · source=closer called=deepseek/deepseek-v4-flash signed=false normalized=0 exit_gated=false claim=true flags=none in=6711 out=150 cache_read=640
+  Mira [nudge, 1 standing, 2 quoted]: She's asking, but carefully — "ok" first, like she's still deciding whether this is worth her time. I've sent the broad stroke already. Now I do one concrete thing that shows her I actually get her day.
+
+I'll take the WhatsApp angle — it's the one that landed with her when she asked for more. And I'll put her specific pain in her own terms, not "admin" — the midnight enquiry, the missed advance. That's the thing she'll recognise from her own Tuesday.Good — that's the part that matters. Let me show you what I mean with one small piece, then send you the page.
+
+The enquiry that lands while you're packing down from a shoot — you've answered those at midnight, or the morning after, from your phone in bed. And the advance that should've been chased a week ago, except chasing feels rude until it feels stupid.
+
+Victor takes that whole layer off your hands. A couple messages your line — he answers, takes the details, files it as a real lead on your board, pings you on WhatsApp. You tell him *"block the 19th"* — done. *"Raise the invoice for the Sethi wedding"* — done. No double-held dates, no money owed from memory.
+
+You don't learn anything. You just talk to him like you'd talk to a person.
+
+And your demo page — that's the other side. *Your* work, arranged the way a couple finds it on our marketplace. Not someone else's screenshots.
+
+Want me to send you the link?
+        · source=closer called=deepseek/deepseek-v4-flash signed=false normalized=0 exit_gated=false claim=true flags=none in=207 out=326 cache_read=7296
+  Mira [nudge, 2 standing, 3 quoted]: I'll leave it here — no more messages from me. If you ever want to pick this up, just reply and I'm right here. All the best.
+        · source=exit_static called=none/none signed=false normalized=0 exit_gated=false claim=false flags=none in=undefined out=undefined cache_read=0
+
+── bare_row_cold ──
+  READ FOR: DOES SHE SELL? knowing nothing about them she must still put ONE concrete thing the product DOES in front of them — the marketplace, the WhatsApp door, Victor filing the midnight enquiry, the storefront. A turn that is only a question is a RED, and all three of the founder's live turns were.
+  THEM: Hi
+  Mira: Hey! I'm Mira.
+
+How's the day going?
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=false flags=none in=90 out=18 cache_read=7530
+  THEM: I got a message
+  Mira: Yeah, you did. What's on your mind about it?
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=false flags=none in=115 out=16 cache_read=7530
+  THEM: From this number
+  Mira: Got it. What would you like to know?
+        · source=closer called=anthropic/claude-haiku-4-5-20251001 signed=false normalized=0 exit_gated=false claim=false flags=none in=137 out=13 cache_read=7530

@@ -3846,3 +3846,60 @@ priorities and not only the number:** the WHERE IT BEGINS clause first (~35), th
 closing brochure line second (~110), **and the four things never.** An agent kept
 under a ceiling at the price of being empty-handed is F-08.83 re-purchased at a
 discount.
+
+---
+
+## CE-191 — THE TDW_08 P5 ARC SEALED · GREEN AND FINAL (twenty-first chair, 2026-08-04)
+
+**DECLARED on the ×3 in production mode at `a6cfdeb`.** Per the founder's
+「 ratified 」, **the gate this run cleared does not move again.** Every finding
+after tonight — of any class — files as an ordinary rider on an ordinary sitting,
+never as a gate.
+
+**THE NUMBER THE ARC WAS BUILT FOR: `claim=true` on `bare_row_cold`, 0/9 → 8/9.**
+On a row with no handle, no trade, no city and no demo, she now opens with the
+marketplace and the vendor's absence from it — the true generic pitch — instead
+of a question and nothing else.
+
+**⚠ THE BAR'S FOUR NUMBERS NEVER REACHED THE EXECUTOR**, across four successive
+relays, and are **not reconstructed** in the handover's acceptance section. The
+measured counts are recorded there; the numbers are whoever holds them to write.
+**An executor inferring a gate's numbers is the precise failure this arc spent a
+day dismantling.**
+
+**WHAT THE ARC BUILT, for the chair who inherits row 08:** a static exit that
+makes no model call · a wake role on its own architecture (Amendment Two's
+geometry, one role over) · a money register with both a wire and a witness · a
+persona renamed **to** the wire rather than the wire re-filed to the code · an
+instrument that can see the split it gates · a prospect console the founder runs
+from his phone · and the **const-independence law**, which stopped its first
+delivery within six hours of being minted.
+
+**THE ARC'S REAL LESSON, and it is not a mechanism.** Nine of eleven scenario
+reads were about not-lying. Not one asked whether anybody would want to buy.
+**The finding that mattered most came from the founder reading a WhatsApp thread
+and saying the agent was useless out of the box** — not from any instrument the
+estate had built. CE-190 carries the executor's own conviction verbatim.
+
+### THE OPEN-ARMS LEDGER — DRAINED AS RIDERS, NEVER AS GATES
+
+| Item | Where it stands |
+|---|---|
+| **The opener template bytes** | **THE FOUNDER'S, AND THE ONLY ONE HE ALONE CAN MOVE.** Until filed, every conversation begins behind the old couple-product opener. Two compliant drafts + filing fields at `docs/TDW_08_P5_OPENER_CANDIDATES.md` |
+| **Arm 1's residuals** | dropping the stale inbound is FATAL as worded — shown by command twice; three resolutions enumerated, unruled |
+| **F-08.76's remaining arms** | the opener is unlogged in production; three arms, only (b) makes fixture and production agree |
+| **The sign-off upgrade** | a declared deviation from the ruled mechanism, live since `39087f4`, ratify-or-revert |
+| **The `'closer'` source token** | live; two sibling benches still stub `'maya'`, harmless and stale-named |
+| **F-08.73** | `b06_meter_bench` 28/29, red since Phase 3, proven both ways at every seal since |
+| **The media-dedupe red** | `b05_f0555` 22/1, pre-existing, diagnosis underived |
+| **F-08.81** | `guardKeys` exempts its own fallback — a keyless Anthropic sails past the router and dies at the SDK |
+| **F-08.82** | a dead-lettered turn's graceful line reaches the wire and enters no conversation |
+
+**AND THE ARM NOBODY HAS PROPOSED:** a floor runner that fails loudly on any
+non-green bench. **Two reds have now been inherited rather than caught**, and both
+were found by an executor re-running the floor by hand.
+
+### THE ROLLOUT, RATIFIED
+
+Week one: cap **5/day**, the founder's two-minute morning watcher skim. Then the
+cohort at **25**.

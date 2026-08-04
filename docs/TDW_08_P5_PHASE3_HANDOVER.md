@@ -1782,3 +1782,71 @@ sentence — the only copy in this delivery. **The riders are machinery.**
    real measurement for the first time.
 3. Unchanged: the opener bytes · arm 1 · F-08.76 · the sign-off upgrade ·
    the `'closer'` token · F-08.73 · the media-dedupe red · F-08.81 · F-08.82.
+
+---
+
+# ACCEPTANCE — THE ARC'S GATE, AND WHAT THE ×3 AT `a6cfdeb` MEASURED
+
+**DECLARED GREEN AND FINAL by the CE, 2026-08-04**, on the ×3 in production mode
+at `a6cfdeb`. Per the founder's 「 ratified 」, **the gate this run cleared does
+not move again**: everything after tonight is riders and the watch, never gates.
+
+## ⚠ THE BAR'S FOUR NUMBERS NEVER REACHED THE EXECUTOR
+
+The relay ordered this section written *"in its numbers"* and referred to the bar
+as *"founder-ratified verbatim as above."* **No bar text arrived, in four
+successive relays.** §3 spoke of "the four numbers" and this session has never
+held them.
+
+**They are NOT reconstructed here.** A gate whose numbers the executor inferred
+is the exact failure this arc spent a day dismantling — eleven scenarios that
+looked like a measurement and were not. **What follows is what was MEASURED.**
+Whoever holds the bar's four numbers writes them against these counts; the
+declaration of GREEN is the chair's and stands on the chair's own reading.
+
+## WHAT THE ×3 MEASURED, BY COUNT
+
+| Read | `9b6e3ca` | `22d6df9` | **`a6cfdeb`** |
+|---|---|---|---|
+| **`claim=true` on `bare_row_cold`** — the number the arc was built for | **0/9** | 0/9 (cure held) | **8/9** |
+| `seen_work` fired on a live turn | class did not exist | 1 (false positive) | **0 — the shape stopped appearing** |
+| `marketplace_presence` fired on a live turn | class did not exist | 1 (true positive) | **0 — same** |
+| fabrications read by the founder | **6** | — | **0 named** |
+| `wake_split=true` on nudge turns | 6/6 | 6/6 | **6/6** |
+| exit static | 3/3 | 3/3 | **3/3** |
+| link unsigned | 0 | 0 | **0** |
+| rupee glyph on the wire | 0 | 0 | **0** |
+
+**THE ONE FALSE in 8/9** is rep 1 turn 2 — *"Someone sent you a message from us?
+Sorry — what did it say?"* — a clarifying question mid-conversation rather than an
+opening. Named rather than argued.
+
+**AND THE HONEST WEAKNESS, stated:** the two new classes not firing is **proof the
+disease did not recur in nine turns, not proof the classes work in production.**
+They were exercised on bench fixtures; live, they had nothing to catch.
+
+## THE ARC, IN ONE PARAGRAPH
+
+`c0d34ed` shipped the marketing lane's first soul. Forty-odd rulings later the
+lane had a static exit that makes no model call, a wake role on its own
+architecture, a register with a wire and a witness, a persona renamed to the wire
+rather than the wire re-filed to the code, an instrument that can see what it
+gates, a console the founder runs from his phone, and a ceiling that cannot move
+in the same commit as the prose it caps.
+
+**And the finding that mattered most came from the founder reading a WhatsApp
+thread and saying the agent was useless out of the box.** Nine of eleven scenario
+reads were about not-lying; not one asked whether anybody would want to buy.
+**That is CE-190's own sentence and it is the arc's real lesson.**
+
+## THE ROLLOUT, AS RATIFIED
+
+Week one: **cap 5/day**, the founder's two-minute morning skim of the watcher.
+Then the cohort at **25**.
+
+## ⚠ THE ONE ITEM ONLY THE FOUNDER CAN MOVE
+
+**The opener template bytes.** Until he picks a candidate and files it,
+**every conversation still begins behind the old couple-product opener** — the
+one that names the right persona and pitches the wrong instrument. Two compliant
+drafts and the filing fields are at `docs/TDW_08_P5_OPENER_CANDIDATES.md`.
