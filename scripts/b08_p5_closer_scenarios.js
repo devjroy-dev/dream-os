@@ -52,7 +52,30 @@ const { CLOSER_SOUL, CLOSER_SOUL_VERSION } = require(path.join(ROOT, 'src/agent/
 const { MIRA } = require(path.join(ROOT, 'src/agent/miraSoul.js'));
 const { TEMPLATES } = require(path.join(ROOT, 'src/lib/templates.js'));
 
+// ── THE THREE LANES, AND ONLY ONE OF THEM GATES (CE-ruled, F-08.80) ─────────
+// `haiku` and `deepseek` PIN one architecture for a whole run and force both
+// halves of the call. That is what 1298a8d built them for and they stay exactly
+// as they are: they answer "how does each architecture behave", which is a
+// comparison question.
+//
+// THEY CANNOT ANSWER "what does the shipped tree do", and that is F-08.80: the
+// route they seed is `{provider, model}` — TWO FIELDS — so a PER-ROLE split
+// (`nudge_provider`, F-08.69) cannot exist in the fixture, and `laneLlm` forces
+// the provider afterwards regardless. Eighteen turns at 1d79567 read
+// `wake_split=false` and the whole of that delivery was invisible to the
+// instrument gating its deploy. F-08.65's family, fourth costume.
+//
+// `production` seeds the REAL route, lets `resolveModel` decide PER TURN, and
+// calls the provider that actually resolved. **The ×3 that gates the evenings
+// runs in this mode** — the tree as shipped is the only tree the gate was ever
+// about. The other two run beside it, informative and never gating.
+const PRODUCTION_ROUTE = JSON.stringify({
+  provider: 'anthropic', model: 'claude-haiku-4-5-20251001',
+  nudge_provider: 'deepseek', nudge_model: 'deepseek-v4-flash',
+});
+
 const LANES = {
+  production: { production: true, route: PRODUCTION_ROUTE },
   haiku:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
   deepseek: { provider: 'deepseek',  model: 'deepseek-v4-flash' },
 };
@@ -81,7 +104,13 @@ function makeFixtureSupabase(laneName) {
   const lane = LANES[laneName];
   const D = {
     users: [],
-    admin_config: [{ key: 'model.wa_marketing.default', value: JSON.stringify(lane) }],
+    // THE ROUTE THE FIXTURE SEEDS. In production mode it is the REAL row's bytes,
+    // per-role split and all, so `resolveModel` answers the same question it
+    // answers on Railway. In the pinned lanes it is the two-field override that
+    // makes an architecture comparison possible — and F-08.80's own cause, named
+    // here rather than left to be rediscovered.
+    admin_config: [{ key: 'model.wa_marketing.default',
+                     value: lane.production ? lane.route : JSON.stringify(lane) }],
     demo_vendors: [{
       id: 'demo_scenarios', ig_handle: 'kanupriyasethi.studio',
       display_name: 'Kanupriya Sethi Studio', category: 'photography', city: 'Chandigarh',
@@ -250,6 +279,16 @@ async function runScenario(name, laneName) {
     // cross-provider request nobody asked for.
     let usage = {};
     const laneLlm = async (resolvedProvider, params) => {
+      // PRODUCTION MODE FORCES NOTHING. The engine has already chosen the lane
+      // for THIS turn — reply or wake — and this hands the call to exactly that
+      // provider with exactly that model. `wake_split` becomes a witnessable
+      // fact instead of a constant.
+      if (lane.production) {
+        const r = await llmCreate(resolvedProvider, params);
+        usage = r.usage || {};
+        r._called = { provider: resolvedProvider, model: params.model };
+        return r;
+      }
       if (resolvedProvider !== lane.provider) {
         console.warn(`  [lane] route resolved ${resolvedProvider}, forcing ${lane.provider} `
           + `— check the provider key is present in this process`);
@@ -311,7 +350,18 @@ async function runScenario(name, laneName) {
     // first five scenarios at 710b4e5. A lane's transcripts can never again wear
     // the other lane's name.
     _resetRouteCache();
-    say(`\n${'█'.repeat(64)}\nLANE: ${laneName.toUpperCase()} (${LANES[laneName].provider}/${LANES[laneName].model})\n${'█'.repeat(64)}`);
+    const L = LANES[laneName];
+    const banner = L.production
+      ? `LANE: PRODUCTION — the shipped route, resolved per turn  ★ THIS LANE GATES`
+      : `LANE: ${laneName.toUpperCase()} (${L.provider}/${L.model}) — diagnostic, does not gate`;
+    say(`\n${'█'.repeat(64)}\n${banner}\n${'█'.repeat(64)}`);
+    // A MISSING KEY SILENTLY COLLAPSES THE SPLIT — `guardKeys` drops it and the
+    // wake follows the reply. That is correct behaviour and a WORTHLESS run, so
+    // it is said out loud rather than discovered in the counts.
+    if (L.production && !process.env.DEEPSEEK_API_KEY) {
+      say('  ⚠ DEEPSEEK_API_KEY ABSENT — the wake split will be dropped by guardKeys and');
+      say('    every nudge will read wake_split=false. This run does not measure F-08.69.');
+    }
     for (const name of names) {
       say(`\n── ${name} ──`);
       say(`  READ FOR: ${READ_FOR[name]}`);

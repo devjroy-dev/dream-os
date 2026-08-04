@@ -112,6 +112,25 @@ const MUTATIONS = {
   prov_wide: ['src/agent/closerEngine.js', s => s.replace(
     "  ['provenance', /\\b(got (?:it|your number|you) from",
     "  ['provenance', /\\b(where.{0,12}number|got (?:it|your number|you) from")],
+  // F-08.78 — the glyph swap neutered: the register reaches the wire again.
+  register_off: ['src/agent/closerEngine.js', s => s.replace(
+    "  const out = String(text).replace(RUPEE_GLYPH_RE, () => { corrected++; return 'Rs '; });",
+    '  const out = String(text);')],
+  // F-08.78 — the watcher's register class blinded on both limbs.
+  register_blind: ['src/agent/closerEngine.js', s => s.replace(
+    "  return (/\\u20B9/.test(t) || REGISTER_SHORTHAND_RE.test(t)) ? ['register'] : [];",
+    "  return [];")],
+  // F-08.78 — the normalizer turned GREEDY onto the digits: arithmetic on her words.
+  register_greedy: ['src/agent/closerEngine.js', s => s.replace(
+    "const RUPEE_GLYPH_RE = /\\u20B9\\s*/g;",
+    "const RUPEE_GLYPH_RE = /\\u20B9\\s*[\\d,]*/g;")],
+  // F-08.79 — the structural tell removed: 1d79567's specimens walk again.
+  tell_structural_off: ['src/agent/closerEngine.js', s => s.replace(
+    "  ['enumerated_interrogation', {\n    test: (t) => ENUMERATION_RE.test(t) && INTERROGATION_RE.test(t),\n  }],", '')],
+  // F-08.79 — the tell made GREEDY: an ordinary enumerated wake gets dropped.
+  tell_structural_greedy: ['src/agent/closerEngine.js', s => s.replace(
+    '    test: (t) => ENUMERATION_RE.test(t) && INTERROGATION_RE.test(t),',
+    '    test: (t) => ENUMERATION_RE.test(t),')],
   // F-08.69 — the wake split ignored: wakes silently follow replies again.
   wake_split_off: ['src/agent/closerEngine.js', s => s.replace(
     '  const wakeSplit = isNudge && route.nudge_provider && route.nudge_model;',
@@ -1239,6 +1258,69 @@ function fakeSupabase(db) {
   const engSrc4 = fs.readFileSync(path.join(ROOT, 'src/agent/closerEngine.js'), 'utf8');
   ok(/reason: 'no_send'/.test(engSrc4) && /an unsent message must not raise/i.test(engSrc4),
      'F-08.69 — a dropped wake is not logged, so the derived standing does not rise and she keeps the message');
+
+  // ═══ 17 · F-08.78 · F-08.79 · F-08.80 ════════════════════════════════════
+  section('17 · the register on the wire, the structural tell, the instrument that can see');
+
+  // ── F-08.78 · THE MONEY REGISTER FINALLY HAS A MECHANICAL WITNESS ────────
+  ok(closer.normalizeRegister('\u20B9999 for the bottom, \u20B9 5,999 for the top').text
+       === 'Rs 999 for the bottom, Rs 5,999 for the top',
+     "F-08.78 — THE SPECIMEN: the glyph swaps to the register's own bytes, spaced or not");
+  ok(closer.normalizeRegister('Rs 1,20,000 and Rs 4,999').corrected === 0,
+     'F-08.78 — correct money is untouched: it corrects a FORM, it does not read the number');
+  ok(closer.normalizeRegister('\u20B91,20,000').text === 'Rs 1,20,000',
+     'F-08.78 — and the DIGITS ship as she wrote them: grouping stays soul-side, never arithmetic');
+  ok(closer.registerFlags('\u20B9999').indexOf('register') !== -1
+     && closer.registerFlags('about 1.2L').indexOf('register') !== -1
+     && closer.registerFlags('50k budget').indexOf('register') !== -1,
+     'F-08.78 — the watcher class sees the glyph AND the k/L/Cr shorthand');
+  ok(closer.registerFlags('Rs 1,20,000 a month').length === 0,
+     'F-08.78 — and stays quiet on the register done right, so a flag means something');
+  // BEHAVIOURAL, not source-text: a `readFileSync` cell cannot see an in-memory
+  // mutation, so it would be a lint dressed as a proof. Driven instead.
+  const short = closer.normalizeRegister('roughly 1.2L, maybe 50k on flowers');
+  ok(short.corrected === 0 && short.text === 'roughly 1.2L, maybe 50k on flowers',
+     'F-08.78 — the SHORTHAND is watched and NEVER rewritten: a number is a semantic act');
+  // DELIVERED — the glyph must not survive to the wire, and the flag must survive
+  // the normalization that removed the thing it saw.
+  const glyphLlm = async () => ({ content: [{ type: 'text', text: 'The range is \u20B9999 to \u20B95,999 a month.' }], usage: {} });
+  const glyphOut = await closer.runCloserTurn({
+    supabase: fakeSupabase({ messages: [
+      { id: 'g1', conversation_id: 'cG', direction: 'inbound', body: 'how much', created_at: '2026-08-04T01:00:00Z' },
+    ] }), prospect: { id: 'pG', demo_vendor_ref: null }, conversationId: 'cG',
+    phone: '919000333444', wakeReason: 'reply', llm: glyphLlm,
+  });
+  ok(glyphOut.text.indexOf('\u20B9') === -1 && glyphOut.text.indexOf('Rs 999') !== -1
+     && (glyphOut.flags || []).indexOf('register') !== -1,
+     'F-08.78 DELIVERED — no glyph reaches the wire, and the watcher still reports the one it caught');
+
+  // ── F-08.79 · THE TELL IS THE SPECIMEN'S ANATOMY, NOT ITS VOCABULARY ─────
+  const REP1 = '1. **Kanupriya**, responding to that first message and wanting to know more?\n'
+             + '2. **Someone testing me** to see how I would respond?\n\n'
+             + 'So: are you Kanupriya, or are you testing the system?';
+  const REP3 = 'I need to be clear about what you are asking. Are you:\n\n'
+             + '1. Kanupriya, responding to that first message?\n'
+             + '2. Someone testing me?\n\n'
+             + 'The instructions I\u2019ve been given are very specific.';
+  ok(closer.wakeCostumeTells(REP1).indexOf('enumerated_interrogation') !== -1
+     && closer.wakeCostumeTells(REP3).indexOf('enumerated_interrogation') !== -1,
+     'F-08.79 — both 1d79567 specimens, neither of which carried a single old tell');
+  ok(closer.wakeCostumeTells('Two things worth knowing:\n\n1. Your page is live.\n'
+       + '2. Victor files for you.\n\nWant a look?').length === 0,
+     'F-08.79 — an ordinary enumerated wake is NOT dropped: the interrogation is half the anatomy');
+  ok(closer.wakeCostumeTells('Are you still there? Worth a look whenever.').length === 0,
+     'F-08.79 — and a bare question is not either: it takes BOTH limbs to fire');
+
+  // ── F-08.80 · THE INSTRUMENT CAN SEE THE SPLIT NOW ──────────────────────
+  const harn5 = fs.readFileSync(path.join(ROOT, 'scripts/b08_p5_closer_scenarios.js'), 'utf8');
+  ok(/nudge_provider: 'deepseek'/.test(harn5) && /production: \{ production: true/.test(harn5),
+     'F-08.80 — a production lane exists and seeds the REAL route, split and all');
+  ok(/if \(lane\.production\) \{\s*\n\s*const r = await llmCreate\(resolvedProvider, params\);/.test(harn5),
+     'F-08.80 — and it FORCES NOTHING: the provider that resolved is the provider that is called');
+  ok(/★ THIS LANE GATES/.test(harn5) && /does not gate/.test(harn5),
+     'F-08.80 — the transcript says which lane gates, so a reader cannot mistake a diagnostic for the gate');
+  ok(/DEEPSEEK_API_KEY ABSENT/.test(harn5),
+     'F-08.80 — a missing key collapses the split silently, so the run says so rather than being read as evidence');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);

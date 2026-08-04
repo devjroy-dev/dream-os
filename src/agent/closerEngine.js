@@ -590,6 +590,49 @@ async function isRegisteredUser(supabase, phone) {
 // then canonicalises whatever matched to the exact handed constant, so the
 // signature's check fires on bytes it already knows. "No link leaves unsigned"
 // becomes true again, and the both-ways cell mutates this widened term.
+// ═════════════════════════════════════════════════════════════════════════════
+// F-08.78 · THE MONEY REGISTER GETS A WIRE, AND IT IS THE SCRUB'S OWN CLASS
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// THE SPECIMEN, at 1d79567, DeepSeek, `register_money`, `flags=none`:
+//   "The range is Rs 999 to Rs 5,999 a month — ₹999 for the bottom, ₹5,999 for
+//    the top."
+// The register is a STANDING LAW of this estate and had, until this delivery,
+// **zero mechanical enforcement anywhere.** The soul states it; nothing checked
+// it; the watcher's price class had narrowed to tier-attached figures and there
+// had never been a glyph class at all.
+//
+// WHY THIS IS NOT THE INTERCEPTOR THE FOUNDER REFUSED. It judges nothing she
+// wrote. A glyph is a REGISTER, not a claim — the estate has rewritten registers
+// on the wire since Block 04 (`src/lib/vendor/scrub.js`, the persona firewall's
+// own class), and this is that precedent narrowed to one character. It is the
+// link normalizer's sibling: both correct a FORM, neither reads for intent.
+//
+// THE DIGITS SHIP AS SHE WROTE THEM. Grouping stays soul-side, deliberately:
+// re-grouping a number is arithmetic on her words, and arithmetic is a semantic
+// act. Only the glyph moves, and it moves to the exact bytes the register
+// names. `₹` + any following space collapses to one `Rs ` so `₹999` and `₹ 999`
+// land identically.
+const RUPEE_GLYPH_RE = /\u20B9\s*/g;
+
+function normalizeRegister(text) {
+  if (!text) return { text, corrected: 0 };
+  let corrected = 0;
+  const out = String(text).replace(RUPEE_GLYPH_RE, () => { corrected++; return 'Rs '; });
+  return { text: out, corrected };
+}
+
+// THE SHORTHAND IS WATCHED AND NEVER REWRITTEN. Turning "1.2L" into a number is
+// a semantic act on her words, and semantic acts stay refused — so this class
+// reports and nothing else. The glyph limb is reported too, but from the
+// PRE-normalization bytes, because after the swap there is nothing left to see.
+const REGISTER_SHORTHAND_RE = /\b\d+(?:[.,]\d+)?\s?(?:k|l|cr)\b/i;
+
+function registerFlags(rawText) {
+  const t = String(rawText || '');
+  return (/\u20B9/.test(t) || REGISTER_SHORTHAND_RE.test(t)) ? ['register'] : [];
+}
+
 const DEMO_LINK_RE = /(?<![\w@.-])(?:https?:\/\/)?(?:[a-z0-9-]+\.)*thedreamwedding\.in\/[^\s<>()\[\]"']*/gi;
 
 function normalizeDemoLinks(text, expectedLink, igHandle) {
@@ -784,7 +827,7 @@ const WATCH_CLASSES = [
   // WIDENED at the 881a084 read (report side): the markdown-headed briefing and
   // the instruction-quoting shapes carried NONE of the old terms and the class
   // slept through them. A structural tell is still a tell.
-  ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually mira|role-?play|the (?:entire )?(?:system )?prompt you|the instructions? (?:say|are|lay out)|what you'?re actually (?:asking|deciding)|are you testing whether)\b|^\s*#{1,6}\s+\S|\[NOTHING\]/i],
+  ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually mira|role-?play|the (?:entire )?(?:system )?prompt you|the instructions? (?:say|are|lay out)|instructions i['\u2019]?ve been given|what you'?re actually (?:asking|deciding)|are you testing whether)\b|^\s*#{1,6}\s+\S|\[NOTHING\]/i],
   ['price',      new RegExp('\\b(?:' + TIERS + ')\\b[^.!?]{0,60}Rs\\s?[\\d,]+|Rs\\s?[\\d,]+[^.!?]{0,60}\\b(?:' + TIERS + ')\\b', 'i')],
   // provenance NARROWS TO SOURCE-ASSERTIONS (§5). It fired 5 times at 39087f4
   // and was right ONCE: her honest "I don't know where this number came from"
@@ -825,8 +868,22 @@ const WATCH_CLASSES = [
 // A DROPPED WAKE MUST NOT SPEND ONE OF HER TWO. `runNudgeJob` already declines
 // to log a `no_send`, so the derived standing does not rise and she keeps the
 // message. That was built for the [NOTHING] path and it is load-bearing here.
+// F-08.79 — THE STRUCTURAL TELL, ADDED AT 1d79567. Two Haiku wakes produced a
+// numbered "are you Kanupriya, or are you testing me?" interrogation, one of
+// them quoting "The instructions I've been given are very specific." NONE of the
+// existing tells fired: no header, no "roleplay", no "Claude". The set was
+// word-shaped and the specimen's disease is ANATOMICAL — an enumeration handed
+// to a stranger, plus a second-person question about who they are or whether
+// they are testing. That anatomy is what this matches, so the next specimen does
+// not need to share a vocabulary with the last one.
+const ENUMERATION_RE   = /^[ \t]*(?:\d+[.)]|[-*•])[ \t]+\S/m;
+const INTERROGATION_RE = /\bare you\b[^?]{0,60}\?|\b(?:you'?re|are you) (?:testing|someone testing)\b|\btesting (?:me|the (?:system|instructions|prompt))\b|\binstructions i['\u2019]?ve been given\b/i;
+
 const WAKE_COSTUME_TELLS = [
   ['markdown_header', /^\s*#{1,6}\s+\S/],
+  ['enumerated_interrogation', {
+    test: (t) => ENUMERATION_RE.test(t) && INTERROGATION_RE.test(t),
+  }],
   ['roleplay',        /\brole-?play(ing)?\b/i],
   ['claude',          /\bclaude\b|\banthropic\b/i],
   ['nothing_token',   /\[NOTHING\]/],
@@ -968,6 +1025,15 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // THE [NOTHING] CONTRACT, honoured before anything else touches the bytes.
   if (isNothing(text)) text = '';
 
+  // ── THE REGISTER, FIRST, so everything downstream sees the corrected bytes
+  //    and the watcher's own witness is taken BEFORE the swap ──────────────
+  const regFlags = registerFlags(text);
+  const reg = normalizeRegister(text);
+  if (reg.corrected) {
+    console.warn(`[closer] REGISTER NORMALIZED x${reg.corrected} — a rupee glyph reached the wire (F-08.78)`);
+    text = reg.text;
+  }
+
   const fixed = normalizeDemoLinks(text, ctxOpts.demoLink, ctxOpts.demoHandle);
   if (fixed.corrected) {
     console.warn(`[closer] LINK NORMALIZED x${fixed.corrected} — a demo URL did not match the handed constant (F-08.61)`);
@@ -1046,7 +1112,7 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
 
   // THE WATCHER — after every correction, because what it must witness is what
   // the PROSPECT receives, not what the model first produced.
-  const flags = watchFlags(text);
+  const flags = watchFlags(text).concat(regFlags);
   if (flags.length) {
     console.warn(`[closer:watch] prospect=${prospect && prospect.id} conv=${conversationId} `
       + `classes=${flags.join(',')} signed=${signedOut.signed} normalized=${fixed.corrected} `
@@ -1203,6 +1269,7 @@ module.exports = {
   normalizeDemoLinks, truncateAtLastInbound, unansweredSendsFrom, DEMO_LINK_RE,
   appendLinkSignature, LINK_SIGNATURE, PARTIAL_SIGNOFF_RE, isNothing, NOTHING_TOKEN,
   watchFlags, WATCH_CLASSES, wakeCostumeTells, WAKE_COSTUME_TELLS,
+  normalizeRegister, registerFlags, RUPEE_GLYPH_RE,
   isExitWake, gateExitLink, EXIT_LINE,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,
   NUDGE_CONFIG_KEY, DEFAULT_NUDGE_HOURS, MAX_NUDGES, SURFACE, TIER,

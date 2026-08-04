@@ -1204,3 +1204,102 @@ moved. Nothing minted, nothing to veto.**
 3. Unchanged and unruled: **arm 1's three resolutions** · **F-08.76's three
    arms** · the ceiling at 12,800 · the sign-off upgrade · the `'closer'` token
    · **F-08.73 and the media-dedupe red**.
+
+---
+
+# ADDENDUM 9 · THE INSTRUMENT REBUILT · THE REGISTER GETS A WIRE (2026-08-04)
+
+**Base:** dream-os `1d79567` · dreamos-pwa `19978c7` (**ZERO pwa bytes**).
+**Ruled to:** the CE ×3 ruling, 2026-08-04, §2 through §6.
+
+## 75 · WHAT SHIPPED
+
+| Ruling | What |
+|---|---|
+| **§2** | `--lane=production` — seeds the REAL route, `resolveModel` decides per turn, `laneLlm` forces nothing, `wake_split` becomes witnessable · the banner names which lane gates · a missing DeepSeek key is announced, not discovered |
+| **§3** | `normalizeRegister` — the glyph swaps to `Rs `, digits untouched · the watcher gains a `register` class taken **pre-normalization** |
+| **§4** | the `enumerated_interrogation` tell — the specimen's **anatomy**, not its vocabulary |
+| **§5** | `docs/TDW_08_P5_OPEN_ARMS.md` — seven held items, evidence and arms |
+| **§6** | floor PAIRED, transcripts ride the delivery |
+
+## 76 · F-08.80 — THE INSTRUMENT COULD NOT SEE WHAT IT WAS GATING
+
+The pinned lanes seed `{provider, model}` — **two fields** — so a per-role split
+cannot exist in the fixture, and `:257` forced the provider afterwards regardless.
+Eighteen turns at `1d79567` read `wake_split=false` and **the whole of F-08.69 was
+invisible to the instrument gating its own deploy.**
+
+`production` mode is a third lane, not a replacement: `haiku` and `deepseek` stay
+exactly as built, because *"how does each architecture behave"* is a real question
+and they answer it. They just do not answer *"what does the shipped tree do."*
+**The banner now says which is which in the transcript**, so a reader cannot
+mistake a diagnostic for the gate.
+
+**And the silent-collapse path is announced.** A missing `DEEPSEEK_API_KEY` makes
+`guardKeys` drop the split — correct behaviour and a worthless run — so the lane
+header says so rather than letting `wake_split=false` be read as a measurement.
+
+## 77 · §3 — THE REGISTER FINALLY HAS A MECHANICAL WITNESS
+
+`₹999` reached the wire at `1d79567` with `flags=none`. The register has been
+standing law with **zero enforcement anywhere**: the soul stated it, nothing
+checked it, and the watcher's price class had narrowed to tier-attached figures.
+
+**The swap is `scrub.js`'s own class** — the estate has rewritten registers on the
+wire since Block 04. A glyph is a **form**, not a claim; it judges nothing she
+wrote, exactly as the link normalizer judges nothing.
+
+**THE DIGITS SHIP AS SHE WROTE THEM.** Grouping stays soul-side and the k/L/Cr
+shorthand is **watched and never rewritten** — turning "1.2L" into a number is
+arithmetic on her words, and semantic acts stay refused. A behavioural cell
+proves the shorthand survives untouched; a source-text cell would have been a
+lint dressed as a proof.
+
+**The flag is taken BEFORE the swap**, because after it there is nothing left to
+see — and a delivered-turn cell proves both halves in one act: no glyph on the
+wire, `register` still in `flags`.
+
+## 78 · §4 — ANATOMY, NOT VOCABULARY
+
+Both `1d79567` specimens carried **no old tell**: no header, no "roleplay", no
+"Claude". The disease is structural — **an enumeration handed to a stranger plus
+a second-person question about who they are or whether they are testing.** The
+tell matches that shape, so the next specimen need not share a vocabulary with
+the last.
+
+**Both false-positive arms are proven**, because the gate drops to silence and
+over-dropping is the defect in the other direction: an ordinary enumerated wake
+does not fire, and a bare question does not either. **It takes both limbs.**
+
+## 79 · THE FLOOR — PAIRED
+
+```
+b08_p5_closer_bench  209  (…182→195→209) · 45 mutations, 45 clean reds, ZERO stale
+b5c 47 · b08_p1 106 · b08_p3 61 · console 71 · factory 83 · invite 35
+b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+b05_couple_soul 21/21 · b06_advisor_route 16/16
+b06_meter 28/29 ⚠ PRE-EXISTING (F-08.73, open-arms §6)
+dreamos-pwa (ZERO bytes): unchanged since the last seal
+```
+
+`node --check` clean on all three touched `.js` files.
+
+## 80 · COPY INVENTORY
+
+**ZERO new user-facing bytes.** The register normalizer moves a glyph to bytes
+the standing law already names — **it mints nothing and the founder's own money
+register is the author of `Rs `.** Tells, lanes and flags are machinery.
+**No soul byte, no template byte, no signature byte moved.**
+
+## 81 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The eleven ×3 in PRODUCTION mode** — the first run in this arc that
+   measures the shipped tree. **Read `wake_split=true` on every nudge turn
+   first**; if it reads false, the key is missing and the run measures nothing.
+   Then: costume breaks (4/9 → 3/9 → ?), `WAKE_DROPPED=` lines, glyphs (must be
+   zero on the wire), `register` flags.
+2. **The open-arms packet** — seven items, and **§1 is urgent**: the soul is
+   live at 12,793 against a last-ratified 12,250.
+3. **The unproposed arm**, named in open-arms §7: a floor runner that fails
+   loudly on any non-green bench, so a red cannot be inherited. Two have been
+   now.
