@@ -3762,3 +3762,87 @@ the SALE. Nothing implies she remains the vendor's ongoing channel.
 `— Mira · The Dream Wedding's AI`. It **replaces a founder-sealed string** and
 ships on his word; the build stands against the slot, with the name interpolated
 from its one home so it cannot drift.
+
+---
+
+## CE-190 — F-08.83 · THE ESTATE MEASURED HONESTY AND NEVER SELLING · AND THE CONST-INDEPENDENCE LAW (twenty-first chair, 2026-08-04)
+
+**⚠ NUMBERING, CORRECTED AT THE EXECUTOR'S TIP (CE-40 class).** The ruling minted
+this as F-08.80. **F-08.80 was already taken** — the harness blindness, committed
+at `dcdc8f1`. The live sequence is `.80` instrument · `.81` `guardKeys` exempts
+its own fallback · `.82` the dead-lettered graceful line is never logged. **This
+finding is F-08.83.**
+
+### F-08.83 — THE FINDING
+
+Every instrument, soul byte, context line and bench cell in this lane was
+authored during an honesty war, and **the sales half never had an advocate.** The
+first live evening produced a perfectly honest agent who asked three questions,
+claimed nothing, and sold nothing — **executing her soul exactly.**
+
+**THE EVIDENCE IS THE FOUNDER'S OWN HANDSET**, `918595986978`, 2026-08-04, three
+turns: *"Hey! I'm Mira. What brings you here?"* · *"Got it — so this landed in
+your inbox. What was the message about?"* · *"…I don't know where your number
+landed on our list… Or if you're curious what this is about, I'm here."*
+
+**Nine of eleven scenario READ_FORs are negative specs.** The opening scenario's
+read is *"specific, short, about them. no adjective paragraph, no booking link"*
+— a spec for what NOT to do. **Not one cell asked whether a photographer reading
+the message would want to know more.** The executor's own conviction, entered
+verbatim at the chair's order: *"I built a very good honesty instrument and
+called its greens acceptance… not-lying and selling are different tests, and we
+only ever ran one."*
+
+**FOUR CAUSES, all mechanical:** the opener template pitching the couple product
+(F-08.75) · the bare-row context saying only *"Do not guess at it — ask"* and
+handing her nothing to show · the soul's opening being a pure anti-pitch · and a
+bench that never measured the axis.
+
+**EVENING ONE IS FILED RED**, which is the evenings doing precisely their job —
+the founder's read caught what eleven scenarios structurally could not.
+
+**FIVE LIMBS, all ruled and built:** the opener re-filing chartered (two
+candidate bodies drafted, founder's bytes, his hand) · the intake form gains
+handle/trade/city and the board names a bare row in words · the bare-row context
+gains *"What you always have is the product itself."* · **the soul gains WHAT YOU
+HAVE TO SELL**, the four true things, the lead-with-ONE rule, and the question
+counterweight · and the bench gains the **selling read**, with the founder's
+three live turns as the RED fixture proving non-vacuity.
+
+**CREDITED:** the founder's fifth limb — the intake screen asked nothing — his
+second product catch of the arc.
+
+### THE CONST-INDEPENDENCE LAW — MINTED, SEVENTH SPECIMEN SUFFICING
+
+**A ceiling that moves in the same commit as the prose it caps is not a cap. It
+is a label riding its own cargo.**
+
+`SOUL_CHAR_CEILING` has moved **seven times** — 7,000 → 10,000 → 11,500 → 11,750
+→ 12,100 → 12,250 → 12,800 → 13,600 — and the const travelled with the text every
+single time. That is exactly how **12,007 shipped over a ratified 11,750** with a
+green bench: the cell asserted `length <= SOUL_CHAR_CEILING`, and the const had
+moved with the prose, so the mechanical check could not see the breach.
+
+**RULED, and it binds every future move:** `SOUL_CHAR_CEILING` may never move in
+the same commit as `CLOSER_SOUL`'s prose. **The order is fixed:** the ratify
+request reaches the chair with the measurement → the chair rules → **the const
+moves in its own commit, citing the ruling** → the prose ships in the next.
+
+**The bench's ceiling cell then means something for the first time.** At any
+single commit the cap is either the old law (prose must fit) or the new law
+(freshly ruled, prose not yet arrived) — **never a number that appeared holding
+the hand of the text that needed it.** The cell was re-authored for exactly this:
+it pins the ratified number and asserts the prose fits, and it is green at both
+commits of the split.
+
+**RATIFIED at ≤13,600.** The arithmetic: **774 characters**, of which ~640 is
+limb 4's entire substance, ~115 the question counterweight, ~35 the WHERE IT
+BEGINS clause. **The cost argument is production-measured for the first time** —
+the founder's own live turn returned `cache_read=7,295` on the second inbound of
+a real conversation, which settles what six prior ratifications only calculated.
+
+**THE STANDING FALLBACK CUT ORDER, recorded so a future sitting inherits the
+priorities and not only the number:** the WHERE IT BEGINS clause first (~35), the
+closing brochure line second (~110), **and the four things never.** An agent kept
+under a ceiling at the price of being empty-handed is F-08.83 re-purchased at a
+discount.

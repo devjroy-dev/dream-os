@@ -82,7 +82,7 @@ const MUTATIONS = {
     + "               nudgesStanding };",
     "      throw new Error('no-send path removed by mutation');")],
   // RE-ANCHORED: the ceiling moved to 12,100 (executor-proposed, ratify-or-revert).
-  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 12800;', 'const SOUL_CHAR_CEILING = 100;')],
+  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 13600;', 'const SOUL_CHAR_CEILING = 100;')],
   // §2 — the fabrication ROOT CAUSE put back: metadata declared to mean she looked.
   soul_looked:  ['src/agent/souls/closerSoul.js', s => s.replace(
     'What you have is their handle, their trade and their city — not their photographs.',
@@ -1096,8 +1096,22 @@ function fakeSupabase(db) {
   const soulSrc = fs.readFileSync(path.join(ROOT, 'src/agent/souls/closerSoul.js'), 'utf8');
   ok(/a ceiling that travels with the thing it caps\n\/\/            is not a cap|is not a cap/.test(soulSrc),
      '§6 — the ladder records the 12,007-over-11,750 breach and names its failure mode');
-  ok(soul.SOUL_CHAR_CEILING === 12800 && soul.CLOSER_SOUL.length === 12793,
-     `§6 — EXECUTOR-PROPOSED 12,800 (ratify-or-revert); measured ${soul.CLOSER_SOUL.length}`);
+  // ── LABELED AMENDMENT · COUNT +1 · THE CONST-INDEPENDENCE LAW ────────────
+  // RATIFIED at <=13,600, and the same ruling minted the law this cell has to
+  // survive: **`SOUL_CHAR_CEILING` may never move in the same commit as the
+  // prose it caps.** Seven moves, and the const travelled with the text every
+  // one of them — which is exactly how 12,007 shipped over a ratified 11,750
+  // with a green bench: the cap was a label riding its own cargo.
+  //
+  // A CELL THAT PINS BOTH NUMBERS CANNOT BE GREEN AT COMMIT ONE, where the
+  // const arrives alone and the prose is still the old length. So it asserts
+  // the two things true at EVERY commit under the law: the ratified number, and
+  // that the prose fits inside it. Here that reads 12,793 <= 13,600; at the
+  // next commit, 13,567 <= 13,600.
+  ok(soul.SOUL_CHAR_CEILING === 13600,
+     '§6 — the ratified ceiling, 13,600, and it arrives in its own commit (const-independence law)');
+  ok(soul.CLOSER_SOUL.length <= soul.SOUL_CHAR_CEILING,
+     `§6 — and the prose fits inside it: ${soul.CLOSER_SOUL.length} / ${soul.SOUL_CHAR_CEILING}`);
 
   // ═══ 15 · F-08.75 · F-08.76 · F-08.77 — THE RENAME AND THE BOUNDARY ══════
   section('15 · the rename to the wire, and the persona boundary');
