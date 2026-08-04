@@ -19,13 +19,68 @@ const { normalizeTo } = require('../../lib/metaCloud');
 const { sendWa } = require('../../lib/sendWa');
 const { readDailyCap } = require('../../lib/prospects');
 
+// ═════════════════════════════════════════════════════════════════════════════
+// THE INTAKE GUARD (F-08.55's protection, moved to the door) — CE-ruled
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// F-08.55 stopped a registered vendor being SOLD to on the marketing line, at
+// the turn. It could not stop one being LOADED onto the lane in the first place
+// — and the console this router now serves puts intake under the founder's own
+// thumb, at speed, from a phone. The likeliest accident in the estate is him
+// pasting a list that contains his own customers.
+//
+// THE PREDICATE IS demoLeadAlert's OWN, not a second opinion: both phone forms,
+// because `users.phone` has no single normalizer governing writes so its
+// canonical shape is DECLARED, never derived. `closerEngine.isRegisteredUser`
+// uses the same pair for the same reason.
+//
+// IT FAILS **CLOSED**, and that asymmetry is deliberate and OPPOSITE to the
+// turn's. At the turn a human has already spoken and silence is the ruder
+// failure, so a broken lookup proceeds. HERE nothing is waiting: the cost of a
+// refused intake is one row the founder re-adds; the cost of a wrong intake is
+// a customer receiving a sales pitch from the house. So a lookup that throws
+// REFUSES, loudly logged.
+//
+// KEY-NEVER-PROSE: the screen renders on `already_registered`, so the sentence
+// can change without a client edit.
+async function isRegisteredPhone(supabase, phone) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .in('phone', [phone, `+${phone}`])
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+// PHONE SHAPE AT THE DOOR, so the register law holds at INTAKE and not only on
+// the wire. `normalizeTo` strips `+` and the `whatsapp:` prefix and stops there
+// — a bare ten-digit Indian number survives it intact and then fails silently
+// at Meta, hours later, as a send that never arrives. Refused here with a key
+// the screen can render, because a number the founder can still see on his own
+// screen is a number he can still fix.
+const BARE_TEN_DIGIT_RE = /^\d{10}$/;
+
+function phoneFault(phone) {
+  if (!phone) return 'phone_required';
+  if (BARE_TEN_DIGIT_RE.test(phone)) return 'missing_country_code';
+  if (!/^\d{8,15}$/.test(phone)) return 'phone_not_numeric';
+  return null;
+}
+
 const VALID_STATES = ['cold', 'templated', 'replied', 'in_session', 'converted', 'opted_out', 'expired'];
 const VALID_SOURCES = ['sheet', 'manual', 'other'];
 const CAP_KEY = 'marketing.daily_template_cap';
 
 function cleanProspectInput(b) {
   return {
-    phone:     b.phone ? normalizeTo(b.phone) : null,
+    // SPACES AND DASHES ARE WHAT A HUMAN TYPES, and `normalizeTo` strips only
+    // `+` and the `whatsapp:` prefix. Caught by this router's own bench: the
+    // shape "+91 98882 94440" — which is how the number appears on a phone —
+    // survived normalization as "91 98882 94440" and was refused as non-numeric.
+    // A door that rejects the format printed on the handset is not a door.
+    phone:     b.phone ? normalizeTo(String(b.phone).replace(/[\s\-().]/g, '')) : null,
     name:      b.name || null,
     ig_handle: b.ig_handle || b.ig || null,
     category:  b.category || null,
@@ -65,7 +120,20 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
 router.post('/', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const input = cleanProspectInput(req.body || {});
-  if (!input.phone) return errRes(res, 400, 'phone is required.');
+  const fault = phoneFault(input.phone);
+  if (fault === 'phone_required')       return errRes(res, 400, 'phone is required.', fault);
+  if (fault === 'missing_country_code') return errRes(res, 400, 'Add the country code — 91 and then the ten digits.', fault);
+  if (fault)                            return errRes(res, 400, 'That phone number has characters in it that a number cannot have.', fault);
+
+  // THE GUARD, before any write.
+  try {
+    if (await isRegisteredPhone(supabase, input.phone)) {
+      return errRes(res, 409, 'That number already belongs to a vendor on The Dream Wedding. This lane is for people who have not joined yet.', 'already_registered');
+    }
+  } catch (e) {
+    console.error(`[admin:prospects] registered check FAILED for ${input.phone}: ${e && e.message} — REFUSING: nothing is waiting on this, and the wrong intake sells to a customer`);
+    return errRes(res, 503, 'Could not check that number against existing vendors. Nothing was added — try again.', 'registered_check_failed');
+  }
 
   const { data, error } = await supabase
     .from('prospects')
@@ -85,10 +153,25 @@ router.post('/bulk', requireAdmin, asyncHandler(async (req, res) => {
   const rows = Array.isArray(req.body && req.body.prospects) ? req.body.prospects : null;
   if (!rows) return errRes(res, 400, 'body.prospects must be an array.');
 
-  const inserted = [], skipped = [], failed = [];
+  // `refused` is a FOURTH bucket and it is additive on purpose: the n8n sheet
+  // flow reads insertedCount/skippedCount/failedCount and must not break, while
+  // a refusal is genuinely none of those three — the row was valid, well-formed
+  // and deliberately not taken.
+  const inserted = [], skipped = [], failed = [], refused = [];
   for (const raw of rows) {
     const input = cleanProspectInput(raw);
-    if (!input.phone) { failed.push({ input: raw, error: 'missing phone' }); continue; }
+    const fault = phoneFault(input.phone);
+    if (fault) { failed.push({ phone: input.phone || null, input: raw, error: fault }); continue; }
+    try {
+      if (await isRegisteredPhone(supabase, input.phone)) {
+        refused.push({ phone: input.phone, error: 'already_registered' });
+        continue;
+      }
+    } catch (e) {
+      console.error(`[admin:prospects] registered check FAILED for ${input.phone}: ${e && e.message} — REFUSING that row`);
+      refused.push({ phone: input.phone, error: 'registered_check_failed' });
+      continue;
+    }
     const { data, error } = await supabase
       .from('prospects')
       .insert({ ...input, source: 'sheet', state: 'cold' })
@@ -100,7 +183,9 @@ router.post('/bulk', requireAdmin, asyncHandler(async (req, res) => {
       inserted.push(data);
     }
   }
-  return okRes(res, { insertedCount: inserted.length, skippedCount: skipped.length, failedCount: failed.length, inserted, skipped, failed });
+  return okRes(res, { insertedCount: inserted.length, skippedCount: skipped.length,
+                      failedCount: failed.length, refusedCount: refused.length,
+                      inserted, skipped, failed, refused });
 }));
 
 // GET /cap — the current daily template cap (defaults to 25 when unseeded).

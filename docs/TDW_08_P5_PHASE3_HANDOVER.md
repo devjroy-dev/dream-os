@@ -1303,3 +1303,134 @@ register is the author of `Rs `.** Tells, lanes and flags are machinery.
 3. **The unproposed arm**, named in open-arms §7: a floor runner that fails
    loudly on any non-green bench, so a red cannot be inherited. Two have been
    now.
+
+---
+
+# ADDENDUM 10 · THE PROSPECT CONSOLE · TWO REPOS (2026-08-04)
+
+**Base:** dream-os `dcdc8f1` · dreamos-pwa `19978c7`.
+**Ruled to:** the CE re-sequence + screen charter, 2026-08-04.
+**TWO ZIPS.**
+
+## 82 · WHAT SHIPPED
+
+| Repo | File | What |
+|---|---|---|
+| dream-os | `src/api/admin/prospects.js` | the **intake guard** (F-08.55 at the door, both phone forms, fails CLOSED) on `POST /` and `POST /bulk` · phone shape at the door · the `refused` bucket |
+| dream-os | `src/agent/closerEngine.js` | **F-08.72's missed line** — the watcher log now names the mouth that spoke |
+| dream-os | `scripts/b08_p5_prospect_intake_bench.js` | NEW — 13 cells, 5 both-ways mutations |
+| dream-os | `scripts/_noop_middleware.js` | NEW — the injected-past `requireAdmin`, named |
+| dreamos-pwa | `app/admin/prospects/page.tsx` | NEW — the console |
+| dreamos-pwa | `app/admin/layout.tsx` | the nav entry, Outreach |
+| dreamos-pwa | `scripts/tdw08_p5_prospects_console.proof.mjs` | NEW — 45 cells, 4 both-ways mutations |
+
+## 83 · THE API WAS WHOLE — VERIFIED, NOT TAKEN
+
+The relay said eight routes. **Derived at `dcdc8f1`: eight, and `src/api/router.js:52`
+mounts them at `/api/v2/admin/prospects`.** Every request and response shape in
+the screen was read off the handler before the caller was written (protocol §6),
+and the bench asserts all eight are registered — **the console is built against a
+door that exists.**
+
+## 84 · THE GUARD FAILS CLOSED, AND THAT IS THE OPPOSITE OF THE TURN
+
+F-08.55 at the turn **fails open**: a human has already spoken and silence is the
+ruder failure. **At intake nothing is waiting.** The cost of a refused row is one
+the founder re-adds; the cost of a wrong row is a customer receiving a sales
+pitch from the house. So a broken lookup **refuses**, loudly logged, and a cell
+drives exactly that.
+
+The predicate is `demoLeadAlert`'s own — **both phone forms**, because
+`users.phone` has no normalizer governing writes so its canonical shape is
+declared, never derived. A mutation dropping the second form reddens.
+
+**The bulk door is guarded as its own act**, and a separate mutation proves the
+twin cannot be missed — F-04.38's exact class, which is a cure landing on one
+door while its twin sits one file away.
+
+**`refused` is a FOURTH bucket, never a rename.** The n8n sheet flow reads
+`insertedCount`/`skippedCount`/`failedCount` and a cell asserts all three survive.
+
+## 85 · ⚠ §0.2 — THREE CORRECTIONS AGAINST MY OWN WORK, ALL CAUGHT BY MY OWN BENCH
+
+**(a) I asserted an envelope I had not read.** My first cells matched
+`res.body.error_key` and `res.body.data.…`. `src/lib/response.js`: `ok()` spreads
+onto `{ok:true, …}` with **no `data` wrapper**, and `err()` puts the key on
+**`code`**. The bench went red against correct production code. **Protocol §6 —
+read the actual handler before writing the caller, and a bench is a caller.**
+
+**(b) The door rejected the format printed on a handset.** `+91 98882 94440`
+survived `normalizeTo` as `91 98882 94440` and was refused as non-numeric.
+Spaces, dashes, brackets and dots are now stripped at the door. **Found by the
+cell asserting "the shapes a human actually types are normalized, not refused"**
+— a cell written because that is what the founder will type on evening one.
+
+**(c) The bench raced the thing it was testing.** `asyncHandler` returns
+**undefined**, so `await handler(…)` yields one microtask and no more: the short
+routes had responded by then, `POST /bulk`'s loop had not, and the bench crashed
+on a correct tree reading `res.body === null`. It now awaits the **response**,
+resolved by `res.json`. Named in-file.
+
+## 86 · CONTROL INVENTORY (CE-115) — ELEVEN CONTROLS, ALL NEW
+
+The state filter · add one prospect · paste a list · add the pasted list · the
+cap dial · send opener (arms) · the confirm tap · cancel the send · view the
+conversation · mark converted · clear the paste result. **This screen replaces no
+surface**, so there is nothing KEPT, MOVED or REMOVED — every control is NEW and
+each is asserted by name.
+
+**The send is confirm-tapped** because it spends a real Meta template on a real
+handset, and the armed state says which number. A mutation removing the arming
+step reddens.
+
+## 87 · THE FLOOR — PAIRED, BOTH REPOS
+
+```
+dream-os
+  b08_p5_prospect_intake   13   NEW · 5 mutations, 5 clean reds
+  b08_p5_closer_bench     209   byte-stable · 45 mutations, 45 clean reds
+  b5c 47 · b08_p1 106 · b08_p3 61 · console 71 · factory 83 · invite 35
+  b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+  b05_couple_soul 21 · b06_meter 28/29 ⚠ PRE-EXISTING (F-08.73)
+dreamos-pwa
+  tsc 0 lines on a cleared .next
+  29 .mjs — 28 green, tdw08_p5_prospects_console 45/45 NEW
+  7 .ts green
+```
+
+**FLOOR-METHOD DISCLOSURE:** `tdw_f0774_vacuity_probe.mjs` exits 1 on a **dirty
+tree by design** — *"Commit or stash first. Nothing was touched."* It is a
+mutation probe refusing to run over uncommitted work, which is correct conduct,
+not a red. It runs green once this delivery is committed. Proven identical at
+base and cured.
+
+## 88 · COPY INVENTORY — USER-FACING BYTES, ALL OPERATOR-SIDE
+
+Every string on the console is **operator copy**, read only by the founder:
+labels, the eleven control names, the refusal sentences, the cap's plain line
+(*"How many cold prospects the morning job may send an opener to. Set it to 0 to
+send none — the job still runs, and sends nothing."*), and two empty states.
+**No prospect-facing byte moved.** The two server refusal sentences
+(`already_registered`, `missing_country_code`) are operator-facing too — they
+reach an admin screen, never a wire.
+
+## 89 · WHAT THE FOUNDER'S THUMB PROVES, AND WHY IT IS EVENING ONE'S FIRST STEP
+
+The live witness is his, declared not claimed: **load the clean SIM's number from
+his phone, set the cap, fire Send opener at it, watch the thread render.** That
+is simultaneously the console's acceptance and the intake of the evening's
+fixture — which is why the re-sequence was worth taking.
+
+**The guard's own witness rides it free:** loading `919888294440` must be refused
+with *"Already a vendor with us."* — the same number that is `94440`, the guard's
+witness at the turn.
+
+## 90 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The founder's thumb-walk** → the walk card authors from the live rows per
+   the fixture-state law → evening one.
+2. **The open-arms packet** (`docs/TDW_08_P5_OPEN_ARMS.md`, shipped at `dcdc8f1`)
+   — seven items, **§1 urgent**: the soul is live at 12,793 against a
+   last-ratified 12,250.
+3. **F-08.73** and the media-dedupe red, and the unproposed arm: a floor runner
+   that fails loudly on any non-green bench.

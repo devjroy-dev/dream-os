@@ -1116,7 +1116,11 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   if (flags.length) {
     console.warn(`[closer:watch] prospect=${prospect && prospect.id} conv=${conversationId} `
       + `classes=${flags.join(',')} signed=${signedOut.signed} normalized=${fixed.corrected} `
-      + `provider=${route.provider} — REPORT ONLY, nothing blocked, precision UNMEASURED`);
+      // F-08.72, THE ONE LINE I MISSED. The TURN line was cured to name the mouth
+      // that spoke; this line was not, so every wake at dcdc8f1 read
+      // `provider=anthropic` while `called=deepseek`. Same class, one file, six
+      // lines apart — which is exactly how F-04.38's twin survived a cure.
+      + `provider=${called.provider} — REPORT ONLY, nothing blocked, precision UNMEASURED`);
   }
 
   if (!text) {
