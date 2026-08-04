@@ -89,7 +89,7 @@ const MUTATIONS = {
     + "               nudgesStanding };",
     "      throw new Error('no-send path removed by mutation');")],
   // RE-ANCHORED: the ceiling moved to 12,100 (executor-proposed, ratify-or-revert).
-  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 13850;', 'const SOUL_CHAR_CEILING = 100;')],
+  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 14300;', 'const SOUL_CHAR_CEILING = 100;')],
   // §2 — the fabrication ROOT CAUSE put back: metadata declared to mean she looked.
   soul_looked:  ['src/agent/souls/closerSoul.js', s => s.replace(
     'What you have is their handle, their trade and their city — not their photographs.',
@@ -1157,8 +1157,14 @@ function fakeSupabase(db) {
   // tree. So it asserts the two things that are true at EVERY commit under the
   // law: the ratified number, and that the prose fits inside it. At commit one
   // that reads 12,793 <= 13,600; at commit two, 13,567 <= 13,600.
-  ok(soul.SOUL_CHAR_CEILING === 13850,
-     '§6 — the ratified ceiling, 13,850, and it arrives in its own commit (const-independence law)');
+  // RE-PINNED at CE ruling R-A6 (2026-08-05), 13,850 -> 14,300. The literal is
+  // pinned DELIBERATELY: this cell is the const-independence law's mechanical half,
+  // and a cell reading `soul.SOUL_CHAR_CEILING` on both sides would move with the
+  // const and see nothing. It is GREEN AT BOTH COMMITS OF THE SPLIT — at the const
+  // commit the old prose (13,817) fits the new ceiling; at the prose commit the new
+  // prose (14,122) fits it too.
+  ok(soul.SOUL_CHAR_CEILING === 14300,
+     '§6 — the ratified ceiling, 14,300, and it arrives in its own commit (const-independence law)');
   ok(soul.CLOSER_SOUL.length <= soul.SOUL_CHAR_CEILING,
      `§6 — and the prose fits inside it: ${soul.CLOSER_SOUL.length} / ${soul.SOUL_CHAR_CEILING}`);
 

@@ -369,8 +369,36 @@ Then it ends, and the parting line is not yours to write. The house sends one pl
 //            Cost unchanged and production-measured: cache_read=7,471 on every
 //            warm turn of the 9b6e3ca run.
 //
-// Growth past 13,850 returns to the CE.
-const SOUL_CHAR_CEILING = 13850;
+//   14,300 — CE-RATIFIED, 2026-08-05, at the Session A read-first — CE ruling
+//            R-A6. THIS CONST ARRIVES IN ITS OWN COMMIT, prose in the next:
+//            the const-independence law, third application. The number was
+//            PRE-ratified in the charter CONDITIONAL on the executor's exact
+//            measurement, and the measurement is what released it — not the
+//            other order.
+//            MEASURED BEFORE: **13,817**. THE DELTA: **305** (303 of prose + the
+//            paragraph break). PROJECTED: **14,122**. HEADROOM: **178**.
+//            THE ARITHMETIC, +305 over 13,817 — MIRA RIDER 1, the on-your-behalf
+//            pitch, founder-ordered as a hotfix:
+//              ~305  WHAT YOU HAVE TO SELL gains the eleven-at-night beat — that
+//                    a couple who messages gets ANSWERED, warmly, right then, on
+//                    the vendor's behalf, with everything they said arriving
+//                    filed as a lead; and that the booking stays the vendor's and
+//                    costs one sentence.
+//            WHY IT IS NOT A FIFTH THING: it amplifies the THIRD of the four
+//            (Victor filing the midnight enquiry) and sits after the enumeration,
+//            before `Lead with ONE`. The count in the paragraph above stays
+//            honest — a soul that says "four" and lists five is handing the model
+//            a contradiction, which is the F-08.66/F-08.67 class in prose.
+//            EVERY CLAUSE IS PRESENT-TENSE WITNESSED, which is the whole warrant:
+//            the couple assistant answers and files live (`runCoupleAgenticTurn`
+//            -> `capture_couple_lead`, engine.js), and `donna_book_event` holds
+//            on one sentence (recordPrimitives.ts). She is not selling a roadmap.
+//            IF THE CHAIR REFUSES: the byte to re-cut is the second sentence —
+//            the booking clause — which is the least load-bearing of the two;
+//            the answering clause is the pitch itself and does not cut.
+//
+// Growth past 14,300 returns to the CE.
+const SOUL_CHAR_CEILING = 14300;
 
 // MIRA is deliberately NOT re-exported: one home, at miraSoul.js. Anything that
 // needs the name imports it there, exactly as this module does.
