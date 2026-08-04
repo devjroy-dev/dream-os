@@ -264,10 +264,71 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
 
         const input = toolUse.input;
 
-        // Parse date safely
-        let event_date = null;
-        if (input.event_date) {
-          const parsed = new Date(input.event_date);
+        // ── TDW_08 P5 · F-08.87 — THE PRECISION DROP, CURED AT THE ONE HOME ──────────
+        // (CE ruling R-A2, Session A read-first, 2026-08-05.)
+        //
+        // THE DISEASE. This lane parsed the date inline and wrote `wedding_date` alone
+        // (:307 update, :324 create), never `wedding_date_precision`. A bride who said
+        // "December" had the model fill the day it always fills, and the row became a
+        // hard 1 Dec — indistinguishable, forever, from a wedding actually on the 1st.
+        // The vendor lane never had this: it has called `resolveWeddingDate` since
+        // Patch 8d (see `create_lead`, :588-597).
+        //
+        // THE RULING, RE-SCOPED AND REPORTED (§0.2). The charter ruled the vendor
+        // lane's resolver HOISTS to one home and both lanes call it. Half was already
+        // true: the resolver never lived inside the vendor lane — it lives at
+        // `src/agent/datePrecision.js` and is exported there beside
+        // `formatDateWithPrecision`. So nothing hoists; THIS lane joins. One limb, not
+        // two, and the two lanes can no longer drift because there is only one rule.
+        //
+        // FORWARD-ONLY BY RULING. Retroactive repair was REFUSED and the refusal is
+        // recorded here rather than in a doc nobody re-reads: existing 1st-of-month
+        // rows are indistinguishable from true 1st-of-month weddings, so a backfill
+        // would have to guess, and a guess written into a date column is the disease
+        // wearing a cure's clothes.
+        //
+        // THE HAYSTACK IS THE OWNER'S OWN WORDS, RULED (R-A2). `capture_couple_lead`
+        // carries NO `raw_message` parameter — the vendor lane's `input.raw_message ||
+        // inboundMessage` has no analogue here — and the bride commonly names the month
+        // several turns before the capture fires ("December" at turn 2, the name at
+        // turn 5). So the text handed to the resolver is HER user-role turns for this
+        // session plus this inbound, and NOTHING the assistant wrote.
+        //
+        // [F-06.85: this paragraph is conditioned on a MECHANICAL fact — that `history`
+        //  above (:90-102) carries role-tagged turns, `role: 'user'` for inbound only.
+        //  Mechanism: the `.map()` at :95-98, whose ternary is the sole role source. If
+        //  that mapping ever stops distinguishing direction, this filter silently starts
+        //  feeding the assistant's prose to the resolver and this comment is false.]
+        //
+        // WHY ASSISTANT PROSE IS EXCLUDED, on the record: Eliza paraphrases. If she
+        // writes back "so, a December wedding" and that sentence enters the haystack,
+        // HER rewording mints a precision the bride never spoke — the provenance-hold
+        // class, one column over. The owner's words are the only authority for what
+        // the owner said.
+        const { resolveWeddingDate } = require('./datePrecision');
+        const coupleOwnWords = [
+          ...history.filter(m => m.role === 'user').map(m => m.content),
+          inboundMessage,
+        ].filter(Boolean).join(' ');
+        const resolvedDate = resolveWeddingDate({
+          wedding_date: input.event_date,
+          raw_message:  coupleOwnWords,
+          name:         input.name,
+        });
+
+        // THE YEAR-BUMP SURVIVES (§8 — existing behaviour is sacred). The inline parse
+        // this replaces rolled a past date forward a year, twice if needed; the resolver
+        // has no such rule (`setFullYear` appears nowhere in datePrecision.js) because
+        // the vendor lane's dates arrive from a vendor stating a real booking. A bride
+        // saying "December" in August gets the model's "2025-12-01" as often as not, and
+        // dropping this bump would file next winter's wedding in the past. Applied AFTER
+        // resolution, deliberately: the sentinel is the 1st for 'month' and Jan 1 for
+        // 'year', and moving the year leaves both sentinels exactly where they were, so
+        // the precision the resolver derived survives the bump untouched.
+        let event_date = resolvedDate.wedding_date;
+        let event_date_precision = resolvedDate.precision;
+        if (event_date) {
+          const parsed = new Date(event_date);
           if (!isNaN(parsed.getTime())) {
             const today = new Date();
             if (parsed < today) {
@@ -276,6 +337,9 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             }
             event_date = parsed.toISOString().split('T')[0];
           }
+        }
+        if (event_date_precision === 'month' || event_date_precision === 'year') {
+          console.log(`[couple-agent:capture] precision=${event_date_precision} — sentinel date kept (${event_date}), UI will render appropriately`);
         }
 
         // Upsert lead — dedup on (vendor_id, phone)
@@ -304,7 +368,14 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
           // A partial update writes what it KNOWS and leaves the rest alone. Absence of a
           // field in one turn's extraction is not the owner saying the field is empty.
           const leadPatch = { name: resolvedName };
-          if (event_date)           leadPatch.wedding_date   = event_date;
+          // F-08.87: precision travels WITH the date and only with it. Guarded by the
+          // same `if` deliberately — a partial update writes what it knows (F-06.48's
+          // law, the paragraph above), and writing precision on a turn that supplied no
+          // date would re-label a stored date from a sentence that never mentioned it.
+          if (event_date) {
+            leadPatch.wedding_date            = event_date;
+            leadPatch.wedding_date_precision  = event_date_precision;
+          }
           if (input.event_city)     leadPatch.wedding_city   = input.event_city;
           if (input.occasion)       leadPatch.event_types    = [input.occasion];
           if (input.budget_min)     leadPatch.budget_min     = input.budget_min;
@@ -322,6 +393,11 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
             phone:        couplePhone,
             name:         resolvedName,
             wedding_date: event_date,
+            // F-08.87. NULL when no date was given — `leads_wedding_date_precision_check`
+            // (PUBLIC_SCHEMA.md:1395-1396) admits day|month|year and NULL, never ''.
+            // `resolveWeddingDate` returns null precision for a null date, so the two
+            // columns cannot disagree by construction.
+            wedding_date_precision: event_date_precision,
             wedding_city: input.event_city   || null,
             event_types:  input.occasion ? [input.occasion] : null,
             budget_min:   input.budget_min   || null,
@@ -363,7 +439,35 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
         if (event_date)       parts.push(`Date: ${event_date}`);
         if (input.event_city) parts.push(`City: ${input.event_city}`);
         if (input.budget_min) {
-          const bud = `Rs ${(input.budget_min/100000).toFixed(1)}L${input.budget_max && input.budget_max !== input.budget_min ? `-${(input.budget_max/100000).toFixed(1)}L` : ''}`;
+          // ── TDW_08 P5 · F-08.86 — Rs 4.5L ON THE VENDOR WIRE (CE ruling R-A3) ──────
+          // SITE 1 OF 2. This string reaches a VENDOR's handset (the four notification
+          // sites, vendorInbound.js:588/698/837/971). `Rs 4.5L` breaks the house money
+          // register twice over — the L shorthand is forbidden outright, and toFixed(1)
+          // rounds 4,55,000 to "4.6L", so the vendor read a figure the bride never said.
+          //
+          // THE HOME IS NOT NEW AND IS NOT INVENTED HERE. `witnessLine.rupees` is the
+          // CJS wire's ONE grouped-money home (TDW_06 M-4, ruling R2-B); the TS engine's
+          // `rs()` is the same output form one runtime over, and recordPrimitives.ts:122
+          // states the split in law: per-runtime, no cross-runtime reach. Five modules
+          // already import it under this exact comment. A third formatter is forbidden.
+          //
+          // THE FALLBACK IS THE ESTATE'S OWN IDIOM (`rupees(n) || \`Rs ${n}\``, as at
+          // harvest.js:311 and api/vendor/leads.js:250): `rupees` returns null on a
+          // non-finite or non-positive value, and a lead's budget must never render the
+          // word "null" on a vendor's phone.
+          //
+          // THE RANGE FORM IS FOUNDER-VETOED, 2026-08-05, verbatim 「 yes 」:
+          //   was  Rs 4.5L-6.0L
+          //   now  Rs 4,50,000-Rs 6,00,000
+          // The separator byte is preserved exactly; `Rs` repeats on the second bound
+          // because the home emits its own prefix and stripping it would be a third
+          // formatter wearing a substring's clothes.
+          const { rupees } = require('../lib/witnessLine');
+          const budMin = rupees(input.budget_min) || `Rs ${input.budget_min}`;
+          const budMax = (input.budget_max && input.budget_max !== input.budget_min)
+            ? (rupees(input.budget_max) || `Rs ${input.budget_max}`)
+            : null;
+          const bud = budMax ? `${budMin}-${budMax}` : budMin;
           parts.push(`Budget: ${bud}`);
         }
         const summary = parts.length > 0 ? parts.join(', ') : 'Details still being collected';
