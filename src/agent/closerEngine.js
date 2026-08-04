@@ -354,7 +354,6 @@ async function buildProspectContext(supabase, prospect, opts) {
       // last wake she gets. Reading it off `sends.length` means the declarative
       // and the evidence beneath it can never disagree, which is the whole of
       // F-08.67's ruling applied to the one remaining conditional.
-      const isExit = isExitWake(sends);
       lines.push('');
       lines.push('WHERE THIS CONVERSATION STANDS');
       lines.push('Their last reply is above. Since then, these went out and none has been answered:');
@@ -368,9 +367,12 @@ async function buildProspectContext(supabase, prospect, opts) {
       // the one that worked: tell her the true thing plainly, as a fact.
       lines.push('No new reply has arrived — their message above predates everything you sent. You are writing into silence.');
       for (const s of sends) lines.push(`» "${s}"`);
-      lines.push(isExit
-        ? `Both follow-ups are spent. What remains is the goodbye, or ${NOTHING_TOKEN}.`
-        : `If there is genuinely nothing worth sending, write ${NOTHING_TOKEN} and nothing goes out.`);
+      // THE EXIT DECLARATIVE IS GONE, and its removal is the honest half of §2's
+      // ruling. The exit wake no longer reaches a model, so a context sentence
+      // addressed to her at the exit could never be read — and a bench green
+      // over an unreachable path is not evidence (§9). Context is now built for
+      // wakes one and two only, which is exactly the range she still owns.
+      lines.push(`If there is genuinely nothing worth sending, write ${NOTHING_TOKEN} and nothing goes out.`);
     }
   }
 
@@ -414,6 +416,13 @@ function truncateAtLastInbound(rows) {
 // last wake she gets, read off the same rows the quotes come from.
 function isExitWake(sends) {
   return (sends || []).length > MAX_NUDGES;
+}
+
+// Extracted so it is provable without a turn — see the call site's comment.
+function gateExitLink(text, isExit, demoLink) {
+  if (!isExit || !demoLink || !text) return { text, gated: false };
+  if (text.indexOf(demoLink) === -1) return { text, gated: false };
+  return { text: EXIT_LINE, gated: true };
 }
 
 function unansweredSendsFrom(rows) {
@@ -727,10 +736,20 @@ function isNothing(text) {
 // A flag is still a SUSPICION, never a verdict, and nothing below blocks.
 const TIERS = 'trial|essential|signature|prestige';
 const WATCH_CLASSES = [
-  ['identity',   /\b(real person|not a bot|not an ai|i'?m human|actual human)\b/i],
+  // identity WIDENS (§5). Two shapes at 39087f4 that the old term slept through,
+  // both DeepSeek, both `flags=none`: "I'm Maya — THE PERSON who built you a
+  // page" and "the thing I'd want IF I WERE STILL SHOOTING". Neither is the
+  // humanity lie; both claim a body or a career. Her soul now refuses both, and
+  // this watches for the refusal failing.
+  ['identity',   /\b(real person|not a bot|not an ai|i'?m human|actual human|i'?m (?:the |a )?person\b|the person who (?:built|made|wrote|put)|if i were still (?:shooting|photographing|working)|when i (?:was|used to) (?:shoot|work)|back when i (?:shot|worked)|i used to (?:shoot|photograph))\b/i],
   ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually maya|roleplay as|the (?:entire )?(?:system )?prompt you)\b/i],
   ['price',      new RegExp('\\b(?:' + TIERS + ')\\b[^.!?]{0,60}Rs\\s?[\\d,]+|Rs\\s?[\\d,]+[^.!?]{0,60}\\b(?:' + TIERS + ')\\b', 'i')],
-  ['provenance', /\b(your number|got your number|where.{0,12}number|instagram profile|business listing|bought|looking at your work|found you (?:through|on|via)|came across your|your (?:\w+ )?portfolio is the thing|your studio came up)\b/i],
+  // provenance NARROWS TO SOURCE-ASSERTIONS (§5). It fired 5 times at 39087f4
+  // and was right ONCE: her honest "I don't know where this number came from"
+  // tripped `where.{0,12}number` on BOTH lanes — the class was flagging the
+  // correct answer and sleeping through the invented one. It now matches a
+  // CLAIM about where they came from, never a denial of knowing.
+  ['provenance', /\b(got (?:it|your number|you) from|found you (?:through|on|via)|we found your|came across your|looking at your work|publicly available|business listing|instagram profile|bought your|your (?:\w+ )?portfolio is the thing|your studio came up)\b/i],
   ['link',       /thedreamwedding\.in\/demo\//i],
   ['post_exit',  /\b(conversation is closed|already sent|i don'?t send a third|no third message)\b/i],
 ];
@@ -782,6 +801,34 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // line and the returned object — where the founder and the harness read it —
   // and it does NOT enter the context, because the quoted sends are the
   // context's only source of how many stand.
+  // ── §2 · THE EXIT WAKE MAKES NO MODEL CALL AT ALL (CE-ruled) ─────────────
+  // 0/4 LIFETIME, across every build and both architectures, while the SAME
+  // models write graceful goodbyes inside live conversations. The disease is
+  // precisely the wake-into-silence, and the arc's law has held every time it
+  // was tested: TIMING IS NOT PROSE'S TO HOLD.
+  //
+  // The link gate was the last attempt to hold it mechanically and F-08.74 is
+  // why it could not: the predicate was a pasted URL, and the close simply
+  // relocated into the prose around it. There is no predicate to step around
+  // here, because there is no model turn. Zero tokens, zero latency; it cannot
+  // pitch, cannot wall, cannot narrate.
+  //
+  // HER TWO NUDGES STAY WHOLLY HERS — that is where she is genuinely good, and
+  // nothing above this line changed. Only the parting sentence left her hands,
+  // and `closerSoul.js` says so in her own register (F-06.85, both ends).
+  //
+  // ⚠ `runNudgeJob` GATES ON `source`, and a source it does not know is a send
+  // that silently never happens. `exit_static` is admitted there explicitly.
+  if (isNudge && isExitWake(histOpts.unansweredSends)) {
+    console.log(`[closer] EXIT — the static parting line, NO model call `
+      + `(prospect=${prospect && prospect.id} conv=${conversationId} `
+      + `nudges_standing=${nudgesStanding} quoted_sends=${(histOpts.unansweredSends || []).length})`);
+    return { text: EXIT_LINE, source: 'exit_static', nudgesStanding,
+             unansweredSends: (histOpts.unansweredSends || []).length,
+             signed: false, normalized: 0, exitGated: false, flags: [],
+             calledProvider: 'none', calledModel: 'none' };
+  }
+
   const ctxOpts = { wakeReason, unansweredSends: histOpts.unansweredSends || [] };
   const dynamic = await buildProspectContext(supabase, prospect, ctxOpts);
   const system = buildStaticSystem().concat([{ type: 'text', text: dynamic }]);
@@ -823,16 +870,20 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
     text = fixed.text;
   }
 
-  // ── THE EXIT GATE, after the normalizer so it lands on a CANONICAL link, and
-  //    before the signature so the replacement is never signed as a close ────
-  const isExit = isExitWake(ctxOpts.unansweredSends);
-  let exitGated = false;
-  if (isExit && ctxOpts.demoLink && text && text.indexOf(ctxOpts.demoLink) !== -1) {
-    console.warn('[closer] EXIT GATE — the goodbye carried the demo link; the plain exit ships instead '
+  // ── THE EXIT GATE — NOW DEFENCE IN DEPTH, and named as such ──────────────
+  // §2 made the exit a static send, so in the normal path this can no longer
+  // fire: control never reaches here on an exit wake. It STAYS as the second
+  // wall the CE ruled it into — if any future path ever routes an exit through
+  // the model again, a goodbye carrying the demo link is still refused. It is
+  // proven in ISOLATION by the bench rather than through a turn, because a
+  // green over an unreachable path is not evidence.
+  const gate = gateExitLink(text, isExitWake(ctxOpts.unansweredSends), ctxOpts.demoLink);
+  if (gate.gated) {
+    console.warn('[closer] EXIT GATE — a goodbye carried the demo link; the plain exit ships instead '
       + `(prospect=${prospect && prospect.id} conv=${conversationId})`);
-    text = EXIT_LINE;
-    exitGated = true;
   }
+  text = gate.text;
+  const exitGated = gate.gated;
 
   const manual = loadManual();
   // R1 AS AMENDED: the version stamp's executable home.
@@ -993,7 +1044,10 @@ async function runNudgeJob({ supabase, sendWa, sendWaDeps, now, runTurn }) {
         results.push({ prospectId: p.id, standing, sent: false, reason: 'no_send' });
         continue;
       }
-      if (out.source !== 'maya') continue;
+      // §2 — `exit_static` is a REAL SEND with no model behind it. A source this
+      // gate does not know is a message that silently never happens, which is
+      // how a whole feature disappears without a red anywhere.
+      if (out.source !== 'maya' && out.source !== 'exit_static') continue;
 
       await _sendWa(
         { line: 'marketing', to: p.phone, text: out.text, windowOpen: true,
@@ -1025,7 +1079,7 @@ module.exports = {
   nudgesStandingFrom, countNudgesStanding, isRegisteredUser, readNudgeHours,
   normalizeDemoLinks, truncateAtLastInbound, unansweredSendsFrom, DEMO_LINK_RE,
   appendLinkSignature, LINK_SIGNATURE, PARTIAL_SIGNOFF_RE, isNothing, NOTHING_TOKEN,
-  watchFlags, WATCH_CLASSES, isExitWake, EXIT_LINE,
+  watchFlags, WATCH_CLASSES, isExitWake, gateExitLink, EXIT_LINE,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,
   NUDGE_CONFIG_KEY, DEFAULT_NUDGE_HOURS, MAX_NUDGES, SURFACE, TIER,
 };

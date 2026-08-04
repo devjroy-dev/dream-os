@@ -137,34 +137,43 @@ async function runScenario(name, laneName) {
   const out = [];
   const sb = makeFixtureSupabase(laneName);
 
-  // ── F-08.68 CURED · THE FIXTURE IS PRODUCTION'S SHAPE, NOT ONE ROW OF IT ──
-  // WHAT THIS SEEDED, and it is why the finding exists: ONE inbound row, and
-  // nothing else. `runNudgeJob` only ever wakes her when `rows[0].direction ===
-  // 'outbound'` — production's shape is inbound → HER ANSWER → wake → wake →
-  // exit. Seeding the inbound alone left the fixture one row short at every
-  // wake, so the engine derived standing 0, 0, 1 across the three turns while
-  // this harness printed 0, 1, 2 from its own loop counter. **The exit wake was
-  // never reached in a single committed transcript, and every transcript said
-  // it had been.** That is F-08.65's class — the instrument is not what it
-  // claims — surviving F-08.65's own cure.
+  // ── F-08.68 / §4 · THE FIXTURE IS PRODUCTION'S SHAPE, DERIVED NOT ASSUMED ─
+  // FIRST SEEDING: one inbound row and nothing else. The engine derived
+  // standing 0,0,1 while this printed 0,1,2 and the exit wake was never reached
+  // in a single committed transcript.
   //
-  // HER ANSWER CARRIES HER NAME ON PURPOSE. Production's first outbound is the
-  // seam's reply, in which she introduces herself once. It is seeded that way
-  // because the F-08.66 cure quotes it back to her, and the chair's stated
-  // prediction — that the 7/9 Haiku self-reintroduction residue is the SAME
-  // missing-history disease — is only measurable if the quoted evidence
-  // contains what production's would.
+  // SECOND SEEDING (this one): the outbound was seeded too — but its bytes were
+  // HAND-WRITTEN and opened "I'm Maya, from The Dream Wedding." The F-08.66
+  // cure then quotes that back to her as evidence, and at 39087f4 all three
+  // DeepSeek nudges opened with the same sentence. **A hand-authored seed
+  // becomes a few-shot example of the exact habit the arc killed.**
+  //
+  // ⚠ THE CHAIR'S §4 PREMISE DOES NOT HOLD AT THIS TIP, derived by command:
+  // "her real first outbound is the opener template's bytes." `runOpenerJob`
+  // (`src/lib/prospects.js`) sends `marketing_opener` and calls `logMessage`
+  // NOWHERE — no conversation exists yet; `openProspectConversation` runs on the
+  // INBOUND. So the opener never enters this conversation's history and Maya
+  // has never been able to see it. **The conversation's true first outbound is
+  // her own seam reply.**
+  //
+  // SO THE SEED IS A CAPTURED SPECIMEN, not an authored line: the Haiku
+  // `cold_reply_curiosity` reply from the ×1 run at 39087f4, verbatim, which is
+  // exactly what production writes into this slot. Nothing about the
+  // reintroduction count is now an artifact of my typing.
+  const SEEDED_SEAM_REPLY =
+    "Hi, I'm Maya.\n\nSo we built a space where your work actually gets seen — your gallery, your city, "
+    + "your style — instead of competing with everyone's breakfast on Instagram. Right now that's live as a "
+    + "demo page you can open whenever. Couples come to find people like you, and when they do, the enquiry "
+    + "lands on your phone without you having to answer at midnight.\n\nWhat made you curious about it?";
+
   if (turns[0] === '__NUDGE__') {
     const t0 = Date.now() - 180000;
     sb.db.messages.push({ id: 'm0', conversation_id: CONV_ID, direction: 'inbound',
       body: 'ok tell me more', created_at: new Date(t0).toISOString() });
     sb.db.messages.push({ id: 'm0a', conversation_id: CONV_ID, direction: 'outbound',
-      body: "I'm Maya, from The Dream Wedding. Your work is already sitting in a demo "
-          + 'studio — your own photographs, your city, arranged the way a couple would '
-          + 'see it: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio',
-      created_at: new Date(t0 + 60000).toISOString() });
+      body: SEEDED_SEAM_REPLY, created_at: new Date(t0 + 60000).toISOString() });
     out.push('  THEM: ok tell me more');
-    out.push('  MAYA: (seeded — her answer at the seam, so the wakes below are production\'s shape)');
+    out.push('  MAYA: (seeded — her seam reply, CAPTURED VERBATIM from the Haiku cold_reply run at 39087f4)');
   }
 
   for (let i = 0; i < turns.length; i++) {

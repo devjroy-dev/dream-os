@@ -685,3 +685,161 @@ added. Nothing else minted.
 5. **F-08.59's provenance slot** — one true sentence from the founder retires
    the class; DeepSeek showed the honest-ignorance line working tonight.
 6. **The `PRODUCT_LINK` exit shape** — named, not built (§36).
+
+---
+
+# ADDENDUM 5 · THE ×1 RULING BUILT — §2 → §6 (2026-08-04)
+
+**Base:** dream-os `39087f4` · dreamos-pwa `19978c7` (**ZERO pwa bytes**).
+**Ruled to:** the CE's ×1-read ruling, 2026-08-04, §2 through §6.
+**Role:** EXECUTOR. Nothing pushed.
+
+## 42 · WHAT SHIPPED
+
+| Ruling | What |
+|---|---|
+| **§2** | the exit wake makes **no model call**: the static parting line ships from the machinery · `runNudgeJob` admits `exit_static` · the exit declarative leaves context · the link gate becomes `gateExitLink`, defence in depth, proven in isolation · the soul's WHEN NOBODY ANSWERS re-authored |
+| **§4** | the nudge fixture's seed becomes a **captured production specimen** |
+| **§5** | the soul's WHO YOU ARE gains the biography boundary · identity widens to person/career claims · provenance narrows to source-assertions |
+| **§6** | ceiling ratified 12,250; the ladder **records the breach** |
+| **§3** | ⚠ **NOT BUILT — the collision is fatal as worded. Shown below.** |
+
+## 43 · ⚠ §3 — ARM 1 CANNOT EXECUTE AS WORDED, AND HERE IS THE COMMAND
+
+Arm 1 applied to production source (`rows = []` where the truncation stood),
+driven through `runCloserTurn` on a production-shaped nudge fixture:
+
+```
+[closer] no-send — a nudge with no conversation behind it has nothing to say
+  RESULT source=no_send  text=""
+```
+
+**The model is never reached and no nudge is ever sent.** `runNudgeJob` treats
+`no_send` as a legal silent turn that does not even spend one of her two, so
+**Maya would simply stop nudging — with no red anywhere in the floor.** The API
+constraint underneath it is already on the record: `886d0f7`'s committed
+transcripts carry `400 messages: at least one message is required`.
+
+The collision is not the guard being wrong. It is that a nudge which still calls
+a model **must** carry a user-role turn, and the only candidates are the stale
+inbound (the disease), a machinery line (F-08.57, dead), or her own last send
+(the prefill, also dead). **Reported, not adapted.** Resolutions I can see, none
+picked:
+
+1. **Quote the inbound into context too and keep it in the array** — the array
+   is unchanged, but the frame states its age; this is the current build plus
+   §3's declarative, which measured 1/6 explicit and ~5/6 soft.
+2. **Retire the model call on wakes 1 and 2 as well**, the way §2 retired the
+   exit. Kills the class outright; costs the two messages she is good at.
+3. **Accept the residue and measure it at the ×3** — the declarative has one
+   run of data and the softest forms may be prose, not architecture.
+
+## 44 · §2 — THE EXIT IS NO LONGER A MODEL TURN
+
+0/4 lifetime, both architectures, while the same models write graceful goodbyes
+inside live conversations. **There is no predicate to step around because there
+is no model turn.** Zero tokens; it cannot pitch, wall, or narrate.
+
+**THE SILENT-FAILURE CATCH:** `runNudgeJob` gates on `out.source !== 'maya'`.
+A new source it does not know is **a send that never happens, with no error** —
+the whole feature disappearing without a red. `exit_static` is admitted
+explicitly and **a runtime cell drives the real job and asserts the parting line
+actually goes on the wire.**
+
+The exit declarative left the context: the exit no longer reaches a model to
+read it, and **a bench green over an unreachable path is not evidence** (§9).
+The gate survives as `gateExitLink`, defence in depth, proven **in isolation**
+for the same reason.
+
+## 45 · ⚠ §0.2 — TWO CORRECTIONS AGAINST MY OWN WORK, AND ONE AGAINST THE RULING
+
+**(a) A VACUOUS CELL OF MINE, convicted by the harness.** My first §2 cell
+asserted the nudge-job gate by `fs.readFileSync` on the source. **The harness
+mutates production source IN MEMORY before require, so no source-text cell can
+ever see a mutation** — `nudge_job_drops_exit` came back GREEN. F-08.53's third
+limb convicting my own bench. Replaced with the runtime cell it should always
+have been. **Every source-text cell in this bench inherits that limitation and
+it is now named in-file.**
+
+**(b) A CELL THAT COULD NOT DISTINGUISH TWO TERMS.** My provenance cell drove
+`"I got it from looking at your work"`, which matches **two** terms, so
+`watch_prov_narrow` stayed green. Re-driven on a string whose only trigger is
+the term under test.
+
+**(c) ⚠ THE CHAIR'S §4 PREMISE DOES NOT HOLD AT THIS TIP.** *"Her real first
+outbound is the opener template's bytes."* Derived by command: `runOpenerJob`
+(`src/lib/prospects.js`) sends `marketing_opener` and calls `logMessage`
+**nowhere** — no conversation exists yet, `openProspectConversation` runs on the
+INBOUND. **The opener never enters the conversation and Maya has never been able
+to see it.** The conversation's true first outbound is her own seam reply, so
+the seed is a **captured specimen** — the Haiku `cold_reply_curiosity` reply
+from the ×1 run at `39087f4`, verbatim. Nothing about the reintroduction count
+is now an artifact of my typing.
+
+## 46 · ⚠ F-08.75 MINTED — THE MARKETING OPENER INTRODUCES THE WRONG PERSONA, TO THE WRONG AUDIENCE
+
+Derived while chasing §4. `src/lib/templates.js` `marketing_opener`, **approved,
+live, and the first thing every prospect ever receives**:
+
+> Hi {{1}}, this is **Mira** from The Dream Wedding. We keep **your vendors,
+> payments, and timeline** in one place. Reply here and I'll show you how it
+> would work for **your wedding**. Reply STOP to opt out.
+
+Two defects in one template. **(1) It names Mira** — the couple's assistant, per
+the estate's own name map — and then **Maya** answers. Its in-file comment says
+so explicitly: *"Couple-facing agent is named Mira… Filed 2026-07-19"*, three
+weeks before Maya was minted. **(2) It pitches the COUPLE product to a VENDOR.**
+"Your vendors, your wedding" is the bride instrument; this lane's prospects are
+photographers with `demo_vendor_ref` rows.
+
+**NOT FIXED — it is Meta-approved template copy, which is a re-filing and the
+founder's alone.** This is also why the opener's absence from history is a
+mercy: Maya cannot see it, so she has never had to reconcile it.
+
+## 47 · §6 — THE CEILING RECORDS ITS OWN BREACH
+
+`soul_chars=12007` **shipped and ran at `39087f4` while the ratified ceiling was
+11,750.** The 12,100 const was executor-proposed and no packet ratified it
+before the push. The bench asserted `length <= SOUL_CHAR_CEILING` and **the
+const had moved with the prose** — so the mechanical check could not see the
+breach. **A ceiling that travels with the thing it caps is not a cap.** Named in
+the const's own ladder for whoever moves this number next.
+
+Ratified now at **12,250**; measured at this seal **12,244**, headroom 6, after
+one tightening pass. §2's exit-paragraph simplification bought some back: the
+parting line left the soul entirely when it stopped being hers.
+
+## 48 · THE FLOOR — PAIRED
+
+```
+b08_p5_closer_bench  171  (64→89→110→112→130→156→171) · 33 mutations, 33 clean reds, ZERO stale
+b5c 47 · b08_p1 106+0 · b08_p3 61 · console 71 · factory 83 · invite 35
+b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+modelRouter-adjacent: advisor_route 16 · wa_words 19 · f79 19 · f80 24 · rider 32
+b06_meter 28/29 ⚠ F-08.73, PRE-EXISTING, unchanged, outside this charter
+dreamos-pwa (ZERO bytes): tsc 0 lines · 28 .mjs · 7 .ts — all green
+```
+
+## 49 · COPY INVENTORY
+
+**Model-voiced, delegated veto, founder override standing:** the WHO YOU ARE
+biography boundary · the re-authored WHEN NOBODY ANSWERS paragraph. Both
+`MAYA_SOUL` bytes.
+
+**`EXIT_LINE` is unchanged from the last delivery** and is now the ONLY thing a
+prospect reads at the exit — no longer a fallback but **the parting line
+itself.** That raises its weight: his to change at the character.
+
+**Nothing else minted.** Money register verified: zero glyphs, zero k/L/Cr.
+
+## 50 · WHAT THE NEXT SITTING PICKS UP
+
+1. **§3's three resolutions** — ruled, then built.
+2. **The eleven ×3.** Named reads: exit wake now **mechanically green by
+   construction** (assert `source=exit_static`, zero tokens) · "welcome back"
+   1/6 → ? · DeepSeek reintroduction 3/3 re-measured against the captured seed ·
+   identity/person claims 2 → 0 · provenance flags 5-fires-1-true → inverted.
+3. **F-08.75** — the opener template, founder's re-filing.
+4. **F-08.73** — the pre-existing 28/29.
+5. **Two ratify-or-reverts still open:** the sign-off upgrade (§35), and this
+   delivery's §3 hold.

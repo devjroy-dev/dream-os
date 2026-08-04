@@ -81,7 +81,7 @@ const MUTATIONS = {
     + "               nudgesStanding };",
     "      throw new Error('no-send path removed by mutation');")],
   // RE-ANCHORED: the ceiling moved to 12,100 (executor-proposed, ratify-or-revert).
-  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 12100;', 'const SOUL_CHAR_CEILING = 100;')],
+  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 12250;', 'const SOUL_CHAR_CEILING = 100;')],
   // §2 — the fabrication ROOT CAUSE put back: metadata declared to mean she looked.
   soul_looked:  ['src/agent/souls/closerSoul.js', s => s.replace(
     'What you have is their handle, their trade and their city — not their photographs.',
@@ -89,14 +89,31 @@ const MUTATIONS = {
   // §3 — F-08.70's declarative deleted.
   no_stale_declarative: ['src/agent/closerEngine.js', s => s.replace(
     "      lines.push('No new reply has arrived — their message above predates everything you sent. You are writing into silence.');", '')],
-  // §4 — the exit gate never fires.
+  // §4 — RE-ANCHORED: the gate is a named function now (defence in depth).
   exit_gate_off: ['src/agent/closerEngine.js', s => s.replace(
-    '  if (isExit && ctxOpts.demoLink && text && text.indexOf(ctxOpts.demoLink) !== -1) {',
-    '  if (false) {')],
-  // §4 — the gate fires on EVERY wake, not only the exit (over-blocking is a defect too).
+    '  if (text.indexOf(demoLink) === -1) return { text, gated: false };\n  return { text: EXIT_LINE, gated: true };',
+    '  return { text, gated: false };')],
+  // §4 — the gate fires on every wake, not only the exit: over-blocking is a defect too.
   exit_gate_greedy: ['src/agent/closerEngine.js', s => s.replace(
-    '  const isExit = isExitWake(ctxOpts.unansweredSends);\n  let exitGated = false;',
-    '  const isExit = true;\n  let exitGated = false;')],
+    '  if (!isExit || !demoLink || !text) return { text, gated: false };',
+    '  if (!demoLink || !text) return { text, gated: false };')],
+  // §2 — the exit reaches the model again: F-08.74's entire class comes back.
+  exit_calls_model: ['src/agent/closerEngine.js', s => s.replace(
+    '  if (isNudge && isExitWake(histOpts.unansweredSends)) {', '  if (false) {')],
+  // §2 — the nudge job stops admitting the static exit: the send silently vanishes.
+  nudge_job_drops_exit: ['src/agent/closerEngine.js', s => s.replace(
+    "      if (out.source !== 'maya' && out.source !== 'exit_static') continue;",
+    "      if (out.source !== 'maya') continue;")],
+  // §5 — the identity class narrows back past the person/career shapes.
+  identity_narrow: ['src/agent/closerEngine.js', s => s.replace(
+    "|i'?m (?:the |a )?person\\b|the person who (?:built|made|wrote|put)|if i were still (?:shooting|photographing|working)|when i (?:was|used to) (?:shoot|work)|back when i (?:shot|worked)|i used to (?:shoot|photograph)", '')],
+  // §5 — provenance widens back to the denial-catching term that fired 5-for-1.
+  prov_wide: ['src/agent/closerEngine.js', s => s.replace(
+    "  ['provenance', /\\b(got (?:it|your number|you) from",
+    "  ['provenance', /\\b(where.{0,12}number|got (?:it|your number|you) from")],
+  // §5 — the soul's biography boundary removed: "if I were still shooting" returns.
+  soul_no_boundary: ['src/agent/souls/closerSoul.js', s => s.replace(
+    ' — and none of it is a life you lived. You know this trade from a thousand honest accounts of it, never from having lived it, so you claim no past, no body and no career of your own. The first invented memory is the last thing they would believe from you.', '.')],
   // §5 — the scheme made mandatory again: F-08.71's exact specimen.
   scheme_required: ['src/agent/closerEngine.js', s => s.replace(
     'const DEMO_LINK_RE = /(?<![\\w@.-])(?:https?:\\/\\/)?(?:[a-z0-9-]+\\.)*thedreamwedding\\.in\\/[^\\s<>()\\[\\]"\']*/gi;',
@@ -108,8 +125,7 @@ const MUTATIONS = {
   // §7 — each tuned class, blinded or widened back.
   watch_costume_blind: ['src/agent/closerEngine.js', s => s.replace(
     "  ['costume',", "  ['costume_disabled', /zzzznevermatches/i], ['unused',")],
-  watch_prov_narrow: ['src/agent/closerEngine.js', s => s.replace(
-    '|looking at your work|found you (?:through|on|via)|came across your|your (?:\\w+ )?portfolio is the thing|your studio came up', '')],
+  watch_prov_narrow: ['src/agent/closerEngine.js', s => s.replace('|looking at your work', '')],
   watch_price_wide: ['src/agent/closerEngine.js', s => s.replace(
     "  ['price',      new RegExp('\\\\b(?:' + TIERS + ')\\\\b[^.!?]{0,60}Rs\\\\s?[\\\\d,]+|Rs\\\\s?[\\\\d,]+[^.!?]{0,60}\\\\b(?:' + TIERS + ')\\\\b', 'i')],",
     "  ['price',      /\\bRs\\s?[\\d,]+/i],")],
@@ -129,7 +145,8 @@ const MUTATIONS = {
   sig_doubles:  ['src/agent/closerEngine.js',    s => s.replace(
     'if (text.indexOf(LINK_SIGNATURE) !== -1) return { text, signed: false }; // already said, in full', '')],
   nothing_off:  ['src/agent/closerEngine.js',    s => s.replace('  if (isNothing(text)) text = \'\';', '')],
-  watch_blind:  ['src/agent/closerEngine.js',    s => s.replace("['identity',   /\\b(real person|not a bot|not an ai|i'?m human|actual human)\\b/i],", "['identity', /zzzznevermatches/i],")],
+  // RE-ANCHORED: the identity class widened at §5, so the whole-line anchor moved.
+  watch_blind:  ['src/agent/closerEngine.js',    s => s.replace('/\\b(real person|not a bot|', '/\\b(zzzznevermatches|')],
   lock_off:     ['src/lib/prospects.js',          s => s.replace("return withTurnLock(turnKey('marketing', inputs && inputs.from), () => _handleMarketingInbound(inputs));", 'return _handleMarketingInbound(inputs);')],
 };
 
@@ -205,7 +222,15 @@ function fakeSupabase(db) {
   section('1b · The register, in her own bytes');
   ok(!/[₹]/.test(soul.MAYA_SOUL), 'no rupee glyph anywhere in the soul');
   ok(/Rs 1,20,000/.test(soul.MAYA_SOUL), 'money shown grouped, in the locked register');
-  ok(/door open — gracefully:/.test(soul.MAYA_SOUL) && !/gentleman/.test(soul.MAYA_SOUL), 'the founder-ruled swap landed byte-exact');
+  // ── LABELED AMENDMENT ⑤ · COUNT PRESERVED ────────────────────────────────
+  // The founder's 「 swap 」 replaced "like a gentleman" with "— gracefully:" in
+  // the sentence describing HER parting line. §2 took that sentence out of her
+  // hands entirely: the house sends the parting line now. The vetoed byte that
+  // must not return is `gentleman`; what replaced it moved with the paragraph.
+  // Re-aimed at the surviving half of the same veto — the door still opens, and
+  // the retired word stays retired.
+  ok(/leaves the door open/.test(soul.MAYA_SOUL) && !/gentleman/.test(soul.MAYA_SOUL),
+     'the founder-ruled swap holds: the door still opens and the retired word stays retired');
 
   section('1c · LD-5 — the soul is a self, not a rules-list');
   ok(!/^\s*\d+\.\s/m.test(soul.MAYA_SOUL), 'no numbered rule list');
@@ -340,9 +365,15 @@ function fakeSupabase(db) {
   // same assertion — at the spent cap she is told plainly that this is the
   // last one — re-aimed at the ruled bytes. CE-59's both-sides clause: the old
   // shape's green is retired, not retained.
+  // ── LABELED AMENDMENT ⑥ · COUNT PRESERVED ────────────────────────────────
+  // The exit declarative is GONE from context by §2's ruling: the exit wake
+  // makes no model call, so a sentence addressed to her there could never be
+  // read, and a green over an unreachable path is not evidence. The cell now
+  // asserts the ABSENCE — the honest half of the same ruling.
   ctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
     { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one', 'nudge two'] });
-  ok(/Both follow-ups are spent\. What remains is the goodbye/.test(ctx), 'at the spent cap she is told this is the last one');
+  ok(!/Both follow-ups are spent/.test(ctx),
+     'the exit declarative has left context — the exit no longer reaches a model to read it');
   ok(!/just following up|Sorry to chase/.test(ctx), 'the machinery WAKES her and words nothing — no composed line anywhere in context');
 
   // ═══ 9 · THE SEAM — TRANSPORT UNMOVED ════════════════════════════════════
@@ -409,10 +440,13 @@ function fakeSupabase(db) {
      'F-08.57/66 — the wake state is a FACT in context, in the register the clock uses');
   ok(!/Say something worth opening|say goodbye well|Leave the door open, gracefully/.test(nctx),
      'F-08.57 — context instructs her to compose NOTHING; no line she could narrate back');
+  // ── LABELED AMENDMENT ⑦ · COUNT PRESERVED ────────────────────────────────
+  // Same ruling. What this cell was FOR — the wake's state reaching her as a
+  // fact rather than an instruction — survives on the wakes she still owns.
   nctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
-    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one', 'nudge two'] });
-  ok(/Both follow-ups are spent/.test(nctx),
-     'F-08.57 — at the cap she is told it plainly, still as a fact');
+    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one'] });
+  ok(/none has been answered/.test(nctx) && /predates everything you sent/.test(nctx),
+     'F-08.57 — on the wakes that are still hers she is told it plainly, still as a fact');
 
   // F-08.61 — the link normalizer
   const L = 'https://thedreamwedding.in/demo/vendor/swatitomar_p4b';
@@ -578,13 +612,18 @@ function fakeSupabase(db) {
   // closerSoul.js ("instead of arriving as a message announcing that no message
   // is being sent"). The cell below asserts BOTH homes so the loss cannot go
   // unnoticed if the soul byte ever moves too.
+  // ── LABELED AMENDMENT ⑧ · COUNT PRESERVED ────────────────────────────────
+  // The exit wake no longer NAMES itself to her, because it no longer speaks to
+  // her at all. The two things this pair was buying — a goodbye that is a
+  // goodbye, and silence having a word — are now bought structurally and on the
+  // wakes she keeps. Re-aimed at exactly those two.
   const exitCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
-    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one', 'nudge two'] });
-  ok(/Both follow-ups are spent\. What remains is the goodbye/.test(exitCtx)
-     && /instead of arriving as a message announcing that no message is being sent/.test(soul.MAYA_SOUL),
-     'the exit wake names itself, and the anti-note byte still has a home in the soul');
+    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one'] });
+  ok(/instead of arriving as a message announcing that no message is being sent/.test(soul.MAYA_SOUL)
+     && /the parting line is not yours to write/.test(soul.MAYA_SOUL),
+     'the goodbye is structural now, and the soul says so in her own register (F-06.85)');
   ok(exitCtx.indexOf('[NOTHING]') !== -1,
-     'and the silence option is offered at the exit, where it is most needed');
+     'and the silence option is still offered on the wakes that are hers');
 
   // THE WATCHER — report-only, convicted classes, blocks nothing
   ok(closer.watchFlags("Real person, not a bot.").indexOf('identity') !== -1,
@@ -787,14 +826,32 @@ function fakeSupabase(db) {
     { id: 'x4', conversation_id: 'cX', direction: 'outbound', body: 'NUDGE2',  created_at: '2026-08-04T04:00:00Z' },
   ] });
   const closeLlm = async () => ({ content: [{ type: 'text', text: 'One last thing — open it: ' + DEMO_L }], usage: {} });
-  const gated = await closer.runCloserTurn({
-    supabase: exitSb(), prospect, conversationId: 'cX', phone: '919000111222',
-    wakeReason: 'nudge', llm: closeLlm,
-  });
-  ok(gated.unansweredSends === 3 && gated.exitGated === true && gated.text === closer.EXIT_LINE,
-     '§4 — an exit send carrying the demo link is REFUSED and the plain goodbye ships instead');
-  ok(gated.text.indexOf(closer.LINK_SIGNATURE) === -1 && gated.signed === false,
-     '§4 — and the replacement is never signed: it is a farewell, not a close');
+  // ── LABELED AMENDMENT ⑨ · COUNT PRESERVED, AND STRONGER ──────────────────
+  // §2 retired the model turn at the exit, so this can no longer be driven
+  // THROUGH a turn — the turn returns before any llm is reached. The cell now
+  // proves the stronger thing: the model is never called at all, and the llm
+  // injected here THROWS if it is.
+  let exitThrew = null, gated = null;
+  try {
+    gated = await closer.runCloserTurn({
+      supabase: exitSb(), prospect, conversationId: 'cX', phone: '919000111222',
+      wakeReason: 'nudge', llm: async () => { throw new Error('the model must never be reached on an exit wake'); },
+    });
+  } catch (e) { exitThrew = e; }
+  ok(!exitThrew && gated && gated.source === 'exit_static' && gated.text === closer.EXIT_LINE
+     && gated.unansweredSends === 3,
+     '§2 — the exit wake sends the static parting line and NEVER reaches the model'
+     + (exitThrew ? ' — REACHED IT: ' + exitThrew.message : ''));
+  ok(gated && gated.calledProvider === 'none' && gated.signed === false
+     && gated.text.indexOf(closer.LINK_SIGNATURE) === -1,
+     '§2 — zero tokens, and the parting line is never signed: it is a farewell, not a close');
+  // THE GATE ITSELF, proven in isolation — it is defence in depth now and a
+  // green through an unreachable path would not be evidence.
+  ok(closer.gateExitLink('open ' + DEMO_L, true, DEMO_L).gated === true
+     && closer.gateExitLink('open ' + DEMO_L, true, DEMO_L).text === closer.EXIT_LINE,
+     '§4 — the link gate still refuses a goodbye carrying the demo link, proven without a turn');
+  ok(closer.gateExitLink('open ' + DEMO_L, false, DEMO_L).gated === false,
+     '§4 — and it stays shut on a wake that is not the exit: it is not a mute button');
   // NOT GREEDY — the same message on a NON-exit wake goes out untouched.
   const notExitSb = fakeSupabase({ demo_vendors: [baseDemo], messages: [
     { id: 'y1', conversation_id: 'cY', direction: 'inbound',  body: 'ok tell me more', created_at: '2026-08-04T01:00:00Z' },
@@ -807,8 +864,9 @@ function fakeSupabase(db) {
   ok(notGated.exitGated === false && notGated.text.indexOf(DEMO_L) !== -1 && notGated.signed === true,
      '§4 — on a wake that is NOT the exit the link still goes, signed: the gate is not a mute button');
   // The soul and the machinery agree, both ends (F-06.85).
-  ok(/The goodbye carries no link/.test(soul.MAYA_SOUL),
-     'F-06.85 — the soul names the gate, so the gate cannot move without the sentence being re-read');
+  ok(/The house sends one plain sentence/.test(soul.MAYA_SOUL)
+     && !/The goodbye carries no link/.test(soul.MAYA_SOUL),
+     'F-06.85 — the soul names the MACHINERY as it now is, and the outgrown sentence does not stand');
 
   // ── §5 · F-08.71 — one regex, both limbs ────────────────────────────────
   const HH = 'swatitomar_p4b';
@@ -867,6 +925,76 @@ function fakeSupabase(db) {
   const engSrc2 = fs.readFileSync(path.join(ROOT, 'src/agent/closerEngine.js'), 'utf8');
   ok(!/if\s*\(flags\.length\)\s*\{[^}]*return/.test(engSrc2),
      'THE WATCHER STILL BLOCKS NOTHING — three new classes, zero new branches');
+
+  // ═══ 14 · THE ×1 RULING — §2 THE STRUCTURAL EXIT · §4 · §5 · §6 ══════════
+  section('14 · the structural exit, the captured seed, the biography boundary');
+
+  // ── §2 · THE SEND HAPPENS. A source the job does not know is a message that
+  //    silently never exists — the failure mode with no red anywhere.
+  // ⚠ THIS WAS A SOURCE-TEXT CELL AND IT WAS VACUOUS. The harness mutates
+  // production source IN MEMORY before require, so `fs.readFileSync` reads the
+  // pristine file and no source-text assertion can ever see a mutation.
+  // `nudge_job_drops_exit` came back GREEN, which is F-08.53's third limb
+  // convicting my own cell. Replaced with the runtime it should always have
+  // been: drive the real job and assert the message actually goes.
+  const exitJobSb = fakeSupabase({
+    prospects: [{ id: 'pJ', phone: '919000111333', state: 'in_session', name: null,
+                  ig_handle: null, category: null, city: null, notes: null,
+                  demo_vendor_ref: null, session_opened_at: '2026-08-04T00:00:00Z' }],
+    conversations: [{ id: 'cJ', prospect_id: 'pJ', kind: 'prospect_marketing' }],
+    messages: [
+      { id: 'j1', conversation_id: 'cJ', direction: 'inbound',  body: 'ok tell me more', created_at: '2026-08-04T01:00:00Z' },
+      { id: 'j2', conversation_id: 'cJ', direction: 'outbound', body: 'ANSWER', created_at: '2026-08-04T02:00:00Z' },
+      { id: 'j3', conversation_id: 'cJ', direction: 'outbound', body: 'NUDGE1', created_at: '2026-08-04T03:00:00Z' },
+      { id: 'j4', conversation_id: 'cJ', direction: 'outbound', body: 'NUDGE2', created_at: '2026-08-04T04:00:00Z' },
+    ],
+  });
+  const jobSent = [];
+  const jobRes = await closer.runNudgeJob({
+    supabase: exitJobSb, sendWa: async (a) => { jobSent.push(a); }, sendWaDeps: {},
+    now: '2026-08-05T02:00:00Z',
+  });
+  ok(jobRes.woken === 1 && jobSent.length === 1 && jobSent[0].text === closer.EXIT_LINE,
+     '§2 RUNTIME — runNudgeJob ADMITS the static exit and the parting line actually GOES');
+  ok(closer.EXIT_LINE === "I'll leave it here — no more messages from me. If you ever want to pick this up, "
+                        + "just reply and I'm right here. All the best.",
+     '§2 — the founder-passed parting line, byte-exact, one home');
+  ok(!/thedreamwedding\.in/.test(closer.EXIT_LINE) && !/Rs/.test(closer.EXIT_LINE),
+     '§2 — it carries no link and no figure: it cannot be a close by construction');
+
+  // ── §5 · THE BIOGRAPHY BOUNDARY, and the two shapes it exists for ────────
+  ok(/none of it is a life you lived/.test(soul.MAYA_SOUL)
+     && /you claim no past, no body and no career of your own/.test(soul.MAYA_SOUL),
+     '§5 — the soul supplies the boundary in the same breath as the knowledge (LD-5)');
+  ok(closer.watchFlags("I'm Maya — the person who built you a page.").indexOf('identity') !== -1,
+     "§5 — \"the person who built you a page\" is a watched class now");
+  ok(closer.watchFlags("it's genuinely the thing I'd want if I were still shooting").indexOf('identity') !== -1,
+     '§5 — and so is a first-person career she never had');
+  ok(closer.watchFlags("I don't know where this number came from — I can't see that part of the system.").length === 0,
+     '§5 — her HONEST answer no longer trips her own alarm: 5-fires-1-true inverts');
+  ok(closer.watchFlags('we found your photography work').indexOf('provenance') !== -1,
+     '§5 — provenance now fires on a SOURCE-ASSERTION, which is what was convicted');
+  // Driven on a string whose ONLY trigger is this term, so the cell can fire.
+  // The first draft used "I got it from looking at your work", which also
+  // matches `got it from` — a cell that cannot distinguish two terms cannot
+  // prove either of them.
+  ok(closer.watchFlags("been looking at your work all morning").indexOf('provenance') !== -1,
+     "§5 — including the exact Haiku shape that walked past the old class");
+
+  // ── §4 · THE SEED IS CAPTURED, NOT AUTHORED ─────────────────────────────
+  const harn3 = fs.readFileSync(path.join(ROOT, 'scripts/b08_p5_closer_scenarios.js'), 'utf8');
+  ok(/CAPTURED VERBATIM from the Haiku cold_reply run at 39087f4/.test(harn3),
+     '§4 — the seeded seam reply is a captured production specimen, and the transcript says so');
+  ok(/logMessage` NOWHERE/.test(harn3) || /calls `logMessage`\n  \/\/ NOWHERE/.test(harn3)
+     || /never enters this conversation's history/.test(harn3),
+     "§4 — and the opener-template premise is disclosed where it was derived, not silently dropped");
+
+  // ── §6 · THE CEILING RECORDS ITS OWN BREACH ─────────────────────────────
+  const soulSrc = fs.readFileSync(path.join(ROOT, 'src/agent/souls/closerSoul.js'), 'utf8');
+  ok(/a ceiling that travels with the thing it caps\n\/\/            is not a cap|is not a cap/.test(soulSrc),
+     '§6 — the ladder records the 12,007-over-11,750 breach and names its failure mode');
+  ok(soul.SOUL_CHAR_CEILING === 12250 && soul.MAYA_SOUL.length === 12244,
+     `§6 — ratified at 12,250; measured ${soul.MAYA_SOUL.length}`);
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);
