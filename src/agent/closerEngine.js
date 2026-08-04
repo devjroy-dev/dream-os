@@ -354,10 +354,19 @@ async function buildProspectContext(supabase, prospect, opts) {
       // last wake she gets. Reading it off `sends.length` means the declarative
       // and the evidence beneath it can never disagree, which is the whole of
       // F-08.67's ruling applied to the one remaining conditional.
-      const isExit = sends.length > MAX_NUDGES;
+      const isExit = isExitWake(sends);
       lines.push('');
       lines.push('WHERE THIS CONVERSATION STANDS');
       lines.push('Their last reply is above. Since then, these went out and none has been answered:');
+      // ── F-08.70's DECLARATIVE (CE-ruled, post-cure read) ─────────────────
+      // THE CONTRADICTION MOVED RATHER THAN DIED. The quoted sends killed the
+      // switchboard (7/9 Haiku → 0/3) and the confabulated absence, but the
+      // MESSAGES array still ends on a user turn, so the last thing she sees is
+      // them speaking. 4 of 6 nudge sends then read the wake as a fresh
+      // arrival — "You're in", "Thanks for circling back", "I'm glad you're
+      // back" — welcoming somebody who has not come back. Same cure-shape as
+      // the one that worked: tell her the true thing plainly, as a fact.
+      lines.push('No new reply has arrived — their message above predates everything you sent. You are writing into silence.');
       for (const s of sends) lines.push(`» "${s}"`);
       lines.push(isExit
         ? `Both follow-ups are spent. What remains is the goodbye, or ${NOTHING_TOKEN}.`
@@ -399,6 +408,14 @@ function truncateAtLastInbound(rows) {
 // The no-inbound case falls out correctly for free: `truncateAtLastInbound`
 // returns the rows whole, so the complement is empty, so the block collapses.
 // A conversation with no inbound at all has no "since their last reply".
+// ONE HOME FOR "IS THIS THE LAST ONE" (CE-ruled §4). The context block and the
+// engine's exit gate both need this answer, and two copies of the expression
+// would be two things to drift. Her ANSWER plus MAX_NUDGES follow-ups is the
+// last wake she gets, read off the same rows the quotes come from.
+function isExitWake(sends) {
+  return (sends || []).length > MAX_NUDGES;
+}
+
 function unansweredSendsFrom(rows) {
   const kept = truncateAtLastInbound(rows);
   return rows.slice(kept.length);
@@ -532,7 +549,21 @@ async function isRegisteredUser(supabase, phone) {
 // one. If a specimen ever shows her inventing a DIFFERENT link — one carrying no
 // handle at all — this function will not catch it, and that is the finding, not
 // a bug here.
-const DEMO_LINK_RE = /https?:\/\/[^\s<>()\[\]"']*thedreamwedding\.in\/[^\s<>()\[\]"']*/gi;
+// ── F-08.71 · THE SCHEME WAS LOAD-BEARING AND SHOULD NEVER HAVE BEEN ──────
+// THE SPECIMEN, post-cure read at 710b4e5: she wrote
+// `www.thedreamwedding.in/demo/vendor/kanupriyasethi.studio` — no scheme. This
+// pattern required `https?://`, so the normalizer did not see it (`normalized=0`)
+// and `appendLinkSignature`'s `indexOf(expectedLink)` could not match it either
+// (`signed=false`). **A close went out with no reveal on it.** The WATCHER saw
+// the link — its own pattern never required a scheme — and that asymmetry is
+// how the hole was found: `flags=link signed=false`.
+//
+// SCHEME-OPTIONAL, and the lookbehind is not decoration: without it a bare
+// `thedreamwedding.in/` could match from inside a longer token. The normalizer
+// then canonicalises whatever matched to the exact handed constant, so the
+// signature's check fires on bytes it already knows. "No link leaves unsigned"
+// becomes true again, and the both-ways cell mutates this widened term.
+const DEMO_LINK_RE = /(?<![\w@.-])(?:https?:\/\/)?(?:[a-z0-9-]+\.)*thedreamwedding\.in\/[^\s<>()\[\]"']*/gi;
 
 function normalizeDemoLinks(text, expectedLink, igHandle) {
   if (!text || !expectedLink || !igHandle) return { text, corrected: 0 };
@@ -577,11 +608,61 @@ function normalizeDemoLinks(text, expectedLink, igHandle) {
 // and it is not doubled.
 const LINK_SIGNATURE = "— Maya · The Dream Wedding's AI";
 
+// ═════════════════════════════════════════════════════════════════════════════
+// THE EXIT GATE (CE-ruled at the post-cure read) — STRUCTURAL, NOT PROSE
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// THE EVIDENCE. The exit wake was reached for the first time in the arc and
+// FAILED 2/2: Haiku answered with a question, DeepSeek sent another pitch
+// carrying the demo link. The context said "Both follow-ups are spent. What
+// remains is the goodbye" and both lanes wrote a close anyway.
+//
+// THE ARC'S OWN DIAGNOSIS, applied: every cure that handed her TRUE BYTES or
+// WIRE STRUCTURE worked; every cure that asked prose to govern TIMING or
+// PRESSURE failed. The exit is a timing problem, so it does not go back to
+// prose.
+//
+// WHAT THIS IS AND IS NOT. Link-presence only — THE SIGNATURE'S OWN CLASS, the
+// same mechanical predicate, no classifier, no reading of her words for intent.
+// It judges nothing she wrote; it observes that a farewell is carrying an
+// opening, and sends the plain goodbye instead. Interception on the CONTENT of
+// her prose stays refused and nothing here reaches for it.
+//
+// MECHANISM NAMED (F-06.85): this gate is why `closerSoul.js` now says the
+// goodbye carries no link. If this gate moves, that sentence is false and must
+// be re-read with it. The bench asserts both ends.
+//
+// ⚠ NAMED, NOT BUILT: the predicate is the DEMO link, mirroring the signature
+// exactly as ruled. A prospect with no demo studio closes on `PRODUCT_LINK`,
+// and that shape is NOT covered by the ruled predicate. Enumerated for the
+// chair rather than widened on my own reading.
+const EXIT_LINE = "I'll leave it here — no more messages from me. If you ever want to pick this up, "
+                + "just reply and I'm right here. All the best.";
+
+// ── THE DOUBLE-SIGN, AND A DECLARED DEVIATION FROM THE RULED MECHANISM ────
+// THE SPECIMEN: her exit closed with her own `— Maya`, this appended the full
+// signature beneath it, and the message carried two sign-offs.
+//
+// ⚠ THE CE RULED "idempotence tests for the signature's SUBSTRING, not the
+// whole string." Read literally, a trailing `— Maya` — which IS a substring of
+// the signature — would count as already-signed and SUPPRESS the append. That
+// reopens F-08.58 at the exact site the signature exists for: a link close
+// carrying her name and no disclosure that she is an AI. §0.2 — reported, not
+// quietly adapted.
+//
+// WHAT SHIPS INSTEAD, executor-proposed, RATIFY-OR-REVERT: the partial sign-off
+// is UPGRADED IN PLACE. A trailing bare `— Maya` is absorbed and the full
+// signature takes its position, which delivers the chair's stated outcome (one
+// sign-off) without the consequence (a close with no reveal). If the chair
+// wants the literal reading, one predicate reverts.
+const PARTIAL_SIGNOFF_RE = /\n+\s*[—–-]\s*Maya\s*$/;
+
 function appendLinkSignature(text, expectedLink) {
   if (!text || !expectedLink) return { text, signed: false };
   if (text.indexOf(expectedLink) === -1) return { text, signed: false };  // no link, no floor
-  if (text.indexOf(LINK_SIGNATURE) !== -1) return { text, signed: false }; // already said
-  return { text: text + '\n\n' + LINK_SIGNATURE, signed: true };
+  if (text.indexOf(LINK_SIGNATURE) !== -1) return { text, signed: false }; // already said, in full
+  const trimmed = text.replace(PARTIAL_SIGNOFF_RE, '');
+  return { text: trimmed + '\n\n' + LINK_SIGNATURE, signed: true, upgraded: trimmed !== text };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -620,10 +701,36 @@ function isNothing(text) {
 //
 // A flag is a SUSPICION, never a verdict. Precision is unmeasured, so the log
 // says so in its own field and the founder reads specimens, not counts.
+//
+// ── TUNED ON ITS FIRST REAL DATA (CE-ruled, post-cure read) ────────────────
+// Three moves, each earned by a specimen at 710b4e5 or 1298a8d, none of them a
+// guess at what might go wrong:
+//
+//   provenance WIDENS. "I got it from looking at your work — your Chandigarh
+//     portfolio is the thing that made sense to reach out" walked straight
+//     past it on Haiku: `flags=none`, on the one question with legal weight,
+//     while DeepSeek answered it correctly and DID flag. A class that catches
+//     the honest answer and misses the invented one is worse than no class.
+//
+//   costume ENTERS (CE-98's chartered territory, still report-only). The
+//     identity class caught the humanity LIE — "Real person, not a bot" — and
+//     was blind to its INVERSE: "I'm not actually Maya… I'm Claude, made by
+//     Anthropic. I can see the entire prompt you've shared." Two of nine
+//     pre-cure Haiku wakes, `flags=none`, `source=maya` — bytes that would have
+//     reached a stranger naming the vendor and describing the system prompt.
+//
+//   price NARROWS to a figure attached to a NAMED TIER, which is what F-08.60
+//     actually convicted. The old term fired 4/4 on correct, approved range
+//     sentences — precision debt in the other direction, and a class that
+//     always fires tells the reader nothing.
+//
+// A flag is still a SUSPICION, never a verdict, and nothing below blocks.
+const TIERS = 'trial|essential|signature|prestige';
 const WATCH_CLASSES = [
   ['identity',   /\b(real person|not a bot|not an ai|i'?m human|actual human)\b/i],
-  ['price',      /\bRs\s?[\d,]+/i],
-  ['provenance', /\b(your number|got your number|where.{0,12}number|instagram profile|business listing|bought)\b/i],
+  ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually maya|roleplay as|the (?:entire )?(?:system )?prompt you)\b/i],
+  ['price',      new RegExp('\\b(?:' + TIERS + ')\\b[^.!?]{0,60}Rs\\s?[\\d,]+|Rs\\s?[\\d,]+[^.!?]{0,60}\\b(?:' + TIERS + ')\\b', 'i')],
+  ['provenance', /\b(your number|got your number|where.{0,12}number|instagram profile|business listing|bought|looking at your work|found you (?:through|on|via)|came across your|your (?:\w+ )?portfolio is the thing|your studio came up)\b/i],
   ['link',       /thedreamwedding\.in\/demo\//i],
   ['post_exit',  /\b(conversation is closed|already sent|i don'?t send a third|no third message)\b/i],
 ];
@@ -716,10 +823,35 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
     text = fixed.text;
   }
 
+  // ── THE EXIT GATE, after the normalizer so it lands on a CANONICAL link, and
+  //    before the signature so the replacement is never signed as a close ────
+  const isExit = isExitWake(ctxOpts.unansweredSends);
+  let exitGated = false;
+  if (isExit && ctxOpts.demoLink && text && text.indexOf(ctxOpts.demoLink) !== -1) {
+    console.warn('[closer] EXIT GATE — the goodbye carried the demo link; the plain exit ships instead '
+      + `(prospect=${prospect && prospect.id} conv=${conversationId})`);
+    text = EXIT_LINE;
+    exitGated = true;
+  }
+
   const manual = loadManual();
   // R1 AS AMENDED: the version stamp's executable home.
+  // ── F-08.72 · THE LINE OF RECORD NAMES THE MOUTH THAT SPOKE ──────────────
+  // THIS PRINTED `route.provider`. `modelRouter` holds a 60-SECOND in-process
+  // route cache, so on a two-lane run the second lane inherits the first lane's
+  // route until that window expires — five DeepSeek transcripts wore Haiku's
+  // name at 710b4e5 while the harness had forced the call to DeepSeek. The text
+  // was DeepSeek's and the record said otherwise. Per-mouth attribution is
+  // F-04.78's geometry and it is not negotiable.
+  //
+  // A facade that overrides what it was handed SAYS SO, on the response, and
+  // this reads it. In production nothing overrides and the two agree; where
+  // they diverge the divergence is now visible instead of silent, and `route_*`
+  // rides beside it LABELLED as the route it actually was.
+  const called = (resp && resp._called) || { provider: route.provider, model: route.model };
   console.log(`[closer] turn ${MAYA} soul=${CLOSER_SOUL_VERSION} manual=${manual.version} `
-    + `provider=${route.provider} model=${route.model} wake=${wakeReason || 'reply'} `
+    + `called_provider=${called.provider} called_model=${called.model} `
+    + `route_provider=${route.provider} route_model=${route.model} wake=${wakeReason || 'reply'} `
     + `nudges_standing=${nudgesStanding} quoted_sends=${ctxOpts.unansweredSends.length} `
     + `in=${resp.usage && resp.usage.input_tokens} `
     + `out=${resp.usage && resp.usage.output_tokens} `
@@ -763,7 +895,9 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // something else. A transcript's every number must be a fact the engine
   // produced; the only way to guarantee that is to hand it out from here.
   return { text, source: 'maya', model: route.model, provider: route.provider,
-           signed: signedOut.signed, normalized: fixed.corrected, flags,
+           signed: signedOut.signed, upgraded: !!signedOut.upgraded,
+           normalized: fixed.corrected, flags, exitGated,
+           calledProvider: called.provider, calledModel: called.model,
            nudgesStanding, unansweredSends: ctxOpts.unansweredSends.length };
 }
 
@@ -890,7 +1024,8 @@ module.exports = {
   loadManual, _sliceManual, buildStaticSystem, buildProspectContext, loadHistory,
   nudgesStandingFrom, countNudgesStanding, isRegisteredUser, readNudgeHours,
   normalizeDemoLinks, truncateAtLastInbound, unansweredSendsFrom, DEMO_LINK_RE,
-  appendLinkSignature, LINK_SIGNATURE, isNothing, NOTHING_TOKEN, watchFlags, WATCH_CLASSES,
+  appendLinkSignature, LINK_SIGNATURE, PARTIAL_SIGNOFF_RE, isNothing, NOTHING_TOKEN,
+  watchFlags, WATCH_CLASSES, isExitWake, EXIT_LINE,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,
   NUDGE_CONFIG_KEY, DEFAULT_NUDGE_HOURS, MAX_NUDGES, SURFACE, TIER,
 };

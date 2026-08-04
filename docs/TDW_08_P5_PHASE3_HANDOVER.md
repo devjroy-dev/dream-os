@@ -524,3 +524,164 @@ if he wants it to read differently, it is a fixture edit, not a copy act.
 5. **F-08.54's content is UNDERIVED and F-08.56 is an empty reserved address**
    (CE-188). Neither is reconstructable from the repo; both are named rather
    than invented.
+
+---
+
+# ADDENDUM 4 · THE POST-CURE RULING BUILT — §2 → §8 (2026-08-04)
+
+**Base:** dream-os `710b4e5` · dreamos-pwa `19978c7` (**ZERO pwa bytes**) — both
+re-derived at origin at first motion, both trees clean.
+**Ruled to:** the CE's POST-CURE READ ruling, 2026-08-04, §2 through §8.
+**Role:** EXECUTOR. Nothing pushed; the LE holds no write credentials.
+
+## 32 · WHAT SHIPPED
+
+| File | Ruling | What |
+|---|---|---|
+| `src/agent/souls/closerSoul.js` | §2, §4 | the fabrication root cause re-authored · the exit sentence gains its truthful clause · ceiling **11,750 → 12,100 EXECUTOR-PROPOSED** |
+| `src/agent/closerEngine.js` | §3–§7 | F-08.70's declarative · the exit gate + `EXIT_LINE` · `isExitWake` one home · `DEMO_LINK_RE` scheme-optional · the sign-off upgrade · `called_*` on the line of record · the watcher tuned |
+| `src/lib/modelRouter.js` | §6 | `_resetRouteCache()` — a named test seam, production never calls it |
+| `scripts/b08_p5_closer_scenarios.js` | §6 | cache bust at every lane boundary · the facade declares what it forced · the turn line gains `called=`, `exit_gated=`, `(upgraded)` |
+| `scripts/b08_p5_closer_bench.js` | all | **130 → 156** · 33 mutations, 33 clean reds · three re-anchored |
+| `scripts/out/README.md` | §8 | NEW — the record explains itself where the files live |
+
+## 33 · §2 — THE ROOT CAUSE WAS IN HER SOUL, AND THE CHAIR FOUND IT
+
+The old passage said, in her own voice, that handle + category + city **meant**
+she had looked at their work, and handed her a city-set reference as the
+exemplar. *"That Jodhpur set with the late-afternoon light"* — against a fixture
+whose city is Chandigarh — was **not a model inventing against her character. It
+was her character, obeyed.** Re-authored so specificity comes from what is true,
+never from images she has not seen, with the reason in the same breath (LD-5).
+
+## 34 · ⚠ §0.2 — THE CEILING, MEASURED AND STATED AS ORDERED
+
+**12,007 characters.** Three tightening passes (12,241 → 12,086 → 12,007). The
+two ruled additions cost ~600 and retired ~330; the remainder cannot come out
+without cutting ruled content, and **a ruled cure is not hollowed to hit a
+number.**
+
+`SOUL_CHAR_CEILING` = **12,100, EXECUTOR-PROPOSED, RATIFY-OR-REVERT**, with the
+whole history and this arithmetic in `closerSoul.js`. On a *fresher* measurement
+than the last move rested on: the founder's own run at `710b4e5` returned
+`cache_read=7,033` Haiku and `6,656–6,912` DeepSeek on every warm turn.
+**If the chair refuses:** the byte to re-cut is the **Jodhpur illustration** —
+the example, not the rule — ~120 characters, leaving the reason still in the
+same breath.
+
+## 35 · ⚠ §0.2 — A DECLARED DEVIATION FROM §5's RULED MECHANISM
+
+§5 ruled *"idempotence tests for the signature's SUBSTRING, not the whole
+string."* **Read literally that reopens F-08.58.** A trailing `— Maya` IS a
+substring of the signature, so it would count as already-signed and **suppress
+the append** — leaving a link close carrying her name and no disclosure that she
+is an AI, at the exact site the signature exists for.
+
+**Reported, not quietly adapted.** What ships instead, EXECUTOR-PROPOSED,
+RATIFY-OR-REVERT: the partial sign-off is **UPGRADED IN PLACE** — a trailing
+bare `— Maya` is absorbed and the full signature takes its position. That
+delivers the chair's stated outcome (one sign-off) without the consequence. If
+the chair wants the literal reading, **one predicate reverts**
+(`PARTIAL_SIGNOFF_RE`).
+
+## 36 · §4 — THE EXIT GATE, AND WHAT IT IS NOT
+
+Link-presence only — **the signature's own predicate**, no classifier, no
+reading of her words for intent. It judges nothing she wrote; it observes that a
+farewell is carrying an opening. Sited **after the normalizer** (so it lands on
+a canonical link, including the scheme-less shape §5 just cured) and **before
+the signature** (so the replacement is never signed as a close). Interception on
+the content of her prose stays refused.
+
+**⚠ NAMED, NOT BUILT:** the predicate is the DEMO link, mirroring the signature
+exactly as ruled. A prospect with **no demo studio** closes on `PRODUCT_LINK`,
+and that shape is **not covered**. Enumerated for the chair rather than widened
+on my own reading.
+
+F-06.85 is satisfied at both ends: the gate's comment names the soul sentence,
+the soul sentence names the gate, and a bench cell asserts both.
+
+## 37 · THE BENCH — 130 → 156, 33 MUTATIONS, 33 CLEAN REDS
+
+**Ten mutations new** — `soul_looked` (the root cause put back) ·
+`no_stale_declarative` · `exit_gate_off` · **`exit_gate_greedy`** (over-blocking
+is a defect too: the gate must NOT fire on a non-exit wake) · `scheme_required`
+(F-08.71's exact specimen) · `sign_no_upgrade` · `watch_costume_blind` ·
+`watch_prov_narrow` · `watch_price_wide` · `called_ignored`.
+
+**Three RE-ANCHORED** — `soul_ceiling2`, `sig_off`, `sig_doubles`. **`sig_doubles`
+had been left pointing at a comment this cure reworded, and its stale form
+CRASHED the require rather than reddening.** A mutation that cannot even load is
+not a proof; caught by the harness's own exit-2-on-stale-anchor.
+
+**The end-to-end cell is the load-bearing one for §5:** the hole was that a
+scheme-less link defeated the **signature**, not just the normalizer, so the
+cell drives `runCloserTurn` and asserts `normalized=1 signed=true` on the shape
+that broke it.
+
+## 38 · ⚠ F-08.73 MINTED — A BENCH IN THE ESTATE HAS BEEN RED FOR THREE SEALS
+
+`b06_meter_bench` reads **28/29**, and `§3.2 no OTHER route moved — the whole
+DEFAULTS map, key-for-key` has been FAILING since Phase 3 seeded
+`model.wa_marketing.default`. **Proven both ways: identical 28/29 at `710b4e5`
+and at the cured tree**, so it is not mine.
+
+The bench pins `JSON.stringify(DEFAULTS)` against a five-key literal. Maya's
+route is a legitimate sixth key. **The bench convicted a correct change and
+nobody read the number** — F-08.50's exact class, three seals deep.
+
+**NOT FIXED — the ruling released §2–§8 and this bench is outside it.** Reported
+with its diagnosis so the amendment is one line for whoever is chartered: the
+literal gains the `wa_marketing` row, or the cell narrows to the keys it means
+to police.
+
+## 39 · THE FLOOR AT THIS SEAL — PAIRED
+
+```
+b08_p5_closer_bench      156  (64→89→110→112→130→156) · 33 mutations, 33 clean reds
+b5c 47 · b08_p1 106+0 · b08_p3 61 · console 71 · factory 83 · invite 35
+b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+modelRouter-adjacent (the one shared file touched):
+  b06_advisor_route 16 · b06_wa_words 19 · b6_f79 19 · b6_f80 24 · b6_rider 32
+  b06_meter 28/29 ⚠ PRE-EXISTING, F-08.73, proven both ways
+dreamos-pwa (ZERO bytes): tsc 0 lines on cleared .next · 28 .mjs green · 7 .ts green
+```
+
+`node --check` clean on all five touched `.js` files.
+
+**FLOOR-METHOD DISCLOSURE:** running the modelRouter grep sweep executed
+`b08_p5_closer_scenarios.js`, which **wrote a transcript into `scripts/out/`**.
+It was **deleted before packaging** and is in no ZIP. A container artifact in a
+delivery is a byte nobody ruled (Phase 2's disclosure ③ is the precedent).
+
+## 40 · COPY INVENTORY — TWO ITEMS, BOTH FOR THE FOUNDER
+
+**Model-voiced, drafted under §2/§4's delegation, founder override standing:**
+
+1. **The soul's §2 passage** (replaces the "you have looked at their work" /
+   "Your Jaipur set" bytes) and **the §4 exit clause**. Both are `MAYA_SOUL`
+   bytes and both ride his veto.
+2. **`EXIT_LINE`** — the static goodbye that ships when the gate fires:
+   > I'll leave it here — no more messages from me. If you ever want to pick this up, just reply and I'm right here. All the best.
+
+   **This is the only byte in this delivery a prospect can read.** Drafted for
+   his pass as ruled; his to change at the character.
+
+**Money register verified by command:** zero glyphs, zero k/L/Cr, in every byte
+added. Nothing else minted.
+
+## 41 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The eleven ×3 on the cured tree**, both lanes, counts against tonight's:
+   self-reintroduction Haiku 0/3 · **"welcome back" misread 4/6 → the number to
+   watch** · exit wake 0/2 → the gate makes it mechanical · fabricated
+   specifics 4 → §2's target · `signed=false` on any link → must be zero.
+2. **§3's pre-authorisation stands:** if ×3 still shows ≥1 "welcome back",
+   arm 1 (drop the stale inbound) builds next — **with the empty-array guard
+   collision resolved first and SHOWN, not inferred.**
+3. **Three ratify-or-reverts open:** the ceiling at 12,100 · the sign-off
+   upgrade · nothing else.
+4. **F-08.73** — the pre-existing red, outside this charter.
+5. **F-08.59's provenance slot** — one true sentence from the founder retires
+   the class; DeepSeek showed the honest-ignorance line working tonight.
+6. **The `PRODUCT_LINK` exit shape** — named, not built (§36).

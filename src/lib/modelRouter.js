@@ -103,4 +103,12 @@ async function resolveModel(supabase, surface, tier) {
   return val;
 }
 
-module.exports = { resolveModel, DEFAULTS };
+// ── F-08.72's SECOND LIMB (CE-ruled) — A TEST SEAM, NAMED ────────────────────
+// The 60s cache above is correct for production: a zero-deploy flip lands within
+// one window and the read is cheap. It is WRONG for a two-lane bench run, where
+// the second lane inherits the first lane's route until the window expires and
+// its transcripts wear the other lane's name. `turnLock._reset()` is the
+// estate's own precedent for this shape. Production never calls it.
+function _resetRouteCache() { cache.clear(); }
+
+module.exports = { resolveModel, DEFAULTS, _resetRouteCache };

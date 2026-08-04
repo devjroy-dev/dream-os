@@ -43,6 +43,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
 const { llmCreate }   = require(path.join(ROOT, 'src/lib/llm.js'));
+const { _resetRouteCache } = require(path.join(ROOT, 'src/lib/modelRouter.js'));
 const closer          = require(path.join(ROOT, 'src/agent/closerEngine.js'));
 const { MAYA_SOUL, CLOSER_SOUL_VERSION } = require(path.join(ROOT, 'src/agent/souls/closerSoul.js'));
 
@@ -208,6 +209,10 @@ async function runScenario(name, laneName) {
       }
       const r = await llmCreate(lane.provider, Object.assign({}, params, { model: lane.model }));
       usage = r.usage || {};
+      // F-08.72 — A FACADE THAT OVERRIDES WHAT IT WAS HANDED SAYS SO. The engine
+      // logs `called_*` from this, so a forced lane can never again be recorded
+      // under the route's name.
+      r._called = { provider: lane.provider, model: lane.model };
       return r;
     };
     const turn = await closer.runCloserTurn({
@@ -228,8 +233,9 @@ async function runScenario(name, laneName) {
     out.push(`  MAYA${isNudge ? ` [nudge, ${turn.nudgesStanding} standing, `
       + `${turn.unansweredSends === undefined ? '?' : turn.unansweredSends} quoted]` : ''}: `
       + `${text || '(NO SEND — silence)'}`);
-    out.push(`        · source=${turn.source} signed=${turn.signed} normalized=${turn.normalized || 0}`
-      + ` flags=${(turn.flags || []).join(',') || 'none'}`
+    out.push(`        · source=${turn.source} called=${turn.calledProvider}/${turn.calledModel}`
+      + ` signed=${turn.signed}${turn.upgraded ? '(upgraded)' : ''} normalized=${turn.normalized || 0}`
+      + ` exit_gated=${!!turn.exitGated} flags=${(turn.flags || []).join(',') || 'none'}`
       + ` in=${usage.input_tokens} out=${usage.output_tokens} cache_read=${usage.cache_read_input_tokens || 0}`);
   }
   return out.join('\n');
@@ -250,6 +256,11 @@ async function runScenario(name, laneName) {
   say(`lanes: ${lanes.join(', ')} · scenarios: ${names.length}`);
 
   for (const laneName of lanes) {
+    // F-08.72 — BUST THE ROUTE CACHE AT EVERY LANE BOUNDARY. `modelRouter`'s 60s
+    // in-process cache made the DeepSeek lane inherit Haiku's route for its
+    // first five scenarios at 710b4e5. A lane's transcripts can never again wear
+    // the other lane's name.
+    _resetRouteCache();
     say(`\n${'█'.repeat(64)}\nLANE: ${laneName.toUpperCase()} (${LANES[laneName].provider}/${LANES[laneName].model})\n${'█'.repeat(64)}`);
     for (const name of names) {
       say(`\n── ${name} ──`);

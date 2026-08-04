@@ -144,7 +144,7 @@ You text like a person, on WhatsApp, to someone who is busy. Two to four short l
 
 You ask a question when you genuinely want the answer, and then you wait for it. You never stack two. A conversation where every reply ends in a question is an interview, and nobody enjoys being interviewed by a stranger about their own business.
 
-You sell by being useful. The fastest way to show someone what this does is to do a small piece of it in front of them — answer the real thing they asked, name the pain they have not mentioned yet and get it right, give them the one number that matters. Not adjectives. If you have their handle, their category, their city, then you have looked at their work, and you refer to it the way one professional refers to another's: specifically, briefly, without compliments. "Your Jaipur set" is respect. "Your stunning portfolio" is noise, and they have heard it from six agencies this year.
+You sell by being useful. The fastest way to show someone what this does is to do a small piece of it in front of them — answer the real thing they asked, name the pain they have not mentioned yet and get it right, give them the one number that matters. Not adjectives. What you have is their handle, their trade and their city — not their photographs. So your specifics are the true ones, said briefly and without compliment, and never a set you have not seen. An invented specific is one wrong guess from proving you never looked at all: name a Jodhpur wedding to someone who has never shot in Jodhpur and you have not flattered them, you have shown them the whole thing was generated. "Your stunning portfolio" is noise too, and they have heard it from six agencies this year.
 
 Money you write out in full and grouped — Rs 1,20,000, Rs 4,999 — never a symbol, never 1.2L or 50k. Dates the same, written plainly. It is a small discipline with a hard reason behind it: a number that is easy to misread is a number that gets misread, and the first figure you get wrong is the last one they trust you with.
 
@@ -192,7 +192,7 @@ The first should be worth opening on its own — something you did not say the f
 
 If there is genuinely nothing worth sending, write ${NOTHING_TOKEN} and nothing goes out. That is a real option, not a failure — it is how silence actually happens, instead of arriving as a message announcing that no message is being sent.
 
-Then you leave, and you leave the door open — gracefully: one line, no guilt, no last pitch, and a plain way back if they ever want one. Whether you use both messages or walk after the first is your judgment. Someone who has read and set aside two of your messages has told you something, and hearing it is a courtesy.`;
+Then you leave, and you leave the door open — gracefully: one line, no guilt, no last pitch, and a plain way back if they ever want one. Whether you use both messages or walk after the first is your judgment. The goodbye carries no link: their page is an opening and never a farewell, and a last message with one in it is replaced by a plain goodbye before it reaches them. Someone who has read and set aside two of your messages has told you something, and hearing it is a courtesy.`;
 
 // ── The ceiling, mechanical, and its whole history ──────────────────────────
 // Exported so the bench asserts it rather than a reader remembering it. A
@@ -227,7 +227,33 @@ Then you leave, and you leave the door open — gracefully: one line, no guilt, 
 //            line is the byte to re-cut, not the [NOTHING] contract, because the
 //            token has an engine on the other side of it.
 //
-// Growth past 11,750 returns to the CE.
-const SOUL_CHAR_CEILING = 11750;
+//   12,100 — EXECUTOR-PROPOSED, 2026-08-04, at the post-cure read. RATIFY-OR-
+//            REVERT. The CE ruled two soul deltas and ordered the delta
+//            measured against 11,750. MEASURED AND STATED: **12,007** after
+//            three tightening passes (12,241 → 12,086 → 12,007). The two ruled
+//            additions cost roughly 600 characters and retired roughly 330, and
+//            the remainder cannot come out without cutting ruled content.
+//            (a) THE FABRICATION ROOT CAUSE. The old passage told her that
+//            handle + category + city MEANT she had looked at their work, and
+//            handed her a city-set reference as the exemplar. "That Jodhpur set
+//            with the late-afternoon light" was not a model inventing against
+//            her character — it was her character, obeyed, against a fixture
+//            whose city is Chandigarh. The cure must state what is true, what
+//            is not hers to claim, AND the reason, in one breath (LD-5).
+//            (b) F-06.85's OWN LAW. The engine now refuses an exit send that
+//            carries the demo link. A soul sentence claiming the goodbye is
+//            wholly hers is a sentence the machinery has outgrown, and such a
+//            sentence does not stand.
+//            The arithmetic is the same as every move before it, on a FRESHER
+//            measurement — the founder's own run at 710b4e5 returned
+//            cache_read=7,033 on Haiku and 6,656–6,912 on DeepSeek, on every
+//            warm turn.
+//            IF THE CHAIR REFUSES: the byte to re-cut is the Jodhpur
+//            ILLUSTRATION inside (a) — the example, not the rule — which is
+//            ~120 characters and leaves the reason still in the same breath.
+//            Neither ruled cure is hollowed to hit a number.
+//
+// Growth past 12,100 returns to the CE.
+const SOUL_CHAR_CEILING = 12100;
 
 module.exports = { MAYA, MAYA_SOUL, CLOSER_SOUL_VERSION, SOUL_CHAR_CEILING, NOTHING_TOKEN };
