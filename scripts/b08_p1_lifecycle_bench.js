@@ -81,6 +81,27 @@ function makeDb(seed) {
         return api;
       },
       order() { return api; },
+      // ── LABELED AMENDMENT ① · TDW_08 P5 Phase 3 · COUNT PRESERVED ──────────
+      // WHY, and it is the BOTH-SIDES CLAUSE (CE-59) biting exactly as designed.
+      // Phase 3 swapped the marketing seam from a static holding line to Maya's
+      // turn. `handleMarketingInbound`'s fall-through now reaches
+      // `closerEngine.runCloserTurn`, whose registered-user guard and history
+      // read both call `.limit()` — a builder verb this fake never implemented
+      // because nothing it drove had ever needed one. §15.2 went red on
+      // "…limit is not a function": a HARNESS gap, not a product defect, and it
+      // proved so by failing on a chain the cell does not assert about.
+      //
+      // THIS ADDS A CAPABILITY AND WEAKENS NO ASSERTION. Every existing cell's
+      // predicate is byte-untouched and the count is identical before and after
+      // (105 passed · 0 failed · 1 skipped, both trees). A fake that silently
+      // lacks a verb the production path uses is the same class as the
+      // `\b`-for-`\y` false negative: it answers confidently about a query it
+      // never ran.
+      //
+      // RATIFY-OR-REVERT: if the CE prefers this bench left frozen, the seam is
+      // unchanged and only this cell's harness reverts — the finding would then
+      // stand as a declared floor gap on b08_p1 rather than as a cure.
+      limit(n) { q._limit = n; return api; },
       update(patch) { q._mode = 'update'; q._patch = patch; return api; },
       insert(row)   { q._mode = 'insert'; q._insert = row;  return api; },
       _run() {
@@ -89,8 +110,11 @@ function makeDb(seed) {
           rows().push(row);
           return [row];
         }
-        const hit = rows().filter((r) => matches(r, q._filters));
+        let hit = rows().filter((r) => matches(r, q._filters));
         if (q._mode === 'update') hit.forEach((r) => Object.assign(r, q._patch));
+        // AMENDMENT ① continued: the limit is applied AFTER the update so an
+        // update's own return set is unchanged by it, matching PostgREST.
+        if (typeof q._limit === 'number') hit = hit.slice(0, q._limit);
         return hit;
       },
       async maybeSingle() { const r = api._run(); return { data: r[0] || null, error: null }; },
@@ -506,7 +530,7 @@ await ta('THE RULED CELL — opted_out lands even when demoLifecycle THROWS', as
   };
   const prospects = require(SRC('src/lib/prospects.js'));
   const db = makeDb({ prospects: [{ id: 'p1', phone: '919888294440', state: 'templated', demo_vendor_ref: 'demo-1' }] });
-  const res = await prospects.handleMarketingInbound({
+  const res = await prospects.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db, from: '919888294440', text: 'STOP',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -853,6 +877,21 @@ t('§14.2 the route reads the module\'s list and never re-implements it', () => 
 // the founder's walk and NOT by this bench: restore() was written, exported and
 // celled, and nothing called it. Every cell below therefore drives a CALLER.
 // ══════════════════════════════════════════════════════════════════════════
+// ── LABELED AMENDMENT ② · TDW_08 P5 Phase 3 · COUNT PRESERVED ────────────────
+// Phase 3's seam swap means `handleMarketingInbound`'s fall-through ends in a
+// MODEL CALL. Every call below therefore injects a stub `closerTurn` through the
+// same dependency-injection door the file already uses for `sendWa`.
+//
+// THIS IS NOT A WEAKENING — IT IS THE PRECONDITION FOR THE CELLS BEING ABOUT
+// ANYTHING. Without it §15.2 asserted nothing about the demo restore and
+// everything about whether this container holds an ANTHROPIC_API_KEY, which is
+// the "a proof witnesses only what its question asked" failure. Not one
+// predicate changed; the counts are identical on both trees.
+// Declared as a FUNCTION, not a const: the first seam call sits ~350 lines
+// above this note and a `const` here is a temporal-dead-zone crash, which this
+// bench found on its own first run of the amendment. Hoisting is the fix.
+async function _stubCloserTurn() { return { text: '(bench stub — the Closer is benched in b08_p5_closer_bench)', source: 'maya' }; }
+
 H('§15 — F-08.24: the START arm, driven through handleMarketingInbound');
 
 const PROS_PATH = require.resolve(SRC('src/lib/prospects.js'));
@@ -882,7 +921,7 @@ function removedSeed(over) {
 await ta('§15.1 START restores the demo AND lifts the opt-out', async () => {
   const pros = freshProspects();
   const db = makeDb(removedSeed());
-  const res = await pros.handleMarketingInbound({
+  const res = await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db, from: '919888294440', text: 'START',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -903,7 +942,7 @@ await ta('§15.2 THE WALK\'S ACTUAL FAILURE — a SECOND START still restores', 
   const seed = removedSeed();
   seed.prospects[0].state = 'replied';        // already lifted by an earlier START
   const db = makeDb(seed);
-  await pros.handleMarketingInbound({
+  await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db, from: '919888294440', text: 'START',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -915,7 +954,7 @@ await ta('§15.2 THE WALK\'S ACTUAL FAILURE — a SECOND START still restores', 
 await ta('§15.3 restore DERIVES from the ladder stamps — expired, never legacy', async () => {
   const pros = freshProspects();
   const db = makeDb(removedSeed());
-  await pros.handleMarketingInbound({
+  await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db, from: '919888294440', text: 'START',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -925,7 +964,7 @@ await ta('§15.3 restore DERIVES from the ladder stamps — expired, never legac
   const pros2 = freshProspects();
   const bare = removedSeed({ invited_at: null, opened_at: null, engaged_at: null, expires_at: null });
   const db2 = makeDb(bare);
-  await pros2.handleMarketingInbound({
+  await pros2.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db2, from: '919888294440', text: 'START',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -939,7 +978,7 @@ await ta('§15.4 IDEMPOTENT — a START on a LIVE demo writes nothing', async ()
   seed.demo_vendors[0].active = true;
   const db = makeDb(seed);
   const before = JSON.stringify(db._tables.demo_vendors[0]);
-  await pros.handleMarketingInbound({
+  await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db, from: '919888294440', text: 'START',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -953,7 +992,7 @@ await ta('§15.5 a handset with NO linked demo is a typed refusal, not a fault',
     demo_vendors: [],
     prospects: [{ id: 'p1', phone: '919888294440', state: 'opted_out', demo_vendor_ref: null }],
   });
-  const res = await pros.handleMarketingInbound({
+  const res = await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db, from: '919888294440', text: 'START',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -974,7 +1013,7 @@ await ta('§15.6 FAIL-OPEN — the opt-out lift stands when the demo half THROWS
   const db = makeDb({
     demo_vendors: [], prospects: [{ id: 'p1', phone: '919888294440', state: 'opted_out' }],
   });
-  const res = await pros.handleMarketingInbound({
+  const res = await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
     supabase: db, from: '919888294440', text: 'START',
     sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
   });
@@ -1413,7 +1452,7 @@ await mutateAndDrive('src/lib/prospects.js',
   async () => {
     const pros = freshProspects();
     const db = makeDb(removedSeed());
-    await pros.handleMarketingInbound({
+    await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
       supabase: db, from: '919888294440', text: 'START',
       sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
     });
@@ -1429,7 +1468,7 @@ await mutateAndDrive('src/lib/demoLifecycle.js',
     const seed = removedSeed();
     seed.prospects[0].state = 'replied';
     const db = makeDb(seed);
-    await pros.handleMarketingInbound({
+    await pros.handleMarketingInbound({ closerTurn: _stubCloserTurn,
       supabase: db, from: '919888294440', text: 'START',
       sendWa: async () => ({ sid: 'x' }), copy: () => 'ack',
     });

@@ -174,11 +174,30 @@ async function main() {
   ok(sb.db.prospects.filter((p) => p.state === 'templated').length === 3, 'three flipped to templated');
   ok(sb.db.prospects.find((p) => p.id === 'p0').state === 'templated' && sb.db.prospects.find((p) => p.id === 'p0').last_template_at, 'oldest picked, last_template_at stamped');
 
-  // ═══ 5. templated → replied → in_session (reply flips + holding line + conversation) ═══
+  // ═══ 5. templated → replied → in_session (reply flips + THE CLOSER + conversation) ═══
+  // ── LABELED AMENDMENT · TDW_08 P5 Phase 3 · COUNT PRESERVED (one cell, in place) ──
+  // THE BOTH-SIDES CLAUSE (CE-59) IN ITS OWN WORDS: "when one sitting changes
+  // both sides of a contract, the bench drives the NEW caller's payload; the old
+  // shape's green is RETIRED, not retained — a green over a shape nobody sends is
+  // indistinguishable from no test at all."
+  //
+  // Phase 3 retired `prospectCopy.holding_line` at this seam. The cell below
+  // asserted that exact string on the wire. Left standing it would have been a
+  // green over bytes the estate no longer sends, which is the shape this clause
+  // exists to forbid — and it would have been the SECOND time this one cell went
+  // stale, the first being ARC M6's own re-aim recorded beneath.
+  //
+  // RE-AIMED to what the cell was ALWAYS FOR: a free-form Meta text carrying THE
+  // IN-SESSION REPLY. It now asserts the CLOSER'S words reached the wire, driven
+  // through the same injection door `sendWa` already uses, so it can never again
+  // drift with a copy change. The transport assertion is UNCHANGED and is the
+  // load-bearing half: same free-form Meta text, same lane. The Closer's own
+  // conduct is benched in scripts/b08_p5_closer_bench.js, not here.
   section('Reply → in_session');
   sb = makeFakeSupabase({ prospects: [{ id: 'pr', phone: '919888111222', name: 'Ria', state: 'templated', source: 'sheet' }] });
   calls = installFakeFetch();
-  const inb = await prospects.handleMarketingInbound({ supabase: sb, from: '919888111222', text: 'yes tell me more', messageId: 'wamid.R1', sendWa, sendWaDeps: marketingDeps });
+  const CLOSER_STUB_REPLY = 'Saw your Jaipur set — that December series is the one, no?';
+  const inb = await prospects.handleMarketingInbound({ supabase: sb, from: '919888111222', text: 'yes tell me more', messageId: 'wamid.R1', sendWa, sendWaDeps: marketingDeps, closerTurn: async () => ({ text: CLOSER_STUB_REPLY, source: 'maya' }) });
   ok(inb.action === 'in_session' && inb.state === 'in_session', 'reply flips to in_session');
   const conv = sb.db.conversations[0];
   ok(conv && conv.kind === 'prospect_marketing' && conv.prospect_id === 'pr', 'conversation opened kind=prospect_marketing, owned by prospect_id');
@@ -202,14 +221,14 @@ async function main() {
   // holding line — asserted against prospectCopy's own constant rather than a phrase
   // copied into the bench, so this can never drift from the shipped bytes again.
   ok(calls.length === 1 && calls[0].body.type === 'text'
-     && calls[0].body.text.body === require('../src/lib/prospectCopy').PROSPECT_COPY.holding_line,
-     'holding line sent free-form via Meta');
+     && calls[0].body.text.body === CLOSER_STUB_REPLY,
+     "the Closer's reply sent free-form via Meta (was: the holding line — retired at the Phase 3 seam swap)");
 
   // ═══ 6. Opt-out cross-line (STOP → opted_out → refuse on ALL lines) ═══
   section('Opt-out cross-line');
   sb = makeFakeSupabase({ prospects: [{ id: 'po', phone: '919888333444', name: 'Sam', state: 'in_session', source: 'sheet' }] });
   calls = installFakeFetch();
-  const stop = await prospects.handleMarketingInbound({ supabase: sb, from: '919888333444', text: 'STOP', messageId: 'wamid.S1', sendWa, sendWaDeps: marketingDeps });
+  const stop = await prospects.handleMarketingInbound({ supabase: sb, from: '919888333444', text: 'STOP', messageId: 'wamid.S1', sendWa, sendWaDeps: marketingDeps, closerTurn: async () => { throw new Error('STOP must never reach the Closer'); } });
   ok(stop.action === 'opted_out', 'STOP → opted_out');
   ok(sb.db.prospects[0].state === 'opted_out', 'state persisted opted_out');
   ok(stop.confirmSent === true && calls.length === 1 && /opted out/i.test(calls[0].body.text.body), 'opt-out confirmation sent (deliberate bypass)');

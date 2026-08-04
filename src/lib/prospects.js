@@ -1,9 +1,30 @@
 // src/lib/prospects.js — the prospect-lane state machine (Block 05, P3).
 //
 // STATES (0085 CHECK): cold → templated → replied → in_session → {expired | converted}, plus
-// opted_out (terminal, cross-line). No AI calls here (W-1): an in-session prospect gets a single
-// free-form holding line (prospectCopy.holding_line); 06's Closer soul slots in at THIS seam with
-// zero transport change.
+// opted_out (terminal, cross-line).
+//
+// ── THE DAY ARRIVED (TDW_08 P5 Phase 3, 2026-08-04) ──────────────────────────
+// THIS HEADER READ, from Block 05 until now: "No AI calls here (W-1): an
+// in-session prospect gets a single free-form holding line
+// (prospectCopy.holding_line); 06's Closer soul slots in at THIS seam with zero
+// transport change." That sentence was written for this edit and it kept its
+// promise: the Closer — MAYA — now answers here, and NOT ONE TRANSPORT BYTE
+// MOVED. Same `_sendWa`, same `windowOpen: true`, same `logMessage`, same
+// conversation. The 05/06 boundary inversion held in both directions: 05 owned
+// the pipes and could not touch a word; 06 owned the words and did not touch a
+// pipe.
+//
+// The Closer was Block 06's P2, was never built, and Block 06 closed carrying it
+// as unbuilt scope with nothing filed forward — F-08.51, the orphan class.
+// CE-187 homed it here.
+//
+// STILL NO MODEL ASSEMBLY IN THIS FILE, and that is FORK 4's ruling rather than
+// an accident: this module is a STATE MACHINE. It carries exactly ONE call, to
+// `src/agent/closerEngine.js`, mirroring the estate's own `brideInbound` →
+// `brideEngine` separation. `prospectCopy.holding_line` is RETIRED at this seam
+// and its bytes are preserved in the Phase 3 handover; the constant and the
+// string stay in `prospectCopy.js` untouched so no other reader breaks and the
+// founder's own vetoed line is not deleted out of the record.
 //
 // TRANSPORT: sends go through the real sendWa gate. The caller (marketingIndex, or the bench)
 // passes `sendWa` + `sendWaDeps`; the marketing line's free-form + template both ride Meta Cloud
@@ -20,6 +41,7 @@
 const { sendWa: realSendWa } = require('./sendWa');
 const { normalizeTo } = require('./metaCloud');
 const { getProspectCopy } = require('./prospectCopy');
+const { turnKey, withTurnLock } = require('./turnLock');   // ARC M1 / F-05.41 — the third lane joins
 
 const HOLDING_LINE_KEY = 'holding_line';
 const OPT_OUT_CONFIRM_KEY = 'opt_out_confirmation';
@@ -117,7 +139,29 @@ async function logMessage(supabase, conversationId, { direction, body, sentBy })
 // ── the inbound orchestrator ─────────────────────────────────────────────────
 // Returns a result object describing the transition (for logs/tests). Never throws on a normal
 // send refusal — a typed sendWa error is caught and surfaced in the result, never silently eaten.
-async function handleMarketingInbound({ supabase, from, text, messageId, sendWa, sendWaDeps, copy }) {
+// ── FORK 5 · THE TURN LOCK, AND THE MARKETING LANE WAS THE THIRD ─────────────
+// `src/lib/turnLock.js` is F-05.41's cure: "yeah" and "Is my haldi" 1.1 seconds
+// apart on one bride thread produced two concurrent turns, two add_booking calls
+// 300ms apart, and Rs 90,000 held for one Rs 45,000 yes. It says of itself that
+// the vendor lane "SHARES THIS ANATOMY EXACTLY — it is not witnessed there only
+// because nobody has yet typed twice into it in one second," and that leaving
+// one lane racy while curing the other would be a knowing half-cure.
+//
+// `marketingIndex.js`'s webhook is that anatomy verbatim: verify signature →
+// `res.status(200).send('ok')` → an async loop. Two inbounds are two POSTs and
+// nothing joined them. Consumers were `vendorInbound.js` and `brideInbound.js`;
+// this lane had none.
+//
+// While the answer was one static string the cost was a duplicate holding line.
+// With Maya it is two concurrent model turns on one stranger, two replies, and a
+// thread whose history disagrees with itself. Key is the lane-scoped phone, as
+// on both other lanes and for the reason `turnLock.js:52-67` gives: the
+// conversation does not exist yet at the seam where the lock must sit.
+async function handleMarketingInbound(inputs) {
+  return withTurnLock(turnKey('marketing', inputs && inputs.from), () => _handleMarketingInbound(inputs));
+}
+
+async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa, sendWaDeps, copy, closerTurn }) {
   const _sendWa = sendWa || realSendWa;
   const _deps   = sendWaDeps || {};
   const _copy   = copy || getProspectCopy;
@@ -224,20 +268,45 @@ async function handleMarketingInbound({ supabase, from, text, messageId, sendWa,
     session_opened_at: now,     // rolling window anchor (disclosed)
   });
 
-  let holdingSent = false, holdingError = null;
+  // ── THE SEAM · MAYA ANSWERS HERE (TDW_08 P5 Phase 3) ───────────────────────
+  // THIS BLOCK SENT `_copy(HOLDING_LINE_KEY)`. It now sends what the Closer
+  // composed. EVERY TRANSPORT ARGUMENT IS BYTE-IDENTICAL to the line above it —
+  // same `_sendWa`, same `line`, same `windowOpen: true`, same `conversationId`,
+  // same `logMessage` — because 06 owns words and never pipes. Only `text`
+  // changed its source.
+  //
+  // THE INBOUND IS LOGGED BEFORE THE TURN (:above), which is what lets the
+  // Closer read this conversation's own history including the message it is
+  // answering. Order is load-bearing, not incidental.
+  //
+  // THE LAZY REQUIRE is the same cycle discipline as the STOP/START arms:
+  // closerEngine reaches demoLifecycle, which requires THIS module, and a
+  // top-level require would resolve against a half-built exports object.
+  //
+  // ON FAILURE, THE STRANGER GETS THE ESTATE'S EXISTING VETOED LINE, not a
+  // Maya-voiced apology and not silence: `marketingIndex.js`'s catch already
+  // owns that sentence (GRACEFUL_TURN_LINE) and the CE ruled zero new bytes
+  // there. So a thrown turn propagates to the caller exactly as any other
+  // failure in this function would, and the dead-letter path records it.
+  const _turn = closerTurn || require('../agent/closerEngine').runCloserTurn;
+  const out = await _turn({
+    supabase, prospect: advanced, conversationId: conversation.id, phone, wakeReason: 'reply',
+  });
+
+  let replySent = false, replyError = null;
   try {
     await _sendWa(
-      { line: 'marketing', to: phone, text: _copy(HOLDING_LINE_KEY), windowOpen: true,
+      { line: 'marketing', to: phone, text: out.text, windowOpen: true,
         conversationId: conversation.id, supabase },
       _deps,
     );
-    holdingSent = true;
-    await logMessage(supabase, conversation.id, { direction: 'outbound', body: _copy(HOLDING_LINE_KEY), sentBy: 'system' });
-  } catch (e) { holdingError = e; }
+    replySent = true;
+    await logMessage(supabase, conversation.id, { direction: 'outbound', body: out.text, sentBy: 'system' });
+  } catch (e) { replyError = e; }
 
   return {
     action: 'in_session', phone, prospectId: prospect.id, conversationId: conversation.id,
-    state: advanced.state, holdingSent, holdingError,
+    state: advanced.state, replySent, replyError, replySource: out.source,
   };
 }
 

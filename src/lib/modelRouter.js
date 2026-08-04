@@ -31,6 +31,16 @@ const DEFAULTS = {
   // resolveModel is untouched. Mirrors 0082_advisor_route_seed.sql; a pre-seed deploy
   // routes advisor identically here rather than silently falling to Haiku.
   'model.pwa_vendor.advisor':   { provider: 'deepseek',  model: 'deepseek-v4-flash' },
+  // TDW_08 P5 Phase 3 — THE MARKETING LANE'S ROUTE (Maya, the Closer).
+  // A PROSPECT HAS NO TIER: they are not vendors and hold no `vendors` row, so
+  // the tier slot is `default` and `model.harvest.default` is the structural
+  // precedent here, not `pwa_vendor`. Seeded haiku per E-4's unified
+  // architecture — every outward Victor-class mouth starts Haiku, cached.
+  // Mirrors 0110_marketing_route_seed.sql so a pre-seed deploy routes
+  // IDENTICALLY; the seed row exists to make the route admin-editable, because
+  // the PATCH door 404s on a key with no row (D7). The founder's flip to
+  // DeepSeek and back is that row, 60 seconds, no deploy.
+  'model.wa_marketing.default':  { provider: 'anthropic', model: HAIKU },
   'model.harvest.default':      { provider: 'glm',       model: 'glm-4.7-flash' },
 };
 

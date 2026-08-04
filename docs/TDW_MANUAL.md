@@ -3,7 +3,7 @@
 **S-7 — the canonical what-it-is / what-it-can-do document. The single source of product truth.**
 
 **MANUAL_VERSION: v1**
-**Derived at: dream-os `0615f47` · dreamos-pwa `96cda4a`**
+**Derived at: dream-os `3b6fa97` · dreamos-pwa `19978c7`**
 
 Every claim in this document was derived from the running product at those two
 commits. Nothing here describes something planned, specced, or in progress. When

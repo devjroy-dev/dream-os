@@ -212,7 +212,7 @@ const TEMPLATES = {
   //  When that fact moves, this paragraph and `status` are re-read together.]
   enquiry_alert_vendor: {
     key: 'enquiry_alert_vendor',
-    name: 'tdw_enquiry_alert_vendor',      // PROPOSED — founder-final on the WABA
+    name: 'tdw_enquiry_alert_vendor',      // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-04
     language: TEMPLATE_LANGUAGE,
     line: 'vendor',
     category: 'UTILITY',
@@ -254,7 +254,7 @@ const TEMPLATES = {
   // buildAuthTemplatePayload() (below), which ALSO threads the code into the OTP button.
   couple_login_otp: {
     key: 'couple_login_otp',
-    name: 'tdw_couple_login_otp',          // PROPOSED — founder-final on the WABA
+    name: 'tdw_couple_login_otp',          // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-04
     language: TEMPLATE_LANGUAGE,
     line: 'bride',
     category: 'AUTHENTICATION',
@@ -265,7 +265,7 @@ const TEMPLATES = {
 
   couple_reset_otp: {
     key: 'couple_reset_otp',
-    name: 'tdw_couple_reset_otp',          // PROPOSED — founder-final on the WABA
+    name: 'tdw_couple_reset_otp',          // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-04
     language: TEMPLATE_LANGUAGE,
     line: 'bride',
     category: 'AUTHENTICATION',
@@ -276,7 +276,7 @@ const TEMPLATES = {
 
   circle_join_otp: {
     key: 'circle_join_otp',
-    name: 'tdw_circle_join_otp',           // PROPOSED — founder-final on the WABA
+    name: 'tdw_circle_join_otp',           // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-04
     language: TEMPLATE_LANGUAGE,
     line: 'bride',
     category: 'AUTHENTICATION',
@@ -287,7 +287,7 @@ const TEMPLATES = {
 
   vendor_login_otp: {
     key: 'vendor_login_otp',
-    name: 'tdw_vendor_login_otp',          // PROPOSED — founder-final on the WABA
+    name: 'tdw_vendor_login_otp',          // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-04
     language: TEMPLATE_LANGUAGE,
     line: 'vendor',
     category: 'AUTHENTICATION',
@@ -298,7 +298,7 @@ const TEMPLATES = {
 
   vendor_reset_otp: {
     key: 'vendor_reset_otp',
-    name: 'tdw_vendor_reset_otp',          // PROPOSED — founder-final on the WABA
+    name: 'tdw_vendor_reset_otp',          // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-04
     language: TEMPLATE_LANGUAGE,
     line: 'vendor',
     category: 'AUTHENTICATION',

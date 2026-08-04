@@ -44,6 +44,29 @@ function scheduleMarketingCrons({ supabase, sendWa, sendWaDeps }) {
     }
   });
 
+  // ── Maya's nudge sweep — hourly at :20 (TDW_08 P5 Phase 3, FORK 1) ─────────
+  // THE MACHINERY WAKES HER; IT NEVER WORDS HER. This handle schedules; the job
+  // finds quiet conversations and starts a full Closer turn. Every byte the
+  // prospect reads is composed by the model, which is what keeps S-5 intact:
+  // S-5 forbids ENGINEERED ESCALATION — routing, bigger models, pressure
+  // triggers — and a send into silence cannot originate from a model that is not
+  // running, so the wake is necessarily machinery and S-4's own text presumes
+  // the power exists.
+  //
+  // :20 RATHER THAN :05, and the offset is deliberate: the expiry job at :05
+  // flips `in_session → expired` past 24h, and a nudge sweep running in the same
+  // minute could wake a conversation the expiry sweep is closing. Fifteen
+  // minutes is more than the sweep needs and costs a prospect nothing.
+  handles.nudge = cron.schedule('20 * * * *', async () => {
+    try {
+      const { runNudgeJob } = require('./agent/closerEngine');
+      const r = await runNudgeJob({ supabase, sendWa, sendWaDeps });
+      if (r.woken) console.log(`[wa:marketing:cron] nudge: woke ${r.woken} conversation(s)`);
+    } catch (e) {
+      console.error('[wa:marketing:cron] nudge error:', e && e.message);
+    }
+  });
+
   return handles;
 }
 
