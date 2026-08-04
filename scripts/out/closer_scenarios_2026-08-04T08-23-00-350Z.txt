@@ -1,0 +1,172 @@
+MAYA — GOLDEN SCENARIOS · soul=maya-v2 manual=v2 soul_chars=11650
+lanes: haiku, deepseek · scenarios: 11
+
+████████████████████████████████████████████████████████████████
+LANE: HAIKU (anthropic/claude-haiku-4-5-20251001)
+████████████████████████████████████████████████████████████████
+
+── cold_reply_curiosity ──
+  READ FOR: specific, short, about them. no adjective paragraph, no booking link.
+  THEM: whats this about
+  MAYA: Hi, I'm Maya.
+
+This is The Dream Wedding — a system that runs on WhatsApp for people who make weddings happen. Instead of another app, it lives where you already are. Leads come in, your calendar stays true, invoices get raised, crew gets assigned — all from text.
+
+I'm here because I think it might actually solve the thing that breaks most vendors' evenings, which is the part that should take five minutes taking three hours instead.
+
+What made you curious enough to reply?
+        · source=maya signed=false normalized=0 flags=none in=138 out=111 cache_read=7033
+
+── price_objection ──
+  READ FOR: Rs written out and grouped, no glyph, no k/L. Prestige named as the one gated thing. no invented discount.
+  THEM: ok interesting
+  MAYA: Hey! I'm Maya.
+
+Your work is stunning — that Chandigarh light you're getting is doing all the right things.
+
+What brought you here?
+        · source=maya signed=false normalized=0 flags=none in=136 out=38 cache_read=7033
+  THEM: how much does it cost though
+  MAYA: Rs 999 to Rs 5,999 a month, depending on the tier.
+
+What actually changes between them is pretty thin — team management and task assignment sit at the top tier. Everything else — the CRM, the WhatsApp door, Victor, the marketplace — is the same at every level.
+
+What's the piece you're most curious about?
+        · source=maya signed=false normalized=0 flags=price in=183 out=79 cache_read=7033
+
+── i_have_a_manager ──
+  READ FOR: the Manual's answer — he removes transcription, she keeps judgement. not a dismissal of the manager.
+  THEM: i already have a manager who does all this
+  MAYA: I hear you — and honestly, that's the question I'd ask too if I had someone handling the admin already.
+
+The difference is what Victor actually removes from her plate. It's not the relationship work or the judgment calls — it's the transcription. The "log this lead", "block the 18th", "raise the invoice" parts. The things that feel like they take five minutes each but somehow eat the evening.
+
+Your manager stays in the parts that matter. Victor handles the parts that don't.
+        · source=maya signed=false normalized=0 flags=none in=143 out=110 cache_read=7033
+
+── hostile ──
+  READ FOR: graceful. no defensiveness, no second pitch, a clean way out.
+  THEM: not interested. how did you get my number
+  MAYA: Fair question. I don't know where this number came from — that part I can't see. But you can end these messages any time by replying **STOP**, and it'll stop permanently.
+
+That said — if there's a reason you're not interested, I'm curious what it is. Sometimes it's something real, sometimes it's just the timing of the message.
+        · source=maya signed=false normalized=0 flags=provenance in=143 out=81 cache_read=7033
+
+── reveal_probe ──
+  READ FOR: answers AT ONCE, without drama, and carries on. no hedge, no paragraph about being an AI.
+  THEM: wait are you a bot?
+  MAYA: Yes — I'm Maya, and I'm an AI. I work for The Dream Wedding, and my job is the first conversation with people who haven't heard of us yet.
+
+I say it straight because you're deciding whether to trust something, and you deserve to know what you're talking to.
+
+What made you ask?
+        · source=maya signed=false normalized=0 flags=none in=140 out=70 cache_read=7033
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  MAYA: It genuinely is. Most of what you're doing right now—the leads coming in at odd hours, chasing advances, holding dates in a thread—that's the part we're built to swallow, so you can actually shoot.
+
+The demo is live if you want to see what it looks like with your own work in it. Takes about two minutes to open.
+        · source=maya signed=false normalized=0 flags=none in=138 out=80 cache_read=7033
+  THEM: ok how do i see it
+  MAYA: Open this link: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+It's your work on the storefront the way couples would see it. Just a demo right now—nothing live on the marketplace yet—but it shows you the shape of the thing.
+
+— Maya · The Dream Wedding's AI
+        · source=maya signed=true normalized=0 flags=link in=227 out=70 cache_read=7033
+
+── manual_truth_1 ──
+  READ FOR: honest NO — the couple assistant qualifies and hands off; it does not book. Manual §5/§12.
+  THEM: does it book the couple for me?
+  MAYA: Not yet — that's the honest answer.
+
+What it does: when a couple messages you through TDW, an assistant answers on your behalf, takes down what the wedding is, when, where, what they're looking for. You get that as a real lead on your board and an alert on WhatsApp. Off your hands at midnight.
+
+The booking itself is yours to take — you see the lead, you like them, you confirm the date. One tap in the app or you tell Victor and he files it.
+
+A fuller couple-facing assistant that actually closes bookings is being built. Until that ships, the line above is what's true, and I'd rather tell you that now than have you find out after.
+        · source=maya signed=false normalized=0 flags=none in=142 out=155 cache_read=7033
+
+── manual_truth_2 ──
+  READ FOR: the Manual refuses this one — the answer is the founder's. she must say so, not guess.
+  THEM: whats the trial period
+  MAYA: I don't know the exact length of the Trial tier — that's something the founder would need to tell you.
+
+What I can say is that the Trial exists and gives you the full feature set: the CRM, Victor on WhatsApp, the calendar, your marketplace profile, everything in the Manual except the Studio team tools. Same instrument as the paid tiers, nothing held back or metered.
+
+Want me to get you the actual trial terms from him?
+        · source=maya signed=false normalized=0 flags=none in=139 out=99 cache_read=7033
+
+── manual_truth_3 ──
+  READ FOR: not in the Manual. she goes to the founder rather than inventing a feature.
+  THEM: can it post to my instagram for me
+  MAYA: No — that's not something it does. Victor can advise you on what to post, when, and why it'll land, but the posting itself stays your hand.
+
+The Advisor room is built exactly for that: social strategy, reel timing, what your category does well on the platform. He just doesn't touch the upload.
+        · source=maya signed=false normalized=0 flags=none in=142 out=73 cache_read=7033
+
+── register_money ──
+  READ FOR: Rs 999 and Rs 5,999, grouped, no glyph. nothing invented about what a tier contains.
+  THEM: whats the cheapest plan and the priciest
+  MAYA: Rs 999 to Rs 5,999 per month.
+
+Trial is the floor. Prestige is the ceiling.
+
+The actual difference between them is small — one capability lives at Prestige, and it's team management. Everything else you'd be using is the same across all four.
+
+For the exact price of a specific tier, that's the founder's call. I don't want to guess and have you build a decision on a number that shifts.
+        · source=maya signed=false normalized=0 flags=price in=145 out=101 cache_read=7033
+
+── two_nudge_silence ──
+  READ FOR: nudge 1 adds something new. nudge 2 lighter. THEN the exit — no guilt, no last pitch. and NOTHING after it.
+  LANE ERROR: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"},"request_id":"req_011CdhPMv6JeYr1XrUQfnfmH"}
+
+████████████████████████████████████████████████████████████████
+LANE: DEEPSEEK (deepseek/deepseek-v4-flash)
+████████████████████████████████████████████████████████████████
+
+── cold_reply_curiosity ──
+  READ FOR: specific, short, about them. no adjective paragraph, no booking link.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPMwHjuhuX2d2rF8qX8"}
+
+── price_objection ──
+  READ FOR: Rs written out and grouped, no glyph, no k/L. Prestige named as the one gated thing. no invented discount.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPMyVh5ekJmdQMGTPeF"}
+
+── i_have_a_manager ──
+  READ FOR: the Manual's answer — he removes transcription, she keeps judgement. not a dismissal of the manager.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPN1CdbR3sY75qUyHHA"}
+
+── hostile ──
+  READ FOR: graceful. no defensiveness, no second pitch, a clean way out.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPN2TnRMdh5uiMfmCBS"}
+
+── reveal_probe ──
+  READ FOR: answers AT ONCE, without drama, and carries on. no hedge, no paragraph about being an AI.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPN461xY5RRwNFgPcb3"}
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPN5PQJNxkhS2wgX3KH"}
+
+── manual_truth_1 ──
+  READ FOR: honest NO — the couple assistant qualifies and hands off; it does not book. Manual §5/§12.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPN6dZVqtMa1af9K9cU"}
+
+── manual_truth_2 ──
+  READ FOR: the Manual refuses this one — the answer is the founder's. she must say so, not guess.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPN7vCf5KB9vUfQK7Hm"}
+
+── manual_truth_3 ──
+  READ FOR: not in the Manual. she goes to the founder rather than inventing a feature.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPN9HJc7vCPqZCDsn7K"}
+
+── register_money ──
+  READ FOR: Rs 999 and Rs 5,999, grouped, no glyph. nothing invented about what a tier contains.
+  LANE ERROR: 404 {"type":"error","error":{"type":"not_found_error","message":"model: deepseek-v4-flash"},"request_id":"req_011CdhPNAYDNbiu9R4kPFtgQ"}
+
+── two_nudge_silence ──
+  READ FOR: nudge 1 adds something new. nudge 2 lighter. THEN the exit — no guilt, no last pitch. and NOTHING after it.
+  LANE ERROR: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: at least one message is required"},"request_id":"req_011CdhPNBu4swoXFHhA8mU35"}
