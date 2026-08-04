@@ -1668,3 +1668,117 @@ flight and it is not in this delivery.**
 3. **§5 is already in the founder's hands:** the console has the handle and city
    fields, and a row added with them opens with specifics instead of generics.
    **The bare row should become the exception, not the default.**
+
+---
+
+# ADDENDUM 13 · THE CLOSING SEQUENCE — CONST, PROSE, RIDERS (2026-08-04)
+
+**Base:** dream-os `22d6df9`. **Ruled to:** the CE closing-sequence relay, §1–§3.
+**TWO ZIPS, in order: the const, then the prose.**
+
+## 108 · ⚠ §0.2 — THE ACCEPTANCE BAR DID NOT REACH ME
+
+§1 orders the bar *"written into the handover as the acceptance section, in its
+numbers"*, and refers to it as **"founder-ratified verbatim as above."** **No bar
+text arrived in the relay.** §3 speaks of "the four numbers" and I do not have
+them.
+
+**I have not invented an acceptance section.** A gate whose numbers the executor
+guessed is worse than no gate — the whole arc has been about instruments that
+looked like measurements. **The acceptance section is the one thing owed back
+before the ×3 is read**, and it is the only reason this handover has no §ACCEPTANCE.
+
+## 109 · WHAT SHIPPED, IN TWO COMMITS
+
+**COMMIT ONE — the const alone.** `SOUL_CHAR_CEILING` 13,600 → **13,850**,
+CE-ratified, with the full arithmetic in the ladder. **Second application of the
+const-independence law, and the first that was routine rather than newly minted.**
+Proven at commit one: prose 13,567, const 13,850, bench **235/0**.
+
+**COMMIT TWO — the prose and the riders.**
+
+| | |
+|---|---|
+| **§1** | room governs length and tone, **never** whether she puts one true thing on the table; a bare hello gets one too |
+| **§2** | on a bare row she leads with **the product** — *"'we saw your work' when you haven't is the fastest way to prove you never looked at all"* |
+| **rider 1** | `seen_work` **re-keyed and de-proxied** |
+| **rider 2** | `hasProductClaim` **widened** so `claim=` measures instead of floors |
+| **rider 3** | the `marketplace_presence` true-positive kept as the class's own fixture |
+
+Measured at commit two: **13,817 / 13,850**, bench **244/0**, 58 mutations,
+58 clean reds.
+
+## 110 · RIDER 1 — I GATED THE CLASS ON THE WRONG FACT
+
+Two misses, both mine, both found by the class's **first live run**.
+
+**It fired on "your ANYTHING."** `(we|i) (saw|…) (your|their)` matched *"I saw
+your **number** come through"* — a claim about a number, flagged under a class
+named for work. Re-keyed to **work nouns only**.
+
+**And the gate was the wrong fact entirely.** It gated on `blindToTheirWork` — no
+handle, no category, no city — as a proxy for *"she has nothing of theirs."* But
+**a handle is not a photograph, and images reach her on NO row, ever**: the
+context carries handle, category, city and a link, and never a picture. So *"your
+work is stunning"* was unfounded on the handle-carrying row too, and **the class
+slept through the dressed version while catching the naked one.**
+
+**The gate is gone.** `seen_work` is unconditional and therefore moved out of
+`contextFlags` into `watchFlags` — the split is itself the documentation.
+`blindToTheirWork` is **deleted**, because a context fact nobody reads is a fact
+that drifts.
+
+`marketplace_presence` stays contextual, because it genuinely is: the same
+sentence is **true** on a discoverable demo and false everywhere else.
+
+## 111 · RIDER 2 — THE READ WAS A FLOOR AND THIS IS THE ARC'S ACCEPTANCE NUMBER
+
+Two messages that plainly sold scored **false** at 22d6df9 — *"we built a page
+with your portfolio on it… it's live right now"* and *"that's your page… built
+from your actual Instagram work."* Neither matched.
+
+**A read that under-counts the thing it exists to count makes every green softer
+than it looks** — and `claim=` is what the bar will be read against. Widened to
+the page / portfolio / built-from forms, with a cell proving a bare question
+still scores nothing, so the widening did not hollow it.
+
+## 112 · ⚠ FOUR MUTATION REPAIRS, ALL MINE, ALL CAUGHT BY THE SWEEP
+
+**`clock_uncond` lost its re-anchor** — I restored the pre-ship bench over the
+shipped one and the fix went with it. `o.discoverable` reads
+`demo.discover_eligible === true` and sits **above** the clock, so the bare anchor
+took the first match again. **Recorded twice on purpose.**
+
+**`marketplace_blind`** anchored on a `contextFlags` body the de-proxy rewrote.
+
+**`no_context_facts` reddened nothing**, because every `contextFlags` cell called
+the function directly with its own opts and **none drove the BUILDER's own
+derivation**. A DELIVERED cell now runs a real turn against a non-discoverable
+demo and asserts the flag reaches it.
+
+**`claim_floored` RETIRED with its reason.** The harness mutates a fixed set of
+production files in memory before require, and `scripts/closerReads.js` is not
+among them — the mutation applies to nothing. Same limitation that retired
+`seed_vacated_name`. **The widened terms are proven by cells driving the reader
+directly: a proof of the function rather than a proof of the harness.**
+
+## 113 · THE FLOOR
+
+```
+b08_p5_closer_bench  244  (235 → 244) · 58 mutations, 58 clean reds, ZERO stale
+b08_p5_prospect_intake 13 · b5c 47 · b08_p1 106 · console 71 · factory 83
+b07_p1 75 · b07_p5 136 · b05_couple_soul 21 · b06_advisor_route 16
+```
+
+## 114 · COPY INVENTORY
+
+**Model-voiced, delegated veto, founder override standing:** §1's clause and §2's
+sentence — the only copy in this delivery. **The riders are machinery.**
+
+## 115 · WHAT REMAINS
+
+1. **The acceptance bar's four numbers** — owed back before the ×3 is read.
+2. **The ×3 in production mode**, read against them. `bare_row_cold` becomes a
+   real measurement for the first time.
+3. Unchanged: the opener bytes · arm 1 · F-08.76 · the sign-off upgrade ·
+   the `'closer'` token · F-08.73 · the media-dedupe red · F-08.81 · F-08.82.

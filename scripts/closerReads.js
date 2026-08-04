@@ -37,6 +37,16 @@ const PRODUCT_CLAIM_TERMS = [
   /\benquir(?:y|ies) (?:that )?land/i,
   /\bfiles? it\b/i,
   /\byour (?:own )?(?:work|gallery|photographs) (?:is|are|already)\b/i,
+  // ── WIDENED (CE-ruled at the ×3 read): the read was a FLOOR, not a measure.
+  // Two messages that plainly sell scored false at 22d6df9 — "we built a page
+  // with your portfolio on it… it's live right now" and "that's your page…
+  // built from your actual Instagram work". Both name a concrete artifact the
+  // product produced; neither matched. A read that under-counts the thing it
+  // exists to count makes every green softer than it looks.
+  /\b(?:built|made|put together|pulled)\b[^.!?]{0,40}\b(?:page|studio|storefront|profile)\b/i,
+  /\b(?:a|your|the) page\b[^.!?]{0,60}\b(?:portfolio|gallery|work|photographs|instagram)\b/i,
+  /\b(?:built|made) from your\b/i,
+  /\byour (?:actual |real )?(?:instagram|portfolio|gallery|photographs)\b/i,
 ];
 
 // A trailing question with nothing given is the shape convicted at the founder's

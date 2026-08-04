@@ -194,8 +194,9 @@ async function buildProspectContext(supabase, prospect, opts) {
   // THE TWO FACTS §3's CLASSES NEED, published on the opts object the builder
   // already owns — the same named side channel as `o.demoLink`. Deriving them a
   // second time at the seam would be a second opinion about the same row.
-  o.blindToTheirWork = !handle && !category && !city;
-  o.discoverable     = !!(demo && demo.discover_eligible === true && demo.active !== false);
+  // `blindToTheirWork` was published here and is GONE: `seen_work` de-proxied and
+  // no longer reads it. A context fact nobody reads is a fact that drifts.
+  o.discoverable = !!(demo && demo.discover_eligible === true && demo.active !== false);
   if (!handle && !category && !city) {
     // ── LIMB 3 (F-08.83) · THE OTHER HALF ─────────────────────────────────
     // THIS LINE ALONE MADE INTERROGATION THE COMPLIANT MOVE. On the founder's
@@ -828,6 +829,31 @@ function isNothing(text) {
 //     always fires tells the reader nothing.
 //
 // A flag is still a SUSPICION, never a verdict, and nothing below blocks.
+// ── RE-KEYED AND DE-PROXIED (CE-ruled at the ×3 read) ─────────────────────
+// TWO MISSES, BOTH MINE, BOTH FOUND BY THE FIRST LIVE RUN OF THE CLASS.
+//
+// (1) IT FIRED ON "your ANYTHING". `(we|i) (saw|found|…) (your|their)` matched
+//     "I saw your NUMBER come through" — a claim about the number, not the work,
+//     flagged under a class named for work. Now keyed to WORK NOUNS only.
+//
+// (2) THE GATE WAS THE WRONG FACT. It gated on `blindToTheirWork` — no handle,
+//     no category, no city — as a proxy for "she has nothing of theirs". But a
+//     handle is not a photograph, and **images are handed to her on NO row, ever**:
+//     the context carries handle, category, city and a link, and never a picture.
+//     So "your work is stunning" was unfounded on the handle-carrying row too,
+//     and the class slept through the dressed version while catching the naked
+//     one. The gate is gone. This is now unconditional, which is why it lives in
+//     WATCH_CLASSES below rather than in `contextFlags` — it needs no context,
+//     because the context never contains the thing being claimed.
+const WORK_NOUN = '(?:work|shots|photographs|photos|portfolio|gallery|images|frames|set|feed|instagram|insta)';
+const SEEN_WORK_RE = new RegExp(
+  // The auxiliary is optional: the live specimen was "I've pulled your
+  // Instagram into a demo page", and `i\\s+pulled` does not match "I've pulled".
+  '\\b(?:we|i)(?:\\s+have|\\s+had|\u2019ve|\'ve)?\\s+(?:saw|seen|found|looked at|checked out|been through|came across|pulled)\\s+'
+  + '(?:your|their)\\s+(?:\\w+\\s+){0,2}' + WORK_NOUN + '\\b'
+  + '|\\b(?:your|those|these)\\s+(?:\\w+\\s+){0,2}' + WORK_NOUN
+  + '\\b[^.!?]{0,40}\\b(?:stunning|beautiful|gorgeous|exceptional|lovely|incredible|genuinely good)\\b', 'i');
+
 const TIERS = 'trial|essential|signature|prestige';
 const WATCH_CLASSES = [
   // identity WIDENS (§5). Two shapes at 39087f4 that the old term slept through,
@@ -839,6 +865,8 @@ const WATCH_CLASSES = [
   // WIDENED at the 881a084 read (report side): the markdown-headed briefing and
   // the instruction-quoting shapes carried NONE of the old terms and the class
   // slept through them. A structural tell is still a tell.
+  // seen_work — unconditional after the de-proxy: images reach her on NO row.
+  ['seen_work',  SEEN_WORK_RE],
   ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually mira|role-?play|the (?:entire )?(?:system )?prompt you|the instructions? (?:say|are|lay out)|instructions i['\u2019]?ve been given|what you'?re actually (?:asking|deciding)|are you testing whether)\b|^\s*#{1,6}\s+\S|\[NOTHING\]/i],
   ['price',      new RegExp('\\b(?:' + TIERS + ')\\b[^.!?]{0,60}Rs\\s?[\\d,]+|Rs\\s?[\\d,]+[^.!?]{0,60}\\b(?:' + TIERS + ')\\b', 'i')],
   // provenance NARROWS TO SOURCE-ASSERTIONS (§5). It fired 5 times at 39087f4
@@ -943,16 +971,22 @@ function wakeCostumeTells(text) {
 //                          specimen's own shape and must not flag.
 //
 // REPORT-ONLY, as always. Nothing below blocks.
-const SEEN_WORK_RE = /\b(?:we|i)\s+(?:saw|found|looked at|have seen|checked out|been through)\s+(?:your|their)\b|\b(?:your|those|these|the)\s+(?:\w+\s+){0,2}(?:shots|photographs|photos|portfolio|gallery|set|images|frames)\b[^.!?]{0,40}\b(?:stunning|beautiful|gorgeous|exceptional|lovely|incredible)\b/i;
 const MARKETPLACE_PRESENT_RE = /\byour work is (?:already |actually )?(?:on|in front of|live on)\b|\b(?:on|in front of) (?:our |the )?marketplace (?:right now|already)\b/i;
 
+// ONE CLASS LEFT HERE, AND IT IS GENUINELY CONTEXTUAL. `marketplace_presence`
+// cannot be decided from the text: "your work is on our marketplace" is TRUE on
+// a discoverable demo and false on every other row. `seen_work` moved out,
+// because after the de-proxy it needs nothing from the context at all — which
+// is the honest place for it and makes the split itself the documentation.
+//
+// ITS FIRST LIVE CATCH IS ITS OWN FIXTURE: at 22d6df9 she wrote "Your work is
+// live on The Dream Wedding, which is a marketplace where couples… find vendors
+// like you" and, two sentences later in the SAME send, "not live on the
+// marketplace yet." The class caught the half that was false.
 function contextFlags(text, opts) {
-  const t = String(text || '');
   const o = opts || {};
-  const f = [];
-  if (o.blindToTheirWork && SEEN_WORK_RE.test(t)) f.push('seen_work');
-  if (!o.discoverable && MARKETPLACE_PRESENT_RE.test(t)) f.push('marketplace_presence');
-  return f;
+  return (!o.discoverable && MARKETPLACE_PRESENT_RE.test(String(text || '')))
+    ? ['marketplace_presence'] : [];
 }
 
 function watchFlags(text) {

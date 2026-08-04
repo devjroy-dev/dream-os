@@ -52,12 +52,11 @@ const MUTATIONS = {
   guard_closed: ['src/agent/closerEngine.js',     s => s.replace('    return false;\n  }\n}\n\n// ═', '    return true;\n  }\n}\n\n// ═')],
   nudge_count:  ['src/agent/closerEngine.js',     s => s.replace('return Math.max(0, run - 1);', 'return run;')],
   nudge_cap:    ['src/agent/closerEngine.js',     s => s.replace('const MAX_NUDGES = 2;', 'const MAX_NUDGES = 99;')],
-  // ⚠ RE-ANCHORED, AND I CAUSED THE COLLISION. §3's `o.discoverable` line reads
-  // `demo.discover_eligible === true` too, and it sits ABOVE the clock — so the
-  // bare anchor started taking the FIRST match and mutated the wrong predicate.
-  // CE-127's exact class: String.replace takes the first hit, so a bare anchor
-  // is a coin flip, and adding a second occurrence anywhere flips it. Anchored
-  // on the clock's own multi-line shape, which is unique.
+  // ⚠ RE-ANCHORED (and the re-anchor was LOST once already, when I restored the
+  // pre-ship bench over the shipped one — so it is recorded twice on purpose).
+  // `o.discoverable` reads `demo.discover_eligible === true` too and sits ABOVE
+  // the clock, so the bare anchor takes the FIRST match and mutates the wrong
+  // predicate. CE-127: a bare anchor is a coin flip.
   clock_uncond: ['src/agent/closerEngine.js',     s => s.replace(
     '    const inSweepPopulation =\n      demo.discover_eligible === true &&',
     '    const inSweepPopulation =\n      true &&')],
@@ -120,18 +119,35 @@ const MUTATIONS = {
   prov_wide: ['src/agent/closerEngine.js', s => s.replace(
     "  ['provenance', /\\b(got (?:it|your number|you) from",
     "  ['provenance', /\\b(where.{0,12}number|got (?:it|your number|you) from")],
+  // §1 — the room rule wins again: the bare row goes back to 0/9 claim=false.
+  room_beats_claim: ['src/agent/souls/closerSoul.js', s => s.replace(
+    'Room governs your length and your tone, never whether you put one true thing on the table — a bare hello gets one too. ', '')],
+  // §2 — the bare-row lead-with-the-product line removed: "we saw your work" returns.
+  no_product_lead: ['src/agent/souls/closerSoul.js', s => s.replace(
+    'When you know nothing about their work, the product is what you have', 'When you know nothing about their work, say so')],
+  // RIDER — the class re-proxied: it sleeps through the dressed adjective form again.
+  seen_work_reproxied: ['src/agent/closerEngine.js', s => s.replace(
+    "  ['seen_work',  SEEN_WORK_RE],", '')],
+  // ⚠ `claim_floored` WAS DRAFTED AND RETIRED, with the reason rather than a
+  // silent deletion: this harness mutates a fixed set of production files in
+  // memory before require, and `scripts/closerReads.js` is not among them — the
+  // mutation applies to nothing and reddens nothing. Same limitation that
+  // retired `seed_vacated_name`. The widened terms are proven by the three
+  // RIDER cells driving the reader directly; that is a proof of the FUNCTION,
+  // and the mutation would have been a proof of the harness.
   // §3 — the seen-work class blinded.
-  seen_work_blind: ['src/agent/closerEngine.js', s => s.replace(
-    "  if (o.blindToTheirWork && SEEN_WORK_RE.test(t)) f.push('seen_work');", '')],
-  // §3 — the class made CONTEXT-BLIND: it would fire on rows where the claim is true.
-  seen_work_contextless: ['src/agent/closerEngine.js', s => s.replace(
-    '  if (o.blindToTheirWork && SEEN_WORK_RE.test(t))', '  if (SEEN_WORK_RE.test(t))')],
+  // ⚠ `seen_work_blind`, `seen_work_contextless` and `no_context_facts` were
+  // RETIRED here, with the reason rather than a silent deletion: all three
+  // anchored on `o.blindToTheirWork`, which the de-proxy removed. A mutation
+  // whose predicate no longer exists is not a proof, and leaving it would have
+  // exited 2 on a correct tree.
+  no_context_facts: ['src/agent/closerEngine.js', s => s.replace(
+    '  o.discoverable = !!(demo && demo.discover_eligible === true && demo.active !== false);',
+    '  o.discoverable = true;')],
   // §3 — the marketplace-presence class blinded.
   marketplace_blind: ['src/agent/closerEngine.js', s => s.replace(
-    "  if (!o.discoverable && MARKETPLACE_PRESENT_RE.test(t)) f.push('marketplace_presence');", '')],
-  // §3 — the context facts never published: both classes go dark at the seam.
-  no_context_facts: ['src/agent/closerEngine.js', s => s.replace(
-    '  o.blindToTheirWork = !handle && !category && !city;', '  o.blindToTheirWork = false;')],
+    "  return (!o.discoverable && MARKETPLACE_PRESENT_RE.test(String(text || '')))\n    ? ['marketplace_presence'] : [];",
+    '  return [];')],
   // §4 — post_exit widened back: the legitimate nudge-two flags again.
   post_exit_wide: ['src/agent/closerEngine.js', s => s.replace(
     "|i don'?t send a third", "|already sent|i don'?t send a third")],
@@ -1435,11 +1451,22 @@ function fakeSupabase(db) {
   // ═══ 19 · THE ×3 AT 9b6e3ca — SELLING BROUGHT FABRICATION WITH IT ════════
   section('19 · the claim beats the room, and the two classes that need context');
 
-  // ⚠ §1 AND §2's CELLS ARE NOT HERE, AND THAT IS THE LAW WORKING. Those two
-  // limbs are SOUL PROSE, they measure 13,817 against a ratified 13,600, and the
-  // const-independence law forbids the cap moving in the same commit as the text
-  // it caps. The prose is HELD with its ratify request; §3 and §4 are machinery
-  // and ship now. The cells land in the same commit as the bytes they assert.
+  // ── §1 · THE CLAIM RULE BEATS THE ROOM RULE ─────────────────────────────
+  // THE RED THIS CURES: `bare_row_cold` scored claim=FALSE 9/9 at 9b6e3ca. The
+  // mechanism was soul-internal — WHERE IT BEGINS said take the room you are
+  // given and no more, "Hi" reads as almost no room, and the new claim rule lost
+  // to the room rule on exactly the shortest inbounds.
+  ok(/Room governs your length and your tone, never whether you put one true thing on the table/.test(soul.CLOSER_SOUL),
+     '§1 — room governs length and tone, never whether she puts something on the table');
+  ok(/a bare hello gets one too/.test(soul.CLOSER_SOUL),
+     '§1 — and the shortest possible opening is named, because that is where it failed');
+
+  // ── §2 · ON A BARE ROW SHE LEADS WITH THE PRODUCT ───────────────────────
+  ok(/When you know nothing about their work, the product is what you have/.test(soul.CLOSER_SOUL),
+     '§2 — the collision is resolved: the product is always true and always available');
+  ok(/the fastest way to prove you never looked at all/.test(soul.CLOSER_SOUL),
+     '§2 — with the reason in the same breath (LD-5), and it names the specimen');
+
   // ── §3 · THE TWO CLASSES THAT CANNOT BE DECIDED FROM TEXT ALONE ─────────
   // TONIGHT'S SIX SPECIMENS ARE THE FIXTURE. Four of them had no class at all
   // until this delivery, and every one is a verbatim outbound from 9b6e3ca.
@@ -1447,14 +1474,20 @@ function fakeSupabase(db) {
   const KNOWN = { blindToTheirWork: false, discoverable: false };
   const LIVE  = { blindToTheirWork: false, discoverable: true  };
 
-  ok(closer.contextFlags('We saw your work and thought you might be interested', BARE)
-       .indexOf('seen_work') !== -1,
-     '§3 — "we saw your work" on a row she was shown nothing of');
-  ok(closer.contextFlags('those shots are genuinely stunning', BARE).indexOf('seen_work') !== -1,
+  // ── LABELED AMENDMENT · RE-KEYED AND DE-PROXIED (the ×3's precision riders) ─
+  // The class fired on "I saw your NUMBER" and slept through "your work is
+  // stunning" on a handle row. Both were mine. Re-keyed to WORK NOUNS, and the
+  // gate removed entirely — **images reach her on NO row**, so the claim is
+  // unfounded everywhere and the class is unconditional. It therefore moved out
+  // of `contextFlags` and into `watchFlags`, and these cells moved with it.
+  ok(closer.watchFlags('We saw your work and thought you might be interested').indexOf('seen_work') !== -1,
+     '§3 — "we saw your work", which the context never gave her on any row');
+  ok(closer.watchFlags('those shots are genuinely stunning').indexOf('seen_work') !== -1,
      '§3 — and the adjective form, which is the same lie wearing a compliment');
-  // NON-VACUITY: the SAME sentence on a row that carries a handle is TRUE.
-  ok(closer.contextFlags('We saw your work and thought you might be interested', KNOWN).length === 0,
-     '§3 — the same words on a row with a handle flag NOTHING: the class is the context, not the text');
+  ok(closer.watchFlags('Your work is stunning — and I can see why couples would be looking').indexOf('seen_work') !== -1,
+     '§3 — INCLUDING on a row that carries a handle: a handle is not a photograph');
+  ok(closer.watchFlags('I saw your number come through').indexOf('seen_work') === -1,
+     '§3 — and NOT on "your number", which is the false positive the first live run produced');
 
   ok(closer.contextFlags('your work is actually in front of couples right now on our marketplace', KNOWN)
        .indexOf('marketplace_presence') !== -1,
@@ -1477,7 +1510,33 @@ function fakeSupabase(db) {
     conversationId: 'cZ', phone: '919000777888', wakeReason: 'reply', llm: seenLlm,
   });
   ok((bareOut.flags || []).indexOf('seen_work') !== -1,
-     '§3 DELIVERED — the context facts are derived by the builder and reach the turn\'s flags');
+     '§3 DELIVERED — the claim reaches the turn\'s own flags, not just the reader');
+  // ── RIDER 3 · `claim=` MEASURES INSTEAD OF FLOORING ──────────────────────
+  // Two messages that plainly sold scored FALSE at 22d6df9. A read that
+  // under-counts the thing it exists to count makes every green softer than it
+  // looks — and this read is the arc's acceptance number.
+  const reads2 = require(path.join(__dirname, 'closerReads.js'));
+  ok(reads2.hasProductClaim('We built a page with your portfolio on it and it is live right now'),
+     'RIDER — "we built a page with your portfolio on it" is a claim, and now scores as one');
+  ok(reads2.hasProductClaim('That is your page. It is built from your actual Instagram work'),
+     'RIDER — and so is "built from your actual Instagram work"');
+  ok(!reads2.hasProductClaim('Hey! I am Mira. What is your trade?'),
+     'RIDER — and a bare question still scores nothing, so the widening did not hollow the read');
+
+  // DELIVERED — `marketplace_presence` must reach a real turn's flags, and the
+  // context fact it needs must be derived by the BUILDER. Without this cell the
+  // `no_context_facts` mutation reddened nothing: every other cell called
+  // `contextFlags` directly with its own opts and never touched the publish.
+  const mktSb = fakeSupabase({ demo_vendors: [baseDemo], messages: [
+    { id: 'k1', conversation_id: 'cK', direction: 'inbound', body: 'whats this about', created_at: '2026-08-04T01:00:00Z' },
+  ] });
+  const mktLlm = async () => ({ content: [{ type: 'text', text: 'Your work is live on our marketplace right now.' }], usage: {} });
+  const mktOut = await closer.runCloserTurn({
+    supabase: mktSb, prospect, conversationId: 'cK', phone: '919000888999',
+    wakeReason: 'reply', llm: mktLlm,
+  });
+  ok((mktOut.flags || []).indexOf('marketplace_presence') !== -1,
+     '§3 DELIVERED — the presence lie reaches the turn\'s flags, and `discoverable` is the BUILDER\'s own derivation');
 
   // ── §4 · post_exit NARROWS TO SENDS, NOT REFERENCES ─────────────────────
   ok(closer.watchFlags("I've already sent you the demo link").indexOf('post_exit') === -1,
