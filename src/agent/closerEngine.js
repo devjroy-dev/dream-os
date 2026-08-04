@@ -280,8 +280,8 @@ async function buildProspectContext(supabase, prospect, opts) {
   }
 
   // ── The nudge state (FORK 1: the machinery WAKES her, it never WORDS her) ──
-  // The count is DERIVED from the conversation's own messages and stored
-  // nowhere — zero DDL, the record is the truth. She is told the number; SHE
+  // The evidence is DERIVED from the conversation's own messages and stored
+  // nowhere — zero DDL, the record is the truth. She is shown what stands; SHE
   // decides whether this is nudge one, nudge two, or the gracious exit, and she
   // composes every byte of it. The cap below her is mechanical and fail-closed.
   // ── THE WAKE IS CONTEXT, NEVER CONVERSATION (F-08.57's cure, CE-ruled) ────
@@ -300,22 +300,69 @@ async function buildProspectContext(supabase, prospect, opts) {
   // clock and the enquiry count, in exactly the register those use. She is told
   // what is true; she composes to the PROSPECT.
   //
-  // MECHANISM NAMED (F-06.85): this block is conditioned on `runNudgeJob`
-  // waking her at all, and on `loadHistory` truncating at the last inbound so
-  // no trailing assistant turn invites a continuation. If either changes, this
-  // paragraph is false and must be re-read with it.
+  // ── F-08.66 · WHAT THE TRUNCATION CUT AWAY COMES BACK AS EVIDENCE ────────
+  // THE DISEASE. `truncateAtLastInbound` cuts the message array at the
+  // prospect's last inbound, which is correct — a trailing assistant turn is a
+  // prefill and F-08.57 is dead by that cut. But it ALSO deleted the only proof
+  // that her sends existed. The turn then arrived as ONE stale user message
+  // beside a context block asserting messages stood unanswered: two facts that
+  // contradict. Haiku, correctly, refused or asked what was meant; DeepSeek
+  // stayed in character and confabulated ("Looks like none of my earlier
+  // messages made it through"). And with her own sends invisible she
+  // reintroduced herself on 7 of 9 Haiku wakes — the switchboard her own soul
+  // and the Manual both name.
+  //
+  // THE CURE, arm (b), CE-ruled: her unanswered sends move into the CONTEXT,
+  // quoted verbatim. The messages array STAYS truncated. No trailing assistant
+  // turn, no user-role wake, and the careful model gets evidence instead of a
+  // setup.
+  //
+  // ── F-08.67 · THE SINGLE-SOURCE LAW, AND WHY NO NUMBER IS SPOKEN ─────────
+  // THIS BLOCK USED TO SAY, on every FIRST nudge in production:
+  //   "Your last 0 messages stand unanswered."
+  // `nudgesStandingFrom` counts NUDGES (her first outbound after an inbound is
+  // her ANSWER, not a nudge, so the run is floored at run-1); the copy said
+  // MESSAGES. On the first wake those are 0 and 1, and the sentence was a
+  // self-contradiction handed to a model this arc had just finished teaching not
+  // to trust contradictory turns.
+  //
+  // RULED: the quoted block is the ONLY source. There is no spoken count at all
+  // — the quotes ARE the count, so count and quotes cannot disagree. The cap
+  // bookkeeping stays machinery for `runNudgeJob`'s fail-closed max and is never
+  // spoken as a number.
+  //
+  // ZERO-COLLAPSE (CE-186's discipline, the same rule the enquiry count obeys
+  // twenty lines above): nothing standing → the line and the block are both
+  // ABSENT. Not "no messages", not "unknown" — absent. A model told a thing is
+  // zero will reach for it anyway.
+  //
+  // MECHANISM NAMED (F-06.85), THREE OF THEM:
+  //   1. `runNudgeJob` waking her at all — it only fires on a trailing outbound.
+  //   2. `loadHistory`'s truncation: `unansweredSends` is derived as the exact
+  //      COMPLEMENT of `truncateAtLastInbound` (see `unansweredSendsFrom`), so
+  //      the quotes are, by construction, precisely what the cut removed. If the
+  //      truncation moves, these quotes move with it and cannot drift.
+  //   3. `MAX_NUDGES = 2` — the exit declarative below says "Both follow-ups are
+  //      spent" IN WORDS. If the cap ever moves off two, that sentence is false
+  //      and this block must be re-read with it. The bench asserts the cap
+  //      beside the sentence so the pairing is mechanical, not remembered.
   if (o.wakeReason === 'nudge') {
-    const standing   = o.nudgesStanding || 0;
-    const remaining  = Math.max(0, MAX_NUDGES - standing);
-    lines.push('');
-    lines.push('WHERE THIS CONVERSATION STANDS');
-    lines.push(standing === 1
-      ? 'Your last message stands unanswered.'
-      : `Your last ${standing} messages stand unanswered.`);
-    lines.push(remaining > 0
-      ? `You have ${remaining} more message${remaining === 1 ? '' : 's'} after this one.`
-      : 'This wake is the goodbye. Whatever you write now is the last thing they hear from you, so write the goodbye itself — not a note about having said goodbye.');
-    lines.push(`If there is genuinely nothing worth sending, write ${NOTHING_TOKEN} and nothing goes out.`);
+    const sends = o.unansweredSends || [];
+    if (sends.length) {
+      // THE EXIT IS DERIVED FROM THE SAME ROWS AS THE QUOTES, deliberately, and
+      // not from a second count: her ANSWER plus MAX_NUDGES follow-ups is the
+      // last wake she gets. Reading it off `sends.length` means the declarative
+      // and the evidence beneath it can never disagree, which is the whole of
+      // F-08.67's ruling applied to the one remaining conditional.
+      const isExit = sends.length > MAX_NUDGES;
+      lines.push('');
+      lines.push('WHERE THIS CONVERSATION STANDS');
+      lines.push('Their last reply is above. Since then, these went out and none has been answered:');
+      for (const s of sends) lines.push(`» "${s}"`);
+      lines.push(isExit
+        ? `Both follow-ups are spent. What remains is the goodbye, or ${NOTHING_TOKEN}.`
+        : `If there is genuinely nothing worth sending, write ${NOTHING_TOKEN} and nothing goes out.`);
+    }
   }
 
   return lines.join('\n');
@@ -341,6 +388,22 @@ function truncateAtLastInbound(rows) {
   return rows;
 }
 
+// F-08.66 — THE COMPLEMENT, AND IT IS DEFINED AS THE COMPLEMENT ON PURPOSE.
+// What the truncation removed is exactly what the context quotes. Writing this
+// as `rows.slice(kept.length)` rather than as a second scan for trailing
+// outbounds means there is ONE definition of "her unanswered sends" in this
+// file and no way for the quote to disagree with the cut. A second scan would
+// be a second method, and INDEPENDENT-METHOD clause 1 is about exactly this:
+// two derivations of the same fact are a drift surface, not a check.
+//
+// The no-inbound case falls out correctly for free: `truncateAtLastInbound`
+// returns the rows whole, so the complement is empty, so the block collapses.
+// A conversation with no inbound at all has no "since their last reply".
+function unansweredSendsFrom(rows) {
+  const kept = truncateAtLastInbound(rows);
+  return rows.slice(kept.length);
+}
+
 async function loadHistory(supabase, conversationId, opts) {
   const { data } = await supabase
     .from('messages')
@@ -349,7 +412,21 @@ async function loadHistory(supabase, conversationId, opts) {
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT);
   let rows = (data || []).slice().reverse();
-  if (opts && opts.truncateAtInbound) rows = truncateAtLastInbound(rows);
+  if (opts && opts.truncateAtInbound) {
+    // THE SIDE CHANNEL, NAMED RATHER THAN HIDDEN — the same shape and the same
+    // reason as `o.demoLink` in buildProspectContext above. The cut rows exist
+    // in exactly one place, here, at the moment of cutting. Any other route
+    // would mean re-reading the messages table and deriving the same thing a
+    // second time, which is the drift `unansweredSendsFrom` exists to refuse.
+    // The empty-body filter is applied identically to both halves, so a blank
+    // row is neither sent to the model nor quoted at it.
+    if (opts) {
+      opts.unansweredSends = unansweredSendsFrom(rows)
+        .filter(r => r.body && String(r.body).trim())
+        .map(r => String(r.body));
+    }
+    rows = truncateAtLastInbound(rows);
+  }
   return rows
     .filter(r => r.body && String(r.body).trim())
     .map(r => ({
@@ -585,10 +662,20 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // THE USER-ROLE WAKE IS GONE (F-08.57). Nothing is appended to the message
   // stream. The history is cut at the prospect's last inbound so it ends where
   // they went quiet, and everything the machinery knows rides the context block.
-  const messages = await loadHistory(supabase, conversationId, { truncateAtInbound: isNudge });
+  //
+  // F-08.66: `histOpts` is named rather than inline because `loadHistory`
+  // publishes the cut sends back onto it. What the truncation removed from the
+  // MESSAGES is what the CONTEXT quotes, and this object is the only thing
+  // standing between those two facts.
+  const histOpts = { truncateAtInbound: isNudge };
+  const messages = await loadHistory(supabase, conversationId, histOpts);
   const nudgesStanding = isNudge ? await countNudgesStanding(supabase, conversationId) : 0;
 
-  const ctxOpts = { wakeReason, nudgesStanding };
+  // THE STANDING IS MACHINERY AND STAYS MACHINERY (F-08.67). It rides the log
+  // line and the returned object — where the founder and the harness read it —
+  // and it does NOT enter the context, because the quoted sends are the
+  // context's only source of how many stand.
+  const ctxOpts = { wakeReason, unansweredSends: histOpts.unansweredSends || [] };
   const dynamic = await buildProspectContext(supabase, prospect, ctxOpts);
   const system = buildStaticSystem().concat([{ type: 'text', text: dynamic }]);
 
@@ -600,7 +687,8 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   if (!messages.length) {
     if (isNudge) {
       console.log('[closer] no-send — a nudge with no conversation behind it has nothing to say');
-      return { text: '', source: 'no_send', model: route.model, provider: route.provider };
+      return { text: '', source: 'no_send', model: route.model, provider: route.provider,
+               nudgesStanding };
     }
     throw new Error('closer turn reached the model with an empty history');
   }
@@ -632,7 +720,8 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // R1 AS AMENDED: the version stamp's executable home.
   console.log(`[closer] turn ${MAYA} soul=${CLOSER_SOUL_VERSION} manual=${manual.version} `
     + `provider=${route.provider} model=${route.model} wake=${wakeReason || 'reply'} `
-    + `nudges_standing=${nudgesStanding} in=${resp.usage && resp.usage.input_tokens} `
+    + `nudges_standing=${nudgesStanding} quoted_sends=${ctxOpts.unansweredSends.length} `
+    + `in=${resp.usage && resp.usage.input_tokens} `
     + `out=${resp.usage && resp.usage.output_tokens} `
     + `cache_read=${(resp.usage && resp.usage.cache_read_input_tokens) || 0}`);
 
@@ -663,12 +752,19 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   if (!text) {
     if (isNudge) {
       console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);
-      return { text: '', source: 'no_send', model: route.model, provider: route.provider };
+      return { text: '', source: 'no_send', model: route.model, provider: route.provider,
+               nudgesStanding };
     }
     throw new Error('closer turn produced no text');
   }
+  // F-08.68 — `nudgesStanding` and `unansweredSends` are RETURNED, not merely
+  // logged, because the scenarios harness printed its own loop counter as the
+  // transcript's "[nudge, N standing]" label and the engine had derived
+  // something else. A transcript's every number must be a fact the engine
+  // produced; the only way to guarantee that is to hand it out from here.
   return { text, source: 'maya', model: route.model, provider: route.provider,
-           signed: signedOut.signed, normalized: fixed.corrected, flags };
+           signed: signedOut.signed, normalized: fixed.corrected, flags,
+           nudgesStanding, unansweredSends: ctxOpts.unansweredSends.length };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -793,7 +889,7 @@ module.exports = {
   // exported for the bench
   loadManual, _sliceManual, buildStaticSystem, buildProspectContext, loadHistory,
   nudgesStandingFrom, countNudgesStanding, isRegisteredUser, readNudgeHours,
-  normalizeDemoLinks, truncateAtLastInbound, DEMO_LINK_RE,
+  normalizeDemoLinks, truncateAtLastInbound, unansweredSendsFrom, DEMO_LINK_RE,
   appendLinkSignature, LINK_SIGNATURE, isNothing, NOTHING_TOKEN, watchFlags, WATCH_CLASSES,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,
   NUDGE_CONFIG_KEY, DEFAULT_NUDGE_HOURS, MAX_NUDGES, SURFACE, TIER,

@@ -136,21 +136,39 @@ async function runScenario(name, laneName) {
   const out = [];
   const sb = makeFixtureSupabase(laneName);
 
-  // A NUDGE ONLY EVER FOLLOWS A REPLY. Production reaches `in_session` because
-  // the prospect wrote something; a nudge scenario that opens cold has no
-  // history at all, and the API refuses an empty message list. Seeding the reply
-  // that got them here is not padding the fixture — it is the fixture matching
-  // the only state production can be in when this job fires.
+  // ── F-08.68 CURED · THE FIXTURE IS PRODUCTION'S SHAPE, NOT ONE ROW OF IT ──
+  // WHAT THIS SEEDED, and it is why the finding exists: ONE inbound row, and
+  // nothing else. `runNudgeJob` only ever wakes her when `rows[0].direction ===
+  // 'outbound'` — production's shape is inbound → HER ANSWER → wake → wake →
+  // exit. Seeding the inbound alone left the fixture one row short at every
+  // wake, so the engine derived standing 0, 0, 1 across the three turns while
+  // this harness printed 0, 1, 2 from its own loop counter. **The exit wake was
+  // never reached in a single committed transcript, and every transcript said
+  // it had been.** That is F-08.65's class — the instrument is not what it
+  // claims — surviving F-08.65's own cure.
+  //
+  // HER ANSWER CARRIES HER NAME ON PURPOSE. Production's first outbound is the
+  // seam's reply, in which she introduces herself once. It is seeded that way
+  // because the F-08.66 cure quotes it back to her, and the chair's stated
+  // prediction — that the 7/9 Haiku self-reintroduction residue is the SAME
+  // missing-history disease — is only measurable if the quoted evidence
+  // contains what production's would.
   if (turns[0] === '__NUDGE__') {
+    const t0 = Date.now() - 180000;
     sb.db.messages.push({ id: 'm0', conversation_id: CONV_ID, direction: 'inbound',
-      body: 'ok tell me more', created_at: new Date(Date.now() - 60000).toISOString() });
-    out.push('  THEM: ok tell me more   [seeded: a nudge only ever follows a reply]');
+      body: 'ok tell me more', created_at: new Date(t0).toISOString() });
+    sb.db.messages.push({ id: 'm0a', conversation_id: CONV_ID, direction: 'outbound',
+      body: "I'm Maya, from The Dream Wedding. Your work is already sitting in a demo "
+          + 'studio — your own photographs, your city, arranged the way a couple would '
+          + 'see it: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio',
+      created_at: new Date(t0 + 60000).toISOString() });
+    out.push('  THEM: ok tell me more');
+    out.push('  MAYA: (seeded — her answer at the seam, so the wakes below are production\'s shape)');
   }
 
   for (let i = 0; i < turns.length; i++) {
     const t = turns[i];
     const isNudge = t === '__NUDGE__';
-    const standing = isNudge ? i : 0;
 
     // The prospect's turn is a ROW, not an array entry — production reads
     // history from public.messages and derives the nudge standing from the same
@@ -201,7 +219,15 @@ async function runScenario(name, laneName) {
     // reads of real rows, exactly as production computes them.
     if (text) sb.db.messages.push({ id: 'm' + (sb.db.messages.length + 1), conversation_id: CONV_ID,
       direction: 'outbound', body: text, created_at: new Date(Date.now() + i * 1000).toISOString() });
-    out.push(`  MAYA${isNudge ? ` [nudge, ${standing} standing]` : ''}: ${text || '(NO SEND — silence)'}`);
+    // ── F-08.68 CURED · THE LABEL IS THE ENGINE'S NUMBER, NEVER THE LOOP'S ──
+    // `standing = i` is GONE. `runCloserTurn` now returns the standing it
+    // actually derived and the count of sends it actually quoted, and those are
+    // what print. A transcript is read as evidence by the founder and by the
+    // chair; a number in it that the engine never produced is the transcript
+    // lying about the run, which is the whole of F-08.65 and now of F-08.68.
+    out.push(`  MAYA${isNudge ? ` [nudge, ${turn.nudgesStanding} standing, `
+      + `${turn.unansweredSends === undefined ? '?' : turn.unansweredSends} quoted]` : ''}: `
+      + `${text || '(NO SEND — silence)'}`);
     out.push(`        · source=${turn.source} signed=${turn.signed} normalized=${turn.normalized || 0}`
       + ` flags=${(turn.flags || []).join(',') || 'none'}`
       + ` in=${usage.input_tokens} out=${usage.output_tokens} cache_read=${usage.cache_read_input_tokens || 0}`);

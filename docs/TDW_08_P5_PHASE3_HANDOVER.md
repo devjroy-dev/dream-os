@@ -345,3 +345,182 @@ carries the signature, **which is itself the ordering it proves**.
 `no_send_off`'s anchor had moved and the mutation silently failed to apply; the
 harness exits 2 on a stale anchor rather than passing quietly, which is how it
 was caught. Repaired and re-proven.
+
+---
+
+# ADDENDUM 3 · THE FOURTH RED — F-08.66 / F-08.67 / F-08.68 (2026-08-04)
+
+**Base:** dream-os `1298a8d` · dreamos-pwa `19978c7` (**ZERO pwa bytes this
+sitting**) — both re-derived at origin by `git fetch -q origin && git rev-parse
+origin/main` at first motion, both equal to the charter's tips, both trees clean.
+**Ruled to:** the twenty-first chair's OMNIBUS RULING, 2026-08-04 — §2 F-08.67
+minted · §3 F-08.68 minted · §4 F-08.66 siting and frame bytes · §5 the standing
+arms closed · §6 the records gap.
+**Role:** EXECUTOR. Nothing here was pushed; the LE holds no write credentials.
+
+## 23 · WHAT SHIPPED
+
+| File | What |
+|---|---|
+| `src/agent/closerEngine.js` | `unansweredSendsFrom` (the truncation's exact complement) · `loadHistory` publishes the cut sends on the opts object · the ruled quoted-sends frame replaces the two count-speaking lines · the turn RETURNS `nudgesStanding` + `unansweredSends` · `quoted_sends=` joins the transport log line |
+| `scripts/b08_p5_closer_scenarios.js` | F-08.68: the nudge fixture seeds **her answer**, so the exit wake is reachable · the transcript label is the ENGINE's number, never the loop's |
+| `scripts/b08_p5_closer_bench.js` | 112 → **130** · four labeled amendments, all COUNT-PRESERVING in intent · two mutations RE-ANCHORED · four mutations NEW |
+| `docs/FINDINGS_LOG.md` | CE-188 — the F-08.52 → F-08.68 index (§6 of the ruling) |
+| `docs/TDW_08_P5_PHASE3_HANDOVER.md` | this addendum |
+
+**W-1 CLEAN in the sense that matters:** `closerSoul.js` is **byte-untouched**.
+W-1 was open for Maya's own files; the soul did not need a byte and did not get
+one. Zero bytes in any other soul, lens, prompt or `src/engine/src`.
+
+## 24 · THE CURE, AND THE ONE PLACE IT IS DEFINED
+
+`unansweredSendsFrom(rows)` is written as `rows.slice(truncateAtLastInbound(rows).length)`
+— **the complement, not a second scan for trailing outbounds.** A second scan
+would be a second method for the same fact, which INDEPENDENT-METHOD clause 1
+names as a drift surface rather than a check. Defined this way, **what the
+context quotes is by construction exactly what the messages array lost**, and
+the no-inbound case falls out correctly for free.
+
+The cut rides back on the `opts` object `loadHistory` already receives — the
+same named side channel, for the same stated reason, as `o.demoLink` in
+`buildProspectContext`. `histOpts` is named rather than inline at the call site
+because it is now the only thing standing between the two halves of one fact.
+
+**THE SPOKEN COUNT IS GONE ENTIRELY** (§2's ruling). Not corrected — removed.
+The block's opening line names what it counts in words, the quotes are the
+count, and `nudgesStandingFrom` stays machinery for `runNudgeJob`'s fail-closed
+cap. The exit declarative reads its condition off `sends.length`, the same rows
+the quotes come from, so the declarative and the evidence beneath it cannot
+disagree.
+
+**F-06.85 NAMED, THREE MECHANISMS**, in-comment at the block: `runNudgeJob`'s
+trailing-outbound predicate · `loadHistory`'s truncation · **`MAX_NUDGES = 2`,
+because "Both follow-ups are spent" states the cap IN WORDS.** A bench cell
+asserts the cap beside the sentence, so the pairing is mechanical.
+
+## 25 · ⚠ DISCLOSED LOSS — ONE CONTEXT BYTE DOES NOT SURVIVE THE RULED FRAME
+
+The old exit line ended *"…write the goodbye itself — **not a note about having
+said goodbye**."* The chair's ruled exit declarative is *"Both follow-ups are
+spent. What remains is the goodbye, or [NOTHING]."* **I shipped the ruled bytes
+exactly and did not append to them.**
+
+That anti-note clause was bought with evidence — **0/3 Haiku exits produced a
+note instead of a goodbye.** Its equivalent survives in the SOUL, in her own
+register: *"instead of arriving as a message announcing that no message is being
+sent."* **The amended bench cell now asserts BOTH homes in one expression**, so
+if that soul byte ever moves the loss cannot pass unnoticed. Named here rather
+than papered; the chair may want the clause restored to context, and that is a
+ruling, not mine.
+
+The standing `[NOTHING]` offer on non-exit wakes is **retained byte-unchanged**
+— existing ruled content (F-08.57's third limb), not re-authored. On the exit
+wake it is not duplicated: the ruled declarative carries the token itself.
+
+## 26 · THE BENCH — 112 → 130, AND WHAT EACH MUTATION CONVICTS
+
+**FOUR LABELED AMENDMENTS**, each disclosed in-file with its reasoning, each
+re-aimed under CE-59's both-sides clause (the old shape's green **retired**, not
+retained): ① §8's exit cell · ②/③ §11's two context cells (the cell between
+them, asserting context instructs her to compose nothing, is **byte-unchanged**
+and now guards a larger block) · ④ the exit-wake cell, which is the disclosed
+loss above.
+
+**TWO MUTATIONS RE-ANCHORED, and this is the harness's own law working:**
+`no_truncate` and `no_send_off` both had anchors inside lines this cure moved.
+The harness **exits 2 on a stale anchor rather than passing quietly**, which is
+how both were caught rather than silently going green. `no_send_off` additionally
+needed a *unique* anchor once both no-send returns became byte-identical.
+
+**FOUR MUTATIONS NEW**, each producing a clean red with a readable count and a
+named cell:
+
+| Mutation | Reddens |
+|---|---|
+| `no_quoted_sends` | the wake-state cell · the verbatim-order cell · **F-08.66 DELIVERED — the turn the model receives** |
+| `speaks_count` | the frame-line cell · **F-08.67 — the block speaks no count at all** |
+| `no_zero_collapse` | **F-08.67 — ZERO-COLLAPSE** |
+| `no_returned_standing` | **F-08.68 — the turn RETURNS what it derived** · the independent-method agreement cell |
+
+**THE DELIVERED-TURN CELL IS THE LOAD-BEARING ONE** and it was written because
+everything else asserts the *builder*: a mutation could delete the quotes at the
+seam and leave every builder cell green. It captures the `system` array actually
+handed to the model through the injectable `llm` seam and asserts her sends are
+in it.
+
+**All 23 mutations run at the cured tree: 23 clean reds, zero stale anchors.**
+
+## 27 · F-08.68 PROVEN AT THE FIXTURE, BY COMMAND
+
+Production's shape is `inbound → HER ANSWER → wake → wake → exit`. Against the
+cured fixture, the engine now derives, across the three wakes:
+
+```
+WAKE 1  standing=0  quoted=1
+WAKE 2  standing=1  quoted=2
+WAKE 3  standing=2  quoted=3   → "Both follow-ups are spent. What remains is the goodbye, or [NOTHING]."
+```
+
+**The exit wake is reached for the first time in this arc.** Her seeded answer
+carries her name deliberately, because production's first outbound does, and
+because the chair's §4 prediction is only measurable if the quoted evidence
+contains what production's would.
+
+## 28 · ⚠ §0.2 — A CORRECTION AGAINST MY OWN READ-FIRST
+
+My read-first reported **"six silent `.ts` runners, pass-vs-broken not
+established"** and refused to count them. **That refusal was right and the
+observation was wrong.** All seven runners pass; the silence was an artifact of
+my own `tail -1` over output ending in a blank line — a measurement reproducing
+its own failure mode, INDEPENDENT-METHOD clause 1, against my own bench, in the
+same packet that cited the law. Re-run with the summary line matched directly:
+
+```
+assign-words 24 · bands 11 · city 17 · crew 11 · post-access 25 · roster-mint 22 · settle 41
+```
+
+**151 cells, seven runners, rc=0 on every one.** The pwa floor is therefore
+**28 `.mjs` + 7 `.ts`**, and the §5 build item closes as a *no-defect*.
+
+## 29 · THE FLOOR AT THIS SEAL — PAIRED, SIBLING CHECKED OUT
+
+```
+b08_p5_closer_bench      130  (64 → 89 → 110 → 112 → 130) · 23 mutations, 23 clean reds
+b5c_prospect_lane_bench   47  byte-stable
+b08_p1_lifecycle_bench   106 + 0 skip   PAIRED
+b08_p3_seeing_surface     61 · b08_console 71 · b08_p4_factory 83 · b08_p5_invite 35
+b07_f0789 19 · b07_f0774 20 PAIRED · b07_f0784 59 · b07_p6 29
+b07_p1 75 PAIRED · b07_p5 136 PAIRED
+dreamos-pwa   tsc 0 lines on a cleared .next · 28 .mjs green · 7 .ts green
+```
+
+**The three-seal `⚠ dreamos-pwa floor NOT RUN` closes here.** `node --check`
+clean on both touched `.js` files.
+
+## 30 · COPY INVENTORY
+
+**ZERO new user-facing bytes.** No prospect ever reads any byte in this
+delivery. The context frame is machinery — model-visible, never wire-visible —
+and its bytes are the chair's, ruled 2026-08-04, shipped unamended.
+
+**ONE FIXTURE STRING, named so it is not mistaken for copy:** the harness's
+seeded answer row. It is model-visible inside a bench fixture and reaches no
+wire and no vendor. It is not on the veto list and it is not the founder's byte;
+if he wants it to read differently, it is a fixture edit, not a copy act.
+
+**The veto list is EMPTY. The build minted nothing.**
+
+## 31 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The eleven ×3 through the true pipe, both lanes** — `node scripts/b08_p5_closer_scenarios.js`.
+   The counts to read against this arc's: **self-reintroduction 7/9 Haiku,
+   2/9 DeepSeek** (the chair's named prediction — should collapse) ·
+   **exit wake, now reachable, 0/3 lifetime → measured for the first time** ·
+   reveal-before-close · F-08.64 recurrence.
+2. **F-08.64 is OPEN and recurred at `1298a8d`.** The specimen rides to the
+   founder's transcript read. Interception stays refused.
+3. **F-08.59's provenance slot stays open** — the founder's own sentence.
+4. **The disclosed loss at §25** — the anti-note clause, chair's call.
+5. **F-08.54's content is UNDERIVED and F-08.56 is an empty reserved address**
+   (CE-188). Neither is reconstructable from the repo; both are named rather
+   than invented.

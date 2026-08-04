@@ -53,10 +53,33 @@ const MUTATIONS = {
   nudge_cap:    ['src/agent/closerEngine.js',     s => s.replace('const MAX_NUDGES = 2;', 'const MAX_NUDGES = 99;')],
   clock_uncond: ['src/agent/closerEngine.js',     s => s.replace('demo.discover_eligible === true &&', 'true &&')],
   zero_shows:   ['src/agent/closerEngine.js',     s => s.replace('if (count && count > 0) {', 'if (count >= 0) {')],
-  no_truncate:  ['src/agent/closerEngine.js',    s => s.replace('if (opts && opts.truncateAtInbound) rows = truncateAtLastInbound(rows);', '')],
+  // RE-ANCHORED (F-08.66): the truncation moved inside a block that also
+  // publishes the cut sends. The old anchor no longer exists and a mutation
+  // whose anchor has moved exits 2 by design rather than passing quietly.
+  no_truncate:  ['src/agent/closerEngine.js',    s => s.replace('    rows = truncateAtLastInbound(rows);', '')],
+  // F-08.66 — the quoted block deleted. The DELIVERED-TURN cell must redden.
+  no_quoted_sends: ['src/agent/closerEngine.js', s => s.replace('      for (const s of sends) lines.push(`» "${s}"`);', '')],
+  // F-08.67 — a spoken count put back, of the kind that read "Your last 0".
+  speaks_count: ['src/agent/closerEngine.js',    s => s.replace(
+    "      lines.push('Their last reply is above. Since then, these went out and none has been answered:');",
+    "      lines.push(`Your last ${o.nudgesStanding || 0} messages stand unanswered.`);")],
+  // F-08.67 — the zero-collapse guard removed; the block emits over nothing.
+  no_zero_collapse: ['src/agent/closerEngine.js', s => s.replace('    if (sends.length) {', '    if (true) {')],
+  // F-08.68 — the engine stops handing out the standing it derived, so the
+  // harness would have nothing to print but its own loop counter again.
+  no_returned_standing: ['src/agent/closerEngine.js', s => s.replace(
+    '           nudgesStanding, unansweredSends: ctxOpts.unansweredSends.length };',
+    '           };')],
   normalizer_off: ['src/agent/closerEngine.js',  s => s.replace('    corrected++;\n    return expectedLink;', '    return url;')],
   normalizer_greedy: ['src/agent/closerEngine.js', s => s.replace("if (url.toLowerCase().indexOf(needle) === -1) return url;   // not aiming at this demo", '')],
-  no_send_off:  ['src/agent/closerEngine.js',    s => s.replace("      return { text: '', source: 'no_send', model: route.model, provider: route.provider };", "      throw new Error('no-send path removed by mutation');")],
+  // RE-ANCHORED (F-08.68): both no-send returns now carry the derived standing,
+  // so the old one-line anchor no longer exists AND the two sites became
+  // byte-identical. Anchored on the log line above it, which is unique.
+  no_send_off:  ['src/agent/closerEngine.js',    s => s.replace(
+    "      console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);\n"
+    + "      return { text: '', source: 'no_send', model: route.model, provider: route.provider,\n"
+    + "               nudgesStanding };",
+    "      throw new Error('no-send path removed by mutation');")],
   soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 11750;', 'const SOUL_CHAR_CEILING = 100;')],
   sig_off:      ['src/agent/closerEngine.js',    s => s.replace("  return { text: text + '\\n\\n' + LINK_SIGNATURE, signed: true };", '  return { text, signed: false };')],
   sig_no_link:  ['src/agent/closerEngine.js',    s => s.replace('if (text.indexOf(expectedLink) === -1) return { text, signed: false };  // no link, no floor', '')],
@@ -265,12 +288,17 @@ function fakeSupabase(db) {
   ctx = await closer.buildProspectContext(fakeSupabase({}), Object.assign({}, prospect, { demo_vendor_ref: null }));
   ok(ctx.includes(closer.PRODUCT_LINK) && !/demo studio is up/.test(ctx), 'no demo → S-6 falls back to the product link');
 
-  ctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect, { wakeReason: 'nudge', nudgesStanding: 2 });
-  // RE-AIMED, count preserved: F-08.57's cure reworded this from an instruction
-  // ("This is your last message... Leave the door open, gracefully") into a
-  // FACT ("This is the last message you will send"). The old wording was the
-  // narration bug's own raw material.
-  ok(/This wake is the goodbye/.test(ctx), 'at two standing she is told this is the last one');
+  // ── LABELED AMENDMENT ① · COUNT PRESERVED (F-08.66/67) ────────────────────
+  // RE-AIMED TWICE NOW. F-08.57's cure reworded this from an instruction into a
+  // fact; F-08.67's ruling deletes the spoken count entirely and makes the
+  // quoted sends the block's only source, so the driver is no longer a
+  // `nudgesStanding` integer but the sends themselves. The ASSERTION is the
+  // same assertion — at the spent cap she is told plainly that this is the
+  // last one — re-aimed at the ruled bytes. CE-59's both-sides clause: the old
+  // shape's green is retired, not retained.
+  ctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
+    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one', 'nudge two'] });
+  ok(/Both follow-ups are spent\. What remains is the goodbye/.test(ctx), 'at the spent cap she is told this is the last one');
   ok(!/just following up|Sorry to chase/.test(ctx), 'the machinery WAKES her and words nothing — no composed line anywhere in context');
 
   // ═══ 9 · THE SEAM — TRANSPORT UNMOVED ════════════════════════════════════
@@ -321,15 +349,25 @@ function fakeSupabase(db) {
   ok(JSON.stringify(closer.truncateAtLastInbound([O2, O2])) === JSON.stringify([O2, O2]),
      'F-08.57 — a conversation with no inbound at all is left whole, never emptied');
 
+  // ── LABELED AMENDMENTS ② and ③ · COUNT PRESERVED (F-08.66/67) ─────────────
+  // Both cells asserted the SPOKEN COUNTS that F-08.67 convicted — the first on
+  // "Your last message stands unanswered" and "You have 1 more message after
+  // this one", the second on "This wake is the goodbye". Those bytes are gone
+  // by ruling. What each cell was FOR survives untouched: the wake's state
+  // reaches her as a fact in the clock's register (②), and the cap is stated
+  // plainly and still as a fact (③). Re-aimed at the ruled frame; the cell
+  // between them, which asserts context instructs her to compose nothing, is
+  // BYTE-UNCHANGED and now guards a larger block.
   let nctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
-    { wakeReason: 'nudge', nudgesStanding: 1 });
-  ok(/Your last message stands unanswered/.test(nctx) && /You have 1 more message after this one/.test(nctx),
-     'F-08.57 — the standing is a FACT in context, in the register the clock uses');
+    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one'] });
+  ok(/Since then, these went out and none has been answered/.test(nctx)
+     && /» "nudge one"/.test(nctx),
+     'F-08.57/66 — the wake state is a FACT in context, in the register the clock uses');
   ok(!/Say something worth opening|say goodbye well|Leave the door open, gracefully/.test(nctx),
      'F-08.57 — context instructs her to compose NOTHING; no line she could narrate back');
   nctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
-    { wakeReason: 'nudge', nudgesStanding: 2 });
-  ok(/This wake is the goodbye/.test(nctx),
+    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one', 'nudge two'] });
+  ok(/Both follow-ups are spent/.test(nctx),
      'F-08.57 — at the cap she is told it plainly, still as a fact');
 
   // F-08.61 — the link normalizer
@@ -487,11 +525,20 @@ function fakeSupabase(db) {
      'F-08.57 RUNTIME — she writes the token and nothing goes out'
      + (nothingThrew ? ' — THREW INSTEAD' : ''));
 
-  // THE EXIT WAKE says plainly that THIS wake is the goodbye
+  // ── LABELED AMENDMENT ④ · COUNT PRESERVED (F-08.66/67) ────────────────────
+  // The exit wake still names itself; the bytes that name it are the chair's,
+  // ruled 2026-08-04. DISCLOSED LOSS, not papered: the old context sentence
+  // "not a note about having said goodbye" does NOT survive into the ruled
+  // frame. The behaviour it bought — 0/3 Haiku exits produced a note instead of
+  // a goodbye — is carried by the soul, which says it in her own register at
+  // closerSoul.js ("instead of arriving as a message announcing that no message
+  // is being sent"). The cell below asserts BOTH homes so the loss cannot go
+  // unnoticed if the soul byte ever moves too.
   const exitCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
-    { wakeReason: 'nudge', nudgesStanding: 2 });
-  ok(/This wake is the goodbye/.test(exitCtx) && /not a note about having said goodbye/.test(exitCtx),
-     'the exit wake names itself, because 0/3 Haiku exits produced a note instead of a goodbye');
+    { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one', 'nudge two'] });
+  ok(/Both follow-ups are spent\. What remains is the goodbye/.test(exitCtx)
+     && /instead of arriving as a message announcing that no message is being sent/.test(soul.MAYA_SOUL),
+     'the exit wake names itself, and the anti-note byte still has a home in the soul');
   ok(exitCtx.indexOf('[NOTHING]') !== -1,
      'and the silence option is offered at the exit, where it is most needed');
 
@@ -543,6 +590,122 @@ function fakeSupabase(db) {
   } catch (e) { ehReplyThrew = true; }
   ok(ehReplyThrew,
      'but an empty history on a REPLY is a genuine fault and throws — there is no reply without something to reply to');
+
+  // ═══ 12 · F-08.66 · F-08.67 · F-08.68 — THE WAKE CARRIES HER OWN SENDS ═══
+  section('12 · F-08.66/67/68 — her unanswered sends are evidence, not a memory');
+
+  const IN = (b, t) => ({ direction: 'inbound',  body: b, created_at: t });
+  const OUT = (b, t) => ({ direction: 'outbound', body: b, created_at: t });
+
+  // ── THE COMPLEMENT IS A COMPLEMENT, proven as a partition rather than as a
+  //    second scan. Whatever the truncation keeps plus whatever this returns is
+  //    the whole row set, on every shape — which is the single-source law
+  //    stated as arithmetic instead of as a sentence.
+  const shapes = [
+    [IN('a', '1'), OUT('b', '2'), OUT('c', '3')],
+    [IN('a', '1'), OUT('b', '2'), IN('c', '3'), OUT('d', '4')],
+    [IN('a', '1')],
+    [OUT('a', '1'), OUT('b', '2')],
+    [],
+  ];
+  let partitionHolds = true;
+  for (const rows of shapes) {
+    const kept = closer.truncateAtLastInbound(rows);
+    const cut  = closer.unansweredSendsFrom(rows);
+    if (kept.length + cut.length !== rows.length) partitionHolds = false;
+    if (cut.some(r => r.direction !== 'outbound')) partitionHolds = false;
+  }
+  ok(partitionHolds,
+     'F-08.66 — what the quote carries is EXACTLY what the truncation cut, on every shape');
+  ok(closer.unansweredSendsFrom([OUT('a', '1'), OUT('b', '2')]).length === 0,
+     'F-08.66 — no inbound at all: the history stays whole, so nothing was cut and nothing is quoted');
+  ok(closer.unansweredSendsFrom([IN('a', '1')]).length === 0,
+     'F-08.66 — they spoke last: nothing stands, and zero-collapse has something true to collapse');
+
+  // ── loadHistory publishes the cut in the same act that cuts ───────────────
+  const qSb = fakeSupabase({ messages: [
+    { id: 'q1', conversation_id: 'cQ', direction: 'inbound',  body: 'ok tell me more', created_at: '2026-08-04T01:00:00Z' },
+    { id: 'q2', conversation_id: 'cQ', direction: 'outbound', body: "I'm Maya. Your page is live.", created_at: '2026-08-04T02:00:00Z' },
+    { id: 'q3', conversation_id: 'cQ', direction: 'outbound', body: '   ', created_at: '2026-08-04T02:30:00Z' },
+    { id: 'q4', conversation_id: 'cQ', direction: 'outbound', body: 'One more thing —', created_at: '2026-08-04T03:00:00Z' },
+  ] });
+  const qOpts = { truncateAtInbound: true };
+  const qMsgs = await closer.loadHistory(qSb, 'cQ', qOpts);
+  ok(qMsgs.length === 1 && qMsgs[0].role === 'user',
+     'F-08.66 — the MESSAGES array stays truncated: the prefill disease stays dead');
+  ok(qOpts.unansweredSends.length === 2
+     && qOpts.unansweredSends[0] === "I'm Maya. Your page is live."
+     && qOpts.unansweredSends[1] === 'One more thing —',
+     'F-08.66 RUNTIME — the cut sends ride back on the opts object, in order, blank row dropped');
+  const rOpts = { truncateAtInbound: false };
+  await closer.loadHistory(qSb, 'cQ', rOpts);
+  ok(rOpts.unansweredSends === undefined,
+     'F-08.66 — a REPLY publishes nothing: there is no wake, so there is nothing to quote');
+
+  // ── The ruled frame, at the byte ─────────────────────────────────────────
+  const qCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
+    { wakeReason: 'nudge', unansweredSends: ["I'm Maya. Your page is live.", 'One more thing —'] });
+  ok(/Their last reply is above\. Since then, these went out and none has been answered:/.test(qCtx),
+     'F-08.66 — the ruled frame line, declarative, no imperative and no label to narrate');
+  ok(qCtx.indexOf('» "I\'m Maya. Your page is live."') !== -1
+     && qCtx.indexOf('» "One more thing —"') !== -1,
+     'F-08.66 — her sends are quoted VERBATIM, in the order they went out');
+
+  // ── F-08.67 · NO NUMBER IS SPOKEN, AND THE ZERO-LINE CANNOT RETURN ───────
+  ok(!/Your last \d+ messages? stands? unanswered/.test(qCtx)
+     && !/You have \d+ more messages?/.test(qCtx),
+     'F-08.67 — the block speaks no count at all: the quotes ARE the count, so they cannot disagree');
+  const zeroCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
+    { wakeReason: 'nudge', unansweredSends: [] });
+  ok(!/WHERE THIS CONVERSATION STANDS/.test(zeroCtx),
+     'F-08.67 — ZERO-COLLAPSE: nothing standing, so the whole block is absent, not asserted as zero');
+
+  // ── The exit declarative, and the cap it is conditioned on ───────────────
+  const twoCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
+    { wakeReason: 'nudge', unansweredSends: ['answer', 'nudge one'] });
+  ok(!/Both follow-ups are spent/.test(twoCtx) && twoCtx.indexOf('[NOTHING]') !== -1,
+     'the exit declarative does NOT fire early, and the silence option is offered anyway');
+  ok(closer.MAX_NUDGES === 2,
+     'F-06.85 — "Both follow-ups are spent" is conditioned on this cap; move the cap and the sentence lies');
+
+  // ── THE DELIVERED TURN — what the model is actually handed ───────────────
+  // THIS is the cell `no_quoted_sends` must redden. Everything above asserts
+  // the builder; a mutation could delete the quotes at the seam and leave all
+  // of it green. The question this bench is for is what reaches the model.
+  let deliveredSystem = null;
+  const capturingLlm = async (_p, params) => {
+    deliveredSystem = params.system.map(x => x.text).join('\n');
+    return { content: [{ type: 'text', text: 'ok' }], usage: {} };
+  };
+  const dSb = fakeSupabase({ messages: [
+    { id: 'd1', conversation_id: 'cD', direction: 'inbound',  body: 'ok tell me more', created_at: '2026-08-04T01:00:00Z' },
+    { id: 'd2', conversation_id: 'cD', direction: 'outbound', body: 'ANSWER-AT-THE-SEAM', created_at: '2026-08-04T02:00:00Z' },
+    { id: 'd3', conversation_id: 'cD', direction: 'outbound', body: 'NUDGE-ONE', created_at: '2026-08-04T03:00:00Z' },
+  ] });
+  const dOut = await closer.runCloserTurn({
+    supabase: dSb, prospect: { id: 'pD', demo_vendor_ref: null }, conversationId: 'cD',
+    phone: '919999000777', wakeReason: 'nudge', llm: capturingLlm,
+  });
+  ok(deliveredSystem !== null
+     && deliveredSystem.indexOf('» "ANSWER-AT-THE-SEAM"') !== -1
+     && deliveredSystem.indexOf('» "NUDGE-ONE"') !== -1,
+     'F-08.66 DELIVERED — the turn the model receives carries her unanswered sends, quoted');
+
+  // ── F-08.68 · THE ENGINE HANDS OUT THE NUMBER THE TRANSCRIPT PRINTS ──────
+  ok(dOut.nudgesStanding === 1 && dOut.unansweredSends === 2,
+     'F-08.68 — the turn RETURNS the standing it derived and the sends it quoted');
+  const dRows = [{ direction: 'outbound' }, { direction: 'outbound' }, { direction: 'inbound' }];
+  ok(closer.nudgesStandingFrom(dRows) + 1 === dOut.unansweredSends,
+     'F-08.68 — INDEPENDENT METHOD: the cap bookkeeping and the quoted evidence agree on the same rows');
+
+  // ── F-08.68 · THE INSTRUMENT ITSELF ─────────────────────────────────────
+  const harn = fs.readFileSync(path.join(ROOT, 'scripts/b08_p5_closer_scenarios.js'), 'utf8');
+  ok(!/const standing = isNudge \? i : 0;/.test(harn),
+     'F-08.68 — the harness no longer labels a transcript with its own loop counter');
+  ok(/turn\.nudgesStanding/.test(harn),
+     "F-08.68 — it prints the engine's number, so a transcript's every figure is a fact the engine produced");
+  ok(/direction: 'outbound',\s*$/m.test(harn.split('for (let i = 0')[0]) || /m0a/.test(harn),
+     'F-08.68 — the nudge fixture seeds HER ANSWER, so the exit wake is reachable at all');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);
