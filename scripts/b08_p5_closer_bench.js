@@ -78,7 +78,7 @@ const MUTATIONS = {
   // byte-identical. Anchored on the log line above it, which is unique.
   no_send_off:  ['src/agent/closerEngine.js',    s => s.replace(
     "      console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);\n"
-    + "      return { text: '', source: 'no_send', model: route.model, provider: route.provider,\n"
+    + "      return { text: '', source: 'no_send', model: turnRoute.model, provider: turnRoute.provider,\n"
     + "               nudgesStanding };",
     "      throw new Error('no-send path removed by mutation');")],
   // RE-ANCHORED: the ceiling moved to 12,100 (executor-proposed, ratify-or-revert).
@@ -112,6 +112,32 @@ const MUTATIONS = {
   prov_wide: ['src/agent/closerEngine.js', s => s.replace(
     "  ['provenance', /\\b(got (?:it|your number|you) from",
     "  ['provenance', /\\b(where.{0,12}number|got (?:it|your number|you) from")],
+  // F-08.69 — the wake split ignored: wakes silently follow replies again.
+  wake_split_off: ['src/agent/closerEngine.js', s => s.replace(
+    '  const wakeSplit = isNudge && route.nudge_provider && route.nudge_model;',
+    '  const wakeSplit = false;')],
+  // F-08.69 — the split leaks onto REPLIES too: over-routing is a defect.
+  wake_split_greedy: ['src/agent/closerEngine.js', s => s.replace(
+    '  const wakeSplit = isNudge && route.nudge_provider && route.nudge_model;',
+    '  const wakeSplit = route.nudge_provider && route.nudge_model;')],
+  // F-08.69 — the wake gate never fires: the briefing goes to the prospect.
+  wake_gate_off: ['src/agent/closerEngine.js', s => s.replace(
+    '    const tells = wakeCostumeTells(text);', '    const tells = [];')],
+  // F-08.69 — the gate leaks onto replies: silence where a human is waiting.
+  wake_gate_greedy: ['src/agent/closerEngine.js', s => s.replace(
+    '  if (isNudge) {\n    const tells = wakeCostumeTells(text);',
+    '  if (true) {\n    const tells = wakeCostumeTells(text);')],
+  // F-08.69 — the structural tell removed, leaving only the word-shaped ones.
+  wake_tell_structural: ['src/agent/closerEngine.js', s => s.replace(
+    "  ['markdown_header', /^\\s*#{1,6}\\s+\\S/],", '')],
+  // ⚠ `seed_vacated_name` WAS DRAFTED HERE AND RETIRED BEFORE SHIPPING, with the
+  // reason recorded rather than the mutation quietly dropped: this harness
+  // mutates production source IN MEMORY BEFORE REQUIRE, and the scenarios file
+  // is never required — it is read with `fs.readFileSync`. A mutation aimed at
+  // a non-required file APPLIES and then reddens nothing, which is a green that
+  // means nothing. The seed's protection is therefore a LINT (the readFileSync
+  // cell in §15), and it is named as a lint rather than dressed as a proof.
+  // Same limitation as the source-text cells; F-08.53's third limb.
   // F-08.75 — the persona re-declared locally instead of imported: two homes.
   name_two_homes: ['src/agent/souls/closerSoul.js', s => s.replace(
     "const { MIRA } = require('../miraSoul');", "const MIRA = 'Maya';")],
@@ -144,8 +170,8 @@ const MUTATIONS = {
     "  ['price',      /\\bRs\\s?[\\d,]+/i],")],
   // §6 — the engine stops reading the facade's own account of what it called.
   called_ignored: ['src/agent/closerEngine.js', s => s.replace(
-    '  const called = (resp && resp._called) || { provider: route.provider, model: route.model };',
-    '  const called = { provider: route.provider, model: route.model };')],
+    '  const called = (resp && resp._called) || { provider: turnRoute.provider, model: turnRoute.model };',
+    '  const called = { provider: turnRoute.provider, model: turnRoute.model };')],
   // RE-ANCHORED: the return now absorbs a partial sign-off (F-08.71) and reports
   // `upgraded`, so the old one-line anchor no longer exists.
   sig_off:      ['src/agent/closerEngine.js',    s => s.replace(
@@ -641,8 +667,16 @@ function fakeSupabase(db) {
       llm: async () => ({ content: [{ type: 'text', text: '[NOTHING]' }], usage: {} }),
     });
   } catch (e) { nothingThrew = e; }
-  ok(!nothingThrew && nothingOut && nothingOut.source === 'no_send' && nothingOut.text === '',
-     'F-08.57 RUNTIME — she writes the token and nothing goes out'
+  // ── LABELED AMENDMENT ⑮ · COUNT PRESERVED (F-08.69's §3) ─────────────────
+  // ⚠ MY OWN CHANGE MADE THIS CELL VACUOUS AND THE SWEEP CAUGHT IT. The wake
+  // gate treats a `[NOTHING]` embedded in prose as a costume tell, so with
+  // `nothing_off` mutated the turn STILL returned `no_send` — via the gate
+  // instead of the token — and the mutation came back green. Discriminated on
+  // `wakeTells`, which only the gate sets: this cell now proves the TOKEN path
+  // specifically, and cannot be satisfied by the wall standing next to it.
+  ok(!nothingThrew && nothingOut && nothingOut.source === 'no_send' && nothingOut.text === ''
+     && nothingOut.wakeTells === undefined,
+     'F-08.57 RUNTIME — she writes the token and nothing goes out, by the TOKEN path'
      + (nothingThrew ? ' — THREW INSTEAD' : ''));
 
   // ── LABELED AMENDMENT ④ · COUNT PRESERVED (F-08.66/67) ────────────────────
@@ -1025,8 +1059,16 @@ function fakeSupabase(db) {
 
   // ── §4 · THE SEED IS CAPTURED, NOT AUTHORED ─────────────────────────────
   const harn3 = fs.readFileSync(path.join(ROOT, 'scripts/b08_p5_closer_scenarios.js'), 'utf8');
-  ok(/CAPTURED VERBATIM from the Haiku cold_reply run at 39087f4/.test(harn3),
-     '§4 — the seeded seam reply is a captured production specimen, and the transcript says so');
+  // ── LABELED AMENDMENT ⑭ · COUNT PRESERVED (F-08.69's §4) ─────────────────
+  // The cell pinned the CAPTURE TIP. That tip's specimen opened "Hi, I'm Maya"
+  // and the F-08.66 cure quoted it back to her on every wake — the vacated name
+  // sat in her own evidence three times a run, and Haiku read it. Re-aimed at
+  // what actually matters and cannot go stale on the next re-capture: the seed
+  // is captured (not authored) AND carries no vacated name.
+  ok(/RE-CAPTURED/.test(harn3) && /verbatim, and Mira-era/.test(harn3),
+     '§4 — the seeded seam reply is a captured production specimen, and the harness says so');
+  ok(!/const SEEDED_SEAM_REPLY[\s\S]{0,600}?Maya/.test(harn3),
+     "§4 — and it carries NO vacated name: a seed is a few-shot, and rep 3 proved it");
   ok(/logMessage` NOWHERE/.test(harn3) || /calls `logMessage`\n  \/\/ NOWHERE/.test(harn3)
      || /never enters this conversation's history/.test(harn3),
      "§4 — and the opener-template premise is disclosed where it was derived, not silently dropped");
@@ -1088,6 +1130,115 @@ function fakeSupabase(db) {
                                        prospectsSrc.indexOf('// ── window-expiry job'));
   ok(openerJob.indexOf('logMessage') === -1,
      'F-08.76 — DERIVED, not claimed: runOpenerJob logs nothing, which is why nobody saw F-08.75 for three seals');
+
+  // ═══ 16 · F-08.69 — THE WAKE LANE, AND THE WAKE-SEND GATE ════════════════
+  section('16 · the wake rides its own lane, and what breaks anyway is dropped');
+
+  // ── §2 · THE PER-ROLE SPLIT, mirroring Amendment Two exactly ─────────────
+  const router2 = require(path.join(ROOT, 'src/lib/modelRouter.js'));
+  const wm = router2.DEFAULTS['model.wa_marketing.default'];
+  ok(wm.provider === 'anthropic' && wm.nudge_provider === 'deepseek'
+     && wm.nudge_model === 'deepseek-v4-flash',
+     'F-08.69 — DEFAULTS: replies ride the seeded lane, WAKES ride the lane that never broke one');
+  const mig = fs.readFileSync(path.join(ROOT, 'db/migrations/0111_marketing_nudge_route.sql'), 'utf8');
+  ok(mig.indexOf('"nudge_provider":"deepseek"') !== -1 && /on conflict \(key\) do update/.test(mig),
+     'F-08.69 — 0111 carries the same split, and UPDATES 0110 rather than skipping it');
+  // THE SEED ROW WINS OVER DEFAULTS — driven, because this is the silent-defeat path.
+  const splitSb = (routeJson) => fakeSupabase({
+    admin_config: [{ key: 'model.wa_marketing.default', value: routeJson }],
+    messages: [
+      { id: 'w1', conversation_id: 'cW', direction: 'inbound',  body: 'ok tell me more', created_at: '2026-08-04T01:00:00Z' },
+      { id: 'w2', conversation_id: 'cW', direction: 'outbound', body: 'ANSWER', created_at: '2026-08-04T02:00:00Z' },
+    ],
+  });
+  // ⚠ TWO PIECES OF BENCH SETUP, BOTH NAMED, NEITHER A PRODUCTION MUTATION.
+  //
+  // (1) `guardKeys` DROPS the nudge split when the provider's key is absent —
+  //     correct behaviour, and the bench container has no keys, so without this
+  //     the split cell would go green for the wrong reason on every run. The
+  //     env var is set for these cells and restored after; nothing in `src/`
+  //     moves. The FALLBACK arm below deliberately keeps its own assertion, so
+  //     the keyless path is still proven, not just assumed.
+  // (2) `modelRouter` holds a 60-SECOND route cache keyed on the config key.
+  //     These three sub-cells drive THREE different route values under ONE key,
+  //     so without a reset between them the first answer would be returned to
+  //     all three — F-08.72's own mechanism, aimed at a bench this time.
+  const _dsKey = process.env.DEEPSEEK_API_KEY;
+  process.env.DEEPSEEK_API_KEY = 'bench-key-not-a-credential';
+  let seenProvider = null;
+  const spy = async (p) => { seenProvider = p; return { content: [{ type: 'text', text: 'a nudge' }], usage: {} }; };
+  router2._resetRouteCache();
+  await closer.runCloserTurn({
+    supabase: splitSb('{"provider":"anthropic","model":"claude-haiku-4-5-20251001","nudge_provider":"deepseek","nudge_model":"deepseek-v4-flash"}'),
+    prospect: { id: 'pW', demo_vendor_ref: null }, conversationId: 'cW', phone: '919000222111',
+    wakeReason: 'nudge', llm: spy,
+  });
+  ok(seenProvider === 'deepseek', 'F-08.69 RUNTIME — a WAKE turn is handed to the nudge lane');
+  seenProvider = null;
+  router2._resetRouteCache();
+  await closer.runCloserTurn({
+    supabase: splitSb('{"provider":"anthropic","model":"claude-haiku-4-5-20251001","nudge_provider":"deepseek","nudge_model":"deepseek-v4-flash"}'),
+    prospect: { id: 'pW', demo_vendor_ref: null }, conversationId: 'cW', phone: '919000222111',
+    wakeReason: 'reply', llm: spy,
+  });
+  ok(seenProvider === 'anthropic', 'F-08.69 RUNTIME — a REPLY turn is untouched: she stays where she is good');
+  seenProvider = null;
+  router2._resetRouteCache();
+  await closer.runCloserTurn({
+    supabase: splitSb('{"provider":"anthropic","model":"claude-haiku-4-5-20251001"}'),
+    prospect: { id: 'pW', demo_vendor_ref: null }, conversationId: 'cW', phone: '919000222111',
+    wakeReason: 'nudge', llm: spy,
+  });
+  ok(seenProvider === 'anthropic',
+     'F-08.69 — an UNSEEDED row falls back to the reply lane: the pre-ruling behaviour, never a guess');
+  // THE KEYLESS ARM, proven rather than assumed: the split is present in the
+  // row and the key is gone, so `guardKeys` drops it loudly and the wake rides
+  // the reply lane. This is the arm the env-var setup above would otherwise hide.
+  delete process.env.DEEPSEEK_API_KEY;
+  router2._resetRouteCache();
+  seenProvider = null;
+  await closer.runCloserTurn({
+    supabase: splitSb('{"provider":"anthropic","model":"claude-haiku-4-5-20251001","nudge_provider":"deepseek","nudge_model":"deepseek-v4-flash"}'),
+    prospect: { id: 'pW', demo_vendor_ref: null }, conversationId: 'cW', phone: '919000222111',
+    wakeReason: 'nudge', llm: spy,
+  });
+  ok(seenProvider === 'anthropic',
+     'F-08.69 — a KEYLESS nudge provider drops the split loudly rather than routing at a key that is not there');
+  if (_dsKey === undefined) delete process.env.DEEPSEEK_API_KEY; else process.env.DEEPSEEK_API_KEY = _dsKey;
+  router2._resetRouteCache();
+
+  // ── §3 · THE WAKE-SEND GATE ─────────────────────────────────────────────
+  ok(closer.wakeCostumeTells('# UNDERSTANDING THE SETUP\n\nYou are being asked').indexOf('markdown_header') !== -1,
+     'F-08.69 — the markdown-headed briefing, which walked past the watcher entirely');
+  ok(closer.wakeCostumeTells("you're asking me to roleplay as Mira").indexOf('roleplay') !== -1
+     && closer.wakeCostumeTells("I'm Claude, made by Anthropic").indexOf('claude') !== -1
+     && closer.wakeCostumeTells('Or actually: [NOTHING], because').indexOf('nothing_token') !== -1
+     && closer.wakeCostumeTells('Maya opened the conversation').indexOf('vacated_name') !== -1,
+     'F-08.69 — every tell is a specimen from a transcript in this repository');
+  ok(closer.wakeCostumeTells('Your demo studio is live right now — open it whenever.').length === 0,
+     'F-08.69 — an ordinary wake trips nothing, so a drop means something');
+  // RUNTIME, both directions: a wake is dropped, a REPLY with the same bytes is not.
+  const breakLlm = async () => ({ content: [{ type: 'text', text: '# UNDERSTANDING THE SETUP\n\nYou are being asked to step into Mira\'s shoes.' }], usage: {} });
+  const dropped = await closer.runCloserTurn({
+    supabase: splitSb('{"provider":"anthropic","model":"claude-haiku-4-5-20251001"}'),
+    prospect: { id: 'pW', demo_vendor_ref: null }, conversationId: 'cW', phone: '919000222111',
+    wakeReason: 'nudge', llm: breakLlm,
+  });
+  ok(dropped.source === 'no_send' && dropped.text === ''
+     && (dropped.wakeTells || []).indexOf('markdown_header') !== -1
+     && (dropped.flags || []).indexOf('wake_costume') !== -1,
+     'F-08.69 RUNTIME — a costume break on a WAKE is dropped to silence and flagged');
+  const notDropped = await closer.runCloserTurn({
+    supabase: splitSb('{"provider":"anthropic","model":"claude-haiku-4-5-20251001"}'),
+    prospect: { id: 'pW', demo_vendor_ref: null }, conversationId: 'cW', phone: '919000222111',
+    wakeReason: 'reply', llm: breakLlm,
+  });
+  ok(notDropped.source === 'closer' && notDropped.text.length > 0,
+     'F-08.69 — the SAME bytes on a REPLY go out untouched: replies are ungated, the refusal stands');
+  // A DROPPED WAKE MUST NOT SPEND ONE OF HER TWO — the job's own no_send path.
+  const engSrc4 = fs.readFileSync(path.join(ROOT, 'src/agent/closerEngine.js'), 'utf8');
+  ok(/reason: 'no_send'/.test(engSrc4) && /an unsent message must not raise/i.test(engSrc4),
+     'F-08.69 — a dropped wake is not logged, so the derived standing does not rise and she keeps the message');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);

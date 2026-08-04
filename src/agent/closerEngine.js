@@ -781,7 +781,10 @@ const WATCH_CLASSES = [
   // humanity lie; both claim a body or a career. Her soul now refuses both, and
   // this watches for the refusal failing.
   ['identity',   /\b(real person|not a bot|not an ai|i'?m human|actual human|i'?m (?:the |a )?person\b|the person who (?:built|made|wrote|put)|if i were still (?:shooting|photographing|working)|when i (?:was|used to) (?:shoot|work)|back when i (?:shot|worked)|i used to (?:shoot|photograph))\b/i],
-  ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually mira|roleplay as|the (?:entire )?(?:system )?prompt you)\b/i],
+  // WIDENED at the 881a084 read (report side): the markdown-headed briefing and
+  // the instruction-quoting shapes carried NONE of the old terms and the class
+  // slept through them. A structural tell is still a tell.
+  ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually mira|role-?play|the (?:entire )?(?:system )?prompt you|the instructions? (?:say|are|lay out)|what you'?re actually (?:asking|deciding)|are you testing whether)\b|^\s*#{1,6}\s+\S|\[NOTHING\]/i],
   ['price',      new RegExp('\\b(?:' + TIERS + ')\\b[^.!?]{0,60}Rs\\s?[\\d,]+|Rs\\s?[\\d,]+[^.!?]{0,60}\\b(?:' + TIERS + ')\\b', 'i')],
   // provenance NARROWS TO SOURCE-ASSERTIONS (§5). It fired 5 times at 39087f4
   // and was right ONCE: her honest "I don't know where this number came from"
@@ -792,6 +795,48 @@ const WATCH_CLASSES = [
   ['link',       /thedreamwedding\.in\/demo\//i],
   ['post_exit',  /\b(conversation is closed|already sent|i don'?t send a third|no third message)\b/i],
 ];
+
+// ═════════════════════════════════════════════════════════════════════════════
+// §3 · THE WAKE-SEND GATE (CE-ruled) — THE EXIT GATE'S OWN CLASS, ONE ROLE OVER
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// THE ASYMMETRY THAT MAKES THIS SAFE, and it is the whole argument: a WAKE send
+// has a property a REPLY never has — **silence is always safe, because nobody
+// is waiting.** A dropped reply leaves a human staring at nothing. A dropped
+// wake is indistinguishable from her deciding there was nothing worth sending,
+// which the [NOTHING] contract already makes a first-class outcome.
+//
+// So the exit gate's shape extends here: a mechanical predicate, failing to
+// SILENCE, on WAKE TURNS ONLY. Replies remain entirely ungated and the founder's
+// interception refusal stands untouched exactly where he made it.
+//
+// THE TELLS ARE THE CONVICTED ONES, not a guess at what might go wrong — every
+// one of them is a specimen from a transcript in this repository:
+//   markdown_header — "# UNDERSTANDING THE SETUP" (881a084, Haiku, rep 3). No
+//                     WhatsApp message opens on a heading. This one walked past
+//                     the watcher entirely: no "Claude", no "roleplay".
+//   roleplay        — "you're asking me to roleplay as Mira" (881a084, rep 2)
+//   claude          — "I'm Claude, made by Anthropic" (1298a8d, the gravest)
+//   nothing_token   — the contract token EMBEDDED in prose rather than sent
+//                     alone; `isNothing` handles the bare form, so reaching here
+//                     means she is discussing the machinery, not using it
+//   vacated_name    — "Maya", retired at F-08.75 and never again a live byte
+//
+// A DROPPED WAKE MUST NOT SPEND ONE OF HER TWO. `runNudgeJob` already declines
+// to log a `no_send`, so the derived standing does not rise and she keeps the
+// message. That was built for the [NOTHING] path and it is load-bearing here.
+const WAKE_COSTUME_TELLS = [
+  ['markdown_header', /^\s*#{1,6}\s+\S/],
+  ['roleplay',        /\brole-?play(ing)?\b/i],
+  ['claude',          /\bclaude\b|\banthropic\b/i],
+  ['nothing_token',   /\[NOTHING\]/],
+  ['vacated_name',    /\bMaya\b/],
+];
+
+function wakeCostumeTells(text) {
+  const t = String(text || '');
+  return WAKE_COSTUME_TELLS.filter(c => c[1].test(t)).map(c => c[0]);
+}
 
 function watchFlags(text) {
   const t = String(text || '');
@@ -824,6 +869,25 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   const route = await resolveModel(supabase, SURFACE, TIER);
 
   const isNudge = wakeReason === 'nudge';
+
+  // ── F-08.69 · THE WAKE RIDES ITS OWN LANE (CE-ruled, an assignment not a cure)
+  // Haiku wake-turns failed in EVERY build of this arc — 9/9 narration, 7/9
+  // self-reintroduction, 4/9 refusals, 4/9 costume breaks at 881a084 including
+  // a markdown-headed briefing to an imagined operator, on the wire. DeepSeek
+  // wake-turns: 0/9 that night, effectively clean across the arc. The frame now
+  // works so well that a careful model reads the whole wake as a brief, and the
+  // careful model in this house is Haiku.
+  //
+  // Amendment Two's own geometry, one role over: `donna_provider` routes a role
+  // separately from the surface; `nudge_provider` does the same for the wake.
+  // REPLIES ARE UNTOUCHED — they stay on the seeded lane, which is where she is
+  // good. If the split is absent (unseeded row, or a keyless provider that
+  // `guardKeys` dropped loudly), the wake falls back to the reply lane, which
+  // is the pre-ruling behaviour rather than a silent misroute.
+  const wakeSplit = isNudge && route.nudge_provider && route.nudge_model;
+  const turnRoute = wakeSplit
+    ? { provider: route.nudge_provider, model: route.nudge_model }
+    : { provider: route.provider, model: route.model };
 
   // THE USER-ROLE WAKE IS GONE (F-08.57). Nothing is appended to the message
   // stream. The history is cut at the prospect's last inbound so it ends where
@@ -881,14 +945,14 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   if (!messages.length) {
     if (isNudge) {
       console.log('[closer] no-send — a nudge with no conversation behind it has nothing to say');
-      return { text: '', source: 'no_send', model: route.model, provider: route.provider,
+      return { text: '', source: 'no_send', model: turnRoute.model, provider: turnRoute.provider,
                nudgesStanding };
     }
     throw new Error('closer turn reached the model with an empty history');
   }
 
-  const resp = await _create(route.provider, {
-    model:      route.model,
+  const resp = await _create(turnRoute.provider, {
+    model:      turnRoute.model,
     max_tokens: MAX_TOKENS,
     system,
     messages,
@@ -939,10 +1003,11 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // this reads it. In production nothing overrides and the two agree; where
   // they diverge the divergence is now visible instead of silent, and `route_*`
   // rides beside it LABELLED as the route it actually was.
-  const called = (resp && resp._called) || { provider: route.provider, model: route.model };
+  const called = (resp && resp._called) || { provider: turnRoute.provider, model: turnRoute.model };
   console.log(`[closer] turn ${MIRA} soul=${CLOSER_SOUL_VERSION} manual=${manual.version} `
     + `called_provider=${called.provider} called_model=${called.model} `
-    + `route_provider=${route.provider} route_model=${route.model} wake=${wakeReason || 'reply'} `
+    + `route_provider=${turnRoute.provider} route_model=${turnRoute.model} `
+    + `wake_split=${!!wakeSplit} wake=${wakeReason || 'reply'} `
     + `nudges_standing=${nudgesStanding} quoted_sends=${ctxOpts.unansweredSends.length} `
     + `in=${resp.usage && resp.usage.input_tokens} `
     + `out=${resp.usage && resp.usage.output_tokens} `
@@ -959,6 +1024,22 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // empty is still a fault: a human just spoke and silence would be the rudest
   // possible answer, so it throws and the caller's existing vetoed graceful line
   // covers it.
+  // ── THE WAKE-SEND GATE FIRES HERE, on the corrected bytes, before the
+  //    signature — a dropped wake is never signed, because it never goes ────
+  if (isNudge) {
+    const tells = wakeCostumeTells(text);
+    if (tells.length) {
+      console.warn(`[closer:wake_costume] prospect=${prospect && prospect.id} conv=${conversationId} `
+        + `tells=${tells.join(',')} provider=${turnRoute.provider} — WAKE DROPPED TO SILENCE. `
+        + 'Nothing sent, nothing logged, her message is NOT spent (F-08.69)');
+      return { text: '', source: 'no_send', model: turnRoute.model, provider: turnRoute.provider,
+               nudgesStanding, unansweredSends: ctxOpts.unansweredSends.length,
+               signed: false, normalized: fixed.corrected, exitGated: false,
+               flags: ['wake_costume'], wakeTells: tells,
+               calledProvider: called.provider, calledModel: called.model };
+    }
+  }
+
   // THE SIGNATURE, last, so it lands on the bytes that actually go out.
   const signedOut = appendLinkSignature(text, ctxOpts.demoLink);
   text = signedOut.text;
@@ -975,7 +1056,7 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   if (!text) {
     if (isNudge) {
       console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);
-      return { text: '', source: 'no_send', model: route.model, provider: route.provider,
+      return { text: '', source: 'no_send', model: turnRoute.model, provider: turnRoute.provider,
                nudgesStanding };
     }
     throw new Error('closer turn produced no text');
@@ -987,7 +1068,7 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // produced; the only way to guarantee that is to hand it out from here.
   // THE TOKEN IS PERSONA-NEUTRAL (F-08.75). It read 'maya'; a machine token
   // carrying a vacated persona's name is a rename waiting to be missed.
-  return { text, source: 'closer', model: route.model, provider: route.provider,
+  return { text, source: 'closer', model: turnRoute.model, provider: turnRoute.provider,
            signed: signedOut.signed, upgraded: !!signedOut.upgraded,
            normalized: fixed.corrected, flags, exitGated,
            calledProvider: called.provider, calledModel: called.model,
@@ -1121,7 +1202,8 @@ module.exports = {
   nudgesStandingFrom, countNudgesStanding, isRegisteredUser, readNudgeHours,
   normalizeDemoLinks, truncateAtLastInbound, unansweredSendsFrom, DEMO_LINK_RE,
   appendLinkSignature, LINK_SIGNATURE, PARTIAL_SIGNOFF_RE, isNothing, NOTHING_TOKEN,
-  watchFlags, WATCH_CLASSES, isExitWake, gateExitLink, EXIT_LINE,
+  watchFlags, WATCH_CLASSES, wakeCostumeTells, WAKE_COSTUME_TELLS,
+  isExitWake, gateExitLink, EXIT_LINE,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,
   NUDGE_CONFIG_KEY, DEFAULT_NUDGE_HOURS, MAX_NUDGES, SURFACE, TIER,
 };

@@ -40,7 +40,20 @@ const DEFAULTS = {
   // IDENTICALLY; the seed row exists to make the route admin-editable, because
   // the PATCH door 404s on a key with no row (D7). The founder's flip to
   // DeepSeek and back is that row, 60 seconds, no deploy.
-  'model.wa_marketing.default':  { provider: 'anthropic', model: HAIKU },
+  //
+  // F-08.69 — THE WAKE ROLE RIDES A DIFFERENT LANE, AND IT IS AN ASSIGNMENT
+  // RATHER THAN A CURE. Haiku wake-turns failed in EVERY build of this arc:
+  // 9/9 narration → 7/9 self-reintroduction → 4/9 refusals → 4/9 costume breaks
+  // at 881a084, including a markdown-headed briefing to an imagined operator,
+  // on the wire. DeepSeek wake-turns: 0/9 that night and effectively clean
+  // across the arc's whole history. The frame now works so well that a careful
+  // model reads the wake as a brief — and the careful model in this house is
+  // Haiku. So: replies stay on the seeded lane; wakes ride the lane that has
+  // never broken one. Amendment Two's own geometry, one role over.
+  // MIRRORS 0111_marketing_nudge_route.sql. ⚠ THE SEED ROW WINS OVER THIS
+  // MATRIX, so 0111 must be run or wakes silently follow replies.
+  'model.wa_marketing.default':  { provider: 'anthropic', model: HAIKU,
+                                   nudge_provider: 'deepseek', nudge_model: 'deepseek-v4-flash' },
   'model.harvest.default':      { provider: 'glm',       model: 'glm-4.7-flash' },
 };
 
@@ -56,6 +69,12 @@ function parseRoute(text) {
       // Invalid split values are dropped, never guessed.
       if (v.donna_provider && !CONF[v.donna_provider]) { delete v.donna_provider; delete v.donna_model; }
       if (v.donna_provider && !v.donna_model) delete v.donna_provider;
+      // TDW_08 P5 (F-08.69): the SAME per-role geometry, one role over — a wake
+      // turn may ride a different lane from a reply turn. Identical validation,
+      // identical drop-rather-than-guess discipline. Read by
+      // `src/agent/closerEngine.js`; nothing else has wake turns.
+      if (v.nudge_provider && !CONF[v.nudge_provider]) { delete v.nudge_provider; delete v.nudge_model; }
+      if (v.nudge_provider && !v.nudge_model) delete v.nudge_provider;
       return v;
     }
   } catch (_e) { /* junk falls through to defaults */ }
@@ -70,6 +89,15 @@ function guardKeys(route) {
   if (route.donna_provider && route.donna_provider !== 'anthropic' && !providerKeyPresent(route.donna_provider)) {
     console.warn(`[provider_misconfigured] donna route ${route.donna_provider} keyless — her split dropped, she follows Victor`);
     const { donna_provider, donna_model, ...rest } = route;
+    return rest;
+  }
+  // F-08.69: the nudge split follows donna's exact failure mode — a keyless
+  // provider DROPS the split rather than routing at a key that is not there.
+  // The wake then rides the reply lane, which is the pre-ruling behaviour and
+  // is loudly logged rather than silently correct.
+  if (route.nudge_provider && route.nudge_provider !== 'anthropic' && !providerKeyPresent(route.nudge_provider)) {
+    console.warn(`[provider_misconfigured] nudge route ${route.nudge_provider} keyless — the wake split dropped, wakes follow replies`);
+    const { nudge_provider, nudge_model, ...rest } = route;
     return rest;
   }
   return route;

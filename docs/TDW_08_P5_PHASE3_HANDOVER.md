@@ -1079,3 +1079,128 @@ genuinely sent, not a switchboard tic.
 Still unruled and unchanged: **arm 1's three resolutions** · **F-08.76's three
 arms** · the ceiling at 12,800 · the sign-off upgrade · the `'closer'` source
 token · F-08.73 and the media-dedupe red.
+
+---
+
+# ADDENDUM 8 · F-08.69 — THE WAKE LOSES ITS LAST TWO HOMES (2026-08-04)
+
+**Base:** dream-os `881a084` · dreamos-pwa `19978c7` (**ZERO pwa bytes**).
+**Ruled to:** the CE ×3 ruling, 2026-08-04, §2 through §5. **Five files + one migration.**
+
+## 67 · WHAT SHIPPED
+
+| Ruling | What |
+|---|---|
+| **§2** | `nudge_provider`/`nudge_model` — Amendment Two's geometry, one role over: replies stay on the seeded lane, **wakes ride DeepSeek** · `0111_marketing_nudge_route.sql` · `wake_split=` on the line of record |
+| **§3** | the **wake-send gate**: five convicted tells, drop-to-silence, **wake turns only** |
+| **§4** | the seed **re-captured** from the Mira-era run · the transcript label cleaned · the watcher's costume class widened to the structural tells |
+| **§5** | floor PAIRED, labeled amendments, the three transcripts ride the delivery |
+
+## 68 · ⚠ THE SEED WAS THE LEAK, AND THE BYTE WAS MINE
+
+Rep 3's break said *"**Maya** opened the conversation with Kanupriya."* I read
+that as the model resurrecting a vacated name. **It was reading a byte I put
+there.** The seeded seam reply was the captured Haiku specimen from `39087f4`,
+and that specimen opens **"Hi, I'm Maya."** — which the F-08.66 cure then quotes
+back to her, verbatim, **on every single wake**.
+
+The vacated name sat inside her own evidence three times a run.
+
+**Re-captured from `881a084`'s Haiku `cold_reply_curiosity`** — same slot, same
+model, verbatim, Mira-era. **The standing lesson is in the file:** a captured
+specimen is only faithful while the tree it was captured from is the tree that
+ships. Re-capture whenever the persona moves.
+
+## 69 · §2 — AN ASSIGNMENT, NOT A CURE
+
+Haiku wake-turns failed in **every build of this arc**: 9/9 narration → 7/9
+self-reintroduction → 4/9 refusals → 4/9 costume breaks. DeepSeek wake-turns:
+**0/9** at `881a084`, effectively clean across the arc. The frame now works so
+well that a careful model reads the wake as a brief — and the careful model in
+this house is Haiku.
+
+**Nothing new was invented for this.** `donna_provider` has routed a role
+separately from its surface since TDW_02 P7; `nudge_provider` is that geometry
+one role over, with identical validation and the same drop-rather-than-guess
+discipline in `parseRoute` and `guardKeys`.
+
+**⚠ ORDER MATTERS — 0111 RUNS BEFORE THE APPLY.** The seed row **wins over** the
+DEFAULTS matrix, so a tree deployed against 0110's old row routes wakes to Haiku
+and the ruling is defeated **silently**. `0109`'s discipline exactly. A bench
+cell drives the unseeded row and asserts the fallback is the pre-ruling
+behaviour rather than a guess — and a second cell drives the **keyless** arm,
+because the bench sets `DEEPSEEK_API_KEY` for the split cells and that setup
+would otherwise hide the very path `guardKeys` exists for.
+
+## 70 · §3 — WHY A GATE IS SAFE HERE AND WAS NOT ON REPLIES
+
+**A wake send has a property a reply never has: silence is always safe, because
+nobody is waiting.** A dropped reply leaves a human staring at nothing; a dropped
+wake is indistinguishable from her deciding there was nothing worth sending —
+which `[NOTHING]` already makes a first-class outcome.
+
+Five tells, **every one a specimen from a transcript in this repository**:
+`markdown_header` (the briefing that walked past the watcher entirely — no
+"Claude", no "roleplay") · `roleplay` · `claude` · `nothing_token` embedded in
+prose · `vacated_name`.
+
+**Replies remain entirely ungated** and a runtime cell proves it: the *same
+bytes* are dropped on a wake and go out untouched on a reply. The founder's
+interception refusal stands exactly where he made it.
+
+**A dropped wake does not spend one of her two** — `runNudgeJob` already declines
+to log a `no_send`, built for the token path and load-bearing here.
+
+## 71 · ⚠ §0.2 — THREE CORRECTIONS AGAINST MY OWN BENCH, ALL CAUGHT BY THE SWEEP
+
+**(a) I made an existing cell vacuous.** The wake gate treats an embedded
+`[NOTHING]` as a tell, so with `nothing_off` mutated the turn still returned
+`no_send` — **via the gate instead of the token** — and the mutation came back
+green. Discriminated on `wakeTells`, which only the gate sets. **A new wall can
+make an old proof stop proving anything, and only the both-ways sweep sees it.**
+
+**(b) A mutation I drafted cannot fire, and it is retired with the reason in-file
+rather than dropped quietly.** `seed_vacated_name` targets the scenarios file,
+which this harness **never requires** — it reads it with `fs.readFileSync`, and
+the harness mutates in memory before require. The mutation applies and reddens
+nothing. **The seed's protection is a LINT, and it is named as a lint rather
+than dressed as a proof.**
+
+**(c) The route cache, aimed at a bench this time.** Three sub-cells drive three
+different route values under **one** config key, and `modelRouter`'s 60-second
+cache would have returned the first answer to all three. `_resetRouteCache()`
+between them — F-08.72's own mechanism, one layer over.
+
+## 72 · THE FLOOR — PAIRED
+
+```
+b08_p5_closer_bench  195  (…180→182→195) · 40 mutations, 40 clean reds, ZERO stale
+b5c 47 · b08_p1 106 · b08_p3 61 · console 71 · factory 83 · invite 35
+b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+b05_couple_soul 21/21 (the one-home census, green through the router change)
+modelRouter-adjacent, all re-run: advisor_route 16 · wa_words 19 · f79 19 · f80 24 · rider 32
+b06_meter 28/29 ⚠ PRE-EXISTING (F-08.73) — re-proven both ways, unchanged by the DEFAULTS edit
+dreamos-pwa (ZERO bytes): unchanged since the last seal
+```
+
+`node --check` clean on all four touched `.js` files. Migration ladder: `0111`,
+no hole, no renumber.
+
+## 73 · COPY INVENTORY
+
+**ZERO new user-facing bytes.** The tells are machinery; the seed is a fixture;
+the migration is config. **No soul byte, no template byte, no signature byte
+moved. Nothing minted, nothing to veto.**
+
+## 74 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The eleven ×3 on this tree** — the wake surface is now armored three deep:
+   a lane that has never broken one, a gate that drops what breaks anyway, and
+   an exit that makes no model call at all. The read: **costume breaks 4/9 → 0**,
+   and any `WAKE_DROPPED=` line in a transcript is the gate earning its place.
+2. **Watch for over-drop.** A wake dropped for a tell it should not have tripped
+   is a defect in the other direction, and the transcript now names the tell so
+   it can be read rather than guessed.
+3. Unchanged and unruled: **arm 1's three resolutions** · **F-08.76's three
+   arms** · the ceiling at 12,800 · the sign-off upgrade · the `'closer'` token
+   · **F-08.73 and the media-dedupe red**.

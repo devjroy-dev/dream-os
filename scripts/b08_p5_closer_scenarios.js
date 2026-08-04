@@ -6,12 +6,12 @@
 // The 06 spec's P2 bench list, as replayable scripts. These are MODEL RUNS. They
 // need live keys and they are the FOUNDER'S to run — the estate's own precedent
 // (the gauntlet: "rig selftest N/N at the desk, the LIVE run is the founder's
-// with his keys"). The mechanical floor under Maya is b08_p5_closer_bench.js and
+// with his keys"). The mechanical floor under her is b08_p5_closer_bench.js and
 // it runs anywhere with no keys at all.
 //
 // ── BOTH LANES, AND THE REASON IS THE MANUAL PAPER'S OWN LAW ─────────────────
 // "A doctrine that only one model can carry is a routing constraint wearing a
-// soul's clothes." The founder ruled 「 the option should be there 」 — Maya must
+// soul's clothes." The founder ruled 「 the option should be there 」 — she must
 // run on Haiku or DeepSeek by config alone — so every scenario runs on BOTH and
 // the per-lane verdicts are printed side by side. A flip decision is then
 // evidence-backed the day he wants one.
@@ -60,7 +60,7 @@ const LANES = {
 const argLane  = (process.argv.find(a => a.startsWith('--lane=')) || '').split('=')[1];
 const argScene = (process.argv.find(a => a.startsWith('--scenario=')) || '').split('=')[1];
 
-// ── The prospect Maya is talking to across every scenario ────────────────────
+// ── The prospect she is talking to across every scenario ─────────────────────
 // A demo studio that is LIVE but NOT on the marketplace — deliberately the
 // production fixture's own shape, because that is the case where the close line
 // has two senses and only one of them is true.
@@ -165,11 +165,20 @@ async function runScenario(name, laneName) {
   // `cold_reply_curiosity` reply from the ×1 run at 39087f4, verbatim, which is
   // exactly what production writes into this slot. Nothing about the
   // reintroduction count is now an artifact of my typing.
+  // ⚠ RE-CAPTURED, AND THE OLD SEED WAS THE LEAK. The previous specimen was the
+  // Haiku `cold_reply_curiosity` reply from 39087f4, which opened **"Hi, I'm
+  // Maya."** The F-08.66 cure quotes that back to her verbatim on EVERY wake —
+  // so the vacated name sat in her evidence three times a run, and at 881a084
+  // Haiku read it and wrote "Maya opened the conversation with Kanupriya."
+  // **The costume break was reading a byte I put there.** A captured specimen
+  // is only faithful while the tree it was captured from is the tree that ships.
+  //
+  // NOW: the Haiku `cold_reply_curiosity` reply from 881a084 — same slot, same
+  // model, verbatim, and Mira-era. Re-capture this whenever the persona moves.
   const SEEDED_SEAM_REPLY =
-    "Hi, I'm Maya.\n\nSo we built a space where your work actually gets seen — your gallery, your city, "
-    + "your style — instead of competing with everyone's breakfast on Instagram. Right now that's live as a "
-    + "demo page you can open whenever. Couples come to find people like you, and when they do, the enquiry "
-    + "lands on your phone without you having to answer at midnight.\n\nWhat made you curious about it?";
+    "Hey — I'm Mira, from The Dream Wedding.\n\nWe built a demo studio for you using your Instagram "
+    + "work, so you can see what it looks like when a couple finds you on our platform instead of "
+    + "scrolling through a thousand other things on Insta.\n\nWant to take a look?";
 
   // ── THE OPENER IS RENDERED, NOT INJECTED — and the distinction is F-08.76 ──
   // The relay chartered "seed the TRUE opener bytes" to cure transcripts that
@@ -199,7 +208,10 @@ async function runScenario(name, laneName) {
     sb.db.messages.push({ id: 'm0a', conversation_id: CONV_ID, direction: 'outbound',
       body: SEEDED_SEAM_REPLY, created_at: new Date(t0 + 60000).toISOString() });
     out.push('  THEM: ok tell me more');
-    out.push('  MAYA: (seeded — her seam reply, CAPTURED VERBATIM from the Haiku cold_reply run at 39087f4)');
+    // THE LABEL IS CLEAN. A transcript label is read by people, but rep 3 proved
+    // a stray name anywhere near the fixture becomes a few-shot; there is no
+    // reason for this line to carry anything but her name.
+    out.push(`  ${MIRA}: ${SEEDED_SEAM_REPLY.split('\n')[0]} …  [seeded seam reply]`);
   }
 
   for (let i = 0; i < turns.length; i++) {
@@ -270,7 +282,9 @@ async function runScenario(name, laneName) {
       + `${text || '(NO SEND — silence)'}`);
     out.push(`        · source=${turn.source} called=${turn.calledProvider}/${turn.calledModel}`
       + ` signed=${turn.signed}${turn.upgraded ? '(upgraded)' : ''} normalized=${turn.normalized || 0}`
-      + ` exit_gated=${!!turn.exitGated} flags=${(turn.flags || []).join(',') || 'none'}`
+      + ` exit_gated=${!!turn.exitGated}`
+      + (turn.wakeTells ? ` WAKE_DROPPED=${turn.wakeTells.join(',')}` : '')
+      + ` flags=${(turn.flags || []).join(',') || 'none'}`
       + ` in=${usage.input_tokens} out=${usage.output_tokens} cache_read=${usage.cache_read_input_tokens || 0}`);
   }
   return out.join('\n');
