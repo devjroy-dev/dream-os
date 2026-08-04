@@ -58,18 +58,47 @@ const argScene = (process.argv.find(a => a.startsWith('--scenario=')) || '').spl
 // A demo studio that is LIVE but NOT on the marketplace — deliberately the
 // production fixture's own shape, because that is the case where the close line
 // has two senses and only one of them is true.
-const FIXTURE_CONTEXT = [
-  'WHO YOU ARE TALKING TO',
-  'Name: Kanupriya Sethi Studio',
-  'Instagram: kanupriyasethi.studio',
-  'Trade: photography',
-  'City: Chandigarh',
-  '',
-  'THEIR DEMO STUDIO',
-  'Live and openable right now: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio',
-  'It is NOT on the marketplace where couples browse — it is a page they can open, and nothing more than that. Never imply couples are seeing it.',
-  'The page is honestly labelled a demonstration. So are you.',
-].join('\n');
+// ── THE FIXTURE, AS ROWS ─────────────────────────────────────────────────────
+// F-08.65's cure means the harness no longer AUTHORS a context block; it seeds
+// the ROWS production reads and lets buildProspectContext derive from them. The
+// demo is live and NOT discover_eligible — deliberately the production fixture's
+// own shape, because that is the case where the close line has two senses and
+// only one is true, and where the clock must stay silent.
+const FIXTURE_PHONE  = '919000000001';
+const CONV_ID        = 'conv_scenarios';
+const FIXTURE_PROSPECT = {
+  id: 'prospect_scenarios', phone: FIXTURE_PHONE, name: null, ig_handle: null,
+  category: null, city: null, notes: null, demo_vendor_ref: 'demo_scenarios',
+};
+
+function makeFixtureSupabase(laneName) {
+  const lane = LANES[laneName];
+  const D = {
+    users: [],
+    admin_config: [{ key: 'model.wa_marketing.default', value: JSON.stringify(lane) }],
+    demo_vendors: [{
+      id: 'demo_scenarios', ig_handle: 'kanupriyasethi.studio',
+      display_name: 'Kanupriya Sethi Studio', category: 'photography', city: 'Chandigarh',
+      state: 'invited', active: true, discover_eligible: false, claimed_at: null,
+      invited_at: '2026-08-03T21:00:00Z', created_at: '2026-08-03T15:00:00Z', sunset_at: null,
+    }],
+    demo_leads: [], messages: [],
+  };
+  function q(table) {
+    let rows = D[table].slice(); let head = false;
+    const api = {
+      select(_c, o) { if (o && o.head) head = true; return api; },
+      eq(c, v) { rows = rows.filter(r => r[c] === v); return api; },
+      in(c, vs) { rows = rows.filter(r => vs.includes(r[c])); return api; },
+      order(c, o) { const asc = !o || o.ascending !== false; rows.sort((a, b) => (a[c] > b[c] ? 1 : -1) * (asc ? 1 : -1)); return api; },
+      limit(n) { rows = rows.slice(0, n); return api; },
+      maybeSingle() { return Promise.resolve({ data: rows[0] || null, error: null }); },
+      then(f) { return Promise.resolve({ data: head ? null : rows, count: rows.length, error: null }).then(f); },
+    };
+    return api;
+  }
+  return { from: q, db: D };
+}
 
 const SCENARIOS = {
   cold_reply_curiosity: ['whats this about'],
@@ -104,35 +133,56 @@ const READ_FOR = {
 async function runScenario(name, laneName) {
   const lane  = LANES[laneName];
   const turns = SCENARIOS[name];
-  const messages = [];
   const out = [];
+  const sb = makeFixtureSupabase(laneName);
 
   for (let i = 0; i < turns.length; i++) {
     const t = turns[i];
     const isNudge = t === '__NUDGE__';
     const standing = isNudge ? i : 0;
 
-    let dynamic = FIXTURE_CONTEXT;
-    if (isNudge) {
-      dynamic += '\n\nNOBODY HAS ANSWERED\n'
-        + `Your last ${standing === 1 ? 'message has' : `${standing} messages have`} gone unanswered. Nothing has come back.\n`
-        + (standing >= 2
-          ? 'This is your last message on this conversation. Leave the door open, gracefully.'
-          : 'You may send one more after this if it is still silent, and then you stop.')
-        + '\nSay something worth opening, or say goodbye well. Nothing else.';
-      messages.push({ role: 'user', content: '(no reply has come. write your next message, or your last one.)' });
-    } else {
+    // The prospect's turn is a ROW, not an array entry — production reads
+    // history from public.messages and derives the nudge standing from the same
+    // rows, so the harness must write them or it is measuring a different thing.
+    if (!isNudge) {
       out.push(`  THEM: ${t}`);
-      messages.push({ role: 'user', content: t });
+      sb.db.messages.push({ id: 'm' + (sb.db.messages.length + 1), conversation_id: CONV_ID,
+        direction: 'inbound', body: t, created_at: new Date(Date.now() + i * 1000).toISOString() });
     }
 
-    const system = closer.buildStaticSystem().concat([{ type: 'text', text: dynamic }]);
-    const resp = await llmCreate(lane.provider, { model: lane.model, max_tokens: 700, system, messages });
-    const text = (resp.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-    messages.push({ role: 'assistant', content: text });
-    out.push(`  MAYA${isNudge ? ` [nudge, ${standing} standing]` : ''}: ${text}`);
-    const u = resp.usage || {};
-    out.push(`        · in=${u.input_tokens} out=${u.output_tokens} cache_read=${u.cache_read_input_tokens || 0} cache_write=${u.cache_creation_input_tokens || 0}`);
+
+    // ── F-08.65 CURED · THE HARNESS ROUTES THROUGH runCloserTurn ────────────
+    // WHAT THIS READ, and it is why the finding exists: this line called
+    // `llmCreate` DIRECTLY and printed the raw model blocks. So the instrument
+    // GATING DEPLOY was a second implementation of the turn — the normalizer,
+    // the [NOTHING] token, the signature and the watcher were all invisible to
+    // it, and two link mangles were read as production defects when the
+    // production seam had already corrected them. A transcript that is not what
+    // the prospect receives is not evidence about what the prospect receives.
+    //
+    // NOW: the real function, the real context builder, the real guard, the real
+    // corrections. The model call is injected through the `llm` seam that
+    // already existed for the bench, so the LANE is still chosen here and
+    // everything else is production.
+    let usage = {};
+    const laneLlm = async (provider, params) => {
+      const r = await llmCreate(provider, Object.assign({}, params, { model: lane.model }));
+      usage = r.usage || {};
+      return r;
+    };
+    const turn = await closer.runCloserTurn({
+      supabase: sb, prospect: FIXTURE_PROSPECT, conversationId: CONV_ID,
+      phone: FIXTURE_PHONE, wakeReason: isNudge ? 'nudge' : 'reply', llm: laneLlm,
+    });
+    const text = turn.text;
+    // Persisted so the NEXT turn's history and derived nudge-standing are real
+    // reads of real rows, exactly as production computes them.
+    if (text) sb.db.messages.push({ id: 'm' + (sb.db.messages.length + 1), conversation_id: CONV_ID,
+      direction: 'outbound', body: text, created_at: new Date(Date.now() + i * 1000).toISOString() });
+    out.push(`  MAYA${isNudge ? ` [nudge, ${standing} standing]` : ''}: ${text || '(NO SEND — silence)'}`);
+    out.push(`        · source=${turn.source} signed=${turn.signed} normalized=${turn.normalized || 0}`
+      + ` flags=${(turn.flags || []).join(',') || 'none'}`
+      + ` in=${usage.input_tokens} out=${usage.output_tokens} cache_read=${usage.cache_read_input_tokens || 0}`);
   }
   return out.join('\n');
 }

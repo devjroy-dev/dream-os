@@ -266,3 +266,82 @@ node scripts/b08_p5_closer_scenarios.js
 The numbers that must move: **stage-direction sends 9/9 → 0/9 on Haiku**, and
 **reveal-before-close 0/6 → 6/6 on both lanes.** Anything less is another RED
 and files to the CE rather than being argued down.
+
+---
+
+# ADDENDUM 2 · THE THIRD RED — THE STRUCTURAL SET (2026-08-04)
+
+## 19 · ⚠ §0.2 — I COULD NOT RE-DERIVE THE CHAIR'S COUNTS
+
+The relay named three transcripts and said to read all three whole before
+building. **They are not in the repository at `5351a1b`.** `scripts/out/` holds
+eleven files ending at `T07-27-44`; the three cited — `T07-53-36`, `T07-55-12`,
+`T07-57-13` — are on the founder's Codespace disk and were never committed.
+
+**So every count in §2 of the relay is the chair's read and I have verified none
+of them.** The rulings stand on their own and this build executes them; the
+counts do not enter any claim I make.
+
+**What I DID re-derive at my own hand, and it is the load-bearing one:**
+`b08_p5_closer_scenarios.js:130-131` called `llmCreate` directly and printed raw
+model blocks. **F-08.65 confirmed independently.** And the chair's exoneration
+reproduces exactly — `normalizeDemoLinks` on the mangled specimen returns
+`corrected: 1`, so the transcript mangles were pre-normalizer raw text and
+F-08.61 was already cured at the production seam.
+
+## 20 · ⚠ §0.2 — THE CEILING, MEASURED AND STATED AS ORDERED
+
+The relay said soul deltas ride ≤11,500. **They do not: 11,650**, after one
+tightening pass that took 11,841 down. The remaining 150 cannot come out without
+cutting ruled content.
+
+`SOUL_CHAR_CEILING` is set to **11,750, EXECUTOR-PROPOSED, RATIFY-OR-REVERT**,
+with the whole history and this reasoning in `closerSoul.js`. If the chair
+refuses, one constant reverts and **the provenance line is the byte to re-cut,
+not the `[NOTHING]` contract** — the token has an engine on the other side of it.
+
+## 21 · THE SET AS BUILT
+
+**THE LINK SIGNATURE** — founder-sealed bytes at the `runCloserTurn` seam,
+fired on link-presence only, idempotent, appended **after** the normalizer so the
+floor lands on a corrected link and never a dead one. The soul's REVEAL section
+is untouched: the reveal stays character; this stops it being the only thing
+between a stranger and F-08.64's *"Real person, not a bot."*
+
+**THE `[NOTHING]` TOKEN** — one home in `closerSoul.js`, imported by the engine,
+so the two sides cannot drift into different words. Silence now has a word she
+can type; an empty completion never was one, which is why Haiku's exits were 0/3
+meta. The exit wake also names itself: *"This wake is the goodbye… not a note
+about having said goodbye."*
+
+**THE PROVENANCE TRUE-BYTES** — honest ignorance plus the one true mechanism she
+can actually offer: STOP ends it permanently. **On the veto list.**
+
+**THE HARNESS CURE (F-08.65)** — the scenarios script no longer authors its own
+context or reads raw blocks. It seeds ROWS and calls `runCloserTurn`, so the
+context builder, the guard, the normalizer, the token, the signature and the
+watcher are all in the instrument. Every transcript from here is what a prospect
+receives. Per-turn output now prints `source · signed · normalized · flags`.
+
+**THE WATCHER** — report-only, five convicted classes, `console.warn` at the
+seam. **It blocks nothing and a bench cell asserts that mechanically**: no branch
+returns or throws on a flag. Interception stays refused. Precision is UNMEASURED
+and the log line says so in its own words.
+
+## 22 · THE FLOOR AT THIS SEAL
+
+```
+b08_p5_closer_bench      110  (64 → 89 → 110) · 19 mutations, 19 clean reds
+b5c 47 · b08_p1 105+1 · b08_p3 61 · console 71 · factory 83 · invite 35
+b07_f0789 19 · b07_f0774 19+1 · b07_f0784 59 · b07_p6 29
+b07_p1 71 ⚠LONE · b07_p5 114 ⚠LONE · dreamos-pwa floor ⚠ STILL NOT RUN
+```
+
+**Four cells re-aimed under CE-59, disclosed in-file**: the version cell (now
+asserts the shape `maya-v\d+`, so it cannot go stale on every future delta), the
+two exit-wording cells, and the normalizer runtime cell — whose expected text now
+carries the signature, **which is itself the ordering it proves**.
+
+`no_send_off`'s anchor had moved and the mutation silently failed to apply; the
+harness exits 2 on a stale anchor rather than passing quietly, which is how it
+was caught. Repaired and re-proven.

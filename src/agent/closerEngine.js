@@ -60,7 +60,7 @@ const { llmCreate }      = require('../lib/llm');
 const { normalizeTo }    = require('../lib/metaCloud');
 const { claimLinkFor }   = require('../lib/discover/demoLeadAlert');
 const demoLifecycle      = require('../lib/demoLifecycle');
-const { MAYA, MAYA_SOUL, CLOSER_SOUL_VERSION } = require('./souls/closerSoul');
+const { MAYA, MAYA_SOUL, CLOSER_SOUL_VERSION, NOTHING_TOKEN } = require('./souls/closerSoul');
 
 const SURFACE = 'wa_marketing';
 const TIER    = 'default';
@@ -314,7 +314,8 @@ async function buildProspectContext(supabase, prospect, opts) {
       : `Your last ${standing} messages stand unanswered.`);
     lines.push(remaining > 0
       ? `You have ${remaining} more message${remaining === 1 ? '' : 's'} after this one.`
-      : 'This is the last message you will send on this conversation.');
+      : 'This wake is the goodbye. Whatever you write now is the last thing they hear from you, so write the goodbye itself — not a note about having said goodbye.');
+    lines.push(`If there is genuinely nothing worth sending, write ${NOTHING_TOKEN} and nothing goes out.`);
   }
 
   return lines.join('\n');
@@ -470,6 +471,92 @@ function normalizeDemoLinks(text, expectedLink, igHandle) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// F-08.58 / F-08.64 — THE LINK SIGNATURE
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// WHY PROSE FAILED AND THIS DOES NOT. The soul was given a concrete, ruled
+// definition of the close — "sending someone their page is the close" — and the
+// reveal still landed **0/12 lifetime, both lanes**. Three consecutive REDs on
+// the same law. The diagnosis the CE drew from the whole arc: every cure that
+// handed her TRUE BYTES or WIRE STRUCTURE worked; every cure that asked prose to
+// govern TIMING or PRESSURE failed. This one goes structural.
+//
+// F-08.64 is why it cannot wait. Unprompted, into silence, she wrote: "Real
+// person, not a bot." An affirmative humanity lie — self-corrected one wake
+// later, which is character fighting through, and no comfort at all to the
+// reader who saw only the first message.
+//
+// WHAT THIS IS AND IS NOT. It is a FLOOR, not a voice. It fires on LINK PRESENCE
+// only, appends founder-sealed bytes, and judges nothing she wrote. It is the
+// normalizer's sibling: both correct OUR OWN artifact at the seam, neither reads
+// her words for intent. The soul's REVEAL section is deliberately UNTOUCHED —
+// the reveal stays character, and this stops it being the only thing standing
+// between a stranger and a lie.
+//
+// S-4's "always before the close" now holds BY CONSTRUCTION: the close is the
+// link, and no link leaves this function unsigned.
+//
+// IDEMPOTENT: if the signature is already in the message she wrote it herself
+// and it is not doubled.
+const LINK_SIGNATURE = "— Maya · The Dream Wedding's AI";
+
+function appendLinkSignature(text, expectedLink) {
+  if (!text || !expectedLink) return { text, signed: false };
+  if (text.indexOf(expectedLink) === -1) return { text, signed: false };  // no link, no floor
+  if (text.indexOf(LINK_SIGNATURE) !== -1) return { text, signed: false }; // already said
+  return { text: text + '\n\n' + LINK_SIGNATURE, signed: true };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// THE [NOTHING] TOKEN — the no-send contract, named on both sides
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The engine already treated an EMPTY completion as no-send. Models do not
+// produce empty completions when asked to write; they produce "The conversation
+// is closed." — a message, to a human, announcing that no message is being sent.
+// Haiku's exit wakes were 0/3, every one of them meta.
+//
+// So silence gets a WORD she can actually type. The soul names the contract in
+// her own register; this honours it. A token beats an absence because a token is
+// a thing she can choose.
+
+function isNothing(text) {
+  return String(text || '').trim().replace(/^\W+|\W+$/g, '').toUpperCase() === 'NOTHING';
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// THE WATCHER (CE-ruled, founder-ratified) — REPORT-ONLY. IT BLOCKS NOTHING.
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Stage-1 discipline exactly, and the wire-guard's own precedent at CE-107:
+// measure precision BEFORE anything is ever given the power to block. The
+// founder refused interception on this lane and that refusal STANDS — this
+// observes and records, and there is no branch anywhere below that returns early
+// or alters a byte on the strength of a flag.
+//
+// The five classes are the CONVICTED ones, not a guess at what might go wrong:
+//   identity   — F-08.64, the humanity lie
+//   price      — F-08.60, a figure attached to a named tier
+//   provenance — F-08.59, where the number came from
+//   link       — F-08.58, the close, and whether it carried the signature
+//   post_exit  — the send that should not have existed
+//
+// A flag is a SUSPICION, never a verdict. Precision is unmeasured, so the log
+// says so in its own field and the founder reads specimens, not counts.
+const WATCH_CLASSES = [
+  ['identity',   /\b(real person|not a bot|not an ai|i'?m human|actual human)\b/i],
+  ['price',      /\bRs\s?[\d,]+/i],
+  ['provenance', /\b(your number|got your number|where.{0,12}number|instagram profile|business listing|bought)\b/i],
+  ['link',       /thedreamwedding\.in\/demo\//i],
+  ['post_exit',  /\b(conversation is closed|already sent|i don'?t send a third|no third message)\b/i],
+];
+
+function watchFlags(text) {
+  const t = String(text || '');
+  return WATCH_CLASSES.filter(c => c[1].test(t)).map(c => c[0]);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // THE TURN
 // ═════════════════════════════════════════════════════════════════════════════
 /**
@@ -519,6 +606,9 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
     .trim();
 
   // THE LINK NORMALIZER, at the last point before the words become an outbound.
+  // THE [NOTHING] CONTRACT, honoured before anything else touches the bytes.
+  if (isNothing(text)) text = '';
+
   const fixed = normalizeDemoLinks(text, ctxOpts.demoLink, ctxOpts.demoHandle);
   if (fixed.corrected) {
     console.warn(`[closer] LINK NORMALIZED x${fixed.corrected} — a demo URL did not match the handed constant (F-08.61)`);
@@ -544,6 +634,19 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // empty is still a fault: a human just spoke and silence would be the rudest
   // possible answer, so it throws and the caller's existing vetoed graceful line
   // covers it.
+  // THE SIGNATURE, last, so it lands on the bytes that actually go out.
+  const signedOut = appendLinkSignature(text, ctxOpts.demoLink);
+  text = signedOut.text;
+
+  // THE WATCHER — after every correction, because what it must witness is what
+  // the PROSPECT receives, not what the model first produced.
+  const flags = watchFlags(text);
+  if (flags.length) {
+    console.warn(`[closer:watch] prospect=${prospect && prospect.id} conv=${conversationId} `
+      + `classes=${flags.join(',')} signed=${signedOut.signed} normalized=${fixed.corrected} `
+      + `provider=${route.provider} — REPORT ONLY, nothing blocked, precision UNMEASURED`);
+  }
+
   if (!text) {
     if (isNudge) {
       console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);
@@ -551,7 +654,8 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
     }
     throw new Error('closer turn produced no text');
   }
-  return { text, source: 'maya', model: route.model, provider: route.provider };
+  return { text, source: 'maya', model: route.model, provider: route.provider,
+           signed: signedOut.signed, normalized: fixed.corrected, flags };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -677,6 +781,7 @@ module.exports = {
   loadManual, _sliceManual, buildStaticSystem, buildProspectContext, loadHistory,
   nudgesStandingFrom, countNudgesStanding, isRegisteredUser, readNudgeHours,
   normalizeDemoLinks, truncateAtLastInbound, DEMO_LINK_RE,
+  appendLinkSignature, LINK_SIGNATURE, isNothing, NOTHING_TOKEN, watchFlags, WATCH_CLASSES,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,
   NUDGE_CONFIG_KEY, DEFAULT_NUDGE_HOURS, MAX_NUDGES, SURFACE, TIER,
 };

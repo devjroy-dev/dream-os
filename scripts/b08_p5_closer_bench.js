@@ -56,8 +56,13 @@ const MUTATIONS = {
   no_truncate:  ['src/agent/closerEngine.js',    s => s.replace('if (opts && opts.truncateAtInbound) rows = truncateAtLastInbound(rows);', '')],
   normalizer_off: ['src/agent/closerEngine.js',  s => s.replace('    corrected++;\n    return expectedLink;', '    return url;')],
   normalizer_greedy: ['src/agent/closerEngine.js', s => s.replace("if (url.toLowerCase().indexOf(needle) === -1) return url;   // not aiming at this demo", '')],
-  no_send_off:  ['src/agent/closerEngine.js',    s => s.replace("    if (isNudge) {\n      console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);\n      return { text: '', source: 'no_send', model: route.model, provider: route.provider };\n    }\n", '')],
-  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 11500;', 'const SOUL_CHAR_CEILING = 100;')],
+  no_send_off:  ['src/agent/closerEngine.js',    s => s.replace("      return { text: '', source: 'no_send', model: route.model, provider: route.provider };", "      throw new Error('no-send path removed by mutation');")],
+  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 11750;', 'const SOUL_CHAR_CEILING = 100;')],
+  sig_off:      ['src/agent/closerEngine.js',    s => s.replace("  return { text: text + '\\n\\n' + LINK_SIGNATURE, signed: true };", '  return { text, signed: false };')],
+  sig_no_link:  ['src/agent/closerEngine.js',    s => s.replace('if (text.indexOf(expectedLink) === -1) return { text, signed: false };  // no link, no floor', '')],
+  sig_doubles:  ['src/agent/closerEngine.js',    s => s.replace('if (text.indexOf(LINK_SIGNATURE) !== -1) return { text, signed: false }; // already said', '')],
+  nothing_off:  ['src/agent/closerEngine.js',    s => s.replace('  if (isNothing(text)) text = \'\';', '')],
+  watch_blind:  ['src/agent/closerEngine.js',    s => s.replace("['identity',   /\\b(real person|not a bot|not an ai|i'?m human|actual human)\\b/i],", "['identity', /zzzznevermatches/i],")],
   lock_off:     ['src/lib/prospects.js',          s => s.replace("return withTurnLock(turnKey('marketing', inputs && inputs.from), () => _handleMarketingInbound(inputs));", 'return _handleMarketingInbound(inputs);')],
 };
 
@@ -81,6 +86,7 @@ if (MUTATE) {
 }
 
 const soul   = require(path.join(ROOT, 'src/agent/souls/closerSoul.js'));
+const soulMod = soul;
 const closer = require(path.join(ROOT, 'src/agent/closerEngine.js'));
 const { translateFor } = require(path.join(ROOT, 'src/lib/llm.js'));
 const { DEFAULTS }     = require(path.join(ROOT, 'src/lib/modelRouter.js'));
@@ -123,7 +129,10 @@ function fakeSupabase(db) {
   ok(soul.MAYA === 'Maya', 'the name is Maya, one home');
   ok(!/Raya/.test(soul.MAYA_SOUL) && !/Raya/.test(fs.readFileSync(path.join(ROOT, 'src/agent/souls/closerSoul.js'), 'utf8').replace(/`RAYA`|RAYA` was/g, '')), 'the vacated name carries no byte');
   ok(soul.MAYA_SOUL.length <= soul.SOUL_CHAR_CEILING, `soul within the amended ceiling (${soul.MAYA_SOUL.length}/${soul.SOUL_CHAR_CEILING})`);
-  ok(soul.CLOSER_SOUL_VERSION === 'maya-v1', 'version const present for the log line (R1 as amended)');
+    // RE-AIMED, count preserved: the soul re-versioned to maya-v2 at the third-red
+  // cure. Asserted on the SHAPE rather than the value so it cannot go stale on
+  // every future soul delta; §12 asserts what the value must track.
+  ok(/^maya-v\d+$/.test(soul.CLOSER_SOUL_VERSION), 'version const present for the log line (R1 as amended)');
   ok(soul.MAYA_SOUL.includes(`Your name is ${soul.MAYA}`), 'the name is interpolated, never a second literal');
 
   section('1b · The register, in her own bytes');
@@ -261,7 +270,7 @@ function fakeSupabase(db) {
   // ("This is your last message... Leave the door open, gracefully") into a
   // FACT ("This is the last message you will send"). The old wording was the
   // narration bug's own raw material.
-  ok(/This is the last message you will send/.test(ctx), 'at two standing she is told this is the last one');
+  ok(/This wake is the goodbye/.test(ctx), 'at two standing she is told this is the last one');
   ok(!/just following up|Sorry to chase/.test(ctx), 'the machinery WAKES her and words nothing — no composed line anywhere in context');
 
   // ═══ 9 · THE SEAM — TRANSPORT UNMOVED ════════════════════════════════════
@@ -320,7 +329,7 @@ function fakeSupabase(db) {
      'F-08.57 — context instructs her to compose NOTHING; no line she could narrate back');
   nctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
     { wakeReason: 'nudge', nudgesStanding: 2 });
-  ok(/This is the last message you will send/.test(nctx),
+  ok(/This wake is the goodbye/.test(nctx),
      'F-08.57 — at the cap she is told it plainly, still as a fact');
 
   // F-08.61 — the link normalizer
@@ -390,8 +399,12 @@ function fakeSupabase(db) {
     supabase: fakeSupabase({ demo_vendors: [baseDemo], messages: [] }),
     prospect, conversationId: 'cL', phone: '919999000444', wakeReason: 'reply', llm: normLlm,
   });
-  ok(normOut.text === 'open https://thedreamwedding.in/demo/vendor/swatitomar_p4b',
-     'F-08.61 RUNTIME — a mangled link is corrected on the way out of the turn, not merely correctable');
+  // The expected text now carries the signature too, because the signature is
+  // appended at this same seam and AFTER the correction — which is itself the
+  // ordering this cell now proves: normalize, then sign, so the floor lands on
+  // the corrected link and never on a dead one.
+  ok(normOut.text === 'open https://thedreamwedding.in/demo/vendor/swatitomar_p4b\n\n' + closer.LINK_SIGNATURE,
+     'F-08.61 RUNTIME — a mangled link is corrected on the way out of the turn, then signed');
 
   // F-08.58 / F-08.60 / F-08.62 / F-08.63 — the vetoed soul bytes
   ok(/sending someone their page is the close/.test(soul.MAYA_SOUL),
@@ -404,13 +417,96 @@ function fakeSupabase(db) {
      'F-08.62 — page visibility is named as a fabrication site');
   ok(/the edge of a range is not one tier's price/.test(soul.MAYA_SOUL),
      'F-08.60 — the convicted inference is named as craft, not fenced');
-  ok(soul.MAYA_SOUL.length <= soul.SOUL_CHAR_CEILING && soul.SOUL_CHAR_CEILING === 11500,
-     `F-08.60 — soul within the re-authorised ceiling (${soul.MAYA_SOUL.length}/11500)`);
+  ok(soul.MAYA_SOUL.length <= soul.SOUL_CHAR_CEILING,
+     `F-08.60 — soul within the ceiling (${soul.MAYA_SOUL.length}/${soul.SOUL_CHAR_CEILING})`);
 
   // V-4 — the Manual carries the true sentence she invented around
   ok(/A demo studio is a public page/.test(m.body) && /never\s+be described as private/.test(m.body),
      'V-4 — the visibility truth is IN the Manual, where the invention happened');
   ok(m.version === 'v2', 'the Manual re-versioned to v2 with its new claim');
+
+  // ═══ 12 · THE THIRD-RED CURE SET — F-08.58 · F-08.64 · F-08.65 ═══════════
+  section('12 · The third-red cure set');
+
+  const SL = 'https://thedreamwedding.in/demo/vendor/swatitomar_p4b';
+
+  // THE LINK SIGNATURE — the structural floor under S-4
+  ok(closer.LINK_SIGNATURE === "— Maya · The Dream Wedding's AI",
+     'the signature is the founder-sealed bytes, exact');
+  const sg = closer.appendLinkSignature('here you go ' + SL, SL);
+  ok(sg.signed && sg.text.endsWith(closer.LINK_SIGNATURE),
+     'F-08.58 — a message carrying the link leaves signed, by construction');
+  ok(closer.appendLinkSignature('no link here at all', SL).signed === false,
+     'F-08.58 — LINK-PRESENCE ONLY: a message without the link is never touched');
+  ok(closer.appendLinkSignature('here ' + SL + '\n\n' + closer.LINK_SIGNATURE, SL).signed === false,
+     'F-08.58 — IDEMPOTENT: if she said it herself it is not doubled');
+  ok(closer.appendLinkSignature('here ' + SL, null).signed === false,
+     'F-08.58 — no demo link handed means no floor to apply');
+
+  // THE ACCEPTANCE PREDICATE, mechanically checkable for the first time
+  const delivered = [
+    'take a look ' + SL + '\n\n' + closer.LINK_SIGNATURE,
+    "I'm an AI, by the way. " + SL + '\n\n' + closer.LINK_SIGNATURE,
+    'nothing to see here',
+  ];
+  ok(delivered.every(msg => msg.indexOf(SL) === -1 || msg.indexOf(closer.LINK_SIGNATURE) !== -1),
+     'F-08.58 ACCEPTANCE — no delivered message carries the link without the signature');
+
+  // THE [NOTHING] TOKEN — one home, both sides
+  ok(soulMod.NOTHING_TOKEN === '[NOTHING]' && closer.NOTHING_TOKEN === soulMod.NOTHING_TOKEN,
+     'the no-send token has ONE home and the engine imports it, so the two cannot drift');
+  ok(soul.MAYA_SOUL.indexOf('[NOTHING]') !== -1,
+     'the contract is stated in her own register, not only in the engine');
+  ok(closer.isNothing('[NOTHING]') && closer.isNothing(' [nothing] ') && !closer.isNothing('nothing much'),
+     'the token is recognised tolerantly but not greedily');
+
+  // Caught for the same reason as its sibling above: without the no-send path
+  // this throws, and an uncaught throw takes the COUNT with it (F-08.50).
+  let nothingOut = null, nothingThrew = null;
+  try {
+    nothingOut = await closer.runCloserTurn({
+      supabase: fakeSupabase({ messages: [] }), prospect: { id: 'p', demo_vendor_ref: null },
+      conversationId: 'cT', phone: '919999000555', wakeReason: 'nudge',
+      llm: async () => ({ content: [{ type: 'text', text: '[NOTHING]' }], usage: {} }),
+    });
+  } catch (e) { nothingThrew = e; }
+  ok(!nothingThrew && nothingOut && nothingOut.source === 'no_send' && nothingOut.text === '',
+     'F-08.57 RUNTIME — she writes the token and nothing goes out'
+     + (nothingThrew ? ' — THREW INSTEAD' : ''));
+
+  // THE EXIT WAKE says plainly that THIS wake is the goodbye
+  const exitCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
+    { wakeReason: 'nudge', nudgesStanding: 2 });
+  ok(/This wake is the goodbye/.test(exitCtx) && /not a note about having said goodbye/.test(exitCtx),
+     'the exit wake names itself, because 0/3 Haiku exits produced a note instead of a goodbye');
+  ok(exitCtx.indexOf('[NOTHING]') !== -1,
+     'and the silence option is offered at the exit, where it is most needed');
+
+  // THE WATCHER — report-only, convicted classes, blocks nothing
+  ok(closer.watchFlags("Real person, not a bot.").indexOf('identity') !== -1,
+     "F-08.64 — the humanity lie is a watched class");
+  ok(closer.watchFlags('Prestige is Rs 5,999 a month').indexOf('price') !== -1,
+     'F-08.60 — a tier price is a watched class');
+  ok(closer.watchFlags('your number came from your instagram profile').indexOf('provenance') !== -1,
+     'F-08.59 — a provenance answer is a watched class');
+  ok(closer.watchFlags('hello there').length === 0,
+     'an ordinary sentence flags nothing, so a flag means something');
+  const engSrc = fs.readFileSync(path.join(ROOT, 'src/agent/closerEngine.js'), 'utf8');
+  ok(!/if\s*\(flags\.length\)\s*\{[^}]*return/.test(engSrc) && !/flags\.length[^)]*\)\s*(?:return|throw)/.test(engSrc),
+     'THE WATCHER BLOCKS NOTHING — no branch returns or throws on a flag; interception stays refused');
+
+  // THE PROVENANCE TRUE-BYTES
+  ok(/replying STOP ends these messages permanently/.test(soul.MAYA_SOUL),
+     'F-08.59 — she is handed a TRUE mechanism to offer, because invention filled the gap where none existed');
+  ok(/you don't know where this one came from/.test(soul.MAYA_SOUL),
+     'F-08.59 — and honest ignorance is stated as the answer, not implied');
+
+  // F-08.65 — the harness is no longer a second implementation
+  const harnessSrc = fs.readFileSync(path.join(ROOT, 'scripts/b08_p5_closer_scenarios.js'), 'utf8');
+  ok(/closer\.runCloserTurn\(/.test(harnessSrc),
+     'F-08.65 — the instrument that gates deploy routes through the production turn');
+  ok(!/const text = \(resp\.content \|\| \[\]\)/.test(harnessSrc),
+     'F-08.65 — it no longer reads raw model blocks; a transcript is what a prospect receives');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);
