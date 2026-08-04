@@ -3690,3 +3690,75 @@ chair's hypothesis is that the self-reintroduction residue — **7/9 Haiku, 2/9
 DeepSeek** — is the SAME missing-history disease, and that with *"I'm Maya"*
 visible in her own quoted sends the switchboard behaviour collapses. **The
 re-run's reintroduction count is a named read**, not an impression.
+
+---
+
+## CE-189 — F-08.75 · F-08.76 · F-08.77 · THE RENAME TO THE WIRE (twenty-first chair, 2026-08-04)
+
+**F-08.75 — TWO NAMES ON ONE CONVERSATION, AND THE WIRE'S NAME WAS THE ONE THE
+PROSPECT READ.** `src/lib/templates.js` `marketing_opener` — **Meta-approved
+2026-07-19, live since Block 05, and the first message every prospect on this
+line has ever received** — opens *"Hi {{1}}, this is **Mira** from The Dream
+Wedding."* Every turn behind it answered as **Maya**.
+
+**THE INVISIBILITY MECHANISM, and it is why three seals missed it:** `runOpenerJob`
+sends that template and calls **`logMessage` nowhere** — no conversation exists
+yet, `openProspectConversation` runs on the INBOUND. **The opener enters no
+history, no transcript, no bench and no model context.** It was invisible to
+every instrument this arc built, including the harness that gates deploy. Filed
+separately as **F-08.76**, because the harness is FAITHFUL here and it is
+PRODUCTION that loses the message.
+
+**FOUNDER RULING, verbatim:** 「 the tempelate for marketing is approved for
+Mira 」 · 「 i somehow dont want to acpture any name other than mira and Eliza 」.
+**The Meta template stands BYTE-UNTOUCHED** — no re-submission, no approval
+cycle, no risk to an approved MARKETING template. **The CODE renames to the
+wire.** MAYA vacates having never been met by a real prospect (RAYA's own
+precedent, one lane over). The persona ledger is **four**: Victor · Donna ·
+Mira · Eliza.
+
+**ONE HOME HELD.** `MIRA` is imported from `src/agent/miraSoul.js:91` and
+re-declared nowhere; `closerSoul.js` deliberately does **not** re-export it.
+Derived by command at `101e03e`: **six** modules `require` miraSoul; this is the
+seventh. *(The relay said sixteen and seventeenth — corrected at the executor's
+tip, CE-40 class.)*
+
+**CREDITED — AN EXISTING BENCH CAUGHT THE RENAME'S ONE SLIP.**
+`b05_couple_soul_bench` §4.1 (*"the name literal lives in miraSoul and in
+Meta-committed template copy only"*) went **21/21 → 20/21** on the first cured
+tree: the new same-name paragraph carried a hardcoded `Mira` in soul prose.
+Interpolated to `${MIRA}` and the census is green again. **The estate's own
+one-home law convicted the sitting that was implementing it**, with no amendment
+to the cell required.
+
+**F-08.76 — THE OPENER IS UNLOGGED, AND THAT IS A PRODUCTION FORK, NOT A FIXTURE
+ONE.** The relay chartered seeding the opener into the harness fixture. Building
+that as worded would hand the model a row **production does not have** — F-08.68's
+own class, cured hours earlier. So the harness **renders** the opener into the
+transcript (read from the registry, never retyped) and does **not** push it into
+her history. **OPEN, three arms, none picked:** (a) leave it — Maya never saw it
+and the prospect did · (b) log it at send time, which means opening the
+conversation earlier and touching the state machine · (c) log it retroactively
+at the inbound. Arm (b) is the only one that makes fixture and production agree.
+
+**F-08.77 — THE PERSONA BOUNDARY, FOUNDER-RULED, AND THE MACHINERY WAS ALREADY
+BUILT FOR IT.** 「 Mira will not be meeting the vendors again since mira is the
+brides ai and she is the marketing voice 」. One persona, two doors, **zero
+overlap in an ongoing relationship**: she opens the house to brides on the canvas
+and to prospects on this line, and the day a prospect converts, **Victor** takes
+them. **The F-08.55 registered-user guard is this ruling's mechanical
+enforcement** — built before the sentence existed. A registered vendor texting
+the marketing line gets the founder's sealed one-liner and **no Closer turn at
+all**, which makes *"this line is for people we haven't met yet"* architecturally
+exact rather than merely honest. Named in-file as a mechanism (F-06.85): remove
+the guard and the soul paragraph becomes a promise nothing keeps.
+
+**AUDITED, EXPECTED-ZERO, VERIFIED NOT ASSUMED:** every post-conversion promise
+shape across the soul and `EXIT_LINE`. **One hit**, and it is the ruled-fine one
+— the static exit's *"just reply and I'm right here"*, which is re-entry into
+the SALE. Nothing implies she remains the vendor's ongoing channel.
+
+**STILL OPEN AND OWED TO THE FOUNDER:** the signature byte
+`— Mira · The Dream Wedding's AI`. It **replaces a founder-sealed string** and
+ships on his word; the build stands against the slot, with the name interpolated
+from its one home so it cannot drift.

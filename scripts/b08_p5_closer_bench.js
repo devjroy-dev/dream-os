@@ -30,6 +30,7 @@
 const path = require('path');
 const fs   = require('fs');
 const ROOT = path.resolve(__dirname, '..');
+const mira = require(path.join(__dirname, '../src/agent/miraSoul.js'));
 
 const MUTATE = (process.argv.find(a => a.startsWith('--mutate=')) || '').split('=')[1] || null;
 
@@ -46,7 +47,7 @@ function section(t) { console.log(`\n── ${t} ──`); }
 // ═════════════════════════════════════════════════════════════════════════════
 const MUTATIONS = {
   manual_slice: ['src/agent/closerEngine.js',     s => s.replace('const MANUAL_BODY_FROM_LINE  = 14;', 'const MANUAL_BODY_FROM_LINE  = 1;')],
-  one_breakpoint: ['src/agent/closerEngine.js',   s => s.replace("{ type: 'text', text: MAYA_SOUL, cache_control: { type: 'ephemeral' } },", "{ type: 'text', text: MAYA_SOUL },")],
+  one_breakpoint: ['src/agent/closerEngine.js',   s => s.replace("{ type: 'text', text: CLOSER_SOUL, cache_control: { type: 'ephemeral' } },", "{ type: 'text', text: CLOSER_SOUL },")],
   guard_off:    ['src/agent/closerEngine.js',     s => s.replace(".in('phone', [p, `+${p}`])", ".in('phone', [p])")],
   guard_closed: ['src/agent/closerEngine.js',     s => s.replace('    return false;\n  }\n}\n\n// ═', '    return true;\n  }\n}\n\n// ═')],
   nudge_count:  ['src/agent/closerEngine.js',     s => s.replace('return Math.max(0, run - 1);', 'return run;')],
@@ -81,7 +82,7 @@ const MUTATIONS = {
     + "               nudgesStanding };",
     "      throw new Error('no-send path removed by mutation');")],
   // RE-ANCHORED: the ceiling moved to 12,100 (executor-proposed, ratify-or-revert).
-  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 12250;', 'const SOUL_CHAR_CEILING = 100;')],
+  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 12800;', 'const SOUL_CHAR_CEILING = 100;')],
   // §2 — the fabrication ROOT CAUSE put back: metadata declared to mean she looked.
   soul_looked:  ['src/agent/souls/closerSoul.js', s => s.replace(
     'What you have is their handle, their trade and their city — not their photographs.',
@@ -102,8 +103,8 @@ const MUTATIONS = {
     '  if (isNudge && isExitWake(histOpts.unansweredSends)) {', '  if (false) {')],
   // §2 — the nudge job stops admitting the static exit: the send silently vanishes.
   nudge_job_drops_exit: ['src/agent/closerEngine.js', s => s.replace(
-    "      if (out.source !== 'maya' && out.source !== 'exit_static') continue;",
-    "      if (out.source !== 'maya') continue;")],
+    "      if (out.source !== 'closer' && out.source !== 'exit_static') continue;",
+    "      if (out.source !== 'closer') continue;")],
   // §5 — the identity class narrows back past the person/career shapes.
   identity_narrow: ['src/agent/closerEngine.js', s => s.replace(
     "|i'?m (?:the |a )?person\\b|the person who (?:built|made|wrote|put)|if i were still (?:shooting|photographing|working)|when i (?:was|used to) (?:shoot|work)|back when i (?:shot|worked)|i used to (?:shoot|photograph)", '')],
@@ -111,6 +112,12 @@ const MUTATIONS = {
   prov_wide: ['src/agent/closerEngine.js', s => s.replace(
     "  ['provenance', /\\b(got (?:it|your number|you) from",
     "  ['provenance', /\\b(where.{0,12}number|got (?:it|your number|you) from")],
+  // F-08.75 — the persona re-declared locally instead of imported: two homes.
+  name_two_homes: ['src/agent/souls/closerSoul.js', s => s.replace(
+    "const { MIRA } = require('../miraSoul');", "const MIRA = 'Maya';")],
+  // F-08.77 — the boundary paragraph removed from her voice.
+  no_boundary_para: ['src/agent/souls/closerSoul.js', s => s.replace(
+    ' Asked outright, the answer is yes, said easily — there is nothing to be cagey about, and someone who works it out later feels handled. What you never imply is that you stay: the day someone joins, Victor takes care of them from then on and your part is finished.', '')],
   // §5 — the soul's biography boundary removed: "if I were still shooting" returns.
   soul_no_boundary: ['src/agent/souls/closerSoul.js', s => s.replace(
     ' — and none of it is a life you lived. You know this trade from a thousand honest accounts of it, never from having lived it, so you claim no past, no body and no career of your own. The first invented memory is the last thing they would believe from you.', '.')],
@@ -120,7 +127,7 @@ const MUTATIONS = {
     'const DEMO_LINK_RE = /https?:\\/\\/[^\\s<>()\\[\\]"\']*thedreamwedding\\.in\\/[^\\s<>()\\[\\]"\']*/gi;')],
   // §5 — the partial sign-off is no longer absorbed: the double-sign returns.
   sign_no_upgrade: ['src/agent/closerEngine.js', s => s.replace(
-    "const PARTIAL_SIGNOFF_RE = /\\n+\\s*[—–-]\\s*Maya\\s*$/;",
+    "const PARTIAL_SIGNOFF_RE = new RegExp('\\\\n+\\\\s*[—–-]\\\\s*' + MIRA + '\\\\s*$');",
     "const PARTIAL_SIGNOFF_RE = /zzzznevermatches/;")],
   // §7 — each tuned class, blinded or widened back.
   watch_costume_blind: ['src/agent/closerEngine.js', s => s.replace(
@@ -210,18 +217,29 @@ function fakeSupabase(db) {
 
   // ═══ 1 · THE SOUL, AND ITS CEILING ═══════════════════════════════════════
   section('1 · The soul');
-  ok(soul.MAYA === 'Maya', 'the name is Maya, one home');
-  ok(!/Raya/.test(soul.MAYA_SOUL) && !/Raya/.test(fs.readFileSync(path.join(ROOT, 'src/agent/souls/closerSoul.js'), 'utf8').replace(/`RAYA`|RAYA` was/g, '')), 'the vacated name carries no byte');
-  ok(soul.MAYA_SOUL.length <= soul.SOUL_CHAR_CEILING, `soul within the amended ceiling (${soul.MAYA_SOUL.length}/${soul.SOUL_CHAR_CEILING})`);
+  ok(mira.MIRA === 'Mira' && soul.MIRA === undefined,
+     'F-08.75 — the persona is MIRA and her literal has ONE home: this module does not re-declare it');
+  ok(!/Raya/.test(soul.CLOSER_SOUL) && !/Raya/.test(fs.readFileSync(path.join(ROOT, 'src/agent/souls/closerSoul.js'), 'utf8').replace(/`RAYA`|RAYA` was/g, '')), 'the vacated names carry no soul byte');
+  ok(soul.CLOSER_SOUL.length <= soul.SOUL_CHAR_CEILING, `soul within the amended ceiling (${soul.CLOSER_SOUL.length}/${soul.SOUL_CHAR_CEILING})`);
     // RE-AIMED, count preserved: the soul re-versioned to maya-v2 at the third-red
   // cure. Asserted on the SHAPE rather than the value so it cannot go stale on
   // every future soul delta; §12 asserts what the value must track.
-  ok(/^maya-v\d+$/.test(soul.CLOSER_SOUL_VERSION), 'version const present for the log line (R1 as amended)');
-  ok(soul.MAYA_SOUL.includes(`Your name is ${soul.MAYA}`), 'the name is interpolated, never a second literal');
+  // ── LABELED AMENDMENT ⑩ · COUNT PRESERVED (F-08.75) ──────────────────────
+  // The shape was `maya-v\d+`. The persona vacated, so the shape moved with it.
+  // Asserted on SHAPE, not value, for the same reason as before: it must not go
+  // stale on every soul delta. The version increments across the rename rather
+  // than resetting, so the ledger stays one line.
+  ok(/^mira-closer-v\d+$/.test(soul.CLOSER_SOUL_VERSION), 'version const present for the log line (R1 as amended)');
+  // ── LABELED AMENDMENT ⑪ · COUNT PRESERVED (F-08.75) ──────────────────────
+  // The name is interpolated from its ONE HOME — miraSoul.js — and this module
+  // re-declares nothing. The cell now drives the home rather than a re-export,
+  // which is the stronger form of the same assertion.
+  ok(soul.CLOSER_SOUL.includes(`Your name is ${mira.MIRA}`),
+     'the name is interpolated from its one home, never a second literal');
 
   section('1b · The register, in her own bytes');
-  ok(!/[₹]/.test(soul.MAYA_SOUL), 'no rupee glyph anywhere in the soul');
-  ok(/Rs 1,20,000/.test(soul.MAYA_SOUL), 'money shown grouped, in the locked register');
+  ok(!/[₹]/.test(soul.CLOSER_SOUL), 'no rupee glyph anywhere in the soul');
+  ok(/Rs 1,20,000/.test(soul.CLOSER_SOUL), 'money shown grouped, in the locked register');
   // ── LABELED AMENDMENT ⑤ · COUNT PRESERVED ────────────────────────────────
   // The founder's 「 swap 」 replaced "like a gentleman" with "— gracefully:" in
   // the sentence describing HER parting line. §2 took that sentence out of her
@@ -229,13 +247,13 @@ function fakeSupabase(db) {
   // must not return is `gentleman`; what replaced it moved with the paragraph.
   // Re-aimed at the surviving half of the same veto — the door still opens, and
   // the retired word stays retired.
-  ok(/leaves the door open/.test(soul.MAYA_SOUL) && !/gentleman/.test(soul.MAYA_SOUL),
+  ok(/leaves the door open/.test(soul.CLOSER_SOUL) && !/gentleman/.test(soul.CLOSER_SOUL),
      'the founder-ruled swap holds: the door still opens and the retired word stays retired');
 
   section('1c · LD-5 — the soul is a self, not a rules-list');
-  ok(!/^\s*\d+\.\s/m.test(soul.MAYA_SOUL), 'no numbered rule list');
-  ok(!/Forbidden|FORBIDDEN|forbidden phrases/.test(soul.MAYA_SOUL), 'no forbidden-phrase block');
-  ok(!/^\s*[-*•]\s/m.test(soul.MAYA_SOUL), 'no bulleted directives');
+  ok(!/^\s*\d+\.\s/m.test(soul.CLOSER_SOUL), 'no numbered rule list');
+  ok(!/Forbidden|FORBIDDEN|forbidden phrases/.test(soul.CLOSER_SOUL), 'no forbidden-phrase block');
+  ok(!/^\s*[-*•]\s/m.test(soul.CLOSER_SOUL), 'no bulleted directives');
 
   // ═══ 2 · THE MANUAL SLICE (FORK 6 / F-06.52's class) ═════════════════════
   section('2 · The Manual, meta-header sliced');
@@ -256,7 +274,7 @@ function fakeSupabase(db) {
   const sys = closer.buildStaticSystem();
   ok(sys.length === 2, 'exactly two static blocks');
   ok(!!sys[0].cache_control && !!sys[1].cache_control, 'BOTH carry a breakpoint — a Manual re-version must not invalidate the soul');
-  ok(sys[0].text === soul.MAYA_SOUL, 'soul first');
+  ok(sys[0].text === soul.CLOSER_SOUL, 'soul first');
   ok(sys[1].text.includes(m.body), 'Manual second');
 
   // ═══ 4 · THE Z-LAW, THROUGH THE REAL translateFor ════════════════════════
@@ -271,7 +289,7 @@ function fakeSupabase(db) {
   // (Caught by this cell going red at the cured tree — the bench's own bug, in
   // the open. INDEPENDENT-METHOD clause 1: a check whose failure mode is a
   // silent mismatch is not a check.)
-  ok(ds.system[0].text === soul.MAYA_SOUL && ds.system[1].text === params.system[1].text,
+  ok(ds.system[0].text === soul.CLOSER_SOUL && ds.system[1].text === params.system[1].text,
      'deepseek: the soul and Manual survive the strip byte-intact — only the annotation left');
 
   // ═══ 5 · THE ROUTE ═══════════════════════════════════════════════════════
@@ -384,12 +402,12 @@ function fakeSupabase(db) {
   const res = await prospectsMod.handleMarketingInbound({
     supabase: sb, from: '919999000111', text: 'who is this?', messageId: 'wamid.1',
     sendWa: fakeSend, sendWaDeps: {},
-    closerTurn: async () => ({ text: 'Maya here. Saw your Jaipur set.', source: 'maya' }),
+    closerTurn: async () => ({ text: 'Mira here. Saw your Jaipur set.', source: 'closer' }),
   });
   ok(res.action === 'in_session' && res.replySent === true, 'the turn advances and the reply goes');
   ok(sent.length === 1 && sent[0].line === 'marketing' && sent[0].windowOpen === true,
      'ZERO TRANSPORT BYTES MOVED — same line, same windowOpen:true');
-  ok(sent[0].text === 'Maya here. Saw your Jaipur set.', "the wire carries the Closer's words, not a constant");
+  ok(sent[0].text === 'Mira here. Saw your Jaipur set.', "the wire carries the Closer's words, not a constant");
   ok(sb.db.messages.filter(x => x.direction === 'outbound').length === 1, 'the outbound is persisted through the same logMessage');
   ok(sb.db.messages.filter(x => x.direction === 'inbound').length === 1, 'the inbound was logged BEFORE the turn — she can read what she is answering');
   const src = fs.readFileSync(path.join(ROOT, 'src/lib/prospects.js'), 'utf8');
@@ -400,7 +418,7 @@ function fakeSupabase(db) {
   turnLock._reset();
   const order = [];
   const sb2 = fakeSupabase({ prospects: [{ id: 'pA', phone: '919999000222', state: 'replied', source: 'other' }] });
-  const slowTurn = async () => { order.push('start'); await new Promise(r => setTimeout(r, 40)); order.push('end'); return { text: 'x', source: 'maya' }; };
+  const slowTurn = async () => { order.push('start'); await new Promise(r => setTimeout(r, 40)); order.push('end'); return { text: 'x', source: 'closer' }; };
   const call = () => prospectsMod.handleMarketingInbound({
     supabase: sb2, from: '919999000222', text: 'hi', messageId: 'w', sendWa: fakeSend, sendWaDeps: {}, closerTurn: slowTurn,
   });
@@ -529,18 +547,18 @@ function fakeSupabase(db) {
      'F-08.61 RUNTIME — a mangled link is corrected on the way out of the turn, then signed');
 
   // F-08.58 / F-08.60 / F-08.62 / F-08.63 — the vetoed soul bytes
-  ok(/sending someone their page is the close/.test(soul.MAYA_SOUL),
+  ok(/sending someone their page is the close/.test(soul.CLOSER_SOUL),
      'F-08.58 — the close has a concrete definition she can always see: her own link');
-  ok((soul.MAYA_SOUL.match(/is the close/g) || []).length === 1,
+  ok((soul.CLOSER_SOUL.match(/is the close/g) || []).length === 1,
      'F-08.58 — ONE home; THE CLOSE left untouched so the rule cannot fork');
-  ok(/crediting an invented rule to the Manual itself/.test(soul.MAYA_SOUL),
+  ok(/crediting an invented rule to the Manual itself/.test(soul.CLOSER_SOUL),
      "F-08.63 — the specimen is named in the authoring, so the next sitting re-reads what it kills");
-  ok(/who can see a page/.test(soul.MAYA_SOUL),
+  ok(/who can see a page/.test(soul.CLOSER_SOUL),
      'F-08.62 — page visibility is named as a fabrication site');
-  ok(/the edge of a range is not one tier's price/.test(soul.MAYA_SOUL),
+  ok(/the edge of a range is not one tier's price/.test(soul.CLOSER_SOUL),
      'F-08.60 — the convicted inference is named as craft, not fenced');
-  ok(soul.MAYA_SOUL.length <= soul.SOUL_CHAR_CEILING,
-     `F-08.60 — soul within the ceiling (${soul.MAYA_SOUL.length}/${soul.SOUL_CHAR_CEILING})`);
+  ok(soul.CLOSER_SOUL.length <= soul.SOUL_CHAR_CEILING,
+     `F-08.60 — soul within the ceiling (${soul.CLOSER_SOUL.length}/${soul.SOUL_CHAR_CEILING})`);
 
   // V-4 — the Manual carries the true sentence she invented around
   ok(/A demo studio is a public page/.test(m.body) && /never\s+be described as private/.test(m.body),
@@ -553,8 +571,13 @@ function fakeSupabase(db) {
   const SL = 'https://thedreamwedding.in/demo/vendor/swatitomar_p4b';
 
   // THE LINK SIGNATURE — the structural floor under S-4
-  ok(closer.LINK_SIGNATURE === "— Maya · The Dream Wedding's AI",
-     'the signature is the founder-sealed bytes, exact');
+  // ── LABELED AMENDMENT ⑫ · COUNT PRESERVED (F-08.75) ──────────────────────
+  // ⚠ THE SIGNATURE IS PENDING-FOUNDER-SEAL. These bytes REPLACE a sealed
+  // string and ship only on his word. The cell asserts the SLOT — the name
+  // resolved from its one home — so the moment he seals different bytes this
+  // fails loudly instead of drifting.
+  ok(closer.LINK_SIGNATURE === `— ${mira.MIRA} · The Dream Wedding's AI`,
+     'the signature slot resolves from the one home (PENDING FOUNDER SEAL)');
   const sg = closer.appendLinkSignature('here you go ' + SL, SL);
   ok(sg.signed && sg.text.endsWith(closer.LINK_SIGNATURE),
      'F-08.58 — a message carrying the link leaves signed, by construction');
@@ -577,7 +600,7 @@ function fakeSupabase(db) {
   // THE [NOTHING] TOKEN — one home, both sides
   ok(soulMod.NOTHING_TOKEN === '[NOTHING]' && closer.NOTHING_TOKEN === soulMod.NOTHING_TOKEN,
      'the no-send token has ONE home and the engine imports it, so the two cannot drift');
-  ok(soul.MAYA_SOUL.indexOf('[NOTHING]') !== -1,
+  ok(soul.CLOSER_SOUL.indexOf('[NOTHING]') !== -1,
      'the contract is stated in her own register, not only in the engine');
   ok(closer.isNothing('[NOTHING]') && closer.isNothing(' [nothing] ') && !closer.isNothing('nothing much'),
      'the token is recognised tolerantly but not greedily');
@@ -619,8 +642,8 @@ function fakeSupabase(db) {
   // wakes she keeps. Re-aimed at exactly those two.
   const exitCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
     { wakeReason: 'nudge', unansweredSends: ['her answer', 'nudge one'] });
-  ok(/instead of arriving as a message announcing that no message is being sent/.test(soul.MAYA_SOUL)
-     && /the parting line is not yours to write/.test(soul.MAYA_SOUL),
+  ok(/instead of arriving as a message announcing that no message is being sent/.test(soul.CLOSER_SOUL)
+     && /the parting line is not yours to write/.test(soul.CLOSER_SOUL),
      'the goodbye is structural now, and the soul says so in her own register (F-06.85)');
   ok(exitCtx.indexOf('[NOTHING]') !== -1,
      'and the silence option is still offered on the wakes that are hers');
@@ -639,9 +662,9 @@ function fakeSupabase(db) {
      'THE WATCHER BLOCKS NOTHING — no branch returns or throws on a flag; interception stays refused');
 
   // THE PROVENANCE TRUE-BYTES
-  ok(/replying STOP ends these messages permanently/.test(soul.MAYA_SOUL),
+  ok(/replying STOP ends these messages permanently/.test(soul.CLOSER_SOUL),
      'F-08.59 — she is handed a TRUE mechanism to offer, because invention filled the gap where none existed');
-  ok(/you don't know where this one came from/.test(soul.MAYA_SOUL),
+  ok(/you don't know where this one came from/.test(soul.CLOSER_SOUL),
      'F-08.59 — and honest ignorance is stated as the answer, not implied');
 
   // F-08.65 — the harness is no longer a second implementation
@@ -794,15 +817,15 @@ function fakeSupabase(db) {
   section('13 · the post-cure ruling — the root cause, the exit gate, the scheme, the mouth');
 
   // ── §2 · THE FABRICATION ROOT CAUSE WAS IN HER SOUL ──────────────────────
-  ok(!/then you have looked at their work/.test(soul.MAYA_SOUL),
+  ok(!/then you have looked at their work/.test(soul.CLOSER_SOUL),
      '§2 — the soul no longer tells her that handle+category+city MEANS she has seen the photographs');
-  ok(/not their photographs/.test(soul.MAYA_SOUL)
-     && /never a set you have not seen/.test(soul.MAYA_SOUL),
+  ok(/not their photographs/.test(soul.CLOSER_SOUL)
+     && /never a set you have not seen/.test(soul.CLOSER_SOUL),
      '§2 — specificity comes from what is TRUE, and never from images she has not seen');
-  ok(/one wrong guess from proving you never looked at all/.test(soul.MAYA_SOUL),
+  ok(/one wrong guess from proving you never looked at all/.test(soul.CLOSER_SOUL),
      'LD-5 — the reason rides in the same breath as the constraint, never as a rule');
-  ok(soul.MAYA_SOUL.length <= soul.SOUL_CHAR_CEILING,
-     `the ceiling is mechanical, not remembered — ${soul.MAYA_SOUL.length} / ${soul.SOUL_CHAR_CEILING}`);
+  ok(soul.CLOSER_SOUL.length <= soul.SOUL_CHAR_CEILING,
+     `the ceiling is mechanical, not remembered — ${soul.CLOSER_SOUL.length} / ${soul.SOUL_CHAR_CEILING}`);
 
   // ── §3 · F-08.70 — the wake says plainly that nobody has come back ───────
   const staleCtx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
@@ -864,8 +887,8 @@ function fakeSupabase(db) {
   ok(notGated.exitGated === false && notGated.text.indexOf(DEMO_L) !== -1 && notGated.signed === true,
      '§4 — on a wake that is NOT the exit the link still goes, signed: the gate is not a mute button');
   // The soul and the machinery agree, both ends (F-06.85).
-  ok(/The house sends one plain sentence/.test(soul.MAYA_SOUL)
-     && !/The goodbye carries no link/.test(soul.MAYA_SOUL),
+  ok(/The house sends one plain sentence/.test(soul.CLOSER_SOUL)
+     && !/The goodbye carries no link/.test(soul.CLOSER_SOUL),
      'F-06.85 — the soul names the MACHINERY as it now is, and the outgrown sentence does not stand');
 
   // ── §5 · F-08.71 — one regex, both limbs ────────────────────────────────
@@ -886,9 +909,9 @@ function fakeSupabase(db) {
   });
   ok(sl.normalized === 1 && sl.signed === true && sl.text.indexOf(closer.LINK_SIGNATURE) !== -1,
      'F-08.71 DELIVERED — "no link leaves unsigned" is true again, on the shape that broke it');
-  const dbl = closer.appendLinkSignature('see ' + DEMO_L + '\n\n— Maya', DEMO_L);
+  const dbl = closer.appendLinkSignature('see ' + DEMO_L + '\n\n— ' + mira.MIRA, DEMO_L);
   ok(dbl.signed === true && dbl.upgraded === true
-     && dbl.text.split('Maya').length - 1 === 1,
+     && dbl.text.split(mira.MIRA).length - 1 === 1,
      'the double sign-off cures: her partial is UPGRADED in place, not stacked beneath');
   ok(closer.appendLinkSignature('see ' + DEMO_L + '\n\n' + closer.LINK_SIGNATURE, DEMO_L).signed === false,
      'and the full signature is still idempotent — said once, never twice');
@@ -963,8 +986,8 @@ function fakeSupabase(db) {
      '§2 — it carries no link and no figure: it cannot be a close by construction');
 
   // ── §5 · THE BIOGRAPHY BOUNDARY, and the two shapes it exists for ────────
-  ok(/none of it is a life you lived/.test(soul.MAYA_SOUL)
-     && /you claim no past, no body and no career of your own/.test(soul.MAYA_SOUL),
+  ok(/none of it is a life you lived/.test(soul.CLOSER_SOUL)
+     && /you claim no past, no body and no career of your own/.test(soul.CLOSER_SOUL),
      '§5 — the soul supplies the boundary in the same breath as the knowledge (LD-5)');
   ok(closer.watchFlags("I'm Maya — the person who built you a page.").indexOf('identity') !== -1,
      "§5 — \"the person who built you a page\" is a watched class now");
@@ -993,8 +1016,59 @@ function fakeSupabase(db) {
   const soulSrc = fs.readFileSync(path.join(ROOT, 'src/agent/souls/closerSoul.js'), 'utf8');
   ok(/a ceiling that travels with the thing it caps\n\/\/            is not a cap|is not a cap/.test(soulSrc),
      '§6 — the ladder records the 12,007-over-11,750 breach and names its failure mode');
-  ok(soul.SOUL_CHAR_CEILING === 12250 && soul.MAYA_SOUL.length === 12244,
-     `§6 — ratified at 12,250; measured ${soul.MAYA_SOUL.length}`);
+  ok(soul.SOUL_CHAR_CEILING === 12800 && soul.CLOSER_SOUL.length === 12793,
+     `§6 — EXECUTOR-PROPOSED 12,800 (ratify-or-revert); measured ${soul.CLOSER_SOUL.length}`);
+
+  // ═══ 15 · F-08.75 · F-08.76 · F-08.77 — THE RENAME AND THE BOUNDARY ══════
+  section('15 · the rename to the wire, and the persona boundary');
+
+  // ── F-08.75 · THE CODE RENAMED TO THE WIRE, NOT THE WIRE TO THE CODE ─────
+  const tpl = require(path.join(ROOT, 'src/lib/templates.js'));
+  ok(tpl.TEMPLATES.marketing_opener.body.indexOf('this is ' + mira.MIRA + ' from The Dream Wedding') !== -1
+     && tpl.TEMPLATES.marketing_opener.status === 'approved',
+     'F-08.75 — the Meta template stands BYTE-UNTOUCHED and still approved: the code moved');
+  ok(!/\bMaya\b/.test(soul.CLOSER_SOUL) && !/\bMaya\b/.test(closer.LINK_SIGNATURE)
+     && !/\bMaya\b/.test(closer.EXIT_LINE),
+     'F-08.75 — no vacated name survives in any byte a prospect can read');
+  ok(soul.CLOSER_SOUL.indexOf('this is ' + mira.MIRA) === -1
+     || tpl.TEMPLATES.marketing_opener.body.indexOf(mira.MIRA) !== -1,
+     'the wire and the soul agree on one name, and the wire is the one that was approved');
+
+  // ── F-08.77 · THE PERSONA BOUNDARY, IN HER VOICE AND IN THE MACHINERY ────
+  ok(/One assistant, two doors/.test(soul.CLOSER_SOUL)
+     && /Victor takes care of them from then on and your part is finished/.test(soul.CLOSER_SOUL),
+     "F-08.77 — the founder's boundary law is in her own register, reason in the breath (LD-5)");
+  ok(/Asked outright, the answer is yes/.test(soul.CLOSER_SOUL),
+     'F-08.77 — asked whether she is the same Mira, the true answer is yes, said easily');
+  // The guard IS the enforcement. Driven, not asserted from the comment.
+  const boundarySb = fakeSupabase({ users: [{ id: 'u1', phone: '+919888294440' }] });
+  // CAUGHT DELIBERATELY: if the guard stops firing, the injected llm throws and
+  // an uncaught throw takes the COUNT with it (F-08.50). A red whose count
+  // nobody can read is not a usable red.
+  let boundary = null, boundaryThrew = null;
+  try {
+    boundary = await closer.runCloserTurn({
+      supabase: boundarySb, prospect: { id: 'pB', demo_vendor_ref: null }, conversationId: 'cB',
+      phone: '919888294440', wakeReason: 'reply',
+      llm: async () => { throw new Error('a registered vendor must never reach a Closer turn'); },
+    });
+  } catch (e) { boundaryThrew = e; }
+  ok(!boundaryThrew && boundary && boundary.source === 'registered_user_redirect'
+     && boundary.text === closer.REGISTERED_USER_LINE,
+     'F-08.77 — a registered vendor gets the sealed line and NO turn: the boundary is mechanical'
+     + (boundaryThrew ? ' — REACHED THE TURN: ' + boundaryThrew.message : ''));
+
+  // ── F-08.76 · THE OPENER IS RENDERED, NEVER INJECTED ────────────────────
+  const harn4 = fs.readFileSync(path.join(ROOT, 'scripts/b08_p5_closer_scenarios.js'), 'utf8');
+  ok(/TEMPLATES\.marketing_opener\.body/.test(harn4),
+     'F-08.76 — the transcript renders the opener from the REGISTRY, never retyped');
+  ok(!/direction: 'outbound',[^}]*opener/.test(harn4),
+     'F-08.76 — and it is NOT pushed into her history: production does not log it, so neither does the fixture');
+  const prospectsSrc = fs.readFileSync(path.join(ROOT, 'src/lib/prospects.js'), 'utf8');
+  const openerJob = prospectsSrc.slice(prospectsSrc.indexOf('async function runOpenerJob'),
+                                       prospectsSrc.indexOf('// ── window-expiry job'));
+  ok(openerJob.indexOf('logMessage') === -1,
+     'F-08.76 — DERIVED, not claimed: runOpenerJob logs nothing, which is why nobody saw F-08.75 for three seals');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);

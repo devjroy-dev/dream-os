@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// scripts/b08_p5_closer_scenarios.js — MAYA'S GOLDEN SCENARIOS, BOTH ARCHITECTURES.
+// scripts/b08_p5_closer_scenarios.js — THE CLOSER'S GOLDEN SCENARIOS, BOTH
+// ARCHITECTURES. The persona is MIRA (F-08.75); Maya is vacated.
 //
 // ── WHAT THIS IS ─────────────────────────────────────────────────────────────
 // The 06 spec's P2 bench list, as replayable scripts. These are MODEL RUNS. They
@@ -26,7 +27,9 @@
 //
 // ── THE FIXTURE-DISJOINTNESS RIDER (F-06.105), HONOURED HERE ────────────────
 // Every name below is FULL-NAME-GRADE disjoint from all five estate personas —
-// Victor, Donna, Mira, Eliza, Maya — near-twins included. The existing
+// Victor, Donna, Mira, Eliza — FOUR now, Maya vacated (F-08.75) — near-twins
+// included. The R-a bar is MORE load-bearing after the rename, not less: Riya
+// and Rhea are near-twins of MIRA, who is now this lane's own voice. The existing
 // Riya/Rhea fixtures appear in NO scenario of hers: the R-a family is barred
 // outright rather than checked case by case, because F-06.105 was minted on a
 // first-name collision that read as disjoint until it wasn't.
@@ -45,7 +48,9 @@ const ROOT = path.resolve(__dirname, '..');
 const { llmCreate }   = require(path.join(ROOT, 'src/lib/llm.js'));
 const { _resetRouteCache } = require(path.join(ROOT, 'src/lib/modelRouter.js'));
 const closer          = require(path.join(ROOT, 'src/agent/closerEngine.js'));
-const { MAYA_SOUL, CLOSER_SOUL_VERSION } = require(path.join(ROOT, 'src/agent/souls/closerSoul.js'));
+const { CLOSER_SOUL, CLOSER_SOUL_VERSION } = require(path.join(ROOT, 'src/agent/souls/closerSoul.js'));
+const { MIRA } = require(path.join(ROOT, 'src/agent/miraSoul.js'));
+const { TEMPLATES } = require(path.join(ROOT, 'src/lib/templates.js'));
 
 const LANES = {
   haiku:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
@@ -166,8 +171,29 @@ async function runScenario(name, laneName) {
     + "demo page you can open whenever. Couples come to find people like you, and when they do, the enquiry "
     + "lands on your phone without you having to answer at midnight.\n\nWhat made you curious about it?";
 
+  // ── THE OPENER IS RENDERED, NOT INJECTED — and the distinction is F-08.76 ──
+  // The relay chartered "seed the TRUE opener bytes" to cure transcripts that
+  // "began one message too late." The reading is right and the harm is real:
+  // every transcript this arc produced omitted the first thing the prospect
+  // ever read. But the CAUSE is not the fixture. Derived by command:
+  // `runOpenerJob` calls `logMessage` NOWHERE, and `openProspectConversation`
+  // runs on the INBOUND — so in PRODUCTION the opener enters no conversation,
+  // and the model cannot see it either. **The harness is faithful; production
+  // is what loses the message.**
+  //
+  // Pushing the opener into `sb.db.messages` would therefore hand the model a
+  // row production does not have — a fixture that lies about production, which
+  // is F-08.68's own class, cured six hours ago. So it is PRINTED into the
+  // transcript (the reader's problem, solved) and NOT pushed (the model's
+  // history, kept honest). F-08.76 carries the production fork to the chair.
+  //
+  // The bytes are read FROM THE REGISTRY, never retyped: templates.js is the
+  // single source of what Meta approved.
   if (turns[0] === '__NUDGE__') {
     const t0 = Date.now() - 180000;
+    const opener = TEMPLATES.marketing_opener.body.replace('{{1}}', 'Kanupriya');
+    out.push(`  ${MIRA} (opener template, sent by runOpenerJob — NOT in the conversation history,`);
+    out.push(`        F-08.76): ${opener}`);
     sb.db.messages.push({ id: 'm0', conversation_id: CONV_ID, direction: 'inbound',
       body: 'ok tell me more', created_at: new Date(t0).toISOString() });
     sb.db.messages.push({ id: 'm0a', conversation_id: CONV_ID, direction: 'outbound',
@@ -239,7 +265,7 @@ async function runScenario(name, laneName) {
     // what print. A transcript is read as evidence by the founder and by the
     // chair; a number in it that the engine never produced is the transcript
     // lying about the run, which is the whole of F-08.65 and now of F-08.68.
-    out.push(`  MAYA${isNudge ? ` [nudge, ${turn.nudgesStanding} standing, `
+    out.push(`  ${MIRA}${isNudge ? ` [nudge, ${turn.nudgesStanding} standing, `
       + `${turn.unansweredSends === undefined ? '?' : turn.unansweredSends} quoted]` : ''}: `
       + `${text || '(NO SEND — silence)'}`);
     out.push(`        · source=${turn.source} called=${turn.calledProvider}/${turn.calledModel}`
@@ -261,7 +287,8 @@ async function runScenario(name, laneName) {
   const say = (s) => { console.log(s); log.push(s); };
 
   const manual = closer.loadManual();
-  say(`MAYA — GOLDEN SCENARIOS · soul=${CLOSER_SOUL_VERSION} manual=${manual.version} soul_chars=${MAYA_SOUL.length}`);
+  say(`${MIRA.toUpperCase()} (the Closer) — GOLDEN SCENARIOS · soul=${CLOSER_SOUL_VERSION} `
+    + `manual=${manual.version} soul_chars=${CLOSER_SOUL.length}`);
   say(`lanes: ${lanes.join(', ')} · scenarios: ${names.length}`);
 
   for (const laneName of lanes) {

@@ -843,3 +843,140 @@ itself.** That raises its weight: his to change at the character.
 4. **F-08.73** — the pre-existing 28/29.
 5. **Two ratify-or-reverts still open:** the sign-off upgrade (§35), and this
    delivery's §3 hold.
+
+---
+
+# ADDENDUM 6 · THE RENAME — MAYA VACATES, MIRA TAKES THE LANE (2026-08-04)
+
+**Base:** dream-os `101e03e` · dreamos-pwa `19978c7` (**ZERO pwa bytes**).
+**Ruled to:** the CE rename charter + the persona-boundary addendum, 2026-08-04.
+**Role:** EXECUTOR. Nothing pushed.
+
+## 51 · WHAT SHIPPED
+
+| File | What |
+|---|---|
+| `src/agent/souls/closerSoul.js` | `MIRA` **imported** from its one home, never re-declared · the NAME section re-authored with F-08.75's evidence · the same-name paragraph carrying the **persona boundary** · version `maya-v2` → `mira-closer-v3` · ceiling **12,250 → 12,800 EXECUTOR-PROPOSED** |
+| `src/agent/closerEngine.js` | `LINK_SIGNATURE` and `PARTIAL_SIGNOFF_RE` interpolate the one home · the `source` token `'maya'` → **`'closer'`**, persona-neutral · watcher costume class re-aimed · F-08.55 gains the boundary-mechanism comment · live prose swept |
+| `scripts/b08_p5_closer_scenarios.js` | title and labels · the opener **rendered from the registry** · the disjointness rider re-stated against four |
+| `scripts/b08_p5_closer_bench.js` | **171 → 180** · three labeled amendments · two new mutations · two re-anchored |
+| `docs/FINDINGS_LOG.md` | CE-189 |
+
+## 52 · THE ONE-HOME LAW, AND THE BENCH THAT ENFORCED IT ON ME
+
+`MIRA` lives at `miraSoul.js:91` and is imported. `closerSoul.js` **does not
+re-export it** — a re-export is a second door to the same literal.
+
+**CREDITED: `b05_couple_soul_bench` §4.1 caught my one slip.** It went
+**21/21 → 20/21** on the first cured tree because the new same-name paragraph
+carried a hardcoded `Mira` in soul prose. Interpolated to `${MIRA}`; census
+green; **no amendment to that cell was needed or made.** The estate's own law
+convicted the sitting implementing it.
+
+**⚠ CORRECTED AT MY TIP (CE-40 class):** the relay said *"the sixteen-importer
+discipline; you are the seventeenth."* Derived by command — **six** modules
+`require` miraSoul; **this is the seventh.** The other mentions are comments and
+strings.
+
+## 53 · ⚠ §0.2 — THE OPENER SEED, BUILT DIFFERENTLY THAN CHARTERED
+
+The charter: *"the fixture re-seed now seeds the TRUE opener bytes."* The
+reading behind it is right — every transcript this arc produced began one
+message too late. **The cause is not the fixture.** `runOpenerJob` calls
+`logMessage` nowhere, so in production the opener enters no conversation and
+**the model cannot see it either.**
+
+Pushing it into `sb.db.messages` would hand the model a row production does not
+have — **F-08.68's own class, cured six hours earlier.** So the opener is
+**RENDERED** into the transcript (read from `TEMPLATES.marketing_opener.body`,
+never retyped) and **NOT pushed** into her history. The reader's problem is
+solved; the model's history stays honest. **F-08.76 carries the production fork
+to the chair, three arms, none picked.**
+
+**Also mechanically:** the charter said the seed would cure the reintroduction
+few-shot *"in one act."* It would not. An opener row sits **before** the last
+inbound, so `truncateAtLastInbound` keeps it in the MESSAGES array — it never
+reaches the quoted block, and the few-shot is unaffected either way. The captured
+specimen from Addendum 5 is what addresses that, and it stands.
+
+## 54 · ⚠ §3's ARM 1 — RE-SHOWN ON THE RENAMED TREE, STILL FATAL
+
+Re-derived at this tip, not carried from the last packet. Arm 1 applied to
+production source:
+
+```
+[closer] no-send — a nudge with no conversation behind it has nothing to say
+  RESULT source=no_send text=""
+```
+
+**Every nudge silently stops, with no red anywhere in the floor.** Nothing in the
+rename changes this: with the opener unlogged, dropping the stale inbound leaves
+either an empty array or a leading assistant turn, and Meta's API takes neither.
+**The three resolutions in Addendum 5 §43 stand unchanged and unruled.**
+
+## 55 · THE SIGNATURE — PENDING FOUNDER SEAL
+
+`— Mira · The Dream Wedding's AI` **replaces a founder-sealed string** and is
+built against the slot, not shipped on my word. The name is **interpolated from
+its one home**, so whatever he seals, the signature cannot drift from the
+persona. The bench asserts the slot, so a different seal fails loudly.
+
+## 56 · THE PERSONA BOUNDARY — AUDITED, EXPECTED-ZERO, VERIFIED
+
+Every post-conversion promise shape across the soul and `EXIT_LINE`, by command.
+**One hit:** the static exit's *"just reply and I'm right here"* — re-entry into
+the SALE, ruled fine. **Nothing implies she remains the vendor's ongoing
+channel.** The delta list is empty.
+
+The boundary is enforced by `isRegisteredUser`, and a **runtime** cell drives it:
+a registered vendor reaches the sealed line and an injected llm that **throws if
+the turn is ever reached**. Wrapped, per F-08.50 — a red whose count nobody can
+read is not a usable red.
+
+## 57 · THE FLOOR — PAIRED, AND TWO REDS THAT ARE NOT MINE
+
+```
+b08_p5_closer_bench  180  (…156→171→180) · 35 mutations, 35 clean reds, ZERO stale
+b5c 47 · b08_p1 106 · b08_p3 61 · console 71 · factory 83 · invite 35
+b07_f0789 19 · b07_f0774 20 · b07_f0784 59 · b07_p6 29 · b07_p1 75 · b07_p5 136
+miraSoul-adjacent (the home I now import from), all re-run:
+  b05_arc_m1 53 · m2 27 · m3 11 · m4 18 · m5 11 · ping_drain 31
+  b05_couple_soul 21/21 ✓ (caught my slip, then green)
+  b05_f0555_media_dedupe 22 + 1 ⚠ PRE-EXISTING
+b06_meter 28/29 ⚠ PRE-EXISTING (F-08.73)
+dreamos-pwa (ZERO bytes): unchanged since the last seal, green
+```
+
+**⚠ A SECOND UNREPORTED RED, same class as F-08.73.**
+`b05_f0555_media_dedupe_bench` §6.2 (*"the guard speaks to NOBODY — it writes a
+row and returns, never a line"*) reads **22 passed, 1 failed** and is
+**identical at `101e03e` and at the cured tree — proven both ways, not mine.**
+Two benches in this estate are now known-red and unreported. **Not fixed —
+outside this charter.** Reported so the count is disclosed rather than preserved
+silently (floor-method law).
+
+## 58 · COPY INVENTORY
+
+**Model-voiced, delegated veto, founder override standing:** the same-name
+paragraph carrying the boundary — the only new soul prose. The NAME section
+rewrite is comments, not copy.
+
+**PENDING FOUNDER SEAL:** `— Mira · The Dream Wedding's AI`.
+
+**BYTE-UNTOUCHED and stated:** the Meta template `marketing_opener` · the F-08.55
+redirect line · `EXIT_LINE` · every other template body. **Nothing was filed with
+Meta and nothing needs to be.**
+
+## 59 · WHAT THE NEXT SITTING PICKS UP
+
+1. **The eleven ×3 on the renamed tree** — counts against `39087f4`'s. The
+   reintroduction read now means something different: *"this is Mira from The
+   Dream Wedding"* is legitimately message one on the wire, so a reintroduction
+   in nudge one is a **repetition of the opener**, not a switchboard tic.
+2. **The signature seal** — one word.
+3. **Three ratify-or-reverts:** the ceiling at 12,800 · the sign-off upgrade
+   (Addendum 5 §35) · the `'closer'` source token.
+4. **F-08.76's three arms** · **arm 1's three resolutions** — both unruled.
+5. **F-08.73 and the media-dedupe red** — two known-red benches, outside charter.
+6. **`b5c` and `b08_p1` still stub `source: 'maya'`** — harmless (they never
+   reach the engine) but stale-named. Named, not fixed: outside the file list.

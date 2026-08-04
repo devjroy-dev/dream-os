@@ -1,5 +1,5 @@
-// closerSoul.js — MAYA. The Closer: the marketing lane's soul, and the first AI
-// ever to speak on it.
+// closerSoul.js — MIRA ON THE MARKETING LINE. The Closer: this lane's soul.
+// The persona is Mira, whose name has one home at src/agent/miraSoul.js.
 //
 // ═══ WHY THIS FILE EXISTS ════════════════════════════════════════════════════
 // `src/lib/prospects.js` has carried a sentence since Block 05 saying that an
@@ -21,20 +21,40 @@
 // Three exports, mirroring miraSoul exactly: the NAME (one home), the SOUL (one
 // exported const), and the VERSION (stamped into the transport log line).
 //
-// ═══ THE NAME ════════════════════════════════════════════════════════════════
-// MAYA — founder-minted 2026-08-04. A name is a soul-adjacent byte and the
-// founder's alone to mint (CE-65's ELIZA ruling, the standing precedent); the
-// executor authored her nameless and asked. `RAYA` was minted and vacated at the
-// founder's own asterisk within the hour; it never reached an artifact and no
-// byte here ever carried it. The literal lives HERE and nowhere else.
+// ═══ THE NAME — AND WHY IT IS NOT DECLARED HERE ══════════════════════════════
+// F-08.75, and the cure runs toward the WIRE rather than away from it.
 //
-// The name map, house-wide, so no future sitting has to reconstruct it:
+// THE DEFECT. `src/lib/templates.js` `marketing_opener` — APPROVED by Meta on
+// 2026-07-19, live since Block 05, and the first message every prospect on this
+// line has ever received — opens `Hi {{1}}, this is Mira from The Dream
+// Wedding.` Every turn behind it then answered as MAYA. Two names, one
+// conversation, and the wire's name was the one the prospect actually read.
+//
+// WHY NOBODY SAW IT FOR THREE SEALS. `runOpenerJob` (`src/lib/prospects.js`)
+// sends that template and calls `logMessage` NOWHERE — no conversation exists
+// yet, `openProspectConversation` runs on the INBOUND. So the opener enters no
+// history, no transcript, no bench and no model context. It was invisible to
+// every instrument this arc built. (Filed as F-08.76 below; the harness is
+// FAITHFUL to production here, and it is production that loses the message.)
+//
+// THE FOUNDER'S RULING, verbatim: 「 the tempelate for marketing is approved for
+// Mira 」 · 「 i somehow dont want to acpture any name other than mira and Eliza 」.
+// The Meta template stands BYTE-UNTOUCHED — no re-submission, no approval cycle.
+// The CODE renames to the wire. MAYA vacates, having never been met by a real
+// prospect; RAYA's own precedent, one lane over.
+//
+// THE LITERAL IS NOT DECLARED IN THIS FILE, and that is the point. `MIRA` has
+// ONE HOME at `src/agent/miraSoul.js:91` and this module imports it. A second
+// declaration would be a second thing to drift, which is the whole reason the
+// one-home law exists. Derived by command at 101e03e: six modules `require`
+// miraSoul today; this is the seventh.
+//
+// The name map, house-wide — FOUR personas now, not five:
 //   Victor  — the vendor's advisor, every surface
 //   Donna   — internal only, never named on any wire
-//   Mira    — the couple's assistant, the bride's side always
+//   Mira    — THE HOUSE'S ONE PUBLIC ASSISTANT. The bride's side, and this
+//             marketing line. One persona, two audiences, one operator.
 //   Eliza   — the Concierge default, a vendor's front-of-house (unbuilt)
-//   Maya    — this file: the house's own voice, to people who are not yet
-//             customers, on the marketing number
 //
 // ═══ WHAT RULED HER CONDUCT ══════════════════════════════════════════════════
 // S-4 (reveal by her own judgment; conversational never interrogating; always
@@ -69,7 +89,7 @@
 // This entire const is model-voiced copy and passed his verbatim veto in two
 // rounds: the six original sections, then the four additions, with one amendment
 // on his word 「 swap 」 — "like a gentleman" became "— gracefully:" once the
-// Closer was named Maya. (The original phrase came from the spec's P2 authoring
+// Closer was named Maya, a name since vacated. (The original phrase came from the spec's P2 authoring
 // instruction, written while the Closer was assumed male.) Nothing here is
 // minted. A future sitting changes a byte only through the same door.
 'use strict';
@@ -78,7 +98,7 @@
 // ONE HOME. Not Meta-committed (unlike Mira, whose literal rides approved
 // template copy at templates.js), so a rename here is a code change and not a
 // template re-filing — but it is still the founder's byte and not a sitting's.
-const MAYA = 'Maya';
+const { MIRA } = require('../miraSoul');
 
 // The no-send token, named HERE because the soul is where the contract is stated
 // in her own register; src/agent/closerEngine.js honours the same literal. One
@@ -99,14 +119,16 @@ const NOTHING_TOKEN = '[NOTHING]';
 // only if the founder ever wants per-message provenance — at which point it is
 // one migration and one line in `logMessage`, and this comment is where whoever
 // does it will find that out.
-const CLOSER_SOUL_VERSION = 'maya-v2';
+const CLOSER_SOUL_VERSION = 'mira-closer-v3';
 
 // ── The soul ─────────────────────────────────────────────────────────────────
-const MAYA_SOUL = `WHO YOU ARE
+const CLOSER_SOUL = `WHO YOU ARE
 
-Your name is ${MAYA}.
+Your name is ${MIRA}.
 
 Say it early and once — in the first message, or the moment someone asks who they are talking to. After that you never announce yourself again. A person who reintroduces herself at the top of every message is not a person, she is a switchboard, and the whole point of you is that this should not feel like being processed.
+
+You are the same ${MIRA} the couples talk to. One assistant, two doors: on their side you keep a wedding straight, and here you talk to people who have not joined yet. Asked outright, the answer is yes, said easily — there is nothing to be cagey about, and someone who works it out later feels handled. What you never imply is that you stay: the day someone joins, Victor takes care of them from then on and your part is finished. Say it plainly when the pitch reaches it — their couples get you, on the couple's side, and they get Victor, on theirs.
 
 You work for The Dream Wedding, and your job is the first conversation — the one with someone who has never heard of us.
 
@@ -270,7 +292,28 @@ Then it ends, and the parting line is not yours to write. The house sends one pl
 //            the parting line left the soul entirely when it stopped being
 //            hers. MEASURED AT THIS SEAL: **12,244**, headroom 6.
 //
-// Growth past 12,250 returns to the CE.
-const SOUL_CHAR_CEILING = 12250;
+//   12,800 — EXECUTOR-PROPOSED, 2026-08-04, at the RENAME. RATIFY-OR-REVERT.
+//            The rename itself is character-neutral (Maya and Mira are both four
+//            letters). The cost is ONE ruled paragraph: the same-name beat
+//            carrying the founder's persona-boundary law — one assistant, two
+//            doors, and Victor takes the vendor the day they join. MEASURED
+//            AFTER ONE TIGHTENING PASS: **12,793** (12,894 before it).
+//            It cannot come out. Without it she is a second Mira to anyone who
+//            has met the first, and the boundary — 「 Mira will not be meeting
+//            the vendors again 」 — has no home in her voice at all, which is
+//            F-06.85's class pointing the other way: a MECHANISM (the F-08.55
+//            guard) with no soul sentence naming it.
+//            Arithmetic unchanged: the prefix is cached by construction on both
+//            architectures; 39087f4's run returned cache_read=7,110 Haiku and
+//            6,784–6,912 DeepSeek on every warm turn.
+//            IF THE CHAIR REFUSES: the byte to re-cut is the last sentence of
+//            that paragraph — the "their couples get you, they get Victor"
+//            pitch shape — which is §3 of the addendum and the least
+//            load-bearing of its three limbs. The boundary itself does not cut.
+//
+// Growth past 12,800 returns to the CE.
+const SOUL_CHAR_CEILING = 12800;
 
-module.exports = { MAYA, MAYA_SOUL, CLOSER_SOUL_VERSION, SOUL_CHAR_CEILING, NOTHING_TOKEN };
+// MIRA is deliberately NOT re-exported: one home, at miraSoul.js. Anything that
+// needs the name imports it there, exactly as this module does.
+module.exports = { CLOSER_SOUL, CLOSER_SOUL_VERSION, SOUL_CHAR_CEILING, NOTHING_TOKEN };

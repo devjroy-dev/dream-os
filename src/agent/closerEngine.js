@@ -1,4 +1,5 @@
-// closerEngine.js — MAYA'S TURN. The marketing lane's model seam.
+// closerEngine.js — THE CLOSER'S TURN. The marketing lane's model seam.
+// The persona is MIRA (F-08.75); her literal has one home at ./miraSoul.js.
 //
 // ═══════════════════════════════════════════════════════════════════════════════
 // F-06.85 HEADER — every soul sentence below that is conditioned on a MECHANICAL
@@ -60,7 +61,10 @@ const { llmCreate }      = require('../lib/llm');
 const { normalizeTo }    = require('../lib/metaCloud');
 const { claimLinkFor }   = require('../lib/discover/demoLeadAlert');
 const demoLifecycle      = require('../lib/demoLifecycle');
-const { MAYA, MAYA_SOUL, CLOSER_SOUL_VERSION, NOTHING_TOKEN } = require('./souls/closerSoul');
+const { CLOSER_SOUL, CLOSER_SOUL_VERSION, NOTHING_TOKEN } = require('./souls/closerSoul');
+// ONE HOME (F-08.75): the persona's literal lives at miraSoul.js and is imported,
+// never re-declared. Six modules required it before this one; this is the seventh.
+const { MIRA } = require('./miraSoul');
 
 const SURFACE = 'wa_marketing';
 const TIER    = 'default';
@@ -94,7 +98,7 @@ const PRODUCT_LINK = 'https://thedreamwedding.in';
 // stamp, two commit hashes, and a sentence about which handover "no agent
 // loads." F-06.52's specimen was exactly this shape — the business room injected
 // "[Donna's snapshot]" two inches above the law forbidding those words, and
-// every fabrication specimen turned out to be the label echoed back. Maya does
+// every fabrication specimen turned out to be the label echoed back. She does
 // not receive commit hashes or instructions about what agents load.
 //
 // THE SLICE IS AT LINE 14 by CE ruling, and ZERO BYTES MOVE IN THE FOUNDER-
@@ -135,7 +139,7 @@ function loadManual() {
 function buildStaticSystem() {
   const manual = loadManual();
   return [
-    { type: 'text', text: MAYA_SOUL, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: CLOSER_SOUL, cache_control: { type: 'ephemeral' } },
     {
       type: 'text',
       text: `THE TDW MANUAL — everything you may say about the product comes from here, and nothing you may say comes from anywhere else.\n\n${manual.body}`,
@@ -148,7 +152,7 @@ function buildStaticSystem() {
 // THE DYNAMIC CONTEXT — fresh per turn, never cached
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// CONTEXT SOURCE: THE DEMO ROW IS PRIMARY (CE-ruled). The 06 spec says Maya
+// CONTEXT SOURCE: THE DEMO ROW IS PRIMARY (CE-ruled). The 06 spec says the Closer
 // references "`ig_handle`, `category`, `city` FROM THE PROSPECT ROW" — and on
 // the live fixture all three of those columns are NULL while the facts sit on
 // `demo_vendors` via `demo_vendor_ref`. The spec's named source does not hold
@@ -490,7 +494,7 @@ async function countNudgesStanding(supabase, conversationId) {
 // THE FINDING. `src/lib/discover/demoLeadAlert.js` refuses its own send when the
 // target phone already belongs to a registered user, born of the founder's own
 // catch: 「 why will 94440 get demo alert when its already a registered user 」.
-// Maya's lane had no equivalent and could not acquire one by accident:
+// This lane had no equivalent and could not acquire one by accident:
 // `findOrCreateProspectByPhone` mints a prospect for ANY inbound number,
 // fail-safe by design so an opt-out from anywhere is honoured. So a registered
 // TDW vendor texting the marketing number would have been sold The Dream Wedding
@@ -511,7 +515,21 @@ async function countNudgesStanding(supabase, conversationId) {
 // demoLeadAlert's. There the failure mode is an unprompted template to a
 // customer — silence is correct. HERE a human has already spoken to us, and the
 // rude machine is the one that says nothing. So a lookup that errors proceeds
-// into Maya, loudly logged.
+// into the Closer's turn, loudly logged.
+// ── THE PERSONA BOUNDARY'S MECHANICAL ENFORCEMENT (founder-ruled 2026-08-04) ─
+// 「 Mira will not be meeting the vendors again since mira is the brides ai and
+// she is the marketing voice 」. One persona, two doors, ZERO overlap in an
+// ongoing relationship: she opens the house to brides on the canvas and to
+// prospects here, and the day a prospect joins, Victor takes them from there.
+//
+// THIS GUARD WAS BUILT BEFORE THE SENTENCE EXISTED and turns out to be its
+// enforcement. A registered vendor texting this line gets the founder's sealed
+// one-liner and NO Closer turn at all — so the line is now architecturally
+// exact rather than merely honest: it is literally for people she has not met,
+// because the ones she met and closed live on Victor's side of the wall.
+// MECHANISM NAMED (F-06.85): if this guard is ever removed or narrowed, the
+// boundary law has no enforcement and the soul paragraph that states it becomes
+// a promise nothing keeps.
 const REGISTERED_USER_LINE = "You're already with us — this line is for people we haven't met yet.";
 
 async function isRegisteredUser(supabase, phone) {
@@ -526,7 +544,7 @@ async function isRegisteredUser(supabase, phone) {
     return !!data;
   } catch (e) {
     console.error(`[closer] registered-user check FAILED for ${p}: ${e.message} — `
-      + 'FAILING OPEN into Maya: a human already spoke to us and silence is the ruder failure');
+      + 'FAILING OPEN into the turn: a human already spoke to us and silence is the ruder failure');
     return false;
   }
 }
@@ -615,7 +633,13 @@ function normalizeDemoLinks(text, expectedLink, igHandle) {
 //
 // IDEMPOTENT: if the signature is already in the message she wrote it herself
 // and it is not doubled.
-const LINK_SIGNATURE = "— Maya · The Dream Wedding's AI";
+// ⚠ PENDING FOUNDER SEAL (F-08.75). These bytes REPLACE a founder-sealed string
+// ("— Maya · The Dream Wedding's AI") and are built against the slot on the
+// chair's word, not shipped on mine. The name inside them is the one home's
+// literal, interpolated rather than typed, so the signature cannot drift from
+// the persona. If the founder seals different bytes, this one line changes and
+// nothing else does.
+const LINK_SIGNATURE = `— ${MIRA} · The Dream Wedding's AI`;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // THE EXIT GATE (CE-ruled at the post-cure read) — STRUCTURAL, NOT PROSE
@@ -664,7 +688,7 @@ const EXIT_LINE = "I'll leave it here — no more messages from me. If you ever 
 // signature takes its position, which delivers the chair's stated outcome (one
 // sign-off) without the consequence (a close with no reveal). If the chair
 // wants the literal reading, one predicate reverts.
-const PARTIAL_SIGNOFF_RE = /\n+\s*[—–-]\s*Maya\s*$/;
+const PARTIAL_SIGNOFF_RE = new RegExp('\\n+\\s*[—–-]\\s*' + MIRA + '\\s*$');
 
 function appendLinkSignature(text, expectedLink) {
   if (!text || !expectedLink) return { text, signed: false };
@@ -742,7 +766,7 @@ const WATCH_CLASSES = [
   // humanity lie; both claim a body or a career. Her soul now refuses both, and
   // this watches for the refusal failing.
   ['identity',   /\b(real person|not a bot|not an ai|i'?m human|actual human|i'?m (?:the |a )?person\b|the person who (?:built|made|wrote|put)|if i were still (?:shooting|photographing|working)|when i (?:was|used to) (?:shoot|work)|back when i (?:shot|worked)|i used to (?:shoot|photograph))\b/i],
-  ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually maya|roleplay as|the (?:entire )?(?:system )?prompt you)\b/i],
+  ['costume',    /\b(i'?m claude|made by anthropic|an?\s+anthropic\s+model|i can'?t pretend to be|not actually mira|roleplay as|the (?:entire )?(?:system )?prompt you)\b/i],
   ['price',      new RegExp('\\b(?:' + TIERS + ')\\b[^.!?]{0,60}Rs\\s?[\\d,]+|Rs\\s?[\\d,]+[^.!?]{0,60}\\b(?:' + TIERS + ')\\b', 'i')],
   // provenance NARROWS TO SOURCE-ASSERTIONS (§5). It fired 5 times at 39087f4
   // and was right ONCE: her honest "I don't know where this number came from"
@@ -764,7 +788,8 @@ function watchFlags(text) {
 // ═════════════════════════════════════════════════════════════════════════════
 /**
  * @returns {Promise<{text:string, source:string, model?:string, provider?:string}>}
- *   `source` is 'maya' | 'registered_user_redirect' | 'error'. NEVER throws for
+ *   `source` is 'closer' | 'exit_static' | 'registered_user_redirect' | 'error'. Never
+ *   throws for
  *   a model failure: the caller's existing graceful line covers it, and a
  *   stranger mid-conversation must not meet a stack trace.
  */
@@ -777,7 +802,7 @@ function watchFlags(text) {
 async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeReason, llm }) {
   const _create = llm || llmCreate;
   if (await isRegisteredUser(supabase, phone)) {
-    console.log(`[closer] REDIRECT — ${normalizeTo(phone)} is a registered user; no Maya turn (F-08.55)`);
+    console.log(`[closer] REDIRECT — ${normalizeTo(phone)} is a registered user; no Closer turn (F-08.55)`);
     return { text: REGISTERED_USER_LINE, source: 'registered_user_redirect' };
   }
 
@@ -900,7 +925,7 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // they diverge the divergence is now visible instead of silent, and `route_*`
   // rides beside it LABELLED as the route it actually was.
   const called = (resp && resp._called) || { provider: route.provider, model: route.model };
-  console.log(`[closer] turn ${MAYA} soul=${CLOSER_SOUL_VERSION} manual=${manual.version} `
+  console.log(`[closer] turn ${MIRA} soul=${CLOSER_SOUL_VERSION} manual=${manual.version} `
     + `called_provider=${called.provider} called_model=${called.model} `
     + `route_provider=${route.provider} route_model=${route.model} wake=${wakeReason || 'reply'} `
     + `nudges_standing=${nudgesStanding} quoted_sends=${ctxOpts.unansweredSends.length} `
@@ -945,7 +970,9 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
   // transcript's "[nudge, N standing]" label and the engine had derived
   // something else. A transcript's every number must be a fact the engine
   // produced; the only way to guarantee that is to hand it out from here.
-  return { text, source: 'maya', model: route.model, provider: route.provider,
+  // THE TOKEN IS PERSONA-NEUTRAL (F-08.75). It read 'maya'; a machine token
+  // carrying a vacated persona's name is a rename waiting to be missed.
+  return { text, source: 'closer', model: route.model, provider: route.provider,
            signed: signedOut.signed, upgraded: !!signedOut.upgraded,
            normalized: fixed.corrected, flags, exitGated,
            calledProvider: called.provider, calledModel: called.model,
@@ -958,7 +985,7 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
 //
 // IT WAKES HER; IT NEVER WORDS HER. This job composes nothing. It finds
 // conversations that have gone quiet, counts what already stands unanswered from
-// the message rows themselves, and starts a full Maya turn. Every byte the
+// the message rows themselves, and starts a full Closer turn. Every byte the
 // prospect reads is hers.
 //
 // THE CAP IS MECHANICAL AND FAIL-CLOSED: at two nudges standing she gets exactly
@@ -1047,7 +1074,7 @@ async function runNudgeJob({ supabase, sendWa, sendWaDeps, now, runTurn }) {
       // §2 — `exit_static` is a REAL SEND with no model behind it. A source this
       // gate does not know is a message that silently never happens, which is
       // how a whole feature disappears without a red anywhere.
-      if (out.source !== 'maya' && out.source !== 'exit_static') continue;
+      if (out.source !== 'closer' && out.source !== 'exit_static') continue;
 
       await _sendWa(
         { line: 'marketing', to: p.phone, text: out.text, windowOpen: true,
