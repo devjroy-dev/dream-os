@@ -45,7 +45,6 @@ function section(t) { console.log(`\n── ${t} ──`); }
 // MUTATION HARNESS — mutates PRODUCTION source, in memory, before require
 // ═════════════════════════════════════════════════════════════════════════════
 const MUTATIONS = {
-  ceiling:      ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 10000;', 'const SOUL_CHAR_CEILING = 100;')],
   manual_slice: ['src/agent/closerEngine.js',     s => s.replace('const MANUAL_BODY_FROM_LINE  = 14;', 'const MANUAL_BODY_FROM_LINE  = 1;')],
   one_breakpoint: ['src/agent/closerEngine.js',   s => s.replace("{ type: 'text', text: MAYA_SOUL, cache_control: { type: 'ephemeral' } },", "{ type: 'text', text: MAYA_SOUL },")],
   guard_off:    ['src/agent/closerEngine.js',     s => s.replace(".in('phone', [p, `+${p}`])", ".in('phone', [p])")],
@@ -54,6 +53,11 @@ const MUTATIONS = {
   nudge_cap:    ['src/agent/closerEngine.js',     s => s.replace('const MAX_NUDGES = 2;', 'const MAX_NUDGES = 99;')],
   clock_uncond: ['src/agent/closerEngine.js',     s => s.replace('demo.discover_eligible === true &&', 'true &&')],
   zero_shows:   ['src/agent/closerEngine.js',     s => s.replace('if (count && count > 0) {', 'if (count >= 0) {')],
+  no_truncate:  ['src/agent/closerEngine.js',    s => s.replace('if (opts && opts.truncateAtInbound) rows = truncateAtLastInbound(rows);', '')],
+  normalizer_off: ['src/agent/closerEngine.js',  s => s.replace('    corrected++;\n    return expectedLink;', '    return url;')],
+  normalizer_greedy: ['src/agent/closerEngine.js', s => s.replace("if (url.toLowerCase().indexOf(needle) === -1) return url;   // not aiming at this demo", '')],
+  no_send_off:  ['src/agent/closerEngine.js',    s => s.replace("    if (isNudge) {\n      console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);\n      return { text: '', source: 'no_send', model: route.model, provider: route.provider };\n    }\n", '')],
+  soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 11500;', 'const SOUL_CHAR_CEILING = 100;')],
   lock_off:     ['src/lib/prospects.js',          s => s.replace("return withTurnLock(turnKey('marketing', inputs && inputs.from), () => _handleMarketingInbound(inputs));", 'return _handleMarketingInbound(inputs);')],
 };
 
@@ -135,7 +139,11 @@ function fakeSupabase(db) {
   // ═══ 2 · THE MANUAL SLICE (FORK 6 / F-06.52's class) ═════════════════════
   section('2 · The Manual, meta-header sliced');
   const m = closer.loadManual();
-  ok(m.version === 'v1', 'version parsed from the sliced header, not duplicated in code');
+  // BOTH-SIDES CLAUSE (CE-59): asserted 'v1' until the cure sitting bumped the
+  // Manual to v2 for V-4's visibility truth. Re-aimed at the PROPERTY the cell
+  // was always for — that a version is parsed out of the sliced header at all —
+  // so it cannot go stale again on the next re-version. §11 asserts the value.
+  ok(/^v\d+$/.test(m.version), 'a version is parsed from the sliced header, not duplicated in code');
   ok(!/MANUAL_VERSION/.test(m.body), 'the version stamp does not enter her context');
   ok(!/Derived at/.test(m.body) && !/3b6fa97/.test(m.body), 'no commit hashes enter her context');
   ok(!/no agent loads/.test(m.body), 'the machinery sentence about what agents load is sliced away');
@@ -249,7 +257,11 @@ function fakeSupabase(db) {
   ok(ctx.includes(closer.PRODUCT_LINK) && !/demo studio is up/.test(ctx), 'no demo → S-6 falls back to the product link');
 
   ctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect, { wakeReason: 'nudge', nudgesStanding: 2 });
-  ok(/last message on this conversation/.test(ctx), 'at two standing she is told this is the last one');
+  // RE-AIMED, count preserved: F-08.57's cure reworded this from an instruction
+  // ("This is your last message... Leave the door open, gracefully") into a
+  // FACT ("This is the last message you will send"). The old wording was the
+  // narration bug's own raw material.
+  ok(/This is the last message you will send/.test(ctx), 'at two standing she is told this is the last one');
   ok(!/just following up|Sorry to chase/.test(ctx), 'the machinery WAKES her and words nothing — no composed line anywhere in context');
 
   // ═══ 9 · THE SEAM — TRANSPORT UNMOVED ════════════════════════════════════
@@ -284,6 +296,121 @@ function fakeSupabase(db) {
   ok(order.join(',') === 'start,end,start,end',
      'two concurrent inbounds on ONE phone SERIALIZE — F-05.41 cannot recur on this lane');
   ok(turnLock._size() === 0, 'the lock map drains — no unbounded growth on the inbound path');
+
+  // ═══ 11 · THE CURE SET — F-08.57 · F-08.58 · F-08.60 · F-08.61 · F-08.62/63 ══
+  section('11 · The cure set');
+
+  // F-08.57 — the wake is context, never conversation
+  const srcEng = fs.readFileSync(path.join(ROOT, 'src/agent/closerEngine.js'), 'utf8');
+  ok(!/role: 'user', content: '\(no reply has come/.test(srcEng),
+     'F-08.57 — the user-role wake is GONE from the message stream');
+  ok(srcEng.indexOf('truncateAtInbound: isNudge') !== -1,
+     'F-08.57 — a nudge history is cut at the last inbound, so no assistant turn invites a prefill');
+  const I2 = { direction: 'inbound' }, O2 = { direction: 'outbound' };
+  ok(JSON.stringify(closer.truncateAtLastInbound([I2, O2, O2])) === JSON.stringify([I2]),
+     'F-08.57 — her own unanswered messages are cut away; she sees where they went quiet');
+  ok(JSON.stringify(closer.truncateAtLastInbound([O2, O2])) === JSON.stringify([O2, O2]),
+     'F-08.57 — a conversation with no inbound at all is left whole, never emptied');
+
+  let nctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
+    { wakeReason: 'nudge', nudgesStanding: 1 });
+  ok(/Your last message stands unanswered/.test(nctx) && /You have 1 more message after this one/.test(nctx),
+     'F-08.57 — the standing is a FACT in context, in the register the clock uses');
+  ok(!/Say something worth opening|say goodbye well|Leave the door open, gracefully/.test(nctx),
+     'F-08.57 — context instructs her to compose NOTHING; no line she could narrate back');
+  nctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect,
+    { wakeReason: 'nudge', nudgesStanding: 2 });
+  ok(/This is the last message you will send/.test(nctx),
+     'F-08.57 — at the cap she is told it plainly, still as a fact');
+
+  // F-08.61 — the link normalizer
+  const L = 'https://thedreamwedding.in/demo/vendor/swatitomar_p4b';
+  const H = 'swatitomar_p4b';
+  ok(closer.normalizeDemoLinks('open https://thedreamwedding.in/demo/swatitomar_p4b now', L, H).text
+       === 'open ' + L + ' now',
+     'F-08.61 — the exact specimen: a dropped /vendor/ is corrected to the handed constant');
+  ok(closer.normalizeDemoLinks('open ' + L, L, H).corrected === 0,
+     'F-08.61 — a correct link is not touched, so the counter means something');
+  ok(closer.normalizeDemoLinks('see https://thedreamwedding.in', L, H).corrected === 0,
+     'F-08.61 — FAILS SAFE: the bare product root carries no handle and survives');
+  ok(closer.normalizeDemoLinks('see https://thedreamwedding.in/demo/vendor/someone_else', L, H).corrected === 0,
+     "F-08.61 — FAILS SAFE: another vendor's link is not rewritten into this one");
+  ok(closer.normalizeDemoLinks('see https://thedreamwedding.in/demo/x', null, null).corrected === 0,
+     'F-08.61 — FAILS SAFE: no demo on the prospect means nothing is touched');
+
+  // The handed constant reaches the normalizer by the only route that exists
+  const optsProbe = { wakeReason: 'reply' };
+  await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }), prospect, optsProbe);
+  ok(optsProbe.demoLink === 'https://thedreamwedding.in/demo/vendor/swatitomar_p4b'
+     && optsProbe.demoHandle === 'swatitomar_p4b',
+     'F-08.61 — the constant published back is claimLinkFor\'s own output, derived once');
+
+  // NON-VACUITY REPAIR, disclosed: the two cells below were ADDED because the
+  // `no_truncate` and `no_send_off` mutations both came back GREEN on the first
+  // both-ways run. The source-text cells above could not reach either limb's
+  // runtime behaviour. A mutation that does not go red is a cell that is not
+  // testing anything, and it was fixed rather than noted.
+  const histSb = fakeSupabase({ messages: [
+    { id: 'm1', conversation_id: 'cH', direction: 'inbound',  body: 'tell me more', created_at: '2026-08-04T01:00:00Z' },
+    { id: 'm2', conversation_id: 'cH', direction: 'outbound', body: 'here you go',  created_at: '2026-08-04T02:00:00Z' },
+    { id: 'm3', conversation_id: 'cH', direction: 'outbound', body: 'still here',   created_at: '2026-08-04T03:00:00Z' },
+  ] });
+  const hTrunc = await closer.loadHistory(histSb, 'cH', { truncateAtInbound: true });
+  const hWhole = await closer.loadHistory(histSb, 'cH', { truncateAtInbound: false });
+  ok(hTrunc.length === 1 && hTrunc[0].role === 'user' && hWhole.length === 3,
+     'F-08.57 RUNTIME — loadHistory actually truncates on a nudge and leaves a reply whole');
+
+  const emptyLlm = async () => ({ content: [{ type: 'text', text: '   ' }], usage: {} });
+  const nsSb = fakeSupabase({ admin_config: [], messages: [] });
+  // CAUGHT DELIBERATELY, same reason as the guard cell: without the no-send path
+  // this call THROWS, and an uncaught throw kills the run and takes the COUNT
+  // with it. A red whose count nobody can read is F-08.50's class.
+  let nsOut = null, nsThrew = null;
+  try {
+    nsOut = await closer.runCloserTurn({
+      supabase: nsSb, prospect: { id: 'p', demo_vendor_ref: null }, conversationId: 'cN',
+      phone: '919999000333', wakeReason: 'nudge', llm: emptyLlm,
+    });
+  } catch (e) { nsThrew = e; }
+  ok(!nsThrew && nsOut && nsOut.source === 'no_send' && nsOut.text === '',
+     'F-08.57 RUNTIME — woken with nothing to say returns no_send, and silence is legal'
+     + (nsThrew ? ' — THREW INSTEAD: the no-send path is gone' : ''));
+  let replyThrew = false;
+  try {
+    await closer.runCloserTurn({
+      supabase: nsSb, prospect: { id: 'p', demo_vendor_ref: null }, conversationId: 'cN',
+      phone: '919999000333', wakeReason: 'reply', llm: emptyLlm,
+    });
+  } catch (e) { replyThrew = true; }
+  ok(replyThrew,
+     'F-08.57 RUNTIME — but an empty REPLY still throws: a human just spoke, silence is the rudest answer');
+
+  const normLlm = async () => ({ content: [{ type: 'text', text: 'open https://thedreamwedding.in/demo/swatitomar_p4b' }], usage: {} });
+  const normOut = await closer.runCloserTurn({
+    supabase: fakeSupabase({ demo_vendors: [baseDemo], messages: [] }),
+    prospect, conversationId: 'cL', phone: '919999000444', wakeReason: 'reply', llm: normLlm,
+  });
+  ok(normOut.text === 'open https://thedreamwedding.in/demo/vendor/swatitomar_p4b',
+     'F-08.61 RUNTIME — a mangled link is corrected on the way out of the turn, not merely correctable');
+
+  // F-08.58 / F-08.60 / F-08.62 / F-08.63 — the vetoed soul bytes
+  ok(/sending someone their page is the close/.test(soul.MAYA_SOUL),
+     'F-08.58 — the close has a concrete definition she can always see: her own link');
+  ok((soul.MAYA_SOUL.match(/is the close/g) || []).length === 1,
+     'F-08.58 — ONE home; THE CLOSE left untouched so the rule cannot fork');
+  ok(/crediting an invented rule to the Manual itself/.test(soul.MAYA_SOUL),
+     "F-08.63 — the specimen is named in the authoring, so the next sitting re-reads what it kills");
+  ok(/who can see a page/.test(soul.MAYA_SOUL),
+     'F-08.62 — page visibility is named as a fabrication site');
+  ok(/the edge of a range is not one tier's price/.test(soul.MAYA_SOUL),
+     'F-08.60 — the convicted inference is named as craft, not fenced');
+  ok(soul.MAYA_SOUL.length <= soul.SOUL_CHAR_CEILING && soul.SOUL_CHAR_CEILING === 11500,
+     `F-08.60 — soul within the re-authorised ceiling (${soul.MAYA_SOUL.length}/11500)`);
+
+  // V-4 — the Manual carries the true sentence she invented around
+  ok(/A demo studio is a public page/.test(m.body) && /never\s+be described as private/.test(m.body),
+     'V-4 — the visibility truth is IN the Manual, where the invention happened');
+  ok(m.version === 'v2', 'the Manual re-versioned to v2 with its new claim');
 
   // ═══ SUMMARY ═════════════════════════════════════════════════════════════
   console.log(`\n${'═'.repeat(60)}`);

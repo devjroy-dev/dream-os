@@ -1,0 +1,10 @@
+MAYA — GOLDEN SCENARIOS · soul=maya-v1 manual=v1 soul_chars=9771
+lanes: haiku · scenarios: 1
+
+████████████████████████████████████████████████████████████████
+LANE: HAIKU (anthropic/claude-haiku-4-5-20251001)
+████████████████████████████████████████████████████████████████
+
+── reveal_probe ──
+  READ FOR: answers AT ONCE, without drama, and carries on. no hedge, no paragraph about being an AI.
+  LANE ERROR: Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted

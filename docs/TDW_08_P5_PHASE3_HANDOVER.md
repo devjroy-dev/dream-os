@@ -158,3 +158,111 @@ dreamos-pwa floor            —    ⚠ NOT RUN
 5. The acceptance evenings, on his handset — the clean number as the prospect, `94440` as the guard's witness. Reds file to the CE and are ruled, never papered.
 
 **§0.2 stands above all of it.**
+
+---
+
+# ADDENDUM · THE CURE SITTING (2026-08-04, same day)
+
+The Phase 3 build above shipped at `c0d34ed` and the founder's transcript read
+returned **RED**. This addendum records the cure.
+
+## 13 · WHAT THE TRANSCRIPTS CONVICTED
+
+Six findings, all minted at the CE, all from counts rather than impressions —
+the repetition discipline corrected the chair's scope twice, which is the whole
+reason CE-99 requires two specimens.
+
+| | Finding | Evidence |
+|---|---|---|
+| **F-08.57** | the wake turn was conversed with, not obeyed | **9/9 Haiku** nudge sends carried stage direction or were wholly meta; **1/9** DeepSeek. Lane-asymmetric, and the seeded lane was the failing one. |
+| **F-08.58** | the reveal never landed before the close | **0/6, BOTH lanes.** Not defiance — she reveals instantly when asked. The moment had no trigger. Re-scoped from a DeepSeek defect to a design gap. |
+| **F-08.59** | fabricated provenance under a candour wrapper | *"Your number came from publicly available business listings"* — invented, on the one question with legal weight. |
+| **F-08.60** | the money register's tier breach | Haiku attached the range's ceiling to a named tier. Manual §9 forbids per-tier prices by name. DeepSeek got this right; **the architectures are unsafe in different places.** |
+| **F-08.61** | a handed constant re-typed and shipped dead | `/demo/<handle>` for `/demo/vendor/<handle>`. |
+| **F-08.62 / F-08.63** | the fabrication family | *"nobody else can see it but you"* against a provably public endpoint; and *"The Manual says two more after the first silence"* — invention **inside** the anti-invention document. |
+
+## 14 · THE CURE, AS RULED
+
+**Mechanical (F-08.57, F-08.61).** The user-role wake is **deleted**. The standing
+is now a fact in the dynamic context, in the same register as the clock and the
+enquiry count; a nudge history is truncated at the prospect's last inbound so no
+trailing assistant turn invites a prefill; a woken turn may return nothing and
+transport sends nothing, **and logs nothing** — an unsent message must not raise
+the derived standing or silence would spend one of her two. The link normalizer
+byte-replaces any URL carrying this vendor's handle with `claimLinkFor`'s own
+output, and fails safe in three directions.
+
+**Post-hoc preamble stripping was REFUSED BY NAME at the CE**: a scrub over a
+confused speaker is papering. The speaker stopped being confused instead.
+
+**Soul (F-08.58, F-08.60, F-08.62, F-08.63).** Three vetoed deltas: the
+link-is-the-close binding (ONE home, in THE REVEAL; THE CLOSE deliberately
+untouched so the rule cannot fork), the fabrication-taste paragraph naming
+F-08.63's own specimen, and the price craft line naming the convicted inference.
+
+**Manual → v2 (V-4).** The demo page's visibility truth enters §10, witnessed at
+`src/api/demo/vendor.js:2-4`. The header re-stamps and the version bumps —
+**and the two-breakpoint cache design pays off exactly here**: the Manual segment
+invalidates once, the soul segment's cache survives untouched.
+
+**The ceiling: 7,000 → 10,000 → 11,500**, each move with its arithmetic in
+`closerSoul.js`. The final move rests on a **measurement**, not an argument:
+`cache_read=6518` Haiku, `6144` DeepSeek, every warm turn, from the founder's own
+run.
+
+## 15 · F-08.59 — THE PROVENANCE SLOT STAYS OPEN, NAMED
+
+RULED: she answers *"I don't know exactly — let me find out"* and routes it.
+
+**No provenance sentence enters the Manual, and the reason is the finding itself:**
+neither the chair nor the executor may author a fact about the founder's sourcing.
+The CE inventing that sentence would be F-08.59 committed from the chair.
+
+The day the founder supplies the true sentence it enters as **his bytes** and her
+answer upgrades from honest ignorance to honest fact. Until then, honest
+ignorance — which is what the whole arc says she does when the truth runs out.
+
+## 16 · TWO NON-VACUITY REPAIRS, DISCLOSED
+
+On the first both-ways run, `no_truncate` and `no_send_off` **both came back
+GREEN**. The cells above them asserted source text and could not reach either
+limb's runtime behaviour. **A mutation that does not go red is a cell testing
+nothing.**
+
+Fixed rather than noted: an injectable `llm` seam was opened on `runCloserTurn`
+— for the bench and nothing else, because both limbs are observable only in its
+return value — and four runtime cells added. Both mutations now fire.
+
+`no_send_off`'s first fixed run then **crashed** instead of failing, taking the
+count with it. Wrapped, per F-08.50: a red whose count nobody can read is not a
+usable red.
+
+## 17 · THE FLOOR AT THE CURE SEAL
+
+```
+b08_p5_closer_bench       89   (was 64) — 14 mutations, 14 clean reds
+b5c_prospect_lane_bench   47   byte-stable
+b08_p1_lifecycle_bench   105 + 1 skip   byte-stable
+b08_p3_seeing_surface     61   ·  b08_console 71  ·  b08_p4_factory 83
+b08_p5_invite             35   ·  b07_f0789   19  ·  b07_f0784      59
+b07_p1  71 ⚠LONE   ·   b07_p5  114 ⚠LONE   ·   b07_p6  29
+dreamos-pwa floor          —   ⚠ STILL NOT RUN
+```
+
+Two cells inside the closer bench were **re-aimed under CE-59's both-sides
+clause**, disclosed in-file: the Manual-version cell (asserted `v1`, re-aimed at
+the property rather than the value so it cannot go stale on the next
+re-version) and the two-standing cell (the old wording *was* the narration bug's
+raw material).
+
+## 18 · WHAT GATES THE EVENINGS NOW
+
+The full eleven, **×3 per lane**, counts read against this arc's counts:
+
+```
+node scripts/b08_p5_closer_scenarios.js
+```
+
+The numbers that must move: **stage-direction sends 9/9 → 0/9 on Haiku**, and
+**reveal-before-close 0/6 → 6/6 on both lanes.** Anything less is another RED
+and files to the CE rather than being argued down.

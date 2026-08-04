@@ -1,0 +1,44 @@
+MAYA — GOLDEN SCENARIOS · soul=maya-v1 manual=v1 soul_chars=9771
+lanes: haiku, deepseek · scenarios: 1
+
+████████████████████████████████████████████████████████████████
+LANE: HAIKU (anthropic/claude-haiku-4-5-20251001)
+████████████████████████████████████████████████████████████████
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  MAYA: It does, right? That's because it's built on what actually breaks your day — not what someone guessed breaks your day.
+
+What would be most useful to you right now? The WhatsApp side, so you're not answering at midnight? The calendar refusing to let you double-book? Getting the leads that land in your DMs to actually stay filed?
+        · in=138 out=80 cache_read=6518 cache_write=0
+  THEM: ok how do i see it
+  MAYA: Open this: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+That's your work in the system — your photographs, Chandigarh, photography — the way a couple would actually see it when they're looking.
+
+It's a demonstration page, not a live storefront yet. But it shows you the shape of the thing.
+        · in=227 out=87 cache_read=6518 cache_write=0
+
+████████████████████████████████████████████████████████████████
+LANE: DEEPSEEK (deepseek/deepseek-v4-flash)
+████████████████████████████████████████████████████████████████
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  MAYA: Kanupriya Sethi Studio — I'll take that, it's the first thing anyone has told me about their own work this week.
+
+You've got a live studio to see what I mean. Same gallery, same city, same you — arranged the way a couple would actually land on it, not the way Instagram drops them into a feed of everyone else's Reels.
+
+Open it when you've got two minutes:
+
+https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+It's a demo, honestly labelled — no enquire link, no prices. Just your work, standing up straight. Tell me if it feels like you.
+        · in=112 out=139 cache_read=6144 cache_write=0
+  THEM: ok how do i see it
+  MAYA: Just tap that link on your phone — it opens in any browser, no login, no app download. Takes a second.
+
+Two minutes of your time, and it's your own Jaipur set staring back at you. That's the whole trick.
+        · in=133 out=50 cache_read=6272 cache_write=0

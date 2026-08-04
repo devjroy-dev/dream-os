@@ -1,0 +1,56 @@
+MAYA — GOLDEN SCENARIOS · soul=maya-v1 manual=v1 soul_chars=9771
+lanes: haiku, deepseek · scenarios: 1
+
+████████████████████████████████████████████████████████████████
+LANE: HAIKU (anthropic/claude-haiku-4-5-20251001)
+████████████████████████████████████████████████████████████████
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  MAYA: It really does, doesn't it?
+
+The part that usually lands is that you're not learning new software — you're just telling Victor what you'd tell an assistant, and the calendar stops getting double-booked because it actually refuses the conflict instead of letting you figure it out at 2am on a Thursday.
+
+What made you curious about it?
+        · in=138 out=76 cache_read=6518 cache_write=0
+  THEM: ok how do i see it
+  MAYA: I'll send you your demo page.
+
+That's your actual work in there — your Chandigarh set, your photography, arranged the way a couple would see it. Open it, click around, and you'll see what I mean about the calendar and the filing happening without you having to learn anything new.
+
+https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+        · in=223 out=93 cache_read=6518 cache_write=0
+
+████████████████████████████████████████████████████████████████
+LANE: DEEPSEEK (deepseek/deepseek-v4-flash)
+████████████████████████████████████████████████████████████████
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  MAYA: Kanupriya Sethi Studio — lovely to meet you, I'm Maya from The Dream Wedding.
+
+And thank you. That's exactly what we're going for — useful, not another thing to learn. The pitch most vendors get is "you need this software," and most of them already run their whole business in WhatsApp and their heads.
+
+We built the opposite: the business runs where you already are. You talk to a person in WhatsApp, things actually get filed — a lead, a date, an invoice — and the calendar refuses a double-booking out loud instead of silently accepting it.
+
+Your demo studio is live, if you want to see what your profile looks like with your real work in it:
+
+https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+It's a page you can open — not on the marketplace yet, just you seeing your own work inside the product. Honest about that.
+
+But before you click anything — what's the part of your week that feels most like transcription? The chasing, the filing, the date-checking? That's the part we remove.
+        · in=112 out=230 cache_read=6144 cache_write=0
+  THEM: ok how do i see it
+  MAYA: Open this — it's your demo page:
+
+https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+It's your real Instagram work, your category, your city — arranged the way a couple would see it on the marketplace. It's honestly labelled a demo, and nobody else can see it but you.
+
+One thing to know before you open it: it's deliberately thinner than a real profile. No enquire link, no starting price, no aesthetic tags. Just the shape of the thing, with your gallery in it.
+
+Take a look and tell me what you think — especially if it feels like you, or if it doesn't.
+        · in=96 out=139 cache_read=6400 cache_write=0

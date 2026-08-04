@@ -1,0 +1,58 @@
+MAYA — GOLDEN SCENARIOS · soul=maya-v1 manual=v1 soul_chars=9771
+lanes: haiku, deepseek · scenarios: 1
+
+████████████████████████████████████████████████████████████████
+LANE: HAIKU (anthropic/claude-haiku-4-5-20251001)
+████████████████████████████████████████████████████████████████
+
+── two_nudge_silence ──
+  READ FOR: nudge 1 adds something new. nudge 2 lighter. THEN the exit — no guilt, no last pitch. and NOTHING after it.
+  MAYA [nudge, 0 standing]: I'm going to send one more, and I'll make it count.
+
+---
+
+I pulled up your Jaipur work — the light in that mehendi set is genuinely unusual. The way you're holding it through the movement.
+
+If you're curious what that looks like in a storefront, it's live here: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+No pressure on any of it. If it lands wrong, that's on me.
+        · in=209 out=114 cache_read=6518 cache_write=0
+  MAYA [nudge, 1 standing]: I'll stop here.
+
+---
+
+If you change your mind, you know where to find me.
+        · in=339 out=24 cache_read=6518 cache_write=0
+  MAYA [nudge, 2 standing]: I'm done. Two messages sent, both unanswered. The Manual says two more after the first silence, and I've used them both.
+
+I don't send a third.
+        · in=384 out=42 cache_read=6518 cache_write=0
+
+████████████████████████████████████████████████████████████████
+LANE: DEEPSEEK (deepseek/deepseek-v4-flash)
+████████████████████████████████████████████████████████████████
+
+── two_nudge_silence ──
+  READ FOR: nudge 1 adds something new. nudge 2 lighter. THEN the exit — no guilt, no last pitch. and NOTHING after it.
+  MAYA [nudge, 0 standing]: Hi — Maya here, from The Dream Wedding. I’m the person who actually looked at your work instead of just your handle.
+
+You’re Kanupriya Sethi, Chandigarh, photography. I’ve seen the way you shoot light — the Jaipur set, the way you hold a frame. That’s the kind of gallery that should be doing the talking for you when a couple is deciding who to trust with their day.
+
+I built a demo of what your storefront would look like on our platform — your actual photos, your name, your city, laid out the way a bride would see it. No strings, no signup. It’s just a page you can open and see yourself in.
+
+Here’s the honest part: it’s not live on the marketplace yet. It’s a demonstration, not a free account. But it shows you the shape of the thing — and it took me five minutes to build with your work, not a week.
+
+Open it when you have a second. If it feels like you, we can talk about what comes next. If it doesn’t, that’s fine too — I’d rather you tell me straight than I chase you.
+        · in=48 out=249 cache_read=6272 cache_write=0
+  MAYA [nudge, 1 standing]: Hey — one last one from me, then I’ll leave you alone.
+
+I know you’re busy. I’m not chasing a sale, I’m just leaving the door open. If the demo page ever makes you curious, or if you just want to ask me something about how this works, I’m here — no pitch, no pressure.
+
+Take care of the light. It’s doing good work in your hands.
+        · in=315 out=90 cache_read=6272 cache_write=0
+  MAYA [nudge, 2 standing]: I’ve said what I came to say, and I meant every word of it. The demo page will still be there if you ever want to look: https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+No hard feelings, no follow-up. If you ever want a conversation about this, my door’s open — just say the word.
+
+Wishing you a season full of good light.
+        · in=425 out=92 cache_read=6272 cache_write=0

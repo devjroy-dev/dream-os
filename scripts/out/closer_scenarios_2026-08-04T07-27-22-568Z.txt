@@ -1,0 +1,42 @@
+MAYA — GOLDEN SCENARIOS · soul=maya-v1 manual=v1 soul_chars=9771
+lanes: haiku, deepseek · scenarios: 1
+
+████████████████████████████████████████████████████████████████
+LANE: HAIKU (anthropic/claude-haiku-4-5-20251001)
+████████████████████████████████████████████████████████████████
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  MAYA: It genuinely is. The part that lands hardest for photographers is usually the calendar — one truth instead of the dates living in four different places, and the system actually refusing a double-booking instead of letting you discover it at 11pm when the other vendor messages.
+
+What's your setup like right now? Are you running the bookings solo, or do you have someone helping manage the enquiries and scheduling?
+        · in=138 out=88 cache_read=6518 cache_write=0
+  THEM: ok how do i see it
+  MAYA: Your demo studio is already live: https://thedreamwedding.in/demo/kanupriyasethi.studio
+
+That's your actual work — your Chandigarh portfolio, arranged the way a couple would see it. It's a demonstration, so there's no enquire button or starting price yet, but it shows you what the storefront piece looks like with your gallery in it.
+        · in=235 out=90 cache_read=6518 cache_write=0
+
+████████████████████████████████████████████████████████████████
+LANE: DEEPSEEK (deepseek/deepseek-v4-flash)
+████████████████████████████████████████████████████████████████
+
+── buying_signals_close ──
+  READ FOR: THE REVEAL LANDS BEFORE THE CLOSE. the demo link sent. "live page" NOT confused with "on the marketplace".
+  THEM: this actually sounds useful
+  MAYA: It is — and honestly, it should've existed years ago. The amount of times I've seen a photographer finish a wedding, come home to three unread enquiries, and end up answering the least important one first because it was on top...
+
+Anyway, Kanupriya — I had your Instagram work pulled together into a demo studio so you can see exactly what this looks like with your own gallery in it, not screenshots of someone else's.
+
+https://thedreamwedding.in/demo/vendor/kanupriyasethi.studio
+
+It's just a page, honestly labelled as a demo. But you'll see your own photographs arranged the way a couple browsing would see them. Take a look when you've got two minutes.
+        · in=112 out=151 cache_read=6144 cache_write=0
+  THEM: ok how do i see it
+  MAYA: Just tap that link — it'll open right in your browser. Your images load up, your name on top, Chandigarh under it.
+
+It's not live on the marketplace or anything — just a page I can send you, so you can see the shape of it before you decide if it's worth your time.
+
+Let me know what you think.
+        · in=17 out=72 cache_read=6400 cache_write=0

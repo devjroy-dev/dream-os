@@ -210,6 +210,13 @@ async function buildProspectContext(supabase, prospect, opts) {
       lines.push('Not live. Do not send them a link and do not say a page exists.');
     } else {
       lines.push(`Live and openable right now: ${link}`);
+      // THE HANDED CONSTANT, published back to the caller on the opts object it
+      // already owns. F-08.61's normalizer needs the EXACT bytes she was given,
+      // and the only place they exist is here, where claimLinkFor derived them.
+      // A side channel, named rather than hidden: any other route would mean a
+      // second derivation of the link and therefore a second thing to drift.
+      o.demoLink   = link;
+      o.demoHandle = demo.ig_handle;
       // THE TWO SENSES, RULED. `getDemoVendor` (src/api/demo/vendor.js) gates the
       // page on `active = true` ONLY. The couple-facing marketplace feed
       // predicates on `discover_eligible AND active`
@@ -277,14 +284,37 @@ async function buildProspectContext(supabase, prospect, opts) {
   // nowhere — zero DDL, the record is the truth. She is told the number; SHE
   // decides whether this is nudge one, nudge two, or the gracious exit, and she
   // composes every byte of it. The cap below her is mechanical and fail-closed.
+  // ── THE WAKE IS CONTEXT, NEVER CONVERSATION (F-08.57's cure, CE-ruled) ────
+  // WHAT THIS REPLACED AND WHY. The standing used to ride a USER-ROLE turn —
+  // "(no reply has come. write your next message, or your last one.)" — and she
+  // ANSWERED IT instead of acting on it. 9 of 9 Haiku nudge sends came back as
+  // stage direction or wholly meta: "You're done. Two messages into silence is
+  // the line, and you've reached it. Walk away cleanly." Sent to a vendor, that
+  // is coaching notes about Maya, addressed to nobody. One of nine on DeepSeek,
+  // so the disease was mechanical AND lane-asymmetric, and the seeded lane was
+  // the failing one.
+  //
+  // Post-hoc stripping of the preamble was REFUSED BY NAME at the CE: a scrub
+  // over a confused speaker is papering. The speaker stops being confused
+  // instead — the standing is now a FACT in her context, sitting beside the
+  // clock and the enquiry count, in exactly the register those use. She is told
+  // what is true; she composes to the PROSPECT.
+  //
+  // MECHANISM NAMED (F-06.85): this block is conditioned on `runNudgeJob`
+  // waking her at all, and on `loadHistory` truncating at the last inbound so
+  // no trailing assistant turn invites a continuation. If either changes, this
+  // paragraph is false and must be re-read with it.
   if (o.wakeReason === 'nudge') {
+    const standing   = o.nudgesStanding || 0;
+    const remaining  = Math.max(0, MAX_NUDGES - standing);
     lines.push('');
-    lines.push('NOBODY HAS ANSWERED');
-    lines.push(`Your last ${o.nudgesStanding === 1 ? 'message has' : `${o.nudgesStanding} messages have`} gone unanswered. Nothing has come back.`);
-    lines.push(o.nudgesStanding >= 2
-      ? 'This is your last message on this conversation. Leave the door open, gracefully.'
-      : 'You may send one more after this if it is still silent, and then you stop.');
-    lines.push('Say something worth opening, or say goodbye well. Nothing else.');
+    lines.push('WHERE THIS CONVERSATION STANDS');
+    lines.push(standing === 1
+      ? 'Your last message stands unanswered.'
+      : `Your last ${standing} messages stand unanswered.`);
+    lines.push(remaining > 0
+      ? `You have ${remaining} more message${remaining === 1 ? '' : 's'} after this one.`
+      : 'This is the last message you will send on this conversation.');
   }
 
   return lines.join('\n');
@@ -295,14 +325,30 @@ async function buildProspectContext(supabase, prospect, opts) {
 // ═════════════════════════════════════════════════════════════════════════════
 const HISTORY_LIMIT = 30;
 
-async function loadHistory(supabase, conversationId) {
+// `truncateAtLastInbound` exists for the wake and for nothing else. On a nudge
+// the conversation ends with HER, and a trailing assistant turn handed to the
+// model is a PREFILL — it asks her to continue her own last message rather than
+// write a new one. Cutting the history at the prospect's last inbound means she
+// sees the conversation as it actually stood when they went quiet, and the fact
+// of her unanswered messages arrives as CONTEXT instead. No machinery in the
+// message stream at all, which is what makes narration impossible rather than
+// merely discouraged.
+function truncateAtLastInbound(rows) {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (rows[i].direction === 'inbound') return rows.slice(0, i + 1);
+  }
+  return rows;
+}
+
+async function loadHistory(supabase, conversationId, opts) {
   const { data } = await supabase
     .from('messages')
     .select('direction, body, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT);
-  const rows = (data || []).slice().reverse();
+  let rows = (data || []).slice().reverse();
+  if (opts && opts.truncateAtInbound) rows = truncateAtLastInbound(rows);
   return rows
     .filter(r => r.body && String(r.body).trim())
     .map(r => ({
@@ -382,6 +428,48 @@ async function isRegisteredUser(supabase, phone) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// F-08.61 — THE LINK NORMALIZER
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// THE SPECIMEN. Handed `https://thedreamwedding.in/demo/vendor/<handle>` in her
+// context, she sent `https://thedreamwedding.in/demo/<handle>` — she dropped
+// `/vendor/` out of a constant given to her verbatim. A dead link is the close
+// failing silently: the prospect taps, gets nothing, and nobody learns.
+//
+// WHY THIS IS NOT THE INTERCEPTOR CLASS THE FOUNDER REFUSED. That refusal was
+// about a machine JUDGING her words. This judges nothing. It corrects OUR OWN
+// artifact — a URL constant this estate authored and handed her — back to the
+// bytes it was always meant to be. The estate has edited the wire lawfully since
+// Block 04 (`src/lib/vendor/scrub.js`), and this is that precedent, narrowed to
+// one string.
+//
+// IT FAILS SAFE IN BOTH DIRECTIONS. No expected link (a prospect with no demo)
+// → nothing is touched. A URL that does not carry this handle → nothing is
+// touched, so the bare product root and any other link she writes survive
+// untouched. It can only ever rewrite a URL that is already trying to be this
+// vendor's demo link.
+//
+// IT IS NOT A LICENCE TO STOP CARING. The soul still says the link is hers to
+// send correctly; this is a floor under a transcription slip, not permission for
+// one. If a specimen ever shows her inventing a DIFFERENT link — one carrying no
+// handle at all — this function will not catch it, and that is the finding, not
+// a bug here.
+const DEMO_LINK_RE = /https?:\/\/[^\s<>()\[\]"']*thedreamwedding\.in\/[^\s<>()\[\]"']*/gi;
+
+function normalizeDemoLinks(text, expectedLink, igHandle) {
+  if (!text || !expectedLink || !igHandle) return { text, corrected: 0 };
+  const needle = String(igHandle).toLowerCase();
+  let corrected = 0;
+  const out = String(text).replace(DEMO_LINK_RE, function (url) {
+    if (url === expectedLink) return url;
+    if (url.toLowerCase().indexOf(needle) === -1) return url;   // not aiming at this demo
+    corrected++;
+    return expectedLink;
+  });
+  return { text: out, corrected };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // THE TURN
 // ═════════════════════════════════════════════════════════════════════════════
 /**
@@ -390,7 +478,14 @@ async function isRegisteredUser(supabase, phone) {
  *   a model failure: the caller's existing graceful line covers it, and a
  *   stranger mid-conversation must not meet a stack trace.
  */
-async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeReason }) {
+// `llm` is injectable for the bench and NOTHING ELSE. It exists because two of
+// this function's limbs — the no-send path and the link normalizer — are only
+// observable in its RETURN VALUE, and a mutation that removed either one passed
+// a bench that could not reach them. A check that cannot fire is not a check
+// (F-08.53's third limb), so the seam was opened rather than the limbs left
+// unproven. Production never passes it.
+async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeReason, llm }) {
+  const _create = llm || llmCreate;
   if (await isRegisteredUser(supabase, phone)) {
     console.log(`[closer] REDIRECT — ${normalizeTo(phone)} is a registered user; no Maya turn (F-08.55)`);
     return { text: REGISTERED_USER_LINE, source: 'registered_user_redirect' };
@@ -398,34 +493,37 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
 
   const route = await resolveModel(supabase, SURFACE, TIER);
 
-  const messages = await loadHistory(supabase, conversationId);
-  const nudgesStanding = wakeReason === 'nudge'
-    ? await countNudgesStanding(supabase, conversationId)
-    : 0;
+  const isNudge = wakeReason === 'nudge';
 
-  const dynamic = await buildProspectContext(supabase, prospect, { wakeReason, nudgesStanding });
+  // THE USER-ROLE WAKE IS GONE (F-08.57). Nothing is appended to the message
+  // stream. The history is cut at the prospect's last inbound so it ends where
+  // they went quiet, and everything the machinery knows rides the context block.
+  const messages = await loadHistory(supabase, conversationId, { truncateAtInbound: isNudge });
+  const nudgesStanding = isNudge ? await countNudgesStanding(supabase, conversationId) : 0;
 
+  const ctxOpts = { wakeReason, nudgesStanding };
+  const dynamic = await buildProspectContext(supabase, prospect, ctxOpts);
   const system = buildStaticSystem().concat([{ type: 'text', text: dynamic }]);
 
-  // A woken turn has no inbound to answer. The model API requires a final user
-  // turn, so the wake itself is the turn's own last word — and it is a
-  // MECHANICAL instruction to act, never a word she must say.
-  const outbound = wakeReason === 'nudge'
-    ? messages.concat([{ role: 'user', content: '(no reply has come. write your next message, or your last one.)' }])
-    : messages;
-
-  const resp = await llmCreate(route.provider, {
+  const resp = await _create(route.provider, {
     model:      route.model,
     max_tokens: MAX_TOKENS,
     system,
-    messages:   outbound,
+    messages,
   });
 
-  const text = (resp.content || [])
+  let text = (resp.content || [])
     .filter(b => b.type === 'text')
     .map(b => b.text)
     .join('\n')
     .trim();
+
+  // THE LINK NORMALIZER, at the last point before the words become an outbound.
+  const fixed = normalizeDemoLinks(text, ctxOpts.demoLink, ctxOpts.demoHandle);
+  if (fixed.corrected) {
+    console.warn(`[closer] LINK NORMALIZED x${fixed.corrected} — a demo URL did not match the handed constant (F-08.61)`);
+    text = fixed.text;
+  }
 
   const manual = loadManual();
   // R1 AS AMENDED: the version stamp's executable home.
@@ -435,7 +533,24 @@ async function runCloserTurn({ supabase, prospect, conversationId, phone, wakeRe
     + `out=${resp.usage && resp.usage.output_tokens} `
     + `cache_read=${(resp.usage && resp.usage.cache_read_input_tokens) || 0}`);
 
-  if (!text) throw new Error('closer turn produced no text');
+  // ── THE NO-SEND PATH (F-08.57's third limb, CE-ruled) ────────────────────
+  // A woken turn may have nothing worth saying, and until now she had no way to
+  // express that except by SAYING it: "I've already sent my last message. The
+  // conversation is closed." — a message, to a human, announcing that no message
+  // is being sent. That sentence was silence trying to happen through the only
+  // channel available to it.
+  //
+  // So on a WOKEN turn, empty is legal and it means send nothing. On a REPLY,
+  // empty is still a fault: a human just spoke and silence would be the rudest
+  // possible answer, so it throws and the caller's existing vetoed graceful line
+  // covers it.
+  if (!text) {
+    if (isNudge) {
+      console.log(`[closer] no-send — woken with nothing to say, and that is a legal answer`);
+      return { text: '', source: 'no_send', model: route.model, provider: route.provider };
+    }
+    throw new Error('closer turn produced no text');
+  }
   return { text, source: 'maya', model: route.model, provider: route.provider };
 }
 
@@ -522,7 +637,16 @@ async function runNudgeJob({ supabase, sendWa, sendWaDeps, now, runTurn }) {
       const out = await _turn({
         supabase, prospect: p, conversationId: conv.id, phone: p.phone, wakeReason: 'nudge',
       });
-      if (out.source !== 'maya') continue;                      // the guard spoke; never nudge over it
+      // THE GUARD SPOKE — never nudge over a redirect.
+      if (out.source === 'registered_user_redirect') continue;
+      // THE NO-SEND PATH — woken with nothing to say. Transport sends nothing,
+      // and NOTHING IS LOGGED either: an unsent message must not raise the
+      // derived standing, or a silent turn would spend one of her two.
+      if (out.source === 'no_send' || !out.text) {
+        results.push({ prospectId: p.id, standing, sent: false, reason: 'no_send' });
+        continue;
+      }
+      if (out.source !== 'maya') continue;
 
       await _sendWa(
         { line: 'marketing', to: p.phone, text: out.text, windowOpen: true,
@@ -550,8 +674,9 @@ module.exports = {
   runCloserTurn,
   runNudgeJob,
   // exported for the bench
-  loadManual, _sliceManual, buildStaticSystem, buildProspectContext,
+  loadManual, _sliceManual, buildStaticSystem, buildProspectContext, loadHistory,
   nudgesStandingFrom, countNudgesStanding, isRegisteredUser, readNudgeHours,
+  normalizeDemoLinks, truncateAtLastInbound, DEMO_LINK_RE,
   REGISTERED_USER_LINE, PRODUCT_LINK, MANUAL_BODY_FROM_LINE,
   NUDGE_CONFIG_KEY, DEFAULT_NUDGE_HOURS, MAX_NUDGES, SURFACE, TIER,
 };

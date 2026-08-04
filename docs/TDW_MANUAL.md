@@ -2,14 +2,14 @@
 
 **S-7 — the canonical what-it-is / what-it-can-do document. The single source of product truth.**
 
-**MANUAL_VERSION: v1**
-**Derived at: dream-os `3b6fa97` · dreamos-pwa `19978c7`**
+**MANUAL_VERSION: v2**
+**Derived at: dream-os `07d3cf6` · dreamos-pwa `19978c7`**
 
 Every claim in this document was derived from the running product at those two
 commits. Nothing here describes something planned, specced, or in progress. When
 the product changes, this document is re-derived before it is re-edited — the
-witness table for every claim below lives in `docs/TDW_08_P5_PHASE2_HANDOVER.md`,
-which no agent loads.
+witness table for every claim below lives in `docs/TDW_08_P5_PHASE2_HANDOVER.md`
+and `docs/TDW_08_P5_PHASE3_HANDOVER.md`, which no agent loads.
 
 ---
 
@@ -317,6 +317,12 @@ and it reaches the team immediately.
 Demo studios are deliberately thinner than a real profile — no enquire link, no
 starting price, no aesthetic tags. They show the shape of the thing, honestly
 labelled as a demo.
+
+A demo studio is a public page. Anyone with the link can open it — there is no
+login and no session, and the page says plainly that it is a demonstration. It is
+not listed on the marketplace unless the studio has been made discoverable, so in
+practice nobody finds it by browsing; but it is not private, and it should never
+be described as private.
 
 ---
 
