@@ -1126,14 +1126,45 @@ const PROS_SRC = read('src/lib/prospects.js');
 const ADMIN_SRC = read('src/api/admin/demoAdmin.js');
 const ROUTER_SRC = read('src/api/router.js');
 
-t('NO P1 PATH ISSUES A DELETE AGAINST demo_vendors (CE-134 §3)', () => {
-  for (const [name, src] of [['demoLifecycle', LC_SRC], ['demo/vendor', DEMO_SRC],
+// ── LABELED AMENDMENT ② · TDW_08 P6 · COUNT PRESERVED · RE-AIMED, NOT RELAXED ──
+// WHY IT MOVED. This cell asserted that NOTHING in five files issues a supabase
+// delete against `demo_vendors`. That was exactly right for P1, whose own
+// `onRemoved` comment says so in its own words (:416-418: "THIS PATH DELETES
+// NOTHING … Deletion is P6's, under a resurrect window, and no P1 path issues
+// one"). P6 is now that deletion, ruled at CE R-B4→R-B9, and it is sited INSIDE
+// `demoLifecycle.js` as the module's second door precisely so the sole-writer
+// rider extends to deletion (R-B5).
+//
+// THE TEETH ARE KEPT AND ONE IS ADDED. The four OTHER files stay under the
+// original unconditional ban — a delete in `demoAdmin`, `cron`, `prospects` or
+// the public demo route is still the fifth-writer shape and still a RED. Inside
+// `demoLifecycle` the ban narrows to what CE-134 §3 actually protects: the
+// LIFECYCLE TRANSITIONS must delete nothing, so the only delete permitted in the
+// file is the one inside `_purgeRow`. A delete appearing in `onRemoved`,
+// `restore`, `deactivate` or any sweep still fails this cell.
+//
+// RATIFY-OR-REVERT: if the CE prefers b08_p1 frozen, this cell reverts and
+// stands as a declared floor RED against a ruled feature; the assertion's
+// substance lives on either way at b08_p6_purge_bench §7's sole-deleter cell.
+t('NO P1 PATH ISSUES A DELETE AGAINST demo_vendors (CE-134 §3, re-aimed at P6)', () => {
+  for (const [name, src] of [['demo/vendor', DEMO_SRC],
                              ['demoAdmin', ADMIN_SRC], ['cron', CRON_SRC], ['prospects', PROS_SRC]]) {
     // `router.delete(` is an Express VERB, not a supabase delete. The hazard is a
     // supabase delete against the table, so the cell must name that shape.
     const dbDeletes = src.replace(/router\.delete\s*\(/g, 'router.DELETEVERB(');
     assert.ok(!/\.delete\s*\(/.test(dbDeletes), `${name} carries a supabase .delete( — the FK cascades 8 leads`);
   }
+  // demoLifecycle: the delete is legal in the purge door ONLY. Everything from
+  // the top of the file to `_purgeRow`, and everything from `_read` onward, must
+  // still be delete-free — that span is every transition CE-134 §3 protects.
+  const door  = LC_SRC.indexOf('async function _purgeRow');
+  const after = LC_SRC.indexOf('async function _read');
+  assert.ok(door > 0 && after > door, 'the purge door is not where the bench expects it');
+  const outsideTheDoor = LC_SRC.slice(0, door) + LC_SRC.slice(after);
+  assert.ok(!/\.delete\s*\(/.test(outsideTheDoor),
+    'demoLifecycle carries a supabase .delete( OUTSIDE the purge door — a transition deletes');
+  assert.ok(/\.delete\(\)/.test(LC_SRC.slice(door, after)),
+    'the purge door no longer deletes — P6 is hollow');
 });
 
 t('demoAdmin no longer writes any presence column directly', () => {
@@ -1215,13 +1246,20 @@ t('F-08.6 CURED — the phantom job is gone from CODE and the tombstone survives
     'the tombstone no longer names the column, so it cannot warn about it');
 });
 
-t('exactly FIVE cron jobs survive, and the two demo lifecycle jobs are among them', () => {
+// ── LABELED AMENDMENT ③ · TDW_08 P6 · COUNT MOVES 5 → 6, BY RULING ───────────
+// The number is the whole point of this cell — it is what catches a job added
+// without a ruling, and it caught this one. R-B8 rules the third demo job:
+// `runPurgeSweep`, nightly 04:15 IST, sequenced after the 03:45 sunset. The
+// count moves BY LABEL with the ruling named, never by quietly loosening the
+// assertion to `>= 5`, which would retire the cell's only power.
+t('exactly SIX cron jobs survive, and the three demo lifecycle jobs are among them', () => {
   const code = CRON_SRC.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   const jobs = code.match(/cron\.schedule\(/g) || [];
-  assert.strictEqual(jobs.length, 5,
-    `cron.js holds ${jobs.length} scheduled jobs, expected 5 after the phantom's deletion`);
+  assert.strictEqual(jobs.length, 6,
+    `cron.js holds ${jobs.length} scheduled jobs, expected 6 after P6's purge job (R-B8)`);
   assert.ok(/runExpirySweep\(supabase\)/.test(code), 'the hourly demo expiry job is gone');
   assert.ok(/runSunsetSweep\(supabase\)/.test(code), 'the nightly demo sunset job is gone');
+  assert.ok(/runPurgeSweep\(supabase\)/.test(code), 'the nightly demo purge job is gone');
 });
 
 t('the :136-139 opt-out confirmation bypass is byte-stable', () => {

@@ -1552,6 +1552,58 @@ ALTER TABLE otp_sessions ADD CONSTRAINT otp_sessions_purpose_check
 
 ---
 
+## DEMO RETENTION POLICY — how long demo content lives, and when it is destroyed
+
+*TDW_08 P6. Written in plain words because the spec asked for plain words. The
+machinery is `runPurgeSweep` in `src/lib/demoLifecycle.js`; if the two ever
+disagree, the code is what runs and this note is the thing that is wrong.*
+
+**A demo studio leaves in one of two ways, and they are not the same thing.**
+
+A **sunset** is a quiet rotation. A demo nobody has claimed drops out of the
+couple-facing Discover feed after 90 days (`demo.sunset_days`), counted from the
+day it was invited, or from the day it was built if it was never invited. Its
+content is kept. Nothing is deleted. An admin can put it straight back.
+
+A **takedown** is an exit. It happens when a vendor replies STOP, or when an
+admin removes the studio. The card leaves every surface in the same minute —
+feed, page, and outreach all honour it. Removed means removed.
+
+**Both then run a seven-day resurrect window before anything is destroyed.**
+
+The window is seven days (`DEMO_PURGE_RESURRECT_DAYS`, dialable at
+`admin_config.demo.purge_resurrect_days`). During it, nothing has been lost and
+either exit can be undone:
+
+- a taken-down studio comes back with START from the vendor's own handset, or
+  with the admin Activate control;
+- a sunset studio comes back the moment an admin re-grants it to Discover.
+
+**When the window closes, the deletion is real and it is not reversible.** The
+nightly purge (04:15 IST) destroys every one of that studio's photographs at
+Cloudinary, then deletes the row. The enquiries attached to it go with it — the
+database cascades them — and any prospect record pointing at the studio has its
+pointer cleared so nothing is left aiming at a thing that no longer exists.
+
+**The purge will not guess.** A photograph it cannot confirm destroyed keeps its
+whole studio alive for another night, and it tries again the next night. A row
+is never deleted on the assumption that its files went; it is deleted only after
+every file has confirmed gone. Day eight, the bytes are not in Cloudinary, and
+that is checkable by hand.
+
+**Two things are deliberately outside all of this.** A **claimed** studio is
+never purged — the vendor took it, and the claim flow's copy semantics are not
+yet built, so nothing here touches it. And **`muse_pool`** is admin-curated
+editorial content with no lifecycle at all; the purge does not read it.
+
+**The kill switch.** Setting `admin_config.demo.purge_resurrect_days` to `0`
+disables the purge entirely — no rows read, no files destroyed, nothing deleted
+— and it takes effect on the next nightly run. Raising the number lengthens the
+window for everyone; lowering it shortens it. Junk or a missing key falls back
+to seven days, because an unseeded key is the normal state of this estate.
+
+---
+
 ## Migration 0058 — Demo Claim Requests
 **Applied:** 2026-05-28
 

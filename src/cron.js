@@ -269,6 +269,33 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── Demo PURGE — nightly 4:15am IST (spec P6, CE R-B8) ────────────────────
+  // THE ONLY DESTRUCTIVE JOB IN THIS FILE. It destroys Cloudinary bytes and
+  // deletes rows, and it is the reason the two jobs above are careful to leave
+  // a sunset and a takedown distinguishable in the row.
+  //
+  // 04:15 IST, THIRTY MINUTES AFTER THE SUNSET AT 03:45 AND ALONE IN ITS SLOT.
+  // Sequenced after on purpose: the sunset job is what mints `sunset_at`, and a
+  // purge running first would judge the night's rotations against yesterday's
+  // stamps. The gap is not a guess about runtime — the two jobs share no row on
+  // any single night (a row sunset at 03:45 is `sunset_at = now`, which cannot
+  // satisfy a cutoff seven days back), so the ordering is for legibility and
+  // for the day the window is dialled down, not for a race.
+  //
+  // NOTHING IS PASSED FOR THE DESTROY SEAM: `runPurgeSweep`'s default IS the
+  // real `destroyVerified`. The bench drives that seam by injection and asserts
+  // the production default by identity, so a harness can never quietly become
+  // the thing production runs (F-08.65's true-pipe law).
+  cron.schedule('15 4 * * *', async () => {
+    try {
+      await require('./lib/demoLifecycle').runPurgeSweep(supabase);
+    } catch (err) {
+      console.error('[cron:demoLifecycle:purge] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
 }
 
 module.exports = { startCronJobs, routeBriefing };

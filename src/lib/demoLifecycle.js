@@ -70,7 +70,11 @@
 
 'use strict';
 
-const prospects = require('./prospects');
+const prospects  = require('./prospects');
+// TDW_08 P6. The VERIFYING destroy (admin/cloudinary.js's destroyVerified), never
+// the best-effort sibling directly above it in that file — see its header for why
+// the two exist side by side. `publicIdFromUrl` is R-B6's fallback leg.
+const cloudinary = require('./admin/cloudinary');
 
 // ── The machine ──────────────────────────────────────────────────────────────
 
@@ -82,6 +86,14 @@ const WINDOW_HOURS = 72;   // G-1: the window, and every refresh of it
 // insert route; ranking.js:67 records the same trap).
 const DEFAULT_SUNSET_DAYS = 90;
 const SUNSET_CONFIG_KEY   = 'demo.sunset_days';
+
+// TDW_08 P6 — THE RESURRECT WINDOW GETS ITS FIRST CODE HOME (CE R-B8).
+// The spec has said "7-day resurrect window" since P1 and this module has only
+// ever said "a resurrect window" with NO NUMBER (:418's own words, re-derived at
+// the P6 read-first). A number that lives in prose and nowhere in code is a
+// number nothing can honour; this constant is what makes it honourable.
+const DEMO_PURGE_RESURRECT_DAYS = 7;
+const PURGE_CONFIG_KEY          = 'demo.purge_resurrect_days';
 
 const STATES = Object.freeze([
   'legacy', 'built', 'invited', 'opened', 'engaged', 'claimed', 'expired', 'removed',
@@ -146,6 +158,81 @@ async function _write(supabase, id, patch) {
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+// ── THE SECOND DOOR · THE SOLE DELETER (TDW_08 P6, CE R-B5) ──────────────────
+//
+// F-06.85 HEADER: the mechanism is named here because the function directly
+// ABOVE this one is the reason this one had to exist separately, and a hand that
+// reads only one of the two will build the wrong thing.
+//
+// WHY THIS IS NOT `_write`. `_write` is an UPDATE door carrying a column
+// ALLOWLIST — it exists to refuse a patch that touches a non-lifecycle column.
+// A DELETE has no columns to allowlist; routing one through `_write` would mean
+// widening a guard whose entire job is to be narrow, and the widened guard would
+// then admit exactly the patches it was built to refuse. So the module gets a
+// SECOND door rather than a looser first one.
+//
+// WHY IT IS IN THIS FILE AT ALL. The sole-writer rider (:8-22, :126-131) is
+// structural because every presence byte passes one function. Deletion is the
+// most destructive presence act there is — it removes all four fields at once —
+// and a deleter living in a cron file or an admin route would be the
+// fifth-writer shape wearing a delete verb. ANY DELETION OF A `demo_vendors` ROW
+// FROM ANYWHERE ELSE IN THIS ESTATE IS THAT DISEASE. The bench asserts the sole
+// DELETER exactly as it asserts the sole writer.
+//
+// ORDER IS LOAD-BEARING AND THE FAILURE MODE IS STATED, NOT DISCOVERED LATER:
+//   1. the leads are COUNTED first — `demo_leads_demo_vendor_id_fkey` is ON
+//      DELETE CASCADE (0106:111 filed this exact instruction for P6), so after
+//      step 3 there is nothing left to count and the ledger would lie by
+//      omission about what left.
+//   2. `prospects.demo_vendor_ref` is NULLed BEFORE the row goes. That field
+//      carries no FK (the 0056 doctrine), so nothing in the database would
+//      clean it up, and `removeByPhone`/`restoreByPhone` both key on it (:443,
+//      :467): a dangling ref makes the START arm find a prospect, follow the
+//      pointer, and resurrect NOTHING, silently. That is the arc's disease in
+//      the restore path.
+//   3. the row is deleted last.
+// IF STEP 3 FAILS AFTER STEP 2, the row survives with its prospect linkage
+// already cut, and the assets are already destroyed at Cloudinary because the
+// caller verified them gone before calling here. That residue is REAL and it is
+// the lesser harm by construction: the row's photos no longer render, so the
+// linkage points at nothing worth reaching, and the next nightly run re-attempts
+// the delete — the destroy is idempotent ("not found" IS gone, see
+// admin/cloudinary.js's destroyVerified), so the retry costs one no-op call and
+// heals. It is ledgered as `linkage_cut_row_survived` rather than swallowed.
+async function _purgeRow(supabase, row) {
+  const leads = await supabase
+    .from('demo_leads')
+    .select('id, converted_lead_id')
+    .eq('demo_vendor_id', row.id);
+  if (leads.error) throw leads.error;
+  const leadRows = leads.data || [];
+
+  const unlinked = await supabase
+    .from('prospects')
+    .update({ demo_vendor_ref: null })
+    .eq('demo_vendor_ref', row.id)
+    .select('id');
+  if (unlinked.error) throw unlinked.error;
+
+  const gone = await supabase
+    .from('demo_vendors')
+    .delete()
+    .eq('id', row.id)
+    .select('id');
+  if (gone.error) {
+    console.error(`[demoLifecycle:purge] ${row.ig_handle} linkage_cut_row_survived — `
+      + `prospect refs were nulled and the row delete failed: ${gone.error.message}`);
+    throw gone.error;
+  }
+
+  return {
+    leads_cascaded:    leadRows.length,
+    converted_leads:   leadRows.filter((l) => l.converted_lead_id).length,
+    prospects_unlinked: (unlinked.data || []).length,
+    deleted:           (gone.data || []).length,
+  };
 }
 
 async function _read(supabase, id) {
@@ -416,6 +503,16 @@ async function onClaimed(supabase, demoVendorId, claimedVendorId) {
 // THIS PATH DELETES NOTHING (CE-134 §3). `demo_leads_demo_vendor_id_fkey` is ON
 // DELETE CASCADE and Legacy carries eight leads; removal is a state and two
 // flags. Deletion is P6's, under a resurrect window, and no P1 path issues one.
+//
+// ⚠ REVERSE POINTER, TDW_08 P6 — P6 SHIPPED, AND THE WINDOW HAS A NUMBER NOW.
+// This sentence said "a resurrect window" and named no figure for two sittings;
+// `DEMO_PURGE_RESURRECT_DAYS` (7, dialable at `demo.purge_resurrect_days`, 0 =
+// off) is that number's first code home. The `removed_at` stamp written on the
+// line below STARTS THAT CLOCK: at its close `runPurgeSweep` destroys this row's
+// Cloudinary bytes and deletes the row, cascading its leads. `restore()` before
+// the window closes is the reprieve — it changes `state` off `removed`, which is
+// the live condition the purge's takedown leg requires (F-08.90's conjunction
+// law). This path still deletes nothing; it now schedules something.
 async function onRemoved(supabase, demoVendorId, reason) {
   const row = await _read(supabase, demoVendorId);
   if (!row) return _refuse('not_found', demoVendorId);
@@ -612,6 +709,16 @@ async function readSunsetDays(supabase) {
 // `discover_eligible` (out of Discover, content retained). The row keeps
 // whatever state it held, so `expired` stays `expired` and `legacy` stays
 // `legacy`, and P6's deletion queue can still tell a sunset from a takedown.
+//
+// ⚠ REVERSE POINTER, TDW_08 P6 — THAT DELETION QUEUE NOW EXISTS AND IT IS
+// `runPurgeSweep` AT THE FOOT OF THIS FILE. The sentence above was written in
+// the future tense and is now a live coupling: this job's `sunset_at` write is
+// the START OF A DESTRUCTION CLOCK, not merely a rotation marker. A row this job
+// touches has its Cloudinary bytes destroyed and its row deleted
+// `DEMO_PURGE_RESURRECT_DAYS` later unless an admin re-grants it through
+// `setDiscoverEligible` (which fails the purge's sunset predicate and is the
+// per-row reprieve). ANY CHANGE TO THIS JOB'S POPULATION IS A CHANGE TO WHAT
+// GETS DESTROYED. F-06.85's standing law, pointed both ways per F-06.98.
 // The inverse of a sunset is therefore NOT restore() — it is an admin grant
 // through setDiscoverEligible(), which returns both the flag and the stamp.
 //
@@ -667,12 +774,235 @@ async function runSunsetSweep(supabase, now) {
   };
 }
 
+// ── The purge dial (CE R-B8) ────────────────────────────────────────────────
+// `admin_config.demo.purge_resurrect_days`, the sunset dial's exact pattern and
+// the same read-per-run reasoning (:554-559), NOT repeated here.
+//
+// ⚠ ITS ZERO IS THE OPPOSITE OF THE SUNSET DIAL'S ZERO, AND THE INVERSION IS THE
+// WHOLE POINT. `readSunsetDays` REFUSES 0 (`n >= 1`) because a 0-day horizon
+// would make every demo instantly older than its cutoff and drain the feed on
+// the next tick — there, 0 is the catastrophe. Here 0 would be a 0-day resurrect
+// window: every removed row purged the moment it is removed, no window at all,
+// bytes destroyed at Cloudinary with no way back. So 0 is NOT read as a horizon
+// at all — it is the KILL SWITCH, ruled at R-B8, and `runPurgeSweep` checks it
+// BEFORE any cutoff arithmetic exists. The next hand that reaches to harmonise
+// these two guards for consistency reads this paragraph first: they are
+// deliberately not the same guard, because the destructive direction is opposite.
+//
+// JUNK, ABSENT, NEGATIVE AND NON-FINITE ALL FALL TO THE DEFAULT, LOUDLY for the
+// malformed cases. An unseeded key is the NORMAL state of this estate
+// (src/api/admin/config.js:31-32 404s on a key with no row and there is no
+// insert route), so absent MUST fall to 7 or the feature never fires at all.
+// Only a value that parses to exactly 0 disables.
+async function readPurgeDays(supabase) {
+  if (!supabase) return DEMO_PURGE_RESURRECT_DAYS;
+  try {
+    const { data } = await supabase
+      .from('admin_config').select('value').eq('key', PURGE_CONFIG_KEY).maybeSingle();
+    if (!data || data.value == null) return DEMO_PURGE_RESURRECT_DAYS;
+    const n = Number(JSON.parse(String(data.value)));   // '7' -> 7, '0' -> 0
+    if (Number.isFinite(n) && n === 0) return 0;        // THE KILL SWITCH
+    if (Number.isFinite(n) && n >= 1) return Math.floor(n);
+    console.warn(`[demoLifecycle:purge] ${PURGE_CONFIG_KEY} holds an unusable value `
+      + `(${String(data.value)}) — falling back to ${DEMO_PURGE_RESURRECT_DAYS} days`);
+    return DEMO_PURGE_RESURRECT_DAYS;
+  } catch (_e) {
+    return DEMO_PURGE_RESURRECT_DAYS;
+  }
+}
+
+// ── THE ASSET REFERENCES ON A ROW (CE R-B6 · both-with-precedence) ──────────
+// `demo_vendors.photos` is jsonb, `{ url, is_hero, cloudinary_id }` (0057).
+// The founder's census, 2026-08-05: 52 of 57 photos carry a `cloudinary_id`,
+// five do not — so BOTH legs fire on real production rows and neither is a
+// hedge. Stored id wins when present; the URL parse is the fallback and is the
+// same derivation `portfolio.js:78` has used since F-07.14 (the duplication is
+// DECLARED at admin/cloudinary.js's publicIdFromUrl, not accidental).
+//
+// A photo that resolves to NEITHER is `public_id: null`, and that is not a
+// shrug — R-B7 makes it BLOCK the row's purge. An asset nobody can name is an
+// asset nobody can confirm destroyed.
+function _photoAssets(photos) {
+  const list = Array.isArray(photos) ? photos : [];
+  return list.map((p, i) => {
+    const url    = p && typeof p.url === 'string' ? p.url : null;
+    const stored = p && typeof p.cloudinary_id === 'string' && p.cloudinary_id.trim()
+      ? p.cloudinary_id.trim() : null;
+    const parsed = stored ? null : cloudinary.publicIdFromUrl(url);
+    return {
+      index: i,
+      url,
+      public_id:   stored || parsed || null,
+      resolved_by: stored ? 'stored_id' : (parsed ? 'url_parse' : null),
+    };
+  });
+}
+
+// ── Job 3 · nightly purge (spec P6, CE R-B2/R-B7/R-B8/AD-B1) ────────────────
+// VERIFY THEN PURGE, BLOCK AND RETRY. A row's bytes go from Cloudinary FIRST and
+// every one of them must confirm GONE; only then does the row leave the table.
+// An unconfirmed asset keeps its whole row for another night, ledgered loudly.
+// There is no purge-and-orphan path and no mark-and-forget path — the day-8
+// clause is made structural rather than promised.
+//
+// ══ THE CONJUNCTION LAW (F-08.90, ratified at R-B2) ══════════════════════════
+// `removed_at` and `sunset_at` are HISTORY stamps: both are KEPT when their
+// condition is undone, on purpose, and the argument is at :40-52. That makes
+// EITHER STAMP ALONE A LETHAL PREDICATE HERE:
+//   · `restore()` (:493) flips `active` back and KEEPS `removed_at`. A purge
+//     keyed on `removed_at < cutoff` alone DELETES A LIVE RESTORED ROW.
+//   · `setDiscoverEligible(…, true)` (:517) grants the flag and stamp back and
+//     does NOT clear `sunset_at`. A purge keyed on `sunset_at < cutoff` alone
+//     DELETES A ROW LIVE IN THE COUPLE FEED.
+// So each leg conjoins its own LIVE condition, never the stamp alone, and the
+// two legs are EXCLUSIVE BY STATE so a removed row carrying an older stale
+// sunset stamp is judged by its removal only — the most recent exit governs.
+// `onRemoved` re-stamps on every removal (:431), so restored-then-re-removed
+// restarts the window by construction rather than by a special case.
+//
+// ══ CLAIMED ROWS ARE EXCLUDED — AN EXECUTOR ADDITION, DISCLOSED (F-08.93) ════
+// §0.2, reported not worked around. Neither ruled leg names `claimed`, and a
+// claimed row reaches BOTH of them: `onClaimed` (:395) writes `state` and
+// `claimed_at` and touches NEITHER presence flag, and sunset does not change
+// state — so a row that was sunset and LATER claimed carries
+// `discover_eligible=false` with a stale `sunset_at` and satisfies the sunset
+// leg exactly. `onRemoved` is reachable from any state including `claimed`, so
+// the takedown leg reaches one too.
+// WHY THAT MUST NOT PURGE TODAY: P2 owns the claim flow and is DEFERRED BY
+// FOUNDER WORD — unbuilt. The spec says a claim "carries photos" to the real
+// account, and whether that is a Cloudinary re-upload or a reference to these
+// same assets IS NOT DECIDED. If it is a reference, purging here destroys a
+// paying vendor's live portfolio. An unruled arm is not a licence (the
+// UNRULED-ARM law), so both legs conjoin `claimed_at IS NULL` — mirroring
+// `runSunsetSweep`'s own :645 guard — and the exclusion is filed as F-08.93 for
+// the chair rather than assumed either way. Narrowing a destructive predicate is
+// the safe direction; the arm re-opens the day P2 states its copy semantics.
+async function runPurgeSweep(supabase, now, opts) {
+  const at      = now || _now();
+  const destroy = (opts && opts.destroy) || cloudinary.destroyVerified;
+  const days    = await readPurgeDays(supabase);
+
+  // THE KILL SWITCH, CHECKED BEFORE ANY CUTOFF EXISTS. Nothing is read, nothing
+  // is destroyed, nothing is deleted. See readPurgeDays' inversion warning.
+  if (days === 0) {
+    console.log(`[cron:demoLifecycle:purge] DISABLED — ${PURGE_CONFIG_KEY} is 0 (kill switch); `
+      + 'zero rows read, zero assets destroyed');
+    return { disabled: true, days: 0, purged: 0, blocked: 0, handles: [], blocked_handles: [] };
+  }
+
+  const cutoff = _iso(new Date(at.getTime() - days * 24 * 3600 * 1000));
+  const SELECT = 'id, ig_handle, state, active, discover_eligible, photos, removed_at, sunset_at, claimed_at';
+
+  // LEG 1 · TAKEDOWN. `state = 'removed'` IS the live condition — a restored row
+  // no longer holds it, which is precisely what makes the kept `removed_at` safe.
+  const takedown = await supabase
+    .from('demo_vendors')
+    .select(SELECT)
+    .eq('state', 'removed')
+    .is('claimed_at', null)
+    .not('removed_at', 'is', null)
+    .lte('removed_at', cutoff);
+  if (takedown.error) throw takedown.error;
+
+  // LEG 2 · SUNSET. `discover_eligible = false` IS the live condition — an admin
+  // re-grant flips it true and lifts the row out of this leg the same second,
+  // which is the per-row reprieve named in the handover. `state <> 'removed'`
+  // is the exclusivity clause: a removed row is leg 1's, never counted twice.
+  const sunset = await supabase
+    .from('demo_vendors')
+    .select(SELECT)
+    .neq('state', 'removed')
+    .is('claimed_at', null)
+    .eq('discover_eligible', false)
+    .not('sunset_at', 'is', null)
+    .lte('sunset_at', cutoff);
+  if (sunset.error) throw sunset.error;
+
+  const rows = [].concat(takedown.data || [], sunset.data || []);
+
+  const purged = [];
+  const blocked = [];
+  let assetsDestroyed = 0;
+  let leadsCascaded   = 0;
+
+  for (const row of rows) {
+    const assets = _photoAssets(row.photos);
+    const failures = [];
+    let confirmed = 0;
+
+    for (const a of assets) {
+      if (!a.public_id) {
+        failures.push({ index: a.index, reason: 'unresolvable_asset', url: a.url });
+        continue;
+      }
+      let d;
+      try {
+        d = await destroy(a.public_id);
+      } catch (e) {
+        d = { ok: false, reason: 'threw', detail: e && e.message };
+      }
+      if (d && d.ok) confirmed++;
+      else failures.push({ index: a.index, reason: (d && d.reason) || 'unknown', public_id: a.public_id });
+    }
+
+    if (failures.length) {
+      // BLOCKED. The row keeps its whole existence for another night. Confirmed
+      // assets stay destroyed and that is safe: the retry re-asks for them and
+      // Cloudinary answers "not found", which this estate counts as GONE.
+      blocked.push({ ig_handle: row.ig_handle, confirmed, failures });
+      console.error(`[cron:demoLifecycle:purge] BLOCKED ${row.ig_handle} — `
+        + `${failures.length} of ${assets.length} asset(s) could not be confirmed destroyed `
+        + `(${failures.map((f) => f.reason).join(', ')}); the row was NOT deleted and retries tonight+1`);
+      continue;
+    }
+
+    const res = await _purgeRow(supabase, row);
+    assetsDestroyed += confirmed;
+    leadsCascaded   += res.leads_cascaded;
+    purged.push({
+      ig_handle: row.ig_handle,
+      leg: row.state === 'removed' ? 'takedown' : 'sunset',
+      assets: confirmed,
+      leads_cascaded: res.leads_cascaded,
+      converted_leads: res.converted_leads,
+      prospects_unlinked: res.prospects_unlinked,
+    });
+    console.log(`[cron:demoLifecycle:purge] PURGED ${row.ig_handle} `
+      + `(${row.state === 'removed' ? 'takedown' : 'sunset'} leg, window ${days}d) — `
+      + `${confirmed} asset(s) destroyed at Cloudinary, ${res.leads_cascaded} lead(s) cascaded `
+      + `(${res.converted_leads} carrying converted_lead_id), ${res.prospects_unlinked} prospect ref(s) nulled`);
+  }
+
+  if (rows.length) {
+    console.log(`[cron:demoLifecycle:purge] window ${days}d — `
+      + `${purged.length} purged, ${blocked.length} blocked, `
+      + `${assetsDestroyed} asset(s) destroyed, ${leadsCascaded} lead(s) cascaded`);
+  }
+
+  return {
+    disabled: false,
+    days,
+    purged: purged.length,
+    blocked: blocked.length,
+    assets_destroyed: assetsDestroyed,
+    leads_cascaded: leadsCascaded,
+    handles: purged.map((p) => p.ig_handle),
+    blocked_handles: blocked.map((b) => b.ig_handle),
+    by_leg: {
+      takedown: (takedown.data || []).length,
+      sunset:   (sunset.data || []).length,
+    },
+    detail: { purged, blocked },
+  };
+}
+
 module.exports = {
   WINDOW_HOURS, DEFAULT_SUNSET_DAYS, SUNSET_CONFIG_KEY, readSunsetDays,
+  DEMO_PURGE_RESURRECT_DAYS, PURGE_CONFIG_KEY, readPurgeDays,
   STATES, INVITE_STATES, CLOCK_STATES, SUNSET_STATES, PRESENCE_COLUMNS,
   buildInsertPatch,
   markInviteSent,
   onInvited, onOpened, onEnquiry, onClaimed, onRemoved,
   removeByPhone, restoreByPhone, restore, setDiscoverEligible, deactivate,
-  runExpirySweep, runSunsetSweep,
+  runExpirySweep, runSunsetSweep, runPurgeSweep,
 };
