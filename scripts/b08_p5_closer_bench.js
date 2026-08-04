@@ -90,6 +90,14 @@ const MUTATIONS = {
     "      throw new Error('no-send path removed by mutation');")],
   // RE-ANCHORED: the ceiling moved to 12,100 (executor-proposed, ratify-or-revert).
   soul_ceiling2: ['src/agent/souls/closerSoul.js', s => s.replace('const SOUL_CHAR_CEILING = 14300;', 'const SOUL_CHAR_CEILING = 100;')],
+  // MIRA RIDER 1 (2026-08-05) — the on-your-behalf beat deleted. Its cells must red.
+  rider1_deleted: ['src/agent/souls/closerSoul.js', s => s.replace(
+    "And the one that lands hardest at eleven at night: when a couple messages, they get answered \u2014 warmly, right then, on the vendor's behalf \u2014 and everything they said arrives filed as a lead. The booking itself stays the vendor's, and it costs one sentence: tell Victor to book them, and the date is held.\n\n",
+    '')],
+  // The beat MOVED out of WHAT YOU HAVE TO SELL — placement is load-bearing, not taste.
+  rider1_displaced: ['src/agent/souls/closerSoul.js', s => s.replace(
+    "And the one that lands hardest at eleven at night: when a couple messages, they get answered \u2014 warmly, right then, on the vendor's behalf \u2014 and everything they said arrives filed as a lead. The booking itself stays the vendor's, and it costs one sentence: tell Victor to book them, and the date is held.\n\nLead with ONE",
+    'Lead with ONE')],
   // §2 — the fabrication ROOT CAUSE put back: metadata declared to mean she looked.
   soul_looked:  ['src/agent/souls/closerSoul.js', s => s.replace(
     'What you have is their handle, their trade and their city — not their photographs.',
@@ -1167,6 +1175,42 @@ function fakeSupabase(db) {
      '§6 — the ratified ceiling, 14,300, and it arrives in its own commit (const-independence law)');
   ok(soul.CLOSER_SOUL.length <= soul.SOUL_CHAR_CEILING,
      `§6 — and the prose fits inside it: ${soul.CLOSER_SOUL.length} / ${soul.SOUL_CHAR_CEILING}`);
+
+  // ── MIRA RIDER 1 — THE ON-YOUR-BEHALF PITCH (founder-ordered hotfix, 2026-08-05) ──
+  // The bytes are the FOUNDER'S, passed by the chair under standing delegation with
+  // his override open. Pinned LITERALLY here, exactly as the sealed-byte cells are:
+  // a cell that read the sentence out of the soul and asserted it against itself
+  // would move with any edit and see nothing — the const-independence disease in its
+  // prose costume (Phase 4 §4(b), `honesty_byte_drifts` at 28/0).
+  const RIDER1 = "And the one that lands hardest at eleven at night: when a couple "
+    + "messages, they get answered \u2014 warmly, right then, on the vendor's behalf \u2014 and "
+    + "everything they said arrives filed as a lead. The booking itself stays the "
+    + "vendor's, and it costs one sentence: tell Victor to book them, and the date is held.";
+  ok(soul.CLOSER_SOUL.includes(RIDER1),
+     'RIDER 1 — the on-your-behalf beat is in the soul, byte-for-byte as passed');
+
+  // PLACEMENT IS LOAD-BEARING. The beat amplifies the THIRD of the four true things,
+  // so it must sit AFTER the enumeration and BEFORE `Lead with ONE` — which is what
+  // keeps the paragraph's "Four things" honest. A soul that says four and lists five
+  // hands the model a contradiction; that is the F-08.66/F-08.67 class in prose.
+  const iFour  = soul.CLOSER_SOUL.indexOf('Four things are true of every vendor');
+  const iRider = soul.CLOSER_SOUL.indexOf(RIDER1);
+  const iLead  = soul.CLOSER_SOUL.indexOf('Lead with ONE, chosen for whatever you know.');
+  ok(iFour !== -1 && iLead !== -1 && iFour < iRider && iRider < iLead,
+     'RIDER 1 — the beat sits inside WHAT YOU HAVE TO SELL, after the four and before Lead with ONE');
+  ok(/Four things are true of every vendor/.test(soul.CLOSER_SOUL)
+     && !/Five things are true of every vendor/.test(soul.CLOSER_SOUL),
+     'RIDER 1 — the count stays four: the beat amplifies the third thing, it does not add a fifth');
+
+  // EVERY CLAUSE PRESENT-TENSE WITNESSED — the whole warrant for shipping it. She is
+  // not selling a roadmap, so the two mechanisms she names are asserted to EXIST.
+  // Live-form tells: read from the shipped sources, never pasted literals.
+  const rd = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  const engineSrc = rd('src/agent/engine.js');
+  ok(/case 'donna_book_event'/.test(rd('src/engine/src/core/tools/recordPrimitives.ts')),
+     "RIDER 1 — \"it costs one sentence\" is witnessed: donna_book_event exists and holds");
+  ok(/capture_couple_lead/.test(engineSrc) && /runCoupleAgenticTurn/.test(engineSrc),
+     'RIDER 1 — "they get answered ... and arrives filed as a lead" is witnessed on the couple lane');
 
   // ═══ 15 · F-08.75 · F-08.76 · F-08.77 — THE RENAME AND THE BOUNDARY ══════
   section('15 · the rename to the wire, and the persona boundary');

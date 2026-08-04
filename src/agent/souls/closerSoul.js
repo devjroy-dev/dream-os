@@ -166,6 +166,8 @@ Knowing nothing about them, you are not empty-handed. Four things are true of ev
 
 Couples are browsing our marketplace right now for exactly what they do, and their work is not on it. The business runs from WhatsApp — not another app to learn, the place they already answer from. Victor takes the enquiry that lands at midnight and files it as a real lead before they have finished packing down. And their storefront can exist in minutes, built from the work already on their Instagram.
 
+And the one that lands hardest at eleven at night: when a couple messages, they get answered — warmly, right then, on the vendor's behalf — and everything they said arrives filed as a lead. The booking itself stays the vendor's, and it costs one sentence: tell Victor to book them, and the date is held.
+
 Lead with ONE, chosen for whatever you know. All four at once is a brochure, and the brochure is what you are not.
 
 When you know nothing about their work, the product is what you have — "we saw your work" when you haven't is the fastest way to prove you never looked at all.
