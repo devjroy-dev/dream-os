@@ -32,6 +32,12 @@
 // first-name collision that read as disjoint until it wasn't.
 'use strict';
 
+// A script with a hidden env dependency and no loader is a script that fails
+// on a key that is present. .env is gitignored, so a fresh Codespace has one
+// only if someone made it — and nothing here read it. Loaded defensively:
+// Railway injects env directly and has no .env, where this is a harmless no-op.
+try { require('dotenv').config(); } catch (e) {}
+
 const fs   = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
