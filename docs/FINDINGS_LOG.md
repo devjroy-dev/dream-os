@@ -3903,3 +3903,71 @@ were found by an executor re-running the floor by hand.
 
 Week one: cap **5/day**, the founder's two-minute morning watcher skim. Then the
 cohort at **25**.
+
+## MINT COLLISION NOTICE — TDW_08 BLOCK 08, THE PARALLEL SITTINGS (2026-08-05)
+
+Filed per CE ruling R-M2 (twenty-second chair). This notice exists so that a future
+reader who finds "F-08.93" or "F-08.94" in a commit message, a chat log, or an older
+document can resolve it from the ledger in ONE read. **The commit messages themselves
+are history and stay wrong. This notice is what makes them safely wrong.**
+
+### THE MAP
+
+| Finding | Subject | Owner | Ruling |
+|---|---|---|---|
+| **F-08.93** | the claimed-row exclusion in `demoLifecycle.js` | **Session B** | **STANDS AS MINTED** |
+| **F-08.94** | the Closer's rotation clock hiding a destruction deadline | **Session B** | **STANDS AS MINTED** |
+| F-08.93 → **F-08.95** | `marketingIndex.js`'s wrong window-code comment (131049 → 131047) | Session A | **RE-MINTED** |
+| F-08.94 → **F-08.96** | `b06_m0`'s mutation arms ungated from the cells that witness them | Session A | **RE-MINTED** |
+| F-08.95 → **F-08.97** | a returning bride's `wedding_date` can never be updated | Session A | **RE-MINTED** (second collision, below) |
+| F-08.96 → **F-08.98** | the vendor's enquiry alert prints the raw sentinel and ignores the precision it just wrote | Session A | **RE-MINTED** (second collision, below) |
+
+**ESTATE NEXT FREE: F-08.99** — and per R-M3 that sentence expires at utterance. Derive
+at origin, by command, across `docs/` AND `src/`, immediately before the next allocation.
+
+### ROOT CAUSE — COLLISION 1 (the chair's, owned by name)
+
+At the rider read-first the chair ratified Session A's mint and spoke "your next free is
+F-08.94" without re-deriving the high-water mark at the then-current tip `9a1cbcb`, which
+already carried Session B's pair in the P6 handover it landed. A count was carried from an
+earlier ruling instead of derived by command at the moment of allocation. **Chair
+correction №3.** Both executors drew exactly the numbers they were told; neither
+executor's conduct is at fault.
+
+Resolved by two converging principles (R-M1): **first-to-origin** — Session B's pair
+landed at `9a1cbcb`, before `8c1487e`, and origin is truth; and **least-reach** — Session
+B's F-08.93 is load-bearing in two code files and a bench, Session A's touched one comment
+line and one document.
+
+### ROOT CAUSE — COLLISION 2 (Session A's, disclosed rather than quietly absorbed)
+
+**The remap ruled in R-M1 landed on numbers Session A had already taken.** Between the
+chair authoring R-M1 and Session A receiving it, the founder's live walk produced two
+findings, and Session A allocated them **.95 and .96** by computing "next free after .94"
+— which is precisely the carried-count error R-M3 was written to forbid, committed by the
+executor this time rather than the chair. Those two mints were in-flight, authored and
+disclosed to the founder, but **not yet at origin**, so the chair could not have seen them.
+
+Resolved the only way consistent with R-M3: **the chair's ruled allocation is
+authoritative and Session A's self-allocation was invalid at birth** — a number is free
+only if absent from origin *and* from every in-flight charter, and the executor derived
+neither. The chair's remap keeps .95/.96; Session A's walk findings move to **.97/.98**.
+
+**This also corrects R-M2's own closing line**, which states the estate's next free as
+F-08.97. It is **F-08.99**. Reported rather than silently adjusted, because a notice that
+quietly fixes the ruling it implements is the disease it exists to cure.
+
+### THE STANDING LAW THIS PRODUCED (R-M3 — THE PARALLEL-MINT LAW)
+
+During parallel sittings, findings are minted **only from chair-issued disjoint ranges,
+allocated before build**. The chair derives the high-water mark at origin, by command,
+across `docs/` AND `src/`, immediately before every allocation. A number is free only if
+absent from origin AND from every in-flight charter. **"Next free" is never carried from a
+prior ruling, never computed from memory, and expires at utterance.** Ranges are closed
+intervals. NOTE_21's original design (A: .88–.89 · B: .90+) *was* this law; the failure
+was breaching B's open range to resupply A.
+
+Collision 2 is the law's first test case and it argues for one hardening the chair may
+wish to consider: **an executor holding an open range must not allocate from beyond it
+even when a ruling appears to grant "next free"** — the range is the authority, not the
+sentence.
