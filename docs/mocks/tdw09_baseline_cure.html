@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><title>F-09.16 baseline cure — current vs proposed</title>
+<!-- TDW_09 stage 3 · mock per R-U14 + F-4(a). Sources: app/(landing)/page.tsx:786-797 (phone + Instagram rows).
+     ONE QUESTION: does baseline alignment + shared line-height put same-line letters on one plane?
+     FAILING OBSERVATION: the PROPOSED rows still show the gold link or dial code floating off the typed line.
+     Fonts: container cannot fetch Google Fonts (adjudicated env limit) — serif/sans fallbacks approximate;
+     the founder's two-screenshot smoke on device is the settling witness. -->
+<style>
+body{background:#0C0A09;color:#F8F7F5;font-family:system-ui;margin:0;padding:24px;max-width:520px}
+h1{font:italic 300 22px Georgia,serif}h2{font:200 10px sans-serif;letter-spacing:.25em;text-transform:uppercase;color:#C9A84C;margin:28px 0 10px}
+.panel{background:rgba(255,255,255,.05);border:.5px solid rgba(255,255,255,.12);border-radius:12px;padding:16px;margin-bottom:14px}
+.guide{position:relative}.guide::after{content:'';position:absolute;left:0;right:0;top:var(--y);border-top:1px dashed #E07B5C;pointer-events:none}
+.row-cur{display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.3)}
+.row-fix{display:flex;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.3)}
+.inp{flex:1;background:transparent;border:0;outline:0;color:#F8F7F5;font:300 15px/1.5 sans-serif;padding:8px 0}
+.ig{color:#C9A84C;font:300 9px sans-serif;letter-spacing:.05em;text-decoration:none;margin-left:8px}
+.fix .ig{font-size:9px;line-height:1.5}
+.dial{color:rgba(248,247,245,.5);font:300 13px sans-serif}.fix .dial{line-height:1.5}
+.flag{font-size:16px;margin-right:6px}.fixflag{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;font-size:14px;margin-right:6px}
+small{color:rgba(248,247,245,.55);font-size:11px;line-height:1.6;display:block;margin-top:8px}
+</style>
+<h1>F-09.16 — letters on one plane</h1>
+<h2>Current — center-aligned row (page.tsx:795)</h2>
+<div class="panel guide" style="--y:34px"><div class="row-cur"><input class="inp" value="@yourhandle"><a class="ig">OPEN IG →</a></div>
+<small>The dashed line sits under the typed text's baseline. Centered boxes of different heights put the gold link's baseline ≈2px above it (computed from the font tables; your screenshot settles it).</small></div>
+<h2>Proposed — baseline row + shared line-height (the canon Row)</h2>
+<div class="panel guide fix" style="--y:34px"><div class="row-fix"><input class="inp" value="@yourhandle"><a class="ig">OPEN IG →</a></div>
+<small>Same content: <b>align-items:baseline</b> + line-height 1.5 on every text node. One plane by construction.</small></div>
+<h2>Current — phone row (page.tsx:786)</h2>
+<div class="panel guide" style="--y:36px"><div class="row-cur"><span class="flag">🇮🇳</span><span class="dial">+91</span><input class="inp" style="margin-left:10px" value="98882 94440"></div></div>
+<h2>Proposed</h2>
+<div class="panel guide fix" style="--y:36px"><div class="row-fix"><span class="fixflag">🇮🇳</span><span class="dial">+91</span><input class="inp" style="margin-left:10px" value="98882 94440"></div>
+<small>The emoji leaves text alignment entirely — a fixed 20px slot — so the device's emoji metrics stop moving the line.</small></div>

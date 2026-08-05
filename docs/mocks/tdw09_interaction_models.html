@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><title>Interaction models — the hood, the skins, the chat</title>
+<!-- TDW_09 stage 3 · R-U14 + F-4(a). Sources: app/vendor/page.tsx (Hub: Ledger :157, ChatThread :519),
+     components/vendor/Cabinet.tsx (the brass "Your books" handle :326; skins Cards/Workbench/Accounts :21).
+     ONE QUESTION: in which model does the founder find his books AND the chat input within one glance each?
+     FAILING OBSERVATION: he opens a model and asks "where are my books" or "how do I talk to it".
+     Static sketches — geometry and placement, not dress; every label rides the veto. -->
+<style>
+body{background:#0C0A09;color:#F8F7F5;font-family:system-ui;margin:0;padding:22px;max-width:560px}
+h1{font:italic 300 22px Georgia,serif}h2{font:200 10px sans-serif;letter-spacing:.25em;text-transform:uppercase;color:#C9A84C;margin:26px 0 8px}
+.ph{width:230px;height:410px;border:1px solid rgba(255,255,255,.25);border-radius:22px;display:inline-flex;flex-direction:column;margin:6px;vertical-align:top;position:relative;overflow:hidden;background:#111}
+.bar{font:200 8px sans-serif;letter-spacing:.2em;text-transform:uppercase;color:rgba(248,247,245,.5);padding:8px 10px;border-bottom:.5px solid rgba(255,255,255,.12)}
+.sec{margin:8px 10px;border:.5px solid rgba(255,255,255,.14);border-radius:8px;padding:8px;font:300 10px sans-serif;color:rgba(248,247,245,.75)}
+.gold{color:#E0BC6E}
+.input{margin:auto 10px 10px;border:.5px solid rgba(201,168,76,.4);border-radius:999px;padding:9px 12px;font:300 10px sans-serif;color:rgba(248,247,245,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:26%;background:#1A1512;border-top:1px solid rgba(201,168,76,.5);border-radius:16px 16px 0 0;padding:10px;font:300 10px sans-serif}
+.tabs{display:flex;gap:10px;font:300 8px sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(248,247,245,.5);margin-bottom:8px}
+.tabs b{color:#E0BC6E;font-weight:400}
+.nav{margin-top:auto;border-top:.5px solid rgba(255,255,255,.15);display:flex;justify-content:space-around;font:200 7px sans-serif;letter-spacing:.2em;text-transform:uppercase;color:rgba(248,247,245,.5);padding:8px 0}
+small{display:block;color:rgba(248,247,245,.55);font-size:11px;line-height:1.6;max-width:520px;margin:4px 6px 0}
+</style>
+<h1>Three models for one hood</h1>
+
+<h2>Model 1 — the rising room (recommended)</h2>
+<div class="ph"><div class="bar">Home · O-B</div><div class="sec">Today: 2 leads · Sat booked</div><div class="sec gold">⌃ Your books</div><div class="input">Ask anything…</div><div class="nav"><span>CAL</span><span>BUSINESS</span><span>MORE</span></div></div>
+<div class="ph"><div class="bar">Home · chat risen</div><div class="sheet"><div class="tabs"><b>Cards</b><span>Workbench</span><span>Accounts</span></div>Chat fills the sheet; the skin switcher lives in the books sheet's header, named. Tap outside → home returns.</div><div class="input" style="position:absolute;left:10px;right:10px;bottom:10px">Type…</div></div>
+<small>One reveal physics for chat AND books (the Cabinet's own gesture). Nothing changes rooms; the home's glance state hides only while talking.</small>
+
+<h2>Model 2 — two rooms, one hall</h2>
+<div class="ph"><div class="bar">Home</div><div class="sec">Today: 2 leads · Sat booked</div><div class="sec">Books — top slice inline · <span class="gold">See all →</span></div><div class="input">Ask anything… (tap = go to Chat)</div><div class="nav"><span>HOME</span><span>CHAT</span><span>MORE</span></div></div>
+<small>The input is a door; chat is a full screen ("the landing disappears completely" — literally). The sheet and its three skins retire: Workbench/Accounts become the Business slices they already mirror.</small>
+
+<h2>Model 3 — the split hood</h2>
+<div class="ph"><div class="bar">Business tab</div><div class="sec gold">⌃ Your books — Cards · Workbench · Accounts (named tabs)</div><div class="sec">Slices…</div><div class="nav"><span>CAL</span><b style="color:#E0BC6E">BUSINESS</b><span>MORE</span></div></div>
+<small>Books rise from the Business door (information scent: books live where business lives); chat stays inline on Home. Cost: the Hub loses its brass moment.</small>

@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>R-U17 — two controls, two silhouettes</title>
+<!-- TDW_09 stage 3 · R-U14 + F-4(a). Sources: components/vendor/BottomNav.tsx (ModePill),
+     components/vendor/VictorModeChip.tsx (its :7 comment: "BORROWS the Atelier pill styling").
+     ONE QUESTION: can a vendor tell at a glance which control changes the SCREEN and which changes the ASSISTANT?
+     FAILING OBSERVATION: in the proposed row you still must read both labels to know which is which.
+     Label candidates (Work/Storefront) ride the founder's veto — current words shown beside them. -->
+<style>
+body{background:#0C0A09;color:#F8F7F5;font-family:system-ui;margin:0;padding:24px;max-width:520px}
+h1{font:italic 300 22px Georgia,serif}h2{font:200 10px sans-serif;letter-spacing:.25em;text-transform:uppercase;color:#C9A84C;margin:26px 0 10px}
+.panel{background:rgba(255,255,255,.05);border:.5px solid rgba(255,255,255,.12);border-radius:12px;padding:18px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.pill{display:flex;background:rgba(255,255,255,.06);border:.5px solid rgba(201,168,76,.22);border-radius:999px;padding:3px}
+.pill b{font:300 9px sans-serif;letter-spacing:.22em;text-transform:uppercase;padding:6px 11px;border-radius:999px;color:rgba(240,230,210,.45)}
+.pill b.on{background:rgba(201,168,76,.18);box-shadow:inset 0 0 0 .5px rgba(201,168,76,.5);color:#E0BC6E}
+.tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.18)}
+.tabs b{font:300 9px sans-serif;letter-spacing:.22em;text-transform:uppercase;padding:8px 12px;color:rgba(240,230,210,.45);border-bottom:2px solid transparent}
+.tabs b.on{color:#F8F7F5;border-bottom-color:#F8F7F5;font-weight:500}
+.chip{display:inline-flex;gap:6px;align-items:center;border:.5px solid rgba(201,168,76,.5);border-radius:999px;padding:7px 13px;font:300 9px sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#E0BC6E}
+.chip i{font-style:normal;font-size:9px}
+.chip s{text-decoration:none;color:rgba(240,230,210,.4);font-size:8px;margin-left:4px}
+small{color:rgba(248,247,245,.55);font-size:11px;line-height:1.6}
+</style>
+<h1>Two mode controls</h1>
+<h2>Current — one dress, two organs</h2>
+<div class="panel"><span class="pill"><b class="on">✦ Studio</b><b>Discover</b></span><span class="pill"><b class="on">Business</b><b>Advisor</b></span></div>
+<small>Left changes which tabs the nav shows (and navigates to the calendar). Right changes how the assistant behaves, server-persisted. Identical silhouettes; the chip's own source comment names the borrowing.</small>
+<h2>Proposed — place looks like tabs · assistant looks like a state chip</h2>
+<div class="panel"><span class="tabs"><b class="on">Work</b><b>Storefront</b></span><span class="chip"><i>✦</i> Business <s>⇄</s></span></div>
+<small><b>Tabs</b> = "you are here / go there" (the nav's own family, ink-weight active, no gold). <b>Chip</b> = "the assistant is currently in this room; tap to flip." Words <i>Work / Storefront</i> are veto candidates beside current <i>Studio / Discover</i> — "Studio" cannot survive as a label that opens the calendar (IA map §4). Both inherit the F-09.21 pressed primitive.</small>

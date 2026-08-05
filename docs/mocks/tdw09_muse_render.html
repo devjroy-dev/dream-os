@@ -1,0 +1,45 @@
+<!doctype html><meta charset="utf-8"><title>Muse rendering — current vs proposed</title>
+<!-- TDW_09 stage 3 · R-U14 + F-4(a). Source: app/(frost)/frost/canvas/muse/page.tsx:440-471
+     (columns:'2 auto' masonry; :451 img with no reserved box; :453 the 3/4 placeholder card).
+     ONE QUESTION: does a uniform 3/4 reserved box + row-major grid kill the reflow and fix reading order?
+     FAILING OBSERVATION: the proposed board visibly reflows when you press "simulate slow images",
+     or save №2 renders below №1 instead of beside it.
+     Images are grey washes (no network); the reflow is simulated with real delayed loads. -->
+<style>
+body{background:#F0EEE8;color:#16243A;font-family:system-ui;margin:0;padding:22px;max-width:560px}
+h1{font:italic 300 22px Georgia,serif}h2{font:200 10px sans-serif;letter-spacing:.25em;text-transform:uppercase;color:#4A7A9B;margin:24px 0 10px}
+button{font:300 10px sans-serif;letter-spacing:.15em;text-transform:uppercase;background:#16243A;color:#F0EEE8;border:0;border-radius:999px;padding:10px 16px;cursor:pointer}
+.cols{columns:2 auto;column-gap:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{background:#fff;border:.5px solid rgba(74,122,155,.2);border-radius:10px;overflow:hidden;margin:0 0 8px;break-inside:avoid;position:relative}
+.card .n{position:absolute;top:6px;left:8px;font:600 11px sans-serif;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.img{width:100%;background:linear-gradient(135deg,#A8C4D8,#8B6E52);display:block}
+.fix .img{aspect-ratio:3/4;height:auto!important}
+.skel{background:repeating-linear-gradient(90deg,#e8e4dc,#f4f1ea 40%,#e8e4dc 80%);animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:200px 0}}
+.link{aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#fff}
+.link b{font:300 12px Georgia,serif;font-style:italic}.link s{text-decoration:none;font:300 9px sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#4A7A9B}
+small{color:rgba(22,36,58,.6);font-size:11px;line-height:1.6;display:block;margin-top:6px}
+</style>
+<h1>The Muse board</h1>
+<button onclick="run()">Simulate slow images</button>
+<h2>Current — columns, no reserved boxes (page.tsx:440/:451)</h2>
+<div class="cols" id="cur"></div>
+<small>Watch: each image "arrives" at its own height, the columns re-balance, and №2 sits <b>below</b> №1 (column order). This is the restlessness, mechanised.</small>
+<h2>Proposed — one ratio, row-major grid, skeleton till load</h2>
+<div class="grid fix" id="fix"></div>
+<small>Every image cell reserves 3/4 (the estate's own placeholder ratio, :453) — zero shift by construction; the grid reads left-to-right, newest first; the link-save card keeps the same ratio and gains its destination's plain word.</small>
+<script>
+const H=[210,120,260,150,180,240];// "natural" heights arriving late
+function card(i,fixed){const c=document.createElement('div');c.className='card';
+ if(i===3){c.innerHTML='<div class="link"><b>Rivaah by Tanishq</b><s>Open link →</s></div><span class="n">'+(i+1)+'</span>';return c;}
+ const im=document.createElement('div');im.className='img skel';im.style.height=fixed?'':'34px';c.appendChild(im);
+ const n=document.createElement('span');n.className='n';n.textContent=i+1;c.appendChild(n);
+ c._img=im;c._h=H[i];return c}
+function fill(id,fixed){const el=document.getElementById(id);el.innerHTML='';const cs=[];
+ for(let i=0;i<6;i++){const c=card(i,fixed);el.appendChild(c);cs.push(c)}return cs}
+function run(){for(const [id,fixed] of [['cur',false],['fix',true]]){const cs=fill(id,fixed);
+ cs.forEach((c,i)=>{if(!c._img)return;setTimeout(()=>{c._img.classList.remove('skel');
+  if(!fixed)c._img.style.height=c._h+'px';},400+i*550)})}}
+run();
+</script>
