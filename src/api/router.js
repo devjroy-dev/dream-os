@@ -8,7 +8,6 @@ const express          = require('express');
 const router           = express.Router();
 
 const waitlistRouter        = require('./waitlist');
-const inviteRouter          = require('./invite');
 const vendorAuthRouter      = require('./vendor/auth');
 const coupleAuthRouter      = require('./couple/auth');
 const pinStatusRouter       = require('./pin-status');
@@ -17,8 +16,6 @@ const exploringPhotosRouter = require('./exploring-photos');
 const testRouter            = require('./_test/whoami');
 
 router.use('/waitlist',           waitlistRouter);
-router.use('/invite',             inviteRouter);
-router.use('/register',           require('./register'));   // public — open phone-OTP signup
 router.use('/vendor/auth',        vendorAuthRouter);
 router.use('/couple/auth',        coupleAuthRouter);
 router.use('/auth/pin-status',    pinStatusRouter);
@@ -40,7 +37,6 @@ router.use('/admin/featured',        require('./admin/featured'));
 router.use('/admin/vendors',         require('./admin/vendors'));
 router.use('/admin/couples',         require('./admin/couples'));
 router.use('/admin/hot-dates',       require('./admin/hotDates'));
-router.use('/admin/invites',         require('./admin/invites'));
 router.use('/admin/config',          require('./admin/config'));
 router.use('/admin',                 require('./admin/content'));
 router.use('/admin/muse-pool',       require('./admin/musePool').adminRouter);
@@ -50,7 +46,6 @@ router.use('/admin/discover-heroes', require('./admin/discoverHeroes').adminRout
 router.use('/admin/conversations',   require('./admin/conversations'));
 router.use('/admin/failed-turns',    require('./admin/failedTurns'));   // TDW_05 P1b: dead-letter list/replay/discard
 router.use('/admin/prospects',       require('./admin/prospects'));     // TDW_05 P3: prospect lane intake/board/cap/actions
-router.use('/admin/waitlist',         require('./admin/waitlist'));
 router.use('/admin/vendors/:vendorId/portfolio', require('./admin/vendorPortfolio'));
 // Public endpoints for content surfaces
 router.use('/muse-pool',             require('./admin/musePool').publicRouter);

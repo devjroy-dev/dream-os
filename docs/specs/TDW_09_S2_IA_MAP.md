@@ -160,3 +160,7 @@ To **stage 2** (heuristic + states + touch): the `/discover` dead-end pairing wi
 **F-09.17** — the public discover feed's signup CTA targets nonexistent `/auth/signup`; live conversion 404. **F-09.18** — the Studio Suite door is link-orphaned while the nav uses "Studio" for a mode that lands on the calendar. **F-09.19** — `/about` and `/privacy` unreachable from any screen in either app.
 
 **Range used to date: F-09.16 (filed at the read-first, anchor: the baseline class) + .17–.19. Next free: F-09.20.**
+
+---
+## CORRECTION №1 (executor-owned, 2026-08-05, rides the retirement ZIP)
+§3.3's "invite-requests×2" under-counted: the family was **three** page files — a redirect index (`/admin/invite-requests` → `/dreamers`, `page.tsx`) plus the two lists — with the index holding live inbound from the dashboard card (`app/admin/page.tsx:87`). The executor's stage-1 delivery message additionally called that card's target "a route that does not exist"; that claim was **false** (the route existed and redirected) and is retracted by name. The route census's 124 was correct throughout — the error lived in the prose enumeration and the chat claim, not the instrument. The whole family retires under R-X10 regardless; the count is corrected so the record derives clean.

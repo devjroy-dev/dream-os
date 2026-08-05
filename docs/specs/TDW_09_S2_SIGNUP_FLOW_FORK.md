@@ -66,3 +66,7 @@ Couples flow as arm (a); vendors as arm (b). (The reverse — vendors open, coup
 ## 4 · FOR THE FOUNDER'S RULING, in one screen
 
 The ceremony dies (ruled). What stands: **(a)** open door, no gate — curation stays at Discover approval where it already works · **(b)** open door, silent founder-admit gate — new machinery, invisible wait · **(c)** couples open, vendors silently gated. **Recommendation: (a).** One word rules it.
+
+---
+## CORRECTION №1 (executor-owned, 2026-08-05, rides the retirement ZIP)
+§1.1's admin footprint read `{dreamers,makers} + _list`; the true family was **four files** — a redirect index `page.tsx` (`/admin/invite-requests` → `/dreamers`, dashboard-linked at `admin/page.tsx:87`) + the two lists + `_list.tsx` — and the dashboard itself carried two more coupling limbs the footprint missed (the `getInvites()` counter arm and the `admin/waitlist?status=new` counter arm at `admin/page.tsx:49–51`, plus the Generate Invites quick link at `:94`). All were found by the retirement's own zero-caller re-proof at tip — R-X6's discipline doing exactly what it exists to do — and all die in the same ZIP. Arm (a)'s ruling is unaffected; the radius is corrected.
