@@ -1,34 +1,113 @@
-<!doctype html><meta charset="utf-8"><title>Interaction models — the hood, the skins, the chat</title>
-<!-- TDW_09 stage 3 · R-U14 + F-4(a). Sources: app/vendor/page.tsx (Hub: Ledger :157, ChatThread :519),
-     components/vendor/Cabinet.tsx (the brass "Your books" handle :326; skins Cards/Workbench/Accounts :21).
-     ONE QUESTION: in which model does the founder find his books AND the chat input within one glance each?
-     FAILING OBSERVATION: he opens a model and asks "where are my books" or "how do I talk to it".
-     Static sketches — geometry and placement, not dress; every label rides the veto. -->
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interaction models — tappable walkthroughs (R-X21 redelivery)</title>
+<!-- TDW_09 stage 3 · REDELIVERY under R-X21: Hub reconstructed from source; each model a tappable
+     stepped walkthrough (Rest → Input tapped → Chat). Sources: app/vendor/page.tsx (Header :527,
+     VictorModeChip :531, Ledger :157-215 [◆ mark, Letters/Owed/Next, fmtRs register, script-italic date],
+     InputBar :588 [placeholder "Ask DreamAi…" — shown verbatim as CURRENT chrome; proposed wording rides
+     the veto]), components/vendor/Cabinet.tsx :326-340 (the brass "Your books" ornament + cap),
+     components/vendor/BottomNav.tsx (ModePill + STUDIO/DISCOVER items).
+     RULED VOCABULARY CARRIED: R-X20 — nav words Work/Storefront in PROPOSED frames; chip Business/Advisor,
+     distinct silhouette. Money register Rs X,XX,XXX throughout.
+     ONE QUESTION: in which model does the founder find his books AND reach the chat within one glance each?
+     FAILING OBSERVATION: on any model's walkthrough he asks "where are my books" or the input's tap
+     does something he didn't predict.
+     Self-contained: no fetches, no storage; system-font approximations of Cormorant/Jost/DM Sans, stated. -->
 <style>
-body{background:#0C0A09;color:#F8F7F5;font-family:system-ui;margin:0;padding:22px;max-width:560px}
-h1{font:italic 300 22px Georgia,serif}h2{font:200 10px sans-serif;letter-spacing:.25em;text-transform:uppercase;color:#C9A84C;margin:26px 0 8px}
-.ph{width:230px;height:410px;border:1px solid rgba(255,255,255,.25);border-radius:22px;display:inline-flex;flex-direction:column;margin:6px;vertical-align:top;position:relative;overflow:hidden;background:#111}
-.bar{font:200 8px sans-serif;letter-spacing:.2em;text-transform:uppercase;color:rgba(248,247,245,.5);padding:8px 10px;border-bottom:.5px solid rgba(255,255,255,.12)}
-.sec{margin:8px 10px;border:.5px solid rgba(255,255,255,.14);border-radius:8px;padding:8px;font:300 10px sans-serif;color:rgba(248,247,245,.75)}
-.gold{color:#E0BC6E}
-.input{margin:auto 10px 10px;border:.5px solid rgba(201,168,76,.4);border-radius:999px;padding:9px 12px;font:300 10px sans-serif;color:rgba(248,247,245,.45)}
-.sheet{position:absolute;left:0;right:0;bottom:0;top:26%;background:#1A1512;border-top:1px solid rgba(201,168,76,.5);border-radius:16px 16px 0 0;padding:10px;font:300 10px sans-serif}
-.tabs{display:flex;gap:10px;font:300 8px sans-serif;letter-spacing:.18em;text-transform:uppercase;color:rgba(248,247,245,.5);margin-bottom:8px}
-.tabs b{color:#E0BC6E;font-weight:400}
-.nav{margin-top:auto;border-top:.5px solid rgba(255,255,255,.15);display:flex;justify-content:space-around;font:200 7px sans-serif;letter-spacing:.2em;text-transform:uppercase;color:rgba(248,247,245,.5);padding:8px 0}
-small{display:block;color:rgba(248,247,245,.55);font-size:11px;line-height:1.6;max-width:520px;margin:4px 6px 0}
+:root{--ink:#F0E6D2;--soft:rgba(240,230,210,.62);--mute:rgba(240,230,210,.4);--brass:#C9A84C;--warm:#E0BC6E;--bg:#14100D;--line:rgba(201,168,76,.28)}
+body{background:#0C0A09;color:var(--ink);font-family:system-ui;margin:0;padding:20px;display:flex;flex-wrap:wrap;gap:26px;justify-content:center}
+h1{width:100%;text-align:center;font:italic 300 22px Georgia,serif;margin:0 0 4px}
+.note{width:100%;text-align:center;color:var(--soft);font-size:11px;margin:0 0 10px}
+.unit{width:262px}
+.unit h2{font:200 10px sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--brass);text-align:center;margin:0 0 8px}
+.steps{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
+.steps b{font:300 8px sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);border:.5px solid var(--line);border-radius:999px;padding:5px 9px;cursor:pointer}
+.steps b.on{color:#0C0A09;background:var(--brass);border-color:var(--brass)}
+.ph{width:262px;height:520px;background:var(--bg);border:1px solid rgba(255,255,255,.22);border-radius:26px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 6px}
+.hdr .nm{font:italic 300 14px Georgia,serif}
+.pill{display:flex;background:rgba(255,255,255,.05);border:.5px solid var(--line);border-radius:999px;padding:2px}
+.pill i{font:300 7px sans-serif;letter-spacing:.18em;text-transform:uppercase;font-style:normal;padding:4px 8px;border-radius:999px;color:var(--mute)}
+.pill i.on{background:rgba(201,168,76,.18);color:var(--warm);box-shadow:inset 0 0 0 .5px rgba(201,168,76,.5)}
+.tabseg{display:flex;border-bottom:.5px solid rgba(255,255,255,.2)}
+.tabseg i{font:300 7px sans-serif;letter-spacing:.18em;text-transform:uppercase;font-style:normal;padding:5px 9px;color:var(--mute);border-bottom:1.5px solid transparent}
+.tabseg i.on{color:var(--ink);border-bottom-color:var(--ink)}
+.chip{align-self:center;display:inline-flex;gap:5px;border:.5px solid rgba(201,168,76,.5);border-radius:999px;padding:4px 10px;font:300 7px sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--warm);margin:4px auto 0}
+.ledger{margin:10px 16px 0;padding:12px 4px 10px;border-top:.5px solid var(--line);border-bottom:.5px solid var(--line);display:flex;position:relative}
+.ledger::before{content:'◆';position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:var(--bg);padding:0 12px;color:var(--brass);font-size:8px;letter-spacing:.3em}
+.cell{flex:1;text-align:center;padding:0 4px}
+.cell+.cell{border-left:.5px solid var(--line)}
+.cell .big{font:200 26px sans-serif;color:var(--ink)}
+.cell .big.money{font-size:17px;color:var(--warm)}
+.cell .big.date{font:italic 300 14px Georgia,serif;color:var(--warm)}
+.cell .lab{font:300 6.5px sans-serif;letter-spacing:.26em;text-transform:uppercase;color:var(--mute);margin-top:2px}
+.cell .sub{font:300 7px sans-serif;color:var(--mute);margin-top:1px}
+.chat{flex:1;overflow:hidden;padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.bub{max-width:82%;font:300 10px/1.5 sans-serif;padding:8px 11px;border-radius:12px}
+.bub.v{align-self:flex-start;background:rgba(255,255,255,.06);border:.5px solid rgba(255,255,255,.1)}
+.bub.u{align-self:flex-end;background:rgba(201,168,76,.16);border:.5px solid rgba(201,168,76,.35)}
+.orn{align-self:center;margin:2px 0;color:var(--warm);font:200 8px sans-serif;letter-spacing:.3em;text-transform:uppercase;cursor:pointer;text-align:center}
+.orn::before{content:'⌃';display:block;font-size:12px;letter-spacing:0}
+.inputbar{margin:8px 12px;border:.5px solid rgba(201,168,76,.4);border-radius:999px;padding:10px 14px;font:300 10px sans-serif;color:var(--mute);cursor:pointer}
+.nav{border-top:.5px solid rgba(255,255,255,.14);display:flex;justify-content:space-around;padding:8px 0 12px;font:200 6.5px sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.nav b{font-weight:400;color:var(--ink)}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:0;background:#1B1512;border-top:1px solid rgba(201,168,76,.55);border-radius:18px 18px 0 0;transition:height .32s cubic-bezier(.22,1,.36,1);overflow:hidden;display:flex;flex-direction:column}
+.sheet.open{height:78%}
+.sheet .cap{font:200 8px sans-serif;letter-spacing:.3em;text-transform:uppercase;color:var(--warm);text-align:center;padding:10px 0 6px}
+.skins{display:flex;gap:8px;justify-content:center;padding-bottom:8px;border-bottom:.5px solid var(--line)}
+.skins i{font:300 7px sans-serif;letter-spacing:.16em;text-transform:uppercase;font-style:normal;color:var(--mute);padding:4px 8px;border:.5px solid transparent;border-radius:6px;cursor:pointer}
+.skins i.on{color:var(--warm);border-color:rgba(201,168,76,.5)}
+.slice{margin:8px 12px;padding:9px 11px;border:.5px solid rgba(255,255,255,.12);border-radius:9px;font:300 9px sans-serif;color:var(--soft)}
+.slice b{color:var(--warm);font-weight:400}
+.cap2{color:var(--soft);font:300 10px/1.55 sans-serif;margin-top:8px;min-height:64px}
+.veto{color:#E07B5C}
 </style>
-<h1>Three models for one hood</h1>
+<h1>Three models — walk them</h1>
+<p class="note">Tap the step pills, or tap the input bar / the ⌃ handle inside each phone. Reconstructed from source (paths in this file's header). <span class="veto">Orange = word riding the veto.</span></p>
 
-<h2>Model 1 — the rising room (recommended)</h2>
-<div class="ph"><div class="bar">Home · O-B</div><div class="sec">Today: 2 leads · Sat booked</div><div class="sec gold">⌃ Your books</div><div class="input">Ask anything…</div><div class="nav"><span>CAL</span><span>BUSINESS</span><span>MORE</span></div></div>
-<div class="ph"><div class="bar">Home · chat risen</div><div class="sheet"><div class="tabs"><b>Cards</b><span>Workbench</span><span>Accounts</span></div>Chat fills the sheet; the skin switcher lives in the books sheet's header, named. Tap outside → home returns.</div><div class="input" style="position:absolute;left:10px;right:10px;bottom:10px">Type…</div></div>
-<small>One reveal physics for chat AND books (the Cabinet's own gesture). Nothing changes rooms; the home's glance state hides only while talking.</small>
+<div class="unit" id="m1"><h2>Model 1 · the rising room</h2><div class="steps"></div><div class="ph"></div><div class="cap2"></div></div>
+<div class="unit" id="m2"><h2>Model 2 · two rooms, one hall</h2><div class="steps"></div><div class="ph"></div><div class="cap2"></div></div>
+<div class="unit" id="m3"><h2>Model 3 · the split hood</h2><div class="steps"></div><div class="ph"></div><div class="cap2"></div></div>
 
-<h2>Model 2 — two rooms, one hall</h2>
-<div class="ph"><div class="bar">Home</div><div class="sec">Today: 2 leads · Sat booked</div><div class="sec">Books — top slice inline · <span class="gold">See all →</span></div><div class="input">Ask anything… (tap = go to Chat)</div><div class="nav"><span>HOME</span><span>CHAT</span><span>MORE</span></div></div>
-<small>The input is a door; chat is a full screen ("the landing disappears completely" — literally). The sheet and its three skins retire: Workbench/Accounts become the Business slices they already mirror.</small>
+<script>
+const LEDGER=`<div class="ledger"><div class="cell"><div class="big">2</div><div class="lab">Letters</div><div class="sub">enquiries · awaiting reply</div></div><div class="cell"><div class="big money">Rs 45,000</div><div class="lab">Owed</div><div class="sub">from your binders · 1 open</div></div><div class="cell"><div class="big date">Sat, 14 Dec</div><div class="lab">Next</div><div class="sub">Mehndi · Gurgaon</div></div></div>`;
+const CHIP=`<span class="chip">✦ Business ⇄</span>`;
+const HDR_CUR=`<div class="hdr"><span class="nm">Swati Roy</span><span class="pill"><i class="on">✦ Studio</i><i>Discover</i></span></div>`;
+const HDR_PROP=`<div class="hdr"><span class="nm">Swati Roy</span><span class="tabseg"><i class="on veto">Work</i><i class="veto">Storefront</i></span></div>`;
+const CHAT=`<div class="chat"><div class="bub v">Two enquiries came in last night — Ananya (Feb, Jaipur) and one without a date yet. Want the briefs?</div><div class="bub u">yes, and hold 14 Dec</div><div class="bub v">Held. 14 Dec is yours — Mehndi, Gurgaon. Ananya's brief coming up.</div></div>`;
+const SHEET=(skins)=>`<div class="sheet"><div class="cap">Your books</div>${skins?'<div class="skins"><i class="on">Cards</i><i>Workbench</i><i>Accounts</i></div>':''}<div class="slice"><b>Clients</b> — Ananya S · Feb wedding · Rs 1,20,000 quoted</div><div class="slice"><b>Invoices</b> — 1 open · Rs 45,000 due</div><div class="slice"><b>Calendar</b> — Sat, 14 Dec · Mehndi</div></div>`;
 
-<h2>Model 3 — the split hood</h2>
-<div class="ph"><div class="bar">Business tab</div><div class="sec gold">⌃ Your books — Cards · Workbench · Accounts (named tabs)</div><div class="sec">Slices…</div><div class="nav"><span>CAL</span><b style="color:#E0BC6E">BUSINESS</b><span>MORE</span></div></div>
-<small>Books rise from the Business door (information scent: books live where business lives); chat stays inline on Home. Cost: the Hub loses its brass moment.</small>
+const MODELS={
+ m1:{steps:['Rest','Input tapped','Books lifted'],
+  frames:[
+   {body:HDR_PROP+CHIP+LEDGER+`<div class="chat"></div><div class="orn" data-act="books">Your books</div><div class="inputbar" data-act="input">Ask anything… <span class="veto">(word rides veto; current: "Ask DreamAi…")</span></div><div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`,
+    cap:'The O-B home at rest: today\'s state in the ◆ ledger, the brass handle, the input waiting. Everything on one screen, nothing moving.'},
+   {body:HDR_PROP+`<div class="sheet open" style="height:82%"><div class="cap">Chat</div>${CHAT}<div class="inputbar" data-act="home" style="margin-top:auto">Type… (tap to go back for this demo)</div></div>`+CHIP+LEDGER+`<div class="chat"></div><div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`,
+    cap:'Tap the input → the chat RISES over the home with the Cabinet\'s own physics. The home is beneath, one swipe away; the promise stays put.'},
+   {body:HDR_PROP+CHIP+LEDGER+`<div class="chat"></div>`+SHEET(true)+`<div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`.replace('class="sheet"','class="sheet open"'),
+    cap:'Tap ⌃ Your books → the same rise, the three skins NAMED in the sheet\'s header where they act. One physics for both reveals.',open:true}]},
+ m2:{steps:['Rest','Input tapped (→ Chat room)','Books inline'],
+  frames:[
+   {body:HDR_PROP+CHIP+LEDGER+`<div class="chat"><div class="slice"><b>Your books</b> — Rs 45,000 due · 1 open · <span style="color:var(--warm)">See all →</span></div></div><div class="inputbar" data-act="input">Ask anything…</div><div class="nav"><b>Home</b><span>Chat</span><span>More</span></div>`,
+    cap:'Home at rest: books are an inline SECTION (top slice + See all), the sheet retired, its skins retired into the Business slices they mirror.'},
+   {body:`<div class="hdr"><span class="nm">‹ Chat</span></div>`+CHAT+`<div class="inputbar">Type…</div><div class="nav"><span>Home</span><b>Chat</b><span>More</span></div>`,
+    cap:'Tap the input → you TRAVEL: chat is its own full room ("the landing disappears completely," literally). Back is one predictable tap.'},
+   {body:HDR_PROP+CHIP+`<div class="chat"><div class="slice"><b>Clients</b> — Ananya S · Rs 1,20,000 quoted</div><div class="slice"><b>Invoices</b> — Rs 45,000 due</div><div class="slice"><b>Calendar</b> — Sat, 14 Dec</div></div><div class="nav"><b>Home</b><span>Chat</span><span>More</span></div>`,
+    cap:'"See all" expands inline — no skins, no sheet, one scroll. The cost, plainly: the brass rising-books moment dies.'}]},
+ m3:{steps:['Rest (Home)','Input tapped','Business tab · books'],
+  frames:[
+   {body:HDR_PROP+CHIP+LEDGER+CHAT+`<div class="inputbar" data-act="input">Ask anything…</div><div class="nav"><span>Cal</span><b>Home</b><span>Business</span></div>`,
+    cap:'Home keeps chat INLINE (today\'s shape) — no reveal on tap, the thread is already here. The hood moves out of this room entirely.'},
+   {body:HDR_PROP+CHIP+LEDGER+CHAT+`<div class="inputbar">Type…</div><div class="nav"><span>Cal</span><b>Home</b><span>Business</span></div>`,
+    cap:'Tap the input → nothing rises, the keyboard opens, you\'re typing into the same thread. Zero surprise; also zero moment.'},
+   {body:`<div class="hdr"><span class="nm">Business</span></div>`+SHEET(true).replace('class="sheet"','class="sheet open" style="position:static;height:auto;border-radius:0;border-top:none"')+`<div class="nav"><span>Cal</span><span>Home</span><b>Business</b></div>`,
+    cap:'Books rise from the BUSINESS tab — information scent: the books live where business lives, skins as named tabs. Two rooms now carry ledger-shaped UI.'}]}
+};
+for(const [id,m] of Object.entries(MODELS)){
+ const u=document.getElementById(id),steps=u.querySelector('.steps'),ph=u.querySelector('.ph'),cap=u.querySelector('.cap2');
+ m.steps.forEach((s,i)=>{const b=document.createElement('b');b.textContent=(i+1)+' · '+s;b.onclick=()=>show(i);steps.appendChild(b)});
+ function show(i){[...steps.children].forEach((b,j)=>b.classList.toggle('on',j===i));
+  ph.innerHTML=m.frames[i].body;cap.textContent=m.frames[i].cap;
+  ph.querySelectorAll('[data-act]').forEach(el=>{el.onclick=()=>{const a=el.dataset.act;
+   if(a==='input')show(1);else if(a==='books')show(2);else if(a==='home')show(0);};});}
+ show(0);}
+</script>
