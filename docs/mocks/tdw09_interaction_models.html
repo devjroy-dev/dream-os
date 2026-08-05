@@ -6,6 +6,8 @@
      InputBar :588 [placeholder "Ask DreamAi…" — shown verbatim as CURRENT chrome; proposed wording rides
      the veto]), components/vendor/Cabinet.tsx :326-340 (the brass "Your books" ornament + cap),
      components/vendor/BottomNav.tsx (ModePill + STUDIO/DISCOVER items).
+     RULED AT R-X22: Model 1 FOUNDER-AMENDED — rise physics + Model 2's full-clean rendering while risen
+     (frame 2 below IS the amended state; frame captions say so). R-X23: the furnished-home unit added.
      RULED VOCABULARY CARRIED: R-X20 — nav words Work/Storefront in PROPOSED frames; chip Business/Advisor,
      distinct silhouette. Money register Rs X,XX,XXX throughout.
      ONE QUESTION: in which model does the founder find his books AND reach the chat within one glance each?
@@ -65,6 +67,7 @@ h1{width:100%;text-align:center;font:italic 300 22px Georgia,serif;margin:0 0 4p
 <p class="note">Tap the step pills, or tap the input bar / the ⌃ handle inside each phone. Reconstructed from source (paths in this file's header). <span class="veto">Orange = word riding the veto.</span></p>
 
 <div class="unit" id="m1"><h2>Model 1 · the rising room</h2><div class="steps"></div><div class="ph"></div><div class="cap2"></div></div>
+<div class="unit" id="home"><h2>The home, furnished · R-X23</h2><div class="steps"></div><div class="ph"></div><div class="cap2"></div></div>
 <div class="unit" id="m2"><h2>Model 2 · two rooms, one hall</h2><div class="steps"></div><div class="ph"></div><div class="cap2"></div></div>
 <div class="unit" id="m3"><h2>Model 3 · the split hood</h2><div class="steps"></div><div class="ph"></div><div class="cap2"></div></div>
 
@@ -76,13 +79,22 @@ const HDR_PROP=`<div class="hdr"><span class="nm">Swati Roy</span><span class="t
 const CHAT=`<div class="chat"><div class="bub v">Two enquiries came in last night — Ananya (Feb, Jaipur) and one without a date yet. Want the briefs?</div><div class="bub u">yes, and hold 14 Dec</div><div class="bub v">Held. 14 Dec is yours — Mehndi, Gurgaon. Ananya's brief coming up.</div></div>`;
 const SHEET=(skins)=>`<div class="sheet"><div class="cap">Your books</div>${skins?'<div class="skins"><i class="on">Cards</i><i>Workbench</i><i>Accounts</i></div>':''}<div class="slice"><b>Clients</b> — Ananya S · Feb wedding · Rs 1,20,000 quoted</div><div class="slice"><b>Invoices</b> — 1 open · Rs 45,000 due</div><div class="slice"><b>Calendar</b> — Sat, 14 Dec · Mehndi</div></div>`;
 
+const WAIT=`<div class="slice" style="border-color:rgba(224,123,92,.4)"><b style="color:#E07B5C">Waiting</b> — Ananya\'s enquiry · unanswered 6h · <span style="color:var(--warm)">Reply →</span></div><div class="slice" style="border-color:rgba(224,123,92,.4)"><b style="color:#E07B5C">Waiting</b> — 14 Dec hold · unconfirmed · <span style="color:var(--warm)">Confirm →</span></div>`;
+const WEEK=`<div class="slice"><b>This week</b> — Sat 14 Mehndi · Sun 15 free · Thu 19 Sangeet</div>`;
+const EXEMPLAR=`<div class="slice" style="opacity:.75"><b>Example</b> — "Hold 14 Dec for the Kapoor mehndi" <i style="font-style:normal;color:var(--mute)">· tap to try</i></div><div class="slice" style="opacity:.75"><b>Example</b> — "What\'s owed this month?" <i style="font-style:normal;color:var(--mute)">· tap to try</i></div>`;
 const MODELS={
- m1:{steps:['Rest','Input tapped','Books lifted'],
+ home:{steps:['Furnished','First run (exemplars)'],
+  frames:[
+   {body:HDR_PROP+CHIP+LEDGER+`<div class="chat" style="gap:6px">${WAIT}${WEEK}</div><div class="orn" data-act="books">Your books</div><div class="inputbar">Ask anything…</div><div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`,
+    cap:'Zone 1 the ◆ ledger · Zone 2 WHAT\'S WAITING — only items needing his hand, each a tappable line, ABSENT when empty (zero-collapse) · the this-week strip rides free (upcoming_events is already in the context payload) · Zone 3 books + input. The test every zone passed: it answers "what happened while I was away?" faster than asking.'},
+   {body:HDR_PROP+CHIP+`<div class="ledger"><div class="cell"><div class="big">0</div><div class="lab">Letters</div><div class="sub">enquiries · none yet</div></div><div class="cell"><div class="big">—</div><div class="lab">Owed</div><div class="sub">nothing filed yet</div></div><div class="cell"><div class="big">—</div><div class="lab">Next</div><div class="sub">no engagements</div></div></div><div class="chat" style="gap:6px">${EXEMPLAR}</div><div class="orn">Your books</div><div class="inputbar">Ask anything…</div><div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`,
+    cap:'FIRST RUN: no waiting zone (nothing waits), the ledger honest at zero, and LABELED EXAMPLES seed the input — the founder\'s 「 tips/dummy prefed inputs 」, each marked Example, each tap-to-try, retiring the moment real data exists.'}]},
+ m1:{steps:['Rest','Risen (ruled)','Books lifted'],
   frames:[
    {body:HDR_PROP+CHIP+LEDGER+`<div class="chat"></div><div class="orn" data-act="books">Your books</div><div class="inputbar" data-act="input">Ask anything… <span class="veto">(word rides veto; current: "Ask DreamAi…")</span></div><div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`,
     cap:'The O-B home at rest: today\'s state in the ◆ ledger, the brass handle, the input waiting. Everything on one screen, nothing moving.'},
-   {body:HDR_PROP+`<div class="sheet open" style="height:82%"><div class="cap">Chat</div>${CHAT}<div class="inputbar" data-act="home" style="margin-top:auto">Type… (tap to go back for this demo)</div></div>`+CHIP+LEDGER+`<div class="chat"></div><div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`,
-    cap:'Tap the input → the chat RISES over the home with the Cabinet\'s own physics. The home is beneath, one swipe away; the promise stays put.'},
+   {body:`<div class="sheet open" style="height:100%;border-radius:0;border-top:none"><div style="align-self:center;width:34px;height:4px;border-radius:2px;background:rgba(240,230,210,.25);margin:8px 0 2px"></div><div class="cap">Chat · risen — swipe down returns</div>${CHAT}<div class="inputbar" data-act="home" style="margin-top:auto">Type… (tap = swipe-down for this demo)</div></div>`,
+    cap:'RULED (R-X22, founder-amended): tap the input → the chat RISES with the Cabinet\'s physics but renders as the FULL CLEAN ROOM — full-bleed thread, no ledger fragments bleeding through. The home stays put beneath; one swipe returns. This frame is the O-B build\'s acceptance picture.'},
    {body:HDR_PROP+CHIP+LEDGER+`<div class="chat"></div>`+SHEET(true)+`<div class="nav"><span>Cal</span><b>Home</b><span>More</span></div>`.replace('class="sheet"','class="sheet open"'),
     cap:'Tap ⌃ Your books → the same rise, the three skins NAMED in the sheet\'s header where they act. One physics for both reveals.',open:true}]},
  m2:{steps:['Rest','Input tapped (→ Chat room)','Books inline'],

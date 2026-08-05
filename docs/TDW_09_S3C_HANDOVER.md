@@ -1,0 +1,6 @@
+# TDW_09 · BLUEPRINT · STAGE 3c — R-X22 AMENDMENT + R-X23 HOME SPEC — EXECUTOR HANDOVER
+**Under:** R-X22 (Model 1 founder-amended: rise physics + full-clean risen rendering; mock updated as the O-B acceptance picture) · R-X23 (home content spec chartered and delivered). **This ZIP: one amended mock + one spec paper + this file. Docs-only; W-1 held; every proposed string veto-marked.**
+**What shipped:** `docs/mocks/tdw09_interaction_models.html` amended — Model 1's frame 2 IS the ruled hybrid (full-bleed clean chat, grabber, "swipe down returns", no ledger bleed; caption names it the acceptance picture) + the new `home` unit (Furnished / First-run frames) · `docs/specs/TDW_09_S3_HOME_CONTENT_SPEC.md` — three zones, candidates weighed on source evidence (the decisive datum: `TodayResponse.needs_attention` already ships at `/api/v2/vendor/today/:vendorId` — zone 2 is wiring, not build; the week strip rides the context payload free; last-activity OUT until the P2 inbox feed makes it free), the exemplar first-run chapter with retirement law.
+**Floor:** HTML parses, self-contained, 15.7KB; docs-only.
+**Gates:** founder vetoes from the render (zone membership, waiting verbs, exemplar strings). **Next per the standing order: the theme strategy paper → the cure queue.**
+Sequencing beyond this sitting is the founder's.
