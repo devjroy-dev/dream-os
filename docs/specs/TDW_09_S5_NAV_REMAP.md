@@ -33,3 +33,19 @@
 
 ## 3 · WHAT BOTH BARS INHERIT
 48px stable tabs, labels always visible *(recognition over icon-recall)* · the F-09.21 pressed primitive *(states always legible)* · active = ink-weight shift, **no gold in chrome** (the spec's own law) · safe-area padded · `prefers-reduced-motion` collapses motion — the P1 spec's clauses, restated as this remap's floor rather than re-invented.
+
+---
+## §2 REDELIVERY — THE BRIDE SET, RE-PROPOSED UNDER R-X28
+*(supersedes §2 above; the founder's catch owned by name: the first proposal forgot the shop window and the chat — both derived below by command, as ordered.)*
+
+**DERIVATION 1 — canvas/discover's true state: FOLDED, NOT DEAD.** `app/(frost)/frost/canvas/discover/page.tsx` is a redirect stub carrying its own history: folded at TDW_07 P6 under **F-07.43 「 F-D 」**, founder-ruled in two letters — *"sanctuary's Discover room IS the couple Discover surface"* — with zero inbound at two censuses, everything worth keeping travelled into shared homes (`VendorProfileView`, `ImageDots`, `photoPager`). **The consequence for this remap:** the bride Discover surface is alive *inside* sanctuary as an absorbed room; decomposing sanctuary without seating it was the miss. **The public `/discover` feed's relationship, stated:** it is the pre-auth acquisition funnel (components/discovery), R-X7 lands its CTA on the couple door — and the converted bride then needs the *in-app* marketplace room her signup was sold on. A marketplace app whose nav hides its shop window breaks the funnel at the last step; the Discover door is that step's landing.
+
+**DERIVATION 2 — the bride chat's ground, today and tomorrow.** Today sanctuary's chat is an **out-of-app WhatsApp hand-off**: `DREAMAI_WA_LINK` (`sanctuary/page.tsx:155`, `wa.me` on the bride line) plus per-vendor enquiry links with `TDW-` routing handles (`:640`). Tomorrow it is **Eliza** — the couple-lane concierge behind `couple.eliza_enabled` (default OFF), the soul sitting's to seat. **The forward-looking proposal, honest-controls law obeyed:** chat gets **no dead door**. It takes the house idiom instead — the R-X22 rising input on the bride Home, vendor parity, one grammar learned once — which **today** renders plainly marked for what it is (*"Chat on WhatsApp ↗"* — an honest hand-off, never dressed as in-app) and, the day `eliza_enabled` flips, becomes the in-app rising chat **with zero nav change**. The nav is designed for the product being built; nothing pretends to be wired before it is.
+
+**THE RE-PROPOSED SET — FIVE DOORS** (the vendor's own cap, Hick's governing): `Home · Discover · Muse · Journey · Circle`, chat as Home's rising input per above.
+- **Home** — her state + the rising chat. *(one rest state; aesthetic-usability: the calm first screen is the brand.)*
+- **Discover** — the absorbed room re-seated: the vendor feed, FEATURED, profiles. *(funnel continuity + information scent: the door the acquisition promised.)*
+- **Muse** — the R-X18 grid. *(the save-and-dream loop.)*
+- **Journey** — events·moments·reminders·expenses, counted-down progress. *(goal-gradient, honest.)*
+- **Circle** — re-argued against the two entrants and **held**: it is the only door that is *people*, its member pages carry live edges (degree 2), and folding it under Journey would bury the product's one social surface two deep. **Trade stated:** five doors is the ceiling; if the founder wants four, Circle folds into Journey as §1 and the paper says so rather than pretending both fit for free.
+**Every prior seat re-accounted:** Home KEPT · Muse KEPT · Journey KEPT · Circle KEPT-BY-RE-ARGUMENT · **Discover SEATED** (derivation 1) · **Chat SEATED-AS-IDIOM, not door** (derivation 2, honest-controls).
