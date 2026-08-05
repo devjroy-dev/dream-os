@@ -245,3 +245,40 @@ was built for them; the founder rules them row-by-row through doors that exist:
 Per AD-B6 the immediate sunset horizon is **empty** (`0/0` on the founder's
 census): this build lands with **zero rows in jeopardy**. The masterplan's
 "first natural fire 2026-08-26" stands un-re-derived.
+
+---
+
+## 10 · RESIDUAL CLOSED — THE LEG WITNESS, MADE LEGIBLE
+
+*Added 2026-08-05 on the founder's sequencing word 「 residuals 」, after the rider
+sealed at `4b81eb6`. No new finding minted: this is the executor's own disclosed
+gap from §5 of this document, closed at the same seam that carried it.*
+
+**THE GAP, RESTATED.** R-B6 required the walk to witness a destroy through each
+leg — stored `cloudinary_id` and URL-parse. The live walk destroyed six assets
+and **the ledger could not say which leg resolved any of them**, so the question
+was unanswerable from the output rather than answered wrongly. `_photoAssets`
+had computed `resolved_by` since the P6 build; nothing ever read it.
+
+**THE CURE.** Both ledgers now carry the leg, and the sweep rolls it up:
+
+- `detail.purged[].assets_by_leg` — per row, e.g. `{ stored_id: 5, url_parse: 1 }`
+- `assets_by_leg` — per sweep, the same shape summed
+- `detail.blocked[].failures[].resolved_by` — per failure; `null` when neither
+  leg could name the asset, which is a stated absence rather than a guess
+- `detail.blocked[].confirmed_by_leg` — what a blocked row DID destroy before it
+  blocked, so the retry is legible rather than a mystery
+- the `PURGED` log line names the legs inline
+
+**RECONCILIATION IS ASSERTED, not assumed:** a cell requires the per-leg tally to
+sum to the headline `assets_destroyed`. An unreconciled tally is decoration.
+
+**FLOOR:** `b08_p6_purge_bench` **54 → 60**; every other bench byte-stable.
+**M-10** added — a tally hard-coded to `stored_id` reddens the URL-parse cells,
+so the leg is proven read from the resolver rather than printed as a constant.
+
+**WHAT THIS DOES NOT DO.** It does not itself witness the parse leg on
+production. It makes the next real purge *say* which legs fired. R-B6's live
+both-legs witness stays **open** until a purge runs over a row carrying at least
+one of the five id-less photos in the founder's census — the walk card's SELECT
+finds them.

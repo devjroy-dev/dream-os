@@ -924,15 +924,24 @@ async function runPurgeSweep(supabase, now, opts) {
   const blocked = [];
   let assetsDestroyed = 0;
   let leadsCascaded   = 0;
+  const assetsByLeg   = {};
 
   for (const row of rows) {
     const assets = _photoAssets(row.photos);
     const failures = [];
     let confirmed = 0;
+    // ── WHICH LEG RESOLVED EACH ASSET (R-B6's witness, made legible) ─────────
+    // The executor's own disclosed gap from the P6 delivery: the ledger recorded
+    // WHAT failed and WHY, but never HOW the id was resolved — so the founder's
+    // live walk could not tell a stored-id destroy from a URL-parse destroy, and
+    // R-B6's "witness one through EACH leg" was unanswerable from the output.
+    // Both ledgers now carry it: the blocked ledger per failure, the purged
+    // ledger as a tally. The next real purge SAYS which legs fired.
+    const byLeg = {};
 
     for (const a of assets) {
       if (!a.public_id) {
-        failures.push({ index: a.index, reason: 'unresolvable_asset', url: a.url });
+        failures.push({ index: a.index, reason: 'unresolvable_asset', url: a.url, resolved_by: null });
         continue;
       }
       let d;
@@ -941,15 +950,15 @@ async function runPurgeSweep(supabase, now, opts) {
       } catch (e) {
         d = { ok: false, reason: 'threw', detail: e && e.message };
       }
-      if (d && d.ok) confirmed++;
-      else failures.push({ index: a.index, reason: (d && d.reason) || 'unknown', public_id: a.public_id });
+      if (d && d.ok) { confirmed++; byLeg[a.resolved_by] = (byLeg[a.resolved_by] || 0) + 1; }
+      else failures.push({ index: a.index, reason: (d && d.reason) || 'unknown', public_id: a.public_id, resolved_by: a.resolved_by });
     }
 
     if (failures.length) {
       // BLOCKED. The row keeps its whole existence for another night. Confirmed
       // assets stay destroyed and that is safe: the retry re-asks for them and
       // Cloudinary answers "not found", which this estate counts as GONE.
-      blocked.push({ ig_handle: row.ig_handle, confirmed, failures });
+      blocked.push({ ig_handle: row.ig_handle, confirmed, confirmed_by_leg: byLeg, failures });
       console.error(`[cron:demoLifecycle:purge] BLOCKED ${row.ig_handle} — `
         + `${failures.length} of ${assets.length} asset(s) could not be confirmed destroyed `
         + `(${failures.map((f) => f.reason).join(', ')}); the row was NOT deleted and retries tonight+1`);
@@ -959,17 +968,21 @@ async function runPurgeSweep(supabase, now, opts) {
     const res = await _purgeRow(supabase, row);
     assetsDestroyed += confirmed;
     leadsCascaded   += res.leads_cascaded;
+    for (const [k, v] of Object.entries(byLeg)) assetsByLeg[k] = (assetsByLeg[k] || 0) + v;
     purged.push({
       ig_handle: row.ig_handle,
       leg: row.state === 'removed' ? 'takedown' : 'sunset',
       assets: confirmed,
+      assets_by_leg: byLeg,
       leads_cascaded: res.leads_cascaded,
       converted_leads: res.converted_leads,
       prospects_unlinked: res.prospects_unlinked,
     });
     console.log(`[cron:demoLifecycle:purge] PURGED ${row.ig_handle} `
       + `(${row.state === 'removed' ? 'takedown' : 'sunset'} leg, window ${days}d) — `
-      + `${confirmed} asset(s) destroyed at Cloudinary, ${res.leads_cascaded} lead(s) cascaded `
+      + `${confirmed} asset(s) destroyed at Cloudinary `
+      + `(${Object.entries(byLeg).map(([k, v]) => `${v} by ${k}`).join(', ') || 'none'}), `
+      + `${res.leads_cascaded} lead(s) cascaded `
       + `(${res.converted_leads} carrying converted_lead_id), ${res.prospects_unlinked} prospect ref(s) nulled`);
   }
 
@@ -985,6 +998,7 @@ async function runPurgeSweep(supabase, now, opts) {
     purged: purged.length,
     blocked: blocked.length,
     assets_destroyed: assetsDestroyed,
+    assets_by_leg: assetsByLeg,
     leads_cascaded: leadsCascaded,
     handles: purged.map((p) => p.ig_handle),
     blocked_handles: blocked.map((b) => b.ig_handle),

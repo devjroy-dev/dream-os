@@ -336,6 +336,47 @@ await ta('a row with BOTH kinds destroys both, one call each', async () => {
   assert.deepStrictEqual(d.seen.sort(), ['demo_vendors/a/p1', 'demo_vendors/a/p2']);
   assert.strictEqual(r.assets_destroyed, 2);
 });
+
+// ── R-B6's WITNESS, MADE LEGIBLE (the executor's disclosed P6 gap) ──────────
+// The live walk destroyed six assets and the ledger could not say which leg
+// resolved any of them, so "witness one through EACH leg" was unanswerable from
+// the output. These cells assert the ledger now answers it.
+await ta('the purged ledger names the leg for EVERY asset, per row and per sweep', async () => {
+  const db = makeDb({ demo_vendors: [vendor({ photos: [PHOTO_STORED, PHOTO_PARSE, PHOTO_STORED] })] });
+  const r = await lc.runPurgeSweep(db, NOW, { destroy: destroyAllOk() });
+  assert.deepStrictEqual(r.detail.purged[0].assets_by_leg, { stored_id: 2, url_parse: 1 });
+  assert.deepStrictEqual(r.assets_by_leg, { stored_id: 2, url_parse: 1 });
+  const total = Object.values(r.assets_by_leg).reduce((a, b) => a + b, 0);
+  assert.strictEqual(total, r.assets_destroyed,
+    'the per-leg tally must reconcile with the headline count — an unreconciled tally is decoration');
+});
+await ta('a STORED-ID-only row reports only that leg — the tally is not a constant', async () => {
+  const db = makeDb({ demo_vendors: [vendor({ photos: [PHOTO_STORED] })] });
+  const r = await lc.runPurgeSweep(db, NOW, { destroy: destroyAllOk() });
+  assert.deepStrictEqual(r.assets_by_leg, { stored_id: 1 });
+});
+await ta('a URL-PARSE-only row reports only that leg', async () => {
+  const db = makeDb({ demo_vendors: [vendor({ photos: [PHOTO_PARSE] })] });
+  const r = await lc.runPurgeSweep(db, NOW, { destroy: destroyAllOk() });
+  assert.deepStrictEqual(r.assets_by_leg, { url_parse: 1 });
+});
+await ta('the BLOCKED ledger names each failure\'s leg, and null for an unresolvable asset', async () => {
+  const db = makeDb({ demo_vendors: [vendor({ photos: [PHOTO_STORED, PHOTO_ORPHAN] })] });
+  const r = await lc.runPurgeSweep(db, NOW, { destroy: destroyAllFail('http_401') });
+  const fails = r.detail.blocked[0].failures;
+  assert.strictEqual(fails.find((f) => f.reason === 'http_401').resolved_by, 'stored_id',
+    'a failed destroy must say which leg produced the id it tried');
+  assert.strictEqual(fails.find((f) => f.reason === 'unresolvable_asset').resolved_by, null,
+    'an asset neither leg could name reports null, not a guess');
+});
+await ta('a BLOCKED row still reports which of its assets DID confirm, by leg', async () => {
+  // One stored-id asset confirms, the orphan blocks the row. The partial work is
+  // ledgered so the retry is legible rather than a mystery.
+  const db = makeDb({ demo_vendors: [vendor({ photos: [PHOTO_STORED, PHOTO_ORPHAN] })] });
+  const r = await lc.runPurgeSweep(db, NOW, { destroy: destroyAllOk() });
+  assert.strictEqual(r.blocked, 1);
+  assert.deepStrictEqual(r.detail.blocked[0].confirmed_by_leg, { stored_id: 1 });
+});
 await ta('a row with ZERO photos purges — nothing to destroy is vacuously confirmed', async () => {
   const db = makeDb({ demo_vendors: [vendor({ photos: [] })] });
   const r = await lc.runPurgeSweep(db, NOW, { destroy: destroyAllOk() });
@@ -687,6 +728,18 @@ await ta('M-9 · dropping the status check reddens the 401 cell', async () => {
       const r = await mcloud.destroyVerified('a/b');
       restoreFetch();
       assert.strictEqual(r.ok, false);
+    });
+});
+
+await ta('M-10 · a leg tally that ignores the resolver reddens the witness cells', async () => {
+  await mutate(LC_PATH,
+    "if (d && d.ok) { confirmed++; byLeg[a.resolved_by] = (byLeg[a.resolved_by] || 0) + 1; }",
+    "if (d && d.ok) { confirmed++; byLeg.stored_id = (byLeg.stored_id || 0) + 1; }",
+    'M-10',
+    async (mlc) => {
+      const db = makeDb({ demo_vendors: [vendor({ photos: [PHOTO_PARSE] })] });
+      const r = await mlc.runPurgeSweep(db, NOW, { destroy: destroyAllOk() });
+      assert.deepStrictEqual(r.assets_by_leg, { url_parse: 1 });
     });
 });
 
