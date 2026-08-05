@@ -246,23 +246,96 @@ async function buildProspectContext(supabase, prospect, opts) {
       lines.push('The page is honestly labelled a demonstration. So are you.');
     }
 
-    // ── THE CLOCK: CONDITIONED OR SILENT (CE-ruled) ─────────────────────────
-    // A deadline with no mechanism behind it is F-06.85's class, so the clock
-    // enters context ONLY when this row is genuinely in the sweep's population.
+    // ── THE CLOCK: CONDITIONED OR SILENT ────────────────────────────────────
+    // CE-ruled at P5; EXTENDED TDW_08 P6 RIDER (F-08.94, F-08.99, CE R-C2→R-C6).
+    // A deadline with no mechanism behind it is F-06.85's class, so a clock
+    // enters context ONLY when this row is genuinely in the population of the
+    // job that would fire it.
     //
-    // MECHANISM NAMED: `runSunsetSweep` in `src/lib/demoLifecycle.js` updates
-    // only rows matching `state IN SUNSET_STATES` AND `claimed_at IS NULL` AND
+    // ⚠ TWO MECHANISMS NOW CONDITION THIS BLOCK, AND EITHER ONE MOVING MAKES IT
+    // WRONG. Whichever sitting touches one is forced back here by this comment.
+    //
+    // MECHANISM 1 — `runSunsetSweep` (src/lib/demoLifecycle.js) updates only
+    // rows matching `state IN SUNSET_STATES` AND `claimed_at IS NULL` AND
     // `discover_eligible = true`, against `COALESCE(invited_at, created_at) <
     // now - N days`, N from `readSunsetDays` (admin_config `demo.sunset_days`,
-    // default 90). `sunset_at` is NOT the deadline — it is the HISTORY stamp
-    // that sweep writes when it fires, and a row carrying it has already left
-    // Discover. If that predicate changes, this block is wrong and must be
-    // re-read with it.
+    // default 90). That is the ROTATION clock, and it is the only clock this
+    // block carried before P6.
+    //
+    // MECHANISM 2 — `runPurgeSweep`'s SUNSET LEG (same file). It destroys the
+    // row's Cloudinary assets and deletes the row when `state <> 'removed'` AND
+    // `claimed_at IS NULL` AND `discover_eligible = false` AND `sunset_at IS NOT
+    // NULL` AND `sunset_at <= now - W days`, W from `readPurgeDays`
+    // (admin_config `demo.purge_resurrect_days`, default 7, ZERO = the whole
+    // purge disabled). That is the DESTRUCTION clock.
+    //
+    // ⚠ THE SENTENCE THIS COMMENT USED TO CARRY IS NOW HALF FALSE, AND IT IS
+    // CORRECTED HERE RATHER THAN DELETED, because the correction is the lesson.
+    // It read: "`sunset_at` is NOT the deadline — it is the HISTORY stamp that
+    // sweep writes when it fires, and a row carrying it has already left
+    // Discover." The second clause is still true. THE FIRST IS NOT: since P6,
+    // `sunset_at` IS a deadline's anchor — the destruction clock starts at that
+    // stamp. F-08.94 was exactly this block staying silent about mechanism 2
+    // while selling on mechanism 1, and F-08.99 is its sharper half: a row that
+    // has ALREADY rotated is INSIDE the destruction window, and this block said
+    // nothing at all at the moment the deadline was closest.
+    //
+    // THE LIMBS CARRY THEIR OWN EXCLUSIONS AND THAT IS LOAD-BEARING, NOT
+    // DECORATIVE. This block sits AFTER the claimed / not-live / live if-else
+    // above closes, so a `claimed` row and an `active = false` row both fall
+    // through into it. Each population below therefore re-states the purge's own
+    // conjunctions; the model speaks only about rows the jobs will actually
+    // take. The conjunction law (F-08.90) applied to speech.
+    //
+    // THE DESTRUCTION FIGURES FLOOR, ALWAYS (R-C3). On a clock that ends in
+    // permanent deletion the conservative direction is understating time, never
+    // overstating it: a vendor told one day fewer than truth loses nothing; told
+    // one day more, he loses the photographs.
+    //
+    // TWO EXACT FIGURES, NEVER A COMBINED TOTAL (R-C3). Both sweeps run nightly,
+    // so a row crossing its horizon at 09:00 is not stamped until the next
+    // 03:45 — any *sum* of the two clocks carries up to a day of slack. Each
+    // figure alone is exact. The model is handed finished numbers and invited to
+    // do no arithmetic.
+    //
+    // THE ADMIN REPRIEVE IS DELIBERATELY ABSENT (R-C4). An admin re-grant
+    // through `setDiscoverEligible` does lift a row out of mechanism 2, and the
+    // model is NOT told so: it is a third party's act she cannot promise, and it
+    // would hand a saleswoman a softener for the one deadline that must not
+    // soften. Everything she is given remains true; this is a fact that is not
+    // hers to sell with. Documented admin-side in the P6 handover §8. DO NOT ADD
+    // IT HERE.
+    //
+    // NAMED LIMIT, ZERO CODE (R-C5): the TAKEDOWN leg of `runPurgeSweep`
+    // (`state = 'removed'`, anchored on `removed_at`) has NO limb here, and
+    // `removed_at` is deliberately absent from this block's `demo_vendors`
+    // select. A STOPped vendor is `opted_out` and outside the Closer's
+    // population, so the case is unreachable. A live wire ever showing a
+    // `removed` row inside a Closer conversation is its own finding on that day.
     const inSweepPopulation =
       demo.discover_eligible === true &&
       !demo.claimed_at &&
       !demo.sunset_at &&
       demoLifecycle.SUNSET_STATES.includes(demo.state);
+
+    // F-08.99 — the population INSIDE the destruction window. Mirrors
+    // `runPurgeSweep`'s sunset leg conjunction for conjunction. Mutually
+    // exclusive with the above by construction: that one requires `!sunset_at`,
+    // this one requires it present.
+    const inPurgePopulation =
+      !!demo.sunset_at &&
+      demo.discover_eligible === false &&
+      !demo.claimed_at &&
+      demo.state !== 'removed';
+
+    // The dial is read ONCE, and only when a limb could speak. Zero disables the
+    // whole purge, so at zero every destruction sentence below is ABSENT and this
+    // block's output is byte-identical to what it shipped before P6 — a model
+    // handed a destruction claim while the founder's kill switch is on would be
+    // handed a lie.
+    const purgeDays = (inSweepPopulation || inPurgePopulation)
+      ? await demoLifecycle.readPurgeDays(supabase)
+      : 0;
 
     if (inSweepPopulation) {
       const days   = await demoLifecycle.readSunsetDays(supabase);
@@ -270,6 +343,37 @@ async function buildProspectContext(supabase, prospect, opts) {
       const left   = Math.floor((anchor + days * 24 * 3600 * 1000 - Date.now()) / (24 * 3600 * 1000));
       if (Number.isFinite(left) && left > 0) {
         lines.push(`Days left before it rotates out of the marketplace: ${left}. This is a real clock and you may say so.`);
+        // NESTED INSIDE THE ROTATION LINE'S OWN GUARD, DELIBERATELY: "After
+        // that" is anaphoric and refers to the sentence above it. Emitted
+        // without its antecedent it would be a dangling claim.
+        if (purgeDays > 0) {
+          lines.push(`After that it is held ${purgeDays} days and then permanently deleted — the page, the photographs, and the enquiries on it. That deletion cannot be undone.`);
+        }
+      }
+    } else if (inPurgePopulation && purgeDays > 0) {
+      const anchor   = new Date(demo.sunset_at).getTime();
+      const daysLeft = Math.floor((anchor + purgeDays * 24 * 3600 * 1000 - Date.now()) / (24 * 3600 * 1000));
+      // A malformed stamp yields NaN and falls to SILENCE rather than to a
+      // sentence — the same posture as the rotation limb's isFinite guard.
+      if (Number.isFinite(daysLeft)) {
+        if (daysLeft >= 1) {
+          lines.push(`It has already rotated out of the marketplace. In ${daysLeft} days it is permanently deleted — the page, the photographs, and the enquiries on it — and that cannot be undone. This is a real clock and you may say so.`);
+        } else {
+          // THE FINAL DAY. `daysLeft` floors to 0 for a guaranteed 24-hour band
+          // every cycle, so this is not an edge case — it is a form the block
+          // reaches routinely, and "in 0 days" is not a sentence worth handing
+          // anyone. "Within a day" and not "today": the purge runs once a night,
+          // so a row still standing means its window closed AFTER the last run
+          // and it goes at the next one.
+          //
+          // FOUNDER-ACCEPTED IMPRECISION, KNOWINGLY (AD-C4): if a row's purge is
+          // BLOCKED — an asset that will not confirm destroyed — the row survives
+          // past its window and this sentence repeats "within a day" nightly
+          // until the block clears. It overstates URGENCY in that case. It never
+          // overstates TIME REMAINING, which is the direction R-C3 protects, and
+          // teaching the Closer to read the blocked ledger was refused as surface.
+          lines.push('It has already rotated out of the marketplace and its holding period has run out. It is deleted within a day — the page, the photographs, and the enquiries on it — and that cannot be undone. This is a real clock and you may say so.');
+        }
       }
     }
     // else: SILENT. Not "no clock", not "unknown" — absent. A model told a clock

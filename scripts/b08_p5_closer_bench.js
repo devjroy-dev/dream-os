@@ -61,6 +61,26 @@ const MUTATIONS = {
     '    const inSweepPopulation =\n      demo.discover_eligible === true &&',
     '    const inSweepPopulation =\n      true &&')],
   zero_shows:   ['src/agent/closerEngine.js',     s => s.replace('if (count && count > 0) {', 'if (count >= 0) {')],
+  // ── TDW_08 P6 RIDER ARMS (F-08.94 · F-08.99) ─────────────────────────────
+  // Site-qualified anchors, each unique in the file (CE-127).
+  // 1. Speak the destruction sentence while the founder's kill switch is ON.
+  purge_dial_ignored: ['src/agent/closerEngine.js', s => s.replace(
+    '        if (purgeDays > 0) {\n          lines.push(`After that it is held',
+    '        if (true) {\n          lines.push(`After that it is held')],
+  // 2. Let the model's figure diverge from the code's own derivation — the
+  //    off-by-one that hands a vendor a day he does not have.
+  purge_figure_drift: ['src/agent/closerEngine.js', s => s.replace(
+    'const daysLeft = Math.floor((anchor + purgeDays * 24 * 3600 * 1000 - Date.now()) / (24 * 3600 * 1000));',
+    'const daysLeft = Math.ceil((anchor + purgeDays * 24 * 3600 * 1000 - Date.now()) / (24 * 3600 * 1000)) + 1;')],
+  // 3. Drop the already-sunset limb entirely — F-08.99 back open.
+  purge_limb_gone: ['src/agent/closerEngine.js', s => s.replace(
+    '    } else if (inPurgePopulation && purgeDays > 0) {',
+    '    } else if (false) {')],
+  // 4. Drop the swept limb's live-flag conjunction — a re-granted row, told it
+  //    is about to be destroyed. F-08.90's law, broken at the mouth.
+  purge_limb_unconj: ['src/agent/closerEngine.js', s => s.replace(
+    '      !!demo.sunset_at &&\n      demo.discover_eligible === false &&',
+    '      !!demo.sunset_at &&')],
   // RE-ANCHORED (F-08.66): the truncation moved inside a block that also
   // publishes the cut sends. The old anchor no longer exists and a mutation
   // whose anchor has moved exits 2 by design rather than passing quietly.
@@ -470,10 +490,93 @@ function fakeSupabase(db) {
   ok(/Enquiries waiting on that page for them: 2/.test(ctx), 'a non-zero count enters context');
   ok(!/bride_phone|bride_email|bride_name/.test(ctx), 'F-07.41 — demo_leads is COUNTED, never read for content');
 
+  // ── LABELED AMENDMENT ⑪ · TDW_08 P6 RIDER · COUNT PRESERVED, RE-LABELLED ──
+  // F-08.99 / CE R-C2. THE ASSERTION IS UNCHANGED AND STILL PASSES; ITS LABEL WAS
+  // WRONG, AND WRONG IN A WAY THAT HID A DEFECT FOR A SITTING.
+  //
+  // The old label read: "a row already swept has NO days left — sunset_at is the
+  // history stamp, never the deadline". That was RIGHT WHEN WRITTEN and was MADE
+  // A DEFECT BY P6: since the purge shipped, `sunset_at` IS a deadline's anchor.
+  //
+  // ⚠ AND THE CELL NEVER TESTED WHAT ITS LABEL CLAIMED. The fixture carries
+  // `discover_eligible: true` WITH `sunset_at` set — which `runSunsetSweep` can
+  // never produce, since it flips the flag false in the same act that stamps.
+  // That combination is a RE-GRANTED row: an admin put it back. Silence is the
+  // correct answer for it, and stays correct — the row fails the purge's
+  // `discover_eligible = false` conjunction, so nothing will take it (F-08.90's
+  // law). So the cell passes, and passes for a reason its label never stated.
+  // Re-labelled to the case it actually holds; the genuine swept row gets its own
+  // cell directly below, which is the counter-cell R-C2 requires.
   ctx = await closer.buildProspectContext(fakeSupabase({
     demo_vendors: [Object.assign({}, baseDemo, { discover_eligible: true, sunset_at: '2026-08-04T00:00:00Z' })],
   }), prospect);
-  ok(!/Days left/.test(ctx), 'a row already swept has NO days left — sunset_at is the history stamp, never the deadline');
+  ok(!/Days left/.test(ctx), 'a RE-GRANTED row (eligible true WITH a sunset stamp) has no rotation clock — and no destruction clock either, because the purge conjoins the live flag');
+  ok(!/permanently deleted/.test(ctx), 'F-08.90 at the mouth — a re-granted row is not on any destruction path and is never told it is');
+
+  // ═══ 8b · THE DESTRUCTION CLOCK (F-08.94 · F-08.99) ══════════════════════
+  const DAYMS  = 24 * 3600 * 1000;
+  const agoIso = (d) => new Date(Date.now() - d * DAYMS).toISOString();
+  const DIAL_7 = { admin_config: [{ key: 'demo.purge_resurrect_days', value: '7' }] };
+  const DIAL_0 = { admin_config: [{ key: 'demo.purge_resurrect_days', value: '0' }] };
+  // The genuine swept row: the flag false BECAUSE the sweep flipped it.
+  const sweptDemo = (daysAgo) => Object.assign({}, baseDemo, {
+    discover_eligible: false, sunset_at: agoIso(daysAgo),
+  });
+  const rotatingDemo = Object.assign({}, baseDemo, { discover_eligible: true });
+
+  // ── THE COUNTER-CELL (R-C2): the destruction line IS present, so the
+  // amendment above cannot hollow the cure.
+  ctx = await closer.buildProspectContext(fakeSupabase(
+    Object.assign({ demo_vendors: [sweptDemo(1.5)] }, DIAL_7)), prospect);
+  ok(/It has already rotated out of the marketplace\. In 5 days it is permanently deleted — the page, the photographs, and the enquiries on it — and that cannot be undone\. This is a real clock and you may say so\./.test(ctx),
+     'F-08.99 CURED — FORM A verbatim, with the floored figure, for a genuinely swept row');
+  ok(!/Days left/.test(ctx), 'the ROTATION line stays absent — a swept row has already rotated');
+
+  ctx = await closer.buildProspectContext(fakeSupabase(
+    Object.assign({ demo_vendors: [sweptDemo(6.5)] }, DIAL_7)), prospect);
+  ok(/It has already rotated out of the marketplace and its holding period has run out\. It is deleted within a day — the page, the photographs, and the enquiries on it — and that cannot be undone\. This is a real clock and you may say so\./.test(ctx),
+     'FORM B verbatim on the final day — the guaranteed 24h band where the floor yields 0');
+  ok(!/In 0 days/.test(ctx), '"in 0 days" is never a byte this block emits');
+
+  ctx = await closer.buildProspectContext(fakeSupabase(
+    Object.assign({ demo_vendors: [sweptDemo(1.5)] }, DIAL_0)), prospect);
+  ok(!/permanently deleted|holding period/.test(ctx),
+     'THE KILL SWITCH — dial 0 means no destruction sentence exists to hand her; a claim made while the purge is off is a lie');
+
+  // ── THE ROTATION LIMB gains its second line, and ONLY that line ───────────
+  const ctxRotDial7 = await closer.buildProspectContext(fakeSupabase(
+    Object.assign({ demo_vendors: [rotatingDemo] }, DIAL_7)), prospect);
+  const ctxRotDial0 = await closer.buildProspectContext(fakeSupabase(
+    Object.assign({ demo_vendors: [rotatingDemo] }, DIAL_0)), prospect);
+  ok(/Days left before it rotates out of the marketplace: \d+\. This is a real clock and you may say so\./.test(ctxRotDial7),
+     'the rotation line is byte-untouched by this rider');
+  ok(/After that it is held 7 days and then permanently deleted — the page, the photographs, and the enquiries on it\. That deletion cannot be undone\./.test(ctxRotDial7),
+     'F-08.94 CURED — the destruction line verbatim, beneath its own antecedent');
+  // THE BYTE-IDENTITY CELL, the acceptance surface's strongest: at dial 0 this
+  // block's whole output is what production shipped before P6, and the ONLY
+  // delta at dial 7 is the one vetoed sentence.
+  ok(ctxRotDial7 === ctxRotDial0
+      + '\nAfter that it is held 7 days and then permanently deleted — the page, the photographs, and the enquiries on it. That deletion cannot be undone.',
+     'BYTE-IDENTITY — dial 0 is production-before-P6 exactly, and the destruction line is the entire delta');
+
+  // ── EXCLUSIONS: the limbs speak only about rows the purge will take ───────
+  ctx = await closer.buildProspectContext(fakeSupabase(Object.assign({
+    demo_vendors: [Object.assign({}, sweptDemo(9), { claimed_at: '2026-08-01T00:00:00Z' })] }, DIAL_7)), prospect);
+  ok(!/permanently deleted|holding period/.test(ctx),
+     'a CLAIMED row is never purged and is never told it is — the F-08.93 exclusion, at the mouth');
+
+  ctx = await closer.buildProspectContext(fakeSupabase(Object.assign({
+    demo_vendors: [Object.assign({}, sweptDemo(9), { state: 'removed', active: false })] }, DIAL_7)), prospect);
+  ok(!/permanently deleted|holding period/.test(ctx),
+     'a REMOVED row is the takedown leg\'s, not this limb\'s — leg exclusivity at the mouth (R-C5)');
+
+  ctx = await closer.buildProspectContext(fakeSupabase(Object.assign({
+    demo_vendors: [Object.assign({}, sweptDemo(2), { sunset_at: 'not-a-date' })] }, DIAL_7)), prospect);
+  ok(!/permanently deleted|holding period/.test(ctx),
+     'a malformed stamp falls to SILENCE, never to a sentence carrying NaN');
+
+  ok(!/setDiscoverEligible|admin can|put it back|restore/i.test(ctxRotDial7 + ctx),
+     'R-C4 — the admin reprieve is never handed to her: a third party\'s act she cannot promise');
 
   ctx = await closer.buildProspectContext(fakeSupabase({ demo_vendors: [baseDemo] }),
     Object.assign({}, prospect, { notes: 'demo_lead' }));
