@@ -1,0 +1,18 @@
+# TDW_09 · BLUEPRINT · STAGE 5 — THE REMAP — EXECUTOR HANDOVER
+
+**Bases:** dreamos-pwa `e3210b5` · founder dream-os tip `4b1cbff` (per the chair's packet; my docs deltas are disjoint from everything that moved there). **Under:** the stage-5 charter (Part 2) · AD-X1 principles-inline · mock-fidelity law · R-X18/R-X20/R-X22/R-X23/R-X25 integrated as ruled vocabulary and dress.
+**This ZIP: two papers (three chartered papers — Paper A nav; Papers B flow + C grammar sharing one file) + two tappable mocks + this file. Docs-only; W-1 held; every proposed word veto-marked in the mocks.**
+
+## 1 · WHAT SHIPPED
+`docs/specs/TDW_09_S5_NAV_REMAP.md` — **vendor fork**: arm (a) FIVE STABLE DOORS (Home·Calendar·Business·Storefront·More), the mode dissolved by subtraction — the spec's own U-1 five-door ruling cited as precedent — with every current seat accounted kept/moved/removed with its reason and the Portfolio-one-deeper trade stated; arm (b) two wings, its honest case made and declined. **Bride**: FOUR DOORS (Home·Muse·Journey·Circle), sanctuary decomposing along its own slice seams, riding the bride cure phase beside Porcelain + F-09.27 since the same lines move. · `docs/specs/TDW_09_S5_FLOW_AND_GRAMMAR.md` — the five tasks counted before/after from source paths (4 strictly shallower, 1 honest parity with its ruled quality cure named — the charter's bar held, not gamed); every convicted dead-end closed with a drawn edge and the token pages ratified terminal on purpose; goal-gradient placed on onboarding count-down + Journey's honest progress; the eight house rules with named principles and an enforcement shape (which rules are benchable gates vs chair review-gate sentences). · `docs/mocks/tdw09_remap_vendor.html` (tap the pill on the before-frame and watch the bar change membership — the disease demonstrated live; the after-frame's task badges tick lead→reply 1 · date→hold 2 · money 2) · `docs/mocks/tdw09_remap_bride.html` (the after worn in ruled Warm Porcelain with ◐ flipping to Wine — the stage-4 values live; Circle badge holds at 2).
+
+## 2 · DISCLOSURES
+**D-1 ·** Inbound-degree is a static-edge frequency proxy, not usage telemetry — stated in Paper A; with three test accounts there is no telemetry to prefer, and the proxy is the best instrument that exists at this tip. **D-2 ·** Task counts are from-app-open tap counts on the drawn paths; the after-counts are walkable on the mocks themselves — the mock is the proof, not my arithmetic. **D-3 ·** The badge counters count every tap including repeats (a demo behavior, stated). **D-4 ·** The bride decomposition's byte radius is the lane's largest and is deliberately NOT sized here — the founder rules the destination from the render; the chair sequences the surgery with the Porcelain/F-09.27 phase.
+
+## 3 · FLOOR
+Both mocks parse clean, self-contained, zero fetches, zero storage APIs (8.4KB / 6.1KB) · papers docs-only · money register `Rs X,XX,XXX` throughout · no persona names in any chrome byte · gold absent from proposed nav active-states per the spec's own law.
+
+## 4 · GATES + WHAT REMAINS
+**The founder rules the remap from the renders, per app** — vendor arm (a)/(b), bride four-doors — and **only then the cure queue closes the charter** (the Blueprint's final deliverable: every finding F-09.16–.27 + the remap's cures, ranked by user-impact-per-byte, handed to the chair for sequencing into the Opus sitting or this sitting's own cure phases). Standing on this desk's side, already chartered: the R-X8 Notes re-home cure · the waitlist.js retirement (gated on the Opus landing cure deploying) · the R-X25 subsumption statement owed at the bride cure handover.
+
+Sequencing beyond this sitting is the founder's.

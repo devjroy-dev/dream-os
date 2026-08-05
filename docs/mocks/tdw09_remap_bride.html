@@ -1,0 +1,72 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bride remap — the sun becomes a hub</title>
+<!-- TDW_09 stage 5 · mock-fidelity law. Sources: sanctuary/page.tsx (the absorption: ":7 Every slice
+     opens IN THIS PAGE"; degree 7 vs siblings ≤2), lib/frost/tokens.ts (the ruled pair). Paper A §2.
+     Dressed in the PROPOSED Warm Porcelain with Wine one tap away — the stage-4 veto values worn live.
+     ONE QUESTION: does the four-door decomposition keep her one glance from everything the mega-page held,
+     and does check-her-Circle hit 2 taps on this walkthrough?
+     FAILING OBSERVATION: she (the founder walking as her) hunts for anything sanctuary used to hold,
+     or the Circle badge passes 2. Every word rides the veto. -->
+<style>
+:root{--bg:#F6F1EA;--ink:#241712;--soft:rgba(36,23,18,.80);--mute:rgba(36,23,18,.62);--rose:#8E2F44}
+body{background:#0C0A09;color:#eee;font-family:system-ui;margin:0;padding:20px;display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+h1{width:100%;text-align:center;font:italic 300 22px Georgia,serif;margin:0 0 8px;color:#F0E6D2}
+.unit{width:262px}.unit h2{font:200 9px sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#C9A84C;text-align:center;margin:0 0 8px}
+.ph{width:262px;height:500px;border-radius:26px;border:1px solid rgba(255,255,255,.2);overflow:hidden;display:flex;flex-direction:column}
+.light{background:var(--bg);color:var(--ink)}
+.dark{background:#1E0A0E;color:#F5E5DC}
+.body{flex:1;overflow:auto;padding:12px}
+.sec{border-radius:10px;padding:10px 12px;margin-bottom:8px;font:300 10px/1.5 sans-serif}
+.light .sec{background:#fff;border:.5px solid rgba(142,47,68,.2);color:var(--mute)}
+.dark .sec{background:rgba(255,255,255,.05);border:.5px solid rgba(196,133,106,.3);color:rgba(245,229,220,.62)}
+.sec b{font-weight:400;display:block}
+.light .sec b{color:var(--ink)}.dark .sec b{color:#F5E5DC}
+.tapa{cursor:pointer}.light .tapa i{font-style:normal;color:var(--rose)}.dark .tapa i{font-style:normal;color:#C4856A}
+.nav{border-top:.5px solid rgba(0,0,0,.12);display:flex}
+.dark .nav{border-top-color:rgba(255,255,255,.14)}
+.nav i{flex:1;text-align:center;font:200 6.6px sans-serif;letter-spacing:.16em;text-transform:uppercase;padding:10px 0 13px;font-style:normal;cursor:pointer;color:var(--mute)}
+.dark .nav i{color:rgba(245,229,220,.52)}
+.nav i.on{font-weight:500}.light .nav i.on{color:var(--ink)}.dark .nav i.on{color:#F5E5DC}
+.badge{width:100%;text-align:center;font:300 9px sans-serif;color:#E0BC6E;margin-bottom:6px}
+.moon{position:absolute;margin:8px;font-size:11px;cursor:pointer;opacity:.6}
+.cap{font:300 10px/1.55 sans-serif;color:rgba(240,230,210,.6);margin-top:6px;min-height:40px}
+.name{font:italic 300 19px Georgia,serif;margin:2px 0 8px}
+.prog{font:300 8.5px sans-serif;letter-spacing:.08em}
+.light .prog{color:var(--rose)}.dark .prog{color:#C4856A}
+</style>
+<h1>Bride remap — walk her home</h1>
+
+<div class="unit"><h2>Before — the mega-page</h2>
+<div class="ph dark"><div class="body">
+<div class="name">Meera &amp; Arjun</div>
+<div class="sec"><b>Feed · slices · journey · circle · everything</b>sanctuary/page.tsx — 3,900 lines, ":7 Every slice opens IN THIS PAGE. No router.push." Circle is: scroll → journey area → circle → member (3 taps, one room).</div>
+<div class="sec"><b>Siblings</b>canvas/discover — "dead" in source · dream, journey shells orphaned.</div>
+</div><div class="nav"><i class="on">Sanctuary</i></div></div>
+<div class="cap">One sun (inbound degree 7), dead hallways. Wine dress shown — her current dark.</div></div>
+
+<div class="unit"><h2>After — four doors · ruled pair worn</h2>
+<div class="badge">check-her-Circle: <b id="c">0</b>/2 taps</div>
+<div class="ph light" id="P"><span class="moon" onclick="flip()" title="theme">◐</span><div class="body" id="Ab"></div><div class="nav" id="An"></div></div>
+<div class="cap" id="Ac"></div></div>
+
+<script>
+let scr='home',dark=false,c=0;
+const CAP={home:'Home: the feed-and-slices heart, shed of its absorbed limbs. Warm Porcelain by default — tap ◐ for Wine.',
+ muse:'Muse: the R-X18 grid — one ratio, no reflow.',
+ journey:'Journey: the four orphan leaves re-parented, real progress on top (goal-gradient, honest — it moves only on filed truth).',
+ circle:'Circle: her people, first-class. Tap Meera\'s mother.',member:'A member page — reached in 2. Badge holds.'};
+function flip(){dark=!dark;render()}
+function tick(){c++;document.getElementById('c').textContent=c}
+function go(s,t){if(t)tick();scr=s;render()}
+function render(){const P=document.getElementById('P');P.className='ph '+(dark?'dark':'light');
+ const b=document.getElementById('Ab');
+ if(scr==='home')b.innerHTML=`<div class="name">Meera &amp; Arjun</div><div class="sec"><b>Today</b>Trial with Swati confirmed · 2 looks saved</div><div class="sec"><b>Binders</b>3 open — makeup · venue · lehenga</div>`;
+ if(scr==='muse')b.innerHTML=`<div class="sec"><b>Muse</b>Saved looks — the ruled grid, 3/4 boxes, skeletons till load.</div>`;
+ if(scr==='journey')b.innerHTML=`<div class="prog">JOURNEY — 12 of 34 things done · counted down</div><div class="sec"><b>Events</b></div><div class="sec"><b>Moments</b></div><div class="sec"><b>Reminders</b></div><div class="sec"><b>Expenses</b></div>`;
+ if(scr==='circle')b.innerHTML=`<div class="sec tapa" onclick="go('member',1)"><b>Meera's mother</b>2 notes · sangeet duties · <i>open →</i></div><div class="sec"><b>Arjun's sister</b>1 note</div>`;
+ if(scr==='member')b.innerHTML=`<div class="sec"><b>Meera's mother</b>Her page — notes, duties, the thread. <i style="color:${dark?'#C4856A':'#8E2F44'}">2 taps. Done.</i></div>`;
+ document.getElementById('Ac').textContent=CAP[scr]||'';
+ document.getElementById('An').innerHTML=[['home','Home'],['muse','Muse'],['journey','Journey'],['circle','Circle']]
+  .map(([k,l])=>`<i class="${(scr===k||(scr==='member'&&k==='circle'))?'on':''}" onclick="go('${k}','${k==='circle'?1:''}')">${l}</i>`).join('');}
+render();
+</script>

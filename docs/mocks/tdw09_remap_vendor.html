@@ -1,0 +1,89 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vendor nav remap — before / after, tappable</title>
+<!-- TDW_09 stage 5 · mock-fidelity law. Sources: components/vendor/BottomNav.tsx (two memberships),
+     Header.tsx:77 (studio-mode → calendar), the ruled R-X22 hybrid + R-X23 home; Paper A arm (a).
+     ONE QUESTION: five stable doors — does every daily destination stay one glance findable, and do the
+     three vendor tasks hit Paper B's after-counts on this very walkthrough?
+     FAILING OBSERVATION: the founder hunts for Portfolio/Leads, or any task needs more taps than its badge.
+     Tap the nav tabs and the waiting lines. Tap-count badges tick as you walk a task. Veto words orange. -->
+<style>
+:root{--ink:#F0E6D2;--soft:rgba(240,230,210,.62);--mute:rgba(240,230,210,.42);--brass:#C9A84C;--warm:#E0BC6E;--bg:#14100D;--line:rgba(201,168,76,.28)}
+body{background:#0C0A09;color:var(--ink);font-family:system-ui;margin:0;padding:20px;display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+h1{width:100%;text-align:center;font:italic 300 22px Georgia,serif;margin:0 0 2px}
+p.note{width:100%;text-align:center;color:var(--soft);font-size:11px;margin:0 0 8px}
+.unit{width:262px}.unit h2{font:200 9px sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--brass);text-align:center;margin:0 0 8px}
+.ph{width:262px;height:500px;background:var(--bg);border:1px solid rgba(255,255,255,.22);border-radius:26px;display:flex;flex-direction:column;overflow:hidden}
+.body{flex:1;overflow:auto;padding:10px 12px}
+.sec{border:.5px solid rgba(255,255,255,.13);border-radius:9px;padding:9px 11px;margin-bottom:8px;font:300 10px/1.5 sans-serif;color:var(--soft)}
+.sec b{color:var(--ink);font-weight:400}
+.wait{border-color:rgba(224,123,92,.45);cursor:pointer}
+.wait i{font-style:normal;color:var(--warm)}
+.ledg{display:flex;border-top:.5px solid var(--line);border-bottom:.5px solid var(--line);padding:10px 0;margin-bottom:8px;text-align:center;position:relative}
+.ledg::before{content:'◆';position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:var(--bg);padding:0 10px;color:var(--brass);font-size:7px}
+.ledg div{flex:1;font:300 8px sans-serif;color:var(--mute)}
+.ledg div em{display:block;font:200 17px sans-serif;font-style:normal;color:var(--ink)}
+.ledg div.tap{cursor:pointer}.ledg div.tap em{color:var(--warm)}
+.pillrow{display:flex;background:rgba(255,255,255,.05);border:.5px solid var(--line);border-radius:999px;padding:2px;width:max-content;margin:0 auto 8px}
+.pillrow i{font:300 7px sans-serif;letter-spacing:.16em;text-transform:uppercase;font-style:normal;padding:4px 9px;border-radius:999px;color:var(--mute);cursor:pointer}
+.pillrow i.on{background:rgba(201,168,76,.18);color:var(--warm)}
+.nav{border-top:.5px solid rgba(255,255,255,.14);display:flex}
+.nav i{flex:1;text-align:center;font:200 6.4px sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:10px 0 13px;font-style:normal;cursor:pointer}
+.nav i.on{color:var(--ink);font-weight:400}
+.badges{display:flex;gap:6px;justify-content:center;margin:8px 0}
+.badges b{font:300 8px sans-serif;border:.5px solid var(--line);border-radius:999px;padding:4px 8px;color:var(--soft)}
+.badges b em{font-style:normal;color:var(--warm)}
+.veto{color:#E07B5C}
+.cap{font:300 10px/1.55 sans-serif;color:var(--soft);margin-top:6px;min-height:44px}
+</style>
+<h1>Vendor remap — walk it</h1>
+<p class="note">Left: today's two-membership bar (flip the pill, watch the tabs change). Right: arm (a), five stable doors. Badges count your taps on the three tasks.</p>
+
+<div class="unit"><h2>Before — one bar, two memberships</h2>
+<div class="ph" id="B"><div class="body" id="Bb"></div><div class="nav" id="Bn"></div></div>
+<div class="cap" id="Bc"></div></div>
+
+<div class="unit"><h2>After — five doors, mode dissolved</h2>
+<div class="badges"><b>lead→reply <em id="t1">0</em>/1</b><b>date→hold <em id="t2">0</em>/2</b><b>money <em id="t3">0</em>/2</b></div>
+<div class="ph" id="A"><div class="body" id="Ab"></div><div class="nav" id="An"></div></div>
+<div class="cap" id="Ac"></div></div>
+
+<script>
+// BEFORE
+let bmode='studio';
+function bnav(){const items=bmode==='studio'?['Calendar','Business','More']:['Portfolio','Leads','Collab'];
+ document.getElementById('Bn').innerHTML=items.map(x=>`<i>${x}</i>`).join('');}
+function brender(){document.getElementById('Bb').innerHTML=
+ `<div class="pillrow"><i class="${bmode==='studio'?'on':''}" onclick="bmode='studio';brender()">✦ Studio</i><i class="${bmode==='discover'?'on':''}" onclick="bmode='discover';brender()">Discover</i></div>
+  <div class="ledg"><div><em>2</em>Letters</div><div><em style="font-size:12px">Rs 45,000</em>Owed</div><div><em style="font-size:11px">Sat 14 Dec</em>Next</div></div>
+  <div class="sec"><b>Chat</b> — thread here. To reply to a lead: flip the pill → Leads → the lead → reply (4 taps).</div>`;
+ bnav();document.getElementById('Bc').textContent=bmode==='studio'
+  ?'Studio membership: Calendar · Business · More. Leads is not here — it lives in the other membership.'
+  :'Discover membership: Portfolio · Leads · Collab. Calendar just vanished from the bar. A nav you cannot learn.';}
+brender();
+
+// AFTER
+const T={t1:0,t2:0,t3:0},CAP={home:'Home: the R-X23 rest state. The waiting line IS the lead task — one tap.',
+ cal:'Calendar door — stable seat 2.',biz:'Business: the five slices, one door.',
+ store:'Storefront: Portfolio · Discover status · Leads · Collab — everything couples see, behind the word that says so.',
+ more:'More: Settings · TDS · Contracts · Couture · Featured · Team Hub · Notes (R-X8\'s ruled seat).'};
+let ascreen='home';
+function tick(k,cap){T[k]++;document.getElementById(k).textContent=T[k];if(cap)aset('done',cap)}
+function aset(s,capOverride){ascreen=s;const b=document.getElementById('Ab');
+ if(s==='home')b.innerHTML=`<div class="ledg"><div><em>2</em>Letters</div><div class="tap" onclick="tick('t3');aset('bindersDue')"><em style="font-size:12px">Rs 45,000</em>Owed · tap</div><div><em style="font-size:11px">Sat 14 Dec</em>Next</div></div>
+  <div class="sec wait" onclick="tick('t1');aset('reply')"><b style="color:#E07B5C">Waiting</b> — Ananya's enquiry · 6h · <i>Reply →</i></div>
+  <div class="sec wait" onclick="tick('t2');aset('week')"><b>This week</b> — Sat 14 · Sun 15 free · Thu 19 · <i>tap a day</i></div>
+  <div class="sec"><b>⌃ Your books</b> · <span class="veto">Ask anything…</span> (R-X22 hybrid beneath)</div>`;
+ if(s==='reply')b.innerHTML=`<div class="sec"><b>Reply to Ananya</b> — composer open. <i style="color:var(--warm)">Task done in 1.</i></div>`;
+ if(s==='week')b.innerHTML=`<div class="sec"><b>Sat 14 Dec</b> — free morning · <i class="veto" style="color:var(--warm)" onclick="tick('t2');aset('held')">Hold it →</i></div>`;
+ if(s==='held')b.innerHTML=`<div class="sec"><b>Held.</b> Sat 14 Dec is yours. <i style="color:var(--warm)">Task done in 2.</i></div>`;
+ if(s==='bindersDue')b.innerHTML=`<div class="sec"><b>Open binders</b> — filtered to owed</div><div class="sec" onclick="tick('t3');aset('binder')" style="cursor:pointer"><b>Ananya S</b> — Rs 45,000 due · <i style="color:var(--warm)">open →</i></div>`;
+ if(s==='binder')b.innerHTML=`<div class="sec"><b>Ananya S · binder</b> — Rs 45,000 due, invoice open. <i style="color:var(--warm)">Task done in 2.</i></div>`;
+ if(s==='store')b.innerHTML=['Portfolio','Discover status','Leads','Collab'].map(x=>`<div class="sec"><b>${x}</b></div>`).join('');
+ if(s==='biz')b.innerHTML=['Leads','Clients','Invoices','Expenses','Events'].map(x=>`<div class="sec"><b>${x}</b></div>`).join('');
+ if(s==='cal')b.innerHTML=`<div class="sec"><b>Calendar</b> — the month, holds in brass.</div>`;
+ if(s==='more')b.innerHTML=['Settings','TDS','Contracts','Couture','Featured','Team Hub','Notes'].map(x=>`<div class="sec"><b>${x}</b>${x==='Notes'?' — <span class="veto">R-X8 re-home</span>':''}</div>`).join('');
+ document.getElementById('Ac').textContent=capOverride||CAP[s]||'';
+ document.getElementById('An').innerHTML=[['home','Home'],['cal','Calendar'],['biz','Business'],['store','Storefront'],['more','More']]
+  .map(([k,l])=>`<i class="${ascreen===k?'on':''}" onclick="aset('${k}')">${l}</i>`).join('');}
+aset('home');
+</script>
