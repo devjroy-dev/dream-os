@@ -48,3 +48,7 @@
 
 ## FINDINGS MINTED IN STAGE 3
 **F-09.24** — `fmtINR` (₹) reaches vendors through the Hub's Your-Books sheet (`Cabinet.tsx:63`/`:65`, home `lib/vendor/cabinet.ts`) — the thirteenth money home, missed by F-09.6's census, vendor-facing. **F-09.25** — the Cabinet skin persists via `localStorage` (`:277`/`:303`) against the house guardrail that `VictorModeChip.tsx:7` obeys by name. **Next free: F-09.26.**
+
+---
+## PAPER 4 AMENDMENT — R-X24, THE SMOKE'S MEASURED FIGURES ARE THE ACCEPTANCE NUMBERS
+The founder's two photos, chair-measured: specimen ① (`Open IG →`) **~5–6 CSS px above** the typed baseline · specimen ② (`+91`) **~1 px above**. Direction confirmed on both; **the model undershot ①** (computed ~2.0px) — the unmodeled remainder sits in the UA's internal single-line-input centring and the anchor's own line-box, candidates named, not asserted. The witness outranks the model: **5–6px and 1px are the acceptance numbers**; the cure (the canon Row primitive — baseline rows, shared line-height, fixed glyph slots) is magnitude-independent by construction, and acceptance is the same two rows re-shot after deploy with the small text **ON** the line. Gate open per R-X24: the primitive enters the token canon; landing-class sites ride the Opus single landing cure; mirror sites take the primitive per F-3(b).
