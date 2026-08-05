@@ -3971,3 +3971,13 @@ Collision 2 is the law's first test case and it argues for one hardening the cha
 wish to consider: **an executor holding an open range must not allocate from beyond it
 even when a ruling appears to grant "next free"** — the range is the authority, not the
 sentence.
+
+## CE-192 — THE P6 ARC BAND + LEDGER RECONCILIATION (twenty-second chair; entered via TDW_09 Sitting 1 ZIP 1, 2026-08-05)
+
+THE ARC, INDEXED BY POINTER: the deletion queue at 9a1cbcb · the F-08.94/F-08.99 rider at 4b81eb6 · the leg-witness residual at b0d7822. Findings F-08.90–.94: docs/TDW_08_P6_HANDOVER.md §3 (its "next free F-08.95" closing line SUPERSEDED by the MINT COLLISION NOTICE above). F-08.99 minted+cured: docs/TDW_08_P6_RIDER_HANDOVER.md. F-08.95–.98: the collision notice + the P5 rider handover. This band exists because the P6 sitting's findings lived in handover docs alone and a session deriving high-water from this log missed a minted number — the ledger's fragmentation caught by its own reader (TDW_09 Sitting 1, B1/B2).
+
+F-08.100 — THE PASTE-DOOR GATE (chair-minted at the P6 close; entered here; homed to TDW_09 Sitting 1): _photoGate (src/api/admin/demoAdmin.js, symbol _photoGate, both create paths) validates count only; five unpurgeable photos entered production through it (specimen: the makeupbyswatiroy row, assets founder-deleted 2026-08-05; the estate-wide version-less-URL SELECT returned zero rows after). Cure shape F-08.44's: reject at the door with a named reason when publicIdFromUrl (src/lib/admin/cloudinary.js) cannot resolve a public id — an undeletable asset never enters again; the parser stays frozen. No current instance; recurrence guard.
+
+SPEC AMENDMENT, RULED (R-U4): docs/specs/TDW_09_UIUX_FINAL.md P6 and acceptance item 7 are amended — the standing money-register law governs every rendered byte: Rs X,XX,XXX, the ₹ glyph and L/k/Cr shorthand struck. The spec predates the law; the law wins.
+
+CHAIR CORRECTIONS №5–№6 OWNED: the TDW_09 kickoff misquoted the SQL-provenance law ("settling" for "starting" witness); F-08.100 was minted in chat and left uncommitted while its arc closed. Both cured at this band.
