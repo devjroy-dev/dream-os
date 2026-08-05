@@ -44,6 +44,14 @@ const LANE_FLAGS = {
   // TDW_08 P5 Phase 4 — ELIZA, the couple concierge on a vendor's line.
   // OFF at 0112. The flip is the founder's hand and the arc's last act.
   'couple.eliza_enabled': false,
+
+  // TDW_08 P5 RIDER — the out-of-window enquiry-alert fallback (F-08.85, CE R-R6).
+  // OFF at birth. Push is not speak: the door catches 131047 and ledgers the miss
+  // from the moment it ships, but it sends NO template until the founder flips this
+  // after his walk. The dial that picks WHICH template is
+  // `vendor.enquiry_alert_oow_template` (enquiryAlert.js) — a dial is not a gate,
+  // and the gate is here.
+  'vendor.enquiry_alert_oow_enabled': false,
 };
 
 function _resetLaneFlagCache() { cache.clear(); }

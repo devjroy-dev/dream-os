@@ -155,6 +155,28 @@ await t('§1.7 THE NAMING ACT ARRIVED — and the name has ONE HOME (amended, TD
 // ════════════════════════════════════════════════════════════════════════════
 H('§2 — THE MONEY REGISTER: 「 forbids both 」 — no glyph, no ungrouped/k form');
 
+// ── F-08.88's CURE (TDW_08 P5 rider, CE R-R? / D2) ──────────────────────────
+// THIS BENCH READ 29/4 ON A COLD CLONE AND 33/0 ON EVERY RE-RUN. It was filed as a
+// possible mutation-restore race (the `writeFileSync` at :405). That framing was
+// WRONG and is corrected here: the four §2 cells below `require` the COMPILED
+// engine at `src/engine/dist/...`, which does not exist on a fresh clone. The first
+// run rebuilt it (the `rebuild: true` arm shells `npx tsc`) and reddened while it
+// did; every later run found dist present and greened. An order dependency with a
+// stated cause — A COLD TREE — not a race. The `writeFileSync` is innocent.
+//
+// The cure is not a new mechanism: `scripts/lib/dist_gate.js` has existed since
+// Block 06 and NINE benches already use it. This one never joined. It also catches
+// the STALE case (dist compiled before its source moved), which this bench was
+// equally blind to.
+const { distGate } = require(path.join(__dirname, 'lib', 'dist_gate'));
+const gate = distGate({
+  sentinel: 'function rs',
+  srcPath:  P('src/engine/src/core/tools/recordPrimitives.ts'),
+  distPath: P(PRIM_DIST),
+  benchCmd: 'scripts/b06_m4_bench.js',
+});
+
+if (gate.runDist) {
 await t('§2.1 THE TWO HOMES AGREE — the CJS wire and the TS engine converge on ONE output form', () => {
   // Correction №A: the estate owns TWO Indian-grouping homes on two runtimes. The ruling
   // is per-runtime with no cross-reach invented, so the ONLY thing that makes that safe is
@@ -193,6 +215,10 @@ await t('§2.4 THE DONOR POOL IS DRAINED — the payload the model READS carries
   assert.ok(/Rs 5,00,000/.test(text), `the record line still hands the model an ungrouped figure: ${text}`);
   assert.ok(!/Rs 500000\b/.test(text), `the raw digit string survived: ${text}`);
 });
+} else {
+  console.log('  … §2.1/§2.2/§2.3/§2.4 SKIPPED, stated (see the gate above).');
+  console.log('    They drive the COMPILED engine; the source-side register laws below still run.');
+}
 
 
 // ── LABELED AMENDMENT · THE CE-77 REVERT (CE-ruled 2026-07-25) ──────────────────
@@ -377,10 +403,13 @@ const MUTATIONS = [
   { label: '§1.5 RED — HARD RULE 11 is deleted: an answer-first opener can lose the lead and the vendor is never told',
     file: COUPLE, from: 'STILL call capture_couple_lead with whatever you have so far', to: 'stop and wait',
     check: () => assert.ok(!/STILL call capture_couple_lead with whatever you have so far/.test(firstContact())) },
-  { label: '§2.2 RED — the grouped door returns the raw digits: the model reads an off-register figure off its own hand',
+  // F-08.88: this arm SHELLS `npx tsc` to rebuild dist. On a cold clone that build is
+  // the very thing that made run one red. The arm is gated on the same condition as the
+  // cells it proves — an arm whose cell did not run proves nothing about that cell.
+  ...(gate.runDist ? [{ label: '§2.2 RED — the grouped door returns the raw digits: the model reads an off-register figure off its own hand',
     file: 'src/engine/src/core/tools/recordPrimitives.ts', from: '  return `Rs ${inr(v)}`;', to: '  return `Rs ${v}`;',
     rebuild: true,
-    check: () => { const { rs } = require(P(PRIM_DIST)); assert.strictEqual(rs(500000), 'Rs 500000'); } },
+    check: () => { const { rs } = require(P(PRIM_DIST)); assert.strictEqual(rs(500000), 'Rs 500000'); } }] : []),
   { label: '§3.1 RED — the persona arms lose the case flag: every lowercase send walks straight through',
     file: SCRUB, from: ".replace(/\\bDonna\\b/gi, 'Operator')", to: ".replace(/\\bDonna\\b/g, 'Operator')",
     check: () => { const { scrubText } = fresh(SCRUB); assert.ok(/donna/i.test(scrubText('I had donna pull the file.'))); } },

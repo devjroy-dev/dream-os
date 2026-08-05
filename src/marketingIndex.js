@@ -101,9 +101,17 @@ async function processMarketingChange(subBody) {
   }
 }
 
-// TDW_05 F-05.19 rider (CE-54): the count alone ("errors=1") named nothing — a 131049
+// TDW_05 F-05.19 rider (CE-54): the count alone ("errors=1") named nothing — a 131047
 // (re-engagement window closed) read identically to any other failure, so the log could not
-// tell a template problem from a window problem. extractStatuses already hands over the raw
+// tell a template problem from a window problem.
+//
+// ⚠ F-08.93 (TDW_08 P5 rider, CE R-R2): this comment SAID 131049 until 2026-08-05. It was
+// wrong, and wrong exactly where the next person reaches. 131047 is the re-engagement /
+// 24-hour-window code; 131049 is "Meta chose not to deliver" (per-user messaging limits),
+// whose documented remedy is to BACK OFF, not to send a template. The printing code below
+// was always correct — it prints whatever code arrives — so no behaviour changed here. The
+// fact did. Cured while the true fact was in hand: F-08.85's cure
+// (src/lib/vendor/enquiryAlert.js) turns on this same number. extractStatuses already hands over the raw
 // errors[] (metaInbound.js), so this is a PRINT-SITE cure: ZERO extractor lines.
 //
 // Lifted to a named pure function for ONE reason, disclosed: a formatter that lives inline

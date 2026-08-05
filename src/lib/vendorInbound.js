@@ -114,6 +114,20 @@ function stripRoutingToken(rawBody) {
 // surface, ctx }. The SPLITTER'S LOGIC BELOW IS BYTE-UNCHANGED; the witness only reads
 // the whole-in/whole-out pair and files a row when the firewall actually caught
 // something. Omit it and this function behaves exactly as M-3 shipped it.
+// ── TDW_08 P5 RIDER (F-08.85, CE R-R3) — THE ONE DOOR ────────────────────────
+// The three enquiry-alert relays below (:591 disambiguated, :700 sticky, :989
+// returning) call `sendVendorEnquiryAlert` and NOTHING ELSE calls it. Direct
+// `sendWhatsApp` for a vendor notification is the defect this rider cured: it
+// threw on a shut 24h window, reached the function-level dead-letter, and cost
+// the BRIDE the rest of her turn. The bench asserts the sole-caller property.
+const { sendVendorEnquiryAlert } = require('./vendor/enquiryAlert');
+
+// FOUNDER-WITNESSED, 2026-08-05: this is the exact link the founder submitted as
+// {{3}}'s review sample on the approved template, read off his own screenshot.
+// Named as a const beside the door's callers for the same reason `CLAIM_BASE`
+// (demoLeadAlert.js:55) is — a URL pasted at three call sites drifts at two.
+const VENDOR_LEADS_LINK = 'https://thedreamwedding.in/vendor/leads';
+
 function scrubModelFrame(text, verbatim, witness = null) {
   if (text == null) return text;
   const s = String(text);
@@ -588,7 +602,12 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             if (result.vendorNotification && vendorUser?.phone) {
               // M-3 R3: the model's frame scrubs, her quoted sentence passes byte-exact.
               // This turn was handed `originalMessage` (:557) — the quote is that value.
-              await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, originalMessage, { supabase, vendorId: interp.matched_vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(disambiguated)' }));
+              await sendVendorEnquiryAlert({
+                toPhone: vendorUser.phone,
+                text: scrubModelFrame(result.vendorNotification, originalMessage, { supabase, vendorId: interp.matched_vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(disambiguated)' }),
+                vendorName: vendorUser.name, brideName: result.leadName, link: VENDOR_LEADS_LINK,
+                supabase, vendorId: interp.matched_vendor_id, ctx: 'vendorInbound:notification(disambiguated)',
+              });
             }
 
             await supabase.from('conversations')
@@ -697,7 +716,12 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
 
           if (result.vendorNotification && vendorUser?.phone) {
             // M-3 R3: frame scrubs, quote passes. This turn was handed `body` (:665).
-            await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: stickyThread.vendors?.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(sticky)' }));
+            await sendVendorEnquiryAlert({
+              toPhone: vendorUser.phone,
+              text: scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: stickyThread.vendors?.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(sticky)' }),
+              vendorName: vendorUser.name, brideName: result.leadName, link: VENDOR_LEADS_LINK,
+              supabase, vendorId: stickyThread.vendors?.id, ctx: 'vendorInbound:notification(sticky)',
+            });
           }
 
           // Refresh sticky window — each interaction extends stickiness
@@ -986,7 +1010,12 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           // null, whereas `fullVendor` can (the code already guards it at :946
           // with `fullVendor?.user_id`). Deviation from the ruling's wording named:
           // "the branch's own fetched vendor" and this value are the same id.
-          await sendWhatsApp(vendorUser.phone, scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: existingThread.vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)' }));
+          await sendVendorEnquiryAlert({
+            toPhone: vendorUser.phone,
+            text: scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: existingThread.vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)' }),
+            vendorName: vendorUser.name, brideName: result.leadName, link: VENDOR_LEADS_LINK,
+            supabase, vendorId: existingThread.vendor_id, ctx: 'vendorInbound:notification(returning)',
+          });
         }
 
         await supabase.from('conversations')
