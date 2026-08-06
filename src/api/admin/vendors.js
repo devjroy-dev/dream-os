@@ -8,6 +8,27 @@ const requireAdmin = require('./requireAdmin');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { writeAudit } = require('../../lib/admin/auditLog');
+// ── F-10.50 CURED · THE MINT DID NOT NORMALISE THE PHONE ────────────────────
+// `src/lib/phone.js` is THE ONE HOME for phone normalisation (hoisted at
+// F-04.109 precisely because three divergent copies were splitting one person
+// into two rows). It had three callers. The mint I shipped at 800d7a1 was not
+// one of them — it stored `String(phone).trim()` verbatim, and I never looked
+// for the normaliser. Caught on the founder's own walk.
+//
+// WHAT IT COST, derived rather than feared:
+//   · bare digits landed in users.phone as `9431101193` while every other row
+//     is `+91…`;
+//   · vendor login enforces /^\+[0-9]{8,15}$/ and matches on exact equality
+//     (src/api/vendor/auth.js, symbol sendOtp) — that row is UNREACHABLE;
+//   · worse, send-otp self-mints on a phone it does not find, so his first
+//     sign-in would create a SECOND users row for the same person. That is
+//     exactly the divergence phone.js's own header exists to prevent;
+//   · and it partly defeated F-10.47: the collision check is
+//     `.eq('phone', cleanPhone)`, so minting bare digits against a stored `+91`
+//     row read as VIRGIN, called the RPC, and reached the clobber clause the
+//     cure was built to make unreachable.
+// The cure is one call, before the lookup and before the RPC, on both species.
+const { toE164 } = require('../../lib/phone');
 
 const VALID_TIERS = ['trial', 'essential', 'signature', 'prestige'];
 
@@ -96,7 +117,10 @@ async function mintVendor(req, res) {
   const { business_name, phone, category, city, tier } = req.body || {};
 
   if (!phone || !String(phone).trim()) return errRes(res, 400, 'phone is required.');
-  const cleanPhone = String(phone).trim();
+  // NORMALISED FIRST — before the existence lookup, so the collision check in
+  // (1) compares like with like, and before the RPC, so its ON CONFLICT clause
+  // keys on the same string every other door in the estate uses.
+  const cleanPhone = toE164(String(phone).trim());
   const cleanName  = business_name ? String(business_name).trim() : '';
 
   // (1) Who is already here? This read is what makes the collision legible.

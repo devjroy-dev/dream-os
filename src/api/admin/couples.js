@@ -9,6 +9,10 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { ensureCoupleRow, captureField } = require('../../lib/coupleIdentity');
 const { writeAudit } = require('../../lib/admin/auditLog');
+// F-10.50 — the same miss on the couple side. `ensureCoupleRow` keys on the
+// phone it is handed and does not normalise either, so an un-normalised admin
+// mint would split a bride the same way it split a vendor.
+const { toE164 } = require('../../lib/phone');
 
 const VALID_TIERS = ['basic', 'gold', 'platinum'];
 
@@ -103,7 +107,7 @@ async function mintCouple(req, res) {
   if (!phone || !String(phone).trim()) return errRes(res, 400, 'phone is required.');
   if (!name  || !String(name).trim())  return errRes(res, 400, 'name is required.');
 
-  const cleanPhone = String(phone).trim();
+  const cleanPhone = toE164(String(phone).trim());
   const cleanName  = String(name).trim();
 
   // Read BEFORE the write so the outcome is knowable. `ensureCoupleRow` is

@@ -406,6 +406,53 @@ section('§3  F-10.47 — THE MINT THAT SAID "created" FOR A ROW IT DID NOT CREA
   ok('…and no handle-generation ladder exists in the mint path',
      !/VENDOR\$\{|candidates\s*=/.test(code(F_VENDORS)));
 
+  // ── F-10.50's CELLS · A BARE-DIGIT MINT MUST FIND THE E.164 ROW ────────────
+  // The fixture's only users row is stored `+919888294440`. A mint typed as ten
+  // bare digits MUST resolve to it — otherwise the collision check misses, the
+  // RPC runs, and the clobber clause F-10.47's cure exists to avoid is reached
+  // by a different road. This is the founder's own walk, turned into a cell.
+  {
+    const sbBare = makeSupabase(baseFixtures());
+    const rBare  = await call(F_VENDORS, 'post', '/create', {
+      supabase: sbBare, body: { phone: '9888294440', business_name: 'Renamed By Mint' },
+    });
+    ok('a BARE-DIGIT mint of a stored +91 number reports "existing", not created',
+       rBare.body && rBare.body.outcome === 'existing', JSON.stringify(rBare.body));
+    ok('…and therefore never calls invite_vendor, so the clobber clause is unreachable',
+       !sbBare.__rpcs.some(r => r.name === 'invite_vendor'));
+    ok('…and issues no write to public.users',
+       sbBare.__writes.filter(w => w.table === 'users').length === 0);
+    // The stored form is what every other door uses. A mint that invents its own
+    // is the F-04.109 divergence with a nicer button.
+    const lookups = sbBare.__calls.filter(c => c.table === 'users');
+    ok('the lookup queries the E.164 form, never the raw input',
+       lookups.some(c => c.filters.some(f => f[0] === 'eq' && f[1] === 'phone' && f[2] === '+919888294440')),
+       JSON.stringify(lookups.map(c => c.filters)));
+  }
+  // A virgin BARE-DIGIT mint must store the normalised form, not the digits.
+  {
+    const sbNew2 = makeSupabase(baseFixtures());
+    await call(F_VENDORS, 'post', '/create', { supabase: sbNew2, body: { phone: '9999911111' } });
+    const rpc = sbNew2.__rpcs.find(r => r.name === 'invite_vendor');
+    ok('a virgin bare-digit mint hands the RPC the E.164 form',
+       !!(rpc && rpc.params.p_phone === '+919999911111'), rpc && rpc.params.p_phone);
+  }
+  // The couple side, same law.
+  {
+    const sbC = makeSupabase(baseFixtures());
+    await call(F_COUPLES, 'post', '/create', {
+      supabase: sbC, body: { phone: '9888294440', name: 'Priya & Arjun' },
+    });
+    const lookups = sbC.__calls.filter(c => c.table === 'users');
+    ok('the couple mint normalises too — one law, both species',
+       lookups.some(c => c.filters.some(f => f[0] === 'eq' && f[1] === 'phone' && f[2] === '+919888294440')));
+  }
+  ok('both mint handlers import the ONE normaliser home, never a local copy',
+     /require\('\.\.\/\.\.\/lib\/phone'\)/.test(code(F_VENDORS)) &&
+     /require\('\.\.\/\.\.\/lib\/phone'\)/.test(code(F_COUPLES)));
+  ok('neither handler mints a second normaliser',
+     !/\+91\$\{|replace\(\/\\D\//.test(code(F_VENDORS) + code(F_COUPLES)));
+
   // (d) phone is required and the refusal is typed.
   const rNo = await call(F_VENDORS, 'post', '/create', { supabase: makeSupabase(baseFixtures()), body: {} });
   ok('a mint with no phone is refused 400', rNo.status === 400, `status ${rNo.status}`);
@@ -771,6 +818,18 @@ section('§7  MUTATION — every cure cell proven able to REDDEN');
       "  await supabase.from('users').upsert({ phone: cleanPhone, name: cleanName }, { onConflict: 'phone' });\n  let ids;");
     ok('M10 restoring the couple name-clobber ⇒ the no-upsert cell reddens',
        applied && /upsert\(\{ phone/.test(read(F_COUPLES)), `applied=${applied}`);
+    restoreAll();
+  }
+
+  // M11 — strip the normalisation; F-10.50's cells must redden.
+  {
+    const applied = mutate(F_VENDORS,
+      'const cleanPhone = toE164(String(phone).trim());',
+      'const cleanPhone = String(phone).trim();');
+    const sb = makeSupabase(baseFixtures());
+    const r  = await call(F_VENDORS, 'post', '/create', { supabase: sb, body: { phone: '9888294440' } });
+    ok('M11 removing toE164 ⇒ a bare-digit mint reads a stored +91 number as VIRGIN again',
+       applied && r.body && r.body.outcome === 'created', `applied=${applied}`);
     restoreAll();
   }
 
