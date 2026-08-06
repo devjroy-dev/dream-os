@@ -76,7 +76,16 @@ router.get('/feed', asyncHandler(async (req, res) => {
   if (category) realQuery = realQuery.eq('category', category);
   if (city)     realQuery = realQuery.ilike('city', `%${city}%`);
   if (budget)   realQuery = realQuery.lte('rate_min', parseInt(budget, 10));
-  if (vibes)    realQuery = realQuery.overlaps('aesthetic_tags', vibes.split(','));
+  // TDW_09 PHASE B — the FILTER side of the one normal form (F-10.52): the
+  // couple's vibes normalise through the same shared module the write door
+  // uses, so `Traditional` finally matches `traditional`. Custom vendor words
+  // are not filterable in v1 by construction — a couple can only send terms
+  // her UI offers, and that UI offers the vetoed vocabulary.
+  if (vibes) {
+    const { normalizeTags } = require('../../lib/shared/tagVocabulary');
+    const vibeList = normalizeTags(vibes.split(','));
+    if (vibeList.length) realQuery = realQuery.overlaps('aesthetic_tags', vibeList);
+  }
 
   realQuery = realQuery.order('created_at', { ascending: false });
 

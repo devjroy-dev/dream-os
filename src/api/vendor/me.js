@@ -190,6 +190,15 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
     }
   }
 
+  // TDW_09 PHASE B — aesthetic_tags NORMALISES AT THIS WRITE DOOR (the one
+  // writer): trim + case-fold + dedupe via src/lib/shared/tagVocabulary.js —
+  // the bound mirror of the pwa vocabulary home (its header names the parity
+  // arbiter). Write-side is half the F-10.52 cure; the filter door in
+  // src/api/couple/discover.js is the other half. Tolerate-on-read law: legacy
+  // rows are NEVER bulk-rewritten; each corrects on its vendor's next save.
+  const { normalizeTags } = require('../../lib/shared/tagVocabulary');
+  if (Array.isArray(body.aesthetic_tags)) body.aesthetic_tags = normalizeTags(body.aesthetic_tags);
+
   const update = {};
   for (const key of ALLOWED_FIELDS) {
     if (body[key] !== undefined) update[key] = body[key];
