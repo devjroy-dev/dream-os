@@ -28,7 +28,7 @@
 ## 2. MIGRATION RESERVATIONS (ladder after 09 = next 0085; LD-8)
 | # | File | Adds |
 |---|---|---|
-| 0085 | `0085_admin_control.sql` | `admin_audit (id uuid pk, actor text not null, action text not null, entity_type text, entity_id text, payload jsonb, created_at timestamptz default now())` + (created_at) index · `view_as_tokens (id uuid pk, vendor_id uuid fk, token_hash text unique, expires_at timestamptz not null, used_at timestamptz, created_by text)` |
+| 0113 | `0113_admin_control.sql` | `admin_audit (id uuid pk, actor text not null, action text not null, entity_type text, entity_id text, payload jsonb, created_at timestamptz default now())` + (created_at) index · `view_as_tokens (id uuid pk, vendor_id uuid fk, token_hash text unique, expires_at timestamptz not null, used_at timestamptz, created_by text)`  **(re-homed by CE ruling R-A6, 2026-08-06 — 0085 consumed by `0085_prospect_lane.sql` at CE-29; LD-8 forbids reuse)** |
 
 ---
 

@@ -28,6 +28,10 @@ router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit 
 // F-2 RULED (a): the json login door for Panel B. Mounted FIRST among the
 // admin routes so no later '/admin' mount can shadow it.
 router.use('/admin/login',           require('./admin/login'));
+// TDW_10 P1: the command palette's back end. Mounted HERE, above the broad
+// '/admin' content mount below, for the same reason login is — a later
+// '/admin' mount would shadow '/admin/search' otherwise.
+router.use('/admin/search',          require('./admin/search'));
 router.use('/admin/discover',        require('./admin/discover'));
 router.use('/admin/photos',          require('./admin/photos'));
 router.use('/admin/couture',         require('./admin/couture'));
