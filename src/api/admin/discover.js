@@ -262,14 +262,21 @@ router.post('/deny/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
   return okRes(res, {});
 }));
 
-// POST /revoke/:vendorId
-router.post('/revoke/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
+// POST /hide/:vendorId
+// ── ONE VERB FOR ONE ACT (founder-ruled) ────────────────────────────────────
+// THIS PATH READ `/revoke/:vendorId`. It did the SAME THING as the Makers row's
+// 「 Remove from Discover 」 toggle — take a vendor off the feed — under a
+// different and heavier word, so the estate had two names for one act and the
+// founder had to guess which was which. Renamed rather than aliased: an alias is
+// how you end up with two paths and a comment explaining that they agree.
+// The pwa client moves in the paired ZIP; both repos ship together.
+router.post('/hide/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendorId = req.params.vendorId;
   const reason   = (req.body || {}).reason || null;
-  const wroteR = await setDiscoverState(supabase, vendorId, { eligible: false, state: 'revoked' });
+  const wroteR = await setDiscoverState(supabase, vendorId, { eligible: false, state: 'hidden' });
   if (!wroteR.ok) return errRes(res, 500, wroteR.error);
-  await writeAudit(supabase, 'discover_revoke', 'vendor', vendorId, { reason });
+  await writeAudit(supabase, 'discover_hide', 'vendor', vendorId, { reason });
   return okRes(res, {});
 }));
 

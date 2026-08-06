@@ -710,6 +710,14 @@ section('§8  F-10.59 — ONE WRITER FOR THE COLUMN PAIR');
   const HAS_WRITER = typeof V.setDiscoverState === 'function';
   ok('setDiscoverState is exported from the one home', HAS_WRITER);
   ok('the state set is frozen', Array.isArray(V.DISCOVER_STATES) && Object.isFrozen(V.DISCOVER_STATES));
+  // F-10.60 — 'hidden' is the admin word; 'paused' is deliberately ABSENT,
+  // because `vendors.discover_paused` is the VENDOR's own switch and one word may
+  // not carry two mechanisms.
+  ok("'hidden' is a legal state", (V.DISCOVER_STATES || []).includes('hidden'));
+  ok("'paused' is NOT — that word belongs to the vendor's own column",
+     !(V.DISCOVER_STATES || []).includes('paused'));
+  ok('legacy \'revoked\' is retained for rows that already carry it',
+     (V.DISCOVER_STATES || []).includes('revoked'));
 
   // ── DEFENSIVE, per the P2 precedent ────────────────────────────────────────
   // At an UNCURED tree `setDiscoverState` does not exist, and the first run of
@@ -853,13 +861,17 @@ section('§8  F-10.59 — ONE WRITER FOR THE COLUMN PAIR');
        JSON.stringify(w && w.payload));
   }
   {
-    const sbR = makeSupabase(baseFixtures());
-    await call(F_VENDORS, 'patch', '/:vendorId/revoke', { supabase: sbR, params: { vendorId: V_FULL } });
-    const w = sbR.__writes.find(x => x.table === 'vendors');
-    ok('Revoke Access now writes BOTH columns AND still pauses (specimen 2)',
-       !!w && w.payload.discover_eligible === false &&
-       w.payload.discover_request_state === 'revoked' && w.payload.status === 'paused',
-       JSON.stringify(w && w.payload));
+    // ── F-10.60 · THE SECOND SPECIMEN'S DOOR IS GONE, NOT CURED ───────────────
+    // Rider 4 routed `PATCH /vendors/:id/revoke` through the one writer. The
+    // founder then asked what it actually did, the derivation said "removes her
+    // from Discover and stops her morning briefing", and he ruled it deleted:
+    // 「 why suspend any vendor. i can delete the vendor 」. The cell inverts —
+    // the door must not exist, and nothing may write `status: 'paused'` again.
+    const vRouter = fresh(F_VENDORS);
+    const revokeLayer = vRouter && vRouter.stack.find(l => l.route && l.route.path === '/:vendorId/revoke');
+    ok('the Revoke Access route is DELETED, not merely unlinked', !revokeLayer);
+    ok('nothing in src/api writes vendors.status any more',
+       !/status:\s*'paused'/.test(code(F_VENDORS)));
   }
   {
     // BEHAVIOUR CHANGE, asserted rather than described: deny now takes a live
@@ -1070,17 +1082,24 @@ section('§7  MUTATION — every cure cell proven able to REDDEN');
   }
 
   // M13 — restore the eligibility-only toggle; F-10.59's specimen returns.
+  // ANCHORED ON ONE SHORT LINE, not on a reconstructed multi-line block. The
+  // first anchor quoted the whole `setDiscoverState({...})` call and stopped
+  // matching the moment F-10.60 changed one word inside it — `applied=false`,
+  // a mutation that silently stopped mutating. A mutation whose anchor is
+  // brittle is a green that will quietly become vacuous.
   {
     const applied = mutate(F_VENDORS,
-      "  const wrote = await setDiscoverState(supabase, req.params.vendorId, {\n    eligible: newVal,\n    state:    newVal ? 'approved' : 'revoked',\n  });",
-      "  const wrote = { ok: true, state: undefined };\n  await supabase.from('vendors').update({ discover_eligible: newVal }).eq('id', req.params.vendorId);");
+      "    state:    newVal ? 'approved' : 'hidden',",
+      "    state:    newVal ? 'approved' : 'approved',   // MUTATED");
     const sb = makeSupabase(baseFixtures());
-    await call(F_VENDORS, 'patch', '/:vendorId/discover-eligible', { supabase: sb, params: { vendorId: V_FULL } });
+    await call(F_VENDORS, 'patch', '/:vendorId/discover-eligible', { supabase: sb, params: { vendorId: V_THIN } });
     const w = sb.__writes.find(x => x.table === 'vendors');
-    ok('M13 writing eligibility alone ⇒ the pair drifts apart again (F-10.59 reproduced)',
-       applied && !!w && w.payload.discover_request_state === undefined, `applied=${applied}`);
+    ok('M13 forcing the state to `approved` on both arms ⇒ hiding stops being recorded',
+       applied && !!w && w.payload.discover_request_state === 'approved' &&
+       w.payload.discover_eligible === true, `applied=${applied} ${JSON.stringify(w && w.payload)}`);
     restoreAll();
   }
+
   // M14 — drop the coherence guard; the unauthorable pair becomes authorable.
   {
     const applied = mutate(F_VDISC,

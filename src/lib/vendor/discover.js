@@ -74,8 +74,30 @@ const MIN_PORTFOLIO_IMAGES = 6;
 // (rate and tags at request time; `status` at revoke-access) so this stays one
 // round trip and cannot half-apply. It may not smuggle the pair: the two keys
 // are refused there by name.
+// ── 'hidden' JOINS THE SET, AND 'paused' DELIBERATELY DOES NOT ───────────────
+// The founder's first word for the admin act was 「 Pause Discover 」. DERIVED
+// BEFORE IT WAS USED: `vendors.discover_paused` already exists and is THE
+// VENDOR'S OWN switch — she writes it through PATCH /api/v2/vendor/me (its
+// allow-list and boolean-coercion list both name it), it arrived at migration
+// 0101, and the couple feed excludes on it directly at
+// src/api/couple/discover.js `.eq('discover_paused', false)`.
+//
+// So an admin state called 'paused' would have put ONE WORD on TWO mechanisms —
+// hers and his — in a product where a vendor's screen has to tell her which one
+// is holding her back. That is F-10.59's disease, one rider after curing it.
+// Writing HER column instead was refused outright: she can unpause herself from
+// her own profile controls, so an admin act the subject can reverse is not an
+// admin act.
+// Founder-ruled: same behaviour, a word that is still free. 'hidden' is also
+// what it literally does — she keeps her account, her leads and her AI; couples
+// simply cannot see her.
+//
+// 'revoked' is RETAINED for the rows that already carry it (the Makers toggle
+// wrote it for one evening between rider 4 and this one). Nothing writes it any
+// more; the vendor screen renders it identically to 'hidden' so those vendors
+// are told the same true thing.
 const DISCOVER_STATES = Object.freeze([
-  'not_requested', 'requested', 'under_review', 'approved', 'denied', 'revoked',
+  'not_requested', 'requested', 'under_review', 'approved', 'denied', 'hidden', 'revoked',
 ]);
 
 async function setDiscoverState(supabase, vendorId, { eligible, state, extra } = {}) {

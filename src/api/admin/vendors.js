@@ -289,10 +289,14 @@ router.patch('/:vendorId/discover-eligible', requireAdmin, asyncHandler(async (r
   const newVal = !vendor.discover_eligible;
   const wrote = await setDiscoverState(supabase, req.params.vendorId, {
     eligible: newVal,
-    state:    newVal ? 'approved' : 'revoked',
+    // Founder-ruled: 'hidden', not 'paused'. `vendors.discover_paused` is the
+    // VENDOR'S own switch (PATCH /api/v2/vendor/me, migration 0101) and one word
+    // may not carry two mechanisms — see DISCOVER_STATES' note in
+    // src/lib/vendor/discover.js.
+    state:    newVal ? 'approved' : 'hidden',
   });
   if (!wrote.ok) return errRes(res, 500, wrote.error);
-  await writeAudit(supabase, newVal ? 'discover_grant' : 'discover_revoke', 'vendor', req.params.vendorId,
+  await writeAudit(supabase, newVal ? 'discover_grant' : 'discover_hide', 'vendor', req.params.vendorId,
     { via: 'makers_toggle' });
   return okRes(res, { discover_eligible: newVal, discover_request_state: wrote.state });
 }));
@@ -312,28 +316,32 @@ router.patch('/:vendorId/dreamai', requireAdmin, asyncHandler(async (req, res) =
   return okRes(res, { dreamai_access: !!access });
 }));
 
-// ─── PATCH /api/v2/admin/vendors/:id/revoke ─────────────────────────────
-router.patch('/:vendorId/revoke', requireAdmin, asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-
-  // ── F-10.59 · THE FOUNDER'S SECOND SPECIMEN, CONVICTED BY RESIDUE ──────────
-  // THIS READ: `.update({ status: 'paused', discover_eligible: false })` — the
-  // state untouched again. His row proved this was the door he pressed: a click
-  // reaching POST /api/v2/admin/discover/revoke would have left state='revoked',
-  // and the surviving 'approved' could only have come from here.
-  // NAMED SO THE NEXT READER IS NOT CAUGHT: TWO DOORS CARRY THE WORD "REVOKE".
-  // `POST /api/v2/admin/discover/revoke/:vendorId` removes a vendor from
-  // Discover. THIS one also pauses the account (`status: 'paused'`), which is the
-  // larger act the Makers label 「 Revoke Access 」 is naming. `status` rides
-  // `extra` because it is this door's own column, not the pair's.
-  const wrote = await setDiscoverState(supabase, req.params.vendorId, {
-    eligible: false, state: 'revoked', extra: { status: 'paused' },
-  });
-  if (!wrote.ok) return errRes(res, 500, wrote.error);
-  await writeAudit(supabase, 'vendor_access_revoked', 'vendor', req.params.vendorId,
-    { via: 'makers_revoke_access', paused: true });
-  return okRes(res, { revoked: true, discover_request_state: wrote.state });
-}));
+// ── RETIRED · PATCH /api/v2/admin/vendors/:id/revoke (founder-ruled) ────────
+// THE ROUTE READ:
+//     router.patch('/:vendorId/revoke', requireAdmin, asyncHandler(async (req, res) => {
+//       await supabase.from('vendors')
+//         .update({ status: 'paused', discover_eligible: false })
+//         .eq('id', req.params.vendorId);
+//       return okRes(res, { revoked: true });
+//     }));
+//
+// IT WAS A LABEL THAT OUTRAN ITS ACT. The Makers row called it 「 Revoke Access 」
+// and it revoked no access at all. Derived across the estate before the founder
+// ruled: `vendors.status` has EXACTLY ONE consumer — the morning-briefing cron at
+// src/cron.js, `.eq('status', 'active')`. Login does not read it
+// (src/api/vendor/auth.js), the app does not read it (resolveVendor), the WhatsApp
+// lane does not read it (vendorInbound). So pressing it took a vendor off Discover
+// and stopped her good-morning message, while she kept her account, her leads, her
+// portfolio and her AI — and the founder would have believed he had cut her off.
+//
+// FOUNDER-RULED, on his own question: 「 why suspend any vendor. i can delete the
+// vendor. suspension as a practice itself 」 · 「 revoke doesnt serve any purpose 」.
+// The verb is DELETED rather than made true. A half-built kill switch on your own
+// admin is the thing most likely to be trusted at the wrong moment.
+//
+// NOTHING WRITES `vendors.status` ANY MORE. The column and the cron's filter stand
+// untouched. A vendor whose status this route paused before its deletion needs a
+// one-line repair — handed to the founder in the handover, never performed here.
 
 // ── DELETE /api/v2/admin/vendors/:vendorId ────────────────────────────────────
 // Hard delete. Cascades to all vendor data via FK constraints.
