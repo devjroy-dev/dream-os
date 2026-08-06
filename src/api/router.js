@@ -7,7 +7,6 @@
 const express          = require('express');
 const router           = express.Router();
 
-const waitlistRouter        = require('./waitlist');
 const vendorAuthRouter      = require('./vendor/auth');
 const coupleAuthRouter      = require('./couple/auth');
 const pinStatusRouter       = require('./pin-status');
@@ -15,7 +14,6 @@ const landingSlidesRouter   = require('./landing-slides');
 const exploringPhotosRouter = require('./exploring-photos');
 const testRouter            = require('./_test/whoami');
 
-router.use('/waitlist',           waitlistRouter);
 router.use('/vendor/auth',        vendorAuthRouter);
 router.use('/couple/auth',        coupleAuthRouter);
 router.use('/auth/pin-status',    pinStatusRouter);

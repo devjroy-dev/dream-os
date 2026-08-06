@@ -2,9 +2,21 @@
 // src/api/vendor-engine/today.js
 // Vendor Suit, Phase 3-B — engine-backed TODAY dashboard.
 //   GET /api/v2/vendor-e/today/:vendorId
-// The live src/api/vendor/today.js reads the LEGACY separate tables
-// (invoices/leads). The engine has only the unified ledger (engine.records), so
-// this RE-DERIVES the same TodayResponse shape from the binder ledger:
+//
+// THIS FILE IS THE LIVE /api/v2/vendor/today ROUTE. The mechanism: the Phase-4
+// flip at src/api/vendor/core.js (symbol: the '/today' mount) points that path
+// here. If that mount ever moves, this paragraph is wrong and must be re-read.
+//
+// F-09.63 (TDW_09 dream-os micro): the sentence that stood here called the
+// LEGACY reader src/api/vendor/today.js "the live" one — long after the flip
+// had unmounted it, and long enough to mislead an executor on the record. That
+// file was DELETED in the same commit that cured this comment; a header
+// outliving its subject is F-09.50's class, and the cure had to travel with the
+// deletion or the lie would simply have moved next door.
+//
+// That legacy reader read the LEGACY separate tables (invoices/leads). The
+// engine has only the unified ledger (engine.records), so this RE-DERIVES the
+// same TodayResponse shape from the binder ledger:
 //   overdue_invoices  <- binders with amount_pending > 0 and a past date
 //   new_leads         <- lead-stage binders (non-client, inbound), most recent
 //   money_snapshot    <- summed from amount_received / amount_pending
@@ -51,10 +63,21 @@ router.get('/:vendorId',
         .eq('agent_id', agentId)
         .eq('hidden', false),
       // Upcoming events through +7 days covers both events_today and this_week.
+      //
+      // F-09.53 — THE COVENANT. The read-side law lives at src/api/vendor/day.js
+      // (symbol: the day-sheet events query): every read of public.events skips
+      // soft-deleted rows. This query filtered state alone since birth, so a
+      // vendor who deleted an upcoming wedding still saw it on TODAY.
+      //
+      // CONJUNCTION, not replacement: `.is('deleted_at', null)` stands BESIDE
+      // the live condition `.eq('state','upcoming')`. Neither substitutes for
+      // the other — state says what the row claims to be, deleted_at says
+      // whether the row is still the vendor's at all.
       pub.from('events')
         .select('id, title, kind, event_date, event_time')
         .eq('vendor_id', vendor.id)
         .eq('state', 'upcoming')
+        .is('deleted_at', null)
         .gte('event_date', today)
         .lte('event_date', sevenDays)
         .order('event_date', { ascending: true })
