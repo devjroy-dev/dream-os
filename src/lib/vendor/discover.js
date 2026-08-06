@@ -24,6 +24,87 @@ const { rateMet } = require('./rateMet');
 // the number exists anywhere, in digits or in words.
 const MIN_PORTFOLIO_IMAGES = 6;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// F-10.59 · setDiscoverState — THE ONE WRITER OF THE COLUMN PAIR (R-P3.4(b))
+// ═══════════════════════════════════════════════════════════════════════════
+// `vendors.discover_eligible` and `vendors.discover_request_state` encode ONE
+// fact between them — whether a vendor is on Discover and what her standing is.
+// Before this function SEVEN doors wrote them, and only three wrote both:
+//
+//   POST /api/v2/admin/discover/grant          both        (eligible true,  'approved')
+//   POST /api/v2/admin/discover/revoke         both        (eligible false, 'revoked')
+//   POST /api/v2/admin/discover/deny           STATE ONLY  ('denied', eligible untouched)
+//   PATCH /api/v2/admin/vendors/:id/discover-eligible  ELIGIBLE ONLY (state untouched)
+//   PATCH /api/v2/admin/vendors/:id/revoke     ELIGIBLE ONLY (+ status:'paused')
+//   requestDiscover (this file)                STATE ONLY  ('requested')
+//   withdrawRequest (this file)                STATE ONLY  ('not_requested')
+//
+// THE FOUNDER FOUND IT BY USING THE PRODUCT. He pressed 「 Remove from Discover 」
+// and 「 Revoke Access 」 on the Makers row; both leave the state untouched. His
+// own row, read back:
+//     Make Up by Swati Roy · discover_eligible=false · discover_paused=false
+//     · discover_request_state='approved' · is_live=false
+// and her screen therefore read, verbatim: 「 You're on Discover. Your work is
+// live on The Dream Wedding. 」 She was invisible to every couple. That is the
+// founding-lie family on a vendor-facing surface — the worst place it can land,
+// because she would sit there wondering why no enquiries came.
+//
+// THE ROW ALSO CONVICTED THE DOOR, BY RESIDUE. A click reaching
+// POST /discover/revoke would have left state='revoked'. The surviving
+// 'approved' proves 「 Revoke Access 」 rides the OTHER door — derived at the
+// pwa tip: app/admin/makers/page.tsx `revoke` → lib/admin-api/index.ts
+// `patchVendorRevoke` → PATCH /api/v2/admin/vendors/:id/revoke, which writes
+// status + eligible and never touches the state. Two doors carry the word
+// "revoke" and mean different things; only one of them said so.
+//
+// ── WHAT THIS FUNCTION REFUSES, AND WHY THAT IS THE CURE ───────────────────
+// BOTH values are REQUIRED. There is no default and no partial write: a caller
+// that knows only half the fact does not get to write half the pair, because
+// that is precisely how the two columns drifted apart. An omission throws.
+//
+// AND ONE COHERENCE RULE IS ENFORCED MECHANICALLY:
+//     state === 'approved'  ⟹  eligible === true
+// That is the founder's specimen, made impossible to author. It is deliberately
+// ONE-DIRECTIONAL: `eligible: true` with state 'requested' is LEGAL and real —
+// an already-live vendor re-applying is live AND under review, which is two true
+// things, not a contradiction. A biconditional would have refused that and
+// silently dropped a live vendor off the feed the moment she re-applied.
+//
+// `extra` carries the columns a caller legitimately writes in the SAME update
+// (rate and tags at request time; `status` at revoke-access) so this stays one
+// round trip and cannot half-apply. It may not smuggle the pair: the two keys
+// are refused there by name.
+const DISCOVER_STATES = Object.freeze([
+  'not_requested', 'requested', 'under_review', 'approved', 'denied', 'revoked',
+]);
+
+async function setDiscoverState(supabase, vendorId, { eligible, state, extra } = {}) {
+  if (!vendorId) throw new Error('setDiscoverState: vendorId required');
+  if (typeof eligible !== 'boolean') {
+    throw new Error(
+      'setDiscoverState: `eligible` must be an explicit boolean. Half the pair is how ' +
+      'F-10.59 happened — a caller that does not know the whole fact does not write it.');
+  }
+  if (!DISCOVER_STATES.includes(state)) {
+    throw new Error(`setDiscoverState: unknown state '${state}' (expected one of ${DISCOVER_STATES.join(', ')})`);
+  }
+  if (state === 'approved' && eligible !== true) {
+    throw new Error(
+      "setDiscoverState: state 'approved' with eligible=false is F-10.59 — the vendor's " +
+      'own screen would read approved-and-live while no couple could see her. Use ' +
+      "'revoked' to take her off Discover.");
+  }
+  const patch = { ...(extra || {}), discover_eligible: eligible, discover_request_state: state };
+  for (const k of ['discover_eligible', 'discover_request_state']) {
+    if (extra && Object.prototype.hasOwnProperty.call(extra, k)) {
+      throw new Error(`setDiscoverState: '${k}' may not travel in \`extra\` — it is this function's to write.`);
+    }
+  }
+  const { error } = await supabase.from('vendors').update(patch).eq('id', vendorId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, eligible, state };
+}
+
 async function requestDiscover(supabase, vendorId, body) {
   // TDW_07 P4b · F4 (WIDENED) — `rate_max` is no longer destructured. The submit form no
   // longer sends it, the gate no longer asks for it, and :47's write no longer stores it.
@@ -97,9 +178,20 @@ async function requestDiscover(supabase, vendorId, body) {
   // DDL this sitting, and its CHECK is null-tolerant); it simply stops being written. Rows
   // that already carry a max keep it untouched — this is a retirement, not a migration, and
   // nothing here reaches back over existing data.
-  const vendorUpdate = { rate_min: Number(rate_min), aesthetic_tags, discover_request_state: 'requested' };
-  if (instagram_handle) vendorUpdate.instagram_handle = instagram_handle;
-  await supabase.from('vendors').update(vendorUpdate).eq('id', vendorId);
+  // F-10.59 — through the ONE WRITER. `eligible` is read and PASSED BACK
+  // deliberately unchanged: a vendor who is already live and re-applies stays
+  // live while her new request is reviewed. Declaring it explicitly is the point
+  // — the old code omitted it, and an omission is what let the pair drift.
+  const { data: cur } = await supabase
+    .from('vendors').select('discover_eligible').eq('id', vendorId).maybeSingle();
+  const extra = { rate_min: Number(rate_min), aesthetic_tags };
+  if (instagram_handle) extra.instagram_handle = instagram_handle;
+  const wrote = await setDiscoverState(supabase, vendorId, {
+    eligible: cur ? cur.discover_eligible === true : false,
+    state: 'requested',
+    extra,
+  });
+  if (!wrote.ok) return { ok: false, error: wrote.error };
 
   // Insert request row
   const { data: req, error } = await supabase.from('vendor_discover_requests')
@@ -149,6 +241,17 @@ async function getDiscoverStatus(supabase, vendorId) {
     // is the walk's word for the state this field reports as false.
     ig_import_enabled:      igImport.isConfigured(),
     discover_request_state: vendor?.discover_request_state || 'not_requested',
+    // ── F-10.59(a) · THE SCREEN MUST NOT READ THE STATE ALONE ─────────────────
+    // `is_live` has been computed here since TDW_07 P4b and the vendor's own
+    // Discover screen never read it — it branched on `discover_request_state`
+    // alone, which is how 「 You're on Discover. Your work is live 」 came to be
+    // rendered to a vendor no couple could see. The state says what the founder
+    // DECIDED; `is_live` says what a couple can DO. They are two facts and the
+    // screen needs both.
+    // Surfaced under an explicit name so the pwa branches on a fact rather than
+    // recomputing it from two fields it would have to keep in step itself —
+    // which is the client-side version of the very bug being cured.
+    live_now:               (vendor?.discover_eligible === true) && (vendor?.discover_paused !== true),
     discover_eligible:      vendor?.discover_eligible || false,
     portfolio_summary:      summary,
     saves_count:            savesCount || 0,
@@ -260,7 +363,14 @@ async function withdrawRequest(supabase, vendorId) {
   if (!req) return { ok: false, error: 'No pending request to withdraw.' };
 
   await supabase.from('vendor_discover_requests').update({ state: 'revoked' }).eq('id', req.id);
-  await supabase.from('vendors').update({ discover_request_state: 'not_requested' }).eq('id', vendorId);
+  // F-10.59 — withdrawing a PENDING request returns the vendor to not_requested.
+  // `eligible: false` is stated rather than assumed: the only rows that can reach
+  // here are pending ones, and a pending vendor who withdraws is not on Discover.
+  // A previously-approved vendor who re-applied and then withdraws is the one case
+  // this would move — and taking her off the feed is the honest reading of
+  // withdrawing, not a side effect.
+  const wrote = await setDiscoverState(supabase, vendorId, { eligible: false, state: 'not_requested' });
+  if (!wrote.ok) return { ok: false, error: wrote.error };
   return { ok: true };
 }
 
@@ -268,4 +378,9 @@ async function withdrawRequest(supabase, vendorId) {
 // the enforced floor rather than minting a second copy of the number. Behaviour here is
 // unchanged — this line adds a name to the export object and nothing else. P2 raises the
 // constant at :6 from 5 to 6 and BOTH the gate and the completeness score move together.
-module.exports = { requestDiscover, getDiscoverStatus, getDiscoverPreview, withdrawRequest, MIN_PORTFOLIO_IMAGES };
+module.exports = {
+  requestDiscover, getDiscoverStatus, getDiscoverPreview, withdrawRequest,
+  MIN_PORTFOLIO_IMAGES,
+  // F-10.59 — the sole writer of the discover column pair, and the frozen state set.
+  setDiscoverState, DISCOVER_STATES,
+};

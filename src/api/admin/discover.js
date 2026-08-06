@@ -26,7 +26,7 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const { writeAudit } = require('../../lib/admin/auditLog');
 
 const { portfolioSummary } = require('../../lib/vendor/portfolio');
-const { getDiscoverPreview, MIN_PORTFOLIO_IMAGES } = require('../../lib/vendor/discover');
+const { getDiscoverPreview, MIN_PORTFOLIO_IMAGES, setDiscoverState } = require('../../lib/vendor/discover');
 
 // GET /requests
 // ── F-07.91 CURED — THE UNSATISFIABLE GUARD STACK ────────────────────────────
@@ -198,7 +198,11 @@ router.post('/grant/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
       'below_photo_floor');
   }
 
-  await supabase.from('vendors').update({ discover_eligible: true, discover_request_state: 'approved' }).eq('id', vendorId);
+  // F-10.59 — through the ONE WRITER. This door already wrote both columns
+  // correctly; routing it anyway is the point of a sole writer. A door that
+  // "happens to be right" is the next door to drift.
+  const wroteG = await setDiscoverState(supabase, vendorId, { eligible: true, state: 'approved' });
+  if (!wroteG.ok) return errRes(res, 500, wroteG.error);
   await supabase.from('vendor_discover_requests')
     .update({ state: 'approved', decided_by_admin: 'admin', decided_at: new Date().toISOString() })
     .eq('vendor_id', vendorId).in('state', ['requested', 'under_review']);
@@ -239,7 +243,16 @@ router.post('/deny/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
   const pitch = open ? open.reason : null;
 
-  await supabase.from('vendors').update({ discover_request_state: 'denied' }).eq('id', vendorId);
+  // ── F-10.59 · BEHAVIOUR CHANGE, DECLARED NOT SLIPPED IN ────────────────────
+  // THIS READ: `.update({ discover_request_state: 'denied' })` — state only,
+  // eligibility untouched. So denying an ALREADY-LIVE vendor left her on the
+  // couples' feed while her own screen read NOT APPROVED: the exact mirror of
+  // the founder's specimen, and reachable today by rejecting a vendor who
+  // re-applies after an approval. The pair cannot be written by halves any more,
+  // so this door must now DECLARE its eligibility, and the only honest value is
+  // false — a refusal that leaves the vendor visible is not a refusal.
+  const wroteD = await setDiscoverState(supabase, vendorId, { eligible: false, state: 'denied' });
+  if (!wroteD.ok) return errRes(res, 500, wroteD.error);
   await supabase.from('vendor_discover_requests')
     .update({ state: 'denied', reason, decided_by_admin: 'admin', decided_at: new Date().toISOString() })
     .eq('vendor_id', vendorId).in('state', ['requested', 'under_review']);
@@ -254,7 +267,8 @@ router.post('/revoke/:vendorId', requireAdmin, asyncHandler(async (req, res) => 
   const supabase = req.app.locals.supabase;
   const vendorId = req.params.vendorId;
   const reason   = (req.body || {}).reason || null;
-  await supabase.from('vendors').update({ discover_eligible: false, discover_request_state: 'revoked' }).eq('id', vendorId);
+  const wroteR = await setDiscoverState(supabase, vendorId, { eligible: false, state: 'revoked' });
+  if (!wroteR.ok) return errRes(res, 500, wroteR.error);
   await writeAudit(supabase, 'discover_revoke', 'vendor', vendorId, { reason });
   return okRes(res, {});
 }));

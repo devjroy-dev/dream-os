@@ -29,6 +29,8 @@ const { writeAudit } = require('../../lib/admin/auditLog');
 //     cure was built to make unreachable.
 // The cure is one call, before the lookup and before the RPC, on both species.
 const { toE164 } = require('../../lib/phone');
+// F-10.59 — the sole writer of the discover column pair (R-P3.4(b)).
+const { setDiscoverState } = require('../../lib/vendor/discover');
 
 const VALID_TIERS = ['trial', 'essential', 'signature', 'prestige'];
 
@@ -275,14 +277,24 @@ router.patch('/:vendorId/discover-eligible', requireAdmin, asyncHandler(async (r
 
   if (fetchErr) return errRes(res, 404, 'Vendor not found.');
 
+  // ── F-10.59 · THE FOUNDER'S FIRST SPECIMEN ─────────────────────────────────
+  // THIS READ: `.update({ discover_eligible: newVal })` — eligibility only. He
+  // pressed 「 Remove from Discover 」 here, and Swati's screen went on reading
+  // 「 You're on Discover. Your work is live 」 off a state this door never
+  // touched, while the couples' feed — which filters on eligibility — could no
+  // longer see her.
+  // The pair now moves together. Turning Discover OFF is a revocation and says
+  // so; turning it ON from this door is an approval and says so, which is also
+  // why the state can no longer read 'approved' for a vendor nobody can see.
   const newVal = !vendor.discover_eligible;
-  const { error } = await supabase
-    .from('vendors')
-    .update({ discover_eligible: newVal })
-    .eq('id', req.params.vendorId);
-
-  if (error) return errRes(res, 500, error.message);
-  return okRes(res, { discover_eligible: newVal });
+  const wrote = await setDiscoverState(supabase, req.params.vendorId, {
+    eligible: newVal,
+    state:    newVal ? 'approved' : 'revoked',
+  });
+  if (!wrote.ok) return errRes(res, 500, wrote.error);
+  await writeAudit(supabase, newVal ? 'discover_grant' : 'discover_revoke', 'vendor', req.params.vendorId,
+    { via: 'makers_toggle' });
+  return okRes(res, { discover_eligible: newVal, discover_request_state: wrote.state });
 }));
 
 // ─── PATCH /api/v2/admin/vendors/:id/dreamai ────────────────────────────
@@ -304,13 +316,23 @@ router.patch('/:vendorId/dreamai', requireAdmin, asyncHandler(async (req, res) =
 router.patch('/:vendorId/revoke', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
 
-  const { error } = await supabase
-    .from('vendors')
-    .update({ status: 'paused', discover_eligible: false })
-    .eq('id', req.params.vendorId);
-
-  if (error) return errRes(res, 500, error.message);
-  return okRes(res, { revoked: true });
+  // ── F-10.59 · THE FOUNDER'S SECOND SPECIMEN, CONVICTED BY RESIDUE ──────────
+  // THIS READ: `.update({ status: 'paused', discover_eligible: false })` — the
+  // state untouched again. His row proved this was the door he pressed: a click
+  // reaching POST /api/v2/admin/discover/revoke would have left state='revoked',
+  // and the surviving 'approved' could only have come from here.
+  // NAMED SO THE NEXT READER IS NOT CAUGHT: TWO DOORS CARRY THE WORD "REVOKE".
+  // `POST /api/v2/admin/discover/revoke/:vendorId` removes a vendor from
+  // Discover. THIS one also pauses the account (`status: 'paused'`), which is the
+  // larger act the Makers label 「 Revoke Access 」 is naming. `status` rides
+  // `extra` because it is this door's own column, not the pair's.
+  const wrote = await setDiscoverState(supabase, req.params.vendorId, {
+    eligible: false, state: 'revoked', extra: { status: 'paused' },
+  });
+  if (!wrote.ok) return errRes(res, 500, wrote.error);
+  await writeAudit(supabase, 'vendor_access_revoked', 'vendor', req.params.vendorId,
+    { via: 'makers_revoke_access', paused: true });
+  return okRes(res, { revoked: true, discover_request_state: wrote.state });
 }));
 
 // ── DELETE /api/v2/admin/vendors/:vendorId ────────────────────────────────────

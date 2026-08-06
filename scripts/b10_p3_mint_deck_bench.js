@@ -703,6 +703,182 @@ section('§6  THE AUDIT WRAPPER, AND THE STATUS FIELDS THAT NOW HAVE CELLS');
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+section('§8  F-10.59 — ONE WRITER FOR THE COLUMN PAIR');
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const V = require(F_VDISC);
+  const HAS_WRITER = typeof V.setDiscoverState === 'function';
+  ok('setDiscoverState is exported from the one home', HAS_WRITER);
+  ok('the state set is frozen', Array.isArray(V.DISCOVER_STATES) && Object.isFrozen(V.DISCOVER_STATES));
+
+  // ── DEFENSIVE, per the P2 precedent ────────────────────────────────────────
+  // At an UNCURED tree `setDiscoverState` does not exist, and the first run of
+  // this section THREW — a stack trace where the both-ways measurement should
+  // have been a NUMBER. "The cure's size must be a number" is the whole point of
+  // running a bench at both trees, and a section that dies takes every cell after
+  // it with it. Every call below goes through this shim: absent writer ⇒ one red
+  // per cell, never an exception.
+  const writeVia = async (sb, id, args) => {
+    if (!HAS_WRITER) return { threw: 'setDiscoverState is absent at this tree', result: null };
+    try { return { threw: null, result: await V.setDiscoverState(sb, id, args) }; }
+    catch (e) { return { threw: e.message, result: null }; }
+  };
+
+  // ── THE CENSUS IS THE WRITER'S PROOF, AND IT TOOK TWO ATTEMPTS ────────────
+  // Seven doors used to write this pair and only three wrote both. This walks
+  // src/api/ and the pair's home and asserts the columns are written NOWHERE
+  // ELSE — derived by filesystem walk, never by a list, because a hand-listed
+  // census is exactly what let F-10.34's cure miss two sites.
+  //
+  // THE FIRST DRAFT FOUND ZERO WRITERS AND SAID SO. It matched
+  // `.update({ … discover_eligible …})` as an inline object literal — and
+  // `setDiscoverState` builds its payload in a VARIABLE, so the regex missed the
+  // one legitimate writer along with everything else. It surfaced as a red only
+  // because the cell asserts `=== 1` rather than `=== 0`: a census whose failure
+  // mode is an empty result is not a census (protocol §9, independent-method).
+  //
+  // THE SECOND DRAFT FOUND ZERO TOO, and for a different reason worth recording:
+  // brace-matching the argument of `.update(` yields the literal text `patch` —
+  // `setDiscoverState` builds its payload in a VARIABLE. A census that only reads
+  // inline literals cannot see the one writer it exists to bless.
+  //
+  // NOW: the argument is brace-matched, and when it is a bare identifier the
+  // census resolves ONE level of indirection to that identifier's assignment in
+  // the same file. Two misses, both surfaced by the `=== 1` assertion rather than
+  // by an empty pass — which is the whole argument for asserting a POSITIVE count
+  // in a census instead of an absence.
+  function updateArgs(src) {
+    const out = [];
+    let i = 0;
+    for (;;) {
+      const at = src.indexOf('.update(', i);
+      if (at === -1) break;
+      let d = 0, j = at + '.update('.length, start = j;
+      for (; j < src.length; j++) {
+        const c = src[j];
+        if (c === '(' || c === '{' || c === '[') d++;
+        else if (c === ')' || c === '}' || c === ']') { if (d === 0) break; d--; }
+      }
+      out.push(src.slice(start, j));
+      i = j + 1;
+    }
+    return out;
+  }
+  const files = [];
+  (function walk(d) {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p2 = path.join(d, e.name);
+      if (e.isDirectory()) walk(p2); else if (p2.endsWith('.js')) files.push(p2);
+    }
+  })(path.join(ROOT, 'src/api'));
+  files.push(F_VDISC);
+
+  const writers = [];
+  for (const f of files) {
+    const src = code(f);
+    // `demo_vendors` carries a column of the same name on a DIFFERENT table with
+    // its own sole writer (demoLifecycle). Scoped out by name so the cell measures
+    // this pair, not every column that shares a word.
+    if (path.relative(ROOT, f) === 'src/api/admin/demoAdmin.js') continue;
+    const named = (a) => {
+      if (/discover_eligible|discover_request_state/.test(a)) return true;
+      const id = a.trim().match(/^([A-Za-z_$][\w$]*)$/);
+      if (!id) return false;
+      const assign = src.match(new RegExp(`(?:const|let|var)\\s+${id[1]}\\s*=\\s*\\{[^;]*`));
+      return !!assign && /discover_eligible|discover_request_state/.test(assign[0]);
+    };
+    if (updateArgs(src).some(named)) {
+      writers.push(path.relative(ROOT, f));
+    }
+  }
+  ok('exactly ONE file writes the discover pair', writers.length === 1, writers.join(', ') || 'ZERO — the census found nothing, which is a broken census');
+  ok('…and that file is src/lib/vendor/discover.js, the pair\'s one home',
+     writers[0] === 'src/lib/vendor/discover.js', String(writers[0]));
+
+  // Every door that used to write directly must now CALL the writer.
+  for (const [f, label] of [
+    ['src/api/admin/discover.js', 'the deck\'s grant/deny/revoke'],
+    ['src/api/admin/vendors.js',  'the Makers toggle and Revoke Access'],
+  ]) {
+    ok(`${label} routes through setDiscoverState`,
+       /setDiscoverState\(/.test(code(path.join(ROOT, f))), f);
+  }
+  ok('requestDiscover routes through it too', /setDiscoverState\(supabase, vendorId, \{\s*\n?\s*eligible: cur/.test(code(F_VDISC)));
+  ok('withdrawRequest routes through it too',
+     /setDiscoverState\(supabase, vendorId, \{ eligible: false, state: 'not_requested' \}\)/.test(code(F_VDISC)));
+
+  // ── THE REFUSALS. Half a pair, and the founder's exact specimen. ───────────
+  const sb = () => makeSupabase(baseFixtures());
+  const r1 = await writeVia(sb(), V_FULL, { state: 'approved' });
+  ok('omitting `eligible` THROWS — half the pair is how F-10.59 happened',
+     !!r1.threw && /explicit boolean/.test(r1.threw), String(r1.threw));
+
+  const r2 = await writeVia(sb(), V_FULL, { eligible: true, state: 'martian' });
+  ok('an unknown state THROWS', !!r2.threw && /unknown state/.test(r2.threw), String(r2.threw));
+
+  const r3 = await writeVia(sb(), V_FULL, { eligible: false, state: 'approved' });
+  ok('THE FOUNDER\'S SPECIMEN IS UNAUTHORABLE: approved + not eligible THROWS',
+     !!r3.threw && /F-10\.59/.test(r3.threw), String(r3.threw));
+
+  // ONE-DIRECTIONAL, deliberately: a live vendor re-applying is live AND under
+  // review. A biconditional would have dropped her off the feed on re-apply.
+  {
+    const r = await writeVia(sb(), V_FULL, { eligible: true, state: 'requested' });
+    ok('eligible + requested is LEGAL — a live vendor may re-apply without going dark',
+       !r.threw && !!r.result && r.result.ok === true, String(r.threw));
+  }
+
+  // The pair always lands together, and `extra` cannot smuggle it.
+  {
+    const sbW = sb();
+    await writeVia(sbW, V_FULL, { eligible: false, state: 'revoked', extra: { status: 'paused' } });
+    const w = sbW.__writes.find(x => x.table === 'vendors');
+    ok('both columns travel in ONE update', !!w &&
+       w.payload.discover_eligible === false && w.payload.discover_request_state === 'revoked');
+    ok('…alongside the caller\'s own column', !!w && w.payload.status === 'paused');
+  }
+  const r4 = await writeVia(sb(), V_FULL, { eligible: true, state: 'approved', extra: { discover_eligible: false } });
+  ok('`extra` may not smuggle the pair', !!r4.threw && /may not travel/.test(r4.threw), String(r4.threw));
+
+  // ── THE DOORS, DRIVEN. The founder pressed these two. ──────────────────────
+  {
+    const sbT = makeSupabase(baseFixtures());
+    const r = await call(F_VENDORS, 'patch', '/:vendorId/discover-eligible', {
+      supabase: sbT, params: { vendorId: V_FULL },
+    });
+    void r;
+    const w = sbT.__writes.find(x => x.table === 'vendors');
+    ok('the Makers toggle now writes BOTH columns (specimen 1)',
+       !!w && w.payload.discover_eligible === true && w.payload.discover_request_state === 'approved',
+       JSON.stringify(w && w.payload));
+  }
+  {
+    const sbR = makeSupabase(baseFixtures());
+    await call(F_VENDORS, 'patch', '/:vendorId/revoke', { supabase: sbR, params: { vendorId: V_FULL } });
+    const w = sbR.__writes.find(x => x.table === 'vendors');
+    ok('Revoke Access now writes BOTH columns AND still pauses (specimen 2)',
+       !!w && w.payload.discover_eligible === false &&
+       w.payload.discover_request_state === 'revoked' && w.payload.status === 'paused',
+       JSON.stringify(w && w.payload));
+  }
+  {
+    // BEHAVIOUR CHANGE, asserted rather than described: deny now takes a live
+    // vendor off the feed instead of leaving the mirror lie.
+    const sbD = makeSupabase(baseFixtures());
+    await call(F_DISC, 'post', '/deny/:vendorId', {
+      supabase: sbD, params: { vendorId: V_FULL }, body: { reason: 'Watermarks' } });
+    const w = sbD.__writes.find(x => x.table === 'vendors');
+    ok('deny now clears eligibility — a refusal that leaves her visible is not a refusal',
+       !!w && w.payload.discover_eligible === false && w.payload.discover_request_state === 'denied',
+       JSON.stringify(w && w.payload));
+  }
+
+  // ── THE SCREEN'S FACT ──────────────────────────────────────────────────────
+  ok('getDiscoverStatus surfaces live_now by name, not for the client to recompute',
+     /live_now:\s+\(vendor\?\.discover_eligible === true\) && \(vendor\?\.discover_paused !== true\)/.test(code(F_VDISC)));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 section('§7  MUTATION — every cure cell proven able to REDDEN');
 // ═════════════════════════════════════════════════════════════════════════════
 // Production code is edited on disk, the module re-required, the cell re-run, and
@@ -890,6 +1066,35 @@ section('§7  MUTATION — every cure cell proven able to REDDEN');
     const r  = await call(F_VENDORS, 'post', '/create', { supabase: sb, body: { phone: '9888294440' } });
     ok('M11 removing toE164 ⇒ a bare-digit mint reads a stored +91 number as VIRGIN again',
        applied && r.body && r.body.outcome === 'created', `applied=${applied}`);
+    restoreAll();
+  }
+
+  // M13 — restore the eligibility-only toggle; F-10.59's specimen returns.
+  {
+    const applied = mutate(F_VENDORS,
+      "  const wrote = await setDiscoverState(supabase, req.params.vendorId, {\n    eligible: newVal,\n    state:    newVal ? 'approved' : 'revoked',\n  });",
+      "  const wrote = { ok: true, state: undefined };\n  await supabase.from('vendors').update({ discover_eligible: newVal }).eq('id', req.params.vendorId);");
+    const sb = makeSupabase(baseFixtures());
+    await call(F_VENDORS, 'patch', '/:vendorId/discover-eligible', { supabase: sb, params: { vendorId: V_FULL } });
+    const w = sb.__writes.find(x => x.table === 'vendors');
+    ok('M13 writing eligibility alone ⇒ the pair drifts apart again (F-10.59 reproduced)',
+       applied && !!w && w.payload.discover_request_state === undefined, `applied=${applied}`);
+    restoreAll();
+  }
+  // M14 — drop the coherence guard; the unauthorable pair becomes authorable.
+  {
+    const applied = mutate(F_VDISC,
+      "  if (state === 'approved' && eligible !== true) {", "  if (false) {");
+    delete require.cache[require.resolve(F_VDISC)];
+    const V2 = require(F_VDISC);
+    let ok2 = false;
+    try {
+      if (typeof V2.setDiscoverState !== 'function') throw new Error('absent');
+      await V2.setDiscoverState(makeSupabase(baseFixtures()), V_FULL, { eligible: false, state: 'approved' });
+      ok2 = true;
+    } catch { ok2 = false; }
+    ok('M14 dropping the coherence guard ⇒ approved-and-invisible can be written again',
+       applied && ok2, `applied=${applied}`);
     restoreAll();
   }
 
