@@ -7,6 +7,8 @@ const router       = express.Router();
 const requireAdmin = require('./requireAdmin');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
+const { ensureCoupleRow, captureField } = require('../../lib/coupleIdentity');
+const { writeAudit } = require('../../lib/admin/auditLog');
 
 const VALID_TIERS = ['basic', 'gold', 'platinum'];
 
@@ -60,30 +62,103 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
 }));
 
 // ─── POST /api/v2/admin/couples/create ──────────────────────────────────
-router.post('/create', requireAdmin, asyncHandler(async (req, res) => {
+// ── TDW_10 P3 · THE COUPLE BIRTH PATH RETIRES ONTO ITS SOLE WRITER (R-P3.1) ──
+// `POST /api/v2/admin/mint/couple` is an ALIAS onto this exact handler — see
+// src/api/admin/mint.js.
+//
+// THIS HANDLER READ, until this delivery:
+//     const { data: user } = await supabase.from('users')
+//       .upsert({ phone, name }, { onConflict: 'phone' }).select('id').single();
+//     await supabase.from('couples').insert({ user_id: user.id, planning_state: 'browsing' });
+//     return okRes(res, { created: true });
+//
+// That was the THIRD couple-creation implementation in this estate, derived by
+// census at the P3 read-first: `invite_couple()` (the RPC, called from
+// src/admin/router.js), `ensureCoupleRow` (src/lib/coupleIdentity.js, the live
+// inbound path every real bride arrives through), and this. It carried two
+// defects the other two do not:
+//
+//   (1) THE NAME CLOBBER. `upsert … onConflict: 'phone'` overwrites the stored
+//       name of any existing person. Same species as F-10.47 on the vendor side.
+//   (2) THE DUPLICATE COUPLE. It inserted a `couples` row UNCONDITIONALLY. That
+//       exact bug was found and fixed in 2026 for the RPC —
+//       db/migrations/0015_pronouns_and_dedup.sql:42 records it verbatim
+//       ("invite_couple() could create multiple couples rows") — and the fix went
+//       INTO THE FUNCTION only. This route was born after it and inherited the
+//       disease the migration had already cured one door over.
+//
+// Both die by retirement rather than by repair. `ensureCoupleRow` is idempotent,
+// backfills `users.name` ONLY when the stored name is absent (so it cannot
+// clobber), reuses an existing `couples` row, and also creates the `couple_state`
+// row that this route never made — a bride minted here previously had no state row
+// until her first inbound message built one.
+//
+// `invite_couple()` IS DELIBERATELY NOT CALLED, and coupleIdentity.js's own header
+// says why in its first paragraph: it requires pronouns and would clobber existing
+// users. Retiring one wrong writer onto a second wrong writer is not a cure.
+async function mintCouple(req, res) {
   const supabase = req.app.locals.supabase;
-  const { name, phone } = req.body;
+  const { name, phone, wedding_date } = req.body || {};
 
-  if (!phone || !name) return errRes(res, 400, 'name and phone are required.');
+  if (!phone || !String(phone).trim()) return errRes(res, 400, 'phone is required.');
+  if (!name  || !String(name).trim())  return errRes(res, 400, 'name is required.');
 
-  // Upsert user row.
-  const { data: user, error: userErr } = await supabase
-    .from('users')
-    .upsert({ phone: phone.trim(), name: name.trim() }, { onConflict: 'phone' })
-    .select('id')
-    .single();
+  const cleanPhone = String(phone).trim();
+  const cleanName  = String(name).trim();
 
-  if (userErr) return errRes(res, 400, userErr.message);
+  // Read BEFORE the write so the outcome is knowable. `ensureCoupleRow` is
+  // idempotent by design and therefore cannot itself tell created from existing —
+  // that is a property of the caller's knowledge, not of the writer.
+  const { data: priorUser } = await supabase
+    .from('users').select('id').eq('phone', cleanPhone).maybeSingle();
+  let priorCouple = null;
+  if (priorUser) {
+    const { data: c } = await supabase
+      .from('couples').select('id').eq('user_id', priorUser.id).maybeSingle();
+    priorCouple = c || null;
+  }
+  const outcome = priorCouple ? 'existing' : 'created';
 
-  // Insert couple row.
-  const { error: coupleErr } = await supabase
-    .from('couples')
-    .insert({ user_id: user.id, planning_state: 'browsing' });
+  let ids;
+  try {
+    ids = await ensureCoupleRow(supabase, cleanPhone, cleanName);
+  } catch (e) {
+    return errRes(res, 400, e.message);
+  }
+  if (!ids || !ids.couple_id) return errRes(res, 500, 'Account was not created.');
 
-  if (coupleErr) return errRes(res, 400, coupleErr.message);
+  // The wedding date rides `captureField`, the SAME allow-listed writer the vendor
+  // lane uses — never a raw update from here. It coerces and validates the date in
+  // one home; a second date parser on the admin side is the drift this block exists
+  // to avoid.
+  let dateResult = null;
+  if (wedding_date && String(wedding_date).trim()) {
+    dateResult = await captureField(supabase, ids.couple_id, 'wedding_date', String(wedding_date).trim());
+    if (!dateResult.ok) return errRes(res, 400, dateResult.error);
+  }
 
-  return okRes(res, { created: true });
-}));
+  // ── DECLARED GAP · `couples.partner_name` IS NOT WRITTEN HERE ────────────────
+  // The spec's sheet says "names + wedding date". One name ships, into
+  // `users.name` through `ensureCoupleRow`. `partner_name` is REFUSED by
+  // `captureField` by name ("partner_name not writable from vendor side"), and
+  // giving the admin plane a second writer for a column one module deliberately
+  // guards is an architecture choice nobody ruled. The mint sheet's field is
+  // therefore labelled for what it stores. Declared, not silently invented.
+
+  await writeAudit(supabase, 'mint_couple', 'couple', ids.couple_id, {
+    outcome, phone: cleanPhone, name: cleanName,
+    wedding_date: wedding_date ? String(wedding_date).trim() : null,
+  });
+
+  return okRes(res, {
+    created: outcome === 'created',
+    outcome,
+    couple_id: ids.couple_id,
+    owner_name: cleanName,
+  });
+}
+
+router.post('/create', requireAdmin, asyncHandler(mintCouple));
 
 // ─── PATCH /api/v2/admin/couples/:id/tier ───────────────────────────────
 // Couples don't have a tier column yet — placeholder for when it's added.
@@ -124,3 +199,5 @@ router.delete('/:coupleId', requireAdmin, asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+// The mint alias mounts THIS function, not a copy of it (R-P3.1, one path).
+module.exports.mintCouple = mintCouple;

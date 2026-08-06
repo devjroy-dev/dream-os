@@ -252,6 +252,34 @@ const TEMPLATES = {
   //
   // `variables: ['code']` documents the single body variable; auth payloads are built by
   // buildAuthTemplatePayload() (below), which ALSO threads the code into the OTP button.
+// ── F-10.42 SETTLED · THE STATUS FIELD WAS INERT ON THIS FAMILY, NOT STALE ────
+// The registry carried `status: 'draft'` on all five AUTHENTICATION templates
+// while vendors and couples demonstrably logged in every day. The obvious reading
+// — "the field is stale" — was wrong in a way that mattered, and the call graph
+// says why:
+//
+//     otpSend.js  ->  templates.buildAuthTemplatePayload  ->  metaCloud.sendMetaTemplate
+//
+// `buildAuthTemplatePayload` (this file, at the bottom) gates on
+// `category === 'AUTHENTICATION'` and on a non-empty code. IT NEVER READS
+// `status`. And `isApproved` has exactly ONE true caller estate-wide —
+// src/lib/sendWa.js, symbol sendWa — which the OTP path never routes through;
+// otpSend.js's own header states that bypass is STRUCTURAL and deliberate
+// (AUTHENTICATION templates are opt-out-exempt). So nothing on the OTP path ever
+// consulted these five fields. They were not lying about Meta; they were
+// unread.
+//
+// THE FLIP IS A TRUTH REPAIR WITH ZERO BEHAVIOURAL EFFECT, and that is exactly
+// why it was worth doing rather than leaving: P4 builds the registry's runtime
+// twin, and a twin born reading `draft` on five live templates would have been
+// born lying. All five carry the in-file witness one line up — FOUNDER-FINAL on
+// the WABA, Meta-witnessed 2026-08-04 — which is the evidence the flip stands on.
+//
+// [F-06.85: this paragraph is conditioned on MECHANICAL facts — the call graph
+//  and Meta's review state. Mechanisms: `buildAuthTemplatePayload` below, and
+//  `isApproved` below. If either grows a status read, this paragraph is re-read.]
+// CITATION-NEEDS-A-CELL's cousin, minted with this flip: a status field ships with
+// a cell asserting it, or it is prose. See scripts/b10_p3_mint_deck_bench.js §6.
   couple_login_otp: {
     key: 'couple_login_otp',
     name: 'tdw_couple_login_otp',          // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-04
@@ -260,7 +288,8 @@ const TEMPLATES = {
     category: 'AUTHENTICATION',
     variables: ['code'],
     body: '[Meta preset auth body] {{1}} is your verification code.',  // preset, not author-editable
-    status: 'draft',
+    status: 'approved',   // F-10.42, see the AUTHENTICATION note above
+
   },
 
   couple_reset_otp: {
@@ -271,7 +300,7 @@ const TEMPLATES = {
     category: 'AUTHENTICATION',
     variables: ['code'],
     body: '[Meta preset auth body] {{1}} is your verification code.',
-    status: 'draft',
+    status: 'approved',   // F-10.42, see the AUTHENTICATION note above
   },
 
   circle_join_otp: {
@@ -282,7 +311,7 @@ const TEMPLATES = {
     category: 'AUTHENTICATION',
     variables: ['code'],
     body: '[Meta preset auth body] {{1}} is your verification code.',
-    status: 'draft',
+    status: 'approved',   // F-10.42, see the AUTHENTICATION note above
   },
 
   vendor_login_otp: {
@@ -293,7 +322,7 @@ const TEMPLATES = {
     category: 'AUTHENTICATION',
     variables: ['code'],
     body: '[Meta preset auth body] {{1}} is your verification code.',
-    status: 'draft',
+    status: 'approved',   // F-10.42, see the AUTHENTICATION note above
   },
 
   vendor_reset_otp: {
@@ -304,8 +333,37 @@ const TEMPLATES = {
     category: 'AUTHENTICATION',
     variables: ['code'],
     body: '[Meta preset auth body] {{1}} is your verification code.',
+    status: 'approved',   // F-10.42, see the AUTHENTICATION note above
+  },
+  // ── TDW_10 ADMIN P3 · R-P3.3 — THE WELCOME, WIRED AND DARK ──────────────────
+  // Ships at 'draft' DELIBERATELY. The founder files this with Meta by hand in
+  // Business Manager (the tdw_enquiry_brief_vendor precedent) and flips this one
+  // field when Meta approves — no code push, no redeploy. Until then sendWa's
+  // isApproved gate refuses the send and the mint's success card renders the
+  // refusal in words. A button that pretended to send would be worse than no
+  // button; a button that refuses honestly is the F-08.17 shape, already proven.
+  //
+  // ONE VARIABLE, and the reason is copy law rather than taste: a second variable
+  // reading "Your account manager is {{2}}" would name either a persona — never
+  // permitted in a vendor-facing byte — or a human who does not exist. The clause
+  // died with the variable (chair copy ruling, founder-vetoed 「 2-all ok 」).
+  //
+  // BODY SHAPE, against docs/TEMPLATES.md §1: single line, no variable adjacent to
+  // another, none begins or ends the body. UTILITY is the honest category — this
+  // is transactional notice that an account the founder just created exists.
+  vendor_welcome: {
+    key: 'vendor_welcome',
+    name: 'tdw_vendor_welcome',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['name'],
+    body:
+      "Hi {{1}}, your Dream Wedding account is ready. Reply here and I'll set up " +
+      "your profile so couples can find you.",
     status: 'draft',
   },
+
 };
 
 // ── helpers ────────────────────────────────────────────────────────────────

@@ -429,8 +429,32 @@ section('§8  THE QUEUE');
   ok('halted subscriptions render a labelled not-built state, never 0', Q.subscriptions_halted.state === 'not_built');
   ok('the halted-subs state cites F-10.29', Q.subscriptions_halted.finding === 'F-10.29');
 
-  ok('templates awaiting verdict reads the REAL registry (5 drafts at this tip)',
-     Q.templates_awaiting_verdict.count === 5, String(Q.templates_awaiting_verdict.count));
+  // ── LABELLED AMENDMENT · TDW_10 P3, ratify-or-revert ────────────────────────
+  // THIS CELL READ, until P3:
+  //     ok('templates awaiting verdict reads the REAL registry (5 drafts at this tip)',
+  //        Q.templates_awaiting_verdict.count === 5, …);
+  //
+  // It pinned the LITERAL 5. P3 changed that number twice, both by ruling and
+  // neither by accident: F-10.42 flipped the five AUTHENTICATION templates from
+  // 'draft' to 'approved' (they were never read by the OTP path — a truth repair
+  // with zero behavioural effect), and `vendor_welcome` was added at 'draft'
+  // deliberately, wired and dark. The registry's draft count is therefore 1, the
+  // endpoint reports 1 correctly, and only this literal was stale.
+  //
+  // RE-AIMED, NOT RELAXED. The assertion is now that the endpoint's count EQUALS
+  // the registry's own non-approved count, derived here from the same module the
+  // endpoint reads. That is strictly stronger than a literal — it would redden if
+  // the endpoint miscounted, which the literal could only do while the registry
+  // happened to hold five — and it cannot be invalidated again by a lawful flip.
+  // Count preserved: one cell before, one cell after.
+  // This is CE-199's ratified shape (a sealed bench may follow its subject when
+  // the property asserted is unchanged and the amendment is labelled). Disclosed
+  // in the P3 handover rather than absorbed.
+  const REG = require(path.join(ROOT, 'src/lib/templates.js'));
+  const expectedDrafts = Object.values(REG.TEMPLATES).filter(t => t.status !== 'approved').length;
+  ok('templates awaiting verdict equals the registry\'s own non-approved count',
+     Q.templates_awaiting_verdict.count === expectedDrafts,
+     `endpoint ${Q.templates_awaiting_verdict.count} vs registry ${expectedDrafts}`);
   ok('no approved template appears in the awaiting list',
      Q.templates_awaiting_verdict.templates.every(t => t.status !== 'approved'));
   ok('the transport is named Meta, and the spec\'s stale Twilio wording is cited as F-10.28',

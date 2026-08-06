@@ -35,6 +35,11 @@ router.use('/admin/search',          require('./admin/search'));
 // TDW_10 P2: the Bridge. Mounted HERE for the same reason search is — a later
 // broad '/admin' mount would shadow '/admin/bridge' otherwise.
 router.use('/admin/bridge',          require('./admin/bridge'));
+// TDW_10 P3 — mounted ABOVE the broad '/admin' content mount for the same reason
+// login, search and bridge are: a later '/admin' mount would shadow '/admin/mint'.
+// The handlers are the SAME FUNCTION OBJECTS admin/vendors.js and admin/couples.js
+// mount at their own paths (R-P3.1, one path) — see src/api/admin/mint.js.
+router.use('/admin/mint',            require('./admin/mint'));
 router.use('/admin/discover',        require('./admin/discover'));
 router.use('/admin/photos',          require('./admin/photos'));
 router.use('/admin/couture',         require('./admin/couture'));

@@ -133,7 +133,24 @@ async function getDiscoverStatus(supabase, vendorId) {
     portfolio_summary:      summary,
     saves_count:            savesCount || 0,
     current_request:        request || null,
-    last_decision_reason:   request?.reason || null,
+    // ── F-10.44 · THE SPLIT IS MADE ON STATE, NOT LEFT TO THE SCREEN ───────────
+    // `vendor_discover_requests.reason` is DOUBLE-DUTY: it holds this vendor's own
+    // PITCH from the moment he requests (see requestDiscover's insert), and the
+    // ADMIN'S DECISION once one lands. This field is named
+    // `last_decision_reason`, and before this delivery it returned the raw column
+    // — so a vendor with an OPEN request was being handed his own sentence under
+    // the name of a decision. The pwa's denied branch happened to hide it
+    // (app/vendor/discover/page.tsx renders it only under state==='denied'), but a
+    // field that is only true because its one consumer filters it is a field
+    // waiting for its second consumer.
+    // Now: a decision reason exists only after a decision. The pitch is returned
+    // under its own name so nothing is lost from the surface.
+    // The full cure — one column per author — is DDL and belongs to 0113's
+    // sitting; this is the honest bounded half.
+    last_decision_reason:   (request && (request.state === 'denied' || request.state === 'revoked'))
+                              ? (request.reason || null) : null,
+    pitch:                  (request && (request.state === 'requested' || request.state === 'under_review'))
+                              ? (request.reason || null) : null,
   };
 }
 
