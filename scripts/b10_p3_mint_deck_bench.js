@@ -710,14 +710,26 @@ section('§8  F-10.59 — ONE WRITER FOR THE COLUMN PAIR');
   const HAS_WRITER = typeof V.setDiscoverState === 'function';
   ok('setDiscoverState is exported from the one home', HAS_WRITER);
   ok('the state set is frozen', Array.isArray(V.DISCOVER_STATES) && Object.isFrozen(V.DISCOVER_STATES));
-  // F-10.60 — 'hidden' is the admin word; 'paused' is deliberately ABSENT,
-  // because `vendors.discover_paused` is the VENDOR's own switch and one word may
-  // not carry two mechanisms.
-  ok("'hidden' is a legal state", (V.DISCOVER_STATES || []).includes('hidden'));
-  ok("'paused' is NOT — that word belongs to the vendor's own column",
+  // ── F-10.61 · THE SET IS THE MIGRATION'S, ASSERTED AGAINST THE MIGRATION ───
+  // `'hidden'` was briefly in this array and 500'd on the founder's thumb:
+  // `vendors.discover_request_state` has carried a CHECK constraint since 0039
+  // and does not know that word. The cell that would have caught it did not
+  // exist, so it exists now — and it reads the CONSTRAINT ITSELF rather than a
+  // copy of its values, which is the only version that cannot drift.
+  const mig = fs.readFileSync(path.join(ROOT, 'db/migrations/0039_vendor_discover.sql'), 'utf8');
+  const chk = mig.match(/check \(discover_request_state in\s*\n?\s*\(([^)]*)\)\)/);
+  const allowed = chk ? chk[1].split(',').map(x => x.trim().replace(/'/g, '')) : [];
+  ok('0039\'s CHECK constraint is readable — the cell has a real witness',
+     allowed.length === 6, allowed.join(','));
+  ok('EVERY state the code can write is permitted by the database',
+     (V.DISCOVER_STATES || []).every(st => allowed.includes(st)),
+     (V.DISCOVER_STATES || []).filter(st => !allowed.includes(st)).join(',') || 'none');
+  ok('…and the two sets are the SAME SIZE — a value the DB allows and the code ' +
+     'never writes is a gap, not a safety margin',
+     (V.DISCOVER_STATES || []).length === allowed.length,
+     `code ${(V.DISCOVER_STATES || []).length} vs db ${allowed.length}`);
+  ok("'paused' is absent — that word is the vendor's own column, not a state",
      !(V.DISCOVER_STATES || []).includes('paused'));
-  ok('legacy \'revoked\' is retained for rows that already carry it',
-     (V.DISCOVER_STATES || []).includes('revoked'));
 
   // ── DEFENSIVE, per the P2 precedent ────────────────────────────────────────
   // At an UNCURED tree `setDiscoverState` does not exist, and the first run of
@@ -1089,7 +1101,7 @@ section('§7  MUTATION — every cure cell proven able to REDDEN');
   // brittle is a green that will quietly become vacuous.
   {
     const applied = mutate(F_VENDORS,
-      "    state:    newVal ? 'approved' : 'hidden',",
+      "    state:    newVal ? 'approved' : 'revoked',",
       "    state:    newVal ? 'approved' : 'approved',   // MUTATED");
     const sb = makeSupabase(baseFixtures());
     await call(F_VENDORS, 'patch', '/:vendorId/discover-eligible', { supabase: sb, params: { vendorId: V_THIN } });
@@ -1114,6 +1126,21 @@ section('§7  MUTATION — every cure cell proven able to REDDEN');
     } catch { ok2 = false; }
     ok('M14 dropping the coherence guard ⇒ approved-and-invisible can be written again',
        applied && ok2, `applied=${applied}`);
+    restoreAll();
+  }
+
+  // M15 — put a DB-forbidden state back in the set; F-10.61's cell reddens.
+  {
+    const applied = mutate(F_VDISC,
+      "  'not_requested', 'requested', 'under_review', 'approved', 'denied', 'revoked',",
+      "  'not_requested', 'requested', 'under_review', 'approved', 'denied', 'revoked', 'hidden',");
+    delete require.cache[require.resolve(F_VDISC)];
+    const V3 = require(F_VDISC);
+    const mig3 = fs.readFileSync(path.join(ROOT, 'db/migrations/0039_vendor_discover.sql'), 'utf8');
+    const c3 = mig3.match(/check \(discover_request_state in\s*\n?\s*\(([^)]*)\)\)/);
+    const a3 = c3 ? c3[1].split(',').map(x => x.trim().replace(/'/g, '')) : [];
+    ok('M15 adding a state 0039 forbids ⇒ the constraint cell reddens (the 500 the founder hit)',
+       applied && !(V3.DISCOVER_STATES || []).every(st => a3.includes(st)), `applied=${applied}`);
     restoreAll();
   }
 

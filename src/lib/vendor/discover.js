@@ -74,7 +74,7 @@ const MIN_PORTFOLIO_IMAGES = 6;
 // (rate and tags at request time; `status` at revoke-access) so this stays one
 // round trip and cannot half-apply. It may not smuggle the pair: the two keys
 // are refused there by name.
-// ── 'hidden' JOINS THE SET, AND 'paused' DELIBERATELY DOES NOT ───────────────
+// ── THE ADMIN'S WORD IS 'HIDDEN'; 'paused' IS THE VENDOR'S AND IS NOT USED ──
 // The founder's first word for the admin act was 「 Pause Discover 」. DERIVED
 // BEFORE IT WAS USED: `vendors.discover_paused` already exists and is THE
 // VENDOR'S OWN switch — she writes it through PATCH /api/v2/vendor/me (its
@@ -88,16 +88,48 @@ const MIN_PORTFOLIO_IMAGES = 6;
 // Writing HER column instead was refused outright: she can unpause herself from
 // her own profile controls, so an admin act the subject can reverse is not an
 // admin act.
-// Founder-ruled: same behaviour, a word that is still free. 'hidden' is also
-// what it literally does — she keeps her account, her leads and her AI; couples
-// simply cannot see her.
+// Founder-ruled: same behaviour, a word that is still free. HIDDEN is what the
+// button, the vendor's screen and the admin chip all say — she keeps her
+// account, her leads and her AI; couples simply cannot see her.
 //
-// 'revoked' is RETAINED for the rows that already carry it (the Makers toggle
-// wrote it for one evening between rider 4 and this one). Nothing writes it any
-// more; the vendor screen renders it identically to 'hidden' so those vendors
-// are told the same true thing.
+// THE STORED VALUE IS `'revoked'`, and that is deliberate — see the note on
+// DISCOVER_STATES below. The word the schema knows and the word a human reads
+// are allowed to differ here for exactly as long as it takes 0113's sitting to
+// widen the constraint.
+// ── AND THE SET IS THE DATABASE'S, NOT MINE (F-10.61) ───────────────────────
+// `'hidden'` was briefly a member of this array and the admin toggle wrote it.
+// It 500'd on production the moment the founder pressed the button, because
+// `vendors.discover_request_state` carries a CHECK CONSTRAINT and always has:
+//
+//   db/migrations/0039_vendor_discover.sql:39-41
+//     add column if not exists discover_request_state text
+//       check (discover_request_state in
+//         ('not_requested','requested','under_review','approved','denied','revoked')),
+//
+// I minted an enum value without checking whether the column had a domain. The
+// SQL-provenance law says every column is named with its witness before it is
+// authored; I applied that to column NAMES all evening and never to a column's
+// ALLOWED VALUES. The founder's own question found it: 「 why are we not using
+// the same endpoint or whatever we were using during remove from discover? 」 —
+// and the answer was that we were. The endpoint never moved. Only the stored
+// word did, and it never needed to.
+//
+// FOUNDER-RULED (b): zero DDL. The stored value stays `'revoked'` — the word the
+// schema has known since 0039 — while the button, the vendor's screen and the
+// admin chip all read HIDDEN.
+//
+// THE COST, NAMED HERE RATHER THAN LEFT TO BE TRIPPED OVER: the stored word and
+// the rendered word disagree. That is a small version of the very disease
+// F-10.59 cured, and it is accepted deliberately and temporarily. Widening the
+// constraint to `'hidden'` is carried to 0113's sitting, where a migration can
+// ride beside `admin_audit` and F-10.44's decision column instead of running
+// alone to repair a word chosen badly at 1am.
+//
+// THIS ARRAY MAY ONLY EVER CONTAIN 0039's SIX VALUES. A seventh member here is
+// not a feature — it is a 500 waiting for the founder's thumb. The bench asserts
+// this set against the migration's own text rather than against a copy of it.
 const DISCOVER_STATES = Object.freeze([
-  'not_requested', 'requested', 'under_review', 'approved', 'denied', 'hidden', 'revoked',
+  'not_requested', 'requested', 'under_review', 'approved', 'denied', 'revoked',
 ]);
 
 async function setDiscoverState(supabase, vendorId, { eligible, state, extra } = {}) {

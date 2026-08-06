@@ -274,7 +274,9 @@ router.post('/hide/:vendorId', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendorId = req.params.vendorId;
   const reason   = (req.body || {}).reason || null;
-  const wroteR = await setDiscoverState(supabase, vendorId, { eligible: false, state: 'hidden' });
+  // F-10.61 — `'revoked'` is the stored word (0039's CHECK constraint); HIDDEN is
+  // the word every screen renders. See DISCOVER_STATES in src/lib/vendor/discover.js.
+  const wroteR = await setDiscoverState(supabase, vendorId, { eligible: false, state: 'revoked' });
   if (!wroteR.ok) return errRes(res, 500, wroteR.error);
   await writeAudit(supabase, 'discover_hide', 'vendor', vendorId, { reason });
   return okRes(res, {});

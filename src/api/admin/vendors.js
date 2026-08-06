@@ -289,11 +289,14 @@ router.patch('/:vendorId/discover-eligible', requireAdmin, asyncHandler(async (r
   const newVal = !vendor.discover_eligible;
   const wrote = await setDiscoverState(supabase, req.params.vendorId, {
     eligible: newVal,
-    // Founder-ruled: 'hidden', not 'paused'. `vendors.discover_paused` is the
-    // VENDOR'S own switch (PATCH /api/v2/vendor/me, migration 0101) and one word
-    // may not carry two mechanisms — see DISCOVER_STATES' note in
+    // F-10.61 · THE STORED WORD IS THE SCHEMA'S. `'hidden'` here 500'd on the
+    // founder's thumb — `vendors.discover_request_state` has carried a CHECK
+    // constraint since 0039 and does not know that word. The BUTTON says Hide,
+    // the vendor's screen says Hidden, the chip says HIDDEN; the column says
+    // `'revoked'`, which is what it has always said for this act. Zero DDL,
+    // founder-ruled. Full reasoning at DISCOVER_STATES in
     // src/lib/vendor/discover.js.
-    state:    newVal ? 'approved' : 'hidden',
+    state:    newVal ? 'approved' : 'revoked',
   });
   if (!wrote.ok) return errRes(res, 500, wrote.error);
   await writeAudit(supabase, newVal ? 'discover_grant' : 'discover_hide', 'vendor', req.params.vendorId,
