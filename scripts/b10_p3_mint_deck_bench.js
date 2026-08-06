@@ -453,6 +453,22 @@ section('§3  F-10.47 — THE MINT THAT SAID "created" FOR A ROW IT DID NOT CREA
   ok('neither handler mints a second normaliser',
      !/\+91\$\{|replace\(\/\\D\//.test(code(F_VENDORS) + code(F_COUPLES)));
 
+  // ── THE PROBE FAILS LOUD (hotfix 2) ────────────────────────────────────────
+  // A failing vendors probe used to yield a silent null, which became
+  // outcome:'created' over data that was never created. It now refuses.
+  {
+    const sbErr = makeSupabase(baseFixtures(), { fail_on: ['vendors'] });
+    const rErr  = await call(F_VENDORS, 'post', '/create', {
+      supabase: sbErr, body: { phone: '+919888294440' },
+    });
+    ok('a failing existence probe refuses 500 rather than mislabelling the outcome',
+       rErr.status === 500, `status ${rErr.status}`);
+    ok('…and reports NO outcome at all, rather than a wrong one',
+       !(rErr.body && rErr.body.outcome), JSON.stringify(rErr.body));
+    ok('…and never reaches the RPC on a probe it could not read',
+       !sbErr.__rpcs.some(r => r.name === 'invite_vendor'));
+  }
+
   // (d) phone is required and the refusal is typed.
   const rNo = await call(F_VENDORS, 'post', '/create', { supabase: makeSupabase(baseFixtures()), body: {} });
   ok('a mint with no phone is refused 400', rNo.status === 400, `status ${rNo.status}`);
@@ -650,6 +666,14 @@ section('§6  THE AUDIT WRAPPER, AND THE STATUS FIELDS THAT NOW HAVE CELLS');
   ok('isApproved refuses it, so sendWa cannot dispatch it', tmpl.isApproved('vendor_welcome') === false);
   ok('the welcome route does NOT re-implement the gate around the send',
      !/if \(!?isApproved\('vendor_welcome'\)\)[\s\S]{0,120}return/.test(code(F_MINT)));
+  // ── THE BODY MATCHES WHAT THE FOUNDER FILED (hotfix 1) ─────────────────────
+  // The registry's body is documentation of the Meta filing. A cell, not a
+  // paragraph — the same law CITATION-NEEDS-A-CELL minted for token donors.
+  ok('vendor_welcome carries the FILED body, not the rejected draft',
+     !!(w && w.body === 'Hi {{1}}, your Dream Wedding vendor account has been created. ' +
+                        'Reply here to complete your account setup.'), w && w.body);
+  ok('the benefit clause Meta refused as Utility is GONE',
+     !!(w && !/couples can find you/.test(w.body)));
   ok('the welcome body is single-line and no variable begins or ends it',
      !!(w && !/\n/.test(w.body) && !/^\{\{/.test(w.body) && !/\}\}$/.test(w.body.trim())));
 }
@@ -818,6 +842,18 @@ section('§7  MUTATION — every cure cell proven able to REDDEN');
       "  await supabase.from('users').upsert({ phone: cleanPhone, name: cleanName }, { onConflict: 'phone' });\n  let ids;");
     ok('M10 restoring the couple name-clobber ⇒ the no-upsert cell reddens',
        applied && /upsert\(\{ phone/.test(read(F_COUPLES)), `applied=${applied}`);
+    restoreAll();
+  }
+
+  // M12 — swallow the probe error again; the fail-loud cells must redden.
+  {
+    const applied = mutate(F_VENDORS,
+      "    if (vErr) return errRes(res, 500, `Could not read the existing account: ${vErr.message}`);\n",
+      "");
+    const sb = makeSupabase(baseFixtures(), { fail_on: ['vendors'] });
+    const r  = await call(F_VENDORS, 'post', '/create', { supabase: sb, body: { phone: '+919888294440' } });
+    ok('M12 swallowing the probe error ⇒ a failed read is mislabelled "created" again',
+       applied && r.body && r.body.outcome === 'created', `applied=${applied} status=${r.status}`);
     restoreAll();
   }
 

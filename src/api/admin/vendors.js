@@ -133,11 +133,31 @@ async function mintVendor(req, res) {
 
   let existingVendor = null;
   if (existingUser) {
-    const { data: v } = await supabase
+    // ── HARDENING · THIS PROBE SWALLOWED ITS ERROR ──────────────────────────
+    // IT READ: `const { data: v } = await supabase…` — no `error`. If the query
+    // failed for any reason, `v` came back null, `existingVendor` became null,
+    // and `outcome` became 'created' while the RPC's ON CONFLICT DO NOTHING
+    // quietly made no rows: a WRONG LABEL over correct data, which is F-10.47's
+    // disease surviving in the one field built to cure it.
+    //
+    // ATTRIBUTED HONESTLY: this was NOT the cause of anything observed. It was
+    // proposed as the explanation for a second `created` on the founder's walk,
+    // and his own evidence killed that — two distinct target_ids, a deleted row
+    // and a re-created one, exactly as he said. The diagnosis was wrong; the
+    // swallowed error is real regardless, and it is cured here as hardening
+    // rather than left in because its first accusation missed.
+    //
+    // A check whose failure mode is a silent zero is not a check (protocol §9,
+    // the independent-method law) — and the probe one line above this one checks
+    // its error, which is what makes the omission legible rather than defensible.
+    // FAIL LOUD: the mint refuses rather than mislabelling. A 500 the founder can
+    // read beats a success card that names the wrong outcome.
+    const { data: v, error: vErr } = await supabase
       .from('vendors')
       .select('id, business_name, category, city, tier, routing_handle')
       .eq('user_id', existingUser.id)
       .maybeSingle();
+    if (vErr) return errRes(res, 500, `Could not read the existing account: ${vErr.message}`);
     existingVendor = v || null;
   }
 

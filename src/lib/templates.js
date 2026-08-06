@@ -358,9 +358,27 @@ const TEMPLATES = {
     line: 'vendor',
     category: 'UTILITY',
     variables: ['name'],
+    // ── THE BODY MOVED AT FILING TIME, AND THIS FIELD MOVES WITH IT ──────────
+    // The drafted body read: "Hi {{1}}, your Dream Wedding account is ready. Reply
+    // here and I'll set up your profile so couples can find you." META'S OWN
+    // CLASSIFIER REFUSED IT as Utility before submission — 「 Category does not
+    // match … this message template will be rejected 」 — because 「 so couples can
+    // find you 」 is a BENEFIT CLAIM, and a benefit claim reads as Marketing no
+    // matter which category is ticked.
+    //
+    // The estate had already solved this once. `demo_invite` above earned Utility
+    // by tightening to "set up / access your account" rather than "explore / take
+    // a look", and its comment says so. This body follows that precedent: it names
+    // an account that EXISTS and the action that services it, and promises nothing.
+    // Founder-filed 2026-08-06, In review at filing.
+    //
+    // THIS FIELD IS DOCUMENTATION, NOT THE WIRE — buildTemplatePayload sends name,
+    // language and the variable — so a divergence breaks nothing today. It is
+    // corrected because P4 builds this registry's runtime twin, and a twin born
+    // describing a sentence Meta does not hold is born lying.
     body:
-      "Hi {{1}}, your Dream Wedding account is ready. Reply here and I'll set up " +
-      "your profile so couples can find you.",
+      'Hi {{1}}, your Dream Wedding vendor account has been created. ' +
+      'Reply here to complete your account setup.',
     status: 'draft',
   },
 
