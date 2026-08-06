@@ -28,7 +28,7 @@
 ## 2. MIGRATION RESERVATIONS (ladder derived at every sitting that touches it; admin_control re-homed to 0113 per R-A6; LD-8)
 | # | File | Adds |
 |---|---|---|
-| 0113 | `0113_admin_control.sql` | `admin_audit (id uuid pk, actor text not null, action text not null, entity_type text, entity_id text, payload jsonb, created_at timestamptz default now())` + (created_at) index · `view_as_tokens (id uuid pk, vendor_id uuid fk, token_hash text unique, expires_at timestamptz not null, used_at timestamptz, created_by text)`  **(re-homed by CE ruling R-A6, 2026-08-06 — 0085 consumed by `0085_prospect_lane.sql` at CE-29; LD-8 forbids reuse)** |
+| 0113 | `0113_admin_control.sql` | `admin_audit (id uuid pk, actor text not null, action text not null, entity_type text, entity_id text, payload jsonb, created_at timestamptz default now())` + (created_at) index · `view_as_tokens (id uuid pk, vendor_id uuid fk, token_hash text unique, expires_at timestamptz not null, used_at timestamptz, created_by text)`  **(re-homed by CE ruling R-A6, 2026-08-06 — 0085 consumed by `0085_prospect_lane.sql` at CE-29; LD-8 forbids reuse. AMENDED at R-P3.2/CE-201: P3 audits through the LIVE `public.admin_activity_log` via one wrapper — P6's audit charter is CONSOLIDATE-OR-EXTEND that table, deciding then whether 0113's `admin_audit` is needed at all; `view_as_tokens` unaffected)** |
 
 ---
 
@@ -83,7 +83,7 @@ Admin is web forever — nothing here enters the native track · view-as writes 
 7. Money figures reconcile to billing_events + cost-meter rows; CSV exports open clean.
 8. Audit viewer shows every P3–P5 action from this sweep; audit table has no delete path.
 9. Full flow driven from a phone: palette-jump → approve two vendors on the deck → mint one → check the Bridge — all one-handed.
-10. `node --check` + tsc clean; 0085 proven; MASTERPLAN gains A-1…A-5.
+10. `node --check` + tsc clean; any ruled DDL proven at its ladder-derived number (0085 collided — see §2, R-A6/CE-199); MASTERPLAN gains A-1…A-5.
 
 ## 5. FOUNDER SMOKE (phone)
 Wake up → the Bridge tells you the day → queue shows 3 approvals → deck them in ninety seconds → palette-jump to a vendor who texted you → view-as, see what they see, ribbon on → back; mint a vendor for the decorator you met at dinner and send the welcome → Engine: flip entry-tier Victor to deepseek, watch the audit line appear.
