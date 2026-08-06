@@ -63,14 +63,34 @@ async function requestDiscover(supabase, vendorId, body) {
     return { ok: false, error: `Need at least ${MIN_PORTFOLIO_IMAGES} portfolio images. You have ${summary.total}.` };
   }
 
-  // Validate sample_image_ids belong to this vendor
-  if (sample_image_ids?.length) {
-    const { data: imgs } = await supabase.from('vendor_portfolio')
-      .select('id').eq('vendor_id', vendorId).in('id', sample_image_ids);
-    if ((imgs || []).length !== sample_image_ids.length) {
-      return { ok: false, error: 'One or more sample_image_ids do not belong to your portfolio.' };
-    }
-  }
+  // ── F-10.53 · THE SAMPLES VALIDATOR DIES WITH THE STEP IT GUARDED ─────────
+  // THIS READ:
+  //     if (sample_image_ids?.length) {
+  //       const { data: imgs } = await supabase.from('vendor_portfolio')
+  //         .select('id').eq('vendor_id', vendorId).in('id', sample_image_ids);
+  //       if ((imgs || []).length !== sample_image_ids.length) {
+  //         return { ok: false, error: 'One or more sample_image_ids do not belong to your portfolio.' };
+  //       }
+  //     }
+  //
+  // It validated ownership of three-to-five images and then WROTE THEM NOWHERE:
+  // the vendor update below carries rate, tags and state; the request insert
+  // carries the pitch. `grep -rn sample_image_ids src/ db/ docs/db/` returned
+  // only these lines, and `sample` appears ZERO times in PUBLIC_SCHEMA.md — no
+  // column existed that could have held them. A required gate on a field with no
+  // reader, found by the founder walking his own submit flow.
+  //
+  // FOUNDER-RULED: 「 3 to 5 photo is from the legacy era. it has no bearing
+  // whatso ever now 」 — so the step is deleted rather than wired to a home.
+  // The pwa's step 4 goes in the paired ZIP and no caller sends the field any
+  // more. WIRE-OR-DELETE-AT-BIRTH (Block 09): a validator for a field nobody
+  // sends is dead code that reads like a live contract, and the next hand would
+  // have believed samples were still part of the request.
+  //
+  // The destructure above keeps `sample_image_ids` deliberately UNUSED-BY-NAME:
+  // an old client cached in a browser may still send it, and the shape stays
+  // accepted-and-ignored exactly as `rate_max` is one comment up — a request that
+  // suddenly 400s on a retired field is a vendor blocked by our housekeeping.
 
   // Update vendor profile fields
   // TDW_07 P4b · F4 — `rate_max` DROPPED from the write. The column is not dropped (ZERO
