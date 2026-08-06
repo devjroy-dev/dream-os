@@ -31,7 +31,7 @@
 | # | File | Adds |
 |---|---|---|
 | 0083 | `0083_notifications.sql` | `notifications (id uuid pk, vendor_id uuid fk, kind text, title text, body text, deeplink text, ref jsonb, read_at timestamptz, created_at timestamptz default now())` + index (vendor_id, read_at) · `push_subscriptions (id uuid pk, vendor_id uuid fk, endpoint text unique, keys jsonb, created_at)` · `users.notif_prefs jsonb` |
-| 0084 | `0084_billing.sql` | `vendors.razorpay_customer_id text` · `vendors.razorpay_subscription_id text` · `vendors.billing_status text check (billing_status in ('trial','active','halted','cancelled')) default 'trial'` · `billing_events (id uuid pk, vendor_id uuid, event text, payload jsonb, created_at)` · `vendors.loop_discount_pct int not null default 0` |
+| ~~0084~~ **COLLIDED — number consumed by `0084_message_sid_dedupe.sql` (CE-27); F-10.21, LD-8 forbids reuse. The billing DDL re-derives its number from the ladder at its own sitting (per CE-200); this row's column list stays canonical.** | `billing.sql` (number at sitting) | `vendors.razorpay_customer_id text` · `vendors.razorpay_subscription_id text` · `vendors.billing_status text check (billing_status in ('trial','active','halted','cancelled')) default 'trial'` · `billing_events (id uuid pk, vendor_id uuid, event text, payload jsonb, created_at)` · `vendors.loop_discount_pct int not null default 0` |
 
 ---
 
