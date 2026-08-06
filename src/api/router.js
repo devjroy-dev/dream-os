@@ -32,6 +32,9 @@ router.use('/admin/login',           require('./admin/login'));
 // '/admin' content mount below, for the same reason login is — a later
 // '/admin' mount would shadow '/admin/search' otherwise.
 router.use('/admin/search',          require('./admin/search'));
+// TDW_10 P2: the Bridge. Mounted HERE for the same reason search is — a later
+// broad '/admin' mount would shadow '/admin/bridge' otherwise.
+router.use('/admin/bridge',          require('./admin/bridge'));
 router.use('/admin/discover',        require('./admin/discover'));
 router.use('/admin/photos',          require('./admin/photos'));
 router.use('/admin/couture',         require('./admin/couture'));
