@@ -35,6 +35,9 @@ const { buildLlmForTurn, abandonActiveThread } = require('./api/vendor-engine/ch
 const { matchModeWord, applyModeFlip, MODE_FLIP_LINES, matchFreshWord, FRESH_THREAD_LINE } = require('./api/vendor-engine/vendorMode'); // TDW_06 P7b: WA mode words · TDW_04.5 F-04.98 C3: WA fresh word
 const { processVendorInbound, metaInputsFrom, resolveVendorMedia } = require('./lib/vendorInbound'); // TDW_05 M2 + MEDIA-SHIM
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M2: dormant Meta inbound (vendor lane)
+const razorpay      = require('./lib/billing/razorpay');  // TDW_10 billing: verifier + normaliser
+const billingLedger = require('./lib/billing/ledger');    // TDW_10 billing: the SOLE writer of billing_events
+const tierFlip      = require('./lib/billing/tierFlip');  // TDW_10 billing: the ONE flip path (two feeders, TDW_11:59)
 const { resolveMetaMedia } = require('./lib/metaMedia'); // TDW_05 MEDIA-SHIM: lane-agnostic Meta media resolver
 const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle'); // TDW_05 M2: via deps
 const { extractCalendarFromImage } = require('./lib/vendorCalendarImage'); // TDW_05 M2: via deps
@@ -223,6 +226,106 @@ app.post('/webhook/meta', async (req, res) => {
     }
   } catch (err) {
     console.error('[webhook:meta] inbound processing error:', err && err.message);
+  }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// POST /webhook/razorpay — THE ONLY DOOR MONEY ENTERS THIS ESTATE BY
+// TDW_10 · the billing sitting · R-BILL.9 · F-10.22's cure
+// ═════════════════════════════════════════════════════════════════════════════
+// Seated HERE, beside /webhook/meta, on purpose. It reads `req.rawBody` — the
+// exact bytes, captured estate-wide by the express.json({ verify }) at line 103
+// above for Meta's signature since TDW_05 M2. NO new middleware seat was
+// invented: the raw-body capture this route needs has been running and proven on
+// this service for months. Re-serialising req.body here would break every
+// signature silently. (Pattern-over-shape, CE-202/203.)
+//
+// THE ORDER IS LOAD-BEARING: verify → ledger → 200 → flip.
+//   • verify first, fail closed: an unsigned event never reaches the database.
+//   • LEDGER BEFORE ACKNOWLEDGING. If the write fails we return 500 on purpose,
+//     so Razorpay retries. A 200 on an unstored event is money that silently
+//     never happened.
+//   • 200 before flipping, because Razorpay requires a 2xx inside FIVE SECONDS
+//     and disables a webhook that fails for 24 hours straight. The flip must
+//     never be able to hold the response open.
+//   • the flip is order-independent: it derives from the event's own
+//     subscription state, never from an assumed delivery sequence — Razorpay
+//     states plainly that events may arrive out of order.
+app.post('/webhook/razorpay', async (req, res) => {
+  const secret  = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const eventId = req.headers['x-razorpay-event-id'];
+
+  // Unset secret is NOT an open door. Before the founder sets the Railway var,
+  // this route accepts nothing at all.
+  if (!secret) {
+    console.warn('[webhook:razorpay] RAZORPAY_WEBHOOK_SECRET unset — refusing');
+    return res.status(503).send('Not configured');
+  }
+  if (!razorpay.verifyRazorpaySignature(req.rawBody, req.headers['x-razorpay-signature'], secret)) {
+    console.warn('[webhook:razorpay] invalid X-Razorpay-Signature');
+    return res.status(403).send('Forbidden');
+  }
+  // The idempotency key IS the header. No header, no guarantee we can avoid
+  // double-counting a retry — so it is a rejection, not a best-effort insert.
+  if (!eventId) {
+    console.warn('[webhook:razorpay] missing x-razorpay-event-id');
+    return res.status(400).send('Bad Request');
+  }
+
+  let normalized;
+  try {
+    normalized = razorpay.normalizeRazorpayEvent(eventId, req.body);
+  } catch (err) {
+    console.error('[webhook:razorpay] normalise failed:', err && err.message);
+    return res.status(400).send('Bad Request');
+  }
+
+  // Resolve the vendor BEFORE the ledger write so the row carries it. An
+  // unresolvable event still gets written, with vendor_id null (R-BILL.7).
+  let vendorId = null;
+  try {
+    vendorId = await tierFlip.resolveVendor(supabase, {
+      subscriptionId: normalized.provider_subscription_id,
+      notesVendorId:  normalized.notes_vendor_id,
+    });
+  } catch (err) {
+    console.error('[webhook:razorpay] vendor resolve failed:', err && err.message);
+  }
+  if (!vendorId) {
+    console.warn(`[webhook:razorpay] ORPHAN event ${eventId} (${normalized.event}) — `
+      + `sub=${normalized.provider_subscription_id || 'none'} notes.vendor_id=${normalized.notes_vendor_id || 'none'}. `
+      + 'Ledgered; no flip. Check the Subscription Link\'s Notes.');
+  }
+
+  const written = await billingLedger.recordEvent(supabase, { ...normalized, vendor_id: vendorId });
+
+  if (written.status === 'error') {
+    console.error(`[webhook:razorpay] ledger write failed for ${eventId}:`, written.error);
+    return res.status(500).send('Ledger write failed'); // deliberate: let Razorpay retry
+  }
+  if (written.status === 'duplicate') {
+    console.log(`[webhook:razorpay] duplicate event ${eventId} — one row, one flip, already done`);
+    return res.status(200).send('ok');
+  }
+
+  res.status(200).send('ok'); // inside the five-second law; the flip follows
+
+  try {
+    if (vendorId && normalized.provider_subscription_id) {
+      await tierFlip.linkSubscription(supabase, vendorId, normalized.provider_subscription_id);
+    }
+    if (vendorId && normalized.entitlement) {
+      await tierFlip.applyEntitlement(supabase, {
+        vendorId,
+        entitlement: normalized.entitlement,
+        provider:    normalized.provider,
+        eventId:     normalized.event_id,
+      });
+    }
+  } catch (err) {
+    // The row is already banked. A flip failure is recoverable from the ledger;
+    // it must never become an unacknowledged webhook.
+    console.error(`[webhook:razorpay] post-ack processing error for ${eventId}:`, err && err.message);
   }
 });
 

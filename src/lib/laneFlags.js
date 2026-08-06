@@ -52,6 +52,15 @@ const LANE_FLAGS = {
   // `vendor.enquiry_alert_oow_template` (enquiryAlert.js) — a dial is not a gate,
   // and the gate is here.
   'vendor.enquiry_alert_oow_enabled': false,
+
+  // TDW_10 THE BILLING SITTING — the Razorpay tier flip (R-BILL.9, F-10.22).
+  // OFF at 0114. The asymmetry inside the money path is deliberate and is
+  // documented at its mechanism in src/lib/billing/tierFlip.js: the LEDGER is
+  // NOT gated (every verified event is written from the moment the route
+  // deploys, because a missed money row is unrecoverable), but the ENTITLEMENT
+  // is (a tier moving on an unwalked rail is not). Push is not speak, and here
+  // the two halves of the same webhook sit on opposite sides of that line.
+  'billing.tier_flip_enabled': false,
 };
 
 function _resetLaneFlagCache() { cache.clear(); }

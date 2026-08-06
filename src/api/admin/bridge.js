@@ -128,17 +128,19 @@ const APPROVAL_PENDING = Object.freeze(['requested', 'under_review']);
 // THE HONEST STATES — each names its owner, because "unavailable" without an
 // owner is a shrug and a shrug does not get scheduled.
 // ═════════════════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
+// RETIRED HERE, TDW_10 THE BILLING SITTING (F-10.22's cure):
+//   `revenue`     — was 'wiring pending' because billing_events did not exist.
+//                   It exists at 0114 and the signature-verified webhook is its
+//                   sole writer. The line below is now a live instrument.
+//   `subs_halted` — was 'not built' because "no subscription table exists; the
+//                   word subscription appears zero times in src/". Both halves
+//                   of that sentence are now false: vendors.billing_status
+//                   carries 'halted', written only from a verified event.
+// The two remaining entries are NOT this sitting's and stay honest:
+// trials_expiring (F-10.27, no trial clock) and credit_state (F-10.26, unhomed).
+// ─────────────────────────────────────────────────────────────────────────────
 const WIRING_PENDING = Object.freeze({
-  revenue: {
-    state: 'wiring_pending',
-    label: 'revenue — wiring pending',
-    // F-10.1. Ruled at CE-200: no DDL in P2.
-    why: 'No payment or subscription rows exist anywhere in the estate. '
-       + 'billing_events is specified in TDW_09_UIUX_FINAL (migration 0084) and was never built; '
-       + 'the Razorpay integration is a stub whose order-id is null on both branches of RAZORPAY_LIVE.',
-    owner: 'Block 09 P4 — Razorpay checkout + the signature-verified webhook',
-    finding: 'F-10.1',
-  },
   trials_expiring: {
     state: 'no_clock',
     label: 'no trial clock',
@@ -158,14 +160,6 @@ const WIRING_PENDING = Object.freeze({
        + 'only in TDW_10_ADMIN_FINAL itself.',
     owner: 'unhomed — needs a charter before it can have a number',
     finding: 'F-10.26',
-  },
-  subs_halted: {
-    state: 'not_built',
-    label: 'halted subscriptions — not built',
-    // F-10.29, minted this sitting.
-    why: 'No subscription table exists; the word "subscription" appears zero times in src/.',
-    owner: 'Block 09 P4',
-    finding: 'F-10.29',
   },
 });
 
@@ -262,6 +256,7 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   const [
     enquiries, newLeads, demoClaims, newVendors,
     feeToday, feeLifetime,
+    revenueToday, revenueLifetime, billingEventsToday, subsHalted,
     trials,
     waTurnsExact, waRows, convRowsPromiseSeed,
     downgrades,
@@ -285,6 +280,26 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
       .gte('paid_at', day.start).lt('paid_at', day.end).limit(ROW_CAP), degraded),
     attempt('featured_fees_lifetime', () => supabase.from('vendor_featured_submissions')
       .select('fee_inr').not('paid_at', 'is', null).limit(ROW_CAP), degraded),
+
+    // ── TDW's OWN REVENUE. The first rows in this estate's history that mean
+    // "money received BY TDW" (0114, F-10.22).
+    //
+    // `counts_as_revenue` is the whole predicate, and it is a COLUMN rather than
+    // a condition assembled here, because the distinction it encodes cannot be
+    // re-derived from the outside: Razorpay charges an authorisation payment to
+    // validate a mandate and then AUTO-REFUNDS it. Summing every row with an
+    // amount would have made the founder's first revenue figure a number that
+    // came straight back (R-BILL.4). The webhook decides it once, at write time,
+    // with the payload in hand; this endpoint only reads it.
+    attempt('revenue_today', () => inDay(supabase.from('billing_events')
+      .select('amount_paise').eq('counts_as_revenue', true).limit(ROW_CAP), 'created_at'), degraded),
+    attempt('revenue_lifetime', () => supabase.from('billing_events')
+      .select('amount_paise').eq('counts_as_revenue', true).limit(ROW_CAP), degraded),
+    // Every verified event, counted or not — so a day with authorisations but no
+    // charges reads as "3 events, Rs 0" rather than as silence.
+    attempt('billing_events_today', () => inDay(countOf(supabase, 'billing_events', q => q), 'created_at'), degraded),
+    attempt('subs_halted', () => countOf(supabase, 'vendors',
+      q => q.eq('billing_status', 'halted')), degraded),
 
     // Real: a count of rows whose tier says trial. The EXPIRY half is the
     // honest state above — the count is true, the clock does not exist.
@@ -360,6 +375,17 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   const feesToday    = sumFees(feeToday);
   const feesLifetime = sumFees(feeLifetime);
 
+  // Paise in the table, rupees on the screen. The division happens ONCE, here,
+  // and the ledger never stores a fraction — integer paise is the reason this
+  // number can be reconciled against a Razorpay settlement line without a
+  // rounding argument.
+  const sumPaise = (r) => {
+    if (!r || !Array.isArray(r.data)) return null;
+    return r.data.reduce((a, row) => a + (Number(row.amount_paise) || 0), 0) / 100;
+  };
+  const revenueTodayInr    = sumPaise(revenueToday);
+  const revenueLifetimeInr = sumPaise(revenueLifetime);
+
   const cnt = (r) => (r && typeof r.count === 'number') ? r.count : null;
 
   const oldestIso = approvalsOldest && Array.isArray(approvalsOldest.data) && approvalsOldest.data[0]
@@ -390,10 +416,23 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
       demo_claims: cnt(demoClaims),
       new_vendors: cnt(newVendors),
 
-      // Two lines, per the CE-200 ruling: the honest headline, and beneath it
-      // the one real ledger that exists at this tip.
+      // TDW_10 THE BILLING SITTING. Two ledgers, both real, standing side by
+      // side — subscriptions above, the featured fee below. The CE-200 ruling's
+      // own words were that a zero that can move the day Razorpay clears is a
+      // live instrument. Razorpay has cleared. Both zeros can move now, and the
+      // headline is a figure rather than a label.
       revenue: {
-        ...WIRING_PENDING.revenue,
+        state:        'live',
+        label:        'revenue',
+        subscriptions: {
+          today_inr:    revenueTodayInr,
+          lifetime_inr: revenueLifetimeInr,
+          events_today: cnt(billingEventsToday),
+          source:       'public.billing_events where counts_as_revenue = true',
+          note:         'Written only by the signature-verified Razorpay webhook (src/lib/billing/ledger.js, sole writer). '
+                      + 'Authorisation payments are auto-refunded by Razorpay: they are recorded and never counted, which is '
+                      + 'why `events_today` can exceed the rupees. F-10.22 / R-BILL.4.',
+        },
         featured_fees: {
           today_inr:    feesToday,
           lifetime_inr: feesLifetime,
@@ -444,7 +483,14 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
       approvals_pending: { count: cnt(approvalsPending), oldest_hours: oldestHours, oldest_at: oldestIso },
       failed_turns:      { count: cnt(failedUnreplayed) },
       takedowns_24h:     { count: cnt(removed24h) },
-      subscriptions_halted: WIRING_PENDING.subs_halted,
+      // Live at 0114. `halted` is written only from a verified subscription.halted
+      // event — Razorpay reaches that state only after its three retries are
+      // spent, so a vendor counted here has genuinely stopped paying, not merely
+      // bounced a card once (the retry-window mercy, R-BILL.3).
+      subscriptions_halted: {
+        count:  cnt(subsHalted),
+        source: 'public.vendors where billing_status = \'halted\'',
+      },
       templates_awaiting_verdict: {
         count:     awaitingVerdict.length,
         templates: awaitingVerdict,
