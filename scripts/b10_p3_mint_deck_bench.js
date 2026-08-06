@@ -662,8 +662,32 @@ section('§6  THE AUDIT WRAPPER, AND THE STATUS FIELDS THAT NOW HAVE CELLS');
   ok('vendor_welcome is in the registry', !!w);
   ok('vendor_welcome is UTILITY on the vendor line', !!(w && w.category === 'UTILITY' && w.line === 'vendor'));
   ok('vendor_welcome carries exactly ONE variable', !!(w && w.variables.length === 1), w && String(w.variables));
-  ok('vendor_welcome ships at status draft — wired and dark', !!(w && w.status === 'draft'));
-  ok('isApproved refuses it, so sendWa cannot dispatch it', tmpl.isApproved('vendor_welcome') === false);
+  // ── THE DARK LANE WENT LIVE. These two cells INVERT on Meta's word ─────────
+  // THEY READ, until 2026-08-06:
+  //     ok('vendor_welcome ships at status draft — wired and dark', w.status === 'draft');
+  //     ok('isApproved refuses it, so sendWa cannot dispatch it', isApproved(...) === false);
+  // They were correct while the template was In review and they are wrong now.
+  // Recorded verbatim rather than silently replaced: the wired-and-dark state was
+  // real, it was proven on production (three refusals in admin_activity_log,
+  // reason `template_not_approved`, founder-walked), and a bench that erases the
+  // state it used to guard leaves no evidence the gate ever worked.
+  ok('vendor_welcome is APPROVED — Meta returned Active on 2026-08-06',
+     !!(w && w.status === 'approved'), w && w.status);
+  ok('isApproved passes it, so sendWa can now dispatch it',
+     tmpl.isApproved('vendor_welcome') === true);
+  // The gate is still the ONLY thing that decides. If this ever fails while the
+  // status reads approved, the mechanism has drifted from the field.
+  ok('the gate agrees with the field — one authority, not two',
+     tmpl.isApproved('vendor_welcome') === (w && w.status === 'approved'));
+  // A payload Meta can actually accept: the filed name, the filed language, and
+  // exactly one body parameter.
+  {
+    const payload = tmpl.buildTemplatePayload('vendor_welcome', ['Swati']);
+    ok('the built payload names the filed template', payload.name === 'tdw_vendor_welcome');
+    ok('…in the filed language', payload.language && payload.language.code === 'en');
+    ok('…with exactly one body parameter',
+       payload.components[0].type === 'body' && payload.components[0].parameters.length === 1);
+  }
   ok('the welcome route does NOT re-implement the gate around the send',
      !/if \(!?isApproved\('vendor_welcome'\)\)[\s\S]{0,120}return/.test(code(F_MINT)));
   // ── THE BODY MATCHES WHAT THE FOUNDER FILED (hotfix 1) ─────────────────────

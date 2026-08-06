@@ -87,6 +87,7 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 5 | `payment_reminder` | `tdw_payment_due` | UTILITY | **approved** | 2026-07-19 |
 | 6 | `demo_invite` | `tdw_demo_invite` | UTILITY (approved as filed) | **approved** | 2026-07-19 |
 | 7 | `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY | **approved** | 2026-07-29 — Meta approved ~17:31 UTC, Utility retained (dashboard: Active – Quality pending). Flipped in `src/lib/templates.js` at TDW_07 P2. |
+| 8 | `vendor_welcome` | `tdw_vendor_welcome` | UTILITY | **approved** | 2026-08-06 — filed by the founder for TDW_10 ADMIN P3's mint. The FIRST draft was refused by Meta's own pre-submission classifier as Marketing (「 so couples can find you 」 is a benefit claim); the filed body follows `demo_invite`'s Utility-earning precedent — an account that EXISTS and the action that services it, promising nothing. Dashboard: Active – Quality pending. Flipped in `src/lib/templates.js` at the P3 close. |
 
 ## 4. Language code
 

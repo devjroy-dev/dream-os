@@ -379,7 +379,33 @@ const TEMPLATES = {
     body:
       'Hi {{1}}, your Dream Wedding vendor account has been created. ' +
       'Reply here to complete your account setup.',
-    status: 'draft',
+    // ── APPROVED. THE ONE FIELD, ON META'S WORD (2026-08-06) ─────────────────
+    // WhatsApp Manager, template_details for tdw_vendor_welcome:
+    // "Active – Quality pending", Utility, English, updated 6 Aug 2026 —
+    // founder screenshot on the chat record. "Quality pending" is the QUALITY
+    // RATING, not the review state; ACTIVE is the approval. That reading is not
+    // new here: it is the estate's own precedent, established for
+    // tdw_demo_lead_alert (TDW_07 P2) and restated for tdw_enquiry_alert_vendor
+    // above, both of which shipped 'approved' from the identical dashboard state.
+    //
+    // WHAT THIS ONE WORD DOES. `sendWa`'s gate reads `isApproved` and nothing
+    // else, so this flip is the ENTIRE difference between the mint's Send welcome
+    // refusing and sending. No code path changed; the dark lane went live because
+    // the registry stopped saying no. That is the shape the wired-and-dark design
+    // was for — the founder files, Meta rules, one field moves, no redeploy of
+    // logic.
+    //
+    // THE BODY ABOVE IS BYTE-IDENTICAL TO WHAT WAS FILED, verified against the
+    // founder's screenshot, which renders it with the review sample substituted
+    // ("Hi Swati, your Dream Wedding vendor account has been created. Reply here
+    // to complete your account setup."). A registry whose body has drifted from
+    // the filed one builds a payload Meta rejects at send time.
+    //
+    // [F-06.85: conditioned on Meta's review state — a MECHANICAL fact.
+    //  Mechanism: `isApproved` at the bottom of this file. If Meta ever pauses or
+    //  reclassifies this template, this word moves back and the mint's card
+    //  returns to its honest refusal with no other change.]
+    status: 'approved',
   },
 
 };
