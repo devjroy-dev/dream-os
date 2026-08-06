@@ -25,7 +25,7 @@
 | A-4 | Mobile-first — the cockpit must run from a phone as a first-class citizen |
 | A-5 | Audit log on every admin mutation |
 
-## 2. MIGRATION RESERVATIONS (ladder after 09 = next 0085; LD-8)
+## 2. MIGRATION RESERVATIONS (ladder derived at every sitting that touches it; admin_control re-homed to 0113 per R-A6; LD-8)
 | # | File | Adds |
 |---|---|---|
 | 0113 | `0113_admin_control.sql` | `admin_audit (id uuid pk, actor text not null, action text not null, entity_type text, entity_id text, payload jsonb, created_at timestamptz default now())` + (created_at) index · `view_as_tokens (id uuid pk, vendor_id uuid fk, token_hash text unique, expires_at timestamptz not null, used_at timestamptz, created_by text)`  **(re-homed by CE ruling R-A6, 2026-08-06 — 0085 consumed by `0085_prospect_lane.sql` at CE-29; LD-8 forbids reuse)** |
