@@ -271,15 +271,42 @@ const SUB_OK = { id: 'sub_TEST1', short_url: 'https://rzp.io/i/TEST1', status: '
     assert.strictEqual(ent.tier, null, 'and it must not move her tier either (R-BILL.3)');
   });
 
-  console.log('\n══ §G · F-10.90 — THE COMPLETED HOLE, ASSERTED AS IT STANDS ══\n');
+  console.log('\n══ §G · F-10.90 — THE COMPLETED HOLE, NOW CURED ══\n');
 
-  cell('§G.1 subscription.completed is UNHANDLED — declared, not papered over', () => {
-    // This cell asserts the DEFECT, deliberately. F-10.90 is filed and unruled;
-    // a bench that asserted the cure would be asserting a thing that has not
-    // shipped, and a bench that stayed silent would let the hole close unnoticed.
-    // When the founder rules it, this cell inverts and the finding closes.
-    assert.strictEqual(entitlementFor('subscription.completed', 'prestige'), null,
-      'if this now returns an entitlement, F-10.90 has been cured — invert this cell');
+  cell('§G.1 subscription.completed DEMOTES — a spent rail does not keep her tier', () => {
+    // INVERTED, as this cell's previous form promised it would be. It asserted
+    // the defect while F-10.90 was open; the founder ruled the cure and it now
+    // asserts the cure. The promise in the old comment is the reason it could
+    // be inverted with confidence rather than rewritten from scratch.
+    const ent = entitlementFor('subscription.completed', 'prestige');
+    assert.ok(ent, 'completed must produce an entitlement, not silence');
+    assert.strictEqual(ent.tier, 'basic');
+    assert.strictEqual(ent.billing_status, 'cancelled');
+  });
+
+  cell('§G.3 the status word is one 0114 CHECK actually admits', () => {
+    // 'completed' is NOT in the CHECK (none|active|pending|halted|cancelled), so
+    // writing the semantically exact word would be a write the database refuses
+    // — the 0115 lesson exactly: a constant holding a word the CHECK rejects
+    // breaks the money path on the next event.
+    const ADMITTED = ['none', 'active', 'pending', 'halted', 'cancelled'];
+    for (const ev of ['subscription.completed', 'subscription.cancelled',
+                      'subscription.halted', 'subscription.pending', 'subscription.charged']) {
+      const ent = entitlementFor(ev, 'signature');
+      if (ent && ent.billing_status) {
+        assert.ok(ADMITTED.includes(ent.billing_status),
+          `${ev} writes "${ent.billing_status}", which 0114's CHECK would reject`);
+      }
+    }
+  });
+
+  cell('§G.4 completed inherits F-10.89 — its dead link nulls too', () => {
+    // Not a coincidence to rely on silently: the null-cure keys on cancelled and
+    // halted, and completed lands on cancelled. Asserted so a future sitting that
+    // changes the word is forced to notice it is also changing the link cure.
+    const ent = entitlementFor('subscription.completed', 'prestige');
+    assert.ok(['cancelled', 'halted'].includes(ent.billing_status),
+      'completed must land on a status the dead-link cure keys on');
   });
 
   cell('§G.2 subscription.expired is ALSO unhandled, and that one is correct', () => {

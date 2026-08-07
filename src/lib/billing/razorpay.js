@@ -117,6 +117,38 @@ function tierFromPlan(planId, amountPaise) {
 //   subscription.halted         → basic, 'halted'     (Razorpay halts only after
 //                                                      its 3 retries are spent)
 //   subscription.cancelled      → basic, 'cancelled'
+//   subscription.completed      → basic, 'cancelled'
+//                                 F-10.90's CURE. A subscription that runs out
+//                                 its billing cycles has STOPPED CHARGING HER,
+//                                 exactly as a cancellation has, and the estate
+//                                 must treat the two the same. It did not: this
+//                                 event fell to the default below — row ledgered,
+//                                 tier untouched — leaving a vendor entitled to a
+//                                 paid tier on a rail that would never take her
+//                                 money again. Silent, permanent, and invisible
+//                                 to her AND to the admin surfaces.
+//
+//                                 THE STATUS WORD IS A COMPROMISE AND IS NAMED AS
+//                                 ONE. 0114's CHECK admits five words — none,
+//                                 active, pending, halted, cancelled — and
+//                                 'completed' is not among them, so writing the
+//                                 semantically exact word would need a migration,
+//                                 a new vendor-facing string and a founder veto.
+//                                 'cancelled' is the closest TRUE word available:
+//                                 her plan has ended and she is on Basic, which is
+//                                 precisely what the surface then tells her. At
+//                                 total_count 1200 (founder-ruled) this branch is
+//                                 a hundred-year event; buying an exact vocabulary
+//                                 for it with a migration would be machinery
+//                                 serving a word rather than a vendor.
+//
+//                                 It also inherits F-10.89 for free: the
+//                                 'cancelled' status is one of the two the
+//                                 dead-link cure keys on, so a completed
+//                                 subscription's short_url is nulled in the same
+//                                 write. That is not a coincidence to rely on
+//                                 silently — it is named here so a future sitting
+//                                 that changes this word re-reads tierFlip.js.
 //   subscription.pending        → NO TIER CHANGE, status 'pending'
 //                                 THE RETRY-WINDOW MERCY (R-BILL.3): a card that
 //                                 bounced once, while Razorpay is still trying,
@@ -136,6 +168,11 @@ function entitlementFor(event, tier) {
     case 'subscription.halted':
       return { tier: BASE_TIER, billing_status: 'halted' };
     case 'subscription.cancelled':
+      return { tier: BASE_TIER, billing_status: 'cancelled' };
+    // F-10.90. Grouped with cancelled rather than given its own arm, because
+    // the estate's answer to both is identical and a second arm returning the
+    // same object is a place for the two to drift apart later.
+    case 'subscription.completed':
       return { tier: BASE_TIER, billing_status: 'cancelled' };
     case 'subscription.pending':
       return { tier: null, billing_status: 'pending' };

@@ -23,6 +23,8 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 const { CATEGORY_CAPACITY, RULED_OFF } = require('../../lib/vendor/occupancy');
 const { profileFor }        = require('../../lib/vendor/categoryProfiles');
 const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
+// F-10.92 — the lane flag has to reach the CLIENT, not just the route.
+const { readLaneFlag } = require('../../lib/laneFlags');
 
 // The stepper is for function artists only (spec P3; timelineType 'event' in the
 // profile's own vocabulary) and never for RULED_OFF categories (planner: occupancy
@@ -41,6 +43,11 @@ function capacityFacts(category) {
 router.get('/', requireAuth, resolveVendor(), async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
+
+  // F-10.92. Fails closed to `false` on any error, exactly as readLaneFlag
+  // does everywhere else — a /me that could not read the flag renders a shut
+  // door, never an open one.
+  const selfServeEnabled = await readLaneFlag(supabase, 'billing.selfserve_enabled');
 
   // Fetch users.name for the vendor.
   const { data: user, error: userErr } = await supabase
@@ -92,6 +99,17 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // and no endpoint accepts a subscription id from the caller. It stays in
       // LOCKED_FIELDS below — readable, never PATCHable.
       razorpay_subscription_id:    vendor.razorpay_subscription_id || null,
+      // ── F-10.92 ─────────────────────────────────────────────────────────
+      // Acceptance ④ ratified 「 OFF = today's surface 」 and the v2 build did
+      // not deliver it: `billing.selfserve_enabled` gated the ROUTE only, so a
+      // flag flipped OFF produced a picker that 503s rather than a closed door.
+      // A kill switch the user can still see and press is not a kill switch.
+      //
+      // Carried on the wire so the CLIENT can shut too. The read is laneFlags'
+      // own — same 60-second cache, same fail-closed default — so the surface
+      // and the route can never disagree about whether the door is open, which
+      // a second client-side constant would eventually guarantee (F-04.36).
+      selfserve_enabled:           selfServeEnabled,
       // Block F (migration 0034) applied these columns — real values now.
       aesthetic_tags:    vendor.aesthetic_tags    || [],
       rate_min:          vendor.rate_min          || null,
