@@ -59,7 +59,7 @@ ok('1.1', 'writer A — the agent tool still owns budget_total',
    !!ENGINE && /case 'save_wedding_detail'/.test(ENGINE) &&
    /if \(field === 'budget_total'\)/.test(ENGINE));
 ok('1.2', 'writer B — the route now accepts budget_total',
-   !!ROUTE && /const \{ name, partner_name, wedding_date, wedding_city, budget_total \}/.test(ROUTE));
+   !!ROUTE && /const \{ name, partner_name, wedding_date, wedding_city, budget_total, budget_confirmed \}/.test(ROUTE));
 ok('1.3', 'writer B actually puts it in the patch object (not just destructured)',
    !!ROUTE && /couplesPatch\.budget_total = budgetCoerced;/.test(ROUTE));
 ok('1.4', 'the agent tool is reachable from the APP, not only WhatsApp',
@@ -153,8 +153,8 @@ ok('3.3', 'the persisted value is echoed so the caller can compare, not assume',
    /budget_total: budgetCoerced/.test(ROUTE || ''));
 ok('3.4', 'a supabase failure still returns 500 rather than a cheerful boolean',
    /Could not update profile\./.test(ROUTE || ''));
-ok('3.5', 'an ambiguous figure WRITES NOTHING at either door',
-   /if \(verdict\.confirm\) \{[\s\S]{0,900}?return res\.status\(409\)/.test(ROUTE || '') &&
+ok('3.5', 'an UNCONFIRMED ambiguous figure writes nothing at either door',
+   /if \(verdict\.confirm && !budget_confirmed\) \{[\s\S]{0,1400}?return res\.status\(409\)/.test(ROUTE || '') &&
    /if \(verdict\.confirm\) \{[\s\S]{0,900}?return \{\s*ok: false/.test(ENGINE || ''));
 ok('3.6', 'the route distinguishes invalid (400) from confirm-me (409)',
    /res\.status\(409\)/.test(ROUTE || '') && /errRes\(res, 400/.test(ROUTE || ''));
@@ -173,8 +173,26 @@ ok('4.2', 'the no-clear decision is named in-file with its reason',
    /NOT SUPPORTED, deliberately: clearing the budget back to null/.test(ROUTE_RAW || ''));
 ok('4.3', 'the column carries its schema witness in-comment (SQL-provenance law)',
    /PUBLIC_SCHEMA\.md line 288/.test(ROUTE_RAW || ''));
-ok('4.4', 'the route\'s 409 deviation is DECLARED, not silent',
-   /DECLARED DEVIATION/.test(ROUTE_RAW || '') && /no next message to listen for/.test(ROUTE_RAW || ''));
+/* ── THE ANSWER PATH (founder: 「 after the question, the next save is a yes 」) ── */
+ok('4.5', 'the route accepts a confirmation — the question has a door for its answer',
+   /budget_total, budget_confirmed \} = req\.body/.test(ROUTE) &&
+   /if \(verdict\.confirm && !budget_confirmed\)/.test(ROUTE));
+ok('4.6', 'the confirmation skips ONLY the floor — an unreadable figure is still refused',
+   ROUTE.indexOf('errRes(res, 400') < ROUTE.indexOf('budget_confirmed)'));
+ok('4.7', 'the flag is never persisted — the next ambiguous figure asks again',
+   !/couplesPatch\.budget_confirmed/.test(ROUTE) && !/budget_confirmed:/.test(ROUTE));
+ok('4.8', 'the dead end is owned in-file, not re-labelled',
+   /permanently unsettable from Settings/.test(ROUTE_RAW || '') &&
+   /A question with no reply is/.test(ROUTE_RAW || ''));
+
+/* 4.4 REVERSED, LABELLED. It asserted that the 409 arm was a DECLARED DEVIATION —
+   which is how I framed a question that had no answer. It was not a deviation, it
+   was a dead end: Rs 50,000 could not be set from Settings at all. The founder's
+   ruling 「 after the question, the next save is a yes 」 made it a working path,
+   so the cell now asserts the path rather than the label on the hole. */
+ok('4.4', 'the floor at this door is a CONVERSATION, not a dead end',
+   /THE NEXT SAVE OF THE SAME FIGURE IS THE YES/.test(ROUTE_RAW || '') &&
+   /if \(verdict\.confirm && !budget_confirmed\)/.test(ROUTE));
 
 /* ═══ §5 · F-09.165 + F-09.167 · CURED — the cells INVERT (R-26.5 §5) ════ */
 section('§5 · the two findings are CURED, and the old assertions are reversed');

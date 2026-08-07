@@ -65,7 +65,7 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 403, 'Forbidden.');
   }
 
-  const { name, partner_name, wedding_date, wedding_city, budget_total } = req.body || {};
+  const { name, partner_name, wedding_date, wedding_city, budget_total, budget_confirmed } = req.body || {};
 
   const couplesPatch = {};
   if (partner_name !== undefined) couplesPatch.partner_name = partner_name;
@@ -114,18 +114,22 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
     if (!verdict.ok) {
       return errRes(res, 400, `budget_total ${verdict.reason}`);
     }
-    if (verdict.confirm) {
-      // F-09.167 AT A DOOR THAT CANNOT HOLD A CONVERSATION.
-      // DECLARED DEVIATION, reported not assumed: the ruling scoped the floor's
-      // behaviour to Dream Ai — 「 below it Dream Ai asks 」 — and said nothing
-      // about this route, which has no next message to listen for. Its two
-      // available arms are accept-silently (which IS the defect) or hand the
-      // question back. It hands the question back: 409 rather than 400, so a
-      // client can tell "you typed something invalid" from "confirm what you
-      // meant", carrying the founder's verbatim query byte as the message. The
-      // Settings sheet already renders a save error, so the question reaches
-      // her with no new UI. NOTHING IS WRITTEN until she resubmits a figure
-      // that stands on its own. A true confirm handshake here is a rider.
+    if (verdict.confirm && !budget_confirmed) {
+      // F-09.167 AT A DOOR THAT CANNOT HOLD A CONVERSATION — and the answer path
+      // it was missing. The first save below the floor returns the question and
+      // writes nothing. THE NEXT SAVE OF THE SAME FIGURE IS THE YES: the client
+      // sets budget_confirmed and this arm is skipped.
+      //
+      // Owned: the first cut of this route shipped the question with NO way to
+      // answer it, so Rs 50,000 was permanently unsettable from Settings — the
+      // founder walked into the loop within a minute. A question with no reply is
+      // not a declared deviation, it is a dead end, and calling it declared did
+      // not make it work.
+      //
+      // The flag is scoped to ONE write. It is not stored, so it cannot make the
+      // floor permanently deaf for this couple; the next ambiguous figure asks
+      // again. And it only ever SKIPS the plausibility question — an unreadable
+      // figure is still refused above, because confirming a typo is not consent.
       return res.status(409).json({
         ok: false,
         error: verdict.say,
