@@ -27,6 +27,7 @@
 // if the bride says "yes send them here", the agent calls list_muse with
 // session_id to playback that session's saves only.
 
+const { coerceBudget } = require('../lib/coerceBudget');
 const { STATIC_SYSTEM_PROMPT, buildDynamicContext } = require('./brideSystemPrompt');
 // The one register, for the separate composer call below that runs WITHOUT the
 // static prompt and used to re-describe the voice from memory (CE-65 fold).
@@ -484,6 +485,7 @@ async function execSaveWeddingDetail({ input, couple, supabase }) {
   }
 
   let coerced = value;
+  let savedSay = null;   // F-09.165: the verbatim read-back, when the field has one
 
   // Field-specific coercion
   if (field === 'wedding_date') {
@@ -494,10 +496,34 @@ async function execSaveWeddingDetail({ input, couple, supabase }) {
   }
 
   if (field === 'budget_total') {
-    coerced = Number.isInteger(value) ? value : parseInt(value, 10);
-    if (!Number.isInteger(coerced) || coerced <= 0) {
-      return { ok: false, error: 'budget_total must be a positive integer (rupees)' };
+    // ── W-1 LIFT, NARROW (CE R-26.5 §B) · F-09.165 + F-09.167 ────────────────
+    // This arm used to be `parseInt(value, 10)`, which stops at the first
+    // non-digit: "12,50,000" persisted as Rs 12 and "4.5L" as Rs 4, silently.
+    // THE COERCION NO LONGER LIVES HERE. It lives at src/lib/coerceBudget.js,
+    // which is ALSO what src/api/couple/me.js calls — one definition, two doors,
+    // so the founder's 「 no clash 」 cannot be broken by editing one of them.
+    // Change the rule THERE, never here.
+    const verdict = coerceBudget(value);
+    if (!verdict.ok) {
+      return { ok: false, error: `budget_total ${verdict.reason}` };
     }
+    if (verdict.confirm) {
+      // F-09.167 — THE MAGNITUDE CLASS. "50" parses perfectly and is still
+      // silently wrong when she meant fifty lakh. NOTHING IS WRITTEN: the
+      // figure is handed back as a question and her next message settles it.
+      // Refusing would be wrong too — Rs 50,000 may genuinely be her flowers
+      // budget. Only the conversation can tell, so the conversation decides.
+      return {
+        ok: false,
+        needs_confirmation: true,
+        field,
+        heard: verdict.value,
+        suggestion: verdict.suggestion,
+        say_verbatim: verdict.say,
+      };
+    }
+    coerced = verdict.value;
+    savedSay = verdict.say;
   }
 
   if (field === 'events_planned') {
@@ -533,7 +559,9 @@ async function execSaveWeddingDetail({ input, couple, supabase }) {
     tags:      ['detail', field],
   });
 
-  return { ok: true, field, value: coerced };
+  return savedSay
+    ? { ok: true, field, value: coerced, say_verbatim: savedSay }
+    : { ok: true, field, value: coerced };
 }
 
 // ── add_event executor ───────────────────────────────────────────────

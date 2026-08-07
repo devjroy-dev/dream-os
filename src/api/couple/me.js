@@ -10,6 +10,7 @@
 
 'use strict';
 
+const { coerceBudget } = require('../../lib/coerceBudget');
 const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
@@ -103,14 +104,37 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
   //   NOT SUPPORTED, deliberately: clearing the budget back to null. The first
   //   writer has no clear path, so offering one here would be a capability that
   //   exists on one surface only. Raise it or lower it; blanking needs a ruling.
+  // ── F-09.165 + F-09.167 · THE COERCION MOVED OUT (CE R-26.5) ──────────────
+  // This arm mirrored brideEngine's parseInt BY HAND. Mirroring by hand is how
+  // two doors drift apart; the definition now lives in ONE place and both
+  // writers call it. Change the rule at src/lib/coerceBudget.js, never here.
   let budgetCoerced;
   if (budget_total !== undefined) {
-    budgetCoerced = Number.isInteger(budget_total)
-      ? budget_total
-      : parseInt(budget_total, 10);
-    if (!Number.isInteger(budgetCoerced) || budgetCoerced <= 0) {
-      return errRes(res, 400, 'budget_total must be a positive integer (rupees).');
+    const verdict = coerceBudget(budget_total);
+    if (!verdict.ok) {
+      return errRes(res, 400, `budget_total ${verdict.reason}`);
     }
+    if (verdict.confirm) {
+      // F-09.167 AT A DOOR THAT CANNOT HOLD A CONVERSATION.
+      // DECLARED DEVIATION, reported not assumed: the ruling scoped the floor's
+      // behaviour to Dream Ai — 「 below it Dream Ai asks 」 — and said nothing
+      // about this route, which has no next message to listen for. Its two
+      // available arms are accept-silently (which IS the defect) or hand the
+      // question back. It hands the question back: 409 rather than 400, so a
+      // client can tell "you typed something invalid" from "confirm what you
+      // meant", carrying the founder's verbatim query byte as the message. The
+      // Settings sheet already renders a save error, so the question reaches
+      // her with no new UI. NOTHING IS WRITTEN until she resubmits a figure
+      // that stands on its own. A true confirm handshake here is a rider.
+      return res.status(409).json({
+        ok: false,
+        error: verdict.say,
+        needs_confirmation: true,
+        heard: verdict.value,
+        suggestion: verdict.suggestion,
+      });
+    }
+    budgetCoerced = verdict.value;
     couplesPatch.budget_total = budgetCoerced;
   }
 
