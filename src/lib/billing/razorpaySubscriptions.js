@@ -57,23 +57,31 @@ class RazorpayApiError extends Error {
   }
 }
 
-// ── THE BILLING-CYCLE COUNT ─────────────────────────────────────────────────
+// ── THE BILLING-CYCLE COUNT — FOUNDER-RULED 2026-08-07 ──────────────────────
 //
-// ⚠ DISCLOSED: THE FOUNDER'S NUMERAL HAS NOT LANDED. CE relay #2 ruled
-// 「 total_count goes to the founder below. Do not default it. 」 and relay #3
-// then ruled 「 build everything now 」 without carrying the numeral. Those two
-// cannot both be honoured, so this constant holds the EXECUTOR'S RECOMMENDATION
-// and says so out loud rather than passing itself off as ruled. It is a
-// one-byte change and it is named in the handover's resume card as such.
+// RULED: 1200. The founder's word, given after the contradiction below was put
+// to him plainly. This constant is no longer an executor recommendation and this
+// comment no longer says it is — a comment that keeps calling a ruled value
+// provisional is the next reader's trap, and correcting it is the same law that
+// retires a sentence with its mechanism.
 //
-// WHY 1200. `total_count` is mandatory on create and cannot ride with `end_at`.
-// Razorpay's two surfaces disagree on the ceiling — the API reference says
-// subscriptions are supported to a maximum of 100 years, the dashboard guide
+// THE CONTRADICTION IT RESOLVES, kept on the record because the next sitting
+// should know this numeral was contested rather than defaulted. CE relay #2
+// ruled 「 total_count goes to the founder. Do not default it. 」 Relay #3 then
+// ruled 「 build everything now 」 without carrying the numeral, and `total_count`
+// is mandatory on create — so the build seated 1200 as a DISCLOSED
+// recommendation, named the contradiction in this comment, and carried it to the
+// founder as resume-card item 0. He ruled it. The disclosure did its job and is
+// now history rather than a caveat.
+//
+// WHY 1200. Razorpay's two surfaces disagree on the ceiling — the API reference
+// says subscriptions are supported to a maximum of 100 years; the dashboard guide
 // says 30 and then computes its monthly formula to 1200, a figure that only
-// reconciles with 100. 1200 monthly cycles is the numeral both pages land on
-// and it means, in practice, UNTIL SHE CANCELS — which is what the surface
-// already promises her in the vetoed line 「 Cancel any time from the app. 」 A
-// small count would make that sentence a lie on a timer.
+// reconciles with 100. 1200 monthly cycles is the numeral both pages land on and
+// it means, in practice, UNTIL SHE CANCELS — which is what the surface already
+// promises her in the vetoed line 「 Cancel any time from the app. 」 A small count
+// would make that sentence a lie on a timer. If Razorpay ever rejects it, the
+// create fails loudly with a 400 on the first tap; the fallback is 360.
 //
 // AND IT IS WHY F-10.90 EXISTS. A finite count ends in `subscription.completed`,
 // which `razorpay.js:entitlementFor` does not handle — it falls to the default,

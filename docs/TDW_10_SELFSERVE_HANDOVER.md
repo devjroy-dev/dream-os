@@ -86,28 +86,19 @@ forbids certifying an identifier by the same eyes that read it.
 
 ---
 
-## 5 · ⚠ `total_count` — THE ONE PLACE THE EXECUTOR MOVED PAST AN UNRULED FORK
+## 5 · `total_count` — FOUNDER-RULED 1200 (2026-08-07)
 
-Relay #2: *「 total_count goes to the founder. Do not default it. 」*
-Relay #3: *「 build everything now 」* — and it did not carry the numeral.
+**RULED.** The disclosure that stood here is discharged and the constant's own
+comment has been corrected to stop calling itself provisional.
 
-**Those two cannot both be honoured.** `total_count` is mandatory on create and
-cannot ride with `end_at`; there is no mint without it.
+Kept on the record because the numeral was contested rather than defaulted:
+relay #2 ruled *do not default it*; relay #3 ruled *build everything now* without
+carrying it; `total_count` is mandatory on create. The build seated 1200 as a
+DISCLOSED recommendation, named the contradiction in-comment, and carried it up
+as resume-card item 0. The founder ruled it.
 
-`TOTAL_COUNT_MONTHLY = 1200` is seated in `razorpaySubscriptions.js` as a named
-constant whose comment states out loud that it is **the executor's
-recommendation, not a ruling**, names the contradiction that produced it, and
-flags itself as a one-byte change. It is **RESUME-CARD ITEM 0**.
-
-Why 1200: Razorpay's two surfaces disagree on the ceiling — the API reference
-says a maximum duration of 100 years; the dashboard guide says 30 and then
-computes its monthly formula to 1200, a figure that only reconciles with 100.
-1200 monthly cycles means, in practice, **until she cancels** — which is what the
-vetoed line 「 Cancel any time from the app. 」 already promises her. A small count
-would make that sentence a lie on a timer. If Razorpay rejects it, the create
-fails loudly with a 400 on the first tap; fallback is `360`.
-
----
+Fallback remains 360 if Razorpay ever rejects 1200 — a loud 400 at create, never
+a silent wrong.
 
 ## 6 · F-10.89 — CURED IN TWO PLACES, AND NEITHER MAY ASSUME THE OTHER RAN
 
@@ -197,15 +188,17 @@ than a virgin row, because it is the path every churned vendor walks.
 
 ## 11 · THE RESUME CARD
 
-0. **Rule `total_count`.** One byte in `razorpaySubscriptions.js`. `1200` seated
-   as recommendation; `360` is the fallback if Razorpay rejects it.
+0. ~~Rule `total_count`~~ — **DONE, ruled 1200.**
 1. **Save two Railway vars on `dream-os`**, names only:
    `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`. Values never in a transcript.
 2. **Confirm the three `RAZORPAY_PLAN_*` vars hold the right IDs.** Values are
    masked, so nothing but the walk proves the mapping — tapping Essential must
    show **Rs 999**, Signature **Rs 1,999**, Prestige **Rs 2,999**. Crossed vars
    mismap silently and the amount fallback partially masks it.
-3. **Flip `billing.selfserve_enabled`** to `true` (block ships WITHHELD).
+3. ~~Flip `billing.selfserve_enabled`~~ — **DONE.** Both flags witnessed `true`
+   on 2026-08-07: `billing.selfserve_enabled` AND `billing.tier_flip_enabled`.
+   The second matters: with it off, a real charge would ledger and NOT move her
+   tier, which reads as a failed acceptance ① to anyone who does not know.
 4. **The walk** — acceptance ① ② ③ ④, `9888294440`.
 
 **Acceptance ① is DECLARED-OPEN.** The live mint is the founder's, witnessed
@@ -221,3 +214,36 @@ sites at `page.tsx:318/347/358`, re-carried to the UI micro by chair relay #3.
 This delivery adds **no new size** to that file: body at 16, action words at 10,
 both named rungs, so the three pre-existing sites remain the only ones
 `tdw09_type` can see.
+
+
+---
+
+## 13 · WALK RECORD — 2026-08-07, AND TWO FINDINGS IT PRODUCED
+
+**Pushed:** dream-os `6b896a2` · pwa `0be7370`. tsc clean, Vercel build green.
+
+**Door two witnessed holding.** `POST /vendor/billing/subscribe` returned
+`503 {"ok":false,"error":"Payments are not set up yet.","code":"not_configured"}`
+with the toast 「 Plan changes are not open yet. 」 The route exists, the gate fires
+before anything reaches Razorpay, and the failure renders a true sentence. The
+credential pair is blocked on Razorpay's own 2FA outage (SMS then email, no third
+leg) — an external wall, not an estate defect.
+
+**Plan vars founder-witnessed as NOT crossed.** Walk step 2 collapses from a test
+to a confirmation. His direct inspection outranks the price-on-approval-screen
+proxy the executor had proposed.
+
+**F-10.91 — FILED AND CURED THIS DELIVERY.** See the pwa handover; witnessed on
+two live rows.
+
+**F-10.92 — FILED, OPEN.** Acceptance ④'s first half — *「 OFF = today's
+byte-identical surface, proven by cell 」* — **was not built**. The flag gates the
+SERVER only; the PWA renders the picker regardless of flag state, and the retired
+null-link paragraph is gone unconditionally. So `selfserve_enabled = false` does
+not restore the pre-v2 surface: it produces a picker that 503s. Harmless today
+(the flag is on and staying on), but it was a RATIFIED acceptance number and the
+executor missed it. Disclosed by name rather than allowed to pass under a green.
+Cure, unruled: gate the picker client-side on a flag the wire carries, or amend
+④ to drop the byte-identical arm. The founder's word decides which.
+
+**Acceptance ① ② ③ remain DECLARED-OPEN**, blocked only on the credential pair.

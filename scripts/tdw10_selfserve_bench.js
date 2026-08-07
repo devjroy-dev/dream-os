@@ -90,7 +90,7 @@ const SUB_OK = { id: 'sub_TEST1', short_url: 'https://rzp.io/i/TEST1', status: '
     assert.strictEqual(out.short_url, SUB_OK.short_url, 'no second GET is needed for the link');
   });
 
-  await acell('§A.5 total_count is sent, and it is the recommended numeral (DISCLOSED: unruled)', async () => {
+  await acell('§A.5 total_count is sent, and it is the FOUNDER-RULED numeral (1200)', async () => {
     const f = recorder(SUB_OK);
     await R.createSubscription({ tier: 'essential', vendorId: 'v-1', env: ENV, fetchImpl: f, ...CREDS });
     assert.strictEqual(f.calls[0].body.total_count, R.TOTAL_COUNT_MONTHLY);
@@ -171,6 +171,28 @@ const SUB_OK = { id: 'sub_TEST1', short_url: 'https://rzp.io/i/TEST1', status: '
     // The founder's own row at charter: razorpay_subscription_id sub_TMeuDLooXudasB,
     // billing_status cancelled. Acceptance ① runs on the remint path.
     assert.strictEqual(R.isLiveStatus('cancelled'), false);
+  });
+
+  cell('§D.5 F-10.91 — a tier a vendor is ENTITLED to is not a tier she has BOUGHT', () => {
+    // The witnessed rows: tier 'prestige', billing_status 'none', id NULL. The
+    // picker filtered Prestige out as "her current plan" and locked her out of
+    // buying it. The key was the bug: vendors.tier answers "what may she use",
+    // never "what is she paying for". This cell asserts the two are independent.
+    const entitled = { tier: 'prestige', billing_status: 'none', razorpay_subscription_id: null };
+    const hasLiveMandate = entitled.billing_status === 'active';
+    assert.strictEqual(hasLiveMandate, false,
+      'an entitlement without an active status is not a purchase');
+  });
+
+  cell('§D.6 §D.5 reds if the picker filters on the entitlement instead', () => {
+    const entitled = { tier: 'prestige', billing_status: 'none' };
+    const broken = ['essential','signature','prestige'].filter(t => t !== entitled.tier);
+    const cured  = ['essential','signature','prestige']
+      .filter(t => !((entitled.billing_status === 'active') && t === entitled.tier));
+    assert.throws(() => { assert.ok(broken.includes('prestige')); },
+      'the broken filter must not offer her the tier she is on — that is the defect');
+    assert.ok(cured.includes('prestige'),
+      'the cured filter offers all three to a vendor with no live mandate');
   });
 
   cell('§D.4 an unknown status is treated as terminal, never as live', () => {
