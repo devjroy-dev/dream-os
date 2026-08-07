@@ -214,14 +214,36 @@ t('§1.9 the refusal follows the trio\'s exact shape: send → outbound row → 
   }
 });
 
-t('§1.10 the SPENT-ALLOWANCE seat is built and HELD, and says so — the gap is declared, never silent', () => {
-  assert.ok(/capMeta\.state === 'capped' && capMeta\.turns_cap > 0/.test(waText),
-    'the spent-allowance seat is absent — the gap is now invisible');
-  assert.ok(/SPENT-ALLOWANCE SEAT HELD \(copy veto owed\)/.test(waText),
-    'the held seat emits no warn — a declared gap nobody can see in the logs is a document, not a declaration');
+// ── LABELLED AMENDMENT · R-26.15 ① — THE SEAT WAS HELD; IT IS NOW FILLED. ────
+// FALSIFIED BY RULING, NOT BY DEFECT. This cell asserted that the seat sent NOTHING,
+// because its sentence had not passed the founder's veto and shipping an unvetoed
+// vendor-facing byte is the one thing the copy law forbids outright. The byte landed.
+// The PROPERTY the cell defends is unchanged and is the same one it always defended:
+// this lane must never go silent on a vendor who is inside her rights. It defended it
+// by asserting a declared gap; it now defends it by asserting the cure.
+t('§1.10 the SPENT-ALLOWANCE seat SPEAKS — a paying vendor over her allowance is never met with silence', () => {
   const seat = waText.match(/if \(capMeta && capMeta\.state === 'capped' && capMeta\.turns_cap > 0\) \{[\s\S]*?\n    \}/)[0];
-  assert.ok(!/sendWhatsApp/.test(seat),
-    'the held seat SENDS something — a vendor-facing byte that has not passed the founder veto has shipped');
+  assert.ok(/sendWhatsApp\(phone, spentLine/.test(seat), 'the seat sends nothing — the silence F-3 was ruled to prevent');
+  assert.ok(/capSpentLineFor\(capMeta\)/.test(seat), 'the seat does not take its sentence from the shared home');
+  assert.ok(/\n      return;/.test(seat), 'the seat does not short-circuit — she would be refused AND answered');
+  assert.ok(!/SEAT HELD/.test(waText), 'the held-seat warn survives a filled seat — the file describes itself falsely');
+});
+
+t('§1.11 the spent refusal carries NO ROUTE LINE — a wait is not a sale', () => {
+  const seat = waText.match(/if \(capMeta && capMeta\.state === 'capped' && capMeta\.turns_cap > 0\) \{[\s\S]*?\n    \}/)[0];
+  // The SEND is asserted FIRST. Without it this cell passes on an EMPTY seat — which
+  // is what the pre-ruling tree had — and would be green over the very silence the
+  // ruling exists to end. Caught on the both-ways run, not by reasoning.
+  assert.ok(/sendWhatsApp\(phone, spentLine/.test(seat), 'the seat sends nothing, so "which sentence" is not yet a question');
+  assert.ok(!/WA_CAP_ZERO_LINE/.test(seat),
+    'the spent seat sends the ZERO-cap sentence — she would be told to buy a tier whose allowance simply resets at midnight');
+  assert.ok(!/Billing/.test(seat), 'the spent refusal points her at a payment page for a wait');
+});
+
+t('§1.12 the spent line is IMPORTED, never transcribed — one home for a vetoed byte', () => {
+  assert.ok(/capSpentLineFor = capSeam\.CAPPED_LINE;/.test(waText), 'the WA door does not take the shared sentence');
+  assert.ok(!/reached today's conversation limit/.test(waText),
+    'the WA door carries its OWN copy of a vetoed string — F-04.36, and it would drift on the first one-lane edit');
 });
 
 // ═══ §2 — THE COUNTER WAS ALWAYS COMBINED; NOW THE KEY SAYS SO ══════════════════
@@ -276,7 +298,12 @@ ta('§2.4 the meter returns the SAME reading after the refactor — the both-sid
   assert.strictEqual(meta.turns_cap, 250);
   assert.strictEqual(meta.turns_used, 3);
   assert.strictEqual(meta.state, 'ok');
-  assert.strictEqual(meta.upgrade.href, '/vendor/settings#tier');
+  // AMENDED LABELLED · R-26.14 §B — the picker moved to its own door and the
+  // fragment never scrolled (F-10.101, founder-witnessed). Same property: the
+  // meter mints a path out. New address, because the old one landed her at the
+  // top of a settings page to hunt.
+  assert.strictEqual(meta.upgrade.href, '/vendor/billing');
+  assert.ok(!/#/.test(meta.upgrade.href), 'a fragment returned — /vendor/billing IS the picker, there is nothing to scroll to');
 });
 
 ta('§2.5 the WhatsApp lane and the PWA lane read ONE counter — same agent, same numbers, no lane column', async () => {
@@ -340,14 +367,40 @@ t('§3.3 the meter COUNTS turns but never CREATES one — buildMeta issues no in
 // ═══ §4 — THE SENTENCES ════════════════════════════════════════════════════════
 say('\n§4 — THE COPY (the ruled bytes, and the one that must not move)');
 
-t('§4.1 a NONZERO cap still selects the spent-allowance sentence, BYTE-UNCHANGED', () => {
-  const meta = { tier: 'signature', window: 'day', turns_used: 250, turns_cap: 250 };
-  const expected = "You've used this day's conversations on the signature tier (250/250). The desk reopens at midnight — or step up a tier and keep going.";
-  assert.strictEqual(chat.CAPPED_LINE(meta), expected, 'CAPPED_LINE moved — a ratified acceptance byte changed');
-  assert.strictEqual(chat.cappedReplyFor(meta), expected, 'the selector does not choose the spent sentence at a nonzero cap');
-  const m2 = { tier: 'essential', window: 'month', turns_used: 5000, turns_cap: 5000 };
-  assert.ok(chat.cappedReplyFor(m2).endsWith('The desk reopens on the 1st — or step up a tier and keep going.'),
-    'the month arm of the unchanged sentence moved');
+// ── LABELLED AMENDMENT · R-26.15 ① — THE BYTES MOVED BY RULING. ─────────────
+// This cell pinned CAPPED_LINE byte-unchanged, and that was a RATIFIED ACCEPTANCE
+// NUMBER of F-10.100 which the delivery met. The founder then ruled the sentence.
+// A ruling outranks an acceptance number the same chair set, and the amendment is
+// labelled rather than quiet so the record shows a decision and not a drift.
+// THE PROPERTY IS UNCHANGED: a nonzero cap selects the SPENT sentence, never the
+// no-AI one, and the window branch tells the truth about WHEN she comes back.
+t('§4.1 a nonzero cap selects the RULED spent-allowance sentence, both windows', () => {
+  const day = { tier: 'signature', window: 'day', turns_used: 250, turns_cap: 250 };
+  assert.strictEqual(chat.CAPPED_LINE(day),
+    "You've reached today's conversation limit on your tier. The desk reopens at midnight.");
+  assert.strictEqual(chat.cappedReplyFor(day), chat.CAPPED_LINE(day), 'the selector does not choose the spent sentence at a nonzero cap');
+  const mon = { tier: 'essential', window: 'month', turns_used: 450, turns_cap: 450 };
+  assert.strictEqual(chat.CAPPED_LINE(mon),
+    "You've reached this month's conversation limit on your tier. The desk reopens on the 1st.");
+});
+
+// DECLARED GREEN-BOTH-WAYS, and the declaration is the point: this property held
+// before the ruling and must hold after it. It is a CONTINUITY cell, not a cure
+// cell — the ruling rewrote both arms of this sentence, and the one thing that had
+// to survive the rewrite is that a monthly cap never promises a midnight.
+t('§4.1b THE MONTH BRANCH SURVIVES — it is the only thing between a monthly-capped vendor and a midnight that never comes', () => {
+  const mon = chat.CAPPED_LINE({ window: 'month', tier: 'x', turns_used: 1, turns_cap: 1 });
+  assert.ok(!/midnight/.test(mon), 'a monthly cap promises a midnight reopening — F-10.100(b) one window over');
+  assert.ok(/reopens on the 1st/.test(mon), 'the month arm lost its true date');
+});
+
+t('§4.1c THE RETIRED CLASSES STAY RETIRED — no figures, no raw tier token, no sale', () => {
+  for (const w of ['day', 'month']) {
+    const line = chat.CAPPED_LINE({ window: w, tier: 'basic', turns_used: 15, turns_cap: 15 });
+    assert.ok(!/\(\d+\/\d+\)/.test(line), 'the figures returned — the sentence litigates instead of stating');
+    assert.ok(!/ basic /.test(line),          'the raw lowercase database token returned mid-sentence');
+    assert.ok(!/step up a tier/.test(line),   'the upgrade prompt returned — RETIRED BY RULING (R-26.15 §2), tokens are coming');
+  }
 });
 
 t('§4.2 at cap 0 the PWA speaks the RULED bytes, and not one character else', () => {
@@ -414,8 +467,8 @@ say('\n§5 — THE UPGRADE PATH SURVIVES A ZERO CAP');
 
 t('§5.1 the meter still MINTS an upgrade path at cap 0 — the server half of the cure', () => {
   const body = chatText.match(/async function buildMeta\(\{[\s\S]*?\n\}\n/)[0];
-  assert.ok(/upgrade: \{ label: 'Upgrade', href: '\/vendor\/settings#tier' \}/.test(body),
-    'the meta no longer carries an upgrade path');
+  assert.ok(/upgrade: \{ label: 'Upgrade', href: '\/vendor\/billing' \}/.test(body),
+    'the meta no longer carries an upgrade path to the live picker');
   assert.ok(/return \{ tier: productTier, \.\.\.nearer, state, upgrade:/.test(body),
     'the upgrade path is now conditional — at a zero cap it must still be minted');
 });
@@ -431,7 +484,10 @@ ta('§5.2 END TO END: at cap 0 the meta is capped, reads 0/0, AND still carries 
 });
 
 t('§3.4 THE GATE FAILS OPEN — a broken meter costs an unmetered turn, never a silent Victor', () => {
-  const g = waText.match(/let capMeta = null, WA_CAP_ZERO_LINE = null;[\s\S]*?\n    \}\n/)[0];
+  const g = waText.match(/let capMeta = null, WA_CAP_ZERO_LINE = null, capSpentLineFor = null;[\s\S]*?\n    \}\n/)[0];
+  assert.ok(/RATIFIED BY RULING/.test(waText), 'the fail-open posture no longer names itself as ruled (R-26.14 §C)');
+  assert.ok(/PAYING VENDOR SILENCED BY OUR OWN OUTAGE/.test(waText),
+    'the F-06.85 reason is gone — a future sitting would "fix" this into fail-closed');
   assert.ok(/try \{/.test(g) && /\} catch \(e\) \{/.test(g), 'the cap seam is required unguarded on the main path of every vendor turn');
   assert.ok(/METER UNREACHABLE/.test(g), 'a fail-open path that says nothing is indistinguishable from a cap that never fired');
   // and fail-open must MEAN open: a null meta cannot reach either refusal branch

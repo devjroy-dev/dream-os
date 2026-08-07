@@ -1,101 +1,141 @@
-# TDW_10 · F-10.100 — THE COMBINED AI CAP · ZIP A (dream-os) · EXECUTOR HANDOVER
+# TDW_10 · F-10.100 RIDER — THE SPENT SEAT FILLED · THE HREF RE-POINTED · FAIL-OPEN RATIFIED
 
-**Built at:** dream-os `8ce5422` · **pwa companion:** `97b8b8f`
-**REBASED.** Cut first at `556e164`/`1959023`, rebased to `c44356e`/`d2ef96d`, rebased again to `8ce5422`/`97b8b8f` — the bride lane moved three times during this sitting's walk. ZIP A collided with **nothing** (`556e164..c44356e` is `coerceBudget.js` + `brideEngine` + `couple/me` + its bench and docs — derived by `git diff --name-only`, checked file-by-file against this ZIP's payload). Ladder re-derived at the new tip: `0116` still free, `0113` still an unwritten hole. Full floor re-run at `c44356e`; `tdw09_rider2_budget` **54/54** joins it unmoved.
-**Rulings built under:** CE R-26.7 §A (the ruled bytes) · §C (F-1 · F-2 · F-3 · F-4 · F-6 · M-1) · §D (acceptance)
-**Radius:** dream-os only. The pwa half ships as ZIP B.
-
----
-
-## 0 · THE FIRST DERIVATION, BECAUSE THE RECORD MOVED
-
-Fetch-first at seating and again at cut:
-
-| | ruling said | origin at this seat |
-|---|---|---|
-| dream-os | `556e164` | **`556e164`** — unmoved |
-| dreamos-pwa | `1959023` | **`1959023`** — confirmed; `137c24b..1959023` is F-09.166, bride lane, **zero radius files** |
-
-Ladder re-derived, not carried: tail `0115_tier_vocabulary.sql`; `0113` a reserved-unwritten hole; `0116` free. **LD-8 satisfied.**
+**Built at:** dream-os `a034537` · **pwa companion:** `b989172`
+**Rulings:** R-26.14 §B (href) · §C (fail-open) · R-26.15 ① ② ③ ④
+**Radius:** two files + two benches. Three lines of behaviour.
 
 ---
 
 ## 1 · WHAT SHIPPED
 
-| File | State | What |
-|---|---|---|
-| `db/migrations/0116_combined_ai_cap.sql` | NEW | Eight `vendor_ai_*` keys, seed-from-source-row off the live `vendor_pwa_*` rows. Zero DDL, zero DELETE. Revert commented. |
-| `src/api/vendor-engine/chat.js` | MOD | **F-6** — `buildMeta` plain-args `{ supabase, agentId, tier }`; the key family follows; five call sites re-pointed; the ruled copy + one selector. |
-| `src/lib/vendorInbound.js` | MOD | **F-1** — the cap gate, the word trio's fourth member. W-1 opened for this alone. |
-| `scripts/tdw10_combined_cap_bench.js` | NEW | 33 cells. |
-| `scripts/tdw10_tier_bench.js` | MOD | **Labelled amendment**, 80 → 81. |
+| File | What |
+|---|---|
+| `src/api/vendor-engine/chat.js` | `CAPPED_LINE` → the ruled bytes, both windows · `upgrade.href` → `/vendor/billing` · `CAPPED_LINE` exported for the WA door |
+| `src/lib/vendorInbound.js` | the spent-allowance seat FILLED · fail-open ratification named per F-06.85 |
+| `scripts/tdw10_combined_cap_bench.js` | **33 → 37**, five cells amended LABELLED |
+| `docs/…_COMBINED_CAP_HANDOVER.md` | this |
+
+**The ruled bytes, shipped verbatim, identical on both lanes:**
+
+> You've reached today's conversation limit on your tier. The desk reopens at midnight.
+> You've reached this month's conversation limit on your tier. The desk reopens on the 1st.
 
 ---
 
-## 2 · THE PROOF
+## 2 · THE SILENCE THIS ENDS
 
-- **`tdw10_combined_cap` 33/33 GREEN** cured · **1/33 at pristine `556e164`** — **32 cells RED per-cell**, run on an independently cloned pristine tree. Bar was 22; see §5.
-- **The one green-both-ways cell is declared in-file.** §3.2 tests this bench's own capturing fake, so it cannot redden — it exists because §3.1 asserts an **absence**, and an absence assertion is worth nothing unless something proves the recorder would catch a presence.
-- **Sixteen mutations, every one biting**, all against production source: the gate accepting any cap · the refusal losing its `return` · the key reverting · the meter writing a row · one character of the ruled copy · the upgrade path dropping out · `>= 0` regressing to `> 0` · `loop.ts` growing a lane column · the gate moving ahead of the glitch word · the held seat starting to speak · the fail-open path going silent · the null-guard dropping · the WA door re-typing the vetoed sentence · the selector keying on the tier word.
-- **`tdw10_tier_bench` 81/81** cured; the amended bench **78/81 at pristine**; the **unamended bench witnessed 78/80 against the cured tree** before the amendment was written (CE-209's precedent, in that order).
-- `node --check` clean on both touched JS files.
-- **FLOOR, cured tree:** `b06_forkc_wireguard` **113/113** · `tdw10_billing` 52/52 · `tdw10_selfserve` 30/30 · `tdw09_micro` 23/23 · `b05_m2_vendor_inbound` 2/2 · `b05_arc_m1` 53/53 · `b05_arc_m6` 20/20 · `b0498_fresh_crew_rider` 58/58 · `b05_media_shim` 14/14 · `b06_m3` 37/37 · `b06_m0` 50/50 · `b05_arc_m3` 11/11 · `b6_s2` 48/48.
-- **Attributed reds reproduced UNMOVED:** `b06_meter` 28/29 · `b05_f0555` 22/23 · `b07_f0772` 158/159 · `b10_p1_search` 44/45 · `b07_p4b_body` 75/76.
+The seat shipped empty and warning, and the warn was right to exist. At the founder's
+new ladder an **Essential vendor reaches 15 turns in a day** — and until this delivery
+she then met SILENCE on WhatsApp. Paying, inside her rights, nothing back. That is the
+exact failure F-3 was ruled to prevent, reintroduced by a held byte rather than by a
+design. It was declared, visible in the logs as `SPENT-ALLOWANCE SEAT HELD`, and closed
+by a ruling instead of discovered by a vendor. **The warn goes silent because the seat
+is no longer empty.**
 
-**THREE PRECONDITIONS FOR ANY FLOOR RUN IN THIS ARC, promoted at R-26.7 §D and paid for again here:** `npm ci` · `git fetch --unshallow` · `npm run build`. My first run reported `b06_forkc` 111/113 and `b05_arc_m6` 19/20; both were my container, not the tree.
-
----
-
-## 3 · FOUR THINGS THIS BUILD PRODUCED, EACH OWNED BY NAME
-
-**D-1 — THE LAZY REQUIRE KILLED THREE SEALED BENCHES, and the fix is an architecture call I made mid-build.** Requiring the cap seam pulls the engine's `db` module, which throws at load without its environment. Unguarded on the main path of every vendor turn it took `b05_m2` 2/2 → 0/2, plus `b05_f0555` and `b06_m3`. I avoided the deps-object trap the record warned about and walked into its cousin. **Cured fail-open**, on `buildMeta`'s own stated posture — *a broken meter NEVER blocks a turn* — with a `METER UNREACHABLE` error line. The trade is stated rather than assumed: failing open costs an unmetered turn; failing closed costs a vendor whose assistant has gone silent. **Not ruled. Reversible in one word.**
-
-**D-2 — TWO VACUOUS GREENS IN MY OWN BENCH, caught by the pristine run and not by reasoning.** §1.6/§1.7 used `indexOf`, which returns `-1` for an absent gate and is less than every real offset — both were GREEN against a tree with no gate in it. §4.5 ran `/₹/.test(undefined)`, which tests the string `"undefined"` and passes. Both are the independent-method law's silent-zero clause, in a bench written by the executor who quoted that law in his read-first. Closed with explicit existence guards, each carrying its own tuition in-comment.
-
-**D-3 — A NON-BITING MUTATION, so the cell was added.** Rewriting the selector's `turns_cap === 0` as `tier === 'basic'` passed **every** copy cell, because every zero-cap fixture happened to be Basic and every nonzero one happened not to be. Two properties travelling together in every fixture is one property proven. §4.7 now drives a **zero-capped Prestige** and a **Basic vendor who spent a real allowance** — the dial is the founder's interim lever on any tier, and the sentence must follow the cap, never the word.
-
-**D-4 — MY READ-FIRST TOLD THE CHAIR `billing.selfserve_enabled` WAS FALSE. It is true.** I derived it from `laneFlags.js:81`, which is the *default*; both v2 handovers record both lane flags **witnessed `true` on 2026-08-07**. I asserted a live state from a code default, and smoke step ③ was reworded on that premise. The reword is still the safer step; the premise under it was mine and it was wrong.
+**No route line on this lane, and the asymmetry is deliberate.** The zero-cap sentence is
+a SALE and carries directions to Billing. This one is a WAIT — there is nothing to tap,
+and pointing a vendor at a payment page when her allowance resets at midnight would be
+selling her something she does not need.
 
 ---
 
-## 4 · WHAT THIS DELIVERY DELIBERATELY DID NOT DO
+## 3 · THE ACCEPTANCE NUMBER AMENDED BY RULING — DISCLOSED BY NAME
 
-- **The cap > 0 WhatsApp sentence is NOT built.** The seat is, and it warns rather than speaks. Shipping my own draft of a string awaiting the founder's veto is the one thing the copy law forbids outright. `§1.10` asserts the seat sends **nothing**, so the gap cannot close by accident. Until the byte lands, a paying vendor over her allowance is answered on WhatsApp exactly as she is today — **unchanged, never a regression.**
-- **`couple_wa_*` / `couple_pwa_*` untouched.** Zero readers, both families; a live finding; with the founder. `0116` §6.3 and the pwa's `§3.5b` both assert this delivery did **not** widen a ruling to cover them.
-- **`vendor_pwa_*` and `vendor_wa_*` rows are NOT deleted.** Deleting config is destructive and reversible only from a backup — 0115's call and its reason. They stop being offered and stop being read; the values stay legible.
-- **No cap is set to zero by this delivery.** Zero is a founder act on his own console. A migration that quietly denied a tier its AI would be enforcing policy under cover of a rename.
-- **W-1 held.** `git diff --numstat src/agent/` is **empty**. `engine.js` untouched — the dead twin stays dead. `loop.ts` byte-identical, asserted by `§2.5`.
+F-10.100's ratified bar required *「 a nonzero cap still selects the spent-allowance
+sentence unchanged 」*. **That cell is now falsified BY RULING, not by defect**, and the
+distinction is the whole disclosure: the delivery met the number, the founder then ruled
+the sentence, and a ruling outranks an acceptance number the same chair set.
 
----
+Three classes retired from the sentence, each for its own reason, each asserted by a cell
+so none can return by accident:
 
-## 5 · THREE NUMBERS MOVED. ALL DISCLOSED, NONE SILENTLY.
+- **the figures** `(250/250)` — invited an argument with a number instead of stating a fact
+- **the raw tier token** — rendered `basic` lowercase mid-sentence, the known founder
+  question held open beside F-10.100; `your tier` retires the class rather than patching
+  a capitalisation, and survives any future rename
+- **`step up a tier`** — RETIRED BY FOUNDER RULING. Tokens are coming; he will not sell an
+  upgrade he is about to replace. **The seat's SHAPE is preserved for a `buy tokens` line**
+  and the reason is named in-comment per F-06.85, so no future sitting restores an upgrade
+  prompt thinking it was an omission.
 
-1. **Bench count 22 → 33.** Upward. 22 was ratified and I am over it; the eleven beyond are the three escape-hatch cells, the seat-ordering cells, the four migration cells, the fail-open cell, and §4.7 above. **Needs the chair's amendment.**
-2. **`tdw10_tier_bench` 80 → 81.** Two cells re-aimed labelled; **one cell ADDED** — the F-04.36 negative asserting the retired template left no second reader behind.
-3. **`b06_forkc_wireguard_bench` reddened over my COMMENT PROSE, then restored to 113/113.** Its `§12.8` slices this file from the glitch word to `const calendarSnapshot` and forbids three tokens in that window. I reworded rather than amend a sealed bench, and the gate's comment says in-file why it talks around two symbol names. **The window is over-wide and will trip the next sitting that seats anything there — F-10.104.**
-
----
-
-## 6 · REGISTER DRAWN
-
-- **F-10.103** — `db/migrations/` carries a genuine LD-8 collision at origin: `0063_users_auth_user_id.sql` **and** `0063_vendor_activity_log.sql`. Ninety migrations old, found by `§6.4`'s first draft, fenced **by name** rather than deleted — a cell that stops looking because it found something is not a cell.
-- **F-10.104** — `b06_forkc_wireguard_bench §12.8`'s over-wide window, above.
-- **F-10.102** (chair-filed) — the demo lane's `meta` type with no producer: confirmed at this tip, not cured here.
-- **The destination divergence, filed unruled:** the PWA Upgrade control resolves to `/vendor/settings#tier`; the ruled WhatsApp copy sends her to **Billing**. Two lanes, two destinations, one purchase. Re-pointing a live control is a ruling, not a tidy.
+**The `window === 'day'` branch SURVIVES**, and §4.1b asserts it as a declared
+green-both-ways continuity cell: it is the only thing between a monthly-capped vendor and
+a promise of a midnight that never comes for her.
 
 ---
 
-## 7 · THE FOUNDER'S SHELF AFTER THIS ZIP
+## 4 · THE HREF — EVENT (1) OF TWO, AND EVENT (2) IS NOT OURS
 
-1. **Run the fixture SELECT** (separate message, ships first) and paste the rows. The smoke card is authored from them, never the other way round.
-2. **Run the `0116` block** in the Supabase editor; paste the verify output. Expect eight rows, `values_match` true on every one.
-3. Apply ZIP A, run its verify, paste it back. **Do not run the git line on a red verify.**
-4. Then ZIP B (pwa).
-5. **The push order stands and it is load-bearing:** `/vendor/billing` must be live before this reaches production. The WhatsApp refusal names 「 Billing 」, and at this tip the avatar menu carries **Settings**, not Billing — a refusal that sends a vendor to a door that isn't there is the same class of defect as the sentence it retires.
-6. **Two bytes still owed by him:** the cap > 0 WhatsApp sentence, and the two dead couple dials.
+`href: '/vendor/settings#tier'` → **`/vendor/billing'`**, no fragment; that page IS the
+picker. My own filing called the cost 「 one extra tap 」. **F-10.101's founder-witnessed
+cold-load walk made it worse than I filed it:** the anchor DOES NOT SCROLL AND NEVER HAS.
+A capped vendor landed at the TOP of a settings page and had to hunt. My derivation had
+softened it to 「 a race 」; the walk was harder than the derivation and the walk wins.
+
+**`id="tier"` in the pwa STAYS.** Its own comment records the two-event retirement: (1)
+this line re-points — done — AND (2) **Railway redeploys so the new href is actually
+SERVED**. Live clients take the address off the wire, so the anchor outlives the code
+change by one deploy; deleting it early breaks Upgrade for every capped vendor. Named
+in-comment at both ends per F-06.85.
 
 ---
 
-## 8 · NEXT SITTING PICKS UP
+## 5 · FAIL-OPEN — RATIFIED, NOT MERELY CHOSEN
 
-The held WhatsApp spent-allowance sentence (one branch, one constant, nothing else moves) · F-10.103's elder ladder collision · F-10.104's bench window · the destination divergence · and whether the fail-open posture at the gate stands or reverses.
+R-26.14 §C. The reason is now in the file per F-06.85 so no future sitting "fixes" it into
+fail-closed: **a paying vendor silenced by our own outage is worse than a Basic vendor
+getting turns during one.** The cost is stated rather than left to be rediscovered — a
+failed config read means unmetered AI for the duration, and only the error line says so.
+
+---
+
+## 6 · THE PROOF
+
+- **`tdw10_combined_cap` 37/37** cured · **29/37 at the pre-ruling tree `a034537`** —
+  eight cells RED per-cell on an independently cloned tree.
+- **Nine mutations against production source, every one biting:** the seat going silent
+  again · the seat sending the zero-cap SALE instead of the wait · the seat losing its
+  `return` · the upgrade prompt re-added · the figures returning · the month branch
+  collapsing into the day one · the href reverting · the fail-open reason stripped · the
+  WA door re-typing the vetoed sentence.
+- **Two declared green-both-ways cells, each declared in-file:** §3.2 (tests the bench's
+  own recorder, which is what makes §3.1's absence assertion non-vacuous) and §4.1b (a
+  continuity property that had to survive the rewrite).
+- **FLOOR unmoved:** tier 81/81 · forkc 113/113 · billing 52/52 · selfserve 30/30 ·
+  micro 23/23 · m2 2/2 · arc_m1 53/53 · arc_m6 20/20 · fresh_crew 58/58 · media_shim
+  14/14 · m3 37/37 · m0 50/50 · s2 48/48. Attributed reds UNMOVED: meter 28/29 · f0555
+  22/23 · f0772 158/159 · p1_search 44/45 · p4b_body 75/76.
+
+---
+
+## 7 · TWO DEFECTS OF MY OWN, BOTH CAUGHT BY RUNNING
+
+**D-1 · A SCOPE BUG I WROTE AND CAUGHT.** My first draft called `capSeam.CAPPED_LINE` at
+the spent seat — but `capSeam` is scoped to the try block above it, so that would have
+been a ReferenceError **on every spent-allowance turn**: the exact silence this rider
+exists to end, delivered by the fix for it. Hoisted as `capSpentLineFor` beside
+`WA_CAP_ZERO_LINE`, for the same stated reason.
+
+**D-2 · A VACUOUS CELL, caught on the both-ways run.** §1.11 asserted the spent seat sends
+no route line — and passed against the PRE-RULING tree, where the seat sent *nothing at
+all*. A cell green over an empty seat is green over the silence itself. The send is now
+asserted FIRST, so the question 「 which sentence 」 only arises once there is one.
+
+Also disclosed: a duplicate `module.exports.CAPPED_LINE` introduced and removed within one
+edit, caught by grep; and one aborted `git checkout` in the pwa tree that left me editing a
+stale file for a minute — reset and re-applied on the correct tip, disclosed rather than
+quietly re-run.
+
+---
+
+## 8 · OPEN AFTER THIS RIDER
+
+**F-10.104's cure is now ruled** (R-26.14 §D): re-anchor `b06_forkc §12.8` to the symbols
+it guards rather than a file slice — a slice drifts silently while continuing to read
+correctly. It rides the next sitting that seats anything in `vendorInbound.js`.
+
+**The couple charter** stands ruled and unchartered (R-26.11/R-26.12, F-10.105/.107).
+The load-bearing sentence for whoever seats it: **the vendor cure does not transfer.**
+
+**The 503 is CLOSED** — a concurrent session on a different browser, founder-diagnosed.
+Neither of my two candidates.

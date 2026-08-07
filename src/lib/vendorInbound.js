@@ -1213,20 +1213,31 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // member's inline require is the precedent that survived that lesson; this follows it,
     // and the deps contract stays byte-identical to origin.
     //
-    // FAIL-OPEN, AND IT IS THE ESTATE'S OWN RULED POSTURE FOR THIS MACHINERY, not a
-    // convenience. buildMeta's own catch says it in one line — 「 a broken meter NEVER
-    // blocks a turn 」 — and it returns null rather than throwing. The require itself can
-    // also fail (it pulls the engine's db module, which throws at load without its
-    // environment), and an unguarded require on the MAIN path of every vendor turn would
-    // convert a cap-machinery fault into total WhatsApp silence. That trade is the wrong
-    // way round: the worst case of failing open is an unmetered turn, and the worst case
-    // of failing closed is a vendor whose business assistant has stopped answering.
-    // DISCLOSED, because it is a real cost: if this ever fires in production the cap
-    // stops enforcing on this lane and only the error line says so.
-    let capMeta = null, WA_CAP_ZERO_LINE = null;
+    // FAIL-OPEN — RATIFIED BY RULING (R-26.14 §C), not merely chosen. It was the
+    // executor's call at build time, surfaced rather than allowed to seal silent, and
+    // the chair ruled it standing. F-06.85 binds the reason here so no future sitting
+    // "fixes" it into fail-closed on the assumption that a cap ought to fail shut:
+    //
+    //   A PAYING VENDOR SILENCED BY OUR OWN OUTAGE IS WORSE THAN A BASIC VENDOR
+    //   GETTING TURNS DURING ONE.
+    //
+    // The cost is real and is stated so nobody rediscovers it: a failed config read
+    // means unmetered AI for the duration, and only the error line below says so.
+    // It is the estate's standing posture for this machinery either way — buildMeta's
+    // own catch reads 「 a broken meter NEVER blocks a turn 」 and returns null rather
+    // than throwing. The require can fail too (it pulls the engine's db module, which
+    // throws at load without its environment), and an unguarded require on the MAIN
+    // path of every vendor turn would convert a cap-machinery fault into total
+    // WhatsApp silence.
+    let capMeta = null, WA_CAP_ZERO_LINE = null, capSpentLineFor = null;
     try {
       const capSeam = require('../api/vendor-engine/chat');
       WA_CAP_ZERO_LINE = capSeam.WA_CAP_ZERO_LINE;
+      // Hoisted for the SAME reason as the line above: `capSeam` is scoped to this
+      // try block, and the spent-allowance seat below sits outside it. Taking the
+      // function out here keeps both refusals reading ONE home for their bytes
+      // without either of them reaching into a scope it cannot see.
+      capSpentLineFor = capSeam.CAPPED_LINE;
       capMeta = await capSeam.buildMeta({
         supabase, agentId, tier: (vendor && vendor.tier) || 'basic',
       });
@@ -1245,20 +1256,36 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       console.log(`[agent:cap-gate] refused tier=${capMeta.tier} cap=0 agent=${agentId}`);
       return;
     }
-    // ── THE SPENT-ALLOWANCE SEAT ON THIS LANE — BUILT, HELD, AND SAYING SO ───────────
-    // A vendor on a PAYING tier who has genuinely spent the day's allowance should be
-    // refused here too, in the same seat, for the same reason. She is not, yet, and this
-    // is a DECLARED GAP rather than an oversight: her sentence is a vendor-facing byte and
-    // it has not passed the founder's copy veto (CE R-26.7 §A — 「 build every other cell;
-    // leave this string's seat and stop there 」). Shipping my own draft of a vetoed string
-    // is the one thing the copy law forbids outright, so the seat carries a warn and falls
-    // through — which is today's live behaviour, unchanged, never a regression.
+    // ── THE SPENT-ALLOWANCE SEAT ON THIS LANE — FILLED. R-26.15 ①. ───────────────────
+    // THIS SEAT SHIPPED EMPTY AND WARNING, and the warn was right to exist: at the
+    // founder's new ladder an Essential vendor reaches 15 turns in a day, and until this
+    // block she then met SILENCE on WhatsApp. She is paying, she is inside her rights,
+    // and Victor said nothing back. That is exactly the failure F-3 was ruled to prevent
+    // — 「 silence is the one failure mode this whole sitting exists to end 」 —
+    // reintroduced by a held byte rather than by a design. The gap was declared, visible
+    // in the logs, and closed by a ruling rather than discovered by a vendor.
     //
-    // When the byte lands, the cure is this branch turning into the block above with a
-    // different constant. Nothing else moves. The warn exists so the gap is visible in the
-    // logs of the estate that has it, rather than only in a document nobody re-reads.
+    // IDENTICAL BYTES TO THE PWA, IMPORTED NOT RETYPED. `CAPPED_LINE` is the shared home;
+    // a second transcription of a vetoed string is F-04.36's family and would drift the
+    // first time one lane was edited.
+    //
+    // NO ROUTE LINE HERE, and the asymmetry with the zero-cap block above is deliberate:
+    // that one is a SALE and needs somewhere to send her, so it carries directions to
+    // Billing. This one is a WAIT. There is nothing to tap, because there is nothing to
+    // do but come back — and pointing a vendor at a payment page when her own allowance
+    // simply resets at midnight would be selling her something she does not need.
     if (capMeta && capMeta.state === 'capped' && capMeta.turns_cap > 0) {
-      console.warn(`[agent:cap-gate] SPENT-ALLOWANCE SEAT HELD (copy veto owed) tier=${capMeta.tier} ${capMeta.turns_used}/${capMeta.turns_cap} agent=${agentId}`);
+      const spentLine = capSpentLineFor(capMeta);
+      const twilioMsg = await sendWhatsApp(phone, spentLine, []);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id, direction: 'outbound', channel: 'whatsapp',
+        body: spentLine, sent_by: 'agent',
+        twilio_sid: twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
+      });
+      await supabase.from('conversations')
+        .update({ last_message_at: new Date().toISOString() }).eq('id', convo.id);
+      console.log(`[agent:cap-gate] refused tier=${capMeta.tier} window=${capMeta.window} ${capMeta.turns_used}/${capMeta.turns_cap} agent=${agentId}`);
+      return;
     }
 
     // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference

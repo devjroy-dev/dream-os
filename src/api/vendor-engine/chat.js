@@ -2578,19 +2578,77 @@ async function buildMeta({ supabase, agentId, tier }) {
       : { turns_used: monUsed, turns_cap: monCap, window: 'month' };
     const capped = dayUsed >= dayCap || monUsed >= monCap;
     const state = capped ? 'capped' : (nearer.turns_used / nearer.turns_cap >= 0.8 ? 'nearing' : 'ok');
-    return { tier: productTier, ...nearer, state, upgrade: { label: 'Upgrade', href: '/vendor/settings#tier' } };
+    // ── TDW_10 · R-26.14 §B — THE UPGRADE HREF RE-POINTED. RULED. ────────────
+    // WAS: '/vendor/settings#tier'. The Billing tab is live at origin, so the
+    // picker no longer lives on the settings page — that page holds a signpost.
+    //
+    // AND THE FRAGMENT WAS NEVER DOING ITS JOB. F-10.101, FOUNDER-WITNESSED on a
+    // cold-load walk: the anchor DOES NOT SCROLL AND NEVER HAS. `id="tier"` mounts
+    // only after the /me fetch resolves inside an effect, and a browser resolves a
+    // fragment at load and does not retry on a later mutation. So a capped vendor
+    // tapping Upgrade landed at the TOP of a settings page and had to hunt — on the
+    // one screen she reaches at the exact moment she has been refused. My own
+    // derivation had softened this to "a race"; the walk was harder than the
+    // derivation, and the walk wins.
+    //
+    // NO FRAGMENT NOW, deliberately: /vendor/billing IS the picker, so there is
+    // nothing to scroll to.
+    //
+    // THIS IS EVENT (1) OF A TWO-EVENT RETIREMENT, and event (2) is not ours.
+    // app/vendor/settings/page.tsx (dreamos-pwa) carries `id="tier"` on a permanent
+    // signpost, and its own comment says the anchor retires only when BOTH have
+    // happened: (1) this line re-points — done here — AND (2) Railway redeploys
+    // dream-os so the new href is actually SERVED. Until the deploy lands, live
+    // clients are still being handed the old address from the wire, so deleting
+    // that anchor before then breaks the Upgrade link for every capped vendor.
+    // (Mechanism named in-comment per F-06.85 so the pwa sitting that finally
+    // deletes it is forced to check the deploy rather than the diff.)
+    return { tier: productTier, ...nearer, state, upgrade: { label: 'Upgrade', href: '/vendor/billing' } };
   } catch (e) {
     console.warn('[vendor-e chat:meta] failed (open meter):', e.message);
     return null; // a broken meter NEVER blocks a turn
   }
 }
-// ── THE SPENT-ALLOWANCE SENTENCE. BYTE-UNCHANGED, and that is an acceptance
-// number, not an accident. It is TRUE whenever the cap is nonzero: she has the
-// feature, she has spent the window, and the window really does reopen. It was
-// only ever a lie at a zero cap, which is what the line below exists to end.
+// ═══ TDW_10 · R-26.15 ① — THE SPENT-ALLOWANCE SENTENCE, FOUNDER-RULED ═══════
+// AMENDED BY RULING, NOT BY DEFECT, and the distinction matters to the record.
+// F-10.100's ratified acceptance required this line BYTE-UNCHANGED, and it shipped
+// that way. The founder then ruled it, and a ruling outranks an acceptance number
+// the same chair set. The old bytes, kept here so the diff is readable:
+//
+//   「 You've used this day's conversations on the signature tier (250/250). The
+//     desk reopens at midnight — or step up a tier and keep going. 」
+//
+// THREE THINGS LEFT, each for its own reason:
+//
+//   THE FIGURES. `(250/250)` invited an argument with a number instead of stating
+//   a fact. The meter already renders the count above the input bar; a vendor who
+//   wants the arithmetic has it, and the sentence does not need to litigate.
+//
+//   THE TIER WORD. It rendered the RAW database token mid-sentence — 「 on the
+//   basic tier 」, lowercase, because `meta.tier` is the column value. That was a
+//   known founder question held open beside F-10.100. 「 your tier 」 retires the
+//   whole class rather than patching a capitalisation, and it stays true through
+//   any future rename — which is the lesson 0115 paid for.
+//
+//   ⚠ 「 step up a tier 」 — RETIRED BY FOUNDER RULING (R-26.15 ②), AND THE REASON
+//   IS A MECHANISM, SO F-06.85 BINDS IT HERE. Tokens are coming. He will not sell
+//   an upgrade he is about to replace. This seat's SHAPE is deliberately preserved
+//   for a 「 buy tokens 」 line to take later — so a future sitting reading a bare
+//   two-sentence refusal does not restore an upgrade prompt thinking it was an
+//   omission. It was a decision. Read this comment before adding a sale here.
+//
+// WHAT SURVIVES, and it is load-bearing: the `window === 'day'` branch. It is the
+// only thing standing between a monthly-capped vendor and a promise of a midnight
+// that never comes for her — the same class of falsehood F-10.100(b) retired at a
+// zero cap, one window over.
+//
+// IDENTICAL ON BOTH LANES. No route line, unlike the zero-cap sentence below:
+// that one is a sale and needs somewhere to go; this one is a WAIT. There is
+// nothing to tap, because there is nothing to do but come back.
 const CAPPED_LINE = (meta) =>
-  `You've used this ${meta.window === 'day' ? "day's" : "month's"} conversations on the ${meta.tier} tier (${meta.turns_used}/${meta.turns_cap}). ` +
-  (meta.window === 'day' ? 'The desk reopens at midnight' : 'The desk reopens on the 1st') + ' — or step up a tier and keep going.';
+  meta.window === 'day'
+    ? "You've reached today's conversation limit on your tier. The desk reopens at midnight."
+    : "You've reached this month's conversation limit on your tier. The desk reopens on the 1st.";
 
 // ═══ TDW_10 · F-10.100(b) — THE ZERO-CAP SENTENCE, FOUNDER-RULED 2026-08-07 ═══
 // THE LIE THIS RETIRES, rendered verbatim by CAPPED_LINE at cap 0 until today:
@@ -3074,6 +3132,8 @@ module.exports.readVictorMode        = readVictorMode;
 // exported so the bench asserts the SHIPPED bytes rather than its own copies of them; a
 // bench holding its own transcription of a vetoed string proves the transcription.
 module.exports.buildMeta             = buildMeta;
+// R-26.15 ①: the spent-allowance sentence is IDENTICAL on both lanes, so the WA
+// door imports THIS one rather than holding a transcription of it. One home.
 module.exports.CAPPED_LINE           = CAPPED_LINE;
 module.exports.CAP_ZERO_LINE         = CAP_ZERO_LINE;
 module.exports.WA_CAP_ZERO_LINE      = WA_CAP_ZERO_LINE;
