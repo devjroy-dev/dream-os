@@ -64,12 +64,55 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 403, 'Forbidden.');
   }
 
-  const { name, partner_name, wedding_date, wedding_city } = req.body || {};
+  const { name, partner_name, wedding_date, wedding_city, budget_total } = req.body || {};
 
   const couplesPatch = {};
   if (partner_name !== undefined) couplesPatch.partner_name = partner_name;
   if (wedding_date  !== undefined) couplesPatch.wedding_date  = wedding_date || null;
   if (wedding_city  !== undefined) couplesPatch.wedding_city  = wedding_city || null;
+
+  // ── budget_total · TDW_09 ATELIER RIDER 2 (founder-ruled 2026-08-07) ────────
+  // The app becomes a SECOND writer of couples.budget_total. The first is the
+  // bride agent's save_wedding_detail tool, reached from BOTH WhatsApp and the
+  // in-app Dream room (src/api/couple/chat.js runs the same runBrideAgenticTurn,
+  // one couple_self conversation across both surfaces).
+  //
+  // The founder's ruling was conditional — 「 both can write if theres no clash
+  // and if the write is successful 」 — so both conditions are mechanised here,
+  // not assumed:
+  //
+  //   NO CLASH. This guard is byte-for-byte the semantics of the first writer at
+  //   src/agent/brideEngine.js (its budget_total arm, function
+  //   execSaveWeddingDetail): coerce with parseInt, then require a positive
+  //   integer in rupees. A value one writer would refuse cannot be written by the
+  //   other, so the two can never disagree about what a valid budget is.
+  //   Column witnessed: docs/db/PUBLIC_SCHEMA.md line 288, `budget_total integer`.
+  //
+  //   THE WRITE IS SUCCESSFUL. Invalid input is REFUSED with 400 and a named
+  //   reason — never coerced to null and never silently dropped, which is what
+  //   the `|| null` pattern above would have done to a 0 or a bad string. The
+  //   persisted value is echoed in the response so the caller can compare rather
+  //   than assume, and the client re-reads the profile independently.
+  //
+  //   DECLARED GAP, reported not built: the first writer also inserts a `notes`
+  //   audit row on every change (brideEngine, after its couples update). This
+  //   route does not, so a budget changed in Settings leaves no note while the
+  //   same change through Dream Ai does. That asymmetry is not a clash — the
+  //   column agrees either way — but it is a history gap and it is unruled.
+  //
+  //   NOT SUPPORTED, deliberately: clearing the budget back to null. The first
+  //   writer has no clear path, so offering one here would be a capability that
+  //   exists on one surface only. Raise it or lower it; blanking needs a ruling.
+  let budgetCoerced;
+  if (budget_total !== undefined) {
+    budgetCoerced = Number.isInteger(budget_total)
+      ? budget_total
+      : parseInt(budget_total, 10);
+    if (!Number.isInteger(budgetCoerced) || budgetCoerced <= 0) {
+      return errRes(res, 400, 'budget_total must be a positive integer (rupees).');
+    }
+    couplesPatch.budget_total = budgetCoerced;
+  }
 
   if (Object.keys(couplesPatch).length > 0) {
     const { error: cErr } = await supabase
@@ -92,7 +135,12 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
     }
   }
 
-  return okRes(res, { updated: true });
+  return okRes(res, {
+    updated: true,
+    // Echoed so the caller can COMPARE rather than trust a bare boolean — the
+    // founder's 「 if the write is successful 」 condition, mechanised.
+    ...(budgetCoerced !== undefined ? { budget_total: budgetCoerced } : {}),
+  });
 }));
 
 // ── GET / (bare — used by sanctuary onboarding guard) ────────────────────────
