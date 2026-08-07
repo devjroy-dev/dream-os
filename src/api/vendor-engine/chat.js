@@ -2495,12 +2495,38 @@ function istMonthStartUtcISO() {
   const ist = new Date(Date.now() + IST_MS);
   return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - IST_MS).toISOString();
 }
-async function buildMeta(req, productTier) {
+// ═══ TDW_10 · F-10.100 — THE METER IS PLAIN-ARGS, BECAUSE THE CAP IS COMBINED ═══
+// CE R-26.7 §C ruled F-6 on this file's OWN precedent, twice over: readVictorMode
+// and buildLlmForTurn both carry the F-06.1 second-limb comment a few dozen lines
+// above — PLAIN-ARGS ctx so the WA door can share it; it has no Express `req`;
+// moved in LOCKSTEP with its co-dependents, because a co-dependent that keeps
+// reading `req.app` throws the moment the WhatsApp lane calls it.
+//
+// This meter was the last Express-bound seam in the cap machinery, and that
+// binding was the whole reason the WhatsApp lane could never be refused: the
+// counter at :usage below has ALWAYS counted both lanes (loop.ts writes one row
+// per turn with agent_id + conversation_id and NO lane column — witnessed at
+// docs/db/ENGINE_SCHEMA.md engine.usage, 12 columns), but the only caller that
+// could reach the count held an `req`. One lane spent; one lane was told.
+//
+// THE KEY FAMILY MOVED WITH IT, founder-ruled 2026-08-07: `vendor_pwa_*` and
+// `vendor_wa_*` both retire in favour of ONE `vendor_ai_*` family, because there
+// is one allowance and it is spent from two doors. db/migrations/0116 seeds the
+// eight new keys from the live `vendor_pwa_*` rows, seed-from-source-row on
+// 0115's own pattern, so whatever the founder has tuned copies correctly.
+// `vendor_wa_*` never had a reader at all (F-10.87, two independent methods);
+// it retires with its console group rather than gaining one.
+//
+// (Mechanism named in-comment per F-06.85: the console's Vendor AI group and
+// this interpolation are one fact. A sitting that renames either must re-read
+// the other, or the dial silently stops reaching the reader again.)
+async function buildMeta({ supabase, agentId, tier }) {
   try {
-    const pub = req.app.locals.supabase;
+    const pub = supabase;
     const eng = pub.schema('engine');
-    const dayKey = `vendor_pwa_daily_${productTier}`;
-    const monKey = `vendor_pwa_monthly_${productTier}`;
+    const productTier = tier || 'basic';
+    const dayKey = `vendor_ai_daily_${productTier}`;
+    const monKey = `vendor_ai_monthly_${productTier}`;
     const [{ data: cfg }, dayRes, monRes] = await Promise.all([
       pub.from('admin_config').select('key, value').in('key', [dayKey, monKey]),
       // TDW_06 meter fix: harvest's newly-metered rows carry conversation_id NULL
@@ -2509,8 +2535,8 @@ async function buildMeta(req, productTier) {
       // count-neutral — the founder's read-only verify (delivery message) witnesses
       // the zero. Spend caps (server.ts agentSpendTodayInr) deliberately UNFILTERED:
       // harvest cost is real money and counts.
-      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).not('conversation_id', 'is', null).gte('created_at', istDayStartUtcISO()),
-      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).not('conversation_id', 'is', null).gte('created_at', istMonthStartUtcISO()),
+      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', agentId).not('conversation_id', 'is', null).gte('created_at', istDayStartUtcISO()),
+      eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', agentId).not('conversation_id', 'is', null).gte('created_at', istMonthStartUtcISO()),
     ]);
     // ═══ F-10.85 — THE CAP DIAL CAN NOW SAY ZERO ═════════════════════════════
     // This read was `n > 0 ? n : dflt`, which treated a stored 0 as ABSENT and
@@ -2558,9 +2584,55 @@ async function buildMeta(req, productTier) {
     return null; // a broken meter NEVER blocks a turn
   }
 }
+// ── THE SPENT-ALLOWANCE SENTENCE. BYTE-UNCHANGED, and that is an acceptance
+// number, not an accident. It is TRUE whenever the cap is nonzero: she has the
+// feature, she has spent the window, and the window really does reopen. It was
+// only ever a lie at a zero cap, which is what the line below exists to end.
 const CAPPED_LINE = (meta) =>
   `You've used this ${meta.window === 'day' ? "day's" : "month's"} conversations on the ${meta.tier} tier (${meta.turns_used}/${meta.turns_cap}). ` +
   (meta.window === 'day' ? 'The desk reopens at midnight' : 'The desk reopens on the 1st') + ' — or step up a tier and keep going.';
+
+// ═══ TDW_10 · F-10.100(b) — THE ZERO-CAP SENTENCE, FOUNDER-RULED 2026-08-07 ═══
+// THE LIE THIS RETIRES, rendered verbatim by CAPPED_LINE at cap 0 until today:
+//   「 You've used this day's conversations on the basic tier (0/0). The desk
+//     reopens at midnight — or step up a tier and keep going. 」
+// Three falsehoods in one sentence to a vendor who had just said hello: she used
+// nothing, nothing reopens at midnight, and the tier renders as its raw database
+// token. F-10.85 made a zero cap LAWFUL — it did not make this sentence true.
+//
+// The ruled bytes arrived through the chair as the founder's own (CE R-26.7 §A).
+// They are not paraphrased, not re-wrapped, not "improved": copy under veto lives
+// as bytes. The lowercase raw-token render in CAPPED_LINE is a KNOWN, separately
+// held founder question and is deliberately NOT fixed here (ruled: do not fix).
+//
+// Money register holds by construction: no rupee glyph, no k/L/Cr shorthand, no
+// figure at all — the sentence names tiers, and the prices live on the surface
+// that sells them.
+const CAP_ZERO_LINE =
+  "The AI desk isn't part of Basic. Please upgrade to Essential Tier and above to enjoy controlling your Business through AI chat and WhatsApp. " +
+  'Your first month is free — you only pay from the second month, for the plan you choose.';
+
+// The WhatsApp lane says the same three sentences and then one more, because on
+// WhatsApp there is nothing to tap. The PWA gets a control (app/vendor/page.tsx,
+// R-26.7 §C F-4); this lane gets directions to it.
+//
+// ⚠ THIS LINE NAMES A DESTINATION THAT MUST EXIST BEFORE THIS SHIPS. 「 Billing 」
+// is being built in a parallel sitting at /vendor/billing. The founder holds the
+// push order for exactly this reason: a refusal that sends a vendor to a door
+// that isn't there is the same class of defect as the sentence it replaces.
+// Verified at this seat's tip: the avatar menu (components/vendor/Header.tsx)
+// carries Settings, NOT Billing. Do not push this ZIP before that one lands.
+const WA_CAP_ZERO_LINE = CAP_ZERO_LINE +
+  '\n\nTo upgrade: open your TDW dashboard, tap your initials at the top, and choose Billing.';
+
+// ── ONE SELECTOR, BOTH LANES. The PWA calls it at its two refusal seats; the
+// WhatsApp gate calls its own sibling constant. Keying on `turns_cap === 0` and
+// never on the tier WORD is deliberate: the console dial is the interim lever
+// the founder ruled he would regulate Basic's AI through, and a vendor on ANY
+// tier whose cap he sets to zero is in the same situation and deserves the same
+// true sentence. A tier-word predicate would have made this cure a rename's
+// hostage the next time the vocabulary moved — 0115's whole lesson.
+const cappedReplyFor = (meta) => (meta.turns_cap === 0 ? CAP_ZERO_LINE : CAPPED_LINE(meta));
 
 // POST /chat — one advisor turn. Vendor comes from the JWT (no :vendorId param),
 // matching the Myra chat contract. ai_primer / mode are accepted and ignored:
@@ -2594,9 +2666,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     try {
       send({ type: 'thinking' });
       const productTier = (req.vendor && req.vendor.tier) || 'basic';
-      const metaPre = await buildMeta(req, productTier); // TDW_02 P5 (CE-6): both windows
+      const metaPre = await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }); // TDW_02 P5 (CE-6): both windows · F-10.100: plain-args
       if (metaPre && metaPre.state === 'capped') {
-        send({ type: 'text_delta', text: CAPPED_LINE(metaPre) });
+        send({ type: 'text_delta', text: cappedReplyFor(metaPre) });
         send({ type: 'done', tool_calls: [], refresh: false, meta: metaPre });
         if (!res.writableEnded) res.write('data: [DONE]\n\n');
         return res.end();
@@ -2688,7 +2760,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       }
       // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
       if (result.view && result.view.length) done.view = result.view.map((r) => ({ ...r, missing_cells: missingCells(r) }));
-      done.meta = await buildMeta(req, productTier); // TDW_02 P5: the meter, every turn
+      done.meta = await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }); // TDW_02 P5: the meter, every turn
       if (documents.length) done.documents = documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url }));
       send(done);
       if (!streamDead && !res.writableEnded) res.write('data: [DONE]\n\n');
@@ -2703,9 +2775,9 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
   }
   try {
     const productTier = (req.vendor && req.vendor.tier) || 'basic';
-    const metaPre = await buildMeta(req, productTier); // TDW_02 P5 (CE-6)
+    const metaPre = await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }); // TDW_02 P5 (CE-6) · F-10.100: plain-args
     if (metaPre && metaPre.state === 'capped') {
-      return res.json({ ok: true, capped: true, reply: CAPPED_LINE(metaPre), tool_calls: [], refresh: false, meta: metaPre });
+      return res.json({ ok: true, capped: true, reply: cappedReplyFor(metaPre), tool_calls: [], refresh: false, meta: metaPre });
     }
     const llmWiring = await buildLlmForTurn({ supabase: req.app.locals.supabase, vendor: req.vendor, agentId: req.agentId }); // TDW_02 P5 · P7b ctx
     const calendarSnapshot = await fetchCalendarSnapshot(req);
@@ -2759,7 +2831,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       await stage2RecordDelivery(req.app.locals.supabase, guardVerdict && guardVerdict.run_id, { arm: 'glitch_line', delivered: s2, seat: 'pwa_json' });
       return res.json({
         ok: true, reply: s2, tool_calls: [], refresh: false,
-        meta: await buildMeta(req, productTier),
+        meta: await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }),
         intercept: { replaced: true },
       });
     }
@@ -2784,7 +2856,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       refresh: toolNames.length > 0,
       // TDW_02 P3 (CE-17): the turn view crosses the wire, completeness attached.
       view: result.view && result.view.length ? result.view.map((r) => ({ ...r, missing_cells: missingCells(r) })) : undefined,
-      meta: await buildMeta(req, productTier), // TDW_02 P5: the meter, every turn
+      meta: await buildMeta({ supabase: req.app.locals.supabase, agentId: req.agentId, tier: productTier }), // TDW_02 P5: the meter, every turn
       documents: documents.length ? documents.map((d) => ({ invoice_number: d.invoice_number, pdf_url: d.pdf_url })) : undefined,
     });
   } catch (e) {
@@ -2996,3 +3068,13 @@ module.exports.abandonActiveThread   = abandonActiveThread; // TDW_06 P7a (F-06.
 module.exports.fireHarvest           = fireHarvest;
 module.exports.advisorHarvestGate    = advisorHarvestGate;
 module.exports.readVictorMode        = readVictorMode;
+// TDW_10 F-10.100: the cap seam, exported for the WhatsApp door (src/lib/vendorInbound.js,
+// the word trio's fourth member) and for tdw10_combined_cap. `buildMeta` is now plain-args
+// for exactly this reason — the WA lane has no Express req. The three copy constants are
+// exported so the bench asserts the SHIPPED bytes rather than its own copies of them; a
+// bench holding its own transcription of a vetoed string proves the transcription.
+module.exports.buildMeta             = buildMeta;
+module.exports.CAPPED_LINE           = CAPPED_LINE;
+module.exports.CAP_ZERO_LINE         = CAP_ZERO_LINE;
+module.exports.WA_CAP_ZERO_LINE      = WA_CAP_ZERO_LINE;
+module.exports.cappedReplyFor        = cappedReplyFor;

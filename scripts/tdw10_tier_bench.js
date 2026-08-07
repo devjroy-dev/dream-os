@@ -202,12 +202,34 @@ section('§4  THE HOT PATH — NO SILENT RE-CAPPING, NO SILENT RE-ROUTING');
   const sc = strip(CHAT);
   ok('ENGINE_TIER_MAP is keyed on the ruled floor word', /ENGINE_TIER_MAP = \{ basic: 'entry'/.test(sc));
   ok('ENGINE_TIER_MAP no longer keys on a retired word', !/ENGINE_TIER_MAP = \{[^}]*trial/.test(sc));
-  ok('every productTier fallback is the ruled floor word (3 sites)',
-     (sc.match(/\|\| 'basic';/g) || []).length === 3, (sc.match(/\|\| 'basic';/g) || []).length + ' found');
+  // ── LABELLED AMENDMENT · TDW_10 F-10.100, on CE-199's ratified precedent ──────
+  // THE PROPERTY IS UNCHANGED; ITS SUBJECT MOVED. Both cells below were authored at
+  // the rename sitting to pin two facts: every tier fallback names the canon floor
+  // word, and the cap key has ONE home in code. Neither fact has moved. What moved is
+  // the count and the family, and both moved by a founder ruling recorded on the
+  // record — the combined AI cap (0116). The cells are re-aimed rather than deleted,
+  // and re-aimed rather than loosened: a cell that stops counting because the count
+  // changed is a cell that will not notice the next change either.
+  //
+  // WHY THE COUNT IS NOW FOUR. buildMeta became plain-args so the WhatsApp door could
+  // share it (it has no Express req), and a function that no longer receives the tier
+  // from a resolved `req.vendor` must default it itself. The fourth site is that
+  // default. It names the same floor word as the other three, which is the property.
+  ok('every productTier fallback is the ruled floor word (4 sites — was 3, +1 at F-10.100)',
+     (sc.match(/\|\| 'basic';/g) || []).length === 4, (sc.match(/\|\| 'basic';/g) || []).length + ' found');
   ok('no productTier fallback still names a retired word',
      !/tier\) \|\| 'trial'/.test(sc) && !/tier\) \|\| 'free'/.test(sc));
-  ok('the cap-key template is UNCHANGED — 0115 seeds the keys, code stays still',
-     /vendor_pwa_daily_\$\{productTier\}/.test(sc) && /vendor_pwa_monthly_\$\{productTier\}/.test(sc));
+  // WHY THE FAMILY IS NOW vendor_ai_*. The elder cell's sentence — 「 0115 seeds the
+  // keys, code stays still 」 — was true of the RENAME sitting, whose whole discipline
+  // was to move a word without moving a reader. F-10.100 is the sitting that was
+  // chartered to move the reader: one allowance spent from two doors, so one key
+  // family. The elder's real property was that the template has exactly ONE home in
+  // code and is not duplicated; that is what is asserted, now against the ruled family,
+  // WITH the negative that the retired family left no second reader behind.
+  ok('the cap-key template has ONE home, and it is the ruled vendor_ai_* family (F-10.100)',
+     /vendor_ai_daily_\$\{productTier\}/.test(sc) && /vendor_ai_monthly_\$\{productTier\}/.test(sc));
+  ok('the retired vendor_pwa_* template left no second reader behind (F-04.36)',
+     !/vendor_pwa_daily_\$\{productTier\}/.test(sc) && !/vendor_pwa_monthly_\$\{productTier\}/.test(sc));
   const i = CHAT.indexOf('ENGINE_TIER_MAP');
   ok('the retained basic→entry mapping names F-10.41 in-comment (F-06.85)',
      i > 0 && /F-10\.41/.test(CHAT.slice(Math.max(0, i - 900), i)));

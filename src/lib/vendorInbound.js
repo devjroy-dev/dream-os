@@ -1160,6 +1160,107 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       return;
     }
 
+    // ── TDW_10 · F-10.100 — THE COMBINED AI CAP. THE WORD TRIO'S FOURTH MEMBER. ──────
+    // THE DISEASE, in one sentence: the counter was already combined and only the refusal
+    // was missing. Both lanes resolve one agent through resolveAgentForVendor above, both
+    // run the same engine turn, and the engine loop writes ONE usage row per turn with agent_id
+    // and conversation_id and no lane column at all (witnessed: docs/db/ENGINE_SCHEMA.md,
+    // engine.usage, 12 columns). The meter in src/api/vendor-engine/chat.js has therefore
+    // ALWAYS counted this lane's turns. It simply never refused them. A paying vendor's
+    // WhatsApp use silently exhausted the allowance her web app then denied her.
+    //
+    // WHY IT SITS EXACTLY HERE, and not one line either side — CE R-26.7 §C, F-1 RULED:
+    //
+    //   AFTER the three words. Mode, fresh and glitch each short-circuit above with no
+    //   model call and no cost, and the glitch block's own comment says why that matters:
+    //   the escape hatch cannot depend on the thing it exists to escape. A capped vendor
+    //   keeps every one of them. Sealing her escape hatches behind the cap would have been
+    //   the exact failure that comment was written against, committed by the sitting that
+    //   quotes it.
+    //
+    //   BEFORE the prep. fetchCalendarSnapshot, fetchScratchpad, fetchLeadPings (which
+    //   also STAMPS the pings drained — a read with a write inside it) and the model-route
+    //   builder all sit below. A refused turn must pay for none of them, and the ping drain
+    //   in particular must not consume state for a turn that will never be answered.
+    //
+    //   BEFORE the engine call, which is the only thing on this path that writes a usage
+    //   row. That is what makes the refusal free: a meter that ate its own tail would count
+    //   the refusal it just issued and refuse her again tomorrow for a conversation she
+    //   never had. Two `from('usage').insert` homes exist in the estate — the engine loop
+    //   (the turn ledger) and src/agent/harvest.js (spend rows, conversation_id NULL, and
+    //   excluded by the meter's own filter) — and this early return reaches neither.
+    //
+    //   ⚠ WHY THIS PARAGRAPH TALKS AROUND TWO SYMBOL NAMES. `b06_forkc_wireguard_bench`
+    //   §12.8 slices vendorInbound from the glitch word to `const calendarSnapshot` and
+    //   forbids the tokens `runTurn`, `buildLlmForTurn` and `anthropic` anywhere in that
+    //   window — a grep-shaped guard written when nothing else lived in it. Naming them
+    //   here in PROSE would redden a sealed 113/113 bench over a comment. The precise
+    //   symbols are asserted instead where they belong, by execution rather than by grep:
+    //   scripts/tdw10_combined_cap_bench.js §1.6 and §1.7. The over-wide window is filed
+    //   as F-10.104 for the bench's own next sitting; it is not amended from here.
+    //
+    // THE INBOUND ROW DOES NOT MOVE (ratified). It was written above, before the whole
+    // trio. Her message stays on the record unanswered, exactly as it does when she sends
+    // a mode word — an audit log that only keeps the messages we felt like answering is
+    // not an audit log.
+    //
+    // REQUIRED LAZILY, and the choice is mechanical rather than stylistic. The two elder
+    // trio members receive their seams through `deps`; adding a required key to that
+    // object BROKE FIVE SEALED BENCHES the last time it was tried, because every bench
+    // that drives the real processVendorInbound builds its own deps object and none of
+    // them carry a key that did not exist when they were written (the correction is
+    // recorded at src/lib/nudgeOptout.js, the glitch word's siting note). The glitch
+    // member's inline require is the precedent that survived that lesson; this follows it,
+    // and the deps contract stays byte-identical to origin.
+    //
+    // FAIL-OPEN, AND IT IS THE ESTATE'S OWN RULED POSTURE FOR THIS MACHINERY, not a
+    // convenience. buildMeta's own catch says it in one line — 「 a broken meter NEVER
+    // blocks a turn 」 — and it returns null rather than throwing. The require itself can
+    // also fail (it pulls the engine's db module, which throws at load without its
+    // environment), and an unguarded require on the MAIN path of every vendor turn would
+    // convert a cap-machinery fault into total WhatsApp silence. That trade is the wrong
+    // way round: the worst case of failing open is an unmetered turn, and the worst case
+    // of failing closed is a vendor whose business assistant has stopped answering.
+    // DISCLOSED, because it is a real cost: if this ever fires in production the cap
+    // stops enforcing on this lane and only the error line says so.
+    let capMeta = null, WA_CAP_ZERO_LINE = null;
+    try {
+      const capSeam = require('../api/vendor-engine/chat');
+      WA_CAP_ZERO_LINE = capSeam.WA_CAP_ZERO_LINE;
+      capMeta = await capSeam.buildMeta({
+        supabase, agentId, tier: (vendor && vendor.tier) || 'basic',
+      });
+    } catch (e) {
+      console.error('[agent:cap-gate] METER UNREACHABLE — turn allowed through unmetered:', e.message);
+    }
+    if (capMeta && capMeta.state === 'capped' && capMeta.turns_cap === 0) {
+      const twilioMsg = await sendWhatsApp(phone, WA_CAP_ZERO_LINE, []);
+      await supabase.from('messages').insert({
+        conversation_id: convo.id, direction: 'outbound', channel: 'whatsapp',
+        body: WA_CAP_ZERO_LINE, sent_by: 'agent',
+        twilio_sid: twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
+      });
+      await supabase.from('conversations')
+        .update({ last_message_at: new Date().toISOString() }).eq('id', convo.id);
+      console.log(`[agent:cap-gate] refused tier=${capMeta.tier} cap=0 agent=${agentId}`);
+      return;
+    }
+    // ── THE SPENT-ALLOWANCE SEAT ON THIS LANE — BUILT, HELD, AND SAYING SO ───────────
+    // A vendor on a PAYING tier who has genuinely spent the day's allowance should be
+    // refused here too, in the same seat, for the same reason. She is not, yet, and this
+    // is a DECLARED GAP rather than an oversight: her sentence is a vendor-facing byte and
+    // it has not passed the founder's copy veto (CE R-26.7 §A — 「 build every other cell;
+    // leave this string's seat and stop there 」). Shipping my own draft of a vetoed string
+    // is the one thing the copy law forbids outright, so the seat carries a warn and falls
+    // through — which is today's live behaviour, unchanged, never a regression.
+    //
+    // When the byte lands, the cure is this branch turning into the block above with a
+    // different constant. Nothing else moves. The warn exists so the gap is visible in the
+    // logs of the estate that has it, rather than only in a document nobody re-reads.
+    if (capMeta && capMeta.state === 'capped' && capMeta.turns_cap > 0) {
+      console.warn(`[agent:cap-gate] SPENT-ALLOWANCE SEAT HELD (copy veto owed) tier=${capMeta.tier} ${capMeta.turns_used}/${capMeta.turns_cap} agent=${agentId}`);
+    }
+
     // Same turn inputs the web door feeds: upcoming calendar (so Victor can reference
     // bookings to edit/cancel) + the owner's scratchpad. Without these he is blind to both.
     const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id, vendor.category);
