@@ -143,6 +143,29 @@ async function applyEntitlement(supabase, { vendorId, entitlement, provider, eve
   }
   if (entitlement.billing_status) patch.billing_status = entitlement.billing_status;
 
+  // ── F-10.89 · THE DEAD LINK DIES WITH THE SUBSCRIPTION ────────────────────
+  // `vendors.razorpay_subscription_link` holds the short_url of the mandate this
+  // event has just ended. Razorpay does not restart a cancelled subscription and
+  // does not resurrect a halted one, so that URL is now dead — and the settings
+  // surface renders it as a live payment button whenever billing_status is not
+  // 'active', which is EXACTLY the state these two branches write. Left standing,
+  // the cure for one problem becomes the next: she is told she moved to Basic and
+  // handed a button to a page that cannot take her money.
+  //
+  // NULLED IN THE SAME WRITE THAT FLIPS, not in a follow-up. A second update
+  // could fail on its own and leave the row half-cured, and there is no reason
+  // to take that risk when both columns move for the same reason at the same
+  // instant. The self-serve cancel endpoint nulls it too, at the point of death
+  // — whichever arrives first must leave the column safe, and neither can assume
+  // the other ran (a vendor may also cancel from Razorpay's own surface, where
+  // this webhook is the ONLY thing that will ever hear about it).
+  //
+  // Harmless when v1's founder-pasted links are in play: those vendors are being
+  // demoted for the same reason and their links are equally dead.
+  if (patch.billing_status === 'cancelled' || patch.billing_status === 'halted') {
+    patch.razorpay_subscription_link = null;
+  }
+
   if (!Object.keys(patch).length) return { flipped: false, reason: 'nothing_to_write' };
 
   const { error } = await supabase.from('vendors').update(patch).eq('id', vendorId);

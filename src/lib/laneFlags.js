@@ -61,6 +61,24 @@ const LANE_FLAGS = {
   // is (a tier moving on an unwalked rail is not). Push is not speak, and here
   // the two halves of the same webhook sit on opposite sides of that line.
   'billing.tier_flip_enabled': false,
+
+  // TDW_10 BILLING v2 — THE SELF-SERVE DOOR (vendor mints/cancels her own
+  // subscription; src/api/vendor/billing.js). OFF at birth.
+  //
+  // THIS IS THE SECOND OF TWO INDEPENDENT DOORS, and the split is deliberate.
+  // The other is `RazorpayNotConfiguredError`, thrown in
+  // src/lib/billing/razorpaySubscriptions.js before any socket opens when the
+  // API credential pair is unseated. Credentials are an ACCIDENT of deployment
+  // — they arrive when the founder saves them — and an accident is not a
+  // ruling. This flag is the ruling: even fully credentialed, no vendor can
+  // mint until the founder's hand flips it after his walk. Push is not speak.
+  //
+  // NOTE THE ASYMMETRY WITH ITS SIBLING ABOVE, which gates only the ENTITLEMENT
+  // half of the webhook while the ledger writes regardless. There is no such
+  // split here, because there is no half of "create a real subscription at a
+  // payment provider" that is safe to do early. The two flags are independent:
+  // this one open with tier_flip shut means she can pay and her tier waits.
+  'billing.selfserve_enabled': false,
 };
 
 function _resetLaneFlagCache() { cache.clear(); }

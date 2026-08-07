@@ -51,6 +51,9 @@ router.use('/collab',      require('./collab'));
 router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
 router.use('/couture',     require('./couture'));
 router.use('/featured',    require('./featured'));
+// TDW_10 BILLING v2 — the vendor's own money door (subscribe/cancel/upgrade).
+// Behind `billing.selfserve_enabled`, checked inside the file, default OFF.
+router.use('/billing',     require('./billing'));
 router.use('/studio',      require('./studio/index'));
 router.use('/',            require('./schedules'));
 router.use('/contracts',   require('./contracts'));

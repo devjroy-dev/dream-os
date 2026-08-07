@@ -84,6 +84,14 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // braces for a row read before that migration, not an invented state.
       billing_status:              vendor.billing_status || 'none',
       razorpay_subscription_link:  vendor.razorpay_subscription_link || null,
+      // TDW_10 BILLING v2. Carried so the surface can distinguish a vendor who
+      // NEVER subscribed from one whose plan is dead — two states that were
+      // indistinguishable under v1 because both showed a null link. The id is
+      // NOT a secret and not actionable from the client: it is a Razorpay
+      // handle, every self-serve door re-derives the vendor from her own JWT,
+      // and no endpoint accepts a subscription id from the caller. It stays in
+      // LOCKED_FIELDS below — readable, never PATCHable.
+      razorpay_subscription_id:    vendor.razorpay_subscription_id || null,
       // Block F (migration 0034) applied these columns — real values now.
       aesthetic_tags:    vendor.aesthetic_tags    || [],
       rate_min:          vendor.rate_min          || null,
