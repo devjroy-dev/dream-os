@@ -28,7 +28,8 @@
 const crypto = require('crypto');
 
 // ── CANON, founder-verbatim (this sitting) ──────────────────────────────────
-// Free (no AI/chat) · Essential Rs 999 · Signature Rs 1,999 · Prestige Rs 2,999.
+// Basic (no AI/chat) · Essential Rs 999 · Signature Rs 1,999 · Prestige Rs 2,999.
+// (The canon's Free row is RENAMED basic at 0115, not duplicated — see BASE_TIER.)
 //
 // F-10.63: TDW_09_UIUX_FINAL:15 carried "Essential 499 / Signature 1,999 /
 // Prestige 3,999" and no Free tier at all — two of three prices wrong, in
@@ -42,8 +43,25 @@ const TIER_PAISE = Object.freeze({
 });
 
 // Canon tier names, and the one this estate falls back to when a rail lapses.
-// R-BILL.3 + the founder's word: 「 drops to free 」.
-const FREE_TIER = 'free';
+//
+// ═══ 0115 — THE CONSTANT FOLLOWS THE VOCABULARY ════════════════════════════
+// This was `FREE_TIER = 'free'` until the tier sitting. The founder's ruling —
+// 「 basic is free without ai and without any time bound problem 」 — made
+// `basic` the canon's no-AI floor ITSELF rather than a rung above it, so the
+// word `free` RETIRED instead of surviving beside `basic`. R-BILL.3's
+// 「 drops to free 」 henceforth reads drops-to-basic: the destination did not
+// move, its name did.
+//
+// THE NAME AND THE VALUE MOVE TOGETHER, DELIBERATELY. 0115 puts a CHECK of four
+// words on `vendors.tier`, and `free` is not one of them. Had this constant
+// kept its old value, the very next `subscription.halted` or
+// `subscription.cancelled` would have driven tierFlip.js into writing a word the
+// database now refuses — the money path breaking on a rename it never heard
+// about. RETIRE-WITH-THE-READER (F-10.73's law) applied to a VOCABULARY: the
+// constant ships in the same delivery as the constraint, or neither ships.
+// Renaming the identifier too is the point — a constant called FREE_TIER holding
+// 'basic' is the next reader's trap.
+const BASE_TIER = 'basic';
 
 // ── X-Razorpay-Signature verification ───────────────────────────────────────
 // rawBody MUST be the exact bytes (req.rawBody). Returns false on any shape
@@ -96,9 +114,9 @@ function tierFromPlan(planId, amountPaise) {
 // because a flip table scattered across if-statements is a table nobody can audit.
 //
 //   subscription.charged        → tier from plan, billing_status 'active'
-//   subscription.halted         → free, 'halted'      (Razorpay halts only after
+//   subscription.halted         → basic, 'halted'     (Razorpay halts only after
 //                                                      its 3 retries are spent)
-//   subscription.cancelled      → free, 'cancelled'
+//   subscription.cancelled      → basic, 'cancelled'
 //   subscription.pending        → NO TIER CHANGE, status 'pending'
 //                                 THE RETRY-WINDOW MERCY (R-BILL.3): a card that
 //                                 bounced once, while Razorpay is still trying,
@@ -106,7 +124,7 @@ function tierFromPlan(planId, amountPaise) {
 //                                 would be the estate punishing a vendor for a
 //                                 retry window that has not closed.
 //   subscription.authenticated  → NOTHING. The mandate exists; no money has
-//   subscription.activated      → NOTHING. landed. Canon-Free is no-AI until
+//   subscription.activated      → NOTHING. landed. Canon-basic is no-AI until
 //                                 paid, so entitlement follows the CHARGE, never
 //                                 the authorisation. This is also why the
 //                                 auto-refunded auth payment cannot buy a tier.
@@ -116,9 +134,9 @@ function entitlementFor(event, tier) {
     case 'subscription.charged':
       return tier ? { tier, billing_status: 'active' } : { tier: null, billing_status: 'active' };
     case 'subscription.halted':
-      return { tier: FREE_TIER, billing_status: 'halted' };
+      return { tier: BASE_TIER, billing_status: 'halted' };
     case 'subscription.cancelled':
-      return { tier: FREE_TIER, billing_status: 'cancelled' };
+      return { tier: BASE_TIER, billing_status: 'cancelled' };
     case 'subscription.pending':
       return { tier: null, billing_status: 'pending' };
     default:
@@ -179,5 +197,5 @@ module.exports = {
   entitlementFor,
   tierFromPlan,
   TIER_PAISE,
-  FREE_TIER,
+  BASE_TIER,
 };

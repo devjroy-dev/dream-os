@@ -43,10 +43,28 @@ const { readLaneFlag } = require('../laneFlags');
 
 const FLAG = 'billing.tier_flip_enabled';
 
-// Canon vocabulary. The flip writes ONLY these words. Legacy values already in
-// the column ('trial') are tolerated on read by everything else in the estate
-// and are never written by this file — R-BILL.3.
-const CANON_TIERS = Object.freeze(['free', 'essential', 'signature', 'prestige']);
+// Canon vocabulary. The flip writes ONLY these words, and this list is a
+// FAIL-CLOSED GUARD (see its use below) — a word outside it is refused with a
+// console warning and NO tier movement, which is silent from the vendor's side.
+//
+// 0115 — WHY THIS LIST MOVED, AND WHY IT HAD TO MOVE IN THIS DELIVERY.
+// The founder's ruling renamed the estate's no-AI floor from `free` to `basic`
+// and put a four-word CHECK on `vendors.tier`. razorpay.js's BASE_TIER now
+// yields 'basic' on halted/cancelled. Had this list kept 'free', every halt and
+// every cancellation would have hit the guard below, logged `non_canon_tier`,
+// and left the vendor on a tier she had stopped paying for — the one failure
+// mode with no user-visible symptom at all. The guard is only a guard while it
+// knows the live vocabulary.
+//
+// This is a SECOND vocabulary list, one layer under razorpay.js's constant, and
+// it was missed by a census that grepped `trial` and not `free` (executor
+// disclosure D-3, owned in-band). Recorded here so the next vocabulary change
+// searches for the WORDS, not for the one word it happens to be renaming.
+//
+// `trial` and `free` are BOTH retired at 0115 and neither survives in any row —
+// the migration backfills both into `basic` before the CHECK lands — so there is
+// no legacy value left for this file to tolerate.
+const CANON_TIERS = Object.freeze(['basic', 'essential', 'signature', 'prestige']);
 
 /**
  * Link a provider subscription to a vendor. NOT an entitlement — a mapping.

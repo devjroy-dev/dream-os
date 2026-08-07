@@ -106,7 +106,7 @@ function unifiedInvitePage({ result, error } = {}) {
           <div class="form-group">
             <label>Tier</label>
             <select name="tier" style="width:100%;padding:10px 14px;border:1px solid #E2DED8;border-radius:6px;font-size:14px;font-family:inherit;background:#FAFAFA;color:#0C0A09;margin-top:6px;">
-              <option value="">— (default trial) —</option>
+              <option value="">— (default basic) —</option>
               <option value="essential">Essential</option>
               <option value="signature">Signature</option>
               <option value="prestige">Prestige</option>

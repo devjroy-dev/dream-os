@@ -2405,7 +2405,16 @@ function fireHarvest(req, message, result) {
 
 // ── TDW_02 P5: tiers, routes, caps ────────────────────────────────────────────
 // CE-7: PRODUCT tier -> ENGINE tier, read-through at turn start, never a backfill.
-const ENGINE_TIER_MAP = { trial: 'entry', essential: 'entry', signature: 'mid', prestige: 'top' };
+// 0115 — the key follows the tier rename (F-10.23: `trial` retired, `basic` is
+// the canon's no-AI floor). `basic: 'entry'` RETAINS the old value deliberately:
+// the founder's ruling RECORDS basic as no-AI, but per-tier AI ENFORCEMENT is
+// F-10.41's own W-1-gated sitting and is not built here. Mapping basic to
+// anything else — or dropping the key so the lookup misses — would enforce by
+// accident, on a live chat path, in a delivery chartered to rename a word. The
+// teeth arrive by charter, not as a side effect.
+// (Mechanism named in-comment per F-06.85, so F-10.41's sitting is forced to
+// re-read this line rather than rediscover the coupling.)
+const ENGINE_TIER_MAP = { basic: 'entry', essential: 'entry', signature: 'mid', prestige: 'top' };
 
 // The turn's llm wiring. Anthropic routes pass NO transport — the engine's own
 // pre-facade path runs byte-identical (acceptance 9). Non-anthropic routes pass
@@ -2434,7 +2443,7 @@ async function readVictorMode({ supabase, agentId }) {
 // -> deepseek; product tier otherwise). The PWA door passes { supabase: req.app.locals.supabase,
 // vendor: req.vendor, agentId: req.agentId }; the WA lane (index.js) passes the same shape.
 async function buildLlmForTurn({ supabase, vendor, agentId }) {
-  const productTier = (vendor && vendor.tier) || 'trial';
+  const productTier = (vendor && vendor.tier) || 'basic';
   // F-06.4: the advisor room routes on its own key; every other mode routes on the
   // product tier exactly as before. The ENGINE tier (capabilities/caps) always follows
   // the PRODUCT tier — advisor changes only which MODEL serves Victor, not the tier.
@@ -2503,11 +2512,42 @@ async function buildMeta(req, productTier) {
       eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).not('conversation_id', 'is', null).gte('created_at', istDayStartUtcISO()),
       eng.from('usage').select('id', { count: 'exact', head: true }).eq('agent_id', req.agentId).not('conversation_id', 'is', null).gte('created_at', istMonthStartUtcISO()),
     ]);
-    const val = (k, dflt) => { const r = (cfg || []).find((c) => c.key === k); const n = r ? parseInt(r.value, 10) : NaN; return Number.isFinite(n) && n > 0 ? n : dflt; };
+    // ═══ F-10.85 — THE CAP DIAL CAN NOW SAY ZERO ═════════════════════════════
+    // This read was `n > 0 ? n : dflt`, which treated a stored 0 as ABSENT and
+    // handed back the in-code default of 25. The dial could throttle but never
+    // DENY, and the one value the founder most needs it to express was the one
+    // value it silently discarded.
+    //
+    // That matters now because of what 0115 did one layer up. The founder ruled
+    // 「 basic is free without ai 」, and stated on the record that until
+    // F-10.41's per-tier enforcement sitting he would 「 regulate the ai usage in
+    // basic through admin console 」. That interim regulation runs through THIS
+    // predicate. Without the change, the console cannot express the ruling it was
+    // named to carry.
+    //
+    // `>= 0` is the whole cure. A NEGATIVE value still falls to the default — a
+    // negative cap is malformed input, not an instruction, and this reader's
+    // standing posture is that junk falls back rather than throws on a live turn.
+    // Zero is not junk; zero is a decision.
+    //
+    // WITNESSED SAFE BEFORE FLIPPING: the founder's own admin_config SELECT
+    // (2026-08-07) returned all eighteen tier-keyed cap keys, minimum value 3.
+    // No key stores 0 today, so no vendor's meter moves on the deploy — the
+    // semantic changes, the numbers do not. A bench cell asserts that reading.
+    const val = (k, dflt) => { const r = (cfg || []).find((c) => c.key === k); const n = r ? parseInt(r.value, 10) : NaN; return Number.isFinite(n) && n >= 0 ? n : dflt; };
     const dayCap = val(dayKey, 25), monCap = val(monKey, 250);
     const dayUsed = dayRes.count || 0, monUsed = monRes.count || 0;
     // Report the NEARER window (higher used/cap ratio); enforce BOTH (CE-6).
-    const nearer = (dayUsed / dayCap) >= (monUsed / monCap)
+    //
+    // F-10.85's SECOND HALF. Once 0 became a lawful cap, `dayUsed / dayCap` could
+    // evaluate 0/0 = NaN, and every comparison against NaN is false — so a vendor
+    // DENIED by a zero day-cap would have been correctly capped by the line below
+    // and then told, in CAPPED_LINE, that she had used up her MONTH (0/250). True
+    // refusal, false reason. A denial that misreports why it happened sends the
+    // founder hunting the wrong dial and the vendor arguing with the wrong number.
+    // A cap of zero is not "no usage"; it is fully consumed. Ratio Infinity.
+    const ratio = (used, cap) => (cap > 0 ? used / cap : Infinity);
+    const nearer = ratio(dayUsed, dayCap) >= ratio(monUsed, monCap)
       ? { turns_used: dayUsed, turns_cap: dayCap, window: 'day' }
       : { turns_used: monUsed, turns_cap: monCap, window: 'month' };
     const capped = dayUsed >= dayCap || monUsed >= monCap;
@@ -2553,7 +2593,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
 
     try {
       send({ type: 'thinking' });
-      const productTier = (req.vendor && req.vendor.tier) || 'trial';
+      const productTier = (req.vendor && req.vendor.tier) || 'basic';
       const metaPre = await buildMeta(req, productTier); // TDW_02 P5 (CE-6): both windows
       if (metaPre && metaPre.state === 'capped') {
         send({ type: 'text_delta', text: CAPPED_LINE(metaPre) });
@@ -2662,7 +2702,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     return;
   }
   try {
-    const productTier = (req.vendor && req.vendor.tier) || 'trial';
+    const productTier = (req.vendor && req.vendor.tier) || 'basic';
     const metaPre = await buildMeta(req, productTier); // TDW_02 P5 (CE-6)
     if (metaPre && metaPre.state === 'capped') {
       return res.json({ ok: true, capped: true, reply: CAPPED_LINE(metaPre), tool_calls: [], refresh: false, meta: metaPre });

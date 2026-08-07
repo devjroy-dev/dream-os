@@ -124,11 +124,29 @@ const ev = (event, over = {}) => ({
   t('pending → status only, TIER UNTOUCHED', pending.entitlement, { tier: null, billing_status: 'pending' });
   t('pending → not counted',                 pending.counts_as_revenue, false);
 
-  // The founder's word: 「 drops to free 」.
-  t('halted → free',    razorpay.entitlementFor('subscription.halted', 'signature'),
-    { tier: 'free', billing_status: 'halted' });
-  t('cancelled → free', razorpay.entitlementFor('subscription.cancelled', 'prestige'),
-    { tier: 'free', billing_status: 'cancelled' });
+  // ═══ LABELLED AMENDMENT · 0115, THE TIER & MONEY SITTING ═══════════════════
+  // These three cells asserted the word `free`. The founder's ruling —
+  // 「 basic is free without ai and without any time bound problem 」 — made
+  // `basic` the canon's no-AI floor itself, so `free` RETIRED and 0115 put a
+  // four-word CHECK on vendors.tier that does not contain it.
+  //
+  // The PROPERTY these cells assert is UNCHANGED: a lapsed rail drops the vendor
+  // to the canon floor, and the flip can write nothing outside canon. Only the
+  // floor's NAME moved. That is precisely the condition under which a sealed
+  // bench may follow its subject (CE-199's ratified precedent: same property,
+  // moved subject, amendment LABELLED in-bench with its rationale). R-BILL.3's
+  // 「 drops to free 」 now reads drops-to-basic.
+  //
+  // The cells are written against BASE_TIER rather than a re-typed literal, so
+  // the next vocabulary move reddens the CONSTANT's own cells rather than
+  // silently agreeing with a copy of the old answer.
+  t('halted → the canon floor',    razorpay.entitlementFor('subscription.halted', 'signature'),
+    { tier: razorpay.BASE_TIER, billing_status: 'halted' });
+  t('cancelled → the canon floor', razorpay.entitlementFor('subscription.cancelled', 'prestige'),
+    { tier: razorpay.BASE_TIER, billing_status: 'cancelled' });
+  // The amendment must not become a tautology: pin the floor's VALUE too, so a
+  // future edit that changes BASE_TIER cannot pass these by moving both sides.
+  t('the canon floor IS the ruled word', razorpay.BASE_TIER, 'basic');
 
   // Uncaptured money is not money.
   const uncaptured = razorpay.normalizeRazorpayEvent('evt_5',
@@ -150,10 +168,14 @@ const ev = (event, over = {}) => ({
     razorpay.tierFromPlan(null, 149900), null);
 
   // The flip refuses vocabulary it was not given.
+  // LABELLED AMENDMENT (0115, as above): `free` retires from this list beside
+  // the CHECK that would otherwise refuse it. Same property, renamed word.
   t('canon tiers are the only writable words',
-    tierFlip.CANON_TIERS, ['free', 'essential', 'signature', 'prestige']);
+    tierFlip.CANON_TIERS, ['basic', 'essential', 'signature', 'prestige']);
   t('"trial" is not a word the flip can write',
     tierFlip.CANON_TIERS.includes('trial'), false);
+  t('"free" is not a word the flip can write either (0115 retired it)',
+    tierFlip.CANON_TIERS.includes('free'), false);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

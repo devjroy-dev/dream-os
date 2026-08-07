@@ -32,7 +32,12 @@ const { toE164 } = require('../../lib/phone');
 // F-10.59 — the sole writer of the discover column pair (R-P3.4(b)).
 const { setDiscoverState } = require('../../lib/vendor/discover');
 
-const VALID_TIERS = ['trial', 'essential', 'signature', 'prestige'];
+// 0115 — the ruled canon vocabulary (F-10.23). `trial` and `free` both retired;
+// `basic` is the no-AI floor. This list is the admin door's twin of
+// tierFlip.js's CANON_TIERS and of 0115's vendors_tier_check — three homes, one
+// vocabulary, and a bench cell asserts they agree so the next drift is caught by
+// an instrument rather than by a rejected write at midnight.
+const VALID_TIERS = ['basic', 'essential', 'signature', 'prestige'];
 
 // ─── GET /api/v2/admin/vendors ──────────────────────────────────────────
 router.get('/', requireAdmin, asyncHandler(async (req, res) => {

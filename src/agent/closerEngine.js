@@ -958,7 +958,18 @@ const SEEN_WORK_RE = new RegExp(
   + '|\\b(?:your|those|these)\\s+(?:\\w+\\s+){0,2}' + WORK_NOUN
   + '\\b[^.!?]{0,40}\\b(?:stunning|beautiful|gorgeous|exceptional|lovely|incredible|genuinely good)\\b', 'i');
 
-const TIERS = 'trial|essential|signature|prestige';
+// ═══ 0115 — W-1 OPENED FOR THIS ONE LINE BY CHAIR RULING (Fork E) ═══════════
+// This alternation feeds the `price` WATCH_CLASS below, which catches the model
+// attaching a rupee figure to a named tier. 0115 retired `trial` from the
+// estate's vocabulary; left unchanged, this regex would have gone on watching
+// for a word no vendor can hold while going BLIND to `basic`, the rung most of
+// them are actually on. A safety instrument that cannot match the live
+// vocabulary is the independent-method law's silent zero: it reports clean
+// because it cannot see, not because there is nothing to see.
+// One line, ruled in-scope, diff-proven one line. closerSoul.js's sentence about
+// how long a trial runs is DEFERRED-FILED to the covenant sitting and is
+// byte-untouched by this delivery.
+const TIERS = 'basic|essential|signature|prestige';
 const WATCH_CLASSES = [
   // identity WIDENS (§5). Two shapes at 39087f4 that the old term slept through,
   // both DeepSeek, both `flags=none`: "I'm Maya — THE PERSON who built you a

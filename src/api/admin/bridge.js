@@ -145,9 +145,10 @@ const WIRING_PENDING = Object.freeze({
     state: 'no_clock',
     label: 'no trial clock',
     // F-10.27, minted this sitting.
-    why: 'public.vendors carries `tier` (default trial) but NO trial start or end column, '
+    why: 'public.vendors carries `tier` (default basic since 0115) but NO start or end column, '
        + 'and no TRIAL_DAYS constant exists in src/. "Expiring in 3 days" cannot be derived '
-       + 'without inventing a trial length, so it is not derived.',
+       + 'without inventing a length, so it is not derived. 0115 made this HARDER to ever need: '
+       + 'the founder ruled basic permanent and un-clocked, so there may be nothing to expire.',
     owner: 'Block 09 P4 — 0084_billing.sql\'s `billing_status`',
     finding: 'F-10.27',
   },
@@ -301,9 +302,13 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
     attempt('subs_halted', () => countOf(supabase, 'vendors',
       q => q.eq('billing_status', 'halted')), degraded),
 
-    // Real: a count of rows whose tier says trial. The EXPIRY half is the
-    // honest state above — the count is true, the clock does not exist.
-    attempt('trials', () => countOf(supabase, 'vendors', q => q.eq('tier', 'trial')), degraded),
+    // Real: a count of rows on the entry rung. 0115 renamed that rung
+    // `trial` → `basic` (F-10.23), so this predicate follows the word or the
+    // founder's own card silently reads 0 forever — a zero that looks like data.
+    // The response KEY stays `trials` because the pwa client and its drill map
+    // are typed on it; the DISPLAY word moved on the surface (Bridge.tsx), which
+    // is where a vocabulary rename is actually visible to a human.
+    attempt('trials', () => countOf(supabase, 'vendors', q => q.eq('tier', 'basic')), degraded),
 
     // ── WA turns + INR by surface ──────────────────────────────────────────
     // The headline count is exact and cap-independent.

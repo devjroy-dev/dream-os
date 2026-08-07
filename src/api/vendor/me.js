@@ -68,6 +68,22 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       open_to_travel:    vendor.open_to_travel === true,
       tier:              vendor.tier || null,
       founding_cohort:   vendor.founding_cohort === true,
+      // ── 0115 · THE VENDOR'S OWN MONEY STATE (Fork H, arm (a)) ─────────────
+      // RETIRE-WITH-THE-READER's SAFE direction: this ADDS fields to a response
+      // and removes none, so no existing surface can go dark on it. A second
+      // endpoint was the alternative and was declined — three scalars do not
+      // earn their own route and their own client.
+      //
+      // No extra query: resolveVendor() selects '*' (src/api/middleware/
+      // resolveVendor.js), so `vendor` already carries the 0114/0115 columns.
+      //
+      // NULL IS A REAL ANSWER on the link, and the surface is required to say so
+      // plainly: a vendor with no link issued yet reads "not set up yet", never a
+      // button that goes nowhere. `billing_status` falls back to 'none' — 0114
+      // made the column NOT NULL DEFAULT 'none', so the fallback is belt-and-
+      // braces for a row read before that migration, not an invented state.
+      billing_status:              vendor.billing_status || 'none',
+      razorpay_subscription_link:  vendor.razorpay_subscription_link || null,
       // Block F (migration 0034) applied these columns — real values now.
       aesthetic_tags:    vendor.aesthetic_tags    || [],
       rate_min:          vendor.rate_min          || null,
@@ -126,7 +142,13 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
 // Update vendor profile fields. Locked fields rejected with 400.
 // Auth: requireAuth. resolveVendor mode A.
 
-const LOCKED_FIELDS  = ['phone', 'routing_handle', 'tier', 'founding_cohort', 'onboarding_state', 'category'];
+// 0115: the money fields join the LOCKED list. ALLOWED_FIELDS below is a
+// whitelist, so they were never writable — but an un-listed field is dropped
+// SILENTLY behind a 200, and a vendor who PATCHes her own billing_status
+// deserves a refusal she can see rather than a success she cannot verify
+// (never-a-false-done). Locked here = an explicit 400, same as tier.
+const LOCKED_FIELDS  = ['phone', 'routing_handle', 'tier', 'founding_cohort', 'onboarding_state', 'category',
+                        'billing_status', 'razorpay_subscription_link', 'razorpay_subscription_id'];
 const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel', 'travel_notes',
                         'instagram_handle', 'upi_id', 'gstin', 'briefing_enabled',
                         'aesthetic_tags', 'rate_min',
