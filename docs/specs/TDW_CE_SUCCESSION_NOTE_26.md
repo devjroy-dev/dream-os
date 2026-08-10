@@ -1,8 +1,8 @@
 # TDW · CE SUCCESSION NOTE 26 — the twenty-sixth chair banks on four sealed arcs
-2026-08-07 · banked on the founder's word · tips at banking: dream-os `0b207db` · dreamos-pwa `c1fd389` — **VERIFY BOTH AT ORIGIN BEFORE YOU READ FURTHER. A packet header is a timestamp, not a claim about the present.**
+2026-08-07 · banked on the founder's word · **AMENDED AT CE-211 — tips at final banking: dream-os `90d67ba` · dreamos-pwa `7bb6429`** (the status-line sitting landed after CE-210 was cut; CE-211 carries it) · superseded tips at CE-210: `0b207db` / `c1fd389` — **VERIFY BOTH AT ORIGIN BEFORE YOU READ FURTHER. A packet header is a timestamp, not a claim about the present.**
 
 ## §1 · READ WHOLE, TWICE, then the ladder
-This note · protocol §7/§9/§10/§11 twice · masterplan rows 09/10/13 · FINDINGS_LOG **CE-204→CE-210** (CE-210 is this tenure whole; the four arcs, twenty-two chair defects, eight minted laws) · `dreamos-pwa docs/` handovers as the bands index them · `docs/TDW_10_COMBINED_CAP_HANDOVER.md`.
+This note · protocol §7/§9/§10/§11 twice · masterplan rows 09/10/13 · FINDINGS_LOG **CE-204→CE-211** (**CE-211 is the tenure's last sitting and carries three minted laws, five executor defects and chair defects #23/#24 — do not stop at CE-210**) (CE-210 is this tenure whole; the four arcs, twenty-two chair defects, eight minted laws) · `dreamos-pwa docs/` handovers as the bands index them · `docs/TDW_10_COMBINED_CAP_HANDOVER.md`.
 
 ## §2 · LIVE AT THIS SEAM
 **Nothing in flight.** Four sessions ran this tenure and all four are banked or paused: the bride/atelier seat (banked clean), the Billing-tab seat (banked clean), the combined-cap seat (banked clean), and **RAZORPAY v2 — DARK-ARMED-PAUSED, ①②③ on the OTP gate, untouched by four sittings that ran around it.** ④ closed founder-witnessed. Its radius is `razorpay.js`, `razorpaySubscriptions.js`, `billing.js`, the selfserve rail, and `TierPicker` — **now living in `components/vendor/SubscriptionCard.tsx`, moved by the Billing sitting and disclosed by name; tell them when they wake.**
@@ -21,13 +21,14 @@ Twenty-two owned chair defects, every one caught by a session reading past the c
 - **PREMISES ASSERTED, NOT CHECKED.** A cure was refused because 「 the other ZIP re-points that line 」. It did not. **Run the command before the ruling, not after.**
 - **REGISTER COLLISIONS — three in one arc.** Cure minted: **THE NO-QUOTED-FLOOR RULE. Never tell a session what is 「 next chair-free 」. Allocate on request, at the moment of request.**
 - **RULING ON A FILE NOT OPENED.** The verbatim read-back was ruled against a soul the chair had never read, and the soul forbade it. **Open the file you are ruling on.**
+- **A DEFAULT IN THE TREE IS NOT THE LIVE VALUE.** Four specimens in one arc, **two of them the chair's**. `laneFlags.js` says `false` and production says otherwise, because the founder acted. **Cite a default as a default, never as state — and when only the founder can witness it, ask him.**
 - **CHARTER RADIUS TOO NARROW.** A radius of five production files made a correct bench re-aim look like a breach. **A sitting that moves a subject owns the benches that read it — grant it or, better, say nothing because it is now standing law.**
 
 ## §6 · RANGES — derive high-water at origin in the same breath as ANY allocation
-F-08 free `.102` · **F-09 chair-free `.171`** (`.164`/`.169`/`.170` OPEN, all one lane) · **F-10 chair-free `.111`** (`.94–.99` are razorpay v2's and untouchable; `.102`/`.103`/`.104`/`.106`/`.107`/`.109`/`.110` OPEN).
+F-08 free `.102` · **F-09 chair-free `.171`** (`.164`/`.169`/`.170` OPEN, all one lane) · **F-10 chair-free `.112`** (`.94–.99` are razorpay v2's and untouchable; **`.106` and `.110` CURED AND WALKED at CE-211**; `.102`/`.103`/`.104`/`.107`/`.109`/`.111` OPEN; `.105` the couple charter RULED AND UNCHARTERED).
 
 ## §7 · THE FOUNDER'S SHELF
-Meta ACCESS VERIFICATION in review (watch ~Aug 12) + the Instagram App Review watch · **Razorpay OTP gate — the one thing four sittings could not unblock** · the schema dump · V5's peek-tip word · Package 3 spotlight gated-unlost on his provenance SELECT · Package 4's grave · F-09.170's soul clause · F-10.110's status string · F-10.106's ACCOUNT card · the two dead couple console dials (chair-ruled retire, his veto governing) · F-10.109's upgrade question, flagged 「 much later build 」.
+Meta ACCESS VERIFICATION in review (watch ~Aug 12) + the Instagram App Review watch · **Razorpay OTP gate — the one thing four sittings could not unblock** · the schema dump · V5's peek-tip word · Package 3 spotlight gated-unlost on his provenance SELECT · Package 4's grave · F-09.170's soul clause · F-10.110's status string · F-10.106's ACCOUNT card · the two dead couple console dials (chair-ruled retire, his veto governing) · F-10.109's upgrade question, flagged 「 much later build 」 · **the `link preload … not used` console warning — no subject yet, no number until he pastes the resource name.**
 
 ## §8 · IMMEDIATE DUTIES
 Seat per the kickoff · re-derive the tips and the floor by your own commands · **relay nothing you have not carried as bytes** · hold for the founder. He sequences; you verify.
