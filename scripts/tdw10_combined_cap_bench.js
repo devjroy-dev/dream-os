@@ -525,11 +525,23 @@ t('§6.3 0116 is NON-DESTRUCTIVE and does not widen its ruling — no DELETE, no
   assert.ok(!/couple_(wa|pwa)_/.test(live), '0116 touches the couple keys, which no ruling named');
 });
 
-t('§6.4 LD-8: 0116 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
+// ── LABELLED AMENDMENT, TDW_06 relay-seam sitting one, 2026-08-11 ────────────
+// RE-AIMED, NOT DELETED, and the count is PRESERVED at 37. This cell asserted
+// `0116` as the ladder's tip. That was true when written and it is no longer the
+// truth to assert: 0117 (`0117_pending_couple_drafts.sql`, the relay seam's
+// pending-draft store) was RESERVED at that sitting's charter and lawfully
+// written. A cell left asserting the old tip would have gone red at the next
+// migration and been "fixed" by deleting it — the M-INVERTED §7.6 precedent in
+// `b07_p5_bench` governs: re-aim, keep the teeth, label it.
+// TEETH KEPT WHOLE: 0116 is still asserted present, 0113 is still asserted an
+// unwritten hole, and the 0063 duplicate-set fence is untouched.
+// RATIFY-OR-REVERT.
+t('§6.4 LD-8: 0117 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
   const files = fs.readdirSync(P('db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
   const nums = files.map((f) => f.slice(0, 4));
   assert.ok(nums.includes('0116'), '0116 is not on the ladder');
-  assert.strictEqual(nums[nums.length - 1], '0116', `0116 is not the tail: ${nums.slice(-3).join(', ')}`);
+  assert.ok(nums.includes('0117'), '0117 is not on the ladder');
+  assert.strictEqual(nums[nums.length - 1], '0117', `0117 is not the tail: ${nums.slice(-3).join(', ')}`);
   assert.ok(!nums.includes('0113'), '0113 was filled — LD-8 forbids it; it is reserved-unwritten');
   // ATTRIBUTED ELDER, not this delivery's: 0063 is used TWICE at origin
   // (0063_users_auth_user_id.sql + 0063_vendor_activity_log.sql), an LD-8 collision

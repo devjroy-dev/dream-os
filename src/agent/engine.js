@@ -43,6 +43,80 @@ const HISTORY_LIMIT  = 5;
 // WhatsApp vendor session boundary: vendor's pace, short bursts. 10 minutes.
 const VENDOR_SESSION_IDLE_MS = 10 * 60 * 1000;
 
+// ── TDW_06 · F-06.151 / F-06.152 — THE HISTORY BUILDER'S TWO CURES ───────────
+//
+// F-06.151 (MERGE, NEVER DROP). The reduce below used to keep the FIRST of any
+// consecutive same-role run and DISCARD the rest. The Anthropic API's
+// alternation constraint is real, so deleting the reduce is not a lawful arm —
+// the cure is to MERGE the run into one turn. Live cost of the old shape: any
+// two consecutive outbounds on a couple thread already collapsed, and a
+// vendor-relayed message written immediately after one of Eliza's own replies
+// (the 2026-08-08 shape) never reached her context at all.
+//
+// F-06.152 (PROVENANCE SURVIVES). `sent_by` was fetched at the select and then
+// destroyed by the role map, so a message relayed on the vendor's behalf was
+// byte-indistinguishable from Eliza's own prose and she would believe she had
+// quoted the figure herself. The marker is derived AT ASSEMBLY and prefixed IN
+// MEMORY ONLY.
+//
+// [F-06.85 class — THIS LAW NAMES ITS MECHANISM. Two mechanical facts hold the
+//  paragraph above true, and if either moves this comment becomes false:
+//  (1) `MERGE_DELIMITER` contains at least one character OUTSIDE the class
+//      `[\s,\-/]`. That class is `hasDayAdjacentToMonth`'s separator set at
+//      `src/agent/datePrecision.js` (symbol `hasDayAdjacentToMonth`). Merged
+//      USER turns are joined by this delimiter and the joined string reaches
+//      `resolveWeddingDate` through `coupleOwnWords` below. A whitespace-only
+//      delimiter would let "...thinking December" + "12 guests confirmed" mint
+//      a DAY precision the bride never spoke — the provenance-hold class,
+//      arriving through the front door of this very cure. `"\n"` alone is
+//      INSIDE `\s` and is NOT safe. The `|` is what makes it inert.
+//  (2) The provenance marker is prefixed onto `content` IN MEMORY and is never
+//      written to `public.messages.body` and never transmitted. The durable row
+//      and the wire stay byte-untouched. If a writer ever persists the marker,
+//      the audit row stops being the bride's or the vendor's actual bytes.
+//  The marker is NATURAL-LANGUAGE ATTRIBUTION and deliberately NOT a bracketed
+//  system label: F-06.52 convicted bracket-machinery in context (the model
+//  echoed "[Donna's snapshot]" back as its own words, cured at CE-78). On a
+//  relayed message, attribution read aloud is a FEATURE — it is true, and it is
+//  what the bride should hear.]
+const MERGE_DELIMITER = '\n|\n';
+
+// The `sent_by` value a vendor→bride relay writes. NEW vocabulary this sitting.
+// Census of the live register at 16a4071 (`git grep -hoE "sent_by: *'[a-z_]+'"`):
+// agent(26) · couple(10) · system(4) · vendor(2) · bride(1). `agent` is what
+// `src/lib/vendor/replyToCouple.js` writes today (symbol `replyToCouple`) and it
+// is also what Eliza's own prose writes — THAT COLLISION IS F-06.152. The relay
+// takes its own value so the two are separable at the row, not by inference.
+// THE WRITER ARRIVES AT THE HAND SITTING; this sitting mints the vocabulary and
+// the reader only.
+const RELAY_SENT_BY = 'vendor_relay';
+
+// Founder-vetoed attribution. Bytes are copy-class and carry a veto.
+const RELAY_ATTRIBUTION_PREFIX = 'Passed on from the vendor: ';
+
+// Attribution applied at assembly. Anything that is not a relay row is returned
+// byte-identical, so every pre-existing history shape is unchanged.
+function markRelayProvenance(row) {
+  const body = row.body || '';
+  if (!body) return '';
+  if (row.sent_by !== RELAY_SENT_BY) return body;
+  return `${RELAY_ATTRIBUTION_PREFIX}${body}`;
+}
+
+// F-06.151's cure. Same-role runs MERGE; role boundaries still split, so the
+// API's alternation constraint is preserved exactly as before.
+function mergeSameRole(acc, msg) {
+  if (acc.length === 0) return [msg];
+  const last = acc[acc.length - 1];
+  if (last.role === msg.role) {
+    return [
+      ...acc.slice(0, -1),
+      { role: last.role, content: `${last.content}${MERGE_DELIMITER}${msg.content}` },
+    ];
+  }
+  return [...acc, msg];
+}
+
 // ── Vendor agentic turn — DELETED AT ARC M5 (C6 / F-05.44, CE ruling R-M5-3) ──
 // `runAgenticTurn` lived here, 43-374, with ZERO callers anywhere in src/**. The
 // live vendor wire is the TS engine (vendorInbound.js -> runTurn), so this JS twin
@@ -93,14 +167,14 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     .filter(m => m.body && m.body.trim().length > 0)
     .slice(-HISTORY_LIMIT)
     .map(m => ({
+      // F-06.85's premise below (search this file for `F-06.85`) is conditioned
+      // on THIS ternary being the sole role source. It is unchanged: provenance
+      // rides `content`, never `role`, so a relayed row stays `assistant` and
+      // stays excluded from `coupleOwnWords`. Do not move provenance here.
       role: m.direction === 'inbound' ? 'user' : 'assistant',
-      content: m.body || '',
+      content: markRelayProvenance(m),   // F-06.152 — in memory only
     }))
-    .reduce((acc, msg) => {
-      if (acc.length === 0) return [msg];
-      if (acc[acc.length - 1].role === msg.role) return acc;
-      return [...acc, msg];
-    }, []);
+    .reduce(mergeSameRole, []);          // F-06.151 — merge, never drop
 
   // Detect returning bride — lead already exists for (vendor_id, couplePhone)
   const { data: existingLeadForCouple } = await supabase

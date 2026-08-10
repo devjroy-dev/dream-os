@@ -10,6 +10,29 @@
 //
 // 24h window check: same as vendor briefing — only send free-form if bride
 // messaged within last 24h. If window closed, cron skips (template pending).
+//
+// ── DECLARED, NOT SILENTLY WIDENED (protocol §8; TDW_06 relay-seam sitting) ──
+// The window block below is the estate's THIRD implementation of this predicate
+// and the only couple-side one, and it is LEFT IN PLACE deliberately. A fourth
+// now exists at `src/lib/vendor/coupleWaWindow.js` (symbol `coupleWindowOpen`),
+// built for the vendor lane's send path.
+//
+// THE TWO ARE NOT INTERCHANGEABLE AND THE DIFFERENCE IS THE POINT:
+//   · this block keys on ONE `couple_self` conversation row (`maybeSingle()`),
+//     and `couple_self` sits on the BRIDE PNID.
+//   · `coupleWindowOpen` keys on the (business PNID, user MSISDN) PAIR per
+//     F-06.147, and its allowlist is `couple_thread` — the VENDOR PNID.
+// A bride's inbound here does NOT open the vendor lane's window and vice versa.
+// Folding this block onto that module is a real cure with a real regression
+// surface — `src/brideCron.js` branches on the `window_closed` reason returned
+// below — and it is CHARTERED AS ITS OWN MICRO, founder-sequenced. It is not
+// done here, it is named here, and the fold re-baselines
+// `scripts/b05_p4_crons_bench.js` at the sitting that ships it.
+//
+// [F-06.85 class: the paragraph above is conditioned on a MECHANICAL fact — that
+//  this file still carries its own inline window block, and that
+//  `coupleWaWindow.js`'s `VENDOR_LANE_KINDS` still excludes `couple_self`. If
+//  either moves, re-read this header.]
 
 async function buildNudge({ couple, user, supabase }) {
   const coupleId = couple.id;
