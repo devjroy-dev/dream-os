@@ -3,9 +3,10 @@
 // scripts/b06_relay_foundations_bench.js
 // ── TDW_06 · THE RELAY SEAM · SITTING ONE — THE FOUNDATIONS ──────────────────
 //
-// FORTY-ONE CELLS, chair-ratified before build:
+// FORTY-TWO CELLS. Forty-one chair-ratified; §2.9 added on the founder's
+// attribution veto (2026-08-11) and disclosed RATIFY-OR-REVERT.
 //   §1 A1  W-A  merge-not-drop (F-06.151)                    8
-//   §2 A2  W-B  sent_by survives (F-06.152)                  8
+//   §2 A2  W-B  sent_by survives (F-06.152)                  9  (+1, the fallback)
 //   §3 A3  W-C  the couple-side window predicate (F-06.147)  14
 //   §4 A4  W-D  the pending-draft store (0117)               10
 //   §5     the phone-format contract cell                    1
@@ -101,11 +102,15 @@ function fakeSupabase(rows = {}, opts = {}) {
 // them. Fixtures are therefore authored NEWEST FIRST, exactly as the wire delivers.
 const msg = (direction, body, sent_by, created_at) => ({ direction, body, sent_by, created_at });
 
-async function assembled(messages, enginePath = SRC('src/agent/engine.js'), inbound = 'Any news from dev?') {
+// The founder-vetoed attribution is NAMED, so the fixtures carry an identity.
+// `who` overrides it: `{}` is the no-name case the fallback cell drives.
+const ROHAN = { vendor: { id: 'v1', business_name: 'Rohan Studios' }, vendorUser: { name: 'Rohan Mehta' } };
+
+async function assembled(messages, enginePath = SRC('src/agent/engine.js'), inbound = 'Any news from dev?', who = ROHAN) {
   const capture = {};
   const { runCoupleAgenticTurn } = loadEngine(enginePath, capture);
   await runCoupleAgenticTurn({
-    vendor: { id: 'v1' }, vendorUser: { name: 'Dev' },
+    vendor: who.vendor, vendorUser: who.vendorUser,
     conversation: { id: 'c1' }, couplePhone: '+919625759924', coupleId: null,
     inboundMessage: inbound,
     supabase: fakeSupabase({ messages, leads: [], users: [], couples: [], admin_config: [] }),
@@ -289,6 +294,8 @@ await t('§2.1 a relay row is DISTINGUISHABLE from Eliza\'s own prose', async ()
   const own     = await assembled([ELIZA('The amount is Rs 60,000.', '2026-08-08T16:01:00Z')]);
   assert.notStrictEqual(relayed[0].content, own[0].content,
     'identical bodies produced identical context — sent_by did not survive');
+  assert.strictEqual(relayed[0].content, 'From Rohan Mehta: The amount is Rs 60,000.',
+    'the attribution is not the founder-vetoed named form');
 });
 
 await t('§2.2 the distinction SURVIVES the A1 merge', async () => {
@@ -298,9 +305,8 @@ await t('§2.2 the distinction SURVIVES the A1 merge', async () => {
   ]);
   const c = m.find((x) => x.role === 'assistant').content;
   assert.ok(/Rs 60,000/.test(c) && /Let me check/.test(c), 'merge lost a body');
-  const marked = c.split('Rs 60,000')[0];
-  assert.ok(marked.length > 'Let me check with dev.'.length + 4,
-    'the relay body entered the merge unmarked');
+  assert.ok(c.includes('From Rohan Mehta: The amount is Rs 60,000.'),
+    'the relay body entered the merge unmarked, or not in the vetoed named form');
 });
 
 await t('§2.3 the distinction survives a THREE-row merge', async () => {
@@ -311,8 +317,8 @@ await t('§2.3 the distinction survives a THREE-row merge', async () => {
   ]);
   const c = m.find((x) => x.role === 'assistant').content;
   for (const w of ['before', 'Rs 60,000', 'after']) assert.ok(c.includes(w), `${w} lost`);
-  const seg = c.split(/\n\|\n|\s{2,}/).find((s) => /Rs 60,000/.test(s)) || c;
-  assert.ok(!/^The amount/.test(seg.trim()), 'the middle relay body is unmarked inside the merge');
+  assert.ok(c.includes('From Rohan Mehta: The amount is Rs 60,000.'),
+    'the middle relay body is unmarked inside the merge, or not in the vetoed named form');
 });
 
 await t('§2.4 Eliza\'s own prose carries NO marker', async () => {
@@ -328,7 +334,7 @@ await t('§2.5 the :297-301 premise holds — the USER side carries zero assista
   ], SRC('src/agent/engine.js'), 'and the venue?');
   const userSide = m.filter((x) => x.role === 'user').map((x) => x.content).join(' ');
   assert.ok(!/Rs 60,000/.test(userSide), 'assistant bytes reached the user side');
-  assert.ok(!/Passed on from the vendor/.test(userSide), 'the marker reached the user side');
+  assert.ok(!/^From |\bFrom Rohan Mehta:/.test(userSide), 'the marker reached the user side');
 });
 
 await t('§2.6 the :96 ternary is still the sole role source — a relay row is `assistant`', async () => {
@@ -340,7 +346,7 @@ await t('§2.6 the :96 ternary is still the sole role source — a relay row is 
 });
 
 await t('§2.7 MUTATION — stripping the marker in PRODUCTION turns §2.1 red', async () => {
-  const anchor = 'content: markRelayProvenance(m),';
+  const anchor = 'content: markRelayProvenance(m, relayPrefix),';
   const mut = mutate('src/agent/engine.js', anchor, "content: m.body || '',", 'engine_nomark');
   assert.ok(mut, 'MUTATION ANCHOR ABSENT — this cell proves nothing (uncured tree?)');
   const red = await wentRed(async () => {
@@ -355,10 +361,28 @@ await t('§2.8 the DURABLE row is byte-untouched — the marker is assembly-time
   const row = RELAY('The amount is Rs 60,000.', '2026-08-08T16:01:00Z');
   const before = row.body;
   const m = await assembled([row]);
-  assert.ok(/Passed on from the vendor/.test(m[0].content), 'the marker did not apply — fixture void');
+  assert.ok(/^From Rohan Mehta: /.test(m[0].content), 'the marker did not apply — fixture void');
   assert.strictEqual(row.body, before,
     'the source row was mutated — the marker must never reach public.messages.body');
-  assert.ok(!/Passed on from the vendor/.test(row.body), 'marker bytes persisted onto the row');
+  assert.ok(!/From Rohan Mehta:/.test(row.body), 'marker bytes persisted onto the row');
+});
+
+await t('§2.9 FALLBACK — a nameless vendor renders the generic form, nothing invented', async () => {
+  // Person name absent -> the studio. Both absent -> the generic. A name is never
+  // guessed from another column and NEVER from the phone.
+  const studioOnly = await assembled([RELAY('body bytes', '2026-08-08T16:01:00Z')],
+    SRC('src/agent/engine.js'), 'x',
+    { vendor: { id: 'v1', business_name: 'Rohan Studios' }, vendorUser: { name: '   ' } });
+  assert.strictEqual(studioOnly[0].content, 'From Rohan Studios: body bytes',
+    'a blank person name did not fall through to the business name');
+
+  const nameless = await assembled([RELAY('body bytes', '2026-08-08T16:01:00Z')],
+    SRC('src/agent/engine.js'), 'x',
+    { vendor: { id: 'v1', business_name: null }, vendorUser: { name: null, phone: '+919888294440' } });
+  assert.strictEqual(nameless[0].content, 'From the vendor: body bytes',
+    'a nameless vendor did not render the generic fallback');
+  assert.ok(!/9888294440/.test(nameless[0].content), 'the PHONE was used as a name — never');
+  assert.ok(!/v1/.test(nameless[0].content), 'the vendor id was used as a name — never');
 });
 
 // ── §3 · A3 — W-C · THE COUPLE-SIDE WINDOW PREDICATE ────────────────────────

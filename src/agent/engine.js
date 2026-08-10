@@ -91,16 +91,61 @@ const MERGE_DELIMITER = '\n|\n';
 // the reader only.
 const RELAY_SENT_BY = 'vendor_relay';
 
-// Founder-vetoed attribution. Bytes are copy-class and carry a veto.
-const RELAY_ATTRIBUTION_PREFIX = 'Passed on from the vendor: ';
+// ── THE ATTRIBUTION BYTES — FOUNDER-VETOED 2026-08-11, HIS WORD 「 1 」 ────────
+// APPROVED COPY CARRIES ITS DECISION, so the next session inherits the RULING and
+// not just the string. Options were put to the founder and he took the NAMED form:
+//
+//     VETOED TEMPLATE:  `From <vendor's display name>: `
+//     WORKED EXAMPLE:   「 From Rohan Mehta: Hi Priya — the amount for the
+//                          December shoot is Rs 60,000. 」
+//     RETIRED:          `Passed on from the vendor: ` — the generic form shipped
+//                       at 7a7bc21 is RETIRED as the primary, not reworded. It
+//                       survives BELOW as the fallback only.
+//
+// ── WHICH NAME · DERIVED BY CENSUS, NOT PICKED ──────────────────────────────
+// The register is `vendorUser.name` FIRST, `vendor.business_name` SECOND — the
+// person, then the studio. Cited, not asserted:
+//   · `src/agent/coupleSystemPrompt.js` (symbol `buildCoupleSystemPrompt`) builds
+//     exactly this precedence and speaks it to the bride ~30 times — it is the
+//     register of HER OWN ROOM.
+//   · THIS FILE already uses the identical precedence in the live bride-facing
+//     tool-result copy that tells Eliza to say 「 I've passed this to X 」.
+// COLUMN WITNESSES: `public.users.name` (col 3, docs/db/PUBLIC_SCHEMA.md:875) ·
+// `public.vendors.business_name` (col 3, docs/db/PUBLIC_SCHEMA.md:981).
+// NO LOOKUP IS PERFORMED. Both objects are already parameters of this function,
+// and the history load is conversation-scoped to one `couple_thread`, which
+// carries exactly one `vendor_id`. The prefix is computed ONCE per turn.
+//
+// ⚠ THE ESTATE DOES **NOT** SPEAK ONE NAME PER VENDOR TO A BRIDE, and this
+// comment exists so the next reader is not surprised by it. Census (method: git
+// grep on both column names, every hit read for who hears it; blind spot: the TS
+// engine and dreamos-pwa were not censused). THREE LIVE bride-facing sites, TWO
+// orders: `coupleSystemPrompt.js` and this file put the PERSON first;
+// `src/agent/disambiguation.js` (symbol `vendorDisplayName`, asked of a couple
+// holding threads with several vendors) puts the BUSINESS first. Filed as a
+// finding at this sitting's seal. THIS BYTE JOINS THE THREAD'S OWN REGISTER —
+// a relay reading 「 From Rohan Studios 」 while Eliza calls him 「 Rohan Mehta 」
+// two lines later would show the bride two names for one vendor in one
+// conversation, which is the only failure that matters here.
+const RELAY_ATTRIBUTION_GENERIC = 'From the vendor: ';
+
+// THE HONEST FALLBACK. A missing name renders the generic form. A name is NEVER
+// invented, never guessed from another column, and never the phone number — an
+// unnamed vendor is a fact about the row, not a gap to fill.
+function relayAttributionPrefix(vendor, vendorUser) {
+  const person = typeof (vendorUser && vendorUser.name) === 'string' ? vendorUser.name.trim() : '';
+  const studio = typeof (vendor && vendor.business_name) === 'string' ? vendor.business_name.trim() : '';
+  const name = person || studio;
+  return name ? `From ${name}: ` : RELAY_ATTRIBUTION_GENERIC;
+}
 
 // Attribution applied at assembly. Anything that is not a relay row is returned
 // byte-identical, so every pre-existing history shape is unchanged.
-function markRelayProvenance(row) {
+function markRelayProvenance(row, prefix) {
   const body = row.body || '';
   if (!body) return '';
   if (row.sent_by !== RELAY_SENT_BY) return body;
-  return `${RELAY_ATTRIBUTION_PREFIX}${body}`;
+  return `${prefix}${body}`;
 }
 
 // F-06.151's cure. Same-role runs MERGE; role boundaries still split, so the
@@ -161,6 +206,10 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT + 1);
 
+  // ONE computation, thread-lifetime: a couple_thread carries exactly one
+  // vendor_id and both objects are already this function's parameters.
+  const relayPrefix = relayAttributionPrefix(vendor, vendorUser);
+
   const history = (recentMessages || [])
     .reverse()
     .filter(m => m.body !== inboundBodyAsStored || m.direction !== 'inbound')
@@ -172,7 +221,7 @@ async function runCoupleAgenticTurn({ vendor, vendorUser, conversation, couplePh
       // rides `content`, never `role`, so a relayed row stays `assistant` and
       // stays excluded from `coupleOwnWords`. Do not move provenance here.
       role: m.direction === 'inbound' ? 'user' : 'assistant',
-      content: markRelayProvenance(m),   // F-06.152 — in memory only
+      content: markRelayProvenance(m, relayPrefix),   // F-06.152 — in memory only
     }))
     .reduce(mergeSameRole, []);          // F-06.151 — merge, never drop
 
