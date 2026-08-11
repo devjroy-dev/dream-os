@@ -31,6 +31,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const cloudinary = require('cloudinary').v2;
+const { meterCtxOf, recordVisionCall } = require('./coupleAiCap'); // TDW_10.C · the Vision site's ledger row
 const { MODEL_HAIKU, calculateCost } = require('../agent/models');
 const {
   BRIDE_AESTHETIC_TAGS,
@@ -453,6 +454,24 @@ async function processImageForMuse({ sourceUrl, bufferSource, couple_id, anthrop
       };
     }
     // route === 'muse' → fall through to existing Vision/Haiku tagging
+  }
+
+  // ── TDW_10.C · THE VISION ROW. R-30.27's lift amendment sites it here. ────
+  // images:annotate is a PAID call on the couple's money and it is invisible to
+  // every Anthropic-shaped census — no `messages.create`, no SDK, a raw fetch at
+  // :204. Half-metering the image path would half-answer F-10.107, whose
+  // cheapest vector is exactly a circle member forwarding photos.
+  //
+  // cost_inr = 0 with cost_basis = 'unpriced'. The zero MEANS UNKNOWN and the
+  // column says so — no Vision rate exists anywhere in this estate, and
+  // inventing one is forbidden (harvest.js:73-77's law). The row is still
+  // written: the CALL happened, the volume is real, and one UPDATE backfills
+  // real money the day a rate arrives. Not writing it would lose the count.
+  //
+  // Sited BEFORE the tagger so a Vision failure still leaves its own evidence.
+  const visionCtx = meterCtxOf(anthropic);
+  if (visionCtx) {
+    await recordVisionCall({ supabase: visionCtx.supabase, ctx: visionCtx });
   }
 
   // Vision analysis on the Cloudinary URL — guaranteed public-fetchable

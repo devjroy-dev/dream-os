@@ -8,6 +8,7 @@
 'use strict';
 
 const express      = require('express');
+const { meteredAnthropic } = require('../../lib/coupleAiCap'); // TDW_10.C · the couple lane's meter
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { waNumberFor } = require('../../lib/waNumbers');   // F5 rider
@@ -281,7 +282,15 @@ router.post('/upload', asyncHandler(async (req, res) => {
     pipelineResult = await processImageForMuse({
       bufferSource: { buffer, contentType: mimeType },
       couple_id,
-      anthropic,
+      // TDW_10.C: turn_id is NULL here BY MEANING (R-30.37 consequence 3). An
+      // in-app Muse upload is not an inbound message — there is no turn for it
+      // to belong to. It counts nothing toward the cap and costs truly.
+      anthropic: meteredAnthropic(anthropic, {
+        supabase: req.app.locals.supabase,
+        couple_id,
+        turn_id: null,
+        kind: 'tagging',
+      }),
       runClassifier: surface === 'moments' ? false : false, // classifier handled by museSave for WA path
     });
   } catch (err) {
@@ -363,7 +372,13 @@ router.post('/add-url', asyncHandler(async (req, res) => {
     pipelineResult = await processImageForMuse({
       sourceUrl: url,
       couple_id,
-      anthropic,
+      // TDW_10.C: turn_id NULL by meaning — a link saved in-app is not a turn.
+      anthropic: meteredAnthropic(anthropic, {
+        supabase: req.app.locals.supabase,
+        couple_id,
+        turn_id: null,
+        kind: 'tagging',
+      }),
       runClassifier: false,
     });
   } catch (err) {

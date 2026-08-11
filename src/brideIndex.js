@@ -28,6 +28,7 @@ const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn, surfacePendingCircleSessions } = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
+const { newTurnId, meteredAnthropic, withKind } = require('./lib/coupleAiCap'); // TDW_10.C · the couple lane's meter
 // The one register, for the /surprise composer below — a bare Haiku call with
 // no system prompt, which used to describe the voice for itself (CE-65 fold).
 const { MIRA_REGISTER } = require('./agent/miraSoul');
@@ -208,7 +209,14 @@ app.post('/webhook/meta', async (req, res) => {
 //
 // Returns the reply string. Never throws — all errors caught internally.
 // ─────────────────────────────────────────────────────────────────────
-async function handleSurpriseMe({ couple, supabase }) {
+// TDW_10.C: `anthropic` is now injected so the composer at :285 — site 4 of
+// the opening census — writes a ledger row. It defaults to the module client so
+// any caller not yet threaded keeps working unmetered rather than crashing
+// (fail-open, combined_cap §3.4's posture).
+async function handleSurpriseMe({ couple, supabase, anthropic: metered }) {
+  // `ai` never shadows the module client above — a `const anthropic` here would
+  // put the outer binding in the temporal dead zone for this whole function.
+  const ai = metered || anthropic;
   const FALLBACK_FEW_SAVES = "Save a few more things to your board first and I'll have more to work with — I need at least 3 saves to get a feel for your vibe.";
   const FALLBACK_GEMINI_ERR = "Having a moment with the search — try again in a bit? Your board is gorgeous btw.";
 
@@ -282,7 +290,8 @@ ${sourcesText ? `\nSources:\n${sourcesText}` : ''}
 Write a short reply (3-5 sentences max) sharing these results with her. Reference her specific aesthetic tags naturally. Be specific — mention actual results, not just vibes. End with one question or nudge. Do NOT use bullet points. Do NOT say "based on your board" — just tell her what you found.`;
 
   try {
-    const haiku = await anthropic.messages.create({
+    // TDW_10.C: `ai` is the metered client when the door threaded one.
+    const haiku = await ai.messages.create({
       model:      MODEL_HAIKU,
       max_tokens: 400,
       messages:   [{ role: 'user', content: composePrompt }],
@@ -510,6 +519,15 @@ async function handleCircleMemberMessage({
     }
   }
 
+  // ── TDW_10.C · THE TURN ID IS MINTED ONCE, HERE, FOR THIS WHOLE INBOUND ──
+  // G1 (R-30.37): one id per inbound message, stamped on every row it causes.
+  // Hoisted ABOVE the image door deliberately — a circle member who forwards a
+  // photo produces tagging rows FIRST and engine rows after, and both belong to
+  // the same message. Minting at the engine call alone would have left the
+  // tagging rows orphaned with a null id, which the ledger permits but which
+  // would be a lie here: this inbound exists.
+  const circleTurnId = newTurnId();
+
   // ── Process media/link OR text-note ──
   let mediaContextNote = null;
   let saveSucceeded = false;
@@ -533,6 +551,10 @@ async function handleCircleMemberMessage({
     }
 
     if (sourceUrlForMuse) {
+      // TDW_10.C: the circle member's image door. The opening census's site 10
+      // and F-10.107's cheapest vector — Vision + the Haiku tagger, both on the
+      // bride's money, on every photo forwarded. kind='tagging': priced, not a
+      // turn. The member is named on the row.
       const saveResult = await saveToMuse({
         sourceUrl:        sourceUrlForMuse,
         couple_id:        circleMember.couple_id,
@@ -542,7 +564,13 @@ async function handleCircleMemberMessage({
         caption:          sourceCaption,
         session_id:       sessionId,
         supabase,
-        anthropic,
+        anthropic: meteredAnthropic(anthropic, {
+          supabase,
+          couple_id:        circleMember.couple_id,
+          circle_member_id: circleMember.id,
+          turn_id:          circleTurnId,
+          kind:             'tagging',
+        }),
       });
 
       if (saveResult.ok) {
@@ -672,6 +700,23 @@ async function handleCircleMemberMessage({
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversation.id);
 
+  // ── TDW_10.C · THE CIRCLE DOOR'S METER ────────────────────────────────
+  // F-10.107 MADE MECHANICAL: a circle member's turn is billed to the BRIDE's
+  // couple — that is the finding's whole complaint — so couple_id is hers and
+  // circle_member_id names who spent it. One ceiling per couple (F1), with
+  // per-member visibility. kind='turn': this DOES consume her allowance.
+  //
+  // The turn id is minted here, at this door, exactly as the bride's is at
+  // hers. circleEngine's mini-loop can make up to three calls
+  // (CIRCLE_MAX_ITERS) and all three carry this one id.
+  const circleMeterAnthropic = meteredAnthropic(anthropic, {
+    supabase,
+    couple_id:        circleMember.couple_id,
+    circle_member_id: circleMember.id,
+    turn_id:          circleTurnId,
+    kind:             'turn',
+  });
+
   // ── Run circle agent for the warm reply ──
   const inboundForEngine = trimmedBody.length > 0 ? trimmedBody : bodyForLog;
   const result = await runCircleAgenticTurn({
@@ -684,7 +729,7 @@ async function handleCircleMemberMessage({
     couple:      { id: circleMember.couple_id, user_id: brideRow?.user_id ?? null },
     circleUser:  { id: user.id },
     supabase,
-    anthropic,
+    anthropic: circleMeterAnthropic,
   });
 
   // ── Send reply ──

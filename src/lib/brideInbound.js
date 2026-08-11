@@ -48,6 +48,7 @@ const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
 const { makeInboundSend, REFUSAL } = require('./sendOutcome');         // ARC M1 / F-05.33
 const { appendWitness } = require('./witnessLine');                    // ARC M1 / F-05.34
+const { newTurnId, meteredAnthropic, withKind } = require('./coupleAiCap'); // TDW_10.C · the couple lane's meter
 
 // ── THE TYPED REFUSAL (V-3, founder-locked at CE-67's gates) ────────────────
 // F-04.62's class, one lane over: a DELIBERATE refusal must stop wearing a
@@ -348,6 +349,31 @@ async function _processBrideInbound(inputs, deps) {
       return;
     }
 
+    // ── TDW_10.C · THE METER SITS AT THE DOOR ─────────────────────────────
+    // G1 (R-30.37): ONE turn_id per inbound message, minted here — the door is
+    // the trigger — and stamped on every ledger row this message causes,
+    // however many model calls that turns out to be. The meter counts DISTINCT
+    // turn_id WHERE kind='turn'; spend sums every row regardless.
+    //
+    // `meterAnthropic` is the SAME client with a ledger write behind each call.
+    // Passing it downstream instead of the raw client is what makes the census
+    // hold: brideEngine's loop, brideOnboarding's five extractors, the fan-out
+    // and the image tagger are all metered by construction, including calls a
+    // future sitting adds without ever reading coupleAiCap.js.
+    //
+    // It is sited AFTER the couple lookup deliberately: couple_id is NOT NULL
+    // on the ledger, and a row cannot be honestly written before we know whose
+    // allowance it comes from. The dead-end path above spends nothing.
+    //
+    // REFUSES NOTHING. Delivery 1 counts; delivery 3 gates.
+    const turnId = newTurnId();
+    const meterAnthropic = meteredAnthropic(anthropic, {
+      supabase,
+      couple_id: couple.id,
+      turn_id:   turnId,
+      kind:      'turn',
+    });
+
     // Backfill the user's profile name if Twilio sent one and we don't have it yet
     if (profileName && !user.name) {
       await supabase.from('users').update({ name: profileName }).eq('id', user.id);
@@ -439,7 +465,10 @@ async function _processBrideInbound(inputs, deps) {
         saved_by_role:     'bride',   // Step 5 will extend to circle_member
         caption:           sourceCaption,
         supabase,
-        anthropic,
+        // TDW_10.C: the image path re-scopes to kind='tagging'. R-30.37
+        // consequence 2 — forwarding a photo is not a message spent, but it is
+        // fully priced (Vision + the Haiku tagger, both rows).
+        anthropic: withKind(meterAnthropic, 'tagging'),
       });
 
       if (saveResult.ok && saveResult.classified_as === 'receipt') {
@@ -516,7 +545,10 @@ async function _processBrideInbound(inputs, deps) {
       const circleSummary = await surfacePendingCircleSessions({
         couple_id: couple.id,
         supabase,
-        anthropic,
+        // TDW_10.C: F-10.112's fan-out. Spend, never a turn — one Haiku call
+        // PER pending circle session, so kind='fanout' and these rows are
+        // excluded from the turn count and included in the money.
+        anthropic: withKind(meterAnthropic, 'fanout'),
       });
       if (circleSummary && circleSummary.trim()) {
         let circleMsg = null;
@@ -535,7 +567,10 @@ async function _processBrideInbound(inputs, deps) {
         });
       }
 
-      const surpriseReply = await handleSurpriseMe({ couple, supabase });
+      // TDW_10.C: the /surprise composer (brideIndex.js:285) is the fourth
+      // spend site the opening census found. It answers her message, so it is
+      // a turn.
+      const surpriseReply = await handleSurpriseMe({ couple, supabase, anthropic: meterAnthropic });
 
       let twilioSurprise = null;
       try {
@@ -573,7 +608,7 @@ async function _processBrideInbound(inputs, deps) {
       inboundMessage: inboundForEngine,
       mediaContext:   mediaContextNote,
       supabase,
-      anthropic,
+      anthropic: meterAnthropic,
     });
 
     // Bug #2 fix: circle summary delivered as a separate WhatsApp message

@@ -23,6 +23,7 @@
 const express      = require('express');
 const router       = express.Router();
 const { runBrideAgenticTurn } = require('../../agent/brideEngine');
+const { newTurnId, meteredAnthropic } = require('../../lib/coupleAiCap'); // TDW_10.C · the couple lane's meter
 
 const TIMEOUT_MS = 30000;
 
@@ -154,6 +155,11 @@ router.post('/', async (req, res) => {
 
     let result;
     try {
+      // ── TDW_10.C · THE IN-APP DOOR (SSE). One of THREE call sites behind
+      // the bride turn — the WhatsApp inbound, this stream, and the JSON
+      // fallback below. ⑨'s 「 three doors 」 was the then-known count; the
+      // opening census found five call sites behind the bride turn alone, and
+      // every one of them mints its own turn id.
       const enginePromise = runBrideAgenticTurn({
         couple,
         user,
@@ -161,7 +167,12 @@ router.post('/', async (req, res) => {
         inboundMessage: message,
         mediaContext:   null,
         supabase,
-        anthropic,
+        anthropic: meteredAnthropic(anthropic, {
+          supabase,
+          couple_id: couple.id,
+          turn_id:   newTurnId(),
+          kind:      'turn',
+        }),
       });
 
       const timeoutPromise = new Promise((_, reject) =>
@@ -228,6 +239,8 @@ router.post('/', async (req, res) => {
   // ── JSON fallback (non-streaming clients) ──────────────────────────
   let result;
   try {
+    // TDW_10.C · THE IN-APP DOOR (non-streaming clients). Its own turn id: a
+    // client that falls back to JSON is still one bride, one message.
     result = await runBrideAgenticTurn({
       couple,
       user,
@@ -235,7 +248,12 @@ router.post('/', async (req, res) => {
       inboundMessage: message,
       mediaContext:   null,
       supabase,
-      anthropic,
+      anthropic: meteredAnthropic(anthropic, {
+        supabase,
+        couple_id: couple.id,
+        turn_id:   newTurnId(),
+        kind:      'turn',
+      }),
     });
   } catch (err) {
     console.error('[POST /couple/chat] engine error:', err.message);

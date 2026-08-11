@@ -39,6 +39,7 @@ const { groundedSearch } = require('../lib/groundedSearch');
 const { appendWitness } = require('../lib/witnessLine');
 const { insertCoupleEvent, updateCoupleEvent, deleteCoupleEvent } = require('../lib/coupleEventWrite'); // ARC M6 / C9(a) — the couple plane's ONE writer   // ARC M1 / C2 — one home, both seams
 const { checkBrideMoneyProvenance, moneyFigureOf, moneyClaimKey, claimMoneyWrite, spentDisplay } = require('../lib/moneyGuard'); // ARC M2 / F-05.35 + F-05.41
+const { withKind, meterCtxOf, recordGeminiSearch } = require('../lib/coupleAiCap'); // TDW_10.C · the couple lane's meter
 
 const MAX_ITERATIONS = 5;
 const HISTORY_LIMIT  = 5;
@@ -82,8 +83,14 @@ async function runBrideAgenticTurn({
   // If onboarding is not complete, hand off to the state machine.
   // The state machine returns its own reply — no agent loop runs.
   if (couple.onboarding_state && couple.onboarding_state !== 'complete') {
+    // TDW_10.C: brideOnboarding.js holds FIVE model calls (:123 :190 :254
+    // :289 :365) — sites 5-9 of the opening census, never counted by anything.
+    // R-30.37 consequence 1, CHOSEN not discovered: kind='onboarding' is NOT
+    // 'turn', so a bride's five setup messages never burn a quarter of her
+    // day-one allowance. Their money still lands in spend.
     const result = await nextBrideOnboardingMessage({
-      couple, user, inboundMessage, supabase, anthropic
+      couple, user, inboundMessage, supabase,
+      anthropic: withKind(anthropic, 'onboarding'),
     });
     return {
       reply:        result.reply,
@@ -119,7 +126,8 @@ async function runBrideAgenticTurn({
     const circleSummary = await surfacePendingCircleSessions({
       couple_id: couple.id,
       supabase,
-      anthropic,
+      // TDW_10.C · F-10.112: the fan-out is spend, never a turn.
+      anthropic: withKind(anthropic, 'fanout'),
     });
     if (circleSummary && circleSummary.trim()) {
       // Extract just the human-readable summary lines — strip the [SYSTEM NOTE] header
@@ -1909,13 +1917,33 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
   // Issue 5 fix: log every invocation so Railway logs show whether this ran.
   console.log(`[bride-surface-circle] checking couple ${couple_id}, session idle cutoff: ${cutoffIso}`);
 
+  // ── TDW_10.C · F-10.114 — THE FAN-OUT WAS UNBOUNDED ────────────────────
+  // This SELECT carried no .limit(), and the loop below makes ONE paid Haiku
+  // call per row returned. The ceiling was the row count: a bride with ten
+  // stale circle sessions paid for ten model calls on the word "hi", and none
+  // of them were counted anywhere. That is F-10.112's multiplier and it is a
+  // defect INDEPENDENT of the meter — a cap would have bounded the bill, but
+  // an unbounded batch is wrong even under a cap, because the whole batch runs
+  // before any gate can see the second call.
+  //
+  // The limit is hard and applies REGARDLESS of cap state (F3's batch ruling:
+  // delivery 3 gates the BATCH before this loop, never each call — a per-call
+  // gate would surface some members' summaries and silently drop others,
+  // which reads to the bride as data loss).
+  //
+  // UNSUMMARISED SESSIONS BEYOND THE LIMIT ARE NOT LOST. `summarized_to_bride`
+  // stays false for them and `last_activity_at ASC` takes the OLDEST first, so
+  // the remainder surface on her next message. Nothing is dropped; the spend is
+  // spread.
+  const FANOUT_MAX_SESSIONS = 5;
   const { data: sessions, error } = await supabase
     .from('circle_sessions')
     .select('id, circle_member_id, started_at, last_activity_at')
     .eq('couple_id', couple_id)
     .eq('summarized_to_bride', false)
     .lt('last_activity_at', cutoffIso)
-    .order('last_activity_at', { ascending: true });
+    .order('last_activity_at', { ascending: true })
+    .limit(FANOUT_MAX_SESSIONS);
 
   if (error) {
     console.error('[bride-surface-circle] lookup error:', error);
@@ -2246,6 +2274,11 @@ async function execReadPages({ input, couple, supabase }) {
 //
 // Failure path: if Gemini errors, returns a graceful fallback so the
 // agent can reply honestly rather than silently failing.
+// `anthropic` here is the METERED client (TDW_10.C). It is not used for a
+// model call in this function — it is the carrier of the meter context, which
+// is how a Gemini row learns whose allowance it came out of. A caller that
+// unwraps it silently loses the search meter; meterCtxOf returns null and the
+// row is skipped rather than mis-attributed.
 async function execFactualSearch({ input, anthropic }) {
   const { query } = input || {};
 
@@ -2253,10 +2286,32 @@ async function execFactualSearch({ input, anthropic }) {
     return { ok: false, error: 'query required' };
   }
 
-  const { answer, sources, error: geminiErr } = await groundedSearch(query.trim(), {
+  const { answer, sources, error: geminiErr, raw } = await groundedSearch(query.trim(), {
     context: 'Indian wedding planning, bridal fashion, venues, vendors, costs',
     maxResults: 5,
   });
+
+  // ── TDW_10.C · THE GEMINI SITE. The census's declared blind spot, closed. ──
+  // A `messages.create` grep is provider-BLIND: this call spends real money
+  // through @google/genai and no Anthropic-shaped census could ever see it.
+  // Recorded explicitly because the client wrapper cannot reach a REST SDK.
+  //
+  // kind='search' — retrieval is not a message the bride sent, so it costs
+  // without consuming a turn. cost_basis='estimated': the tokens are real
+  // (usageMetadata, witnessed against the SDK's own type declarations) but the
+  // price is calcCostInr's Haiku fallback, a declared conservative ceiling.
+  //
+  // Sited BEFORE the error branch so a failed search that still burned tokens
+  // is recorded. A search that threw returns no `raw` and writes nothing.
+  const gemCtx = meterCtxOf(anthropic);
+  if (gemCtx && raw) {
+    await recordGeminiSearch({
+      supabase: gemCtx.supabase,
+      ctx:      gemCtx,
+      model:    'gemini-2.0-flash-lite',
+      raw,
+    });
+  }
 
   if (geminiErr || !answer) {
     console.warn(`[bride-tool:factual_search] Gemini error: ${geminiErr || 'no answer'}`);
