@@ -599,11 +599,24 @@ t('§5.8d THE REPORT-ONLY ERA, RETIRED BY RULING — recorded, not silently drop
   // third writer from a smuggled one, so it is re-authored STRICTER: each writer is named
   // by its witness label, and an unnamed fourth reds. Note what is NOT here and must never
   // be: the imperative arm's SECOND-REFUSAL outcome writes nothing at all.
+  //
+  // LABELED AMENDMENT (TDW_06 the bride's arrival, F-06.176; COUNT PRESERVED). The
+  // replace-never-append cure adds a FOURTH writer: on a turn the wire guard judged a
+  // COSTUME and where the seat produced a store-derived outcome, the relay line REPLACES
+  // the model's prose instead of joining it. Walk eight shipped 「 Message sent to Priya. 」
+  // (false) beside ④b-v2 (true) — three sentences, two contradicting, on the screen of the
+  // man whose approval the estate had just acted on. The property this cell guards is
+  // UNTOUCHED — nothing writes replyText except a retry's own reply, the interception line,
+  // or a relay outcome standing over a costume — and it is re-authored STRICTER again: the
+  // fourth writer must carry its `relayReplacedCostume` flag on the very next statement, so
+  // an UNGUARDED fourth writer (one that could replace an honest turn's reply) still reds.
   const writes = (seat.match(/replyText = /g) || []).length;
-  assert.strictEqual(writes, 3, 'the seat writes replyText from an unexpected number of places (costume-retry reply + imperative-retry reply + glitch line = 3)');
+  assert.strictEqual(writes, 4, 'the seat writes replyText from an unexpected number of places (costume-retry reply + imperative-retry reply + glitch line + relay-outcome replacement = 4)');
   assert.ok(/vendorInbound:reply\(retry\)/.test(seat), 'writer 1 — the costume-retry landing — is gone');
   assert.ok(/vendorInbound:reply\(imperative-retry\)/.test(seat), 'writer 2 — the imperative-retry landing — is gone or unfirewalled');
   assert.ok(/if \(s2line\) replyText = s2line;/.test(seat), 'writer 3 — the interception line — is gone');
+  assert.ok(/replyText = relayOut\.line;\s*\n\s*relayReplacedCostume = true;/.test(seat),
+    'writer 4 — the relay-outcome replacement — is gone, or is UNGUARDED and could replace an honest turn');
 });
 
 t('§5.9 STAGE 2 IS SCOPED — the CLASSIFIER stays pure; interception lives at the seats alone', () => {

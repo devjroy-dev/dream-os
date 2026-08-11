@@ -214,15 +214,57 @@ function pendingRelayBlock(draft, name) {
  * wrong, and a relay fault must never cost the vendor his turn (leadPings' own
  * fail-safe-to-empty contract, and F-06.141's class at a neighbouring site).
  */
+// ── F-06.175's CURE · THE STANDING LAW, PRESENT ON EVERY TURN ───────────────
+//
+// THE DISEASE, STATED AS ITS FILER STATED IT: `pendingRelayBlock` is built from
+// the OPEN STAGED ROW at turn start. On the turn that STAGES, no row exists yet.
+// So the one instruction that prevents a duplicated draft-quote was absent on
+// the only turn that produces one — walk eight, 11:20:53, Victor's own
+// `Draft ready for approval:` sitting directly above the door's frame.
+//
+// THE CURE IS NOT A BETTER LOOKUP. There is no lookup that can find a row the
+// turn has not written yet; any attempt to pre-empt it would be the door
+// guessing what the model is about to do. The cure is that the instruction
+// STOPS BEING CONDITIONAL ON A ROW. "The door quotes drafts, you do not" is
+// true of this estate at all times — it is a fact about who owns the SHOW
+// frame (R-29.32), not a fact about whether a draft happens to be open — and a
+// law that is always true has no business being delivered only sometimes.
+//
+// THE ROW-SPECIFIC BLOCK IS UNCHANGED and still rides on top when a row is
+// open: it carries her name, her number and the exact bytes, which the standing
+// law cannot. Byte-for-byte `pendingRelayBlock` is untouched, so every cell
+// asserting its wording still asserts it.
+//
+// THE FIXTURE-ABSENT CELL IS MANDATORY HERE and it is this finding's own
+// tuition: .175's cells all drove a fixture their cure guaranteed. The cell that
+// matters is the one with NO open draft, because that is the staging turn's
+// state at the moment the block is built.
+const RELAY_STANDING_LAW = [
+  'THE ESTATE\'S DOOR OWNS EVERY DRAFT QUOTE.',
+  '',
+  'When the owner asks you to write to a bride, the estate stages the draft and',
+  'shows him the exact words itself, in its own frame, with her name and her',
+  'number. That happens after your turn and it happens every time.',
+  '',
+  'So you never quote the draft back to him and you never write your own',
+  '"here is the draft" frame around it. He would read the same words twice, once',
+  'from you and once from the estate, and have to work out which one he is',
+  'answering. Say what you have done in your own voice and stop.',
+].join('\n');
+
 async function buildPendingRelay(supabase, vendorId) {
   try {
     const open = await drafts.openStagedFor(supabase, vendorId);
-    if (!open.draft) return '';
+    if (!open.draft) return RELAY_STANDING_LAW;
     const name = await coupleDisplayName(supabase, vendorId, open.draft.couple_phone);
-    return pendingRelayBlock(open.draft, name);
+    return `${RELAY_STANDING_LAW}\n\n${pendingRelayBlock(open.draft, name)}`;
   } catch (e) {
     console.warn('[relaySeat] pending-relay block failed:', e && e.message);
-    return '';
+    // STILL THE LAW. The row-specific half needs the store; the standing half
+    // does not, and a store fault is no reason to teach the model that it owns
+    // the draft quote. Fail-safe here means fail to the SMALLER truth, never to
+    // silence — which is the opposite of what an empty string did.
+    return RELAY_STANDING_LAW;
   }
 }
 
@@ -492,19 +534,31 @@ async function runRelaySeat(supabase, vendor, result, deps = {}) {
   console.log(`[relay:wa] seat entered (words=${deps.ownerWords ? 'yes' : 'NO'} transport=${deps.hasTransport !== false})`);
   const signals = collectSignals(result);
 
-  // ── R-29.35 · AUTO-SEND ON A REOPENED WINDOW ──────────────────────────────
-  // The second affirmative is REMOVED by founder ruling. An APPROVED draft goes
-  // the moment her reply opens the window — there is nothing left to ask him.
-  // Driven from the bride's inbound at her own door, never from a poll.
-  if (deps.windowJustOpened) {
-    const appr = await drafts.approvedFor(supabase, vendor.id);
-    if (appr.draft) {
-      const nm = await coupleDisplayName(supabase, vendor.id, appr.draft.couple_phone);
-      console.log(`[relay:wa] auto_sent attempt draft=${appr.draft.id}`);
-      return sendApproved(supabase, vendor, appr.draft, nm, { ...deps, preApproved: true });
-    }
-  }
-
+  // ── R-29.35 · AUTO-SEND — THE CONSUMER IS RETIRED FROM THIS SEAT ──────────
+  //
+  // RETIRE-WITH-THE-READER, APPLIED TO ITSELF. `deps.windowJustOpened` lived
+  // here from R-29.35 with ZERO production producers — F-06.178, and the census
+  // that convicted it found its only two setters inside
+  // `scripts/b06_relay_hand_bench.js`, which is a fixture, not a reader.
+  //
+  // THE TRIGGER COULD NEVER HAVE LIVED HERE. This seat runs on the VENDOR'S
+  // turn, reached from the vendor path of `src/lib/vendorInbound.js`. The act
+  // that opens the window is the BRIDE'S inbound, which enters the couple-lane
+  // region and never calls this function at all. So the branch was not merely
+  // unwired; it was wired to a moment that cannot occur. Its `approvedFor` call
+  // keys on `vendor.id`, which her arrival does not hold — the shape itself was
+  // evidence of the wrong seat.
+  //
+  // WHERE IT WENT (path + symbol, never a line range): the auto-send now fires
+  // from `src/lib/vendor/coupleArrival.js`, symbol `arrivalAutoSend`, invoked at
+  // the couple lane's vendor-resolved routing terminals, and it calls
+  // `sendApprovedDraft` (this file) directly. Running this whole vendor seat on
+  // a bride's turn is exactly the class R-29.30 polices, so the callable was
+  // extracted rather than the seat re-entered.
+  //
+  // A cell asserts this branch is GONE (`windowJustOpened` unreadable here), so
+  // a future reinstatement without a producer fails at the bench rather than in
+  // eight walks.
   // ── THE DOOR'S OWN LANES (R-29.32 · R-29.33) ──────────────────────────────
   // ORDER IS LOAD-BEARING and each step is named:
   //   1. DECLINE before approve — a 「 no 」 must never race a 「 yes 」 family.
@@ -748,6 +802,10 @@ const RELAY_CLAIM_RE_LOCAL = (() => {
 module.exports = {
   runRelaySeat,
   relayReceipt,
+  // FORK 4(b) — the auto-send's callable, extracted so the BRIDE'S lane can send
+  // an approved draft without running the vendor seat on her turn (R-29.30).
+  sendApprovedDraft: sendApproved,
+  RELAY_STANDING_LAW,
   doorbellLineV2,
   deliveredLine,
   readLine,

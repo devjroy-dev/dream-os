@@ -297,6 +297,139 @@ async function approvedFor(supabase, vendorId) {
   return { draft: data, reason: 'approved' };
 }
 
+// ── THE BRIDE'S ARRIVAL · THE PHONE-KEYED READERS (F-06.177 / F-06.178) ──────
+//
+// WHY THESE EXIST AND WHY THEY ARE NOT `approvedFor` WITH A DIFFERENT ARGUMENT.
+// `approvedFor` keys on `vendor_id` because its caller is the VENDOR'S OWN TURN
+// and the vendor is already known. The bride's arrival has the opposite shape:
+// the estate holds her MSISDN and nothing else, and the whole of F-06.177 is
+// that the router asked HER the question the store could already answer. So the
+// question has to be askable in her direction.
+//
+// THE INDEX IS ALREADY THERE AND WAS BUILT FOR THIS. `db/migrations/0117_pending
+// _couple_drafts.sql` creates `idx_pending_couple_drafts_phone_open ON
+// (couple_phone, created_at DESC) WHERE (resolved_at IS NULL)`, and its own
+// in-migration comment states the purpose verbatim: "the pair lookup: is there
+// an open draft for this bride?". Both readers below filter `resolved_at IS
+// NULL`, so both ride that partial index rather than adding a scan.
+//
+// FORMAT CONTRACT, DECLARED (F-06.154): matching is EXACT EQUALITY on
+// `couple_phone`, unnormalized, exactly as `coupleWindowOpen` matches
+// `counterparty_phone`. Both sides of this comparison are +E164 on the live
+// path — the door writes `couple_phone` from `resolveRecipient`'s stored value
+// and `metaInputsFrom` (src/lib/vendorInbound.js, symbol `metaInputsFrom`)
+// normalizes every Meta inbound to a leading `+` before the router sees it. A
+// bare-format row would therefore be a MISS, and that miss is asserted by a
+// cell rather than discovered in production.
+
+/**
+ * IS A DOORBELL STANDING FOR THIS PHONE? — F-06.177's store question.
+ *
+ * A "standing doorbell" is a draft the estate has ALREADY rung a template for:
+ * `markDoorbell` (this file) writes `refusal_reason = 'doorbell:<sid>'` and,
+ * under R-29.35, deliberately leaves the row `approved` with `resolved_at` NULL
+ * so the approval survives to be delivered. That row is therefore the estate's
+ * own record of "we messaged this woman about this vendor and asked her to
+ * reply here" — which is precisely the fact the router needs before it asks her
+ * to choose between three vendors she never enumerated.
+ *
+ * ONLY DOORBELL-MARKED ROWS ANSWER. A merely `approved` draft means the vendor
+ * authorised bytes that have NOT gone out; she has not been written to, so she
+ * cannot be replying to it, and letting it steer her routing would be the
+ * estate inferring an intent from its own unsent mail.
+ *
+ * NEVER THROWS. No row, or a failed query, is "no doorbell" — the router then
+ * behaves exactly as it does today. A false absence costs the disambiguation
+ * question that already exists; a false presence would misdeliver her words.
+ *
+ * @returns {Promise<{draft: object|null, reason: string}>}
+ */
+async function standingDoorbellFor(supabase, couplePhone) {
+  if (!supabase || !couplePhone) return { draft: null, reason: 'no_supabase_or_phone' };
+  try {
+    const { data, error } = await supabase
+      .from(TABLE).select(COLS)
+      .eq('couple_phone', couplePhone)
+      .eq('state', STATES.APPROVED)
+      .is('resolved_at', null)
+      .like('refusal_reason', 'doorbell:%')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) return { draft: null, reason: 'doorbell_query_failed' };
+    if (!data) return { draft: null, reason: 'no_doorbell' };
+    if (!data.vendor_id) return { draft: null, reason: 'doorbell_without_vendor' };
+    return { draft: data, reason: 'doorbell_standing' };
+  } catch (err) {
+    return { draft: null, reason: `doorbell_check_threw:${err && err.message}` };
+  }
+}
+
+/**
+ * THE APPROVED DRAFT WAITING FOR THIS PHONE — F-06.178's store question.
+ *
+ * The auto-send's subject, keyed her way. Expiry is SELF-HEALED here exactly as
+ * `approvedFor` heals it: a past-`expires_at` row is transitioned to `expired`
+ * and reported as absent, so no caller can send bytes whose 24-hour authority
+ * has run out. That transition is what makes fork 5's silence honest — the row
+ * is genuinely closed before anybody composes a sentence about it.
+ *
+ * NOT RESTRICTED TO DOORBELL ROWS. Routing follows the doorbell; the SEND
+ * follows the window (chair-ruled). Any live approved draft for her phone is
+ * deliverable the moment her arrival opens the window, whether the estate rang
+ * a doorbell about it or the vendor approved it while she happened to be mid
+ * conversation.
+ *
+ * @returns {Promise<{draft: object|null, reason: string}>}
+ */
+async function approvedForPhone(supabase, couplePhone) {
+  if (!supabase || !couplePhone) return { draft: null, reason: 'no_supabase_or_phone' };
+  try {
+    const { data, error } = await supabase
+      .from(TABLE).select(COLS)
+      .eq('couple_phone', couplePhone)
+      .eq('state', STATES.APPROVED)
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) return { draft: null, reason: 'draft_query_failed' };
+    if (!data) return { draft: null, reason: 'no_approved_draft' };
+    const exp = data.expires_at ? new Date(data.expires_at).getTime() : null;
+    if (exp != null && Number.isFinite(exp) && Date.now() > exp) {
+      await expire(supabase, data.id);
+      return { draft: null, reason: 'expired' };
+    }
+    return { draft: data, reason: 'approved' };
+  } catch (err) {
+    return { draft: null, reason: `approved_check_threw:${err && err.message}` };
+  }
+}
+
+/**
+ * THE VENDOR BEHIND THE MOST RECENT EXPIRY FOR THIS PHONE.
+ *
+ * Fork 5's other half: when her arrival finds the draft already dead, ⑥ goes to
+ * the vendor and silence to her — and the vendor has to be found from the phone,
+ * because that is all her arrival holds. Sited HERE rather than at the caller
+ * because this file is the ONLY place in `src/` that may name this table
+ * (asserted by `scripts/b06_relay_hand_bench.js` §7.3, which sweeps every `.js`
+ * and `.ts` under `src/`): a reader living outside the store is a second place
+ * the column list can drift from `0117`/`0118`.
+ */
+async function lastExpiredVendorFor(supabase, couplePhone) {
+  if (!supabase || !couplePhone) return { vendorId: null, reason: 'no_supabase_or_phone' };
+  try {
+    const { data, error } = await supabase
+      .from(TABLE).select('vendor_id')
+      .eq('couple_phone', couplePhone)
+      .eq('state', STATES.EXPIRED)
+      .order('created_at', { ascending: false }).limit(1);
+    if (error) return { vendorId: null, reason: 'expired_query_failed' };
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || !row.vendor_id) return { vendorId: null, reason: 'no_expired_draft' };
+    return { vendorId: row.vendor_id, reason: 'found' };
+  } catch (err) {
+    return { vendorId: null, reason: `expired_check_threw:${err && err.message}` };
+  }
+}
+
 async function getById(supabase, draftId) {
   if (!supabase || !draftId) return { draft: null, reason: 'no_supabase_or_draft' };
   const { data, error } = await supabase.from(TABLE).select(COLS).eq('id', draftId).maybeSingle();
@@ -309,6 +442,9 @@ module.exports = {
   stage,
   markDoorbell,
   approvedFor,
+  standingDoorbellFor,
+  approvedForPhone,
+  lastExpiredVendorFor,
   supersedeOpenStaged,
   openStagedFor,
   approve,

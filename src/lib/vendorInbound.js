@@ -572,6 +572,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
               body: originalMessage,
               sent_by: 'couple',
             }, internalReplay ? null : messageSid));
+        // ── F-06.178 · THE AUTO-SEND'S TRIGGER (A2/A3) ────────────────────────
+        // HER ARRIVAL IS THE WINDOW OPENING. Sited AFTER the insert above and
+        // never before it: `coupleWindowOpen` answers by scanning
+        // `public.messages`, so calling this first would consult a predicate that
+        // still reads CLOSED and produce a green function over a red wire — the
+        // exact shape R-29.34 was minted for.
+        // PHONE-LEVEL BY RULING: the window is the (lane PNID, her MSISDN) pair
+        // and does not care which vendor's thread her words were filed under, so
+        // an arrival routed to vendor X can lawfully release vendor Y's approved
+        // draft. Her words follow her conversation; the draft follows the window.
+        try {
+          const { arrivalAutoSend } = require('./vendor/coupleArrival');
+          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+        } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
 
             const { data: vendorUser } = await supabase
               .from('users').select('*').eq('id', thread.vendors.user_id).maybeSingle();
@@ -687,6 +701,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             body,
             sent_by: 'couple',
           }, internalReplay ? null : messageSid));
+        // ── F-06.178 · THE AUTO-SEND'S TRIGGER (A2/A3) ────────────────────────
+        // HER ARRIVAL IS THE WINDOW OPENING. Sited AFTER the insert above and
+        // never before it: `coupleWindowOpen` answers by scanning
+        // `public.messages`, so calling this first would consult a predicate that
+        // still reads CLOSED and produce a green function over a red wire — the
+        // exact shape R-29.34 was minted for.
+        // PHONE-LEVEL BY RULING: the window is the (lane PNID, her MSISDN) pair
+        // and does not care which vendor's thread her words were filed under, so
+        // an arrival routed to vendor X can lawfully release vendor Y's approved
+        // draft. Her words follow her conversation; the draft follows the window.
+        try {
+          const { arrivalAutoSend } = require('./vendor/coupleArrival');
+          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+        } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
 
           const { data: vendorUser } = await supabase
             .from('users').select('*').eq('id', stickyThread.vendors.user_id).maybeSingle();
@@ -786,6 +814,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           body,
           sent_by: 'couple',
         }, internalReplay ? null : messageSid));
+        // ── F-06.178 · THE AUTO-SEND'S TRIGGER (A2/A3) ────────────────────────
+        // HER ARRIVAL IS THE WINDOW OPENING. Sited AFTER the insert above and
+        // never before it: `coupleWindowOpen` answers by scanning
+        // `public.messages`, so calling this first would consult a predicate that
+        // still reads CLOSED and produce a green function over a red wire — the
+        // exact shape R-29.34 was minted for.
+        // PHONE-LEVEL BY RULING: the window is the (lane PNID, her MSISDN) pair
+        // and does not care which vendor's thread her words were filed under, so
+        // an arrival routed to vendor X can lawfully release vendor Y's approved
+        // draft. Her words follow her conversation; the draft follows the window.
+        try {
+          const { arrivalAutoSend } = require('./vendor/coupleArrival');
+          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+        } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
 
         // 5-B-2 — land the enquiry in the engine cabinet (was a public.leads insert).
         // enquiryToBinder dedups by phone and opens the binder as a lead; the
@@ -930,14 +972,77 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         }
       }
 
+      // ── Step B.9: THE DOORBELL ANSWER (F-06.177) ──────────────────
+      //
+      // THE FAILURE THIS CURES, founder-witnessed at walk eight: the estate sent
+      // her a template naming her vendor, with a button. She pressed it. The
+      // router asked her which of THREE vendors she meant. She was made to solve
+      // a problem the estate had already solved and had told her the answer to,
+      // one message earlier.
+      //
+      // WHY THE ORDER IS THIS ORDER (chair-ruled, fork 1(b) and fork 2). This
+      // sits AFTER Step A (her answer to a question we asked), AFTER Step A.5
+      // (sticky — her own recent engagement) and AFTER Step B/B.5 (an explicit
+      // TDW code, her stated intent), and BEFORE Step C. Every one of those
+      // outranks a doorbell because every one of them is HER signal, while the
+      // doorbell is the ESTATE'S inference about why she is writing.
+      // Misdelivering her live conversation with vendor X into vendor Y's thread
+      // is the worse failure by every measure this arc owns.
+      //
+      // IT COVERS THE COUNT-0 BRIDE TOO, and that is why it sits here rather than
+      // inside the `>= 2` arm. A doorbell rung to a phone with no thread yet
+      // would otherwise be refused with 「 send their TDW code 」 — the same
+      // disease with a different victim.
+      //
+      // IT DOES NOT ROUTE — IT PINS. The pinned row is handed to the SAME Step C
+      // terminal that has always handled a single thread: her inbound is
+      // persisted there, the couple turn runs there, the vendor notification
+      // fires there. Nothing about that proven terminal is reimplemented, which
+      // is also what makes F-06.179's persistence hold on this new path by
+      // construction rather than by a second copy of the insert.
+      let doorbellPin = null;
+      {
+        const { doorbellRouteFor } = require('./vendor/coupleArrival');
+        const dr = await doorbellRouteFor(supabase, phone);
+        if (dr.vendorId) {
+          const { data: pinned } = await supabase
+            .from('conversations')
+            .select('*, vendors(id, business_name, category, users(name))')
+            .eq('counterparty_phone', phone)
+            .eq('kind', 'couple_thread')
+            .eq('vendor_id', dr.vendorId)
+            .order('last_message_at', { ascending: false, nullsFirst: false })
+            .limit(1)
+            .maybeSingle();
+          if (pinned) {
+            doorbellPin = pinned;
+            console.log(`[routing:doorbell] ${phone} -> vendor ${dr.vendorId} (draft ${dr.draftId}) — no question asked`);
+          } else {
+            // The doorbell named a vendor whose thread we cannot find. DECLARED,
+            // never silently ignored: `ringDoorbell` writes its own row onto her
+            // thread, so this should be unreachable, and if it is ever reached
+            // the register says so instead of quietly falling back.
+            console.warn(`[routing:doorbell] ${phone} doorbell vendor ${dr.vendorId} has no couple_thread — falling through to Step C`);
+          }
+        } else {
+          console.log(`[routing:doorbell] ${phone} none (${dr.reason})`);
+        }
+      }
+
       // ── Step C: Count existing couple_threads ─────────────────────
-      const { data: existingThreads } = await supabase
+      const { data: allThreads } = await supabase
         .from('conversations')
         .select('*, vendors(id, business_name, category, users(name))')
         .eq('counterparty_phone', phone)
         .eq('kind', 'couple_thread')
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
+      // THE PIN COLLAPSES THE SET TO ONE. When a doorbell stands, the question
+      // "how many vendors could she mean?" has already been answered by the
+      // estate's own outgoing template, so the count is 1 and the `>= 2` ask
+      // never fires. With no doorbell the set is untouched and every existing
+      // branch behaves exactly as it did.
+      const existingThreads = doorbellPin ? [doorbellPin] : allThreads;
       const threadCount = existingThreads?.length || 0;
 
       if (threadCount === 0) {
@@ -961,6 +1066,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           body,
           sent_by: 'couple',
         }, internalReplay ? null : messageSid));
+        // ── F-06.178 · THE AUTO-SEND'S TRIGGER (A2/A3) ────────────────────────
+        // HER ARRIVAL IS THE WINDOW OPENING. Sited AFTER the insert above and
+        // never before it: `coupleWindowOpen` answers by scanning
+        // `public.messages`, so calling this first would consult a predicate that
+        // still reads CLOSED and produce a green function over a red wire — the
+        // exact shape R-29.34 was minted for.
+        // PHONE-LEVEL BY RULING: the window is the (lane PNID, her MSISDN) pair
+        // and does not care which vendor's thread her words were filed under, so
+        // an arrival routed to vendor X can lawfully release vendor Y's approved
+        // draft. Her words follow her conversation; the draft follows the window.
+        try {
+          const { arrivalAutoSend } = require('./vendor/coupleArrival');
+          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+        } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
 
         // Fetch full vendor row first so we have user_id for the user lookup
         const { data: fullVendor } = await supabase
@@ -1040,6 +1159,22 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       await sendWhatsApp(phone, question);
 
       console.log(`[routing:disambiguation_asked] ${phone} candidates=${candidateVendors.length}`);
+      // ── F-06.179 · THE BOUND, DECLARED RATHER THAN SILENT ──────────────────
+      // Her words are NOT persisted on this branch and cannot honestly be.
+      // `public.messages.conversation_id` is NOT NULL (`docs/db/PUBLIC_SCHEMA.md`,
+      // `public.messages`, column 2) and this branch is reached precisely when no
+      // vendor — and therefore no thread — has been resolved. Filing her sentence
+      // under a thread the estate picked for her would be the routing guess this
+      // whole branch exists to refuse, written into the record.
+      //
+      // THE CONSEQUENCE, NAMED SO IT IS NEVER REDISCOVERED: `coupleWindowOpen`
+      // scans `public.messages` for her newest inbound, so on THIS turn only the
+      // estate's window predicate cannot see the window Meta just opened, and an
+      // approved draft waiting for her will not auto-send. It fails CLOSED — a
+      // refusal or a doorbell, never an unearned byte. Her disambiguating reply
+      // resolves a vendor and IS persisted (Step A), and the auto-send fires
+      // there. The gap is exactly one turn wide and this line is its witness.
+      console.log(`[routing:unfiled_inbound] ${phone} — no vendor resolved, her message is not on file this turn (F-06.179 bound)`);
       return;
     }
 
@@ -1613,6 +1748,9 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // reply — F-06.141's class at a neighbouring site, and not one to re-instance
     // in the same block that filed it.
     let relayOut = null;
+    // F-06.176: set only when a costume turn's prose was REPLACED by the seat's
+    // outcome, so the thread patch below can be made to agree with the wire.
+    let relayReplacedCostume = false;
     try {
       const { runRelaySeat } = require('./vendor/relaySeat');
       relayOut = await runRelaySeat(supabase, vendor, effectiveResult, {
@@ -1684,6 +1822,36 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
           s2line = null;
           s2arm = `${s2arm || 'glitch_line'}:relay_outcome_stands`;
           console.log(`[relay:wa] F3 suppressed — this turn's own outcome (${relayOut.kind}) stands`);
+          // ── F-06.176's CURE · REPLACE, NEVER APPEND ────────────────────────
+          //
+          // THE SPECIMEN, founder-witnessed at walk eight 11:21:25. Suppressing
+          // F3 was right. Leaving Victor's prose standing was not. The vendor's
+          // screen read 「 Message sent to Priya. 」 (FALSE — the window was shut)
+          // then the quote, then ④b-v2 saying she had been notified (TRUE). Three
+          // sentences, two of them contradicting each other, on the screen of the
+          // man whose approval the estate had just acted on.
+          //
+          // THE LAW, ONCE: WHEN THE SEAT HAS AN OUTCOME AND THE TURN IS A
+          // COSTUME, THE RELAY LINE REPLACES THE MODEL'S PROSE. We are inside the
+          // exact branch that establishes both halves — `s2line` was armed, so
+          // the wire guard judged this turn a costume, and `relayOut.line` exists,
+          // so the seat has a store-derived outcome. There is no reading of this
+          // moment in which the model's sentence and the door's sentence are both
+          // worth showing him: one is derived from a row, the other from prose
+          // about a row.
+          //
+          // BOTH MEMORIES AGREE, and that is the arc's founding class (F-06.158).
+          // The wire gets the line alone; the thread row is patched to the same
+          // bytes through `patchComposedReply`, the one home both doors call.
+          // The `{ ...result, reply: '' }` idiom is NOT invented here — it is the
+          // estate's own established replace-mode, already shipped at the costume
+          // patch a few statements below, so no byte of `chat.js` moves.
+          //
+          // THE APPEND ABOVE IS UNTOUCHED FOR EVERY OTHER TURN. A relay outcome
+          // on an honest turn still joins Victor's reply, exactly as it has for
+          // eight walks. Only the costume loses its sentence.
+          replyText = relayOut.line;
+          relayReplacedCostume = true;
         } else {
           const laneLine = await relayLaneLine(supabase, vendor, effectiveResult);
           if (laneLine) { s2line = laneLine; s2arm = `${s2arm || 'glitch_line'}:relay_lane`; }
@@ -1718,6 +1886,20 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         const { patchComposedReply } = require('../api/vendor-engine/chat');
         await patchComposedReply(supabase, { ...effectiveResult, reply: '' }, s2line);
       } catch (e) { console.warn('[relay:wa costume-patch]', e && e.message); }
+    }
+    // ── F-06.176's SECOND HALF — THE THREAD FOLLOWS THE WIRE ─────────────────
+    // The append at the seat already patched the row with Victor's prose plus the
+    // relay line. This turn replaced that on the wire, so the row is now the only
+    // place the contradiction still lives — and a row Victor reads back next turn
+    // is a row that teaches him the costume (F-06.166's whole mechanism). Same
+    // one-home core, same replace idiom, awaited so a fast follow-up cannot race
+    // the patch it exists to make.
+    if (relayReplacedCostume && relayOut && relayOut.line) {
+      try {
+        const { patchComposedReply } = require('../api/vendor-engine/chat');
+        await patchComposedReply(supabase, { ...effectiveResult, reply: '' }, relayOut.line);
+        console.log('[relay:wa] costume replaced — wire and thread agree (F-06.176)');
+      } catch (e) { console.warn('[relay:wa replace-patch]', e && e.message); }
     }
     // ── THE DELIVERY WITNESS (FORK 3a) — recorded at FORK D'S RESOLUTION POINT, which is
     // exactly here: the retry has decided, `replyText` is final, and `sendWhatsApp` is the

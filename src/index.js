@@ -220,20 +220,24 @@ app.post('/webhook/meta', async (req, res) => {
       await processVendorInbound(inputs, vendorInboundDeps);
     }
     for (const s of metaInbound.extractStatuses(req.body)) {
-      try { await supabase.from('messages').update({ delivery_status: s.status }).eq('twilio_sid', s.id); }
-      catch (_e) { /* status best-effort */ }
-      console.log(`[webhook:meta] status wamid=${s.id} status=${s.status}`);
-      // ── TDW_06 R-29.35 — THE RELAY RECEIPT CHAIN ─────────────────────────
-      // ④b-v2 promises the vendor a confirmation on delivered and on read. This
-      // is that promise's one seam. It speaks ONLY for rows carrying
-      // `sent_by = 'vendor_relay'` — the marker with exactly one writer — so no
-      // other outbound in the estate can trigger a vendor receipt. Best-effort
-      // and never able to disturb the webhook: a receipt that fails costs a
-      // sentence, and a webhook that throws costs Meta's retry budget.
+      // ── TDW_06 · F-06.143's SECOND LIMB DIES HERE (fork 3(b), chair-ruled) ──
+      // This was a BLIND update: no `.select()`, no count, wrapped in a
+      // swallowing catch, followed by a log line that reported the EVENT and
+      // never the OUTCOME. On 2026-08-08 it matched zero rows twice and said
+      // nothing about it, and the only trace of two failed bride enquiries was a
+      // Railway line nobody was reading. The statement now lives in
+      // `src/lib/vendor/relayStatus.js` (symbol `applyStatusEvent`), which reads
+      // its matched-row count back and names a match to nothing BY NAME.
+      //
+      // THE SEAM IS THIN ON PURPOSE. A cure living inside this express route can
+      // only be exercised by driving express; R-29.34 member (a) wants a cell on
+      // a real entry point, and a callable is one. The receipt half (№14/№15)
+      // rides INSIDE the same call, gated on the witness, so a receipt can never
+      // be the first thing that notices a sid the estate does not hold.
       try {
-        const { relayReceipt } = require('./lib/vendor/relaySeat');
-        await relayReceipt(supabase, { wamid: s.id, status: s.status, sendWhatsApp });
-      } catch (e) { console.warn('[relay:wa receipt seam]', e && e.message); }
+        const { applyStatusEvent } = require('./lib/vendor/relayStatus');
+        await applyStatusEvent(supabase, s, { sendWhatsApp, env: process.env });
+      } catch (e) { console.warn('[webhook:meta] status seam', e && e.message); }
     }
   } catch (err) {
     console.error('[webhook:meta] inbound processing error:', err && err.message);

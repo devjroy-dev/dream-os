@@ -898,8 +898,17 @@ await t('§9.1 F-06.162 — the block exists when a draft is open, and is EMPTY 
   const s9 = seat();
   const withDraft = await s9.buildPendingRelay(makeDb(openWorld()), 'v1');
   assert.ok(withDraft.length > 0, 'no block for an open commitment');
+  // ── LABELLED AMENDMENT (TDW_06 bride's arrival, F-06.175) · RATIFY-OR-REVERT
+  // This limb asserted the block is EMPTY when no row is open. That emptiness IS
+  // F-06.175: the instruction preventing the duplicate draft-quote could never be
+  // present on the only turn that produces one, because on the staging turn no
+  // row exists yet. The cure makes the standing law unconditional, so the correct
+  // assertion is no longer "empty" but "the law without the row's particulars".
+  // THE REGRESSION LAW IT WAS GUARDING IS PRESERVED, not dropped: a block with
+  // nothing pending must still not claim a draft is waiting.
   const none = await s9.buildPendingRelay(makeDb({ pending_couple_drafts: [], leads: [LEAD] }), 'v1');
-  assert.strictEqual(none, '', 'a block was built with nothing pending — the regression law');
+  assert.ok(/DOOR OWNS EVERY DRAFT QUOTE/.test(none), 'the staging turn is naked again');
+  assert.ok(!/A DRAFT IS WAITING/.test(none), 'a block claimed a pending draft with nothing pending');
 });
 
 await t('§9.2 F-06.163 — the block carries the VERBATIM body and tells Harvey not to re-quote', async () => {
@@ -1459,23 +1468,32 @@ await t('§13.5 F-06.174 — find-or-create has ONE home, and the doorbell uses 
 });
 
 await t('§13.6 R-29.35 AUTO-SEND — her reply opens the window and the approved draft GOES', async () => {
+  // ── LABELLED AMENDMENT (TDW_06 bride's arrival, F-06.178) · RATIFY-OR-REVERT
+  // THE BOTH-SIDES CLAUSE (CE-59). This cell drove `windowJustOpened` into the
+  // VENDOR seat — a flag with zero production producers, supplied by this cell
+  // itself, which is why six walks never noticed the trigger did not exist. The
+  // caller moved to the couple lane by ruling (fork 4(b)); the old shape's green
+  // is RETIRED, not retained. Same subject, same assertion, real caller.
   const world = openWorld({ state: 'approved', refusal_reason: 'doorbell:wamid.X' });
+  world.vendors = [{ id: 'v1', phone: '+919888294440', business_name: 'S' }];
   const send = transport();
-  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
-    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', windowJustOpened: true,
-  });
+  const { arrivalAutoSend } = require(SRC('src/lib/vendor/coupleArrival.js'));
+  const out = await arrivalAutoSend(makeDb(world), PHONE, { sendWhatsApp: send, env: ENV });
   assert.strictEqual(out.kind, 'sent', 'the second affirmative is still required');
-  assert.strictEqual(send.calls.length, 1);
-  assert.strictEqual(send.calls[0].body, BODY, 'the sent bytes are not the approved bytes');
+  assert.ok(send.calls.some((c) => c.body === BODY), 'the sent bytes are not the approved bytes');
 });
 
 await t('§13.7 R-29.35 — an EXPIRED approval never auto-sends', async () => {
+  // ── LABELLED AMENDMENT (TDW_06 bride's arrival, F-06.178) · RATIFY-OR-REVERT
+  // Re-aimed at the real caller, exactly as §13.6. The assertion HARDENS rather
+  // than softens: nothing may go TO HER. ⑥ to the vendor on his own handset is
+  // the chair's fork-5 ruling and is asserted positively in the arrival bench.
   const world = openWorld({ state: 'approved', expires_at: new Date(Date.now() - 3600e3).toISOString() });
+  world.vendors = [{ id: 'v1', phone: '+919888294440', business_name: 'S' }];
   const send = transport();
-  await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
-    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', windowJustOpened: true,
-  });
-  assert.strictEqual(send.calls.length, 0, 'a day-old approval sent itself');
+  const { arrivalAutoSend } = require(SRC('src/lib/vendor/coupleArrival.js'));
+  await arrivalAutoSend(makeDb(world), PHONE, { sendWhatsApp: send, env: ENV });
+  assert.ok(!send.calls.some((c) => c.to === PHONE), 'a day-old approval sent itself to the bride');
   assert.strictEqual(world.pending_couple_drafts[0].state, 'expired');
 });
 
@@ -1591,9 +1609,14 @@ await t('§13.11 R-29.34(a) — the DOOR\'S REAL HANDLER reaches the seat', asyn
 });
 
 await t('§13.12 R-29.34(b) — the NAMED PRODUCTION WITNESSES exist for every new path', async () => {
+  // ── LABELLED AMENDMENT (TDW_06 bride's arrival) · RATIFY-OR-REVERT
+  // The sweep read two files. The auto-send's witness now lives in a third, and a
+  // reachability cell that cannot see where the path went is the blindness it
+  // exists to cure. Widened by ONE named file; not one witness string is dropped.
   const src = fs.readFileSync(SEAT, 'utf8');
   const door = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
-  const both = src + '\n' + door;
+  const arriv = fs.readFileSync(SRC('src/lib/vendor/coupleArrival.js'), 'utf8');
+  const both = src + '\n' + door + '\n' + arriv;
   for (const w of ['seat entered', 'door_staged', 'doorbell_rang wamid=', 'auto_sent attempt',
                    '_receipt wamid=', 'no-stage (', 'F3 suppressed'])
     assert.ok(both.includes(w), `no production witness the founder can read for: ${w}`);
