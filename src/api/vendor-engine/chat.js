@@ -1669,8 +1669,40 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // a transmission claim can never be answered by a filing hand.
   const deedClass = mutationClaim ? 'date'
     : (relayClaim ? 'relay' : (BOOKING_CLAIM_RE.test(eligible) ? 'booking' : 'records'));
+  // ── F-06.183's CURE (§0.2 GRANTED) · THE WITNESS IS CLASS-SCOPED ──────────
+  //
+  // FOUNDER-WITNESSED ON PRODUCTION, walk ten, 2026-08-11 13:32:30. The vendor's
+  // handset received 「 Done. Message is out to +918595986978 — Rs 80,000 quoted,
+  // date held till Friday. 」 and NOTHING had been sent. `RELAY_CLAIM_RE` matched
+  // those exact bytes. The estate's own eval row records the acquittal:
+  //
+  //     scenario: wire_guard_stage1:witnessed_hand   verdict: pass
+  //     claim: relay_claim                           truth_status: witnessed_hand
+  //
+  // WHAT ACQUITTED IT: Donna wrote a LEAD that turn, so `writeHands` was
+  // non-empty, so this limb passed. **A lead write acquitted a claim about a
+  // WhatsApp message.**
+  //
+  // THE FILE ALREADY FORBADE THIS IN ITS OWN WORDS. `isDeedOfClass` (below)
+  // carries `if (deedClass === 'relay') return RELAY_DEED_RE.test(n)` and its
+  // comment says 「 a relay claim is witnessed by the SEND signal alone 」.
+  // `deedClass` is computed two lines above. The two ends of the class machinery
+  // existed at both ends of this file and NOTHING JOINED THEM: the census
+  // feeding this limb was `actionKind(h.name) !== 'read'` — any write, any class.
+  // The join is this filter and nothing else; no vocabulary moves.
+  //
+  // WHY THE SAME BUG CANNOT HIDE IN THE OTHER CLASSES: `isDeedOfClass` answers
+  // for all four, so a filed lead can no longer acquit an unblock either — the
+  // records/date confusion its own comment describes at the Fork A' site. This
+  // limb and that one now consult ONE authority on what witnesses what.
+  //
+  // FAIL-SAFE DIRECTION: filtering can only ever SHRINK the acquitting set, so
+  // this cure can convict where the estate used to pass and can never pass where
+  // it used to convict. The expensive direction is a false conviction, which is
+  // why the vocabularies are untouched and only the census narrows.
+  const classWitnessHands = writeHands.filter((h) => isDeedOfClass(h.name, deedClass));
   let kind;
-  if (writeHands.length > 0) kind = 'witnessed_hand';
+  if (classWitnessHands.length > 0) kind = 'witnessed_hand';
   else if (witnessed) kind = 'witnessed';
   // LIMB 5 — the jot room's one lawful hand, before the act limbs so an honest jot in
   // the advisor room is never swept up by LIMB 4.

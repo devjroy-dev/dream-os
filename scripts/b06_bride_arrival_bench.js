@@ -807,6 +807,160 @@ await t('A9.6 BOTH-WAYS — un-skipping restores the walk-nine narration', async
     });
 });
 
+// ═══ A10 · F-06.183 — THE WITNESS IS CLASS-SCOPED — 6 cells ════════════════
+H('A10 — F-06.183 · A LEAD WRITE CANNOT ACQUIT A WIRE CLAIM (6)');
+
+const chat = () => require(SRC('src/api/vendor-engine/chat.js'));
+
+await t('A10.1 THE NAMED RED SPECIMEN — walk ten\'s exact bytes are a relay claim', async () => {
+  const specimen = 'Done. Message is out to +918595986978 — Rs 80,000 quoted, date held till Friday. Lead logged as unverified.';
+  assert.ok(chat().RELAY_CLAIM_RE.test(specimen),
+    'the founder read this on his handset and the detector cannot see it');
+});
+
+await t('A10.2 the verdict census is FILTERED by class, not by "any write"', async () => {
+  const d = code('src/api/vendor-engine/chat.js');
+  assert.ok(/const classWitnessHands = writeHands\.filter\(\(h\) => isDeedOfClass\(h\.name, deedClass\)\);/.test(d),
+    'the census feeding the witnessed_hand limb is still class-blind');
+  assert.ok(/if \(classWitnessHands\.length > 0\) kind = 'witnessed_hand';/.test(d),
+    'the limb still reads the unfiltered census');
+});
+
+await t('A10.3 the relay class is witnessed by donna_relay_send ALONE', async () => {
+  const d = code('src/api/vendor-engine/chat.js');
+  assert.ok(/if \(deedClass === 'relay'\) return RELAY_DEED_RE\.test\(n\);/.test(d));
+  assert.ok(/RELAY_DEED_RE = \/\^donna_relay_send\$\//.test(d),
+    'the relay deed vocabulary moved — the stage hand could acquit a send claim');
+});
+
+await t('A10.4 FIXTURE-ABSENT — the OTHER classes keep their own witnesses', async () => {
+  const d = code('src/api/vendor-engine/chat.js');
+  for (const arm of ["deedClass === 'booking'", "deedClass === 'date'"]) {
+    assert.ok(d.includes(arm), `the class predicate lost its ${arm} arm — the join would over-narrow`);
+  }
+});
+
+await t('A10.5 the filter can only SHRINK the acquitting set (fail-safe direction)', async () => {
+  const d = code('src/api/vendor-engine/chat.js');
+  const i = d.indexOf('const classWitnessHands');
+  const seg = d.slice(i, i + 220);
+  assert.ok(/writeHands\.filter\(/.test(seg), 'the census is rebuilt rather than filtered — it could GROW');
+  assert.ok(!/\.concat\(|\|\|\s*writeHands/.test(seg), 'the filtered census falls back to the unfiltered one');
+});
+
+await t('A10.6 BOTH-WAYS — un-filtering restores walk ten\'s acquittal', async () => {
+  await underMutation('src/api/vendor-engine/chat.js',
+    'const classWitnessHands = writeHands.filter((h) => isDeedOfClass(h.name, deedClass));',
+    'const classWitnessHands = writeHands;',
+    async () => {
+      const d = fs.readFileSync(SRC('src/api/vendor-engine/chat.js'), 'utf8');
+      assert.ok(/const classWitnessHands = writeHands;/.test(d),
+        'the mutation did not land — this cell proves nothing');
+      assert.ok(!/isDeedOfClass\(h\.name, deedClass\)/.test(d.slice(d.indexOf('const classWitnessHands'), d.indexOf('const classWitnessHands') + 200)),
+        'the class join survived its own defacement');
+    });
+});
+
+// ═══ A11 · F-06.184 — THE DOOR'S OWN SECOND LINE — 5 cells ═════════════════
+H('A11 — F-06.184 · THE REPLACE DOES NOT DEPEND ON A LADDER VERDICT (5)');
+
+await t('A11.1 the door tests RELAY_CLAIM_RE against the model\'s prose itself', async () => {
+  const d = code('src/lib/vendorInbound.js');
+  assert.ok(/RELAY_CLAIM_RE\.test\(prose\)/.test(d), 'the second layer does not exist');
+  assert.ok(/relay_claim_replaced/.test(d), 'the second layer carries no witness the founder can read');
+});
+
+await t('A11.2 it requires BOTH a store outcome AND a claim — never one alone', async () => {
+  const d = code('src/lib/vendorInbound.js');
+  assert.ok(/if \(!relayReplacedCostume && relayOut && relayOut\.line\) \{/.test(d),
+    'the layer can fire without a store-derived relay outcome');
+});
+
+await t('A11.3 FIXTURE-ABSENT — a relay turn whose prose claims nothing keeps its append', async () => {
+  const honest = 'Draft is with you above — tell me when you want it to go.';
+  assert.ok(!chat().RELAY_CLAIM_RE.test(honest),
+    'an honest relay turn would lose Victor\'s reply');
+});
+
+await t('A11.4 it does not re-run when the guard already replaced', async () => {
+  const d = code('src/lib/vendorInbound.js');
+  const i = d.indexOf('RELAY_CLAIM_RE.test(prose)');
+  const seg = d.slice(Math.max(0, i - 400), i);
+  assert.ok(/!relayReplacedCostume/.test(seg), 'the two layers can both fire and double-patch the thread');
+});
+
+await t('A11.5 BOTH-WAYS — with the guard layer mutated dead, THIS layer still fires', async () => {
+  // THE WHOLE ARGUMENT FOR DEFENCE IN DEPTH, asserted rather than asserted-about:
+  // walk ten had the guard passing, and this layer must not depend on it.
+  await underMutation('src/lib/vendorInbound.js',
+    'replyText = relayOut.line;\n          relayReplacedCostume = true;',
+    'void 0;',
+    async () => {
+      const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+      assert.ok(/RELAY_CLAIM_RE\.test\(prose\)/.test(d),
+        'killing the guard layer also killed the independent one — they are not independent');
+    });
+});
+
+// ═══ A12 · F-06.185 / F-06.186 — THE COPY EXECUTION CENSUS — 7 cells ═══════
+H('A12 — F-06.185/.186 · RULED COPY ACTS ARE EXECUTED IN THE TREE (7)');
+
+await t('A12.1 the founder\'s strike is executed on ① showBlock', async () => {
+  const b = seat().showBlock('BODY', null, PHONE);
+  assert.ok(!/word for word/i.test(b), 'a founder-struck phrase is still on the vendor\'s screen');
+  assert.ok(/Here is the draft:/.test(b), 'the surviving opener drifted from the founder\'s own strike');
+});
+
+await t('A12.2 THE EXECUTION CENSUS — no shipped vendor-facing byte carries the struck phrase', async () => {
+  // METHOD DECLARED: every .js under src/lib, comment lines stripped, swept for
+  // the struck phrase. BLIND SPOT: the engine TS plane (W-1, read-only here) and
+  // any string assembled at runtime from parts.
+  const hits = [];
+  const walk = (dir) => {
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fp = path.join(dir, f.name);
+      if (f.isDirectory()) { walk(fp); continue; }
+      if (!/\.js$/.test(f.name)) continue;
+      const body = fs.readFileSync(fp, 'utf8').split('\n')
+        .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+      if (/word for word/i.test(body)) hits.push(path.relative(ROOT, fp));
+    }
+  };
+  walk(SRC('src/lib'));
+  assert.deepStrictEqual(hits, [], `struck phrase still shipping in: ${hits.join(', ')}`);
+});
+
+await t('A12.3 RETIRED-COPY-LEAVES-THE-TREE — ④b v1 is gone, not merely renamed', async () => {
+  const d = code('src/lib/vendor/relaySeat.js');
+  assert.ok(!/doorbellLine_RETIRED_v1/.test(d), 'a founder-retired byte survives retirement in the tree');
+});
+
+await t('A12.4 its successor is untouched — retirement is not deletion of the live byte', async () => {
+  assert.ok(/notified on WhatsApp/i.test(seat().doorbellLineV2('Priya')), '④b-v2 moved with its retired sibling');
+});
+
+await t('A12.5 F-06.186 — a phone in the name column renders the nameless form', async () => {
+  const b = seat().showBlock('BODY', '+918595986978', '+918595986978');
+  assert.ok(!/\(\+918595986978\)/.test(b), 'the bride is still addressed by her number twice');
+  assert.ok(b.includes('+918595986978'), 'the recipient vanished entirely');
+});
+
+await t('A12.6 FIXTURE-ABSENT — a REAL name still renders the named form', async () => {
+  const b = seat().showBlock('BODY', 'Priya', PHONE);
+  assert.ok(b.includes(`Priya (${PHONE})`), 'the founder-ruled named form was swallowed by the guard');
+});
+
+await t('A12.7 BOTH-WAYS — removing the guard restores the doubled number', async () => {
+  await underMutation('src/lib/vendor/relaySeat.js',
+    'if (looksLikeThePhone(name, phone)) return `${phone}`;',
+    '',
+    async () => {
+      const s2 = require(SRC('src/lib/vendor/relaySeat.js'));
+      const b = s2.showBlock('BODY', '+918595986978', '+918595986978');
+      assert.ok(/\(\+918595986978\)/.test(b), 'the cell passed over a defaced render guard');
+    });
+});
+
 // ── RESULT ─────────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(66)}`);
 console.log(`b06_bride_arrival_bench: ${pass}/${pass + fail}`);

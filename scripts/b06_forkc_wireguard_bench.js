@@ -20,6 +20,19 @@ const assert = require('assert');
 const fs = require('fs'); const path = require('path');
 const ROOT = path.resolve(__dirname, '..'); const P = (r) => path.join(ROOT, r);
 const read = (r) => fs.readFileSync(P(r), 'utf8');
+
+// ── LABELLED AMENDMENT (TDW_06 rider 3) · RATIFY-OR-REVERT · COUNT PRESERVED.
+// COMMENTS ARE NOT CODE. Three cells below asserted vocabulary-NEGATIVES over the
+// RAW file, so a decision comment explaining the code tripped them: rider 3's
+// F-06.183 note says "WhatsApp message" (§6.11's seat-branch negative) and its
+// F-06.184 note says "defence in depth" (§11.6/§14.10's counter negative).
+// Neither is a seat branch or a retry counter. The estate promoted this exact law
+// after five cells in one sitting read a comment as code — 「 a cell that fails
+// when a file writes down its own reasoning is a cell that forbids the estate
+// from explaining itself 」 — and these three had never been brought under it.
+// Each PROPERTY is untouched; only the text each reads is now the code.
+const stripComments = (x) => String(x).split('\n')
+  .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 let pass = 0, fail = 0;
 const t = (n, f) => { try { f(); console.log(`  ok   ${n}`); pass++; } catch (e) { console.log(`  FAIL ${n}\n       ${e.message}`); fail++; } };
 const H = (s) => console.log(`\n${s}`);
@@ -611,7 +624,14 @@ t('§5.8d THE REPORT-ONLY ERA, RETIRED BY RULING — recorded, not silently drop
   // fourth writer must carry its `relayReplacedCostume` flag on the very next statement, so
   // an UNGUARDED fourth writer (one that could replace an honest turn's reply) still reds.
   const writes = (seat.match(/replyText = /g) || []).length;
-  assert.strictEqual(writes, 4, 'the seat writes replyText from an unexpected number of places (costume-retry reply + imperative-retry reply + glitch line + relay-outcome replacement = 4)');
+  // LABELLED AMENDMENT (TDW_06 rider 3, F-06.184; COUNT PRESERVED). A FIFTH writer:
+  // the door's INDEPENDENT claim test. Walk ten proved the fourth was not enough —
+  // it was gated on the wire guard arming, and the guard PASSED a fabricated send.
+  // This writer depends on no ladder verdict. Re-authored STRICTER again: writer 5
+  // must carry its own flag on the next statement, so an unguarded fifth still reds.
+  assert.strictEqual(writes, 5, 'the seat writes replyText from an unexpected number of places (costume-retry + imperative-retry + glitch line + relay-outcome replacement + relay-claim replacement = 5)');
+  assert.ok(/replyText = relayOut\.line;\s*\n\s*relayReplacedCostume = true;\s*\n\s*console\.log\(`\[relay:wa\] relay_claim_replaced/.test(seat),
+    'writer 5 — the independent relay-claim replacement — is gone, or is UNGUARDED');
   assert.ok(/vendorInbound:reply\(retry\)/.test(seat), 'writer 1 — the costume-retry landing — is gone');
   assert.ok(/vendorInbound:reply\(imperative-retry\)/.test(seat), 'writer 2 — the imperative-retry landing — is gone or unfirewalled');
   assert.ok(/if \(s2line\) replyText = s2line;/.test(seat), 'writer 3 — the interception line — is gone');
@@ -804,7 +824,7 @@ t('§6.11 F-06.108 — THE SAMPLING SHAPE IS DISCLOSED AND BEHAVIOUR IS UNCHANGE
   assert.ok(/F-06\.108[\s\S]{0,1200}?SAMPLING/i.test(c), 'the F-06.108 sampling disclosure is not in the guard\'s own file');
   assert.ok(/THERE IS NO CODE DONOR/i.test(c), 'the disclosure does not state the derived finding it rests on');
   // ZERO BEHAVIOURAL CHANGE: there is exactly one classify home and no seat is named in it.
-  const body = c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('// ── FORK A\''));
+  const body = stripComments(c.slice(c.indexOf('function wireGuardClassify'), c.indexOf('// ── FORK A\'')));
   assert.ok(!/vendorInbound|whatsapp|wa_seat|pwa/i.test(body), 'the ladder now branches on the SEAT — the rework invented the asymmetry it was told not to');
   assert.strictEqual((c.match(/^function wireGuardClassify\(/gm) || []).length, 1, 'there is more than one classify home');
 });
@@ -1370,7 +1390,7 @@ t('§11.6 FORK D — the retry-the-actor leg: structural bound, and three outcom
   // never again pass as a proof.
   const forkD = wa.slice(wa.indexOf('FORK D \u2014 THE RETRY-THE-ACTOR LEG'), wa.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText'));
   assert.ok(forkD.length > 200, 'the Fork D slice is empty or collapsed — every assertion below it would be vacuous');
-  assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(forkD),
+  assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(stripComments(forkD)),
     'the bound became a counter — it was ratified as a shape with no second edge');
   // OUTCOME 2's bytes are F3's, verbatim from undoContract.js:31 — derived, never authored
   const f3src = read('src/lib/undoContract.js');
@@ -1840,7 +1860,7 @@ t('\u00a714.10 THE SPEND BOUND \u2014 exactly ONE extra actor run, structural, n
   // cell the charter asked for as the measured spend cost.
   const runs = forkD.match(/await runTurn\(/g) || [];
   assert.strictEqual(runs.length, 1, 'the leg calls runTurn more than once \u2014 the spend bound is not one duplicated turn');
-  assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(forkD),
+  assert.ok(!/\bretryCount\b|\bretries\b|\battempts?\s*[<>+]|\bdepth\b/i.test(stripComments(forkD)),
     'the bound became a counter \u2014 it was ratified as a shape with no second edge');
   assert.ok(/if \(\(s2line \|\| impMiss\) && !_noRetry\)/.test(wa), 'the widened predicate is not under the structural bound');
 });

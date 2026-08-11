@@ -304,8 +304,16 @@ await t('§2.1 THE ANTI-08-08 CELL — the exact bytes are IN the shown frame', 
 
 await t('§2.2 the frame is a QUOTED artefact — the bytes are delimited', async () => {
   const frame = seat().showBlock(BODY, 'Priya', PHONE);
+  // LABELLED AMENDMENT (TDW_06 rider 3, F-06.185) · RATIFY-OR-REVERT · COUNT
+  // PRESERVED. This asserted the frame DECLARES ITSELF verbatim in words. The
+  // founder STRUCK 「 word for word 」 from every vendor-facing byte on
+  // 2026-08-11 and the strike was executed on ④b-v2 but never on ①, so this cell
+  // was pinning an un-executed ruling in place. The PROPERTY — the bytes are a
+  // delimited artefact and not speech — is untouched and now carries the strike's
+  // own enforcement beside it, so the phrase cannot return as a courtesy.
   assert.ok(frame.includes(`"${BODY}"`), 'the bytes are not quoted, so they read as speech');
-  assert.ok(/word for word/.test(frame), 'the frame does not declare itself verbatim');
+  assert.ok(!/word for word/i.test(frame), 'the founder-struck phrase is back on the vendor\'s screen');
+  assert.ok(/Here is the draft:/.test(frame), 'the frame lost its opener entirely');
 });
 
 await t('§2.3 E3 — the confirm NAMES THE RECIPIENT', async () => {
@@ -759,7 +767,8 @@ await t('§7.8 F-06.157 — THE SEAT READS THE TURN WHOSE REPLY SHIPS (the pairi
 await t('§7.7 the eleven vetoed bytes are present and none was silently reworded', async () => {
   const s = seat();
   const must = [
-    [s.showBlock(BODY, 'Priya', PHONE), 'Here is the draft, word for word:'],
+    // AMENDED (rider 3, F-06.185): the needle carries the founder's executed strike.
+    [s.showBlock(BODY, 'Priya', PHONE), 'Here is the draft:'],
     [s.sentLine('Priya', PHONE), 'Sent to Priya (+919625759924).'],
     [s.windowClosedLine('Priya'), "the moment she writes, say the word and it goes."],
     [s.windowUndeterminedLine(), "I won't send blind. The draft is saved."],

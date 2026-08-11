@@ -64,7 +64,47 @@ const SEND_SIGNAL = 'donna_relay_send';
 // (2026-08-11). ONE form plus its nameless fallback. The phone is the draft
 // row's own `couple_phone`: NOT NULL, stored, the mechanical subject itself.
 // The name is display sugar from the one-home resolver on top of it.
+// ── F-06.186's CURE, LAYER ① · A NUMBER IS NOT A NAME ───────────────────────
+//
+// FOUNDER-WITNESSED, walk ten, 7:02pm: 「 The draft I'm holding is for
+// +918595986978 (+918595986978) 」 and 「 Send this to +918595986978
+// (+918595986978)? 」 — the bride addressed by her own number, twice, in one
+// sentence, on the vendor's screen.
+//
+// THE RESOLVER IS FAITHFUL AND IS NOT THE DEFECT. `coupleDisplayName` returns
+// `leads.name || null`, and the lead row for that number holds THE PHONE IN ITS
+// NAME COLUMN. So a true value arrived where a name was expected and the
+// nameless fallback — which the founder ruled and which reads correctly — never
+// got its turn.
+//
+// THE GUARD IS A RENDER GUARD, DELIBERATELY. It does not repair the row and does
+// not touch the store: a display fix that silently rewrites data is two changes
+// wearing one name. The upstream writer is named in this delivery's handover
+// with its census; every code writer passes `name` through as given, so the
+// phone entered as a MODEL TOOL INPUT and its cure is out of this radius.
+//
+// COMPARISON IS ON DIGITS. `+918595986978`, `918595986978` and `8595986978`
+// are the same human and the same non-name; `counterparty_phone` is not
+// format-normalized estate-wide (F-06.154), so a literal equality check would
+// pass the very shapes this exists to catch. Suffix matching in both directions
+// covers the country-code variance without matching two genuinely different
+// numbers that merely share a tail — the shorter must be at least 7 digits.
+const digitsOf = (s) => String(s || '').replace(/\D+/g, '');
+
+function looksLikeThePhone(name, phone) {
+  const a = digitsOf(name);
+  const b = digitsOf(phone);
+  if (!a || !b) return false;
+  // A NAME WITH LETTERS IS A NAME. 「 Priya (+91…) 」 must never be swallowed by
+  // this guard, and a name that happens to contain digits is still a name.
+  if (/[a-z]/i.test(String(name))) return false;
+  if (a === b) return true;
+  const [shortD, longD] = a.length <= b.length ? [a, b] : [b, a];
+  return shortD.length >= 7 && longD.endsWith(shortD);
+}
+
 function recipientLabel(name, phone) {
+  if (looksLikeThePhone(name, phone)) return `${phone}`;
   return name ? `${name} (${phone})` : `${phone}`;
 }
 
@@ -73,7 +113,19 @@ function recipientLabel(name, phone) {
 // That read-back is A1's first hop and it is why the frame cannot drift: there
 // is no variable here holding a second copy of the bytes.
 function showBlock(body, name, phone) {
-  return `Here is the draft, word for word:\n\n"${body}"\n\nSend this to ${recipientLabel(name, phone)}?`;
+  // ── F-06.185's CURE · THE FOUNDER'S STRIKE, EXECUTED ──────────────────────
+  // 「 word for word 」 was STRUCK from every vendor-facing byte by the founder on
+  // 2026-08-11 (CE-214 ④; consolidated handover §4). The strike was executed on
+  // ④b-v2 — its own comment records it — and NEVER on ①, so the struck phrase
+  // kept shipping and the founder read it on his own handset at walk ten, 7:01pm,
+  // a day after he struck it. A ruled copy act that ships half-executed is a
+  // ruling the tree does not hold.
+  // NO NEW VETO IS OWED: removing the struck words is the founder's own act. The
+  // remaining sentence is shown to him in the delivery's cover.
+  // WHY THE PHRASE WAS STRUCK, kept here so nobody restores it as a courtesy:
+  // equality between what he was shown and what she receives is A1's CELL,
+  // proven by the store's own row — never a sentence promising it.
+  return `Here is the draft:\n\n"${body}"\n\nSend this to ${recipientLabel(name, phone)}?`;
 }
 
 // ── THE DEED LINES ─────────────────────────────────────────────────────────
@@ -107,15 +159,18 @@ const deliveredLine = (name, phone) => `Delivered to ${recipientLabel(name, phon
 // gates it and a receipt is NEVER synthesized from a delivered.
 const readLine = (name) => `${name || 'She'}'s seen it.`;
 
-// ── RETIRED (④b v1). Kept named rather than deleted so the register can see the
-// retirement rather than infer it from an absence.
-// eslint-disable-next-line no-unused-vars
-// ④ SURVIVES AS THE FALLBACK FOREVER: this line is spoken only when the doorbell
-// actually went, because a doorbell that did not go never claims it did.
-const doorbellLine_RETIRED_v1 = (name) =>
-  `${name || 'She'} hasn't written in over 24 hours, so I can't message her directly yet — ` +
-  `but I've sent her a WhatsApp notification that you have an update. ` +
-  `The moment she replies, say the word and your message goes to her word for word.`;
+// ── ④b v1 · RETIRED IN FACT (F-06.185) ──────────────────────────────────────
+// The constant lived on here after its retirement 「 kept named rather than
+// deleted so the register can see the retirement rather than infer it from an
+// absence 」. That reasoning is sound for a REGISTER and wrong for a TREE: the
+// chair's sweep found it still carrying the founder-struck 「 word for word 」,
+// which is a retired byte surviving retirement — a class above a struck phrase.
+// RETIRED-COPY-LEAVES-THE-TREE is the enforcement half of
+// APPROVED-COPY-CARRIES-ITS-HASH: the register remembers, the tree does not.
+// Its retirement is recorded at the consolidated handover §4 (「 ④b (retired)
+// doorbellLine_RETIRED_v1 — superseded 」) and its successor is `doorbellLineV2`,
+// founder-authored, below. Chair-verified reader-less before removal: the only
+// occurrence in `src/` was its own declaration.
 
 // ⑤ WINDOW UNDETERMINED — we do not know, and we do not say we do.
 // This is a SEPARATE byte from ④ deliberately: ④ asserts she has not written,
@@ -817,6 +872,7 @@ const RELAY_CLAIM_RE_LOCAL = (() => {
 
 module.exports = {
   runRelaySeat,
+  looksLikeThePhone,
   relayReceipt,
   // FORK 4(b) — the auto-send's callable, extracted so the BRIDE'S lane can send
   // an approved draft without running the vendor seat on her turn (R-29.30).

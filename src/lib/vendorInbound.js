@@ -2025,6 +2025,39 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         await patchComposedReply(supabase, { ...effectiveResult, reply: '' }, s2line);
       } catch (e) { console.warn('[relay:wa costume-patch]', e && e.message); }
     }
+    // ── F-06.184's CURE · THE DOOR TESTS THE CLAIM ITSELF ────────────────────
+    //
+    // WHY A SECOND LAYER EXISTS AT ALL. A5 shipped with its replacement gated on
+    // `s2line` — on the WIRE GUARD having armed. Walk ten proved that gate is not
+    // the same thing as the chair's ruling: the guard PASSED a fabricated send
+    // (F-06.183, cured this delivery), so nothing armed, so the replacement never
+    // ran, and the founder's screen read 「 Done. Message is out to
+    // +918595986978 」 directly above the door's own 「 I haven't sent anything. 」
+    //
+    // THIS LAYER DEPENDS ON NO LADDER VERDICT. The door already holds the turn's
+    // relay outcome — a fact derived from the store — and `RELAY_CLAIM_RE` is a
+    // pure predicate it can run on the model's prose itself. Tested against walk
+    // ten's exact bytes at the desk: it matches on 「 Message is out 」. So this
+    // line alone would have prevented that screen with F-06.183 unfixed, which is
+    // the whole argument for it: defence in depth, each layer proven to fire with
+    // the other mutated dead.
+    //
+    // IT CANNOT SILENCE AN HONEST TURN. It requires BOTH a store-derived relay
+    // outcome for THIS turn AND a transmission claim in the prose. A vendor turn
+    // with no relay outcome is untouched; a relay turn whose prose claims nothing
+    // keeps its append, exactly as eight walks have shipped it.
+    if (!relayReplacedCostume && relayOut && relayOut.line) {
+      try {
+        const { RELAY_CLAIM_RE } = require('../api/vendor-engine/chat');
+        const prose = String((effectiveResult && effectiveResult.reply) || '');
+        if (RELAY_CLAIM_RE.test(prose)) {
+          replyText = relayOut.line;
+          relayReplacedCostume = true;
+          console.log(`[relay:wa] relay_claim_replaced — the model claimed a send the door did not make (${relayOut.kind})`);
+        }
+      } catch (e) { console.warn('[relay:wa claim-replace]', e && e.message); }
+    }
+
     // ── F-06.176's SECOND HALF — THE THREAD FOLLOWS THE WIRE ─────────────────
     // The append at the seat already patched the row with Victor's prose plus the
     // relay line. This turn replaced that on the wire, so the row is now the only
