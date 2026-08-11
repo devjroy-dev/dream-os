@@ -50,7 +50,7 @@
 'use strict';
 
 const drafts = require('./coupleDrafts');
-const { relayToCouple, ringDoorbell, resolveRecipient, coupleDisplayName } = require('./relayToCouple');
+const { relayToCouple, ringDoorbell, findOrCreateCoupleThread, resolveRecipient, coupleDisplayName } = require('./relayToCouple');
 
 // ── THE SIGNAL NAMES. One home, mirrored from the engine's own
 // `RELAY_SIGNAL_NAMES` (src/engine/src/core/tools/relayCouple.ts). Two strings
@@ -92,10 +92,27 @@ const windowClosedLine = (name) =>
   `Not sent. ${name || 'She'} hasn't written in over 24 hours, and I can't open a new message to her until she does. ` +
   `The draft is saved — the moment she writes, say the word and it goes.`;
 
-// ④b THE DOORBELL RANG — founder-vetoed 2026-08-11 「 approve 」, byte-exact.
+// ④b-v2 THE DOORBELL RANG — FOUNDER-AUTHORED AND VETOED 2026-08-11, byte-exact.
+// ④b IS RETIRED. Two things changed and both are the founder's: the 「 word for
+// word 」 phrase is struck from every vendor-facing byte (equality is A1's CELL
+// and stays out of every sentence), and the second affirmative is gone (R-29.35)
+// — so this line no longer asks him to say anything. It promises a receipt, and
+// the receipt chain below is that promise's machinery.
+const doorbellLineV2 = (name) =>
+  `Done — ${name || 'she'}'s been notified on WhatsApp. I'll confirm the moment it's delivered and read.`;
+
+// №14 — the delivered receipt. ALWAYS fires: Meta sends `delivered` unconditionally.
+const deliveredLine = (name, phone) => `Delivered to ${recipientLabel(name, phone)}.`;
+// №15 — the read receipt. Fires ONLY when Meta sends `read`; her privacy setting
+// gates it and a receipt is NEVER synthesized from a delivered.
+const readLine = (name) => `${name || 'She'}'s seen it.`;
+
+// ── RETIRED (④b v1). Kept named rather than deleted so the register can see the
+// retirement rather than infer it from an absence.
+// eslint-disable-next-line no-unused-vars
 // ④ SURVIVES AS THE FALLBACK FOREVER: this line is spoken only when the doorbell
 // actually went, because a doorbell that did not go never claims it did.
-const doorbellLine = (name) =>
+const doorbellLine_RETIRED_v1 = (name) =>
   `${name || 'She'} hasn't written in over 24 hours, so I can't message her directly yet — ` +
   `but I've sent her a WhatsApp notification that you have an update. ` +
   `The moment she replies, say the word and your message goes to her word for word.`;
@@ -386,6 +403,54 @@ async function doorAsked(supabase, conversationId) {
   } catch (_e) { return false; }
 }
 
+// ══ THE RECEIPT CHAIN (R-29.35) — ④b-v2's PROMISE, MADE MACHINERY ═══════════
+//
+// ④b-v2 says 「 I'll confirm the moment it's delivered and read. 」 A byte never
+// promises a state the machine does not hold, so here is the machine.
+//
+// The status webhook already receives Meta's delivered/read events and lands
+// them on `messages.delivery_status` by wamid. This reads that same event and,
+// when the wamid belongs to a row THIS ARC wrote (`sent_by = 'vendor_relay'` —
+// the marker with exactly one writer), speaks the receipt to the vendor.
+//
+// №15 IS GATED BY META, NEVER SYNTHESIZED. Her read receipts can be off; a
+// `read` we never received is a read that did not happen, and inferring one from
+// a `delivered` would be this arc's founding disease in its smallest possible
+// form. If Meta does not send it, the vendor simply never hears it.
+async function relayReceipt(supabase, { wamid, status, sendWhatsApp, env }) {
+  if (!wamid || !status) return null;
+  const want = String(status).toLowerCase();
+  if (want !== 'delivered' && want !== 'read') return null;
+  try {
+    const { data: row } = await supabase
+      .from('messages').select('id, conversation_id, sent_by, body')
+      .eq('twilio_sid', wamid).maybeSingle();
+    if (!row || row.sent_by !== 'vendor_relay') return null;   // not ours; say nothing
+
+    const { data: convo } = await supabase
+      .from('conversations').select('vendor_id, counterparty_phone')
+      .eq('id', row.conversation_id).maybeSingle();
+    if (!convo || !convo.vendor_id) return null;
+
+    const { data: vend } = await supabase
+      .from('vendors').select('id, phone, business_name').eq('id', convo.vendor_id).maybeSingle();
+    if (!vend || !vend.phone) return null;
+
+    const name = await coupleDisplayName(supabase, convo.vendor_id, convo.counterparty_phone);
+    const line = want === 'delivered'
+      ? deliveredLine(name, convo.counterparty_phone)   // №14
+      : readLine(name);                                 // №15
+    const from = (env || process.env).VENDOR_WHATSAPP_NUMBER;
+    if (typeof sendWhatsApp !== 'function' || !from) return null;
+    await sendWhatsApp(vend.phone, line, [], from);
+    console.log(`[relay:wa] ${want}_receipt wamid=${wamid} vendor=${vend.id}`);
+    return { line, kind: `${want}_receipt` };
+  } catch (e) {
+    console.warn('[relay:wa receipt]', e && e.message);
+    return null;
+  }
+}
+
 // ── THE SIGNAL COLLECTOR ───────────────────────────────────────────────────
 // Signals nest inside `tool_calls[].donna_calls` — a top-level-only scan
 // collects nothing. Same shape as `blockHands.js`'s collector and the invoice
@@ -426,6 +491,19 @@ async function runRelaySeat(supabase, vendor, result, deps = {}) {
   // identical here.
   console.log(`[relay:wa] seat entered (words=${deps.ownerWords ? 'yes' : 'NO'} transport=${deps.hasTransport !== false})`);
   const signals = collectSignals(result);
+
+  // ── R-29.35 · AUTO-SEND ON A REOPENED WINDOW ──────────────────────────────
+  // The second affirmative is REMOVED by founder ruling. An APPROVED draft goes
+  // the moment her reply opens the window — there is nothing left to ask him.
+  // Driven from the bride's inbound at her own door, never from a poll.
+  if (deps.windowJustOpened) {
+    const appr = await drafts.approvedFor(supabase, vendor.id);
+    if (appr.draft) {
+      const nm = await coupleDisplayName(supabase, vendor.id, appr.draft.couple_phone);
+      console.log(`[relay:wa] auto_sent attempt draft=${appr.draft.id}`);
+      return sendApproved(supabase, vendor, appr.draft, nm, { ...deps, preApproved: true });
+    }
+  }
 
   // ── THE DOOR'S OWN LANES (R-29.32 · R-29.33) ──────────────────────────────
   // ORDER IS LOAD-BEARING and each step is named:
@@ -563,7 +641,10 @@ async function handleSend(supabase, vendor, input, deps) {
 // lane pin and every deed line have exactly one implementation regardless of how
 // the owner's yes arrived.
 async function sendApproved(supabase, vendor, draft, name, deps) {
-  const approved = await drafts.approve(supabase, draft.id);
+  // `preApproved` is the auto-send path: the row is ALREADY `approved` (his E3
+  // yes, held across a shut window), so re-approving it would fail the state
+  // guard correctly and strand a draft he has already authorised.
+  const approved = deps.preApproved ? { ok: true } : await drafts.approve(supabase, draft.id);
   if (!approved.ok) {
     console.warn('[relaySeat] approve refused:', approved.reason);
     return null;   // the state machine refused; nothing moved and nothing is claimed
@@ -585,27 +666,44 @@ async function sendApproved(supabase, vendor, draft, name, deps) {
     return { line: sentLine(name, draft.couple_phone), kind: 'sent', draftId: draft.id };   // ③
   }
 
-  // EVERY REFUSAL IS RECORDED WITH ITS REASON (0118, R-29.20), and every one
-  // stamps `resolved_at` through the store's single transition primitive.
-  await drafts.refuse(supabase, draft.id, out.reason || out.kind);
-
+  // ── THE WINDOW-CLOSED FORK IS ASKED FIRST (R-29.35) ───────────────────────
+  // The blanket refusal below used to run BEFORE this fork, so a doorbell that
+  // rang had to un-refuse the row it had just terminated. Under R-29.35 the
+  // draft must SURVIVE a rung doorbell — his approval is standing and the byte
+  // promises a delivery — so the fork is asked before anything is resolved and
+  // only the paths that truly end here stamp a terminal.
   if (out.kind === 'window_closed') {
     // ── THE ④-FORK (R-29.24 ②) — the doorbell arm, live. ONLY on window_closed:
     // an UNDETERMINED window falls through to ⑤ untouched, because ringing a
     // doorbell on a window we could not read is a message sent on a guess.
     const rung = await ringDoorbell(supabase, {
-      vendor, couplePhone: draft.couple_phone, brideName: name, env: deps.env, deps,
+      vendor, couplePhone: draft.couple_phone, brideName: name, env: deps.env,
+      // supabase + threadId so the doorbell's own row lands on HER thread. Walk
+      // seven delivered a message to her handset the estate had no record of.
+      deps: { ...deps, supabase, threadId: (await findOrCreateCoupleThread(supabase, vendor.id, draft.couple_phone)).threadId },
     });
     if (rung.ok) {
       // ⑤ THE STATE MACHINE IS UNTOUCHED — the draft is still `refused` with
       // `window_closed`, written above. The doorbell's own sid is recorded in the
       // reason so the register knows a notification went and which one.
-      await drafts.refuse(supabase, draft.id, `window_closed:doorbell:${rung.twilioSid || 'nosid'}`);
-      return { line: doorbellLine(name), kind: 'window_closed_doorbell', draftId: draft.id };   // ④b
+      // ── R-29.35 · THE DRAFT STAYS APPROVED. F-06.170's principle, applied:
+      // A BYTE NEVER PROMISES A STATE THE MACHINE DOES NOT HOLD. ④b-v2 promises a
+      // delivery, so the draft must still be alive to deliver. His E3 approval
+      // already named her and showed her phone; a shut window never invalidated
+      // it, and asking for a second affirmative was the chair's own design defect
+      // (correction №9). Expiry (24h) and supersede still stand, and
+      // 「 cancel the <name> draft 」 revokes it — byte №13 its receipt.
+      await drafts.markDoorbell(supabase, draft.id, rung.twilioSid);
+      console.log(`[relay:wa] doorbell_rang wamid=${rung.twilioSid || 'nosid'} draft=${draft.id}`);
+      return { line: doorbellLineV2(name), kind: 'window_closed_doorbell', draftId: draft.id };   // ④b-v2
     }
     console.warn('[relaySeat] doorbell not rung:', rung.reason);
+    await drafts.refuse(supabase, draft.id, `window_closed:${rung.reason}`);
     return { line: windowClosedLine(name), kind: 'window_closed', draftId: draft.id };          // ④, the fallback
   }
+  // EVERY OTHER REFUSAL IS RECORDED WITH ITS REASON (0118, R-29.20) and stamps
+  // `resolved_at` through the store's single transition primitive.
+  await drafts.refuse(supabase, draft.id, out.reason || out.kind);
   if (out.kind === 'window_undetermined') return { line: windowUndeterminedLine(), kind: 'window_undetermined', draftId: draft.id }; // ⑤
   if (out.kind === 'no_vendor_lane') return { line: noLaneLine(name), kind: 'no_vendor_lane', draftId: draft.id };              // ⑧b
   if (out.kind === 'no_recipient') return { line: noNumberLine(name), kind: 'no_recipient', draftId: draft.id };                // ⑧a
@@ -649,7 +747,10 @@ const RELAY_CLAIM_RE_LOCAL = (() => {
 
 module.exports = {
   runRelaySeat,
-  doorbellLine,
+  relayReceipt,
+  doorbellLineV2,
+  deliveredLine,
+  readLine,
   relayLaneLine,
   doorStage,
   doorAsked,

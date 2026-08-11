@@ -259,6 +259,44 @@ async function expire(supabase, draftId) {
   return transition(supabase, draftId, STATES.EXPIRED, { refusal_reason: 'expired_at_read' });
 }
 
+/**
+ * R-29.35 — THE DOORBELL STAMP. `approved` is NOT a terminal, so `resolved_at`
+ * stays null and the row lives on: his E3 yes is held across the shut window and
+ * the draft auto-sends when her reply opens it. The doorbell's own wamid is
+ * recorded so the register knows which notification is standing behind it.
+ *
+ * THIS IS THE STATE THE BYTE PROMISES. F-06.170's principle in one write: ④b-v2
+ * says a delivery is coming, so the thing that delivers must still be alive.
+ */
+async function markDoorbell(supabase, draftId, doorbellSid) {
+  const cur = await getById(supabase, draftId);
+  if (!cur.draft) return { ok: false, reason: cur.reason };
+  return transition(supabase, draftId, STATES.APPROVED, {
+    refusal_reason: `doorbell:${doorbellSid || 'nosid'}`,
+  });
+}
+
+/**
+ * The vendor's standing approval, waiting on a window. Expiry ENFORCED AT READ,
+ * exactly as `openStagedFor` enforces it — a 24-hour-old approval is not a
+ * licence to send tomorrow.
+ */
+async function approvedFor(supabase, vendorId) {
+  if (!supabase || !vendorId) return { draft: null, reason: 'no_supabase_or_vendor' };
+  const { data, error } = await supabase
+    .from(TABLE).select(COLS)
+    .eq('vendor_id', vendorId).eq('state', STATES.APPROVED).is('resolved_at', null)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) return { draft: null, reason: 'draft_query_failed' };
+  if (!data) return { draft: null, reason: 'no_approved_draft' };
+  const exp = data.expires_at ? new Date(data.expires_at).getTime() : null;
+  if (exp != null && Number.isFinite(exp) && Date.now() > exp) {
+    await expire(supabase, data.id);
+    return { draft: null, reason: 'expired' };
+  }
+  return { draft: data, reason: 'approved' };
+}
+
 async function getById(supabase, draftId) {
   if (!supabase || !draftId) return { draft: null, reason: 'no_supabase_or_draft' };
   const { data, error } = await supabase.from(TABLE).select(COLS).eq('id', draftId).maybeSingle();
@@ -269,6 +307,8 @@ async function getById(supabase, draftId) {
 
 module.exports = {
   stage,
+  markDoorbell,
+  approvedFor,
   supersedeOpenStaged,
   openStagedFor,
   approve,

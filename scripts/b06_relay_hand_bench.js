@@ -17,6 +17,7 @@
 //   §10 ZIP 4 — R-29.32 door-stage · R-29.33 E3-prime · .165-.167 16
 //   §11 F-06.169 — the temporal dead zone                          3
 //   §12 THE DOORBELL (R-29.24) — the ④-fork's template arm         8
+//   §13 walk seven's cures + R-29.34's two members                12
 //
 // SIXTY-ONE AT DELIVERY. §7.8 is F-06.157's cell, added after the founder's
 // first live walk found the defect this bench could not see. DISCLOSED
@@ -465,10 +466,20 @@ await t('§4.4 the draft is REFUSED with resolved_at stamped', async () => {
   assert.ok(d.resolved_at, 'resolved_at was not stamped on a terminal transition');
 });
 
-await t('§4.5 R-29.20 — the refusal carries its REASON', async () => {
+await t('§4.5 R-29.20 — the refusal carries its REASON, and names the doorbell\'s fate', async () => {
+  // RE-AIMED (R-29.35), RATIFY-OR-REVERT. The reason is unchanged in KIND and
+  // gains its cause: on a closed window the door now tries the doorbell first,
+  // so a plain `window_closed` no longer tells a reader WHY it ended there.
+  // `window_closed:<doorbell reason>` does. (No PNID in this cell's env, so the
+  // doorbell declines with `no_pnid_for_lane:vendor` and the draft terminates.)
   const w = openWorld(); w.messages = [inboundAgeHours(30)];
   const r = await runSend(w);
-  assert.strictEqual(r.world.pending_couple_drafts[0].refusal_reason, 'window_closed');
+  const d = r.world.pending_couple_drafts[0];
+  assert.strictEqual(d.state, 'refused');
+  assert.ok(/^window_closed:/.test(String(d.refusal_reason)),
+    `the reason lost its window_closed root: ${d.refusal_reason}`);
+  assert.ok(/no_pnid_for_lane/.test(String(d.refusal_reason)),
+    'the reason does not say why the doorbell did not go');
 });
 
 await t('§4.6 UNDETERMINED is a REFUSAL and speaks its OWN sentence', async () => {
@@ -1257,9 +1268,16 @@ const bell = (behaviour = {}) => {
   const calls = [];
   const fn = async (arg, opts) => {
     calls.push({ to: arg.to, payload: arg.payload, phoneNumberId: opts && opts.phoneNumberId });
+    // ── THE DOUBLE SPOKE THE WRONG SENDER'S CONTRACT, AND THAT IS THE WHOLE
+    // OF F-06.172. It returned `{ sent, sid }` — the FREE-FORM shape — while
+    // `sendMetaTemplate` really returns `{ ok, wamid }` and THROWS on failure.
+    // So §12 was green over a doorbell the production reader could never have
+    // read as a success, and walk seven found in one message what fourteen
+    // cells could not. A double that speaks a contract its subject does not
+    // speak is not a guard. Corrected to metaCloud's real return.
     if (behaviour.throw) throw new Error('meta refused');
-    if (behaviour.fail) return { sent: false, blocked: behaviour.fail };
-    return { sent: true, sid: 'wamid.DOORBELL' };
+    if (behaviour.fail) return { ok: false, error: behaviour.fail };
+    return { ok: true, wamid: 'wamid.DOORBELL', raw: {} };
   };
   fn.calls = calls;
   return fn;
@@ -1299,7 +1317,10 @@ await t('§12.2 A CLOSED WINDOW RINGS THE DOORBELL and speaks byte ④b', async 
   });
   assert.strictEqual(out.kind, 'window_closed_doorbell');
   assert.strictEqual(b.calls.length, 1, 'the doorbell did not ring');
-  assert.ok(/sent her a WhatsApp notification/.test(out.line), 'byte ④b did not ship');
+  // ④b RETIRED FOR ④b-v2 (founder-authored). RE-AIMED, RATIFY-OR-REVERT.
+  assert.ok(/been notified on WhatsApp/.test(out.line), 'byte ④b-v2 did not ship');
+  assert.ok(/delivered and read/.test(out.line), 'the receipt promise is missing');
+  assert.ok(!/word for word/.test(out.line), 'the struck phrase survives in a vendor-facing byte');
 });
 
 await t('§12.3 ② THE LANE IS PINNED — the doorbell rides the VENDOR PNID', async () => {
@@ -1346,17 +1367,23 @@ await t('§12.6 ① AN UNDETERMINED WINDOW NEVER RINGS IT', async () => {
   assert.strictEqual(b.calls.length, 0, 'a doorbell rang on a window we could not read');
 });
 
-await t('§12.7 ⑤ THE STATE MACHINE IS UNTOUCHED — the draft is still refused', async () => {
+await t('§12.7 R-29.35 — A RUNG DOORBELL LEAVES THE DRAFT APPROVED AND ALIVE', async () => {
+  // ── RE-AIMED (R-29.35 + F-06.170's principle), DISCLOSED RATIFY-OR-REVERT.
+  // The cell asserted `refused`, which was right while ④b asked for a second
+  // affirmative. The founder removed that affirmative: ④b-v2 PROMISES A
+  // DELIVERY, so the draft must still be alive to deliver — a byte never
+  // promises a state the machine does not hold. `approved` with resolved_at
+  // NULL is the state that keeps the promise; expiry and supersede still stand.
   withPnid('123456');
   const world = closedWorld();
   await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
     sendWhatsApp: transport(), sendMetaTemplate: bell(), env: ENVB, hasTransport: true, conversationId: 'c9',
   });
   const d = world.pending_couple_drafts[0];
-  assert.strictEqual(d.state, 'refused', 'the doorbell became a transition in the flow');
-  assert.ok(d.resolved_at);
-  assert.ok(/^window_closed:doorbell:/.test(String(d.refusal_reason)),
-    'the register does not record which notification went');
+  assert.strictEqual(d.state, 'approved', 'a promised delivery was left on a resolved row');
+  assert.strictEqual(d.resolved_at, null, 'the row was terminated — nothing can auto-send');
+  assert.ok(/^doorbell:/.test(String(d.refusal_reason)),
+    'the register does not record which notification is standing behind it');
 });
 
 await t('§12.8 MUTATION — dropping the lane pin turns §12.3 RED', async () => {
@@ -1371,7 +1398,208 @@ await t('§12.8 MUTATION — dropping the lane pin turns §12.3 RED', async () =
     'the mutation did not bite — the lane cell proves nothing');
 });
 
-withPnid(PNID_WAS);   // §12 restores the environment it borrowed
+
+// ── §13 · WALK SEVEN'S CURES + R-29.34's REACHABILITY MEMBERS ───────────────
+H('§13 F-06.172/.173/.174 · R-29.35 · and the reachability law\'s two members');
+
+await t('§13.1 F-06.172 — THE TWO SENDER CONTRACTS HAVE ONE WRITTEN HOME', async () => {
+  const { readSend, SENDER_CONTRACTS } = require(RELAY);
+  assert.deepStrictEqual(Object.keys(SENDER_CONTRACTS).sort(), ['freeform', 'template']);
+  // DERIVED FROM THE REAL SENDERS, not from memory: metaCloud returns {ok,wamid}
+  // and throws; whatsapp.js returns {sent,sid} and reports refusal by return.
+  const meta = fs.readFileSync(SRC('src/lib/metaCloud.js'), 'utf8');
+  assert.ok(/return \{ ok: true, wamid: wamid \|\| null/.test(meta),
+    'metaCloud no longer returns {ok,wamid} — re-derive this cell\'s premise');
+  const wa = fs.readFileSync(SRC('src/lib/whatsapp.js'), 'utf8');
+  assert.ok(/sent: true/.test(wa) && /blocked:/.test(wa), 'the free-form contract moved');
+  assert.strictEqual(SENDER_CONTRACTS.template.successField, 'ok');
+  assert.strictEqual(SENDER_CONTRACTS.freeform.successField, 'sent');
+});
+
+await t('§13.2 F-06.172 THE NAMED SPECIMEN — walk seven\'s success is read as a success', async () => {
+  const { readSend } = require(RELAY);
+  // The exact return metaCloud produced at 10:56:59 while the estate said not_sent.
+  const real = { ok: true, wamid: 'wamid.WALKSEVEN', raw: {} };
+  assert.deepStrictEqual(readSend('template', real), { ok: true, id: 'wamid.WALKSEVEN', reason: 'sent' });
+  assert.strictEqual(readSend('freeform', real).ok, false,
+    'the free-form contract accepts a template return — the two-authorities defect survives');
+  assert.strictEqual(readSend('template', { sent: true, sid: 'x' }).ok, false,
+    'the template contract accepts a free-form return');
+});
+
+await t('§13.3 MUTATION — reading the doorbell through the free-form contract turns §12.2 RED', async () => {
+  const m = mutate('src/lib/vendor/relayToCouple.js', "const verdict = readSend('template', out);", "const verdict = readSend('freeform', out);", 'f172');
+  assert.ok(m, 'DECLARED FAIL — the contract-read anchor is absent');
+  withPnid('123456');
+  const out = await fresh(m).ringDoorbell(makeDb(closedWorld()), {
+    vendor: VENDOR, couplePhone: PHONE, brideName: 'Priya', deps: { sendMetaTemplate: bell() },
+  });
+  assert.strictEqual(out.ok, false, 'the mutation did not bite — walk seven could not recur');
+});
+
+await t('§13.4 THE DOORBELL WRITES ITS OWN ROW ON HER THREAD', async () => {
+  withPnid('123456');
+  const world = closedWorld();
+  const db = makeDb(world);
+  await seat().runRelaySeat(db, VENDOR, sendSig('Priya'), {
+    sendWhatsApp: transport(), sendMetaTemplate: bell(), env: ENVB, hasTransport: true, conversationId: 'c9',
+  });
+  const row = db._log.inserts.find((i) => i.table === 'messages' && /doorbell/.test(String(i.row.body)));
+  assert.ok(row, 'bytes reached her handset with no row in her thread — walk seven exactly');
+  assert.strictEqual(row.row.sent_by, 'vendor_relay');
+  assert.strictEqual(row.row.twilio_sid, 'wamid.DOORBELL', 'the receipt chain has no sid to land on');
+});
+
+await t('§13.5 F-06.174 — find-or-create has ONE home, and the doorbell uses it', async () => {
+  const r = fs.readFileSync(RELAY, 'utf8');
+  const creates = (r.match(/kind: 'couple_thread',\n\s*state: 'new'/g) || []).length;
+  assert.strictEqual(creates, 1, 'a second find-or-create appeared — two authorities on one question');
+  assert.ok(/findOrCreateCoupleThread\(supabase, vendor\.id, draft\.couple_phone\)/.test(fs.readFileSync(SEAT, 'utf8')),
+    'the doorbell does not use the one home');
+});
+
+await t('§13.6 R-29.35 AUTO-SEND — her reply opens the window and the approved draft GOES', async () => {
+  const world = openWorld({ state: 'approved', refusal_reason: 'doorbell:wamid.X' });
+  const send = transport();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', windowJustOpened: true,
+  });
+  assert.strictEqual(out.kind, 'sent', 'the second affirmative is still required');
+  assert.strictEqual(send.calls.length, 1);
+  assert.strictEqual(send.calls[0].body, BODY, 'the sent bytes are not the approved bytes');
+});
+
+await t('§13.7 R-29.35 — an EXPIRED approval never auto-sends', async () => {
+  const world = openWorld({ state: 'approved', expires_at: new Date(Date.now() - 3600e3).toISOString() });
+  const send = transport();
+  await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', windowJustOpened: true,
+  });
+  assert.strictEqual(send.calls.length, 0, 'a day-old approval sent itself');
+  assert.strictEqual(world.pending_couple_drafts[0].state, 'expired');
+});
+
+await t('§13.8 R-29.35 RECEIPTS — №14 on delivered, №15 on read, and NEVER synthesized', async () => {
+  const s13 = seat();
+  const world = {
+    messages: [{ id: 'm1', conversation_id: 'c9', twilio_sid: 'wamid.R', sent_by: 'vendor_relay', body: BODY }],
+    conversations: [{ id: 'c9', vendor_id: 'v1', counterparty_phone: PHONE }],
+    vendors: [{ id: 'v1', phone: '+919888294440', business_name: 'S' }],
+    leads: [LEAD],
+  };
+  const send = transport();
+  const d = await s13.relayReceipt(makeDb(world), { wamid: 'wamid.R', status: 'delivered', sendWhatsApp: send, env: ENV });
+  assert.strictEqual(d.line, 'Delivered to Priya (+919625759924).');
+  const r = await s13.relayReceipt(makeDb(world), { wamid: 'wamid.R', status: 'read', sendWhatsApp: send, env: ENV });
+  assert.strictEqual(r.line, "Priya's seen it.");
+  // sent/failed are NOT receipts — a read is never inferred from anything.
+  for (const st of ['sent', 'failed', 'deleted']) {
+    assert.strictEqual(await s13.relayReceipt(makeDb(world), { wamid: 'wamid.R', status: st, sendWhatsApp: send, env: ENV }), null,
+      `a receipt was synthesized from status=${st}`);
+  }
+});
+
+await t('§13.9 THE RECEIPT SPEAKS ONLY FOR vendor_relay ROWS', async () => {
+  const world = {
+    messages: [{ id: 'm2', conversation_id: 'c9', twilio_sid: 'wamid.OTHER', sent_by: 'agent', body: 'x' }],
+    conversations: [{ id: 'c9', vendor_id: 'v1', counterparty_phone: PHONE }],
+    vendors: [{ id: 'v1', phone: '+919888294440' }], leads: [LEAD],
+  };
+  const send = transport();
+  const out = await seat().relayReceipt(makeDb(world), { wamid: 'wamid.OTHER', status: 'delivered', sendWhatsApp: send, env: ENV });
+  assert.strictEqual(out, null, 'every outbound in the estate would now trigger a vendor receipt');
+  assert.strictEqual(send.calls.length, 0);
+});
+
+await t('§13.10 F-06.173 — F3 NEVER SHIPS WHEN THIS TURN HAS ITS OWN RELAY OUTCOME', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  assert.ok(/if \(relayOut && relayOut\.line\) \{\s*\n\s*s2line = null;/.test(d),
+    'a relay turn can still ship "That didn\'t land — nothing was changed"');
+  assert.ok(/relay_outcome_stands/.test(d), 'the suppression is not named in the arm');
+});
+
+// ── R-29.34 · MEMBER (a) — THE REAL ENTRY POINT ─────────────────────────────
+await t('§13.11 R-29.34(a) — the DOOR\'S REAL HANDLER reaches the seat', async () => {
+  // THE REACHABILITY MEMBER. Six walks were lost to cures that were correct in
+  // this container and never ran on the wire, because every cell drove the
+  // SUBJECT'S OWN EXPORTS. This one drives the door's exported handler and
+  // asserts the seat's log signature appears — the same line the founder reads.
+  const mod = require(SRC('src/lib/vendorInbound.js'));
+  const handler = mod.processVendorInbound;
+  assert.ok(typeof handler === 'function',
+    `DECLARED FAIL — the door's handler is not exported; exports: ${Object.keys(mod).join(', ')}`);
+
+  // THE DEPS BAG IS THE REAL ONE, derived from the door's own destructure at
+  // :169-183. A missing dep is what the door would actually get in production if
+  // index.js forgot one, so this is not a shortcut — it is the wire's shape.
+  // THE FIXTURE IS DERIVED BY RUNNING THE DOOR AND READING WHERE IT STOPS —
+  // three times, each barrier named by the instrumented dead-letter above. That
+  // iteration IS the reachability work; six walks were lost to never doing it.
+  const world = { ...openWorld(),
+    vendors: [{ id: 'v1', phone: '+919888294440', business_name: 'S', tier: 'prestige',
+                user_id: 'u1', category: 'mua' }],
+    users: [{ id: 'u1', phone: '+919888294440', name: 'Dev', vendor_id: 'v1' }],
+    vendor_users: [{ user_id: 'u1', vendor_id: 'v1' }],
+    agents: [{ id: 'a1', vendor_id: 'v1' }] };
+  const deps = {
+    supabase: makeDb(world), anthropic: {},
+    sendWhatsApp: transport(),
+    runTurn: async () => ({ reply: 'ok', tool_calls: [], assistant_message_id: 'am1' }),
+    resolveAgentForVendor: async () => 'a1',
+    fetchCalendarSnapshot: async () => '', fetchScratchpad: async () => '',
+    fetchLeadPings: async () => '', vendorDisplayName: () => 'S',
+    applyCalendarSignals: async () => ({}), buildLlmForTurn: () => ({}),
+    matchModeWord: () => null, matchFreshWord: () => null,
+    checkImageThrottle: async () => ({ ok: true }),
+    // DERIVED BY RUNNING THE REAL HANDLER AND READING WHAT IT REACHED FOR —
+    // never guessed. Its first act is a duplicate-sid gate through webhookCore.
+    // THE DEAD-LETTER PATH IS INSTRUMENTED, not stubbed silent: when the door
+    // stops early it swallows the cause, and a reachability cell that reports
+    // "(nothing)" is the same blindness it exists to cure one level up.
+    webhookCore: {
+      isDuplicateSidError: () => false,
+      markProcessed: async () => true,
+      claimSid: async () => true,
+      recordFailedTurn: async () => null,
+      inboundRow: async () => null,
+      captureDeadLetter: async (a) => { doorErr = (a && a.error && a.error.message) || 'unknown'; return null; },
+    },
+    runCoupleAgenticTurn: async () => ({}), generateInvoiceForBinder: async () => null,
+    enquiryToBinder: async () => null, ensureCoupleRow: async () => null,
+    captureField: async () => null, buildDisambiguationQuestion: () => null,
+    interpretDisambiguationReply: () => null, applyModeFlip: async () => null,
+    MODE_FLIP_LINES: {}, FRESH_THREAD_LINE: '', abandonActiveThread: async () => null,
+    markRejectionSent: async () => null, extractCalendarFromImage: async () => null,
+  };
+
+  let doorErr = null;
+  const seen = [];
+  const log = console.log, warn = console.warn, err = console.error;
+  console.log = (...a) => { seen.push(a.join(' ')); };
+  console.warn = () => {}; console.error = () => {};
+  try {
+    await handler({ phone: '+919888294440', body: 'Tell Priya: "reachability probe."',
+                    messageSid: 'probe', trimmedBody: 'Tell Priya: "reachability probe."',
+                    numMedia: 0, hasMedia: false }, deps);
+  } catch (_e) { /* the door may refuse this fixture; THE LOG is the subject */ }
+  finally { console.log = log; console.warn = warn; console.error = err; }
+
+  assert.ok(seen.some((l) => /\[relay:wa\] seat entered/.test(l)),
+    `THE SEAT WAS NEVER REACHED FROM THE DOOR'S REAL HANDLER — the walk-six class, ` +
+    `and the exact failure R-29.34 exists to catch. Door stopped at: ${doorErr || 'no error reported'}. ` +
+    `Log saw: ${seen.slice(0, 8).join(' | ') || '(nothing)'}`);
+});
+
+await t('§13.12 R-29.34(b) — the NAMED PRODUCTION WITNESSES exist for every new path', async () => {
+  const src = fs.readFileSync(SEAT, 'utf8');
+  const door = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  const both = src + '\n' + door;
+  for (const w of ['seat entered', 'door_staged', 'doorbell_rang wamid=', 'auto_sent attempt',
+                   '_receipt wamid=', 'no-stage (', 'F3 suppressed'])
+    assert.ok(both.includes(w), `no production witness the founder can read for: ${w}`);
+});
+
+withPnid(PNID_WAS);   // §12/§13 restore the environment they borrowed
 
 // ═════════════════════════════════════════════════════════════════════════════
 cleanup();

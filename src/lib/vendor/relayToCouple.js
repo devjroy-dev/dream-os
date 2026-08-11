@@ -76,6 +76,41 @@ function windowVerdict(w) {
 }
 
 /**
+ * FIND OR CREATE the (vendor, couple) thread. ONE HOME (F-06.174).
+ *
+ * Extracted because the DOORBELL needs it too: on a closed window `relayToCouple`
+ * returns before it ever reaches this, so a doorbell fired from that branch had
+ * no thread to write its row onto — which is why walk seven delivered bytes to
+ * her handset the estate has no record of. Two callers, one implementation; the
+ * alternative was a second find-or-create, and the estate has paid for two
+ * authorities on one question twice in this arc already.
+ *
+ * The find-or-create ORDER is the corpse's and is why 0117's `conversation_id`
+ * is nullable: a draft can be staged before this row exists.
+ */
+async function findOrCreateCoupleThread(supabase, vendorId, couplePhone) {
+  try {
+    const { data: found, error: findErr } = await supabase
+      .from('conversations').select('id')
+      .eq('vendor_id', vendorId).eq('counterparty_phone', couplePhone).eq('kind', 'couple_thread')
+      .order('last_message_at', { ascending: false }).limit(1).maybeSingle();
+    if (findErr) return { threadId: null, reason: 'thread_query_failed' };
+    if (found) return { threadId: found.id, reason: 'found' };
+    const { data: made, error: createErr } = await supabase
+      .from('conversations')
+      .insert({
+        vendor_id: vendorId, counterparty_phone: couplePhone, kind: 'couple_thread',
+        state: 'new', mode: 'auto', last_message_at: new Date().toISOString(),
+      })
+      .select('id').single();
+    if (createErr || !made) return { threadId: null, reason: `thread_create_failed: ${(createErr && createErr.message) || 'unknown'}` };
+    return { threadId: made.id, reason: 'created' };
+  } catch (e) {
+    return { threadId: null, reason: `thread_threw: ${e && e.message}` };
+  }
+}
+
+/**
  * Send an already-composed, already-approved message from a vendor to a bride.
  *
  * THIS LIB DOES NOT COMPOSE AND DOES NOT DECIDE. The bytes arrive already
@@ -130,39 +165,9 @@ async function relayToCouple(supabase, { vendor, couplePhone, body, sendWhatsApp
   // ── 3 · Find or create the couple_thread for (vendor, phone) ───────────────
   // The find-or-create order is the corpse's and is why 0117's `conversation_id`
   // is nullable: a draft can be staged before this row exists.
-  let threadId = null;
-  try {
-    const { data: found, error: findErr } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('vendor_id', vendor.id)
-      .eq('counterparty_phone', couplePhone)
-      .eq('kind', 'couple_thread')
-      .maybeSingle();
-    if (findErr) return { ok: false, kind: 'internal', reason: 'thread_query_failed' };
-    if (found) {
-      threadId = found.id;
-    } else {
-      const { data: made, error: createErr } = await supabase
-        .from('conversations')
-        .insert({
-          vendor_id: vendor.id,
-          counterparty_phone: couplePhone,
-          kind: 'couple_thread',
-          state: 'new',
-          mode: 'auto',
-          last_message_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
-      if (createErr || !made) {
-        return { ok: false, kind: 'internal', reason: `thread_create_failed: ${(createErr && createErr.message) || 'unknown'}` };
-      }
-      threadId = made.id;
-    }
-  } catch (e) {
-    return { ok: false, kind: 'internal', reason: `thread_threw: ${e && e.message}` };
-  }
+  const found = await findOrCreateCoupleThread(supabase, vendor.id, couplePhone);
+  if (!found.threadId) return { ok: false, kind: 'internal', reason: found.reason, threadId: null };
+  const threadId = found.threadId;
 
   // ── 4 · THE SEND, LANE-PINNED, RETURN READ ────────────────────────────────
   let out;
@@ -311,6 +316,48 @@ async function resolveRecipient(supabase, vendorId, recipient) {
   return { phone: null, name: raw, reason: 'no_phone_on_file' };
 }
 
+// ══ THE TWO SENDER CONTRACTS — ONE WRITTEN HOME (F-06.172) ══════════════════
+//
+// THE ESTATE HAS TWO SEND VOCABULARIES AND THEY DO NOT AGREE:
+//   · `whatsapp.js`  (symbol `sendWhatsApp`) — the FREE-FORM lane wrapper:
+//                     success is `{ sent: true, sid }`, refusal is `{ blocked }`
+//   · `metaCloud.js` (symbol `postMessage`, and therefore `sendMetaTemplate`
+//                     and `sendMetaText`) — the RAW GRAPH poster:
+//                     success is `{ ok: true, wamid }`, failure THROWS
+//
+// WALK SEVEN IS THE SPECIMEN AND IT IS THE SHARPEST THIS ARC HAS PRODUCED. The
+// doorbell rang. Meta accepted it, delivered it, and the bride's handset had it
+// — sent 10:56:59.990, delivered 10:57:02.280. And the estate told the vendor it
+// had failed, one second before Meta said otherwise, because `ringDoorbell` read
+// `out.sent !== true` and harvested `out.sid` — THE FREE-FORM CONTRACT APPLIED
+// TO A TEMPLATE RETURN. Every field it looked for was absent, so a success read
+// as a refusal.
+//
+// F-06.146's discipline was applied faithfully and in the wrong lane's words.
+// F-04.36's law is the other half: two authorities on what a successful send
+// looks like, and no written home saying which is which. THIS IS THAT HOME. A
+// third reader consults it instead of guessing, and the cell below asserts both
+// shapes against their real senders rather than against a memory of them.
+const SENDER_CONTRACTS = Object.freeze({
+  // free-form: sendWhatsApp / sendWa
+  freeform: Object.freeze({ successField: 'sent', idField: 'sid', refusalField: 'blocked', throwsOnFailure: false }),
+  // template + raw text: sendMetaTemplate / sendMetaText / postMessage
+  template: Object.freeze({ successField: 'ok', idField: 'wamid', refusalField: null, throwsOnFailure: true }),
+});
+
+// The single reader. `kind` names WHICH contract, so a caller cannot silently
+// read one sender's return through the other's eyes.
+function readSend(kind, out) {
+  const c = SENDER_CONTRACTS[kind];
+  if (!c) return { ok: false, id: null, reason: `unknown_sender_contract:${kind}` };
+  if (!out) return { ok: false, id: null, reason: 'no_return' };
+  if (out[c.successField] !== true) {
+    const blocked = c.refusalField ? out[c.refusalField] : null;
+    return { ok: false, id: null, reason: blocked ? `blocked:${blocked}` : 'not_sent' };
+  }
+  return { ok: true, id: out[c.idField] || null, reason: 'sent' };
+}
+
 // ══ THE DOORBELL (R-29.24) — THE ④-FORK'S TEMPLATE ARM ══════════════════════
 //
 // ON A CLOSED WINDOW the estate has, until now, had exactly one honest answer:
@@ -356,9 +403,31 @@ async function ringDoorbell(supabase, { vendor, couplePhone, brideName, env, dep
     const send = deps.sendMetaTemplate
       || require('../metaCloud').sendMetaTemplate;
     const out = await send({ to: couplePhone, payload }, { phoneNumberId: pnid });
-    // The sentinel is READ here too — `sent !== true` is a failure, never rounded up.
-    if (!out || out.sent !== true) return { ok: false, reason: (out && out.blocked) ? `blocked:${out.blocked}` : 'not_sent' };
-    return { ok: true, twilioSid: out.sid || null, line: t.line, template: t.name };
+    // READ THROUGH THE TEMPLATE CONTRACT — `{ ok, wamid }`, never `{ sent, sid }`.
+    // Walk seven's whole defect, cured at its one site and only through the
+    // written home above.
+    const verdict = readSend('template', out);
+    if (!verdict.ok) return { ok: false, reason: verdict.reason };
+
+    // ── THE DOORBELL'S OWN ROW ON HER THREAD ──────────────────────────────
+    // The `not_sent` verdict never wrote one, so walk seven delivered a message
+    // to her handset that the estate has no record of. Her thread must hold every
+    // byte that reached her, and the status webhook needs a row to land
+    // delivered/read on — the receipt chain (№14/№15) is built on this sid.
+    // sent_by 'vendor_relay' is deliberate: the doorbell IS the vendor's outreach.
+    if (deps.supabase && deps.threadId) {
+      try {
+        await deps.supabase.from('messages').insert({
+          conversation_id: deps.threadId,
+          direction: 'outbound',
+          channel: 'whatsapp',
+          body: `[doorbell] ${t.name}`,
+          sent_by: 'vendor_relay',
+          twilio_sid: verdict.id,
+        });
+      } catch (e) { console.warn('[doorbell] thread row failed:', e && e.message); }
+    }
+    return { ok: true, twilioSid: verdict.id, line: t.line, template: t.name };
   } catch (e) {
     return { ok: false, reason: `doorbell_threw: ${e && e.message}` };
   }
@@ -367,6 +436,9 @@ async function ringDoorbell(supabase, { vendor, couplePhone, brideName, env, dep
 module.exports = {
   relayToCouple,
   ringDoorbell,
+  findOrCreateCoupleThread,
+  readSend,
+  SENDER_CONTRACTS,
   resolveRecipient,
   coupleDisplayName,
   asPhone,

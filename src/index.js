@@ -223,6 +223,17 @@ app.post('/webhook/meta', async (req, res) => {
       try { await supabase.from('messages').update({ delivery_status: s.status }).eq('twilio_sid', s.id); }
       catch (_e) { /* status best-effort */ }
       console.log(`[webhook:meta] status wamid=${s.id} status=${s.status}`);
+      // ── TDW_06 R-29.35 — THE RELAY RECEIPT CHAIN ─────────────────────────
+      // ④b-v2 promises the vendor a confirmation on delivered and on read. This
+      // is that promise's one seam. It speaks ONLY for rows carrying
+      // `sent_by = 'vendor_relay'` — the marker with exactly one writer — so no
+      // other outbound in the estate can trigger a vendor receipt. Best-effort
+      // and never able to disturb the webhook: a receipt that fails costs a
+      // sentence, and a webhook that throws costs Meta's retry budget.
+      try {
+        const { relayReceipt } = require('./lib/vendor/relaySeat');
+        await relayReceipt(supabase, { wamid: s.id, status: s.status, sendWhatsApp });
+      } catch (e) { console.warn('[relay:wa receipt seam]', e && e.message); }
     }
   } catch (err) {
     console.error('[webhook:meta] inbound processing error:', err && err.message);

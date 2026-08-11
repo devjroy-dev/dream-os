@@ -1668,8 +1668,26 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     if (s2line) {
       try {
         const { relayLaneLine } = require('./vendor/relaySeat');
-        const laneLine = await relayLaneLine(supabase, vendor, effectiveResult);
-        if (laneLine) { s2line = laneLine; s2arm = `${s2arm || 'glitch_line'}:relay_lane`; }
+        // ── F-06.173 (walk seven's ⑤) — F3 NEVER ON A RELAY MOMENT ──────────
+        // On 2026-08-11 10:56 「 That didn't land — nothing was changed 」 shipped
+        // TWICE on relay turns: false about the draft (staged and standing) and
+        // false about the wire (her handset HAD the doorbell). 08-08 has fully
+        // inverted — then a claimed send that never happened, now a real send
+        // denied by its own reporter — and it is the same class: THE DOOR
+        // DISAGREEING WITH ITS OWN DEED.
+        //
+        // THIS TURN'S OWN RELAY OUTCOME OUTRANKS THE INTERCEPTION. If the seat
+        // produced a line — the doorbell rang, the window refused, a draft was
+        // shown — that line is what the vendor reads, because it is derived from
+        // the store and F3 is derived from a model's prose.
+        if (relayOut && relayOut.line) {
+          s2line = null;
+          s2arm = `${s2arm || 'glitch_line'}:relay_outcome_stands`;
+          console.log(`[relay:wa] F3 suppressed — this turn's own outcome (${relayOut.kind}) stands`);
+        } else {
+          const laneLine = await relayLaneLine(supabase, vendor, effectiveResult);
+          if (laneLine) { s2line = laneLine; s2arm = `${s2arm || 'glitch_line'}:relay_lane`; }
+        }
       } catch (e) { console.warn('[relay:wa lane-line]', e && e.message); }
     }
     // ── F-06.166's GUARD (R-29.32 ③) — THE IMITATED COMMITMENT ───────────────
