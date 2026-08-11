@@ -304,20 +304,33 @@ async function composeBody(agentId, instruction) {
 async function doorStage(supabase, vendor, text, deps) {
   const chat = require('../../api/vendor-engine/chat');
   const raw = String(text || '').trim();
-  if (!raw || !chat.RELAY_VERB_RE.test(raw)) return null;
+  // ── THE DECLINE LOG (F-06.171) ────────────────────────────────────────────
+  // EVERY `return null` ON THIS PATH NOW SAYS WHY. Five walks have produced logs
+  // with NO `[relay:wa]` line at all — not a wrong outcome, NO outcome — and a
+  // silent decline is indistinguishable from a seat that never ran. That
+  // ambiguity has cost the founder five walks and me five wrong guesses; a door
+  // that declines without saying why is not observable, and an unobservable door
+  // cannot be debugged from a log.
+  const no = (why) => { console.log(`[relay:wa] no-stage (${why})`); return null; };
 
-  const who = await resolveRecipient(supabase, vendor.id, extractRecipient(raw));
+  if (!raw) return no('empty_instruction');
+  if (!chat.RELAY_VERB_RE) return no('RELAY_VERB_RE undefined — circular require of chat.js');
+  if (!chat.RELAY_VERB_RE.test(raw)) return no('no_relay_verb');
+
+  const lifted = extractRecipient(raw);
+  const who = await resolveRecipient(supabase, vendor.id, lifted);
   if (who.reason === 'ambiguous_recipient') return { line: askWhoLine(who.name || 'that name'), kind: 'ask_who' };
-  if (!who.phone) return null;   // not a resolvable relay instruction — the door stays silent
+  if (!who.phone) return no(`recipient_unresolved lifted="${lifted}" reason=${who.reason}`);
 
-  const body = verbatimBody(raw) || (deps.agentId ? await composeBody(deps.agentId, raw) : null);
-  if (!body) return null;
+  const verb = verbatimBody(raw);
+  const body = verb || (deps.agentId ? await composeBody(deps.agentId, raw) : null);
+  if (!body) return no(verb === null && !deps.agentId ? 'no_verbatim_and_no_agentId' : 'no_body_composed');
 
   const staged = await drafts.stage(supabase, {
     vendorId: vendor.id, conversationId: deps.conversationId || null,
     couplePhone: who.phone, body,
   });
-  if (!staged.ok) { console.warn('[relaySeat] door stage failed:', staged.reason); return null; }
+  if (!staged.ok) return no(`stage_failed: ${staged.reason}`);
   return {
     line: showBlock(staged.draft.body, who.name, staged.draft.couple_phone),
     kind: 'door_staged', draftId: staged.draft.id,
@@ -408,6 +421,10 @@ const foldName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' '
  * @returns {Promise<{line: string, kind: string}|null>}
  */
 async function runRelaySeat(supabase, vendor, result, deps = {}) {
+  // ENTRY IS LOGGED. "The seat never ran" and "the seat ran and declined" have
+  // looked identical in every log this arc has produced. They stop looking
+  // identical here.
+  console.log(`[relay:wa] seat entered (words=${deps.ownerWords ? 'yes' : 'NO'} transport=${deps.hasTransport !== false})`);
   const signals = collectSignals(result);
 
   // ── THE DOOR'S OWN LANES (R-29.32 · R-29.33) ──────────────────────────────
