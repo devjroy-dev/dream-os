@@ -1,7 +1,10 @@
 // src/lib/prospects.js — the prospect-lane state machine (Block 05, P3).
 //
-// STATES (0085 CHECK): cold → templated → replied → in_session → {expired | converted}, plus
-// opted_out (terminal, cross-line).
+// STATES (0085 CHECK, widened by 0119): cold → templated → replied → in_session →
+// {expired | converted}, plus opted_out (terminal, cross-line) and DISCARDED —
+// the house's own exit, reachable from any state by an admin act and leaving only
+// by the admin Restore verb (TDW_05 P3-D, CE-30). opted_out is the human's word;
+// discarded is the house's. Nothing a stranger types moves either one inward.
 //
 // ── THE DAY ARRIVED (TDW_08 P5 Phase 3, 2026-08-04) ──────────────────────────
 // THIS HEADER READ, from Block 05 until now: "No AI calls here (W-1): an
@@ -260,6 +263,24 @@ async function _handleMarketingInbound({ supabase, from, text, messageId, sendWa
     return { action: 'noop_opted_out', phone, prospectId: prospect.id };
   }
 
+  // ── R-30.15 · F5 ARM (a), THE FOUNDER'S WORD 「 they get silence 」 ─────────
+  // PATH 4 OF SIX, and it was the sharp one. Without this line the sequence is:
+  // `findOrCreateProspectByPhone` above returns the discarded row → the only
+  // early return is the `opted_out` one → the row falls through to
+  // `openProspectConversation`, `state:'in_session'` and a full Maya turn. The
+  // discard would erase itself on the first inbound, and confirm₂'s promise
+  // — "the lane will never touch them again" — would be false from that moment.
+  //
+  // NO STATE CHANGE HERE, deliberately, and that is the difference between this
+  // arm and the one above it. `opted_out` is a state the human chose and this
+  // function may lift on START. `discarded` is a state the HOUSE chose, and
+  // nothing a stranger types may move it — only the admin Restore verb
+  // (src/api/admin/prospects.js, POST /:id/restore) does that, on a named row,
+  // with a confirm that says the sweep can reach them again.
+  if (prospect.state === 'discarded') {
+    return { action: 'noop_discarded', phone, prospectId: prospect.id };
+  }
+
   // replied → open the conversation → in_session; re-stamp the rolling window anchor.
   const conversation = await openProspectConversation(supabase, prospect);
   await logMessage(supabase, conversation.id, { direction: 'inbound', body: text, sentBy: 'prospect' });
@@ -377,7 +398,17 @@ async function runConversionMatchJob({ supabase, now }) {
     .from('prospects').select('id, phone, demo_vendor_ref, state')
     .not('demo_vendor_ref', 'is', null)
     .neq('state', 'converted')
-    .neq('state', 'opted_out');
+    .neq('state', 'opted_out')
+    // ── R-30.14 · PATH 5 OF SIX — THE LATENT ONE ──────────────────────────
+    // This selector excluded two terminal states and would have picked a
+    // `discarded` row, writing `converted` over a row the founder deliberately
+    // removed. It is inert TODAY only because F-07.38 holds: `vendors.claimed_at`
+    // does not exist, so the lookup below throws on every prospect and this job
+    // has converted nothing since it was written. The day Block 08 defines
+    // claimed-truth and cures that column, this job wakes up — and without this
+    // line it would wake up un-discarding rows. A defect that needs someone
+    // else's future fix to become live is still a defect now.
+    .neq('state', 'discarded');
   const converted = [];
   for (const p of (pending || [])) {
     try {

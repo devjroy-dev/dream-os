@@ -547,13 +547,26 @@ t('§6.3 0116 is NON-DESTRUCTIVE and does not widen its ruling — no DELETE, no
 // it asserts the LADDER'S LAW (tip is the highest, no hole is filled, no new
 // duplicate appears), and only the tip's number is a moving part.
 // RATIFY-OR-REVERT.
-t('§6.4 LD-8: 0118 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
+//
+// ── THIRD LABELLED AMENDMENT, TDW_05 P3-D (THE PROSPECT EXIT DOOR) ───────────
+// The shape this cell settled into holds again, and the moving part moved again:
+// 0119 (`0119_prospect_discard.sql`, the state-CHECK widen admitting 'discarded'
+// plus `discarded_at`, CHARTERED AT R-30.10/.12) is now the tail. RE-AIMED,
+// COUNT PRESERVED AT 37, TEETH KEPT WHOLE — 0116, 0117 and 0118 are ALL still
+// asserted present, 0113 is still asserted an unwritten hole, and the attributed
+// 0063 duplicate fence is untouched. The amendment is made by the sitting that
+// moved the subject, per the standing rule that the sitting moving a subject owns
+// the benches reading it; it is NOT a unilateral re-aim of a sealed instrument's
+// PROPERTY, only of the one number this cell has always declared mobile.
+// RATIFY-OR-REVERT.
+t('§6.4 LD-8: 0119 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
   const files = fs.readdirSync(P('db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
   const nums = files.map((f) => f.slice(0, 4));
   assert.ok(nums.includes('0116'), '0116 is not on the ladder');
   assert.ok(nums.includes('0117'), '0117 is not on the ladder');
   assert.ok(nums.includes('0118'), '0118 is not on the ladder');
-  assert.strictEqual(nums[nums.length - 1], '0118', `0118 is not the tail: ${nums.slice(-3).join(', ')}`);
+  assert.ok(nums.includes('0119'), '0119 is not on the ladder');
+  assert.strictEqual(nums[nums.length - 1], '0119', `0119 is not the tail: ${nums.slice(-3).join(', ')}`);
   assert.ok(!nums.includes('0113'), '0113 was filled — LD-8 forbids it; it is reserved-unwritten');
   // ATTRIBUTED ELDER, not this delivery's: 0063 is used TWICE at origin
   // (0063_users_auth_user_id.sql + 0063_vendor_activity_log.sql), an LD-8 collision

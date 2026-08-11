@@ -109,9 +109,16 @@ const QUEUE_SAMPLE = 1;     // oldest-age lookups need exactly one row
 const IST_OFFSET_MIN = 330;
 
 // ── State vocabularies, each carried from its own CHECK constraint ──────────
-// prospects: 0085_prospect_lane.sql:32
+// prospects: 0085_prospect_lane.sql:32, WIDENED BY 0119_prospect_discard.sql.
+// `discarded` joins for NAMING, not for arithmetic — and the distinction is
+// worth the sentence. `bucket()` below carries an `other` catch-all and takes its
+// headline `total` from the independent exact count, so an unjoined state never
+// went missing from the total; it went missing from its own LABEL, absorbed into
+// an unnamed bucket while every number still added up. That is this estate's own
+// law read back at itself: a totality check routed through a catch-all is a check
+// on the catch-all.
 const PROSPECT_STATES = Object.freeze([
-  'cold', 'templated', 'replied', 'in_session', 'converted', 'opted_out', 'expired',
+  'cold', 'templated', 'replied', 'in_session', 'converted', 'opted_out', 'expired', 'discarded',
 ]);
 // demo_vendors: src/lib/demoLifecycle.js:98-99 (STATES), the sole writer's own list
 const DEMO_STATES = Object.freeze([

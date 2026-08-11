@@ -144,6 +144,18 @@ async function defaultSendTemplate({ to, key, line, payload }) {
 // the send target the same way. Needs a supabase handle; when none is supplied AND no isOptedOut
 // dep is injected, the send CANNOT be checked — that is a NAMED residual (handover census), never
 // a silent open: the marketing lane (where STOP originates) always supplies supabase.
+// ── DECLARED UNCOVERED LAYER — TDW_05 P3-D, R-30.14's boundary (2026-08-11) ──
+// THIS GATE DOES NOT KNOW ABOUT `discarded`, AND THAT IS A RULING, NOT AN
+// OVERSIGHT. The predicate below is a POSITIVE gate on exactly one value, so a
+// prospect in state `discarded` is not blocked here. Every outbound SOURCE that
+// could reach one now refuses upstream instead: the morning sweep by its own
+// selector (`prospects.js` runOpenerJob, `.eq('state','cold')`), the nudge job
+// by its own (`closerEngine.js` runNudgeJob, `.eq('state','in_session')`), the
+// conversion job by an explicit `.neq('state','discarded')`, the console's
+// send-opener by a typed refusal, and the inbound path by `noop_discarded`.
+// Widening THIS gate is a depth-in-kind question about shared transport
+// infrastructure and belongs to its own charter. Named here so it can neither be
+// forgotten nor closed silently.
 async function defaultIsOptedOut({ to, supabase }) {
   if (!supabase) return false; // cannot check here; caller-census residual, not a silent pass
   const phone = normalizeTo(to);
