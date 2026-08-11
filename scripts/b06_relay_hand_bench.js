@@ -898,10 +898,15 @@ await t('§9.2 F-06.163 — the block carries the VERBATIM body and tells Harvey
     'nothing suppresses the drift-prone second copy');
 });
 
-await t('§9.3 E3 — the block instructs a NAMING affirmative, never a bare yes', async () => {
+await t('§9.3 E3-PRIME — the block says a PLAIN YES SENDS, and forbids asking for the name', async () => {
+  // RE-AIMED (R-29.33), DISCLOSED RATIFY-OR-REVERT. Under the pre-amendment guard
+  // this cell asserted the block demanded a naming affirmative. E3-prime retired
+  // that, the code moved, and this text did not — so Victor kept enforcing it.
+  // THE INSTRUCTION IS THE INTERFACE and this cell now guards it as one.
   const b = seat().pendingRelayBlock(draftRow(), 'Priya');
-  assert.ok(/NAMING her/.test(b) && /send it to Priya/.test(b), 'the block does not ask for the name');
-  assert.ok(/A bare "yes" is not enough/.test(b), 'the block would teach the answer E3 refuses');
+  assert.ok(/ANY plain yes sends it/.test(b), 'the block does not tell him a plain yes works');
+  assert.ok(/NEVER ask for it/.test(b), 'the block still permits demanding the name back');
+  assert.ok(!/A bare "yes" is not enough/.test(b), 'the retired instruction survives');
 });
 
 await t('§9.4 F-06.162 — A NAMING AFFIRMATIVE ROUTES WITH ZERO TOOL CALLS', async () => {

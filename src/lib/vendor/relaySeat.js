@@ -141,6 +141,16 @@ const PWA_RELAY_UNAVAILABLE_LINE =
 //   · the draft's VERBATIM body, so he need not quote it himself    — F-06.163
 //   · the recipient's name AND stored phone, so his ask can name her — E3
 //
+// ── E3-PRIME (R-29.33) — AND THE FRICTION THIS BLOCK ONCE CAUSED ───────────
+// The block used to instruct 「 he must say so NAMING her / a bare yes is not
+// enough 」. That was correct under the pre-amendment guard and became WRONG the
+// moment the founder ruled E3-prime — and the code moved while these words did
+// not. On 2026-08-11 10:31 Victor obeyed them exactly and told the founder
+// 「 I need you to name her to send it. Say: "Yes, send it to Priya." 」 —
+// enforcing a rule the door had already retired. THE INSTRUCTION IS THE
+// INTERFACE: a block that lags a ruling produces friction indistinguishable
+// from a bug, and the founder felt it as one because it was one.
+//
 // THE INSTRUCTION NAMES HER, AND THAT IS A DISCLOSED DEVIATION FROM R-29.29's
 // LITERAL COPY, REPORTED IN THE HANDOVER RATHER THAN TAKEN SILENTLY. The ruling
 // wrote 「 reply Yes and it goes to her 」 while its own trigger clause requires
@@ -162,10 +172,14 @@ function pendingRelayBlock(draft, name) {
     `send them to ${who} — you do not need to quote the draft to him again.`,
     'Nothing has gone to her and nothing will until he approves it.',
     '',
-    `If he wants it sent, he must say so NAMING her — "yes, send it to ${name || draft.couple_phone}".`,
-    'A bare "yes" is not enough, and that is deliberate: naming her is what keeps a',
-    'message from reaching the wrong client. If his answer does not name her, ask him',
-    'to confirm who it goes to. If he wants it changed or dropped, say so plainly.',
+    'ANY plain yes sends it — "yes", "send", "send it", "ok", "haan". You do not need',
+    'her name back from him and you must NEVER ask for it. The estate already showed',
+    `him her name and her number in the question, so his yes is an answer to that`,
+    'question and nothing else. Asking him to repeat what you just told him is',
+    'friction he did not ask for.',
+    '',
+    'If he says no, or wait, or cancel — it is dropped and nothing goes to her.',
+    'If he wants it changed, say so plainly and he can give you the new words.',
   ].join('\n');
 }
 
