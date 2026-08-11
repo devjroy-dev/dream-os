@@ -108,6 +108,26 @@ type RunTurnArgs = {
   // (lib/vendor/leadPings.js) exactly as recentActivity's does. ABSENT => the pre-cure
   // dynamic block is byte-identical (regression law).
   leadPings?: string;
+  // ── TDW_06 F-06.162/.163 (R-29.29) — THE PENDING-RELAY BLOCK ───────────────
+  // actBlock and pingBlock's third sibling, and it exists for a reason neither of
+  // them had: THE RELAY IS THE ESTATE'S FIRST MULTI-TURN COMMITMENT. A draft is
+  // shown on one turn and approved on the next, and between those turns the only
+  // party who knows a commitment is open is the DOOR.
+  //
+  // F-06.162, founder-witnessed 2026-08-11 09:29: the confirm was in Victor's own
+  // thread (F-06.158's cure had landed and is proven) and the turn still came back
+  // `(0 tool calls)` — no `dear_donna_talk`, no hand, a fabricated 「 Message sent
+  // to Priya 」. Reading a question is not having a hand to answer it, and a
+  // question a model can read and cannot mechanically answer is a question it
+  // answers in PROSE. Prose about a send is a fabrication.
+  //
+  // THIS SEAM GIVES HIM A FACT, NOT A TOOL. `loop.ts`'s own opening line — Harvey
+  // holds NO DB tools — stays true, and this block does not touch it. The CE-4
+  // seam exists precisely so the door can tell him something only the door knows.
+  // OPAQUE STRING, door-built: the engine's client is bound to schema 'engine' and
+  // cannot read `public.pending_couple_drafts` at all. ABSENT => the dynamic block
+  // is byte-identical (regression law), exactly as leadPings' own contract states.
+  pendingRelay?: string;
   // TDW_04.5 P6 (CE-61, Fork B): the vendor's NORMALISED category, door-computed.
   // THE DOOR NORMALISES, THE ENGINE COMPARES — `normaliseCategory` keeps its one home in
   // lib/vendor/categoryFraming.js, which is the whole point of the ruling: Victor's
@@ -470,7 +490,15 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     // user-roled message would let it VOUCH for a write, which is F-04.70 exactly.
     // b05_f0550_ping_drain_bench §2 asserts the absence structurally and functionally.
     const pingBlock = (estateInRoom && args.leadPings) ? `\n\n${args.leadPings}` : '';
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock;
+    // F-06.162/.163 (R-29.29): DYNAMIC, NEVER CACHED — it changes the moment a draft
+    // is staged or resolved. Gated on `estateInRoom` with its two siblings and NOT on
+    // its own: the block carries a draft's verbatim body, which can hold a rupee
+    // figure, and exempting it from the gate would re-open the neighbouring-line donor
+    // pool that ruling A-3 closed (F-04.70's mechanism). SYSTEM TAIL, never the message
+    // stream — the same provenance siting as pingBlock, so a figure here can inform
+    // Victor and can never VOUCH for a write.
+    const relayBlock = (estateInRoom && args.pendingRelay) ? `\n\n${args.pendingRelay}` : '';
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];

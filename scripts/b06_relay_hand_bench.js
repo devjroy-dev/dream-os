@@ -13,6 +13,7 @@
 //   §6 A6 the deed is door-composed; relaySeam.ts untouched     6
 //   §7    structural — import guard · sealed benches · floor     8  (+1, §7.8)
 //   §8 ZIP 2 — F-06.158 · F-06.159 · F-06.160                    12
+//   §9 ZIP 3 — F-06.162 · F-06.163 · F-06.164                    14
 //
 // SIXTY-ONE AT DELIVERY. §7.8 is F-06.157's cell, added after the founder's
 // first live walk found the defect this bench could not see. DISCLOSED
@@ -493,7 +494,12 @@ await t('§5.1 THE ENGINE HOLDS NO STORE WRITER AND NO TRANSPORT (R-29.25)', asy
       const p = path.join(dir, f.name);
       if (f.isDirectory()) { walk(p); continue; }
       if (!/\.ts$/.test(f.name)) continue;
-      const s = fs.readFileSync(p, 'utf8');
+      // EXECUTABLE LINES ONLY. loop.ts now NAMES `public.pending_couple_drafts`
+      // in the comment explaining why the engine cannot read it — the third time
+      // this bench has had to learn that a file documenting a law is not
+      // breaking it. Comments stripped; the assertion is about code.
+      const s = fs.readFileSync(p, 'utf8').split('\n')
+        .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
       if (/pending_couple_drafts|sendWhatsApp|sendMetaText|sendWa\(/.test(s)) bad.push(path.relative(ROOT, p));
     }
   };
@@ -868,6 +874,129 @@ await t('§8.12 F-06.160 — another vendor\'s open draft is untouched', async (
                   pending_couple_drafts: [draftRow({ id: 'other', vendor_id: 'v2' })] };
   await fresh(DRAFTS).stage(makeDb(world), { vendorId: 'v1', couplePhone: PHONE, body: 'new one' });
   assert.strictEqual(world.pending_couple_drafts.find((x) => x.id === 'other').state, 'staged');
+});
+
+
+// ── §9 · ZIP 3 — THE INSTRUCTION GAP BEHIND THE RECORD GAP ──────────────────
+H('§9 F-06.162/.163/.164 — the pending-relay block, the route, the lane');
+
+await t('§9.1 F-06.162 — the block exists when a draft is open, and is EMPTY when none is', async () => {
+  const s9 = seat();
+  const withDraft = await s9.buildPendingRelay(makeDb(openWorld()), 'v1');
+  assert.ok(withDraft.length > 0, 'no block for an open commitment');
+  const none = await s9.buildPendingRelay(makeDb({ pending_couple_drafts: [], leads: [LEAD] }), 'v1');
+  assert.strictEqual(none, '', 'a block was built with nothing pending — the regression law');
+});
+
+await t('§9.2 F-06.163 — the block carries the VERBATIM body and tells Harvey not to re-quote', async () => {
+  const s9 = seat();
+  const b = s9.pendingRelayBlock(draftRow(), 'Priya');
+  assert.ok(b.includes(`"${BODY}"`), 'the block does not carry the exact bytes');
+  assert.ok(/do not need to quote the draft to him again/.test(b),
+    'nothing suppresses the drift-prone second copy');
+});
+
+await t('§9.3 E3 — the block instructs a NAMING affirmative, never a bare yes', async () => {
+  const b = seat().pendingRelayBlock(draftRow(), 'Priya');
+  assert.ok(/NAMING her/.test(b) && /send it to Priya/.test(b), 'the block does not ask for the name');
+  assert.ok(/A bare "yes" is not enough/.test(b), 'the block would teach the answer E3 refuses');
+});
+
+await t('§9.4 F-06.162 — A NAMING AFFIRMATIVE ROUTES WITH ZERO TOOL CALLS', async () => {
+  // The founder's 09:29 turn shape exactly: no signal in the result at all.
+  const world = openWorld();
+  const db = makeDb(world);
+  const send = transport();
+  const out = await seat().runRelaySeat(db, VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, ownerWords: 'yes, send it to Priya',
+  });
+  assert.ok(out, 'the affirmative found no route — F-06.162 uncured');
+  assert.strictEqual(out.kind, 'sent');
+  assert.strictEqual(send.calls.length, 1);
+});
+
+await t('§9.5 E3 HOLDS AT THE DOOR — a BARE yes moves nothing', async () => {
+  const world = openWorld();
+  const send = transport();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, ownerWords: 'Yes',
+  });
+  assert.strictEqual(out, null, 'a bare yes routed — the founder\'s own 09:29:03 turn');
+  assert.strictEqual(send.calls.length, 0);
+  assert.strictEqual(world.pending_couple_drafts[0].state, 'staged');
+});
+
+await t('§9.6 E3 HOLDS — an affirmative naming a DIFFERENT person moves nothing', async () => {
+  const world = openWorld();
+  const send = transport();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, ownerWords: 'yes send it to Ananya',
+  });
+  assert.strictEqual(out, null);
+  assert.strictEqual(send.calls.length, 0);
+  assert.strictEqual(world.pending_couple_drafts[0].state, 'staged');
+});
+
+await t('§9.7 the PHONE also names her — the stored anchor is a legal naming', async () => {
+  const s9 = seat();
+  assert.ok(s9.affirmativeNames('yes send to +919625759924', null, PHONE));
+  assert.ok(s9.affirmativeNames('ok, 9625759924 please', 'Priya', PHONE));
+  assert.ok(!s9.affirmativeNames('9625759924', 'Priya', PHONE), 'a phone with no affirmative routed');
+});
+
+await t('§9.8 MUTATION — dropping the naming conjunction turns §9.5 RED', async () => {
+  const m = mutate('src/lib/vendor/relaySeat.js', 'if (!AFFIRM_RE.test(t)) return false;', 'if (!AFFIRM_RE.test(t)) return false;\n  return true;', 'f162');
+  assert.ok(m, 'DECLARED FAIL — the affirmative-guard anchor is absent');
+  assert.ok(fresh(m).affirmativeNames('Yes', 'Priya', PHONE),
+    'the mutation did not bite — §9.5 proves nothing');
+});
+
+await t('§9.9 F-06.164 — a RELAY costume interception ships a relay byte, never F3', async () => {
+  const line = await seat().relayLaneLine(makeDb(openWorld()), VENDOR, { reply: 'Message sent to Priya.' });
+  assert.ok(line, 'the relay lane stayed silent and F3 would have shipped');
+  assert.ok(line.includes(BODY) && /Send this to Priya \(\+919625759924\)\?/.test(line));
+  assert.ok(!/didn't land/.test(line), 'F3 leaked into the relay lane');
+});
+
+await t('§9.10 F-06.164 — a FILING-lane costume leaves F3 alone, even with a draft open', async () => {
+  const line = await seat().relayLaneLine(makeDb(openWorld()), VENDOR, { reply: "Done — that's filed." });
+  assert.strictEqual(line, null, 'the relay lane spoke for a claim that was not its business');
+});
+
+await t('§9.11 F-06.164 — the claim family has ONE home; the lane reads chat.js, not a copy', async () => {
+  const { RELAY_CLAIM_RE } = require(SRC('src/api/vendor-engine/chat.js'));
+  const src = fs.readFileSync(SEAT, 'utf8');
+  assert.ok(/require\('\.\.\/\.\.\/api\/vendor-engine\/chat'\)\.RELAY_CLAIM_RE/.test(src),
+    'the seat authored its own copy of the claim family');
+  assert.ok(RELAY_CLAIM_RE.test('Message sent to Priya.'));
+});
+
+await t('§9.12 the door hands the OWNER\'S words, and the block rides the retry too', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  assert.ok(/ownerWords: body,/.test(d), 'the seat is not given the owner\'s own inbound');
+  assert.ok(/pendingRelay, vendorCategory,/.test(d),
+    'the retry runs without the block — the re-run would lose the fact the first turn had');
+  assert.strictEqual((d.match(/pendingRelay,/g) || []).length, 2, 'the block reaches one path only');
+});
+
+await t('§9.13 the engine seam is gated and never cached, like its two siblings', async () => {
+  const l = fs.readFileSync(SRC('src/engine/src/core/loop.ts'), 'utf8');
+  assert.ok(/const relayBlock = \(estateInRoom && args\.pendingRelay\)/.test(l),
+    'the block is not estate-room-gated — the F-04.70 donor pool reopens');
+  assert.ok(/pingBlock \+ relayBlock;/.test(l), 'the block is not in the dynamic tail');
+  // NEVER CACHED, asserted structurally: the cached block is `staticPrefix` and
+  // the relay block is a term of `dynamic`. If the block ever joined the cached
+  // prefix, a draft staged at 14:00 would still be "waiting" at 14:05.
+  assert.ok(/\{ type: 'text', text: staticPrefix, cache_control: \{ type: 'ephemeral' \} \}/.test(l),
+    'the cached block is no longer staticPrefix — re-derive this cell\'s premise');
+  assert.ok(!/staticPrefix[^\n]*pendingRelay|pendingRelay[^\n]*staticPrefix/.test(l),
+    'the block touches the cached prefix');
+});
+
+await t('§9.14 ABSENT => byte-identical dynamic block (the regression law)', async () => {
+  const l = fs.readFileSync(SRC('src/engine/src/core/loop.ts'), 'utf8');
+  assert.ok(/args\.pendingRelay\) \? `\\n\\n\$\{args\.pendingRelay\}` : ''/.test(l),
+    'an absent block does not collapse to the empty string');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

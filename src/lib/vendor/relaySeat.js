@@ -133,6 +133,85 @@ const PWA_RELAY_UNAVAILABLE_LINE =
   `I can't send messages to your clients from here yet — that only works over WhatsApp for now. ` +
   `Message me on WhatsApp and I'll send it from there.`;
 
+// ── THE PENDING-RELAY BLOCK (R-29.29) — THE DOOR'S FACT, NOT A TOOL ────────
+// Built at the door from the OPEN STAGED ROW and injected into Harvey's system
+// tail on the CE-4 seam (loop.ts, `pendingRelay`). It carries three things and
+// each one closes a named finding:
+//   · that a commitment is OPEN and an affirmative is expected      — F-06.162
+//   · the draft's VERBATIM body, so he need not quote it himself    — F-06.163
+//   · the recipient's name AND stored phone, so his ask can name her — E3
+//
+// THE INSTRUCTION NAMES HER, AND THAT IS A DISCLOSED DEVIATION FROM R-29.29's
+// LITERAL COPY, REPORTED IN THE HANDOVER RATHER THAN TAKEN SILENTLY. The ruling
+// wrote 「 reply Yes and it goes to her 」 while its own trigger clause requires
+// 「 an affirmative NAMING HER 」. Those cannot both hold: a block that teaches
+// the vendor to answer 「 Yes 」 teaches him the one answer E3 refuses, and the
+// founder's own 09:29:03 turn was exactly that bare Yes. Resolved in the SAFE
+// direction — the block asks for a naming affirmative — because the alternative
+// silently retires the founder's wrong-bride guard. The chair's to overrule.
+function pendingRelayBlock(draft, name) {
+  if (!draft) return '';
+  const who = recipientLabel(name, draft.couple_phone);
+  return [
+    'A DRAFT IS WAITING FOR THE OWNER\'S APPROVAL.',
+    '',
+    `It is addressed to ${who}, and these are its exact words:`,
+    `"${draft.body}"`,
+    '',
+    'The estate has already shown him these words verbatim and asked him whether to',
+    `send them to ${who} — you do not need to quote the draft to him again.`,
+    'Nothing has gone to her and nothing will until he approves it.',
+    '',
+    `If he wants it sent, he must say so NAMING her — "yes, send it to ${name || draft.couple_phone}".`,
+    'A bare "yes" is not enough, and that is deliberate: naming her is what keeps a',
+    'message from reaching the wrong client. If his answer does not name her, ask him',
+    'to confirm who it goes to. If he wants it changed or dropped, say so plainly.',
+  ].join('\n');
+}
+
+/**
+ * The block for this vendor's open staged draft, or '' when nothing is pending.
+ * Returns '' on every failure — a Victor without the block is diminished, not
+ * wrong, and a relay fault must never cost the vendor his turn (leadPings' own
+ * fail-safe-to-empty contract, and F-06.141's class at a neighbouring site).
+ */
+async function buildPendingRelay(supabase, vendorId) {
+  try {
+    const open = await drafts.openStagedFor(supabase, vendorId);
+    if (!open.draft) return '';
+    const name = await coupleDisplayName(supabase, vendorId, open.draft.couple_phone);
+    return pendingRelayBlock(open.draft, name);
+  } catch (e) {
+    console.warn('[relaySeat] pending-relay block failed:', e && e.message);
+    return '';
+  }
+}
+
+// ── THE AFFIRMATIVE, READ AT THE DOOR (R-29.29's trigger) ──────────────────
+// R-29.19 refused arm (3c) — the door word-matching the vendor's raw text — and
+// that refusal is NOT overturned here, because (3c) had the door CHOOSE THE
+// RECIPIENT from prose. It does not choose anything. The recipient is already
+// pinned on the stored row; this reads the owner's words only to ask whether he
+// AFFIRMED and whether he NAMED THE STORED SUBJECT. The identity anchor stays
+// the draft row, exactly as R-29.19 ruled — the text is checked against the
+// store, never mined for a new fact.
+//
+// TWO CONDITIONS, BOTH REQUIRED, and the conjunction is the guard:
+//   (1) an affirmative is present
+//   (2) the stored name OR the stored phone appears in his words
+// A bare 「 yes 」 satisfies (1) and not (2) and moves NOTHING — the founder's
+// own 09:29:03 turn, and E3's whole point.
+const AFFIRM_RE = /\b(?:yes|yep|yeah|yup|ok|okay|sure|send it|send|go ahead|approve[d]?|confirmed?|do it|please do)\b/i;
+
+function affirmativeNames(text, name, phone) {
+  const t = String(text || '');
+  if (!AFFIRM_RE.test(t)) return false;
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits && t.replace(/\D/g, '').includes(digits.slice(-10))) return true;
+  if (!name) return false;
+  return new RegExp(`\\b${foldName(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(foldName(t));
+}
+
 // ── THE SIGNAL COLLECTOR ───────────────────────────────────────────────────
 // Signals nest inside `tool_calls[].donna_calls` — a top-level-only scan
 // collects nothing. Same shape as `blockHands.js`'s collector and the invoice
@@ -169,6 +248,27 @@ const foldName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' '
  */
 async function runRelaySeat(supabase, vendor, result, deps = {}) {
   const signals = collectSignals(result);
+
+  // ── F-06.162's ROUTE (R-29.29) ────────────────────────────────────────────
+  // When a commitment is OPEN and the owner's own words affirm it BY NAME, the
+  // door acts on the store — no Harvey tool call required, because R-29.23
+  // already put the door in charge of reading the turn and R-29.25 already put
+  // every organ on this side of the boundary. Harvey holds no tool and needs
+  // none; the block told him a fact, the vendor answered it, and the door owns
+  // the deed. Seated BEFORE the signal branch so a turn that both affirms and
+  // (wrongly) re-stages is governed by the affirmative, exactly as the two
+  // signals are ordered below and for the same reason.
+  if (deps.hasTransport !== false && deps.ownerWords) {
+    const open = await drafts.openStagedFor(supabase, vendor.id);
+    if (open.expired) return { line: expiredLine(), kind: 'expired' };
+    if (open.draft) {
+      const name = await coupleDisplayName(supabase, vendor.id, open.draft.couple_phone);
+      if (affirmativeNames(deps.ownerWords, name, open.draft.couple_phone)) {
+        return sendApproved(supabase, vendor, open.draft, name, deps);
+      }
+    }
+  }
+
   if (!signals.length) return null;
 
   if (deps.hasTransport === false) {
@@ -254,6 +354,14 @@ async function handleSend(supabase, vendor, input, deps) {
     return { line: mismatchBlock(draft.body, name, draft.couple_phone), kind: 'name_mismatch' };   // ⑨
   }
 
+  return sendApproved(supabase, vendor, draft, name, deps);
+}
+
+// THE APPROVED LEG. One home, reached from the door's own affirmative route and
+// from the SEND signal alike — so the state machine, the window question, the
+// lane pin and every deed line have exactly one implementation regardless of how
+// the owner's yes arrived.
+async function sendApproved(supabase, vendor, draft, name, deps) {
   const approved = await drafts.approve(supabase, draft.id);
   if (!approved.ok) {
     console.warn('[relaySeat] approve refused:', approved.reason);
@@ -287,8 +395,45 @@ async function handleSend(supabase, vendor, input, deps) {
   return { line: sendFailedLine(name), kind: out.kind || 'send_failed', draftId: draft.id };                                     // ⑦
 }
 
+/**
+ * R-29.30 — the RELAY LANE'S OWN SENTENCE for a stage-2 interception.
+ *
+ * Returns null when this interception is NOT the relay's business, so F3 ships
+ * exactly as it does today for every filing-lane costume. Returns a
+ * founder-vetoed relay byte when a draft is open: the re-show, which is the safe
+ * direction R-29.19 already ruled for an affirmative that could not be honoured.
+ *
+ * NOTHING IS SENT AND NO STATE MOVES HERE. The interception means the model
+ * claimed a deed it did not do; the draft is exactly where it was and the vendor
+ * is told so with the bytes written for that fact.
+ */
+async function relayLaneLine(supabase, vendor, result) {
+  // Only speak for a turn that CLAIMED the relay. A filing-lane costume in a
+  // conversation that happens to hold a draft is not this lane's to answer.
+  const claimed = RELAY_CLAIM_RE_LOCAL.test(String((result && result.reply) || ''));
+  if (!claimed) return null;
+  const open = await drafts.openStagedFor(supabase, vendor.id);
+  if (open.expired) return expiredLine();
+  if (!open.draft) return null;
+  const name = await coupleDisplayName(supabase, vendor.id, open.draft.couple_phone);
+  return mismatchBlock(open.draft.body, name, open.draft.couple_phone);
+}
+
+// The claim family has ONE home (chat.js, F-06.159). Required lazily so this
+// module never depends on the door's import order, and asserted equal to that
+// home by a cell rather than trusted.
+const RELAY_CLAIM_RE_LOCAL = (() => {
+  try { return require('../../api/vendor-engine/chat').RELAY_CLAIM_RE; }
+  catch (_e) { return /\bmessage\s+(?:to\s+[^\s,.]+\s+)?(?:is|has been)\s+(?:live|sent)\b/i; }
+})();
+
 module.exports = {
   runRelaySeat,
+  relayLaneLine,
+  buildPendingRelay,
+  pendingRelayBlock,
+  affirmativeNames,
+  AFFIRM_RE,
   collectSignals,
   recipientLabel,
   showBlock,

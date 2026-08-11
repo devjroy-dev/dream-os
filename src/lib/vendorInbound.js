@@ -1318,9 +1318,23 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       vendorCategory = require('./vendor/categoryFraming').normaliseCategory(vendor.category);
     } catch (e) { console.warn('[agent:category]', e.message); }
     // P6 FORK-B END
+    // ── TDW_06 F-06.162/.163 (R-29.29) — THE PENDING-RELAY BLOCK ─────────────
+    // Built BEFORE the turn, from the open staged row, and handed to Victor as a
+    // FACT on the CE-4 seam. Without it he can read the confirm in his own thread
+    // and has no idea a commitment is open or what is expected of him — which is
+    // the 09:29 turn that came back with zero tool calls and a fabrication.
+    // Fail-safe to '' exactly as leadPings does: a Victor without the block is
+    // diminished, never wrong.
+    let pendingRelay = '';
+    try {
+      const { buildPendingRelay } = require('./vendor/relaySeat');
+      pendingRelay = await buildPendingRelay(supabase, vendor.id);
+    } catch (e) { console.warn('[relay:wa pending-block]', e && e.message); }
+
     const result = await runTurn({
       agentId, message: body, calendarSnapshot, scratchpad,
       leadPings, // TDW_05 F-05.50(b) — an opaque string, the recentActivity contract
+      pendingRelay, // TDW_06 F-06.162 (R-29.29) — the open commitment, door-known
       // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
       vendorCategory,
       // P6 FORK-B END
@@ -1488,7 +1502,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       if ((s2line || impMiss) && !_noRetry) {
         try {
           const retry = await runTurn({
-            agentId, message: body, calendarSnapshot, scratchpad, leadPings, vendorCategory,
+            agentId, message: body, calendarSnapshot, scratchpad, leadPings, pendingRelay, vendorCategory,
             tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride,
             transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport,
             donnaModelOverride: llmWiring.donnaModelOverride,
@@ -1559,6 +1573,32 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         }
       }
     } catch (e) { console.warn('[wire-guard stage2 wa]', e.message); }
+    // ── TDW_06 F-06.164's CURE (R-29.30) — LANE SELECTION, NOT A REWORD ──────
+    // F3's sentence 「 That didn't land — nothing was changed. 」 is founder-vetoed
+    // for the FILING lane and knows nothing about a wire. Shipped after a RELAY
+    // costume it is false twice over: on 2026-08-11 09:29 a draft WAS staged and
+    // waiting, so "nothing was changed" was untrue, and the honest sentence for
+    // that moment already existed and was already vetoed.
+    //
+    // NO NEW COPY IS MINTED HERE. This routes bytes the founder approved on
+    // 2026-08-11 to the moment they were written for: a relay-claim interception
+    // with a draft waiting speaks the re-show (⑨'s frame, the safe direction
+    // R-29.19 already ruled). Everything else leaves F3 to its own lane, untouched.
+    //
+    // IT SELECTS s2line AND NEVER WRITES replyText. The interception statement
+    // below is left BYTE-IDENTICAL deliberately: `b06_forkc_wireguard_bench`
+    // §11.5 asserts that exact statement, and its own comment records why — the
+    // mutation floor once caught a cell passing over `if (false) replyText =
+    // s2line;`. Reshaping the one line that ships an interception to add a
+    // feature beside it is how that guard dies quietly. So the selection sits
+    // ABOVE it and the seat keeps its single, unmodified writer.
+    if (s2line) {
+      try {
+        const { relayLaneLine } = require('./vendor/relaySeat');
+        const laneLine = await relayLaneLine(supabase, vendor, effectiveResult);
+        if (laneLine) { s2line = laneLine; s2arm = `${s2arm || 'glitch_line'}:relay_lane`; }
+      } catch (e) { console.warn('[relay:wa lane-line]', e && e.message); }
+    }
     if (s2line) replyText = s2line;
     // ── THE DELIVERY WITNESS (FORK 3a) — recorded at FORK D'S RESOLUTION POINT, which is
     // exactly here: the retry has decided, `replyText` is final, and `sendWhatsApp` is the
@@ -1600,6 +1640,10 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         sendWhatsApp,
         conversationId: convo.id,
         hasTransport: true,
+        // R-29.29's trigger. The OWNER'S OWN INBOUND, never the model's prose:
+        // the door asks whether HE affirmed and whether HE named the stored
+        // subject. It chooses nothing — the recipient is already on the row.
+        ownerWords: body,
       });
       if (relayOut && relayOut.line) {
         replyText += `\n\n${relayOut.line}`;

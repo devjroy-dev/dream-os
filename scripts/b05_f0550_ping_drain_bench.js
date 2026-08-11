@@ -171,7 +171,17 @@ H('§2 — CE-NAMED CELL: bride_message IS ABSENT FROM vendorWords, WITH THE BLO
 await t('§2.1 SOURCE: the ping block is composed into `dynamic`, and `dynamic` alone', () => {
   const l = code('src/engine/src/core/loop.ts');
   assert.ok(/const pingBlock = \(estateInRoom && args\.leadPings\)/.test(l), 'the block must be gated on estateInRoom — A-3 keeps the donor pool closed');
-  assert.ok(/\+ actBlock \+ pingBlock;/.test(l), 'the block belongs in the dynamic tail, beside its sibling');
+  // ── LABELLED AMENDMENT (TDW_06 THE HAND · ZIP 3, R-29.29). RE-AIMED, TEETH
+  // KEPT, COUNT PRESERVED. `relayBlock` — the pending-relay block, actBlock and
+  // pingBlock's third sibling — joined the dynamic tail AFTER pingBlock, so an
+  // anchor ending in `pingBlock;` no longer matches. THE PROPERTY IS UNCHANGED
+  // and is asserted more precisely than before: pingBlock still follows actBlock,
+  // and it is still a term of `dynamic` and of nothing else. Anchoring on the
+  // ADJACENCY rather than on the line's end means the next sibling cannot break
+  // this cell either — which is the failure this amendment is paying for.
+  // RATIFY-OR-REVERT.
+  assert.ok(/\+ actBlock \+ pingBlock\b/.test(l), 'the block belongs in the dynamic tail, beside its sibling');
+  assert.ok(/const dynamic = [^;]*\bpingBlock\b[^;]*;/.test(l), 'the block is not a term of `dynamic`');
   const vw = l.slice(l.indexOf('const vendorWords'), l.indexOf('const vendorWords') + 260);
   assert.ok(!/leadPings|pingBlock/.test(vw), 'THE PROVENANCE PROPERTY: the corpus is the OWNER\'S words only (F-04.70)');
   assert.ok(!/leadPings/.test(l.slice(l.indexOf('let messages'), l.indexOf('let messages') + 200)), 'and it never enters the message stream');
@@ -200,7 +210,12 @@ if (gate.runDist) {
     const thread = [{ role: 'user', content: 'what is my thursday' }, { role: 'assistant', content: 'clear' }];
 
     const evalDynamic = new Function('args', 'estateInRoom', 'ownerBlock', 'today', 'factsBlock', 'snapshot', 'donnaMsgs', 'shelfBlock',
-      `${pingLine}\n const calBlock=''; const actBlock='';\n ${dynLine}\n return dynamic;`);
+      // LABELLED AMENDMENT (same ZIP): `relayBlock` seeded empty exactly as
+      // calBlock and actBlock already are. THE ASSERTIONS BELOW ARE UNTOUCHED —
+      // this cell evaluates the bytes Railway runs, and the shipped `dynamic`
+      // line now names a third sibling. Seeding it empty is what "this cell is
+      // about the PING block" has always meant. RATIFY-OR-REVERT.
+      `${pingLine}\n const calBlock=''; const actBlock=''; const relayBlock='';\n ${dynLine}\n return dynamic;`);
     const evalWords = new Function('thread', 'message', `${vwSrc}\n return vendorWords;`);
 
     const dynamic = evalDynamic({ leadPings }, true, 'owner', 'Fri', '', '', '', '');
@@ -464,8 +479,14 @@ H('§7 — NON-VACUOUS: RED AT THE UNCURED TREE, BY PRODUCTION MUTATION');
 if (!process.env.F0550_BENCH_CHILD) {
   const { execFileSync } = require('child_process');
   const M = [
+    // LABELLED AMENDMENT (TDW_06 THE HAND · ZIP 3, R-29.29). RE-AIMED, COUNT
+    // PRESERVED, TEETH IDENTICAL. `relayBlock` joined the dynamic tail after
+    // `pingBlock`, so the old anchor's trailing `;` no longer matches. The
+    // mutation still does exactly what it always did — remove pingBlock from the
+    // dynamic tail — and now anchors on the term itself rather than on whatever
+    // happens to follow it. RATIFY-OR-REVERT.
     { cell: '§2.1', why: 'the block leaves the dynamic tail for the message stream — F-04.70\'s laundering path, re-opened',
-      file: 'src/engine/src/core/loop.ts', from: '+ actBlock + pingBlock;', to: '+ actBlock;' },
+      file: 'src/engine/src/core/loop.ts', from: '+ actBlock + pingBlock', to: '+ actBlock' },
     { cell: '§2.1', why: 'the A-3 gate goes optional — an advisor room regains its donor pool',
       file: 'src/engine/src/core/loop.ts', from: 'const pingBlock = (estateInRoom && args.leadPings)', to: 'const pingBlock = (true && args.leadPings)' },
     { cell: '§3.1', why: 'the stamp disappears — the ping surfaces forever and L1 is a fiction',
