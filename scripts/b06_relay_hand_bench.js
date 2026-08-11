@@ -15,6 +15,7 @@
 //   §8 ZIP 2 — F-06.158 · F-06.159 · F-06.160                    12
 //   §9 ZIP 3 — F-06.162 · F-06.163 · F-06.164                    14
 //   §10 ZIP 4 — R-29.32 door-stage · R-29.33 E3-prime · .165-.167 16
+//   §11 F-06.169 — the temporal dead zone                          3
 //
 // SIXTY-ONE AT DELIVERY. §7.8 is F-06.157's cell, added after the founder's
 // first live walk found the defect this bench could not see. DISCLOSED
@@ -1183,6 +1184,62 @@ await t('§10.16 R-29.32 ② — the COMPOSE fork uses an EXISTING engine entry 
   const harvest = fs.readFileSync(SRC('src/agent/harvest.js'), 'utf8');
   assert.ok(/require\('\.\.\/engine\/dist\/core\/donna'\)/.test(harvest),
     'the precedent this cure cited no longer exists — re-derive before shipping');
+});
+
+
+// ── §11 · F-06.169 — THE TEMPORAL DEAD ZONE ────────────────────────────────
+H('§11 F-06.169 — a reference above its own `let` took the whole door down');
+
+await t('§11.1 NO `let` IN THE WA DOOR IS READ ABOVE ITS OWN DECLARATION', async () => {
+  // THE CELL THAT WOULD HAVE CAUGHT IT, and the reason it did not exist: every
+  // §10 cell about the door was a GREP over source text, and a grep cannot see
+  // ordering. `node --check` cannot see a TDZ either — it is a runtime throw on a
+  // syntactically perfect file. On 2026-08-11 10:18 that cost EVERY vendor turn,
+  // relay or not: the founder received the dead-letter line twice and nothing
+  // else worked.
+  //
+  // METHOD, DECLARED: scan the door for `let <name>` declarations that this arc
+  // introduced, then assert no earlier line in the same function body reads that
+  // identifier. BLIND SPOT, DECLARED: it checks the names this arc owns, not
+  // every binding in a 1700-line file, and it is line-ordered rather than
+  // scope-aware — a `let` inside a nested block would read as a false positive.
+  // Narrow and honest beats broad and vacuous.
+  const src = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  const lines = src.split('\n');
+  const OURS = ['relayOut', 'effectiveResult', 'pendingRelay', 's2line', 's2arm', 's2run'];
+  for (const name of OURS) {
+    const declIdx = lines.findIndex((l) => new RegExp(`^\\s*let\\s+${name}\\b`).test(l));
+    assert.ok(declIdx > -1, `DECLARED FAIL — no \`let ${name}\` found; the anchor moved`);
+    const re = new RegExp(`\\b${name}\\b`);
+    for (let i = 0; i < declIdx; i++) {
+      const l = lines[i];
+      if (/^\s*(\/\/|\*|\/\*)/.test(l)) continue;   // comments explain, they do not execute
+      assert.ok(!re.test(l),
+        `TDZ: \`${name}\` is read at line ${i + 1}, above its own \`let\` at ${declIdx + 1}`);
+    }
+  }
+});
+
+await t('§11.2 the SEAT runs BEFORE the interception, which runs BEFORE the send', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  const seatAt = d.indexOf('runRelaySeat(supabase, vendor, effectiveResult');
+  const guardAt = d.indexOf('CONFIRM_SHAPE_RE.test(');
+  // NEWLINE-ANCHORED, and that is not fussiness: `d.indexOf` found the copy of
+  // this statement inside the ORDERING COMMENT eight lines above the real one,
+  // and the cell went red on a file that was correct. Fourth time this sitting a
+  // cell has read the estate's own explanation as its code. The banner explains
+  // the order; this finds the statement that enforces it.
+  const applyAt = d.search(/\n\s*if \(s2line\) replyText = s2line;/);
+  const sendAt = d.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText, []);');
+  assert.ok(seatAt > 0 && guardAt > seatAt, 'the confirm-shape guard cannot read this turn\'s staging outcome');
+  assert.ok(applyAt > guardAt, 'the interception applies before the guard can select its line');
+  assert.ok(sendAt > applyAt, 'the send precedes the interception — a costume reaches the vendor');
+});
+
+await t('§11.3 the interception statement is STILL byte-identical (forkc §11.5 unbroken)', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  assert.ok(/\n\s*if \(s2line\) replyText = s2line;/.test(d),
+    'the one line that ships an interception was reshaped by a neighbouring feature');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

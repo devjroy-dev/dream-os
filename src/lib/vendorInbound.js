@@ -1573,6 +1573,79 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         }
       }
     } catch (e) { console.warn('[wire-guard stage2 wa]', e.message); }
+    // ── ORDER, AND WHY IT IS THIS ORDER (F-06.169's cure) ────────────────────
+    // THE RELAY SEAT RUNS BEFORE THE INTERCEPTION BLOCK. It was seated after it,
+    // and F-06.166's guard — which must acquit on THIS TURN'S OWN staging outcome
+    // — read `relayOut` from above its own `let`. A TEMPORAL DEAD ZONE throw on
+    // EVERY vendor turn, relay or not: the founder received the dead-letter
+    // hiccup line twice and the whole WA door was down. `node --check` cannot see
+    // a TDZ and neither could a bench that only grepped the source.
+    //
+    // The order below is the honest one and each step needs the one before it:
+    //   1. the seat stages/approves/sends and APPENDS its line to replyText
+    //   2. the lane selection and the confirm-shape guard read `relayOut`
+    //   3. the interception statement below REPLACES — an interception wins over
+    //      an appended line, which is correct: a costume must not ship beside a
+    //      true one. That statement stays BYTE-IDENTICAL (forkc §11.5) and is
+    //      NOT QUOTED HERE ON PURPOSE: forkc §5.8d counts the seat's writers by
+    //      pattern, and quoting it in prose minted a phantom fourth writer. A
+    //      comment that breaks the cell guarding the thing it describes is the
+    //      fifth instance of that class this sitting; named so it stops.
+
+    // ── TDW_06 · THE HAND · SITTING TWO — THE RELAY SEAT ─────────────────────
+    // THE VENDOR→BRIDE SEND, WHOLE: the vendor instructs, Harvey composes, the
+    // draft is STAGED, the exact bytes are SHOWN as a quoted artefact, his named
+    // affirmative APPROVES, and the estate DELIVERS window-first.
+    //
+    // SEATED HERE AND NOWHERE ELSE, for the reason the wire guard is seated here:
+    // this is the ONLY point with a true pre-delivery seam — `replyText` is final
+    // (Fork D has resolved, `s2line` has been applied) and `sendWhatsApp` is the
+    // very next statement. The relay's lines are the DOOR's speech appended to
+    // Victor's, exactly as the invoice confirmations above are, and they cross to
+    // the vendor without passing through any model's mouth.
+    //
+    // R-29.2 — TRANSPORT IS DOOR-INJECTED. `sendWhatsApp` comes from this door's
+    // own deps bag; the engine never requires a transport at import and holds no
+    // store writer. That is what makes 2026-08-08 impossible at the level of what
+    // the model can touch, rather than at the level of what it can be told.
+    //
+    // NEVER THROWS INTO THE TURN. A relay fault must not cost the vendor his
+    // reply — F-06.141's class at a neighbouring site, and not one to re-instance
+    // in the same block that filed it.
+    let relayOut = null;
+    try {
+      const { runRelaySeat } = require('./vendor/relaySeat');
+      relayOut = await runRelaySeat(supabase, vendor, effectiveResult, {
+        sendWhatsApp,
+        conversationId: convo.id,
+        hasTransport: true,
+        agentId, // R-29.32 ② — the COMPOSE fork's handle on Donna's machinery
+        // R-29.29's trigger. The OWNER'S OWN INBOUND, never the model's prose:
+        // the door asks whether HE affirmed and whether HE named the stored
+        // subject. It chooses nothing — the recipient is already on the row.
+        ownerWords: body,
+      });
+      if (relayOut && relayOut.line) {
+        replyText += `\n\n${relayOut.line}`;
+        console.log(`[relay:wa] ${relayOut.kind}${relayOut.draftId ? ` draft=${relayOut.draftId}` : ''}`);
+        // ── F-06.158's CURE (R-29.26) — THE LINE JOINS VICTOR'S OWN THREAD ────
+        // Without this the SHOW frame and the E3 confirm exist only on the wire:
+        // `loop.ts` saves `result.reply` alone, so Victor asks 「 Send this to
+        // Priya (+91…)? 」 and holds no record of asking. The vendor's affirmative
+        // then answers a question the thread never contains, and Harvey re-stages.
+        //
+        // THE SAME CORE THE PWA DOOR CALLS — one home, extracted at this sitting,
+        // never a second copy. Patched on `effectiveResult`, not `result`:
+        // F-06.157's lesson holds here too, and the witnessed row must belong to
+        // the turn whose reply actually shipped. AWAITED, so a fast follow-up
+        // cannot race the patch it exists to make.
+        try {
+          const { patchComposedReply } = require('../api/vendor-engine/chat');
+          await patchComposedReply(supabase, effectiveResult, `\n\n${relayOut.line}`);
+        } catch (e) { console.warn('[relay:wa composed-reply]', e && e.message); }
+      }
+    } catch (e) { console.error('[relay:wa]', e && e.message); }
+
     // ── TDW_06 F-06.164's CURE (R-29.30) — LANE SELECTION, NOT A REWORD ──────
     // F3's sentence 「 That didn't land — nothing was changed. 」 is founder-vetoed
     // for the FILING lane and knows nothing about a wire. Shipped after a RELAY
@@ -1641,60 +1714,6 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         await stage2RecordDelivery(supabase, s2run, { arm: s2arm, delivered: s2line, seat: 'wa' });
       } catch (e) { console.warn('[wire-guard stage2 wa delivery]', e.message); }
     }
-    // ── TDW_06 · THE HAND · SITTING TWO — THE RELAY SEAT ─────────────────────
-    // THE VENDOR→BRIDE SEND, WHOLE: the vendor instructs, Harvey composes, the
-    // draft is STAGED, the exact bytes are SHOWN as a quoted artefact, his named
-    // affirmative APPROVES, and the estate DELIVERS window-first.
-    //
-    // SEATED HERE AND NOWHERE ELSE, for the reason the wire guard is seated here:
-    // this is the ONLY point with a true pre-delivery seam — `replyText` is final
-    // (Fork D has resolved, `s2line` has been applied) and `sendWhatsApp` is the
-    // very next statement. The relay's lines are the DOOR's speech appended to
-    // Victor's, exactly as the invoice confirmations above are, and they cross to
-    // the vendor without passing through any model's mouth.
-    //
-    // R-29.2 — TRANSPORT IS DOOR-INJECTED. `sendWhatsApp` comes from this door's
-    // own deps bag; the engine never requires a transport at import and holds no
-    // store writer. That is what makes 2026-08-08 impossible at the level of what
-    // the model can touch, rather than at the level of what it can be told.
-    //
-    // NEVER THROWS INTO THE TURN. A relay fault must not cost the vendor his
-    // reply — F-06.141's class at a neighbouring site, and not one to re-instance
-    // in the same block that filed it.
-    let relayOut = null;
-    try {
-      const { runRelaySeat } = require('./vendor/relaySeat');
-      relayOut = await runRelaySeat(supabase, vendor, effectiveResult, {
-        sendWhatsApp,
-        conversationId: convo.id,
-        hasTransport: true,
-        agentId, // R-29.32 ② — the COMPOSE fork's handle on Donna's machinery
-        // R-29.29's trigger. The OWNER'S OWN INBOUND, never the model's prose:
-        // the door asks whether HE affirmed and whether HE named the stored
-        // subject. It chooses nothing — the recipient is already on the row.
-        ownerWords: body,
-      });
-      if (relayOut && relayOut.line) {
-        replyText += `\n\n${relayOut.line}`;
-        console.log(`[relay:wa] ${relayOut.kind}${relayOut.draftId ? ` draft=${relayOut.draftId}` : ''}`);
-        // ── F-06.158's CURE (R-29.26) — THE LINE JOINS VICTOR'S OWN THREAD ────
-        // Without this the SHOW frame and the E3 confirm exist only on the wire:
-        // `loop.ts` saves `result.reply` alone, so Victor asks 「 Send this to
-        // Priya (+91…)? 」 and holds no record of asking. The vendor's affirmative
-        // then answers a question the thread never contains, and Harvey re-stages.
-        //
-        // THE SAME CORE THE PWA DOOR CALLS — one home, extracted at this sitting,
-        // never a second copy. Patched on `effectiveResult`, not `result`:
-        // F-06.157's lesson holds here too, and the witnessed row must belong to
-        // the turn whose reply actually shipped. AWAITED, so a fast follow-up
-        // cannot race the patch it exists to make.
-        try {
-          const { patchComposedReply } = require('../api/vendor-engine/chat');
-          await patchComposedReply(supabase, effectiveResult, `\n\n${relayOut.line}`);
-        } catch (e) { console.warn('[relay:wa composed-reply]', e && e.message); }
-      }
-    } catch (e) { console.error('[relay:wa]', e && e.message); }
-
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
     await supabase.from('messages').insert({
       conversation_id: convo.id,
