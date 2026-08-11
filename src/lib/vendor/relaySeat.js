@@ -50,7 +50,7 @@
 'use strict';
 
 const drafts = require('./coupleDrafts');
-const { relayToCouple, resolveRecipient, coupleDisplayName } = require('./relayToCouple');
+const { relayToCouple, ringDoorbell, resolveRecipient, coupleDisplayName } = require('./relayToCouple');
 
 // ── THE SIGNAL NAMES. One home, mirrored from the engine's own
 // `RELAY_SIGNAL_NAMES` (src/engine/src/core/tools/relayCouple.ts). Two strings
@@ -91,6 +91,14 @@ const sentLine = (name, phone) => `Sent to ${recipientLabel(name, phone)}.`;
 const windowClosedLine = (name) =>
   `Not sent. ${name || 'She'} hasn't written in over 24 hours, and I can't open a new message to her until she does. ` +
   `The draft is saved — the moment she writes, say the word and it goes.`;
+
+// ④b THE DOORBELL RANG — founder-vetoed 2026-08-11 「 approve 」, byte-exact.
+// ④ SURVIVES AS THE FALLBACK FOREVER: this line is spoken only when the doorbell
+// actually went, because a doorbell that did not go never claims it did.
+const doorbellLine = (name) =>
+  `${name || 'She'} hasn't written in over 24 hours, so I can't message her directly yet — ` +
+  `but I've sent her a WhatsApp notification that you have an update. ` +
+  `The moment she replies, say the word and your message goes to her word for word.`;
 
 // ⑤ WINDOW UNDETERMINED — we do not know, and we do not say we do.
 // This is a SEPARATE byte from ④ deliberately: ④ asserts she has not written,
@@ -564,7 +572,23 @@ async function sendApproved(supabase, vendor, draft, name, deps) {
   // stamps `resolved_at` through the store's single transition primitive.
   await drafts.refuse(supabase, draft.id, out.reason || out.kind);
 
-  if (out.kind === 'window_closed') return { line: windowClosedLine(name), kind: 'window_closed', draftId: draft.id };          // ④
+  if (out.kind === 'window_closed') {
+    // ── THE ④-FORK (R-29.24 ②) — the doorbell arm, live. ONLY on window_closed:
+    // an UNDETERMINED window falls through to ⑤ untouched, because ringing a
+    // doorbell on a window we could not read is a message sent on a guess.
+    const rung = await ringDoorbell(supabase, {
+      vendor, couplePhone: draft.couple_phone, brideName: name, env: deps.env, deps,
+    });
+    if (rung.ok) {
+      // ⑤ THE STATE MACHINE IS UNTOUCHED — the draft is still `refused` with
+      // `window_closed`, written above. The doorbell's own sid is recorded in the
+      // reason so the register knows a notification went and which one.
+      await drafts.refuse(supabase, draft.id, `window_closed:doorbell:${rung.twilioSid || 'nosid'}`);
+      return { line: doorbellLine(name), kind: 'window_closed_doorbell', draftId: draft.id };   // ④b
+    }
+    console.warn('[relaySeat] doorbell not rung:', rung.reason);
+    return { line: windowClosedLine(name), kind: 'window_closed', draftId: draft.id };          // ④, the fallback
+  }
   if (out.kind === 'window_undetermined') return { line: windowUndeterminedLine(), kind: 'window_undetermined', draftId: draft.id }; // ⑤
   if (out.kind === 'no_vendor_lane') return { line: noLaneLine(name), kind: 'no_vendor_lane', draftId: draft.id };              // ⑧b
   if (out.kind === 'no_recipient') return { line: noNumberLine(name), kind: 'no_recipient', draftId: draft.id };                // ⑧a
@@ -608,6 +632,7 @@ const RELAY_CLAIM_RE_LOCAL = (() => {
 
 module.exports = {
   runRelaySeat,
+  doorbellLine,
   relayLaneLine,
   doorStage,
   doorAsked,

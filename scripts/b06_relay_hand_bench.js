@@ -16,6 +16,7 @@
 //   §9 ZIP 3 — F-06.162 · F-06.163 · F-06.164                    14
 //   §10 ZIP 4 — R-29.32 door-stage · R-29.33 E3-prime · .165-.167 16
 //   §11 F-06.169 — the temporal dead zone                          3
+//   §12 THE DOORBELL (R-29.24) — the ④-fork's template arm         8
 //
 // SIXTY-ONE AT DELIVERY. §7.8 is F-06.157's cell, added after the founder's
 // first live walk found the defect this bench could not see. DISCLOSED
@@ -1246,6 +1247,131 @@ await t('§11.3 the interception statement is STILL byte-identical (forkc §11.5
   assert.ok(/\n\s*if \(s2line\) replyText = s2line;/.test(d),
     'the one line that ships an interception was reshaped by a neighbouring feature');
 });
+
+
+// ── §12 · THE DOORBELL (R-29.24) — THE ④-FORK'S TEMPLATE ARM ────────────────
+H('§12 the doorbell — a closed window stops being a dead end');
+
+const closedWorld = () => { const w = openWorld(); w.messages = [inboundAgeHours(30)]; return w; };
+const bell = (behaviour = {}) => {
+  const calls = [];
+  const fn = async (arg, opts) => {
+    calls.push({ to: arg.to, payload: arg.payload, phoneNumberId: opts && opts.phoneNumberId });
+    if (behaviour.throw) throw new Error('meta refused');
+    if (behaviour.fail) return { sent: false, blocked: behaviour.fail };
+    return { sent: true, sid: 'wamid.DOORBELL' };
+  };
+  fn.calls = calls;
+  return fn;
+};
+// THE PNID IS RESOLVED THROUGH `sendWa.phoneNumberIdFor`, WHICH READS
+// process.env — one home for the lane→PNID map, and this bench drives the REAL
+// resolver rather than an injected shadow of it. Setting it here (and restoring
+// it after §12) is the honest way to exercise the production path; passing a
+// fake `env` object would have tested a parameter production does not use, which
+// is exactly the hollow-green shape this bench refuses.
+const PNID_WAS = process.env.VENDOR_PHONE_NUMBER_ID;
+const ENVB = ENV;
+const withPnid = (v) => { if (v == null) delete process.env.VENDOR_PHONE_NUMBER_ID; else process.env.VENDOR_PHONE_NUMBER_ID = v; };
+
+await t('§12.1 the template is registered FROM THE WIRE WITNESS, byte-exact', async () => {
+  const { getTemplate, isApproved, buildTemplatePayload } = require(SRC('src/lib/templates.js'));
+  const t12 = getTemplate('enquiry_update_couple');
+  assert.ok(t12, 'the doorbell is not on the registry');
+  assert.strictEqual(t12.name, 'tdw_enquiry_update_couple');
+  assert.strictEqual(t12.category, 'UTILITY');
+  assert.strictEqual(t12.line, 'vendor');
+  assert.deepStrictEqual(t12.variables, ['name', 'vendor']);
+  assert.strictEqual(t12.body,
+    'Hi {{1}} — your vendor {{2}} has an update on your wedding enquiry. ' +
+    'Reply here and it will be shared with you right away.');
+  assert.ok(isApproved('enquiry_update_couple'));
+  const p = buildTemplatePayload('enquiry_update_couple', { name: 'Priya', vendor: 'Studio' });
+  assert.deepStrictEqual(p.components[0].parameters.map((x) => x.text), ['Priya', 'Studio']);
+});
+
+await t('§12.2 A CLOSED WINDOW RINGS THE DOORBELL and speaks byte ④b', async () => {
+  withPnid('123456');
+  const world = closedWorld();
+  const b = bell();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
+    sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
+  });
+  assert.strictEqual(out.kind, 'window_closed_doorbell');
+  assert.strictEqual(b.calls.length, 1, 'the doorbell did not ring');
+  assert.ok(/sent her a WhatsApp notification/.test(out.line), 'byte ④b did not ship');
+});
+
+await t('§12.3 ② THE LANE IS PINNED — the doorbell rides the VENDOR PNID', async () => {
+  withPnid('123456');
+  const b = bell();
+  await seat().runRelaySeat(makeDb(closedWorld()), VENDOR, sendSig('Priya'), {
+    sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
+  });
+  assert.strictEqual(b.calls[0].phoneNumberId, '123456',
+    'the doorbell did not pin the vendor lane — her reply lands on the wrong number');
+  assert.strictEqual(b.calls[0].to, PHONE);
+});
+
+await t('§12.4 ② no vendor PNID ⇒ NO doorbell, and byte ④ verbatim', async () => {
+  withPnid(null);
+  const world = closedWorld();
+  const b = bell();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
+    sendWhatsApp: transport(), sendMetaTemplate: b, env: ENV, hasTransport: true, conversationId: 'c9',
+  });
+  assert.strictEqual(b.calls.length, 0, 'a doorbell went with no lane to send from');
+  assert.strictEqual(out.kind, 'window_closed');
+  assert.ok(/hasn't written in over 24 hours/.test(out.line));
+});
+
+await t('§12.5 ④ A DOORBELL THAT DID NOT GO NEVER CLAIMS IT DID', async () => {
+  withPnid('123456');
+  for (const b of [bell({ fail: 'opted_out' }), bell({ throw: true })]) {
+    const out = await seat().runRelaySeat(makeDb(closedWorld()), VENDOR, sendSig('Priya'), {
+      sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
+    });
+    assert.strictEqual(out.kind, 'window_closed', 'a failed doorbell was reported as rung');
+    assert.ok(!/notification/.test(out.line), 'byte ④b shipped on a doorbell that never went');
+  }
+});
+
+await t('§12.6 ① AN UNDETERMINED WINDOW NEVER RINGS IT', async () => {
+  withPnid('123456');
+  const b = bell();
+  const db = makeDb(openWorld(), { queryError: 'messages' });
+  await seat().runRelaySeat(db, VENDOR, sendSig('Priya'), {
+    sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
+  });
+  assert.strictEqual(b.calls.length, 0, 'a doorbell rang on a window we could not read');
+});
+
+await t('§12.7 ⑤ THE STATE MACHINE IS UNTOUCHED — the draft is still refused', async () => {
+  withPnid('123456');
+  const world = closedWorld();
+  await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
+    sendWhatsApp: transport(), sendMetaTemplate: bell(), env: ENVB, hasTransport: true, conversationId: 'c9',
+  });
+  const d = world.pending_couple_drafts[0];
+  assert.strictEqual(d.state, 'refused', 'the doorbell became a transition in the flow');
+  assert.ok(d.resolved_at);
+  assert.ok(/^window_closed:doorbell:/.test(String(d.refusal_reason)),
+    'the register does not record which notification went');
+});
+
+await t('§12.8 MUTATION — dropping the lane pin turns §12.3 RED', async () => {
+  withPnid('123456');
+  const m = mutate('src/lib/vendor/relayToCouple.js', 'const pnid = phoneNumberIdFor(t.line);', "const pnid = 'MARKETING_DEFAULT';", 'bell');
+  assert.ok(m, 'DECLARED FAIL — the doorbell lane-pin anchor is absent');
+  const b = bell();
+  await fresh(m).ringDoorbell(makeDb(closedWorld()), {
+    vendor: VENDOR, couplePhone: PHONE, brideName: 'Priya', env: ENVB, deps: { sendMetaTemplate: b },
+  });
+  assert.strictEqual(b.calls[0].phoneNumberId, 'MARKETING_DEFAULT',
+    'the mutation did not bite — the lane cell proves nothing');
+});
+
+withPnid(PNID_WAS);   // §12 restores the environment it borrowed
 
 // ═════════════════════════════════════════════════════════════════════════════
 cleanup();

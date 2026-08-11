@@ -77,6 +77,39 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── TDW_06 THE HAND · THE DOORBELL (R-29.24) ──────────────────────────────
+  // AUTHORED FROM THE WIRE WITNESS AND NO OTHER SOURCE (F-08.75). Founder-
+  // witnessed on his own Meta Template Manager, 2026-08-11: name
+  // `tdw_enquiry_update_couple` · UTILITY · English · quick-reply 「 See the
+  // update 」 · body submitted BYTE-IDENTICAL to the chair's vetoed draft. Meta
+  // approved it minutes after filing.
+  //
+  // WHAT IT IS FOR: the vendor→bride window is a 24-hour customer-service window
+  // and it closes. Before this template the estate's only honest answer on a shut
+  // window was byte ④ — 「 Not sent. She hasn't written in over 24 hours 」 — and
+  // the vendor's message simply waited. THIS IS THE DOORBELL: it does not carry
+  // his message (a UTILITY template cannot), it tells her there IS one, and her
+  // reply re-opens the window so the real words can follow, word for word.
+  //
+  // LANE: 'vendor'. NON-NEGOTIABLE and celled. A doorbell sent from the bride
+  // PNID invites her reply onto the wrong number, and the whole mechanic dies
+  // silently — she answers into a lane that has no draft waiting.
+  //
+  // {{1}} bride first name · {{2}} vendor display name. Single line, no variable
+  // adjacent to another, none at the body's start or end — §1's own rules.
+  enquiry_update_couple: {
+    key: 'enquiry_update_couple',
+    name: 'tdw_enquiry_update_couple',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['name', 'vendor'],
+    body:
+      "Hi {{1}} — your vendor {{2}} has an update on your wedding enquiry. " +
+      "Reply here and it will be shared with you right away.",
+    status: 'approved',
+  },
+
   crew_assignment: {
     key: 'crew_assignment',
     name: 'tdw_crew_assignment',

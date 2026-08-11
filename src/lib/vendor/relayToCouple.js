@@ -311,8 +311,62 @@ async function resolveRecipient(supabase, vendorId, recipient) {
   return { phone: null, name: raw, reason: 'no_phone_on_file' };
 }
 
+// ══ THE DOORBELL (R-29.24) — THE ④-FORK'S TEMPLATE ARM ══════════════════════
+//
+// ON A CLOSED WINDOW the estate has, until now, had exactly one honest answer:
+// byte ④, the draft waits, and nothing reaches her until she happens to write.
+// The doorbell is the other arm: a UTILITY template that tells her there IS an
+// update, whose reply RE-OPENS the window so the vendor's real words can follow
+// verbatim.
+//
+// FIVE PROPERTIES, EACH RULED AND EACH CELLED:
+//  ① it fires ONLY on `window_closed` — never on `window_undetermined`, because
+//    a doorbell rung on a window we could not read is a message sent on a guess;
+//  ② THE LANE IS PINNED, exactly as the free-form send pins it. A doorbell from
+//    the bride PNID invites her reply onto the wrong number and the mechanic
+//    dies silently — she answers into a lane holding no draft;
+//  ③ SID DISCIPLINE on its own send, same as every other write in this file;
+//  ④ ITS FAILURE FALLS BACK TO BYTE ④ VERBATIM. A doorbell that did not go never
+//    claims it did — the whole arc's law, applied to its newest limb;
+//  ⑤ THE DRAFT'S STATE MACHINE IS UNTOUCHED. The doorbell is a NOTIFICATION
+//    BESIDE the flow, never a transition in it: the draft stays `refused` with
+//    `window_closed`, exactly as it would with no doorbell at all. What changes
+//    is only what the VENDOR is told, and only when she was actually rung.
+async function ringDoorbell(supabase, { vendor, couplePhone, brideName, env, deps = {} }) {
+  const environment = env || process.env;
+  try {
+    const { getTemplate, isApproved, buildTemplatePayload } = require('../templates');
+    const KEY = 'enquiry_update_couple';
+    const t = getTemplate(KEY);
+    // ① the fork point: no mapped+approved template ⇒ byte ④, unchanged.
+    if (!t || !isApproved(KEY)) return { ok: false, reason: 'no_mapped_template' };
+
+    // ② THE LANE, PINNED — by the template's own declared line, resolved through
+    // sendWa's one home. An unset PNID is a REFUSAL, never a send to marketing's
+    // default (metaCloud.resolveConfig would fall back there, which is exactly
+    // the silent wrong-number failure ② exists to prevent).
+    const { phoneNumberIdFor } = require('../sendWa');
+    const pnid = phoneNumberIdFor(t.line);
+    if (!pnid) return { ok: false, reason: `no_pnid_for_lane:${t.line}` };
+
+    const vendorName = vendor.business_name || vendor.name || 'your vendor';
+    const first = String(brideName || '').trim().split(/\s+/)[0] || 'there';
+    const payload = buildTemplatePayload(KEY, { name: first, vendor: vendorName });
+
+    const send = deps.sendMetaTemplate
+      || require('../metaCloud').sendMetaTemplate;
+    const out = await send({ to: couplePhone, payload }, { phoneNumberId: pnid });
+    // The sentinel is READ here too — `sent !== true` is a failure, never rounded up.
+    if (!out || out.sent !== true) return { ok: false, reason: (out && out.blocked) ? `blocked:${out.blocked}` : 'not_sent' };
+    return { ok: true, twilioSid: out.sid || null, line: t.line, template: t.name };
+  } catch (e) {
+    return { ok: false, reason: `doorbell_threw: ${e && e.message}` };
+  }
+}
+
 module.exports = {
   relayToCouple,
+  ringDoorbell,
   resolveRecipient,
   coupleDisplayName,
   asPhone,
