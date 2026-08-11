@@ -14,6 +14,7 @@
 //   §7    structural — import guard · sealed benches · floor     8  (+1, §7.8)
 //   §8 ZIP 2 — F-06.158 · F-06.159 · F-06.160                    12
 //   §9 ZIP 3 — F-06.162 · F-06.163 · F-06.164                    14
+//   §10 ZIP 4 — R-29.32 door-stage · R-29.33 E3-prime · .165-.167 16
 //
 // SIXTY-ONE AT DELIVERY. §7.8 is F-06.157's cell, added after the founder's
 // first live walk found the defect this bench could not see. DISCLOSED
@@ -534,7 +535,7 @@ await t('§5.5 an approve against an already-resolved draft is refused', async (
   assert.strictEqual(out.ok, false);
 });
 
-await t('§5.6 A BARE YES TO NOTHING moves no state and mints no byte', async () => {
+await t('§5.6 A BARE YES TO NOTHING (no open draft at all) moves no state', async () => {
   const world = { conversations: [convoRow()], messages: [inboundAgeHours(1)], leads: [LEAD], pending_couple_drafts: [] };
   const r = await runSend(world);
   assert.strictEqual(r.line, null, 'an affirmative to nothing produced a line');
@@ -915,26 +916,38 @@ await t('§9.4 F-06.162 — A NAMING AFFIRMATIVE ROUTES WITH ZERO TOOL CALLS', a
   assert.strictEqual(send.calls.length, 1);
 });
 
-await t('§9.5 E3 HOLDS AT THE DOOR — a BARE yes moves nothing', async () => {
+await t('§9.5 E3-PRIME RE-AIM — a bare yes that is NOT door-adjacent moves nothing', async () => {
+  // ── RE-AIMED (R-29.33), DISCLOSED RATIFY-OR-REVERT. The cell used to assert
+  // that a bare yes NEVER approves. Under E3-prime it approves when it is
+  // door-adjacent, and the property that survives — and is the one that always
+  // mattered — is that a bare yes with no door ask behind it moves nothing.
+  // The world here has NO outbound confirm on record, so adjacency is false.
   const world = openWorld();
+  world.messages = [inboundAgeHours(1)];   // no outbound confirm ⇒ not adjacent
   const send = transport();
   const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
-    sendWhatsApp: send, env: ENV, hasTransport: true, ownerWords: 'Yes',
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: 'Yes',
   });
-  assert.strictEqual(out, null, 'a bare yes routed — the founder\'s own 09:29:03 turn');
-  assert.strictEqual(send.calls.length, 0);
+  assert.strictEqual(send.calls.length, 0, 'a non-adjacent bare yes reached the wire');
   assert.strictEqual(world.pending_couple_drafts[0].state, 'staged');
+  assert.ok(out && out.kind === 'not_adjacent', 'the stale yes was not answered honestly');
 });
 
 await t('§9.6 E3 HOLDS — an affirmative naming a DIFFERENT person moves nothing', async () => {
+  // ── RE-AIMED (R-29.33 lane ③), DISCLOSED RATIFY-OR-REVERT. The behaviour the
+  // cell guards is UNCHANGED and is asserted unchanged: no send, no transition.
+  // What changed is that the vendor is no longer met with silence — a wrong name
+  // now RE-SHOWS, which is the safe direction R-29.19 already ruled and which the
+  // door could not reach before it owned this lane.
   const world = openWorld();
   const send = transport();
   const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
-    sendWhatsApp: send, env: ENV, hasTransport: true, ownerWords: 'yes send it to Ananya',
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: 'yes send it to Ananya',
   });
-  assert.strictEqual(out, null);
-  assert.strictEqual(send.calls.length, 0);
+  assert.strictEqual(send.calls.length, 0, 'the wrong name reached the wire');
   assert.strictEqual(world.pending_couple_drafts[0].state, 'staged');
+  assert.ok(out && out.line.includes(BODY) && !/Ananya/.test(out.line),
+    'the re-show is missing, or it echoed the wrong name back');
 });
 
 await t('§9.7 the PHONE also names her — the stored anchor is a legal naming', async () => {
@@ -997,6 +1010,179 @@ await t('§9.14 ABSENT => byte-identical dynamic block (the regression law)', as
   const l = fs.readFileSync(SRC('src/engine/src/core/loop.ts'), 'utf8');
   assert.ok(/args\.pendingRelay\) \? `\\n\\n\$\{args\.pendingRelay\}` : ''/.test(l),
     'an absent block does not collapse to the empty string');
+});
+
+
+// ── §10 · ZIP 4 — THE DOOR OWNS THE STAGE, AND E3-PRIME ─────────────────────
+H('§10 R-29.32/.33 — the trigger leaves the model');
+
+const withAsk = (over = {}) => {
+  const w = openWorld(over);
+  w.messages = [inboundAgeHours(1),
+    { id: 'ask', conversation_id: 'c9', direction: 'outbound',
+      body: `Here is the draft, word for word:\n\n"${BODY}"\n\nSend this to Priya (+919625759924)?`,
+      created_at: new Date().toISOString() }];
+  return w;
+};
+
+await t('§10.1 R-29.33 LANE ① — a door-adjacent PLAIN yes APPROVES and SENDS', async () => {
+  const world = withAsk();
+  const send = transport();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: 'Yes',
+  });
+  assert.strictEqual(out.kind, 'sent');
+  assert.strictEqual(send.calls.length, 1);
+});
+
+await t('§10.2 WALK FOUR\'S THREE REFUSED AFFIRMATIVES NOW APPROVE — the named specimens', async () => {
+  for (const said of ['Send', 'Yes', 'Send it']) {
+    const world = withAsk();
+    const send = transport();
+    const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+      sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: said,
+    });
+    assert.strictEqual(out.kind, 'sent', `walk four's "${said}" still refuses`);
+    assert.strictEqual(send.calls.length, 1);
+  }
+});
+
+await t('§10.3 MUTATION — stripping the adjacency check lets a STALE yes send (RED)', async () => {
+  const m = mutate('src/lib/vendor/relaySeat.js', 'const adjacent = (plain || decline) ? await doorAsked(supabase, deps.conversationId) : false;', 'const adjacent = true;', 'e3p');
+  assert.ok(m, 'DECLARED FAIL — the adjacency anchor is absent');
+  const world = openWorld(); world.messages = [inboundAgeHours(1)];
+  const send = transport();
+  await fresh(m).runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: 'Yes',
+  });
+  assert.strictEqual(send.calls.length, 1, 'the mutation did not bite — §9.5 proves nothing');
+});
+
+await t('§10.4 LANE ② — a NAMING affirmative still approves without adjacency', async () => {
+  const world = openWorld(); world.messages = [inboundAgeHours(1)];
+  const send = transport();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: 'yes send it to Priya',
+  });
+  assert.strictEqual(out.kind, 'sent', 'the strong signal lost its standing power');
+});
+
+await t('§10.5 LANE ③ — a DIFFERENT name still refuses, adjacent or not', async () => {
+  const world = withAsk();
+  const send = transport();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: 'yes send it to Ananya',
+  });
+  assert.strictEqual(send.calls.length, 0, 'the wrong-bride guard fell to E3-prime');
+  assert.strictEqual(world.pending_couple_drafts[0].state, 'staged');
+});
+
+await t('§10.6 THE DECLINE LANE — byte №13, row refused, never deleted', async () => {
+  const world = withAsk();
+  const send = transport();
+  const out = await seat().runRelaySeat(makeDb(world), VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: send, env: ENV, hasTransport: true, conversationId: 'c9', ownerWords: "don't send",
+  });
+  assert.strictEqual(out.kind, 'declined');
+  assert.strictEqual(send.calls.length, 0);
+  const d = world.pending_couple_drafts[0];
+  assert.strictEqual(d.state, 'refused');
+  assert.strictEqual(d.refusal_reason, 'vendor_declined');
+  assert.ok(d.resolved_at && world.pending_couple_drafts.length === 1, 'a decline deleted the row');
+});
+
+await t('§10.7 R-29.32 ② VERBATIM — the vendor\'s own bytes stage byte-exact, zero model', async () => {
+  const s10 = seat();
+  assert.strictEqual(s10.verbatimBody('Tell Priya: "The shoot is confirmed for 12 December."'),
+    'The shoot is confirmed for 12 December.');
+  assert.strictEqual(s10.verbatimBody('ask her if she is free'), null, 'an intent was read as verbatim');
+});
+
+await t('§10.8 R-29.32 ① — the door stages from the vendor\'s instruction, ZERO tool calls', async () => {
+  const world = { conversations: [convoRow()], messages: [inboundAgeHours(1)], leads: [LEAD], pending_couple_drafts: [] };
+  const db = makeDb(world);
+  const out = await seat().runRelaySeat(db, VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: transport(), env: ENV, hasTransport: true, conversationId: 'c9',
+    ownerWords: 'Tell Priya: "The shoot is confirmed for 12 December."',
+  });
+  assert.ok(out && out.kind === 'door_staged', 'walk four repeats — the door did not stage');
+  assert.ok(out.line.includes('The shoot is confirmed for 12 December.'));
+  assert.strictEqual(world.pending_couple_drafts.length, 1);
+});
+
+await t('§10.9 ① ZERO ROWS ON A GUESS — an ambiguous recipient ASKS (byte №12)', async () => {
+  const world = { conversations: [convoRow()], messages: [], pending_couple_drafts: [],
+                  leads: [LEAD, { id: 'l2', vendor_id: 'v1', name: 'Priya', phone: '+919999999999' }] };
+  const db = makeDb(world);
+  const out = await seat().runRelaySeat(db, VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: transport(), env: ENV, hasTransport: true, conversationId: 'c9',
+    ownerWords: 'Tell Priya: "The shoot is confirmed."',
+  });
+  assert.strictEqual(out.kind, 'ask_who');
+  assert.ok(/won't guess with a message/.test(out.line));
+  assert.strictEqual(world.pending_couple_drafts.length, 0, 'a row was minted on a guess');
+});
+
+await t('§10.10 the door stays SILENT on a non-relay turn — no rows, no lines', async () => {
+  const world = { conversations: [convoRow()], messages: [], leads: [LEAD], pending_couple_drafts: [] };
+  const db = makeDb(world);
+  const out = await seat().runRelaySeat(db, VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: transport(), env: ENV, hasTransport: true, conversationId: 'c9',
+    ownerWords: 'what is my thursday looking like',
+  });
+  assert.strictEqual(out, null);
+  assert.strictEqual(db._log.inserts.length, 0);
+});
+
+await t('§10.11 F-06.160 FINALLY FIRES — a door-staged row supersedes the stale one', async () => {
+  const world = { conversations: [convoRow()], messages: [inboundAgeHours(1)], leads: [LEAD],
+                  pending_couple_drafts: [draftRow({ id: 'stale' })] };
+  const db = makeDb(world);
+  const out = await seat().runRelaySeat(db, VENDOR, { tool_calls: [] }, {
+    sendWhatsApp: transport(), env: ENV, hasTransport: true, conversationId: 'c9',
+    ownerWords: 'Tell Priya: "A completely new message for her."',
+  });
+  assert.strictEqual(out.kind, 'door_staged', 'the stage never happened, so nothing superseded');
+  const stale = world.pending_couple_drafts.find((r) => r.id === 'stale');
+  assert.strictEqual(stale.state, 'expired', 'walk four\'s two-drafts-one-screen survives');
+  assert.ok(/^superseded:/.test(String(stale.refusal_reason)));
+});
+
+await t('§10.12 F-06.166 — the fabricated 50k frame is a costume shape', async () => {
+  const { CONFIRM_SHAPE_RE } = require(SRC('src/api/vendor-engine/chat.js'));
+  const spec = 'Draft ready for approval:\n"Are you interested in a pre-wedding shoot for Rs 50,000? We can get on a call and finalise the details."\nSend this to Priya?';
+  assert.ok(CONFIRM_SHAPE_RE.test(spec), 'the 09:49:37 specimen still walks');
+  assert.ok(!CONFIRM_SHAPE_RE.test('Not sent. Priya hasn\'t written in over 24 hours.'),
+    'an honest refusal was read as an imitated commitment');
+});
+
+await t('§10.13 F-06.166 — the guard acquits on the STORE, not the words', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  assert.ok(/if \(!s2line && !\(relayOut && relayOut\.draftId\)\)/.test(d),
+    'the confirm-shape guard does not consult this turn\'s own staging outcome');
+});
+
+await t('§10.14 F-06.165 arm (α) IS MECHANICAL — the costume row is patched, not hand-fixed', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  assert.ok(/relay_lane\|confirm_shape_costume/.test(d), 'the standing patch does not cover both relay arms');
+  assert.ok(/patchComposedReply\(supabase, \{ \.\.\.effectiveResult, reply: '' \}, s2line\)/.test(d),
+    'the costume row is not replaced by the honest line');
+});
+
+await t('§10.15 F-06.167 — the founder\'s walked specimen now convicts', async () => {
+  const { RELAY_CLAIM_RE } = require(SRC('src/api/vendor-engine/chat.js'));
+  assert.ok(RELAY_CLAIM_RE.test('Nothing waiting to send. The last message to Priya went through.'));
+  assert.ok(RELAY_CLAIM_RE.test('The message is with her.'));
+  assert.ok(!RELAY_CLAIM_RE.test('Shall I send this to Priya?'), 'a question was convicted');
+});
+
+await t('§10.16 R-29.32 ② — the COMPOSE fork uses an EXISTING engine entry point', async () => {
+  const src = fs.readFileSync(SEAT, 'utf8');
+  assert.ok(/require\('\.\.\/\.\.\/engine\/dist\/core\/donna'\)/.test(src),
+    'the compose fork does not reach Donna through the door plane\'s existing path');
+  const harvest = fs.readFileSync(SRC('src/agent/harvest.js'), 'utf8');
+  assert.ok(/require\('\.\.\/engine\/dist\/core\/donna'\)/.test(harvest),
+    'the precedent this cure cited no longer exists — re-derive before shipping');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

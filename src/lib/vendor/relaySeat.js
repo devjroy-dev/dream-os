@@ -212,6 +212,145 @@ function affirmativeNames(text, name, phone) {
   return new RegExp(`\\b${foldName(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(foldName(t));
 }
 
+// ══ R-29.32 · THE DOOR OWNS THE STAGE ═══════════════════════════════════════
+// FOUR WALKS PROVED THE MODEL IS AN UNRELIABLE TRIGGER. Every relay turn came
+// back `(0 tool calls)` while the vendor's screen filled with plausible prose,
+// and every cure that added CONTEXT handed the costume better material
+// (F-06.166: the true draft verbatim in his context, a fabricated sibling in his
+// prose, ten seconds apart). The trigger leaves the model.
+//
+// ── ① DETECTION ────────────────────────────────────────────────────────────
+// The verb family has ONE home in chat.js (production owns, the rig borrows).
+// The RECIPIENT must resolve to EXACTLY ONE open couple_thread — the corpse's
+// own refuse-to-guess precedent (`replyToCouple.js`, recovery 2) made law.
+// Ambiguous or unresolvable → the door ASKS (byte №12). ZERO ROWS ON A GUESS.
+
+// ── BYTE №12 — the ambiguous / unresolvable recipient ask ──────────────────
+// FOUNDER-VETOED 2026-08-11 「 yes approved 」 (and see the ZIP note: the veto
+// word arrived before these bytes had been drafted, so the founder is reading
+// them for the first time at delivery and holds the gate by holding the push).
+const askWhoLine = (given) =>
+  `Who should that go to? I have more than one client on file matching "${given}", ` +
+  `and I won't guess with a message. Give me her name as it's saved, or her number, ` +
+  `and I'll put the draft in front of you.`;
+
+// ── BYTE №13 — the plain decline ──────────────────────────────────────────
+// FOUNDER-VETOED 2026-08-11 「 approve 」. A decline NEVER deletes; the row stays.
+const declinedLine = (name) =>
+  `Not sent — I've dropped it. Nothing went to ${name || 'her'}. ` +
+  `Tell me when you want to write to her again.`;
+
+// ── ② THE BODY FORK ───────────────────────────────────────────────────────
+// VERBATIM: the vendor gave the words, so the estate delivers HIS bytes,
+// byte-exact, with zero model in the body path. COMPOSE: intent without content
+// — the model still composes (the founder's 「 i want it 」 stands) but the
+// ROUTING is the door's.
+function verbatimBody(text) {
+  const m = require('../../api/vendor-engine/chat').VERBATIM_RE.exec(String(text || ''));
+  if (!m) return null;
+  const body = (m[1] || m[2] || '').trim();
+  return body.length >= 8 ? body : null;
+}
+
+// THE COMPOSE INVOCATION, AND ITS EVIDENCE — the chair required an EXISTING
+// entry point rather than a new one, and there is one: `src/agent/harvest.js:35`
+// already does `require('../engine/dist/core/donna')` from the door plane. This
+// is that same module and that same plane; no new engine entry point is minted.
+// Donna composes and the door reads her STRUCTURED signal — never her prose —
+// so the body that reaches the store is the one her own hand named.
+async function composeBody(agentId, instruction) {
+  try {
+    const { runDonnaTurn } = require('../../engine/dist/core/donna');
+    const turn = await runDonnaTurn(agentId, instruction);
+    for (const tc of (turn && turn.tool_calls) || []) {
+      if (tc.name === STAGE_SIGNAL && tc.input && typeof tc.input.message === 'string') {
+        const b = tc.input.message.trim();
+        if (b) return b;
+      }
+    }
+    return null;
+  } catch (e) {
+    console.warn('[relaySeat] compose failed:', e && e.message);
+    return null;
+  }
+}
+
+/**
+ * THE DOOR'S STAGE. Returns a line to append, or null when this turn is not a
+ * relay instruction at all.
+ */
+async function doorStage(supabase, vendor, text, deps) {
+  const chat = require('../../api/vendor-engine/chat');
+  const raw = String(text || '').trim();
+  if (!raw || !chat.RELAY_VERB_RE.test(raw)) return null;
+
+  const who = await resolveRecipient(supabase, vendor.id, extractRecipient(raw));
+  if (who.reason === 'ambiguous_recipient') return { line: askWhoLine(who.name || 'that name'), kind: 'ask_who' };
+  if (!who.phone) return null;   // not a resolvable relay instruction — the door stays silent
+
+  const body = verbatimBody(raw) || (deps.agentId ? await composeBody(deps.agentId, raw) : null);
+  if (!body) return null;
+
+  const staged = await drafts.stage(supabase, {
+    vendorId: vendor.id, conversationId: deps.conversationId || null,
+    couplePhone: who.phone, body,
+  });
+  if (!staged.ok) { console.warn('[relaySeat] door stage failed:', staged.reason); return null; }
+  return {
+    line: showBlock(staged.draft.body, who.name, staged.draft.couple_phone),
+    kind: 'door_staged', draftId: staged.draft.id,
+  };
+}
+
+// The recipient, lifted from the instruction. Deliberately dumb: the first
+// capitalised token or a phone-like run. It never DECIDES anything — whatever it
+// lifts is handed to `resolveRecipient`, which answers against the store and
+// refuses to guess among several. A bad lift resolves to nothing and the door
+// stays silent, which is the status quo, not a new harm.
+function extractRecipient(text) {
+  const t = String(text || '');
+  const phone = t.match(/\+?\d[\d\s\-()]{8,}/);
+  if (phone) return phone[0];
+  // Case-insensitive on the VERB (a sentence opens with "Tell Priya…", capital T)
+  // and case-SENSITIVE on the name, so the verb itself can never be lifted as the
+  // recipient — which is exactly what an all-case-sensitive pattern did.
+  const m = t.match(/\b(?:to|tell|ask|message|msg|text|whatsapp|inform)\s+([A-Z][a-z]+)\b/i)
+         && t.match(/\b(?:to|tell|ask|message|msg|text|whatsapp|inform)\s+([A-Z][a-z]+)\b/i);
+  if (m && m[1] && !/^(?:to|tell|ask|message|msg|text|whatsapp|inform)$/i.test(m[1])) return m[1];
+  const cap = t.match(/\b([A-Z][a-z]{2,})\b/);
+  return cap ? cap[1] : '';
+}
+
+// ── E3-PRIME (R-29.33) — THREE LANES ───────────────────────────────────────
+// The founder's amendment, and the chair's reason stated where it is read: the
+// original 「 bare yes to nothing 」 refusal guarded a MODEL-anchored flow, where
+// the yes had nothing mechanical to attach to. Under R-29.32 the DOOR asks the
+// question, on a row the DOOR staged, shown with her name AND phone. A bare
+// affirmative arriving as the next vendor inbound after THE DOOR'S OWN ASK is
+// not a yes to nothing — the anchor is the door's own state.
+//
+// The founder felt his own guard refuse him three times in walk four. It was
+// right then because the anchor was the model's; his amendment is right now
+// because the anchor is the door's.
+const AFFIRM_PLAIN_RE = /^(?:\s*(?:yes|yeah|yep|yup|ya|ok|okay|k|sure|go|go ahead|do it|send|send it|send it now|confirm|confirmed|approve|approved|yes please|please send|haan|haa|bhej do|bhejo|theek hai)\s*[.!]?\s*)+$/i;
+const DECLINE_PLAIN_RE = /^(?:\s*(?:no|nope|nah|don'?t|do not|don'?t send|dont send|cancel|stop|wait|hold on|hold|drop it|mat bhejo|rehne do|nahi)\s*[.!]?\s*)+$/i;
+
+/**
+ * DOOR-ADJACENCY — was the estate's OWN confirm ask the last thing this vendor
+ * was shown? Read off `public.messages`, the door's own stored bytes, so the
+ * anchor is a fact the door wrote and not a claim anyone made about it.
+ */
+async function doorAsked(supabase, conversationId) {
+  if (!supabase || !conversationId) return false;
+  try {
+    const { data } = await supabase
+      .from('messages').select('body, direction')
+      .eq('conversation_id', conversationId).eq('direction', 'outbound')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    return !!(data && /Send this to .*\(\+\d/.test(String(data.body || '')));
+  } catch (_e) { return false; }
+}
+
 // ── THE SIGNAL COLLECTOR ───────────────────────────────────────────────────
 // Signals nest inside `tool_calls[].donna_calls` — a top-level-only scan
 // collects nothing. Same shape as `blockHands.js`'s collector and the invoice
@@ -249,24 +388,47 @@ const foldName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' '
 async function runRelaySeat(supabase, vendor, result, deps = {}) {
   const signals = collectSignals(result);
 
-  // ── F-06.162's ROUTE (R-29.29) ────────────────────────────────────────────
-  // When a commitment is OPEN and the owner's own words affirm it BY NAME, the
-  // door acts on the store — no Harvey tool call required, because R-29.23
-  // already put the door in charge of reading the turn and R-29.25 already put
-  // every organ on this side of the boundary. Harvey holds no tool and needs
-  // none; the block told him a fact, the vendor answered it, and the door owns
-  // the deed. Seated BEFORE the signal branch so a turn that both affirms and
-  // (wrongly) re-stages is governed by the affirmative, exactly as the two
-  // signals are ordered below and for the same reason.
+  // ── THE DOOR'S OWN LANES (R-29.32 · R-29.33) ──────────────────────────────
+  // ORDER IS LOAD-BEARING and each step is named:
+  //   1. DECLINE before approve — a 「 no 」 must never race a 「 yes 」 family.
+  //   2. APPROVE before stage — an affirmative answers a draft already shown; a
+  //      stage in the same breath has not been in front of him yet.
+  //   3. STAGE before the signals — the door is the trigger now; a model signal
+  //      arriving on the same turn is decoration, not a second stage.
   if (deps.hasTransport !== false && deps.ownerWords) {
     const open = await drafts.openStagedFor(supabase, vendor.id);
     if (open.expired) return { line: expiredLine(), kind: 'expired' };
+
     if (open.draft) {
       const name = await coupleDisplayName(supabase, vendor.id, open.draft.couple_phone);
-      if (affirmativeNames(deps.ownerWords, name, open.draft.couple_phone)) {
+      const plain = AFFIRM_PLAIN_RE.test(String(deps.ownerWords).trim());
+      const decline = DECLINE_PLAIN_RE.test(String(deps.ownerWords).trim());
+      // ADJACENCY, asked ONCE and only when a plain lane is in play — a naming
+      // affirmative keeps its standing power and never needs it (lane ②).
+      const adjacent = (plain || decline) ? await doorAsked(supabase, deps.conversationId) : false;
+
+      if (decline && adjacent) {
+        await drafts.refuse(supabase, open.draft.id, 'vendor_declined');
+        return { line: declinedLine(name), kind: 'declined', draftId: open.draft.id };
+      }
+      // LANE ① plain + door-adjacent · LANE ② naming, anytime. All three
+      // conditions of lane ① or nothing: the ask was the door's, exactly one
+      // open staged row exists (openStagedFor's own contract), and expiry has
+      // already been enforced at read above.
+      if ((plain && adjacent) || affirmativeNames(deps.ownerWords, name, open.draft.couple_phone)) {
         return sendApproved(supabase, vendor, open.draft, name, deps);
       }
+      // LANE ③ — an affirmative naming SOMEONE ELSE still re-shows and moves
+      // nothing. A plain affirmative that is NOT door-adjacent falls through to
+      // the same place: never a send.
+      if (/\b(?:yes|yeah|yep|send|ok|okay|sure|approve)\b/i.test(String(deps.ownerWords))) {
+        return { line: mismatchBlock(open.draft.body, name, open.draft.couple_phone), kind: 'not_adjacent' };
+      }
     }
+
+    // ── R-29.32 — THE DOOR STAGES. The last model-dependent step, removed.
+    const staged = await doorStage(supabase, vendor, deps.ownerWords, deps);
+    if (staged) return staged;
   }
 
   if (!signals.length) return null;
@@ -407,10 +569,13 @@ async function sendApproved(supabase, vendor, draft, name, deps) {
  * claimed a deed it did not do; the draft is exactly where it was and the vendor
  * is told so with the bytes written for that fact.
  */
-async function relayLaneLine(supabase, vendor, result) {
+async function relayLaneLine(supabase, vendor, result, opts = {}) {
   // Only speak for a turn that CLAIMED the relay. A filing-lane costume in a
   // conversation that happens to hold a draft is not this lane's to answer.
-  const claimed = RELAY_CLAIM_RE_LOCAL.test(String((result && result.reply) || ''));
+  // `anyClaim` is the confirm-shape caller (F-06.166), which has already decided
+  // the turn is the relay's business by a different family and must not be
+  // second-guessed by this one.
+  const claimed = opts.anyClaim || RELAY_CLAIM_RE_LOCAL.test(String((result && result.reply) || ''));
   if (!claimed) return null;
   const open = await drafts.openStagedFor(supabase, vendor.id);
   if (open.expired) return expiredLine();
@@ -430,6 +595,14 @@ const RELAY_CLAIM_RE_LOCAL = (() => {
 module.exports = {
   runRelaySeat,
   relayLaneLine,
+  doorStage,
+  doorAsked,
+  verbatimBody,
+  extractRecipient,
+  askWhoLine,
+  declinedLine,
+  AFFIRM_PLAIN_RE,
+  DECLINE_PLAIN_RE,
   buildPendingRelay,
   pendingRelayBlock,
   affirmativeNames,

@@ -1317,6 +1317,16 @@ const RELAY_CLAIM_RE = new RegExp([
   "\\b(?:sent|delivered|forwarded|relayed|passed on)\\s+(?:it\\s+)?to\\s+\\S",
   // first person completed/promised transmission
   "\\bI(?:'ve| have|'ll| will| am|'m)\\s+(?:just |already |now |going to )?(?:sent|send|sending|delivered|forwarded|relayed|passed on|messaged|texted|written to|whatsapped)\\b",
+  // ── F-06.167 (R-29.32 ④) — THE RELAY COMPLETION LIMBS, UNBOUND FROM FILING
+  // OBJECTS. The founder's specimen walked: 「 the last message to Priya went
+  // through 」. `went through` exists in the estate's vocabulary today only
+  // bound to filing objects, which is exactly why a transmission wearing it was
+  // invisible. These limbs speak about a MESSAGE reaching a PERSON and nothing
+  // else.
+  "\\b(?:message|msg|it|that|reply|note)\\s+(?:to\\s+[^\\s,.]+\\s+)?(?:went through|has gone (?:out|through)?|went out)\\b",
+  "\\b(?:she|he|they)\\s+(?:has|have|'s|'ve)\\s+(?:got|received)\\s+it\\b",
+  "\\b(?:it|that|the message)\\s+(?:is|'s)\\s+with\\s+(?:her|him|them)\\b",
+  "\\blast\\s+message\\s+to\\s+\\S+\\s+went\\s+through\\b",
   // "Done — sent to Priya" / "Done, message is with her"
   "\\b(?:done|sorted|handled)\\b[^.]{0,30}\\b(?:sent|delivered|forwarded|relayed|messaged|texted)\\b",
   // the door-line costume: a bare participle + colon, dressed as a deed line
@@ -1328,6 +1338,52 @@ const RELAY_CLAIM_RE = new RegExp([
 // asserted against the engine's own RELAY_SIGNAL_NAMES by a cell so a rename
 // cannot silently un-blind this class.
 const RELAY_DEED_RE = /^donna_relay_send$/;
+
+// ── TDW_06 F-06.166 (R-29.32 ③) — THE CONFIRM-SHAPE IMITATION ──────────────
+// THE NAMED RED SPECIMEN, founder-witnessed 2026-08-11 09:49:37, ZERO tool
+// calls and ZERO rows minted:
+//   「 Draft ready for approval: / "Are you interested in a pre-wedding shoot
+//     for Rs 50,000? …" / Send this to Priya? 」
+// A near-exact imitation of the door's own founder-vetoed byte ②. It is a
+// costume of a NEW kind — not a claimed deed but a claimed COMMITMENT, and the
+// existing families all speak about deeds. F-06.158's cure is what taught him
+// the shape: door-composed frames patched into the thread read to him as his
+// own speech, so he reproduces them. The cure's cost, priced here.
+//
+// THE ACQUITTAL IS THE STORE, not the words: this shape is honest when a draft
+// was just staged and a costume when none was. The door supplies that fact —
+// this regex only says the shape is present.
+const CONFIRM_SHAPE_RE = new RegExp([
+  "\\bsend\\s+(?:this|it|that)\\s+to\\s+\\S",
+  "\\bdraft\\s+(?:is\\s+)?ready\\b",
+  "\\bready\\s+for\\s+(?:your\\s+)?approval\\b",
+  "\\bapprove\\s+(?:and|it)\\b[^.]{0,40}\\b(?:goes|send)\\b",
+  "\\bhere\\s+is\\s+the\\s+draft\\b",
+].join("|"), "i");
+
+// ── TDW_06 R-29.32 ① — THE RELAY-INSTRUCTION FAMILY, ONE HOME ──────────────
+// Four walks proved THE MODEL IS AN UNRELIABLE TRIGGER: every relay turn came
+// back with zero tool calls while the vendor's screen filled with plausible
+// prose. Detection moves to the door and becomes mechanical.
+//
+// THE (3c) OBJECTION, ANSWERED WHERE IT LIVES RATHER THAN IN A HANDOVER:
+// R-29.19 refused door word-matching on the APPROVE side, where a false
+// positive is a SEND — an irreversible wire event decided by a regex. The
+// STAGE side inverts that geometry entirely. A false-positive stage mints a
+// ROW AND A QUESTION: named, phone-bearing, shown verbatim, E3-guarded,
+// 24h-expiring, and refused unless the vendor answers it. Walk four is the
+// proof — the guard refused the FOUNDER three times running. A false-NEGATIVE
+// stage is the status quo, which is four failed walks. Mechanical reading is
+// safe here BECAUSE it stays refused at approve; one design, not a
+// contradiction.
+const RELAY_VERB_RE = /\b(?:send|message|msg|text|whatsapp|write to|reply to|tell|ask|let\s+\S+\s+know|inform)\b/i;
+
+// The VERBATIM fork's markers: the vendor supplied the words himself, so the
+// estate delivers HIS bytes and no model touches the body path.
+const VERBATIM_RE = /(?:^|\s)(?:tell|say to|write to|message|send)\s+\S+\s*[:,]\s*["'“](.+)["'”]\s*$|["'“]([^"'”]{8,})["'”]/;
+
+// (exported at the foot, beside its siblings — a mid-file assignment would be
+// clobbered by this file's own `module.exports = router`.)
 
 const MUTATION_CLAIM_RE = new RegExp([
   // passive/stative completion on a mutation verb: 18 December IS unblocked / IS cancelled
@@ -3218,6 +3274,9 @@ module.exports.NARRATED_LOOKUP_RE    = NARRATED_LOOKUP_RE;
 // the masking law is honored by construction while the shared four stay byte-identical.
 module.exports.MUTATION_CLAIM_RE     = MUTATION_CLAIM_RE;
 module.exports.RELAY_CLAIM_RE        = RELAY_CLAIM_RE;   // F-06.159 — one home; the rig borrows
+module.exports.CONFIRM_SHAPE_RE      = CONFIRM_SHAPE_RE; // F-06.166 — the imitated commitment
+module.exports.RELAY_VERB_RE         = RELAY_VERB_RE;    // R-29.32 ① — the door's trigger
+module.exports.VERBATIM_RE           = VERBATIM_RE;      // R-29.32 ② — the vendor's own bytes
 module.exports.RELAY_DEED_RE         = RELAY_DEED_RE;
 module.exports.patchComposedReply    = patchComposedReply; // R-29.26 — the core both doors call
 module.exports.ACK_INTENT_RE         = ACK_INTENT_RE;

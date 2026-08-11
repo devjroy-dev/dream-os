@@ -1599,7 +1599,35 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         if (laneLine) { s2line = laneLine; s2arm = `${s2arm || 'glitch_line'}:relay_lane`; }
       } catch (e) { console.warn('[relay:wa lane-line]', e && e.message); }
     }
+    // ── F-06.166's GUARD (R-29.32 ③) — THE IMITATED COMMITMENT ───────────────
+    // A 「 Draft ready … Send this to Priya? 」 shape in MODEL PROSE with no
+    // just-staged row is a costume of a new kind: not a claimed deed but a
+    // claimed COMMITMENT. The 09:49:37 fabricated 50k frame is its specimen, and
+    // F-06.158's cure is what taught him the shape. THE ACQUITTAL IS THE STORE —
+    // this turn's own `[relay:wa]` outcome — never the words.
+    if (!s2line && !(relayOut && relayOut.draftId)) {
+      try {
+        const { CONFIRM_SHAPE_RE } = require('../api/vendor-engine/chat');
+        const { relayLaneLine } = require('./vendor/relaySeat');
+        if (CONFIRM_SHAPE_RE.test(String((effectiveResult && effectiveResult.reply) || ''))) {
+          const laneLine = await relayLaneLine(supabase, vendor, effectiveResult, { anyClaim: true });
+          if (laneLine) { s2line = laneLine; s2arm = 'confirm_shape_costume'; }
+        }
+      } catch (e) { console.warn('[relay:wa confirm-shape]', e && e.message); }
+    }
     if (s2line) replyText = s2line;
+    // ── F-06.165's RULED ARM (α), NOW MECHANICAL (R-29.32 ⑤) ────────────────
+    // Every relay interception patches the costume assistant row IN THE SAME
+    // BREATH it ships the honest wire line, through the same one-home core. The
+    // founder ran this by hand twice; the habit retires here. Without it Victor
+    // reads his own fabrication as history and the chain compounds — four rows
+    // deep on 2026-08-11 09:50, each one the premise of the next.
+    if (s2line && /relay_lane|confirm_shape_costume/.test(String(s2arm || ''))) {
+      try {
+        const { patchComposedReply } = require('../api/vendor-engine/chat');
+        await patchComposedReply(supabase, { ...effectiveResult, reply: '' }, s2line);
+      } catch (e) { console.warn('[relay:wa costume-patch]', e && e.message); }
+    }
     // ── THE DELIVERY WITNESS (FORK 3a) — recorded at FORK D'S RESOLUTION POINT, which is
     // exactly here: the retry has decided, `replyText` is final, and `sendWhatsApp` is the
     // next statement. `delivered` is the EXACT bytes in the DELIVERED form (V-W included on
@@ -1640,6 +1668,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         sendWhatsApp,
         conversationId: convo.id,
         hasTransport: true,
+        agentId, // R-29.32 ② — the COMPOSE fork's handle on Donna's machinery
         // R-29.29's trigger. The OWNER'S OWN INBOUND, never the model's prose:
         // the door asks whether HE affirmed and whether HE named the stored
         // subject. It chooses nothing — the recipient is already on the row.
