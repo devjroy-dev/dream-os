@@ -12,6 +12,7 @@
 //   §5 A5 no send without an E3 affirmative, as a STATE FACT   12
 //   §6 A6 the deed is door-composed; relaySeam.ts untouched     6
 //   §7    structural — import guard · sealed benches · floor     8  (+1, §7.8)
+//   §8 ZIP 2 — F-06.158 · F-06.159 · F-06.160                    12
 //
 // SIXTY-ONE AT DELIVERY. §7.8 is F-06.157's cell, added after the founder's
 // first live walk found the defect this bench could not see. DISCLOSED
@@ -44,6 +45,12 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+
+// chat.js builds a client at import time. The bench never reaches a network —
+// every cell drives pure predicates or the injected double — but the module
+// refuses to load without these. Fenced here, declared, never real credentials.
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'http://bench.invalid';
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'bench-not-a-key';
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = (p) => path.join(ROOT, p);
@@ -84,8 +91,8 @@ function makeDb(tables, opts = {}) {
       let pending = null, mode = null, single = false;
       const api = {
         select() { return api; },
-        eq(c, v) { if (pending) pending[c] = v; else rows = rows.filter((r) => r[c] === v); return api; },
-        is(c, v) { if (!pending) rows = rows.filter((r) => (v === null ? r[c] == null : r[c] === v)); return api; },
+        eq(c, v) { rows = rows.filter((r) => r[c] === v); return api; },
+        is(c, v) { rows = rows.filter((r) => (v === null ? r[c] == null : r[c] === v)); return api; },
         in(c, vs) { rows = rows.filter((r) => vs.includes(r[c])); return api; },
         not(c, _op, _v) { rows = rows.filter((r) => r[c] != null); return api; },
         gte(c, v) { rows = rows.filter((r) => String(r[c]) >= String(v)); return api; },
@@ -117,15 +124,15 @@ function makeDb(tables, opts = {}) {
             }
           } else if (mode === 'update') {
             const patch = { ...pending };
-            const keys = Object.keys(patch);
-            const idKey = keys.includes('id') ? 'id' : null;
-            const target = idKey ? (tables[name] || []).find((r) => r.id === patch.id) : rows[0];
-            if (!target) out = { data: null, error: null };
+            // A sweep UPDATE (filters only, no id) must hit EVERY matching row.
+            // `rows` is already the filtered set — filters after .update() are
+            // filters, exactly as in supabase-js.
+            const targets = rows.slice();
+            if (!targets.length) out = { data: single ? null : [], error: null };
             else {
               delete patch.id;
-              Object.assign(target, patch);
-              log.updates.push({ table: name, row: { ...target } });
-              out = { data: { ...target }, error: null };
+              for (const t of targets) { Object.assign(t, patch); log.updates.push({ table: name, row: { ...t } }); }
+              out = { data: single ? { ...targets[0] } : targets.map((t) => ({ ...t })), error: null };
             }
           } else if (opts.queryError === name) {
             out = { data: null, error: { message: 'query failed' } };
@@ -744,6 +751,123 @@ await t('§7.7 the eleven vetoed bytes are present and none was silently reworde
     [s.PWA_RELAY_UNAVAILABLE_LINE, "Message me on WhatsApp and I'll send it from there."],
   ];
   for (const [actual, needle] of must) assert.ok(String(actual).includes(needle), `vetoed byte drifted: ${needle}`);
+});
+
+
+// ── §8 · ZIP 2 — THE THREE CURES FROM THE FIRST LIVE WALK ───────────────────
+H('§8 F-06.158/.159/.160 — the walk\'s own findings, cured');
+
+await t('§8.1 F-06.158 — the WA door patches the relay line onto VICTOR\'S OWN thread', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  assert.ok(/patchComposedReply\(supabase, effectiveResult,/.test(d),
+    'the WA door does not write the relay line back into engine.messages');
+  // F-06.157's lesson, held: the witnessed row must belong to the turn that shipped.
+  assert.ok(!/patchComposedReply\(supabase, result,/.test(d), 'the patch reads the wrong turn');
+});
+
+await t('§8.2 F-06.158 — ONE HOME: the core is extracted and the PWA wrapper calls it', async () => {
+  const c = fs.readFileSync(SRC('src/api/vendor-engine/chat.js'), 'utf8');
+  assert.ok(/async function patchComposedReply\(supabase, result, tail\)/.test(c), 'the core is missing');
+  assert.ok(/return patchComposedReply\(req\.app\.locals\.supabase, result, tail\)/.test(c),
+    'the PWA wrapper does not delegate — two copies would drift');
+  assert.strictEqual((c.match(/\.schema\('engine'\)\s*\n?\s*\.from\('messages'\)\s*\n?\s*\.update\(\{ content:/g) || []).length, 1,
+    'the composed-reply UPDATE has more than one home');
+});
+
+await t('§8.3 F-06.158 — the two early returns survive extraction (no tail · no witnessed id)', async () => {
+  const { patchComposedReply } = require(SRC('src/api/vendor-engine/chat.js'));
+  const db = makeDb({ messages: [{ id: 'am1', content: 'orig' }] });
+  await patchComposedReply(db, { assistant_message_id: 'am1', reply: 'x' }, '');    // no tail
+  await patchComposedReply(db, { assistant_message_id: null, reply: 'x' }, '\n\ntail'); // no id
+  assert.strictEqual(db._log.updates.length, 0, 'an early return wrote a row it must not');
+});
+
+await t('§8.4 MUTATION — stripping the WA patch turns §8.1 RED', async () => {
+  const m = mutate('src/lib/vendorInbound.js', 'await patchComposedReply(supabase, effectiveResult,', '// removed', 'f158');
+  assert.ok(m, 'DECLARED FAIL — the WA patch anchor is absent');
+  assert.ok(!/patchComposedReply\(supabase, effectiveResult,/.test(fs.readFileSync(m, 'utf8')),
+    'the mutation did not bite — §8.1 proves nothing');
+});
+
+await t('§8.5 F-06.159 — THE NAMED RED SPECIMEN: the founder\'s 09:08:18 sentence convicts', async () => {
+  const { RELAY_CLAIM_RE } = require(SRC('src/api/vendor-engine/chat.js'));
+  const spec = 'Understood. Message to Priya is live — "The December shoot amount is Rs 80k — does that work for you?"';
+  assert.ok(RELAY_CLAIM_RE.test(spec), 'the guard is still blind to the sentence that walked');
+  assert.ok(RELAY_CLAIM_RE.test('Message sent to Priya.'), '09:07:55\'s claim walks');
+  assert.ok(RELAY_CLAIM_RE.test("I've sent it to Priya."), 'the first-person limb is blind');
+});
+
+await t('§8.6 F-06.159 — honest relay speech does NOT convict', async () => {
+  const { RELAY_CLAIM_RE } = require(SRC('src/api/vendor-engine/chat.js'));
+  for (const ok of [
+    'Send this to Priya (+919625759924)?',
+    'Not sent. Priya hasn\'t written in over 24 hours.',
+    'Nothing goes to her until you approve it.',
+    'Shall I send it to her?',
+  ]) assert.ok(!RELAY_CLAIM_RE.test(ok), `false conviction on honest speech: ${ok}`);
+});
+
+await t('§8.7 F-06.159 — THE CLASS MATCH: only the SEND signal witnesses a relay claim', async () => {
+  const { RELAY_DEED_RE } = require(SRC('src/api/vendor-engine/chat.js'));
+  const s2 = seat();
+  assert.ok(RELAY_DEED_RE.test(s2.SEND_SIGNAL), 'the send signal does not witness its own class');
+  assert.ok(!RELAY_DEED_RE.test(s2.STAGE_SIGNAL),
+    'the STAGE signal acquits a send claim — staging is not sending, and that is 09:07:55 exactly');
+  assert.ok(!RELAY_DEED_RE.test('donna_lead') && !RELAY_DEED_RE.test('donna_book_event'));
+});
+
+await t('§8.8 F-06.161 — THE STEMS ARE A QUOTATION, SO THE TENTH WAS NOT TAKEN', async () => {
+  // R-29.27's second clause ordered `send|message` into IMPERATIVE_STEMS. It is
+  // §0.2-BLOCKED and the block is asserted here rather than described in a
+  // handover nobody re-runs: the nine ARE harveySoul.ts:98's nine verbs, and
+  // b06_forkc_wireguard_bench §14.2 asserts there is never a tenth. A tenth is a
+  // sealed-floor RED or a soul byte, and W-1 shuts the soul this sitting.
+  const { IMPERATIVE_STEMS } = require(SRC('src/api/vendor-engine/chat.js'));
+  const soul = fs.readFileSync(SRC('src/engine/src/core/harveySoul.ts'), 'utf8');
+  const NINE = ['unblock','block','log','file','book','cancel','move','note','update'];
+  assert.deepStrictEqual(IMPERATIVE_STEMS.split('|').sort(), NINE.slice().sort(),
+    'the stem list moved — F-06.161 is unruled and this list is the soul\'s quotation');
+  for (const v of NINE) assert.ok(new RegExp(`\\b${v}\\b`).test(soul), `the soul no longer carries ${v}`);
+});
+
+await t('§8.9 F-06.160 — staging supersedes every prior OPEN STAGED row, successor named', async () => {
+  const world = { conversations: [convoRow()], messages: [], leads: [LEAD],
+                  pending_couple_drafts: [draftRow({ id: 'old1' }), draftRow({ id: 'old2' })] };
+  const db = makeDb(world);
+  const res = await fresh(DRAFTS).stage(db, { vendorId: 'v1', couplePhone: PHONE, body: 'new one' });
+  assert.ok(res.ok);
+  for (const id of ['old1', 'old2']) {
+    const r = world.pending_couple_drafts.find((x) => x.id === id);
+    assert.strictEqual(r.state, 'expired', `${id} was left open`);
+    assert.ok(r.resolved_at, `${id} did not stamp resolved_at`);
+    assert.strictEqual(r.refusal_reason, `superseded:${res.draft.id}`, `${id} does not name its successor`);
+  }
+});
+
+await t('§8.10 F-06.160 — AN APPROVED ROW IS THE VENDOR\'S WORD AND IS NEVER TOUCHED', async () => {
+  const world = { conversations: [convoRow()], messages: [], leads: [LEAD],
+                  pending_couple_drafts: [draftRow({ id: 'appr', state: 'approved' }),
+                                          draftRow({ id: 'sentd', state: 'sent', resolved_at: new Date().toISOString() })] };
+  const db = makeDb(world);
+  await fresh(DRAFTS).stage(db, { vendorId: 'v1', couplePhone: PHONE, body: 'new one' });
+  assert.strictEqual(world.pending_couple_drafts.find((x) => x.id === 'appr').state, 'approved');
+  assert.strictEqual(world.pending_couple_drafts.find((x) => x.id === 'sentd').state, 'sent');
+});
+
+await t('§8.11 MUTATION — removing the state filter would eat an approved row (RED)', async () => {
+  const m = mutate('src/lib/vendor/coupleDrafts.js', ".eq('state', STATES.STAGED)\n      .is('resolved_at', null)", ".is('resolved_at', null)", 'f160');
+  assert.ok(m, 'DECLARED FAIL — the supersede state-filter anchor is absent');
+  const world = { pending_couple_drafts: [draftRow({ id: 'appr', state: 'approved' })] };
+  await fresh(m).supersedeOpenStaged(makeDb(world), 'v1');
+  assert.strictEqual(world.pending_couple_drafts[0].state, 'expired',
+    'the mutation did not bite — the approved-row boundary proves nothing');
+});
+
+await t('§8.12 F-06.160 — another vendor\'s open draft is untouched', async () => {
+  const world = { conversations: [convoRow()], messages: [], leads: [LEAD],
+                  pending_couple_drafts: [draftRow({ id: 'other', vendor_id: 'v2' })] };
+  await fresh(DRAFTS).stage(makeDb(world), { vendorId: 'v1', couplePhone: PHONE, body: 'new one' });
+  assert.strictEqual(world.pending_couple_drafts.find((x) => x.id === 'other').state, 'staged');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

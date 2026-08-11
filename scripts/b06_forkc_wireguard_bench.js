@@ -414,15 +414,31 @@ t('§5.3 BOTH persistComposedReply CALL SITES CARRY THE GUARD — one site cover
 
 t('§5.4 THE GUARD DOES NOT RIDE INSIDE persistComposedReply — that function returns early on an empty tail, which is exactly the costume turn', () => {
   const c = read(CHAT);
-  const body = c.slice(c.indexOf('async function persistComposedReply'), c.indexOf('// Lockstep the other way'));
+  // ── LABELLED AMENDMENT (TDW_06 THE HAND · ZIP 2, R-29.26). RE-AIMED, TEETH
+  // KEPT, COUNT PRESERVED. The early-returning body was EXTRACTED to
+  // `patchComposedReply(supabase, result, tail)` so both doors call one home
+  // (F-06.158); `persistComposedReply` is now its req-shaped wrapper. This
+  // cell's PREMISE is unchanged and still true — it simply lives at the new
+  // symbol. Both are asserted, so neither the core nor the wrapper can take the
+  // guard inside it. RATIFY-OR-REVERT.
+  const body = c.slice(c.indexOf('async function patchComposedReply'), c.indexOf('// Lockstep the other way'));
   assert.ok(/if \(!tail\) return;/.test(body), 'the early return is gone — re-derive this cell\'s premise');
+  assert.ok(/return patchComposedReply\(req\.app\.locals\.supabase, result, tail\)/.test(body),
+    'the wrapper no longer delegates to the one home');
   assert.ok(!/wireGuard/.test(body), 'the guard was moved inside the early-returning function — it will go silent on the turns it exists to catch');
 });
 
 t('§5.5 ZERO VENDOR-VISIBLE DELTA: the guard writes no reply bytes, sends nothing outbound, and touches engine.messages never', () => {
   const c = read(CHAT);
   const i = c.indexOf('async function wireGuardSpecimen');
-  const body = c.slice(i, c.indexOf('async function persistComposedReply'));
+  // LABELLED AMENDMENT (same ZIP, same reason): the slice's END BOUNDARY moved
+  // because `patchComposedReply` was extracted ABOVE `persistComposedReply`.
+  // Re-aimed to the new first symbol after the guard so the region under test is
+  // the guard's body and nothing else — widening it would have made this cell
+  // assert things about the patcher, which is not its subject. TEETH KEPT,
+  // COUNT PRESERVED. RATIFY-OR-REVERT.
+  const body = c.slice(i, c.indexOf('// ── TDW_06 F-06.158\'s CURE'));
+  assert.ok(body.length > 500, 'the guard slice collapsed — every assertion below would be vacuous');
   assert.ok(!/send\(/.test(body), 'the guard sends to the wire');
   assert.ok(!/from\('messages'\)/.test(body), 'the guard writes engine.messages');
   assert.ok(!/result\.reply\s*=/.test(body), 'the guard mutates the reply');

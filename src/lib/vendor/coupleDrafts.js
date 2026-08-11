@@ -86,6 +86,22 @@ async function stage(supabase, { vendorId, conversationId = null, couplePhone, b
   const text = typeof body === 'string' ? body.trim() : '';
   if (!text) return { ok: false, reason: 'empty_body' };
 
+  // ── SUPERSEDE-ON-STAGE (R-29.28, F-06.160's cure) ─────────────────────────
+  // Every PRIOR OPEN STAGED row for this vendor is closed before the new one is
+  // written, its successor NAMED in the reason. F-06.160's specimen: the founder's
+  // affirmative was lost to F-06.158 and a second draft staged beside the first,
+  // leaving two open rows for one vendor.
+  //
+  // 'staged' ONLY, and the boundary is the whole care: an `approved` row IS THE
+  // VENDOR'S OWN WORD, already given, possibly mid-send. No stage call may touch
+  // it. A cell holds that line in both directions.
+  //
+  // Ordered BEFORE the insert deliberately — a supersede that ran after would
+  // need the new row's id to name it and would leave a window in which two rows
+  // were open. `openStagedFor` still takes the newest; after this cure the newest
+  // is also the only one open.
+  await supersedeOpenStaged(supabase, vendorId);
+
   const { data, error } = await supabase
     .from(TABLE)
     .insert({
@@ -102,7 +118,38 @@ async function stage(supabase, { vendorId, conversationId = null, couplePhone, b
   // F-06.143's second limb is a blind UPDATE that could not tell it had matched
   // nothing; this store's first act refuses to inherit that.
   if (error || !data) return { ok: false, reason: `stage_failed: ${(error && error.message) || 'no row'}` };
+  await nameSuccessor(supabase, vendorId, data.id);
   return { ok: true, draft: data };
+}
+
+// Close every open STAGED row for this vendor. Never touches `approved`, `sent`,
+// `refused` or `expired` — the state filter is the guard, not a convention.
+async function supersedeOpenStaged(supabase, vendorId) {
+  try {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .update({ state: STATES.EXPIRED, resolved_at: nowIso(), refusal_reason: 'superseded' })
+      .eq('vendor_id', vendorId)
+      .eq('state', STATES.STAGED)
+      .is('resolved_at', null)
+      .select('id');
+    if (error) { console.warn('[coupleDrafts] supersede failed:', error.message); return []; }
+    return (data || []).map((r) => r.id);
+  } catch (e) { console.warn('[coupleDrafts] supersede threw:', e && e.message); return []; }
+}
+
+// The successor's id, written onto the rows this stage displaced. Separate from
+// the sweep above because the successor does not exist until the insert returns —
+// and a reason that names no successor is a worse audit row than one written a
+// moment later. Best-effort: the supersede itself has already landed.
+async function nameSuccessor(supabase, vendorId, newId) {
+  try {
+    await supabase
+      .from(TABLE)
+      .update({ refusal_reason: `superseded:${newId}` })
+      .eq('vendor_id', vendorId)
+      .eq('refusal_reason', 'superseded');
+  } catch (e) { console.warn('[coupleDrafts] successor naming failed:', e && e.message); }
 }
 
 /**
@@ -222,6 +269,7 @@ async function getById(supabase, draftId) {
 
 module.exports = {
   stage,
+  supersedeOpenStaged,
   openStagedFor,
   approve,
   markSent,

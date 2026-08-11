@@ -94,6 +94,16 @@ function actionKind(name) {
 // list; every cousin added here is a false arm paid for in a duplicated model turn on a
 // turn he may have answered honestly. Cousins wait for evidence from the production row
 // this arm now writes. Narrow first.
+// ── R-29.27's SECOND CLAUSE IS §0.2-BLOCKED AND NOT TAKEN (F-06.161) ────────
+// The ruling ordered `send|message` to join these stems. THEY CANNOT JOIN.
+// THE NINE ARE NOT A LIST — THEY ARE A QUOTATION. `harveySoul.ts:98` names
+// exactly these nine verbs ("log her, file this, book the date, block the
+// morning, unblock it, cancel it, move it, note it, update it"), and
+// `b06_forkc_wireguard_bench` §14.2 asserts the constant IS the soul's nine and
+// never a tenth. A tenth stem is therefore either a sealed-floor RED or a soul
+// byte — and W-1 shuts the soul for this sitting.
+// Filed as F-06.161 and left to the chair. The relay's claim family
+// (RELAY_CLAIM_RE) is independent of this clause and ships whole.
 const IMPERATIVE_STEMS = 'unblock|block|log|file|book|cancel|move|note|update';
 // Tolerated lead-ins. These do not change the mood — "please log her" is "log her".
 const IMPERATIVE_POLITE = '(?:please|pls|plz|kindly|just|can you|could you|would you|can u)';
@@ -1279,6 +1289,46 @@ const STATIVE_COMPLETION_RE = new RegExp([
 // `donna_book_event` and by nothing else — F-06.125's symmetry EXTENDED, not patched.
 const BOOKING_CLAIM_RE = /\b(?:is|are|it's|its|been|now|already|has been|have been)\s+(?:now\s+|been\s+|already\s+)?(?:booked|re-?booked)\b|\bbooked\s+(?:for|on|at)\b/i;
 
+// ── TDW_06 F-06.159 · RELAY_CLAIM_RE (R-29.27) — THE FOURTH DEED CLASS.
+// THE SPECIMEN, founder-witnessed live on the hand's first walk (2026-08-11
+// 09:08:18, ZERO tool calls): 「 Understood. Message to Priya is live — "The
+// December shoot amount is Rs 80k — do..." 」 The wire guard did not fire. That
+// is F-06.150's disease — a claimed send with no organ — recurring in the very
+// arc built to end it, and the guard was silent because its vocabulary knew
+// nothing about sending a message TO A THIRD PARTY. Every existing family
+// speaks about the RECORD (logged/filed/booked/unblocked); none speaks about
+// the wire.
+//
+// AND THE CLASS-MATCH IS THE SHARP HALF, not the vocabulary: a relay claim is
+// witnessed by `donna_relay_send` AND BY NOTHING ELSE. `donna_relay_stage` must
+// NOT acquit it — staging is not sending, and treating the stage hand as a
+// witness would let 「 Message sent to Priya 」 walk on a turn that only put a
+// draft in front of the owner. That is precisely the 09:07:55 turn, which said
+// exactly that. F-06.128's symmetry extended to a fourth class, not patched.
+const RELAY_CLAIM_RE = new RegExp([
+  // stative/passive completion on a transmission verb, aimed at a person
+  // The RECIPIENT PHRASE is optional and is why the founder's own specimen walked
+  // the first time this family was drafted: 「 Message TO PRIYA is live 」 puts a
+  // name between the subject and the copula, and a limb anchored on
+  // `message\\s+is` cannot see it. Bounded to one token so it stays a recipient
+  // and not an arbitrary clause.
+  "\\b(?:message|msg|it|that|reply|note)\\s+(?:to\\s+[^\\s,.]+\\s+)?(?:is|has been|have been|was|'s)\\s+(?:now\\s+|already\\s+|been\\s+)?(?:live|sent|delivered|gone|out|away|with her|with him|on its way)\\b",
+  // "Message sent to Priya." / "Sent to Priya." — the bare participle + recipient
+  "\\b(?:sent|delivered|forwarded|relayed|passed on)\\s+(?:it\\s+)?to\\s+\\S",
+  // first person completed/promised transmission
+  "\\bI(?:'ve| have|'ll| will| am|'m)\\s+(?:just |already |now |going to )?(?:sent|send|sending|delivered|forwarded|relayed|passed on|messaged|texted|written to|whatsapped)\\b",
+  // "Done — sent to Priya" / "Done, message is with her"
+  "\\b(?:done|sorted|handled)\\b[^.]{0,30}\\b(?:sent|delivered|forwarded|relayed|messaged|texted)\\b",
+  // the door-line costume: a bare participle + colon, dressed as a deed line
+  "(?:^|\\n)\\s*(?:sent|delivered|forwarded|relayed)\\s*:",
+].join("|"), "i");
+
+// The hands that witness a relay claim. `donna_relay_send` alone — the approval
+// signal the door turns into an actual transmission. Named here, one home, and
+// asserted against the engine's own RELAY_SIGNAL_NAMES by a cell so a rename
+// cannot silently un-blind this class.
+const RELAY_DEED_RE = /^donna_relay_send$/;
+
 const MUTATION_CLAIM_RE = new RegExp([
   // passive/stative completion on a mutation verb: 18 December IS unblocked / IS cancelled
   "\\b(?:is|are|it's|its|been|now|already|has been|have been)\\s+(?:now\\s+|been\\s+|already\\s+)?(?:unblocked|blocked|cancelled|canceled|cleared|moved|rescheduled|freed up|opened up)\\b",
@@ -1452,6 +1502,9 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // markup is not whitespace. The deaf-cure fixtures caught it. One text, read once.
   const eligible = sentences.join('\n');
   const mutationClaim = MUTATION_CLAIM_RE.test(eligible) || DOORLINE_CLAIM_RE.test(eligible);
+  // F-06.159: the relay claim reaches the ladder as its own family, so a claimed
+  // send with zero hands is convictable without borrowing another class's words.
+  const relayClaim = RELAY_CLAIM_RE.test(eligible);
   // ── THE ACKNOWLEDGEMENT PREDICATE, DEFINED POSITIVELY (executor-authored,
   // Stage-1-scoped, DISCLOSED). The first ladder defined `acknowledgement` NEGATIVELY —
   // "whatever is not a completed act" — and that was wrong for a derivable reason:
@@ -1467,7 +1520,7 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // it, so no shared meaning moves (the masking law, honored by construction).
   const ackShaped = ACK_INTENT_RE.test(eligible) && !DONE_MARKER_RE.test(eligible);
   const completed = (COMPLETED_ACT_RE.test(eligible) || mutationClaim) && !JOT_CLAIM_RE.test(eligible);
-  let claimsAct = ACTION_CLAIM_RE.test(eligible) || completed;
+  let claimsAct = ACTION_CLAIM_RE.test(eligible) || completed || relayClaim;
   const jotClaim  = JOT_CLAIM_RE.test(eligible);
   const narrated  = NARRATED_LOOKUP_RE.test(eligible);
   // F-06.122 — an invented PRESENCE is an existence claim exactly as an invented absence
@@ -1519,12 +1572,16 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // (`sentences` and `eligible` are computed once, above, beside the caption rule.)
   const isClaimSentence = (x) => ACTION_CLAIM_RE.test(x) || COMPLETED_ACT_RE.test(x)
     || MUTATION_CLAIM_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
-    || DOORLINE_CLAIM_RE.test(x);
+    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x);
   // the stative "<participle> as" IS a completion marker — that is what carries the claim
   // in the shape F-06.126 has been unable to see for three batches.
+  // RELAY_CLAIM_RE joins BOTH lists, exactly as DOORLINE_CLAIM_RE does and for the
+  // same reason: a claimed transmission is SELF-MARKING. 「 Message to Priya is
+  // live 」 carries its own completion; requiring a separate "Done."-class marker
+  // beside it would acquit the founder's own specimen, whose opener is 「 Understood. 」
   const markerIn = (x) => AGENTIVE_CLAIM_RE.test(x) || DONE_MARKER_RE.test(x)
     || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
-    || DOORLINE_CLAIM_RE.test(x);
+    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x);
   const opener = sentences[0] || '';
   // the "Done."-class opener: SHORT and carrying nothing but the completion word. Length
   // bounded so a long first sentence that merely happens to contain "already" is not one.
@@ -1552,7 +1609,10 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // A filed lead does not witness an unblock; that is the whole reason the match is
   // class-scoped rather than "any prior write".
   // F-06.128: three classes, granularity following the HAND taxonomy.
-  const deedClass = mutationClaim ? 'date' : (BOOKING_CLAIM_RE.test(eligible) ? 'booking' : 'records');
+  // F-06.159: FOUR classes now. The relay class is tested BEFORE booking/records so
+  // a transmission claim can never be answered by a filing hand.
+  const deedClass = mutationClaim ? 'date'
+    : (relayClaim ? 'relay' : (BOOKING_CLAIM_RE.test(eligible) ? 'booking' : 'records'));
   let kind;
   if (writeHands.length > 0) kind = 'witnessed_hand';
   else if (witnessed) kind = 'witnessed';
@@ -1625,6 +1685,7 @@ function wireGuardClassify(vendorId, result, priorDeed) {
       ACTION_CLAIM_RE.test(eligible) ? 'action_claim' : null,
       COMPLETED_ACT_RE.test(eligible) && !JOT_CLAIM_RE.test(eligible) ? 'completed_act' : null,
       mutationClaim ? 'mutation_claim' : null,
+      relayClaim ? 'relay_claim' : null,
       jotClaim ? 'jot_claim' : null,
       narrated ? 'narrated_lookup' : null,
       presenceClaim ? 'presence_claim' : null,
@@ -1696,6 +1757,11 @@ function isDeedOfClass(name, deedClass) {
   // does not witness a filing any more than a filed lead witnesses an unblock.
   // F-06.128 (M-2d): a booking claim is witnessed by the BOOKING HAND and nothing else.
   // The two-class map coerced it into `records`, where its real deed could not acquit it.
+  // F-06.159: a relay claim is witnessed by the SEND signal alone. The STAGE
+  // signal deliberately does not acquit it — a draft put in front of the owner is
+  // not a message put in front of the bride, and the founder's 09:07:55 turn said
+  // 「 Message sent to Priya 」 on exactly that hand.
+  if (deedClass === 'relay') return RELAY_DEED_RE.test(n);
   if (deedClass === 'booking') return BOOKING_DEED_RE.test(n);
   if (deedClass === 'date') return isDateDeed;
   return !isDateDeed;                                       // records class: writes that are not date deeds
@@ -2041,17 +2107,49 @@ async function fileGlitchReport(supabase, agentId) {
   }
 }
 
-async function persistComposedReply(req, result, tail) {
+// ── TDW_06 F-06.158's CURE (R-29.26) — ONE HOME, BOTH DOORS ─────────────────
+// THE CORE, supabase-parameterised. Extracted from persistComposedReply below,
+// whose body this was verbatim and which now calls it — PWA behaviour is
+// byte-identical and a cell proves it.
+//
+// WHY THE WA DOOR NEEDED IT, in one specimen (F-06.158, founder-witnessed
+// 2026-08-11 09:07): the relay's SHOW frame and its E3 confirm are composed at
+// the DOOR and appended to `replyText`. `replyText` lands in `public.messages` —
+// the vendor's WhatsApp transcript. But VICTOR'S OWN MEMORY is `engine.messages`
+// (memory.ts, symbol `loadThread`), and loop.ts saves `result.reply` ALONE. So
+// Victor asked 「 Send this to Priya (+919625759924)? 」 on the wire and held no
+// record of asking it. The vendor's 「 yes, send it to Priya 」 arrived answering
+// a question that, from inside the thread, was never asked — and Harvey read it
+// as a fresh instruction and STAGED A SECOND DRAFT. E3's affirmative could not
+// reach `donna_relay_send` by construction.
+//
+// THE CLASS HAS A NAME NOW, and it is the same one F-06.157 belongs to: THE DOOR
+// AND THE MODEL DISAGREEING ABOUT WHICH TURN HAPPENED.
+//
+// F-06.29's DISPOSITION LINE APPLIES: this seam has existed at the PWA door
+// since Q-B4-6(b) — `loop.ts:931`'s own comment calls it 「 the row the door may
+// patch 」, generic, designed for doors — and the WhatsApp lane, the one the
+// founder actually reads, never took it. CURED AT BOTH DOORS OR CURED NOWHERE.
+//
+// THE LAW IS UNCHANGED AND IS THE HEADER'S: the patch lands on
+// `result.assistant_message_id` — THE ENGINE'S OWN WITNESS — and never on "the
+// latest assistant row", which is a guess. No id writes NOTHING. No tail returns
+// early. A failed patch warns and never disturbs a reply that is already owed.
+async function patchComposedReply(supabase, result, tail) {
   if (!tail) return; // no door lines this turn — the saved row is already the whole truth
   const id = result && result.assistant_message_id;
   if (!id) return;   // the engine did not witness the row — write nothing, never guess one
   try {
-    const { error } = await req.app.locals.supabase.schema('engine')
+    const { error } = await supabase.schema('engine')
       .from('messages')
       .update({ content: `${result.reply || ''}${tail}` })
       .eq('id', id);
-    if (error) console.warn('[vendor-e chat:composed-reply]', error.message);
-  } catch (e) { console.warn('[vendor-e chat:composed-reply]', e.message); }
+    if (error) console.warn('[door:composed-reply]', error.message);
+  } catch (e) { console.warn('[door:composed-reply]', e.message); }
+}
+
+async function persistComposedReply(req, result, tail) {
+  return patchComposedReply(req.app.locals.supabase, result, tail);
 }
 
 // Lockstep the other way: when Donna moves a binder's date (donna_date / donna_edit carrying a date),
@@ -3119,6 +3217,9 @@ module.exports.NARRATED_LOOKUP_RE    = NARRATED_LOOKUP_RE;
 // wireGuardClassify is its only consumer, and no gauntlet arm reads it — which is how
 // the masking law is honored by construction while the shared four stay byte-identical.
 module.exports.MUTATION_CLAIM_RE     = MUTATION_CLAIM_RE;
+module.exports.RELAY_CLAIM_RE        = RELAY_CLAIM_RE;   // F-06.159 — one home; the rig borrows
+module.exports.RELAY_DEED_RE         = RELAY_DEED_RE;
+module.exports.patchComposedReply    = patchComposedReply; // R-29.26 — the core both doors call
 module.exports.ACK_INTENT_RE         = ACK_INTENT_RE;
 // TDW_06 P6b (F-06.4/F-06.2): door-seam seams exposed for b06_advisor_route_bench.
 module.exports.buildLlmForTurn       = buildLlmForTurn;

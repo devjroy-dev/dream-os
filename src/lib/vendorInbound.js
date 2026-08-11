@@ -1604,6 +1604,21 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       if (relayOut && relayOut.line) {
         replyText += `\n\n${relayOut.line}`;
         console.log(`[relay:wa] ${relayOut.kind}${relayOut.draftId ? ` draft=${relayOut.draftId}` : ''}`);
+        // ── F-06.158's CURE (R-29.26) — THE LINE JOINS VICTOR'S OWN THREAD ────
+        // Without this the SHOW frame and the E3 confirm exist only on the wire:
+        // `loop.ts` saves `result.reply` alone, so Victor asks 「 Send this to
+        // Priya (+91…)? 」 and holds no record of asking. The vendor's affirmative
+        // then answers a question the thread never contains, and Harvey re-stages.
+        //
+        // THE SAME CORE THE PWA DOOR CALLS — one home, extracted at this sitting,
+        // never a second copy. Patched on `effectiveResult`, not `result`:
+        // F-06.157's lesson holds here too, and the witnessed row must belong to
+        // the turn whose reply actually shipped. AWAITED, so a fast follow-up
+        // cannot race the patch it exists to make.
+        try {
+          const { patchComposedReply } = require('../api/vendor-engine/chat');
+          await patchComposedReply(supabase, effectiveResult, `\n\n${relayOut.line}`);
+        } catch (e) { console.warn('[relay:wa composed-reply]', e && e.message); }
       }
     } catch (e) { console.error('[relay:wa]', e && e.message); }
 
