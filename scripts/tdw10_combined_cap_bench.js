@@ -536,12 +536,24 @@ t('§6.3 0116 is NON-DESTRUCTIVE and does not widen its ruling — no DELETE, no
 // TEETH KEPT WHOLE: 0116 is still asserted present, 0113 is still asserted an
 // unwritten hole, and the 0063 duplicate-set fence is untouched.
 // RATIFY-OR-REVERT.
-t('§6.4 LD-8: 0117 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
+//
+// ── SECOND LABELLED AMENDMENT, TDW_06 relay-seam SITTING TWO (THE HAND) ──────
+// The prediction above came true one sitting later and is being honoured rather
+// than discovered: 0118 (`0118_pending_couple_drafts_refusal_reason.sql`, the
+// refusal-reason column, CHARTERED AT R-29.20) is now the tail. RE-AIMED AGAIN,
+// COUNT PRESERVED AT 37, TEETH KEPT WHOLE — 0116 and 0117 are BOTH still
+// asserted present, 0113 is still asserted an unwritten hole, and the attributed
+// 0063 duplicate fence is untouched. Note the shape this cell has settled into:
+// it asserts the LADDER'S LAW (tip is the highest, no hole is filled, no new
+// duplicate appears), and only the tip's number is a moving part.
+// RATIFY-OR-REVERT.
+t('§6.4 LD-8: 0118 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
   const files = fs.readdirSync(P('db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
   const nums = files.map((f) => f.slice(0, 4));
   assert.ok(nums.includes('0116'), '0116 is not on the ladder');
   assert.ok(nums.includes('0117'), '0117 is not on the ladder');
-  assert.strictEqual(nums[nums.length - 1], '0117', `0117 is not the tail: ${nums.slice(-3).join(', ')}`);
+  assert.ok(nums.includes('0118'), '0118 is not on the ladder');
+  assert.strictEqual(nums[nums.length - 1], '0118', `0118 is not the tail: ${nums.slice(-3).join(', ')}`);
   assert.ok(!nums.includes('0113'), '0113 was filled — LD-8 forbids it; it is reserved-unwritten');
   // ATTRIBUTED ELDER, not this delivery's: 0063 is used TWICE at origin
   // (0063_users_auth_user_id.sql + 0063_vendor_activity_log.sql), an LD-8 collision

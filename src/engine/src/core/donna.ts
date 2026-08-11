@@ -31,6 +31,9 @@ import { DONNA_VERDICT_TOOL, executeDonnaVerdict } from './tools/donnaVerdict.js
 import { DONNA_REVIEW_TOOL, executeDonnaReview } from './tools/donnaReview.js';
 import { LISTEN_HARVEY_TALK_TOOL } from './tools/listenHarvey.js';
 import { DONNA_LEAD_TOOL, executeDonnaLead } from './tools/donnaLead.js'; // TDW_02 P1 (Amendment One CE-1)
+// TDW_06 THE HAND (R-29.17 arm 1b · R-29.25 arm (a)) — the relay's TWO SIGNALS.
+// SIGNAL-ONLY: they write nothing and send nothing. The door holds the organs.
+import { RELAY_TOOLS, RELAY_SIGNAL_NAMES, executeRelayStage, executeRelaySend } from './tools/relayCouple.js';
 import { checkMoneyProvenance } from './provenanceHold.js'; // M-2 — the mechanical-floors ZIP
 import { vendorIdFromAgent } from './vendorIdentity.js'; // TDW_02: rebuild reads the typed lead plane
 import { phoneKey, nameKey } from './phoneKey.js';
@@ -339,7 +342,12 @@ export async function snapshotText(agentId: string): Promise<string> {
 // a fallback, with plain text). A segment ends when she speaks. Her message history is
 // returned as a DonnaSession so the NEXT call resumes the same conversation — that is
 // what makes the exchange two-way instead of a one-shot.
-const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, LISTEN_HARVEY_TALK_TOOL];
+const DONNA_TOOLS: Anthropic.Tool[] = [...RECORD_TOOLS, ...READ_TOOLS, ...BENCH_READ_TOOLS, ...SHELF_READ_TOOLS, ...REVIEW_READ_TOOLS, DONNA_LEAD_TOOL, DONNA_VERDICT_TOOL, DONNA_REVIEW_TOOL, ...RELAY_TOOLS, LISTEN_HARVEY_TALK_TOOL];
+// TDW_06 THE HAND — THE CACHE COST OF THE TWO NEW SCHEMAS, NAMED AND ACCEPTED
+// (R-29.17). DONNA_TOOLS rides DONNA_STATIC_PREFIX's cached region, so the two
+// schemas are a ONE-OFF cache-window re-write, not a per-turn charge. Lawful
+// under the house cost law (the prefix stays static; nothing dynamic entered
+// it), priced at the ruling, never discovered on the bill.
 // ── TDW_06 ECONOMICS SITTING — THE DONNA CACHE (charter item 2; UNIT_ECONOMICS'
 // own fire alarm: her system + ~20 tool schemas + segments billed FULL RATE
 // 2–6×/turn — the ₹9.59-class dispatch turn's whole top end). The cure is the
@@ -635,6 +643,27 @@ export async function runDonnaTurn(
           // it: no fallback to `display`, and therefore no machinery smuggled onward.
           record(tu.name, tu.input, heldMoney.display);
           results.push({ type: 'tool_result', tool_use_id: tu.id, content: heldMoney.display });
+          continue;
+        }
+        // ── TDW_06 THE HAND — THE TWO RELAY SIGNALS ────────────────────────
+        // Seated ABOVE every write branch and returning immediately, because
+        // these hands are not writes: no `mutated`, no `patchNote`, no snapshot
+        // item, no `found` rows. They are the model asking the door for
+        // something, in the shape blockHands.js's header calls SIGNAL-ONLY.
+        //
+        // They author NO `plain` clause and NO `refused` array — deliberately,
+        // and it is the fail-closed law doing its job rather than an omission.
+        // `plain` is what Victor's composer may be handed beside her voiced
+        // sentence; a relay signal has no receipt to contribute, and handing one
+        // over would give the composer material to narrate a deed the door has
+        // not performed yet. The vendor-facing bytes are the DOOR's, composed
+        // from these hands' structured inputs (R-29.18/R-29.23), founder-vetoed.
+        if (RELAY_SIGNAL_NAMES.has(tu.name)) {
+          outcome = tu.name === 'donna_relay_stage'
+            ? executeRelayStage(input as Parameters<typeof executeRelayStage>[0])
+            : executeRelaySend(input as Parameters<typeof executeRelaySend>[0]);
+          record(tu.name, tu.input, outcome.display);
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: outcome.display });
           continue;
         }
         if (tu.name === 'donna_verdict') {

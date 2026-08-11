@@ -1551,6 +1551,40 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         await stage2RecordDelivery(supabase, s2run, { arm: s2arm, delivered: s2line, seat: 'wa' });
       } catch (e) { console.warn('[wire-guard stage2 wa delivery]', e.message); }
     }
+    // ── TDW_06 · THE HAND · SITTING TWO — THE RELAY SEAT ─────────────────────
+    // THE VENDOR→BRIDE SEND, WHOLE: the vendor instructs, Harvey composes, the
+    // draft is STAGED, the exact bytes are SHOWN as a quoted artefact, his named
+    // affirmative APPROVES, and the estate DELIVERS window-first.
+    //
+    // SEATED HERE AND NOWHERE ELSE, for the reason the wire guard is seated here:
+    // this is the ONLY point with a true pre-delivery seam — `replyText` is final
+    // (Fork D has resolved, `s2line` has been applied) and `sendWhatsApp` is the
+    // very next statement. The relay's lines are the DOOR's speech appended to
+    // Victor's, exactly as the invoice confirmations above are, and they cross to
+    // the vendor without passing through any model's mouth.
+    //
+    // R-29.2 — TRANSPORT IS DOOR-INJECTED. `sendWhatsApp` comes from this door's
+    // own deps bag; the engine never requires a transport at import and holds no
+    // store writer. That is what makes 2026-08-08 impossible at the level of what
+    // the model can touch, rather than at the level of what it can be told.
+    //
+    // NEVER THROWS INTO THE TURN. A relay fault must not cost the vendor his
+    // reply — F-06.141's class at a neighbouring site, and not one to re-instance
+    // in the same block that filed it.
+    let relayOut = null;
+    try {
+      const { runRelaySeat } = require('./vendor/relaySeat');
+      relayOut = await runRelaySeat(supabase, vendor, result, {
+        sendWhatsApp,
+        conversationId: convo.id,
+        hasTransport: true,
+      });
+      if (relayOut && relayOut.line) {
+        replyText += `\n\n${relayOut.line}`;
+        console.log(`[relay:wa] ${relayOut.kind}${relayOut.draftId ? ` draft=${relayOut.draftId}` : ''}`);
+      }
+    } catch (e) { console.error('[relay:wa]', e && e.message); }
+
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
     await supabase.from('messages').insert({
       conversation_id: convo.id,
