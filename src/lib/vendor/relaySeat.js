@@ -474,18 +474,34 @@ async function relayReceipt(supabase, { wamid, status, sendWhatsApp, env }) {
       .eq('id', row.conversation_id).maybeSingle();
     if (!convo || !convo.vendor_id) return null;
 
-    const { data: vend } = await supabase
-      .from('vendors').select('id, phone, business_name').eq('id', convo.vendor_id).maybeSingle();
-    if (!vend || !vend.phone) return null;
+    // ── F-06.180's CURE · THE HANDSET IS RESOLVED, NOT ASSUMED ───────────────
+    // This selected `phone` from `public.vendors`, WHICH HAS NO SUCH COLUMN (38
+    // columns, witnessed). `vend.phone` was therefore always undefined and this
+    // function returned null on every real status Meta ever sent — №14 and №15
+    // have never once reached a vendor's handset. Walk nine proved it on
+    // production: `status=read matched=1 sent_by=vendor_relay` matched the right
+    // row and no byte left the estate.
+    const { vendorHandset } = require('./vendorHandset');
+    const hand = await vendorHandset(supabase, convo.vendor_id);
+    if (!hand.phone) {
+      // NAMED, NOT SILENT. The old `return null` is exactly why this survived
+      // from seating: a receipt that declines to speak must say why, or its
+      // silence is indistinguishable from "not ours" (F-06.171's law).
+      console.warn(`[relay:wa] ${want}_receipt undeliverable vendor=${convo.vendor_id} reason=${hand.reason}`);
+      return null;
+    }
 
     const name = await coupleDisplayName(supabase, convo.vendor_id, convo.counterparty_phone);
     const line = want === 'delivered'
       ? deliveredLine(name, convo.counterparty_phone)   // №14
       : readLine(name);                                 // №15
     const from = (env || process.env).VENDOR_WHATSAPP_NUMBER;
-    if (typeof sendWhatsApp !== 'function' || !from) return null;
-    await sendWhatsApp(vend.phone, line, [], from);
-    console.log(`[relay:wa] ${want}_receipt wamid=${wamid} vendor=${vend.id}`);
+    if (typeof sendWhatsApp !== 'function' || !from) {
+      console.warn(`[relay:wa] ${want}_receipt undeliverable — no transport or no vendor lane`);
+      return null;
+    }
+    await sendWhatsApp(hand.phone, line, [], from);
+    console.log(`[relay:wa] ${want}_receipt wamid=${wamid} vendor=${convo.vendor_id}`);
     return { line, kind: `${want}_receipt` };
   } catch (e) {
     console.warn('[relay:wa receipt]', e && e.message);

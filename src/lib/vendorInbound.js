@@ -157,6 +157,12 @@ function scrubModelFrame(text, verbatim, witness = null) {
 // retry calls `runTurn` directly and never re-enters this function, so the retried turn
 // has NO SECOND EDGE by construction. The parameter exists so a future caller that DOES
 // re-enter cannot accidentally create one, and so the bench can assert the property.
+// F-06.182's predicate, imported from its one home so the door and the bench
+// read the SAME list of kinds. A relay outcome that put no bytes on her screen
+// (a refusal, a failed send) must NOT silence the model — she asked a question
+// and still deserves an answer.
+const { relayFiredOnArrival } = require('./vendor/coupleArrival');
+
 async function processVendorInbound(inputs, deps, _noRetry) {
   return withTurnLock(turnKey('vendor', inputs && inputs.phone), () => _processVendorInbound(inputs, deps, _noRetry));
 }
@@ -582,10 +588,43 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         // and does not care which vendor's thread her words were filed under, so
         // an arrival routed to vendor X can lawfully release vendor Y's approved
         // draft. Her words follow her conversation; the draft follows the window.
+        let arrivalRelay = null;
         try {
           const { arrivalAutoSend } = require('./vendor/coupleArrival');
-          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+          arrivalRelay = await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
         } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
+
+        // ── F-06.182 · ON A RELAY-FIRED ARRIVAL, THE MODEL DOES NOT SPEAK ────
+        //
+        // FOUNDER-CAUGHT ON HIS OWN BRIDE HANDSET, walk nine. The door delivered
+        // the vendor's quote at 12:34:33 and four seconds later the model told
+        // her 「 Perfect, sending that over to you now. You'll hear from dev
+        // directly with all details. 」 — false in both clauses. It was not
+        // blind: the relayed row was already on her thread and in its context.
+        // It saw a completed deed and narrated it as a future one.
+        //
+        // THE CLASS, THIRD INVERSION: 08-08 claimed a send that never happened;
+        // walk seven denied a send that did; this announces as pending a send
+        // already delivered. Same disease — the door and the model disagreeing
+        // about which turn happened — now with a customer as the audience.
+        //
+        // SKIPPED, NOT RUN-AND-DROPPED. No tokens spent, no assistant row
+        // minted, so there is no costume to patch afterwards — F-06.165's
+        // lesson honoured by never creating the row rather than by curing it.
+        // The quote stands alone, which is exactly what the doorbell promised
+        // her. Her NEXT message runs the couple turn normally: the silence is
+        // one turn wide and heals itself.
+        //
+        // DISCLOSED CONSEQUENCE: the model-composed vendor notification is
+        // skipped with the turn. The vendor is not left uninformed — ③ tells
+        // him the delivery landed, which is truer than the notification was.
+        if (relayFiredOnArrival(arrivalRelay)) {
+          console.log(`[relay:wa] model_silent — the door's deed stands alone (${arrivalRelay.kind}) phone=${phone}`);
+          await supabase.from('conversations')
+            .update({ last_message_at: new Date().toISOString() })
+            .eq('id', thread.id);
+          return;
+        }
 
             const { data: vendorUser } = await supabase
               .from('users').select('*').eq('id', thread.vendors.user_id).maybeSingle();
@@ -711,10 +750,43 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         // and does not care which vendor's thread her words were filed under, so
         // an arrival routed to vendor X can lawfully release vendor Y's approved
         // draft. Her words follow her conversation; the draft follows the window.
+        let arrivalRelay = null;
         try {
           const { arrivalAutoSend } = require('./vendor/coupleArrival');
-          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+          arrivalRelay = await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
         } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
+
+        // ── F-06.182 · ON A RELAY-FIRED ARRIVAL, THE MODEL DOES NOT SPEAK ────
+        //
+        // FOUNDER-CAUGHT ON HIS OWN BRIDE HANDSET, walk nine. The door delivered
+        // the vendor's quote at 12:34:33 and four seconds later the model told
+        // her 「 Perfect, sending that over to you now. You'll hear from dev
+        // directly with all details. 」 — false in both clauses. It was not
+        // blind: the relayed row was already on her thread and in its context.
+        // It saw a completed deed and narrated it as a future one.
+        //
+        // THE CLASS, THIRD INVERSION: 08-08 claimed a send that never happened;
+        // walk seven denied a send that did; this announces as pending a send
+        // already delivered. Same disease — the door and the model disagreeing
+        // about which turn happened — now with a customer as the audience.
+        //
+        // SKIPPED, NOT RUN-AND-DROPPED. No tokens spent, no assistant row
+        // minted, so there is no costume to patch afterwards — F-06.165's
+        // lesson honoured by never creating the row rather than by curing it.
+        // The quote stands alone, which is exactly what the doorbell promised
+        // her. Her NEXT message runs the couple turn normally: the silence is
+        // one turn wide and heals itself.
+        //
+        // DISCLOSED CONSEQUENCE: the model-composed vendor notification is
+        // skipped with the turn. The vendor is not left uninformed — ③ tells
+        // him the delivery landed, which is truer than the notification was.
+        if (relayFiredOnArrival(arrivalRelay)) {
+          console.log(`[relay:wa] model_silent — the door's deed stands alone (${arrivalRelay.kind}) phone=${phone}`);
+          await supabase.from('conversations')
+            .update({ last_message_at: new Date().toISOString() })
+            .eq('id', stickyThread.id);
+          return;
+        }
 
           const { data: vendorUser } = await supabase
             .from('users').select('*').eq('id', stickyThread.vendors.user_id).maybeSingle();
@@ -824,10 +896,43 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         // and does not care which vendor's thread her words were filed under, so
         // an arrival routed to vendor X can lawfully release vendor Y's approved
         // draft. Her words follow her conversation; the draft follows the window.
+        let arrivalRelay = null;
         try {
           const { arrivalAutoSend } = require('./vendor/coupleArrival');
-          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+          arrivalRelay = await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
         } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
+
+        // ── F-06.182 · ON A RELAY-FIRED ARRIVAL, THE MODEL DOES NOT SPEAK ────
+        //
+        // FOUNDER-CAUGHT ON HIS OWN BRIDE HANDSET, walk nine. The door delivered
+        // the vendor's quote at 12:34:33 and four seconds later the model told
+        // her 「 Perfect, sending that over to you now. You'll hear from dev
+        // directly with all details. 」 — false in both clauses. It was not
+        // blind: the relayed row was already on her thread and in its context.
+        // It saw a completed deed and narrated it as a future one.
+        //
+        // THE CLASS, THIRD INVERSION: 08-08 claimed a send that never happened;
+        // walk seven denied a send that did; this announces as pending a send
+        // already delivered. Same disease — the door and the model disagreeing
+        // about which turn happened — now with a customer as the audience.
+        //
+        // SKIPPED, NOT RUN-AND-DROPPED. No tokens spent, no assistant row
+        // minted, so there is no costume to patch afterwards — F-06.165's
+        // lesson honoured by never creating the row rather than by curing it.
+        // The quote stands alone, which is exactly what the doorbell promised
+        // her. Her NEXT message runs the couple turn normally: the silence is
+        // one turn wide and heals itself.
+        //
+        // DISCLOSED CONSEQUENCE: the model-composed vendor notification is
+        // skipped with the turn. The vendor is not left uninformed — ③ tells
+        // him the delivery landed, which is truer than the notification was.
+        if (relayFiredOnArrival(arrivalRelay)) {
+          console.log(`[relay:wa] model_silent — the door's deed stands alone (${arrivalRelay.kind}) phone=${phone}`);
+          await supabase.from('conversations')
+            .update({ last_message_at: new Date().toISOString() })
+            .eq('id', coupleThread.id);
+          return;
+        }
 
         // 5-B-2 — land the enquiry in the engine cabinet (was a public.leads insert).
         // enquiryToBinder dedups by phone and opens the binder as a lead; the
@@ -1076,10 +1181,43 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         // and does not care which vendor's thread her words were filed under, so
         // an arrival routed to vendor X can lawfully release vendor Y's approved
         // draft. Her words follow her conversation; the draft follows the window.
+        let arrivalRelay = null;
         try {
           const { arrivalAutoSend } = require('./vendor/coupleArrival');
-          await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
+          arrivalRelay = await arrivalAutoSend(supabase, phone, { sendWhatsApp, env: process.env });
         } catch (e) { console.warn('[relay:wa arrival]', e && e.message); }
+
+        // ── F-06.182 · ON A RELAY-FIRED ARRIVAL, THE MODEL DOES NOT SPEAK ────
+        //
+        // FOUNDER-CAUGHT ON HIS OWN BRIDE HANDSET, walk nine. The door delivered
+        // the vendor's quote at 12:34:33 and four seconds later the model told
+        // her 「 Perfect, sending that over to you now. You'll hear from dev
+        // directly with all details. 」 — false in both clauses. It was not
+        // blind: the relayed row was already on her thread and in its context.
+        // It saw a completed deed and narrated it as a future one.
+        //
+        // THE CLASS, THIRD INVERSION: 08-08 claimed a send that never happened;
+        // walk seven denied a send that did; this announces as pending a send
+        // already delivered. Same disease — the door and the model disagreeing
+        // about which turn happened — now with a customer as the audience.
+        //
+        // SKIPPED, NOT RUN-AND-DROPPED. No tokens spent, no assistant row
+        // minted, so there is no costume to patch afterwards — F-06.165's
+        // lesson honoured by never creating the row rather than by curing it.
+        // The quote stands alone, which is exactly what the doorbell promised
+        // her. Her NEXT message runs the couple turn normally: the silence is
+        // one turn wide and heals itself.
+        //
+        // DISCLOSED CONSEQUENCE: the model-composed vendor notification is
+        // skipped with the turn. The vendor is not left uninformed — ③ tells
+        // him the delivery landed, which is truer than the notification was.
+        if (relayFiredOnArrival(arrivalRelay)) {
+          console.log(`[relay:wa] model_silent — the door's deed stands alone (${arrivalRelay.kind}) phone=${phone}`);
+          await supabase.from('conversations')
+            .update({ last_message_at: new Date().toISOString() })
+            .eq('id', existingThread.id);
+          return;
+        }
 
         // Fetch full vendor row first so we have user_id for the user lookup
         const { data: fullVendor } = await supabase

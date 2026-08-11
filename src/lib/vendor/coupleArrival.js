@@ -171,11 +171,22 @@ async function tellVendor(supabase, vendor, line, deps = {}) {
   try {
     const { sendWhatsApp, env } = deps;
     const from = (env || process.env).VENDOR_WHATSAPP_NUMBER;
-    if (typeof sendWhatsApp !== 'function' || !from || !vendor || !vendor.phone) {
-      console.warn('[relay:wa] arrival outcome undeliverable to vendor — no transport, lane or phone');
+    if (typeof sendWhatsApp !== 'function' || !from || !vendor || !vendor.id) {
+      console.warn('[relay:wa] arrival outcome undeliverable to vendor — no transport, lane or vendor');
       return false;
     }
-    await sendWhatsApp(vendor.phone, line, [], from);
+    // ── F-06.180's CURE · THE HANDSET IS RESOLVED, NOT READ OFF THE ROW ──────
+    // This read `vendor.phone` off a `public.vendors` row. That column does not
+    // exist, so ③ and ⑥ were undeliverable from the moment they shipped — the
+    // walk-nine red, and the same defect this sitting had just found in
+    // `relayReceipt`, copied forward by a seat that never checked the schema.
+    const { vendorHandset } = require('./vendorHandset');
+    const hand = await vendorHandset(supabase, vendor.id);
+    if (!hand.phone) {
+      console.warn(`[relay:wa] arrival outcome undeliverable to vendor=${vendor.id} reason=${hand.reason}`);
+      return false;
+    }
+    await sendWhatsApp(hand.phone, line, [], from);
     return true;
   } catch (e) {
     console.warn('[relay:wa arrival-tell-vendor]', e && e.message);
@@ -204,4 +215,21 @@ async function tellVendorOfExpiry(supabase, couplePhone, deps = {}) {
   }
 }
 
-module.exports = { doorbellRouteFor, arrivalAutoSend };
+// ── F-06.182 · WHICH OUTCOMES PUT BYTES ON HER SCREEN ──────────────────────
+// THE ONE HOME for the list, so the door and every cell read the same one. A
+// relay outcome is only a reason to silence the model when the estate ACTUALLY
+// SPOKE TO HER this turn:
+//   `sent`                    — the approved draft reached her handset.
+//   `window_closed_doorbell`  — a template reached her handset instead.
+// Everything else (a refusal, an undetermined window, a failed send, no draft at
+// all) put NOTHING in front of her, and silencing the model on those would leave
+// a woman who asked a question with no answer from anyone. The safe direction
+// here is the model speaking, which is the opposite of the safe direction on a
+// delivered relay — and that asymmetry is the whole finding.
+const RELAY_DELIVERED_KINDS = Object.freeze(['sent', 'window_closed_doorbell']);
+
+function relayFiredOnArrival(out) {
+  return !!(out && out.kind && RELAY_DELIVERED_KINDS.includes(out.kind));
+}
+
+module.exports = { doorbellRouteFor, arrivalAutoSend, relayFiredOnArrival, RELAY_DELIVERED_KINDS };

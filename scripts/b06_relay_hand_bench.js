@@ -1502,7 +1502,13 @@ await t('§13.8 R-29.35 RECEIPTS — №14 on delivered, №15 on read, and NEVE
   const world = {
     messages: [{ id: 'm1', conversation_id: 'c9', twilio_sid: 'wamid.R', sent_by: 'vendor_relay', body: BODY }],
     conversations: [{ id: 'c9', vendor_id: 'v1', counterparty_phone: PHONE }],
-    vendors: [{ id: 'v1', phone: '+919888294440', business_name: 'S' }],
+    // LABELLED AMENDMENT (TDW_06 rider 2, F-06.181) · RATIFY-OR-REVERT · COUNT
+    // PRESERVED. This fixture asserted `vendors.phone`, a column that does not
+    // exist — so §13.8 proved the receipt's COMPOSITION while the shipped path
+    // could never reach a handset. The fixture now mirrors the schema and the
+    // cell proves the same property against a reachable subject.
+    vendors: [{ id: 'v1', user_id: 'u1', business_name: 'S' }],
+    users: [{ id: 'u1', phone: '+919888294440', name: 'Dev' }],
     leads: [LEAD],
   };
   const send = transport();
@@ -1521,7 +1527,8 @@ await t('§13.9 THE RECEIPT SPEAKS ONLY FOR vendor_relay ROWS', async () => {
   const world = {
     messages: [{ id: 'm2', conversation_id: 'c9', twilio_sid: 'wamid.OTHER', sent_by: 'agent', body: 'x' }],
     conversations: [{ id: 'c9', vendor_id: 'v1', counterparty_phone: PHONE }],
-    vendors: [{ id: 'v1', phone: '+919888294440' }], leads: [LEAD],
+    // LABELLED AMENDMENT (TDW_06 rider 2, F-06.181) · RATIFY-OR-REVERT.
+    vendors: [{ id: 'v1', user_id: 'u1' }], users: [{ id: 'u1', phone: '+919888294440' }], leads: [LEAD],
   };
   const send = transport();
   const out = await seat().relayReceipt(makeDb(world), { wamid: 'wamid.OTHER', status: 'delivered', sendWhatsApp: send, env: ENV });

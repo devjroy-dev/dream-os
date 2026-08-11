@@ -51,6 +51,20 @@ const PHONE = '+919625759924';
 const VENDOR_PHONE = '+919888294440';
 const ENV = { VENDOR_WHATSAPP_NUMBER: '+919999000111' };
 
+// ── F-06.181's CURE · FIXTURES DERIVED FROM THE SCHEMA, NOT FROM HABIT ──────
+// `public.vendors` has 38 columns and NONE of them is `phone` (witnessed at
+// `docs/db/PUBLIC_SCHEMA.md`, `## public.vendors`). Every double in this file
+// used to hand the subject `vendors: [{ id, phone }]` — a fixture asserting a
+// column that does not exist — which is why two shipped sites read `vend.phone`,
+// always got undefined, and went mute from the day they were seated. The
+// fixture-shaped-cell law and F-06.172's "a double speaking a contract its
+// subject does not speak", converging inside a sealed bench.
+// The handset now lives where the schema puts it: `public.users.phone` (col 2),
+// reached through `public.vendors.user_id` (col 2).
+const VENDOR_ROW = Object.freeze({ id: 'v1', user_id: 'u1', business_name: 'S' });
+const VENDOR_USER_ROW = Object.freeze({ id: 'u1', phone: '+919888294440', name: 'Dev' });
+
+
 // ── THE STORE DOUBLE ────────────────────────────────────────────────────────
 // Supports exactly the query shapes the subjects use, and NO MORE: a double that
 // speaks a contract its subject does not speak is not a guard (F-06.172).
@@ -356,7 +370,7 @@ await t('A3.2 FIXTURE-ABSENT — no approved draft, nothing fires and it says wh
 
 await t('A3.3 EXPIRED — the row self-heals to expired and NO send goes', async () => {
   const stale = { ...DOORBELL_DRAFT, expires_at: '2020-01-01T00:00:00Z' };
-  const tables = { pending_couple_drafts: [stale], vendors: [{ id: 'v1', phone: VENDOR_PHONE }] };
+  const tables = { pending_couple_drafts: [stale], vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW] };
   const db = makeDb(tables);
   const send = transport();
   const out = await arrival().arrivalAutoSend(db, PHONE, { sendWhatsApp: send, env: ENV });
@@ -366,7 +380,7 @@ await t('A3.3 EXPIRED — the row self-heals to expired and NO send goes', async
 
 await t('A3.4 EXPIRED — the BRIDE is told nothing (fork 5, chair-ruled silence)', async () => {
   const stale = { ...DOORBELL_DRAFT, expires_at: '2020-01-01T00:00:00Z' };
-  const db = makeDb({ pending_couple_drafts: [stale], vendors: [{ id: 'v1', phone: VENDOR_PHONE }] });
+  const db = makeDb({ pending_couple_drafts: [stale], vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW] });
   const send = transport();
   await arrival().arrivalAutoSend(db, PHONE, { sendWhatsApp: send, env: ENV });
   assert.ok(!send.calls.some((c) => c.to === PHONE),
@@ -377,7 +391,7 @@ await t('A3.5 EXPIRED — the VENDOR is told, on his own handset, with ⑥', asy
   // THE FIXTURE IS AN `approved` ROW PAST ITS EXPIRY, never a pre-`expired` one:
   // the arm fires on the SELF-HEAL, which is the only way it fires in production.
   const stale = { ...DOORBELL_DRAFT, expires_at: '2020-01-01T00:00:00Z' };
-  const db = makeDb({ pending_couple_drafts: [stale], vendors: [{ id: 'v1', phone: VENDOR_PHONE }] });
+  const db = makeDb({ pending_couple_drafts: [stale], vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW] });
   const send = transport();
   await arrival().arrivalAutoSend(db, PHONE, { sendWhatsApp: send, env: ENV });
   const toVendor = send.calls.filter((c) => c.to === VENDOR_PHONE);
@@ -387,7 +401,7 @@ await t('A3.5 EXPIRED — the VENDOR is told, on his own handset, with ⑥', asy
 
 await t('A3.6 the vendor-facing byte rides the VENDOR LANE number, pinned', async () => {
   const stale = { ...DOORBELL_DRAFT, expires_at: '2020-01-01T00:00:00Z' };
-  const db = makeDb({ pending_couple_drafts: [stale], vendors: [{ id: 'v1', phone: VENDOR_PHONE }] });
+  const db = makeDb({ pending_couple_drafts: [stale], vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW] });
   const send = transport();
   await arrival().arrivalAutoSend(db, PHONE, { sendWhatsApp: send, env: ENV });
   assert.strictEqual(send.calls[0].from, ENV.VENDOR_WHATSAPP_NUMBER, 'F-06.147 — the lane is not pinned');
@@ -416,7 +430,7 @@ await t('A3.10 BOTH-WAYS — mutating the store reader to vendor-keying kills th
     'const found = await drafts.approvedForPhone(supabase, couplePhone);',
     'const found = { draft: null, reason: "mutated" };',
     async () => {
-      const db = makeDb({ pending_couple_drafts: [DOORBELL_DRAFT], vendors: [{ id: 'v1', phone: VENDOR_PHONE }] });
+      const db = makeDb({ pending_couple_drafts: [DOORBELL_DRAFT], vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW] });
       const send = transport();
       const out = await require(SRC('src/lib/vendor/coupleArrival.js')).arrivalAutoSend(db, PHONE, { sendWhatsApp: send, env: ENV });
       assert.strictEqual(out.kind, 'no_draft', 'the cell passed over a defaced reader');
@@ -647,6 +661,150 @@ await t('A7.7 BOTH-WAYS — removing the persist blinds the window predicate', a
   assert.strictEqual((await coupleWindowOpen(withRow, PHONE)).open, true);
   assert.strictEqual((await coupleWindowOpen(without, PHONE)).open, false,
     'THE MUTATION THAT REMOVES HER ROW MUST GO RED — this is A7\'s whole subject');
+});
+
+// ═══ A8 · F-06.180 — THE VENDOR'S HANDSET, RESOLVED WHERE IT LIVES — 8 cells ═
+H('A8 — F-06.180 · №14/№15/③/⑥ REACH A REAL HANDSET (8)');
+
+const handset = () => require(SRC('src/lib/vendor/vendorHandset.js'));
+
+await t('A8.1 the resolver joins users through vendors.user_id', async () => {
+  const db = makeDb({ vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW] });
+  const out = await handset().vendorHandset(db, 'v1');
+  assert.strictEqual(out.phone, '+919888294440');
+  assert.strictEqual(out.reason, 'resolved');
+});
+
+await t('A8.2 THE GREP-CLASS CELL — no shipped code selects `phone` FROM vendors', async () => {
+  // A JOIN INTO `users` IS LAWFUL AND MUST NOT RED. `users!fk ( phone )` and
+  // `user:users(name, phone)` both select from the RELATION, not from vendors —
+  // two such sites ship today and are correct. Only a BARE `phone` in the
+  // top-level select list is the defect, so nested parens are stripped first.
+  const hits = [];
+  const walk = (dir) => {
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fp = path.join(dir, f.name);
+      if (f.isDirectory()) { if (f.name !== 'node_modules' && f.name !== 'dist') walk(fp); continue; }
+      if (!/\.(js|ts)$/.test(f.name)) continue;
+      const body = fs.readFileSync(fp, 'utf8');
+      const re = /\.from\(['"]vendors['"]\)\s*\.select\(\s*(['"])([^'"]*)\1/g;
+      let m;
+      while ((m = re.exec(body)) !== null) {
+        const topLevel = m[2].replace(/\([^)]*\)/g, '');
+        if (/(^|[\s,])phone([\s,]|$)/.test(topLevel)) hits.push(`${path.relative(ROOT, fp)}: ${m[2]}`);
+      }
+    }
+  };
+  walk(SRC('src'));
+  assert.deepStrictEqual(hits, [], `vendors.phone does not exist; selected at: ${hits.join(' | ')}`);
+});
+
+await t('A8.3 FIXTURE-ABSENT — a vendor with no user row refuses BY NAME', async () => {
+  const db = makeDb({ vendors: [VENDOR_ROW], users: [] });
+  const out = await handset().vendorHandset(db, 'v1');
+  assert.strictEqual(out.phone, null);
+  assert.strictEqual(out.reason, 'no_user_row', 'the refusal is unnamed — F-06.171 all over again');
+});
+
+await t('A8.4 an unknown vendor refuses by name, never throws', async () => {
+  const out = await handset().vendorHandset(makeDb({ vendors: [], users: [] }), 'nope');
+  assert.strictEqual(out.reason, 'no_such_vendor');
+});
+
+await t('A8.5 R-29.34(b) — the resolution carries a founder-readable witness', async () => {
+  const d = code('src/lib/vendor/vendorHandset.js');
+  assert.ok(/vendor_handset_resolved/.test(d), 'no named witness for a resolved handset');
+});
+
+await t('A8.6 №14/№15 REACH THE HANDSET — the walk-nine mute path, cured', async () => {
+  const world = {
+    messages: [{ id: 'm1', conversation_id: 'c9', twilio_sid: 'wamid.R', sent_by: 'vendor_relay', body: 'x' }],
+    conversations: [{ id: 'c9', vendor_id: 'v1', counterparty_phone: PHONE }],
+    vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW], leads: [],
+  };
+  const send = transport();
+  const out = await seat().relayReceipt(makeDb(world), { wamid: 'wamid.R', status: 'delivered', sendWhatsApp: send, env: ENV });
+  assert.ok(out && /Delivered to/.test(out.line), 'the receipt still composes nothing');
+  assert.strictEqual(send.calls.length, 1, 'THE RECEIPT IS STILL MUTE — walk nine unfixed');
+  assert.strictEqual(send.calls[0].to, '+919888294440');
+});
+
+await t('A8.7 ③/⑥ REACH THE HANDSET — the arrival outcome, cured', async () => {
+  const stale = { ...DOORBELL_DRAFT, expires_at: '2020-01-01T00:00:00Z' };
+  const db = makeDb({ pending_couple_drafts: [stale], vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW] });
+  const send = transport();
+  await arrival().arrivalAutoSend(db, PHONE, { sendWhatsApp: send, env: ENV });
+  const toVendor = send.calls.filter((c) => c.to === '+919888294440');
+  assert.strictEqual(toVendor.length, 1, 'the arrival outcome is still undeliverable to the vendor');
+});
+
+await t('A8.8 BOTH-WAYS — reverting the receipt to vendors.phone goes mute again', async () => {
+  await underMutation('src/lib/vendor/relaySeat.js',
+    "const hand = await vendorHandset(supabase, convo.vendor_id);",
+    "const hand = { phone: undefined, reason: 'mutated' };",
+    async () => {
+      const world = {
+        messages: [{ id: 'm1', conversation_id: 'c9', twilio_sid: 'wamid.R', sent_by: 'vendor_relay', body: 'x' }],
+        conversations: [{ id: 'c9', vendor_id: 'v1', counterparty_phone: PHONE }],
+        vendors: [VENDOR_ROW], users: [VENDOR_USER_ROW], leads: [],
+      };
+      const send = transport();
+      const out = await require(SRC('src/lib/vendor/relaySeat.js')).relayReceipt(makeDb(world), { wamid: 'wamid.R', status: 'delivered', sendWhatsApp: send, env: ENV });
+      assert.strictEqual(out, null, 'the cell passed over a mute receipt');
+      assert.strictEqual(send.calls.length, 0);
+    });
+});
+
+// ═══ A9 · F-06.182 — THE DOOR'S DEED STANDS ALONE — 6 cells ═════════════════
+H('A9 — F-06.182 · ON A RELAY-FIRED ARRIVAL, THE MODEL DOES NOT SPEAK (6)');
+
+await t('A9.1 a delivered relay silences the model at every terminal — four, counted', async () => {
+  const d = code('src/lib/vendorInbound.js');
+  const n = (d.match(/if \(relayFiredOnArrival\(arrivalRelay\)\) \{/g) || []).length;
+  assert.strictEqual(n, 4, `expected the skip at 4 terminals, found ${n}`);
+});
+
+await t('A9.2 the skip RETURNS — no tokens, no assistant row, no costume to patch', async () => {
+  const d = code('src/lib/vendorInbound.js');
+  const re = /if \(relayFiredOnArrival\(arrivalRelay\)\) \{([\s\S]*?)\n        \}/g;
+  let m, seen = 0;
+  while ((m = re.exec(d)) !== null) {
+    assert.ok(/return;/.test(m[1]), 'the skip falls through — the model still runs');
+    assert.ok(!/runCoupleAgenticTurn/.test(m[1]), 'the model is run and dropped, minting the row .165 forbids');
+    seen++;
+  }
+  assert.strictEqual(seen, 4, `only ${seen} of 4 skips return`);
+});
+
+await t('A9.3 FIXTURE-ABSENT — no relay fired, the model speaks normally', async () => {
+  const { relayFiredOnArrival } = arrival();
+  assert.strictEqual(relayFiredOnArrival(null), false, 'a bride with no draft would be met with silence');
+  assert.strictEqual(relayFiredOnArrival({ kind: 'no_draft' }), false);
+});
+
+await t('A9.4 A REFUSAL DOES NOT SILENCE HER ANSWER — the asymmetry is the finding', async () => {
+  const { relayFiredOnArrival } = arrival();
+  for (const k of ['expired', 'window_undetermined', 'send_failed', 'no_recipient', 'vendor_missing', 'threw']) {
+    assert.strictEqual(relayFiredOnArrival({ kind: k }), false,
+      `kind "${k}" put nothing on her screen and must not leave her question unanswered`);
+  }
+});
+
+await t('A9.5 only outcomes that reached her handset silence the model', async () => {
+  const { relayFiredOnArrival, RELAY_DELIVERED_KINDS } = arrival();
+  assert.deepStrictEqual([...RELAY_DELIVERED_KINDS], ['sent', 'window_closed_doorbell']);
+  assert.strictEqual(relayFiredOnArrival({ kind: 'sent' }), true);
+});
+
+await t('A9.6 BOTH-WAYS — un-skipping restores the walk-nine narration', async () => {
+  await underMutation('src/lib/vendor/coupleArrival.js',
+    "return !!(out && out.kind && RELAY_DELIVERED_KINDS.includes(out.kind));",
+    "return false;",
+    async () => {
+      const { relayFiredOnArrival } = require(SRC('src/lib/vendor/coupleArrival.js'));
+      assert.strictEqual(relayFiredOnArrival({ kind: 'sent' }), false,
+        'the predicate survived the defacement of the thing it decides');
+    });
 });
 
 // ── RESULT ─────────────────────────────────────────────────────────────────
