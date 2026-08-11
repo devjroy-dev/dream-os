@@ -1452,6 +1452,26 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // threads through, the retried call goes to `runTurn` directly and never re-enters
     // this body, so the worst case for any turn is EXACTLY ONE duplicated actor run.
     let s2line = null;
+    // ── TDW_06 F-06.157's CURE — THE EFFECTIVE RESULT ────────────────────────
+    // WHICH TURN'S HANDS BELONG TO THE REPLY THAT ACTUALLY SHIPS.
+    //
+    // Fork D can re-run the actor, and when it does, `replyText` is rebuilt from
+    // `retry.reply` while `result` still holds the FIRST turn's `tool_calls`.
+    // Every signal collector that runs BEFORE this block (invoices at :1346,
+    // calendar at :1388) reads the first turn by construction and is consistent.
+    // A collector seated AFTER it is not: it would read one turn's hands and ship
+    // another turn's words. F-06.157 is that mismatch, founder-witnessed on the
+    // relay's first live walk — Victor's retry told the vendor a draft was ready
+    // and the door, reading a turn with zero tool calls, composed nothing.
+    //
+    // THIS VARIABLE IS THE ANSWER AND ITS RULE IS ONE SENTENCE: it is reassigned
+    // in EXACTLY the arms where `replyText` is rebuilt from the retry, so hands
+    // and words always come from the same turn. Outcome B ships Victor's ORIGINAL
+    // reply, so it keeps the original result; outcome 2 ships F3's sentence
+    // saying nothing landed, and a collector must never compose beside that.
+    // A bench cell pairs the two assignment counts, so a future third retry arm
+    // that rebuilds `replyText` and forgets this goes red instead of silent.
+    let effectiveResult = result;
     let s2run = null;   // F-06.130: the specimen row this seat will patch with what SHIPPED
     let s2arm = null;   // which of Fork D's three outcomes actually resolved
     let impMiss = false; // F-06.136: the second arm, live only when the first did not fire
@@ -1495,6 +1515,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
               // same firewall the first reply went through. s2line was already null; nothing
               // is replaced and no line of this arm's own exists to replace it with.
               replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(retry.reply ?? ''), scrubText(retry.reply), 'vendorInbound:reply(imperative-retry)');
+              effectiveResult = retry;   // F-06.157: the retry's words ship, so the retry's hands govern
               s2arm = 'imperative_retry_landed';
               console.log('[wire-guard stage2 wa] imperative-miss retry landed the hand; the honest first reply was never sent');
             } else {
@@ -1511,6 +1532,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             // outcome 1 — the act landed. Ship the retry's own reply, through the same
             // firewall the first reply went through. No glitch line, no chip word.
             replyText = witnessWireScrub(supabase, vendor.id, 'whatsapp', String(retry.reply ?? ''), scrubText(retry.reply), 'vendorInbound:reply(retry)');
+            effectiveResult = retry;   // F-06.157: the retry's words ship, so the retry's hands govern
             s2line = null;
             s2arm = 'retry_landed';
             console.log('[wire-guard stage2 wa] retry landed the act; original specimen stands logged');
@@ -1574,7 +1596,7 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     let relayOut = null;
     try {
       const { runRelaySeat } = require('./vendor/relaySeat');
-      relayOut = await runRelaySeat(supabase, vendor, result, {
+      relayOut = await runRelaySeat(supabase, vendor, effectiveResult, {
         sendWhatsApp,
         conversationId: convo.id,
         hasTransport: true,

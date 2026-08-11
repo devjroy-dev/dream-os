@@ -11,7 +11,19 @@
 //   §4 A4 out-of-window / undetermined — zero attempt           7
 //   §5 A5 no send without an E3 affirmative, as a STATE FACT   12
 //   §6 A6 the deed is door-composed; relaySeam.ts untouched     6
-//   §7    structural — import guard · sealed benches · floor     7
+//   §7    structural — import guard · sealed benches · floor     8  (+1, §7.8)
+//
+// SIXTY-ONE AT DELIVERY. §7.8 is F-06.157's cell, added after the founder's
+// first live walk found the defect this bench could not see. DISCLOSED
+// RATIFY-OR-REVERT; the chair's ceiling was 61 and this is the sixty-first.
+//
+// ITS GRADE IS DECLARED: §7.8 is a SOURCE-SHAPE cell, not a behavioural one.
+// Driving the real Fork D retry needs a live wire-guard, a second model turn and
+// a classifier verdict, none of which this container holds. It is the strongest
+// honest cell available here, and it is paired rather than a single grep: it
+// counts BOTH sides of an invariant, so the specific way F-06.157 happened —
+// an arm rebuilding the reply without moving the hands — cannot recur silently.
+// The behavioural witness is the founder's re-walk and it is named on the card.
 //
 // BOTH-WAYS DISCIPLINE. Every RED is produced by defacing PRODUCTION CODE, never
 // test setup. If a mutation ANCHOR is absent the cell prints a DECLARED FAIL
@@ -661,7 +673,7 @@ await t('§7.3 coupleDrafts is the ONLY writer of pending_couple_drafts', async 
 
 await t('§7.4 the WA door seats the relay BEFORE its send and cannot throw into the turn', async () => {
   const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
-  const seatAt = d.indexOf('runRelaySeat(supabase, vendor, result');
+  const seatAt = d.indexOf('runRelaySeat(supabase, vendor, effectiveResult');
   const sendAt = d.indexOf('const twilioMsg = await sendWhatsApp(phone, replyText, []);');
   assert.ok(seatAt > 0 && seatAt < sendAt, 'the relay seat is not before the door send');
   assert.ok(/catch \(e\) \{ console\.error\('\[relay:wa\]'/.test(d), 'the seat is not fenced against throwing into the turn');
@@ -694,6 +706,27 @@ await t('§7.6 the corpse stays byte-dead — replyToCouple has no new caller', 
   // requirer anywhere turns it red, and so would REMOVING the corpse's label by
   // deleting the dead caller without a ruling.
   assert.deepStrictEqual(hits, ['src/agent/engine.js'], `the corpse's caller set moved: ${hits.join(', ')}`);
+});
+
+await t('§7.8 F-06.157 — THE SEAT READS THE TURN WHOSE REPLY SHIPS (the pairing invariant)', async () => {
+  const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
+  // (a) the seat is handed the effective result, never the raw first turn.
+  assert.ok(/runRelaySeat\(supabase, vendor, effectiveResult,/.test(d),
+    'the seat reads `result` — it would compose from one turn and ship another turn\'s words');
+  // (b) THE PAIRING, which is the cell with teeth. Every arm that rebuilds
+  // `replyText` from the RETRY must also move `effectiveResult`. Counting both
+  // and asserting equality means a future third retry arm cannot add one without
+  // the other and stay green — the failure mode F-06.157 actually had.
+  const rebuilt = (d.match(/replyText = witnessWireScrub\([^;]*retry\.reply/g) || []).length;
+  const moved = (d.match(/effectiveResult = retry;/g) || []).length;
+  assert.ok(rebuilt > 0, 'DECLARED FAIL — no retry-rebuilt replyText found; the anchor moved');
+  assert.strictEqual(moved, rebuilt,
+    `${rebuilt} arms rebuild replyText from the retry but only ${moved} move effectiveResult`);
+  // (c) the two arms that must NOT move it are named, so the pairing above cannot
+  // be satisfied by moving it everywhere: outcome B ships Victor's ORIGINAL reply
+  // and outcome 2 ships F3's "nothing was changed".
+  assert.ok(/s2arm = 'imperative_second_refusal';/.test(d) && /s2arm = 'second_costume';/.test(d),
+    'the two no-move arms are gone — the pairing rule needs re-deriving');
 });
 
 await t('§7.7 the eleven vetoed bytes are present and none was silently reworded', async () => {
