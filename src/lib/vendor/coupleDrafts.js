@@ -276,6 +276,180 @@ async function markDoorbell(supabase, draftId, doorbellSid) {
   });
 }
 
+// ══ TDW_06/07 · M2 — THE CONTENT SEND'S OWN STAMP ══════════════════════════
+//
+// A draft whose bytes rode `tdw_enquiry_reply_couple` to her handset. `sent` is
+// a TERMINAL: `resolved_at` is stamped, the row is spent, and it can never be
+// re-sent. That is the whole difference from `markDoorbell`, which deliberately
+// leaves the row `approved` because the doorbell carried no words and something
+// still has to be delivered.
+//
+// R-29.35's PRINCIPLE, RUNNING ITS OTHER DIRECTION (CE ruling, Fork 3 (c)
+// refused). "A byte never promises a state the machine does not hold" kept the
+// doorbell's draft alive because ④b-v2 promised a delivery. Here ③ says the
+// delivery HAPPENED. Leaving the row `approved` so the routing pin could find it
+// would make a spent draft re-sendable — the same law, the opposite conclusion.
+//
+// `refusal_reason` CARRIES `content:<wamid>` and is not a refusal at all. The
+// column is the register's typed WHY for a terminal transition (0118 declines a
+// CHECK for exactly this reason: "a CHECK here would make the database the place
+// a new honest reason goes to die"), and `content:` is the marker
+// `recentContentSendFor` keys on. The wamid rides so the register knows WHICH
+// send, at zero cost.
+async function markContentSent(supabase, draftId, wamid) {
+  const cur = await getById(supabase, draftId);
+  if (!cur.draft) return { ok: false, reason: cur.reason };
+  if (cur.draft.state !== STATES.APPROVED) return { ok: false, reason: `not_approved: ${cur.draft.state}` };
+  return transition(supabase, draftId, STATES.SENT, {
+    twilio_sid: wamid || null,
+    refusal_reason: `content:${wamid || 'nosid'}`,
+  });
+}
+
+/**
+ * ══ TDW_06/07 · M2's ROUTING PIN — F-06.177's QUESTION, ASKED FOR A NEW LIMB ══
+ *
+ * IS A CONTENT SEND STANDING FOR THIS PHONE? The sibling of
+ * `standingDoorbellFor`, and it exists because that function CANNOT answer for
+ * a content send and must not be widened to try (CE ruling, Fork 3 (a) over (b)).
+ *
+ * WHY NOT WIDEN. `standingDoorbellFor`'s clauses are `state='approved'` AND
+ * `resolved_at IS NULL` AND `refusal_reason LIKE 'doorbell:%'`. A content-sent
+ * row is `sent` with `resolved_at` stamped, so it fails two of the three — and
+ * that function's own header rules that ONLY doorbell-marked rows may answer,
+ * precisely so the estate never routes a bride on the strength of its own UNSENT
+ * mail. Dropping the state clause to admit this row would reopen exactly that.
+ *
+ * WHAT WOULD HAVE HAPPENED WITHOUT IT. She receives his words inside Meta's
+ * envelope, taps 「 Reply 」, and lands in a router that finds no standing
+ * doorbell — so on a phone holding threads with three vendors she is asked which
+ * one she means. That is walk eight's defect on a brand-new limb, and the bride
+ * is the one person in this arc who did not sign up for it.
+ *
+ * ── THE BOUND, DERIVED ────────────────────────────────────────────────────
+ * 24 HOURS from `resolved_at`, and three independent facts agree on that number:
+ *   · the WhatsApp customer-service window her reply opens is 24h — the pin
+ *     exists to serve exactly the reply that rides that window;
+ *   · `expires_at`'s founder-ruled span is 24h (0117), so no relay object in
+ *     this store outlives a day;
+ *   · the doorbell pin it mirrors is bounded by that same expiry.
+ * A reply arriving later is a NEW conversation, not an answer to this send, and
+ * the ordinary routing ladder is the right authority for it.
+ *
+ * NEVER THROWS. No row, or a failed query, is "no content send" — the router
+ * then behaves exactly as it does today. A false absence costs the
+ * disambiguation question that already exists; a false presence would misdeliver
+ * her words.
+ *
+ * @returns {Promise<{draft: object|null, reason: string}>}
+ */
+const CONTENT_PIN_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+async function recentContentSendFor(supabase, couplePhone, nowMs = Date.now()) {
+  if (!supabase || !couplePhone) return { draft: null, reason: 'no_supabase_or_phone' };
+  try {
+    const since = new Date(nowMs - CONTENT_PIN_WINDOW_MS).toISOString();
+    const { data, error } = await supabase
+      .from(TABLE).select(COLS)
+      .eq('couple_phone', couplePhone)
+      .eq('state', STATES.SENT)
+      .like('refusal_reason', 'content:%')
+      .gte('resolved_at', since)
+      .order('resolved_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) return { draft: null, reason: 'content_query_failed' };
+    if (!data) return { draft: null, reason: 'no_content_send' };
+    if (!data.vendor_id) return { draft: null, reason: 'content_send_without_vendor' };
+    return { draft: data, reason: 'content_standing' };
+  } catch (err) {
+    return { draft: null, reason: `content_check_threw:${err && err.message}` };
+  }
+}
+
+/**
+ * ══ TDW_06/07 · M3's READER — THE DOORBELLS THE CLOCK HAS OUTRUN ═══════════
+ *
+ * Every draft sitting in the EXACT state №16 speaks for: the vendor approved
+ * bytes, the estate rang her doorbell, and her 24 hours ran out in silence.
+ *
+ * THE FOUR CLAUSES ARE THE RULED STATE, EACH LOAD-BEARING:
+ *   `state = 'approved'`          — R-29.35 kept the row alive for delivery;
+ *                                    a `sent`/`refused`/`expired` row is spent
+ *   `resolved_at IS NULL`         — the open predicate, 0117's own
+ *   `refusal_reason LIKE 'doorbell:%'` — the estate ACTUALLY RANG HER. A merely
+ *                                    approved draft means he authorised bytes
+ *                                    that never went out: she was never
+ *                                    notified, so nothing failed to be answered
+ *   `expires_at < now`            — the clock, not a guess
+ *
+ * THE FIXTURE-ABSENT FAMILY FALLS OUT OF THESE BY CONSTRUCTION rather than by a
+ * list this reader has to remember: a SUPERSEDED draft is `expired` with
+ * `refusal_reason='superseded'`; a CANCELLED one is `refused`; a REPLIED-TO one
+ * was auto-sent and is `sent`; a CONTENT-SENT one is `sent` with `content:`.
+ * Not one of them can satisfy clause 1, and the `doorbell:` clause independently
+ * excludes every draft that was never rung.
+ *
+ * `now` IS A PARAMETER so the sweep and its cells share one clock and neither
+ * has to sleep.
+ *
+ * @returns {Promise<{rows: object[], reason: string}>}
+ */
+// ── WHY THIS PREFIX IS A CONSTANT HERE AND A LITERAL IN `standingDoorbellFor` ─
+// It should be one home and it deliberately is not, and the reason is named so
+// nobody "tidies" it: `scripts/b06_bride_arrival_bench.js` §A1.12 is a SEALED
+// both-ways cell whose PRODUCTION MUTATION keys on the exact `.like(...)` call
+// inside `standingDoorbellFor`, and `String.replace` with a string pattern
+// defaces only the FIRST occurrence in the file. This function sits ABOVE that
+// one, so an identical call here would silently absorb the mutation and leave
+// the cell green over an undefaced guard — a both-ways proof quietly reduced to
+// a one-way one. The constant keeps this reader's intent legible AND keeps the
+// sealed anchor unique.
+//
+// **AND THIS COMMENT DOES NOT SPELL THE ANCHOR OUT, WHICH IS F-06.192's WHOLE
+// POINT (proposed).** An earlier draft explained the collision by quoting the
+// byte sequence — and the prose then absorbed the mutation itself, exactly as
+// the code had. The estate already holds "strip comment lines before asserting
+// about code" for ASSERTIONS; §A1.12 proves the same law binds MUTATIONS, and
+// nobody had said so. Until `underMutation` strips comments, a comment that
+// quotes an anchor is a cell quietly disarmed by prose.
+const DOORBELL_REASON_PREFIX = 'doorbell:';
+
+async function doorbellExpiredUnanswered(supabase, nowMs = Date.now(), limit = 50) {
+  if (!supabase) return { rows: [], reason: 'no_supabase' };
+  try {
+    const { data, error } = await supabase
+      .from(TABLE).select(COLS)
+      .eq('state', STATES.APPROVED)
+      .is('resolved_at', null)
+      .like('refusal_reason', `${DOORBELL_REASON_PREFIX}%`)
+      .lt('expires_at', new Date(nowMs).toISOString())
+      .order('expires_at', { ascending: true }).limit(limit);
+    if (error) return { rows: [], reason: 'sweep_query_failed' };
+    return { rows: data || [], reason: 'ok' };
+  } catch (err) {
+    return { rows: [], reason: `sweep_threw:${err && err.message}` };
+  }
+}
+
+/**
+ * M3's TERMINAL. Stamps `expired` and records WHICH arm took it.
+ *
+ * `expired_no_reply:<sid>` — the ruled byte; №16 speaks for this row.
+ * `expired_after_reply:<sid>` — DERIVED SIBLING, DECLARED: she DID write after
+ *   the doorbell but the auto-send never carried the draft, so the row is
+ *   genuinely expired and genuinely NOT a case №16 may narrate. It is stamped
+ *   with the same act and stays silent. Without this arm the sweep would either
+ *   leave a stale `approved` row forever or tell a vendor she ignored him when
+ *   she did not.
+ *
+ * IDEMPOTENCE IS THIS FUNCTION, not a flag. The row leaves `approved`, so the
+ * sweep's own reader cannot see it again and a re-run speaks zero.
+ */
+async function markSweptExpired(supabase, draftId, reason) {
+  return transition(supabase, draftId, STATES.EXPIRED, {
+    refusal_reason: reason ? String(reason).slice(0, 200) : 'expired_no_reply',
+  });
+}
+
 /**
  * The vendor's standing approval, waiting on a window. Expiry ENFORCED AT READ,
  * exactly as `openStagedFor` enforces it — a 24-hour-old approval is not a
@@ -452,6 +626,13 @@ module.exports = {
   refuse,
   expire,
   getById,
+  // TDW_06/07 THE OOW COMPLETION
+  markContentSent,
+  recentContentSendFor,
+  doorbellExpiredUnanswered,
+  markSweptExpired,
+  CONTENT_PIN_WINDOW_MS,
+  DOORBELL_REASON_PREFIX,
   STATES,
   TERMINAL,
   TABLE,

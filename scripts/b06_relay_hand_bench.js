@@ -1292,6 +1292,25 @@ await t('§11.3 the interception statement is STILL byte-identical (forkc §11.5
 H('§12 the doorbell — a closed window stops being a dead end');
 
 const closedWorld = () => { const w = openWorld(); w.messages = [inboundAgeHours(30)]; return w; };
+
+// ── LABELLED AMENDMENT · TDW_06/07 THE OOW COMPLETION · RATIFY-OR-REVERT ─────
+// THE BOTH-SIDES CLAUSE (CE-59). The window-closed fork gained a THIRD ARM this
+// sitting: when the approved draft fits Meta's envelope, `tdw_enquiry_reply_couple`
+// carries the vendor's ACTUAL WORDS and the doorbell is never rung. `BODY` above
+// is 85 single-line characters, so it fits — which means every §12/§13 cell that
+// drove the closed-window fixture through `runRelaySeat` silently changed subject: four
+// went red, and THREE (§12.3, §12.4, §12.5) stayed GREEN WHILE ASSERTING
+// AGAINST THE CONTENT SEND UNDER A NAME THAT SAYS DOORBELL. A green over a path
+// a cell does not name is indistinguishable from no test at all.
+//
+// `bellWorld()` is the closed-window fixture with a draft that CANNOT ride the envelope —
+// a newline, which docs/TEMPLATES.md §1 states Meta rejects inside a parameter.
+// So the six cells below test the doorbell exactly as they always claimed to,
+// and they now additionally prove the doorbell SURVIVES BENEATH the new arm and
+// that the fork's ordering is real. Count preserved: six cells, six cells.
+// The content arm's own cells live in scripts/b0607_oow_completion_bench.js.
+const UNFIT_BODY = 'Hi Priya —\nthe amount for the December shoot is Rs 60,000.';
+const bellWorld = () => { const w = closedWorld(); w.pending_couple_drafts[0].body = UNFIT_BODY; return w; };
 const bell = (behaviour = {}) => {
   const calls = [];
   const fn = async (arg, opts) => {
@@ -1338,7 +1357,7 @@ await t('§12.1 the template is registered FROM THE WIRE WITNESS, byte-exact', a
 
 await t('§12.2 A CLOSED WINDOW RINGS THE DOORBELL and speaks byte ④b', async () => {
   withPnid('123456');
-  const world = closedWorld();
+  const world = bellWorld();
   const b = bell();
   const out = await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
     sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
@@ -1354,7 +1373,7 @@ await t('§12.2 A CLOSED WINDOW RINGS THE DOORBELL and speaks byte ④b', async 
 await t('§12.3 ② THE LANE IS PINNED — the doorbell rides the VENDOR PNID', async () => {
   withPnid('123456');
   const b = bell();
-  await seat().runRelaySeat(makeDb(closedWorld()), VENDOR, sendSig('Priya'), {
+  await seat().runRelaySeat(makeDb(bellWorld()), VENDOR, sendSig('Priya'), {
     sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
   });
   assert.strictEqual(b.calls[0].phoneNumberId, '123456',
@@ -1364,7 +1383,7 @@ await t('§12.3 ② THE LANE IS PINNED — the doorbell rides the VENDOR PNID', 
 
 await t('§12.4 ② no vendor PNID ⇒ NO doorbell, and byte ④ verbatim', async () => {
   withPnid(null);
-  const world = closedWorld();
+  const world = bellWorld();
   const b = bell();
   const out = await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
     sendWhatsApp: transport(), sendMetaTemplate: b, env: ENV, hasTransport: true, conversationId: 'c9',
@@ -1377,7 +1396,7 @@ await t('§12.4 ② no vendor PNID ⇒ NO doorbell, and byte ④ verbatim', asyn
 await t('§12.5 ④ A DOORBELL THAT DID NOT GO NEVER CLAIMS IT DID', async () => {
   withPnid('123456');
   for (const b of [bell({ fail: 'opted_out' }), bell({ throw: true })]) {
-    const out = await seat().runRelaySeat(makeDb(closedWorld()), VENDOR, sendSig('Priya'), {
+    const out = await seat().runRelaySeat(makeDb(bellWorld()), VENDOR, sendSig('Priya'), {
       sendWhatsApp: transport(), sendMetaTemplate: b, env: ENVB, hasTransport: true, conversationId: 'c9',
     });
     assert.strictEqual(out.kind, 'window_closed', 'a failed doorbell was reported as rung');
@@ -1403,7 +1422,7 @@ await t('§12.7 R-29.35 — A RUNG DOORBELL LEAVES THE DRAFT APPROVED AND ALIVE'
   // promises a state the machine does not hold. `approved` with resolved_at
   // NULL is the state that keeps the promise; expiry and supersede still stand.
   withPnid('123456');
-  const world = closedWorld();
+  const world = bellWorld();
   await seat().runRelaySeat(makeDb(world), VENDOR, sendSig('Priya'), {
     sendWhatsApp: transport(), sendMetaTemplate: bell(), env: ENVB, hasTransport: true, conversationId: 'c9',
   });
@@ -1419,7 +1438,7 @@ await t('§12.8 MUTATION — dropping the lane pin turns §12.3 RED', async () =
   const m = mutate('src/lib/vendor/relayToCouple.js', 'const pnid = phoneNumberIdFor(t.line);', "const pnid = 'MARKETING_DEFAULT';", 'bell');
   assert.ok(m, 'DECLARED FAIL — the doorbell lane-pin anchor is absent');
   const b = bell();
-  await fresh(m).ringDoorbell(makeDb(closedWorld()), {
+  await fresh(m).ringDoorbell(makeDb(bellWorld()), {
     vendor: VENDOR, couplePhone: PHONE, brideName: 'Priya', env: ENVB, deps: { sendMetaTemplate: b },
   });
   assert.strictEqual(b.calls[0].phoneNumberId, 'MARKETING_DEFAULT',
@@ -1430,9 +1449,20 @@ await t('§12.8 MUTATION — dropping the lane pin turns §12.3 RED', async () =
 // ── §13 · WALK SEVEN'S CURES + R-29.34's REACHABILITY MEMBERS ───────────────
 H('§13 F-06.172/.173/.174 · R-29.35 · and the reachability law\'s two members');
 
-await t('§13.1 F-06.172 — THE TWO SENDER CONTRACTS HAVE ONE WRITTEN HOME', async () => {
+await t('§13.1 F-06.172 — THE THREE SENDER CONTRACTS HAVE ONE WRITTEN HOME', async () => {
   const { readSend, SENDER_CONTRACTS } = require(RELAY);
-  assert.deepStrictEqual(Object.keys(SENDER_CONTRACTS).sort(), ['freeform', 'template']);
+  // ── LABELLED AMENDMENT · TDW_06/07 · RATIFY-OR-REVERT ─────────────────────
+  // A THIRD SHAPE joined the written home, and its arrival is F-06.172 working
+  // rather than drifting: `sendWa`'s template path returns a COMPOSITE —
+  // `{ sent: true, ..., result: { ok, wamid } }` — the free-form vocabulary on
+  // the outside and the template vocabulary nested inside. `enquiryAlert.js` is
+  // its first caller that needs the id, and reading `out.sid` there would have
+  // harvested undefined from a genuine success: walk seven's exact defect, one
+  // lane over, caught by the law instead of by a founder's handset.
+  assert.deepStrictEqual(Object.keys(SENDER_CONTRACTS).sort(),
+    ['freeform', 'sendwa_template', 'template']);
+  assert.strictEqual(SENDER_CONTRACTS.sendwa_template.idField, null,
+    'the composite claims a top-level id — the whole point is that it has none');
   // DERIVED FROM THE REAL SENDERS, not from memory: metaCloud returns {ok,wamid}
   // and throws; whatsapp.js returns {sent,sid} and reports refusal by return.
   const meta = fs.readFileSync(SRC('src/lib/metaCloud.js'), 'utf8');
@@ -1459,7 +1489,7 @@ await t('§13.3 MUTATION — reading the doorbell through the free-form contract
   const m = mutate('src/lib/vendor/relayToCouple.js', "const verdict = readSend('template', out);", "const verdict = readSend('freeform', out);", 'f172');
   assert.ok(m, 'DECLARED FAIL — the contract-read anchor is absent');
   withPnid('123456');
-  const out = await fresh(m).ringDoorbell(makeDb(closedWorld()), {
+  const out = await fresh(m).ringDoorbell(makeDb(bellWorld()), {
     vendor: VENDOR, couplePhone: PHONE, brideName: 'Priya', deps: { sendMetaTemplate: bell() },
   });
   assert.strictEqual(out.ok, false, 'the mutation did not bite — walk seven could not recur');
@@ -1467,7 +1497,7 @@ await t('§13.3 MUTATION — reading the doorbell through the free-form contract
 
 await t('§13.4 THE DOORBELL WRITES ITS OWN ROW ON HER THREAD', async () => {
   withPnid('123456');
-  const world = closedWorld();
+  const world = bellWorld();
   const db = makeDb(world);
   await seat().runRelaySeat(db, VENDOR, sendSig('Priya'), {
     sendWhatsApp: transport(), sendMetaTemplate: bell(), env: ENVB, hasTransport: true, conversationId: 'c9',

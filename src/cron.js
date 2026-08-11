@@ -296,6 +296,52 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── RELAY EXPIRY SWEEP — hourly, :05 IST (TDW_06/07 M3) ───────────────────
+  // №16, THE ESTATE'S FIRST CLOCK-SPEAKER. A vendor approved bride-facing bytes,
+  // the estate rang her doorbell, and her 24 hours ran out in silence. Every
+  // other byte in the relay arc answers an act; this one reports that nobody
+  // acted, which is why it needs a schedule rather than a call site.
+  //
+  // ── WHY THIS FILE AND NOT `brideCron.js`, DERIVED NOT DEFAULTED ───────────
+  // `src/cron.js` is started by `src/index.js` (symbol `startCronJobs` at its
+  // boot block); `src/brideCron.js` by `src/brideIndex.js`. The subject is
+  // `pending_couple_drafts` — a VENDOR-lane relay object — and the notice lands
+  // on the VENDOR's handset from `VENDOR_WHATSAPP_NUMBER`. This is the sibling
+  // home. A new cron file would have been a fork, not a default.
+  //
+  // ── CADENCE, FROM THE SIBLINGS ───────────────────────────────────────────
+  // HOURLY is the demo-lifecycle expiry sweep's own cadence ('30 * * * *') and
+  // the same shape of question: a clock passed, a row must be judged. :30 is
+  // taken, so this takes :05 — its own minute, alone in its slot, sharing the
+  // siblings' Asia/Kolkata declaration so the expression says what the comment
+  // says (the B3(a) wall-clock law this file already carries).
+  //
+  // A notice can therefore trail its expiry by up to 59 minutes. That is
+  // acceptable and it is the point: the fact being reported is "a day passed",
+  // not "a second passed", and a tighter cadence would buy precision nobody can
+  // perceive at the cost of 24× the reads.
+  //
+  // NOTHING IS PASSED FOR THE TRANSPORT SEAM BY ACCIDENT: `sendWhatsApp` is
+  // handed in EXPLICITLY here, because `relayExpirySweep` refuses to send
+  // without it rather than reaching for a module-level import — the F-08.65
+  // true-pipe law, and the same posture `relayToCouple` holds one file over.
+  cron.schedule('5 * * * *', async () => {
+    try {
+      const { relayExpirySweep } = require('./lib/vendor/relaySeat');
+      const { sendWhatsApp } = require('./lib/whatsapp');
+      const out = await relayExpirySweep(supabase, { sendWhatsApp });
+      // R-29.34 MEMBER (b) — THE NAMED PRODUCTION WITNESS. The founder can read
+      // this line on a night nothing happened and know the sweep RAN, which is
+      // the difference between a quiet cron and an absent one.
+      console.log(`[relay:expiry] sweep scanned=${out.scanned} spoke=${out.spoke} `
+        + `silent=${out.silent} undelivered=${out.undelivered} reason=${out.reason}`);
+    } catch (err) {
+      console.error('[cron:relayExpiry] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
 }
 
 module.exports = { startCronJobs, routeBriefing };

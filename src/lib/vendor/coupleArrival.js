@@ -57,8 +57,42 @@ const { coupleDisplayName } = require('./relayToCouple');
 async function doorbellRouteFor(supabase, couplePhone) {
   try {
     const found = await drafts.standingDoorbellFor(supabase, couplePhone);
-    if (!found.draft) return { vendorId: null, draftId: null, reason: found.reason };
-    return { vendorId: found.draft.vendor_id, draftId: found.draft.id, reason: 'doorbell_standing' };
+    if (found.draft) {
+      return { vendorId: found.draft.vendor_id, draftId: found.draft.id, reason: 'doorbell_standing' };
+    }
+
+    // ── TDW_06/07 · M2's ROUTING PIN — THE CONTENT SEND ANSWERS TOO ─────────
+    // §0.2 REPORT, TAKEN UNDER THE CHAIR'S FORK 3 (a) RULING AND DECLARED HERE
+    // RATHER THAN WIDENED QUIETLY. This file sits OUTSIDE the sitting's stated
+    // write radius; the ruled arm cannot execute without it, because the store
+    // reader has no other caller and the router is where routing is decided.
+    // One function, one fallback, ratify-or-revert — deleting this block
+    // restores the prior behaviour exactly.
+    //
+    // WHY IT IS NEEDED AT ALL. `standingDoorbellFor` answers only for rows the
+    // estate rang a DOORBELL for — `approved`, unresolved, `doorbell:`-marked.
+    // A content send is `sent` with `resolved_at` stamped, so it fails those
+    // clauses by construction, and that function must NOT be loosened to admit
+    // it: its own header rules that only doorbell-marked rows may steer her,
+    // precisely so the estate never routes a bride on its own unsent mail.
+    //
+    // WHAT IT PREVENTS. She receives the vendor's actual words inside Meta's
+    // envelope, taps 「 Reply 」, and — on a phone holding threads with three
+    // vendors — is asked which one she meant. Walk eight's defect on a new limb.
+    // The estate is not inferring who she means here any more than the doorbell
+    // does: it is REMEMBERING WHAT IT SENT HER, minutes earlier, with that
+    // vendor's name in `{{2}}`.
+    //
+    // ORDER IS DELIBERATE: the doorbell is asked FIRST. A standing doorbell is
+    // an UNDELIVERED promise and a content send is a DELIVERED one, so if both
+    // somehow exist for one phone, the thing still waiting to be answered is the
+    // stronger claim on her reply.
+    const content = await drafts.recentContentSendFor(supabase, couplePhone);
+    if (content.draft) {
+      return { vendorId: content.draft.vendor_id, draftId: content.draft.id, reason: 'content_standing' };
+    }
+
+    return { vendorId: null, draftId: null, reason: found.reason };
   } catch (e) {
     return { vendorId: null, draftId: null, reason: `doorbell_route_threw:${e && e.message}` };
   }

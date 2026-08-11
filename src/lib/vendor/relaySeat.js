@@ -50,7 +50,8 @@
 'use strict';
 
 const drafts = require('./coupleDrafts');
-const { relayToCouple, ringDoorbell, findOrCreateCoupleThread, resolveRecipient, coupleDisplayName } = require('./relayToCouple');
+const { relayToCouple, ringDoorbell, findOrCreateCoupleThread, resolveRecipient, coupleDisplayName,
+        sendContentTemplate, contentFits } = require('./relayToCouple');
 
 // ── THE SIGNAL NAMES. One home, mirrored from the engine's own
 // `RELAY_SIGNAL_NAMES` (src/engine/src/core/tools/relayCouple.ts). Two strings
@@ -182,6 +183,46 @@ const windowUndeterminedLine = () =>
 // ⑥ EXPIRED.
 const expiredLine = () =>
   `That draft is more than 24 hours old, so I haven't sent it. Tell me again and I'll write it fresh.`;
+
+// ── №16 THE EXPIRY NOTICE — FOUNDER-VETOED 「 a 」, byte-exact ────────────────
+// THE ESTATE'S FIRST CLOCK-SPEAKER. Every other byte on this slate answers a
+// turn: the vendor said something and the door replied. This one arrives when
+// NOBODY ACTED — his doorbell rang, her 24 hours ran out in silence, and the
+// message he approved is now unsendable. Without it the draft simply vanishes
+// and he learns nothing, which is the silence class this whole arc was minted
+// against.
+//
+// WHY IT IS NOT ⑥. ⑥ answers a vendor who is IN A TURN asking about a stale
+// draft — "Tell me again and I'll write it fresh" is a reply. №16 is a PUSH to a
+// handset with no conversation open, so it must name what happened, name who did
+// not answer, and offer the two moves he actually has. The two bytes are
+// siblings and neither can wear the other's clothes.
+//
+// THE NAME RENDERS THROUGH THE F-06.186 GUARD — a bride on file only as a phone
+// number is never addressed as though the digits were her name.
+//
+// A BYTE NEVER PROMISES A STATE THE MACHINE DOES NOT HOLD (F-06.170). This one
+// says the message "didn't go out", and the sweep stamps `expired` BEFORE it
+// speaks, so the sentence is true at the instant it is uttered.
+//
+// ── THE SUBJECT'S RENDER, AND WHY IT IS NOT `recipientLabel` ────────────────
+// The founder's vetoed byte opens on a BARE NAME — 「 Priya didn't reply… 」 — and
+// the charter rules "nameless = phone". `recipientLabel` would render
+// 「 Priya (+919625759924) didn't reply… 」, which is a different sentence from
+// the one he approved. So the guard is applied WITHOUT the parenthetical: the
+// name when it is a name, the phone when it is not, matching ④ and ④b-v2's bare
+// shape rather than ①/③'s labelled one. Both shapes are already on this slate;
+// this byte takes the one its own vetoed text shows.
+// `looksLikeThePhone` is F-06.186's cure and is this file's own — a bride whose
+// `leads.name` is her digits is never addressed as though they were her name.
+function relaySubject(name, phone) {
+  if (name && !looksLikeThePhone(name, phone)) return name;
+  return phone || 'She';
+}
+
+const expiryNoticeLine = (name, phone) =>
+  `${relaySubject(name, phone)} didn't reply to the notification, so your message didn't go out. ` +
+  `Want me to write it fresh, or send her another nudge?`;
 
 // ⑦ SEND FAILED — ONE byte for every failure mode (ruled). The WHY lives in
 // `refusal_reason`; the opt-out split is on the founder's shelf, not minted.
@@ -835,14 +876,57 @@ async function sendApproved(supabase, vendor, draft, name, deps) {
   // promises a delivery — so the fork is asked before anything is resolved and
   // only the paths that truly end here stamp a terminal.
   if (out.kind === 'window_closed') {
-    // ── THE ④-FORK (R-29.24 ②) — the doorbell arm, live. ONLY on window_closed:
-    // an UNDETERMINED window falls through to ⑤ untouched, because ringing a
-    // doorbell on a window we could not read is a message sent on a guess.
+    // ── THE ④-FORK, NOW THREE-ARMED (TDW_06/07 · M2) ─────────────────────────
+    // ORDER IS THE RULING. The CONTENT arm is asked FIRST because it is strictly
+    // better for both people when it can fire: she gets his actual words instead
+    // of a knock on the door, and he gets ③ instead of a promise. The doorbell
+    // survives beneath it as the fallback for a draft that cannot ride the
+    // envelope, and byte ④ survives beneath THAT for a doorbell that did not
+    // ring. Nothing is removed; a rung arm simply stops being the only one.
+    //
+    // ONLY on window_closed, all three: an UNDETERMINED window falls through to
+    // ⑤ untouched, because sending on a window we could not read is a message
+    // sent on a guess. THIS DOOR AND THE ALERT DOOR DIVERGE HERE ON PURPOSE and
+    // the reason is named at `src/lib/vendor/enquiryAlert.js` (symbol
+    // `sendVendorEnquiryAlert`): there the fallback is a template, lawful in both
+    // window states; here the subject is a BRIDE receiving a vendor's words, and
+    // a guess about her window is not a cost this lane pays.
+    //
+    // THE THREAD IS RESOLVED ONCE FOR BOTH ARMS. It used to be found inside the
+    // doorbell's own argument list; hoisting it means a content send and a
+    // doorbell can never land on two different rows for one (vendor, phone).
+    const threadId = (await findOrCreateCoupleThread(supabase, vendor.id, draft.couple_phone)).threadId;
+
+    const fit = contentFits(draft.body);
+    if (fit.fits) {
+      const contented = await sendContentTemplate(supabase, {
+        vendor, couplePhone: draft.couple_phone, brideName: name, body: draft.body,
+        deps: { ...deps, supabase, threadId },
+      });
+      if (contented.ok) {
+        // THE DRAFT IS SPENT. `markContentSent` stamps the `sent` TERMINAL with
+        // `resolved_at` and `content:<wamid>` — R-29.35's principle running its
+        // other direction: ④b-v2 promised a delivery so its draft had to live;
+        // ③ says the delivery HAPPENED, so this one must not.
+        await drafts.markContentSent(supabase, draft.id, contented.twilioSid);
+        console.log(`[relay:oow] content_sent wamid=${contented.twilioSid || 'nosid'} draft=${draft.id}`);
+        // ③, UNCHANGED AND TRUE. The template frame is Meta's envelope; his
+        // words reached her, which is exactly what this byte has always claimed.
+        return { line: sentLine(name, draft.couple_phone), kind: 'sent', draftId: draft.id };
+      }
+      console.warn('[relaySeat] content arm declined:', contented.reason);
+    } else {
+      console.log(`[relay:oow] content_unfit reason=${fit.reason} draft=${draft.id} — falling to the doorbell`);
+    }
+
+    // ── THE DOORBELL ARM (R-29.24 ②), unchanged beneath the new one ─────────
     const rung = await ringDoorbell(supabase, {
       vendor, couplePhone: draft.couple_phone, brideName: name, env: deps.env,
       // supabase + threadId so the doorbell's own row lands on HER thread. Walk
       // seven delivered a message to her handset the estate had no record of.
-      deps: { ...deps, supabase, threadId: (await findOrCreateCoupleThread(supabase, vendor.id, draft.couple_phone)).threadId },
+      // The id is the fork's own, hoisted above the content arm: two
+      // find-or-creates in one fork is two chances to land on two rows.
+      deps: { ...deps, supabase, threadId },
     });
     if (rung.ok) {
       // ⑤ THE STATE MACHINE IS UNTOUCHED — the draft is still `refused` with
@@ -907,8 +991,169 @@ const RELAY_CLAIM_RE_LOCAL = (() => {
   catch (_e) { return /\bmessage\s+(?:to\s+[^\s,.]+\s+)?(?:is|has been)\s+(?:live|sent)\b/i; }
 })();
 
+// ══ M3 · THE EXPIRY SWEEP — THE ESTATE'S FIRST CLOCK-SPEAKER ════════════════
+//
+// Everything else in this arc answers an act. A vendor spoke, a bride replied, a
+// webhook landed. THIS FIRES WHEN NOBODY DID ANYTHING, and that is the whole
+// reason it needs a cron rather than a call site: the fact it reports — that
+// twenty-four hours passed in silence — has no event to hang on.
+//
+// THE RULED STATE, and each clause is asked of a ROW, never of a string
+// (`doorbellExpiredUnanswered`, `src/lib/vendor/coupleDrafts.js`): the draft is
+// `approved` with `resolved_at` NULL, its `refusal_reason` begins `doorbell:`
+// (so the estate ACTUALLY RANG HER — an unrung draft is not a message she failed
+// to answer), and `expires_at` is past.
+//
+// ── ORDER: STAMP FIRST, SPEAK SECOND ───────────────────────────────────────
+// Deliberate, and the asymmetry is priced. Stamping first means a transport
+// failure costs the vendor a notice he never hears, logged loudly. Speaking
+// first would mean a stamp failure costs him the SAME notice TWICE on the next
+// hour's run. This arc's standing law is that a byte which did not go never
+// claims it did — it says nothing about a byte going twice, so the cheaper
+// failure wins and it is named here rather than discovered at 4am.
+//
+// ── IDEMPOTENCE IS THE STATE MACHINE, NOT A FLAG ───────────────────────────
+// The stamp moves the row out of `approved`, which is clause 1 of the reader's
+// own query. A re-run cannot see it. There is no "already swept" column to drift
+// from the thing it describes.
+//
+// ── THE ⑥-COLLISION, AND WHY ITS ASYMMETRY IS ITSELF THE CELL ──────────────
+// A bride arriving AFTER expiry already produces a vendor-facing byte:
+// `approvedForPhone` self-heals the row to `expired` and `coupleArrival.js`
+// speaks ⑥. So two paths could in principle narrate one draft. They cannot
+// collide, and the reason is directional: if she arrives first, the row is no
+// longer `approved` and this sweep finds NOTHING. The benign direction is the
+// only one reachable, and that fact is asserted by a cell rather than trusted.
+//
+// ── THE SECOND ARM, DERIVED AND DECLARED ───────────────────────────────────
+// A row can be expired-and-doorbelled while she DID write — if her arrival
+// failed to carry the draft for any reason. №16 must not tell a vendor she
+// ignored him when she did not. Such a row is stamped in the same act with
+// `expired_after_reply:<sid>` and SPEAKS NOTHING. Without this arm the sweep
+// would either strand the row forever or utter a false sentence, and silence is
+// the only honest third option.
+//
+// THE REPLY FLOOR IS THE DOORBELL'S OWN ROW when it can be resolved (its wamid
+// rides in `refusal_reason`), else the draft's `created_at`. The fallback is
+// CONSERVATIVE IN THE SILENT DIRECTION: an inbound between staging and the ring
+// would suppress №16 that could honestly have spoken. Silence over a wrong
+// sentence, declared rather than discovered.
+async function relayExpirySweep(supabase, deps = {}) {
+  const now = deps.now || Date.now();
+  const _drafts = deps.drafts || drafts;
+  const out = { scanned: 0, spoke: 0, silent: 0, undelivered: 0, reason: 'ok' };
+  if (!supabase) { out.reason = 'no_supabase'; return out; }
+
+  const found = await _drafts.doorbellExpiredUnanswered(supabase, now);
+  if (found.reason !== 'ok') { out.reason = found.reason; return out; }
+  out.scanned = found.rows.length;
+  if (!found.rows.length) return out;
+
+  for (const draft of found.rows) {
+    try {
+      const sid = String(draft.refusal_reason || '').slice('doorbell:'.length) || 'nosid';
+      const replied = await brideRepliedSince(supabase, draft, sid);
+
+      // STAMP FIRST — both arms, one act, the register distinguishing them.
+      const reason = replied ? `expired_after_reply:${sid}` : `expired_no_reply:${sid}`;
+      const stamped = await _drafts.markSweptExpired(supabase, draft.id, reason);
+      if (!stamped.ok) {
+        console.warn(`[relay:expiry] stamp refused draft=${draft.id} reason=${stamped.reason} — nothing spoken`);
+        continue;
+      }
+
+      if (replied) {
+        out.silent += 1;
+        console.log(`[relay:expiry] silent draft=${draft.id} — she wrote after the doorbell; ⑥ is the arrival's byte, not mine`);
+        continue;
+      }
+
+      const name = await coupleDisplayName(supabase, draft.vendor_id, draft.couple_phone);
+      const spoke = await pushToVendor(supabase, draft.vendor_id,
+        expiryNoticeLine(name, draft.couple_phone), deps);   // №16
+      if (spoke) {
+        out.spoke += 1;
+        console.log(`[relay:expiry] notice draft=${draft.id} vendor=${draft.vendor_id} doorbell=${sid}`);
+      } else {
+        out.undelivered += 1;
+        console.warn(`[relay:expiry] notice UNDELIVERED draft=${draft.id} vendor=${draft.vendor_id} — `
+          + `the row is stamped and he has not been told`);
+      }
+    } catch (e) {
+      console.warn(`[relay:expiry] draft=${draft && draft.id} threw:`, e && e.message);
+    }
+  }
+  return out;
+}
+
+// Has she written since the estate rang her? The floor is the doorbell's own row
+// when resolvable, else the draft's creation. Scans `couple_thread` rows for her
+// phone — the vendor-lane kinds, never `couple_self`, which sits on the BRIDE
+// PNID (`src/lib/vendor/coupleWaWindow.js`, symbol `VENDOR_LANE_KINDS`).
+async function brideRepliedSince(supabase, draft, sid) {
+  try {
+    let floor = draft.created_at;
+    if (sid && sid !== 'nosid') {
+      // WITNESS: `## public.messages` — `twilio_sid` col 10, `created_at` col 11.
+      const { data: bell } = await supabase
+        .from('messages').select('created_at').eq('twilio_sid', sid).maybeSingle();
+      if (bell && bell.created_at) floor = bell.created_at;
+    }
+    // WITNESS: `## public.conversations` — `counterparty_phone` col 4, `kind` col 5.
+    const { data: convos } = await supabase
+      .from('conversations').select('id')
+      .eq('counterparty_phone', draft.couple_phone).eq('kind', 'couple_thread');
+    const ids = (convos || []).map((c) => c.id);
+    if (!ids.length) return false;
+    const { data: inbound } = await supabase
+      .from('messages').select('id')
+      .eq('direction', 'inbound').in('conversation_id', ids)
+      .gt('created_at', floor).limit(1).maybeSingle();
+    return !!inbound;
+  } catch (e) {
+    // FAILS TOWARD SILENCE. An unreadable history is not permission to tell a
+    // vendor his customer ignored him.
+    console.warn('[relay:expiry] reply check threw:', e && e.message);
+    return true;
+  }
+}
+
+// He is not in a turn, so there is no reply to append to. The same shape
+// `relayReceipt` uses for №14/№15, through F-06.180's one home: `public.vendors`
+// HAS NO `phone` COLUMN, and two sites believed otherwise for the life of the
+// receipt chain.
+async function pushToVendor(supabase, vendorId, line, deps = {}) {
+  try {
+    const send = deps.sendWhatsApp;
+    const from = (deps.env || process.env).VENDOR_WHATSAPP_NUMBER;
+    if (typeof send !== 'function' || !from || !vendorId) {
+      console.warn('[relay:expiry] undeliverable — no transport, lane or vendor');
+      return false;
+    }
+    const { vendorHandset } = require('./vendorHandset');
+    const hand = await vendorHandset(supabase, vendorId);
+    if (!hand.phone) {
+      console.warn(`[relay:expiry] undeliverable vendor=${vendorId} reason=${hand.reason}`);
+      return false;
+    }
+    const out = await send(hand.phone, line, [], from);
+    // THE SENTINEL, READ (F-06.146). `sendWhatsApp` refuses BY RETURN.
+    if (!out || out.sent !== true) {
+      console.warn(`[relay:expiry] send refused vendor=${vendorId} reason=${(out && out.blocked) || 'not_sent'}`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[relay:expiry] push threw:', e && e.message);
+    return false;
+  }
+}
+
 module.exports = {
   runRelaySeat,
+  relayExpirySweep,
+  expiryNoticeLine,
+  relaySubject,
   RELAY_CONFIRM_SENT_BY,
   ASKING_KINDS,
   relayOutcomeAsks,

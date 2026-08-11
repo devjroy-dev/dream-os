@@ -343,6 +343,21 @@ const SENDER_CONTRACTS = Object.freeze({
   freeform: Object.freeze({ successField: 'sent', idField: 'sid', refusalField: 'blocked', throwsOnFailure: false }),
   // template + raw text: sendMetaTemplate / sendMetaText / postMessage
   template: Object.freeze({ successField: 'ok', idField: 'wamid', refusalField: null, throwsOnFailure: true }),
+  // ── THE THIRD SHAPE, ADDED TDW_06/07 · A COMPOSITE, AND THE TRAP IS REAL ──
+  // `src/lib/sendWa.js` (symbol `sendWa`) is a GATE, not a sender, and its
+  // template path returns BOTH vocabularies nested:
+  //     { sent: true, mode: 'template', key, from, to, payload, result: {ok, wamid} }
+  // The OUTER object speaks the free-form contract; the INNER `result` is
+  // `metaCloud`'s raw return. There is NO `sid` anywhere on it, so a reader
+  // applying the freeform contract harvests `undefined` from a genuine success —
+  // walk seven's exact defect, waiting one lane over for the first caller that
+  // needed the id. `src/lib/vendor/enquiryAlert.js` is that caller.
+  // `idField` is deliberately null: the id is NOT at the top level, and a
+  // reader must go through `nestedField`.
+  sendwa_template: Object.freeze({
+    successField: 'sent', idField: null, refusalField: null, throwsOnFailure: true,
+    nestedField: 'result', nestedIdField: 'wamid',
+  }),
 });
 
 // The single reader. `kind` names WHICH contract, so a caller cannot silently
@@ -354,6 +369,13 @@ function readSend(kind, out) {
   if (out[c.successField] !== true) {
     const blocked = c.refusalField ? out[c.refusalField] : null;
     return { ok: false, id: null, reason: blocked ? `blocked:${blocked}` : 'not_sent' };
+  }
+  // The composite's id lives one level down. Optional-chained: `result` is an
+  // EXTERNAL shape and a malformed one must yield a null id, never throw inside
+  // the reader that exists to stop callers guessing.
+  if (c.nestedField) {
+    const inner = out[c.nestedField];
+    return { ok: true, id: (inner && inner[c.nestedIdField]) || null, reason: 'sent' };
   }
   return { ok: true, id: out[c.idField] || null, reason: 'sent' };
 }
@@ -433,9 +455,137 @@ async function ringDoorbell(supabase, { vendor, couplePhone, brideName, env, dep
   }
 }
 
+// ══ THE FIT TEST (TDW_06/07 · M2) — MAY HIS WORDS RIDE THE ENVELOPE? ════════
+//
+// TWO CLAUSES, AND THEIR EVIDENCE IS OF TWO DIFFERENT GRADES. That asymmetry is
+// stated rather than smoothed over, because a constant that hides its own
+// uncertainty is F-08.75 evaded rather than honoured.
+//
+// ── CLAUSE 1 · WHITESPACE — needs nobody's word ─────────────────────────────
+// `docs/TEMPLATES.md` §1, the estate's own written law, filed with Meta:
+// "Variable values supplied at send time must themselves contain no newline,
+// tab, or run of 4+ spaces (Meta rejects those in parameters)." A multi-line
+// draft is REFUSED here and falls to the doorbell, which carries no words and
+// therefore cannot be broken by them.
+//
+// ── CLAUSE 2 · LENGTH — and ONE RESIDUAL, NAMED AS UNRESOLVED ───────────────
+// THE ARITHMETIC, measured against the registry's own body at authoring:
+//     frame with placeholders ................ 102 chars
+//     Meta's documented BODY cap ............. 1024 chars
+//     1024 − 102 ............................. 922 chars across {{1}}+{{2}}+{{3}}
+//     less a generous 60 for name + vendor ... 862
+//     MAX_CONTENT_BODY_CHARS ................. 700   (162 of margin)
+//
+// **THE UNRESOLVED RESIDUAL, DECLARED:** the founder's Edit screen showed a
+// counter reading **1036**, and this seat could not reconcile that number with a
+// 1024-character cap under either available reading — "remaining" or "used" —
+// since 1036 exceeds 1024 in both. 700 is chosen because it is SAFE UNDER EVERY
+// READING OF THAT COUNTER, including readings nobody here has thought of. It is
+// not a derivation of 1036; it is a constant deliberately small enough not to
+// need one. If the founder later states what 1036 counts, this number may rise
+// — and a rise is a copy-free, cell-covered one-line change.
+//
+// A REFUSAL COSTS NOTHING SHE NOTICES: the doorbell rings instead, exactly as it
+// does today, and byte ④b-v2 speaks. An over-long parameter costs a Meta
+// rejection on a bride-facing send, which is the expensive direction.
+const MAX_CONTENT_BODY_CHARS = 700;
+const CONTENT_BAD_WHITESPACE = /[\r\n\t]|\s{4,}/;
+
+function contentFits(body) {
+  const s = typeof body === 'string' ? body : '';
+  if (!s.trim()) return { fits: false, reason: 'empty_body' };
+  if (CONTENT_BAD_WHITESPACE.test(s)) return { fits: false, reason: 'multiline_or_whitespace' };
+  if (s.length > MAX_CONTENT_BODY_CHARS) return { fits: false, reason: `over_length:${s.length}` };
+  return { fits: true, reason: 'fits' };
+}
+
+// ══ THE CONTENT LEG (TDW_06/07 · M2) — THE OOW FORK'S SECOND ARM ════════════
+//
+// ON A CLOSED WINDOW the estate has had two answers: byte ④ (the draft waits) and
+// the doorbell (she is told there IS an update). THIS IS THE THIRD AND IT IS THE
+// ONE THE VENDOR ACTUALLY WANTED: his approved words, delivered, now.
+//
+// ── THE EQUALITY LAW'S TRUE OBJECT, RULED ──────────────────────────────────
+// `{{3}}` IS THE STORED BYTES, read off the row, handed to the payload builder
+// untouched. THE TEMPLATE FRAME IS META'S ENVELOPE, NOT THE MESSAGE. So ③ speaks
+// unchanged and truthfully, the SHOW stays the bare frame ① (the window is
+// unknowable at stage and can flip before the affirmative — a dressed SHOW would
+// be a sentence promising an equality nobody can yet assert, which is the exact
+// class the founder's 「 word for word 」 strike killed), and the equality claim
+// lives where it has always lived: in a CELL, asserting `{{3}} === body`.
+//
+// FIVE PROPERTIES, MIRRORED FROM `ringDoorbell` BECAUSE THEY WERE RIGHT THERE:
+//  ① it fires ONLY on a shut window and only when `contentFits` says yes;
+//  ② THE LANE IS PINNED by the template's own declared line. A send from the
+//    bride PNID invites her reply onto a number holding no draft;
+//  ③ THE RETURN IS READ THROUGH THE TEMPLATE CONTRACT — `{ok, wamid}`, never
+//    `{sent, sid}`. Walk seven's whole defect, and the written home is above;
+//  ④ ITS FAILURE FALLS BACK TO THE DOORBELL, which falls back to byte ④. A send
+//    that did not go never claims it did;
+//  ⑤ HER THREAD HOLDS THE BYTES SHE RECEIVED. `sent_by: 'vendor_relay'` is
+//    correct and deliberate here where it was not at the alert site: this IS the
+//    vendor's outreach to a bride, so `relayReceipt` SHOULD fire №14/№15 on it —
+//    that is LEG 1's whole promise on his handset.
+//
+// THE ROW CARRIES THE RAW BODY, NOT THE ENVELOPE. The doorbell writes a marker
+// (`[doorbell] <name>`) because it carried no words; this one carried his, and
+// her thread must hold what reached her. The envelope is recorded where an
+// envelope belongs — the draft's `content:<wamid>` stamp and the log line.
+async function sendContentTemplate(supabase, { vendor, couplePhone, brideName, body, deps = {} }) {
+  try {
+    const text = typeof body === 'string' ? body.trim() : '';
+    const fit = contentFits(text);
+    if (!fit.fits) return { ok: false, reason: `does_not_fit:${fit.reason}` };
+
+    const { getTemplate, isApproved, buildTemplatePayload } = require('../templates');
+    const KEY = 'enquiry_reply_couple';
+    const t = getTemplate(KEY);
+    // ① the fork point: no mapped+approved template ⇒ the doorbell, unchanged.
+    if (!t || !isApproved(KEY)) return { ok: false, reason: 'no_mapped_template' };
+
+    // ② THE LANE, PINNED — an unset PNID is a REFUSAL, never a send to
+    // marketing's default (`metaCloud.resolveConfig` would fall back there,
+    // which is the silent wrong-number failure this clause exists to prevent).
+    const { phoneNumberIdFor } = require('../sendWa');
+    const pnid = phoneNumberIdFor(t.line);
+    if (!pnid) return { ok: false, reason: `no_pnid_for_lane:${t.line}` };
+
+    const vendorName = (vendor && (vendor.business_name || vendor.name)) || 'your vendor';
+    const first = String(brideName || '').trim().split(/\s+/)[0] || 'there';
+    // {{3}} IS `text` — the stored bytes, unrewritten. This is the equality
+    // chain's last hop and the cell asserts it against the payload Meta receives.
+    const payload = buildTemplatePayload(KEY, { name: first, vendor: vendorName, message: text });
+
+    const send = deps.sendMetaTemplate || require('../metaCloud').sendMetaTemplate;
+    const out = await send({ to: couplePhone, payload }, { phoneNumberId: pnid });
+    const verdict = readSend('template', out);
+    if (!verdict.ok) return { ok: false, reason: verdict.reason };
+
+    if (deps.supabase && deps.threadId) {
+      try {
+        await deps.supabase.from('messages').insert({
+          conversation_id: deps.threadId,
+          direction: 'outbound',
+          channel: 'whatsapp',
+          body: text,
+          sent_by: 'vendor_relay',
+          twilio_sid: verdict.id,
+        });
+      } catch (e) { console.warn('[relay:oow] content thread row failed:', e && e.message); }
+    }
+    return { ok: true, twilioSid: verdict.id, line: t.line, template: t.name };
+  } catch (e) {
+    return { ok: false, reason: `content_threw: ${e && e.message}` };
+  }
+}
+
 module.exports = {
   relayToCouple,
   ringDoorbell,
+  sendContentTemplate,
+  contentFits,
+  MAX_CONTENT_BODY_CHARS,
+  CONTENT_BAD_WHITESPACE,
   findOrCreateCoupleThread,
   readSend,
   SENDER_CONTRACTS,

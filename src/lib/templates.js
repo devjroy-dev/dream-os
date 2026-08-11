@@ -110,6 +110,103 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── TDW_06/07 THE OOW COMPLETION · M1 — THE ENQUIRY BRIEF ─────────────────
+  // AUTHORED FROM THE WIRE WITNESS AND NO OTHER SOURCE (F-08.75). The founder
+  // captured this off his own Meta Template Manager Edit screen: name
+  // `tdw_enquiry_brief_vendor` · UTILITY · English · NO button · body verbatim
+  // below. Approved on the WABA since 2026-08-05 and UNMAPPED until this
+  // sitting — `enquiryAlert.js`'s old OOW registry named its absence
+  // deliberately rather than guessing a mapper, and this entry is that wait
+  // ending with the bytes in hand.
+  //
+  // WHAT IT IS FOR, AND WHY IT REPLACES `enquiry_alert_vendor` ON THIS PATH.
+  // The alert that has been reaching out-of-window vendors says a bride
+  // enquired and does NOT say what she asked — `{{3}}` is this template's whole
+  // reason to exist. `enquiry_alert_vendor`'s three slots (name/bride/link)
+  // cannot carry her words; this one's four can.
+  //
+  // {{3}} IS HER OWN SENTENCE — scrubbed, newline-collapsed, truncated at a
+  // declared cap (CE ruling, Fork 2 arm (a); the composer is
+  // `src/lib/vendor/enquiryAlert.js`, symbol `briefSummary`). NEVER an invented
+  // field, and never the model's frame: the model's frame is multi-line on the
+  // returning-bride shape and a template parameter cannot carry a newline.
+  //
+  // LANE: 'vendor'. The vendor's own handset, the vendor's own PNID.
+  //
+  // BODY SHAPE against docs/TEMPLATES.md §1: single line · variables 1..4, no
+  // gaps · the body neither begins nor ends on a variable · no two variables
+  // adjacent. Checked line by line against §1 at authoring.
+  //
+  // [F-06.85: conditioned on a MECHANICAL fact — Meta's review state for
+  //  tdw_enquiry_brief_vendor. Mechanism: `isApproved` at the bottom of this
+  //  file. If Meta pauses or reclassifies it, `status` moves and the door's
+  //  send refuses honestly with no other change.]
+  enquiry_brief_vendor: {
+    key: 'enquiry_brief_vendor',
+    name: 'tdw_enquiry_brief_vendor',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['name', 'bride', 'summary', 'link'],
+    body:
+      "Hi {{1}}, a new enquiry just came in on The Dream Wedding. It's from {{2}}, " +
+      "and here's what they shared: {{3}}. Open your Leads at {{4}} to see everything and reply.",
+    status: 'approved',
+  },
+
+  // ── TDW_06/07 THE OOW COMPLETION · M2 — THE CONTENT-CARRYING REPLY ────────
+  // AUTHORED FROM THE WIRE WITNESS AND NO OTHER SOURCE (F-08.75). Founder-
+  // captured off his own Edit screen: name `tdw_enquiry_reply_couple` ·
+  // English · quick-reply 「 Reply 」 · APPROVED 2026-08-11, founder-submitted.
+  //
+  // WHAT IT IS, AND HOW IT DIFFERS FROM THE DOORBELL. `enquiry_update_couple`
+  // (above) is the DOORBELL: it tells her there IS a message and carries none.
+  // This one CARRIES HIS WORDS. On a shut window the estate now has two arms —
+  // the content template when the approved draft fits, the doorbell when it does
+  // not — and byte ④ survives beneath both as the honest refusal.
+  //
+  // {{3}} IS HIS APPROVED BYTES, BYTE-EXACT. That is the equality law's true
+  // object on this leg and it is asserted by a CELL, never by a sentence: the
+  // template frame is META'S ENVELOPE, not the message (CE ruling, Fork 1). The
+  // fit test that decides whether these bytes may ride at all lives at
+  // `src/lib/vendor/relayToCouple.js`, symbol `contentFits`.
+  //
+  // LANE: 'vendor'. NON-NEGOTIABLE, the doorbell's own reasoning verbatim — a
+  // send from the bride PNID invites her reply onto a number holding no draft,
+  // and the mechanic dies silently.
+  //
+  // ── A NAMED §1 DIVERGENCE, RECORDED RATHER THAN "FIXED" ───────────────────
+  // §1's third rule asks that no two variables be adjacent, separated by REAL
+  // WORDS. `{{1}} — {{2}}` is separated by an em-dash, which is punctuation.
+  // THE BODY IS NOT ALTERED HERE AND MUST NOT BE: Meta has already approved
+  // these exact bytes, and a registry whose body has drifted from the filed one
+  // builds a payload Meta rejects at send time (the `enquiry_alert_vendor` and
+  // `vendor_welcome` comments both record that same law). The estate already
+  // holds the precedent live: `enquiry_update_couple` above opens
+  // 「 Hi {{1}} — your vendor {{2}} 」, the identical shape, approved and rung on
+  // production. The divergence is DECLARED so it is a decision on the record
+  // rather than a drift nobody noticed.
+  //
+  // NO BUTTON COMPONENT IS SENT for the quick-reply. Derived, not assumed:
+  // `buildTemplatePayload` (below) emits a `body` component only, and
+  // `enquiry_update_couple` — which carries a quick-reply 「 See the update 」 —
+  // sends green through that same builder on production. A quick-reply button
+  // takes no send-time parameter.
+  //
+  // [F-06.85: conditioned on Meta's review state. Mechanism: `isApproved`.]
+  enquiry_reply_couple: {
+    key: 'enquiry_reply_couple',
+    name: 'tdw_enquiry_reply_couple',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['name', 'vendor', 'message'],
+    body:
+      'Hi {{1}} — {{2}} has replied to your wedding enquiry: "{{3}}" ' +
+      'Reply here to continue the conversation.',
+    status: 'approved',
+  },
+
   crew_assignment: {
     key: 'crew_assignment',
     name: 'tdw_crew_assignment',

@@ -696,21 +696,48 @@ t('§7.6 F-07.40: enquiry_alert_vendor is REGISTERED on the vendor line and APPR
 // re-read the bodies; the gap is not allowed to close by accident." Meta approved
 // tdw_enquiry_alert_vendor and the tripwire tripped on precisely that event.
 // Re-authored to the NEW truth, keeping the tripwire live for a FIFTH template.
-t('§7.8 F-07.40 CLOSED: exactly one approved vendor-line template carries an enquiry', () => {
+t('§7.8 F-07.40: the approved vendor-line set is ENUMERATED, and only carriers say enquiry', () => {
   const { TEMPLATES } = require(SRC('src/lib/templates.js'));
   const approvedVendor = Object.values(TEMPLATES)
     .filter(v => v.line === 'vendor' && v.status === 'approved')
     .map(v => v.key).sort();
+  // ── LABELLED AMENDMENT · TDW_06/07 THE OOW COMPLETION · RATIFY-OR-REVERT ──
+  // THIS CELL WAS RED AT `dd48506`, BEFORE THIS SITTING TOUCHED ANYTHING —
+  // re-derived by stashing the sitting's diff and re-running, 113/114 both ways.
+  // It is repaired here under "the sitting that moves a subject owns the benches
+  // that read it": this sitting adds two approved vendor-line templates, so the
+  // set is this sitting's subject even though the drift is not its doing.
+  //
+  // WHY IT DRIFTED, AND THE LAW IT PROVES: an inventory that COUNTS controls in
+  // a single state is a claim about that state, not about the control. The cell
+  // was sealed when four keys held; `vendor_welcome` (TDW_10 P3),
+  // `enquiry_update_couple` (the doorbell) and the three AUTHENTICATION keys
+  // (F-10.42's truth repair) each joined afterwards, every one of them a lawful
+  // addition, and the cell reddened on all five without any of them being wrong.
+  // It now ENUMERATES the set rather than asserting its size, so a lawful
+  // addition reddens it exactly once — when the addition is made — and the seat
+  // making it must say so here rather than discover it three sittings later.
   assert.deepStrictEqual(approvedVendor,
-    ['crew_assignment', 'enquiry_alert_vendor', 'morning_nudge_vendor', 'payment_reminder'],
+    ['crew_assignment', 'enquiry_alert_vendor', 'enquiry_brief_vendor',
+     'enquiry_reply_couple', 'enquiry_update_couple', 'morning_nudge_vendor',
+     'payment_reminder', 'vendor_login_otp', 'vendor_reset_otp', 'vendor_welcome'],
     'the approved vendor-line set MOVED — re-derive F-07.40 by hand before trusting the fallback');
-  // THE CARRIER, and only it, may speak of an enquiry. The other three were
-  // rejected as costume twice by derivation; if one of them ever acquires the
-  // word, that is a body edit nobody benched and this reddens.
-  const CARRIER = 'enquiry_alert_vendor';
+  // THE CARRIERS may speak of an enquiry; nothing else may. F-07.40 sealed with
+  // ONE carrier. There are now FOUR, and each earned its place by a ruling:
+  //   enquiry_alert_vendor  — F-07.40's original, still the PWA path's fallback
+  //                           (src/api/couple/enquire.js) and NOT retired
+  //   enquiry_brief_vendor  — TDW_06/07 M1, the WhatsApp alert door's OOW arm,
+  //                           the first that can say WHAT SHE ASKED
+  //   enquiry_update_couple — the doorbell (R-29.24), bride-facing on this lane
+  //   enquiry_reply_couple  — TDW_06/07 M2, the content-carrying OOW arm
+  // The three original non-carriers were rejected as costume twice by
+  // derivation; if one of THEM ever acquires the word, that is a body edit
+  // nobody benched and this still reddens.
+  const CARRIERS = ['enquiry_alert_vendor', 'enquiry_brief_vendor',
+                    'enquiry_reply_couple', 'enquiry_update_couple'];
   for (const k of approvedVendor) {
     const mentions = /enquir/i.test(TEMPLATES[k].body);
-    if (k === CARRIER) {
+    if (CARRIERS.includes(k)) {
       assert.ok(mentions, 'the carrier no longer mentions the enquiry it exists to announce');
     } else {
       assert.ok(!mentions, `${k} now mentions an enquiry — re-read F-07.40`);
@@ -719,8 +746,10 @@ t('§7.8 F-07.40 CLOSED: exactly one approved vendor-line template carries an en
   // The STOP hazard that disqualified morning_nudge_vendor must never reach the
   // carrier: an enquiry alert a vendor can silence by pausing MORNINGS is the
   // defect the whole finding was about.
-  assert.ok(!/STOP/i.test(TEMPLATES[CARRIER].body),
-    'the enquiry carrier has acquired a STOP instruction — the morning_nudge trap');
+  for (const c of CARRIERS) {
+    assert.ok(!/STOP/i.test(TEMPLATES[c].body),
+      `${c} has acquired a STOP instruction — the morning_nudge trap`);
+  }
 });
 
 t('§7.9 SURFACE ARM: `ok` is bound to the lead write, not hardcoded true', () => {

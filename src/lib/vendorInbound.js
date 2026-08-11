@@ -659,6 +659,11 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
                 toPhone: vendorUser.phone,
                 text: scrubModelFrame(result.vendorNotification, originalMessage, { supabase, vendorId: interp.matched_vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(disambiguated)' }),
                 vendorName: vendorUser.name, brideName: result.leadName, link: VENDOR_LEADS_LINK,
+                // TDW_06/07 M1 — {{3}}'s raw material, passed rather than derived.
+                // The SAME value handed to `scrubModelFrame` one line up, for the
+                // same reason its header gives: the call site knows the boundary
+                // as a fact and a regex at the door would be guessing at it.
+                brideMessage: originalMessage,
                 supabase, vendorId: interp.matched_vendor_id, ctx: 'vendorInbound:notification(disambiguated)',
               });
             }
@@ -820,6 +825,8 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
               toPhone: vendorUser.phone,
               text: scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: stickyThread.vendors?.id, surface: 'whatsapp', ctx: 'vendorInbound:notification(sticky)' }),
               vendorName: vendorUser.name, brideName: result.leadName, link: VENDOR_LEADS_LINK,
+              // TDW_06/07 M1 — {{3}}'s raw material. This turn was handed `body`.
+              brideMessage: body,
               supabase, vendorId: stickyThread.vendors?.id, ctx: 'vendorInbound:notification(sticky)',
             });
           }
@@ -1271,6 +1278,8 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
             toPhone: vendorUser.phone,
             text: scrubModelFrame(result.vendorNotification, body, { supabase, vendorId: existingThread.vendor_id, surface: 'whatsapp', ctx: 'vendorInbound:notification(returning)' }),
             vendorName: vendorUser.name, brideName: result.leadName, link: VENDOR_LEADS_LINK,
+            // TDW_06/07 M1 — {{3}}'s raw material. This turn was handed `body`.
+            brideMessage: body,
             supabase, vendorId: existingThread.vendor_id, ctx: 'vendorInbound:notification(returning)',
           });
         }
