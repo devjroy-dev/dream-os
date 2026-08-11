@@ -109,11 +109,37 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   const limit  = Math.min(parseInt(req.query.limit || '100', 10) || 100, 500);
   const offset = parseInt(req.query.offset || '0', 10) || 0;
 
-  // counts per state (state board)
+  // ── THE STATE BOARD (F-05.70 limb 2 · R-30.23) ────────────────────────────
+  // THIS LOOP READ: `if (counts[row.state] != null) counts[row.state]++`, over an
+  // object seeded from VALID_STATES alone. A state the vocabulary did not name
+  // was not bucketed to `other` and not emitted — it was DROPPED, and the board
+  // above it still added up, which is the fixed-list filter under-reporting while
+  // looking complete. The screen cure (a tile row generated from this object)
+  // would have been a cure of the symptom's symptom: a ninth state can only
+  // auto-render if this payload names it FIRST.
+  //
+  // THE SEED IS NOW BOTH: the vocabulary (so a state with zero rows still renders
+  // its tile at 0, which is a real fact and not an absence) AND the rows actually
+  // observed (so a state nobody declared is counted rather than censored). The
+  // screen's humanising fallback is what turns the unrecognised key into a label.
   const counts = {};
   for (const s of VALID_STATES) counts[s] = 0;
-  const { data: all } = await supabase.from('prospects').select('state');
-  for (const row of (all || [])) if (counts[row.state] != null) counts[row.state]++;
+  const { data: all } = await supabase.from('prospects').select('state, last_template_at');
+  for (const row of (all || [])) {
+    const k = row && row.state;
+    if (k == null) continue;
+    counts[k] = (counts[k] || 0) + 1;
+  }
+
+  // ── THE CUMULATIVE FIGURE (F-05.70 limb 1 · R-30.22 §2) ───────────────────
+  // `counts.templated` is a WAYPOINT: the sweep writes `templated`, and the first
+  // inbound writes it straight back out to `replied`/`in_session`, and 24h later
+  // to `expired`. Reading it as "openers sent" told the founder ZERO over a lane
+  // that had sent four. `last_template_at` is the RECORD of a send — it has
+  // exactly two writers (this file's send-opener and runOpenerJob) and nothing
+  // ever clears it, INCLUDING restore, because the send genuinely happened.
+  // This is the founder's own audit query made a served fact.
+  const openers_sent_total = (all || []).filter(r => r && r.last_template_at).length;
 
   let q = supabase
     .from('prospects')
@@ -171,7 +197,7 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
     return { ...r, has_conversation: has, exit_kind: exitKind(r, has) };
   });
 
-  return okRes(res, { prospects: stamped, counts, state, limit, offset });
+  return okRes(res, { prospects: stamped, counts, openers_sent_total, state, limit, offset });
 }));
 
 // POST / — manual add (source='manual'). phone required.
