@@ -1052,11 +1052,21 @@ await t('§9.14 ABSENT => byte-identical dynamic block (the regression law)', as
 // ── §10 · ZIP 4 — THE DOOR OWNS THE STAGE, AND E3-PRIME ─────────────────────
 H('§10 R-29.32/.33 — the trigger leaves the model');
 
+// ── LABELLED AMENDMENT (TDW_06 rider 4, F-06.188) · RATIFY-OR-REVERT · COUNT
+// PRESERVED. This fixture fabricated the door's ask as a BODY STRING, because the
+// gate read one — which is the finding. Walk ten proved the cost: rider 3's
+// render guard dropped the parentheses for a nameless bride and the gate went
+// with them, so no nameless draft could be approved by a plain yes. `doorAsked`
+// now reads a reserved `sent_by` stamp, so the fixture carries the STAMP and a
+// body in the NAMELESS form — the exact shape that broke on production. If the
+// gate ever regresses to reading copy, these cells red on the body they hold.
 const withAsk = (over = {}) => {
   const w = openWorld(over);
+  const seatMod = seat();
   w.messages = [inboundAgeHours(1),
     { id: 'ask', conversation_id: 'c9', direction: 'outbound',
-      body: `Here is the draft, word for word:\n\n"${BODY}"\n\nSend this to Priya (+919625759924)?`,
+      sent_by: seatMod.RELAY_CONFIRM_SENT_BY,
+      body: seatMod.showBlock(BODY, null, '+919625759924'),
       created_at: new Date().toISOString() }];
   return w;
 };

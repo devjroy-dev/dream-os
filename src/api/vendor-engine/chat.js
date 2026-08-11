@@ -1324,7 +1324,19 @@ const RELAY_CLAIM_RE = new RegExp([
   // invisible. These limbs speak about a MESSAGE reaching a PERSON and nothing
   // else.
   "\\b(?:message|msg|it|that|reply|note)\\s+(?:to\\s+[^\\s,.]+\\s+)?(?:went through|has gone (?:out|through)?|went out)\\b",
-  "\\b(?:she|he|they)\\s+(?:has|have|'s|'ve)\\s+(?:got|received)\\s+it\\b",
+  // ── F-06.189 (β) · THE BARE-POSSESSION LIMB ───────────────────────────────
+  // WALK TEN, 14:16:10, the founder's own handset: 「 She has it. 」 shipped
+  // directly above ④b-v2, false above true, and BOTH defence layers passed it —
+  // this limb required an intervening `got`/`received` and bare possession walked.
+  // The participle is now optional, and the object is BOUND TO THE BARE PRONOUN:
+  // 「 She has it 」 is a transmission claim; 「 She has a December wedding on the
+  // books 」 is a fact about her file, and a limb that swallowed both would convict
+  // the estate for reading its own records aloud. `seen it` joins for the same
+  // reason 「 She's seen it 」 is №15's own byte — a read claimed without Meta.
+  // DRAFTED AGAINST A CORPUS, BOTH POLARITIES (bench §A14), never against the one
+  // sentence that produced it: this family has walked twice by being widened from
+  // a single specimen and the chair made the battery a condition of the cure.
+  "\\b(?:she|he|they)\\s*(?:has|have|'s|'ve)\\s+(?:got\\s+|received\\s+|seen\\s+)?it\\b",
   "\\b(?:it|that|the message)\\s+(?:is|'s)\\s+with\\s+(?:her|him|them)\\b",
   "\\blast\\s+message\\s+to\\s+\\S+\\s+went\\s+through\\b",
   // "Done — sent to Priya" / "Done, message is with her"

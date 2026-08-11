@@ -1902,7 +1902,15 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         ownerWords: body,
       });
       if (relayOut && relayOut.line) {
-        replyText += `\n\n${relayOut.line}`;
+        // ── THE APPEND IS RETIRED BY F-06.189 (α) ─────────────────────────────
+        // This wrote `replyText += "\n\n" + line` for ten walks. Under (α) every
+        // acted turn now REPLACES below, so an append here would be a write no
+        // reader ever sees — and a line that looks like it ships and never does is
+        // how a guard rots. Retired with its reader, not left as decoration.
+        // The seat's thread patch below is UNCHANGED and still needed: it is
+        // F-06.158's cure (the door's words must exist in Victor's own record),
+        // and the final patch re-writes that row to the replaced bytes so wire and
+        // thread agree.
         console.log(`[relay:wa] ${relayOut.kind}${relayOut.draftId ? ` draft=${relayOut.draftId}` : ''}`);
         // ── F-06.158's CURE (R-29.26) — THE LINE JOINS VICTOR'S OWN THREAD ────
         // Without this the SHOW frame and the E3 confirm exist only on the wire:
@@ -2046,16 +2054,36 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // outcome for THIS turn AND a transmission claim in the prose. A vendor turn
     // with no relay outcome is untouched; a relay turn whose prose claims nothing
     // keeps its append, exactly as eight walks have shipped it.
+    // ── F-06.189 (α) · THE STRUCTURAL PRIMARY · ON AN ACTED TURN THE DOOR SPEAKS
+    //
+    // WALK TEN, 14:16:10, on the founder's own handset — one message, two
+    // sentences: 「 She has it. 」 (FALSE — a doorbell notification is not the
+    // message) directly above ④b-v2 (true). F-06.176's screen a THIRD time, and
+    // NEITHER guard malfunctioned: the ladder is class-scoped now, the door tests
+    // the claim itself, and both consult the SAME vocabulary — whose limb requires
+    // `got` or `received`, so bare possession walked. Probed at the shipped regex:
+    //     "She has it."          -> false
+    //     "She has got it."      -> true
+    //     "She has received it." -> true
+    // DEPTH OVER A SHARED PREDICATE IS DEPTH IN IMPLEMENTATION AND NOT IN
+    // EVIDENCE. The two layers must differ in KIND, so this one is structural and
+    // reads no vocabulary at all.
+    //
+    // THE RULE: WHEN THE SEAT ACTED, THE DOOR'S LINE STANDS ALONE — full stop. Not
+    // 「 acted AND a costume was detected 」, which was A5's gate and is exactly
+    // what let tonight through. This is F-06.182's bride-lane law arriving on the
+    // vendor lane: when the machinery acted, the model does not narrate the act.
+    // The same ruling in a third coat, and the coats are running out.
+    //
+    // AN ACTED TURN IS ONE WITH A STORE-DERIVED OUTCOME — a staged row, a rung
+    // doorbell, a send, a refusal the register holds. The model's prose about that
+    // act is never better evidence than the act, so it is never shown beside it.
+    // A turn with NO relay outcome is untouched: `relayOut` is null and Victor's
+    // reply ships exactly as it has for ten walks.
     if (!relayReplacedCostume && relayOut && relayOut.line) {
-      try {
-        const { RELAY_CLAIM_RE } = require('../api/vendor-engine/chat');
-        const prose = String((effectiveResult && effectiveResult.reply) || '');
-        if (RELAY_CLAIM_RE.test(prose)) {
-          replyText = relayOut.line;
-          relayReplacedCostume = true;
-          console.log(`[relay:wa] relay_claim_replaced — the model claimed a send the door did not make (${relayOut.kind})`);
-        }
-      } catch (e) { console.warn('[relay:wa claim-replace]', e && e.message); }
+      replyText = relayOut.line;
+      relayReplacedCostume = true;
+      console.log(`[relay:wa] door_line_stands_alone — the seat acted (${relayOut.kind}); the model does not narrate it`);
     }
 
     // ── F-06.176's SECOND HALF — THE THREAD FOLLOWS THE WIRE ─────────────────
@@ -2086,12 +2114,23 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       } catch (e) { console.warn('[wire-guard stage2 wa delivery]', e.message); }
     }
     const twilioMsg = await sendWhatsApp(phone, replyText, []);
+    // ── F-06.188's STAMP · THE DOOR MARKS ITS OWN CONFIRM ────────────────────
+    // `doorAsked` used to decide adjacency by regexing THIS row's body. It now
+    // reads this stamp, so a copy change can never move the gate again. The value
+    // is reserved and has exactly one writer — this statement — mirroring
+    // `vendor_relay`'s precedent, and `messages.sent_by` is free text, so no
+    // migration. Only the outcomes that genuinely ASK carry it (① the SHOW frame,
+    // ⑨ the re-show), derived by rendering each byte rather than assumed.
+    const relayAsked = (() => {
+      try { return require('./vendor/relaySeat').relayOutcomeAsks(relayOut); }
+      catch (_e) { return false; }
+    })();
     await supabase.from('messages').insert({
       conversation_id: convo.id,
       direction:       'outbound',
       channel:         'whatsapp',
       body:            replyText,
-      sent_by:         'agent',
+      sent_by:         relayAsked ? require('./vendor/relaySeat').RELAY_CONFIRM_SENT_BY : 'agent',
       twilio_sid:      twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
       tool_calls:      toolNames,
     });

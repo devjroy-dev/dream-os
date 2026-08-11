@@ -630,8 +630,11 @@ t('§5.8d THE REPORT-ONLY ERA, RETIRED BY RULING — recorded, not silently drop
   // This writer depends on no ladder verdict. Re-authored STRICTER again: writer 5
   // must carry its own flag on the next statement, so an unguarded fifth still reds.
   assert.strictEqual(writes, 5, 'the seat writes replyText from an unexpected number of places (costume-retry + imperative-retry + glitch line + relay-outcome replacement + relay-claim replacement = 5)');
-  assert.ok(/replyText = relayOut\.line;\s*\n\s*relayReplacedCostume = true;\s*\n\s*console\.log\(`\[relay:wa\] relay_claim_replaced/.test(seat),
-    'writer 5 — the independent relay-claim replacement — is gone, or is UNGUARDED');
+  // AMENDED (rider 4, F-06.189 α; COUNT PRESERVED). Writer 5's gate re-aimed from
+  // 「 outcome AND a claim in the prose 」 to 「 OUTCOME 」 alone — the vocabulary
+  // clause is what walk ten walked through. The witness renamed with it.
+  assert.ok(/replyText = relayOut\.line;\s*\n\s*relayReplacedCostume = true;\s*\n\s*console\.log\(`\[relay:wa\] door_line_stands_alone/.test(seat),
+    'writer 5 — the door line standing alone on an acted turn — is gone, or is UNGUARDED');
   assert.ok(/vendorInbound:reply\(retry\)/.test(seat), 'writer 1 — the costume-retry landing — is gone');
   assert.ok(/vendorInbound:reply\(imperative-retry\)/.test(seat), 'writer 2 — the imperative-retry landing — is gone or unfirewalled');
   assert.ok(/if \(s2line\) replyText = s2line;/.test(seat), 'writer 3 — the interception line — is gone');

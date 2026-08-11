@@ -489,14 +489,51 @@ const DECLINE_PLAIN_RE = /^(?:\s*(?:no|nope|nah|don'?t|do not|don'?t send|dont s
  * was shown? Read off `public.messages`, the door's own stored bytes, so the
  * anchor is a fact the door wrote and not a claim anyone made about it.
  */
+// ── F-06.188's CURE · STRUCTURED ADJACENCY ─────────────────────────────────
+//
+// AN APPROVAL GATE WAS DECIDED BY A DISPLAY STRING. This asked the last outbound
+// BODY for `/Send this to .*\(\+\d/` — the PARENTHESISED named form — to decide
+// whether a plain 「 yes 」 may approve. The door's act is a ROW; the predicate
+// read a SENTENCE, so every copy change silently moved a gate.
+//
+// IT MOVED ONE, AND THIS SITTING MOVED IT. Rider 3's F-06.186 render guard
+// correctly stopped printing 「 +91… (+91…) 」 for a nameless bride — and took the
+// parentheses, and therefore the adjacency signal, with it. Derived at `a2439d3`:
+// named -> true, phone-as-name -> FALSE (was true), nameless -> FALSE. A bride
+// with no name on file could never have her draft approved by a plain 「 yes 」,
+// ever, and walk ten only ran because the founder was handed a NAMING affirmative
+// instead. The broken class pre-existed for nameless brides; the render guard
+// widened it. Both halves are this arc's, and the general lesson is the finding.
+//
+// THE STAMP. The door now marks its own confirm row with a reserved `sent_by`
+// value and this predicate reads THE STAMP. `messages.sent_by` is free text and
+// the estate has minted a reserved value here before — `vendor_relay`, one
+// writer, exact precedent — so ZERO migration. A copy change can never move this
+// gate again, because the gate no longer reads copy.
+//
+// THE DERIVED WALL, CURED IN THE SAME DELIVERY RATHER THAN DISCOVERED LATER: two
+// readers filter `sent_by = 'agent'` for the MONTHLY COST view
+// (`src/admin/router.js`, symbols in the vendor-detail and cost paths). A new
+// value would have dropped every relay-confirm turn out of the estate's own money
+// aggregate, silently. Both readers are widened in this ZIP and a cell asserts
+// they stay widened — a stamp that quietly under-counts spend would be this
+// finding's own disease in a second coat.
+const RELAY_CONFIRM_SENT_BY = 'relay_confirm';
+
+// The outcomes that ARE the door asking. Derived by rendering each byte and
+// testing it, never assumed: `showBlock` (① the SHOW frame) and `mismatchBlock`
+// (⑨ the re-show) both end in the confirm question; ③, ④, ④b-v2, ⑤, ⑥, ⑦ do not.
+const ASKING_KINDS = Object.freeze(['staged', 'not_adjacent']);
+const relayOutcomeAsks = (out) => !!(out && out.kind && ASKING_KINDS.includes(out.kind));
+
 async function doorAsked(supabase, conversationId) {
   if (!supabase || !conversationId) return false;
   try {
     const { data } = await supabase
-      .from('messages').select('body, direction')
+      .from('messages').select('sent_by, direction')
       .eq('conversation_id', conversationId).eq('direction', 'outbound')
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
-    return !!(data && /Send this to .*\(\+\d/.test(String(data.body || '')));
+    return !!(data && data.sent_by === RELAY_CONFIRM_SENT_BY);
   } catch (_e) { return false; }
 }
 
@@ -872,6 +909,9 @@ const RELAY_CLAIM_RE_LOCAL = (() => {
 
 module.exports = {
   runRelaySeat,
+  RELAY_CONFIRM_SENT_BY,
+  ASKING_KINDS,
+  relayOutcomeAsks,
   looksLikeThePhone,
   relayReceipt,
   // FORK 4(b) — the auto-send's callable, extracted so the BRIDE'S lane can send

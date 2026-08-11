@@ -516,10 +516,15 @@ await t('A5.1 the wire REPLACES on a costume turn with an outcome', async () => 
     'walk eight\'s three-sentence screen can still ship');
 });
 
-await t('A5.2 the APPEND survives for every honest turn (existing behaviour is sacred)', async () => {
+await t('A5.2 F-06.189(α) — THE APPEND IS RETIRED WITH ITS READER', async () => {
+  // AMENDED at rider 4. This asserted the append survived, which was right while
+  // the replacement was CONDITIONAL. Under (α) every acted turn replaces, so an
+  // append would be a write no reader ever sees — and a line that looks like it
+  // ships and never does is how a guard rots. Retire-with-the-reader.
   const d = code('src/lib/vendorInbound.js');
-  assert.ok(/replyText \+= `\\n\\n\$\{relayOut\.line\}`;/.test(d),
-    'the relay line no longer joins Victor\'s reply on ordinary turns');
+  assert.ok(!/replyText \+= `\\n\\n\$\{relayOut\.line\}`;/.test(d),
+    'a dead append survives beside the replacement that always supersedes it');
+  assert.ok(/relayOut && relayOut\.line/.test(d), 'the outcome branch itself vanished');
 });
 
 await t('A5.3 the replacement fires only inside the suppression branch', async () => {
@@ -864,10 +869,18 @@ await t('A10.6 BOTH-WAYS — un-filtering restores walk ten\'s acquittal', async
 // ═══ A11 · F-06.184 — THE DOOR'S OWN SECOND LINE — 5 cells ═════════════════
 H('A11 — F-06.184 · THE REPLACE DOES NOT DEPEND ON A LADDER VERDICT (5)');
 
-await t('A11.1 the door tests RELAY_CLAIM_RE against the model\'s prose itself', async () => {
+await t('A11.1 F-06.189(α) — THE SECOND LAYER IS STRUCTURAL AND READS NO VOCABULARY', async () => {
+  // AMENDED at rider 4. The door's layer tested RELAY_CLAIM_RE — the SAME
+  // predicate the ladder consults (`relaySeat.js` requires it from chat.js's one
+  // home), so the two layers were one vocabulary in two coats and walk ten's
+  // 「 She has it. 」 walked both. Depth over a shared predicate is depth in
+  // implementation and not in evidence. The layer now keys on the STORE's own
+  // outcome and consults no words at all.
   const d = code('src/lib/vendorInbound.js');
-  assert.ok(/RELAY_CLAIM_RE\.test\(prose\)/.test(d), 'the second layer does not exist');
-  assert.ok(/relay_claim_replaced/.test(d), 'the second layer carries no witness the founder can read');
+  assert.ok(/door_line_stands_alone/.test(d), 'the structural layer carries no witness the founder can read');
+  const i = d.indexOf('door_line_stands_alone');
+  const seg = d.slice(Math.max(0, i - 600), i);
+  assert.ok(!/RELAY_CLAIM_RE/.test(seg), 'the structural layer still consults the shared vocabulary');
 });
 
 await t('A11.2 it requires BOTH a store outcome AND a claim — never one alone', async () => {
@@ -889,17 +902,15 @@ await t('A11.4 it does not re-run when the guard already replaced', async () => 
   assert.ok(/!relayReplacedCostume/.test(seg), 'the two layers can both fire and double-patch the thread');
 });
 
-await t('A11.5 BOTH-WAYS — with the guard layer mutated dead, THIS layer still fires', async () => {
-  // THE WHOLE ARGUMENT FOR DEFENCE IN DEPTH, asserted rather than asserted-about:
-  // walk ten had the guard passing, and this layer must not depend on it.
-  await underMutation('src/lib/vendorInbound.js',
-    'replyText = relayOut.line;\n          relayReplacedCostume = true;',
-    'void 0;',
-    async () => {
-      const d = fs.readFileSync(SRC('src/lib/vendorInbound.js'), 'utf8');
-      assert.ok(/RELAY_CLAIM_RE\.test\(prose\)/.test(d),
-        'killing the guard layer also killed the independent one — they are not independent');
-    });
+await t('A11.5 F-06.189(α) — THE RULE IS OUTCOME ALONE, never outcome-AND-costume', async () => {
+  // AMENDED at rider 4, and this is the finding's whole substance. A5's gate was
+  // 「 the seat acted AND a costume was detected 」. Walk ten proved the second
+  // clause is a vocabulary question, and the vocabulary missed. The gate is now
+  // the first clause alone: WHEN THE MACHINERY ACTED, THE MODEL DOES NOT NARRATE
+  // THE ACT — F-06.182's bride-lane law arriving on the vendor lane.
+  const d = code('src/lib/vendorInbound.js');
+  assert.ok(/if \(!relayReplacedCostume && relayOut && relayOut\.line\) \{\s*\n\s*replyText = relayOut\.line;/.test(d),
+    'the replacement is still conditioned on something beyond the seat having acted');
 });
 
 // ═══ A12 · F-06.185 / F-06.186 — THE COPY EXECUTION CENSUS — 7 cells ═══════
@@ -959,6 +970,150 @@ await t('A12.7 BOTH-WAYS — removing the guard restores the doubled number', as
       const b = s2.showBlock('BODY', '+918595986978', '+918595986978');
       assert.ok(/\(\+918595986978\)/.test(b), 'the cell passed over a defaced render guard');
     });
+});
+
+// ═══ A13 · F-06.188 — STRUCTURED ADJACENCY — 7 cells ═══════════════════════
+H('A13 — F-06.188 · AN APPROVAL GATE NO LONGER READS A DISPLAY STRING (7)');
+
+await t('A13.1 doorAsked reads the STAMP, not the body', async () => {
+  const d = code('src/lib/vendor/relaySeat.js');
+  const i = d.indexOf('async function doorAsked');
+  const body = d.slice(i, i + 700);
+  assert.ok(/sent_by === RELAY_CONFIRM_SENT_BY/.test(body), 'the gate does not read the stamp');
+  assert.ok(!/Send this to/.test(body), 'the gate still regexes a rendered sentence');
+});
+
+await t('A13.2 a stamped last-outbound makes a plain yes adjacent', async () => {
+  const db = makeDb({ messages: [{ id: 'm1', conversation_id: 'c9', direction: 'outbound',
+    sent_by: seat().RELAY_CONFIRM_SENT_BY, created_at: '2026-08-11T14:00:00Z' }] });
+  assert.strictEqual(await seat().doorAsked(db, 'c9'), true);
+});
+
+await t('A13.3 THE WALK-TEN RED, CURED — a NAMELESS bride is now adjacent too', async () => {
+  // The whole finding in one cell: this bride has no name, so rider 3 correctly
+  // printed the bare number and the old regex lost its parentheses with it. The
+  // stamp does not care what the sentence looks like.
+  const db = makeDb({ messages: [{ id: 'm1', conversation_id: 'c9', direction: 'outbound',
+    body: seat().showBlock('BODY', null, '+918595986978'),
+    sent_by: seat().RELAY_CONFIRM_SENT_BY, created_at: '2026-08-11T14:00:00Z' }] });
+  assert.strictEqual(await seat().doorAsked(db, 'c9'), true,
+    'a bride with no name on file still cannot be approved with a plain yes');
+});
+
+await t('A13.4 FIXTURE-ABSENT — an ordinary agent turn is NOT adjacent', async () => {
+  const db = makeDb({ messages: [{ id: 'm1', conversation_id: 'c9', direction: 'outbound',
+    sent_by: 'agent', created_at: '2026-08-11T14:00:00Z' }] });
+  assert.strictEqual(await seat().doorAsked(db, 'c9'), false,
+    'a plain yes would approve after any turn at all — R-29.19\'s adjacency is gone');
+});
+
+await t('A13.5 ONLY the asking outcomes carry the stamp — derived, not assumed', async () => {
+  const s13 = seat();
+  assert.deepStrictEqual([...s13.ASKING_KINDS], ['staged', 'not_adjacent']);
+  for (const k of ['staged', 'not_adjacent']) assert.strictEqual(s13.relayOutcomeAsks({ kind: k }), true);
+  for (const k of ['sent', 'window_closed_doorbell', 'expired', 'declined', null])
+    assert.strictEqual(s13.relayOutcomeAsks(k ? { kind: k } : null), false,
+      `outcome "${k}" does not ask, and must not arm a plain yes`);
+});
+
+await t('A13.6 THE DERIVED WALL IS CURED — the money view still counts these turns', async () => {
+  const d = code('src/admin/router.js');
+  const n = (d.match(/\.in\('sent_by', AGENT_COST_SENT_BY\)/g) || []).length;
+  assert.strictEqual(n, 2, `expected both cost readers widened, found ${n}`);
+  assert.ok(/const AGENT_COST_SENT_BY = \['agent', 'relay_confirm'\];/.test(d));
+  assert.ok(!/\.eq\('sent_by', 'agent'\)/.test(d),
+    'a cost reader still filters on agent alone — the stamp silently under-counts spend');
+});
+
+await t('A13.7 BOTH-WAYS — restoring the display-string gate reds the nameless case', async () => {
+  await underMutation('src/lib/vendor/relaySeat.js',
+    'return !!(data && data.sent_by === RELAY_CONFIRM_SENT_BY);',
+    "return !!(data && /Send this to .*\\(\\+\\d/.test(String(data.body || '')));",
+    async () => {
+      const s13 = require(SRC('src/lib/vendor/relaySeat.js'));
+      const db = makeDb({ messages: [{ id: 'm1', conversation_id: 'c9', direction: 'outbound',
+        body: s13.showBlock('BODY', null, '+918595986978'),
+        sent_by: s13.RELAY_CONFIRM_SENT_BY, created_at: '2026-08-11T14:00:00Z' }] });
+      assert.strictEqual(await s13.doorAsked(db, 'c9'), false,
+        'the cell passed over the defaced gate — it proves nothing');
+    });
+});
+
+// ═══ A14 · F-06.189(β) — THE PROBE BATTERY — 6 cells ═══════════════════════
+H('A14 — F-06.189(β) · THE VOCABULARY IS DRAFTED AGAINST A CORPUS (6)');
+
+await t('A14.1 THE CORPUS, BOTH POLARITIES — transmission claims convict', async () => {
+  // NOT drafted from tonight's specimen alone. This family has walked twice by
+  // being widened from one sentence; the battery is the chair's condition.
+  const CLAIMS = [
+    'She has it.', 'He has it.', 'They have it.',
+    "She's got it.", 'She has received it.', 'She has it now.',
+    'Message is out to +91.', 'Sent to Priya.', "I've sent it.",
+    'The message went through.', 'She has seen it.',
+  ];
+  const RE = chat().RELAY_CLAIM_RE;
+  const walked = CLAIMS.filter((c) => !RE.test(c));
+  assert.deepStrictEqual(walked, [], `transmission claims the vocabulary cannot see: ${walked.join(' | ')}`);
+});
+
+await t('A14.2 THE NEGATIVE CORPUS — honest relay speech does NOT convict', async () => {
+  const HONEST = [
+    'Draft is with you above — tell me when you want it to go.',
+    'Nothing has gone to her yet.',
+    "I haven't sent anything.",
+    'She has three shoots booked with you.',
+    'She has a December wedding on the books.',
+    'Shall I send it to her?',
+  ];
+  const RE = chat().RELAY_CLAIM_RE;
+  const wrongly = HONEST.filter((c) => RE.test(c));
+  assert.deepStrictEqual(wrongly, [], `honest speech convicted as a claim: ${wrongly.join(' | ')}`);
+});
+
+await t('A14.3 THE NAMED RED SPECIMEN — walk ten\'s exact sentence', async () => {
+  assert.ok(chat().RELAY_CLAIM_RE.test('She has it.'),
+    'the founder read this above a true byte and the vocabulary still cannot see it');
+});
+
+await t('A14.4 the possession limb does not swallow POSSESSION OF A THING', async () => {
+  // 「 She has it 」 is a claim; 「 She has a December wedding 」 is a fact about her
+  // file. The limb must end at the bare pronoun-object, never at any object.
+  const RE = chat().RELAY_CLAIM_RE;
+  assert.strictEqual(RE.test('She has a December wedding on the books.'), false);
+  assert.strictEqual(RE.test('She has two other quotes from you.'), false);
+});
+
+await t('A14.5 ONE HOME — the door reads chat.js\'s family, never a copy', async () => {
+  const d = code('src/lib/vendor/relaySeat.js');
+  assert.ok(/require\('\.\.\/\.\.\/api\/vendor-engine\/chat'\)\.RELAY_CLAIM_RE/.test(d),
+    'the relay seat holds a second copy of the claim family');
+});
+
+await t('A14.5b THE CORPUS\'S OWN SURVIVOR, DECLARED NOT HIDDEN (F-06.190 proposed)', async () => {
+  // The battery found a SECOND contraction gap in a limb this ruling does not
+  // cover: `\\b(?:it|that|the message)\\s+(?:is|'s)\\s+with\\s+(?:her|him|them)\\b`
+  // requires a SPACE before the contraction, so 「 It's with her 」 walks exactly
+  // as 「 She's got it 」 did. The possession limb was this ruling's subject and is
+  // cured; widening a neighbouring limb unruled is how this family walked twice.
+  // ASSERTED AS A KNOWN GAP so it cannot be forgotten or silently closed.
+  assert.strictEqual(chat().RELAY_CLAIM_RE.test("It's with her."), false,
+    'the declared gap closed without a ruling — update the finding, do not delete the cell');
+  assert.strictEqual(chat().RELAY_CLAIM_RE.test('It is with her.'), true,
+    'the spaced form regressed — the limb itself broke');
+});
+
+await t('A14.6 BOTH-WAYS — the participle made mandatory again, the specimen walks', async () => {
+  // THE EXACT UN-CURE: restore the `got|received|seen` requirement that let
+  // 「 She has it. 」 through on the founder's handset at walk ten.
+  const target = "(?:got\\\\s+|received\\\\s+|seen\\\\s+)?it";
+  const undone = "(?:got\\\\s+|received\\\\s+|seen\\\\s+)it";
+  await underMutation('src/api/vendor-engine/chat.js', target, undone, async () => {
+    const c = require(SRC('src/api/vendor-engine/chat.js'));
+    assert.strictEqual(c.RELAY_CLAIM_RE.test('She has it.'), false,
+      'the cell passed over a defaced vocabulary — it proves nothing');
+    assert.strictEqual(c.RELAY_CLAIM_RE.test('She has got it.'), true,
+      'the mutation broke the limb entirely rather than narrowing it');
+  });
 });
 
 // ── RESULT ─────────────────────────────────────────────────────────────────

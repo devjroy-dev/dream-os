@@ -1,4 +1,15 @@
 const express  = require('express');
+
+// ── F-06.188's DERIVED CONSEQUENCE, CURED IN THE SAME DELIVERY ──────────────
+// The relay door now stamps its own confirm row `relay_confirm` so an approval
+// gate stops reading rendered copy (`src/lib/vendor/relaySeat.js`, symbol
+// `doorAsked`). These two readers aggregate the MONTHLY COST and filtered on
+// `sent_by = 'agent'` alone, so the stamp would have dropped every relay-confirm
+// turn out of the estate's own money view — SILENTLY, which is F-06.188's own
+// disease wearing a second coat. Both are widened here and a cell asserts they
+// stay widened. A `relay_confirm` row is an ordinary agent turn that cost
+// ordinary money; only its provenance differs.
+const AGENT_COST_SENT_BY = ['agent', 'relay_confirm'];
 const router   = express.Router();
 
 const { requireAuth, handleLogin } = require('./middleware');
@@ -102,7 +113,7 @@ router.get('/vendors/:id', async (req, res) => {
     supabase.from('vendor_state').select('*').eq('vendor_id', id).maybeSingle(),
     supabase.from('notes').select('content, tags, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(20),
     supabase.from('leads').select('id, name, phone, wedding_date, wedding_city, budget_min, budget_max, state, source, referrer_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }),
-    supabase.from('messages').select('cost_inr, model').eq('sent_by', 'agent').gte('created_at', monthStart),
+    supabase.from('messages').select('cost_inr, model').in('sent_by', AGENT_COST_SENT_BY).gte('created_at', monthStart),
     supabase.from('invoices').select('id, invoice_number, client_name, amount_total, amount_paid, amount_advance, state, due_date, pdf_url, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
     supabase.from('expenses').select('id, amount, category, description, expense_date, client_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
     supabase.from('clients').select('id, name, phone, email, source, referrer_name, created_at').eq('vendor_id', id).order('created_at', { ascending: false }).limit(50),
@@ -170,7 +181,7 @@ router.get('/vendors/:id', async (req, res) => {
   const { data: vendorCostRows } = await supabase
     .from('messages')
     .select('cost_inr, model')
-    .eq('sent_by', 'agent')
+    .in('sent_by', AGENT_COST_SENT_BY)
     .gte('created_at', monthStart)
     .in('conversation_id', [...vendorConvoIds].length > 0 ? [...vendorConvoIds] : ['00000000-0000-0000-0000-000000000000']);
 
