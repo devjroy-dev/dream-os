@@ -73,6 +73,14 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       upi_id:            vendor.upi_id || null,
       gstin:             vendor.gstin || null,
       open_to_travel:    vendor.open_to_travel === true,
+      // ── ARC OB · 0122's superseding pair, ADDITIVE (CE-31 ruling ①) ──────
+      // Nulls travel deliberately: absent is a real state here (the vendor has
+      // never answered) and is exactly what the arc's predicate reads as
+      // incomplete. Coercing to a default would hide the incompleteness the
+      // form exists to collect. `open_to_travel` above stays until D-3 — see
+      // the allowlist note; a live editor is not degraded on a guess.
+      service_area:      vendor.service_area || null,
+      service_cities:    vendor.service_cities || null,
       tier:              vendor.tier || null,
       founding_cohort:   vendor.founding_cohort === true,
       // ── 0115 · THE VENDOR'S OWN MONEY STATE (Fork H, arm (a)) ─────────────
@@ -206,13 +214,69 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // it had ZERO writers anywhere in the estate — the exact "term nobody
                         // can raise" that profileScore's own header warns against, live since
                         // P1. Discover Profile's About section is its first writer.
-                        'about', 'rate_display', 'discover_paused'];
+                        'about', 'rate_display', 'discover_paused',
+                        // ── ARC OB (CE-31 ruling ①) · SERVICE AREA, the same additive path ──
+                        // 0122's two columns. THE SUPERSEDING PAIR: they replace what
+                        // `open_to_travel` was trying to say, because a boolean cannot
+                        // express worldwide (F-06.85 form — the mechanism is arithmetic,
+                        // and it is named at 0122 §5 and at the column comment).
+                        //
+                        // `open_to_travel` and `travel_notes` STAY IN THIS ARRAY AT D-2, and
+                        // that is a deliberate, declared choice rather than an omission:
+                        // removing a name from the allowlist stops NEW WRITES (the F4
+                        // precedent fourteen lines above), and this repo cannot see whether
+                        // dreamos-pwa's Discover Profile still sends them. Pulling them here
+                        // would degrade a live editor quietly, on a guess. Their removal —
+                        // and the removal of open_to_travel from both shapes below — is D-3,
+                        // coordinated with OB-P through the chair, and the arc's completion
+                        // cell (zero live readers at arc close) is what enforces it.
+                        'service_area', 'service_cities'];
 
 // The three booleans the vendor may now set. Guarded on the slot_capacity pattern
 // (:147 below): a 400 here, never a silent coercion. Without this, {"discover_paused":
 // "maybe"} reaches Postgres raw and the answer to "am I hidden?" becomes whatever the
 // driver decided that day.
 const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused'];
+
+// ── ARC OB · SERVICE-AREA VALIDATION (CE-31 ruling ①) ──────────────────────
+// A 400, never a silent coercion — the BOOLEAN_FIELDS doctrine directly above,
+// applied to a three-token field. Without this, {"service_area": "maybe"} would
+// reach Postgres and be refused there by constraint vendors_service_area_token
+// (0122 §3) as an opaque 500. The constraint is the floor; this is the sentence
+// the vendor can actually read.
+//
+// THE PAIRING IS ASSERTED IN THREE PLACES ON PURPOSE, and they are not
+// redundant: 0122 §4 holds it in DDL (so no writer of any kind can break it),
+// onboardingPredicate.serviceAreaPresent holds it in pure code (so the FORM can
+// ask before a row exists to constrain), and this holds it at the API edge (so
+// the vendor gets a legible refusal). One rule, three altitudes.
+function validateServiceArea(body) {
+  const { SERVICE_AREA_TOKENS } = require('../../lib/onboardingPredicate');
+  const hasArea   = body.service_area   !== undefined;
+  const hasCities = body.service_cities !== undefined;
+  if (!hasArea && !hasCities) return null;
+
+  // Refused as a PAIR. Sending one without the other would let a PATCH land a
+  // row the pairing rule forbids, and the DDL would answer with a 500 the
+  // vendor cannot act on.
+  if (hasArea !== hasCities) {
+    return 'service_area and service_cities must be sent together.';
+  }
+  if (!SERVICE_AREA_TOKENS.includes(body.service_area)) {
+    return "service_area must be one of: " + SERVICE_AREA_TOKENS.join(', ') + '.';
+  }
+  const cities = body.service_cities;
+  if (body.service_area === 'select_cities') {
+    if (!Array.isArray(cities) || cities.filter(c => typeof c === 'string' && c.trim()).length === 0) {
+      return 'service_cities must name at least one city when service_area is select_cities.';
+    }
+  } else if (cities !== null) {
+    // Not an empty array: NULL. The pairing CHECK reads `is null`, and [] would
+    // be a value that satisfies neither arm.
+    return 'service_cities must be null unless service_area is select_cities.';
+  }
+  return null;
+}
 
 router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
@@ -281,9 +345,15 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       }
     }
 
+    // ARC OB · service area, validated on the allowlisted UPDATE rather than the
+    // raw body: a field the allowlist dropped is not a field this handler is
+    // writing, and refusing it would be a 400 about a value with no effect.
+    const saErr = validateServiceArea(update);
+    if (saErr) return errRes(res, 400, saErr);
+
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -294,7 +364,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview')
+      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -308,6 +378,9 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       business_name:    updated.business_name    || null,
       city:             updated.city             || null,
       open_to_travel:   updated.open_to_travel   === true,
+      // ARC OB · the write's own echo, same additive rule as the GET shape.
+      service_area:     updated.service_area     || null,
+      service_cities:   updated.service_cities   || null,
       upi_id:           updated.upi_id           || null,
       gstin:            updated.gstin            || null,
       aesthetic_tags:   updated.aesthetic_tags   || [],

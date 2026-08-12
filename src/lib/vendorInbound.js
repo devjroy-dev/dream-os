@@ -33,6 +33,7 @@ const { matchNudgeWord, setNudgeOptout, matchGlitchWord } = require('./nudgeOpto
 const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
+const { onboardingGate } = require('./onboardingGate');                // ARC OB / CE-31 · the onboarding gate, dark under R-OB.9
 const { scrubText, witnessWireScrub } = require('./vendor/scrub');    // BLOCK 06 M-3 / F-06.29 — the firewall reaches this lane · M-4 / F-06.36 — and now it leaves a witness
 
 // ── BLOCK 06 M-0 · F-05.60 CURED (A1, founder-ruled 「 a1 」) ──────────────────
@@ -263,6 +264,37 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
 
     const { data: vendor } = await supabase
       .from('vendors').select('*').eq('user_id', user.id).maybeSingle();
+
+    // ── ARC OB · THE ONBOARDING GATE (CE-31, ratified site) ───────────────
+    // THE TWO GATES ARE NOT ONE CODE WITH THE TABLE SWAPPED, and CE-31
+    // ratified that asymmetry as law rather than letting a later sitting
+    // "unify" them. The bride door DEAD-ENDS an unknown phone; THIS DOOR
+    // PROVISIONS ONE — the users.insert directly above creates the account on
+    // first contact. So on this lane "un-onboarded" is the NORMAL first state
+    // of every new number, and the gate cannot be a `!vendor` test. It is the
+    // FIELD PREDICATE (R-OB.8: field-presence, never onboarding_state) read
+    // against the row the door itself just made.
+    //
+    // A missing vendors row is incomplete by definition — vendorComplete() is
+    // handed undefined and returns every field missing — so a brand-new number
+    // meets the redirect on message one, which is exactly R-OB.2's intent.
+    //
+    // SITED HERE, immediately after the vendor lookup and before every branch
+    // below: the first of those (the image throttle, next block) already calls
+    // out to Haiku Vision on an onboarded vendor's media. R-OB.3's zero-spend
+    // must hold ahead of it, not alongside it.
+    //
+    // R-OB.9 · DARK. Resolves to { gate: false } until the founder flips
+    // `onboarding.gate_enabled` AND the vendor redirect byte is vetoed.
+    // R-OB.5 · Eliza's door is NOT this door. Her enquirers are the vendor's
+    // leads reaching a VENDOR's line, never TDW registrants, and gating her is
+    // FORBIDDEN by charter. This gate sits on the vendor's own inbound only.
+    const obGate = await onboardingGate({ lane: 'vendor', supabase, user, row: vendor });
+    if (obGate.gate) {
+      console.log(`[webhook] onboarding gate: user ${user.id} incomplete (${obGate.missing.join(',')}) — redirect, zero spend`);
+      await sendWhatsApp(phone, obGate.byte);
+      return;
+    }
 
     // ── Image throttle (Patch 9) ────────────────────────────────────
     // Before any image-pipeline work, throttle to 2 images per 30s per phone.

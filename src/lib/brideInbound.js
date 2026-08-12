@@ -49,6 +49,7 @@ const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1
 const { makeInboundSend, REFUSAL } = require('./sendOutcome');         // ARC M1 / F-05.33
 const { appendWitness } = require('./witnessLine');                    // ARC M1 / F-05.34
 const { newTurnId, meteredAnthropic, withKind, coupleCapGate, surfaceForCouple, logCapSkip } = require('./coupleAiCap'); // TDW_10.C · the couple lane's meter + gate
+const { onboardingGate } = require('./onboardingGate');               // ARC OB / CE-31 · the onboarding gate, dark under R-OB.9
 
 // ── THE TYPED REFUSAL (V-3, founder-locked at CE-67's gates) ────────────────
 // F-04.62's class, one lane over: a DELIBERATE refusal must stop wearing a
@@ -250,7 +251,24 @@ async function _processBrideInbound(inputs, deps) {
       if (existingUser) {
         circleUser = existingUser;
       } else {
-        const safeName = (profileName || claim.invitee_name || '').slice(0, 120);
+        // ── R-OB.7 · THE BRIDE'S WORD OUTRANKS THE PROFILE NAME ─────────────
+        // ARC OB, CE-31 ruling ④. A CIRCLE MEMBER IS KNOWN BY THE NAME THE
+        // BRIDE PUT ON HER. `invitee_name` is CANONICAL for members; the
+        // WhatsApp profile name has no authority over them. Brides and vendors
+        // get their real names from the PWA form (this arc's one door); members
+        // get the bride's word, because she is the one who invited them and the
+        // name she used is the name the circle knows them by.
+        //
+        // F-06.85 FORM — the mechanism this order is conditioned on, named so
+        // the mechanism's next sitting is forced to re-read this sentence: the
+        // Meta normalizer discards contacts[].profile.name, so `profileName` is
+        // ALWAYS NULL on this lane today (that discard is F-05.78's derived
+        // root cause, and it is why 11 of 28 brides are nameless). The previous
+        // order — profileName first — was therefore compliant BY ACCIDENT, and
+        // an accident is not a guard. The day anyone revives profile-name
+        // capture for any purpose, this line already holds the ruling.
+        // Asserted in bytes by scripts/bOB_d2_onboarding_gate_bench.js §4.
+        const safeName = (claim.invitee_name || profileName || '').slice(0, 120);
         const { data: newUser, error: userErr } = await supabase
           .from('users')
           .insert({
@@ -346,6 +364,36 @@ async function _processBrideInbound(inputs, deps) {
     if (!couple) {
       console.log(`[bride-webhook] user ${user.id} has no couples row — dead-end reply`);
       await send(phone, DEAD_END_REPLY);
+      return;
+    }
+
+    // ── ARC OB · THE ONBOARDING GATE (CE-31, ratified site) ───────────────
+    // SITED AFTER THE COUPLE LOOKUP AND BEFORE THE METER, and the two halves of
+    // that sentence are separately load-bearing.
+    //
+    // AFTER the couple lookup, because the predicate reads users.name and
+    // couples.budget_total and cannot be asked before both rows are in hand.
+    //
+    // BEFORE the meter, because R-OB.3 says an un-onboarded user costs zero AI
+    // rupees BY CONSTRUCTION rather than by discipline. `meteredAnthropic`
+    // below is the first spend-capable object this function builds; nothing
+    // above this line can reach a model. Placing the gate one step earlier than
+    // TDW_10.C's cap refusal rides that file's own argument (its comment
+    // directly below explains why the refusal sits at the DOOR and not inside
+    // the engine: a refused turn must not pay for a loop iteration, a fan-out,
+    // or an onboarding extractor). Same reasoning, one predicate earlier.
+    //
+    // R-OB.2 · NO GRACE TURNS: this returns, every time, for as long as she is
+    // incomplete. There is no first-message exemption and no counter.
+    // R-OB.9 · DARK: `onboardingGate` resolves to { gate: false } until the
+    // founder flips `onboarding.gate_enabled` AND the redirect byte is vetoed.
+    // Until then this block is a no-op that costs one cached flag read.
+    // R-OB.5 · the circle-claim branch returned far above this line, so members
+    // never reach the gate — exemption held by control flow, not by a check.
+    const obGate = await onboardingGate({ lane: 'bride', supabase, user, row: couple });
+    if (obGate.gate) {
+      console.log(`[bride-webhook] onboarding gate: user ${user.id} incomplete (${obGate.missing.join(',')}) — redirect, zero spend`);
+      await send(phone, obGate.byte);
       return;
     }
 

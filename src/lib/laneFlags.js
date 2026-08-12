@@ -79,6 +79,21 @@ const LANE_FLAGS = {
   // payment provider" that is safe to do early. The two flags are independent:
   // this one open with tier_flip shut means she can pay and her tier waits.
   'billing.selfserve_enabled': false,
+
+  // ARC OB (THE ONBOARDING OS, CE-31) — THE ONBOARDING GATE at both WhatsApp
+  // doors. OFF at 0122, and R-OB.9 is why it must be: R-OB.2 forbids a model
+  // turn behind the gate, so arming it before OB-P's form is live would not
+  // make the door strict, it would make it a LOCKOUT — every incomplete bride
+  // and vendor redirected to a form that cannot yet take her answer, with no
+  // path at all. The order is absolute: gate dark here -> form live -> founder
+  // flips this -> the conversational onboarding retirements land.
+  //
+  // THIS FLAG IS ONE OF TWO LOCKS. The other is the redirect copy itself,
+  // which is null until vetoed and cannot be flipped from admin_config
+  // (src/lib/onboardingGate.js). Flipping this key with the bytes still
+  // unvetoed does nothing but log — deliberately, because a stranger's first
+  // sentence from this estate must not be able to arrive empty.
+  'onboarding.gate_enabled': false,
 };
 
 function _resetLaneFlagCache() { cache.clear(); }
