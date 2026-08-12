@@ -94,7 +94,7 @@ function makeDeps({ sends, turn, supabase, core, sendImpl }) {
       reply: 'ok', mediaUrls: [], toolCalls: null, model: 'haiku',
       inputTokens: 1, outputTokens: 2, costUsd: 0, costInr: 0, circleSummary: null,
     })),
-    surfacePendingCircleSessions: async () => '',
+    surfacePendingCircleSessions: async () => null,   // the ruled return shape: { displayText, sessionIds } | null
     saveToMuse: async () => ({ ok: false, error: 'n/a' }),
     checkImageThrottle: async () => ({ allowed: true }),
     markRejectionSent: async () => {},
@@ -499,21 +499,30 @@ t('§6.4 W-1 HELD: zero soul/prompt bytes in M1', () => {
       assert.ok(!f.includes(s2), `W-1 BREACH: this movement delivered ${f}, a soul/prompt/engine file`);
 });
 
-t('§6.5 the :1892 pre-insert has NO gated Class-C caller — asserted, not assumed', () => {
+t('§6.5 the summary pre-insert has NO gated Class-C caller — asserted, not assumed', () => {
   // THE RULING ASKED FOR THE MINIMAL SHAPE (gate-before-insert or mark-skipped).
   // Derived by command at this base, the answer is that NEITHER IS NEEDED, because
   // the gated Class-C send the shape would protect against DOES NOT EXIST here:
   //   surfacePendingCircleSessions has exactly two callers —
-  //     brideEngine.js:117   (inside runBrideAgenticTurn)
-  //     brideInbound.js:516  (the /surprise path, which skips the agent)
+  //     brideEngine.js:126   (inside runBrideAgenticTurn)
+  //     brideInbound.js:665  (the /surprise path, which skips the agent)
   //   and runBrideAgenticTurn has exactly three —
-  //     brideInbound.js:569  · api/couple/chat.js:157 · api/couple/chat.js:231
+  //     brideInbound.js:754  · api/couple/chat.js:190 · api/couple/chat.js:289
+  //   LABELLED AMENDMENT (CE-32): all six line cites above, and this cell's own
+  //   title, were STALE — they named a tree several diffs behind. The cell was
+  //   green throughout, because it greps FILES and never read its own comment.
+  //   A census cell whose prose points at the wrong lines teaches the next
+  //   reader a false map of the thing it is guarding, which is the same disease
+  //   the cell exists to catch. Re-derived at this base.
   // Every WhatsApp path reaching the pre-insert sends through the bypassed `send`
   // and therefore LANDS; the remaining path is the sanctuary PWA door, which makes
   // no WhatsApp send at all and so has nothing to gate. NO CRON reaches it.
   // Building a guard for an unreachable path would be inventing a cure for a
   // disease with no specimen — so this cell guards the CENSUS instead: the day
   // someone adds a proactive caller, it fires and the shape gets built then.
+  // (The pre-insert now lives at brideEngine.js:2091 and is the SINGLE persist
+  //  of a circle summary — duty (a), CE-32. Its channel is caller-declared;
+  //  §6.6 below is the enumerator that keeps that declaration honest.)
   const callers = [];
   for (const f of ['src/agent/brideEngine.js', 'src/lib/brideInbound.js', 'src/brideIndex.js',
                    'src/agent/brideNudge.js', 'src/agent/briefing.js', 'src/api/couple/chat.js']) {
@@ -523,6 +532,70 @@ t('§6.5 the :1892 pre-insert has NO gated Class-C caller — asserted, not assu
   }
   assert.deepStrictEqual([...new Set(callers)].sort(), ['src/agent/brideEngine.js', 'src/lib/brideInbound.js'],
     `a NEW caller of the circle pre-insert appeared: ${callers.join(', ')} — if it is proactive it can now mint a row for a send the full stop gates, and the :1892 shape must be built`);
+});
+
+
+t('§6.6 R-31.1 · EVERY caller of the bride turn DECLARES its delivery channel', () => {
+  // THE HAZARD THIS CELL EXISTS FOR, named by the seat and ruled by CE-32:
+  // `deliveryChannel` defaults to 'web' so api/couple/chat.js can stay
+  // READ-ONLY ALWAYS. That default is safe for the doors that exist today and
+  // SILENTLY WRONG for a future fourth caller that sends to a phone and forgets
+  // to say so — it would mint a 'web' row for a WhatsApp message, which is
+  // exactly the F-05.49 lie this diff just finished curing, reborn one layer up.
+  //
+  // A comment cannot hold that. This cell ENUMERATES the call sites itself, so a
+  // fourth caller cannot land without either declaring its channel or turning
+  // this bench red. R-31.1 as written: the cure of "every call site does X" gets
+  // a bench that finds the call sites rather than trusting a list.
+  const files = ['src/lib/brideInbound.js', 'src/api/couple/chat.js', 'src/brideIndex.js',
+                 'src/agent/brideNudge.js', 'src/agent/briefing.js', 'src/agent/circleEngine.js'];
+  const sites = [];
+  for (const f of files) {
+    if (!fs.existsSync(P(f))) continue;
+    const lines = code(f).split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!/runBrideAgenticTurn\(\{/.test(lines[i])) continue;
+      // Read the argument object: from the call to its closing `});`.
+      let block = '';
+      for (let j = i; j < Math.min(i + 40, lines.length); j++) {
+        block += lines[j] + '\n';
+        if (/^\s*\}\);\s*$/.test(lines[j])) break;
+      }
+      sites.push({ file: f, declares: /deliveryChannel:\s*'(web|whatsapp)'/.test(block) });
+    }
+  }
+
+  // THE CENSUS IS FILE + COUNT, NOT LINE NUMBERS. First draft of this cell pinned
+  // `file:line` and reddened at the cured tree on its very first run — because `code()`
+  // strips comments, so its indices are not the file's lines. Kept as written rather
+  // than papered: a line-pinned census is ALSO the wrong shape on its merits, since it
+  // fires on every unrelated edit above a call site and teaches the next reader to
+  // re-baseline a tripwire rather than read it. Counts per file are stable against
+  // everything except the thing this cell is for — a door appearing or vanishing.
+  const census = {};
+  for (const s of sites) census[s.file] = (census[s.file] || 0) + 1;
+  assert.deepStrictEqual(census,
+    { 'src/lib/brideInbound.js': 1, 'src/api/couple/chat.js': 2 },
+    `the census of runBrideAgenticTurn call sites MOVED: ${JSON.stringify(census)} — a new door must declare deliveryChannel explicitly, because the 'web' default is a lie on any path that sends to a phone`);
+
+  // Every WhatsApp-sending door declares. The sanctuary door deliberately does
+  // not: it makes no send at all and 'web' is the true value for its rows.
+  const whatsappDoors = sites.filter(s => s.file === 'src/lib/brideInbound.js');
+  assert.ok(whatsappDoors.length > 0, 'the WhatsApp door vanished from the census');
+  for (const s of whatsappDoors) {
+    assert.ok(s.declares,
+      `${s.file} calls the bride turn on a WhatsApp door without declaring deliveryChannel — the persisted summary row will say 'web'`);
+  }
+  for (const s of sites.filter(s => s.file === 'src/api/couple/chat.js')) {
+    assert.ok(!s.declares,
+      `${s.file} declares a channel — chat.js is READ-ONLY ALWAYS and inherits the 'web' default by design`);
+  }
+
+  // And the /surprise door, which calls the surfacer directly rather than through
+  // the turn, declares on its own call.
+  const surprise = code('src/lib/brideInbound.js');
+  assert.ok(/surfacePendingCircleSessions\(\{[\s\S]{0,200}?channel: 'whatsapp'/.test(surprise),
+    'the /surprise door calls the surfacer without declaring channel: whatsapp');
 });
 
 // ══════════════════════════════════════════════════════════════════════════

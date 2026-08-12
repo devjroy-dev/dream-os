@@ -19,13 +19,19 @@
 // list_muse + delete_muse_save executors, and mediaUrls return for image
 // playback ("show me save 47" sends the actual image back).
 //
-// B2 Step 5+6: added invite_to_circle + list_circle executors,
-// session_id filter on list_muse, and pre-turn session-summary surfacing
+// B2 Step 5+6: added invite_to_circle + list_circle executors, the circle-
+// session filter on list_muse, and pre-turn session-summary surfacing
 // (Step 6) — when the bride messages, we check for ended-but-unsummarized
-// circle sessions, compose a one-line preamble via Haiku, and prepend it to
-// dynamicContext. The preamble carries the session_id back to the agent so
-// if the bride says "yes send them here", the agent calls list_muse with
-// session_id to playback that session's saves only.
+// circle sessions and compose one summary per session via Haiku.
+//
+// F-09.176: this header used to say the summary was PREPENDED TO
+// dynamicContext and that it "carries the session_id back to the agent".
+// Neither was true of the code beneath it. The summary is returned to the
+// caller and delivered to her as ITS OWN MESSAGE — it never enters the turn's
+// context at all — and the session id rides
+// `circle_sessions.summary_message_id`, not the text. If she then says "yes
+// send them here", the agent sets list_muse's `from_recent_circle_session`
+// flag and THIS FILE resolves which session that was.
 
 const { coerceBudget } = require('../lib/coerceBudget');
 const { STATIC_SYSTEM_PROMPT, buildDynamicContext } = require('./brideSystemPrompt');
@@ -62,8 +68,25 @@ const SESSION_IDLE_MS = 10 * 60 * 1000;  // 10 minutes
 //   mediaContext : string | null — when brideIndex.js has just saved an
 //     image/link to Muse, this is the synthesized context note ("User sent
 //     an image and we saved it to her Muse as save 47, tags: ethnic/grand,
-//     caption: 'love this lehenga'"). Injected as a system-level note so
-//     the agent knows what happened and can reply naturally.
+//     caption: 'love this lehenga'"). PREPENDED TO dynamicContext (the
+//     system prompt's dynamic half, at :148) — NOT a distinct system-level
+//     message. F-09.176: the words "injected as a system-level note" were
+//     a narrative of a shape this file never had, and a reader who trusted
+//     them would look for a message that does not exist.
+//
+//   deliveryChannel : 'web' | 'whatsapp' — WHO IS ABOUT TO RECEIVE THE
+//     CIRCLE SUMMARY, declared by the caller because this function cannot
+//     derive it: ONE call site (:126) serves both doors — brideInbound
+//     sends the summary to her phone, api/couple/chat.js drops it and the
+//     sanctuary reads the row from the thread instead. DEFAULT 'web' is
+//     the safe half: chat.js is byte-untouched and keeps the channel its
+//     rows have always carried; brideInbound opts in to 'whatsapp'.
+//     F-06.85 MECHANISM: the value is written onto public.messages.channel
+//     by the SINGLE PERSIST inside surfacePendingCircleSessions (:2004),
+//     which happens BEFORE the send and is the only write of that row.
+//     A future caller that forgets this parameter mints a 'web' row for a
+//     WhatsApp send — silently. That hazard is held by an ENUMERATING
+//     bench cell (b05_arc_m1_bench.js §6.6, R-31.1), never by this comment.
 //
 // Returns include new field:
 //   mediaUrls : string[] — Cloudinary URLs the engine wants brideIndex to
@@ -75,6 +98,7 @@ async function runBrideAgenticTurn({
   conversation,
   inboundMessage,
   mediaContext = null,
+  deliveryChannel = 'web',
   supabase,
   anthropic,
 }) {
@@ -113,31 +137,39 @@ async function runBrideAgenticTurn({
   // ── Step 6: pre-turn circle session summary surfacing ─────────────
   // When the bride's last interaction was a while ago and a circle member
   // has been active in between, we surface a one-time summary of that
-  // session. We inject it as a fake assistant message immediately before
-  // the bride's inbound — the model treats it as something it already said
-  // and naturally continues from it. This is more reliable than prepending
-  // to dynamicContext (system prompt), which Haiku ignores on simple messages.
+  // session. The composed text is returned to the caller and delivered to
+  // her as ITS OWN MESSAGE — it is not injected into this turn's context.
   //
   // We only fire this when there's no fresh mediaContext (i.e. the bride
   // didn't just forward an image herself — in that case the conversation
   // is about HER save, not a circle update).
+  //
+  // ── F-09.171 + DUTY (a) CURED · THE SINGLE-PERSIST ────────────────────────
+  // The surfacer used to hand back ONE STRING carrying three things the bride
+  // was never meant to read: a `[SYSTEM NOTE — ...]` header, a paragraph of
+  // instructions addressed to the model, and a `[session_id: uuid]` marker per
+  // summary. The strip below was this file's attempt to undo that — a
+  // findIndex over four literal prefixes, which is a parser for a format
+  // nobody owned. It was LOSSY BY CONSTRUCTION (a summary whose own first
+  // line began "One or more" lost that line) and it protected exactly one of
+  // the two send-bound paths: /surprise called the surfacer directly and sent
+  // the raw string, header and all (F-09.175).
+  //
+  // The cure is upstream: the surfacer now composes ONE CLEAN THING and
+  // returns { displayText, sessionIds }. There is no header to strip, no
+  // instruction paragraph to skip, and no marker to hide, so this block is a
+  // read rather than a parse, and BOTH callers send `displayText` verbatim.
   let circleSummaryMessage = null;
   if (!mediaContext) {
-    const circleSummary = await surfacePendingCircleSessions({
+    const circle = await surfacePendingCircleSessions({
       couple_id: couple.id,
       supabase,
+      channel: deliveryChannel,
       // TDW_10.C · F-10.112: the fan-out is spend, never a turn.
       anthropic: withKind(anthropic, 'fanout'),
     });
-    if (circleSummary && circleSummary.trim()) {
-      // Extract just the human-readable summary lines — strip the [SYSTEM NOTE] header
-      // and instruction block, keep only the actual summary content.
-      const summaryLines = circleSummary.trim().split('\n');
-      const contentStart = summaryLines.findIndex(l => !l.startsWith('[SYSTEM NOTE') && l.trim().length > 0 && !l.startsWith('MANDATORY') && !l.startsWith('One or more'));
-      const summaryContent = contentStart >= 0
-        ? summaryLines.slice(contentStart).join('\n').trim()
-        : circleSummary.trim();
-      circleSummaryMessage = summaryContent;
+    if (circle && circle.displayText && circle.displayText.trim()) {
+      circleSummaryMessage = circle.displayText;
     }
   }
 
@@ -176,17 +208,42 @@ async function runBrideAgenticTurn({
   // so a row persisted before this cure shipped is reconstructed identically to one
   // persisted after it, and a row that filed nothing is returned untouched. Inbound
   // rows are never marked: the bride's own words are hers.
-  const history = (recentMessages || [])
+  // ── ⑤(b) CURED · THE DOUBLED BRIDE MESSAGE, AND THE TURN IT ATE ───────────
+  // TWO FAULTS, ONE ORDERING. The old shape sliced FIRST and then dropped the
+  // inbound only when it landed in the LAST position. On a fan-out turn the
+  // summary row is persisted AFTER her inbound, so the tail reads
+  //   user:X · assistant:summary
+  // the positional test never fires, and the model is handed
+  //   user:X · assistant:summary · user:X
+  // — her message twice. The second fault rides the first: the SELECT asks for
+  // HISTORY_LIMIT + 1 rows precisely so the drop can cost one, and when the
+  // drop does not happen the slice evicts a GENUINE turn to make room for the
+  // duplicate. She said one thing and the model saw it twice while forgetting
+  // something she actually said.
+  //
+  // THE RULED SHAPE (CE-32): scan the mapped history FROM THE TAIL, remove AT
+  // MOST ONE matching inbound — the LAST occurrence — and slice after. Why the
+  // tail-scan and not a bare content match: a bare match removes EVERY
+  // identical inbound in the window, so a bride who answers 「 yes 」 today and
+  // said 「 yes 」 four messages ago loses the earlier one — the eviction fault
+  // reborn wearing the cure's clothes. The last occurrence is the row that was
+  // just logged; every earlier identical text is hers and stays.
+  const mapped = (recentMessages || [])
     .reverse()
     .filter(m => m.body && m.body.trim().length > 0)
-    .slice(-HISTORY_LIMIT)
     .map(m => ({
       role: m.direction === 'inbound' ? 'user' : 'assistant',
       content: m.direction === 'inbound' ? m.body : appendWitness(m.body, m.tool_calls),
-    }))
-    // Drop the inbound message if it's already the last history item;
-    // we add it explicitly below.
-    .filter((m, i, arr) => !(i === arr.length - 1 && m.role === 'user' && m.content === inboundMessage));
+    }));
+
+  for (let i = mapped.length - 1; i >= 0; i--) {
+    if (mapped[i].role === 'user' && mapped[i].content === inboundMessage) {
+      mapped.splice(i, 1);   // the just-logged inbound; we append it explicitly below
+      break;                 // AT MOST ONE — earlier identical texts are hers
+    }
+  }
+
+  const history = mapped.slice(-HISTORY_LIMIT);
 
   const messages = [
     ...history,
@@ -1475,10 +1532,12 @@ async function execSaveReceipt({ input, couple, supabase }) {
     return { ok: false, error: 'image_url required' };
   }
 
-  // I2 audit fix: minimal URL shape check — mirrors the B2 I3 pattern for
-  // session_id. Cloudinary URLs always start with https://. If the model
-  // truncates or reformats the URL from the SYSTEM NOTE, a malformed URL
-  // stored in couple_receipts would show as a broken image in the PWA.
+  // I2 audit fix: minimal URL shape check. Cloudinary URLs always start with
+  // https://. If the model truncates or reformats the URL it was handed, a
+  // malformed URL stored in couple_receipts would show as a broken image in
+  // the PWA. (This once cited "the B2 I3 pattern for session_id" and "the
+  // SYSTEM NOTE" — both retired with F-09.171's single-persist; the shape
+  // check is the part that was ever load-bearing.)
   const trimmedUrl = image_url.trim();
   if (!trimmedUrl.startsWith('https://')) {
     console.warn('[bride-tool:save_receipt] image_url does not look like a URL:', trimmedUrl.slice(0, 80));
@@ -1571,7 +1630,9 @@ async function execDeleteReceipt({ input, couple, supabase }) {
 //
 // Supports four filters from the agent: save_number (single lookup), limit
 // (pagination), aesthetic_tags (taxonomy match), saved_by (bride vs circle).
-// Plus request_image_playback flag.
+// Plus two flags: from_recent_circle_session (scope to the circle session she
+// was last told about — resolved HERE, never named by the model) and
+// request_image_playback.
 //
 // Note on aesthetic_tags filter: muse_saves.aesthetic_tags is a jsonb column
 // (not text[]). Supabase's .overlaps() compiles to Postgres '&&' which is NOT
@@ -1588,36 +1649,69 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
     limit = LIST_MUSE_DEFAULT_LIMIT,
     aesthetic_tags,
     saved_by,
-    session_id,
+    from_recent_circle_session = false,
     request_image_playback = false,
   } = input || {};
 
   const tagFilterActive = Array.isArray(aesthetic_tags) && aesthetic_tags.length > 0;
 
-  // ── Step 6: session_id filter ───────────────────────────────────
-  // When the bride confirms "yes send them here" on a session-summary preamble,
-  // the agent passes session_id. We resolve session_id → list of muse_save IDs
-  // via circle_activity, then constrain the main query.
+  // ── Step 6: circle-session filter — RESOLVED THROUGH THE STAMP ───────────
+  // When the bride confirms "yes send them here" after a circle summary, this
+  // narrows the listing to the saves that summary was about.
   //
-  // I3 fix: validate that session_id is a valid UUID before querying. The
-  // session_id is extracted by the LLM from the [session_id: uuid] marker in
-  // the system note — if the model truncates or reformats it, we get a bad
-  // string. Return a clear error so the agent can inform the bride rather than
-  // silently returning 0 saves.
-  // (UUID_REGEX is defined at module scope under "Shared validators" — no
-  //  local re-declaration; L1 audit fix.)
+  // ── F-09.171 CONSEQUENCE · THE MODEL NEVER SEES A UUID ────────────────────
+  // This used to take `session_id` — a uuid the model copied out of the
+  // `[session_id: uuid]` marker the surfacer stapled to each summary. That
+  // marker is dead (it was reaching the bride), so the model's only source for
+  // that uuid is gone. A parameter whose supply has been removed but whose
+  // schema still asks for one is an invitation to a HALLUCINATED uuid, which is
+  // why the schema entry moved with this diff rather than after it: the model
+  // now asks in WORDS (`from_recent_circle_session`) for the session it was just
+  // told about, and the resolution happens here, where the fact actually lives.
+  //
+  // THE RESOLUTION, ratified by the chair: the surfacer stamps
+  // `circle_sessions.summary_message_id` when it persists a summary, so a
+  // stamped session IS a session she has been told about. Take the most recent
+  // one for this couple — recency key `last_activity_at DESC`, which is this
+  // table's own ordering key (the surfacer selects on it, and
+  // `circle_sessions_member_activity_idx` indexes it DESC). No join is needed:
+  // the stamp's presence is the whole predicate.
+  //
+  // SQL-PROVENANCE: `summary_message_id uuid` is column 8 of
+  // public.circle_sessions, witnessed at docs/db/PUBLIC_SCHEMA.md:102, FK to
+  // messages(id) at :1716-1717; `couple_id` and `last_activity_at` witnessed in
+  // the same block and read live by surfacePendingCircleSessions:1939-1946.
+  // (UUID_REGEX remains in use elsewhere in this module; no local declaration.)
   let sessionSaveIds = null;
-  if (session_id && typeof session_id === 'string' && session_id.trim()) {
-    const trimmedSessionId = session_id.trim();
-    if (!UUID_REGEX.test(trimmedSessionId)) {
-      console.error(`[bride-tool:list_muse] invalid session_id format: "${trimmedSessionId}"`);
-      return { ok: false, error: `session_id must be a valid UUID (got: "${trimmedSessionId}")` };
+  if (from_recent_circle_session === true) {
+    const { data: stampedSessions, error: stampErr } = await supabase
+      .from('circle_sessions')
+      .select('id, summary_message_id, last_activity_at')
+      .eq('couple_id', couple.id)
+      .not('summary_message_id', 'is', null)
+      .order('last_activity_at', { ascending: false })
+      .limit(1);
+
+    if (stampErr) {
+      console.error('[bride-tool:list_muse] stamped-session lookup error:', stampErr);
+      return { ok: false, error: stampErr.message };
     }
+
+    const resolved = (stampedSessions || [])[0];
+    if (!resolved) {
+      // She has never been sent a circle summary. Say so honestly rather than
+      // silently widening to every save on the board — a narrowing that fails
+      // open is a tool that answers a different question than it was asked.
+      console.log(`[bride-tool:list_muse] no stamped circle session for couple ${couple.id} — nothing to scope to`);
+      return { ok: true, count: 0, saves: [], image_playback_queued: 0 };
+    }
+
+    console.log(`[bride-tool:list_muse] resolved recent circle session ${resolved.id} via summary stamp ${resolved.summary_message_id}`);
 
     const { data: sessionRows, error: sessionErr } = await supabase
       .from('circle_activity')
       .select('subject_id')
-      .eq('session_id', trimmedSessionId)
+      .eq('session_id', resolved.id)
       .eq('subject_type', 'muse_save')
       .eq('activity_type', 'save_added');
 
@@ -1649,7 +1743,7 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
     query = query.eq('saved_by_role', 'circle_member');
   }
 
-  // Constrain to a specific session's saves if session_id was passed.
+  // Constrain to the resolved circle session's saves, when she asked for them.
   if (sessionSaveIds) {
     query = query.in('id', sessionSaveIds);
   }
@@ -1911,7 +2005,7 @@ async function execListCircle({ input, couple, supabase }) {
 // summarized, and accumulates all summaries into a single SYSTEM NOTE
 // preamble that gets prepended to dynamicContext.
 
-async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) {
+async function surfacePendingCircleSessions({ couple_id, supabase, anthropic, channel = 'web' }) {
   const cutoffIso = new Date(Date.now() - SESSION_IDLE_MS).toISOString();
 
   // Issue 5 fix: log every invocation so Railway logs show whether this ran.
@@ -1959,6 +2053,7 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
   console.log(`[bride-surface-circle] ${sessions.length} pending session(s) for couple ${couple_id}`);
 
   const summaryLines = [];
+  const surfacedSessionIds = [];
 
   for (const session of sessions) {
     try {
@@ -1990,8 +2085,24 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
       const summary = await summarizeOneSession({ session, supabase, anthropic });
 
       if (summary) {
-        // Pre-persist the summary to messages before returning to the caller so
-        // the text survives a Twilio send failure or a crash in the caller path.
+        // ── THE SINGLE PERSIST (F-09.171 + duty (a), CE-32) ──────────────────
+        // ONE ROW PER CIRCLE SUMMARY. This write used to be half of a pair: this
+        // one, always stamped 'web', and a SECOND insert in brideInbound.js on
+        // whichever door delivered it — so every WhatsApp-delivered summary
+        // produced TWO rows, one lying about its channel and one carrying the
+        // uuid marker in its body. Both callers now send what this function
+        // returns and persist nothing; this is the only write.
+        //
+        // BEFORE THE SEND, deliberately: the caller sends `displayText` after
+        // this returns, so a crash or a transport failure between the two
+        // leaves the row standing rather than losing the text. The bride can
+        // still read it in her thread.
+        //
+        // CHANNEL-TRUE (F-05.49's ruling, now honest on both doors): the value
+        // is the CALLER'S DECLARATION, not this function's guess — see
+        // runBrideAgenticTurn's `deliveryChannel` header. 'web' remains the
+        // default and the sanctuary path's true value; brideInbound declares
+        // 'whatsapp' because the row describes a message that reached her phone.
         try {
           const { data: convRow } = await supabase
             .from('conversations')
@@ -2006,12 +2117,12 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
               .insert({
                 conversation_id: convRow.id,
                 direction:       'outbound',
-                // F-05.49 CURED (ARC M6): this row was stamped 'whatsapp' for a summary
-                // that is DELIVERED ON THE WEB — the sanctuary reads it from the thread;
-                // no WhatsApp send happens on this path at all. Every channel-keyed read
-                // and every future analytic inherited the lie. 'web' is the estate's own
-                // second value (live at eight sites), derived not invented.
-                channel:         'web',
+                // F-05.49 CURED (ARC M6), COMPLETED HERE: the row was once stamped
+                // 'whatsapp' for a summary DELIVERED ON THE WEB, then stamped 'web' for
+                // one delivered to her phone. Both were the same defect — a constant
+                // standing in for a fact only the caller holds. Neither value is
+                // invented: both are live in this estate's own column.
+                channel,
                 body:            summary,
                 sent_by:         'agent',
               })
@@ -2021,6 +2132,13 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
             if (msgErr) {
               console.error(`[bride-surface-circle] message pre-insert failed for session ${session.id}:`, msgErr.message);
             } else if (msgRow?.id) {
+              // THE STAMP IS WHERE THE SESSION ID LIVES NOW. It used to live in
+              // the message BODY as `[session_id: uuid]` so the model could read
+              // it back and hand it to list_muse — which meant the bride read a
+              // uuid too, on every summary. `circle_sessions.summary_message_id`
+              // (column 8, FK to messages(id), PUBLIC_SCHEMA.md:102 / :1716) has
+              // held the same association all along, in the plane where it
+              // belongs. Playback resolves through it; see execListMuse.
               await supabase
                 .from('circle_sessions')
                 .update({ summary_message_id: msgRow.id })
@@ -2033,7 +2151,11 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
           console.error(`[bride-surface-circle] message pre-insert threw for session ${session.id}:`, preInsertErr.message);
         }
 
-        summaryLines.push(`${summary}\n[session_id: ${session.id}]`);
+        // MARKER-FREE. `[session_id: ${session.id}]` used to be appended here and
+        // it reached the bride verbatim (F-09.171). The id now travels on the
+        // stamp above and on `sessionIds` below — never in a byte she can read.
+        summaryLines.push(summary);
+        surfacedSessionIds.push(session.id);
       } else {
         // H2 fix: summarize returned null (activity lookup failed or empty).
         // Session is already marked summarized_to_bride=true (from the optimistic
@@ -2048,12 +2170,26 @@ async function surfacePendingCircleSessions({ couple_id, supabase, anthropic }) 
 
   if (summaryLines.length === 0) return null;
 
-  return [
-    '[SYSTEM NOTE — circle activity summary]',
-    'One or more of the bride\'s circle members were active on her board since she was last here. Weave this into your reply naturally as a preamble before answering whatever the bride just said. Include the link "thedreamwedding.in/muse" and offer "or should I just send them here?" — if she says yes in her next message, you should call list_muse with the session_id (shown in the summary blocks) and request_image_playback=true.',
-    '',
-    ...summaryLines,
-  ].join('\n');
+  // ── THE RETURN IS A COMPOSED THING, NOT A PROMPT ─────────────────────────
+  // What used to come back was a model-addressed document: a `[SYSTEM NOTE]`
+  // header, a paragraph of instructions written to Haiku, a blank line, then
+  // the summaries with a uuid stapled to each. That document was DELIVERED TO
+  // THE BRIDE on both send-bound paths — whole on /surprise, half-parsed on the
+  // engine path. It was scaffolding that escaped, never copy anyone approved.
+  //
+  // It is REMOVED rather than relocated: nothing downstream needs it. The
+  // summary is delivered as its own message and never enters the turn's
+  // context, so there is no model left to instruct — and the one instruction
+  // that carried real behaviour (call list_muse with the session_id) is now
+  // held by execListMuse's own server-side resolution.
+  //
+  // `displayText` is what she reads. `sessionIds` is what the machinery knows.
+  // The separator is a blank line so two members' summaries read as two
+  // paragraphs rather than one run-on.
+  return {
+    displayText: summaryLines.join('\n\n'),
+    sessionIds:  surfacedSessionIds,
+  };
 }
 
 // Compose a single session's summary by passing all its activity rows

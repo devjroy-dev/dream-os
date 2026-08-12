@@ -132,7 +132,7 @@ function makeDeps({ sends, saves, inserts, circleCalls }) {
       sends.inboundForEngine = args.inboundMessage;
       return { reply: 'ok', mediaUrls: [], toolCalls: null, model: 'haiku', inputTokens: 1, outputTokens: 2, costUsd: 0, costInr: 0, circleSummary: null };
     },
-    surfacePendingCircleSessions: async () => '',
+    surfacePendingCircleSessions: async () => null,   // the ruled return shape: { displayText, sessionIds } | null
     saveToMuse: async (args) => { saves.push(args); return { ok: true, save: { save_number: 7, surface: 'muse', caption: args.caption, aesthetic_tags: [] } }; },
     checkImageThrottle: async () => ({ allowed: true }),
     markRejectionSent: async () => {},
@@ -425,14 +425,118 @@ function captureWarn(fn) {
     assert.strictEqual(inputs.hasMedia, true);
   });
 
-  console.log('\n── §7 — THE (a)-CLUSTER IS ABSENT BY RULING, AND THE BENCH SAYS SO ────────────');
+  console.log('\n── §7 — THE (a)-CLUSTER, RULED AND BUILT: THE SINGLE-PERSIST ─────────────────');
+  // These three cells were SKIPPED at 29bef95 and said so. CE-32 ruled duty (a)
+  // and they come alive in the same diff that cures what they assert. The skip
+  // count goes to zero; nothing was removed to get there.
 
-  skip('§7.1 F-09.171 the marker never reaches a send()-bound string',
-       'HELD UNRULED by CE-32: the marker limb waits on duty (a)\'s body (execListMuse playback channel)');
-  skip('§7.2 F-09.175 /surprise cannot send a [SYSTEM NOTE] string',
-       'HELD UNRULED by CE-32: rides the (a)-cluster diff');
-  skip('§7.3 F-09.176 the injection narrative matches the code',
-       'HELD UNRULED by CE-32: the comment retires with the (a)-cluster diff it describes');
+  await t('§7.1 F-09.171 the marker reaches NO send()-bound or persisted string', () => {
+    // The uuid used to be stapled to every summary and read by the bride. It now
+    // lives ONLY on circle_sessions.summary_message_id. This cell is the byte:
+    // zero `[session_id:` anywhere the composer can put text in front of her.
+    const eng = read('src/agent/brideEngine.js');
+    const inb = read('src/lib/brideInbound.js');
+    const composed = eng.split('\n').filter(l => !l.trim().startsWith('//'));
+    for (const l of composed) {
+      assert.ok(!/summaryLines\.push\(`?\$\{summary\}\\n\[session_id/.test(l),
+        `the marker is still being composed into a summary line: ${l.trim()}`);
+    }
+    // No LIVE (non-comment) code in either file may emit the literal marker.
+    const liveMarker = (src) => src.split('\n')
+      .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
+      .filter(l => l.includes('[session_id:'));
+    assert.deepStrictEqual(liveMarker(eng), [], 'brideEngine still has live code emitting [session_id:');
+    assert.deepStrictEqual(liveMarker(inb), [], 'brideInbound still has live code emitting [session_id:');
+    // And the stamp is still written — the id did not simply vanish.
+    assert.ok(/summary_message_id: msgRow\.id/.test(eng),
+      'the marker died but the stamp did not replace it — the association is now lost entirely');
+  });
+
+  await t('§7.2 F-09.175 /surprise cannot send a [SYSTEM NOTE] string — structurally', () => {
+    // The header and the instruction paragraph are GONE from the composer, so
+    // there is no such string for any send() to reach. Asserted at both ends:
+    // the composer cannot build it, and /surprise sends displayText.
+    const eng = read('src/agent/brideEngine.js');
+    const live = eng.split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*'));
+    assert.ok(!live.some(l => l.includes('[SYSTEM NOTE — circle activity summary]')),
+      'the surfacer can still compose the [SYSTEM NOTE] header');
+    assert.ok(!live.some(l => l.includes('Weave this into your reply naturally as a preamble')),
+      'the surfacer can still compose the model-addressed instruction paragraph');
+    const inb = read('src/lib/brideInbound.js');
+    assert.ok(/await send\(phone, circle\.displayText\)/.test(inb),
+      '/surprise no longer sends circle.displayText — the composed thing is not what reaches her');
+    assert.ok(!/send\(phone, circleSummary\.trim\(\)\)/.test(inb),
+      '/surprise still sends the surfacer raw return');
+  });
+
+  await t('§7.3 F-09.176 the injection narrative matches the code', () => {
+    const eng = read('src/agent/brideEngine.js');
+    // The three sentences that described a shape this file never had.
+    assert.ok(!/Injected as a system-level note so\n\/\/ +the agent knows/.test(eng),
+      'the "injected as a system-level note" narrative survives');
+    assert.ok(!/The preamble carries the session_id back to the agent/.test(eng),
+      'the header still claims the preamble carries the session_id to the agent');
+    assert.ok(!/compose a one-line preamble via Haiku, and prepend it to\n\/\/ dynamicContext/.test(eng),
+      'the header still claims the summary is prepended to dynamicContext');
+    // F-06.85 form: the mechanism the deliveryChannel default is conditioned on
+    // is NAMED, so the next sitting on that mechanism must re-read this sentence.
+    assert.ok(/F-06\.85 MECHANISM: the value is written onto public\.messages\.channel/.test(eng),
+      'deliveryChannel ships without naming the mechanism it is conditioned on');
+  });
+
+  await t('§7.4 DUTY (a) — ONE ROW PER SUMMARY: no send-bound path persists a second', () => {
+    // The named mutation for this cell is RESTORE THE SECOND PERSIST. Both
+    // callers used to insert the summary again after sending it; the surfacer's
+    // own write (before the send, for crash-durability) is now the only one.
+    const inb = read('src/lib/brideInbound.js');
+    const live = inb.split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
+    // No insert into messages may carry a circle summary body on either path.
+    assert.ok(!/body:\s+circleSummary\.trim\(\)/.test(live),
+      '/surprise still persists the summary a second time');
+    assert.ok(!/body:\s+result\.circleSummary/.test(live),
+      'the engine path still persists the summary a second time');
+    assert.ok(!/body:\s+circle\.displayText/.test(live),
+      'a second persist was rebuilt around the new return shape');
+    const eng = read('src/agent/brideEngine.js');
+    assert.strictEqual((eng.match(/from\('messages'\)\s*\n\s*\.insert\(/g) || []).length, 1,
+      'brideEngine no longer has exactly one summary insert — the single-persist has split');
+  });
+
+  await t('§7.5 DUTY (a) — the persisted row is CHANNEL-TRUE, declared by the caller', () => {
+    const eng = read('src/agent/brideEngine.js');
+    assert.ok(/async function surfacePendingCircleSessions\(\{ couple_id, supabase, anthropic, channel = 'web' \}\)/.test(eng),
+      'the surfacer does not take a caller-declared channel with a web default');
+    const live = eng.split('\n').filter(l => !l.trim().startsWith('//'));
+    assert.ok(live.some(l => /^\s+channel,\s*$/.test(l)),
+      'the persist no longer writes the declared channel');
+    assert.ok(!live.some(l => /channel:\s+'web',/.test(l) && /messages/.test(eng)),
+      'the persist still hardcodes a channel constant');
+    const inb = read('src/lib/brideInbound.js');
+    assert.ok(/channel: 'whatsapp'/.test(inb), '/surprise does not declare whatsapp');
+    assert.ok(/deliveryChannel: 'whatsapp'/.test(inb), 'the engine path does not declare whatsapp');
+    // chat.js is READ-ONLY ALWAYS and must stay byte-untouched: it declares
+    // nothing and inherits 'web', which is the value its rows have always had.
+    const chat = read('src/api/couple/chat.js');
+    assert.ok(!/deliveryChannel/.test(chat),
+      'chat.js was edited — it is READ-ONLY ALWAYS and the default exists so it need not be');
+  });
+
+  await t('§7.6 PLAYBACK — the model never names a session, the engine resolves it', () => {
+    const tools = read('src/agent/brideTools.js');
+    const eng   = read('src/agent/brideEngine.js');
+    // The schema no longer asks the model for a uuid it can no longer obtain.
+    assert.ok(!/session_id: \{/.test(tools), 'the list_muse schema still declares a session_id parameter');
+    assert.ok(/from_recent_circle_session: \{/.test(tools), 'the re-aimed boolean is not in the schema');
+    assert.ok(/type: 'boolean'/.test(tools.slice(tools.indexOf('from_recent_circle_session'))),
+      'from_recent_circle_session is not typed boolean');
+    // Resolution happens server-side, through the stamp, on the ratified key.
+    assert.ok(/from\('circle_sessions'\)/.test(eng) && /\.not\('summary_message_id', 'is', null\)/.test(eng),
+      'execListMuse does not resolve through the summary stamp');
+    assert.ok(/\.order\('last_activity_at', \{ ascending: false \}\)/.test(eng),
+      'the ratified recency key (last_activity_at DESC) is not the resolution order');
+    assert.ok(!/session_id must be a valid UUID/.test(eng),
+      'the uuid-from-the-model validation survives — the model is still expected to name one');
+  });
 
   const total = pass + fail + skipped;
   console.log(`\n────────────────────────────────────────────────────────────────────────────────`);

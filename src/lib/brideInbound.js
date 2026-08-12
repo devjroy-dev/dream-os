@@ -183,7 +183,15 @@ async function _processBrideInbound(inputs, deps) {
           trimmedBody,
           hasMedia,
           numMedia,
-          req: { body: { MediaContentType0: mediaContentType, MediaUrl0: mediaUrl } },
+          // F-09.173 / F-05.79 · MediaCaption0 JOINS THE VESTIGE. The synthetic
+          // Twilio-shaped envelope carried the type and the url but not the
+          // caption, so a circle member who forwarded a photo WITH a word about
+          // it lost the word — and it is HER save the word belonged to. The
+          // bride's own door already reads `mediaCaption` (see :493); this is
+          // the same field, one door over, in the vestige's own shape and with
+          // one reader (brideIndex.js's circle save). One act, one row: it
+          // rides the save's caption FIELD and mints nothing new.
+          req: { body: { MediaContentType0: mediaContentType, MediaUrl0: mediaUrl, MediaCaption0: mediaCaption } },
           twilioSid: sidForPersist, // TDW_05 P1b: null on replay / degrades via inboundRow
           profileName,
           circleMember: activeCircleMember,
@@ -644,29 +652,39 @@ async function _processBrideInbound(inputs, deps) {
       // Surface any pending circle session summaries first — same as the normal
       // engine path. /surprise bypasses runBrideAgenticTurn so we call this here
       // explicitly to ensure the bride doesn't miss circle activity.
-      const circleSummary = await surfacePendingCircleSessions({
+      // ── F-09.175 CURED · /surprise SENDS THE COMPOSED THING ──────────────
+      // This path used to send `circleSummary.trim()` — the surfacer's RAW
+      // return, which was a model-addressed document: a `[SYSTEM NOTE — circle
+      // activity summary]` header, a paragraph of instructions written to
+      // Haiku, and a `[session_id: uuid]` stapled to each summary. The engine
+      // path at least attempted a strip; this one sent it whole. A bride who
+      // said "surprise me" received the machine's own scaffolding.
+      //
+      // The cure is structural, not a strip: the surfacer composes ONE CLEAN
+      // THING and `displayText` is the only readable member of its return, so
+      // no header, no instruction paragraph and no uuid is REACHABLE by any
+      // send() on this path. There is nothing left here to remember to remove.
+      //
+      // AND THE SECOND PERSIST IS GONE. The insert that stood here wrote a
+      // second row for a summary the surfacer had already persisted — the
+      // double-persist of duty (a). The surfacer's write is now the only one,
+      // it happens BEFORE this send, and it carries the channel this door
+      // declares.
+      const circle = await surfacePendingCircleSessions({
         couple_id: couple.id,
         supabase,
+        channel: 'whatsapp',   // this door delivers to her phone — see runBrideAgenticTurn's header
         // TDW_10.C: F-10.112's fan-out. Spend, never a turn — one Haiku call
         // PER pending circle session, so kind='fanout' and these rows are
         // excluded from the turn count and included in the money.
         anthropic: withKind(meterAnthropic, 'fanout'),
       });
-      if (circleSummary && circleSummary.trim()) {
-        let circleMsg = null;
+      if (circle && circle.displayText && circle.displayText.trim()) {
         try {
-          circleMsg = await send(phone, circleSummary.trim());
+          await send(phone, circle.displayText);
         } catch (e) {
           console.error('[bride-webhook] /surprise circle summary send error:', e);
         }
-        await supabase.from('messages').insert({
-          conversation_id: conversation.id,
-          direction:       'outbound',
-          channel:         'whatsapp',
-          body:            circleSummary.trim(),
-          sent_by:         'agent',
-          twilio_sid:      circleMsg?.sid ?? null,
-        });
       }
 
       // TDW_10.C: the /surprise composer (brideIndex.js:285) is the fourth
@@ -732,23 +750,26 @@ async function _processBrideInbound(inputs, deps) {
       conversation,
       inboundMessage: inboundForEngine,
       mediaContext:   mediaContextNote,
+      // The WhatsApp door. The circle summary this turn may surface is sent to
+      // her phone below, so the row the surfacer persists must say so — the
+      // engine cannot derive it, because the sanctuary door shares this call
+      // site's downstream. Default is 'web'; declaring is this caller's duty.
+      deliveryChannel: 'whatsapp',
       supabase,
       anthropic: meterAnthropic,
     });
 
     // Bug #2 fix: circle summary delivered as a separate WhatsApp message
     // before the agent reply — never injected into the agent context.
+    //
+    // DUTY (a): the insert that used to sit inside this try is GONE. It was the
+    // second half of the double-persist — the surfacer had already written the
+    // summary (before the send, for crash-durability) and this wrote it again
+    // with a different channel and, until this diff, a uuid in its body. One
+    // composed thing, persisted once, sent clean.
     if (result.circleSummary) {
       try {
         const summaryMsg = await send(phone, result.circleSummary);
-        await supabase.from('messages').insert({
-          conversation_id: conversation.id,
-          direction:       'outbound',
-          channel:         'whatsapp',
-          body:            result.circleSummary,
-          sent_by:         'agent',
-          twilio_sid:      summaryMsg?.sid ?? null,
-        });
         console.log(`[bride-circle-summary] delivered to ${phone} (${summaryMsg?.sid})`);
       } catch (summaryErr) {
         console.error('[bride-circle-summary] send failed (continuing):', summaryErr.message);

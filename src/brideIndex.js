@@ -485,6 +485,9 @@ async function handleCircleMemberMessage({
   // brideInbound.js builds from the normalized inputs (F4's KEPT-AND-NAMED vestige). It holds
   // the stable url, never a Twilio url — there is no Twilio branch left on this lane. Rename
   // those two envelope fields and this column goes null again in the F-09.173 shape.
+  // The envelope carries a THIRD field as of CE-32 — `MediaCaption0`, the member's own word
+  // about the photo — read at the save below (:600). Same mechanism, same fragility: rename it
+  // upstream and the caption goes silently missing from her save with nothing here to notice.
   await supabase.from('messages').insert(webhookCore.inboundRow({
     conversation_id: conversation.id,
     direction:       'inbound',
@@ -593,6 +596,15 @@ async function handleCircleMemberMessage({
 
     if (hasMedia && (req.body.MediaContentType0 || '').toLowerCase().startsWith('image/')) {
       sourceUrlForMuse = req.body.MediaUrl0;
+      // F-05.79's victim on THIS door. `sourceCaption` was initialised from
+      // `trimmedBody`, which on a Meta image inbound is ALWAYS null — the caption
+      // arrives in the image object, not the text body. So a circle member who
+      // sent a photo saying "found this for you" had the sentence discarded, and
+      // it is the BRIDE who lost it: the save is hers, the caption was about it,
+      // and her board showed an untitled image. Mirrors the bride door's own line
+      // (brideInbound.js:493) — the caption rides the FIELD of the save that
+      // already happens, and creates no second row.
+      sourceCaption = req.body.MediaCaption0 || sourceCaption;
     } else {
       const linkInBody = extractMuseUrl(trimmedBody);
       if (linkInBody) {

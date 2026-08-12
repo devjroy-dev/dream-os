@@ -489,9 +489,20 @@ const BRIDE_TOOLS = [
           enum: ['bride', 'circle_member'],
           description: 'Optional. Filter to saves added by the bride only ("my saves"), or by any circle member ("what mom added", "what did the circle add").',
         },
-        session_id: {
-          type: 'string',
-          description: 'Optional. Filter to saves added during a specific circle session. Use when the bride confirms she wants to see images from a session you just surfaced in a summary preamble — pass the session_id from that summary. Format: UUID.',
+        // ── W-1 NARROW LIFT (CE-32, granted for this entry alone) ────────────
+        // LD-5 — the why, attached: the old entry took a `session_id` UUID and
+        // told you to read it out of the summary. That uuid only ever existed
+        // in the summary because it was STAPLED TO A MESSAGE THE BRIDE READS
+        // (F-09.171), which is the defect this diff cures. With the marker gone
+        // there is no uuid for you to copy, and an entry that still asked for
+        // one would be asking you to invent it. So the parameter is re-aimed:
+        // you say IN WORDS that she means the circle activity you just told her
+        // about, and the engine resolves which session that was from its own
+        // records. You are not being asked to remember an id — you are being
+        // asked what she meant, which is the thing you actually know.
+        from_recent_circle_session: {
+          type: 'boolean',
+          description: 'Optional. Set true when she is asking to see the images from the circle activity she was just told about — "yes send them here", "show me what mom added", said right after a circle summary. Scopes the listing to that session\'s saves. Leave it out for any other kind of lookup.',
         },
         request_image_playback: {
           type: 'boolean',

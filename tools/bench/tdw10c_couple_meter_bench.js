@@ -289,10 +289,22 @@ function fakeAnthropic(usage = { input_tokens: 100, output_tokens: 40 }) {
   const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
   await acell('6.1 F-10.114 — the fan-out SELECT is bounded',
-              'delete the .limit(FANOUT_MAX_SESSIONS) at brideEngine.js:~1918',
+              'delete the .limit(FANOUT_MAX_SESSIONS) in surfacePendingCircleSessions',
     async () => {
+      // ── LABELLED AMENDMENT (B-09H D-3b, NOT pre-authorised — surfaced for
+      //    ratify-or-revert). This cell located its subject by the FIRST
+      //    `from('circle_sessions')` in the file. D-3b's playback cure added a
+      //    SECOND reader of that table — execListMuse's stamp resolution — and it
+      //    sits EARLIER in the file than the fan-out. The cell then measured the
+      //    resolver, found no FANOUT_MAX_SESSIONS on it, and reported the fan-out
+      //    unbounded. THE CEILING NEVER MOVED; the anchor did.
+      //    Cured by anchoring on the FUNCTION rather than on file order, so a
+      //    third reader of this table cannot re-break it. Count unchanged: 38.
+      //    Revert, if the chair refuses: restore `src.indexOf("from('circle_sessions')")`.
       const src = read('src/agent/brideEngine.js');
-      const i = src.indexOf("from('circle_sessions')");
+      const fn = src.indexOf('async function surfacePendingCircleSessions');
+      if (fn < 0) return 'surfacePendingCircleSessions moved — re-derive this cell';
+      const i = src.indexOf("from('circle_sessions')", fn);
       if (i < 0) return 'the fan-out SELECT moved — re-derive this cell';
       const window = src.slice(i, i + 600);
       if (!/\.limit\(\s*FANOUT_MAX_SESSIONS\s*\)/.test(window)) return 'the fan-out is unbounded again';

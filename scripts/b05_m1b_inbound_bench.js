@@ -61,7 +61,7 @@ function makeDeps({ user, couple, conversation, sends, engineReply, circleMember
     sendWhatsApp: async (phone, text, media) => { sends.push({ phone, text, media: media || [] }); return { sid: 'X' }; },
     webhookCore,
     runBrideAgenticTurn: async () => ({ reply: engineReply, mediaUrls: [], toolCalls: null, model: 'haiku', inputTokens: 1, outputTokens: 2, costUsd: 0, costInr: 0, circleSummary: null }),
-    surfacePendingCircleSessions: async () => '',
+    surfacePendingCircleSessions: async () => null,   // the ruled return shape: { displayText, sessionIds } | null
     saveToMuse: async () => ({ ok: false, error: 'n/a' }),
     checkImageThrottle: async () => ({ allowed: true }),
     markRejectionSent: async () => {},
