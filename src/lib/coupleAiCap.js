@@ -171,6 +171,17 @@ async function recordAnthropicCall({ supabase, ctx, kind, model, usage }) {
     model:         model || null,
     input_tokens:  inTok,
     output_tokens: outTok,
+    // ── F-10.117 (0121) — THE ROW NOW CARRIES WHAT PRICED IT ────────────────
+    // These two were read and priced from delivery 1 onward and then DROPPED on
+    // the floor. The first production row proved the cost: 707 in / 54 out
+    // against a stored ₹1.66, where those two columns alone yield ₹0.10. The
+    // number was right; the row could not show its work, and the reader who
+    // checked it (this seat) had to reconstruct a cache-write from arithmetic.
+    // Spend was never wrong — reproducibility was. Persisting them closes it
+    // and makes cache-hit economics readable, which is a live cost question on
+    // a lane whose static prefix is cached ephemerally (brideEngine.js:227).
+    cache_read_tokens:  cacheR,
+    cache_write_tokens: cacheW,
     ...priceOf(model, inTok, outTok, cacheR, cacheW, 'metered'),
   });
 }

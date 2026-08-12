@@ -52,6 +52,10 @@ const LEDGER = 'couple_ai_usage';
 const KNOWN_COLS = new Set([
   'couple_id', 'circle_member_id', 'turn_id', 'kind', 'provider', 'model',
   'input_tokens', 'output_tokens', 'cost_inr', 'cost_basis',
+  // F-10.117 (0121). The fake tracks the real table column-for-column; a fake
+  // that silently accepted an unknown column would have hidden the very defect
+  // this delivery cures.
+  'cache_read_tokens', 'cache_write_tokens',
 ]);
 
 function fakeSupabase() {
@@ -338,6 +342,49 @@ function fakeAnthropic(usage = { input_tokens: 100, output_tokens: 40 }) {
       const forbidden = ['admin_config', 'couple_ai_daily', 'couple_ai_monthly', 'turns_cap', 'CAPPED_LINE'];
       const hits = forbidden.filter(w => code.includes(w));
       return hits.length === 0 ? true : `delivery 3 leaked into delivery 1: ${hits.join(', ')}`;
+    });
+
+  // ── 7 · F-10.117 — THE ROW CAN NOW PROVE ITS OWN NUMBER (0121) ────────────
+  await acell('7.1 an anthropic row carries the cache tokens that priced it',
+              'delete the cache_read_tokens / cache_write_tokens lines in recordAnthropicCall',
+    async () => {
+      const sb = fakeSupabase();
+      // The exact shape of the first production row's successor: a cached prefix.
+      const an = fakeAnthropic({
+        input_tokens: 707, output_tokens: 54,
+        cache_read_input_tokens: 0, cache_creation_input_tokens: 12498,
+      });
+      const m = meteredAnthropic(an, { supabase: sb, couple_id: 'c-1', turn_id: 't', kind: 'turn' });
+      await m.messages.create({ model: 'claude-haiku-4-5-20251001', messages: [] });
+      const r = sb.rows[0];
+      if (!r) return 'no row';
+      if (r.cache_read_tokens !== 0) return `cache_read=${r.cache_read_tokens}`;
+      if (r.cache_write_tokens !== 12498) return `cache_write=${r.cache_write_tokens} — the column that explains the rupees`;
+      // THE POINT OF THE FINDING: the four token columns must now reproduce the
+      // cost. Without cache_write, 707/54 alone price at a fraction of it.
+      if (COST_HOME) {
+        const bare = require(path.join(ROOT, 'src/engine/dist/core/models'))
+          .calcCostInr('claude-haiku-4-5-20251001', 707, 54, 0, 0);
+        if (!(r.cost_inr > bare)) return `cost ${r.cost_inr} does not exceed the no-cache price ${bare} — the cache is not reaching the price`;
+      }
+      return true;
+    });
+
+  await acell('7.2 the non-token providers do NOT invent cache columns',
+              'copy the cache lines into recordVisionCall or recordGeminiSearch',
+    async () => {
+      const sb = fakeSupabase();
+      await recordVisionCall({ supabase: sb, ctx: { couple_id: 'c-1' } });
+      await recordGeminiSearch({
+        supabase: sb, ctx: { couple_id: 'c-1' }, model: 'gemini-2.0-flash-lite',
+        raw: { usageMetadata: { promptTokenCount: 900, candidatesTokenCount: 120 } },
+      });
+      for (const r of sb.rows) {
+        if ('cache_read_tokens' in r || 'cache_write_tokens' in r) {
+          return `${r.provider} claimed Anthropic cache columns it has no concept of`;
+        }
+      }
+      return true;
     });
 
   // ── REPORT ────────────────────────────────────────────────────────────────

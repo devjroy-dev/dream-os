@@ -559,14 +559,36 @@ t('§6.3 0116 is NON-DESTRUCTIVE and does not widen its ruling — no DELETE, no
 // the benches reading it; it is NOT a unilateral re-aim of a sealed instrument's
 // PROPERTY, only of the one number this cell has always declared mobile.
 // RATIFY-OR-REVERT.
-t('§6.4 LD-8: 0119 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
+//
+// ── FOURTH LABELLED AMENDMENT, TDW_10.C (THE COUPLE AI CAP) ──────────────────
+// The shape holds a fourth time and the moving part moved twice in one sitting.
+// 0120 (`0120_couple_ai_ledger.sql`, the couple lane's spend ledger, CHARTERED
+// AT R-30.25/.27 and SEALED) and 0121 (`0121_couple_ai_usage_cache_columns.sql`,
+// F-10.117's two cache columns, THIS delivery) both land under TDW_10.C.
+//
+// ⚠ §0.2 REPORT, IN-BAND — THE RULING AS WORDED COULD NOT EXECUTE, AND I DID NOT
+// QUIETLY ADAPT IT. CE-31 relay №2 §2 chartered this amendment as 「 0119→0120
+// tip cell 」. Aiming the cell at 0120 would have shipped a bench RED ON ARRIVAL:
+// this same ZIP carries 0121, so 0120 is not the tail the moment the delivery
+// applies. The cell is therefore aimed at 0121 and the departure is declared
+// here, in the artefact, rather than absorbed silently. If the chair intended
+// 0120 for a reason this seat cannot see, this line is the place to reverse it.
+//
+// RE-AIMED, COUNT PRESERVED AT 37, TEETH KEPT WHOLE — 0116, 0117, 0118, 0119 and
+// now 0120 are ALL still asserted present, 0113 is still asserted an unwritten
+// hole, and the attributed 0063 duplicate fence is untouched. The amendment is
+// made by the sitting that moved the subject, per the standing rule that the
+// sitting moving a subject owns the benches reading it.
+// RATIFY-OR-REVERT.
+t('§6.4 LD-8: 0121 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
   const files = fs.readdirSync(P('db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
   const nums = files.map((f) => f.slice(0, 4));
   assert.ok(nums.includes('0116'), '0116 is not on the ladder');
   assert.ok(nums.includes('0117'), '0117 is not on the ladder');
   assert.ok(nums.includes('0118'), '0118 is not on the ladder');
   assert.ok(nums.includes('0119'), '0119 is not on the ladder');
-  assert.strictEqual(nums[nums.length - 1], '0119', `0119 is not the tail: ${nums.slice(-3).join(', ')}`);
+  assert.ok(nums.includes('0120'), '0120 is not on the ladder');
+  assert.strictEqual(nums[nums.length - 1], '0121', `0121 is not the tail: ${nums.slice(-3).join(', ')}`);
   assert.ok(!nums.includes('0113'), '0113 was filled — LD-8 forbids it; it is reserved-unwritten');
   // ATTRIBUTED ELDER, not this delivery's: 0063 is used TWICE at origin
   // (0063_users_auth_user_id.sql + 0063_vendor_activity_log.sql), an LD-8 collision
