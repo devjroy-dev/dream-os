@@ -35,7 +35,13 @@
 // they never reach a human eye. Founder-vetoed display strings live in the
 // PWA form and map to these keys there.
 const BRIDE_FIELDS  = ['name', 'budget'];
-const VENDOR_FIELDS = ['name', 'category', 'city', 'starting_price', 'service_area'];
+// SIX, as of CE-32 ruling ⓵ (OB-D D-3). `business_name` JOINED this list as the
+// sixth mandatory vendor field: the founder-frozen vendor form is SIX fields —
+// PERSON NAME AND BUSINESS NAME ARE BOTH MANDATORY — and this array carried five
+// with one 'name', which would have let OB-P's form render five boxes for a
+// six-box ruling. The order below is the order `missing[]` reports in, and OB-P
+// keys off these strings; changing one is an interface change, not a rename.
+const VENDOR_FIELDS = ['name', 'business_name', 'category', 'city', 'starting_price', 'service_area'];
 
 const SERVICE_AREA_TOKENS = ['pan_india', 'worldwide', 'select_cities'];
 
@@ -85,30 +91,43 @@ function brideComplete(user, couple) {
 }
 
 /**
- * VENDOR-COMPLETE — COMMON, verbatim: name, category, city, starting price,
- * service area all present.
+ * VENDOR-COMPLETE — COMMON: name, business name, category, city, starting
+ * price, service area all present. SIX fields (CE-32 ruling ⓵).
  *
- * ⚠ DECLARED READING, carried to the chair at D-2 and NOT silently resolved:
- * "name" is read here as `users.name` — the person's own name — for two
- * reasons. (1) SYMMETRY: COMMON's bride half names users.name explicitly, and
- * one predicate should not mean two tables by the same word. (2) PRECEDENT:
- * src/api/vendor/onboarding.js:56-57 already treats users.name as the vendor's
- * name captured at signup. The alternative reading is `vendors.business_name`,
- * which is what src/agent/coupleSystemPrompt.js:77 prefers when users.name is
- * absent. THIS MUST BE RULED BEFORE THE GATE ARMS, because OB-P's form will
- * validate whichever field this file names, and a wrong choice makes every
- * vendor incomplete on a field she has already filled. The gate ships DARK
- * (R-OB.9), so nothing is refused on this reading in the meantime.
+ * ✔ THE D-2 DECLARED READING IS RULED, AND THE QUESTION IT ASKED IS DEAD.
+ * D-2 carried "name" to the chair as an either/or — `users.name` or
+ * `vendors.business_name` — and CE-32 answered BOTH, which the either/or could
+ * not: 'name' STAYS `users.name` (ratified on D-2's own two grounds — symmetry
+ * with brideComplete, which names users.name explicitly, so one predicate never
+ * means two tables by one word; and precedent at src/api/vendor/onboarding.js,
+ * which reads users.name as the vendor's signup-captured name), AND
+ * `vendors.business_name` JOINS as a SIXTH mandatory field in its own right.
+ * The fork was a false one: the founder-frozen form asks for the person and the
+ * studio separately, so a predicate carrying one 'name' was always going to
+ * refuse one of the two answers she gave. src/agent/coupleSystemPrompt.js falls
+ * back from users.name to business_name for DISPLAY — that fallback is a
+ * courtesy on a read path and was never evidence that one field substitutes for
+ * the other on the write path.
+ *
+ * WHY THE TIGHTENING IS SAFE TO LAND TODAY: the gate is DARK (R-OB.9), so no
+ * live turn is refused by it, and OB-P has not seated — so this interface
+ * changes before its only consumer exists rather than after. Blast radius on
+ * live rows is the founder's census SELECT, run before any walk.
  *
  * @param {{name?: string}} user
- * @param {{category?: string, city?: string, rate_min?: number,
- *          service_area?: string, service_cities?: string[]}} vendor
+ * @param {{business_name?: string, category?: string, city?: string,
+ *          rate_min?: number, service_area?: string,
+ *          service_cities?: string[]}} vendor
  * @returns {{complete: boolean, missing: string[]}}
  */
 function vendorComplete(user, vendor) {
   const v = vendor || {};
   const missing = [];
   if (!textPresent(user && user.name)) missing.push('name');
+  // vendors.business_name — witnessed at docs/db/PUBLIC_SCHEMA.md, public.vendors
+  // column 3, `business_name text` (nullable, which is exactly why the predicate
+  // and not the column is what makes it mandatory).
+  if (!textPresent(v.business_name))   missing.push('business_name');
   if (!textPresent(v.category))        missing.push('category');
   if (!textPresent(v.city))            missing.push('city');
   // starting price = vendors.rate_min (0034:8). The column already existed at
@@ -120,10 +139,63 @@ function vendorComplete(user, vendor) {
   return { complete: missing.length === 0, missing };
 }
 
+/**
+ * THE API-EDGE SERVICE-AREA RULE, in one place, for every write door.
+ *
+ * `serviceAreaPresent` above answers "are the facts on file?" for the predicate.
+ * THIS answers a different question — "is what this caller just sent LEGAL?" —
+ * and it answers it in sentences a vendor can read, above the DDL floor that
+ * would otherwise return an opaque 500. Two questions, two functions,
+ * deliberately not merged: a field can be legally absent (predicate: missing)
+ * and it can be illegally shaped (this: refused), and collapsing them would make
+ * "you haven't told us yet" and "that isn't a real answer" the same reply.
+ *
+ * ⚠ BOUND MIRROR — THE PARITY ARBITER IS THIS FILE.
+ * src/api/vendor/me.js carries its own `validateServiceArea` with these exact
+ * four sentences, shipped at D-2 and byte-frozen there. It is NOT re-pointed at
+ * this function this sitting: me.js's radius is additive-only under the D-3
+ * charter, and cell 2.10 of the bench pins those bytes inside me.js. So the rule
+ * lives at two altitudes with IDENTICAL WORDS, and the drift that arrangement
+ * invites is caught mechanically rather than trusted: the bench's parity cell
+ * reddens the day either copy's sentence moves a character. The tagVocabulary
+ * precedent, same shape, same reason. A later sitting that re-homes me.js's
+ * validator onto this one retires the parity cell WITH it.
+ *
+ * @param {{service_area?: string, service_cities?: string[]}} body
+ * @returns {string|null} the refusal sentence, or null when legal
+ */
+function validateServiceAreaPair(body) {
+  const hasArea   = body.service_area   !== undefined;
+  const hasCities = body.service_cities !== undefined;
+  if (!hasArea && !hasCities) return null;
+
+  // Refused as a PAIR — one without the other would land a row the pairing
+  // CHECK (0122 §4) forbids, and the database would answer with a 500 the
+  // vendor cannot act on.
+  if (hasArea !== hasCities) {
+    return 'service_area and service_cities must be sent together.';
+  }
+  if (!SERVICE_AREA_TOKENS.includes(body.service_area)) {
+    return "service_area must be one of: " + SERVICE_AREA_TOKENS.join(', ') + '.';
+  }
+  const cities = body.service_cities;
+  if (body.service_area === 'select_cities') {
+    if (!Array.isArray(cities) || cities.filter(c => typeof c === 'string' && c.trim()).length === 0) {
+      return 'service_cities must name at least one city when service_area is select_cities.';
+    }
+  } else if (cities !== null) {
+    // Not an empty array: NULL. The pairing CHECK reads `is null`, and [] would
+    // be a value that satisfies neither arm.
+    return 'service_cities must be null unless service_area is select_cities.';
+  }
+  return null;
+}
+
 module.exports = {
   brideComplete,
   vendorComplete,
   serviceAreaPresent,
+  validateServiceAreaPair,
   SERVICE_AREA_TOKENS,
   BRIDE_FIELDS,
   VENDOR_FIELDS,

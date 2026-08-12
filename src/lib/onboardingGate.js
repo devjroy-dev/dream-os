@@ -26,9 +26,9 @@
 // ═══ THE SECOND LOCK: COPY ══════════════════════════════════════════════════
 // The redirect bytes are the FIRST SENTENCE a new person ever receives from
 // the estate. They are copy, and copy ships only founder-vetoed and frozen at
-// the byte. At this delivery they are UNVETOED, so THEY ARE NOT RESIDENT HERE:
-// the constants below are null, and their drafts sit in the D-2 design note
-// awaiting the founder's veto.
+// the byte. AT D-3 THEY ARE VETOED AND RESIDENT (founder relay, 2026-08-12) —
+// see the constants below. The lock itself is unchanged and stays armed: it
+// guards the NEXT sitting, the one that edits a byte to null or to whitespace.
 //
 // The gate therefore FAILS CLOSED ON MISSING COPY — flag on plus byte null
 // resolves to "do not gate", not to "gate with silence" and not to some
@@ -45,12 +45,26 @@ const { brideComplete, vendorComplete } = require('./onboardingPredicate');
 
 const GATE_FLAG = 'onboarding.gate_enabled';
 
-// ── THE REDIRECT BYTES — WITHHELD PENDING VETO ─────────────────────────────
-// CONDITIONAL-WITHHELD, in its standing form: a block whose condition has not
-// arrived ships fully commented or withheld; a runnable block never ships on
-// an unresolved conditional. The condition here is the founder's veto. When it
-// arrives, each null is replaced by the 「 」-frozen sentence and nothing else
-// in this file changes.
+// ── THE REDIRECT BYTES — VETOED 2026-08-12, FROZEN AT THE BYTE ─────────────
+// CONDITIONAL-WITHHELD is DISCHARGED: the condition (the founder's veto)
+// arrived by relay on 2026-08-12, and each null is replaced by its 「 」-frozen
+// sentence. Nothing else in this file changed — the promise D-2 made about how
+// these constants would land is the promise kept here.
+//
+// APPROVED-COPY-CARRIES-ITS-HASH. These two strings are FROZEN AT THE BYTE, not
+// at the meaning. An edited comma is a FRESH VETO and may not ride a refactor;
+// the bench pins both sentences character-for-character, so a well-meant tidy
+// reddens rather than ships. The D-2 design note's §3 drafts (B1-B3, V1-V3) are
+// HISTORICAL RECORD ONLY and were superseded whole by this veto — no draft is
+// resident anywhere in this tree.
+//
+// ONE HOST, BOTH LANES: thedreamwedding.in, by founder ruling. The D-2 drafts
+// pointed vendors at thedreamai.in on the estate's own live divergence
+// (systemPrompt.js); the founder consolidated. THE STANDING RE-VETO CONDITION,
+// recorded at the site it binds: IF OB-P MOUNTS THE FORM ON A SUBPATH, THESE
+// BYTES RETURN TO THE FOUNDER WITH THE PATH IN THEM BEFORE ANY AMENDMENT. A
+// byte carries a path only on a fresh veto — never on an executor's inference
+// that the deeper link would be more helpful.
 //
 // TWO BYTES, ONE PER LANE (CE-31 ruling ②). They are NOT the same sentence:
 // the bride lane's is spoken to someone who has an account with a wedding
@@ -61,8 +75,8 @@ const GATE_FLAG = 'onboarding.gate_enabled';
 // DIFFERENT STATE — no account at all ("not on our invite list") — keeps every
 // one of its sites including the R-OB.5-exempt circle dead-ends, and is
 // untouched by this arc. Blast radius zero. Two states, two bytes.
-const BRIDE_REDIRECT_BYTE  = null; // ⟵ founder veto pending · draft in D-2 design note
-const VENDOR_REDIRECT_BYTE = null; // ⟵ founder veto pending · draft in D-2 design note
+const BRIDE_REDIRECT_BYTE  = 'Hi! Before we start planning, head over to thedreamwedding.in, sign in and fill in the details about your wedding.';
+const VENDOR_REDIRECT_BYTE = 'Hi! Before I can start working for you, I need your business details. Head over to thedreamwedding.in and set up your profile.';
 
 /**
  * Should this turn be redirected instead of served?
@@ -114,7 +128,9 @@ async function onboardingGate({ lane, supabase, user, row }) {
 module.exports = {
   onboardingGate,
   GATE_FLAG,
-  // Exported for the bench ONLY, so a cell can assert the bytes are still
-  // withheld and redden the day one ships unvetoed.
+  // Exported for the bench ONLY. At D-2 this let a cell assert the bytes were
+  // still WITHHELD; at D-3 it lets a cell PIN them character-for-character. The
+  // export's job did not change — it is the reason a copy ruling is mechanically
+  // enforceable from outside this file.
   _REDIRECT_BYTES: { bride: BRIDE_REDIRECT_BYTE, vendor: VENDOR_REDIRECT_BYTE },
 };
