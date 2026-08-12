@@ -105,13 +105,13 @@ ok('a post with no requirement_type yields no items rather than a guess',
    items.itemsForPost({ id: 'x' }, []).length === 0);
 
 const multiRows = [
-  { id: 'i-3', post_id: 'p1', position: 2, requirement_type: 'catering' },
+  { id: 'i-3', post_id: 'p1', position: 2, requirement_type: 'venue_catering' },  // ARC OB: was 'catering'
   { id: 'i-1', post_id: 'p1', position: 0, requirement_type: 'photography' },
   { id: 'i-2', post_id: 'p1', position: 1, requirement_type: 'decor' },
 ];
 const ordered = items.itemsForPost({ id: 'p1', requirement_type: 'photography' }, multiRows);
 ok('stored items sort by position, so items[0] is deterministic',
-   ordered.map(i => i.requirement_type).join(',') === 'photography,decor,catering');
+   ordered.map(i => i.requirement_type).join(',') === 'photography,decor,venue_catering');  // ARC OB: was 'catering'
 ok('stored items are NOT flagged wrapped', ordered.every(i => i.wrapped === false));
 
 // ══ §2 — DISCOVERY reads items (F4 as amended) ═════════════════════════════
@@ -121,7 +121,7 @@ const multiPost = { id: 'p1', requirement_type: 'photography' };
 ok('a decorator reaches item[1] of a multi-item post',
    items.postMatchesCategory(multiPost, multiRows, 'decor') === true);
 ok('a caterer reaches item[2]',
-   items.postMatchesCategory(multiPost, multiRows, 'catering') === true);
+   items.postMatchesCategory(multiPost, multiRows, 'venue_catering') === true);
 ok('the photographer still reaches item[0]',
    items.postMatchesCategory(multiPost, multiRows, 'photography') === true);
 ok('a makeup artist reaches nothing — no false positives',
@@ -179,7 +179,7 @@ section('3. roster dedup — two disjoint predicates');
   const threeItems = [
     { id: 'a', post_id: 'p2', position: 0, requirement_type: 'photography', filled_by_response_id: 'r1' },
     { id: 'b', post_id: 'p2', position: 1, requirement_type: 'decor',       filled_by_response_id: 'r2' },
-    { id: 'c', post_id: 'p2', position: 2, requirement_type: 'catering',    filled_by_response_id: null },
+    { id: 'c', post_id: 'p2', position: 2, requirement_type: 'venue_catering', filled_by_response_id: null },
   ];
   const post2 = { id: 'p2', requirement_type: 'photography' };
   ok('3 items, 2 filled → NOT closed', items.allItemsFilled(post2, threeItems) === false);
@@ -218,11 +218,16 @@ section('3. roster dedup — two disjoint predicates');
 
   ok('shoot → photography',     items.requirementForKind('shoot') === 'photography');
   ok('ceremony → planning',     items.requirementForKind('ceremony') === 'planning');
-  ok('recce → venue',           items.requirementForKind('recce') === 'venue');
-  ok('social → music_dj',       items.requirementForKind('social') === 'music_dj');
+  // ── ARC OB (CE-32, 2026-08-12) RETIRE-WITH-THE-READER ─────────────────────
+  // Three prefills pointed at tokens the eleven retired: venue → venue_catering,
+  // music_dj → performer, attire → designer. A chip pointing at a token the new
+  // CHECK rejects would hand the vendor a form that 500s on submit, so these move
+  // in the taxonomy's own diff rather than after it.
+  ok('recce → venue_catering',  items.requirementForKind('recce') === 'venue_catering');
+  ok('social → performer',      items.requirementForKind('social') === 'performer');
   ok('fitting → the TWO-CHIP ask, not a guess',
      Array.isArray(items.requirementForKind('fitting')) &&
-     items.requirementForKind('fitting').join(',') === 'makeup,attire');
+     items.requirementForKind('fitting').join(',') === 'makeup,designer');
   ok('other → no prefill',      items.requirementForKind('other') === null);
   ok('blocked → no prefill',    items.requirementForKind('blocked') === null);
   ok('an unknown kind prefills nothing rather than guessing',

@@ -18,7 +18,18 @@
 // out-of-scope `handle` ReferenceError used to crash.
 
 const { MODEL_HAIKU }                    = require('./models');
-const { VENDOR_CATEGORIES, CATEGORY_ALIASES } = require('./categories');
+// ARC OB: `CATEGORY_ALIASES` no longer exists in categories.js — the alias table
+// is homed beside normaliseCategory (categoryFraming.js). This import named it
+// but never read it; RETIRE-WITH-THE-READER, so the dead name goes with it.
+// The extractor's ALLOWED CATEGORIES list is interpolated from VENDOR_CATEGORIES
+// (:61), so the eleven reach the Haiku prompt with zero byte edits here.
+// ⚠ ONE PROMPT BYTE IS NOW STALE AND IS DELIBERATELY UNTOUCHED (W-1): the
+//   few-shot example below still answers "I do mehendi..." with
+//   {"category":"mehendi"} — a token the eleven retired. The :121 membership
+//   guard coerces it to 'other', which is the RIGHT answer under founder ⑤, so
+//   the outcome is correct while the teaching is a lie. The one-line fix is on
+//   the veto sheet; it is a prompt byte and it is not mine to move.
+const { VENDOR_CATEGORIES } = require('./categories');
 
 const { waNumberFor } = require('../lib/waNumbers');
 const TDW_WA_NUMBER = waNumberFor('vendor');   // F5 rider: was the DEAD sandbox literal

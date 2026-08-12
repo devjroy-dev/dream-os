@@ -322,8 +322,11 @@ sec('11. ITEM 3 — a row LEAVING occupancy asks no occupancy question.');
 // ─────────────────────────────────────────────────────────────────────────
 sec('12. THE MAP (Q-B3-2 corrected) + RULED_OFF. Keyed on profile.key, NEVER timelineType.');
 {
-  ok(CATEGORY_CAPACITY.photography === 1 && CATEGORY_CAPACITY.makeup === 2 && CATEGORY_CAPACITY.decor === 1 && CATEGORY_CAPACITY.venue === 1,
-     'photography 1 · makeup 2 · decor 1 · venue 1 (C4\'s mua:2 RESTORED; decor 1 is audit §9\'s Q-2, ruled)');
+  ok(CATEGORY_CAPACITY.photography === 1 && CATEGORY_CAPACITY.makeup === 2 && CATEGORY_CAPACITY.decor === 1 && CATEGORY_CAPACITY.venue_catering === 1 && CATEGORY_CAPACITY.venue === undefined,
+     // ARC OB (CE-32, 2026-08-12) RETIRE-WITH-THE-READER: `venue` re-keyed to
+     // `venue_catering`. The NUMBER is untouched — LD-8, applied numbers never
+     // rename — and photography's 1 now covers the merged photo+video entry.
+     'photography 1 · makeup 2 · decor 1 · venue_catering 1 (C4\'s mua:2 RESTORED; decor 1 is audit §9\'s Q-2, ruled)');
   ok(!('florist' in CATEGORY_CAPACITY) && !('other' in CATEGORY_CAPACITY) && !('planning' in CATEGORY_CAPACITY),
      'no florist key · no `other` key · no planner key — occupancy OFF is not capacity 1');
   const { profileFor } = require(path.join(ROOT, 'src/lib/vendor/categoryProfiles'));

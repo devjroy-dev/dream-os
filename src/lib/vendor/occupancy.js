@@ -255,7 +255,7 @@ function isOverridable(conflict) {
 //
 // KEY SPACE = PROFILES' SIX. The only space profileFor can return, verified by
 // RUNNING the real resolvers, not by reading the table:
-//   makeup · photography · designer · jewellery · decor · venue   (+ a synthetic `other`)
+//   makeup · photography · designer · jewellery · decor · venue_catering  (+ a synthetic `other`)
 //
 // ⚠ KEYED ON `profile.key`, NEVER ON `timelineType`. THIS IS LOAD-BEARING AND IT
 //   IS A TRAP. profileFor's synthetic `other` fallback returns timelineType:'event'
@@ -276,7 +276,18 @@ function isOverridable(conflict) {
 //       florist gets decor's 1 and sets slot_capacity himself if he runs three sites.
 //   PER-SLOT, not per-day. The column name encodes it (0076); LD-8: applied
 //   numbers never rename.
-const CATEGORY_CAPACITY = { photography: 1, makeup: 2, decor: 1, venue: 1 };
+// ── ARC OB re-key (CE-32, 2026-08-12) ─────────────────────────────────────
+//   `venue: 1` → `venue_catering: 1`. Paired with categoryProfiles' key of the
+//   same name: this map is read as CATEGORY_CAPACITY[profile.key], so the key
+//   here is inert without the profile there.
+//   `photography: 1` STANDS for the merged photo+video entry — A NAMED PRODUCT
+//   CONSEQUENCE: a photographer and a videographer now share one slot. This is
+//   not new behaviour. It was already live: profileFor('videography') has always
+//   returned key 'photography' and drawn this same 1. The merge NAMES it; it did
+//   not cause it. One word here changes it and the dial is the founder's.
+//   `hairstylist`, `performer`, `content_creator` are UNKEYED — unconstrained,
+//   occupancy silent-off, the same posture as the other profile-less tokens.
+const CATEGORY_CAPACITY = { photography: 1, makeup: 2, decor: 1, venue_catering: 1 };
 
 // ── RULED_OFF (Q-C-1's third clause, CE-ruled 2026-07-16) ─────────────────
 //

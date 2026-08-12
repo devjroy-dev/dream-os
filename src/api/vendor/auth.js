@@ -521,7 +521,27 @@ router.post('/refresh', async (req, res) => {
 // via Supabase (signInWithOtp/verifyOtp); requireAuth verifies that session here, then
 // we provision the users + vendor row (idempotent, phone-fallback re-bind). No tokens
 // returned — the browser holds the Supabase session.
-const VENDOR_CATEGORIES = ['makeup', 'planning', 'photography', 'designer', 'venue & decor', 'jewellery'];
+// ── ARC OB · F-OB.3's CURE (CE-32, fork 2, 2026-08-12) ──────────────────────
+// WHAT WAS HERE: a private six — ['makeup','planning','photography','designer',
+// 'venue & decor','jewellery'] — the estate's THIRD taxonomy, undeclared, and the
+// only one containing 'venue & decor', a token no other list has ever carried.
+// The defect was not the list. It was line :538's shape:
+//     if (category && VENDOR_CATEGORIES.includes(category)) { ...write... }
+// A category outside the six was DROPPED WORDLESSLY — no write, no error, no log.
+// A vendor typed their craft at signup, the door said ok:true, and the craft was
+// gone. Under the eleven that would have swallowed `hairstylist` and
+// `content_creator` — two of the founder's five words — on their first day.
+// And the cross-door half: this same door WROTE 'venue & decor', which the CRUD
+// door's allowed[] then refused. One estate, two doors, opposite answers.
+//
+// THE SHAPE, PROPOSED IN ONE LINE (chair rules it in-band): PROVISIONING NEVER
+// FAILS FOR A CATEGORY — an auth path must not strand a vendor mid-signup — but
+// the category is NORMALISED through the one home, and when it does not resolve
+// the response says so out loud (`category_refused` + `allowed`) and the log
+// carries the raw bytes. Refuse the CATEGORY, never the ACCOUNT; and never,
+// ever, eat it in silence.
+const { VENDOR_CATEGORIES } = require('../../agent/categories');
+const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
 
 router.post('/provision', requireAuth, async (req, res) => {
   try {
@@ -532,18 +552,35 @@ router.post('/provision', requireAuth, async (req, res) => {
     const r = await provisionRole(supabase, { authUserId, phone, name, role: 'vendor' });
 
     // Craft/field captured at signup (invite_phone), BEFORE the engine agent is
-    // born — set once, constrained to the six categories that map to a preset/Codex.
-    // This is what lets resolvePreset() land the right profession_preset at birth.
-    const category = (((req.body && req.body.category) || '').trim().toLowerCase()) || null;
-    if (category && VENDOR_CATEGORIES.includes(category)) {
-      const { data: vrow } = await supabase
-        .from('vendors').select('category').eq('id', r.role_id).maybeSingle();
-      if (vrow && !(vrow.category && String(vrow.category).trim())) {
-        await supabase.from('vendors').update({ category }).eq('id', r.role_id);
+    // born — set once, normalised to the ONE canonical taxonomy (not a private
+    // list). This is what lets resolvePreset() land the right profession_preset
+    // at birth; resolvePreset now normalises too, so the two cannot disagree.
+    const rawCategory = ((req.body && req.body.category) || '').trim();
+    let categoryRefused = null;
+    if (rawCategory) {
+      // normalise-or-refuse. `normaliseCategory` returns 'other' for anything it
+      // cannot place, so the ONE ambiguous case is a raw value that is not itself
+      // 'other' but lands there: that is an unrecognised craft, not a chosen one,
+      // and it gets said out loud rather than written as 'other' or dropped.
+      const canonical = normaliseCategory(rawCategory);
+      const recognised = canonical !== 'other' || rawCategory.toLowerCase() === 'other';
+      if (recognised) {
+        const { data: vrow } = await supabase
+          .from('vendors').select('category').eq('id', r.role_id).maybeSingle();
+        if (vrow && !(vrow.category && String(vrow.category).trim())) {
+          await supabase.from('vendors').update({ category: canonical }).eq('id', r.role_id);
+        }
+      } else {
+        categoryRefused = rawCategory;
+        console.warn('[vendor:provision] category not recognised, NOT written:',
+                     JSON.stringify(rawCategory), 'vendor_id=', r.role_id);
       }
     }
 
-    return res.json({ ok: true, user_id: r.user_id, vendor_id: r.role_id, pin_set: r.pin_set });
+    return res.json({
+      ok: true, user_id: r.user_id, vendor_id: r.role_id, pin_set: r.pin_set,
+      ...(categoryRefused ? { category_refused: categoryRefused, allowed: VENDOR_CATEGORIES } : {}),
+    });
   } catch (e) {
     console.error('[vendor:provision]', e.message);
     return res.status(500).json({ ok: false, error: 'Provisioning failed.' });

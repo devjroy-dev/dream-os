@@ -36,6 +36,10 @@
 // that would have caught a 500 on every vendor's Collab tab at deploy.
 // ══════════════════════════════════════════════════════════════════════════
 'use strict';
+// ARC OB (CE-32, 2026-08-12) RETIRE-WITH-THE-READER: this bench's requirement_type
+// fixtures used 'catering' and 'venue', which the eleven retired and 0123's CHECK
+// now rejects. Re-pointed to 'venue_catering'. Fixture bytes only — no assertion
+// changed meaning.
 
 const path = require('path');
 const http = require('http');
@@ -236,7 +240,7 @@ function legacyPost(id, type) {
   section('§1 the pre-0096 world — the deploy that lands before the migration');
   {
     const absent = new Set(['collab_post_items', 'vendor_roster', 'collab_posts.first_look_until', 'collab_responses.item_id']);
-    const db = makeDb({ ...baseSeed(), collab_posts: [legacyPost('p1', 'photography'), legacyPost('p2', 'catering')] }, absent);
+    const db = makeDb({ ...baseSeed(), collab_posts: [legacyPost('p1', 'photography'), legacyPost('p2', 'venue_catering')] }, absent);
     const s = await serve(db, RESP);
 
     const feed = await s.call('GET', '/collab/feed');
@@ -263,14 +267,14 @@ function legacyPost(id, type) {
     // a green over an unreachable path is not evidence. These two drive the
     // real one.
     const before = db._tables.collab_posts.length;
-    const oneItem = await s.call('POST', '/collab', { items: [{ requirement_type: 'venue' }], event_date: FUTURE, city: 'Jaipur' });
+    const oneItem = await s.call('POST', '/collab', { items: [{ requirement_type: 'venue_catering' }], event_date: FUTURE, city: 'Jaipur' });
     ok('a ONE-item post in the CLIENT\'s payload shape still succeeds pre-0096', oneItem.status === 200 && oneItem.body?.ok);
     ok('the post SURVIVES — it is not rolled back', db._tables.collab_posts.length === before + 1);
     ok('and the post column carries the requirement, so nothing was lost',
-       db._tables.collab_posts[db._tables.collab_posts.length - 1].requirement_type === 'venue');
+       db._tables.collab_posts[db._tables.collab_posts.length - 1].requirement_type === 'venue_catering');
 
     // A multi-item create must REFUSE, not silently drop items 2..n.
-    const multi = await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }, { requirement_type: 'catering' }], event_date: FUTURE, city: 'Jaipur' });
+    const multi = await s.call('POST', '/collab', { items: [{ requirement_type: 'decor' }, { requirement_type: 'venue_catering' }], event_date: FUTURE, city: 'Jaipur' });
     ok('a multi-item create REFUSES loudly rather than losing items', multi.status === 503);
     ok('and the refusal SENTENCE reaches the client in the envelope it reads',
        typeof multi.body?.error === 'string' && multi.body.error.length > 0);
@@ -291,7 +295,7 @@ function legacyPost(id, type) {
     const seed = baseSeed();
     seed.collab_posts = [
       { ...legacyPost('p1', 'photography'), first_look_until: inWindow },
-      { ...legacyPost('p2', 'catering'),    first_look_until: past },
+      { ...legacyPost('p2', 'venue_catering'),    first_look_until: past },
       { ...legacyPost('p3', 'decor') },     // predates the column entirely
     ];
     const s = await serve(makeDb(seed), POSTER);

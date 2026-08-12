@@ -31,6 +31,16 @@
 //
 // Keys MUST match src/agent/categories.js canonical values. normaliseCategory()
 // (from categoryFraming) maps free-text → these keys.
+//
+// ARC OB (CE-32, 2026-08-12): `venue` re-keyed to `venue_catering`. THE KEY IS
+// LOAD-BEARING BEYOND THIS FILE — occupancy.js reads CATEGORY_CAPACITY[profile.key],
+// so a capacity keyed on a token with NO PROFILE HERE is never once consulted.
+// `venue_catering: 1` in occupancy and this key are one edit in two files or they
+// are nothing. The profile's BYTES are unchanged and still say "venue": widening
+// them to name a caterer is model-voiced and sits on the veto sheet, not here.
+// `hairstylist`, `performer`, `content_creator` ship PROFILE-LESS and fall to the
+// generic below — which is what nine of the old sixteen already did, so this is
+// the estate's existing posture, not a new gap.
 
 const PROFILES = {
   // Each profile: `ask` = the SHORT, fixed set of category-specific things the
@@ -98,8 +108,8 @@ const PROFILES = {
     vocabulary: 'theme, palette, florals, mandap, stage',
   },
 
-  // ── VENUE ─────────────────────────────────────────────────────────────
-  venue: {
+  // ── VENUE & CATERING (merged 2026-08-12, founder ①) ───────────────────
+  venue_catering: {
     label: 'venue',
     timelineType: 'event',
     ask: [
@@ -112,9 +122,13 @@ const PROFILES = {
   },
 };
 
-const ALIASES = {
-  videography: 'photography',   // photo/video/content share one intake shape
-};
+// ARC OB: the `videography: 'photography'` entry RETIRED WITH ITS READER.
+// `videography` is no longer a token normaliseCategory can return — the merge is
+// resolved one layer up, in the alias table — so this map had become unreachable
+// code pretending to be a rule. Kept as an empty, explained map rather than
+// deleted, because profileFor's `if (ALIASES[key])` branch is the seam the next
+// profile merge will use.
+const ALIASES = {};
 
 // Resolve a vendor category (canonical or free-text) to its profile.
 // Falls back to a sensible generic profile for unknown categories.

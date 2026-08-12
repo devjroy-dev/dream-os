@@ -24,14 +24,20 @@
 //               me.category)` filters the POST column. Caught by the census.
 'use strict';
 
-// The 16 categories, verbatim from 0048_collab.sql:15-22 — the same CHECK list
-// carried by collab_posts.requirement_type and collab_post_items.requirement_type.
-const REQUIREMENT_TYPES = Object.freeze([
-  'photography', 'videography', 'makeup', 'mehendi',
-  'decor', 'catering', 'venue', 'music_dj', 'music_live',
-  'choreography', 'planning', 'transport', 'invitations',
-  'jewellery', 'attire', 'other',
-]);
+// ── ARC OB (CE-32, 2026-08-12): THE COPY DIES ────────────────────────────────
+// This was the 16 typed out a second time "verbatim from 0048_collab.sql:15-22".
+// Two consequences of that copy, both live before this diff:
+//   · it said 'attire' where categories.js said 'designer' — F-OB.4, the mirrored
+//     map disagreeing with itself since 0048, cured by 0123's backfill.
+//   · postMatchesCategory compares requirement_type to `vendors.category` by RAW
+//     EQUALITY, so any vendor token absent from this list matched NOTHING and saw
+//     an EMPTY FEED THAT SAID NOTHING. Under the eleven that would have been four
+//     whole crafts. The chair refused arm (b) on exactly that ground.
+// It now IMPORTS. The CHECK on both tables (0048:17, 0096:11) was moved to the
+// same eleven by migration 0123, so DB and code are one list in three places.
+// ⚠ EDIT categories.js AND YOU OWE A MIGRATION. See that file's header.
+const { VENDOR_CATEGORIES } = require('../../agent/categories');
+const REQUIREMENT_TYPES = Object.freeze([...VENDOR_CATEGORIES]);
 
 const MAX_ITEMS = 8;
 const MIN_ITEMS = 1;
@@ -40,13 +46,17 @@ const MIN_ITEMS = 1;
 // A string  = one prefilled chip.
 // An array  = the two-chip ASK (spec: "makeup or attire (ask, two-chip choice)").
 // null      = no prefill, deliberately (other / blocked).
+// ARC OB re-target — RETIRE-WITH-THE-READER. Every value here was a token; four
+// of them retired. A prefill chip pointing at a token the CHECK now rejects would
+// hand the vendor a form that 500s on submit.
+//   attire → designer · venue → venue_catering · music_dj → performer
 const KIND_TO_REQUIREMENT = Object.freeze({
   shoot:    'photography',
   ceremony: 'planning',
-  fitting:  ['makeup', 'attire'],
-  trial:    ['makeup', 'attire'],
-  recce:    'venue',
-  social:   'music_dj',
+  fitting:  ['makeup', 'designer'],
+  trial:    ['makeup', 'designer'],
+  recce:    'venue_catering',
+  social:   'performer',
   other:    null,
   blocked:  null,
 });
