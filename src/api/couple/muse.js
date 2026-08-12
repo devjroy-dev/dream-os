@@ -8,7 +8,7 @@
 'use strict';
 
 const express      = require('express');
-const { meteredAnthropic } = require('../../lib/coupleAiCap'); // TDW_10.C · the couple lane's meter
+const { meteredAnthropic, coupleCapGate } = require('../../lib/coupleAiCap'); // TDW_10.C · the couple lane's meter + gate
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { waNumberFor } = require('../../lib/waNumbers');   // F5 rider
@@ -249,6 +249,43 @@ router.delete('/:saveId', asyncHandler(async (req, res) => {
 // Runs the same Cloudinary + Vision + Haiku tagging pipeline as the WhatsApp
 // path. Inserts a muse_saves row with source_type='image' and the bride's
 // caption (if provided). Returns the new save id and resolved aesthetic tags.
+
+// ── TDW_10.C · D3a — §0.2-K. THE IN-APP MUSE DOOR WAS UNGATED. ──────────────
+// FOUND IN PRODUCTION, three minutes after the founder set a dial to 0: two
+// tagging rows landed (google-vision unpriced, anthropic ₹0.07 metered) from a
+// PWA upload behind a CLOSED gate. Fork A says the SAVE survives a capped
+// couple; it does not say the SPEND does.
+//
+// THE CAUSE, named rather than smoothed: D3 threaded fork A's flag through
+// museSave.js, which covers BOTH WhatsApp image doors — and this route calls
+// processImageForMuse DIRECTLY, bypassing museSave entirely. D3's own handover
+// claimed 「 image (both) 」 were covered. They were not. That is an executor
+// error, not a ruling gap.
+//
+// THE LESSON IS THE SITTING'S OWN, REPEATED: a hand-written list of doors
+// under-covers. The opening census found a charter naming three spend sites
+// against a tree holding ten; D3's bench cell 8.9 listed four doors by hand and
+// this fifth was not on the list. The bench now asserts the property
+// STRUCTURALLY — every processImageForMuse call site must pass capSkipTagging —
+// so the next call site added anywhere cannot be silently ungated.
+//
+// turn_id stays NULL here (R-30.37 consequence 3): an in-app upload is not an
+// inbound message. It counts nothing toward the cap and costs truly — which is
+// exactly why it must be SKIPPED when the cap is closed rather than counted.
+async function museCapSkip(supabase, couple_id) {
+  const { data: couple } = await supabase
+    .from('couples').select('id, tier').eq('id', couple_id).maybeSingle();
+  const gate = await coupleCapGate({
+    supabase,
+    couple: couple || { id: couple_id },
+    // 'bride' surface: this door is hers. The BYTE is never sent from here —
+    // an upload is not a conversation and gets no refusal sentence (fork D:
+    // one byte per refusal EVENT, and this is not one). Only `refuse` is read.
+    surface: 'bride',
+  });
+  return gate.refuse;
+}
+
 router.post('/upload', asyncHandler(async (req, res) => {
   const supabase  = req.app.locals.supabase;
   const anthropic = req.app.locals.anthropic;
@@ -291,6 +328,9 @@ router.post('/upload', asyncHandler(async (req, res) => {
         turn_id: null,
         kind: 'tagging',
       }),
+      // D3a · §0.2-K: fork A at the in-app door. The save survives; the two
+      // paid calls behind it do not run while the cap is closed.
+      capSkipTagging: await museCapSkip(supabase, couple_id),
       runClassifier: surface === 'moments' ? false : false, // classifier handled by museSave for WA path
     });
   } catch (err) {
@@ -379,6 +419,8 @@ router.post('/add-url', asyncHandler(async (req, res) => {
         turn_id: null,
         kind: 'tagging',
       }),
+      // D3a · §0.2-K: the second in-app call site. Both, or neither.
+      capSkipTagging: await museCapSkip(supabase, couple_id),
       runClassifier: false,
     });
   } catch (err) {

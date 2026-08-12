@@ -542,6 +542,46 @@ function fakeAnthropic(usage = { input_tokens: 100, output_tokens: 40 }) {
         ? true : 'the circle byte varies by her window';
     });
 
+  // ── D3a · §0.2-K — THE STRUCTURAL CELL THAT WOULD HAVE CAUGHT IT ─────────
+  // Cell 8.9 below lists doors BY HAND, and a hand-list is exactly what missed
+  // the in-app Muse door: D3 threaded fork A through museSave.js and this route
+  // calls processImageForMuse directly. The founder's own upload at a 0 dial
+  // spent behind a closed gate three minutes later.
+  //
+  // This cell asserts the PROPERTY instead of the list — every call site of the
+  // paid image pipeline must carry the cap flag — so a call site added by a
+  // future sitting cannot be silently ungated. Same principle as wrapping the
+  // client rather than editing ten sites, applied to the bench itself.
+  await acell('8.10 EVERY processImageForMuse call site passes capSkipTagging',
+              'add a processImageForMuse( call anywhere in src/ without the flag',
+    async () => {
+      const { execSync } = require('child_process');
+      const out = execSync(
+        `grep -rn "processImageForMuse({" ${JSON.stringify(path.join(ROOT, 'src'))} || true`,
+        { encoding: 'utf8' }).trim();
+      // INVOCATIONS ONLY. The first draft of this cell flagged
+      // imagePipeline.js:15 and :318 — both COMMENT lines documenting the
+      // signature — and a cell that cries wolf on documentation gets muted by
+      // the next reader. Match the call form (`await …` / `= …`), never a
+      // mention. The definition (`async function processImageForMuse({`) is
+      // excluded by the same rule rather than by naming its file.
+      const sites = (out ? out.split('\n') : []).filter((l) => {
+        const code = l.slice(l.indexOf(':', l.indexOf(':') + 1) + 1);
+        if (/^\s*(\/\/|\*)/.test(code)) return false;
+        return /(await|=)\s+processImageForMuse\(\{/.test(code);
+      });
+      if (sites.length === 0) return 'no call sites found — the pipeline moved, re-derive this cell';
+      const fs2 = require('fs');
+      const ungated = [];
+      for (const line of sites) {
+        const [file, lineNo] = [line.split(':')[0], Number(line.split(':')[1])];
+        const body = fs2.readFileSync(file, 'utf8').split('\n').slice(lineNo - 1, lineNo + 25).join('\n');
+        if (!/capSkipTagging/.test(body)) ungated.push(`${file}:${lineNo}`);
+      }
+      return ungated.length === 0 ? true
+        : `UNGATED paid-image call site(s): ${ungated.join(', ')}`;
+    });
+
   await acell('8.9 the doors are gated at source, and the skips log by name',
               'revert any door to running the engine without a gate read',
     async () => {
