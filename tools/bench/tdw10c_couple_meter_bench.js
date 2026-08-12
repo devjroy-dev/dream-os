@@ -29,6 +29,8 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const {
   newTurnId, meteredAnthropic, withKind, meterCtxOf,
   recordGeminiSearch, recordVisionCall, KINDS,
+  readCoupleCap, refusalByteFor, coupleCapGate, surfaceForCouple, onboardingRefusesAt,
+  dialValue, CAP_BYTES, ZERO_ONBOARDING_ARMED,
 } = require(path.join(ROOT, 'src/lib/coupleAiCap'));
 
 let pass = 0, fail = 0;
@@ -332,16 +334,45 @@ function fakeAnthropic(usage = { input_tokens: 100, output_tokens: 40 }) {
       return /coupleAiCap\.js/.test(inserts[0]) ? true : `writer is not the module: ${inserts[0]}`;
     });
 
-  await acell('6.5 DELIVERY 1 REFUSES NOTHING — no cap read, no gate, no refusal byte',
-              'add a cap read or a refusal string to coupleAiCap.js',
+  // ── LABELLED AMENDMENT, TDW_10.C DELIVERY 3 ─────────────────────────────
+  // RE-AIMED, NOT DELETED. This cell asserted 「 delivery 1 refuses nothing 」 —
+  // no cap read, no gate, no refusal byte in the meter module. That was true
+  // when written and it is no longer the truth to assert: delivery 3 is the
+  // third act of ⑨'s own sequence and the gate lives in this module by fork F3's
+  // ruling. A cell left asserting the old invariant goes red the moment its
+  // subject lawfully arrives, and gets "fixed" by deletion — the exact failure
+  // the combined_cap §6.4 precedent exists to prevent.
+  //
+  // THE TEETH ARE KEPT, AIMED AT WHAT STILL MUST BE TRUE. The original worry was
+  // that COUNTING must never depend on REFUSING. That worry outlives delivery 1
+  // and is now asserted directly:
+  //   (a) the gate is READ-ONLY on the dials — a gate that can move its own
+  //       ceiling is not a gate;
+  //   (b) the ledger writers carry NO cap decision — a broken gate must never
+  //       be able to stop a row being counted, which is what makes fail-open
+  //       survivable at all.
+  // RATIFY-OR-REVERT.
+  await acell('6.5 counting never depends on refusing — the gate reads dials, never writes them',
+              "add an admin_config .update()/.insert() to coupleAiCap.js, or a cap read inside writeRow",
     async () => {
       const src = read('src/lib/coupleAiCap.js');
-      // Comments are stripped first: this file DISCUSSES delivery 3 at length
-      // and must be allowed to. What it may not do is READ a dial or DECIDE.
       const code = src.replace(/^\s*\/\/.*$/gm, '');
-      const forbidden = ['admin_config', 'couple_ai_daily', 'couple_ai_monthly', 'turns_cap', 'CAPPED_LINE'];
-      const hits = forbidden.filter(w => code.includes(w));
-      return hits.length === 0 ? true : `delivery 3 leaked into delivery 1: ${hits.join(', ')}`;
+      // (a) READ-ONLY on the dials.
+      const cfgWrites = code.match(/from\(['"]admin_config['"]\)[\s\S]{0,120}?\.(update|insert|upsert|delete)\(/g) || [];
+      if (cfgWrites.length) return `the gate can move its own ceiling: ${cfgWrites.join(' | ')}`;
+      // (b) the WRITER half holds no cap decision. Slice the module at the
+      // delivery-3 banner and assert the meter half is free of gate state.
+      // Cut on a CODE marker, never a comment banner: this cell strips comments
+      // first, so slicing at the '// DELIVERY 3' header found nothing and the
+      // "meter half" silently became the whole file including module.exports.
+      // Self-caught — a boundary that can vanish is not a boundary.
+      const cut = code.indexOf('const CAP_BYTES');
+      if (cut < 0) return 'the delivery-3 boundary marker moved — re-derive this cell';
+      const meterHalf = code.slice(0, cut);
+      for (const w of ['readCoupleCap(', 'refusalByteFor(', 'coupleCapGate(', 'CAP_BYTES']) {
+        if (meterHalf.includes(w)) return `refusing leaked into counting: ${w}`;
+      }
+      return true;
     });
 
   // ── 7 · F-10.117 — THE ROW CAN NOW PROVE ITS OWN NUMBER (0121) ────────────
@@ -384,6 +415,147 @@ function fakeAnthropic(usage = { input_tokens: 100, output_tokens: 40 }) {
           return `${r.provider} claimed Anthropic cache columns it has no concept of`;
         }
       }
+      return true;
+    });
+
+  // ── 8 · DELIVERY 3 — THE GATE ────────────────────────────────────────────
+  // A supabase fake that answers the gate's two reads: the dial rows and the
+  // turn rows. Stricter than needed on purpose — it returns exactly what the
+  // real query shape returns, so a cell cannot pass on a shape production
+  // never produces.
+  function capSupabase({ dials = {}, turnRows = [], throwOn = null }) {
+    return {
+      from(t) {
+        if (throwOn === t) throw new Error(`${t} is on fire`);
+        if (t === 'admin_config') {
+          return { select: () => ({ in: async (_c, keys) => ({
+            data: keys.filter((k) => k in dials).map((k) => ({ key: k, value: dials[k] })),
+            error: null }) }) };
+        }
+        if (t === 'couple_ai_usage') {
+          const q = {
+            select: () => q, eq: () => q, not: () => q,
+            gte: async () => ({ data: turnRows, error: null }),
+          };
+          return q;
+        }
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) };
+      },
+    };
+  }
+  const T = (id) => ({ turn_id: id });
+
+  await acell('8.1 F-10.85 — A STORED ZERO IS A DENY, not an absent dial',
+              "use `Number(v) || Infinity` in dialValue, or drop the zero branch in readCoupleCap",
+    async () => {
+      if (dialValue('0', Infinity) !== 0) return 'dialValue swallowed a zero';
+      const sb = capSupabase({ dials: { couple_ai_daily_basic: '0', couple_ai_monthly_basic: '600' } });
+      const cap = await readCoupleCap({ supabase: sb, couple: { id: 'c-1', tier: 'basic' } });
+      if (cap.state !== 'zero') return `state=${cap.state} — the founder's brake did not engage`;
+      return refusalByteFor('zero', 'bride') === CAP_BYTES.zero ? true : 'wrong byte at zero';
+    });
+
+  await acell('8.2 an ABSENT dial is UNCAPPED — absence is not zero',
+              'default dayCap/monCap to 0 instead of Infinity in readCoupleCap',
+    async () => {
+      const sb = capSupabase({ dials: {}, turnRows: [T('a'), T('b'), T('c')] });
+      const cap = await readCoupleCap({ supabase: sb, couple: { id: 'c-1' } });
+      return cap.state === 'ok' ? true : `state=${cap.state} — a missing key must never refuse`;
+    });
+
+  await acell('8.3 the unit is the TURN — five rows, one turn_id, not five',
+              'count rows instead of DISTINCT turn_id in countTurns',
+    async () => {
+      const rows = [T('t1'), T('t1'), T('t1'), T('t1'), T('t1')];
+      const sb = capSupabase({ dials: { couple_ai_daily_basic: '3', couple_ai_monthly_basic: '600' }, turnRows: rows });
+      const cap = await readCoupleCap({ supabase: sb, couple: { id: 'c-1' } });
+      if (cap.dayUsed !== 1) return `dayUsed=${cap.dayUsed} — one message priced as ${cap.dayUsed}`;
+      return cap.state === 'ok' ? true : 'a single message tripped a cap of 3';
+    });
+
+  await acell('8.4 the daily ceiling refuses at >=, with the vetoed byte',
+              'change >= to > in readCoupleCap, or edit the frozen byte',
+    async () => {
+      const sb = capSupabase({ dials: { couple_ai_daily_basic: '2', couple_ai_monthly_basic: '600' },
+                               turnRows: [T('t1'), T('t2')] });
+      const g = await coupleCapGate({ supabase: sb, couple: { id: 'c-1' }, surface: 'bride' });
+      if (!g.refuse) return 'the ceiling did not hold';
+      return g.byte === "You've reached today's conversation limit. I'll be right here at midnight."
+        ? true : `BYTE DRIFT: ${g.byte}`;
+    });
+
+  await acell('8.5 PRECEDENCE — zero > monthly > daily (fork E)',
+              'reorder the state branches in readCoupleCap',
+    async () => {
+      // All three conditions true at once: the byte must not claim a
+      // consumption that never happened.
+      const sb = capSupabase({ dials: { couple_ai_daily_basic: '0', couple_ai_monthly_basic: '0' },
+                               turnRows: [T('t1'), T('t2'), T('t3')] });
+      const cap = await readCoupleCap({ supabase: sb, couple: { id: 'c-1' } });
+      if (cap.state !== 'zero') return `state=${cap.state}`;
+      const sb2 = capSupabase({ dials: { couple_ai_daily_basic: '1', couple_ai_monthly_basic: '2' },
+                                turnRows: [T('t1'), T('t2')] });
+      const cap2 = await readCoupleCap({ supabase: sb2, couple: { id: 'c-1' } });
+      return cap2.state === 'monthly' ? true : `monthly must outrank daily, got ${cap2.state}`;
+    });
+
+  await acell('8.6 FAIL-OPEN — a meter that throws never silences the agent',
+              'remove the try/catch in readCoupleCap',
+    async () => {
+      const sb = capSupabase({ dials: { couple_ai_daily_basic: '0' }, throwOn: 'admin_config' });
+      const g = await coupleCapGate({ supabase: sb, couple: { id: 'c-1' }, surface: 'bride' });
+      if (g.refuse) return 'a BROKEN meter refused a bride — the gate failed CLOSED';
+      return g.degraded === true ? true : 'the degradation was not declared';
+    });
+
+  await acell('8.7 fork B — onboarding is EXEMPT from a reached cap, NOT from zero',
+              "return the bride byte for surface 'onboarding' regardless of state",
+    async () => {
+      if (surfaceForCouple({ onboarding_state: 'asked_date' }) !== 'onboarding') return 'surface resolver missed';
+      if (surfaceForCouple({ onboarding_state: 'complete' }) !== 'bride') return 'complete must read as bride';
+      // ASSERTED ON THE PREDICATE, NOT THE BYTE. With the zero byte unarmed,
+      // refusalByteFor returns null for every onboarding state — so deleting the
+      // exemption entirely would have left this cell green. Self-caught in the
+      // mutation sweep; the predicate is where the rule actually lives.
+      if (onboardingRefusesAt('daily') !== false) return 'a bride mid-signup was refused for a cap she never spent';
+      if (onboardingRefusesAt('monthly') !== false) return 'monthly leaked into onboarding';
+      if (onboardingRefusesAt('zero') !== true) return 'the founder\'s brake left one engine running';
+      if (refusalByteFor('daily', 'onboarding') !== null) return 'a byte reached an exempt surface';
+      // The zero case is ruled REFUSING — but its byte is PENDING-VETO, so it
+      // must stay unarmed until the founder's word.
+      const z = refusalByteFor('zero', 'onboarding');
+      return (ZERO_ONBOARDING_ARMED === false && z === null)
+        ? true : 'an UNVETOED byte reached a bride';
+    });
+
+  await acell('8.8 the circle byte carries no upgrade language and no numbers',
+              'edit the frozen circle byte',
+    async () => {
+      const b = refusalByteFor('daily', 'circle');
+      if (b !== "The board's chat is quiet for today — you can still browse and add to it any time.") {
+        return `BYTE DRIFT: ${b}`;
+      }
+      if (/upgrade|plan|limit|\d/i.test(b)) return 'the circle byte learned about her allowance';
+      // Every state resolves to the SAME circle sentence — he is not the
+      // customer and his experience does not vary with her window.
+      return (refusalByteFor('zero', 'circle') === b && refusalByteFor('monthly', 'circle') === b)
+        ? true : 'the circle byte varies by her window';
+    });
+
+  await acell('8.9 the doors are gated at source, and the skips log by name',
+              'revert any door to running the engine without a gate read',
+    async () => {
+      const fs2 = require('fs');
+      const rd = (f) => fs2.readFileSync(path.join(ROOT, f), 'utf8');
+      const doors = [
+        ['src/lib/brideInbound.js', 'capGate.refuse'],
+        ['src/api/couple/chat.js',  'capGateSse.refuse'],
+        ['src/api/couple/chat.js',  'capGateJson.refuse'],
+        ['src/brideIndex.js',       'circleCapGate.refuse'],
+      ];
+      for (const [f, needle] of doors) if (!rd(f).includes(needle)) return `${f} lost ${needle}`;
+      if (!rd('src/lib/imagePipeline.js').includes('logCapSkip(')) return 'fork A skip is silent — F-09.173 class';
+      if (!rd('src/lib/museSave.js').includes('capSkipTagging')) return 'fork A does not reach the pipeline';
       return true;
     });
 

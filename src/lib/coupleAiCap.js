@@ -308,7 +308,250 @@ function meterCtxOf(anthropic) {
   return (anthropic && anthropic.__meterCtx) || null;
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DELIVERY 3 — THE GATE. THE LEDGER NOW HAS A READER.
+// ═══════════════════════════════════════════════════════════════════════════
+// Deliveries 1 and 2 counted and refused nothing. This is the third act of ⑨'s
+// sequence — 「 ledger → meter → refuse at three doors, never in one act 」 —
+// and the doors turned out to be eight, not three (⑨'s count was the then-known
+// one; the delivery-1 door census found five behind the bride turn alone).
+//
+// ── THE LAWS THAT BIND EVERY LINE BELOW ────────────────────────────────────
+// 1. FAIL-OPEN, ABSOLUTELY (combined_cap §3.4). A broken meter costs an
+//    UNMETERED TURN, never a silent agent. Every failure path in this section
+//    returns state 'ok'. If the config read throws, if the count throws, if the
+//    dial is unparseable — she gets her answer. The bill is the cheaper loss.
+// 2. F-10.85 — THE DIAL CAN SAY ZERO. A stored 0 is a DENY, never treated as
+//    absent. This is the single most defect-prone line in the whole cure: the
+//    natural JS idioms (`Number(v) || fallback`, `if (!cap)`) BOTH swallow zero.
+//    A dial the founder set to 0 that silently means "no limit" is the exact
+//    inversion of a brake.
+// 3. THE UNIT IS THE TURN, NOT THE ROW (G1, R-30.37). COUNT(DISTINCT turn_id)
+//    WHERE kind='turn'. Counting rows would price the founder's 20 messages at
+//    as few as 4 — see 0120's own index comment.
+// 4. ONE BYTE PER REFUSAL EVENT (fork D). Components skipped inside an
+//    otherwise-permitted flow are SILENT to the user and SPOKEN TO THE LOG.
+// 5. EVERY CAP-CAUSED SKIP LOGS ITSELF BY NAME (forks A and C's rider).
+//    F-09.173's lesson is standing law: silence about a dropped capability is
+//    the disease. A capped skip must never be forensically confusable with a
+//    pipeline fault.
+
+// ── ACCEPTED COPY · FOUNDER-VETOED 2026-08-12 · FROZEN AT THE BYTE ──────────
+// APPROVED-COPY-CARRIES-ITS-HASH: these are frozen as BYTES, not as intents. An
+// edit — even a comma — needs a fresh veto and may not ride a refactor. The
+// bench pins them as literals so a silent drift reddens.
+//
+// The bytes are condition-SPECIFIC by the founder's choice, vetoed twice over.
+// Fork E's preference for condition-agnostic bytes is served by its own
+// alternative branch (every variant a separate veto line) — approved copy is
+// not reopened to chase a preference, and 「 I'll be right here at midnight 」 is
+// a true, specific promise the agnostic form cannot make.
+const CAP_BYTES = {
+  // Bride, daily window reached.
+  bride_daily:   "You've reached today's conversation limit. I'll be right here at midnight.",
+  // Bride, monthly window reached.
+  bride_monthly: "You've reached this month's conversation limit. I'll be right here on the 1st.",
+  // Circle member — NOT the customer. Carries NO upgrade language (⑨ +
+  // R-26.15②), and says nothing about the bride's allowance: he should not
+  // learn her limits from a refusal, and R-30.35 leaves nothing to upgrade to.
+  circle:        "The board's chat is quiet for today — you can still browse and add to it any time.",
+  // Dial at 0. Nothing was "reached" — she used nothing — so neither window byte
+  // may be spoken here. This is why the zero case needed its own sentence.
+  zero:          "Chat is paused right now. Everything you've saved is still here whenever you want it.",
+};
+
+// ⚠ PENDING-VETO — NOT ARMED. §0.2-J / relay №4 ruled J1: the onboarding surface
+// at dial 0 refuses with the TRIMMED byte — the first sentence of the vetoed
+// zero byte, nothing added — because a bride mid-signup has saved NOTHING and
+// 「 Everything you've saved is still here 」 would promise a state the machine
+// does not hold. That is fork E's own law applied to fork B's assignment.
+//
+// It is a SEPARATE VETO LINE under copy law and the founder's word has not
+// arrived. Until it does, ZERO_ONBOARDING_ARMED stays false and the onboarding
+// door at dial 0 is NOT gated — it behaves exactly as it does today. Shipping it
+// armed would put an unvetoed byte in front of a bride; shipping it absent would
+// lose the ruling. It ships present, inert, and named.
+const CAP_BYTE_ONBOARDING_ZERO_PENDING_VETO = 'Chat is paused right now.';
+const ZERO_ONBOARDING_ARMED = false;
+
+// ── IST WINDOWS ─────────────────────────────────────────────────────────────
+// Re-derived at THIS seat's tip (ead0b9b), never transcribed from a relay:
+// src/api/vendor-engine/chat.js:2687 `IST_MS`, :2688 `istDayStartUtcISO()`,
+// :2692 `istMonthStartUtcISO()`. Same shape, deliberately — a couple and a
+// vendor whose caps roll at different midnights is a support ticket nobody can
+// answer. Duplicated rather than imported because that module is Express-bound
+// vendor-lane machinery and this one is called from the WhatsApp lane.
+const IST_MS = 5.5 * 60 * 60 * 1000;
+function istDayStartUtcISO() {
+  const ist = new Date(Date.now() + IST_MS);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - IST_MS).toISOString();
+}
+function istMonthStartUtcISO() {
+  const ist = new Date(Date.now() + IST_MS);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - IST_MS).toISOString();
+}
+
+// F-10.85's whole defence, in one function. `Number(v) || d` returns d for "0";
+// `v ?? d` returns "" for an empty string. Only an explicit finite check honours
+// a stored zero, and a stored zero is a DENY.
+function dialValue(raw, fallback) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+// Counts DISTINCT turn_id WHERE kind='turn' since `sinceIso`. Spend rows of
+// every other kind are money, not messages, and never appear here (F4).
+async function countTurns(supabase, coupleId, sinceIso) {
+  const { data, error } = await supabase
+    .from('couple_ai_usage')
+    .select('turn_id')
+    .eq('couple_id', coupleId)
+    .eq('kind', 'turn')
+    .not('turn_id', 'is', null)
+    .gte('created_at', sinceIso);
+  if (error) throw new Error(error.message);
+  return new Set((data || []).map((r) => r.turn_id)).size;
+}
+
+// ── THE READ ────────────────────────────────────────────────────────────────
+// Returns { state, dayUsed, monUsed, dayCap, monCap, degraded }.
+// state ∈ 'ok' | 'zero' | 'monthly' | 'daily'
+//
+// PRECEDENCE (fork E): zero > monthly > daily. Most specific truth first. At a
+// 0 dial nothing was "reached" and a window byte would claim a consumption that
+// never happened.
+async function readCoupleCap({ supabase, couple }) {
+  const open = (extra) => ({ state: 'ok', dayUsed: null, monUsed: null, dayCap: null, monCap: null, degraded: true, ...extra });
+  try {
+    if (!supabase || !couple || !couple.id) return open();
+    const tier   = couple.tier || 'basic';
+    const dayKey = `couple_ai_daily_${tier}`;
+    const monKey = `couple_ai_monthly_${tier}`;
+
+    const [{ data: cfg, error: cfgErr }, dayUsed, monUsed] = await Promise.all([
+      supabase.from('admin_config').select('key, value').in('key', [dayKey, monKey]),
+      countTurns(supabase, couple.id, istDayStartUtcISO()),
+      countTurns(supabase, couple.id, istMonthStartUtcISO()),
+    ]);
+    if (cfgErr) throw new Error(cfgErr.message);
+
+    const byKey = {};
+    for (const row of (cfg || [])) byKey[row.key] = row.value;
+
+    // AN ABSENT DIAL IS NOT A ZERO DIAL. If the key does not exist at all, the
+    // couple is UNCAPPED (Infinity) — the gate fails open on missing config
+    // exactly as it fails open on a thrown read. Only a PRESENT dial reading 0
+    // is a deny, which is the distinction F-10.85 exists to protect.
+    const dayCap = dialValue(byKey[dayKey], Infinity);
+    const monCap = dialValue(byKey[monKey], Infinity);
+
+    let state = 'ok';
+    if (dayCap === 0 || monCap === 0)      state = 'zero';
+    else if (monUsed >= monCap)            state = 'monthly';
+    else if (dayUsed >= dayCap)            state = 'daily';
+
+    return { state, dayUsed, monUsed, dayCap, monCap, degraded: false };
+  } catch (e) {
+    console.warn('[couple-cap] meter unreadable — FAILING OPEN, the turn proceeds:', e.message);
+    return open();
+  }
+}
+
+// ── THE BYTE ────────────────────────────────────────────────────────────────
+// surface ∈ 'bride' | 'circle' | 'onboarding'. Returns null when nothing is
+// refused — and null is also what an unarmed pending-veto byte returns, so an
+// unvetoed sentence can never reach a human.
+// Fork B, as its OWN PREDICATE rather than a branch inside the byte resolver.
+// The reason is a bench defect this seat caught in its own mutation sweep:
+// while ZERO_ONBOARDING_ARMED is false, `refusalByteFor('daily','onboarding')`
+// returns null whether the exemption exists or not — so deleting the exemption
+// changed NOTHING observable and no cell could redden. A rule that cannot be
+// tested while a byte awaits veto is a rule that will be quietly lost at the
+// veto. Exposed here so the exemption has teeth today, unarmed byte and all.
+//
+// TRUE means this state refuses a bride mid-onboarding. Only the zero dial does:
+// she has spent nothing, so a reached-cap refusal is indefensible — but 0 is the
+// founder's brake, and a brake that leaves one engine running is not a brake.
+function onboardingRefusesAt(state) {
+  return state === 'zero';
+}
+
+function refusalByteFor(state, surface) {
+  if (state === 'ok') return null;
+  if (surface === 'circle') return CAP_BYTES.circle;
+  if (surface === 'onboarding') {
+    if (!onboardingRefusesAt(state)) return null;
+    return ZERO_ONBOARDING_ARMED ? CAP_BYTE_ONBOARDING_ZERO_PENDING_VETO : null;
+  }
+  if (state === 'zero')    return CAP_BYTES.zero;
+  if (state === 'monthly') return CAP_BYTES.bride_monthly;
+  return CAP_BYTES.bride_daily;
+}
+
+// ── WHICH SURFACE IS THIS DOOR? (fork B) ────────────────────────────────────
+// The refusal is sited at the DOOR so a capped couple spends nothing behind it
+// — but that means the door must know whether the bride behind it is
+// ONBOARDING, because fork B exempts onboarding from reached-cap refusal.
+//
+// ⚠ MECHANISM NAMED IN-COMMENT, per F-06.85. This condition is a COPY of
+// src/agent/brideEngine.js:85 —
+//     if (couple.onboarding_state && couple.onboarding_state !== 'complete')
+// — which is the branch that actually routes a turn to brideOnboarding.js. THE
+// TWO ARE ONE FACT. If a sitting changes how the engine decides a bride is
+// onboarding and does not change this line, the door and the engine disagree:
+// the door refuses a bride the engine would have onboarded, or exempts one it
+// would have charged. Whoever moves either must re-read the other.
+function surfaceForCouple(couple) {
+  if (couple && couple.onboarding_state && couple.onboarding_state !== 'complete') {
+    return 'onboarding';
+  }
+  return 'bride';
+}
+
+// ── THE GATE ────────────────────────────────────────────────────────────────
+// One call per door. Returns { refuse, byte, state, degraded }.
+// The log line is MANDATORY (forks A/C/D's rider): a capped refusal and a capped
+// skip must both be greppable, so that a missing reply is never mistaken for a
+// transport fault the way F-09.173's eaten photo was.
+async function coupleCapGate({ supabase, couple, surface = 'bride', circleMemberId = null }) {
+  const cap = await readCoupleCap({ supabase, couple });
+  const byte = refusalByteFor(cap.state, surface);
+  if (!byte) {
+    if (cap.state !== 'ok') {
+      console.log(`[couple-cap] state=${cap.state} surface=${surface} couple=${couple && couple.id} — NOT refused at this surface (exempt or byte unarmed)`);
+    }
+    return { refuse: false, byte: null, state: cap.state, degraded: cap.degraded };
+  }
+  console.log(`[couple-cap] REFUSED state=${cap.state} surface=${surface} couple=${couple && couple.id}` +
+              (circleMemberId ? ` member=${circleMemberId}` : '') +
+              ` day=${cap.dayUsed}/${cap.dayCap} month=${cap.monUsed}/${cap.monCap}`);
+  return { refuse: true, byte, state: cap.state, degraded: cap.degraded };
+}
+
+// Fork A's rider, as its own named function so every cap-caused skip logs
+// identically and greps as one family.
+function logCapSkip(what, coupleId, state) {
+  console.log(`[couple-cap] SKIPPED ${what} — cap state=${state} couple=${coupleId}. ` +
+              'This is a cap decision, NOT a pipeline fault.');
+}
+
 module.exports = {
+  // Delivery 3 — the gate
+  readCoupleCap,
+  refusalByteFor,
+  onboardingRefusesAt,
+  surfaceForCouple,
+  coupleCapGate,
+  logCapSkip,
+  CAP_BYTES,
+  CAP_BYTE_ONBOARDING_ZERO_PENDING_VETO,
+  ZERO_ONBOARDING_ARMED,
+  istDayStartUtcISO,
+  istMonthStartUtcISO,
+  dialValue,
+  // Deliveries 1-2 — the meter
   newTurnId,
   meteredAnthropic,
   withKind,

@@ -31,7 +31,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const cloudinary = require('cloudinary').v2;
-const { meterCtxOf, recordVisionCall } = require('./coupleAiCap'); // TDW_10.C · the Vision site's ledger row
+const { meterCtxOf, recordVisionCall, logCapSkip } = require('./coupleAiCap'); // TDW_10.C · the Vision site's ledger row + fork A's skip
 const { MODEL_HAIKU, calculateCost } = require('../agent/models');
 const {
   BRIDE_AESTHETIC_TAGS,
@@ -357,7 +357,10 @@ async function deriveAestheticTags(visionLabels, visionColors, anthropic) {
 // slightly more expensive on Muse. Worth it because Muse contamination is the
 // primary UX cost we're solving.
 
-async function processImageForMuse({ sourceUrl, bufferSource, couple_id, anthropic, runClassifier = false }) {
+// TDW_10.C fork A: `capSkipTagging` makes the SAVE survive a capped couple while
+// the two paid calls behind it (Vision at :204, the Haiku tagger) are skipped.
+// Defaults false so every existing caller is byte-unaffected.
+async function processImageForMuse({ sourceUrl, bufferSource, couple_id, anthropic, runClassifier = false, capSkipTagging = false }) {
   // Either sourceUrl OR bufferSource must be provided.
   // bufferSource is used for direct uploads from the bride PWA (FormData → base64 → Buffer).
   if (!sourceUrl && !bufferSource) {
@@ -469,6 +472,31 @@ async function processImageForMuse({ sourceUrl, bufferSource, couple_id, anthrop
   // real money the day a rate arrives. Not writing it would lose the count.
   //
   // Sited BEFORE the tagger so a Vision failure still leaves its own evidence.
+  // ── TDW_10.C FORK A — THE CAPPED SKIP, AND IT SPEAKS ITS REASON ─────────
+  // The upload above already happened: image_url is resolved, the save will be
+  // written by the caller. What is refused here is the SPEND — two paid calls,
+  // Vision and the Haiku tagger — and nothing else.
+  //
+  // THE LOG LINE IS MANDATORY, not decorative (forks A/C rider). F-09.173 is
+  // standing law: a photo was eaten silently and the silence cost a night of
+  // diagnosis. A capped skip must never be forensically confusable with a
+  // pipeline fault, so it names itself and says which it is.
+  //
+  // Returns tags EMPTY, exactly as the moment-route above returns them empty —
+  // an existing, already-handled shape downstream, not a new one.
+  if (capSkipTagging) {
+    logCapSkip('image tagging (Vision + Haiku)', couple_id, 'capped');
+    return {
+      source_type:    resolvedSourceType,
+      image_url,
+      source_url:     resolvedSourceUrl,
+      vision_raw:     null,
+      aesthetic_tags: [],
+      tagging_cost:   null,
+      classifier_cost,
+    };
+  }
+
   const visionCtx = meterCtxOf(anthropic);
   if (visionCtx) {
     await recordVisionCall({ supabase: visionCtx.supabase, ctx: visionCtx });

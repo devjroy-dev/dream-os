@@ -84,6 +84,10 @@ async function saveToMuse({
   saved_by_role,
   actor_name = null,
   caption = null,
+  // TDW_10.C fork A: passed through to the pipeline so a capped couple's SAVE
+  // survives while the two paid calls behind it are skipped. Defaults false —
+  // every existing caller is byte-unaffected.
+  capSkipTagging = false,
   session_id = null,
   surface = 'muse',
   supabase,
@@ -112,6 +116,7 @@ async function saveToMuse({
       couple_id,
       anthropic,
       runClassifier: saved_by_role === 'bride',
+      capSkipTagging,
     });
   } catch (err) {
     console.error('[museSave] pipeline failed:', err.message);

@@ -28,7 +28,7 @@ const Anthropic    = require('@anthropic-ai/sdk').default;
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn, surfacePendingCircleSessions } = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
-const { newTurnId, meteredAnthropic, withKind } = require('./lib/coupleAiCap'); // TDW_10.C · the couple lane's meter
+const { newTurnId, meteredAnthropic, withKind, coupleCapGate } = require('./lib/coupleAiCap'); // TDW_10.C · the couple lane's meter + gate
 // The one register, for the /surprise composer below — a bare Haiku call with
 // no system prompt, which used to describe the voice for itself (CE-65 fold).
 const { MIRA_REGISTER } = require('./agent/miraSoul');
@@ -528,6 +528,20 @@ async function handleCircleMemberMessage({
   // would be a lie here: this inbound exists.
   const circleTurnId = newTurnId();
 
+  // ── TDW_10.C · DELIVERY 3 — THE GATE AT THE CIRCLE DOOR ─────────────────
+  // F-10.107's premise made mechanical in the refusal as well as the meter: a
+  // circle member spends the BRIDE's allowance, so the cap he meets is HERS.
+  // The couple is looked up by id because this door only ever holds
+  // circleMember.couple_id — `tier` must come off the row, not be assumed.
+  const { data: capCouple } = await supabase
+    .from('couples').select('id, tier').eq('id', circleMember.couple_id).maybeSingle();
+  const circleCapGate = await coupleCapGate({
+    supabase,
+    couple: capCouple || { id: circleMember.couple_id },
+    surface: 'circle',
+    circleMemberId: circleMember.id,
+  });
+
   // ── Process media/link OR text-note ──
   let mediaContextNote = null;
   let saveSucceeded = false;
@@ -571,6 +585,10 @@ async function handleCircleMemberMessage({
           turn_id:          circleTurnId,
           kind:             'tagging',
         }),
+        // FORK A at the circle image door — the vector F-10.107 names as
+        // cheapest. His forward still lands on her board; the two paid calls
+        // behind it do not run.
+        capSkipTagging: circleCapGate.refuse,
       });
 
       if (saveResult.ok) {
@@ -716,6 +734,29 @@ async function handleCircleMemberMessage({
     turn_id:          circleTurnId,
     kind:             'turn',
   });
+
+  // ── TDW_10.C · THE CIRCLE REFUSAL. ONE BYTE, ONE EVENT. ────────────────
+  // Sited after the save above and before the agent, per fork A: what he added
+  // is on her board; what is refused is the model turn. The byte carries NO
+  // upgrade language and says nothing about her allowance — he is not the
+  // customer and must not learn her limits from a refusal.
+  if (circleCapGate.refuse) {
+    let capMsg = null;
+    try {
+      capMsg = await send(phone, circleCapGate.byte);
+    } catch (sendErr) {
+      console.error('[circle-handler] cap refusal send error:', sendErr);
+    }
+    await supabase.from('messages').insert({
+      conversation_id: conversation.id,
+      direction:       'outbound',
+      channel:         'whatsapp',
+      body:            circleCapGate.byte,
+      sent_by:         'agent',
+      twilio_sid:      capMsg?.sid ?? null,
+    });
+    return;
+  }
 
   // ── Run circle agent for the warm reply ──
   const inboundForEngine = trimmedBody.length > 0 ? trimmedBody : bodyForLog;

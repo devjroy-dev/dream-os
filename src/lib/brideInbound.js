@@ -48,7 +48,7 @@ const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
 const { makeInboundSend, REFUSAL } = require('./sendOutcome');         // ARC M1 / F-05.33
 const { appendWitness } = require('./witnessLine');                    // ARC M1 / F-05.34
-const { newTurnId, meteredAnthropic, withKind } = require('./coupleAiCap'); // TDW_10.C · the couple lane's meter
+const { newTurnId, meteredAnthropic, withKind, coupleCapGate, surfaceForCouple, logCapSkip } = require('./coupleAiCap'); // TDW_10.C · the couple lane's meter + gate
 
 // ── THE TYPED REFUSAL (V-3, founder-locked at CE-67's gates) ────────────────
 // F-04.62's class, one lane over: a DELIBERATE refusal must stop wearing a
@@ -366,6 +366,15 @@ async function _processBrideInbound(inputs, deps) {
     // allowance it comes from. The dead-end path above spends nothing.
     //
     // REFUSES NOTHING. Delivery 1 counts; delivery 3 gates.
+    // ── TDW_10.C · DELIVERY 3 — THE GATE AT THE WHATSAPP BRIDE DOOR ───────
+    // Read ONCE per inbound, before any spend. Fail-open by construction: a
+    // meter that cannot be read returns state 'ok' and she gets her answer.
+    //
+    // The refusal is sited at the DOOR, not inside the engine, so a capped
+    // couple spends NOTHING behind it — no loop iteration, no fan-out, no
+    // onboarding extractor. That is the whole reason ⑨ put the refusal at doors.
+    const capGate = await coupleCapGate({ supabase, couple, surface: surfaceForCouple(couple) });
+
     const turnId = newTurnId();
     const meterAnthropic = meteredAnthropic(anthropic, {
       supabase,
@@ -469,6 +478,11 @@ async function _processBrideInbound(inputs, deps) {
         // consequence 2 — forwarding a photo is not a message spent, but it is
         // fully priced (Vision + the Haiku tagger, both rows).
         anthropic: withKind(meterAnthropic, 'tagging'),
+        // FORK A, RULED: at cap the SAVE SURVIVES and the TAGGING is skipped.
+        // Her image is hers; the cap refuses the spend, never her memory.
+        // NAMED COST, accepted at ruling: an untagged save is invisible to
+        // list_muse's tag search, and NO BACKFILL runs when the cap lifts.
+        capSkipTagging: capGate.refuse,
       });
 
       if (saveResult.ok && saveResult.classified_as === 'receipt') {
@@ -592,6 +606,29 @@ async function _processBrideInbound(inputs, deps) {
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', conversation.id);
 
+      return;
+    }
+
+    // ── TDW_10.C · THE REFUSAL. ONE BYTE, ONE EVENT (fork D). ─────────────
+    // Sited AFTER the media save above and BEFORE the engine, which is exactly
+    // fork A's ruling in control flow: her image is already hers (saved, with
+    // tagging skipped and logged), and what the cap refuses is the SPEND.
+    //
+    // She receives one sentence and the turn ends. No engine call, no fan-out,
+    // no tool loop — a capped couple spends nothing behind this door.
+    if (capGate.refuse) {
+      await send(phone, capGate.byte);
+      await supabase.from('messages').insert({
+        conversation_id: conversation.id,
+        direction:       'outbound',
+        channel:         'whatsapp',
+        body:            capGate.byte,
+        sent_by:         'agent',
+      });
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversation.id);
       return;
     }
 

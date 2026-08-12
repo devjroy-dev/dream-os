@@ -23,7 +23,7 @@
 const express      = require('express');
 const router       = express.Router();
 const { runBrideAgenticTurn } = require('../../agent/brideEngine');
-const { newTurnId, meteredAnthropic } = require('../../lib/coupleAiCap'); // TDW_10.C · the couple lane's meter
+const { newTurnId, meteredAnthropic, coupleCapGate, surfaceForCouple } = require('../../lib/coupleAiCap'); // TDW_10.C · the couple lane's meter + gate
 
 const TIMEOUT_MS = 30000;
 
@@ -150,6 +150,33 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // ── TDW_10.C · DELIVERY 3 — THE GATE AT THE IN-APP SSE DOOR ──────────
+    // Sited before `thinking` is emitted: a capped bride should never watch a
+    // typing indicator for a turn that will not run. The refusal rides the SAME
+    // stream envelope as a normal reply, so no client needs a new branch.
+    const capGateSse = await coupleCapGate({ supabase, couple, surface: surfaceForCouple(couple) });
+    if (capGateSse.refuse) {
+      // ENVELOPE COPIED FROM THIS ROUTE'S OWN REPLY PATH, not invented. It
+      // emits `text_delta` chunks then `done` then the literal `[DONE]` frame —
+      // there is NO `reply` event on this stream, and a refusal sent as one
+      // would be silently dropped by every existing client. Self-caught by
+      // reading the emission below rather than assuming a shape.
+      send({ type: 'text_delta', text: capGateSse.byte });
+      send({ type: 'done', tool_calls: [] });
+      try {
+        await supabase.from('messages').insert({
+          conversation_id: conversation.id,
+          direction:       'outbound',
+          channel:         'web',
+          body:            capGateSse.byte,
+          sent_by:         'agent',
+        });
+      } catch (e) { console.error('[couple/chat SSE] cap refusal persist threw:', e.message); }
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+
     // ── Run bride engine with timeout ────────────────────────────────
     send({ type: 'thinking' });
 
@@ -237,6 +264,24 @@ router.post('/', async (req, res) => {
   }
 
   // ── JSON fallback (non-streaming clients) ──────────────────────────
+  // TDW_10.C · the same gate, its own read. A client that falls back to JSON is
+  // still one bride and one message, and must meet the same ceiling.
+  const capGateJson = await coupleCapGate({ supabase, couple, surface: surfaceForCouple(couple) });
+  if (capGateJson.refuse) {
+    await supabase.from('messages').insert({
+      conversation_id: conversation.id,
+      direction:       'outbound',
+      channel:         'web',
+      body:            capGateJson.byte,
+      sent_by:         'agent',
+    });
+    // Envelope copied from this route's own terminal reply (`res.json({ ok:
+    // true, reply, tool_calls })`), not from a sibling module's helper — a
+    // refusal that arrives in a different shape than a reply is a client bug
+    // waiting to happen.
+    return res.json({ ok: true, reply: capGateJson.byte, tool_calls: [] });
+  }
+
   let result;
   try {
     // TDW_10.C · THE IN-APP DOOR (non-streaming clients). Its own turn id: a
