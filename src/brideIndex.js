@@ -39,6 +39,7 @@ const { DAILY_CAP_IMAGES, DAILY_CAP_TEXTS } = require('./agent/circleSystemPromp
 const { sendWhatsApp }   = require('./lib/whatsapp');
 const webhookCore = require('./lib/webhookCore'); // TDW_05 P1a: shared inbound/callback transport
 const { saveToMuse }     = require('./lib/museSave');
+const { DEED }           = require('./lib/deedState'); // B-09H D-4 · F-09.174 · the per-turn deed state
 const { groundedSearch } = require('./lib/groundedSearch');
 const { MODEL_HAIKU }    = require('./agent/models');
 const { startBrideCronJobs } = require('./brideCron');
@@ -122,6 +123,15 @@ function extractMuseUrl(text) {
   // followed by punctuation — keeps the slash, drops the punctuation.
   return match[0].replace(/[.,!?;:'")\]}>]+$/, '');
 }
+
+// ── ACCEPTED COPY · FOUNDER-VETOED 2026-08-13 (V1) · FROZEN AT THE BYTE ─────
+// F-09.177's whole cure, four words. Prepended to the FROZEN 10.C circle cap
+// byte when — and only when — a save actually landed this turn. The trailing
+// space is part of the approved byte: the vetoed sentence reads 「 Added to the
+// board. The board's chat is quiet for today — you can still browse and add to
+// it any time. 」 as ONE message, and a lost space changes what the founder
+// signed. Pinned as a literal by cells §3.3/§3.4.
+const CIRCLE_CAP_SAVED_PREFIX = 'Added to the board. ';
 
 // ── Synthesize a mediaContext note for the agent ─────────────────────
 // Called after a successful Muse save. The note is injected into the agent's
@@ -589,6 +599,13 @@ async function handleCircleMemberMessage({
   let saveAttempted = false;
   let imageSavesToday = 0;
 
+  // ── F-09.174 · WHAT THIS TURN ACTUALLY DID ────────────────────────────────
+  // Seeded NOTHING and narrowed by the branches below. The default direction is
+  // deliberate: an unset state must mean "say nothing happened", never "say it
+  // saved". Read by the agent (src/lib/deedState.js renders it into the
+  // uncached dynamic block) and by the audit shape at the foot of this handler.
+  let deed = { kind: DEED.NOTHING };
+
   if (isMediaOrLink) {
     saveAttempted = true;
     let sourceUrlForMuse = null;
@@ -643,6 +660,7 @@ async function handleCircleMemberMessage({
 
       if (saveResult.ok) {
         saveSucceeded = true;
+        deed = { kind: DEED.SAVED, saveNumber: saveResult.save?.save_number };
         if (saveResult.save?.surface === 'moments') {
           mediaContextNote = `[SYSTEM NOTE] ${circleMember.invitee_name} forwarded a personal photo — it has been saved to the bride's Moments (save #${saveResult.save.save_number}). Reply warmly acknowledging their contribution to her journey.`;
           console.log(`[circle-handler] moment save succeeded: #${saveResult.save.save_number} from ${circleMember.invitee_name}`);
@@ -651,6 +669,7 @@ async function handleCircleMemberMessage({
           console.log(`[circle-handler] save succeeded: #${saveResult.save.save_number} from ${circleMember.invitee_name}`);
         }
       } else {
+        deed = { kind: DEED.SAVE_FAILED };
         mediaContextNote = `[SYSTEM NOTE] The circle member ${circleMember.invitee_name} forwarded an image or link, but the Muse save pipeline failed (${saveResult.error}). Apologise briefly and ask them to try again. Do NOT pretend the save happened.`;
         console.warn(`[circle-handler] save failed: ${saveResult.error}`);
       }
@@ -739,10 +758,44 @@ async function handleCircleMemberMessage({
         session_id:    sessionId,
       });
     if (noteErr) {
+      // F-09.174's LIVE SPECIMEN. This error was logged and thrown away, and
+      // the agent — told by its cached prompt to acknowledge and capture — then
+      // said 「 Noted, I'll pass it along 」 over a row that does not exist. The
+      // insert stays non-fatal (her message still gets an answer); what changes
+      // is that the answer now knows.
+      deed = { kind: DEED.NOTE_FAILED };
       console.error('[circle-handler] circle_activity comment insert failed (non-fatal):', noteErr.message);
     } else {
+      deed = { kind: DEED.NOTE_RECORDED };
       console.log(`[circle-handler] note captured from ${circleMember.invitee_name}: "${trimmedBody.slice(0, 60)}"`);
     }
+  }
+
+  // ── D-2/D-3 RESIDUAL ⓷, CHARTERED IN AND CLOSED ──────────────────────────
+  // The hole neither branch above can reach. When Meta hands us media and the
+  // resolve FAILS, `mediaContentType` and `mediaUrl` both come back null, so the
+  // synthetic envelope (brideInbound.js) carries nulls, `isMediaOrLink` is
+  // false, and `hasMedia` is STILL TRUE — it is `media.length > 0` and knows
+  // nothing about the resolve (vendorInbound.js `metaInputsFrom`). With no
+  // caption in `trimmedBody` on this transport, neither the save branch nor the
+  // note branch fires: the member's photograph produced no save, no note, and
+  // no state, and the agent was told nothing at all. It is a failed save and
+  // now says so.
+  //
+  // ⚠ DECLARED, NOT PAPERED — F-09.187. This branch also catches media the lane
+  // REFUSED by policy (a video, a PDF: `resolveBrideMedia` returns null for any
+  // mime outside the four image types, indistinguishable here from a transport
+  // failure, because the envelope discards the mime along with the url). Such a
+  // member is told a save failed when nothing was ever saveable, and is invited
+  // to resend something that can never work. The existing
+  // `[forwarded a ${kind} — not yet supported]` line below has ALWAYS collapsed
+  // the same way, for the same reason, so this diff neither creates nor worsens
+  // it — but it now has a second reader. The candidate cure (the DECLARED mime
+  // threaded off the descriptor) is UNRULED and deliberately unbuilt: widening
+  // F4's kept-and-named vestige is D-3 ⓵'s ruling, not a seat's to take.
+  if (deed.kind === DEED.NOTHING && hasMedia && !req.body.MediaContentType0) {
+    deed = { kind: DEED.SAVE_FAILED };
+    console.warn('[circle-handler] media present but unresolved — no save attempted, deed=save_failed');
   }
 
   // ── Refresh imageSavesToday (for the agent's context awareness) ──
@@ -809,9 +862,29 @@ async function handleCircleMemberMessage({
   // upgrade language and says nothing about her allowance — he is not the
   // customer and must not learn her limits from a refusal.
   if (circleCapGate.refuse) {
+    // ── V1 · F-09.177 · THE CAPPED BYTE STOPS SPEAKING OVER A REAL SAVE ─────
+    // APPROVED COPY · FOUNDER-VETOED 2026-08-13 · FROZEN AT THE BYTE.
+    // The save above is MECHANICAL — fork A rules that his forward lands on her
+    // board whatever her allowance says — so a capped member could add a pin
+    // and be answered 「 The board's chat is quiet for today 」 and nothing else.
+    // The machinery acted and did not speak.
+    //
+    // ONE SEND, ruled: two messages for a turn we just declined to spend on is
+    // two Meta messages to say one thing. The prefix is PREPENDED and the 10.C
+    // byte is CONCATENATED UNTOUCHED behind it — `CAP_BYTES.circle` is frozen
+    // under APPROVED-COPY-CARRIES-ITS-HASH and this diff does not hold a veto
+    // for it. Cell §3.3 pins the whole sentence; §3.4 pins that the frozen byte
+    // is still its exact suffix, so an edit to either end reddens.
+    //
+    // The prefix rides `deed.kind === SAVED` and nothing else: a capped member
+    // who sent a TEXT note, or whose save failed, must hear the bare cap byte.
+    // Claiming a save here would be F-09.174 rebuilt inside F-09.177's cure.
+    const capBody = deed.kind === DEED.SAVED
+      ? CIRCLE_CAP_SAVED_PREFIX + circleCapGate.byte
+      : circleCapGate.byte;
     let capMsg = null;
     try {
-      capMsg = await send(phone, circleCapGate.byte);
+      capMsg = await send(phone, capBody);
     } catch (sendErr) {
       console.error('[circle-handler] cap refusal send error:', sendErr);
     }
@@ -819,7 +892,7 @@ async function handleCircleMemberMessage({
       conversation_id: conversation.id,
       direction:       'outbound',
       channel:         'whatsapp',
-      body:            circleCapGate.byte,
+      body:            capBody,
       sent_by:         'agent',
       twilio_sid:      capMsg?.sid ?? null,
     });
@@ -837,9 +910,13 @@ async function handleCircleMemberMessage({
     mediaContext:   mediaContextNote,
     couple:      { id: circleMember.couple_id, user_id: brideRow?.user_id ?? null },
     circleUser:  { id: user.id },
+    // F-09.174 — what the door did, handed to the model rather than guessed by
+    // it. F-09.182 — the loop may narrow this to `declined` and hands it back.
+    deed,
     supabase,
     anthropic: circleMeterAnthropic,
   });
+  if (result.deed) deed = result.deed;
 
   // ── Send reply ──
   let twilioMsg = null;

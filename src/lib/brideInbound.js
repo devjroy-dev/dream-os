@@ -49,6 +49,23 @@ const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1
 const { makeInboundSend, REFUSAL } = require('./sendOutcome');         // ARC M1 / F-05.33
 const { appendWitness } = require('./witnessLine');                    // ARC M1 / F-05.34
 const { newTurnId, meteredAnthropic, withKind, coupleCapGate, surfaceForCouple, logCapSkip } = require('./coupleAiCap'); // TDW_10.C · the couple lane's meter + gate
+
+// ── ACCEPTED COPY · FOUNDER-VETOED 2026-08-13 (V8) · FROZEN AT THE BYTE ─────
+// F-09.186. The signed sentences, whole, are:
+//   daily   「 Saved. You've reached today's conversation limit. I'll be right here at midnight. 」
+//   monthly 「 Saved. You've reached this month's conversation limit. I'll be right here on the 1st. 」
+// which is this prefix concatenated ahead of CAP_BYTES.bride_daily and
+// CAP_BYTES.bride_monthly UNTOUCHED. The trailing space is part of the byte.
+//
+// ⚠ F-06.85 MECHANISM: the two halves live in two files. This prefix is here;
+// the suffixes are 10.C's frozen bytes in coupleAiCap.js. Edit either and the
+// founder-signed sentence changes without this line being read. Cells §4.2/§4.3
+// pin both signed sentences whole, so the tripwire is the sentence, not the
+// prefix — a drift at either end reddens.
+const BRIDE_CAP_SAVED_PREFIX  = 'Saved. ';
+// The signed windows, and only these. 'zero' is not a window and has no signed
+// prefix — see the declared gap at the refusal block below.
+const BRIDE_CAP_SAVED_WINDOWS = new Set(['daily', 'monthly']);
 const { onboardingGate } = require('./onboardingGate');               // ARC OB / CE-31 · the onboarding gate, dark under R-OB.9
 
 // ── THE TYPED REFUSAL (V-3, founder-locked at CE-67's gates) ────────────────
@@ -596,7 +613,15 @@ async function _processBrideInbound(inputs, deps) {
     } else if (mediaSaveSucceeded) {
       bodyForLog = mediaCaption || '[forwarded an image]';
     } else if (mediaSaveAttempted) {
-      bodyForLog = mediaCaption || '[forwarded an image — save failed]';
+      // ── V7 · F-09.183 · FORK 3a · FOUNDER-VETOED 2026-08-13 · FROZEN ──────
+      // The collapse D-3's own ratified sub-fork created. With a caption
+      // present, `mediaCaption || '[forwarded an image]'` above and
+      // `mediaCaption || '[forwarded an image — save failed]'` here both
+      // resolved to THE SAME STRING — her caption — so the success row and the
+      // failure row were byte-identical and no census could tell them apart.
+      // `inboundForEngine` reads this same value, so the agent could not
+      // either. Her words are kept; the outcome is no longer erased by them.
+      bodyForLog = mediaCaption ? `${mediaCaption} — save failed` : '[forwarded an image — save failed]';
     } else if (hasMedia) {
       // Media was present but not an image (video, audio, document, etc).
       // Identify the rough kind for the audit trail.
@@ -722,13 +747,33 @@ async function _processBrideInbound(inputs, deps) {
     //
     // She receives one sentence and the turn ends. No engine call, no fan-out,
     // no tool loop — a capped couple spends nothing behind this door.
+    // ── V8 · F-09.186 · THE SAME DISEASE, HER OWN DOOR ─────────────────────
+    // Filed from D-4's read-first adjacency and chartered in-sitting. Fork A
+    // saves her image before this block runs, so a capped bride could forward a
+    // photo and be answered 「 You've reached today's conversation limit 」 with
+    // nothing said about the photograph that had just landed on her board —
+    // F-09.177 exactly, one door over.
+    //
+    // APPROVED COPY · FOUNDER-VETOED 2026-08-13 · FROZEN AT THE BYTE. The
+    // one-word prefix, the frozen 10.C cap bytes untouched behind it, same
+    // shape both windows. Symmetrical with V1 at the circle door.
+    //
+    // ⚠ DECLARED GAP, NOT PAPERED: the founder signed the DAILY and MONTHLY
+    // windows. `state === 'zero'` is not a window — nothing was "reached" — and
+    // it carries no signed prefix, so it speaks its frozen 10.C byte bare, as
+    // today. Same for the onboarding surface, which refuses only at zero. A
+    // conditional block ships withheld until its condition arrives; an
+    // unvetoed sentence must never reach a human.
     if (capGate.refuse) {
-      await send(phone, capGate.byte);
+      const capBody = (mediaSaveSucceeded && BRIDE_CAP_SAVED_WINDOWS.has(capGate.state))
+        ? BRIDE_CAP_SAVED_PREFIX + capGate.byte
+        : capGate.byte;
+      await send(phone, capBody);
       await supabase.from('messages').insert({
         conversation_id: conversation.id,
         direction:       'outbound',
         channel:         'whatsapp',
-        body:            capGate.byte,
+        body:            capBody,
         sent_by:         'agent',
       });
       await supabase

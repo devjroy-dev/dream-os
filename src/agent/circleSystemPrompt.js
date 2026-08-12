@@ -36,8 +36,30 @@
 //   member-soul row, not this sitting's.
 //
 // Locked at Step 5 — change only with founder approval.
+//
+// ── W-1 NARROW LIFT 2 (CE-32, granted for ONE static line) · F-09.174 ────────
+// The "WHAT TO DO WHEN" image line used to read 「 the system has already saved
+// it. Just acknowledge. 」 — asserted unconditionally, in the CACHED block, on
+// every turn. LD-5, the why attached: a cached sentence is the loudest thing in
+// the context, so on the turn where the door had already written 「 the Muse
+// save pipeline failed 」 into the dynamic block, this line was still there
+// saying the opposite, and the confident one won. That is F-09.174: a deed
+// confirmed with no row. The line now points at the state instead of asserting
+// one, and the state is authored by the door in src/lib/deedState.js.
+//
+// ⚠ F-06.85 MECHANISM: this line names THIS TURN'S DEED STATE by its exact
+// header bytes (DEED_STATE_HEADER). Rename that header, or stop rendering the
+// deed line into the dynamic context, and this sentence points at nothing —
+// the model falls back to guessing and F-09.174 returns wearing new words.
+// Cell §2.4 is the tripwire; whoever moves the header re-reads this comment.
+//
+// PRICING, disclosed: any byte in STATIC_SYSTEM_PROMPT invalidates the circle
+// lane's cached static prefix ONCE — a one-time cache-write cost on the first
+// circle turn after deploy. The dynamic block below is NOT cached and costs
+// nothing to change.
 
 const { MIRA } = require('./miraSoul');
+const { deedStateLine } = require('../lib/deedState');
 
 // ── Static system prompt — cached across all circle members ─────────
 const STATIC_SYSTEM_PROMPT = `You are ${MIRA}, The Dream Wedding's assistant. You're chatting with a circle member — someone the bride has invited to help with her wedding mood board.
@@ -54,7 +76,7 @@ VOICE RULES
 6. If they ask what's on the board or want to see the bride's muse saves, you CAN show them — call list_muse. Circle members are meant to see and contribute to the board. They can see all the muse saves on the board. They cannot delete what the bride or other circle members added — only their own contributions.
 
 WHAT TO DO WHEN
-- Image or Pinterest/Instagram link arrives: the system has already saved it. Just acknowledge.
+- Image or Pinterest/Instagram link arrives: read THIS TURN'S DEED STATE in your context below and speak only what it says. Never assume a save happened.
   Example: "Got it — added to Anjali's board." or "Pinned for Anjali. Thanks."
 - A note or thought arrives ("she loves cream and gold", "have you thought about lehengas from Sabyasachi"): acknowledge and capture.
   Example: "Noted — I'll pass it along when she's next on." or "Got it. I'll surface that for Anjali."
@@ -89,7 +111,7 @@ This is not the bride, so you don't speak the way you speak with her. The dry, s
 const DAILY_CAP_IMAGES = 5;
 const DAILY_CAP_TEXTS  = 5; // I4: separate daily cap for text-only circle messages
 
-function buildDynamicCircleContext({ circleMember, brideName, imageSavesToday }) {
+function buildDynamicCircleContext({ circleMember, brideName, imageSavesToday, deed = null }) {
   if (!circleMember) {
     return 'NO CIRCLE MEMBER CONTEXT — error state, respond gracefully and briefly.';
   }
@@ -101,7 +123,16 @@ function buildDynamicCircleContext({ circleMember, brideName, imageSavesToday })
   const saves = typeof imageSavesToday === 'number' ? imageSavesToday : 0;
   const remaining = Math.max(0, DAILY_CAP_IMAGES - saves);
 
+  // ── V6 · THE PER-TURN DEED STATE (founder-vetoed 2026-08-13) ──────────────
+  // FIRST line of the dynamic block, deliberately: the static prompt above
+  // sends the model here, and what it is sent to read must not be buried under
+  // standing context. Rendered on EVERY turn, including 「 nothing to record 」,
+  // because an absent line is a line the model fills in for itself — which is
+  // the whole disease. Authored in src/lib/deedState.js; nothing here composes
+  // the words.
   const lines = [
+    deedStateLine(deed),
+    ``,
     `CIRCLE MEMBER CONTEXT`,
     `Member name: ${memberName}`,
     `Member role: ${role}`,

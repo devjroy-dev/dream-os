@@ -1828,8 +1828,21 @@ async function execListMuse({ input, couple, supabase, mediaUrlsToReturn }) {
 async function execDeleteMuseSave({ input, couple, user, supabase }) {
   const { save_number } = input || {};
 
+  // ── F-09.182 · REFUSED-ON-PURPOSE IS ITS OWN STATE ──────────────────────
+  // The three branches below DECLINE. The two after them (lookupError,
+  // deleteError) FAIL. Nothing distinguished them before this diff, so the
+  // audit and the model's next turn read a deliberate "no" and a broken
+  // database as the same event. `refused` is the discriminator, and it is set
+  // at the source rather than inferred downstream from the error prose —
+  // inferring it from a string would make every future copy edit a silent
+  // behaviour change. `refused_reason` is what the deed state speaks.
   if (typeof save_number !== 'number' || save_number < 1) {
-    return { ok: false, error: 'save_number must be a positive integer' };
+    return {
+      ok: false,
+      refused: true,
+      refused_reason: 'no valid save number was given',
+      error: 'save_number must be a positive integer',
+    };
   }
 
   // Look up the save first to check permissions and report what was deleted
@@ -1846,7 +1859,12 @@ async function execDeleteMuseSave({ input, couple, user, supabase }) {
   }
 
   if (!target) {
-    return { ok: false, error: `save ${save_number} not found` };
+    return {
+      ok: false,
+      refused: true,
+      refused_reason: `there is no save #${save_number} on the board`,
+      error: `save ${save_number} not found`,
+    };
   }
 
   // Permission check: bride can delete anything; circle member only their own
@@ -1858,6 +1876,8 @@ async function execDeleteMuseSave({ input, couple, user, supabase }) {
     if (target.saved_by_user_id !== speakerUserId) {
       return {
         ok: false,
+        refused: true,
+        refused_reason: 'they can only remove their own contributions',
         error: 'circle members can only delete their own contributions',
       };
     }
@@ -2269,12 +2289,12 @@ ${memberName} (a ${memberRole} circle member) just spent some time on the bride'
 
 ${digest}
 
-Write a 1-2 sentence summary FOR THE BRIDE in your own voice — informal, friendly, natural. Mention ${memberName} by name. Capture the gist of what they added or said. Don't list every save individually unless there are very few. Don't add a closing question; the agent will add one after.
+Write a 1-2 sentence summary FOR THE BRIDE in your own voice — informal, friendly, natural. Mention ${memberName} by name. Capture the gist of what they did. Say "added" only for saves; for notes say "said" or "left a note". If there were no saves, do not use "added" at all. Don't list every save individually unless there are very few. Don't add a closing question; the agent will add one after.
 
 EXAMPLES of the voice:
 - "Quick update — your mom just added 3 cream-and-gold decor shots and said she's leaning OTT for the mehndi."
 - "Heads up — Priya pinned 2 elegant moody saves and mentioned wanting to discuss the photographer."
-- "Mom just went through your board and added a candid intimate shot — said it reminded her of your engagement photos."
+- "Mom went through your board and said she's leaning OTT for the mehndi — no new saves."
 
 Reply with ONLY the summary sentence(s). No preamble, no closing, no quotes around it.`;
 
@@ -2295,12 +2315,27 @@ Reply with ONLY the summary sentence(s). No preamble, no closing, no quotes arou
     return null;
   } catch (err) {
     console.error('[bride-surface-circle] haiku call failed, using fallback:', err.message);
-    // Deterministic fallback if Haiku times out / errors
-    const parts = [];
-    if (saveAdds.length > 0) parts.push(`${saveAdds.length} save${saveAdds.length === 1 ? '' : 's'}`);
-    if (notes.length > 0)    parts.push(`${notes.length} note${notes.length === 1 ? '' : 's'}`);
-    const what = parts.length > 0 ? parts.join(' and ') : 'some activity';
-    return `Quick update — ${memberName} just added ${what} to your board.`;
+    // ── V2 · F-09.172 · THE FALLBACK STOPS SAYING 「 added 」 OVER NOTES ──────
+    // APPROVED COPY · FOUNDER-VETOED 2026-08-13 · FROZEN AT THE BYTE.
+    // The old line was one sentence for four different facts: `what` resolved
+    // to 「 2 notes 」 on a notes-only session and to 「 some activity 」 on a
+    // session this function's own filters had emptied — so the bride was told
+    // something was ADDED to her board when nothing had been. Four states, four
+    // bytes, and the empty one no longer claims a deed at all.
+    const nSaves = saveAdds.length;
+    const nNotes = notes.length;
+    const saveStr = `${nSaves} save${nSaves === 1 ? '' : 's'}`;
+    const noteStr = `${nNotes} note${nNotes === 1 ? '' : 's'}`;
+    if (nSaves > 0 && nNotes > 0) {
+      return `Quick update — ${memberName} added ${saveStr} and left ${noteStr} on your board.`;
+    }
+    if (nSaves > 0) {
+      return `Quick update — ${memberName} added ${saveStr} to your board.`;
+    }
+    if (nNotes > 0) {
+      return `Quick update — ${memberName} left ${noteStr} on your board.`;
+    }
+    return `Quick update — ${memberName} was on your board just now.`;
   }
 }
 

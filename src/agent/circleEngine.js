@@ -23,6 +23,7 @@ const { STATIC_SYSTEM_PROMPT, buildDynamicCircleContext } = require('./circleSys
 const { MODEL_HAIKU, calculateCost } = require('./models');
 const { BRIDE_TOOLS } = require('./brideTools');
 const { executeBrideTool } = require('./brideEngine');
+const { DEED, toolCallRecord } = require('../lib/deedState');
 
 // Circle members get a narrow tool surface: list_muse (read board) and
 // delete_muse_save (their own saves only — enforced in executeBrideTool
@@ -44,13 +45,22 @@ async function runCircleAgenticTurn({
   mediaContext = null,
   couple,       // { id, user_id } — bride's couple; couple_id scopes muse queries
   circleUser,   // { id }          — circle member's user row; for permission checks
+  deed = null,  // F-09.174 — the door's per-turn deed state (src/lib/deedState.js)
   supabase,
   anthropic,
 }) {
+  // ── F-09.174 / F-09.182 · THE DEED STATE IS LIVE, NOT A SNAPSHOT ──────────
+  // The door seeds it from what it did before the model was called. The loop
+  // below can CHANGE it: a well-founded tool refusal is a deed outcome the door
+  // could not have known, and F-09.182's complaint is precisely that nothing
+  // distinguished it from a fault. When it changes, the dynamic block is
+  // rebuilt so the next iteration reads the new truth rather than the old one.
+  let liveDeed = deed;
   let dynamicContext = buildDynamicCircleContext({
     circleMember,
     brideName,
     imageSavesToday,
+    deed: liveDeed,
   });
 
   if (mediaContext && typeof mediaContext === 'string' && mediaContext.trim()) {
@@ -89,6 +99,7 @@ async function runCircleAgenticTurn({
   console.log(`[circle-agent] model: ${MODEL_HAIKU} (member: ${circleMember?.invitee_name || 'unknown'})`);
 
   const mediaUrlsToReturn = [];
+  const toolCallsForAudit = [];
   let finalReply = null;
   let totalInputTokens  = 0;
   let totalOutputTokens = 0;
@@ -118,9 +129,18 @@ async function runCircleAgenticTurn({
       }, { timeout: ANTHROPIC_TIMEOUT });
     } catch (err) {
       console.error('[circle-agent] anthropic call failed:', err.message);
+      // ── RESIDUAL, DECLARED AND OWED (F-09.174's own shape, one door down) ──
+      // 「 Got it. Thanks. 」 confirms a deed. On a turn whose deed state is
+      // `save_failed` it is exactly the sentence this delivery exists to kill —
+      // the model never ran, so nothing read the state. THE BYTE IS NOT MOVED
+      // HERE: it was not on D-4's veto sheet and copy law is absolute, so an
+      // honest replacement is the founder's to sign, not this seat's to invent.
+      // The audit below is threaded regardless, so the row records what the
+      // reply does not. Unnumbered, for the chair (R-M3: no range issued).
       return {
         reply:        'Got it. Thanks.',
-        toolCalls:    [],
+        toolCalls:    toolCallsForAudit,
+        deed:         liveDeed,
         iterations,
         model:        MODEL_HAIKU,
         inputTokens:  totalInputTokens,
@@ -154,6 +174,30 @@ async function runCircleAgenticTurn({
         mediaUrlsToReturn,
       });
 
+      // ── F-09.183 · THE AUDIT LEARNS WHAT THE TURN DID ──────────────────
+      // `toolCalls` returned `[]` on every circle turn before this diff, and
+      // the outbound row wrote that `[]` to `messages.tool_calls` — a bare
+      // absence assertion over turns where a tool had demonstrably run. The
+      // column now carries what happened, refusal flag included.
+      toolCallsForAudit.push(toolCallRecord(toolUseBlock.name, toolResult));
+
+      // ── F-09.182 · A REFUSAL IS NOT A FAULT ───────────────────────────
+      // executeBrideTool marks the branches it declines ON PURPOSE (ownership,
+      // no such save, malformed number) with `refused`. A delete that errored
+      // in Postgres is NOT marked, and must not be: telling a member "I decided
+      // not to" over a database failure is the same lie as F-09.174 pointing
+      // the other way. Only a marked refusal moves the deed state.
+      if (toolResult && toolResult.refused) {
+        liveDeed = { kind: DEED.DECLINED, reason: toolResult.refused_reason };
+        dynamicContext = buildDynamicCircleContext({
+          circleMember,
+          brideName,
+          imageSavesToday,
+          deed: liveDeed,
+        });
+        console.log(`[circle-agent] deed declined: ${toolResult.refused_reason}`);
+      }
+
       messages.push({ role: 'assistant', content: response.content });
       messages.push({
         role: 'user',
@@ -185,7 +229,8 @@ async function runCircleAgenticTurn({
 
   return {
     reply:        finalReply,
-    toolCalls:    [],
+    toolCalls:    toolCallsForAudit,
+    deed:         liveDeed,
     iterations,
     model:        MODEL_HAIKU,
     inputTokens:  totalInputTokens,
