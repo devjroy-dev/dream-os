@@ -30,7 +30,7 @@ const {
   newTurnId, meteredAnthropic, withKind, meterCtxOf,
   recordGeminiSearch, recordVisionCall, KINDS,
   readCoupleCap, refusalByteFor, coupleCapGate, surfaceForCouple, onboardingRefusesAt,
-  dialValue, CAP_BYTES, ZERO_ONBOARDING_ARMED,
+  dialValue, CAP_BYTES, ZERO_ONBOARDING_ARMED, CAP_BYTE_ONBOARDING_ZERO,
 } = require(path.join(ROOT, 'src/lib/coupleAiCap'));
 
 let pass = 0, fail = 0;
@@ -521,11 +521,26 @@ function fakeAnthropic(usage = { input_tokens: 100, output_tokens: 40 }) {
       if (onboardingRefusesAt('monthly') !== false) return 'monthly leaked into onboarding';
       if (onboardingRefusesAt('zero') !== true) return 'the founder\'s brake left one engine running';
       if (refusalByteFor('daily', 'onboarding') !== null) return 'a byte reached an exempt surface';
-      // The zero case is ruled REFUSING — but its byte is PENDING-VETO, so it
-      // must stay unarmed until the founder's word.
+      // ── LABELLED AMENDMENT, TDW_10.C ARMING MICRO (relay №5 §1) ─────────
+      // RE-AIMED, NOT DELETED. This assertion required the byte to stay UNARMED
+      // and `refusalByteFor('zero','onboarding')` to return null — correct while
+      // the veto was outstanding, and no longer the truth to assert: the founder
+      // approved it verbatim at 541b945.
+      //
+      // TEETH KEPT AND SHARPENED. The old form guarded 「 no unvetoed byte
+      // reaches a bride 」; the new form guards 「 the VETOED byte reaches her,
+      // byte-exact 」 — which is the same law (copy carries its decision) pointed
+      // at the state that now exists. The exemption predicate above is untouched
+      // and still asserts the zero dial is the ONLY state that refuses here.
+      // RATIFY-OR-REVERT.
+      if (ZERO_ONBOARDING_ARMED !== true) return 'the approved byte was left unarmed';
       const z = refusalByteFor('zero', 'onboarding');
-      return (ZERO_ONBOARDING_ARMED === false && z === null)
-        ? true : 'an UNVETOED byte reached a bride';
+      if (z !== 'Chat is paused right now.') return `BYTE DRIFT: ${z}`;
+      if (z !== CAP_BYTE_ONBOARDING_ZERO) return 'the constant and the resolver disagree';
+      // It must remain the TRIMMED byte. The full zero sentence promises a state
+      // a bride mid-signup does not hold — that is the whole of §0.2-J.
+      if (z === CAP_BYTES.zero) return 'the untrimmed zero byte reached the onboarding surface';
+      return true;
     });
 
   await acell('8.8 the circle byte carries no upgrade language and no numbers',

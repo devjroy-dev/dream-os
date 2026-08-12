@@ -6,7 +6,20 @@
 
 ---
 
-## ⚠ ONE BYTE SHIPS UNARMED — PENDING VETO
+## ✅ THE PENDING BYTE IS APPROVED AND ARMED (annotated post-delivery)
+
+**FOUNDER-VETOED 2026-08-12 against tree `541b945` — 「 YES 」.** The byte below
+shipped in D3 unarmed and was armed by the TDW_10.C arming micro (relay №5 §1):
+`ZERO_ONBOARDING_ARMED = true`, cell 8.7 amended to assert the armed state and
+pin the literal. Copy carries its decision; this annotation is that decision on
+the artefact that shipped without it.
+
+The section below is the state AT D3 and is left standing rather than rewritten —
+a handover that quietly becomes true was never a record of what shipped.
+
+---
+
+## ⚠ ONE BYTE SHIPS UNARMED — PENDING VETO (state at D3)
 
 §0.2-J / relay №4 ruled **J1**: the onboarding surface at dial `0` refuses with the trimmed byte 「 Chat is paused right now. 」 — because a bride mid-signup has saved nothing, and the full zero byte would promise a state the machine does not hold.
 

@@ -361,19 +361,23 @@ const CAP_BYTES = {
   zero:          "Chat is paused right now. Everything you've saved is still here whenever you want it.",
 };
 
-// ⚠ PENDING-VETO — NOT ARMED. §0.2-J / relay №4 ruled J1: the onboarding surface
+// ── ACCEPTED COPY · FOUNDER-VETOED 2026-08-12 at 541b945 · ARMED ───────────
+// §0.2-J / relay №4 ruled J1 and the founder's word arrived: 「 YES 」. The
+// onboarding surface
 // at dial 0 refuses with the TRIMMED byte — the first sentence of the vetoed
 // zero byte, nothing added — because a bride mid-signup has saved NOTHING and
 // 「 Everything you've saved is still here 」 would promise a state the machine
 // does not hold. That is fork E's own law applied to fork B's assignment.
 //
-// It is a SEPARATE VETO LINE under copy law and the founder's word has not
-// arrived. Until it does, ZERO_ONBOARDING_ARMED stays false and the onboarding
-// door at dial 0 is NOT gated — it behaves exactly as it does today. Shipping it
-// armed would put an unvetoed byte in front of a bride; shipping it absent would
-// lose the ruling. It ships present, inert, and named.
-const CAP_BYTE_ONBOARDING_ZERO_PENDING_VETO = 'Chat is paused right now.';
-const ZERO_ONBOARDING_ARMED = false;
+// It was a SEPARATE VETO LINE under copy law and it now carries its decision:
+// approved verbatim by the founder, 2026-08-12, against tree 541b945. FROZEN AT
+// THE BYTE under APPROVED-COPY-CARRIES-ITS-HASH — an edit, even the full stop,
+// needs a fresh veto and may not ride a refactor. Cell 8.7 pins it as a literal.
+//
+// It shipped in D3 present, inert and named rather than absent, so that arming
+// it was one line and not a rediscovery of the ruling. This is that line.
+const CAP_BYTE_ONBOARDING_ZERO = 'Chat is paused right now.';
+const ZERO_ONBOARDING_ARMED = true;
 
 // ── IST WINDOWS ─────────────────────────────────────────────────────────────
 // Re-derived at THIS seat's tip (ead0b9b), never transcribed from a relay:
@@ -483,7 +487,7 @@ function refusalByteFor(state, surface) {
   if (surface === 'circle') return CAP_BYTES.circle;
   if (surface === 'onboarding') {
     if (!onboardingRefusesAt(state)) return null;
-    return ZERO_ONBOARDING_ARMED ? CAP_BYTE_ONBOARDING_ZERO_PENDING_VETO : null;
+    return ZERO_ONBOARDING_ARMED ? CAP_BYTE_ONBOARDING_ZERO : null;
   }
   if (state === 'zero')    return CAP_BYTES.zero;
   if (state === 'monthly') return CAP_BYTES.bride_monthly;
@@ -546,7 +550,7 @@ module.exports = {
   coupleCapGate,
   logCapSkip,
   CAP_BYTES,
-  CAP_BYTE_ONBOARDING_ZERO_PENDING_VETO,
+  CAP_BYTE_ONBOARDING_ZERO,
   ZERO_ONBOARDING_ARMED,
   istDayStartUtcISO,
   istMonthStartUtcISO,
