@@ -67,6 +67,36 @@
 -- hardcoded 25 can. If public ever grows past the editor's cap, this guard SAYS SO
 -- instead of silently lying — which is the only property that matters here.
 --
+-- ── WHY THE TYPE COMES FROM pg_catalog AND NOT information_schema ───────
+--
+-- CE-32, 2026-08-13. `information_schema.columns.data_type` reports every array
+-- as the bare word **ARRAY**. It does not carry the element type anywhere. Five
+-- columns on this plane witnessed as `ARRAY` in the 0099 snapshot and stayed that
+-- way, unreadable, for the whole life of the document:
+--
+--     notes.tags · couple_receipts.tags · events.assigned_member_ids ·
+--     vendors.service_cities · leads.event_types
+--
+-- A reader under the SQL-provenance law cannot tell `text[]` from `uuid[]` from
+-- that word and must GUESS — which is the precise posture this file was built to
+-- kill, surviving inside the cure. `format_type(a.atttypid, a.atttypmod)` renders
+-- what the database would print itself: `text[]`, `uuid[]`.
+--
+-- DISCLOSED, because the next regen's diff will be wider than five lines and a
+-- reader should not have to wonder why: format_type also carries MODIFIERS that
+-- information_schema drops. `numeric` may render `numeric(p,s)`; `character
+-- varying` may render `character varying(n)`. On the 2026-08-13 rows that is five
+-- `numeric` columns and the five arrays; `timestamp with time zone` (161 columns)
+-- renders identically either way. Those lines becoming longer is the fix working,
+-- not drift.
+--
+-- THE ENGINE TWIN DOES NOT CARRY THIS YET, deliberately. `engine_schema_dump.sql`
+-- keeps `data_type` this sitting because docs/db/ENGINE_SCHEMA.md was verified
+-- byte-identical to live on 2026-08-13 and a type-expression change there would
+-- make a doc no longer reproducible by its own generator without a regen to go
+-- with it. The engine plane holds ZERO array columns, so the defect above does not
+-- bite there today. Adoption rides F-SW.1, which owns the engine regen.
+--
 -- ── HOW TO USE ──────────────────────────────────────────────────────────
 --
 -- 1. Run in the Supabase SQL editor (founder). It is ONE statement, so the editor's
@@ -102,7 +132,10 @@ select
   c.table_name,
   count(*)                                                 as columns,
   string_agg(
-    c.ordinal_position || '. ' || c.column_name || ' ' || c.data_type
+    -- THE TYPE EXPRESSION (CE-32, 2026-08-13). Was `c.data_type`. See the header
+    -- section "WHY THE TYPE COMES FROM pg_catalog AND NOT information_schema".
+    c.ordinal_position || '. ' || c.column_name || ' '
+    || format_type(a.atttypid, a.atttypmod)
     || case when c.is_nullable = 'NO' then ' NOT NULL' else '' end
     || case when coalesce(c.column_default, '') <> ''
             then ' default ' || c.column_default else '' end,
@@ -112,6 +145,20 @@ from information_schema.columns c
 join information_schema.tables t
   on  t.table_schema = c.table_schema
   and t.table_name   = c.table_name
+-- The pg_catalog reach-through that carries the real type. One row per column
+-- still: (attrelid, attname) is unique within a relation, so this join cannot
+-- multiply the set it decorates.
+join pg_catalog.pg_namespace ns
+  on  ns.nspname       = c.table_schema
+join pg_catalog.pg_class cls
+  on  cls.relnamespace = ns.oid
+  and cls.relname      = c.table_name
+  and cls.relkind      = 'r'
+join pg_catalog.pg_attribute a
+  on  a.attrelid       = cls.oid
+  and a.attname        = c.column_name
+  and a.attnum         > 0
+  and not a.attisdropped
 where c.table_schema = 'public'
   and t.table_type   = 'BASE TABLE'
 group by c.table_name

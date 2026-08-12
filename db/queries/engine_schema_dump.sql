@@ -25,8 +25,20 @@
 -- wrote it): founder-run SQL is written ONLY against witnessed column lists —
 -- docs/db/ENGINE_SCHEMA.md, db/BASELINE.md, docs/SCHEMA.md — never against prose.
 --
--- HOW TO USE: run in the Supabase SQL editor. **Confirm the result says 25 rows** — if
--- it says fewer, the cap bit again and the output MUST NOT be committed. Hand back the
+-- ── THE GUARD WAS A HARDCODED NUMBER UNTIL CE-32 (2026-08-13) ───────────
+--
+-- This file used to say: "Confirm the result says 25 rows." That number was written
+-- by an executor into a founder-run recipe and then left to age. On 2026-08-13 the
+-- live engine plane read 25 tables — so the stale constant was ACCIDENTALLY RIGHT,
+-- which is the worst outcome a guard can have: it teaches a trust it has not earned,
+-- and the day the schema grows it reports truncation-or-absence with equal
+-- confidence and no way to tell them apart. Its public twin refused to inherit this
+-- shape from the start and said so in its own header; that refusal is now honoured
+-- here. Column 1 of every row is `tables_expected`, computed by the DATABASE.
+--
+-- HOW TO USE: run in the Supabase SQL editor. **Does the row count equal
+-- `tables_expected`?** If it is fewer, the cap bit and the output MUST NOT be
+-- committed — raise the editor's Limit and re-run. Hand back the
 -- output; the executor commits it verbatim as docs/db/ENGINE_SCHEMA.md under a header
 -- naming it a witnessed prod snapshot and its date. Regenerated on demand by re-running
 -- this file. NEVER hand-edited — a hand-edited snapshot is prose again.
@@ -34,6 +46,14 @@
 -- READ-ONLY: one SELECT over information_schema. No DDL, no DML. Cannot mutate.
 -- ════════════════════════════════════════════════════════════════════
 select
+  -- THE SELF-COMPUTING GUARD (CE-32, 2026-08-13). Was a hardcoded "confirm 25
+  -- rows" in this file's HOW TO USE. A scalar subquery: computed by the database,
+  -- repeated on every row, structurally immune to the row cap that truncates the
+  -- result set around it. Compare it to the row count. They must match.
+  (select count(*)
+     from information_schema.tables
+    where table_schema = 'engine'
+      and table_type   = 'BASE TABLE')                    as tables_expected,
   c.table_name,
   count(*)                                                as columns,
   string_agg(
