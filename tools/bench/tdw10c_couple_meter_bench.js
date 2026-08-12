@@ -614,6 +614,270 @@ function fakeAnthropic(usage = { input_tokens: 100, output_tokens: 40 }) {
       return true;
     });
 
+  // ── 9 · CE-31 BF-1 — THE LEDGER RECORDS THE WIRE ──────────────────────────
+  // The labelled amendment to 10.C's sealed writer, benched both ways. §9 is
+  // the reason the bride-lane provider flip can be trusted to price itself:
+  // without it the ledger transcribes the caller's belief and the lane the
+  // meter exists to watch is the one lane it silently mis-prices.
+  const { buildBrideClient, resolveBrideProvider, wireModelFor } =
+    require(path.join(ROOT, 'src/lib/brideLlmClient'));
+
+  // A declaring client that never leaves the process — the adapter's SHAPE
+  // (the two __wire fields) is what the writer reads, so the fake carries the
+  // shape and nothing else. Asserting through the real adapter would demand a
+  // live endpoint; asserting through the shape is the same contract.
+  function declaringFake(provider, wireModel, usage = { input_tokens: 100, output_tokens: 40 }) {
+    const calls = [];
+    return {
+      calls,
+      __wireProvider: provider,
+      __wireModel: wireModel,
+      messages: {
+        create: async (params, options) => {
+          calls.push({ params, options });
+          return { usage, content: [{ type: 'text', text: 'ok' }], stop_reason: 'end_turn' };
+        },
+      },
+    };
+  }
+
+  // The adapter destructures llm.js's exports AT REQUIRE TIME, so reassigning
+  // `llm.clientFor` cannot reach it — the binding is already captured. (First
+  // draft did exactly that and reddened on a missing API key: the stub was
+  // never installed.) What IS shared is the memoised client object itself, so
+  // the stub goes on THAT, and the key env is set only long enough to let the
+  // SDK construct. The key is never read, never printed, and restored after.
+  function stubWire(fn) {
+    const llm = require(path.join(ROOT, 'src/lib/llm.js'));
+    const hadKey = Object.prototype.hasOwnProperty.call(process.env, 'DEEPSEEK_API_KEY');
+    const prevKey = process.env.DEEPSEEK_API_KEY;
+    if (!hadKey) process.env.DEEPSEEK_API_KEY = 'bench-placeholder-never-sent';
+    const client = llm.clientFor('deepseek');
+    const realCreate = client.messages.create;
+    client.messages.create = async (p, o) => fn(p, o);
+    return () => {
+      client.messages.create = realCreate;
+      if (!hadKey) delete process.env.DEEPSEEK_API_KEY; else process.env.DEEPSEEK_API_KEY = prevKey;
+    };
+  }
+
+  await acell('9.1 a DECLARING client writes the WIRE provider and model, not the caller\'s',
+              "restore `provider: PROVIDER_ANTHROPIC` / `model: params.model` in recordAnthropicCall",
+    async () => {
+      const sb = fakeSupabase();
+      const an = declaringFake('deepseek', 'deepseek-v4-flash');
+      const m = meteredAnthropic(an, { supabase: sb, couple_id: 'c-9', turn_id: newTurnId(), kind: 'turn' });
+      // The caller passes HAIKU — exactly as brideEngine.js:214 does today and
+      // will keep doing after the flip. The row must disagree with it.
+      await m.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [] });
+      if (sb.rows.length !== 1) return `rows=${sb.rows.length}`;
+      const r = sb.rows[0];
+      if (r.provider !== 'deepseek') return `provider=${r.provider} — the row still believes the caller`;
+      if (r.model !== 'deepseek-v4-flash') return `model=${r.model} — the row still believes the caller`;
+      return true;
+    });
+
+  await acell('9.2 OFF STATE PINNED AT THE BYTE: a non-declaring client writes 10.C\'s row exactly',
+              'make the wire preference unconditional (drop the `|| PROVIDER_ANTHROPIC` fallback)',
+    async () => {
+      const sb = fakeSupabase(), an = fakeAnthropic();   // the pre-amendment fake, untouched
+      const m = meteredAnthropic(an, { supabase: sb, couple_id: 'c-9', turn_id: newTurnId(), kind: 'turn' });
+      await m.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [] });
+      const r = sb.rows[0];
+      if (!r) return 'no row';
+      if (r.provider !== 'anthropic') return `provider=${r.provider} — the couple web lane moved and nobody asked it to`;
+      if (r.model !== 'claude-haiku-4-5-20251001') return `model=${r.model} — the caller's string was dropped`;
+      // Empty-string and non-string declarations are ABSENT, not truth. A
+      // half-built adapter must degrade to 10.C, never to a null provider on a
+      // NOT NULL column.
+      const sb2 = fakeSupabase(), an2 = declaringFake('', '');
+      const m2 = meteredAnthropic(an2, { supabase: sb2, couple_id: 'c-9', turn_id: newTurnId(), kind: 'turn' });
+      await m2.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [] });
+      const r2 = sb2.rows[0];
+      if (!r2) return 'empty declaration wrote no row at all';
+      if (r2.provider !== 'anthropic' || r2.model !== 'claude-haiku-4-5-20251001') {
+        return `empty declaration was treated as truth: provider=${r2.provider} model=${r2.model}`;
+      }
+      return true;
+    });
+
+  await acell('9.3 THE PRICE FOLLOWS THE WIRE: the declared string hits the DeepSeek row, not the Haiku ceiling',
+              "declare a model models.ts has no PRICING row for (calcCostInr's `?? PRICING[haiku]` fallback)",
+    async () => {
+      if (!COST_HOME) return 'cost home unbuilt — this cell asserts real rupees and cannot run vacuously';
+      const usage = { input_tokens: 1_000_000, output_tokens: 0 };
+      const mk = async (provider, wireModel) => {
+        const sb = fakeSupabase();
+        const m = meteredAnthropic(declaringFake(provider, wireModel, usage),
+          { supabase: sb, couple_id: 'c-9', turn_id: newTurnId(), kind: 'turn' });
+        await m.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [] });
+        return sb.rows[0];
+      };
+      // 1M input tokens: DeepSeek $0.14 → ₹14. Haiku $1.00 → ₹100. The two
+      // prices are 7x apart, so a fallback cannot hide inside rounding.
+      const ds = await mk('deepseek', 'deepseek-v4-flash');
+      if (!(Math.abs(ds.cost_inr - 14) < 0.01)) {
+        return `1M input at the deepseek row must be ₹14, got ₹${ds.cost_inr} — calcCostInr fell back to the Haiku ceiling`;
+      }
+      // And the fallback still WORKS where it should: an unpriced string is
+      // over-stated at the Haiku ceiling, deliberately, per models.ts:76.
+      const unknown = await mk('deepseek', 'deepseek-v9-imaginary');
+      if (!(Math.abs(unknown.cost_inr - 100) < 0.01)) {
+        return `an unknown string must over-state at the Haiku ceiling (₹100), got ₹${unknown.cost_inr}`;
+      }
+      // The string the adapter will actually declare is the one priced above —
+      // derived from the table, not restated, so a CONF edit reddens this.
+      if (wireModelFor('deepseek') !== 'deepseek-v4-flash') {
+        return `the table now resolves ${wireModelFor('deepseek')} — models.ts has no price row for it`;
+      }
+      return true;
+    });
+
+  await acell('9.4 the adapter is built from the env; OFF declares nothing and carries no __unwrap',
+              'point brideIndex.js:81 back at a raw `new Anthropic(...)`, or make the OFF branch declare a wire',
+    async () => {
+      const fs2 = require('fs');
+      const rd = (f) => fs2.readFileSync(path.join(ROOT, f), 'utf8');
+      // Comments stripped before the absence test, this bench's own §12 method:
+      // brideIndex.js:83 QUOTES the byte it replaced so the next reader sees the
+      // OFF state spelled out, and a grep that cannot tell code from commentary
+      // reddens on documentation. Self-caught on this cell's first run.
+      const idx = rd('src/brideIndex.js');
+      const idxCode = idx.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      if (!/const anthropic = buildBrideClient\(process\.env\)/.test(idxCode)) {
+        return 'brideIndex.js no longer builds its client from the env — the flip is unreachable';
+      }
+      if (/new Anthropic\(/.test(idxCode)) return 'a raw client returned to brideIndex.js — it would bypass the table';
+      // OFF is the byte it replaced, and an unrecognised value is OFF too.
+      if (resolveBrideProvider({}) !== 'anthropic') return 'unset no longer means anthropic';
+      if (resolveBrideProvider({ BRIDE_LLM_PROVIDER: 'deepsek' }) !== 'anthropic') {
+        return 'a typo no longer falls back — a mistyped Railway variable would take the lane down';
+      }
+      if (resolveBrideProvider({ BRIDE_LLM_PROVIDER: ' DeepSeek ' }) !== 'deepseek') return 'the value is not normalised';
+      const off = buildBrideClient({ ANTHROPIC_API_KEY: 'x' });
+      if (off.__wireProvider !== undefined || off.__wireModel !== undefined) {
+        return 'the OFF client declares a wire — it would stop taking 10.C\'s path';
+      }
+      if (off.__unwrap !== undefined) return 'the OFF client carries __unwrap — the meter\'s stacking guard would misfire';
+      const on = buildBrideClient({ BRIDE_LLM_PROVIDER: 'deepseek', DEEPSEEK_API_KEY: 'x' });
+      if (on.__unwrap !== undefined) return 'the adapter carries __unwrap — meteredAnthropic would unwrap to a non-client';
+      if (on.__wireModel !== 'deepseek-v4-flash') return `the adapter declares ${on.__wireModel}`;
+      return true;
+    });
+
+  await acell('9.4b THE TIMEOUT SURVIVES THE FLIP: request options reach the wire, not the floor',
+              'drop the `options` forward in brideLlmClient.js (call llmCreate, which takes none)',
+    async () => {
+      // brideEngine.js:2150 passes `{ timeout: 8000 }`. On a foreign endpoint a
+      // dropped deadline is a hang inside a bride's turn with no symptom to
+      // grep for. The adapter is exercised against a STUBBED module client so
+      // the assertion is about production forwarding, not about DeepSeek.
+      const seen = [];
+      const restore = stubWire((p, o) => { seen.push({ p, o }); return { usage: {}, content: [] }; });
+      try {
+        const on = buildBrideClient({ BRIDE_LLM_PROVIDER: 'deepseek', DEEPSEEK_API_KEY: 'x' });
+        await on.messages.create({ model: 'claude-haiku-4-5-20251001', messages: [] }, { timeout: 8000 });
+        await on.messages.create({ model: 'claude-haiku-4-5-20251001', messages: [] });
+      } finally { restore(); }
+      if (seen.length !== 2) return `expected 2 wire calls, saw ${seen.length}`;
+      if (!seen[0].o || seen[0].o.timeout !== 8000) return 'the request options were dropped on the way to the wire';
+      if (seen[1].o !== undefined) return 'an options argument was invented where the caller passed none';
+      // …and the same call proves the flip's two ruled properties on the wire.
+      if (seen[0].p.model !== 'deepseek-v4-flash') return `wire model = ${seen[0].p.model}, not the exact benched string`;
+      if (!seen[0].p.thinking || seen[0].p.thinking.type !== 'disabled') return 'noThink did not arrive by construction';
+      return true;
+    });
+
+  await acell('9.5b cache_control IS ABSENT ON THE WIRE for a real bride-shaped system block',
+              "set `cache: true` on llm.js's deepseek entry, or bypass translateFor in the adapter",
+    async () => {
+      let sent = null;
+      const restore = stubWire((p) => { sent = p; return { usage: {}, content: [] }; });
+      try {
+        const on = buildBrideClient({ BRIDE_LLM_PROVIDER: 'deepseek', DEEPSEEK_API_KEY: 'x' });
+        // The shape brideEngine.js:231-236 actually sends, cache block included.
+        await on.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          system: [{ type: 'text', text: 'STATIC', cache_control: { type: 'ephemeral' } }],
+          messages: [{ role: 'user', content: 'hi' }],
+        });
+      } finally { restore(); }
+      if (!sent) return 'nothing reached the wire';
+      if (JSON.stringify(sent).includes('cache_control')) {
+        return 'cache_control rode onto a foreign endpoint — the z law (llm.js:56-58) is broken and the call would be rejected';
+      }
+      if (sent.system[0].text !== 'STATIC') return 'the strip ate the prompt itself';
+      return true;
+    });
+
+  await acell('9.6 llmCreate is pinned AT THE BYTE against the adapter\'s duplicate',
+              'change any byte of llmCreate — a reorder, a swapped helper, a fourth step',
+    async () => {
+      // F-06.85: the adapter re-authors llmCreate's body to forward request
+      // options. That duplication is only safe while the original stays what it
+      // was. This cell is the tripwire that sends llmCreate's next author to
+      // brideLlmClient.js.
+      const src = require('fs').readFileSync(path.join(ROOT, 'src/lib/llm.js'), 'utf8');
+      // CE-31 BF/№2 ③ — THE PIN IS ON THE BYTES, NOT ON A COUNT.
+      // The first draft counted statements. A count is a proxy: a body can rot
+      // at constant length — swap `translateFor` for a hand-rolled strip, or
+      // reorder the fidelity assert past the return, and a counter shrugs. So
+      // the whole function is pinned at the byte, and ANY divergence reddens.
+      // If this cell fails because llmCreate legitimately changed, the fix is
+      // NOT to update the string here — it is to go re-author the adapter's
+      // duplicated body at src/lib/brideLlmClient.js first, then update this.
+      const EXPECTED =
+        'async function llmCreate(provider, params) {\n' +
+        '  const resp = await clientFor(provider).messages.create(translateFor(provider, params));\n' +
+        '  assertToolFidelity(provider, resp);\n' +
+        '  return resp;\n' +
+        '}';
+      const i = src.indexOf('async function llmCreate(');
+      if (i === -1) return 'llmCreate has moved or been renamed — re-derive the adapter';
+      const end = src.indexOf('\n}\n', i);
+      if (end === -1) return 'llmCreate has no closing brace at column zero — re-derive the adapter';
+      const body = src.slice(i, end + 2);
+      if (body !== EXPECTED) {
+        const at = (() => {
+          for (let k = 0; k < Math.max(body.length, EXPECTED.length); k++) {
+            if (body[k] !== EXPECTED[k]) return k;
+          }
+          return -1;
+        })();
+        return `llmCreate diverged at byte ${at} (len ${body.length} vs ${EXPECTED.length}) — `
+             + `brideLlmClient.js duplicates this body and is now stale: ...${JSON.stringify(body.slice(Math.max(0, at - 30), at + 40))}`;
+      }
+      // …and the duplicate is genuinely a duplicate: the adapter must still
+      // perform all three, or the pin above is guarding nothing.
+      const ad = require('fs').readFileSync(path.join(ROOT, 'src/lib/brideLlmClient.js'), 'utf8');
+      for (const step of ['translateFor(provider,', 'clientFor(provider).messages.create(', 'assertToolFidelity(provider, resp)']) {
+        if (!ad.includes(step)) return `the adapter dropped llmCreate's step: ${step}`;
+      }
+      return true;
+    });
+
+  await acell('9.5 the two ephemeral cache_control blocks still stand on the ANTHROPIC path',
+              'delete the cache_control block at brideEngine.js:235 or circleEngine.js:110',
+    async () => {
+      // The flip strips cache_control by construction (llm.js:79). That must not
+      // become a licence to delete it from the source: the OFF state is a CACHED
+      // Haiku lane, and a lane that lost its 1-hour cache while nobody flipped
+      // anything is a silent cost regression the ledger would price as normal.
+      const fs2 = require('fs');
+      const rd = (f) => fs2.readFileSync(path.join(ROOT, f), 'utf8');
+      for (const f of ['src/agent/brideEngine.js', 'src/agent/circleEngine.js']) {
+        if (!/cache_control:\s*\{\s*type:\s*'ephemeral'\s*\}/.test(rd(f))) return `${f} lost its ephemeral cache block`;
+      }
+      // …and the strip that makes the flip safe is still in the facade.
+      const llm = rd('src/lib/llm.js');
+      if (!/if \(!c\.cache\) out = stripCache\(out\)/.test(llm)) return 'llm.js no longer strips cache_control for non-anthropic providers';
+      if (!/if \(c\.noThink && out\.thinking === undefined\) out\.thinking = \{ type: 'disabled' \}/.test(llm)) {
+        return 'llm.js no longer suppresses silent reasoning — the lane would truncate at max_tokens';
+      }
+      return true;
+    });
+
   // ── REPORT ────────────────────────────────────────────────────────────────
   console.log('\nTDW_10.C · DELIVERY 1 — COUPLE METER BENCH\n' + '─'.repeat(72));
   console.log(`  cost home (src/engine/dist): ${COST_HOME ? 'BUILT — real rupees asserted' : 'UNBUILT — honest-degradation asserted instead'}`);

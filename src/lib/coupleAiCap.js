@@ -157,9 +157,42 @@ function baseRow(ctx, kind) {
   };
 }
 
+// ── CE-31 · BF-1 · LABELLED AMENDMENT TO 10.C's SEALED LAW (ratify-or-revert) ─
+// THE LEDGER RECORDS THE WIRE, NOT THE CALLER'S INTENT.
+//
+// Sealed 10.C hardcoded `provider: 'anthropic'` and took `model` from
+// `params.model` — the string the CALL SITE passed. That was true while every
+// metered call was Anthropic and the caller's belief and the wire's fact were
+// the same sentence. The bride-lane provider flip (BRIDE_LLM_PROVIDER) breaks
+// that identity: brideEngine.js:214 still passes MODEL_HAIKU while the adapter
+// at lib/brideLlmClient.js sends `deepseek-v4-flash` to api.deepseek.com. Left
+// alone, this writer would have recorded provider=anthropic, model=haiku, and
+// PRICED IT AT THE HAIKU ROW while DeepSeek rupees left the account — silent
+// mis-pricing on the exact lane the meter exists to watch.
+//
+// The chair that sealed 10.C opened it narrowly for this and nothing else.
+// SOLE-WRITER LAW IS PRESERVED: this function remains the only writer of the
+// ledger's provider/model columns. It merely stops transcribing a belief when
+// a fact is on offer. When the machinery acted, the machinery speaks.
+//
+// THE FALLBACK IS THE POINT. A client that declares nothing — every raw
+// Anthropic client on the couple web lane (api/couple/chat.js, api/couple/muse.js)
+// and the bride lane's own OFF state — takes the pre-amendment path BYTE FOR
+// BYTE. That is what makes the flip's OFF state pinnable at the byte, and it is
+// what meter bench cell 9.2 asserts.
+function wireProviderOf(client) {
+  const p = client && client.__wireProvider;
+  return (typeof p === 'string' && p) ? p : null;
+}
+function wireModelOf(client, params) {
+  const m = client && client.__wireModel;
+  if (typeof m === 'string' && m) return m;
+  return (params && params.model) || null;
+}
+
 // ── Anthropic spend ──────────────────────────────────────────────────────────
 // Real tokens through a real price. cost_basis = 'metered'.
-async function recordAnthropicCall({ supabase, ctx, kind, model, usage }) {
+async function recordAnthropicCall({ supabase, ctx, kind, model, usage, provider }) {
   const u = usage || {};
   const inTok    = u.input_tokens ?? 0;
   const outTok   = u.output_tokens ?? 0;
@@ -167,7 +200,8 @@ async function recordAnthropicCall({ supabase, ctx, kind, model, usage }) {
   const cacheW   = u.cache_creation_input_tokens ?? 0;
   return writeRow(supabase, {
     ...baseRow(ctx, kind),
-    provider:      PROVIDER_ANTHROPIC,
+    // CE-31 BF-1: the declaration wins when present; absent, this is 10.C's byte.
+    provider:      provider || PROVIDER_ANTHROPIC,
     model:         model || null,
     input_tokens:  inTok,
     output_tokens: outTok,
@@ -276,7 +310,11 @@ function meteredAnthropic(anthropic, ctx) {
           supabase,
           ctx,
           kind,
-          model: (params && params.model) || null,
+          // CE-31 BF-1 · the wire's fact over the caller's belief. `client` is
+          // the UNWRAPPED client — the adapter itself — so the declaration is
+          // read at the one place that knows what actually left the process.
+          model:    wireModelOf(client, params),
+          provider: wireProviderOf(client),
           usage: response && response.usage,
         });
         return response;

@@ -24,11 +24,14 @@
 
 const express      = require('express');
 const ws           = require('ws');
-const Anthropic    = require('@anthropic-ai/sdk').default;
+// (the @anthropic-ai/sdk require lived here until CE-31 BF-1; its ONE consumer
+//  was the client construction below, now homed in lib/brideLlmClient.js — an
+//  unused import on a lane whose provider is now a question is a reader trap)
 const { createClient } = require('@supabase/supabase-js');
 const { runBrideAgenticTurn, surfacePendingCircleSessions } = require('./agent/brideEngine');
 const { runCircleAgenticTurn } = require('./agent/circleEngine');
 const { newTurnId, meteredAnthropic, withKind, coupleCapGate } = require('./lib/coupleAiCap'); // TDW_10.C · the couple lane's meter + gate
+const { buildBrideClient } = require('./lib/brideLlmClient'); // CE-31 BF-1 · the lane's provider, chosen by env
 // The one register, for the /surprise composer below — a bare Haiku call with
 // no system prompt, which used to describe the voice for itself (CE-65 fold).
 const { MIRA_REGISTER } = require('./agent/miraSoul');
@@ -78,7 +81,13 @@ function istMidnightUtcIso() {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   realtime: { transport: ws },
 });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// CE-31 BF-1 · ARM A. BRIDE_LLM_PROVIDER unset ⇒ this IS the line it replaced:
+// `new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })`. Set to a provider
+// llm.js's table carries (deepseek) ⇒ a client-shaped adapter riding that
+// table, cache_control stripped and thinking suppressed BY CONSTRUCTION.
+// Flip and revert are set-var-and-restart; no byte moves either way.
+// The meter wraps whatever this returns — TDW_10.C's wrapper is untouched.
+const anthropic = buildBrideClient(process.env);
 
 const app = express();
 app.set('trust proxy', true);
