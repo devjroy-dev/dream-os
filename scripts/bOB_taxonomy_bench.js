@@ -36,6 +36,8 @@
 //   M5  collabItems: the literal 16 back              -> 4.1 4.2 6.1
 //   M6  auth.js: the silent-drop `if (...includes)`   -> 5.1 5.2
 //   M7  0123: delete the file / the new CHECK         -> 4.3 4.4
+//   M8  change ANY byte of ANY vetoed string           -> the matching 7.x cell
+//       (APPROVED-COPY-CARRIES-ITS-HASH: an edited comma is a fresh veto)
 // Vacuous greens are worse than declared gaps; each cell above is named against
 // the mutation that reddens it, not against the charter that asked for it.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,6 +72,7 @@ const { VENDOR_CATEGORIES } = require(path.join(ROOT, 'src/agent/categories'));
 const { normaliseCategory, CATEGORY_ALIASES } = require(path.join(ROOT, 'src/lib/vendor/categoryFraming'));
 const { profileFor } = require(path.join(ROOT, 'src/lib/vendor/categoryProfiles'));
 const { CATEGORY_CAPACITY, RULED_OFF } = require(path.join(ROOT, 'src/lib/vendor/occupancy'));
+const OFFERING_OTHER = 'the work';
 const { REQUIREMENT_TYPES, KIND_TO_REQUIREMENT, requirementForKind } = require(path.join(ROOT, 'src/lib/vendor/collabItems'));
 const { CATEGORY_PRESET, resolvePreset } = require(path.join(ROOT, 'src/api/vendor/categoryPreset'));
 
@@ -275,6 +278,60 @@ ok(resolvePreset('venue & decor') === 'venue_decorator' && resolvePreset('Photog
    '6.3 resolvePreset normalises first — the Codex survives the merge and the casing');
 ok(resolvePreset('venue_catering') === 'venue_decorator',
    '6.4 a merged venue/caterer still reaches The Setting');
+
+// ═══ 7 · APPROVED-COPY-CARRIES-ITS-HASH ═════════════════════════════════════
+// The seven strings the founder vetoed 2026-08-12 (「 A as written · B② 」),
+// PINNED AT THE BYTE. Not paraphrased, not described — the literal is the cell.
+// An edited comma is a fresh veto, and this section is what makes that true
+// rather than merely stated. `framingFor` and `offeringNoun` are called for
+// real so the pin covers the SENTENCE THE COUPLE HEARS, not just a table entry
+// a caller might never reach.
+//
+// BOTH-WAYS (M8): change ANY byte of ANY string below -> the matching cell reds.
+section('7. the vetoed bytes — frozen (M8 reddens per-string)');
+const FROZEN_CAVEAT = {
+  hairstylist:     'the number of people and functions, and whether trials are included',
+  performer:       'the number of events and the hours of performance',
+  content_creator: 'the number of events, the deliverables, and the turnaround you need',
+  venue_catering:  'the dates, the number of guests, and what you need served or set up',
+};
+const FROZEN_NOUN = {
+  hairstylist:     'the hair',
+  performer:       'the performance',
+  content_creator: 'the content',
+};
+const { framingFor, offeringNoun, PRICE_DEPENDS_ON } = require(path.join(ROOT, 'src/lib/vendor/categoryFraming'));
+
+for (const [tok, want] of Object.entries(FROZEN_CAVEAT)) {
+  ok(PRICE_DEPENDS_ON[tok] === want || `got ${JSON.stringify(PRICE_DEPENDS_ON[tok])}`,
+     `7.caveat ${tok} — byte-frozen`);
+  ok(framingFor(tok) === `though it depends on ${want}`
+     || `sentence drifted: ${JSON.stringify(framingFor(tok))}`,
+     `7.sentence ${tok} — the couple-facing clause carries the vetoed bytes`);
+}
+for (const [tok, want] of Object.entries(FROZEN_NOUN)) {
+  ok(offeringNoun(tok) === want || `got ${JSON.stringify(offeringNoun(tok))}`,
+     `7.noun ${tok} — byte-frozen`);
+}
+// The three A-tokens must no longer fall through to `other` — that fallback was
+// the HELD posture and the veto discharged it. If one silently reverts, its
+// caveat would still be a real sentence, just the WRONG one; hence this cell.
+for (const tok of ['hairstylist', 'performer', 'content_creator']) {
+  ok(PRICE_DEPENDS_ON[tok] !== PRICE_DEPENDS_ON.other && offeringNoun(tok) !== OFFERING_OTHER,
+     `7.discharged ${tok} no longer falls back to \`other\``);
+}
+// B② is a WIDENING, not a re-key: the token still exists and the OLD venue bytes
+// must be gone. Pinning the absence is what stops a "restore" from undoing it.
+ok(PRICE_DEPENDS_ON.venue_catering.includes('served or set up')
+   && !PRICE_DEPENDS_ON.venue_catering.includes('which spaces you need'),
+   '7.B2 the caterer no longer hears venue-only words');
+// Arm ③ was ruled AVAILABLE AND UNTAKEN. These bytes must NOT have moved.
+const PROF = require(path.join(ROOT, 'src/lib/vendor/categoryProfiles')).PROFILES;
+ok(PROF.venue_catering.label === 'venue'
+   && offeringNoun('venue_catering') === 'the venue'
+   && PROF.venue_catering.visitOriented === true
+   && PROF.venue_catering.vocabulary === 'guests, dates, spaces, visit',
+   '7.arm3 UNTAKEN — noun, label, visit logic and vocabulary byte-untouched');
 
 // ═══ VERDICT ═════════════════════════════════════════════════════════════════
 console.log(`\n${'='.repeat(70)}`);

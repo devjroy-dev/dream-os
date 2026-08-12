@@ -35,7 +35,9 @@ const { VENDOR_CATEGORIES } = require('../../agent/categories');
 // ⚠ `hairstylist`, `performer`, `content_creator` ARE DELIBERATELY ABSENT. Their
 //   proposed bytes sit COMMENTED at the foot of this table under R-OB.10 (profile
 //   bytes land only after their veto). Until the founder's word lands they fall to
-//   `other` — generic, honest, not wrong. THIS IS A STATED CONSEQUENCE, NOT A GAP.
+//   DISCHARGED 2026-08-12: the founder's veto landed and all three are keyed
+//   below. The fallback-to-`other` posture this comment described is HISTORY,
+//   not current behaviour — kept because the next held byte will re-enter here.
 // ⚠ THIS TABLE IS NO LONGER THE MEMBERSHIP TEST. normaliseCategory used to decide
 //   "is this a canonical token?" by asking `PRICE_DEPENDS_ON[c]`. A copy table
 //   was the taxonomy's gatekeeper. That is why `venue_catering` could not exist.
@@ -43,15 +45,23 @@ const PRICE_DEPENDS_ON = {
   photography:    'the number of events and how much coverage you need',
   makeup:         'the number of people and functions, and whether trials are included',
   decor:          'the scale of the setup, the venue, and the number of functions',
-  venue_catering: 'the dates, the number of guests, and which spaces you need',
+  // B② VETOED 2026-08-12 — widened from venue's inherited bytes so a CATERER is
+  // not asked about spaces. Arm ③ (noun, label, ask-lines, visitPrompt) stays
+  // AVAILABLE and UNTAKEN: it lands the day a live caterer makes the intake
+  // shape cost something. Nothing else in this merge moved a byte.
+  venue_catering: 'the dates, the number of guests, and what you need served or set up',
   planning:       'the scope of work and how many functions you need managed',
   jewellery:      'the pieces you choose, the materials, and any customisation',
   designer:       'the outfits, the fabrics, and how much customisation you want',
   other:          'your specific requirements',
-  // ── HELD FOR VETO (R-OB.10) — uncomment only with the founder's word ───────
-  // hairstylist:     'the number of people and functions, and whether trials are included',
-  // performer:       'the number of events and the hours of performance',
-  // content_creator: 'the number of events, the deliverables, and the turnaround you need',
+  // ── VETOED AND FROZEN 2026-08-12 (founder: 「 A as written 」) ──────────────
+  // Primary drafts, no alternatives taken. `turnaround` STANDS — it is a trade
+  // word in a couple-facing sentence and that was argued and ruled, not missed.
+  // APPROVED-COPY-CARRIES-ITS-HASH: pinned at the byte by bOB_taxonomy_bench §7.
+  // AN EDITED COMMA IS A FRESH VETO.
+  hairstylist:     'the number of people and functions, and whether trials are included',
+  performer:       'the number of events and the hours of performance',
+  content_creator: 'the number of events, the deliverables, and the turnaround you need',
 };
 // Build a warm, semi-formal caveat clause for a quoted price.
 // Returns just the caveat text (no leading punctuation), e.g.
@@ -76,10 +86,12 @@ const OFFERING_NOUN = {
   jewellery:      'the pieces',
   designer:       'the outfits',
   other:          'the work',
-  // ── HELD FOR VETO (R-OB.10) ───────────────────────────────────────────────
-  // hairstylist:     'the hair',
-  // performer:       'the performance',
-  // content_creator: 'the content',
+  // ── VETOED AND FROZEN 2026-08-12 (founder: 「 A as written 」) ──────────────
+  // `the performance` is the only noun that picks no side across the merge —
+  // `the music` would strand the anchor. Pinned by bench §7; comma-frozen.
+  hairstylist:     'the hair',
+  performer:       'the performance',
+  content_creator: 'the content',
 };
 function offeringNoun(category) {
   const key = normaliseCategory(category);
