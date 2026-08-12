@@ -72,7 +72,7 @@ async function processBrideInbound(inputs, deps) {
 async function _processBrideInbound(inputs, deps) {
   const {
     phone, body, profileName, sidForPersist, internalReplay, messageId,
-    trimmedBody, numMedia, hasMedia, mediaContentType, mediaUrl, rawPayload,
+    trimmedBody, numMedia, hasMedia, mediaContentType, mediaUrl, mediaCaption, rawPayload,
   } = inputs;
   const {
     supabase, anthropic, sendWhatsApp, webhookCore,
@@ -482,7 +482,15 @@ async function _processBrideInbound(inputs, deps) {
 
     if (hasMedia && (mediaContentType || '').toLowerCase().startsWith('image/')) {
       sourceUrlForMuse = mediaUrl;
-      // The bride's caption is whatever text she sent alongside the image (may be empty).
+      // ── F5's CAPTION CLAUSE, UNBLOCKED (F-05.79 · CE-32 fork c-2) ────────────────────
+      // The bride's caption is whatever text she sent alongside the image — and on this
+      // transport that text has NEVER been in `trimmedBody`: Meta carries it on the media
+      // object and the normalizer discarded it (metaInbound.js `_messageMedia`). The line
+      // above read `sourceCaption = trimmedBody || null`, which on a Meta image inbound is
+      // ALWAYS null; F5's "the caption rides the save" was therefore correct in law and
+      // unreachable in fact. ONE ACT, ONE ROW is unchanged and untouched: this fills the
+      // caption FIELD of the save that already happens, and creates no second row.
+      sourceCaption = mediaCaption || sourceCaption;
     } else {
       const linkInBody = extractMuseUrl(trimmedBody);
       if (linkInBody) {
@@ -560,13 +568,27 @@ async function _processBrideInbound(inputs, deps) {
     // Body text is logged as-is. If the inbound was image-only or media-only,
     // synthesize a clear body string so conversation history stays coherent
     // and the agent reading the audit trail later isn't confused.
+    //
+    // ── F-05.79 · THE AUDIT BODY SPEAKS HER WORDS (CE-32-ruled sub-fork) ────────────────
+    // The vendor lane's own witnessed shape, mirrored: `caption || '[calendar image]'`
+    // (vendorInbound.js:384). Where a placeholder described an IMAGE, the bride's caption
+    // now stands in its place; the placeholder survives as the fallback for a captionless
+    // photo. The non-image branch below is deliberately UNMOVED — its string carries the
+    // media KIND ("video", "voice note", "PDF"), which is the only record that the estate
+    // received something it cannot yet process, and a caption must not erase it.
+    //
+    // NAMED CONSEQUENCE, not a side effect: `inboundForEngine` (below) is defined as
+    // "the same synthesized string we wrote to the audit log", so on a captioned photo the
+    // agent's context now carries her caption instead of `[forwarded an image]`. That is the
+    // honest reading of the same act, and the media context note already carried the caption
+    // — this makes the row and the note agree instead of disagree.
     let bodyForLog;
     if (trimmedBody.length > 0) {
       bodyForLog = trimmedBody;
     } else if (mediaSaveSucceeded) {
-      bodyForLog = '[forwarded an image]';
+      bodyForLog = mediaCaption || '[forwarded an image]';
     } else if (mediaSaveAttempted) {
-      bodyForLog = '[forwarded an image — save failed]';
+      bodyForLog = mediaCaption || '[forwarded an image — save failed]';
     } else if (hasMedia) {
       // Media was present but not an image (video, audio, document, etc).
       // Identify the rough kind for the audit trail.
@@ -581,11 +603,29 @@ async function _processBrideInbound(inputs, deps) {
     }
 
     // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
+    //
+    // ── F-09.178 CURED · THE RECORD OF A PHOTOGRAPH KEEPS A PATH TO THE PHOTOGRAPH ──────
+    // This row said `[forwarded an image]` and pointed at nothing. `public.messages.media_url`
+    // has existed since 0001 (column 6, witnessed at docs/db/PUBLIC_SCHEMA.md:599) and the
+    // bride lane never wrote it, so every audited photo inbound was a dead end: the census of
+    // eaten photos could count rows and could not open one.
+    //
+    // SYMMETRY WITH THE VENDOR LANE, CE-32-ruled: the value is the RESOLVED STABLE URL, not a
+    // storage object path — vendorInbound.js:386 writes `media_url: mediaUrl` from the same
+    // `resolvedMedia.stableUrl`, and metaMedia.js's own header names `media_url` as one of the
+    // two persisted audit columns the stable url exists to serve. A path would need a bucket,
+    // a prefix and a signing rule to become openable again; the url is openable as written.
+    //
+    // F-06.85 MECHANISM: this column is only ever non-null because the F-09.173 seam fills
+    // `mediaUrl` at the webhook (brideIndex.js → metaInputsFrom's third argument). If that
+    // seam is ever re-broken, this row goes back to pointing at nothing — silently, and with
+    // the body still reading like a photograph arrived.
     await supabase.from('messages').insert(webhookCore.inboundRow({
       conversation_id: conversation.id,
       direction:       'inbound',
       channel:         'whatsapp',
       body:            bodyForLog,
+      media_url:       mediaUrl || null,
       sent_by:         'couple',
     }, sidForPersist));
 
@@ -835,6 +875,14 @@ function metaInputsFrom(msg, rawBody, resolvedMedia) {
     // so a stableUrl with a null type would leave the doors exactly as shut as before.
     mediaContentType: (resolvedMedia && resolvedMedia.mime)      || null,
     mediaUrl:         (resolvedMedia && resolvedMedia.stableUrl) || null,
+    // F-05.79 CURED (CE-32 fork c-2). The caption travels on the DESCRIPTOR, never on
+    // `body`/`trimmedBody` — see the mechanism note at metaInbound.js `_messageMedia`. It is
+    // surfaced as its own input so it can reach the SAVE without touching one routing branch:
+    // `trimmedBody` is what the STOP word, the nudge words and the 'surprise me' intercept all
+    // read, and a caption promoted into it would be a photograph able to opt its own sender out.
+    // Descriptor-sourced, so it survives a FAILED resolve: `resolvedMedia` may be null while the
+    // caption is still the bride's own word about the thing she just sent.
+    mediaCaption:     (media[0] && media[0].caption) || null,
     rawPayload:       rawBody,
   };
 }

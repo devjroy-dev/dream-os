@@ -163,9 +163,26 @@ async function classifyImage({ image_url }) {
     return { route: 'muse' };
   }
 
+  // ── F-09.179 CURED · ONE WARN FOR TWO OPPOSITE FACTS (watch-list class №5) ──────────────
+  // This was a single line — "Vision returned error or empty response" — over a condition
+  // that is TWO opposite facts: Vision ANSWERED AND REFUSED (a typed error, with a code and a
+  // message we were throwing away), and Vision ANSWERED NOTHING (no responses[0] at all —
+  // quota, shape drift, a silently changed contract). Collapsed into one string they are
+  // indistinguishable in Railway forever, and the estate cannot tell a refusal it could act on
+  // from a silence it must investigate. That is the .174/.177/.179 family exactly.
+  //
+  // BEHAVIOUR IS UNCHANGED AND DELIBERATELY SO: both facts still default to muse and still
+  // return the same object. This cure buys HONESTY IN THE LOG, nothing else — the routing
+  // decision was never the defect.
   const response = data?.responses?.[0];
-  if (!response || response.error) {
-    console.warn('[imageOCRRouter] Vision returned error or empty response, defaulting to muse');
+  if (!response) {
+    console.warn('[imageOCRRouter] Vision response EMPTY (no responses[0]) — defaulting to muse');
+    return { route: 'muse' };
+  }
+  if (response.error) {
+    const code = (response.error && response.error.code) || 'unknown';
+    const message = (response.error && response.error.message) || 'no message';
+    console.warn(`[imageOCRRouter] Vision returned an ERROR (${code}: ${message}) — defaulting to muse`);
     return { route: 'muse' };
   }
 

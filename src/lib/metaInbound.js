@@ -76,12 +76,35 @@ function _messageText(m) {
   return '';
 }
 
+// ── F-05.79 CURED · THE CAPTION RIDES THE DESCRIPTOR (CE-32 fork c-2, 2026-08-12) ───────────
+// Meta puts a photo's caption on the MEDIA object (`m.image.caption`), never in `m.text`.
+// `_messageText` above returns '' for `m.type === 'image'` and always has, so the bride's own
+// words about her own photograph were discarded at the estate's front door: zero readers of
+// `m.image.caption` existed anywhere in the tree. That discard is what blocked F5's caption
+// clause (one act, one row — the caption rides the save) even after F-09.173 opened the doors.
+//
+// WHY HERE AND NOT IN `_messageText` (the rejected arm, recorded so nobody re-opens it):
+// `_messageText` feeds BOTH lanes' `trimmedBody`. Returning the caption there would have
+// changed vendor behaviour (vendorInbound.js:369/:384 would log captions in place of
+// `[calendar image]` and thread them into the calendar pipeline) and — on both lanes — would
+// have routed caption text through the STOP-word, nudge-word and 'surprise me' branches, so a
+// photo captioned "stop" would opt a bride out. The descriptor is the honest home: it is where
+// Meta put it, and it reaches only the adapters that ask for it.
+//
+// ADDITIVE AND UNREAD BY DEFAULT: this field had zero readers estate-wide when it was added,
+// so every existing consumer of `media[]` is byte-unmoved — the vendor lane included. The
+// bride adapter is its first and only reader (brideInbound.js `metaInputsFrom`).
 function _messageMedia(m) {
   if (!m) return [];
   const kinds = ['image', 'document', 'audio', 'video', 'sticker'];
   for (const k of kinds) {
     if (m.type === k && m[k]) {
-      return [{ id: m[k].id || null, mime: m[k].mime_type || null, kind: k }];
+      return [{
+        id: m[k].id || null,
+        mime: m[k].mime_type || null,
+        kind: k,
+        caption: m[k].caption || null,
+      }];
     }
   }
   return [];

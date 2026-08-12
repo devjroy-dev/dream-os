@@ -472,11 +472,25 @@ async function handleCircleMemberMessage({
 
   // ── Log inbound message (earliest safe point — after conversation resolved, cap-hit path has returned) ──
   // TDW_05 P1b: inbound MessageSid moved from twilio_sid to the durable message_sid column.
+  //
+  // ── F-09.178 (b′) CURED · THE CIRCLE MEMBER'S PHOTOGRAPH IS AN [image] INBOUND TOO ────
+  // The body on this row reads `[image]`; until now it pointed at nothing, exactly as the
+  // bride's own row did (cured at brideInbound.js's inbound insert). This door is where
+  // F-09.173's eaten photograph actually arrived, so a census that could not open THIS row
+  // could not open the specimen. Same ruled value as the bride's and the vendor's: the
+  // RESOLVED STABLE URL. `public.messages.media_url` witnessed at
+  // docs/db/PUBLIC_SCHEMA.md:599 (column 6, text).
+  //
+  // F-06.85 MECHANISM: `req.body.MediaUrl0` is the SYNTHETIC Twilio-shaped envelope that
+  // brideInbound.js builds from the normalized inputs (F4's KEPT-AND-NAMED vestige). It holds
+  // the stable url, never a Twilio url — there is no Twilio branch left on this lane. Rename
+  // those two envelope fields and this column goes null again in the F-09.173 shape.
   await supabase.from('messages').insert(webhookCore.inboundRow({
     conversation_id: conversation.id,
     direction:       'inbound',
     channel:         'whatsapp',
     body:            trimmedBody.length > 0 ? trimmedBody : hasMedia ? '[image]' : '[empty]',
+    media_url:       req.body.MediaUrl0 || null,
     sent_by:         'couple',
   }, twilioSid));
 
