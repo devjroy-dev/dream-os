@@ -12,8 +12,16 @@
 // extractCalendarFromImage stay byte-identical; every Meta specific lives here.
 //
 // LANE-AGNOSTIC (BINDING): returns { stableUrl, bytes, mime }. All policy — mime allowlist, size
-// cap, bucket name, graph version, token — is passed IN by the calling adapter. The future bride
-// adapter reuses this file untouched, supplying its own policy.
+// cap, bucket name, object prefix, graph version, token — is passed IN by the calling adapter.
+//
+// ── B-09H · F-09.173 · THE BRIDE ADAPTER ARRIVED (2026-08-12) ────────────────────────────
+// The sentence above ("the future bride adapter reuses this file untouched, supplying its own
+// policy") is now spent: the bride lane's adapter is live at brideInbound.js/resolveBrideMedia.
+// It reuses this resolver as designed. ONE param joined the contract to carry CE-31 ruling F1:
+// `objectPrefix` — SHARE the `wa-media` bucket, separate the lanes by object path (`bride/…`),
+// so a later per-lane bucket split is a mechanical move of prefixed objects rather than an
+// archaeology dig. DEFAULT IS '' — the vendor call site passes nothing and its object paths are
+// BYTE-IDENTICAL to before this change. That equality is a bench cell, not a claim.
 //
 // GUARDRAILS (caller-supplied, enforced here):
 //   - allowMimes : exact-match allowlist. Non-allowed  -> throw (adapter -> text-only path).
@@ -46,6 +54,7 @@ async function resolveMetaMedia({
   graphVersion = DEFAULT_GRAPH_VERSION,
   supabase,
   bucket,
+  objectPrefix = '',                 // adapter policy (F1): lane folder inside the shared bucket, e.g. 'bride/'
   allowMimes,                        // string[] exact mimes (adapter policy)
   maxBytes,                          // number (adapter policy)
   fetchImpl = fetch,                 // injectable for the bench; defaults to global fetch
@@ -92,7 +101,9 @@ async function resolveMetaMedia({
 
   // ── Re-host to the PUBLIC bucket at an UNGUESSABLE path ──────────────────────────────────
   const ext = EXT_BY_MIME[resolvedMime] || 'bin';
-  const objectPath = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  // The UNGUESSABLE part is unchanged; the prefix only files the object under a lane folder.
+  // With objectPrefix '' this expression is byte-identical to the pre-F-09.173 form.
+  const objectPath = `${objectPrefix}${Date.now()}-${crypto.randomUUID()}.${ext}`;
   const { error: upErr } = await supabase.storage
     .from(bucket)
     .upload(objectPath, bytes, { contentType: resolvedMime, upsert: false });

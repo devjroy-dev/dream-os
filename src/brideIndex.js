@@ -39,7 +39,8 @@ const { saveToMuse }     = require('./lib/museSave');
 const { groundedSearch } = require('./lib/groundedSearch');
 const { MODEL_HAIKU }    = require('./agent/models');
 const { startBrideCronJobs } = require('./brideCron');
-const { processBrideInbound, metaInputsFrom } = require('./lib/brideInbound'); // TDW_05 M1b
+const { processBrideInbound, metaInputsFrom, resolveBrideMedia } = require('./lib/brideInbound'); // TDW_05 M1b · B-09H F-09.173 adapter
+const { resolveMetaMedia } = require('./lib/metaMedia'); // TDW_05 MEDIA-SHIM: lane-agnostic Meta media resolver
 const metaInbound = require('./lib/metaInbound'); // TDW_05 M1b: dormant Meta inbound (bride lane)
 const { checkImageThrottle, markRejectionSent } = require('./lib/imageThrottle'); // TDW_05 M1b: via deps
 
@@ -178,7 +179,21 @@ app.post('/webhook/meta', async (req, res) => {
       const hasMedia = Array.isArray(msg.media) && msg.media.length > 0;
       if (!hasText && !hasMedia) { console.warn(`[bride-webhook:meta] empty inbound from ${msg.from}, dropping`); continue; }
 
-      const inputs = metaInputsFrom(msg, req.body);
+      // ── B-09H · F-09.173 · THE BRIDE LANE'S MEDIA SHIM ────────────────────────────
+      // Mirrors src/index.js (the vendor precedent) line for line: resolve the FIRST media
+      // item (media-ID → stable public url) BEFORE building inputs, and hand the result to
+      // the normalizer as its third argument. resolveBrideMedia returns null on any failure
+      // → both media fields stay null → both doors proceed exactly as they did before this
+      // cure (text-only, never a dead turn). Text turns are untouched.
+      //
+      // FIRST ITEM ONLY, and that is deliberate rather than incidental: WhatsApp delivers a
+      // multi-image forward as N separate inbound messages, each with its own wamid, so each
+      // arrives here on its own pass. The vendor lane made the same choice for the same reason.
+      const mediaItem = (Array.isArray(msg.media) && msg.media[0]) || null;
+      const resolvedMedia = mediaItem
+        ? await resolveBrideMedia(mediaItem, { resolveMetaMedia, supabase })
+        : null;
+      const inputs = metaInputsFrom(msg, req.body, resolvedMedia);
       await processBrideInbound(inputs, brideInboundDeps);
     }
     // Delivery receipts (same webhook as inbound). Outbound rows hold the wamid in twilio_sid (M1a).
@@ -606,6 +621,24 @@ async function handleCircleMemberMessage({
       }
     }
   } else if (trimmedBody && trimmedBody.length > 0) {
+    // ── B-09H · F-09.173 · F5 — THE CAPTION RIDES THE SAVE ONLY (CE-31-ruled) ────────
+    // ONE ACT, ONE ROW. When media is present, the `save_added` activity row carries the
+    // deed and the caption lands on the save as `sourceCaption` (see the branch above);
+    // NO `comment` row is written. Text arriving on its own stays a note.
+    //
+    // THIS `else if` IS THE ENFORCEMENT. It is not stylistic. Convert it to a second `if`
+    // and a captioned photo produces a save AND a note for one act — which is precisely the
+    // double-voice F-09.172 exists to cure, one layer down in the data.
+    //
+    // F-06.85 MECHANISM NOTE: before F-09.173's seam cure, `isMediaOrLink` was ALWAYS false
+    // on Meta (mediaContentType arrived null), so every captioned photo fell into THIS branch
+    // and was recorded as a note. That is the witnessed `[circle-handler] note captured` line
+    // over Mehek's photograph. The branch did not change; what changed is that the door above
+    // can finally see. RESIDUAL, DECLARED AND OWED TO F-09.174's sitting: when media is
+    // present but the resolve FAILS, control still lands here and a caption is still recorded
+    // as a note. .174's ruled per-turn states (no-media / media-saved / media-present-unsaved)
+    // are what will carry that case honestly; this sitting does not paper it.
+    //
     // ── Daily-cap check (text messages only) — I4 ──
     // Mirror of the image cap above. Counts circle_activity 'comment' rows
     // from this member today (IST). Hard cap: DAILY_CIRCLE_TEXT_CAP per day.

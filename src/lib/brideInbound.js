@@ -744,9 +744,30 @@ async function _processBrideInbound(inputs, deps) {
 }
 
 // ── Input normalizer (M2b: Meta is the only transport; twilioInputsFrom deleted) ──────
-// Meta path is TEXT-ONLY at M1: media arrives as a media-ID needing a Meta media fetch (a
-// named follow-up), so mediaContentType/mediaUrl are null and media inbounds are a declared gap.
-function metaInputsFrom(msg, rawBody) {
+// ── B-09H · F-09.173 · THE M1 GAP IS CLOSED (CE-31, 2026-08-12) ──────────────────────
+// This function used to hardcode `mediaContentType: null, mediaUrl: null` and call it a
+// "declared gap". The gap outlived Twilio and ate real photographs: a circle member's
+// image became a text note and the estate never saw it (F-09.173, production-witnessed
+// on couple `dev test 23`). The resolve happens at the WEBHOOK, before inputs are built,
+// exactly as the vendor lane does it (src/index.js:215-217 → vendorInbound.js
+// metaInputsFrom's third arg) — so THIS function stays synchronous and pure.
+//
+// ONE SEAM, NOT TWO DOORS. Both media doors read these same two normalized fields:
+//   bride  — brideInbound.js (the `hasMedia && mediaContentType startsWith image/` sites below)
+//   circle — brideIndex.js, via the synthetic `{ body: { MediaContentType0, MediaUrl0 } }`
+//            envelope built at the handCircleMemberMessage call site in this file.
+// Filling them here is what opens BOTH. Neither door needed an edit.
+//
+// F-06.85 MECHANISM NOTE — THE SYNTHETIC TWILIO-SHAPED ENVELOPE IS A KNOWN VESTIGE (F4,
+// CE-31-ruled KEPT this sitting). `MediaContentType0`/`MediaUrl0` are Twilio field names and
+// there is NO Twilio branch left on this lane: brideIndex.js mounts only /webhook/meta, and
+// `twilioInputsFrom` is deleted. The envelope survives because retiring it costs six door
+// edits for zero behaviour; retirement is parked as hygiene. IF YOU EVER RENAME THESE TWO
+// FIELDS, the circle door's media detection goes silent again in exactly the F-09.173 shape.
+//
+// `resolvedMedia` is null when there is no media OR when the resolve failed. Both collapse to
+// the pre-cure behaviour — text-only, never a dead turn (resolveBrideMedia's contract below).
+function metaInputsFrom(msg, rawBody, resolvedMedia) {
   const trimmedBody = (msg.text || '').trim();
   const media       = Array.isArray(msg.media) ? msg.media : [];
   // Meta `from` is bare international digits; the Twilio path (and therefore the DB and every
@@ -761,10 +782,65 @@ function metaInputsFrom(msg, rawBody) {
     internalReplay:   false,
     messageId:        msg.messageId,
     trimmedBody, numMedia: media.length, hasMedia: media.length > 0,
-    mediaContentType: null,
-    mediaUrl:         null,
+    // BOTH fields, deliberately. The vendor lane's normalizer carries mediaUrl alone because
+    // its doors never branch on type; BOTH bride doors do (the `startsWith('image/')` tests),
+    // so a stableUrl with a null type would leave the doors exactly as shut as before.
+    mediaContentType: (resolvedMedia && resolvedMedia.mime)      || null,
+    mediaUrl:         (resolvedMedia && resolvedMedia.stableUrl) || null,
     rawPayload:       rawBody,
   };
 }
 
-module.exports = { processBrideInbound, metaInputsFrom };
+// ── Bride media adapter (B-09H · F-09.173) ────────────────────────────────────────────
+// The vendor precedent, mirrored: src/lib/vendorInbound.js `resolveVendorMedia`. The resolver
+// (src/lib/metaMedia.js) is lane-agnostic; THIS is where the bride lane's policy lives.
+// Returns { stableUrl, mime } on success, or null on ANY failure → text-only path, typed log,
+// never a dead turn. The token is env-read here and NEVER logged.
+//
+// POLICY, CE-31-ruled:
+//   F1 bucket   — SHARE `wa-media` with the vendor lane; separate by object prefix `bride/`.
+//                 No second bucket at this couple count. A later split moves prefixed objects.
+//   F2 token    — ONE token by design: both lanes ride WABA-DIRECT 1739793260373677 and
+//                 metaCloud.js resolves the single env var META_WABA_TOKEN (no per-lane token
+//                 exists estate-wide). Its ABSENCE is a first-class typed state, not an
+//                 assumption: resolveMetaMedia throws 'token required', we catch, log typed,
+//                 return null, and the doors behave exactly as they did before this cure.
+//   F3 policy   — MIRROR the vendor's allowlist and cap VERBATIM (4 mimes, 5 MB). Loosening
+//                 happens later on evidence, never by drift. The two constant sets are
+//                 deliberately separate bindings so a vendor-lane change cannot silently
+//                 move the bride lane's ceiling.
+const BRIDE_MEDIA_ALLOW_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']; // sticker → image/webp passes
+const BRIDE_MEDIA_MAX_BYTES   = 5 * 1024 * 1024; // 5 MB — WhatsApp image ceiling AND Anthropic Vision per-image limit
+const BRIDE_MEDIA_BUCKET      = 'wa-media';      // PUBLIC bucket, shared; unguessable object paths (see metaMedia.js)
+const BRIDE_MEDIA_PREFIX      = 'bride/';        // F1 lane folder
+
+async function resolveBrideMedia(mediaItem, deps) {
+  const { resolveMetaMedia, supabase } = deps;
+  if (!mediaItem || !mediaItem.id) return null;
+  try {
+    const { stableUrl, mime } = await resolveMetaMedia({
+      mediaId:      mediaItem.id,
+      mime:         mediaItem.mime,
+      token:        process.env.META_WABA_TOKEN,
+      supabase,
+      bucket:       BRIDE_MEDIA_BUCKET,
+      objectPrefix: BRIDE_MEDIA_PREFIX,
+      allowMimes:   BRIDE_MEDIA_ALLOW_MIMES,
+      maxBytes:     BRIDE_MEDIA_MAX_BYTES,
+    });
+    return { stableUrl, mime };
+  } catch (e) {
+    // TYPED AND LOUD. F-09.173's whole cost was silence: a photo became
+    // `[circle-handler] note captured` with zero pipeline lines, and a night of diagnosis
+    // was spent on a lane that had never said a word. A refusal that logs is a refusal
+    // someone can read.
+    console.log(`[meta-media] bride resolve failed reason=${e.message} mediaId=${mediaItem.id}`);
+    return null;
+  }
+}
+
+module.exports = {
+  processBrideInbound, metaInputsFrom,
+  resolveBrideMedia, BRIDE_MEDIA_BUCKET, BRIDE_MEDIA_PREFIX,
+  BRIDE_MEDIA_ALLOW_MIMES, BRIDE_MEDIA_MAX_BYTES,
+};
