@@ -15,6 +15,10 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
+// ARC OB · micro item ③. THE ONE PREDICATE HOME — required, never re-derived.
+// Both GETs below report its verdict so OB-P's guard has a server-computed
+// answer and no client ever holds a second copy of the completeness rule.
+const { brideComplete } = require('../../lib/onboardingPredicate');
 
 router.get('/:coupleId', asyncHandler(async (req, res) => {
   const supabase    = req.app.locals.supabase;
@@ -51,6 +55,14 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
       budget_total:     couple.budget_total     || null,
       events_planned:   couple.events_planned   || [],
       planning_state:   couple.planning_state   || null,
+      // ── ARC OB · THE VERDICT (micro item ③) ──────────────────────────────
+      // BOTH couple profile GETs carry it, and that is a declared executor
+      // decision rather than a widening for its own sake: two profile GETs on
+      // one lane returning different answers about completeness is F-04.36's
+      // class waiting to happen. The surface that reads THIS one and finds no
+      // verdict is the surface that computes its own. One lane, one answer.
+      // This handler already selects users(name) — no new query, no new join.
+      onboarding:       brideComplete({ name: couple.users?.name }, couple),
       onboarding_state: couple.onboarding_state || null,
     },
   });
@@ -177,14 +189,31 @@ router.get('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { couple_id } = req.coupleUser;
 
+  // ── ARC OB · THE VERDICT ON THE WIRE (micro item ③) ────────────────────────
+  // `users(name)` JOINS the select because `brideComplete` reads users.name and
+  // this handler could not see it — the join is the minimum needed to answer,
+  // not a widening. It is the SAME join shape GET /:coupleId above already uses,
+  // adopted rather than invented.
   const { data: couple, error } = await supabase
     .from('couples')
-    .select('id, onboarding_state, planning_state, wedding_date, wedding_city, partner_name, budget_total')
+    .select('id, onboarding_state, planning_state, wedding_date, wedding_city, partner_name, budget_total, users(name)')
     .eq('id', couple_id)
     .maybeSingle();
 
   if (error || !couple) return errRes(res, 404, 'Couple not found.');
-  return okRes(res, { couple });
+
+  // `users` is STRIPPED from the response. The join exists to compute the
+  // verdict, and leaking a nested relation into a shape that never carried one
+  // would hand clients a second route to the bride's name — which is how a
+  // client ends up deriving completeness itself. The response gains exactly one
+  // key. (bride_name is already served, under that name, by GET /:coupleId.)
+  const { users, ...row } = couple;
+  return okRes(res, {
+    couple: {
+      ...row,
+      onboarding: brideComplete({ name: users?.name }, couple),
+    },
+  });
 }));
 
 module.exports = router;

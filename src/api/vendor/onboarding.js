@@ -54,7 +54,7 @@ const VENDOR_WA = waNumberFor('vendor');   // F5 rider: one home for the pair
 // "simplified" here — required. R-31.1's posture applied to a predicate rather
 // than a call-site list: a second copy of the completeness rule would be a
 // second thing to keep true, and the arc's whole design is that there is one.
-const { vendorComplete, validateServiceAreaPair } = require('../../lib/onboardingPredicate');
+const { vendorComplete, validateServiceAreaPair, INCOMPLETE_REFUSAL } = require('../../lib/onboardingPredicate');
 
 // THE LOCKED CATEGORY TAXONOMY, required in place (CE-32 ruling fork d).
 // src/agent/categories.js holds 16 canonical tokens and is LOAD-BEARING far
@@ -82,7 +82,12 @@ const { VENDOR_CATEGORIES } = require('../../agent/categories');
 // The two below are FOUNDER-VETOED UTILITY COPY (CE-32's copy boundary: a
 // vendor reads these through OB-P's form, so they take a veto like any other
 // vendor-facing byte). Frozen at the byte; an edit is a fresh veto.
-const INCOMPLETE_REFUSAL = 'A few details are still needed before your profile is live.';
+// INCOMPLETE_REFUSAL IS NO LONGER DECLARED HERE. The micro gives the bride lane
+// the same 400 contract, and this byte now has ONE home beside the predicate
+// that produces the verdict it explains (src/lib/onboardingPredicate.js). It is
+// required above, unchanged character-for-character; the bench pins it at the
+// new home and reddens if either endpoint grows a local copy again.
+//
 // FOUNDER-VETOED 2026-08-12, and DELIBERATELY TAXONOMY-AGNOSTIC. An earlier
 // draft enumerated the categories inside the sentence; it was refused because
 // the estate's taxonomy is under active revision, and copy that names a list
@@ -207,11 +212,31 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     // widened for one caller. The keys are onboardingPredicate's VENDOR_FIELDS
     // vocabulary — an interface, not labels; the founder-vetoed display words
     // live in the PWA and map to these.
+    //
+    // ── `allowed` RIDES HERE TOO (micro item ②) ─────────────────────────────
+    // WHY: OB-P's category picker is forbidden a hardcoded list (F-04.36's
+    // class), so it must build from the server's own taxonomy — and before this
+    // line, the ONLY response carrying `allowed` was the CATEGORY_UNKNOWN
+    // refusal. A form could obtain its options solely by first submitting an
+    // answer it knew to be wrong. That is not a contract, it is a sentinel
+    // harvest, and it was refused on sight.
+    //
+    // UNCONDITIONAL, deliberately — not `...(missing.includes('category') && {})`.
+    // The form renders on ANY incomplete verdict, and a picker that has options
+    // on some refusals and not others is a picker whose author will cache the
+    // list locally to cover the gap. One shape, every time, so there is never a
+    // reason to hold a second copy in the client.
+    //
+    // READ FROM THE TAXONOMY, never restated. This is the same array the
+    // CATEGORY_UNKNOWN branch sends, from the same require — a token added to
+    // src/agent/categories.js appears in OB-P's picker with NO pwa edit, which
+    // is the drift-proof cell the arc's acceptance names.
     return res.status(400).json({
       ok:      false,
       error:   INCOMPLETE_REFUSAL,
       code:    'INCOMPLETE',
       missing: verdict.missing,
+      allowed: VENDOR_CATEGORIES,
     });
   }
 

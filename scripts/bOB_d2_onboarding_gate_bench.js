@@ -842,7 +842,14 @@ async function acell(id, desc, fn) {
 //         clobber is only visible on a row that already holds a price)
 //   7.17  onboarding.js: re-derive completeness locally instead of requiring
 //         the predicate home
-//   7.19  onboarding.js: change one character of INCOMPLETE_REFUSAL
+//   7.19  change one character of INCOMPLETE_REFUSAL. THE BYTE MOVED HOMES in
+//         the CE-32 predicate-wire micro — it is no longer declared in
+//         onboarding.js but required from src/lib/onboardingPredicate.js, so
+//         both lanes refuse in one sentence rather than two copies. Mutate it
+//         THERE. This cell's assertion is behavioural (it reads the response),
+//         so it did not move with the byte; only this instruction did.
+//         RETIRE-WITH-THE-READER: the sitting that moves a subject owns the
+//         lines that point at it.
 //   7.20  onboarding.js: change one character of CATEGORY_REFUSAL
 //   7.21  onboarding.js: fold the token list back into CATEGORY_REFUSAL
 //   7.22  onboarding.js: hardcode the allowed list instead of reading the

@@ -25,6 +25,10 @@ const { profileFor }        = require('../../lib/vendor/categoryProfiles');
 const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
 // F-10.92 — the lane flag has to reach the CLIENT, not just the route.
 const { readLaneFlag } = require('../../lib/laneFlags');
+// ARC OB · micro item ③. THE ONE PREDICATE HOME — required, never re-derived.
+// The GET below reports its verdict so OB-P's guard has a server-computed
+// answer and no client ever holds a second copy of the completeness rule.
+const { vendorComplete } = require('../../lib/onboardingPredicate');
 
 // The stepper is for function artists only (spec P3; timelineType 'event' in the
 // profile's own vocabulary) and never for RULED_OFF categories (planner: occupancy
@@ -141,6 +145,23 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       ...capacityFacts(vendor.category),
       couture_eligible:        vendor.couture_eligible        === true,
       featured_eligible:       vendor.featured_eligible       === true,
+      // ── ARC OB · THE VERDICT ON THE WIRE (micro item ③) ──────────────────
+      // OB-P's layout guard reads THIS and never the marker below it. The two
+      // sit adjacent on purpose: a reader who reaches for `onboarding_state`
+      // has the honest answer in the same object, one line up.
+      //
+      // WHY THE MARKER CANNOT SERVE, even as a cheap negative filter: four live
+      // vendor rows carry onboarding_state='complete' over rows the predicate
+      // refuses (F-OB.2's legacy). A guard trusting the marker's 'complete'
+      // waves exactly those four through FOREVER — and they are precisely the
+      // rows the arc's backfill-on-login promise exists to repair. The marker is
+      // a flow position (R-OB.8); this is the fact.
+      //
+      // COMPUTED SERVER-SIDE, from the one home, because a client that computes
+      // completeness is a second definition of it — the thing this arc has spent
+      // three sittings collapsing into one. `resolveVendor()` selects '*', so
+      // this costs no query.
+      onboarding:              vendorComplete({ name: user?.name }, vendor),
       onboarding_state:        vendor.onboarding_state        || null,
       instagram_handle:        vendor.instagram_handle        || null,
       // ── TDW_07 P2 ────────────────────────────────────────────────────────────

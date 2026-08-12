@@ -29,6 +29,29 @@
 //   M6  drop `requireCoupleAuth` from the route                     → §1.1/§1.2 RED
 //   M7  make the users-write leg fatal (return errRes on uErr)      → §4.3 REDs
 // The run at the uncured origin tree is recorded in the delivery packet with its count.
+// ═══ LABELLED AMENDMENT — ARC OB · CE-32 · THE PREDICATE-WIRE MICRO ══════════════════
+// F-05.18 was ruled SUBSUMED BY OB-P at the CE-31 seal, and this is the shape that
+// ruling takes in code. The micro cures F-OB.10: `couple/onboarding.js` now validates
+// through `brideComplete` and writes 'complete' ONLY when the predicate says so, with an
+// ATOMIC refusal — an incomplete submission writes nothing at all.
+//
+// THIS BENCH PINNED THE CONTRACT THAT CURE RETIRES. Its `NEW_PAYLOAD` carried no
+// `budget_total` and its COUPLE fixture held none, so under the cured handler every
+// fixture is correctly REFUSED before any write, and twenty-one cells failed reading
+// `payload` off a write that never happened. The failures were not a defect in the cure:
+// they were this file asserting that an optional-everything submission still lands.
+//
+// RETIRE-WITH-THE-READER: the sitting that moves a subject owns the benches that read
+// it. Every amended cell is RE-AIMED AT THE CURED CONTRACT, never deleted — the durable
+// half of each (does this field reach a witnessed column? is the write scoped to the
+// JWT's couple? are the phantom keys still inert?) is exactly as load-bearing as it was,
+// and now rides a payload the door actually accepts. The retired half — 「 always set to
+// complete 」 and 「 a failed users write is NON-FATAL 」 — is re-aimed at its own
+// opposite, because both sentences are now false BY RULING and a cell asserting them
+// would defend the disease. §8 is NEW and pins the refusal contract itself.
+// Cell-by-cell disposition table rides the handover.
+//
+// M7 IS INVERTED BY THE SAME RULING and is restated at 4.3.
 'use strict';
 const assert = require('assert');
 
@@ -145,14 +168,28 @@ const notesInsert  = (writes) => writes.find(w => w.table === 'notes'   && w.op 
 
 // THE NEW CALLER'S PAYLOAD — the exact shape the cured (auth) form now sends. The old
 // shape is not benched anywhere in this file, deliberately (the both-sides clause).
+//
+// AMENDED (micro): `budget_total` JOINS IT. Not to make cells pass — to keep this
+// constant honest about its own name. Under BRIDE_FIELDS = ['name','budget'] a payload
+// without a budget is no longer "the new caller's payload"; it is an incomplete
+// submission, and OB-P's bride form cannot send it because the predicate is what its
+// two boxes are keyed off. The four optional fields stay exactly as they were — they do
+// not gate, and §3 still proves each one reaches its witnessed column.
 const NEW_PAYLOAD = {
   name:           'Vera Menon',
+  budget_total:   2500000,
   partner_name:   'Ishaan Rao',
   wedding_date:   '2027-02-14',
   wedding_city:   'Udaipur',
   residence_city: 'Dubai',
   wedding_style:  'hindu',
 };
+
+// THE TWO MANDATORY FIELDS, for cells that isolate ONE optional field. Before the micro
+// those cells could send that field alone; now the door refuses a submission missing the
+// mandatory two, so they carry this and vary exactly one thing on top of it. The subject
+// under test is unchanged — only the ticket to the handler is.
+const MANDATORY = { name: 'Vera Menon', budget_total: 2500000 };
 
 (async () => {
 
@@ -225,13 +262,25 @@ const NEW_PAYLOAD = {
     assert.strictEqual(coupleUpdate(writes).payload.wedding_style, 'hindu');
   });
 
-  await t('3.6 onboarding_state is always set to complete', async () => {
-    const { writes } = await drive({ body: {}, headers: authed });
-    assert.strictEqual(coupleUpdate(writes).payload.onboarding_state, 'complete');
+  await t('3.6 onboarding_state is set to complete ONLY when the predicate says complete [AMENDED]', async () => {
+    // WAS: 「 onboarding_state is always set to complete 」, driven with an EMPTY body.
+    // That sentence is the finding (F-OB.10), not the contract: `const updates = {
+    // onboarding_state: 'complete' }` made the marker the first key of the object,
+    // written before a field was read. The cell keeps its subject — who may write the
+    // marker — and is re-aimed at the ruling: the predicate, and nothing else, decides.
+    const complete = await drive({ body: NEW_PAYLOAD, headers: authed });
+    assert.strictEqual(coupleUpdate(complete.writes).payload.onboarding_state, 'complete');
+
+    const empty = await drive({ body: {}, headers: authed });
+    assert.strictEqual(empty.res._status, 400, 'an empty body was still stamped complete');
+    assert.strictEqual(coupleUpdate(empty.writes), undefined,
+      'an incomplete submission wrote to couples — the refusal is not atomic');
   });
 
   await t('3.7 budget_total still coerces a numeric string (untouched behaviour)', async () => {
-    const { writes } = await drive({ body: { budget_total: '2500000' }, headers: authed });
+    // AMENDED: the fixture gains `name`, because budget alone is now an incomplete
+    // submission. The coercion under test is unchanged and so is the assertion.
+    const { writes } = await drive({ body: { name: 'Vera Menon', budget_total: '2500000' }, headers: authed });
     assert.strictEqual(coupleUpdate(writes).payload.budget_total, 2500000);
   });
 
@@ -257,16 +306,47 @@ const NEW_PAYLOAD = {
       'name was written to couples, which has no name column');
   });
 
-  await t('4.3 a failed users write is NON-FATAL — the request still succeeds (me.js:85-91\'s posture)', async () => {
+  await t('4.3 a failed users write is FATAL, and leaves NO complete marker behind [AMENDED — M7 inverted]', async () => {
+    // WAS: 「 a failed users write is NON-FATAL — the request still succeeds 」. That
+    // posture was reasoned from an ordering that no longer exists: the name write ran
+    // LAST, after `couples` was already committed, so a 500 would have told the caller
+    // nothing landed when most of it had. Under the atomic rule the name write runs
+    // FIRST and nothing is committed when it fails — so the trade is gone, and the old
+    // sentence would now defend a bride being told 「 Profile complete. 」 with her name,
+    // one of the two MANDATORY fields, unsaved. That is the marker lying again, one
+    // layer down. M7 inverts with it: making the users leg non-fatal now REDs this cell.
     const { res, writes } = await drive({ body: NEW_PAYLOAD, headers: authed, failTable: 'users' });
-    assert.ok(coupleUpdate(writes), 'couples never got its write');
-    assert.strictEqual(res._status, 200, 'a failed name write turned a mostly-successful save into a 500');
-    assert.strictEqual(res._json.ok, true);
+    assert.strictEqual(res._status, 500, 'a failed name write was swallowed');
+    assert.strictEqual(res._json.ok, false);
+    assert.strictEqual(coupleUpdate(writes), undefined,
+      'couples was written despite the name write failing — the refusal is not atomic');
   });
 
-  await t('4.4 no name sent → no users write is issued at all', async () => {
-    const { writes } = await drive({ body: { wedding_city: 'Goa' }, headers: authed });
-    assert.strictEqual(usersUpdate(writes), undefined);
+  await t('4.4 no name sent → no users write is issued at all [AMENDED]', async () => {
+    // AMENDED: the fixture must now be one the door ACCEPTS while sending no `name` —
+    // i.e. a returning bride whose name is already on file. The old fixture
+    // ({ wedding_city: 'Goa' }) passed vacuously the moment the cure landed: it is
+    // refused at the predicate, so of course no users write is issued, and the cell
+    // would have proved nothing about the no-name branch it exists for.
+    const writes = [];
+    const supabase = withAuth(
+      makeSupabase({ user: { id: 'u-1', name: 'Vera Menon' }, couple: { id: 'c-1', budget_total: 2500000 }, writes }),
+      { token: TOKEN, authUserId: AUTHID },
+    );
+    const req = makeReq({ body: { wedding_city: 'Goa' }, headers: authed, cookies: {}, supabase });
+    const res = makeRes();
+    await new Promise((resolve) => {
+      let nexted = false;
+      const next = () => { nexted = true; resolve(); };
+      Promise.resolve(authLayer(req, res, next)).then(() => { if (!nexted) resolve(); });
+    });
+    await new Promise((resolve) => {
+      handlerLayer(req, res, () => resolve());
+      const poll = setInterval(() => { if (res._ended) { clearInterval(poll); resolve(); } }, 1);
+      setTimeout(() => { clearInterval(poll); resolve(); }, 800);
+    });
+    assert.strictEqual(res._status, 200, 'a returning bride with everything on file was refused');
+    assert.strictEqual(usersUpdate(writes), undefined, 'a users write was issued for an unchanged name');
   });
 
   // ── §5 — THE NOTES PLANE, and the disclosed silence of the new columns ────────────
@@ -325,7 +405,12 @@ const NEW_PAYLOAD = {
       residence_country: 'Dubai', wedding_country: 'Udaipur',
       wedding_style: 'hindu', user_segment: 'nri',
     };
-    const { writes } = await drive({ body: OLD_PHANTOMS, headers: authed });
+    // AMENDED (micro): MANDATORY rides along. The phantoms alone are now an incomplete
+    // submission, so without it the handler refuses and this cell would read `payload`
+    // off a write that never happened — proving nothing about inertness. The claim under
+    // test is untouched: every phantom key must still fail to reach the database.
+    // `wedding_city` is deliberately NOT in MANDATORY, so the last assertion stands.
+    const { writes } = await drive({ body: { ...MANDATORY, ...OLD_PHANTOMS }, headers: authed });
     const payload = coupleUpdate(writes).payload;
     for (const dead of ['userId', 'phone', 'residence_country', 'wedding_country', 'user_segment']) {
       assert.strictEqual(dead in payload, false, `phantom key ${dead} reached the database`);
@@ -346,23 +431,88 @@ const NEW_PAYLOAD = {
   // ── §7 — TRIMS AND CAPS ───────────────────────────────────────────────────────────
   section('§7 — the new columns take their neighbours\' trimming discipline');
 
-  await t('7.1 residence_city is trimmed and capped at 80 (wedding_city\'s cap)', async () => {
+  await t('7.1 residence_city is trimmed and capped at 80 (wedding_city\'s cap) [AMENDED fixture]', async () => {
     const long = 'x'.repeat(200);
-    const { writes } = await drive({ body: { residence_city: `  ${long}  ` }, headers: authed });
+    const { writes } = await drive({ body: { ...MANDATORY, residence_city: `  ${long}  ` }, headers: authed });
     assert.strictEqual(coupleUpdate(writes).payload.residence_city.length, 80);
   });
 
-  await t('7.2 wedding_style is trimmed and capped at 40', async () => {
-    const { writes } = await drive({ body: { wedding_style: `  ${'y'.repeat(200)}  ` }, headers: authed });
+  await t('7.2 wedding_style is trimmed and capped at 40 [AMENDED fixture]', async () => {
+    const { writes } = await drive({ body: { ...MANDATORY, wedding_style: `  ${'y'.repeat(200)}  ` }, headers: authed });
     assert.strictEqual(coupleUpdate(writes).payload.wedding_style.length, 40);
   });
 
-  await t('7.3 whitespace-only values are treated as absent, not written blank', async () => {
-    const { writes } = await drive({ body: { residence_city: '   ', wedding_style: '  ', name: ' ' }, headers: authed });
+  await t('7.3 whitespace-only OPTIONAL values are treated as absent, not written blank [AMENDED]', async () => {
+    // The `name: ' '` arm MOVED to §8.4, where it belongs: a whitespace name is no
+    // longer "an absent optional field", it is a REFUSED mandatory one, and asserting
+    // "no users write" about it here would pass for the wrong reason (nothing is
+    // written on a refusal at all). Its assertion is stronger at its new home.
+    const { writes } = await drive({ body: { ...MANDATORY, residence_city: '   ', wedding_style: '  ' }, headers: authed });
     const payload = coupleUpdate(writes).payload;
     assert.strictEqual('residence_city' in payload, false);
     assert.strictEqual('wedding_style' in payload, false);
-    assert.strictEqual(usersUpdate(writes), undefined);
+  });
+
+  // ── §8 — THE REFUSAL CONTRACT (NEW, micro) ────────────────────────────────────────
+  // The cure's own half. §1-§7 prove what a COMPLETE submission does; nothing in this
+  // file proved what an incomplete one does, because before the micro there was no such
+  // state. These cells are the both-ways other side: the shape OB-P's bride form renders
+  // its boxes from, and the atomicity that makes a half-filled form safe to abandon.
+  section('§8 — the 400 INCOMPLETE contract, and the atomic refusal  [micro: F-OB.10]');
+
+  await t('8.1 an incomplete submission answers 400 with the estate\'s INCOMPLETE shape', async () => {
+    const { res } = await drive({ body: { partner_name: 'Ishaan Rao' }, headers: authed });
+    assert.strictEqual(res._status, 400);
+    assert.strictEqual(res._json.ok, false);
+    assert.strictEqual(res._json.code, 'INCOMPLETE');
+    assert.strictEqual(res._json.error, 'A few details are still needed before your profile is live.');
+  });
+
+  await t('8.2 missing[] is HONEST — it names every absent mandatory field, in interface order', async () => {
+    const { BRIDE_FIELDS } = require('../src/lib/onboardingPredicate');
+    const { res } = await drive({ body: {}, headers: authed });
+    assert.deepStrictEqual(res._json.missing, BRIDE_FIELDS,
+      'missing[] disagrees with the vocabulary OB-P keys its form off');
+  });
+
+  await t('8.3 the refusal is ATOMIC — no couples write, no users write, no note', async () => {
+    const { writes } = await drive({
+      body: { name: 'Vera Menon', partner_name: 'Ishaan Rao', wedding_city: 'Udaipur' },
+      headers: authed,
+    });
+    assert.strictEqual(writes.length, 0, `an incomplete submission wrote: ${JSON.stringify(writes)}`);
+  });
+
+  await t('8.4 a whitespace-only name is REFUSED, not silently dropped [MOVED from 7.3]', async () => {
+    const { res, writes } = await drive({ body: { name: ' ', budget_total: 2500000 }, headers: authed });
+    assert.strictEqual(res._status, 400);
+    assert.ok(res._json.missing.includes('name'),
+      'a name of one space satisfied a mandatory field');
+    assert.strictEqual(writes.length, 0);
+  });
+
+  await t('8.5 a returning bride is judged on the MERGED shape, not the body alone', async () => {
+    // Her budget is on file from last week; today she sends only her name. Validating
+    // the body alone would refuse her for a fact the estate already holds.
+    const writes = [];
+    const supabase = withAuth(
+      makeSupabase({ user: { id: 'u-1' }, couple: { id: 'c-1', budget_total: 800000 }, writes }),
+      { token: TOKEN, authUserId: AUTHID },
+    );
+    const req = makeReq({ body: { name: 'Vera Menon' }, headers: authed, cookies: {}, supabase });
+    const res = makeRes();
+    await new Promise((resolve) => {
+      let nexted = false;
+      const next = () => { nexted = true; resolve(); };
+      Promise.resolve(authLayer(req, res, next)).then(() => { if (!nexted) resolve(); });
+    });
+    await new Promise((resolve) => {
+      handlerLayer(req, res, () => resolve());
+      const poll = setInterval(() => { if (res._ended) { clearInterval(poll); resolve(); } }, 1);
+      setTimeout(() => { clearInterval(poll); resolve(); }, 800);
+    });
+    assert.strictEqual(res._status, 200, 'a returning bride was re-asked for what was on file');
+    assert.strictEqual(coupleUpdate(writes).payload.onboarding_state, 'complete');
   });
 
   console.log(`\nb05_f0518_onboarding_bench: ${pass} passed, ${fail} failed`);

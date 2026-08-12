@@ -139,6 +139,27 @@ function vendorComplete(user, vendor) {
   return { complete: missing.length === 0, missing };
 }
 
+// ── THE INCOMPLETE REFUSAL — ONE BYTE, BOTH LANES ──────────────────────────
+// MOVED, NOT AUTHORED. This sentence was founder-vetoed 2026-08-12 and shipped
+// resident in src/api/vendor/onboarding.js. The micro gives the BRIDE lane the
+// same 400 contract, and a bride endpoint declaring its own copy of this
+// sentence would be F-04.36's class applied to copy: two homes, one meaning,
+// and a drift nobody notices until a founder edits one of them.
+//
+// APPROVED-COPY-CARRIES-ITS-HASH is intact BECAUSE the byte did not change —
+// character-for-character what the veto approved. A move is not an edit; an
+// edited comma would still be a fresh veto and still may not ride a refactor.
+// It homes HERE rather than in either endpoint because the predicate is already
+// this arc's declared one home for the sentences that answer to it (see
+// validateServiceAreaPair's four, directly below).
+//
+// ⚠ LANE-FIT IS AN OPEN COPY QUESTION, DECLARED NOT DECIDED. The sentence was
+// written for a vendor, and 「 before your profile is live 」 is a vendor's
+// state — a bride has no profile that goes live. The micro's ruling is ZERO NEW
+// COPY, so it ships verbatim on both lanes and the question goes to the founder
+// with OB-P's bride veto sheet rather than being answered by an executor's pen.
+const INCOMPLETE_REFUSAL = 'A few details are still needed before your profile is live.';
+
 /**
  * THE API-EDGE SERVICE-AREA RULE, in one place, for every write door.
  *
@@ -199,4 +220,5 @@ module.exports = {
   SERVICE_AREA_TOKENS,
   BRIDE_FIELDS,
   VENDOR_FIELDS,
+  INCOMPLETE_REFUSAL,
 };
