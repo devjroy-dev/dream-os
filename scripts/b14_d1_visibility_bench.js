@@ -780,6 +780,30 @@ t('§8.3 [F-SW.3] the schema doc names this out-of-order migration in its stalen
     'the header does not say WHICH table it made stale, or by how much');
 });
 
+// ── §8.5 IS BORN OF THIS DELIVERY'S OWN INCIDENT, 2026-08-13 ───────────────
+// After the founder applied 0098 green and the bench ran 61/61, STEP 3 asked him
+// to open the migration by hand and type the apply date. The session that opened
+// it received a pasted shell command instead, the whole file became one line of
+// bash, and it was committed and pushed — because the verify chain I handed him
+// could not print its own STOP (the `;` before the `||` bound the fallback to an
+// `echo` that always succeeds, so D-10's mechanical stop was unreachable).
+//
+// §8.1/§8.2/§8.4 DID catch it on the second run. This cell widens that from "the
+// one file this delivery ships" to EVERY migration in the estate, because the
+// failure was not about 0098's contents — it was about a .sql file being able to
+// hold something that is not SQL and nobody noticing until a bench that happened
+// to read that one file ran. A ladder file that holds shell is a ladder rung
+// that will be replayed as SQL by whoever trusts the directory.
+t('§8.5 NO MIGRATION IN THE ESTATE HOLDS SHELL — the ladder is SQL or it is damaged', () => {
+  const dir = 'db/migrations';
+  const files = fs.readdirSync(SRC(dir)).filter(f => f.endsWith('.sql'));
+  assert.ok(files.length > 100, `the ladder reads ${files.length} files — too few to be the real directory`);
+  const SHELL = /^\s*(npm |node |git |cd |unzip |rm |cp |bash |echo )/m;
+  const damaged = files.filter(f => SHELL.test(fs.readFileSync(SRC(path.join(dir, f)), 'utf8')));
+  assert.deepStrictEqual(damaged, [],
+    `these migration files hold shell commands, not SQL: ${damaged.join(', ')}`);
+});
+
 t('§8.4 the migration explains WHY it is out of order, so it cannot be read as a replay', () => {
   const m = fs.readFileSync(SRC(MIGRATION), 'utf8');
   assert.ok(/LADDER TIP IS 0123/.test(m) && /F-SW\.3/.test(m),
