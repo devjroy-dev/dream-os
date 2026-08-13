@@ -1,7 +1,8 @@
 // src/api/circle/polls.js
-// GET  /api/v2/frost/circle/polls/:brideId            — the couple's polls + tallies
-// POST /api/v2/frost/circle/polls                     — create (bride or member)
-// POST /api/v2/frost/circle/polls/:pollId/vote        — cast or change a vote
+// GET    /api/v2/frost/circle/polls/:brideId          — the couple's polls + tallies
+// POST   /api/v2/frost/circle/polls                   — create (bride or member)
+// POST   /api/v2/frost/circle/polls/:pollId/vote      — cast or change a vote
+// DELETE /api/v2/frost/circle/polls/:pollId           — unmake a poll (D-3e)
 //
 // TDW_14 · D-3 · C-4.
 //
@@ -289,6 +290,74 @@ router.post('/:pollId/vote', asyncHandler(async (req, res) => {
   // never a copy of who chose what.
   console.log(`[POST /frost/circle/polls/vote] poll=${poll.id} couple=${me.coupleId}`);
   return res.json({ success: true, data: { poll_id: poll.id, my_vote: optionId } });
+}));
+
+// ── DELETE /:pollId — unmake a poll (D-3e) ─────────────────────────────────
+// Founder's word, 2026-08-14: DELETE ONLY, NO EDIT. A question can be taken
+// back; it cannot be quietly rewritten under the votes it has already drawn.
+//
+// ── THE VOTES ARE THE PLANE'S JOB, NOT THIS HANDLER'S ─────────────────────
+// `circle_poll_votes.poll_id REFERENCES circle_polls(id) ON DELETE CASCADE`
+// (0124). This handler deletes ONE row and Postgres takes the votes with it —
+// witnessed on production during the D-3 walk, where removing the lehenga poll
+// left `polls 0 · votes 0` with no orphans. A handler that also swept the votes
+// would be a second implementation of a rule the schema already enforces, and
+// would rot the first time someone deleted a poll by any other path.
+//
+// ── AUTHORISATION IS THE COUPLE SCOPE, AND A FORK THAT COLLAPSES TODAY ────
+// [F-06.85: this paragraph is conditioned on a ruling and names it.]
+// `created_by_user_id` is on the row, so "only the asker may unmake it" is
+// derivable. It is NOT built, and the reason is that it would be indistinguishable
+// from what IS built: CREATE IS BRIDE-ONLY by founder ruling, so every poll's
+// asker is the bride, and asker-scope and couple-scope are the SAME SET. Building
+// the narrower rule would add a branch no request can currently take — an arm
+// that looks tested and never runs.
+//
+// The two diverge the moment a member can convene. RE-READ THIS PARAGRAPH THEN:
+// if create ever opens to members, this door silently widens from "the bride
+// unmakes her own questions" to "the bride unmakes anyone's", and that is a
+// product decision, not a refactor.
+//
+// ── NO ACTIVITY ROW, BY RULING ────────────────────────────────────────────
+// Asking writes no `circle_activity` row and neither does unmaking. The circle
+// will never see that a question existed and was withdrawn — founder-confirmed
+// 2026-08-14 as correct behaviour, recorded here because a later hand reading
+// this file will notice the silence and be tempted to fix it.
+router.delete('/:pollId', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const me = await classB(req, res, supabase);
+  if (!me) return;
+
+  const { pollId } = req.params;
+
+  // `.eq('couple_id', …)` IS the authorisation, exactly as on the vote path: a
+  // caller cannot unmake another circle's poll even holding a correct uuid, and
+  // the 404 is deliberately the same answer an unknown id gets — a door that
+  // told them apart would report other circles' polls to anyone willing to guess.
+  const { data: poll } = await supabase
+    .from('circle_polls')
+    .select('id')
+    .eq('id', pollId)
+    .eq('couple_id', me.coupleId)
+    .maybeSingle();
+
+  if (!poll) return res.status(404).json({ success: false, error: 'Poll not found.' });
+
+  const { error } = await supabase
+    .from('circle_polls')
+    .delete()
+    .eq('id', poll.id)
+    .eq('couple_id', me.coupleId);   // scoped on the write too, never on the read alone
+
+  if (error) {
+    console.error('[DELETE /frost/circle/polls] delete error:', error.message);
+    return res.status(500).json({ success: false, error: 'Could not delete the poll.' });
+  }
+
+  // No question text, no vote counts in the line — a record that a poll was
+  // unmade, never a copy of what it asked or how the circle answered.
+  console.log(`[DELETE /frost/circle/polls] poll=${poll.id} couple=${me.coupleId}`);
+  return res.json({ success: true, data: { poll_id: poll.id, deleted: true } });
 }));
 
 // ── GET /:brideId — the couple's polls, newest first ────────────────────────

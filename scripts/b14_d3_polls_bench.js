@@ -83,7 +83,7 @@ const BRIDE_JWT = 'header.payload.signature';   // three parts — a real JWT's 
 // ignores what it was asked for cannot convict code that fails to ask (the
 // f0772 plane's own tuition, and §5.M3 depends on it).
 function plane({ polls = [], votes = [], events = [], visibility = {}, memberCount = 2 } = {}) {
-  const cap = { inserted: [], upserted: [] };
+  const cap = { inserted: [], upserted: [], deleted: [] };
   const api = {
     auth: {
       getUser: async (tok) => (tok === BRIDE_JWT
@@ -97,6 +97,9 @@ function plane({ polls = [], votes = [], events = [], visibility = {}, memberCou
       q.in = (c, vs) => { q._in = { c, vs }; return q; };
       q.order = () => q; q.limit = () => q;
       q.insert = (r) => { cap.inserted.push(r); q._ins = r; return q; };
+      // D-3e: the delete leg. Recorded with its FILTERS so a cell can prove the
+      // couple scope reached the WRITE and not merely the read before it.
+      q.delete = () => { q._del = true; return q; };
       q.upsert = (r, o) => { cap.upserted.push({ row: r, opts: o }); return Promise.resolve({ error: null }); };
       q.maybeSingle = async () => {
         if (table === 'users') {
@@ -121,6 +124,7 @@ function plane({ polls = [], votes = [], events = [], visibility = {}, memberCou
         return { data: null };
       };
       q.then = (r) => {
+        if (q._del) { cap.deleted.push({ eq: { ...q._eq } }); return Promise.resolve({ error: null }).then(r); }
         // The eligible-count query: `.select('id', { count:'exact', head:true })`
         // asks for a NUMBER and no rows. A plane that returned rows here would
         // let a door that forgot `head:true` pass while carrying a roster.
@@ -636,6 +640,86 @@ await ta('§10.5 ONE count per page, never one per poll', async () => {
     'the roster is counted more than once on a page of polls');
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+H('§11 — DELETE: a question can be taken back (D-3e)');
+// ═══════════════════════════════════════════════════════════════════════════
+// Founder's word 2026-08-14: DELETE ONLY, NO EDIT — a question can be unmade,
+// never quietly rewritten under the votes it has already drawn.
+
+await ta('§11.1 the bride unmakes her own poll', async () => {
+  const poll = { id: 'p1', couple_id: MEHEK.coupleId, options: [{ id: 'o1', label: 'A' }] };
+  const r = await call('delete', '/:pollId', {
+    auth: BRIDE_JWT, params: { pollId: 'p1' }, planeOpts: { polls: [poll] } });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.payload.data.deleted, true);
+  assert.strictEqual(r.cap.deleted.length, 1, 'nothing was deleted');
+});
+
+await ta('§11.2 ANOTHER CIRCLE\u0027S POLL is 404 and NOTHING is deleted', async () => {
+  const poll = { id: 'p1', couple_id: OTHER_COUPLE, options: [{ id: 'o1', label: 'A' }] };
+  const r = await call('delete', '/:pollId', {
+    auth: BRIDE_JWT, params: { pollId: 'p1' }, planeOpts: { polls: [poll] } });
+  assert.strictEqual(r.status, 404);
+  assert.strictEqual(r.cap.deleted.length, 0, 'a cross-circle delete landed');
+});
+
+await ta('§11.3 NO CREDENTIAL ⇒ 401 and NOTHING is deleted', async () => {
+  const poll = { id: 'p1', couple_id: MEHEK.coupleId, options: [{ id: 'o1', label: 'A' }] };
+  const r = await call('delete', '/:pollId', { params: { pollId: 'p1' }, planeOpts: { polls: [poll] } });
+  assert.strictEqual(r.status, 401);
+  assert.strictEqual(r.cap.deleted.length, 0);
+});
+
+// The scope must reach the WRITE, not only the read that precedes it. A handler
+// that checks ownership and then deletes by id alone is one refactor away from
+// deleting the row it merely looked at.
+await ta('§11.4 the couple scope reaches the DELETE itself, not just the lookup', async () => {
+  const poll = { id: 'p1', couple_id: MEHEK.coupleId, options: [{ id: 'o1', label: 'A' }] };
+  const r = await call('delete', '/:pollId', {
+    auth: BRIDE_JWT, params: { pollId: 'p1' }, planeOpts: { polls: [poll] } });
+  assert.strictEqual(r.cap.deleted[0].eq.couple_id, MEHEK.coupleId,
+    'the delete is scoped by id alone — ownership was checked and then not enforced');
+  assert.strictEqual(r.cap.deleted[0].eq.id, 'p1');
+});
+
+// [F-SW.2] ABSENCE — the votes are the PLANE's job. A handler that also swept
+// them would be a second implementation of a rule the schema enforces.
+// THE SLICE IS BOUNDED AT BOTH ENDS. Its first cut ran from the delete handler
+// to the END OF FILE and caught the LIST handler's vote query — an absence cell
+// convicting a door it was never about. Third time this class has bitten in this
+// arc; the lesson is the same each time: bound the slice or assert where the
+// claim lives.
+t('§11.5 the handler NEVER touches circle_poll_votes — the cascade owns them', () => {
+  const c = code(POLLS);
+  const a = c.indexOf("router.delete('/:pollId'");
+  const b = c.indexOf("router.get('/:brideId'", a);
+  assert.ok(a >= 0 && b > a, 'the delete handler slice was not found — this cell judged nothing');
+  assert.ok(!/circle_poll_votes/.test(c.slice(a, b)),
+    'the delete handler sweeps votes by hand — 0124 already cascades them');
+});
+
+// The ruled silence, asserted so a later hand does not "fix" it.
+t('§11.6 unmaking writes NO activity row — the ruled silence', () => {
+  const c = code(POLLS);
+  assert.ok(!/circle_activity/.test(c),
+    'a poll door writes an activity row; asking writes none and neither does unmaking');
+});
+
+// NO EDIT. The founder ruled delete-only; a PATCH or PUT on a poll would let a
+// question be rewritten under votes already cast for the old wording.
+t('§11.7 [F-SW.2] there is NO edit door — a question is unmade, never rewritten', () => {
+  const c = code(POLLS);
+  assert.ok(!/router\.(patch|put)\(/.test(c),
+    'an edit door appeared — the founder ruled delete-only, and votes cast for old wording would survive a rewrite');
+});
+
+t('§11.8 the asker-scope arm is DECLARED, not silently built', () => {
+  const raw = read(POLLS);
+  assert.ok(/created_by_user_id/.test(raw) && /RE-READ THIS PARAGRAPH/.test(raw),
+    'the collapsed fork is not recorded — a later reader cannot see that couple-scope and asker-scope are the same set only while create is bride-only');
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 H('§8 — MUTATION: production code broken, each named cell proven to bite');
 // ═══════════════════════════════════════════════════════════════════════════
@@ -757,8 +841,31 @@ await ta('§8.M13 [FROZEN ②] move one character of the vetoed option-count byt
   });
 });
 
-t('§8.M14 every mutation target above was FOUND before it was broken', () => {
-  assert.strictEqual(ledger.length, 13, `expected 13 mutations, the ledger holds ${ledger.length}`);
+await ta('§8.M14 drop the couple scope from the DELETE write ⇒ §11.4 RED', async () => {
+  await mutate(POLLS, "    .delete()\n    .eq('id', poll.id)\n    .eq('couple_id', me.coupleId);", "    .delete()\n    .eq('id', poll.id);", async () => {
+    const poll = { id: 'p1', couple_id: MEHEK.coupleId, options: [{ id: 'o1', label: 'A' }] };
+    const r = await call('delete', '/:pollId', { auth: BRIDE_JWT, params: { pollId: 'p1' }, planeOpts: { polls: [poll] } });
+    assert.strictEqual(r.cap.deleted[0].eq.couple_id, MEHEK.coupleId);
+  });
+});
+
+// THE TARGET MUST BE UNIQUE TO THE DOOR UNDER TEST. `if (!poll) return 404` is
+// written IDENTICALLY in the vote handler and the delete handler, and
+// `String.replace` takes the FIRST — so the first cut of this mutation broke the
+// VOTE path, left the delete guard intact, and §11.2 stayed green over it. The
+// harness reported it decorative rather than passing quietly. The target now
+// carries the delete's own `.select('id')`, which the vote handler does not use.
+await ta('§8.M15 drop the ownership lookup ⇒ §11.2 RED (a cross-circle delete lands)', async () => {
+  await mutate(POLLS, "    .select('id')\n    .eq('id', pollId)\n    .eq('couple_id', me.coupleId)\n    .maybeSingle();\n\n  if (!poll) return",
+                      "    .select('id')\n    .eq('id', pollId)\n    .maybeSingle();\n\n  if (false) return", async () => {
+    const poll = { id: 'p1', couple_id: OTHER_COUPLE, options: [{ id: 'o1', label: 'A' }] };
+    const r = await call('delete', '/:pollId', { auth: BRIDE_JWT, params: { pollId: 'p1' }, planeOpts: { polls: [poll] } });
+    assert.strictEqual(r.status, 404);
+  });
+});
+
+t('§8.M16 every mutation target above was FOUND before it was broken', () => {
+  assert.strictEqual(ledger.length, 15, `expected 15 mutations, the ledger holds ${ledger.length}`);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
