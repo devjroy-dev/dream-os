@@ -82,7 +82,7 @@ const BRIDE_JWT = 'header.payload.signature';   // three parts — a real JWT's 
 // Honours the filters it is given rather than swallowing them: a fake that
 // ignores what it was asked for cannot convict code that fails to ask (the
 // f0772 plane's own tuition, and §5.M3 depends on it).
-function plane({ polls = [], votes = [], events = [], visibility = {} } = {}) {
+function plane({ polls = [], votes = [], events = [], visibility = {}, memberCount = 2 } = {}) {
   const cap = { inserted: [], upserted: [] };
   const api = {
     auth: {
@@ -121,6 +121,12 @@ function plane({ polls = [], votes = [], events = [], visibility = {} } = {}) {
         return { data: null };
       };
       q.then = (r) => {
+        // The eligible-count query: `.select('id', { count:'exact', head:true })`
+        // asks for a NUMBER and no rows. A plane that returned rows here would
+        // let a door that forgot `head:true` pass while carrying a roster.
+        if (table === 'circle_members') {
+          return Promise.resolve({ count: memberCount, data: null, error: null }).then(r);
+        }
         if (table === 'circle_polls') {
           const rows = polls.filter(p => p.couple_id === q._eq.couple_id);
           return Promise.resolve({ data: rows, error: null }).then(r);
@@ -310,13 +316,22 @@ await ta('§3.3 AN OPTION NOT ON THE POLL is 400 and NOTHING is written', async 
   assert.strictEqual(r.cap.upserted.length, 0, 'a vote for a nonexistent option was recorded');
 });
 
-await ta('§3.4 A CLOSED POLL refuses the vote — 409, nothing written', async () => {
+// ── §3.4 IS NOW A FROZEN-COPY CELL (CE-33's standing note) ────────────────
+// Byte ⑩ was vetoed at the founder's D-3b sitting AT ITS EXISTING HOME. It ships
+// server-side rather than in `lib/circle/pollCopy.ts` because it is an API
+// refusal the server must speak whether or not a browser is listening —
+// duplicating it client-side would give one byte two homes. So this cell stops
+// checking only the status code and pins the SENTENCE. If it moves, the bench
+// reds and the veto sheet is the authority.
+await ta('§3.4 [FROZEN ⑩] A CLOSED POLL refuses — 409, the vetoed byte, nothing written', async () => {
   const poll = { id: 'p1', couple_id: MEHEK.coupleId, closes_at: '2020-01-01T00:00:00Z',
                  options: [{ id: 'o1', label: 'A' }, { id: 'o2', label: 'B' }] };
   const r = await call('post', '/:pollId/vote', {
     auth: memberToken(), params: { pollId: 'p1' }, body: { option_id: 'o1' }, planeOpts: { polls: [poll] },
   });
   assert.strictEqual(r.status, 409);
+  assert.strictEqual(r.payload.error, 'This poll has closed.',
+    'the vetoed byte moved — the veto sheet is the authority, not this code');
   assert.strictEqual(r.cap.upserted.length, 0);
 });
 
@@ -351,10 +366,13 @@ await ta('§4.2 OPTION IDS ARE MINTED SERVER-SIDE — a caller cannot collide tw
   assert.strictEqual(new Set(ids).size, ids.length, 'two options share an id — a tally would merge them');
 });
 
-await ta('§4.3 fewer than 2 or more than 4 options is 400, nothing written', async () => {
+// ── §4.3 IS NOW A FROZEN-COPY CELL — byte ② (see §3.4's note) ─────────────
+await ta('§4.3 [FROZEN ②] under 2 or over 4 options is 400, the vetoed byte, nothing written', async () => {
   for (const opts of [['A'], ['A', 'B', 'C', 'D', 'E']]) {
     const r = await call('post', '/', { auth: memberToken(), body: { question: 'q', options: opts } });
     assert.strictEqual(r.status, 400, `${opts.length} options was accepted`);
+    assert.strictEqual(r.payload.error, 'A poll needs between 2 and 4 options.',
+      'the vetoed byte moved — the veto sheet is the authority, not this code');
     assert.strictEqual(r.cap.inserted.length, 0);
   }
 });
@@ -573,6 +591,52 @@ t('§7.6 no migration in the estate holds shell (F-05.80/§8.5 class, re-asserte
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+H('§10 — eligible_count: the denominator the FROZEN BYTE ⑤ needs');
+// ═══════════════════════════════════════════════════════════════════════════
+// D-3a shipped without it because nothing had asked. The copy veto asked: ⑤ is
+// frozen as "{n} of {total} voted", and its denominator is THE CIRCLE — how many
+// people could answer — which no client can derive. Served from here, counting
+// the bride in, because R-D3.2's whole point is that she is a participant.
+
+await ta('§10.1 the payload carries eligible_count = active members + THE BRIDE', async () => {
+  const r = await call('get', '/:brideId', {
+    auth: memberToken(), params: { brideId: 'x' },
+    planeOpts: { polls: [POLL_WITH_EVENT], memberCount: 2 },
+  });
+  assert.strictEqual(r.payload.data[0].eligible_count, 3,
+    'two active members and the bride is three — a denominator that excludes her would say "2 of 2 voted" while three people held a vote');
+});
+
+await ta('§10.2 a circle with NO members still counts the bride — never zero', async () => {
+  const r = await call('get', '/:brideId', {
+    auth: BRIDE_JWT, params: { brideId: 'x' },
+    planeOpts: { polls: [POLL_WITH_EVENT], memberCount: 0 },
+  });
+  assert.strictEqual(r.payload.data[0].eligible_count, 1,
+    'a zero denominator would render "0 of 0 voted" and divide the surface by nothing');
+});
+
+await ta('§10.3 CREATE returns it too — the byte renders on a brand-new poll', async () => {
+  const r = await call('post', '/', {
+    auth: memberToken(), body: { question: 'q', options: ['A', 'B'] }, planeOpts: { memberCount: 2 },
+  });
+  assert.strictEqual(r.payload.data.eligible_count, 3);
+});
+
+t('§10.4 the count asks for a NUMBER, not a roster', () => {
+  const c = code(POLLS);
+  assert.ok(/count: 'exact', head: true/.test(c),
+    'the eligible count fetches rows — a door carrying names it has no reason to hold');
+});
+
+await ta('§10.5 ONE count per page, never one per poll', async () => {
+  const c = code(POLLS);
+  const listBody = c.slice(c.indexOf("router.get('/:brideId'"));
+  assert.strictEqual((listBody.match(/eligibleCountFor/g) || []).length, 1,
+    'the roster is counted more than once on a page of polls');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 H('§8 — MUTATION: production code broken, each named cell proven to bite');
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -667,8 +731,34 @@ await ta('§8.M10 the closed-poll refusal goes away ⇒ §3.4 RED', async () => 
   });
 });
 
-t('§8.M11 every mutation target above was FOUND before it was broken', () => {
-  assert.strictEqual(ledger.length, 10, `expected 10 mutations, the ledger holds ${ledger.length}`);
+await ta('§8.M11 drop the bride from the denominator ⇒ §10.1 RED', async () => {
+  await mutate(POLLS, '  return (count || 0) + 1;   // + the bride', '  return (count || 0);   // + the bride', async () => {
+    const r = await call('get', '/:brideId', { auth: memberToken(), params: { brideId: 'x' },
+      planeOpts: { polls: [POLL_WITH_EVENT], memberCount: 2 } });
+    assert.strictEqual(r.payload.data[0].eligible_count, 3);
+  });
+});
+
+await ta('§8.M12 [FROZEN ⑩] move one character of the vetoed closed-poll byte ⇒ §3.4 RED', async () => {
+  await mutate(POLLS, "'This poll has closed.'", "'This poll is closed.'", async () => {
+    const poll = { id: 'p1', couple_id: MEHEK.coupleId, closes_at: '2020-01-01T00:00:00Z',
+                   options: [{ id: 'o1', label: 'A' }] };
+    const r = await call('post', '/:pollId/vote', {
+      auth: memberToken(), params: { pollId: 'p1' }, body: { option_id: 'o1' }, planeOpts: { polls: [poll] } });
+    assert.strictEqual(r.payload.error, 'This poll has closed.');
+  });
+});
+
+await ta('§8.M13 [FROZEN ②] move one character of the vetoed option-count byte ⇒ §4.3 RED', async () => {
+  await mutate(POLLS, 'A poll needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} options.',
+                      'A poll needs ${MIN_OPTIONS} to ${MAX_OPTIONS} options.', async () => {
+    const r = await call('post', '/', { auth: memberToken(), body: { question: 'q', options: ['A'] } });
+    assert.strictEqual(r.payload.error, 'A poll needs between 2 and 4 options.');
+  });
+});
+
+t('§8.M14 every mutation target above was FOUND before it was broken', () => {
+  assert.strictEqual(ledger.length, 13, `expected 13 mutations, the ledger holds ${ledger.length}`);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

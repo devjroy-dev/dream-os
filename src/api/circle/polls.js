@@ -103,11 +103,38 @@ async function permissionsFor(supabase, identity) {
   return circlePermissions(member && member.visibility);
 }
 
+// How many people can answer a poll in this circle: every ACTIVE member, plus
+// the bride. `{ count: 'exact', head: true }` asks Postgres for the number and
+// no rows — the roster is not needed here and a door that fetched it would be
+// carrying names it has no reason to hold.
+async function eligibleCountFor(supabase, coupleId) {
+  const { count } = await supabase
+    .from('circle_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('couple_id', coupleId)
+    .eq('status', 'active');
+  return (count || 0) + 1;   // + the bride — she votes (R-D3.2)
+}
+
 // Shape a poll for the wire. `votes` is the raw vote rows for this poll.
 // The tally is COMPUTED, never stored: a stored counter is a second source of
 // truth for a number the rows already carry, and it drifts the first time a
 // delete or a changed vote misses it.
-function shapePoll(poll, votes, linkedEvent, perms, viewerUserId) {
+//
+// ── TDW_14 D-3b · `eligible_count`, AND WHY IT ARRIVED AFTER THE SEAL ──────
+// D-3a shipped this payload without a participant count because nothing had
+// asked for one. THE COPY VETO ASKED. Byte ⑤ is frozen as "{n} of {total}
+// voted", and its denominator is THE CIRCLE — how many people COULD answer,
+// against how many did — not the votes cast. A client cannot derive it: the
+// member's session tells her about herself, and the bride's bloom would have to
+// count a roster the poll payload never mentions. Either surface computing it
+// would also be a second implementation of one number.
+//
+// So it is served from the one place that can count it honestly, and it counts
+// THE BRIDE IN: `circle_members` holds members only, and R-D3.2's whole point is
+// that she is a participant like any other — a denominator that excluded her
+// would say "2 of 2 voted" while three people held a vote.
+function shapePoll(poll, votes, linkedEvent, perms, viewerUserId, eligibleCount) {
   const counts = {};
   for (const v of votes) counts[v.option_id] = (counts[v.option_id] || 0) + 1;
 
@@ -132,6 +159,7 @@ function shapePoll(poll, votes, linkedEvent, perms, viewerUserId) {
       votes:     counts[o.id] || 0,
     })),
     total_votes:   votes.length,
+    eligible_count: eligibleCount,
     my_vote:       mine ? mine.option_id : null,
     closes_at:     poll.closes_at || null,
     closed,
@@ -200,8 +228,9 @@ router.post('/', asyncHandler(async (req, res) => {
   }
 
   console.log(`[POST /frost/circle/polls] poll=${created.id} couple=${me.coupleId} options=${options.length}`);
-  const perms = await permissionsFor(supabase, me);
-  return res.json({ success: true, data: shapePoll(created, [], null, perms, me.userId) });
+  const perms    = await permissionsFor(supabase, me);
+  const eligible = await eligibleCountFor(supabase, me.coupleId);
+  return res.json({ success: true, data: shapePoll(created, [], null, perms, me.userId, eligible) });
 }));
 
 // ── POST /:pollId/vote — cast or change ─────────────────────────────────────
@@ -306,9 +335,10 @@ router.get('/:brideId', asyncHandler(async (req, res) => {
   const votesByPoll = {};
   for (const v of (votes || [])) (votesByPoll[v.poll_id] ||= []).push(v);
 
-  const perms = await permissionsFor(supabase, me);
+  const perms    = await permissionsFor(supabase, me);
+  const eligible = await eligibleCountFor(supabase, me.coupleId);   // one count for the page, never per poll
   const shaped = list.map(p =>
-    shapePoll(p, votesByPoll[p.id] || [], eventsById[p.linked_event_id] || null, perms, me.userId));
+    shapePoll(p, votesByPoll[p.id] || [], eventsById[p.linked_event_id] || null, perms, me.userId, eligible));
 
   return res.json({ success: true, data: shaped });
 }));
