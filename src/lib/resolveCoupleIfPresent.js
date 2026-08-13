@@ -35,11 +35,37 @@
 // cross-lane read from requireCoupleAuth in this same motion. A helper that kept
 // accepting the vendor cookie would re-open, at an unauthenticated door, the very
 // crossing the middleware just closed — the four edges are four, not two.
+//
+// ── TDW_14 D-3 · THE RETURN GAINS `usersId`, ADDITIVELY (R-D3.3) ───────────
+// THE VALUE WAS ALREADY COMPUTED HERE AND THROWN AWAY. `resolveUsersId` runs on
+// every arm-2 resolution to find the couple, and its answer — the caller's
+// `public.users.id` — was discarded one line later. D-3's polls need exactly
+// that value: `circle_poll_votes.voter_user_id` is a users.id for the bride and
+// every member alike, so "who is voting" has to be answerable for the BRIDE, and
+// `resolveCircleIdentityIfPresent`'s arm 2 could only ever answer `userId: null`.
+//
+// THE CURE IS AT THE GATE, NOT IN THE HANDLER, and the chair ruled it there for
+// the reason this file exists: a per-handler `couples` hop would be a SECOND
+// IMPLEMENTATION of a resolution the gate already performs, and the second
+// implementation is the disease this estate keeps paying to remove.
+//
+// IT IS ADDITIVE. Every existing key keeps its meaning and its value; `usersId`
+// joins them. The three answers above are unchanged — a reader that destructures
+// `{ present, coupleId }` is byte-unaffected, and the census of such readers is
+// exactly two (`resolveCircleIdentityIfPresent.js` and `couple/enquire.js:139`),
+// derived by grep rather than assumed.
+//
+// `usersId` IS NULL WHEREVER THE COUPLE IS NULL, and never the reverse: the
+// value only exists once a credential has resolved to a real public user, so it
+// cannot answer "who" for a caller this file has already refused to identify.
 'use strict';
 
 const { resolveUsersId } = require('./resolveUsersId');
 
-const ABSENT = Object.freeze({ present: false, coupleId: null });
+// Every return below carries all three keys, so no caller has to ask whether a
+// field is absent or merely null — a shape that varies by branch is how an
+// optional field becomes an undefined nobody checked.
+const ABSENT = Object.freeze({ present: false, coupleId: null, usersId: null });
 
 async function resolveCoupleIfPresent(req, supabase) {
   const header = (req && req.headers && req.headers['authorization']) || '';
@@ -58,18 +84,22 @@ async function resolveCoupleIfPresent(req, supabase) {
   try {
     const { data, error } = await supabase.auth.getUser(token);
     const user = data && data.user;
-    if (error || !user) return { present: true, coupleId: null };
+    if (error || !user) return { present: true, coupleId: null, usersId: null };
 
     const usersId = await resolveUsersId(supabase, user.id);
-    if (!usersId) return { present: true, coupleId: null };
+    if (!usersId) return { present: true, coupleId: null, usersId: null };
 
     const { data: couple } = await supabase
       .from('couples').select('id').eq('user_id', usersId).maybeSingle();
 
-    return { present: true, coupleId: (couple && couple.id) || null };
+    // `usersId` is returned even when the couple is null: the credential DID
+    // resolve to a real public user (a vendor on a couple surface is the
+    // founder's own specimen), and that is a true fact about the caller. It is
+    // hydration that was refused, not identity.
+    return { present: true, coupleId: (couple && couple.id) || null, usersId };
   } catch (err) {
     console.warn('[resolveCoupleIfPresent] lookup failed (hydration refused):', err && err.message);
-    return { present: true, coupleId: null };
+    return { present: true, coupleId: null, usersId: null };
   }
 }
 

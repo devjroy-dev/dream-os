@@ -144,6 +144,10 @@ router.use('/circle/muse',           requireCircleMemberAuth, require('./circle/
 router.use('/frost/circle/feed',     require('./circle/feed'));         // CLASS B — dual-lane, refuses in-handler
 router.use('/frost/circle/threads',  require('./circle/threads'));      // CLASS B — dual-lane, refuses in-handler
 router.use('/frost/circle/messages', require('./circle/messages'));     // CLASS B — dual-lane, refuses in-handler
+// TDW_14 D-3 (R-D3.1): polls are CLASS B, mounted BARE beside its three
+// siblings. The spec said "member auth (C-9 pattern)" — that is Class A, and it
+// would 403 the bride out of the poll the same spec sentence says she votes in.
+router.use('/frost/circle/polls',    require('./circle/polls'));        // CLASS B — dual-lane, refuses in-handler
 
 // Demo admin routes (admin auth enforced inside the file)
 router.use('/admin/demo', require('./admin/demoAdmin'));

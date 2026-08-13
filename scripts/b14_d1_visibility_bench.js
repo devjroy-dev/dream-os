@@ -75,6 +75,7 @@ function H(h) { console.log(`\n${h}`); }
 const PERMS_HOME = 'src/lib/circlePermissions.js';
 const GUARD      = 'src/api/middleware/requireCircleMemberAuth.js';
 const WRITER     = 'src/api/couple/circle.js';
+const POLLS      = 'src/api/circle/polls.js';   // TDW_14 D-3, the fourth consumer
 const MIGRATION  = 'db/migrations/0098_circle_visibility.sql';
 
 // Fresh require, so a mutated file is actually re-read rather than served from
@@ -532,11 +533,22 @@ function walk(dir, out = []) {
 const ALL_SRC  = walk('src');
 const CONSUMERS = ALL_SRC.filter(f => /circlePermissions/.test(code(f)));
 
-t('§5.1 the census finds the consumers by WALKING, and there are exactly three', () => {
+// ── THE COUNT MOVED BY CHARTER AT TDW_14 D-3, AND THAT IS THE POINT ────────
+// This cell asserted THREE. D-3's polls router reads the one home to gate a
+// linked event's vendor field (R-D3.4), so the estate now has FOUR consumers and
+// this cell moved in the SAME delivery that made it four —
+// RETIRE-WITH-THE-READER: the sitting that moves a subject owns the benches that
+// read it. Its red at the old count was declared in D-3's read-first BEFORE the
+// build, so it could never be mistaken for a regression.
+//
+// The list below is not the point; the WALK is. A fifth consumer appearing
+// without a charter still reds here, which is the whole reason the cell counts
+// rather than merely checking that the named files import correctly.
+t('§5.1 the census finds the consumers by WALKING, and there are exactly four', () => {
   console.log(`         consumers found: ${CONSUMERS.length} — ${CONSUMERS.join(' · ')}`);
-  assert.strictEqual(CONSUMERS.length, 3,
-    `expected the one home + the guard + the writer; found ${CONSUMERS.length}`);
-  for (const expected of [PERMS_HOME, GUARD, WRITER]) {
+  assert.strictEqual(CONSUMERS.length, 4,
+    `expected the one home + the guard + the writer + D-3's polls; found ${CONSUMERS.length}`);
+  for (const expected of [PERMS_HOME, GUARD, WRITER, POLLS]) {
     assert.ok(CONSUMERS.includes(expected), `${expected} is not among the consumers`);
   }
 });
@@ -590,10 +602,22 @@ const MEMBER_ROUTES = fs.readdirSync(SRC('src/api/circle'))
   .filter(f => f.endsWith('.js'))
   .map(f => path.join('src/api/circle', f));
 
-t('§6.1 the member-facing route family is enumerated by the bench, and it is SEVEN', () => {
+// ── SEVEN BECAME EIGHT AT D-3, AND THIS CELL DID ITS JOB ──────────────────
+// It reddened the moment `polls.js` joined the family, which is exactly what it
+// was written to do: §6.2's absence claim is about A NAMED SET, and a set that
+// grew silently would leave the new member unchecked while the cell went on
+// reporting a green about the old one.
+//
+// OWNED: D-3's read-first declared §5.1 as the one cell moving by charter and
+// MISSED THIS ONE. Two cells read the circle radius, not one. The bench found
+// the second — a chartered move that was not declared is still a surprise, and
+// the only reason it cost nothing is that the cell refused to stay quiet.
+t('§6.1 the member-facing route family is enumerated by the bench, and it is EIGHT', () => {
   console.log(`         member routes: ${MEMBER_ROUTES.length} — ${MEMBER_ROUTES.map(f => path.basename(f)).join(' · ')}`);
-  assert.strictEqual(MEMBER_ROUTES.length, 7,
+  assert.strictEqual(MEMBER_ROUTES.length, 8,
     'the circle router family changed size — the absence claim below covers a different set than it was written for');
+  assert.ok(MEMBER_ROUTES.some(f => path.basename(f) === 'polls.js'),
+    'D-3\u0027s polls router left the family the absence claim is asserted over');
 });
 
 t('§6.2 ZERO member-facing routes select a budget-bearing table or column', () => {

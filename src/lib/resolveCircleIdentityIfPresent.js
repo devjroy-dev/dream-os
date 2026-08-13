@@ -46,6 +46,10 @@
 //       turns this answer into a refusal; nothing else about the shape changes.
 //
 //   { present:true, coupleId:'<uuid>', source:'circle'|'couple', userId }
+//   `userId` is a public.users.id on BOTH arms as of TDW_14 D-3 (R-D3.3):
+//   arm 1 takes it from the circle token's binding, arm 2 from the gate that
+//   had always computed it. It is the one key that answers WHO, as opposed to
+//   WHOSE CIRCLE, and polls key their votes on it.
 //       A proven caller. The circle member's token binds her couple; the bride's
 //       Supabase JWT resolves to hers. EITHER WAY THE PROVEN COUPLE WINS over
 //       anything the request supplied in a param or a body.
@@ -109,7 +113,16 @@ async function resolveCircleIdentityIfPresent(req, supabase) {
       present:  true,
       coupleId: couple.coupleId,   // may be null — the third answer, preserved
       source:   'couple',
-      userId:   null,
+      // ── TDW_14 D-3 (R-D3.3): `userId` STOPS BEING NULL ON THIS ARM ────────
+      // It read a hard `null` with the note that the bride's identity was not
+      // needed. D-3 needs it: `circle_poll_votes.voter_user_id` is a users.id
+      // for the bride and every member alike (R-D3.2, no sentinel anywhere), so
+      // a door that can name the member but not the bride cannot record her
+      // vote. `resolveCoupleIfPresent` was ALREADY computing this value and
+      // discarding it one line after; it now returns it, and this arm passes it
+      // through unchanged. No new query, no second resolution, no handler-side
+      // couples hop — the gate answers "whose" once, for both arms.
+      userId:   couple.usersId || null,
     };
   }
 

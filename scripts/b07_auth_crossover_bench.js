@@ -197,14 +197,32 @@ await ta('§1.6 EDGES 3+4 — the Authorization header is UNTOUCHED on both lane
 
 H('§2 — F-07.62: the resolve-if-present helper, all three answers');
 
+// ── THE SHAPE GAINED A THIRD KEY AT TDW_14 D-3, AND THESE CELLS MOVED WITH IT ─
+// `resolveCoupleIfPresent` now returns `usersId` alongside `present` and
+// `coupleId` (R-D3.3): the value was already computed on every arm-2 resolution
+// and discarded one line later, and D-3's polls need it because
+// `circle_poll_votes.voter_user_id` is a users.id for the BRIDE as well as every
+// member. The widening is additive — no existing key changed meaning — but these
+// three cells assert the WHOLE shape with `deepStrictEqual`, and that is
+// deliberate: a cell that only checked the two keys it cared about would let a
+// fourth key appear unnoticed. So the expectations grow rather than loosen.
+//
+// OWNED, and it is the sitting's own miss: D-3's read-first ran the reader census
+// for this widening with `grep -rn resolveCoupleIfPresent src/` — SCOPED TO
+// SOURCE. Benches live in `scripts/`. The callers were all found; the cells that
+// PIN THE SHAPE were never looked for, and the floor found them instead of the
+// read-first. A return-shape change has two reader censuses, not one.
 await ta('§2.1 LOGGED OUT — no credential ⇒ { present:false } ⇒ the posted id still serves her', async () => {
   const r = await resolveCoupleIfPresent(fakeReq({}), fakePlane());
-  assert.deepStrictEqual(r, { present: false, coupleId: null });
+  assert.deepStrictEqual(r, { present: false, coupleId: null, usersId: null });
 });
 
 await ta('§2.2 AUTHENTICATED BRIDE — her token yields HER couple id', async () => {
   const r = await resolveCoupleIfPresent(fakeReq({ header: `Bearer ${BRIDE_JWT}` }), fakePlane());
-  assert.deepStrictEqual(r, { present: true, coupleId: BRIDE.coupleId });
+  // `usersId` is the bride's public users id — the same value D-3 keys her vote
+  // on. Asserted rather than ignored, so a widening that returned the WRONG id
+  // would red here too.
+  assert.deepStrictEqual(r, { present: true, coupleId: BRIDE.coupleId, usersId: BRIDE.usersId });
 });
 
 await ta('§2.3 SPECIMEN — a vendor credential yields present:true + NULL (hydration refused, no fallback)', async () => {
@@ -229,7 +247,7 @@ await ta('§2.5 A BROKEN credential never demotes to logged-out (it must not re-
 
 await ta('§2.6 the helper reads ONLY the couple cookie (it must not re-open the closed crossing)', async () => {
   const r = await resolveCoupleIfPresent(fakeReq({ cookies: { tdw_vendor_token: VENDOR_JWT } }), fakePlane());
-  assert.deepStrictEqual(r, { present: false, coupleId: null },
+  assert.deepStrictEqual(r, { present: false, coupleId: null, usersId: null },
     'the helper accepted the vendor cookie — edge 1 closed and the door re-opened it');
 });
 
@@ -333,8 +351,12 @@ await mutateSrc('src/api/middleware/requireAuth.js',
 // INVERSE 3 — make the helper fall back to logged-out on a present-but-coupleless
 // credential. §2.3 must redden: this is the exact shape that would re-open forgery.
 await mutateSrc('src/lib/resolveCoupleIfPresent.js',
-  "    return { present: true, coupleId: (couple && couple.id) || null };",
-  "    return (couple && couple.id) ? { present: true, coupleId: couple.id } : ABSENT;",
+  // Re-aimed at TDW_14 D-3: the returned line now carries `usersId`. The
+  // mutation is unchanged in substance — it makes the helper fall back to
+  // logged-out on a present-but-coupleless credential, the exact shape that
+  // would re-open forgery — only its target string moved.
+  "    return { present: true, coupleId: (couple && couple.id) || null, usersId };",
+  "    return (couple && couple.id) ? { present: true, coupleId: couple.id, usersId } : ABSENT;",
   'the present-but-coupleless refusal (F-07.62)',
   async () => {
     const { resolveCoupleIfPresent: fresh } = require(SRC('src/lib/resolveCoupleIfPresent'));
