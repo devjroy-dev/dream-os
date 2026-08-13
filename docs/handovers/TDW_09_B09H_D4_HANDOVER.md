@@ -238,7 +238,14 @@ words on both. The only cure that separates them appends a new model-voiced byte
 body, and no such byte was put to the founder. The deed LINE distinguishes them for the
 model today; the ROW does not. Named in `deedState.js` at the audit comment.
 
-**⓸ F-09.185 (chair-minted).** D-3 §8 asserted `public.messages` is 18 columns and unaltered
+**⓸ THE OWNERSHIP-ASK LOOP (walk-found).** The circle agent asks about ownership rather than
+resolving it from `list_muse_saves`, and accepts a bare 「 Yes 」. Server gate holds; the cost
+is two turns of a five-turn daily cap per deletion. W-1, outside the two lifts. Unnumbered.
+
+**⓹ THE 10:06:35 SAVE FAILURE (walk-found, cause open).** Bytes green, cause unestablished.
+The dial is exonerated by three readings (§9). Railway log settles it. Unnumbered.
+
+**⓺ F-09.185 (chair-minted).** D-3 §8 asserted `public.messages` is 18 columns and unaltered
 by `0100`–`0122`. **`0105_circle_message_author.sql` adds `sender_name` and
 `sender_user_id`** — its own readback expects twenty. `docs/db/PUBLIC_SCHEMA.md` is stale on
 that table. D-3's SELECTs were unharmed; the provenance claim was not. **This delivery adds
@@ -246,35 +253,103 @@ no DDL** and its fork-3 choice (3a) was made so none is needed.
 
 ---
 
-## 9 · THE WALK CARD — joins the bride-lane pattern, one step at a time
+## 9 · THE WALK — RUN 2026-08-13, FOUNDER'S HANDSETS. RESULT.
 
-The live witness is the **founder's, declared-not-claimed. Nothing below was witnessed by
-this seat.** Walk after the push deploys, pasting results before the next step.
-**Dashboard acts expected: NONE.** No env var, no Railway variable, no Meta setting, no
-Supabase flag.
+**Every line below is the founder's witness, declared-not-claimed.** This seat saw rows and
+screenshots, never a phone. Dial home is `public.admin_config`, keys
+`couple_ai_daily_<tier>` / `couple_ai_monthly_<tier>` — **not** `app_config`, which does not
+exist; the seat's first guess was wrong and the founder pasted the error rather than hunting.
+Test couple `9f1f84d5-e688-4d4f-9e44-9f5da6315e52`, tier `basic`, dials `40`/`600`.
+**Dashboard acts: NONE, as forecast.**
 
-**FIXTURE-STATE FIRST (step 0).** Every step names its precondition. SELECTs at §10.
+### GREEN — witnessed on a handset AND in the rows
 
-| # | step | what it proves | evidence | fixture-state precondition |
-|---|---|---|---|---|
-| 0 | Run SELECT D and SELECT E | the baseline: today's counters for both lanes | pasted rows | none |
-| 1 | Circle member (`8757788550`) forwards a photo, **under** the couple's cap | the happy path is unchanged | her normal ack; SELECT F newest `muse_saves` row | member `status='active'`; couple under cap |
-| 2 | **Set the couple's daily dial to 1**, then have the bride send one message to burn it | the cap is live for step 3 | SELECT E shows the couple over cap | founder's dial, his hand |
-| 3 | **Circle member forwards a photo while the couple is capped** | **V1 · F-09.177** | **HANDSET:** he reads 「 Added to the board. The board's chat is quiet for today — you can still browse and add to it any time. 」 as ONE message; SELECT F shows the save landed | step 2 green |
-| 4 | Circle member sends a **text note** while still capped | V1's guard — no save, no claim | **HANDSET:** the bare cap byte, **no** 「 Added to the board. 」 | step 3 done |
-| 5 | **Bride forwards a photo while capped** | **V8 · F-09.186** | **HANDSET:** 「 Saved. You've reached today's conversation limit. I'll be right here at midnight. 」; SELECT F shows her save | her couple over cap |
-| 6 | Bride sends a **text** while capped | V8's guard | **HANDSET:** the bare 10.C byte, no 「 Saved. 」 | step 5 done |
-| 7 | **Restore the dial to 20**, bride sends a captioned photo | V7 + the ordinary path | SELECT G: newest inbound `body` = her caption, no suffix | dial restored |
-| 8 | Circle member asks to delete a save that is **not theirs** | **F-09.182** | **HANDSET:** the reply declines and does not report a fault; SELECT H: outbound `tool_calls` carries `refused: true` with its reason | a save on the board owned by someone else |
-| 9 | Wait past `SESSION_IDLE_MS`, then message the bride lane so a **notes-only** session fans out | **F-09.172** | **HANDSET:** the summary does not say 「 added 」 | one idle unsummarised session with notes and **zero** saves |
+| step | cure | evidence |
+|---|---|---|
+| 1 | control — the ordinary circle path | save `#13` `circle_member`; agent-composed warm reply `09:30:37` |
+| 3 | **V1 · F-09.177** | save `#14` `09:40:16`, outbound `09:40:18`: 「 Added to the board. The board's chat is quiet for today — you can still browse and add to it any time. 」 ONE message, no agent turn between inbound and reply. **Witnessed twice** — `#15` at `09:48:35` repeated it unprompted |
+| 4 | **V1's guard** | text turn `09:41:47`: the bare frozen byte, prefix ABSENT. The two outbounds sit adjacent in the log, same door, same cap state, 89s apart, identical suffix, prefix in exactly one |
+| 5 | **V8 · F-09.186** | save `#16` `10:00:42` `saved_by_role = bride`; outbound `10:00:45`: 「 Saved. You've reached today's conversation limit. I'll be right here at midnight. 」 |
+| 6 | **V8's guard** | text turn `10:02:24`: bare frozen byte, 「 Saved. 」 absent. Same adjacency proof as step 4 |
+| 7 | **V7 · F-09.183, BOTH ARMS** | see below — the arm this handover called unforceable |
+| — | **F-09.183's audit column, live** | `10:21:32` outbound carries `[{"ok":true,"name":"delete_muse_save","reason":null,"refused":false}]`; the turn 20s earlier where no tool ran carries `[]`. The column discriminates rather than always emitting |
 
-**Steps only a handset can witness: 3, 4, 5, 6, 8, 9.** Steps 3–6 are the sharpest — the
-bench proves the concatenation, but only a handset proves the whole live path sends one
-message with the signed sentence in it. Step 9's fallback arm cannot be forced without
-breaking the Haiku key and **is not proposed**; the Haiku-composed arm is what step 9
-witnesses, and V3/V4 are what steer it.
+### V7's FAILURE ARM — this handover was WRONG and production corrected it
 
----
+§3 and the first draft of §8 recorded V7's failure arm as **bench-only, unforceable from a
+handset without breaking Cloudinary**. At `10:06:35` a real save failed on the bride door,
+unforced, 45 seconds before an identical one succeeded. The two inbound rows:
+
+```
+10:06:36  "Gold tissue, exactly like this — save failed"   media_url present
+10:07:25  "Gold tissue, exactly like this"                 media_url present
+```
+
+**Identical human input, byte-different audit rows.** Before this diff both read
+`Gold tissue, exactly like this` and nothing downstream could tell them apart. That is
+F-09.183's collapse cured on live data — M12's exact shape, refuted in production. The
+agent's reply on the failed turn (「 The save didn't go through 」) is F-09.174's whole point
+arriving on the same turn, and her resend then landed as `#17`, so its advice was correct too.
+
+### CARRIED — unwitnessed, blocked on the IST-midnight cap reset. NOT failures.
+
+| carried | why | what already covers it |
+|---|---|---|
+| **F-09.182's `refused: true` branch** | the circle member spent both daily caps (5 images, 5 texts) before the branch could be reached | §5.1 §5.3 §5.4 + M5/M6/M7; and the audit column is **proven live** on the `ok:true` path above — what is untested on a handset is the refusal flag specifically |
+| **step 9 · F-09.172** | needs an idle notes-only session, which needs circle text turns she no longer has | §6.1–§6.5 + M13/M14 |
+
+**Both are one message each after IST midnight.** Recorded as unwitnessed rather than
+folded into a green — the walk is not complete and this handover does not say it is.
+
+### WHY THE CAPS RAN OUT — a behaviour for the chair, not a red
+
+The circle agent **asks about ownership rather than resolving it**, even for a member's own
+save — it holds `list_muse_saves`, which returns `saved_by_role`, so it could know. At
+`10:21:12` it made the member confirm ownership of a save that was already hers, and at
+`10:15:13` it offered 「 If save 17 is yours, tell me and I'll take it down 」 over a save that
+was not. **It then accepts a bare 「 Yes 」.** The server gate is the real one and it holds —
+`execDeleteMuseSave` checks `saved_by_user_id` and cannot be talked past — so this is a
+wasted-turn loop, not a hole. But it costs **two turns of a five-turn daily cap per
+deletion**, which is precisely why F-09.182's branch went unwitnessed.
+
+It is prompt shaping on the circle lane: **W-1, shut outside D-4's two granted lifts.**
+Filed unnumbered; R-M3, the register is the chair's.
+
+### SEAT DEFECTS DURING THE WALK — three, all self-caught, none consequential
+
+1. **Predicted a `wa-media/bride/…` url for a muse save.** It is Cloudinary
+   (`dream-os/muse/<couple_id>/…`); `wa-media` is the inbound transport bucket. Written from
+   memory instead of derived.
+2. **Predicted `tool_calls = []` on a cap refusal.** It writes **`null`** — the cap-refusal
+   insert omits the column because the model never runs. Right about the rows, wrong about
+   the column.
+3. **Read a step as green from a screen report that the rows contradicted.** Two photos the
+   founder believed went down the bride lane were `saved_by_role = 'circle_member'`; V8 was
+   unwitnessed and the seat said so and re-issued step 5. **The rows-and-logs rule caught it.**
+
+### ONE CAUSE STILL OPEN — the save that failed at 10:06:35
+
+The founder's reading was that the dial change had not yet propagated. **The seat disagreed,
+and the disagreement is on the record because it is load-bearing.** Three independent
+readings say the dial cannot produce that failure: `media_url` is **present** on the failed
+row, so the resolve succeeded and the fault is downstream in `saveToMuse`; `museSave.js`
+contains **zero** references to the cap, the gate, or `admin_config` (grepped, count 0); and
+the turn received an **agent-composed reply**, which a cap refusal returns before. There is
+no cache — `readCoupleCap` queries `admin_config` fresh every turn.
+
+So the failure is one of `museSave`'s named modes, most likely the Cloudinary leg
+(`image pipeline failed: …`), and a resend succeeding 45s later fits an intermittent upstream
+far better than a config write. **Why this matters:** if "cap propagation" enters the record,
+an intermittent live save failure on the bride door stops being investigated. The BYTES are
+green either way — the cure is not in question, the cause is. Railway logs settle it in one
+line, tag `[museSave] pipeline failed:` or `[museSave] insert failed:` around `10:06:35 UTC`.
+**Not blocking. Filed unnumbered; R-M3.**
+
+### THE DIAL IS RESTORED
+
+`couple_ai_daily_basic` was set to `1` for steps 3–6 (**estate-wide config, signed off with
+the radius named — every basic-tier couple, three test couples, no real ones**) and restored
+to `40` at step 7, verified by read. The estate is out of its modified state.
 
 ## 10 · FOUNDER-RUN SELECTs — read-only, zero placeholders
 
