@@ -355,7 +355,101 @@ const TEMPLATES = {
     status: 'approved',
   },
 
-  // ── AUTHENTICATION-category OTP templates (Block 05, F-05.6 fix (a), CE-35) ──────
+  // ── TDW_14 D-2 · C-6 — THE CIRCLE LANE'S FIRST CONTENT TEMPLATE ─────────────
+  // AUTHORED FROM THE WIRE, NOT FROM THE DRAFT (F-08.75, absolute). The body
+  // below was transcribed from the founder's own handset render of a live send
+  // and cross-checked against the WhatsApp Manager preview — never from the
+  // sheet the copy was vetoed on. A registry whose body has drifted from the
+  // filed one builds a payload Meta rejects at send time; enquiry_alert_vendor's
+  // comment says the same thing one entry up, and this entry obeys it.
+  //
+  // ── THE WIRE WITNESS ────────────────────────────────────────────────────────
+  //   Meta template ID  2069520823656352 · Utility · English
+  //   Dashboard state   "Active – Quality pending", 2026-08-13 (founder screen).
+  //                     "Quality pending" is the QUALITY RATING, not the review
+  //                     state — Active is the approval. Same reading as
+  //                     enquiry_alert_vendor's; the distinction has now been
+  //                     misread once in this estate's history and twice read
+  //                     correctly, so it is written down again here.
+  //   Live send         PNID 1193630900506451 (the BRIDE lane — the circle rides
+  //                     it, per TEMPLATES.md §7.1) → +918757788550, accepted with
+  //                     wamid.HBgMOTE4NzU3Nzg4NTUwFQIAERgSNjY2MTMxNzg0MkRDNDEwQ0FEAA==
+  //   Delivery          bride-webhook status callbacks sent · delivered · read.
+  //   Render            witnessed on the handset; see the slot-order note below.
+  //
+  // ── WHY `variables` IS IN THIS ORDER, AND HOW WE KNOW ──────────────────────
+  // PARAMETERS ARE POSITIONAL AND META ONLY COUNTS THEM. A payload whose three
+  // values are correct but ordered wrong is ACCEPTED, returns a wamid, delivers
+  // cleanly, and reads "Hi <bride>, your place in <invitee>'s wedding circle" —
+  // wrong, silently, on a real invitee's phone. No API response can catch that.
+  // The order below is not inferred from the filing form: it is READ OFF THE
+  // DELIVERED MESSAGE, which rendered "Hi Mehek, your place in Dev Test 23's
+  // wedding circle …" for parameters sent as [Mehek, Dev Test 23, <link>].
+  //
+  // ── COPY PROVENANCE — the refusal is part of the record ────────────────────
+  // The FIRST draft ("your invitation to join {{2}}'s wedding circle … is still
+  // open. Tap here to set up your access") was refused by Meta's pre-submission
+  // classifier as MARKETING, verbatim: "This message template will be rejected."
+  // Three signals, each visible in hindsight: "invitation" is an OFFER; "is still
+  // open" is URGENCY; "set up your access" implies the recipient HAS NOTHING YET.
+  // Meta's own dialog defines Utility as messages about "an existing order or
+  // account", and all three approved UTILITY bodies in this file obey that
+  // literally — demo_invite ("has been set up and is ready"), vendor_welcome
+  // ("has been created"), enquiry_alert_vendor ("just came in"): each asserts in
+  // PAST TENSE a thing that already exists, then names the action servicing it.
+  // vendor_welcome's own comment records this identical failure one template
+  // earlier. The precedent was in this file and the executor read past it.
+  //
+  // The cure is TRUTHFUL rather than merely compliant, and the distinction is the
+  // point: `invite_circle_member` writes the circle_members row — her name, her
+  // role, her token — at the moment the bride invites. So "your place … has been
+  // created" asserts a record that GENUINELY EXISTS at send time. The template
+  // name moved with the body (tdw_circle_invite_reminder → tdw_circle_place_ready)
+  // because "invite" was doing part of the damage.
+  //
+  // ── [F-14.6] THE WINDOW SIGNAL ON THIS LANE IS A TRAP — READ BEFORE SENDING ─
+  // Any future caller of this key MUST derive last-inbound from `messages`.
+  // `conversations.last_message_at` is bumped by COPLANNER WEB SENDS
+  // (src/api/circle/messages.js — the thread write and the bump), so supplying it
+  // to sendWa as the window signal claims an open 24h WhatsApp session because
+  // somebody typed in a browser. sendWa refuses to guess (WaWindowUndeterminedError);
+  // it must not be taught to guess wrong. CE-212 §⑤ binds every new send site at
+  // birth and this is its circle specimen.
+  //
+  // ── [F-14.7] THE MEMBER'S STOP IS HALF-ARMED, AND THE CURE IS RULED ────────
+  // [F-06.85: conditioned on machinery that does not exist yet, and naming it.]
+  // A circle member has no opt-out row of her own and cannot make one. FULL STOP
+  // (prospects.state='opted_out') is phone-keyed and consulted on every send, so
+  // it blocks her ONLY IF her phone already exists as an opted-out prospect row —
+  // and no circle path anywhere creates one. NUDGE-CLASS (nudge_optout) is
+  // lane-scoped to 'bride'|'vendor', so a member's pause would also silence her
+  // bride-lane morning nudge.
+  //
+  // RULED (CE-32, at this template's filing): a STOP lands on the LANE IT WAS
+  // SAID IN — a member's stop silences circle-lane outbounds to her and touches
+  // nothing else. The cure is `nudge_optout`'s lane vocabulary widened with
+  // 'circle' at its one home (_assertLane widened with it), consulted at every
+  // circle send site AT BIRTH. Minting a prospects row for a member was REFUSED:
+  // a wedding guest must never enter the marketing lane's terminal register.
+  //
+  // THIS ENTRY SHIPS NO CALLER (CE-32 ruling ③ — D-2 stops at filing; a reminder
+  // cron for a population of one member is scope wearing a uniform). The cure
+  // above therefore has nothing to attach to yet. IT IS OWED BY THE FIRST
+  // DELIVERY THAT SENDS THIS TEMPLATE. RE-READ THIS PARAGRAPH THEN.
+  circle_place_ready: {
+    key: 'circle_place_ready',
+    name: 'tdw_circle_place_ready',        // FOUNDER-FINAL on the WABA, Meta-witnessed 2026-08-13
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',                         // the circle rides the bride number (TEMPLATES.md §7.1)
+    category: 'UTILITY',
+    variables: ['invitee', 'bride', 'link'],   // ORDER PROVEN BY THE RENDER — see above
+    body:
+      'Hi {{1}}, your place in {{2}}\'s wedding circle on The Dream Wedding has been ' +
+      'created. Open it here to complete your setup: {{3}} — reply here if you need any help.',
+    status: 'approved',
+  },
+
+
   // These carry the login / PIN-reset / circle-join one-time codes over the Meta
   // transport. At M2b (CE-62, founder gate (ii)) they became the ONLY OTP path: the
   // OTP_WA_NUMBER Twilio fallback was deleted, so a lane with no PNID now throws rather
