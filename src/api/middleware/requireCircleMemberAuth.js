@@ -114,7 +114,7 @@ module.exports = async function requireCircleMemberAuth(req, res, next) {
   // made.
   const { data: member } = await supabase
     .from('circle_members')
-    .select('id, couple_id, role, invitee_name, status')
+    .select('id, couple_id, role, invitee_name, status, visibility')
     .eq('invitee_phone', userRow.phone)
     .eq('status', 'active')
     .maybeSingle();
@@ -134,12 +134,41 @@ module.exports = async function requireCircleMemberAuth(req, res, next) {
     co_planner_id: member.id,
     couple_id:     member.couple_id,
     role:          member.role,
-    name:          userRow.name || member.invitee_name || null,
+    // ── [F-06.85] Q-d, F-07.125 — THE PRECEDENCE IS THE FOUNDER'S, AND HIS
+    // GROUND IS WRITTEN IN SO NO FUTURE HAND "FIXES" IT BACK ─────────────────
+    // THIS LINE READ `userRow.name || member.invitee_name`. It was the estate's
+    // THIRD answer to one question and it disagreed with the other two: a member
+    // whose `users.name` said Droy saw Droy in settings while her own messages,
+    // written from `invitee_name`, said Mehek. Same person, same screen session,
+    // two names — F-07.125, and it sat on the founder's shelf for a tenure
+    // because it is a product question and not a mechanical one.
+    //
+    // HIS WORD, verbatim, 2026-08-13: 「 bride's name wins. it's her circle 」.
+    //
+    // THE SECOND SENTENCE IS THE RULING'S GROUND, not decoration. `invitee_name`
+    // is the name the BRIDE TYPED when she invited this person; `users.name` is
+    // whatever that person happened to register under, in her own lane, for her
+    // own reasons. The circle is the bride's room. Inside it, people are called
+    // what she calls them — so this is not a tie broken arbitrarily, it is the
+    // only precedence that matches whose surface this is.
+    //
+    // R-OB.7 (circle member names governed by the bride's given name) and
+    // F-07.107 (`messages.js:174`, "the name the bride herself typed") are this
+    // line's two older siblings. With this flip the estate has ONE answer at all
+    // three sites and Q-d closes. A future hand that reverses this is not fixing
+    // a fallback order; it is overruling the founder on whose room this is.
+    name:          member.invitee_name || userRow.name || null,
     // FORK E — one home, cited both ways. The block used to be seven literal
     // lines here and seven identical literal lines at `src/api/circle/session.js`.
     // `src/lib/circlePermissions.js` is now the only place it is written, and
     // that file's header carries F-07.115's declaration.
-    permissions:   circlePermissions(),
+    //
+    // TDW_14 D-1 — the block is now PER-MEMBER. The row's `visibility` jsonb is
+    // handed to the one home, which resolves it against the frozen defaults. The
+    // guard does not read a key, compare a value, or hold an opinion about what
+    // any flag means: it passes the column and takes the answer. That is what
+    // makes this a choke point rather than a first implementation.
+    permissions:   circlePermissions(member.visibility),
   };
 
   next();
