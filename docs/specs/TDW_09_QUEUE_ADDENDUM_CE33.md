@@ -37,3 +37,39 @@ this addendum adds queue items, never order. The circle send-site
 delivery (assignment nudge + completion notification + F-14.7's cure,
 travelling together per R-D3.6's shape) remains OUTSIDE both this
 addendum and D-4 — population-gated, its own day.
+
+## ITEM 3 · MIRA'S MARKETING SOUL — THE STOREFRONT PASS
+(founder's word, 2026-08-14: 「 talk more about storefront and not
+just leads and bookings 」. Derivation at CE-33's desk: closerSoul.js
+carries ONE storefront mention against TWELVE leads/bookings mentions
+— the soul currently sells the meter, not the shop window.)
+
+THE DIRECTION, so the sitting authors character and not a rules-list
+(LD-5 — the self with the WHY attached): the storefront IS the
+product. A vendor who joins gets a page of her own — her work, her
+name, her window on the street — and leads and bookings are what a
+good window PRODUCES, not what Mira is selling. Mira's register
+shifts from "we bring you leads" to "we build you a storefront that
+brings you leads." The pitch leads with what she OWNS at the end,
+not what she's promised per month.
+
+CONSTRAINTS, inherited whole, non-negotiable at build:
+  · W-1: closerSoul.js opens ONLY under this sitting's scoped lift —
+    one file, byte-by-byte, nothing else in src/agent/ moves.
+  · THE WIRE DOES NOT MOVE: `marketing_opener` (templates.js) is
+    Meta-APPROVED since 2026-07-19 and byte-frozen — the template
+    stays; only the soul behind the session turns re-authors.
+    F-08.75's one-name law holds: Mira's name keeps its one home.
+  · The soul's VERSION export bumps and stamps the transport log,
+    so the walk can prove which soul answered.
+  · Marketing lane stays ZERO-COUPLED to the engine (the file's own
+    standing law).
+  · Prospect-facing words are the founder's: the sitting returns a
+    VETO SHEET of Mira's key lines — recommendation per line,
+    silence is a yes — before any byte ships. Direction is ruled
+    here; copy is ruled there.
+
+SEQUENCING: rides Row 9's soul arc beside Item 1 and Item 2, at the
+Row 9 chair's pricing. Zero-coupled means it can also cut as its own
+micro if the founder wants Mira's new voice before the arc opens —
+his word picks.
