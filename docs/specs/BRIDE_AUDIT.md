@@ -1,4 +1,6 @@
 # BRIDE_AUDIT — The Complete Bride-Side Ground Truth (pre-spec audit, 2026-07-14)
+
+> **SUPERSEDED (CE-33 · 2026-08-14 · c12's cure): this 2026-07-14 snapshot is NOT ground truth and no seat is seated on it — a superseded audit handed to a seat as ground truth is the c12 defect this banner cures. Derive at origin at your own tips: the live tree, `docs/db/PUBLIC_SCHEMA.md` (the regenerated witness), and the FINDINGS_LOG bands.**
 **Purpose:** the verified foundation for TDW_14/15/16 so no executor session audits, discovers, or improvises mid-build. Every claim below was read from live code this session. Where something could NOT be verified from a clone, it is marked ⚠ VERIFY-AT-BUILD with the exact check to run.
 
 ---
