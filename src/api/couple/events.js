@@ -25,7 +25,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
 
   let query = supabase
     .from('events')
-    .select('id, title, event_date, event_time, kind, state, notes, created_at')
+    .select('id, title, event_date, event_time, kind, state, notes, created_at, assigned_circle_member_id')
     .eq('couple_id', couple_id)
     .order('event_date', { ascending: true })
     .limit(limit);
@@ -97,7 +97,8 @@ router.patch('/:eventId', asyncHandler(async (req, res) => {
   const { eventId } = req.params;
   if (!UUID_RE.test(eventId)) return errRes(res, 400, 'Invalid event id.');
 
-  const { title, event_date, event_time, kind, notes, state } = req.body || {};
+  const { title, event_date, event_time, kind, notes, state,
+          assigned_circle_member_id } = req.body || {};
   const updates = {};
 
   if (title !== undefined) {
@@ -132,11 +133,47 @@ router.patch('/:eventId', asyncHandler(async (req, res) => {
     if (!ALLOWED_STATES.has(state)) return errRes(res, 400, 'state must be upcoming, done, or cancelled.');
     updates.state = state;
   }
+  // ── TDW_14 D-4 · DELEGATION RIDES THIS DOOR, NOT A NEW ONE ────────────────
+  // The assignment is a field on the event, so it belongs in the event's own
+  // allowlist beside `kind` and `state`. A dedicated /assign route would have
+  // been a second write path to one table, and `coupleEventWrite` exists
+  // precisely to keep the couple plane at ONE writer (TDW_05 ARC M6).
+  //
+  // THE MEMBER IS VERIFIED AGAINST THIS BRIDE'S OWN CIRCLE BEFORE THE WRITE.
+  // The FK alone would accept ANY circle_members.id — including a member of
+  // another couple's circle — because a foreign key checks existence, never
+  // ownership. Without this lookup a caller could delegate her own event to a
+  // stranger's seat, and every read of that event would then join to a member
+  // she has never met.
+  //
+  // `null` CLEARS the assignment (byte C, "No one"). It is distinguished from
+  // "field absent" by `!== undefined`, exactly as `event_time` and `notes`
+  // already distinguish theirs — an established shape in this handler, not a
+  // new convention.
+  if (assigned_circle_member_id !== undefined) {
+    if (assigned_circle_member_id === null || assigned_circle_member_id === '') {
+      updates.assigned_circle_member_id = null;
+    } else {
+      if (!UUID_RE.test(assigned_circle_member_id)) {
+        return errRes(res, 400, 'Invalid member id.');
+      }
+      const { data: member } = await supabase
+        .from('circle_members')
+        .select('id')
+        .eq('id', assigned_circle_member_id)
+        .eq('couple_id', couple_id)      // HER circle — the FK cannot say this
+        .eq('status', 'active')          // and a removed seat holds nothing
+        .maybeSingle();
+      if (!member) return errRes(res, 404, 'Member not found.');
+      updates.assigned_circle_member_id = assigned_circle_member_id;
+    }
+  }
+
   if (Object.keys(updates).length === 0) return errRes(res, 400, 'No fields to update.');
 
   const { data, error } = await updateCoupleEvent(supabase, {
     coupleId: couple_id, eventId, updates,
-    select: 'id, title, event_date, event_time, kind, state, notes',
+    select: 'id, title, event_date, event_time, kind, state, notes, assigned_circle_member_id',
   });
 
   if (error) {

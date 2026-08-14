@@ -612,12 +612,21 @@ const MEMBER_ROUTES = fs.readdirSync(SRC('src/api/circle'))
 // MISSED THIS ONE. Two cells read the circle radius, not one. The bench found
 // the second — a chartered move that was not declared is still a surprise, and
 // the only reason it cost nothing is that the cell refused to stay quiet.
-t('§6.1 the member-facing route family is enumerated by the bench, and it is EIGHT', () => {
+// ── EIGHT BECAME NINE AT D-4, DECLARED BEFORE THE BUILD ──────────────────
+// `assigned.js` — the member's "Yours" tray — joins the family, so §6.2's
+// money-absence claim now covers it too, which is exactly what this cell exists
+// to force. D-3b's own note records that this cell was found by the FLOOR rather
+// than by that read-first; R-33.1 was minted for it, and D-4's read-first named
+// this move before a byte was written. The count is RE-DERIVED, never adjusted
+// until it passed.
+t('§6.1 the member-facing route family is enumerated by the bench, and it is NINE', () => {
   console.log(`         member routes: ${MEMBER_ROUTES.length} — ${MEMBER_ROUTES.map(f => path.basename(f)).join(' · ')}`);
-  assert.strictEqual(MEMBER_ROUTES.length, 8,
+  assert.strictEqual(MEMBER_ROUTES.length, 9,
     'the circle router family changed size — the absence claim below covers a different set than it was written for');
-  assert.ok(MEMBER_ROUTES.some(f => path.basename(f) === 'polls.js'),
-    'D-3\u0027s polls router left the family the absence claim is asserted over');
+  for (const expected of ['polls.js', 'assigned.js']) {
+    assert.ok(MEMBER_ROUTES.some(f => path.basename(f) === expected),
+      `${expected} left the family the absence claim is asserted over`);
+  }
 });
 
 t('§6.2 ZERO member-facing routes select a budget-bearing table or column', () => {
