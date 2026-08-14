@@ -73,3 +73,51 @@ SEQUENCING: rides Row 9's soul arc beside Item 1 and Item 2, at the
 Row 9 chair's pricing. Zero-coupled means it can also cut as its own
 micro if the founder wants Mira's new voice before the arc opens —
 his word picks.
+
+## ITEM 4 · P6 AMENDED — THE MEMBER HAS NO CONVERSATIONAL AI
+(founder's ruling, 2026-08-14. The picture job ALREADY EXISTS:
+museSave.js is extended for circle members
+(saved_by_role='circle_member', actor name from invitee_name,
+save_added activity), and circleEngine.js's own header states the
+design — "NO tools; circle members have no agentic capabilities
+beyond auto-save." The founder's ruling and the B2 architecture are
+the same decision.)
+
+STRUCK from TDW_14_CIRCLE_FINAL.md P6, by this ruling:
+  · P6.1 whole — the circleSystemPrompt "gracious insider" doctrine
+    pass. No wedding-aware context feed, no personality authoring,
+    no visibility-resolver injection. The member engine stays
+    byte-for-byte the minimal acknowledger it is.
+  · Acceptance #4's AI half — "refuses the budget probe
+    in-character." There is no in-character. The payload half STANDS
+    and carries the whole guarantee: budget fields absent from the
+    member feed payload with the flag off, raw JSON audit.
+  · The conversational bench scenarios — replaced by ONE cell
+    family: the member lane calls no tools, reads no visibility
+    context, answers within its declared limits. Smallness IS the
+    spec; the bench pins it.
+
+SURVIVES, unchanged: P6.2 (circleEngine mechanicals) · P6.3 THE FULL
+SWEEP (founder-run 2026-08-14, green) · all remaining acceptance.
+
+CONSEQUENCE: no TDW_14 phase touches circleSystemPrompt.js — P6 no
+longer waits on Row 9. If Row 9's doctrine work ever revisits the
+member lane, this ruling is the standing answer.
+
+## ITEM 5 · P6 ACCEPTANCE #3 AMENDED — THE TIER LADDER IS PARKED
+(chair ruling on the founder's catalogue probe, 2026-08-14:
+pg_get_functiondef returned invite_circle_member with
+v_member_cap := 3, FLAT — no tier-aware variant exists. This is
+CORRECT: the paid couple tier is parked at R-30.35, and the Gold
+whisper would breach the label law today — present-tense chairs
+nobody can buy. Witnessed live mapping: "Circle is full. Maximum 3
+members allowed." — plain, no phantom tier.)
+
+Acceptance #3 henceforth: 4th invite refused with the plain full
+message — proven at the catalogue and the mapping. Tier seats 5/8,
+the tier-aware RPC, and the whisper land WITH the couple tier when
+it unparks; that delivery cites this item.
+
+Also banked from the founder's probes: removed-member session death
+witnessed on production (the 403 cascade after the D-4c removal) —
+P3.3's acceptance, closed on glass.
