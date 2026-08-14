@@ -84,8 +84,8 @@ const EV = { id: EVENT_ID, couple_id: MEHEK.coupleId, title: 'Book mehendi trial
 
 // The plane honours its filters rather than swallowing them: a fake that ignores
 // what it was asked for cannot convict code that fails to ask.
-function plane({ events = [], seatStatus = 'active' } = {}) {
-  const cap = { updated: [] };
+function plane({ events = [], seatStatus = 'active', failEventUpdate = false } = {}) {
+  const cap = { updated: [], writes: [] };
   const api = {
     auth: { getUser: async (tok) => (tok === BRIDE_JWT
       ? { data: { user: { id: BRIDE.authUserId } }, error: null }
@@ -129,7 +129,11 @@ function plane({ events = [], seatStatus = 'active' } = {}) {
           if (!seat) return { data: null };
           if (q._eq.couple_id !== undefined && q._eq.couple_id !== seat.couple) return { data: null };
           if (q._eq.status    !== undefined && q._eq.status    !== seat.status) return { data: null };
-          return { data: { id } };
+          // D-4c: the removal door selects `id, status, invitee_name` and READS
+          // `member.status` to decide its idempotent exit. The plane returned
+          // `{ id }` alone, so that branch could never be driven. Additive —
+          // every existing cell reads `.id` or mere truthiness.
+          return { data: { id, status: seat.status, invitee_name: 'Mehek' } };
         }
         if (table === 'events') {
           if (!q._upd) return { data: null, error: null };
@@ -144,7 +148,17 @@ function plane({ events = [], seatStatus = 'active' } = {}) {
         return { data: null };
       };
       q.then = (r) => {
+        // ── D-4c · THE TERMINAL-LESS WRITE, WITNESSED ────────────────────────
+        // The removal door's two writes are AWAITED DIRECTLY — no `.single()`,
+        // no `.maybeSingle()` — so they land here and not in the terminal above.
+        // Until D-4c this branch recorded nothing, which is why an ordering
+        // claim could not be made at all. Recording is ADDITIVE: the resolved
+        // shape below is unchanged, so no existing cell moves.
+        if (q._upd) cap.writes.push({ table, eq: { ...q._eq }, updates: q._upd });
         if (table === 'events') {
+          if (q._upd && failEventUpdate) {
+            return Promise.resolve({ data: null, error: { message: 'bench: forced clear failure' } }).then(r);
+          }
           const rows = events.filter(e =>
             (q._eq.couple_id === undefined || e.couple_id === q._eq.couple_id) &&
             (q._eq.assigned_circle_member_id === undefined
@@ -481,6 +495,134 @@ t('§6.6 no migration in the estate holds shell (F-05.80 class)', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+H('§8 — D-4c · THE REMOVAL CLEARS THE PLANE (F-14.12, R-33.6)');
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ── WHY THIS SECTION EXISTS, AND WHY §6 WAS NOT ENOUGH ─────────────────────
+// §6 reads 0125's `ON DELETE SET NULL` out of the migration and §7.M10 proves
+// that cell bites. Both are correct and both are GREEN OVER A PATH NOTHING
+// TAKES: no code in this estate ever DELETEs a `circle_members` row, so the
+// constraint has never fired in production and could not.
+//
+// R-33.6, minted on exactly this: a rule read from the catalogue proves the
+// rule EXISTS, never that any live path TAKES it. A behavioural ruling's cell
+// asserts the PATH; the constraint is belt-and-braces.
+//
+// So the cells below DRIVE THE REMOVAL DOOR rather than reading a schema. §8.1
+// is the source cell R-33.6 demands; §8.2-§8.5 are the door itself, executed.
+const CIRCLE_DOOR = 'src/api/couple/circle.js';
+
+// ── AN UNCURED TREE MUST YIELD A RED SET, NEVER A STACK TRACE ──────────────
+// These two derivations were first written at MODULE SCOPE with bare asserts.
+// At 6c84830 the clear does not exist, so the bench THREW before its first cell
+// and exited 1 — which looks like the red the both-ways leg wants and is not: a
+// typo in this file would exit 1 identically, and nothing would name what is
+// missing. A CRASH IS NOT A RED. Both are now functions, called inside cells, so
+// the uncured tree reports §8.1-§8.5 RED BY NAME.
+//
+// I wrote this same warning into the D-4b bench's own header and then made the
+// mistake here, which is worth leaving on the record: writing a lesson down is
+// not the same as having learnt it.
+//
+// BOUNDED TO THE HANDLER, never the file: `circle.js` is 460 lines and carries
+// other `.from('events')` work. A file-wide grep would pass on a clear that
+// lives anywhere at all.
+const REMOVAL_HANDLER = () => {
+  const c = code(CIRCLE_DOOR);
+  const i = c.indexOf("router.delete('/member/:memberId'");
+  assert.ok(i > -1, 'the removal handler is not where this bench expects it');
+  const j = c.indexOf("router.get('/member/:memberId'", i);
+  return c.slice(i, j > -1 ? j : c.length);
+};
+
+// ── AND BOUNDED AGAIN, TO THE CLEAR STATEMENT ITSELF ───────────────────────
+// §8.1's first cut asserted `.eq('couple_id', couple_id)` anywhere in the
+// handler — and THE STATUS FLIP twenty lines down carries that same predicate,
+// so the assertion passed while reading the wrong statement. Mutation §7.M12,
+// which strips the predicate off the clear, went green and reported itself
+// decorative. Caught by its own mutation leg, not by the eye.
+//
+// This is the exact twin of the D-4b bench's §3.1 — where a column assertion
+// read `updateEvent`'s patch type while claiming `CoupleEvent` — found the same
+// way, one delivery apart. R-33.3: the radius equals the claim, and "the
+// handler" is not the claim when the claim is "the clear".
+const CLEAR_STMT = () => {
+  const h = REMOVAL_HANDLER();
+  const i = h.indexOf(".from('events')");
+  assert.ok(i > -1, 'the removal door never touches the events plane — the ruling is unenforced');
+  return h.slice(i, h.indexOf(';', i));
+};
+
+t('§8.1 R-33.6 — the CLEAR lives IN the removal handler, scoped by BOTH keys', () => {
+  const s = CLEAR_STMT();
+  assert.ok(/\.update\(\{ assigned_circle_member_id: null \}\)/.test(s),
+    'the door touches events but does not null the delegation column');
+  assert.ok(/\.eq\('couple_id', couple_id\)/.test(s),
+    'the CLEAR is not scoped by the proven couple (the status flip carrying it does not count)');
+  assert.ok(/\.eq\('assigned_circle_member_id', memberId\)/.test(s),
+    'the clear is not scoped by the seat — it would blank the whole couple');
+});
+
+await ta('§8.2 the door, DRIVEN: removing a member nulls her delegations', async () => {
+  const r = await call(fresh(CIRCLE_DOOR), 'delete', '/member/:memberId', {
+    auth: BRIDE_JWT, params: { memberId: MEHEK.seatId },
+    planeOpts: { events: [{ ...EV, assigned_circle_member_id: MEHEK.seatId }] } });
+  assert.strictEqual(r.status, 200);
+  const clear = r.cap.writes.find(w => w.table === 'events');
+  assert.ok(clear, 'the removal completed without ever writing to the events plane');
+  assert.strictEqual(clear.updates.assigned_circle_member_id, null);
+  assert.strictEqual(clear.eq.couple_id, MEHEK.coupleId);
+  assert.strictEqual(clear.eq.assigned_circle_member_id, MEHEK.seatId);
+});
+
+await ta('§8.3 THE ORDERING — clear precedes flip, never the reverse', async () => {
+  const r = await call(fresh(CIRCLE_DOOR), 'delete', '/member/:memberId', {
+    auth: BRIDE_JWT, params: { memberId: MEHEK.seatId },
+    planeOpts: { events: [{ ...EV, assigned_circle_member_id: MEHEK.seatId }] } });
+  const tables = r.cap.writes.map(w => w.table);
+  assert.deepStrictEqual(tables, ['events', 'circle_members'],
+    `writes landed in the order ${tables.join(' -> ')}; the invariant needs events first`);
+});
+
+await ta('§8.4 A FAILED CLEAR REFUSES THE REMOVAL WHOLE — nothing half-done', async () => {
+  const r = await call(fresh(CIRCLE_DOOR), 'delete', '/member/:memberId', {
+    auth: BRIDE_JWT, params: { memberId: MEHEK.seatId },
+    planeOpts: { events: [{ ...EV, assigned_circle_member_id: MEHEK.seatId }],
+                 failEventUpdate: true } });
+  assert.strictEqual(r.status, 500);
+  assert.ok(!r.cap.writes.some(w => w.table === 'circle_members'),
+    'the member was removed anyway — a live pointer at somebody gone, the ghost the ruling forbids');
+});
+
+await ta('§8.5 THE ALREADY-REMOVED EXIT OWES THE CLEAR TOO — self-healing', async () => {
+  // The pre-D-4c handler short-circuited on status==='removed' before touching
+  // anything. That exit still ends with status='removed', so the invariant binds
+  // it. It is also what repairs a row stranded by the old code: production's one
+  // specimen was cleared by founder SQL on 2026-08-14, and this is what keeps
+  // the count at zero without a cron.
+  const r = await call(fresh(CIRCLE_DOOR), 'delete', '/member/:memberId', {
+    auth: BRIDE_JWT, params: { memberId: MEHEK.seatId },
+    planeOpts: { events: [{ ...EV, assigned_circle_member_id: MEHEK.seatId }],
+                 seatStatus: 'removed' } });
+  assert.strictEqual(r.status, 200);
+  assert.ok(r.cap.writes.some(w => w.table === 'events'),
+    'an already-removed member exits without clearing — the stranding survives');
+});
+
+t('§8.6 THE SOFT DELETE STAYS — the row is not deleted to reach the constraint', () => {
+  assert.ok(/\.update\(\{ status: 'removed' \}\)/.test(REMOVAL_HANDLER()));
+  assert.ok(!/from\('circle_members'\)[\s\S]{0,200}\.delete\(/.test(code(CIRCLE_DOOR)),
+    'the row is hard-deleted — joined_at, the invite token and every activity attribution go with it');
+});
+
+t('§8.7 0125 IS UNTOUCHED — LD-8, and the FK remains belt-and-braces', () => {
+  const stmt = (read(MIGRATION).match(/ALTER TABLE public\.events[\s\S]*?;/) || [''])[0];
+  assert.ok(/ON DELETE SET NULL/.test(stmt),
+    'an applied migration was edited, or the constraint was weakened');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 H('§7 — MUTATION: production code broken, each named cell proven to bite');
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -582,8 +724,46 @@ await ta('§7.M10 the delete rule becomes CASCADE ⇒ §6.2 RED (her event would
   });
 });
 
+// ── D-4c's mutations (F-14.12) ─────────────────────────────────────────────
+// R-33.4: each target is CODE, and each was verified UNIQUE on the FINAL tree.
+await ta('§7.M11 the removal stops clearing the plane ⇒ §8.1/§8.2 RED (F-14.12 returns)', async () => {
+  await mutate(CIRCLE_DOOR,
+    "  const { error: cErr } = await supabase\n    .from('events')\n    .update({ assigned_circle_member_id: null })",
+    "  const cErr = null; await Promise.resolve();\n  if (false) await supabase\n    .from('events')\n    .update({ assigned_circle_member_id: null })", async () => {
+    const r = await call(fresh(CIRCLE_DOOR), 'delete', '/member/:memberId', {
+      auth: BRIDE_JWT, params: { memberId: MEHEK.seatId },
+      planeOpts: { events: [{ ...EV, assigned_circle_member_id: MEHEK.seatId }] } });
+    assert.ok(r.cap.writes.some(w => w.table === 'events'));
+  });
+});
+
+await ta('§7.M12 the clear drops the couple predicate ⇒ §8.1 RED (it would blank the couple)', async () => {
+  await mutate(CIRCLE_DOOR,
+    "    .update({ assigned_circle_member_id: null })\n    .eq('couple_id', couple_id)\n    .eq('assigned_circle_member_id', memberId);",
+    "    .update({ assigned_circle_member_id: null })\n    .eq('assigned_circle_member_id', memberId);", async () => {
+    // A PROBE MUST MIRROR THE CELL IT NAMES (§7.M10's tuition, paid again). The
+    // first cut searched the whole handler and matched the STATUS FLIP's own
+    // couple predicate, so it passed over the broken clear and reported itself
+    // decorative. It now re-derives the CLEAR STATEMENT exactly as §8.1 does.
+    assert.ok(/\.eq\('couple_id', couple_id\)/.test(CLEAR_STMT()));
+  });
+});
+
+await ta('§7.M13 a failed clear stops refusing ⇒ §8.4 RED (the removal goes half-done)', async () => {
+  await mutate(CIRCLE_DOOR,
+    "    console.error('[DELETE /couple/circle/member] delegation clear error:', cErr.message);\n    return errRes(res, 500, 'Could not remove member.');",
+    "    console.error('[DELETE /couple/circle/member] delegation clear error:', cErr.message);", async () => {
+    const r = await call(fresh(CIRCLE_DOOR), 'delete', '/member/:memberId', {
+      auth: BRIDE_JWT, params: { memberId: MEHEK.seatId },
+      planeOpts: { events: [{ ...EV, assigned_circle_member_id: MEHEK.seatId }],
+                   failEventUpdate: true } });
+    assert.strictEqual(r.status, 500);
+    assert.ok(!r.cap.writes.some(w => w.table === 'circle_members'));
+  });
+});
+
 t('§7.M11 every mutation target above was FOUND before it was broken', () => {
-  assert.strictEqual(ledger.length, 10, `expected 10 mutations, the ledger holds ${ledger.length}`);
+  assert.strictEqual(ledger.length, 13, `expected 13 mutations, the ledger holds ${ledger.length}`);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

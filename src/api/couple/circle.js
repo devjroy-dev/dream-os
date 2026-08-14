@@ -152,7 +152,62 @@ function shapeActivity(a, saveLookup) {
   return base;
 }
 
-// ── DELETE /member/:memberId — soft-delete a circle member (status → removed) ─
+// ── DELETE /member/:memberId — remove a circle member ────────────────────────
+//
+// SOFT DELETE, AND THE ROW STAYS ON PURPOSE. `joined_at`, the invite token and
+// the attribution behind every `circle_activity` line on the bride's feed all
+// live on this row. Deleting it outright would orphan her history to buy a
+// cascade, so the status flip is right and is not what F-14.12 was about.
+//
+// ── F-14.12 · WHAT THIS HANDLER WAS MISSING, AND HOW IT WAS FOUND ───────────
+// 0125 gave `events.assigned_circle_member_id` an `ON DELETE SET NULL` and
+// stated the ruling in its own header: removing a member returns her task to
+// the bride VISIBLY, never a ghost pointing at somebody no longer in the room.
+// THAT CONSTRAINT HAS NEVER FIRED IN PRODUCTION AND COULD NOT, because nothing
+// in this estate ever DELETEs a `circle_members` row — this door, the only
+// removal path there is, has always updated a status.
+//
+// D-4a's bench read the delete rule out of `pg_constraint` and passed. The rule
+// was really there; no live path reached it. R-33.6 was minted on this:
+// a rule read from the catalogue proves the rule EXISTS, never that any live
+// path TAKES it. A behavioural ruling's cell asserts the PATH; the constraint is
+// belt-and-braces.
+//
+// It surfaced on a walk. The bride removed her only member, the name vanished
+// from the events bloom, and the screen looked exactly like the ruling working.
+// It was the PWA's `holderName` fallback — which resolves a seat against ACTIVE
+// members only — doing the schema's job. One SELECT behind the glass showed the
+// column still holding the removed seat's uuid. A GREEN SCREEN OVER AN
+// UNENFORCED RULING IS THE SAME DISEASE AS A GREEN CELL OVER AN UNTAKEN PATH.
+//
+// ── THE INVARIANT THIS HANDLER NOW HOLDS ───────────────────────────────────
+//   THIS HANDLER NEVER EXITS WITH status='removed' WHILE ANY events ROW STILL
+//   HOLDS THAT MEMBER'S id.
+//
+// Three things follow from stating it that way rather than as "clear the column
+// too", and each is load-bearing:
+//
+//   1. CLEAR FIRST, FLIP SECOND. Between the two writes there is a moment with
+//      no transaction around it. Clearing first means the worst reachable
+//      interleaving is a task in the pool while its holder is briefly still a
+//      member — visible, harmless, self-correcting. Flipping first would leave
+//      the opposite: a live pointer at a member already gone, which is the
+//      exact ghost the ruling forbids.
+//   2. A FAILED CLEAR REFUSES THE REMOVAL WHOLE. 500, and the member stays
+//      active. Half-done is worse than not-done here: the caller sees a failure
+//      and retries, and a retry is safe because both writes are idempotent.
+//   3. THE CLEAR RUNS BEFORE THE ALREADY-REMOVED SHORT-CIRCUIT, not after.
+//      That early return is an exit with status='removed', so under the
+//      invariant it owes the clear like any other. This also makes the handler
+//      SELF-HEALING for rows stranded before this delivery: a second removal of
+//      an already-removed member now cleans up after the version of this file
+//      that could not. Production's one stale row was repaired by founder SQL on
+//      2026-08-14; this is what keeps the count at zero without a cron.
+//
+// 0125 IS NOT EDITED. LD-8 is append-only, and a migration rewritten after it
+// has been applied is a lie about what the database was told. The FK stays
+// exactly as it is — belt-and-braces for a genuine hard delete, which no code
+// path performs today and which this comment is the record of.
 router.delete('/member/:memberId', asyncHandler(async (req, res) => {
   const supabase     = req.app.locals.supabase;
   const { couple_id } = req.coupleUser;
@@ -171,6 +226,24 @@ router.delete('/member/:memberId', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not remove member.');
   }
   if (!member) return errRes(res, 404, 'Member not found.');
+
+  // ── F-14.12 · THE PLANE IS CLEARED FIRST. Scoped by BOTH keys: the couple
+  // predicate is not redundant with the seat, because a seat id is a uuid a
+  // caller could hold from anywhere, and ownership was proven for THIS couple
+  // three lines up. Belt-and-braces here costs one indexed predicate and is the
+  // same shape the member's own door uses.
+  const { error: cErr } = await supabase
+    .from('events')
+    .update({ assigned_circle_member_id: null })
+    .eq('couple_id', couple_id)
+    .eq('assigned_circle_member_id', memberId);
+
+  if (cErr) {
+    console.error('[DELETE /couple/circle/member] delegation clear error:', cErr.message);
+    return errRes(res, 500, 'Could not remove member.');
+  }
+
+  // The idempotent exit — AFTER the clear, deliberately. See the invariant.
   if (member.status === 'removed') return okRes(res, { member_id: memberId, status: 'removed' });
 
   const { error: uErr } = await supabase
