@@ -27,3 +27,12 @@ src/engine/dist/
 
 # delivery artifacts are applied then discarded — never committed
 /*.zip
+
+# Bench output — scripts write here, and a TRACKED output directory means every
+# floor run dirties the repo. That is how F-14.14 happened: a `git add -A` over a
+# floor-dirtied tree staged ten tracked artifacts as DELETIONS in an unintended
+# commit. Ignoring it also turns the post-run dirt check in run-floor.sh into a
+# real guard: with this line, any dirt after a floor means a bench left
+# PRODUCTION SOURCE mutated. The untracking is the founder's own paste block —
+# its own step, because the apply chain cannot delete.
+scripts/out/
