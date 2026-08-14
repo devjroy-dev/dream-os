@@ -1,0 +1,28 @@
+# scripts/floor-manifest.txt
+# M-TRUST · the dream-os delivery's own file table, declared for [F-14.16]'s
+# --delivery mode. Every path here is dirt this floor is permitted to measure
+# over; one byte outside it and the runner refuses exactly as it always did.
+#
+# This file is NOT a permanent fixture. It is cut per delivery, travels in the
+# ZIP beside the bytes it declares, and its contents are the same table the
+# handover prints — one artefact, so the two cannot drift.
+
+# ── the cascade: the gates come out ──────────────────────────────────────────
+src/api/circle/polls.js
+src/api/circle/session.js
+src/api/couple/circle.js
+src/api/middleware/requireCircleMemberAuth.js
+src/lib/circlePermissions.js
+
+# ── the benches that moved with their subjects ───────────────────────────────
+scripts/b14_d1_visibility_bench.js
+scripts/b14_d3_polls_bench.js
+scripts/b07_f0772_circle_auth_bench.js
+
+# ── the runner's own cure, and this manifest ─────────────────────────────────
+scripts/run-floor.sh
+scripts/floor-manifest.txt
+
+# ── the docs half of honesty ─────────────────────────────────────────────────
+docs/specs/TDW_14_CIRCLE_FINAL.md
+docs/handovers/TDW_14_M_TRUST_HANDOVER.md

@@ -75,11 +75,42 @@
 # was misread as a two-red delta once already. This runner warns when the
 # sibling is absent so the misreading cannot repeat silently.
 #
+# ── LESSON 5 · [F-14.16] A CLEAN-TREE REFUSAL MAKES THE FLOOR UNRUNNABLE ON
+#    THE ONE TREE IT EXISTS TO GATE. Found on this runner's FIRST contact with
+#    a real delivery, 2026-08-14.
+# LESSON 4 refused a dirty tree outright. But a DELIVERY TREE IS DIRTY BY
+# DEFINITION, and R-33.7 forbids the executor the commit that would clean it.
+# The two rules together meant the floor could only run AFTER apply-and-commit —
+# at which point it audits rather than gates, which is not what a floor is for.
+# The runner had over-tightened: it could not tell CONTAMINATION from A DELIVERY.
+#
+# THE DIFFERENCE IS THAT A DELIVERY'S DIRT IS DECLARED. `--delivery <manifest>`
+# proceeds on a dirty tree IF AND ONLY IF every dirty path is named in the
+# manifest — the delivery's own file table, which its handover carries anyway.
+# One byte of dirt outside the manifest and it refuses exactly as before. The
+# manifest is PRINTED INTO THE OUTPUT so the measurement records what it
+# tolerated: a floor that quietly forgave something is not a floor.
+#
+# THE POST-RUN GUARD IS STRICTER IN THIS MODE, NOT LOOSER. LESSON 3's alarm was
+# "any dirt after the run". Under `--delivery` that test would be blind to a
+# bench corrupting a manifest file, since such a file is already expected dirty.
+# So the manifest's files are SHA-256'd before the run and re-hashed after, and
+# a moved byte is a hard stop. The set is tolerated; the contents are not.
+#
+# THE CLEAN-TREE REFUSAL REMAINS THE DEFAULT. `--delivery` is the declared
+# exception, never the new normal.
+#
+# (`dreamos-pwa`'s runner never had this gap — it has ORDERING, not refusal —
+# which is why every prior pwa floor ran lawfully on a working tree. The gap was
+# this repo's alone, and it arrived with the refusal that was meant to cure
+# F-14.14.)
+#
 # EXIT CODE IS THE VERDICT, never the printed text: benches here use several
 # report formats and only the exit code is shared by all of them.
 #
-# Usage:  bash scripts/run-floor.sh            # print the red set
-#         bash scripts/run-floor.sh --check    # diff against the named base
+# Usage:  bash scripts/run-floor.sh                            # print the red set
+#         bash scripts/run-floor.sh --check                    # diff against the named base
+#         bash scripts/run-floor.sh --delivery FILE [--check]  # [F-14.16] declared-dirt tree
 
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -87,15 +118,71 @@ cd "$(dirname "$0")/.." || exit 1
 BENCH_TIMEOUT="${BENCH_TIMEOUT:-}"   # UNSET by default — see LESSON 3
 BASE_FILE="scripts/floor-base.txt"
 
-# ── THE CLEAN-TREE REFUSAL (LESSON 4) ────────────────────────────────────────
-# Refused, not warned. A floor measured on a dirty tree is a number nobody can
-# reproduce, and the benches that write-and-restore cannot vouch for themselves.
-DIRT=$(git status --porcelain 2>/dev/null)
-if [ -n "$DIRT" ]; then
-  echo "STOP — the tree is dirty. A floor is measured on a clean tree or not at all."
-  echo "Commit or stash first. Nothing was run."
-  echo "$DIRT" | sed 's/^/  /'
-  exit 1
+# ── ARGUMENTS ────────────────────────────────────────────────────────────────
+# Order-independent, because a caller who types `--check --delivery FILE` means
+# the same thing as the reverse and should not be punished for it.
+CHECK=""
+MANIFEST=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --check)    CHECK="yes"; shift ;;
+    --delivery) MANIFEST="${2:-}"; shift 2 || { echo "STOP — --delivery needs a manifest path."; exit 1; } ;;
+    *)          echo "STOP — unknown argument: $1"; exit 1 ;;
+  esac
+done
+
+# `git status --porcelain` paths, one per line. Rename entries carry `old -> new`
+# and BOTH sides are dirt a manifest must account for.
+dirt_paths() {
+  git status --porcelain 2>/dev/null | while IFS= read -r line; do
+    p="${line:3}"
+    case "$p" in
+      *" -> "*) echo "${p%% -> *}"; echo "${p##* -> }" ;;
+      *)        echo "$p" ;;
+    esac
+  done | sed 's/^"//; s/"$//' | sort -u
+}
+
+# ── THE CLEAN-TREE REFUSAL (LESSON 4), WITH ITS DECLARED EXCEPTION (LESSON 5) ─
+DIRT=$(dirt_paths)
+
+if [ -z "$MANIFEST" ]; then
+  # DEFAULT. Refused, not warned. A floor measured on a dirty tree is a number
+  # nobody can reproduce, and the benches that write-and-restore cannot vouch
+  # for themselves.
+  if [ -n "$DIRT" ]; then
+    echo "STOP — the tree is dirty. A floor is measured on a clean tree or not at all."
+    echo "Commit or stash first, or declare the dirt with --delivery <manifest> [F-14.16]."
+    echo "$DIRT" | sed 's/^/  /'
+    exit 1
+  fi
+else
+  # [F-14.16] DECLARED-DIRT MODE.
+  if [ ! -f "$MANIFEST" ]; then
+    echo "STOP — manifest not found: ${MANIFEST}. Nothing was run."
+    exit 1
+  fi
+  # Blank lines and `#` comments allowed, so the manifest can carry its own
+  # reasons and be the same artefact the handover prints.
+  DECLARED=$(sed 's/#.*//' "$MANIFEST" | sed 's/[[:space:]]*$//' | grep -v '^[[:space:]]*$' | sort -u)
+  UNDECLARED=$(comm -23 <(echo "$DIRT") <(echo "$DECLARED"))
+  if [ -n "$UNDECLARED" ]; then
+    echo "STOP — dirt OUTSIDE the declared manifest. This is contamination, not a"
+    echo "delivery, and the difference is the whole point of this mode."
+    echo "$UNDECLARED" | sed 's/^/  /'
+    exit 1
+  fi
+  # PRINTED INTO THE OUTPUT: a floor that quietly forgave something is not a
+  # floor. Whoever reads this measurement reads what it tolerated.
+  echo "[F-14.16] --delivery mode: $(echo "$DIRT" | grep -c . ) dirty path(s), all declared in ${MANIFEST}:" >&2
+  echo "$DIRT" | sed 's/^/  declared: /' >&2
+  echo "" >&2
+
+  # CONTENTS ARE NOT TOLERATED, ONLY THE SET. A bench that corrupts a manifest
+  # file would hide inside expected dirt; these hashes are what catch it.
+  MANIFEST_SHA_BEFORE=$(echo "$DIRT" | while IFS= read -r p; do
+    [ -f "$p" ] && sha256sum "$p" || echo "ABSENT  $p"
+  done)
 fi
 
 # ── THE SIBLING WARNING ──────────────────────────────────────────────────────
@@ -150,16 +237,44 @@ cat /tmp/floor.txt
 # changed — a restore that did not run. It exits non-zero: a floor measured over
 # corrupted source is worse than no floor, and the one time it happened the
 # number came back correct anyway.
-POST=$(git status --porcelain 2>/dev/null)
-if [ -n "$POST" ]; then
-  echo ""
-  echo "STOP — the tree is dirty AFTER the run. A bench did not restore what it"
-  echo "mutated, and this floor was measured over changed source. Do not trust it."
-  echo "$POST" | sed 's/^/  /'
-  exit 1
+if [ -z "$MANIFEST" ]; then
+  POST=$(git status --porcelain 2>/dev/null)
+  if [ -n "$POST" ]; then
+    echo ""
+    echo "STOP — the tree is dirty AFTER the run. A bench did not restore what it"
+    echo "mutated, and this floor was measured over changed source. Do not trust it."
+    echo "$POST" | sed 's/^/  /'
+    exit 1
+  fi
+else
+  # [F-14.16] Two questions in this mode, and the second is the one the default
+  # guard could not ask: did the DIRTY SET grow (a bench touched a file nobody
+  # declared), and did any DECLARED FILE'S CONTENTS move (a bench corrupted the
+  # delivery itself, hiding inside dirt that was already expected)?
+  POST_DIRT=$(dirt_paths)
+  POST_UNDECLARED=$(comm -23 <(echo "$POST_DIRT") <(echo "$DECLARED"))
+  if [ -n "$POST_UNDECLARED" ]; then
+    echo ""
+    echo "STOP — a bench dirtied a file OUTSIDE the manifest. It did not restore"
+    echo "what it mutated, and this floor was measured over changed source."
+    echo "$POST_UNDECLARED" | sed 's/^/  /'
+    exit 1
+  fi
+  MANIFEST_SHA_AFTER=$(echo "$DIRT" | while IFS= read -r p; do
+    [ -f "$p" ] && sha256sum "$p" || echo "ABSENT  $p"
+  done)
+  if [ "$MANIFEST_SHA_BEFORE" != "$MANIFEST_SHA_AFTER" ]; then
+    echo ""
+    echo "STOP — a DECLARED file's contents moved during the run. The manifest"
+    echo "tolerates a dirty SET, never dirty CONTENTS: a bench corrupted the"
+    echo "delivery and would have hidden inside dirt that was already expected."
+    diff <(echo "$MANIFEST_SHA_BEFORE") <(echo "$MANIFEST_SHA_AFTER") | sed 's/^/  /'
+    exit 1
+  fi
+  echo "[F-14.16] declared files unmoved — set and contents both verified." >&2
 fi
 
-if [ "${1:-}" = "--check" ]; then
+if [ "$CHECK" = "yes" ]; then
   # ── THE NAMED BASE lives in its own committed file (LESSON 2) ──────────────
   # Not a printf inside this script: a base that is a literal in the runner is a
   # base that gets edited by the hand that needs it to change. A separate file

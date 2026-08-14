@@ -52,7 +52,17 @@ Coplanner as an installable surface: `manifest.circle.json` scoped to /coplanner
 
 ### P3 — Capacity + sovereignty (C-2, C-3)
 1. Apply 0098's RPC replacement (re-homed from 0087 at CE-59); circle.js error mapping gains the tier-aware message ("Your circle is full on Basic — Gold opens two more chairs") — the upgrade whisper, one line, never a wall.
-2. **Visibility matrix:** bride's circle bloom gains per-member switches (budget OFF by default, vendors, moments); every member-facing read path (feed, dreamai context, muse, threads content assembly) filters through one shared `memberVisibility(memberId)` resolver — a SINGLE choke point; a second filter implementation anywhere is a failed session. Budget-bearing fields never serialize to a member without the flag (payload-level, view-source-proof — the 08 blur standard).
+2. ~~**Visibility matrix:** bride's circle bloom gains per-member switches (budget OFF by default, vendors, moments); every member-facing read path (feed, dreamai context, muse, threads content assembly) filters through one shared `memberVisibility(memberId)` resolver — a SINGLE choke point; a second filter implementation anywhere is a failed session. Budget-bearing fields never serialize to a member without the flag (payload-level, view-source-proof — the 08 blur standard).~~
+
+   > **STRUCK — M-TRUST, founder's trust ruling 2026-08-14.** 「 the bride is consciously adding people. 1- mehek always sees the vendor info. 2- mehek always gets to add to muse. 3- budget never visible 」
+   >
+   > **MEMBERSHIP IS THE PERMISSION.** The per-member switches are cancelled whole — never built, and the six vetoed copy bytes die unspent. What shipped instead is smaller and stronger: the gates came OUT (`polls.js`'s `can_see_vendors` consultation, the guard's resolved block, the session payload's `permissions` key, the bride's `PATCH /member/:memberId/visibility` door), and `src/lib/circlePermissions.js` retired whole — Arm 1, a module exporting nothing and imported by nothing is a doc file wearing a `.js` extension.
+   >
+   > **THE ONLY WALL IS BUDGET, AND IT IS NOT A FLAG.** It is a structural absence held per serializer, unconditionally, by `scripts/b14_d1_visibility_bench.js` §6 across all six member-facing serializers (feed · session · threads · muse · polls · assigned) plus the residual three. A wall with no switch is a better promise than a switch that defaults closed.
+   >
+   > **`circle_members.visibility` (0098) SURVIVES AT THE PLANE** — append-only and inert, per LD-8. Nothing writes it; nothing reads it. The guard still SELECTs it and holds no opinion about it, so a future reader never has to ask whether it was ever there.
+   >
+   > **This supersedes the D-3b veto sheet's line (b)** — 「 a member without the flag sees the event's name and date but not its vendor 」 — by the founder's word of 2026-08-14. Fresh founder ruling outranks the old ratification; both are dated so no future seat wonders which won.
 3. Mute/remove polish (routes exist — PATCH/DELETE member): confirm flows + activity entries; removed member's session dies (session check reads active row — verify, fix if stale sessions survive).
 4. **Activity feed surfaced:** circle_activity rendered in the bride's circle bloom ("Maa pinned 3 lehengas · Riya voted") and the member feed — the heartbeat both sides see.
 
@@ -77,7 +87,9 @@ The P1 fix is the smallest honest change — no chain rewrite · one visibility 
 1. A real second phone: invite → WA link → join → OTP → PIN → coplanner, clean; the culprit link documented in FINDINGS_LOG.
 2. Cross-circle message read → 403; muse-pattern auth verified on threads + messages + polls.
 3. Tier caps: Basic 4th invite refused with the whisper; Gold seats 5; Platinum seats 8 without complaint; RPC replacement proven via information_schema/`pg_get_functiondef`.
-4. Budget probe: member feed payload contains zero budget fields with the flag off (raw JSON audit); flag on → visible; the member AI refuses the budget probe in-character with the flag off.
+4. ~~Budget probe: member feed payload contains zero budget fields with the flag off (raw JSON audit); flag on → visible; the member AI refuses the budget probe in-character with the flag off.~~
+
+   > **REPLACED — M-TRUST, 2026-08-14.** There is no flag, so there is no "flag off" and no "flag on → visible" arm to test. **The replacement criterion is mechanical and stronger:** no member-facing serializer carries a budget-bearing field AT ALL, unconditionally — held per serializer by `scripts/b14_d1_visibility_bench.js` §6.1–§6.7, each cell bounded to one file (R-33.3), each proven non-vacuous by its own mutation in §7. The member AI's in-character refusal is unaffected and remains owed by P6.
 5. Muse: member pin → bride tray → approve → board with credit chip; decline is silent; bride's own saves regression-clean.
 6. Poll with two muse-image options: both phones vote, tally live, close-nudge template fires at T-2h, winner lands on the linked event's record.
 7. Delegated task appears in the member's "Yours," check-off notifies the bride, activity feed shows the whole heartbeat.

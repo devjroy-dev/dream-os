@@ -94,10 +94,11 @@ router.get('/:userId', asyncHandler(async (req, res) => {
       name:      me.name,
       couple_id: me.couple_id,
       role:      me.role,
-      // FORK E — the permission literal that stood here is now
-      // `src/lib/circlePermissions.js`, written once and read by the guard and
-      // by this response. F-07.115's declaration lives in that file's header.
-      permissions: me.permissions,
+      // M-TRUST 2026-08-14 — `permissions` LEFT THIS PAYLOAD. It was a literal
+      // block here (FORK E), then a read of the guard's resolved block (D-1).
+      // The founder's ruling retired the flags whole; a key with no reader is a
+      // promise the estate has not made, and serving `{}` to a client whose type
+      // no longer declares it would be the emptiest form of that promise.
       bride: {
         name: couple?.users?.name || null,
       },

@@ -390,7 +390,7 @@ await ta('§4.4 a blank question or a blank label is 400, nothing written', asyn
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-H('§5 — THE FOURTH CONSUMER: the linked event reads through the ONE HOME (R-D3.4)');
+H('§5 — [M-TRUST] THE LINKED EVENT SERVES WHOLE: no consumer, no gate, no flag');
 // ═══════════════════════════════════════════════════════════════════════════
 
 const EV = { id: 'e1', title: 'Mehendi', event_date: '2026-12-01', vendor_id: 'v1' };
@@ -398,25 +398,41 @@ const POLL_WITH_EVENT = { id: 'p1', couple_id: MEHEK.coupleId, question: 'q',
   options: [{ id: 'o1', label: 'A' }, { id: 'o2', label: 'B' }], linked_event_id: 'e1',
   created_at: '2026-08-13T00:00:00Z' };
 
-await ta('§5.1 a member WITHOUT can_see_vendors gets the event, WITHOUT the vendor', async () => {
+// ── THE CELLS BELOW ARE THE OLD ONES INVERTED, AND THAT IS THE DELIVERY ────
+// D-3 authored §5.1/§5.2 as a matched pair proving a FLAG WAS LOAD-BEARING: the
+// vendor withheld with `vendors` off, served with it on. The founder's trust
+// ruling of 2026-08-14 retired the flag — 「 1- mehek always sees the vendor
+// info 」 — so the pair inverts. §5.1 now proves the vendor serves to a member
+// carrying NOTHING; §5.2 proves it serves EVEN TO A MEMBER WHOSE LEGACY COLUMN
+// SAYS NO. §5.2 is the stronger of the two and the reason the pair survives at
+// all: 0098's column is still on the plane, still writable by hand, and a cell
+// that only tested `{}` would go green on a build where the old gate had been
+// quietly restored. RETIRE-WITH-THE-READER — the subject moved, the cells moved.
+await ta('§5.1 an active member gets the linked event WITH the vendor, carrying nothing', async () => {
   const r = await call('get', '/:brideId', {
     auth: memberToken(), params: { brideId: 'ignored' },
     planeOpts: { polls: [POLL_WITH_EVENT], events: [EV], visibility: {} },
   });
   const ev = r.payload.data[0].linked_event;
   assert.strictEqual(ev.title, 'Mehendi', 'the event itself was withheld — the poll lost its subject');
-  assert.ok(!('vendor_id' in ev), 'a member with the flag OFF received the vendor id');
+  assert.strictEqual(ev.vendor_id, 'v1',
+    'a member was denied the vendor id — the M-TRUST ruling says membership is the permission');
 });
 
-await ta('§5.2 the SAME member WITH can_see_vendors gets it — the flag is load-bearing', async () => {
+await ta('§5.2 a LEGACY {vendors:false} column CANNOT re-gate her — the flag is inert', async () => {
   const r = await call('get', '/:brideId', {
     auth: memberToken(), params: { brideId: 'ignored' },
-    planeOpts: { polls: [POLL_WITH_EVENT], events: [EV], visibility: { vendors: true } },
+    planeOpts: { polls: [POLL_WITH_EVENT], events: [EV], visibility: { vendors: false } },
   });
-  assert.strictEqual(r.payload.data[0].linked_event.vendor_id, 'v1');
+  assert.strictEqual(r.payload.data[0].linked_event.vendor_id, 'v1',
+    'a stored flag still closes the vendor — the gate was restored, or never left');
 });
 
-await ta('§5.3 THE BRIDE is ungated — she sees her own journey whole', async () => {
+// §5.3 survives with its assertion unchanged and its MEANING changed. It used
+// to be a CONTRAST — the bride ungated where a member was gated. There is no
+// contrast left; it is now a regression guard, holding that the ruling did not
+// accidentally cost the bride anything on its way through.
+await ta('§5.3 THE BRIDE still sees her own journey whole — the ruling cost her nothing', async () => {
   const r = await call('get', '/:brideId', {
     auth: BRIDE_JWT, params: { brideId: 'ignored' },
     planeOpts: { polls: [POLL_WITH_EVENT], events: [EV], visibility: {} },
@@ -433,21 +449,24 @@ await ta('§5.4 A POLL IS SHARED BY CREATION — options render WHOLE regardless
   assert.strictEqual(r.payload.data[0].options.length, 2, 'options were filtered — a ballot half the circle cannot answer');
 });
 
-t('§5.5 polls.js reaches the ONE HOME by CALL and reads no flag out of the column', () => {
+t('§5.5 [M-TRUST] polls.js consults NO permission machinery — comment-stripped', () => {
   const c = code(POLLS);
-  assert.ok(/require\('\.\.\/\.\.\/lib\/circlePermissions'\)/.test(c), 'polls.js does not reach the one home');
+  assert.ok(!/circlePermissions|permissionsFor/.test(c),
+    'polls.js reaches a permission resolver — the module retired at M-TRUST');
   assert.ok(!/visibility\s*(\?\.|\[|\.)\s*(budget|guests|vendors|contribute_muse)/.test(c),
     'polls.js indexes the visibility column directly — a second resolver');
+  assert.ok(!/\bperms\b/.test(c),
+    'a `perms` binding survives in polls.js — the threaded parameter did not fully retire');
 });
 
-// [F-SW.2] ABSENCE — no new key was invented, the set is still unruled.
-t('§5.6 NO NEW PERMISSION KEY was invented for polls', () => {
+// The old §5.6 asked whether polls.js had invented a NEW key. The question is
+// retired with the key set itself: there are no keys. The cell asks the harder
+// question the ruling opened — whether ANY permission vocabulary survives here.
+t('§5.6 [M-TRUST] polls.js names NO permission key at all — the vocabulary is gone', () => {
   const c = code(POLLS);
   const keys = [...c.matchAll(/can_[a-z_]+/g)].map(m => m[0]);
-  for (const k of keys) {
-    assert.ok(['can_see_budget', 'can_see_guests', 'can_see_vendors', 'can_contribute_muse'].includes(k),
-      `polls.js names a permission key that does not exist: ${k}`);
-  }
+  assert.deepStrictEqual(keys, [],
+    `polls.js still names permission keys after the retirement: ${keys.join(', ')}`);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -770,17 +789,40 @@ await ta('§8.M5 drop the option-membership check ⇒ §3.3 RED', async () => {
   });
 });
 
-await ta('§8.M6 ungate the vendor field ⇒ §5.1 RED (the flag stops being load-bearing)', async () => {
-  await mutate(POLLS, 'if (!perms || perms.can_see_vendors)', 'if (true)', async () => {
+// M6 RE-AIMED. Its old target (`if (!perms || perms.can_see_vendors)`) no longer
+// exists, so the mutation would have been ABSENT and the ledger would have said
+// so. It now breaks the unconditional serve the ruling installed — the same
+// question asked of the new code.
+await ta('§8.M6 withhold the vendor field again ⇒ §5.1 RED (the serve is load-bearing)', async () => {
+  await mutate(POLLS, '      vendor_id:  linkedEvent.vendor_id || null,', '', async () => {
     const r = await call('get', '/:brideId', { auth: memberToken(), params: { brideId: 'x' },
       planeOpts: { polls: [POLL_WITH_EVENT], events: [EV], visibility: {} } });
-    assert.ok(!('vendor_id' in r.payload.data[0].linked_event));
+    assert.strictEqual(r.payload.data[0].linked_event.vendor_id, 'v1');
   });
 });
 
-await ta('§8.M7 filter the OPTIONS by permission ⇒ §5.4 RED (a ballot nobody can answer)', async () => {
+// M6b is NEW and it is the cell that guards the retirement itself: restore the
+// gate by hand, reading the legacy column directly, and §5.2 must catch it. A
+// bench that only proved the vendor serves today would go green on a tree where
+// someone re-introduced the flag from the column that is still on the plane.
+await ta('§8.M6b restore a hand-rolled gate off the legacy column ⇒ §5.2 RED', async () => {
+  await mutate(POLLS,
+    '      vendor_id:  linkedEvent.vendor_id || null,',
+    '      vendor_id:  (poll && poll.__vis && poll.__vis.vendors === false) ? undefined : (linkedEvent.vendor_id || null),',
+    async () => {
+      const r = await call('get', '/:brideId', { auth: memberToken(), params: { brideId: 'x' },
+        planeOpts: { polls: [{ ...POLL_WITH_EVENT, __vis: { vendors: false } }], events: [EV], visibility: { vendors: false } } });
+      assert.strictEqual(r.payload.data[0].linked_event.vendor_id, 'v1');
+    });
+});
+
+// M7's OLD replacement read `perms ? [] : …` — a binding this file no longer
+// has. It would have reddened §5.4 on a ReferenceError rather than on filtering:
+// a HOLLOW RED, green-looking proof of nothing. Self-caught at the re-author and
+// declared rather than quietly corrected. The replacement now filters honestly.
+await ta('§8.M7 filter the OPTIONS ⇒ §5.4 RED (a ballot nobody can answer)', async () => {
   await mutate(POLLS, '    options:       (poll.options || []).map(o => ({',
-                      '    options:       (perms ? [] : (poll.options || [])).map(o => ({', async () => {
+                      '    options:       ([]).map(o => ({', async () => {
     const r = await call('get', '/:brideId', { auth: memberToken(), params: { brideId: 'x' },
       planeOpts: { polls: [POLL_WITH_EVENT], events: [EV], visibility: {} } });
     assert.strictEqual(r.payload.data[0].options.length, 2);
@@ -865,7 +907,7 @@ await ta('§8.M15 drop the ownership lookup ⇒ §11.2 RED (a cross-circle delet
 });
 
 t('§8.M16 every mutation target above was FOUND before it was broken', () => {
-  assert.strictEqual(ledger.length, 15, `expected 15 mutations, the ledger holds ${ledger.length}`);
+  assert.strictEqual(ledger.length, 16, `expected 16 mutations, the ledger holds ${ledger.length}`);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

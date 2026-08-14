@@ -14,11 +14,10 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-// FORK E — the one home, now cited by the WRITE side too. `normaliseVisibility`
-// owns which keys exist and what a value may be; `circlePermissions` owns what a
-// stored fragment resolves to. Neither answer is re-implemented in this file.
-const { circlePermissions, normaliseVisibility, VISIBILITY_KEYS } =
-  require('../../lib/circlePermissions');
+// FORK E's write-side citation stood here and is retired with its subject
+// (M-TRUST, 2026-08-14). This file imported the visibility allowlist and the
+// resolver; both retired with the flags themselves. See the dated note at the
+// old door's site below for the ruling.
 
 // ── POST /invite — must come before /:coupleId ────────────────────────────────
 router.post('/invite', asyncHandler(async (req, res) => {
@@ -310,86 +309,25 @@ router.get('/member/:memberId', asyncHandler(async (req, res) => {
   });
 }));
 
-// ── PATCH /member/:memberId/visibility — the bride's per-member switches ─────
-// TDW_14 D-1 (C-3). THE WRITE SIDE OF THE ONE HOME.
+// ── THE VISIBILITY DOOR STOOD HERE, AND IS RETIRED (M-TRUST, 2026-08-14) ────
+// `PATCH /member/:memberId/visibility` — the bride's per-member switches, built
+// at TDW_14 D-1 (C-3) as the write side of the one home. It normalised a partial
+// patch against an allowlist, merged it over the stored fragment, wrote
+// `circle_members.visibility`, and returned the resolved block. It had ZERO
+// client callers — derived across both repos before it was cut.
 //
-// WHY IT IS HERE AND NOT ON THE CIRCLE LANE. `visibility` is the BRIDE's
-// decision about a member, never the member's about herself. This router is
-// mounted behind couple auth (`core.js`), so the couple id comes off
-// `req.coupleUser` and is never taken from the path — the same law
-// `resolveCircleIdentityIfPresent.js:50-51` states one lane over: the proven
-// identity wins over anything the request supplied. A member has no door to
-// this at all, which is the point.
+// The founder's trust ruling of 2026-08-14 retired the flags it wrote:
+// 「 the bride is consciously adding people. 1- mehek always sees the vendor
+// info. 2- mehek always gets to add to muse. 3- budget never visible 」.
+// INVITING SOMEONE IS THE PERMISSION. There is no switch left to move, so there
+// is no door — and no `if (false)` husk either. A door that answers nothing is
+// worse than an absent one, because a future hand will try to fix it.
 //
-// PARTIAL BY CONSTRUCTION. The body is MERGED over the stored object, so the
-// bride may flip one switch without restating the others and two screens editing
-// different switches cannot silently undo each other. `visibility` is refused
-// wholesale on any bad key or non-boolean value rather than partially applied:
-// a request that half-lands is the worst answer available, because the caller
-// believes it landed whole.
-//
-// THE ALLOWLIST IS NOT REPEATED HERE. `normaliseVisibility` lives beside the
-// resolver, so the write side and the read side cannot disagree about which keys
-// exist — the second-implementation disease this file's neighbour was extracted
-// to end. The response returns the RESOLVED block through that same resolver, so
-// the bride's screen is told the effective answer rather than the stored
-// fragment, and is told it by the code the guard will use.
-router.patch('/member/:memberId/visibility', asyncHandler(async (req, res) => {
-  const supabase      = req.app.locals.supabase;
-  const { couple_id } = req.coupleUser;
-  const { memberId }  = req.params;
+// 0098's `circle_members.visibility` column SURVIVES at the plane, append-only
+// and inert (LD-8). Nothing writes it; nothing reads it. It is not litter to be
+// swept by a later hand — it is a migration that already ran, and the spec's
+// dated strike at `docs/specs/TDW_14_CIRCLE_FINAL.md` §P3.2 carries the reason.
 
-  const patch = normaliseVisibility(req.body && req.body.visibility);
-  if (!patch.ok) {
-    return errRes(res, 400,
-      `visibility must be one of: ${VISIBILITY_KEYS.join(', ')}, each true or false.`);
-  }
-
-  // Scoped read: `.eq('couple_id', couple_id)` is the whole authorisation. A
-  // bride cannot address a member of another circle even by a correct uuid, and
-  // the 404 is deliberately the same answer she gets for an id that does not
-  // exist — a door that distinguished them would report other people's
-  // membership to anyone willing to guess.
-  const { data: member, error: fErr } = await supabase
-    .from('circle_members')
-    .select('id, visibility')
-    .eq('id', memberId)
-    .eq('couple_id', couple_id)
-    .maybeSingle();
-
-  if (fErr) {
-    console.error('[PATCH /couple/circle/member/visibility] fetch error:', fErr.message);
-    return errRes(res, 500, 'Could not update visibility.');
-  }
-  if (!member) return errRes(res, 404, 'Member not found.');
-
-  // The stored value is normalised on the way OUT of the row as well as on the
-  // way in: a row written before this column existed, or by a hand that predates
-  // `normaliseVisibility`, must not survive a merge and be written back.
-  const current = normaliseVisibility(member.visibility);
-  const merged  = { ...(current.ok ? current.value : {}), ...patch.value };
-
-  const { error: uErr } = await supabase
-    .from('circle_members')
-    .update({ visibility: merged })
-    .eq('id', memberId)
-    .eq('couple_id', couple_id);
-
-  if (uErr) {
-    console.error('[PATCH /couple/circle/member/visibility] update error:', uErr.message);
-    return errRes(res, 500, 'Could not update visibility.');
-  }
-
-  // No member name, no phone, no flag values in the log line — this is a record
-  // that a permission moved, not a copy of who may now see what.
-  console.log(`[PATCH /couple/circle/member/visibility] member=${memberId} couple=${couple_id} keys=${Object.keys(patch.value).join(',')}`);
-
-  return okRes(res, {
-    member_id:   memberId,
-    visibility:  merged,
-    permissions: circlePermissions(merged),
-  });
-}));
 
 // ── GET /:coupleId — unified enriched feed ────────────────────────────────────
 router.get('/:coupleId', asyncHandler(async (req, res) => {

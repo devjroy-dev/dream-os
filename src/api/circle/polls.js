@@ -42,35 +42,30 @@
 // its own — a handler-side `couples` hop would be a second implementation of a
 // question the gate already answers.
 //
-// ── THE FOURTH CONSUMER OF `circlePermissions` (R-D3.4) ────────────────────
-// `b14_d1_visibility_bench` §5.1 asserted THREE consumers of the one home. This
-// file is the fourth, and that cell's count moves in the same delivery — a
-// CHARTERED move, declared before it happened, never a defect
-// (RETIRE-WITH-THE-READER: the sitting that moves a subject owns the benches
-// that read it).
+// ── NOTHING IN THIS FILE IS GATED, AND THAT IS THE RULING ──────────────────
+// M-TRUST, founder's trust ruling 2026-08-14: 「 the bride is consciously adding
+// people 」. Membership IS the permission. This file was once the FOURTH
+// CONSUMER of `circlePermissions` — it consulted `can_see_vendors` before it
+// would serve a linked event's `vendor_id`. That consultation is GONE, along
+// with the module it consulted.
 //
-// WHAT IS AND IS NOT GATED, per the ruling. A POLL IS SHARED BY CREATION: its
-// question, its options, and its tallies render WHOLE to every active member.
-// Gating the options would make a poll that half the circle cannot answer, which
-// is not a privacy feature, it is a broken ballot.
+// A POLL IS SHARED BY CREATION: its question, its options, and its tallies
+// render WHOLE to every active member. That never changed. What changed is the
+// event a poll JOINS: `linked_event_id` reaches into the couple's journey, and
+// an event carries a `vendor_id`. That vendor_id now serves UNCONDITIONALLY to
+// every active member, exactly as it always served the bride.
 //
-// What IS gated is what a poll JOINS. `linked_event_id` reaches into the
-// couple's journey, and an event carries a `vendor_id`. So the linked event is
-// served as `{ id, title, event_date }` to everyone, and its `vendor_id` ONLY
-// when the resolved block says `can_see_vendors`. THE BRIDE IS NOT A MEMBER and
-// has no block — she sees her own journey whole.
-//
-// NO NEW PERMISSION KEY IS INVENTED HERE. The key set is UNRULED against the 14
-// spec's vocabulary and `circlePermissions.js`'s own header declares it so; the
-// UNRULED-ARM LAW says an arm the executor can derive is still not an arm the
-// executor may build. `can_see_vendors` already exists and already means this.
+// THE ONLY WALL IS BUDGET, and it is not a flag — it is a structural absence.
+// No member-facing serializer in this family carries a budget-bearing field at
+// all, and `b14_d1_visibility_bench` §6 holds that absence per serializer,
+// unconditionally, for this file among the six. A flag that could be flipped
+// would be a weaker promise than a payload that has no such field to flip.
 'use strict';
 
 const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { resolveCircleIdentityIfPresent } = require('../../lib/resolveCircleIdentityIfPresent');
-const { circlePermissions }              = require('../../lib/circlePermissions');
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 4;
@@ -87,21 +82,6 @@ async function classB(req, res, supabase) {
     return null;
   }
   return req.circleIdentity;
-}
-
-// Resolve the caller's permission block. The bride has none and needs none — she
-// owns the circle. A member's block comes from her row's `visibility` column
-// THROUGH THE ONE HOME; this file never reads a flag out of the column itself.
-async function permissionsFor(supabase, identity) {
-  if (identity.source !== 'circle') return null;      // the bride: ungated
-  const { data: member } = await supabase
-    .from('circle_members')
-    .select('visibility')
-    .eq('couple_id', identity.coupleId)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle();
-  return circlePermissions(member && member.visibility);
 }
 
 // How many people can answer a poll in this circle: every ACTIVE member, plus
@@ -135,7 +115,7 @@ async function eligibleCountFor(supabase, coupleId) {
 // THE BRIDE IN: `circle_members` holds members only, and R-D3.2's whole point is
 // that she is a participant like any other — a denominator that excluded her
 // would say "2 of 2 voted" while three people held a vote.
-function shapePoll(poll, votes, linkedEvent, perms, viewerUserId, eligibleCount) {
+function shapePoll(poll, votes, linkedEvent, viewerUserId, eligibleCount) {
   const counts = {};
   for (const v of votes) counts[v.option_id] = (counts[v.option_id] || 0) + 1;
 
@@ -144,9 +124,15 @@ function shapePoll(poll, votes, linkedEvent, perms, viewerUserId, eligibleCount)
 
   let event = null;
   if (linkedEvent) {
-    event = { id: linkedEvent.id, title: linkedEvent.title, event_date: linkedEvent.event_date };
-    // The gate, and the only one in this file. `perms === null` is the bride.
-    if (!perms || perms.can_see_vendors) event.vendor_id = linkedEvent.vendor_id || null;
+    // M-TRUST: unconditional. There was a gate here reading `can_see_vendors`;
+    // the founder's ruling of 2026-08-14 removed it. An active member sees the
+    // linked event whole, vendor and all, exactly as the bride always has.
+    event = {
+      id:         linkedEvent.id,
+      title:      linkedEvent.title,
+      event_date: linkedEvent.event_date,
+      vendor_id:  linkedEvent.vendor_id || null,
+    };
   }
 
   return {
@@ -229,9 +215,8 @@ router.post('/', asyncHandler(async (req, res) => {
   }
 
   console.log(`[POST /frost/circle/polls] poll=${created.id} couple=${me.coupleId} options=${options.length}`);
-  const perms    = await permissionsFor(supabase, me);
   const eligible = await eligibleCountFor(supabase, me.coupleId);
-  return res.json({ success: true, data: shapePoll(created, [], null, perms, me.userId, eligible) });
+  return res.json({ success: true, data: shapePoll(created, [], null, me.userId, eligible) });
 }));
 
 // ── POST /:pollId/vote — cast or change ─────────────────────────────────────
@@ -404,10 +389,9 @@ router.get('/:brideId', asyncHandler(async (req, res) => {
   const votesByPoll = {};
   for (const v of (votes || [])) (votesByPoll[v.poll_id] ||= []).push(v);
 
-  const perms    = await permissionsFor(supabase, me);
   const eligible = await eligibleCountFor(supabase, me.coupleId);   // one count for the page, never per poll
   const shaped = list.map(p =>
-    shapePoll(p, votesByPoll[p.id] || [], eventsById[p.linked_event_id] || null, perms, me.userId, eligible));
+    shapePoll(p, votesByPoll[p.id] || [], eventsById[p.linked_event_id] || null, me.userId, eligible));
 
   return res.json({ success: true, data: shaped });
 }));

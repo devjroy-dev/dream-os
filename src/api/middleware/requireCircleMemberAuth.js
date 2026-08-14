@@ -74,7 +74,6 @@
 'use strict';
 
 const { verifyCircleSession, circleTokenFrom } = require('../../lib/circleSession');
-const { circlePermissions }                    = require('../../lib/circlePermissions');
 
 module.exports = async function requireCircleMemberAuth(req, res, next) {
   const supabase = req.app.locals.supabase;
@@ -158,17 +157,42 @@ module.exports = async function requireCircleMemberAuth(req, res, next) {
     // three sites and Q-d closes. A future hand that reverses this is not fixing
     // a fallback order; it is overruling the founder on whose room this is.
     name:          member.invitee_name || userRow.name || null,
-    // FORK E — one home, cited both ways. The block used to be seven literal
-    // lines here and seven identical literal lines at `src/api/circle/session.js`.
-    // `src/lib/circlePermissions.js` is now the only place it is written, and
-    // that file's header carries F-07.115's declaration.
+    // M-TRUST, founder's trust ruling 2026-08-14 — THE PERMISSION BLOCK IS GONE
+    // FROM THE IDENTITY. It used to be seven literal lines here (FORK E), then
+    // one call into `src/lib/circlePermissions.js` resolving the row's
+    // `visibility` jsonb (TDW_14 D-1). Both are retired: 「 the bride is
+    // consciously adding people 」 — membership is the permission, and a guard
+    // that computed an empty block on every request would be machinery
+    // pretending to be a mechanism (the F-14.12 shape).
     //
-    // TDW_14 D-1 — the block is now PER-MEMBER. The row's `visibility` jsonb is
-    // handed to the one home, which resolves it against the frozen defaults. The
-    // guard does not read a key, compare a value, or hold an opinion about what
-    // any flag means: it passes the column and takes the answer. That is what
-    // makes this a choke point rather than a first implementation.
-    permissions:   circlePermissions(member.visibility),
+    // `visibility` STAYS IN THE SELECT ABOVE ON PURPOSE: 0098's column survives
+    // at the plane, append-only and inert (LD-8), and a select that stopped
+    // asking would make a future reader's first question 「 was it ever there? 」
+    // Nothing reads the value. The row is carried; no opinion is held.
+    //
+    // ── [F-06.85] F-07.115'S CLOSURE RECORD, RE-HOMED HERE AT M-TRUST ────────
+    // THIS PARAGRAPH IS NOT DECORATION. It lived in `circlePermissions.js`, and
+    // that module was deleted whole by the 2026-08-14 ruling. F-06.85's law is
+    // that a sentence conditioned on a mechanism records what happened to the
+    // mechanism — so a record cannot die just because its host file did. It
+    // moves to the surviving reader, which is this guard. `b07_f0772` §13.14
+    // reads it HERE now, and that cell moved in the same delivery by charter
+    // (RETIRE-WITH-THE-READER).
+    //
+    // WHAT IT SAYS. `dreamai_access_granted` was a HARDCODED `false` at the one
+    // home. No column backed it; `public.circle_members` carried THIRTEEN
+    // columns at the witness (`docs/db/PUBLIC_SCHEMA.md:74-89`) and none was a
+    // permission — so THE FLAG COULD NOT BE TRUE FOR ANYONE, EVER. F-07.115 was
+    // CLOSED BY DELETION rather than by adding the column the defect seemed to
+    // ask for: the founder ruled THE LOCK WAS RIGHT AND THE FEATURE DID NOT
+    // BELONG THERE. Circle members reach Mira on WhatsApp — they always could —
+    // so the flag died with the surface it gated. THIS IS THAT RE-READ, carried
+    // forward intact.
+    //
+    // IF A REAL DREAM-AI PERMISSION IS EVER WANTED it arrives as a COLUMN with a
+    // migration behind it, never as a literal, and it must red §13.14 on its way
+    // in. That is the conversation the cell exists to force, and the retirement
+    // of the block it used to watch does not retire the watch.
   };
 
   next();

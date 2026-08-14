@@ -575,11 +575,21 @@ t('§7.8 THE ZERO-ROW FACT IS ON THE RECORD — the refusal breaks nothing that 
 
 H('§8 — session.js: the minimisation, declared partial');
 
+// `permissions,` LEFT THE KEPT SET AT M-TRUST (2026-08-14) — RETIRE-WITH-THE-
+// READER. This cell pins the SHAPE of a payload, and the payload's shape moved
+// when the founder retired the flags: 「 the bride is consciously adding people 」.
+// The field is not merely unasserted here, which would let it drift back in
+// unwatched; the cell below asserts it is ABSENT, so a hand that re-adds
+// `permissions` to this response has to redden f0772 to do it.
 t('§8.1 the KEPT set is exactly the derived consumed set', () => {
   const s = read('src/api/circle/session.js');
-  for (const f of ['user_id:', 'name:', 'couple_id:', 'role:', 'permissions,', 'bride: {']) {
+  for (const f of ['user_id:', 'name:', 'couple_id:', 'role:', 'bride: {']) {
     assert.ok(s.includes(f), `kept field missing: ${f}`);
   }
+  const c = s.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/permissions/.test(c),
+    'the session payload re-declared `permissions` — retired whole at M-TRUST, ' +
+    'and a key with no reader is a promise the estate has not made');
 });
 
 t('§8.2 the DROPPED set is gone from the response — phone, pin_set, co_planner_id', () => {
@@ -807,27 +817,37 @@ await mutateSrc('src/api/router.js',
       '/circle/muse lost its guard in the retirement');
   });
 
-// INVERSE 13 — bring the keyless flag back to the one home. §13.14's INVERSION
-// must redden; a cell that only asserted absence by no longer running could not.
-await mutateSrc('src/lib/circlePermissions.js',
-  '  can_see_budget:         false,',
-  '  dreamai_access_granted: false,\n  can_see_budget:         false,',
-  "F-07.115's closure by deletion at the one home",
+// INVERSE 13 — RE-AIMED AT M-TRUST. Its old target was `src/lib/circlePermissions.js`,
+// which the 2026-08-14 ruling deleted whole; a mutation aimed at an absent file
+// is not a weaker proof, it is no proof, and the harness would have said so.
+// The flag's re-introduction is still the thing being watched — it just has one
+// fewer place to come back to. It comes back at the surviving reader now.
+await mutateSrc('src/api/middleware/requireCircleMemberAuth.js',
+  '    name:          member.invitee_name || userRow.name || null,',
+  '    dreamai_access_granted: false,\n    name:          member.invitee_name || userRow.name || null,',
+  "F-07.115's closure by deletion, watched at the surviving reader",
   async () => {
-    const code = read('src/lib/circlePermissions.js')
+    const code = read('src/api/middleware/requireCircleMemberAuth.js')
       .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-    assert.ok(!/dreamai_access_granted/.test(code), 'the keyless flag is back in the permission block');
+    assert.ok(!/dreamai_access_granted/.test(code), 'the keyless flag is back in the identity');
   });
 
 // INVERSE 14 — strip the closure record while leaving the deletion in place.
 // The field being gone is not the whole cure: F-06.85's law is that the
 // paragraph conditioned on the mechanism records what happened to it.
-await mutateSrc('src/lib/circlePermissions.js',
-  'THIS IS THAT SITTING, AND THIS IS THAT RE-READ',
+// INVERSE 14 — RE-AIMED for the same reason, and it is the more important of
+// the pair. F-06.85's law is that the paragraph conditioned on a mechanism
+// records what happened to it. The mechanism's HOST FILE was deleted, so the
+// record was re-homed to the guard in the same delivery — a record that dies
+// with its host file is not a record, it is a comment that happened to survive
+// until someone tidied up. This mutation proves the re-homed paragraph is load-
+// bearing at its new address exactly as it was at its old one.
+await mutateSrc('src/api/middleware/requireCircleMemberAuth.js',
+  'THIS IS THAT RE-READ, carried',
   'The flag was removed',
-  "the F-06.85 record of F-07.115's re-read",
+  "the F-06.85 record of F-07.115's re-read, at its re-homed address",
   async () => {
-    assert.ok(/THIS IS THAT SITTING, AND THIS IS THAT RE-READ/.test(read('src/lib/circlePermissions.js')),
+    assert.ok(/THIS IS THAT RE-READ, carried/.test(read('src/api/middleware/requireCircleMemberAuth.js')),
       'the paragraph no longer records that its own re-read instruction was discharged');
   });
 
@@ -1853,17 +1873,40 @@ t('§13.12 NO TOKEN BYTES ARE LOGGED IN THE GUARD — not the value, not a prefi
 
 // ── FORK E: THE PERMISSION BLOCK'S ONE HOME ─────────────────────────────────
 
-t('§13.13 FORK E — the permission block has ONE definition and TWO readers', () => {
-  const home = read('src/lib/circlePermissions.js');
-  assert.ok(home.includes('can_contribute_muse:    true'), 'the one home does not carry the block');
-  for (const f of ['src/api/middleware/requireCircleMemberAuth.js', 'src/api/circle/session.js']) {
+// ── §13.13 RETIRES WITH ITS SUBJECT AT M-TRUST (2026-08-14) ────────────────
+// FOUND BY THE BENCH, NOT BY THE READ-FIRST, AND THAT IS OWNED. My f0772 sweep
+// named three sites — the payload shape and the two dead-file mutations — and
+// MISSED this one. It is Fork E's own cell, the nearest possible sibling of
+// §13.14, and it read the same deleted module. The bench caught it; the census
+// should have. Same structural miss the estate has recorded before: the reader
+// census covers CALLERS reliably and cells that PIN SHAPES unreliably.
+//
+// Fork E's guarantee was ONE DEFINITION, TWO READERS — a cure for the seven
+// literal lines that once stood in the guard and seven identical lines in
+// session.js. The founder's trust ruling retired the block itself, so the
+// guarantee inverts to its limit: ZERO definitions, ZERO readers. The cell is
+// not deleted, because the disease it was minted against — a literal block
+// re-appearing at a reader — is exactly what a hand would do first if it wanted
+// the flags back without the module. It now watches for that.
+t('§13.13 FORK E at its limit — ZERO definitions, and no reader re-grows a literal', () => {
+  assert.ok(!fs.existsSync(path.join(ROOT, 'src/lib/circlePermissions.js')),
+    'the one home is back — Fork E was superseded by retirement, not by relocation');
+  for (const f of [
+    'src/api/middleware/requireCircleMemberAuth.js',
+    'src/api/circle/session.js',
+    'src/api/circle/polls.js',
+  ]) {
     const code = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
     assert.ok(!/can_contribute_muse:\s*true/.test(code),
-      `${f} still carries its own literal copy of the block`);
+      `${f} re-grew a literal copy of the block — the second-implementation disease ` +
+      'Fork E was minted to end, arriving after the module it was extracted into');
+    assert.ok(!/require\(['"]\.\.\/\.\.\/lib\/circlePermissions['"]\)/.test(code),
+      `${f} still requires the retired module`);
   }
-  assert.ok(read('src/api/middleware/requireCircleMemberAuth.js').includes("require('../../lib/circlePermissions')"));
-  assert.ok(read('src/api/circle/session.js').includes('me.permissions'),
-    'session.js no longer serves the guard-resolved block');
+  const s = read('src/api/circle/session.js').split('\n')
+    .filter(l => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/me\.permissions/.test(s),
+    'session.js still serves a resolved block — `permissions` left this payload at M-TRUST');
 });
 
 // ── §13.14 IS INVERTED AT F-07.115, AND THE INVERSION IS THE WHOLE POINT ────
@@ -1878,21 +1921,41 @@ t('§13.13 FORK E — the permission block has ONE definition and TWO readers', 
 // If a real Dream-AI permission is ever wanted it will arrive as a COLUMN with a
 // migration behind it, and it will have to red this cell on its way in, which is
 // exactly the conversation we want it to force.
+// ── AND AT M-TRUST THE ONE HOME ITSELF WAS DELETED (2026-08-14) ────────────
+// The cell inverted once at F-07.115 (presence → absence). It moves again now,
+// and the move is smaller than it looks: the WATCH is unchanged — the keyless
+// flag must not return — and only its ADDRESSES moved, because the module that
+// held two of them is gone. RETIRE-WITH-THE-READER; declared before the byte.
+//
+// THE RECORD MOVED WITH IT, WHICH IS THE PART THAT MATTERED. F-06.85's law does
+// not say 「 the paragraph lives at the one home 」; it says a sentence
+// conditioned on a mechanism records what happened to that mechanism. Deleting
+// the host file would have silently discharged the obligation, and this cell is
+// what makes that impossible: it now requires the record AT THE GUARD, the
+// surviving reader, carrying the same number and the same column witness it was
+// decided on.
 t('§13.14 [F-06.85] F-07.115 CLOSED BY DELETION — the flag is ABSENT, and its record is not', () => {
-  const home = read('src/lib/circlePermissions.js');
-  const code = home.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-  assert.ok(!/dreamai_access_granted/.test(code),
-    'the keyless flag is back in the permission block — it needs a column and a migration, not a literal');
-  for (const f of ['src/api/middleware/requireCircleMemberAuth.js', 'src/api/circle/session.js']) {
+  // The one home is gone; its absence is asserted at b14_d1 §5.2 and is not
+  // re-litigated here. What this cell owns is the flag and the record.
+  const READERS = [
+    'src/api/middleware/requireCircleMemberAuth.js',
+    'src/api/circle/session.js',
+    'src/api/circle/polls.js',
+  ];
+  for (const f of READERS) {
     const c = read(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-    assert.ok(!/dreamai_access_granted/.test(c), `${f} re-declared the retired flag`);
+    assert.ok(!/dreamai_access_granted/.test(c),
+      `${f} re-declared the retired flag — it needs a column and a migration, not a literal`);
   }
-  // The RECORD survives the field. F-06.85's law is that a sentence conditioned
-  // on a mechanism names it; the closure is that mechanism's next state, and the
-  // paragraph must still carry both the number and the witness it was decided on.
-  assert.ok(home.includes('F-07.115'), 'the closure is not recorded where the flag lived');
+  assert.ok(!fs.existsSync(path.join(ROOT, 'src/lib/circlePermissions.js')),
+    'the one home is back — this cell\u0027s addresses assume the M-TRUST retirement');
+
+  // The RECORD survives the field AND the file that held it.
+  const home = read('src/api/middleware/requireCircleMemberAuth.js');
+  assert.ok(home.includes('F-07.115'),
+    'the closure is not recorded at the reader the record was re-homed to');
   assert.ok(/PUBLIC_SCHEMA\.md:74-89/.test(home), 'the column witness left the record');
-  assert.ok(/THIS IS THAT SITTING, AND THIS IS THAT RE-READ/.test(home),
+  assert.ok(/THIS IS THAT RE-READ, carried/.test(home),
     'the paragraph no longer records that its own re-read instruction was discharged');
 });
 
