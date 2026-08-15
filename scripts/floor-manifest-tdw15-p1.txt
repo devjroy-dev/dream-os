@@ -18,3 +18,4 @@ src/lib/imagePipeline.js
 scripts/tdw15_p1_receipt_image.js
 scripts/floor-manifest-tdw15-p1.txt
 docs/handovers/TDW_15_P1_ZIP1_HANDOVER.md
+docs/handovers/TDW_15_P1_HOTFIX_F1506_HANDOVER.md

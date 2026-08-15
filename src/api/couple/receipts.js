@@ -39,7 +39,32 @@ function buildReceiptRow({ couple_id, vendor_name, amount, description, receipt_
     amount:       amount       ? parseInt(amount, 10)                      : null,
     description:  description  ? String(description).trim().slice(0,500)  : null,
     receipt_date: receipt_date || null,
-    tags:         Array.isArray(tags) ? tags : (notes ? [notes] : null),
+    // ── F-15.6 · THE NULL THIS COLUMN CANNOT TAKE ──────────────────────────
+    // `[]`, NEVER `null`. `couple_receipts.tags` is `text[] NOT NULL default
+    // ARRAY[]::text[]` (PUBLIC_SCHEMA.md:287, column 9), and an EXPLICIT null
+    // does not fall back to a default — it violates the constraint and the
+    // insert throws. Every receipt filed with no tag and no note hit that.
+    //
+    // THIS FILE'S TYPED POST HAS CARRIED THE NULL SINCE BIRTH AND COULD NEVER
+    // HAVE WRITTEN A ROW. Nobody noticed because nobody had ever used it: the
+    // vault stood at ZERO receipts on the day this was found, so the door's
+    // whole history is consistent with it having always been broken.
+    //
+    // THE ESTATE HAD THE RIGHT EXPRESSION EIGHTEEN INCHES AWAY. Three writers
+    // reach this table and only this one was wrong:
+    //   · `couple/expenses.js:63`  tags: ... : []        — correct, always
+    //   · `brideEngine.js` save_receipt — OMITS the column, so the default
+    //     fires; that is why the WhatsApp path has always worked
+    //   · this one                  tags: ... : null      — could not write
+    //
+    // AND THE PRESERVATION ARGUMENT IS OVERTURNED BY ITS OWN EVIDENCE. ZIP 1
+    // extracted this expression byte-faithfully and PINNED the null with a
+    // bench cell, on the reasoning that a UI sitting must not move a live
+    // persistence rule. The reasoning was right and the fact was wrong: the
+    // rule was never live. A behaviour with zero successful executions is not
+    // shipped behaviour, it is a defect with a long tenure. The founder's thumb
+    // settled in one tap what the derivation could not.
+    tags:         Array.isArray(tags) ? tags : (notes ? [notes] : []),
   };
 }
 

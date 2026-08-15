@@ -251,13 +251,49 @@ t('6.3 the extraction preserves the shipped coercions, executed not read',
       'a coercion moved during extraction');
   });
 
-t('6.4 the tags oddity is PINNED, not silently cured (declared shipped behaviour)',
+// ── AMENDED, F-15.6, 2026-08-15 — THIS CELL PINNED A DEFECT ────────────────
+// It asserted `tags === null` for a bare row and called that a shipped
+// persistence rule this delivery must not move. It was not a rule. The column
+// is `text[] NOT NULL` and an explicit null cannot be written at all, so the
+// assertion was pinning a value the database has never once accepted.
+//
+// The cell was not wrong to exist — it was wrong about which fact it had. It
+// now pins the value the column can actually take, and 6.5 pins the REASON so
+// the next hand that finds `[]` "inconsistent" with the sibling doors meets the
+// constraint before it meets its own taste.
+t('6.4 a bare row carries an EMPTY ARRAY, which is what the column accepts',
   () => {
     const b = requireFresh(RECEIPTS).__buildReceiptRow;
     assert.deepStrictEqual(b({ couple_id: 'C', notes: 'x' }).tags, ['x'],
-      'the notes-becomes-a-one-element-array behaviour changed — that is a ' +
-      'persistence rule, and a UI sitting may not move it');
-    assert.strictEqual(b({ couple_id: 'C' }).tags, null);
+      'the notes-becomes-a-one-element-array behaviour changed');
+    assert.deepStrictEqual(b({ couple_id: 'C' }).tags, [],
+      'a null here is a NOT NULL violation and every untagged receipt 500s');
+  });
+
+t('6.5 the builder can NEVER emit null for tags, whatever the caller sends',
+  () => {
+    const b = requireFresh(RECEIPTS).__buildReceiptRow;
+    for (const input of [
+      { couple_id: 'C' },
+      { couple_id: 'C', tags: null },
+      { couple_id: 'C', tags: 'not-an-array' },
+      { couple_id: 'C', notes: '' },
+      { couple_id: 'C', notes: null, tags: undefined },
+    ]) assert.ok(Array.isArray(b(input).tags),
+      `tags came back non-array for ${JSON.stringify(input)}`);
+  });
+
+// THE CONSTRAINT IS READ FROM THE WITNESS, not remembered. If a later regen
+// shows the column nullable, this cell reds and the comments above it become
+// history rather than law — which is the right way round.
+t('6.6 the schema witness still says the column refuses a null',
+  () => {
+    const doc = read('docs/db/PUBLIC_SCHEMA.md');
+    const at  = doc.indexOf('## public.couple_receipts');
+    assert.ok(at > -1, 'the witness has no couple_receipts section');
+    const body = doc.slice(at, at + 600);
+    assert.ok(/tags text\[\] NOT NULL/.test(body),
+      'the column no longer reads NOT NULL — re-read 6.4 before trusting it');
   });
 
 function requireFresh(p) { delete require.cache[SRC(p)]; return require(SRC(p)); }
@@ -303,7 +339,12 @@ const PROBES = {
   '6.4': () => {
     delete require.cache[SRC(RECEIPTS)];
     const b = require(SRC(RECEIPTS)).__buildReceiptRow;
-    assert.deepStrictEqual(b({ couple_id: 'C', notes: 'x' }).tags, ['x']);
+    assert.deepStrictEqual(b({ couple_id: 'C' }).tags, []);
+  },
+  '6.5': () => {
+    delete require.cache[SRC(RECEIPTS)];
+    const b = require(SRC(RECEIPTS)).__buildReceiptRow;
+    assert.ok(Array.isArray(b({ couple_id: 'C' }).tags));
   },
   '2.5': () => {
     assert.ok(!/image_url\s*[:=][^=]/.test(typedHandler()));
@@ -326,11 +367,14 @@ const MUTATIONS = [
     reds: ['3.3'],
     why:  'typed door: the same reversal on the extraction it came from' },
 
+  // AMENDED WITH ITS CELL (F-15.6). This mutation used to break the cell by
+  // REMOVING the notes-to-tags fallback; it now breaks it by reintroducing the
+  // null, which is the failure that actually reached a user.
   { id: 'M5', file: RECEIPTS,
-    from: `    receipt_date: receipt_date || null,\n    tags:         Array.isArray(tags) ? tags : (notes ? [notes] : null),`,
-    to:   `    receipt_date: receipt_date || null,\n    tags:         Array.isArray(tags) ? tags : [],`,
-    reds: ['6.4'],
-    why:  'the extraction silently "cures" the tags oddity — a persistence rule moved' },
+    from: `    tags:         Array.isArray(tags) ? tags : (notes ? [notes] : []),`,
+    to:   `    tags:         Array.isArray(tags) ? tags : (notes ? [notes] : null),`,
+    reds: ['6.4', '6.5'],
+    why:  'the null returns — every untagged receipt 500s on a NOT NULL column' },
 
   { id: 'M2', file: RECEIPTS,
     from: `row.image_url = uploaded.secure_url;`,
