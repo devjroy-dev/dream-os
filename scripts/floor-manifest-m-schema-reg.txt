@@ -1,0 +1,27 @@
+# scripts/floor-manifest-m-schema-reg.txt
+# M-SCHEMA-REG (dream-os, one ZIP) — the delivery's own file table, declared for
+# [F-14.16]'s --delivery mode. Every path here is dirt this floor is permitted to
+# measure over; one byte outside it and the runner refuses exactly as it always did.
+#
+# Cut per delivery, travels in the ZIP beside the bytes it declares, and its
+# contents are the same table the handover prints — one artefact, no drift.
+
+# ── the register's data, hand-authored and LEGALLY so: this is not a generated file
+db/migrations/OUT_OF_ORDER.json
+
+# ── the register's prose, moved into the generator where NEVER HAND-EDIT is enforced
+db/queries/format_public_schema.js
+
+# ── the cell that watches the pipe. Nothing watched it before; that was the defect.
+scripts/b15_schema_register_bench.js
+
+# ── this manifest
+scripts/floor-manifest-m-schema-reg.txt
+
+# ── the handover
+docs/handovers/TDW_M_SCHEMA_REG_HANDOVER.md
+
+# NOT IN THIS DELIVERY, DELIBERATELY:
+#   docs/db/PUBLIC_SCHEMA.md — NEVER HAND-EDITED, and this delivery does not break
+#   that law "just to seed". The doc still carries the old hand-authored region and
+#   will until the founder's regen, which is the acceptance witness (R-34.26).
