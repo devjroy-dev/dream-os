@@ -1,0 +1,35 @@
+# scripts/floor-manifest-tdw15-p2.txt
+# TDW_15 P2 · ZIP 1 (dream-os) — the delivery's own file table, declared for
+# [F-14.16]'s --delivery mode. Every path here is dirt this floor is permitted
+# to measure over; one byte outside it and the runner refuses exactly as it
+# always did.
+#
+# This file is NOT a permanent fixture. It is cut per delivery, travels in the
+# ZIP beside the bytes it declares, and its contents are the same table the
+# handover prints — one artefact, so the two cannot drift.
+
+# ── the migration, executed by the founder before this ZIP was cut ───────────
+db/migrations/0088_envelopes.sql
+
+# ── the row shape's one home, and the two readers that stop being copies ─────
+src/api/couple/receiptColumns.js
+src/api/couple/receipts.js
+src/api/couple/expenses.js
+
+# ── the envelope doors and their mount ───────────────────────────────────────
+src/api/couple/envelopes.js
+src/api/couple/core.js
+
+# ── the wall that learns envelope bytes ──────────────────────────────────────
+scripts/b14_d1_visibility_bench.js
+# P1's bench, amended under R-34.38/.39/.40 — two edits only
+scripts/tdw15_p1_receipt_image.js
+
+# ── the docs half of honesty: the known-ephemeral out-of-order line ──────────
+docs/db/PUBLIC_SCHEMA.md
+
+# ── the handover ─────────────────────────────────────────────────────────────
+docs/handovers/TDW_15_P2_ZIP1_HANDOVER.md
+
+# ── this manifest ────────────────────────────────────────────────────────────
+scripts/floor-manifest-tdw15-p2.txt

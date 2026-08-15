@@ -27,6 +27,10 @@ router.use('/circle',   require('./circle'));
 router.use('/bookings', require('./bookings'));
 router.use('/receipts', require('./receipts'));
 
+// TDW_15 P2 (R-4): her budget envelopes, the unfiled tray, and the couple-plane
+// `allowed[]` read the envelope picker builds from (R-34.34).
+router.use('/envelopes', require('./envelopes'));
+
 // B-5: chat
 router.use('/chat',     require('./chat'));
 

@@ -251,7 +251,29 @@ H('§6 — [M-TRUST] THE BUDGET WALL AS LAW: absence, per serializer, unconditio
 // wrong, because there is no budget-bearing field in any member-facing
 // serializer to shape.
 
-const MONEY = /\bfrom\('(expenses|invoices|payment_schedules|team_payments)'\)|\b(amount|budget|total_amount|paid_amount|balance_due)\b/;
+// ── TDW_15 P2 (R-34.16): THE WALL LEARNS ENVELOPE BYTES ─────────────────────
+// The alternation above named four tables and FIVE field words, and `envelope`
+// appeared nowhere in this file. `budget_envelopes` was not a table it watched,
+// `envelope_id` was not a field it watched, and `amount_inr` does not match
+// `\bamount\b` because `_` is a word character and the boundary never fires.
+// So the family was blind to the exact bytes 0088 minted, and M-TRUST's ruling
+// — 「 budget never visible 」, no flag, no key — would have been enforced over
+// a money vocabulary that no longer described the money.
+//
+// R-34.20: the envelope cells mutate on `budget_envelopes`, `envelope_id` and
+// `amount_inr` SPECIFICALLY, each proven to red for its OWN token. The reason
+// is that `couple_receipts.amount` is live and `\bamount\b` ALREADY matches it,
+// so a naive both-ways cell could go green on a pre-existing word rather than
+// on the new bytes, and R-33.4 requires the mutation anchor be unique in the
+// final tree. A cell that reds only because `amount` was already there is
+// vacuous and proves nothing about envelopes.
+const MONEY = /\bfrom\('(expenses|invoices|payment_schedules|team_payments|budget_envelopes)'\)|\b(amount|budget|total_amount|paid_amount|balance_due|envelope_id|amount_inr)\b/;
+
+// The envelope tokens ALONE, so a cell can prove absence of THESE bytes without
+// the pre-existing `amount` word being able to satisfy it. This is the
+// non-vacuity instrument for R-34.20, and it is deliberately NOT a subset of
+// MONEY's behaviour at the call site — it is matched separately.
+const ENVELOPE = /\bfrom\('budget_envelopes'\)|\b(envelope_id|amount_inr)\b/;
 const SIX   = ['feed', 'session', 'threads', 'muse', 'polls', 'assigned'];
 
 function moneyHit(base) {
@@ -292,6 +314,47 @@ t('§6.7 the residual three member-facing files carry no money either', () => {
     const hit = moneyHit(base);
     assert.strictEqual(hit, null, `src/api/circle/${base}.js touches money (${hit})`);
   }
+});
+
+// ── §6.10–.12 · TDW_15 P2 (R-34.16/.20) — THE ENVELOPE BYTES, PER TOKEN ─────
+// Acceptance 3 as amended: a member receives ZERO envelope bytes,
+// unconditionally, proven structurally over the whole family rather than by
+// auditing a payload. Three cells because there are three tokens and R-34.20
+// requires each to red for its own — one cell over all three would go green on
+// two while a third leaked.
+for (const [idx, token, re] of [
+  [10, 'budget_envelopes', /\bfrom\('budget_envelopes'\)/],
+  [11, 'envelope_id',      /\benvelope_id\b/],
+  [12, 'amount_inr',       /\bamount_inr\b/],
+]) {
+  t(`§6.${idx} NO member-facing circle route touches \`${token}\` — unconditional`, () => {
+    const hits = [];
+    for (const f of FAMILY) {
+      const m = code(f).match(re);
+      if (m) hits.push(`${f} (${m[0]})`);
+    }
+    assert.deepStrictEqual(hits, [],
+      `a member-facing serializer grew an envelope byte: ${hits.join(' · ')}. ` +
+      'M-TRUST is 「 budget never visible 」 with no flag to open it, and an ' +
+      'envelope IS budget — it is her ceiling and her spend in one row.');
+  });
+}
+
+// R-34.20's NON-VACUITY GUARD, and it is the cell that makes the three above
+// mean something. `couple_receipts.amount` is live and `\bamount\b` already
+// matches it, so MONEY would fire on a file that has no envelope byte at all.
+// This cell proves ENVELOPE is a STRICTER instrument than MONEY — that it does
+// NOT match the pre-existing word — so a green above cannot have been bought by
+// `amount` sitting in the tree since 0019.
+t('§6.13 the envelope instrument does not fire on the pre-existing `amount` word (R-34.20)', () => {
+  const decoy = "const q = supabase.from('couple_receipts').select('id, amount, created_at');";
+  assert.ok(MONEY.test(decoy),
+    'the MONEY instrument no longer matches a bare `amount` — the extension broke what it inherited');
+  assert.strictEqual(ENVELOPE.test(decoy), false,
+    'the ENVELOPE instrument fires on a bare `amount`, so §6.10–.12 could go green ' +
+    'on a word that predates 0088 by six blocks — that is a vacuous cell (R-33.4)');
+  assert.ok(ENVELOPE.test("const q = supabase.from('budget_envelopes').select('id, amount_inr');"),
+    'the ENVELOPE instrument does not fire on a real envelope read — it proves nothing');
 });
 
 t('§6.8 the circle route family is enumerated by the bench, and it is NINE', () => {

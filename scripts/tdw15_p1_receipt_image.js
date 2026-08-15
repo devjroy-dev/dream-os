@@ -46,6 +46,8 @@ const code = (p) => read(p)
 const RECEIPTS = 'src/api/couple/receipts.js';
 const PIPELINE = 'src/lib/imagePipeline.js';
 const EXPENSES = 'src/api/couple/expenses.js';
+// TDW_15 P2 (R-34.37): the row shape's one home, extracted from RECEIPTS.
+const COLUMNS  = 'src/api/couple/receiptColumns.js';
 const CORE     = 'src/api/couple/core.js';
 
 let pass = 0, fail = 0;
@@ -123,12 +125,28 @@ t('2.2 it WRITES image_url — the column no http path could write before it',
 t('2.3 …into couple_receipts, the settled expense vault',
   () => assert.ok(/\.from\('couple_receipts'\)[\s\S]{0,200}\.insert\(row\)/.test(imageHandler())));
 
+// AMENDED TDW_15 P2 (R-34.38). THIS CELL USED TO PIN WHERE THE CONSTANT LIVED —
+// `/const RECEIPT_COLUMNS\s*=/` inside RECEIPTS — and its failure message said
+// "the shared column literal is gone". That was authored when ONE HOME and IN
+// THIS FILE were the same fact. R-34.37 separated them: the literal moved to a
+// neutral module owned by neither route, so the old cell convicted the cure.
+// F-15.12 is the doctrine — a cell that encodes an incidental LOCATION instead
+// of the invariant reds on improvement and stays green on decay.
+//
+// The invariant was never "the literal is in this file". It was ONE HOME, THREE
+// READERS — the sentence P1's comment claimed and the tree did not support. So
+// the cell now asserts exactly that, and is strictly stronger than what it
+// replaces: it proves the three-way sharing rather than one file's contents.
 t('2.4 the response is shape-identical to its two siblings (one column literal)',
   () => {
-    const c = code(RECEIPTS);
-    assert.ok(/const RECEIPT_COLUMNS\s*=/.test(c), 'the shared column literal is gone');
+    assert.ok(/const RECEIPT_COLUMNS\s*=/.test(code(COLUMNS)),
+      'the row shape has no home — RECEIPT_COLUMNS is declared nowhere');
+    assert.ok(/require\('\.\/receiptColumns'\)/.test(code(RECEIPTS)),
+      'receipts.js no longer reads the one home');
     assert.ok(/\.select\(RECEIPT_COLUMNS\)/.test(imageHandler()),
       'the image door hand-lists its columns instead of using the one home');
+    assert.ok(/\.select\(RECEIPT_COLUMNS\)/.test(code(EXPENSES)),
+      'expenses.js hand-lists its columns again — the third reader drifted back');
   });
 
 // THE ABSENCE THIS DELIVERY EXISTS TO END. Bounded to the two http files: the
@@ -323,8 +341,11 @@ const PROBES = {
   },
   '2.2': () => assert.ok(/\brow\.image_url\s*=\s*uploaded\.secure_url\b/.test(imageHandler())),
   '2.4': () => {
-    assert.ok(/const RECEIPT_COLUMNS\s*=/.test(code(RECEIPTS)));
+    // R-34.38: amended in lockstep with the cell above so the two cannot drift.
+    assert.ok(/const RECEIPT_COLUMNS\s*=/.test(code(COLUMNS)));
+    assert.ok(/require\('\.\/receiptColumns'\)/.test(code(RECEIPTS)));
     assert.ok(/\.select\(RECEIPT_COLUMNS\)/.test(imageHandler()));
+    assert.ok(/\.select\(RECEIPT_COLUMNS\)/.test(code(EXPENSES)));
   },
   '3.2': () => {
     const i = argsOf(imageHandler(), 'buildReceiptRow(');
@@ -388,9 +409,13 @@ const MUTATIONS = [
     reds: ['1.1', '1.2'],
     why:  'the granted export withdrawn — the door imports a non-function' },
 
+  // R-34.39: re-anchored. `.select(RECEIPT_COLUMNS)` occurs THREE times in
+  // receipts.js since P2 (image door · the GET redirected to the one home · the
+  // envelope tag PATCH), so the bare line is no longer unique and R-33.4 fires.
+  // The `.insert(row)` pair is unique to the image door. Meaning and red unchanged.
   { id: 'M4', file: RECEIPTS,
-    from: `    .select(RECEIPT_COLUMNS)`,
-    to:   `    .select('id, image_url')`,
+    from: `    .insert(row)\n    .select(RECEIPT_COLUMNS)`,
+    to:   `    .insert(row)\n    .select('id, image_url')`,
     reds: ['2.4'],
     why:  'the image door hand-lists columns; two doors, two shapes' },
 ];

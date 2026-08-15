@@ -11,11 +11,14 @@ const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 
-// The columns every receipt read returns. One literal, three readers — the
-// image door's response must be shape-identical to the two that predate it or
-// the client would have to know which door made a row.
-const RECEIPT_COLUMNS =
-  'id, booking_id, amount, vendor_name, description, receipt_date, image_url, tags, created_at';
+// TDW_15 P2 (F-15.11, R-34.35/.37): the row shape moved to its one home. The
+// literal that stood here had two byte-identical twins — this file's own GET at
+// the `.select()` below, and `couple/expenses.js`. All three now read this.
+const { RECEIPT_COLUMNS } = require('./receiptColumns');
+
+// Path-parameter shape guard. Same literal as `couple/bookings.js:94` — a
+// regex, not a list, so no taxonomy question rides on it.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ── TDW_15 · P1 · β1 — THE TYPED FIELDS HAVE ONE HOME, AND THAT IS NEW ──────
 // The image door files a receipt that ALSO carries an amount and a vendor (she
@@ -81,7 +84,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
 
   let query = supabase
     .from('couple_receipts')
-    .select('id, booking_id, amount, vendor_name, description, receipt_date, image_url, tags, created_at')
+    .select(RECEIPT_COLUMNS)
     .eq('couple_id', couple_id)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -200,6 +203,63 @@ router.post('/:coupleId/image', express.json({ limit: '12mb' }), asyncHandler(as
 }));
 
 // DELETE /:receiptId — delete receipt
+// ── PATCH /:receiptId — FILE IT (TDW_15 P2, the envelope tag) ───────────────
+// The ONLY field this door writes is `envelope_id`. It lives here and not on
+// the envelopes router because it mutates a RECEIPT, and a receipt mutation on
+// an envelope route is a second home for this row's write path.
+// `envelope_id: null` is a legal body — that is UNFILING, and it is how a
+// receipt returns to the tray by her hand rather than by a cascade.
+router.patch('/:receiptId', asyncHandler(async (req, res) => {
+  const supabase      = req.app.locals.supabase;
+  const { couple_id } = req.coupleUser;
+  const { receiptId }  = req.params;
+
+  if (!UUID_RE.test(receiptId)) return errRes(res, 400, 'Invalid receipt id.');
+
+  const body = req.body || {};
+  if (!Object.prototype.hasOwnProperty.call(body, 'envelope_id')) {
+    return errRes(res, 400, 'envelope_id is required.');
+  }
+
+  const envelope_id = body.envelope_id;
+  if (envelope_id !== null && !UUID_RE.test(String(envelope_id))) {
+    return errRes(res, 400, 'envelope_id must be an envelope id or null.');
+  }
+
+  // Both scopes are the JWT's. The FK guarantees the envelope exists; the
+  // couple_id equality guarantees it is HERS, because a foreign key alone would
+  // happily accept another bride's envelope id.
+  if (envelope_id !== null) {
+    const { data: envelope, error: lookupError } = await supabase
+      .from('budget_envelopes')
+      .select('id')
+      .eq('id', envelope_id)
+      .eq('couple_id', couple_id)
+      .maybeSingle();
+    if (lookupError) {
+      console.error('[PATCH /couple/receipts/:receiptId] envelope lookup error:', lookupError.message);
+      return errRes(res, 500, 'Could not file that receipt.');
+    }
+    if (!envelope) return errRes(res, 404, 'Envelope not found.');
+  }
+
+  const { data, error } = await supabase
+    .from('couple_receipts')
+    .update({ envelope_id })
+    .eq('id', receiptId)
+    .eq('couple_id', couple_id)
+    .select(RECEIPT_COLUMNS)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return errRes(res, 404, 'Receipt not found.');
+    console.error('[PATCH /couple/receipts/:receiptId] update error:', error.message);
+    return errRes(res, 500, 'Could not file that receipt.');
+  }
+
+  return okRes(res, { receipt: data });
+}));
+
 router.delete('/:receiptId', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { couple_id } = req.coupleUser;

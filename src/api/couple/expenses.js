@@ -10,6 +10,7 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
+const { RECEIPT_COLUMNS } = require('./receiptColumns');
 
 router.get('/:coupleId', asyncHandler(async (req, res) => {
   const supabase    = req.app.locals.supabase;
@@ -24,7 +25,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
   // couple_receipts is the expense vault per 0019_bride_planner.sql
   let query = supabase
     .from('couple_receipts')
-    .select('id, booking_id, amount, vendor_name, description, receipt_date, image_url, tags, created_at')
+    .select(RECEIPT_COLUMNS)
     .eq('couple_id', couple_id)
     .order('created_at', { ascending: false })
     .limit(limit);
