@@ -1,23 +1,24 @@
 # scripts/floor-manifest-m-schema-reg-b.txt
-# M-SCHEMA-REG AMENDMENT B (dream-os, one ZIP) — R-34.47, on af3cb04.
-# Declared dirt for [F-14.16]'s --delivery mode.
+# M-SCHEMA-REG AMENDMENT B + THE REGEN (dream-os, one ZIP) — R-34.47/.48/.49/.50/.51,
+# on af3cb04. Declared dirt for [F-14.16]'s --delivery mode.
 #
-# NOTE FOR THE FLOOR RUN: this amendment lands mid-regen. The tree will ALSO
-# carry the regenerated docs/db/PUBLIC_SCHEMA.md and the four dump CSVs. The
-# doc is declared below because the founder's regen legitimately rewrote it;
-# the CSVs are transient inputs and are NOT declared — they must not be
-# committed, and the floor should see them as undeclared dirt if they are
-# still present. Move them out of the repo before the floor run.
+# The four dump CSVs are transient inputs and are deliberately NOT declared. They
+# must not be committed. Move them out of the repo before the floor run.
 
-# ── the cell that now asserts the empty state instead of refusing it
+# ── the cell that now asserts the empty state instead of refusing it (R-34.47/.50)
 scripts/b15_schema_register_bench.js
+
+# ── the two cross-block re-scopes, riding this ZIP under R-34.51. Scope is fenced
+#    to one assertion each; every other cell in both files is untouched.
+scripts/b14_d4_delegation_bench.js
+scripts/b14_d1_visibility_bench.js
 
 # ── this manifest
 scripts/floor-manifest-m-schema-reg-b.txt
 
-# ── the regenerated snapshot: script-written by the founder's pipe run, not
-#    hand-edited. This is the acceptance witness's own output.
+# ── the regenerated snapshot: script-written by the founder's pipe run. This is
+#    the acceptance witness's own output, not a hand-edit.
 docs/db/PUBLIC_SCHEMA.md
 
-# ── the register, emptied at step 2 once the regen paid both debts
+# ── the register, emptied once the regen paid both debts
 db/migrations/OUT_OF_ORDER.json

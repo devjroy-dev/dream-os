@@ -476,8 +476,21 @@ t('§6.3 the verify reads pg_constraint, and each block is pasted ALONE', () => 
 t('§6.4 the address is IN ORDER — no F-SW.3 line owed, and it says so', () => {
   const m = read(MIGRATION).replace(/^--\s?/gm, '').replace(/\s+/g, ' ');
   assert.ok(/F-SW\.3's out-of-order rule DOES NOT APPLY/.test(m));
+  // (M-SCHEMA-REG R-34.48) SCOPED TO THE REGISTER, NOT THE WHOLE HEADER.
+  // This used to test !/0125/ across the entire header slice. The intent was
+  // always right and the scope was always wrong; it merely looked right while
+  // the header was frozen. The 2026-08-15 regen advanced the applied tip past
+  // 0123, and `0125` now appears in that slice twice for entirely legitimate
+  // reasons — as the ladder tip, and inside the `0001`-`0125` range sentence.
+  // A false red, and it fired at the regen, before the register was emptied.
+  // What the cell means is "0125 is not a ROW in the out-of-order register",
+  // so that is what it now reads: the register's own region, table or empty
+  // line, and nothing above it.
   const doc = read('docs/db/PUBLIC_SCHEMA.md');
-  assert.ok(!/0125/.test(doc.slice(0, doc.indexOf('## public.'))),
+  const header = doc.slice(0, doc.indexOf('## public.'));
+  const start = header.indexOf('| out-of-order migration |');
+  const region = start === -1 ? '' : header.slice(start);
+  assert.ok(!/0125/.test(region),
     'an in-order migration wrongly added itself to the staleness table');
 });
 

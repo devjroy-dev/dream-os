@@ -474,14 +474,35 @@ t('§8.2 the verify reads the CATALOGUE, not rows — and each block is pasted a
     'the verify blocks do not each carry their own paste boundary');
 });
 
-t('§8.3 [F-SW.3] the schema doc names this out-of-order migration in its staleness header', () => {
+// (M-SCHEMA-REG R-34.49) THE CURE HAS TWO LEGITIMATE STATES. ASSERT BOTH.
+// This cell used to require that the header name 0098_circle_visibility.sql
+// forever. That encoded a DEBT RECORD AS PERMANENT, when a debt record is by
+// design temporary: it is outstanding while the document is stale for the
+// table, and it is REMOVED once a regen has paid it. The 2026-08-15 regen paid
+// this one, and the cell went red on the estate reaching the exact state it
+// was built to reach — a cell convicting a cure.
+//
+// What F-SW.3 actually promises is that a reader is never silently misled about
+// circle_members. That holds in either state, and one of them must be true:
+//   · DEBT OUTSTANDING — 0098 is named in the register, with what it made stale;
+//   · DEBT PAID        — the body describes circle_members at 14 columns.
+// A tree where NEITHER holds is the real defect, and that is now what this
+// catches. The F-SW.3 rule itself must be present in the header either way:
+// the blind spot does not stop existing because today's ledger is clear.
+t('§8.3 [F-SW.3] the out-of-order cure holds — named while owed, or paid in the body', () => {
   const doc = read('docs/db/PUBLIC_SCHEMA.md');
   const header = doc.slice(0, doc.indexOf('## public.'));
   assert.ok(/F-SW\.3/.test(header), 'the staleness header does not carry F-SW.3\u0027s rule');
-  assert.ok(/0098_circle_visibility\.sql/.test(header),
-    'the out-of-order migration does not name itself where a reader would look');
-  assert.ok(/circle_members/.test(header) && /13 columns to 14/.test(header),
-    'the header does not say WHICH table it made stale, or by how much');
+
+  const owed = /0098_circle_visibility\.sql/.test(header)
+            && /circle_members/.test(header)
+            && /13 columns to 14/.test(header);
+  const paid = /##\s+public\.circle_members\s+·\s+14 columns/.test(doc);
+
+  assert.ok(owed || paid,
+    'neither state holds: 0098 is not named in the staleness header, AND the body '
+    + 'does not describe circle_members at 14 columns. The document is silently '
+    + 'stale for that table, which is the exact condition F-SW.3 exists to prevent.');
 });
 
 // ── §8.5 IS BORN OF THIS DELIVERY'S OWN INCIDENT, 2026-08-13 ───────────────
