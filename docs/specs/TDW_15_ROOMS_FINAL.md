@@ -28,6 +28,22 @@
 | R-5 | Bride inbox lands here (notify() extended to couples) so 16's signal has a bell to ring |
 | R-6 | Room enrichments: Dream = morning masthead · bookings = live milestone mirror of the vendor's schedule · receipts feed the envelopes |
 
+> **AMENDMENT — CE-34 · 2026-08-15 (rides the CE-34 seating push).** This spec is
+> 2026-07-14 ink and the estate moved at M-TRUST (TDW_14 block seal §4:
+> **membership IS the permission** — the 14 visibility resolver and
+> `circlePermissions.js` were DELETED with their door and keys). Three lines in
+> this document are therefore STALE and are STRUCK, never built: R-4's "hidden
+> from circle members by default via the 14 resolver" · P2.3 whole ("the 14
+> visibility resolver verified to cover envelope payloads (budget=false strips
+> them)") · Acceptance 3's "member with budget=false receives zero envelope
+> bytes" — and the header's "TDW_14 (assignee param, visibility resolver)"
+> parenthetical is stale for the same reason. **The replacement is THE WALL:**
+> envelopes are budget-bearing bytes and take unconditional absence on every
+> member-facing serializer, extending `b14_d1` §6's cell family. Acceptance 3
+> amends to: **"a member receives zero envelope bytes, unconditionally."** No
+> flag, no switch, no resolver — structural, per the trust ruling. The original
+> ink above and below stands untouched as the record of what was written.
+
 ## 2. PROPOSED — AWAITING FOUNDER RULING
 (none)
 
