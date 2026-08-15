@@ -98,7 +98,22 @@ function runPipe(fx, doc) {
 function main() {
   console.log('\n== b15 · THE OUT-OF-ORDER REGISTER SURVIVES ITS OWN GENERATOR ==\n');
   const reg = JSON.parse(fs.readFileSync(path.join(REPO, 'db', 'migrations', 'OUT_OF_ORDER.json'), 'utf8')).register;
-  if (!reg.length) return fail('OUT_OF_ORDER.json holds no records — this cell cannot prove carriage of nothing.');
+  // (R-34.47) THE EMPTY REGISTER IS THE GOAL STATE, NOT A BROKEN ONE.
+  // This cell used to REFUSE to run when the register held no records, on the
+  // reasoning that carriage of nothing cannot be proven. That was defensible for
+  // the two seeded rows and wrong as a general rule: a register empties when every
+  // recorded debt has been paid by a regen, which is the state the estate is
+  // supposed to reach. The bench would have gone red on a correct tree the first
+  // time it got there — and the first time was the run immediately after F-SW.7's
+  // own closure, which is as bad a moment to cry wolf as exists.
+  //
+  // It also left the renderer's empty branch (:285) as the only path nothing had
+  // ever executed. So the empty state now gets asserted rather than refused: the
+  // warning paragraph must STILL survive — a reader needs to know the blind spot
+  // exists and where to record the next migration, whether or not anything is
+  // outstanding today — and the empty-state line must render in place of the table.
+  const EMPTY = !reg.length;
+  if (EMPTY) console.log('  ..   register is empty (all debts paid) — asserting the empty state');
 
   const { fx, doc } = buildTree();
   const before = fs.readFileSync(doc, 'utf8');
@@ -119,7 +134,14 @@ function main() {
 
   // ── 2. THE TABLE HEADER.
   const HEAD = '| out-of-order migration | tables it makes this document STALE for | state |';
-  if (!after.includes(HEAD)) fail('the register table header did NOT survive the pipe.');
+  const EMPTY_LINE = '_No out-of-order migration is outstanding at this snapshot._';
+  if (EMPTY) {
+    // The table must be ABSENT, not merely empty: a header with no rows under it
+    // reads as data lost in transit rather than as a debt-free ladder.
+    if (!after.includes(EMPTY_LINE)) fail('the empty-state line did NOT render in place of the table.');
+    else if (after.includes(HEAD)) fail('an empty register still rendered a table header with no rows beneath it.');
+    else console.log('  ok   empty state renders its own line, no orphan table header');
+  } else if (!after.includes(HEAD)) fail('the register table header did NOT survive the pipe.');
   else console.log('  ok   table header survives both halves');
 
   // ── 3. EVERY ROW, RENDERED FROM THE COMMITTED INPUT, byte-compared against the
@@ -127,6 +149,7 @@ function main() {
   //       row that survives with the wrong column count is worse than an absent
   //       one, because the reader trusts it.
   const ladder = fs.readdirSync(path.join(REPO, 'db', 'migrations')).filter(f => f.endsWith('.sql'));
+  if (EMPTY && !after.includes('| `0')) console.log('  ok   no register rows rendered, correctly');
   for (const r of reg) {
     const file = ladder.find(f => f.startsWith(String(r.number).padStart(4, '0') + '_'));
     if (!file) { fail(`register names ${r.number} but no .sql matches it in db/migrations/`); continue; }
@@ -138,11 +161,12 @@ function main() {
   // ── 4. ORDER IS HISTORY, not numeric. If the renderer ever starts sorting, the
   //       document silently reorders and a reader's sense of "what came last" goes
   //       with it. Assert the input's own order came out the far side.
-  const pos = reg.map(r => {
+  const pos = EMPTY ? [] : reg.map(r => {
     const file = ladder.find(f => f.startsWith(String(r.number).padStart(4, '0') + '_'));
     return after.indexOf('`' + file + '`');
   });
-  if (pos.some(p => p < 0) || pos.some((p, i) => i && p < pos[i - 1]))
+  if (EMPTY) { /* order is vacuous with no rows */ }
+  else if (pos.some(p => p < 0) || pos.some((p, i) => i && p < pos[i - 1]))
     fail('register rows did not survive in input order.');
   else console.log('  ok   rows survive in input order, not sorted');
 

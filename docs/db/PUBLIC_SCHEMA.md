@@ -1,22 +1,20 @@
 # docs/db/PUBLIC_SCHEMA.md — the `public` schema, WITNESSED PROD SNAPSHOT
 
-**Snapshot taken:** 2026-08-13, founder-run in the Supabase SQL editor, output handed back as CSV and formatted by script. **67 tables, 774 columns.**
-**Applied ladder tip at snapshot:** `0123` — stated in the header so this file's staleness is a readable fact, never archaeology. The prior snapshot (2026-07-23, 63 tables, tip `0099`) went **23 migrations stale** before this regen measured it.
-**Repo tip at authoring:** `f18234e` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
-**Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0123` across 104 files, and it is not contiguous: **19 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0088`, `0089`, `0090`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0098`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
+**Snapshot taken:** 2026-08-15, founder-run in the Supabase SQL editor, output handed back as CSV and formatted by script. **70 tables, 796 columns.**
+**Applied ladder tip at snapshot:** `0125` — stated in the header so this file's staleness is a readable fact, never archaeology. The prior snapshot (2026-08-13, 67 tables, tip `0123`) went **2 migrations stale** before this regen measured it.
+**Repo tip at authoring:** `af3cb04` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
+**Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0125` across 108 files, and it is not contiguous: **17 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0090`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
 **⏳ HOW TO TELL WHETHER THIS DOCUMENT IS STILL TRUE.** If `db/migrations/` holds any file newer than the ladder tip named above, **this document is STALE for any table those migrations touch — the migration is the witness until regen.** Check the directory before you cite a column from this file. F-09.185 is what happens otherwise: a committed handover asserted `public.messages` at 18 columns on this document's word, while `0105` had made it 20 and the document said nothing.
 
-**⚠ THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF HERE (F-SW.3, ruled CE-32).** "Newer than the ladder tip" is an ARITHMETIC test, and this estate holds nineteen reserved-but-empty numbers *below* its tip (listed above). A migration filling one of them lands AFTER the tip in time and BEFORE it in number, so it does not trip the check and this document goes on answering confidently about a table it no longer describes. The standing cure is that such a migration ships its own line into this header, in the same delivery, naming itself and the tables it touches. **A reader who checks only the arithmetic will be wrong; read this list too.**
+**⚠ THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF IN THE REGISTER BELOW (F-SW.3, ruled CE-32).** "Newer than the ladder tip" is an ARITHMETIC test, and this estate holds 17 reserved-but-empty numbers *below* its tip (listed above). A migration filling one of them lands AFTER the tip in time and BEFORE it in number, so it does not trip the check and this document goes on answering confidently about a table it no longer describes. **The standing cure is that such a migration adds a record to `db/migrations/OUT_OF_ORDER.json` in the same delivery, naming itself and the tables it touches — NOT a hand-edited line here. This header is GENERATED, and a hand-edit to it is deleted by the next regen without warning.** **A reader who checks only the arithmetic will be wrong; read this list too.**
 
-| out-of-order migration | tables it makes this document STALE for | state |
-|---|---|---|
-| `0098_circle_visibility.sql` (TDW_14 D-1 — reserved for block 14 at CE-59, LD-8) | `public.circle_members` — adds `visibility jsonb NOT NULL default '{}'::jsonb`, taking the table from **13 columns to 14**. The body below still says 13. | **applied — regen owed** |
-| `0088_envelopes.sql` (TDW_15 P2 — reserved for block 15 at spec authoring 2026-07-14, LD-8) | `public.budget_envelopes` — a NEW table (6 columns) that does not appear in the body below at all · `public.couple_receipts` — adds `envelope_id uuid NULL` with an `ON DELETE SET NULL` FK, taking the table from **11 columns to 12**. The body below still says 11. | **applied — regen owed** |
+_No out-of-order migration is outstanding at this snapshot._
+
 **Project:** `nvzkbagqxbysoeszxent` (PRODUCTION). **Role: NOT WITNESSED** — the executor did not see this run's editor chrome and names that rather than assert it.
-**Generated by:** the PAIR — `db/queries/public_schema_dump.sql` (founder-run in the SQL editor) piped through `db/queries/format_public_schema.js` (formatter + cap guard). **Re-running the SQL alone does NOT regenerate this file; both halves of the pipe must run.** **Plus one overlay, disclosed:** 5 array columns took their element type from a founder-pasted `table_name,column_name,full_type` result, because the CSV behind this snapshot was captured before the dump adopted `format_type` and `information_schema` renders every array as the bare word `ARRAY`. Applied mechanically by the formatter, which aborts on an overlay row that matches nothing and on any bare `ARRAY` it cannot resolve. **Not a hand-edit**, and self-retiring: the next regen reads element types natively.
+**Generated by:** the PAIR — `db/queries/public_schema_dump.sql` (founder-run in the SQL editor) piped through `db/queries/format_public_schema.js` (formatter + cap guard). **Re-running the SQL alone does NOT regenerate this file; both halves of the pipe must run.**
 **NEVER HAND-EDIT.** A hand-edited snapshot is prose again, and prose is what this file exists to kill.
 
-**THE GUARD PASSES.** The dump's self-computing `tables_expected` read **67**; the result carried **67** rows. Equal ⇒ the editor's row cap did not truncate this snapshot (F-04.29's disease, made self-detecting). The guard was re-run mechanically at format time, not eyeballed — a capped CSV exits nonzero without writing.
+**THE GUARD PASSES.** The dump's self-computing `tables_expected` read **70**; the result carried **70** rows. Equal ⇒ the editor's row cap did not truncate this snapshot (F-04.29's disease, made self-detecting). The guard was re-run mechanically at format time, not eyeballed — a capped CSV exits nonzero without writing.
 
 **THE NEAR-MISS THIS HEADER EXISTS TO PREVENT.** At CE-63 an opt-out migration was nearly drafted against a snapshot that predated `prospects` — the very table the opt-out gate reads. The doc looked complete; only the ladder tip, printed above, made its staleness visible. A reference that is silently twenty migrations behind does not announce itself: it answers confidently and wrongly.
 
@@ -26,7 +24,7 @@
 
 **WHERE THE TYPE COMES FROM.** Name, nullability and default are `information_schema.columns`. **The type is `format_type(a.atttypid, a.atttypmod)` from `pg_catalog`** (CE-32) — because `information_schema` renders every array as the bare word `ARRAY` and carries the element type nowhere, so five columns on this plane witnessed as `ARRAY` for the whole life of this document and a reader could not tell `text[]` from `uuid[]` without guessing. `format_type` prints what the database itself would print. It also carries modifiers `information_schema` drops, so a type here may be fuller than a reader remembers — `numeric(p,s)` rather than `numeric`. That is the fix working, not drift.
 
-**Ordinal gaps are not errors.** A hole is a dropped column's fingerprint. In this snapshot 8 tables carry one — `clients` skips ordinal 12 of 13; `couple_tasks` skips ordinal 5 of 10; `events` skips ordinal 13 of 18; `expenses` skips ordinal 12 of 13; `invoices` skips ordinal 18 of 22; `leads` skips ordinal 19 of 28; `vendor_portfolio` skips ordinal 9 of 15; `vendors` skips ordinals 35, 36, 37, 38, 39, 40, 41, 42 of 53. A gap is not an absence, and this list is derived from the rows below on every regen rather than remembered.
+**Ordinal gaps are not errors.** A hole is a dropped column's fingerprint. In this snapshot 8 tables carry one — `clients` skips ordinal 12 of 13; `couple_tasks` skips ordinal 5 of 10; `events` skips ordinal 13 of 19; `expenses` skips ordinal 12 of 13; `invoices` skips ordinal 18 of 22; `leads` skips ordinal 19 of 28; `vendor_portfolio` skips ordinal 9 of 15; `vendors` skips ordinals 35, 36, 37, 38, 39, 40, 41, 42 of 53. A gap is not an absence, and this list is derived from the rows below on every regen rather than remembered.
 
 ---
 
@@ -82,6 +80,17 @@
 9. updated_at timestamp with time zone NOT NULL default now()
 ```
 
+## public.budget_envelopes  ·  6 columns
+
+```
+1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. name text NOT NULL
+4. amount_inr integer NOT NULL default 0
+5. sort integer NOT NULL default 0
+6. created_at timestamp with time zone NOT NULL default now()
+```
+
 ## public.circle_activity  ·  13 columns
 
 ```
@@ -100,7 +109,7 @@
 13. session_id uuid
 ```
 
-## public.circle_members  ·  13 columns
+## public.circle_members  ·  14 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -116,6 +125,30 @@
 11. created_at timestamp with time zone NOT NULL default now()
 12. updated_at timestamp with time zone NOT NULL default now()
 13. expires_at timestamp with time zone
+14. visibility jsonb NOT NULL default '{}'::jsonb
+```
+
+## public.circle_poll_votes  ·  4 columns
+
+```
+1. poll_id uuid NOT NULL
+2. voter_user_id uuid NOT NULL
+3. option_id text NOT NULL
+4. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.circle_polls  ·  9 columns
+
+```
+1. id uuid NOT NULL default uuid_generate_v4()
+2. couple_id uuid NOT NULL
+3. thread_id uuid
+4. question text NOT NULL
+5. options jsonb NOT NULL
+6. linked_event_id uuid
+7. closes_at timestamp with time zone
+8. created_by_user_id uuid NOT NULL
+9. created_at timestamp with time zone NOT NULL default now()
 ```
 
 ## public.circle_sessions  ·  10 columns
@@ -285,7 +318,7 @@
 9. created_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.couple_receipts  ·  11 columns
+## public.couple_receipts  ·  12 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -299,6 +332,7 @@
 9. tags text[] NOT NULL default ARRAY[]::text[]
 10. created_at timestamp with time zone NOT NULL default now()
 11. label text
+12. envelope_id uuid
 ```
 
 ## public.couple_state  ·  5 columns
@@ -480,7 +514,7 @@
 4. tapped_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.events  ·  17 columns
+## public.events  ·  18 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -500,6 +534,7 @@
 16. slot text
 17. ready_by date
 18. assigned_member_ids uuid[] NOT NULL default '{}'::uuid[]
+19. assigned_circle_member_id uuid
 ```
 
 ## public.expenses  ·  12 columns
@@ -670,8 +705,8 @@
 13. model text
 14. input_tokens integer
 15. output_tokens integer
-16. cost_usd numeric
-17. cost_inr numeric
+16. cost_usd numeric(10,6)
+17. cost_inr numeric(10,2)
 18. message_sid text
 19. sender_name text
 20. sender_user_id uuid
@@ -762,7 +797,7 @@
 2. invoice_id uuid NOT NULL
 3. vendor_id uuid NOT NULL
 4. milestone_label text NOT NULL
-5. pct numeric NOT NULL
+5. pct numeric(5,2) NOT NULL
 6. amount_due integer NOT NULL
 7. due_date date
 8. state text NOT NULL default 'pending'::text
@@ -874,7 +909,7 @@
 6. client_pan text
 7. client_tan text
 8. gross_amount integer NOT NULL
-9. tds_rate numeric NOT NULL
+9. tds_rate numeric(4,2) NOT NULL
 10. tds_amount integer NOT NULL
 11. net_received integer NOT NULL
 12. section text
@@ -1145,14 +1180,14 @@
 
 # CONSTRAINTS ADDENDUM — what the `public` schema REFUSES
 
-**Snapshot taken:** 2026-08-13, founder-run in the Supabase SQL editor, output handed back verbatim.
-**Applied ladder tip at snapshot:** `0123`. **Repo tip at authoring:** `f18234e`.
+**Snapshot taken:** 2026-08-15, founder-run in the Supabase SQL editor, output handed back verbatim.
+**Applied ladder tip at snapshot:** `0125`. **Repo tip at authoring:** `af3cb04`.
 **⏳ STALENESS CHECK — same law as the column snapshot above.** If `db/migrations/` holds any file newer than the ladder tip named here, **this addendum is STALE for any table those migrations touch.** A constraint is exactly as capable of going quietly out of date as a column: `0123` rewrote both `collab` `requirement_type` CHECKs, and a reader citing a pre-`0123` addendum would have offered a vendor a category the database now refuses.
 **Project / role:** `nvzkbagqxbysoeszxent` / `main` (PRODUCTION), role `postgres`.
 **Generated by:** `db/queries/append_constraints_to_public_schema.js` from `db/queries/public_constraints_dump.sql`'s three sections. **Regenerate on demand by re-running both.**
 **NEVER HAND-EDIT.** The generator refuses a capped result and refuses a result set without its guard column; hand-editing routes around both.
 
-**THE GUARD PASSED, ALL THREE SECTIONS.** §1 **168/168** · §2 **95/95** · §3 **246/246**. Rows returned == `rows_expected` ⇒ the editor's row cap did not truncate. (F-04.29's disease, made self-detecting. These counts are the facts the sections exist to establish, so they cannot be asserted in advance — the database computes them. The engine twin carried a hardcoded *"confirm 25 rows"* until CE-32 retired it for the same reason.)
+**THE GUARD PASSED, ALL THREE SECTIONS.** §1 **173/173** · §2 **104/104** · §3 **253/253**. Rows returned == `rows_expected` ⇒ the editor's row cap did not truncate. (F-04.29's disease, made self-detecting. These counts are the facts the sections exist to establish, so they cannot be asserted in advance — the database computes them. The engine twin carried a hardcoded *"confirm 25 rows"* until CE-32 retired it for the same reason.)
 
 **WHY THIS ADDENDUM EXISTS.** The column snapshot above answers *"what columns exist, of what type."* It is drawn from `information_schema.columns`, which yields name, type, nullability and default — **and nothing else.** It does not answer ***"what values are legal."*** That file's own scope note names the gap: `events.kind`'s CHECK, `events.slot`'s CHECK and `0075`'s UNIQUE partial index were **real and invisible** there. The occupancy checker rides on all three. *Founder-run SQL is written ONLY against witnessed lists — and a constraint is a fact about the schema exactly as much as a column is.*
 
@@ -1162,7 +1197,7 @@
 
 ---
 
-## §1 — CHECK / UNIQUE / PRIMARY KEY  ·  168 constraints
+## §1 — CHECK / UNIQUE / PRIMARY KEY  ·  173 constraints
 
 ### public.admin_activity_log
 
@@ -1196,6 +1231,15 @@
     PRIMARY KEY (id)
 ```
 
+### public.budget_envelopes
+
+```
+[CHECK] budget_envelopes_amount_inr_check
+    CHECK ((amount_inr >= 0))
+[PRIMARY KEY] budget_envelopes_pkey
+    PRIMARY KEY (id)
+```
+
 ### public.circle_activity
 
 ```
@@ -1217,6 +1261,22 @@
 [CHECK] circle_members_status_check
     CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'removed'::text])))
 [PRIMARY KEY] circle_members_pkey
+    PRIMARY KEY (id)
+```
+
+### public.circle_poll_votes
+
+```
+[PRIMARY KEY] circle_poll_votes_pkey
+    PRIMARY KEY (poll_id, voter_user_id)
+```
+
+### public.circle_polls
+
+```
+[CHECK] circle_polls_options_cardinality
+    CHECK (((jsonb_typeof(options) = 'array'::text) AND ((jsonb_array_length(options) >= 2) AND (jsonb_array_length(options) <= 4))))
+[PRIMARY KEY] circle_polls_pkey
     PRIMARY KEY (id)
 ```
 
@@ -1837,7 +1897,7 @@
 
 ---
 
-## §2 — FOREIGN KEYS  ·  95 constraints
+## §2 — FOREIGN KEYS  ·  104 constraints
 
 ### public.billing_events
 
@@ -1853,6 +1913,13 @@ bride_pages_couple_id_fkey
     FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
 bride_pages_user_id_fkey
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+```
+
+### public.budget_envelopes
+
+```
+budget_envelopes_couple_id_fkey
+    FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
 ```
 
 ### public.circle_activity
@@ -1871,6 +1938,28 @@ circle_activity_session_id_fkey
 ```
 circle_members_couple_id_fkey
     FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+```
+
+### public.circle_poll_votes
+
+```
+circle_poll_votes_poll_id_fkey
+    FOREIGN KEY (poll_id) REFERENCES circle_polls(id) ON DELETE CASCADE
+circle_poll_votes_voter_user_id_fkey
+    FOREIGN KEY (voter_user_id) REFERENCES users(id) ON DELETE CASCADE
+```
+
+### public.circle_polls
+
+```
+circle_polls_couple_id_fkey
+    FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+circle_polls_created_by_user_id_fkey
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+circle_polls_linked_event_id_fkey
+    FOREIGN KEY (linked_event_id) REFERENCES events(id) ON DELETE SET NULL
+circle_polls_thread_id_fkey
+    FOREIGN KEY (thread_id) REFERENCES conversations(id) ON DELETE SET NULL
 ```
 
 ### public.circle_sessions
@@ -1980,6 +2069,8 @@ couple_receipts_booking_id_fkey
     FOREIGN KEY (booking_id) REFERENCES couple_bookings(id) ON DELETE SET NULL
 couple_receipts_couple_id_fkey
     FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
+couple_receipts_envelope_id_fkey
+    FOREIGN KEY (envelope_id) REFERENCES budget_envelopes(id) ON DELETE SET NULL
 ```
 
 ### public.couple_state
@@ -2040,6 +2131,8 @@ demo_leads_demo_vendor_id_fkey
 ### public.events
 
 ```
+events_assigned_circle_member_id_fkey
+    FOREIGN KEY (assigned_circle_member_id) REFERENCES circle_members(id) ON DELETE SET NULL
 events_couple_id_fkey
     FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE
 events_linked_lead_id_fkey
@@ -2276,7 +2369,7 @@ vendors_user_id_fkey
 
 ---
 
-## §3 — INDEXES  ·  246 indexes
+## §3 — INDEXES  ·  253 indexes
 
 ### public.admin_activity_log
 
@@ -2322,6 +2415,15 @@ idx_bride_pages_couple_entry_date
     CREATE INDEX idx_bride_pages_couple_entry_date ON public.bride_pages USING btree (couple_id, entry_date DESC)
 ```
 
+### public.budget_envelopes
+
+```
+budget_envelopes_couple_sort_idx
+    CREATE INDEX budget_envelopes_couple_sort_idx ON public.budget_envelopes USING btree (couple_id, sort, created_at)
+budget_envelopes_pkey
+    CREATE UNIQUE INDEX budget_envelopes_pkey ON public.budget_envelopes USING btree (id)
+```
+
 ### public.circle_activity
 
 ```
@@ -2348,6 +2450,24 @@ circle_members_phone_idx
     CREATE INDEX circle_members_phone_idx ON public.circle_members USING btree (invitee_phone) WHERE (invitee_phone IS NOT NULL)
 circle_members_pkey
     CREATE UNIQUE INDEX circle_members_pkey ON public.circle_members USING btree (id)
+```
+
+### public.circle_poll_votes
+
+```
+circle_poll_votes_pkey
+    CREATE UNIQUE INDEX circle_poll_votes_pkey ON public.circle_poll_votes USING btree (poll_id, voter_user_id)
+circle_poll_votes_poll_idx
+    CREATE INDEX circle_poll_votes_poll_idx ON public.circle_poll_votes USING btree (poll_id)
+```
+
+### public.circle_polls
+
+```
+circle_polls_couple_created_idx
+    CREATE INDEX circle_polls_couple_created_idx ON public.circle_polls USING btree (couple_id, created_at DESC)
+circle_polls_pkey
+    CREATE UNIQUE INDEX circle_polls_pkey ON public.circle_polls USING btree (id)
 ```
 
 ### public.circle_sessions
@@ -2499,6 +2619,8 @@ couple_receipts_couple_label_idx
     CREATE INDEX couple_receipts_couple_label_idx ON public.couple_receipts USING btree (couple_id, lower(label)) WHERE (label IS NOT NULL)
 couple_receipts_pkey
     CREATE UNIQUE INDEX couple_receipts_pkey ON public.couple_receipts USING btree (id)
+couple_receipts_unfiled_idx
+    CREATE INDEX couple_receipts_unfiled_idx ON public.couple_receipts USING btree (couple_id) WHERE (envelope_id IS NULL)
 ```
 
 ### public.couple_state

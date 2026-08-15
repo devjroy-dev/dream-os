@@ -1,0 +1,23 @@
+# scripts/floor-manifest-m-schema-reg-b.txt
+# M-SCHEMA-REG AMENDMENT B (dream-os, one ZIP) — R-34.47, on af3cb04.
+# Declared dirt for [F-14.16]'s --delivery mode.
+#
+# NOTE FOR THE FLOOR RUN: this amendment lands mid-regen. The tree will ALSO
+# carry the regenerated docs/db/PUBLIC_SCHEMA.md and the four dump CSVs. The
+# doc is declared below because the founder's regen legitimately rewrote it;
+# the CSVs are transient inputs and are NOT declared — they must not be
+# committed, and the floor should see them as undeclared dirt if they are
+# still present. Move them out of the repo before the floor run.
+
+# ── the cell that now asserts the empty state instead of refusing it
+scripts/b15_schema_register_bench.js
+
+# ── this manifest
+scripts/floor-manifest-m-schema-reg-b.txt
+
+# ── the regenerated snapshot: script-written by the founder's pipe run, not
+#    hand-edited. This is the acceptance witness's own output.
+docs/db/PUBLIC_SCHEMA.md
+
+# ── the register, emptied at step 2 once the regen paid both debts
+db/migrations/OUT_OF_ORDER.json

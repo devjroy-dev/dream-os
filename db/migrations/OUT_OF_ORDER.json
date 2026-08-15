@@ -22,18 +22,5 @@
     "REMOVE a record only when the regen it is owed has actually run and the body below",
     "the header describes the table correctly. The row is a debt; regen pays it."
   ],
-  "register": [
-    {
-      "number": 98,
-      "note": "TDW_14 D-1 — reserved for block 14 at CE-59, LD-8",
-      "stale_for": "`public.circle_members` — adds `visibility jsonb NOT NULL default '{}'::jsonb`, taking the table from **13 columns to 14**. The body below still says 13.",
-      "state": "**applied — regen owed**"
-    },
-    {
-      "number": 88,
-      "note": "TDW_15 P2 — reserved for block 15 at spec authoring 2026-07-14, LD-8",
-      "stale_for": "`public.budget_envelopes` — a NEW table (6 columns) that does not appear in the body below at all · `public.couple_receipts` — adds `envelope_id uuid NULL` with an `ON DELETE SET NULL` FK, taking the table from **11 columns to 12**. The body below still says 11.",
-      "state": "**applied — regen owed**"
-    }
-  ]
+  "register": []
 }
