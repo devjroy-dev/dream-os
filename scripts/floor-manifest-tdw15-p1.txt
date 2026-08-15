@@ -1,0 +1,20 @@
+# scripts/floor-manifest-tdw15-p1.txt
+# TDW_15 · P1 · ZIP 1 (dream-os) — the F-14.16 declared-dirt manifest.
+#
+# R-33.8: a floor on a delivery-dirtied tree is not a floor. This file is the
+# declared exception, and it exists so the floor can be measured BEFORE the
+# commit rather than after it — the founder should not have to bank a delivery
+# in order to find out whether it moved the floor.
+#
+# The runner tolerates this SET and nothing else: any dirty path absent from
+# this list stops the run as contamination, and every path here is sha256'd
+# before and after so a bench that corrupts the delivery cannot hide inside
+# dirt that was already expected.
+#
+# THIS FILE DECLARES ITSELF, and must: it arrives with the ZIP and is therefore
+# dirt on the tree it is measuring.
+src/api/couple/receipts.js
+src/lib/imagePipeline.js
+scripts/tdw15_p1_receipt_image.js
+scripts/floor-manifest-tdw15-p1.txt
+docs/handovers/TDW_15_P1_ZIP1_HANDOVER.md

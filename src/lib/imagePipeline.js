@@ -522,6 +522,26 @@ async function processImageForMuse({ sourceUrl, bufferSource, couple_id, anthrop
 // ─────────────────────────────────────────────────────────────────────────────
 module.exports = {
   processImageForMuse,
+
+  // ── TDW_15 · P1 · β1 (R-34.7) — THE RECEIPT LANE TAKES THE UPLOAD ALONE ────
+  // `POST /couple/receipts/:coupleId/image` needs Cloudinary and NOTHING ELSE.
+  // It deliberately does NOT call processImageForMuse, and the reason is a
+  // ruling rather than an optimisation: that function runs Google Vision AND a
+  // metered Haiku tagging call to derive AESTHETIC TAGS — a vocabulary for a
+  // mood board. A receipt has no aesthetic. Paying two model calls to hang
+  // `blush` and `candlelight` off a caterer's invoice is not a cheaper feature,
+  // it is a wrong one.
+  //
+  // AND THE OCR LEG IS REFUSED, NOT DEFERRED (R-34.7 adopts the executor's
+  // reasoning verbatim). `imageOCRRouter.classifyImage` is an INBOUND-MEDIA
+  // ROUTER — it decides whether a forwarded WhatsApp photo is a receipt, a
+  // moment or a muse save. It does not extract an amount, a vendor or a date,
+  // and NOTHING in this estate turns a receipt photo into typed fields on any
+  // plane. Wiring it here would invent a capability, not close a gap. She files
+  // the photo and types the amount — symmetric with `save_receipt`, whose own
+  // executor (brideEngine.js) writes `couple_id` + `image_url` and no more.
+  uploadBufferToCloudinary,
+
   // Exposed for unit-test reach-in only; production callers use processImageForMuse.
   detectSourceType,
   extractOgImage,
