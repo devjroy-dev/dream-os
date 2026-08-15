@@ -108,7 +108,11 @@ function main() {
   //       staleness test has a blind spot. It was hand-authored and as doomed as
   //       the rows; if this assertion fails the register may still be present and
   //       nobody will know to read it.
-  const WARN = 'THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF HERE (F-SW.3, ruled CE-32).';
+  // Anchored on the paragraph's STABLE prefix, deliberately stopping before the
+  // clause R-34.45(ii) re-pointed. The survival assertion must outlive legitimate
+  // amendments to the instruction; anchoring on wording that is expected to change
+  // makes this cell red on correct work, which trains the next seat to ignore it.
+  const WARN = '\u26a0 THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF';
   if (!before.includes(WARN)) fail('fixture doc did not carry the warning paragraph in — bench tree is wrong, not the code.');
   if (!after.includes(WARN))  fail('the warning paragraph did NOT survive the pipe.');
   else console.log('  ok   warning paragraph survives both halves');
@@ -154,6 +158,56 @@ function main() {
   if (!after.includes('<!-- CONSTRAINTS-ADDENDUM:BEGIN') || !after.includes('<!-- CONSTRAINTS-ADDENDUM:END -->'))
     fail('the constraints addendum is not intact — the second half of the pipe did not complete.');
   else console.log('  ok   addendum intact below the sentinel');
+
+  // ══ (R-34.46) THE PARAGRAPH'S TWO CLAIMS ═════════════════════════════════
+  // The paragraph shipped as a "byte-unchanged copy move" and carried two claims
+  // that the same delivery falsified: a TYPED count sitting one line under a
+  // DERIVED one, and an instruction pointing migration authors at the header —
+  // the regenerated region — rather than at OUT_OF_ORDER.json. Neither was caught
+  // by anything, because nothing asserted on the paragraph's CONTENT, only its
+  // presence. These cells assert content.
+
+  const para = (after.match(/\*\*\u26a0 THE RULE ABOVE HAS A BLIND SPOT[^\n]*/) || [''])[0];
+  if (!para) fail('could not isolate the warning paragraph to inspect its claims.');
+
+  // ── 7. THE INSTRUCTION POINTS AT THE REGISTER, NOT AT THIS HEADER.
+  if (!para.includes('db/migrations/OUT_OF_ORDER.json'))
+    fail('the warning paragraph does not name OUT_OF_ORDER.json — it is still pointing authors somewhere else.');
+  else if (/ships its own line into this header/.test(para))
+    fail('the warning paragraph still carries the retired instruction to hand-edit this header.');
+  else console.log('  ok   instruction points at OUT_OF_ORDER.json, not at this header');
+
+  // ── 8. THE COUNT IS DERIVED, PROVEN BY MOVING THE TREE UNDER IT.
+  // Presence of a correct number proves nothing — a typed number is correct until
+  // the directory changes. So FILL A HOLE in the temp tree and re-run the pipe:
+  // a derived count follows, a typed one does not. The mutation is production
+  // code's own input, and it lives and dies inside the temp tree.
+  const claimed = (para.match(/holds (\d+) reserved-but-empty/) || [])[1];
+  if (claimed === undefined) fail('the warning paragraph states no count at all.');
+  else {
+    const migDir = path.join(tmp, 'db', 'migrations');
+    const absent = (() => {
+      const ns = fs.readdirSync(migDir).filter(f => /^\d{4}_.*\.sql$/.test(f)).map(f => Number(f.slice(0, 4))).sort((a, b) => a - b);
+      const have = new Set(ns);
+      const arc = new Set(fs.existsSync(path.join(migDir, 'archive'))
+        ? fs.readdirSync(path.join(migDir, 'archive')).filter(f => /^\d{4}_/.test(f)).map(f => Number(f.slice(0, 4))) : []);
+      const out = [];
+      for (let i = ns[0]; i <= ns[ns.length - 1]; i++) if (!have.has(i) && !arc.has(i)) out.push(i);
+      return out;
+    })();
+    if (Number(claimed) !== absent.length)
+      fail(`the paragraph claims ${claimed} reserved-but-empty numbers; the directory holds ${absent.length}.`);
+    else {
+      const fill = String(absent[0]).padStart(4, '0') + '_bench_fill.sql';
+      fs.writeFileSync(path.join(migDir, fill), '-- bench fixture, temp tree only\n');
+      const para2 = (runPipe(fx, doc).match(/\*\*\u26a0 THE RULE ABOVE HAS A BLIND SPOT[^\n]*/) || [''])[0];
+      const claimed2 = (para2.match(/holds (\d+) reserved-but-empty/) || [])[1];
+      fs.unlinkSync(path.join(migDir, fill));
+      if (Number(claimed2) !== absent.length - 1)
+        fail(`the count did not follow the directory: filled hole ${fill}, expected ${absent.length - 1}, paragraph said ${claimed2}. It is TYPED, not derived.`);
+      else console.log(`  ok   count is derived — followed the tree ${absent.length} → ${claimed2} when a hole was filled`);
+    }
+  }
 
   console.log(process.exitCode ? '\n  RED\n' : '\n  GREEN — the register survives its own generator.\n');
 }

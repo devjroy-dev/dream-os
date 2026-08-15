@@ -1,0 +1,17 @@
+# scripts/floor-manifest-m-schema-reg-a.txt
+# M-SCHEMA-REG AMENDMENT A (dream-os, one ZIP) — R-34.45/.46, on 73d2155.
+# Declared dirt for [F-14.16]'s --delivery mode. Two files, nothing else moves.
+
+# ── the paragraph: count derived, instruction re-pointed
+db/queries/format_public_schema.js
+
+# ── the two cells that make both claims falsifiable
+scripts/b15_schema_register_bench.js
+
+# ── this manifest
+scripts/floor-manifest-m-schema-reg-a.txt
+
+# NOT IN THIS DELIVERY:
+#   db/migrations/OUT_OF_ORDER.json — unchanged; its _README already carried the
+#   correct instruction. The header was the half that pointed the wrong way.
+#   docs/db/PUBLIC_SCHEMA.md — still NEVER HAND-EDITED. Regen remains the witness.

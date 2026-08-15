@@ -260,7 +260,25 @@ function renderOutOfOrderRegister(out, ladder, ladderTip) {
   // and the table header below are carried byte-unchanged from the hand-authored
   // region they replace. They are the reader's ONLY warning that the arithmetic
   // staleness test above has a blind spot, and they were as doomed as the rows.
-  out.push('**\u26a0 THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF HERE (F-SW.3, ruled CE-32).** "Newer than the ladder tip" is an ARITHMETIC test, and this estate holds nineteen reserved-but-empty numbers *below* its tip (listed above). A migration filling one of them lands AFTER the tip in time and BEFORE it in number, so it does not trip the check and this document goes on answering confidently about a table it no longer describes. The standing cure is that such a migration ships its own line into this header, in the same delivery, naming itself and the tables it touches. **A reader who checks only the arithmetic will be wrong; read this list too.**');
+  // (M-SCHEMA-REG R-34.45) AMENDED, NOT CARRIED — and named as an amendment because
+  // the "byte-unchanged copy move" that shipped this paragraph carried two claims
+  // that this micro's own delivery falsified.
+  //
+  // ① THE COUNT IS DERIVED. It used to be the typed word "nineteen", sitting one
+  //    line below a holes list that COMPUTES the same quantity off the directory.
+  //    Script-owned prose never self-heals, so a typed number there would have
+  //    contradicted the derived line above it permanently — F-SW.6's disease
+  //    reproduced inside F-SW.7's cure, and inverted the worse way. Nothing about
+  //    this quantity is typed into this file, exactly as at :382-386.
+  //
+  // ② THE INSTRUCTION RE-POINTS. It used to read "ships its own line into this
+  //    header". That was true while the header was hand-authored. It is now false
+  //    AND harmful: it directs the next migration author to hand-edit a region the
+  //    formatter regenerates, into the grave this micro closed, against the
+  //    NEVER HAND-EDIT law. The register's data lives in OUT_OF_ORDER.json and the
+  //    instruction must say so, because the header is what a reader actually meets.
+  const nAbsent = ladder ? ladder.gapsAbsent.length : 0;
+  out.push(`**\u26a0 THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF IN THE REGISTER BELOW (F-SW.3, ruled CE-32).** "Newer than the ladder tip" is an ARITHMETIC test, and this estate holds ${nAbsent} reserved-but-empty number${nAbsent === 1 ? '' : 's'} *below* its tip (listed above). A migration filling one of them lands AFTER the tip in time and BEFORE it in number, so it does not trip the check and this document goes on answering confidently about a table it no longer describes. **The standing cure is that such a migration adds a record to \`db/migrations/OUT_OF_ORDER.json\` in the same delivery, naming itself and the tables it touches — NOT a hand-edited line here. This header is GENERATED, and a hand-edit to it is deleted by the next regen without warning.** **A reader who checks only the arithmetic will be wrong; read this list too.**`);
   out.push('');
 
   if (!register.length) {
