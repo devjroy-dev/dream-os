@@ -1,0 +1,26 @@
+# scripts/floor-manifest-m-bridename-zip1.txt
+# M-BRIDE-NAME · ZIP 1 (dream-os) — the delivery's own file table, declared for
+# [F-14.16]'s --delivery mode. Every path here is dirt this floor is permitted
+# to measure over; one byte outside it and the runner refuses exactly as it
+# always did.
+#
+# This file is NOT a permanent fixture. It is cut per delivery, travels in the
+# ZIP beside the bytes it declares, and its contents are the same table the
+# handover prints — one artefact, so the two cannot drift.
+
+# ── F-OB.13 · the fill-when-null on paths (a)/(b), both selects widened ──────
+src/lib/provisionRole.js
+
+# ── F-OB.14 · the post-write name on couple /provision (server half) ─────────
+# The vendor twin is DELIBERATELY absent from this table: R-35.13 killed that
+# symmetry as a recorded non-act, and §2.2 of the bench holds it dead.
+src/api/couple/auth.js
+
+# ── the both-ways bench ──────────────────────────────────────────────────────
+scripts/bOB_m_bridename_fill_bench.js
+
+# ── the handover ─────────────────────────────────────────────────────────────
+docs/handovers/TDW_M_BRIDENAME_ZIP1_HANDOVER.md
+
+# ── this manifest ────────────────────────────────────────────────────────────
+scripts/floor-manifest-m-bridename-zip1.txt

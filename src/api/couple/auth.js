@@ -476,7 +476,16 @@ router.post('/provision', requireAuth, async (req, res) => {
     const phone = req.auth.phone || (req.body && req.body.phone) || null;
     const name  = ((req.body && req.body.name) || '').trim() || null;
     const r = await provisionRole(req.app.locals.supabase, { authUserId, phone, name, role: 'couple' });
-    return res.json({ ok: true, user_id: r.user_id, couple_id: r.role_id, pin_set: r.pin_set });
+    // F-OB.14 — `name` is the POST-WRITE witness. The landing screen's onboarding
+    // routing (dreamos-pwa app/(landing)/page.tsx:527) reads `d.name` to ask
+    // "does she have a name NOW"; until this key existed the read was always
+    // `undefined`, so the term was dead and the branch it guarded never fired.
+    // `verify-otp` above (:337-345) also returns a name, but it is read BEFORE
+    // provision runs and so cannot see a name typed at this signup — that value
+    // is pre-write, this one is fresh. The vendor twin deliberately does NOT
+    // gain this key [R-35.13]: it has no reader, and a field nobody reads is a
+    // shape nobody can rely on.
+    return res.json({ ok: true, user_id: r.user_id, couple_id: r.role_id, pin_set: r.pin_set, name: r.name });
   } catch (e) {
     console.error('[couple:provision]', e.message);
     return res.status(500).json({ ok: false, error: 'Provisioning failed.' });
