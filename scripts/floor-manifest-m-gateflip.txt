@@ -1,0 +1,24 @@
+# scripts/floor-manifest-m-gateflip.txt
+# M-GATEFLIP — the delivery's declared dirt for [F-14.16]'s --delivery mode.
+# Cut per delivery, travels in the ZIP beside the bytes it declares.
+#
+# NOTE WHAT IS NOT HERE: no production behaviour file. This ZIP arms nothing.
+# The gate is armed by an admin_config row the founder runs by hand after the
+# push (R-35.17) — see docs/handovers/TDW_M_GATEFLIP_SQL.sql, Block 2.
+
+# ── F-OB.17 · the stale two-locks comment cured, and the arming surface named
+#    at its own site. THE FLAG'S VALUE IS UNCHANGED: still `false`.
+src/lib/laneFlags.js
+
+# ── the bench: 6.1/6.2 retitled, 6.2a added (armed + complete, BRIDE lane),
+#    6.3/6.3b labelled as standing unamended. No cell deleted.
+scripts/bOB_d2_onboarding_gate_bench.js
+
+# ── the three founder SQL blocks: population · arm · disarm
+docs/handovers/TDW_M_GATEFLIP_SQL.sql
+
+# ── the handover
+docs/handovers/TDW_M_GATEFLIP_HANDOVER.md
+
+# ── this manifest
+scripts/floor-manifest-m-gateflip.txt

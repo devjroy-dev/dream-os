@@ -81,18 +81,50 @@ const LANE_FLAGS = {
   'billing.selfserve_enabled': false,
 
   // ARC OB (THE ONBOARDING OS, CE-31) — THE ONBOARDING GATE at both WhatsApp
-  // doors. OFF at 0122, and R-OB.9 is why it must be: R-OB.2 forbids a model
-  // turn behind the gate, so arming it before OB-P's form is live would not
-  // make the door strict, it would make it a LOCKOUT — every incomplete bride
-  // and vendor redirected to a form that cannot yet take her answer, with no
-  // path at all. The order is absolute: gate dark here -> form live -> founder
-  // flips this -> the conversational onboarding retirements land.
+  // doors. OFF at 0122, and R-OB.9 is why it had to be: R-OB.2 forbids a model
+  // turn behind the gate, so arming it before OB-P's form was live would not
+  // have made the door strict, it would have made it a LOCKOUT — every
+  // incomplete bride and vendor redirected to a form that could not yet take
+  // her answer, with no path at all. The order was absolute: gate dark here ->
+  // form live -> founder arms -> the conversational onboarding retirements land.
   //
-  // THIS FLAG IS ONE OF TWO LOCKS. The other is the redirect copy itself,
-  // which is null until vetoed and cannot be flipped from admin_config
-  // (src/lib/onboardingGate.js). Flipping this key with the bytes still
-  // unvetoed does nothing but log — deliberately, because a stranger's first
-  // sentence from this estate must not be able to arrive empty.
+  // ── F-OB.17 · THIS PARAGRAPH USED TO SAY "TWO LOCKS". IT WAS ONE. ──────────
+  // The superseded text claimed a second lock — the redirect copy, "null until
+  // vetoed". THAT CONDITION DISCHARGED ON 2026-08-12. Both bytes are vetoed and
+  // FROZEN AT THE BYTE in src/lib/onboardingGate.js:48-52,:78-79, and
+  // bOB_d2_onboarding_gate_bench.js pins them character-for-character. The
+  // sentence outlived the state it described.
+  //
+  // IT DID REAL DAMAGE, WHICH IS WHY THE CORRECTION IS RECORDED AND NOT JUST
+  // MADE. An executor seat read THIS comment instead of onboardingGate.js at
+  // its own site, and reported a two-lock gate to the chair FOUR TIMES across
+  // an audit and two handovers — mispricing fork (b) as twice as far away as it
+  // was. A comment in one file describing the contents of another is a claim,
+  // not a witness. If the reader needs the copy's state, the copy's file is two
+  // seconds away.
+  //
+  // ── WHERE THIS FLAG IS ARMED, AND WHY NOT HERE [R-35.17] ──────────────────
+  // THE DEFAULT ON THIS LINE STAYS `false`, AND CHANGING IT IS NOT HOW THIS
+  // GATE IS TURNED ON. `readLaneFlag` below consults `admin_config` FIRST and
+  // falls back to this literal only when the key is absent or unreadable, so
+  // editing it would arm BOTH DOORS the moment Railway finished a build —
+  // making the build queue the arming hand. That is F-08.56 exactly, the
+  // inversion this file's opening law exists to prevent, and a charter that
+  // named this line as the edit site was halted at that law rather than obeyed
+  // (CE-222; the chair owned it as c-35.9).
+  //
+  // ARM IT WITH ONE `admin_config` ROW, BY HAND, AFTER THE PUSH — it lands
+  // within the 60-second cache window above and needs no deploy, which is the
+  // estate's own doctrine at three committed sites (src/agent/engine.js:280,
+  // src/lib/billing/tierFlip.js:22, src/api/vendor-engine/chat.js:2757). The
+  // founder holds the disarm row in the same hand.
+  //
+  // ONE FLAG, TWO DOORS — derived, not assumed: `onboardingGate` has exactly
+  // two callers, src/lib/brideInbound.js:418 and src/lib/vendorInbound.js:292.
+  // The lanes are NOT symmetric in cost: brideComplete gates on two fields,
+  // vendorComplete on six. Arming redirects incomplete vendors on any one of
+  // them. The founder ruled BOTH DOORS on 2026-08-20 with both population
+  // counts on his glass.
   'onboarding.gate_enabled': false,
 };
 

@@ -225,6 +225,20 @@ console.log('\n=== §3 · THE GATE IS DARK (R-OB.9) and the copy lock is indepen
 const stubDb = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }) };
 const incompleteBride = { user: { name: null }, row: { budget_total: null } };
 
+// ── TEST SETUP, DISCLOSED (M-GATEFLIP, R-35.17) ──────────────────────────────
+// `stubDb` returns no admin_config row, so readLaneFlag falls to the SHIPPED
+// DEFAULT — that is the dark state, and it is the state this repo ships in.
+// `armedDb()` returns the row the FOUNDER'S OWN HAND writes to arm the gate:
+// admin_config.value is TEXT (laneFlags.js:19), the literal is the JSON string
+// 'true', and laneFlags.js:123-124 accepts nothing looser — 'yes', '1' and 'on'
+// are treated as typos in a safety switch and leave the lane shut.
+//
+// IT IS A FUNCTION, NOT A CONSTANT, on purpose: each cell gets a fresh stub, so
+// no cell can pass on a hit counter or a cached value another cell warmed. The
+// flag cache is reset on both sides of every armed cell for the same reason.
+const armedConfigDb = () => ({ from: () => ({ select: () => ({ eq: () => ({
+  maybeSingle: async () => ({ data: { value: 'true' } }) }) }) }) });
+
 cell('3.1', 'flag is registered in the lane-flag census, OFF at birth', () => {
   const s = read('src/lib/laneFlags.js');
   return /'onboarding\.gate_enabled':\s*false/.test(s) || 'flag missing or not default-off';
@@ -363,14 +377,51 @@ async function acell(id, desc, fn) {
 (async () => {
   console.log('\n=== §6 · THE GATE, EXERCISED LIVE (async) ===');
 
-  await acell('6.1', 'DARK at ship state: an incomplete bride is NOT gated', async () => {
+  // ── LABELLED AMENDMENT (M-GATEFLIP, R-35.17) · 6.1/6.2 RETITLED, 6.2a ADDED ─
+  // M-GATEFLIP's charter first proposed arming this gate by editing the DEFAULT
+  // in laneFlags.js. That would have INVERTED both cells below. It was halted at
+  // that file's own opening law (F-08.56: the build queue must not be the arming
+  // hand) and the arming moved to an admin_config row run by the founder's hand
+  // — so the default stays `false` and 6.1/6.2 remain TRUE STATEMENTS about it.
+  // Nothing is inverted. Their titles now say SHIPPED DEFAULT rather than "ship
+  // state", because the distinction between the default and the armed row is the
+  // whole of R-35.17 and a title that blurs it invites the next mistake.
+  //
+  // ⚠ THE EXECUTOR'S READ-FIRST WAS WRONG ABOUT THIS SECTION, and the correction
+  // is recorded because it changed what shipped. It claimed the armed path was
+  // "reachable in this bench only through 6.3" and tabled armed twins for both
+  // lanes on that basis. IT IS NOT: 6.5, 6.6 and 6.7 below already drive the
+  // armed stub — 6.5 armed+complete (vendor), 6.6 armed+incomplete with the
+  // vetoed byte and the missing field named (vendor), 6.7 armed+incomplete with
+  // the bride byte (bride). The seat had read 3.1/6.1/6.2/6.3 and tabled an
+  // amendment over a roster it had not finished reading. Two of the three cells
+  // it proposed were cut at build for duplicating 6.7 and 6.5/6.6.
+  //
+  // 6.2a IS WHAT SURVIVED, because it is the one combination genuinely absent:
+  // ARMED + COMPLETE on the BRIDE lane. 6.5 proves it for the vendor only, and
+  // the two predicates are different (brideComplete: two fields; vendorComplete:
+  // six), so vendor coverage is not bride coverage. A gate that detoured a
+  // complete bride would be a lockout on the estate's own paying path, and the
+  // founder's arming row is what makes that reachable.
+  await acell('6.1', 'DARK at the SHIPPED DEFAULT: an incomplete bride is NOT gated', async () => {
     const r = await G.onboardingGate({ lane: 'bride', supabase: stubDb, ...incompleteBride });
-    return r.gate === false || 'the gate fired at ship state — R-OB.9 broken';
+    return r.gate === false || 'the gate fired at the shipped default — R-OB.9 broken';
   });
 
-  await acell('6.2', 'DARK at ship state: a brand-new vendor is NOT gated', async () => {
+  await acell('6.2', 'DARK at the SHIPPED DEFAULT: a brand-new vendor is NOT gated', async () => {
     const r = await G.onboardingGate({ lane: 'vendor', supabase: stubDb, user: { name: null }, row: null });
-    return r.gate === false || 'the vendor gate fired at ship state';
+    return r.gate === false || 'the vendor gate fired at the shipped default';
+  });
+
+  await acell('6.2a', 'ARMED: a COMPLETE bride is still NOT gated — the gate refuses the incomplete, not everyone', async () => {
+    _resetLaneFlagCache();
+    try {
+      const r = await G.onboardingGate({
+        lane: 'bride', supabase: armedConfigDb(),
+        user: { name: 'Sarah' }, row: { budget_total: 5000000 },
+      });
+      return r.gate === false || 'an armed gate detoured a COMPLETE bride — that is a lockout, not a gate';
+    } finally { _resetLaneFlagCache(); }
   });
 
   // ── LABELLED AMENDMENT (D-3) · cell 6.3 keeps its QUESTION, changes its FIXTURE
@@ -415,6 +466,22 @@ async function acell(id, desc, fn) {
     return verdict;
   });
 
+  // ── LABELLED NON-AMENDMENT (M-GATEFLIP, R-35.17) · 6.3 and 6.3b STAND ───────
+  // CE-35 ruled a re-point of these two into this ZIP, on the ground that
+  // M-GATEFLIP would render them silently vacuous. THAT PREMISE WAS DISCHARGED
+  // BY THE RULING ITSELF, and the reason is recorded here so the next sitting
+  // does not re-derive it:
+  //
+  // Both cells prove something about an ARMED flag, and both arm it through
+  // their own stub. They would have gone hollow only if the SHIPPED DEFAULT had
+  // been mutated to `true` — then the stub's arming would decide nothing and the
+  // cells would pass on the default alone. R-35.17 moved the arming to an
+  // admin_config row written by the founder's hand and LEFT THE DEFAULT `false`.
+  // With the default false, the stub is the only thing that can arm the flag, so
+  // the arming stays load-bearing and both cells keep their full force.
+  //
+  // A cell edited without a live cause is a cell whose next reader cannot tell
+  // what the edit was for. UNAMENDED, DELIBERATELY — ratify-or-revert.
   await acell('6.3b', 'the armed stub is genuinely consulted (anti-vacuity)', async () => {
     _resetLaneFlagCache();
     let hits = 0;
