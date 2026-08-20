@@ -1,0 +1,18 @@
+# scripts/floor-manifest-tdw15-p3.txt
+# TDW_15 · P3 ZIP 1 (dream-os) — the delivery's own file table [F-14.16].
+#
+# Every path this ZIP writes, and nothing else. One byte of dirt outside this
+# list and `run-floor.sh --delivery` refuses exactly as it does on a clean tree.
+# The set is tolerated; the CONTENTS are not — the runner SHA-256s these files
+# before the run and re-hashes after, so a bench that corrupts one is a hard
+# stop rather than a red hiding inside expected dirt.
+#
+# NOT LISTED, DELIBERATELY: docs/FINDINGS_LOG.md. F-15.17 and F-15.18 were
+# minted by CE-35 and their BODIES live in this delivery's handover, which the
+# next band adopts by committed home (the CE-214 precedent). An executor does
+# not write a chair's band.
+src/lib/istDay.js
+src/api/couple/today.js
+scripts/tdw15_p3_daystogo_bench.js
+scripts/floor-manifest-tdw15-p3.txt
+docs/handovers/TDW_15_P3_ZIP1_HANDOVER.md

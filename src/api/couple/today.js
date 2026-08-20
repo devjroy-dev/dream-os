@@ -9,6 +9,7 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
+const { daysUntilIst } = require('../../lib/istDay');   // TDW_15 P3 · R-35.23
 
 router.get('/:coupleId', asyncHandler(async (req, res) => {
   const supabase    = req.app.locals.supabase;
@@ -30,17 +31,31 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 500, 'Could not fetch today snapshot.');
   }
 
-  // days_until_wedding
-  let days_until_wedding = null;
-  if (couple?.wedding_date) {
-    const wDate = new Date(couple.wedding_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const diff = Math.ceil((wDate.getTime() - today.getTime()) / 86400000);
-    days_until_wedding = diff > 0 ? diff : 0;
-  }
+  // ── days_until_wedding — F-15.17 CURED, R-35.23 ────────────────────────────
+  // WHAT STOOD HERE, and it was wrong every day of its life: `new Date()` with
+  // `.setHours(0,0,0,0)` — a HOST-LOCAL midnight — subtracted from
+  // `new Date(couple.wedding_date)`, which is a UTC midnight. Railway runs UTC,
+  // so between 00:00 and 05:30 IST the two bases diverged by a day and this
+  // door returned ONE HIGH for five and a half hours out of every twenty-four.
+  // Acceptance 4 of TDW_15 ("days-to-go correct across IST midnight") failed at
+  // the tip, silently, on the number the bride wakes to.
+  //
+  // The derivation now lives in ONE HOME per repo — `src/lib/istDay.js` — and
+  // the mechanism that makes it correct (both operands parsed on the SAME UTC
+  // basis so the basis cancels) is written out in that file's header, along
+  // with the two "simplifications" that put the bug straight back. Read it
+  // before touching this line.
+  const days_until_wedding = daysUntilIst(couple?.wedding_date);
 
-  // Today's date string (YYYY-MM-DD) for event_date comparison
+  // Today's date string (YYYY-MM-DD) for event_date comparison.
+  //
+  // DECLARED, NOT SILENTLY WIDENED (§8, §0.2): this is a SERVER-UTC day key and
+  // the events queries below ride it, so between 00:00 and 05:30 IST "events
+  // today" reads YESTERDAY'S IST date — the same fault class as the cure above,
+  // on a different value. It is UNRULED: R-35.23 chartered days-to-go and this
+  // seat does not widen a ruling to reach an adjacent defect. Reported in the
+  // handover for a chair number; left byte-untouched here so the report and the
+  // tree agree.
   const todayStr = new Date().toISOString().slice(0, 10);
 
   // Events today
