@@ -126,3 +126,16 @@ bench-authored. If the walk comes back empty, the next read is
   in. Census relayed 2026-08-20: **all 24 are NULL**, so the `!user.name` guard's
   coverage is total — no row is stranded behind a literal `'unknown'`.
 - **Sequencing beyond this sitting is the founder's.**
+
+---
+
+## AMENDMENT A (CE-35, 2026-08-20, docs-only, rides the CE-222 band push)
+
+§6's premise sentence ("unverified at build time") was true when written and is
+now DISCHARGED: the founder's walk of 2026-08-20 witnessed
+`contacts[].profile.name` on the wire — arm B, the nameless row, `NULL` →
+`🤍priya🤍` in one inbound, 44 seconds, `updated_at` moved; arm A, the named
+row, unmoved to the microsecond. R-35.21's premise holds and the first captured
+contacts payload now exists on glass. The walk's supplementary-plane emoji
+(U+1F90D, a surrogate pair) exercised the R-35.18 code-point-safe cap on real
+bytes. Nothing else in this handover is amended.
