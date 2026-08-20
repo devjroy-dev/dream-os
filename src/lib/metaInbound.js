@@ -133,6 +133,89 @@ function normalizeMetaInbound(body) {
   return out;
 }
 
+// ── F-05.78 REOPENED-SCOPED · THE PROFILE NAME SURFACE (R-35.19/.20, CE-35) ──
+// `normalizeMetaInbound` above emits one flat object per message and has never read
+// `value.contacts[]`. That was the estate's REAL discard: `grep -rn "contacts" src/`
+// returned zero readers, so `brideInbound.js`'s `profileName: null` was not a lazy
+// hardcode — the field never entered the process at all, and the two fill-when-null
+// writers behind it had never fired once.
+//
+// F-05.78 WAS CLOSED-SUPERSEDED AT CE-31 (R-OB.7: the PWA form is the one door for
+// real names). R-35.19 REOPENS IT SCOPED on the founder's word of 2026-08-20: the
+// situation R-OB.7 priced at 11-of-28 nameless with a working form door now stands at
+// 22-of-42 with the onboarding gate ruled dark, so the form is not in fact a door.
+// R-OB.7 is AMENDED, not reversed — it stands WHOLE on the member plane (a circle
+// member is known by the bride's word, `invitee_name` canonical, and `safeName` in
+// brideInbound.js no longer reads this field at all), and the reopen reaches only the
+// bride's OWN users row, fill-when-null.
+//
+// WHY HERE AND NOT IN THE BRIDE LANE (R-35.20, the rejected arm recorded so nobody
+// re-opens it): `metaInputsFrom` already receives `rawBody`, so a bride-local read was
+// available and cheaper. It was refused because the wa_id↔message pairing is PAYLOAD
+// NORMALIZATION — this adapter's whole job — and a lane-local copy would be a SECOND
+// HOME for that pairing, which is how the two lanes drift. `changesWithPnid` is the
+// precedent: additive, pure, per-change, exported, and unread until a lane asks.
+//
+// ADDITIVE AND INERT. `normalizeMetaInbound` is byte-unchanged and no existing caller
+// moves. The bride lane's `metaInputsFrom` is the first and only consumer;
+// `vendorInbound.js`'s own `profileName: null` stands untouched, so the bride-only
+// blast radius holds BY STRUCTURE rather than by anyone's care (F-05.81 records the
+// vendor lane's unguarded creation-time writers — they are latent only while that null
+// holds, and are never to be woken casually).
+//
+// F-06.85 MECHANISM NOTE — THE 80 IS POLICY, NOT A COLUMN CONSTRAINT. `users.name` is
+// unbounded `text` (docs/db/PUBLIC_SCHEMA.md:995). 80 is the estate's existing cap for
+// this exact column, witnessed at src/api/couple/onboarding.js:179 — the corrected
+// witness under R-35.18 as amended; the "onboarding form's own cap" the ruling first
+// cited does not exist in dreamos-pwa. Kept identical so one column has one cap.
+//
+// THE CAP IS COUNTED IN CODE POINTS, NOT UTF-16 UNITS, AND THAT IS THE WHOLE POINT.
+// R-35.18 stores her name VERBATIM — emoji, initials, script and all — because her
+// WhatsApp name is the name she presents to the world and a filled '♥ Priya ♥' beats a
+// literal 'unknown' everywhere downstream. A plain `.slice(0, 80)` contradicts that
+// clause on its own terms: '👰'.length is 2 and a ZWJ sequence is 7+, so a slice landing
+// mid-pair emits a LONE SURROGATE — invalid UTF-8, which Postgres rejects or stores as
+// U+FFFD. The spread iterates code points, so the cut can only fall between characters.
+// (F-OB.20 records that `onboarding.js:179` still carries the raw-`.slice` form; it is
+// queued, one line, out of this scope.)
+const PROFILE_NAME_CAP = 80;
+
+// R-35.18's sanity shape, one home. Trim; reject empty-after-trim (a name of spaces is
+// not a name — the `brideComplete` predicate has always agreed); otherwise VERBATIM to
+// the cap. Returns null for every non-name so callers need no second test: the writers
+// downstream are all guarded `if (profileName && ...)`, and null is what makes an
+// absent, blank or whitespace-only wire name a NO-OP rather than a bad write.
+function sanitizeProfileName(raw) {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return [...trimmed].slice(0, PROFILE_NAME_CAP).join('');
+}
+
+// Pair a normalized message back to its contact by `wa_id`. One Meta POST can batch
+// several messages from several senders across several changes, so the pairing is by ID
+// and never positional — `contacts[0]` would attribute one bride's name to another's row
+// on any batched POST, and that write is unguarded once `users.name` is null.
+// `waId` is `msg.from` (bare international digits); '+' is tolerated on either side so a
+// caller that already normalized to E.164 still matches.
+function profileNameFor(body, waId) {
+  if (!waId) return null;
+  const want = String(waId).replace(/^\+/, '');
+  const entries = (body && Array.isArray(body.entry)) ? body.entry : [];
+  for (const entry of entries) {
+    const changes = Array.isArray(entry.changes) ? entry.changes : [];
+    for (const ch of changes) {
+      const contacts = (ch && ch.value && Array.isArray(ch.value.contacts)) ? ch.value.contacts : [];
+      for (const c of contacts) {
+        if (!c || String(c.wa_id == null ? '' : c.wa_id).replace(/^\+/, '') !== want) continue;
+        const name = sanitizeProfileName(c.profile && c.profile.name);
+        if (name) return name;
+      }
+    }
+  }
+  return null;
+}
+
 // ── delivery-status extraction ───────────────────────────────────────────────
 // Meta delivery receipts arrive through the SAME webhook as value.statuses[] (not a separate
 // Twilio-style callback URL). Shape: { id:<wamid>, status:'sent'|'delivered'|'read'|'failed',
@@ -207,6 +290,10 @@ module.exports = {
   verifyMetaSignature,
   normalizeMetaInbound,
   extractStatuses,
+  // F-05.78 REOPENED-SCOPED (R-35.19/.20) — additive; bride lane is the only consumer
+  profileNameFor,
+  sanitizeProfileName,
+  PROFILE_NAME_CAP,
   // TDW_05 Workstream-1 (additive — shared receiver fork)
   changesWithPnid,
   buildSingleChangeBody,

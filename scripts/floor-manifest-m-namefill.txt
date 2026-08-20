@@ -1,0 +1,21 @@
+# scripts/floor-manifest-m-namefill.txt
+# M-NAMEFILL · CE-35 · F-05.78 REOPENED-SCOPED AND CURED.
+# The dream-os delivery's own file table, declared for [F-14.16]'s --delivery
+# mode. Every path here is dirt this floor is permitted to measure over; one
+# byte outside it and the runner refuses exactly as it always did.
+#
+# Cut per delivery, travels in the ZIP beside the bytes it declares, and its
+# contents are the same table the handover prints — one artefact, so the two
+# cannot drift.
+
+# ── the cure: the additive surface, and the lane that consumes it ────────────
+src/lib/metaInbound.js
+src/lib/brideInbound.js
+
+# ── the benches: one new, one moved with its reader ─────────────────────────
+scripts/b05_f0578_namefill_bench.js
+scripts/bOB_d2_onboarding_gate_bench.js
+
+# ── the docs half of honesty, and this manifest ─────────────────────────────
+docs/handovers/TDW_05_M_NAMEFILL_HANDOVER.md
+scripts/floor-manifest-m-namefill.txt

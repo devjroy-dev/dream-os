@@ -67,6 +67,7 @@ const BRIDE_CAP_SAVED_PREFIX  = 'Saved. ';
 // prefix — see the declared gap at the refusal block below.
 const BRIDE_CAP_SAVED_WINDOWS = new Set(['daily', 'monthly']);
 const { onboardingGate } = require('./onboardingGate');               // ARC OB / CE-31 · the onboarding gate, dark under R-OB.9
+const metaInbound = require('./metaInbound');                         // F-05.78 REOPENED (R-35.20) · the shared profile-name surface
 
 // ── THE TYPED REFUSAL (V-3, founder-locked at CE-67's gates) ────────────────
 // F-04.62's class, one lane over: a DELIBERATE refusal must stop wearing a
@@ -284,16 +285,25 @@ async function _processBrideInbound(inputs, deps) {
         // get the bride's word, because she is the one who invited them and the
         // name she used is the name the circle knows them by.
         //
-        // F-06.85 FORM — the mechanism this order is conditioned on, named so
-        // the mechanism's next sitting is forced to re-read this sentence: the
-        // Meta normalizer discards contacts[].profile.name, so `profileName` is
-        // ALWAYS NULL on this lane today (that discard is F-05.78's derived
-        // root cause, and it is why 11 of 28 brides are nameless). The previous
-        // order — profileName first — was therefore compliant BY ACCIDENT, and
-        // an accident is not a guard. The day anyone revives profile-name
-        // capture for any purpose, this line already holds the ruling.
+        // R-35.19 (CE-35) — THE ACCIDENT IS NOW A GUARD, AND R-OB.7 IS ENFORCED
+        // IN BYTES RATHER THAN IN COMMENTS. The sentence that used to sit here
+        // said `profileName` was ALWAYS NULL on this lane, so the ordering was
+        // compliant BY ACCIDENT — and an accident is not a guard. That premise
+        // died this sitting: F-05.78 was REOPENED-SCOPED and the normalizer at
+        // `metaInputsFrom` now fills the field, so the accident would have
+        // become a live fallback the first time a member arrived without an
+        // `invitee_name`. The fix is not a stronger comment. `profileName` is
+        // GONE from this expression: the member plane cannot read the wire name
+        // even by mistake, because the wire name is not in scope of this line.
+        //
+        // R-OB.7 STANDS WHOLE HERE, AMENDED ONLY IN ITS REACH. A circle member
+        // is known by the name the bride put on her, full stop; the reopen
+        // touches the bride's own users row and nothing else. This also
+        // dissolves the cap conflict the reopen would otherwise have created —
+        // no wire name can enter this 120 path, so the estate's one cap for a
+        // wire-sourced name stays the 80 at metaInbound.js `PROFILE_NAME_CAP`.
         // Asserted in bytes by scripts/bOB_d2_onboarding_gate_bench.js §4.
-        const safeName = (claim.invitee_name || profileName || '').slice(0, 120);
+        const safeName = (claim.invitee_name || '').slice(0, 120);
         const { data: newUser, error: userErr } = await supabase
           .from('users')
           .insert({
@@ -931,7 +941,28 @@ function metaInputsFrom(msg, rawBody, resolvedMedia) {
   return {
     phone,
     body:             msg.text || '',
-    profileName:      null,
+    // ── F-05.78 REOPENED-SCOPED · CURED (R-35.19/.20, CE-35) ────────────────────────
+    // This line was `null` and had been since M2b, which is why the two fill-when-null
+    // writers behind it (:460 here, brideIndex.js:391) had never fired ONCE. The name
+    // itself is not in `msg` — `normalizeMetaInbound` never read `value.contacts[]` —
+    // so the surface it comes from is the shared adapter's, paired by wa_id, carrying
+    // R-35.18's whole sanity shape (trim · reject empty · code-point-safe cap 80 ·
+    // otherwise verbatim). See the mechanism note at metaInbound.js `profileNameFor`.
+    //
+    // F-06.85 MECHANISM NOTE — THIS FIELD IS NOW SOMETIMES NON-NULL, AND SEVERAL
+    // SENTENCES IN THIS FILE WERE CONDITIONED ON IT ALWAYS BEING NULL. The circle
+    // claim at :296 is the one that mattered: its name order was "compliant BY
+    // ACCIDENT" while this line read null, and R-35.19 replaced that accident with a
+    // guard by dropping the field from `safeName` outright. If you are reviving this
+    // line's null for any reason, read :279 before you do — the member plane is
+    // R-OB.7's and is deliberately unreachable from here.
+    //
+    // FAILURE MODE IS INERT, AND THAT IS WHAT LET THIS SHIP AHEAD OF ITS WITNESS
+    // (R-35.21): `sanitizeProfileName` returns null for an absent, null, blank or
+    // whitespace-only wire name, and every writer downstream is guarded on truthiness,
+    // so if Meta never sends `contacts[].profile.name` on this lane, nothing fires and
+    // the estate behaves byte-for-byte as it did before this line changed.
+    profileName:      metaInbound.profileNameFor(rawBody, msg.from),
     sidForPersist:    msg.messageId,   // wamid → durable message_sid dedupe home
     internalReplay:   false,
     messageId:        msg.messageId,

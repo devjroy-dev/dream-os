@@ -322,10 +322,19 @@ cell('3.8', 'Eliza\'s door is NOT gated (R-OB.5, FORBIDDEN)', () => {
 
 console.log('\n=== §4 · R-OB.7 — the bride\'s word outranks the profile name ===');
 
-cell('4.1', 'invitee_name is FIRST in the circle-member name precedence', () => {
+// AMENDED at CE-35 (R-35.19), count preserved. This cell was written when
+// `profileName` was structurally null and the member path merely ORDERED the
+// bride's word ahead of it. F-05.78 is now REOPENED-SCOPED and the field is
+// live, so an ordering is no longer a guard: the amended cell asserts the
+// field is ABSENT from the expression, which is what R-35.19 ruled. The old
+// form would have passed over a live fallback — RETIRE-WITH-THE-READER.
+cell('4.1', 'the circle claim reads invitee_name ONLY — no profileName (R-OB.7 as amended by R-35.19)', () => {
   const s = read('src/lib/brideInbound.js');
-  return s.includes("const safeName = (claim.invitee_name || profileName || '')")
-    || 'profileName still outranks the bride\'s word at the circle claim';
+  const i = s.indexOf('const safeName = (claim.invitee_name');
+  if (i < 0) return 'the safeName line moved or was renamed';
+  const line = s.slice(i, s.indexOf('\n', i));
+  return (line === "const safeName = (claim.invitee_name || '').slice(0, 120);"
+    || `the member path's name expression is not bride's-word-only: ${line.trim()}`);
 });
 
 cell('4.2', 'the reordered line names R-OB.7 in-comment (F-06.85 form)', () => {
@@ -335,9 +344,50 @@ cell('4.2', 'the reordered line names R-OB.7 in-comment (F-06.85 form)', () => {
     || 'the mechanism is not named at its own site';
 });
 
-cell('4.3', 'NO new name-capture code ships (R-OB.7, cure refused everywhere)', () => {
-  for (const f of ['src/lib/onboardingGate.js', 'src/lib/onboardingPredicate.js']) {
-    if (/profile\.name|profileName/.test(read(f))) return `${f} touches profile name`;
+// ── F-OB.19 · RE-POINTED at CE-35, count preserved ──────────────────────────
+// This cell used to read 'NO new name-capture code ships (cure refused
+// everywhere)' and test exactly two files — `onboardingGate.js` and
+// `onboardingPredicate.js` — NEITHER of which is on the path any name-capture
+// cure would take. It titled a policy and measured two bystanders, so it would
+// have stayed green through this entire delivery while the ruling it names was
+// amended underneath it: a green that costs nothing to keep is not a guard.
+// (Raised as F-OB.19 at the read-first, minted by the chair, and re-pointed
+// HERE because this delivery is the thing that falsifies it.)
+//
+// The amended cell asserts R-OB.7's CURRENT scope, on the files that carry it:
+//   a) the member path takes no profileName (the plane R-OB.7 still owns whole)
+//   b) every writer that CAN take one is fill-when-null — a wire name may fill
+//      an empty row, never overwrite a name the estate already holds. That is
+//      what makes the reopen safe on both lanes; it is the M-BRIDE-NAME
+//      precedent, and it is the property, not the file list, that matters.
+cell('4.3', 'R-OB.7 as amended holds in bytes: member path takes no wire name, writers are fill-when-null', () => {
+  const bi = read('src/lib/brideInbound.js');
+  const bx = read('src/brideIndex.js');
+
+  // (a) the member plane
+  const claimIdx = bi.indexOf('const safeName = (claim.invitee_name');
+  if (claimIdx < 0) return 'the circle claim name expression moved';
+  if (/profileName/.test(bi.slice(claimIdx, bi.indexOf('\n', claimIdx)))) {
+    return 'the wire name re-entered the member path';
+  }
+
+  // (b) every `users` name-write reachable from a profileName must be guarded
+  //     fill-when-null. Both live writers are found by their own bytes rather
+  //     than by line number, so this cell survives the file moving under it.
+  const writers = [
+    ['src/lib/brideInbound.js', bi],
+    ['src/brideIndex.js',       bx],
+  ];
+  for (const [name, src] of writers) {
+    const hits = src.split('\n').filter((l) => /update\(\{ name: profileName \}\)/.test(l));
+    if (hits.length === 0) return `${name} no longer carries a profileName fill-writer`;
+    for (const h of hits) {
+      const at = src.indexOf(h);
+      const before = src.slice(Math.max(0, at - 200), at);
+      if (!/if \(profileName && !user\.name\) \{/.test(before)) {
+        return `${name}: a profileName write is not guarded fill-when-null`;
+      }
+    }
   }
   return true;
 });
@@ -872,7 +922,11 @@ async function acell(id, desc, fn) {
 //   3.4   brideIndex.js: edit one byte of DEAD_END_REPLY
 //   3.6   move the gate block below `const meterAnthropic = ...`
 //   3.7   move the gate block below the image-throttle branch
-//   4.1   restore `(profileName || claim.invitee_name || '')`
+//   4.1   restore `(claim.invitee_name || profileName || '')` at the circle claim
+//         — the pre-R-35.19 ordering, which is a fallback now that the field is live
+//   4.3a  same edit as 4.1 (the member-plane arm)
+//   4.3b  brideInbound.js:470 OR brideIndex.js:391 — drop the `&& !user.name`
+//         from either fill-writer's guard (fill-when-null becomes clobber)
 //   5.1   0122: delete the STALE stamp from the open_to_travel comment
 //
 // ── D-3's ──────────────────────────────────────────────────────────────────
