@@ -22,5 +22,12 @@
     "REMOVE a record only when the regen it is owed has actually run and the body below",
     "the header describes the table correctly. The row is a debt; regen pays it."
   ],
-  "register": []
+  "register": [
+    {
+      "number": 90,
+      "note": "Creates **`public.engagements`** — the TDW_16 P1 spine: one row per (couple, vendor, category) relationship, with `enquiry_id` / `couple_booking_id` / `lead_id` soft refs and a unique key on the triple. Backfilled from `couple_enquiries` ONLY (2 rows); no booking-side rows exist to mint from, because `couple_bookings.vendor_id` has never had a writer (F-16.6, censused at 0 of 6).",
+      "stale_for": "**`engagements`** — absent from the snapshot entirely, so this document does not merely *misdescribe* the table, it denies it exists. Also reprices `couple_bookings` and `couple_enquiries` as the spine's linked artifacts, though neither table's own columns are altered here.",
+      "state": "OUTSTANDING — awaiting the next PAIR regen (`db/queries/public_schema_dump.sql` founder-run, piped through `db/queries/format_public_schema.js`). Remove this record only once the regenerated body below the header actually describes `public.engagements`."
+    }
+  ]
 }

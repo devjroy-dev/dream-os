@@ -28,6 +28,29 @@
 // Sending one produced a 500. This is obedience to ink already committed a few
 // lines below, not new policy.
 
+//
+// ── TDW_16 P1 · THE DOOR LEARNS WHO THE VENDOR IS (F-16.6 · R-35.30) ────────
+// `couple_bookings.vendor_id` has existed since the table was born and NO CODE
+// PATH IN THE ESTATE HAS EVER WRITTEN IT. It sat in this file's two `.select()`
+// lists and in neither `.insert()` nor `.update()`; Mira's add_booking did the
+// same; the PWA's own fixtures construct every booking with `vendor_id: null`.
+// The founder's census of 2026-08-21 measured it at the rows: 6 bookings, 0
+// with a vendor. So the TDW_16 engagement key — (couple_id, vendor_id,
+// category) — had no vendor on this side of the link, and the block's spine
+// could not have been built on it.
+//
+// The cure is deliberately the door half ONLY: POST and PATCH now ACCEPT an
+// optional `vendor_id` and write it when it is sent. NOTHING IN EITHER APP
+// SENDS ONE YET, and that is correct — the vendor-aware flows are TDW_16 P2's
+// whole subject (a signal and a proposal know their vendor natively). This
+// phase makes the door ready to receive what P2 will supply, and the founder's
+// walk exercises it directly. Bookings she types by hand for an off-platform
+// vendor keep sending nothing and keep landing with a null vendor, which is not
+// a gap: an engagement is a bride↔PLATFORM-VENDOR relationship by definition.
+//
+// When a vendor IS supplied, the engagement is minted through its one home,
+// src/lib/engagements.js. This file never touches the `engagements` table.
+
 'use strict';
 
 const express      = require('express');
@@ -35,6 +58,7 @@ const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { VENDOR_CATEGORIES } = require('../../agent/categories');
+const { recordBooking } = require('../../lib/engagements');   // TDW_16 P1: the spine's one home
 
 // The DB CHECK constraint allows exactly these three states.
 // considering/shortlisted/in_discussion are NOT in the constraint — reject them.
@@ -78,9 +102,26 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
   const { couple_id } = req.coupleUser;
   if (req.params.coupleId !== couple_id) return errRes(res, 403, 'Forbidden.');
 
-  const { vendor_name, category, amount_total, amount_advance, balance_due_date, state, notes } = req.body || {};
+  const { vendor_name, vendor_id, category, amount_total, amount_advance, balance_due_date, state, notes } = req.body || {};
   if (!vendor_name || typeof vendor_name !== 'string' || !vendor_name.trim())
     return errRes(res, 400, 'vendor_name required.');
+
+  // TDW_16 P1. `vendor_id` stays OPTIONAL — omitting it is the normal case and
+  // means an off-platform vendor. A vendor_id that WAS sent is checked here, on
+  // the same principle R-35.27a settled for `category`: a door that refuses by
+  // letting Postgres throw a 500 is not a door. Shape first, then existence —
+  // an unparseable string never reaches the database, and a well-formed uuid
+  // that names no vendor is refused rather than written into a key column.
+  let resolvedVendorId = null;
+  if (vendor_id !== undefined && vendor_id !== null && vendor_id !== '') {
+    const UUID_RE_V = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof vendor_id !== 'string' || !UUID_RE_V.test(vendor_id))
+      return errRes(res, 400, 'Invalid vendor.');
+    const { data: v } = await supabase
+      .from('vendors').select('id').eq('id', vendor_id).maybeSingle();
+    if (!v) return errRes(res, 400, 'Invalid vendor.');
+    resolvedVendorId = v.id;
+  }
 
   // R-35.27a. `category` stays OPTIONAL — omitting it still means `other`, which
   // is the founder's own fold-everything-else token and survives 0126. But a
@@ -106,6 +147,7 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
     .insert({
       couple_id,
       vendor_name: vendor_name.trim().slice(0, 200),
+      vendor_id: resolvedVendorId,
       category: category || 'other',
       amount_total: amount_total ? parseInt(amount_total, 10) : null,
       amount_advance: amount_advance ? parseInt(amount_advance, 10) : null,
@@ -119,6 +161,27 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
   if (error) {
     console.error('[POST /couple/bookings] insert error:', error.message);
     return errRes(res, 500, 'Could not create booking.');
+  }
+
+  // TDW_16 P1. Only a booking that names a platform vendor has a relationship
+  // to record. `source: 'direct'` is honest about what this door is: she came
+  // and booked him: not a Discover enquiry, not a signal. If she enquired
+  // first, the row already exists carrying its own source, and the writer's
+  // mint step leaves that value alone. Failure is logged, never surfaced — her
+  // booking and her money landed, and the link is re-mintable.
+  if (resolvedVendorId) {
+    try {
+      await recordBooking({
+        supabase,
+        coupleId:  couple_id,
+        vendorId:  resolvedVendorId,
+        category:  data.category,
+        bookingId: data.id,
+        source:    'direct',
+      });
+    } catch (err) {
+      console.error('[POST /couple/bookings] recordBooking threw:', err.message);
+    }
   }
   return okRes(res, { booking: data });
 }));
@@ -137,8 +200,23 @@ router.patch('/:bookingId', asyncHandler(async (req, res) => {
   const { bookingId } = req.params;
   if (!UUID_RE.test(bookingId)) return errRes(res, 400, 'Invalid booking id.');
 
-  const { vendor_name, category, amount_total, amount_advance, balance_due_date, notes, contact_phone, state } = req.body || {};
+  const { vendor_name, vendor_id, category, amount_total, amount_advance, balance_due_date, notes, contact_phone, state } = req.body || {};
   const updates = {};
+
+  // TDW_16 P1, same validation as POST's. PATCH is how a booking she made
+  // before P2 existed gets attached to the vendor it was always about.
+  if (vendor_id !== undefined) {
+    if (vendor_id === null || vendor_id === '') {
+      updates.vendor_id = null;
+    } else {
+      if (typeof vendor_id !== 'string' || !UUID_RE.test(vendor_id))
+        return errRes(res, 400, 'Invalid vendor.');
+      const { data: v } = await supabase
+        .from('vendors').select('id').eq('id', vendor_id).maybeSingle();
+      if (!v) return errRes(res, 400, 'Invalid vendor.');
+      updates.vendor_id = v.id;
+    }
+  }
 
   if (vendor_name !== undefined) {
     if (typeof vendor_name !== 'string' || !vendor_name.trim())
@@ -192,13 +270,31 @@ router.patch('/:bookingId', asyncHandler(async (req, res) => {
     .update(updates)
     .eq('id', bookingId)
     .eq('couple_id', couple_id)
-    .select('id, vendor_name, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes')
+    .select('id, vendor_name, vendor_id, category, amount_total, amount_advance, amount_paid, balance_due_date, state, notes')
     .single();
 
   if (error) {
     if (error.code === 'PGRST116') return errRes(res, 404, 'Booking not found.');
     console.error('[PATCH /couple/bookings/:bookingId] error:', error.message);
     return errRes(res, 500, 'Could not update booking.');
+  }
+
+  // TDW_16 P1. Read from the RETURNED ROW, never from the request body: the
+  // caller may have patched only the category, leaving a vendor_id this handler
+  // never saw, and the relationship is about what the row now says.
+  if (data.vendor_id) {
+    try {
+      await recordBooking({
+        supabase,
+        coupleId:  couple_id,
+        vendorId:  data.vendor_id,
+        category:  data.category,
+        bookingId: data.id,
+        source:    'direct',
+      });
+    } catch (err) {
+      console.error('[PATCH /couple/bookings/:bookingId] recordBooking threw:', err.message);
+    }
   }
   return okRes(res, { booking: data });
 }));

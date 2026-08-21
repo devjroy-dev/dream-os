@@ -53,6 +53,7 @@ const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld:
 const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5: the free-lead hook
 const { bandCeiling, normalizeFunctions } = require('../../lib/discover/enquiryFields');
 const { resolveCoupleIfPresent } = require('../../lib/resolveCoupleIfPresent'); // F-07.62's cure
+const { recordEnquiry } = require('../../lib/engagements');                     // TDW_16 P1: the spine's one home
 
 // ── F-07.50 CURED · THE {{3}} LINK POINTED AT A 404 ──────────────────────────
 // THIS READ: 'https://thedreamwedding.in/vendor/leads' — a path I authored from
@@ -451,7 +452,20 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   // only leads_wedding_date_precision_check and the primary key — so 'discover'
   // is accepted as written. Witness recorded here because a source value that
   // fails a constraint fails at RUNTIME, on a live couple's tap.
+  // ── F-16.7's CURE, THE ONE-LINE HALF (R-35.30 fork 3) ────────────────────
+  // `leadId` is NEW. `createLead` has always returned `{ ok, lead, deduped }`
+  // (src/lib/vendor/leads.js:36 on the dedupe path, :76 on the create path) and
+  // this handler has always thrown the row away, keeping only whether it
+  // worked. The engagement spine needs the IDENTITY, so the id is kept — and
+  // this is the whole change: one declaration, one assignment. `leadCreated`
+  // keeps its exact meaning and every reader of it below is untouched.
+  //
+  // THIS IS public.leads.id AND NOTHING ELSE. `couple_enquiries.vendor_lead_id`
+  // — written twenty lines down — holds the ENGINE BINDER id that
+  // `enquiryToBinder` returns, despite the name. The two are different planes.
+  // The rename of that column is filed and NOT taken here (F-16.7).
   let leadCreated = false;
+  let leadId = null;
   try {
     const leadRes = await createLead(supabase, vendor.id, {
       name:        brideNameFinal  || 'Dream Wedding enquiry',
@@ -471,6 +485,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       notes:       'Discover enquiry — she found you on the feed.',
     });
     leadCreated = !!(leadRes && leadRes.ok);
+    leadId      = (leadRes && leadRes.lead && leadRes.lead.id) || null;
     if (!leadCreated) {
       console.error(`[enquire] createLead refused for vendor ${vendor.id}: ${leadRes && leadRes.error}`);
     }
@@ -497,9 +512,15 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   }
 
   // ── 4. Her enquiry row (only if logged in) ────────────────────────────────
+  //
+  // TDW_16 P1: the engagement is minted from THIS block's success, immediately
+  // below it. It is deliberately not minted for a logged-out bride — she has no
+  // couple_id, so there is no relationship to key, and the vendor still gets
+  // his lead. That asymmetry is the same one this block already lives with.
   let enquirySaved = false;
+  let enquiryRowId = null;
   if (couple_id) {
-    const { error: enqErr } = await supabase
+    const { data: enqRow, error: enqErr } = await supabase
       .from('couple_enquiries')
       .upsert({
         couple_id,
@@ -510,9 +531,37 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
         routing_handle:  vendor.routing_handle || null,
         vendor_lead_id:  vendorLeadId,
         created_at:      new Date().toISOString(),
-      }, { onConflict: 'couple_id,vendor_id' });
+      }, { onConflict: 'couple_id,vendor_id' })
+      .select('id')
+      .single();
     if (enqErr) console.error('[enquire] couple_enquiries upsert error:', enqErr.message);
-    else enquirySaved = true;
+    else { enquirySaved = true; enquiryRowId = enqRow && enqRow.id; }
+
+    // ── TDW_16 P1 · THE SPINE ────────────────────────────────────────────────
+    // One row per (couple, vendor, category), written through its ONE HOME. The
+    // category handed over is the vendor's raw free text; `recordEnquiry`
+    // routes it through `normaliseCategory` (R-35.31) — this door does not
+    // normalise, does not validate, and does not know the eleven. That is the
+    // point of one home.
+    //
+    // Failure here is logged and does not change her response. Her enquiry
+    // reached the vendor the moment the lead landed; a missing spine row is a
+    // linkage the next enquiry re-mints, not a reason to tell her the door
+    // failed. `ok` keeps the meaning F-07.45 gave it.
+    if (enquirySaved) {
+      try {
+        await recordEnquiry({
+          supabase,
+          coupleId:  couple_id,
+          vendorId:  vendor.id,
+          category:  vendor.category,
+          enquiryId: enquiryRowId,
+          leadId,
+        });
+      } catch (err) {
+        console.error('[enquire] recordEnquiry threw:', err.message);
+      }
+    }
   }
 
   // ── 5. Analytics tap ──────────────────────────────────────────────────────
