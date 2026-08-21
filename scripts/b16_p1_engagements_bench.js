@@ -21,10 +21,42 @@
 // that the doors call it, and that the category verdict transcribed into the
 // migration is the one the live function actually returns.
 //
+// ── AMENDED AT THE 0127 RIDER (R-35.32), RETIRE-WITH-THE-READER ────────────
+// This bench was born reading a THREE-column key. 0127 dropped the third
+// column, so the cells that read it travel with it rather than being left
+// asserting a shape the database no longer holds. COUNTS DISCLOSED:
+//   1.2  AMENDED — was "the key is UNIQUE (couple_id, vendor_id, category)";
+//        now reads BOTH migrations and demands 0090's triple be dropped by
+//        0127 and the pair added. A cell that still passed on 0090 alone would
+//        have been green about a constraint that no longer exists.
+//   2.1  AMENDED — getEngagement's arity is now part of the cell.
+//   5.4  AMENDED — was a diff against HEAD, which answered EMPTY the moment
+//        ff15775 landed the very string it watched for. Now a FROZEN approved
+//        set: the copy law's standing question, not a one-delivery one.
+//   2.4  RETIRED — subsumed by 2.6; reason at its site. Removed, not loosened.
+//   NEW: 1.11 1.12 1.13 (0127's DDL, its pre-check, its assertions)
+//        2.5 (no lookup carries a category leg)
+//        2.6 (every write refreshes the tracked column, none raw)
+//        4.7 (the booking door hands over no category)
+//   Cell count 29 -> 34, READ OFF THE RUN and not computed in my head: six
+//   added, one retired, three rewritten in place.
+//
 // ── BOTH-WAYS (production mutation, comments stripped) ──────────────────────
 // Restore any of these on the CURED tree and the named cells MUST red:
 //   M1  0090: drop `NOT NULL` from vendor_id                    -> 1.3
-//   M2  0090: drop the UNIQUE (couple_id, vendor_id, category)  -> 1.2
+//   M2  0127: drop its ADD CONSTRAINT ... UNIQUE line           -> 1.2
+//       (an earlier draft of this ledger predicted 1.2 AND 1.11 here and the
+//        run said 1.2 alone — 1.11 watches the REGISTER, not the ADD. The
+//        ledger is corrected to what the run output, never the reverse.)
+//   M22 OUT_OF_ORDER.json: add a record for 127                 -> 1.11
+//   M2b 0127: re-key it back to the triple                      -> 1.2
+//   M2c 0127: delete its duplicate-pair pre-check               -> 1.12
+//   M18 engagements.js: restore a `.eq('category', ...)` leg on
+//       any write filter                                        -> 2.5
+//   M19 engagements.js: drop the category refresh from a patch   -> 2.6
+//   M20 engagements.js: restore the 3-arg getEngagement          -> 2.1
+//   M21 bookings.js: hand `category: data.category` back to the
+//       writer                                                   -> 4.7
 //   M3  0090: widen the category CHECK by one token             -> 1.4
 //   M4  0090: change the backfill's CASE verdict for
 //       'Event planner' from 'planning' to 'other' (0126's
@@ -68,9 +100,11 @@ function strip(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*--.*$/gm, '').replace(/^\s*\/\/.*$/gm, '');
 }
 
-const MIG   = 'db/migrations/0090_engagements.sql';
+const MIG    = 'db/migrations/0090_engagements.sql';
+const RIDER  = 'db/migrations/0127_engagements_pair_key.sql';
 const sqlRaw = read(MIG);
 const sql    = strip(sqlRaw);
+const rider  = strip(read(RIDER));
 const eng    = strip(read('src/lib/engagements.js'));
 const enq    = strip(read('src/api/couple/enquire.js'));
 const bok    = strip(read('src/api/couple/bookings.js'));
@@ -85,8 +119,13 @@ section('1 · 0090 — the DDL, read off disk');
 ok(/CREATE TABLE IF NOT EXISTS public\.engagements/.test(sql),
    '1.1 0090 creates public.engagements');
 
-ok(/UNIQUE\s*\(\s*couple_id\s*,\s*vendor_id\s*,\s*category\s*\)/.test(sql),
-   '1.2 the key is UNIQUE (couple_id, vendor_id, category) — F-15.2\'s committed cure');
+// AMENDED AT 0127. The live key is what 0090 said MINUS what 0127 dropped PLUS
+// what 0127 added — so the cell reads both files and would red if either half
+// were missing. Reading 0090 alone was correct for one day and is now a lie.
+ok(/DROP CONSTRAINT IF EXISTS engagements_couple_vendor_category_uidx/.test(rider) &&
+   /ADD CONSTRAINT engagements_couple_vendor_uidx UNIQUE \(couple_id, vendor_id\)/.test(rider) &&
+   /UNIQUE\s*\(\s*couple_id\s*,\s*vendor_id\s*,\s*category\s*\)/.test(sql),
+   '1.2 the key is UNIQUE (couple_id, vendor_id) — 0090\'s triple dropped by 0127 (F-16.17, R-35.32)');
 
 ok(/vendor_id\s+uuid NOT NULL REFERENCES public\.vendors\(id\)/.test(sql),
    '1.3 vendor_id is NOT NULL and FK-backed (R-35.30: identity, not decoration)');
@@ -140,11 +179,28 @@ ok(/RAISE EXCEPTION 'BACKFILL ASSERTION FAILED/.test(sql) &&
    (sqlRaw.match(/RAISE EXCEPTION 'BACKFILL ASSERTION FAILED/g) || []).length === 3,
    '1.10 the counts assert in-file and REFUSE rather than backfill an unmeasured shape');
 
+ok(!/OUT_OF_ORDER/.test(rider.replace(/^[\s\S]*?BEGIN;/, '')) &&
+   (() => {
+     const reg = JSON.parse(read('db/migrations/OUT_OF_ORDER.json'));
+     return reg.register.length === 1 && reg.register[0].number === 90;
+   })(),
+   '1.11 0127 sits AT the tip and takes NO register row — 0090\'s row stands, its debt unpaid');
+
+ok(/RAISE EXCEPTION 'RE-KEY REFUSED/.test(rider),
+   '1.12 0127 names WHICH pairs are duplicated before it drops anything');
+
+ok(/RAISE EXCEPTION 'RE-KEY ASSERTION FAILED/.test(rider) &&
+   /count\(DISTINCT \(couple_id, vendor_id\)\)/.test(rider),
+   '1.13 0127 asserts rows AND distinct pairs — zero collapse, priced against the fixture');
+
 // ═══ 2 · ONE HOME, AND THE GREP GATE ═════════════════════════════════════════
 section('2 · the resolver\'s one home (acceptance 1\'s grep gate)');
 
-ok(typeof engagements.getEngagement === 'function',
-   '2.1 getEngagement is exported from src/lib/engagements.js');
+// AMENDED AT 0127. Arity is now load-bearing: a three-argument resolver would
+// filter the READ on category and the row would go MISSING the day the vendor
+// re-categorised — a worse failure than a duplicate, because nothing looks wrong.
+ok(typeof engagements.getEngagement === 'function' && engagements.getEngagement.length === 3,
+   `2.1 getEngagement is exported and takes (supabase, coupleId, vendorId) — not a category (arity ${engagements.getEngagement.length})`);
 
 // THE BENCH ENUMERATES ITS CONSUMERS ITSELF. It walks the tree; it does not
 // read a list someone wrote down, because a list someone wrote down is the
@@ -169,12 +225,27 @@ ok(touchers.length === 0,
 ok(touchers.length === 0,
    '2.3 …and none writes it either (same walk: .from() covers both verbs on this client)');
 
-// R-35.31: every write site routes category through the function. Counted, so a
-// NEW write site that forgets it also reddens — not just an edit to an old one.
-const writeSites = (eng.match(/\.from\('engagements'\)/g) || []).length;
-const normCalls  = (eng.match(/normaliseCategory\(/g) || []).length;
-ok(writeSites > 0 && normCalls >= writeSites && !/category:\s*category\b/.test(eng),
-   `2.4 every engagements statement pairs with a normaliseCategory call (${normCalls} calls / ${writeSites} statements)`);
+// ── 2.4 RETIRED AT THE 0127 RIDER, SUBSUMED BY 2.6 ─────────────────────────
+// It read "every engagements STATEMENT pairs with a normaliseCategory call".
+// That arithmetic held while all five statements filtered on category. 0127
+// took the category leg off the READ — correctly, and 2.5 now pins that
+// absence — so the cell began counting a read that must NOT normalise against
+// writes that must, and went RED on the cure itself. Its whole assertion,
+// including its `category: category` guard, is carried by 2.6, which counts
+// refreshes against WRITES: a raw assignment drops the refresh count below the
+// write count and reddens there. RETIRED, not loosened — a cell edited until it
+// passes is the defect wearing the cure's uniform.
+
+ok(!/\.eq\('category'/.test(eng),
+   '2.5 NO lookup filters on category — the key is the pair, and so is every read and write filter');
+
+// The column tracks the vendor, so every write that touches this row carries it.
+// Counted against the write statements, so a NEW writer that forgets the
+// refresh reddens too — not only an edit to an existing one.
+const patchWrites = (eng.match(/\.(update|upsert)\(/g) || []).length;
+const refreshes   = (eng.match(/category:\s*normaliseCategory\(category\)/g) || []).length;
+ok(patchWrites > 0 && refreshes === patchWrites && !/category:\s*category\b/.test(eng),
+   `2.6 every write refreshes the tracked category, none raw (${refreshes} refreshes / ${patchWrites} writes)`);
 
 // ═══ 3 · MONOTONICITY, ENFORCED AT THE DATABASE ══════════════════════════════
 section('3 · the relationship never walks backward (fork 5)');
@@ -213,6 +284,11 @@ ok(/vendor_id:\s*resolvedVendorId/.test(bok),
 ok(/updates\.vendor_id\s*=\s*v\.id/.test(bok),
    '4.5 PATCH can attach a vendor to a booking made before the spine existed');
 
+// R-35.32: couple_bookings.category is HER choice; the engagement's tracks the
+// VENDOR. The door must not hand one over as if they were the same fact.
+ok(!/category:\s*data\.category/.test(bok) && /select\('category'\)/.test(eng),
+   '4.7 the booking door passes NO category — the one home resolves the vendor\'s own');
+
 // record_payment() IS SACRED (B-7 absolute). Proven as an untouched byte
 // sequence, not as a promise in a comment.
 const rpNow  = (bok.match(/supabase\.rpc\('record_payment'[\s\S]*?\}\);/) || [''])[0];
@@ -236,27 +312,48 @@ ok(unchangedVsHead('src/agent/brideEngine.js'),
 ok(unchangedVsHead('src/lib/vendor/categoryFraming.js') && unchangedVsHead('src/agent/categories.js'),
    '5.3 the taxonomy\'s one home is untouched — this block reads it, never edits it');
 
-// The delivery's ONE new user-facing byte, pinned so an edit to it is a fresh
-// veto (APPROVED-COPY-CARRIES-ITS-HASH).
+// ── AMENDED AT THE 0127 RIDER. THE HEAD-DIFF CELL DECAYED ON LANDING. ──────
+// It read: lift every 400 literal out of this file and its HEAD twin, subtract,
+// and demand exactly one arrived. That was the right question the day the
+// string was authored — and it answered EMPTY the moment ff15775 made HEAD
+// contain it. A cell pinned to `HEAD` measures a DELIVERY, not a fact, and
+// expires when the delivery lands.
 //
-// THE CELL IS A DIFF, NOT A COUNT. An earlier draft counted occurrences and a
-// substring match over the file, and its own control run came back RED against
-// strings that were already there ('vendor_name required.'). Counting what
-// EXISTS cannot tell you what ARRIVED. This lifts every 400 literal out of both
-// this file and its HEAD twin and subtracts — so the cell answers the only
-// question the copy law asks: which bytes are NEW, and were they vetoed.
+// The copy law's standing question is not "what arrived" but
+// APPROVED-COPY-CARRIES-ITS-HASH: these are the vetoed bytes, and none has
+// drifted. The set is FROZEN here. Reword any of them — including the ones that
+// predate this block — and this reddens, which is correct permanently rather
+// than for one day.
 function refusalStrings(src) {
   return new Set([...strip(src).matchAll(/errRes\(res,\s*\d{3},\s*'([^']*)'\)/g)].map(m => m[1]));
 }
-const bokHead  = execFileSync('git', ['show', 'HEAD:src/api/couple/bookings.js'], { cwd: ROOT, encoding: 'utf8' });
-const wasStr   = refusalStrings(bokHead);
-const nowStr   = refusalStrings(read('src/api/couple/bookings.js'));
-const arrived  = [...nowStr].filter(x => !wasStr.has(x));
-const departed = [...wasStr].filter(x => !nowStr.has(x));
-
-ok(arrived.length === 1 && arrived[0] === 'Invalid vendor.' && departed.length === 0,
-   `5.4 exactly ONE new user-facing string arrived and none departed` +
-   ` (new: ${JSON.stringify(arrived)}, gone: ${JSON.stringify(departed)})`);
+const APPROVED = [
+  'Forbidden.',
+  'vendor_name required.',
+  'Invalid vendor.',
+  'Invalid category.',
+  'state must be booked, advance_paid, or paid.',
+  'Could not fetch bookings.',
+  'Could not create booking.',
+  'Invalid booking id.',
+  'vendor_name must be a non-empty string.',
+  'amount_total must be a non-negative integer.',
+  'amount_advance must be a non-negative integer.',
+  'balance_due_date must be YYYY-MM-DD.',
+  'No fields to update.',
+  'Booking not found.',
+  'Could not update booking.',
+  'amount required (non-zero integer rupees).',
+  'payment_date must be YYYY-MM-DD.',
+  'Could not record payment.',
+  'Could not delete booking.',
+];
+const nowStr  = refusalStrings(read('src/api/couple/bookings.js'));
+const drifted = [...nowStr].filter(x => !APPROVED.includes(x));
+const missing = APPROVED.filter(x => !nowStr.has(x));
+ok(drifted.length === 0 && missing.length === 0 && nowStr.has('Invalid vendor.'),
+   `5.4 every refusal string is a vetoed byte, none drifted` +
+   ` (unapproved: ${JSON.stringify(drifted)}, missing: ${JSON.stringify(missing)})`);
 
 ok((bok.match(/'Invalid vendor\.'/g) || []).length === 4,
    '5.4b …and that one string serves all four refusal sites — no near-duplicate wording');

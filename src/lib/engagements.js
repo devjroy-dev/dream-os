@@ -13,6 +13,30 @@
 // someone wrote down is the defect (R-31.1's habit, borrowed).
 //
 // ═════════════════════════════════════════════════════════════════════════════
+// THE KEY IS THE PAIR (R-35.32, curing F-16.17) — AMENDED AFTER 0090 SHIPPED.
+// ═════════════════════════════════════════════════════════════════════════════
+// This file was born keying on (couple_id, vendor_id, category), because the
+// spec said so. 0127 dropped the third column and this file moved with it.
+// THE REASON, so nobody restores the triple from memory: `vendors.category` is
+// a SINGLE free-text column, so a vendor holds exactly one category and the
+// third key column discriminated NOTHING — it only let one relationship split
+// into two rows when he edited his profile. The founder's own test vendor had
+// already done it: enquired-as 'Event planner', live as 'photography'.
+//
+// `category` IS NOW A TRACKING SNAPSHOT. Every writer below refreshes it from
+// the vendor's live category, so the column follows him. It is NOT history:
+// history lives in the artifacts this row points at — couple_enquiries
+// .vendor_category holds what he was when she enquired, couple_bookings
+// .category holds what she booked him for. This column is not trying to be
+// either, and a reader who wants either should follow the ref.
+//
+// ⚠ getEngagement TAKES TWO IDENTIFIERS, NOT THREE. The charter named a
+// three-argument resolver; R-35.32 supersedes it. Filtering the READ on
+// category would move the fragmentation bug from the writer to the reader —
+// the row would simply go missing the day the vendor re-categorised, which is
+// a worse failure than a duplicate because nothing looks wrong.
+//
+// ═════════════════════════════════════════════════════════════════════════════
 // R-35.31 — normaliseCategory IS THE RULING AUTHORITY ON CATEGORY IDENTITY.
 // ═════════════════════════════════════════════════════════════════════════════
 // Every write below routes `category` through `normaliseCategory()`. Not a copy
@@ -89,7 +113,7 @@ function statusesBelow(target) {
 // Returns the engagement row for one relationship, or null. Never throws:
 // callers on both planes treat an absent engagement as "no relationship yet",
 // which is a real answer and not an error.
-async function getEngagement(supabase, coupleId, vendorId, category) {
+async function getEngagement(supabase, coupleId, vendorId) {
   if (!supabase || !coupleId || !vendorId) return null;
 
   const { data, error } = await supabase
@@ -97,7 +121,6 @@ async function getEngagement(supabase, coupleId, vendorId, category) {
     .select('id, couple_id, vendor_id, category, status, source, enquiry_id, couple_booking_id, lead_id, created_at, updated_at')
     .eq('couple_id', coupleId)
     .eq('vendor_id', vendorId)
-    .eq('category', normaliseCategory(category))
     .maybeSingle();
 
   if (error) {
@@ -121,7 +144,7 @@ async function mint({ supabase, coupleId, vendorId, category, status, source }) 
       status,
       source,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'couple_id,vendor_id,category', ignoreDuplicates: true });
+    }, { onConflict: 'couple_id,vendor_id', ignoreDuplicates: true });
 
   if (error) console.error('[engagements] mint error:', error.message);
   return !error;
@@ -146,7 +169,9 @@ async function recordEnquiry({ supabase, coupleId, vendorId, category, enquiryId
   // vocabularies meet HERE, at the one door that owns both words.
   await mint({ supabase, coupleId, vendorId, category, status: 'enquiry', source: 'discover_enquiry' });
 
-  const patch = { updated_at: new Date().toISOString() };
+  // The category REFRESH rides the same statement that stamps the refs — one
+  // write, so the column cannot drift from the vendor between two round trips.
+  const patch = { updated_at: new Date().toISOString(), category: normaliseCategory(category) };
   if (enquiryId) patch.enquiry_id = enquiryId;
   if (leadId)    patch.lead_id    = leadId;
 
@@ -154,8 +179,7 @@ async function recordEnquiry({ supabase, coupleId, vendorId, category, enquiryId
     .from('engagements')
     .update(patch)
     .eq('couple_id', coupleId)
-    .eq('vendor_id', vendorId)
-    .eq('category', normaliseCategory(category));
+    .eq('vendor_id', vendorId);
 
   if (error) {
     console.error('[engagements] recordEnquiry stamp error:', error.message);
@@ -178,8 +202,25 @@ async function recordEnquiry({ supabase, coupleId, vendorId, category, enquiryId
 // The status advance is a SEPARATE statement with a `.in()` guard, so it is
 // monotonic at the database. If she was already 'completed', 'booked' is not an
 // advance and this write correctly moves nothing.
-async function recordBooking({ supabase, coupleId, vendorId, category, bookingId, source }) {
+//
+// ── THIS WRITER RESOLVES THE CATEGORY ITSELF, AND TAKES NONE (R-35.32) ──────
+// It deliberately does NOT accept a `category` argument. The booking door has
+// one to hand — `couple_bookings.category`, the category SHE chose when she
+// filed the booking — and passing it would put a second meaning into a column
+// the enquiry door fills from the VENDOR. Two meanings in one column is the
+// disease this file exists to prevent, so the resolution lives here, once.
+// (The enquiry door is asymmetric on purpose: it already holds the live vendor
+// row it just read, so it passes that category rather than paying for a second
+// round trip to learn what it already knows.)
+async function recordBooking({ supabase, coupleId, vendorId, bookingId, source }) {
   if (!supabase || !coupleId || !vendorId) return false;
+
+  const { data: v, error: vErr } = await supabase
+    .from('vendors').select('category').eq('id', vendorId).maybeSingle();
+  if (vErr) console.error('[engagements] recordBooking vendor read error:', vErr.message);
+  // No vendor row, or a vendor with no category set: normaliseCategory's own
+  // default answers 'other'. The relationship is still real and still recorded.
+  const category = v && v.category;
 
   await mint({
     supabase, coupleId, vendorId, category,
@@ -192,20 +233,18 @@ async function recordBooking({ supabase, coupleId, vendorId, category, bookingId
   if (bookingId) {
     const { error: refErr } = await supabase
       .from('engagements')
-      .update({ couple_booking_id: bookingId, updated_at: now })
+      .update({ couple_booking_id: bookingId, updated_at: now, category: normaliseCategory(category) })
       .eq('couple_id', coupleId)
       .eq('vendor_id', vendorId)
-      .eq('category', normaliseCategory(category))
       .is('couple_booking_id', null);
     if (refErr) console.error('[engagements] recordBooking ref error:', refErr.message);
   }
 
   const { error: stErr } = await supabase
     .from('engagements')
-    .update({ status: 'booked', updated_at: now })
+    .update({ status: 'booked', updated_at: now, category: normaliseCategory(category) })
     .eq('couple_id', coupleId)
     .eq('vendor_id', vendorId)
-    .eq('category', normaliseCategory(category))
     .in('status', statusesBelow('booked'));
 
   if (stErr) {

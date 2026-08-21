@@ -50,6 +50,12 @@
 //
 // When a vendor IS supplied, the engagement is minted through its one home,
 // src/lib/engagements.js. This file never touches the `engagements` table.
+//
+// ── AND IT DOES NOT HAND OVER A CATEGORY (R-35.32) ─────────────────────────
+// `couple_bookings.category` is the category SHE chose for her booking. The
+// engagement's category tracks THE VENDOR. Those are different facts and this
+// door is not the place to reconcile them, so `recordBooking` resolves the
+// vendor's own category itself and this file passes none.
 
 'use strict';
 
@@ -175,7 +181,6 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
         supabase,
         coupleId:  couple_id,
         vendorId:  resolvedVendorId,
-        category:  data.category,
         bookingId: data.id,
         source:    'direct',
       });
@@ -288,7 +293,6 @@ router.patch('/:bookingId', asyncHandler(async (req, res) => {
         supabase,
         coupleId:  couple_id,
         vendorId:  data.vendor_id,
-        category:  data.category,
         bookingId: data.id,
         source:    'direct',
       });
