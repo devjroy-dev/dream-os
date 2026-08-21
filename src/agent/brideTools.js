@@ -1,5 +1,13 @@
 // brideTools.js — bride agent tool schemas
 //
+// R-35.26 (F-15.10) — BYTE-SCOPED LIFT. The three booking `category` enums
+// (add_booking, list_bookings, update_booking) each carried the pre-0123 eleven
+// as their own literal. They now read `src/agent/categories.js`, the one home,
+// which is the same list `couple_bookings_category_check` carries after
+// migration 0126. Nothing else in this file moved under that lift. Offering the
+// model a token the runtime then refuses is a silent tool failure rather than an
+// error, which is exactly why these travelled with the Set in brideEngine.js.
+//
 // Mirrors src/agent/tools.js shape: this file exports ONLY the schemas
 // that get sent to the model. The actual tool executors live as switch-case
 // branches inside src/agent/brideEngine.js (mirroring how engine.js handles
@@ -14,6 +22,8 @@
 // an image or a Pinterest/Instagram link via WhatsApp — handled in brideIndex.js
 // before the agent runs. The agent receives a synthesized context message
 // ("we just saved this to Muse as save X") and composes a natural reply.
+
+const { VENDOR_CATEGORIES } = require('./categories'); // R-35.26 — the one home
 
 const BRIDE_TOOLS = [
   {
@@ -293,7 +303,7 @@ const BRIDE_TOOLS = [
         },
         category: {
           type: 'string',
-          enum: ['photographer', 'videographer', 'mua', 'designer', 'venue', 'caterer', 'decor', 'florist', 'music', 'planner', 'other'],
+          enum: VENDOR_CATEGORIES,
           description: 'Required. Vendor category. If she did not specify, ASK her before calling this tool — do not guess.',
         },
         amount_total: {
@@ -324,7 +334,7 @@ const BRIDE_TOOLS = [
       properties: {
         category: {
           type: 'string',
-          enum: ['photographer', 'videographer', 'mua', 'designer', 'venue', 'caterer', 'decor', 'florist', 'music', 'planner', 'other'],
+          enum: VENDOR_CATEGORIES,
           description: 'Optional. Filter to one category.',
         },
         state: {
@@ -360,7 +370,7 @@ const BRIDE_TOOLS = [
         },
         category: {
           type: 'string',
-          enum: ['photographer', 'videographer', 'mua', 'designer', 'venue', 'caterer', 'decor', 'florist', 'music', 'planner', 'other'],
+          enum: VENDOR_CATEGORIES,
           description: 'Optional. New category.',
         },
         amount_total: {

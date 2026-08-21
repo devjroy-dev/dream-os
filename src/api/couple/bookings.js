@@ -3,6 +3,30 @@
 // Returns vendor bookings (couple_bookings table).
 // Query: ?state=booked|advance_paid|paid|all  ?limit=50
 // Requires couple auth (applied in core.js).
+//
+// ── ONE VOCABULARY, ONE HOME (F-15.10 · R-35.26) ────────────────────────────
+// `VENDOR_CATEGORIES` is imported from `src/agent/categories.js`. It is NOT
+// re-declared here. It used to be: a Set of the pre-0123 eleven sat inline in
+// the PATCH handler and had drifted out of agreement with the canonical list —
+// only `designer`, `decor` and `other` still agreed. Migration 0126 moved
+// `couple_bookings_category_check` to the canonical eleven; this file reads that
+// same list rather than restating it, so the next edit to the taxonomy cannot
+// leave this door behind. `src/api/couple/envelopes.js:50` is the committed
+// shape being followed.
+//
+// ── THE POST DOOR VALIDATES CATEGORY (F-15.23 · R-35.27a) ───────────────────
+// It did not. `category: category || 'other'` handed the raw body straight to
+// the insert, and the only thing refusing a bad token was the DB CHECK — which
+// surfaces to her as a 500 "Could not create booking." A door that refuses by
+// crashing is not a door. The guard below is the same guard PATCH has always
+// had, on the path that actually creates rows.
+//
+// ── AND ITS STATE LIST AGREES WITH THE CONSTRAINT (F-15.25 · R-35.27b) ──────
+// POST's `VALID_STATES` admitted `considering`, `shortlisted` and
+// `in_discussion` — three tokens `couple_bookings_state_check` has never
+// accepted — while THIS FILE's own PATCH comment already ruled them rejected.
+// Sending one produced a 500. This is obedience to ink already committed a few
+// lines below, not new policy.
 
 'use strict';
 
@@ -10,6 +34,11 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
+const { VENDOR_CATEGORIES } = require('../../agent/categories');
+
+// The DB CHECK constraint allows exactly these three states.
+// considering/shortlisted/in_discussion are NOT in the constraint — reject them.
+const ALLOWED_STATES = new Set(['booked', 'advance_paid', 'paid']);
 
 router.get('/:coupleId', asyncHandler(async (req, res) => {
   const supabase    = req.app.locals.supabase;
@@ -53,8 +82,24 @@ router.post('/:coupleId', asyncHandler(async (req, res) => {
   if (!vendor_name || typeof vendor_name !== 'string' || !vendor_name.trim())
     return errRes(res, 400, 'vendor_name required.');
 
-  const VALID_STATES = ['considering', 'shortlisted', 'in_discussion', 'booked', 'advance_paid', 'paid'];
-  const resolvedState = VALID_STATES.includes(state) ? state : 'booked';
+  // R-35.27a. `category` stays OPTIONAL — omitting it still means `other`, which
+  // is the founder's own fold-everything-else token and survives 0126. But a
+  // token that was SENT and is not one of the eleven is refused HERE, with a
+  // 400 that names the fault, instead of reaching Postgres and coming back as a
+  // 500 that blames the server for her typo.
+  if (category !== undefined && category !== null && category !== '' &&
+      !VENDOR_CATEGORIES.includes(category)) {
+    return errRes(res, 400, 'Invalid category.');
+  }
+
+  // R-35.27b. An explicitly-sent bad state is refused, not silently coerced —
+  // quietly turning her `shortlisted` into `booked` would be a lie in her own
+  // row. An ABSENT state still defaults to `booked`, which is what every current
+  // caller relies on (the pwa's create body sends no state at all).
+  if (state !== undefined && state !== null && state !== '' && !ALLOWED_STATES.has(state)) {
+    return errRes(res, 400, 'state must be booked, advance_paid, or paid.');
+  }
+  const resolvedState = ALLOWED_STATES.has(state) ? state : 'booked';
 
   const { data, error } = await supabase
     .from('couple_bookings')
@@ -84,13 +129,9 @@ router.patch('/:bookingId', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { couple_id } = req.coupleUser;
 
-  const ALLOWED_CATEGORIES = new Set([
-    'photographer','videographer','mua','designer',
-    'venue','caterer','decor','florist','music','planner','other',
-  ]);
-  // DB CHECK constraint only allows these three states.
-  // considering/shortlisted/in_discussion are NOT in the constraint — reject them.
-  const ALLOWED_STATES = new Set(['booked', 'advance_paid', 'paid']);
+  // R-35.26. The inline allowlist that stood here is gone; `VENDOR_CATEGORIES`
+  // at module scope is the one home. `ALLOWED_STATES` moved to module scope in
+  // the same edit so POST and PATCH cannot disagree about states again.
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   const { bookingId } = req.params;
@@ -105,7 +146,7 @@ router.patch('/:bookingId', asyncHandler(async (req, res) => {
     updates.vendor_name = vendor_name.trim().slice(0, 200);
   }
   if (category !== undefined) {
-    if (!ALLOWED_CATEGORIES.has(category)) return errRes(res, 400, 'Invalid category.');
+    if (!VENDOR_CATEGORIES.includes(category)) return errRes(res, 400, 'Invalid category.');
     updates.category = category;
   }
   // -1 sentinel clears integer fields (schema CHECK enforces >= 0, so -1 is safe as clear signal)

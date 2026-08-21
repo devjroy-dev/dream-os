@@ -40,6 +40,7 @@ const { STATIC_SYSTEM_PROMPT, buildDynamicContext } = require('./brideSystemProm
 const { MIRA_REGISTER } = require('./miraSoul');
 const { nextBrideOnboardingMessage } = require('./brideOnboarding');
 const { BRIDE_TOOLS } = require('./brideTools');
+const { VENDOR_CATEGORIES } = require('./categories'); // R-35.26 — the one home
 const { MODEL_HAIKU, MODEL_SONNET, calculateCost, COMPLEXITY } = require('./models');
 const { groundedSearch } = require('../lib/groundedSearch');
 const { appendWitness } = require('../lib/witnessLine');
@@ -1203,11 +1204,12 @@ async function execDeleteEvent({ input, couple, supabase }) {
 // rejected. -1 is impossible for a real rupee amount (CHECK constraint
 // enforces >= 0), so it's safe as a sentinel.
 
-const ALLOWED_BOOKING_CATEGORIES = new Set([
-  'photographer', 'videographer', 'mua', 'designer',
-  'venue', 'caterer', 'decor', 'florist', 'music',
-  'planner', 'other',
-]);
+// R-35.26 (F-15.10) — BYTE-SCOPED LIFT. This literal was the pre-0123 eleven and
+// is now a read of the one home, `src/agent/categories.js`. Nothing else in this
+// file moved under that lift. The tool ENUMS in `src/agent/brideTools.js` were
+// re-pointed in the same edit: moving this Set alone would leave Mira offered
+// tokens she is then refused at runtime — a silent tool failure, not an error.
+const ALLOWED_BOOKING_CATEGORIES = new Set(VENDOR_CATEGORIES);
 
 const ALLOWED_BOOKING_STATES = new Set(['booked', 'advance_paid', 'paid']);
 
