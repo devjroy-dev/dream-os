@@ -55,28 +55,48 @@ const { bandCeiling, normalizeFunctions } = require('../../lib/discover/enquiryF
 const { resolveCoupleIfPresent } = require('../../lib/resolveCoupleIfPresent'); // F-07.62's cure
 const { recordEnquiry } = require('../../lib/engagements');                     // TDW_16 P1: the spine's one home
 
-// ── F-07.50 CURED · THE {{3}} LINK POINTED AT A 404 ──────────────────────────
-// THIS READ: 'https://thedreamwedding.in/vendor/leads' — a path I authored from
-// the shape of the sentence, never from the route table. IT DOES NOT EXIST.
-// Derived by command against dreamos-pwa @ 5c16261: `find app/vendor -name
-// page.tsx` lists /vendor/discover/leads and NO /vendor/leads; there is no
-// rewrite or redirect in next.config.ts or middleware.ts; and the app's own
-// BottomNav.tsx:104 links Leads to '/vendor/discover/leads'.
+// ── F-07.50's CURE, CARRIED FORWARD · THE LINK NOW LANDS WHERE THE LEAD IS ───
 //
-// SEVERITY: this value ships inside tdw_enquiry_alert_vendor, which Meta
-// APPROVED on 2026-07-31 and which sendWa now dispatches. Every out-of-window
-// vendor would have received a real message containing a dead link — the
-// costume class delivered by an approved template, which is worse than the
-// silence F-07.40 was minted to end.
+// THE ORIGINAL DEFECT (F-07.50, cured 07 P5): this read
+// 'https://thedreamwedding.in/vendor/leads' — a path authored from the shape of
+// the sentence, never from the route table. It did not exist. The value ships
+// inside tdw_enquiry_alert_vendor, Meta-approved 2026-07-31, so every
+// out-of-window vendor received a real message containing a dead link.
+//
+// WHY IT MOVES AGAIN NOW (F-16.21, ruled R-35.36). The cure pointed at
+// /vendor/discover/leads — a live route, so the 404 was genuinely fixed. But
+// that page filters `leads.source === 'discover'`, and `createLead` DEDUPES on
+// (vendor_id, phone) and returns the existing row untouched. A bride enquiring
+// from a phone the vendor already knows therefore produces no row that filter
+// can see. The alert announced an enquiry and linked to a page that rendered
+// "No TDW leads yet." — the estate contradicting itself inside one message.
+// Witnessed in production 2026-08-21 on the founder's own vendor device.
+//
+// THE DESTINATION IS NOW BUSINESS LEADS, and this is permanent, not a stopgap:
+// the founder ruled the storefront is profile and portfolio, not leads. That
+// page filters on nothing but vendor_id and deleted_at, so it holds every lead
+// however it arrived. /vendor/discover/leads is retired to a redirect stub in
+// the same delivery — alerts already sitting in vendors' chat histories carry
+// the old URL, and a founding partner tapping last week's message into a 404
+// would be F-16.21's wound reopened by its own cure.
 //
 // THE FIX IS CODE, NOT META. {{3}} is a template VARIABLE, so the approved body
 // is untouched and no refiling is needed; only the value passed here changes.
 //
-// ONE HOME, and it is checked. The bench pins this constant against the pwa's
-// actual route table (cross-repo, skipped-with-reason where the sibling tree is
-// absent) so the next person to move that page reddens a cell instead of
-// shipping a 404 to a vendor's phone.
-const VENDOR_LEADS_URL = 'https://thedreamwedding.in/vendor/discover/leads';
+// ── A CORRECTION TO THIS COMMENT'S OWN EVIDENCE (labelled, R-35.36) ──────────
+// The paragraph this replaces cited "the app's own BottomNav.tsx:104 links
+// Leads to '/vendor/discover/leads'" as part of its derivation. THAT LINKER NO
+// LONGER EXISTS: BottomNav.tsx at dreamos-pwa 8ebbe9e lists Home · Calendar ·
+// Business · Storefront · More, with no Leads door at all. The conclusion held;
+// its evidence had decayed. Corrected here rather than left to rot, because a
+// comment whose citation is false teaches the next reader to distrust the ones
+// that are true.
+//
+// ONE HOME, and it is checked. scripts/b07_p5_bench.js §12.1-§12.3 pins this
+// constant against the pwa's actual route table (cross-repo, skipped-with-reason
+// where the sibling tree is absent) so the next person to move that page reddens
+// a cell instead of shipping a 404 to a vendor's phone.
+const VENDOR_LEADS_URL = 'https://thedreamwedding.in/vendor/list/leads';
 
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;

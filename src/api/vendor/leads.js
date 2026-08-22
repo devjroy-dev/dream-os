@@ -60,6 +60,7 @@ function leadPhoneKey(p) {
 // the write-time record, but placeholder-stuffed rows (city="Unknown",
 // phone=0000000000 — the Keka case) chip TODAY instead of reading complete.
 const { leadMissing } = require('../../engine/dist/core/draftContracts');
+const { engagedLeadIds } = require('../../lib/engagements'); // M-LEADS-TRUTH: the badge's batched read, one home
 
 function leadDraftWire(l) {
   const missing = leadMissing(l);
@@ -151,6 +152,27 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     return res.status(500).json({ ok: false, error: 'Lookup failed.' });
   }
 
+  // ── M-LEADS-TRUTH · THE TDW BADGE (R-35.35) ────────────────────────────────
+  // ONE query for the whole page, after the rows are known and before they are
+  // mapped. Not one per row: `.in()` over the ids this page already holds,
+  // scoped to this vendor, indexed by 0128.
+  //
+  // THE F-04.10 LAW APPLIES HERE, AND IT IS THE REASON THIS COMMENT EXISTS.
+  // That finding was born on THIS handler: the SELECT carried `notes`, the
+  // mapper dropped it, and F-04.7's read-row could only ever render an em-dash —
+  // caught by the founder's phone, not the bench. The law it left behind is
+  // quoted at `notes:` below: THE HANDLER MAPS, IT NEVER PASSES THROUGH. So the
+  // badge is not finished when this read succeeds; it is finished when `tdw:`
+  // appears in the object below, and the bench asserts BOTH halves.
+  //
+  // `created_at` needs no such work — it has been in the SELECT and in the
+  // mapper since TDW_04. The arrival date is presentation only.
+  //
+  // DECLARED GAP (rides the handover, R-35.34): pre-P1 engagements carry a NULL
+  // lead_id and therefore do not badge until their next enquiry refreshes them.
+  // Linkage-backed means linkage-backed. This is stated, not hidden.
+  const tdwIds = await engagedLeadIds(supabase, vendor.id, (rows || []).map(r => r.id));
+
   const leads = (rows || []).map(l => ({
     id:                     l.id,
     name:                   l.name,
@@ -169,6 +191,9 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
                            // law ("read the handler, never assume the response shape"), broken by
                            // the executor and caught by the founder's phone. Logged in FINDINGS.
     created_at:   l.created_at,
+    tdw:          tdwIds.has(l.id), // M-LEADS-TRUTH: linkage-backed, read through the
+                                    // engagements home — NEVER off leads.source, which
+                                    // the createLead dedupe can never set (F-16.21).
     draft:        leadDraftWire(l), // TDW_02 P3 wishbone (undefined when complete)
   }));
 

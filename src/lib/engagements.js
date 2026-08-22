@@ -254,8 +254,50 @@ async function recordBooking({ supabase, coupleId, vendorId, bookingId, source }
   return true;
 }
 
+// ── THE SECOND READER (R-35.35) — BATCHED, NEVER PER-ROW ────────────────────
+// The Business Leads surface asks a question `getEngagement` structurally
+// cannot answer. That resolver is PAIR-KEYED — (couple_id, vendor_id) — and
+// Business Leads holds `leads` rows, which carry no couple_id. The linkage runs
+// the other way: engagements.lead_id → leads.id. So "is this lead
+// linkage-backed?" needed its own shape, and this is it.
+//
+// IT LIVES HERE BECAUSE THE GREP GATE WALKS FILES, NOT FUNCTION NAMES
+// (scripts/b16_p1_engagements_bench.js §2.2). One home still owns every read of
+// public.engagements; a handler reaching for `.from('engagements')` still reddens.
+//
+// ONE QUERY PER PAGE. Not one per row. The per-row shape would be N round trips
+// for a page of N leads and would grow with the vendor's inbox; this is a single
+// `.in()` over the ids the handler already has, scoped to the one vendor.
+// 0128 gives it (vendor_id, lead_id) WHERE lead_id IS NOT NULL.
+//
+// FAIL-SOFT BY DESIGN: on any error it returns an EMPTY set, so the badge
+// simply does not render. A lead row that loses its badge is a smaller harm
+// than a Leads tab that 500s — and F-16.21's whole wound was a vendor being
+// told nothing was there.
+async function engagedLeadIds(supabase, vendorId, leadIds) {
+  const out = new Set();
+  if (!supabase || !vendorId || !Array.isArray(leadIds) || leadIds.length === 0) return out;
+
+  const ids = leadIds.filter(Boolean);
+  if (ids.length === 0) return out;
+
+  const { data, error } = await supabase
+    .from('engagements')
+    .select('lead_id')
+    .eq('vendor_id', vendorId)
+    .in('lead_id', ids);
+
+  if (error) {
+    console.error('[engagements] engagedLeadIds error:', error.message);
+    return out;
+  }
+  for (const r of data || []) if (r && r.lead_id) out.add(r.lead_id);
+  return out;
+}
+
 module.exports = {
   getEngagement,
+  engagedLeadIds,
   recordEnquiry,
   recordBooking,
   STATUS_RANK,

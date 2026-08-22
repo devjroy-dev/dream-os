@@ -41,6 +41,25 @@
 //   Cell count 29 -> 34, READ OFF THE RUN and not computed in my head: six
 //   added, one retired, three rewritten in place.
 //
+// ── AMENDED AGAIN AT M-LEADS-TRUTH (R-35.35), RETIRE-WITH-THE-READER ───────
+// The one home gained a SECOND reader — `engagedLeadIds` — because the Business
+// Leads surface holds `leads` rows and no couple_id, so the pair resolver could
+// not answer its question. The grep gate is unchanged and intact (§2.2 walks
+// FILES), but three new facts want cells:
+//   NEW: 2.7 (the batched reader is exported from the one home)
+//        2.8 (ONE query per page, never per-row — the shape, not the count)
+//        4.8 (the handler wires it AND maps it — the F-04.10 law, both halves)
+//   Cell count 34 -> 37, read off the run.
+//
+// NEW MUTATION ARMS:
+//   M23 engagements.js: delete the engagedLeadIds export      -> 2.7
+//   M24 engagements.js: loop getEngagement per id instead of
+//       one .in() (the N+1 shape)                             -> 2.8
+//   M25 leads.js: call the reader but DROP `tdw:` from the
+//       mapper — F-04.10's exact defect, reproduced            -> 4.8
+//   M26 leads.js: badge off `l.source === 'discover'` instead
+//       of the linkage (F-16.21's disease restored)            -> 4.8
+//
 // ── BOTH-WAYS (production mutation, comments stripped) ──────────────────────
 // Restore any of these on the CURED tree and the named cells MUST red:
 //   M1  0090: drop `NOT NULL` from vendor_id                    -> 1.3
@@ -247,6 +266,17 @@ const refreshes   = (eng.match(/category:\s*normaliseCategory\(category\)/g) || 
 ok(patchWrites > 0 && refreshes === patchWrites && !/category:\s*category\b/.test(eng),
    `2.6 every write refreshes the tracked category, none raw (${refreshes} refreshes / ${patchWrites} writes)`);
 
+ok(typeof engagements.engagedLeadIds === 'function',
+   '2.7 the batched lead reader is exported from the one home (R-35.35)');
+
+// THE SHAPE, NOT THE COUNT. A per-row reader would be N round trips for a page
+// of N leads. This asserts the batched predicate exists and that no per-row
+// resolver call sits inside a loop in the handler.
+ok(/\.in\('lead_id',\s*ids\)/.test(eng) &&
+   !/for\s*\([^)]*\)\s*\{[^}]*getEngagement\(/.test(bok) &&
+   !/\.map\([^)]*getEngagement\(/.test(read('src/api/vendor/leads.js')),
+   '2.8 the badge read is ONE batched query per page — never one per row');
+
 // ═══ 3 · MONOTONICITY, ENFORCED AT THE DATABASE ══════════════════════════════
 section('3 · the relationship never walks backward (fork 5)');
 
@@ -283,6 +313,20 @@ ok(/vendor_id:\s*resolvedVendorId/.test(bok),
 
 ok(/updates\.vendor_id\s*=\s*v\.id/.test(bok),
    '4.5 PATCH can attach a vendor to a booking made before the spine existed');
+
+// ── THE F-04.10 LAW, BOTH HALVES (this bench's reason for existing here) ────
+// F-04.10 was born on THIS handler: the SELECT carried `notes`, the mapper
+// dropped it, and the read-row could only render an em-dash — caught by the
+// founder's phone, not the bench. So the badge is asserted at BOTH ends: the
+// read must run, AND `tdw:` must appear in the response object. Either half
+// alone is the same defect wearing the other half's uniform.
+// And it must be read off the LINKAGE, never off `leads.source` — the column
+// createLead's dedupe can never set, which is the whole of F-16.21.
+const vlead = strip(read('src/api/vendor/leads.js'));
+ok(/engagedLeadIds\(supabase,\s*vendor\.id/.test(vlead) &&
+   /tdw:\s*tdwIds\.has\(l\.id\)/.test(vlead) &&
+   !/source\s*===\s*'discover'/.test(vlead),
+   '4.8 the Leads handler both READS the linkage and MAPS it, and never badges off leads.source');
 
 // R-35.32: couple_bookings.category is HER choice; the engagement's tracks the
 // VENDOR. The door must not hand one over as if they were the same fact.

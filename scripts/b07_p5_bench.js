@@ -1065,14 +1065,26 @@ asyncQueue.push(
 );
 
 // ═════════════════════════════════════════════════════════════════════════════
+// ── §12 RE-FOUNDED AT M-LEADS-TRUTH (R-35.36), NOT DELETED ──────────────────
+// F-07.50's cure was: the template's {{3}} must resolve to a REAL route, pinned
+// cross-repo so nobody moves the page and ships a 404 to a vendor's phone.
+// R-35.36 moved the destination (F-16.21: the old page filters on
+// `leads.source === 'discover'`, which createLead's dedupe can never set, so
+// the alert linked to a page that denied the enquiry it announced).
+// THE CURE TRAVELS WITH THE DESTINATION. Deleting these cells would retire
+// F-07.50's protection along with F-07.50's URL — and the protection is not
+// what changed. §12.3's tripwire now guards the OLD path, and it guards it
+// differently: the page must still RESOLVE (a redirect stub), because alerts
+// already delivered carry that URL in vendors' chat histories forever.
+H('§12 — F-07.50 carried forward: the approved link resolves, and the retired one still does');
 H('§12 — F-07.50: the link inside the approved template resolves');
 
 t('§12.1 the Leads URL lives at ONE named home, not inline in the vars array', () => {
   const src = code(read('src/api/couple/enquire.js'));
-  assert.ok(/const VENDOR_LEADS_URL = 'https:\/\/thedreamwedding\.in\/vendor\/discover\/leads';/.test(src),
-    'the Leads URL constant is missing or has drifted');
-  assert.ok(!/'https:\/\/thedreamwedding\.in\/vendor\/leads'/.test(src),
-    'the DEAD /vendor/leads path is still present — it 404s and ships in an approved template');
+  assert.ok(/const VENDOR_LEADS_URL = 'https:\/\/thedreamwedding\.in\/vendor\/list\/leads';/.test(src),
+    'the Leads URL constant is missing or has drifted off Business Leads');
+  assert.ok(!/'https:\/\/thedreamwedding\.in\/vendor\/discover\/leads'/.test(src),
+    'the alert still points at the retired storefront dashboard (F-16.21)');
 });
 
 // Cross-repo, b07_p1_bench.js:349 convention: sibling tree or a named skip.
@@ -1081,28 +1093,58 @@ if (!PWA_VISIBLE) {
   console.log('       cells resolve the template link against the real route table.');
 } else {
   t('§12.2 that URL resolves to a REAL Next route (a page.tsx exists there)', () => {
-    assert.ok(fs.existsSync(path.join(PWA_ROOT, 'app/vendor/discover/leads/page.tsx')),
-      'the Leads route moved — the approved template now points at a 404');
+    assert.ok(fs.existsSync(path.join(PWA_ROOT, 'app/vendor/list/[slice]/page.tsx')),
+      'the Business Leads route moved — the approved template now points at a 404');
+    const slicePage = fs.readFileSync(path.join(PWA_ROOT, 'app/vendor/list/[slice]/page.tsx'), 'utf8');
+    assert.ok(/'leads'/.test(slicePage),
+      "the /vendor/list route no longer accepts the 'leads' slice");
   });
 
-  t('§12.3 the dead path has NOT quietly acquired a route (this cell is the tripwire)', () => {
-    // If /vendor/leads is ever created, this cell reddens and a human decides
-    // which of the two is canonical — rather than two Leads pages drifting apart.
-    assert.ok(!fs.existsSync(path.join(PWA_ROOT, 'app/vendor/leads/page.tsx')),
-      '/vendor/leads now exists too — decide which is canonical before shipping both');
+  t('§12.3 the RETIRED path still resolves — historical alerts must not 404', () => {
+    // R-35.36's reason, pinned: every alert already sent carries
+    // /vendor/discover/leads. Deleting the route outright would 404 a founding
+    // partner tapping last week's message — F-16.21's wound reopened by its own
+    // cure. The stub must exist, and it must be a stub: if the full dashboard
+    // ever returns here, two Leads pages drift again and §12.4 catches it.
+    assert.ok(fs.existsSync(path.join(PWA_ROOT, 'app/vendor/discover/leads/page.tsx')),
+      'the retired Leads route is gone entirely — historical alerts now 404');
+    const stub = fs.readFileSync(path.join(PWA_ROOT, 'app/vendor/discover/leads/page.tsx'), 'utf8');
+    assert.ok(/\/vendor\/list\/leads/.test(stub),
+      'the retired route no longer forwards to Business Leads');
+  });
+
+  t('§12.4 the retired page is a STUB, not a second Leads dashboard', () => {
+    // COMMENTS STRIPPED FIRST, and that is not a convenience. The first cut of
+    // this cell read the file raw and went RED on the stub's OWN header, which
+    // quotes the very predicate it forbids in order to explain why the page
+    // died. A cell that cannot tell an explanation from an implementation is
+    // the mirror of the anchor-matching-a-comment defect this estate already
+    // names — same blindness, opposite sign. `code()` is the house stripper.
+    const stub = code(fs.readFileSync(path.join(PWA_ROOT, 'app/vendor/discover/leads/page.tsx'), 'utf8'));
+    assert.ok(!/fetchLeads|useLeadsData/.test(stub),
+      'the retired page has grown data logic again — two Leads surfaces will drift');
+    assert.ok(/router\.replace/.test(stub),
+      'the retired page no longer forwards — it is a dead end, not a stub');
+  });
+
+  t('§12.5 the storefront no longer offers a Leads tile', () => {
+    const sf = fs.readFileSync(path.join(PWA_ROOT, 'app/vendor/storefront/page.tsx'), 'utf8');
+    assert.ok(!/href: '\/vendor\/discover\/leads'/.test(sf),
+      'the storefront still links Leads — the founder ruled it profile and portfolio, not leads');
   });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════════════
 // §13 — F-07.54: THE DEMO SPECIES CARRIES NO ROUTING TOKEN
 // The disease is an UNRESOLVABLE token on TDW's own line, never a wa.me link as
 // such. vendorInbound resolves `vendors.routing_handle` and never reads
 // demo_vendors, so a demo `ig_handle` shipped as a token misses Step B, skips
 // Step B.5 (guard: !startsWith('TDW-')) and lands in Step C — dead end at zero
 // threads, MISROUTE into an unrelated vendor at one.
-// ═══════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+
+
+// ════════════════════════════════════════════════════════════════════════════
 H('§13 — F-07.54: the demo species carries no routing token');
 
 // ── LABELED AMENDMENT · TDW_08 P3 · THE SPECIES MOVED FILE; THE MECHANISM DID NOT ──
