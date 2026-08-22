@@ -265,6 +265,31 @@ async function recordBooking({ supabase, coupleId, vendorId, bookingId, source }
 // (scripts/b16_p1_engagements_bench.js §2.2). One home still owns every read of
 // public.engagements; a handler reaching for `.from('engagements')` still reddens.
 //
+// ── WIDENED AT R2 (Set → Map): IT NOW CARRIES THE CLOCK, NOT JUST THE FACT ──
+// The badge answered "is this lead linkage-backed?". The sheet needs a second
+// answer on the same row — WHEN the enquiry came — because F-16.22 proved
+// `leads.created_at` is the lead's BIRTHDAY, not the enquiry's arrival. On the
+// founder's own row those are 5 Aug and 21 Aug: the lead was born from a
+// WhatsApp arrival and createLead's phone-dedupe returned it untouched when
+// Sarah enquired sixteen days later. The lead row cannot know that. The SPINE
+// can, because recordEnquiry moves `engagements.updated_at` on every enquiry —
+// witnessed three times on one row during the P1 walk (16:41:57 backfill,
+// 18:03:02 her re-enquiry, 18:12:47 the booking).
+//
+// SAME QUERY. One more column on a read that was already running, so the page
+// still costs exactly one extra round trip. It does cost the Index Only Scan:
+// engagements_lead_idx covers (vendor_id, lead_id), so `updated_at` forces a
+// heap fetch. Stated rather than discovered later — the shape stays O(1)
+// queries, which is what R-35.35 ruled; only the per-row cost moves.
+//
+// ── AND IT IS RENAMED, DELIBERATELY (F-16.7's lesson, applied to my own byte) ─
+// `engagedLeadIds` returning a Map of ids-to-timestamps would be a name that
+// lies about its contents. This block already paid for one of those:
+// `couple_enquiries.vendor_lead_id` holds an ENGINE BINDER id, and the cost of
+// that name was a whole finding and a near-miss backfill that would have put
+// binder uuids behind a foreign key pointing at public.leads. One home, one
+// caller, both in this delivery — the rename is free here and expensive later.
+//
 // ONE QUERY PER PAGE. Not one per row. The per-row shape would be N round trips
 // for a page of N leads and would grow with the vendor's inbox; this is a single
 // `.in()` over the ids the handler already has, scoped to the one vendor.
@@ -274,8 +299,8 @@ async function recordBooking({ supabase, coupleId, vendorId, bookingId, source }
 // simply does not render. A lead row that loses its badge is a smaller harm
 // than a Leads tab that 500s — and F-16.21's whole wound was a vendor being
 // told nothing was there.
-async function engagedLeadIds(supabase, vendorId, leadIds) {
-  const out = new Set();
+async function engagedLeadStamps(supabase, vendorId, leadIds) {
+  const out = new Map();
   if (!supabase || !vendorId || !Array.isArray(leadIds) || leadIds.length === 0) return out;
 
   const ids = leadIds.filter(Boolean);
@@ -283,21 +308,25 @@ async function engagedLeadIds(supabase, vendorId, leadIds) {
 
   const { data, error } = await supabase
     .from('engagements')
-    .select('lead_id')
+    .select('lead_id, updated_at')
     .eq('vendor_id', vendorId)
     .in('lead_id', ids);
 
   if (error) {
-    console.error('[engagements] engagedLeadIds error:', error.message);
+    console.error('[engagements] engagedLeadStamps error:', error.message);
     return out;
   }
-  for (const r of data || []) if (r && r.lead_id) out.add(r.lead_id);
+  // Presence in this Map IS the badge; the value is the clock. A row whose
+  // updated_at is somehow null still belongs in the Map — the relationship is
+  // real even if its timestamp is not, and dropping it would silently unbadge a
+  // linkage-backed lead.
+  for (const r of data || []) if (r && r.lead_id) out.set(r.lead_id, r.updated_at || null);
   return out;
 }
 
 module.exports = {
   getEngagement,
-  engagedLeadIds,
+  engagedLeadStamps,
   recordEnquiry,
   recordBooking,
   STATUS_RANK,

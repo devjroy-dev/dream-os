@@ -60,7 +60,7 @@ function leadPhoneKey(p) {
 // the write-time record, but placeholder-stuffed rows (city="Unknown",
 // phone=0000000000 — the Keka case) chip TODAY instead of reading complete.
 const { leadMissing } = require('../../engine/dist/core/draftContracts');
-const { engagedLeadIds } = require('../../lib/engagements'); // M-LEADS-TRUTH: the badge's batched read, one home
+const { engagedLeadStamps } = require('../../lib/engagements'); // M-LEADS-TRUTH: the badge's batched read, one home
 
 function leadDraftWire(l) {
   const missing = leadMissing(l);
@@ -171,7 +171,7 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   // DECLARED GAP (rides the handover, R-35.34): pre-P1 engagements carry a NULL
   // lead_id and therefore do not badge until their next enquiry refreshes them.
   // Linkage-backed means linkage-backed. This is stated, not hidden.
-  const tdwIds = await engagedLeadIds(supabase, vendor.id, (rows || []).map(r => r.id));
+  const tdwStamps = await engagedLeadStamps(supabase, vendor.id, (rows || []).map(r => r.id));
 
   const leads = (rows || []).map(l => ({
     id:                     l.id,
@@ -191,9 +191,17 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
                            // law ("read the handler, never assume the response shape"), broken by
                            // the executor and caught by the founder's phone. Logged in FINDINGS.
     created_at:   l.created_at,
-    tdw:          tdwIds.has(l.id), // M-LEADS-TRUTH: linkage-backed, read through the
-                                    // engagements home — NEVER off leads.source, which
-                                    // the createLead dedupe can never set (F-16.21).
+    tdw:          tdwStamps.has(l.id), // M-LEADS-TRUTH: linkage-backed, read through the
+                                       // engagements home — NEVER off leads.source, which
+                                       // the createLead dedupe can never set (F-16.21).
+    // R2 · F-16.22's cure on the wire. `created_at` above is when the LEAD was
+    // born; this is when the ENQUIRY came. On the founder's own row those are
+    // 5 Aug and 21 Aug, and only the second one is the event the vendor is
+    // being alerted about. Null on unbadged rows — the sheet gates on `tdw`,
+    // so an absent stamp renders nothing rather than an em-dash.
+    // F-04.10 BINDS THIS LINE: the read above is only half the work, and this
+    // mapper entry is the other half. That finding was born on this handler.
+    tdw_enquired_at: tdwStamps.get(l.id) || null,
     draft:        leadDraftWire(l), // TDW_02 P3 wishbone (undefined when complete)
   }));
 

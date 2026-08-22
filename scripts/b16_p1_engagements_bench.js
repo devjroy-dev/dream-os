@@ -60,6 +60,28 @@
 //   M26 leads.js: badge off `l.source === 'discover'` instead
 //       of the linkage (F-16.21's disease restored)            -> 4.8
 //
+// ── AMENDED AT R2 (Set → Map), RETIRE-WITH-THE-READER ────────────────────
+// The batched reader now carries the enquiry's clock as well as the fact
+// (F-16.22: `leads.created_at` is the LEAD's birthday, and on the founder's own
+// row that is 5 Aug against a 21 Aug enquiry). The export renamed with it —
+// `engagedLeadIds` returning a Map would be F-16.7's disease in my own byte.
+//   2.7  AMENDED — asserts the RENAMED export, and that the old name is gone
+//        from the whole tree (a stale caller is a crash, not a red cell).
+//   2.8  AMENDED — the batched predicate now selects two columns; the cell
+//        pins the SHAPE (one .in(), no per-row call), not the column list.
+//   4.8  AMENDED — F-04.10 now binds TWO mapper entries, `tdw:` and
+//        `tdw_enquired_at:`. Half a wire is the same defect as no wire.
+//   NEW: 2.9 (the Map carries the clock — select and set, both halves)
+//   Cell count 37 -> 38, read off the run.
+//
+// NEW MUTATION ARMS:
+//   M27 engagements.js: drop `updated_at` from the select        -> 2.9
+//   M28 engagements.js: `out.set(r.lead_id, true)` — a Map that
+//       carries the fact but not the clock                       -> 2.9
+//   M29 leads.js: drop `tdw_enquired_at:` from the mapper (the
+//       F-04.10 defect, on the NEW half this time)               -> 4.8
+//   M30 anywhere: restore the old export name                    -> 2.7
+//
 // ── BOTH-WAYS (production mutation, comments stripped) ──────────────────────
 // Restore any of these on the CURED tree and the named cells MUST red:
 //   M1  0090: drop `NOT NULL` from vendor_id                    -> 1.3
@@ -224,6 +246,7 @@ ok(typeof engagements.getEngagement === 'function' && engagements.getEngagement.
 // THE BENCH ENUMERATES ITS CONSUMERS ITSELF. It walks the tree; it does not
 // read a list someone wrote down, because a list someone wrote down is the
 // defect this gate exists to catch.
+function walkAll(dir, out = []) { return walk(dir, out); }
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
@@ -266,16 +289,35 @@ const refreshes   = (eng.match(/category:\s*normaliseCategory\(category\)/g) || 
 ok(patchWrites > 0 && refreshes === patchWrites && !/category:\s*category\b/.test(eng),
    `2.6 every write refreshes the tracked category, none raw (${refreshes} refreshes / ${patchWrites} writes)`);
 
-ok(typeof engagements.engagedLeadIds === 'function',
-   '2.7 the batched lead reader is exported from the one home (R-35.35)');
+// AMENDED AT R2. The old name is asserted ABSENT across the tree as well as the
+// new one present: a rename that leaves a caller behind is a runtime crash, and
+// a cell that only checks the new export would stay green through it.
+const treeHasOldName = walkAll(path.join(ROOT, 'src'))
+  .some(p => /\bengagedLeadIds\b/.test(strip(fs.readFileSync(p, 'utf8'))));
+// The first cut of this line matched `engagedLeadIds` only where a CALL or a
+// destructure would put it — followed by `(`, `,` or `}`. M30 restored the old
+// name as an ALIAS EXPORT (`engagedLeadIds: engagedLeadStamps`), where the next
+// character is a colon, and the cell stayed GREEN through a live resurrection of
+// the name it exists to bury. Widened to the bare identifier, anywhere in src,
+// comments stripped. A cell that only catches the shapes I thought of is a cell
+// that certifies my imagination, not the tree.
+ok(typeof engagements.engagedLeadStamps === 'function' && !treeHasOldName,
+   '2.7 the batched reader is exported under its true name, and no caller holds the old one');
 
 // THE SHAPE, NOT THE COUNT. A per-row reader would be N round trips for a page
 // of N leads. This asserts the batched predicate exists and that no per-row
 // resolver call sits inside a loop in the handler.
-ok(/\.in\('lead_id',\s*ids\)/.test(eng) &&
+ok(/\.in\('lead_id',\s*ids\)/.test(eng) && (eng.match(/\.in\('lead_id'/g) || []).length === 1 &&
    !/for\s*\([^)]*\)\s*\{[^}]*getEngagement\(/.test(bok) &&
    !/\.map\([^)]*getEngagement\(/.test(read('src/api/vendor/leads.js')),
    '2.8 the badge read is ONE batched query per page — never one per row');
+
+// R2 · F-16.22's cure at the source. BOTH HALVES: the column must be SELECTED
+// and it must be SET into the Map. Selecting it and storing `true` would pass a
+// naive "does it read updated_at" cell while the sheet still had no clock.
+ok(/\.select\('lead_id,\s*updated_at'\)/.test(eng) &&
+   /out\.set\(r\.lead_id,\s*r\.updated_at/.test(eng),
+   '2.9 the batched read carries the enquiry clock — selected AND stored (F-16.22)');
 
 // ═══ 3 · MONOTONICITY, ENFORCED AT THE DATABASE ══════════════════════════════
 section('3 · the relationship never walks backward (fork 5)');
@@ -323,10 +365,11 @@ ok(/updates\.vendor_id\s*=\s*v\.id/.test(bok),
 // And it must be read off the LINKAGE, never off `leads.source` — the column
 // createLead's dedupe can never set, which is the whole of F-16.21.
 const vlead = strip(read('src/api/vendor/leads.js'));
-ok(/engagedLeadIds\(supabase,\s*vendor\.id/.test(vlead) &&
-   /tdw:\s*tdwIds\.has\(l\.id\)/.test(vlead) &&
+ok(/engagedLeadStamps\(supabase,\s*vendor\.id/.test(vlead) &&
+   /tdw:\s*tdwStamps\.has\(l\.id\)/.test(vlead) &&
+   /tdw_enquired_at:\s*tdwStamps\.get\(l\.id\)/.test(vlead) &&
    !/source\s*===\s*'discover'/.test(vlead),
-   '4.8 the Leads handler both READS the linkage and MAPS it, and never badges off leads.source');
+   '4.8 the handler READS the linkage and MAPS BOTH halves — badge and clock — never off leads.source');
 
 // R-35.32: couple_bookings.category is HER choice; the engagement's tracks the
 // VENDOR. The door must not hand one over as if they were the same fact.
