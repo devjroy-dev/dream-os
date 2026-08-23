@@ -17,5 +17,4 @@ RED: b10_p3_mint_deck_bench
 RED: b5_wa_door_smoke
 RED: b5b_movementb_bench
 RED: bf1_bride_tool_fidelity_bench
-RED: tdw10_combined_cap_bench
 RED: test-shape

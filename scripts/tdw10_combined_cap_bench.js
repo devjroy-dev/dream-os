@@ -580,7 +580,7 @@ t('§6.3 0116 is NON-DESTRUCTIVE and does not widen its ruling — no DELETE, no
 // made by the sitting that moved the subject, per the standing rule that the
 // sitting moving a subject owns the benches reading it.
 // RATIFY-OR-REVERT.
-t('§6.4 LD-8: 0121 is the ladder\'s tip and 0113 stays an unwritten hole', () => {
+t('§6.4 LD-8: the ladder is append-only — the tip is UNPINNED, and 0113 stays an unwritten hole', () => {
   const files = fs.readdirSync(P('db/migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
   const nums = files.map((f) => f.slice(0, 4));
   assert.ok(nums.includes('0116'), '0116 is not on the ladder');
@@ -588,7 +588,37 @@ t('§6.4 LD-8: 0121 is the ladder\'s tip and 0113 stays an unwritten hole', () =
   assert.ok(nums.includes('0118'), '0118 is not on the ladder');
   assert.ok(nums.includes('0119'), '0119 is not on the ladder');
   assert.ok(nums.includes('0120'), '0120 is not on the ladder');
-  assert.strictEqual(nums[nums.length - 1], '0121', `0121 is not the tail: ${nums.slice(-3).join(', ')}`);
+  // ── F-15.12 · THE TIP IS DERIVED, NEVER PINNED. RE-FOUNDED R-36.5 RIDER ────
+  // THIS LINE READ: assert.strictEqual(nums[nums.length - 1], '0121', …), and it
+  // pinned an ADDRESS. Every migration appended after 0121 reddened it, so by the
+  // time the ladder reached 0129 this bench had been RED AT BASE for eight
+  // migrations — and a bench that is red for "someone shipped a migration" cannot
+  // gate the cap seam it exists to gate. Worse, it had gone red-blind: a REAL
+  // break in §1/§2/§3 would have hidden inside an expected red and the floor would
+  // have reported no delta (LESSON 3's shape, at bench granularity).
+  //
+  // LD-8's actual property is APPEND-ONLY: THE TIP IS SUPPOSED TO MOVE. What must
+  // never happen is a hole BELOW the tip being filled after the fact. So the tip
+  // is READ here, not asserted equal to anything, and the invariants that carry
+  // real weight are the reserved hole and the duplicate set below.
+  //
+  // WHY NOT ASSERT CONTIGUITY INSTEAD: the ladder carries SEVENTEEN holes today
+  // (0024, 0026, 0027, 0029, 0037, 0038, 0058, 0068, 0079, 0089, 0091–0095, 0097,
+  // 0113 — derived, not recalled). Enumerating them would re-pin addresses one
+  // level up and hand the next sitting the same maintenance burden this cure is
+  // removing. Only 0113 is named, because only 0113 is RESERVED by ruling.
+  // AND THERE IS NO TIP ASSERTION AT ALL, WHICH IS THE POINT. Two candidates were
+  // written and BOTH proved unreachable under mutation, which is how they were
+  // caught rather than shipped:
+  //   · `nums.every(4-digit)` — the readdir filter above already admits only
+  //     `^\d{4}_`, so a 3-digit file never reaches the array.
+  //   · `tip >= '0116'` — `nums.includes('0116')` four lines up already proves it,
+  //     since the tip is the maximum and 0116 is present. Deleting the ladder
+  //     above 0116 reddens the INCLUDES assert, never this one.
+  // That is the honest end of "derive, never pin": once the address is gone there
+  // is nothing left to assert about a tip that is SUPPOSED to move. LD-8's weight
+  // sits entirely on the two invariants below — the reserved hole and the
+  // duplicate set — and both are proven to bite.
   assert.ok(!nums.includes('0113'), '0113 was filled — LD-8 forbids it; it is reserved-unwritten');
   // ATTRIBUTED ELDER, not this delivery's: 0063 is used TWICE at origin
   // (0063_users_auth_user_id.sql + 0063_vendor_activity_log.sql), an LD-8 collision
