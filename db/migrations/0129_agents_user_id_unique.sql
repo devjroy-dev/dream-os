@@ -1,72 +1,93 @@
 -- db/migrations/0129_agents_user_id_unique.sql
--- R-36.5 · F-05.83's ARBITER — one agent per engine.users row, enforced by the
--- database rather than hoped for by a read. Founder-run in the Supabase editor.
+-- R-36.5 F1 · the arbiter engine.agents has never had. Ruled CE-225. Founder-run.
 --
 -- ═════════════════════════════════════════════════════════════════════════════
 -- AT THE LADDER TIP. NO REGISTER ROW, AND THAT IS DERIVED, NOT ASSUMED.
 -- ═════════════════════════════════════════════════════════════════════════════
--- The last file is 0128; this is 0129, the next number. Per
--- db/migrations/OUT_OF_ORDER.json's own _README, a register row exists only for
--- a number BELOW the applied tip — that is what out-of-order MEANS, and the
--- formatter ABORTS on a record that isn't. Same derivation as 0128's, at the
--- next rung.
+-- The applied tip is 0128; this is 0129, the next number. A record in
+-- db/migrations/OUT_OF_ORDER.json would ABORT the formatter, which refuses any
+-- record whose number is not BELOW the tip — that is what out-of-order MEANS
+-- (that file's own _README). 0128's header derives this identically; this file
+-- re-derived it rather than inheriting it.
+--
+-- SCHEMA PLANE: engine, NOT public. ENGINE_SCHEMA.md's own header states that
+-- engine-plane constraints have NEVER been witnessed anywhere (F-SW.1) — so the
+-- absence of a UNIQUE on agents(user_id) is not read off that document. It is
+-- proven by the estate itself: eleven duplicate (user_id) pairs existed on
+-- 2026-08-23 (CE-224). A unique index cannot coexist with eleven duplicate
+-- pairs, so the census IS the existence proof of the gap this file closes.
 --
 -- ═════════════════════════════════════════════════════════════════════════════
--- ⚠ THE LADDER'S FIRST ENGINE-PLANE FILE — STATED SO NOBODY IS FALSELY REASSURED
+-- ⚠ PRECONDITION — NAMED, BECAUSE THIS FILE FAILS LOUDLY WITHOUT IT
 -- ═════════════════════════════════════════════════════════════════════════════
--- ENGINE_SCHEMA.md's header says, truthfully as of its writing, that the ladder
--- has NEVER created or altered an engine table, and tells its reader that a
--- quiet db/migrations/ is therefore no evidence about the engine plane. THIS
--- FILE ENDS THAT SENTENCE'S TRUTH: it is the ladder's first engine-plane
--- migration, chair-chartered as 0129 by R-36.5. The schema doc's header is
--- hand-authored under CE lift and is the chair's to amend — flagged in this
--- delivery's handover, not edited by this seat. The only witness for
--- ENGINE_SCHEMA.md's freshness remains a re-run of its dump (F-SW.1 stands;
--- this file adds an INDEX, not a column, so the 25-table/244-column body is
--- unmoved either way).
+-- CREATE UNIQUE INDEX ABORTS ON A DUPLICATED ESTATE. It does not repair, it does
+-- not skip; it errors and rolls back the whole block.
+--
+-- The repair already ran. R-36.4 / CE-224: the founder executed the dedupe SQL
+-- and his own witness query returned `0 · 0` — zero duplicate user_ids, zero
+-- orphaned agent_owner rows. THAT WITNESS IS THIS FILE'S PRECONDITION, named
+-- here so a future reader knows the order and does not run this against a fresh
+-- duplication.
+--
+-- IF THIS BLOCK ERRORS with "could not create unique index", the estate has
+-- re-duplicated since that witness — which would mean the race fired again
+-- between the dedupe and this run. DO NOT force it. Re-run the CE-224 census,
+-- dedupe again, then return here. The error is the guard working.
 --
 -- ═════════════════════════════════════════════════════════════════════════════
--- PRECONDITION — THE FOUNDER'S 0·0 WITNESS IS THIS CREATE'S PRECONDITION
+-- WHY AN INDEX AND NOT A TABLE CONSTRAINT
 -- ═════════════════════════════════════════════════════════════════════════════
--- CREATE UNIQUE INDEX FAILS ON A DUPLICATED ESTATE. It scans every existing row
--- and refuses if any two share a user_id — which is exactly why it can be run
--- now and could not have been run before 2026-08-23: eleven live vendors
--- carried duplicate pairs until the founder's R-36.4 dedupe
--- (keep-eldest/delete-newest, conditioned on the fourteen-table reference
--- census). His post-cure witness, run at his own hand:
+-- supabase-js `.upsert(..., { onConflict: 'user_id' })` compiles to PostgREST's
+-- `on_conflict=user_id`, which becomes `ON CONFLICT (user_id)`. That is an
+-- INFERENCE clause, and Postgres resolves an inference clause against a UNIQUE
+-- INDEX. A unique index satisfies it; so would a UNIQUE constraint (which is a
+-- unique index underneath). The index is the smaller statement and the one the
+-- inference names directly, so it is what this file creates.
 --
---     dup_agents 0 · orphan_owner_rows 0        (CE-224, 2026-08-23)
+-- NOT CONCURRENTLY, deliberately: CREATE INDEX CONCURRENTLY cannot run inside a
+-- transaction block, and this table is small enough that the brief write lock is
+-- cheaper than giving up the BEGIN/COMMIT wrapper. A CONCURRENTLY build that
+-- fails leaves an INVALID index behind that still blocks nothing while looking
+-- present — the worst shape for an arbiter the application code now depends on.
 --
--- That 0·0 is the precondition, named here by the charter's own instruction.
--- If this CREATE errors with "could not create unique index" naming duplicate
--- key values, the estate has re-minted the disease since the witness (the race
--- stands until the code half deploys) — STOP, re-run the R-36.4 dedupe
--- verification, and only then re-run this file. Never drop rows from inside
--- this migration; the dedupe is R-36.4's, with its census, not this file's.
---
--- ═════════════════════════════════════════════════════════════════════════════
--- PROVENANCE — every name below witnessed, never authored from memory
--- ═════════════════════════════════════════════════════════════════════════════
--- engine.agents: docs/db/ENGINE_SCHEMA.md:54–:66 (witnessed prod snapshot,
--- verified current 2026-08-13) — 11 columns; user_id uuid NOT NULL at :57.
--- Engine-plane CONSTRAINTS are unwitnessed estate-wide (F-SW.1, that header's
--- own warning) — which is HOW the missing UNIQUE hid: the duplicates' existence
--- was the only witness that no arbiter stood. Index name follows the estate's
--- `<table>_<column>_key` convention (public plane specimens: users_phone_key,
--- couples_user_id_unique — PUBLIC_SCHEMA.md CONSTRAINTS ADDENDUM).
---
--- ═════════════════════════════════════════════════════════════════════════════
--- APPLY ORDER IS LAW (R-36.5): THIS FILE RUNS BEFORE THE CODE DEPLOYS.
--- ═════════════════════════════════════════════════════════════════════════════
--- The code half (agentBridge.js / signup.ts) says ON CONFLICT (user_id), and
--- Postgres rejects ON CONFLICT with no matching arbiter — deploying the code
--- first would error EVERY first-touch instead of racing some of them, trading
--- the disease for a louder one. The handover's founder steps are numbered:
--- this file first, the verify SELECT second, the git push third.
+-- ⚠ APPLY ORDER IS LAW FOR THIS DELIVERY (R-36.5, chair):
+--   THIS FILE RUNS BEFORE THE CODE DEPLOYS. `onConflict: 'user_id'` has no
+--   arbiter until this index exists, and Postgres ERRORS on an inference clause
+--   that matches no index. Deploying the code first would convert the silent
+--   duplicate into a loud failure on every first touch — trading the disease for
+--   a worse one. Founder steps are numbered in the handover.
 
-CREATE UNIQUE INDEX agents_user_id_key
+BEGIN;
+
+CREATE UNIQUE INDEX IF NOT EXISTS agents_user_id_unique
   ON engine.agents USING btree (user_id);
 
--- REVERT (one-liner, conditional-withheld — uncomment ONLY on a chair ruling
--- that vacates R-36.5; dropping this index re-opens F-05.83's race):
--- DROP INDEX engine.agents_user_id_key;
+COMMIT;
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- VERIFY. TWO BLOCKS, EACH ITS OWN PASTE.
+-- 0123's law: the editor renders only the last statement's result set, so a
+-- batched verify is not a verify.
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- ── BLOCK 1 · THE INDEX EXISTS AND IS UNIQUE ──────────────────── paste alone ───
+-- Expect exactly one row, and `indexdef` must contain the word UNIQUE. An index
+-- row WITHOUT it means the uniqueness was lost between here and the database and
+-- the arbiter is decorative — the upsert would then silently insert duplicates
+-- again, which is the original disease wearing this file as a costume.
+--
+-- select indexname, indexdef
+--   from pg_indexes
+--  where schemaname = 'engine' and tablename = 'agents'
+--    and indexname = 'agents_user_id_unique';
+
+-- ── BLOCK 2 · THE ESTATE IS STILL SINGULAR ────────────────────── paste alone ───
+-- THE ONE THAT PROVES THE PRECONDITION HELD. Expect ZERO rows. Any row here
+-- means a duplicate survives, which also means BLOCK 1 returned nothing, because
+-- the CREATE would have aborted. Run this second so its emptiness is read
+-- against an index that already exists.
+--
+-- select user_id, count(*) as n
+--   from engine.agents
+--  group by user_id
+-- having count(*) > 1;

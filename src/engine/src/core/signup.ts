@@ -75,16 +75,25 @@ export async function createOwner(input: SignupInput): Promise<SignupResult> {
     })());
 
   // 2) the bounded brain
+  // ── R-36.5 F1 · THE SAME (a)-SHAPE RECOVERY THE BRIDGE TAKES ────────────────
+  // SCOPE GREW BY THIS FUNCTION, chair-declared, and the reason is 0129 itself.
+  // This was a bare insert, and before 0129 a racing loser here simply minted a
+  // silent duplicate — the bridge's disease, second writer. Under the new unique
+  // index that same loser gets a 23505 instead, and this function converts it into
+  // `agents insert failed: …` — A FAILED SIGNUP, thrown at the person creating
+  // their account. The index does not create the race; it changes its symptom from
+  // quiet corruption to a loud stranger at the door. Both are cured by the same
+  // shape, so both take it in the same sitting rather than leaving the louder one
+  // to be discovered by a vendor.
   //
-  // ── F-05.83's SECOND WRITER, RULED IN (R-36.5) ────────────────────────────
-  // This was a bare INSERT — the same read-then-insert shape as the bridge's,
-  // and once 0129's UNIQUE INDEX on agents(user_id) stands, a racing loser here
-  // (a double-submitted signup form, a retried request) converts from a silent
-  // duplicate into a LOUD FAILED SIGNUP. Same class, same arbiter, two writers,
-  // one law: the (a)-shape. ON CONFLICT DO NOTHING hands the winner its row and
-  // the loser zero rows; the loser then adopts the ELDEST existing agent — the
-  // same eldest-first read this file already uses for returning users at the
-  // top, so the two paths cannot disagree about which agent is "the" agent.
+  // `ignoreDuplicates: true` for the bridge's reason exactly: DO NOTHING makes the
+  // loser a reader. DO UPDATE (the supabase-js default) would let a second
+  // concurrent signup rewrite the first one's display_name and tier.
+  //
+  // mintDemoOwner below is UNTOUCHED and that is derived, not overlooked: it
+  // inserts a FRESH users row every call (auth_user_id null), so its agent's
+  // user_id is unique by construction and can never conflict. An always-fresh
+  // minter has no race to lose.
   const { data: agentRow, error: agentErr } = await supabase
     .from('agents')
     .upsert({
@@ -98,30 +107,41 @@ export async function createOwner(input: SignupInput): Promise<SignupResult> {
     .maybeSingle();
   if (agentErr) throw new Error(`agents insert failed: ${agentErr.message}`);
 
-  const wonTheInsert = !!agentRow;
+  // The race verdict, read off the wire: DO NOTHING returns the row to the winner
+  // and an empty set to the loser.
+  const bornHere = !!agentRow;
   let agentId: string;
-  if (agentRow) {
-    agentId = agentRow.id as string;
+  if (bornHere) {
+    agentId = agentRow!.id as string;
   } else {
-    // The racing loser's lane: the row exists, minted by the winner. Adopt it.
-    const { data: existing } = await supabase
+    // We lost the race. The winner's row is a proven fact — the unique index is
+    // why we are here — so read it rather than failing the signup. `order` +
+    // `limit(1)` mirrors the returning-user read at :52 above, so both paths pick
+    // the same agent for a user who somehow carries more than one.
+    const { data: raced, error: racedErr } = await supabase
       .from('agents')
       .select('id')
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
-    if (!existing) {
-      throw new Error('agents upsert returned no row and the re-read found none — the winner\'s row vanished mid-signup');
+    if (racedErr) throw new Error(`agents re-read failed: ${racedErr.message}`);
+    if (!raced) {
+      throw new Error(
+        `agents upsert conflicted for user ${userId} but no agent row is readable — ` +
+        'the unique index rejected the insert, so a row must exist. Investigate ' +
+        'engine.agents before retrying; do not drop the index.');
     }
-    agentId = existing.id as string;
+    agentId = raced.id as string;
   }
 
   // 3) the owner anchor — WHO Harvey works for. consult_done=false routes the fresh
   // agent into the first consultation (gate wired into the loop next).
-  // WINNER-ONLY (the loser-safe clause, R-36.5): agent_owner has no arbiter of
-  // its own, so the loser writing it would double-mint the anchor.
-  if (wonTheInsert) {
+  //
+  // LOSER-SAFE (R-36.5 F1): gated on `bornHere`. agent_owner carries no unique
+  // index, so a race loser writing here would give one agent two owner anchors —
+  // the duplicate disease moved one table sideways.
+  if (bornHere) {
     const { error: ownerErr } = await supabase.from('agent_owner').insert({
       agent_id: agentId,
       owner_name: name,
@@ -131,7 +151,10 @@ export async function createOwner(input: SignupInput): Promise<SignupResult> {
     if (ownerErr) throw new Error(`agent_owner insert failed: ${ownerErr.message}`);
   }
 
-  return { agent_id: agentId, existed: !wonTheInsert };
+  // `existed` REPORTS THE TRUTH THE CALLER NEEDS: a race loser did NOT mint this
+  // agent, and saying `false` would tell a caller it had just created something it
+  // had merely found — the same lie the returning-user path at :59 exists to avoid.
+  return { agent_id: agentId, existed: !bornHere };
 }
 
 // /de demo mint — a real agent with no Supabase account behind it (auth_user_id null,
