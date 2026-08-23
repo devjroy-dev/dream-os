@@ -1396,7 +1396,16 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // the ---DRAFT--- split were Myra delivery features the 78807dd engine cut
     // lacks; deferred (see WHATSAPP_ENGINE_DEFERRED_FEATURES.md). The public.messages
     // audit log is kept (3b) for delivery telemetry; engine.messages carries memory.
-    const { agentId } = await resolveAgentForVendor(supabase, vendor, user.auth_user_id);
+    //
+    // R-36.5 fork F2 arm (b): the resolve is wrapped, and a resolve FAILURE on a
+    // vendor whose tier dial reads ZERO degrades to the cap-zero refusal instead
+    // of the hiccup — the one true sentence derivable without an agentId. The
+    // helper below owns the shape; a degraded turn ends here.
+    const resolved = await resolveAgentOrDegrade({
+      resolveAgentForVendor, supabase, sendWhatsApp, vendor, user, convo, phone,
+    });
+    if (resolved.degraded) return;
+    const { agentId } = resolved;
 
     // TDW_06 P7b (S-10 WA words + F-06.8): the mode words, intercepted PRE-ENGINE like the
     // nudge words — exact whole-message "advisor mode" / "business mode" on the vendor_self
@@ -2268,8 +2277,90 @@ async function resolveVendorMedia(mediaItem, deps) {
   }
 }
 
+// ── R-36.5 · F2 ARM (b) — THE RESOLVE WRAP WITH THE TIER-SCOPED DEGRADE ──────
+// F-05.83's second symptom was the SHAPE of the failure, not just the failure:
+// when resolveAgentForVendor died, the turn died at the function-level
+// dead-letter and a basic-tier vendor heard the hiccup line instead of the
+// refusal she was owed — the cap-gate at :1561 sits BELOW the resolve and never
+// ran. Arm (a) (hoist the whole gate) was killed on evidence: buildMeta's turn
+// counts are keyed on agent_id, so only the CAP-ZERO refusal is derivable
+// without an agentId, and half a gate is not a gate. This wrap is arm (b):
+// ordering stands, and a resolve failure DEGRADES to that one derivable
+// sentence — for exactly the vendors it is true of.
+//
+// THE PREDICATE IS THE DIAL, NEVER THE TIER WORD. chat.js's own doctrine at
+// WA_CAP_ZERO_LINE: keying on the tier word makes the cure a rename's hostage
+// (0115's lesson), and a vendor on ANY tier whose dial the founder set to zero
+// deserves the same true sentence. The dial is read through buildMeta ITSELF —
+// one home for the F-10.85 `>=0` semantics — by handing it NO_AGENT_USAGE_PROBE,
+// a uuid that owns no engine.usage rows, so both counts are 0 and buildMeta's
+// `capped` reduces exactly to `dayCap === 0 || monCap === 0`. A bench cell
+// asserts that reduction.
+//
+// THE BINDING CLAUSE (R-36.5, chair's words): THE DEGRADE NEVER MASKS THE
+// FAULT. A refusal-shaped answer over an infrastructure fault is how the next
+// F-05.83 hides from the log search, so the resolve failure logs itself loudly
+// as a resolve failure BEFORE anything else, on every branch, and the degraded
+// send logs a second line naming itself NOT a cap event. The Railway search
+// token is `[agent:resolve] RESOLVE FAILED`.
+//
+// WHAT DOES NOT DEGRADE, AND WHY: a PRE-ONBOARDING turn (no vendor row, or a
+// WA-born user with no auth_user_id — F-05.84's class) rethrows into the ruled
+// dead-letter + hiccup path unchanged; fork F3 was ruled DEAD-LETTER-AS-IS this
+// sitting, its cure re-pointed at the dark onboarding gate's own sitting. A
+// vendor whose dial reads ABOVE zero rethrows too: telling a paying vendor she
+// is capped when the estate is broken would be a false statement (the ruling's
+// own sentence).
+//
+// COPY: the refusal reuses the shipped, vetoed WA_CAP_ZERO_LINE — zero new
+// vendor-facing bytes. EXPECTED-ZERO held.
+const NO_AGENT_USAGE_PROBE = '00000000-0000-0000-0000-000000000000';
+
+async function resolveAgentOrDegrade({ resolveAgentForVendor, supabase, sendWhatsApp, vendor, user, convo, phone }) {
+  try {
+    const { agentId } = await resolveAgentForVendor(supabase, vendor, user && user.auth_user_id);
+    return { agentId };
+  } catch (resolveErr) {
+    // LOUD FIRST, UNCONDITIONALLY — the binding clause. Every branch below
+    // happens beneath this line, so no outcome can bury the fault.
+    console.error('[agent:resolve] RESOLVE FAILED —', (resolveErr && resolveErr.message) || resolveErr);
+
+    const preOnboarding = !vendor || !(user && user.auth_user_id);
+    if (preOnboarding) throw resolveErr; // F-05.84's class — ruled dead-letter-as-is (fork F3).
+
+    let refusalLine = null;
+    try {
+      // Guarded require, same posture as the cap-gate below (:1548's comment):
+      // the seam pulls the engine's db module, and a cap-machinery fault must
+      // never convert this wrap into total silence — it falls to the hiccup.
+      const capSeam = require('../api/vendor-engine/chat');
+      const meta = await capSeam.buildMeta({
+        supabase, agentId: NO_AGENT_USAGE_PROBE, tier: (vendor && vendor.tier) || 'basic',
+      });
+      if (meta && meta.state === 'capped' && meta.turns_cap === 0) {
+        refusalLine = capSeam.WA_CAP_ZERO_LINE;
+      }
+    } catch (probeErr) {
+      console.error('[agent:resolve] degrade probe failed — falling to the dead-letter:', probeErr && probeErr.message);
+    }
+    if (!refusalLine) throw resolveErr; // dial above zero, or probe unreachable → the hiccup path.
+
+    console.error('[agent:resolve] degraded to the cap-zero refusal over a RESOLVE FAILURE — NOT a cap event; hunt "[agent:resolve] RESOLVE FAILED" above.');
+    const msg = await sendWhatsApp(phone, refusalLine, []);
+    await supabase.from('messages').insert({
+      conversation_id: convo.id, direction: 'outbound', channel: 'whatsapp',
+      body: refusalLine, sent_by: 'agent',
+      twilio_sid: msg && msg.sid ? msg.sid : null,
+    });
+    await supabase.from('conversations')
+      .update({ last_message_at: new Date().toISOString() }).eq('id', convo.id);
+    return { degraded: true };
+  }
+}
+
 module.exports = {
   processVendorInbound, metaInputsFrom, stripRoutingToken, // stripRoutingToken: BLOCK 06 M-0 / F-05.60 — exported so the bench drives the shipped function, never a copy (Q-SP-5)
+  resolveAgentOrDegrade, NO_AGENT_USAGE_PROBE,             // R-36.5 F2(b) — exported so the bench drives the shipped seam, never a copy (R-29.34's callable doctrine)
   scrubModelFrame,                                         // BLOCK 06 M-3 / F-06.17+F-06.29 — same reason, same law
   resolveVendorMedia, WA_MEDIA_BUCKET, VENDOR_MEDIA_ALLOW_MIMES, VENDOR_MEDIA_MAX_BYTES,
 };

@@ -75,31 +75,63 @@ export async function createOwner(input: SignupInput): Promise<SignupResult> {
     })());
 
   // 2) the bounded brain
+  //
+  // ── F-05.83's SECOND WRITER, RULED IN (R-36.5) ────────────────────────────
+  // This was a bare INSERT — the same read-then-insert shape as the bridge's,
+  // and once 0129's UNIQUE INDEX on agents(user_id) stands, a racing loser here
+  // (a double-submitted signup form, a retried request) converts from a silent
+  // duplicate into a LOUD FAILED SIGNUP. Same class, same arbiter, two writers,
+  // one law: the (a)-shape. ON CONFLICT DO NOTHING hands the winner its row and
+  // the loser zero rows; the loser then adopts the ELDEST existing agent — the
+  // same eldest-first read this file already uses for returning users at the
+  // top, so the two paths cannot disagree about which agent is "the" agent.
   const { data: agentRow, error: agentErr } = await supabase
     .from('agents')
-    .insert({
+    .upsert({
       user_id: userId,
       display_name: name,
       kind: 'solo',
       profession_preset: prof.key,
       tier: tier ?? 'entry',
-    })
+    }, { onConflict: 'user_id', ignoreDuplicates: true })
     .select('id')
-    .single();
+    .maybeSingle();
   if (agentErr) throw new Error(`agents insert failed: ${agentErr.message}`);
-  const agentId = agentRow.id as string;
+
+  const wonTheInsert = !!agentRow;
+  let agentId: string;
+  if (agentRow) {
+    agentId = agentRow.id as string;
+  } else {
+    // The racing loser's lane: the row exists, minted by the winner. Adopt it.
+    const { data: existing } = await supabase
+      .from('agents')
+      .select('id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!existing) {
+      throw new Error('agents upsert returned no row and the re-read found none — the winner\'s row vanished mid-signup');
+    }
+    agentId = existing.id as string;
+  }
 
   // 3) the owner anchor — WHO Harvey works for. consult_done=false routes the fresh
   // agent into the first consultation (gate wired into the loop next).
-  const { error: ownerErr } = await supabase.from('agent_owner').insert({
-    agent_id: agentId,
-    owner_name: name,
-    owner_descriptor: prof.descriptor,
-    consult_done: false,
-  });
-  if (ownerErr) throw new Error(`agent_owner insert failed: ${ownerErr.message}`);
+  // WINNER-ONLY (the loser-safe clause, R-36.5): agent_owner has no arbiter of
+  // its own, so the loser writing it would double-mint the anchor.
+  if (wonTheInsert) {
+    const { error: ownerErr } = await supabase.from('agent_owner').insert({
+      agent_id: agentId,
+      owner_name: name,
+      owner_descriptor: prof.descriptor,
+      consult_done: false,
+    });
+    if (ownerErr) throw new Error(`agent_owner insert failed: ${ownerErr.message}`);
+  }
 
-  return { agent_id: agentId, existed: false };
+  return { agent_id: agentId, existed: !wonTheInsert };
 }
 
 // /de demo mint — a real agent with no Supabase account behind it (auth_user_id null,

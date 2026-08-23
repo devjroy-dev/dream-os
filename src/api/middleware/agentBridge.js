@@ -81,39 +81,93 @@ async function resolveAgentForVendor(supabase, vendor, authUserId) {
   }
 
   // 2 — engine.agents by user_id (one agent per vendor). Create if absent.
+  //
+  // ── F-05.83 CURED · THE RACE FENCE (R-36.5, fork F1 arm (a)) ─────────────────
+  // THE DISEASE: this was read-then-INSERT with no guard and no arbiter. Eleven
+  // live vendors carried duplicate agents rows born 15–172ms apart — not two
+  // humans typing at once, but this bridge's own EIGHT call sites racing each
+  // other on a virgin vendor's first PWA screen (the middleware plus five
+  // in-handler resolves fire in parallel). Every later read then threw
+  // PostgREST's one-row error and the whole vendor — API and WhatsApp both —
+  // went dark (CE-224).
+  //
+  // THE CURE IS TWO HALVES AND THE ORDER IS LAW: migration 0129 puts a UNIQUE
+  // INDEX on engine.agents(user_id) — the arbiter — and THIS upsert names it.
+  // `onConflict: 'user_id', ignoreDuplicates: true` compiles to
+  // INSERT … ON CONFLICT (user_id) DO NOTHING: the racing winner gets its row
+  // back; the loser gets ZERO rows (never an error), and the re-read below
+  // hands the loser the winner's agentId. Two concurrent first-touches yield
+  // ONE row and BOTH callers an agentId. 0129 MUST BE APPLIED BEFORE THIS
+  // DEPLOYS — ON CONFLICT with no matching arbiter is a Postgres error, which
+  // would trade the race for a louder disease (the handover's founder steps are
+  // numbered for exactly this).
+  //
+  // Same shape as step 1's upsert above, whose arbiter
+  // (engine.users.auth_user_id UNIQUE) is proven to exist by that upsert
+  // succeeding in production — the existence-proof technique, now on record.
   let { data: a, error: ae } = await eng
     .from('agents').select('id, profession_preset').eq('user_id', u.id).maybeSingle();
   if (ae) throw ae;
   if (!a) {
     const preset = resolvePreset(vendor.category);
     const ag = await eng.from('agents')
-      .insert({
+      .upsert({
         user_id:           u.id,
         profession_preset: preset,
         display_name:      vendor.business_name || null,
         kind:              'solo',
         tier:              'entry',
         timezone:          'Asia/Kolkata',
-      })
-      .select('id, profession_preset').single();
+      }, { onConflict: 'user_id', ignoreDuplicates: true })
+      .select('id, profession_preset').maybeSingle();
     if (ag.error) throw ag.error;
     a = ag.data;
+
+    // THE WINNER FLAG, read before the loser path can touch `a`. Only the hand
+    // that actually minted the agents row writes the owner anchor below — the
+    // loser-safe clause (R-36.5). The CE-224 census already witnessed what an
+    // unguarded second hand does here: one racing loser skipped its owner row
+    // (`orphan_owner_rows` counted it), and a loser that DID reach this insert
+    // would double-mint agent_owner instead, which has no arbiter of its own.
+    const wonTheInsert = !!a;
+
+    if (!a) {
+      // THE RACING LOSER'S LANE. ignoreDuplicates returned zero rows, which
+      // means the row EXISTS and someone else minted it milliseconds ago —
+      // re-read and adopt it. `.maybeSingle()` is safe here BECAUSE 0129
+      // stands: the index makes a second row impossible, so this read can
+      // never throw the one-row error this cure exists to end.
+      const rr = await eng
+        .from('agents').select('id, profession_preset').eq('user_id', u.id).maybeSingle();
+      if (rr.error) throw rr.error;
+      if (!rr.data) {
+        // Zero rows from the upsert AND zero rows on re-read: the winner's row
+        // vanished between the two statements (a concurrent delete). Loudly
+        // impossible in normal operation; never resolve to a guess.
+        throw new Error('resolveAgentForVendor: agents upsert returned no row and the re-read found none — the winner\'s row vanished mid-resolve');
+      }
+      a = rr.data;
+    }
 
     // Owner anchor — WHO this agent works for. Without an agent_owner row, loadOwner
     // returns nothing and Victor opens "Donna didn't hand me your name." The person's
     // name lives in public.users.name (set at signup/provision); the descriptor comes
     // from the preset. consult_done=false routes the first opening. Mirrors signup.ts.
-    const { data: pu } = await supabase
-      .from('users').select('name').eq('id', vendor.user_id).maybeSingle();
-    const ownerName = (pu && pu.name) || vendor.business_name || null;
-    if (ownerName) {
-      const { error: ownerErr } = await eng.from('agent_owner').insert({
-        agent_id:         a.id,
-        owner_name:       ownerName,
-        owner_descriptor: presetDescriptor(preset),
-        consult_done:     false,
-      });
-      if (ownerErr) throw ownerErr;
+    // WINNER-ONLY (the loser-safe clause above): the loser adopted a row whose
+    // owner anchor is the winner's to write.
+    if (wonTheInsert) {
+      const { data: pu } = await supabase
+        .from('users').select('name').eq('id', vendor.user_id).maybeSingle();
+      const ownerName = (pu && pu.name) || vendor.business_name || null;
+      if (ownerName) {
+        const { error: ownerErr } = await eng.from('agent_owner').insert({
+          agent_id:         a.id,
+          owner_name:       ownerName,
+          owner_descriptor: presetDescriptor(preset),
+          consult_done:     false,
+        });
+        if (ownerErr) throw ownerErr;
+      }
     }
   }
 

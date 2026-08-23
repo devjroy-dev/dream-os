@@ -1,0 +1,72 @@
+-- db/migrations/0129_agents_user_id_unique.sql
+-- R-36.5 · F-05.83's ARBITER — one agent per engine.users row, enforced by the
+-- database rather than hoped for by a read. Founder-run in the Supabase editor.
+--
+-- ═════════════════════════════════════════════════════════════════════════════
+-- AT THE LADDER TIP. NO REGISTER ROW, AND THAT IS DERIVED, NOT ASSUMED.
+-- ═════════════════════════════════════════════════════════════════════════════
+-- The last file is 0128; this is 0129, the next number. Per
+-- db/migrations/OUT_OF_ORDER.json's own _README, a register row exists only for
+-- a number BELOW the applied tip — that is what out-of-order MEANS, and the
+-- formatter ABORTS on a record that isn't. Same derivation as 0128's, at the
+-- next rung.
+--
+-- ═════════════════════════════════════════════════════════════════════════════
+-- ⚠ THE LADDER'S FIRST ENGINE-PLANE FILE — STATED SO NOBODY IS FALSELY REASSURED
+-- ═════════════════════════════════════════════════════════════════════════════
+-- ENGINE_SCHEMA.md's header says, truthfully as of its writing, that the ladder
+-- has NEVER created or altered an engine table, and tells its reader that a
+-- quiet db/migrations/ is therefore no evidence about the engine plane. THIS
+-- FILE ENDS THAT SENTENCE'S TRUTH: it is the ladder's first engine-plane
+-- migration, chair-chartered as 0129 by R-36.5. The schema doc's header is
+-- hand-authored under CE lift and is the chair's to amend — flagged in this
+-- delivery's handover, not edited by this seat. The only witness for
+-- ENGINE_SCHEMA.md's freshness remains a re-run of its dump (F-SW.1 stands;
+-- this file adds an INDEX, not a column, so the 25-table/244-column body is
+-- unmoved either way).
+--
+-- ═════════════════════════════════════════════════════════════════════════════
+-- PRECONDITION — THE FOUNDER'S 0·0 WITNESS IS THIS CREATE'S PRECONDITION
+-- ═════════════════════════════════════════════════════════════════════════════
+-- CREATE UNIQUE INDEX FAILS ON A DUPLICATED ESTATE. It scans every existing row
+-- and refuses if any two share a user_id — which is exactly why it can be run
+-- now and could not have been run before 2026-08-23: eleven live vendors
+-- carried duplicate pairs until the founder's R-36.4 dedupe
+-- (keep-eldest/delete-newest, conditioned on the fourteen-table reference
+-- census). His post-cure witness, run at his own hand:
+--
+--     dup_agents 0 · orphan_owner_rows 0        (CE-224, 2026-08-23)
+--
+-- That 0·0 is the precondition, named here by the charter's own instruction.
+-- If this CREATE errors with "could not create unique index" naming duplicate
+-- key values, the estate has re-minted the disease since the witness (the race
+-- stands until the code half deploys) — STOP, re-run the R-36.4 dedupe
+-- verification, and only then re-run this file. Never drop rows from inside
+-- this migration; the dedupe is R-36.4's, with its census, not this file's.
+--
+-- ═════════════════════════════════════════════════════════════════════════════
+-- PROVENANCE — every name below witnessed, never authored from memory
+-- ═════════════════════════════════════════════════════════════════════════════
+-- engine.agents: docs/db/ENGINE_SCHEMA.md:54–:66 (witnessed prod snapshot,
+-- verified current 2026-08-13) — 11 columns; user_id uuid NOT NULL at :57.
+-- Engine-plane CONSTRAINTS are unwitnessed estate-wide (F-SW.1, that header's
+-- own warning) — which is HOW the missing UNIQUE hid: the duplicates' existence
+-- was the only witness that no arbiter stood. Index name follows the estate's
+-- `<table>_<column>_key` convention (public plane specimens: users_phone_key,
+-- couples_user_id_unique — PUBLIC_SCHEMA.md CONSTRAINTS ADDENDUM).
+--
+-- ═════════════════════════════════════════════════════════════════════════════
+-- APPLY ORDER IS LAW (R-36.5): THIS FILE RUNS BEFORE THE CODE DEPLOYS.
+-- ═════════════════════════════════════════════════════════════════════════════
+-- The code half (agentBridge.js / signup.ts) says ON CONFLICT (user_id), and
+-- Postgres rejects ON CONFLICT with no matching arbiter — deploying the code
+-- first would error EVERY first-touch instead of racing some of them, trading
+-- the disease for a louder one. The handover's founder steps are numbered:
+-- this file first, the verify SELECT second, the git push third.
+
+CREATE UNIQUE INDEX agents_user_id_key
+  ON engine.agents USING btree (user_id);
+
+-- REVERT (one-liner, conditional-withheld — uncomment ONLY on a chair ruling
+-- that vacates R-36.5; dropping this index re-opens F-05.83's race):
+-- DROP INDEX engine.agents_user_id_key;
