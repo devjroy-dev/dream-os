@@ -382,25 +382,50 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   // shipped before this sitting; it is not re-derived, it is the same line.
   const fullBody = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}${enrichBlock}\n\nThey found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
 
-  // BASIC — the redacted in-window variant. FOUNDER-VETOED 2026-08-24, shape
-  // A-prime, verbatim: the approved template's OWN sentence, in-window.
+  // ── BASIC · THE ALERT MIRRORS THE CARD ────────────────────────────────────
+  // M-LEADGATE-RECUT · R-36.13 / R-37.5 / R-37.12. FOUNDER-VETOED 2026-08-25,
+  // ARM ALPHA: HER NAME AND THE MONTH RIDE THIS ALERT. CONTACT NEVER DOES.
   //
-  // WHY IT IS THE TEMPLATE'S WORDS AND NOT A SECOND VOICE. A basic vendor lands
-  // on whichever leg his 24h window happens to put him on, and he has no idea
-  // that window exists. Two different sentences for one event would make the
-  // transport visible to him as a change in how we speak. One sentence makes the
-  // leg invisible, which is what it should always have been.
+  // The rule is one sentence and it is worth keeping in that form: THE ALERT
+  // SAYS WHAT THE CARD SAYS. A basic vendor opening his Leads now sees her name,
+  // her date, her city and the budget; an alert that named none of those would
+  // be quieter than the surface it points at, which is a second policy nobody
+  // ruled. Under R-36.8 the alert and the card agreed because both said nothing;
+  // under R-36.13 they agree because both say her name.
   //
-  // THE STRAY `"` IS NOT CARRIED HERE [F-08.104]. On the template it is
+  // ── RETIRED IN PLACE, WITH ITS REASON [R-37.5, retire-with-the-reader] ─────
+  // This block used to carry a paragraph titled "WHY IT IS THE TEMPLATE'S WORDS
+  // AND NOT A SECOND VOICE": the in-window body reproduced the approved
+  // template's own sentence so that a vendor could not perceive which transport
+  // leg he had landed on. THAT PARAGRAPH IS RETIRED, NOT DELETED, AND HERE IS
+  // WHY IT STOPPED BEING TRUE. Its premise was that the two legs COULD say the
+  // same thing. R-36.13 puts her name in the in-window body, and the OOW
+  // template `tdw_lead_alert_basic` HAS NO NAME SLOT and stays as approved
+  // (re-filing costs days; founder-ruled that it nudges to the app, where the
+  // fuller card lives). So the legs now differ in SUBSTANCE, not in one stray
+  // character — and preserving the old wording would have preserved the
+  // paragraph's appearance while its substance was already gone. Reported at
+  // read-first rather than built under; ruled R-37.5.
+  //
+  // THE STRAY `"` IS STILL NOT CARRIED HERE [F-08.104]. On the template it is
   // load-bearing — deleting it would end an approved body with a variable, which
-  // TEMPLATES.md:19 forbids. Off-template that constraint does not exist, so
+  // docs/TEMPLATES.md forbids. Off-template that constraint does not exist, so
   // reproducing the quote here would be importing a Meta workaround into a
-  // free-form string for no reason. The two legs differ by exactly that one
-  // character, and this paragraph is why.
+  // free-form string for no reason.
   //
-  // NOT ONE IDENTITY BYTE: `brideLine`, `phoneLine` and `enrichBlock` are all
-  // absent from this expression. `vendor.business_name` is HIS name.
-  const basicBody = `\u2726 New enquiry from The Dream Wedding\n\nHi ${vendor.business_name || 'there'}, a couple just asked about your work for their ${monthPhrase(wedding_date)} wedding. Open your Leads to see more: ${VENDOR_LEADS_URL}\n\n\u2014 TDW`;
+  // ── THE NULL-NAME ARM IS BINDING, AND IT IS THE WHOLE ARC IN ONE LINE ──────
+  // When `brideNameFinal` is absent the sentence falls back to TODAY'S EXACT
+  // BYTE — "a couple" — never a placeholder, never "Unknown". This is the same
+  // discipline that the A-sitting's walk paid for on seventeen live vendors: a
+  // surface may withhold, and a surface may speak generally, but it may never
+  // claim ignorance about something it holds. `nameClause` below is the only
+  // difference between the two arms; every other character is shared, so the
+  // fallback cannot drift away from the vetoed byte by accident.
+  //
+  // NOT ONE CONNECT BYTE EITHER WAY: `phoneLine` and `enrichBlock` are absent
+  // from both arms. `vendor.business_name` is HIS name.
+  const nameClause = brideNameFinal ? `${brideNameFinal} just` : 'a couple just';
+  const basicBody = `\u2726 New enquiry from The Dream Wedding\n\nHi ${vendor.business_name || 'there'}, ${nameClause} asked about your work for their ${monthPhrase(wedding_date)} wedding. Open your Leads to see more: ${VENDOR_LEADS_URL}\n\n\u2014 TDW`;
 
   const body = fullAccess ? fullBody : basicBody;
 

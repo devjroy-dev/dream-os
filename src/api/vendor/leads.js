@@ -41,6 +41,20 @@ const { patchNote }  = require('../../engine/dist/core/donna');         // TDW_0
 const asyncHandler   = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const { createLead, updateLead, loseLead, getLeadDetail } = require('../../lib/vendor/leads');
+// ── M-LEADGATE-RECUT · R-36.13 / R-37.4 — THE CONNECT GATE RE-LANDS HERE ────
+// Both read doors below serialize through this module before responding. The
+// gate withholds EXACTLY {phone, email} from a basic vendor and passes
+// everything else — her name, the date, the city, the budget, the free text —
+// byte-unmoved. Essential+ is untouched by construction (the gate returns its
+// input).
+//
+// THIS IS THE DELIBERATE RE-LANDING the A-sitting's bench §0 was written to
+// demand. That cut redacted identity itself, the pwa rendered the absent name
+// through `l.name ?? 'Unknown'`, and twelve leads on a live vendor's screen read
+// `Unknown` — the estate claiming ignorance about data it holds. R-36.13 makes
+// that falsehood structurally impossible: the name never leaves the wire, so no
+// fallback has anything to invent. See src/lib/vendor/leadSerializer.js, law ③.
+const { serializeLeadRows, serializeLeadDetail } = require('../../lib/vendor/leadSerializer');
 const { logActivity } = require('../../lib/vendor/snapshot'); // TDW_04 engine-lane (ST-3d): lead doors log
 
 // TDW_04 engine-lane (ST-3b): JS twin of the engine's phoneKey.ts / the PWA's
@@ -100,7 +114,10 @@ router.get('/:leadId/detail', requireAuth,
     const result = await getLeadDetail(supabase, vendor.id, leadId);
     if (!result.ok) return errRes(res, 404, result.error);
     if (result.lead) result.lead.draft = leadDraftWire(result.lead); // TDW_02 P3 wishbone
-    return okRes(res, result);
+    // R-36.13: the gate runs LAST, after the wishbone is attached, so the draft
+    // block is inside what it inspects. Order matters — a gate that ran before
+    // the mapper would be auditing a shape nobody sends (the both-sides clause).
+    return okRes(res, serializeLeadDetail(result, vendor.tier, vendor.id));
   })
 );
 
@@ -205,9 +222,13 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     draft:        leadDraftWire(l), // TDW_02 P3 wishbone (undefined when complete)
   }));
 
+  // R-36.13 · the gate runs LAST, on the MAPPED rows, so `draft`, `referrer`,
+  // `budget_total` and the tdw stamps are all inside what it inspects. Mapping
+  // first and gating second is what makes the payload-proof cells meaningful:
+  // they assert against the exact object this line returns.
   return res.json({
     ok:    true,
-    leads,
+    leads: serializeLeadRows(leads, vendor.tier, vendor.id),
     total: count || 0,
   });
 });

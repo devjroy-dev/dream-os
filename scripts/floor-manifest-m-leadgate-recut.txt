@@ -1,0 +1,32 @@
+# scripts/floor-manifest-m-leadgate-recut.txt
+#
+# M-LEADGATE-RECUT · SEAT A′ — THE DECLARED DIRT for `run-floor.sh --delivery`.
+#
+# [F-14.16] A delivery tree is dirty BY DEFINITION and R-33.7 forbids the
+# executor the commit that would clean it. This file is how the floor tells a
+# DELIVERY from CONTAMINATION: every dirty path must be named here, one byte
+# outside and the runner refuses exactly as it would on a clean-tree run. The
+# manifest's files are SHA-256'd before the run and re-hashed after, so the SET
+# is tolerated and the CONTENTS are not.
+#
+# ── CUT FROM THE DELIVERY'S FILE LIST, AND THE FLOOR MEASURED LAST ──────────
+# The A-sitting shipped its manifest ONE PATH SHORT — the handover itself was
+# omitted, because the floor had been measured BEFORE the handover was authored.
+# The measuring tree held six files and the shipped tree held seven, so the
+# zero-delta number was true of a tree that never shipped: a green measured over
+# the wrong tree, which is the hollow-green class in miniature. The founder's
+# verify refused with `STOP — dirt OUTSIDE the declared manifest`, D-10 held, and
+# nothing was pushed.
+#
+# THE STANDING CORRECTION, HONOURED HERE: the manifest is cut from the
+# DELIVERY's file list, and the floor is measured LAST, on the tree that actually
+# goes into the ZIP. A handover is a delivered file and dirties the tree like any
+# other; so is this manifest.
+#
+# SIX PATHS. The ZIP carries exactly these.
+src/lib/vendor/leadSerializer.js
+src/api/vendor/leads.js
+src/api/couple/enquire.js
+scripts/b36_leadgate_a_bench.js
+scripts/floor-manifest-m-leadgate-recut.txt
+docs/TDW_M_LEADGATE_RECUT_A_HANDOVER.md
