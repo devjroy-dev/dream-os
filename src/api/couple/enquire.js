@@ -54,6 +54,16 @@ const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5
 const { bandCeiling, normalizeFunctions } = require('../../lib/discover/enquiryFields');
 const { resolveCoupleIfPresent } = require('../../lib/resolveCoupleIfPresent'); // F-07.62's cure
 const { recordEnquiry } = require('../../lib/engagements');                     // TDW_16 P1: the spine's one home
+// M-LEADGATE-A · R-36.8 — the tier gate's one home, shared with both leads doors.
+const { hasFullLeadAccess } = require('../../lib/vendor/leadSerializer');
+// `monthPhrase` is reused from its ONE HOME rather than re-derived. The coupling
+// is named because it is not obvious: a real-vendor path importing from the DEMO
+// species' alert module looks wrong at a glance. It is right — that function is
+// the estate's only month-phrase authority, its 'upcoming' fallback is pinned by
+// ruling, and a second implementation here would be the F-04.36 drift class.
+// If it ever moves out of demoLeadAlert.js, this import is the reader that breaks
+// loudly rather than the copy that silently disagrees.
+const { monthPhrase } = require('../../lib/discover/demoLeadAlert');
 
 // ── F-07.50's CURE, CARRIED FORWARD · THE LINK NOW LANDS WHERE THE LEAD IS ───
 //
@@ -178,7 +188,10 @@ router.post('/', asyncHandler(async (req, res) => {
   // paused. The two surfaces now read the same two columns.
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('id, business_name, routing_handle, user_id, category, city, base_fee_min, base_fee_max')
+    // M-LEADGATE-A: `tier` joins this SELECT. It is the whole input to the
+    // redaction branch below and it was NOT here — the door has never had a
+    // reason to know what a vendor pays. One column, no extra query.
+    .select('id, business_name, routing_handle, user_id, category, city, base_fee_min, base_fee_max, tier')
     .eq('id', vendor_id)
     .eq('discover_eligible', true)
     .eq('discover_paused', false)
@@ -327,8 +340,24 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   // re-derived (P5 fork F5, CE-ruled). Its clash predicate is
   // enquiryEnrichment.js:107-113 — vendor_id + event_date + state 'upcoming',
   // now also `deleted_at is null` per this sitting's cure.
+  // ── M-LEADGATE-A · R-36.8 · THE BRANCH ────────────────────────────────────
+  // Decided ONCE, here, and read by both legs below. `hasFullLeadAccess` also
+  // emits R-36.10's loud line on a drifted spelling, so an unknown tier is
+  // announced at the alert as well as at the leads doors.
+  const fullAccess = hasFullLeadAccess(vendor.tier, vendor.id);
+
+  // ── F5 · ENRICHMENT NEVER RIDES A BASIC ALERT, BY CONSTRUCTION ────────────
+  // The builder is not called on the basic path at all — it is not called and
+  // then discarded. That distinction is the whole of the ruling: a composed
+  // string that is thrown away is one refactor from being interpolated, whereas
+  // a function that never runs cannot leak what it never computed. The fourth
+  // identity donor (`buildEnquiryEnrichment`, which I flagged uncleared at
+  // read-first) is therefore cleared for this lane WITHOUT anyone having to
+  // audit its internals — it is unreachable from here.
+  //
+  // Essential+ enrichment is byte-unmoved: same builder, same args, same block.
   let enrichment = '';
-  try {
+  if (fullAccess) try {
     const { buildEnquiryEnrichment } = require('../../lib/vendor/enquiryEnrichment');
     enrichment = await buildEnquiryEnrichment(supabase, {
       vendorId: vendor.id,
@@ -347,7 +376,33 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   }
 
   const enrichBlock = enrichment ? `\n\n${enrichment}` : '';
-  const body = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}${enrichBlock}\n\nThey found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
+
+  // ── THE TWO BODIES ────────────────────────────────────────────────────────
+  // ESSENTIAL+ — byte-unmoved. This expression is character-identical to what
+  // shipped before this sitting; it is not re-derived, it is the same line.
+  const fullBody = `\u2726 New enquiry from The Dream Wedding\n\n${brideLine} is interested in your work.${phoneLine}${enrichBlock}\n\nThey found you on the Discover feed. Reply on WhatsApp to connect.\n\n\u2014 TDW`;
+
+  // BASIC — the redacted in-window variant. FOUNDER-VETOED 2026-08-24, shape
+  // A-prime, verbatim: the approved template's OWN sentence, in-window.
+  //
+  // WHY IT IS THE TEMPLATE'S WORDS AND NOT A SECOND VOICE. A basic vendor lands
+  // on whichever leg his 24h window happens to put him on, and he has no idea
+  // that window exists. Two different sentences for one event would make the
+  // transport visible to him as a change in how we speak. One sentence makes the
+  // leg invisible, which is what it should always have been.
+  //
+  // THE STRAY `"` IS NOT CARRIED HERE [F-08.104]. On the template it is
+  // load-bearing — deleting it would end an approved body with a variable, which
+  // TEMPLATES.md:19 forbids. Off-template that constraint does not exist, so
+  // reproducing the quote here would be importing a Meta workaround into a
+  // free-form string for no reason. The two legs differ by exactly that one
+  // character, and this paragraph is why.
+  //
+  // NOT ONE IDENTITY BYTE: `brideLine`, `phoneLine` and `enrichBlock` are all
+  // absent from this expression. `vendor.business_name` is HIS name.
+  const basicBody = `\u2726 New enquiry from The Dream Wedding\n\nHi ${vendor.business_name || 'there'}, a couple just asked about your work for their ${monthPhrase(wedding_date)} wedding. Open your Leads to see more: ${VENDOR_LEADS_URL}\n\n\u2014 TDW`;
+
+  const body = fullAccess ? fullBody : basicBody;
 
   // ── F-07.45 CURED · THE TRANSPORT ARM ─────────────────────────────────────
   //
@@ -417,16 +472,37 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
     // word. That refusal is TYPED and LOGGED, never silent, and the wiring does
     // not have to be built again on approval day.
     if (err instanceof WaWindowClosedError) {
+      // ── M-LEADGATE-A · THE OOW LEG IS TIER-SWITCHED TOO ──────────────────
+      // The charter named only the in-window variant; the chair took the OOW
+      // leg into scope on the seat's report (c-36.8, chair-owned). It leaks
+      // identically: `enquiry_alert_vendor`'s {{2}} IS her name.
+      //
+      // WHAT THIS REPLACES, AND WHY IT WAS NEVER SAFETY. The old vars carried
+      // `brideNameFinal || 'a couple'`. That fallback made the template DEGRADE
+      // TO ANONYMITY WHEN HYDRATION FAILED — the right-looking output arriving
+      // as a bug's side-effect, on a path nobody chose it for. A basic vendor
+      // getting 'a couple' would have looked like the policy working while
+      // being a coincidence, and the first successful hydration would have
+      // silently ended it. The deliberate template replaces the accident.
       try {
         await sendWa({
           line: 'vendor',
           to: user.phone,
-          templateKey: 'enquiry_alert_vendor',
-          vars: [
-            vendor.business_name || 'there',
-            brideNameFinal || 'a couple',
-            VENDOR_LEADS_URL,
-          ],
+          templateKey: fullAccess ? 'enquiry_alert_vendor' : 'lead_alert_basic',
+          // Essential+ vars byte-unmoved. Basic rides the pinned surviving-field
+          // set — his own name, the month phrase, the leads link — none of which
+          // is hers. Both are positional arrays in the registry's declared order.
+          vars: fullAccess
+            ? [
+                vendor.business_name || 'there',
+                brideNameFinal || 'a couple',
+                VENDOR_LEADS_URL,
+              ]
+            : [
+                vendor.business_name || 'there',
+                monthPhrase(wedding_date),
+                VENDOR_LEADS_URL,
+              ],
           supabase,
         });
         vendorNotified = true;

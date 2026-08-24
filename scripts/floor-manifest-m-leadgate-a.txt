@@ -1,0 +1,40 @@
+# scripts/floor-manifest-m-leadgate-a.txt
+# M-LEADGATE-A · R-36.8/.10 — this delivery's own file table, declared for
+# [F-14.16]'s --delivery mode. Every path here is dirt this floor is permitted
+# to measure over; one byte outside it and the runner refuses exactly as it
+# always did.
+#
+# Cut per delivery, travels in the ZIP beside the bytes it declares, and its
+# contents are the same table the handover prints — one artefact, so the two
+# cannot drift.
+
+# ── the gate's one home (NEW) ────────────────────────────────────────────────
+src/lib/vendor/leadSerializer.js
+
+# ── the two leads doors, both reading through it ─────────────────────────────
+src/api/vendor/leads.js
+
+# ── the alert, tier-switched on both legs ────────────────────────────────────
+src/api/couple/enquire.js
+
+# ── the registry entry, authored from the wire witness ───────────────────────
+src/lib/templates.js
+
+# ── the bench (NEW) ──────────────────────────────────────────────────────────
+scripts/b36_leadgate_a_bench.js
+
+# ── the handover (NEW) ───────────────────────────────────────────────────────
+# OMITTED FROM THE FIRST CUT OF THIS FILE, and the floor refused the delivery on
+# exactly that. The omission had a cause worth recording: the floor was measured
+# BEFORE this handover was authored, so the measuring tree carried six files and
+# the shipped tree carried seven. The number reported was true of a tree that
+# never shipped.
+#
+# THE LESSON IS AN ORDERING ONE: the manifest is cut from the DELIVERY's file
+# list, and the floor is measured LAST, on the tree that is actually going in the
+# ZIP — never on an earlier one that happens to be convenient. A handover is a
+# delivered file like any other and dirties the tree like any other.
+docs/TDW_M_LEADGATE_A_HANDOVER.md
+
+# ── this manifest ────────────────────────────────────────────────────────────
+scripts/floor-manifest-m-leadgate-a.txt

@@ -300,6 +300,57 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── M-LEADGATE-A · R-36.8 — THE BASIC-TIER ENQUIRY CARRIER ─────────────────
+  // The out-of-window leg of the redaction policy. A basic vendor whose 24h
+  // window is closed hears that an enquiry exists, for which month, and where to
+  // open it — and NOTHING about who she is.
+  //
+  // ── PROVENANCE: AUTHORED FROM THE WIRE PASTE ALONE (F-08.75, ABSOLUTE) ─────
+  // Founder's WhatsApp Manager witness, 2026-08-24. Meta id 966395332526543,
+  // status `Active – Quality pending`, category MARKETING, English. `Active` is
+  // the approval state; `Quality pending` is the quality RATING, a separate axis
+  // that does not gate sending — hence `status: 'approved'` below, which is the
+  // only value `isApproved` accepts.
+  //
+  // NO BUTTON COMPONENT — founder-confirmed against the body preview, and
+  // consistent with both his screenshots. `buildTemplatePayload` emits a body
+  // component only, so this entry needs no capability it does not already have.
+  // The conditional scope grant for button support DID NOT FIRE.
+  //
+  // ══ THE TRAILING `"` IS REAL, IS APPROVED, AND MUST NOT BE "FIXED" [F-08.104]
+  // The body below ends with a stray double-quote. It is not a transcription
+  // slip: Meta's own character counter reads 127, and the body without that
+  // quote is 126. Two instruments with different failure modes agree, and one is
+  // Meta's. It renders on the live template card, so it is in the APPROVED
+  // artefact and it reaches vendors' handsets.
+  //
+  // AND THE OBVIOUS FIX IS A TRAP. docs/TEMPLATES.md:19 states the house rule:
+  // NO BODY BEGINS OR ENDS WITH A VARIABLE. Delete the quote and this body ends
+  // with `{{3}}` — in breach of the rule that exists because Meta rejects that
+  // shape. The stray character is accidentally load-bearing.
+  //
+  // So the cure is a REAL trailing clause, never a deletion — e.g.
+  // `... see more: {{3}} — reply here if you need any help.` (already Mira's
+  // approved voice on demo_invite, TEMPLATES.md §6). That edit re-submits the
+  // template to review, which drops it out of `Active`, and `isApproved` at the
+  // foot of this file tests exactly that — so the OOW leg would refuse every
+  // basic alert until re-approval. IT RIDES ITS OWN MICRO, AFTER THE WALK.
+  lead_alert_basic: {
+    key: 'lead_alert_basic',
+    name: 'tdw_lead_alert_basic',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'MARKETING',
+    // Pinned by ruling as the SURVIVING-FIELD SET, and the wire matches it
+    // exactly: {{1}} the VENDOR'S OWN name (never hers), {{2}} the month phrase,
+    // {{3}} the leads link. Not one variable carries identity.
+    variables: ['vendor_name', 'month', 'leads_link'],
+    body:
+      "Hi {{1}}, a couple just asked about your work for their {{2}} wedding on The " +
+      "Dream Wedding. Open your Leads to see more: {{3}}\"",
+    status: 'approved',
+  },
+
   // ── TDW_07 P5 · F-07.40 — THE VENDOR-LANE ENQUIRY CARRIER ──────────────────
   // RE-DERIVED AT 9b84c6d (this sitting, by command against this registry, not
   // carried from the prior sitting's claim). The vendor line's approved set is
