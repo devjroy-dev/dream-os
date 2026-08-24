@@ -61,12 +61,6 @@ function leadPhoneKey(p) {
 // phone=0000000000 — the Keka case) chip TODAY instead of reading complete.
 const { leadMissing } = require('../../engine/dist/core/draftContracts');
 const { engagedLeadStamps } = require('../../lib/engagements'); // M-LEADS-TRUTH: the badge's batched read, one home
-// M-LEADGATE-A · R-36.8 — the tier gate's ONE HOME. BOTH doors below read
-// through it; `req.vendor` already carries `tier` because resolveVendor selects
-// `*` in all three modes (src/api/middleware/resolveVendor.js:49), so the gate
-// costs no query. Redaction is decided HERE, at read time, from the tier as it
-// reads now — which is what makes upgrade unlock history and lapse re-lock it.
-const { serializeLeadRows, serializeLeadDetail } = require('../../lib/vendor/leadSerializer');
 
 function leadDraftWire(l) {
   const missing = leadMissing(l);
@@ -106,17 +100,7 @@ router.get('/:leadId/detail', requireAuth,
     const result = await getLeadDetail(supabase, vendor.id, leadId);
     if (!result.ok) return errRes(res, 404, result.error);
     if (result.lead) result.lead.draft = leadDraftWire(result.lead); // TDW_02 P3 wishbone
-
-    // ── M-LEADGATE-A · THE GATE ──────────────────────────────────────────────
-    // AFTER the wishbone is attached, never before: `leadDraftWire` reads
-    // `l.name` to build its primer, so gating first would hand it a redacted row
-    // and produce a draft block computed off absent fields. Gating last means
-    // the draft is built from the truth and then WITHHELD WHOLE from a basic
-    // vendor — the allowlist drops it, because `draft` is not on it.
-    //
-    // This ordering is the one thing in this file a refactor could silently
-    // invert, so it is stated rather than left to be rediscovered.
-    return okRes(res, serializeLeadDetail(result, vendor.tier, vendor.id));
+    return okRes(res, result);
   })
 );
 
@@ -221,18 +205,9 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     draft:        leadDraftWire(l), // TDW_02 P3 wishbone (undefined when complete)
   }));
 
-  // ── M-LEADGATE-A · THE GATE, AT THE LAST POSSIBLE MOMENT ──────────────────
-  // Deliberately here and not inside the mapper: the mapper's job is to state
-  // what a lead IS, and the gate's job is to state what THIS VENDOR may see of
-  // it. Fusing them would put a tier test inside every field expression and
-  // make the F-04.10 "maps, never passes through" law unreadable.
-  //
-  // `total` is NOT redacted. The COUNT is existence, and existence is exactly
-  // what a basic vendor is entitled to know — it is the whole product argument
-  // for upgrading. A redacted count would hide the thing we want him to see.
   return res.json({
     ok:    true,
-    leads: serializeLeadRows(leads, vendor.tier, vendor.id),
+    leads,
     total: count || 0,
   });
 });

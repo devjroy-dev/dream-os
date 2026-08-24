@@ -1,5 +1,34 @@
 # M-LEADGATE-A — EXECUTOR HANDOVER
-**Seat:** LE · **Repo:** dream-os ONLY · **Base:** `ec828c8` (fetch-first at the seat's own clone; charter named `747bd19`, the CE-225 docs push sat one above as expected) · **Rulings:** R-36.8 · R-36.10 · F1–F6 (chair, this sitting)
+
+> **⚠ AMENDED 2026-08-24 AFTER THE FOUNDER'S WALK — ARM A: THE TWO LEADS DOORS ARE REVERTED.**
+> Read §6 before anything else in this file. Everything below §6 describes the delivery
+> as it landed at `7d625e8`; §6 describes what is actually running now.
+
+**Seat:** LE · **Repo:** dream-os ONLY · **Base:** `ec828c8` (fetch-first at the seat's own clone; charter named `747bd19`, the CE-225 docs push sat one above as expected) · **Rulings:** R-36.8 · R-36.10 · F1–F6 (chair, this sitting) · **ARM A** (founder, post-walk)
+
+---
+
+## 6 · THE WALK, AND WHY HALF OF THIS SHIPPED BACK OUT
+
+**Step 3 GREEN — the alert half is proven on production.** A basic-tier vendor received the redacted in-window alert on his own handset: no bride name, no phone, no enrichment, and `December 2026` rendered from the enquiry sheet's own date — which only `monthPhrase('2026-12-22')` could have produced, so the code path is witnessed rather than inferred.
+
+**Step 4 FAILED, and not as a rendering nit.** The redaction worked; identity genuinely left the wire. But `dreamos-pwa`'s `leads.tsx:55` falls back `l.name ?? 'Unknown'`, so twelve leads rendered `Unknown` — **the estate claiming ignorance about data it holds and is withholding.** A false statement on a money surface, live on seventeen real vendors, introduced that night. **The F-04.71 costume class**, which Block 06 was spent killing. Withholding is a product decision; claiming ignorance is a lie.
+
+**SEAT ERROR, OWNED:** the read-first called this outcome "degraded, **honest**", and the chair ratified the A→B gap on that adjective. The word was wrong. Predicting a symptom is not pricing it, and that adjective is what let it through.
+
+**ARM A, founder-ruled:** revert the two leads doors; keep the alert half. The alert is lie-free even against the un-reverted page — it says **less** than the page shows, which is withholding with no false claim anywhere in the chain. The page returns to behaviour that has been unchanged for months, so no *new* exposure is created.
+
+### THE RE-LANDING LAW — ruled 2026-08-24, verbatim
+> **"The two doors' redaction re-lands only after Seat B is at origin, deployed, and walked."**
+
+**STRUCTURAL, not scheduling.** Seat B is backward-compatible — with no `redacted` flag on the wire it renders exactly today's behaviour — so B-first opens no gap in either direction. Doors-first is what the walk proved. This sentence belongs in Seat B's charter and the succession note verbatim.
+
+### WHAT ENFORCES IT MECHANICALLY
+The bench gains **§0 · THE WIRING STATE**, which reads the door files off disk and asserts *which of them import the gate*. Without it, 33 cells would have gone on reporting green while testing a module no door calls — **a green over an unreachable path**, which is the failure mode a revert silently creates in any bench that tests a module instead of a wire.
+
+**When the doors re-land, §0's first cell goes RED.** That is the instrument working: it forces the re-landing to be a deliberate act with a ruling behind it, rather than something that slides back in because a file got restored. Proven both ways (M6: doors re-landed → red; M7: alert half lost → red).
+
+**Bench 57 → 60. Walk B (the OOW template leg) is HELD** — no green is added to a red board.
 
 ---
 
@@ -7,14 +36,14 @@
 
 | File | State | What |
 |---|---|---|
-| `src/lib/vendor/leadSerializer.js` | **NEW** | The tier gate's one home. Allowlist. Read-time. |
-| `src/api/vendor/leads.js` | modified | Both doors read through the gate |
-| `src/api/couple/enquire.js` | modified | Alert tier-switched on **both** legs; `tier` joins the SELECT |
-| `src/lib/templates.js` | modified | `lead_alert_basic` registry entry, from the wire paste |
-| `scripts/b36_leadgate_a_bench.js` | **NEW** | 57 cells, payload-proof |
-| `scripts/floor-manifest-m-leadgate-a.txt` | **NEW** | This delivery's declared-dirt table |
+| `src/lib/vendor/leadSerializer.js` | **NEW** | The tier gate's one home. Allowlist. Read-time. **Doors detached per ARM A; alert half live.** |
+| `src/api/vendor/leads.js` | **REVERTED to `ec828c8`** | Ungated, per ARM A |
+| `src/api/couple/enquire.js` | modified | Alert tier-switched on **both** legs; `tier` joins the SELECT — **LIVE** |
+| `src/lib/templates.js` | modified | `lead_alert_basic` registry entry, from the wire paste — **LIVE** |
+| `scripts/b36_leadgate_a_bench.js` | **NEW** | 60 cells, payload-proof + wiring |
+| `scripts/floor-manifest-m-leadgate-a-armA.txt` | **NEW** | ARM A's declared-dirt table |
 
-**No migration. No SQL runs in this delivery.** `0130` remains next-free.
+**No migration. No SQL in this delivery.** `0130` remains next-free.
 
 ---
 

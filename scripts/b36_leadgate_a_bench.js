@@ -121,6 +121,51 @@ function detailEnvelope() {
   };
 }
 
+console.log('\n§0 · THE WIRING STATE — WHAT IS ACTUALLY CALLED TODAY');
+// ═══════════════════════════════════════════════════════════════════════════
+// WHY THIS SECTION EXISTS, AND WHY IT ASSERTS THE *ABSENCE* OF A CALL.
+//
+// Every other section in this file tests the serializer MODULE by calling it
+// directly. After the ARM A revert (2026-08-24) the two leads doors DO NOT call
+// it — so without this section the bench would go on reporting 57/57 while the
+// doors it was written to protect ran completely ungated. That is a green over
+// an unreachable path, which §9 forbids by name, and it is the failure mode a
+// revert quietly creates in every bench that tests a module instead of a wire.
+//
+// SO THE BENCH STATES THE WIRING RATHER THAN IMPLYING IT. These cells read the
+// door files off disk and assert which of them import the gate.
+//
+// ── THE RE-LANDING LAW, RULED 2026-08-24, VERBATIM ─────────────────────────
+// "The two doors' redaction re-lands only after Seat B is at origin, deployed,
+//  and walked."
+//
+// The order is STRUCTURAL, not scheduling. Seat B is backward-compatible — with
+// no `redacted` flag on the wire it renders exactly today's behaviour — so
+// B-first opens no gap in either direction. Doors-first is what tonight proved:
+// the pwa's own fallback is `l.name ?? 'Unknown'` (leads.tsx:55), so an absent
+// name rendered as the estate CLAIMING IGNORANCE about data it holds and is
+// withholding. The costume class, on a money surface, on seventeen real vendors.
+//
+// WHEN SEAT B LANDS AND THE DOORS RE-LAND, THE FIRST CELL BELOW GOES RED. That
+// is not a defect — it is this instrument demanding that the re-landing be a
+// DELIBERATE act with a ruling behind it, rather than something that slides back
+// in because a file got restored. Flip the expectation then, and only then.
+// ═══════════════════════════════════════════════════════════════════════════
+const fs = require('fs');
+const LEADS_DOOR   = fs.readFileSync(path.join(ROOT, 'src/api/vendor/leads.js'), 'utf8');
+const ENQUIRE_DOOR = fs.readFileSync(path.join(ROOT, 'src/api/couple/enquire.js'), 'utf8');
+
+t('the two LEADS doors are UNGATED (ARM A revert holds)', () =>
+  !LEADS_DOOR.includes('leadSerializer')
+    ? true
+    : 'the leads doors import the gate again — if this is the deliberate re-landing '
+      + 'after Seat B walked, flip this cell; if it is not, the Unknown lie is back live');
+t('the ALERT half IS gated (the lie-free half stays live)', () =>
+  ENQUIRE_DOOR.includes('hasFullLeadAccess') && ENQUIRE_DOOR.includes('lead_alert_basic')
+    ? true : 'the alert half lost its gate — basic vendors are being sent her name');
+t('the alert still composes BOTH bodies', () =>
+  ENQUIRE_DOOR.includes('basicBody') && ENQUIRE_DOOR.includes('fullBody'));
+
 console.log('\n§1 · R-36.10 — THE FOUR CANON SPELLINGS');
 t('basic resolves to basic',        () => resolveTier('basic', VENDOR_ID) === 'basic');
 t('essential resolves to essential',() => resolveTier('essential', VENDOR_ID) === 'essential');

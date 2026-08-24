@@ -54,6 +54,32 @@
 // MECHANISM NAMED: the dial's reader is `buildMeta` at chat.js:2721. If a
 // per-tier enforcement seat ever lands (F-10.41) and the cap stops being the
 // thing that closes this lane, THIS PARAGRAPH IS FALSE and must be re-read.
+// ── ⚠ THE TWO LEADS DOORS DO NOT CALL THIS MODULE TODAY (ARM A, 2026-08-24) ──
+// This gate shipped wired at both leads doors and at both alert legs. The doors
+// were REVERTED the same night, by founder ruling, on the founder's own walk.
+//
+// WHY. The redaction worked — identity genuinely left the wire. But the pwa
+// renders an absent name through its own fallback `l.name ?? 'Unknown'`
+// (dreamos-pwa leads.tsx:55), so a basic vendor's twelve leads read `Unknown`:
+// THE ESTATE CLAIMING IGNORANCE ABOUT DATA IT HOLDS AND IS WITHHOLDING. That is
+// a false statement on a money surface, it was live on seventeen real vendors,
+// and it is the F-04.71 costume class that Block 06 was spent killing.
+// Withholding is a product decision; claiming ignorance is a lie.
+//
+// THE RE-LANDING LAW, RULED VERBATIM: "The two doors' redaction re-lands only
+// after Seat B is at origin, deployed, and walked." STRUCTURAL, not scheduling —
+// Seat B is backward-compatible (no `redacted` flag on the wire → today's render
+// exactly), so B-first opens no gap in either direction, while doors-first is
+// what tonight proved.
+//
+// STILL LIVE AND CORRECT: the ALERT half (src/api/couple/enquire.js), which
+// reads `hasFullLeadAccess` below. It is lie-free even against the un-reverted
+// page — the alert says LESS than the page shows, which is withholding with no
+// false claim anywhere in the chain.
+//
+// The wiring state is asserted mechanically at scripts/b36_leadgate_a_bench.js
+// §0, so the re-landing cannot happen by a file being restored. It reds there
+// until someone flips it deliberately, with a ruling.
 'use strict';
 
 // ── R-36.10 · THE FOUR CANON SPELLINGS ──────────────────────────────────────

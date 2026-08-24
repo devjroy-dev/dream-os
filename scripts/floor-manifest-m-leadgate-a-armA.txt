@@ -1,0 +1,22 @@
+# scripts/floor-manifest-m-leadgate-a-armA.txt
+# M-LEADGATE-A · ARM A — THE DOORS REVERT. Declared dirt for [F-14.16].
+#
+# Cut from THIS delivery's file list, and the floor is measured LAST, on the
+# tree that actually goes into the ZIP. That ordering is the standing correction
+# from ZIP 1, where the manifest was cut before the handover existed and the
+# floor was measured on a tree one file short of the one that shipped.
+
+# ── the two leads doors, REVERTED to ec828c8 (ungated) ───────────────────────
+src/api/vendor/leads.js
+
+# ── the gate itself: KEPT in the tree, doors detached, header records why ────
+src/lib/vendor/leadSerializer.js
+
+# ── the bench: gains §0, which asserts the WIRING rather than the module ─────
+scripts/b36_leadgate_a_bench.js
+
+# ── the handover ─────────────────────────────────────────────────────────────
+docs/TDW_M_LEADGATE_A_HANDOVER.md
+
+# ── this manifest ────────────────────────────────────────────────────────────
+scripts/floor-manifest-m-leadgate-a-armA.txt
