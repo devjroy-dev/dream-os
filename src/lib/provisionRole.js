@@ -51,24 +51,23 @@
 // stays the founder's separate word.
 'use strict';
 
-// THE EMPTINESS DEFINITION IS NOT THIS FILE'S. It mirrors `textPresent` at
-// src/lib/onboardingPredicate.js:50-52 — "a text field is present when it holds
-// a non-empty, non-whitespace string" — which is the SAME rule `brideComplete`
-// uses to refuse at the onboarding form. The door and the form must not
-// disagree about what a name is; a bride whose name is one space has not told
-// us her name at either.
+// THE EMPTINESS DEFINITION IS NOT THIS FILE'S, AND NOW IT IS NOT THIS FILE'S
+// COPY EITHER. `textPresent` at src/lib/onboardingPredicate.js is the one home
+// — "a text field is present when it holds a non-empty, non-whitespace string"
+// — the SAME rule `brideComplete` refuses by at the onboarding form and the
+// same rule both send-otp doors now coerce by. The door, the form and this
+// seam must not disagree about what a name is.
 //
-// IT IS DUPLICATED RATHER THAN IMPORTED, AND THAT IS A DECLARED TENSION WITH
-// THE ONE-HOME LAW. M-BRIDE-NAME's charter fences `onboardingPredicate.js` at
-// ZERO BYTES ("verified working, therefore untouched"), and `textPresent` is
-// not in its export list — so importing it would require a byte on a file this
-// sitting was ordered not to touch. The explicit fence wins over the general
-// law, the duplication is named here rather than hidden, and the handover
-// carries it forward: if a later sitting un-fences that file and exports
-// `textPresent`, THIS FUNCTION DIES and the import replaces it.
-function namePresent(v) {
-  return typeof v === 'string' && v.trim().length > 0;
-}
+// THE DUPLICATE IS RETIRED WITH ITS REASON, NOT SILENTLY DELETED. Until
+// 2026-08-25 this file carried a local `namePresent` and a paragraph saying
+// why: M-BRIDE-NAME's charter fenced `onboardingPredicate.js` at ZERO BYTES,
+// `textPresent` was not exported, and an import would have cost a byte on a
+// file that sitting was ordered not to touch. That paragraph ended with its
+// own instruction — "if a later sitting un-fences that file and exports
+// `textPresent`, THIS FUNCTION DIES and the import replaces it." R-37.19
+// un-fenced it for exactly that one line. This is that death, executed as
+// written. The tension is closed, not carried.
+const { textPresent } = require('./onboardingPredicate');
 
 async function provisionRole(supabase, { authUserId, phone, name, role }) {
   if (!authUserId) throw new Error('authUserId required');
@@ -88,6 +87,10 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
   let usersId = null;
   let currentName = null;
   let landedOnExisting = false;
+  // R-37.14 — set ONLY on path (b), and only when the row had never completed a
+  // verified login. Path (a) matched BY `auth_user_id`, so by construction that
+  // row has one and can never promote. See the R-37.14 block below.
+  let promoteUnverified = false;
   const { data: byAuth } = await supabase
     .from('users').select('id, name').eq('auth_user_id', authUserId).maybeSingle();
   if (byAuth) {
@@ -97,10 +100,15 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
   }
 
   // b) phone-fallback re-bind (legacy account migrating to phone-OTP)
+  //    The projection carries `auth_user_id` for R-37.14's marker and for no
+  //    other reason — it is READ, never compared to the caller's, because the
+  //    question is "has ANY verified login ever claimed this row", not "was it
+  //    this one".
   if (!usersId && phone) {
     const { data: byPhone } = await supabase
-      .from('users').select('id, name').eq('phone', phone).maybeSingle();
+      .from('users').select('id, name, auth_user_id').eq('phone', phone).maybeSingle();
     if (byPhone) {
+      promoteUnverified = (byPhone.auth_user_id ?? null) === null;
       const { error: rebindErr } = await supabase
         .from('users').update({ auth_user_id: authUserId }).eq('id', byPhone.id);
       if (rebindErr) throw new Error(`re-bind failed: ${rebindErr.message}`);
@@ -114,14 +122,52 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
   // Reached ONLY when (a) or (b) landed on an existing row. Path (c) writes the
   // name at insert and is deliberately untouched — it was never the defect.
   //
-  // The `!namePresent(currentName)` term is the never-clobber guarantee and is
+  // The `!textPresent(currentName)` term is the never-clobber guarantee and is
   // the cell the bench mutates: loosen it and a stale signup-form value would
-  // overwrite a corrected name on every subsequent login.
+  // overwrite a corrected name on every subsequent login. (It read
+  // `namePresent` until R-37.19 retired the duplicate; the guarantee is the
+  // same sentence, now read from its one home.)
   //
-  // The `namePresent(name)` term also means NO WRITE IS ISSUED AT ALL when no
+  // The `textPresent(name)` term also means NO WRITE IS ISSUED AT ALL when no
   // name was presented — provision runs on every login, and a silent update on
   // each one would move `updated_at` for nothing.
-  if (landedOnExisting && namePresent(name) && !namePresent(currentName)) {
+  //
+  // ── R-37.14 · THE PROMOTION ARM [F-05.89, founder-ratified 2026-08-25] ─────
+  // F-05.89 gave the send-otp doors a name at mint, so a row can now arrive
+  // here ALREADY NAMED by a byte nobody verified — anyone can type a name
+  // beside a phone they do not own and never complete the OTP. Under plain
+  // never-clobber that unverified byte would be permanent, and a mistyped
+  // pre-name would outlive the real owner's first real login.
+  //
+  // THE MECHANISM THIS SENTENCE STANDS ON, NAMED SO ITS NEXT SITTING MUST
+  // RE-READ THIS LINE [F-06.85]: `promoteUnverified` is TRUE only when path (b)
+  // found the row with `auth_user_id` NULL — the estate's durable mark of
+  // "no verified login has ever claimed this row". It is durable because
+  // `users_auth_user_id_key` is UNIQUE **WHERE (auth_user_id IS NOT NULL)**
+  // (docs/db/PUBLIC_SCHEMA.md, public.users indexes) — a partial unique, so
+  // NULL is a legal shared value for every never-verified row and a set value
+  // is unique to one identity. The rebind three lines above SETS it. The marker
+  // therefore flips in the same breath as the promotion, which is what makes
+  // this fire AT MOST ONCE PER ROW; never-clobber resumes forever after.
+  //
+  // ITS RADIUS IS WIDER THAN THE DOORS, PRICED AND ACCEPTED. `coupleIdentity.js`,
+  // `vendorInbound.js` and `brideInbound.js` also mint `auth_user_id`-NULL rows,
+  // carrying WhatsApp PROFILE names rather than typed ones. Those rows promote
+  // too, and that is the ruling rather than an overshoot. The authority, not
+  // just the rule, so the next reader need not go looking for it:
+  //     typed beats scraped — founder word 2026-08-25
+  // A name a person typed at a verified login outranks one scraped off a
+  // handset's profile field, and the marker flips at that same moment so the
+  // overwrite can never repeat.
+  //
+  // The `name !== currentName` term keeps the promotion from issuing a write
+  // that changes nothing — the common case, where the same person typed the
+  // same name at both doors, must not move `updated_at`.
+  const nameWins = textPresent(name) && (
+    !textPresent(currentName) ||
+    (promoteUnverified && name !== currentName)
+  );
+  if (landedOnExisting && nameWins) {
     const { error: fillErr } = await supabase
       .from('users').update({ name }).eq('id', usersId);
     if (fillErr) throw new Error(`name fill failed: ${fillErr.message}`);
@@ -130,9 +176,10 @@ async function provisionRole(supabase, { authUserId, phone, name, role }) {
 
   // c) fresh user
   //    The `if (name)` guard is preserved BYTE-FOR-BYTE. Both callers already
-  //    coerce with `.trim() || null`, so it is equivalent to `namePresent` at
+  //    coerce with `.trim() || null`, so it is equivalent to `textPresent` at
   //    every live call site, and this path was verified working: existing
-  //    behaviour is sacred (§8 SCOPE LAW).
+  //    behaviour is sacred (§8 SCOPE LAW). (Cited as `namePresent` until
+  //    R-37.19 retired that duplicate onto its one home.)
   if (!usersId) {
     const ins = { auth_user_id: authUserId };
     if (phone) ins.phone = phone;

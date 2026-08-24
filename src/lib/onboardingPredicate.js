@@ -212,9 +212,20 @@ function validateServiceAreaPair(body) {
   return null;
 }
 
+// `textPresent` JOINS THE EXPORT LIST — R-37.19, F-05.89, 2026-08-25.
+//
+// It was defined here and exported nowhere, and the cost of that was a copy:
+// `provisionRole.js` duplicated it as `namePresent` and said so in its own
+// bytes, because M-BRIDE-NAME's charter fenced THIS FILE at zero bytes and an
+// import would have needed one. That fence was sitting-scoped; R-37.19 lifts
+// it for exactly this line. The duplicate is now dead and its home imports
+// from here, so the door, the form and the provision seam all refuse by the
+// SAME sentence about what a name is. Adding a name to an export list changes
+// no behaviour for any existing reader — that is why the lift costs one line.
 module.exports = {
   brideComplete,
   vendorComplete,
+  textPresent,
   serviceAreaPresent,
   validateServiceAreaPair,
   SERVICE_AREA_TOKENS,

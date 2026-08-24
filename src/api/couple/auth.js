@@ -29,6 +29,7 @@ const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
 const { sendOtpCode } = require('../../lib/otpSend');
 const { ensureAuthIdentity } = require('../../lib/ensureAuthIdentity');
+const { textPresent } = require('../../lib/onboardingPredicate');
 
 // Dedicated service-role client for the GoTrue session exchange (mintSession), kept
 // SEPARATE from the shared data client with persistSession/autoRefreshToken OFF, so
@@ -118,14 +119,44 @@ async function mintSession(supabase, userId) {
 // ---------------------------------------------------------------------------
 // POST /send-otp
 // ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
+// F-05.89 [R-37.1] — THE NAME THAT MUST TRAVEL
+// ═══════════════════════════════════════════════════════════════════════════
+// The landing sheet makes the first name COMPULSORY before SEND CODE, then
+// posted the phone alone and held the name in browser state until /provision,
+// which runs only after a successful OTP. Every abandon between those two
+// moments therefore minted a durable NAMELESS users+role pair — this door was
+// one of exactly TWO nameless minting sites in the whole estate (the vendor
+// twin is the other; every other users-insert already carried a name). The
+// founder's word: "the first name that's entered must not be discarded. it
+// defeats the entire purpose of getting their name altogether."
+//
+// The name now rides the send-code request and lands ON THE FRESH INSERT ONLY.
+// An EXISTING row is never touched from here — a send-code name is unverified
+// (anyone can type a name beside a phone they do not own), so it may found a
+// row but may never overwrite one. The verified-login promotion that can
+// correct a bad pre-name lives at its one home, `provisionRole.js` [R-37.14].
+//
+// THE COERCION IS THE FORM'S OWN, NOT THIS DOOR'S [R-37.19]. `textPresent`
+// from `src/lib/onboardingPredicate.js` is the estate's one sentence about
+// what a name is, and the 80-cap matches `src/api/couple/onboarding.js` — the
+// door and the form write the same column and must not disagree about what
+// fits in it. (`brideInbound.js`'s 120 path is a different path with its own
+// argued comment and is untouched.)
 router.post('/send-otp', async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { phone } = req.body;
+  const { phone, name } = req.body;
 
   if (!phone || !PHONE_RE.test(phone.trim())) {
     return res.status(400).json({ error: 'Valid E.164 phone number required.' });
   }
   const cleanPhone = phone.trim();
+  // Absent, blank or whitespace-only is NULL, not a refusal: this door has never
+  // rejected a caller for a missing name and does not start now. The landing
+  // sheet's own gate is what makes the name compulsory for a human; a partner
+  // integration or an older cached bundle posting phone alone still works, and
+  // lands exactly the row it lands today.
+  const cleanName = textPresent(name) ? name.trim().slice(0, 80) : null;
 
   // Open signup: self-mint the account if this phone is new.
   let { data: userRow } = await supabase
@@ -153,8 +184,12 @@ router.post('/send-otp', async (req, res) => {
     }
   } else {
     // Fresh phone — create users + role row.
+    // F-05.89: `name` joins the insert. The shape is `coupleIdentity.js`'s
+    // donor byte (`{ phone, name: name || null }`) — a nullable column written
+    // explicitly rather than omitted, so the row's namelessness is a recorded
+    // fact rather than an absent key.
     const { data: newUser, error: userErr } = await supabase
-      .from('users').insert({ phone: cleanPhone }).select('id').single();
+      .from('users').insert({ phone: cleanPhone, name: cleanName }).select('id').single();
     if (userErr) {
       console.error('[couple:send-otp] users insert error:', userErr.message);
       return res.status(500).json({ error: 'Something went wrong. Please try again.' });

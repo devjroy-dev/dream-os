@@ -29,6 +29,7 @@ const requireAuth   = require('../middleware/requireAuth');
 const { provisionRole } = require('../../lib/provisionRole');
 const { sendOtpCode } = require('../../lib/otpSend');
 const { ensureAuthIdentity } = require('../../lib/ensureAuthIdentity');
+const { textPresent } = require('../../lib/onboardingPredicate');
 
 const BCRYPT_ROUNDS    = 10;
 const OTP_TTL_MS       = 5 * 60 * 1000;
@@ -121,14 +122,34 @@ async function mintSession(supabase, userId) {
 // ---------------------------------------------------------------------------
 // POST /send-otp
 // ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
+// F-05.89 [R-37.1] — THE NAME THAT MUST TRAVEL · THE VENDOR TWIN [R-37.16]
+// ═══════════════════════════════════════════════════════════════════════════
+// The founder's word named brides; the code says the hole is ONE HOLE, and
+// R-37.16 ruled both doors cured together. This door and `couple/auth.js` were
+// the estate's only two nameless `users` minting sites; the pwa's `sendOtp`
+// branches BOTH lanes out of a single function, so curing one lane from that
+// function would have shipped a half-wired door; and `vendorComplete`
+// (`onboardingPredicate.js`) refuses on a missing `user.name` exactly as
+// `brideComplete` does. A maker abandoning between SEND CODE and OTP minted
+// the identical Unknown.
+//
+// The cure is byte-parallel with the couple twin and the reasoning lives there
+// in full: name on the FRESH INSERT ONLY, never over an existing row; the
+// verified-login promotion is `provisionRole.js`'s [R-37.14]; the coercion is
+// `textPresent` + an 80-cap, matching the onboarding form that writes the same
+// column [R-37.19].
 router.post('/send-otp', async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { phone } = req.body;
+  const { phone, name } = req.body;
 
   if (!phone || !PHONE_RE.test(phone.trim())) {
     return res.status(400).json({ error: 'Valid E.164 phone number required.' });
   }
   const cleanPhone = phone.trim();
+  // Absent, blank or whitespace-only is NULL, not a refusal — see the couple
+  // twin's note: this door has never turned a caller away for a missing name.
+  const cleanName = textPresent(name) ? name.trim().slice(0, 80) : null;
 
   // Open signup: self-mint the account if this phone is new.
   let { data: userRow } = await supabase
@@ -156,8 +177,9 @@ router.post('/send-otp', async (req, res) => {
     }
   } else {
     // Fresh phone — create users + role row.
+    // F-05.89: `name` joins the insert — `coupleIdentity.js`'s donor shape.
     const { data: newUser, error: userErr } = await supabase
-      .from('users').insert({ phone: cleanPhone }).select('id').single();
+      .from('users').insert({ phone: cleanPhone, name: cleanName }).select('id').single();
     if (userErr) {
       console.error('[vendor:send-otp] users insert error:', userErr.message);
       return res.status(500).json({ error: 'Something went wrong. Please try again.' });

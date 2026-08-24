@@ -191,12 +191,44 @@ await ta('§1.5 path (b) re-bind, name NULL ⇒ auth bound AND name filled', asy
   assert.strictEqual(r.name, 'Meera');
 });
 
-await ta('§1.6 path (b) re-bind onto an ALREADY NAMED legacy row ⇒ bound, never clobbered', async () => {
+// ── CELL RE-AIMED 2026-08-25 · F-05.89 · R-37.14, founder-ratified ──────────
+// THIS CELL ASSERTED THE OPPOSITE UNTIL TODAY, and the reversal is a ruling,
+// not a regression. It read: "path (b) re-bind onto an ALREADY NAMED legacy row
+// ⇒ bound, never clobbered", guarding against "a legacy account losing its name
+// to a signup form". R-37.14 promotes exactly this shape — a name on a row that
+// NO VERIFIED LOGIN HAS EVER CLAIMED (`auth_user_id IS NULL`) yields ONCE to a
+// name typed at the verified rebind, after which the marker flips and
+// never-clobber resumes forever. Founder's word, 2026-08-25: typed beats
+// scraped.
+//
+// THE RADIUS WAS MEASURED BEFORE THIS CELL WAS TOUCHED, because reversing a
+// protection on a live estate is not a thing to do on reasoning alone. The
+// founder's census of 2026-08-25 (`auth_user_id IS NULL AND name IS NOT NULL`)
+// returned ONE row estate-wide — couple lane, minted 2026-06-30. That is the
+// entire population this reversal can reach, and it can reach it exactly once,
+// with the winning byte typed by the row's own owner at a verified door.
+//
+// §1.6b below is the half that did NOT move, and it is why this cell's change
+// is a narrowing rather than a surrender: once ANY verified login has claimed a
+// row, a later re-bind to a different identity cannot touch the name at all.
+await ta('§1.6 path (b) re-bind onto a NEVER-VERIFIED named row ⇒ promoted once [R-37.14]', async () => {
   const p = plane([{ id: USER_REBIND, auth_user_id: null, phone: PHONE_REBIND, name: 'Anita' }]);
   const r = await provisionRole(p, { authUserId: AUTH_REBIND, phone: PHONE_REBIND, name: 'Meera', role: 'couple' });
   const row = rowById(p, USER_REBIND);
   assert.strictEqual(row.auth_user_id, AUTH_REBIND, 'the re-bind itself regressed');
-  assert.strictEqual(row.name, 'Anita', 'a legacy account lost its name to a signup form');
+  assert.strictEqual(row.name, 'Meera', 'R-37.14: the unverified pre-name was not promoted over');
+  assert.strictEqual(r.name, 'Meera');
+});
+
+await ta('§1.6b path (b) re-bind onto an ALREADY-VERIFIED named row ⇒ never clobbered', async () => {
+  // The protection §1.6 used to carry, kept where it still applies and where it
+  // matters most: this row's name was set behind a verified login once already,
+  // so a re-bind to a NEW Supabase identity must not disturb it. Only the
+  // `auth_user_id IS NULL` marker separates this cell from the one above.
+  const p = plane([{ id: USER_REBIND, auth_user_id: AUTH_LINKED, phone: PHONE_REBIND, name: 'Anita' }]);
+  const r = await provisionRole(p, { authUserId: AUTH_REBIND, phone: PHONE_REBIND, name: 'Meera', role: 'couple' });
+  const row = rowById(p, USER_REBIND);
+  assert.strictEqual(row.name, 'Anita', 'a verified account lost its name to a signup form');
   assert.strictEqual(r.name, 'Anita');
 });
 
@@ -292,9 +324,17 @@ async function reddens(label, fn) {
   try { await fn(); return false; } catch { return true; }
 }
 
+// ── ANCHOR RE-FOUNDED 2026-08-25 · F-05.89 · R-37.19 [LE, this sitting] ──────
+// This pin named `namePresent`, provisionRole's local duplicate of
+// `textPresent`. R-37.19 retired that duplicate onto its one home
+// (`onboardingPredicate.js`, now exporting it) per the instruction the file
+// carried in its own bytes, and R-37.14 widened the guard into `nameWins`.
+// The pin is re-aimed at the CURRENT condition; the law it asserts — a fill
+// that is removable must redden §1.1 — is unchanged, and the cell count is
+// unchanged. Re-founded, not deleted: F-15.12's class.
 await ta('§3.1 THE MUTATION: delete the fill block ⇒ §1.1 RED', async () => {
   const red = await withMutation('src/lib/provisionRole.js',
-    'if (landedOnExisting && namePresent(name) && !namePresent(currentName)) {',
+    'if (landedOnExisting && nameWins) {',
     'if (false) {',
     () => reddens('1.1', async () => {
       const p = plane([{ id: USER_LINKED, auth_user_id: AUTH_LINKED, phone: PHONE_REBIND, name: null }]);
@@ -304,10 +344,15 @@ await ta('§3.1 THE MUTATION: delete the fill block ⇒ §1.1 RED', async () => 
   assert.ok(red, '§1.1 passed with the fill removed — it proves nothing');
 });
 
+// ── ANCHOR RE-FOUNDED 2026-08-25 · F-05.89 · R-37.19 [LE, this sitting] ──────
+// Same re-founding as §3.1: the never-clobber term is now
+// `!textPresent(currentName)` inside `nameWins` rather than
+// `!namePresent(currentName)` inline. Neutralising the term still inverts the
+// guard into a clobber on every login, which is the law this cell asserts.
 await ta('§3.2 THE MUTATION: drop the never-clobber term ⇒ §1.2 RED', async () => {
   const red = await withMutation('src/lib/provisionRole.js',
-    'if (landedOnExisting && namePresent(name) && !namePresent(currentName)) {',
-    'if (landedOnExisting && namePresent(name)) {',
+    '    !textPresent(currentName) ||',
+    '    true ||',
     () => reddens('1.2', async () => {
       const p = plane([{ id: USER_LINKED, auth_user_id: AUTH_LINKED, phone: PHONE_REBIND, name: 'Priya' }]);
       await provisionRole(p, { authUserId: AUTH_LINKED, phone: PHONE_REBIND, name: 'Meera', role: 'couple' });
