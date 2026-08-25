@@ -230,7 +230,7 @@ router.post('/', asyncHandler(async (req, res) => {
   if (vendor) {
     return await handleRealVendor({ supabase, res, vendor, couple_id: identityCoupleId,
                                     bride_name, bride_phone,
-                                    postedFunctions, wedding_date, city, postedBudgetMax });
+                                    postedFunctions, wedding_date, city, postedBudgetMax, postedBudgetMin });
   }
 
   const { data: demoVendor } = await supabase
@@ -255,7 +255,7 @@ router.post('/', asyncHandler(async (req, res) => {
 // THE REAL SPECIES
 // ─────────────────────────────────────────────────────────────────────────────
 async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, bride_phone,
-                                  postedFunctions, wedding_date, city, postedBudgetMax }) {
+                                  postedFunctions, wedding_date, city, postedBudgetMax, postedBudgetMin }) {
   const { data: user } = await supabase
     .from('users')
     .select('phone')
