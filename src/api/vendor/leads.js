@@ -146,7 +146,20 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
   // Build data + count queries in parallel. Soft-deleted rows (deleted_at set — the
   // TDW_02 P1 undo door, and any prior soft-deletes) never appear in the pipeline.
-  const dataSelect  = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_max, state, source, referrer_name, raw_message, draft_meta, notes, created_at'; // notes: TDW_04 A2 rider F-04.7 (CE-ruled, display-only read-row)
+  // ── F-16.25 (R-37.21) · `budget_min` JOINS THIS SELECT ─────────────────────
+  // The list wire has carried `budget_max` alone since TDW_02, aliased to
+  // `budget_total` by the mapper below. That was sufficient while every band had
+  // a ceiling. The top band does not, so a floor-only lead had nothing on this
+  // wire at all and the card rendered `Rs —` for the richest enquiry on the
+  // board. The floor now rides beside the ceiling, and the pair is the mark:
+  // budget_min present + budget_max null = the top band; both null = silence.
+  //
+  // THE CENSUS GUARD WILL RED ON THIS KEY UNTIL IT IS DISPOSITIONED, and that is
+  // the instrument working exactly as R-37.4 built it — a new column reaching a
+  // money wire stops at a desk before it reaches a vendor. Dispositioned PRESENT
+  // (budget is granted under R-36.13) at leadSerializer.js's LIST_SELECT_CENSUS
+  // and LIST_WIRE_CENSUS, both amended by label this sitting.
+  const dataSelect  = 'id, name, phone, wedding_date, wedding_date_precision, wedding_city, budget_min, budget_max, state, source, referrer_name, raw_message, draft_meta, notes, created_at'; // notes: TDW_04 A2 rider F-04.7 (CE-ruled, display-only read-row)
   let dataQuery     = supabase.from('leads').select(dataSelect).eq('vendor_id', vendor.id).is('deleted_at', null);
   let countQuery    = supabase.from('leads').select('*', { count: 'exact', head: true }).eq('vendor_id', vendor.id).is('deleted_at', null);
 
@@ -198,6 +211,12 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     wedding_date_precision: l.wedding_date_precision,
     wedding_city:           l.wedding_city,
     budget_total: l.budget_max,
+    // F-16.25: the FLOOR, under its own true name. Deliberately NOT folded into
+    // `budget_total` — that key is an alias for the ceiling and has been since
+    // TDW_02 (see today.js's header for its rationale). Two facts, two keys; a
+    // third meaning on `budget_total` is how the alias became confusing in the
+    // first place. The surface decides what to render from the pair.
+    budget_min:   l.budget_min,
     state:        l.state,
     source:       l.source,
     referrer:     l.referrer_name,

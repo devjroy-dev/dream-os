@@ -51,7 +51,7 @@ const { vendorWindowOpen } = require('../../lib/vendor/waWindow');
 const { createLead }   = require('../../lib/vendor/leads');
 const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld: enquiries → binders
 const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5: the free-lead hook
-const { bandCeiling, normalizeFunctions } = require('../../lib/discover/enquiryFields');
+const { bandCeiling, bandFloor, bandAnswered, normalizeFunctions } = require('../../lib/discover/enquiryFields');
 const { resolveCoupleIfPresent } = require('../../lib/resolveCoupleIfPresent'); // F-07.62's cure
 const { recordEnquiry } = require('../../lib/engagements');                     // TDW_16 P1: the spine's one home
 // M-LEADGATE-A · R-36.8 — the tier gate's one home, shared with both leads doors.
@@ -129,12 +129,42 @@ router.post('/', asyncHandler(async (req, res) => {
     wedding_date,   // 'YYYY-MM-DD'
     city,           // text
     budget_band,    // the band's `value` — whole-rupee ceiling as a string, '' = no ceiling
+    budget_floor,   // F-16.25 (R-37.21): the band's FLOOR, whole rupees as a string, '' = none
   } = req.body || {};
 
   // Parsed at ONE home (src/lib/discover/enquiryFields.js) so the bench can drive
   // the real functions. These were inline here until the both-ways run proved the
   // cells written for them were tautologies — see that file's header.
   const postedBudgetMax = bandCeiling(budget_band);
+  // ── F-16.25 · THE FLOOR NOW HAS A COLUMN TO LAND IN (R-37.21, Fork A) ──────
+  // `Rs 10,00,000+` is a floor with no ceiling. Its `value` is '', so
+  // `postedBudgetMax` is correctly null — there is no ceiling to record — and
+  // before this sitting that was the END of it: the richest bride on the feed
+  // was stored exactly like a bride who answered nothing, and her card read
+  // `Rs —`. `public.leads.budget_min` (witnessed, ordinal 9) is the column for
+  // what she actually said, and the Discover door has never written it.
+  //
+  // THE MARK, stated once here and relied on downstream: budget_min PRESENT
+  // with budget_max NULL is the top-band answer. Both null is silence.
+  const postedBudgetMin = bandFloor(budget_floor);
+  // AND THE DISTINCTION THE PARSE USED TO DISCARD, now read rather than thrown
+  // away. The sheet posts `band ?? undefined`, so silence OMITS the key and the
+  // top band SENDS ''. `bandCeiling` maps both to null; this reads them apart.
+  // It is corroboration, never the carrier — the floor above is the carrier,
+  // because building the top-band inference on '' alone would put the band
+  // table's meaning in two repos. Logged, not branched on.
+  const budgetAnswered = bandAnswered(budget_band);
+  if (budgetAnswered && postedBudgetMax == null && postedBudgetMin == null) {
+    // The ZIP-ORDER WINDOW, named so it is not read as a defect: this door
+    // accepts `budget_floor` before the sheet posts it. Until the pwa half is
+    // deployed, a top-band enquiry arrives answered-but-floorless and behaves
+    // exactly as it did before this sitting. The line closes itself the moment
+    // ZIP 2 lands, and until then it says so out loud.
+    console.warn(
+      '[enquire] top-band enquiry carried no floor — the sheet has not shipped ' +
+      'budget_floor yet (F-16.25 ZIP-order window). budget_min stays null.'
+    );
+  }
   const postedFunctions = normalizeFunctions(functions);
 
   if (!vendor_id) {
@@ -602,6 +632,11 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       // for a value this door could not previously receive.
       wedding_city: city || vendor.city || null,
       budget_max:   postedBudgetMax,
+      // F-16.25 (R-37.21): her floor, on its own witnessed column. Null when she
+      // answered nothing AND when the band she chose has no lower bound — the
+      // first band, `Under Rs 1,00,000`, is a ceiling with no floor exactly as
+      // the top band is a floor with no ceiling.
+      budget_min:   postedBudgetMin,
       raw_message: `${brideNameFinal || 'A couple'} enquired via the Discover feed on The Dream Wedding.`,
       notes:       'Discover enquiry — she found you on the feed.',
     });

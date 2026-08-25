@@ -16,13 +16,15 @@
 // bench and counting its own output, never estimated:
 //   at 5be80d6 (the A-cut), run at the untouched tip     60 cells, 60/60
 //   at this tree (the recut)                             94 cells
+//   at Seat B′ (F-16.25's disposition, labelled)          95 cells
 //   carrying the [re-founded] label                      14 cells
 //
 //   per section, this tree:
 //     §0 wiring state ................  6   (was 3 — the flip plus two cells
 //                                            asserting WHICH handler is gated)
 //     §1 canon spellings .............. 11   unchanged
-//     §2 list door ....................  8
+//     §2 list door ....................  9   (+1 at Seat B′, labelled — the
+//                                            budget_min disposition proven)
 //     §3 essential+ unmoved ...........  6   unchanged
 //     §4 detail door .................. 15
 //     §5 tier flip ....................  5
@@ -300,6 +302,16 @@ t('BASIC list row KEEPS existence + context', () => {
       && r.wedding_date === '2026-12-14' && r.budget_total === 200000
       && r.tdw === true && r.tdw_enquired_at === '2026-08-21T10:00:00Z'
       ? true : `existence fields lost: ${JSON.stringify(r)}`;
+});
+// ── LABELLED AMENDMENT · SEAT B′ (F-16.25 / R-37.21) · +1 cell, 94 -> 95 ────
+// The census constants above were AMENDED to disposition `budget_min` PRESENT.
+// A disposition that only edits a constant is a declaration; this cell is the
+// proof, so the guard's answer and the wire's behaviour cannot drift apart.
+t('[B′ amendment] BASIC list row KEEPS budget_min (dispositioned PRESENT)', () => {
+  const row = { ...listRow(), budget_min: 1000000, budget_total: null };
+  const out = serializeLeadRow(row, 'basic', VENDOR_ID);
+  return out.budget_min === 1000000
+    ? true : `the floor was withheld from a basic wire: ${JSON.stringify(out.budget_min)}`;
 });
 t('BASIC list row carries the redacted tell', () =>
   serializeLeadRow(listRow(), 'basic', VENDOR_ID).redacted === true);

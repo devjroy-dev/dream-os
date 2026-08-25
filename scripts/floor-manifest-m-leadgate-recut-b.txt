@@ -1,0 +1,25 @@
+# scripts/floor-manifest-m-leadgate-recut-b.txt
+#
+# M-LEADGATE-RECUT · SEAT B′ (ZIP 1, dream-os) — THE DECLARED DIRT.
+#
+# [F-14.16] A delivery tree is dirty by definition and R-33.7 forbids the
+# executor the commit that would clean it. Every dirty path must be named here;
+# one byte outside and the runner refuses. The manifest's files are SHA-256'd
+# before the run and re-hashed after, so the SET is tolerated and the CONTENTS
+# are not.
+#
+# CUT FROM THE DELIVERY'S FILE LIST, AND THE FLOOR MEASURED LAST — the A-sitting
+# shipped its manifest one path short because the floor was measured before the
+# handover was authored, and the zero-delta number was true of a tree that never
+# shipped. The handover and this manifest are delivered files and dirty the tree
+# like any other.
+#
+# EIGHT PATHS. ZIP 1 carries exactly these.
+src/lib/discover/enquiryFields.js
+src/api/couple/enquire.js
+src/api/vendor/leads.js
+src/lib/vendor/leadSerializer.js
+scripts/b36_leadgate_a_bench.js
+scripts/b37_f1625_band_floor_bench.js
+scripts/floor-manifest-m-leadgate-recut-b.txt
+docs/TDW_M_LEADGATE_RECUT_B_HANDOVER.md

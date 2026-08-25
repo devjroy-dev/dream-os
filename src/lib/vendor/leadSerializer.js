@@ -329,9 +329,15 @@ const LEADS_COLUMN_CENSUS = [
 
 // The columns the LIST door asks the database for (src/api/vendor/leads.js,
 // symbol `dataSelect`).
+// ── AMENDED BY LABEL · M-LEADGATE-RECUT SEAT B′ (F-16.25 / R-37.21) ────────
+// `budget_min` JOINS. DISPOSITIONED **PRESENT** for basic: budget is granted
+// whole under R-36.13 ("the name of the bride, date of wedding, budget, city —
+// let it all be there"), and a floor carries no mode to connect. The guard cell
+// red that this key produced was the instrument working, and this line is the
+// ruling that answers it — not an append to make a bench quiet.
 const LIST_SELECT_CENSUS = [
   'id', 'name', 'phone', 'wedding_date', 'wedding_date_precision',
-  'wedding_city', 'budget_max', 'state', 'source', 'referrer_name',
+  'wedding_city', 'budget_min', 'budget_max', 'state', 'source', 'referrer_name',
   'raw_message', 'draft_meta', 'notes', 'created_at',
 ];
 
@@ -340,9 +346,14 @@ const LIST_SELECT_CENSUS = [
 // `budget_max` on this wire and is NOT a `public.leads` column; the real
 // `budget_total` phantom lives in src/lib/vendor/snapshot.js and is a separate,
 // filed, out-of-radius debt.
+// ── AMENDED BY LABEL · SEAT B′ (F-16.25 / R-37.21) ─────────────────────────
+// `budget_min` joins the WIRE too, under its own true name. Note it sits beside
+// `budget_total` rather than inside it: `budget_total` is the CEILING wearing an
+// alias (mapper: `budget_total: l.budget_max`), and giving that key a third
+// meaning is how the alias became a thing readers have to look up.
 const LIST_WIRE_CENSUS = [
   'id', 'name', 'phone', 'wedding_date', 'wedding_date_precision',
-  'wedding_city', 'budget_total', 'state', 'source', 'referrer',
+  'wedding_city', 'budget_total', 'budget_min', 'state', 'source', 'referrer',
   'raw_message', 'notes', 'created_at', 'tdw', 'tdw_enquired_at', 'draft',
 ];
 
