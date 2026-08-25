@@ -615,7 +615,9 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   // — written twenty lines down — holds the ENGINE BINDER id that
   // `enquiryToBinder` returns, despite the name. The two are different planes.
   // The rename of that column is filed and NOT taken here (F-16.7).
+  let leadFiled = false;
   let leadCreated = false;
+  let leadEnriched = false;
   let leadId = null;
   try {
     const leadRes = await createLead(supabase, vendor.id, {
@@ -639,10 +641,50 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       budget_min:   postedBudgetMin,
       raw_message: `${brideNameFinal || 'A couple'} enquired via the Discover feed on The Dream Wedding.`,
       notes:       'Discover enquiry — she found you on the feed.',
+      // ── F-16.30 · R-37.32 / R-37.34 / R-37.37 — HER WORD, UNCOALESCED ─────
+      // THE RETURNING BRIDE'S ANSWERS STOP BEING DISCARDED. Until this line,
+      // a phone the vendor already knew made `createLead` return the existing
+      // row untouched, and everything she had just typed went in the bin while
+      // the door answered `ok: true`.
+      //
+      // EVERY VALUE BELOW IS THE RAW ONE, and that is the whole enforcement of
+      // R-37.37 ("enrich only from her word, never from a fallback"). Compare
+      // them to the coalesced parameters directly above: `wedding_city` there
+      // is `city || vendor.city`, and `name` there falls back to a stock
+      // literal. Passing those would fill her empty columns with the VENDOR'S
+      // city and a placeholder name, in her voice, on a money surface — which
+      // is R-37.27's `Unknown` class wearing a different coat.
+      //
+      //   name          brideNameFinal ONLY — session-derived or her posted
+      //                 name. Null when the estate genuinely has none, and a
+      //                 null never fills anything.
+      //   wedding_city  `city` ONLY — never the vendor.city coalesce.
+      //   the rest      already unfallback'd; passed for one readable table.
+      //
+      // The refused keys (source, raw_message, notes, phone, email,
+      // referrer_name) are absent here BY RULING, dispositioned with their
+      // reasons at src/lib/vendor/leads.js, ENRICH_REFUSED_KEYS.
+      enrich: {
+        name:         brideNameFinal || null,
+        wedding_date: wedding_date   || null,
+        wedding_city: city           || null,
+        event_types:  postedFunctions,
+        budget_min:   postedBudgetMin,
+        budget_max:   postedBudgetMax,
+      },
     });
-    leadCreated = !!(leadRes && leadRes.ok);
-    leadId      = (leadRes && leadRes.lead && leadRes.lead.id) || null;
-    if (!leadCreated) {
+    // ── R-37.36 · THE WIRE STOPS OVERSTATING ────────────────────────────────
+    // `leadCreated` was `!!leadRes.ok`, which is TRUE on a dedupe hit — so the
+    // door reported creating a row it had not created and had not touched.
+    // Three facts now travel separately because they are three facts:
+    //   leadFiled    the row EXISTS where the vendor will find it.
+    //   leadCreated  a row was INSERTED this request.
+    //   leadEnriched an existing row GAINED at least one field this request.
+    leadFiled    = !!(leadRes && leadRes.ok);
+    leadCreated  = leadFiled && !(leadRes && leadRes.deduped);
+    leadEnriched = !!(leadRes && leadRes.enriched);
+    leadId       = (leadRes && leadRes.lead && leadRes.lead.id) || null;
+    if (!leadFiled) {
       console.error(`[enquire] createLead refused for vendor ${vendor.id}: ${leadRes && leadRes.error}`);
     }
   } catch (err) {
@@ -760,14 +802,35 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
   // is on the wire and witnessable rather than inferred. This is the demo leg's
   // own pattern (:382 `notified_vendor: alert.sent === true`) — the asymmetry
   // between the two species closes toward the honest one.
+  // ── R-37.36 · `ok` IS HELD BYTE-STABLE, AND THIS IS A DECLARED DERIVATION ──
+  // This line read `ok: leadCreated`. R-37.36 redefines `leadCreated` to mean
+  // "a row was INSERTED", so leaving the expression untouched would have
+  // silently changed `ok` — and a returning bride whose enquiry landed
+  // perfectly on an existing lead would have been told, by the sheet's own
+  // check, that it failed. That is a false statement to a bride caused by a
+  // cure for false statements, so the expression moves in order to keep the
+  // VALUE identical in every case.
+  //
+  // `ok` keeps the meaning this file's own header has always given it (:36):
+  // "the enquiry EXISTS where the vendor will find it (the row)". True on a
+  // create, true on a dedupe hit enriched or not, false only when nothing
+  // landed — which is exactly what it evaluated to before this sitting.
+  //
+  // DECLARED FOR RATIFY-OR-REVERT: the ruling names `lead_created` and
+  // `lead_enriched` and does not name `ok`. I am not treating that silence as
+  // a licence to change the wire — I am treating it as a requirement not to.
+  // A cell pins `ok` against the pre-arc truth table in all four states.
   return res.json({
-    ok: leadCreated,
+    ok: leadFiled,
     species: 'real',
     sent,
     vendor_notified: vendorNotified,
     notify_mode: notifyMode,
     notify_refusal: notifyRefusal,
     lead_created: leadCreated,
+    // R-37.36: minted. `false` on a create and on a no-fill dedupe; `true`
+    // only when an existing row actually gained a field this request.
+    lead_enriched: leadEnriched,
     enquiry_saved: enquirySaved,
   });
 }

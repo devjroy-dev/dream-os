@@ -1,0 +1,23 @@
+# scripts/floor-manifest-m-doorboot.txt
+#
+# M-DOORBOOT · F-16.29 HARNESS + R-37.32 ENRICH-ON-DEDUPE — THE DECLARED DIRT.
+#
+# [F-14.16] A delivery tree is dirty by definition and R-33.7 forbids the
+# executor the commit that would clean it. Every dirty path must be named here;
+# one byte outside and the runner refuses. The manifest's files are SHA-256'd
+# before the run and re-hashed after, so the SET is tolerated and the CONTENTS
+# are not.
+#
+# CUT FROM THE DELIVERY'S FILE LIST, AND THE FLOOR MEASURED LAST — the A-sitting
+# shipped its manifest one path short because the floor was measured before the
+# handover was authored, and the zero-delta number was true of a tree that never
+# shipped. The handover and this manifest are delivered files and dirty the tree
+# like any other. That tuition is honoured here: this file and the handover are
+# both on the list below, and the floor runs after both exist.
+#
+# FIVE PATHS. THE ZIP CARRIES EXACTLY THESE.
+src/lib/vendor/leads.js
+src/api/couple/enquire.js
+scripts/b38_doorboot_enrich_bench.js
+scripts/floor-manifest-m-doorboot.txt
+docs/TDW_M_DOORBOOT_HANDOVER.md
