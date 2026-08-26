@@ -515,6 +515,9 @@ A-3 amends this sheet to consolidate the **real** enumerated surface set, not th
 **⛔ STOP — D-10.**
 **The merge sheet ends here. Nothing in §7 is decided. §7.1 through §7.5 are five proposals awaiting the founder's ruling, and §7.3 carries a declared evidence gap that must be closed before it can be ruled at all. No Phase 1 byte may assume any of them.**
 
+> **AMENDED 2026-08-27 (CE-37):** the rulings this STOP awaited are now TAKEN and recorded at §11 below. The STOP is preserved unedited as the record of the gate it was.
+
+
 ---
 
 ## §8 · THE SURFACED ROWS — WHAT THE FOUNDER RULES
@@ -593,3 +596,36 @@ This ledger is complete when the founder rules:
 **Phase 1's kickoff is written only after that signature.** Phase 1 carries the branch mechanics, the founder's Vercel and CORS steps, and the manifest-name veto per R-37.42 — none of which is this sitting's work.
 
 Sequencing beyond this sitting is the founder's.
+
+> **SIGNED 2026-08-27 (CE-37, founder words of 2026-08-26 quoted at §11):** every item enumerated above now carries a taken ruling at §11. Phase 1 opens.
+
+
+
+---
+
+## §11 · THE SIGNATURE — RULINGS TAKEN (amendment, CE-37, 2026-08-27)
+
+Filed to cure the disease a Phase 1 seat convicted at this file's own hash: the rulings below were taken in the founder's chat on 2026-08-26 and lived nowhere a fresh clone could read. They land here verbatim-anchored. Founder words are quoted where they are the authority; everything else is the chair's ruling under them. Nothing in §7/§8 above is rewritten — this section is the signature §10 awaited.
+
+**The founder's words of record, 2026-08-26:** 「1-5 as recommended」 (ruling §7.1-alt, §7.2, §7.4-fold, §7.5, §8.2 in one stroke) · 「couture with a featured list」 (the §7.4 room name) · 「yes on hygiene micro」 (§8.3's execution order).
+
+**THE MERGE SHEET (§7), ruled:**
+- **§7.1 M-α → THE ALTERNATIVE ARM.** Portfolio is its own pinnable room; the other six Storefront surfaces fold into one room with pills. [R-37.43]
+- **§7.2 M-β → FOLD.** Team Hub's zero-control menu dies; one room, three pills, tier gate rides. [R-37.43]
+- **§7.3 M-γ → RESOLVED BY DERIVATION, no merge exists to perform.** Both doors render the shared `NotesBody` → `GET /api/v2/vendor/notes` → `owner_notes`; `public.notes` is touched by neither (it is the agent-context and leads-trail plane). One Notes room in the shell; the second door drops. Evidence: the Phase 1 seat's read-first at `aae3f99`/`c1d35cb`, chair-verified. [R-37.54]
+- **§7.4 M-δ → FOLD.** The room is **Couture**; **Featured** is a pill inside it. Founder byte verbatim above; zero new copy. [R-37.44]
+- **§7.5 M-ε → CONFIRMED.** Money and legal rooms stay whole.
+
+**THE SURFACED ROWS (§8), ruled — each per its own *Proposed* arm unless stated:**
+- **§8.1** W-1 measures the full-list path; the top-three Home jobs record at-floor with a ≤ obligation. [R-37.43]
+- **§8.2** Storefront joins Calendar as a default pin. [R-37.43]
+- **§8.3** REMOVED-BY-RULING — **EXECUTED**, dreamos-pwa `aae3f99` (M-HYGIENE). [R-37.43]
+- **§8.4** Candidate A (`leads.state = 'new'`), B held as Phase 3 enrichment. **§8.5** `team_tasks` only. **§8.6** `shop_nudge` parked; six kinds ship. **§8.7** `done_today` covers the three provable kinds and says so on the card. **§8.8** fresh module path; the roadmap's D-3 sentence amends at the next seam. **§8.9** the typed plane; the engine-backed reader retires at the same seam. **§8.10** the branch shell carries equivalent tour anchors from Phase 1. [all R-37.43]
+- **§8.11** SETTLED BY COMMAND: `lib/vendor/theme.ts:219` (Addendum A — Espresso + Editorial Paper) supersedes `TDW_09_UIUX_FINAL.md:94`; K-6/K-7 are CARRIED. The coin's "Parchment" subtitle is filed as **F-09.189** (vendor-facing vocabulary drift; cure-word is the founder's; main-side micro, outside this arc). [R-37.43]
+- **§8.12** Do-not-port RULED. The live `?igprobe=1` ladder is URL-gated (`portfolio/page.tsx:349`, chair-derived, correcting an earlier over-grade owned as c-37.7); its retirement wants R-1 as predicate and stays queued. [R-37.43]
+- **§8.13** Atmospheres re-key to the merged rooms' prefixes, zero visual delta, cell-asserted. [R-37.43]
+- **§8.14** → §7.3 above. [R-37.54]
+
+**Standing beside these:** R-37.41 (D-1…D-8 adopted as proposed; amendments A-1…A-6 as recorded in §0/§3 of this ledger) · R-37.42 (the branch-PWA model, already woven through this file) · the full R-37 register banks in FINDINGS_LOG at CE-227, which supersedes this section as the register of record when it lands.
+
+**Phase 1 is OPEN against this file at its post-amendment hash.**
