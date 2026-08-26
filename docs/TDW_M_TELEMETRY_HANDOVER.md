@@ -138,3 +138,77 @@ One founder glance at Railway after any vendor-lane send. Tonight's OOW walk see
 3. **F-05.91** — bride and marketing lanes; six one-line calls.
 4. **F-16.35** — under observation; the watch is now instrumented on six of seven sites.
 5. Unmoved and located: F-16.32 (queued, frost-side) · F-05.84 · F-08.103 · F-08.105 · F-10.122 · F-16.19 · F-SW.10.
+
+---
+
+# M-TELEMETRY-R — THE RECEIPT SAYS WHY [APPENDED, R-37.56–.59]
+
+**Base:** `409c602`. **REBASED MID-DELIVERY, DECLARED.** Read-first and the whole build were done at `7e5c9eb`; the tip moved to `409c602` while this seat was building (`9e60e68` WORKLIST_PARITY §11, `409c602` CE-227's closing band — both docs-only). Caught by re-deriving the hash fetch-first at the cut rather than trusting the base named in the kickoff. **Zero overlap** with this delivery's four paths, verified by `git diff --name-only`; the seat rebased and **re-ran the engine gate, the bench and the floor on the new base** rather than shipping a hash that was true an hour ago. **Log-only, ONE production file, zero schema, zero DDL, copy zero.**
+
+## R1 · WHAT SHIPPED
+
+`src/lib/vendor/relayStatus.js` — the five outcome lines absorbed into `[wa:receipt]`, Meta's `errors[]` finally read. Plus `scripts/b39_telemetry_bench.js` (+12 cells, 22 → 34), the manifest, and this handover.
+
+## R2 · THE CORRECTION THAT OPENED THE SITTING
+
+My own read-first opened by claiming `errors[]` was stripped upstream. **It is not, and I retracted it in the same message.** `metaInbound.js` (symbol `extractStatuses`) has always carried `errors: Array.isArray(s.errors) ? s.errors : []`, and `index.js` passes the whole object into `applyStatusEvent`. **The reason reached this server on 26 Aug and was thrown away inside `relayStatus.js`, which read only `.id` and `.status`.** That made the cure smaller and better than chartered: log-only, one file, no upstream plumbing.
+
+## R3 · c-37.9 — THE KICKOFF'S TRUNCATION WOULD HAVE BROKEN ITS OWN PURPOSE
+
+The kickoff asked for a wamid *"tail-truncated to match your send line's grep."* **The shipped send line is not truncated** — witnessed in production the same evening: `wamid=wamid.HBgMOTE5ODg4Mjk0NDQwFQIAERgSMzhCOUI0NkNGRjBCQUMzNzQzAA==`. A truncated receipt would not have matched it, and the one-grep-two-lines evening the sitting exists to create would have failed on delivery. Raised at read-first, owned by the chair as **c-37.9**, ruled to the **full wamid** at R-37.56. **Cell 6.3 produces both lines and asserts the same substring finds both** — so the property is executed, not promised.
+
+## R4 · THE FOUNDER'S TWO-LINE EVENING — THE EXACT GREP
+
+```
+wamid.HBgMOTE5ODg4Mjk0NDQwFQIAERgSMzhCOUI0NkNGRjBCQUMzNzQzAA==
+```
+
+Paste any wamid into Railway's filter and the send and its receipt come back adjacent:
+
+```
+[wa:vendor]  SENT site=enquire:oow mode=template key=lead_alert_basic to=…4440 wamid=<W> ctx=<vendor>
+[wa:receipt] webhook:meta wamid=<W> status=failed home=none matched=0 err=131049 err_title=This_message_was_not_delivered… — NO ROW CARRIES THIS SID
+```
+
+Other habits, all one line each: `wa:receipt` (every callback) · `err=` (**only real failures** — R-37.58 omits it on success) · `home=none` (orphans) · `webhook:meta` (the pre-existing search, preserved inside the new line by R-37.57's absorption).
+
+## R5 · WHY `home=none` IS THE HONEST ANSWER AND NOT A FIX [R-37.59]
+
+A correlation home **exists**: `public.messages.twilio_sid` already holds Meta wamids — `whatsapp.js` returns `{ sid: wamid, … }`, *"documented misnomer"*. Our alerts still orphan because they go through **`sendWa`, which writes no `messages` row at all**. Priced, not built, and recorded as **F-16.34's open third arm**:
+
+- **(a) attach to `vendor_self`** — the pattern `enquiryAlert.js` already uses; no migration, but alerts would enter agent history: a behavioural change wanting its own ruling and possibly the founder's taste.
+- **(b) a send-ledger table** — a migration and a sole-writer question.
+
+`public.messages` is `conversation_id uuid NOT NULL` with an FK, so an alert row cannot simply be inserted. **Until one arm is ruled, `home=none` says in words that the receipt is an orphan** rather than reporting a zero as if it were nothing.
+
+## R6 · PROOF
+
+**`b39_telemetry_bench` 34/34** (was 22) · **24/34 at `7e5c9eb`** — **9 of 11 new cells red uncured.**
+
+**6.10 and 6.11 are green at both trees ON PURPOSE** and are named rather than counted: they assert the receipt path still never throws and that the `{matched, row, reason}` contract `applyStatusEvent` gates receipts №14/№15 on is **byte-unmoved**. Regression guards for a log-only sitting, not cure evidence.
+
+**Ten production mutations, ZERO inert**, each restored byte-exact with the bench re-verified at 0 after every one. R1 (discard `errors[]` again — F-16.34 restored) bites 3. R9 and R10 bite the two guards, which is what makes them guards rather than decoration.
+
+### TWO DEFECTS THE MUTATION HARNESS FOUND IN MY OWN CELLS
+
+**(a) A CELL THAT COULD NOT FAIL ON ITS OWN SUBJECT.** 6.9 was named *"every field is grep-shaped — the title's spaces are underscored"* and asserted that the `err_title=` token contained no space — **true by construction of splitting on whitespace.** R7 (stop underscoring the title) bit 6.1 and left 6.9 green: a cell named for grep-shape that could not detect an unshaped line. Re-founded on the fact that matters — the **whole** title must arrive as one token, so a reader grepping `err_title=` gets the reason and not its first word.
+
+**(b) THE FOURTH OUTCOME SHAPE WAS UNCOVERED.** R-37.57 required all four survive the re-key; nothing tested `SID IS NOT UNIQUE`, which is how R8 came back inert after silently dropping that line's old search token. **6.12** now covers it and asserts the ambiguous match hands `row: null` to the receipt gate.
+
+**FLOOR: NAMED BASE, no delta** — `--delivery --check`, measured **LAST** on the exact shipping tree. **Engine RC=0.** `node --check` clean.
+
+## R7 · THE WALK
+
+1. Deploy green.
+2. Send one vendor-lane message (any Discover enquiry).
+3. Railway → active deployment → **Deploy Logs** → filter `wa:receipt`. Expect **one line per callback**, carrying `status=`, `home=`, and **no `err=` on success**.
+4. Copy the `wamid=` value from the `[wa:vendor]` line and paste it into the filter. **Expect two lines: the send and its receipt.**
+
+**The first `failed` receipt that ever arrives will carry `err=<code> err_title=<reason>` — that is the line F-16.35 has been waiting for.**
+
+## R8 · WHAT REMAINS
+
+1. **F-16.34's third arm** — the correlation home, priced above, unruled.
+2. **F-16.35** — now instrumented on both halves. The next failure names itself.
+3. **F-05.91** — bride/marketing lanes, including `brideIndex.js`'s matchless status line, ratified into that census this sitting.
+4. **F-05.92** — the vendor plane's raw-transport callers.

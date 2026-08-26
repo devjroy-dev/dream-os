@@ -1,0 +1,16 @@
+# scripts/floor-manifest-m-telemetry-r.txt
+#
+# M-TELEMETRY-R · R-37.56–.59 — THE DECLARED DIRT.
+#
+# [F-14.16] Every dirty path named; one byte outside and the runner refuses.
+# The listed files are hashed before the run and re-hashed after, so the SET is
+# tolerated and the CONTENTS are not.
+#
+# The handover and this manifest are delivered files and dirty the tree like any
+# other, so both are listed and THE FLOOR RUNS AFTER BOTH EXIST.
+#
+# FOUR PATHS — one production file, one bench, this manifest, the handover.
+src/lib/vendor/relayStatus.js
+scripts/b39_telemetry_bench.js
+scripts/floor-manifest-m-telemetry-r.txt
+docs/TDW_M_TELEMETRY_HANDOVER.md

@@ -443,6 +443,172 @@ await t('5.4', 'and on REFUSAL — the cell N12 found missing', async () => {
   assert.ok(w[0].text.includes('REFUSED') && w[0].text.includes('err=template_not_approved'), w[0].text);
 });
 
+
+// ══════════════════════════════════════════════════════════════════════════
+console.log('\n§6 · THE RECEIPT SAYS WHY — M-TELEMETRY-R · R-37.56/.57/.58/.59');
+// EXECUTED. Every cell drives the REAL `witnessStatusMatch` against a recording
+// supabase and reads the console output back. Nothing greps source.
+//
+// This is the half that was missing on 26 Aug: three receipts came back
+// `failed`, and `errors[]` — which `extractStatuses` had ALREADY put on the
+// status object — was read by nobody.
+
+const { witnessStatusMatch } = require(P('src/lib/vendor/relayStatus'));
+
+// Meta's real payload shape for a failed marketing send. Path derived at
+// read-first: body.entry[].changes[].value.statuses[] -> { id, status, errors[] }.
+const WAMID = 'wamid.HBgMOTE5ODg4Mjk0NDQwFQIAERgSMzhCOUI0NkNGRjBCQUMzNzQzAA==';
+const failedStatus = (errors) => ({ id: WAMID, status: 'failed', recipient: '919888294440', errors });
+const META_131049 = [{ code: 131049, title: 'This message was not delivered to maintain healthy ecosystem engagement.' }];
+
+function receiptSupabase(rows) {
+  return { from: () => ({
+    update() {
+      const u = {
+        eq() { return u; }, is() { return u; },
+        select() { return Promise.resolve({ data: rows, error: null }); },
+      };
+      return u;
+    },
+  }) };
+}
+const rcpt = (lines) => lines.filter((l) => /\[wa:receipt\]/.test(l.text));
+
+await t('6.1', 'A FAILED RECEIPT CARRIES META\'S CODE AND TITLE — the 26 Aug line', async () => {
+  const { lines } = await capture(() =>
+    witnessStatusMatch(receiptSupabase([]), failedStatus(META_131049)));
+  const r = rcpt(lines);
+  assert.strictEqual(r.length, 1, `expected 1 receipt line, got ${r.length}`);
+  assert.ok(r[0].text.includes('err=131049'), `the code did not reach the line: ${r[0].text}`);
+  assert.ok(r[0].text.includes('err_title=This_message_was_not_delivered'),
+    `the title did not reach the line: ${r[0].text}`);
+});
+
+await t('6.2', 'R-37.58: a SUCCESS carries NO err field — grep err= returns only failures', async () => {
+  const { lines } = await capture(() =>
+    witnessStatusMatch(receiptSupabase([]), { id: WAMID, status: 'sent', errors: [] }));
+  const s0 = rcpt(lines)[0].text;
+  assert.ok(!/err=/.test(s0), `a success carried an err field: ${s0}`);
+  assert.ok(!/err_title=/.test(s0), s0);
+});
+
+await t('6.3', 'R-37.56: the wamid is FULL and byte-identical to the send line\'s', async () => {
+  // The whole point: ONE grep on a wamid returns the send AND its receipt.
+  // Both lines are produced here and the same substring must find both.
+  const { lines: sendLines } = capture(() => logWaSend('vendor', {
+    site: 'enquire:oow', mode: 'template', templateKey: 'lead_alert_basic',
+    to: '+919888294440',
+    out: { sent: true, mode: 'template', result: { ok: true, wamid: WAMID } },
+  }));
+  const { lines: rcptLines } = await capture(() =>
+    witnessStatusMatch(receiptSupabase([]), failedStatus(META_131049)));
+  const both = [sendLines[0].text, rcpt(rcptLines)[0].text];
+  for (const line of both) {
+    assert.ok(line.includes(`wamid=${WAMID}`),
+      `the full wamid is not in this line, so one grep cannot find both: ${line}`);
+  }
+  assert.strictEqual(both.filter((l) => l.includes(WAMID)).length, 2,
+    'the founder\'s two-line evening is broken');
+});
+
+await t('6.4', 'R-37.57: `home=none` fires on an ORPHAN — matched=0 stops reading as nothing', async () => {
+  const { lines } = await capture(() =>
+    witnessStatusMatch(receiptSupabase([]), { id: WAMID, status: 'sent', errors: [] }));
+  const s0 = rcpt(lines)[0].text;
+  assert.ok(s0.includes('home=none'), `an orphan receipt did not say so: ${s0}`);
+  assert.ok(s0.includes('matched=0'), s0);
+});
+
+await t('6.5', 'and a MATCHED receipt says home=messages, never home=none', async () => {
+  const { lines } = await capture(() => witnessStatusMatch(
+    receiptSupabase([{ id: 'm1', conversation_id: 'c1', sent_by: 'vendor_relay',
+                       body: 'x', twilio_sid: WAMID, delivery_status: 'delivered' }]),
+    { id: WAMID, status: 'delivered', errors: [] }));
+  const s0 = rcpt(lines)[0].text;
+  assert.ok(s0.includes('home=messages') && s0.includes('matched=1'), s0);
+  assert.ok(!s0.includes('home=none'), `a matched receipt claimed to be an orphan: ${s0}`);
+});
+
+await t('6.6', 'R-37.58 F4: several errors name the first AND declare the count', async () => {
+  const { lines } = await capture(() => witnessStatusMatch(receiptSupabase([]),
+    failedStatus([{ code: 131049, title: 'first' }, { code: 131050, title: 'second' }])));
+  const s0 = rcpt(lines)[0].text;
+  assert.ok(s0.includes('err=131049') && s0.includes('err_count=2'),
+    `a second error was dropped silently: ${s0}`);
+});
+
+await t('6.7', 'a single error declares NO count — quiet on the common case', async () => {
+  const { lines } = await capture(() => witnessStatusMatch(receiptSupabase([]), failedStatus(META_131049)));
+  assert.ok(!/err_count=/.test(rcpt(lines)[0].text), rcpt(lines)[0].text);
+});
+
+await t('6.8', 'R-37.57: ABSORPTION — the old search token rides INSIDE the new line', async () => {
+  // The founder's muscle memory is `webhook:meta`. One line answers both greps;
+  // a second line would be the double-emission R-37.57 refused.
+  const { lines } = await capture(() => witnessStatusMatch(receiptSupabase([]), failedStatus(META_131049)));
+  const all = lines.filter((l) => /wa:receipt|webhook:meta/.test(l.text));
+  assert.strictEqual(all.length, 1, `double-emission: ${all.length} lines`);
+  assert.ok(all[0].text.includes('[wa:receipt]') && all[0].text.includes('webhook:meta'), all[0].text);
+});
+
+await t('6.9', 'every field is grep-shaped — the title survives WHOLE as ONE token', async () => {
+  // [AMENDED BEFORE DELIVERY] The first draft split on whitespace and asserted
+  // the `err_title=` TOKEN had no space in it — which is true by construction of
+  // splitting, so the cell could not fail on its own subject. Mutation R7
+  // (stop underscoring the title) bit 6.1 and left this one GREEN: a cell named
+  // for grep-shape that could not detect an unshaped line. Re-founded on the
+  // fact that actually matters — the WHOLE title must arrive as one token, so a
+  // reader grepping `err_title=` gets the reason and not its first word.
+  const { lines } = await capture(() => witnessStatusMatch(receiptSupabase([]), failedStatus(META_131049)));
+  const s0 = rcpt(lines)[0].text;
+  const errTok = s0.split(/\s+/).find((tok) => tok.startsWith('err_title='));
+  assert.ok(errTok, `no err_title token: ${s0}`);
+  const words = META_131049[0].title.trim().split(/\s+/).length;
+  assert.strictEqual(errTok.split('_').length >= words, true,
+    `the title was truncated at its first space — only "${errTok}" survived: ${s0}`);
+  assert.ok(errTok.includes('healthy_ecosystem_engagement'),
+    `the title's tail did not survive as part of the token: ${errTok}`);
+});
+
+await t('6.12', 'THE FOURTH OUTCOME SHAPE — SID IS NOT UNIQUE keeps its information', async () => {
+  // R-37.57 required all FOUR outcome shapes survive the re-key. Nothing
+  // covered this one until mutation R8 came back inert by dropping its old
+  // token unnoticed. Ambiguity must be visible: a duplicate sid means the
+  // estate wrote the same wamid twice, and no receipt may speak off it.
+  const dup = [{ id: 'm1', sent_by: 'vendor_relay', twilio_sid: WAMID },
+               { id: 'm2', sent_by: 'vendor_relay', twilio_sid: WAMID }];
+  const { lines, value } = await capture(() =>
+    witnessStatusMatch(receiptSupabase(dup), { id: WAMID, status: 'delivered', errors: [] }));
+  const r = rcpt(lines);
+  assert.strictEqual(r.length, 1, `expected 1 line, got ${r.length}`);
+  assert.ok(r[0].text.includes('webhook:meta'), `the old search token was dropped: ${r[0].text}`);
+  assert.ok(r[0].text.includes('home=ambiguous') && r[0].text.includes('matched=2'), r[0].text);
+  assert.ok(r[0].text.includes('SID IS NOT UNIQUE'), r[0].text);
+  assert.strictEqual(value.row, null, 'an ambiguous match handed a row to the receipt gate');
+});
+
+await t('6.10', 'the receipt path NEVER THROWS — a status must not cost Meta\'s retry budget', async () => {
+  const exploding = { from: () => { throw new Error('db gone'); } };
+  const { value } = await capture(() => witnessStatusMatch(exploding, failedStatus(META_131049)));
+  assert.strictEqual(value.matched, 0);
+  assert.ok(String(value.reason).startsWith('threw:'), JSON.stringify(value));
+});
+
+await t('6.11', 'the RETURN CONTRACT is byte-unmoved — the receipt half still gates on it', async () => {
+  // applyStatusEvent gates №14/№15 on `matched === 1` and `row`. This sitting is
+  // log-only and must not have moved either.
+  const orphan = await witnessStatusMatch(receiptSupabase([]), { id: WAMID, status: 'sent', errors: [] });
+  assert.deepStrictEqual(
+    { matched: orphan.matched, row: orphan.row, reason: orphan.reason },
+    { matched: 0, row: null, reason: 'no_row_for_sid' });
+  const hit = await witnessStatusMatch(
+    receiptSupabase([{ id: 'm1', sent_by: 'vendor_relay', twilio_sid: WAMID }]),
+    { id: WAMID, status: 'read', errors: [] });
+  assert.strictEqual(hit.matched, 1);
+  assert.strictEqual(hit.reason, 'matched');
+  assert.strictEqual(hit.row.sent_by, 'vendor_relay');
+});
+
 console.log(`\n${'═'.repeat(66)}`);
 console.log(`b39_telemetry_bench: ${pass}/${pass + fail}`);
 if (fail) { console.log('REDS: ' + reds.join(', ')); }
