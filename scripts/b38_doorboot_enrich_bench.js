@@ -79,6 +79,24 @@ require.cache[sendWaPath] = {
   },
 };
 
+// ── THE VENDOR-POST DOOR'S MIDDLEWARE, STUBBED AT THE REGISTRY ──────────────
+// Same technique as sendWa above, and for the same reason: §12 must EXECUTE
+// the door, not read it. requireAuth and resolveVendor are seated before the
+// router loads or the real ones win the reference.
+const requireAuthPath   = require.resolve(P('src/api/middleware/requireAuth.js'));
+const resolveVendorPath = require.resolve(P('src/api/middleware/resolveVendor.js'));
+require.cache[requireAuthPath] = {
+  id: requireAuthPath, filename: requireAuthPath, loaded: true,
+  exports: (req, _res, next) => { req.user = { id: 'u-1' }; next(); },
+};
+require.cache[resolveVendorPath] = {
+  id: resolveVendorPath, filename: resolveVendorPath, loaded: true,
+  exports: () => (req, _res, next) => {
+    req.vendor = { id: '23165e38-6510-4639-ab6a-9f35bab93742', city: 'Mumbai', tier: 'basic' };
+    next();
+  },
+};
+
 const leadsLib = require(P('src/lib/vendor/leads.js'));
 const { createLead, LEAD_RETURN_KEYS, ENRICH_KEYS, ENRICH_REFUSED_KEYS, NON_COLUMN_PARAMS, ENRICH_PAIRS } = leadsLib;
 
@@ -768,6 +786,58 @@ await t('11.7', 'the pair table is CODE and its members are dispositioned enrich
       assert.ok(!ENRICH_REFUSED_KEYS.includes(k), `${k} is paired AND refused`);
     }
   }
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════
+console.log('\n§12 · THE VENDOR-POST DOOR NAMES ITS OWN PROVENANCE — F-16.33');
+// EXECUTED, not grepped. The door is booted over real HTTP with its auth
+// middleware stubbed, because the defect lives in what the door PASSES and
+// only running it can show that.
+
+async function callVendorPost(body, leads) {
+  const writes = [];
+  const app = express();
+  app.use(express.json());
+  app.locals.supabase = makeSupabase(seed(leads), writes);
+  delete require.cache[require.resolve(P('src/api/vendor/leads.js'))];
+  app.use('/leads', require(P('src/api/vendor/leads.js')));
+  const server = http.createServer(app);
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/leads/`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return { status: r.status, json: await r.json().catch(() => ({})), writes,
+             store: app.locals.supabase._store };
+  } finally { await new Promise((r) => server.close(r)); }
+}
+
+await t('12.1', 'a hand-typed lead is NOT stamped as having arrived over WhatsApp', async () => {
+  const r = await callVendorPost({ bride_name: 'Bandtest', phone: '+919000000077' });
+  const ins = leadInserts(r.writes);
+  assert.strictEqual(ins.length, 1, `expected 1 insert, got ${ins.length} (HTTP ${r.status})`);
+  assert.notStrictEqual(ins[0].payload.source, 'whatsapp',
+    'the vendor typed this lead himself and the row claims it arrived over WhatsApp');
+  assert.strictEqual(ins[0].payload.source, 'self');
+});
+
+await t('12.2', 'a caller that DOES name a source still wins — the default never overrides', async () => {
+  const r = await callVendorPost({ bride_name: 'X', phone: '+919000000078', source: 'referral' });
+  assert.strictEqual(leadInserts(r.writes)[0].payload.source, 'referral',
+    'the door overwrote a source its caller supplied');
+});
+
+await t('12.3', 'and the shared fallback is UNMOVED for its other callers', async () => {
+  // Victor and harvest genuinely DO arrive over WhatsApp. Curing F-16.33 inside
+  // createLead would have fixed this door by lying to those. This cell is the
+  // guard on that reasoning, and it reds if a later reader "tidies" the
+  // fallback into one place.
+  const { writes } = await callCreate({ name: 'Victor lead', phone: '+919000000079' });
+  assert.strictEqual(leadInserts(writes)[0].payload.source, 'whatsapp',
+    'the shared default moved — Victor and harvest leads now misreport their origin');
 });
 
 console.log(`\n${'═'.repeat(66)}`);

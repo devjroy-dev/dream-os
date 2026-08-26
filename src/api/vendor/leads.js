@@ -270,7 +270,32 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
 
   const result = await createLead(supabase, vendor.id, {
     name: leadName, phone, email, wedding_date, wedding_city,
-    event_types, budget_min, budget_max, source, referrer_name, raw_message, notes,
+    // ── F-16.33 · THE DOOR NAMES ITS OWN PROVENANCE ─────────────────────────
+    // This was bare `source`. When the add-lead form sends none — which is
+    // always, it has no source field — `createLead`'s shared fallback fired and
+    // stamped 'whatsapp'. So a lead the vendor typed with his own thumbs came
+    // to rest claiming it arrived over WhatsApp, and his card read
+    // `SOURCE: Whatsapp`. Founder-noticed on the M-DOORBOOT walk, 26 Aug.
+    //
+    // Same class as R-37.27's `Unknown` and the 'Dream Wedding enquiry'
+    // literal: a hardcoded default masquerading as a provenance record. The
+    // estate already distrusts this column for exactly this reason — see the
+    // note above the engagements read, where the TDW badge is deliberately
+    // taken off the engagements home and NEVER off `leads.source`.
+    //
+    // CURED HERE AND NOT IN `createLead`, deliberately. The shared fallback is
+    // CORRECT for its other callers — Victor and harvest genuinely do arrive
+    // over WhatsApp. Moving it there would fix this door by lying to those.
+    // The door that knows the answer is the door that should give it.
+    //
+    // [WHAT THIS DOES NOT REACH, so the next reader does not assume it does]
+    // `public.leads.source` also carries a DATABASE-LEVEL default of
+    // 'whatsapp'. Any INSERT that omits the column entirely is still stamped by
+    // Postgres. This path always passes a value so the default never fires for
+    // it, but the default itself is untouched and unruled — no migration in
+    // this delivery.
+    source: source || 'self',
+    event_types, budget_min, budget_max, referrer_name, raw_message, notes,
   });
   if (!result.ok) return errRes(res, 400, result.error);
   // TDW_04 engine-lane (ST-3d): lead doors log. Fire-and-forget.

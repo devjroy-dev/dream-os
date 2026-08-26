@@ -16,8 +16,15 @@
 # both on the list below, and the floor runs after both exist.
 #
 # FIVE PATHS. THE ZIP CARRIES EXACTLY THESE.
+#
+# [ZIP 4 · F-16.33] `src/api/vendor/leads.js` JOINS THE LIST. The founder's
+# source micro-fix lives at the vendor-POST door, which no prior M-DOORBOOT
+# delivery had touched. Declared here rather than discovered by the runner's
+# refusal — F-14.16 rejects one byte outside this list, and a manifest amended
+# after a red is a manifest that was wrong when it shipped.
 src/lib/vendor/leads.js
 src/api/couple/enquire.js
+src/api/vendor/leads.js
 scripts/b38_doorboot_enrich_bench.js
 scripts/floor-manifest-m-doorboot.txt
 docs/TDW_M_DOORBOOT_HANDOVER.md

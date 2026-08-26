@@ -150,7 +150,9 @@ At the fetch that opened the build, `git status` came back dirty on **`src/engin
 
 **⑥ c-D.3 — I READ A PLACEHOLDER AS ROW EVIDENCE. [added by ZIP 2]** Walk one's finding on `event_types` was filed with the sentence *"she selected Mehendi and Sangeet"*, taken off the sheet in a screenshot. R-37.40's derivation is that the functions row was a **placeholder wearing a value's clothes** — greyed suggestion text that reads as a selection. If so she selected nothing, and I asserted a bride's action from a screenshot rather than from a row, a `tool_calls` trail, or a witnessed code path. **In the sitting whose entire subject is claims that outrun their instruments, that is the disease in the cure's uniform.** The finding's CONCLUSION may survive — `event_types` demonstrably never lands — but its stated MECHANISM does not, and F-16.32's live probe exists because neither chair nor executor can presently tell typed-and-died from never-typed. Owned, not softened.
 
-**⑦ `wedding_date_precision` IS IN THE RETURN SHAPE AND NOT IN THE ENRICH SET.** It is not a `createLead` parameter at all (it lives only in `updateLead`'s EDITABLE list), so it is outside the 12-key bound by construction. A bride posting a month-known date still lands a fake-exact day on the create path — pre-existing, unmoved, named so the next reader does not read its absence as a decision made here.
+**⑦ c-D.5 AND c-D.6 — TWO MORE MISREADS, BOTH MINE. [added by ZIP 4]** **c-D.5:** walk three's leg A was authored so that its PASS state (nothing moves) is byte-indistinguishable from the step never having run — I asked for evidence that could not tell the two apart, and only the founder's pre/post screenshot pair closed it. A step whose success looks identical to its absence is c-D.4 wearing a different coat, one walk later. **c-D.6:** on the alert failure I named marketing opt-out as the mechanism and stated it with more confidence than the evidence carried; the operative branch is the door's window test, which I derived only AFTER the founder observed that `hi` restored delivery. **His observation was the discriminating test and my hypothesis was the non-discriminating one** — the same asymmetry the whole sitting is about, with the roles reversed.
+
+**⑧ `wedding_date_precision` IS IN THE RETURN SHAPE AND NOT IN THE ENRICH SET.** It is not a `createLead` parameter at all (it lives only in `updateLead`'s EDITABLE list), so it is outside the 12-key bound by construction. A bride posting a month-known date still lands a fake-exact day on the create path — pre-existing, unmoved, named so the next reader does not read its absence as a decision made here.
 
 ---
 
@@ -199,6 +201,20 @@ Walk two was designed by me to test F-16.31 and **its leg A was non-discriminati
 
 **The visible tell across all three** is the `+ Budget Max` chip: present in leg A **and still present after it** (because nothing filled), gone after leg B.
 
+### 9.4 · WALK THREE — RUN 26 AUG, FOUNDER-WITNESSED, ALL THREE LEGS GREEN [ZIP 4]
+
+Administered live, one step at a time, fixtures minted through real doors and never by SQL.
+
+| leg | fixture | posted | result |
+|---|---|---|---|
+| **A — DISCRIMINATING** | `1000000 / null` (held floor, minted by a top-band Discover enquiry) | `Rs 3,00,000–5,00,000` | **nothing moved.** `updated_at` unchanged. Under ZIP 1 this wrote `budget_max 500000` — a bracket whose floor exceeds its ceiling |
+| **B — regression guard** | `null / null` (minted through the vendor-POST door) | `Rs 3,00,000–5,00,000` | both bounds landed **together**; `draft_meta` promoted from a three-cell `missing` list |
+| **C — the no-op** | `300000 / 500000` (complete) | `Rs 5,00,000–10,00,000` | **no write at all** — `updated_at` byte-identical to the microsecond |
+
+**Leg A is the only one that proves anything about R-37.40**, and the founder's choice of a band DISJOINT from the held floor is what makes it airtight: `500000` could not have arrived by coincidence. B and C are labelled guards; counting them as cure evidence would be c-D.4 again.
+
+**WHAT WALK THREE DID NOT TEST, stated so a later reader cannot mistake it.** Midway through, the founder sent `hi` from the vendor number to diagnose F-16.35. That opened the 24-hour service window, so every leg took the door's IN-WINDOW free-form leg. **The template path never fired once.** Walk three green says nothing whatever about alert deliverability.
+
 ---
 
 ## 10 · WHAT THE NEXT SITTING PICKS UP
@@ -216,6 +232,18 @@ Walk two was designed by me to test F-16.31 and **its leg A was non-discriminati
 **F-16.30's RADIUS BOUNDARY, witnessed.** The dedupe is gated on `if (phone)`. Nine live leads on the test vendor carry `phone: null`, seven of them named `Dream Wedding enquiry`. Enrich-on-dedupe structurally cannot reach any of them, and each new phoneless enquiry mints another row. A scope boundary of what shipped, not a regression.
 
 **THE PREFILL DERIVATION, now supported.** Walk two's sheet returned `22 Dec 2026 / Jaipur` unprompted — the first direct evidence for the chair's couple-profile prefill claim, which §9.2 of the prior rider recorded as LE-underived. The date/city fills in that leg were prefill-sourced, not typed.
+
+**F-16.34 — THE VENDOR LANE HAS NO DELIVERY TELEMETRY. Founder-surfaced, and the most expensive finding of the sitting.** `src/lib/vendor/relayStatus.js:76` logs `status=` and `matched=` and **discards Meta's `errors[]` array** — the code, title and message that say WHY a send failed. It is logged nowhere else in the estate; `sendWa` does not capture it either. Compounding it, every status webhook reports `matched=0 — NO ROW CARRIES THIS SID`, so no row records the send at all. **Consequence: every vendor alert could fail indefinitely and the only detection path is a founder checking his phone** — which is exactly how this was found. On a live estate with paying basic-tier vendors this is silent revenue loss. Unruled. The cure is small (log `errors[0].code` and `.title`) and would have turned an evening of inference into a diagnosis.
+
+**F-16.35 — THE BASIC TIER'S ALERT IS CATEGORISED `MARKETING` AND ONLY FIRES OUT-OF-WINDOW.** `lead_alert_basic` is `MARKETING`; its paid twin `enquiry_alert_vendor` is `UTILITY`; twelve of the registry's fourteen templates are UTILITY. The door sends free-form text in-window and falls back to the template ONLY when the window is closed — so **the basic tier's alert is structurally undeliverable in the exact condition it exists for: a vendor who has gone quiet.**
+
+*Evidence, and it is deliberately separated from the explanation:* three sends, three same-second `failed` statuses, **wamids issued** — so Meta ACCEPTED the payload (a bad template name, unapproved status or wrong parameter count fails synchronously with a 400 and no wamid). Other messages to that number read normally. Delivery resumed after the founder sent `hi`, which both opened the window and supplied an engagement signal.
+
+*Founder hypothesis, recorded AS hypothesis:* Meta withheld the marketing template under per-recipient engagement pacing (the 131049 class) because the vendor never replies to alerts. **UNCONFIRMED — the error code was discarded by F-16.34 and was never captured. Under observation.** The executor's earlier account named opt-out as the mechanism and derived the window branch only after the founder's `hi`; see c-D.6.
+
+**F-16.33 — CURED BY ZIP 4, and the census was wrong about its size.** `source` defaulted to `'whatsapp'`, so a lead the vendor typed with his own thumbs claimed it arrived over WhatsApp. **Cured at the vendor-POST door** — which knows the answer — and deliberately NOT in `createLead`'s shared fallback, where `'whatsapp'` is correct for Victor and harvest; §12.3 is the guard on that reasoning and reds if a later reader tidies the two into one place. Founder-vetoed copy: **`self`**, rendering as `SOURCE: Self`. *Two gaps named rather than closed:* (a) `public.leads.source` also carries a **database-level default of `'whatsapp'`**, untouched and unruled — this path always passes a value so the default never fires for it, but any INSERT omitting the column is still stamped by Postgres; (b) the card's capitalisation lives in `dreamos-pwa`, unverified from this seat — `Discover` and `Whatsapp` are plain capitalisations of stored values, which is evidence but not proof that `self` renders as `Self`.
+
+**OBSERVATION, not a finding.** The add-lead toast reads *"Filed — 5 details pending"* while the same row's `draft_meta.missing` lists **three**. Two counts of one emptiness from two code paths. Cosmetic, out of radius, recorded so neither number is later read as authoritative.
 
 **STANDING:**
 
