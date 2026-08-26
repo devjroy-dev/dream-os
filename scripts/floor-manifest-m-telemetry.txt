@@ -1,0 +1,33 @@
+# scripts/floor-manifest-m-telemetry.txt
+#
+# M-TELEMETRY · R-37.46–.52 — THE DECLARED DIRT.
+#
+# [F-14.16] A delivery tree is dirty by definition and R-33.7 forbids the
+# executor the commit that would clean it. Every dirty path is named here; one
+# byte outside and the runner refuses. The listed files are SHA-256'd before the
+# run and re-hashed after, so the SET is tolerated and the CONTENTS are not.
+#
+# THE HANDOVER AND THIS FILE ARE ON THE LIST, AND THE FLOOR RUNS AFTER BOTH
+# EXIST. The A-sitting shipped a manifest one path short because it measured the
+# floor before authoring the handover — a zero-delta number true of a tree that
+# never shipped. Same tuition, paid once.
+#
+# TEN PATHS — six production, TWO benches, this manifest, the handover.
+#
+# [RETIRE-WITH-THE-READER] `b06_relay_hand_bench.js` joins because the FLOOR
+# CAUGHT IT, not because the build predicted it: its sealed cell §13.1 deep-
+# equals the SENDER_CONTRACTS key set and says THREE. R-37.47 made it four, so
+# the cell reddened on delivery. Amended with a labelled amendment and its count
+# disclosed, exactly as that cell was amended when the THIRD shape arrived.
+# Declared here rather than left for the runner to refuse.
+# THE ZIP CARRIES EXACTLY THESE.
+src/lib/waSendLog.js
+src/lib/vendor/relayToCouple.js
+src/lib/vendor/enquiryAlert.js
+src/api/couple/enquire.js
+src/api/admin/mint.js
+src/cron.js
+scripts/b39_telemetry_bench.js
+scripts/floor-manifest-m-telemetry.txt
+scripts/b06_relay_hand_bench.js
+docs/TDW_M_TELEMETRY_HANDOVER.md

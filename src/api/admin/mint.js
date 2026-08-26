@@ -30,6 +30,7 @@ const { mintCouple } = require('./couples');
 
 const { sendWa, WaTemplateNotApprovedError, WaOptedOutError,
         WaLineNotConfiguredError } = require('../../lib/sendWa');
+const { logWaSend } = require('../../lib/waSendLog');                            // M-TELEMETRY R-37.48
 const { getTemplate, isApproved } = require('../../lib/templates');
 
 // ─── POST /api/v2/admin/mint/vendor ─────────────────────────────────────
@@ -76,7 +77,7 @@ router.post('/welcome/:vendorId', requireAdmin, asyncHandler(async (req, res) =>
   if (!to) return errRes(res, 400, 'This vendor has no phone on file.');
 
   try {
-    await sendWa({
+    const out = await sendWa({
       line: 'vendor',
       to,
       templateKey: 'vendor_welcome',
@@ -87,9 +88,15 @@ router.post('/welcome/:vendorId', requireAdmin, asyncHandler(async (req, res) =>
       vars: [name],
       supabase,
     });
+    // M-TELEMETRY R-37.48. The audit row records the DECISION; this line records
+    // the TRANSPORT. They are different facts and the audit has never carried a
+    // wamid, so a welcome that Meta accepted and then rejected looked identical
+    // in the audit to one that arrived.
+    logWaSend('vendor', { site: 'mint:welcome', mode: 'template', templateKey: 'vendor_welcome', to, out, ctx: vendorId });
     await writeAudit(supabase, 'send_welcome', 'vendor', vendorId, { outcome: 'sent', to });
     return okRes(res, { sent: true });
   } catch (e) {
+    logWaSend('vendor', { site: 'mint:welcome', mode: 'template', templateKey: 'vendor_welcome', to, err: e, ctx: vendorId });
     // Every refusal is REPORTED with the reason the transport gave, never
     // collapsed into a generic failure. A vendor-facing send that quietly did
     // nothing is the founding-lie family; so is an admin screen that says "sent".

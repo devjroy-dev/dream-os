@@ -53,7 +53,8 @@ const { enquiryToBinder } = require('../../lib/vendor/enquiryBinder');  // weld:
 const { sendDemoLeadAlert } = require('../../lib/discover/demoLeadAlert'); // P5: the free-lead hook
 const { bandCeiling, bandFloor, bandAnswered, normalizeFunctions } = require('../../lib/discover/enquiryFields');
 const { resolveCoupleIfPresent } = require('../../lib/resolveCoupleIfPresent'); // F-07.62's cure
-const { recordEnquiry } = require('../../lib/engagements');                     // TDW_16 P1: the spine's one home
+const { recordEnquiry } = require('../../lib/engagements');
+const { logWaSend }     = require('../../lib/waSendLog');                       // M-TELEMETRY R-37.48: one line per vendor-lane send                     // TDW_16 P1: the spine's one home
 // M-LEADGATE-A · R-36.8 — the tier gate's one home, shared with both leads doors.
 const { hasFullLeadAccess } = require('../../lib/vendor/leadSerializer');
 // `monthPhrase` is reused from its ONE HOME rather than re-derived. The coupling
@@ -503,17 +504,26 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
 
   const win = await vendorWindowOpen(supabase, vendor.id);
   try {
-    await sendWa({
+    // M-TELEMETRY R-37.48: the return is CAPTURED now. It was discarded, which
+    // is the same discipline F-07.45 cured at this very door one layer down —
+    // there the discarded value hid two refusal shapes; here it hid the wamid.
+    const out = await sendWa({
       line: 'vendor',
       to: user.phone,
       text: body,
       windowOpen: win.open,
       supabase,
     });
+    logWaSend('vendor', { site: 'enquire:inwindow', mode: 'text', to: user.phone, out, ctx: vendor.id });
     vendorNotified = true;
     notifyMode = 'text';
   } catch (err) {
     notifyRefusal = (err && err.code) || 'unknown';
+    // BOTH BRANCHES LOG. A send that only logs on success is exactly the
+    // blindness M-TELEMETRY exists to end — and on this door the refusal branch
+    // is the interesting one, because it is the branch that falls through to the
+    // template and to F-16.35.
+    logWaSend('vendor', { site: 'enquire:inwindow', mode: 'text', to: user.phone, err, ctx: vendor.id });
 
     // ── F-07.40 · THE FALLBACK, WIRED ───────────────────────────────────────
     // A closed window is the ONE refusal a template can answer. Every other
@@ -540,7 +550,7 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
       // being a coincidence, and the first successful hydration would have
       // silently ended it. The deliberate template replaces the accident.
       try {
-        await sendWa({
+        const tplOut = await sendWa({
           line: 'vendor',
           to: user.phone,
           templateKey: fullAccess ? 'enquiry_alert_vendor' : 'lead_alert_basic',
@@ -560,11 +570,24 @@ async function handleRealVendor({ supabase, res, vendor, couple_id, bride_name, 
               ],
           supabase,
         });
+        // M-TELEMETRY R-37.48. THIS IS THE LINE THE 26 AUG EVENING NEEDED.
+        // This is the out-of-window leg — the only leg a quiet vendor is
+        // reached on, and the one that fires `lead_alert_basic` (MARKETING).
+        // Three of these sends came back `failed` from Meta and the estate
+        // could not name the template, the recipient, or the wamid, so nothing
+        // could be correlated against Meta's own status webhook. Now it can.
+        const tplKey = fullAccess ? 'enquiry_alert_vendor' : 'lead_alert_basic';
+        logWaSend('vendor', { site: 'enquire:oow', mode: 'template', templateKey: tplKey, to: user.phone, out: tplOut, ctx: vendor.id });
         vendorNotified = true;
         notifyMode = 'template';
         notifyRefusal = null;
       } catch (tplErr) {
         notifyRefusal = (tplErr && tplErr.code) || 'template_unknown';
+        logWaSend('vendor', {
+          site: 'enquire:oow', mode: 'template',
+          templateKey: fullAccess ? 'enquiry_alert_vendor' : 'lead_alert_basic',
+          to: user.phone, err: tplErr, ctx: vendor.id,
+        });
       }
     }
   }

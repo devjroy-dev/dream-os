@@ -57,6 +57,7 @@
 
 const { sendWhatsApp }     = require('../whatsapp');
 const { sendWa }           = require('../sendWa');
+const { logWaSend } = require('../waSendLog');                                   // M-TELEMETRY R-37.48/.50
 const { readLaneFlag }     = require('../laneFlags');
 const { scrubText }        = require('./scrub');
 const { vendorWindowOpen } = require('./waWindow');
@@ -199,6 +200,26 @@ async function sendVendorEnquiryAlert({
     + `vendor=${vendorId || 'none'} ctx=${ctx}`);
 
   // ── 2 · IN WINDOW — the free-form alert, exactly as before this sitting ────
+  //
+  // ── SITE 7, DELIBERATELY NOT INSTRUMENTED [R-37.52 · rider (ii)] ───────────
+  // M-TELEMETRY wired six vendor-lane sends and STOPPED at this one. It is not
+  // an oversight and the cost is recorded rather than hidden.
+  //
+  // WHY IT WAS MISSED: this site calls `sendWhatsApp` — the raw transport —
+  // not `sendWa`, and carries no `line: 'vendor'` key. The sitting's census
+  // grepped the WRAPPER, so it was structurally blind here. Census the
+  // transport, never the wrapper (banked with F-05.92).
+  //
+  // WHY IT WAS NOT WIRED ANYWAY: the success return below reads `res.sid`,
+  // while on the Meta vendor lane the id arrives wamid-shaped. Attaching a
+  // `wamid=` field to a return whose id field is disputed at the byte would
+  // publish blanks on genuine successes — telemetry that lies, which is worse
+  // than the silence it replaces.
+  //
+  // THE COST, STATED: this site's SUCCESS path stays silent until F-05.92's
+  // migration sitting. Its refusal and failure branches below do log, in the
+  // older free-text shape. So F-16.35's watch leans on the six instrumented
+  // sites, Meta's own delivery receipts, and DB-side evidence — not on this one.
   if (inWindow) {
     try {
       const res = await _sendWhatsApp(toPhone, text);
@@ -269,7 +290,21 @@ async function sendVendorEnquiryAlert({
     // `SENDER_CONTRACTS`; this site names which one it reads.
     const wamid = (out && out.sent === true && out.result && out.result.wamid) || null;
 
-    console.log(`[enquiry:oow] brief sent key=${entry.templateKey} wamid=${wamid || 'nosid'} ctx=${ctx}`);
+    // ── R-37.50 · RETIRE-BY-ABSORPTION ──────────────────────────────────────
+    // This site was the estate's ONLY vendor-lane send that logged its outcome;
+    // the other five logged nothing, which is what M-TELEMETRY cures. It is not
+    // replaced and it is not double-emitted: the old `[enquiry:oow]` token is
+    // PRESERVED INSIDE the new keyed line as the site tag, so the founder's
+    // existing Railway search and the new `[wa:vendor]` one land on the SAME
+    // single line. Muscle memory intact, one line per send preserved.
+    //
+    // The local `wamid` above is left standing because `recordBriefSend` below
+    // consumes it; the logger derives its own id through `readSend` rather than
+    // trusting a second extraction of the same trap.
+    logWaSend('vendor', {
+      site: 'enquiry:oow', mode: 'template',
+      templateKey: entry.templateKey, to: toPhone, out, ctx,
+    });
     // THE META NAME, not the registry key — the `ringDoorbell` precedent writes
     // `[doorbell] <t.name>`, and a marker naming an internal key would tell a
     // reader of his history nothing about what Meta actually delivered.
@@ -281,6 +316,13 @@ async function sendVendorEnquiryAlert({
     // The brief itself failed. Still no throw — same reasoning as above. sendWa
     // THROWS its refusals (opted out, not approved, line not configured), so
     // this catch is the honest reader of them and the code travels back.
+    // R-37.48: BOTH branches. The line above logged only successes; a brief
+    // that Meta refused left the keyed format entirely and could not be found
+    // by the same search that finds the sends.
+    logWaSend('vendor', {
+      site: 'enquiry:oow', mode: 'template',
+      templateKey: entry.templateKey, to: toPhone, err: tErr, ctx,
+    });
     console.error(`[enquiry:oow] brief FAILED key=${entry.templateKey} ctx=${ctx}: ${tErr?.message || tErr}`);
     return { sent: false, path: null, reason: 'template_failed', code: tErr?.body?.error?.code ?? tErr?.code ?? null };
   }

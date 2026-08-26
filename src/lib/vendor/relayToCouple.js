@@ -358,6 +358,53 @@ const SENDER_CONTRACTS = Object.freeze({
     successField: 'sent', idField: null, refusalField: null, throwsOnFailure: true,
     nestedField: 'result', nestedIdField: 'wamid',
   }),
+  // ── THE FOURTH SHAPE [R-37.47 · M-TELEMETRY] · THE SAME TRAP, UNDECLARED ──
+  // `sendWa`'s FREE-FORM path returns
+  //     { sent: true, mode: 'text', from, to, result: {ok, wamid, raw} }
+  // — `result` from sendMetaText -> postMessage (metaCloud.js, symbol
+  // `postMessage`). So it nests its id EXACTLY like the template path above,
+  // and until this entry NOTHING described it. The composite's own warning at
+  // `sendwa_template` names the template path as the trap and is silent about
+  // this one, which made the free-form return look safe to read through the
+  // `freeform` contract below. It is not: that contract's `idField` is 'sid',
+  // and sendWa's text return has no `sid` anywhere on it. A reader would have
+  // harvested `undefined` from a genuine success — walk seven's defect a third
+  // time, in the shape the warning did not cover.
+  //
+  // Derived at M-TELEMETRY's read-first, before any log line was written; it
+  // blocked the two free-form vendor sites outright, which is the read-first
+  // earning its keep rather than a build discovering it late.
+  sendwa_freeform: Object.freeze({
+    successField: 'sent', idField: null, refusalField: null, throwsOnFailure: true,
+    nestedField: 'result', nestedIdField: 'wamid',
+  }),
+  // ── `freeform` ABOVE IS A TWILIO FOSSIL, AND IT IS LEFT STANDING ON PURPOSE ─
+  // It describes `sendWhatsApp`'s return — `sid`, `blocked`, never throws —
+  // which is the Twilio-era transport the estate has been moving off since
+  // TDW_05. R-37.47 rules it UNTOUCHED this sitting: retiring a contract is a
+  // census, not a comment.
+  //
+  // [CORRECTED IN THIS ZIP · R-37.52 rider (i)] An earlier draft of this note
+  // said a reader would see four entries and know which one is live. THAT WAS
+  // WRONG, and the way it was wrong is worth keeping. `freeform` is not a
+  // dormant fossil: it has LIVE CALLERS ON THIS VERY LANE — `enquiryAlert.js`'s
+  // in-window alert calls `sendWhatsApp` directly, and the chair's wider grep
+  // sights at least three more on the vendor plane (`relayToCouple.js`,
+  // `replyToCouple.js`, `relaySeat.js`). So on the vendor lane TWO of these
+  // four contracts are live at once, and a reader must check which transport a
+  // site actually calls before picking an entry here.
+  //
+  // Worse, and this is why no telemetry was bolted onto that site tonight: its
+  // success path reads `res.sid`, while on the Meta vendor lane the id arrives
+  // wamid-shaped. A `wamid=` field reading blank on genuine successes is worse
+  // than silence — telemetry that lies is the false-done class in an operator's
+  // uniform. The migration is F-05.92, with its own both-ways proof; those
+  // sites inherit `logWaSend` free at the seam.
+  //
+  // THE CENSUS-METHOD LESSON, banked with the finding: M-TELEMETRY's read-first
+  // censused `sendWa(` and filtered on `line: 'vendor'`. The raw-transport
+  // sites carry NEITHER token, so a correct-looking census was structurally
+  // blind to them. Census the TRANSPORT (`sendWhatsApp(`), never the wrapper.
 });
 
 // The single reader. `kind` names WHICH contract, so a caller cannot silently

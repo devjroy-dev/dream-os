@@ -1449,7 +1449,7 @@ await t('§12.8 MUTATION — dropping the lane pin turns §12.3 RED', async () =
 // ── §13 · WALK SEVEN'S CURES + R-29.34's REACHABILITY MEMBERS ───────────────
 H('§13 F-06.172/.173/.174 · R-29.35 · and the reachability law\'s two members');
 
-await t('§13.1 F-06.172 — THE THREE SENDER CONTRACTS HAVE ONE WRITTEN HOME', async () => {
+await t('§13.1 F-06.172 — THE FOUR SENDER CONTRACTS HAVE ONE WRITTEN HOME', async () => {
   const { readSend, SENDER_CONTRACTS } = require(RELAY);
   // ── LABELLED AMENDMENT · TDW_06/07 · RATIFY-OR-REVERT ─────────────────────
   // A THIRD SHAPE joined the written home, and its arrival is F-06.172 working
@@ -1459,10 +1459,26 @@ await t('§13.1 F-06.172 — THE THREE SENDER CONTRACTS HAVE ONE WRITTEN HOME', 
   // its first caller that needs the id, and reading `out.sid` there would have
   // harvested undefined from a genuine success: walk seven's exact defect, one
   // lane over, caught by the law instead of by a founder's handset.
+  // ── LABELLED AMENDMENT · M-TELEMETRY · R-37.47 · RATIFY-OR-REVERT ─────────
+  // A FOURTH SHAPE joined, and this cell CAUGHT ITS ARRIVAL — the floor went
+  // delta on it, which is F-06.172 doing its job a second time rather than
+  // drifting. `sendWa`'s FREE-FORM path nests its id identically to the
+  // template path (`result.wamid`), and until R-37.47 nothing described it.
+  // The note above warns about the template composite and is SILENT about this
+  // one, which made the free-form return look safe to read through `freeform` —
+  // whose idField is 'sid', a field sendWa's text return does not carry. A
+  // reader would have published a blank id on a genuine success.
+  // COUNT DISCLOSED: three contracts -> four. Title amended with it, because a
+  // cell whose name says THREE while asserting FOUR is the drift this cell
+  // exists to catch.
   assert.deepStrictEqual(Object.keys(SENDER_CONTRACTS).sort(),
-    ['freeform', 'sendwa_template', 'template']);
+    ['freeform', 'sendwa_freeform', 'sendwa_template', 'template']);
   assert.strictEqual(SENDER_CONTRACTS.sendwa_template.idField, null,
     'the composite claims a top-level id — the whole point is that it has none');
+  assert.strictEqual(SENDER_CONTRACTS.sendwa_freeform.idField, null,
+    'the free-form composite claims a top-level id — it has none either');
+  assert.strictEqual(SENDER_CONTRACTS.sendwa_freeform.nestedIdField, 'wamid',
+    'the free-form id moved off result.wamid — re-derive against sendWa.js');
   // DERIVED FROM THE REAL SENDERS, not from memory: metaCloud returns {ok,wamid}
   // and throws; whatsapp.js returns {sent,sid} and reports refusal by return.
   const meta = fs.readFileSync(SRC('src/lib/metaCloud.js'), 'utf8');

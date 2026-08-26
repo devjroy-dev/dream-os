@@ -40,6 +40,7 @@ const { buildBriefing } = require('./agent/briefing');
 // the briefing now goes through sendWa, the single outbound gate. A dangling import to the
 // bypassed transport is an invitation to bypass it again.
 const { sendWa } = require('./lib/sendWa');
+const { logWaSend } = require('./lib/waSendLog');                               // M-TELEMETRY R-37.48
 const { isNudgeOptedOut } = require('./lib/nudgeOptout');
 const { getNudgeCopy } = require('./lib/nudgeCopy');
 
@@ -73,8 +74,14 @@ async function routeBriefing({ vendor, user, supabase }, deps = {}) {
     // In-window: free-form on the vendor line. nudgeClass is declared so sendWa's own gate
     // applies too — belt and braces, and the bench asserts both halves independently.
     try {
-      await _sendWa({ line: 'vendor', to: phone, text: result.message, windowOpen: true, supabase, nudgeClass: true });
+      const out = await _sendWa({ line: 'vendor', to: phone, text: result.message, windowOpen: true, supabase, nudgeClass: true });
+      logWaSend('vendor', { site: 'cron:morning', mode: 'text', to: phone, out });
     } catch (err) {
+      // M-TELEMETRY R-37.48: BOTH branches. The two codes handled below are
+      // ROUTED, not swallowed — but routing is not recording, and before this
+      // line a vendor whose nudges were refused for any of the other seven
+      // typed codes left no trace at all.
+      logWaSend('vendor', { site: 'cron:morning', mode: 'text', to: phone, err });
       if (err && (err.code === 'opted_out' || err.code === 'nudge_opted_out')) {
         return { action: 'refused', reason: err.code, phone };
       }
@@ -87,7 +94,7 @@ async function routeBriefing({ vendor, user, supabase }, deps = {}) {
     // F4 — THE CURE. Previously this branch logged and dropped. It now routes to the
     // approved vendor morning template, exactly as the bride lane has since P2.
     try {
-      await _sendWa({
+      const out = await _sendWa({
         line: 'vendor',
         to: phone,
         templateKey: 'morning_nudge_vendor',
@@ -95,8 +102,10 @@ async function routeBriefing({ vendor, user, supabase }, deps = {}) {
         supabase,
         nudgeClass: true,
       });
+      logWaSend('vendor', { site: 'cron:morning:oow', mode: 'template', templateKey: 'morning_nudge_vendor', to: phone, out });
       return { action: 'sent', mode: 'template', phone, key: 'morning_nudge_vendor' };
     } catch (err) {
+      logWaSend('vendor', { site: 'cron:morning:oow', mode: 'template', templateKey: 'morning_nudge_vendor', to: phone, err });
       return { action: 'refused', reason: err.code || 'template_error', message: err.message, phone };
     }
   }
