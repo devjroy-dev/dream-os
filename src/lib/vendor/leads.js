@@ -50,6 +50,38 @@ const DEDUPE_READ_SELECT = `${LEAD_RETURN_SELECT}, budget_min, event_types`;
 //     referrer_name not posted by the Discover door at all.
 const ENRICH_KEYS = ['name', 'wedding_date', 'wedding_city', 'event_types', 'budget_min', 'budget_max'];
 const ENRICH_REFUSED_KEYS = ['phone', 'email', 'source', 'referrer_name', 'raw_message', 'notes'];
+
+// ── R-37.40 · F-16.31 — THE BAND IS ONE ANSWER LIVING IN TWO COLUMNS ────────
+// THE DEFECT THIS CURES, and it shipped through this file's own first cut.
+// Fill-when-absent reasons per COLUMN. `budget_min` and `budget_max` are not
+// two facts; they are one band the bride picked off one row of chips. Reasoned
+// per column, a row holding `budget_min 1000000` (the open "Rs 10,00,000+"
+// answer) that receives "Rs 5,00,000 - 10,00,000" keeps its floor (held) and
+// fills its ceiling (absent) — and comes to rest at 1000000/1000000, a
+// DEGENERATE BAND SHE HAS NEVER CHOSEN. Neither the old answer nor the new.
+// Founder-witnessed on the standing Sarah row, 26 Aug.
+//
+// So the pair is dispositioned as a UNIT:
+//   ABSENT  iff BOTH bounds are null      -> her band may fill both
+//   HELD    if EITHER bound is non-null   -> nothing moves, either bound
+// Fill both together or fill neither. There is no state in which one bound
+// moves and the other does not.
+//
+// [WHY THE TOP BAND IS NOT AN EXCEPTION] "Rs 10,00,000+" posts a floor and a
+// genuinely ABSENT ceiling (bandCeiling('') is null by design — see
+// enquiryFields.js, where Number('') === 0 is the trap that function exists to
+// avoid). Filling a both-null row from it writes the floor and leaves the
+// ceiling null. That is the band landing WHOLE, not half of it: the open band's
+// ceiling is absent in the answer itself, not missing from it.
+//
+// [WHY A CELL CANNOT PROVE THIS FROM A BOTH-NULL FIXTURE — c-D.4] From
+// absence, per-column and unit-band semantics produce the IDENTICAL row. A
+// walk starting both-null cannot distinguish them, and this executor read one
+// such walk as evidence of a narrowing it could not have shown. The
+// discriminating case is ONE-HELD-ONE-NULL, and §11 of the bench asserts it in
+// both directions. A fixture that cannot fail is not a fixture.
+const ENRICH_PAIRS = [['budget_min', 'budget_max']];
+const PAIRED_KEYS = new Set([].concat.apply([], ENRICH_PAIRS));
 // `enrich` is an OPTION, not a column. Named here so the guard cell can hold
 // the destructure's column-bearing bound without counting it.
 const NON_COLUMN_PARAMS = ['enrich'];
@@ -149,9 +181,33 @@ async function createLead(supabase, vendorId, params) {
 
       const patch = {};
       for (const key of ENRICH_KEYS) {
+        if (PAIRED_KEYS.has(key)) continue;           // R-37.40: settled as a unit below
         if (!targetAbsent(existing[key])) continue;   // it holds something — leave it
         if (sourceAbsent(enrich[key])) continue;      // she said nothing — nothing to give
         patch[key] = enrich[key];
+      }
+
+      // ── R-37.40 · THE PAIRS SETTLE TOGETHER OR NOT AT ALL ─────────────────
+      // The two `continue`s below are the whole cure, and the ORDER matters:
+      // the held-test comes first and looks at BOTH columns, so a row holding
+      // either bound is out of reach entirely. That is what stops one bound
+      // moving while the other stays and minting a band she never chose.
+      for (const pair of ENRICH_PAIRS) {
+        const held = pair.some((k) => !targetAbsent(existing[k]));
+        if (held) continue;                                      // the band is answered — leave it whole
+        // [NO `offered` GUARD HERE, AND THAT IS DELIBERATE] The first cut had
+        // one — `if (!pair.some(k => !sourceAbsent(enrich[k]))) continue;`. The
+        // mutation harness proved it INERT: mutating it to always-true bit no
+        // cell, because when she answered no band both bounds are already
+        // sourceAbsent and the loop below skips each on its own. It was dead
+        // code wearing a guard's uniform, which is worse than no guard — a
+        // later reader would have trusted it. Removed rather than declared.
+        for (const k of pair) {
+          // Her band lands whole. A bound she left open (the top band's absent
+          // ceiling) is skipped rather than written, because writing null into
+          // null is not a fill and would put an empty key in `enriched_fields`.
+          if (!sourceAbsent(enrich[k])) patch[k] = enrich[k];
+        }
       }
 
       if (!Object.keys(patch).length) {
@@ -401,4 +457,5 @@ module.exports = {
   // is CODE, not prose: the cell reds when the destructure grows a key that
   // neither list carries, which is the R-37.4 pattern one door over.
   LEAD_RETURN_SELECT, LEAD_RETURN_KEYS, ENRICH_KEYS, ENRICH_REFUSED_KEYS, NON_COLUMN_PARAMS,
+  ENRICH_PAIRS,
 };

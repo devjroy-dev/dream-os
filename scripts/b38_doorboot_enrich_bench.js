@@ -80,7 +80,7 @@ require.cache[sendWaPath] = {
 };
 
 const leadsLib = require(P('src/lib/vendor/leads.js'));
-const { createLead, LEAD_RETURN_KEYS, ENRICH_KEYS, ENRICH_REFUSED_KEYS, NON_COLUMN_PARAMS } = leadsLib;
+const { createLead, LEAD_RETURN_KEYS, ENRICH_KEYS, ENRICH_REFUSED_KEYS, NON_COLUMN_PARAMS, ENRICH_PAIRS } = leadsLib;
 
 let pass = 0, fail = 0;
 const reds = [];
@@ -312,9 +312,21 @@ await t('2.2', 'the create path still coalesces — vendor.city and the stock na
 // ══════════════════════════════════════════════════════════════════════════
 console.log('\n§3 · ENRICH FILLS WHAT THE LEAD LACKS — R-37.32, per dispositioned field');
 
-await t('3.1', 'THE FIXTURE: a null ceiling is filled by her chosen band', async () => {
-  const r = await callDoor(ENQUIRY({ budget_band: '1500000' }), [liveLead()]);
+// [AMENDED BY ZIP 3 · R-37.40 — RETIRE-WITH-THE-READER] This cell READ:
+//   "THE FIXTURE: a null ceiling is filled by her chosen band", driven against
+//   a row holding budget_min 1000000 with a null ceiling, asserting the ceiling
+//   filled to 1500000. It went GREEN at the ZIP 1 tree and it was ASSERTING
+//   F-16.31 — the row it green-lit came to rest at 1000000/1500000, a band the
+//   bride never chose. The cell was not wrong about the code; it was wrong
+//   about what the code should do, which is the more expensive kind.
+//   Its subject moved to §11, where the one-held-one-null case now asserts that
+//   NOTHING moves. Re-founded here on a both-null row, which is what this cell
+//   was always trying to say: her band lands.
+await t('3.1', 'THE FIXTURE: a both-null band is filled WHOLE by her chosen band', async () => {
+  const r = await callDoor(ENQUIRY({ budget_floor: '500000', budget_band: '1500000' }),
+                           [liveLead({ budget_min: null, budget_max: null })]);
   assert.strictEqual(leadInserts(r.writes).length, 0, 'the dedupe stopped deduping');
+  assert.strictEqual(rowOf(r.store).budget_min, 500000, 'the floor did not land');
   assert.strictEqual(rowOf(r.store).budget_max, 1500000,
     `the ceiling stayed ${JSON.stringify(rowOf(r.store).budget_max)} — F-16.30 has returned`);
 });
@@ -340,12 +352,16 @@ await t('3.5', 'a null event_types is filled, and an EMPTY ARRAY counts as absen
 });
 
 await t('3.6', 'the response names WHICH fields were filled', async () => {
+  // [AMENDED BY ZIP 3 · R-37.40] Was driven with `budget_max` against a row
+  // holding budget_min — a fill the unit rule now refuses. The cell's SUBJECT
+  // is the naming of filled fields, not the band, so it moves to a both-null
+  // row and keeps both bounds to prove a PAIR reports as two named fields.
   const { out } = await callCreate({
     phone: SARAH, name: 'x',
-    enrich: { wedding_city: 'Delhi', budget_max: 1500000 },
-  }, [liveLead()]);
+    enrich: { wedding_city: 'Delhi', budget_min: 500000, budget_max: 1500000 },
+  }, [liveLead({ budget_min: null, budget_max: null })]);
   assert.strictEqual(out.enriched, true);
-  assert.deepStrictEqual(out.enriched_fields.sort(), ['budget_max', 'wedding_city']);
+  assert.deepStrictEqual(out.enriched_fields.sort(), ['budget_max', 'budget_min', 'wedding_city']);
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -472,9 +488,11 @@ await t('7.1', 'a dedupe hit returns the create path\'s OWN key set, exactly', a
 });
 
 await t('7.2', 'an ENRICHED dedupe hit returns the same shape, post-write', async () => {
+  // [AMENDED BY ZIP 3 · R-37.40] Both-null row: the ceiling alone can no longer
+  // fill against a held floor. Subject (post-write return shape) is unchanged.
   const { out } = await callCreate({
-    phone: SARAH, name: 'x', enrich: { budget_max: 1500000 },
-  }, [liveLead()]);
+    phone: SARAH, name: 'x', enrich: { budget_min: 500000, budget_max: 1500000 },
+  }, [liveLead({ budget_min: null, budget_max: null })]);
   assert.strictEqual(out.enriched, true);
   assert.deepStrictEqual(Object.keys(out.lead).sort(), LEAD_RETURN_KEYS.slice().sort());
   assert.strictEqual(out.lead.budget_max, 1500000,
@@ -511,12 +529,16 @@ await t('7.4', 'draft_meta is recomputed by the machinery that owns it, never ha
 });
 
 await t('7.5', 'filling the LAST missing cell PROMOTES the draft (draft_meta -> null)', async () => {
+  // [AMENDED BY ZIP 3 · R-37.40] The row must be both-null for the band to be
+  // reachable at all. Subject (last-cell promotion) unchanged; draft_meta's
+  // five-field contract carries budget_max and not budget_min, so filling the
+  // pair still leaves exactly one cell to promote on.
   const stale = liveLead({
-    budget_max: null, wedding_date: '2027-02-14', wedding_city: 'Delhi',
+    budget_min: null, budget_max: null, wedding_date: '2027-02-14', wedding_city: 'Delhi',
     draft_meta: { missing: ['budget_max'], source: 'owner' },
   });
   const { out } = await callCreate({
-    phone: SARAH, name: 'x', enrich: { budget_max: 1500000 },
+    phone: SARAH, name: 'x', enrich: { budget_min: 500000, budget_max: 1500000 },
   }, [stale]);
   assert.strictEqual(out.lead.draft_meta, null, 'a complete row is still marked a draft');
 });
@@ -653,6 +675,99 @@ await t('10.5', 'the dedupe read carries the two columns the return shape does n
   }, [liveLead({ budget_min: null, event_types: null })]);
   assert.deepStrictEqual(out.enriched_fields.sort(), ['budget_min', 'event_types'],
     'a column outside the return shape was not readable for the fill decision');
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════
+console.log('\n§11 · THE BAND SETTLES AS A UNIT — R-37.40 · F-16.31');
+// THE DISCRIMINATING SECTION. Every cell here starts from ONE-HELD-ONE-NULL,
+// because that is the only state in which per-column and unit-band semantics
+// disagree. From a both-null row they produce the identical result, which is
+// why walk two's leg A could not test this and why reading it as proof was an
+// error (c-D.4). These cells RED at the ZIP 1 tree; §3.1's both-null cell does
+// not, and the contrast is the point.
+
+await t('11.1', 'FOUNDER-WITNESSED CASE: a held floor + her bounded band moves NOTHING', async () => {
+  // The Sarah row, exactly: budget_min 1000000 (the open top-band answer),
+  // budget_max null. She returns and picks Rs 5,00,000 - 10,00,000.
+  // ZIP 1: floor holds, ceiling fills -> 1000000/1000000, a band never chosen.
+  // R-37.40: the band is ANSWERED, so it is left whole.
+  const r = await callDoor(ENQUIRY({ budget_floor: '500000', budget_band: '1000000' }),
+                           [liveLead({ budget_min: 1000000, budget_max: null })]);
+  const row = rowOf(r.store);
+  assert.strictEqual(row.budget_min, 1000000, `the floor MOVED to ${row.budget_min}`);
+  assert.strictEqual(row.budget_max, null,
+    `the ceiling filled to ${row.budget_max} against a held floor — F-16.31 has returned, and the row now carries a band she never chose`);
+});
+
+await t('11.2', 'and the mirror: a held CEILING + her band moves nothing either', async () => {
+  const r = await callDoor(ENQUIRY({ budget_floor: '500000', budget_band: '1500000' }),
+                           [liveLead({ budget_min: null, budget_max: 900000 })]);
+  const row = rowOf(r.store);
+  assert.strictEqual(row.budget_min, null, `the floor filled to ${row.budget_min} against a held ceiling`);
+  assert.strictEqual(row.budget_max, 900000, `the ceiling MOVED to ${row.budget_max}`);
+});
+
+await t('11.3', 'a held band reports enriched:FALSE when it is the only thing on offer', async () => {
+  const full = liveLead({ budget_min: 1000000, budget_max: null,
+                          wedding_date: '2026-12-01', wedding_city: 'Jaipur', event_types: ['wedding'] });
+  const r = await callDoor(ENQUIRY({ budget_floor: '500000', budget_band: '1000000' }), [full]);
+  assert.strictEqual(r.json.lead_enriched, false, 'a refused band was reported as an enrichment');
+  assert.strictEqual(leadUpdates(r.writes).length, 0, 'a write was issued for a band that never landed');
+});
+
+await t('11.4', 'THE SETTLE INVARIANT: the pair rests as HER band or as its OWN — never a mixture', async () => {
+  // The general statement of the cure, swept rather than sampled. For every
+  // starting state and every posted band, the pair must equal one or the other
+  // in FULL. A degenerate mixture is what F-16.31 was.
+  const posted = { min: 500000, max: 1500000 };
+  const starts = [
+    [null, null], [1000000, null], [null, 900000], [1000000, 900000],
+  ];
+  for (const [lo, hi] of starts) {
+    const { store } = await callCreate({
+      phone: SARAH, name: 'x',
+      enrich: { budget_min: posted.min, budget_max: posted.max },
+    }, [liveLead({ budget_min: lo, budget_max: hi })]);
+    const row = store.leads[0];
+    const isHers = row.budget_min === posted.min && row.budget_max === posted.max;
+    const isOwn  = row.budget_min === lo && row.budget_max === hi;
+    assert.ok(isHers || isOwn,
+      `from [${lo}, ${hi}] the pair settled at [${row.budget_min}, ${row.budget_max}] — neither her band nor its own`);
+  }
+});
+
+await t('11.5', 'the TOP band lands WHOLE on a both-null row — an absent ceiling is an answer', async () => {
+  // "Rs 10,00,000+" posts a floor and a genuinely absent ceiling. That is the
+  // band arriving complete, not half-arriving, so it must not be refused.
+  const r = await callDoor(ENQUIRY({ budget_floor: '1000000', budget_band: '' }),
+                           [liveLead({ budget_min: null, budget_max: null })]);
+  const row = rowOf(r.store);
+  assert.strictEqual(row.budget_min, 1000000, 'the open band\'s floor did not land');
+  assert.strictEqual(row.budget_max, null, 'the open band acquired a ceiling');
+  assert.strictEqual(r.json.lead_enriched, true, 'the open band was reported as no enrichment');
+});
+
+await t('11.6', 'no null is ever WRITTEN — an absent bound is skipped, not stamped', async () => {
+  const { out, writes } = await callCreate({
+    phone: SARAH, name: 'x', enrich: { budget_min: 1000000, budget_max: null },
+  }, [liveLead({ budget_min: null, budget_max: null })]);
+  for (const w of leadUpdates(writes)) {
+    assert.ok(!w.keys.includes('budget_max'),
+      'budget_max was written as null — an empty key in the patch and in enriched_fields');
+  }
+  assert.deepStrictEqual(out.enriched_fields, ['budget_min']);
+});
+
+await t('11.7', 'the pair table is CODE and its members are dispositioned enrich keys', async () => {
+  assert.ok(Array.isArray(ENRICH_PAIRS) && ENRICH_PAIRS.length >= 1, 'the pair table is empty');
+  for (const pair of ENRICH_PAIRS) {
+    assert.strictEqual(pair.length, 2, `a pair is not a pair: ${JSON.stringify(pair)}`);
+    for (const k of pair) {
+      assert.ok(ENRICH_KEYS.includes(k), `${k} is paired but not an enrich key`);
+      assert.ok(!ENRICH_REFUSED_KEYS.includes(k), `${k} is paired AND refused`);
+    }
+  }
 });
 
 console.log(`\n${'═'.repeat(66)}`);

@@ -154,49 +154,50 @@ At the fetch that opened the build, `git status` came back dirty on **`src/engin
 
 ---
 
-## 9 · THE SMOKE CARD — WALK ONE WITNESSED GREEN, WALK TWO CORRECTED [AMENDED BY ZIP 2, R-37.40]
+## 9 · THE WALKS — ONE GREEN, ONE VOID AND WHY, AND THE CARD FOR THREE LEGS [AMENDED BY ZIP 3, R-37.40]
 
-**This section was written in the future tense and is now amended to the witnessed result.** The original card's fixture was WRONG in a way the walk itself exposed; the correction is R-37.40's and it is recorded here in full rather than quietly swapped, because the reasoning is the useful part.
+### 9.1 · WALK ONE — 26 AUG, FOUNDER-WITNESSED, GREEN AND STANDING
 
-### 9.1 · WALK ONE — RUN 26 AUG, FOUNDER-WITNESSED, GREEN
-
-Administered live against the standing Sarah row `b17ae785-1fd1-4254-a271-f081973cd6f9` (`+919625759924`), one step at a time, write-path before UI.
+Against the standing Sarah row `b17ae785-…`, administered live, write-path before UI.
 
 | step | ruling | witnessed |
 |---|---|---|
-| 2 · write path | fill what it lacks | `budget_max` filled; the `+ Budget Max` chip gone from her card |
-| 2 · wire | **deviation ①**, `ok` held | the sheet rendered *"Enquiry sent ✦ saved in Vendors"* — a returning bride on a deduped lead was NOT told she failed |
-| 3 · the row | never move what it holds | posted `25/12/2026` + `delhi`; row held `2026-12-22` + `Jaipur`. `name`, `budget_min` unmoved |
-| 3 · refused keys | the table governs | `source` `discover`, `raw_message`, `notes` all byte-unmoved |
-| 3b | **R-37.34's delegation** | `draft_meta` → **`NULL`**. `budget_max` was the row's only missing cell, so filling it PROMOTED the draft — a thing only `updateLead`'s recompute can do. A raw UPDATE would have left `missing:["budget_max"]` lying. Cell 7.5 reproduced on production data. |
-| 3b | the write landed | `updated_at 23:52:54` > `created_at 21:50:16` |
-| 4 · **the negative half** | a no-op writes NOTHING | second enquiry posting `20/12/2026`, `delhi`, `Rs 3,00,000 – 5,00,000` → **`updated_at` byte-identical to the microsecond.** Not a write that changed nothing — *no write*. Cell 4.7 live. |
+| write path | fill what it lacks | `budget_max` filled; the `+ Budget Max` chip gone |
+| wire | **deviation ①**, `ok` held | *"Enquiry sent ✦ saved in Vendors"* — the returning bride was not told she failed |
+| the row | never move what it holds | posted `25/12/2026` + `delhi`; row held `2026-12-22` + `Jaipur` |
+| refused keys | the table governs | `source`, `raw_message`, `notes` byte-unmoved |
+| **`draft_meta` → `NULL`** | **R-37.34's delegation** | the promotion only `updateLead`'s recompute can do. Cell 7.5 on production data. |
+| **the negative half** | a no-op writes NOTHING | second enquiry, contradicting date/city/band → **`updated_at` byte-identical to the microsecond** |
 
-**Deviation ① is witnessed under live conditions and the chair is asked to RATIFY:** the returning bride was told her enquiry landed, which is the truth.
+**These stand.** Deviation ① is witnessed live and is asked to be RATIFIED.
 
-Also witnessed rather than assumed: the bumped `updated_at` did **not** reorder her in the pipeline, because the list sorts on `created_at`. That was derived at read-first and is now evidence.
+### 9.2 · WALK TWO — I CLAIMED A GREEN FROM A CELL THAT COULD NOT FAIL [c-D.4]
 
-### 9.2 · WHY WALK ONE COULD NOT TEST THE ATOMIC PAIR, AND WHAT REPLACES IT
+**The grading, in the same terms this bench uses on everything else.**
 
-Walk one minted **F-16.31** (§10) by accident: Sarah held `budget_min 1000000` and posted a band of `Rs 5,00,000 – 10,00,000`. The floor held (it had a value), the ceiling filled (it was null), and the row came to rest at **`1000000 / 1000000`** — a degenerate band she has never chosen, neither the old answer nor the new.
+Walk two was designed by me to test F-16.31 and **its leg A was non-discriminating by construction.** The fixture was a **both-null** lead. From both-null, per-column fill-when-absent and unit-band semantics produce the **identical row**: both bounds fill. There is no observation at that starting state that separates them. I ran it, saw `500000 / 1000000`, and wrote *"F-16.31 narrowed to the one-held-one-null case."*
 
-Testing that properly needs a lead whose budget is **both-null**, and R-37.40 rules that such a lead **cannot be minted from her phone via Discover**: the enquiry sheet prefills the band from her couple profile (0108 display-and-confirm — chips SWITCH, they never unselect), so every Discover enquiry posts a band.
+**That is a conclusion drawn from a test incapable of producing the opposite result** — the vacuity class this entire sitting was chartered to end, committed by the executor who wrote the charter's benches. It is the same shape as the `b37` door cells that greened over a throw: the assertion was true, and it was true of a tree that had the defect. §11.1's existence is the proof of the gap — **it REDS at the very tree walk two called green**, while §3.1's both-null cell greens at that same tree. That contrast is c-D.4 mechanised, and it is why §11 leads with the one-held-one-null case and says so in its header.
 
-**LE POSITION, stated so the record is not stronger than the evidence:** that derivation is the CHAIR'S and is **not verifiable from `dream-os`**. The prefill lives in `dreamos-pwa`, which this sitting does not hold. The one committed dream-os record touching it — `enquiryFields.js`'s note on `EnquirySheet.tsx` — says the sheet's `band` state *initialises to null* and posts `budget_band: band ?? undefined`, which is COMPATIBLE with a later prefill but does not confirm one.
+**WHAT THE RELAY GOT WRONG, DERIVED RATHER THAN ARGUED.** The relay that voided this walk also stated *"no ZIP was delivered, no cure landed."* **That is false and the record should not carry it.** At `origin`: `ENRICH_KEYS` at `leads.js:51`, the enrich branch at `:151`, `enriched_fields` at `:180`, and the pre-cure discard byte `return { ok: true, lead: existing, deduped: true };` occurring **zero times**. `458126f` sits in `origin/main`'s history beneath `b6f049b`. The relay's own next clause — *"production serves ZIP 1's per-column behavior"* — is correct and contradicts it.
 
-**It does not matter, and that is the argument for the correction rather than against it:** the vendor-POST door mints a both-null lead **regardless of what the sheet does**. The corrected fixture is strictly safer than the derivation that motivated it, so it is adopted without depending on it. Recorded as chair-supplied, LE-underived.
+**So the void is real but narrower than stated.** Walk two witnessed ZIP 1's cure working: enrichment ran at all, `draft_meta` promoted from a three-cell `missing` list, refused keys froze including F-16.33's wrong `source`, and the vendor-POST door minted without enriching. None of that is possible at the pre-ZIP-1 tree. **What is void is my atomic-pair conclusion, not the walk and not the landing.** Recording both halves, because a correction that overshoots is the same failure with better manners.
 
-### 9.3 · WALK TWO — THE CORRECTED FIXTURE, TO BE ADMINISTERED LIVE
+### 9.3 · WALK THREE — THE CARD, THREE LEGS
 
-**ADMINISTRATION LAW (R-37.40): the seat issues ONE step, waits for the founder's paste, confirms green or STOPS, and only then issues the next. The card is never handed over whole.** Write-path steps precede UI steps.
+**ADMINISTRATION LAW: the seat issues ONE step, waits for the founder's paste, confirms green or STOPS, then issues the next. Never the whole card at once. Write-path steps precede UI steps. Fixture SELECTs are authored and run BEFORE each write step and the card is built from pasted rows.**
 
-**The fixture is minted through the VENDOR-POST door**, not Discover: Business Leads → add a manual lead on the founder's own phone, **budget left entirely empty**. That door is R-37.34's carved-out caller, so it mints without enriching — exactly the clean both-null starting state.
+**Preconditions:** founder's push landed AND Railway green. Nothing below means anything otherwise.
 
-The walk then drives a Discover enquiry from that phone with a **bounded** band, and both bounds must fill **together** into a coherent band. The F-16.31 defect is proven absent only if `budget_min` and `budget_max` come to rest as the band she actually chose.
+**The founder types nothing into the functions row unless a step explicitly says to** — F-16.32's specimen is closed by his answer and re-probing it here would only re-open a question already settled.
 
-**THE F-16.32 PROBE RIDES THE SAME WALK.** The card instructs the founder to **tap the functions row and TYPE `Mehendi, Sangeet`** — not to trust what the row displays. This is not optional politeness about wording: see c-D.3 in §8. The probe exists to distinguish **typed-and-died** from **never-typed**, which no instrument in either repo can currently tell apart.
+**LEG A — the top-band fixture.** A lead holding `budget_min` with a null ceiling: the founder-witnessed Sarah state, and the only state where the two semantics disagree. A re-enquiry with a **bounded** band must move **NOTHING** — floor stays, ceiling stays null, `lead_enriched: false`. Under ZIP 1 this filled the ceiling and minted a degenerate band. §11.1 is this leg.
 
-Fixture SELECTs are authored and run BEFORE each write step, and the card is built from the founder's pasted rows — never the other order.
+**LEG B — re-enquire with the full band on a both-null lead.** Both bounds must land **together** as the band she chose. This leg is **non-discriminating for F-16.31** and is included as a regression guard only, labelled as such so no one reads it as cure evidence twice. §3.1 and §11.5 are this leg.
+
+**LEG C — nothing moves.** A third enquiry against the now-complete row: `lead_enriched: false`, and `updated_at` byte-identical. The no-op guard, which is what makes legs A and B mean anything.
+
+**The visible tell across all three** is the `+ Budget Max` chip: present in leg A **and still present after it** (because nothing filled), gone after leg B.
 
 ---
 
@@ -207,6 +208,14 @@ Fixture SELECTs are authored and run BEFORE each write step, and the card is bui
 **F-16.31 — THE BUDGET BAND IS AN ATOMIC PAIR AND THE CENSUS TREATED IT AS TWO COLUMNS.** `budget_min` and `budget_max` jointly encode ONE answer; fill-when-absent reasons per column. When a row holds one bound and lacks the other, enrichment produces a band the bride never chose (witnessed: `1000000 / 1000000`). Every column obeyed R-37.32 exactly; the pair did not. **The gap is in my own disposition table** — it asked what each row should do and never asked whether any two rows were one fact. It is the only atomic pair in the enrich set. Unruled: does a band enrich **as a unit or not at all**? Still strictly better than the disease, which discarded her answer whole and left `Rs —`.
 
 **F-16.32 — `event_types` NEVER LANDS, AND IT DIES BEFORE THE DEDUPE.** The row's `event_types` was already `NULL` when it was born on the **create path**, which writes the same `event_types: postedFunctions`. `normalizeFunctions` returns null unless handed an array, so it has been receiving a non-array on this door since before this sitting. The enrichment behaved correctly on a null input — never write emptiness into a null. **This is F-16.30's fifth field, but it dies one layer upstream where R-37.32 structurally cannot reach it.** The pwa half is outside this repo and unverified from this seat; walk two's probe is the instrument.
+
+**F-16.31 — AMENDED AND CURED BY ZIP 3 [R-37.40].** The band is ONE answer in two columns; reasoned per column it minted a degenerate band from a one-held-one-null row. **Cured**: the pair settles as a unit — absent iff BOTH bounds are null, held if EITHER is. Two amendments the walk forced: (a) **`min == max` is NOT a signature of this defect** — `8df93b99` (Priya, 5 Aug, `source whatsapp`) carries `450000/450000` and predates enrichment by three weeks, so a census hunting the shape will over-report and a chair reading such a count as damage would be reading point-estimates as corruption; (b) the both-null case never demonstrated anything (c-D.4, §9.2).
+
+**F-16.33 — `source: source || 'whatsapp'` at `src/lib/vendor/leads.js`.** A lead hand-typed in the vendor PWA is stamped as having arrived over WhatsApp. Convicted from code, founder-noticed on the card. Same class as R-37.27's `Unknown` and the `'Dream Wedding enquiry'` literal — a hardcoded default masquerading as a provenance record — but living on the CREATE path, which R-37.37 deliberately does not govern. The estate already distrusts this column: `src/api/vendor/leads.js` carries a comment that the TDW badge reads from the engagements home and **never off `leads.source`**. **Unruled, untouched.**
+
+**F-16.30's RADIUS BOUNDARY, witnessed.** The dedupe is gated on `if (phone)`. Nine live leads on the test vendor carry `phone: null`, seven of them named `Dream Wedding enquiry`. Enrich-on-dedupe structurally cannot reach any of them, and each new phoneless enquiry mints another row. A scope boundary of what shipped, not a regression.
+
+**THE PREFILL DERIVATION, now supported.** Walk two's sheet returned `22 Dec 2026 / Jaipur` unprompted — the first direct evidence for the chair's couple-profile prefill claim, which §9.2 of the prior rider recorded as LE-underived. The date/city fills in that leg were prefill-sourced, not typed.
 
 **STANDING:**
 
