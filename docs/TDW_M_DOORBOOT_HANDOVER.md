@@ -148,57 +148,70 @@ At the fetch that opened the build, `git status` came back dirty on **`src/engin
 
 **⑤ `logActivity`'s dedupe summary is now incomplete, not wrong.** `src/api/vendor/leads.js` writes *"— deduped onto existing"* on a dedupe hit. Under the carve-out that caller never enriches, so the sentence stays true. If F3 is ever re-ruled to include the vendor POST, that string needs a word for the new case. Untouched here; filed.
 
-**⑥ `wedding_date_precision` IS IN THE RETURN SHAPE AND NOT IN THE ENRICH SET.** It is not a `createLead` parameter at all (it lives only in `updateLead`'s EDITABLE list), so it is outside the 12-key bound by construction. A bride posting a month-known date still lands a fake-exact day on the create path — pre-existing, unmoved, named so the next reader does not read its absence as a decision made here.
+**⑥ c-D.3 — I READ A PLACEHOLDER AS ROW EVIDENCE. [added by ZIP 2]** Walk one's finding on `event_types` was filed with the sentence *"she selected Mehendi and Sangeet"*, taken off the sheet in a screenshot. R-37.40's derivation is that the functions row was a **placeholder wearing a value's clothes** — greyed suggestion text that reads as a selection. If so she selected nothing, and I asserted a bride's action from a screenshot rather than from a row, a `tool_calls` trail, or a witnessed code path. **In the sitting whose entire subject is claims that outrun their instruments, that is the disease in the cure's uniform.** The finding's CONCLUSION may survive — `event_types` demonstrably never lands — but its stated MECHANISM does not, and F-16.32's live probe exists because neither chair nor executor can presently tell typed-and-died from never-typed. Owned, not softened.
+
+**⑦ `wedding_date_precision` IS IN THE RETURN SHAPE AND NOT IN THE ENRICH SET.** It is not a `createLead` parameter at all (it lives only in `updateLead`'s EDITABLE list), so it is outside the 12-key bound by construction. A bride posting a month-known date still lands a fake-exact day on the create path — pre-existing, unmoved, named so the next reader does not read its absence as a decision made here.
 
 ---
 
-## 9 · THE SMOKE CARD
+## 9 · THE SMOKE CARD — WALK ONE WITNESSED GREEN, WALK TWO CORRECTED [AMENDED BY ZIP 2, R-37.40]
 
-**Fixture-state law: the SELECT ships FIRST and the card is authored from the pasted rows — not the other order.** The standing Sarah row is the natural fixture, but this container cannot reach production, so **BLOCK 1 below is run before the card's write-path steps are finalised.** What is already fixed: write-path steps precede UI steps (the banked sequencing law), and the visible tell is the disappearance of the `+ Budget Max` chip on her card.
+**This section was written in the future tense and is now amended to the witnessed result.** The original card's fixture was WRONG in a way the walk itself exposed; the correction is R-37.40's and it is recorded here in full rather than quietly swapped, because the reasoning is the useful part.
 
-**BLOCK 1 — run first, paste the rows back.** Zero placeholders; self-contained.
+### 9.1 · WALK ONE — RUN 26 AUG, FOUNDER-WITNESSED, GREEN
 
-```sql
--- M-DOORBOOT walk fixture. Columns witnessed against docs/db/PUBLIC_SCHEMA.md,
--- public.leads (27 columns, ladder tip 0125; 0126-0129 alter no leads column).
-select
-  l.id,
-  l.name,
-  l.phone,
-  l.wedding_date,
-  l.wedding_city,
-  l.budget_min,
-  l.budget_max,
-  l.event_types,
-  l.source,
-  l.state,
-  l.draft_meta,
-  l.created_at
-from public.leads l
-where l.vendor_id = '23165e38-6510-4639-ab6a-9f35bab93742'
-  and l.deleted_at is null
-  and l.budget_max is null
-  and l.phone is not null
-order by l.created_at desc
-limit 10;
-```
+Administered live against the standing Sarah row `b17ae785-1fd1-4254-a271-f081973cd6f9` (`+919625759924`), one step at a time, write-path before UI.
 
-**The walk, once BLOCK 1's rows land** (Railway green first; nothing below means anything otherwise):
+| step | ruling | witnessed |
+|---|---|---|
+| 2 · write path | fill what it lacks | `budget_max` filled; the `+ Budget Max` chip gone from her card |
+| 2 · wire | **deviation ①**, `ok` held | the sheet rendered *"Enquiry sent ✦ saved in Vendors"* — a returning bride on a deduped lead was NOT told she failed |
+| 3 · the row | never move what it holds | posted `25/12/2026` + `delhi`; row held `2026-12-22` + `Jaipur`. `name`, `budget_min` unmoved |
+| 3 · refused keys | the table governs | `source` `discover`, `raw_message`, `notes` all byte-unmoved |
+| 3b | **R-37.34's delegation** | `draft_meta` → **`NULL`**. `budget_max` was the row's only missing cell, so filling it PROMOTED the draft — a thing only `updateLead`'s recompute can do. A raw UPDATE would have left `missing:["budget_max"]` lying. Cell 7.5 reproduced on production data. |
+| 3b | the write landed | `updated_at 23:52:54` > `created_at 21:50:16` |
+| 4 · **the negative half** | a no-op writes NOTHING | second enquiry posting `20/12/2026`, `delhi`, `Rs 3,00,000 – 5,00,000` → **`updated_at` byte-identical to the microsecond.** Not a write that changed nothing — *no write*. Cell 4.7 live. |
 
-1. **Deploy green.** Evidence: the Railway banner.
-2. **WRITE PATH.** Re-enquire from the named row's phone on the Discover feed, choosing a budget band with a ceiling. Evidence: the response body — expect `"lead_created": false`, `"lead_enriched": true`, and **`"ok": true`**.
-3. **THE ROW.** Re-run BLOCK 1. Evidence: pasted rows. Expect **`budget_max` filled** on that lead and **`name`, `wedding_date`, `wedding_city`, `budget_min`, `source` all unchanged** — the whole ruling in one diff.
-4. **UI.** Open that lead's card in Business Leads. Evidence: screenshot. Expect the **`+ Budget Max` chip GONE** and the budget rendering the filled ceiling.
-5. **THE NEGATIVE HALF, which is what makes the rest mean anything.** Re-enquire once more from the same phone, this time choosing a **different** band. Evidence: response body plus one re-run of BLOCK 1. Expect **`"lead_enriched": false`** and **`budget_max` UNCHANGED** — the estate declining to overwrite what she already told it.
+**Deviation ① is witnessed under live conditions and the chair is asked to RATIFY:** the returning bride was told her enquiry landed, which is the truth.
 
-**Steps with no thumb-path, named:** none. **Veto slot: empty** — no copy in this delivery.
+Also witnessed rather than assumed: the bumped `updated_at` did **not** reorder her in the pipeline, because the list sorts on `created_at`. That was derived at read-first and is now evidence.
+
+### 9.2 · WHY WALK ONE COULD NOT TEST THE ATOMIC PAIR, AND WHAT REPLACES IT
+
+Walk one minted **F-16.31** (§10) by accident: Sarah held `budget_min 1000000` and posted a band of `Rs 5,00,000 – 10,00,000`. The floor held (it had a value), the ceiling filled (it was null), and the row came to rest at **`1000000 / 1000000`** — a degenerate band she has never chosen, neither the old answer nor the new.
+
+Testing that properly needs a lead whose budget is **both-null**, and R-37.40 rules that such a lead **cannot be minted from her phone via Discover**: the enquiry sheet prefills the band from her couple profile (0108 display-and-confirm — chips SWITCH, they never unselect), so every Discover enquiry posts a band.
+
+**LE POSITION, stated so the record is not stronger than the evidence:** that derivation is the CHAIR'S and is **not verifiable from `dream-os`**. The prefill lives in `dreamos-pwa`, which this sitting does not hold. The one committed dream-os record touching it — `enquiryFields.js`'s note on `EnquirySheet.tsx` — says the sheet's `band` state *initialises to null* and posts `budget_band: band ?? undefined`, which is COMPATIBLE with a later prefill but does not confirm one.
+
+**It does not matter, and that is the argument for the correction rather than against it:** the vendor-POST door mints a both-null lead **regardless of what the sheet does**. The corrected fixture is strictly safer than the derivation that motivated it, so it is adopted without depending on it. Recorded as chair-supplied, LE-underived.
+
+### 9.3 · WALK TWO — THE CORRECTED FIXTURE, TO BE ADMINISTERED LIVE
+
+**ADMINISTRATION LAW (R-37.40): the seat issues ONE step, waits for the founder's paste, confirms green or STOPS, and only then issues the next. The card is never handed over whole.** Write-path steps precede UI steps.
+
+**The fixture is minted through the VENDOR-POST door**, not Discover: Business Leads → add a manual lead on the founder's own phone, **budget left entirely empty**. That door is R-37.34's carved-out caller, so it mints without enriching — exactly the clean both-null starting state.
+
+The walk then drives a Discover enquiry from that phone with a **bounded** band, and both bounds must fill **together** into a coherent band. The F-16.31 defect is proven absent only if `budget_min` and `budget_max` come to rest as the band she actually chose.
+
+**THE F-16.32 PROBE RIDES THE SAME WALK.** The card instructs the founder to **tap the functions row and TYPE `Mehendi, Sangeet`** — not to trust what the row displays. This is not optional politeness about wording: see c-D.3 in §8. The probe exists to distinguish **typed-and-died** from **never-typed**, which no instrument in either repo can currently tell apart.
+
+Fixture SELECTs are authored and run BEFORE each write step, and the card is built from the founder's pasted rows — never the other order.
 
 ---
 
 ## 10 · WHAT THE NEXT SITTING PICKS UP
 
-1. **The walk**, then deviation ① ratified or reverted.
+**MINTED BY WALK ONE [added by ZIP 2]:**
+
+**F-16.31 — THE BUDGET BAND IS AN ATOMIC PAIR AND THE CENSUS TREATED IT AS TWO COLUMNS.** `budget_min` and `budget_max` jointly encode ONE answer; fill-when-absent reasons per column. When a row holds one bound and lacks the other, enrichment produces a band the bride never chose (witnessed: `1000000 / 1000000`). Every column obeyed R-37.32 exactly; the pair did not. **The gap is in my own disposition table** — it asked what each row should do and never asked whether any two rows were one fact. It is the only atomic pair in the enrich set. Unruled: does a band enrich **as a unit or not at all**? Still strictly better than the disease, which discarded her answer whole and left `Rs —`.
+
+**F-16.32 — `event_types` NEVER LANDS, AND IT DIES BEFORE THE DEDUPE.** The row's `event_types` was already `NULL` when it was born on the **create path**, which writes the same `event_types: postedFunctions`. `normalizeFunctions` returns null unless handed an array, so it has been receiving a non-array on this door since before this sitting. The enrichment behaved correctly on a null input — never write emptiness into a null. **This is F-16.30's fifth field, but it dies one layer upstream where R-37.32 structurally cannot reach it.** The pwa half is outside this repo and unverified from this seat; walk two's probe is the instrument.
+
+**STANDING:**
+
+1. **Walk two**, administered live per §9.3; then deviation ① ratified or reverted.
 2. **The pwa half of the R-37.36 census** — `lead_created` / `lead_enriched` consumers in `dreamos-pwa`; the chair found one comment at `discover.tsx:562`, unverified from here.
 3. **The found-mutation trace at §7** — whether a severed predecessor sat in this container.
-4. **F-16.30's remaining siblings**: the badge (F-16.21) and the second stamp (F-16.22) were cured at their own homes; this cure means a fourth field arriving at the dedupe now has a table to join rather than a wall to hit. That is the class closed, not one more field patched.
+4. **F-16.30's class, closed rather than patched:** the badge (F-16.21) and the second stamp (F-16.22) were cured at their own homes. A sixth field arriving at the dedupe now has a table to join rather than a wall to hit — but F-16.32 shows the wall was never the only place fields die.
 5. Unmoved and located: F-05.84 · F-05.85/.86/.88 · F-08.103 · F-08.105 · F-10.122 · F-16.19 · F-SW.10 · the `budget_total` phantom · the name-column contact finding from Seat A′.
