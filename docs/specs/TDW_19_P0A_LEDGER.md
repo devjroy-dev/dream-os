@@ -19,7 +19,7 @@
 | F-19.04 | The business name and address submitted in the GBP use-case text are read off the verified Business Profile itself, never typed from memory. |
 | F-19.05 | Recorded above. |
 | F-19.06 | CLOSED by demonstration at the create screen, 2026-08-28. A URL call-to-action and a quick reply coexist in one template; Meta's own preview rendered both. B2's two-button shape is chosen, not constrained. |
-| F-19.07 | Meta's classifier reclassified BOTH templates to MARKETING before submission and both were approved as MARKETING. Three P1 conditions follow — see AMENDMENT 1. |
+| F-19.07 | Meta's classifier reclassified BOTH templates to MARKETING before submission and both were approved as MARKETING. ONE P1 condition follows (opt-out gating) plus TWO open questions (cost, throttling) — see AMENDMENT 1 as amended by AMENDMENT 2. |
 | F-19.08 | B2's quick reply is type `Custom`, not Meta's built-in opt-out. Meta forwards the tap as an inbound message and takes no action itself. A handler and a suppression flag are owed at P1 before the P4 cron fires once — see AMENDMENT 1. |
 
 ---
@@ -179,13 +179,17 @@ Both templates approved 2026-08-28 as **MARKETING**, not UTILITY. The kickoff pr
 
 ### Why MARKETING is not a relabel
 
-Three consequences bind P1. None blocked submission; all block firing.
+Three consequences follow. None blocked submission. **As amended by AMENDMENT 2: only the first binds P1 as a condition; the other two are open questions.**
 
 **1 · Opt-out gating is now mandatory, not optional.** Marketing sends respect a per-recipient marketing opt-out. The P1 cron cannot fire `tdw_review_request` blind at `event end + 3 days`, and the P4 cron cannot fire `tdw_referral_invite` blind at `event ended > 30 days`. Both must read a suppression flag first. Firing past an opt-out burns quality rating on exactly the people who asked us to stop.
 
 **2 · Cost.** Marketing is materially dearer per message than Utility on the India rate card. At the 200–500 vendor scale stated in A3 this is a line item, not a rounding error. The rate is not recorded here because it is Meta's to change; derive it from Insights → the cost cards on each template's page before P1 sizes anything.
 
+> **AMENDED 2026-08-28 (AMENDMENT 2) — this is an OPEN QUESTION, not a condition.** The seat asserted the cost differential without reading a rate card. No derive stands behind it. It binds nothing on P1 until a founder-seat read of Meta Insights fills the number in.
+
 **3 · Throttling.** Marketing volume sits under messaging limits and quality-based throttles that Utility largely escapes. A P1 cron that batches sends must tolerate being throttled rather than treating a throttle as an error.
+
+> **AMENDED 2026-08-28 (AMENDMENT 2) — the premise is an OPEN QUESTION; the instruction stands.** The Marketing-versus-Utility throttle difference was not witnessed by this sitting. The instruction it produced — a batching cron tolerates throttles rather than erroring on them — is sound in either category and survives on its own merits.
 
 ### The Stop button owes code (F-19.08)
 
@@ -212,3 +216,38 @@ Meta's console advertises the Marketing Messages API (formerly MM Lite) as impro
 ### Part B state
 
 **SEALED.** Both templates approved, both bodies and button sets recorded verbatim above. Part A remains OPEN; the ledger as a whole is therefore OPEN.
+
+---
+
+## AMENDMENT 2 — 2026-08-28 · F-19.07 RESTATED · TWO LEGS DEMOTED TO OPEN QUESTIONS
+
+Labeled amendment, in place, reasoning at site. Nothing removed. AMENDMENT 1's text stands as written; three sites inside it now carry a supersession note, and F-19.07's row in the rulings table is restated to match. A reader arriving at any of the four sites learns of this amendment there, without reaching the end of the file.
+
+### What changed and why
+
+CE-38 ruled on the seat's own disclosure that F-19.07's three legs did not have equal derives behind them.
+
+**Consequence 1 — opt-out gating — remains a CONDITION on P1.** It follows from what the console showed. Meta's classifier moved both templates to MARKETING precisely because their content is promotional, and MARKETING sends honour a per-recipient opt-out. Both crons read the suppression flag before firing, or they do not fire.
+
+**Consequence 2 — cost — becomes an OPEN QUESTION.** The seat asserted that Marketing is materially dearer than Utility on the India rate card without reading one. Directionally it is the seat's understanding; it is not a derived fact, and an undived claim does not get to bind a charter. It binds nothing until a founder-seat read of Meta Insights → the cost cards on each template's page produces a number. Filed here when he does it.
+
+**Consequence 3 — throttling — becomes an OPEN QUESTION, but its instruction survives.** The claim that MARKETING volume is throttled differently from UTILITY was not witnessed by this sitting. The instruction it produced — a batching cron tolerates being throttled rather than treating a throttle as an error — is correct in either category, because any WhatsApp send path sits under messaging limits. P1 builds to the instruction; P1 does not build to the premise.
+
+### The distinction being drawn
+
+A finding that names what the console showed is a condition. A finding that names what the seat believes is an open question. Both belong in the ledger; only the first binds a charter. The seat disclosed which legs were which unprompted, and that disclosure is the reason this amendment exists rather than a P1 sitting building against an unverified rate card.
+
+### P1 inheritance after this amendment
+
+| Item | Class | Source |
+|---|---|---|
+| Opt-out suppression flag read by both crons | CONDITION | F-19.07 c1 |
+| `Stop messages` inbound handler + one-home suppression flag | CONDITION | F-19.08 |
+| Two redirect routes `/r/{code}`, `/v/{code}` + one-home short code | CONDITION | R-19.1 |
+| Send parameter is the suffix, never the full URL | CONDITION | AMENDMENT 1, send-shape note |
+| Batching cron tolerates throttles rather than erroring | INSTRUCTION | F-19.07 c3, premise struck |
+| Marketing-vs-Utility rate differential | OPEN QUESTION | F-19.07 c2 — owes a founder-seat Insights read |
+| Marketing-vs-Utility throttle differential | OPEN QUESTION | F-19.07 c3 |
+| Marketing Messages API as the P1 send path | OPEN QUESTION | AMENDMENT 1, observed-not-acted-on |
+
+P1 charters against this table, not against the kickoff's text. Where the two disagree — the UTILITY category assumption above all — the ledger governs (CE-38, this sitting).
