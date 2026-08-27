@@ -20,6 +20,7 @@
 | F-19.05 | Recorded above. |
 | F-19.06 | CLOSED by demonstration at the create screen, 2026-08-28. A URL call-to-action and a quick reply coexist in one template; Meta's own preview rendered both. B2's two-button shape is chosen, not constrained. |
 | F-19.07 | Meta's classifier reclassified BOTH templates to MARKETING before submission and both were approved as MARKETING. ONE P1 condition follows (opt-out gating) plus TWO open questions (cost, throttling) — see AMENDMENT 1 as amended by AMENDMENT 2. |
+| F-19.09–F-19.13 | Filed during the Part A walk, 2026-08-28 — see AMENDMENT 3. |
 | F-19.08 | B2's quick reply is type `Custom`, not Meta's built-in opt-out. Meta forwards the tap as an inbound message and takes no action itself. A handler and a suppression flag are owed at P1 before the P4 cron fires once — see AMENDMENT 1. |
 
 ---
@@ -30,29 +31,33 @@
 
 | # | Prerequisite | Witness | Status |
 |---|---|---|---|
-| 1 | Verified, complete GBP for The Dream Wedding, ideally 60+ days old | Maps shows "You manage this Business Profile" | |
-| 2 | `thedreamwedding.in` live with a visible privacy page naming Google account data | `/privacy` renders; paragraph present | |
-| 3 | Submitting email on the website domain and an owner/manager of the GBP above | not a gmail.com address | |
-| 4 | Google Cloud project under a Cloud Organization (not "No organization") | IAM & Admin → Manage Resources | |
-| 5 | Project Number captured (numeric, not the ID) | Console → Dashboard → Project info | |
+| 1 | Verified, complete GBP for The Dream Wedding, **60+ days old** | Maps shows "You manage this Business Profile" | **PARTIAL** — created and verified 2026-08-28. Age requirement NOT met; earliest eligible ≈ 2026-10-27. See AMENDMENT 3. |
+| 2 | `thedreamwedding.in` live with a visible privacy page naming Google account data | `/privacy` renders; paragraph present | **PARTIAL** — page renders, DPDP-complete, but names no Google data. Paragraph owed (F-19.13). |
+| 3 | Submitting email on the website domain and an owner/manager of the GBP above | not a gmail.com address | **MET (domain)** — `dev@thedreamwedding.in`, Google identity on the domain; `hello@` is an alias into the same mailbox. Owner/manager listing NOT yet witnessed. |
+| 4 | Google Cloud project under a Cloud Organization (not "No organization") | IAM & Admin → Manage Resources | **MET** — org `thedreamwedding.in`, ID `970665222370`. |
+| 5 | Project Number captured (numeric, not the ID) | Console → Dashboard → Project info | **MET** — `214847546988`. |
 
 ### A2 · Values derived, not typed (F-19.04)
 
 | Field | Value |
 |---|---|
-| Business name, verbatim from the GBP | |
-| Address / service area, verbatim from the GBP | |
-| Primary category on the GBP | |
-| Project Number | |
-| Submitting email | |
-| Railway backend host (for the OAuth redirect) | |
+| Business name, verbatim from the GBP | `The Dream Wedding` |
+| Address / service area, verbatim from the GBP | **No public street address.** Service-area business; verification address is private and not displayed. A3's address line therefore uses the registered address published on the privacy page: `9/1506, Lotus Boulevard, Sector 100, Noida, Uttar Pradesh, India` (F-19.11). |
+| Primary category on the GBP | `Software company` |
+| Business Profile ID | `01598190128077173643` |
+| Profile verified on | 2026-08-28 (instant; no postcard) |
+| Google Cloud Organization | `thedreamwedding.in` · `970665222370` |
+| Project name / ID | `tdw-business-solutions` |
+| Project Number | `214847546988` |
+| Submitting email | `dev@thedreamwedding.in` |
+| Railway backend host (for the OAuth redirect) | NOT DERIVED — owed before A-5 |
 | OAuth redirect URI submitted | `https://<host>/api/v2/vendor/solutions/google/callback` |
 
 ### A3 · Submission record
 
 | Field | Value |
 |---|---|
-| Date submitted | |
+| Date submitted | **NOT SUBMITTED** — blocked on the 60-day profile age. Date certain ≈ 2026-10-27. |
 | Application type | Application for Basic API Access |
 | Confirmation screenshot path | |
 | Follow-up email received (date) | |
@@ -62,7 +67,8 @@
 | Field | Value |
 |---|---|
 | Approval email date | |
-| Quota screenshot path (Console → APIs & Services → Quotas, non-zero for Business Profile APIs) | |
+| Quota screenshot path (Console → APIs & Services → Quotas) | | 
+| Approval test, from Google's Prerequisites page verbatim | 0 QPM = not approved · 300 QPM = approved |
 | Eight APIs enabled (date) — Account Management, Business Information, Lodging, Place Actions, Notifications, Verifications, Performance, legacy `mybusiness` v4 | |
 
 Q&A API is retired (Nov 2025); nothing in the P1 spec depends on it. Recorded so no later sitting goes looking for it.
@@ -161,7 +167,7 @@ P0-A is **OPEN** on this file existing in the tree with both submission dates re
 
 P0-A is **SEALED** when all three land:
 
-- [ ] GBP approval date recorded (A4)
+- [ ] GBP approval date recorded (A4) — BLOCKED: application not submitted; 60-day profile age clears ≈ 2026-10-27 (AMENDMENT 3)
 - [x] `tdw_review_request` approved body verbatim recorded (B1) — 2026-08-28
 - [x] `tdw_referral_invite` approved body verbatim recorded (B2) — 2026-08-28
 
@@ -251,3 +257,62 @@ A finding that names what the console showed is a condition. A finding that name
 | Marketing Messages API as the P1 send path | OPEN QUESTION | AMENDMENT 1, observed-not-acted-on |
 
 P1 charters against this table, not against the kickoff's text. Where the two disagree — the UTILITY category assumption above all — the ledger governs (CE-38, this sitting).
+
+---
+
+## AMENDMENT 3 — 2026-08-28 · PART A WALKED · PROFILE CREATED · APPLICATION BLOCKED ON AGE
+
+Labeled amendment, in place, reasoning at site. Part A's tables above are filled from a live guided walk; every value was read off the founder's screen, none typed from memory (F-19.04).
+
+### What was created tonight
+
+A Google Business Profile for The Dream Wedding did not exist. It does now, created and verified 2026-08-28 in one sitting, no postcard step. Category `Software company` — chosen over the kickoff's suggested `Wedding planner` because TDW sells vendor software and a category that disagrees with the application is what stalls a legitimacy review. Service-area business, no public street address. Hours set seven days. Description authored to match A3's account of the business, with no persona names and no claims about scale.
+
+The Cloud side was already in place: an Organization on `thedreamwedding.in` existed, so no Cloud Identity detour was needed. Project `tdw-business-solutions` created under it today.
+
+### Why the application was NOT submitted
+
+Google's Prerequisites page, read at origin, states the requirement as a threshold: a Business Profile **verified and active for 60+ days**. The profile is hours old. The page also states that a rejected application should be corrected and re-applied, and that a follow-up email follows review either way — it does not describe a stage at which supporting documents are requested.
+
+The founder proposed submitting now and supplying registration documents if asked. The seat's counter, and the ruling: no document ages a profile. Incorporation or Udyam registration proves TDW is a real business, which is not what the 60-day rule tests. The rule tests track record, and only time supplies it.
+
+**Ruled by the founder: wait. Submit after the profile clears 60 days — earliest ≈ 2026-10-27.**
+
+### The client-profile route, recorded for completeness
+
+Google's same sentence permits the qualifying profile to belong to "one of the clients they manage." This is a real alternative route and would unblock the application immediately. It requires a vendor with a Business Profile already verified and 60+ days old who adds `dev@thedreamwedding.in` as a manager on it. That is the vendor's action, granted from their end — TDW cannot arrange it unilaterally, and manufacturing one would defeat the check the rule exists to perform. Not taken tonight; available if a genuine vendor relationship of that shape arises before October.
+
+### Founder's note to CE — free profile creation as a vendor service
+
+The founder raised offering Business Profile creation to vendors free of charge, as an onboarding service. Recorded as his proposal, with three observations the seat can make and one it cannot:
+
+- Google permits a profile to be created by the business owner **or an authorised representative**. Doing this for a vendor is allowed with their knowledge and authorisation; doing it silently on their behalf is not.
+- It collides directly with A3's draft text, which currently reads "We never create profiles." That sentence must change before submission if this becomes a real offer, or the application will describe a business TDW is not running.
+- It is also a strong answer to the 60-day problem in the long run: vendors whose profiles TDW helped create and manages are exactly the client profiles the prerequisite contemplates.
+- **Not derived:** whether the Business Profile API can create locations programmatically, or whether creation remains a console-only action. The seat's understanding is the latter, but no derive stands behind it. If the service is offered at scale this needs answering before it is designed.
+
+### Findings filed tonight
+
+| Id | Finding | State |
+|---|---|---|
+| F-19.09 | `9888294440` is simultaneously TDW's public phone, TDW's public WhatsApp (via `wa.me` click-to-chat on the profile), and the standing test vendor fixture that every evening-walk SQL, virgin check and curl batch is authored against. The founder rules the number is TDW's permanently. The fixture must therefore move to a different number before the profile draws real inbound, and every bench and SQL block naming it amended in one labeled pass. | OPEN — ruling on timing owed |
+| F-19.10 | The published privacy policy names `help@thedreamwedding.in` four times — for rights requests, opt-out, and the statutory DPDP grievance channel. That address does not exist; the domain has `dev@` and `hello@`. The grievance channel is dead as published. Cure: add `help@` as an alias immediately (costs nothing, makes the page true), then correct the page to `hello@` in the next pwa docs ZIP and keep the alias. | OPEN |
+| F-19.11 | TDW's registered address is published on the privacy page: `9/1506, Lotus Boulevard, Sector 100, Noida`. It is therefore already public, and supplies A3's address line from a witnessed source. The GBP verification address is separate and private. | CLOSED — recorded |
+| F-19.12 | The privacy policy §7 already promises that replying STOP halts messages. That promise predates template B2 and is live today. F-19.08's handler is therefore not new work created by the referral template — the template makes an existing unmet obligation visible. Strengthens the P1 condition; adds none. | OPEN — merged into F-19.08 |
+| F-19.13 | The privacy page mentions no Google data anywhere. A GBP reviewer looks for exactly this. A ≤120-word paragraph was drafted for the founder covering: consent-gated access via official APIs, what is read, what is written, one-directional sync, encrypted tokens, and revocation from both sides. It is a pwa byte under his veto and ships in the next pwa docs ZIP. | OPEN — owed before submission ≈ 2026-10-27 |
+
+### Also outstanding, not findings
+
+- The profile's phone number did not persist through creation; the panel shows "Add place's phone number". Dashboard fix, F-19.09's number.
+- Photos: none. The storefront-photo step was skipped deliberately — TDW has no premises, and the step warns that photo location metadata may update the business location in Maps, which would have exposed the private verification address. Logo and app screenshots should be added from the dashboard instead, with metadata stripped.
+- `dev@thedreamwedding.in` is not yet witnessed as an owner/manager on the profile. Almost certainly true since it created the profile; A-4 requires it witnessed, not assumed.
+- The Railway backend host for the OAuth redirect URI is not derived.
+- A near-identical domain, `thedreamswedding.in` (with an S), belongs to an unrelated Delhi wedding-photography business and ranks for "The Dream Wedding". A3 should state TDW's domain explicitly to pre-empt reviewer confusion.
+
+### Part A state
+
+**OPEN, blocked with a date certain.** Prerequisites 4 and 5 met. Prerequisite 1 met except for age, clearing ≈ 2026-10-27. Prerequisites 2 and 3 partially met with named cures. The eight-week wait is not idle time: F-19.13, the phone number, the photos, and profile completeness all have a deadline they did not have this morning.
+
+### Ledger state
+
+**OPEN.** Part B sealed. Part A blocked on age. P0-A's done condition — both submissions dated — is not met and cannot be met before late October. A chair opening P1 does so against a sealed Part B and an open Part A, and Part C's rule stands: P1 charters against this ledger, not against the kickoff.
