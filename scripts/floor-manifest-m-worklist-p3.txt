@@ -1,0 +1,12 @@
+# scripts/floor-manifest-m-worklist-p3.txt
+# M-WORKLIST Phase 3 — the delivery's declared dirt [F-14.16].
+# Every path this ZIP touches, and nothing else. run-floor.sh proceeds on a
+# dirty tree ONLY if every dirty path is named here, hashes the set before and
+# after, and refuses if any content moved during the run.
+docs/TDW_09_WORKLIST_P3_HANDOVER.md
+src/api/vendor/worklistToday.js
+src/api/vendor/core.js
+src/lib/vendor/istClock.js
+src/lib/vendor/leadSerializer.js
+scripts/b39_worklist_today_bench.js
+scripts/floor-manifest-m-worklist-p3.txt

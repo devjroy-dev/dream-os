@@ -365,6 +365,30 @@ const DETAIL_SELECT_CENSUS = [
   'notes', 'client_id', 'vendor_summary', 'draft_meta', 'created_at',
 ];
 
+// ── THE SIXTH CENSUS · M-WORKLIST PHASE 3 (F-P3.4, chair-granted) ──────────
+// THE ALARM WAS SCOPED BY DOOR COUNT, AND A THIRD DOOR ARRIVED.
+//
+// The five sets above pin TWO doors on `public.leads` — the list and the
+// detail. R-37.4's guard therefore reds when a future contact column reaches
+// either of them, and says NOTHING about any door built afterwards. Phase 3's
+// Today feed is such a door (src/api/vendor/worklistToday.js, symbol
+// `LEAD_FEED_SELECT`), and without this constant a `whatsapp` or `alt_phone`
+// column would have reddened the guard at two doors while riding out on a
+// third. That gap is the finding; this is its cure.
+//
+// THE FEED DOOR IS THE STRICTEST OF THE THREE and this list is why: it names NO
+// contact column at any tier. The other two doors select `phone` and strip it;
+// this one never asks. So law ① is satisfied AT THE QUERY here, and the census
+// records that as a fact a bench can diff rather than a claim in a header.
+//
+// UPDATING THIS IS A RULING, NOT A CHORE — the same sentence that governs the
+// five above. A key appearing in the feed's SELECT and not here is an
+// unclassified field on a money surface, and b39 §5 names it and reds.
+const FEED_SELECT_CENSUS = [
+  'id', 'name', 'wedding_date', 'wedding_city', 'budget_min', 'budget_max',
+  'state', 'created_at',
+];
+
 // The top-level keys of the DETAIL envelope (same symbol, its return).
 const DETAIL_ENVELOPE_CENSUS = [
   'ok', 'lead', 'vendor_summary', 'conversation', 'invoices', 'events', 'client',
@@ -386,4 +410,5 @@ module.exports = {
   LIST_WIRE_CENSUS,
   DETAIL_SELECT_CENSUS,
   DETAIL_ENVELOPE_CENSUS,
+  FEED_SELECT_CENSUS,
 };

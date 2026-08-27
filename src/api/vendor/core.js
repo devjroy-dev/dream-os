@@ -24,6 +24,16 @@ const router  = express.Router();
 
 router.use('/me',       require('./me'));
 router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip -> engine
+// ── M-WORKLIST PHASE 3 · F-1 arm (b), chair-ruled ──────────────────────────
+// ITS OWN SEGMENT, DELIBERATELY. The line ABOVE is the live `/today` route,
+// consumed in production by the pwa Storefront's profile score. Phase 3's feed
+// could have been mounted bare at '/today' and separated from it only by
+// whether a path segment is present — that was refused: the estate deleted
+// src/api/vendor/today.js for asserting a liveness it did not have, and a
+// second reader at a live reader's address is the next instance of that class.
+// §8.9's retirement of the engine reader is a CROSS-REPO seam (the Storefront
+// consumer repoints in the same motion) and is chartered, not done here.
+router.use('/worklist', require('./worklistToday'));
 router.use('/leads',    require('./leads'));
 router.use('/clients',  require('./clients'));
 router.use('/invoices', require('./invoices'));
