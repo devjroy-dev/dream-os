@@ -1,5 +1,5 @@
 # TDW_19 · BUSINESS SOLUTIONS — THE VENDOR'S MARKETING DESK
-**Spec v1 · authored by CE-38 · 2026-08-28 · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
+**Spec v1.1 · authored by CE-38 · 2026-08-28 · AMENDMENT 1 (P1 two services: managed profile, profile setup) 2026-08-28 · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
 
 > Reader: this document is written for an LE seat that has never met the estate, building under a chair who has never met this block. Every claim marked **DERIVE** is a claim the seat re-derives at origin by command before writing a byte; nothing here is a column witness (SQL-provenance law: never author a column from memory — `docs/SCHEMA.md` is the witness, this spec is not). Founder holds veto over every vendor-facing byte; every string in §9 ships only after his one pass.
 
@@ -70,7 +70,10 @@ P0 seals when the chair has re-derived (2) by command at three sampled lines and
 - OAuth: standard code flow, scope `https://www.googleapis.com/auth/business.manage`. Refresh token encrypted at rest. One grant per vendor.
 - Sync is **one-directional, TDW → Google**, on a cron (P4 of Block 05 owns crons — reuse its runner, **DERIVE** its file) and on Storefront save. Never Google → TDW; the estate's rooms stay the source of truth.
 - Reviews: on `events.end_date + 3 days` for events with a linked couple phone, send the `review_request` WhatsApp template (Meta Cloud API direct, vendor lane) carrying the vendor's short review URL (`https://search.google.com/local/writereview?placeid=…`). One send per couple per event; opt-out honoured. Template text is a founder byte (§9).
-- Not-claimed path: if the vendor has no profile, the row shows the claim steps as a three-line checklist deep-linking to Google's claim flow, and TDW polls for the grant. We do not create profiles on their behalf (Google policy).
+- **Two services, founder-approved 2026-08-28 (AMENDMENT 1 — filed from the P0-A ledger's finding that TDW's own profile needs 60 days before API access):**
+  - **Managed profile.** A vendor who already has a profile adds `dev@thedreamwedding.in` as a **Manager** from their own Google Business Profile (Business Profile → People and access → Add). Google's prerequisite text admits a profile that "could belong to one of the clients they manage"; this is that route. The vendor does it from their end — TDW cannot arrange it for itself. In the app, the row shows the three-tap path and TDW polls the Account Management API for the grant. Until the OAuth flow ships (P1), this is also **the estate's route to API access**: one vendor's 60-day-old profile with `dev@` as manager satisfies the GBP prerequisite without waiting on TDW's own profile. The founder asks one real vendor for this in P0-A.
+  - **Profile setup.** A vendor with no profile gets one created **with them, on a call or in person** — TDW's staff signed in as `dev@`, the vendor present and named as owner, verification done to the vendor's phone/postcard. Free, part of the subscription. Google requires creation by the owner or an authorised representative, so this is never silent and never "on their behalf" from the app: **no API-side creation is chartered.** Whether the current API can create locations at all is **DERIVE** (the chair's understanding is that creation is a console action, not an API one; unasserted). The app row shows `Set up my Google page` → opens a WhatsApp thread to TDW support with the vendor's Storefront fields pre-filled, so the call has the bytes ready.
+  - **Consequence for the GBP application (A3):** the line "we never create profiles" is struck; it now reads "we create profiles only together with the vendor, as their authorised representative, never programmatically." The P0-A seat carries this into the form text before submission.
 
 **Storage — candidate DDL, chair-ruled, columns from the migration not from this page:**
 `vendor_integrations (id, vendor_id → vendors, provider text CHECK IN ('google_business'), external_account_id text, external_location_id text, refresh_token_enc bytea, scopes text[], status text CHECK IN ('pending','active','revoked','error'), last_synced_at timestamptz, last_error text, created_at, updated_at)` — one row per (vendor, provider) UNIQUE.
@@ -84,7 +87,7 @@ P0 seals when the chair has re-derived (2) by command at three sampled lines and
 
 **Founder walk:** on `9888294440`, connect a test GBP (the founder's own test business), save a Storefront change, witness the sync row; SQL fixture SELECTs authored by the chair, curl card authored from his pasted rows.
 
-**Refusals:** no Google → TDW sync · no review solicitation to a couple with no linked event · no photo upload of media the vendor has not marked public in Portfolio.
+**Refusals:** no Google → TDW sync · no review solicitation to a couple with no linked event · no photo upload of media the vendor has not marked public in Portfolio · no programmatic profile creation, and no profile creation without the vendor present.
 
 ---
 
