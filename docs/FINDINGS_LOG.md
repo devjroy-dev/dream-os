@@ -4769,3 +4769,34 @@ Two things make it worth a number rather than a note. The mutation is **plausibl
 
 **Open:** F-38.22 (thirty colour literals) · F-38.23 (six header words, three homes) · F-38.24 (the census) · F-38.30 = F-19.14 · F-38.31's Phase 4 half · F-38.32.
 
+
+
+---
+
+# CE-38 · THIRD BAND — TWO SEALS, A RENUMBERING, AND THE `/v/` QUESTION RULED
+**Authored by CE-38 · 2026-08-28 · appended to `docs/FINDINGS_LOG.md` at `f7f5a6e` by the founder's hand. Witness tips at authoring: dreamos-pwa `c0ce015` (S2/3) and `f3e23dd` (P0-B close), dream-os `f7f5a6e`.**
+
+## §1 · REGISTER RENUMBERING (c-38.27, the chair's)
+Three seats minted F-38.39–.42 independently; only the chair serializes the register. Final ids: the symlink-shadow finding keeps **F-38.42** (first to this log, second band). The S2/3 findings renumber, texts standing verbatim in that seat's handover under: **F-38.43** (crossings break `scripts/` benches — tdw09_hotfix, 12 cells, caught by R-38.19's set-diff at the cut) · **F-38.44** (`PAGES` derivation dropped `/w/rooms`; corpus refuses by name now; the first guard written for it was vacuous and was deleted rather than shipped) · **F-38.45** (C32's bare-JSX arm hardcoded one persona name of five — fourth cut of that matcher) · **F-38.46** (the persona cell announced five surfaces while walking thirteen; C5 structurally could not fail on a 151-apostrophe file) · **F-38.47** (below). Henceforth seats file with placeholder ids; the chair assigns finals at the seal.
+
+## §2 · SEAL — M-FINISH S2, SESSION 3 (the S2 seat)
+Sealed at `c0ce015`: audit 26/0/2 · arm 40/0 · b40 37/37 · FLOOR = NAMED BASE (22), all at the deploy, stamped to the tree. Calendar crossed; the address book paid out as built — three sites, one needing no edit.
+**Rulings taken at this seal:**
+- **R-38.11 amended by label:** the interim sets "may only shrink **or hold with the movement stated**." A census bent to match a sentence is the disease; `INTERIM_VENDOR_ROOMS` shrinking is the load-bearing assertion, `INTERIM_VENDOR_MOUNTS` holding with a declared move is honest. Expected on most of the remaining seven crossings.
+- **`INTERIM_HUB_PRIMERS` ratified** as a declared set, shrink-only from birth, correctly kept out of `INTERIM_VENDOR_LINKS`.
+- **F-38.47 · THE FOUR HUB PRIMERS** — `router.push('/vendor?draft=…')` behind 「Send to Chat」 in WishboneSheet (six rooms), BinderCard (clients), NotesBody (notes), CalendarDaySheet (calendar): each unmounts the shell entire — F-38.1's last live remnant, passed by two gates whose matchers required a trailing slash. **Chartered as this seat's next sitting, a design sitting:** AskSheet grows a `draft` prefill parameter with one home; the four doors re-point through it; the trailing-slash matcher is amended in the same cut, and matchers henceforth derive from a shape table, never inline (fifth firing of the matcher family). Storefront's crossing opens after this cures.
+- **D-38.1 corollary, banked:** *"Every one was a cell agreeing with a description of itself; none was found by reading."* Six instrument findings in one sitting carry it.
+
+## §3 · SEAL — TDW_19 P0-B (the Business Solutions seat)
+Sealed at `f3e23dd` / `f7f5a6e`. Five steps across both repos: contracts (14-cell gate) · doors live with withheld POSTs · six surfaces on the rungs · the estate's first public routes (`/v/`, `/r/`, the public vendor-card door, field-by-named-field) · the copy register (C24 catching a one-character apostrophe drift on its first run). Founder walk passed on all twelve screens; walk findings F-19.19/.20/.21 cured on glass; every instrument non-vacuous by mutation of production source. Block epigraph, banked: **twice the walk found what the instruments structurally could not — a page can be green and empty.**
+
+## §4 · THE `/v/` QUESTION — RULED, AND P2-A CHARTERED
+The P0-B seat's closing note stands: `/v/` is where `tdw_referral_invite` lands a couple at her highest intent, and it renders a name and one sentence while `vendor_portfolio` holds an approved, vendor-curated image set. The ruling was made about a URL; the walk proved it is about a moment.
+**Disclosure rulings, so the charter opens decided:**
+1. **Consent transfers.** Discover already renders approved images to signed-out couples on the public landing; `approval_state='approved'` is consent to the public couple-facing exposure class, and `/v/` is that class with an address. Binds per-image, with the vendor's own `is_hero`/`in_carousel` curation; nothing else renders.
+2. **`rate_display` binds.** A hidden rate stays hidden; being shared un-hides nothing.
+3. **One switch.** `discover_paused` governs the entire page, photos included — one vendor word, everywhere.
+**TDW_19 P2-A — the early storefront** is chartered as its own sitting, kickoff to follow: `/v/` renders through `VendorProfileView`'s shape (one couple-facing card in the estate, never two that drift); the public door's allowlist grows by named fields only; `b44` §3 keeps diffing the SELECT. Not slipped into a fix ZIP — the seat's scope honesty is the record.
+
+## §5 · OPEN AT THIS BAND
+F-38.22 · F-38.23 · F-38.24 · F-38.30 = F-19.14 (partially discharged by P2-A when it lands) · F-38.31's Phase 4 half · F-38.32's bride-plane export · F-38.38 + F-19.18 (helper proven at the hotfix seat, seam-0 ZIP owed) · F-38.41 (theme cookie arm, hotfix seat) · F-38.47 (chartered §2) · F-19.15 · F-19.16 (seam 0) · F-19.17 · the eight dated uncomments at their own sites · Part A's form on 2026-10-27.
