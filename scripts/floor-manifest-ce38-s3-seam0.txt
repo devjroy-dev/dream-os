@@ -1,0 +1,17 @@
+# scripts/floor-manifest-ce38-s3-seam0.txt
+#
+# CE-38 S3 · SEAM 0 · F-38.38 (dream-os) — THE DECLARED DIRT.
+#
+# [F-14.16] A delivery tree is dirty by definition and R-33.7 forbids the
+# executor the commit that would clean it. Every dirty path must be named here;
+# one byte outside and the runner refuses. The manifest's files are SHA-256'd
+# before the run and re-hashed after, so the SET is tolerated and the CONTENTS
+# are not.
+#
+# THIS FILE IS ON ITS OWN LIST. The pwa half of this seam now carries the same
+# name under scripts/, so the two repos state one convention rather than two.
+#
+# THREE PATHS.
+scripts/lib/mutateCopy.js
+scripts/b06_m1_bench.js
+scripts/floor-manifest-ce38-s3-seam0.txt

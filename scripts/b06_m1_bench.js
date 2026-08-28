@@ -40,6 +40,7 @@ const assert = require('assert');
 const fs = require('fs'); const path = require('path');
 const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..'); const P = (r) => path.join(ROOT, r);
+const { createShadow, assertUntouched } = require('./lib/mutateCopy.js');
 const read = (r) => fs.readFileSync(P(r), 'utf8');
 let pass = 0, fail = 0;
 const t = (n, f) => { try { f(); console.log(`  ok   ${n}`); pass++; } catch (e) { console.log(`  FAIL ${n}\n       ${e.message}`); fail++; } };
@@ -371,29 +372,68 @@ if (!process.env.B06_M1_BENCH_CHILD) {
     { file: DONNA, cell: '§6.3', why: 'the snapshot line loses its stamp — F-06.25\'s dominant path goes blind again',
       from: 'lines.push(`- ${it.text}${stampOf(it)}`);', to: 'lines.push(`- ${it.text}`);' },
   ];
+  // ── F-38.38 · THIS LEG NO LONGER WRITES TO PRODUCTION SOURCE ───────────────
+  //
+  // It used to, and this repo paid for it: `src/engine/src/core/donna.ts` was left
+  // with `stampOf(it)` stripped from a vendor-facing line after a run was killed
+  // before its `finally`. A `finally` GUARDS A THROW AND NOT A SIGNAL. The diff was
+  // PLAUSIBLE — a dropped timestamp reads as a deliberate copy edit — so it would
+  // have survived review, and F-38.38 was found by killing a run rather than by
+  // reading the bench, which had a `finally` and a §7.0 cell and looked airtight.
+  //
+  // `scripts/lib/mutateCopy.js` is this repo's one home for the cure, the same shape
+  // and the same words as the pwa's `.mjs`. The mutation goes into a SHADOW — a
+  // symlink farm in `tmpdir` where only the paths a bench materialises are real — and
+  // the build and the child both run inside it. Production is never opened for
+  // writing, so however this process dies it leaves nothing behind.
+  //
+  // ⚠ TWO THINGS THE SHADOW NEEDS, AND NEITHER IS OPTIONAL:
+  //
+  //   `unfold('src/engine')` — F-38.43. `tsc -p src/engine/tsconfig.json` writes to
+  //   `outDir: "dist"`, i.e. `src/engine/dist`. Materialising only the mutated file's
+  //   path leaves `src/engine` a symlink for runs whose mutations fall elsewhere, and
+  //   the build then writes compiled output THROUGH it into production — invisibly,
+  //   because build output is untracked and `git status` never mentions it. Witnessed
+  //   both ways: without the unfold, production grew a `src/engine/dist`; with it,
+  //   production stayed clean.
+  //
+  //   `shadow.exec` for the child, never `execFileSync('node', …)` — F-38.42. Node
+  //   canonicalises the main module's path, so without `--preserve-symlinks` and
+  //   `--preserve-symlinks-main` the child reads the REAL repository while standing in
+  //   the shadow, and every mutation reports GREEN over a tree nobody read. The helper
+  //   owns the flag pair so this cannot be forgotten here.
+  //
+  // THE PRODUCTION REBUILD IS GONE FROM THE RESTORE PATH, and that is a consequence
+  // rather than an optimisation: there is nothing to rebuild, because there was never
+  // anything to restore.
   const REBUILD = new Set([TODAY, FIND, DONNA]); // TS mutations must reach the dist the bench imports
+  const PRISTINE = new Map([...new Set(M.map((m) => m.file))].map((f) => [f, fs.readFileSync(P(f), 'utf8')]));
+  const shadow = createShadow(ROOT);
+  try {
+  shadow.unfold('src/engine');
   for (const m of M) {
-    const abs = P(m.file), orig = fs.readFileSync(abs, 'utf8');
+    const orig = PRISTINE.get(m.file);
     if (!orig.includes(m.from)) { console.log(`  FAIL MUTATION anchor stale in ${m.file} — ${m.cell}`); fail++; continue; }
-    try {
-      fs.writeFileSync(abs, orig.replace(m.from, m.to));
-      if (REBUILD.has(m.file)) execFileSync('npm', ['run', 'build'], { cwd: ROOT, stdio: 'ignore' });
-      let out = '';
-      try { execFileSync('node', [P('scripts/b06_m1_bench.js')], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, B06_M1_BENCH_CHILD: '1' } }); }
-      catch (e) { out = String(e.stdout || ''); }
-      const red = new RegExp(`FAIL ${m.cell.replace('§', '\\u00a7')}`).test(out);
-      if (red) { console.log(`  ok   ${m.cell} RED at the uncured tree — ${m.why}`); pass++; }
-      else { console.log(`  FAIL ${m.cell} did NOT go red — ${m.why}`); fail++; }
-    } finally {
-      fs.writeFileSync(abs, orig);
-      if (REBUILD.has(m.file)) execFileSync('npm', ['run', 'build'], { cwd: ROOT, stdio: 'ignore' });
-    }
+    shadow.write(m.file, orig.replace(m.from, m.to));
+    if (REBUILD.has(m.file)) execFileSync('npm', ['run', 'build'], { cwd: shadow.root, stdio: 'ignore' });
+    const r = shadow.exec('scripts/b06_m1_bench.js', [], { env: { ...process.env, B06_M1_BENCH_CHILD: '1' } });
+    const out = String(r.stdout || '');
+    const red = new RegExp(`FAIL ${m.cell.replace('§', '\\u00a7')}`).test(out);
+    if (red) { console.log(`  ok   ${m.cell} RED at the uncured tree — ${m.why}`); pass++; }
+    else { console.log(`  FAIL ${m.cell} did NOT go red — ${m.why}`); fail++; }
+    // Back to pristine bytes between mutations so mutation N+1 is proved ALONE — a
+    // shadow that accumulates would let an earlier mutation's red be read as a later
+    // one's, which is a proof that cannot say what it proved.
+    shadow.write(m.file, orig);
+    if (REBUILD.has(m.file)) execFileSync('npm', ['run', 'build'], { cwd: shadow.root, stdio: 'ignore' });
   }
-  t('§7.0 every mutated file is restored BYTE-IDENTICAL', () => {
-    const dirty = execFileSync('git', ['diff', '--name-only', '--', GAUNTLET, TODAY, FIND, DONNA], { cwd: ROOT, encoding: 'utf8' });
-    for (const m of M) assert.ok(fs.readFileSync(P(m.file), 'utf8').includes(m.from), `${m.file} not restored`);
-    assert.ok(dirty !== null);
+  // §7.0 SAYS THE STRONGER THING NOW. It used to assert that every mutated file was
+  // restored byte-identical; it asserts that production was never written at all, and
+  // it reads the bytes back from the REAL tree to say so.
+  t('§7.0 production source untouched by the whole mutation leg', () => {
+    assertUntouched(ROOT, [...PRISTINE.keys()], PRISTINE);
   });
+  } finally { shadow.dispose(); }
   t('§7.1 THE SOULS ARE DELIBERATELY UNMUTATED — a prompt paragraph has no desk teeth, and the walk is where it answers', () => {
     assert.ok(!M.some((m) => /Soul\.ts|Lens\.ts/.test(m.file)));
   });
