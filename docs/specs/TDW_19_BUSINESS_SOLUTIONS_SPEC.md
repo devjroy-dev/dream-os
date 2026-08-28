@@ -1,5 +1,5 @@
 # TDW_19 · BUSINESS SOLUTIONS — THE VENDOR'S MARKETING DESK
-**Spec v1.1 · authored by CE-38 · 2026-08-28 · AMENDMENT 1 (P1 two services: managed profile, profile setup) 2026-08-28 · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
+**Spec v1.2 · authored by CE-38 · 2026-08-28 · AMENDMENT 1 (P1 two services) · AMENDMENT 2 (P7 Own number, founder-approved 2026-08-28) · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
 
 > Reader: this document is written for an LE seat that has never met the estate, building under a chair who has never met this block. Every claim marked **DERIVE** is a claim the seat re-derives at origin by command before writing a byte; nothing here is a column witness (SQL-provenance law: never author a column from memory — `docs/SCHEMA.md` is the witness, this spec is not). Founder holds veto over every vendor-facing byte; every string in §9 ships only after his one pass.
 
@@ -149,6 +149,23 @@ Copy law binds: the model writes in the vendor's voice from the vendor's own des
 **P6 Benchmarks.** One nightly job computing, per (city, category): median first-reply time, reply rate, enquiries per month, conversion to booking — from `leads` and `events` on the typed plane (**F-P3.11 must be diagnosed first; benchmarks never read the engine plane**). Each vendor sees *their* number beside the category median as two t2 numerals and a one-word direction. Minimum cohort of 5 vendors before a median is shown; below that the row reads "Not enough vendors in <city> yet." Never shows another vendor's number.
 
 **Storage:** `category_benchmarks (city, category, metric, median numeric, cohort int, computed_at)` PK `(city, category, metric)`.
+
+---
+
+## §7b · P7 — OWN NUMBER (AMENDMENT 2, founder-approved 2026-08-28 · Prestige tier · opens only after Block 05 seals whole: bride lane on Meta direct + M2b Twilio sunset)
+
+**Outcome:** a Prestige vendor's own WhatsApp number becomes a WABA under TDW's Tech Provider portfolio; Victor answers on **her** number in her name; every `wa.me/<her-number>` surface (storefront, Google page, printed cards, `/v/`) lands in TDW's machinery. Row byte 「Own number」.
+
+**Mechanism:** Meta **Embedded Signup** inside the PWA — the vendor taps through the Meta-hosted flow, verifies the number by OTP, and her WABA is created under TDW's business with TDW as messaging provider. Sending/receiving is the same Cloud API the estate already runs; her lane is a per-vendor `PHONE_NUMBER_ID` resolved from a new `vendor_wabas` table (candidate DDL, chair-ruled at charter: `id, vendor_id UNIQUE, waba_id, phone_number_id, display_number, status CHECK IN ('pending','active','suspended','migrated_out'), quality_rating, tier, created_at, updated_at`). Webhook routing gains one dispatch key: inbound `phone_number_id` → vendor lane. Prerequisite Meta-side: **TDW onboarded as Tech Provider / Solution Partner** — a founder-seat application filed alongside the standing GBP ledger; its approval is this phase's long pole and its ledger entry gates the charter (conditional-withheld).
+
+**Three ruled constraints:**
+1. **Second-number default.** A number on the Cloud API stops working in the vendor's WhatsApp app. The offer is a **business line** (TDW can provision one), never silent conversion of her personal number; converting her own number is an explicit, twice-confirmed choice with the consequence stated in her language.
+2. **Priced, not absorbed.** Per-vendor conversation charges pass through on her invoice at cost (the F-19.15 paise/rupee seam applies), or are bundled into Prestige with the bundle's cap stated — founder's word at charter. Zero-commission means zero *commission*, not silent COGS.
+3. **Quality is portfolio-wide.** Meta judges the provider by its clients. Marketing sends on vendor WABAs are template-only, opt-in-audited (the `broadcasts` table's discipline), rate-guarded by the cron runner, and a vendor whose quality rating drops is auto-paused with a notice — one spammy vendor must not throttle the estate's onboarding.
+
+**Scale facts, DERIVE at charter (Meta revises; the seat verifies current figures on the day):** client-WABA onboarding is effectively unlimited for a clean provider (new-provider velocity caps rise automatically); per-number messaging tiers start ~250 business-initiated conversations/day and climb 1K→10K→100K on clean volume — a wedding vendor's 20–50 couples/month never leaves tier 1; ~20 numbers per WABA (irrelevant at one WABA per vendor). The binding constraints are TDW's business verification, portfolio quality, and sales — not Meta.
+
+**Sequencing:** P7 charters after Block 05 seals whole AND the Tech Provider approval lands. It is the last row of the Business Solutions room and completes the story the GBP row starts: TDW runs the vendor's public presence end to end.
 
 ---
 
