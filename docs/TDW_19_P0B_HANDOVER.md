@@ -1,10 +1,11 @@
-# TDW_19 P0-B · HANDOVER (dream-os) — STEP 1 OF 5: THE CONTRACTS
+# TDW_19 P0-B · HANDOVER (dream-os) — STEPS 1–2 OF 5: THE CONTRACTS, THE DOORS
 
 **Seat:** LE, P0-B · **Chair:** CE-38 · **Sitting date:** 2026-08-28
 **Governing kickoff:** TDW_19 P0-B, packet `906ef15b0b19fa9d31079cd74165f61d59c3a32902113ad445265a5028589cf2`
 **Built on:** `dream-os` `aeca43f` (origin/main) · sibling `dreamos-pwa` `b251600` (origin/worklist)
 **Ruled by:** CE-38 relay #1, items 1–7 and the `/v/` ruling.
-**State:** kickoff §4 item 1 COMPLETE and gated. Items 2–5 not started.
+**State:** kickoff §4 items 1 AND 2 COMPLETE and gated. Items 3–5 not started.
+**Step 2 built on:** `dream-os` `b65b27a` · `dreamos-pwa` `7142cbf` (both pushed tips), siblings resolvable per c-38.12.
 
 This file touches neither `FINDINGS_LOG.md` nor the masterplan. Findings raised
 here are stated for the chair to file.
@@ -288,3 +289,169 @@ door, never on write from here. No change to R-19.3.
   mutating production source.
 - ⚠ Bench numbering: `b40`, `b41`, `b42` are reserved to P1, P2, P3 by spec
   §4–§6 and are free in `scripts/` today. Do not take them.
+
+---
+---
+
+# STEP 2 — THE DOORS (kickoff §4-2, R-19.4)
+
+## §10 · WHAT LANDED
+
+| Path | Lines | Change |
+|---|---|---|
+| `src/api/vendor/solutions/index.js` | 375 | NEW — eight GETs live, POSTs conditional-withheld |
+| `scripts/b43_solutions_doors_bench.js` | 388 | NEW — 35 cells over real HTTP |
+| `src/api/vendor/core.js` | +6 | **EDITED** — the mount, one route line plus its reasoning |
+
+The `core.js` edit is the **only** existing file touched by this seat in either
+repo across both steps, and the kickoff named it as the one S2-adjacent backend
+touch. It sits **above** the bare `router.use('/', require('./schedules'))`:
+a root mount is reached for every path, so a segment router that needs to win its
+own prefix belongs before it. Derived that `schedules` declares only
+`/invoices/:invoiceId/schedule` and `/schedules/:milestoneId` routes, so there is
+no live shadow either way — the ordering is defensive, not corrective.
+
+**Still zero DDL, zero migrations.** One column is read across all eight doors:
+`req.vendor.routing_handle`, which `resolveVendor` has already put on the
+request. Witness and its staleness test are in §5 above.
+
+## §11 · b43 — 35 CELLS, AND WHY IT DOES NOT REUSE b38's PATTERN
+
+`b38` seats a `require.cache` stub for `resolveVendor`, because ownership was
+scenery to what it tested. The kickoff asks for something stricter here: **over
+real HTTP THROUGH `resolveVendor`.** So the real middleware runs against a
+recording in-memory fake that answers the exact query chain `resolveUsersId` and
+`resolveVendor` make — `users.auth_user_id`, the `users.id` legacy fallback, then
+`vendors.user_id`.
+
+**That is what makes §3 mean anything.** A stubbed `resolveVendor` cannot produce
+a 403 — it would have to be *told* to, which proves nothing. The real one
+produces it by failing to find a vendor row:
+
+```
+§3.1 no vendor row -> 403 from the real middleware      HTTP 403 "Not a vendor account."
+§3.2 identity maps to no user -> 403                    HTTP 403
+§3.3 restored -> 200 again (the guard is not sticky)    HTTP 200
+§3.4 resolved BY JWT, not by a URL param                4 vendors read(s), filters: ["user_id"]
+```
+
+`requireAuth` **is** stubbed, and the distinction is deliberate rather than
+convenient: it verifies a Supabase JWT signature against a live auth service —
+a property of Supabase, not of this block, already asserted by every other door
+bench. It attaches `req.auth` and nothing else, which is exactly what
+`resolveVendor` consumes.
+
+**The fake THROWS on any table it was not told about.** A door that started
+reading `vendor_integrations` — a table with no DDL — reddens here rather than
+500ing in production. §4.2 proves that refusal is real, so §4.1 is not vacuous.
+
+Bench number is CE-38's (relay #1 item 2), and `b39`'s unavailability was
+verified at origin: `b39_telemetry_bench.js` **and** `b39_worklist_today_bench.js`
+both sit in `scripts/`. `b43` was free. `b40`/`b41`/`b42` remain reserved to
+P1/P2/P3 by spec §4–§6.
+
+**b43 runs on a dirty tree by design** — it reads no floor and mutates nothing at
+rest, so the founder can satisfy the verify line at his apply moment, before
+commit. See F-19.16 for what happens to benches that do otherwise.
+
+## §12 · TWO DECISIONS INSIDE THE DOORS THAT ARE NOT OBVIOUS
+
+**`/domain/search` returns an empty list rather than plausible suggestions.**
+The registrar is not wired, so there is no availability to report and no price to
+quote. This door could have returned realistic-looking domains at a
+realistic-looking price and nobody would have noticed — and every one would be a
+fabricated fact about a domain the vendor might try to buy, at a number that is
+not the registrar's. It returns nothing and reports `live: false`.
+
+**`/benchmarks` sends `mine: null` as well as `median: null`.** Sending the
+vendor's own number would be perfectly safe — it is hers. But it would establish
+the habit of putting a number on this wire before the cohort has been checked,
+and P6 would inherit that habit against a five-vendor floor. `city` and
+`category` are null for the neighbouring reason: naming a city beside `cohort: 0`
+invites the surface to render *"Not enough vendors in Mumbai yet"* as though we
+had counted Mumbai. We have not. P6 fills all three together or none.
+
+**A contract violation is a 500, not a logged warning.** A door that logs the
+violation and sends the body anyway has taught its caller the contract is
+advisory. Proven by mutation N4.
+
+## §13 · THE WITHHELD POSTS
+
+Nine POST addresses are declared in comments with method, response shape, gate,
+and an explicit uncomment step. **They are not draft handlers** — writing a body
+now would be writing against a table that does not exist and a registrar that is
+not wired. What is fixed is the address, the method, the shape and the gate, so
+P1 and P2 inherit a decision instead of making it again.
+
+Two warnings are planted at their sites for whoever uncomments them:
+
+- **`POST /domain/register` spends the founder's money.** It owes an idempotency
+  key on the registrar call before the first real request, or a retried POST buys
+  the domain twice.
+- **F-19.15 lands there too.** The pass-through invoice line converts paise →
+  rupees at the *invoices* room's own write door. It does not convert in
+  `solutions/` and does not write `invoices` from there — sole-writer law.
+
+**P3–P6 declare no POSTs, and that is not an oversight.** Spec §8 names no key
+for them; declaring their addresses would pin an interface for phases whose gates
+do not exist, and the next seat would inherit it as though ruled.
+
+## §14 · GATE
+
+```
+node --check core.js / solutions/index.js / b43            OK, all three
+node scripts/b43_solutions_doors_bench.js                  35 PASS · 0 FAIL, exit 0
+floor --delivery <manifest> --check                        FLOOR = NAMED BASE, no delta, exit 0
+  [F-14.16] 3 dirty paths, all declared
+  [F-14.16] declared files unmoved — set and contents both verified
+  b43 entered the scripts/*.js glob and added no red
+```
+
+### Non-vacuity, by mutating production source
+
+| # | Mutation | Reddened |
+|---|---|---|
+| N1 | unmount `/solutions` from `core.js` | §0.1 §0.2, all seven §2 cells, §3.1–§3.4, §5.x, §6.x — the whole surface |
+| N2 | `subdomainFor(...)` → inline concatenation | §5.2 (`DEV550.thedreamwedding.in`) and **§5.3 (`"null.thedreamwedding.in"`)** |
+| N3 | `/benchmarks` sends `mine: 12, median: 18` | §7.5, message derived: `first_reply_minutes=12/18 …` |
+| N4 | `GoogleStatus` grows `internalNote` | §2 `/google` → **HTTP 500 CONTRACT_VIOLATION**, §3.3, §7.1 |
+| N5 | `/domain` reads `vendor_integrations` | §4.1 (`tables touched: users, vendor_integrations, vendors`), §2, §5.x |
+
+**N2 is the one worth reading.** Replacing the transform with the obvious inline
+concatenation produced literally `"null.thedreamwedding.in"` on the wire — the
+exact byte CE-38 relay #1 item 4 exists to prevent, reached by writing the line
+the way anyone would write it if the ruling had not been made.
+
+### ⚠ TWO DEFECTS IN THIS BENCH, FOUND BY ITS OWN MUTATIONS AND CURED
+
+Disclosed rather than quietly fixed, because both are the class D-38.1 warns about.
+
+**Three failure messages were static strings and contradicted their own verdict.**
+N3 printed `FAIL §7.5 … — four metrics, all null, direction "unknown"` — the
+message asserting the opposite of the failure, at exactly the moment it was
+reporting a leaked number. A cell whose message contradicts its verdict is worse
+than a silent one: it reads as reassurance. §3.4, §6.3 and §7.5 now derive their
+messages from what was observed.
+
+**The bench aborted mid-run under N4.** When `/google` 500s its body is absent,
+and §7's first cut dereferenced it — `BENCH ABORTED — TypeError`, with §7, §8 and
+§9 never printed. Exit 2 is still an honest verdict, but a **partial verdict set**
+is precisely what `wl_audit`'s preamble refuses: the reader cannot distinguish an
+unreported cell from a passing one. §7 is guarded; N4 now completes at
+`32 PASS · 3 FAIL`.
+
+Neither defect ever produced a false green — both were found by mutations that
+correctly reddened. But a bench that reports badly under failure reports badly on
+the day it matters.
+
+## §15 · WHAT STEP 3 INHERITS
+
+- `GET /api/v2/vendor/solutions` is live and returns `SolutionsIndex` with a
+  `live` and `state` per row, driven by `env.gates()`. The surface reads chips
+  off it; it does not compute them.
+- `lib/solutions/client.ts` (pwa) is step 3's and is still unbuilt.
+- Every door's empty payload is now fixed and asserted, so a surface can be built
+  against a real response rather than a mock.
+- Backend counts to carry forward, re-derived at the moment of writing:
+  `index.js` 375 · `b43` 388 · `contract.js` 314 · `env.js` 148 · `core.js` mount
+  at line 73.

@@ -65,6 +65,12 @@ router.use('/featured',    require('./featured'));
 // Behind `billing.selfserve_enabled`, checked inside the file, default OFF.
 router.use('/billing',     require('./billing'));
 router.use('/studio',      require('./studio/index'));
+// TDW_19 P0-B — Business Solutions (R-19.4). GETs live and answering the
+// contract's empty shape; POSTs conditional-withheld inside the file. Mounted
+// ABOVE the bare '/' below deliberately: `schedules` is mounted at the root and
+// a root mount is reached for every path, so a segment router that needs to win
+// its own prefix belongs before it, not after.
+router.use('/solutions',   require('./solutions/index'));
 router.use('/',            require('./schedules'));
 router.use('/contracts',   require('./contracts'));
 router.use('/tds',         require('./tds'));
