@@ -1,5 +1,5 @@
 # TDW_19 · BUSINESS SOLUTIONS — THE VENDOR'S MARKETING DESK
-**Spec v1.2 · authored by CE-38 · 2026-08-28 · AMENDMENT 1 (P1 two services) · AMENDMENT 2 (P7 Own number, founder-approved 2026-08-28) · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
+**Spec v1.3 · authored by CE-38 · 2026-08-29 · AMENDMENT 1 (P1 two services) · AMENDMENT 2 (P7 Own number) · AMENDMENT 3 (§7c Enquiry routing, founder-approved 2026-08-29) · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
 
 > Reader: this document is written for an LE seat that has never met the estate, building under a chair who has never met this block. Every claim marked **DERIVE** is a claim the seat re-derives at origin by command before writing a byte; nothing here is a column witness (SQL-provenance law: never author a column from memory — `docs/SCHEMA.md` is the witness, this spec is not). Founder holds veto over every vendor-facing byte; every string in §9 ships only after his one pass.
 
@@ -166,6 +166,24 @@ Copy law binds: the model writes in the vendor's voice from the vendor's own des
 **Scale facts, DERIVE at charter (Meta revises; the seat verifies current figures on the day):** client-WABA onboarding is effectively unlimited for a clean provider (new-provider velocity caps rise automatically); per-number messaging tiers start ~250 business-initiated conversations/day and climb 1K→10K→100K on clean volume — a wedding vendor's 20–50 couples/month never leaves tier 1; ~20 numbers per WABA (irrelevant at one WABA per vendor). The binding constraints are TDW's business verification, portfolio quality, and sales — not Meta.
 
 **Sequencing:** P7 charters after Block 05 seals whole AND the Tech Provider approval lands. It is the last row of the Business Solutions room and completes the story the GBP row starts: TDW runs the vendor's public presence end to end.
+
+---
+
+## §7c · ENQUIRY ROUTING — THE THREE RUNGS (AMENDMENT 3, founder-approved 2026-08-29 · sequenced with P2: one column, one Settings row, no Meta dependency)
+
+**The question this answers:** where does 「Enquire on WhatsApp」 send a couple? The estate's answer becomes the vendor's own choice — one switch, one home, three values, read by every enquiry surface (`/v/`, the Discover deck, the Google page at P0-A's maturity, print QRs later).
+
+**The switch:** `vendors.enquiry_routing text NOT NULL DEFAULT 'tdw' CHECK (enquiry_routing IN ('tdw','own_number','own_waba'))` — candidate DDL, chair-ruled at charter; founder runs the migration. One column; no second home. Surfaces resolve the wa.me target through one shared resolver (the `shapeVendor.js:41` lineage), never inline.
+
+**Rung 1 · `tdw` (default, every tier).** Enquiries route through TDW's number with the vendor's handle in the prefill — Victor answers in her name, the lead is captured, threads and analytics exist. Zero setup. This is W-1's cure and the floor under everything.
+
+**Rung 2 · `own_number` (opt-in, every tier).** The page deep-links `wa.me/<her chosen number>` — her existing personal or business WhatsApp, no WABA, no migration. **Consent gate, twice-stated in her language:** (a) she is publishing a number on an unauthenticated URL; (b) enquiries that go there bypass TDW entire — no Victor, no lead capture, no threads, no analytics, and TDW cannot answer for her. The Settings row states both before the switch flips; flipping back to `tdw` takes effect immediately. The number she publishes is a field she types (`enquiry_phone`), hers to change, never scraped from `users.phone` — the P0-B refusal stands as law.
+
+**Rung 3 · `own_waba` (Prestige, P7).** Her number is a WABA under TDW's Tech Provider portfolio per §7b — Victor answers on **her** number, everything captured, both worlds. Selecting this rung is P7's Embedded Signup flow; until P7 ships the value is present in the CHECK but the Settings row shows it as 「Arrives with Own number」 (conditional-withheld, disabled state per F-19.20's law).
+
+**Sequencing:** the column and resolver land with P2; the Settings row lands with the Settings room's next sitting; `/v/` and the deck consume the resolver the day it exists (until then they hardcode rung 1, which is today's W-1 cure — stated at site with this section named). §7b's charter inherits rung 3's wiring for free.
+
+**One law restated for every surface this touches:** the vendor's word governs her exposure (`rate_display`, `discover_paused`, now `enquiry_routing`) — switches the vendor owns, one home each, read everywhere, invented nowhere.
 
 ---
 
