@@ -1,5 +1,5 @@
 # TDW_19 · BUSINESS SOLUTIONS — THE VENDOR'S MARKETING DESK
-**Spec v1.3 · authored by CE-38 · 2026-08-29 · AMENDMENT 1 (P1 two services) · AMENDMENT 2 (P7 Own number) · AMENDMENT 3 (§7c Enquiry routing, founder-approved 2026-08-29) · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
+**Spec v1.4 · authored by CE-38 · 2026-08-29 · AMENDMENT 1 (P1) · AMENDMENT 2 (§7b P7) · AMENDMENT 3 (§7c) · AMENDMENT 4 (§7d P2-B Page editor, founder-approved 2026-08-29) · founder-approved scope (six lines, one word: 「approved」) · status: SPEC READY, not chartered**
 
 > Reader: this document is written for an LE seat that has never met the estate, building under a chair who has never met this block. Every claim marked **DERIVE** is a claim the seat re-derives at origin by command before writing a byte; nothing here is a column witness (SQL-provenance law: never author a column from memory — `docs/SCHEMA.md` is the witness, this spec is not). Founder holds veto over every vendor-facing byte; every string in §9 ships only after his one pass.
 
@@ -184,6 +184,27 @@ Copy law binds: the model writes in the vendor's voice from the vendor's own des
 **Sequencing:** the column and resolver land with P2; the Settings row lands with the Settings room's next sitting; `/v/` and the deck consume the resolver the day it exists (until then they hardcode rung 1, which is today's W-1 cure — stated at site with this section named). §7b's charter inherits rung 3's wiring for free.
 
 **One law restated for every surface this touches:** the vendor's word governs her exposure (`rate_display`, `discover_paused`, now `enquiry_routing`) — switches the vendor owns, one home each, read everywhere, invented nowhere.
+
+---
+
+## §7d · P2-B — THE VENDOR PAGE EDITOR (AMENDMENT 4, founder-approved 2026-08-29 · sequenced POST-CUTOVER per the strategy note §4 · the first post-launch vendor-facing feature)
+
+**What it is:** the Website row (`/w/support/website`) grows into 「Your page」 — a preview-what-couples-see surface with edit doors, so the vendor fills her own `/v/` page instead of TDW seeding it by SQL. This is the "website builder" honestly named: she never designs; she supplies content into a composition the estate owns (D-19.1's), and every field reaches `/v/` through the public door's named-field law, so the disclosure rulings (approval gates, `rate_display`, `discover_paused`, §7c routing) hold automatically for every new field.
+
+**The content set, founder-scoped 2026-08-29** (each lands as its own section on `/v/`, empty sections never render):
+1. **About** — the existing column gains its editor; Victor drafts it from her own chat history so she never faces a blank box; she edits and saves.
+2. **Packages / services** — named packages with inclusions and `Rs X,XX,XXX` price bands (rupees, MICRO-2 lineage); her `rate_display` switch governs whether prices show; candidate table `vendor_packages` (chair-ruled DDL at charter).
+3. **FAQ** — common questions as page content (the Proof document's sibling, one authoring surface feeding both).
+4. **Terms & conditions of service** — her booking terms, cancellation policy, advance/refund policy, rendered as a plain-language section with her word choices; template library per category so she starts from a lawyer-shaped draft, never a blank page. Pairs with the contracts room (the same terms flow into her date-hold contracts).
+5. **Video / reels** — hosted links (YouTube/Instagram embeds) with the same admin approval gate as photos; no video hosting built.
+6. **Testimonials** — pulled from captured reviews (P0-A's flywheel) with her selection switch per testimonial; never invented, never edited beyond truncation.
+7. **Business hours & service areas** — hours, cities served, travel policy; feeds the GBP row (§9) so one edit updates both.
+8. **Social links** — Instagram (exists), YouTube, Facebook, website; typed by her, rendered as chips.
+9. **Photo curation** — her `is_hero` / `in_carousel` switches finally get their consumer (discharges F-19.22's orphan): she orders the strip, picks the hero, within the approved set only.
+
+**Laws that bind every field:** one home per field (column or table, named in `PUBLIC_SCHEMA.md`, witnessed at the door) · the public door grows by named fields only, `b44`'s SELECT-diff extending each time · admin approval where content is media or testimonial · her switches govern exposure · empty never renders (a half-filled page shows a shorter page, not placeholder chrome) · the preview surface renders through the same shared core as `/v/` so preview and public can never drift.
+
+**Why post-cutover:** `/v/` launches sign-worthy on photos + about + rate (P2-A). The editor is the retention engine — the feature that brings vendors back weekly — and the first thing built once production serves the shell. Charter order inside P2-B: about + packages + T&C first (the money-and-trust set), then FAQ/testimonials/curation, then video/hours/social.
 
 ---
 
