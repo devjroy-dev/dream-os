@@ -217,8 +217,8 @@ const get = (p, headers) => new Promise((resolve, reject) => {
 });
 
 const B = '/api/v2/public/vendor-card';
-const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquiry_phone',
-                   'handle', 'is_demo', 'photos', 'starting_price'];
+const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquire_link',
+                   'enquiry_phone', 'handle', 'is_demo', 'photos', 'starting_price'];
 
 (async () => {
   await new Promise((r) => { server = app.listen(0, '127.0.0.1', r); });
@@ -247,7 +247,7 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquiry_phone'
     else {
       const got = Object.keys(c).sort();
       chk(JSON.stringify(got) === JSON.stringify(CARD_WANT),
-          '§2.1 exactly the nine declared keys, no more no less', got.join(','));
+          '§2.1 exactly the ten declared keys, no more no less', got.join(','));
       chk(JSON.stringify(door.CARD_KEYS.slice().sort()) === JSON.stringify(CARD_WANT),
           '§2.2 the door\u2019s exported CARD_KEYS matches the ruling\u2019s list', door.CARD_KEYS.join(','));
       const leaked = WIRE_FORBIDDEN.filter((k) => k in c);
@@ -345,7 +345,7 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquiry_phone'
       chk(c.enquiry_phone === '919000000000',
           '§5.3 the enquiry number ships, off demo_vendors.whatsapp_phone', String(c.enquiry_phone));
       chk(JSON.stringify(Object.keys(c).sort()) === JSON.stringify(CARD_WANT),
-          '§5.4 the demo card uses THE SAME nine keys \u2014 one shape, one boundary', Object.keys(c).sort().join(','));
+          '§5.4 the demo card uses THE SAME ten keys \u2014 one shape, one boundary', Object.keys(c).sort().join(','));
       chk(c.business_name === 'Demo Films',
           '§5.5 display_name maps to business_name (demo_vendors has no business_name)', c.business_name);
       // The jsonb leg. Two usable rows of three — the empty url is dropped, not
@@ -457,6 +457,52 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquiry_phone'
     const photoKeys = c.photos && c.photos[0] ? Object.keys(c.photos[0]).sort() : [];
     chk(JSON.stringify(photoKeys) === JSON.stringify(['caption', 'hero', 'position', 'url']),
         '§7.7 a photo is four named fields \u2014 no row is ever spread', photoKeys.join(','));
+  }
+
+  // ═══ §8 · THE ENQUIRE LINK (W-1, c-38.37) ═══════════════════════════════
+  // The founder walk found a storefront a couple could not act on. The cure is
+  // that every real vendor routes through TDW's OWN number — the same one the
+  // Frost deck has used since TDW_07 — so no personal number is published and
+  // the page still has a purpose.
+  console.log('\n── §8 · the enquire link ──');
+  {
+    const { ENQUIRE_BASE } = require(P('src/lib/discover/shapeVendor.js'));
+    const { waNumberFor }  = require(P('src/lib/waNumbers.js'));
+    const house = waNumberFor('vendor');
+
+    const r = await get(`${B}/dev440`);
+    const c = (r.body && r.body.card) || {};
+    // Derived from the shaper's own constant, never from a literal here: a cell
+    // carrying its own copy of the house number is the second home
+    // `waNumbers.js` exists to prevent.
+    chk(c.enquire_link === `${ENQUIRE_BASE}${LIVE.routing_handle}`,
+        '§8.1 a real vendor gets the house link, off the deck\u2019s own ENQUIRE_BASE',
+        String(c.enquire_link));
+    chk(typeof c.enquire_link === 'string' && c.enquire_link.includes(house),
+        '§8.2 \u2026and it points at TDW\u2019s number', `house=${house}`);
+    // THE CELL THAT MATTERS. A vendor's own number must never reach this wire,
+    // by any route, under any key.
+    const body = JSON.stringify(c);
+    chk(!/9888294440/.test(body),
+        '§8.3 no vendor phone number reaches the wire, in any field',
+        'the standing test vendor\u2019s number is absent from the whole card');
+    // UPPERCASE. Donna parses `TDW-<handle>` out of the message body and the
+    // stored byte is uppercase; the wire's `handle` is lowercased for the URL.
+    chk(/TDW-DEV440$/.test(String(c.enquire_link)),
+        '§8.4 the message body carries the UPPERCASE handle, not the URL\u2019s',
+        String(c.enquire_link).slice(-12));
+
+    const d = await get(`${B}/demofilms`);
+    const dc = (d.body && d.body.card) || {};
+    chk(dc.enquire_link === 'https://wa.me/919000000000',
+        '§8.5 a demo vendor deep-links its own published contact \u2014 the asymmetry\u2019s remainder',
+        String(dc.enquire_link));
+    chk(!String(dc.enquire_link).includes(house),
+        '§8.6 \u2026and does NOT route through the house', 'demo keeps its own number');
+
+    const paused = await get(`${B}/quiet1`);
+    chk(!/wa\.me/.test(paused.raw),
+        '§8.7 a miss offers no link at all', 'the one indistinguishable body is unchanged');
   }
 
   server.close();

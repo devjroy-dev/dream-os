@@ -102,12 +102,45 @@
 const express = require('express');
 const router  = express.Router();
 
+// ── W-1's CURE, AND IT IS AN IMPORT RATHER THAN A TRANSCRIPTION ─────────────
+// `ENQUIRE_BASE` is `https://wa.me/${waNumberFor('vendor')}?text=TDW-`, declared
+// once at `src/lib/discover/shapeVendor.js:43` and used for every Enquire tap
+// the Frost deck has served since TDW_07. Requiring it here costs one module —
+// that file's only runtime dependency is `../waNumbers` — and buys the property
+// the founder walk was owed: the public page and the deck send a couple to the
+// SAME number with the SAME message, and neither can drift from the other.
+//
+// Transcribing the template would have been two homes for the house number, and
+// `waNumbers.js`'s own header records what two homes cost last time: eleven
+// independent `|| '14787788550'` tails, one of which fell back to the wrong
+// lane entirely (F-05.23).
+const { ENQUIRE_BASE } = require('../../lib/discover/shapeVendor');
+
 /**
  * THE WIRE SHAPE, DECLARED ONCE.
  *
- * ⚠ NINE KEYS AT P2-A. Six at P0-B (six, not the relay's four — see below);
- * `about`, `starting_price` and `photos` are added by the third band §4's
- * charter, each ruled before it was built.
+ * ⚠ TEN KEYS AT P2-A S4. Six at P0-B; `about`, `starting_price` and `photos`
+ * added by the third band §4's charter; `enquire_link` added by c-38.37 after
+ * the founder walk (W-1).
+ *
+ * ── W-1 · A STOREFRONT A COUPLE CANNOT ACT ON IS A BROCHURE ────────────────
+ * The third band §2-5 gave real vendors no contact affordance, and that ruling
+ * was right about the question it answered — a vendor's PERSONAL number must
+ * not be published without her consent. This seat read "no personal number" as
+ * "no contact", which does not follow, and shipped a page a couple arriving at
+ * her highest intent could do nothing with. The founder walked it and said so.
+ *
+ * c-38.37, the chair's: the ruling answered the disclosure question and never
+ * asked what the page was FOR.
+ *
+ * The cure needed no column, no consent and no charter, because the estate had
+ * already solved it: every Enquire in the couple plane routes through TDW's own
+ * WhatsApp number with the vendor's handle in the message body, and Donna routes
+ * from there. Nobody ever needed to publish her number.
+ *
+ * THE ASYMMETRY NARROWS TO ITS HONEST REMAINDER: real vendors route through the
+ * house; demo vendors deep-link the business's own public Instagram contact,
+ * which is what `demo_vendors.whatsapp_phone` has always been.
  *
  * ⚠ SIX KEYS, NOT THE FOUR CE-38 RELAY #3 NAMED — reported, not adapted (§0.2).
  * The relay's shape line (`business_name, category, city, handle`) was written
@@ -140,6 +173,7 @@ const CARD_KEYS = Object.freeze([
   'business_name', 'category', 'city', 'handle',
   'is_demo', 'enquiry_phone',
   'about', 'starting_price', 'photos',
+  'enquire_link',
 ]);
 
 /**
@@ -215,7 +249,7 @@ function startingPrice(rate_display, rate_min) {
  *            about: string|null, starting_price: number|null,
  *            photos: Array<{url: string, caption: string|null, hero: boolean, position: number}>}}
  */
-function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos }) {
+function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link }) {
   return {
     business_name: business_name || null,
     category:      category      || null,
@@ -226,6 +260,11 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     about:         about         || null,
     starting_price: starting_price == null ? null : starting_price,
     photos:        Array.isArray(photos) ? photos : [],
+    // THE ONE CONTACT FIELD THE SURFACE READS. `enquiry_phone` survives beside
+    // it as the RAW datum the demo leg's link is built from — it is not a second
+    // way to contact anyone, and no surface reads it. Named so the next reader
+    // does not take two fields for two mechanisms.
+    enquire_link:  enquire_link || null,
   };
 }
 
@@ -322,6 +361,11 @@ router.get('/:code', async (req, res) => {
           // third band §2-5: a `public_contact_phone` with the vendor's
           // explicit choice is priced into P2 proper. Until then, no button.
           enquiry_phone: null,
+          // Built from `routing_handle` UPPERCASE — the stored byte and the one
+          // Donna parses out of `TDW-<handle>`. NOT from the wire's `handle`,
+          // which this door lowercases for the URL. Two cases of one value, and
+          // only one of them is the message body.
+          enquire_link:   ENQUIRE_BASE + String(v.routing_handle),
           about:          v.about,
           starting_price: startingPrice(v.rate_display, v.rate_min),
           photos:         (rows || []).map(photo),
@@ -369,6 +413,12 @@ router.get('/:code', async (req, res) => {
         // named on the copy register: the demo page carries one affordance the
         // real page does not yet.
         enquiry_phone: d.whatsapp_phone,
+        // The demo leg keeps its own deep link — a business's own published
+        // contact, on a page that states it is a demo. This is the asymmetry's
+        // honest remainder after c-38.37, not the whole of it as before.
+        enquire_link:  d.whatsapp_phone
+          ? `https://wa.me/${String(d.whatsapp_phone).replace(/[^0-9]/g, '')}`
+          : null,
         about:         d.about,
         // ⚠ NULL, AND NOT BECAUSE THE DEMO HAS NO PRICE — P2-A correction 5.
         // `demo_vendors.rate_display` is `text` (:476), a DISPLAY STRING like
