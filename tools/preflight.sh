@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+# tools/preflight.sh — R-38.20b. THE §0 THAT CANNOT BE WRITTEN AS PROSE.
+#
+#   bash tools/preflight.sh
+#
+# ── WHY  ────────────────────────────────────────────────────────────────────
+# Three sittings in a row opened with the words "sibling clone present" and none of them
+# said WHICH TREE. Today the founder's pwa workspace was found holding a sibling 154 commits
+# behind, which means every floor number this arc was derived against a dream-os from
+# another month and nobody could tell, because "present" is a fact about a directory and the
+# benches read a fact about a commit. F-38.34. `present` as prose is banned; this prints the
+# tip.
+#
+# ── WHAT LIES, AND WHY IT LIES QUIETLY  ─────────────────────────────────────
+# Two preconditions have each faked a finding in this arc, in opposite directions, and both
+# wore the costume of a defect while being one command away from nothing:
+#
+#   · NO node_modules → the pwa floor reads EIGHT TOO MANY REDs. `scripts/run-bands-proof.sh`
+#     shells straight to `node_modules/.bin/tsc`, so seven `run-*-proof` benches and `waDial`
+#     refuse for want of a binary. Witnessed at S2 §0.
+#   · A MISSING OR STALE SIBLING → three benches refuse or read the wrong tree:
+#     `tdw09_p2b_vocab`, `tdw13_d6_parity_matrix`, `tdw15_p1_events`. Witnessed at S1 §7
+#     (missing) and again in a worktree at S2/2 §1 (25 REDs where the named base was 22).
+#
+# The three names are RECORDED from those two witnessings, not re-derived on every run —
+# said plainly rather than implied, because a list a reader assumes was derived is worse
+# than one that admits it was remembered.
+#
+# NO STRICT MODE (R-38.21 (2), F-38.35). This file sets no shell options. It is executed
+# rather than sourced and it still declines to set any, for the reason base_guard.sh gives.
+
+say() { echo "$1"; }
+line() { echo "------------------------------------------------------------"; }
+
+# The two repos are siblings on disk. Derived from this file's own location rather than from
+# a hard-coded /workspaces path, so it works in a codespace, a clone, or a container.
+HERE=$(cd "$(dirname "$0")/.." && pwd)
+PARENT=$(dirname "$HERE")
+
+# ⚠ A DETACHED HEAD MUST NOT BE COMPARED AGAINST THE DEFAULT BRANCH, and the first cut of
+# this file did exactly that. `git rev-parse --abbrev-ref HEAD` returns the literal string
+# `HEAD` when the checkout is detached, so `origin/$BR` became `origin/HEAD` — origin's
+# DEFAULT branch — and the report showed an upstream and a behind-count belonging to a
+# branch the tree was not on. It then printed CLEAR over a sixteen-file dirty tree.
+#
+# THIS FILE EXISTS BECAUSE "sibling present" was a comfortable sentence that was not a fact,
+# and its first cut produced a comfortable NUMBER that was not a fact. Same disease, new
+# coat, one command away from being caught — which is why it was.
+report() {
+  NAME="$1"; DIR="$2"; WANT_BR="$3"
+  if [ ! -d "$DIR/.git" ]; then
+    say "$NAME"
+    say "  path      $DIR"
+    say "  NOT PRESENT — and this is a TOPOLOGY fact, not a fault by itself."
+    say "  The two repos live in SEPARATE codespaces: the dreamos-pwa workspace carries"
+    say "  a dream-os sibling; the dream-os workspace carries no pwa. What that costs the"
+    say "  floor is stated in the verdict below, per repo, because it is not symmetric."
+    eval "${NAME_VAR}_PRESENT=0"
+    return
+  fi
+  eval "${NAME_VAR}_PRESENT=1"
+  PKG=$(grep -m1 '"name"' "$DIR/package.json" 2>/dev/null | tr -d ' ",' | sed 's/name://')
+  ORIGIN=$(git -C "$DIR" remote get-url origin 2>/dev/null)
+  git -C "$DIR" fetch -q origin 2>/dev/null
+  BR=$(git -C "$DIR" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  DETACHED="no"
+  if [ "$BR" = "HEAD" ]; then DETACHED="YES"; BR="$WANT_BR"; fi
+  HD=$(git -C "$DIR" rev-parse --short HEAD 2>/dev/null)
+  UP=$(git -C "$DIR" rev-parse --short "origin/$BR" 2>/dev/null)
+  BEHIND=$(git -C "$DIR" rev-list --count "HEAD..origin/$BR" 2>/dev/null)
+  DIRT=$(git -C "$DIR" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+  say "$NAME"
+  say "  path      $DIR"
+  say "  package   $PKG"
+  say "  origin    $ORIGIN"
+  say "  branch    $BR"
+  if [ "$DETACHED" = "YES" ]; then
+    say "  ⚠ DETACHED HEAD — the branch above is the EXPECTED one, not one this tree is on."
+  fi
+  say "  HEAD      $HD"
+  say "  upstream  origin/$BR = $UP"
+  say "  behind    ${BEHIND:-?}"
+  say "  dirty     $DIRT file(s)"
+  if [ -d "$DIR/node_modules" ]; then say "  node_modules  present"; else say "  node_modules  ABSENT"; fi
+  # Exported for the verdict below. A report that prints a number and a verdict that does
+  # not read it is two homes for one fact.
+  eval "${NAME_VAR}_BEHIND=\${BEHIND:-0}"
+  eval "${NAME_VAR}_DIRT=\$DIRT"
+}
+
+line
+say "PREFLIGHT · $(date -u '+%Y-%m-%d %H:%M UTC')"
+line
+# The expected branch per repo. Passed in rather than guessed, because a detached checkout
+# cannot tell you which branch it was cut from and a guess there is how the first cut
+# reported a behind-count against the wrong branch.
+PWA_BRANCH="${1:-worklist}"
+NAME_VAR=PWA; report "dreamos-pwa" "$PARENT/dreamos-pwa" "$PWA_BRANCH"
+line
+NAME_VAR=OS;  report "dream-os" "$PARENT/dream-os" "main"
+line
+
+# ── THE VERDICT, AND IT NAMES THE BENCHES RATHER THAN SAYING "some" ─────────
+# ── PRECONDITIONS ARE CHECKED ONLY WHERE THEY APPLY ────────────────────────
+# The first cut warned that the pwa's node_modules was absent while the pwa itself was
+# absent — a precondition check run against a directory that does not exist, printed as
+# though it were a finding. Same class as the two blind freshness checks at F-38.37: an
+# instrument answering a question it cannot see.
+WARN=0
+if [ "${PWA_PRESENT:-0}" = "1" ] && [ ! -d "$PARENT/dreamos-pwa/node_modules" ]; then
+  say "⚠ pwa node_modules ABSENT — the pwa floor will read EIGHT TOO MANY REDs"
+  say "  (seven run-*-proof benches and waDial refuse without node_modules/.bin/tsc)."
+  say "  Run: npm ci   in $PARENT/dreamos-pwa  BEFORE any floor number is written down."
+  WARN=1
+fi
+
+# ── THE SIBLING MATTERS IN BOTH DIRECTIONS, AND NOT EQUALLY ────────────────
+# From the pwa: three benches read the dream-os sibling and refuse or misread without it
+# (F-38.34, handled below). From dream-os: `scripts/run-floor.sh` prints its own NOTE —
+# 「dreamos-pwa is not a sibling of this repo. Cross-repo benches will REFUSE」 — so a
+# dream-os floor COUNT taken without the pwa is not comparable to one taken with it.
+#
+# THAT IS WHY THIS WARNS RATHER THAN STAYING QUIET. A seat derived 20 REDs for dream-os in
+# a container holding both repos and handed the founder that number for a workspace holding
+# one. The number was true where it was measured and meaningless where it was quoted, which
+# is F-38.34 pointed the other way. **Compare the SET at your own base, never a number from
+# somebody else's layout** (R-38.19).
+if [ "${OS_PRESENT:-0}" = "1" ] && [ "${PWA_PRESENT:-0}" = "0" ]; then
+  say "⚠ dream-os is here and dreamos-pwa is NOT. dream-os's own floor will show extra REDs:"
+  say "  its cross-repo benches refuse without the sibling, and that refusal IS them working."
+  say "  A count taken here is NOT comparable to one taken in the pwa workspace. Derive the"
+  say "  base's own count in THIS workspace before reading any delta (R-38.19)."
+  WARN=1
+fi
+if [ "${PWA_PRESENT:-0}" = "1" ] && [ "${OS_PRESENT:-0}" = "0" ]; then
+  say "⚠ sibling dream-os MISSING beside the pwa — three pwa benches will refuse:"
+  say "  tdw09_p2b_vocab · tdw13_d6_parity_matrix · tdw15_p1_events"
+  WARN=1
+elif [ "${OS_PRESENT:-0}" = "1" ]; then
+  SB=$(git -C "$PARENT/dream-os" rev-list --count HEAD..origin/main 2>/dev/null)
+  if [ "${SB:-0}" != "0" ]; then
+    say "⚠ sibling dream-os is $SB commit(s) BEHIND origin/main."
+    say "  It is a FLOOR PRECONDITION, not scenery: tdw09_p2b_vocab,"
+    say "  tdw13_d6_parity_matrix and tdw15_p1_events read it. A floor derived"
+    say "  against a stale sibling is a number about a different tree (F-38.34)."
+    say "  Run: git -C $PARENT/dream-os reset --hard origin/main"
+    WARN=1
+  fi
+fi
+# ── THE WORKING REPO'S OWN STATE IS PART OF THE VERDICT ─────────────────────
+# The first cut warned only about node_modules and the sibling, so it printed CLEAR over a
+# tree that was one commit behind and sixteen files dirty. A preflight that clears a tree
+# nobody could safely apply to is worse than none: it is a signature on a check that was
+# never made.
+if [ "${PWA_PRESENT:-0}" = "1" ] && [ "${PWA_BEHIND:-0}" != "0" ]; then
+  say "⚠ dreamos-pwa is ${PWA_BEHIND} commit(s) behind origin/${PWA_BRANCH} — re-derive the base (R-38.16)."
+  WARN=1
+fi
+if [ "${PWA_PRESENT:-0}" = "1" ] && [ "${PWA_DIRT:-0}" != "0" ]; then
+  say "⚠ dreamos-pwa has ${PWA_DIRT} uncommitted file(s). A whole-file apply over these reverts them (F-38.25)."
+  WARN=1
+fi
+if [ "${OS_DIRT:-0}" != "0" ]; then
+  say "⚠ dream-os has ${OS_DIRT} uncommitted file(s)."
+  WARN=1
+fi
+if [ "$WARN" = "0" ]; then
+  say "PREFLIGHT CLEAR — both tips named above. Quote THESE in §0, not the word 'present'."
+else
+  say "PREFLIGHT NOT CLEAR — resolve the lines above before any number goes in a handover."
+fi
+line
+exit 0

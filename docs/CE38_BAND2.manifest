@@ -1,0 +1,10 @@
+# CE-38 second band — the delivery's own file table (F-14.16 declared-dirt mode).
+#   bash scripts/run-floor.sh --delivery docs/CE38_BAND2.manifest
+# It lists itself: the manifest arrives in the same ZIP as the files it declares,
+# so a manifest that omitted itself would be undeclared dirt and the floor would
+# STOP on the artefact that exists to let it run.
+docs/CE38_BAND2.manifest
+docs/FINDINGS_LOG.md
+docs/TDW_BUILD_PROTOCOL.md
+tools/base_guard.sh
+tools/preflight.sh

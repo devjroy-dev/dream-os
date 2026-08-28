@@ -4692,3 +4692,80 @@ A census keyed on a symbol counts homonyms and misses renames; key it on the imp
 F-P3.11.c's discover-door source read (next backend sitting) · F-P3.12 rides the register regeneration as a generator fix **only if the fix is a one-liner**; otherwise filed, not cured · F-P3.13's seventeen literals · F-P3.7's CHECK and the `lead_id` FK, both priced and shelved · R-P3.5.6 ③, owed before the §8.9 seam opens · everything CE-227 left open, unchanged by this band.
 
 **RANGES AT THIS BAND — NEXT-FREE:** F-P3 `.14` · R-P3.5 next `.7` · c-38 next `.10` · D-38 next `.2`. CE-227's ranges stand untouched. Never quote a floor forward. Sequencing beyond this band is the founder's.
+
+---
+
+## CE-38 · SECOND BAND — M-FINISH SITTING 2, SESSION 2: THE SIX ITEMS SEAL, AND ELEVEN OF THE THIRTEEN FINDINGS ARE IN THE INSTRUMENTS (2026-08-28, docs-only; the code is in `dreamos-pwa` at `7bc317a`)
+
+**WHAT SHIPPED, ON GLASS, IN BOTH MODES, AGAINST A DEPLOY THAT NAMES ITSELF:** `wl_audit` 26 PASS · 0 FAIL · 2 INCONCLUSIVE. `wl_render` 40 PASS · 0 FAIL. `b40` 37/37. `dreamos-pwa` `FLOOR = NAMED BASE (22)`, proven on a clean tree rather than predicted, at `7bc317a` with the sibling at `b52448f`.
+
+**THIS BAND'S OWN FLOOR, RE-DERIVED AT THE CUT PER R-38.19** — `dream-os` at `b52448f`, under F-14.16 declared-dirt mode with `docs/CE38_BAND2.manifest`: **20 RED in a container holding BOTH repos**, and `[F-14.16] declared files unmoved — set and contents both verified`. The delivery is docs and tools; it moves no bench.
+
+**⚠ AND THAT NUMBER IS NOT PORTABLE, WHICH IS F-38.34 POINTED THE OTHER WAY.** `dream-os`'s own floor reads the pwa sibling — `run-floor.sh` prints its own NOTE: *dreamos-pwa is not a sibling of this repo. Cross-repo benches will REFUSE, and that is them working.* **The founder's `dream-os` workspace carries no pwa**, so his count is higher than twenty and the difference is clone layout, not tree. A seat measured in a container holding both repos and quoted the figure to a workspace holding one — true where it was measured, meaningless where it was quoted. **The invariant is the SET at your own base, never a number from somebody else's layout.**
+
+The preflight's first cut hid this and added a second defect while doing it: it reported the absent pwa and then **warned that the absent pwa's `node_modules` was missing** — a precondition checked against a directory that does not exist, printed as though it were a finding. F-38.37's shape again, in the tool written to end guessing. Absence is now reported as the topology fact it is, and the sibling's asymmetric cost is stated per repo.
+
+**THE ARITHMETIC OF THE SITTING, WHICH IS THE ENTRY THAT MATTERS.** Thirteen findings. **Two were in the tree** — F-38.27 (a floor bench reddened by the branch's own cure) and F-38.31 (a ruled byte asserting an absence nothing had checked). **Eleven were in the instruments, and every one of the eleven was written by the seat that then had to find it.** Not one was found by reading. All were found by running.
+
+That is D-38.1's own arithmetic repeating one sitting later, in the same direction, with the same seat — and the shape is now specific enough to name rather than resolve to be careful about: **an assertion written from a reading of what the code should contain, never run against what it does.** Six of the eleven are literally that one act.
+
+### THE TWO IN THE TREE
+
+**F-38.27 · THE ZIP-BOUNCE CURE BROKE A FLOOR BENCH AND SHIPPED.** `f542795`'s R-38.1 cure replaced `SliceShell`'s hardcoded `/vendor/billing` with `roomHref('billing')`. `tdw37_leadgate_b_slot`'s cell `the slot routes at Billing, the CE-210 home` asserted the retired spelling and went red with the cure. **It shipped** because the S2 handover's `FLOOR = NAMED BASE, no delta` was derived at `b251600`, before the bounce cure existed, and §9's remedy re-derived the cells and never re-ran the floor. Cured by a labelled, count-preserved, in-place amendment: the cell asserts the DESTINATION in two halves — the CTA asks the address book, and the registry still answers with a Billing route — so a registry that lost that row reddens while the call site still looks right. **R-38.19 followed.** Non-vacuity by mutating production source: restoring the literal reds this bench alone at 36/37.
+
+**F-38.31 · 「Nothing needs you yet.」 ASSERTED AN ABSENCE NOTHING HAD CHECKED.** R-38.17 first put it on the Today masthead unconditionally. The seat filed against the ruling; **the chair amended his own byte at c-38.14 rather than defending it.** And the objection convicts the numeral standing beside it: a `0` no instrument produced is the identical claim in digits, and curing the sentence while keeping the digit would have passed every cell about the sentence. Until Phase 4's feed answers, the status reads the not-reading line and **the numeral does not render**. `lib/worklist/feed.ts` is the one home for the fact, and it is a READER with a null answer rather than a constant — a `const FEED_RESPONDED = false` would have made the surface's conditional dead in one direction, a branch no cell can reach and no reader trusts.
+
+### THE ELEVEN IN THE INSTRUMENTS
+
+**F-38.28** · the memoised `GET /me` (F-38.26's cure) left a handle or name changed in Settings stale for the session. Cured at two success arms by one-line scope widening.
+
+**F-38.29 · A COMMENT THAT READ LIKE THE RULING OVER CODE THAT DID NOT PERFORM IT.** `b40` C13's labelled amendment stated in words that R-38.6 cut the body ceiling from three sentences to ONE; the assertion beneath it still read `count > 3`. **This seat then committed the same defect twice more** — C13's chip matcher anchored on `cardAskChips`, a PREFIX of a key added beside it, so it counted an eyebrow byte as a sixth chip and reddened a correct tree; and the `R-38.4 t0` cell, whose pass-message was rewritten to describe the withheld numeral while `t0Sites.length === 1` was left standing above it. **Three instances, one habit: writing the explanation and not re-reading the line beneath it.**
+
+**F-38.30 = F-19.14 · ONE FINDING, TWO FILERS.** R-38.17's card 3 addresses `thedreamwedding.in/v/<handle>` and `/v/` is a 404; the P0-B seat derived the same fact independently. Card 3 ships under the conditional-withheld rule with its uncomment step dated to TDW_19 P0-B step 4.
+
+**F-38.32** · `dreamCanvas` in the bride tree's token home has **zero consumers in the whole tree** and ships into six vendor rooms because `SliceRow` imports `FT`/`FS` from the same module. Byte made safe; the honest cure is retirement and is priced, because deleting a bride-side export inside a vendor sitting is a blast radius no cell on that branch measures.
+
+**F-38.33 · THE GUARD RAN AFTER THE COPY.** Four ZIPs in one sitting put APPLY first and VERIFY second — **F-38.25 reproduced by the seat that had just written R-38.15 into its own handover.** R-38.20 followed, and the first hand-written guard it pasted the founder would have refused inside the correct repo, because neither repo's `package.json` name matches its repo name.
+
+**F-38.34 · "SIBLING CLONE PRESENT" WAS NEVER A FACT ABOUT A COMMIT.** 154 commits behind, undetectable, under three consecutive §0s. R-38.20b followed. Re-derived with the fresh sibling, the floor set was byte-identical — **the numbers stood, but they stood by luck, and the luck is the finding.**
+
+**F-38.35 · `set -u` IN A SOURCED SCRIPT BROKE THE FOUNDER'S SHELL.** R-38.21 (2) followed.
+
+**F-38.36 · THE FOURTH SIGHTING OF ONE CLASS IN ONE FILE.** A bare `goto` and a bare `waitForSelector` in the render arm's C-R2, outside `settle()` and outside any `try`, threw out of the whole run: **one PASS printed and thirty-nine cells never evaluated.** F-38.6 guarded the measurement navigations, F-38.9 guarded the screenshot step, F-38.11 wrapped the capture block and wrote *anything in the evidence path can reach the verdict path* as a structural rule — **and these two lines sat outside all three because they predated them and nobody swept the file for siblings.** The cure is applied where the failure is seen and the shape is never searched for elsewhere. The invariant is now written so it can be checked: four `p.goto(` sites, each named at its site.
+
+**F-38.37 · THE GATE COULD NOT NAME THE TREE IT MEASURED.** Four runs spent on an unidentifiable deploy, and the seat offered the founder **two freshness checks that could not see what they were asked about** — one grepped a document for a byte that lives in a JS chunk; the other grepped for shell CSS on a route that never prerenders, because the shell's layout returns a loading div until the session resolves. Both were the F-38.7 shape, offered by the seat that had written that sentence into its own handover three sections earlier. **R-38.22 followed:** the build stamps its commit, the gate refuses a deploy that is not the tree on disk, and `--any-commit` makes measuring an old deploy something you ask for out loud.
+
+**AND TWO MORE OF THE SAME FAMILY, BOTH CAUGHT BY THE FOUNDER'S RUNS:** `b40`'s persona sweep read a **hand-listed set of ten** shell-owned files and missed all four bytes the chair's bounce found — a set drafted before the crossing widened what the rooms bundle, which is the identical disease as the audit's interim list, committed **in the cell written to clean up after that bounce**; it then read three of four shapes, missing bare JSX text with an arrow glyph (**the double-quote matcher again**), and its third cut still missed it because a JSX text node is bounded by a brace as well as an angle bracket and `strip()` collapses a JSX comment to `{}` — **so the cure note written directly above the byte cut the text run in half and hid it from the sweep.** And the render arm's C-R14 held a regex over-escaped by a heredoc, matched nothing, and reported that as a finding about `copy.ts`.
+
+### WHAT THE INSTRUMENTS LEARNED, STATED AS LAW
+
+**A CLAIM BELONGS TO THE INSTRUMENT THAT CAN SEE IT — INCLUDING WHEN THAT SPLITS ONE RULING THREE WAYS.** `typeCss` builds every rung as a template literal, which compiles to concatenation, so the literal `--wl-t0:` has never appeared in a served byte and the served-bytes gate's `.replace(/--wl-t0:[^;]*;/g, '')` was a no-op for its entire life. The t0 ruling now divides: **the consumer's absence** is a literal in a stylesheet (served-bytes gate) · **the declaration's survival** is a source fact (`b40` C37, new) · **whether it paints** is a computed fact (render arm C-R17). C37 is not tidiness: with the numeral withheld nothing reads t0 at all, and an unread rung is what a later sweep deletes — after which Phase 4 re-invents the Today numeral at whatever size looks right, against a ratified mock.
+
+**A WITHHELD BYTE MUST NOT BE AN EXPORT, AND A WITHHELD RULE MUST NOT BE A COMMENT INSIDE THE LITERAL.** `Nothing needs you yet.` sat on a retired list and shipped anyway, because a live export ships and the list was stopping nobody. Four orphaned CSS rules had to be parked in **JS comment space**, not commented inside the template literal — a CSS comment inside a literal ships, the class name stays declared, and the dead-rule sweep is byte-strict with no annotation escape hatch.
+
+**A RACE IS RETIRED, NOT RE-TIMED.** The first-run card set was ordered last so its arrival would append, then given a handle cache so the second load would beat the wire. Both were re-timings, and on the real deploy **dark painted two cards and light painted three, on one tree in one run.** The set now waits for the shell's one `/me` — already in flight, so it costs no round trip — and paints whole. **And the cell holds the real wire rather than answering it:** the pre-settle window is milliseconds, so the arm delays the real response by 2.5s. The request reaches the real server and the real answer comes back; only its arrival is held. **That is the opposite of a stub — a stub removes the server; this keeps it and widens the moment the defect lives in.**
+
+**ARITHMETIC ABOUT A STYLESHEET IS NOT A FACT ABOUT A PAGE.** The Add control's offset was assembled from declared values — nav 52 + dock 61 = 113 — and the browser paints 120. The gap came out at nine against a ruled sixteen while every other property of the control was correct. Literal set from the measurement; the cell measures the painted gap every run, so a stale literal is caught by the run and not by a comment nobody re-derives.
+
+### F-38.38 · A KILLED FLOOR RUN LEAVES PRODUCTION SOURCE MUTATED (dream-os, filed not fixed)
+
+Found by interrupting a floor run in this repo while cutting this band. `scripts/b06_m1_bench.js` proves non-vacuity the correct way — it mutates real production source, runs the cell, and restores in a `finally`, with a §7.0 cell asserting every mutated file comes back **byte-identical**. That is the estate's own doctrine, implemented properly.
+
+**A `finally` GUARDS A THROW. IT DOES NOT GUARD A SIGNAL.** A `timeout`, a Ctrl-C, a codespace restart or an OOM kill ends the process before the restore, and `src/engine/src/core/donna.ts` was left holding the mutation — `stampOf(it)` stripped from a vendor-facing line in `snapshotText`. **The bench's own restoration cell cannot catch this, because the process that would run it is gone.** The next `git status` shows a one-line diff in production source that nobody made and no bench admits to.
+
+Two things make it worth a number rather than a note. The mutation is **plausible**: a stripped timestamp reads like a deliberate copy edit, not corruption, and it would survive a review. And the window is **exactly when a run is most likely to be killed** — a long floor pass on a slow container, which is when a seat reaches for `timeout` in the first place.
+
+**Cure, not built here** (`scripts/` is outside this delivery, which is docs and tools): either a `process.on('SIGINT'/'SIGTERM')` restore beside the `finally`, or mutate a copy and point the cell at the copy. The second is the better shape — a bench that never writes to production source cannot leave it dirty however it dies. Priced for the next backend sitting.
+
+**AND THE DISCOVERY METHOD IS THE ENTRY'S OTHER HALF:** this was found by killing a run, not by reading the bench. Reading it would have shown a `finally` and a restoration cell and been satisfied — which is D-38.1 pointed at the estate's own safety machinery.
+
+### DOCTRINE STATUS
+
+**D-38.1's transplant is DISCHARGED and was already in this band at `b52448f`.** The S2 seat carried "transplant owed" in its handover for two sittings after it had been banked; corrected here rather than shipped twice. **c-38: the seat's own ledger was stale about its own debt, which is verify-never-trust applied in the one direction seats keep forgetting — to their own outstanding items.**
+
+### OWED, DATED AT THEIR OWN SITES
+
+**Five uncomments at Phase 4's first 200, one commit:** `COPY.todayNothingYet` · the two-armed status in `app/w/today/page.tsx` · the `wl-mnum` trio's CSS · `wl_audit`'s R-38.6 entry · the `R-38.4 t0` predicate. **Three at TDW_19 P0-B step 4, one commit:** `COPY.cardLinkAddressBase` · the address row in `FirstRun.tsx` · the `wl-cardaddr` rule.
+
+**Open:** F-38.22 (thirty colour literals) · F-38.23 (six header words, three homes) · F-38.24 (the census) · F-38.30 = F-19.14 · F-38.31's Phase 4 half · F-38.32.
+
