@@ -473,3 +473,151 @@ the day it matters.
 - Backend counts to carry forward, re-derived at the moment of writing:
   `index.js` 375 · `b43` 388 · `contract.js` 314 · `env.js` 148 · `core.js` mount
   at line 73.
+
+---
+---
+
+# STEP 4 — THE TWO PUBLIC ROUTES (kickoff §4-4, R-19.7, CE-38 relay #3)
+
+**Built on** `dream-os` `b52448f` · `dreamos-pwa` `9a868c8`, siblings resolvable.
+**State:** kickoff §4 items 1–4 complete. Item 5 (copy register, handover close) remains.
+
+## §18 · THE FIRST UNAUTHENTICATED PER-VENDOR READ IN THE ESTATE
+
+| Path | Lines | Change |
+|---|---|---|
+| `src/api/public/vendorCard.js` | 201 | NEW — the public card door |
+| `scripts/b44_public_vendor_card_bench.js` | 249 | NEW — 25 cells |
+| `src/api/router.js` | +6 | **EDITED** — the mount, beside the public routers |
+
+Mounted at `/api/v2/public/vendor-card`, **beside** `crew` and `hot-dates` and
+never under `./vendor/core` — that sub-router's every sibling carries
+`requireAuth` + `resolveVendor`, and a door with no session mounted among them
+would be read as guarded by association.
+
+**The shape is the security boundary**, inherited from `src/api/crew.js`'s
+header. `public.vendors` has 45 columns including `upi_id`, `gstin`, `pin_hash`,
+`rate_min` and `razorpay_subscription_id`. One `select('*')` publishes a bank
+handle, a tax number and a password hash to anyone who guesses a six-character
+code — **and it would look completely fine on screen**, because the page renders
+three fields either way. A response-only assertion cannot see it.
+
+So b44 §3 **diffs the SELECT itself** (CE-38 relay #3: *diff the SELECT too*).
+The fake records every column list asked for and compares it against a list
+written from the ruling. A star select reddens before it reaches a response.
+
+Every column names its `PUBLIC_SCHEMA.md` line at the site; the witness was
+staleness-tested first (snapshot `0125`, migrations `0126`–`0129`, none touching
+`public.vendors`).
+
+## §19 · ⚠ SIX KEYS, NOT THE RELAY'S FOUR — reported, not adapted
+
+CE-38 relay #3 names the card shape as `business_name, category, city, handle`.
+Blocker 2's ruling in the same relay ships the demo `Enquire on WhatsApp` button
+off `demo_vendors.whatsapp_phone`. **Those cannot both hold at four keys** — the
+button needs a number on the wire and the page needs to know it is a demo.
+
+Rather than emit two shapes, which would give the security boundary two
+definitions, there is ONE shape of six fixed keys. `is_demo` and `enquiry_phone`
+are always present; for a real vendor they are `false` and `null`, so a real
+vendor's response carries no more information than the relay's four. The
+allowlist stays one list the bench can diff. **If the chair wants four keys and
+two shapes, that is one word and `CARD_KEYS` plus its cell move together.**
+
+## §20 · WHAT THE ROUTES CAN HONESTLY DO TODAY
+
+**`/r/<code>` redirects nobody, ever, yet.** `grep -niE
+"review_url|review_link|google_review"` across `PUBLIC_SCHEMA.md` returns
+NOTHING — there is nowhere for a review URL to live until P1's
+`vendor_integrations`. F-19.17: `tdw_vendor_review_request` is APPROVED AT META
+against this base and resolved to a framework 404 until this file existed. It
+now renders one sentence. A sentence beats a 404; nothing more is built. The
+uncomment step for P1 is stated in the file.
+
+**`/v/<code>` is a 200 page, not a 302** (CE-38 relay #1) — there is no
+storefront to redirect to, and a redirect to a route that does not exist is a
+worse byte than a page that says what is true. It is the storefront's address
+from today; P2 replaces the body, not the URL. `route.ts` → `page.tsx` is
+c-38.16, the chair's.
+
+**No button for real vendors, and that is the ruling.** `public.vendors` has no
+phone and no "number is public" flag; a vendor's number lives on
+`public.users.phone`. Publishing it because a button needed a target would put a
+personal WhatsApp number on an open URL on the strength of a choice she was never
+asked to make. A `public_contact_phone` with explicit consent is priced into P2.
+Demo vendors get the button, off their own public Instagram contact, on a page
+that says it is a demo. **The asymmetry is on the register.**
+
+**Visibility is the vendor's own word.** `status='active' AND NOT
+discover_paused`. A vendor who said *don't show me publicly* did not mean
+*except on this new URL*. And absent, paused and inactive return **byte-identical
+404s** — b44 §4.4 asserts the three bodies are one string, because a route that
+distinguished them would answer *does this handle exist?* for anyone willing to
+walk a six-character keyspace.
+
+## §21 · GATE
+
+```
+node --check vendorCard.js / router.js / b44        OK, all three
+node scripts/b44_public_vendor_card_bench.js        25 PASS · 0 FAIL, exit 0
+node scripts/b43_solutions_doors_bench.js           35 PASS · 0 FAIL (unbroken)
+backend floor --delivery <manifest> --check         NAMED BASE, no delta, exit 0
+pwa npx tsc --noEmit                                exit 0
+pwa node tools/bs_audit.mjs                         23 PASS · 0 FAIL
+pwa floor, uninterrupted                            1 red: tdw_f0774_vacuity_probe (F-19.16, dirt)
+```
+
+### Non-vacuity, by mutating production source
+
+| # | Mutation | Reddened |
+|---|---|---|
+| V1 | `VENDOR_SELECT` → `'*'` | §3.2 §3.3 §3.5 — *A STAR SELECT REACHED THE PUBLIC DOOR* |
+| V2 | `discover_paused` check removed | §4.1 §4.4 §4.5 — the paused vendor was served |
+| V3 | miss bodies made distinguishable | §4.4 — the enumeration oracle |
+| V4 | `upi_id` added to the allowlist | §3.3 §3.4 §3.5 — *ASKED: upi_id* |
+| V5 | the door unmounted from `router.js` | 9 cells across §1–§6 |
+| V6 | a real vendor's phone put on the wire | §2.5 |
+
+## §22 · ⚠ F-19.18 · A MUTATING BENCH KILLED MID-RUN DEFACES PRODUCTION SOURCE
+
+**OPEN. Caused by this seat's process, not its code. Stated because the next
+seat will hit it.**
+
+The pwa floor reported `RED: tdw07_f0772_circle` — a bench with nothing to do
+with this delivery. Withdrawing step 4 entirely did not clear it, which looked
+like proof it was someone else's. It was not.
+
+`git status` showed a file this seat never touched sitting modified:
+
+```
++  permissions: { can_see_budget: boolean };
+```
+
+— inserted into `app/coplanner/CircleSessionContext.tsx` by that bench's own
+mutation leg and never restored, which then made its §14.5b fail on the exact
+vocabulary it had just injected. **The bench had reddened itself.**
+
+The cause was this seat's: an earlier command hit its execution limit and was
+killed while the floor was mid-mutation, so the restore never ran. Cleared with
+`git checkout --` and re-run: **GREEN 131/131**, and an uninterrupted floor pass
+leaves the tree clean.
+
+Two things worth carrying:
+1. **A red on a mutating bench is not evidence until the tree is checked.** The
+   first instinct — withdraw the delivery and re-measure — was right and still
+   gave the wrong answer, because the contamination survived the withdrawal.
+   `git status` before `git blame`.
+2. This is F-19.16's neighbour. That finding says the pwa floor cannot gate a
+   dirty tree; this one says an interrupted floor MAKES the tree dirty, in
+   production source, silently. The cure is the same `--delivery` port, plus
+   restore-on-signal in the mutating legs.
+
+## §23 · WHAT STEP 5 INHERITS
+
+- `docs/COPY_REGISTER_TDW19.md` — two-column, for the founder's ONE pass. It must
+  carry: the `Coming` chip as PROPOSED beyond spec §9's six; the demo-only button
+  asymmetry; every sentence in `lib/solutions/copy.ts`; and the two strings
+  transcribed inline in `app/r` and `app/v` with `copy.ts` named as their home.
+- Frames on the seven surfaces plus `/v/` and `/r/` — the founder's, gated
+  separately for `/v/` as the estate's first public byte.
+- Still open: F-19.14, F-19.16, F-19.17, F-19.18, F-38.32.

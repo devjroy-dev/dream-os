@@ -22,6 +22,12 @@ router.use('/exploring-photos',   exploringPhotosRouter);
 router.use('/_test/whoami',       testRouter);
 router.use('/hot-dates',          require('./public/hotDates'));
 router.use('/crew',               require('./crew'));          // TDW_04.5 P3 — the crew page (public, capability-token; NEVER under /vendor)
+// TDW_19 P0-B step 4 — the public vendor card behind thedreamwedding.in/v/<code>.
+// HERE, BESIDE THE PUBLIC ROUTERS, AND NEVER UNDER './vendor/core' — that
+// sub-router's every sibling carries requireAuth + resolveVendor, and a door with
+// no session mounted among them would be read as guarded by association. Same
+// reasoning as the crew line above.
+router.use('/public/vendor-card', require('./public/vendorCard'));
 router.use('/vendor/onboarding',  require('./vendor/onboarding'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)
