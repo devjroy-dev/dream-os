@@ -38,6 +38,7 @@ const { writeEvent } = require('../../lib/vendor/eventWrite');    // TDW_04 B2 �
 const { executeAndPatch } = require('../../lib/executeAndPatch');  // TDW_04 B2 — the CRUD lockstep leg
 const { resolveAgentForVendor } = require('../middleware/agentBridge');
 const { isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one rule (Q-B3-10, CE-ratified)
+const { istTodayISO } = require('../../lib/vendor/istClock');      // R-P3.5.2 — the one clock
 
 // ── TDW_04 B2 — this door's writes route through eventWrite ────────────────
 // createEvent/updateEvent/deleteEvent are gone from here. lib/vendor/events.js still
@@ -62,7 +63,10 @@ const ALLOWED_KINDS  = [
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+// R-P3.5.2 · ONE HOME (F-P3.8). `IST_OFFSET_MS` and the local `istTodayISO`
+// stood here and had exactly one reader between them. Both deleted; the offset
+// is istClock's and is not re-declared for a file that no longer does the
+// arithmetic itself.
 // TDW_04 B3 (Q-B3-12's interim, CE-ruled 2026-07-16) — F-04.47's stopgap, NOT its cure.
 // WAS 60. A wedding vendor books 6-18 months out; at 60 days his own November shoots were
 // invisible on every surface while the grid showed hot dates. PROVEN 2026-07-16, one door,
@@ -76,11 +80,6 @@ const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 // exceed it and be SILENTLY TRUNCATED — no count, no has_more. The horizon contract owns that too.
 const DEFAULT_WINDOW_DAYS = 400;
 const HARD_CAP = 200;
-
-function istTodayISO() {
-  const istNow = new Date(Date.now() + IST_OFFSET_MS);
-  return istNow.toISOString().split('T')[0];
-}
 
 function addDaysISO(yyyymmdd, days) {
   // Parse as UTC midnight for stable day arithmetic, then re-format.

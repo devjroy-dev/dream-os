@@ -18,13 +18,33 @@
 // five copies happen: each author was obeying the law's spirit and had no
 // destination. THIS FILE IS THE DESTINATION.
 //
-// ── WHAT THIS SITTING DID AND DID NOT DO ───────────────────────────────────
-// This module is ADDITIVE. The five existing sites are BYTE-UNTOUCHED, and that
-// is deliberate rather than lazy: four of them sit on live paths serving paying
-// vendors (A-1), and a Phase 3 read-only sitting is the wrong place to edit a
-// live money reader's clock. The cleanup is chartered, not performed, and this
-// paragraph is its address. A future sitting deletes five declarations and adds
-// five imports; nothing else about those files needs to move.
+// ── LABELLED AMENDMENT · R-P3.5.2, 2026-08-28 · THE CLEANUP IS PERFORMED ───
+// THE PARAGRAPH THAT STOOD HERE IS RETIRED WITH ITS READER. It said the five
+// sites were byte-untouched and the cleanup was "chartered, not performed".
+// Both halves are now false, and a header that outlives its subject is
+// F-09.50's class — the disease this estate deleted a whole file over.
+//
+// SIX sites now import from here, not five. `context.js` had grown its own
+// `istTodayISO` since 0ca7f08 and the list above still calls it a bare-literal
+// site; `crew.js:227` was always the sixth and was invisible to every census
+// keyed on the SYMBOL, because it spelled itself `istToday`. That is the
+// finding worth carrying forward: a duplicate that renames itself defeats a
+// grep and is caught only by a header that names sites. Re-derived at
+// `aeca43f`, the six:
+//
+//   src/api/vendor-engine/today.js    src/api/vendor-engine/cabinet.js
+//   src/api/vendor/events.js          src/api/vendor/context.js
+//   src/api/vendor/studio/briefing.js src/api/crew.js (exports `istToday`)
+//
+// `src/api/vendor/worklistToday.js` imported from here already and was never a
+// home; the P3.5 read ladder listed it as one and did not list `crew.js`.
+//
+// WHAT IS STILL NOT DONE, WITH ITS ADDRESS. Seventeen offset literals remain
+// outside this plane — bride, agent, cron and admin paths, including
+// `src/api/admin/bridge.js:109`'s `IST_OFFSET_MIN = 330`, the same constant in
+// minutes, which no grep for `19800` or `+05:30` can see. Filed F-P3.13 with
+// addresses; the cure is chartered to a sitting licensed to touch those paths.
+// This one was not.
 //
 // ── THE ARITHMETIC IS THE ESTATE'S OWN, COPIED NOT INVENTED ────────────────
 // Byte-equivalent to src/api/vendor-engine/today.js:33-39, which is the

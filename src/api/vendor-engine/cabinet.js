@@ -16,10 +16,9 @@ const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
 const { withRecordCompleteness } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-15/16)
 
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-function istTodayISO() {
-  return new Date(Date.now() + IST_OFFSET_MS).toISOString().split('T')[0];
-}
+// R-P3.5.2 · ONE HOME (F-P3.8). Local declaration deleted; arithmetic
+// byte-equivalent, and the call below passes no clock.
+const { istTodayISO } = require('../../lib/vendor/istClock');
 
 // engine.records — same cells as the public.binders BINDER_SELECT.
 const RECORD_SELECT =

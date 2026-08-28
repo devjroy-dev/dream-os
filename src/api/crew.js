@@ -85,6 +85,7 @@ const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../lib/asyncHandler');
 const { ok: okRes } = require('../lib/response');
+const { istTodayISO } = require('../lib/vendor/istClock');   // R-P3.5.2 — the one clock
 
 // uuid_generate_v4() shape — 0087 §B. Rejecting a malformed token before any query
 // keeps garbage off the DB and makes the per-IP bucket the only cost of a scan.
@@ -223,15 +224,28 @@ async function resolveAgentIdReadOnly(supabase, vendor) {
   }
 }
 
-/** IST today, YYYY-MM-DD. */
-function istToday(now = Date.now()) {
-  // The estate holds two inline conventions and no shared home to ask: chat.js:1102
-  // (this work's nearest sibling) uses bare UTC; vendorInbound.js:93 uses the IST
-  // offset. IST is chosen HERE and the divergence is disclosed rather than silent:
-  // the crew are in India reading this on a phone, and a UTC "today" would, between
-  // 00:00 and 05:30 IST, still be showing yesterday's date as upcoming.
-  return new Date(now + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
+/**
+ * IST today, YYYY-MM-DD.
+ *
+ * ── R-P3.5.2 · ONE HOME (F-P3.8) ──────────────────────────────────────────
+ * THE NAME STAYS, THE ARITHMETIC LEAVES. This was the sixth `istTodayISO` in
+ * the estate wearing a different name — which is why the P3.5 read ladder's
+ * grep for `istTodayISO` could not see it, and why istClock.js's own header
+ * could: the header names sites, the grep names spellings. A duplicate that
+ * renames itself is invisible to every census keyed on the symbol.
+ *
+ * THE ALIAS IS NOT COSMETIC. `istToday` is EXPORTED (:bottom) and has two
+ * readers outside this file — src/api/vendor/studio/team.js:19 and
+ * scripts/b0451_crew_page_bench.js:84, the latter asserting the 18:30Z
+ * boundary at its §12. Deleting the name would red a green bench and break a
+ * live studio door, so the export survives and forwards.
+ *
+ * The reasoning the old body carried, kept because it is still the reason the
+ * crew door is on IST and its nearest sibling (chat.js:1102) is on bare UTC:
+ * the crew read this on a phone in India, and a UTC "today" would show
+ * yesterday's date as upcoming between 00:00 and 05:30 IST.
+ */
+const istToday = istTodayISO;
 
 /**
  * The member's board. Exported so the bench drives the REAL builder rather than a

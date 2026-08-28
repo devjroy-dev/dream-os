@@ -33,17 +33,11 @@ const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-
-function istTodayISO() {
-  const istNow = new Date(Date.now() + IST_OFFSET_MS);
-  return istNow.toISOString().split('T')[0];
-}
-
-function istPlusDaysISO(days) {
-  const istThen = new Date(Date.now() + IST_OFFSET_MS + days * 86400000);
-  return istThen.toISOString().split('T')[0];
-}
+// ── R-P3.5.2 · ONE HOME (F-P3.8) ───────────────────────────────────────────
+// The local pair took no `now` argument; istClock's take an optional one that
+// defaults to `Date.now()`. Every call site here passes nothing, so the
+// substitution is byte-equivalent at this tip and strictly more testable.
+const { istTodayISO, istPlusDaysISO } = require('../../lib/vendor/istClock');
 
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), async (req, res) => {
   const supabase = req.app.locals.supabase;

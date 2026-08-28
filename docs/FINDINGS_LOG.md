@@ -4568,3 +4568,127 @@ SEATING: the twenty-fourth chair seated 2026-08-06 on NOTE_23 per the twenty-thi
 **OPEN THREADS:** M-TELEMETRY-R (receipt says why — chartered, in flight) · R-37.53 rider (Already-settled register, one line) · M-WORKLIST Phase 1 (branch minting at founder's hands; R-37.42/.55 govern) · queued: F-05.90/.91/.92, F-16.26/.27/.32, F-08.105, F-07.129, F-09.189, F-SW.10, the 31 aged nameless rows (unreachable by mint-writes), igprobe retirement (wants R-1) · watches: F-16.35 (receipts are the instrument), frost-canvas 401/#418 console noise, hygiene real-thumb inch.
 
 **RANGES AT THIS BAND — NEXT-FREE:** F-05 `.93` · F-07 `.130` · F-08 `.106` · F-09 `.190` · F-10 `.125` · F-16 `.36` · F-SW `.11` · R-37 next `.56` · c-37 next `.9`. Never quote a floor forward. Sequencing beyond this band is the founder's.
+
+## CE-38 — THE THIRTY-EIGHTH CHAIR'S FIRST BAND: PRESENCE IS NOT BEHAVIOUR · THE FAÇADE CURED · THE TWELFTH ROW THAT NEVER EXISTED (2026-08-28, docs-only for the doctrine; P3.5 carries code)
+
+### D-38.1 · PRESENCE IS NOT BEHAVIOUR · OBSERVE AT THE DEFECT'S MOMENT
+
+Banked at the seal of M-FINISH sitting 1. Authored in `dreamos-pwa` at `docs/D-38.1_DOCTRINE_PRESENCE_IS_NOT_BEHAVIOUR.md`, tip `7af1e82` on `origin/worklist`, **for transplant** — that repo has no `FINDINGS_LOG.md` and the doctrine's own header says so. This is the transplant. A doctrine paragraph that exists only in a chat relay is a ruling with no artifact.
+
+> **A cell asserts behaviour, never presence; and it observes at the moment the defect is visible, not the moment the instrument is comfortable.**
+
+The long form, verbatim from the source: *A cell that asserts a thing is PRESENT has not asserted that the thing WORKS. These are different claims, and the gap between them is where defects live undisturbed for as long as the gate is green.* And the test: **it is not whether a cell would pass on a correct tree — it is whether it could fail on the broken one.** Every instance below passed both.
+
+**THE SIX INSTANCES,** each a single substitution made six times by a seat that believed each time it had written a real assertion:
+
+| | the cell said | the truth it missed |
+|---|---|---|
+| **F-38.7** | every painted tuple is one of the six rungs | zero members satisfy a universal claim — it PASSED on a logged-out, empty page, against the real deploy |
+| **R-38.2 (tile clause)** | matched `room.href` in the bundle | the minifier renames it; the clause was `true` by construction and printed `tile=true` at the tree it was written to convict |
+| **F-38.13 / R-37.84 ⑥** | a fixed scrim is present | never *present ONLY when open*. An unconditional mount satisfies it perfectly while covering the coin on fourteen rooms. Green throughout the defect's life |
+| **F-38.14** | the row has an `:active` rule | measured, that rule moved the sheet by nine values per channel — **1.116:1**. Present and invisible |
+| **F-38.17 / R-37.79** | the shell's drawer has its six rows | it read ONE of two implementations. A cell scoped to one of two implementations cannot see a divergence between them |
+| **F-38.20** | the fill is now 1.511:1 | the state had no frame to exist in — the handler closed the drawer in the frame the press began. A correct colour nobody is shown |
+
+**THE COROLLARY, EARNED SEPARATELY:** a cell must be written against the moment the defect is visible, not the moment the instrument is comfortable. Three cells could only be written against an inconvenient moment — C-R10 and C-R12 had to read the **first paint**, because every other cell in the arm runs after `settle()` and by then the fetch has landed and the defect is over; C-R11 had to press, **release**, and look 60ms later, when the active pseudo-class is long gone, because looking during the gesture proves only that the browser has `:active`.
+
+**WHAT IT OBLIGES:** ① assert behaviour where behaviour is the ruling — a hit-test, not a query; a measured ratio, not a rule's existence; a state observed after the gesture, not during it. ② put the assertion in the instrument that can make it — a served-bytes gate runs no JavaScript, dispatches no tap and has no notion of "at rest"; assertions of that class print INCONCLUSIVE there and belong to the render arm. ③ scope the cell to **every** implementation of its subject. ④ give every universal claim a non-vacuity floor: *all X are Y* must fail when there are no X. ⑤ prove both ways, at the tip, by running it — reading a cell back confirms what it was *meant* to say; only running it at the uncured tree confirms what it *does* say.
+
+**THE SITTING'S OWN ARITHMETIC, AS EVIDENCE:** twenty-one findings. **Two were in the tree. Nineteen were in the instruments or in that seat's own new chrome.** Not one of the nine found on the founder's walks was found by reading, and four separate instrument cures were needed before the render arm could complete a run against a real deploy — each of them a case of curing an instance and leaving the class (F-38.6 → F-38.9 → F-38.10 → F-38.11). **The gate was green for every one of them.**
+
+### F-38.1 · THE FAÇADE — ROOT FINDING OF THE M-FINISH SITTING — **CURED**
+
+At `366a7b5`, sixteen of seventeen tiles and four of five drawer rows crossed out of `/w` into a second route tree with a second root layout. Every such tap unmounted `/w/layout` and mounted `/vendor/layout`: a second Splash, a second session resolve, `GET /api/v2/vendor/me` on every pathname, the old masthead, the old coin, the old glyph nav, a second token scope. **Every grievance on the founder's list was that one structure.** Rooms, Today, Business Solutions, Billing, Settings and Advisor are now children of `app/w/layout.tsx`; `app/vendor/layout.tsx`'s chrome mounts for no route the shell serves. Fourteen rooms remain declared as `INTERIM_VENDOR_ROOMS` and are asserted **as a set**, so a room sliding back out reddens and a room crossing without leaving the list reddens too.
+
+### F-P3.11 · THE ENGINE READER AND THE TYPED DOOR DISAGREED, AND THE DISAGREEMENT WAS NOT ONE ROW — **DIAGNOSED, CURE RULED, NOT BUILT**
+
+On `9888294440`, same minute, `open_leads_count` said **12** and `lead_unanswered` said **11**. Founder-run SQL at P3.5, three blocks, quoted whole in `docs/TDW_09_WORKLIST_P3_5_HANDOVER.md` §3.
+
+**Nine of the twelve engine rows are echoes of nine of the eleven typed rows,** each lagging its typed source by 0.588–1.118s, all on 2026-07-31. **12 − 3 = 9 = 11 − 2.**
+
+**THERE IS NO TWELFTH ROW.** The two sets are three-and-two apart, and the difference of one is arithmetic coincidence — two independent divergences in opposite directions landing within one of each other on this account. On another account the same two defects produce any gap at all, including zero. A Phase 4 masthead built on this would have looked correct on the day it shipped and drifted silently forever after. The chair's question — *which row is the twelfth* — has no answer, and the absence of an answer is the answer.
+
+- **F-P3.11.a · THE TWO PLANES SHARE NO KEY.** `engine.records` (21 cols) carries no `lead_id`, `source_lead_id` or `vendor_id`; `public.leads` (27 cols) carries no `agent_id` or `record_id`. The join fell to its declared fallback.
+- **F-P3.11.b · `isClientStage` READS `stage` ALONE.** A NULL stage is `''`, contains none of the six client words, and counts as a lead. `f039b198` (Verma) is an unclassified binder. `c9b66b36` (Meera) is **a fully settled client — `amount_received` 200000, `amount_pending` 0, `payment_status` `'paid'` — counted as an open lead.** `payment_status`(20) and `amount_pending`(19) sit beside `stage`(10) in the row the predicate is already holding. Not plane separation: a predicate reading one cell and ignoring the two next to it that contradict it.
+- **F-P3.11.c · THE MIRROR IS ONE-DIRECTIONAL AND LOSSY.** `94d81734` is a lead-stage binder with no `public.leads` row anywhere. Two typed rows have no engine echo: `41a706d7` (source `victor`) and `88dbb52b` (Sarah, source `discover`, 2026-08-26) — **the newest lead on the account.** The founder-run probe returned exactly one `engine.records` row in twenty-six days, `1248902e` (`stage` `'expense'`, `direction` `'out'`, correctly excluded by `isOut`), landing **33 minutes before Sarah on the same day**. That kills "the engine write path is dark". What survives is narrower: the discover door's lead-mirror leg specifically produced nothing for Sarah while another engine writer succeeded half an hour earlier. **Two sub-readings remain and are NOT separated by this data** — the leg broke between 07-31 and 08-26, or it is conditional on something Sarah's row lacks. **No cause is named.** One specimen and a timing correlation do not enter this log as causation. Chartered as a source read of the discover write path, next backend sitting.
+- **F-P3.11.d · THE RULED JOIN WAS VACUOUS ON THIS DATA.** Block (c) returned zero `BOTH` rows: `phone` is NULL on 21 of 23 rows across both planes. **The pairing is the seat's, by inspection of `created_at` and `client`/`name` — not machine-derived**, and is recorded as such. One thing the failure proved: `94d81734` (07-24) and Sarah (08-26) share last-10 `9625759924`; a phone-only join without the ±24h window would have paired them falsely across 33 days.
+
+**LOOKED FOR, NOT FOUND IN THIS DATA — recorded so absence is never read as clearance:** the vocabulary gap (typed counts `state='new'`, engine counts any non-client stage, so a lead moved to contacted/quoted/lost leaves one count and stays in the other — all nine paired typed rows are `new`; unexercised, live); the soft-delete asymmetry (typed filters `deleted_at IS NULL`, engine filters `hidden=false`, nothing sets both — no such row in either set); and `'paid'` as a **substring** in `CLIENT_STAGE_WORDS`, which would classify `unpaid` as client — no non-null stage other than `lead` and `expense` appears. Unexercised. Not claimed.
+
+**WHICH PREDICATE IS WRONG FOR A VENDOR:** the engine one. `open_leads_count` does not count leads; it counts non-outbound binders whose stage lacks a client word.
+
+### F-P3.12 · THE ORDINALS ARE HONEST; THE CITATION CONVENTION IS NOT — **DOWNGRADED AT REGEN, CURED**
+
+**AMENDED 2026-08-28 AT THE REGENERATION, AND THE SEAT'S ORIGINAL FILING WAS WRONG.** This was filed against the register generator on the reading that a gapped ordinal list is a witness that lies. The regen falsifies that. `public.leads` came back from live production with ordinals 1–18, 20–28 and `public.vendors` with 1–34, 43–53 — **identical to the document**, because the generator emits `information_schema.columns.ordinal_position` verbatim and Postgres leaves holes where columns were dropped. `db/queries/public_schema_dump.sql`'s own footer predicts exactly this: *a gap in ordinal_position is NOT an error: it is a dropped column's fingerprint.* The register is not lying. It is reporting a hole that is really there, and renumbering to close it would destroy the provenance the numbers exist to carry.
+
+**WHAT REMAINS, AND IT IS REAL BUT SMALLER:** `src/api/vendor/worklistToday.js`'s source map cites `deleted_at(20)`, and a reader who counts to the twentieth *line* of `public.leads` gets `vendor_summary`. The number is an **ordinal_position**, not a position in the list, and nothing said so. An ambiguity in a convention, not a false witness. **Cured as a one-liner at this regen**, per the chair's ruling that F-P3.12 rides the regeneration only if the fix is one line.
+
+**AND THE CLASS:** a seat convicted a generator on a document's shape without re-deriving the shape at origin. Verify-never-trust applies to the seat's own findings, not only to the ones it inherits. Owned in c-38 below.
+
+### F-P3.14 · THE CONSTRAINTS DUMP HAS OUTGROWN THE EDITOR'S CAP, AND ITS SIBLING CANNOT
+
+At this regeneration `public_constraints_dump.sql` §1 returned **100 rows against a `rows_expected` of 178**. **The guard fired exactly as designed** — F-04.29's disease stayed self-detecting and nothing was written. But the two halves of the pipe are not equally protected, and the asymmetry is now load-bearing:
+
+- `public_schema_dump.sql` is **immune by construction**: one row per table, `string_agg` over the columns. 71 tables, and it would take a estate of 100 tables before the cap could bite.
+- `public_constraints_dump.sql` §1 is **one row per constraint**. It crossed 100 somewhere between the 2026-08-15 snapshot (173) and now (178), and its only remedy is a manual toolbar action in the SQL editor.
+
+**A guard whose remedy is a human remembering to change a setting is a guard on borrowed time.** §2 (109) and §3 (258) will hit the same wall — §3 already returns 258 rows and survives only because the founder raises the Limit each run. **Proposed, not built:** re-shape all three sections one-row-per-table with `string_agg`, matching the sibling, which makes the cap structurally unable to bite and lets the guard become a formality instead of a catch. That is an edit to a ratified founder-run artifact and belongs to the chair.
+
+### F-P3.13 · SEVENTEEN OFFSET LITERALS OUTSIDE THE WORKLIST PLANE
+
+R-P3.5.2 re-pointed six sites to `src/lib/vendor/istClock.js`. Seventeen `5.5 * 60 * 60 * 1000` literals remain across bride, agent, cron and admin paths, including **`src/api/admin/bridge.js:109`'s `IST_OFFSET_MIN = 330`** — the same constant in minutes, which no grep for `19800` or `+05:30` can see. Addresses in `docs/TDW_09_WORKLIST_P3_5_HANDOVER.md` §5. Cure chartered to a sitting licensed to touch those paths; P3.5 was not.
+
+**AND THE CLASS IT NAMES:** `src/api/crew.js:227` was the sixth `istTodayISO` in the estate and spelled itself `istToday`. **A duplicate that renames itself is invisible to every census keyed on the symbol** and is caught only by a header that names sites. `istClock.js`'s own header caught it; the P3.5 read ladder's grep did not.
+
+### F-P3.15 · THE REGISTER'S OWN README AND A BLOCK 16 CELL NOW CONTRADICT EACH OTHER — **RULING OWED, NOTHING FORCED**
+
+`db/migrations/OUT_OF_ORDER.json` carries one record: `0090_engagements.sql`, state OUTSTANDING, and its `_README` says *REMOVE a record only when the regen it is owed has actually run and the body below the header describes the table correctly.* **The regen has now run and the body describes `public.engagements` at 11 columns.** The debt is paid and the record should go.
+
+`scripts/b16_p1_engagements_bench.js` §1.11 asserts `reg.register.length === 1 && reg.register[0].number === 90`, under a cell named *0090's row stands, its debt unpaid.* **Removing the paid record REDDENS a green Block 16 bench**, witnessed at this sitting.
+
+Both artifacts are correct about the moment they were written. The cell pinned a **snapshot of the register** where its real subject was narrower — that `0127` takes no register row — and a snapshot asserted as an invariant becomes false the day the thing it snapshots legitimately moves. **That is D-38.1's shape one level up: the cell asserts the PRESENCE of a debt record rather than the behaviour it cares about.**
+
+**THE SEAT DID NOT CHOOSE.** Removing the record contaminates a P3.5 delivery with a Block 16 red; leaving it publishes a register row that the regenerated document beneath it visibly refutes. The record is **left in place** and the contradiction is disclosed rather than resolved, because amending another block's bench is not this sitting's licence. Proposed for the chair: amend §1.11 to assert its actual subject — `0127` takes no register row, **and** no record names a table the snapshot already describes — which is true today and stays true when the next debt is paid.
+
+### F-P3.16 · THE ADDENDUM WAS HIDING A CURED FINDING — `couple_bookings_category_check` MOVED AND NOTHING SAID SO
+
+The constraints addendum regenerated at 178 · 109 · 258 (was 173 · 104 · 253). Five in each section, and **four of the five in §1 are `public.engagements`'s own** — its category, status and source CHECKs plus the `(couple_id, vendor_id)` UNIQUE, all arriving with the table. The fifth line is not an addition. **It is a replacement, and it is the interesting one:**
+
+```
+-  couple_bookings_category_check  CHECK (category = ANY (ARRAY[
+     'photographer','videographer','mua','designer','venue','caterer',
+     'decor','florist','music','planner','other']))
++  couple_bookings_category_check  CHECK (category = ANY (ARRAY[
+     'planning','designer','photography','makeup','hairstylist','jewellery',
+     'decor','venue_catering','performer','content_creator','other']))
+```
+
+**That is ARC OB's taxonomy — the sixteen become eleven — landed on `couple_bookings`.** The CHECK now matches `src/agent/categories.js`'s canonical eleven, which is `engagements_category_check`'s vocabulary too.
+
+**AND THE TREE STILL SAYS OTHERWISE.** `src/api/couple/envelopes.js:22` reads, at this tip:
+
+> *Her BOOKINGS remain constrained by `couple_bookings_category_check`, which carries the pre-0123 eleven — photographer · videographer · mua · designer · venue · caterer · decor · florist · music · planner · other — of which only `designer`, `decor` and `other` agree with the canonical set. So an envelope named `jewellery` cannot match a booking today, because she cannot categorise a booking as `jewellery` at all. Reconciliation lands when F-15.10's micro moves that CHECK and backfills live rows.*
+
+**The micro has landed. The paragraph has not been told.** `jewellery` is now a legal booking category and the comment says it cannot exist. `src/api/couple/bookings.js:12` already reads the new eleven, so the two doors on the same table now disagree in prose about what that table accepts.
+
+**THIS IS THE REGISTER EARNING ITS KEEP, AND ALSO INDICTING THE INTERVAL.** The addendum went thirteen days without regeneration; in that window a CHECK the estate reasons about in three separate files changed vocabulary entirely, and the only witness that could have said so was stale. **A constraints addendum is not documentation — it is the only place a CHECK's vocabulary is witnessed**, and every `state`/`category` allowlist in the codebase cites it under the SQL-provenance law.
+
+**NOT CURED HERE.** The seat does not know whether F-15.10's micro also backfilled live rows, and a comment rewritten on half the facts is the disease. Two questions for the chair, both answerable by one founder-run SELECT: does any `couple_bookings` row still carry a pre-0123 token, and is F-15.10 closable. `envelopes.js:22`'s paragraph is a **known-stale comment with a filed address** until then.
+
+### RULINGS
+
+**R-P3.5.1** the diagnosis is a row, not a number — discharged, above. **R-P3.5.2** the IST clock has one home; six sites re-point (five declarations plus `crew.js`'s alias, whose export survives for `studio/team.js:19` and `b0451_crew_page_bench.js:84`); the cell asserts **behaviour** at four injected instants including the 18:30:00Z edge — `scripts/b41_ist_clock_bench.js`, 26 cells, both-ways at the tree (12 RED uncured, 0 cured). **R-P3.5.3** `resolveVendor.js`'s header names modes and one verified live route each, states the deriving command and its tip, and lists no consumers — a header that lists 36 files is the next stale header. **R-P3.5.4** the register is regenerated by its ratified generator pair on the founder's dump. **R-P3.5.5** this band. **R-P3.5.6 · THE ENGINE PREDICATE IS NOT REPAIRED; IT RETIRES AT THE SEAM.** ① Phase 4's masthead reads the typed feed only, and `open_leads_count` is never summed, compared or displayed against it in any surface, bench or doc. ② Block 19 P6 never opens on it. ③ Before the §8.9 seam a seat derives every reader of the engine plane and rules on `94d81734`'s class — a real lead that dies with the reader unless mirrored. ④ `engine.records.lead_id` FK **priced and shelved** with F-P3.7's CHECK. Repairing a predicate on a route scheduled for deletion buys a corrected number at the price of a behaviour change on a live money-adjacent path.
+
+### CORRECTIONS OWNED — chair c-38.1–.9
+
+.1–.4 at the M-FINISH seal (.3: the chair's own relay asked a served-bytes gate to dispatch a tap — D-38.1 oblige ② is that correction generalised). **.5** kickoff §0 named 22 RED in the floor's named base; it is **20**, verdict line intact. **.6** the read ladder named `src/middleware/resolveVendor.js`; the file is at `src/api/middleware/`. **.7** the ladder named `worklistToday.js` as an `istTodayISO` home — it has imported from `istClock.js` since Phase 3 — and omitted `crew.js:227`, which is one. **.8** the ladder's F-P3.8 count of "three bare offset literals" was **twenty-three** hits estate-wide. **.9 · THE GREP CELL WAS D-38.1's OWN CLASS INSIDE THE RULING BANKING D-38.1.** R-P3.5.2's cell as chartered asserted **presence**, would have REDDENED on two comments, and was **blind to the live duplicate at `bridge.js:109`**. Struck at relay #1 and replaced with the behaviour cell. **Seat correction with attribution:** the P3.5 seat's first relay put `resolveVendor`'s consumer count at 48; that was a **mention** count and swept in `src/lib/billing/tierFlip.js`'s unrelated function of the same name. Re-derived by import: **36 files, 104 call sites.** A census keyed on a symbol counts homonyms — the same class as c-38.7's, one census up.
+
+### LAW-CANDIDATES BANKED
+
+A census keyed on a symbol counts homonyms and misses renames; key it on the import, or on a header that names sites · reference identity is a presence claim wearing a behaviour claim's clothes (b41 §2.7's own first cut, corrected at site) · a header that lists its consumers is the next stale header — bank the command and the tip instead · when two numbers differ by one, prove the one before believing it; equal-looking gaps hide unequal causes · a mutation-restore `finally` does not survive a killed process, so a floor run that is interrupted must be re-run on a restored tree before its output is read.
+
+### OPEN THREADS AT THIS BAND
+
+F-P3.11.c's discover-door source read (next backend sitting) · F-P3.12 rides the register regeneration as a generator fix **only if the fix is a one-liner**; otherwise filed, not cured · F-P3.13's seventeen literals · F-P3.7's CHECK and the `lead_id` FK, both priced and shelved · R-P3.5.6 ③, owed before the §8.9 seam opens · everything CE-227 left open, unchanged by this band.
+
+**RANGES AT THIS BAND — NEXT-FREE:** F-P3 `.14` · R-P3.5 next `.7` · c-38 next `.10` · D-38 next `.2`. CE-227's ranges stand untouched. Never quote a floor forward. Sequencing beyond this band is the founder's.

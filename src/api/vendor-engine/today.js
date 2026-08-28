@@ -30,13 +30,14 @@ const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const resolveAgent  = require('../middleware/resolveAgent');
 
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-function istTodayISO() {
-  return new Date(Date.now() + IST_OFFSET_MS).toISOString().split('T')[0];
-}
-function istPlusDaysISO(days) {
-  return new Date(Date.now() + IST_OFFSET_MS + days * 86400000).toISOString().split('T')[0];
-}
+// ── R-P3.5.2 · ONE HOME (F-P3.8) ───────────────────────────────────────────
+// This file DECLARED `istTodayISO` and `istPlusDaysISO` locally. It was one of
+// six such declarations; istClock.js's own header names this file's :33-39 as
+// the specimen the other five agreed with, so this is the copy the home was
+// derived FROM, re-pointed at the home it founded. Byte-equivalent arithmetic:
+// istClock takes an optional `now` defaulting to Date.now(), and every call
+// here passes nothing.
+const { istTodayISO, istPlusDaysISO } = require('../../lib/vendor/istClock');
 
 const RECORD_SELECT =
   'id, client, amount, amount_received, amount_pending, payment_status, ' +

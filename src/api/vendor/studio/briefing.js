@@ -11,10 +11,14 @@ const resolveVendor  = require('../../middleware/resolveVendor');
 const requirePrestige = require('../../middleware/requirePrestige');
 const asyncHandler   = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
-
-function istTodayISO() {
-  return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
+// ── R-P3.5.2 · ONE HOME (F-P3.8) ───────────────────────────────────────────
+// This file carried the offset literal TWICE: once inside a local istTodayISO
+// and once inline for `weekEnd`, which is istPlusDaysISO(7) written out. The
+// local used `.slice(0, 10)`; istClock uses `.split('T')[0]`. On an ISO-8601
+// string those are the same ten characters — the difference is spelling, not
+// behaviour, and b41 §2 asserts the equality rather than asking anyone to
+// take this sentence's word for it.
+const { istTodayISO, istPlusDaysISO } = require('../../../lib/vendor/istClock');
 
 router.get(
   '/',
@@ -25,8 +29,7 @@ router.get(
     const supabase  = req.app.locals.supabase;
     const vendorId  = req.vendor.id;
     const today     = istTodayISO();
-    const weekEnd   = new Date(Date.now() + 5.5 * 60 * 60 * 1000 + 7 * 86400000)
-                        .toISOString().slice(0, 10);
+    const weekEnd   = istPlusDaysISO(7);
 
     // ── Today's events ────────────────────────────────────────────────────
     const { data: todayEvents, error: e1 } = await supabase

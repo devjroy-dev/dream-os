@@ -63,6 +63,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // THE SOURCE MAP — five attention kinds, three done kinds
 // ═══════════════════════════════════════════════════════════════════════════
+// ORDINALS BELOW ARE `information_schema.columns.ordinal_position` AS WITNESSED
+// IN PUBLIC_SCHEMA.md — NOT the column's place in the printed list (F-P3.12).
+// The two differ wherever a column was dropped: `public.leads` runs 1–18 then
+// 20–28, so the twentieth LINE is `vendor_summary` and `deleted_at(20)` below
+// is nonetheless correct. Match on the number, never by counting.
+//
 // §8.6 parks `shop_nudge`; six of the seven D-4 kinds ship, and the six is
 // FIVE in needs_attention plus done_today as the sixth. That arithmetic was
 // derived at read-first and CONFIRMED by the chair, because the kickoff and the
