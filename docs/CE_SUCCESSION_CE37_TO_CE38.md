@@ -95,3 +95,5 @@ The **render arm** (`tools/wl_render.cjs` — real Chromium via @sparticuz/chrom
 The founder's sentence hangs over the next desk: *he cannot go on searching every page for every defect.* Make it so he never has to again.
 
 — **CE-37, closed.** The failures above are mine where they are anyone's; the seats built what they were ordered to build.
+
+> **Appended by CE-39, 2026-08-29 (F-39.1):** this note lacks the KICKOFF DOCTRINE section protocol §11 requires. The section lives in `CE_SUCCESSION_CE38_TO_CE39.md` §7 and binds every chair from this date.

@@ -31,3 +31,16 @@ All CE-38 rulings are in the tree: bands 1–4 (`FINDINGS_LOG.md`), §12 (`TDW_B
 3. Judge the P2-A seat: continue with D-19.1 amendments 2 + the strip mechanism, or re-seat fresh (the kickoff packet `KICKOFF_CE39_OPENING.md` carries both paths).
 4. On `/v/` walk-green: author the Phase 4 kickoff (the contract is frozen; it is a build, not a design).
 5. Hold the founder to his own sequencing: cutover before polish. Refuse scope that isn't on the §3 road.
+
+## §7 · KICKOFF DOCTRINE (appended by CE-39, 2026-08-29 — F-39.1; the section protocol §11's standing order requires and this note shipped without)
+**The law:** protocol §10 — SEVEN PARTS, committed. **The benchmark:** `docs/specs/TDW_04_B6_KICKOFF.md` — thinner than the precedent on the ladder, smoke-card or veto dimensions is not ready to issue. **The skeletal template**, as issued by CE-39 for the P2-A hotfix S7 (chat paste-block, never committed as an instance):
+```
+═══ TDW_XX · <PHASE> — KICKOFF (CE-nn, date) ═══
+1 · HEADER  block · one sitting · role EXECUTOR · repo/branch · ZIP count · tip-at-charter RE-DERIVED fetch-first at writing · first motion (fresh clone, preflight pasted, dirt = STOP) · SCOPE by file, SQL scope stated.
+2 · THE DISEASE  every claim file:line or DECLARED UNDERIVED; the founder's words verbatim where they are the authority.
+3 · READ LADDER  ordered, whole, repo named per file; "your FIRST MESSAGE states which — no statement, no ruling."
+4 · READ-FIRST (BUILD HELD)  (i) re-verify on the RUNNING deploy, identity first (ii) mirrors (iii) FORKS — ruled or enumerated, never left to inference (iv) COPY INVENTORY (v) CONTROL INVENTORY kept/moved/removed-by-ruling + verbs (vi) ATTESTATION: §7+§11 opened, chain quoted verbatim, SQL posture.
+5 · LAWS  named per sitting; instrument counts chair-run at the charter tip; "Trust evidence over narrative — including this kickoff."
+6 · ACCEPTANCE  read-first → ruling + veto → build → cells (each with its non-vacuity mutation, each marked where it can and cannot run) → delivery (base pin line 1 · base_guard first · §7 chain verbatim · one verify line ending the D-10 STOP · git line its own block) → FOUNDER CARD, numbered, his language, evidence read by the seat.
+7 · CHARTER SLOT  context by path+hash · CE addendum · VETO SLOT verbatim (current → proposed, YES/NO) · "Sequencing beyond this sitting is the founder's."
+```

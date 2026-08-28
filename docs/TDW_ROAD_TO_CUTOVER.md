@@ -1,0 +1,42 @@
+# TDW · THE ROAD TO CUTOVER — SEQUENCE OF RECORD
+**Authored by CE-39 · 2026-08-29 · base dream-os `d8f20e8` · dreamos-pwa `70dd458` (worklist) · founder-ruled sequence, banked so no chair re-derives it from chat. Supersedes the compressed road in `TDW_STRATEGY_BEYOND_CRM.md` §4 and `CE_SUCCESSION_CE38_TO_CE39.md` §3 where they are thinner; contradicts neither.**
+
+> The rule this document exists for: **cutover outranks polish** (founder, 2026-08-29). Anything not on this road is refused until Phase 7 seals, unless the founder moves it by word and the move is recorded here.
+
+## §0 · WHERE WE ARE (verify fetch-first)
+- Shell complete: 18 rooms in `/w`, `INTERIM_VENDOR_ROOMS=[]` (pwa `c3dc2a6`).
+- P2-A `/v/` at `70dd458`: F-19.38 (strip) and F-19.40 (shimmer) sealed on walk #4; walk #5 found F-19.43 (invalid `font` shorthand, 14px colophon, horizontal overflow) and the founder ruled F-19.44 (thumbnail displaces the hero). **Hotfix S7 in flight** under the CE-39 kickoff and relay of 2026-08-29.
+- Razorpay: subscriptions self-serve LIVE (`billing.selfserve_enabled` flipped by the founder; brochure 13 Aug 2026). One-time charges NOT in the tree (no Orders arm in `razorpay.js`).
+
+## §1 · THE SEQUENCE
+Each step names its gate. Nothing opens before the step above it seals, except where "in parallel" is written.
+
+1. **P2-A Hotfix S7** (pwa, one ZIP on `70dd458`): longhands at the four `font:` sites · nowrap struck · strip renders ALL photographs, radio/label hero displacement, zero JS · F-19.38's flex rule and focus ring on the label · C37 amended by label · C39 inverted · C40 (both public routes) · fixture-render overflow cell at 320 and 374. **Seal:** the founder's six-line card on the branch alias. Green = **P2-A SEALED**.
+2. **Shell debts** (pwa, one ZIP, after S7 lands): Khata room (19th; typed plane, read-only; `ROOM_COUNT_EXPECTED` 18→19; `rooms.ts:1` header) · Settings on the rungs + `Sign out` confirm (S2/2 §4-4; status DERIVED at charter, not assumed) · F-38.3 (`components/worklist/AskSheet.tsx:60` drops `<ThemeProvider pinned>`) · **F-38.47 re-sequenced PRE-cutover (R-39.3)**: the four hub primers (`WishboneSheet.tsx:70`, `BinderCard.tsx:163`, `NotesBody.tsx:210`, CalendarDaySheet) re-point through an AskSheet `draft` prefill so nothing pushes `/vendor`; matcher derives from a shape table. F-38.50 (dark-token fork) stays post-cutover.
+3. **Phase 3's walk** (founder-run, may run any time from now): the six §9.4 fixture SELECTs on `9888294440`, then the curl card on `GET /api/v2/vendor/worklist/today`. Never run since Phase 3 landed (`42b5616`); it is Phase 4's fixture-state input under the fixture-state law.
+4. **Phase 4 — Today reads the feed** (both repos). Kickoff may issue while S7 is in flight; **the seat does read-first only, build HELD, no ZIP, until steps 1–2 are pushed, then re-derives its base (R-38.16) — R-39.5.** Contents: masthead + cards from the frozen contract (`TDW_09_WORKLIST_P3_HANDOVER.md` §3) · tile badges from the same response, badge-equals-count cell (R-37.63 ①) · resting Today = `done_today` summary (③) · tier-aware first-run variant drafted and vetoed (R-37.71) · the five dated uncomments on first production 200 · `open_leads_count` never displayed (R-P3.5.6) · roadmap D-3 sentence amended (§8.8).
+5. **Phase 6 — Acceptance.** Two consecutive all-green evenings, three test accounts, both modes, from a chair-authored card off derived fixture state. Any red resets the clock (M-exit rule).
+6. **Phase 7 — Cutover.** Founder rulings first: arm (a) path-swap vs (b) flag-flip (roadmap recommends (a)) · legacy delete date. Then: `worklist` → production · `thedreamwedding.in` serves the shell · `/v/` and `/r/` live · D-8 redirect stubs, `/vendor/list/leads` template paths re-verified · retirement sweep (old `/vendor` layout, both fallback bases, `INTERIM_VENDOR_LINKS`, `INTERIM_BOTTOMNAV_MOUNTS`, `dreamai_theme`) · demo studio rendered in the Graphite shell as a demo-mode data source, demo `/v/` flagged, no review link (founder ruling 2026-08-28). The founder's production walk seals it.
+
+## §2 · AFTER CUTOVER — BLOCK 19 AND BLOCK 09 IN PARALLEL
+**Block 19** (spec v1.4; P1 and P2 may run on two seats): P1 Google page (managed-profile + profile-setup services; sync withheld until GBP quota — form 2026-10-27 or one vendor's managed grant) · P2 Website (`<handle>.thedreamwedding.in` on wildcard + host middleware; own domain; **§7c** `enquiry_routing` column + `enquiry_phone` + one resolver land with P2; Settings row with the Settings sitting) · §7d Page editor (about + packages + T&C first) · P3 SEO · P4 Marketing · P5 Proof · P6 Benchmarks (after F-P3.11) · §7b Own number after the Tech Provider approval — **the founder files that application now; it is the long pole.**
+**Block 09:** Victor-intro and Mira soul sittings · Phase 5 action cards + undo · the eighteen-reader cure sitting (`wl_render` first) · F-38.50 · F-09.189 · the F-38.22/.23/.24 sweeps · **M-SEARCH (R-39.2, below)**.
+
+## §3 · DECISIONS TAKEN 2026-08-29 (founder's word where quoted; chair's ruling under it)
+- **R-39.1 · HERO DISPLACEMENT.** 「clicking any picture should displace the hero picture at the top」. Supersedes CE-38's W4-1 shape (1). Mechanism: hidden radios + `<label>` thumbnails + `:checked ~`; zero JS, no history entry. §7d's swipe viewer and `photoPager` reuse stand post-cutover.
+- **R-39.2 · UNIVERSAL SEARCH — ARM A.** 「Arm A」: one field under the masthead on Rooms and Today, results grouped by room, tapping lands in the record; one read door `GET /api/v2/vendor/search?q=` on the typed plane, M-LEADGATE serializer on Basic, notes plane decided at charter. **Chartered post-cutover as a roadmap section (M-SEARCH). R-37.63's refusal "no search-as-navigation" is AMENDED by the founder's word to this extent and no further.**
+- **R-39.3 · F-38.47 IS PRE-CUTOVER.** The succession note parked it post-cutover; Phase 7 retires `/vendor`, so four live doors would land on a stub. Minimal shape only (draft prefill); design half (F-38.50) stays post-cutover.
+- **R-39.4 · DOMAINS — PROPOSAL FOR THE P2 CHARTER, NOT RULED.** Spec §5's "pass-through on the next invoice" creates the churn exposure the founder named (a paid domain in a vendor's name after she stops paying). Proposed three rungs: subdomain (default, every tier) · own domain **PREPAID** before register (Razorpay Orders arm: one call in `razorpaySubscriptions.js`'s request shape, one `order.paid` arm in `razorpay.js`'s switch, one ledger kind, register keyed on the paid event) · bring-your-own-domain (vendor buys anywhere, TDW gives one DNS record, wires to Vercel). On churn the storefront detaches from her domain; she keeps the domain to expiry; TDW never auto-renews a non-subscriber. **Founder's word at the P2 charter.**
+- **R-39.5 · PARALLEL READ-FIRST.** A seat may open read-first on a branch another seat is cutting to, but takes no ZIP until the prior ZIP is pushed and re-derives its base. Two ZIPs on one base cannot both apply; `base_guard` refusing the second is the guard working.
+- **ARM A (P2-A seat judgment):** the seat was NOT re-seated; S5-c had derived the strip mechanism from the founder's console and cured its own instrument. Re-seat only on a walk red against a claimed cure.
+
+## §4 · STANDING METHOD LINES BANKED THIS SITTING
+- **Reading source produces candidates; only the running page produces causes** (the P2-A seat's line, F-19.38 and W4-3's tuition; sits beside F-19.37).
+- **A declaration's presence is not its application.** F-19.43: `inherit` inside a `font` shorthand invalidates the declaration; three sittings tuned a size the browser dropped. C40 is the cell; the fixture-render (extracted stylesheet + real DOM shape in the arm's own Chromium) is ratified for the computed-style class ONLY and is always named FIXTURE-RENDER, never the deploy.
+- **Egress is stated per cell.** A pv_render cell that cannot run from the seat's container is shipped and marked REFUSED-egress; the founder's console line is the deploy witness. A run of refusals is not green.
+- **Memory is a claim.** c-39.2: the chair asserted a billing rail "dark" from memory; the tree said LIVE. Every state claim by command.
+
+## §5 · OPEN FOUNDER ITEMS (his desk, dated)
+Tech Provider (Meta Solution Partner) application — file now · GBP quota form 2026-10-27 · ResellerClub deposit before P2 · tier question TDW_19 §11.3 · Phase 7 arm (a)/(b) + legacy delete date · the Phase 3 walk (step 3 above).
+
+Sequencing beyond this document is the founder's.

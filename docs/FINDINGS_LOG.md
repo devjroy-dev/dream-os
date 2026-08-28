@@ -4819,3 +4819,28 @@ F-38.22 · F-38.23 · F-38.24 · F-38.30 = F-19.14 (partially discharged by P2-A
 
 ## §4 · OPEN AT THIS BAND
 F-38.22 · .23 · .24 · .30=F-19.14 (P2-A discharging) · .31 Phase-4 half · .32 bride-plane export · .47 design sitting (+F-38.50) · .54 · the eighteen-reader cure sitting (wl_render first) · F-19.15 · .17 · .22 (→§7d) · W-5's 503 half (Network-tab check on next walk) · eight dated uncomments (five at Phase 4's first 200, three discharged/re-dated per F-38.48's law) · GBP form 2026-10-27 · the road: batch ③ ✅ → S5-b → Phase 4 → founder walk → **Phase 7 cutover** (strategy note §4; soul sittings post-cutover).
+
+---
+
+# CE-39 · FIRST BAND — THE SEAT SEATS ON A MOVED TIP; THE REGISTER CATCHES UP; THE ROAD IS WRITTEN DOWN
+**Authored by CE-39 · 2026-08-29 · appended at dream-os `d8f20e8`. Witness tips: dreamos-pwa `70dd458` (P2-A S6; hotfix S7 in flight). Companion: `docs/TDW_ROAD_TO_CUTOVER.md`, the sequence of record.**
+
+## §1 · SERIALIZED (texts in the pwa commit bodies, the walk-4 packet `77a5911…` and its addendum, and the S7 kickoff)
+**F-19.38** the four-sitting strip bug — `min-width:auto` on a flex `<img>` floors it at the photograph's intrinsic 1080px; the 104px basis was honoured and outranked. Named by the founder's console, proven in isolation 326→104, **SEALED walk #4**. **F-19.39** pv_render measured a page whose images never loaded (egress); `naturalWidth>0` gates every geometry cell. **F-19.40** the shimmer pulsed the photograph forever; moved beneath the image, capped at 3 — **SEALED walk #4**. **F-19.41** `app/layout.tsx:76` static `theme-color #1E0A0E` leaked the app's chrome onto `/v/`; cured S6, C38 holds the class. **F-19.42** no `color-scheme` declared; Chrome auto-dark inverted the miss page full-width; cured S6 in the cascade (a meta tag alone left it `normal`). **F-19.43** (walk #5) `font:… inherit` at `app/v/[code]/page.tsx:610/:616/:620/:674` — a CSS-wide keyword inside a shorthand invalidates the declaration; the colophon computed 14px nowrap → 134px horizontal overflow; the CTA lost weight AND size. Three sittings tuned a number the browser never read. Cure: longhands, nowrap struck, C40 on both public routes. **F-19.44** (walk #5, founder-ruled) photographs opened Cloudinary in a new tab; ruling R-39.1, hero displacement by radio/label, zero JS.
+**Seat placeholders standing at S7 read-first:** F-19.p1 (nowrap fails its own criterion; 320px still overflows) · F-19.p2 (strip excluded the hero; N radios, N−1 labels — ruled arm (a)) · F-19.p3 (deleting the anchors deleted F-19.38's flex rule and both focus rings — ruled: rules travel to the label; C37 derives the flex item from markup). Finals at the seal.
+**Walk-4 corrections, the seat's texts:** W4-4 withdrawn (top bar paints at 40px; filed on a screenshot crop) · W4-5 four walk lists sent the founder to `/v/demofilms`, a bench fixture name, never a row — four wasted taps. Witness-path law's specimen.
+
+**F-39.1 · TWO SUCCESSION NOTES LACK THE KICKOFF DOCTRINE SECTION.** Protocol §11's standing order (CE-63, founder-ruled): every succession note carries (a) the §10 pointer, (b) the benchmark sentence, (c) a skeletal template. `CE_SUCCESSION_CE37_TO_CE38.md` and `CE_SUCCESSION_CE38_TO_CE39.md` carry none of it — two chairs inherited facts and not form, and the founder paid for it in execution. **CURED in this delivery:** §7 appended to the 38→39 note; a pointer line appended to the 37→38 note.
+
+**F-39.2 · EVERY CREDENTIALED API CALL PAYS A PREFLIGHT.** `src/index.js:78` `cors({...})` sets no `maxAge`; Chrome caches a preflight 5s by default, so the founder's Network tab shows OPTIONS+GET pairs for every `/api/v2/vendor/me`. Not the SW (`sw.js:82` is the pass-through fetch, credited as initiator), not a loop (26 in 7.7h of preserved log, 304s throughout). Cure `maxAge: 600`, one line, behaviour-free — **chartered to the next dream-os code seat; the chair does not ship product bytes.**
+
+## §2 · RULINGS
+R-39.1 hero displacement · R-39.2 universal search Arm A, post-cutover, R-37.63 amended to that extent · R-39.3 F-38.47 pre-cutover · R-39.4 domains prepay/BYO as a proposal for the P2 charter · R-39.5 parallel read-first, no parallel ZIP. Texts in `TDW_ROAD_TO_CUTOVER.md` §3. The four S7 read-first rulings (nowrap struck; arm (a); rules to the label + C37 by label; C40 both routes) and the veto (YES, "Show photograph N"; hero label deleted) are recorded there and in the relay.
+
+## §3 · CORRECTIONS OWNED — c-39.1–.3
+**.1** the chair's first road omitted Khata, §4-4/§4-5, F-38.47, the Phase 3 walk and Phase 4's own contents, and called Phase 6 "one walk" — it is two green evenings. **.2** "Razorpay one-off rail dark behind the flag" asserted from memory; the tree says subscriptions LIVE and one-time charges absent — a different fact in both directions. **.3** the S7 ladder pointed at a protocol file that does not exist in dreamos-pwa (seat's catch, credited).
+
+## §4 · OPEN AT THIS BAND
+Everything in CE-38 band 4 §4 not named above, unchanged · F-19.p1–.p3 (S7) · F-39.2 (next dream-os seat) · W-5's 503 Network-tab half — the founder's tab of 2026-08-29 showed no 503 on `/me`; still unadopted, not closed.
+
+**RANGES — NEXT-FREE:** F-19 `.45` · F-39 `.3` · R-39 `.6` · c-39 `.4`. Never quote a floor forward.
