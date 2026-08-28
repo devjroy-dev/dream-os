@@ -399,6 +399,7 @@ do not exist, and the next seat would inherit it as though ruled.
 ## §14 · GATE
 
 ```
+npm ci && npm run build:engine                             ← PREREQUISITE, see below
 node --check core.js / solutions/index.js / b43            OK, all three
 node scripts/b43_solutions_doors_bench.js                  35 PASS · 0 FAIL, exit 0
 floor --delivery <manifest> --check                        FLOOR = NAMED BASE, no delta, exit 0
@@ -406,6 +407,23 @@ floor --delivery <manifest> --check                        FLOOR = NAMED BASE, n
   [F-14.16] declared files unmoved — set and contents both verified
   b43 entered the scripts/*.js glob and added no red
 ```
+
+### ⚠ LABELLED AMENDMENT (F-19.17) — the gate block above gained its first line after the push
+
+The first cut of this table began at `node --check`, implying a bare `npm ci`
+clone would do. **It will not.** §0 asserts the mount THROUGH `core.js` rather
+than by requiring the router directly — deliberately, because the mount line is
+the thing that can be wrong — and loading `core.js` loads every sibling door with
+it. `leads.js:39` requires `../../engine/dist/core/donna`, which `.gitignore:26`
+excludes. A fresh clone therefore gets `MODULE_NOT_FOUND` and exit 1 before one
+cell runs.
+
+Found by running the pushed tip `f1cf374` on a virgin clone, not by reasoning:
+green in a tree where `build:engine` had been run earlier in the sitting, RED on
+a clean one. b38's header states this prerequisite; b43's first cut did not.
+**A bench whose clean-checkout failure looks like a broken door is a bench that
+will get the door blamed.** Cured in b43's header with the reasoning at site;
+no code changed and the 35 cells are untouched.
 
 ### Non-vacuity, by mutating production source
 

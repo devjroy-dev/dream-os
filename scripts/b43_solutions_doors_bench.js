@@ -38,6 +38,26 @@
 // would redden here rather than in production. That is the point of a recording
 // fake over a permissive one.
 //
+// ── ⚠ BUT IT DOES NEED THE ENGINE BUILT ────────────────────────────────────
+//
+//     npm ci && npm run build:engine && node scripts/b43_solutions_doors_bench.js
+//
+// LABELLED AMENDMENT, and the reason is worth more than the line. §0 asserts the
+// mount THROUGH `core.js` rather than by requiring `solutions/index.js` directly,
+// because the mount line is the thing that can be wrong and requiring the router
+// would skip it. The cost of that choice is that loading `core.js` loads every
+// sibling door with it — and `leads.js:39` requires `../../engine/dist/core/donna`,
+// which `.gitignore:26` excludes from the repo. So a FRESH CLONE with only
+// `npm ci` gets `MODULE_NOT_FOUND` and exit 1 before a single cell runs.
+//
+// This was found by running the pushed tip on a clean clone, not by reasoning:
+// the bench was green in a tree where `build:engine` had been run earlier in the
+// sitting, and RED on a virgin one. b38's header states this prerequisite; this
+// header's first cut did not, and its handover's gate table implied a bare clone
+// would do. **A bench whose failure mode on a clean checkout looks like a broken
+// door is a bench that will get the door blamed.** Exit 1 with a module error is
+// an honest verdict but an illegible one.
+//
 // ── IT RUNS ON A DIRTY TREE ────────────────────────────────────────────────
 // It reads no floor and mutates nothing at rest, so the founder can satisfy the
 // verify line at his apply moment, before commit (the F-05.89 seat's lesson,
