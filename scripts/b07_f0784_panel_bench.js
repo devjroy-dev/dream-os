@@ -140,10 +140,13 @@ sec('§2 · F-07.85 — x-admin-password is read nowhere in src/');
   ok('§2.3 the guard carries a COOKIE limb',  /COOKIE_NAME/.test(guard));
   ok('§2.4 the guard carries NO header limb', !/x-admin-password/.test(guard));
 
-  const idx = stripComments(read('src/index.js'));
-  ok('§2.5 CORS no longer allowlists the header', !/x-admin-password/.test(idx));
-  ok('§2.6 CORS still allows Authorization (the bearer must be able to travel)',
-     /allowedHeaders:\s*\[[^\]]*['"]Authorization['"]/.test(idx));
+  // CE-39 step 2a (F-39.2): the CORS options moved to their one home,
+  // src/lib/corsOptions.js — the bench moves with the reader and asserts the
+  // OBJECT, not the file it was once spelled in.
+  const { corsOptions } = require('../src/lib/corsOptions');
+  const allowed = (corsOptions.allowedHeaders || []).map((h) => String(h).toLowerCase());
+  ok('§2.5 CORS no longer allowlists the header', !allowed.includes('x-admin-password'));
+  ok('§2.6 CORS still allows Authorization (the bearer must be able to travel)', allowed.includes('authorization'));
 
   const conc = stripComments(read('src/api/couple/concierge.js'));
   ok('§2.7 THE THIRD AUTHORITY, found and folded: the couple route no longer reads the header',

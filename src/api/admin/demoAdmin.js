@@ -66,6 +66,8 @@ const demoLifecycle = require('../../lib/demoLifecycle');
 // Writing the literal here would have made three shapes in one estate.
 const { sendWa } = require('../../lib/sendWa');
 const { claimLinkFor } = require('../../lib/discover/demoLeadAlert');
+// F-19.49 (CE-39 step 2a): the one cross-table address guard.
+const { handleIsFree } = require('../../lib/vendor/routingHandle');
 
 // ── TDW_08 P4 · FORK B(a) — THE PHOTO PLANE COMES TO PARITY, BY IMPORT ───────
 // The demo plane held THREE numbers where the spec has two, and none of them
@@ -296,6 +298,12 @@ router.post('/vendors', requireAdminPassword, async (req, res) => {
 
   const gate = _photoGate(photos);
   if (gate.ok === false) return res.status(400).json({ ok: false, error: gate.error });
+  // F-19.49 · ONE ADDRESS SPACE. A demo may not take a real vendor's address:
+  // the one guard (src/lib/vendor/routingHandle.js) refuses a `vendors.routing_handle`
+  // match case-folded. The real vendor wins, in both directions.
+  if (!(await handleIsFree(supabase, ig_handle))) {
+    return res.status(409).json({ ok: false, error: 'handle_taken', detail: ig_handle.toLowerCase().trim() });
+  }
   try {
     const { data, error } = await supabase
       .from('demo_vendors')
@@ -445,6 +453,10 @@ router.post('/bulk', requireAdminPassword, async (req, res) => {
     // THE SAME GATE THE CONSOLE FIRES. One home, two callers.
     const gate = _photoGate(photos);
     if (gate.ok === false) { failed.push({ ig_handle, error: gate.error }); continue; }
+
+    // F-19.49: same guard as the console create — a real vendor's address is
+    // refused here too (an existing demo with this handle is the 23505 skip below).
+    if (!(await handleIsFree(supabase, ig_handle))) { failed.push({ ig_handle, error: 'handle_taken' }); continue; }
 
     try {
       const { data, error } = await supabase

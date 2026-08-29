@@ -628,20 +628,22 @@ async function acell(id, desc, fn) {
       from(table) {
         return {
           select() {
-            return {
-              eq(col) {
-                return {
-                  maybeSingle: async () => {
-                    if (table === 'users')  return { data: user };
-                    // the handle-collision probe must find nobody, or every
-                    // candidate is taken and the fallback fires
-                    if (table === 'vendors' && col === 'routing_handle') return { data: null };
-                    if (table === 'vendors') return { data: vendorRow };
-                    return { data: null };
-                  },
-                };
+            // CE-39 step 2a (F-19.49): the mint's collision probe now runs through
+            // handleIsFree, which chains a SECOND .eq (demo_vendors: ig_handle AND
+            // active). The double answers any depth of .eq the same way — the first
+            // column named is the one the answers below key on.
+            const probe = (col) => ({
+              eq: () => probe(col),
+              maybeSingle: async () => {
+                if (table === 'users')  return { data: user };
+                // the handle-collision probe must find nobody, or every
+                // candidate is taken and the fallback fires
+                if (table === 'vendors' && col === 'routing_handle') return { data: null };
+                if (table === 'vendors') return { data: vendorRow };
+                return { data: null };
               },
-            };
+            });
+            return { eq: (col) => probe(col) };
           },
           update(payload) {
             return { eq: async () => { writes[table].push(payload); return { error: null }; } };

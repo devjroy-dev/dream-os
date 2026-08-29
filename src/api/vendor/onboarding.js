@@ -72,6 +72,12 @@ const { vendorComplete, validateServiceAreaPair, INCOMPLETE_REFUSAL } = require(
 // be re-pointed, not deleted, when that micro lands.
 const { VENDOR_CATEGORIES } = require('../../agent/categories');
 
+// CE-39 step 2a · F-19.50/F-19.49 · THE ONE HANDLE HOME. The mint, the shape rule
+// and the cross-table guard all live in src/lib/vendor/routingHandle.js; this
+// file re-derives none of them.
+const { mintRoutingHandle, shapeRoutingHandle, handleIsFree } = require('../../lib/vendor/routingHandle');
+const { normalizeIgHandle } = require('../../lib/discover/shapeVendor');
+
 // ── API-INTERFACE STRINGS ──────────────────────────────────────────────────
 // These are responses OB-P renders. The service-area sentences are NOT minted
 // here: they come from the predicate's own validator, byte-identical to the
@@ -132,7 +138,10 @@ async function generateHandle(supabase, vendorId, user, igFromBody) {
   // function could read it back; under the atomic-refusal rule that pre-write is
   // exactly the partial write the refusal forbids, so the value is passed in.
   const igSource  = igFromBody || v?.instagram_handle || '';
-  const igHandle  = igSource.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  // F-19.50: NORMALISE BEFORE MINT — the username, never the URL — and ONE rule
+  // (^[A-Z0-9]{1,30}$) for every candidate. A candidate the rule refuses is
+  // SKIPPED, never truncated (ruled B-2); the old `.slice(0, 20)` is gone.
+  const igHandle  = mintRoutingHandle(igSource);
   const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
   const phone3    = (user?.phone || '').replace(/\D/g, '').slice(-3);
   const phone4    = (user?.phone || '').replace(/\D/g, '').slice(-4);
@@ -142,14 +151,16 @@ async function generateHandle(supabase, vendorId, user, igFromBody) {
     `${firstName}${phone4}`,
     `${firstName}${phone3}${phone4}`,
     `${firstName}${Date.now().toString().slice(-6)}`,
-  ].filter(Boolean);
+    `VENDOR${Date.now().toString().slice(-6)}`,
+  ].map(shapeRoutingHandle).filter(Boolean);
   for (const c of candidates) {
-    if (!c || c.length < 2) continue;
-    const { data: existing } = await supabase
-      .from('vendors').select('id').eq('routing_handle', c).maybeSingle();
-    if (!existing) return c;
+    // F-19.49: one address space — a live demo_vendors.ig_handle is as taken as
+    // a vendors.routing_handle. The guard folds case both ways.
+    if (await handleIsFree(supabase, c)) return c;
   }
-  return `VENDOR${Date.now().toString().slice(-6)}`;
+  // Nothing free: the caller leaves the row without an address AND without
+  // `status: 'active'` (F-19.51's invariant — an active vendor has an address).
+  return null;
 }
 
 router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
@@ -191,7 +202,10 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
   const { data: user } = await supabase
     .from('users').select('name, phone').eq('id', vendor.user_id).maybeSingle();
 
-  const cleanIg = (instagram_handle || '').trim().replace(/^@/, '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 30) || null;
+  // F-19.50 (iv): `instagram_handle` is stored NORMALISED — a pasted URL never
+  // lands in the column. normalizeIgHandle strips the instagram.com prefix, the
+  // `@`, and anything from `/?#`, and refuses what is not a username.
+  const cleanIg = normalizeIgHandle(instagram_handle);
 
   const candidateName = trimmedOr(name, user?.name);
   const candidate = {
@@ -266,10 +280,17 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     rate_min:         candidate.rate_min,
     service_area:     candidate.service_area,
     service_cities:   candidate.service_cities,
-    routing_handle:   handle,
     onboarding_state: 'complete',
   };
   if (cleanIg) vendorUpdate.instagram_handle = cleanIg;
+  // F-19.51 (ruled CE-39 §0.2-D option (a)): a vendor is born `status='pending'`
+  // (src/api/vendor/auth.js) and becomes `active` HERE, alongside `complete`,
+  // IF AND ONLY IF the mint returned an address. A completion whose mint yields
+  // null leaves status pending — an active vendor has an address, always.
+  if (handle) {
+    vendorUpdate.routing_handle = handle;
+    vendorUpdate.status         = 'active';
+  }
 
   const { error: vendorErr } = await supabase.from('vendors').update(vendorUpdate).eq('id', vendor.id);
   if (vendorErr) return errRes(res, 500, 'Could not save profile. Please try again.');
@@ -288,7 +309,7 @@ router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => 
     });
   }
 
-  const tdwLink = `https://wa.me/${VENDOR_WA}?text=TDW-${handle}`;
+  const tdwLink = handle ? `https://wa.me/${VENDOR_WA}?text=TDW-${handle}` : null;
   console.log(`[vendor:onboarding] complete vendor=${vendor.id} handle=${handle}`);
   return okRes(res, {
     routing_handle:   handle,

@@ -43,7 +43,9 @@ const igSigned = require('../../lib/vendor/igSignedRequest');
 // address, and a safe default so a missing variable lands the vendor somewhere
 // real rather than on a blank page.
 const PWA_BASE = process.env.PWA_BASE_URL || 'https://thedreamwedding.in';
-const RETURN_PATH = '/vendor/portfolio';
+// F-38.p12 (CE-39 step 2a): the path reads the ONE HOME, src/lib/pwaPaths.js —
+// `/vendor/portfolio` today, `/w/portfolio` when Phase 7 flips that file.
+const RETURN_PATH = require('../../lib/pwaPaths').vendorPath('portfolio');
 
 function backToPortfolio(res, params) {
   const q = new URLSearchParams(params);

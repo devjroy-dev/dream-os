@@ -68,7 +68,7 @@ const express = require('express');
 const ROOT    = path.resolve(__dirname, '..');
 
 // ── the auth doubles, installed BEFORE team.js is required ───────────────────
-// requireAuth / resolveVendor / requirePrestige are the declared-permissible doubles.
+// requireAuth / resolveVendor are the declared-permissible doubles (requirePrestige retired, R-39.7).
 // Everything inside the team router's handlers is the real thing.
 const VENDOR = { id: 'c0ffee00-0000-4000-8000-000000000001', user_id: 'u1', business_name: 'Vera Studios' };
 function stub(rel, mod) {
@@ -77,7 +77,7 @@ function stub(rel, mod) {
 }
 stub('src/api/middleware/requireAuth',    (req, _res, next) => { req.auth = { user_id: 'u1' }; next(); });
 stub('src/api/middleware/resolveVendor',  () => (req, _res, next) => { req.vendor = VENDOR; next(); });
-stub('src/api/middleware/requirePrestige', (req, _res, next) => next());
+// requirePrestige stub RETIRED with the middleware (R-39.7, CE-39 step 2a).
 
 const crewRouter = require(path.join(ROOT, 'src/api/crew.js'));
 const teamRouter = require(path.join(ROOT, 'src/api/vendor/studio/team.js'));

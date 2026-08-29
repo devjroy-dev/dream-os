@@ -1,0 +1,40 @@
+# scripts/floor-manifest-ce39-2a.txt
+scripts/tdw10_combined_cap_bench.js
+# BASE 852d385 (main; re-derived fetch-first at the cut — the guard decides).
+# CE-39 step 2a · the dream-os pre-cutover seat: F-39.2 cors maxAge · F-19.50 mint
+# cure + one validator · F-19.49 cross-table handle guard · F-19.51 born pending,
+# active iff address · F-38.p12 four /vendor sites on one home · R-39.6 Couture =
+# Signature + Prestige · R-39.7 requirePrestige retired with its readers.
+# [F-14.16] The delivery's own file table — AND F-39.p5's instrument: the list of
+# every file this seat touched, so a later self of this seat (or the next) can
+# tell own-hand dirt from other-hand dirt. Preflight cannot; this can.
+
+docs/TDW_CE39_2A_HANDOVER.md
+scripts/b0451_crew_page_bench.js
+scripts/b0454_owner_assignments_bench.js
+scripts/b0455_money_loop_bench.js
+scripts/b07_f0784_panel_bench.js
+scripts/b45_precutover_seat_bench.js
+scripts/bOB_d2_onboarding_gate_bench.js
+scripts/floor-manifest-ce39-2a.txt
+scripts/tdw10_combined_cap_bench.js
+src/agent/onboarding.js
+src/api/admin/demoAdmin.js
+src/api/couple/enquire.js
+src/api/middleware/requirePrestige.js
+src/api/vendor-engine/chat.js
+src/api/vendor/auth.js
+src/api/vendor/ig.js
+src/api/vendor/me.js
+src/api/vendor/onboarding.js
+src/api/vendor/studio/briefing.js
+src/api/vendor/studio/index.js
+src/api/vendor/studio/messages.js
+src/api/vendor/studio/payments.js
+src/api/vendor/studio/tasks.js
+src/api/vendor/studio/team.js
+src/index.js
+src/lib/corsOptions.js
+src/lib/pwaPaths.js
+src/lib/vendor/routingHandle.js
+src/lib/vendorInbound.js

@@ -11,14 +11,13 @@ const router          = express.Router();
 const { randomUUID }  = require('crypto');
 const requireAuth     = require('../../middleware/requireAuth');
 const resolveVendor   = require('../../middleware/resolveVendor');
-const requirePrestige  = require('../../middleware/requirePrestige');
 const asyncHandler    = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
 // TDW_04.5 P4 — the crew page's member-board assembly, reused whole (see the
 // assignments door below). Imported, never re-implemented; byte-untouched there.
 const { buildCrewPage, istToday } = require('../../crew');
 
-const mw = [requireAuth, resolveVendor(), requirePrestige];
+const mw = [requireAuth, resolveVendor()]; // R-39.7 (founder, 2026-08-29): Studio Suite open to every tier — requirePrestige retired
 
 // ── F-04.106 — THE EXPLICIT COLUMN LIST (TDW_04.5 P3, disclosed labeled rider) ──
 // This file used to answer with `select('*')`, which meant every column ever added to

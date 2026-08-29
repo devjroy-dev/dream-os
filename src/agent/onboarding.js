@@ -32,6 +32,9 @@ const { MODEL_HAIKU }                    = require('./models');
 const { VENDOR_CATEGORIES } = require('./categories');
 
 const { waNumberFor } = require('../lib/waNumbers');
+// CE-39 step 2a · F-19.50/.49/.51 — the one handle home; nothing re-derived here.
+const { mintRoutingHandle, shapeRoutingHandle, handleIsFree } = require('../lib/vendor/routingHandle');
+const { normalizeIgHandle } = require('../lib/discover/shapeVendor');
 const TDW_WA_NUMBER = waNumberFor('vendor');   // F5 rider: was the DEAD sandbox literal
 
 // Categories whose work is made-and-delivered before the wedding. These get the
@@ -169,9 +172,14 @@ async function completeOnboarding({ vendor, user, supabase }) {
 
   if (handle) {
     // Handle already set (e.g. from web onboarding) — keep it, just complete.
-    await supabase.from('vendors').update({ onboarding_state: 'complete' }).eq('id', vendor.id);
+    // F-19.51: the row has an address, so it may be active.
+    await supabase.from('vendors').update({ onboarding_state: 'complete', status: 'active' }).eq('id', vendor.id);
   } else {
-    const igHandle  = (freshVendor?.instagram_handle || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    // F-19.50 (CE-39 step 2a): the mint reads the ONE HOME —
+    // src/lib/vendor/routingHandle.js. Normalise before mint, one rule
+    // (^[A-Z0-9]{1,30}$) for every candidate, an over-long candidate SKIPPED
+    // never truncated; the cross-table guard (F-19.49) decides "free".
+    const igHandle  = mintRoutingHandle(freshVendor?.instagram_handle || '');
     const firstName = (user?.name || 'VENDOR').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
     const phone3    = (user?.phone || '').replace(/\D/g, '').slice(-3);
     const phone4    = (user?.phone || '').replace(/\D/g, '').slice(-4);
@@ -181,19 +189,27 @@ async function completeOnboarding({ vendor, user, supabase }) {
       `${firstName}${phone4}`,
       `${firstName}${phone3}${phone4}`,
       `${firstName}${Date.now().toString().slice(-6)}`,
-    ].filter(Boolean);
+      `VENDOR${Date.now().toString().slice(-6)}`,
+    ].map(shapeRoutingHandle).filter(Boolean);
     for (const candidate of candidates) {
-      if (!candidate || candidate.length < 2) continue;
-      const { data: existing } = await supabase
-        .from('vendors').select('id').eq('routing_handle', candidate).maybeSingle();
-      if (!existing) { handle = candidate; break; }
+      if (await handleIsFree(supabase, candidate)) { handle = candidate; break; }
     }
-    // Last-resort fallback so handle is never null.
-    if (!handle) handle = `VENDOR${Date.now().toString().slice(-6)}`;
-    await supabase
-      .from('vendors')
-      .update({ routing_handle: handle, onboarding_state: 'complete' })
-      .eq('id', vendor.id);
+    // F-19.51: `status` flips to active alongside `complete` IF AND ONLY IF the
+    // mint returned an address. No handle → the row stays `pending` (born so at
+    // src/api/vendor/auth.js) and keeps no address.
+    const completion = handle
+      ? { routing_handle: handle, onboarding_state: 'complete', status: 'active' }
+      : { onboarding_state: 'complete' };
+    await supabase.from('vendors').update(completion).eq('id', vendor.id);
+  }
+
+  // F-19.51: a completion with no address (the guard refused every candidate)
+  // writes no handle note and hands no `TDW-null` link. The reply below is the
+  // existing closing sentence's second paragraph, verbatim — no new byte.
+  if (!handle) {
+    return {
+      reply: `Also head over to thedreamwedding.in and sign in as a Maker — your dashboard is ready and waiting for you.`,
+    };
   }
 
   await supabase.from('notes').insert({
@@ -275,7 +291,8 @@ async function nextOnboardingMessage({ vendor, user, inboundMessage, supabase, a
     case 'asked_ig': {
       const trimmedIg = inboundMessage.trim();
       const skipped = /^skip$/i.test(trimmedIg) || /^no$/i.test(trimmedIg) || !trimmedIg;
-      const igRaw = skipped ? null : trimmedIg.replace(/^@/, '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 30);
+      // F-19.50 (iv): stored NORMALISED — a pasted URL never lands in the column.
+      const igRaw = skipped ? null : normalizeIgHandle(trimmedIg);
       const igUpdates = { onboarding_state: 'asked_category' };
       if (igRaw) igUpdates.instagram_handle = igRaw;
       await supabase.from('vendors').update(igUpdates).eq('id', vendor.id);

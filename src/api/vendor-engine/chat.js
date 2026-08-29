@@ -2801,7 +2801,7 @@ async function buildMeta({ supabase, agentId, tier }) {
     // that anchor before then breaks the Upgrade link for every capped vendor.
     // (Mechanism named in-comment per F-06.85 so the pwa sitting that finally
     // deletes it is forced to check the deploy rather than the diff.)
-    return { tier: productTier, ...nearer, state, upgrade: { label: 'Upgrade', href: '/vendor/billing' } };
+    return { tier: productTier, ...nearer, state, upgrade: { label: 'Upgrade', href: require('../../lib/pwaPaths').vendorPath('billing') } }; // F-38.p12 · W-1 ruling CE-39 E: the one home, value unchanged today
   } catch (e) {
     console.warn('[vendor-e chat:meta] failed (open meter):', e.message);
     return null; // a broken meter NEVER blocks a turn

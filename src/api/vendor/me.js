@@ -25,6 +25,16 @@ const { profileFor }        = require('../../lib/vendor/categoryProfiles');
 const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
 // F-10.92 — the lane flag has to reach the CLIENT, not just the route.
 const { readLaneFlag } = require('../../lib/laneFlags');
+// CE-39 step 2a · F-19.50/.49 — the one handle home (shape rule, cross-table
+// guard, founder-vetoed strings). R-39.6 — the tier strings are DERIVED from
+// tierFlip's CANON_TIERS, never restated: the pair below is asserted against
+// it at load so a renamed tier fails here, not in a vendor's Couture room.
+const { shapeRoutingHandle, handleIsFree, HANDLE_TOO_LONG, HANDLE_TAKEN } = require('../../lib/vendor/routingHandle');
+const { CANON_TIERS } = require('../../lib/billing/tierFlip');
+const COUTURE_TIERS = Object.freeze(['signature', 'prestige']);
+for (const t of COUTURE_TIERS) {
+  if (!CANON_TIERS.includes(t)) throw new Error(`[me] COUTURE_TIERS names '${t}', which tierFlip.CANON_TIERS does not carry`);
+}
 // ARC OB · micro item ③. THE ONE PREDICATE HOME — required, never re-derived.
 // The GET below reports its verdict so OB-P's guard has a server-computed
 // answer and no client ever holds a second copy of the completeness rule.
@@ -143,7 +153,10 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // TDW_04 B6-S1 (item 2): the capacity row's read half. `??` — 0 is a posture.
       slot_capacity:           vendor.slot_capacity ?? null,
       ...capacityFacts(vendor.category),
-      couture_eligible:        vendor.couture_eligible        === true,
+      // R-39.6 (founder, 2026-08-29): Couture is for Signature and Prestige. The
+      // invite flag stays as an additional door; the tier is the main one. The
+      // screen still reads this ONE boolean.
+      couture_eligible:        vendor.couture_eligible === true || COUTURE_TIERS.includes(vendor.tier),
       featured_eligible:       vendor.featured_eligible       === true,
       // ── ARC OB · THE VERDICT ON THE WIRE (micro item ③) ──────────────────
       // OB-P's layout guard reads THIS and never the marker below it. The two
@@ -429,21 +442,24 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
 // ─── PATCH /api/v2/vendor/me/routing-handle ────────────────────────────
 //
 // Handle changes are sensitive — separate endpoint.
-// Alphanumeric, 3-12 chars, uppercased. Globally unique.
+// Alphanumeric, 1-30 chars, uppercased (ONE rule, src/lib/vendor/routingHandle.js
+// — F-19.50). Unique across vendors AND live demo_vendors (F-19.49).
 // Auth: requireAuth. resolveVendor mode A.
 
 router.patch('/routing-handle', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const vendor   = req.vendor;
   const raw      = (req.body || {}).routing_handle || '';
-  const cleaned  = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const cleaned  = shapeRoutingHandle(raw);
 
-  if (cleaned.length < 3)  return errRes(res, 400, 'Handle must be at least 3 characters.');
-  if (cleaned.length > 12) return errRes(res, 400, 'Handle must be 12 characters or fewer.');
+  // The validator is the only rule (ruled B-3: the old `<3` floor retired with
+  // its sentence). An empty strip is a 400 with the same byte a too-long one
+  // gets — there is one vendor-facing sentence for "not a handle".
+  if (!cleaned) return errRes(res, 400, HANDLE_TOO_LONG);
 
-  const { data: collision } = await supabase
-    .from('vendors').select('id').eq('routing_handle', cleaned).neq('id', vendor.id).maybeSingle();
-  if (collision) return errRes(res, 409, 'Handle already taken.', 'HANDLE_TAKEN');
+  if (!(await handleIsFree(supabase, cleaned, { excludeVendorId: vendor.id }))) {
+    return errRes(res, 409, HANDLE_TAKEN, 'HANDLE_TAKEN');
+  }
 
   const { error } = await supabase
     .from('vendors').update({ routing_handle: cleaned }).eq('id', vendor.id);

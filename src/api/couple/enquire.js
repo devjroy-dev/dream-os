@@ -107,7 +107,9 @@ const { monthPhrase } = require('../../lib/discover/demoLeadAlert');
 // constant against the pwa's actual route table (cross-repo, skipped-with-reason
 // where the sibling tree is absent) so the next person to move that page reddens
 // a cell instead of shipping a 404 to a vendor's phone.
-const VENDOR_LEADS_URL = 'https://thedreamwedding.in/vendor/list/leads';
+// F-38.p12 (CE-39 step 2a): the ONE HOME for vendor-facing PWA paths,
+// src/lib/pwaPaths.js — byte-identical today; Phase 7 flips that file alone.
+const VENDOR_LEADS_URL = require('../../lib/pwaPaths').vendorUrl('leadsList');
 
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;

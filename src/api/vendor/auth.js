@@ -169,7 +169,10 @@ router.post('/send-otp', async (req, res) => {
     }
     if (!thisRow) {
       const { error: roleErr } = await supabase.from('vendors')
-        .insert({ user_id: userRow.id, onboarding_state: 'new' });
+        // F-19.51 (CE-39 §0.2-D): born `pending`; onboarding's mint flips it to
+        // `active` only once the row has an address. Readers: cron (gated on
+        // onboarding_state) and the public /v/ door (pending = not found).
+        .insert({ user_id: userRow.id, onboarding_state: 'new', status: 'pending' });
       if (roleErr) {
         console.error('[vendor:send-otp] vendors insert error:', roleErr.message);
         return res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -186,7 +189,8 @@ router.post('/send-otp', async (req, res) => {
     }
     userRow = newUser;
     const { error: roleErr } = await supabase.from('vendors')
-      .insert({ user_id: userRow.id, onboarding_state: 'new' });
+      // F-19.51: born `pending` — see the sibling insert above.
+      .insert({ user_id: userRow.id, onboarding_state: 'new', status: 'pending' });
     if (roleErr) {
       await supabase.from('users').delete().eq('id', userRow.id);
       console.error('[vendor:send-otp] vendors insert error:', roleErr.message);

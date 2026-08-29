@@ -81,15 +81,13 @@ function stub(vendorId) {
   const paths = {
     reqAuth: path.join(ROOT, 'src/api/middleware/requireAuth.js'),
     resVen:  path.join(ROOT, 'src/api/middleware/resolveVendor.js'),
-    prest:   path.join(ROOT, 'src/api/middleware/requirePrestige.js'),
   };
   require.cache[require.resolve(paths.reqAuth)] =
     { id: paths.reqAuth, filename: paths.reqAuth, loaded: true, exports: (rq, rs, nx) => nx() };
   require.cache[require.resolve(paths.resVen)] =
     { id: paths.resVen, filename: paths.resVen, loaded: true,
       exports: () => (rq, rs, nx) => { rq.vendor = { id: vendorId }; nx(); } };
-  require.cache[require.resolve(paths.prest)] =
-    { id: paths.prest, filename: paths.prest, loaded: true, exports: (rq, rs, nx) => nx() };
+  // requirePrestige stub RETIRED with the middleware (R-39.7, CE-39 step 2a).
 }
 
 async function serve(db, vendorId) {

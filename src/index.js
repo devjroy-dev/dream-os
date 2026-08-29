@@ -60,39 +60,12 @@ const app = express();
 app.set('trust proxy', true);
 
 // CORS — allow PWA origins to call dream-os API endpoints.
-// Locked list: production domain + Vercel shell + local dev.
-// Add new origins here when new deploy targets are introduced.
-const ALLOWED_ORIGINS = [
-  'https://thedreamwedding.in',
-  'https://www.thedreamwedding.in',
-  'https://thedreamai.in',
-  'https://www.thedreamai.in',
-  'https://dreamos-pwa.vercel.app',
-  'https://demo.thedreamwedding.in',
-  'https://demodiscover.thedreamwedding.in',
-  'https://demobride.thedreamwedding.in',
-  'https://demodreamer.thedreamwedding.in',
-  'http://localhost:3000',
-  'http://localhost:3001',
-];
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    // dreamos-pwa Vercel previews
-    if (/^https:\/\/dreamos-pwa[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
-    // dreamai Vercel previews
-    if (/^https:\/\/dreamai[a-z0-9-]*\.vercel\.app$/.test(origin)) return cb(null, true);
-    // GitHub Codespaces (dev)
-    if (/^https:\/\/[a-z0-9-]+-\d+\.app\.github\.dev$/.test(origin)) return cb(null, true);
-    return cb(null, false);  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  // F-07.85 (CE F-3 end-state): `x-admin-password` REMOVED. The credential has
-  // left the client, so the header it travelled in is no longer allowlisted —
-  // a browser that tried to send it now fails preflight, which is the point.
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-}));
+// The options live in ONE HOME, src/lib/corsOptions.js (F-39.2, CE-39 step 2a):
+// the origin list, credentials, methods and headers are byte-for-byte what this
+// file carried, plus `maxAge: 600` so a credentialed call no longer pays an
+// OPTIONS preflight every 5 seconds. Add new origins THERE, not here.
+const { corsOptions } = require('./lib/corsOptions');
+app.use(cors(corsOptions));
 
 // CORS error handler — return 403 JSON, not 500 HTML
 app.use((err, req, res, next) => {

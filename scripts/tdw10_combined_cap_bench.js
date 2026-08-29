@@ -467,8 +467,15 @@ say('\n§5 — THE UPGRADE PATH SURVIVES A ZERO CAP');
 
 t('§5.1 the meter still MINTS an upgrade path at cap 0 — the server half of the cure', () => {
   const body = chatText.match(/async function buildMeta\(\{[\s\S]*?\n\}\n/)[0];
-  assert.ok(/upgrade: \{ label: 'Upgrade', href: '\/vendor\/billing' \}/.test(body),
-    'the meta no longer carries an upgrade path to the live picker');
+  // CE-39 step 2a (F-38.p12): the href reads the one home, src/lib/pwaPaths.js
+  // (`/vendor/billing` today; Phase 7 flips that file). The spelling cell became
+  // a where-the-constant-lives cell (F-15.12 family); it now asserts the SEAT of
+  // the upgrade path and its VALUE through the home, and §3.x above still reads
+  // `meta.upgrade.href` off the wire.
+  assert.ok(/upgrade: \{ label: 'Upgrade', href: require\('\.\.\/\.\.\/lib\/pwaPaths'\)\.vendorPath\('billing'\) \}/.test(body),
+    'the meta no longer carries an upgrade path to the live picker through pwaPaths');
+  assert.strictEqual(require('../src/lib/pwaPaths').vendorPath('billing'), '/vendor/billing',
+    'the Billing path is not the live picker\'s address today');
   assert.ok(/return \{ tier: productTier, \.\.\.nearer, state, upgrade:/.test(body),
     'the upgrade path is now conditional — at a zero cap it must still be minted');
 });

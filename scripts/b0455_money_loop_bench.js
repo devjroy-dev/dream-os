@@ -166,8 +166,6 @@ function stubMiddleware(vendorId) {
       (req, res, next) => { req.auth = { user_id: 'u-1' }; next(); },
     'src/api/middleware/resolveVendor.js':
       () => (req, res, next) => { req.vendor = { id: vendorId, tier: 'prestige', category: 'planning' }; next(); },
-    'src/api/middleware/requirePrestige.js':
-      (req, res, next) => next(),
     'src/api/middleware/agentBridge.js':
       { resolveAgentForVendor: async () => ({ agentId: 'agent-1' }) },
   };

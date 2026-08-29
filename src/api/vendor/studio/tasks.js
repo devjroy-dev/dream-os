@@ -9,13 +9,12 @@ const express         = require('express');
 const router          = express.Router();
 const requireAuth     = require('../../middleware/requireAuth');
 const resolveVendor   = require('../../middleware/resolveVendor');
-const requirePrestige  = require('../../middleware/requirePrestige');
 const asyncHandler    = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
 
 const VALID_STATES    = ['open', 'in_progress', 'done', 'cancelled'];
 const VALID_PRIORITIES = ['low', 'normal', 'high', 'urgent'];
-const mw = [requireAuth, resolveVendor(), requirePrestige];
+const mw = [requireAuth, resolveVendor()]; // R-39.7 (founder, 2026-08-29): Studio Suite open to every tier — requirePrestige retired
 
 // GET — list
 router.get('/', ...mw, asyncHandler(async (req, res) => {

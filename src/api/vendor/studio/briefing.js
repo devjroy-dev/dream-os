@@ -8,7 +8,6 @@ const express        = require('express');
 const router         = express.Router();
 const requireAuth    = require('../../middleware/requireAuth');
 const resolveVendor  = require('../../middleware/resolveVendor');
-const requirePrestige = require('../../middleware/requirePrestige');
 const asyncHandler   = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
 // ── R-P3.5.2 · ONE HOME (F-P3.8) ───────────────────────────────────────────
@@ -23,8 +22,7 @@ const { istTodayISO, istPlusDaysISO } = require('../../../lib/vendor/istClock');
 router.get(
   '/',
   requireAuth,
-  resolveVendor(),
-  requirePrestige,
+  resolveVendor(), // R-39.7: Studio Suite open to every tier — requirePrestige retired
   asyncHandler(async (req, res) => {
     const supabase  = req.app.locals.supabase;
     const vendorId  = req.vendor.id;

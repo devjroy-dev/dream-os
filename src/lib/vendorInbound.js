@@ -127,7 +127,9 @@ const { sendVendorEnquiryAlert } = require('./vendor/enquiryAlert');
 // {{3}}'s review sample on the approved template, read off his own screenshot.
 // Named as a const beside the door's callers for the same reason `CLAIM_BASE`
 // (demoLeadAlert.js:55) is — a URL pasted at three call sites drifts at two.
-const VENDOR_LEADS_LINK = 'https://thedreamwedding.in/vendor/leads';
+// F-38.p12 (CE-39 step 2a): reads the ONE HOME, src/lib/pwaPaths.js — the
+// address is byte-identical today; Phase 7 flips that file alone.
+const VENDOR_LEADS_LINK = require('./pwaPaths').vendorUrl('leads');
 
 function scrubModelFrame(text, verbatim, witness = null) {
   if (text == null) return text;
