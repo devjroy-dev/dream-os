@@ -71,6 +71,19 @@ router.use('/studio',      require('./studio/index'));
 // a root mount is reached for every path, so a segment router that needs to win
 // its own prefix belongs before it, not after.
 router.use('/solutions',   require('./solutions/index'));
+// ── ROAD STEP 2b · THE TYPED MONEY PLANE (F-39.3, arm (c)) ─────────────────
+// GET /money/books/:vendorId and nothing else. Read-only; the router declares
+// no non-GET and a cell asserts that against its stack.
+//
+// MOUNTED ABOVE THE BARE '/' BELOW FOR THE REASON THE '/solutions' COMMENT
+// GIVES, and it is worth repeating rather than pointing at: `schedules` is
+// mounted at the ROOT and a root mount is reached for every path, so a segment
+// router that must win its own prefix belongs before it. `schedules` owns
+// `/invoices/:invoiceId/schedule` and `/schedules/:milestoneId` — it would not
+// today swallow `/money/books/:vendorId`, so this is not a live collision being
+// dodged. It is placement that stays correct when `schedules` grows a segment,
+// which is the failure the line below it was written for.
+router.use('/money',       require('./money'));
 router.use('/',            require('./schedules'));
 router.use('/contracts',   require('./contracts'));
 router.use('/tds',         require('./tds'));

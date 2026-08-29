@@ -185,6 +185,31 @@ else
   done)
 fi
 
+# ── THE BUILD-ARTIFACT REFUSAL (F-39.p2) ─────────────────────────────────────
+# REFUSED, NOT WARNED, AND THE ASYMMETRY WITH THE SIBLING NOTE BELOW IS THE
+# POINT. A missing sibling makes cross-repo benches SAY they refused — the
+# output tells you. A missing `src/engine/dist` says nothing at all: the
+# benches run, throw MODULE_NOT_FOUND inside `src/api/vendor/leads.js` (symbol:
+# the `patchNote` import) as it is pulled in through `src/api/vendor/core.js`,
+# and report as ordinary REDs indistinguishable from defects.
+#
+# WITNESSED, NOT SUPPOSED: at the 2b read-first, a fresh clone measured 47 RED
+# against a named base of 20 — delta 27, every one of them an ADDITION and not
+# one removal. That one-directional shape is the tell, and it is exactly the
+# shape a seat writing the number down would not have questioned.
+#
+# `src/engine/dist` is `tsc` output (`npm run build:engine`) and is not
+# committed, so EVERY fresh clone starts in this state. LESSON 1 above already
+# says the first floor after a fresh install is not a floor; this is the same
+# sentence with a second cause, and unlike cold module resolution it does not
+# go away on the second run.
+if [ -d "src/engine" ] && [ ! -d "src/engine/dist" ]; then
+  echo "STOP — src/engine/dist is absent. The floor would read TWENTY-SEVEN too many"
+  echo "REDs and every one of them would look like a defect [F-39.p2]."
+  echo "Run: npm run build"
+  exit 1
+fi
+
 # ── THE SIBLING WARNING ──────────────────────────────────────────────────────
 if [ ! -d "../dreamos-pwa" ]; then
   echo "NOTE — dreamos-pwa is not a sibling of this repo. Cross-repo benches will"

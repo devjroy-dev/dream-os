@@ -1,0 +1,9 @@
+# ROAD STEP 2b · the Books door delivery. Every path here is dirt this ZIP
+# creates on purpose; anything OUTSIDE this list is contamination [F-14.16].
+src/api/vendor/money.js
+src/api/vendor/core.js
+scripts/b46_money_books_bench.js
+scripts/run-floor.sh
+scripts/floor-manifest-ce39-2b.txt
+tools/preflight.sh
+docs/TDW_CE39_2B_BOOKS_HANDOVER.md

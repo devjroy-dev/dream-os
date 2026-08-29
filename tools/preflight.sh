@@ -21,10 +21,32 @@
 #   · A MISSING OR STALE SIBLING → three benches refuse or read the wrong tree:
 #     `tdw09_p2b_vocab`, `tdw13_d6_parity_matrix`, `tdw15_p1_events`. Witnessed at S1 §7
 #     (missing) and again in a worktree at S2/2 §1 (25 REDs where the named base was 22).
+#   · NO src/engine/dist → THE DREAM-OS FLOOR READS TWENTY-SEVEN TOO MANY REDs.  [F-39.p2]
+#     `src/api/vendor/leads.js` (symbol: the `patchNote` import) requires
+#     `../../engine/dist/core/donna`, which is a BUILD ARTIFACT — `npm run build:engine`,
+#     `tsc -p src/engine/tsconfig.json` — and is not committed. On a fresh clone the require
+#     throws MODULE_NOT_FOUND, and because `src/api/vendor/core.js` mounts `leads.js`, the
+#     throw cascades into every bench that loads the vendor router. Witnessed at the 2b
+#     read-first: 47 RED against a named base of 20, delta 27, ALL ONE-DIRECTIONAL — which
+#     is itself the tell, since a real regression at an untouched tip does not add
+#     twenty-seven benches and remove none.
 #
-# The three names are RECORDED from those two witnessings, not re-derived on every run —
-# said plainly rather than implied, because a list a reader assumes was derived is worse
-# than one that admits it was remembered.
+# The names above are RECORDED from those witnessings, not re-derived on every run — said
+# plainly rather than implied, because a list a reader assumes was derived is worse than one
+# that admits it was remembered.
+#
+# AND THE THIRD ONE WAS ALREADY KNOWN, WHICH IS THE PART WORTH RECORDING.
+# `scripts/b43_solutions_doors_bench.js`'s header states the prerequisite in full, and says
+# it was learnt the same way — green in a tree where `build:engine` had run, RED on a virgin
+# one — ending on the sentence 「a bench whose failure mode on a clean checkout looks like a
+# broken door is a bench that will get the door blamed」.
+#
+# So the FACT was documented and the INSTRUMENT was not, and only the instrument runs. A
+# header b43's reader sees is a header nobody measuring a floor ever opens; the floor went
+# on returning a stable, wrong, twenty-seven-bench answer to any seat that wrote the number
+# down. The 2b seat re-found it from first principles because there was nothing to read it
+# from at the moment it mattered. Knowing a precondition lies is not the same as having
+# something that says so out loud, and this file is the difference.
 #
 # NO STRICT MODE (R-38.21 (2), F-38.35). This file sets no shell options. It is executed
 # rather than sourced and it still declines to set any, for the reason base_guard.sh gives.
@@ -82,6 +104,14 @@ report() {
   say "  behind    ${BEHIND:-?}"
   say "  dirty     $DIRT file(s)"
   if [ -d "$DIR/node_modules" ]; then say "  node_modules  present"; else say "  node_modules  ABSENT"; fi
+  # [F-39.p2] dream-os only, and the guard is on the SOURCE dir rather than on the repo's
+  # name: a repo that has `src/engine/` is a repo whose floor needs `src/engine/dist/`, and
+  # keying on the tree means this line cannot start lying if the layout moves. The pwa has
+  # no `src/engine/`, so it prints nothing and no reader learns a fact about the wrong repo.
+  if [ -d "$DIR/src/engine" ]; then
+    if [ -d "$DIR/src/engine/dist" ]; then say "  engine/dist   present"
+    else say "  engine/dist   ABSENT"; fi
+  fi
   # Exported for the verdict below. A report that prints a number and a verdict that does
   # not read it is two homes for one fact.
   eval "${NAME_VAR}_BEHIND=\${BEHIND:-0}"
@@ -111,6 +141,17 @@ if [ "${PWA_PRESENT:-0}" = "1" ] && [ ! -d "$PARENT/dreamos-pwa/node_modules" ];
   say "⚠ pwa node_modules ABSENT — the pwa floor will read EIGHT TOO MANY REDs"
   say "  (seven run-*-proof benches and waDial refuse without node_modules/.bin/tsc)."
   say "  Run: npm ci   in $PARENT/dreamos-pwa  BEFORE any floor number is written down."
+  WARN=1
+fi
+
+# [F-39.p2] The same shape for the artifact the dream-os floor cannot see past. Keyed on
+# `src/engine` existing, exactly as the per-repo line above is, so this never asks its
+# question of a tree that has no such directory.
+if [ -d "$PARENT/dream-os/src/engine" ] && [ ! -d "$PARENT/dream-os/src/engine/dist" ]; then
+  say "⚠ dream-os src/engine/dist ABSENT — the dream-os floor will read TWENTY-SEVEN TOO MANY REDs"
+  say "  (src/api/vendor/leads.js requires engine/dist/core/donna; the throw cascades through"
+  say "   src/api/vendor/core.js into every bench that mounts the vendor router)."
+  say "  Run: npm run build   in $PARENT/dream-os  BEFORE any floor number is written down."
   WARN=1
 fi
 
