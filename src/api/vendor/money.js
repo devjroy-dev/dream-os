@@ -1,7 +1,13 @@
 // src/api/vendor/money.js
-// TDW · ROAD STEP 2b · THE TYPED MONEY PLANE — ONE READ DOOR.
+// TDW · ROAD STEP 2c · THE TYPED MONEY PLANE — THE READ DOOR AND THE WRITE DOORS.
 //
-//   GET /api/v2/vendor/money/books/:vendorId
+//   GET    /api/v2/vendor/money/books/:vendorId
+//   POST   /api/v2/vendor/money/invoices/:vendorId
+//   PATCH  /api/v2/vendor/money/invoices/:vendorId/:invoiceId/cancel
+//   POST   /api/v2/vendor/money/invoices/:vendorId/:invoiceId/payments
+//   GET    /api/v2/vendor/money/invoices/:vendorId/:invoiceId/pdf
+//   POST   /api/v2/vendor/money/expenses/:vendorId
+//   DELETE /api/v2/vendor/money/expenses/:vendorId/:expenseId
 //
 // Auth: vendor JWT, must own :vendorId (requireAuth + resolveVendor mode 2).
 //
@@ -27,13 +33,26 @@
 // participate in the id-space split above.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// ZERO NON-GET, BY CONSTRUCTION AND BY CELL
+// THE ZERO-NON-GET CLAUSE IS RETIRED HERE, AND IT MOVED RATHER THAN DIED
 // ═══════════════════════════════════════════════════════════════════════════
-// This file declares exactly one route and it is a GET. `scripts/b45_money_
-// books_bench.js` (symbol: the zero-non-GET cell) asserts that against the
-// router's own stack, not against a grep of this text — a comment saying "no
-// writes" is not a guard, and D-38.1 is the doctrine: presence is not
-// behaviour, observe at the defect's moment.
+// At 2b this file declared one route and it was a GET, and `b45`'s cell asserted
+// that against the router's own stack. 2c gives it the five money verbs, so the
+// clause cannot stand on THIS router — it now belongs to the ROOM.
+//
+// ⚠ AND THE GUARD CHANGED CHARACTER, WHICH IS THE PART WORTH THE PARAGRAPH.
+// Books mounted no verb at 2b partly by ruling and partly by CONSTRUCTION: the
+// movement ids it emitted were composites (`invoice:<uuid>`, `expense:<uuid>`,
+// `schedule:<invoice_id>:<ordinal>`) and unusable as addresses, so a control
+// there had nothing to key on. Those ids are unchanged, but the room now sits
+// beside doors that DO take typed ids. The room's read-only ruling is from this
+// sitting enforced ONLY by the cell in `scripts/b47_money_crossing_bench.js`
+// (symbol: the zero-verb cell, asserted over BooksBody's import graph), never
+// again by the id space. Recorded at CE-39 as the band's line.
+//
+// ── EVERY WRITE BELOW CALLS THE HOME AND NOTHING ELSE ──────────────────────
+// `src/lib/vendor/invoices.js` and `src/lib/vendor/expenses.js` are the writer
+// homes for their tables (c-39.32). No route in this file opens a table itself;
+// the cell mutation for that is an inline insert here, which reds.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 // COLUMN WITNESS — DERIVE-OR-DECLARE (F-P3.12, SQL-PROVENANCE LAW)
@@ -68,12 +87,36 @@ const router = express.Router();
 const requireAuth = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler = require('../../lib/asyncHandler');
-const { ok: okRes } = require('../../lib/response');
+const { ok: okRes, err: errRes } = require('../../lib/response');
+const {
+  createInvoice, recordPayment, cancelInvoice, invoicePdfSource,
+} = require('../../lib/vendor/invoices');
+const { createExpense, deleteExpense } = require('../../lib/vendor/expenses');
+const { generateInvoicePdf } = require('../../lib/invoicePdf');
 
+// ── THE PARTICULAR · D-1 B13, AND ONLY THE PARTICULAR  [F-39.21] ───────────
+// The founder's verdict on the 2b room: 「no info about who paid, out of how
+// much」. The door already SELECTed `amount_total` and `amount_paid` and threw
+// both away per-row. D-1 sealed exactly which facts join them, and the list is
+// SHORTER than the 2c kickoff's — the kickoff was authored before the pick.
+//
+//   credit  ->  client_name(5) · invoice_number(4) · paid-of-total(10 of 8)
+//               + milestone_label(4 on payment_schedules) when it is a schedule row
+//   debit   ->  category(4) · description(5)
+//
+// STRUCK, WITH REASON, at CE-39 (a):
+//   invoices.description — F-39.23: Victor's money-edit writes an AUDIT LOG
+//     carrying the struck rupee glyph into this vendor-facing column. Rendering
+//     it would put the glyph on the money surface. Unrenderable, not merely
+//     unrendered.
+//   invoices.state, invoices.due_date — not on D-1's particular. `state` is
+//     still SELECTed because OUTSTANDING is gated on it; it does not ride a row.
+//   expenses.client_name — not on D-1's debit particular.
 const INVOICE_SELECT =
-  'id, amount_total, amount_paid, state, created_at, last_payment_at, has_schedule';
-const SCHEDULE_SELECT = 'invoice_id, amount_due, state, paid_at, paid_amount, ordinal';
-const EXPENSE_SELECT = 'id, amount, expense_date, created_at';
+  'id, invoice_number, client_name, amount_total, amount_paid, state, created_at, last_payment_at, has_schedule';
+const SCHEDULE_SELECT =
+  'invoice_id, milestone_label, amount_due, state, paid_at, paid_amount, ordinal';
+const EXPENSE_SELECT = 'id, amount, category, description, expense_date, created_at';
 
 // ── R-39.12 (CE-39, on the 2b read-first's REPORT 4) · THE OUTSTANDING RULE ──
 // OUTSTANDING IS A POSITIVE LIST AND NEVER A NEGATION. F-P3.1 earned this on
@@ -151,6 +194,10 @@ router.get(
     // unscheduled invoices contribute their own `amount_paid`.
     const credits = [];
 
+    // The schedule credit names its parent invoice, so the parent must be in
+    // hand before the loop rather than fetched per row.
+    const invoiceById = new Map(invoices.map((i) => [i.id, i]));
+
     for (const s of schedules) {
       // A milestone is a movement when it has a PAID CLOCK. `state = 'waived'`
       // never sets one, and a 'pending' row has not moved money yet. The clock
@@ -158,12 +205,24 @@ router.get(
       if (!s.paid_at) continue;
       const amount = Number(s.paid_amount) || 0;
       if (amount <= 0) continue;
+      const parent = invoiceById.get(s.invoice_id) || null;
       credits.push({
         id: `schedule:${s.invoice_id}:${s.ordinal}`,
         date: String(s.paid_at).slice(0, 10),
         _tiebreak: String(s.paid_at),
         amount,
         undated: false,
+        // D-1 B13 · the schedule credit names its milestone in the vendor's own
+        // words. `milestone_label` is NOT NULL (ordinal 4) so the field is never
+        // absent; the parent lookup can miss only if a schedule outlived its
+        // invoice, which the FK's ON DELETE CASCADE makes impossible.
+        particular: {
+          client_name:    parent ? parent.client_name : null,
+          invoice_number: parent ? parent.invoice_number : null,
+          milestone_label: s.milestone_label || null,
+          amount_paid:    amount,
+          amount_total:   parent ? (Number(parent.amount_total) || 0) : null,
+        },
       });
     }
 
@@ -189,6 +248,16 @@ router.get(
         _tiebreak: String(when),
         amount,
         undated: !stamped,
+        // `invoice_number`(4) and `client_name`(5) are both NOT NULL, so the
+        // register never renders an empty particular against a real row.
+        // `amount_paid of amount_total` is the founder's 「out of how much」.
+        particular: {
+          client_name:    i.client_name || null,
+          invoice_number: i.invoice_number || null,
+          milestone_label: null,
+          amount_paid:    amount,
+          amount_total:   Number(i.amount_total) || 0,
+        },
       });
     }
 
@@ -208,6 +277,19 @@ router.get(
       _tiebreak: String(e.created_at),
       amount: Number(e.amount) || 0,
       undated: !e.expense_date,
+      // D-1 B13 · the debit particular. `category`(4) is NOT NULL and carries a
+      // CLOSED vocabulary at `expenses_category_check`.
+      //
+      // ⚠ THE DOOR EMITS THE ROW'S OWN WORD, VERBATIM, ALWAYS — IT NEVER
+      // VALIDATES. F-2c.p1: `src/lib/vendor/expenses.js`'s ALLOWED_CATEGORIES
+      // and the database's CHECK are not the same twelve, so three words the
+      // DB holds would be refused by the writer. A door that filtered rows
+      // through the writer's list would HIDE money the vendor logged. The row's
+      // truth is the register's truth — F-39.8's precedent, one plane over.
+      particular: {
+        category:    e.category || null,
+        description: e.description || null,
+      },
     }));
 
     // ── THE REGISTER ───────────────────────────────────────────────────────
@@ -236,6 +318,7 @@ router.get(
         credit: m.kind === 'credit' ? m.amount : null,
         debit: m.kind === 'debit' ? m.amount : null,
         balance,
+        particular: m.particular || null,
       };
     });
 
@@ -245,13 +328,131 @@ router.get(
       .filter((i) => OUTSTANDING_STATES.includes(i.state))
       .reduce((sum, i) => sum + ((Number(i.amount_total) || 0) - (Number(i.amount_paid) || 0)), 0);
 
+    // ── OPENING AND CLOSING · READ, NEVER SUMMED  [D-1 §B] ─────────────────
+    // D-1 states it and this door obeys it: **this surface sums nothing.**
+    // OPENING is zero by the register's own construction — the balance runs
+    // from zero at the first movement, so the period opens at zero by
+    // definition and not by arithmetic. CLOSING is the LAST ROW'S OWN
+    // `balance` cell, read back. Neither is a second derivation of the chain.
+    //
+    // F-04.13's tuition kept rather than repaid: the hub totalled
+    // `public.invoices` while the list totalled binders, two derivations of one
+    // rule, and they could not agree by luck. A `reduce` here would be the
+    // third.
+    const opening = 0;
+    const closing = rows.length ? rows[rows.length - 1].balance : 0;
+
     return okRes(res, {
       received,
       outstanding,
+      opening,
+      closing,
       movements: rows,
       total: rows.length,
     });
   }),
 );
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE WRITE DOORS — ROAD STEP 2c, THE MONEY WRITE-PLANE CROSSING (F-39.3)
+// ═══════════════════════════════════════════════════════════════════════════
+// Every one of these is vendor-JWT authed through the SAME pair the read door
+// uses (requireAuth + resolveVendor on :vendorId), and every one delegates to
+// the writer home. NOT ONE OF THEM OPENS A TABLE. That is asserted by cell, not
+// by this paragraph — `scripts/b47_money_crossing_bench.js`, mutation: inline a
+// `.from('invoices').insert(` here and it reds.
+//
+// ── WHAT THEY REPLACE ──────────────────────────────────────────────────────
+//   Mark paid       POST /binders/:v/:id/money-edit   (ENGINE)  -> here
+//   Delete expense  POST /binders/:v/:id/hide         (ENGINE)  -> here
+//   Add             POST /binders/:v/:id/money-edit   (ENGINE)  -> here
+//   Cancel          PATCH /vendor/invoices/:id/cancel (binder)  -> here
+//   PDF             GET   /vendor/invoices/:id/pdf    (binder)  -> here
+// The first three crossed a PLANE; the last two were already on the public
+// mount but keyed on an ENGINE BINDER id, which is the same crossing wearing a
+// different coat. All five now key on `public.invoices.id` / `public.expenses.id`.
+
+const vendorGate = [requireAuth, resolveVendor({ paramName: 'vendorId' })];
+
+// ── ADD ───────────────────────────────────────────────────────────────────
+router.post('/invoices/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {
+  const r = await createInvoice(req.app.locals.supabase, req.vendor.id, req.body || {});
+  if (!r.ok) return errRes(res, 400, r.error);
+  return okRes(res, { invoice: r.invoice });
+}));
+
+router.post('/expenses/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {
+  const r = await createExpense(req.app.locals.supabase, req.vendor.id, req.body || {});
+  if (!r.ok) return errRes(res, 400, r.error);
+  return okRes(res, { expense: r.expense });
+}));
+
+// ── CANCEL ────────────────────────────────────────────────────────────────
+router.patch('/invoices/:vendorId/:invoiceId/cancel', ...vendorGate, asyncHandler(async (req, res) => {
+  const r = await cancelInvoice(req.app.locals.supabase, req.vendor.id, req.params.invoiceId);
+  if (!r.ok) return errRes(res, r.code === 'INVOICE_PAID' ? 400 : 404, r.error);
+  return okRes(res, { invoice: r.invoice, already_cancelled: !!r.already_cancelled });
+}));
+
+// ── MARK PAID ─────────────────────────────────────────────────────────────
+// `amount` is REQUIRED and the caller computes it. The room passes the row's
+// own `owed`; the agent passes what the vendor said arrived. Neither the door
+// nor the home guesses a figure on a money surface.
+router.post('/invoices/:vendorId/:invoiceId/payments', ...vendorGate, asyncHandler(async (req, res) => {
+  const { amount, payment_type } = req.body || {};
+  const r = await recordPayment(
+    req.app.locals.supabase, req.vendor.id, req.params.invoiceId, { amount, payment_type },
+  );
+  if (!r.ok) return errRes(res, r.code ? 400 : 404, r.error);
+  return okRes(res, { invoice: r.invoice, transitioned: r.transitioned, balance: r.balance });
+}));
+
+// ── DELETE EXPENSE ────────────────────────────────────────────────────────
+// SOFT delete, exactly as the home has always done it: `deleted_at` is stamped
+// and the Books read filters it, so the row leaves the register without leaving
+// the database.
+router.delete('/expenses/:vendorId/:expenseId', ...vendorGate, asyncHandler(async (req, res) => {
+  const r = await deleteExpense(req.app.locals.supabase, req.vendor.id, req.params.expenseId);
+  if (!r.ok) return errRes(res, 404, r.error);
+  return okRes(res, { deleted: true });
+}));
+
+// ── PDF ───────────────────────────────────────────────────────────────────
+// The generator and the bucket are NOT this door's — `src/lib/invoicePdf.js`
+// renders and the `invoices` bucket stores, both already one home each. This
+// route asks the writer home for the typed source and hands it over.
+router.get('/invoices/:vendorId/:invoiceId/pdf', ...vendorGate, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const src = await invoicePdfSource(supabase, req.vendor.id, req.params.invoiceId);
+  if (!src.ok) return errRes(res, 404, src.error);
+
+  try {
+    const buffer = await generateInvoicePdf({
+      invoice: src.invoice, vendor: src.vendor, vendorName: src.vendorName || 'Vendor',
+    });
+    const fileName = `${req.vendor.id}/INVOICE-` +
+      `${src.invoice.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;
+
+    const { error: upErr } = await supabase.storage
+      .from('invoices').upload(fileName, buffer, { contentType: 'application/pdf', upsert: true });
+    if (upErr) return errRes(res, 500, 'Could not store the PDF.');
+
+    const { data: signed } = await supabase.storage
+      .from('invoices').createSignedUrl(fileName, 60 * 60 * 24 * 365);
+    if (!signed?.signedUrl) return errRes(res, 500, 'Could not sign the PDF link.');
+
+    // `pdf_url` is a column on public.invoices, so the stamp goes through the
+    // writer home rather than through a `.from()` here — the sole-writer rule
+    // does not take an exception for a one-field update.
+    const { updateInvoicePdfUrl } = require('../../lib/vendor/invoices');
+    await updateInvoicePdfUrl(supabase, req.vendor.id, src.invoice.id, signed.signedUrl);
+
+    return okRes(res, { url: signed.signedUrl, invoice_number: src.invoice.invoice_number });
+  } catch (e) {
+    console.error('[GET /vendor/money/invoices/:id/pdf]', e.message);
+    return errRes(res, 500, 'Could not generate the PDF.');
+  }
+}));
 
 module.exports = router;

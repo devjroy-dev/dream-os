@@ -1,0 +1,280 @@
+#!/usr/bin/env node
+'use strict';
+// scripts/b47_money_crossing_bench.js — ROAD STEP 2c · THE MONEY WRITE-PLANE
+// CROSSING. dream-os side.
+//
+//   node scripts/b47_money_crossing_bench.js
+//
+// Exit code is the verdict. Counts are DISCLOSED, never padded.
+//
+// ── WHAT THIS BENCH ASSERTS, AND WHAT IT REFUSES TO ────────────────────────
+// Every cell below is either STRUCTURAL (a fact about the module graph and the
+// text of a file, read raw) or BEHAVIOURAL against a stub supabase. None of
+// them talks to a database, so none of them can claim a row exists.
+//
+// ⚠ COMMENT-BLINDNESS, EARNED AT F-39.13. A text cell that greps a source file
+// must strip comments FIRST or it reads its own documentation as evidence —
+// F-39.13 caught exactly that in `vendor.ts`, where a comment-strip swallowed
+// live code and three absence cells went vacuously green. `strip()` below
+// removes block and line comments and every cell that asserts ABSENCE runs on
+// the stripped text; cells that assert PRESENCE of a named symbol run on it too,
+// so a symbol that exists only in prose cannot pass.
+//
+// ── THE STRUCK CELL, DECLARED RATHER THAN DROPPED  [CE-39, ruling 3(a)] ─────
+// The charter asked for: "every money write that emitted an event still does,
+// through writeEvent". It was STRUCK at the read-first and the strike is
+// recorded here rather than in a handover nobody re-reads. Derived at 051a413:
+// money.js, invoices.js, expenses.js, schedules.js, binderWrite.js and
+// ledger.js hold ZERO references to `public.events` or `writeEvent`, and
+// engine.js's create_invoice / record_payment / log_expense hold none either.
+// NO MONEY VERB EMITS A CALENDAR ENTRY. A cell asserting the preservation of an
+// empty coupling passes over an unreachable path — vacuous green, which this
+// estate treats as worse than a declared gap. It is therefore NOT WRITTEN, and
+// this paragraph is why. If a money verb ever gains an event, this cell is owed.
+
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.resolve(__dirname, '..');
+const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+const strip = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, '')
+     .split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+
+let pass = 0; let fail = 0;
+// Cells may be sync or async; the queue keeps them in declaration order so the
+// printout reads as the file reads.
+const queue = [];
+function cell(name, fn) { queue.push([name, fn]); }
+async function runAll() {
+  for (const [name, fn] of queue) {
+    if (name === null) { console.log(fn); continue; }
+    let ok = false; let why = '';
+    try { const r = await fn(); ok = r === true; if (!ok) why = String(r); }
+    catch (e) { ok = false; why = e.message; }
+    if (ok) { pass += 1; console.log(`  PASS  ${name}`); }
+    else { fail += 1; console.log(`  FAIL  ${name}\n        ${why}`); }
+  }
+}
+
+console.log('b47 · money write-plane crossing · dream-os\n');
+
+// ── §1 · ONE WRITER HOME ──────────────────────────────────────────────────
+cell(null, '§1 one writer home');
+
+cell('1.1 money.js opens no table itself', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  // The read door's three SELECTs are the ONLY `.from(` calls permitted here,
+  // and they are reads. Any insert/update/upsert/delete is the defect.
+  // ⚠ `router.delete(` IS A ROUTE DECLARATION, NOT A TABLE MUTATION, and the
+  // first cut of this cell reddened on it. An instrument's report is evidence
+  // about the instrument first (F-39.25). The question is whether a supabase
+  // CHAIN mutates, so the match is anchored on `.from(` — that is the only
+  // shape a table write can take here.
+  const flat = s.replace(/\s+/g, ' ');
+  const bad = flat.match(/\.from\('[a-z_]+'\)\s*\.(insert|update|upsert|delete)\s*\(/g) || [];
+  return bad.length === 0 || `money.js mutates a table directly: ${bad.join(' ')}`;
+  // MUTATION: add `await supabase.from('invoices').insert({});` to any route
+  // above `module.exports` -> RED.
+});
+
+cell('1.2 money.js write routes import the writer home', () => {
+  // PROVEN-ONE-WAY. Green at the cured tree; no production mutation run.
+  const s = strip(read('src/api/vendor/money.js'));
+  const need = ['createInvoice', 'recordPayment', 'cancelInvoice', 'invoicePdfSource', 'createExpense', 'deleteExpense'];
+  const miss = need.filter((n) => !new RegExp(`\\b${n}\\b`).test(s));
+  return miss.length === 0 || `money.js does not reach the home for: ${miss.join(', ')}`;
+});
+
+cell('1.3 src/lib/money/ was never created', () => {
+  // PROVEN-ONE-WAY. Asserts an ABSENCE, and the mutation that would red it
+  // is creating the very thing the sitting refused to create. Green-only by
+  // construction; labelled rather than padded.
+  const p = path.join(ROOT, 'src/lib/money');
+  return !fs.existsSync(p) || 'src/lib/money/ exists — a second home for public.invoices (c-39.32)';
+});
+
+cell('1.4 the engine tool switch is a DEFUSED ISLAND — no money verb lives there', () => {
+  // ── AMENDED MID-SITTING · THE CHARTER'S EXTRACTION CLAUSE WENT VOID ───────
+  // This cell asserted that `case 'record_payment'` and `case 'log_expense'`
+  // in src/agent/engine.js call the writer home. They were extracted, the
+  // floor reddened `b05_f0550_ping_drain_bench` §4.3 — 「a defusal that moves
+  // an executable byte is not a defusal」 — and the reason is that BOTH CASES
+  // SIT INSIDE THE F-05.56 DEFUSED ISLAND at src/agent/engine.js:753,
+  // 「EVERYTHING BELOW THIS LINE HAS ZERO CALLERS SINCE ARC M5」, frozen under
+  // CE-68 R4. record_payment is at 1508 and log_expense at 1769; the island
+  // opens at 753. The extraction edited dead code and broke a freeze to do it.
+  //
+  // engine.js reverted byte-identical. The charter's extraction clause is
+  // DISCHARGED-AS-VOID: its target was not a live writer.
+  //
+  // WHAT THIS CELL ASSERTS NOW is the fact that made the clause void, so the
+  // next seat cannot re-charter the same extraction: the money cases are BELOW
+  // the island line, and the island's two entry points have no callers. If
+  // either ever gains one, this reds and the extraction becomes real work.
+  const s = strip(read('src/agent/engine.js'));
+  const raw = read('src/agent/engine.js');
+  const islandAt = raw.split('\n').findIndex((l) => /ZERO CALLERS SINCE ARC M5/.test(l));
+  if (islandAt < 0) return 'the F-05.56 island header is gone — re-derive before trusting this cell';
+  const lines = raw.split('\n');
+  for (const c of ['record_payment', 'log_expense']) {
+    const at = lines.findIndex((l) => l.includes(`case '${c}'`));
+    if (at < 0) return `case '${c}' not found`;
+    if (at < islandAt) return `case '${c}' is ABOVE the island line — it may be live now`;
+  }
+  // The callers, swept rather than assumed. This is the sweep whose absence
+  // produced c-2c.2 and the chair's c-39.33 on F-39.20.
+  const callers = /\b(handleOnboarding|executeTool)\s*\(/g;
+  const hits = (s.match(callers) || []).filter((h) => !/function/.test(h));
+  const decls = (s.match(/async function (handleOnboarding|executeTool)\s*\(/g) || []).length;
+  return hits.length === decls
+    || `the island's entry points have ${hits.length - decls} caller(s) — it is no longer defused`;
+});
+
+// ── §2 · F-39.8 · THE PAYMENT WRITER STAMPS ITS OWN CLOCK ─────────────────
+cell(null, '\n§2 F-39.8 — the payment clock and the transition');
+
+cell('2.1 recordPayment stamps last_payment_at', () => {
+  const s = strip(read('src/lib/vendor/invoices.js'));
+  const i = s.indexOf('async function recordPayment');
+  if (i < 0) return 'recordPayment not found in the home';
+  const block = s.slice(i, s.indexOf('async function cancelInvoice'));
+  return /last_payment_at:\s*stampedAt/.test(block)
+    || 'recordPayment does not write last_payment_at — F-39.8 uncured';
+  // MUTATION: delete the `last_payment_at: stampedAt,` line -> RED.
+});
+
+cell('2.2 the transition is a POSITIVE list, never a negation', () => {
+  // PROVEN-ONE-WAY at the text level. Its BEHAVIOURAL twin, 2.3, IS mutation-
+  // proven, and 2.3 is the one that would catch a real negation.
+  const s = strip(read('src/lib/vendor/invoices.js'));
+  if (!/const PAYABLE_STATES = \[\s*'unpaid',\s*'advance_paid'\s*\]/.test(s)) {
+    return 'PAYABLE_STATES is not the ruled two-item positive list';
+  }
+  const i = s.indexOf('async function recordPayment');
+  const block = s.slice(i, s.indexOf('async function cancelInvoice'));
+  if (/state\s*!==\s*'paid'|state\s*<>\s*'paid'|!\s*\[[^\]]*'cancelled'/.test(block)) {
+    return 'recordPayment gates on a negation — R-39.12';
+  }
+  return /PAYABLE_STATES\.includes\(inv\.state\)/.test(block)
+    || 'recordPayment does not gate on PAYABLE_STATES';
+  // MUTATION: replace the gate with `inv.state !== 'paid'` -> RED.
+});
+
+cell('2.3 behavioural — a short payment cannot be talked into paid', async () => {
+  // The table this replaced let `payment_type: 'balance'` close an invoice
+  // REGARDLESS of arithmetic. Run the real function against a stub client.
+  const { recordPayment } = require(path.join(ROOT, 'src/lib/vendor/invoices.js'));
+  const row = {
+    id: 'i1', invoice_number: 'TDW/T/01', client_name: 'K', client_phone: null,
+    lead_id: null, amount_total: 50000, amount_advance: null, amount_paid: 0,
+    state: 'unpaid', due_date: null, created_at: '2026-01-01T00:00:00Z',
+  };
+  let written = null;
+  const chain = () => {
+    const o = {};
+    o.select = () => o; o.eq = () => o; o.is = () => o;
+    o.update = (patch) => { written = patch; return o; };
+    o.maybeSingle = async () => ({ data: written ? { ...row, ...written } : row, error: null });
+    o.single = o.maybeSingle;
+    return o;
+  };
+  const r = await recordPayment({ from: chain }, 'v1', 'i1', { amount: 1, payment_type: 'balance' });
+  if (!r.ok) return `refused outright: ${r.error}`;
+  if (!written) return 'no update was issued';
+  if (written.state !== 'advance_paid') {
+    return `Rs 1 declared 'balance' produced state=${written.state} on a Rs 50,000 invoice`;
+  }
+  if (!written.last_payment_at) return 'the payment clock was not stamped';
+  return true;
+  // MUTATION: restore `if (payment_type === 'balance') newState = 'paid'` -> RED.
+});
+
+// ── §3 · THE BOOKS DOOR EMITS D-1's PARTICULARS  [F-39.21] ────────────────
+cell(null, '\n§3 F-39.21 — the particular on the wire');
+
+cell('3.1 the door SELECTs every field D-1 renders', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  const need = {
+    'invoices.invoice_number': /INVOICE_SELECT[\s\S]{0,300}?invoice_number/,
+    'invoices.client_name': /INVOICE_SELECT[\s\S]{0,300}?client_name/,
+    'payment_schedules.milestone_label': /SCHEDULE_SELECT[\s\S]{0,300}?milestone_label/,
+    'expenses.category': /EXPENSE_SELECT[\s\S]{0,300}?category/,
+    'expenses.description': /EXPENSE_SELECT[\s\S]{0,300}?description/,
+  };
+  const miss = Object.keys(need).filter((k) => !need[k].test(s));
+  return miss.length === 0 || `not selected: ${miss.join(', ')}`;
+  // MUTATION: drop `client_name` from INVOICE_SELECT -> RED.
+});
+
+cell('3.2 the door PROJECTS the particular onto every movement', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  const projected = (s.match(/particular:\s*\{/g) || []).length;
+  if (projected < 3) return `only ${projected} particular projections (credit×2 + debit expected)`;
+  return /particular:\s*m\.particular/.test(s)
+    || 'the movement row does not carry particular onto the wire';
+  // MUTATION: delete `particular: m.particular || null,` from the row map -> RED.
+});
+
+cell('3.3 invoices.description is NOT on the wire  [F-39.23]', () => {
+  // PROVEN-ONE-WAY. An absence cell: green at the cured tree, no mutation run.
+  // ⚠ An absence cell can pass VACUOUSLY if INVOICE_SELECT is renamed out from
+  // under it, which is why it reads the named const and not the whole file.
+  const s = strip(read('src/api/vendor/money.js'));
+  const sel = (s.match(/const INVOICE_SELECT =[\s\S]*?;/) || [''])[0];
+  return !/description/.test(sel)
+    || 'INVOICE_SELECT carries description — F-39.23 puts a rupee glyph audit log on the money surface';
+});
+
+cell('3.4 opening/closing are READ, never summed', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  if (!/const opening = 0;/.test(s)) return 'opening is not the constructed zero';
+  if (!/const closing = rows\.length \? rows\[rows\.length - 1\]\.balance : 0;/.test(s)) {
+    return 'closing is not the last row\'s own balance cell';
+  }
+  // Exactly two reduces are permitted in this file and they are the head figures
+  // received/outstanding, which predate 2c. A third is a second derivation of
+  // the chain — F-04.13.
+  const reduces = (s.match(/\.reduce\(/g) || []).length;
+  return reduces === 2 || `${reduces} reduce() calls — the register must sum nothing new`;
+});
+
+// ── §4 · THE FIVE VERBS ARE MOUNTED, TYPED, AND GATED ─────────────────────
+cell(null, '\n§4 the five verbs');
+
+cell('4.1 all six typed money routes exist on the router', () => {
+  // PROVEN-ONE-WAY. Green at the cured tree; no production mutation run.
+  const s = strip(read('src/api/vendor/money.js'));
+  const want = [
+    /router\.post\('\/invoices\/:vendorId'/,
+    /router\.post\('\/expenses\/:vendorId'/,
+    /router\.patch\('\/invoices\/:vendorId\/:invoiceId\/cancel'/,
+    /router\.post\('\/invoices\/:vendorId\/:invoiceId\/payments'/,
+    /router\.delete\('\/expenses\/:vendorId\/:expenseId'/,
+    /router\.get\('\/invoices\/:vendorId\/:invoiceId\/pdf'/,
+  ];
+  const miss = want.filter((r) => !r.test(s)).length;
+  return miss === 0 || `${miss} of six typed money routes missing`;
+});
+
+cell('4.2 every write route is vendor-JWT gated', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  if (!/const vendorGate = \[requireAuth, resolveVendor\(\{ paramName: 'vendorId' \}\)\]/.test(s)) {
+    return 'vendorGate is not the requireAuth + resolveVendor pair';
+  }
+  const routes = s.match(/router\.(post|patch|delete|get)\('\/(invoices|expenses)[^\n]*/g) || [];
+  const ungated = routes.filter((r) => !/\.\.\.vendorGate/.test(r));
+  return ungated.length === 0 || `ungated route(s): ${ungated.join(' | ')}`;
+  // MUTATION: drop `...vendorGate` from the payments route -> RED.
+});
+
+// ── §5 · SEATED ELSEWHERE, BY RULING ──────────────────────────────────────
+// The base_guard.sh equality cell is seated in the pwa's `b40`, not here — the
+// chair's ruling, and the correct one: the comment-only fork is cured in ZIP 2,
+// so a cell here would red at ZIP 1's own floor for work that has not shipped.
+
+// ── VERDICT ───────────────────────────────────────────────────────────────
+runAll().then(() => {
+  console.log(`\nb47 — ${pass} PASS · ${fail} FAIL`);
+  process.exit(fail === 0 ? 0 : 1);
+});

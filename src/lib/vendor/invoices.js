@@ -1,14 +1,49 @@
 // src/lib/vendor/invoices.js
-// Shared write logic for vendor invoices.
-// Called by REST handlers (src/api/vendor/invoices.js), the vendor engine
-// chat door (src/api/vendor-engine/chat.js — Victor), and src/index.js.
+// THE WRITER HOME FOR public.invoices. ONE HOME, ALL VERBS.
+//
+// Called by REST handlers (src/api/vendor/invoices.js, src/api/vendor/money.js),
+// the vendor engine chat door (src/api/vendor-engine/chat.js — Victor),
+// src/agent/engine.js's tool WRITE BLOCKS, and src/index.js.
+//
+// ── WHY THIS FILE AND NOT src/lib/money/  [CE-39 2c, c-39.32] ───────────────
+// The 2c kickoff ruled a NEW home at `src/lib/money/{invoices,expenses}.js`. It
+// was authored blind of this tree: `createInvoice` and `updateInvoice` were
+// already here, already typed, already the only importers' target. Founding a
+// second home for functions that have one is the defect `lib/vendor/events.js`
+// was just convicted of from the other side (F-39.20) — a superseded home left
+// standing. The chair adopted the seat's arm: the home is HERE, it grows, and
+// `src/lib/money/` is never created.
+//
+// ── WHAT 2c ADDED, AND WHERE IT CAME FROM ──────────────────────────────────
+// `recordPayment` and `cancelInvoice` were inline in the REST router
+// (src/api/vendor/invoices.js `/:invoiceId/payments` and `/:invoiceId/cancel`)
+// and inline again in `src/agent/engine.js` (`case 'record_payment'`). Two
+// implementations of one verb on one table is how they drift, and they HAD:
+// see the F-39.29 line in this sitting's handover.
 //
 // Counter increment is NOT atomic here -- we do a read-then-write.
 // Acceptable for founding cohort scale (<50 vendors, low concurrency).
 // TODO: replace with a Postgres function when concurrent invoice creation
 // becomes a real risk (post-launch scaling).
+//
+// ── COLUMN WITNESS · SQL-PROVENANCE LAW (F-P3.12) ──────────────────────────
+// Ordinals are `information_schema.columns.ordinal_position` as witnessed in
+// `docs/db/PUBLIC_SCHEMA.md` at dream-os 051a413. `public.invoices` skips
+// ordinal 18, so printed position and ordinal differ — match on the NUMBER.
+//   invoice_number(4) client_name(5) description(7) amount_total(8)
+//   amount_paid(10) due_date(11) state(12) created_at(15)
+//   last_payment_at(19) deleted_at(20) has_schedule(21)
+// State vocabulary from the table's own CHECK, `invoices_state_check`:
+//   {unpaid, advance_paid, paid, cancelled}
 
 'use strict';
+
+// ── THE TRANSITIONABLE SET · A POSITIVE LIST, NEVER A NEGATION  [F-39.8] ────
+// R-39.12 earned this on this exact table: `state <> 'paid'` reads every
+// UNKNOWN as included, the unknown being any state a future migration adds. So
+// a payment may move an invoice only FROM one of these two, and `cancelled`
+// and `paid` are excluded by being absent rather than by being named.
+const PAYABLE_STATES = ['unpaid', 'advance_paid'];
 
 // ── createInvoice ─────────────────────────────────────────────────────────
 
@@ -129,4 +164,203 @@ async function updateInvoice(supabase, vendorId, invoiceId, patch) {
   return { ok: true, invoice };
 }
 
-module.exports = { createInvoice, updateInvoice };
+// ── recordPayment ─────────────────────────────────────────────────────────
+// THE MONEY VERB. Extracted from two inline implementations at CE-39 2c.
+//
+// ── F-39.8 CURED HERE, AND THIS IS THE WHOLE OF THE CURE ───────────────────
+// Both prior implementations updated `amount_paid`, `state` and `updated_at`
+// and NEVER STAMPED `last_payment_at`. That is why DROY550's two fully-paid
+// invoices read `unpaid` and why the Books register renders 「no date on file」
+// against them: the door had to date the credit by `created_at` because the
+// payment's own clock was never written. The register was telling the truth
+// about a database the writer had left incomplete.
+//
+// ── THE TRANSITION IS ARITHMETIC, GATED BY A POSITIVE LIST ─────────────────
+// The engine's prior table read:
+//     if (payment_type === 'balance' || newAmountPaid >= amount_total) 'paid'
+//     else if (payment_type === 'advance' && state === 'unpaid') 'advance_paid'
+// so a caller passing `payment_type: 'balance'` closed the invoice REGARDLESS
+// of arithmetic — a Rs 1 payment declared 'balance' marked a Rs 50,000 invoice
+// paid. Ruled at CE-39: the money decides, the label does not. `payment_type`
+// survives on the params for the callers that pass it and is advisory only.
+//
+// EXISTING ROWS ARE NOT TOUCHED BY THIS CURE. DROY550's two invoices keep
+// their stale state and their missing clock, and the register keeps saying so.
+// A backfill is the founder's to ask for and the chair's to author.
+async function recordPayment(supabase, vendorId, invoiceId, params) {
+  const { amount, payment_type = null } = params || {};
+
+  if (!invoiceId) return { ok: false, error: 'invoiceId is required.' };
+  if (!amount || amount <= 0) return { ok: false, error: 'amount must be greater than zero.' };
+
+  const { data: inv, error: readErr } = await supabase
+    .from('invoices')
+    .select('id, invoice_number, client_name, client_phone, lead_id, amount_total, amount_advance, amount_paid, state, due_date, created_at')
+    .eq('id', invoiceId)
+    .eq('vendor_id', vendorId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (readErr) return { ok: false, error: readErr.message };
+  if (!inv) return { ok: false, error: 'Invoice not found.' };
+
+  // The two refusals are stated separately because they are different facts and
+  // each caller renders a different sentence for them.
+  if (inv.state === 'paid') {
+    return { ok: false, error: 'Invoice is already fully paid.', code: 'INVOICE_PAID', invoice: inv };
+  }
+  if (!PAYABLE_STATES.includes(inv.state)) {
+    return { ok: false, error: 'Cannot record a payment on this invoice.', code: 'INVOICE_NOT_PAYABLE', invoice: inv };
+  }
+
+  const priorState    = inv.state;
+  const newAmountPaid = (Number(inv.amount_paid) || 0) + amount;
+
+  // Overpayment is WARNED, never blocked. Shagun and tips arrive over the total
+  // and the database does not object; a writer that refused them would be
+  // refusing money the vendor actually banked.
+  if (newAmountPaid > inv.amount_total) {
+    console.warn(
+      `[invoices:recordPayment] overpayment of Rs ${newAmountPaid - inv.amount_total} on ${inv.invoice_number} — recording as-is`,
+    );
+  }
+
+  let newState = priorState;
+  if (newAmountPaid >= inv.amount_total) newState = 'paid';
+  else if (newAmountPaid > 0) newState = 'advance_paid';
+
+  const stampedAt = new Date().toISOString();
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .update({
+      amount_paid:     newAmountPaid,
+      state:           newState,
+      last_payment_at: stampedAt,
+      updated_at:      stampedAt,
+    })
+    .eq('id', invoiceId)
+    .eq('vendor_id', vendorId)
+    .select('id, invoice_number, client_name, client_phone, lead_id, amount_total, amount_advance, amount_paid, state, due_date, created_at, last_payment_at')
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!invoice) return { ok: false, error: 'Invoice not found.' };
+
+  console.log(
+    `[invoices:recordPayment] ${invoice.invoice_number} Rs ${amount} received — ${priorState} -> ${newState}` +
+    (payment_type ? ` (payment_type=${payment_type}, advisory)` : ''),
+  );
+
+  return {
+    ok: true,
+    invoice,
+    prior: { state: priorState, amount_paid: Number(inv.amount_paid) || 0 },
+    transitioned: priorState !== newState,
+    balance: inv.amount_total - newAmountPaid,
+  };
+}
+
+// ── cancelInvoice ─────────────────────────────────────────────────────────
+// Typed cancel. The engine-plane predecessor (src/api/vendor/invoices.js's
+// `/:invoiceId/cancel`, `donna_hide` on a binder id) is retired with its reader
+// by this sitting's crossing — the room's row ids are typed uuids now, so a
+// binder-keyed door has nothing to key on.
+//
+// A CANCELLED INVOICE KEEPS ITS `amount_paid`, AND THAT IS DELIBERATE. Money
+// that arrived is money that arrived; cancelling does not un-collect an advance
+// the vendor already banked. `src/api/vendor/money.js` states the other half of
+// this rule — cancelled invoices still credit RECEIVED and are excluded from
+// OUTSTANDING only.
+async function cancelInvoice(supabase, vendorId, invoiceId) {
+  const { data: existing, error: readErr } = await supabase
+    .from('invoices')
+    .select('id, invoice_number, amount_total, amount_paid, state')
+    .eq('id', invoiceId)
+    .eq('vendor_id', vendorId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (readErr) return { ok: false, error: readErr.message };
+  if (!existing) return { ok: false, error: 'Invoice not found.' };
+  if (existing.state === 'cancelled') return { ok: true, invoice: existing, already_cancelled: true };
+
+  // The prior door refused a fully-paid invoice and this one keeps that guard
+  // verbatim in meaning: it read `deriveInvoiceState(binder) === 'paid'` off the
+  // binder, which is the same question asked of the typed row.
+  if (existing.state === 'paid') {
+    return { ok: false, error: 'Cannot cancel a fully paid invoice.', code: 'INVOICE_PAID' };
+  }
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .update({ state: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('id', invoiceId)
+    .eq('vendor_id', vendorId)
+    .select('id, invoice_number, amount_total, amount_paid, state')
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!invoice) return { ok: false, error: 'Invoice not found.' };
+
+  console.log(`[invoices:cancelInvoice] ${invoice.invoice_number} — ${existing.state} -> cancelled`);
+  return { ok: true, invoice };
+}
+
+// ── invoicePdfSource ──────────────────────────────────────────────────────
+// NOT A WRITER — the READ half of the PDF verb, homed here so the door and the
+// agent ask one question. It returns the typed row and the vendor/user rows the
+// generator needs; rendering and storage stay in `src/lib/invoicePdf.js`, which
+// already has one home and does not move.
+async function invoicePdfSource(supabase, vendorId, invoiceId) {
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select('id, invoice_number, client_name, client_phone, description, amount_total, amount_advance, amount_paid, due_date, state, pdf_url, created_at')
+    .eq('id', invoiceId)
+    .eq('vendor_id', vendorId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!invoice) return { ok: false, error: 'Invoice not found.' };
+
+  const { data: vendor } = await supabase
+    .from('vendors')
+    .select('id, business_name, upi_id, routing_handle, user_id')
+    .eq('id', vendorId)
+    .maybeSingle();
+
+  let vendorName = null;
+  if (vendor?.user_id) {
+    const { data: u } = await supabase
+      .from('users').select('name').eq('id', vendor.user_id).maybeSingle();
+    vendorName = u?.name || null;
+  }
+
+  return { ok: true, invoice, vendor, vendorName };
+}
+
+// ── updateInvoicePdfUrl ───────────────────────────────────────────────────
+// `pdf_url` is a column on public.invoices and this is the only writer of it.
+// It exists as its own function rather than as a `.from()` at the PDF door
+// because "one writer home per table" does not take an exception for a
+// one-field update — that exception is how a second home starts.
+async function updateInvoicePdfUrl(supabase, vendorId, invoiceId, url) {
+  const { error } = await supabase
+    .from('invoices')
+    .update({ pdf_url: url, updated_at: new Date().toISOString() })
+    .eq('id', invoiceId)
+    .eq('vendor_id', vendorId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+module.exports = {
+  createInvoice,
+  updateInvoicePdfUrl,
+  updateInvoice,
+  recordPayment,
+  cancelInvoice,
+  invoicePdfSource,
+  PAYABLE_STATES,
+};

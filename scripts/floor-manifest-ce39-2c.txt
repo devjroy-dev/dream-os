@@ -1,0 +1,19 @@
+# scripts/floor-manifest-ce39-2c.txt
+# BASE 051a413 (main; re-derived fetch-first at the cut — the guard decides).
+# CE-39 ROAD STEP 2c · dream-os half of the money write-plane crossing:
+#   F-39.3  the five verbs cross to the typed plane through ONE writer home
+#   (the charter's engine.js extraction clause is DISCHARGED-AS-VOID — its
+#    target sits inside the F-05.56 defused island; engine.js is untouched.)
+#   F-39.8  recordPayment stamps last_payment_at; positive-list transition
+#   F-39.21 the Books door emits D-1's particular on every movement
+#   F-39.23 invoices.description STRUCK from the wire, with reason
+# [F-14.16 / F-39.31] The list of every file this seat touched, so a later self
+# of this seat — or the next — can tell own-hand dirt from other-hand dirt.
+# Preflight cannot; this can.
+
+docs/TDW_CE39_2C_HANDOVER.md
+scripts/b46_money_books_bench.js
+scripts/b47_money_crossing_bench.js
+scripts/floor-manifest-ce39-2c.txt
+src/api/vendor/money.js
+src/lib/vendor/invoices.js

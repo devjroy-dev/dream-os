@@ -248,13 +248,51 @@ function probeChild() {
     // stack is walked; a grep for `router.post` would be blind to a verb
     // mounted through a variable or a helper.
     const moneyRouter = require(DOOR);
-    const methods = new Set();
+
+    // ── AMENDED AT CE-39 ROAD STEP 2c · RETIRE-WITH-THE-READER ─────────────
+    // WHAT THIS CELL SAID, AND WHY IT NO LONGER SAYS IT.
+    // It read:
+    //     const nonGet = [...methods].filter((m) => m !== 'get');
+    //     chk(nonGet.length === 0, '§1.1 the money router declares zero
+    //         non-GET verbs', ...)
+    // At 2b that was the whole truth about this file: it declared one route and
+    // it was a GET, because the rooms that own the verbs had not crossed. 2c
+    // crosses them, by ruling — the five money verbs are mounted HERE now, on
+    // the typed plane, and this bench went RED on the crossing it was asked to
+    // permit. A bench that reds when its subject moves BY RULING is a reader
+    // that outlived what it read.
+    //
+    // IT IS AMENDED, NOT DELETED, AND THE COUNT IS PRESERVED — one cell before,
+    // one cell after. What survives is the clause's real subject: **the BOOKS
+    // door takes no verb.** The 2b clause was that sentence written at the
+    // router's scope because at 2b the router and the door were the same thing.
+    // They are not any more, so the assertion narrows to the door and says the
+    // same thing about it.
+    //
+    // The room-level guard — that BooksBody mounts no control at all — is NOT
+    // duplicated here. It lives once, in the pwa's own bench, because Books'
+    // read-only ruling is now enforced only by a cell (money.js's header states
+    // why: the composite ids that used to enforce it by construction sit beside
+    // typed doors now). One rule, one home, even for a rule this load-bearing.
+    //
+    // OBSERVED AT THE DEFECT'S MOMENT (D-38.1), not grepped: the router's own
+    // stack is walked, so a verb mounted through a variable or a helper is seen.
+    const booksMethods = new Set();
+    let booksSeen = false;
     for (const layer of moneyRouter.stack || []) {
-      for (const m of Object.keys(layer.route ? layer.route.methods : {})) methods.add(m.toLowerCase());
+      if (!layer.route) continue;
+      if (!String(layer.route.path).startsWith('/books/')) continue;
+      booksSeen = true;
+      for (const m of Object.keys(layer.route.methods)) booksMethods.add(m.toLowerCase());
     }
-    const nonGet = [...methods].filter((m) => m !== 'get');
-    chk(nonGet.length === 0, '§1.1 the money router declares zero non-GET verbs',
-      `verbs on the stack: [${[...methods].sort().join(', ') || 'none'}]`);
+    const booksNonGet = [...booksMethods].filter((m) => m !== 'get');
+    chk(booksSeen && booksNonGet.length === 0,
+      '§1.1 the BOOKS door declares zero non-GET verbs',
+      booksSeen
+        ? `verbs on /books/: [${[...booksMethods].sort().join(', ') || 'none'}]`
+        : 'no /books/ route found on the money router');
+    // MUTATION (both-ways, production code): change money.js's
+    // `router.get('/books/:vendorId'` to `router.post(` -> RED.
 
     // AND OVER THE WIRE, because a route absent from the stack could still be
     // reachable through a mount above it.
