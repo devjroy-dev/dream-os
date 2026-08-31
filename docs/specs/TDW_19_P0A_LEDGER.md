@@ -316,3 +316,11 @@ The founder raised offering Business Profile creation to vendors free of charge,
 ### Ledger state
 
 **OPEN.** Part B sealed. Part A blocked on age. P0-A's done condition — both submissions dated — is not met and cannot be met before late October. A chair opening P1 does so against a sealed Part B and an open Part A, and Part C's rule stands: P1 charters against this ledger, not against the kickoff.
+
+
+---
+
+### Sibling ledger — Meta Tech Provider (Solution Partner)
+**APPROVED** — founder's word 2026-09-01 (K-1 sitting, R-K1.b). Approval date and partner ID: **OWED** (founder pastes; chair files). Gates discharged: §7b's long pole. Remaining §7b gate: Block 05 sealed whole.
+### Sibling ledger — Meta App Review `ads_management`
+**NOT FILED** (2026-09-01). Gates the Ads row rung 2 (Addendum K-1 §1). Founder files; the date goes here.

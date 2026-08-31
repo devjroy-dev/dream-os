@@ -244,3 +244,15 @@ Verify-never-trust · report-never-adapt (§0.2) · SQL-provenance (every column
 2. The public storefront route (§2) — exists or not; if not, whether it is Block 19 P2's or Block 07's.
 3. Whether Business Solutions is a tier feature (Signature+) or every tier — billing rail dependency (Block 09 P4 / Razorpay). Chair's read: Google page and subdomain on every tier; own domain, Marketing, Proof, Benchmarks on Signature+. **Founder's word.**
 4. F-P3.11's diagnosis, prerequisite to P6.
+
+
+---
+
+## ADDENDUM K-1 (CE-39, 2026-09-01) — amendments from the counsel review, ruled by the chair on the founder's K-1 rulings
+1. **§0 table grows to EIGHT rows: 「Ads」** (R-K1.e; label vetoed by delegation) — assisted Meta/IG ads, rung 2 only: her ad account, her card, TDW builds the creative and audience from her own ledger and portfolio, she publishes. Rung 3 (managed spend) REFUSED. Trust line, three sentences, binding on every Ads byte: TDW never touches her card; TDW never optimises spend on her behalf; TDW never reports a result it cannot read from her own ledger. Gate: Meta App Review `ads_management` (+ Marketing API) — founder files now.
+2. **§7b Own number gains the missed-call → WhatsApp bridge** (K-1 F3): on busy/no-answer her callers receive a WhatsApp from Victor in her name (template 「you called」, to be filed); two rungs, both ship in beta (TDW-provisioned number, or her own number via carrier forwarding) per R-K1.c. No `Calls` row. The full voice agent is FAR, gated on this bridge's learnings. Telephony quote before charter.
+3. **§7b prerequisite met: Meta Tech Provider APPROVED** (founder's word 2026-09-01; date/ID owed to the P0-A ledger sibling). Remaining gate for Embedded Signup: Block 05 sealed whole (chair derives).
+4. **P4 Marketing gains: the Post tool with the brief inverted** (K-1 F6 — she writes the brief + images, TDW authors the post; she shares it herself; no IG Graph publishing until demand is proven), **Broadcasts** (K-1 F1 — one table + one send door on `metaCloud.js`; Meta per-conversation fees PASS-THROUGH at cost with the figure shown before send — the same answer discharges §7b constraint 2), **catalog messages** (F1b) after Embedded Signup and the Couture storefront work.
+5. **Out of block:** Victor analytics answers (K-1 F2) → Block 09 after the typed money doors; the Collab board extension for stylists/PRs (K-1 F4) → the Collab room's own arc, post-cutover, as paying accounts of a new kind (name and price shape: founder).
+6. **Refused as products:** influencer marketplace · multi-platform ad analytics · white-label reseller purchase · managed ad spend.
+7. **Sequencing after the flip:** F6 → F1 → F8 → F3 → F7 → F1b → F4.
