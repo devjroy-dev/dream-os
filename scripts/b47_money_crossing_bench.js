@@ -232,11 +232,26 @@ cell('3.4 opening/closing are READ, never summed', () => {
   if (!/const closing = rows\.length \? rows\[rows\.length - 1\]\.balance : 0;/.test(s)) {
     return 'closing is not the last row\'s own balance cell';
   }
-  // Exactly two reduces are permitted in this file and they are the head figures
-  // received/outstanding, which predate 2c. A third is a second derivation of
-  // the chain — F-04.13.
-  const reduces = (s.match(/\.reduce\(/g) || []).length;
-  return reduces === 2 || `${reduces} reduce() calls — the register must sum nothing new`;
+  // ── AMENDED AT 2a-dreamos · RETIRE-WITH-THE-READER ──────────────────────
+  // It counted `.reduce(` across the WHOLE FILE and capped it at two — the
+  // register's own received/outstanding. That was the whole truth when the file
+  // was only the register. The two room reads now derive `total_outstanding`,
+  // `total_collected` and `total_spent` server-side BY RULING, so the count hit
+  // five and the cell reddened on work it was written to permit. Same shape as
+  // b46 §1.1 one ZIP earlier: a rule written at file scope for a subject that
+  // has since grown neighbours.
+  //
+  // AMENDED, NOT RELAXED. The rule is unchanged — THE REGISTER sums nothing new
+  // — and it is now asserted of the register's own route instead of the file
+  // that hosts it. The room reads' reduces are covered by 5.6, which asserts
+  // they exist; nothing is left unguarded by the narrowing.
+  const bI = s.indexOf("'/books/:vendorId'");
+  if (bI < 0) return 'the books route is not in this file';
+  const bEnd = s.indexOf('router.get(', bI + 10);
+  const booksBlock = s.slice(bI, bEnd < 0 ? s.length : bEnd);
+  const reduces = (booksBlock.match(/\.reduce\(/g) || []).length;
+  return reduces === 2
+    || `${reduces} reduce() calls inside the books route — the register must sum nothing new`;
 });
 
 // ── §4 · THE FIVE VERBS ARE MOUNTED, TYPED, AND GATED ─────────────────────
@@ -268,7 +283,96 @@ cell('4.2 every write route is vendor-JWT gated', () => {
   // MUTATION: drop `...vendorGate` from the payments route -> RED.
 });
 
-// ── §5 · SEATED ELSEWHERE, BY RULING ──────────────────────────────────────
+
+// ── §5 · THE TWO ROOM READS  [2a-dreamos, c-2c.3] ─────────────────────────
+cell(null, '\n§5 the two room reads');
+
+cell('5.1 the module LOADS — the gate is not in its own dead zone', () => {
+  // NOT A SYNTAX CELL. `const vendorGate` sat below the write doors; the two
+  // room reads register earlier in the file, so the first cut put the const in
+  // its own temporal dead zone and the router threw at module load. `node
+  // --check` passed it — a TDZ is a runtime binding fact, not a syntax one.
+  // Requiring the module is the only instrument that can see it (D-38.1: observe
+  // at the defect's moment).
+  const r = require(path.join(ROOT, 'src/api/vendor/money.js'));
+  return (r && Array.isArray(r.stack)) || 'the money router did not load';
+  // MUTATION: move `const vendorGate = …` below the room reads -> RED.
+});
+
+cell('5.2 both room reads are mounted, gated, and GET', () => {
+  const r = require(path.join(ROOT, 'src/api/vendor/money.js'));
+  const want = ['/invoices/:vendorId', '/expenses/:vendorId'];
+  for (const p0 of want) {
+    const layer = (r.stack || []).find((l) => l.route && l.route.path === p0);
+    if (!layer) return `${p0} is not mounted`;
+    const methods = Object.keys(layer.route.methods);
+    if (methods.length !== 1 || methods[0] !== 'get') return `${p0} answers ${methods.join(',')}`;
+  }
+  const s = strip(read('src/api/vendor/money.js'));
+  const ungated = (s.match(/router\.get\('\/(invoices|expenses)\/:vendorId'[^\n]*/g) || [])
+    .filter((l) => !/\.\.\.vendorGate/.test(l));
+  return ungated.length === 0 || `ungated room read: ${ungated.join(' | ')}`;
+});
+
+cell('5.3 both room reads filter deleted_at IS NULL', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  for (const t of ['invoices', 'expenses']) {
+    const i = s.indexOf(`router.get('/${t}/:vendorId'`);
+    if (i < 0) return `/${t}/:vendorId not found`;
+    const block = s.slice(i, i + 1200);
+    if (!/\.is\('deleted_at', null\)/.test(block)) {
+      return `/${t}/:vendorId does not filter deleted_at — a soft-deleted row would re-enter the room`;
+    }
+  }
+  return true;
+  // MUTATION: drop `.is('deleted_at', null)` from either -> RED.
+});
+
+cell('5.4 the room reads SELECT every field their response type declares', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  const inv = (s.match(/const ROOM_INVOICE_SELECT =[\s\S]*?;/) || [''])[0];
+  const exp = (s.match(/const ROOM_EXPENSE_SELECT =[\s\S]*?;/) || [''])[0];
+  // The columns InvoicesResponse / ExpensesResponse name in the pwa's types.
+  const needInv = ['id', 'invoice_number', 'client_name', 'client_phone',
+                   'amount_total', 'amount_paid', 'due_date', 'state', 'created_at'];
+  const needExp = ['id', 'amount', 'category', 'description', 'expense_date',
+                   'client_name', 'created_at'];
+  const missInv = needInv.filter((c) => !new RegExp(`\\b${c}\\b`).test(inv));
+  const missExp = needExp.filter((c) => !new RegExp(`\\b${c}\\b`).test(exp));
+  if (missInv.length) return `invoice select misses: ${missInv.join(', ')}`;
+  if (missExp.length) return `expense select misses: ${missExp.join(', ')}`;
+  return true;
+  // MUTATION: drop `client_phone` from ROOM_INVOICE_SELECT -> RED.
+});
+
+cell('5.5 outstanding on the ROOM reads the same positive list as the REGISTER', () => {
+  // Two doors on one plane disagreeing about what is owed is the
+  // two-derivations disease wearing two doors instead of two files. F-P3.1
+  // earned the rule on this exact column: `state <> 'paid'` returns cancelled
+  // invoices as money owed.
+  const s = strip(read('src/api/vendor/money.js'));
+  const i = s.indexOf("router.get('/invoices/:vendorId'");
+  const block = s.slice(i, i + 2600);
+  if (/state\s*!==\s*'paid'|!\s*\[[^\]]*'cancelled'/.test(block)) {
+    return 'the room read gates outstanding on a negation — R-39.12';
+  }
+  return /OUTSTANDING_STATES\.includes/.test(block)
+    || 'the room read does not use OUTSTANDING_STATES — a second vocabulary for one column';
+  // MUTATION: replace with `r.state !== 'paid'` -> RED.
+});
+
+cell('5.6 amount_owed and the summary figures are derived SERVER-side', () => {
+  const s = strip(read('src/api/vendor/money.js'));
+  const i = s.indexOf("router.get('/invoices/:vendorId'");
+  const block = s.slice(i, i + 2600);
+  const has = /amount_owed:\s*total - paid/.test(block)
+    && /total_outstanding:/.test(block) && /total_collected:/.test(block);
+  return has || 'the room read does not compute amount_owed and the summary itself';
+  // MUTATION: emit rows without amount_owed -> RED. The client-side twin (the
+  // pwa must not re-derive them) is 2a-pwa's own cell, by ruling.
+});
+
+// ── §6 · SEATED ELSEWHERE, BY RULING ──────────────────────────────────────
 // The base_guard.sh equality cell is seated in the pwa's `b40`, not here — the
 // chair's ruling, and the correct one: the comment-only fork is cured in ZIP 2,
 // so a cell here would red at ZIP 1's own floor for work that has not shipped.

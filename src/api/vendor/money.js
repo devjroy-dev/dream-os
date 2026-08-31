@@ -2,6 +2,8 @@
 // TDW · ROAD STEP 2c · THE TYPED MONEY PLANE — THE READ DOOR AND THE WRITE DOORS.
 //
 //   GET    /api/v2/vendor/money/books/:vendorId
+//   GET    /api/v2/vendor/money/invoices/:vendorId
+//   GET    /api/v2/vendor/money/expenses/:vendorId
 //   POST   /api/v2/vendor/money/invoices/:vendorId
 //   PATCH  /api/v2/vendor/money/invoices/:vendorId/:invoiceId/cancel
 //   POST   /api/v2/vendor/money/invoices/:vendorId/:invoiceId/payments
@@ -73,7 +75,14 @@
 //     invoice_id(2) vendor_id(3) amount_due(6) state(8) paid_at(9)
 //     paid_amount(10) ordinal(11)
 //   public.expenses           (12 columns)
-//     id(1) vendor_id(2) amount(3) expense_date(6) created_at(10) deleted_at(13)
+//     id(1) vendor_id(2) amount(3) category(4) description(5) expense_date(6)
+//     client_name(7) created_at(10) deleted_at(13)
+//
+// THE ROOM READS NAME MORE COLUMNS THAN THE REGISTER DOES, and that is the
+// rooms' shape rather than scope creep: `InvoicesResponse` carries
+// `client_phone`(6) for the cross-chip's key and `due_date`(11) for the row,
+// neither of which the register renders. Witnessed by ordinal like the rest.
+//   public.invoices additionally: client_phone(6) due_date(11)
 //
 // STATE VOCABULARIES, from each table's own CHECK constraint in the same
 // snapshot — named here so a reader can see the lists below are the DATABASE's
@@ -354,6 +363,126 @@ router.get(
 );
 
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE TWO ROOM READS — ROAD STEP 2c, 2a-dreamos
+// ═══════════════════════════════════════════════════════════════════════════
+// WHY THEY EXIST, STATED PLAINLY BECAUSE THEIR ABSENCE WAS A DEFECT.
+// The 2c crossing re-points the Invoices and Expenses rooms off the engine
+// plane. The first dream-os ZIP built the six WRITE routes and the Books read
+// and stopped, so `fetchInvoices` and `fetchExpenses` had nothing typed to
+// point AT — the existing `/vendor/invoices/:vendorId` and
+// `/vendor/expenses/:vendorId` both read `eng.from('records')`, so re-pointing
+// at them would have swapped one engine reader for another and crossed nothing.
+// c-2c.3, the seat's own gap, caught deriving the pwa's re-point target.
+//
+// ── THE FIGURES ARE SERVER-COMPUTED, LIKE THE BALANCE ──────────────────────
+// `amount_owed` per row, and `total_outstanding` / `total_collected` /
+// `total_spent` on the summary, are derived HERE. Today `fetchInvoices` does it
+// in the client with a `reduce`, which is a second home for arithmetic the
+// server can state once — F-04.13's lesson, the same one the running balance
+// obeys three hundred lines up. The pwa's own cell asserts it does not
+// re-derive them.
+//
+// ── SHAPE PARITY IS DELIBERATE ────────────────────────────────────────────
+// Both responses answer in the shape `lib/vendor/types/vendor.ts` already
+// declares (`InvoicesResponse`, `ExpensesResponse`), field for field. A typed
+// door that invented a better shape would make the crossing a rewrite of both
+// rooms instead of a change of address.
+
+// ── THE GATE, DECLARED ONCE AND ABOVE ITS FIRST READER ────────────────────
+// It sat below the write doors when they were the only readers. The two room
+// reads are registered EARLIER in this file, so leaving it there would put the
+// const in its own temporal dead zone and throw at module load — a defect
+// `node --check` is structurally blind to, since it is a runtime binding fact
+// and not a syntax one. Caught by requiring the module, not by reading it.
+const vendorGate = [requireAuth, resolveVendor({ paramName: 'vendorId' })];
+
+const ROOM_INVOICE_SELECT =
+  'id, invoice_number, client_name, client_phone, amount_total, amount_paid, due_date, state, created_at';
+const ROOM_EXPENSE_SELECT =
+  'id, amount, category, description, expense_date, client_name, created_at';
+
+router.get('/invoices/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {
+  const { data, error } = await req.app.locals.supabase
+    .from('invoices')
+    .select(ROOM_INVOICE_SELECT)
+    .eq('vendor_id', req.vendor.id)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[GET /vendor/money/invoices] typed read failed:', error.message);
+    return errRes(res, 500, 'Lookup failed.');
+  }
+
+  // `state` filtering stays a CLIENT concern exactly as it is today
+  // (`fetchInvoices(vendorId, state)` filters after the fetch), so this door
+  // answers the whole set and no filter vocabulary is minted here. A second
+  // vocabulary for the same column is how `invoices_state_check` grows a rival.
+  const rows = (data || []).map((i) => {
+    const total = Number(i.amount_total) || 0;
+    const paid = Number(i.amount_paid) || 0;
+    return {
+      id: i.id,
+      invoice_number: i.invoice_number,
+      client_name: i.client_name,
+      client_phone: i.client_phone || undefined,
+      amount_total: total,
+      amount_paid: paid,
+      amount_owed: total - paid,
+      state: i.state,
+      due_date: i.due_date,
+      created_at: i.created_at,
+    };
+  });
+
+  // OUTSTANDING IS THE POSITIVE LIST, THE SAME ONE THE REGISTER USES. The room
+  // and the register disagreeing about what is owed is the two-derivations
+  // disease wearing two doors instead of two files, so both read
+  // OUTSTANDING_STATES from the one const above.
+  const summary = {
+    total_outstanding: rows
+      .filter((r) => OUTSTANDING_STATES.includes(r.state))
+      .reduce((sum, r) => sum + r.amount_owed, 0),
+    total_collected: rows.reduce((sum, r) => sum + r.amount_paid, 0),
+  };
+
+  return okRes(res, { invoices: rows, summary, total: rows.length });
+}));
+
+router.get('/expenses/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {
+  const { data, error } = await req.app.locals.supabase
+    .from('expenses')
+    .select(ROOM_EXPENSE_SELECT)
+    .eq('vendor_id', req.vendor.id)
+    .is('deleted_at', null)
+    .order('expense_date', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[GET /vendor/money/expenses] typed read failed:', error.message);
+    return errRes(res, 500, 'Lookup failed.');
+  }
+
+  // THE ROW'S OWN CATEGORY, VERBATIM, NEVER VALIDATED — the same rule the debit
+  // particular states above, for the same reason (F-2c.p1: the writer's list
+  // and the database's CHECK are not the same twelve, and a door that filtered
+  // through the writer's list would hide money the vendor logged).
+  const rows = (data || []).map((e) => ({
+    id: e.id,
+    description: e.description,
+    amount: Number(e.amount) || 0,
+    category: e.category,
+    expense_date: e.expense_date,
+    client_name: e.client_name,
+    created_at: e.created_at,
+  }));
+
+  const total_spent = rows.reduce((sum, r) => sum + r.amount, 0);
+  return okRes(res, { expenses: rows, total_spent, total: rows.length });
+}));
+
 // ═══════════════════════════════════════════════════════════════════════════
 // THE WRITE DOORS — ROAD STEP 2c, THE MONEY WRITE-PLANE CROSSING (F-39.3)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -373,7 +502,6 @@ router.get(
 // mount but keyed on an ENGINE BINDER id, which is the same crossing wearing a
 // different coat. All five now key on `public.invoices.id` / `public.expenses.id`.
 
-const vendorGate = [requireAuth, resolveVendor({ paramName: 'vendorId' })];
 
 // ── ADD ───────────────────────────────────────────────────────────────────
 router.post('/invoices/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {
