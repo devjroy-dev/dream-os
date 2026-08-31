@@ -21,9 +21,10 @@ const router         = express.Router();
 const requireAuth    = require('../middleware/requireAuth');
 const resolveVendor  = require('../middleware/resolveVendor');
 const resolveAgent   = require('../middleware/resolveAgent');
-const asyncHandler   = require('../../lib/asyncHandler');
-const { ok: okRes, err: errRes } = require('../../lib/response');
-const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
+// `asyncHandler` and the response helpers left with the three write routes
+// (c-2c.4): the surviving GET is a plain async handler that answers through
+// `res.json` directly. A dead import is how a retired route grows back — it
+// leaves the door's furniture standing and the next hand assumes a door.
 
 router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), resolveAgent(), async (req, res) => {
   // 6-B — expenses now read Harvey/Donna's ledger: money-OUT binders in
@@ -82,57 +83,33 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
 
 // ─── POST /api/v2/vendor/expenses ─────────────────────────────────────
 //
-// Log a new expense.
-// Auth: requireAuth. resolveVendor mode A.
-
-router.post('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const vendor   = req.vendor;
-  const body     = req.body || {};
-
-  const result = await createExpense(supabase, vendor.id, {
-    amount:         body.amount         || null,
-    category:       body.category       || null,
-    description:    body.description    || null,
-    expense_date:   body.expense_date   || null,
-    client_name:    body.client_name    || null,
-    linked_lead_id: body.linked_lead_id || null,
-    notes:          body.notes          || null,
-  });
-
-  if (!result.ok) return errRes(res, 400, result.error);
-  return okRes(res, { expense: result.expense });
-}));
-
-// ─── PATCH /api/v2/vendor/expenses/:expenseId ─────────────────────────
+// ── THE THREE TYPED WRITE ROUTES RETIRED HERE  [c-2c.4, CE-39 2c·2a] ──────
+// `POST /`, `PATCH /:expenseId` and `DELETE /:expenseId` stood here and were
+// ALREADY on the typed writer home — they called `createExpense`,
+// `updateExpense` and `deleteExpense` in `src/lib/vendor/expenses.js` directly.
+// They were correct and they were in the wrong file: `src/api/vendor/money.js`
+// is the typed money door by charter, and a table's doors live in ONE file.
 //
-// Partial update.
-// Auth: requireAuth. resolveVendor mode C via expenses table.
-
-router.patch('/:expenseId', requireAuth, resolveVendor({ paramName: 'expenseId', via: 'expenses' }), asyncHandler(async (req, res) => {
-  const supabase   = req.app.locals.supabase;
-  const vendor     = req.vendor;
-  const expenseId  = req.params.expenseId;
-  const body       = req.body || {};
-
-  const result = await updateExpense(supabase, vendor.id, expenseId, body);
-  if (!result.ok) return errRes(res, 400, result.error);
-  return okRes(res, { expense: result.expense });
-}));
-
-// ─── DELETE /api/v2/vendor/expenses/:expenseId ────────────────────────
+// THE SEAT MINTED THEIR REPLACEMENTS WITHOUT READING THEM FIRST. The pwa was
+// calling `binders/:id/hide` and `money-edit` for expenses, so the seat read
+// the room's engine plane and concluded the typed routes did not exist. They
+// did; the pwa was calling the wrong door, not a missing one. c-2c.4, the same
+// failure as c-39.32 one direction over — ruling a shape without reading what
+// the tree already had.
 //
-// Soft delete.
-// Auth: requireAuth. resolveVendor mode C via expenses table.
-
-router.delete('/:expenseId', requireAuth, resolveVendor({ paramName: 'expenseId', via: 'expenses' }), asyncHandler(async (req, res) => {
-  const supabase  = req.app.locals.supabase;
-  const vendor    = req.vendor;
-  const expenseId = req.params.expenseId;
-
-  const result = await deleteExpense(supabase, vendor.id, expenseId);
-  if (!result.ok) return errRes(res, 404, result.error);
-  return okRes(res, { deleted: true });
-}));
+// RETIRED HERE AND NOT LATER because the caller sweep at `bb4a9ad` found ZERO:
+// no reference to `/vendor/expenses` anywhere under the pwa's `app/`,
+// `components/` or `lib/` (comments stripped), and no other dream-os router,
+// script or tool. The standing rule is that a source retires once no reader
+// calls it, and nothing ever called these.
+//
+// Their addresses now:
+//   POST   /api/v2/vendor/money/expenses/:vendorId
+//   PATCH  /api/v2/vendor/money/expenses/:vendorId/:expenseId
+//   DELETE /api/v2/vendor/money/expenses/:vendorId/:expenseId
+//
+// WHAT SURVIVES IN THIS FILE is the engine-plane `GET /:vendorId` above, which
+// still has a live reader until 2a-pwa re-points it. It retires in 2b's
+// companion with the other engine money GET arm, by ruling.
 
 module.exports = router;

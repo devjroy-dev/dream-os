@@ -4,6 +4,8 @@
 //   GET    /api/v2/vendor/money/books/:vendorId
 //   GET    /api/v2/vendor/money/invoices/:vendorId
 //   GET    /api/v2/vendor/money/expenses/:vendorId
+//   PATCH  /api/v2/vendor/money/invoices/:vendorId/:invoiceId
+//   PATCH  /api/v2/vendor/money/expenses/:vendorId/:expenseId
 //   POST   /api/v2/vendor/money/invoices/:vendorId
 //   PATCH  /api/v2/vendor/money/invoices/:vendorId/:invoiceId/cancel
 //   POST   /api/v2/vendor/money/invoices/:vendorId/:invoiceId/payments
@@ -98,9 +100,9 @@ const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const {
-  createInvoice, recordPayment, cancelInvoice, invoicePdfSource,
+  createInvoice, updateInvoice, recordPayment, cancelInvoice, invoicePdfSource,
 } = require('../../lib/vendor/invoices');
-const { createExpense, deleteExpense } = require('../../lib/vendor/expenses');
+const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
 const { generateInvoicePdf } = require('../../lib/invoicePdf');
 
 // ── THE PARTICULAR · D-1 B13, AND ONLY THE PARTICULAR  [F-39.21] ───────────
@@ -512,6 +514,35 @@ router.post('/invoices/:vendorId', ...vendorGate, asyncHandler(async (req, res) 
 
 router.post('/expenses/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {
   const r = await createExpense(req.app.locals.supabase, req.vendor.id, req.body || {});
+  if (!r.ok) return errRes(res, 400, r.error);
+  return okRes(res, { expense: r.expense });
+}));
+
+
+// ── EDIT ──────────────────────────────────────────────────────────────────
+// c-2c.3, second instance. `AddSheet` calls `updateInvoice` at :297/:366 and
+// `updateExpense` at :317/:367 — four of the ten money call sites — and the
+// typed plane had no edit door for either. The invoice edit lived only at
+// `PATCH /vendor/invoices/:invoiceId`, on the engine binder; the expense edit
+// lived at `PATCH /vendor/expenses/:expenseId`, typed but on the wrong file
+// (c-2c.4, retired below).
+//
+// The home decides what is editable, not this door: `updateInvoice` refuses a
+// row with payments (`INVOICE_LOCKED`) or a cancelled one, and `updateExpense`
+// validates category and amount. A door that re-stated either would be a second
+// home for the rule.
+router.patch('/invoices/:vendorId/:invoiceId', ...vendorGate, asyncHandler(async (req, res) => {
+  const r = await updateInvoice(
+    req.app.locals.supabase, req.vendor.id, req.params.invoiceId, req.body || {},
+  );
+  if (!r.ok) return errRes(res, r.code ? 400 : 404, r.error);
+  return okRes(res, { invoice: r.invoice });
+}));
+
+router.patch('/expenses/:vendorId/:expenseId', ...vendorGate, asyncHandler(async (req, res) => {
+  const r = await updateExpense(
+    req.app.locals.supabase, req.vendor.id, req.params.expenseId, req.body || {},
+  );
   if (!r.ok) return errRes(res, 400, r.error);
   return okRes(res, { expense: r.expense });
 }));

@@ -1,6 +1,19 @@
 // src/lib/vendor/expenses.js
-// Shared write logic for vendor expenses.
-// Called by REST handlers (src/api/vendor/expenses.js).
+// THE WRITER HOME FOR public.expenses.
+//
+// Called by `src/api/vendor/money.js` — the typed money door. It used to say
+// `src/api/vendor/expenses.js`, which was true until c-2c.4 moved this table's
+// three write routes into the one money file; that router now keeps only its
+// engine-plane GET. Retire-with-the-reader applies to a comment naming a caller
+// exactly as it applies to code.
+//
+// ⚠ F-2c.p1 IS OPEN ON `ALLOWED_CATEGORIES` BELOW. It and the database's
+// `expenses_category_check` are not the same twelve — `editing`, `packaging`
+// and `accommodation` are here and rejected by the CHECK; `commission`,
+// `shoot` and `inventory` are in the CHECK and refused here, by an error
+// sentence that then names the wrong twelve. Third instance of F-15.10's class,
+// vendor plane never censused. Byte-untouched by ruling (arm i); the cure and
+// the corrected sentence belong to the writer-hygiene sitting, with a veto slot.
 
 'use strict';
 

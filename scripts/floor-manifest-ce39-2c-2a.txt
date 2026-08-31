@@ -1,16 +1,19 @@
 # scripts/floor-manifest-ce39-2c-2a.txt
-# BASE f188a69 (main; re-derived fetch-first at the cut — the guard decides).
-# CE-39 ROAD STEP 2c · 2a-dreamos · THE TWO ROOM READS ONLY.
-#   GET /api/v2/vendor/money/invoices/:vendorId
-#   GET /api/v2/vendor/money/expenses/:vendorId
-# c-2c.3: ZIP 1 built the six write routes and the Books read and stopped, so
-# `fetchInvoices`/`fetchExpenses` had nothing typed to point at. This closes it.
-# NO RETIREMENT BYTES — cabinet.js's paid/owed slices and the two engine money
-# GET arms retire only after 2a-pwa's re-point, by ruling: their readers are
-# live until then.
+# BASE a03729e (main; re-derived fetch-first at the cut — the guard decides).
+# CE-39 ROAD STEP 2c · 2a-dreamos · THE TYPED MONEY DOOR MADE WHOLE.
+#   + GET   /money/invoices/:vendorId        + GET   /money/expenses/:vendorId
+#   + PATCH /money/invoices/:vendorId/:id    + PATCH /money/expenses/:vendorId/:id
+#   - expenses.js's three typed write routes (POST/PATCH/DELETE), zero callers swept
+# c-2c.3 the room reads and the edit doors had no typed home to point at.
+# c-2c.4 expenses.js's write routes were ALREADY typed; the seat minted
+#        replacements without reading them. money.js is the survivor by charter.
+# NO engine-GET retirement — cabinet.js's slices and the two engine money GET
+# arms retire in 2b's companion, after 2a-pwa's re-point.
 # [F-14.16 / F-39.31] The delivery's own file table.
 
 docs/TDW_CE39_2C_2A_DREAMOS_HANDOVER.md
 scripts/b47_money_crossing_bench.js
 scripts/floor-manifest-ce39-2c-2a.txt
+src/api/vendor/expenses.js
 src/api/vendor/money.js
+src/lib/vendor/expenses.js

@@ -86,7 +86,61 @@ cell('1.2 money.js write routes import the writer home', () => {
   return miss.length === 0 || `money.js does not reach the home for: ${miss.join(', ')}`;
 });
 
-cell('1.3 src/lib/money/ was never created', () => {
+cell('1.3 one file mounts the typed money writers, and it is money.js', () => {
+  // ── WIDENED AT 2a-dreamos  [c-2c.4] ─────────────────────────────────────
+  // It asserted only that `src/lib/money/` was never created — a guard against
+  // the home the chair's kickoff ruled and the tree already had. That is one
+  // half of "one home"; this is the other. `src/api/vendor/expenses.js` carried
+  // POST/PATCH/DELETE that already called the typed writer home, correctly and
+  // in the wrong file, and the seat minted replacements in money.js without
+  // reading them. Two doors, one home, one table — exactly what this cell
+  // exists to refuse, sitting one directory away while the cell passed.
+  //
+  // ⚠ ONE DECLARED EXCEPTION, NAMED RATHER THAN EXCLUDED BY A LOOSE REGEX.
+  // `invoices.js :: generateInvoiceForBinder` calls `createInvoice` and writes
+  // `public.invoices` at :381. It is NOT a money-door route: it is the binder
+  // -> formal-invoice sync, reached from the PDF route AND from three live
+  // callers outside this file — vendor-engine/chat.js:422, vendorInbound.js:1698,
+  // and the dependency injection at index.js:149. It is F-39.33, filed OPEN at
+  // the chair's hand, ruled untouched this sitting. Derived at 2a: it does NOT
+  // go dead when the binder readers retire, because the WhatsApp path keeps
+  // calling it. The exception is listed by symbol so adding a second one is an
+  // edit to this cell and not an accident.
+  const ALLOWED_OUTSIDE = new Set(['generateInvoiceForBinder']);
+  const WRITERS = /\b(createInvoice|updateInvoice|recordPayment|cancelInvoice|createExpense|updateExpense|deleteExpense)\s*\(/;
+
+  const bad = [];
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const r = rel + '/' + e.name;
+      if (e.isDirectory()) { walk(r); continue; }
+      if (!/\.js$/.test(e.name)) continue;
+      if (r === 'src/api/vendor/money.js') continue;
+      const src = strip(read(r));
+      if (!WRITERS.test(src)) continue;
+      // A file may reach a writer outside a route (the declared exception). The
+      // defect is a ROUTE that does.
+      if (!/router\.(post|patch|put|delete)\s*\(/.test(src)) continue;
+      for (const m of src.match(new RegExp(WRITERS.source, 'g')) || []) {
+        const sym = m.replace(/\s*\($/, '');
+        const near = src.slice(Math.max(0, src.indexOf(m) - 900), src.indexOf(m));
+        const enclosing = (near.match(/(?:async )?function ([A-Za-z_]+)/g) || []).pop();
+        const fname = enclosing ? enclosing.replace(/.*function /, '') : '';
+        if (ALLOWED_OUTSIDE.has(fname)) continue;
+        bad.push(`${r} reaches ${sym} from a routed file`);
+      }
+    }
+  };
+  walk('src/api');
+  if (bad.length) return bad.join(' | ');
+
+  return !fs.existsSync(path.join(ROOT, 'src/lib/money'))
+    || 'src/lib/money/ exists — a second home for public.invoices (c-39.32)';
+  // MUTATION: restore `router.post('/', ... createExpense(...))` in
+  // src/api/vendor/expenses.js -> RED.
+});
+
+cell('1.3b src/lib/money/ was never created', () => {
   // PROVEN-ONE-WAY. Asserts an ABSENCE, and the mutation that would red it
   // is creating the very thing the sitting refused to create. Green-only by
   // construction; labelled rather than padded.
@@ -359,6 +413,40 @@ cell('5.5 outstanding on the ROOM reads the same positive list as the REGISTER',
   return /OUTSTANDING_STATES\.includes/.test(block)
     || 'the room read does not use OUTSTANDING_STATES — a second vocabulary for one column';
   // MUTATION: replace with `r.state !== 'paid'` -> RED.
+});
+
+cell('5.7 both EDIT doors are mounted, gated, and reach the home', () => {
+  // c-2c.3's second instance: AddSheet's four update sites (:297 :317 :366 :367)
+  // had no typed door on either table. The home decides what is editable —
+  // updateInvoice refuses a paid or cancelled row, updateExpense validates
+  // category and amount — so the door restates neither rule.
+  const r = require(path.join(ROOT, 'src/api/vendor/money.js'));
+  for (const p0 of ['/invoices/:vendorId/:invoiceId', '/expenses/:vendorId/:expenseId']) {
+    const layer = (r.stack || []).find((l) => l.route && l.route.path === p0
+      && l.route.methods.patch);
+    if (!layer) return `PATCH ${p0} is not mounted`;
+  }
+  const s2 = strip(read('src/api/vendor/money.js'));
+  const lines = (s2.match(/router\.patch\('\/(invoices|expenses)\/:vendorId\/:[a-zA-Z]+'[^\n]*/g) || []);
+  if (lines.length !== 2) return `${lines.length} edit routes matched, expected 2`;
+  const ungated = lines.filter((l) => !/\.\.\.vendorGate/.test(l));
+  if (ungated.length) return `ungated edit route: ${ungated.join(' | ')}`;
+  return /updateInvoice\(/.test(s2) && /updateExpense\(/.test(s2)
+    || 'the edit doors do not reach the writer home';
+  // MUTATION: drop `...vendorGate` from either PATCH -> RED.
+});
+
+cell('5.8 expenses.js keeps its engine GET and mounts no write route', () => {
+  // c-2c.4. The three typed write routes retired from this file — swept ZERO
+  // callers at bb4a9ad — and its engine-plane GET survives until 2a-pwa
+  // re-points it. A write route reappearing here is the second home returning.
+  const e = require(path.join(ROOT, 'src/api/vendor/expenses.js'));
+  const verbs = (e.stack || []).filter((l) => l.route)
+    .flatMap((l) => Object.keys(l.route.methods));
+  const nonGet = verbs.filter((v) => v !== 'get');
+  if (nonGet.length) return `expenses.js mounts ${nonGet.join(', ')} — c-2c.4 returning`;
+  return verbs.length === 1 || `expenses.js mounts ${verbs.length} routes, expected 1 GET`;
+  // MUTATION: restore `router.post('/', ...)` in expenses.js -> RED.
 });
 
 cell('5.6 amount_owed and the summary figures are derived SERVER-side', () => {
