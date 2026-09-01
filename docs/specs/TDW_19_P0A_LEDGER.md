@@ -321,6 +321,6 @@ The founder raised offering Business Profile creation to vendors free of charge,
 ---
 
 ### Sibling ledger — Meta Tech Provider (Solution Partner)
-**APPROVED** — founder's word 2026-09-01 (K-1 sitting, R-K1.b). Approval date and partner ID: **OWED** (founder pastes; chair files). Gates discharged: §7b's long pole. Remaining §7b gate: Block 05 sealed whole.
+**BUSINESS HALF VERIFIED** — submitted 2026-08-07, verified as Tech Provider 2026-08-09 (Business Settings, K-2). **APP HALF: FILED 2026-09-02 ~03:53 IST, submission `1461935125758843`** (both WhatsApp permissions, *Review in progress*, K-4). Solution ID: **none — Tech Provider onboarding never started**; `Start onboarding` is F8 charter item ZERO. WABAs: `1739793260373677` (Direct, of record) · `1023382280673745` (Test) · `1299109268220358` — **template split across the last two NOT DERIVED, live-lane risk, F-K4.1**. Gates discharged: §7b's long pole. Remaining §7b gate: Block 05 sealed whole.
 ### Sibling ledger — Meta App Review `ads_management`
 **NOT FILED** (2026-09-01). Gates the Ads row rung 2 (Addendum K-1 §1). Founder files; the date goes here.
