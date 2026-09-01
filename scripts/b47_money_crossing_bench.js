@@ -121,12 +121,79 @@ cell('1.3 one file mounts the typed money writers, and it is money.js', () => {
       // A file may reach a writer outside a route (the declared exception). The
       // defect is a ROUTE that does.
       if (!/router\.(post|patch|put|delete)\s*\(/.test(src)) continue;
-      for (const m of src.match(new RegExp(WRITERS.source, 'g')) || []) {
-        const sym = m.replace(/\s*\($/, '');
-        const near = src.slice(Math.max(0, src.indexOf(m) - 900), src.indexOf(m));
-        const enclosing = (near.match(/(?:async )?function ([A-Za-z_]+)/g) || []).pop();
-        const fname = enclosing ? enclosing.replace(/.*function /, '') : '';
-        if (ALLOWED_OUTSIDE.has(fname)) continue;
+      // ── s-2c.1 CURED AT CE-39 2b-2. THE OLD LINE HELD THREE DEFECTS ────────
+      // It read:
+      //   for (const m of src.match(<WRITERS>, 'g') || []) {
+      //     const near = src.slice(Math.max(0, src.indexOf(m) - 900), src.indexOf(m));
+      //     const enclosing = (near.match(/(?:async )?function ([A-Za-z_]+)/g) || []).pop();
+      //
+      //   (1) `indexOf(m)` FINDS THE FIRST OCCURRENCE, NOT THIS ONE. `String.match`
+      //       with /g returns TEXT, not positions, so every repeat of the same
+      //       writer symbol in one file was judged at the position of the first.
+      //       The second and third calls were never actually examined — carried
+      //       as s-2c.1 for the 900 alone, and the index defect was found on
+      //       reading the line to cure it.
+      //   (2) THE 900-CHARACTER WINDOW IS A PROXIMITY GUESS, NOT A SCOPE. A
+      //       declaration 901 characters back yields the empty name and reds a
+      //       lawful call; a long unrelated function inside the window yields
+      //       ITS name and exonerates an unlawful one.
+      //   (3) IT SEES ONLY `function <name>`. An ARROW handler — which is how
+      //       every route in this estate is written — is invisible to it, so a
+      //       writer called inside `router.post('/', async (req,res) => {…})`
+      //       was attributed to whatever named function happened to precede it.
+      //
+      // THE CURE DERIVES THE SITE INSTEAD OF GUESSING AT IT. `matchAll` gives
+      // each occurrence its OWN index; the whole prefix is scanned (no window)
+      // for the nearest preceding declaration in either form; and a route opened
+      // AFTER that declaration means the call sits inside the ROUTE, which is
+      // the defect this cell exists to catch, so the exception cannot apply.
+      //
+      // ⚠ THE EXCEPTION NARROWS RATHER THAN WIDENS, which is the direction a
+      // correction to a guard must go. `generateInvoiceForBinder` is exonerated
+      // ONLY when the call is lexically inside it with no route opened between —
+      // never merely near it.
+      // ── ⚠ THE FIRST CUT OF THIS CURE WAS ALSO A GUESS, AND IT WAS CAUGHT BY
+      // RUNNING IT (F-39.25's pattern, third instance on this arc). It replaced
+      // the 900-char window with 「the nearest preceding declaration」, which is
+      // a better guess and still a guess: at src/api/vendor/invoices.js the
+      // nearest declaration before the lawful `createInvoice` call is a LOCAL
+      // `const latest = (…)` INSIDE `generateInvoiceForBinder`, so the cell
+      // reddened a call the estate has ruled lawful. A nearest-preceding
+      // declaration is not a scope; a scope is a brace.
+      //
+      // SO THE SCOPE IS DERIVED, NOT APPROXIMATED. `enclosingName` walks
+      // BACKWARDS from the call tracking brace depth, and at each brace that
+      // actually encloses the call it reads the head immediately before it:
+      // a named `function NAME(…)`, a `NAME = (…) =>` binding, or a
+      // `router.<verb>(` handler. Anonymous blocks (`if`, `try`, `for`) are
+      // stepped over rather than answered with, which is precisely what the
+      // local `const` defeated. The first enclosing FUNCTION wins; a route
+      // handler answers '' and can never be exonerated.
+      //
+      // ITS LIMIT, NAMED: braces inside string and template literals are
+      // counted as code. No writer symbol in this estate sits behind one, and a
+      // cell that mis-parses would RED (over-report) rather than pass, which is
+      // the safe direction for a guard.
+      const enclosingName = (text, at) => {
+        let depth = 0;
+        for (let i = at - 1; i >= 0; i--) {
+          const c = text[i];
+          if (c === '}') { depth++; continue; }
+          if (c !== '{') continue;
+          if (depth > 0) { depth--; continue; }
+          // This brace encloses the call. What opened it?
+          const head = text.slice(Math.max(0, i - 240), i);
+          let m;
+          if ((m = /(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*$/.exec(head))) return m[1];
+          if ((m = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\s*)?\([^()]*\)\s*=>\s*$/.exec(head))) return m[1];
+          if (/router\.(?:get|post|patch|put|delete)\s*\([\s\S]*$/.test(head)) return '';
+          // an anonymous block — keep walking outward at the same depth
+        }
+        return '';
+      };
+      for (const m of src.matchAll(new RegExp(WRITERS.source, 'g'))) {
+        const sym = m[1];
+        if (ALLOWED_OUTSIDE.has(enclosingName(src, m.index))) continue;
         bad.push(`${r} reaches ${sym} from a routed file`);
       }
     }

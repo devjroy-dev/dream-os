@@ -2,13 +2,27 @@
 # tools/base_guard.sh — R-38.20. THE CHECK THAT RUNS BEFORE A SINGLE FILE IS COPIED.
 #
 #   bash tools/base_guard.sh <repo-name> <base> <branch>
-#   bash tools/base_guard.sh dream-os b52448f main
+#   bash tools/base_guard.sh dreamos-pwa 9a868c8 worklist
+#   bash tools/base_guard.sh dream-os    b52448f main
 #
 # ── IT IS THE SAME FILE IN BOTH REPOS, AND THAT IS DELIBERATE ───────────────
 # The declared map below already knows both package names, so the two copies are
 # byte-identical rather than forked. A guard that differs between the repos it guards is a
 # guard with two behaviours and one name — and the founder works in both workspaces in the
 # same hour, which is the condition this file exists for.
+#
+# ⚠ AND IT WAS NOT TRUE UNTIL CE-39 2b-2. THE PARAGRAPH ABOVE WAS THE DIVERGENCE.
+# Derived by `cmp` at bd60ac2/4918275: the two copies differed, and they differed in
+# EXACTLY THIS PARAGRAPH — the dream-os copy carried the claim of byte-identity and the
+# dreamos-pwa copy did not, so the sentence asserting the equality was the only thing
+# breaking it. Each copy also named only its OWN repo in the usage line, which is what a
+# reader in the other workspace needs least.
+#
+# Both usage lines are here now, in one file, because a file that must be identical in two
+# places cannot hold a line that is true in one of them. `b40` C81 asserts the equality by
+# reading both trees, so the next divergence reddens a bench instead of being described by
+# the file that has already drifted. F-39.26's class, in a shell script: present-tense ink
+# that reads as a description and functions as a promise.
 #
 # ── WHY IT EXISTS, AND IT IS NOT A CONVENIENCE ──────────────────────────────
 # R-38.15 says the verify block opens with the base check and STOPs on drift BEFORE
