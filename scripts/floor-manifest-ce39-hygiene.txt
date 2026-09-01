@@ -1,0 +1,47 @@
+# scripts/floor-manifest-ce39-hygiene.txt
+# BASE 238074f (main; re-derived fetch-first at the cut — the guard decides).
+# Sibling dreamos-pwa 926c342 (worklist). The dream-os ZIP applies FIRST; the
+# pwa twin's C84 reads this repo, so the pwa floor is only meaningful after
+# this side is on disk.
+#
+# CE-39 · THE WRITER-HYGIENE SITTING — the money writers, cleaned before
+# vendors write through them.
+#
+# ⚠ WHAT MOVED IN THE NAMES, AND WHY, BEFORE ANYTHING ELSE:
+#   b48 IS TAKEN. 2c's 2b-2 companion landed `b48_engine_mounts_bench.js`
+#   between this sitting's read-first and its cut. This delivery's bench was
+#   authored as b48 against the older tip and is renamed b49 here rather than
+#   colliding. The same happened on the pwa side: b40 grew to C83, so this
+#   sitting's mirror cell is seated as C84. Both collisions were found by
+#   re-deriving at the new tips, not by remembering.
+#
+#   THREE CURES, ONE VOCABULARY:
+#   (1) ALLOWED_CATEGORIES reconciled to expenses_category_check, in the
+#       CHECK's own order, single-minted refusal sentence. F-2c.p1 cured; the
+#       paragraph 2c left declaring it OPEN retires with the defect.
+#   (2) studio/payments.js's mark-paid expense leg routes through createExpense
+#       and declares its failure instead of console.warn-ing it.
+#   (3) recordPrimitives.ts's `[money corrected …]` note append DELETED. The
+#       trail already existed twice on the same write (logEvent + the
+#       reason_for_action diary), which is the only reason a deletion is lawful.
+#
+#   b47 §1.3 AMENDED (chair, arm (a)) — NARROWED, count preserved 22:22. Its
+#       subject was a proxy: 「no routed file outside money.js may call a writer
+#       symbol」 caught c-2c.4's real defect and also caught this sitting's cure,
+#       because studio/payments.js's mark-paid is a STUDIO route writing its own
+#       side-effect through the home — it mounts no money endpoint and adds no
+#       second money address. It now asserts c-2c.4's law directly: ONE ADDRESS
+#       SPACE FOR THE MONEY VERBS, derived from core.js's mount table. The
+#       stronger property moved to b49 §2.1 and got stricter on the way.
+#
+# ZERO migrations. ZERO frozen bytes moved — src/agent/engine.js is
+# byte-identical to 238074f.
+#
+# FILES
+src/lib/vendor/expenses.js
+src/api/vendor/studio/payments.js
+src/engine/src/core/tools/recordPrimitives.ts
+scripts/b47_money_crossing_bench.js
+scripts/b49_writer_hygiene_bench.js
+scripts/floor-manifest-ce39-hygiene.txt
+docs/TDW_CE39_HYGIENE_HANDOVER.md

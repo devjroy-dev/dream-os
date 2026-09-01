@@ -649,10 +649,29 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
         }
         return { display: 'ERROR: donna_money_edit needs at least one money cell to change.' };
       }
-      // The story carries its own corrections: one dated line appended to the note.
-      const today = new Date().toISOString().slice(0, 10);
-      if (confess.length) patch.note = `[money corrected ${today}] ${confess.join('; ')}.`;
-      const outcome = await writeFields(agentId, rid, patch, `money corrected — ${confess.join('; ') || 'no change'}`, new Set(['note']));
+      // ── F-39.23's CURE (CE-39 hygiene, ruling 3) ─────────────────────────────
+      // WHAT STOOD HERE: `patch.note = '[money corrected <date>] received: (empty)
+      // → Rs 15,000.'`, appended into `engine.records.note` — a column the vendor
+      // READS. `src/api/vendor-engine/ledger.js` projects `note` in its SELECT and
+      // is mounted live under `/vendor/binders`; `cabinet.js` does the same. So a
+      // machine's audit line was being written into the vendor's own narrative.
+      //
+      // THE TRAIL ALREADY EXISTED, TWICE, ON THIS EXACT WRITE — which is why the
+      // cure is a deletion and not a new column or a migration:
+      //   · `writeFields` calls `logEvent(agentId, 'update', id, label)` with the
+      //     label built one line below this comment — the audit log proper.
+      //   · `ALWAYS_APPEND = ['reason_for_action']` — the always-append diary,
+      //     appended by the same call.
+      // Nothing about the correction is lost; it stops being said a third time in
+      // the one place a human reads for their own words. `note` holds what a
+      // vendor wrote; the log holds what the machine did.
+      //
+      // NOTE ON THE FILING: F-39.23 was filed against `public.invoices.description`
+      // with ₹ glyphs. All three particulars were wrong — the table is
+      // `engine.records` (the engine client is schema-scoped, `db: { schema:
+      // 'engine' }`), the column is `note`, and `moneyWords()` emits ASCII `Rs`.
+      // Re-derived from the callers down at CE-39; ratified as a misfile at c-39.35.
+      const outcome = await writeFields(agentId, rid, patch, `money corrected — ${confess.join('; ') || 'no change'}`);
       if (outcome.display.startsWith('ERROR')) return outcome;
       return { display: `MONEY CORRECTED on ${rid} — ${confess.join('; ')}.\n${outcome.display.split('\n').slice(1).join('\n')}`, item: outcome.item };
     }

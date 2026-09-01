@@ -86,125 +86,78 @@ cell('1.2 money.js write routes import the writer home', () => {
   return miss.length === 0 || `money.js does not reach the home for: ${miss.join(', ')}`;
 });
 
-cell('1.3 one file mounts the typed money writers, and it is money.js', () => {
-  // ── WIDENED AT 2a-dreamos  [c-2c.4] ─────────────────────────────────────
-  // It asserted only that `src/lib/money/` was never created — a guard against
-  // the home the chair's kickoff ruled and the tree already had. That is one
-  // half of "one home"; this is the other. `src/api/vendor/expenses.js` carried
-  // POST/PATCH/DELETE that already called the typed writer home, correctly and
-  // in the wrong file, and the seat minted replacements in money.js without
-  // reading them. Two doors, one home, one table — exactly what this cell
-  // exists to refuse, sitting one directory away while the cell passed.
+cell('1.3 no file outside money.js mounts a /money route onto the typed writers', () => {
+  // ── AMENDED AT CE-39 WRITER-HYGIENE. NARROWED, NOT WEAKENED. ─────────────
   //
-  // ⚠ ONE DECLARED EXCEPTION, NAMED RATHER THAN EXCLUDED BY A LOOSE REGEX.
-  // `invoices.js :: generateInvoiceForBinder` calls `createInvoice` and writes
-  // `public.invoices` at :381. It is NOT a money-door route: it is the binder
-  // -> formal-invoice sync, reached from the PDF route AND from three live
-  // callers outside this file — vendor-engine/chat.js:422, vendorInbound.js:1698,
-  // and the dependency injection at index.js:149. It is F-39.33, filed OPEN at
-  // the chair's hand, ruled untouched this sitting. Derived at 2a: it does NOT
-  // go dead when the binder readers retire, because the WhatsApp path keeps
-  // calling it. The exception is listed by symbol so adding a second one is an
-  // edit to this cell and not an accident.
-  const ALLOWED_OUTSIDE = new Set(['generateInvoiceForBinder']);
+  // WHAT IT ASSERTS NOW, QUOTED FIRST so a later seat reads the claim before
+  // the history: every route whose PATH is under /money reaches the typed
+  // writers only from money.js, and no file outside money.js mounts a /money
+  // route at all. ONE ADDRESS SPACE FOR THE MONEY VERBS — which is c-2c.4's
+  // law, stated as the law rather than as a proxy for it.
+  //
+  // WHAT IT ASSERTED BEFORE, AND WHY THAT WAS THE WRONG SUBJECT: 「one file
+  // mounts the typed money writers, and it is money.js」, enforced as 「no
+  // ROUTED FILE outside money.js may call a writer symbol」. That is a proxy.
+  // It catches c-2c.4's real defect — two doors onto one table, which is what
+  // src/api/vendor/expenses.js was — but it also catches a case that is not a
+  // defect at all, and CE-39 walked straight into it: studio/payments.js's
+  // mark-paid now logs its expense through createExpense. That route MOUNTS NO
+  // MONEY ENDPOINT. It is a STUDIO route writing its own side-effect through
+  // the writer home — the correct direction, and the one the hygiene sitting
+  // was chartered to force. Under the old wording the cell reddened the cure.
+  //
+  // ⚠ THE NARROWING IS NOT A LOOSENING, AND THIS IS THE PARAGRAPH THAT PROVES
+  // IT. The strong property — 「nothing outside the writer home opens
+  // public.expenses with a mutation verb」 — is what c-2c.4 was actually
+  // reaching for, and it is now asserted, mutation-proven in BOTH directions,
+  // at b49_writer_hygiene_bench §2.1. It is a STRICTER claim than the one
+  // removed here: the old line permitted any non-routed file to open the table
+  // inline so long as it never named a writer symbol, which is exactly how
+  // studio/payments.js opened public.expenses undetected for the whole of 2c.
+  // The guard did not shrink; it moved to the file that can state it properly,
+  // and got stronger on the way. RETIRE-WITH-THE-READER, across two benches.
+  //
+  // COUNT PRESERVED: one cell in, one cell out. 1.3b is untouched.
+  //
+  // THE `generateInvoiceForBinder` EXCEPTION RETIRES WITH THE WORDING THAT
+  // NEEDED IT. It existed to exonerate a writer call in a routed file; this
+  // cell no longer asks that question of any file. F-39.33 still carries the
+  // finding itself, filed OPEN at the chair's hand, cure deferred past beta.
+  // ⚠ THE ADDRESS IS DERIVED FROM THE MOUNT TABLE, NEVER FROM THE ROUTE LITERAL.
+  // The first cut of this amendment matched `router.post('/invoices…` and the
+  // like, and reddened `src/api/vendor/schedules.js` — which mounts at `/` and
+  // whose `/invoices/:id/schedule` is therefore NOT under `/money` at all. A
+  // route string is not an address; `core.js`'s `router.use` is. Caught by
+  // running it, F-39.25's pattern once more on this arc.
   const WRITERS = /\b(createInvoice|updateInvoice|recordPayment|cancelInvoice|createExpense|updateExpense|deleteExpense)\s*\(/;
+  const core = strip(read('src/api/vendor/core.js'));
+  const mounts = [...core.matchAll(/router\.use\(\s*'([^']+)'\s*,\s*require\('([^']+)'\)/g)]
+    .map((m) => ({ at: m[1], file: m[2] }));
+  if (!mounts.length) return 'the vendor mount table could not be read from core.js';
 
-  const bad = [];
-  const walk = (rel) => {
-    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
-      const r = rel + '/' + e.name;
-      if (e.isDirectory()) { walk(r); continue; }
-      if (!/\.js$/.test(e.name)) continue;
-      if (r === 'src/api/vendor/money.js') continue;
-      const src = strip(read(r));
-      if (!WRITERS.test(src)) continue;
-      // A file may reach a writer outside a route (the declared exception). The
-      // defect is a ROUTE that does.
-      if (!/router\.(post|patch|put|delete)\s*\(/.test(src)) continue;
-      // ── s-2c.1 CURED AT CE-39 2b-2. THE OLD LINE HELD THREE DEFECTS ────────
-      // It read:
-      //   for (const m of src.match(<WRITERS>, 'g') || []) {
-      //     const near = src.slice(Math.max(0, src.indexOf(m) - 900), src.indexOf(m));
-      //     const enclosing = (near.match(/(?:async )?function ([A-Za-z_]+)/g) || []).pop();
-      //
-      //   (1) `indexOf(m)` FINDS THE FIRST OCCURRENCE, NOT THIS ONE. `String.match`
-      //       with /g returns TEXT, not positions, so every repeat of the same
-      //       writer symbol in one file was judged at the position of the first.
-      //       The second and third calls were never actually examined — carried
-      //       as s-2c.1 for the 900 alone, and the index defect was found on
-      //       reading the line to cure it.
-      //   (2) THE 900-CHARACTER WINDOW IS A PROXIMITY GUESS, NOT A SCOPE. A
-      //       declaration 901 characters back yields the empty name and reds a
-      //       lawful call; a long unrelated function inside the window yields
-      //       ITS name and exonerates an unlawful one.
-      //   (3) IT SEES ONLY `function <name>`. An ARROW handler — which is how
-      //       every route in this estate is written — is invisible to it, so a
-      //       writer called inside `router.post('/', async (req,res) => {…})`
-      //       was attributed to whatever named function happened to precede it.
-      //
-      // THE CURE DERIVES THE SITE INSTEAD OF GUESSING AT IT. `matchAll` gives
-      // each occurrence its OWN index; the whole prefix is scanned (no window)
-      // for the nearest preceding declaration in either form; and a route opened
-      // AFTER that declaration means the call sits inside the ROUTE, which is
-      // the defect this cell exists to catch, so the exception cannot apply.
-      //
-      // ⚠ THE EXCEPTION NARROWS RATHER THAN WIDENS, which is the direction a
-      // correction to a guard must go. `generateInvoiceForBinder` is exonerated
-      // ONLY when the call is lexically inside it with no route opened between —
-      // never merely near it.
-      // ── ⚠ THE FIRST CUT OF THIS CURE WAS ALSO A GUESS, AND IT WAS CAUGHT BY
-      // RUNNING IT (F-39.25's pattern, third instance on this arc). It replaced
-      // the 900-char window with 「the nearest preceding declaration」, which is
-      // a better guess and still a guess: at src/api/vendor/invoices.js the
-      // nearest declaration before the lawful `createInvoice` call is a LOCAL
-      // `const latest = (…)` INSIDE `generateInvoiceForBinder`, so the cell
-      // reddened a call the estate has ruled lawful. A nearest-preceding
-      // declaration is not a scope; a scope is a brace.
-      //
-      // SO THE SCOPE IS DERIVED, NOT APPROXIMATED. `enclosingName` walks
-      // BACKWARDS from the call tracking brace depth, and at each brace that
-      // actually encloses the call it reads the head immediately before it:
-      // a named `function NAME(…)`, a `NAME = (…) =>` binding, or a
-      // `router.<verb>(` handler. Anonymous blocks (`if`, `try`, `for`) are
-      // stepped over rather than answered with, which is precisely what the
-      // local `const` defeated. The first enclosing FUNCTION wins; a route
-      // handler answers '' and can never be exonerated.
-      //
-      // ITS LIMIT, NAMED: braces inside string and template literals are
-      // counted as code. No writer symbol in this estate sits behind one, and a
-      // cell that mis-parses would RED (over-report) rather than pass, which is
-      // the safe direction for a guard.
-      const enclosingName = (text, at) => {
-        let depth = 0;
-        for (let i = at - 1; i >= 0; i--) {
-          const c = text[i];
-          if (c === '}') { depth++; continue; }
-          if (c !== '{') continue;
-          if (depth > 0) { depth--; continue; }
-          // This brace encloses the call. What opened it?
-          const head = text.slice(Math.max(0, i - 240), i);
-          let m;
-          if ((m = /(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*$/.exec(head))) return m[1];
-          if ((m = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\s*)?\([^()]*\)\s*=>\s*$/.exec(head))) return m[1];
-          if (/router\.(?:get|post|patch|put|delete)\s*\([\s\S]*$/.test(head)) return '';
-          // an anonymous block — keep walking outward at the same depth
-        }
-        return '';
-      };
-      for (const m of src.matchAll(new RegExp(WRITERS.source, 'g'))) {
-        const sym = m[1];
-        if (ALLOWED_OUTSIDE.has(enclosingName(src, m.index))) continue;
-        bad.push(`${r} reaches ${sym} from a routed file`);
-      }
-    }
-  };
-  walk('src/api');
-  if (bad.length) return bad.join(' | ');
+  const moneyMounts = mounts.filter((m) => m.at === '/money');
+  if (moneyMounts.length !== 1) {
+    return `/money is mounted ${moneyMounts.length} time(s); one address space means exactly one`;
+  }
+  if (!/\/money$/.test(moneyMounts[0].file)) {
+    return `/money is mounted from ${moneyMounts[0].file}, not money.js`;
+  }
+
+  // AND THE ONE ADDRESS SPACE MUST ACTUALLY BE INHABITED — otherwise this cell
+  // passes vacuously the day money.js's routes are moved or deleted.
+  const money = strip(read('src/api/vendor/money.js'));
+  if (!/router\.(?:get|post|patch|put|delete)\s*\(/.test(money)) {
+    return 'money.js mounts no route — the address space is empty and this cell would pass over nothing';
+  }
+  if (!WRITERS.test(money)) return 'money.js reaches no typed writer — the money door no longer uses the home';
 
   return !fs.existsSync(path.join(ROOT, 'src/lib/money'))
     || 'src/lib/money/ exists — a second home for public.invoices (c-39.32)';
-  // MUTATION: restore `router.post('/', ... createExpense(...))` in
-  // src/api/vendor/expenses.js -> RED.
+  // MUTATION (the defect direction): add a second `router.use('/money', ...)` to
+  // core.js, or re-point the existing one at another file -> RED.
+  // MUTATION (the cure direction): studio/payments.js keeps calling createExpense
+  // -> GREEN. Both run at the cut; see the handover's non-vacuity section.
+  // MUTATION (the vacuity direction): strip money.js's routes -> RED.
 });
 
 cell('1.3b src/lib/money/ was never created', () => {

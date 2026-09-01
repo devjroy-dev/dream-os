@@ -13,6 +13,7 @@ const asyncHandler    = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
 const { resolveAgentForVendor } = require('../../middleware/agentBridge');
 const { binderRecordsByIds, titleOfRecord } = require('../../../lib/vendor/binderTitles');
+const { createExpense } = require('../../../lib/vendor/expenses');   // CE-39 hygiene: the ONE expense writer
 
 const VALID_STATES = ['owed', 'paid', 'cancelled'];
 const mw = [requireAuth, resolveVendor()]; // R-39.7 (founder, 2026-08-29): Studio Suite open to every tier — requirePrestige retired
@@ -422,8 +423,24 @@ router.patch('/:paymentId/mark-paid', ...mw, asyncHandler(async (req, res) => {
     return errRes(res, 500, error.message);
   }
 
-  // Auto-create a business expense so team payments show up in the vendor's expense ledger.
-  // Fire-and-forget — don't fail the mark-paid if expense creation fails.
+  // ── CE-39 HYGIENE, ruling 2 — THE SECOND WRITER GOES THROUGH THE HOME ──────
+  // THE DEFECT: this leg opened `public.expenses` inline with a hardcoded
+  // category, so `src/lib/vendor/expenses.js`'s validator — the one place that
+  // knows what the CHECK accepts — never saw the row. `assistant` happens to be
+  // legal, so nothing was broken; what was broken is that nothing here would
+  // ever HAVE been broken visibly. The catch was `console.warn`, so a 23514 on
+  // this row surfaced to the vendor as an unqualified success: the payment
+  // settles, the ledger silently gains nothing, and the only witness is a log
+  // line in Railway. That is the silent-loss path, and it is why this writer
+  // routes through the home now rather than merely being told the right word.
+  //
+  // FAILURE IS DECLARED, NOT SWALLOWED. The mark-paid still stands — the money
+  // row is already written and committed above, and reversing it because a
+  // derived bookkeeping row failed would be the worse lie. So the response
+  // carries `expense_logged`, and when it is false it carries WHY. The caller
+  // is told; nothing is invented and nothing is hidden.
+  let expenseLogged = false;
+  let expenseError  = null;
   try {
     const expenseDate = new Date().toISOString().slice(0, 10);
     const memberRes   = await supabase
@@ -435,19 +452,21 @@ router.patch('/:paymentId/mark-paid', ...mw, asyncHandler(async (req, res) => {
     const desc = data.description
       ? `${memberName} — ${data.description}`
       : `Payment to ${memberName}`;
-    await supabase.from('expenses').insert({
-      vendor_id:    req.vendor.id,
+    const r = await createExpense(supabase, req.vendor.id, {
       amount:       data.amount_inr,
       category:     'assistant',
       description:  desc,
       expense_date: expenseDate,
       notes:        paid_via ? `Paid via ${paid_via}` : null,
     });
+    expenseLogged = r.ok === true;
+    if (!r.ok) expenseError = r.error;
   } catch (expErr) {
-    console.warn('[studio:mark-paid] expense auto-create failed:', expErr.message);
+    expenseError = expErr.message;
   }
+  if (!expenseLogged) console.warn('[studio:mark-paid] expense not logged:', expenseError);
 
-  return okRes(res, { payment: data });
+  return okRes(res, { payment: data, expense_logged: expenseLogged, expense_error: expenseError });
 }));
 
 module.exports = router;
