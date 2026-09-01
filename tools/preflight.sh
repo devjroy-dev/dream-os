@@ -205,10 +205,34 @@ if [ "${OS_DIRT:-0}" != "0" ]; then
   say "⚠ dream-os has ${OS_DIRT} uncommitted file(s)."
   WARN=1
 fi
+# ── F-39.44 · THE VERDICT WAS PRINTED AND THE EXIT CODE SAID GO ──────────────
+# This file ended `exit 0`, unconditionally, under both branches below. So it
+# printed "PREFLIGHT NOT CLEAR — resolve the lines above" and then handed the
+# caller a zero, and under this estate's own floor-method law — THE EXIT CODE IS
+# THE VERDICT, never the printed text, because our benches use at least three
+# report formats and only the code is shared by all of them — every wrapper that
+# gated on this instrument saw CLEAR forever.
+#
+# It is the class this file's own sitting was chartered to audit, standing in the
+# gate instrument itself: an instrument CORRECT ABOUT ITS OWN SUBJECT (the four
+# warnings above are all true and all printed) and WRONG ABOUT WHAT IT IS READ TO
+# MEAN, with nothing above it asking the second question. Found at the B-1
+# read-first while deriving preflight for that sitting's own first motion; the
+# instrument auditing the instruments could not clear itself.
+#
+# WHY `exit "$WARN"` AND NOT `exit 1`. `WARN` is already the verdict — every site
+# above sets it to 1 beside the `say` that explains why. Deriving the exit from it
+# means a warning added tomorrow gates by existing, which is the same law
+# `run-floor.sh` learnt three times: an enumeration written by hand is believed to
+# be complete and is not. There is no second place to keep in step.
+#
+# BEHAVIOUR ON A CLEAN TREE IS UNCHANGED: WARN=0, exit 0, same words.
+# THE TWO COPIES ARE FORKED BY DESIGN AND BEHAVIOURALLY IDENTICAL — this block is
+# byte-identical in both repos and both benches assert that.
 if [ "$WARN" = "0" ]; then
   say "PREFLIGHT CLEAR — both tips named above. Quote THESE in §0, not the word 'present'."
 else
   say "PREFLIGHT NOT CLEAR — resolve the lines above before any number goes in a handover."
 fi
 line
-exit 0
+exit "$WARN"
