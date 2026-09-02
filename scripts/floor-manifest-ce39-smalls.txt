@@ -1,0 +1,38 @@
+# scripts/floor-manifest-ce39-smalls.txt
+# CE-39 · PRE-BETA SMALLS · dream-os half — the declared dirt of S1 + S4.
+#
+# F-39.51(b): a dirty file outside this list is a STOP until accounted for. Two
+# of the six below were authored by THIS SEAT'S PREDECESSOR, which died on a
+# network error mid-sitting in this same directory; they are inherited, read
+# whole against the ruling, verified claim by claim, and adopted. They are named
+# as inherited rather than folded in silently, because a manifest that cannot
+# say where a byte came from is not an instrument.
+
+# ── S1 · THE PDF FIELD RENAME  [F-2c.w7's dream-os half] ────────────────────
+src/api/vendor/money.js
+scripts/b47_money_crossing_bench.js
+
+# ── S4 · THE RUNNER REFUSALS  [F-39.47 · F-39.48 · F-39.37] ─────────────────
+scripts/run-floor.sh
+scripts/b49_writer_hygiene_bench.js
+
+# ── INHERITED FROM THE PREDECESSOR SEAT, ADOPTED ON DERIVATION ──────────────
+# recordPrimitives.ts: the F-39.36 naming, granted comment-only under W-1 for
+# this line alone. Its three factual claims were re-derived before adoption —
+# ledger.js and cabinet.js DO both project `note` in their record SELECT (one
+# multi-line concatenated string in each), the vendor-engine index mounts ledger
+# at `/binders` and cabinet at `/cabinet`, and `git show f5e1933` on this file
+# contains zero occurrences of `money replaced`, so the hygiene seat cured the
+# EDIT arm and left the REPLACE arm unnamed. Comment bytes only; no logic moved.
+src/engine/src/core/tools/recordPrimitives.ts
+
+# floor-base.txt: `b5_wa_door_smoke` RED -> REFUSED. Lawful, and verified by
+# running the bench bare rather than by reading the line: it exits 3 with
+# 「SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set... it refuses to run
+# without explicit service-role keys」. NOTE, and it is the better half of the
+# finding: that `process.exit(3)` has been in the file since `ca1e697` — exit 3
+# was ALREADY this estate's refusal convention, and F-39.47's channel did not
+# invent it, it taught the runner to read what benches were already saying.
+scripts/floor-base.txt
+scripts/floor-manifest-ce39-smalls.txt
+scripts/bf1_bride_tool_fidelity_bench.js

@@ -232,7 +232,24 @@ run_pass() {
       node "$b" >/dev/null 2>&1
     fi
     local rc=$?
-    if [ $rc -ne 0 ]; then
+    # ── F-39.47 · EXIT 3 IS A REFUSAL, AND IT GETS ITS OWN LINE ──────────────
+    # A bench that could not READ its subject is not a bench that FAILED it.
+    # `b49_writer_hygiene_bench` §3.1 returns `REFUSED — src/engine/dist/... is
+    # absent` and, until the channel existed, exited 1 exactly as a defect does —
+    # so a missing build artifact reached this floor as `RED: b49`, reading as
+    # audit prose surviving in a vendor-facing column.
+    #
+    # CLASSIFIED BY THE CODE, NEVER A GREP, exactly as this file's header rules:
+    # only the exit code is shared by this estate's report formats, and greping
+    # output for the word REFUSED would classify a bench by a string any comment
+    # could contain. 0 green · 1 red · 3 refused · 124 timeout.
+    #
+    # THE SET CARRIES IT so `--check`'s diff can see a refusal appear or vanish;
+    # a refusal that quietly became permanent would read as steady state, which
+    # is how a bench stops looking without anyone noticing.
+    if [ "$rc" -eq 3 ]; then
+      echo "REFUSED: ${n}" >> "$out"
+    elif [ $rc -ne 0 ]; then
       # 124 is timeout(1)'s own exit code — a bench THIS FILE killed, which is a
       # finding about BENCH_TIMEOUT and must never pass as a bench's own verdict.
       # Captured into `rc` immediately: inside `if timeout ...; then`, `$?` in the
@@ -304,6 +321,58 @@ if [ "$CHECK" = "yes" ]; then
   # Not a printf inside this script: a base that is a literal in the runner is a
   # base that gets edited by the hand that needs it to change. A separate file
   # makes every movement a diff in a delivery, with a reason beside it.
+  #
+  # ⚠ THE BASE FILE IS A PURE SET AND CARRIES NO COMMENTS. It is diffed RAW
+  # against the measured floor below, so a `#` line in it is a permanent delta
+  # that fails every run. Reasons for base movements are written HERE. Learned by
+  # doing it wrong once this sitting: the reclassification note below was drafted
+  # into the base file first and would have broken `--check` at every tip.
+  #
+  # ── BASE AMENDED, LABELLED — CE-39 PRE-BETA SMALLS · S4 RIDER  [F-39.55] ───
+  # A SECOND LINE RECLASSIFIES: `bf1_bride_tool_fidelity_bench`, `RED:` ->
+  # `REFUSED:`. Nothing joins, nothing leaves.
+  #
+  # THE GROUND, MEASURED AND NOT READ: run bare with no `DEEPSEEK_API_KEY` it
+  # prints 「BF1_VERDICT: NOT_RUN reason=no_key」 and now exits 3. It exited 2
+  # until this sitting, which is why it sat in the base as a red — a live-endpoint
+  # bench declining to invent an offline mode, counted as a defect.
+  #
+  # ⚠ IT WAS TWO EDITS, NOT THE ONE THE GRANT ANTICIPATED, AND THE SECOND CURED A
+  # REGRESSION OF MINE. `bf1`'s catch exited 3 for BOTH a transport failure and an
+  # unexpected throw. While the runner read every non-zero code as RED that cost
+  # nothing. F-39.47 taught it that 3 means REFUSED — and thereby downgraded an
+  # unanticipated exception from a red sheet to a shrug, in the one bench whose
+  # own header says a transport fault must never be reported as a red sheet. The
+  # catch now splits: transport -> 3, unexpected -> 2. Proven both ways.
+  #
+  # ⚠ AND THE ORDERING BIT ONCE, RECORDED SO IT DOES NOT AGAIN. This file is
+  # diffed RAW against a `sort`ed measurement, so it must itself be sorted.
+  # `RED:` sorts before `REFUSED:` (D < F), so a reclassified line MOVES to the
+  # end of the file — editing it in place leaves the set correct and the ORDER
+  # wrong, and `--check` then prints the identical line on both sides of the
+  # diff. That reads as a delta and is an artifact of the comparison.
+  #
+  # ── BASE AMENDED, LABELLED — CE-39 PRE-BETA SMALLS · S4  [F-39.47] ─────────
+  # ONE LINE RECLASSIFIES; NOTHING JOINS, NOTHING LEAVES, AND NO BENCH CHANGED.
+  # `b5_wa_door_smoke` moves from `RED:` to `REFUSED:`.
+  #
+  # THE GROUND, derived rather than asserted: that bench guards its own entry —
+  # 「This smoke writes to a live database; it refuses to run without explicit
+  # service-role keys」 — and exits 3. It has always exited 3. The runner
+  # classified every non-zero code as RED, so a bench declining to touch
+  # PRODUCTION without credentials has been counted as a defect in every dream-os
+  # floor since it was written, and sat in the base as a line nobody could
+  # account for. F-39.47 gave the runner a third code to read; this line is what
+  # it found already spoken.
+  #
+  # ⚠ EXIT 3 WAS NOT INVENTED FOR THIS ARC. It was chosen for the channel before
+  # this bench was read, and finding the convention already here means the estate
+  # had it and only the reader was missing. Recorded because a coincidence that
+  # goes unexamined is how a wrong convention gets entrenched.
+  #
+  # ⚠ IT IS STILL NOT GREEN. A refusal is non-zero and named in the set, so if
+  # this bench ever starts PASSING — or starts REDDING for a real reason — the
+  # diff below catches it. A reclassification is not an absolution.
   if [ ! -f "$BASE_FILE" ]; then
     echo "STOP — ${BASE_FILE} is missing. There is no base to check against."
     exit 1

@@ -545,6 +545,37 @@ export async function executeRecordTool(agentId: string, name: string, input: Re
           // happens; the old figure is confessed old → new in words, preserved into the
           // binder's own story (note, appended) and the event trail. Her judgment sees
           // everything and is overridden by nothing.
+          //
+          // ── ⚠ A RULED EXCEPTION TO F-39.23's LAW, NAMED HERE  [F-39.36 · REPLACE arm] ──
+          // THE LAW THIS BREAKS, STATED SO THE BREAK IS DELIBERATE AND NOT AN OVERSIGHT:
+          // the EDIT arm of this same tool stopped writing `[money corrected <date>]`
+          // into this column at the CE-39 hygiene sitting, because `engine.records.note`
+          // is what the VENDOR reads — projected by `src/api/vendor-engine/ledger.js`
+          // and `cabinet.js` — and a machine's audit line does not belong in a human's
+          // own narrative. The trail existed twice already on that write, so the cure
+          // was a deletion.
+          //
+          // THE REPLACE ARM IS EXEMPT, ruled at the CE-39 hygiene review (2026-09-01):
+          // 「the REPLACE case is exactly where a vendor needs the prior figure visible
+          // in her own narrative」. The distinction is not stylistic. A CORRECTION
+          // restates a figure the story already carries; a REPLACEMENT DESTROYS one.
+          // Delete this line and the old amount exists nowhere the vendor will ever
+          // look — only in an event trail she has no door to. The founder's standing
+          // design governs: money is never silently lost.
+          //
+          // ⚠ THE HYGIENE SEAT WAS TO NAME THIS AT THE SITE AND DID NOT. Derived, not
+          // assumed: `git show f5e1933 -- src/engine/src/core/tools/recordPrimitives.ts`
+          // contains ZERO occurrences of `money replaced`; that commit cured the EDIT
+          // arm and left this one silent. The paragraph above is the naming, added as a
+          // comment-only edit under an explicit W-1 grant for this line alone.
+          //
+          // ⚠ THE BENCH KNOWS. `scripts/b49_writer_hygiene_bench.js` §3.1 sweeps four
+          // audit-prose shapes over every narrative column in the estate, and this
+          // write matches two of them. It is green ONLY through the enumerated
+          // exception list there, keyed to this file, this column, and this exact
+          // value — so a second `replaced`-shaped writer anywhere else still reds, and
+          // CHANGING THIS LINE breaks the key and reds it here. The exception is a
+          // named door, not a hole.
           const today = new Date().toISOString().slice(0, 10);
           const oldLine = `${moneyWords(existing.amount)}${existing.direction ? ' ' + existing.direction : ''}`;
           const newLine = `${moneyWords(parsed)} ${dirIn}`;

@@ -607,7 +607,20 @@ router.get('/invoices/:vendorId/:invoiceId/pdf', ...vendorGate, asyncHandler(asy
     const { updateInvoicePdfUrl } = require('../../lib/vendor/invoices');
     await updateInvoicePdfUrl(supabase, req.vendor.id, src.invoice.id, signed.signedUrl);
 
-    return okRes(res, { url: signed.signedUrl, invoice_number: src.invoice.invoice_number });
+    // ── F-2c.w7's dream-os HALF · THE WIRE SAYS `pdf_url` NOW ───────────────
+    // THIS FIELD WAS `url`, AND IT WAS THE ONLY PLACE IN THE ESTATE THAT SPELLED
+    // IT THAT WAY. The column is `pdf_url` (public.invoices ordinal 13), the
+    // stamp one line above writes `pdf_url`, `POST /` at
+    // `src/api/vendor/invoices.js` (symbol: the create route's okRes) answers
+    // `pdf_url`, the binder door's `/:invoiceId/pdf` answers `pdf_url`, and the
+    // admin detail view and the agent both read `pdf_url`. One door said `url`
+    // and every caller of it had to know that.
+    //
+    // The pwa carried a `url ?? pdf_url` fallback for exactly this, declared
+    // conditional-withheld with its retirement condition written down: it
+    // retires when THIS line ships. It does, in the pair — dream-os first so no
+    // deploy window has a client reading a name the server does not send.
+    return okRes(res, { pdf_url: signed.signedUrl, invoice_number: src.invoice.invoice_number });
   } catch (e) {
     console.error('[GET /vendor/money/invoices/:id/pdf]', e.message);
     return errRes(res, 500, 'Could not generate the PDF.');

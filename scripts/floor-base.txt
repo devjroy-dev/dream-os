@@ -14,7 +14,7 @@ RED: b08_p5_unblock_bench
 RED: b10_p1_search_bench
 RED: b10_p2_bridge_bench
 RED: b10_p3_mint_deck_bench
-RED: b5_wa_door_smoke
 RED: b5b_movementb_bench
-RED: bf1_bride_tool_fidelity_bench
 RED: test-shape
+REFUSED: b5_wa_door_smoke
+REFUSED: bf1_bride_tool_fidelity_bench

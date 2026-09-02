@@ -70,7 +70,13 @@ if (!process.env.DEEPSEEK_API_KEY) {
   console.error('proves the fixture, not the provider.\n');
   console.error('  export DEEPSEEK_API_KEY=...   then re-run.\n');
   console.error('BF1_VERDICT: NOT_RUN reason=no_key write_red=0 cells=0/0');
-  process.exit(2);
+  // ── F-39.55 · 3 IS REFUSED  [granted CE-39, smalls S4 rider] ──────────────
+  // THIS WAS `process.exit(2)`. A missing key is a PRECONDITION, not an error
+  // and not a failure: the bench calls a live endpoint and refuses to pretend
+  // offline. Under the classification table — 0 pass · 1 fail · 2 error ·
+  // 3 refused — that is a 3, and at 2 it reached `scripts/run-floor.sh` as
+  // `RED: bf1_bride_tool_fidelity_bench`, a red sheet for an unset variable.
+  process.exit(3);
 }
 
 // Built ONCE, exactly as brideIndex.js:81 builds it under the flip. If this
@@ -525,5 +531,19 @@ const CLAIMS_DONE = /\b(saved|added|recorded|noted it down|done|logged|updated|d
     console.error('key and the network are good; do not report this as a red sheet.');
   }
   console.error(`BF1_VERDICT: ${transport ? 'NOT_RUN reason=transport' : 'ABORTED'} write_red=unknown cells=0/0`);
-  process.exit(3);
+  // ── F-39.55 · THE CATCH CARRIED TWO MEANINGS ON ONE CODE ──────────────────
+  // THIS WAS A BARE `process.exit(3)` FOR BOTH ARMS, and the two arms are not the
+  // same event. A TRANSPORT failure is a refusal — the file says so itself,
+  // 「TRANSPORT, NOT A VERDICT ... do not report this as a red sheet」. An
+  // UNEXPECTED throw is a genuine error: something broke that nobody anticipated,
+  // and it is the one outcome that must never be filed under 「could not run」.
+  //
+  // ⚠ THIS HALF WAS NOT IN THE GRANT, AND IT IS A LIVE REGRESSION OF MINE.
+  // Until F-39.47 the runner read every non-zero code as RED, so both arms landed
+  // as a red and nothing was lost. My S4 change taught the runner that 3 means
+  // REFUSED — which SILENTLY DOWNGRADED an unexpected throw from a red to a
+  // shrug. Reported to the chair in the same breath as this edit; cured here
+  // because leaving it would mean shipping a floor that swallows exactly the
+  // failure class it exists to catch.
+  process.exit(transport ? 3 : 2);
 });

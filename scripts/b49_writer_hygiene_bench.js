@@ -44,7 +44,21 @@ const strip = (src) =>
   src.replace(/\/\*[\s\S]*?\*\//g, '')
      .split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
 
-let pass = 0; let fail = 0;
+// ── F-39.47 · A REFUSAL IS NOT A FAIL  [ported from the pwa's b40] ──────────
+// §3.1 below already returns `REFUSED — src/engine/dist/... absent; run
+// \`npm run build\`` and this loop counted it as a FAIL, exited 1, and the runner
+// recorded `RED: b49_writer_hygiene_bench` — a missing build artifact reported
+// as audit prose surviving in a vendor column. The sentence went to a reader;
+// the floor got a defect that was not there.
+//
+// THE SIGNAL IS THE RETURNED STRING'S OWN OPENING WORD, so the cell that already
+// writes it needs no edit. `true` is still the only pass — a refusal does NOT
+// pass on absence, it is counted, named, and carried to a non-zero exit.
+//
+// EXIT CODES, SHARED WITH THE PWA TWIN: 0 green · 1 red · 3 refused. A throw is
+// never a refusal — a cell that refuses does so deliberately, by returning.
+let pass = 0; let fail = 0; let refused = 0;
+const refusedNames = [];
 const queue = [];
 function cell(name, fn) { queue.push([name, fn]); }
 async function runAll() {
@@ -53,8 +67,13 @@ async function runAll() {
     let ok = false; let why = '';
     try { const r = await fn(); ok = r === true; if (!ok) why = String(r); }
     catch (e) { ok = false; why = e.message; }
-    if (ok) { pass += 1; console.log(`  PASS  ${name}`); }
-    else { fail += 1; console.log(`  FAIL  ${name}\n        ${why}`); }
+    if (ok) { pass += 1; console.log(`  PASS  ${name}`); continue; }
+    if (/^REFUSED\b/.test(why)) {
+      refused += 1; refusedNames.push(name.split(' ')[0]);
+      console.log(`  REFUSED  ${name}\n        ${why.replace(/^REFUSED\s*—?\s*/, '')}`);
+      continue;
+    }
+    fail += 1; console.log(`  FAIL  ${name}\n        ${why}`);
   }
 }
 
@@ -224,22 +243,174 @@ cell('2.4 the expense leg does not reverse a committed money row', () => {
 // ── §3 · THE NOTE IS THE VENDOR'S; THE LOG IS THE MACHINE'S ────────────────
 cell(null, "\n§3 F-39.23 — audit prose leaves the vendor's column");
 
-cell("3.1 no live writer appends '[money corrected' into a narrative column", () => {
+// ── THE AUDIT-PROSE CLASS  [F-39.37] ───────────────────────────────────────
+// §3.1 caught ONE STRING. F-39.23's defect was not that string — it was a
+// MACHINE writing its own bookkeeping into a column a human reads, and the
+// bookkeeping happened to be spelled `[money corrected`. A cell pinned to the
+// spelling catches the instance and licenses the class: rename the label to
+// `[amount adjusted` and the identical defect walks past a green bench.
+//
+// FOUR SHAPES, EACH WITH A SPECIMEN, because a class asserted without specimens
+// is a regex nobody can check. The specimens are what the mutation restores.
+//
+//   bracket   `[money corrected 5000 -> 7000]`   a bracketed correction label
+//   arrow     `amount: 5000 -> 7000`             an ASCII state transition
+//   glyph     `5000 → 7000`                      the same in one character
+//   stamp     `[2026-09-02T04:00:00Z]`           a machine timestamp in prose
+//
+// ⚠ DECLARED BLIND SPOT, named rather than discovered later: the STAMP shape
+// reads LITERAL dates only. A writer composing `[${today}]` from a variable is
+// invisible to it, and the live site this cell found does exactly that — it is
+// caught by the bracket and glyph shapes instead. A static reader cannot
+// evaluate a template expression, and pretending otherwise by matching `${`
+// would convict every interpolation in the estate. The stamp shape is therefore
+// a floor on this class, not a ceiling.
+//
+// ⚠ THE SHAPES ARE SOUGHT IN WRITTEN VALUES, NOT ANYWHERE IN THE FILE. An arrow
+// is `=>` in every callback in this estate and `->` in half its comments, so a
+// naive file-wide search convicts every tree. The corpus is narrowed twice
+// before any shape is applied: comments are stripped, and only the
+// RIGHT-HAND SIDE of an assignment to a narrative column is read. That
+// narrowing is the cell — without it this reds on cured code and on the defect
+// alike, which is F-39.39's disease and distinguishes nothing.
+// ── ⚠ THE COLUMN SET IS PER-FILE, AND THE FIRST RUN IS WHY  [F-39.25] ──────
+// A flat list `['note','description','notes']` applied to every file convicted
+// `recordPrimitives.ts` three times over — on `description: "File money on a
+// binder: the amount and its direction (in = ...)"`. That is a TOOL SCHEMA's
+// description, the sentence the model reads to choose a tool. It is not a column
+// on any table, and the `→` in it is ordinary prose.
+//
+// INSTRUMENT FIRST. Those three were evidence about the reader, not the tree,
+// and the reader is what moved. `description` is a narrative column on
+// `public.invoices`(7) and `public.expenses`(5); in the engine plane the
+// narrative column is `engine.records.note` and `description` is a schema field
+// that happens to share its spelling. One word, two planes, and a cell that
+// cannot tell them apart reds on cured code and on the defect alike.
+//
+// So each file declares WHICH columns it can write. A file added here without a
+// column set is refused rather than scanned against a guess.
+const WRITE_SITES = [
+  // engine plane — engine.records.note is the narrative column; `description`
+  // in this file is the tool-schema field and is NOT read.
+  ['src/engine/src/core/tools/recordPrimitives.ts', ['note']],
+  ['src/engine/dist/core/tools/recordPrimitives.js', ['note']],
+  // public plane — the vendor-facing narrative columns and their writer homes.
+  ['src/lib/vendor/invoices.js', ['description', 'notes']],
+  ['src/lib/vendor/expenses.js', ['description']],
+  ['src/api/vendor/money.js', ['description', 'notes']],
+];
+
+// ── DECLARED EXCEPTIONS · ONE LIST, IN ONE PLACE  [F-39.36 · the REPLACE arm] ──
+// A CLASS WITH NO DOOR GETS ONE CUT IN IT LATER, BY SOMEONE IN A HURRY, WITHOUT
+// A REASON. This is the door, and it is built so it cannot widen quietly.
+//
+// ⚠ THE KEY IS (file · column · the EXACT written value), never the shape and
+// never the file. That is the whole design:
+//   · a second `replaced`-shaped writer in ANY other file still reds
+//   · a second one in THIS file, on this column, still reds — the value differs
+//   · CHANGING the exempted line breaks its own key and reds it here, so the
+//     exception cannot silently outlive the write it was granted for
+// A per-file pass or a vocabulary narrowing would have failed all three.
+//
+// ⚠ THE RULING AND THE REASON RIDE THE ENTRY, not a handover. An exception a
+// later reader cannot account for is indistinguishable from a bug someone
+// tolerated, and this estate has a name for absorbing those.
+const DECLARED_EXCEPTIONS = [
+  {
+    ruling: 'F-39.36 · REPLACE arm · CE-39 hygiene review, 2026-09-01',
+    reason: 'the REPLACE case is exactly where a vendor needs the prior figure '
+          + 'visible in her own narrative — a CORRECTION restates a figure the story '
+          + 'already carries; a REPLACEMENT destroys one, and deleting this line puts '
+          + 'the old amount nowhere the vendor can reach. Founder\'s standing design: '
+          + 'money is never silently lost.',
+    files: [
+      'src/engine/src/core/tools/recordPrimitives.ts',
+      'src/engine/dist/core/tools/recordPrimitives.js',
+    ],
+    column: 'note',
+    // VERBATIM, and matched by containment against the written value. The source
+    // and its compiled twin emit this identically, so one string keys both.
+    value: '`[money replaced ${today}] ${oldLine} → ${newLine}.`',
+  },
+];
+
+/**
+ * Is this write covered by a DECLARED exception? Exact-keyed, never fuzzy.
+ *
+ * ⚠ IT RETURNS THE ENTRY, so the caller can PRINT which ruling licensed a write
+ * rather than merely falling silent. An exception that leaves no trace in the
+ * output is an exception nobody re-examines.
+ */
+function declaredException(rel, col, value) {
+  return DECLARED_EXCEPTIONS.find((e) =>
+    e.files.includes(rel) && e.column === col && value.includes(e.value)) || null;
+}
+
+
+const AUDIT_SHAPES = [
+  // `replaced` earned its seat on this cell's FIRST RUN — the live site the
+  // widening found spells it `[money replaced ...]`, and a vocabulary built from
+  // the one cured instance would have missed it by a synonym. That is the whole
+  // argument for widening: the defect is the SHAPE, and the spelling is an
+  // accident of whoever typed it.
+  [/\[[^\]\n]*\b(corrected|adjusted|updated|changed|edited|replaced)\b[^\]\n]*\]/i, 'a bracketed correction label'],
+  [/\b\d[\d,._]*\s*->\s*\d/, 'an ASCII value transition'],
+  [/→/, 'a transition glyph'],
+  [/\[\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/, 'a machine timestamp'],
+];
+
+/** Every value written to one of `cols` in `src`, as raw text. */
+function narrativeWrites(src, cols) {
+  const out = [];
+  for (const col of cols) {
+    // `col: <value>` up to the line end, and `patch.col = <value>` likewise.
+    const re = new RegExp('(?:\\b' + col + '\\s*:|\\.' + col + '\\s*=)\\s*([^\\n]*)', 'g');
+    let m;
+    while ((m = re.exec(src)) !== null) out.push([col, m[1]]);
+  }
+  return out;
+}
+
+cell('3.1 no live writer puts audit-shaped prose into a narrative column [F-39.37]', () => {
   // AGAINST THE LIVE SITE. F-39.23 was filed against invoices.description; the
   // writer is donna_money_edit in the compiled engine, and the column is
   // engine.records.note. This cell asserts of the LIVE source, and — because
   // the engine ships COMPILED — of the emitted artifact too. A cure that fixes
   // the .ts and leaves a stale dist is not a cure.
-  const src = strip(read('src/engine/src/core/tools/recordPrimitives.ts'));
-  if (/\[money corrected/.test(src)) return 'the prose is still written in recordPrimitives.ts';
   const distRel = 'src/engine/dist/core/tools/recordPrimitives.js';
   if (!fs.existsSync(path.join(ROOT, distRel))) {
     return `REFUSED — ${distRel} absent; run \`npm run build\` before this bench`;
   }
-  const dist = strip(read(distRel));
-  return !/\[money corrected/.test(dist) || 'the prose survives in the compiled engine — dist is stale';
-  // MUTATION: restore `patch.note = \`[money corrected ...\`` and rebuild -> RED.
-  // Run at the uncured tree: RED at both legs.
+  const bad = [];
+  const licensed = [];
+  for (const [rel, cols] of WRITE_SITES) {
+    if (!fs.existsSync(path.join(ROOT, rel))) {
+      return `REFUSED — ${rel} is named in WRITE_SITES and is not on this tree; the class cannot be swept`;
+    }
+    for (const [col, value] of narrativeWrites(strip(read(rel)), cols)) {
+      const hits = AUDIT_SHAPES.filter(([shape]) => shape.test(value));
+      if (!hits.length) continue;
+      // THE EXCEPTION IS CONSULTED ONLY AFTER A SHAPE MATCHES, so an exempt write
+      // is one the class DID catch and a ruling then released — never one the
+      // class was taught not to see.
+      const ex = declaredException(rel, col, value);
+      if (ex) { licensed.push(`${rel} · ${col} — ${ex.ruling}`); continue; }
+      for (const [, why] of hits) {
+        bad.push(`${rel} writes ${col} carrying ${why}: ${value.trim().slice(0, 70)}`);
+      }
+    }
+  }
+  // PRINTED EVEN ON GREEN. An exception that leaves no trace in the output is an
+  // exception nobody re-examines, and this bench's whole subject is prose that
+  // nobody re-examined.
+  for (const l of licensed) console.log(`        EXEMPT  ${l}`);
+  return bad.length === 0 || bad.join(' | ');
+  // MUTATION, one per shape, each restoring a real defect rather than a token:
+  //   patch.note = `[money corrected ${a} -> ${b}]`   -> RED on bracket + arrow
+  //   patch.note = `${a} → ${b}`                      -> RED on glyph
+  //   patch.note = `[${new Date().toISOString()}]`    -> RED on stamp
+  // Each rebuilt, so both legs (source and dist) are exercised. Run at the
+  // uncured tree: RED.
 });
 
 cell('3.2 the audit trail the prose duplicated is still written', () => {
@@ -285,6 +456,15 @@ cell('3.4 invoices.description is untouched by any live writer', () => {
 
 // ── VERDICT ───────────────────────────────────────────────────────────────
 runAll().then(() => {
-  console.log(`\nb49 — ${pass} PASS · ${fail} FAIL`);
-  process.exit(fail === 0 ? 0 : 1);
+  // THREE STATES ON THE EXIT CODE  [F-39.47]. RED WINS over a refusal, always: a
+  // run that refused one cell and broke another is a broken run, and reporting
+  // it as merely under-provisioned would absorb the defect.
+  const tail = refused ? ` · ${refused} REFUSED: ${refusedNames.join(', ')}` : '';
+  console.log(`\nb49 — ${pass} PASS · ${fail} FAIL${tail}`);
+  if (fail > 0) process.exit(1);
+  if (refused > 0) {
+    console.log('REFUSED — a precondition is absent. This is NOT a pass and NOT a fail.');
+    process.exit(3);
+  }
+  process.exit(0);
 });

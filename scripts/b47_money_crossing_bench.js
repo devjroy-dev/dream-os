@@ -358,6 +358,30 @@ cell('4.2 every write route is vendor-JWT gated', () => {
 });
 
 
+cell('4.3 the PDF door answers `pdf_url`, the estate-wide name [F-2c.w7]', () => {
+  // THE DOOR IS THE ONE THAT WAS WRONG, not the caller. Every other invoice
+  // shape in this estate spells the link `pdf_url` — the column itself
+  // (public.invoices ordinal 13), `updateInvoicePdfUrl` in the writer home,
+  // the create route's okRes in `src/api/vendor/invoices.js`, the binder
+  // `/:invoiceId/pdf` arm, the admin detail view, the agent's send arm. This
+  // door alone answered `url`, and the pwa carried a fallback to survive it.
+  //
+  // ASSERTED POSITIVELY AND NEGATIVELY, because only the pair is the claim: the
+  // new name must be there AND the old one must be gone. A door answering both
+  // would pass a presence-only cell while leaving the second spelling alive.
+  const s = strip(read('src/api/vendor/money.js'));
+  const i = s.indexOf("router.get('/invoices/:vendorId/:invoiceId/pdf'");
+  if (i < 0) return 'the PDF route could not be located';
+  const block = s.slice(i);
+  const okLine = (block.match(/return okRes\(res, \{[^\n]*invoice_number[^\n]*/) || [])[0];
+  if (!okLine) return 'the PDF door has no success response naming invoice_number';
+  if (/\burl:/.test(okLine)) return `the door still answers the bare \`url\`: ${okLine}`;
+  return /\bpdf_url:/.test(okLine) || `the door does not answer \`pdf_url\`: ${okLine}`;
+  // MUTATION: return `{ url: signed.signedUrl, ... }` -> RED on the negative leg.
+  // Run at the uncured tree: RED.
+});
+
+
 // ── §5 · THE TWO ROOM READS  [2a-dreamos, c-2c.3] ─────────────────────────
 cell(null, '\n§5 the two room reads');
 
