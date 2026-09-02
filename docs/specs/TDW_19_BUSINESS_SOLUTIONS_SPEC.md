@@ -256,3 +256,8 @@ Verify-never-trust · report-never-adapt (§0.2) · SQL-provenance (every column
 5. **Out of block:** Victor analytics answers (K-1 F2) → Block 09 after the typed money doors; the Collab board extension for stylists/PRs (K-1 F4) → the Collab room's own arc, post-cutover, as paying accounts of a new kind (name and price shape: founder).
 6. **Refused as products:** influencer marketplace · multi-platform ad analytics · white-label reseller purchase · managed ad spend.
 7. **Sequencing after the flip:** F6 → F1 → F8 → F3 → F7 → F1b → F4.
+
+---
+
+## POINTER — 2026-09-02 · TDW_19 v2 MASTER SUPERSEDES THIS SPEC'S SEQUENCING
+`docs/specs/TDW_19_V2_BUSINESS_SOLUTIONS_MASTER.md` is the block's constitution from this date: the founder's vision, the nine rooms, phases G0–G8, the Instagram plan, the gates table, the refusals, the open founder questions. Every mechanism in this spec (P0–P7, 7b/7c/7d, Addendum K-1) stands and is referenced by name there; only §1's sequencing and K-1 §7's order are superseded. A chair charters Block 19 sittings from the master, never from this file alone. The founder's ruling of 2026-09-02: Block 09 does not open until every feature in the master is built (Meta-gated features built dark behind named flags).
