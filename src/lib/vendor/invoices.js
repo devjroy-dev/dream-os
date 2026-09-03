@@ -307,15 +307,97 @@ async function cancelInvoice(supabase, vendorId, invoiceId) {
   return { ok: true, invoice };
 }
 
+// ── PDF_VENDOR_COLUMNS · THE DOCUMENT'S VENDOR FIELD LIST, ONE HOME ────────
+// Two call sites render an invoice document from a vendor row: the PDF door,
+// through `invoicePdfSource` below, and the agent's record_payment arm in
+// `src/agent/engine.js`, which regenerates the PDF after a payment. Before S2
+// the agent selected four columns and the door selected five, and it did not
+// matter because the generator read only two. It matters now: the document
+// prints the vendor's city, GSTIN, address and bank rails, so a caller with a
+// short select would silently produce A DIFFERENT DOCUMENT for the same
+// invoice — the one thing a document may never do.
+//
+// So the list is a constant and both callers spell it by name. `user_id` rides
+// it because the display-name fallback needs it; `routing_handle` rides it
+// because the agent's row already carried it and dropping a column is not this
+// sitting's business.
+//
+// COLUMN WITNESS: public.vendors — business_name(3) city(6) upi_id(7) gstin(8)
+// routing_handle(15), witnessed in `docs/db/PUBLIC_SCHEMA.md` at 83d2eb8.
+// `address`, `account_name`, `account_number` and `ifsc` are migration 0130's,
+// applied by the founder 2026-09-03, and are OWED a PAIR regen.
+const PDF_VENDOR_COLUMNS =
+  'id, business_name, upi_id, routing_handle, user_id, city, gstin, address, account_name, account_number, ifsc';
+
+// ── invoiceScheduleRows ───────────────────────────────────────────────────
+// THE SCHEDULE READ, ONE HOME. Two callers need the milestone rows for a
+// document — `invoicePdfSource` below, and the agent's record_payment arm in
+// `src/agent/engine.js`, which regenerates the PDF from rows it already holds
+// and would otherwise have grown a second `.from('payment_schedules')`. That
+// second home is exactly how the columns drift apart, so the read lives here
+// beside the other invoice reads and both callers ask it the same question.
+//
+// COLUMN WITNESS: public.payment_schedules — milestone_label(4) pct(5)
+// amount_due(6) due_date(7) state(8) ordinal(11), witnessed in
+// `docs/db/PUBLIC_SCHEMA.md` at 83d2eb8.
+//
+// Ordered by `ordinal`, which the schedule writer home stamps 1..n at create —
+// never by `due_date`, because an undated milestone would sort itself out of
+// the sequence the vendor actually built.
+//
+// A FAILED READ RETURNS [], NOT AN ERROR. The couple's invoice is still true
+// without the block; refusing a whole document over a missing schedule would
+// trade a complete page for no page at all. The failure is logged so it is a
+// declared gap rather than a silent one.
+async function invoiceScheduleRows(supabase, vendorId, invoiceId) {
+  const { data, error } = await supabase
+    .from('payment_schedules')
+    .select('milestone_label, pct, amount_due, due_date, state, ordinal')
+    .eq('invoice_id', invoiceId)
+    .eq('vendor_id', vendorId)
+    .order('ordinal', { ascending: true });
+  if (error) {
+    console.error('[invoices:invoiceScheduleRows] schedule read failed —', error.message);
+    return [];
+  }
+  return data || [];
+}
+
 // ── invoicePdfSource ──────────────────────────────────────────────────────
 // NOT A WRITER — the READ half of the PDF verb, homed here so the door and the
 // agent ask one question. It returns the typed row and the vendor/user rows the
 // generator needs; rendering and storage stay in `src/lib/invoicePdf.js`, which
 // already has one home and does not move.
+//
+// ── S2 · THE SELECT IS THE DOCUMENT'S FIELD LIST, NOT A HABIT ───────────────
+// The read-first table for F-2c.w8 found this function selecting SEVENTEEN
+// columns of which the generator read NINE, while EIGHT more that the document
+// needs were never asked for at all. Both halves of that were defects, and the
+// second is the one that made the document lie: `state` was selected and thrown
+// away while the header printed a literal.
+//
+// What each addition is FOR, so a later reader can tell a needed column from an
+// inherited one:
+//   notes(14)        · the vendor's own line to the couple, printed under Notes
+//   has_schedule(21) · the ONLY gate on the schedule block and on the fifth read
+//   city(6) gstin(8) · the vendor's identity line under her name
+//   address          · the header's second line, printed only when filled
+//   account_name · account_number · ifsc
+//                    · the bank rails. NEW COLUMNS, migration 0130, applied by
+//                      the founder in the Supabase editor 2026-09-03.
+//
+// COLUMN WITNESS · SQL-PROVENANCE LAW (F-P3.12). Every name below is witnessed
+// in `docs/db/PUBLIC_SCHEMA.md` at 83d2eb8 except 0130's four, which are
+// witnessed by the migration itself and are OWED a PAIR regen — the schema doc
+// does not describe them yet and this comment is the standing note that it must.
+//   public.invoices    notes(14) has_schedule(21)
+//   public.vendors     city(6) gstin(8)
+//   public.payment_schedules  milestone_label(4) pct(5) amount_due(6)
+//                             due_date(7) state(8) ordinal(11)
 async function invoicePdfSource(supabase, vendorId, invoiceId) {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('id, invoice_number, client_name, client_phone, description, amount_total, amount_advance, amount_paid, due_date, state, pdf_url, created_at')
+    .select('id, invoice_number, client_name, client_phone, description, amount_total, amount_advance, amount_paid, due_date, state, pdf_url, created_at, notes, has_schedule')
     .eq('id', invoiceId)
     .eq('vendor_id', vendorId)
     .is('deleted_at', null)
@@ -326,7 +408,7 @@ async function invoicePdfSource(supabase, vendorId, invoiceId) {
 
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('id, business_name, upi_id, routing_handle, user_id')
+    .select(PDF_VENDOR_COLUMNS)
     .eq('id', vendorId)
     .maybeSingle();
 
@@ -337,7 +419,17 @@ async function invoicePdfSource(supabase, vendorId, invoiceId) {
     vendorName = u?.name || null;
   }
 
-  return { ok: true, invoice, vendor, vendorName };
+  // ── THE FIFTH READ · GATED ON has_schedule, NOT ATTEMPTED AND DISCARDED ────
+  // `has_schedule` is a real column maintained by the schedule writer home
+  // (`src/lib/vendor/schedules.js` sets it true on create and false on delete),
+  // so it is the cheap authority and a query is not needed to learn there is
+  // nothing to fetch. The read itself is `invoiceScheduleRows` above — one home,
+  // shared with the agent.
+  const schedule = invoice.has_schedule
+    ? await invoiceScheduleRows(supabase, vendorId, invoiceId)
+    : [];
+
+  return { ok: true, invoice, vendor, vendorName, schedule };
 }
 
 // ── updateInvoicePdfUrl ───────────────────────────────────────────────────
@@ -362,5 +454,7 @@ module.exports = {
   recordPayment,
   cancelInvoice,
   invoicePdfSource,
+  invoiceScheduleRows,
+  PDF_VENDOR_COLUMNS,
   PAYABLE_STATES,
 };

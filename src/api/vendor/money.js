@@ -589,6 +589,7 @@ router.get('/invoices/:vendorId/:invoiceId/pdf', ...vendorGate, asyncHandler(asy
   try {
     const buffer = await generateInvoicePdf({
       invoice: src.invoice, vendor: src.vendor, vendorName: src.vendorName || 'Vendor',
+      schedule: src.schedule,
     });
     const fileName = `${req.vendor.id}/INVOICE-` +
       `${src.invoice.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;

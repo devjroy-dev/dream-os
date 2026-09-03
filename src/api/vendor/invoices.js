@@ -184,6 +184,12 @@ async function generateAndStoreInvoicePdf(supabase, vendor, invoice) {
       invoice,
       vendor,
       vendorName: u?.name || vendor.business_name || 'Vendor',
+      // S2 · EMPTY BY CONSTRUCTION, NOT BY OVERSIGHT. `has_schedule` defaults to
+      // false on `public.invoices` and `createSchedule` refuses an invoice that
+      // already has one, so a just-created invoice cannot have milestones yet.
+      // Passed explicitly rather than left undefined so a reader can tell the
+      // difference between "none exist" and "nobody asked".
+      schedule: [],
     });
 
     const fileName = `${vendor.id}/INVOICE-${invoice.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;
