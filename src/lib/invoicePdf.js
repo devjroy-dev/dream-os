@@ -40,7 +40,7 @@
 
 const PDFDocument = require('pdfkit');
 const QRCode     = require('qrcode');
-const { formatRs } = require('./format');
+const { formatRs, formatDate } = require('./format');
 
 // ── Colours & typography ──────────────────────────────────────────────────────
 // FIVE COLOURS, unchanged from the old document. I2 was ruled NO: meaning is carried
@@ -114,17 +114,13 @@ async function generateInvoicePdf({ invoice, vendor, vendorName, schedule }) {
         doc.fontSize(7.5).fillColor(COLOUR_GREY_LIGHT).font('Helvetica')
            .text(label.toUpperCase(), x, y, { characterSpacing: 1, lineBreak: false });
       };
-      const fmtDate = (d) => {
-        if (!d) return null;
-        // `due_date` is a DATE and `created_at` a TIMESTAMPTZ. The date gets an explicit
-        // midnight so it is not walked backwards a day by the runtime's zone; the
-        // timestamp is already an instant and is parsed as one.
-        const dt = /^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? new Date(d + 'T00:00:00') : new Date(d);
-        if (Number.isNaN(dt.getTime())) return null;
-        return new Intl.DateTimeFormat('en-IN', {
-          day: 'numeric', month: 'short', year: 'numeric',
-        }).format(dt);
-      };
+      // THE DATE HAS ONE HOME AND IT IS NOT THIS FILE. It used to be a local Intl call
+      // here, which rendered September as `Sept` — four letters, alone among the twelve,
+      // against a ratified frame reading `3 Sep 2026`. `formatDate` in src/lib/format.js
+      // renders the short month by TABLE for exactly that reason; the same home writes
+      // the WhatsApp message about this document, so the two cannot spell one due date
+      // two ways in one thread.
+      const fmtDate = formatDate;
 
       // ═══ HEADER ══════════════════════════════════════════════════════════
       doc.fontSize(22).fillColor(COLOUR_BLACK).font('Helvetica-Bold')
@@ -181,12 +177,14 @@ async function generateInvoicePdf({ invoice, vendor, vendorName, schedule }) {
            .text(value, datesX + 60, dy, { width: DATES_W - 60, align: 'right', lineBreak: false });
         dy += 15;
       };
-      // H4 IS OPEN AND UNRULED: the due date prints on every state, `paid` and
-      // `cancelled` included, exactly as the ratified frame draws it. The question of
-      // whether a released or settled invoice should still show a due date was raised
-      // with the founder and not answered; it is NOT decided here by omission.
+      // ── H4, RULED 2026-09-03 · `Due` BELONGS TO THE PAYABLE STATES ────────────
+      // A due date on a settled or released invoice is the same falsehood E5 retired one
+      // row lower: nothing is owed on either, so nothing is due on either. `paid` and
+      // `cancelled` print `Issued` alone. The gate is `showsRails` — the SAME predicate
+      // that decides whether the page may ask for money — because "is anything owed" is
+      // one question and it may not have two answers on one page.
       dateRow('Issued', fmtDate(invoice.created_at));
-      dateRow('Due',    fmtDate(invoice.due_date));
+      if (showsRails) dateRow('Due', fmtDate(invoice.due_date));
 
       if (stateWord) {
         // The cant is applied to the ink, not to the layout: rotate about the stamp's

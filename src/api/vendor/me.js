@@ -86,6 +86,18 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       handle:            vendor.routing_handle || null,
       upi_id:            vendor.upi_id || null,
       gstin:             vendor.gstin || null,
+      // ── S2 · HER RAILS · R-39.20 (chair, 2026-09-03) ─────────────────────
+      // Migration 0130's four columns. They reach the vendor's own Settings surface
+      // and they are printed on HER invoice document — the address in the header,
+      // the three bank fields under Payment beside her UPI QR.
+      // They are HERS, not TDW's state about her: TDW never moves money through
+      // them, exactly as it never does through `upi_id`, which has ridden this
+      // shape since it was added. That is why they are here and in ALLOWED_FIELDS
+      // rather than in LOCKED_FIELDS.
+      address:           vendor.address        || null,
+      account_name:      vendor.account_name   || null,
+      account_number:    vendor.account_number || null,
+      ifsc:              vendor.ifsc           || null,
       open_to_travel:    vendor.open_to_travel === true,
       // ── ARC OB · 0122's superseding pair, ADDITIVE (CE-31 ruling ①) ──────
       // Nulls travel deliberately: absent is a real state here (the vendor has
@@ -219,6 +231,18 @@ const LOCKED_FIELDS  = ['phone', 'routing_handle', 'tier', 'founding_cohort', 'o
                         'billing_status', 'razorpay_subscription_link', 'razorpay_subscription_id'];
 const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel', 'travel_notes',
                         'instagram_handle', 'upi_id', 'gstin', 'briefing_enabled',
+                        // ── S2 · 0130's FOUR, additive on gstin's own path (R-B6-16) ──
+                        // A dedicated route was not proposed and is not wanted: this
+                        // handler already scopes every write with `.eq('id', vendor.id)`,
+                        // which is the guard, and a second route would be a second place
+                        // for that scoping to be got wrong.
+                        // WHY NOT LOCKED_FIELDS. `account_number` and `ifsc` are
+                        // money-SHAPED, and the locked list exists to stop a vendor
+                        // writing her own billing state. But `billing_status` is TDW's
+                        // claim ABOUT her; these are her instruments, printed on her
+                        // document, and TDW moves nothing through them. R-39.20, on the
+                        // founder's own law: the vendor's rails are hers.
+                        'address', 'account_name', 'account_number', 'ifsc',
                         'aesthetic_tags', 'rate_min',
                         // TDW_07 P4b · F4 — 'rate_max' RETIRED FROM THE ALLOWLIST, dormant
                         // by comment rather than deleted, and ZERO DDL: the column stays,
@@ -387,7 +411,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
 
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -398,7 +422,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities')
+      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -417,6 +441,13 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       service_cities:   updated.service_cities   || null,
       upi_id:           updated.upi_id           || null,
       gstin:            updated.gstin            || null,
+      // S2 · the four must come BACK as well as go in. A PATCH that accepts a field
+      // and answers without it is a save the client cannot verify — the same
+      // never-a-false-done reasoning that put the locked list's 400 where it is.
+      address:          updated.address          || null,
+      account_name:     updated.account_name     || null,
+      account_number:   updated.account_number   || null,
+      ifsc:             updated.ifsc             || null,
       aesthetic_tags:   updated.aesthetic_tags   || [],
       rate_min:         updated.rate_min         || null,
       rate_max:         updated.rate_max         || null,

@@ -1,13 +1,14 @@
 // src/lib/invoiceMessage.js — compose WhatsApp invoice message
 
-const { formatRs, formatPercent } = require('./format');
+const { formatRs, formatPercent, formatDate } = require('./format');
 
 function buildInvoiceMessage({ clientName, vendorDisplayName, invoiceNumber, description, amountTotal, amountAdvance, dueDate, upiId }) {
-  const formatDate = (dateStr) => {
-    const d = new Date(dateStr + 'T00:00:00');
-    return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
-  };
-
+  // S2 · THE LOCAL COPY IS RETIRED. This message is ABOUT the document the PDF draws,
+  // and it reaches the same couple in the same thread — so a due date spelled `3 Sept`
+  // here and `3 Sep` there is one fact in two spellings, feet apart. One home:
+  // `formatDate` in ./format, which renders the short month by table.
+  // Behaviour change beyond the month: the shared home tolerates a null or unparseable
+  // date and returns null, where the local copy would have produced `Invalid Date`.
   const parts = [
     `Hi ${clientName} — sharing your invoice from ${vendorDisplayName}.`,
     '',

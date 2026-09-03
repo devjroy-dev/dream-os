@@ -251,6 +251,24 @@ const pagesOf = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) |
       'the F-39.49(b) cure is that this column no longer speaks for money received');
   }
 
+  // ═══ §5b · THE MONTH IS A TABLE, AND `Due` BELONGS TO THE PAYABLE STATES ══
+  sec('\u00a75b \u00b7 the date bytes');
+  // `Intl('en-IN')` renders September as `Sept`. The ratified frame reads `3 Sep 2026`
+  // and the founder vetoed the word, so the estate renders the short month by table.
+  // Asserted on a SEPTEMBER document specifically, because September is the only month
+  // of the twelve where the two disagree — a cell using any other date passes on both
+  // implementations and proves nothing.
+  ok('September renders Sep, never Sept', textOf(unpaid).includes('3 Sep 2026') &&
+    !textOf(unpaid).includes('Sept'), 'the Intl spelling is back');
+  ok('a non-September month is unaffected',
+    textOf(unpaid).includes('12 Dec 2026'), 'the table broke a month it was not about');
+  // H4, RULED: `Due` prints on unpaid and advance_paid only.
+  ok('unpaid prints Due',        textOf(unpaid).includes('Due'));
+  ok('advance_paid prints Due',  textOf(advance).includes('Due'));
+  ok('PAID prints Issued alone', textOf(paid).includes('Issued') && !textOf(paid).includes('Due'));
+  ok('CANCELLED prints Issued alone',
+    textOf(cancelled).includes('Issued') && !textOf(cancelled).includes('Due'));
+
   // ═══ §6 · THE SOURCE HALF ═════════════════════════════════════════════════
   sec('\u00a76 \u00b7 invoicePdfSource selects the mock\u2019s field list');
   const srcTxt = fs.readFileSync(SRC, 'utf8');
@@ -282,6 +300,15 @@ const pagesOf = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) |
       ['F-39.58 \u2014 the document forgets the invoice is paid',
        "      const isPaid      = state === 'paid';",
        "      const isPaid      = false;"],
+      // The month table's mutation is the LOCAL Intl call this sitting retired — the
+      // shipped defect, not a strawman. Only September moves under it, which is why
+      // §5b's fixture is a September document.
+      ['Sep \u2014 the month goes back to Intl',
+       "      const fmtDate = formatDate;",
+       "      const fmtDate = (d) => d ? new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(/^\\d{4}-\\d{2}-\\d{2}$/.test(String(d)) ? new Date(d + 'T00:00:00') : new Date(d)) : null;"],
+      ['H4 \u2014 Due comes back on every state',
+       "      if (showsRails) dateRow('Due', fmtDate(invoice.due_date));",
+       "      dateRow('Due', fmtDate(invoice.due_date));"],
       ['B1 \u2014 restore the state literal',
        "  cancelled:    'Cancelled',",
        "  cancelled:    'Booking confirmed',"],
