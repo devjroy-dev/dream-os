@@ -108,8 +108,61 @@
 # EXIT CODE IS THE VERDICT, never the printed text: benches here use several
 # report formats and only the exit code is shared by all of them.
 #
+# ═══════════════════════════════════════════════════════════════════════════
+# THE BASE HOLDS FAILURES ONLY  [c-39.57 · TRANSPORT SITTING T-1, 2026-09-03]
+# ═══════════════════════════════════════════════════════════════════════════
+# A REFUSAL IS A FACT ABOUT THIS ENVIRONMENT. A FAILURE IS A FACT ABOUT THIS
+# TREE. ONE BASE CANNOT HOLD BOTH, AND FOR THREE WEEKS THIS ONE TRIED.
+#
+# F-39.47 gave this runner a third exit code to read and the refusals joined the
+# printed SET — which was right — and then joined the BASE, which was not. The
+# chair has named that second step as his own correction (c-39.57) rather than
+# leave it as a property of the file.
+#
+# WHAT IT COST, AND IT WAS FOUND BY THE GATE THAT DOES NOT YET EXIST. At the T-1
+# read-first the pwa's base was seen to carry `REFUSED: b50_fetch_loop_bench`
+# with a comment stating, correctly and in advance, that the SAME BENCH IS GREEN
+# ON A CI RUNNER because the refusal is an egress fact about the LE container.
+# So the base was true in one environment and one line wrong in every other, and
+# the first `--check` on a runner would have failed a docs-only pull request for
+# a reason that had nothing to do with the pull request. The alternatives on the
+# table were a per-environment base (a second home for the floor's truth) or a
+# keyed tolerance (the same thing wearing an env var). Both were refused.
+#
+# SO: `--check` COMPARES THE RED SET AND NOTHING ELSE. Refusals are measured,
+# named in their own list under the floor, and carried by no base. The three
+# lines that left when this shipped — `b5_wa_door_smoke`, `bf1_bride_tool_
+# fidelity_bench` (this repo) and `b50_fetch_loop_bench` (the pwa) — were every
+# REFUSED line either base held.
+#
+# ⚠ THIS IS NOT AN ABSOLUTION, AND THE CHANNEL IS NOT WEAKER FOR IT. A refusal
+# is still non-zero, still measured, still printed by name, and `--refusals-fatal`
+# makes it an exit code wherever a refusal has no honest reason to exist. What
+# left the base is the CLAIM that a particular refusal is permanent everywhere.
+#
+# ⚠ AND A REFUSAL THAT GOES SILENT IS STILL A LOSS. The base used to catch a
+# refusal appearing or vanishing; it no longer does, and that is the price of the
+# ruling, stated rather than hidden. The named list is what a reader diffs by eye,
+# and `--refusals-fatal` is what a runner diffs by exit code.
+#
+# ── `--refusals-fatal` · WHERE A REFUSAL IS A CONFIG DEFECT ─────────────────
+# Every refusal in this estate names a MISSING PRECONDITION: a service-role key,
+# a provider key, egress, the sibling clone. A run that was provisioned with all
+# of them and still refuses is a broken runner configuration, not a fact about
+# the tree — and CI is exactly that run. So the gate passes this flag and a
+# refusal there is red.
+#
+# IT IS A FLAG AND NOT THE DEFAULT because the founder's Codespace and every LE
+# container legitimately lack one precondition or another, and a floor that
+# refused to be measured without a live DeepSeek key would simply stop being run.
+#
+# CLASSIFIED BY THE EXIT CODE, NEVER BY GREPPING THE OUTPUT — the header's own
+# rule, and the reason this lives in the runner instead of in the workflow. A
+# grep's failure mode is a silent zero; an exit code's is an error.
+#
 # Usage:  bash scripts/run-floor.sh                            # print the red set
-#         bash scripts/run-floor.sh --check                    # diff against the named base
+#         bash scripts/run-floor.sh --check                    # diff RED against the named base
+#         bash scripts/run-floor.sh --check --refusals-fatal   # CI: a refusal is a red too
 #         bash scripts/run-floor.sh --delivery FILE [--check]  # [F-14.16] declared-dirt tree
 
 set -uo pipefail
@@ -123,9 +176,15 @@ BASE_FILE="scripts/floor-base.txt"
 # the same thing as the reverse and should not be punished for it.
 CHECK=""
 MANIFEST=""
+REFUSALS_FATAL=""
+# The single accumulated verdict. Declared here rather than at first use because
+# `set -u` is on above and an undefined expansion would abort the run at the one
+# moment the run is trying to report.
+VERDICT=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --check)    CHECK="yes"; shift ;;
+    --check)           CHECK="yes"; shift ;;
+    --refusals-fatal)  REFUSALS_FATAL="yes"; shift ;;
     --delivery) MANIFEST="${2:-}"; shift 2 || { echo "STOP — --delivery needs a manifest path."; exit 1; } ;;
     *)          echo "STOP — unknown argument: $1"; exit 1 ;;
   esac
@@ -221,8 +280,9 @@ fi
 ALL=$(ls scripts/*.js 2>/dev/null | sort -u)
 
 run_pass() {
-  local out="$1" quiet="$2"
+  local out="$1" ref="$2" quiet="$3"
   : > "$out"
+  : > "$ref"
   for b in $ALL; do
     [ -f "$b" ] || continue
     local n; n=$(basename "$b" .js)
@@ -244,11 +304,15 @@ run_pass() {
     # output for the word REFUSED would classify a bench by a string any comment
     # could contain. 0 green · 1 red · 3 refused · 124 timeout.
     #
-    # THE SET CARRIES IT so `--check`'s diff can see a refusal appear or vanish;
-    # a refusal that quietly became permanent would read as steady state, which
-    # is how a bench stops looking without anyone noticing.
+    # ⚠ THE LINE THAT USED TO STAND HERE SAID 「THE SET CARRIES IT so `--check`'s
+    # diff can see a refusal appear or vanish」. That was the reasoning behind
+    # c-39.57 and it is retired rather than deleted, because a removed line
+    # teaches nothing. It bought one kind of visibility and paid for it with a
+    # base that was only true in one environment; the header states the trade in
+    # full. Refusals now go to their OWN list, which is printed, and to
+    # `--refusals-fatal`, which is an exit code.
     if [ "$rc" -eq 3 ]; then
-      echo "REFUSED: ${n}" >> "$out"
+      echo "REFUSED: ${n}" >> "$ref"
     elif [ $rc -ne 0 ]; then
       # 124 is timeout(1)'s own exit code — a bench THIS FILE killed, which is a
       # finding about BENCH_TIMEOUT and must never pass as a bench's own verdict.
@@ -264,15 +328,31 @@ run_pass() {
     fi
   done
   sort -o "$out" "$out"
+  sort -o "$ref" "$ref"
 }
 
 # ── THE WARM-UP, DISCARDED (LESSON 1) ────────────────────────────────────────
 echo "warming (this pass is discarded — see LESSON 1 in this file's header)…" >&2
-run_pass /tmp/floor_warm.txt quiet
+run_pass /tmp/floor_warm.txt /tmp/floor_warm_refused.txt quiet
 
 # ── THE MEASURED PASS ────────────────────────────────────────────────────────
-run_pass /tmp/floor.txt loud
+run_pass /tmp/floor.txt /tmp/floor_refused.txt loud
 cat /tmp/floor.txt
+
+# ── THE REFUSALS, NAMED AND UNCOMPARED  [c-39.57] ────────────────────────────
+# PRINTED EVEN WHEN EMPTY. Silence here would be ambiguous between "none refused"
+# and "this runner no longer looks", and the whole reason refusals left the base
+# is that an unexamined steady state is how a bench stops being read.
+if [ -s /tmp/floor_refused.txt ]; then
+  echo ""
+  echo "REFUSED — measured, named, and NOT part of the base compare [c-39.57]:"
+  sed 's/^/  /' /tmp/floor_refused.txt
+  echo "Each names a missing precondition of THIS environment — a key, egress, the"
+  echo "sibling clone. Provision it and the line goes; it is not a claim about the tree."
+else
+  echo ""
+  echo "REFUSED — none."
+fi
 
 # ── THE POST-RUN GUARD (LESSON 3) ────────────────────────────────────────────
 # With scripts/out/ ignored, dirt here means a bench left PRODUCTION SOURCE
@@ -373,6 +453,19 @@ if [ "$CHECK" = "yes" ]; then
   # ⚠ IT IS STILL NOT GREEN. A refusal is non-zero and named in the set, so if
   # this bench ever starts PASSING — or starts REDDING for a real reason — the
   # diff below catches it. A reclassification is not an absolution.
+  #
+  # ── BASE AMENDED, LABELLED — TRANSPORT SITTING T-1  [c-39.57] ──────────────
+  # TWO LINES LEAVE AND NOTHING JOINS: `REFUSED: b5_wa_door_smoke` and
+  # `REFUSED: bf1_bride_tool_fidelity_bench`. NO BENCH CHANGED, and neither
+  # bench's verdict moved — both still exit 3 and both are still printed, in the
+  # named refusal list above rather than in this file.
+  #
+  # THE COUNT MOVEMENT, DISCLOSED: 20 lines → 18. Both amendments immediately
+  # above (F-39.47, F-39.55) put those two lines here one sitting ago and this
+  # one takes them out; that is not churn, it is the chair correcting his own
+  # ruling in the open. The reasoning is in this file's header under c-39.57.
+  # After this, EVERY line in the base file begins `RED:` — and that is now an
+  # invariant, not an observation.
   if [ ! -f "$BASE_FILE" ]; then
     echo "STOP — ${BASE_FILE} is missing. There is no base to check against."
     exit 1
@@ -382,6 +475,23 @@ if [ "$CHECK" = "yes" ]; then
     echo "FLOOR = NAMED BASE, no delta"
   else
     echo "FLOOR DELTA — the diff above is this delivery's to explain"
-    exit 1
+    VERDICT=1
   fi
 fi
+
+# ── `--refusals-fatal` · THE GATE'S OWN QUESTION  [c-39.57] ──────────────────
+# Asked AFTER the base compare and reported ALONGSIDE it, never instead of it. A
+# run that has both a delta and a refusal has two things wrong with it, and an
+# early `exit` on the first would hide the second behind a green-looking silence
+# — which is the shape this file spent three lessons learning to distrust.
+if [ "$REFUSALS_FATAL" = "yes" ] && [ -s /tmp/floor_refused.txt ]; then
+  echo ""
+  echo "STOP — refusals in a run that declared itself fully provisioned:"
+  sed 's/^/  /' /tmp/floor_refused.txt
+  echo "--refusals-fatal says every precondition was supplied, so a refusal here is a"
+  echo "CONFIG defect in the runner and not a fact about the tree. Fix the provisioning"
+  echo "or take the flag off; do not put the line back in the base."
+  VERDICT=1
+fi
+
+exit "$VERDICT"

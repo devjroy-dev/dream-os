@@ -1,0 +1,143 @@
+# .github/workflows/gate.yml — THE ESTATE'S OWN GATES, RUN BY GITHUB.
+#
+# TRANSPORT SITTING T-1 (CE-39, 2026-09-03). This file runs the same four
+# instruments a seat runs by hand, in the same order, and hands the merge button
+# their exit codes. It adds no check of its own and it weakens none: every step's
+# status gates, there is no `|| true` anywhere in it, and there never may be — a
+# gate that cannot fail is not a gate.
+#
+# ── WHY EVERY LINE BELOW IS THE WAY IT IS ───────────────────────────────────
+# Each numbered item was derived by command at the T-1 read-first, several of
+# them against the charter's own instructions, and each is a ruling. They are
+# written here rather than in the flow doc because the person who breaks one will
+# be editing this file, not reading that one.
+#
+# 1 · BOTH REPOS ARE CHECKED OUT INTO SUBDIRECTORIES OF THE WORKSPACE, and this
+#     repo is one of them. `path: ../dreamos-pwa` DOES NOT WORK: actions/checkout
+#     resolves `path` against GITHUB_WORKSPACE and throws
+#     「Repository path '...' is not under '...'」 (input-helper.ts:46-51,
+#     read at origin). Nesting both makes them genuine siblings INSIDE the
+#     workspace, which is what the cells need — and it is why every step below
+#     carries a `working-directory`. [F-T1.2]
+#
+# 2 · THE DIRECTORY NAMES ARE LOAD-BEARING, not cosmetic. Every cross-repo cell
+#     in both estates hardcodes the literal relative path — `path.resolve(ROOT,
+#     '..', 'dreamos-pwa')`, `path.join(ROOT, '../dreamos-pwa/tools/base_guard.sh')`
+#     — and exactly ONE cell in either repo honours an env override. Rename either
+#     directory and the cells do not error: they REFUSE, and a refusal reads as
+#     an environment fact. Do not rename them.
+#
+# 3 · THE SIBLING IS PINNED TO `worklist`, NOT TO THE PWA'S DEFAULT BRANCH, and
+#     the asymmetry is deliberate: dream-os's protected branch is `main`, the
+#     pwa's live branch is `worklist`, and the two pwa branches have DIVERGED
+#     (worklist 80 ahead of main, main 2 ahead of worklist, at the T-1 tips).
+#     Proven both ways at the read-first: with the sibling on `main`,
+#     `tools/preflight.sh` prints 「dreamos-pwa is 80 commit(s) behind
+#     origin/worklist」 and EXITS 1; on `worklist` it exits 0. The floor's
+#     measured set was byte-identical either way — so a seat reading only the
+#     floor would have called the wrong branch harmless, and only the exit code
+#     of the gate instrument said otherwise. [F-T1.3]
+#
+# 4 · `fetch-depth: 0`, AND THE ACTION'S DEFAULT IS 1. Two things break on a
+#     shallow checkout, one loudly and one silently:
+#       · `scripts/tdw19_p2a_profile_core.proof.mjs` (pwa) reads its baseline out
+#         of git at a PINNED sha, precisely so the proof cannot go vacuous. On a
+#         real `--depth 1` clone that object is absent — witnessed:
+#         「fatal: path exists on disk, but not in '2351af4…'」.
+#       · `tools/preflight.sh` reads `origin/<branch>` for its behind-counts.
+#         Without those refs `BEHIND` is empty, `${BEHIND:-0}` resolves to zero,
+#         and preflight prints `behind ?` WHILE STILL EXITING 0 — a vacuous pass
+#         inside the gate instrument, which is the class F-39.44 was filed for.
+#     Full history is 13M and 22M. The cost is nothing; the silence was not. [F-T1.4]
+#
+# 5 · `npm ci` RUNS IN THE SIBLING TOO, and this gate does not need it — the
+#     dream-os floor never touches the pwa's `node_modules`. `tools/preflight.sh`
+#     does: checking out the sibling is what arms its
+#     「pwa node_modules ABSENT」 warning, and that warning sets WARN=1, which
+#     since F-39.44 is the exit code. RULED: pay the 26s. A gate instrument is
+#     not edited to accommodate the gate. [F-T1.5]
+#
+# 6 · ORDER IS NOT ARBITRARY. `npm run build` before `preflight.sh`, because
+#     preflight fails on an absent `src/engine/dist` [F-39.p2]; preflight before
+#     the floor, because the floor STOPs on the same artifact and would otherwise
+#     read TWENTY-SEVEN too many REDs.
+#
+# 7 · `--refusals-fatal` IS PASSED HERE AND NOWHERE ELSE. Every refusal in this
+#     estate names a missing precondition — a key, egress, the sibling clone.
+#     This job supplies all of them, so a refusal here is a CONFIG DEFECT IN THIS
+#     FILE and not a fact about the tree. The question is asked by the runner's
+#     exit code and never by grepping its output: a grep's failure mode is a
+#     silent zero. [c-39.57]
+#
+# 8 · NO DEPENDENCY CACHE, deliberately, for now. `npm ci` measures 4s here and
+#     26s in the sibling; a cache would save seconds and add one more instrument
+#     that can go stale without saying so. Revisit when the floor, not the
+#     install, is the cost.
+#
+# 9 · `timeout-minutes: 30`. The floor has NO per-bench cap by design — LESSON 3
+#     in `scripts/run-floor.sh` records that a `timeout` SIGTERM skips a bench's
+#     restore `finally` and leaves production source mutated, and that reasoning
+#     is unchanged in CI. A JOB-level cap is outside the bench process tree and
+#     kills nothing that matters, because this checkout is thrown away. Measured
+#     end to end at ~5 min; thirty gives six-fold headroom and turns a hang into
+#     a fast red instead of a six-hour one. [F-T1.7]
+
+name: gate
+
+on:
+  pull_request:
+    branches: [main]
+
+# READ-ONLY. This job builds nothing that leaves it and pushes nowhere; the
+# merge is the founder's hand on a button, never this file's.
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: check out this pull request — dream-os
+        uses: actions/checkout@v4
+        with:
+          path: dream-os
+          fetch-depth: 0
+
+      - name: check out the sibling — dreamos-pwa @ worklist
+        uses: actions/checkout@v4
+        with:
+          repository: devjroy-dev/dreamos-pwa
+          ref: worklist
+          path: dreamos-pwa
+          fetch-depth: 0
+
+      - name: node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: npm ci — dream-os
+        working-directory: dream-os
+        run: npm ci
+
+      - name: npm ci — the sibling, for preflight's sake [F-T1.5]
+        working-directory: dreamos-pwa
+        run: npm ci
+
+      - name: build the engine — src/engine/dist [F-39.p2]
+        working-directory: dream-os
+        run: npm run build
+
+      - name: preflight — both tips named, exit code is the verdict [F-39.44]
+        working-directory: dream-os
+        run: bash tools/preflight.sh
+
+      - name: floor — FLOOR = NAMED BASE, and a refusal here is a config defect
+        working-directory: dream-os
+        run: bash scripts/run-floor.sh --check --refusals-fatal

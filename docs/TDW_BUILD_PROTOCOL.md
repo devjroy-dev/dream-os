@@ -123,6 +123,33 @@ One phase per sitting. The spec's build-order table is the contract.
   Update `TDW_00_MASTERPLAN.md` status table and `docs/SCHEMA.md` (if
   schema moved) in the same delivery.
 
+### 7A. THE PULL REQUEST IS THE DELIVERY OF RECORD (TRANSPORT SITTING T-1, CE-39, 2026-09-03)
+
+**Everything above this heading stays exactly as written, and is now the FALLBACK.** It is not deprecated, not softened, and not to be edited: it is the chain a seat with no credential still delivers by, and a fallback nobody maintains is a fallback nobody can use when they need it. `tools/base_guard.sh` keeps its job ahead of every ZIP apply, unchanged.
+
+**THE DEFAULT IS NOW A PULL REQUEST.** A seat pushes a branch and opens a PR; GitHub runs `.github/workflows/gate.yml` — `npm ci`, the build, `tools/preflight.sh`, `run-floor.sh --check --refusals-fatal` — and every step's exit code gates the merge button. The founder reads the diff and the handover in the same browser tab and merges with one click. **The merge IS the push**, and the walk follows the merge's deploy exactly as it followed the push.
+
+**THE HANDOVER'S SECTIONS ARE UNCHANGED. ONLY ITS HOME MOVED**, to `.github/pull_request_template.md`: base tip, WHAT MOVED, FLOOR by SET, MUTATION LEDGER, FINDINGS, CORRECTIONS, COPY INVENTORY, CONTROL INVENTORY, SQL, CARD. A section with nothing in it reads `none — stated`; **no section may be deleted**, because an absent section and an empty one look identical to a reader and mean opposite things.
+
+**`--delivery` DOES NOT TRAVEL INTO THIS FLOW.** A PR's tree is committed, so there is no declared dirt for the manifest mode to tolerate; the WHAT MOVED table is its successor. `--delivery` stays in both runners for the ZIP fallback and for nothing else.
+
+**"REQUIRE BRANCHES TO BE UP TO DATE" REPLACES THE BASE CHECK FOR PRs.** R-38.15's base-pinned STOP existed because a whole-file copy over a moved tip silently reverts work (F-38.25). GitHub answers a moved tip with *rebase*, so the mechanism becomes unreachable rather than merely guarded. R-38.15 and R-38.20 continue to govern ZIPs.
+
+**THE BASE HOLDS FAILURES ONLY (c-39.57).** `run-floor.sh --check` compares the RED set. Refusals are measured, named in their own list, and carried by no base — a refusal is a fact about the environment and a failure is a fact about the tree, and one base cannot hold both. CI passes `--refusals-fatal`, because a run that supplies every precondition and still refuses has a config defect.
+
+**THE APPLY LINE IS `cp -r deploy/. .` WHENEVER A ZIP CARRIES A DOTFILE, AND THIS ONE DID. [p-T1.11]** §7's chain above says `cp -r deploy/* .`, and the shell's `*` does not match names beginning with a dot. This delivery is half dotfiles — `.github/workflows/gate.yml` and `.github/pull_request_template.md` — so the frozen chain drops the workflow that defines the gate, `rm -rf deploy` then destroys the original, and **every command in the chain exits 0.** Proven by running it rather than by reading it:
+
+```
+after `cp -r deploy/* .`  → .github present? NO — SILENTLY DROPPED, exit 0
+after `cp -r deploy/. .`  → .github present? YES
+```
+
+**RULED: `cp -r deploy/. .` is the apply line for every ZIP from here, dotfiles or not.** Not a second chain to choose between — a choice between two apply lines is a decision at the worst possible moment, and `deploy/.` is correct for ZIPs without dotfiles too. §7's `deploy/*` is superseded and kept above only as the text this correction was made against. The verify step gains a companion: after `rm -rf deploy`, name a file the ZIP carried and `test -f` it, because a silent drop is invisible to a chain in which nothing fails.
+
+⚠ **THIS DISEASE HAS RUN IN THIS ESTATE BEFORE.** `githooks/`'s header records the same glob dropping the same class of file, and the cure was written there and not promoted here. A law that lives at one site is a law the next site has to rediscover; that is what promotion into this document is for.
+
+Full flow, branch-protection settings and the seat's credential: **`docs/TDW_PR_FLOW.md`**, byte-identical in both repos.
+
 ## 8. SCOPE LAW
 - Declared gaps stay declared: if the spec says "verify X" and X is absent
   or different, say so and propose — never silently invent.
@@ -204,7 +231,8 @@ These bind every session from this date. Where a law amends an earlier section, 
 ## 11. SESSION & WORKSPACE LAW (formalized at CE-50, born of the #4 incident, 2026-07-21)
 - **One sitting = one FRESH workspace.** Never resume a severed or prior session for new work — a resumed session continues its ORIGINAL charter and becomes a concurrent writer on a tree it no longer owns. The #4 two-hand collision is the proof case.
 - **First motion of every sitting:** fresh clone, `git fetch`, `git status` on an expected-clean tree at the charter's stated tip. ANY unexpected dirt or unexpected code = STOP and report before any read-first. Found code follows the provenance protocol (CE-50/Ruling №6): hold byte-untouched → founder accounts → adopt-and-repair with attribution, or discard-without-adoption + security finding.
-- **LE never pushes.** LE containers hold no write credentials BY DESIGN. Banked = at origin through the founder's authenticated hand (deploy ZIP, or `git format-patch -1 <hash> --stdout` → founder `git am` + push for emergency recovery). A commit that exists only in an LE container is EXPOSED, not banked. Bank-at-the-seam (CE-49) is measured at ORIGIN.
+- **A SEAT PUSHES BRANCHES AND OPENS PULL REQUESTS; A SEAT NEVER MERGES.** (Transport sitting T-1, CE-39, 2026-09-03.) The clause below is amended, not replaced: what a seat may now hold is a fine-grained token scoped to `contents: write` + `pull requests: write` on the two repos and nothing else, which can push a BRANCH and open a PR and **cannot reach a protected branch** — GitHub refuses it at the server. The token lives in the workspace environment, never in a file, never in a commit, never in a PR. Merging is the founder's hand on a button. Once branch protection is applied per `docs/TDW_PR_FLOW.md` §3 this stops being a law the seat obeys and becomes a fact the repository enforces, which is the point.
+- **LE never pushes** *to a protected branch*. LE containers hold no credential that can reach one, BY DESIGN. Banked = at origin through the founder's authenticated hand (deploy ZIP, or `git format-patch -1 <hash> --stdout` → founder `git am` + push for emergency recovery). A commit that exists only in an LE container is EXPOSED, not banked. Bank-at-the-seam (CE-49) is measured at ORIGIN.
 - **CODE-CAPABLE ADDENDUM (Note VIII §2(b), committed verbatim):** LE sittings seat in CODE-CAPABLE surfaces; a tool-less session that STOPs (as one correctly did) is right conduct, not failure.
 - **Severed-session protocol:** if a sitting dies mid-build, the incoming session's opening message states "the tree may carry the predecessor's unbanked work" — one sentence converts a security event into a handover.
 - **THE SUCCESSION-NOTE KICKOFF-DOCTRINE CLAUSE (CE-63, founder-ruled STANDING ORDER, 2026-07-23):** every CE succession note MUST carry a **KICKOFF DOCTRINE** section: (a) the §10 pointer (seven parts, committed law), (b) the substance-benchmark sentence (`TDW_04_B6_KICKOFF.md` — thinner-than-precedent is not ready to issue), and (c) a SKELETAL INSTANCE TEMPLATE distilled from the outgoing tenure's own kickoffs — so each incoming chair inherits the FORM of charter authoring, not just the facts. A note without this section is incomplete under this clause. `TDW_CE_SUCCESSION_NOTE_9.md` is the clause's first compliant specimen, born in the same push as the clause.
