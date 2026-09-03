@@ -199,4 +199,4 @@ const db = { from: (t) => mkq(t), schema: () => db };
 
   console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES'}  ${pass}/${pass + fail}`);
   process.exit(fail === 0 ? 0 : 1);
-})();
+})().catch((e) => { console.error('BENCH THREW (unexpected):', e && e.stack || e); process.exit(2); }); // F-39.67: an unexpected throw is an ERROR (2), never a FAIL (1)

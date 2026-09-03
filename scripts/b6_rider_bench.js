@@ -220,7 +220,7 @@ sec('§1 — R-B6-29 shape (a), the REAL runHarvest. First: THE NAMED FIRST TEST
 
   console.log(`\n   ══ ${pass}/${pass + fail} ${fail ? 'FAIL' : 'PASS'} ══`);
   process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error('BENCH CRASH:', e); process.exit(1); });
+})().catch((e) => { console.error('BENCH CRASH:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });
 
 // §1's shared runner (A/B scenarios share inputs; C/D pass their own).
 async function runA(replyText) {

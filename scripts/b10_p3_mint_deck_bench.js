@@ -1157,4 +1157,4 @@ console.log(`\n─────────────────────�
 console.log(`b10_p3_mint_deck_bench: ${pass} passed, ${fail} failed  (total ${pass + fail})`);
 process.exit(fail === 0 ? 0 : 1);
 
-})().catch(e => { console.error('BENCH THREW:', e); process.exit(1); });
+})().catch(e => { console.error('BENCH THREW:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

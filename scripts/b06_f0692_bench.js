@@ -191,4 +191,4 @@ const noteOf = (display) => {
 
   console.log(`\n   ══ ${pass}/${pass + fail} ${fail ? 'FAIL' : 'PASS'} ══`);
   process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error('BENCH CRASH:', e); process.exit(1); });
+})().catch((e) => { console.error('BENCH CRASH:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

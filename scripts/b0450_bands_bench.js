@@ -278,4 +278,4 @@ const run = (fx, over = {}) => {
 
   console.log(`\n══ b0450_bands_bench: ${pass} passed, ${fail} failed ══\n`);
   process.exit(fail === 0 ? 0 : 1);
-})().catch((e) => { console.error('BENCH CRASHED:', e); process.exit(1); });
+})().catch((e) => { console.error('BENCH CRASHED:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

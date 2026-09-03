@@ -401,4 +401,4 @@ const total = pass + fail;
 if (fail === 0) console.log(`GREEN — b07_p2_bench ${pass}/${total}`);
 else            console.log(`RED — b07_p2_bench ${pass}/${total}`);
 process.exit(fail === 0 ? 0 : 1);
-})().catch(err => { console.error('BENCH THREW:', err); process.exit(1); });
+})().catch(err => { console.error('BENCH THREW:', err); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

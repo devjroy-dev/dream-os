@@ -540,4 +540,4 @@ async function main() {
   process.exit(fail ? 1 : 0);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => { console.error(e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

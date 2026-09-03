@@ -237,5 +237,5 @@ function main() {
 }
 
 try { main(); }
-catch (e) { console.error('  RED  bench threw: ' + (e.stderr || e.message)); process.exitCode = 1; }
+catch (e) { console.error('  RED  bench threw: ' + (e.stderr || e.message)); process.exitCode = 2 /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; }
 finally { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); }

@@ -2583,7 +2583,7 @@ function scriptedTransports(profile) {
   if (!require('fs').existsSync(LOOP_DIST)) {
     console.error('engine dist absent — the gauntlet drives the REAL compiled runTurn and cannot');
     console.error('run on a clean clone. THE FIX, one line: npm run build && node scripts/b06_gauntlet.js' + (SELFTEST ? ' --rig-selftest' : ''));
-    process.exit(2);
+    process.exit(3); // F-39.55/F-39.47: a missing build artifact is a REFUSAL (3), not an error
   }
   const { runTurn } = require(LOOP_DIST);
 
@@ -4545,7 +4545,7 @@ function scriptedTransports(profile) {
   console.log('      was silent. The census is a fraction from this run on, not a floor on the loss.');
   console.log('      Its resolution is disclosed in the line itself: both sides test ANY-over-a-join,');
   console.log('      so partial carry reads as carried. It is a census, never a fidelity verdict.');
-  if (!process.env.ANTHROPIC_API_KEY) { console.error('ANTHROPIC_API_KEY absent — the incumbent lane cannot run. Set it in this shell (never paste it anywhere else) and re-run.'); process.exit(2); }
+  if (!process.env.ANTHROPIC_API_KEY) { console.error('ANTHROPIC_API_KEY absent — the incumbent lane cannot run. Set it in this shell (never paste it anywhere else) and re-run.'); process.exit(3); /* F-39.55: a missing key is a REFUSAL (3), not an error */ }
   const hasDs = !!process.env.DEEPSEEK_API_KEY;
   if (!hasDs) console.log('DEEPSEEK_API_KEY absent — L2/L3 will be SKIPPED, stated; L1 (incumbent) runs alone.');
 
@@ -4616,4 +4616,4 @@ function scriptedTransports(profile) {
     console.log('\n' + proposalSql('donna', outcomes.L3.laneOk));
   }
   process.exit(0);
-})().catch((e) => { console.error('GAUNTLET CRASH:', e && e.stack || e); process.exit(1); });
+})().catch((e) => { console.error('GAUNTLET CRASH:', e && e.stack || e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

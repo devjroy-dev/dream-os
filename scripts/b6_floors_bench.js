@@ -127,7 +127,7 @@ const db = { from: (t) => mkq(t), schema: () => db };
 const DIST = path.join(ROOT, 'src/engine/dist/core');
 if (!fs.existsSync(path.join(DIST, 'provenanceHold.js'))) {
   console.error('engine dist absent or pre-floors — run: npm run build && node scripts/b6_floors_bench.js');
-  process.exit(2);
+  process.exit(3); // F-39.55/F-39.47: dist absent is a REFUSAL (3), not an error
 }
 const { checkMoneyProvenance, extractVendorFigures, MONEY_WRITE_FIELDS } = require(path.join(DIST, 'provenanceHold.js'));
 const { parseMoney } = require(path.join(DIST, 'tools/recordPrimitives.js'));
@@ -268,4 +268,4 @@ const { runDonnaTurn } = require(path.join(DIST, 'donna.js'));
 
   console.log(`\n${fail === 0 ? '\u2550\u2550 ' + pass + '/' + (pass + fail) + ' PASS \u2550\u2550' : 'FAILURES  ' + pass + '/' + (pass + fail)}`);
   process.exit(fail === 0 ? 0 : 1);
-})().catch((e) => { console.error('FLOORS BENCH CRASH:', e && e.stack || e); process.exit(1); });
+})().catch((e) => { console.error('FLOORS BENCH CRASH:', e && e.stack || e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

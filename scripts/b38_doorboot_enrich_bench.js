@@ -845,4 +845,4 @@ console.log(`b38_doorboot_enrich_bench: ${pass}/${pass + fail}`);
 if (fail) { console.log('REDS:'); reds.forEach((r) => console.log('  - ' + r)); }
 console.log('═'.repeat(66));
 process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error('BENCH THREW:', e); process.exit(1); });
+})().catch((e) => { console.error('BENCH THREW:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

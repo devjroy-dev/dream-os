@@ -1703,4 +1703,4 @@ console.log(`  b06_relay_hand_bench: ${pass} passed, ${fail} failed  (total ${pa
 if (fail) { console.log('  FAILURES:'); for (const f of fails) console.log(`    - ${f}`); }
 console.log(`${'═'.repeat(68)}\n`);
 process.exit(fail ? 1 : 0);
-})().catch((e) => { cleanup(); console.error(e); process.exit(1); });
+})().catch((e) => { cleanup(); console.error(e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

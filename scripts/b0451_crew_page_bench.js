@@ -611,4 +611,4 @@ sec('12. IST today');
 server.close();
 console.log(`\n══ b0451_crew_page_bench: ${pass} passed, ${fail} failed ══\n`);
 process.exit(fail === 0 ? 0 : 1);
-})().catch((e) => { console.error('BENCH CRASHED:', e); try { server && server.close(); } catch {} process.exit(1); });
+})().catch((e) => { console.error('BENCH CRASHED:', e); try { server && server.close(); } catch {} process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

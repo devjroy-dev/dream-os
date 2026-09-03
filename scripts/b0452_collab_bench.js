@@ -255,4 +255,4 @@ section('3. roster dedup — two disjoint predicates');
 
   console.log(`\n══ b0452_collab_bench: ${pass} passed, ${fail} failed ══\n`);
   process.exit(fail === 0 ? 0 : 1);
-})();
+})().catch((e) => { console.error('BENCH THREW (unexpected):', e && e.stack || e); process.exit(2); }); // F-39.67: an unexpected throw is an ERROR (2), never a FAIL (1)

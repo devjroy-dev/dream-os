@@ -256,4 +256,4 @@ if (fail === 0) console.log(`   \u2550\u2550 ${pass}/${pass} PASS \u2550\u2550`)
 else            console.log(`   \u2550\u2550 ${pass}/${pass + fail} \u2014 ${fail} FAILED \u2550\u2550`);
 process.exit(fail === 0 ? 0 : 1);
 
-})().catch((e) => { console.error('BENCH CRASHED:', e); process.exit(1); });
+})().catch((e) => { console.error('BENCH CRASHED:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

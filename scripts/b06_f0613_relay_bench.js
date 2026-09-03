@@ -24,7 +24,7 @@ const DIST = path.join(ROOT, 'src/engine/dist/core');
 
 if (!fs.existsSync(path.join(DIST, 'historyGate.js')) || !fs.existsSync(path.join(DIST, 'relaySeam.js'))) {
   console.error('DIST MISSING — run `npm run build` first. This bench drives the SHIPPED functions, never a copy.');
-  process.exit(1);
+  process.exit(3); // F-39.47: a missing build artifact is a REFUSAL (3), never a FAIL
 }
 
 const gate = require(path.join(DIST, 'historyGate.js'));

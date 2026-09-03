@@ -218,7 +218,12 @@ if [ ! -d "../dreamos-pwa" ]; then
   echo ""
 fi
 
-ALL=$(ls scripts/*.js 2>/dev/null | sort -u)
+# ── E-1 (CE-39 ruling 4) · `_noop_middleware.js` IS NOT A BENCH ─────────────
+# It is a pass-through middleware export that benches require to drive a router
+# past `requireAdmin`. The glob ran it for want of a verdict it never had; it
+# exited 0 forever and read as a green. Excluded by name, not by a leading
+# underscore convention, so a second helper cannot slip out the same door unseen.
+ALL=$(ls scripts/*.js 2>/dev/null | grep -v '^scripts/_noop_middleware\.js$' | sort -u)
 
 run_pass() {
   local out="$1" quiet="$2"
@@ -249,6 +254,13 @@ run_pass() {
     # is how a bench stops looking without anyone noticing.
     if [ "$rc" -eq 3 ]; then
       echo "REFUSED: ${n}" >> "$out"
+    # ── E-1 · F-39.67 · EXIT 2 IS AN ERROR, AND IT GETS ITS OWN LINE ─────────
+    # The estate's table is 0 pass · 1 fail · 2 error · 3 refused, and until this
+    # sitting the runner read 2 as RED — an unexpected throw and a failed cell
+    # were one line. An ERROR is still non-green and still enters the base; it is
+    # named so a bench that stops asserting and starts crashing is a visible move.
+    elif [ "$rc" -eq 2 ]; then
+      echo "ERROR: ${n}" >> "$out"
     elif [ $rc -ne 0 ]; then
       # 124 is timeout(1)'s own exit code — a bench THIS FILE killed, which is a
       # finding about BENCH_TIMEOUT and must never pass as a bench's own verdict.
@@ -328,6 +340,16 @@ if [ "$CHECK" = "yes" ]; then
   # doing it wrong once this sitting: the reclassification note below was drafted
   # into the base file first and would have broken `--check` at every tip.
   #
+  # ── BASE AMENDED, LABELLED — E-1 · THE EXIT-CODE CENSUS (CE-39, 2026-09-03) ──
+  # BY MEASUREMENT, BOTH FLOORS BY SET, cured tree vs `e947570`. Nothing joins,
+  # nothing leaves; FOUR LINES MOVE and TWO LEAVE THE FILE:
+  #   `test-shape`        RED → REFUSED   (:32 no ANTHROPIC_API_KEY exited 1; now 3)
+  #   `b06_gauntlet`      RED → REFUSED   (:4548 no key exited 2; :2586 no dist exited 2; now 3)
+  #   `b5b_movementb`     RED → ERROR     (:225 uncaught TypeError; the 2 was always right,
+  #                                        the runner could not read it — F-E1.1)
+  #   `b5_wa_door_smoke`, `bf1`  LEAVE THE FILE — refusals never enter a base (c-39.57).
+  # Refusals are still measured and printed; the `--check` diff excludes them.
+  # 49 one-line exit-site cures rode this ZIP under F-39.67 (throw → 2); none moved a line.
   # ── BASE AMENDED, LABELLED — CE-39 PRE-BETA SMALLS · S4 RIDER  [F-39.55] ───
   # A SECOND LINE RECLASSIFIES: `bf1_bride_tool_fidelity_bench`, `RED:` ->
   # `REFUSED:`. Nothing joins, nothing leaves.
@@ -378,8 +400,20 @@ if [ "$CHECK" = "yes" ]; then
     exit 1
   fi
   echo ""
-  if diff "$BASE_FILE" /tmp/floor.txt; then
-    echo "FLOOR = NAMED BASE, no delta"
+  # ── E-1 · c-39.57 · A BASE HOLDS FAILURES ONLY ────────────────────────────
+  # Refusals are named in the verdict above and never enter a base: a refusal is
+  # a fact about the ENVIRONMENT (a key, a sibling, a build artifact), and a base
+  # is a fact about the TREE. The two S4 reclassifications (`b5_wa_door_smoke`,
+  # `bf1`) leave the base file here for that reason. The diff below is over
+  # RED/ERROR lines only; refusals are printed beside it so a reader still sees
+  # what was not measured.
+  grep -v '^REFUSED: ' /tmp/floor.txt > /tmp/floor_fail.txt
+  if grep -q '^REFUSED: ' "$BASE_FILE"; then
+    echo "STOP — ${BASE_FILE} carries a REFUSED line. Bases hold failures only (c-39.57)."
+    exit 1
+  fi
+  if diff "$BASE_FILE" /tmp/floor_fail.txt; then
+    echo "FLOOR = NAMED BASE, no delta  (refusals, not in base: $(grep -c '^REFUSED: ' /tmp/floor.txt))"
   else
     echo "FLOOR DELTA — the diff above is this delivery's to explain"
     exit 1

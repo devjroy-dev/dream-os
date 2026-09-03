@@ -29,7 +29,7 @@ const CASES = [
 (async () => {
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error('✗ ANTHROPIC_API_KEY not set in environment. Run inside your Codespace where the key exists.');
-    process.exit(1);
+    process.exit(3); // F-39.55: a missing key is a REFUSAL (3), never a FAIL
   }
   console.log('Testing extractWeddingShape() across phrasings:\n');
   for (const [msg, note] of CASES) {

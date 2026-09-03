@@ -686,4 +686,4 @@ await t('§5.1 a BARE-format phone row of an allowlisted kind is a DECLARED MISS
 cleanup();
 console.log(`\n${pass}/${pass + fail} cells green`);
 if (fail) { console.log('FAILED:', fails.join(' · ')); process.exit(1); }
-})().catch((e) => { cleanup(); console.error('BENCH CRASHED:', e); process.exit(1); });
+})().catch((e) => { cleanup(); console.error('BENCH CRASHED:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

@@ -187,4 +187,4 @@ if(!process.env.M6_BENCH_CHILD){
 console.log(`\n════════  ${pass} passed, ${fail} failed  ════════`);
 if(fail===0) console.log('GREEN — the couple plane has one writer, four doors carry their wamid, and the fence speaks.');
 process.exit(fail===0?0:1);
-})();
+})().catch((e) => { console.error('BENCH THREW (unexpected):', e && e.stack || e); process.exit(2); }); // F-39.67: an unexpected throw is an ERROR (2), never a FAIL (1)

@@ -926,4 +926,4 @@ console.log('─'.repeat(66));
 if (fail) { fails.forEach(f => console.log(`   RED  ${f}`)); process.exit(1); }
 process.exit(0);
 
-})().catch(e => { console.error('BENCH HARNESS ERROR:', e); process.exit(1); });
+})().catch(e => { console.error('BENCH HARNESS ERROR:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

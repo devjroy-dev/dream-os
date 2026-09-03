@@ -483,4 +483,4 @@ const SEED = [
 
   console.log(`\n  \u2500\u2500 ${pass}/${pass + fail} PASS \u2500\u2500\n`);
   process.exit(fail === 0 ? 0 : 1);
-})();
+})().catch((e) => { console.error('BENCH THREW (unexpected):', e && e.stack || e); process.exit(2); }); // F-39.67: an unexpected throw is an ERROR (2), never a FAIL (1)

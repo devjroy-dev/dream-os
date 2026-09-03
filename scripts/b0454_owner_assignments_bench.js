@@ -230,4 +230,4 @@ function seedWorld() {
 
   console.log(`\n══ b0454_owner_assignments_bench: ${pass} passed, ${fail} failed ══\n`);
   process.exit(fail === 0 ? 0 : 1);
-})().catch(err => { console.error('BENCH CRASH:', err); process.exit(1); });
+})().catch(err => { console.error('BENCH CRASH:', err); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

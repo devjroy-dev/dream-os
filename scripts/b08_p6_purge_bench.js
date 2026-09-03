@@ -747,4 +747,4 @@ await ta('M-10 · a leg tally that ignores the resolver reddens the witness cell
 console.log(`\n══ b08_p6_purge_bench: ${pass} passed, ${fail} failed, 0 skipped ══`);
 process.exit(fail ? 1 : 0);
 
-})().catch((e) => { console.error('BENCH CRASHED:', e); process.exit(1); });
+})().catch((e) => { console.error('BENCH CRASHED:', e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });

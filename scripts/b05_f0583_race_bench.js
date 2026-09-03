@@ -346,4 +346,4 @@ function loadBeside(siblingAbs, text, tag) {
 
   console.log(`\nb05_f0583_race_bench: ${pass}/${pass + fail} GREEN${fail ? ' — RED: ' + red.join(', ') : ''}`);
   process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error('BENCH CRASHED:', e && e.stack || e); process.exit(1); });
+})().catch((e) => { console.error('BENCH CRASHED:', e && e.stack || e); process.exit(2) /* F-39.67: an unexpected throw is an ERROR, never a FAIL */; });
