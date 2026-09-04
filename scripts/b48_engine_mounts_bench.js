@@ -148,17 +148,27 @@ console.log('\n── §1 — THE FOUR MOUNTS, BY REQUEST ───────�
     });
   })();
 
-  // §1.4 — THE CABINET PAYLOAD STILL CARRIES ITS FOUR MONEY-BEARING SLICES.
-  // NOT a retirement cell: the inverse. `paid` and `owed` have three live
-  // readers on the /vendor tree (F-2b2.3), so the payload keeps them until that
-  // tree retires. Comment-blind, because this file's own header names both words
-  // many times.
-  cell('§1.4 the cabinet payload still ships paid and owed — their readers are live (F-2b2.3)', () => {
+  // §1.4 INVERTED at P7.2 Arm E (CE-39, 2026-09-04). This cell was the OPPOSITE of a
+  // retirement: it HELD `paid` and `owed` in the payload because F-2b2.3 recorded three live
+  // readers on the /vendor tree. That premise was corrected as FORK 4 — the readers were the
+  // SHELL's (leads/body.tsx, events/body.tsx, and the invoices masthead via deriveMoney), not
+  // the old tree's — and they were CURED AT THE SHELL in P7.2 ZIP 1 rather than deleted with it.
+  //
+  // THE PROOF, quoted rather than re-asserted here: `tsc --noEmit` on dreamos-pwa at 405f962,
+  // where dropping the two from `CabinetResponse` named exactly ONE remaining reader,
+  // `lib/vendor/derive.ts::moneyBinders`, which retired with them. The invoices figure now comes
+  // from money.js's own summary (OUTSTANDING_STATES — one rule, server-side).
+  //
+  // The cell asserts the ABSENCE now, so the slices cannot return without a ruling. `pendingOf`
+  // is NOT in scope: it is F-04.13's money rule and today.js reads it.
+  cell('§1.4 the cabinet payload no longer ships paid or owed — cured at the shell (FORK 4)', () => {
     const src = strip(read('src/api/vendor-engine/cabinet.js'));
-    assert.ok(/\bconst\s+paid\s*=/.test(src), 'cabinet.js no longer computes the `paid` slice');
-    assert.ok(/\bconst\s+owed\s*=/.test(src), 'cabinet.js no longer computes the `owed` slice');
-    assert.ok(/clients,\s*leads,\s*paid,\s*owed,\s*booked,\s*reminders/.test(src),
-      'the six slices are no longer shipped together — the payload moved and three pwa readers ride it');
+    assert.ok(!/\bconst\s+paid\s*=/.test(src), 'cabinet.js computes the `paid` slice again — its readers were cured at the shell (P7.2 ZIP 1)');
+    assert.ok(!/\bconst\s+owed\s*=/.test(src), 'cabinet.js computes the `owed` slice again — its readers were cured at the shell (P7.2 ZIP 1)');
+    assert.ok(/clients,\s*leads,\s*booked,\s*reminders/.test(src),
+      'the payload does not ship the four surviving slices together');
+    assert.ok(!/paid:\s*paid\.length|owed:\s*owed\.length/.test(src), 'the counts still report the retired slices');
+    assert.ok(/const pendingOf/.test(src), 'pendingOf went with them — it is F-04.13 rule and today.js reads it');
   });
 
   // §1.5 — THE HANDLERS ARE MOUNTED WHERE THE LIVE ADDRESSES ARE. §1.3 proves

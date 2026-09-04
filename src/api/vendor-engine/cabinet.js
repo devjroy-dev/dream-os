@@ -79,7 +79,15 @@ router.get('/:vendorId',
     };
     const clients = allBinders.filter(isClientStage);
     const leads   = allBinders.filter(b => !isClientStage(b) && (b.direction || '').toLowerCase() !== 'out');
-    const paid    = allBinders.filter(b => Number(b.amount_received) > 0);
+    // ── `paid` RETIRED at P7.2 Arm E (CE-39, 2026-09-04) ──────────────────────────
+    // F-2b2.3 listed this slice for retirement on the ground that its readers were the old
+    // /vendor tree's pages. THE PREMISE WAS WRONG, and the correction is on the record as
+    // FORK 4: the readers were the SHELL's — leads/body.tsx, events/body.tsx and the invoices
+    // masthead — and they were cured at the shell in P7.2 ZIP 1, not deleted with the tree.
+    // The proof is `tsc --noEmit` on dreamos-pwa at 405f962, where dropping `paid`/`owed` from
+    // `CabinetResponse` named exactly one remaining reader (`derive.ts::moneyBinders`), which
+    // retired with them. The invoices figure now comes from money.js's own summary
+    // (OUTSTANDING_STATES — the one rule, server-side).
 
     // ── F-04.13 (CE-RATIFIED 2026-07-15) — THE money rule ────────────────
     // CANON lives in dreamos-pwa/lib/vendor/derive.ts :: pendingOf(). This is
@@ -107,7 +115,8 @@ router.get('/:vendorId',
       }
       return Math.max((Number(b.amount) || 0) - (Number(b.amount_received) || 0), 0);
     };
-    const owed = allBinders.filter(b => pendingOf(b) > 0);
+    // `owed` retires with `paid`, same warrant. `pendingOf` above STAYS: it is F-04.13's ruled
+    // money rule and today.js reads it for the Today feed's `amount_owed`.
 
     // ── F-04.17 (CE-RATIFIED 2026-07-15) — the calendar predicate ────────
     // ONE rule, recorded (executor's choice per the ruling: the state filter
@@ -144,10 +153,10 @@ router.get('/:vendorId',
         city:     vendor.city || null,
         handle:   vendor.routing_handle || null,
       },
-      clients, leads, paid, owed, booked, reminders,
+      clients, leads, booked, reminders,
       counts: {
-        clients: clients.length, leads: leads.length, paid: paid.length,
-        owed: owed.length, booked: booked.length, reminders: reminders.length,
+        clients: clients.length, leads: leads.length,
+        booked: booked.length, reminders: reminders.length,
       },
     });
   });
