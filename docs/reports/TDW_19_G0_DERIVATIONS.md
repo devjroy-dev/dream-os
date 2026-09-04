@@ -524,3 +524,157 @@ One, owned. My first message stated the read ladder was discharged before I had 
 FORK B's cost turns on **Cloudinary plan ceilings** (master §8.3) — a console fact. FORK C(b) needs a **founder-run census of `leads.source`'s live distinct values** before any CHECK is authored. FORK E needs **one reading of Meta's current Instagram permission matrix**. And the couple-consent write door `PATCH /api/v2/couple/me/:id` should be **read whole** before a consent column is proposed, because its allowlist pattern did not surface under grep and a new column may or may not need to join one.
 
 *Sequencing beyond this sitting is the founder's.*
+
+---
+---
+
+# ADDENDUM A — FORK E ANSWERED · THE TWO INSTAGRAM LOGIN FLOWS
+
+**Appended 2026-09-04 beneath this report's own last line, per R-40.3.** Docs-only, same file, same base `dream-os @ c841082`. Nothing above this line is rewritten.
+
+**The question R-40.3 puts:** for each permission master §5 names, does the estate's existing **Instagram Login** flow carry it, or does it need **Facebook Login for Business with a linked Page**? It decides the class of three §5 rows and two of §5.3's EXTENDS verdicts before the filing order is committed.
+
+**Method.** Meta's own current documentation, read at the URLs cited beneath each answer. Where a permission's name in master §5 differs from the name Meta uses on the flow that carries it, the difference is stated rather than reconciled silently. **This addendum overturns two of this seat's own verdicts; both are owned in §A.5.**
+
+---
+
+## A.1 · THE TWO FLOWS, AND WHICH ONE THE ESTATE IS ON
+
+Meta operates the Instagram Platform as two API setups, distinguished by login type, host and permission family.
+
+| | **Instagram API with Instagram Login** | **Instagram API with Facebook Login** |
+|---|---|---|
+| Login | Business Login for Instagram | Facebook Login for Business |
+| Host | `graph.instagram.com` | `graph.facebook.com` |
+| Token | Instagram User access token | Facebook User / Page access token |
+| Facebook Page required | **No** | **Yes** — the IG professional account must be linked to a Page |
+| Permission family | `instagram_business_*` | `instagram_*` + `pages_*` |
+
+Sources: `https://developers.facebook.com/docs/instagram-platform` · `https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login` · `https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-facebook-login.md`
+
+**The estate is on Instagram Login, and the tree proves it without a console:** `src/lib/vendor/igOAuth.js:124` sets `GRAPH_HOST = 'https://graph.instagram.com'` and `:132` sets `IG_SCOPE = 'instagram_business_basic'`. Both are the Instagram-Login family. This is a repo fact, derived in §5.1 of this report, and it is what makes the rest of this addendum decidable.
+
+**Instagram Login's own scope set**, per Meta: `instagram_business_basic`, `instagram_business_content_publish`, `instagram_business_manage_messages`, `instagram_business_manage_comments` — the values that replaced the older `business_*` spellings, the old ones dead since 2025-01-27. Insights joined later under its own name (§A.2, I3).
+
+---
+
+## A.2 · THE ANSWER, PER PERMISSION
+
+### I1 · Portfolio import — `instagram_business_basic`
+**INSTAGRAM LOGIN CARRIES IT.** It is the flow's base scope and the estate's live one. No change. Verdict **EXISTS** stands.
+
+### I2 · The DM bridge — `instagram_business_manage_messages`
+**INSTAGRAM LOGIN CARRIES IT.** Messaging is one of the five capabilities Meta lists for this setup, and Meta states plainly that this setup does not require a Facebook Page to be linked. Meta's own app-creation guide records that `instagram_business_basic` and `instagram_business_manage_messages` are the two permissions added by default when the Instagram-Login setup is configured — messaging is the setup's default posture, not an exception to it.
+
+Since July 2024 an Instagram professional account no longer needs a linked Page to hold conversations, manage comments or publish media.
+
+Sources: `https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login` · `https://developers.facebook.com/documentation/development/create-an-app/instagram-use-case` · `https://developers.facebook.com/docs/messenger-platform/instagram/get-started`
+
+**Verdict NEW stands, and it is a scope-widening on the existing flow — not a second OAuth flow.** FORK E's worst case does not obtain for I2.
+
+### I3 · The Sunday brief and influencer reach cards — master names `instagram_manage_insights`
+**INSTAGRAM LOGIN CARRIES IT — UNDER A DIFFERENT NAME. The master's permission string is the Facebook-Login one.**
+
+The correct scope on the estate's flow is **`instagram_business_manage_insights`**, introduced in March 2025 when Meta brought user and media insights to the Instagram-Login setup. Meta's insights reference tabulates the two flows side by side: `instagram_business_basic` + `instagram_business_manage_insights` on `graph.instagram.com`, versus `instagram_basic` + `instagram_manage_insights` + `pages_read_engagement` on `graph.facebook.com`.
+
+Two facts that bear on G4.1 and G5.3:
+
+- The insights reachable this way include per-media views, profile visits and account interactions, and **follower trends including top follower locations and age demographics** — which is exactly master §5's *"audience demographics (age, gender, top 45 cities) at 100+ followers"* and exactly what a G5.3 reach card needs.
+- **Advanced Access is required to request the permission from any app user.** Standard Access covers only accounts the app owns or manages. This is the same gate class as F-K3.8.
+
+Named limitations from the same references, carried so a later sitting does not rediscover them: `follower_count` and `online_followers` are unavailable below 100 followers; demographic metrics return only the top 45 performers; and the **insights webhook is not supported on the Instagram-Login setup** — the Sunday brief is a pull on a cron, never a push.
+
+Sources: `https://developers.facebook.com/blog/post/2025/03/24/user-and-media-insights-on-instagram-api-with-instagram-login/` · `https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights` · `https://developers.facebook.com/documentation/instagram-platform/reference/instagram-media/insights`
+
+**Verdict EXTENDS UPHELD**, with the permission string corrected. Master §5's I3 row should read `instagram_business_manage_insights`.
+
+### I4 · Publishing from TDW — `instagram_business_content_publish`
+**INSTAGRAM LOGIN CARRIES IT.** Content publishing is one of the five listed capabilities and the scope is in the flow's own set. Verdict **NEW** stands, as a scope-widening on the existing flow.
+
+**One residual, flagged not asserted.** The Instagram-Login overview's Limitations line states that this API setup cannot access ads or **tagging**. Master §5 claims publishing with *"user tagging on reels"*, and G1.3 wants the reel published with *"credits tagged"* — the credit roll's amplifier on Instagram. Whether Meta's word "tagging" there means product tagging, the `/tags` edge (media the user is tagged in), user tagging at publish time, or all three **is not resolved by that one line**, and this seat will not assert a reading of a four-word limitation. **It is a named residual for I4's charter**, and it matters more than its size suggests: if user tagging at publish is excluded, G1.3's reel ships without the credit roll attached and the acquisition loop loses its Instagram limb.
+
+Source: `https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login`
+
+### I5 · Comments as the first reply — `instagram_business_manage_comments`
+**INSTAGRAM LOGIN CARRIES IT.** In the flow's own scope set; comment moderation is a listed capability. Verdict **NEW** stands, as a scope-widening.
+
+### I6 · Mentions become credits — the mentions webhook
+**INSTAGRAM LOGIN CARRIES IT.** Mentions — identifying media where the account was @mentioned — is a listed capability of the Instagram-Login setup, and Meta's webhook table shows the Instagram-Login comment and messaging webhook subscriptions taking `instagram_business_*` fields. Verdict **NEW** stands; the estate still has no IG webhook receiver, which was the basis of the verdict and is unchanged.
+
+Sources: `https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login` · `https://developers.facebook.com/documentation/instagram-platform/self-messaging`
+
+### I7 · Peer posting benchmarks — Business Discovery
+**FACEBOOK LOGIN ONLY. THIS SEAT'S "EXTENDS" VERDICT WAS WRONG.**
+
+Meta's Business Discovery reference states the availability in one line — available for the Instagram API with **Facebook Login** — and its permission block requires a **Facebook User access token** carrying `instagram_basic`, `instagram_manage_insights` and `pages_read_engagement`, with `ads_management` or `ads_read` additionally where the user's Page role came via Business Manager. The call is made against `graph.facebook.com` on the app user's own IG account id, naming the target by username.
+
+Business Discovery appears in Meta's capability list for the Facebook-Login setup and **does not appear** in the Instagram-Login setup's list. The same asymmetry covers **hashtag search**, which master §5 already refuses on other grounds.
+
+Sources: `https://developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-user/business_discovery` · `https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-facebook-login/business-discovery.md` · `https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-facebook-login.md`
+
+**Reclassified: I7 is not an extension of anything the estate has. It is a second login flow, a linked Facebook Page per vendor, and a different permission family.**
+
+### I8 · Engagement — `instagram_manage_engagement`
+**FACEBOOK LOGIN ONLY.** Meta's April 2026 announcement of the like/unlike capability for feed posts, reels, comments and replies states that the update set is delivered through the Instagram API with **Facebook Login**, and names `instagram_manage_engagement` as the new permission it requires. Stories and private-account content are excluded.
+
+Source: `https://developers.facebook.com/blog/post/2026/04/22/instagram-api-updates-for-partnerships-metrics-collaboration-and-engagement/`
+
+**Verdict NEW stands, but for a stronger reason than the one given**: not merely that no code exists, but that the permission is on the other flow entirely. Master §5 already ranks I8 last and lowest-value, which this does not disturb.
+
+---
+
+## A.3 · THE STRUCTURAL CONSEQUENCE — ONE INSTAGRAM SETUP PER APP
+
+The per-row answers do not compose the way a permission list would suggest, because of a constraint on the **app**, not on any permission.
+
+**Meta's app-creation documentation states that only one API setup may be added per app, and that implementing both setups requires a separate app for each.** It appears twice in Meta's own pages, in the same words.
+
+Source: `https://developers.facebook.com/docs/instagram-platform/create-an-instagram-app/` · `https://developers.facebook.com/documentation/development/create-an-app/instagram-use-case`
+
+**Applied to the estate, using facts already derived:**
+
+App-LIVE `1425513376067685` is configured with the **Instagram Login** setup — proven by `igOAuth.js:124` and `:132`, and by the fact that I1's live import runs against `graph.instagram.com` today. Therefore:
+
+- **I2, I3, I4, I5, I6 are all reachable on App-LIVE**, as scope widenings at `IG_SCOPE`'s one home (`igOAuth.js:132`), with no second OAuth flow, no Facebook Page requirement, and no new app. **Five of the eight rows are clean.**
+- **I7 and I8 are not reachable on App-LIVE at all** — not by widening a scope, not by adding a permission, not on any timeline — because they live on a setup the app cannot simultaneously hold. Reaching them means either **switching App-LIVE's Instagram setup to Facebook Login**, which would break the live I1 flow and orphan its App Review filing, or **a third Meta app**.
+
+**A third app is not in the estate's law.** Master §2.3 and `TDW_06.5_GROWTH_SUITE_PARKED.md` §3 together state a two-app world: WhatsApp and Instagram permissions on App-LIVE `1425513376067685`; ads permissions on the second app under portfolio `995204059832918`, never App-LIVE. **A third app for a Facebook-Login Instagram setup is a charter question and is not ruled here.**
+
+**And it reaches a refusal.** Master §7 refuses scraping and permits public peer data by exactly one named mechanism — Business Discovery. Master §4 G7 rests peer posting benchmarks on the same mechanism. **The sanctioned mechanism sits on the flow the estate is not on.** G7's benchmark limb is unreachable as currently architected; the refusal it serves is untouched and is not re-proposed here in any arm.
+
+---
+
+## A.4 · WHAT THIS MEANS FOR §5's FILING ORDER
+
+Stated as consequence, not as a sequencing proposal — sequencing is the founder's.
+
+- **One basket is now visibly coherent.** I2 · I3 · I4 · I5 · I6 are one flow, one app, one permission family, one token store, one scope constant. Master §5's filing law (one submission per permission or a small basket, each with its own screen recording) applies to them without qualification, and I2's stated priority — *file first after the WhatsApp pair returns* — is unobstructed.
+- **The permission string for I3 must be corrected in master §5 before it is filed.** Filing `instagram_manage_insights` against an Instagram-Login app is filing a permission the app's setup does not offer.
+- **I7 and I8 cannot be filed on App-LIVE in any order**, and no screencast can change that. They are blocked on a decision, not on a review.
+- **The build-dark law (§2.2) still holds for I2–I6** and is unaffected by any of this: built whole, walked on a test account, one flag per permission, flipped on grant.
+
+---
+
+## A.5 · CORRECTIONS THIS SEAT OWNS
+
+**e-G0.1 — the I7 EXTENDS verdict was wrong.** §5.3 classed Business Discovery as EXTENDS on the reasoning that it is *"a read using the existing token against a public account."* The token is the wrong token: Business Discovery requires a Facebook User access token on `graph.facebook.com`. The error is the one FORK E was raised to catch, and it was caught by the reading FORK E asked for — which is the argument for R-40.3 having been ruled into G0 rather than deferred.
+
+**e-G0.2 — the I8 NEW verdict was right for an incomplete reason.** §5.3 gave the basis as *"no like/hide/delete paths"* in the tree. True, and not the binding constraint: the permission is on the other login flow.
+
+**e-G0.3 — §5.3's I3 row reproduced the master's permission string without checking it against the flow the estate runs on.** The row was mapped correctly as EXTENDS and named with a permission that does not exist on `graph.instagram.com`. A name copied from a spec is a claim like any other; this one went unchecked until this addendum.
+
+**Not corrected, because it held:** I2, I4, I5 and I6 were each classed NEW on the tree's own silence, and the classification survives the reading. FORK E's stated worst case — that three rows become a second OAuth flow — **does not obtain.** It obtains for I7 and I8, which FORK E did not name.
+
+---
+
+## A.6 · WHAT THIS ADDENDUM CANNOT SEE
+
+Meta's documentation is the witness here, and it has three blind spots this seat will not paper over.
+
+1. **Which permissions App-LIVE currently holds in Advanced Access** — a console fact. The founder's App Review submission `1461935125758843` covers the WhatsApp pair only; `instagram_business_basic` is NOT FILED per band 6's Meta ledger.
+2. **Whether App-LIVE's Instagram use case is formally configured with the Instagram-Login setup in the App Dashboard.** The tree proves the *code* calls `graph.instagram.com` with an `instagram_business_*` scope, which cannot function against a Facebook-Login setup — so the inference is strong. **It is an inference, and the App Dashboard is the witness.** One screen settles it, in the manner F-K4.1 was settled.
+3. **The meaning of "tagging" in the Instagram-Login limitation line** (§A.2, I4) — one further reading of the content-publishing reference, owed at I4's charter.
+
+Meta revises this surface frequently: the `business_*` scopes were replaced and deprecated inside six months, insights arrived on this flow eight months after the flow itself, and the engagement permission is five months old. **Every answer above carries its date. Re-derive at the charter of the phase that files it.**
+
+*Addendum A closes FORK E. G0 seals on it, per R-40.3. Sequencing beyond this sitting is the founder's.*
