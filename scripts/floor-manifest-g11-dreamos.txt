@@ -1,0 +1,75 @@
+# scripts/floor-manifest-g11-dreamos.txt
+# BLOCK 19 · G1.1 · WEDDING PAGES — the declared dirt of the dream-os half.
+#
+# F-39.51(b): a dirty file outside this list is a STOP until accounted for.
+# Every file below was authored by THIS seat in THIS sitting; nothing is
+# inherited, and `git status --porcelain` was empty at seating (§0, preflight
+# CLEAR at d58648e).
+#
+# This manifest exists because the first floor run of this sitting was measured
+# on a dirty tree and the runner refused — correctly. The refusal printed a STOP
+# and zero result lines, and a naive comparison read "0 non-green" as a floor
+# that had gone green. It had not run at all. The instrument was right and the
+# reading was the defect; the manifest is the lawful way to measure a delivery
+# rather than the way around the guard.
+
+# ── THE MIGRATION  [R-G11.21 · R-G11.4 · R-G11.16] ──────────────────────────
+# Additive only, proven by AST: 3 CreateStmt + 6 IndexStmt, zero
+# Drop/Truncate/Delete/Alter/Update nodes. Founder-run before the pwa apply.
+db/migrations/0131_wedding_pages.sql
+
+# ── THE ONE SIGNER  [R-G11.22 · F-40.34] ────────────────────────────────────
+# New file. The sole home for `folder=…&public_id=…&timestamp=…` + sha256.
+# Census by command: 3 `paramsToSign` sites before, 1 after.
+src/lib/cloudinarySign.js
+
+# The three donors. Each keeps its FUNCTION NAME, ARGUMENTS and RETURN SHAPE, so
+# not one of the eight call sites across the tree changes — the cure is a body
+# swap. Signature equivalence was proven against an independent transcription of
+# the pre-cure method over four folder/publicId/timestamp cases, all MATCH.
+# The DESTROY signing in portfolio.js:84 and admin/cloudinary.js is byte-
+# untouched: different endpoint, different params, R-G11.13's line holds.
+src/lib/vendor/igImport.js
+src/lib/vendor/portfolio.js
+src/lib/admin/cloudinary.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g11-dreamos.txt
+
+# ── THE SEASON MAP  [R-40.25, founder-vetoed] ───────────────────────────────
+# Four couple-facing words, one home. F-40.35 is why they needed a veto: the
+# mock ratified one of four and R-G11.20's July fixture cannot produce it.
+src/lib/season.js
+
+# ── THE DATA LAYER  [sole writer for all three tables born in 0131] ─────────
+src/lib/vendor/weddings.js
+
+# ── THE DARK CLAIM SEND  [F-40.21 · master §2.2 build-dark law] ─────────────
+# Two independent gates, both shut. The template is registered `pending`
+# because it exists on neither WABA; the founder submits it from WhatsApp
+# Manager by the numbered steps in the handover.
+src/lib/vendor/creditInvite.js
+src/lib/templates.js
+
+# ── THE DOORS, AND THEIR TWO MOUNT LINES ───────────────────────────────────
+src/api/vendor/studio/weddings.js
+src/api/public/weddingPage.js
+src/api/credits.js
+src/api/vendor/studio/index.js
+src/api/router.js
+
+# ── THE BENCH  [both-ways: 62 cells + 9 production-code mutations] ──────────
+scripts/b53_g11_wedding_pages_bench.js
+
+# ── THE TAXONOMY EXCLUSION  [F-40.36 · R-G11.23] ───────────────────────────
+# AMENDED BY THE SITTING WHOSE CODE REDDENED IT, and named here for that
+# reason. Cell 6.1 was RIGHT to red: four of R-40.7's ascii role keys are also
+# vendor-taxonomy tokens. The exclusion SUBTRACTS those four tokens; it does
+# NOT exempt the file — the first cut did exempt it and this delivery's own
+# non-vacuity mutation caught that a real private taxonomy copy then passed
+# unseen. Pinned both ways by 6.1d/6.1e and proven able to red in three
+# directions by b53's mutation pass.
+scripts/bOB_taxonomy_bench.js
+
+# ── THE HANDOVER ───────────────────────────────────────────────────────────
+docs/TDW_19_G11_BUILD_HANDOVER.md

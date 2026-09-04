@@ -220,6 +220,45 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── THE FIFTH TEMPLATE — BLOCK 19 G1.1, F-40.21 · BUILT DARK ──────────────
+  // ⚠ `status: 'pending'` IS THE TRUTH, NOT A PLACEHOLDER. This template does
+  // not exist on either WABA. G0 §3 censused Direct 1739793260373677 at 26
+  // templates (25 `tdw_*`) and the other WABA at 12 by-name twins plus 3 `_hx`
+  // legacies; none of them is this one. `isApproved('wedding_credit')` returns
+  // false and the send path refuses on it — see `src/lib/vendor/creditInvite.js`,
+  // which ALSO requires the named flag. Two gates, because a registry status
+  // flipped by a careless edit should not be enough to start sending.
+  //
+  // THE FOUNDER SUBMITS IT FROM WHATSAPP MANAGER. Numbered steps ride the build
+  // handover; this seat does not submit and does not claim it has. Until Meta
+  // returns Approved on Direct 1739793260373677, the claim path is walked by the
+  // founder pasting the claim URL himself, which the walk card states.
+  //
+  // CATEGORY IS UTILITY and that is a judgement with a known risk: F-19.07 is
+  // the estate's own precedent for Meta reclassifying a Utility template as
+  // MARKETING, and F-40.12 records the review-ask template being classed
+  // MARKETING for a similar shape. This message is a transactional notice about
+  // a specific act by a specific person naming the recipient's own role, with a
+  // decline path in the body — the Utility case is real, and the risk is stated
+  // in the handover rather than discovered on submission.
+  //
+  // THE BODY IS STRING #32, RATIFIED (R-40.18) AND BYTE-FROZEN. It is
+  // transcribed from `docs/mocks/wedding-pages-mock.html`'s W4-wa frame, not
+  // re-voiced. The apostrophe in `{{3}}’s` is TYPOGRAPHIC (R-40.19) and the dash
+  // is an em dash; both are the ratified bytes and neither is an ascii twin.
+  wedding_credit: {
+    key: 'wedding_credit',
+    name: 'tdw_wedding_credit',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['owner', 'role', 'wedding', 'link'],
+    body:
+      '{{1}} credited you as {{2}} on {{3}}’s wedding page. Add your name to the page, ' +
+      'or decline — nothing is published under your name until you choose.\n\n{{4}}',
+    status: 'pending',
+  },
+
   payment_reminder: {
     key: 'payment_reminder',
     // Meta name is tdw_payment_due (NOT tdw_payment_reminder) to avoid colliding with the

@@ -3,6 +3,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { signUpload, uploadUrl, nowTimestamp } = require('../cloudinarySign');
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dccso5ljv';
 const API_KEY    = process.env.CLOUDINARY_API_KEY;
@@ -28,20 +29,24 @@ function ensureCloudinary() {
 }
 
 // Generate signed upload params for direct browser → Cloudinary upload.
+// ── R-G11.22 · THE SIGNING MOVED OUT; THE SIGNATURE DID NOT ─────────────────
+// F-40.34: the second of three byte-identical copies. The body delegates to
+// `src/lib/cloudinarySign.js`; the arguments, the return shape and the name are
+// untouched, so both call sites — `src/api/vendor/portfolio.js:27` and
+// `src/api/admin/vendorPortfolio.js:55` — are byte-unchanged.
+//
+// THE FOLDER STAYS THE CALLER'S. `vendor_portfolio/${vendorId}` is this
+// module's policy and it is stated HERE, not in the signer: the signer holds
+// the one fact that is the same everywhere (how to sign) and each caller keeps
+// the one fact that is its own (where its bytes live). The wedding plane's
+// `weddings/${vendorId}/${weddingId}` is the same arrangement seen from the
+// other side.
 function generateUploadParams(vendorId, filename) {
-  ensureCloudinary();
-  const timestamp = Math.round(Date.now() / 1000);
-  const publicId  = `${filename.replace(/\.[^.]+$/, '')}-${crypto.randomBytes(4).toString('hex')}`;
-  const folder    = `vendor_portfolio/${vendorId}`;
-
-  const paramsToSign = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}`;
-  const signature = crypto.createHash('sha256')
-    .update(paramsToSign + API_SECRET)
-    .digest('hex');
-
+  const publicId = `${filename.replace(/\.[^.]+$/, '')}-${crypto.randomBytes(4).toString('hex')}`;
+  const folder   = `vendor_portfolio/${vendorId}`;
   return {
-    upload_url: `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    params: { api_key: API_KEY, timestamp, signature, folder, public_id: publicId },
+    upload_url: uploadUrl(),
+    params: signUpload({ folder, publicId, timestamp: nowTimestamp() }),
   };
 }
 

@@ -5,6 +5,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { signUpload, uploadUrl, nowTimestamp } = require('../cloudinarySign');
 const { canAcceptMore, registerImage, MAX_PORTFOLIO_IMAGES } = require('./portfolio');
 // TDW_07 P4a: the wire constants live in igOAuth.js and are IMPORTED, never
 // re-declared. GRAPH_HOST in two files would be the F-05.20 class in miniature.
@@ -240,23 +241,26 @@ function ensureCloudinary() {
 // the P3 read-first corrected the charter's "unsigned" on exactly this point.
 async function mirrorOne(vendorId, sourceUrl) {
   ensureCloudinary();
-  const timestamp = Math.round(Date.now() / 1000);
-  const publicId  = `ig-${crypto.randomBytes(6).toString('hex')}`;
-  const folder    = `vendor_portfolio/${vendorId}`;
-
-  const paramsToSign = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}`;
-  const signature = crypto.createHash('sha256').update(paramsToSign + API_SECRET).digest('hex');
+  // ── R-G11.22 · THE SIGNING MOVED OUT; THE POSTURE DID NOT ────────────────
+  // F-40.34: the first of three byte-identical copies. `signUpload` returns the
+  // exact bag this form needs — api_key, timestamp, signature, folder,
+  // public_id — so the spread below is the whole of what used to be six lines
+  // of hand-assembly. `file` is added on top and is this caller's own: it is
+  // what makes this an import-and-mirror rather than a browser upload, and it
+  // is deliberately NOT a signed param (Cloudinary does not sign `file`).
+  //
+  // URLSearchParams coerces every value to a string, so `timestamp` no longer
+  // needs its explicit String() — the number signed is the number sent, which
+  // is the property the signer exists to keep.
+  const publicId = `ig-${crypto.randomBytes(6).toString('hex')}`;
+  const folder   = `vendor_portfolio/${vendorId}`;
 
   const form = new URLSearchParams({
     file: sourceUrl,          // Cloudinary fetches and STORES it — this is the copy
-    api_key: API_KEY,
-    timestamp: String(timestamp),
-    signature,
-    folder,
-    public_id: publicId,
+    ...signUpload({ folder, publicId, timestamp: nowTimestamp() }),
   });
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+  const res = await fetch(uploadUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: form.toString(),

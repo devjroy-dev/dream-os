@@ -3,6 +3,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { signUpload, uploadUrl, nowTimestamp } = require('../cloudinarySign');
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dccso5ljv';
 const API_KEY    = process.env.CLOUDINARY_API_KEY;
@@ -12,18 +13,22 @@ function ensureCloudinary() {
   if (!API_KEY || !API_SECRET) throw new Error('CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET not set.');
 }
 
+// ── R-G11.22 · THE SIGNING MOVED OUT; THE SIGNATURE DID NOT ─────────────────
+// F-40.34: this function held the third of three byte-identical copies of the
+// upload signing. The body now delegates to `src/lib/cloudinarySign.js`, the
+// one home. Its ARGUMENTS, its RETURN SHAPE and its NAME are untouched, so all
+// six requirers of this module — content.js, spotlight.js, surprisePool.js,
+// discoverHeroes.js, musePool.js and demoLifecycle.js — are byte-unchanged by
+// this delivery. (demoLifecycle takes the namespace and reads only
+// `publicIdFromUrl` and `destroyVerified`; neither moves.)
+//
+// The DESTROY signing below stays here by R-G11.13: different endpoint,
+// different params, and two endpoints do not share one name.
 function generateUploadParams(folder, filename) {
-  ensureCloudinary();
-  const timestamp = Math.round(Date.now() / 1000);
-  const publicId  = `${filename.replace(/\.[^.]+$/, '')}-${crypto.randomBytes(4).toString('hex')}`;
-  const paramsToSign = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}`;
-  const signature = crypto.createHash('sha256')
-    .update(paramsToSign + API_SECRET)
-    .digest('hex');
-
+  const publicId = `${filename.replace(/\.[^.]+$/, '')}-${crypto.randomBytes(4).toString('hex')}`;
   return {
-    upload_url: `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    params: { api_key: API_KEY, timestamp, signature, folder, public_id: publicId },
+    upload_url: uploadUrl(),
+    params: signUpload({ folder, publicId, timestamp: nowTimestamp() }),
   };
 }
 

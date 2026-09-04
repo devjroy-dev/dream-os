@@ -244,11 +244,61 @@ const CANON = path.join(ROOT, 'src/agent/categories.js');
 const BRIDE_NAMESPACE = ['photographer', 'videographer', 'mua', 'caterer', 'florist', 'music', 'planner'];
 const isBrideNamespace = src => BRIDE_NAMESPACE.filter(t => new RegExp(`['"\`]${t}['"\`]`).test(src)).length >= 4;
 
+// ── THE CREDIT-ROLE NAMESPACE IS A SECOND DECLARED EXCLUSION (R-G11.23) ──────
+// F-40.36, CE-40 2026-09-04. Block 19 G1.1 gave `public.wedding_credits` a
+// `role` CHECK carrying R-40.7's ten, and four of its ascii keys are also
+// vendor-taxonomy tokens: `makeup`, `decor` and `venue` from the canonical
+// eleven, `mehendi` from RETIRED. So `src/lib/vendor/weddings.js` reddened 6.1
+// on its first floor, and THE CELL WAS RIGHT TO. A count would have hidden it;
+// the SET comparison is what surfaced it (R-38.19).
+//
+// DERIVED BEFORE EXCLUDING IT, the same test 6.1b's paragraph applies:
+//   · NOTHING compares `wedding_credits.role` to `vendors.category`. There is
+//     no equality join anywhere in the wedding lane — grepped across the lib,
+//     the three door files and the migration.
+//   · The one place the two namespaces even appeared near each other was the
+//     public door selecting `category` on the owner row and never using it;
+//     that column was dropped, so the explicit list is a decision again.
+//   · A credit ROLE answers "who did the makeup at this wedding". A vendor
+//     CATEGORY answers "what kind of business is this". They are different
+//     questions that happen to share trade nouns, exactly as the bride
+//     namespace does.
+//
+// TWO ARMS WERE REFUSED AND ARE NAMED SO THEY ARE NOT RE-PROPOSED: prefixing
+// the keys (`credit_makeup`) contorts a schema to satisfy a lint and stops it
+// saying what it means; importing `categories.js` into the wedding lib would
+// satisfy this detector's letter while ASSERTING THE CONFLATION THIS BENCH
+// EXISTS TO FORBID — a credit role is not a vendor category.
+//
+// SAID OUT LOUD, NOT HIDDEN, and pinned both ways by 6.1d below. This
+// exclusion was added in the same sitting whose code reddened the cell, which
+// is a shape that deserves to be read rather than trusted: it is named by
+// number in `docs/TDW_19_G11_BUILD_HANDOVER.md`'s disclosure section so the
+// founder sees the amendment rather than inheriting a quieter detector.
+// ⚠ IT SUBTRACTS TOKENS; IT DOES NOT EXEMPT A FILE — and the difference is the
+// whole exclusion. The first cut of this amendment skipped the FILE once it
+// looked like the credit-role namespace, and the non-vacuity mutation caught it
+// immediately: a genuine private taxonomy copy pasted into `weddings.js` no
+// longer reddened. That is a loosened detector with a comment on it, which is
+// precisely what R-G11.23's third fence exists to prevent.
+//
+// So the four COLLIDING KEYS are removed from the hit set and the >=3 rule then
+// runs on whatever remains. The file keeps every bit of its coverage for every
+// token that is not one of R-40.7's own; only the four that the role CHECK
+// legitimately owns stop counting against it.
+const CREDIT_ROLE_NAMESPACE = ['shot_by', 'styled_by', 'mehendi', 'wearing', 'model'];
+const CREDIT_ROLE_COLLISIONS = ['makeup', 'decor', 'venue', 'mehendi'];
+const isCreditRoleNamespace = src =>
+  /wedding_credits|ROLE_KEYS/.test(src) &&
+  CREDIT_ROLE_NAMESPACE.filter(t => new RegExp(`['"\`]${t}['"\`]`).test(src)).length >= 3;
+
 const suspects = [];
 for (const f of walk(path.join(ROOT, 'src'))) {
   if (f === CANON) continue;
   const src = strip(fs.readFileSync(f, 'utf8'));
-  const hits = ELEVEN.concat(RETIRED).filter(t => new RegExp(`['"\`]${t}['"\`]`).test(src));
+  let hits = ELEVEN.concat(RETIRED).filter(t => new RegExp(`['"\`]${t}['"\`]`).test(src));
+  // Subtract, never exempt (see the credit-role paragraph above).
+  if (isCreditRoleNamespace(src)) hits = hits.filter(t => !CREDIT_ROLE_COLLISIONS.includes(t));
   const imports = /require\(['"][^'"]*categories['"]\)/.test(src)
                || /require\(['"][^'"]*collabItems['"]\)/.test(src)
                || /require\(['"][^'"]*categoryFraming['"]\)/.test(src);
@@ -270,6 +320,47 @@ ok(brideToks.length === BRIDE_ELEVEN.length && BRIDE_ELEVEN.every(t => brideToks
 ok(!brideToks.includes('venue_catering') && !brideToks.includes('content_creator')
    && !brideToks.includes('hairstylist') && !brideToks.includes('performer'),
    '6.1c ...and no vendor token has leaked into it (if one does, the two lists have joined)');
+
+// ── 6.1d · THE CREDIT-ROLE EXCLUSION, PINNED BOTH WAYS (R-G11.23) ────────────
+// HALF ONE: the migration is the witness, never this file. If ROLE_KEYS grows,
+// shrinks or reorders relative to 0131's CHECK, the exclusion is describing a
+// list that no longer exists and this reddens. (`b53` asserts the same equality
+// from the other side; two readers, one witness, and neither retypes the ten.)
+{
+  const wLib = path.join(ROOT, 'src/lib/vendor/weddings.js');
+  const wMig = path.join(ROOT, 'db/migrations/0131_wedding_pages.sql');
+  if (!fs.existsSync(wLib) || !fs.existsSync(wMig)) {
+    ok(false, '6.1d credit-role exclusion pinned to 0131 (subject absent)');
+  } else {
+    const migTxt = fs.readFileSync(wMig, 'utf8');
+    const m = migTxt.match(/wedding_credits_role_check CHECK \(role = ANY \(ARRAY\[([\s\S]*?)\]\)\)/);
+    const fromSql = m ? [...m[1].matchAll(/'([a-z_]+)'::text/g)].map(x => x[1]) : [];
+    const libTxt = fs.readFileSync(wLib, 'utf8');
+    const fromLib = [...libTxt.matchAll(/\{ key: '([a-z_]+)',/g)].map(x => x[1]);
+    ok(fromSql.length === 10 && JSON.stringify(fromSql) === JSON.stringify(fromLib)
+       || `role list drift: 0131 [${fromSql.join(',')}] vs lib [${fromLib.join(',')}]`,
+       '6.1d ROLE_KEYS still equals 0131 wedding_credits_role_check, in order');
+
+    // HALF TWO: the exclusion holds ONLY while the two namespaces never meet.
+    // The moment any file compares a role to vendors.category — an equality, a
+    // filter, or a select that carries category into the wedding lane — the
+    // no-join derivation is false and the exclusion must be re-argued.
+    const LANE = ['src/lib/vendor/weddings.js', 'src/api/vendor/studio/weddings.js',
+                  'src/api/public/weddingPage.js', 'src/api/credits.js'];
+    const joins = [];
+    for (const rel of LANE) {
+      const f = path.join(ROOT, rel);
+      if (!fs.existsSync(f)) continue;
+      const src2 = strip(fs.readFileSync(f, 'utf8'));
+      if (/\.eq\(\s*['"]category['"]/.test(src2)
+       || /\bcategory\b\s*===?\s*[a-zA-Z_.]*role\b/.test(src2)
+       || /\brole\b\s*===?\s*[a-zA-Z_.]*category\b/.test(src2)
+       || /select\((['"`])[^'"`]*\bcategory\b[^'"`]*\1\)/.test(src2)) joins.push(rel);
+    }
+    ok(joins.length === 0 || `role/category join found in: ${joins.join(', ')}`,
+       '6.1e no file in the wedding lane joins a credit role to vendors.category');
+  }
+}
 
 ok(Object.keys(CATEGORY_PRESET).every(k => VENDOR_CATEGORIES.includes(k))
    || `preset keys off-taxonomy: ${Object.keys(CATEGORY_PRESET).filter(k => !VENDOR_CATEGORIES.includes(k)).join(',')}`,
