@@ -231,3 +231,12 @@ Block 19 is SEALED when every phase G0–G7 is built and walked on the founder's
 - **The DM bridge** — "your Instagram brings them to the door; we answer it."
 
 *This document is the record of the founder's vision for Block 19 as of 2026-09-02. A future chair changes it only by a dated amendment beneath this line, never by rewriting above it.*
+
+---
+## AMENDMENT 1 · 2026-09-04 (CE-40; founder-ruled in chat, banked in FINDINGS_LOG band 7 §5)
+- **§3 room names are RULED (R-40.1):** R1 Wedding pages · R2 Google reviews · R3 Your website · R4 Contracts & deposits · R5 Payment reminders · R6 Posts & ads · R7 Referrals & partners · R8 Open dates & rates · R9 Your own number. The §3 table's "Working name" column is superseded by this list; its other columns stand.
+- **§4 G1.1's address** `/w/<handle>/<wedding-slug>` predates the flip (`/w/` retired into `/vendor/` 2026-09-04). Wedding pages live at **`/v/<code>/w/<slug>`** (R-40.15). Its door `GET /v/w/:slug` reads accordingly.
+- **§4 G1.1 data:** `delivered_at` lives on the `weddings` row, never on `events` (R-40.11). The gallery is a new asset plane with the signed-upload primitive of `igImport.js:241` extracted to one exported home (R-40.12). `leads.source` stays free text (R-40.13). G1.1 ships zero render bytes (R-40.14).
+- **§5 I3 permission string** is `instagram_business_manage_insights` (R-40.6). **I7 and I8 are PARKED** to G7's charter — Facebook-Login-only under Meta's one-IG-setup-per-app rule; no third app (R-40.5, 06.5 §3 stands).
+- **§8 answered:** 1 (R-40.1) · 2 roles fixed: shot by · makeup · hair · décor · mehendi · planner · styled by · wearing · model · venue (R-40.7) · 3 Cloudinary at the current plan (R-40.8) · 8 G1.1 → G1.2 → G1.3 (R-40.10) · 9 the switch lives in the couple's Settings room, OFF by default (R-40.9). Open: 4, 5, 6, 7.
+- **§6 gates:** F-K4.1 CLOSED as duplicate (G0); the review-ask template is MARKETING (F-40.12); no missed-call template exists (F-40.13); ffmpeg unproven (F-40.16) — reels build dark.
