@@ -28,6 +28,15 @@ const { generateInvoiceForBinder } = require('../vendor/invoices');
 // door is relocation C's.
 const { executeAndPatch } = require('../../lib/executeAndPatch');
 const { missingCells } = require('../../lib/recordCompleteness'); // TDW_02 P3 (CE-16/17)
+// ── TDW · THE VICTOR SITTING (CE-40) · R-VS.6 + R-VS.7 ──────────────────────
+// The guard's Victor arms live in ONE HOME so this file takes an additive diff:
+// B-i's vocabularies (the gate could see neither specimen), B-ii's two
+// structurally-impossible classes with empty acquittal sets, R-VS.6's equality
+// fence, and B-iii's door-authored replacement. Read here, never re-implemented.
+const {
+  MONEY_STATE_RE, victorClaim, leadSendClaim, moneyGrounded, victorCostumeLine,
+  structurallyImpossible, containsVetoedLine,
+} = require('../../lib/wireGuardVictor');
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
 const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
@@ -1507,7 +1516,20 @@ const MUTATION_CLAIM_RE = new RegExp([
 // function returns kind `prior_deed_pending` and the caller resolves), `true` = a
 // class-matched prior deed exists, `false` = the conversation holds none, `null` = the
 // lookup could not run (FAIL-OPEN — the hedge, never a conviction).
-function wireGuardClassify(vendorId, result, priorDeed) {
+// ── SIGNATURE BEND, DISCLOSED (Q-B2-7's relocation precedent — the signature
+// bends, stated, never silently). `ctx` is the FOURTH parameter and it is
+// OPTIONAL: every existing caller and every existing bench that passes three
+// arguments behaves byte-identically, because `victorClaim(_, undefined)` cannot
+// match an ask and `moneyFacts` absent means "no block this turn", which is the
+// pre-cure world. `ctx = { message, moneyFacts }`:
+//   `message`    — the OWNER'S imperative. Required by B-ii, because a reply-only
+//                  vocabulary cannot classify 「Done.」 at all (no object) and a
+//                  reply-only expense vocabulary firing on "paid" would convict
+//                   「Priya paid Rs 50,000」, an ordinary TRUE report. The ask names
+//                  the capability; the reply claims the act; BOTH are required.
+//   `moneyFacts` — the fact block's own handles (lib/vendor/moneyFacts.js), for
+//                  R-VS.6 fence 1. A gate reads a row, never a display string.
+function wireGuardClassify(vendorId, result, priorDeed, ctx) {
   const reply = String((result && result.reply) || '');
   if (!reply.trim()) return null;
   const hands = [];
@@ -1572,7 +1594,15 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   const mutationClaim = MUTATION_CLAIM_RE.test(eligible) || DOORLINE_CLAIM_RE.test(eligible);
   // F-06.159: the relay claim reaches the ladder as its own family, so a claimed
   // send with zero hands is convictable without borrowing another class's words.
-  const relayClaim = RELAY_CLAIM_RE.test(eligible);
+  // ── R-VS.12 · B-i WIDENS THE EXISTING FAMILY, IT DOES NOT MINT A RIVAL ────
+  // 「Reaching out to Kunal now」 was invisible at c841082 because "reach out" sat
+  // in NO transmission vocabulary — not RELAY_CLAIM_RE, not RELAY_VERB_RE. It is
+  // visible now, and it is a `relay` claim, because a lead IS a couple who wrote
+  // in and `donna_relay_send` IS Victor's line to one (CE-212→CE-215, walked).
+  // So the turn reaches the ladder — all B-i was ever for — and is then judged by
+  // the class it has always belonged to, acquitted by a real send hand and by
+  // nothing else.
+  const relayClaim = RELAY_CLAIM_RE.test(eligible) || leadSendClaim(eligible, ctx && ctx.message);
   // ── THE ACKNOWLEDGEMENT PREDICATE, DEFINED POSITIVELY (executor-authored,
   // Stage-1-scoped, DISCLOSED). The first ladder defined `acknowledgement` NEGATIVELY —
   // "whatever is not a completed act" — and that was wrong for a derivable reason:
@@ -1598,7 +1628,24 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   const participleDone = PARTICIPLE_COMPLETION_RE.test(eligible);
   const stativeDone = STATIVE_COMPLETION_RE.test(eligible);
   if (participleDone || stativeDone) claimsAct = true;
-  if (!claimsAct && !jotClaim && !narrated && !presenceClaim) return null;
+  // ── R-VS.7 · B-i — THE GATE LEARNS TWO VOCABULARIES IT NEVER HAD ──────────
+  // THIS IS THE PRECONDITION, NOT A RIVAL ARM. Every conviction limb in this
+  // function sits BELOW the next line, so a turn matching no claim family is
+  // never classified at all — not acquitted, never seen. Read-first 2 proved it
+  // by EXECUTING this classifier: 「Done.」, 「Done. …logged today.」, 「Logged Rs
+  // 5,000…」, 「Reaching out to Kunal now」, 「I'm reaching out to Kunal now」 and
+  // 「No one owes you anything」 all returned null here, and thirty days of this
+  // guard's own log carry ZERO money rows and ZERO expense rows.
+  const victorClass = victorClaim(eligible, ctx && ctx.message);   // 'expense' | 'lead_send' | null
+  // A founder-vetoed refusal coming back verbatim is the DOOR'S OWN SENTENCE, not
+  // a claim — and the money family must be deaf to it, because LEDGER_UNREADABLE
+  // carries the word "outstanding" and the unreadable block makes the equality
+  // fence false, so the cure's own refusal would have convicted as a money
+  // costume and been replaced by a glitch line. Found by the seat's probe, cured
+  // by identity at the source, disclosed in the handover.
+  const moneyClaim = MONEY_STATE_RE.test(eligible) && !containsVetoedLine(eligible);
+  if (victorClass) claimsAct = true;
+  if (!claimsAct && !jotClaim && !narrated && !presenceClaim && !moneyClaim) return null;
   // The witness line is the SAME derivation the persisted tail uses — never a second
   // authority, never a re-implementation (D-2's one home).
   const witnessed = donnaWitnessLines(vendorId || null, result).length > 0;
@@ -1638,9 +1685,20 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // "Done."-class OPENER — the short leading sentence the CE named by that name. Both
   // directions are asserted at §8.1 with tonight's exact bytes.
   // (`sentences` and `eligible` are computed once, above, beside the caption rule.)
+  // ── R-VS.14 · SELF-MARKING (CE-40) ───────────────────────────────────────
+  // B-i's transmission arm joins BOTH lists on RELAY_CLAIM_RE's own reasoning,
+  // quoted two lines below and unchanged since F-06.159: A CLAIMED TRANSMISSION
+  // IS SELF-MARKING. Without this, F-39.71's exact bytes reached the ladder and
+  // WALKED as `state_description`, because `convictable` needs a claim sentence
+  // carrying a marker and neither list knew the new vocabulary — so the same
+  // promise convicted phrased 「I'll send Kunal a note」 and walked phrased
+  // 「Reaching out to Kunal now」. The ask is threaded in because this arm has
+  // always required both halves; a bare transmission verb with no imperative
+  // behind it still marks nothing.
   const isClaimSentence = (x) => ACTION_CLAIM_RE.test(x) || COMPLETED_ACT_RE.test(x)
     || MUTATION_CLAIM_RE.test(x) || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
-    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x);
+    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x)
+    || leadSendClaim(x, ctx && ctx.message);
   // the stative "<participle> as" IS a completion marker — that is what carries the claim
   // in the shape F-06.126 has been unable to see for three batches.
   // RELAY_CLAIM_RE joins BOTH lists, exactly as DOORLINE_CLAIM_RE does and for the
@@ -1649,7 +1707,8 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // beside it would acquit the founder's own specimen, whose opener is 「 Understood. 」
   const markerIn = (x) => AGENTIVE_CLAIM_RE.test(x) || DONE_MARKER_RE.test(x)
     || PARTICIPLE_COMPLETION_RE.test(x) || STATIVE_COMPLETION_RE.test(x)
-    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x);
+    || DOORLINE_CLAIM_RE.test(x) || RELAY_CLAIM_RE.test(x)
+    || leadSendClaim(x, ctx && ctx.message);   // R-VS.14 — self-marking, both lists
   const opener = sentences[0] || '';
   // the "Done."-class opener: SHORT and carrying nothing but the completion word. Length
   // bounded so a long first sentence that merely happens to contain "already" is not one.
@@ -1679,8 +1738,25 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // F-06.128: three classes, granularity following the HAND taxonomy.
   // F-06.159: FOUR classes now. The relay class is tested BEFORE booking/records so
   // a transmission claim can never be answered by a filing hand.
-  const deedClass = mutationClaim ? 'date'
-    : (relayClaim ? 'relay' : (BOOKING_CLAIM_RE.test(eligible) ? 'booking' : 'records'));
+  // ── R-VS.7 · B-ii + F-40.7 — THE STRUCTURAL CLASSES ARE TESTED FIRST, AND
+  // THEY ARE NEVER `records`. F-40.7: `isDeedOfClass` ends `return !isDateDeed`,
+  // so `records` is a CATCH-ALL and any non-date write acquits anything filed
+  // under it. Routing an expense claim there would mean a `donna_lead` write
+  // acquitting a false expense claim the day Block 09 ships the hand —
+  // F-06.183's cured shape, live again one class over. `expense` and
+  // `lead_send` carry EMPTY acquittal sets (structurallyImpossible below), which
+  // cures F-40.7 for these two arms now; the catch-all's remainder is Block 09's.
+  //
+  // `money` is fifth and is NOT structurally impossible — it is the one class
+  // whose evidence is a FACT rather than a hand (R-VS.6).
+  // R-VS.12: `victorClass` is now `expense` or nothing, so a claimed send to a
+  // lead falls through to `relay` exactly as it did before this sitting — the
+  // seat's preemption of that class is REVERSED, deliberately.
+  const deedClass = victorClass ? victorClass
+    : (mutationClaim ? 'date'
+      : (relayClaim ? 'relay'
+        : (BOOKING_CLAIM_RE.test(eligible) ? 'booking'
+          : (moneyClaim && !claimsAct ? 'money' : 'records'))));
   // ── F-06.183's CURE (§0.2 GRANTED) · THE WITNESS IS CLASS-SCOPED ──────────
   //
   // FOUNDER-WITNESSED ON PRODUCTION, walk ten, 2026-08-11 13:32:30. The vendor's
@@ -1714,7 +1790,38 @@ function wireGuardClassify(vendorId, result, priorDeed) {
   // why the vocabularies are untouched and only the census narrows.
   const classWitnessHands = writeHands.filter((h) => isDeedOfClass(h.name, deedClass));
   let kind;
-  if (classWitnessHands.length > 0) kind = 'witnessed_hand';
+  // ── R-VS.7 · B-ii · LIMB 0 — FALSE BY CONSTRUCTION ────────────────────────
+  // FIRST, above every evidence limb, because there is no evidence to consult:
+  // the lane holds no hand of this class, so no census, no witness line and no
+  // prior deed can make the claim true. LIMB 4 already rules this way for the
+  // advisor room; these are the same logic for two RULED impossibilities —
+  // `expense` (R-39.18 homes the hand in Block 09; F-40.5 keeps the island's
+  // copy dead) and `lead_send` (R-VS.3 = C1; relayCouple's pair is bride-bound
+  // by CE-215 and C3 was refused permanently).
+  //
+  // Sited above `classWitnessHands` DELIBERATELY: that filter would return empty
+  // for these classes anyway, but relying on emptiness would mean the guarantee
+  // lived in a filter's silence rather than in a stated rule.
+  if (victorClass && structurallyImpossible(victorClass)) kind = 'costume';
+  // ── R-VS.6 · THE MONEY LIMB — FENCE 1, EQUALITY ───────────────────────────
+  // F-40.8: a fact block makes Victor a ZERO-HAND answerer on money by design,
+  // and zero hands is exactly the census this guard convicts. The 2026-09-01
+  // 17:45 production row is the rehearsal — a zero-hand rundown that invented a
+  // 4-September block and omitted a 3-September recce, correctly caught. So the
+  // acquittal is LIMB 1's logic extended: an injected money fact evidences a
+  // money-state sentence the way a read hand evidences a lookup — BUT ONLY where
+  // every figure and invoice handle the model spoke appears in that block's own
+  // set by equality. A figure the block does not hold is a costume, whatever it
+  // is dressed as.
+  //
+  // NO BLOCK AND NO HANDS IS THE CONFABULATION SIGNATURE and it keeps convicting
+  // — that is F-40.9's shape and R-VS.6 fence 2 exists to keep it detectable.
+  else if (moneyClaim && !claimsAct) {
+    kind = moneyGrounded(eligible, ctx && ctx.moneyFacts)
+      ? 'fact_grounded'
+      : (readHands.length > 0 ? 'read_backed_report' : 'costume');
+  }
+  else if (classWitnessHands.length > 0) kind = 'witnessed_hand';
   else if (witnessed) kind = 'witnessed';
   // LIMB 5 — the jot room's one lawful hand, before the act limbs so an honest jot in
   // the advisor room is never swept up by LIMB 4.
@@ -1798,7 +1905,26 @@ function wireGuardClassify(vendorId, result, priorDeed) {
     },
     witness_line: witnessed,
     prior_deed: priorDeed === undefined ? null : priorDeed,
+    // ── R-VS.7 · B-iii's INPUT. `victor_class` names which of the two structural
+    // impossibilities fired; `victor_draft` is the quoted body the model showed,
+    // if it showed one. The DOOR is the sole author of what the vendor reads on
+    // these classes (deedState.js's shape), and it authors from these two facts
+    // rather than by re-parsing the reply at the delivery site — a second reader
+    // of the same prose is a second authority on what was claimed.
+    victor_class: victorClass || null,
+    victor_draft: victorClass === 'lead_send' ? quotedDraft(eligible) : null,
   };
+}
+
+// The draft the model showed, if it showed one. VERBATIM_RE is the estate's own
+// quoted-body extractor and is read here rather than re-written; the fallback is
+// null, and null is honest — C1's line stands alone when no words were offered,
+// which is itself the truthful report of that turn.
+function quotedDraft(text) {
+  const m = VERBATIM_RE.exec(String(text || ''));
+  if (!m) return null;
+  const body = (m[1] || m[2] || '').trim();
+  return body || null;
 }
 
 // ── FORK A' — THE PRIOR-DEED CHECK (TDW_06, 2026-07-29; CE Addendum №2, single-source).
@@ -1959,6 +2085,21 @@ const REPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
 // Which line a specimen earns. The lookup line is for a costume whose ONLY claim is an
 // existence/lookup claim; anything asserting an act takes the mutation line.
 function stage2Line(verdict, forWhatsApp) {
+  // ── R-VS.7 · B-iii — THE DOOR IS THE SOLE AUTHOR ON THE TWO STRUCTURAL
+  // CLASSES, AND THE GLITCH LINE IS THE WRONG SENTENCE FOR THEM. "There was a
+  // small glitch, please try again" invites a RETRY, and a retry of a capability
+  // the lane does not hold produces the same lie a second time — F-04.27's shape.
+  // These two classes get the founder-vetoed truth instead: nothing was written,
+  // and there is no wire to the lead. The bytes are R-40.2's, read from their one
+  // hash-carried home and never retyped.
+  //
+  // On `lead_send` the draft is re-shown VERBATIM BENEATH the line, never inside
+  // it — the reasoning of the couple lane's own `second_costume:relay_lane` arm,
+  // reused; its bytes are not copied, because they are the bride lane's veto.
+  const victorLine = verdict && verdict.victor_class
+    ? victorCostumeLine(verdict.victor_class, verdict.victor_draft)
+    : null;
+  if (victorLine) return victorLine;   // the REPORT word is deliberately absent: nothing malfunctioned
   const claims = (verdict && verdict.claims) || [];
   const lookupOnly = claims.length > 0
     && claims.every((cl) => cl === 'narrated_lookup' || cl === 'presence_claim');
@@ -1991,16 +2132,18 @@ function stage2Intercept(verdict, forWhatsApp) {
 //
 // FAIL-SILENT BY DESIGN: every path is caught and warns. A report-only guard that could
 // throw into the reply path would be a guard that hurts the vendor to watch the model.
-async function wireGuardSpecimen(supabase, vendorId, result, agentId) {
+// `ctx` is the FIFTH parameter and OPTIONAL — three- and four-argument callers
+// are byte-identical to the pre-cure world (see wireGuardClassify's note).
+async function wireGuardSpecimen(supabase, vendorId, result, agentId, ctx) {
   try {
     // TWO-PHASE, so the ladder stays sync and pure: classify once; if and only if it
     // reaches Fork A's limb does the lookup run, and the ladder is re-entered with the
     // answer. No query fires on a turn that never asks the question.
-    let verdict = wireGuardClassify(vendorId, result);
+    let verdict = wireGuardClassify(vendorId, result, undefined, ctx);
     if (!verdict) return null;
     if (verdict.kind === 'prior_deed_pending') {
       const priorDeed = await priorDeedLookup(supabase, result, verdict.deed_class);
-      verdict = wireGuardClassify(vendorId, result, priorDeed);
+      verdict = wireGuardClassify(vendorId, result, priorDeed, ctx);
       if (!verdict) return null;
     }
     const eng = supabase && typeof supabase.schema === 'function' ? supabase.schema('engine') : null;
@@ -2036,6 +2179,22 @@ async function wireGuardSpecimen(supabase, vendorId, result, agentId) {
         assistant_message_id: (result && result.assistant_message_id) || null,
         reply: (result && result.reply) || '',
         hand_census: verdict.hand_census,
+        // ── R-VS.6 FENCE 2 · THE FACT BLOCK RIDES THE RECORD, BESIDE THE CENSUS.
+        // Without this the weekly precision read cannot tell a fact-grounded turn
+        // from a confabulation, because BOTH have zero hands — which is F-40.8
+        // stated as a measurement problem. `present:false` AND zero hands is the
+        // confabulation signature (F-40.9's 2026-09-01 shape) and it stays
+        // detectable as a class. ZERO DDL: this is additive into the EXISTING
+        // `evals_runs.transcript` jsonb, witnessed at docs/db/ENGINE_SCHEMA.md:215,
+        // exactly as F-06.123 added its own fields — no migration is owed, and the
+        // ruling's conditional column never fires because the json carries it.
+        money_facts: (ctx && ctx.moneyFacts)
+          ? {
+              present: true,
+              readable: !ctx.moneyFacts.unreadable,
+              rows: ctx.moneyFacts.rowCount || 0,
+            }
+          : { present: false, readable: null, rows: 0 },
         kind: verdict.kind,
         deed_class: verdict.deed_class,
         mode: verdict.mode,
@@ -2843,6 +3002,22 @@ async function buildMeta({ supabase, agentId, tier }) {
 // IDENTICAL ON BOTH LANES. No route line, unlike the zero-cap sentence below:
 // that one is a sale and needs somewhere to go; this one is a WAIT. There is
 // nothing to tap, because there is nothing to do but come back.
+// ── TDW · THE VICTOR SITTING (CE-40) · F-39.73's CURE at BOTH PWA SEATS ─────
+// One home for the door's half of the fact block, called identically by the SSE
+// and JSON routes so the two surfaces cannot answer money differently — the same
+// principle `buildLlmForTurn` carries a few hundred lines above. Never throws;
+// a failure returns null and the caller passes `undefined`, which the engine
+// treats as the pre-cure world (regression law).
+async function fetchMoneyFacts(req) {
+  try {
+    const { buildMoneyFacts } = require('../../lib/vendor/moneyFacts');
+    return await buildMoneyFacts(req.app.locals.supabase, req.vendor.id);
+  } catch (e) {
+    console.warn('[money:pwa fact-block]', e && e.message);
+    return null;
+  }
+}
+
 const CAPPED_LINE = (meta) =>
   meta.window === 'day'
     ? "You've reached today's conversation limit on your tier. The desk reopens at midnight."
@@ -2933,12 +3108,14 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       const calendarSnapshot = await fetchCalendarSnapshot(req);
       const scratchpad = await fetchScratchpad(req);
       const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
+      const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
       const result = await runTurn({
         agentId: req.agentId,
         message,
         calendarSnapshot,
         scratchpad,
         recentActivity,
+        moneyFacts: moneyFacts ? moneyFacts.block : undefined,
         // 04.5 P6 (Fork B): the door normalises, the engine compares — one home for the
         // predicate, so the planner VOICE and the planner GAP LINE cannot diverge.
         vendorCategory: normaliseCategoryForTurn(req.vendor.category),
@@ -2998,7 +3175,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
       // Awaited (one UPDATE) so a refresh cannot race the patch it exists to fix.
       await persistComposedReply(req, result,
         composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-      const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId); // wire guard — PWA site 1 of 2 (SSE)
+      const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts }); // wire guard — PWA site 1 of 2 (SSE)
 
       const toolNames = (result.tool_calls || []).map((t) => t.name);
       // ── STAGE 2, SSE SEAT — REPLACE-AT-DONE (CE-ruled). The model's body has already
@@ -3039,7 +3216,8 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const calendarSnapshot = await fetchCalendarSnapshot(req);
     const scratchpad = await fetchScratchpad(req);
     const recentActivity = await fetchRecentBlock(req); // TDW_02 P4 (CE-4)
-    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
+    const moneyFacts = await fetchMoneyFacts(req); // F-39.73 (R-VS.2) — the typed ledger, door-read
+    const result    = await runTurn({ agentId: req.agentId, message, calendarSnapshot, scratchpad, recentActivity, moneyFacts: moneyFacts ? moneyFacts.block : undefined, vendorCategory: normaliseCategoryForTurn(req.vendor.category), tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride, transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport, donnaModelOverride: llmWiring.donnaModelOverride });
     if (result.provider_downgrade) {
       logActivity(req.app.locals.supabase, { vendorId: req.vendor.id, surface: 'pwa', action: 'provider_downgrade', summary: `provider ${llmWiring.route.provider} downgraded to Haiku mid-turn` }).catch(() => {});
     }
@@ -3067,7 +3245,7 @@ router.post('/', requireAuth, resolveVendor(), resolveAgent(), async (req, res) 
     const openLine = donnaOpenLine(result);
     await persistComposedReply(req, result,
       composedTail({ witnessed: donnaWitnessLines(req.vendor.id, result), documents, booked, refused, mutated, advised, blocked, unblocked, open: openLine }));
-    const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId); // wire guard — PWA site 2 of 2 (JSON)
+    const guardVerdict = await wireGuardSpecimen(req.app.locals.supabase, req.vendor.id, result, req.agentId, { message, moneyFacts }); // wire guard — PWA site 2 of 2 (JSON)
 
     // CE-18: the firewall covers the reply itself. TDW_06 M-4 / F-06.36: and now it
     // leaves a witness. Wired here as well as on the WhatsApp door because this file's

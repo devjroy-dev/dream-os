@@ -1032,7 +1032,10 @@ await t('§9.13 the engine seam is gated and never cached, like its two siblings
   const l = fs.readFileSync(SRC('src/engine/src/core/loop.ts'), 'utf8');
   assert.ok(/const relayBlock = \(estateInRoom && args\.pendingRelay\)/.test(l),
     'the block is not estate-room-gated — the F-04.70 donor pool reopens');
-  assert.ok(/pingBlock \+ relayBlock;/.test(l), 'the block is not in the dynamic tail');
+  // LABELED AMENDMENT (CE-40, F-39.73's cure): the dynamic tail gained a FOURTH
+  // door-built sibling, `moneyBlock`, sited last per CE-77's position doctrine. This
+  // cell is about the RELAY block's membership, which is unchanged. COUNT PRESERVED.
+  assert.ok(/pingBlock \+ relayBlock \+ moneyBlock;/.test(l), 'the block is not in the dynamic tail');
   // NEVER CACHED, asserted structurally: the cached block is `staticPrefix` and
   // the relay block is a term of `dynamic`. If the block ever joined the cached
   // prefix, a draft staged at 14:00 would still be "waiting" at 14:05.

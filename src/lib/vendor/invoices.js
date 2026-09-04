@@ -447,6 +447,91 @@ async function updateInvoicePdfUrl(supabase, vendorId, invoiceId, url) {
   return { ok: true };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// THE READER · R-VS.2 (CE-40, the Victor sitting) — THE WRITER HOME BECOMES
+// THE READER HOME TOO, AND THERE IS NOW ONE HOME FOR THE MONEY TRUTH.
+// ═══════════════════════════════════════════════════════════════════════════
+// F-39.73's cure needs the answer to 「 who owes me money 」 in TWO places: the
+// Money room's door (src/api/vendor/money.js) and Victor's fact block
+// (src/lib/vendor/moneyFacts.js). The derivation already existed — inline in
+// that router — and a second copy for the fact block would have been the
+// two-derivations disease this estate has convicted twice on this exact table
+// (F-04.13: the hub totalled public.invoices while the list totalled binders).
+//
+// SO THE ROUTER'S COPY DIES IN THE SAME COMMIT THAT BORN THIS ONE. That is the
+// ruling's own clause and it is checkable: `grep -c "OUTSTANDING_STATES" ` in
+// src/api/vendor/money.js reads its IMPORT, never a declaration.
+//
+// ── R-39.12 · THE OUTSTANDING RULE, MOVED NOT RE-AUTHORED ──────────────────
+// OUTSTANDING IS A POSITIVE LIST AND NEVER A NEGATION. F-P3.1 earned this on
+// this table at src/api/vendor/worklistToday.js: `state <> 'paid'` returns
+// CANCELLED invoices as money owed, and a negation reads every UNKNOWN state as
+// included — the unknown being any state a future migration adds. These two
+// values travelled here BYTE-IDENTICAL from money.js:138; nothing was retyped.
+const OUTSTANDING_STATES = ['unpaid', 'advance_paid'];
+
+// The read's own column list. Witnessed against docs/db/PUBLIC_SCHEMA.md's
+// `public.invoices` block (:637, 21 columns, current — the doc is stale only for
+// `vendors`, which `0130` touched, and this read opens no vendors column):
+// id :638 · invoice_number :641 · client_name :642 · client_phone :643 ·
+// amount_total :645 · amount_paid :647 · due_date :648 · state :649 ·
+// created_at :652 · deleted_at :657. No column here is authored from memory.
+const OUTSTANDING_SELECT =
+  'id, invoice_number, client_name, client_phone, amount_total, amount_paid, due_date, state, created_at';
+
+/**
+ * readOutstanding — the ONE derivation of what a vendor is owed.
+ *
+ * Returns { ok: true, rows, summary } or { ok: false, error }. IT NEVER THROWS
+ * AND IT NEVER GUESSES: a read failure returns ok:false and the callers refuse
+ * honestly (the room 500s; the fact block carries the vetoed LEDGER_UNREADABLE
+ * line and says nothing else about money that turn — R-VS.2's fail-closed
+ * clause). "Could not be read" is never "there is none"; that sentence is the
+ * estate's and it is kept here at the source rather than restated downstream.
+ *
+ * `amount_owed` is total − paid, per row. `total_outstanding` sums that owed
+ * figure over OUTSTANDING_STATES ONLY. `total_collected` sums amount_paid over
+ * EVERY row and asks nothing about state — a cancelled invoice still credits
+ * money that actually arrived (money.js's own ruling, preserved verbatim in
+ * substance: cancelling does not un-collect a banked advance).
+ */
+async function readOutstanding(supabase, vendorId) {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select(OUTSTANDING_SELECT)
+    .eq('vendor_id', vendorId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  if (error) return { ok: false, error: error.message };
+
+  const rows = (data || []).map((i) => {
+    const total = Number(i.amount_total) || 0;
+    const paid = Number(i.amount_paid) || 0;
+    return {
+      id: i.id,
+      invoice_number: i.invoice_number,
+      client_name: i.client_name,
+      client_phone: i.client_phone || undefined,
+      amount_total: total,
+      amount_paid: paid,
+      amount_owed: total - paid,
+      state: i.state,
+      due_date: i.due_date,
+      created_at: i.created_at,
+    };
+  });
+
+  const summary = {
+    total_outstanding: rows
+      .filter((r) => OUTSTANDING_STATES.includes(r.state))
+      .reduce((sum, r) => sum + r.amount_owed, 0),
+    total_collected: rows.reduce((sum, r) => sum + r.amount_paid, 0),
+  };
+
+  return { ok: true, rows, summary };
+}
+
 module.exports = {
   createInvoice,
   updateInvoicePdfUrl,
@@ -455,6 +540,8 @@ module.exports = {
   cancelInvoice,
   invoicePdfSource,
   invoiceScheduleRows,
+  readOutstanding,
+  OUTSTANDING_STATES,
   PDF_VENDOR_COLUMNS,
   PAYABLE_STATES,
 };

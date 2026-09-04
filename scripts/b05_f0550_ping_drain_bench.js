@@ -215,7 +215,11 @@ if (gate.runDist) {
       // this cell evaluates the bytes Railway runs, and the shipped `dynamic`
       // line now names a third sibling. Seeding it empty is what "this cell is
       // about the PING block" has always meant. RATIFY-OR-REVERT.
-      `${pingLine}\n const calBlock=''; const actBlock=''; const relayBlock='';\n ${dynLine}\n return dynamic;`);
+      // LABELED AMENDMENT (CE-40, F-39.73's cure): `moneyBlock` seeded empty exactly
+      // as calBlock, actBlock and relayBlock already are — the shipped `dynamic` line
+      // now names a FOURTH sibling. THE ASSERTIONS BELOW ARE UNTOUCHED; this cell is
+      // about the PING block and always has been. RATIFY-OR-REVERT.
+      `${pingLine}\n const calBlock=''; const actBlock=''; const relayBlock=''; const moneyBlock='';\n ${dynLine}\n return dynamic;`);
     const evalWords = new Function('thread', 'message', `${vwSrc}\n return vendorWords;`);
 
     const dynamic = evalDynamic({ leadPings }, true, 'owner', 'Fri', '', '', '', '');

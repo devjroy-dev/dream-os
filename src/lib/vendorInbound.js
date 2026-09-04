@@ -1416,6 +1416,40 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // the flip. A message that merely mentions the words is a real turn — it falls through.
     const modeTarget = matchModeWord(body);
     if (modeTarget) {
+      // ── TDW · THE VICTOR SITTING (CE-40) · R-VS.4 = D1 · F-40.3's CURE ────────
+      // R-39.22: business mode only on the WhatsApp lane and the PWA chat; ADVISORY
+      // LIVES IN THE ADVISOR ROOM ALONE. The read-first's derivation corrected the
+      // charter here (report ε): the DEFAULT was never the disease —
+      // `engine.agents.victor_mode` is `NOT NULL default 'business'`
+      // (docs/db/ENGINE_SCHEMA.md:70) and `agentBridge.js` does not set the column at
+      // agent birth, so a fresh vendor's first turn resolves to business on BOTH doors,
+      // derived from the row. THE DISEASE IS THIS WORD: `applyModeFlip` writes advisor
+      // onto the row PERSISTENTLY, and the row survives fresh threads — so one word on
+      // WhatsApp moved the vendor into the advisory room and left him there.
+      //
+      // THE PIN IS A REFUSAL AT THE WRITE, NOT A GATE AT THE READ. D3 was refused for
+      // leaving F-40.3 live; D2 (session scope) was refused for minting a third state
+      // for one column. So `applyModeFlip` is NEVER CALLED FROM THIS LANE FOR
+      // 'advisor': the row keeps whatever it holds, no thread is chained, and the
+      // vendor gets the founder-vetoed sentence naming where the room actually lives.
+      //
+      // `business` STAYS LEGAL, deliberately — it is the way home if a row was ever
+      // flipped by the PWA chip, and refusing it would strand a vendor in a room this
+      // lane cannot leave. F-40.4 (the chip itself) is the pwa repo's and is Block 09's.
+      if (modeTarget === 'advisor') {
+        const { VICTOR_LINES } = require('./victorLines');
+        const refusal = VICTOR_LINES.ADVISOR_ON_WHATSAPP;
+        const twilioMsg = await sendWhatsApp(phone, refusal, []);
+        await supabase.from('messages').insert({
+          conversation_id: convo.id, direction: 'outbound', channel: 'whatsapp',
+          body: refusal, sent_by: 'agent',
+          twilio_sid: twilioMsg && twilioMsg.sid ? twilioMsg.sid : null,
+        });
+        await supabase.from('conversations')
+          .update({ last_message_at: new Date().toISOString() }).eq('id', convo.id);
+        console.log(`[agent:mode-word] advisor REFUSED on the WhatsApp lane (R-39.22/D1) agent=${agentId}`);
+        return;
+      }
       const flip = await applyModeFlip(supabase, agentId, modeTarget);
       const confirmation = MODE_FLIP_LINES[modeTarget][flip.changed ? 'changed' : 'noop'];
       const twilioMsg = await sendWhatsApp(phone, confirmation, []);
@@ -1656,10 +1690,30 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
       pendingRelay = await buildPendingRelay(supabase, vendor.id);
     } catch (e) { console.warn('[relay:wa pending-block]', e && e.message); }
 
+    // ── TDW · THE VICTOR SITTING (CE-40) · F-39.73's CURE (F-A arm A1, R-VS.2) ──
+    // THE MONEY FACT BLOCK, built here for the same reason leadPings is built here
+    // and stated in that block's own comment: the engine's client is bound to schema
+    // 'engine' (db.ts) and CANNOT SEE public.invoices. Both planes are in scope at
+    // this door and nowhere else.
+    //
+    // FAIL-CLOSED AND NOT FAIL-SAFE, which is the one place this block's contract
+    // differs from its three siblings. `leadPings` and `pendingRelay` degrade to ''
+    // because a Victor without them is diminished, never wrong. A Victor without THIS
+    // block answers about money from the cabinet, which is the disease — so a read
+    // failure ships the founder-vetoed LEDGER_UNREADABLE line inside the block and
+    // says nothing else about money that turn. `moneyFacts` itself never throws; the
+    // catch is the second fence, not the first.
+    let moneyFacts = null;
+    try {
+      const { buildMoneyFacts } = require('./vendor/moneyFacts');
+      moneyFacts = await buildMoneyFacts(supabase, vendor.id);
+    } catch (e) { console.warn('[money:wa fact-block]', e && e.message); }
+
     const result = await runTurn({
       agentId, message: body, calendarSnapshot, scratchpad,
       leadPings, // TDW_05 F-05.50(b) — an opaque string, the recentActivity contract
       pendingRelay, // TDW_06 F-06.162 (R-29.29) — the open commitment, door-known
+      moneyFacts: moneyFacts ? moneyFacts.block : undefined, // F-39.73 (R-VS.2) — the typed ledger, door-read
       // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
       vendorCategory,
       // P6 FORK-B END
@@ -1817,7 +1871,11 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     try {
       const { wireGuardSpecimen, stage2Intercept, stage2RecordDelivery, STAGE2_WA_REPORT,
               stage2Armed, imperativeMiss, recordImperativeRetry } = require('../api/vendor-engine/chat');
-      const verdict = await wireGuardSpecimen(supabase, vendor.id, result, agentId);
+      // R-VS.7 (B-ii) + R-VS.6 (fence 1/2): the guard reads the OWNER'S imperative
+      // and the fact block's handles. `body` names which capability was asked for —
+      // without it 「Done.」 carries no object and cannot be classified at all; the
+      // handles are what a money sentence is checked against BY EQUALITY.
+      const verdict = await wireGuardSpecimen(supabase, vendor.id, result, agentId, { message: body, moneyFacts });
       s2line = stage2Intercept(verdict, true);
       if (s2line) { s2run = (verdict && verdict.run_id) || null; s2arm = 'glitch_line'; }
       // ORDER IS LOAD-BEARING: a turn that is BOTH a costume and an imperative-miss is
@@ -1828,11 +1886,12 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
         try {
           const retry = await runTurn({
             agentId, message: body, calendarSnapshot, scratchpad, leadPings, pendingRelay, vendorCategory,
+            moneyFacts: moneyFacts ? moneyFacts.block : undefined, // the retry answers from the SAME facts or it answers blind
             tierOverride: llmWiring.tierOverride, modelOverride: llmWiring.modelOverride,
             transport: llmWiring.transport, donnaTransport: llmWiring.donnaTransport,
             donnaModelOverride: llmWiring.donnaModelOverride,
           });
-          const retryVerdict = await wireGuardSpecimen(supabase, vendor.id, retry);
+          const retryVerdict = await wireGuardSpecimen(supabase, vendor.id, retry, undefined, { message: body, moneyFacts });
           const retryHands = [];
           for (const tc of (retry.tool_calls || [])) {
             for (const dc of ((tc && tc.donna_calls) || [])) {

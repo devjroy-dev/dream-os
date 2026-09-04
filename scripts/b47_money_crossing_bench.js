@@ -448,15 +448,35 @@ cell('5.5 outstanding on the ROOM reads the same positive list as the REGISTER',
   // two-derivations disease wearing two doors instead of two files. F-P3.1
   // earned the rule on this exact column: `state <> 'paid'` returns cancelled
   // invoices as money owed.
+  // ── LABELED AMENDMENT (CE-40, the Victor sitting · R-VS.2). RE-AIMED, TEETH
+  // KEPT, COUNT PRESERVED, RATIFY-OR-REVERT. This cell asserted the positive list
+  // was read INSIDE this router's own block — true while the derivation lived
+  // there, and superseded by ruling: R-VS.2 moved `readOutstanding` and
+  // `OUTSTANDING_STATES` to `src/lib/vendor/invoices.js` so the room and Victor's
+  // fact block cannot become two derivations of one number. The cell's SUBJECT is
+  // unchanged and is the thing that ever mattered — ONE POSITIVE LIST, NEVER A
+  // NEGATION — so it now follows the value to its home instead of pinning its old
+  // address. F-38.27's class, refused: a bench that reds because a ruled cure
+  // landed is asserting a retired spelling, not a property.
   const s = strip(read('src/api/vendor/money.js'));
   const i = s.indexOf("router.get('/invoices/:vendorId'");
   const block = s.slice(i, i + 2600);
   if (/state\s*!==\s*'paid'|!\s*\[[^\]]*'cancelled'/.test(block)) {
     return 'the room read gates outstanding on a negation — R-39.12';
   }
-  return /OUTSTANDING_STATES\.includes/.test(block)
-    || 'the room read does not use OUTSTANDING_STATES — a second vocabulary for one column';
-  // MUTATION: replace with `r.state !== 'paid'` -> RED.
+  if (!/readOutstanding\(/.test(block)) {
+    return 'the room read no longer reaches the one home — a second derivation is back';
+  }
+  const home = strip(read('src/lib/vendor/invoices.js'));
+  if (/state\s*!==\s*'paid'|!\s*\[[^\]]*'cancelled'/.test(home)) {
+    return 'the HOME gates outstanding on a negation — R-39.12';
+  }
+  if (!/const OUTSTANDING_STATES = \['unpaid', 'advance_paid'\]/.test(home)) {
+    return 'the positive list is not declared at its one home';
+  }
+  return /OUTSTANDING_STATES\.includes/.test(home)
+    || 'the home does not gate outstanding on the positive list';
+  // MUTATION: replace the home's filter with `r.state !== 'paid'` -> RED.
 });
 
 cell('5.7 both EDIT doors are mounted, gated, and reach the home', () => {
@@ -494,12 +514,14 @@ cell('5.8 expenses.js keeps its engine GET and mounts no write route', () => {
 });
 
 cell('5.6 amount_owed and the summary figures are derived SERVER-side', () => {
-  const s = strip(read('src/api/vendor/money.js'));
-  const i = s.indexOf("router.get('/invoices/:vendorId'");
-  const block = s.slice(i, i + 2600);
-  const has = /amount_owed:\s*total - paid/.test(block)
-    && /total_outstanding:/.test(block) && /total_collected:/.test(block);
-  return has || 'the room read does not compute amount_owed and the summary itself';
+  // ── LABELED AMENDMENT (CE-40 · R-VS.2). RE-AIMED, TEETH KEPT, COUNT PRESERVED,
+  // RATIFY-OR-REVERT. The subject is SERVER-SIDE DERIVATION — that the client is
+  // never handed raw rows to total for itself. That is still true and is now true
+  // at one home instead of two. Asserted where the arithmetic lives.
+  const home = strip(read('src/lib/vendor/invoices.js'));
+  const has = /amount_owed:\s*total - paid/.test(home)
+    && /total_outstanding:/.test(home) && /total_collected:/.test(home);
+  return has || 'the reader home does not compute amount_owed and the summary itself';
   // MUTATION: emit rows without amount_owed -> RED. The client-side twin (the
   // pwa must not re-derive them) is 2a-pwa's own cell, by ruling.
 });

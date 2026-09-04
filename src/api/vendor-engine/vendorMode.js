@@ -48,11 +48,20 @@ function matchModeWord(body) {
 // MINTED — FOUNDER VETO (the WA flip-confirmation words). SCRUBBED: they name the flip and
 // carry ZERO cabinet/thread content. 'changed' also signals the fresh thread so the vendor
 // knows the room reset; 'noop' is the honest "already there" (never a false "switched").
+// ── R-VS.4 = D1 (CE-40, the Victor sitting) · RETIRE-WITH-THE-READER ────────
+// THE `advisor` KEY IS GONE, and it went because its last reader did. R-39.22
+// puts advisory in the Advisor room alone, so `vendorInbound.js` now REFUSES the
+// advisor word on this lane and never reaches these bytes.
+//
+// THE PWA ROUTE WAS DERIVED BEFORE THE DELETION, as the ruling required: the
+// PATCH door below (`router.patch('/')`) calls `applyModeFlip` and returns
+// `{ victor_mode, thread_reset }` — it has never read MODE_FLIP_LINES, and the
+// GET door reads nothing at all. Grep census at c841082: the only non-bench
+// reader estate-wide was `vendorInbound.js:1420`. So this is a retirement, not a
+// deletion of live copy, and the founder-vetoed `business` bytes are untouched
+// beside it — `business` stays legal on the lane deliberately, because it is the
+// way home if the PWA chip ever flipped the row.
 const MODE_FLIP_LINES = {
-  advisor:  {
-    changed: 'Advisor mode \u2014 fresh thread. On brand and content now; the ledger\u2019s paused till you flip back.',
-    noop:    'Already in advisor mode.',
-  },
   business: {
     changed: 'Business mode \u2014 fresh thread. Back on the books.',
     noop:    'Already in business mode.',

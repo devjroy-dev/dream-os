@@ -422,7 +422,13 @@ t('§5.3 BOTH persistComposedReply CALL SITES CARRY THE GUARD — one site cover
   // THE GUARD, which is what this cell has always meant. FORK 3-K1 added `req.agentId` as a
   // fourth argument at both sites, so the old anchor's trailing `result);` no longer matches.
   // Re-anchored on the call with its agent argument, and the count still decides.
-  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId\);/g) || []).length, 2, 'the guard is not on both PWA sites');
+  // ── LABELED AMENDMENT (CE-40, the Victor sitting). RE-AIMED, TEETH KEPT, COUNT
+  // PRESERVED, RATIFY-OR-REVERT. R-VS.6/R-VS.7 add an OPTIONAL trailing `ctx`
+  // ({ message, moneyFacts }) at both guard seams — the ask names the capability,
+  // the handles carry the equality fence. The old anchors ended on `)` and so no
+  // longer match. The SUBJECT is untouched: one function, both doors, no second
+  // implementation, and the count still decides.
+  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId, \{ message, moneyFacts \}\)/g) || []).length, 2, 'the guard is not on both PWA sites');
 });
 
 t('§5.4 THE GUARD DOES NOT RIDE INSIDE persistComposedReply — that function returns early on an empty tail, which is exactly the costume turn', () => {
@@ -571,14 +577,20 @@ t('§5.8b R-10 — THE WHATSAPP SEAT SHIPS, AND IT IS THE SAME FUNCTION (no new 
   assert.ok(/require\('\.\.\/api\/vendor-engine\/chat'\)/.test(wa), 'the WA lane does not reach the guard\'s one home — a re-implementation would prove its own copy');
   // AMENDED (F-06.130, count preserved): the WA seat now passes `agentId` too — the key the
   // REPORT catcher finds this vendor's delivered witness by after a thread timeout.
-  assert.ok(/await wireGuardSpecimen\(supabase, vendor\.id, result, agentId\)/.test(wa), 'the WA lane does not call the guard');
+  // ── LABELED AMENDMENT (CE-40, the Victor sitting). RE-AIMED, TEETH KEPT, COUNT
+  // PRESERVED, RATIFY-OR-REVERT. R-VS.6/R-VS.7 add an OPTIONAL trailing `ctx`
+  // ({ message, moneyFacts }) at both guard seams — the ask names the capability,
+  // the handles carry the equality fence. The old anchors ended on `)` and so no
+  // longer match. The SUBJECT is untouched: one function, both doors, no second
+  // implementation, and the count still decides.
+  assert.ok(/await wireGuardSpecimen\(supabase, vendor\.id, result, agentId, \{ message: body, moneyFacts \}\)/.test(wa), 'the WA lane does not call the guard');
   assert.ok(/const result = await runTurn\(\{/.test(wa), 'the WA lane no longer calls runTurn — R-10\'s derivation premise has changed; re-derive before trusting this seat');
   // the guard's signature is the ONE adaptation, and both doors pass the same two values
   const c = read(CHAT);
   // AMENDED (F-06.130, count preserved): the relocated signature GAINS its agent, additively.
   // R-10's subject — ONE function, both doors, no second implementation — is untouched.
-  assert.ok(/async function wireGuardSpecimen\(supabase, vendorId, result, agentId\)/.test(c), 'the guard signature is not the relocated (supabase, vendorId, result, agentId) shape');
-  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId\)/g) || []).length, 2,
+  assert.ok(/async function wireGuardSpecimen\(supabase, vendorId, result, agentId, ctx\)/.test(c), 'the guard signature is not the relocated (supabase, vendorId, result, agentId, ctx) shape');
+  assert.strictEqual((c.match(/await wireGuardSpecimen\(req\.app\.locals\.supabase, req\.vendor\.id, result, req\.agentId, \{ message, moneyFacts \}\)/g) || []).length, 2,
     'the PWA door does not pass the relocated signature at both of its sites');
 });
 
@@ -650,7 +662,17 @@ t('§5.9 STAGE 2 IS SCOPED — the CLASSIFIER stays pure; interception lives at 
   // verdict and nothing else; interception is the SEATS' business, gated on
   // `verdict.specimen`. A classifier that knew about copy could drift into deciding.
   const cc = read(CHAT);
-  const cls = cc.slice(cc.indexOf('function wireGuardClassify'), cc.indexOf("// ── FORK A'"));
+  // ── LABELED AMENDMENT (CE-40). RE-AIMED, TEETH KEPT, COUNT PRESERVED,
+  // RATIFY-OR-REVERT — AND IT IS F-06.55's PRECEDENT EXACTLY. That cell grepped the
+  // bare token `phone ` and so convicted the withholding law's own prose: THE LAW
+  // ANNOUNCING THE FLOOR CONVICTED THE FLOOR. The same shape here — a COMMENT in the
+  // classifier explaining that a vetoed refusal would otherwise "be replaced by a
+  // glitch line" is documentation of the fence, not Stage 2 vocabulary entering the
+  // ladder. The subject is CODE: the classifier must not know about copy. So comments
+  // are stripped and the executable bytes are what the cell reads. The instrument is
+  // fixed rather than the artefact papered.
+  const clsRaw = cc.slice(cc.indexOf('function wireGuardClassify'), cc.indexOf("// ── FORK A'"));
+  const cls = clsRaw.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
   assert.ok(!/glitch|please try again|STAGE2_LINE|stage2Intercept/i.test(cls),
     'Stage 2 vocabulary has entered the CLASSIFIER — the ladder must stay pure');
 });

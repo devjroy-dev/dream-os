@@ -101,6 +101,12 @@ const asyncHandler = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const {
   createInvoice, updateInvoice, recordPayment, cancelInvoice, invoicePdfSource,
+  // R-VS.2 (CE-40, the Victor sitting): the money truth has ONE HOME and it is the
+  // writer home. `readOutstanding` and `OUTSTANDING_STATES` are IMPORTED here, never
+  // declared — this router's own copies died in the commit that born them, because
+  // the fact block Victor reads and the room the vendor reads must not be two
+  // derivations of one number (F-04.13's tuition, on this exact table).
+  readOutstanding, OUTSTANDING_STATES,
 } = require('../../lib/vendor/invoices');
 const { createExpense, updateExpense, deleteExpense } = require('../../lib/vendor/expenses');
 const { generateInvoicePdf } = require('../../lib/invoicePdf');
@@ -135,7 +141,8 @@ const EXPENSE_SELECT = 'id, amount, category, description, expense_date, created
 // INVOICE_DUE_STATES): `state <> 'paid'` returns CANCELLED invoices as money
 // owed, and a negation reads every UNKNOWN as included — the unknown being any
 // state a future migration adds. So outstanding sums only these two.
-const OUTSTANDING_STATES = ['unpaid', 'advance_paid'];
+// (moved to src/lib/vendor/invoices.js at R-VS.2 and IMPORTED at the head of this
+// file — the rule's text and both its readers travelled together, byte-identical.)
 
 // ── THE OTHER HALF OF THE SAME RULING, STATED ONCE ──────────────────────────
 // A CANCELLED INVOICE STILL CREDITS RECEIVED. Money that arrived is money that
@@ -406,51 +413,24 @@ const ROOM_EXPENSE_SELECT =
   'id, amount, category, description, expense_date, client_name, created_at';
 
 router.get('/invoices/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {
-  const { data, error } = await req.app.locals.supabase
-    .from('invoices')
-    .select(ROOM_INVOICE_SELECT)
-    .eq('vendor_id', req.vendor.id)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('[GET /vendor/money/invoices] typed read failed:', error.message);
-    return errRes(res, 500, 'Lookup failed.');
-  }
-
+  // R-VS.2: ONE READER. The map and the summary that used to sit inline here are
+  // `readOutstanding`'s body now, byte-for-byte in substance — same select, same
+  // `amount_owed = total - paid`, same positive-list OUTSTANDING gate, same
+  // state-blind `total_collected`. The response SHAPE is unchanged and the
+  // acceptance cell proves it by SET: a moved rupee is a RED.
+  //
   // `state` filtering stays a CLIENT concern exactly as it is today
   // (`fetchInvoices(vendorId, state)` filters after the fetch), so this door
   // answers the whole set and no filter vocabulary is minted here. A second
   // vocabulary for the same column is how `invoices_state_check` grows a rival.
-  const rows = (data || []).map((i) => {
-    const total = Number(i.amount_total) || 0;
-    const paid = Number(i.amount_paid) || 0;
-    return {
-      id: i.id,
-      invoice_number: i.invoice_number,
-      client_name: i.client_name,
-      client_phone: i.client_phone || undefined,
-      amount_total: total,
-      amount_paid: paid,
-      amount_owed: total - paid,
-      state: i.state,
-      due_date: i.due_date,
-      created_at: i.created_at,
-    };
-  });
+  const read = await readOutstanding(req.app.locals.supabase, req.vendor.id);
 
-  // OUTSTANDING IS THE POSITIVE LIST, THE SAME ONE THE REGISTER USES. The room
-  // and the register disagreeing about what is owed is the two-derivations
-  // disease wearing two doors instead of two files, so both read
-  // OUTSTANDING_STATES from the one const above.
-  const summary = {
-    total_outstanding: rows
-      .filter((r) => OUTSTANDING_STATES.includes(r.state))
-      .reduce((sum, r) => sum + r.amount_owed, 0),
-    total_collected: rows.reduce((sum, r) => sum + r.amount_paid, 0),
-  };
+  if (!read.ok) {
+    console.error('[GET /vendor/money/invoices] typed read failed:', read.error);
+    return errRes(res, 500, 'Lookup failed.');
+  }
 
-  return okRes(res, { invoices: rows, summary, total: rows.length });
+  return okRes(res, { invoices: read.rows, summary: read.summary, total: read.rows.length });
 }));
 
 router.get('/expenses/:vendorId', ...vendorGate, asyncHandler(async (req, res) => {

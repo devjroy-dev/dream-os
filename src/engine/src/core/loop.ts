@@ -128,6 +128,24 @@ type RunTurnArgs = {
   // cannot read `public.pending_couple_drafts` at all. ABSENT => the dynamic block
   // is byte-identical (regression law), exactly as leadPings' own contract states.
   pendingRelay?: string;
+  // ── TDW · THE VICTOR SITTING (CE-40) · F-39.73's CURE · F-A arm A1, R-VS.2 ──
+  // THE MONEY FACT BLOCK — actBlock / pingBlock / relayBlock's fourth sibling,
+  // and it exists because the engine CANNOT read the plane the answer lives on.
+  // `db.ts` binds this client to `db: { schema: 'engine' }`, so `public.invoices`
+  // is not merely unread here, it is unreachable; every money answer Victor has
+  // ever given stood on `engine.records`, a second money model that is EMPTY
+  // (F-39.73's walk: 「no one owes you」 with Rs 60,000 unpaid on the typed plane).
+  //
+  // AND IT IS A FACT, NOT A TOOL — deliberately, so this file's own opening line
+  // (「Harvey holds NO DB tools」) stays true. R-VS.2 refused A2/A3/A4 for exactly
+  // that: a tool on a seat that holds none, a network hop for an in-process read,
+  // or a second client and a second home. The CE-4 seam exists precisely so the
+  // door can tell him something only the door knows.
+  //
+  // OPAQUE STRING, door-built (lib/vendor/moneyFacts.js). ABSENT => the dynamic
+  // block is byte-identical to the pre-cure engine (regression law), exactly as
+  // leadPings' and pendingRelay's own contracts state.
+  moneyFacts?: string;
   // TDW_04.5 P6 (CE-61, Fork B): the vendor's NORMALISED category, door-computed.
   // THE DOOR NORMALISES, THE ENGINE COMPARES — `normaliseCategory` keeps its one home in
   // lib/vendor/categoryFraming.js, which is the whole point of the ruling: Victor's
@@ -498,7 +516,21 @@ async function runTurnInner(args: RunTurnArgs, ctx: TurnCtx): Promise<TurnResult
     // stream — the same provenance siting as pingBlock, so a figure here can inform
     // Victor and can never VOUCH for a write.
     const relayBlock = (estateInRoom && args.pendingRelay) ? `\n\n${args.pendingRelay}` : '';
-    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock;
+    // F-39.73 (R-VS.2): DYNAMIC, NEVER CACHED — it changes the moment an invoice is
+    // raised or a payment lands. Gated on `estateInRoom` with its three siblings and
+    // NOT on its own: the block carries rupee figures, and exempting it from the gate
+    // would re-open the neighbouring-line donor pool ruling A-3 closed (F-04.70's
+    // mechanism). SYSTEM TAIL, never the message stream — the same provenance siting
+    // pingBlock and relayBlock carry, so a figure here can INFORM Victor and can never
+    // VOUCH for a write (the provenance hold reads `vendorWords`, the owner's own
+    // messages, and this block is deliberately not among them).
+    //
+    // IT IS LAST, AND THAT IS THE INSTRUCTION. CE-77's position doctrine, named after
+    // the M-4 narration arc: position inside a paragraph is part of the instruction.
+    // The block ends on the sentence that must govern — these are the only figures for
+    // money owed, and the cabinet does not hold this.
+    const moneyBlock = (estateInRoom && args.moneyFacts) ? `\n\n${args.moneyFacts}` : '';
+    const dynamic = ownerBlock + `\n\n[${today}]\n` + factsBlock + snapshot + donnaMsgs + shelfBlock + calBlock + actBlock + pingBlock + relayBlock + moneyBlock;
     const blocks: Anthropic.TextBlockParam[] = [
       { type: 'text', text: staticPrefix, cache_control: { type: 'ephemeral' } },
     ];
