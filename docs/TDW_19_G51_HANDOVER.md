@@ -1,6 +1,7 @@
 # TDW_19 G5.1 — THE OVERFLOW EXCHANGE · dream-os HALF · HANDOVER
 
-**Base** dream-os `3c0f8d6` (re-derived at the cut; the tip moved **three times** under this seat — see §6).
+**Base** dream-os `85fb480` (rider 1; the half sealed at `556f0c1`, this adds §6b and §9)
+**Sealed base** `3c0f8d6` (re-derived at the cut; the tip moved **three times** under this seat — see §6).
 **Delivery** 8 files, listed in `scripts/floor-manifest-g51-dreamos.txt`.
 **Chair** CE-40, rulings R-G51.1–.10 (relay 2), B8 and the migration number ruled at relay 3 (R-40.44).
 **Mock** `docs/mocks/referrals-mock.html` @ dreamos-pwa `30828d7`, copy ratified at R-40.42, rider 1 at R-40.40.
@@ -50,7 +51,7 @@ Four defects were mine, all found by mutating rather than by reading, and all in
 ## 5 · WHAT THIS DELIVERY DOES NOT PROVE
 
 - **That 0135 has run.** The plane is founder-run. The bench drives the code that will write to it, against an in-memory double that honours no constraint — so the UNIQUE on `new_lead_id` and both FK delete rules are asserted by **reading 0135**, not by exercising it, and the cells say so in their labels.
-- **That the tier decision (R-G51.8) holds under change.** There is no cell that reddens if someone adds a tier check to the forward door. The ruling asked for one; I have not written it, because a cell asserting the *absence* of a check anywhere in a file is the vacuous shape this estate keeps filing findings about. **Named as owed rather than faked.**
+- ~~That the tier decision (R-G51.8) holds under change.~~ **DISCHARGED at rider 1, §6b** — see §9. The gap was real and the first refusal to fake it was right; the cell that closes it asserts a behaviour, not an absence.
 - **Any live DB, RLS, or pwa behaviour.** The surfaces are the pwa arm's.
 
 ## 6 · THE TIP MOVED THREE TIMES UNDER THIS SEAT
@@ -63,17 +64,41 @@ The third carry touched a floor bench (`b53_g11_wedding_pages_bench.js`), so the
 
 **The second carry changed a fact, not just a base.** G2 banked `0134_reviews_and_seal.sql`, so the ladder is now contiguous `0133 · 0134 · 0135` and this file sits AT the tip. `0135`'s header was **re-derived** rather than left asserting the hole it was written above, and neither delivery owes an `OUT_OF_ORDER.json` record.
 
-## 7 · THE FLOOR
+## 7 · THE FLOOR — **ZERO DELTA AT `85fb480`**
 
-Measured with declared dirt (`--delivery`, F-14.16 — the clean-tree refusal fired first and named its own cure). **One delta: `b16_p1_engagements_bench`.**
+`FLOOR = NAMED BASE, no delta` · exit **0** · 15 RED · `[F-14.16] declared files unmoved — set and contents both verified` · 4 refusals not in base.
 
-**It is not this delivery's.** Proven by running the bench with this seat's work stashed on the clean tip: identical RED, identical blamed file — `src/lib/vendor/weddings.js`, which G1.2 banked at `9235849`. This delivery's files never call `.from('engagements')`; the only occurrence is a comment citing `engagedLeadStamps` for its batching shape.
+**This section previously reported one delta and an owed exoneration. Both are retired, and by someone else's work rather than by anything this seat did.**
 
-This is the F-40.64 class, inherited. **The chair's exoneration is owed; this seat does not exonerate itself.**
+The sealed half measured `b16_p1_engagements_bench` RED and proved it inherited by re-running it at the clean tip with this delivery stashed — identical RED, identical blamed file, `src/lib/vendor/weddings.js`. The chair exonerated it by attribution at relay 4 (F-40.64 → `weddings.js:resolveCoupleForEvent`, G1.1c's byte, cure charged to G1.2). **G1.2 then landed that cure at `a2a5180`** — "the spine read moves to its one home (b16 2.2/2.3)" — and the bench is now GREEN in the named base.
+
+So this delivery's floor line is no longer "one delta, exonerated". It is **no delta at all**, and the RED count fell 16 → 15 for a reason that belongs to G1.2.
+
+**The lesson is the one §9.2 already banks in a different costume: a floor number is a measurement of a moment, not a property of a delivery.** Carrying `16 RED, one delta` forward into this rider — true when it was written, six commits stale by the time it shipped — would have reported an owed exoneration that no longer exists and understated the tree by one green bench. The floor was re-derived at the moved base *before* a word of this section was rewritten, which is the only order in which the sentence above can be honest.
 
 ## 8 · OWED
 
-- The chair's exoneration of `b16_p1_engagements_bench`.
-- The tier cell (§5), or a ruling that the decision rides prose.
+- ~~The chair's exoneration of `b16_p1_engagements_bench`.~~ **Granted at relay 4, then made moot at `a2a5180` — the bench is green in the named base. See §7.**
+- ~~The tier cell (§5), or a ruling that the decision rides prose.~~ **Written at rider 1 §6b. See §9.1.**
 - The pwa half: the record's one control, the sheet with its refusal state, `Forwarded by` + the note, the room, the live hub row with its `Open` chip, C31 by label, `next build`.
 - `PUBLIC_SCHEMA.md` regen: until the next pair regen, **0135 is `lead_referrals`' sole witness** — cite the file by line, never the snapshot.
+
+---
+
+## 9 · RIDER 1 — THE TIER CELL, AND TWO LAWS-IN-WAITING
+
+### 9.1 · §6b, and why the first refusal was correct
+
+The sealed half named the tier cell as **owed rather than written**, because the obvious cell — grep `referrals.js` for the absence of a tier check — is vacuous by construction. It passes on an empty file. It passes if the check moves one module away. It can never tell "no gate" from "gate spelled differently".
+
+The chair's correction (relay 4) is the shape that binds: **assert the behaviour, not the absence.** §6b drives a basic-tier vendor through the real `forwardLead` and asserts the forward LANDS — the referral row returned, the peer's lead actually present, stamped `peer_referral` like any other. Three further cells stop it passing by accident: a paid tier must behave identically, and a vendor row carrying no tier at all must not fall into a refusal.
+
+**Both-ways, proven:** adding `if (fromVendor.tier === 'basic') return {ok:false,...}` to the door reddens three cells; reverting returns 67/67.
+
+**And the ruling is not a technicality.** A basic vendor is exactly the one whose lead record withholds the couple's phone (`WITHHELD_FIELDS`; `FULL_ACCESS_TIERS` excludes `basic`). She is the vendor who *cannot ring this couple herself*. Gating the forward would take the one remaining thing she can do with an enquiry she cannot serve and hand it to nobody — couple unanswered, peer never told, the exchange dead at precisely the tier where overflow is most likely.
+
+### 9.2 · Two laws-in-waiting, from this sitting's own mistakes
+
+**A running floor's manifest is a SNAPSHOT, not a subscription.** `run-floor.sh --delivery` reads the declared set at start and verifies "set and contents both" at the end. Any declared file that moves mid-run trips the STOP — correctly. This seat broke it twice: once by creating the handover after the run began, once by editing the manifest and handover to record a carry. The second time it was caught before the run finished and killed rather than allowed to burn fifteen minutes producing a STOP already known. **Proposed law: from the moment a floor starts, no file in its manifest moves until it exits. If a declared file must change, kill the run and restart — a floor measured over shifting source is not a floor.**
+
+**A DDL cell reads DISK; only `information_schema` reads the DATABASE.** §8's four cells assert `0135`'s guarantees by reading the `.sql` file, and they are labelled as such — but they pass identically whether or not the migration has ever run. On this delivery the founder's editor returned **zero rows** for `lead_referrals` on the first ask, with the bench fully green and the code applied. The green number was true and said nothing about production. **Proposed law: any delivery carrying DDL states its `information_schema` witness query in the apply chain, and the plane is not considered live until that query returns its expected shape. A bench cannot witness a migration it cannot reach.**

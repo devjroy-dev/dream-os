@@ -34,3 +34,16 @@ src/api/vendor/leads.js
 src/api/vendor/referrals.js
 src/lib/vendor/leads.js
 src/lib/vendor/referrals.js
+
+# ── RIDER 1 (2026-09-05, base 556f0c1) ─────────────────────────────────────
+# The tier cell (R-G51.8, chair-corrected at relay 4: assert the behaviour, not
+# the absence) and the handover's §9. Three files, all already in the list above.
+# No production byte moves in this rider — b51 gains §6b and nothing else.
+#
+# CARRY 4: 556f0c1 -> 85fb480 (six commits, G1.2 and G2 sitting 1 closing;
+# nineteen files, disjoint from these three, proven before the carry; all three
+# byte-identical after). The carry CHANGED A FACT: G1.2's a2a5180 cured F-40.64,
+# so b16_p1_engagements_bench is GREEN in the named base and this delivery's
+# floor now reads ZERO DELTA (exit 0, 15 RED). The handover's §7 was rewritten
+# against the re-derived floor, never carried forward from the sealed half.
+

@@ -16,6 +16,7 @@
 //   §4  drop the `member_vendor_id` eq from the roster read      → §4 flips RED
 //   §5  add `state: 'forwarded'` to the original lead            → §5 flips RED
 //   §6  delete the step-4 dedupe refusal from forwardLead        → §6 flips RED
+//   §6b add a tier gate to forwardLead                          → §6b flips RED
 //       (BEHAVIOURALLY INERT — see §6's own note. The guard it removes is
 //        outcome-equivalent to createLead's own dedupe on this path, so §2's
 //        cells stay green. The cell that catches it is structural, and that
@@ -279,6 +280,58 @@ section('6. every refusal is decided BEFORE anything is written');
   const r3 = await referrals.forwardLead(db3, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: null });
   ok('a lead with no phone is refused, and refused by name', r3.ok === false && r3.code === referrals.REFUSE.NO_PHONE);
   ok('and nothing was written for it', db3._tables.lead_referrals.length === 0);
+}
+
+// ══ §6b — TIER · R-G51.8 ═══════════════════════════════════════════════════
+// MUTATION: add a tier gate to forwardLead (`if (fromVendor.tier === 'basic')
+// return { ok:false, ... }`) → §6b flips RED.
+//
+// ⚠ THIS SECTION ASSERTS A BEHAVIOUR, NOT AN ABSENCE, AND THE DIFFERENCE IS THE
+// WHOLE REASON IT EXISTS. The first attempt at this cell was refused by its own
+// author and named as owed rather than written: a cell that greps a file for the
+// non-existence of a tier check is vacuous by construction — it passes on an
+// empty file, it passes if the check moves one module away, and it can never
+// distinguish "no gate" from "gate spelled differently". The chair's correction
+// (relay 4) is the shape that binds: drive a BASIC-TIER vendor through the real
+// door and assert the forward LANDS.
+//
+// AND THE RULING IT GUARDS IS NOT A TECHNICALITY. A basic vendor is exactly the
+// one whose lead record withholds the couple's phone — `WITHHELD_FIELDS` at
+// leadSerializer.js, `FULL_ACCESS_TIERS` excludes 'basic'. She is the vendor who
+// CANNOT ring this couple herself. Gating the forward on tier would take the one
+// thing she can still do with an enquiry she cannot serve, and hand it to nobody:
+// the couple goes unanswered, the peer never hears, and the exchange is dead at
+// the tier where overflow is most likely. R-G51.8 is that reasoning, ruled.
+section('6b. a basic-tier vendor may forward — the exchange is not tier-gated');
+{
+  const basicVendor = { id: FROM, business_name: 'Dev Roy Photography', tier: 'basic' };
+  const db = makeDb(seedBase());
+  const r = await referrals.forwardLead(db, basicVendor, {
+    leadId: 'lead-priya', toVendorId: TO, note: 'Booked that weekend.',
+  });
+
+  ok('the forward LANDS for a basic-tier vendor', r.ok === true);
+  ok('and the door returns the referral row, not a refusal shape', !!r.referral && !r.code);
+  ok('the peer really has the lead — the success is not cosmetic',
+     !!db._tables.leads.find(l => l.vendor_id === TO));
+  ok('and it is stamped like any other forward',
+     db._tables.leads.find(l => l.vendor_id === TO).source === 'peer_referral');
+
+  // The same vendor at a paid tier must be indistinguishable, or the cell above
+  // would pass on a door that happened to allow everyone by accident rather than
+  // by ruling.
+  const paid = await referrals.forwardLead(makeDb(seedBase()),
+    { id: FROM, business_name: 'Dev Roy Photography', tier: 'signature' },
+    { leadId: 'lead-priya', toVendorId: TO, note: 'Booked that weekend.' });
+  ok('a paid tier behaves identically — tier is not read on this path at all',
+     paid.ok === r.ok && !!paid.referral === !!r.referral);
+
+  // And a vendor row with NO tier at all (the shape `resolveVendor` hands over
+  // when the column is empty) must not fall into a refusal by accident.
+  const untiered = await referrals.forwardLead(makeDb(seedBase()),
+    { id: FROM, business_name: 'Dev Roy Photography' },
+    { leadId: 'lead-priya', toVendorId: TO, note: null });
+  ok('a vendor carrying no tier at all still forwards', untiered.ok === true);
 }
 
 // ══ §7 — THE ROOM · R-G51.6 ════════════════════════════════════════════════
