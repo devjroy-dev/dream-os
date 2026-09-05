@@ -2,8 +2,8 @@
 
 **Status:** THE SIMPLIFIED INSTRUMENT. For the lawyer's one-line yes.
 **Seat:** CE-40 · G3.2-pre · Fable-Desk, docs only · 2026-09-05
-**Base:** `dream-os @ 0a43d09`
-**Governed by:** R-40.43 (this simplification, under the lawyer's guidance) · R-40.36 · R-40.37 (deposit 30%, editable) · R-40.9 (the couple's publication switch, off by default) · R-40.7 (the credit-roll roles) · master §7 (the refusals).
+**Base:** `dream-os @ b88abe5`
+**Governed by:** **R-40.46** (the lawyer's yes on this instrument — see the appendix) · R-40.43 (this simplification, under his guidance) · R-40.36 · R-40.37 (deposit 30%, editable) · R-40.9 (the couple's publication switch, off by default) · R-40.7 (the credit-roll roles) · master §7 (the refusals).
 
 ## WHAT THIS FILE IS, AND WHAT v1 STILL IS
 
@@ -292,6 +292,10 @@ We'll send this to you on WhatsApp. You read it on your phone, we send a one-tim
 # APPENDIX — THE QUESTIONS, CLOSED
 
 v1's Appendix 2 asked the lawyer seven. This is where they stand.
+
+**R-40.46 · 2026-09-05 · the lawyer's yes.** **The founder's lawyer has read this simplified instrument and approved it.** It carries the same protection for the vendor as the eighteen-clause version he passed before. **This block supersedes the Status line above** — v3 is no longer "for the lawyer's one-line yes"; it has it. It remains not vendor-facing product copy, and the closing note below still binds on that.
+
+**v3 is what a vendor sends, from today.** It is a PDF and the contract plane stores a PDF, so she uploads it and sends it with no schema byte and no new door. F-40.94 is what later stops her filling 166 blanks by hand.
 
 **R-40.43 · 2026-09-05 · the lawyer's guidance, verbatim.** *"Simplify it and don't make the contract too complicated in terms of enforcement and formalities. Contracts in the wedding-vendor field are more so to give each other (vendor and client) a clear indication of expectations, services and other essential deliverables — not for enforcement in a court of law. Follow standard practice."*
 
