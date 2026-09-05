@@ -1,0 +1,72 @@
+# scripts/floor-manifest-g12-approved.txt
+# TDW_19 · BLOCK 19 · G1.2 — THE REGISTRY MICRO. Meta returned UTILITY, ACTIVE on
+# both wedding templates (founder-witnessed, WhatsApp Manager, Direct
+# 1739793260373677, 2026-09-05). The registry and the Manager must never hold
+# different words — or different states — under one template name.
+#
+# ⚠ APPROVED IS NOT LIVE, AND THAT IS THE WHOLE POINT OF THE SECOND GATE.
+# `isApproved()` now returns true for both; both sends still refuse, because
+# `WEDDING_CREDIT_SEND_ENABLED` and `WEDDING_CONSENT_SEND_ENABLED` are unset in
+# every environment. Derived, not asserted: `{open:false, approved:true,
+# flagOn:false, reason:"<FLAG> is not set"}` for each. The flags stay shut until
+# R-40.16 is satisfied — a relay-class send needs a number that is neither a real
+# vendor's nor a registered couple's, and the estate holds none.
+#
+# THREE COMMENTS MOVED WITH THE TWO BYTES. The credit template's header said
+# "this template does not exist on either WABA", citing G0 §3's census of 26 on
+# Direct. That was true when written and is now false. A comment that outlives
+# the fact it describes is band 5's own class — an instrument correct about its
+# subject and wrong about what it is read to mean — so it moves with the byte
+# rather than being left for a reader to trip over.
+#
+# AND THE SEAT'S WRONG PREDICTION IS KEPT, NOT DELETED. This file argued before
+# submission that the consent ask would return MARKETING: weaker on the Utility
+# test than the credit invite, the recipient not credited, the act a request
+# rather than a notice. Meta returned UTILITY on both. The reasoning was
+# defensible and the outcome refuted it, and the next seat weighing a Utility
+# filing should know this estate's read was pessimistic here and by how much.
+src/lib/templates.js
+
+# ── THE SEALED CELL, AMENDED — C7, ratify-or-revert ─────────────────────────
+# WAS: `isApproved === false` and `gate.approved === false` under the sentence
+# "the send is dark". THE PROPERTY IS UNCHANGED AND THE ASSERTION IS STRONGER.
+# While BOTH gates were shut the cell could not distinguish a two-gate design
+# from a one-gate one — either gate alone explained the result. Now approval has
+# moved, so the cell proves what the design was FOR: approved TRUE, flag FALSE,
+# send STILL SHUT. The second gate carries the whole weight and this is the first
+# moment that is demonstrable.
+#
+# ⚠ ONE OF ITS NEW CELLS WAS TOO WEAK AND THE MUTATION PASS CAUGHT IT.
+# "the consent gate names its own flag" asserted only `cgate.reason`, which is a
+# LITERAL — so a gate reading the CREDIT variable while REPORTING the consent
+# name passed it, and with both flags unset the two are observationally
+# identical. The mutation stayed GREEN. A mutation that does not bite is a cell
+# that is not testing what its name claims; the cell now reads the SOURCE and
+# requires the two gates to consult different variables.
+#
+# THREE PRODUCTION MUTATIONS ADDED, each RED and restored byte-for-byte: the
+# credit gate loses its flag (approval alone would open live traffic to real
+# numbers), the consent gate borrows the credit flag (one switch, two audiences),
+# and a registered body opens on a variable again — F-40.91, the placement rule
+# Meta enforces, which this estate met exactly once and had no cell for until now.
+scripts/b53_g11_wedding_pages_bench.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g12-approved.txt
+
+# ── THE TIP MOVED MID-CUT AND THE FIRST CUT WAS WITHDRAWN ──────────────────
+# This micro was first cut against `5e5c230`. Between the floor run and the ZIP,
+# the G2 seat landed `4d7a341` — and it TOUCHES THIS FILE, adding the review-ask
+# template and `buildTemplatePayload`'s URL-button arm.
+#
+# A whole-file copy cut against the parent would have SILENTLY REVERTED all of
+# it on apply. That is F-38.25 exactly, and the reason R-38.15/.16 exist: only
+# `tsc` caught it last time, one file away from deleting two render cells in
+# total silence. The cut was withdrawn, the tree moved to `4d7a341`, and the two
+# status flips were RE-APPLIED ON TOP OF THEIR FILE — never merged, never
+# reconstructed from memory.
+#
+# Proven rather than asserted: the diff against their tip changes exactly TWO
+# `status:` lines and their attendant comments; `isApproved('review_request')`
+# is still true; and `b55_g2_reviews_bench` and `b44_public_vendor_card_bench`
+# both still exit 0 on this tree.

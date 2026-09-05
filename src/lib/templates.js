@@ -220,14 +220,25 @@ const TEMPLATES = {
     status: 'approved',
   },
 
-  // ── THE FIFTH TEMPLATE — BLOCK 19 G1.1, F-40.21 · BUILT DARK ──────────────
-  // ⚠ `status: 'pending'` IS THE TRUTH, NOT A PLACEHOLDER. This template does
-  // not exist on either WABA. G0 §3 censused Direct 1739793260373677 at 26
-  // templates (25 `tdw_*`) and the other WABA at 12 by-name twins plus 3 `_hx`
-  // legacies; none of them is this one. `isApproved('wedding_credit')` returns
-  // false and the send path refuses on it — see `src/lib/vendor/creditInvite.js`,
-  // which ALSO requires the named flag. Two gates, because a registry status
-  // flipped by a careless edit should not be enough to start sending.
+  // ── THE FIFTH TEMPLATE — BLOCK 19 G1.1, F-40.21 · APPROVED, STILL DARK ────
+  // ⚠ APPROVED IS NOT LIVE, AND THE SECOND GATE IS WHY.
+  // Meta returned **Utility, Active** on Direct 1739793260373677, founder-
+  // witnessed in WhatsApp Manager 2026-09-05. `isApproved('wedding_credit')`
+  // now returns TRUE — and NOTHING SENDS, because
+  // `src/lib/vendor/creditInvite.js` requires `WEDDING_CREDIT_SEND_ENABLED=1`
+  // as well, and that flag is unset in every environment. Two gates that fail
+  // for DIFFERENT reasons: the registry says "Meta has approved these words",
+  // the flag says "we have decided to send". One of them has now moved.
+  //
+  // THE FLAG STAYS SHUT UNTIL R-40.16 IS SATISFIED — a relay-class send needs a
+  // number that is neither a real vendor's nor a registered couple's, and the
+  // estate holds none. Until the founder has one, the claim path is walked by
+  // pasting the URL by hand, exactly as it is today.
+  //
+  // ⚠ THE CENSUS SENTENCE THIS REPLACED WAS TRUE WHEN WRITTEN AND IS NOW FALSE.
+  // It read "this template does not exist on either WABA", citing G0 §3's count
+  // of 26 on Direct. It does exist now. A comment that survives the fact it
+  // describes is the class band 5 named, so it moves with the byte.
   //
   // THE FOUNDER SUBMITS IT FROM WHATSAPP MANAGER. Numbered steps ride the build
   // handover; this seat does not submit and does not claim it has. Until Meta
@@ -266,7 +277,7 @@ const TEMPLATES = {
       'You’ve been credited on a wedding page. {{1}} credited you as {{2}} on ' +
       '{{3}}’s wedding page. Open {{4}} to add your name or decline — nothing is ' +
       'published under your name until you choose.',
-    status: 'pending',
+    status: 'approved',
   },
 
   // ── THE SIXTH · G1.2's CONSENT ASK — DARK (master §2.2's build-dark law) ───
@@ -275,19 +286,25 @@ const TEMPLATES = {
   // message that reaches such a couple. Filed on Direct 1739793260373677 on
   // 2026-09-05, category UTILITY, status "In review" in the Manager at filing.
   //
-  // `status: 'pending'` here is the REGISTRY's word and it is deliberately NOT
-  // flipped by Meta's answer arriving. Two things move together when the grant
-  // lands — this line, and `WEDDING_CONSENT_SEND_ENABLED` in Railway — and
-  // neither alone opens the send. Same two-gate shape as `wedding_credit`,
-  // for the same reason: a registry status flipped by a careless edit should not
-  // be enough to start traffic.
+  // `status: 'approved'` — Meta returned **Utility, Active**, founder-witnessed
+  // 2026-09-05. The OTHER gate, `WEDDING_CONSENT_SEND_ENABLED`, remains unset,
+  // so this still sends nothing. Two things move together when a send opens —
+  // this line and the flag — and neither alone opens it.
   //
-  // ⚠ MARKETING IS THE LIKELIER RETURN AND THAT IS STATED BEFORE SUBMISSION,
-  // NOT DISCOVERED AFTER IT (F-19.07's class; F-40.12 is the estate's own
-  // precedent). This message is WEAKER on the Utility test than `wedding_credit`
-  // is: the recipient is not credited on the page, and the act it notifies is a
-  // REQUEST rather than a completed one. If Meta returns MARKETING that is a
-  // finding, and it changes the pricing and the opt-out posture — not the code.
+  // A SECOND FLAG AND NOT A SHARED ONE: vendors who were credited and couples
+  // who are not on the platform are different audiences with different review
+  // outcomes, so one switch governing both would mean the founder cannot open
+  // the safer one without opening the other.
+  //
+  // ⚠ THE SEAT PREDICTED MARKETING AND WAS WRONG — recorded, not deleted.
+  // Before submission this file argued the message was WEAKER on the Utility
+  // test than `wedding_credit`: the recipient is not credited on the page, and
+  // the act it notifies is a REQUEST rather than a completed one. F-19.07 and
+  // F-40.12 were the precedents. Meta returned UTILITY on both.
+  // The reasoning was defensible and the outcome refuted it, which is worth more
+  // in the record than a prediction quietly removed once it failed — the next
+  // seat weighing a Utility filing should know this estate's read was pessimistic
+  // here, and by how much.
   //
   // THE BODY OPENS AND CLOSES ON PROSE, by rule and not by luck — see
   // `wedding_credit` above and F-40.91. It was authored this way after Meta
@@ -303,7 +320,7 @@ const TEMPLATES = {
       'Your wedding page is ready to see. {{1}} has made a page for {{2}}, with ' +
       'everyone who worked it credited. Open {{3}} to have a look and choose \u2014 ' +
       'nothing is published until you say yes, and you can turn it off at any time.',
-    status: 'pending',
+    status: 'approved',
   },
 
   // ── THE SEVENTH BLOCK-19 TEMPLATE — G2, R-G2.10 · THE REVIEW ASK ─────────

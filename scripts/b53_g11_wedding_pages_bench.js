@@ -190,20 +190,67 @@ sec('C6 \u00b7 the upload signing has one home');
 }
 
 // ── C7 · THE TEMPLATE IS DARK, ON TWO INDEPENDENT GATES ─────────────────────
-sec('C7 \u00b7 the claim send is dark (F-40.21, build-dark law)');
+// ── SEALED CELL AMENDED, LABELLED — G1.2 (Meta returned Utility 2026-09-05) ──
+// WAS: `isApproved === false` and `gate.approved === false`, under the sentence
+// "the send is dark". THE PROPERTY IS UNCHANGED AND THE ASSERTION IS STRONGER.
+//
+// Meta approved BOTH templates as Utility, founder-witnessed in WhatsApp
+// Manager. The old cells proved the send was shut while BOTH gates were shut —
+// which cannot distinguish a two-gate design from a one-gate one, because either
+// gate alone explained the result. Now that approval has moved, the cell can
+// prove the thing the two-gate design was FOR: `approved` is TRUE, the flag is
+// FALSE, and the send is STILL SHUT. The second gate is carrying the whole
+// weight and this is the first moment that is demonstrable.
+//
+// Ratify or revert; it lands with the one-line flip that moved it.
+sec('C7 \u00b7 approved is not live \u2014 the second gate carries it (F-40.21)');
 {
   const t = fresh('src/lib/templates.js');
   ok('wedding_credit is registered', Boolean(t.getTemplate('wedding_credit')));
-  ok('and is NOT approved', t.isApproved('wedding_credit') === false);
+  ok('and Meta HAS approved it', t.isApproved('wedding_credit') === true);
   ok('it declares exactly four variables',
     JSON.stringify(t.getTemplate('wedding_credit').variables) === JSON.stringify(['owner','role','wedding','link']));
   const inv = fresh(INVITE);
   const gate = inv.sendGate();
-  ok('the send gate is SHUT', gate.open === false);
-  ok('the flag is the first gate and it is named', gate.flagOn === false && /WEDDING_CREDIT_SEND_ENABLED/.test(gate.reason));
-  ok('the two gates are independent (approval alone would not open it)', gate.approved === false);
+  // THE CELL THAT MATTERS NOW: approved, and still shut.
+  ok('the send gate is SHUT DESPITE approval', gate.open === false && gate.approved === true);
+  ok('the flag is the gate that holds, and it NAMES itself',
+    gate.flagOn === false && /WEDDING_CREDIT_SEND_ENABLED/.test(gate.reason));
   ok('claimUrl is live even while the send is dark (the founder pastes it)',
     /\/credits\/8f2c41a9$/.test(inv.claimUrl('8f2c41a9')));
+
+  // ── THE SIXTH TEMPLATE, SAME LAW, ITS OWN FLAG ────────────────────────────
+  // A second flag and not a shared one: vendors who were credited and couples
+  // who are not on the platform are different audiences, and one switch would
+  // mean the founder cannot open the safer one without opening the other.
+  ok('wedding_consent is registered and approved', t.isApproved('wedding_consent') === true);
+  ok('it declares exactly three variables',
+    JSON.stringify(t.getTemplate('wedding_consent').variables) === JSON.stringify(['owner','wedding','link']));
+  const cgate = inv.consentSendGate();
+  ok('the consent send is SHUT DESPITE approval', cgate.open === false && cgate.approved === true);
+  // ⚠ THIS CELL WAS TOO WEAK ON ITS FIRST CUT AND THE MUTATION PASS SAID SO.
+  // It asserted only `cgate.reason`, which is a LITERAL string — so a gate that
+  // actually read `WEDDING_CREDIT_SEND_ENABLED` while REPORTING the consent name
+  // passed it. With both flags unset the two are observationally identical, and
+  // the mutation "the consent send borrows the credit flag" stayed GREEN.
+  // A mutation that does not bite is a cell that is not testing what its name
+  // claims. Now the SOURCE is read: the consent gate must consult its own
+  // variable, and the two gates must consult different ones.
+  const invSrc = read(INVITE);
+  const consentFn = invSrc.slice(invSrc.indexOf('function consentSendGate'),
+                                 invSrc.indexOf('async function sendConsentInvite'));
+  ok('the consent gate READS its own variable, not the credit one',
+    /WEDDING_CONSENT_SEND_ENABLED/.test(consentFn)
+    && !/WEDDING_CREDIT_SEND_ENABLED/.test(consentFn));
+  ok('and it reports the same one it reads', /WEDDING_CONSENT_SEND_ENABLED/.test(cgate.reason));
+  // NO REGISTERED BODY MAY OPEN OR CLOSE ON A VARIABLE — F-40.91. Meta refuses
+  // both ("Variables can't be at the start or end of the template"), the founder
+  // hit that wall in the Manager, and a census found exactly one violator among
+  // eighteen. The estate had never met the rule and had no cell for it.
+  const bodies = Object.values(t.TEMPLATES || {}).map((x) => String(x.body || '').trim());
+  const bad = bodies.filter((b) => /^\{\{/.test(b) || /\{\{\d+\}\}$/.test(b));
+  ok('no registered body opens or closes on a variable (F-40.91)',
+    bodies.length > 0 && bad.length === 0, bad.join(' | '));
 }
 
 // ── C8 · THE SEASON MAP (R-40.25) ───────────────────────────────────────────
@@ -489,6 +536,23 @@ if (process.argv.includes('--mutate')) {
     // whose params are alphabetical by luck. Remove it and the signature is over
     // a different string than the request carries — a 401 that reads like a
     // credentials problem and is not.
+    // ── THE SECOND GATE IS THE ONLY ONE LEFT; PROVE IT CAN STILL RED ─────────
+    // With both templates approved, a careless edit that dropped the flag check
+    // would open live traffic to real numbers and nothing else would object.
+    ['src/lib/vendor/creditInvite.js',
+      'the credit send drops its flag gate \u2014 approval alone opens live traffic',
+      "  const flagOn   = String(process.env.WEDDING_CREDIT_SEND_ENABLED || '') === '1';",
+      "  const flagOn   = true;"],
+    ['src/lib/vendor/creditInvite.js',
+      'the consent send borrows the credit flag \u2014 one switch opens two audiences',
+      "  const flagOn   = String(process.env.WEDDING_CONSENT_SEND_ENABLED || '') === '1';",
+      "  const flagOn   = String(process.env.WEDDING_CREDIT_SEND_ENABLED || '') === '1';"],
+    // F-40.91: the placement rule the estate met exactly once and had no cell for.
+    ['src/lib/templates.js',
+      'a registered body opens on a variable again \u2014 Meta refuses it (F-40.91)',
+      "      'You\u2019ve been credited on a wedding page. {{1}} credited you as {{2}} on ' +",
+      "      '{{1}} credited you as {{2}} on ' +"],
+
     [SIGN, 'the archive params stop being sorted \u2014 a 401 that looks like bad credentials',
       "  const paramsToSign = Object.keys(params).sort()",
       "  const paramsToSign = Object.keys(params)"],
