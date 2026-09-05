@@ -190,6 +190,14 @@ async function generateAndStoreInvoicePdf(supabase, vendor, invoice) {
       // Passed explicitly rather than left undefined so a reader can tell the
       // difference between "none exist" and "nobody asked".
       schedule: [],
+      // ── G2 · null EXPLICITLY, AND FOR THE SAME REASON `schedule: []` IS ───
+      // A just-created invoice is rendered the instant it exists, inside the
+      // create call. Reading `vendor_seal` here would add a query to the hot
+      // path of every create to decorate a document the couple has not been sent
+      // yet, and the PDF door re-renders with the seal the moment anyone opens
+      // it. Passed rather than omitted so a reader can tell "deliberately none"
+      // from "nobody asked" — the distinction the line above already draws.
+      seal: null,
     });
 
     const fileName = `${vendor.id}/INVOICE-${invoice.invoice_number.replace(/^TDW\//, '').replace(/\//g, '-').toUpperCase()}.pdf`;

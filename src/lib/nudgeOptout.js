@@ -15,9 +15,16 @@
 //                → UNTOUCHED BY THIS FILE. Not read, not written, not imported.
 //
 //   NUDGE-CLASS  nudge_optout(phone, lane) · LANE-SCOPED by design · reversible ·
-//                owned here · suppresses the morning nudge / morning briefing and
-//                NOTHING ELSE. Bookings, payments, invoices, agent replies and
-//                every other send continue.
+//                owned here · suppresses the morning nudge / morning briefing —
+//                and, since G2, the couple lane's MARKETING sends.
+//                ⚠ THAT SENTENCE USED TO END "AND NOTHING ELSE", and G2's
+//                'couple' lane is what made it false. Amended at the site rather
+//                than left to rot: R-G2.7 gives this module a third lane whose
+//                reader is the review-ask cron, not a morning nudge. The
+//                MECHANISM is unchanged — a (phone, lane) reversible pause that
+//                only a caller declaring itself can trip — and it is the
+//                mechanism, not the current reader list, that this module is.
+//                The full stop below is still untouched by all of it.
 //
 // ── WHY LANE-SCOPED, WHERE THE SIBLING IS NOT (chair amendment, CE-63) ──────
 //
@@ -40,7 +47,19 @@
 
 const { normalizeTo } = require('./metaCloud');
 
-const LANES = new Set(['bride', 'vendor']);
+// ⚠ THE CONSTANT AND THE CONSTRAINT MOVE TOGETHER OR NEITHER MOVES.
+// `nudge_optout_lane_check` admits exactly the values listed here, and it is the
+// DATABASE that refuses an unknown one — witnessed at docs/db/PUBLIC_SCHEMA.md's
+// constraints addendum, `CHECK ((lane = ANY (ARRAY['bride','vendor'])))` before
+// G2. Widening this Set alone would have shipped a lane every write rejects:
+// F-40.45's exact class, a derivation that reads right in the tree and is
+// refused at the write. `db/migrations/0134_reviews_and_seal.sql` §3 widens the
+// CHECK in the same delivery, and `_assertLane` below is what keeps a caller
+// from reaching the database with a value neither of them knows.
+//
+// 'couple' — G2, R-G2.7. Her marketing pause: written by the `Stop messages`
+// handler on the bride line, read by the review-ask cron before it sends.
+const LANES = new Set(['bride', 'vendor', 'couple']);
 
 // ── the qualifier-aware matcher ─────────────────────────────────────────────
 // Reads the FIRST TWO tokens, upper-cased, punctuation-stripped — the same
@@ -80,7 +99,15 @@ function matchNudgeWord(text) {
 }
 
 function _assertLane(lane) {
-  if (!LANES.has(lane)) throw new RangeError(`nudgeOptout: unknown lane '${lane}' (expected 'bride' | 'vendor')`);
+  // THE MESSAGE READS `LANES`, IT DOES NOT RESTATE IT. It used to spell
+  // "expected 'bride' | 'vendor'" as a literal, which is a second home for the
+  // vocabulary — and the second home is always the one that goes stale, as it
+  // did the moment G2 added a third lane. Derived from the Set so it cannot.
+  if (!LANES.has(lane)) {
+    throw new RangeError(
+      `nudgeOptout: unknown lane '${lane}' (expected ${[...LANES].map((l) => `'${l}'`).join(' | ')})`
+    );
+  }
 }
 
 // ── the read gate ───────────────────────────────────────────────────────────
@@ -168,9 +195,40 @@ async function setNudgeOptout({ supabase, phone, lane, state, source }) {
 // exists: unlike bare STOP, `report` is claimed by no other machinery in this estate.
 const GLITCH_WORD = 'REPORT';
 
+// ── G2 · F-19.08's MATCHER — THE `Stop messages` QUICK REPLY ────────────────
+// Meta forwards a custom quick-reply tap to our webhook AS AN INBOUND MESSAGE
+// whose body is the button's own title, and does nothing else — no suppression,
+// no state, no acknowledgement (P0-A ledger, "The Stop button owes code"). So
+// the thing to match is the title, exactly.
+//
+// ⚠ THIS MATCHER EXISTS BECAUSE `matchFullStopWord` WOULD OTHERWISE EAT IT, AND
+// THAT IS A LIVE DEFECT, NOT A HYPOTHETICAL. The full-stop matcher reads the
+// FIRST TOKEN ONLY, so `Stop messages` is `STOP` to it — and the full stop is
+// terminal and CROSS-LINE. A couple who tapped the button on `tdw_referral_invite`
+// any time since 2026-08-28 was recorded as a permanent, all-lanes opt-out, which
+// also silences her own vendor's enquiry replies. It is the exact disease
+// F-05.22's ordering comment one branch up was written to prevent, arriving from
+// a button instead of a typed phrase. The branch that uses this matcher therefore
+// runs BEFORE the full stop, and the ordering is load-bearing there too.
+//
+// NARROW BY CONSTRUCTION, the house idiom: exactly TWO tokens, punctuation
+// stripped, case-insensitive. A message that merely contains the words is a real
+// turn and falls through — "stop messages from my planner please" reaches the
+// engine untouched. `STOP` alone is still the full stop's and is not claimed here.
+const STOP_MESSAGES_TOKENS = ['STOP', 'MESSAGES'];
+
+function matchStopMessages(text) {
+  const t = _tokens(text);
+  return t.length === 2 && t[0] === STOP_MESSAGES_TOKENS[0] && t[1] === STOP_MESSAGES_TOKENS[1];
+}
+
 function matchGlitchWord(text) {
   const t = _tokens(text);
   return t.length === 1 && t[0] === GLITCH_WORD;
 }
 
-module.exports = { matchNudgeWord, isNudgeOptedOut, setNudgeOptout, LANES, matchGlitchWord, GLITCH_WORD };
+module.exports = {
+  matchNudgeWord, isNudgeOptedOut, setNudgeOptout, LANES,
+  matchGlitchWord, GLITCH_WORD,
+  matchStopMessages, STOP_MESSAGES_TOKENS,   // G2 · F-19.08
+};

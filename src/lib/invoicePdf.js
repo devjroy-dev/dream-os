@@ -71,10 +71,19 @@ const SHOWS_RAILS = ['unpaid', 'advance_paid'];
 // vendor     : object — vendor row (identity, UPI, bank rails, address)
 // vendorName : string — display name fallback (user.name)
 // schedule   : array  — payment_schedules rows, ordinal-ordered; [] when none
+// seal       : object|null — G2, R-G2.8. `{ weddings, delivery_days }` or null.
+//              ⚠ THE VISIBILITY DECISION IS ALREADY MADE WHEN IT ARRIVES. This
+//              file does not know what three means and must not learn: the rule
+//              lives once, in `sealIsVisible` beside the computation, and every
+//              caller passes the result of it. A renderer that re-decided would
+//              be the second home for the estate's only unfalsifiable claim.
+//              null → the block does not render at all. Not a placeholder, not a
+//              greyed mark: `empty never renders`, and a couple must not be able
+//              to tell an unverified studio from one whose seal is uncomputed.
 //
 // Returns: Promise<Buffer>
 
-async function generateInvoicePdf({ invoice, vendor, vendorName, schedule }) {
+async function generateInvoicePdf({ invoice, vendor, vendorName, schedule, seal }) {
   return new Promise(async (resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -407,6 +416,34 @@ async function generateInvoicePdf({ invoice, vendor, vendorName, schedule }) {
       // every render of this sitting. Found by counting pages on the real buffer;
       // nothing in the source says "this will paginate". 40pt clears it with room.
       const footY = doc.page.height - doc.page.margins.bottom - 40;
+
+      // ═══ THE SEAL — G2, veto sheet row H5 ════════════════════════════════
+      // ABOVE THE RULE, INSIDE THE FOOT'S OWN RESERVED HEIGHT, AND NOT ONE POINT
+      // BELOW IT. The 40pt clearance above is not a margin, it is a cure: at 24
+      // the 9pt line's descent crossed the content boundary and pdfkit opened a
+      // SECOND PAGE, on every state, in every render. Drawing the seal by
+      // advancing `y` would spend that clearance and reintroduce the defect the
+      // number was chosen to fix. So both lines are placed ABSOLUTELY, upward
+      // from `footY`, and the footer does not move by a point.
+      //
+      // GREY, NOT GOLD. `COLOUR_ACCENT` is the document's one accent and the
+      // state stamp holds it. `Unpaid` must stay the first word a couple reads;
+      // a second gold mark competing with it would be a badge outranking a
+      // balance.
+      //
+      // NO Rs, EVER — the money on this sheet is the invoice's own.
+      if (seal && Number(seal.weddings) > 0) {
+        const facts = seal.delivery_days == null
+          ? `${seal.weddings} weddings`
+          : `${seal.weddings} weddings \u00b7 delivers in ${seal.delivery_days} days`;
+        doc.fontSize(7.5).fillColor('#777777').font('Helvetica')
+           .text('TDW-VERIFIED', startX, footY - 30,
+                 { width: pageWidth, align: 'center', characterSpacing: 1, lineBreak: false });
+        doc.fontSize(8.5).fillColor(COLOUR_GREY_DARK).font('Helvetica')
+           .text(facts, startX, footY - 17,
+                 { width: pageWidth, align: 'center', lineBreak: false });
+      }
+
       rule(footY);
       doc.fontSize(9).fillColor(COLOUR_GREY_LIGHT).font('Helvetica')
          .text(isCancelled

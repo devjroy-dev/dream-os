@@ -305,6 +305,42 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── G2 · REVIEWS + THE SEAL — nightly 3:20am IST (R-G2.5) ─────────────────
+  // TWO SWEEPS IN ONE JOB: the review ask, then the seal's recount. Ordered, and
+  // the order is stated at `reviewsNightly.js` rather than here.
+  //
+  // ── :20, AND THE MINUTE IS DERIVED ───────────────────────────────────────
+  // This band runs 03:00 (briefing) · 03:15 (bride nudge) · 03:45 (demo sunset) ·
+  // 04:15 (demo purge). :20 is free, alone in its slot, and it sits AFTER the
+  // 03:00 briefing on purpose: a vendor's morning read must never queue behind a
+  // sweep of every wedding page on the estate.
+  //
+  // ── THE ASK IS DARK AND THIS SCHEDULE DOES NOT CHANGE THAT ───────────────
+  // `reviewAsk.js` holds two gates and `REVIEW_ASK_SEND_ENABLED` is unset in
+  // every environment. This job therefore runs tonight, claims nothing it cannot
+  // send, and reports `asked=0 skipped=N` — which is the honest reading of a
+  // feature built dark, and is what the founder card witnesses by SELECT.
+  //
+  // ⚠ THE SEAL SWEEP IS **NOT** DARK. It writes `vendor_seal` from the first
+  // night, deliberately: the seal has no Meta dependency and no gate, and a
+  // storefront that only starts counting on the day a flag flips would show every
+  // vendor a zero on her first day. Named here so the asymmetry is a decision.
+  //
+  // NOTHING IS PASSED FOR EITHER SEAM: `runReviewsNightly`'s defaults ARE the
+  // real sweeps. The bench drives them by injection and asserts the production
+  // defaults by identity, so a harness can never quietly become what production
+  // runs (F-08.65's true-pipe law).
+  cron.schedule('20 3 * * *', async () => {
+    try {
+      const { runReviewsNightly } = require('./lib/vendor/reviewsNightly');
+      await runReviewsNightly(supabase);
+    } catch (err) {
+      console.error('[cron:reviewsNightly] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── RELAY EXPIRY SWEEP — hourly, :05 IST (TDW_06/07 M3) ───────────────────
   // №16, THE ESTATE'S FIRST CLOCK-SPEAKER. A vendor approved bride-facing bytes,
   // the estate rang her doorbell, and her 24 hours ran out in silence. Every

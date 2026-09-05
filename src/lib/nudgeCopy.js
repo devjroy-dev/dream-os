@@ -76,6 +76,23 @@ const NUDGE_COPY = {
   // the silence would now be lying in the other direction. The STOP-vs-STOP
   // MORNINGS distinction survives untouched; two opt-outs shipped in one block
   // still must not read as one.
+  // ── G2 · STRING 17 · RATIFIED VERBATIM (founder, R-40.42, 2026-09-05) ─────
+  // The reply to `Stop messages` — the custom quick reply on tdw_referral_invite
+  // (ledger B2), which F-19.08 found reaches our webhook and does nothing. This
+  // byte is what the handler says once the flag is written.
+  //
+  // PAST TENSE OF A THING ALREADY DONE, not a promise: `setNudgeOptout` runs
+  // BEFORE this goes out, so by the time she reads it, it is true.
+  //
+  // NO PERSONA NAME (copy law) · NO APOLOGY · NO "are you sure" — a stop that
+  // argues is not a stop. And it does not name The Dream Wedding: she may not
+  // remember us, and the vendor is who she thinks she is hearing from.
+  //
+  // ⚠ W-1 HOLDS. This is a keyword handler's fixed reply, not a soul byte: no
+  // model is called on this path and no prompt is touched.
+  couple_stop_confirmation:
+    "You won't get any more messages like this from us.",
+
   full_stop_confirmation:
     "You're opted out — I won't message you first about anything. If you write to me I'll still answer; reply START to turn messages back on. If you only wanted to pause the daily updates, reply START and then STOP MORNINGS instead.",
 

@@ -115,6 +115,9 @@ const router  = express.Router();
 // independent `|| '14787788550'` tails, one of which fell back to the wrong
 // lane entirely (F-05.23).
 const { ENQUIRE_BASE } = require('../../lib/discover/shapeVendor');
+// G2 · R-G2.9. The visibility rule is IMPORTED, never restated: `three` lives
+// once, beside the computation that produces the count it tests.
+const { sealIsVisible } = require('../../lib/vendor/seal');
 
 /**
  * THE WIRE SHAPE, DECLARED ONCE.
@@ -174,6 +177,13 @@ const CARD_KEYS = Object.freeze([
   'is_demo', 'enquiry_phone',
   'about', 'starting_price', 'photos',
   'enquire_link',
+  // ── G2 · R-G2.9 — THE SEAL JOINS THE WIRE, BY NAMED FIELD ────────────────
+  // The door grows by named fields only (P2-A §3-1), and `b44` §2.2/§3.5 diff
+  // this list, so the constant and its two cells move in one edit. `seal` is an
+  // OBJECT OR NULL, never a partially-filled shape: under three weddings there
+  // is no seal, and the wire says so by absence rather than by a flag the leaf
+  // has to interpret. See `sealFor` below.
+  'seal',
 ]);
 
 /**
@@ -182,6 +192,12 @@ const CARD_KEYS = Object.freeze([
  * could produce one, because these are the strings the queries are built from.
  */
 const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, about, rate_min, rate_display';
+// G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
+// `computed_at` is selected and WITHHELD — the page shows a fact, not an audit
+// trail, and "counted every night" is the room's sentence to the vendor, not the
+// couple's. Two of the three states this door's header names: fetched-and-sent,
+// and fetched-and-withheld.
+const SEAL_SELECT      = 'vendor_id, weddings, delivery_days, computed_at';
 const PORTFOLIO_SELECT = 'image_url, caption, is_hero, position';
 const DEMO_SELECT      = 'display_name, category, city, ig_handle, whatsapp_phone, active, about, photos';
 
@@ -249,7 +265,7 @@ function startingPrice(rate_display, rate_min) {
  *            about: string|null, starting_price: number|null,
  *            photos: Array<{url: string, caption: string|null, hero: boolean, position: number}>}}
  */
-function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link }) {
+function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal }) {
   return {
     business_name: business_name || null,
     category:      category      || null,
@@ -265,6 +281,36 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     // way to contact anyone, and no surface reads it. Named so the next reader
     // does not take two fields for two mechanisms.
     enquire_link:  enquire_link || null,
+    // G2 · an OBJECT or NULL. `sealFor` has already decided; the card does not
+    // second-guess it, exactly as it does not second-guess the portfolio's cap.
+    seal:          seal || null,
+  };
+}
+
+/**
+ * THE SEAL'S SHAPE, AND THE VISIBILITY RULE IS NOT DECIDED HERE.
+ *
+ * `sealIsVisible` lives in `src/lib/vendor/seal.js` with the computation, and it
+ * is imported rather than restated, because "three" appearing in two files is
+ * two homes for the rule and the second one is what ships a seal at two.
+ *
+ * ⚠ `computed_at` IS SELECTED AND WITHHELD. A couple reads a fact; the audit of
+ * when it was counted is the vendor's room's line ("Counted every night from
+ * your own weddings"), not hers. This is the fetched-and-withheld state the
+ * header's two-laws note names, and the third file on this door to use it.
+ *
+ * `delivery_days` MAY BE NULL and travels as null. A studio whose delivered
+ * pages are all back-catalogue has no measurable D, and the leaf renders the
+ * weddings count alone rather than inventing a number for the gap.
+ *
+ * NO RATING FIELD, R-G2.2: there is no source for one, and a null `rating` on
+ * the wire is an invitation to render an empty star row.
+ */
+function sealFor(row) {
+  if (!sealIsVisible(row)) return null;
+  return {
+    weddings:      Number(row.weddings),
+    delivery_days: row.delivery_days == null ? null : Number(row.delivery_days),
   };
 }
 
@@ -343,6 +389,25 @@ router.get('/:code', async (req, res) => {
         .order('created_at', { ascending: false });
       if (pErr) throw pErr;
 
+      // ── G2 · THE SEAL (R-G2.9) ────────────────────────────────────────────
+      // ONE READ, AND A FAILURE HERE NEVER COSTS HER THE PAGE. The seal is an
+      // ornament on a storefront whose job is to take an enquiry; a 500 because
+      // a nightly job has not run yet would trade the whole page for a badge.
+      // `maybeSingle` returns null for a vendor the sweep has never reached,
+      // which is the same outcome as under three weddings, which is the same
+      // outcome as an error — and all three mean the couple sees no seal.
+      let sealRow = null;
+      try {
+        const { data: sr } = await supabase
+          .from('vendor_seal')
+          .select(SEAL_SELECT)
+          .eq('vendor_id', v.id)
+          .maybeSingle();
+        sealRow = sr || null;
+      } catch (_sealErr) {
+        sealRow = null;
+      }
+
       return res.status(200).json({
         ok: true,
         card: card({
@@ -369,6 +434,7 @@ router.get('/:code', async (req, res) => {
           about:          v.about,
           starting_price: startingPrice(v.rate_display, v.rate_min),
           photos:         (rows || []).map(photo),
+          seal:           sealFor(sealRow),
         }),
       });
     }
@@ -444,5 +510,6 @@ router.get('/:code', async (req, res) => {
 module.exports = router;
 module.exports.CARD_KEYS = CARD_KEYS;
 module.exports.VENDOR_SELECT = VENDOR_SELECT;
+module.exports.SEAL_SELECT = SEAL_SELECT;   // G2 · R-G2.9, so b44 can diff it
 module.exports.PORTFOLIO_SELECT = PORTFOLIO_SELECT;
 module.exports.DEMO_SELECT = DEMO_SELECT;

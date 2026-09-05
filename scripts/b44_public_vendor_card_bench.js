@@ -135,6 +135,9 @@ const SELECT_FORBIDDEN = ['upi_id', 'gstin', 'pin_hash', 'rate_max',
 const SELECTS = [];   // every column list the door asked for
 const FILTERS = [];   // every filter the door applied, by table
 let VENDORS = [LIVE, HIDDEN, PAUSED, OFF];
+// G2 · the seal row the door reads. `computed_at` is present on purpose: it is
+// the FETCHED-AND-WITHHELD column, and §2.9 asserts it never reaches the wire.
+let SEAL = { vendor_id: 'v-live', weddings: 4, delivery_days: 34, computed_at: '2026-09-05T03:20:00Z' };
 let DEMOS   = [DEMO];
 
 function pick(row, cols) {
@@ -195,6 +198,14 @@ function fake() {
           if (q.cols === '*') return { data: { ...row }, error: null };
           return { data: pick(row, q.cols), error: null };
         }
+        // ── G2 · R-G2.9 · vendor_seal ────────────────────────────────────
+        // DECLARED, so the fake still refuses a table the door invents. SEAL is
+        // mutable per-cell below: null (never computed), under three, and at
+        // three, which are the three states the wire must distinguish.
+        if (table === 'vendor_seal') {
+          if (q.cols === '*') throw new Error('[fake] a star select reached vendor_seal');
+          return { data: SEAL ? pick(SEAL, q.cols) : null, error: null };
+        }
         throw new Error(`[fake] UNDECLARED TABLE READ: ${table}`);
       };
       return q;
@@ -217,8 +228,14 @@ const get = (p, headers) => new Promise((resolve, reject) => {
 });
 
 const B = '/api/v2/public/vendor-card';
+// ── G2 · R-G2.9 — THE LIST GROWS BY ONE NAMED FIELD, AND SO DOES THIS CELL ──
+// The door's header states the law this bench enforces: the door grows by named
+// fields only, and `CARD_KEYS` plus its two cells move in ONE edit. `seal` is
+// that edit. It is sorted into place rather than appended, because §2.1 and §2.2
+// both compare against the SORTED list.
 const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquire_link',
-                   'enquiry_phone', 'handle', 'is_demo', 'photos', 'starting_price'];
+                   'enquiry_phone', 'handle', 'is_demo', 'photos', 'seal',
+                   'starting_price'];
 
 (async () => {
   await new Promise((r) => { server = app.listen(0, '127.0.0.1', r); });
@@ -247,7 +264,7 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquire_link',
     else {
       const got = Object.keys(c).sort();
       chk(JSON.stringify(got) === JSON.stringify(CARD_WANT),
-          '§2.1 exactly the ten declared keys, no more no less', got.join(','));
+          '§2.1 exactly the eleven declared keys, no more no less', got.join(','));
       chk(JSON.stringify(door.CARD_KEYS.slice().sort()) === JSON.stringify(CARD_WANT),
           '§2.2 the door\u2019s exported CARD_KEYS matches the ruling\u2019s list', door.CARD_KEYS.join(','));
       const leaked = WIRE_FORBIDDEN.filter((k) => k in c);
@@ -267,7 +284,56 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquire_link',
       chk(c.starting_price === LIVE.rate_min,
           '§2.7 `starting_price` is the RUPEE integer off rate_min, never paise',
           `rate_min=${LIVE.rate_min} \u2192 sent ${c.starting_price}`);
+
+      // ── G2 · THE SEAL ON THE WIRE (R-G2.9) ────────────────────────────────
+      chk(c.seal && c.seal.weddings === 4 && c.seal.delivery_days === 34,
+          '§2.8 the seal reaches the wire as an object with its two facts',
+          JSON.stringify(c.seal));
+      // THE FETCHED-AND-WITHHELD STATE, WHICH IS THE THIRD ONE THIS DOOR'S
+      // HEADER NAMES. `computed_at` is selected — the door needs no second query
+      // to add it later — and never sent: a couple reads a fact, not an audit.
+      chk(c.seal && !('computed_at' in c.seal) && !('vendor_id' in c.seal),
+          '§2.9 `computed_at` and `vendor_id` are selected and WITHHELD',
+          Object.keys(c.seal || {}).join(','));
+      // NO RATING FIELD, R-G2.2. A null `rating` on the wire is an invitation to
+      // render an empty star row, and there is no source for a real one.
+      chk(c.seal && !('rating' in c.seal),
+          '§2.10 no `rating` field exists on the wire (R-G2.2)',
+          Object.keys(c.seal || {}).join(','));
     }
+  }
+
+  // ═══ §2b · THE SEAL'S THREE STATES — THE ABSENCE IS THE FEATURE ══════════
+  console.log('\n── §2b · the seal under three, and uncomputed ──');
+  {
+    const saved = SEAL;
+
+    SEAL = { vendor_id: 'v-live', weddings: 2, delivery_days: 30, computed_at: 'x' };
+    let r = await get(`${B}/dev440`);
+    let c = r.body && r.body.card;
+    chk(c && c.seal === null, '§2b.1 under three weddings the seal is null, not a partial object',
+        JSON.stringify(c && c.seal));
+    chk(c && Object.keys(c).sort().join(',') === CARD_WANT.join(','),
+        '§2b.2 the KEY is still present \u2014 absence is a null value, not a missing key',
+        Object.keys(c || {}).sort().join(','));
+
+    SEAL = null;
+    r = await get(`${B}/dev440`);
+    c = r.body && r.body.card;
+    chk(c && c.seal === null, '§2b.3 a vendor the nightly sweep has never reached gets null',
+        JSON.stringify(c && c.seal));
+    chk(r.status === 200 && c.business_name === LIVE.business_name,
+        '§2b.4 no seal never costs her the page \u2014 the card still serves',
+        `status=${r.status}`);
+
+    SEAL = { vendor_id: 'v-live', weddings: 3, delivery_days: null, computed_at: 'x' };
+    r = await get(`${B}/dev440`);
+    c = r.body && r.body.card;
+    chk(c && c.seal && c.seal.weddings === 3 && c.seal.delivery_days === null,
+        '§2b.5 an all-back-catalogue studio sends N with delivery_days null, never 0',
+        JSON.stringify(c && c.seal));
+
+    SEAL = saved;
   }
 
   // ═══ §3 · THE SELECT ITSELF — the cell a response cannot give you ════════
@@ -289,6 +355,18 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquire_link',
         forbiddenAsked.length ? 'ASKED: ' + forbiddenAsked.join(', ') : 'the query never sees them');
     chk(door.VENDOR_SELECT.split(',').map((s) => s.trim()).sort().join(',') === WANT.join(','),
         '§3.5 the door\u2019s exported VENDOR_SELECT agrees with the ruling', door.VENDOR_SELECT);
+
+    // ── THE SEAL SELECT, SAME TREATMENT (G2) ──────────────────────────────
+    const ss = SELECTS.filter((s) => s.table === 'vendor_seal');
+    const SWANT = ['computed_at', 'delivery_days', 'vendor_id', 'weddings'];
+    const sAsked = [...new Set(ss.flatMap((s) => s.cols.split(',').map((x) => x.trim())))].sort();
+    chk(ss.length > 0, '§3.10 a vendor_seal query was observed', `${ss.length} recorded`);
+    chk(JSON.stringify(sAsked) === JSON.stringify(SWANT),
+        '§3.11 the vendor_seal SELECT is exactly its four allowlisted columns', sAsked.join(','));
+    chk(!ss.some((s) => s.cols === '*'), '§3.12 no select(\u2018*\u2019) on vendor_seal, ever',
+        ss.some((s) => s.cols === '*') ? 'A STAR SELECT REACHED THE SEAL' : 'zero star selects');
+    chk(door.SEAL_SELECT.split(',').map((s) => s.trim()).sort().join(',') === SWANT.join(','),
+        '§3.13 the door\u2019s exported SEAL_SELECT agrees with the ruling', door.SEAL_SELECT);
 
     // ── THE PORTFOLIO SELECT, SAME TREATMENT ──────────────────────────────
     const ps = SELECTS.filter((s) => s.table === 'vendor_portfolio');

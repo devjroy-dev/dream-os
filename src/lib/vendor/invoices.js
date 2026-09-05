@@ -38,6 +38,10 @@
 
 'use strict';
 
+// G2 · R-G2.8. The seal's visibility rule is IMPORTED, never restated — `three`
+// lives once, beside the computation that produces the count it tests.
+const { sealIsVisible } = require('./seal');
+
 // ── THE TRANSITIONABLE SET · A POSITIVE LIST, NEVER A NEGATION  [F-39.8] ────
 // R-39.12 earned this on this exact table: `state <> 'paid'` reads every
 // UNKNOWN as included, the unknown being any state a future migration adds. So
@@ -429,7 +433,33 @@ async function invoicePdfSource(supabase, vendorId, invoiceId) {
     ? await invoiceScheduleRows(supabase, vendorId, invoiceId)
     : [];
 
-  return { ok: true, invoice, vendor, vendorName, schedule };
+  // ── G2 · THE SEAL (R-G2.8) ─────────────────────────────────────────────
+  // THE SIXTH READ, AND IT IS ADDED HERE RATHER THAN AT THE THREE CALL SITES
+  // BECAUSE THIS IS THE SOURCE HOME. The document has ONE renderer and THREE
+  // callers, and only this function is the typed source — the read-first found
+  // the other two assembling their own arguments, one of which does not pass
+  // `schedule` at all. Adding a sixth read to each would have been three homes
+  // for one question. The two hand-built callers pass `seal: null` EXPLICITLY,
+  // so a reader can tell "no seal for this render" from "nobody asked".
+  //
+  // `sealIsVisible` decides; this function does not know what three means. A
+  // failure here costs the seal, never the document: an invoice must render for
+  // a couple who is owed one whether or not a nightly job has run.
+  let seal = null;
+  try {
+    const { data: sr } = await supabase
+      .from('vendor_seal')
+      .select('weddings, delivery_days')
+      .eq('vendor_id', vendorId)
+      .maybeSingle();
+    if (sealIsVisible(sr)) {
+      seal = { weddings: Number(sr.weddings), delivery_days: sr.delivery_days == null ? null : Number(sr.delivery_days) };
+    }
+  } catch (_sealErr) {
+    seal = null;
+  }
+
+  return { ok: true, invoice, vendor, vendorName, schedule, seal };
 }
 
 // ── updateInvoicePdfUrl ───────────────────────────────────────────────────

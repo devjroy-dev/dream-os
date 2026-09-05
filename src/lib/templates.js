@@ -306,6 +306,87 @@ const TEMPLATES = {
     status: 'pending',
   },
 
+  // ── THE SEVENTH BLOCK-19 TEMPLATE — G2, R-G2.10 · THE REVIEW ASK ─────────
+  // ⚠ THIS ONE ALREADY EXISTS ON THE WABA AND HAS SINCE 2026-08-28. It is the
+  // first entry in this registry that was APPROVED BEFORE IT WAS REGISTERED:
+  // Meta id 1713996623186968 on Direct 1739793260373677, censused in
+  // docs/reports/TDW_19_G0_DERIVATIONS.md §3.1 row 3. Registering it is this
+  // seat's whole job on this entry; not one byte of it is authored here.
+  //
+  // ── PROVENANCE: THE LEDGER, NOT A LIVE GET (G0 §3, closing paragraph) ─────
+  // `docs/specs/TDW_19_P0A_LEDGER.md` B1 records the body and the button
+  // VERBATIM as APPROVED, and that record — not a `fields=components` call — is
+  // the authoring source, because the ledger was written at the create screen
+  // with the founder watching it. Both are transcribed below character for
+  // character. THE BUTTON TEXT IS `Write a Review` WITH A CAPITAL R: the
+  // pre-submission draft read lowercase, Meta locked the capitalised form, and
+  // the ledger's byte note says P1 authors from there.
+  //
+  // ── CATEGORY IS `MARKETING`, AND THAT IS THE TRUTH, NOT A CHOICE ──────────
+  // Submitted UTILITY, reclassified by Meta's classifier at the create screen,
+  // accepted by the founder (F-19.07, F-40.12). R-G2.10 REFUSED a fresh Utility
+  // submission — the classifier has moved this shape twice now, and a third
+  // attempt spends the founder's time to learn a thing the ledger already knows.
+  // A registry that recorded UTILITY here would be lying about a live template.
+  //
+  // ── WHAT MARKETING COSTS, AND WHERE THAT COST IS PAID ────────────────────
+  // A MARKETING send honours a per-recipient opt-out. The ledger's P1
+  // inheritance table makes that a CONDITION, not an open question. It is NOT
+  // paid here — `status` and `category` are documentation; the gate is the
+  // mechanism. It is paid in `src/lib/vendor/reviewAsk.js`, which routes through
+  // `sendWa` precisely so the opt-out gates run, and in the 'couple' lane this
+  // delivery adds to `nudgeOptout`.
+  //
+  // ── LINE IS 'bride' AND IT IS DERIVED, NOT DEFAULTED ─────────────────────
+  // The recipient is a COUPLE, and the couple's number in this estate is the
+  // bride lane's (BRIDE_PHONE_NUMBER_ID; `resolveFrom`/`phoneNumberIdFor` in
+  // sendWa.js). The doorbell templates one screen up carry `line: 'vendor'` for
+  // the opposite reason, stated there: they invite a reply onto the number that
+  // holds a waiting draft. Nothing waits on a review reply, and a couple who
+  // answers this should land where Mira's lane already knows her.
+  //
+  // ── THE BUTTON IS WHY `buildTemplatePayload` GREW AN ARM ─────────────────
+  // `button: { type:'url', index:0 }` below is READ BY THE BUILDER and is the
+  // first entry in this file to declare one. A dynamic URL button takes a
+  // send-time parameter; a quick reply does not, which is why
+  // `enquiry_update_couple`'s comment ("NO BUTTON COMPONENT IS SENT") is true
+  // there and does not cover this entry. See the builder at the foot of this file.
+  //
+  // ⚠ THE PARAMETER IS THE SUFFIX, NEVER THE FULL URL. Meta's sample field took
+  // `https://thedreamwedding.in/r/k7m2qp`; the API parameter at send time is
+  // `k7m2qp` alone. Sending the full URL yields
+  // `https://thedreamwedding.in/r/https://thedreamwedding.in/r/k7m2qp` — the
+  // ledger's AMENDMENT 1 send-shape note, named here so this entry inherits it
+  // rather than discovering it on a live send. `reviewAsk.js` passes the vendor's
+  // `routing_handle` lowercased and nothing else.
+  //
+  // [F-06.85: conditioned on Meta's review state — a MECHANICAL fact. Mechanism:
+  //  `isApproved` at the bottom of this file. If Meta pauses or reclassifies it,
+  //  `status` moves and the send refuses honestly with no other change.]
+  review_request: {
+    key: 'review_request',
+    name: 'tdw_review_request',
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',
+    category: 'MARKETING',
+    variables: ['couple', 'vendor'],
+    body:
+      'Hi {{1}}, thank you for choosing {{2}} for your wedding. ' +
+      'If you have a minute, a Google review would mean a lot to them.',
+    // The URL button, as APPROVED: base `https://thedreamwedding.in/r/`, one
+    // dynamic suffix. `base` is documentation — Meta holds it, the send never
+    // transmits it — and it is recorded so a reader can see what the suffix is
+    // appended to without opening the ledger.
+    button: {
+      type: 'url',
+      index: 0,
+      text: 'Write a Review',
+      base: 'https://thedreamwedding.in/r/',
+      variable: 'code',
+    },
+    status: 'approved',
+  },
+
   payment_reminder: {
     key: 'payment_reminder',
     // Meta name is tdw_payment_due (NOT tdw_payment_reminder) to avoid colliding with the
@@ -786,6 +867,27 @@ function isApproved(key) {
 // vars may be an array (positional) or an object keyed by the semantic variable names.
 // Throws a RangeError if the count doesn't match the template's declared variables —
 // a caller must supply exactly one value per {{n}}.
+//
+// ── G2 · THE URL-BUTTON ARM (R-G2.6) ───────────────────────────────────────
+// This builder emitted a BODY COMPONENT AND NOTHING ELSE for its whole life, and
+// that was correct for sixteen entries: fifteen carry no button, and the two
+// quick replies (`enquiry_update_couple`, `enquiry_reply_couple`) take no
+// send-time parameter — a fact their own comments derive from a live green send.
+//
+// A DYNAMIC URL BUTTON IS THE FIRST SHAPE THAT DOES. `tdw_review_request` is
+// approved with `base + {{1}}`, and Meta requires its suffix as its own
+// component. Without this arm the send omits it and the template's one call to
+// action goes nowhere.
+//
+// ⚠ IT IS OFF BY CONSTRUCTION FOR EVERY ENTRY THAT DECLARES NO BUTTON. The arm
+// is gated on `t.button`, which exactly one entry has. Sixteen payloads are
+// byte-identical before and after this change, and that is asserted by a cell
+// that snapshots all seventeen rather than by this sentence
+// (`scripts/b55_g2_reviews_bench.js` §1).
+//
+// THE VALUE IS THE SUFFIX. The builder does not know the base and never
+// concatenates one; if a caller hands it a full URL, Meta receives a doubled
+// address. `reviewAsk.js` is the only caller and it passes a routing handle.
 function buildTemplatePayload(key, vars) {
   const t = TEMPLATES[key];
   if (!t) throw new RangeError(`unknown template: ${key}`);
@@ -808,16 +910,33 @@ function buildTemplatePayload(key, vars) {
   }
 
   // Meta payload shape: { name, language:{code}, components:[{type:'body', parameters:[{type:'text', text}]}] }
-  return {
-    name: t.name,
-    language: { code: t.language },
-    components: declared.length
-      ? [{
-          type: 'body',
-          parameters: ordered.map((v) => ({ type: 'text', text: String(v) })),
-        }]
-      : [],
-  };
+  const components = declared.length
+    ? [{
+        type: 'body',
+        parameters: ordered.map((v) => ({ type: 'text', text: String(v) })),
+      }]
+    : [];
+
+  // The button component, when and only when the entry declares one. Its value
+  // is read from `vars` by the button's OWN variable name — never from the body's
+  // positional list, because the button's {{1}} and the body's {{1}} are two
+  // different variables that happen to share a number.
+  if (t.button && t.button.type === 'url') {
+    const supplied = (vars && !Array.isArray(vars)) ? vars[t.button.variable] : undefined;
+    if (supplied == null || String(supplied).length === 0) {
+      throw new RangeError(
+        `template ${key} declares a url button and requires '${t.button.variable}' (the SUFFIX, not a full URL)`
+      );
+    }
+    components.push({
+      type: 'button',
+      sub_type: 'url',
+      index: String(t.button.index == null ? 0 : t.button.index),
+      parameters: [{ type: 'text', text: String(supplied) }],
+    });
+  }
+
+  return { name: t.name, language: { code: t.language }, components };
 }
 
 // Build the Meta Cloud API `template` payload for an AUTHENTICATION-category template.

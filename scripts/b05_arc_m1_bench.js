@@ -277,10 +277,24 @@ t('§3.2 the bypass has ONE home — sendOutcome re-exports, never re-declares',
     'they must be the SAME object, not two objects that agree today');
 });
 
-t('§3.3 the four ack sites are BYTE-UNTOUCHED and still carry ACK_BYPASS (F-05.27 held)', () => {
+// ── LABELED AMENDMENT (BLOCK 19 G2), COUNT MOVED · RATIFY-OR-REVERT ─────────
+// THIS CELL READ `acks.length === 4`. G2 added a FIFTH ack on this lane — the
+// couple's `Stop messages` branch (F-19.08's cure) — and the cell reddened.
+//
+// THE PROPERTY IT EXISTS FOR IS THE SECOND LINE, NOT THE FIRST: every ack on the
+// bride lane carries ACK_BYPASS, because an acknowledgement the recipient never
+// receives reads as an opt-out that did not register (F-05.27). That property is
+// TRUE of all five and is asserted below unchanged.
+//
+// The count is a CENSUS of a file that is allowed to grow, and a census pinned to
+// a number reddens on lawful growth — the arc_m4 §4.1 disease, named one bench
+// over. It is kept rather than deleted because a count catches an ack site that
+// DISAPPEARS, which the loop cannot. So it moves to five, by label, with the
+// reason at the site, and the next lawful ack moves it again by the same route.
+t('§3.3 the five ack sites are BYTE-UNTOUCHED and still carry ACK_BYPASS (F-05.27 held)', () => {
   const bi = code('src/lib/brideInbound.js');
   const acks = bi.split('\n').filter(l => /sendWhatsApp\(phone, getNudgeCopy\(/.test(l));
-  assert.strictEqual(acks.length, 4, `expected the four ack sites verbatim, found ${acks.length}`);
+  assert.strictEqual(acks.length, 5, `expected the five ack sites verbatim, found ${acks.length}`);
   for (const l of acks) assert.ok(/ACK_BYPASS/.test(l), `an ack lost its bypass:\n       ${l.trim()}`);
 });
 

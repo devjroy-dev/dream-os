@@ -42,7 +42,7 @@
 // everything else; the acks keep the explicit constant they were built with.
 'use strict';
 
-const { matchNudgeWord, setNudgeOptout } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22
+const { matchNudgeWord, setNudgeOptout, matchStopMessages } = require('./nudgeOptout');   // TDW_05 P4 / F-05.22 · G2 F-19.08
 const { matchFullStopWord, recordFullStop, recordFullStart, ACK_BYPASS } = require('./fullStop'); // F-05.25 / F-05.27
 const { getNudgeCopy } = require('./nudgeCopy');
 const { turnKey, withTurnLock } = require('./turnLock');               // ARC M1 / F-05.41
@@ -137,6 +137,39 @@ async function _processBrideInbound(inputs, deps) {
         // Never let this branch swallow the turn silently. The write is attempted first,
         // so a failure here is most often the confirmation send — logged, not hidden.
         console.error('[bride-webhook] nudge-class branch error:', nudgeErr && nudgeErr.message);
+      }
+      return;
+    }
+
+    // ── G2 · F-19.08's CURE — THE COUPLE'S `Stop messages` (bride lane) ───
+    // SECOND, AND ITS POSITION IS THE WHOLE POINT. It must run BEFORE the full
+    // stop below, for the same reason the nudge branch does: `matchFullStopWord`
+    // reads the FIRST TOKEN ONLY, so `Stop messages` is `STOP` to it, and the
+    // full stop is TERMINAL and CROSS-LINE. Left to fall through, a couple who
+    // tapped the button on `tdw_referral_invite` was recorded as a permanent
+    // all-lanes opt-out — which also silences her own vendor's enquiry replies
+    // to her. That has been the live behaviour since 2026-08-28.
+    //
+    // ⚠ IT IS A PAUSE, NOT A STOP, AND THAT IS THE BUTTON'S OWN PROMISE. The
+    // approved byte says `Stop messages` — messages of that kind, from us. It
+    // does not say "stop everything", and it is not the estate's terminal word.
+    // So it writes `nudge_optout(phone, 'couple')`: lane-scoped, reversible, and
+    // read by the review-ask cron before it sends (R-G2.7).
+    //
+    // THE WRITE HAPPENS FIRST, THE ACKNOWLEDGEMENT SECOND — so the byte's past
+    // tense is true by the time she reads it. The confirmation rides ACK_BYPASS
+    // for the reason its two siblings state: an acknowledgement the recipient
+    // never receives reads as an opt-out that did not register.
+    if (matchStopMessages(trimmedBody)) {
+      try {
+        await setNudgeOptout({
+          supabase, phone, lane: 'couple',
+          state: 'opted_out', source: 'inbound_stop_messages',
+        });
+        await sendWhatsApp(phone, getNudgeCopy('couple_stop_confirmation'), [], undefined, ACK_BYPASS);
+        console.log(`[bride-webhook] couple marketing PAUSE recorded for ${phone} (lane=couple)`);
+      } catch (stopMsgErr) {
+        console.error('[bride-webhook] couple-stop branch error:', stopMsgErr && stopMsgErr.message);
       }
       return;
     }

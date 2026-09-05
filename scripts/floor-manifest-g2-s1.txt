@@ -1,0 +1,22 @@
+# scripts/floor-manifest-g2-s1.txt
+# BLOCK 19 · G2 SITTING 1 — the delivery manifest, F-14.16's declared dirt.
+# Base: dream-os main 5e5c230. Every path below is authored by this delivery.
+db/migrations/0134_reviews_and_seal.sql
+docs/sql/F40_98_stop_messages_census.sql
+scripts/b44_public_vendor_card_bench.js
+scripts/b05_arc_m1_bench.js
+scripts/b55_g2_reviews_bench.js
+scripts/floor-manifest-g2-s1.txt
+src/api/public/vendorCard.js
+src/api/vendor/invoices.js
+src/api/vendor/money.js
+src/cron.js
+src/lib/brideInbound.js
+src/lib/invoicePdf.js
+src/lib/nudgeCopy.js
+src/lib/nudgeOptout.js
+src/lib/templates.js
+src/lib/vendor/invoices.js
+src/lib/vendor/reviewAsk.js
+src/lib/vendor/reviewsNightly.js
+src/lib/vendor/seal.js
