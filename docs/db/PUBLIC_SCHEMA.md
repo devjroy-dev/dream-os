@@ -1,22 +1,20 @@
 # docs/db/PUBLIC_SCHEMA.md — the `public` schema, WITNESSED PROD SNAPSHOT
 
-**Snapshot taken:** 2026-08-28, founder-run in the Supabase SQL editor, output handed back as CSV and formatted by script. **71 tables, 807 columns.**
-**Applied ladder tip at snapshot:** `0129` — stated in the header so this file's staleness is a readable fact, never archaeology. The prior snapshot (2026-08-15, 70 tables, tip `0125`) went **4 migrations stale** before this regen measured it.
-**Repo tip at authoring:** `aeca43f` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
-**Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0129` across 113 files, and it is not contiguous: **16 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
+**Snapshot taken:** 2026-09-05, founder-run in the Supabase SQL editor, output handed back as CSV and formatted by script. **74 tables, 841 columns.**
+**Applied ladder tip at snapshot:** `0132` — stated in the header so this file's staleness is a readable fact, never archaeology. The prior snapshot (2026-08-28, 71 tables, tip `0129`) went **3 migrations stale** before this regen measured it.
+**Repo tip at authoring:** `286cdb4` — the commit the generator ran from, so a reader can reproduce this file rather than trust it.
+**Standing holes in the ladder, named so their silence is not misread.** The numbering runs `0001`–`0132` across 116 files, and it is not contiguous: **16 numbers carry no file anywhere in `db/migrations/`** — `0024`, `0026`, `0027`, `0029`, `0037`, `0038`, `0058`, `0079`, `0089`, `0091`, `0092`, `0093`, `0094`, `0095`, `0097`, `0113`; **1 sits in `db/migrations/archive/`** — `0068`; **1 file carries no number at all** — `MAYA_MODEL_FLIP_FORMS.sql` — and therefore sits outside the ordering, outside the staleness arithmetic above, and outside any reader's sense of "what came last". **This states what the tree holds, not what happened.** A number with no file may never have been written or may have been withdrawn before it landed; a directory listing cannot tell those apart and this line does not pretend to. What it does establish is that a gap here is **not** an unapplied migration waiting to run.
 **⏳ HOW TO TELL WHETHER THIS DOCUMENT IS STILL TRUE.** If `db/migrations/` holds any file newer than the ladder tip named above, **this document is STALE for any table those migrations touch — the migration is the witness until regen.** Check the directory before you cite a column from this file. F-09.185 is what happens otherwise: a committed handover asserted `public.messages` at 18 columns on this document's word, while `0105` had made it 20 and the document said nothing.
 
 **⚠ THE RULE ABOVE HAS A BLIND SPOT, AND EVERY MIGRATION THAT ENTERS IT MUST NAME ITSELF IN THE REGISTER BELOW (F-SW.3, ruled CE-32).** "Newer than the ladder tip" is an ARITHMETIC test, and this estate holds 16 reserved-but-empty numbers *below* its tip (listed above). A migration filling one of them lands AFTER the tip in time and BEFORE it in number, so it does not trip the check and this document goes on answering confidently about a table it no longer describes. **The standing cure is that such a migration adds a record to `db/migrations/OUT_OF_ORDER.json` in the same delivery, naming itself and the tables it touches — NOT a hand-edited line here. This header is GENERATED, and a hand-edit to it is deleted by the next regen without warning.** **A reader who checks only the arithmetic will be wrong; read this list too.**
 
-| out-of-order migration | tables it makes this document STALE for | state |
-|---|---|---|
-| `0090_engagements.sql` (Creates **`public.engagements`** — the TDW_16 P1 spine: one row per (couple, vendor, category) relationship, with `enquiry_id` / `couple_booking_id` / `lead_id` soft refs and a unique key on the triple. Backfilled from `couple_enquiries` ONLY (2 rows); no booking-side rows exist to mint from, because `couple_bookings.vendor_id` has never had a writer (F-16.6, censused at 0 of 6).) | **`engagements`** — absent from the snapshot entirely, so this document does not merely *misdescribe* the table, it denies it exists. Also reprices `couple_bookings` and `couple_enquiries` as the spine's linked artifacts, though neither table's own columns are altered here. | OUTSTANDING — awaiting the next PAIR regen (`db/queries/public_schema_dump.sql` founder-run, piped through `db/queries/format_public_schema.js`). Remove this record only once the regenerated body below the header actually describes `public.engagements`. |
+_No out-of-order migration is outstanding at this snapshot._
 
 **Project:** `nvzkbagqxbysoeszxent` (PRODUCTION). **Role: NOT WITNESSED** — the executor did not see this run's editor chrome and names that rather than assert it.
 **Generated by:** the PAIR — `db/queries/public_schema_dump.sql` (founder-run in the SQL editor) piped through `db/queries/format_public_schema.js` (formatter + cap guard). **Re-running the SQL alone does NOT regenerate this file; both halves of the pipe must run.**
 **NEVER HAND-EDIT.** A hand-edited snapshot is prose again, and prose is what this file exists to kill.
 
-**THE GUARD PASSES.** The dump's self-computing `tables_expected` read **71**; the result carried **71** rows. Equal ⇒ the editor's row cap did not truncate this snapshot (F-04.29's disease, made self-detecting). The guard was re-run mechanically at format time, not eyeballed — a capped CSV exits nonzero without writing.
+**THE GUARD PASSES.** The dump's self-computing `tables_expected` read **74**; the result carried **74** rows. Equal ⇒ the editor's row cap did not truncate this snapshot (F-04.29's disease, made self-detecting). The guard was re-run mechanically at format time, not eyeballed — a capped CSV exits nonzero without writing.
 
 **THE NEAR-MISS THIS HEADER EXISTS TO PREVENT.** At CE-63 an opt-out migration was nearly drafted against a snapshot that predated `prospects` — the very table the opt-out gate reads. The doc looked complete; only the ladder tip, printed above, made its staleness visible. A reference that is silently twenty migrations behind does not announce itself: it answers confidently and wrongly.
 
@@ -26,7 +24,7 @@
 
 **WHERE THE TYPE COMES FROM.** Name, nullability and default are `information_schema.columns`. **The type is `format_type(a.atttypid, a.atttypmod)` from `pg_catalog`** (CE-32) — because `information_schema` renders every array as the bare word `ARRAY` and carries the element type nowhere, so five columns on this plane witnessed as `ARRAY` for the whole life of this document and a reader could not tell `text[]` from `uuid[]` without guessing. `format_type` prints what the database itself would print. It also carries modifiers `information_schema` drops, so a type here may be fuller than a reader remembers — `numeric(p,s)` rather than `numeric`. That is the fix working, not drift.
 
-**Ordinal gaps are not errors.** A hole is a dropped column's fingerprint. In this snapshot 8 tables carry one — `clients` skips ordinal 12 of 13; `couple_tasks` skips ordinal 5 of 10; `events` skips ordinal 13 of 19; `expenses` skips ordinal 12 of 13; `invoices` skips ordinal 18 of 22; `leads` skips ordinal 19 of 28; `vendor_portfolio` skips ordinal 9 of 15; `vendors` skips ordinals 35, 36, 37, 38, 39, 40, 41, 42 of 53. A gap is not an absence, and this list is derived from the rows below on every regen rather than remembered.
+**Ordinal gaps are not errors.** A hole is a dropped column's fingerprint. In this snapshot 8 tables carry one — `clients` skips ordinal 12 of 13; `couple_tasks` skips ordinal 5 of 10; `events` skips ordinal 13 of 19; `expenses` skips ordinal 12 of 13; `invoices` skips ordinal 18 of 22; `leads` skips ordinal 19 of 28; `vendor_portfolio` skips ordinal 9 of 15; `vendors` skips ordinals 35, 36, 37, 38, 39, 40, 41, 42 of 57. A gap is not an absence, and this list is derived from the rows below on every regen rather than remembered.
 
 ---
 
@@ -361,7 +359,7 @@
 10. updated_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.couples  ·  23 columns
+## public.couples  ·  24 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -387,6 +385,7 @@
 21. functions text
 22. residence_city text
 23. wedding_style text
+24. publish_weddings boolean NOT NULL default false
 ```
 
 ## public.couture_appointments  ·  13 columns
@@ -1128,7 +1127,7 @@
 7. updated_at timestamp with time zone NOT NULL default now()
 ```
 
-## public.vendors  ·  45 columns
+## public.vendors  ·  49 columns
 
 ```
 1. id uuid NOT NULL default uuid_generate_v4()
@@ -1176,6 +1175,10 @@
 51. razorpay_subscription_link text
 52. service_area text
 53. service_cities text[]
+54. account_name text
+55. account_number text
+56. ifsc text
+57. address text
 ```
 
 ## public.waitlist_signups  ·  9 columns
@@ -1192,20 +1195,64 @@
 9. updated_at timestamp with time zone NOT NULL default now()
 ```
 
+## public.wedding_credits  ·  10 columns
+
+```
+1. id uuid NOT NULL default uuid_generate_v4()
+2. wedding_id uuid NOT NULL
+3. role text NOT NULL
+4. vendor_id uuid
+5. phone text
+6. name text
+7. status text NOT NULL default 'tagged'::text
+8. claim_token uuid NOT NULL default uuid_generate_v4()
+9. created_at timestamp with time zone NOT NULL default now()
+10. updated_at timestamp with time zone NOT NULL default now()
+```
+
+## public.wedding_photos  ·  6 columns
+
+```
+1. id uuid NOT NULL default uuid_generate_v4()
+2. wedding_id uuid NOT NULL
+3. url text NOT NULL
+4. public_id text NOT NULL
+5. position integer NOT NULL default 0
+6. created_at timestamp with time zone NOT NULL default now()
+```
+
+## public.weddings  ·  13 columns
+
+```
+1. id uuid NOT NULL default uuid_generate_v4()
+2. owner_vendor_id uuid NOT NULL
+3. event_id uuid
+4. slug text NOT NULL
+5. title text NOT NULL
+6. venue text
+7. city text
+8. delivered_at timestamp with time zone
+9. couple_consent boolean NOT NULL default false
+10. visibility text NOT NULL default 'draft'::text
+11. created_at timestamp with time zone NOT NULL default now()
+12. updated_at timestamp with time zone NOT NULL default now()
+13. couple_id uuid
+```
+
 <!-- CONSTRAINTS-ADDENDUM:BEGIN — generated by db/queries/append_constraints_to_public_schema.js. Everything below this line is script-written. Do not hand-edit. -->
 
 ---
 
 # CONSTRAINTS ADDENDUM — what the `public` schema REFUSES
 
-**Snapshot taken:** 2026-08-28, founder-run in the Supabase SQL editor, output handed back verbatim.
-**Applied ladder tip at snapshot:** `0129`. **Repo tip at authoring:** `aeca43f`.
+**Snapshot taken:** 2026-09-05, founder-run in the Supabase SQL editor, output handed back verbatim.
+**Applied ladder tip at snapshot:** `0132`. **Repo tip at authoring:** `286cdb4`.
 **⏳ STALENESS CHECK — same law as the column snapshot above.** If `db/migrations/` holds any file newer than the ladder tip named here, **this addendum is STALE for any table those migrations touch.** A constraint is exactly as capable of going quietly out of date as a column: `0123` rewrote both `collab` `requirement_type` CHECKs, and a reader citing a pre-`0123` addendum would have offered a vendor a category the database now refuses.
 **Project / role:** `nvzkbagqxbysoeszxent` / `main` (PRODUCTION), role `postgres`.
 **Generated by:** `db/queries/append_constraints_to_public_schema.js` from `db/queries/public_constraints_dump.sql`'s three sections. **Regenerate on demand by re-running both.**
 **NEVER HAND-EDIT.** The generator refuses a capped result and refuses a result set without its guard column; hand-editing routes around both.
 
-**THE GUARD PASSED, ALL THREE SECTIONS.** §1 **178/178** · §2 **109/109** · §3 **258/258**. Rows returned == `rows_expected` ⇒ the editor's row cap did not truncate. (F-04.29's disease, made self-detecting. These counts are the facts the sections exist to establish, so they cannot be asserted in advance — the database computes them. The engine twin carried a hardcoded *"confirm 25 rows"* until CE-32 retired it for the same reason.)
+**THE GUARD PASSED, ALL THREE SECTIONS.** §1 **186/186** · §2 **115/115** · §3 **270/270**. Rows returned == `rows_expected` ⇒ the editor's row cap did not truncate. (F-04.29's disease, made self-detecting. These counts are the facts the sections exist to establish, so they cannot be asserted in advance — the database computes them. The engine twin carried a hardcoded *"confirm 25 rows"* until CE-32 retired it for the same reason.)
 
 **WHY THIS ADDENDUM EXISTS.** The column snapshot above answers *"what columns exist, of what type."* It is drawn from `information_schema.columns`, which yields name, type, nullability and default — **and nothing else.** It does not answer ***"what values are legal."*** That file's own scope note names the gap: `events.kind`'s CHECK, `events.slot`'s CHECK and `0075`'s UNIQUE partial index were **real and invisible** there. The occupancy checker rides on all three. *Founder-run SQL is written ONLY against witnessed lists — and a constraint is a fact about the schema exactly as much as a column is.*
 
@@ -1215,7 +1262,7 @@
 
 ---
 
-## §1 — CHECK / UNIQUE / PRIMARY KEY  ·  178 constraints
+## §1 — CHECK / UNIQUE / PRIMARY KEY  ·  186 constraints
 
 ### public.admin_activity_log
 
@@ -1928,9 +1975,40 @@
     PRIMARY KEY (id)
 ```
 
+### public.wedding_credits
+
+```
+[CHECK] wedding_credits_role_check
+    CHECK ((role = ANY (ARRAY['shot_by'::text, 'makeup'::text, 'hair'::text, 'decor'::text, 'mehendi'::text, 'planner'::text, 'styled_by'::text, 'wearing'::text, 'model'::text, 'venue'::text])))
+[CHECK] wedding_credits_status_check
+    CHECK ((status = ANY (ARRAY['tagged'::text, 'claimed'::text, 'declined'::text])))
+[PRIMARY KEY] wedding_credits_pkey
+    PRIMARY KEY (id)
+[UNIQUE] wedding_credits_claim_token_key
+    UNIQUE (claim_token)
+```
+
+### public.wedding_photos
+
+```
+[PRIMARY KEY] wedding_photos_pkey
+    PRIMARY KEY (id)
+```
+
+### public.weddings
+
+```
+[CHECK] weddings_visibility_check
+    CHECK ((visibility = ANY (ARRAY['draft'::text, 'published'::text])))
+[PRIMARY KEY] weddings_pkey
+    PRIMARY KEY (id)
+[UNIQUE] weddings_owner_slug_key
+    UNIQUE (owner_vendor_id, slug)
+```
+
 ---
 
-## §2 — FOREIGN KEYS  ·  109 constraints
+## §2 — FOREIGN KEYS  ·  115 constraints
 
 ### public.billing_events
 
@@ -2415,9 +2493,36 @@ vendors_user_id_fkey
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ```
 
+### public.wedding_credits
+
+```
+wedding_credits_vendor_id_fkey
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+wedding_credits_wedding_id_fkey
+    FOREIGN KEY (wedding_id) REFERENCES weddings(id) ON DELETE CASCADE
+```
+
+### public.wedding_photos
+
+```
+wedding_photos_wedding_id_fkey
+    FOREIGN KEY (wedding_id) REFERENCES weddings(id) ON DELETE CASCADE
+```
+
+### public.weddings
+
+```
+weddings_couple_id_fkey
+    FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE SET NULL
+weddings_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+weddings_owner_vendor_id_fkey
+    FOREIGN KEY (owner_vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
+```
+
 ---
 
-## §3 — INDEXES  ·  258 indexes
+## §3 — INDEXES  ·  270 indexes
 
 ### public.admin_activity_log
 
@@ -3288,6 +3393,45 @@ waitlist_signups_new_recent_idx
     CREATE INDEX waitlist_signups_new_recent_idx ON public.waitlist_signups USING btree (created_at DESC) WHERE (status = 'new'::text)
 waitlist_signups_pkey
     CREATE UNIQUE INDEX waitlist_signups_pkey ON public.waitlist_signups USING btree (id)
+```
+
+### public.wedding_credits
+
+```
+idx_wedding_credits_vendor
+    CREATE INDEX idx_wedding_credits_vendor ON public.wedding_credits USING btree (vendor_id)
+idx_wedding_credits_wedding
+    CREATE INDEX idx_wedding_credits_wedding ON public.wedding_credits USING btree (wedding_id)
+wedding_credits_claim_token_key
+    CREATE UNIQUE INDEX wedding_credits_claim_token_key ON public.wedding_credits USING btree (claim_token)
+wedding_credits_pkey
+    CREATE UNIQUE INDEX wedding_credits_pkey ON public.wedding_credits USING btree (id)
+```
+
+### public.wedding_photos
+
+```
+idx_wedding_photos_wedding
+    CREATE INDEX idx_wedding_photos_wedding ON public.wedding_photos USING btree (wedding_id, "position")
+wedding_photos_pkey
+    CREATE UNIQUE INDEX wedding_photos_pkey ON public.wedding_photos USING btree (id)
+```
+
+### public.weddings
+
+```
+idx_weddings_couple
+    CREATE INDEX idx_weddings_couple ON public.weddings USING btree (couple_id) WHERE (couple_id IS NOT NULL)
+idx_weddings_event
+    CREATE INDEX idx_weddings_event ON public.weddings USING btree (event_id)
+idx_weddings_live
+    CREATE INDEX idx_weddings_live ON public.weddings USING btree (owner_vendor_id, slug) WHERE ((visibility = 'published'::text) AND (couple_consent = true))
+idx_weddings_owner
+    CREATE INDEX idx_weddings_owner ON public.weddings USING btree (owner_vendor_id)
+weddings_owner_slug_key
+    CREATE UNIQUE INDEX weddings_owner_slug_key ON public.weddings USING btree (owner_vendor_id, slug)
+weddings_pkey
+    CREATE UNIQUE INDEX weddings_pkey ON public.weddings USING btree (id)
 ```
 
 <!-- CONSTRAINTS-ADDENDUM:END -->
