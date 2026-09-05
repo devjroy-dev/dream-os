@@ -1,0 +1,7 @@
+# scripts/floor-manifest-g2-s1b.txt
+# BLOCK 19 · G2 SITTING 1 · ZIP 1b — the room's read door. F-14.16's declared dirt.
+# Base: dream-os main 06c9c7e.
+scripts/b55_g2_reviews_bench.js
+scripts/floor-manifest-g2-s1b.txt
+src/api/vendor/solutions/contract.js
+src/api/vendor/solutions/index.js

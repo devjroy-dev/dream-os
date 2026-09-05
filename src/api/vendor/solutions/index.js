@@ -170,6 +170,117 @@ router.get('/google', requireAuth, resolveVendor(), asyncHandler(async (req, res
 }));
 
 // ═══════════════════════════════════════════════════════════════════════════
+// GET /google-reviews  —  G2 SITTING 1, ZIP 1b · THE ROOM'S ONE READ
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠ THIS IS THE FIRST DOOR IN THIS ROUTER THAT READS A TABLE, and the header's
+// standing sentence — *"NO TABLE IS READ. NO COLUMN IS NAMED. NO DDL EXISTS."* —
+// is true of the eight doors above it and is no longer true of this file whole.
+// Amended at the site rather than left to rot: `0134` is APPLIED IN PRODUCTION,
+// so `reviews_asked` and `vendor_seal` exist, and the room they feed shows real
+// numbers or it is a lying surface. The eight doors above still read nothing.
+//
+// ── WHY IT EXISTS AT ALL, OWNED ───────────────────────────────────────────
+// G2's sitting-1 plan shipped the planes, the job and the send without a
+// vendor-facing read. The room would have rendered four bands off no data. The
+// chair ruled the door ships as its own micro BEFORE the pwa half, and this is
+// it: ONE GET, NO WRITER. Nothing here mutates anything.
+//
+// ── COLUMN WITNESS · SQL-PROVENANCE ──────────────────────────────────────
+// ⚠ `docs/db/PUBLIC_SCHEMA.md` DESCRIBES NEITHER TABLE. Its snapshot tip is
+// `0132`; the ladder now holds `0135`. Under the header's own staleness rule the
+// document is STALE for anything `0133`–`0135` touched, and `0134` is the SOLE
+// WITNESS for both tables read below until the PAIR regen runs. Cited by line:
+//   db/migrations/0134_reviews_and_seal.sql
+//     public.reviews_asked  couple_id · wedding_id · vendor_id · asked_at
+//                           UNIQUE (couple_id) — the once-ever key
+//     public.vendor_seal    vendor_id PK · weddings · delivery_days · computed_at
+//   public.weddings.title   0131:57, and docs/db/PUBLIC_SCHEMA.md:1228 (col 5)
+//   public.couples.user_id  docs/db/PUBLIC_SCHEMA.md:365 (col 2)
+//   public.users.name       docs/db/PUBLIC_SCHEMA.md:1012 (col 3)
+//
+// ── `landedCount` IS HARD ZERO, AND IT IS THE TRUTH, NOT A STUB ──────────
+// A review "lands" when Google returns it, and nothing in this estate can read
+// Google before 2026-10-27 plus a quota grant. There is no reviews table because
+// there is nothing to put in one (R-G2.2 struck the rating for the same reason).
+// So this field is a literal, and the room's own string — *"Reviews appear here
+// once your Google listing is connected"* — is what stops it reading as broken.
+// When the source arrives, this line gains a query and the shape does not move.
+//
+// ── `sendEnabled` REPORTS THE GATE, IT DOES NOT OPEN IT ──────────────────
+// Read from `reviewAsk.sendGate()`, the same function the send consults, so the
+// room cannot claim a state the send path disagrees with. It is `false` in every
+// environment today.
+router.get('/google-reviews', requireAuth, resolveVendor(), asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { sealIsVisible } = require('../../../lib/vendor/seal');
+  const { sendGate }      = require('../../../lib/vendor/reviewAsk');
+
+  // WHAT WAS ASKED, THIS STUDIO'S ONLY. Scoped `.eq('vendor_id', req.vendor.id)`
+  // and nothing else — a room that could be handed another studio's asks would
+  // be a capability leak wearing a filter.
+  const { data: askRows, error: aErr } = await supabase
+    .from('reviews_asked')
+    .select('asked_at, weddings(title), couples(user_id)')
+    .eq('vendor_id', req.vendor.id)
+    .order('asked_at', { ascending: false });
+  if (aErr) return errRes(res, 500, 'Could not read your review requests.');
+
+  // HER NAME COSTS ONE MORE READ AND IT IS WORTH IT. The room lists couples, and
+  // a list of dates with no names is a log, not a room. Batched by user_id rather
+  // than one query per row.
+  const userIds = [...new Set((askRows || []).map((r) => r.couples && r.couples.user_id).filter(Boolean))];
+  const names = new Map();
+  if (userIds.length) {
+    const { data: us } = await supabase.from('users').select('id, name').in('id', userIds);
+    for (const u of (us || [])) names.set(u.id, u.name);
+  }
+
+  const asked = (askRows || []).map((r) => ({
+    // `null` where a name is genuinely absent. The pwa renders its own fallback;
+    // this door does not invent 'there' or 'a couple' — an invented name on a
+    // vendor's screen is a fact she cannot check.
+    coupleName:   (r.couples && names.get(r.couples.user_id)) || null,
+    weddingTitle: (r.weddings && r.weddings.title) || null,
+    askedAt:      r.asked_at,
+  }));
+
+  // THE SEAL, THROUGH ITS ONE VISIBILITY RULE. `sealIsVisible` is imported, never
+  // restated — `three` lives once, beside the computation.
+  let seal = null;
+  try {
+    const { data: sr } = await supabase
+      .from('vendor_seal')
+      .select('weddings, delivery_days')
+      .eq('vendor_id', req.vendor.id)
+      .maybeSingle();
+    if (sealIsVisible(sr)) {
+      seal = {
+        weddings:     Number(sr.weddings),
+        deliveryDays: sr.delivery_days == null ? null : Number(sr.delivery_days),
+      };
+    }
+  } catch (_e) {
+    // A seal that cannot be read must not cost her the room. Same posture the
+    // public card door takes, for the same reason.
+    seal = null;
+  }
+
+  return sendShaped(res, 'GoogleReviewsRoom', {
+    asked,
+    askedCount:  asked.length,
+    landedCount: 0,
+    seal,
+    // ONE HOME FOR THE DATE, and it is a constant rather than a computed
+    // "60 days from verification": the profile was verified 2026-08-28 and the
+    // arithmetic is done, so a live computation would be a second way to get a
+    // number we already know. When it passes, the row goes live and this field
+    // retires with the band it feeds.
+    gbpAvailableFrom: '2026-10-27',
+    sendEnabled:      sendGate().open,
+  }, 'googleReviews');
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════
 // GET /domain  (spec §5)
 // ═══════════════════════════════════════════════════════════════════════════
 // R-19.4 as amended by CE-38 relay #1 item 4:

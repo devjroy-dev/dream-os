@@ -180,6 +180,28 @@ const SHAPES = Object.freeze({
   ProofDoc:           ['kind', 'status', 'url', 'generatedAt'],
   Benchmark:          ['metric', 'mine', 'median', 'direction'],
   BenchmarksReport:   ['city', 'category', 'cohort', 'metrics'],
+
+  // ── G2 · THE GOOGLE REVIEWS ROOM (R-G2 sitting 1, ZIP 1b) ────────────────
+  // ⚠ ADDING A SHAPE MOVES THIS FILE'S DIGEST, AND THAT IS THE MIRROR WORKING.
+  // `CONTRACT_DIGEST` below moves with it; `dreamos-pwa/lib/solutions/types.ts`
+  // carries the twin literal and moves in the pwa ZIP that lands next. Between
+  // the two applies the two literals DIFFER — which is exactly the one-line diff
+  // this header says a reader cannot miss, not an error state. The two ZIPs are
+  // applied back to back and the window closes with the second.
+  //
+  // WHY A NEW SHAPE RATHER THAN FIELDS ON `GoogleStatus`: that shape is P1's —
+  // the OAuth connection, the sync, the quota gate — and it answers a question
+  // this room does not ask. Widening it would have made one payload mean two
+  // things and forced the room to read past six fields it never uses. Either
+  // choice moves the digest, so the digest is not what decides this.
+  //
+  // `asked` is a LIST OF `ReviewAsk`, validated element-wise by `sendShaped`'s
+  // list sibling. `seal` is an object OR NULL and the shape validator does not
+  // walk into it — named here rather than implied, because a nested shape this
+  // file does not check is a boundary D-38.1 says must be stated.
+  ReviewAsk:          ['coupleName', 'weddingTitle', 'askedAt'],
+  GoogleReviewsRoom:  ['asked', 'askedCount', 'landedCount', 'seal',
+                       'gbpAvailableFrom', 'sendEnabled'],
 });
 
 /**
@@ -227,7 +249,7 @@ function computeDigest() {
  * Derived, never typed from memory:
  *   node -e "console.log(require('./src/api/vendor/solutions/contract.js').computeDigest())"
  */
-const CONTRACT_DIGEST = 'e31a1a2414ee3cb6e95a83c2fbb536cf80a20df4f4f614098e7e6b663b55f650';
+const CONTRACT_DIGEST = '9dec81f452f9511384a5b8d9b9867836e49277843f11735e64d089105523d183';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SHAPE() — every door runs this before it responds

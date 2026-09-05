@@ -381,6 +381,83 @@ cell('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', ()
     return true;
   });
 
+  // ═══ §8 · THE ROOM'S READ DOOR (ZIP 1b) ═════════════════════════════════
+  sec('\u00a78 \u00b7 GET /google-reviews \u2014 one read, no writer');
+
+  const C = fresh('src/api/vendor/solutions/contract.js');
+
+  cell('the contract digest is self-consistent after the shape was added', () =>
+    C.computeDigest() === C.CONTRACT_DIGEST ? true
+      : `computed ${C.computeDigest()} \u2260 literal ${C.CONTRACT_DIGEST}`);
+
+  cell('the room\u2019s payload passes its own shape', () => {
+    const v = C.shape('GoogleReviewsRoom', {
+      asked: [], askedCount: 0, landedCount: 0, seal: null,
+      gbpAvailableFrom: '2026-10-27', sendEnabled: false,
+    });
+    return v.ok ? true : JSON.stringify(v);
+  });
+
+  cell('the shape REFUSES an extra field \u2014 P3\u2019s lesson, still armed', () => {
+    const v = C.shape('GoogleReviewsRoom', {
+      asked: [], askedCount: 0, landedCount: 0, seal: null,
+      gbpAvailableFrom: '2026-10-27', sendEnabled: false, rating: 4.8,
+    });
+    return v.ok === false ? true : 'a rating field passed the contract';
+  });
+
+  cell('no `rating` is declared anywhere in the room\u2019s shape (R-G2.2)', () => {
+    const src = fs.readFileSync(R('src/api/vendor/solutions/contract.js'), 'utf8');
+    const block = src.slice(src.indexOf('ReviewAsk:'), src.indexOf('});', src.indexOf('ReviewAsk:')));
+    return /rating/.test(block) ? 'a rating field exists with no source' : true;
+  });
+
+  cell('the door is a READ \u2014 it writes nothing', () => {
+    const src = fs.readFileSync(R('src/api/vendor/solutions/index.js'), 'utf8');
+    const from = src.indexOf("router.get('/google-reviews'");
+    const to   = src.indexOf('router.get(', from + 10);
+    const block = src.slice(from, to);
+    for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(', '.rpc(']) {
+      if (block.includes(verb)) return `the room's door calls ${verb}`;
+    }
+    return true;
+  });
+
+  cell('the door is scoped to the calling vendor and to nothing else', () => {
+    const src = fs.readFileSync(R('src/api/vendor/solutions/index.js'), 'utf8');
+    const from = src.indexOf("router.get('/google-reviews'");
+    const to   = src.indexOf('router.get(', from + 10);
+    const block = src.slice(from, to);
+    if (!/requireAuth, resolveVendor\(\)/.test(block)) return 'the door is not behind the vendor guard';
+    // ⚠ COMMENT LINES ARE STRIPPED BEFORE COUNTING. The first cut counted three
+    // and reddened on correct code: the third match was this door's OWN COMMENT
+    // saying it scopes by vendor_id. A cell that reads its own prose is the same
+    // defect as the money cell one section up, and it is cured the same way —
+    // assert the EXECUTABLE bytes, never the file's account of them.
+    const exec = block.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const eqs = exec.match(/\.eq\('vendor_id', req\.vendor\.id\)/g) || [];
+    return eqs.length === 2 ? true : `expected both reads scoped by vendor_id, found ${eqs.length}`;
+  });
+
+  cell('the door reports the gate rather than deciding it', () => {
+    const src = fs.readFileSync(R('src/api/vendor/solutions/index.js'), 'utf8');
+    const from = src.indexOf("router.get('/google-reviews'");
+    const to   = src.indexOf('router.get(', from + 10);
+    const block = src.slice(from, to);
+    if (!/sendGate\(\)\.open/.test(block)) return 'the door does not read sendGate';
+    if (/REVIEW_ASK_SEND_ENABLED/.test(block)) return 'the door reads the env var directly \u2014 a second home for the gate';
+    return true;
+  });
+
+  cell('the door does not restate what three means', () => {
+    const src = fs.readFileSync(R('src/api/vendor/solutions/index.js'), 'utf8');
+    const from = src.indexOf("router.get('/google-reviews'");
+    const to   = src.indexOf('router.get(', from + 10);
+    const block = src.slice(from, to);
+    if (/>=\s*3|SEAL_MIN_WEDDINGS\s*=/.test(block)) return 'the door learned the floor';
+    return /sealIsVisible/.test(block) ? true : 'the door does not use the one visibility rule';
+  });
+
   // ═══ VERDICT ════════════════════════════════════════════════════════════
   console.log(`\n${'='.repeat(70)}`);
   console.log(`b55_g2_reviews_bench  ${pass} GREEN  ${fail} RED`);
@@ -395,6 +472,8 @@ NON-VACUITY \u2014 SEVEN PRODUCTION MUTATIONS, EACH RED ON THE CELLS NAMED:
   5 src/lib/vendor/seal.js  count eventless pages into spans as 0               \u2192 \u00a74 back-catalogue, NULL
   6 src/lib/brideInbound.js  move the couple branch below the full stop         \u2192 \u00a76 ordering
   7 src/lib/invoicePdf.js  advance y in the seal block instead of footY-offset  \u2192 \u00a77 pagination cure
+  8 src/api/vendor/solutions/contract.js  drop a field from GoogleReviewsRoom    \u2192 \u00a78 digest, shape
+  9 src/api/vendor/solutions/index.js  drop one .eq('vendor_id', req.vendor.id)  \u2192 \u00a78 scoping
 `);
   process.exit(fail ? 1 : 0);
 })();
