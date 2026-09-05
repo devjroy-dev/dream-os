@@ -63,3 +63,12 @@ src/lib/vendor/referrals.js
 # stashed, RED here) and cured by CLASSIFYING them in `LIST_WIRE_CENSUS`, amended
 # by label. A classification, never an append to quiet a bench. b36 95/95.
 
+# ── MICRO 1 (2026-09-06, base 3efa47c) ─────────────────────────────────────
+# R-G51.14 / F-40.120: the sender's note rendered TWICE on the peer's record —
+# under `Forwarded by` and under `Notes`. The note is the sender's PROVENANCE,
+# not the peer's working record, so it lives on `lead_referrals.note` alone and
+# `createLead` receives no `notes` from a forward. `notes` also left the SELECT
+# with its reader. b51 76 -> 79; the duplicate-write mutation reds the new cell.
+# Found by the founder's walk, not by any bench — no cell counted HOW MANY places
+# the note arrived in.
+

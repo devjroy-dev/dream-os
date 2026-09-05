@@ -65,7 +65,12 @@ async function forwardLead(supabase, fromVendor, { leadId, toVendorId, note }) {
   // lib function that is wrong the first time someone mounts it elsewhere.
   const { data: lead, error: leadErr } = await supabase
     .from('leads')
-    .select('id, name, phone, email, wedding_date, wedding_date_precision, wedding_city, event_types, budget_min, budget_max, notes, raw_message')
+    // `notes` LEFT THE SELECT WITH ITS READER (R-G51.14). The original's notes were
+    // never carried to the peer, and now that the sender's note does not travel
+    // through `createLead` either, nothing in this function reads the column. A
+    // SELECT that asks for a column no line uses is the shape F-04.106 was filed
+    // against — it grows quietly until someone assumes it is needed.
+    .select('id, name, phone, email, wedding_date, wedding_date_precision, wedding_city, event_types, budget_min, budget_max, raw_message')
     .eq('id', leadId)
     .eq('vendor_id', fromVendor.id)
     .is('deleted_at', null)
@@ -162,11 +167,22 @@ async function forwardLead(supabase, fromVendor, { leadId, toVendorId, note }) {
     source:        PEER_REFERRAL_SOURCE,
     referrer_name: fromVendor.business_name || null,
     raw_message:   lead.raw_message,
-    // The SENDER'S note becomes the peer's `notes`, and the original lead's own
-    // notes are deliberately NOT carried: they are the sender's private working
-    // record of a couple, written for herself, and a forward is not consent to
-    // publish them to another business.
-    notes:         note || null,
+    // ── NO `notes` ON THE PEER'S COPY  (R-G51.14 / F-40.120) ────────────────
+    // ⚠ THIS FIELD WAS HERE AND THE FOUNDER'S WALK REMOVED IT.
+    // The first cut sent the sender's note into `createLead`'s `notes` AND onto
+    // the referral row, reasoning the peer should have it in her own working
+    // notes. On glass it rendered TWICE on one record — once under `Forwarded
+    // by`, once under `Notes` — and read as a bug rather than as care.
+    //
+    // The ruling is about WHERE THE NOTE BELONGS, not about a duplicate to
+    // delete: the note is the SENDER'S PROVENANCE — her sentence about why she
+    // passed this on — and not the peer's working record of the couple. It lives
+    // on `lead_referrals.note` alone. The peer writes her own notes.
+    //
+    // And the ORIGINAL lead's notes are still not carried, for the reason the
+    // first cut got right: they are the sender's private working record, written
+    // for herself, and a forward is not consent to publish them to another
+    // business.
   });
 
   if (!created.ok) return { ok: false, error: created.error };

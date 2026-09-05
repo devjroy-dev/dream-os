@@ -142,6 +142,20 @@ section('1. the forward lands, and lands through createLead');
   ok('the referral row points at the copy', db._tables.lead_referrals[0].new_lead_id === copy.id);
   ok('the referral row points back at the original', db._tables.lead_referrals[0].lead_id === 'lead-priya');
   ok('the note is on the row', db._tables.lead_referrals[0].note === 'Booked that weekend.');
+
+  // ── R-G51.14 / F-40.120 · THE NOTE LIVES IN ONE PLACE ────────────────────
+  // MUTATION: restore `notes: note || null` to the createLead call → these red.
+  //
+  // The first cut wrote the sender's note onto BOTH the referral row and the
+  // peer's `leads.notes`, and the founder's walk showed it rendering twice on
+  // one record. No bench saw it: every cell asserted the note REACHED the wire,
+  // none asked how many places it arrived in. Counting is the cure.
+  ok('the peer\'s copy carries NO notes — the note is the sender\'s provenance, not the peer\'s working record',
+     (copy.notes ?? null) === null);
+  ok('and the note is on the referral row, which is its one home',
+     db._tables.lead_referrals[0].note === 'Booked that weekend.');
+  ok('the ORIGINAL lead\'s own notes are not carried either — a forward is not consent to publish them',
+     (copy.notes ?? null) !== 'Called twice. Wants film.');
 }
 
 // ══ §2 — THE REFUSAL · R-G51.2 / F-40.84 ═══════════════════════════════════
