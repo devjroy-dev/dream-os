@@ -46,6 +46,40 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
 
   if (!couple) return errRes(res, 404, 'Couple not found.');
 
+  // ── G1.1c · R-G11c.10 · DOES ANY PAGE OF HERS EXIST ────────────────────────
+  // The room's sub-line has two forms and they are chosen by PAGE EXISTENCE,
+  // never by the switch's own state (C1/C2 draw one, C3/C4 the other). Before
+  // this key the client had no way to know which was true and the only arms left
+  // were a guess or a sentence about a page that may not exist. Both are the
+  // lying-control class. So the fact gets a home on the same door that already
+  // owns her standing answer: one writer, one reader, the client infers nothing.
+  //
+  // WHY A ONE-ROW PROBE AND NOT A COUNT. The question is EXISTS, and a count
+  // would be a number nobody reads — `weddings_touched` on the PATCH already
+  // serves the "how many moved" question and serves it after a write. `limit(1)`
+  // rides `idx_weddings_couple` (0132:89), which is partial on
+  // `couple_id IS NOT NULL` and exists for exactly this lookup.
+  //
+  // READ-ONLY, AND THE WRITER IS UNTOUCHED. Nothing here writes;
+  // `couple_set_publish` remains the sole writer of both columns and the PATCH
+  // below is not changed by a byte.
+  //
+  // A FAILED PROBE IS A 500, NOT A GUESS. `false` here would render "no wedding
+  // page has been made for you yet" to a couple who has one; `true` would
+  // promise that turning the switch off removes a page that may not exist. The
+  // handler cannot answer, so it says so — the same shape the couples query
+  // above already takes, and protocol §4's never-a-false-done applied to a read.
+  const { data: wRows, error: wErr } = await supabase
+    .from('weddings')
+    .select('id')
+    .eq('couple_id', couple_id)
+    .limit(1);
+
+  if (wErr) {
+    console.error('[GET /couple/me] wedding page probe error:', wErr.message);
+    return errRes(res, 500, 'Could not fetch profile.');
+  }
+
   return okRes(res, {
     couple: {
       id:               couple.id,
@@ -61,6 +95,10 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
       // exist — and a missing row must read OFF, not undefined. The room draws
       // the switch from THIS byte; it never holds its own idea of her answer.
       publish_weddings: couple.publish_weddings === true,
+      // R-G11c.10. Derived from the ROW that came back, never from the request
+      // body and never from a constant. `wRows.length > 0` and not a truthiness
+      // test on `wRows`: supabase returns `[]` for no match, and `[]` is truthy.
+      has_wedding_page: Array.isArray(wRows) && wRows.length > 0,
       planning_state:   couple.planning_state   || null,
       // ── ARC OB · THE VERDICT (micro item ③) ──────────────────────────────
       // BOTH couple profile GETs carry it, and that is a declared executor

@@ -1,0 +1,47 @@
+# scripts/floor-manifest-g11c10-doorlift.txt
+# BLOCK 19 · G1.1c · THE DOOR LIFT (R-G11c.10) — the declared dirt of this micro.
+#
+# F-39.51(b): a dirty file outside this list is a STOP until accounted for.
+# Every file below was authored by THIS seat in THIS sitting. `git status
+# --porcelain` was empty at seating (preflight CLEAR at cdd15fb) and empty again
+# after b54's mutation pass and after the two hand-run mutations on bOB, each of
+# which was restored and proven byte-identical by `diff`.
+#
+# A NEW MANIFEST RATHER THAN AN EDIT TO THE LAST ONE.
+# `floor-manifest-g11c-dreamos.txt` is the record of the build sitting's
+# delivery and it is left byte-untouched. A manifest is a statement about ONE
+# delivery's dirt; editing an old one to cover a new one destroys the only
+# document that says what the earlier ZIP actually moved.
+
+# ── THE DOOR  [R-G11c.10 — the lift, read-only] ─────────────────────────────
+# GET /:coupleId gains ONE key, `has_wedding_page`, from a one-row EXISTS probe
+# on `weddings WHERE couple_id = hers`, riding idx_weddings_couple (0132:89).
+# The PATCH is not touched by a byte; couple_set_publish remains the sole writer
+# of both columns. A failed probe REFUSES with 500 rather than guessing, because
+# either guess renders a sentence about a page that may not exist.
+src/api/couple/me.js
+
+# ── THE BENCH  [C7 · 8 new cells, 3 new production mutations] ───────────────
+# The C7 cells DRIVE THE REAL HANDLER through the router's own GET layer, found
+# by path and method rather than by index. A regex over `has_wedding_page:`
+# proves a string is present and cannot tell a row from a literal, which is the
+# one thing R-G11c.10 requires proving. Bare 46 cells; --mutate 64.
+scripts/b54_g11c_couple_switch_bench.js
+
+# ── A SEALED BENCH'S STUB, AMENDED AND LABELLED  [ratify or revert] ─────────
+# bOB was GREEN at cdd15fb and this change REDDENED it — derived by command
+# (`git stash`, re-run, restore), not assumed, and disclosed rather than cured
+# quietly. Its `meDb` fixture knew the `.eq().maybeSingle()` chain and not the
+# `.eq().limit()` chain the probe introduced, so the handler threw and §3.6
+# reported the stub's blind spot as a defect in the code under test.
+#
+# TEST SETUP MOVED, NOT AN ASSERTION. Cell count unchanged at 32, no cell
+# removed, no cell loosened — and that is PROVEN rather than claimed: mutating
+# the /:coupleId verdict to a value the bare GET disagrees with turns §3.6 RED
+# with its own message. The alternative — reshaping the probe to
+# `.maybeSingle()` so the old fixture served it — was REFUSED: maybeSingle errors
+# on more than one row, and a couple with two wedding pages is ordinary.
+scripts/bOB_micro_predicate_wire_bench.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g11c10-doorlift.txt

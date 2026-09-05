@@ -414,17 +414,45 @@ console.log('══════════════════════�
   const coupleMeGet = finalHandler(coupleMe, 'get', '/');
   const coupleMeById = finalHandler(coupleMe, 'get', '/:coupleId');
 
+  // ── STUB AMENDED, LABELLED — G1.1c · R-G11c.10 (2026-09-05) · RATIFY OR REVERT
+  // THIS IS TEST SETUP, NOT AN ASSERTION, AND NOT ONE CELL IS LOOSENED. §3.4-3.6
+  // assert the onboarding verdict and they still assert exactly that.
+  //
+  // WHAT MOVED AND WHY. `GET /:coupleId` gained a second statement under
+  // R-G11c.10 — a one-row EXISTS probe on `weddings` for the couple's own pages,
+  // so the Settings room's sub-line is chosen by page existence rather than by a
+  // client-side guess. It ends in `.limit(1)`, a chain shape this stub had never
+  // been shown, so the handler threw on `undefined` and §3.6 read
+  // "Cannot read properties of undefined" — a stub reporting its own blind spot
+  // as a defect in the code under test.
+  //
+  // WHY THE STUB MOVED AND NOT THE HANDLER. `.maybeSingle()` — the shape this
+  // stub already knew — ERRORS on more than one row, and a couple with two
+  // wedding pages is ordinary and legal. Reshaping production code to fit a
+  // fixture would have shipped a door that 500s for exactly the couples it
+  // serves best. The fixture is the thing that was wrong about the world.
+  //
+  // `weddings` ANSWERS EMPTY, and that is the honest answer here: these fixtures
+  // are onboarding rows, none of them has a page, and no cell in this file reads
+  // the key. A stub that invented a page would be asserting something this bench
+  // was never asked to assert.
   function meDb({ user, coupleRow }) {
     return {
       from(table) {
         return {
           select() {
-            return { eq() { return { maybeSingle: async () => {
-              if (table === 'admin_config') return { data: null };
-              if (table === 'users')        return { data: user };
-              if (table === 'couples')      return { data: coupleRow };
-              return { data: null };
-            } }; } };
+            return { eq() { return {
+              maybeSingle: async () => {
+                if (table === 'admin_config') return { data: null };
+                if (table === 'users')        return { data: user };
+                if (table === 'couples')      return { data: coupleRow };
+                return { data: null };
+              },
+              limit: async () => {
+                if (table === 'weddings') return { data: [], error: null };
+                return { data: [], error: null };
+              },
+            }; } };
           },
         };
       },

@@ -187,6 +187,121 @@ ok('the studio door does not accept a couple_id from the vendor', !/couple_id/.t
 ok('0131 remains the sole witness for weddings (0132 adds, never redefines)',
   /couple_consent\s+boolean\s+NOT NULL DEFAULT false/i.test(read(M0131)));
 
+// ── C7 · R-G11c.10 · THE DOOR ANSWERS "DOES ANY PAGE OF HERS EXIST" ─────────
+// These cells DRIVE THE REAL HANDLER rather than read its source. A regex over
+// `has_wedding_page:` proves a string is present; it cannot tell the row from a
+// literal, and "the key reads the row, not the body" is precisely the thing that
+// must be proven. So the router's own GET layer is pulled out and called with a
+// stub database, and the assertion is made against the JSON that comes back.
+sec('C7 \u00b7 GET /couple/me \u2014 has_wedding_page, read from the row');
+
+// The stub answers the two shapes THIS handler uses and nothing else: the
+// couples lookup ends in .maybeSingle(), the weddings probe ends in .limit().
+// A third shape appearing here would be a handler doing something this bench
+// has not been told about, so the stub throws rather than inventing an answer.
+function doorStub(tables) {
+  return {
+    from(name) {
+      const q = { _t: name, _f: {} };
+      q.select = () => q;
+      q.eq = (c, v) => { q._f[c] = v; return q; };
+      const rows = () => (tables[q._t] || []).filter((r) =>
+        Object.entries(q._f).every(([k, v]) => r[k] === v));
+      q.maybeSingle = async () => ({ data: rows()[0] || null, error: null });
+      q.limit = async (n) => {
+        if (tables.__weddingsError && q._t === 'weddings') {
+          return { data: null, error: { message: 'probe blew up' } };
+        }
+        return { data: rows().slice(0, n), error: null };
+      };
+      return q;
+    },
+  };
+}
+
+// The GET /:coupleId layer, taken from the router by PATH and METHOD rather than
+// by index — an index is a line number wearing a different hat, and a route
+// added above this one would silently point the cells at the wrong handler.
+const doorRouter = fresh(DOOR);
+const getLayer = doorRouter.stack.find(
+  (l) => l.route && l.route.path === '/:coupleId' && l.route.methods.get);
+ok('the GET /:coupleId layer was FOUND (C7 is not vacuous)', !!getLayer);
+
+async function callGet(tables, coupleId = 'c-sarah') {
+  let captured = { status: 0, body: null };
+  const res = {
+    status(s) { captured.status = s; return res; },
+    json(b) { captured.body = b; return res; },
+  };
+  const req = {
+    app: { locals: { supabase: doorStub(tables) } },
+    params: { coupleId },
+    coupleUser: { couple_id: coupleId, user_id: 'u-1' },
+    body: {},
+  };
+  await new Promise((resolve, reject) => {
+    getLayer.route.stack[0].handle(req, res, (e) => (e ? reject(e) : resolve()));
+    setImmediate(resolve);
+  });
+  await new Promise((r) => setImmediate(r));
+  return captured;
+}
+
+const COUPLE_ROW = { id: 'c-sarah', partner_name: 'Arjun', wedding_date: null,
+  wedding_city: null, budget_total: null, events_planned: [],
+  planning_state: null, onboarding_state: null, publish_weddings: false,
+  users: { name: 'Sarah' } };
+
+if (getLayer) {
+  const withPage = await callGet({
+    couples: [COUPLE_ROW],
+    weddings: [{ id: 'w-1', couple_id: 'c-sarah' }],
+  });
+  ok('a couple WITH a page reads has_wedding_page true',
+    withPage.body && withPage.body.couple && withPage.body.couple.has_wedding_page === true,
+    JSON.stringify(withPage.body && withPage.body.couple));
+
+  const noPage = await callGet({ couples: [COUPLE_ROW], weddings: [] });
+  ok('a couple with NO page reads has_wedding_page false',
+    noPage.body && noPage.body.couple && noPage.body.couple.has_wedding_page === false,
+    JSON.stringify(noPage.body && noPage.body.couple));
+
+  // THE KEY READS THE ROW, NOT THE BODY. Same couple, same stub, one row moved.
+  // A literal cannot pass both of the two cells above; this one names why.
+  ok('the two answers differ on the ROW alone \u2014 the key is not a constant',
+    withPage.body && noPage.body &&
+    withPage.body.couple.has_wedding_page !== noPage.body.couple.has_wedding_page);
+
+  // Another couple's page is not hers. The probe is scoped by couple_id and a
+  // dropped scope would make every couple on the estate read true.
+  const othersPage = await callGet({
+    couples: [COUPLE_ROW],
+    weddings: [{ id: 'w-9', couple_id: 'c-someone-else' }],
+  });
+  ok('another couple\u2019s page does not count as hers (the probe is scoped)',
+    othersPage.body && othersPage.body.couple &&
+    othersPage.body.couple.has_wedding_page === false);
+
+  // A FAILED PROBE IS A 500, NEVER A GUESS.
+  const blown = await callGet({
+    couples: [COUPLE_ROW], weddings: [], __weddingsError: true,
+  });
+  ok('a failed probe REFUSES with 500 rather than guessing a sub-line',
+    blown.status === 500 && blown.body && blown.body.ok === false,
+    'status ' + blown.status);
+
+  // The lifted byte is read-only: her standing answer still comes off her row,
+  // and the response the switch draws its DEFAULT from is unchanged.
+  ok('the lift did not disturb the switch\u2019s default \u2014 still from her row',
+    noPage.body && noPage.body.couple && noPage.body.couple.publish_weddings === false);
+}
+
+// The PATCH is untouched by the lift, and that is asserted rather than assumed:
+// the sole-writer rpc is still the only path to the column.
+ok('the lift added no second writer \u2014 the rpc is still the only write path',
+  (door.match(/supabase\.rpc\('couple_set_publish'/g) || []).length === 1 &&
+  !/from\('weddings'\)[\s\S]{0,200}\.update\(/.test(door));
+
 console.log('\n' + (fail === 0 ? 'GREEN' : 'RED') + ' \u2014 ' + pass + ' pass, ' + fail + ' fail');
 
 if (process.argv.includes('--cells-only')) process.exit(fail === 0 ? 0 : 1);
@@ -216,6 +331,18 @@ if (process.argv.includes('--mutate')) {
     [LIB, 'the engagement scope drops vendor_id \u2014 another studio\u2019s lead resolves',
       "    .eq('lead_id', ev.linked_lead_id)\n    .eq('vendor_id', ownerVendorId)",
       "    .eq('lead_id', ev.linked_lead_id)"],
+
+    [DOOR, 'has_wedding_page returns a LITERAL instead of reading the row (R-G11c.10)',
+      "      has_wedding_page: Array.isArray(wRows) && wRows.length > 0,",
+      "      has_wedding_page: false,"],
+
+    [DOOR, 'the page probe drops its couple scope \u2014 every couple reads true',
+      "    .eq('couple_id', couple_id)\n    .limit(1);",
+      "    .limit(1);"],
+
+    [DOOR, 'a failed probe is swallowed and guessed instead of refused',
+      "    console.error('[GET /couple/me] wedding page probe error:', wErr.message);\n    return errRes(res, 500, 'Could not fetch profile.');",
+      "    console.error('[GET /couple/me] wedding page probe error:', wErr.message);"],
 
     [DOOR, 'publish_weddings is folded into couplesPatch \u2014 a second writer appears',
       "    const { data: pubRows, error: pErr } = await supabase.rpc('couple_set_publish', {",
