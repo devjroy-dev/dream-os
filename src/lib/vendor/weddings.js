@@ -218,15 +218,18 @@ async function resolveCoupleForEvent(supabase, { ownerVendorId, eventId }) {
   if (evErr) throw evErr;
   if (!ev || !ev.linked_lead_id) return null;
 
-  const { data: eng, error: engErr } = await supabase
-    .from('engagements')
-    .select('couple_id')
-    .eq('lead_id', ev.linked_lead_id)
-    .eq('vendor_id', ownerVendorId)
-    .maybeSingle();
-  if (engErr) throw engErr;
-
-  return (eng && eng.couple_id) || null;
+  // ── F-40.64 CURED · THE SPINE HAS ONE HOME AND THIS FILE IS NOT IT ────────
+  // This function reached `public.engagements` directly and `b16` §2.2/§2.3
+  // convicted it for the whole G1.1c arc — those cells WALK THE SOURCE TREE, so
+  // a second reader cannot hide behind a list nobody updated. The query moved to
+  // `src/lib/engagements.js` as `coupleIdForLead`, carrying its `vendor_id`
+  // scope and its declared miss (F-40.60) with it, rather than leaving either
+  // for the next caller to re-derive.
+  const { coupleIdForLead } = require('../engagements');
+  return coupleIdForLead(supabase, {
+    leadId: ev.linked_lead_id,
+    vendorId: ownerVendorId,
+  });
 }
 
 /**

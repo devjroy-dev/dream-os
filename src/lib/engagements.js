@@ -324,8 +324,47 @@ async function engagedLeadStamps(supabase, vendorId, leadIds) {
   return out;
 }
 
+/**
+ * THE SPINE, READ BY LEAD — F-40.64's cure, and this file is the one home.
+ *
+ * `src/lib/vendor/weddings.js` reached `public.engagements` directly to resolve a
+ * wedding's couple, and `b16` §2.2/§2.3 convicted it: those cells WALK THE SOURCE
+ * TREE rather than read a list of consumers someone wrote down, because a list
+ * someone wrote down is the defect. The bench was right for the whole G1.1c arc
+ * and the read belongs here.
+ *
+ * ⚠ THE `vendorId` SCOPE IS LOAD-BEARING, NOT DEFENSIVE, and it moves across
+ * with the query rather than being re-derived by whoever calls next. The fixture
+ * couple holds THREE engagements, two of them `photography` (DEV440 and
+ * DROY550): a match on lead alone, or on couple-and-category, is ambiguous on
+ * real data today.
+ *
+ * ⚠ DECLARED MISS, CARRIED WITH THE CODE — F-40.60, ruled DORMANT (R-G12.14).
+ * This is LEAD-MEDIATED, so an engagement with a NULL `lead_id` is invisible to
+ * it. The census the chair ordered found `neither` = 1 and `booking_only` = 0 on
+ * production, so the booking-mediated fallback (F-40.61) is filed dormant rather
+ * than built. The `neither` row is F-40.81 and its cure is at this file's own
+ * mint, not here.
+ *
+ * Returns null on every absence: a back-catalogue page has no event at all
+ * (R-G11.21), and a page with no couple is a legal, ordinary page — it waits for
+ * the off-platform consent path instead (F-40.49).
+ */
+async function coupleIdForLead(supabase, { leadId, vendorId }) {
+  if (!leadId || !vendorId) return null;
+  const { data, error } = await supabase
+    .from('engagements')
+    .select('couple_id')
+    .eq('lead_id', leadId)
+    .eq('vendor_id', vendorId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data && data.couple_id) || null;
+}
+
 module.exports = {
   getEngagement,
+  coupleIdForLead,
   engagedLeadStamps,
   recordEnquiry,
   recordBooking,

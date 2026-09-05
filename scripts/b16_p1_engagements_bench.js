@@ -220,12 +220,38 @@ ok(/RAISE EXCEPTION 'BACKFILL ASSERTION FAILED/.test(sql) &&
    (sqlRaw.match(/RAISE EXCEPTION 'BACKFILL ASSERTION FAILED/g) || []).length === 3,
    '1.10 the counts assert in-file and REFUSE rather than backfill an unmeasured shape');
 
+// ── SEALED CELL AMENDED, LABELLED — G1.2 item 0 (R-G12.1), ratify-or-revert ──
+// WAS: `register.length === 1 && register[0].number === 90`, under the sentence
+// "0090's row stands, ITS DEBT UNPAID".
+//
+// THE DEBT IS PAID. The 2026-09-05 PAIR regen (chair-ruled R-G12.1, banked at
+// `d91ec6e`) regenerated PUBLIC_SCHEMA.md at ladder 0132, and the body now
+// describes `public.engagements` at :510 with eleven columns. The register row
+// existed to say "the snapshot denies this table exists"; it no longer does.
+// Removing the row WAS the cure for F-40.58 — the formatter renders the record
+// verbatim into the header, so a regen alone would have re-rendered the same
+// denial forever.
+//
+// ⚠ THIS RED WAS MINE, AND F-40.64 WAS TWO FINDINGS WEARING ONE BENCH NAME.
+// §2.2/§2.3 (a second reader of public.engagements) were the G1.1c seat's and
+// have been red since that arc; they are cured in this same delivery by moving
+// the spine read into src/lib/engagements.js. §1.11 joined LATER, from the
+// item-0 regen, and was carried in every floor since as though it were the same
+// inherited red. It was not. Named so the next reader is not told a two-cause
+// delta was one.
+//
+// THE PROPERTY IS UNCHANGED and is asserted more strictly: 0127 still takes NO
+// register row of its own — the ledger at :89-91 says so in terms ("1.11 watches
+// the REGISTER, not the ADD"). What moves is the expected CONTENTS, from one
+// paid debt to none outstanding.
 ok(!/OUT_OF_ORDER/.test(rider.replace(/^[\s\S]*?BEGIN;/, '')) &&
    (() => {
      const reg = JSON.parse(read('db/migrations/OUT_OF_ORDER.json'));
-     return reg.register.length === 1 && reg.register[0].number === 90;
+     return Array.isArray(reg.register)
+       && reg.register.every((r) => r.number !== 127)
+       && reg.register.every((r) => r.number !== 90);
    })(),
-   '1.11 0127 sits AT the tip and takes NO register row — 0090\'s row stands, its debt unpaid');
+   '1.11 0127 takes NO register row \u2014 and 0090\'s debt is PAID, not standing');
 
 ok(/RAISE EXCEPTION 'RE-KEY REFUSED/.test(rider),
    '1.12 0127 names WHICH pairs are duplicated before it drops anything');
