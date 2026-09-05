@@ -200,6 +200,15 @@ const SHAPES = Object.freeze({
   // walk into it — named here rather than implied, because a nested shape this
   // file does not check is a boundary D-38.1 says must be stated.
   ReviewAsk:          ['coupleName', 'weddingTitle', 'askedAt'],
+  // ⚠ `ReviewSeal` IS A NAMED SHAPE BECAUSE THE OTHER HALF'S PARSER DEMANDS IT,
+  // and that is a fact this side had to learn from over there. `bs_audit.mjs`
+  // refuses an inline nested object literal in `types.ts` and reports
+  // GATE-UNSOUND rather than digesting a shape it can only half see. ZIP 1b
+  // shipped `seal` as an unnamed field here, which would have left the two
+  // literals PERMANENTLY DIFFERENT — each side green against its own, the mirror
+  // silently broken, which is the one failure this whole mechanism exists to
+  // prevent. Named on both sides now, and the digest moves with it.
+  ReviewSeal:         ['weddings', 'deliveryDays'],
   GoogleReviewsRoom:  ['asked', 'askedCount', 'landedCount', 'seal',
                        'gbpAvailableFrom', 'sendEnabled'],
 });
@@ -249,7 +258,7 @@ function computeDigest() {
  * Derived, never typed from memory:
  *   node -e "console.log(require('./src/api/vendor/solutions/contract.js').computeDigest())"
  */
-const CONTRACT_DIGEST = '9dec81f452f9511384a5b8d9b9867836e49277843f11735e64d089105523d183';
+const CONTRACT_DIGEST = 'a4ccb0a742fbbd87a4a9a63674922ac6d60f7576e7e9fd66696cf061267a607a';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SHAPE() — every door runs this before it responds

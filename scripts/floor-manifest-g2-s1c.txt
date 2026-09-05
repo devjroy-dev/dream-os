@@ -1,0 +1,5 @@
+# scripts/floor-manifest-g2-s1c.txt
+# BLOCK 19 · G2 · ZIP 1c — the mirror's nested shape gets a name. F-14.16's declared dirt.
+# Base: dream-os main 6402e78.
+scripts/floor-manifest-g2-s1c.txt
+src/api/vendor/solutions/contract.js
