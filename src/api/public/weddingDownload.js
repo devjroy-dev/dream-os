@@ -259,12 +259,18 @@ router.get('/:code/:slug/archive/:token', asyncHandler(async (req, res) => {
   if (!photos.length) return notFound(res);
 
   try {
+    // The ids travel as an ARRAY as well as inside the signed params: the
+    // signature is over the comma-joined form and the query string repeats
+    // `public_ids[]`, which are two correct forms for two different jobs
+    // (F-40.106). Splitting the joined string back apart would tear any id
+    // derived from a filename containing a comma.
+    const publicIds = photos.map((p) => p.public_id);
     const url = archiveDownloadUrl(signArchive({
-      publicIds: photos.map((p) => p.public_id),
+      publicIds,
       timestamp: nowTimestamp(),
       expiresAt: nowTimestamp() + ARCHIVE_TTL_SECONDS,
       mode:      'download',
-    }));
+    }), publicIds);
     return res.status(200).json({ ok: true, url });
   } catch (e) {
     req.app.locals.logger?.error?.('weddingDownload:archive', e);

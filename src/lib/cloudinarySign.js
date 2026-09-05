@@ -177,9 +177,35 @@ function archiveUrl() {
  * resolves it server-side from an opaque token; the browser only ever sees it as
  * an href it follows once.
  */
-function archiveDownloadUrl(params) {
+function archiveDownloadUrl(params, publicIds) {
+  // ── F-40.106 · THE SIGNATURE AND THE REQUEST DISAGREE ABOUT ARRAYS ────────
+  // THE FOUNDER WALKED THIS AND CLOUDINARY ANSWERED 400. This file's own header
+  // WARNS about it at :109 — "`public_ids` is an ARRAY that Cloudinary expects
+  // as `public_ids[]=a&public_ids[]=b`" — and the first cut of this function
+  // then emitted the comma-joined form anyway. I wrote the warning and did not
+  // implement it, which is worse than not knowing.
+  //
+  // THE TWO FORMS ARE BOTH CORRECT, FOR DIFFERENT THINGS:
+  //   · SIGNING  — Cloudinary joins array values with commas, so the signed
+  //                string carries `public_ids=a,b,c`. That is what `signArchive`
+  //                builds and it was never wrong.
+  //   · SENDING  — the query string must repeat the bracketed key, one per id.
+  // So the signature stays over the joined form and the URL carries the
+  // repeated one. That asymmetry is the whole defect and it is now explicit.
+  //
+  // ⚠ THE ARRAY IS PASSED IN, NEVER SPLIT BACK OUT OF THE JOINED STRING.
+  // `publicId` is derived from the uploaded FILENAME
+  // (`studio/weddings.js:185`), so a file called `a,b.jpg` yields an id with a
+  // comma in it — and splitting on commas would silently tear one id into two,
+  // producing a 400 that looks exactly like this one and is even harder to find.
+  const ids = Array.isArray(publicIds) && publicIds.length
+    ? publicIds
+    : String(params.public_ids || '').split(',');
+
   const qs = Object.keys(params)
+    .filter((k) => k !== 'public_ids')
     .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .concat(ids.map((id) => `public_ids[]=${encodeURIComponent(id)}`))
     .join('&');
   return `${archiveUrl()}?${qs}`;
 }

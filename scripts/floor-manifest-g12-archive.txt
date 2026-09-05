@@ -1,0 +1,33 @@
+# scripts/floor-manifest-g12-archive.txt
+# TDW_19 · BLOCK 19 · G1.2 — F-40.106: THE ARCHIVE URL'S ARRAY ENCODING.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+#
+# ⚠ THE FOUNDER WALKED IT AND CLOUDINARY ANSWERED 400. And this file's own
+# header WARNED about it at :109 — "`public_ids` is an ARRAY that Cloudinary
+# expects as `public_ids[]=a&public_ids[]=b`" — while the first cut of
+# `archiveDownloadUrl` emitted the comma-joined form anyway. I wrote the warning
+# and did not implement it, which is worse than not knowing: a reader now trusts
+# a comment that the code contradicts two hundred lines below it.
+#
+# THE TWO FORMS ARE BOTH CORRECT, FOR DIFFERENT JOBS:
+#   · SIGNING — Cloudinary joins array values with commas, so the signed string
+#     carries `public_ids=a,b,c`. `signArchive` was never wrong about this.
+#   · SENDING — the query string must repeat the bracketed key, one per id.
+# The signature stays over the joined form; the URL carries the repeated one.
+#
+# ⚠ THE ARRAY IS PASSED IN, NEVER SPLIT BACK OUT OF THE JOINED STRING.
+# `publicId` is derived from the uploaded FILENAME (`studio/weddings.js:185`),
+# so a file called `a,b.jpg` yields an id containing a comma — and splitting on
+# commas would silently tear one id into two, producing a 400 identical to this
+# one and considerably harder to find.
+src/lib/cloudinarySign.js
+src/api/public/weddingDownload.js
+
+# ── THE BENCH  [4 cells, 1 production mutation] ───────────────────────────
+# The mutation is the exact regression: the ids collapsing back to one joined
+# param. It reds, and it restores byte-for-byte.
+scripts/b53_g11_wedding_pages_bench.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g12-archive.txt

@@ -568,6 +568,23 @@ sec('C17 \u00b7 the archive resolve re-checks the three gates');
   // it would silently 401 and read as a credentials problem.
   ok('mode is a SIGNED param, not appended after the fact',
     /mode:\s+mode === 'download'/.test(strip(read(SIGN))));
+  // ── F-40.106 · THE FOUNDER WALKED THIS AND CLOUDINARY SAID 400 ────────────
+  // This file's header WARNED about it at :109 and the first cut emitted the
+  // comma-joined form anyway. Writing the warning and not implementing it is
+  // worse than not knowing. Both forms are correct for different jobs: the
+  // signature is over `public_ids=a,b`, the query string repeats
+  // `public_ids[]=a&public_ids[]=b`.
+  const sgn = strip(read(SIGN));
+  ok('the signed params still join the ids with commas', /public_ids:\s+publicIds\.join\(','\)/.test(sgn));
+  ok('but the URL repeats the BRACKETED key, one per id',
+    /public_ids\[\]=\$\{encodeURIComponent\(id\)\}/.test(sgn));
+  ok('and the joined form is dropped from the query string, never sent twice',
+    /filter\(\(k\) => k !== 'public_ids'\)/.test(sgn));
+  // ⚠ The array is PASSED, never split back out: a public_id is derived from the
+  // uploaded FILENAME, so `a,b.jpg` yields an id with a comma and splitting
+  // would tear one id into two — a 400 that looks identical and hides better.
+  ok('the door hands the array through rather than re-splitting it',
+    /archiveDownloadUrl\(signArchive\(\{[\s\S]{0,220}\}\), publicIds\)/.test(strip(read(DOWNLOAD))));
 }
 
 // ── C18 · F-40.105 · THE CONSENT TOKEN NEVER REACHES THE VENDOR ────────────
@@ -703,6 +720,9 @@ if (process.argv.includes('--mutate')) {
     [DOWNLOAD, 'the resolve door stops re-checking consent \u2014 a withdrawn wedding still hands out its zip',
       "  if (wedding.couple_consent !== true) return notFound(res);\n\n  const photos = await W.photosFor(supabase, wedding.id);\n  if (!photos.length) return notFound(res);",
       "  const photos = await W.photosFor(supabase, wedding.id);\n  if (!photos.length) return notFound(res);"],
+    [SIGN, 'the ids go back to one comma-joined param \u2014 Cloudinary answers 400 (F-40.106)',
+      "    .concat(ids.map((id) => `public_ids[]=${encodeURIComponent(id)}`))",
+      "    .concat([`public_ids=${encodeURIComponent(ids.join(','))}`])"],
     [DOWNLOAD, 'the archive is signed in CREATE mode \u2014 the guest is handed a POST she cannot tap',
       "      mode:      'download',",
       "      mode:      'create',"],
