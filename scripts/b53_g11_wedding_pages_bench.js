@@ -39,6 +39,7 @@ const SIGN      = 'src/lib/cloudinarySign.js';
 const CONSENT   = 'src/api/consent.js';
 const DOWNLOAD  = 'src/api/public/weddingDownload.js';
 const LEADS     = 'src/lib/vendor/leads.js';
+const MIG136    = 'db/migrations/0136_consent_attempts.sql';
 const MIG133    = 'db/migrations/0133_guest_leads_and_consent.sql';
 
 for (const rel of [MIGRATION, LIB, SEASON, PUBDOOR, STUDIO, CREDITS, INVITE,
@@ -569,6 +570,84 @@ sec('C17 \u00b7 the archive resolve re-checks the three gates');
     /mode:\s+mode === 'download'/.test(strip(read(SIGN))));
 }
 
+// ── C18 · F-40.105 · THE CONSENT TOKEN NEVER REACHES THE VENDOR ────────────
+// THE FOUNDER FOUND THIS ON GLASS. The door returned `consent_url` and the room
+// printed it, so the VENDOR held the couple's consent link and could answer with
+// it — master §2.4's "neither does the counterparty", defeated by the surface
+// that mints the token. It arrived as a dark-send fallback and outlived the
+// approval that retired its reason.
+sec('C18 \u00b7 the consent link is not vendor-facing (F-40.105 / R-G12.18)');
+{
+  const studio = strip(read(STUDIO));
+  ok('the studio door returns NO consent url', !/consent_url/.test(studio));
+  ok('and does not even build one', !/consentUrl\(/.test(studio));
+  // What she gets instead is four digits she already typed.
+  ok('she is told the last four of the number she typed, and nothing more',
+    /sent_to_last4: W\.lastFourOf\(phone\)/.test(studio));
+  // R-G12.18.2: a resend that took a number would silently redirect a LIVE token.
+  ok('the resend takes NO number \u2014 it uses the stored one',
+    /consent\/resend/.test(studio)
+    && /to: row\.consent_phone/.test(studio)
+    && !/consent\/resend[\s\S]{0,900}body[\s\S]{0,40}phone/.test(studio));
+  // THE WHOLE-LANE SWEEP: no vendor-facing file may name the token at all.
+  // ⚠ MY FIRST CUT ASSERTED THE FILE NEVER *NAMES* THE TOKEN, AND IT CONVICTED
+  // A CORRECT DOOR. The resend MUST read `consent_token` server-side — that is
+  // how it sends to the stored number without the vendor ever holding it. The
+  // property is not "the word is absent", it is "the token never reaches a
+  // RESPONSE", and those are different sentences. Narrowed to the true subject;
+  // a cell that convicts the right code is not a stricter cell, it is a broken
+  // one (this bench's own e-4, and mine at e-5).
+  const payloads = [...strip(read(STUDIO)).matchAll(/okRes\(res, \{[\s\S]*?\}\);/g)]
+    .map((m) => m[0]).join('\n');
+  ok('C18 is not vacuous \u2014 the door\u2019s responses were found', payloads.length > 0);
+  ok('no studio RESPONSE carries the consent token',
+    !/consent_token/.test(payloads) && !/consent_url/.test(payloads));
+}
+
+// ── C19 · THE LAST-FOUR CHECK — R-G12.18.4 ─────────────────────────────────
+// A FRICTION CHECK AGAINST A FORWARDED LINK, NOT AN OTP. Nothing is sent and
+// nothing is stored; the digits are compared server-side against a number this
+// estate never returns, not even masked, anywhere in this lane.
+sec('C19 \u00b7 the last-four check gates the switch');
+{
+  const lib = strip(read(LIB));
+  const cons = strip(read(CONSENT));
+  const mig = read('db/migrations/0136_consent_attempts.sql');
+  ok('0136 adds the counter beside the thing it protects', /consent_attempts/.test(mig));
+  // ⚠ THIS CELL WAS TOO WEAK AND THE MUTATION PASS SAID SO. It asserted the
+  // substring was PRESENT, so a line that fell back to the caller's own digits
+  // when the row had none — `lastFourOf(phone) || digits` — still matched, and
+  // the mutation "any four digits pass" stayed GREEN. A mutation that does not
+  // bite is a cell that is not testing what its name claims. The property is
+  // that `want` comes from the ROW AND NOTHING ELSE, so the line is read whole
+  // and the caller's input must not appear on it.
+  const wantLine = (lib.match(/const want = .*/) || [''])[0];
+  ok('C19 is not vacuous \u2014 the comparison line was found', wantLine.length > 0);
+  ok('the expected digits come from the ROW alone, never from the caller',
+    /lastFourOf\(wedding\.consent_phone\)/.test(wantLine)
+    && !/digits/.test(wantLine) && !/\|\|/.test(wantLine), wantLine);
+  // The number must never leave — not whole, not masked, not four digits of it.
+  ok('the consent lane returns NO part of her number',
+    !/consent_phone/.test(cons.replace(/select\([^)]*\)/g, '')));
+  ok('three wrong answers SPEND the token', /attempts >= CONSENT_MAX_ATTEMPTS/.test(lib)
+    && /patch\.consent_token = null/.test(lib));
+  // Spending is NULL, not a flag — so a spent token reaches the SAME miss as a
+  // forged one, enforced by the lookup rather than a branch someone can reorder.
+  ok('spending is a NULL token, never a flag', !/consent_spent|is_spent/.test(lib));
+  // A correct answer must not forgive earlier guesses.
+  ok('a correct answer does not reset the count',
+    !/got === want[\s\S]{0,200}consent_attempts: 0/.test(lib));
+  // THE PASS IS SERVER-ENFORCED. A leaf that remembers it passed is a suggestion.
+  ok('the writing doors require a signed pass, not a client boolean',
+    /passHolds\(pass, v\.id\)/.test(cons) && /mintSigned/.test(cons));
+  ok('and the pass is bound to THIS wedding', /subject: \[String\(weddingId/.test(cons));
+  // One answer for every failure.
+  ok('a wrong guess, a spent token and an absent page are ONE miss',
+    /if \(!okDigits\) return dead\(res\)/.test(cons));
+  // The founder's ask: she sees what she just published.
+  ok('a yes returns the page\u2019s own public address', /page_url: v\.pageUrl/.test(cons));
+}
+
 if (process.argv.includes('--cells-only')) {
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -600,6 +679,22 @@ if (process.argv.includes('--mutate')) {
       'a registered body opens on a variable again \u2014 Meta refuses it (F-40.91)',
       "      'You\u2019ve been credited on a wedding page. {{1}} credited you as {{2}} on ' +",
       "      '{{1}} credited you as {{2}} on ' +"],
+
+    // ── F-40.105 · THE FOUNDER'S FIND, PROVEN ABLE TO RED ─────────────────────
+    [STUDIO, 'the consent link goes back to the vendor \u2014 the counterparty can say yes again',
+      "    sent_to_last4: W.lastFourOf(phone),",
+      "    consent_url: 'x', sent_to_last4: W.lastFourOf(phone),"],
+    // R-G12.18.4: without the check, a forwarded link is a switch.
+    [CONSENT, 'the last-four check is skipped \u2014 a forwarded link answers for her',
+      "    if (!passHolds(pass, v.id)) return dead(res);",
+      "    // check skipped"],
+    // The pass must be SERVER-verified; a client boolean is theatre.
+    [LIB, 'wrong answers stop spending the token \u2014 a guesser gets unlimited tries',
+      "  if (attempts >= CONSENT_MAX_ATTEMPTS) patch.consent_token = null;",
+      "  // token never spent"],
+    [LIB, 'the check compares against the WRONG field \u2014 any four digits pass',
+      "  const want = lastFourOf(wedding.consent_phone);",
+      "  const want = lastFourOf(wedding.consent_phone) || String(digits).replace(/\\D/g, '');"],
 
     // ── R-G12.17 · F-40.102's cure, proven able to red ────────────────────────
     [DOWNLOAD, 'the door answers the form POST with JSON again \u2014 raw JSON on a guest\u2019s screen',

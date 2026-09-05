@@ -426,7 +426,12 @@ async function mintConsentToken(supabase, { ownerVendorId, weddingId, phone }) {
 async function findWeddingByConsentToken(supabase, token) {
   const { data, error } = await supabase
     .from('weddings')
-    .select('id, owner_vendor_id, title, couple_consent, consent_sent_at')
+    // ⚠ `consent_phone` IS SELECTED AND NEVER RETURNED PAST THIS FILE. The
+    // last-four check compares against it SERVER-SIDE; the digits are the thing
+    // the caller supplies, never the thing this estate hands out. A door that
+    // returned even four of them would let a forwarded link be answered by
+    // reading the page it was forwarded to.
+    .select('id, owner_vendor_id, title, couple_consent, consent_sent_at, consent_phone, consent_attempts')
     .eq('consent_token', token)
     .maybeSingle();
   if (error) throw error;
@@ -434,6 +439,56 @@ async function findWeddingByConsentToken(supabase, token) {
   const ageMs = Date.now() - new Date(data.consent_sent_at).getTime();
   if (ageMs > 30 * 24 * 60 * 60 * 1000) return null;
   return data;
+}
+
+// ── THE LAST-FOUR CHECK — R-G12.18.4, F-40.105's cure ───────────────────────
+// A FRICTION CHECK AGAINST A FORWARDED LINK, NOT AN OTP. The founder walked the
+// hole: the vendor was handed the couple's link by design, so the counterparty
+// could say yes. The link now never reaches her — and this is the second half,
+// for the case where a link is forwarded on by someone who did receive it.
+//
+// ⚠ THE COMPARISON IS SERVER-SIDE AND THE NUMBER NEVER LEAVES. The caller sends
+// four digits; this file holds the number. Returning even a masked form of it to
+// the consent page would defeat the check by printing its own answer.
+//
+// ⚠ THREE WRONG ANSWERS SPEND THE TOKEN, and spending is `consent_token = NULL`
+// rather than a flag: a spent token then reaches the SAME miss as a forged one,
+// an expired one and one that never existed. Enforced by the lookup, not by a
+// branch someone could reorder.
+//
+// A CORRECT ANSWER DOES NOT RESET THE COUNT. A token that has survived two
+// guesses is one somebody has been working on; forgiving that on a lucky third
+// would hand a guesser an unlimited budget four digits at a time.
+const CONSENT_MAX_ATTEMPTS = 3;
+
+function lastFourOf(phone) {
+  const digits = String(phone == null ? '' : phone).replace(/\D/g, '');
+  return digits.length >= 4 ? digits.slice(-4) : null;
+}
+
+/**
+ * -> true on a match. On a wrong answer the count rises and the token may be
+ * spent; either way the caller gets `false` and cannot tell which happened.
+ */
+async function checkConsentLastFour(supabase, { weddingId, token, digits }) {
+  const wedding = await findWeddingByConsentToken(supabase, token);
+  if (!wedding || wedding.id !== weddingId) return false;
+
+  const want = lastFourOf(wedding.consent_phone);
+  const got  = String(digits == null ? '' : digits).replace(/\D/g, '');
+  // A page with no recorded number cannot be answered at all. That is not a
+  // failure of this check — it is a page nobody was ever asked about, and
+  // letting it through would be the whole hole reopened.
+  if (!want) return false;
+
+  if (got === want) return true;
+
+  const attempts = Number(wedding.consent_attempts || 0) + 1;
+  const patch = { consent_attempts: attempts, updated_at: new Date().toISOString() };
+  if (attempts >= CONSENT_MAX_ATTEMPTS) patch.consent_token = null;
+  const { error } = await supabase.from('weddings').update(patch).eq('id', wedding.id);
+  if (error) throw error;
+  return false;
 }
 
 /**
@@ -544,6 +599,7 @@ module.exports = {
   createWedding, addCredit, publishWedding, addPhoto, deletePhoto,
   resolveCoupleForEvent, consentSeedFor,
   mintConsentToken, findWeddingByConsentToken, setConsentByToken,
+  checkConsentLastFour, lastFourOf, CONSENT_MAX_ATTEMPTS,
   findCreditByToken, settleCredit,
   publicRoll, publicWedding,
 };

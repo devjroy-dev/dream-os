@@ -23,7 +23,7 @@ const resolveVendor = require('../../middleware/resolveVendor');
 const asyncHandler  = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
 const { signUpload, uploadUrl, nowTimestamp } = require('../../../lib/cloudinarySign');
-const { claimUrl, consentUrl, sendCreditInvite, sendConsentInvite } = require('../../../lib/vendor/creditInvite');
+const { claimUrl, sendCreditInvite, sendConsentInvite } = require('../../../lib/vendor/creditInvite');
 const W = require('../../../lib/vendor/weddings');
 const crypto = require('crypto');
 
@@ -281,6 +281,37 @@ router.delete('/:id/photos/:photoId', ...mw, asyncHandler(async (req, res) => {
 // ⚠ THE NUMBER IS STORED AND NEVER PUT ON A PUBLIC WIRE. `consent_phone` is the
 // couple's own number and it is on neither `publicWedding` nor `publicRoll`;
 // R-G11.6 governs it identically to `wedding_credits.phone`.
+// POST /:id/consent/resend — R-G12.18.2
+//
+// ⚠ IT TAKES NO NUMBER. Re-sending to a number supplied at resend time would be
+// a silent redirect of a LIVE token to whoever asked last, which is the hole
+// F-40.105 closed wearing a different sleeve. A different number is a NEW ASK:
+// it re-mints, re-records, and the old token dies with the overwrite.
+router.post('/:id/consent/resend', ...mw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const wedding  = await W.getForOwner(supabase, req.vendor.id, req.params.id);
+  if (!wedding) return errRes(res, 404, 'Not found.');
+
+  const { data: row, error } = await supabase
+    .from('weddings')
+    .select('title, consent_token, consent_phone')
+    .eq('id', wedding.id)
+    .maybeSingle();
+  if (error) return errRes(res, 500, error.message);
+  if (!row || !row.consent_token || !row.consent_phone) {
+    return errRes(res, 409, 'Nothing to send again yet.');
+  }
+
+  const invite = await sendConsentInvite({
+    to: row.consent_phone,
+    owner:   req.vendor.business_name || '',
+    wedding: row.title,
+    token:   row.consent_token,
+    supabase,
+  });
+  return okRes(res, { sent_to_last4: W.lastFourOf(row.consent_phone), invite });
+}));
+
 router.post('/:id/consent', ...mw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const phone    = String((req.body || {}).phone || '').trim();
@@ -304,9 +335,23 @@ router.post('/:id/consent', ...mw, asyncHandler(async (req, res) => {
     supabase,
   });
 
+  // ── F-40.105 CURED · THE TOKEN NEVER REACHES THE VENDOR ───────────────────
+  // The first cut returned `consent_url` here and the room printed it, so THE
+  // VENDOR HELD THE COUPLE'S CONSENT LINK AND COULD ANSWER WITH IT. The founder
+  // found it on glass. Master §2.4: silence never means yes, and NEITHER DOES
+  // THE COUNTERPARTY — and this door was handing the counterparty the switch.
+  //
+  // It got there as a DARK-SEND FALLBACK, inherited from the claim path: "the
+  // founder pastes the link by hand while the send is dark." Meta approved both
+  // templates on 2026-09-05 and that window closed; the fallback outlived its
+  // reason and became the hole. It retires with the reason (R-G12.18.1/.3).
+  //
+  // WHAT SHE GETS INSTEAD is the last four digits of the number the ask went to,
+  // so she knows it went and where — and holds nothing she can act on. The
+  // digits are hers already: she typed the number.
   return okRes(res, {
     wedding: { id: minted.id, slug: minted.slug },
-    consent_url: consentUrl(minted.consent_token),
+    sent_to_last4: W.lastFourOf(phone),
     invite,
   });
 }));

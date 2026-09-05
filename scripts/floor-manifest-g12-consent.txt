@@ -1,0 +1,76 @@
+# scripts/floor-manifest-g12-consent.txt
+# TDW_19 · BLOCK 19 · G1.2 — F-40.105: THE CONSENT TOKEN NEVER REACHES THE VENDOR.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+#
+# ⚠ THE FOUNDER FOUND THIS ON GLASS, and it is the seat's. The door returned
+# `consent_url` and the room printed it, so THE VENDOR HELD THE COUPLE'S CONSENT
+# LINK AND COULD ANSWER WITH IT. Master §2.4 is that silence never means yes and
+# NEITHER DOES THE COUNTERPARTY — and this lane handed the counterparty the
+# switch. It arrived as a dark-send fallback inherited from the claim path ("the
+# founder pastes the link by hand while the send is dark"); Meta approved both
+# templates on 2026-09-05 and that window closed. The fallback outlived its
+# reason and became the hole.
+
+# ── THE COUNTER  [0136, founder-run BEFORE the ZIP] ────────────────────────
+# "Three wrong tries and the token is spent" is a promise about a TOKEN, not a
+# process. An in-memory counter resets on every deploy and is not shared between
+# replicas — a patient guesser would get three per restart and three per
+# instance, which is not three. The count belongs beside the thing it protects.
+# SPENDING IS `consent_token = NULL`, never a flag: a spent token then reaches
+# the SAME miss as a forged one, an expired one and one that never existed,
+# enforced by the lookup rather than a branch someone could reorder.
+db/migrations/0136_consent_attempts.sql
+
+# ── THE CHECK  [R-G12.18.4] ────────────────────────────────────────────────
+# A FRICTION CHECK AGAINST A FORWARDED LINK, NOT AN OTP. Nothing is sent and
+# nothing is stored on her device; the four digits are compared SERVER-SIDE
+# against the number the ask went to — which this estate never returns, not even
+# masked, anywhere in this lane. A correct answer does NOT reset the count: a
+# token that has survived two guesses is one somebody has been working on, and
+# forgiving that on a lucky third hands a guesser an unlimited budget.
+src/lib/vendor/weddings.js
+
+# ── THE DOOR  [R-G12.18.1/.4 + the founder's ask] ──────────────────────────
+# The check is enforced by the SERVER through a short signed pass bound to the
+# wedding. A leaf that remembers it answered is a suggestion — anyone who opens
+# a console sets a boolean, and the check becomes theatre. No new crypto and no
+# table: `signedSession.js` is the estate's home, and a missing secret fails
+# closed.
+# ONE ANSWER FOR EVERY FAILURE: a wrong guess, a spent token, an expired one and
+# one that never existed all return the same 404. A body that told them apart
+# would tell a guesser how close he was and how many tries remained.
+# AND THE FOUNDER'S ASK, 2026-09-05: a yes returns the page's own PUBLIC address,
+# so a couple who consents can SEE what she just published. Not a secret — once
+# consent is true that URL serves to anyone, which is precisely the thing she
+# was asked to agree to.
+src/api/consent.js
+
+# ── THE VENDOR SIDE  [R-G12.18.1/.2/.3] ───────────────────────────────────
+# `consent_url` is gone from the response and the door does not even build one.
+# She is told the LAST FOUR of the number she typed — digits she already has —
+# and holds nothing she can act on.
+# THE RESEND TAKES NO NUMBER. Re-sending to a number supplied at resend time
+# would be a silent redirect of a LIVE token to whoever asked last, which is
+# F-40.105 wearing a different sleeve. A different number is a NEW ASK: re-minted,
+# re-recorded, and the old token dies with the overwrite.
+src/api/vendor/studio/weddings.js
+
+# ── THE BENCH  [C18-C19, 19 cells, 4 production mutations] ────────────────
+# ⚠ TWO OF MY OWN CELLS WERE WRONG AND THE RUN SAID SO.
+#   · C18 first asserted the studio file never NAMES the token — and convicted a
+#     correct door, because the resend MUST read it server-side to send to the
+#     stored number. The property is "the token never reaches a RESPONSE", which
+#     is a different sentence. Narrowed to the door's own payloads.
+#   · C19 first asserted the comparison substring was PRESENT, so a line falling
+#     back to the caller's own digits still matched and the mutation "any four
+#     digits pass" stayed GREEN. A mutation that does not bite is a cell that is
+#     not testing what its name claims. It now reads the whole line and requires
+#     the expected digits to come from the ROW and nothing else.
+# Also: I reached for `has()`, which is b42's helper and not this file's —
+# borrowing a name across benches is how one acquires a dependency nobody
+# declared. Caught by the run.
+scripts/b53_g11_wedding_pages_bench.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g12-consent.txt
