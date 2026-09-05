@@ -175,7 +175,15 @@ async function cleanupDraftContracts(supabase) {
 const crypto = require('crypto');
 
 const DEFAULT_DEPOSIT_PCT = 30;
-const OTP_TTL_MS   = 10 * 60 * 1000;
+// ⚠ FIVE MINUTES, AND THE NUMBER IS META'S RATHER THAN OURS — 2026-09-06.
+// `tdw_contract_sign_otp` was filed with the expiry add-on set to 5, so the message
+// she reads says **"Expires in 5 minutes."**, and its validity period is 5 as well.
+// This constant was 10. A door that accepted a code for ten minutes while the message
+// promised five is the same divergence class as a document and its record disagreeing
+// (F-39.49(b)): two homes for one fact, and the one the person actually reads is the
+// one that must win. **The server moves to the message, never the message to the
+// server** — the message is already on her phone and cannot be edited.
+const OTP_TTL_MS   = 5 * 60 * 1000;
 // THIRTY DAYS, matching `/consent/`'s own expiry and for the same reason it has one:
 // this token flips a legal state, so it is a standing grant and not a page view.
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;

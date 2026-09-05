@@ -77,3 +77,41 @@ src/lib/vendor/dateLock.js
 # mutations rather than by reading the assertions, and a second wrong answer plus a
 # whole §6b are what now catch them. A cell that cannot go red is a cell that proves
 # nothing, and two of these could not until they were driven.
+
+# ── RIDER 1 (2026-09-06, base 390c144) · BOTH TEMPLATES ACTIVE ──────────────
+# Three files, all already in the list above. No new file, no schema byte, no door.
+#
+#   src/lib/templates.js        the eighth Utility's THIRD body (the bytes Meta holds),
+#                               status -> 'approved', meta_id 1599338985536926;
+#                               contract_sign_otp re-pointed to its own name
+#                               (R-G32.9(ii) landed the same night as (i));
+#                               the stale AUTHENTICATION flow paragraph replaced
+#   src/lib/vendor/contracts.js OTP_TTL_MS 10 -> 5 minutes
+#   scripts/b56_contract_bench  §10 re-authored against the post-approval truth
+#
+# ⚠ THE BODY WENT THROUGH THREE CUTS AND EACH WAS REFUSED BY A DIFFERENT AUTHORITY.
+#   1 · opened on {{1}} — refused by META'S RULE (F-40.91), caught by b53, a SIBLING
+#       seat's bench, and carried as a loud red until the founder re-vetoed (R-40.55).
+#   2 · R-40.55's — refused by META'S PRE-SUBMISSION CLASSIFIER as Authentication, on
+#       the tail `and enter the code we send you`. Authentication was not an available
+#       answer: that category carries Meta's preset body.
+#   3 · the founder's, filed and Active. The code sentence is gone entirely and never
+#       belonged — contract_sign_otp sends the code ten minutes later.
+#   The founder also struck `and the deposit that holds your dates` on sight. That was
+#   v3 clause 4 verbatim, carried so notice and instrument would agree; in a one-line
+#   message to someone who has not opened the agreement it explains nothing.
+#
+# ⚠ FOUR CELLS WERE RE-AUTHORED, NOT DELETED. §10 asserted `status: 'draft'` and
+# `isApproved === false`, which was true for about two hours. ONE OF THE TWO GATES HAS
+# MOVED and the cells moved with it — the send is still dark, and the FLAG is now where
+# that is asserted. Three new cells replace them and all three were driven both ways:
+#   point contract_sign_otp back at tdw_vendor_login_otp   -> 3 red
+#   OTP_TTL_MS back to 10 minutes                          -> 1 red
+#   status back to 'draft'                                 -> 2 red
+# b56 99 -> 102.
+#
+#   THIS TREE      GREEN 110  RED 49  TOTAL 159
+#   NAMED BASE     GREEN 110  RED 49  TOTAL 159   (390c144)
+#   DELTA          ZERO
+#
+# CONTRACT_SIGN_SEND_ENABLED remains unset in every environment. Nothing sends.

@@ -355,19 +355,48 @@ const TEMPLATES = {
     line: 'vendor',
     category: 'UTILITY',
     variables: ['owner', 'functions', 'link'],
-    // ⚠ RE-AUTHORED UNDER **R-40.55** AFTER `b53` REDDENED ON IT — F-40.118.
-    // The first cut opened on `{{1}}`, which Meta refuses ("Variables can't be at the
-    // start or end of the template"). The founder hit that exact wall on 2026-09-05
-    // with `wedding_credit`, and the estate has had a cell for it ever since — `b53`
-    // was right to red, and the chair's c-40.29 records that the veto was given
-    // against a rule the bench already held. THESE ARE THE BYTES ACTUALLY VETOED, and
-    // they are what the founder files with Meta: the registry and the Manager must
-    // never hold different words under one template name.
+    // ⚠ THE BODY WENT THROUGH **THREE** CUTS AND ALL THREE ARE WORTH THE RECORD,
+    // because each was refused by a DIFFERENT authority and the estate learned
+    // something different from each.
+    //
+    //   CUT 1 — opened on `{{1}}`. Refused by META'S OWN RULE (F-40.91): variables
+    //     may not start or end a template. Caught by `b53_g11_wedding_pages_bench`,
+    //     a SIBLING seat's bench, the moment the entry landed — the estate had held
+    //     that cell since `wedding_credit` hit the same wall on 2026-09-05. The seat
+    //     carried the red into the floor rather than papering it, filed F-40.118, and
+    //     the founder re-vetoed under R-40.55. c-40.29 is the chair's own note that
+    //     the veto had been given against a rule the bench already held.
+    //
+    //   CUT 2 — R-40.55's. Refused by META'S PRE-SUBMISSION CLASSIFIER, live in the
+    //     Create-template dialog: "Category does not match … Authentication
+    //     Recommended … This message template will be rejected." The trigger was the
+    //     tail, `and enter the code we send you` — code vocabulary reads as
+    //     Authentication whatever the rest says. And Authentication was not an
+    //     available answer: that category carries Meta's PRESET body, so this text
+    //     cannot be filed under it either.
+    //
+    //   CUT 3 — BELOW, and it is what Meta actually holds. The code sentence is gone
+    //     entirely, and it should never have been here: `contract_sign_otp` sends the
+    //     code ten minutes later, after she taps I agree. This template has ONE job,
+    //     which is to deliver the link. Founder-vetoed and filed 2026-09-06;
+    //     **Active, Utility, Meta id 1599338985536926**.
+    //
+    // ⚠ THE FOUNDER ALSO STRUCK `and the deposit that holds your dates` ON SIGHT, and
+    // was right about it in a way worth keeping: that phrase is v3 clause 4 VERBATIM
+    // ("It's what holds your dates"), carried here so the notice and the instrument
+    // would say one thing in one set of words. In the agreement it earns its place —
+    // it explains why a deposit exists. In a one-line notice to someone who has not
+    // yet opened the agreement it explains nothing, and a carried byte that does no
+    // work in its new home is decoration however good its provenance.
     body:
-      'You have an agreement to read and sign. {{1}} has sent it \u2014 it covers ' +
-      '{{2}}, and the deposit that holds your dates. Open {{3}} to read it \u2014 ' +
-      'nothing is agreed until you tap I agree and enter the code we send you.',
-    status: 'draft',
+      'You have an agreement to read and sign. {{1}} has sent it, covering {{2}}. ' +
+      'Open {{3}} to read it \u2014 nothing is agreed until you tap I agree.',
+    // Meta returned **Active, Utility** on Direct 1739793260373677, founder-witnessed
+    // 2026-09-06. THE OTHER GATE, `CONTRACT_SIGN_SEND_ENABLED`, remains unset in every
+    // environment, so this still sends nothing. Two things move together when a send
+    // opens — this line and the flag — and neither alone opens it.
+    status: 'approved',
+    meta_id: '1599338985536926',
   },
 
   // ── THE SIGN OTP — R-G32.9 · A KEY, NOT AN EIGHTH SUBMISSION ──────────────
@@ -381,14 +410,23 @@ const TEMPLATES = {
   // pointing several at one `name`. That is what this is: a distinct key, so the
   // send site is tracked on its own, aimed at an ALREADY-APPROVED WABA template.
   //
-  // ⚠ AND THE NAME LIES IN THE MANAGER UNTIL IT DOESN'T — which is the whole
-  // reason (ii) rides beside (i). `tdw_vendor_login_otp` is not what a couple
-  // signing a contract is doing, and a template name that misdescribes its use is
-  // the same class as a comment that outlives its fact. `tdw_contract_sign_otp` is
-  // submitted in parallel; on approval THIS `name` changes and nothing else does.
+  // ⚠ **(ii) LANDED THE SAME NIGHT AS (i), SO THE BORROWED NAME IS ALREADY RETIRED.**
+  // The fallback existed so the sign walk could run with no new Meta dependency; it
+  // was never needed, because `tdw_contract_sign_otp` came back Active within the
+  // hour. `tdw_vendor_login_otp` is not what a couple signing a contract is doing,
+  // and a template name that misdescribes its use is the same class as a comment
+  // that outlives its fact — so it goes the moment it can rather than the moment
+  // someone remembers. R-G32.9's whole (i)/(ii) split is discharged here, and it is
+  // left written down because the NEXT seat facing a Meta round trip should know the
+  // shape worked: point at an approved sibling, ship, re-point.
+  //
+  // Filed 2026-09-06: Authentication, **Copy code** delivery (see the corrected flow
+  // note above — Zero-tap and One-tap both demand a native package name and signature
+  // hash this estate does not have), security recommendation on, code expiry 5
+  // minutes, validity 5 minutes. Meta returned **Active**, founder-witnessed.
   contract_sign_otp: {
     key: 'contract_sign_otp',
-    name: 'tdw_vendor_login_otp',          // R-G32.9(i) — re-points to tdw_contract_sign_otp on approval
+    name: 'tdw_contract_sign_otp',         // R-G32.9(ii) — the borrowed name is retired
     language: TEMPLATE_LANGUAGE,
     line: 'vendor',
     category: 'AUTHENTICATION',
@@ -778,10 +816,36 @@ const TEMPLATES = {
   // after Meta approves (same convention as the six above). The Meta OTP send is gated on
   // the lane's *_PHONE_NUMBER_ID (see otpSend.js), so these stay dormant until cutover.
   //
-  // PROPOSED preset add-ons (FOUNDER VETO — filed on the WABA, not shipped as copy here):
-  //   • add_security_recommendation: true   → "For your security, do not share this code."
-  //   • code_expiration_minutes: 5          → "This code expires in 5 minutes." (matches OTP_TTL_MS)
-  //   • OTP button: COPY_CODE, text "Copy Code"
+  // ── WHAT THE MANAGER ACTUALLY ASKS FOR — CORRECTED 2026-09-06 ─────────────
+  // ⚠ THE PARAGRAPH THIS REPLACES LISTED THREE "PROPOSED PRESET ADD-ONS" AS IF THEY
+  // WERE THREE INDEPENDENT TICKS. THEY ARE NOT, AND THE ERROR COSTS A WASTED FILING.
+  // It was written in July against an older Create-template layout and was right about
+  // the OUTCOME and stale about the FLOW — the class this estate keeps meeting, a
+  // comment that outlives the fact it describes. The G3.2 seat followed it while filing
+  // `tdw_contract_sign_otp` and walked the founder into the wrong radio; he hit the wall
+  // on glass. Corrected from the screen, 2026-09-06:
+  //
+  //   1. **CODE DELIVERY SETUP is a RADIO, and it is the first thing the form asks.**
+  //      Three options: Zero-tap auto-fill (the default, and RECOMMENDED by Meta),
+  //      One-tap auto-fill, and Copy code.
+  //
+  //      ⚠ **ZERO-TAP AND ONE-TAP ARE UNAVAILABLE TO THIS ESTATE**, and not by
+  //      preference. Both open an "App setup" block demanding an Android **package
+  //      name** and an eleven-character **app signature hash**, because both deliver the
+  //      code into a NATIVE app that reads it without the recipient typing. TDW has no
+  //      native app — Block 11 is unstarted — and every OTP in this estate is entered
+  //      into a WEB page. Zero-tap additionally requires accepting a Terms-of-Service
+  //      checkbox on the business's behalf. **The answer is COPY CODE**, which asks for
+  //      nothing further, and it is what all five August templates carry.
+  //
+  //   2. **CONTENT** — two checkboxes, and expiry is one of them, not a number field:
+  //      ☑ Add security recommendation → "For your security, do not share this code."
+  //      ☑ Add expiry time for the code → reveals "Expires in [ 5 ] minutes"
+  //
+  //   3. **MESSAGE VALIDITY PERIOD** — a separate toggle further down, defaulting OFF
+  //      to WhatsApp's standard 10 minutes. Set to 5, matching the expiry above.
+  //
+  // THE BODY IS NEVER TYPED. Meta writes it; the form shows it in preview only.
   //
   // `variables: ['code']` documents the single body variable; auth payloads are built by
   // buildAuthTemplatePayload() (below), which ALSO threads the code into the OTP button.

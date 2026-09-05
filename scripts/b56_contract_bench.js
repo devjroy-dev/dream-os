@@ -408,8 +408,20 @@ section('10. the send is dark, and says so');
   const t = TPL.getTemplate('contract_sign');
   ok('the eighth template is registered', Boolean(t));
   ok('it is UTILITY', t.category === 'UTILITY');
-  ok("it ships status 'draft' — Meta has not passed it", t.status === 'draft');
-  ok('isApproved is false, so sendWa refuses it', TPL.isApproved('contract_sign') === false);
+  // ⚠ **ONE OF THE TWO GATES HAS MOVED, AND THE CELLS MOVED WITH IT.**
+  // These asserted `status: 'draft'` and `isApproved === false` at the cut, which was
+  // the truth for about two hours. Meta returned **Active, Utility** on 2026-09-06 and
+  // the founder witnessed it, so the registry gate is now OPEN and asserting it shut
+  // would be a bench lying about the estate to keep itself green.
+  //
+  // THE SEND IS STILL DARK, AND THE CELLS BELOW ARE WHERE THAT NOW LIVES. Two gates
+  // fail for DIFFERENT reasons — the registry says "Meta has approved these words",
+  // the flag says "we have decided to send" — and exactly one of them has moved.
+  // `creditInvite.js`'s own comment records the same moment for `wedding_credit`:
+  // *"Two gates that fail for DIFFERENT reasons … One of them has now moved."*
+  ok("it ships status 'approved' — Meta returned Active 2026-09-06", t.status === 'approved');
+  ok('the Meta id is on the entry', t.meta_id === '1599338985536926');
+  ok('isApproved is TRUE, so the registry no longer refuses it', TPL.isApproved('contract_sign') === true);
   // ⚠ F-40.91 — META REFUSES A LEADING OR TRAILING VARIABLE. **F-40.118 CLOSED
   // BY R-40.55.** T1's first cut opened on `{{1}}` and `b53_g11_wedding_pages_bench`
   // reddened on it the moment the entry landed — the estate has held that cell since
@@ -424,10 +436,21 @@ section('10. the send is dark, and says so');
   const o = TPL.getTemplate('contract_sign_otp');
   ok('the sign-OTP key exists', Boolean(o));
   ok('it is AUTHENTICATION', o.category === 'AUTHENTICATION');
-  ok('it points at tdw_vendor_login_otp (R-G32.9 i)', o.name === 'tdw_vendor_login_otp');
+  // R-G32.9(ii) LANDED THE SAME NIGHT AS (i). The borrowed name is retired; the cell
+  // that asserted it is retired with it, and reds if anyone points this key back at a
+  // template whose name misdescribes what a couple is doing.
+  ok('it points at its OWN name (R-G32.9 ii)', o.name === 'tdw_contract_sign_otp');
+  ok('the borrowed name is gone', o.name !== 'tdw_vendor_login_otp');
   ok('it rides the vendor lane', o.line === 'vendor');
   const payload = TPL.buildAuthTemplatePayload('contract_sign_otp', '419283');
-  ok('the auth payload builds on that name', payload && payload.name === 'tdw_vendor_login_otp');
+  ok('the auth payload builds on that name', payload && payload.name === 'tdw_contract_sign_otp');
+
+  // ⚠ THE CODE'S LIFE AND THE MESSAGE'S PROMISE ARE ONE NUMBER.
+  // The template was filed with the expiry add-on at 5 minutes, so her message reads
+  // "Expires in 5 minutes." A door that accepted the code for ten would be the
+  // document-and-record divergence class, and the message is the home that cannot be
+  // edited after the fact. This cell reds if the server drifts off what she reads.
+  ok('OTP_TTL_MS is five minutes, matching the filed expiry', C.OTP_TTL_MS === 5 * 60 * 1000);
   // THE SECOND GATE. The flag is unset in every environment.
   ok('CONTRACT_SIGN_SEND_ENABLED is unset here', String(process.env.CONTRACT_SIGN_SEND_ENABLED || '') !== '1');
   ok('the door names the flag rather than sending', /CONTRACT_SIGN_SEND_ENABLED/.test(read('src/api/sign.js')));
