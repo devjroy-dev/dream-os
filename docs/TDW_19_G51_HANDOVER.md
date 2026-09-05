@@ -1,6 +1,6 @@
 # TDW_19 G5.1 — THE OVERFLOW EXCHANGE · dream-os HALF · HANDOVER
 
-**Base** dream-os `85fb480` (rider 1; the half sealed at `556f0c1`, this adds §6b and §9)
+**Base** dream-os `38e52fc` (rider 2; the half sealed at `556f0c1`, this adds §6b and §9)
 **Sealed base** `3c0f8d6` (re-derived at the cut; the tip moved **three times** under this seat — see §6).
 **Delivery** 8 files, listed in `scripts/floor-manifest-g51-dreamos.txt`.
 **Chair** CE-40, rulings R-G51.1–.10 (relay 2), B8 and the migration number ruled at relay 3 (R-40.44).
@@ -102,3 +102,43 @@ The chair's correction (relay 4) is the shape that binds: **assert the behaviour
 **A running floor's manifest is a SNAPSHOT, not a subscription.** `run-floor.sh --delivery` reads the declared set at start and verifies "set and contents both" at the end. Any declared file that moves mid-run trips the STOP — correctly. This seat broke it twice: once by creating the handover after the run began, once by editing the manifest and handover to record a carry. The second time it was caught before the run finished and killed rather than allowed to burn fifteen minutes producing a STOP already known. **Proposed law: from the moment a floor starts, no file in its manifest moves until it exits. If a declared file must change, kill the run and restart — a floor measured over shifting source is not a floor.**
 
 **A DDL cell reads DISK; only `information_schema` reads the DATABASE.** §8's four cells assert `0135`'s guarantees by reading the `.sql` file, and they are labelled as such — but they pass identically whether or not the migration has ever run. On this delivery the founder's editor returned **zero rows** for `lead_referrals` on the first ask, with the bench fully green and the code applied. The green number was true and said nothing about production. **Proposed law: any delivery carrying DDL states its `information_schema` witness query in the apply chain, and the plane is not considered live until that query returns its expected shape. A bench cannot witness a migration it cannot reach.**
+
+---
+
+## 10 · RIDER 2 — F-40.109, A FUNCTION THAT SHIPPED WITH NO CALLER
+
+### 10.1 · The defect
+
+`referralStampsForLeads` shipped in the sealed half **exported, benched by §8, and mounted on no door.** `grep -rn "referralStampsForLeads" src/` returned the definition and the export line. Nothing else.
+
+R-G51.5 and F-40.85's cure were therefore unreachable: `GET /api/v2/vendor/leads` sent no stamp, no other door did, and the acceptance card's line 2 — *DROY550's Leads room shows it with the referrer's name and the note* — could not happen. Had the pwa half been built on top of it, the detail rows would have read a field the backend never sent, on every lead, silently, forever. **A surface that renders empty is worse than a missing surface**, because nobody files a finding against it.
+
+### 10.2 · Why every instrument was green
+
+§8 tested the function and it was correct. §9's sole-writer cells asked who *calls the table*. The floor sat at named base with no delta. All true, and all blind to the same thing: **"the function is correct" and "the function is reachable" are different questions, and nothing asked the second one.**
+
+This is the third instance of one class in this sitting. The other two are in §4: a mutation deleting the dedupe refusal reddened nothing, and one leaking `phone` into the picker's columns reddened nothing. Each time the cell tested a property adjacent to the one that mattered. **A cell can only see what it looks at, and the way to find out what it looks at is to break the thing it claims to guard.**
+
+### 10.3 · The cure
+
+The call rides beside `tdwStamps` — same shape, one batched read per page, mapped in the serializer. `forwarded_to` from `sentBy`, `forwarded_by` from `receivedBy`, both null where absent so the surface gates on presence.
+
+**R-G51.11: not tier-gated.** The two keys pass through `serializeLeadRows` untouched and `WITHHELD_FIELDS` is unchanged. A peer's business name and her sentence about a lead she chose to hand over are *another vendor's words*, not the couple's contact detail — withholding them from a basic-tier vendor would hide who sent her work from the vendor least able to chase it down. Asserted as a **behaviour**: the serializer is driven at both tiers and the stamps must come back identical, while her phone stays gated at basic.
+
+**§8b is the cell that was missing, and it reddens on the exact shipped defect.** Deleting `forwarded_by` from the mapper reddens one cell; deleting the call — restoring the door to precisely the state of the sealed half — reddens two. `b51` 67 → 76.
+
+### 10.4 · One more cell defect, owned
+
+§8b's batching assertion went RED on correct code. Its matcher was `\(supabase,[^)]*\.map\(`, and `[^)]*` cannot cross the `)` in `(rows || []).map(...)` — the negated class stopped one character short of what it was looking for. Same family as the money cell that matched the local `inRes`: **a regex asserting a property it cannot actually see.** Re-matched on the argument shape instead. That is now four cell defects this sitting, every one found by running the instrument against a state rather than by reading it.
+
+### 10.5 · `b36` caught the cure mid-flight, and it was right
+
+Mounting the stamps grew the list wire by two keys, and `b36_leadgate_a_bench` leg C — *every key put on the wire is classified* — reddened within the hour: `list wire DRIFTED — UNCLASSIFIED: [forwarded_to, forwarded_by]`.
+
+**The delta was proven MINE** the same way `b16`'s was proven not: run the bench at the clean tip with the work stashed. GREEN there, RED here. No ambiguity, no argument from plausibility.
+
+The cure is a **classification in `LIST_WIRE_CENSUS`, amended by label — never an append to quiet a bench.** Neither key is a `public.leads` column; both are objects assembled from `lead_referrals`, which is why they enter the wire census and no SELECT census: leg B1 pins what this door asks the leads table for, and it asks for nothing new. `b36` 95/95.
+
+Worth noting what the two instruments did between them. `b51` §8b is the cell that would have caught F-40.109 had it existed. `b36` is a cell that already existed and caught the *cure* the moment it moved something it guards. **The estate's older instruments are load-bearing for work written months after them**, and the right response to one of them reddening is to derive attribution first and only then decide whether the finding is against the delivery or against the cell.
+
+**Floor at `38e52fc`: `FLOOR = NAMED BASE, no delta`, exit 0, 15 RED, declared files unmoved.**

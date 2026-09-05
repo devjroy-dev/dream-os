@@ -56,7 +56,7 @@ const { createLead, updateLead, loseLead, getLeadDetail } = require('../../lib/v
 // fallback has anything to invent. See src/lib/vendor/leadSerializer.js, law ③.
 const { serializeLeadRows, serializeLeadDetail } = require('../../lib/vendor/leadSerializer');
 const { logActivity } = require('../../lib/vendor/snapshot'); // TDW_04 engine-lane (ST-3d): lead doors log
-const { forwardLead } = require('../../lib/vendor/referrals'); // Block 19 G5.1 — the lead_referrals plane's one writer
+const { forwardLead, referralStampsForLeads } = require('../../lib/vendor/referrals'); // Block 19 G5.1 — the lead_referrals plane's one writer, and the list's stamps
 
 // TDW_04 engine-lane (ST-3b): JS twin of the engine's phoneKey.ts / the PWA's
 // cabinet.ts phoneKey — last 10 digits or null. Annotation-only (snapshot item
@@ -204,6 +204,26 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
   // Linkage-backed means linkage-backed. This is stated, not hidden.
   const tdwStamps = await engagedLeadStamps(supabase, vendor.id, (rows || []).map(r => r.id));
 
+  // ── BLOCK 19 G5.1 · THE REFERRAL STAMPS  (R-G51.5 · F-40.85 · F-40.109) ────
+  // ⚠ THIS CALL IS F-40.109's CURE, AND THE FINDING IS WORTH THE PARAGRAPH.
+  // `referralStampsForLeads` shipped in the sealed half exported, benched by §8
+  // of `b51`, and MOUNTED ON NO DOOR. Every instrument was green because every
+  // instrument tested the FUNCTION; none asked whether anything called it. So
+  // the peer's lead record could never have rendered "Forwarded by" — the
+  // acceptance card's own line 2 — and the pwa would have read a field the
+  // backend never sent, on every lead, silently, forever.
+  //
+  // It rides HERE, beside `tdwStamps`, because that is the same shape: one
+  // batched read for the whole page rather than one per row, mapped in the
+  // serializer below. `engagedLeadStamps` earned that pattern; this inherits it
+  // rather than inventing a second one.
+  //
+  // Degradation is deliberate: `referralStampsForLeads` returns empty maps and
+  // logs rather than throwing when the plane is unreadable. A stamp is
+  // DECORATION on a lead record, and a stamp read that failed must never cost
+  // the vendor her leads.
+  const refStamps = await referralStampsForLeads(supabase, vendor.id, (rows || []).map(r => r.id));
+
   const leads = (rows || []).map(l => ({
     id:                     l.id,
     name:                   l.name,
@@ -239,6 +259,25 @@ router.get('/:vendorId', requireAuth, resolveVendor({ paramName: 'vendorId' }), 
     // F-04.10 BINDS THIS LINE: the read above is only half the work, and this
     // mapper entry is the other half. That finding was born on this handler.
     tdw_enquired_at: tdwStamps.get(l.id) || null,
+
+    // ── G5.1 · THE TWO STAMPS ON THE WIRE  (R-G51.5, R-G51.11) ──────────────
+    // `forwarded_to` on the sender's own lead; `forwarded_by` on the peer's
+    // copy. Never both on one row — a lead is the landing place of at most one
+    // forward (0135's UNIQUE on `new_lead_id`) and the sender's original is a
+    // different row from the peer's copy.
+    //
+    // ⚠ NOT TIER-GATED, BY RULING (R-G51.11). These two keys pass through
+    // `serializeLeadRows` untouched. `WITHHELD_FIELDS` is a founder-closed set
+    // and stays exactly as it is: a peer's business name and her sentence about
+    // a lead she chose to hand over are ANOTHER VENDOR'S WORDS, not the couple's
+    // contact detail. Withholding them from a basic-tier vendor would hide who
+    // sent her work — from the vendor least able to chase it down herself.
+    //
+    // Null where absent rather than an empty object, so the surface gates on
+    // presence and renders nothing at all on an unforwarded lead — the same
+    // posture `tdw_enquired_at` takes one line up.
+    forwarded_to: refStamps.sentBy.get(l.id) || null,
+    forwarded_by: refStamps.receivedBy.get(l.id) || null,
     draft:        leadDraftWire(l), // TDW_02 P3 wishbone (undefined when complete)
   }));
 

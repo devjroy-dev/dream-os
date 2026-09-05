@@ -32,6 +32,7 @@ docs/TDW_19_G51_HANDOVER.md
 src/api/vendor/core.js
 src/api/vendor/leads.js
 src/api/vendor/referrals.js
+src/lib/vendor/leadSerializer.js
 src/lib/vendor/leads.js
 src/lib/vendor/referrals.js
 
@@ -46,4 +47,19 @@ src/lib/vendor/referrals.js
 # so b16_p1_engagements_bench is GREEN in the named base and this delivery's
 # floor now reads ZERO DELTA (exit 0, 15 RED). The handover's §7 was rewritten
 # against the re-derived floor, never carried forward from the sealed half.
+
+# ── RIDER 2 (2026-09-06, base 38e52fc) ─────────────────────────────────────
+# F-40.109: `referralStampsForLeads` shipped mounted on no door. The leads list
+# door now calls it beside `tdwStamps` and maps `forwarded_to`/`forwarded_by`
+# (R-G51.5); the stamps are NOT tier-gated (R-G51.11) and `WITHHELD_FIELDS` is
+# untouched. `b51` gains §8b, which reddens when the door stops sending them —
+# the cell that was missing. 67 -> 76.
+#
+# The chair named the tip `ccdc70e`; re-derived at the cut it was `38e52fc`
+# (G1.2's F-40.106 archive cure landed between). Disjoint from every path here.
+#
+# RIDER 2 ADDENDUM: `b36_leadgate_a_bench` leg C reddened the moment the wire
+# grew two keys — the delta was proven MINE (GREEN at the clean tip with the work
+# stashed, RED here) and cured by CLASSIFYING them in `LIST_WIRE_CENSUS`, amended
+# by label. A classification, never an append to quiet a bench. b36 95/95.
 

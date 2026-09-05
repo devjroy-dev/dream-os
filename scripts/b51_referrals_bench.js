@@ -17,6 +17,7 @@
 //   §5  add `state: 'forwarded'` to the original lead            → §5 flips RED
 //   §6  delete the step-4 dedupe refusal from forwardLead        → §6 flips RED
 //   §6b add a tier gate to forwardLead                          → §6b flips RED
+//   §8b delete `forwarded_by` from the leads list mapper         → §8b flips RED
 //       (BEHAVIOURALLY INERT — see §6's own note. The guard it removes is
 //        outcome-equivalent to createLead's own dedupe on this path, so §2's
 //        cells stay green. The cell that catches it is structural, and that
@@ -413,6 +414,77 @@ section('8. the two lead records\' one row each, and the DDL\'s own guarantees')
   ok('0135 adds NO column to leads and NO CHECK on state',
      !/ALTER TABLE public\.leads/.test(ddl) && !/leads_state_check/.test(ddl));
   ok('0135 carries no money column', !/amount|price|fee|commission|inr/i.test(ddl.replace(/^--.*$/gm, '')));
+}
+
+// ══ §8b — THE DOOR SENDS THE STAMP · F-40.109's CURE ═══════════════════════
+// MUTATION: delete the `forwarded_by` line from the leads list mapper → §8b RED.
+//
+// ⚠ THIS SECTION EXISTS BECAUSE §8 PASSED WHILE THE FEATURE WAS DEAD.
+// `referralStampsForLeads` shipped in the sealed half exported, benched by §8,
+// and MOUNTED ON NO DOOR. Every cell above was green because every cell tested
+// the FUNCTION; not one asked whether anything CALLED it. The peer's lead record
+// could never have rendered "Forwarded by" — the acceptance card's own line 2 —
+// and the pwa would have read a field the backend never sent, on every lead,
+// silently, forever.
+//
+// It is the same defect class as the two mutations in §4 of the handover that
+// reddened nothing: a cell can only see what it looks at, and "the function is
+// correct" and "the function is reachable" are different questions. §9's
+// sole-writer cells ask who CALLS the table. Nothing asked who calls the lib.
+//
+// So this section reads the DOOR, not the lib. It is structural — the door needs
+// a live supabase and a mounted express app to drive, and standing one up here
+// would be a second integration harness for four lines of mapper. What it
+// asserts is exactly what was missing: the call exists, both keys are mapped,
+// and they are mapped from the stamp maps rather than from anything else.
+section('8b. the leads list door actually SENDS the stamps (F-40.109)');
+{
+  const doorSrc = fs.readFileSync(path.join(ROOT, 'src/api/vendor/leads.js'), 'utf8');
+  const live = doorSrc.replace(/^\s*\/\/.*$/gm, '');   // comments name the keys; code must map them
+
+  ok('the door imports the stamp reader', /referralStampsForLeads/.test(live.split('\n')[0] + live));
+  ok('and CALLS it — the cure for a function that shipped with no caller',
+     /await referralStampsForLeads\(/.test(live));
+  // ⚠ THE FIRST CUT OF THIS CELL WENT RED ON CORRECT CODE. Its matcher was
+  // `\(supabase,[^)]*\.map\(` — and `[^)]*` cannot cross the `)` in
+  // `(rows || []).map(...)`, so the negated class stopped one character short of
+  // the thing it was looking for. Same family as the money cell that matched the
+  // local `inRes`: a regex asserting a property it cannot actually see. Matched
+  // on the ARGUMENT SHAPE instead — the ids arrive as an array derived from the
+  // page's rows, which is the property that matters, and one-per-row would not
+  // pass an array at all.
+  const call = (live.replace(/\n/g, ' ').match(/referralStampsForLeads\(([^;]*)\)/) || [])[1] || '';
+  ok('the call is batched over the page\'s lead ids, not one per row',
+     /\.map\(/.test(call) && /rows/.test(call));
+
+  ok('`forwarded_to` is mapped onto the wire from sentBy',
+     /forwarded_to:\s*refStamps\.sentBy\.get\(l\.id\)/.test(live));
+  ok('`forwarded_by` is mapped onto the wire from receivedBy',
+     /forwarded_by:\s*refStamps\.receivedBy\.get\(l\.id\)/.test(live));
+
+  // ── R-G51.11 · NOT TIER-GATED ────────────────────────────────────────────
+  // The stamps are another vendor's words about a lead she chose to hand over,
+  // not the couple's contact detail. Withholding them from a basic-tier vendor
+  // would hide WHO SENT HER WORK from the vendor least able to chase it down.
+  // Asserted as a BEHAVIOUR of the serializer, not as the absence of a gate —
+  // relay 4's correction, applied a second time.
+  const { serializeLeadRows } = require(path.join(ROOT, 'src/lib/vendor/leadSerializer.js'));
+  const row = {
+    id: 'lead-x', vendor_id: TO, name: 'Priya Nair', phone: '+919812345678', email: 'p@x.com',
+    state: 'new', source: 'peer_referral', referrer: 'Dev Roy Photography',
+    forwarded_by: { peer_name: 'Dev Roy Photography', note: 'Booked that weekend.', at: '2026-09-05T00:00:00Z' },
+    forwarded_to: null,
+  };
+  const [basic] = serializeLeadRows([{ ...row }], 'basic', TO);
+  const [paid]  = serializeLeadRows([{ ...row }], 'signature', TO);
+
+  ok('a BASIC-tier vendor still receives the referrer\'s name',
+     basic.forwarded_by && basic.forwarded_by.peer_name === 'Dev Roy Photography');
+  ok('and still receives the note', basic.forwarded_by && basic.forwarded_by.note === 'Booked that weekend.');
+  ok('the stamp is identical at a paid tier — the gate does not touch it',
+     JSON.stringify(basic.forwarded_by) === JSON.stringify(paid.forwarded_by));
+  ok('and WITHHELD_FIELDS is untouched: her phone is still gated at basic',
+     basic.phone !== row.phone && paid.phone === row.phone);
 }
 
 // ══ §9 — ONE WRITER, ONE HOME ══════════════════════════════════════════════

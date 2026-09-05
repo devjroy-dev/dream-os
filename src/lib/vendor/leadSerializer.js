@@ -351,10 +351,32 @@ const LIST_SELECT_CENSUS = [
 // `budget_total` rather than inside it: `budget_total` is the CEILING wearing an
 // alias (mapper: `budget_total: l.budget_max`), and giving that key a third
 // meaning is how the alias became a thing readers have to look up.
+// ── AMENDED BY LABEL · BLOCK 19 G5.1 RIDER 2 (R-G51.5, R-G51.11 / F-40.109) ──
+// `forwarded_to` and `forwarded_by` join the WIRE. Neither is a `public.leads`
+// column — both are objects assembled from `public.lead_referrals` by
+// `referralStampsForLeads`, which is why they appear HERE and in no SELECT
+// census: leg B1 pins the columns this door asks the leads table for, and this
+// door asks it for nothing new.
+//
+// ⚠ THE RED THAT PRODUCED THIS LINE WAS THE INSTRUMENT WORKING, AND IT CAUGHT
+// THE SEAT MID-CURE. Rider 2 exists because `referralStampsForLeads` shipped
+// mounted on no door (F-40.109). Mounting it grew the wire by two keys, `b36`
+// leg C reddened on the drift within the hour, and the delta was proven MINE by
+// running the bench at the clean tip with the work stashed — GREEN there, RED
+// here. This is a classification, not an append to make a bench quiet.
+//
+// ⚠ THEY ARE NOT GATED, AND THAT IS A RULING (R-G51.11). The pair passes through
+// `serializeLeadRows` untouched and `WITHHELD_FIELDS` is unchanged: a peer's
+// business name and her sentence about a lead she chose to hand over are ANOTHER
+// VENDOR'S WORDS, not the couple's contact detail. Withholding them at basic
+// tier would hide who sent her work from the vendor least able to chase it down.
+// `b51` §8b drives this serializer at both tiers and asserts the stamps come
+// back identical while her phone stays gated.
 const LIST_WIRE_CENSUS = [
   'id', 'name', 'phone', 'wedding_date', 'wedding_date_precision',
   'wedding_city', 'budget_total', 'budget_min', 'state', 'source', 'referrer',
   'raw_message', 'notes', 'created_at', 'tdw', 'tdw_enquired_at', 'draft',
+  'forwarded_to', 'forwarded_by',
 ];
 
 // The columns the DETAIL door asks for (src/lib/vendor/leads.js, symbol
