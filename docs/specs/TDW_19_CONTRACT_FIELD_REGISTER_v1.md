@@ -247,9 +247,9 @@ All PROFILE or PER-CONTRACT; none is DERIVED at this base, because no annex plan
 
 ---
 
-## 8 · WHAT THE PRODUCT CANNOT FILL YET
+## 8 · WHAT THE PRODUCT CANNOT FILL YET — **F-40.94**
 
-Eight tokens above have no column at base `d91ec6e`. They are gathered here because they, and not the clause text, are G3.2's schema work.
+Eight token families above have no column at base `d91ec6e`. They are gathered here because they, and not the clause text, are G3.2's schema work, and they carry a number — **F-40.94**, allocated by the chair on 2026-09-05 — so that the DDL is tracked as a finding and not as a paragraph inside a spec. This section is the finding's body; the finding itself is filed in `docs/FINDINGS_LOG.md` by the chair's own cut.
 
 | Token | Wanted for | Nearest existing home |
 |---|---|---|
@@ -275,3 +275,5 @@ Derived at `dream-os @ d91ec6e`. Every DERIVED row names its `PUBLIC_SCHEMA.md` 
 **No byte in this file is vendor-facing copy**, and no label here may be lifted into a surface. The mock reads this file for *which* fields exist and *where* they come from; the words a vendor reads beside each field are minted at G3.2's mock and pass the founder's veto there.
 
 This register tracks `TDW_19_CONTRACT_GENERIC_v1.md`. **When the lawyer's v2 lands, this file is re-derived against v2 and reissued at the same version** — a register pointing at a superseded instrument is worse than no register, because it is confidently wrong.
+
+**2026-09-05 · v2 · re-derived, no change.** The lawyer approved the instrument as it stood and moved no clause, so v2 is v1 plus a dated verdict block in its front matter, at the same path. The census was re-run against v2 and returns **202** — the same 202 tokens, none added, none renamed, none retired. **Every row above therefore stands unamended, and all 39 `PUBLIC_SCHEMA.md` witness lines were re-read at base `012374c` before this line was written; `PUBLIC_SCHEMA.md` did not move between `d91ec6e` and `012374c`, verified by `git diff --stat`.** The register is not stale.

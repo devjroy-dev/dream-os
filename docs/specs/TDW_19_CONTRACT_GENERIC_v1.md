@@ -8,6 +8,30 @@
 
 ---
 
+## VERDICT — v2 · 2026-09-05
+
+**The founder's lawyer has read this instrument and APPROVED it as it stands, as a contract carrying no detrimental liability on the vendor.** No clause was struck, added, reworded or reordered. **This file is therefore v2, and v2 is byte-identical to v1 below this block.** There is no second instrument, because the lawyer moved nothing; a copied file would be a second home for one document.
+
+**This block supersedes four passages below it, which were written before the verdict and are left unrewritten so the record reads in the order it happened.** Where this block and a superseded passage disagree, this block governs.
+
+1. **The Status line above** — no longer "DRAFT FOR THE FOUNDER'S LAWYER … Not shipped." The instrument is **lawyer-passed and cleared for use.** It remains not vendor-facing product copy: see 4 below.
+2. **Appendix 2's opening sentence** ("the founder would like the return draft (v2) to answer these seven") — the lawyer returned a **global approval, not seven individual answers.** Appendix 2 stands as the open technical questions, unanswered on the record, and §"WHAT THE APPROVAL DOES NOT COVER" below says what that means.
+3. **The closing sentence** ("v2 is the file that comes back from the lawyer") — it came back unchanged, so v2 is this file with this block, at this path.
+4. **The closing paragraph's "every byte here is a lawyer's draft"** — read now as *lawyer-passed*. The rest of that paragraph stands unchanged and binds: **no sentence in this file is vendor-facing product copy, none may be lifted into the product, and the product's bytes are minted at G3.2's mock under the copy law's founder veto.** Approval of the instrument is not approval of any surface.
+
+### WHAT THE APPROVAL DOES NOT COVER — stated so the silence is not misread
+
+The verdict recorded is that the contract carries no detrimental liability on the vendor. It is a verdict on the **instrument**, and the following are outside it:
+
+- **Appendix 2's seven questions are not answered.** In particular Q1 (what the clause 18.3 audit record must contain to be admissible, and whether a section 65B certificate is needed), Q3 (the GST block's correctness for a registered and an unregistered vendor) and Q7 (stamp duty in each state a vendor may be in) are technical questions whose answers change what the **product** must store and print, not what this contract says. A global approval does not supply them.
+- **Clause 18's mechanism is still not built.** Clause 18.6's paper fallback is the operative path until it is. The approval does not make the flow at 18.2 exist.
+- **The blanks are not approved, because they are not filled here.** Every field token in it is the vendor's own number or policy. A cancellation slab or a liability figure a vendor sets is hers, and no verdict on this template reaches it.
+- **The annexes are approved as drafted, not as attached.** Which annexes a given contract carries is a per-contract choice, and clause 3.1 governs it.
+
+**A vendor may use this instrument from today**, by uploading it to her Contracts room — the plane already stores a PDF and its state, so this needs no schema byte. The field register's §8 (**F-40.94**) is what G3.2 builds afterwards, to stop her filling the blanks by hand.
+
+---
+
 ## HOW TO READ THIS FILE
 
 **It is one instrument, not seven.** Clauses 1–18 apply to every engagement. Annexes A–G are attached only where the service is engaged; an annex not attached is not part of the agreement, and clause 3.1 says so.
