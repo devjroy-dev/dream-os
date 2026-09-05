@@ -1,0 +1,36 @@
+# scripts/floor-manifest-g51-dreamos.txt
+# TDW_19 · BLOCK 19 · G5.1 — THE dream-os HALF. The overflow exchange: the
+# lead_referrals plane, the provenance token, the forward door, the room's reads.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for. Every
+# file below was authored by THIS seat in THIS sitting; nothing inherited. The
+# tree was clean at 0a43d09 before a byte moved, proven by `git status
+# --porcelain | wc -l` returning 0 immediately after `git reset --hard
+# origin/main`, and 0a43d09 is the tip the chair named in relay 3.
+#
+# ⚠ THE TIP MOVED UNDER THIS SEAT TWICE, AS RELAY 3 SAID IT WOULD.
+#   0a43d09 -> 5e5c230  (b88abe5, 5e5c230 — G3.2-pre's contract docs, docs/specs/)
+#   5e5c230 -> 4d7a341  (G2 sitting 1, dream-os — nineteen files incl. 0134)
+#   4d7a341 -> 3c0f8d6  (G1.2's approved templates — templates.js, b53, a manifest)
+# Both carries: `git diff --name-only` against this list FIRST to prove disjoint,
+# then stash -> ff-merge -> pop, then sha256 over all eight paths on both sides —
+# the SET and the CONTENTS both, because "it looked fine" is not a check
+# (R-38.16; F-38.25 is what happens otherwise). Neither carry moved a byte.
+#
+# THE SECOND CARRY CHANGED A FACT, not just a base: G2 filled 0134, so the ladder
+# is contiguous and 0135 now sits AT the tip. 0135's header was re-derived rather
+# than left asserting the hole it was written above.
+#
+# 0135_lead_referrals.sql is FOUNDER-RUN in the Supabase editor before the ZIP is
+# applied; it is listed because it is dirt in this tree, not because the floor
+# executes it. No bench in this delivery touches a live database.
+
+db/migrations/0135_lead_referrals.sql
+scripts/b51_referrals_bench.js
+scripts/floor-manifest-g51-dreamos.txt
+docs/TDW_19_G51_HANDOVER.md
+src/api/vendor/core.js
+src/api/vendor/leads.js
+src/api/vendor/referrals.js
+src/lib/vendor/leads.js
+src/lib/vendor/referrals.js

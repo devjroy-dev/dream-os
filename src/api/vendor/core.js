@@ -59,6 +59,7 @@ router.use('/discover',    require('./discover'));
 router.use('/ig',          require('./ig'));
 router.use('/collab',      require('./collab'));
 router.use('/roster',      require('./roster'));   // TDW_04.5 P4 — the roster plane + the bridge-mint door (CE-59 fork 2)
+router.use('/referrals',   require('./referrals')); // Block 19 G5.1 — the overflow exchange's READ doors (the forward is on /leads)
 router.use('/couture',     require('./couture'));
 router.use('/featured',    require('./featured'));
 // TDW_10 BILLING v2 — the vendor's own money door (subscribe/cancel/upgrade).

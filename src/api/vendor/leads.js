@@ -56,6 +56,7 @@ const { createLead, updateLead, loseLead, getLeadDetail } = require('../../lib/v
 // fallback has anything to invent. See src/lib/vendor/leadSerializer.js, law ③.
 const { serializeLeadRows, serializeLeadDetail } = require('../../lib/vendor/leadSerializer');
 const { logActivity } = require('../../lib/vendor/snapshot'); // TDW_04 engine-lane (ST-3d): lead doors log
+const { forwardLead } = require('../../lib/vendor/referrals'); // Block 19 G5.1 — the lead_referrals plane's one writer
 
 // TDW_04 engine-lane (ST-3b): JS twin of the engine's phoneKey.ts / the PWA's
 // cabinet.ts phoneKey — last 10 digits or null. Annotation-only (snapshot item
@@ -534,6 +535,84 @@ router.delete('/:leadId', requireAuth, resolveVendor({ paramName: 'leadId', via:
 
   return okRes(res, { deleted: { id: leadId } });
 }));
+
+
+// ─── POST /api/v2/vendor/leads/:leadId/forward ────────────────────────────────
+// BLOCK 19 G5.1 — THE OVERFLOW EXCHANGE. A booked vendor hands an enquiry she
+// cannot take to a peer on her roster, with a note. The peer's copy is minted by
+// `createLead` — this sitting adds a CALLER, never a sixth INSERT.
+//
+// ⚠ IT LIVES ON THE LEADS ROUTER AND NOT ON `/referrals`, BY CHARTER. The act is
+// a thing done TO A LEAD, and `resolveVendor({ paramName: 'leadId', via: 'leads' })`
+// is what proves the lead is hers — the same mode-C guard the state PATCH, the
+// field PATCH and the DELETE already use. A door on the referrals router would
+// have had to re-derive ownership by hand, which is how the two-writer diseases
+// in this estate's log all start. The ROOM's read door is separate
+// (src/api/vendor/referrals.js) because it is about the plane, not about a lead.
+//
+// ⚠ NO resolveAgent(). This door does not touch Donna's snapshot, and it must
+// not: R-G51.3 leaves the original lead's `state` and every rendered field
+// exactly where they were, so there is nothing for `patchLeadSnapshot` to keep
+// true. Mounting the middleware would also make a forward FAIL for a vendor with
+// no agent row — the constraint the create door's own comment (F-04.21's trail,
+// one screen up) was written to honour.
+//
+// THE REFUSAL IS THE POINT (R-G51.2 · F-40.84). Every reason a forward cannot
+// land is decided BEFORE anything is written, and returned as a CODE — the
+// vendor-facing sentence is the founder's, vetoed at G51_VETO_SHEET §C1, and it
+// lives in the pwa's copy home. A door that returned prose here would own a
+// vendor-facing byte nobody vetoed.
+router.post('/:leadId/forward', requireAuth,
+  resolveVendor({ paramName: 'leadId', via: 'leads' }),
+  asyncHandler(async (req, res) => {
+    const supabase = req.app.locals.supabase;
+    const vendor   = req.vendor;
+    const leadId   = req.params.leadId;
+
+    const body       = req.body || {};
+    const toVendorId = typeof body.to_vendor_id === 'string' ? body.to_vendor_id.trim() : '';
+    // Trimmed to null rather than kept as '': a note is absent or it is a
+    // sentence, and an empty string in `lead_referrals.note` would render as a
+    // blank quote under "Forwarded by" on the peer's record.
+    const rawNote    = typeof body.note === 'string' ? body.note.trim() : '';
+    const note       = rawNote || null;
+
+    if (!toVendorId) return errRes(res, 400, 'to_vendor_id is required.');
+
+    const result = await forwardLead(supabase, vendor, { leadId, toVendorId, note });
+
+    if (!result.ok) {
+      // A refusal is a 409 when the world is simply in a state that forbids the
+      // act — the peer already holds the couple, the vendor is not a peer — and
+      // not a 400, because nothing about the REQUEST was malformed. The client
+      // renders the ruled sentence off `code`; `error` is for the log and for a
+      // caller that renders nothing.
+      const status = result.code ? 409 : 400;
+      return res.status(status).json({ ok: false, error: result.error, code: result.code || null });
+    }
+
+    // Fire-and-forget, like every other lead door. Both vendors' ledgers would
+    // be the honest thing, but `logActivity` is scoped to one vendor by
+    // construction and a second call would be this door inventing an activity
+    // row on a business that did not act. The sender acted; the peer received.
+    logActivity(supabase, {
+      vendorId: vendor.id, surface: 'pwa', action: 'lead_forward',
+      summary: `lead forwarded to a peer${result.record_failed ? ' — the forward was not recorded' : ''}`,
+      entityType: 'lead', entityId: leadId,
+    }).catch(() => {});
+
+    // 201: a lead was created on the peer's side. `record_failed` rides the
+    // success response rather than turning it into an error, because the peer
+    // HAS the enquiry — reporting failure would be a false-not-done, which is the
+    // same lie as a false-done pointing the other way.
+    return res.status(201).json({
+      ok: true,
+      referral: result.referral,
+      new_lead_id: result.new_lead_id,
+      record_failed: result.record_failed || false,
+    });
+  })
+);
 
 
 module.exports = router;

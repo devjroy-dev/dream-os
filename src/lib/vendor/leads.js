@@ -75,6 +75,38 @@ const ENRICH_KEYS = ['name', 'wedding_date', 'wedding_city', 'event_types', 'bud
 const ENRICH_REFUSED_KEYS = ['phone', 'email', 'source', 'referrer_name', 'raw_message', 'notes',
                              'wedding_id', 'wedding_date_precision'];
 
+// ── BLOCK 19 G5.1 · R-G51.4 — THE FORWARD'S PROVENANCE TOKEN, ONE HOME ──────
+// The value `leads.source` carries when a vendor forwards an enquiry to a peer
+// on her roster. It lives HERE, beside the only function that writes the column,
+// and never as a string at a call site.
+//
+// ⚠ WHY IT IS NOT `'referral'`, WHICH IS WHAT THE CHARTER FIRST ASKED FOR.
+// `referral` IS ALREADY A LIVE VALUE OF THIS COLUMN AND IT MEANS SOMETHING ELSE.
+// Victor is taught it as word-of-mouth: src/agent/systemPrompt.js:92 — "Anjali
+// is the referrer — put her name in referrer_name field, NOT the lead name
+// field" — and :297 shows him emitting
+// `{source:"referral", referrer_name:"Aditi", ...}` for a bride who was given
+// the vendor's number by a friend at a mehendi.
+//
+// Those are different facts about different worlds. One is a stranger who
+// mentioned you; the other is a vendor on this estate handing you live work
+// through a door TDW built. Collapsing them onto one token would make the peer's
+// own lead record unable to tell them apart — `Source` renders raw (F-40.86) —
+// and would teach one word two meanings inside a soul file this sitting is
+// forbidden to touch (W-1).
+//
+// So the token is distinct and Victor's grammar is left exactly as it stands. No
+// engine byte, no prompt byte, and no CHECK: `leads.source` is free text
+// (R-40.13), the census found ten live values already, and a distinct eleventh is
+// the honest way to add a meaning to an open column.
+//
+// ⚠ AND IT IS EXPORTED RATHER THAN INLINED AT THE DOOR. The forward door hands
+// it to `createLead` like any other caller hands a source; what it may NOT do is
+// spell it. F-16.33 one screen down is the specimen — a door that spelled its
+// own provenance wrong stamped `whatsapp` on leads a vendor typed with his
+// thumbs, and it read back to him as fact for weeks.
+const PEER_REFERRAL_SOURCE = 'peer_referral';
+
 // ── R-37.40 · F-16.31 — THE BAND IS ONE ANSWER LIVING IN TWO COLUMNS ────────
 // THE DEFECT THIS CURES, and it shipped through this file's own first cut.
 // Fill-when-absent reasons per COLUMN. `budget_min` and `budget_max` are not
@@ -500,4 +532,8 @@ module.exports = {
   // neither list carries, which is the R-37.4 pattern one door over.
   LEAD_RETURN_SELECT, LEAD_RETURN_KEYS, ENRICH_KEYS, ENRICH_REFUSED_KEYS, NON_COLUMN_PARAMS,
   ENRICH_PAIRS,
+  // G5.1 · R-G51.4 — the forward's provenance token. Exported so the forward
+  // door hands it rather than spelling it, and so a bench can assert that no
+  // other file in the tree carries the literal.
+  PEER_REFERRAL_SOURCE,
 };
