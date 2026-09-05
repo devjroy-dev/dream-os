@@ -254,8 +254,55 @@ const TEMPLATES = {
     category: 'UTILITY',
     variables: ['owner', 'role', 'wedding', 'link'],
     body:
-      '{{1}} credited you as {{2}} on {{3}}’s wedding page. Add your name to the page, ' +
-      'or decline — nothing is published under your name until you choose.\n\n{{4}}',
+      // ⚠ THE BODY WAS RE-AUTHORED AND RE-SUBMITTED — F-40.91.
+      // The first cut opened on {{1}} and closed on {{4}}, and META REFUSES BOTH:
+      // "Variables can't be at the start or end of the template." The founder hit
+      // that wall in the Manager on 2026-09-05 with this exact text. A census of all
+      // eighteen registered bodies found this was the ONLY violator — every older
+      // template happens to open and close on prose, which is why the estate had
+      // never met the rule and had no cell for it. `b54` now asserts it.
+      // These are the bytes actually filed with Meta; the registry and the Manager
+      // must never hold different words under one template name.
+      'You’ve been credited on a wedding page. {{1}} credited you as {{2}} on ' +
+      '{{3}}’s wedding page. Open {{4}} to add your name or decline — nothing is ' +
+      'published under your name until you choose.',
+    status: 'pending',
+  },
+
+  // ── THE SIXTH · G1.2's CONSENT ASK — DARK (master §2.2's build-dark law) ───
+  // F-40.49: a page whose couple has no TDW account cannot be published under
+  // R-G11c.2, and that is most of a photographer's back catalogue. This is the
+  // message that reaches such a couple. Filed on Direct 1739793260373677 on
+  // 2026-09-05, category UTILITY, status "In review" in the Manager at filing.
+  //
+  // `status: 'pending'` here is the REGISTRY's word and it is deliberately NOT
+  // flipped by Meta's answer arriving. Two things move together when the grant
+  // lands — this line, and `WEDDING_CONSENT_SEND_ENABLED` in Railway — and
+  // neither alone opens the send. Same two-gate shape as `wedding_credit`,
+  // for the same reason: a registry status flipped by a careless edit should not
+  // be enough to start traffic.
+  //
+  // ⚠ MARKETING IS THE LIKELIER RETURN AND THAT IS STATED BEFORE SUBMISSION,
+  // NOT DISCOVERED AFTER IT (F-19.07's class; F-40.12 is the estate's own
+  // precedent). This message is WEAKER on the Utility test than `wedding_credit`
+  // is: the recipient is not credited on the page, and the act it notifies is a
+  // REQUEST rather than a completed one. If Meta returns MARKETING that is a
+  // finding, and it changes the pricing and the opt-out posture — not the code.
+  //
+  // THE BODY OPENS AND CLOSES ON PROSE, by rule and not by luck — see
+  // `wedding_credit` above and F-40.91. It was authored this way after Meta
+  // refused the first shape.
+  wedding_consent: {
+    key: 'wedding_consent',
+    name: 'tdw_wedding_consent',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['owner', 'wedding', 'link'],
+    body:
+      'Your wedding page is ready to see. {{1}} has made a page for {{2}}, with ' +
+      'everyone who worked it credited. Open {{3}} to have a look and choose \u2014 ' +
+      'nothing is published until you say yes, and you can turn it off at any time.',
     status: 'pending',
   },
 

@@ -9,6 +9,7 @@
 // sole-writer law and the reason `eventWrite.js` exists for the calendar.
 'use strict';
 
+const crypto = require('crypto');
 const { seasonYearFor } = require('../season');
 
 // ── THE TEN ROLES — R-40.7, in R-40.7's ORDER ───────────────────────────────
@@ -339,7 +340,120 @@ async function addPhoto(supabase, { weddingId, url, publicId, position }) {
   return data;
 }
 
-// ── THE CLAIM PAIR ──────────────────────────────────────────────────────────
+/**
+ * DELETE ONE PHOTOGRAPH — R-G12.12.
+ *
+ * The plane was built for this delete and never got it: 0131:118-122 stores
+ * `public_id` DELIBERATELY because `vendor_portfolio` has no such column and its
+ * delete path must parse a URL, which orphans the asset whenever the URL carries
+ * no `/v<digits>/` segment (F-07.14). This plane does not inherit that defect —
+ * so the row goes here and the Cloudinary asset is destroyed by the caller with
+ * the stored id, never with a parsed one.
+ *
+ * SCOPED THROUGH THE WEDDING, not by photo id alone. A bare
+ * `.eq('id', photoId)` would let any authenticated vendor delete any vendor's
+ * photograph by guessing a uuid; the door already proved she owns the wedding,
+ * and this predicate is what makes that proof load-bearing rather than
+ * decorative.
+ *
+ * ⚠ NO REORDER FUNCTION HERE, BY RULING. R-G12.12 was narrowed after this seat
+ * flagged that `POST /:id/photos/order` would ship with no caller — the F-40.28
+ * shape, a door with no reader. Order changes by remove-and-re-add until a
+ * gesture is ruled (F-40.83). `position` stays settable at INSERT only.
+ */
+async function deletePhoto(supabase, { weddingId, photoId }) {
+  const { data, error } = await supabase
+    .from('wedding_photos')
+    .delete()
+    .eq('id', photoId)
+    .eq('wedding_id', weddingId)
+    .select(PHOTO_COLS)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+// ── THE OFF-PLATFORM COUPLE — R-G12.4 / R-G12.5, F-40.49 ────────────────────
+/**
+ * MINT (or re-mint) the consent token and record who it went to.
+ *
+ * RE-MINTING IS THE DESIGN, not a convenience. `wedding_set_consent` enforces a
+ * 30-day expiry against `consent_sent_at` (0133), and a token cannot be revived
+ * by any other means — so a vendor whose ask went stale sends again and the old
+ * token dies the moment this row is overwritten. One live token per page, ever.
+ *
+ * ⚠ REFUSED ON A PAGE WHOSE COUPLE IS ON TDW. That page's consent is governed by
+ * HER SWITCH (`couple_set_publish`, 0132), and minting a token beside it would
+ * give one decision two doors — the exact disease the writer-set census exists
+ * to prevent. The caller gets `null` and says so; it is not an error.
+ */
+async function mintConsentToken(supabase, { ownerVendorId, weddingId, phone }) {
+  const wedding = await getForOwner(supabase, ownerVendorId, weddingId);
+  if (!wedding) return null;
+  if (wedding.couple_id) return { refused: 'couple_on_platform' };
+
+  const { data, error } = await supabase
+    .from('weddings')
+    .update({
+      consent_token:   crypto.randomUUID(),
+      consent_sent_at: new Date().toISOString(),
+      consent_phone:   phone,
+      updated_at:      new Date().toISOString(),
+    })
+    .eq('id', weddingId)
+    .eq('owner_vendor_id', ownerVendorId)
+    .select('id, slug, title, consent_token, consent_sent_at')
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+/**
+ * WHAT THE CONSENT PAGE IS ALLOWED TO KNOW.
+ *
+ * The token is looked up and the row is NEVER spread — `consent_phone` is the
+ * couple's own number and `consent_token` is already in her address bar, so
+ * neither is echoed. F-04.106 is the precedent: a spread once shipped
+ * `page_token`, a capability secret, to a client.
+ *
+ * THE EXPIRY IS EVALUATED HERE TOO, and returns the same `null` as an absent
+ * token. The leaf renders one sentence for both; a page that distinguished them
+ * would tell a prober which tokens once existed.
+ */
+async function findWeddingByConsentToken(supabase, token) {
+  const { data, error } = await supabase
+    .from('weddings')
+    .select('id, owner_vendor_id, title, couple_consent, consent_sent_at')
+    .eq('consent_token', token)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || !data.consent_sent_at) return null;
+  const ageMs = Date.now() - new Date(data.consent_sent_at).getTime();
+  if (ageMs > 30 * 24 * 60 * 60 * 1000) return null;
+  return data;
+}
+
+/**
+ * THE THIRD WRITER, CALLED THROUGH ITS FUNCTION AND NEVER AS AN UPDATE.
+ *
+ * `wedding_set_consent` (0133) checks the token and the expiry INSIDE its own
+ * UPDATE, so a wrong token, an expired token and an absent page all touch zero
+ * rows and are one indistinguishable miss. Doing it as a `supabase.update()`
+ * here would move that predicate into this process, where a read-then-write
+ * races itself — 0131:97's own lesson, applied a second time.
+ */
+async function setConsentByToken(supabase, { weddingId, token, consent }) {
+  const { data, error } = await supabase.rpc('wedding_set_consent', {
+    p_wedding_id: weddingId,
+    p_token:      token,
+    p_consent:    consent,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row || null;
+}
+
+
 // R-G11.14: no expiry (the crew constitution). The token is ONE ACTION, then
 // terminal — `settleCredit` moves `tagged` and nothing else, so a second call
 // on a settled credit changes no byte and the caller reads the terminal state.
@@ -424,8 +538,9 @@ module.exports = {
   WEDDING_COLS, CREDIT_COLS_OWNER, PHOTO_COLS,
   slugify, uniqueSlug,
   listForOwner, getForOwner, creditsFor, photosFor,
-  createWedding, addCredit, publishWedding, addPhoto,
+  createWedding, addCredit, publishWedding, addPhoto, deletePhoto,
   resolveCoupleForEvent, consentSeedFor,
+  mintConsentToken, findWeddingByConsentToken, setConsentByToken,
   findCreditByToken, settleCredit,
   publicRoll, publicWedding,
 };

@@ -1,0 +1,127 @@
+# scripts/floor-manifest-g12-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.2 — THE dream-os HALF. The guest gallery's lead, the
+# off-platform couple's consent, the archive, the delete door.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for. Every
+# file below was authored by THIS seat in THIS sitting; nothing inherited. The
+# tree was clean at 012374c before a byte moved, and the tip moved UNDER this
+# seat to 475dcff mid-build (G3.2's contract docs, docs/specs/ only). The work
+# was carried across by stash → ff-merge → pop and proven byte-identical on both
+# sides by sha256 over all eleven paths — the SET and the CONTENTS both, because
+# "it looked fine" is not a check (R-38.16; F-38.25 is what happens otherwise).
+
+# ── THE MIGRATION  [founder-run, its own paste block, BEFORE the pwa apply] ──
+# `leads.wedding_id` (F-40.79), the three consent-token columns, and
+# `wedding_set_consent()` — the THIRD AND LAST writer of `couple_consent`.
+# The token and the 30-day expiry are checked INSIDE the UPDATE, so a wrong
+# token, an expired token and an absent page all touch zero rows and are one
+# indistinguishable miss. Zero rows does NOT raise: raising would let a prober
+# tell a wrong token from an expired one by the error it produced.
+# Provenance cites the REGENERATED snapshot by line (leads :675/:1666,
+# weddings :1224/:1998) rather than 0131/0132 — item 0 paid that debt.
+db/migrations/0133_guest_leads_and_consent.sql
+
+# ── THE ONE SIGNING HOME, A SECOND PARAMETER SET  [R-G12.2] ─────────────────
+# `signArchive` + `archiveUrl`. NOT the `destroy` case this file refuses at
+# :22-28 — that is a different ENDPOINT with different callers. This is the same
+# account, the same secret, the same sha256-over-sorted-params rule.
+# ⚠ THE SORT IS PERFORMED, NOT ASSUMED. `signUpload`'s three params are
+# alphabetical BY LUCK (the file says so at :44-48); these are not, and a wrong
+# order yields a 401 that reads like a credentials problem and is not.
+src/lib/cloudinarySign.js
+
+# ── THE SOLE WRITER, WIDENED  [R-G12.4/.5/.12] ─────────────────────────────
+# `deletePhoto` (scoped THROUGH the wedding, never by photo id alone),
+# `mintConsentToken`, `findWeddingByConsentToken`, `setConsentByToken`.
+# No reorder function: R-G12.12 was narrowed after this seat flagged that
+# `POST /:id/photos/order` would ship with no caller — the F-40.28 shape.
+# F-40.83 holds the gesture.
+src/lib/vendor/weddings.js
+
+# ── THE LEAD WRITER, WIDENED ADDITIVELY  [R-G12.3/.11, ratified] ───────────
+# `wedding_id` and `wedding_date_precision`, both defaulting null. It accepted
+# NEITHER before: a caller passing them had them SILENTLY DROPPED, so the guest
+# lead would have landed with a first-of-month date and no precision — a claim
+# about a day that isn't true — and no page id at all, defeating F-40.79.
+# Derived by reading the function, which is the only way it gets caught.
+# WIDENED, NOT FORKED: `leads` already has four INSERT sites and this door does
+# not become a fifth. The two existing callers are byte-unaffected.
+src/lib/vendor/leads.js
+
+# ── THE DOORS ───────────────────────────────────────────────────────────────
+# studio: DELETE /:id/photos/:photoId and POST /:id/consent.
+# ⚠ THE ROW GOES FIRST AND THE ASSET SECOND, and the order is the ruling: a
+# destroy before a failed row delete leaves a broken <img> on a couple's wedding
+# page, visible to every guest; the reverse costs storage and nothing else.
+# The destroy uses the STORED public_id via `destroyVerified` — never
+# `deleteFromCloudinary`, which fires and reads nothing back inside a bare catch.
+src/api/vendor/studio/weddings.js
+# public consent pair. Inherits credits.js's constitution WHOLE, with ONE
+# declared departure: this token expires (R-G12.4), because it flips consent on
+# published material and can flip it back, where a credit token claims one name.
+# `withdraw` stands beside `publish` — a couple who can say yes and never no has
+# not been given a switch, she has been given a trapdoor.
+src/api/consent.js
+# the guest download. A FORM POST answered here, because the public leaf ships no
+# JavaScript by ruling — the guest's number never touches JS. The download is
+# NEVER the opt-in: she gets her photographs whether she ticks the box or not.
+# A `no` writes phone NULL and the number is held NOWHERE.
+src/api/public/weddingDownload.js
+src/api/router.js
+
+# ── THE REGISTRY  [F-40.91 · the sixth template] ───────────────────────────
+# `tdw_wedding_credit`'s body re-authored to the bytes ACTUALLY FILED WITH META:
+# the first cut opened on {{1}} and closed on {{4}}, and Meta refuses both
+# ("Variables can't be at the start or end of the template"). The founder hit
+# that wall in the Manager on 2026-09-05 with this exact text. A census of all
+# eighteen registered bodies found it was the ONLY violator. The registry and the
+# Manager must never hold different words under one template name.
+# `wedding_consent` joins as the sixth, status 'pending', behind its OWN flag —
+# a second flag and not a shared one, because vendors and couples are different
+# audiences with different review outcomes.
+src/lib/templates.js
+
+# ── F-40.90's CURE ─────────────────────────────────────────────────────────
+# Both sends routed through `sendWa`, not `sendMetaTemplate` direct. A direct
+# call bypassed THREE things: `resolveFrom(line)` (the vendor lane's own PNID),
+# THE CROSS-LINE OPT-OUT GATE (sendWa.js:212 — a person who opted out would have
+# received a credit invite anyway; the one failure in that file that reaches a
+# human who never asked for us), and the `[sendWa:template]` dispatch line that
+# F-07.55 exists to guarantee. The typed errors are caught and MAPPED, never
+# swallowed: an uncaught throw would fail the whole credits request over a
+# message that was never the point of it.
+src/lib/vendor/creditInvite.js
+
+# ── THE BENCH  [C12-C15, 32 new cells, 7 production mutations] ─────────────
+# `b53:261` MOVED A SECOND TIME under R-G11c.9's fences: the writer set is now
+# proven POSITIVELY against a declared list of three — couple_set_publish (0132),
+# createWedding's seed (lib), wedding_set_consent (0133) — with the count pinned
+# and the lib naming the column exactly once. Ratify-or-revert; it lands in the
+# same delivery as the code that moved it.
+#
+# ⚠ A `strip` HELPER WAS HOISTED TO ONE HOME, and the reason is e-5: four of my
+# own cells convicted the very comments explaining why a refused call was
+# refused. `b42` has carried that helper since G1.1 and this file did not — the
+# inline `stripped` at C9 was one cell's private copy, which is how a fact ends
+# up with two homes and one of them missing.
+#
+# The expiry is mutated BOTH WAYS on purpose — once at the function, once at the
+# read — because a cure living in one place only is the half-cure F-40.80 was
+# minted for.
+scripts/b53_g11_wedding_pages_bench.js
+
+# ── THE SEALED CELL AMENDED  [b38 §10.2 + §10.3, ratify-or-revert] ─────────
+# `b38` WAS RIGHT TO RED: it caught this seat widening createLead's destructure
+# and walking straight past the disposition register the literals exist to
+# protect. Both new params are dispositioned REFUSED with their reasons — a
+# wedding_id enriched on a dedupe hit would silently rewrite a lead's provenance
+# to whichever page she most recently downloaded from, and a precision enriched
+# alone is R-37.40's degenerate band wearing a different column.
+# The numbers are RE-DERIVED MECHANICALLY (15 destructured, 14 column-bearing,
+# 6 + 8 = 14 covered), never counted by eye — which is exactly how c-D.2's
+# THIRTEEN happened. Proven both ways: amended bench against UNCURED leads.js
+# reds on exactly 10.2 and 10.3; cured, 53/53; restore byte-identical by sha256.
+scripts/b38_doorboot_enrich_bench.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g12-dreamos.txt

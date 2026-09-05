@@ -23,7 +23,7 @@ const resolveVendor = require('../../middleware/resolveVendor');
 const asyncHandler  = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
 const { signUpload, uploadUrl, nowTimestamp } = require('../../../lib/cloudinarySign');
-const { claimUrl, sendCreditInvite } = require('../../../lib/vendor/creditInvite');
+const { claimUrl, consentUrl, sendCreditInvite, sendConsentInvite } = require('../../../lib/vendor/creditInvite');
 const W = require('../../../lib/vendor/weddings');
 const crypto = require('crypto');
 
@@ -227,6 +227,88 @@ router.post('/:id/photos', ...mw, asyncHandler(async (req, res) => {
     position: Number(body.position),
   });
   return okRes(res, { photo });
+}));
+
+// DELETE /:id/photos/:photoId — R-G12.12
+//
+// ⚠ THE ROW GOES FIRST AND THE ASSET SECOND, AND THE ORDER IS THE RULING.
+// If the destroy succeeded and the row delete then failed, the page would render
+// an <img> at a URL Cloudinary no longer serves — a broken photograph on a
+// couple's wedding page, visible to every guest. The reverse leaves an orphaned
+// asset costing storage and nothing else. Between a visible break and an
+// invisible cost, the invisible cost wins.
+//
+// ⚠ AND THE DESTROY USES THE STORED `public_id`, NEVER A PARSED URL. That is the
+// entire reason 0131:118-122 stores the column: `vendor_portfolio` has none and
+// its delete path must parse, which silently orphans any URL with no
+// `/v<digits>/` segment (F-07.14). This plane does not inherit that defect.
+router.delete('/:id/photos/:photoId', ...mw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const wedding  = await W.getForOwner(supabase, req.vendor.id, req.params.id);
+  if (!wedding) return errRes(res, 404, 'Not found.');
+
+  const photo = await W.deletePhoto(supabase, {
+    weddingId: wedding.id, photoId: req.params.photoId,
+  });
+  if (!photo) return errRes(res, 404, 'Not found.');
+
+  // ⚠ `destroyVerified`, NOT `deleteFromCloudinary` — DERIVED, and my first cut
+  // called a name (`destroyAsset`) that does not exist in this estate at all.
+  // It would have failed the `typeof` guard I had wrapped it in and reported
+  // "no destroy home" forever: a permanent silent no-op wearing a defensive
+  // check. That is e-4 and it is owned in the handover.
+  //
+  // Of the two that DO exist, `destroyVerified` (admin/cloudinary.js:83) is the
+  // one whose contract fits: it never throws, it returns `{ok, reason}`, and its
+  // own header rules that Cloudinary's "not found" is a SUCCESS — the question
+  // is "is it gone", and an already-absent asset is gone. `deleteFromCloudinary`
+  // fires and reads nothing back inside a bare catch, so a 401, a 404 and a
+  // success are byte-indistinguishable to it; that is fit for an admin looking
+  // at the screen and unfit for a report a vendor reads.
+  const { destroyVerified } = require('../../../lib/admin/cloudinary');
+  const asset = await destroyVerified(photo.public_id);
+
+  return okRes(res, { photo, asset });
+}));
+
+// POST /:id/consent — the off-platform couple's ask (R-G12.4, F-40.49)
+//
+// The vendor types the couple's number; TDW mints a token and sends ONE Utility
+// template, dark until Approved. Until then the founder pastes the link by hand,
+// exactly as the claim path is walked today — `consent_url` is returned for that
+// reason and is live regardless of the flag.
+//
+// ⚠ THE NUMBER IS STORED AND NEVER PUT ON A PUBLIC WIRE. `consent_phone` is the
+// couple's own number and it is on neither `publicWedding` nor `publicRoll`;
+// R-G11.6 governs it identically to `wedding_credits.phone`.
+router.post('/:id/consent', ...mw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const phone    = String((req.body || {}).phone || '').trim();
+  if (!phone) return errRes(res, 400, 'A number is required.');
+
+  const minted = await W.mintConsentToken(supabase, {
+    ownerVendorId: req.vendor.id, weddingId: req.params.id, phone,
+  });
+  if (!minted) return errRes(res, 404, 'Not found.');
+  // A page whose couple IS on TDW is governed by her switch. Refusing here keeps
+  // one decision behind one door (R-G12.5's writer-set census is what proves it).
+  if (minted.refused === 'couple_on_platform') {
+    return errRes(res, 409, 'This couple already answers for her own pages.');
+  }
+
+  const invite = await sendConsentInvite({
+    to: phone,
+    owner:   req.vendor.business_name || '',
+    wedding: minted.title,
+    token:   minted.consent_token,
+    supabase,
+  });
+
+  return okRes(res, {
+    wedding: { id: minted.id, slug: minted.slug },
+    consent_url: consentUrl(minted.consent_token),
+    invite,
+  });
 }));
 
 module.exports = router;

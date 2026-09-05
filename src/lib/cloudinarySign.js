@@ -84,4 +84,73 @@ function signUpload({ folder, publicId, timestamp }) {
   return { api_key: apiKey(), timestamp: ts, signature, folder, public_id: publicId };
 }
 
-module.exports = { signUpload, uploadUrl, ensureCloudinary, nowTimestamp, cloudName };
+/**
+ * THE ARCHIVE SIGNER — R-G12.2 (FORK 1 arm (a)).
+ *
+ * A guest downloads a whole wedding, and Cloudinary builds the zip server-side
+ * from a list of `public_id`s. The two arms this beat: (b) buffering hundreds of
+ * full-resolution originals in the Railway process, with no declared memory
+ * budget; (c) handing a stranger a folder URL whose shape the estate does not
+ * control.
+ *
+ * ⚠ A SECOND PARAMETER SET IN THE SAME HOME, DELIBERATELY — and it is NOT the
+ * `destroy` case this file refuses at :22-28. Destroy was kept out because it is
+ * a different ENDPOINT reached by different callers for a different purpose.
+ * This is the same account, the same secret, the same sha256-over-sorted-params
+ * rule, signed for the same reason: so that no caller ever assembles a
+ * Cloudinary signature by hand. Two parameter sets, one signing law, one file.
+ *
+ * ⚠ THE SORT IS EXPLICIT HERE, AND THAT IS THE WHOLE DIFFERENCE FROM `signUpload`.
+ * `signUpload`'s three params happen to be alphabetical already
+ * (folder < public_id < timestamp), which is why all three donor sites were
+ * correct by construction rather than by care — this file says so at :44-48.
+ * These are NOT: `expires_at`, `public_ids`, `target_public_id`, `timestamp`,
+ * `type` interleave, and `public_ids` is an ARRAY that Cloudinary expects as
+ * `public_ids[]=a&public_ids[]=b`. Getting either wrong yields a 401 that looks
+ * like a credentials problem and is not. So the sort is performed, not assumed,
+ * and the array serialisation is written once here rather than at a call site.
+ *
+ * `expiresAt` is REQUIRED rather than defaulted. A download link with no expiry
+ * is a permanent public URL to a couple's whole wedding, mailed to whoever the
+ * guest forwards it to; the caller must state a lifetime out loud.
+ */
+function signArchive({ publicIds, timestamp, expiresAt, targetPublicId }) {
+  ensureCloudinary();
+  if (!Array.isArray(publicIds) || publicIds.length === 0) {
+    throw new Error('signArchive: publicIds must be a non-empty array.');
+  }
+  if (!Number.isFinite(expiresAt)) {
+    throw new Error('signArchive: expiresAt (unix seconds) is required.');
+  }
+  const ts = Number.isFinite(timestamp) ? timestamp : nowTimestamp();
+
+  // Built as pairs, then sorted by key — so adding a param later cannot put the
+  // signature and the request out of step by one line.
+  const params = {
+    expires_at:  String(expiresAt),
+    mode:        'create',
+    public_ids:  publicIds.join(','),
+    timestamp:   String(ts),
+    type:        'upload',
+  };
+  if (targetPublicId) params.target_public_id = targetPublicId;
+
+  const paramsToSign = Object.keys(params).sort()
+    .map((k) => `${k}=${params[k]}`)
+    .join('&');
+  const signature = crypto.createHash('sha256')
+    .update(paramsToSign + apiSecret())
+    .digest('hex');
+
+  return { ...params, api_key: apiKey(), signature };
+}
+
+/** The archive endpoint. One spelling, beside `uploadUrl`, same reasoning. */
+function archiveUrl() {
+  return `https://api.cloudinary.com/v1_1/${cloudName()}/image/generate_archive`;
+}
+
+module.exports = {
+  signUpload, uploadUrl, ensureCloudinary, nowTimestamp, cloudName,
+  signArchive, archiveUrl,
+};

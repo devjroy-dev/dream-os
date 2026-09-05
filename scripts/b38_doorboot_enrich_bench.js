@@ -655,21 +655,40 @@ await t('10.1', 'EVERY destructured param is dispositioned — enrich, refused, 
     `undispositioned parameter(s) reaching a money row: ${orphans.join(', ')} — rule them before they ship`);
 });
 
-await t('10.2', 'the column-bearing bound is TWELVE, re-derived not remembered [c-D.2]', async () => {
+// ── SEALED CELL AMENDED, LABELLED — G1.2 (R-G12.3/.11, R-G11c.9's discipline) ─
+// WAS: 12 column-bearing, 13 destructured. G1.2 adds `wedding_id` and
+// `wedding_date_precision` to createLead so the guest download door can say
+// WHICH page earned a lead and that her date is a MONTH — both dispositioned
+// REFUSED in the table, with reasons, rather than added to the bound in silence.
+//
+// THE CELL WAS RIGHT TO RED and it caught something a reading had missed: this
+// seat widened the destructure and walked straight past the register the
+// literals exist to protect (e-6, owned). The numbers below are RE-DERIVED
+// MECHANICALLY at the amendment — 15 destructured, 14 column-bearing, 6 + 8 = 14
+// covered — never counted by eye, which is exactly how c-D.2's THIRTEEN happened.
+// The literals stay LITERAL for the reason they always were: a cell computing
+// them from the table it polices would agree with any drift.
+//
+// RATIFY OR REVERT. This amendment lands in the SAME delivery as the code that
+// moved it; a bench amendment landing first would be a green about a tree that
+// does not exist yet.
+await t('10.2', 'the column-bearing bound is FOURTEEN, re-derived not remembered [c-D.2 \u00b7 G1.2]', async () => {
   // BOTH the read-first and the chair's verification of it said THIRTEEN. The
   // count is mechanical and it is twelve; the miscount is owned as c-D.2 and
   // pinned here so no future reader inherits it. `enrich` is the thirteenth
   // param and it is an OPTION, not a column — which is probably how the
   // number went wrong in the first place.
   const columns = destructuredParams.filter((k) => !NON_COLUMN_PARAMS.includes(k));
-  assert.strictEqual(columns.length, 12, `the bound is ${columns.length}, not 12`);
-  assert.strictEqual(destructuredParams.length, 13, 'the option is missing from the destructure');
+  assert.strictEqual(columns.length, 14, `the bound is ${columns.length}, not 14`);
+  assert.strictEqual(destructuredParams.length, 15, 'the option is missing from the destructure');
 });
 
 await t('10.3', 'the two dispositions are DISJOINT and cover the bound exactly', async () => {
   const both = ENRICH_KEYS.filter((k) => ENRICH_REFUSED_KEYS.includes(k));
   assert.deepStrictEqual(both, [], `a key is both enriched and refused: ${both.join(', ')}`);
-  assert.strictEqual(ENRICH_KEYS.length + ENRICH_REFUSED_KEYS.length, 12,
+  // 6 enriched + 8 refused = 14, matching 10.2's bound. G1.2's two joined the
+  // REFUSED side, so this sum moves with that one and never independently.
+  assert.strictEqual(ENRICH_KEYS.length + ENRICH_REFUSED_KEYS.length, 14,
     'the disposition table no longer covers the bound');
 });
 

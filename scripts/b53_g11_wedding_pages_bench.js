@@ -18,6 +18,14 @@ const { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const P    = (rel) => path.join(ROOT, rel);
 const read = (rel) => fs.readFileSync(P(rel), 'utf8');
+/** Comments stripped before any PROHIBITION is tested. A cell that cannot tell a
+ *  rule from its violation is worse than no cell — this bench's own e-4 was that
+ *  class, and G1.2's e-5 was it again: four cells convicted the very comments
+ *  that explain why a refused call was refused. `b42` has carried this helper
+ *  since G1.1 and this file did not; the inline `stripped` at C9 was one cell's
+ *  private copy, which is how a fact ends up with two homes and one of them
+ *  missing. Hoisted here, one home, used by every prohibition below. */
+const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 const MIGRATION = 'db/migrations/0131_wedding_pages.sql';
 const LIB       = 'src/lib/vendor/weddings.js';
@@ -26,8 +34,15 @@ const PUBDOOR   = 'src/api/public/weddingPage.js';
 const STUDIO    = 'src/api/vendor/studio/weddings.js';
 const CREDITS   = 'src/api/credits.js';
 const INVITE    = 'src/lib/vendor/creditInvite.js';
+// ── G1.2's own subjects ─────────────────────────────────────────────────────
+const SIGN      = 'src/lib/cloudinarySign.js';
+const CONSENT   = 'src/api/consent.js';
+const DOWNLOAD  = 'src/api/public/weddingDownload.js';
+const LEADS     = 'src/lib/vendor/leads.js';
+const MIG133    = 'db/migrations/0133_guest_leads_and_consent.sql';
 
-for (const rel of [MIGRATION, LIB, SEASON, PUBDOOR, STUDIO, CREDITS, INVITE]) {
+for (const rel of [MIGRATION, LIB, SEASON, PUBDOOR, STUDIO, CREDITS, INVITE,
+                   SIGN, CONSENT, DOWNLOAD, LEADS, MIG133]) {
   if (!fs.existsSync(P(rel))) {
     console.log('REFUSED \u2014 ' + rel + ' is absent');
     process.exit(3);
@@ -286,6 +301,177 @@ sec('C11 \u00b7 publish does not imply consent');
   // a tree that does not exist yet.
   ok('no VENDOR DOOR writes couple_consent as a choice (R-G11.10)',
     !/couple_consent\s*:/.test(read(STUDIO)) && !/couple_consent\s*:/.test(fn));
+
+  // ── BASE AMENDED A SECOND TIME, LABELLED — G1.2 (R-G12.5, R-G11c.9's fences)
+  // The chair's ruling: this cell's sentence becomes THE THREE NAMED WRITERS AND
+  // NO VENDOR DOOR, asserted against a declared list. The line above is a
+  // NEGATIVE and stays; what follows is the POSITIVE half it never had.
+  //
+  // WHY A DECLARED LIST AND NOT A GREP FOR WRITES. A bare "count the writes"
+  // cell would have to guess at every shape a write can take — an `update({})`,
+  // an `rpc`, a plpgsql body, a raw SQL string — and would go quietly vacuous the
+  // first time someone invented a fourth. The list is DECLARED here, each entry
+  // is proven to exist at its own home, and the cell reds when the count moves in
+  // EITHER direction: a fourth writer appearing, or one of the three vanishing.
+  //
+  // THE THREE, EACH WITH ITS HOME AND WHY IT IS LAWFUL:
+  //   1. couple_set_publish()      0132 — the on-platform couple's own switch.
+  //   2. createWedding's seed      this LIB — a COPY of her standing answer, read
+  //      from her row, never from a request body (R-G11c.8; b54 proves it both ways).
+  //   3. wedding_set_consent()     0133 — the OFF-platform couple's token, checked
+  //      inside the UPDATE so a bad token and an expired one are one miss.
+  // No vendor door is among them. `publishWedding` writes visibility and
+  // delivered_at and nothing else, which the line above asserts.
+  {
+    const m0132 = read('db/migrations/0132_couple_switch.sql');
+    const m0133 = read('db/migrations/0133_guest_leads_and_consent.sql');
+    const WRITERS = [
+      ['couple_set_publish()  (0132)', /SET\s+couple_consent\s*=/.test(m0132)],
+      ['createWedding seed    (lib)',  /couple_consent:\s*consentSeed/.test(read(LIB))],
+      ['wedding_set_consent() (0133)', /SET\s+couple_consent\s*=/.test(m0133)],
+    ];
+    for (const [name, present] of WRITERS) {
+      ok(`declared writer PRESENT at its home \u2014 ${name}`, present);
+    }
+    ok('the declared writer set is exactly THREE (R-G12.5 closes it)',
+      WRITERS.length === 3);
+    // NON-VACUITY, AND THE FENCE THAT MATTERS: the ONLY vendor-lane file allowed
+    // to name the column is this LIB, and only through the seed and the rpc call.
+    // A studio door growing a `couple_consent` write reds the negative above; a
+    // FOURTH function in the lib writing it reds here.
+    const libWrites = (read(LIB).match(/couple_consent\s*:/g) || []).length;
+    ok('the lib names couple_consent as a written field exactly ONCE (the seed)',
+      libWrites === 1, `found ${libWrites}`);
+    // The token writer is reached by RPC and never as an update in this process —
+    // the predicate must stay in the statement, where two taps cannot both pass.
+    ok('the token writer is called through its function, never as an UPDATE',
+      /rpc\('wedding_set_consent'/.test(read(LIB))
+      && !/from\('weddings'\)[\s\S]{0,200}update\([\s\S]{0,120}couple_consent/.test(read(LIB)));
+  }
+}
+
+// ── C12 · THE ARCHIVE SIGNER — R-G12.2, and the sort is PERFORMED ───────────
+// `signUpload`'s three params are alphabetical BY LUCK (folder < public_id <
+// timestamp), which this file's own header says at :44-48 is why all three donor
+// sites were correct by construction rather than by care. The archive's are NOT:
+// expires_at, mode, public_ids, timestamp, type — and a wrong order yields a 401
+// that reads like a credentials problem and is not. So the sort is done, and
+// this cell asserts it is done rather than assumed.
+sec('C12 \u00b7 the archive signer (R-G12.2)');
+{
+  const sign = read(SIGN);
+  ok('signArchive and archiveUrl are exported from the ONE home',
+    /signArchive/.test(sign) && /archiveUrl/.test(sign)
+    && /module\.exports[\s\S]*signArchive[\s\S]*archiveUrl/.test(sign));
+  ok('the params are SORTED, not assumed alphabetical',
+    /Object\.keys\(params\)\.sort\(\)/.test(sign));
+  // An expiry is REQUIRED, never defaulted: a download link with no lifetime is
+  // a permanent public URL to a couple's whole wedding.
+  ok('expiresAt is required, never silently defaulted',
+    /expiresAt.*required/.test(sign) && /Number\.isFinite\(expiresAt\)/.test(sign));
+  ok('the secret is appended to the signed string, matching signUpload exactly',
+    /\.update\(paramsToSign \+ apiSecret\(\)\)/.test(sign));
+  // NON-VACUITY: the signer must actually be reachable by the door that needs it.
+  ok('C12 is not vacuous \u2014 the download door imports the signer',
+    /require\('\.\.\/\.\.\/lib\/cloudinarySign'\)/.test(read(DOWNLOAD)));
+}
+
+// ── C13 · THE DELETE DOOR — R-G12.12 ───────────────────────────────────────
+// The row goes first and the asset second, and the ORDER is the ruling: a
+// destroy that succeeded before a failed row delete leaves a broken <img> on a
+// couple's wedding page, visible to every guest. The reverse costs storage and
+// nothing else.
+sec('C13 \u00b7 the photo delete door (R-G12.12)');
+{
+  const studio = read(STUDIO);
+  ok('the delete door exists at its ruled address',
+    /router\.delete\('\/:id\/photos\/:photoId'/.test(studio));
+  // THE SCOPE IS THE WHOLE POINT. A bare `.eq('id', photoId)` would let any
+  // authenticated vendor delete any vendor's photograph by guessing a uuid.
+  ok('deletePhoto is scoped THROUGH the wedding, not by photo id alone',
+    /\.eq\('id', photoId\)[\s\S]{0,80}\.eq\('wedding_id', weddingId\)/.test(read(LIB)));
+  ok('the destroy uses the STORED public_id, never a parsed URL (F-07.14)',
+    /destroyVerified\(photo\.public_id\)/.test(studio));
+  // `deleteFromCloudinary` fires and reads nothing back inside a bare catch, so a
+  // 401, a 404 and a success are byte-indistinguishable to it — unfit for a
+  // report a vendor reads.
+  // ⚠ STRIPPED. My first cut tested the RAW source and went RED against a door
+  // that is correct — the comment above the call NAMES the legacy function in
+  // order to explain why it was refused. A cell that cannot tell a rule from its
+  // violation is worse than no cell; this file's own e-4 was the same class and
+  // the strip helper existed the whole time (e-5, owned).
+  ok('it calls destroyVerified, NOT the fire-and-forget legacy',
+    !/deleteFromCloudinary/.test(strip(studio)));
+  ok('no reorder door shipped \u2014 R-G12.12 was narrowed (F-40.83)',
+    !/photos\/order/.test(studio) && !/reorderPhotos/.test(read(LIB)));
+}
+
+// ── C14 · THE CONSENT PAIR — R-G12.4 / R-G12.5, F-40.49 ────────────────────
+// The token is the whole credential and the expiry is enforced in TWO places on
+// purpose: the read evaluates it so the page renders the same dead sentence, and
+// the FUNCTION re-checks it inside its UPDATE so a caller that skipped the read
+// cannot write anyway.
+sec('C14 \u00b7 the off-platform couple\u2019s consent (R-G12.4/.5)');
+{
+  const lib = read(LIB), consent = read(CONSENT), m0133 = read(MIG133);
+  ok('0133 declares wedding_set_consent', /FUNCTION wedding_set_consent/.test(m0133));
+  ok('the token AND the expiry are checked INSIDE the UPDATE, not before it',
+    /WHERE w\.id\s*=\s*p_wedding_id[\s\S]{0,220}consent_token\s*=\s*p_token[\s\S]{0,220}consent_sent_at\s*>/.test(m0133));
+  // Zero rows must NOT raise: a raise would let a prober tell a wrong token from
+  // an expired one by the error it produced.
+  ok('zero rows touched is a MISS, never an exception',
+    !/IF NOT FOUND[\s\S]{0,120}RAISE EXCEPTION[\s\S]{0,120}consent/i.test(m0133));
+  ok('the lib re-checks the 30-day expiry on the read path too',
+    /30 \* 24 \* 60 \* 60 \* 1000/.test(lib));
+  ok('withdraw stands beside publish \u2014 consent is a switch, not a trapdoor',
+    /\/:token\/publish/.test(consent) && /\/:token\/withdraw/.test(consent));
+  // The one-action-then-terminal rule of the CLAIM lane must NOT have been copied
+  // here: a couple who can say yes and never no has not been given a switch.
+  ok('the claim lane\u2019s terminal rule was NOT copied onto consent',
+    !/terminal:\s*true/.test(consent));
+  ok('the consent phone and token never reach the public wire (R-G11.6)',
+    !/consent_phone/.test(strip(consent)) && !/consent_token/.test(strip(consent)));
+  // A page whose couple IS on TDW is governed by her switch; two doors to one
+  // decision is the disease the writer-set census exists to prevent.
+  ok('minting refuses a page whose couple is already on TDW',
+    /couple_on_platform/.test(lib) && /couple_on_platform/.test(read(STUDIO)));
+}
+
+// ── C15 · THE GUEST LEAD — R-G12.3 / R-G12.11 ──────────────────────────────
+// The download is NEVER the opt-in: she gets her photographs whether she ticks
+// the box or not. A download withheld until she consents is consent bought with
+// a hostage, and "silence never means yes" is worth nothing if the alternative
+// to yes is losing the pictures.
+sec('C15 \u00b7 the guest lead and the phone that goes nowhere (R-G12.3)');
+{
+  const dl = read(DOWNLOAD), leads = read(LEADS);
+  ok('the lead is written through the ONE home, never a fifth INSERT',
+    /createLead\(supabase, owner\.id/.test(dl) && !/from\('leads'\)[\s\S]{0,80}\.insert/.test(dl));
+  // THE CELL THAT MATTERS: a `no` must write no digit anywhere.
+  ok('a NO writes phone NULL \u2014 the number is held nowhere',
+    /phone:\s*mayContact \? phone : null/.test(dl));
+  // ⚠ RE-AUTHORED. My first cut compared `indexOf('signArchive')` against
+  // `indexOf('mayContact')` — and `signArchive` first appears in the IMPORT at
+  // the top of the file, so the cell was measuring a require statement and
+  // convicting a correct door. THE REAL PROPERTY is that no branch keyed on her
+  // answer can skip the download: an early return on `!mayContact` is the only
+  // way this door could hold her photographs hostage, so that is what is asserted.
+  ok('the download is not withheld on a NO \u2014 no branch on her answer skips it',
+    !/if\s*\(\s*!\s*mayContact\s*\)[\s\S]{0,80}return/.test(strip(dl))
+    && /const mayContact/.test(strip(dl)));
+  ok('the month becomes the ESTATE\u2019S OWN idiom, not a new column (R-G12.11)',
+    /wedding_date_precision:\s*weddingDate \? 'month' : null/.test(dl));
+  ok('createLead actually ACCEPTS both, so neither is silently dropped',
+    /wedding_id, wedding_date_precision,/.test(leads)
+    && /wedding_id:\s+wedding_id\s+\|\| null/.test(leads));
+  ok('the source is spelled once and stays free text (R-40.13)',
+    (strip(dl).match(/'wedding_guest'/g) || []).length === 1);
+  // The page's own three gates must hold here too, or a stranger could probe for
+  // weddings the page refuses to show.
+  ok('the download door repeats the page\u2019s three misses',
+    /visibility !== 'published'/.test(dl) && /couple_consent !== true/.test(dl));
+  ok('nothing about the guest is on the response',
+    !/phone/.test(dl.slice(dl.indexOf('return res.status(200)'))));
 }
 
 if (process.argv.includes('--cells-only')) {
@@ -298,6 +484,47 @@ if (process.argv.includes('--cells-only')) {
 if (process.argv.includes('--mutate')) {
   sec('MUTATIONS \u2014 each must turn the cells RED');
   const MUT = [
+    // ── G1.2 · THE ARCHIVE SIGNER ─────────────────────────────────────────────
+    // The sort is the ONE thing that separates this signer from `signUpload`,
+    // whose params are alphabetical by luck. Remove it and the signature is over
+    // a different string than the request carries — a 401 that reads like a
+    // credentials problem and is not.
+    [SIGN, 'the archive params stop being sorted \u2014 a 401 that looks like bad credentials',
+      "  const paramsToSign = Object.keys(params).sort()",
+      "  const paramsToSign = Object.keys(params)"],
+    [SIGN, 'the archive link loses its expiry \u2014 a permanent public URL to a wedding',
+      "  if (!Number.isFinite(expiresAt)) {\n    throw new Error('signArchive: expiresAt (unix seconds) is required.');\n  }",
+      "  if (false) { throw new Error('unreachable'); }"],
+
+    // ── G1.2 · THE DELETE DOOR ───────────────────────────────────────────────
+    // Without the wedding scope any authenticated vendor deletes any vendor's
+    // photograph by guessing a uuid.
+    [LIB, 'the delete loses its wedding scope \u2014 any vendor deletes any photograph',
+      "    .eq('id', photoId)\n    .eq('wedding_id', weddingId)",
+      "    .eq('id', photoId)"],
+
+    // ── G1.2 · THE CONSENT EXPIRY, BOTH WAYS ─────────────────────────────────
+    // It is enforced in TWO places on purpose: the read so the page renders the
+    // same dead sentence, the FUNCTION so a caller that skipped the read still
+    // cannot write. Each half is mutated on its own, because a cure that lives in
+    // one place only is the half-cure F-40.80 was minted for.
+    [MIG133, 'the FUNCTION stops checking the expiry \u2014 a dead token still writes',
+      "     AND w.consent_sent_at IS NOT NULL\n     AND w.consent_sent_at > (now() - interval '30 days');",
+      "     AND w.consent_sent_at IS NOT NULL;"],
+    [LIB, 'the READ stops checking the expiry \u2014 an expired page renders live',
+      "  if (ageMs > 30 * 24 * 60 * 60 * 1000) return null;",
+      "  // expiry check removed"],
+
+    // ── G1.2 · THE GUEST'S NO ────────────────────────────────────────────────
+    // THE ONE THAT MATTERS. A `no` must write no digit anywhere: not on the lead,
+    // not on the wedding, not in a log. This mutation is the whole of R-G12.3.
+    [DOWNLOAD, 'a NO starts writing her number anyway \u2014 the opt-out becomes decoration',
+      "      phone: mayContact ? phone : null,",
+      "      phone: phone,"],
+    [DOWNLOAD, 'the month loses its precision \u2014 a first-of-month becomes a claimed day',
+      "      wedding_date_precision: weddingDate ? 'month' : null,",
+      "      wedding_date_precision: null,"],
+
     [LIB, 'the slug rule expands the ampersand \u2014 every ratified address breaks',
       ".toLowerCase()\n    .replace(/[^a-z0-9]+/g, '-')",
       ".toLowerCase()\n    .replace(/&/g, ' and ')\n    .replace(/[^a-z0-9]+/g, '-')"],

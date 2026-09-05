@@ -48,8 +48,32 @@ const DEDUPE_READ_SELECT = `${LEAD_RETURN_SELECT}, budget_min, event_types`;
 //                   no information and costs the row its own emptiness.
 //     email         not posted by the Discover door at all.
 //     referrer_name not posted by the Discover door at all.
+//
+//   ── G1.2's TWO, DISPOSITIONED RATHER THAN ADDED (R-G12.3/.11) ─────────────
+//   Both are REFUSED for the enrich set, and the bench is what forced the
+//   question: `b38` §10 went RED the moment the destructure grew two keys that
+//   appeared in neither list, and its §10.2 caught the column-bearing bound
+//   moving 12 -> 14. The instrument was right and this seat had walked past the
+//   register — the disposition is the cure, never a widened bound (e-6, owned).
+//
+//     wedding_id    the guest download door's own fact, and a returning bride
+//                   arriving through Discover has no wedding page behind her.
+//                   Worse if enriched: a dedupe hit would attach a lead she
+//                   made months ago to whichever page she most recently
+//                   downloaded from, silently rewriting its provenance. A lead
+//                   came from ONE page or from none, and that is decided at
+//                   creation and never revised.
+//     wedding_date_precision
+//                   NOT an answer of hers — it is a statement about how coarse
+//                   `wedding_date` is. Enriching it independently is how a row
+//                   ends up claiming DAY precision over a first-of-month date
+//                   nobody chose, which is the degenerate-band defect at
+//                   R-37.40 wearing a different column. It moves only with the
+//                   date it describes, and the download door writes the two
+//                   together or neither.
 const ENRICH_KEYS = ['name', 'wedding_date', 'wedding_city', 'event_types', 'budget_min', 'budget_max'];
-const ENRICH_REFUSED_KEYS = ['phone', 'email', 'source', 'referrer_name', 'raw_message', 'notes'];
+const ENRICH_REFUSED_KEYS = ['phone', 'email', 'source', 'referrer_name', 'raw_message', 'notes',
+                             'wedding_id', 'wedding_date_precision'];
 
 // ── R-37.40 · F-16.31 — THE BAND IS ONE ANSWER LIVING IN TWO COLUMNS ────────
 // THE DEFECT THIS CURES, and it shipped through this file's own first cut.
@@ -110,6 +134,19 @@ async function createLead(supabase, vendorId, params) {
     name, phone, email, wedding_date: rawDate, wedding_city,
     event_types, budget_min, budget_max, source,
     referrer_name, raw_message, notes,
+    // ── G1.2 · TWO ADDITIVE PARAMS, BOTH DEFAULTING TO NULL (R-G12.3/.11) ──
+    // The guest download door needs to say WHICH page earned the lead and
+    // that her date is a MONTH, not a day. Both were accepted by neither the
+    // destructure nor the INSERT below, so a caller passing them had them
+    // SILENTLY DROPPED — derived by reading this function rather than trusting
+    // that a named param arrives (protocol §6, and the mistake I nearly made).
+    //
+    // WIDENED HERE AND NOT FORKED. `leads` already has four INSERT sites and
+    // this door does not become a fifth; the estate's sole-writer law is worth
+    // more than the tidiness of leaving a shared function untouched. Both are
+    // optional and default null, so the vendor POST door and the couple
+    // enquiry door are byte-unaffected — proven by cell, not by assertion.
+    wedding_id, wedding_date_precision,
     // ── M-DOORBOOT · R-37.34 · THE ENRICH OPTION, AND WHY IT CARRIES VALUES ──
     // This is NOT a boolean, and the reason is R-37.37 in mechanical form:
     // ENRICH ONLY FROM HER WORD, NEVER FROM A FALLBACK.
@@ -263,6 +300,11 @@ async function createLead(supabase, vendorId, params) {
       budget_min:    budget_min    || null,
       budget_max:    budget_max    || null,
       source:        source        || 'whatsapp',
+      // NULL unless the caller said so. A precision beside a NULL date would
+      // be a claim about a date that does not exist, so the door sets the two
+      // together or not at all.
+      wedding_id:             wedding_id             || null,
+      wedding_date_precision: wedding_date_precision || null,
       referrer_name: referrer_name || null,
       notes:         notes         || null,
       raw_message:   raw_message   || null,
