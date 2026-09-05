@@ -3,7 +3,7 @@
 **Status:** SPEC. Not a lawyer's document.
 **Tracks:** `docs/specs/TDW_19_CONTRACT_GENERIC_v3.md` — **the simplified instrument, from this cut forward.** `TDW_19_CONTRACT_GENERIC_v1.md` remains on the tree as the record the lawyer approved; it is not a build input, and the 39 blanks R-40.43 retired are not catalogued here.
 **Seat:** CE-40 · G3.2-pre · Fable-Desk, docs only · 2026-09-05
-**Base:** `dream-os @ 9235849`
+**Base:** `dream-os @ 0a43d09`
 **Read by:** G3.2's mock — which of the instrument's blanks the product already knows, which the vendor is asked for once, which are asked per contract.
 **Finding:** §8 is the body of **F-40.94** — G3.2's DDL.
 
@@ -39,9 +39,9 @@ Run it before trusting this file. **If the count differs, this register is stale
 
 ### SQL provenance
 
-Every DERIVED row names its witness as `PUBLIC_SCHEMA.md:<line>` at base `9235849`. **No column name is authored from memory.** Where a token has no column, the Source cell says so and §8 gathers it.
+Every DERIVED row names its witness as `PUBLIC_SCHEMA.md:<line>` at base `0a43d09`. **No column name is authored from memory.** Where a token has no column, the Source cell says so and §8 gathers it.
 
-**⏳ ONE WITNESS IS STALE AT THIS BASE, AND IT IS NAMED RATHER THAN RELIED ON.** `PUBLIC_SCHEMA.md` states its applied ladder tip as `0132`. `db/migrations/0133_guest_leads_and_consent.sql` landed at `9235849` and the snapshot was **not regenerated**, so by that document's own §7 rule it is **STALE for `public.weddings` and `public.leads`.** `0133` only ADDs columns — `weddings.consent_token`, `weddings.consent_sent_at`, `weddings.consent_phone`, `leads.wedding_id` — so **every line this register cites still reads what it read**, and all 39 were re-read at `9235849`. But a reader citing `weddings` from this register must check `db/migrations/` first, exactly as F-09.185 teaches: a document that answers confidently about a table it no longer fully describes is how a handover asserted 18 columns while a migration had made it 20.
+**⏳ ONE WITNESS IS STALE AT THIS BASE — F-40.99 — AND IT IS NAMED RATHER THAN RELIED ON.** `PUBLIC_SCHEMA.md` states its applied ladder tip as `0132`. `db/migrations/0133_guest_leads_and_consent.sql` landed at `9235849` and the snapshot was **not regenerated**, so by that document's own §7 rule it is **STALE for `public.weddings` and `public.leads`.** `0133` only ADDs columns — `weddings.consent_token`, `weddings.consent_sent_at`, `weddings.consent_phone`, `leads.wedding_id` — so **every line this register cites still reads what it read**, and all 39 were re-read at `0a43d09`. But a reader citing `weddings` from this register must check `db/migrations/` first, exactly as F-09.185 teaches: a document that answers confidently about a table it no longer fully describes is how a handover asserted 18 columns while a migration had made it 20. **F-40.99 is not a finding against the G1.2 cut** (chair, 2026-09-05): this staleness is expected and closes at the regen after `0135`.
 
 ---
 
@@ -171,7 +171,7 @@ Every DERIVED row names its witness as `PUBLIC_SCHEMA.md:<line>` at base `923584
 | Of those, fillable today (DERIVED) | 37 | **34** | −3 |
 | **Tokens with no storage home — F-40.94's bill** | 165 | **132** | **−33** |
 
-*Derived by command at `9235849` under `LC_ALL=C`, not by arithmetic: the DERIVED set is the rows above whose Source cell names a column or a computation, and the bill is the census minus that set.*
+*Derived by command at `0a43d09` under `LC_ALL=C`, not by arithmetic: the DERIVED set is the rows above whose Source cell names a column or a computation, and the bill is the census minus that set.*
 
 **The shrink is real but it is not the shape of the work.** Thirty-three fewer blanks is thirty-three fewer inputs, and it removes not one table. What must still be built:
 
@@ -215,9 +215,9 @@ All PROFILE or PER-CONTRACT; none DERIVED, because no annex plane exists.
 
 ## 10 · STATUS
 
-Re-derived at `dream-os @ 9235849` against `TDW_19_CONTRACT_GENERIC_v3.md`. Every DERIVED row names its `PUBLIC_SCHEMA.md` line at that base; nothing is authored from memory. All 39 witness lines were re-read at `9235849` and all 39 resolve.
+Re-derived at `dream-os @ 0a43d09` against `TDW_19_CONTRACT_GENERIC_v3.md`. Every DERIVED row names its `PUBLIC_SCHEMA.md` line at that base; nothing is authored from memory. All 39 witness lines were re-read at `0a43d09` and all 39 resolve.
 
-**`PUBLIC_SCHEMA.md` itself has not moved since `d91ec6e` — and that sentence is true in a way that misleads, which is why it is not left alone.** The *document* is unchanged; the *schema* is not. `0133` landed at `9235849` without a regen, so the snapshot is stale for `weddings` and `leads` (§0). The cure is a PAIR regen, not an edit here.
+**`PUBLIC_SCHEMA.md` itself has not moved since `d91ec6e` — and that sentence is true in a way that misleads, which is why it is not left alone.** The *document* is unchanged; the *schema* is not. `0133` landed at `9235849` without a regen, so the snapshot is stale for `weddings` and `leads` (§0, **F-40.99**). The cure is the PAIR regen after `0135`, not an edit here.
 
 **2026-09-05 · re-derived against v3 under R-40.43.** Census **202 → 166**: 39 tokens retired, 3 new, each named in the section it left or joined. F-40.94's bill falls **165 → 132**. Every retired token is listed against its own section, so a reader sees what went and why rather than inferring it from a shorter list.
 

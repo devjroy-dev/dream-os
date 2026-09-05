@@ -2,7 +2,7 @@
 
 **Status:** THE SIMPLIFIED INSTRUMENT. For the lawyer's one-line yes.
 **Seat:** CE-40 · G3.2-pre · Fable-Desk, docs only · 2026-09-05
-**Base:** `dream-os @ 9235849`
+**Base:** `dream-os @ 0a43d09`
 **Governed by:** R-40.43 (this simplification, under the lawyer's guidance) · R-40.36 · R-40.37 (deposit 30%, editable) · R-40.9 (the couple's publication switch, off by default) · R-40.7 (the credit-roll roles) · master §7 (the refusals).
 
 ## WHAT THIS FILE IS, AND WHAT v1 STILL IS
@@ -293,9 +293,13 @@ We'll send this to you on WhatsApp. You read it on your phone, we send a one-tim
 
 v1's Appendix 2 asked the lawyer seven. This is where they stand.
 
-**Q1 — the electronic signature, and what the audit record must contain.** **Answered at R-40.43.** Clause 12 is drafted to that ruling. *The ruling's text is not on the tree at base `9235849`; this seat records the closure and does not restate the answer, because a legal answer paraphrased from a relay and sent back to a lawyer is worse than an open question.* The chair's docs cut banks it.
+**R-40.43 · 2026-09-05 · the lawyer's guidance, verbatim.** *"Simplify it and don't make the contract too complicated in terms of enforcement and formalities. Contracts in the wedding-vendor field are more so to give each other (vendor and client) a clear indication of expectations, services and other essential deliverables — not for enforcement in a court of law. Follow standard practice."*
 
-**Q7 — stamp duty.** **Answered at R-40.43**, same terms as Q1.
+**That is what this instrument is drafted to.** It is the reason the definitions clause, the notices clause, the boilerplate, the DPDP recital, the mediation ladder and clause 18's five sub-clauses are gone, and the reason clause 12 states the signing mechanism in one paragraph rather than five.
+
+**Q1 — the electronic signature, and what the audit record must contain.** **DISPOSED OF by R-40.43, not answered by it — and the difference is stated rather than smoothed over.** The ruling does not say what the clause 12 record must contain to satisfy section 65B, and does not say whether a certificate is needed. It says that chasing that standard is the wrong shape for this instrument. Clause 12 accordingly describes the mechanism plainly — the one-time password, the "I agree", the sealed PDF with its date, both numbers and a digest — and claims nothing further about its evidential weight. **What the product stores is still a product question**, and it is the same question as Q3: it lives with F-40.94, not with the lawyer.
+
+**Q7 — stamp duty.** **DISPOSED OF on the same terms.** Standard practice for wedding-vendor agreements in India is unstamped, and R-40.43 says follow standard practice. **One residual is recorded rather than buried:** whether an instrument is chargeable is a fact about a state's stamp act and not about the parties' intentions, so "we don't plan to litigate" does not make an unstamped instrument stamped. This seat is not a lawyer and does not reopen a ruling; it notes the residual so a future chair meets it as a known item rather than a surprise.
 
 **Q3 — the GST block.** **STANDS — and it is G3.2's one product question.** Whether the switch at `{{gst_treatment}}` and the optional block are right for a registered vendor *and* for one below the threshold decides what the composer prints and what a tax invoice must carry. It is a product question, not a contract question, and the contract text does not change on either answer.
 
@@ -313,6 +317,6 @@ v1's Appendix 2 asked the lawyer seven. This is where they stand.
 
 ## PROVENANCE
 
-Authored at `dream-os @ 9235849` by the CE-40 G3.2-pre docs seat under **R-40.43**. The lawyer-approved record is `TDW_19_CONTRACT_GENERIC_v1.md` and is unchanged by this file.
+Authored at `dream-os @ 0a43d09` by the CE-40 G3.2-pre docs seat under **R-40.43**. The lawyer-approved record is `TDW_19_CONTRACT_GENERIC_v1.md` and is unchanged by this file.
 
 **No byte here is vendor-facing product copy.** The product's bytes are minted at G3.2's mock, under the copy law's founder veto. The blanks are catalogued in `TDW_19_CONTRACT_FIELD_REGISTER_v1.md`, which tracks **this** file from this cut forward.
