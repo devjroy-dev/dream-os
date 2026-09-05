@@ -111,7 +111,7 @@ async function uniqueSlug(supabase, ownerVendorId, title) {
 // NEITHER public list, and that is R-G11.6 and the crew constitution enforced
 // by the wire rather than by a filter someone can move.
 const WEDDING_COLS =
-  'id, owner_vendor_id, event_id, slug, title, venue, city, delivered_at, couple_consent, visibility, created_at, updated_at';
+  'id, owner_vendor_id, event_id, couple_id, slug, title, venue, city, delivered_at, couple_consent, visibility, created_at, updated_at';
 const CREDIT_COLS_OWNER =
   'id, wedding_id, role, vendor_id, phone, name, status, claim_token, created_at';
 const PHOTO_COLS =
@@ -173,17 +173,101 @@ async function photosFor(supabase, weddingId) {
 
 // ── WRITES ──────────────────────────────────────────────────────────────────
 
+/**
+ * THE SPINE — a wedding's couple, resolved ONCE, at create (R-G11c.2 re-ruled).
+ *
+ * The obvious route is `weddings.event_id -> events.couple_id`, and it is dead:
+ * `events_owner_xor` (0013:55) enforces that an event has a vendor OR a couple,
+ * never both, and the create door only ever offers the vendor's OWN events
+ * (src/api/vendor/studio/weddings.js:84). So that column is NULL by
+ * construction on every wedding that can exist — F-40.45, found by the database
+ * refusing the write rather than by reading about it.
+ *
+ * The live route is the engagement. `public.engagements` is keyed
+ * (couple_id, vendor_id) and carries the lead the couple arrived on, so the
+ * event's own `linked_lead_id` reaches her:
+ *
+ *     events.linked_lead_id -> engagements.lead_id  (vendor_id = THIS owner)
+ *                           -> engagements.couple_id
+ *
+ * THE vendor_id SCOPE IS LOAD-BEARING, not defensive. The fixture couple holds
+ * THREE engagements, two of them `photography` (DEV440 and DROY550). A match on
+ * lead alone, or on couple-and-category, would be ambiguous on real data today.
+ *
+ * DECLARED MISS, filed not hidden — F-40.60: this derivation is LEAD-MEDIATED,
+ * so an engagement with a NULL `lead_id` is invisible to it. There is a live
+ * specimen: MAKEUPBYSWATIROY's engagement with the fixture couple carries no
+ * lead. A page owned by that vendor resolves NULL and its couple never gets a
+ * switch over it, though the estate knows who she is one column away.
+ * `engagements.couple_booking_id` is a second path that would catch it and is
+ * UNRULED (F-40.61) — so it is named here and not built.
+ *
+ * Returns null rather than throwing on every absence: a back-catalogue page has
+ * no event at all (R-G11.21), and a page with no couple is a legal, ordinary
+ * page — it simply waits for the off-platform consent path (F-40.49, G1.2).
+ */
+async function resolveCoupleForEvent(supabase, { ownerVendorId, eventId }) {
+  if (!eventId) return null;
+
+  const { data: ev, error: evErr } = await supabase
+    .from('events')
+    .select('linked_lead_id')
+    .eq('id', eventId)
+    .maybeSingle();
+  if (evErr) throw evErr;
+  if (!ev || !ev.linked_lead_id) return null;
+
+  const { data: eng, error: engErr } = await supabase
+    .from('engagements')
+    .select('couple_id')
+    .eq('lead_id', ev.linked_lead_id)
+    .eq('vendor_id', ownerVendorId)
+    .maybeSingle();
+  if (engErr) throw engErr;
+
+  return (eng && eng.couple_id) || null;
+}
+
+/**
+ * HER STANDING ANSWER, READ AT THE MOMENT THE PAGE IS BORN (R-G11c.8).
+ *
+ * This is the one place a vendor-lane file touches `couple_consent`, and the
+ * b53:261 amendment (R-G11c.9) narrows that cell to the two doors it was always
+ * about rather than exempting this line. The distinction the ruling turns on:
+ * R-G11.10 forbids a vendor door writing consent AS A VENDOR'S CHOICE. This is
+ * not a choice — it is a COPY of the couple's own answer, read from her row,
+ * never from a request body. A page born to a couple whose switch is already on
+ * is born consented, which is what she already said.
+ *
+ * `=== true` rather than truthiness: the column is NOT NULL DEFAULT false
+ * (0132), but a missing row must seed false, not undefined.
+ */
+async function consentSeedFor(supabase, coupleId) {
+  if (!coupleId) return false;
+  const { data, error } = await supabase
+    .from('couples')
+    .select('publish_weddings')
+    .eq('id', coupleId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data && data.publish_weddings) === true;
+}
+
 async function createWedding(supabase, { ownerVendorId, eventId, title, venue, city }) {
   const slug = await uniqueSlug(supabase, ownerVendorId, title);
+  const coupleId    = await resolveCoupleForEvent(supabase, { ownerVendorId, eventId });
+  const consentSeed = await consentSeedFor(supabase, coupleId);
   const { data, error } = await supabase
     .from('weddings')
     .insert({
       owner_vendor_id: ownerVendorId,
       event_id: eventId || null,
+      couple_id: coupleId,
       slug,
       title,
       venue: venue || null,
       city: city || null,
+      couple_consent: consentSeed,
     })
     .select(WEDDING_COLS)
     .single();
@@ -341,6 +425,7 @@ module.exports = {
   slugify, uniqueSlug,
   listForOwner, getForOwner, creditsFor, photosFor,
   createWedding, addCredit, publishWedding, addPhoto,
+  resolveCoupleForEvent, consentSeedFor,
   findCreditByToken, settleCredit,
   publicRoll, publicWedding,
 };

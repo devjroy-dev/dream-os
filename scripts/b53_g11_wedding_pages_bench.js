@@ -258,8 +258,34 @@ sec('C11 \u00b7 publish does not imply consent');
   ok('publishWedding sets visibility', /visibility: 'published'/.test(fn));
   ok('publishWedding sets delivered_at (R-G11.20)', /delivered_at:/.test(fn));
   ok('publishWedding writes NO couple_consent byte', !/couple_consent/.test(fn));
-  ok('no door in this sitting writes couple_consent at all',
-    !/couple_consent\s*:/.test(read(STUDIO)) && !/couple_consent\s*:/.test(src));
+  // ── BASE AMENDED, LABELLED — G1.1c (R-G11c.8 / R-G11c.9, closes F-40.43) ───
+  // WAS: `!/couple_consent\s*:/.test(read(STUDIO)) && !/couple_consent\s*:/.test(src)`
+  //      — the WHOLE of src/lib/vendor/weddings.js, under the sentence "no door
+  //      in this sitting writes couple_consent at all".
+  //
+  // WHY IT MOVED. G1.1c gives createWedding a consent SEED read from
+  // `couples.publish_weddings`, in this same file, so the old assertion reds.
+  // It is narrowed to its two TRUE subjects — the studio door whole, and
+  // publishWedding's own slice — and its sentence rewritten to say what it
+  // actually asserts.
+  //
+  // WHY THAT IS NOT A LOOSENED DETECTOR. R-G11.10 forbids a vendor door writing
+  // consent AS A VENDOR'S CHOICE. The seed is not a choice: it copies the
+  // couple's own standing answer off her row, never from a request body. The
+  // thing this cell was built to catch — a vendor deciding consent — is still
+  // caught, by this cell and by the `publish starts implying consent` mutation
+  // below, which must still RED.
+  //
+  // WHAT NOW CARRIES THE REST. b54_g11c_couple_switch_bench asserts the seed
+  // POSITIVELY and both ways: that it reads couples.publish_weddings, that it
+  // never comes from req.body, and that removing it or sourcing it from the body
+  // both RED. The assertion moved one instrument over; it was not dropped.
+  //
+  // RATIFY-OR-REVERT. This amendment lands in the SAME delivery as the code that
+  // moved it (R-G11c.9) — a bench amendment landing first would be a green about
+  // a tree that does not exist yet.
+  ok('no VENDOR DOOR writes couple_consent as a choice (R-G11.10)',
+    !/couple_consent\s*:/.test(read(STUDIO)) && !/couple_consent\s*:/.test(fn));
 }
 
 if (process.argv.includes('--cells-only')) {

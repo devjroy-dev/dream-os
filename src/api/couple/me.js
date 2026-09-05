@@ -33,6 +33,7 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
     .select(`
       id, partner_name, wedding_date, wedding_city,
       budget_total, events_planned, planning_state, onboarding_state,
+      publish_weddings,
       users(name)
     `)
     .eq('id', couple_id)
@@ -54,6 +55,12 @@ router.get('/:coupleId', asyncHandler(async (req, res) => {
       wedding_city:     couple.wedding_city     || null,
       budget_total:     couple.budget_total     || null,
       events_planned:   couple.events_planned   || [],
+      // ── G1.1c · THE SWITCH'S DEFAULT COMES FROM THE ROW, NEVER FROM STATE ──
+      // `=== true` and not `|| false`: the column is NOT NULL DEFAULT false
+      // (0132), so the only way this is not a boolean is a row that does not
+      // exist — and a missing row must read OFF, not undefined. The room draws
+      // the switch from THIS byte; it never holds its own idea of her answer.
+      publish_weddings: couple.publish_weddings === true,
       planning_state:   couple.planning_state   || null,
       // ── ARC OB · THE VERDICT (micro item ③) ──────────────────────────────
       // BOTH couple profile GETs carry it, and that is a declared executor
@@ -77,7 +84,7 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
     return errRes(res, 403, 'Forbidden.');
   }
 
-  const { name, partner_name, wedding_date, wedding_city, budget_total, budget_confirmed } = req.body || {};
+  const { name, partner_name, wedding_date, wedding_city, budget_total, budget_confirmed, publish_weddings } = req.body || {};
 
   const couplesPatch = {};
   if (partner_name !== undefined) couplesPatch.partner_name = partner_name;
@@ -165,6 +172,49 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
     }
   }
 
+  // ── G1.1c · THE COUPLE'S SWITCH (R-40.9, R-G11c.8) ─────────────────────────
+  // DELIBERATELY NOT IN `couplesPatch` ABOVE. `couples.publish_weddings` has ONE
+  // writer — the function — and routing it through the patch object would make
+  // this route a second one, with the two able to drift about what a valid
+  // answer is. One home for the fact, one writer for the column.
+  //
+  // WHY AN RPC AND NOT TWO UPDATES. Her standing answer and every page of hers
+  // must move together (R-G11c.8). Two supabase.update() calls are two
+  // statements and two chances to half-apply, leaving her answer and her pages
+  // disagreeing with each other. `couple_set_publish` (0132) does both in one
+  // plpgsql body, which is one transaction. This is the ruling executed, not
+  // approximated. The estate's own pattern: ten rpc call sites, eleven functions.
+  //
+  // STRICTLY BOOLEAN. Not truthy — a stray 'false' string or a 0 must be
+  // REFUSED with a named reason rather than coerced into an answer she did not
+  // give. Consent is the one field where a guess is never better than a 400.
+  //
+  // SCOPED BY HER OWN couple_id, taken from the JWT (`req.coupleUser`) and
+  // already checked against the URL at the top of this handler. No wedding id is
+  // accepted from anywhere: consent is not grantable on someone else's page.
+  let publishResult;
+  if (publish_weddings !== undefined) {
+    if (typeof publish_weddings !== 'boolean') {
+      return errRes(res, 400, 'publish_weddings must be true or false.');
+    }
+    const { data: pubRows, error: pErr } = await supabase.rpc('couple_set_publish', {
+      p_couple_id: couple_id,
+      p_publish:   publish_weddings,
+    });
+    if (pErr) {
+      console.error('[PATCH /couple/me] publish error:', pErr.message);
+      return errRes(res, 500, 'Could not update publishing.');
+    }
+    // ZERO TOUCHED WEDDINGS IS NOT A FAILURE. A couple with no page yet
+    // legitimately moves no rows — that is exactly the state the room's own
+    // no-page line describes, and her answer is still recorded on her row.
+    const row = Array.isArray(pubRows) ? pubRows[0] : pubRows;
+    publishResult = {
+      publish_weddings: (row && row.publish_weddings) === true,
+      weddings_touched: (row && Number(row.weddings_touched)) || 0,
+    };
+  }
+
   if (name !== undefined && user_id) {
     const { error: uErr } = await supabase
       .from('users')
@@ -180,6 +230,10 @@ router.patch('/:coupleId', asyncHandler(async (req, res) => {
     // Echoed so the caller can COMPARE rather than trust a bare boolean — the
     // founder's 「 if the write is successful 」 condition, mechanised.
     ...(budgetCoerced !== undefined ? { budget_total: budgetCoerced } : {}),
+    // Echoed for the same reason the budget is: the caller COMPARES rather than
+    // trusts a bare boolean. `weddings_touched` rides along so a walk can see
+    // whether any page actually moved without opening the database.
+    ...(publishResult !== undefined ? publishResult : {}),
   });
 }));
 

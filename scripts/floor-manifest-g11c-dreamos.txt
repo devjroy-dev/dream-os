@@ -1,0 +1,59 @@
+# scripts/floor-manifest-g11c-dreamos.txt
+# BLOCK 19 · G1.1c · THE COUPLE'S SWITCH — the declared dirt of the dream-os half.
+#
+# F-39.51(b): a dirty file outside this list is a STOP until accounted for.
+# Every file below was authored by THIS seat in THIS sitting; nothing is
+# inherited. `git status --porcelain` was empty at seating (§0, preflight CLEAR
+# at 3a35567) and empty again after the b53/b54 mutation passes restored every
+# byte they touched.
+#
+# The runner refused this sitting's first floor run for exactly the reason
+# LESSON 4 exists, and the refusal was right: five authored files were dirt and
+# the reading would have been unreproducible. This manifest is the lawful way to
+# measure a delivery, not the way around the guard.
+
+# ── THE MIGRATION  [R-40.9 · R-G11c.2 re-ruled · R-G11c.8] ──────────────────
+# Additive only: two ADD COLUMN IF NOT EXISTS, one CREATE INDEX IF NOT EXISTS,
+# one CREATE OR REPLACE FUNCTION. Zero DROP / TRUNCATE / DELETE, and public.events
+# is never named — events_owner_xor (F-40.45) is not approached, it is routed
+# around. Founder-run before the pwa apply.
+db/migrations/0132_couple_switch.sql
+
+# ── THE DOOR  [the sole writer of the switch] ───────────────────────────────
+# `publish_weddings` joins the PICKED fields at PATCH /:coupleId and is routed
+# to couple_set_publish(), NOT into couplesPatch — the column keeps one writer.
+# GET /:coupleId serves the switch's default from the ROW with `=== true`, so
+# the surface never holds its own idea of her answer.
+src/api/couple/me.js
+
+# ── THE DATA LAYER  [the spine derivation and the seed] ─────────────────────
+# WEDDING_COLS gains couple_id. createWedding resolves her through
+# events.linked_lead_id -> engagements(lead_id, vendor_id=owner) -> couple_id
+# and seeds couple_consent from couples.publish_weddings. Both new functions are
+# exported so the bench drives them rather than reading about them.
+src/lib/vendor/weddings.js
+
+# ── THE BENCH  [both ways: 36 cells + 6 production-code mutations] ──────────
+# New. Carries what b53:261 carried, one instrument over.
+scripts/b54_g11c_couple_switch_bench.js
+
+# ── THE SEALED BENCH, AMENDED BY THE CODE THAT REDDENED IT  [R-G11c.9] ──────
+# NAMED HERE FOR THAT REASON, the same shape as G1.1's bOB entry. Cell :261 was
+# RIGHT to red: it asserted by bare absence that nothing in weddings.js writes
+# couple_consent, and G1.1c's seed writes it in that file. It is NARROWED to its
+# two true subjects — the studio door whole, and publishWedding's own slice —
+# never exempted, and its sentence rewritten to say what it asserts. :260 is
+# untouched. Proven still able to fire: b53's own `publish starts implying
+# consent (R-G11.10 broken)` mutation still turns it RED, run and witnessed.
+# F-40.43 closes CURED in this ZIP.
+scripts/b53_g11_wedding_pages_bench.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g11c-dreamos.txt
+
+# ── THE HANDOVER IS NOT IN THIS DELIVERY ───────────────────────────────────
+# `docs/TDW_19_G11C_HANDOVER.md` rides a docs micro AFTER this ZIP. It is
+# deliberately absent here rather than shipped empty: an empty handover in the
+# tree is a hollow file, and a manifest naming a path this ZIP does not create
+# would declare dirt that cannot appear. When the micro lands it carries its own
+# manifest line.
