@@ -37,14 +37,61 @@ const router  = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
 const { createLead } = require('../../lib/vendor/leads');
-const { signArchive, archiveUrl, nowTimestamp } = require('../../lib/cloudinarySign');
+const { signArchive, archiveDownloadUrl, nowTimestamp } = require('../../lib/cloudinarySign');
+const { mintSigned, verifySigned } = require('../../lib/signedSession');
+const { siteBase } = require('../../lib/vendor/creditInvite');
 
 function notFound(res) { return res.status(404).json({ ok: false, error: 'Not found.' }); }
 
-/** Seven days, and the leaf's own copy says so — "It works for the next seven
- *  days." A link with no expiry is a permanent public URL to a couple's whole
- *  wedding, forwarded to whoever the guest forwards it to. */
+/** Seven days, and the leaf's own copy says so. */
 const ARCHIVE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+// ── THE DOWNLOAD TOKEN — R-G12.17 ───────────────────────────────────────────
+// The door 303-redirects to the leaf with an OPAQUE token, and the leaf resolves
+// it server-side to the archive URL. The signed URL itself NEVER reaches the
+// address bar: a Cloudinary archive URL carries its own signature, and a guest
+// who screenshots her browser and posts it has handed out a couple's whole
+// wedding. An opaque token in the bar leaks nothing and dies with the archive.
+//
+// ⚠ NO NEW CRYPTO, AND NO TABLE. `src/lib/signedSession.js` is the estate's
+// signed-token home and its posture is exactly the one needed here: the MAC
+// covers a payload that is asserted equal to the carried body (its §1.10),
+// verification returns NULL for expired, forged and malformed ALIKE — a door
+// that told those apart would tell an attacker apart too — and a missing secret
+// FAILS CLOSED rather than minting something that proves less than it claims.
+// A table would need a writer, a reader and a sweeper for a value that is
+// already fully described by its own contents.
+//
+// THE SUBJECT IS THE WEDDING, so a token minted for one page cannot fetch
+// another's photographs. The TTL matches the archive's own expiry, so the token
+// and the thing it names die together — a token outliving its archive would
+// resolve to a URL Cloudinary refuses, which reads to a guest as our failure.
+function downloadSecret() {
+  // The lane's own secret, falling back to the session secret so a deployment
+  // that has not set the new variable still MINTS rather than silently refusing
+  // every download. Named, not silent: `sendGate`'s two-gate shape is the model
+  // — a missing value must be legible, and `mintSigned` returns null when both
+  // are absent, which the door reports.
+  return process.env.WEDDING_DOWNLOAD_SECRET || process.env.ADMIN_SESSION_SECRET;
+}
+
+function mintDownloadToken(weddingId) {
+  return mintSigned({
+    secret:  downloadSecret(),
+    subject: [String(weddingId || '')],
+    ttlMs:   ARCHIVE_TTL_SECONDS * 1000,
+  });
+}
+
+/** -> weddingId | null. NULL for expired, forged and malformed alike. */
+function readDownloadToken(token) {
+  const v = verifySigned({
+    token,
+    secret: downloadSecret(),
+    subjectCount: 1,
+  });
+  return (v && v.subject && v.subject[0]) || null;
+}
 
 /**
  * A guest's month arrives as `YYYY-MM`, and it becomes the estate's OWN
@@ -148,25 +195,81 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
   // server-side from the stored `public_id`s, so Railway never buffers a
   // wedding's originals and the estate never hands out a folder URL it does not
   // shape.
-  let download = null;
+  // ── THE ANSWER IS A REDIRECT, NOT JSON — F-40.102's cure (R-G12.17) ───────
+  // THIS DOOR ANSWERS AN HTML FORM POST. A browser NAVIGATES to whatever comes
+  // back, so the first cut's `res.json(...)` put raw JSON on a guest's screen:
+  // no sentence, no link, nothing she could use, and the vetoed `G2-done` frame
+  // was unreachable. R-G12.10 ruled the answer render and only the leaf's half
+  // was built. Owned as F-40.102.
+  //
+  // 303 AND NOT 302: after a POST, 303 tells the browser to follow with GET. A
+  // 302 leaves the method to the client, and a re-POST on refresh would write
+  // her lead a second time.
+  const token = mintDownloadToken(wedding.id);
+  if (!token) {
+    // FAIL-CLOSED AND LEGIBLE. `mintSigned` returns null only when the secret is
+    // absent, and a token minted from nothing proves nothing. She goes back to a
+    // page that says so rather than to a link that cannot work.
+    req.app.locals.logger?.error?.('weddingDownload: no signing secret; token refused');
+    return res.redirect(303, `${siteBase()}/v/${encodeURIComponent(code)}/w/${encodeURIComponent(slug)}?sent=0`);
+  }
+
+  // ⚠ NOTHING ABOUT THE GUEST IS IN THIS URL. Not her number, not the lead id,
+  // not whether she opted in — and NOT the archive URL, which carries its own
+  // signature and would be a leak in any shared screenshot. The token is opaque,
+  // bound to this wedding, and dies with the archive.
+  return res.redirect(303,
+    `${siteBase()}/v/${encodeURIComponent(code)}/w/${encodeURIComponent(slug)}`
+    + `?sent=1&dl=${encodeURIComponent(token)}`);
+}));
+
+// ── GET /:code/:slug/archive/:token — the leaf resolves, the guest taps ──────
+//
+// The leaf's answer render calls this SERVER-SIDE and puts the result behind one
+// button. A separate door rather than a field on the redirect, because a signed
+// archive URL must never reach an address bar, a history entry or a screenshot.
+//
+// ⚠ THE THREE GATES RUN AGAIN. A token proves WHICH WEDDING, never that the
+// wedding still serves: a couple who withdraws consent between the form post and
+// the tap must not have her photographs handed out on a token minted a minute
+// earlier. Consent is answered fresh on every resolve, exactly as the page is.
+router.get('/:code/:slug/archive/:token', asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const code = String(req.params.code || '').trim();
+  const slug = String(req.params.slug || '').trim().toLowerCase();
+  const weddingId = readDownloadToken(String(req.params.token || '').trim());
+  if (!code || !slug || !weddingId) return notFound(res);
+
+  const { data: owner, error: oErr } = await supabase
+    .from('vendors').select('id, status, discover_paused')
+    .eq('routing_handle', code.toUpperCase()).maybeSingle();
+  if (oErr) throw oErr;
+  if (!owner || owner.status !== 'active' || owner.discover_paused === true) return notFound(res);
+
+  const { data: wedding, error: wErr } = await supabase
+    .from('weddings').select(W.WEDDING_COLS)
+    .eq('id', weddingId).eq('owner_vendor_id', owner.id).eq('slug', slug)
+    .maybeSingle();
+  if (wErr) throw wErr;
+  if (!wedding) return notFound(res);
+  if (wedding.visibility !== 'published') return notFound(res);
+  if (wedding.couple_consent !== true) return notFound(res);
+
+  const photos = await W.photosFor(supabase, wedding.id);
+  if (!photos.length) return notFound(res);
+
   try {
-    const params = signArchive({
+    const url = archiveDownloadUrl(signArchive({
       publicIds: photos.map((p) => p.public_id),
       timestamp: nowTimestamp(),
       expiresAt: nowTimestamp() + ARCHIVE_TTL_SECONDS,
-    });
-    download = { url: archiveUrl(), params };
+      mode:      'download',
+    }));
+    return res.status(200).json({ ok: true, url });
   } catch (e) {
-    // Never a false done: if the archive cannot be signed she is told the
-    // download failed, rather than handed a link that will not open.
-    req.app.locals.logger?.error?.('weddingDownload:signArchive', e);
-    return res.status(503).json({ ok: false, error: 'That didn\u2019t go through. Try again in a moment.' });
+    req.app.locals.logger?.error?.('weddingDownload:archive', e);
+    return res.status(503).json({ ok: false, error: 'Not ready.' });
   }
-
-  // ⚠ NOTHING ABOUT THE GUEST IS ON THIS RESPONSE. Not her number, not the lead
-  // id, not whether she opted in. The leaf renders one sentence and the vendor
-  // learns about her in her Leads room, through the door that already exists.
-  return res.status(200).json({ ok: true, download, lead: leadWritten });
 }));
 
 module.exports = router;

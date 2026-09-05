@@ -114,7 +114,7 @@ function signUpload({ folder, publicId, timestamp }) {
  * is a permanent public URL to a couple's whole wedding, mailed to whoever the
  * guest forwards it to; the caller must state a lifetime out loud.
  */
-function signArchive({ publicIds, timestamp, expiresAt, targetPublicId }) {
+function signArchive({ publicIds, timestamp, expiresAt, targetPublicId, mode }) {
   ensureCloudinary();
   if (!Array.isArray(publicIds) || publicIds.length === 0) {
     throw new Error('signArchive: publicIds must be a non-empty array.');
@@ -126,9 +126,17 @@ function signArchive({ publicIds, timestamp, expiresAt, targetPublicId }) {
 
   // Built as pairs, then sorted by key — so adding a param later cannot put the
   // signature and the request out of step by one line.
+  // ⚠ `mode` IS SIGNED, SO IT CANNOT BE SWAPPED AFTER THE FACT.
+  //   'create'   — the POST that builds an archive server-side.
+  //   'download' — the GET that streams the zip straight to a browser, which is
+  //                the only shape a guest can TAP. R-G12.17's answer render puts
+  //                that URL behind one button.
+  // It is a parameter and not a constant because the signature covers it: a
+  // caller that needed the other mode would otherwise have to re-implement the
+  // signing, which is the third-home disease this file exists to cure.
   const params = {
     expires_at:  String(expiresAt),
-    mode:        'create',
+    mode:        mode === 'download' ? 'download' : 'create',
     public_ids:  publicIds.join(','),
     timestamp:   String(ts),
     type:        'upload',
@@ -150,7 +158,33 @@ function archiveUrl() {
   return `https://api.cloudinary.com/v1_1/${cloudName()}/image/generate_archive`;
 }
 
+/**
+ * THE TAPPABLE ARCHIVE — R-G12.17.
+ *
+ * `archiveUrl()` is a POST endpoint and a guest cannot tap a POST. Cloudinary
+ * serves the same route as a GET when `mode=download`, streaming the zip
+ * directly, so the signed params become a query string and the result is a
+ * plain link behind a button.
+ *
+ * ⚠ THE PARAMS ARE THE SIGNER'S OWN AND ARE NOT RE-ORDERED HERE. The signature
+ * covers a SORTED param string; a query string may be in any order, but nothing
+ * may be added, dropped or edited between signing and sending or the MAC stops
+ * matching — which Cloudinary answers with a 401 that reads like a credentials
+ * problem and is not. So this function only ENCODES what it was handed.
+ *
+ * ⚠ AND THIS URL NEVER REACHES AN ADDRESS BAR. It carries its own signature and
+ * a guest who screenshots it has handed out a couple's whole wedding. The door
+ * resolves it server-side from an opaque token; the browser only ever sees it as
+ * an href it follows once.
+ */
+function archiveDownloadUrl(params) {
+  const qs = Object.keys(params)
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&');
+  return `${archiveUrl()}?${qs}`;
+}
+
 module.exports = {
   signUpload, uploadUrl, ensureCloudinary, nowTimestamp, cloudName,
-  signArchive, archiveUrl,
+  signArchive, archiveUrl, archiveDownloadUrl,
 };

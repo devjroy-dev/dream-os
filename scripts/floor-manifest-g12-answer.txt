@@ -1,0 +1,60 @@
+# scripts/floor-manifest-g12-answer.txt
+# TDW_19 · BLOCK 19 · G1.2 — F-40.102's CURE. THE ANSWER RENDER'S DOOR HALF.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+#
+# ⚠ THE DEFECT, OWNED. This door answers an HTML form POST, and a browser
+# NAVIGATES to whatever comes back. The first cut returned `res.json(...)`, so a
+# guest who tapped Send landed on RAW JSON — no sentence, no link, nothing she
+# could use — and the vetoed `G2-done` frame was unreachable. R-G12.10 had ruled
+# the answer render and only the LEAF's half was built. Found by the founder's
+# question "micro is pwa?", which made me read the door I had already shipped.
+#
+# ⚠ TWO OF THE FIVE ITEMS THE CHAIR LISTED WERE ALREADY BANKED and are NOT in
+# this ZIP: the registry statuses (`3c0f8d6`) and F-40.64's cure (`a2a5180`).
+# Re-derived by command rather than rebuilt from the relay's list.
+
+# ── THE REDIRECT AND THE TOKEN  [R-G12.17] ─────────────────────────────────
+# 303 AND NOT 302: after a POST, 303 tells the browser to follow with GET. A 302
+# leaves the method to the client, and a refresh would write her lead twice.
+#
+# THE TOKEN IS OPAQUE AND THE ARCHIVE URL NEVER REACHES THE ADDRESS BAR. A
+# Cloudinary archive URL carries its own signature; a guest who screenshots her
+# browser and posts it has handed out a couple's whole wedding.
+#
+# NO NEW CRYPTO AND NO TABLE. `src/lib/signedSession.js` is the estate's signed-
+# token home and its posture is already the one needed: the MAC covers a payload
+# asserted equal to the carried body, verification returns NULL for expired,
+# forged and malformed ALIKE — a door that told those apart would tell an
+# attacker apart too — and a missing secret FAILS CLOSED. Proven by command:
+# round-trips its subject, null on a forged secret, null on an edited subject,
+# null mint with no secret. A table would need a writer, a reader and a sweeper
+# for a value already fully described by its own contents.
+#
+# THE RESOLVE DOOR RE-ANSWERS CONSENT. A token proves WHICH WEDDING, never that
+# the wedding still serves: a couple who withdraws between the form post and the
+# tap must not have her photographs handed out on a token minted a minute ago.
+src/api/public/weddingDownload.js
+
+# ── THE TAPPABLE ARCHIVE  [R-G12.17] ───────────────────────────────────────
+# `archiveUrl()` is a POST endpoint and a guest cannot tap a POST. Cloudinary
+# serves the same route as a GET under `mode=download`, so the signed params
+# become a query string and the result is a plain link behind one button.
+#
+# ⚠ `mode` IS INSIDE THE SIGNATURE, not appended after it. Proven rather than
+# asserted: the same publicIds/timestamp/expiry produce DIFFERENT signatures for
+# 'create' and 'download', so the mode cannot be swapped on a signed URL. Were it
+# appended, a swap would 401 and read as a credentials problem, which is the
+# failure mode this file's own header warns about at :44-48.
+src/lib/cloudinarySign.js
+
+# ── THE BENCH  [C16-C17, 13 cells, 3 production mutations] ─────────────────
+# The mutations are the three ways this cure can be undone in silence: the door
+# answering with JSON again (a guest reads it before any bench does), the resolve
+# door dropping its consent re-check (a withdrawn wedding still hands out its
+# zip), and the archive signed in CREATE mode (a POST behind a button that
+# looks live and is not).
+scripts/b53_g11_wedding_pages_bench.js
+
+# ── THIS MANIFEST ───────────────────────────────────────────────────────────
+scripts/floor-manifest-g12-answer.txt

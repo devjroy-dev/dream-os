@@ -521,6 +521,54 @@ sec('C15 \u00b7 the guest lead and the phone that goes nowhere (R-G12.3)');
     !/phone/.test(dl.slice(dl.indexOf('return res.status(200)'))));
 }
 
+// ── C16 · THE ANSWER IS A REDIRECT — F-40.102 (R-G12.17) ───────────────────
+// THIS DOOR ANSWERS AN HTML FORM POST, and a browser NAVIGATES to whatever comes
+// back. The first cut returned `res.json(...)`, so a guest who tapped Send landed
+// on raw JSON: no sentence, no link, and the vetoed G2-done frame unreachable.
+// R-G12.10 ruled the answer render and only the leaf's half was built.
+sec('C16 \u00b7 the download answers with a redirect, not JSON (F-40.102)');
+{
+  const dl = strip(read(DOWNLOAD));
+  ok('the form POST is answered by a redirect', /res\.redirect\(303/.test(dl));
+  // 303 and not 302: after a POST, 303 tells the browser to follow with GET. A
+  // 302 leaves the method to the client and a refresh would re-POST her lead.
+  ok('it is 303, so a refresh cannot re-write her lead', !/res\.redirect\(302/.test(dl));
+  ok('no JSON body survives on the form-POST path',
+    !/return res\.status\(200\)\.json\(\{ ok: true, download/.test(dl));
+  ok('the redirect carries an OPAQUE token, never the archive URL',
+    /sent=1&dl=\$\{encodeURIComponent\(token\)\}/.test(dl)
+    && !/archiveDownloadUrl[\s\S]{0,200}redirect/.test(dl));
+  // FAIL-CLOSED: mintSigned returns null only when the secret is absent, and a
+  // token minted from nothing proves nothing.
+  ok('a missing secret sends her to a page that says so, never to a dead link',
+    /if \(!token\)[\s\S]{0,300}sent=0/.test(dl));
+}
+
+// ── C17 · THE RESOLVE DOOR RE-ANSWERS CONSENT ──────────────────────────────
+// A token proves WHICH WEDDING, never that the wedding still serves. A couple
+// who withdraws between the form post and the tap must not have her photographs
+// handed out on a token minted a minute earlier.
+sec('C17 \u00b7 the archive resolve re-checks the three gates');
+{
+  const dl = strip(read(DOWNLOAD));
+  const fn = dl.slice(dl.indexOf("router.get('/:code/:slug/archive/:token'"));
+  ok('the resolve door exists', fn.length > 0);
+  ok('it re-checks published AND consent, not just the token',
+    /visibility !== 'published'/.test(fn) && /couple_consent !== true/.test(fn));
+  ok('and the owner\u2019s own switches too',
+    /status !== 'active'/.test(fn) && /discover_paused === true/.test(fn));
+  ok('a bad, forged or expired token is the SAME miss as an absent page',
+    /if \(!code \|\| !slug \|\| !weddingId\) return notFound/.test(fn));
+  // The token is bound to the wedding, so one page's token cannot fetch another's.
+  ok('the token\u2019s subject scopes the lookup', /\.eq\('id', weddingId\)/.test(fn));
+  ok('the archive is signed in DOWNLOAD mode \u2014 a POST is not tappable',
+    /mode:\s+'download'/.test(fn));
+  // ⚠ `mode` IS INSIDE THE SIGNATURE. If it were appended after signing, swapping
+  // it would silently 401 and read as a credentials problem.
+  ok('mode is a SIGNED param, not appended after the fact',
+    /mode:\s+mode === 'download'/.test(strip(read(SIGN))));
+}
+
 if (process.argv.includes('--cells-only')) {
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -552,6 +600,17 @@ if (process.argv.includes('--mutate')) {
       'a registered body opens on a variable again \u2014 Meta refuses it (F-40.91)',
       "      'You\u2019ve been credited on a wedding page. {{1}} credited you as {{2}} on ' +",
       "      '{{1}} credited you as {{2}} on ' +"],
+
+    // ── R-G12.17 · F-40.102's cure, proven able to red ────────────────────────
+    [DOWNLOAD, 'the door answers the form POST with JSON again \u2014 raw JSON on a guest\u2019s screen',
+      "  return res.redirect(303,\n    `${siteBase()}/v/${encodeURIComponent(code)}/w/${encodeURIComponent(slug)}`\n    + `?sent=1&dl=${encodeURIComponent(token)}`);",
+      "  return res.status(200).json({ ok: true, download: token, lead: leadWritten });"],
+    [DOWNLOAD, 'the resolve door stops re-checking consent \u2014 a withdrawn wedding still hands out its zip',
+      "  if (wedding.couple_consent !== true) return notFound(res);\n\n  const photos = await W.photosFor(supabase, wedding.id);\n  if (!photos.length) return notFound(res);",
+      "  const photos = await W.photosFor(supabase, wedding.id);\n  if (!photos.length) return notFound(res);"],
+    [DOWNLOAD, 'the archive is signed in CREATE mode \u2014 the guest is handed a POST she cannot tap',
+      "      mode:      'download',",
+      "      mode:      'create',"],
 
     [SIGN, 'the archive params stop being sorted \u2014 a 401 that looks like bad credentials',
       "  const paramsToSign = Object.keys(params).sort()",
