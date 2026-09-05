@@ -323,6 +323,80 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── THE EIGHTH BLOCK-19 TEMPLATE — G3.2 · THE AGREEMENT TO SIGN — DARK ────
+  // Master §2.2's build-dark law. Two gates that fail for DIFFERENT reasons:
+  // `status: 'draft'` says Meta has not passed these words, and
+  // `CONTRACT_SIGN_SEND_ENABLED` (unset everywhere) says we have not decided to
+  // send. Neither alone opens it, and both move together when it opens.
+  //
+  // THE FOUNDER SUBMITS IT FROM WHATSAPP MANAGER. Numbered steps ride the build
+  // handover; this seat does not submit and does not claim it has.
+  //
+  // THE BODY IS **T1 ON `docs/mocks/G32_VETO_SHEET.md`**, vetoed as proposed by
+  // the chair on 2026-09-06 under R-40.42. Byte-frozen: not re-voiced, not
+  // re-punctuated.
+  //
+  // ⚠ IT OPENS AND CLOSES ON PROSE BY RULE, NOT BY LUCK. Meta refuses a leading
+  // or trailing variable — "Variables can't be at the start or end of the
+  // template" — and `wedding_credit` was re-authored on that exact wall in the
+  // Manager on 2026-09-05 (F-40.91). This body was written to the rule rather
+  // than discovering it at submission. `b54` asserts it for every registered body.
+  //
+  // CATEGORY IS UTILITY and the risk is stated rather than assumed. This is a
+  // transactional notice about a specific act by a specific person, naming what it
+  // concerns and how to decline by inaction. But **F-19.07 and F-40.12 are this
+  // estate's own precedents for Meta reclassifying a Utility template as
+  // MARKETING**, and this seat's prediction on `wedding_consent` was pessimistic
+  // and refuted. The read here is not treated as certain.
+  contract_sign: {
+    key: 'contract_sign',
+    name: 'tdw_contract_sign',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['owner', 'functions', 'link'],
+    // ⚠ RE-AUTHORED UNDER **R-40.55** AFTER `b53` REDDENED ON IT — F-40.118.
+    // The first cut opened on `{{1}}`, which Meta refuses ("Variables can't be at the
+    // start or end of the template"). The founder hit that exact wall on 2026-09-05
+    // with `wedding_credit`, and the estate has had a cell for it ever since — `b53`
+    // was right to red, and the chair's c-40.29 records that the veto was given
+    // against a rule the bench already held. THESE ARE THE BYTES ACTUALLY VETOED, and
+    // they are what the founder files with Meta: the registry and the Manager must
+    // never hold different words under one template name.
+    body:
+      'You have an agreement to read and sign. {{1}} has sent it \u2014 it covers ' +
+      '{{2}}, and the deposit that holds your dates. Open {{3}} to read it \u2014 ' +
+      'nothing is agreed until you tap I agree and enter the code we send you.',
+    status: 'draft',
+  },
+
+  // ── THE SIGN OTP — R-G32.9 · A KEY, NOT AN EIGHTH SUBMISSION ──────────────
+  // The read-first derived that all five AUTHENTICATION entries carry the IDENTICAL
+  // Meta preset body `{{1}} is your verification code.` — *preset, not
+  // author-editable* — which names no account, no lane and no service. It is a code
+  // and nothing else, so it can serve a `clients` phone as well as a platform
+  // account's, and **no new Meta submission is required to walk this flow.**
+  //
+  // This file's own AUTHENTICATION header records that keys MAY be collapsed by
+  // pointing several at one `name`. That is what this is: a distinct key, so the
+  // send site is tracked on its own, aimed at an ALREADY-APPROVED WABA template.
+  //
+  // ⚠ AND THE NAME LIES IN THE MANAGER UNTIL IT DOESN'T — which is the whole
+  // reason (ii) rides beside (i). `tdw_vendor_login_otp` is not what a couple
+  // signing a contract is doing, and a template name that misdescribes its use is
+  // the same class as a comment that outlives its fact. `tdw_contract_sign_otp` is
+  // submitted in parallel; on approval THIS `name` changes and nothing else does.
+  contract_sign_otp: {
+    key: 'contract_sign_otp',
+    name: 'tdw_vendor_login_otp',          // R-G32.9(i) — re-points to tdw_contract_sign_otp on approval
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'AUTHENTICATION',
+    variables: ['code'],
+    body: '[Meta preset auth body] {{1}} is your verification code.',  // preset, not author-editable
+    status: 'approved',   // the WABA template this points at is approved; F-10.42's note applies
+  },
+
   // ── THE SEVENTH BLOCK-19 TEMPLATE — G2, R-G2.10 · THE REVIEW ASK ─────────
   // ⚠ THIS ONE ALREADY EXISTS ON THE WABA AND HAS SINCE 2026-08-28. It is the
   // first entry in this registry that was APPROVED BEFORE IT WAS REGISTERED:

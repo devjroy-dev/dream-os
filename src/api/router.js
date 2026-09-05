@@ -36,6 +36,7 @@ router.use('/public/wedding-download', require('./public/weddingDownload'));
 // rule and the same reason as /crew above.
 router.use('/credits',            require('./credits'));
 router.use('/consent',            require('./consent'));
+router.use('/sign',               require('./sign'));
 router.use('/vendor/onboarding',  require('./vendor/onboarding'));
 router.use('/vendor',             require('./vendor/core'));
 router.use('/vendor-e',           require('./vendor-engine'));   // Vendor Suit Phase 3 (shadow doors)

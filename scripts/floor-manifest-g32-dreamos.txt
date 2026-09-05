@@ -1,0 +1,79 @@
+# scripts/floor-manifest-g32-dreamos.txt
+# TDW_19 · BLOCK 19 · G3.2 — THE dream-os HALF. The instrument becomes a product:
+# 0138's three planes, the pure v3 renderer, the fill/preview/send doors, the
+# couple's sign leaf, the date lock, F-40.112's cure, the eighth template dark.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for. Every file
+# below was authored or edited by THIS seat in THIS sitting; nothing inherited. The
+# tree was clean at 3efa47c before a byte moved, proven by `git status --porcelain |
+# wc -l` returning 0 immediately after `git checkout -q origin/main`, and 3efa47c is
+# the tip the chair named and this seat re-derived at the cut.
+#
+# ⚠ THE TIP DID NOT MOVE UNDER THIS SEAT. `git fetch -q origin` was run before the
+# read-first, before the mock and before this build; origin/main has read 3efa47c
+# throughout. The pwa tip DID move (cb724b6 -> 6d014ea -> 1fe47b0) and none of it is
+# in this repo.
+#
+# 0138_contract_fill_and_sign.sql is FOUNDER-RUN in the Supabase editor BEFORE this
+# ZIP is applied; it is listed because it is dirt in this tree, not because the floor
+# executes it. No bench in this delivery touches a live database.
+#
+# ⚠ ONE FILE IS EDITED THAT NO OTHER G3.2 FILE OWNS: src/lib/templates.js. Two
+# entries are added (contract_sign, contract_sign_otp) and NOT ONE EXISTING BYTE
+# MOVES — proven by `git diff src/lib/templates.js` being additions only.
+
+db/migrations/0138_contract_fill_and_sign.sql
+docs/TDW_19_G32_HANDOVER.md
+scripts/b56_contract_bench.js
+scripts/floor-manifest-g32-dreamos.txt
+src/api/router.js
+src/api/sign.js
+src/api/vendor/contracts.js
+src/lib/contractPdf.js
+src/lib/templates.js
+src/lib/vendor/contractSource.js
+src/lib/vendor/contracts.js
+src/lib/vendor/dateLock.js
+
+# ── THE FLOOR, DERIVED TWICE ────────────────────────────────────────────────
+# Run: every `scripts/b*_*.js`, 90s timeout each, on the clean committed tree with
+# the sibling present.
+#
+#   THIS TREE      GREEN 110  RED 49  TOTAL 159
+#   NAMED BASE     GREEN 109  RED 49  TOTAL 158   (3efa47c, this work stashed -u)
+#
+# DELTA = ZERO. `comm -23` over the two sorted red lists returns nothing. The count
+# differs by one file because b56 did not exist at the base; it is GREEN here.
+#
+# ⚠ THE DELTA WAS NOT ZERO ON THE FIRST DERIVATION, AND THAT IS RECORDED RATHER THAN
+# SMOOTHED. Two benches reddened on this work:
+#
+#   b56_contract_bench      — the seat's own, red on F-40.118 (see below)
+#   b53_g11_wedding_pages   — G1.1's, red on the SAME defect through the registry-wide
+#                             cell `no registered body opens or closes on a variable`
+#
+# Both were ONE defect: T1 opened on `{{1}}`, which Meta refuses (F-40.91). The seat
+# carried the red loudly rather than papering it, filed **F-40.118**, and the founder
+# re-vetoed the body under **R-40.55**. b53 is a sibling's bench and it was right to
+# red; c-40.29 is the chair's own note that the veto was given against a rule the
+# estate already held a cell for. Both are green now, and the delta is zero.
+#
+# 49 RED AT BOTH TREES. Inherited, unchanged, and not this delivery's — the same set
+# the base carries, file for file.
+#
+# ── b56, BOTH WAYS ──────────────────────────────────────────────────────────
+# 99/99 cells green. SIX PRODUCTION MUTATIONS driven and reverted, each a real edit
+# to a shipped file:
+#   §1  Math.round -> Math.floor in deriveMoney              → 2 red
+#   §2  drop the `signature.verified_at` gate in contractPdf → 2 red
+#   §3  isLocked ignores `state !== 'signed'`                → 3 red
+#   §4  drop `.is('storage_path', null)` from cleanupDraft   → 4 red   (F-40.112)
+#   §6  verifySignCode resets otp_attempts on a wrong try    → 2 red
+#   §6b findSigningByToken ignores token expiry              → 4 red
+#
+# ⚠ TWO CELLS WERE VACUOUS ON THE FIRST DRIVE AND ARE RECORDED, NOT QUIETLY FIXED.
+# §6's count cell asserted `=== 1` after ONE wrong answer, which a mutation setting
+# `next = 1` satisfied; §6b had no expiry cell at all. Both were caught by DRIVING the
+# mutations rather than by reading the assertions, and a second wrong answer plus a
+# whole §6b are what now catch them. A cell that cannot go red is a cell that proves
+# nothing, and two of these could not until they were driven.

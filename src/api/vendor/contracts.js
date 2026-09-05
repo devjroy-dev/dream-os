@@ -14,7 +14,10 @@ const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-const { getUploadUrl, finalizeContract, getDownloadUrl } = require('../../lib/vendor/contracts');
+const C = require('../../lib/vendor/contracts');
+const { getUploadUrl, finalizeContract, getDownloadUrl } = C;
+const { renderContract } = require('../../lib/vendor/contractSource');
+const { siteBase } = require('../../lib/vendor/creditInvite');
 
 const authMw = [requireAuth, resolveVendor()];
 
@@ -28,13 +31,21 @@ router.post('/upload-url', ...authMw, asyncHandler(async (req, res) => {
 }));
 
 // GET / — list
+//
+// ⚠ `include_cancelled=1` RELAXES THE FILTER — R-G32.15, veto row 9.
+// The door has always hidden cancelled contracts, which was right when the room was a
+// list of PDFs and is wrong now: the room shows all four states, with cancelled as its
+// own section at the foot. The filter is relaxed BEHIND A QUERY PARAM rather than
+// removed, because every existing caller expects the old shape and a silently widened
+// list would put cancelled rows into surfaces that never asked for them. Filed as
+// **F-40.115**; the room passes the param, nothing else does.
 router.get('/', ...authMw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const { client_id, lead_id, state } = req.query;
+  const { client_id, lead_id, state, include_cancelled } = req.query;
   let q = supabase.from('contracts').select('*')
     .eq('vendor_id', req.vendor.id)
-    .neq('state', 'cancelled')
     .order('created_at', { ascending: false });
+  if (String(include_cancelled || '') !== '1') q = q.neq('state', 'cancelled');
   if (client_id) q = q.eq('client_id', client_id);
   if (lead_id)   q = q.eq('lead_id', lead_id);
   if (state)     q = q.eq('state', state);
@@ -105,6 +116,115 @@ router.delete('/:contractId', ...authMw, asyncHandler(async (req, res) => {
     return errRes(res, 500, error.message);
   }
   return okRes(res, { contract: data });
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════
+// G3.2 · THE FILL PATH. The upload path above is untouched and stays.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// POST /compose — create from a client (+ event, + invoice)
+router.post('/compose', ...authMw, asyncHandler(async (req, res) => {
+  const b = req.body || {};
+  const r = await C.composeContract(req.app.locals.supabase, req.vendor.id, {
+    clientId: b.client_id, eventId: b.event_id, invoiceId: b.invoice_id,
+    title: b.title, depositPct: b.deposit_pct,
+  });
+  if (!r.ok) return errRes(res, 400, r.error);
+  return okRes(res, { contract: r.contract });
+}));
+
+// PATCH /:id/fill — the blanks
+router.patch('/:contractId/fill', ...authMw, asyncHandler(async (req, res) => {
+  const b = req.body || {};
+  const r = await C.saveContractFill(req.app.locals.supabase, req.vendor.id, req.params.contractId, {
+    terms: b.terms, annexes: b.annexes, depositPct: b.deposit_pct,
+  });
+  if (!r.ok) return errRes(res, 400, r.error);
+  return okRes(res, { contract: r.contract });
+}));
+
+// GET /:id/preview — the PDF, rendered fresh from the row
+//
+// ⚠ THROUGH `renderContract`, THE ONE CALL SITE. This door does not assemble the
+// renderer's arguments and could not: `generateContractPdf` is not imported here and
+// b56 §5 reds if it ever is.
+router.get('/:contractId/preview', ...authMw, asyncHandler(async (req, res) => {
+  const r = await renderContract(req.app.locals.supabase, req.vendor.id, req.params.contractId);
+  if (!r.ok) return errRes(res, 404, r.error);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'inline; filename=\"agreement.pdf\"');
+  return res.status(200).send(r.buffer);
+}));
+
+// POST /:id/send-to-couple — open a signing and hand back the link
+//
+// ⚠ THE LINK IS RETURNED TO THE VENDOR **ONLY WHILE THE SEND IS DARK**, and this is
+// the one place that departs from G1.2's cure. F-40.105 found that the consent token
+// reached the VENDOR by design, so the counterparty could say yes — and master §2.4 is
+// that the counterparty never means yes.
+//
+// A CONTRACT IS THE OTHER SHAPE. The vendor is the party who SENDS the agreement; she
+// is supposed to have the link, exactly as she is supposed to have the PDF. What she
+// cannot have, and does not get, is the CODE: `issueSignCode` returns it once, to the
+// send path, and it is hashed on the row. **The counterparty holding the link cannot
+// sign, because she cannot receive the password.** That is the whole of the protection
+// and it is the reason clause 12 has an OTP at all.
+router.post('/:contractId/send-to-couple', ...authMw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const { data: row } = await supabase.from('contracts')
+    .select('id, client_id').eq('id', req.params.contractId).eq('vendor_id', req.vendor.id).maybeSingle();
+  if (!row) return errRes(res, 404, 'Contract not found.');
+
+  let phone = (req.body || {}).signer_phone || null;
+  if (!phone && row.client_id) {
+    const { data: c } = await supabase.from('clients')
+      .select('phone').eq('id', row.client_id).maybeSingle();
+    phone = c && c.phone;
+  }
+
+  const r = await C.openSigning(supabase, req.vendor.id, req.params.contractId, { signerPhone: phone });
+  if (!r.ok) return errRes(res, 400, r.error);
+
+  const flagOn = String(process.env.CONTRACT_SIGN_SEND_ENABLED || '') === '1';
+  return okRes(res, {
+    contract_id: req.params.contractId,
+    sign_url: `${siteBase()}/sign/${r.token}`,
+    sent: false,
+    // NEVER A FALSE DONE. The template is dark, so nothing was sent and the reason is
+    // named rather than left for a walk to discover.
+    reason: flagOn ? 'template tdw_contract_sign is not approved on the sending WABA'
+                   : 'CONTRACT_SIGN_SEND_ENABLED is not set',
+  });
+}));
+
+// POST /:id/deposit — vendor-marked only (master §7, veto row 52)
+router.post('/:contractId/deposit', ...authMw, asyncHandler(async (req, res) => {
+  const received = (req.body || {}).received !== false;
+  const r = await C.markDepositReceived(req.app.locals.supabase, req.vendor.id, req.params.contractId, received);
+  if (!r.ok) return errRes(res, 400, r.error);
+  return okRes(res, { contract: r.contract });
+}));
+
+// GET/PUT /profile — her policies, asked once (R-G32.3 a)
+//
+// ⚠ MOUNTED UNDER THE CONTRACTS ROOM AND NOT UNDER `/vendor/me`, deliberately: these
+// are the INSTRUMENT'S fields, they change when the instrument changes, and a vendor
+// profile door that grew them would tie the two together.
+router.get('/profile/fields', ...authMw, asyncHandler(async (req, res) => {
+  const { data } = await req.app.locals.supabase.from('contract_profiles')
+    .select('fields').eq('vendor_id', req.vendor.id).maybeSingle();
+  return okRes(res, { fields: (data && data.fields) || {} });
+}));
+
+router.put('/profile/fields', ...authMw, asyncHandler(async (req, res) => {
+  const fields = (req.body || {}).fields;
+  if (!fields || typeof fields !== 'object') return errRes(res, 400, 'fields object is required.');
+  const { data, error } = await req.app.locals.supabase.from('contract_profiles')
+    .upsert({ vendor_id: req.vendor.id, fields, updated_at: new Date().toISOString() },
+            { onConflict: 'vendor_id' })
+    .select().single();
+  if (error) return errRes(res, 500, error.message);
+  return okRes(res, { fields: data.fields });
 }));
 
 module.exports = router;
