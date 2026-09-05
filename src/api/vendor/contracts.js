@@ -216,7 +216,7 @@ router.get('/profile/fields', ...authMw, asyncHandler(async (req, res) => {
   return okRes(res, { fields: (data && data.fields) || {} });
 }));
 
-router.put('/profile/fields', ...authMw, asyncHandler(async (req, res) => {
+router.post('/profile/fields', ...authMw, asyncHandler(async (req, res) => {
   const fields = (req.body || {}).fields;
   if (!fields || typeof fields !== 'object') return errRes(res, 400, 'fields object is required.');
   const { data, error } = await req.app.locals.supabase.from('contract_profiles')
