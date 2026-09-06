@@ -147,17 +147,51 @@ router.patch('/:contractId/fill', ...authMw, asyncHandler(async (req, res) => {
   return okRes(res, { contract: r.contract });
 }));
 
-// GET /:id/preview — the PDF, rendered fresh from the row
+// POST /:id/preview — render the draft, store it, hand back a SIGNED URL
 //
-// ⚠ THROUGH `renderContract`, THE ONE CALL SITE. This door does not assemble the
-// renderer's arguments and could not: `generateContractPdf` is not imported here and
-// b56 §5 reds if it ever is.
-router.get('/:contractId/preview', ...authMw, asyncHandler(async (req, res) => {
-  const r = await renderContract(req.app.locals.supabase, req.vendor.id, req.params.contractId);
+// ═══ F-40.152 · THE FIRST CUT OF THIS DOOR COULD NEVER HAVE WORKED ═════════
+// It returned PDF BYTES from behind `authMw`, and the room opened it with
+// `window.open()`. **A NEW TAB CARRIES NO AUTHORIZATION HEADER.** Every press
+// returned `{"error":"Missing or malformed Authorization header.","reason":"no_token"}`
+// and the button had never once rendered a document. Found on the founder's glass,
+// on the walk — no bench could have seen it, because every cell in b56 and b57 was
+// asserting this file's own behaviour and not what a browser does with its address.
+//
+// ⚠ THE CURE WAS SIXTY LINES ABOVE, IN THE SAME FILE THE SEAT WAS READING.
+// `getDownloadUrl` returns a **Supabase signed URL** precisely so a browser can open
+// a private object without a header — which is exactly why `Download` has always
+// worked on this room and `Preview` never did. This door is now that door's shape,
+// and the chair refused a one-shot token for the reason that matters: a second
+// credential class for one button is a second thing to keep correct forever.
+//
+// ⚠ IT IS A **POST**, AND THE VERB IS THE HONEST ONE. This door RENDERS and WRITES
+// an object; a GET that mutates storage is a GET that a retry, a prefetch or a
+// crawler will fire. The room asks for the url, then opens it.
+//
+// ⚠ `.draft.pdf`, NEVER `.signed.pdf`. The sealed copy is the agreement (clause 12)
+// and is written once, by the sign door, over bytes a couple actually agreed to.
+// This object is a convenience that is overwritten on every press, and the two must
+// never be able to reach each other's path.
+//
+// ⚠ THROUGH `renderContract`, THE ONE CALL SITE. `generateContractPdf` is not
+// imported here and b56 §5 reds if it ever is.
+const PREVIEW_URL_TTL = 600;   // ten minutes — a preview is a glance, not a link to keep
+
+router.post('/:contractId/preview', ...authMw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const r = await renderContract(supabase, req.vendor.id, req.params.contractId);
   if (!r.ok) return errRes(res, 404, r.error);
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'inline; filename=\"agreement.pdf\"');
-  return res.status(200).send(r.buffer);
+
+  const path = `${req.vendor.id}/${req.params.contractId}.draft.pdf`;
+  const up = await supabase.storage.from(C.BUCKET)
+    .upload(path, r.buffer, { contentType: 'application/pdf', upsert: true });
+  if (up.error) return errRes(res, 500, up.error.message);
+
+  const { data, error } = await supabase.storage
+    .from(C.BUCKET).createSignedUrl(path, PREVIEW_URL_TTL);
+  if (error) return errRes(res, 500, error.message);
+
+  return okRes(res, { pdf_url: data.signedUrl, expires_in: PREVIEW_URL_TTL });
 }));
 
 // POST /:id/send-to-couple — open a signing and hand back the link

@@ -481,6 +481,41 @@ section('10. the send is dark, and says so');
   ok('the door names the flag rather than sending', /CONTRACT_SIGN_SEND_ENABLED/.test(read('src/api/sign.js')));
 }
 
+// ══ §10b — F-40.152 · PREVIEW HANDS BACK A URL, NEVER BYTES ════════════════
+section('10b. a new tab carries no JWT, so the door hands it something it can open');
+{
+  const door = read('src/api/vendor/contracts.js');
+  // ⚠ THE TWO ABSENCE CELLS BELOW READ `code()`, NOT `read()`, AND THEY REDDENED
+  // ON THIS SEAT'S OWN COMMENTS BEFORE THEY DID. The door's header EXPLAINS that
+  // it must never write `.signed.pdf` and never import `generateContractPdf` —
+  // and a cell grepping the whole file failed on the explanation. Same lesson as
+  // b57 §5 and b56 §5 before it, met a third time: an absence cell asserts the
+  // absence of a CALL, and a file that documents its discipline must not be
+  // punished for it.
+  const doorCode = code('src/api/vendor/contracts.js');
+  // ⚠ THE DEFECT THIS ASSERTS AGAINST IS NOT HYPOTHETICAL. The first cut sent PDF
+  // bytes from behind `authMw` and the room opened it with `window.open()`; every
+  // press returned `no_token` and the button had never worked. No bench saw it,
+  // because every cell asserted this file's behaviour and not what a browser does
+  // with its address. The founder's glass found it.
+  ok('the preview door returns a signed url', /createSignedUrl\(path, PREVIEW_URL_TTL\)/.test(door));
+  ok('and answers pdf_url, not bytes', /okRes\(res, \{ pdf_url/.test(door));
+  ok('it no longer sends a buffer', !/preview[\s\S]{0,900}res\.status\(200\)\.send\(r\.buffer\)/.test(door));
+  // ⚠ A GET THAT WRITES STORAGE IS A GET A RETRY OR A PREFETCH WILL FIRE.
+  ok('it is a POST, because it renders and writes', /router\.post\('\/:contractId\/preview'/.test(door));
+  ok('and there is no GET preview left behind', !/router\.get\('\/:contractId\/preview'/.test(door));
+  // ⚠ THE DRAFT AND THE SEALED COPY MAY NEVER REACH EACH OTHER'S PATH.
+  ok('the object is .draft.pdf', /\$\{req\.params\.contractId\}\.draft\.pdf/.test(door));
+  ok('the sign door writes .signed.pdf and only that', /\.signed\.pdf/.test(read('src/api/sign.js')));
+  ok('the preview door never writes .signed.pdf', !/\.signed\.pdf/.test(doorCode));
+  // TEN MINUTES. A preview is a glance, not a link to keep — `getDownloadUrl`'s
+  // hour is for a document she has already agreed to.
+  ok('the url is short-lived', /PREVIEW_URL_TTL = 600/.test(door));
+  // AND IT STILL GOES THROUGH THE ONE CALL SITE.
+  ok('preview renders through renderContract', /preview[\s\S]{0,400}renderContract\(/.test(door));
+  ok('generateContractPdf is not imported by any door', !/generateContractPdf/.test(doorCode));
+}
+
 // ══ §11 — THE PUBLIC LEAF'S CONSTITUTION ═══════════════════════════════════
 section('11. the sign door reads like its two siblings');
 {

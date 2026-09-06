@@ -168,3 +168,45 @@ src/lib/vendor/dateLock.js
 # described, F-40.99 CLOSED — so the note is replaced with a citation. A comment
 # that outlives its fact is this estate's most-repeated defect class; leaving a
 # paid debt on the page would have been a new instance of it.
+
+# ── MICRO 2 (2026-09-06) · derived at dream-os d4a33a7 ─────────────────────
+# F-40.152 — `Preview the PDF` rebuilt on the signed-object arm.
+#
+#   src/api/vendor/contracts.js     GET bytes -> POST { pdf_url }
+#   scripts/b56_contract_bench.js   §10b, eleven cells
+#
+#   b56    122/122  (111 -> 122), four mutations both ways:
+#       send bytes again (the F-40.152 shape) -> 2 red
+#       GET instead of POST                   -> 2 red
+#       write over the sealed copy            -> 2 red
+#       a one-hour preview url                -> 1 red
+#
+# ⚠ THE DEFECT: the door returned PDF BYTES from behind `authMw` and the room
+# opened it with `window.open()`. A NEW TAB CARRIES NO AUTHORIZATION HEADER, so
+# every press returned `no_token` and the button had never once worked. NO BENCH
+# COULD HAVE SEEN IT — every cell asserted this estate's behaviour and none
+# asserted what a browser does with an address. The founder's glass found it.
+#
+# ⚠ AND THE CURE WAS SIXTY LINES ABOVE IN THE SAME FILE. `getDownloadUrl` returns
+# a Supabase signed url precisely so a browser can open a private object without a
+# header — which is why `Download` has always worked on this room. Built beside
+# the precedent, did not take it.
+#
+# ⚠ TWO ABSENCE CELLS REDDENED ON THIS SEAT'S OWN COMMENTS before they read
+# `code()` instead of `read()`. The door's header EXPLAINS that it must never
+# write `.signed.pdf` nor import `generateContractPdf`, and the cells failed on
+# the explanation. Third instance this sitting; the lesson is a standing one.
+#
+# ⚠ THE TIP MOVED BETWEEN THE CUT AND THE RE-DERIVATION, AND THE PACKET WAS
+# RE-CUT RATHER THAN RE-STAMPED. ba368ce -> d4a33a7 (G1.3 rider 3, F-40.150).
+# Derived by command that it touched b57_g13_team_bench.js, its own floor manifest
+# and studio/weddings.js — NOTHING in G3.2 radius — so the work stands. The three
+# files were reapplied ON the new tip and the floor re-run there, both ways:
+#
+#   WORKING TREE   GREEN 110  RED 50  TOTAL 160
+#   TIP d4a33a7    GREEN 110  RED 50  TOTAL 160   (stashed -u)
+#   DELTA          ZERO
+#
+# R-40.69 says a base line means derived-at, and the honest way to keep that true
+# when a queue moves is to derive again — not to edit the line. The founder asked
+# for exactly this before applying, and he was right to.
