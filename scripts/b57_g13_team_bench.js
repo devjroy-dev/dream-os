@@ -341,6 +341,86 @@ asyncCells.push(async () => {
     /card_url/.test(st) && /createSignedUrl/.test(st) && !/res\.type\('application\/pdf'\)/.test(st));
 }
 
+// ── C6b · THE DOORS ARE INVOKED, NOT READ (F-40.150) ───────────────────────
+// THE CELL THAT WAS MISSING, AND THE REASON THE 500 REACHED PRODUCTION.
+// Every other cell in this bench reads SOURCE. Source-reading cannot see an
+// undefined free variable: `siteBase()` was called in the card door with no
+// import, `node --check` passed it (syntax is fine), the floor passed it (no
+// bench loaded the router), and a `grep -n siteBase` printed the CALL SITE which
+// the seat read as the import. Three gates and a grep, all green, on a door that
+// threw ReferenceError on its first real tap.
+//
+// So this cell EXECUTES the handler against stubs and asserts it does not throw
+// a ReferenceError. It does not care what the door answers — 404, 409 and 500
+// are all fine here — only that the code PATH RUNS. A door that cannot resolve
+// its own identifiers is broken in a way no amount of reading will show.
+sec('C6b \u00b7 the card door runs (F-40.150)');
+asyncCells.push(async () => {
+  process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'https://stub.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'stub';
+  let router;
+  try { router = require(P('src/api/vendor/studio/weddings.js')); }
+  catch (e) { ok('the studio weddings router loads', false, e.message); return; }
+  ok('the studio weddings router loads', true);
+
+  const layer = (router.stack || []).find((l) => l.route && l.route.path === '/:id/cards');
+  ok('the card door is mounted at /:id/cards', Boolean(layer));
+  if (!layer) return;
+
+  // The LAST handler in the stack is the door itself; the ones before it are
+  // auth/tier middleware, which this cell deliberately does not run.
+  const handle = layer.route.stack[layer.route.stack.length - 1].handle;
+
+  // A wedding that is live, with an address — so the door gets PAST its 409
+  // gates and reaches the line that once threw.
+  const wedding = { id: 'w1', slug: 'wedding', title: 'Wedding', visibility: 'published', couple_consent: true };
+  const req = {
+    params: { id: 'w1' },
+    vendor: { id: 'v-dev440', routing_handle: 'DEV440', business_name: 'Dev Roy Photography' },
+    app: { locals: { logger: { error() {} }, supabase: {
+      from() { return { select() { return this; }, eq() { return this; },
+        maybeSingle: async () => ({ data: wedding, error: null }) }; },
+      storage: { from() { return {
+        upload: async () => ({ error: { message: 'stub-bucket' } }),
+        createSignedUrl: async () => ({ data: null }),
+      }; } },
+    } } },
+    body: {},
+  };
+  let status = null, body = null, threw = null;
+  // ⚠ THE DOOR CANNOT BE AWAITED, AND ASSUMING IT COULD IS ITS OWN HOLLOW GREEN.
+  // `src/lib/asyncHandler.js` does `Promise.resolve(fn(...)).catch(next)` and
+  // RETURNS UNDEFINED — it swallows the promise. So `await handle(...)` awaits
+  // `undefined`, resolves on the next tick, and a cell that then read `status`
+  // would find `null` for a door that was about to answer perfectly well. The
+  // first cut of this cell did exactly that and reported a FAIL on working code.
+  //
+  // Nor does try/catch help: rejections go to `next`, never to the caller.
+  // So the cell waits on the OUTCOME — a response or a `next(err)` — with a
+  // deadline, and treats the deadline as a failure rather than a pass.
+  const done = new Promise((resolve) => {
+    const finish = () => resolve();
+    const res0 = {
+      status(c) { status = c; return res0; },
+      json(b) { body = b; setImmediate(finish); return res0; },
+    };
+    handle(req, { ...res0, status: res0.status, json: res0.json }, (e) => { threw = e; setImmediate(finish); });
+    setTimeout(finish, 3000);
+  });
+  await done;
+
+  const isRef = threw && threw.name === 'ReferenceError';
+  ok('the card door resolves every identifier it calls \u2014 no ReferenceError',
+    !isRef, threw ? `${threw.name}: ${threw.message}` : '');
+  ok('...and it answered rather than crashed', status !== null || !threw,
+    threw ? String(threw.message) : `status ${status}`);
+  // The stub refuses the upload, so a RUNNING door must report that refusal —
+  // which is only reachable if `siteBase()` resolved on the line above it.
+  ok('...reaching the upload, which is past the line that used to throw',
+    status === 500 && body && /stub-bucket/.test(String(body.error)),
+    `status ${status} body ${JSON.stringify(body)}`);
+});
+
 // ── C7 · THE PROBE ──────────────────────────────────────────────────────────
 sec('C7 \u00b7 the reel probe (R-G13.10)');
 {
@@ -357,6 +437,17 @@ sec('C7 \u00b7 the reel probe (R-G13.10)');
   ok('reel_enabled is NOT just probe.present — the flag still governs (build-dark law)',
     /WEDDING_REEL_ENABLED/.test(sst));
   ok('a missing binary is an ANSWER, never a 500', /not_installed/.test(sst));
+  // ── THE CARRY (the em dash) ──────────────────────────────────────────────
+  // The record drew 「—」 until a vendor tapped `Check again`, and forgot again on
+  // the next open because it was component state. An honest placeholder that is
+  // ALWAYS showing is a worse answer than the answer.
+  ok('the probe has ONE reader, called by both doors',
+    /async function readFfmpeg\(/.test(sst)
+    && (sst.match(/readFfmpeg\(\)/g) || []).length >= 2);
+  ok('the list door carries the reel shape, so the record needs no tap',
+    /weddings: rows, reel: reelShape\(await readFfmpeg\(\)\)/.test(sst));
+  ok('the flag rule has one home too \u2014 reelShape, not two spellings',
+    (sst.match(/WEDDING_REEL_ENABLED/g) || []).length === 1);
 }
 
 // ── C8 · 0137 AND THE DATE PAIR ─────────────────────────────────────────────
@@ -425,6 +516,10 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       ['src/api/public/weddingPage.js', 'W.teamSet(credits, vendorsById, owner)', 'W.teamSet(credits, vendorsById, null)'],
       // 3c · the owner's door stops being served — the hand-off dies silently.
       ['src/api/public/weddingPage.js', "enquire_link: ENQUIRE_BASE + String(owner.routing_handle || '').toUpperCase(),", ''],
+      // 3d · the card door loses its siteBase import again — F-40.150 restored.
+      ['src/api/vendor/studio/weddings.js', 'sendConsentInvite, siteBase }', 'sendConsentInvite }'],
+      // 3e · the list stops carrying the probe — the record goes back to the em dash.
+      ['src/api/vendor/studio/weddings.js', 'weddings: rows, reel: reelShape(await readFfmpeg())', 'weddings: rows'],
       // 4 · nameless targets no longer dropped.
       [LIB, 'return [...out.values()].filter((t) => t.name);', 'return [...out.values()];'],
       // 5 · the guest token spelled at the door again (F-40.111 restored).

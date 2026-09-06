@@ -1,0 +1,42 @@
+# scripts/floor-manifest-g13r3-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.3 RIDER 3 — F-40.150, and the probe carry.
+#
+# F-14.16: a dirty file outside this list is a STOP. Both files authored by this
+# seat in this rider; the tree was clean at the base before a byte moved.
+#
+# ⚠ F-40.150 WAS NEVER A REGRESSION — THE IMPORT NEVER LANDED.
+# `git log -S"sendConsentInvite, siteBase"` finds the identifier in NO commit.
+# The edit was written in the same script as an unrelated one whose anchor
+# assertion failed; python aborts before the write, so BOTH edits were discarded
+# and the re-run applied only the second. The seat then "verified" with
+# `grep -n siteBase`, which printed the CALL SITE and was read as the import.
+# A grep that cannot tell a use from a declaration is not a check.
+#
+# THREE GATES PASSED A DOOR THAT COULD NOT RUN. `node --check` sees syntax, not
+# an undefined free variable. The floor never loaded the router. Every b57 cell
+# read SOURCE. So the cure is not only the import: C6b now INVOKES the handler
+# against stubs and asserts it resolves its identifiers, and its mutation removes
+# the import to prove the cell bites.
+#
+# ⚠ AND THE FIRST CUT OF THAT CELL WAS ITSELF HOLLOW. `src/lib/asyncHandler.js`
+# does `Promise.resolve(fn(...)).catch(next)` and RETURNS UNDEFINED — it swallows
+# the promise. `await handle(...)` therefore awaits nothing, resolves a tick
+# later, and reads `status === null` on a door that was about to answer. The cell
+# reported FAIL on working code until it was rewritten to wait on the OUTCOME —
+# a response or a `next(err)` — with a deadline that counts as failure.
+#
+# THE CARRY: `readFfmpeg` is extracted so the list door and the probe door share
+# ONE reader, and `GET /` now serves `reel` beside `weddings`. The record drew an
+# em dash until someone tapped `Check again`, then forgot on the next open —
+# component state. An honest placeholder that is always showing is a worse answer
+# than the answer. `Check again` stays: it re-reads after an image change, which
+# is the only moment the value moves (F-40.149).
+#
+# ⚠ OWED, NOT IN THIS ZIP: the pwa micro that reads `reel` off the list payload
+# so the record draws it from first paint. Two lines; this ZIP is dream-os only
+# by the chair's word, and the door is backwards-compatible — the room keeps
+# working unchanged until it lands.
+
+scripts/b57_g13_team_bench.js
+scripts/floor-manifest-g13r3-dreamos.txt
+src/api/vendor/studio/weddings.js

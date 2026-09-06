@@ -25,7 +25,22 @@ const resolveVendor = require('../../middleware/resolveVendor');
 const asyncHandler  = require('../../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../../lib/response');
 const { signUpload, uploadUrl, nowTimestamp } = require('../../../lib/cloudinarySign');
-const { claimUrl, sendCreditInvite, sendConsentInvite } = require('../../../lib/vendor/creditInvite');
+// ⚠ `siteBase` IS IN THIS LIST BECAUSE THE CARD DOOR CALLS IT AND ONCE DID NOT
+// HAVE IT (F-40.150). The door shipped in G1.3 reading `siteBase()` with no
+// import, and every tap on `Make the cards` threw
+// `ReferenceError: siteBase is not defined` — a 500 the room rendered as
+// 「The cards couldn't be made.」, which is exactly what a never-a-false-done
+// failure line is FOR, and also exactly why it took a walk to find.
+//
+// NOT A REGRESSION — it never landed. `git log -S` finds the identifier in no
+// commit. The edit was written in the same script as an unrelated one whose
+// anchor assertion failed; python aborts before the write, so BOTH edits were
+// discarded, and the re-run applied only the second. The seat then "verified"
+// with `grep -n siteBase`, which printed the CALL SITE and was read as the
+// import. A grep that cannot tell a use from a declaration is not a check.
+// `node --check` cannot see an undefined free variable either, and the bench
+// never loaded the router — so three gates passed a door that could not run.
+const { claimUrl, sendCreditInvite, sendConsentInvite, siteBase } = require('../../../lib/vendor/creditInvite');
 const W = require('../../../lib/vendor/weddings');
 const { generateWeddingCards } = require('../../../lib/weddingCardPdf');
 const { spawn } = require('child_process');
@@ -36,7 +51,14 @@ const mw = [requireAuth, resolveVendor()];
 // GET / — the room's list
 router.get('/', ...mw, asyncHandler(async (req, res) => {
   const rows = await W.listForOwner(req.app.locals.supabase, req.vendor.id);
-  return okRes(res, { weddings: rows });
+  // ── THE PROBE RIDES THE LIST (the em-dash carry) ──────────────────────────
+  // Server-scoped, not wedding-scoped, so it belongs on the door the room opens
+  // ONCE rather than on each sheet. The record can then draw the Reel line
+  // truthfully from first paint instead of showing 「—」 until someone taps.
+  //
+  // It costs one `ffmpeg -version` spawn per list read, capped at 2s by its own
+  // timeout, and it never throws — an ENOENT IS the answer.
+  return okRes(res, { weddings: rows, reel: reelShape(await readFfmpeg()) });
 }));
 
 // ⚠ THE PROBE IS DECLARED ABOVE `GET /:id` AND THAT IS LOAD-BEARING, NOT TIDY.
@@ -61,8 +83,19 @@ router.get('/', ...mw, asyncHandler(async (req, res) => {
 // a wedding id would imply a per-page answer and invite a per-page cache.
 //
 // It never throws and never 500s: an ENOENT from `spawn` IS the answer.
-router.get('/reel-probe', ...mw, asyncHandler(async (req, res) => {
-  const probe = await new Promise((resolve) => {
+/**
+ * ── ONE READER, TWO CALLERS (the probe carry) ──────────────────────────────
+ * Extracted so the list door can answer the record's Reel line WITHOUT the room
+ * having to ask. The record used to render an em dash until the vendor tapped
+ * `Check again` — 「we have not looked」 — and then forgot again on the next
+ * open, because it was component state. An honest placeholder that is ALWAYS
+ * showing is a worse answer than the answer, and the answer costs a spawn.
+ *
+ * `Check again` stays: it re-reads after an image change, which is exactly the
+ * moment F-40.149's cure lands and the only time the value moves.
+ */
+async function readFfmpeg() {
+  return new Promise((resolve) => {
     let done = false;
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
     try {
@@ -83,15 +116,29 @@ router.get('/reel-probe', ...mw, asyncHandler(async (req, res) => {
       finish({ present: false, reason: 'not_installed' });
     }
   });
+}
 
-  // `reel_enabled` is deliberately NOT `probe.present`. The reel ships dark
-  // behind its own named flag; a server that CAN cut video is a necessary and
-  // not a sufficient condition, and collapsing the two would let an image change
-  // turn a feature on without anyone ruling it (master §2.2's build-dark law).
-  return okRes(res, {
+/**
+ * `reel_enabled` is deliberately NOT `probe.present`. The reel ships dark behind
+ * its own named flag; a server that CAN cut video is a necessary and not a
+ * sufficient condition, and collapsing the two would let an image change turn a
+ * feature on without anyone ruling it (master §2.2's build-dark law).
+ *
+ * F-40.16 CLOSED ON THE WALK 2026-09-06: this line read
+ * 「Video tools on this server: not detected」 from Railway — the witness no
+ * shell could give, since the dream-os image is uncommitted. The cure is an
+ * image change, filed F-40.149 to infra, and until it lands this returns false
+ * on both terms.
+ */
+function reelShape(probe) {
+  return {
     ffmpeg: probe,
     reel_enabled: String(process.env.WEDDING_REEL_ENABLED || '') === '1' && probe.present === true,
-  });
+  };
+}
+
+router.get('/reel-probe', ...mw, asyncHandler(async (req, res) => {
+  return okRes(res, reelShape(await readFfmpeg()));
 }));
 
 // GET /:id — one page with its roll and photos
