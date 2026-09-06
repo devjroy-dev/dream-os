@@ -709,6 +709,49 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── THE UTILITY LEAD ALERT — F-40.176, R-40.72 amended ────────────────────
+  // WHY A SECOND TEMPLATE THAT SAYS ALMOST THE SAME THING. On the R-40.72 walk
+  // of 2026-09-06 two alerts went out. Dev Roy's arrived. SWATI'S WAS DROPPED BY
+  // META WITH `131049` — the marketing throttle, which silently declines a
+  // MARKETING template to a user who has not engaged recently. He had messaged
+  // that day; she had not.
+  //
+  // No wording fixes that. `lead_alert_basic` is MARKETING BY CATEGORY, and the
+  // throttle hits hardest exactly the vendors who most need the alert: the quiet
+  // ones, who are not already in a thread with us. A notification system that
+  // reaches only the people already paying attention is not one.
+  //
+  // A lead alert IS transactional — a notice about something that just happened
+  // on the vendor's own account — so Utility is not a category dodge, it is the
+  // honest classification. Meta agreed: submitted and returned ACTIVE, category
+  // UTILITY, 2026-09-07, template id 1753685715867036, founder-witnessed in
+  // WhatsApp Manager.
+  //
+  // ⚠ THE MARKETING TEMPLATE IS NOT DELETED. Rows in `lead_alerts` written
+  // before today name `lead_alert_basic` in `template_key`, and that must stay
+  // resolvable — a registry that forgot it would make its own history unreadable
+  // (0141 stores the key PER ROW for exactly this reason). It simply stops being
+  // pointed at.
+  //
+  // Same three variables in the same order as its sibling, which is why the
+  // re-point is one line at the call site: {{1}} the VENDOR'S OWN name, {{2}}
+  // the month phrase, {{3}} the leads link. Not one carries the guest.
+  lead_alert_utility: {
+    key: 'lead_alert_utility',
+    name: 'tdw_lead_alert_utility',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['vendor_name', 'month', 'leads_link'],
+    // FOUNDER-VETOED 2026-09-06, row 1 draft (a), and filed at Meta verbatim.
+    // Byte-for-byte what the WhatsApp Manager preview renders.
+    body:
+      "Hi {{1}}, a couple just enquired about your work for their {{2}} wedding " +
+      "through your page on The Dream Wedding. Open your Leads to see it: {{3}} " +
+      "\u2014 reply here if you need a hand.",
+    status: 'approved',
+  },
+
   // ── TDW_07 P5 · F-07.40 — THE VENDOR-LANE ENQUIRY CARRIER ──────────────────
   // RE-DERIVED AT 9b84c6d (this sitting, by command against this registry, not
   // carried from the prior sitting's claim). The vendor line's approved set is

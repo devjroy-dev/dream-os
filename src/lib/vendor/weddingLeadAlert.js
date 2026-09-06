@@ -71,7 +71,23 @@ const MAX_ALERTS_PER_TAP = 10;
  * at the call site precisely so that day is a one-line change with one cell
  * guarding it, instead of a grep.
  */
-const TEMPLATE_KEY = 'lead_alert_basic';
+// ── RE-POINTED 2026-09-07 — F-40.176 CLOSED AT THE REGISTRY, NOT AT THE WALK.
+// `tdw_lead_alert_utility` came back ACTIVE from Meta, category UTILITY, id
+// 1753685715867036, founder-witnessed in WhatsApp Manager. The marketing
+// throttle (`131049`) that dropped Swati's alert cannot apply to a Utility
+// template, so the vendors this was failing — the quiet ones, who had not
+// messaged us recently — are the ones it now reaches.
+//
+// ⚠ THE HOIST IS WHY THIS IS ONE LINE HERE, and it was still not a one-line
+// DELIVERY: `sendWa`'s gate is `isApproved`, which reads the registry, so
+// `templates.js` gained the entry in the same packet. Saying "one line" of the
+// call site and meaning the delivery was this seat's own imprecision, corrected.
+//
+// ⚠ AND THE CLOSE IS NOT THE APPROVAL MAIL. Meta may re-classify a template it
+// judges promotional at any later review. What closes F-40.176 is a real alert
+// ARRIVING at a vendor who has not messaged us in a fortnight — Swati was the
+// specimen and is the test. Until that walk, this is a cure believed, not seen.
+const TEMPLATE_KEY = 'lead_alert_utility';
 
 /**
  * Alert one vendor about one wedding-page lead.

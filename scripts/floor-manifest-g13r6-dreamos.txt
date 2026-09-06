@@ -1,0 +1,43 @@
+# scripts/floor-manifest-g13r6-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.3 rider 6 — THE RE-POINT (F-40.176).
+#
+# F-14.16: a dirty file outside this list is a STOP. Three files, all this seat's,
+# authored on a tree that was clean at 0a5b90f before a byte moved.
+#
+# WHAT HAPPENED. Meta returned `tdw_lead_alert_utility` ACTIVE, category UTILITY,
+# id 1753685715867036, founder-witnessed in WhatsApp Manager 2026-09-07. The body
+# is row 1 draft (a) VERBATIM and obeys the estate's own filing rule on all four
+# counts, checked by command: variables 1..3 with no gaps, begins with no
+# variable, ends with no variable, no two adjacent, single line.
+#
+# ⚠ "ONE LINE" WAS THIS SEAT'S IMPRECISION. The hoist made the CALL SITE one
+# line and the seat said the re-point was one line. `sendWa`'s gate is
+# `isApproved`, which reads the registry, so `templates.js` needed the entry too.
+# Corrected in the file rather than quietly widened.
+#
+# ⚠ THE MARKETING SIBLING IS KEPT, NOT DELETED. `lead_alerts` rows written before
+# today name `lead_alert_basic` in `template_key` — 0141 stores the key PER ROW
+# precisely so history stays truthful — and a registry that forgot it would make
+# its own record unreadable. It simply stops being pointed at.
+#
+# ⚠ F-40.176 IS NOT CLOSED BY THIS PACKET. Meta may re-classify a template it
+# later judges promotional. What closes it is a real alert ARRIVING at a vendor
+# who has not messaged us in a fortnight — Swati is the specimen and the test.
+# Until that walk this is a cure believed, not seen, and the handover says so.
+#
+# TWO CELLS AMENDED BY LABEL, both for the same reason and both this seat's own
+# earlier work: each was NAMED for a property and then PINNED A SHAPE.
+#   · "the template is lead_alert_basic" pinned the pointer's value; it now
+#     asserts the property that mattered — the alert rides a template the
+#     marketing throttle cannot touch — and that the registry agrees. +2 cells.
+#   · "the template has ONE home, ready to re-point" ALSO pinned the value, so
+#     the first re-point — the very thing it existed to make safe — is what broke
+#     it. A cell that reddens when its own purpose is fulfilled was testing the
+#     shape. It now counts declarations. +0.
+# b57 129 -> 131, disclosed. 20/20 mutations bite; the TEMPLATE_KEY mutation now
+# reverts the re-point rather than inventing a tier.
+
+scripts/b57_g13_team_bench.js
+scripts/floor-manifest-g13r6-dreamos.txt
+src/lib/templates.js
+src/lib/vendor/weddingLeadAlert.js

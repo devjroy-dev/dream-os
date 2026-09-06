@@ -444,8 +444,25 @@ sec('C6c \u00b7 the wedding-lead alert (R-40.72)');
   // so the cell now asserts the CONSTANT'S VALUE and that the call site reads it.
   // Asserting the literal where it used to be would have pinned the pre-cure
   // shape and reddened the moment the cure landed.
-  ok('the template is lead_alert_basic \u2014 identity-free, for everyone',
-    A.TEMPLATE_KEY === 'lead_alert_basic' && /templateKey: TEMPLATE_KEY/.test(src));
+  // ── LABELLED AMENDMENT · F-40.176 CLOSED AT THE REGISTRY. COUNT MOVES +2.
+  // It pinned `lead_alert_basic`. Meta returned tdw_lead_alert_utility ACTIVE as
+  // UTILITY, so the pointer moved and the cell follows the law rather than the
+  // shape it was written against. What it asserts now is the PROPERTY that
+  // mattered all along — the alert rides a template the marketing throttle
+  // cannot touch — plus the reason the sibling is kept rather than deleted.
+  ok('the alert rides the UTILITY template, not the throttled MARKETING one',
+    A.TEMPLATE_KEY === 'lead_alert_utility' && /templateKey: TEMPLATE_KEY/.test(src));
+  {
+    const T = fresh('src/lib/templates.js').TEMPLATES;
+    ok('...and the registry agrees it is UTILITY and approved',
+      T.lead_alert_utility && T.lead_alert_utility.category === 'UTILITY'
+      && T.lead_alert_utility.status === 'approved',
+      T.lead_alert_utility ? T.lead_alert_utility.category + '/' + T.lead_alert_utility.status : 'absent');
+    // lead_alerts rows written before today name the old key in `template_key`;
+    // a registry that forgot it would make its own history unreadable.
+    ok('the MARKETING sibling is kept, not deleted \u2014 old rows must stay resolvable',
+      Boolean(T.lead_alert_basic));
+  }
   ok('UNTIERED \u2014 the paid template is never reached from here',
     !/enquiry_alert_vendor/.test(src));
   ok('not one variable carries the guest\u2019s identity',
@@ -525,8 +542,14 @@ sec('C6d \u00b7 rider 5 (F-40.177 / F-40.179)');
   ok('a failed send still records \u2014 wamid null, status the reason',
     /wamid: null, status: reason/.test(src));
   ok('no_phone is a recorded outcome, not a silent return', /status: 'no_phone'/.test(src));
+  // ── LABELLED AMENDMENT · F-40.176. COUNT PRESERVED (1 -> 1).
+  // It was named "has ONE home, ready to re-point" and then PINNED THE VALUE of
+  // that home — so the first re-point, which is the thing it existed to make
+  // safe, is what broke it. A cell that reddens when its own purpose is fulfilled
+  // was testing the shape and not the property. It now asserts what its name
+  // says: exactly one declaration, no literal at any call site.
   ok('the template has ONE home, ready to re-point (F-40.176)',
-    /const TEMPLATE_KEY = 'lead_alert_basic'/.test(src)
+    (src.match(/const TEMPLATE_KEY = '/g) || []).length === 1
     && !/templateKey: 'lead_alert/.test(src));
   ok('bookkeeping never throws \u2014 the send already happened',
     /catch \(e\)[\s\S]{0,120}leadAlert:record/.test(src));
@@ -650,7 +673,7 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       // 3g · the download door alerts even when no lead was written.
       ['src/api/public/weddingDownload.js', 'if (leadWritten) {', 'if (true) {'],
       // 3h · the alert is tiered after all — the distinction with nothing behind it.
-      ['src/lib/vendor/weddingLeadAlert.js', "const TEMPLATE_KEY = 'lead_alert_basic';", "const TEMPLATE_KEY = 'enquiry_alert_vendor';"],
+      ['src/lib/vendor/weddingLeadAlert.js', "const TEMPLATE_KEY = 'lead_alert_utility';", "const TEMPLATE_KEY = 'lead_alert_basic';"],
       // 3i · the team door stops normalising — F-40.179 restored.
       ['src/api/public/weddingTeam.js', 'toE164(String(body.phone', 'String(body.phone'],
       // 3j · the receipt router loses its second home — F-40.177 restored.
