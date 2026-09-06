@@ -71,6 +71,16 @@ const MUTATIONS = [
   // line-counting harness this scored `RED cells: 0` — a clean pass. It must now
   // report CRASH. A harness that cannot detect its own blind spot is the thing
   // this file exists to stop being.
+  // ── F-40.181 / R-G34.3 · THE RIDER'S TWO CURES, PROVEN BOTH WAYS ─────────
+  ['§12 mount /invoices before schedules', 'src/api/vendor/core.js',
+   "router.use('/',            require('./schedules'));\nrouter.use('/invoices', require('./invoices'));",
+   "router.use('/invoices', require('./invoices'));\nrouter.use('/',            require('./schedules'));"],
+  ['§13 drop the second phone home', 'src/lib/vendor/paymentReminders.js',
+   "  const toPhone   = await resolveClientPhone(supabase, invoice);",
+   "  const toPhone   = (invoice && invoice.client_phone) || null;"],
+  ['§14 stop selecting client_id', 'src/api/vendor/reminders.js',
+   "    .select('id, client_name, client_phone, client_id')",
+   "    .select('id, client_name, client_phone')"],
   ['§11 SELF-TEST — syntax broken on purpose', 'src/lib/vendor/paymentReminders.js',
    "function sendGate() {", "function sendGate( {"],
 ];

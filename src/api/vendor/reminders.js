@@ -180,7 +180,8 @@ router.post('/:milestoneId/send', ...authMw, asyncHandler(async (req, res) => {
 
   const { data: inv } = await supabase
     .from('invoices')
-    .select('id, client_name, client_phone')
+    // `client_id` for `resolveClientPhone`'s second home (R-G34.3).
+    .select('id, client_name, client_phone, client_id')
     .eq('id', ms.invoice_id)
     .eq('vendor_id', req.vendor.id)
     .is('deleted_at', null)

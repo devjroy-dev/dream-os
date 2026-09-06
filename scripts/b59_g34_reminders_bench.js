@@ -404,6 +404,25 @@ section('11. schedules.js is untouched, and this plane is the only writer of its
      (doors.match(/req\.vendor\.id/g) || []).length >= 6);
 }
 
+section('11b. the client number has TWO homes, and both are reachable (R-G34.3, F-40.183)');
+{
+  const src = code('src/lib/vendor/paymentReminders.js');
+  ok('the writer resolves the number through resolveClientPhone, not a bare column read',
+     /const toPhone\s*=\s*await resolveClientPhone\(/.test(src));
+  ok('the fallback reads clients.phone via client_id',
+     /from\('clients'\)[\s\S]{0,160}\.eq\('id', invoice\.client_id\)/.test(src));
+  ok('a deleted client is not chased', /from\('clients'\)[\s\S]{0,200}\.is\('deleted_at', null\)/.test(src));
+  ok('both homes are normalised through the estate asPhone, never a local cleaner',
+     /require\('\.\/relayToCouple'\)/.test(src) && /asPhone\(invoice\.client_phone\)/.test(src));
+  ok('no local phone regex is declared in this plane (F-40.185)',
+     !/PHONE_LIKE|\\d\{10,15\}/.test(src));
+
+  // ⚠ THE SECOND HOME IS UNREACHABLE UNLESS BOTH CALLERS SELECT client_id.
+  // The cure is two words in two SELECTs and it is the half a reader would miss.
+  ok('the door selects client_id', /client_name, client_phone, client_id/.test(code('src/api/vendor/reminders.js')));
+  ok('the sweep selects client_id', /client_name, client_phone, client_id/.test(src));
+}
+
 section('12. the cron minute is free and alone in its slot');
 {
   const c = read('src/cron.js');
@@ -450,8 +469,32 @@ section('14. the doors refuse before they act');
      /sent: !!out\.sent, skipped: !!out\.skipped/.test(d));
   ok('the room derives Sent from wamid and nothing softer (R-G34.8)',
      /sent:\s*!!r\.wamid/.test(d));
-  ok('the router is mounted above the bare root in core.js',
-     /router\.use\('\/reminders',\s*require\('\.\/reminders'\)\);[\s\S]{0,80}router\.use\('\/',\s*require\('\.\/schedules'\)\)/.test(read('src/api/vendor/core.js')));
+  // ⚠ THIS CELL ASSERTED AN ADJACENCY AND THE CURE MOVED IT. The first cut read
+  // `/reminders` immediately followed by the root `/` mount — true when written,
+  // false the moment F-40.181 moved the schedules root mount ahead of `/invoices`.
+  // The INTENT was never adjacency: it is that `/reminders` is reached before any
+  // root mount can swallow it. Asserted as an ORDER over the mount list, which is
+  // the property, and which survives the next reshuffle.
+  const coreMounts = [...read('src/api/vendor/core.js').matchAll(/router\.use\('([^']+)'/g)].map(m => m[1]);
+  const iRem = coreMounts.indexOf('/reminders');
+  const iRoot = coreMounts.indexOf('/');
+  // ⚠ THE SECOND CUT OF THIS CELL PASSED FOR THE WRONG REASON and is recorded
+  // because it read as green. It was written `iRem < iRoot ? false : iRem > -1`,
+  // which FAILS when /reminders precedes the root and PASSES when it follows —
+  // the inverse of its own label. It went green only because the cure had just
+  // moved the root mount ahead of /reminders. A cell whose label and assertion
+  // disagree is worse than a missing cell: it reports on a property it is not testing.
+  //
+  // THE REAL PROPERTY IS NOT ORDER AT ALL. `schedules.js` is mounted at the root
+  // but declares only `/invoices/...` and `/schedules/...`, so it cannot swallow
+  // `/reminders/*` from any position. What must hold is that /reminders IS mounted
+  // and that no root-mounted router declares a competing /reminders route.
+  ok('the reminders segment is mounted in core.js', iRem > -1);
+  ok('no root-mounted router declares a competing /reminders route',
+     !/router\.(get|post|patch|delete)\('\/reminders/.test(read('src/api/vendor/schedules.js')));
+  ok('the schedules root mount precedes /invoices, so the schedule GET is reachable (F-40.181)',
+     coreMounts.indexOf('/') > -1 && coreMounts.indexOf('/invoices') > -1 &&
+     coreMounts.indexOf('/') < coreMounts.indexOf('/invoices'));
 }
 
 console.log(`\n${pass}/${pass + fail} cells green.`);

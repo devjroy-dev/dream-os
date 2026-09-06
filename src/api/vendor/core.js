@@ -36,6 +36,23 @@ router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip 
 router.use('/worklist', require('./worklistToday'));
 router.use('/leads',    require('./leads'));
 router.use('/clients',  require('./clients'));
+// ── F-40.181 · THE SCHEDULES ROUTER GOES FIRST, AND THE ORDER IS THE CURE ──
+// It is mounted at the ROOT and owns `/invoices/:invoiceId/schedule`. Mounted
+// AFTER `/invoices`, its GET was unreachable: `invoices.js:75` owns
+// `GET /:vendorId`, so `GET /invoices/{uuid}/schedule` entered that router,
+// matched no route, and 404'd before the root mount was ever consulted.
+//
+// ⚠ THE POST NEVER COLLIDED, WHICH IS WHY THIS HID FOR MONTHS. `/:vendorId` is a
+// GET, so `POST /invoices/{id}/schedule` fell through to the root mount and
+// worked. Create worked, re-read did not — and `SCHEDULE_ENABLED = false` kept
+// even that invisible until G3.4 flipped it. The stale flag's comment said it
+// guarded a 404 against a route that was not built; the route WAS built and the
+// 404 WAS real, by a different mechanism than anyone had looked for.
+//
+// Mounted at the root rather than given a segment because its two paths already
+// begin `/invoices/` and `/schedules/` — a segment would rename live addresses
+// the pwa holds, to cure an ordering problem that ordering cures.
+router.use('/',            require('./schedules'));
 router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
@@ -97,7 +114,6 @@ router.use('/money',       require('./money'));
 // today swallow `/reminders/*` — this is placement that stays correct when
 // `schedules` grows a segment, not a live collision being dodged.
 router.use('/reminders',   require('./reminders'));
-router.use('/',            require('./schedules'));
 router.use('/contracts',   require('./contracts'));
 router.use('/tds',         require('./tds'));
 

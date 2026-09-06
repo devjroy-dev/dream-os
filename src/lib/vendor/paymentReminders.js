@@ -52,6 +52,12 @@
 
 const { isApproved } = require('../templates');
 const { sendWa } = require('../sendWa');
+// ⚠ THE ESTATE'S ONE PHONE NORMALISER, NOT A LOCAL ONE. F-40.185's lesson from
+// the G3.2 lane: a seat wrote its own cleaner, handed Meta ten digits, and Meta
+// answered 200 with a wamid for a message that reached nobody. `asPhone` is
+// narrow on purpose — +E164 or a bare run of 10-15 digits, a bare ten normalised
+// up to +91 because this estate's lane is India.
+const { asPhone } = require('./relayToCouple');
 
 /** The registry key and the lane, each named once. */
 const TEMPLATE_KEY = 'payment_reminder_couple';
@@ -210,6 +216,41 @@ async function invoiceHasVendorTap(supabase, vendorId, invoiceId) {
 }
 
 /**
+ * THE CLIENT'S NUMBER, FROM EITHER OF ITS TWO HOMES (R-G34.3).
+ *
+ * `invoices.client_phone` first — the vendor's statement about THIS job — then
+ * `clients.phone` via `invoices.client_id`, the client record's standing number.
+ * Normalised through `asPhone` either way, and a value that is not phone-shaped
+ * yields null rather than being passed on: `asPhone` returning null is the
+ * refusal, and the caller reports "this client has no phone number".
+ *
+ * ⚠ READ-ONLY ON `clients`. This plane writes `payment_reminders` and
+ * `payment_reminder_settings` and nothing else; `clients` has its own writer.
+ * Constraints for the read: `clients.phone` is `text` NULL, `clients.id` is
+ * `clients_pkey PRIMARY KEY (id)`, and `clients.deleted_at` is honoured because
+ * a deleted client is not someone to chase (PUBLIC_SCHEMA.md, clients block).
+ */
+async function resolveClientPhone(supabase, invoice) {
+  if (!invoice) return null;
+
+  const direct = asPhone(invoice.client_phone);
+  if (direct) return direct;
+
+  if (!invoice.client_id) return null;
+  const { data, error } = await supabase
+    .from('clients')
+    .select('phone')
+    .eq('id', invoice.client_id)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (error) {
+    console.error(`[reminders:phone] clients read failed for invoice ${invoice.id}: ${error.message}`);
+    return null;   // cannot confirm a number ⇒ send nothing
+  }
+  return asPhone(data && data.phone);
+}
+
+/**
  * SEND ONE REMINDER, AND THE INSERT IS THE DECISION.
  *
  * ── THE ONCE-PER-MILESTONE GUARANTEE IS THE UNIQUE KEY, NOT THIS CODE ──────
@@ -249,7 +290,22 @@ async function sendOneReminder(supabase, { vendorId, milestone, invoice, vendorN
   const gate = sendGate();
   const _sendWa = deps.sendWa || sendWa;
 
-  const toPhone   = (invoice && invoice.client_phone) || null;
+  // ── R-G34.3'S TWO HOMES, AND THE FIRST CUT READ ONLY ONE (F-40.183) ───────
+  // The ruling named `invoices.client_phone` OR `clients.phone` via `client_id`.
+  // This function was built reading the first alone, and the walk found all six
+  // DEV440 invoices with a NULL `client_phone` — so every reminder refused for
+  // want of a number the estate already held one join away.
+  //
+  // ⚠ THE ORDER IS NOT ARBITRARY. `invoices.client_phone` is what the VENDOR
+  // typed on THIS invoice; `clients.phone` is the client record's standing
+  // number. The invoice wins because it is the more specific statement about
+  // this job — she may have been given a different number for this wedding.
+  // The client row is the fallback, never the override.
+  //
+  // Both go through `asPhone`, so a ten-digit number typed into either column
+  // reaches Meta as +E164 rather than as ten digits Meta accepts and delivers
+  // nowhere.
+  const toPhone   = await resolveClientPhone(supabase, invoice);
   const clientNm  = (invoice && invoice.client_name) || null;
   const phrase    = composeMilestonePhrase(milestone.milestone_label, milestone.amount_due);
   const dueWords  = formatDueDate(milestone.due_date);
@@ -377,7 +433,10 @@ async function runReminderSweep(supabase, deps = {}) {
 
       const { data: inv } = await supabase
         .from('invoices')
-        .select('id, client_name, client_phone')
+        // `client_id` is selected because `resolveClientPhone` needs it for the
+        // second home. Omitting it would leave the fallback permanently unreachable
+        // and the two-home read would be a comment rather than a behaviour.
+        .select('id, client_name, client_phone, client_id')
         .eq('id', ms.invoice_id)
         .eq('vendor_id', ms.vendor_id)
         .is('deleted_at', null)
