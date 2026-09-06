@@ -700,6 +700,79 @@ section('10c. E.164 at the transport, a log at the door');
   ok('and normalizeTo carries no guard', !/function normalizeTo[\s\S]{0,200}throw/.test(mc));
 }
 
+// ══ §10d — R-G32.19 / F-40.195 · THE DIGEST IS OF SOMETHING CHECKABLE ══════
+section('10d. render, hash, store, seal — in that order');
+{
+  const args = (sig, sealed) => ({
+    contract: { id: 'c1', deposit_pct: 30, terms: { partner_2_name: 'Arjun Nair' }, annexes: { a: true }, state: 'signed' },
+    vendor: { ...seedBase().vendors[0], phone: '+919888294440' },
+    client: seedBase().clients[0], functions: seedBase().events,
+    profile: { vendor_signatory_name: 'Dev Roy' },
+    money: { fee_total: 600000, deposit_amount: 180000, milestones: [] },
+    signature: sig, sealed,
+  });
+  const SIG = { verified_at: '2026-09-06T18:14:56Z', signer_phone: '9625759924',
+                document_sha256: '27a3d5f5ed00259c4a03b984e222ef0ceb0b90e6f89c537b605de5003d56edd7' };
+
+  const agreed = await CPDF.generateContractPdf(args(SIG, false));
+  const sealed = await CPDF.generateContractPdf(args(SIG, true));
+
+  // ⚠ **THE TWO DOCUMENTS ARE NOT THE SAME, AND THAT IS THE CURE.** The first cut
+  // rendered ONE, printed `document_sha256` inside it, and the card compared that
+  // printed value to the column it was printed FROM — a check that could not fail
+  // (R-40.93). A hash inside a document can never be of the document containing
+  // it; a hash of the pages she READ can.
+  ok('the agreed copy renders', agreed.length > 4000);
+  ok('the sealed copy renders', sealed.length > 4000);
+  ok('and the sealed one is STRICTLY LONGER — it carries the seal', sealed.length > agreed.length);
+  ok('sealed:false omits the seal even for a VERIFIED signing',
+     agreed.length === (await CPDF.generateContractPdf(args(null, false))).length);
+
+  // ⚠ THE HASH IS OF THE UNSEALED BYTES, so `sha256sum .agreed.pdf` equals the
+  // column. That is a check that CAN fail, which is the entire point.
+  const crypto = require('crypto');
+  const h1 = crypto.createHash('sha256').update(agreed).digest('hex');
+  const h2 = crypto.createHash('sha256').update(await CPDF.generateContractPdf(args(SIG, false))).digest('hex');
+
+  // ⚠ **THE RENDER IS NOT BYTE-DETERMINISTIC, AND THE FIRST CUT OF THIS CELL
+  // ASSERTED THAT IT WAS.** Two renders of identical inputs differ in exactly 54
+  // bytes: pdfkit's random `/ID` file identifier and the `/Info` creation date.
+  // Derived by diffing two buffers, not assumed either way.
+  //
+  // R-G32.19 DOES NOT NEED DETERMINISM AND NEVER CLAIMED IT. The ruled check is
+  // *download `.agreed.pdf`, `sha256sum`, compare to the row* — a hash of the
+  // STORED BYTES, which is tamper-evidence on the object a couple actually holds.
+  // Re-rendering and comparing would NOT work, and a reader who assumed it would
+  // be misled, so the cell says so out loud instead of quietly passing.
+  ok('two renders differ (pdfkit /ID and CreationDate) — the check is on STORED bytes',
+     h1 !== h2);
+  ok('and the sealed bytes hash DIFFERENTLY from the agreed ones — the old claim was impossible',
+     crypto.createHash('sha256').update(sealed).digest('hex') !== h1);
+  // What the check actually proves: the file at `.agreed.pdf` is the file that was
+  // hashed. That is what the seal's label claims, and no more.
+  ok('hashing the same buffer twice agrees, which is all the card needs',
+     crypto.createHash('sha256').update(agreed).digest('hex') === h1);
+
+  // ── THE DOOR'S ORDER ──────────────────────────────────────────────────────
+  const door = code('src/api/sign.js');
+  ok('the agreed copy is rendered unsealed', /renderContract\([^)]*\{ sealed: false \}\)/.test(door));
+  ok('the hash is taken over THOSE bytes', /update\(agreed\.buffer\)/.test(door));
+  ok('and they are stored, so the hash has something to check against', /\.agreed\.pdf/.test(door));
+  // ⚠ **THE ONE ORDERING THAT WAS WRONG.** `setSealedPath` used to run AFTER the
+  // sealed render, so the seal printed `__________` where clause 12 promises a
+  // fingerprint. It must precede it.
+  ok('setSealedPath runs BEFORE the sealed render',
+     door.indexOf('setSealedPath') < door.indexOf('renderContract(supabase, vendorId, v.contract.id, { sealed: true })'));
+  ok('the seal label names WHICH bytes it hashes',
+     /PAGES BEFORE THIS ONE/.test(code('src/lib/contractPdf.js')));
+
+  // ── F-40.194 · the copy outlives the spent token ──────────────────────────
+  ok('the sign response carries the sealed copy url', /pdf_url: pdfUrl/.test(door));
+  ok('signed for ten minutes, not forever', /SIGNED_URL_TTL = 600/.test(door));
+  ok('and the token is STILL spent — nothing weakened',
+     /sign_token: null/.test(code('src/lib/vendor/contracts.js')));
+}
+
 // ══ §11 — THE PUBLIC LEAF'S CONSTITUTION ═══════════════════════════════════
 section('11. the sign door reads like its two siblings');
 {

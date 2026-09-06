@@ -187,29 +187,76 @@ router.post('/:token/sign', asyncHandler(async (req, res) => {
     return res.status(422).json({ ok: false, code: 'bad_code' });
   }
 
-  // ── THE SEAL. Render, digest, store, stamp, flip. IN THAT ORDER. ──────────
-  // The digest is taken over the bytes that were actually rendered AFTER the
-  // signature row was verified — so the seal on the page and the hash in the record
-  // describe the same document. Digesting an earlier render would be a fingerprint of
-  // a document nobody signed.
+  // ── THE SEAL · R-G32.19 · RENDER → HASH → STORE → SEAL ────────────────────
+  // ⚠ **F-40.195 — THE FIRST CUT'S ORDER MADE ITS OWN PROMISE UNKEEPABLE.**
+  // It rendered once, hashed that render, stored it as the sealed copy, and only
+  // THEN wrote `document_sha256`. So the sealed PDF was produced while the column
+  // was null and printed `__________` where clause 12 promises a fingerprint —
+  // and the hash, printed from inside the document it claimed to describe, could
+  // not have described it anyway.
+  //
+  // Now: **the agreement as she read it** is rendered WITHOUT the seal page and
+  // hashed. Those bytes are stored at `.agreed.pdf` so the hash has something to
+  // be checked against — `sha256sum` on that file must equal the column, and that
+  // is a check that CAN FAIL, which the old one could not (R-40.93).
+  //
+  // Then the sealed copy: the same pages plus a seal that prints the hash of the
+  // pages before it. A hash inside a document can never be of the document
+  // containing it; a hash of the pages she READ can, and it is the one a couple
+  // would want checked.
   const vendorId = v.contract.vendor_id;
-  const r = await renderContract(supabase, vendorId, v.contract.id);
-  if (!r.ok) return res.status(500).json({ ok: false, error: 'Could not seal the agreement.' });
 
-  const sha  = crypto.createHash('sha256').update(r.buffer).digest('hex');
-  const path = `${vendorId}/${v.contract.id}.signed.pdf`;
-  const up = await supabase.storage.from(C.BUCKET)
-    .upload(path, r.buffer, { contentType: 'application/pdf', upsert: true });
-  if (up.error) return res.status(500).json({ ok: false, error: 'Could not store the agreement.' });
+  const agreed = await renderContract(supabase, vendorId, v.contract.id, { sealed: false });
+  if (!agreed.ok) return res.status(500).json({ ok: false, error: 'Could not seal the agreement.' });
 
+  const sha = crypto.createHash('sha256').update(agreed.buffer).digest('hex');
+
+  // ⚠ THE HASHED BYTES ARE STORED, NOT DISCARDED. A digest with nothing to check
+  // it against is a number, not a fingerprint.
+  const agreedPath = `${vendorId}/${v.contract.id}.agreed.pdf`;
+  const upA = await supabase.storage.from(C.BUCKET)
+    .upload(agreedPath, agreed.buffer, { contentType: 'application/pdf', upsert: true });
+  if (upA.error) return res.status(500).json({ ok: false, error: 'Could not store the agreement.' });
+
+  // ⚠ THE COLUMN IS WRITTEN **BEFORE** THE SEALED RENDER, so the seal page has a
+  // fingerprint to print. That single ordering is the whole of F-40.195's cure.
+  const sealedPath = `${vendorId}/${v.contract.id}.signed.pdf`;
   await C.setSealedPath(supabase, v.signing.id,
-    { sha256: sha, path, signedAt: new Date().toISOString() });
+    { sha256: sha, path: sealedPath, signedAt: new Date().toISOString() });
+
+  const sealedDoc = await renderContract(supabase, vendorId, v.contract.id, { sealed: true });
+  if (!sealedDoc.ok) return res.status(500).json({ ok: false, error: 'Could not seal the agreement.' });
+  const upS = await supabase.storage.from(C.BUCKET)
+    .upload(sealedPath, sealedDoc.buffer, { contentType: 'application/pdf', upsert: true });
+  if (upS.error) return res.status(500).json({ ok: false, error: 'Could not store the agreement.' });
 
   await supabase.from('contracts')
     .update({ state: 'signed', signed_at: new Date().toISOString() })
     .eq('id', v.contract.id).eq('vendor_id', vendorId);
 
-  return res.status(200).json({ ok: true, signed: true });
+  // ── F-40.194 · THE DONE SCREEN'S BUTTON MUST OUTLIVE THE TOKEN ────────────
+  // ⚠ `verifySignCode` NULLS `sign_token` — spending it IS the security model,
+  // and the leaf is terminal by ruling. So `/document` 404s the instant she signs,
+  // and the done screen's `Save a copy` pointed exactly there: `{"ok":false,
+  // "code":"not_found"}`, correct behaviour producing a broken control, under a
+  // vetoed sentence that PROMISES the copy is ready below.
+  //
+  // A short-lived signed URL to the sealed copy, returned once, in the response
+  // that made the signature. The token stays spent; nothing is weakened. Third
+  // time in this arc a browser needed a private object and this was the answer.
+  //
+  // ⚠ TEN MINUTES, AND THEN SHE HAS NO COPY — F-40.196, unbuilt. Clause 12
+  // promises `both of us get that PDF on WhatsApp` and this sitting does not
+  // build that. The vendor's `Download the signed copy` is her permanent path;
+  // the couple's is this link. The gap is the instrument's own sentence running
+  // ahead of the product, and it is stated rather than hidden.
+  const SIGNED_URL_TTL = 600;
+  let pdfUrl = null;
+  const signedUrl = await supabase.storage.from(C.BUCKET)
+    .createSignedUrl(sealedPath, SIGNED_URL_TTL);
+  if (!signedUrl.error) pdfUrl = signedUrl.data.signedUrl;
+
+  return res.status(200).json({ ok: true, signed: true, pdf_url: pdfUrl, expires_in: SIGNED_URL_TTL });
 }));
 
 module.exports = router;

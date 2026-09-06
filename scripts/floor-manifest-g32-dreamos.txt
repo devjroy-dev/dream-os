@@ -340,3 +340,46 @@ src/lib/vendor/dateLock.js
 #   THIS TREE      GREEN 113  RED 50  TOTAL 163
 #   TIP 95deda5    GREEN 113  RED 50  TOTAL 163
 #   DELTA          ZERO, by exit code
+
+# ── MICRO 5 (2026-09-06) · derived at dream-os 2509158 ─────────────────────
+# R-G32.19 (the digest), F-40.194 (the copy after the token is spent), F-40.195.
+#
+#   src/lib/contractPdf.js            `sealed` is a third state; the label names its bytes
+#   src/lib/vendor/contractSource.js  renderContract carries the flag
+#   src/api/sign.js                   render -> hash -> store -> seal; the url comes back
+#   scripts/b56_contract_bench.js     §10d, 160 -> 175
+#
+# ⚠ **F-40.195 WAS TWO DEFECTS AND THE CARD COULD NOT HAVE CAUGHT EITHER.**
+# The renderer PRINTS `signature.document_sha256`; it does not compute it. The
+# card said "compare the printed digest to the row" — a value against its own
+# source, a check that cannot fail (R-40.93 now forbids the shape). And because
+# `setSealedPath` ran AFTER the sealed render, the first signed agreement in this
+# estate's history printed `__________` where clause 12 promises a fingerprint.
+#
+# Two renders now. `sealed:false` is the agreement AS SHE READ IT, hashed, and
+# STORED at `.agreed.pdf` so the hash has something to be checked against.
+# `sealed:true` is those pages plus a seal that prints the hash of the pages
+# before it, under a label that says exactly that.
+#
+# ⚠ AND THE RENDER IS NOT BYTE-DETERMINISTIC — derived by diffing two buffers,
+# not assumed. Exactly 54 bytes differ: pdfkit's random `/ID` and the `/Info`
+# creation date. R-G32.19 never claimed determinism and does not need it: the
+# ruled check is `sha256sum` on the STORED `.agreed.pdf`, which is tamper-evidence
+# on the object she holds. **RE-RENDERING AND COMPARING WOULD NOT WORK**, and the
+# cell says so rather than passing quietly and letting a reader assume otherwise.
+#
+# ── MUTATIONS ──────────────────────────────────────────────────────────────
+#   seal the agreed copy too (the old one-render shape)  -> exit 1, 2 red
+#   hash the sealed bytes instead                        -> exit 1, 1 red
+#   setSealedPath MOVED after the sealed render          -> exit 1, 1 red
+#   the label goes back to DOCUMENT FINGERPRINT          -> exit 1, 1 red
+#   the sign response drops the url (F-40.194)           -> exit 1, 1 red
+#
+# ⚠ ONE MUTATION WAS BADLY CHOSEN FIRST: it ADDED a second `setSealedPath` after
+# the sealed render instead of MOVING it, so the cell correctly still found the
+# first and scored zero. Recorded rather than replaced quietly — second time this
+# sitting a mutation tested the harness instead of the tree.
+#
+#   THIS TREE      GREEN 113  RED 50  TOTAL 163
+#   TIP 2509158    GREEN 113  RED 50  TOTAL 163
+#   DELTA          ZERO, by exit code

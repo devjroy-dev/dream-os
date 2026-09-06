@@ -105,7 +105,22 @@ function pct(n) {
 // signature : object|null — the `contract_signatures` row, or null. NULL → no seal.
 //
 // Returns: Promise<Buffer>
-async function generateContractPdf({ contract, vendor, client, functions, profile, money, signature }) {
+// ⚠ **`sealed` IS A THIRD STATE, NOT A SECOND NAME FOR `signature` — R-G32.19.**
+// F-40.195: the first cut rendered ONE document and printed `document_sha256`
+// inside it. A hash inside a document can never be a hash OF the document
+// containing it, and the acceptance card compared that printed value against the
+// column it was printed FROM — a check that could not fail. Worse, the sealed copy
+// was rendered BEFORE `setSealedPath` ran, so it printed `__________` where clause
+// 12 promises a fingerprint.
+//
+// Two renders now, from one function:
+//   `sealed: false` → **the agreement as she read it**, no seal page. Its bytes
+//                     are what `document_sha256` hashes, and they are stored at
+//                     `.agreed.pdf` so the hash has something to be checked against.
+//   `sealed: true`  → the same pages PLUS the seal, which prints the hash of the
+//                     pages before it. That claim is true and checkable; the old
+//                     one was neither.
+async function generateContractPdf({ contract, vendor, client, functions, profile, money, signature, sealed = true }) {
   return new Promise((resolve, reject) => {
     try {
       // ⚠ `bufferPages` IS NOT DECORATION. Row 72's folio reads `Page 1 of 5`, and
@@ -474,7 +489,11 @@ async function generateContractPdf({ contract, vendor, client, functions, profil
       p(`Attached: ${val(annexList(AX))}`);
 
       // ═══ ROWS 68-71 · THE SEAL (VETOED) — SIGNED COPIES ONLY ═════════════
-      if (signature && signature.verified_at) {
+      // ⚠ THE SEAL PAGE IS OMITTED WHEN `sealed` IS FALSE — that is what makes the
+      // digest checkable. `signature.verified_at` still gates it as well: an
+      // unverified signing is a code sent and not entered, and a seal over it would
+      // say a document was signed that was not.
+      if (sealed && signature && signature.verified_at) {
         need(120);
         const y0 = doc.y + 8;
         doc.fontSize(7.5).fillColor(COLOUR_ACCENT).font('Helvetica')
@@ -486,8 +505,12 @@ async function generateContractPdf({ contract, vendor, client, functions, profil
         doc.fontSize(9.5).fillColor(COLOUR_GREY_DARK).font('Helvetica')
            .text('Confirmed by one-time password sent to that number.',
                  startX + 16, doc.y + 2, { width: pageWidth - 32 });
+        // ⚠ **THE LABEL NAMES WHAT THE HASH IS OF — R-G32.19's whole point.**
+        // `DOCUMENT FINGERPRINT` was a claim the bytes could not support. This says
+        // exactly which bytes, so a couple (or her lawyer) can recompute it.
         doc.fontSize(7.5).fillColor(COLOUR_ACCENT).font('Helvetica')
-           .text('DOCUMENT FINGERPRINT · SHA-256', startX + 16, doc.y + 8, { characterSpacing: 1.4 });
+           .text('FINGERPRINT OF THE AGREEMENT AS SIGNED (SHA-256 OF THE PAGES BEFORE THIS ONE)',
+                 startX + 16, doc.y + 8, { characterSpacing: 1.1, width: pageWidth - 32 });
         // ⚠ THE DIGEST IS PRINTED WHOLE. A digest truncated for looks is a digest
         // nobody can check, and clause 12 promises a checkable one.
         doc.fontSize(8).fillColor(COLOUR_GREY_DARK).font('Courier')

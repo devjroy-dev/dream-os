@@ -301,10 +301,11 @@ async function contractPdfSource(supabase, vendorId, contractId) {
 // Everything that wants contract bytes calls THIS, and this calls the renderer. A door
 // that assembled its own arguments would be the second call site and the count is
 // asserted by a cell.
-async function renderContract(supabase, vendorId, contractId) {
+async function renderContract(supabase, vendorId, contractId, { sealed = true } = {}) {
   const src = await contractPdfSource(supabase, vendorId, contractId);
   if (!src.ok) return src;
   const buffer = await generateContractPdf({
+    sealed,
     contract:  src.contract,
     vendor:    src.vendor,
     client:    src.client,
