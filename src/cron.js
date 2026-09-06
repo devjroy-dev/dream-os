@@ -341,6 +341,45 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── G3.4 · THE POLITE COLLECTOR — nightly 3:25am IST (R-G34.4) ───────────
+  // ── :25, AND THE MINUTE IS DERIVED, NOT PICKED ──────────────────────────
+  // This file's eight registrations, read at authoring: 03:00 briefing · 02:30 UTC
+  // (= 08:00 IST) vendor briefing · 03:15 bride nudge · 03:20 reviews · 03:45 demo
+  // sunset · 04:15 demo purge · :30 hourly demo expiry · :05 hourly relay expiry.
+  // The nightly band therefore holds :00, :15, :20, :45 and 04:15, and the two
+  // hourly jobs claim :05 and :30 of EVERY hour including this one. **:25 is free
+  // and alone in its slot**, and it sits after the 03:20 reviews sweep so two
+  // sweeps of the whole estate never contend. Asia/Kolkata declared, per this
+  // file's wall-clock law (B3(a)).
+  //
+  // ── THE SWEEP IS DARK AND THIS SCHEDULE DOES NOT CHANGE THAT ────────────
+  // `paymentReminders.js` holds two gates. `isApproved('payment_reminder_couple')`
+  // is TRUE — Meta returned Active/Utility on 2026-09-06 — so
+  // `PAYMENT_REMINDER_SEND_ENABLED`, unset in every environment, is the ONLY
+  // barrier. This job therefore runs tonight, claims nothing it cannot send, and
+  // reports `sent=0 skipped=N`, which is the honest reading of a feature built
+  // dark and is what the founder card witnesses by SELECT.
+  //
+  // ⚠ AND IT WOULD REPORT skipped=N EVEN WITH THE FLAG ON, because no vendor has
+  // armed the switch and no invoice carries a vendor tap. Two independent reasons
+  // for silence, and the log line distinguishes neither — read the SELECT, not the
+  // console, when judging whether this works.
+  //
+  // NOTHING IS PASSED FOR THE SEND SEAM: `runReminderSweep`'s default IS the real
+  // `sendOneReminder`. The bench drives it by injection and asserts the production
+  // default by identity, so a harness can never quietly become what production
+  // runs (F-08.65's true-pipe law).
+  cron.schedule('25 3 * * *', async () => {
+    try {
+      const { runReminderSweep } = require('./lib/vendor/paymentReminders');
+      await runReminderSweep(supabase);
+    } catch (err) {
+      console.error('[cron:paymentReminders] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── RELAY EXPIRY SWEEP — hourly, :05 IST (TDW_06/07 M3) ───────────────────
   // №16, THE ESTATE'S FIRST CLOCK-SPEAKER. A vendor approved bride-facing bytes,
   // the estate rang her doorbell, and her 24 hours ran out in silence. Every

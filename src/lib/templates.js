@@ -531,6 +531,68 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── BLOCK 19 · G3.4 — THE POLITE COLLECTOR'S OWN TEMPLATE ─────────────────
+  // A SECOND KEY BESIDE `payment_reminder` ABOVE, AND THE TWO ARE NOT DUPLICATES.
+  // F-40.142: `payment_reminder`/`tdw_payment_due` is a VENDOR-lane template whose
+  // body speaks to the vendor — "Reply PAID once it lands and I'll update your
+  // books" (:530) — and carries two variables with no room for an amount, a name
+  // or a date. Sent to a client it is nonsense. This entry faces the CLIENT on the
+  // BRIDE lane and carries four. No caller of `payment_reminder` moves (R-G34.11).
+  //
+  // F-40.144, and it is why this template exists at all: `docs/TEMPLATES.md:120`
+  // recorded a 4-var `tdw_payment_reminder` as already approved on the WABA from
+  // 2026-05. It was never filed. The doc carried a filing that never happened, and
+  // the seat's first arm (register the legacy one) rested on it. The founder's own
+  // word settled it and the words below were authored, vetoed and filed fresh.
+  //
+  // FILED AND APPROVED. The founder filed it 2026-09-06 and Meta returned
+  // **Active – Quality pending · Utility** the same day — WhatsApp Manager,
+  // template details for `tdw_payment_reminder`, ID 1781270206634381,
+  // founder-witnessed on the DETAIL page (R-40.71: the edit screen is never a
+  // reading surface). "Quality pending" is the QUALITY RATING, not the review
+  // state; Active is the approval — the same reading `enquiry_alert_vendor` ships
+  // on at :663. So this ships 'approved' and sendWa's gate PASSES it, which means
+  // `PAYMENT_REMINDER_SEND_ENABLED` is the only remaining barrier.
+  //
+  // The body below is BYTE-IDENTICAL to what was filed — verified against the
+  // founder's own Manager screenshot, which renders it with the review samples
+  // substituted ("Hi Priya Nair, ... from Dev Roy Photography. the second
+  // instalment of Rs 60,000 ... 12 September"). A registry whose body has drifted
+  // from the filed one builds a payload Meta rejects at send time (132001), which
+  // is why this is checked rather than assumed.
+  //
+  // ⚠ `{{2}}` IS A COMPOSED PHRASE, NOT A BARE AMOUNT, AND IT OPENS A SENTENCE.
+  // `composeMilestonePhrase` in `lib/vendor/paymentReminders.js` builds
+  // "The second instalment of Rs 60,000" from `milestone_label` + `amount_due` and
+  // capitalises the first character (R-G34.11). Meta's filed SAMPLE is lowercase;
+  // samples are for the reviewer and are never transmitted, so the two differ by
+  // design and neither is wrong. `Rs`, never the glyph (master §7).
+  //
+  // NAMED RESIDUAL, NOT DERIVED: the WABA language code. Meta's UI says "English",
+  // ambiguous between 'en' and 'en_US'. TEMPLATE_LANGUAGE defaults to 'en' and
+  // live templates send on that value, which is the strongest evidence available
+  // without the API. A first send returning 132001 makes the language the suspect
+  // and WA_TEMPLATE_LANGUAGE the one-env-var cure.
+  //
+  // [F-06.85: conditioned on a MECHANICAL fact — Meta's review state and CATEGORY
+  //  for tdw_payment_reminder. Mechanism: isApproved at the bottom of this file.
+  //  ⚠ IF THE CATEGORY EVER READS MARKETING, this entry's `category` flips AND
+  //  `sendOneReminder`'s `nudgeClass` becomes true — R-G34.7's condition. The two
+  //  move together or the opt-out gate is skipped silently.]
+  payment_reminder_couple: {
+    key: 'payment_reminder_couple',
+    // The Meta name the founder filed. NOT `tdw_payment_due`, which is the
+    // vendor-lane sibling above and a different template entirely.
+    name: 'tdw_payment_reminder',
+    language: TEMPLATE_LANGUAGE,
+    line: 'bride',
+    category: 'UTILITY',
+    variables: ['client', 'milestone', 'vendor', 'due'],
+    body:
+      'Hi {{1}}, a payment reminder from {{3}}. {{2}} is due on {{4}}. UPI or cash, whichever suits.',
+    status: 'approved',
+  },
+
   demo_invite: {
     key: 'demo_invite',
     name: 'tdw_demo_invite',

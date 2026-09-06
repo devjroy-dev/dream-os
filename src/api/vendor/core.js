@@ -85,6 +85,18 @@ router.use('/solutions',   require('./solutions/index'));
 // dodged. It is placement that stays correct when `schedules` grows a segment,
 // which is the failure the line below it was written for.
 router.use('/money',       require('./money'));
+// ── BLOCK 19 · G3.4 — THE PAYMENT REMINDERS DOORS ─────────────────────────
+// Its own segment router rather than a door on `/solutions`, because that file
+// declares itself GET-only with POSTs conditional-withheld and this feature has
+// TWO writes (her tap, her switch). A router that says what it does IS the
+// one-home law; mounting writes on one that claims none would make that file lie
+// about itself and redden the cell asserting zero non-GET verbs on its stack.
+//
+// ABOVE THE BARE '/' FOR THE REASON THE TWO COMMENTS ABOVE GIVE: `schedules` is
+// mounted at the root and a root mount is reached for every path. It would not
+// today swallow `/reminders/*` — this is placement that stays correct when
+// `schedules` grows a segment, not a live collision being dodged.
+router.use('/reminders',   require('./reminders'));
 router.use('/',            require('./schedules'));
 router.use('/contracts',   require('./contracts'));
 router.use('/tds',         require('./tds'));
