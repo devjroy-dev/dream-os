@@ -638,6 +638,68 @@ section('10b. a new tab carries no JWT, so the door hands it something it can op
   ok('generateContractPdf is not imported by any door', !/generateContractPdf/.test(doorCode));
 }
 
+// ══ §10c — R-40.91/.92 · THE SEND CARRIES A COUNTRY CODE, AND SAYS SO ══════
+section('10c. E.164 at the transport, a log at the door');
+{
+  const meta = require(path.join(ROOT, 'src/lib/metaCloud.js'));
+
+  // ⚠ **F-40.185 — THE DOOR HANDED META TEN DIGITS AND META ANSWERED 200.**
+  // `normalizeTo` strips a `+` and adds nothing, so a bare Indian mobile reached
+  // the wire with no country code. `postMessage` throws on a non-ok response, so
+  // the door would have caught a rejection — it never got one. The message was
+  // ACCEPTED and delivered nowhere: no error, no log, and a leaf that advanced to
+  // a code screen for a code that did not exist. Only a walk could see it.
+  ok('E.164 passes untouched', meta.normalizeTo('+919625759924') === '919625759924');
+  ok('and without the plus too', meta.normalizeTo('919625759924') === '919625759924');
+
+  // ⚠ **THE GUARD IS AT `postMessage`, NOT AT `normalizeTo`, AND THE DIFFERENCE
+  // IS EIGHT CALLERS.** This seat first put it in the cleaner and told the chair
+  // the five reds were toy fixtures. FOUR OF THE FIVE WERE NOT: `normalizeTo` is
+  // a shared phone cleaner with eight non-send callers — closerEngine compares
+  // and logs with it, prospects cleans typed input with it, demoAdmin dedupes a
+  // roster with it and hands it an EMPTY STRING on purpose. The benches were
+  // right; the premise was wrong.
+  ok('the cleaner still cleans, and refuses nothing', meta.normalizeTo('') === '');
+  ok('a bare number passes the CLEANER untouched', meta.normalizeTo('9625759924') === '9625759924');
+
+  const refuses = (v) => { try { meta.assertE164(v); return false; } catch (e) { return e.name === 'MetaSendError'; } };
+  ok('A BARE TEN-DIGIT NUMBER IS REFUSED — the exact defect', refuses('9327715877'));
+  ok('and so is the walk fixture in its stored form', refuses('9625759924'));
+  ok('empty is refused', refuses(''));
+  ok('a formatted number is refused', refuses('+91 96257 59924'));
+  ok('and something far too long is refused', refuses('9199999999999999999'));
+
+  // ⚠ TWO REFUSALS THAT SAY DIFFERENT THINGS. A caller told "got 14 digits" about
+  // `+91 96257 59924` would hunt for a fourteen-digit number that does not exist.
+  let digitsMsg = '', lenMsg = '';
+  try { meta.assertE164('+91 96257 59924'); } catch (e) { digitsMsg = e.message; }
+  try { meta.assertE164('9625759924');      } catch (e) { lenMsg    = e.message; }
+  ok('the punctuation refusal names punctuation', /digits-only/.test(digitsMsg));
+  ok('the length refusal names the count', /11-15/.test(lenMsg) && /10 digit/.test(lenMsg));
+  ok('both point at toE164 by name', /toE164/.test(digitsMsg) && /toE164/.test(lenMsg));
+
+  // ── THE DOOR — (a) and (b) ────────────────────────────────────────────────
+  const door = code('src/api/sign.js');
+  ok('the sign door imports toE164 from its one home', /require\('\.\.\/lib\/phone'\)/.test(door));
+  ok('and normalises before sending', /to: toE164\(|toE164\(v\.signing\.signer_phone\)/.test(door));
+  ok('it does not author a local normaliser', !/function toE164|\+91\$\{/.test(door));
+  // R-40.92 — a send with no trace cannot be walked.
+  ok('the send logs its recipient and wamid', /\[sign:send-otp\][\s\S]{0,90}wamid=/.test(door));
+  // ⚠ AND NEVER THE CODE. `otpSend`'s header marks it NEVER LOGGED HERE.
+  ok('and NEVER the code', !/sign:send-otp[\s\S]{0,120}issued\.code|sign:send-otp[\s\S]{0,120}\bcode\}/.test(door));
+
+  // ⚠ THE GUARD DOES NOT REGRESS THE LOGIN DOORS, derived rather than hoped:
+  // both already refuse a non-E.164 at their own edge before ever sending.
+  ok('vendor login gates on E.164 before sending', /PHONE_RE\.test/.test(code('src/api/vendor/auth.js')));
+  ok('couple login does too', /PHONE_RE\.test/.test(code('src/api/couple/auth.js')));
+
+  // ⚠ AND THE GUARD FIRES BEFORE THE REQUEST, NOT AFTER. A refusal that arrives
+  // as a Meta 200 is not a refusal — that is the whole of F-40.185.
+  const mc = code('src/lib/metaCloud.js');
+  ok('assertE164 is called inside postMessage', /async function postMessage[\s\S]{0,400}assertE164\(body/.test(mc));
+  ok('and normalizeTo carries no guard', !/function normalizeTo[\s\S]{0,200}throw/.test(mc));
+}
+
 // ══ §11 — THE PUBLIC LEAF'S CONSTITUTION ═══════════════════════════════════
 section('11. the sign door reads like its two siblings');
 {

@@ -54,6 +54,12 @@ function isConfigured(overrides = {}) {
 }
 
 // ── Meta wants a bare international number: strip 'whatsapp:' and a leading '+' ─
+// ⚠ **THIS FUNCTION STRIPS, IT NEVER ADDS, AND IT IS NOT ONLY THE TRANSPORT'S.**
+// R-40.91's guard was first written HERE and that was wrong — see `postMessage`
+// below, and the census in its header. `normalizeTo` has EIGHT non-send callers
+// that use it as a shared phone cleaner (closerEngine 653/1131, prospects 94,
+// demoAdmin 197/207/219/398). One of them hands it an EMPTY STRING on purpose and
+// tests the result for truthiness. A guard here refuses all of them.
 function normalizeTo(to) {
   let n = String(to || '').trim();
   if (n.startsWith('whatsapp:')) n = n.slice('whatsapp:'.length);
@@ -63,9 +69,60 @@ function normalizeTo(to) {
 
 // ── the one POST ─────────────────────────────────────────────────────────────
 // deps.fetchImpl is injectable; production falls back to global.fetch (Node 18+/22).
+// ⚠ **R-40.91 · THE E.164 GUARD LIVES HERE, AT THE ONE POST.**
+//
+// F-40.185 is what its absence cost: the contract sign door handed `9327715877` —
+// ten digits, no country code — and Meta answered **200 with a wamid**. No error
+// to catch, no exception to log, a leaf that advanced to a code screen for a code
+// that reached nobody. Only a walk could see it.
+//
+// ⚠ **AND IT DOES NOT LIVE IN `normalizeTo`, WHICH IS WHERE THIS SEAT FIRST PUT
+// IT.** That was wrong and the census says why: `normalizeTo` has EIGHT
+// NON-SEND CALLERS using it as a shared phone cleaner — `closerEngine.js:653`
+// and `:1131` compare and log with it, `prospects.js:94` cleans what a human
+// typed before storing it, `demoAdmin.js:197/207/219/398` dedupe a roster by it,
+// and that last one hands it an EMPTY STRING deliberately and tests the result
+// for truthiness. A guard there refuses every one of them, and four benches went
+// red saying so.
+//
+// `postMessage` is the one place a message actually reaches the wire — every
+// send, template or text, funnels through it. THAT is the transport home the
+// ruling names. A rule at the callers is a rule the next caller will not know
+// about; a rule at the cleaner is a rule that punishes eight readers who are not
+// sending anything at all.
+//
+// ⚠ THE BOUNDS ARE E.164's OWN, AND THE FLOOR WAS CHOSEN NOT INHERITED. A country
+// code is 1–3 digits and the total reaches at most 15 (ITU-T E.164); the shortest
+// live numbers in service are 11 with their code. A bare Indian mobile is 10 —
+// exactly the shape that failed — so 11 is the floor that catches it. Nine send
+// sites were traced and none hands a shortcode; if one ever does, this throws
+// where before it would have dropped in silence.
+const E164_MIN_DIGITS = 11;
+const E164_MAX_DIGITS = 15;
+
+function assertE164(to) {
+  const n = String(to == null ? '' : to);
+  if (!/^\d+$/.test(n)) {
+    throw new MetaSendError(
+      `Meta send refused: recipient is not digits-only (got ${JSON.stringify(n)}). ` +
+      'Use toE164() from src/lib/phone.js before sending.', null, null);
+  }
+  if (n.length < E164_MIN_DIGITS || n.length > E164_MAX_DIGITS) {
+    throw new MetaSendError(
+      `Meta send refused: recipient is not E.164 (got ${n.length} digit(s); ` +
+      `expected ${E164_MIN_DIGITS}-${E164_MAX_DIGITS} with a country code). ` +
+      'Use toE164() from src/lib/phone.js before sending.', null, null);
+  }
+  return n;
+}
+
 async function postMessage(body, { fetchImpl, ...overrides } = {}) {
   const { token, phoneNumberId, graphVersion } = resolveConfig(overrides);
   if (!token || !phoneNumberId) throw new MetaNotConfiguredError();
+
+  // ⚠ BEFORE THE REQUEST, NOT AFTER. A refusal that arrives as a Meta 200 is not
+  // a refusal at all — that is the whole of F-40.185.
+  assertE164(body && body.to);
 
   const doFetch = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   if (!doFetch) throw new MetaError('no fetch implementation available', 'no_fetch');
@@ -123,6 +180,7 @@ async function sendMetaText({ to, text }, opts = {}) {
 }
 
 module.exports = {
+  assertE164,
   sendMetaTemplate,
   sendMetaText,
   postMessage,

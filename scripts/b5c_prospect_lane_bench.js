@@ -241,13 +241,25 @@ async function main() {
   section('Window expiry');
   const old = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const fresh = new Date(Date.now() - 1 * 3600 * 1000).toISOString();
+  // ⚠ **R-40.91 / F-40.191 — E.164, BECAUSE THE EXPIRY JOB SENDS.**
+  // These rows were `'9111'` and `'9112'`, four digits, and `runExpiryJob` puts
+  // them through `sendWa` → `sendMetaTemplate` → `postMessage`. Meta could never
+  // receive such a recipient, so the fixture asserted a shape production must not
+  // produce — and once the transport guards E.164 it refuses them, correctly.
+  // Amended by label rather than by the owning seat, which is closed.
   sb = makeFakeSupabase({ prospects: [
-    { id: 'e1', phone: '9111', state: 'in_session', session_opened_at: old },
-    { id: 'e2', phone: '9112', state: 'in_session', session_opened_at: fresh },
+    { id: 'e1', phone: '919888000111', state: 'in_session', session_opened_at: old },
+    { id: 'e2', phone: '919888000112', state: 'in_session', session_opened_at: fresh },
   ] });
   const ex = await prospects.runExpiryJob({ supabase: sb });
   ok(ex.expired === 1 && sb.db.prospects.find((p) => p.id === 'e1').state === 'expired', '>24h in_session → expired');
   ok(sb.db.prospects.find((p) => p.id === 'e2').state === 'in_session', '<24h stays in_session');
+
+  // ⚠ **R-40.91 / F-40.191 — `'9199'` BECAME `'919888000199'` THROUGHOUT BELOW.**
+  // Four digits is a recipient Meta can never accept; the opt-out and dead-letter
+  // fixtures put it through `sendWa` → `sendMetaTemplate` → `postMessage`, so once
+  // the transport guards E.164 they refuse it, correctly. The fixture was asserting
+  // a shape production must not produce. Amended by label; the owning seat is closed.
 
   // ═══ 8. Dedupe (webhookCore LRU on wamid) + dead-letter ═══
   section('Dedupe + dead-letter (real webhookCore)');
@@ -256,7 +268,7 @@ async function main() {
   webhookCore.recordSid('wamid.D');
   ok(webhookCore.sidSeen('wamid.D') === true, 'second identical wamid seen (dedupe)');
   sb = makeFakeSupabase();
-  const dl = await webhookCore.captureDeadLetter({ supabase: sb, service: 'marketing', phone: '9199', payload: { x: 1 }, error: new Error('boom') });
+  const dl = await webhookCore.captureDeadLetter({ supabase: sb, service: 'marketing', phone: '919888000199', payload: { x: 1 }, error: new Error('boom') });
   ok(dl.ok === true && sb.db.failed_turns.length === 1 && sb.db.failed_turns[0].service === 'marketing', 'thrown turn → failed_turns row');
 
   // ═══ 9. readDailyCap defaulting ═══
@@ -268,13 +280,13 @@ async function main() {
   // ═══ 10. MUTATION — prove the assertions are load-bearing ═══
   section('MUTATION (non-vacuity)');
   // MUT-1: the opt-out gate is what blocks — bypass it and the SAME send succeeds.
-  sb = makeFakeSupabase({ prospects: [{ id: 'm1', phone: '9199', state: 'opted_out' }] });
+  sb = makeFakeSupabase({ prospects: [{ id: 'm1', phone: '919888000199', state: 'opted_out' }] });
   installFakeFetch();
-  let blocked = false; try { await sendWa({ line: 'bride', to: '9199', text: 'x', windowOpen: true, supabase: sb }, {}); } catch (e) { blocked = e instanceof WaOptedOutError; }
+  let blocked = false; try { await sendWa({ line: 'bride', to: '919888000199', text: 'x', windowOpen: true, supabase: sb }, {}); } catch (e) { blocked = e instanceof WaOptedOutError; }
   ok(blocked, 'MUT-1a: real gate BLOCKS opted-out (RED if gate removed)');
   // Inject a fake transport so the ONLY difference from MUT-1a is the opt-out gate itself.
   const fakeText = async () => ({ sid: 'fake' });
-  let bypassed = false; try { const r = await sendWa({ line: 'bride', to: '9199', text: 'x', windowOpen: true, supabase: sb }, { isOptedOut: async () => false, sendText: fakeText }); bypassed = r.sent === true; } catch (_e) {}
+  let bypassed = false; try { const r = await sendWa({ line: 'bride', to: '919888000199', text: 'x', windowOpen: true, supabase: sb }, { isOptedOut: async () => false, sendText: fakeText }); bypassed = r.sent === true; } catch (_e) {}
   ok(bypassed, 'MUT-1b: bypassing the gate SENDS — proves the gate is the load-bearing difference');
 
   // MUT-2: cap is load-bearing — different caps pick different counts.
@@ -286,7 +298,7 @@ async function main() {
   // MUT-3: template name is registry-derived — a wrong name would fail this exact predicate.
   installFakeFetch();
   const capture = installFakeFetch();
-  await sendWa({ line: 'marketing', to: '9199', templateKey: 'marketing_opener', vars: { name: 'Z' } }, {});
+  await sendWa({ line: 'marketing', to: '919888000199', templateKey: 'marketing_opener', vars: { name: 'Z' } }, {});
   ok(capture[0].body.template.name === 'tdw_marketing_opener' && capture[0].body.template.name !== 'wrong_name', 'MUT-3: POST carries the registry Meta name (specific, non-vacuous)');
 
   // ── verdict ──

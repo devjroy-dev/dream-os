@@ -292,3 +292,51 @@ src/lib/vendor/dateLock.js
 #   the uuid draft path returns                     -> exit 1, 3 red
 #   drop the id suffix (R-40.82's collision)        -> exit 1, 2 red
 #   BOTH vendor guards removed                      -> exit 1, CRASH (a crash is a red)
+
+# ── MICRO 4 (2026-09-06) · derived at dream-os 95deda5 ─────────────────────
+# The OTP send. F-40.184, F-40.185, R-40.91, R-40.92, F-40.191.
+#
+#   src/api/sign.js                     toE164 imported; the send logs itself
+#   src/lib/metaCloud.js                assertE164 at postMessage
+#   scripts/b56_contract_bench.js       §10c, 137 -> 160
+#   scripts/b5c_prospect_lane_bench.js  ONE fixture amended by label
+#
+# ⚠ **THIS SEAT GAVE THE CHAIR A FALSE PREMISE AND THE CHAIR RULED ON IT.**
+# The audit reported five reddened benches as "toy fixtures, not product
+# defects", and the chair warranted (i) — amend ~24 literals across five files.
+# **FOUR OF THE FIVE WERE NOT TOY FIXTURES.** The guard had been placed in
+# `normalizeTo`, which is NOT the transport: it has EIGHT non-send callers using
+# it as a shared phone cleaner — `closerEngine.js:653` and `:1131` compare and
+# log with it, `prospects.js:94` cleans what a human typed before storing it,
+# `demoAdmin.js:197/207/219/398` dedupe a roster with it, and that last one hands
+# it an EMPTY STRING deliberately and tests the result for truthiness.
+#
+# The benches were right and the premise was wrong. Derived by reading the stack
+# of each red rather than the literals: three of five threw inside ADMIN doors,
+# not sends. Had the warrant been executed as granted, twenty-four fixtures would
+# have been "fixed" to accommodate a guard in the wrong place, and four production
+# paths would still throw.
+#
+# ⚠ THE GUARD MOVED TO `postMessage` — the ONE place a message reaches the wire.
+# That is the transport home R-40.91 names; `normalizeTo` merely shares its file.
+# `assertE164` runs BEFORE the request, after the creds check, so a refusal is a
+# refusal and not a Meta 200 — which is the whole of F-40.185.
+#
+# AFTER THE MOVE, FOUR OF THE FIVE WENT GREEN UNTOUCHED. Exactly ONE bench
+# carried a real toy recipient: `b5c_prospect_lane_bench`'s `'9199'` and
+# `'9111'/'9112'`, four digits, driven through sendWa by the opt-out, dead-letter
+# and expiry sections. Amended by label at each site citing R-40.91/F-40.191.
+# **The warrant was for ~24 across five; the need was 6 in one.** Using less of a
+# warrant than granted is the safe direction, and it is recorded so the chair can
+# see the ruling was executed narrower than written and why.
+#
+# ── MUTATIONS, harness reading exit codes ──────────────────────────────────
+#   normalizeTo strips and adds nothing again (F-40.185)  -> exit 1, 3 red
+#   the length guard removed                              -> exit 1, 5 red
+#   the door stops normalising                            -> exit 1, 1 red
+#   the send goes silent again (F-40.184)                 -> exit 1, 1 red
+#   the log leaks the code                                -> exit 1, 1 red
+#
+#   THIS TREE      GREEN 113  RED 50  TOTAL 163
+#   TIP 95deda5    GREEN 113  RED 50  TOTAL 163
+#   DELTA          ZERO, by exit code

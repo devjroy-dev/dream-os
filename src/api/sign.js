@@ -49,6 +49,11 @@ const asyncHandler = require('../lib/asyncHandler');
 const C = require('../lib/vendor/contracts');
 const { renderContract } = require('../lib/vendor/contractSource');
 const { sendOtpCode } = require('../lib/otpSend');
+// ⚠ ONE HOME, IMPORTED — NEVER A LOCAL NORMALISER (F-40.185). `src/lib/phone.js`'s
+// own header says it was MOVED rather than rewritten, byte-identical to the three
+// copies it replaced, precisely so no seat would author a fourth. Six files import
+// it; this door did not, and handed Meta ten digits.
+const { toE164 } = require('../lib/phone');
 
 function dead(res) { return res.status(404).json({ ok: false, code: 'not_found' }); }
 
@@ -134,10 +139,23 @@ router.post('/:token/code', asyncHandler(async (req, res) => {
   let reason = flagOn ? null : 'CONTRACT_SIGN_SEND_ENABLED is not set';
   if (flagOn) {
     try {
-      await sendOtpCode({
-        to: v.signing.signer_phone, code: issued.code,
-        lane: 'vendor', templateKey: 'contract_sign_otp',
+      // `clients.phone` is stored as a vendor typed it — often bare ten digits.
+      // `normalizeTo` strips and never adds, so without this the country code was
+      // simply absent and Meta answered 200 to a message that reached nobody.
+      const to = toE164(v.signing.signer_phone);
+      const r = await sendOtpCode({
+        to, code: issued.code, lane: 'vendor', templateKey: 'contract_sign_otp',
       });
+      // ⚠ **R-40.92 — THE SEND LOGS ITSELF, AND F-40.184 IS WHY.** Not one of the
+      // four layers on this path logged a success: not `postMessage`, not
+      // `sendMetaTemplate`, not `sendOtpCode`, not this door. Filtering the deploy
+      // log on `otp` returned only another lane's lines, so a walk could not tell
+      // a send that failed from a send that never happened. `vendor/auth.js:226`
+      // and `couple/auth.js:232` each carry their own line; this one was missing.
+      //
+      // THE RECIPIENT AND THE WAMID, NEVER THE CODE. `otpSend`'s own header marks
+      // the code NEVER LOGGED HERE, and that holds.
+      console.log(`[sign:send-otp] sent to ${to} wamid=${(r && r.result && r.result.wamid) || 'none'}`);
       sent = true;
     } catch (e) {
       // The throw is `otpSend`'s own loud failure. It is REPORTED, never swallowed
