@@ -22,5 +22,12 @@
     "REMOVE a record only when the regen it is owed has actually run and the body below",
     "the header describes the table correctly. The row is a debt; regen pays it."
   ],
-  "register": []
+  "register": [
+    {
+      "number": 137,
+      "note": "**BLOCK 19 · G1.3** — `weddings.wedding_date` + `wedding_date_precision` (R-G13.11), and two CHECKs: the precision vocabulary copied verbatim from `leads_wedding_date_precision_check` so the two planes cannot mean different things by `'month'`, and a PAIR check enforcing `(date IS NULL) = (precision IS NULL)` in the database rather than in a comment. Nothing on `public.events` moves (R-40.11); no index is dropped.",
+      "stale_for": "`public.weddings`",
+      "state": "OWED — the snapshot describes `weddings` at ladder `0132`; `0133` and this file are its witnesses until the next PAIR regen."
+    }
+  ]
 }

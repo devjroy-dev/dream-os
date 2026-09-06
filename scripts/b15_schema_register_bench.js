@@ -44,7 +44,37 @@ const { execFileSync } = require('child_process');
 
 const REPO = path.resolve(__dirname, '..');
 const SNAP = '2026-08-13';
-const TIP  = '0123';
+/**
+ * ── THE FIXTURE TIP IS DERIVED, NOT PINNED — G1.3, R-34.41's first real test ──
+ * It was the literal `'0123'`, chosen with `SNAP` when this bench was written and
+ * correct for exactly as long as `OUT_OF_ORDER.json`'s register stayed EMPTY —
+ * which, per R-34.47, is the register's goal state and was its state from the
+ * day the file was created until 2026-09-06.
+ *
+ * THE FIRST REAL RECORD BROKE IT. `0137` (Block 19 G1.3, filling a hole under
+ * `0138`) is the first entry the register has ever carried, and this bench feeds
+ * the REAL register (:100) through a fixture ladder whose asserted snapshot tip
+ * was `0123`. The formatter then aborted, correctly and for its own good reason —
+ * "out-of-order MEANS below the tip" — and the bench reported an ERROR about a
+ * register record that is entirely lawful.
+ *
+ * ⚠ THE BENCH WAS WRONG ABOUT THE WORLD, NOT THE RECORD ABOUT THE LAW. The cure
+ * is not to bump a constant, which would break again on the next record and
+ * teach the next seat to bump it too. The fixture tip is now DERIVED to sit one
+ * above the highest real record, so a register that grows can never again
+ * out-run the tree that tests it. With an empty register it stays `'0123'`
+ * exactly as before, so the historical fixture is preserved where it still
+ * applies.
+ */
+const REAL_RECORDS = (() => {
+  try {
+    const reg = JSON.parse(fs.readFileSync(path.join(REPO, 'db', 'migrations', 'OUT_OF_ORDER.json'), 'utf8')).register;
+    return (reg || []).map((r) => Number(r.number)).filter((n) => Number.isInteger(n));
+  } catch (_e) { return []; }
+})();
+const TIP  = REAL_RECORDS.length
+  ? String(Math.max(123, ...REAL_RECORDS) + 1).padStart(4, '0')
+  : '0123';
 const REPO_TIP = 'benchfixture';
 
 let tmp = null;

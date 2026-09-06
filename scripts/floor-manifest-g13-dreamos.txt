@@ -1,0 +1,128 @@
+# scripts/floor-batch.sh
+scripts/floor-manifest-g13-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.3 — THE dream-os HALF. The door on the roll, "Book the
+# same team", the printed unit, the reel probe, the no-event create.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for. Every
+# file below was authored or amended by THIS seat in THIS sitting; nothing
+# inherited. The tree was clean at 3efa47c before a byte moved, proven by
+# `git status --porcelain | wc -l` returning 0 immediately after the ff-merge to
+# origin/main, and 3efa47c is the tip derived at origin at the moment of the cut.
+#
+# ⚠ THE TIP MOVED UNDER THIS SEAT FOUR TIMES, and every carry is recorded because
+# a base that moved silently is F-38.25's whole disease:
+#   38e52fc -> 3efa47c  (G5.1 rider 2 — the leads DOOR + leadSerializer; disjoint)
+#   3efa47c -> fdc4b8c  (G5.1 micro 1 — referrals.js; disjoint)
+#   fdc4b8c -> 390c144  (G3.2 dream-os — 0138, sign.js, contracts; ONE COLLISION)
+#   pwa cb724b6 -> 6d014ea -> 3d13d65 (G5.1 pwa half, G3.2 mock, this seat's mock)
+#
+# ⚠ THE THIRD CARRY COLLIDED AND WAS RESOLVED BY HAND, NOT BY MERGE.
+# `src/api/router.js` was edited by BOTH seats — G3.2 mounts `/sign`, this seat
+# mounts `/public/wedding-team`. Keeping this seat's copy would have silently
+# REVERTED a live door, which is F-38.25's exact mechanism with a different file.
+# Cure: `git checkout origin/main -- src/api/router.js`, then re-apply this
+# seat's five lines onto THEIR file, then assert BOTH mounts present by grep.
+#
+# ⚠ AND THE BENCH WAS RENUMBERED. G3.2 took `b56` for `b56_contract_bench.js` in
+# the same push. Two benches under one number is a floor that cannot report a
+# SET. This seat's is `b57_g13_team_bench.js`; the number moved, not the cells.
+#
+# Disjointness was proven by command on every carry: `git diff --name-only` over
+# the sibling push intersected with this seat's file list, plus sha256 over every
+# non-colliding path before and after — nine files byte-identical across the third
+# carry, `router.js` accounted for separately above.
+#
+# ⚠ ONE PIECE OF DIRT WAS FOUND THAT THIS SEAT DID NOT AUTHOR, and it is recorded
+# because the next seat will meet it: `src/engine/src/core/tools/recordPrimitives.ts`
+# was modified in the working tree with `rs()` returning `Rs ${v}` instead of
+# `Rs ${inr(v)}` — a MONEY-REGISTER byte on the ENGINE plane. It was a floor
+# bench's own mutation, left behind when this seat killed a `run-floor.sh` run
+# mid-pass: the child restores on the happy path and a killed parent never gets
+# there. Restored by `git checkout --` and proven byte-identical to origin before
+# anything else moved. **Killing a floor run can leave production code mutated,
+# including on the W-1 plane, and `git status` is the only thing that says so.**
+# In particular G5.1 rider 2 touched `src/api/vendor/leads.js` — the DOOR — while
+# this sitting reads `src/lib/vendor/leads.js` — the LIB — and never opens it.
+# `createLead` was last moved at 556f0c1 and is called, never edited.
+#
+# ⚠ WHY `src/lib/vendor/leads.js` IS NOT IN THIS LIST EVEN THOUGH R-G13.2's
+# ONE-HOME PRECEDENT LIVES THERE. `PEER_REFERRAL_SOURCE` sits beside `createLead`
+# and is the right shape in every respect except its address; that file is the
+# G5.1 seat's, live in a parallel cut, and two seats editing one file is the
+# concurrent-writer collision protocol §11 exists to prevent. The tokens sit in
+# their own module instead. A one-line micro AFTER G5.1 seals folds
+# `PEER_REFERRAL_SOURCE` in beside them — filed at this sitting, not taken.
+#
+# ⚠ `floor-batch.sh` SHIPS, AND IT IS NOT A SECOND FLOOR RUNNER.
+# R-40.63 / F-40.128: a seat's tool call cannot outlive ~8 minutes, the floor
+# takes about an hour, and backgrounding it reports neither its death nor its
+# result. So this seat's pass is BATCHED, and the script is committed rather than
+# typed into a terminal and lost — Q-SP-5, a cure nobody can re-run quietly stops
+# being a cure. Its classification is COPIED from `run-floor.sh` (0 green · 1 RED
+# · 2 ERROR · 3 REFUSED · 124 TIMEOUT, by exit code, never by grepping output)
+# and its bench list is the same glob with the same one exclusion. Round-robin
+# batching, not contiguous slices, so the slow benches cannot all land in one.
+# THE FOUNDER'S SINGLE `run-floor.sh` INVOCATION IS THE FLOOR OF RECORD; this
+# produced the set compared at the cut, and the handover says so in terms.
+#
+# ⚠ `b15_schema_register_bench.js` — THE FLOOR'S ONE DELTA AT THE CUT, CURED.
+# It appeared as `ERROR: b15` at the cut and not at the base, and it was mine:
+# b15 feeds the REAL `OUT_OF_ORDER.json` through a FIXTURE ladder whose asserted
+# snapshot tip was the literal `'0123'`. That was correct for exactly as long as
+# the register stayed EMPTY — which, per R-34.47, is its goal state and was its
+# state from the day the file was created. `0137` is the FIRST record it has ever
+# carried, so the formatter aborted ("out-of-order MEANS below the tip") on an
+# entirely lawful entry.
+# THE BENCH WAS WRONG ABOUT THE WORLD, NOT THE RECORD ABOUT THE LAW. Not cured by
+# bumping the constant — that breaks again on the next record and teaches the next
+# seat to bump it too. The fixture tip is now DERIVED to sit one above the highest
+# real record; with an empty register it is still `'0123'`, so the historical
+# fixture is preserved where it applies. Proven not defanged: a record naming a
+# migration that does not exist still aborts (rc 2).
+#
+# ⚠ `b53_g11_wedding_pages_bench.js` IS G1.1's BENCH AND THIS SEAT AMENDED IT.
+# Three cells, each by LABEL with its reason in-file, because the law moved under
+# them and a bench follows the law (R-45.1's class):
+#   · the phone-leak cell banned ANY 10-digit Indian number in the serialized
+#     roll. Exact while the roll carried names and handles; G1.3 puts
+#     `enquire_link` on the wire and THE TDW LINE IS A PHONE NUMBER, so the cell
+#     convicted the house's own published number. NOT loosened to "except the
+#     house line" — that would let a credit's phone through the day someone
+#     formats one the same way. Made STRICTER instead: the three fixture credits'
+#     numbers absent BY IDENTITY, and the only long number on the wire proven to
+#     be the one `ENQUIRE_BASE` publishes. +1 cell.
+#   · the create-door cell pinned "an event is REQUIRED"; R-G13.11 opened the
+#     no-event create, so it now asserts both refusals — neither, and both. +1.
+#   · the source cell asserted `'wedding_guest'` spelled exactly once at the
+#     door; F-40.111 is the finding that R-40.13 said ONE HOME and a literal at a
+#     door is not one. It now asserts ZERO spellings and the import. +0.
+# b53 moves 132 -> 134, disclosed. The first cut of these labels claimed COUNT
+# PRESERVED on two of the three and that was false; the labels were corrected
+# rather than the count.
+#
+# ⚠ 0137 FILLS A HOLE, IT DOES NOT SIT AT THE TIP. G3.2 pushed and ran 0138
+# while this seat was building, so 0137 lands BELOW the applied tip and owes a
+# record in `db/migrations/OUT_OF_ORDER.json` — added in this delivery, which is
+# why that file is dirt here. Its first header claimed the opposite and was
+# corrected; the re-derivation of the tip at the cut is what caught it.
+#
+# 0137_wedding_dates.sql is FOUNDER-RUN in the Supabase editor BEFORE the ZIP is
+# applied; it is listed because it is dirt in this tree, not because the floor
+# executes it. No bench in this delivery touches a live database — b56 drives
+# `teamTargets` through an in-process stub whose shape is the client's, so the
+# function under test is the shipped one and no row anywhere is read or written.
+
+db/migrations/0137_wedding_dates.sql
+docs/TDW_19_G13_HANDOVER.md
+db/migrations/OUT_OF_ORDER.json
+scripts/b15_schema_register_bench.js
+scripts/b53_g11_wedding_pages_bench.js
+scripts/b57_g13_team_bench.js
+scripts/floor-batch.sh
+src/api/public/weddingDownload.js
+src/api/public/weddingTeam.js
+src/api/router.js
+src/api/vendor/studio/weddings.js
+src/lib/vendor/leadSources.js
+src/lib/vendor/weddings.js
+src/lib/weddingCardPdf.js

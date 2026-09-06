@@ -32,6 +32,11 @@ router.use('/public/vendor-card', require('./public/vendorCard'));
 // the same exposure class with a second path segment (R-G11.5's miss law).
 router.use('/public/wedding',     require('./public/weddingPage'));
 router.use('/public/wedding-download', require('./public/weddingDownload'));
+// BLOCK 19 · G1.3 — "Book the same team". Same exposure class as the two above:
+// unauthenticated, keyed on the same <code>/<slug> pair, gated by the same three
+// page checks. Mounted beside them so the whole public wedding surface is one
+// block a reader can take in at once (R-G11.5's siting reason).
+router.use('/public/wedding-team', require('./public/weddingTeam'));
 // The claim pair. Public capability-token, NEVER under /vendor — the same siting
 // rule and the same reason as /crew above.
 router.use('/credits',            require('./credits'));

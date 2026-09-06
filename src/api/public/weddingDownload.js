@@ -37,6 +37,7 @@ const router  = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
 const { createLead } = require('../../lib/vendor/leads');
+const { WEDDING_GUEST_SOURCE } = require('../../lib/vendor/leadSources');
 const { signArchive, archiveDownloadUrl, nowTimestamp } = require('../../lib/cloudinarySign');
 const { mintSigned, verifySigned } = require('../../lib/signedSession');
 const { siteBase } = require('../../lib/vendor/creditInvite');
@@ -150,11 +151,21 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
   if (!photos.length) return res.status(409).json({ ok: false, error: 'There is nothing to download yet.' });
 
   // ── THE LEAD, WRITTEN THROUGH THE ONE HOME ────────────────────────────────
-  // `createLead` (src/lib/vendor/leads.js:108) and never a second INSERT. The
-  // table has four writers today and this door does not become a fifth; the
-  // census SELECT for F-40.18 is still owed before any CHECK is added to
-  // `source`, which is why R-40.13 keeps it free text and 'wedding_guest' is
-  // spelled here once.
+  // `createLead` (src/lib/vendor/leads.js) and never a second INSERT. The table
+  // has four writers today and this door does not become a fifth.
+  //
+  // ⚠ THE TOKEN IS IMPORTED, NOT SPELLED — F-40.111 cured (R-G13.2). This
+  // paragraph used to say `'wedding_guest'` was "spelled here once", which was a
+  // comment arguing for the literal it sat above while R-40.13 had ruled the
+  // token should have ONE HOME and none existed. The home is now
+  // `src/lib/vendor/leadSources.js`; this door hands the constant to
+  // `createLead` exactly as the peer-forward door hands it `PEER_REFERRAL_SOURCE`.
+  // What a door may NOT do is spell its own provenance — F-16.33 is the
+  // specimen, where a door that spelled it wrong stamped `whatsapp` on leads a
+  // vendor typed with his thumbs and it read back to him as fact for weeks.
+  //
+  // `source` stays free text (R-40.13) and F-40.18's distinct-values census is
+  // still owed before any CHECK; the constant is a one-home rule, not a schema one.
   //
   // ⚠ THE OPT-IN DECIDES WHETHER HER NUMBER IS STORED AT ALL — R-G12.3.
   // YES → the lead carries her phone and the vendor can reach her.
@@ -176,7 +187,7 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
       // ONLY when a month was actually given — a NULL date with a precision would
       // be a claim about a date that does not exist.
       wedding_date_precision: weddingDate ? 'month' : null,
-      source: 'wedding_guest',
+      source: WEDDING_GUEST_SOURCE,
       wedding_id: wedding.id,
       raw_message: null,
     });

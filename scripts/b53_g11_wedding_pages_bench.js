@@ -156,7 +156,31 @@ sec('C5 \u00b7 phones never reach a guest');
   const vendors = { v1: { id: 'v1', business_name: 'Dev Roy Photography', routing_handle: 'DEV440', status: 'active', discover_paused: false } };
   const roll = W.publicRoll(credits, vendors);
   const wire = JSON.stringify(roll);
-  ok('no phone digits appear anywhere in the public roll', !/\+?9\d{9}/.test(wire), wire);
+  // ── LABELLED AMENDMENT · G1.3, R-G13.3. COUNT MOVES +1 (one cell becomes two).
+  // THE CELL WAS RIGHT ABOUT ITS SUBJECT AND ITS METHOD WENT STALE. It banned any
+  // 10-digit Indian number anywhere in the serialized roll, which was exact while
+  // the roll carried names and handles only. G1.3 puts `enquire_link` on the wire
+  // — `https://wa.me/<the vendor line>?text=TDW-<CODE>` — and the TDW LINE IS A
+  // PHONE NUMBER. The cell convicted the house's own published number.
+  //
+  // Loosening it to "no phone EXCEPT the house line" would have been the weaker
+  // move and is refused: it would let a credit's phone through the day someone
+  // formats one the same way. Instead the cell is made STRICTER and more exact —
+  // it asserts what R-G11.6 actually forbids, by IDENTITY rather than by shape:
+  //   · the three fixture credits' own numbers are absent, each named; and
+  //   · the ONLY number on the wire is the one `ENQUIRE_BASE` publishes.
+  // A credit phone reaching the roll now reds on the first clause; a door built
+  // from anything but the one home reds on the second.
+  const CREDIT_PHONES = ['919888294440', '919999999999', '918888888888'];
+  ok('no CREDIT phone reaches the public roll (R-G11.6)',
+    CREDIT_PHONES.every((d) => !wire.includes(d)), wire);
+  {
+    const { ENQUIRE_BASE } = require(P('src/lib/discover/shapeVendor.js'));
+    const houseDigits = (ENQUIRE_BASE.match(/\d{6,}/) || [''])[0];
+    const onWire = [...new Set(wire.match(/\d{6,}/g) || [])];
+    ok('the only long number on the wire is the house line ENQUIRE_BASE publishes',
+      onWire.every((d) => d === houseDigits), onWire.join(',') + ' vs ' + houseDigits);
+  }
   ok('no claim_token appears in the public roll', !/tok-/.test(wire), wire);
   ok('no key named phone or claim_token exists on any roll entry',
     roll.every((r) => !('phone' in r) && !('claim_token' in r)));
@@ -308,8 +332,19 @@ sec('C10 \u00b7 the create door refuses a deleted event');
   ok('AND filters deleted_at IS NULL', /\.is\('deleted_at', null\)/.test(src));
   ok('the ownership and liveness checks are ONE query', 
     /\.eq\('vendor_id', req\.vendor\.id\)\s*\n\s*\.is\('deleted_at', null\)/.test(src));
-  ok('an event is required by the door even though the column is nullable (R-G11.21)',
-    /if \(!eventId\) return errRes\(res, 400/.test(src));
+  // ── LABELLED AMENDMENT · G1.3, R-G13.11. COUNT MOVES +1 (one cell becomes two).
+  // The cell asserted the door REQUIRED an event while the column allowed NULL —
+  // which was the truth from 0131 until this sitting, and the gap was honest:
+  // with no event nothing dated the page and `season` had no source, so the
+  // no-event create had no strings and no mock (F-40.99).
+  // 0137 gives the row its own date and the ruling opens the door on ONE rule —
+  // an event OR a date, never neither and never both. The cell follows the law
+  // rather than pinning a superseded one; both refusals are asserted, so the
+  // door cannot quietly accept a page nothing can date.
+  ok('the create door refuses NEITHER an event nor a date (R-G13.11)',
+    /An event or a date is required/.test(src));
+  ok('...and refuses BOTH (a second stored date is the drift R-G11.16 killed)',
+    /not both/.test(src));
 }
 
 // ── C11 · PUBLISH WRITES NO CONSENT BYTE (R-G11.10) ─────────────────────────
@@ -512,8 +547,16 @@ sec('C15 \u00b7 the guest lead and the phone that goes nowhere (R-G12.3)');
   ok('createLead actually ACCEPTS both, so neither is silently dropped',
     /wedding_id, wedding_date_precision,/.test(leads)
     && /wedding_id:\s+wedding_id\s+\|\| null/.test(leads));
-  ok('the source is spelled once and stays free text (R-40.13)',
-    (strip(dl).match(/'wedding_guest'/g) || []).length === 1);
+  // ── LABELLED AMENDMENT · G1.3, R-G13.2 / F-40.111. COUNT PRESERVED (1 -> 1).
+  // The cell asserted the token was spelled EXACTLY ONCE at this door, which was
+  // the best available reading of R-40.13 while no home existed — and F-40.111 is
+  // the finding that R-40.13 said ONE HOME and a literal at a door is not one.
+  // The home is now `src/lib/vendor/leadSources.js`. The cell asserts the cure
+  // instead of the workaround: ZERO spellings here, the constant imported.
+  ok('the guest token is imported, never spelled at this door (R-G13.2)',
+    !/'wedding_guest'/.test(strip(dl))
+    && /require\(.*leadSources.*\)/.test(strip(dl))
+    && /source:\s*WEDDING_GUEST_SOURCE/.test(strip(dl)));
   // The page's own three gates must hold here too, or a stranger could probe for
   // weddings the page refuses to show.
   ok('the download door repeats the page\u2019s three misses',

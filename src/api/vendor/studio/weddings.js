@@ -9,6 +9,8 @@
 //   POST /:id/publish             — publish (R-G11.20: delivered_at lands here)
 //   POST /:id/upload-url          — signed Cloudinary params (R-G11.17)
 //   POST /:id/photos              — record an uploaded photo
+//   POST /:id/cards               — G1.3: render the tent card + insert (R-G13.7)
+//   GET  /reel-probe              — G1.3: what the RUNNING SERVICE can do (R-G13.10)
 //
 // No tier gate: R-39.7 opened the Studio Suite to every tier.
 //
@@ -25,6 +27,8 @@ const { ok: okRes, err: errRes } = require('../../../lib/response');
 const { signUpload, uploadUrl, nowTimestamp } = require('../../../lib/cloudinarySign');
 const { claimUrl, sendCreditInvite, sendConsentInvite } = require('../../../lib/vendor/creditInvite');
 const W = require('../../../lib/vendor/weddings');
+const { generateWeddingCards } = require('../../../lib/weddingCardPdf');
+const { spawn } = require('child_process');
 const crypto = require('crypto');
 
 const mw = [requireAuth, resolveVendor()];
@@ -33,6 +37,61 @@ const mw = [requireAuth, resolveVendor()];
 router.get('/', ...mw, asyncHandler(async (req, res) => {
   const rows = await W.listForOwner(req.app.locals.supabase, req.vendor.id);
   return okRes(res, { weddings: rows });
+}));
+
+// ⚠ THE PROBE IS DECLARED ABOVE `GET /:id` AND THAT IS LOAD-BEARING, NOT TIDY.
+// Express matches routes in declaration order, so a literal path sited below a
+// parameter path is UNREACHABLE — `/:id` would capture `reel-probe` as a wedding
+// id, `getForOwner` would miss, and the door would answer a truthful-looking 404
+// forever. My first cut sited it at the foot of the file and `node --check`
+// passed it; no syntax gate can see a shadowed route, and only reading the
+// file's own route order caught it.
+// ── GET /reel-probe — WHAT THIS SERVICE CAN ACTUALLY DO (R-G13.10) ──────────
+// F-40.16 has been open since G0 on a question no shell could answer: ffmpeg is
+// present on every build container this estate has run in, and the dream-os
+// image is UNCOMMITTED — no Dockerfile, no nixpacks config, no Procfile — so
+// what Railway installs is not a fact any repo file states.
+//
+// ⚠ SO THE ANSWER IS READ FROM INSIDE THE RUNNING SERVICE, and the founder reads
+// it on his walk. Not from a shell on his laptop, which answers about his
+// laptop; not from this seat, which answers about a container that will be
+// destroyed. F-40.16 closes at the surface or it does not close.
+//
+// NO :id — this is a property of the SERVER, not of a wedding. Siting it under
+// a wedding id would imply a per-page answer and invite a per-page cache.
+//
+// It never throws and never 500s: an ENOENT from `spawn` IS the answer.
+router.get('/reel-probe', ...mw, asyncHandler(async (req, res) => {
+  const probe = await new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    try {
+      const child = spawn('ffmpeg', ['-version']);
+      let out = '';
+      child.stdout.on('data', (d) => { out += String(d); });
+      // A probe that can hang is a room that can hang. Two seconds is far past
+      // what `-version` costs and far short of a request timeout.
+      const timer = setTimeout(() => { try { child.kill('SIGKILL'); } catch (_) {} finish({ present: false, reason: 'timeout' }); }, 2000);
+      child.on('error', () => { clearTimeout(timer); finish({ present: false, reason: 'not_installed' }); });
+      child.on('close', (codeNum) => {
+        clearTimeout(timer);
+        if (codeNum !== 0) return finish({ present: false, reason: 'exit_' + codeNum });
+        const first = out.split('\n')[0].trim();
+        finish({ present: true, version: first });
+      });
+    } catch (_e) {
+      finish({ present: false, reason: 'not_installed' });
+    }
+  });
+
+  // `reel_enabled` is deliberately NOT `probe.present`. The reel ships dark
+  // behind its own named flag; a server that CAN cut video is a necessary and
+  // not a sufficient condition, and collapsing the two would let an image change
+  // turn a feature on without anyone ruling it (master §2.2's build-dark law).
+  return okRes(res, {
+    ffmpeg: probe,
+    reel_enabled: String(process.env.WEDDING_REEL_ENABLED || '') === '1' && probe.present === true,
+  });
 }));
 
 // GET /:id — one page with its roll and photos
@@ -57,20 +116,62 @@ router.get('/:id', ...mw, asyncHandler(async (req, res) => {
 
 // POST / — create
 //
-// ⚠ THE COLUMN IS NULLABLE AND THIS DOOR IS NOT (R-G11.21). `weddings.event_id`
-// allows NULL because a photographer's first pages are her back catalogue with
-// no calendar row behind them — but the ratified create sheet has "Which event"
-// and no date/venue-entry path, so a no-event create has no strings and no mock.
-// It is chartered to G1.2. The schema is ready; the door is not open yet, and
-// that difference is deliberate rather than an oversight.
+// ── G1.3 · THE DOOR OPENS FOR THE BACK CATALOGUE (R-G13.11) ────────────────
+// `weddings.event_id` has been NULLABLE since 0131 (R-G11.21) because a
+// photographer's first pages are work she shot before she joined. The door
+// stayed shut for one honest reason: the ratified create sheet had "Which event"
+// and NO WAY TO TYPE A DATE, so a page with no event had nothing to date it and
+// its season could not be derived. F-40.99 is that gap in the copy register —
+// strings #26 and #27 vetoed and then WITHHELD, because `public.weddings` had
+// thirteen columns and none was a date.
+//
+// 0137 gives the row `wedding_date` + `wedding_date_precision` and the door
+// opens on ONE rule: **an event OR a date, never neither and never both.**
+//   · neither → nothing dates the page and `season` is unanswerable
+//   · both    → two dates for one wedding, which is the drift R-G11.16 refused
+//               one column further down when it killed a stored `season`
 router.post('/', ...mw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const body     = req.body || {};
   const eventId  = String(body.event_id || '').trim();
   const title    = String(body.title || '').trim();
+  const rawDate  = String(body.wedding_date || '').trim();
 
-  if (!eventId) return errRes(res, 400, 'An event is required.');
-  if (!title)   return errRes(res, 400, 'A title is required.');
+  if (!title) return errRes(res, 400, 'A title is required.');
+
+  // `YYYY-MM` only — the sheet draws a month field, and a month is what a
+  // vendor can honestly recall about a wedding she shot three years ago. The
+  // precision column is what keeps the first-of-month from being read as a day
+  // (R-G12.11's reasoning, the same pair on the other plane).
+  let weddingDate = null;
+  if (rawDate) {
+    const m = rawDate.match(/^(\d{4})-(\d{2})$/);
+    const mm = m ? Number(m[2]) : 0;
+    if (!m || mm < 1 || mm > 12) return errRes(res, 400, 'That date is not a month we can read.');
+    weddingDate = `${m[1]}-${m[2]}-01`;
+  }
+
+  if (!eventId && !weddingDate) return errRes(res, 400, 'An event or a date is required.');
+  if (eventId && weddingDate)   return errRes(res, 400, 'A page takes an event or a date, not both.');
+
+  // ── THE NO-EVENT PATH ─────────────────────────────────────────────────────
+  // No event to own, so no ownership query and no couple to resolve — a back
+  // catalogue page has no engagement behind it and `resolveCoupleForEvent`
+  // returns null for a null event by its own first line. The page is born with
+  // `couple_consent` false and reaches publication through the off-platform
+  // consent token (F-40.49), which is exactly the path G1.2 built for it.
+  if (!eventId) {
+    const wedding = await W.createWedding(supabase, {
+      ownerVendorId: req.vendor.id,
+      eventId:       null,
+      title,
+      venue: String(body.venue || '').trim() || null,
+      city:  String(body.city  || '').trim() || null,
+      weddingDate,
+      weddingDatePrecision: 'month',
+    });
+    return okRes(res, { wedding });
+  }
 
   // ── F-40.33 · THE PICKER FILTERS `deleted_at IS NULL`, AND SO DOES THIS ─────
   // Derived from the fixture, not imagined: DEV440's `Blocked` event
@@ -354,6 +455,79 @@ router.post('/:id/consent', ...mw, asyncHandler(async (req, res) => {
     sent_to_last4: W.lastFourOf(phone),
     invite,
   });
+}));
+
+// ── POST /:id/cards — THE PRINTED UNIT (R-G13.7) ────────────────────────────
+// ONE CALL, TWO ARTEFACTS, `{ card_url, insert_url }`.
+//
+// ⚠ IT ANSWERS SIGNED URLS AND NOT PDF BYTES, and the charter's
+// `GET /:id/card.pdf` is the shape it is not. Every door in this router carries
+// `requireAuth`, so a `.pdf` byte-stream could not be reached by an `<a href>`
+// from the record — the browser sends no Authorization header on a navigation —
+// and making it reachable would mean a second credential class for a document.
+// `src/api/vendor/invoices.js` already settled this: render, upload, sign, and
+// hand back a URL. Same bucket posture, same year-long signature, same shape.
+//
+// ⚠ THE PAGE MUST BE PUBLISHABLE BEFORE ITS QR IS PRINTED. A card is permanent;
+// a QR to a page that 404s is worse than no card, and this is the one place the
+// estate can still refuse. `visibility` and `couple_consent` are BOTH required —
+// the same two gates the public door applies, checked here so a vendor cannot
+// print her way around a couple who has not answered.
+router.post('/:id/cards', ...mw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const wedding  = await W.getForOwner(supabase, req.vendor.id, req.params.id);
+  if (!wedding) return errRes(res, 404, 'Not found.');
+  if (wedding.visibility !== 'published' || wedding.couple_consent !== true) {
+    return errRes(res, 409, 'This page is not live yet.');
+  }
+
+  const code = String(req.vendor.routing_handle || '').toLowerCase();
+  if (!code) return errRes(res, 409, 'This page has no address yet.');
+  // The address the QR resolves to, built HERE from the one home. R-G13.9: the
+  // page's own URL, direct, no redirect — a printed object depends on nothing
+  // but the page it names.
+  const pageUrl = `${siteBase()}/v/${encodeURIComponent(code)}/w/${encodeURIComponent(wedding.slug)}`;
+
+  let cards;
+  try {
+    cards = await generateWeddingCards({
+      title:      wedding.title,
+      // THE REGISTERED NAME, never a typed one (veto sheet row 21, F-40.54).
+      studioName: req.vendor.business_name || '',
+      pageUrl,
+    });
+  } catch (e) {
+    req.app.locals.logger?.error?.('weddingCards:render', e);
+    return errRes(res, 500, e.message);
+  }
+
+  // `upsert: true` so a vendor who re-renders after editing her title gets the
+  // new card at the same address rather than accumulating orphans in a bucket
+  // nothing sweeps.
+  const base = `${req.vendor.id}/${wedding.id}`;
+  const out  = {};
+  for (const [key, file, buf] of [
+    ['card_url',   `${base}/tent.pdf`,   cards.tent],
+    ['insert_url', `${base}/insert.pdf`, cards.insert],
+  ]) {
+    const { error: upErr } = await supabase.storage
+      .from('wedding-cards')
+      .upload(file, buf, { contentType: 'application/pdf', upsert: true });
+    if (upErr) {
+      req.app.locals.logger?.error?.('weddingCards:upload', upErr);
+      return errRes(res, 500, upErr.message);
+    }
+    const { data: signed } = await supabase.storage
+      .from('wedding-cards')
+      .createSignedUrl(file, 60 * 60 * 24 * 365);
+    // NEVER-A-FALSE-DONE: a rendered card whose URL could not be signed is not a
+    // card the vendor can print, and the door says so rather than returning a
+    // half-filled shape the room would render as success.
+    if (!signed || !signed.signedUrl) return errRes(res, 500, 'The cards could not be signed.');
+    out[key] = signed.signedUrl;
+  }
+
+  return okRes(res, out);
 }));
 
 module.exports = router;

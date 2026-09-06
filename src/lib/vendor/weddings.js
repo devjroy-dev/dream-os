@@ -11,6 +11,10 @@
 
 const crypto = require('crypto');
 const { seasonYearFor } = require('../season');
+// R-G13.3 · IMPORTED, NEVER TRANSCRIBED. One module, whose own only runtime
+// dependency is `../waNumbers`; the public page and the Frost deck therefore
+// send a couple to the same number with the same message by construction.
+const { ENQUIRE_BASE } = require('../discover/shapeVendor');
 
 // ── THE TEN ROLES — R-40.7, in R-40.7's ORDER ───────────────────────────────
 // ⚠ THE ROLL IS NEVER ORDERED BY ANYTHING BUT ROLE (master §4 G1.1's own
@@ -111,8 +115,14 @@ async function uniqueSlug(supabase, ownerVendorId, title) {
 // someone writes it on one of these lines. `phone` and `claim_token` appear on
 // NEITHER public list, and that is R-G11.6 and the crew constitution enforced
 // by the wire rather than by a filter someone can move.
+// ⚠ `wedding_date` and `wedding_date_precision` join at 0137 (R-G13.11). They
+// are the NO-EVENT create's own columns: a back-catalogue page has no calendar
+// row, so `events.event_date` cannot date it and the season had nowhere to come
+// from. F-40.99 is what their absence cost — strings #26 and #27 were founder-
+// vetoed and then WITHHELD because `public.weddings` had thirteen columns and
+// none was a date, so R-G12.6 could not execute as worded.
 const WEDDING_COLS =
-  'id, owner_vendor_id, event_id, couple_id, slug, title, venue, city, delivered_at, couple_consent, visibility, created_at, updated_at';
+  'id, owner_vendor_id, event_id, couple_id, slug, title, venue, city, wedding_date, wedding_date_precision, delivered_at, couple_consent, visibility, created_at, updated_at';
 const CREDIT_COLS_OWNER =
   'id, wedding_id, role, vendor_id, phone, name, status, claim_token, created_at';
 const PHOTO_COLS =
@@ -257,10 +267,31 @@ async function consentSeedFor(supabase, coupleId) {
   return (data && data.publish_weddings) === true;
 }
 
-async function createWedding(supabase, { ownerVendorId, eventId, title, venue, city }) {
+/**
+ * ── G1.3 · THE NO-EVENT CREATE OPENS (R-G13.11, F-40.99's remainder) ────────
+ * `eventId` was already NULLABLE in the column (R-G11.21) and REQUIRED at the
+ * door, because the ratified create sheet had "Which event" and no way to type a
+ * date — so a back-catalogue page could exist in the schema and not through any
+ * surface. 0137 gives the row its own date and the door opens.
+ *
+ * ⚠ THE TWO DATE COLUMNS MOVE TOGETHER OR NEITHER MOVES. A precision beside a
+ * NULL date is a claim about a date that does not exist, and a date with no
+ * precision cannot be rendered honestly — `createLead` reasons identically about
+ * the same pair on `leads` (R-G12.11), and 0137 carries `leads`' own CHECK
+ * vocabulary so the two planes cannot mean different things by `'month'`.
+ *
+ * ⚠ AND A WEDDING WITH AN EVENT DOES NOT GET A TYPED DATE. The event's own
+ * `event_date` is the fact; storing a second one beside it is the drift
+ * R-G11.16 refused for `season`, one column further down. The caller passes one
+ * or the other and this function does not reconcile them — the door refuses the
+ * combination before it gets here.
+ */
+async function createWedding(supabase, { ownerVendorId, eventId, title, venue, city,
+                                         weddingDate, weddingDatePrecision }) {
   const slug = await uniqueSlug(supabase, ownerVendorId, title);
   const coupleId    = await resolveCoupleForEvent(supabase, { ownerVendorId, eventId });
   const consentSeed = await consentSeedFor(supabase, coupleId);
+  const bothDateParts = Boolean(weddingDate) && Boolean(weddingDatePrecision);
   const { data, error } = await supabase
     .from('weddings')
     .insert({
@@ -271,6 +302,8 @@ async function createWedding(supabase, { ownerVendorId, eventId, title, venue, c
       title,
       venue: venue || null,
       city: city || null,
+      wedding_date:           bothDateParts ? weddingDate           : null,
+      wedding_date_precision: bothDateParts ? weddingDatePrecision  : null,
       couple_consent: consentSeed,
     })
     .select(WEDDING_COLS)
@@ -550,6 +583,117 @@ async function settleCredit(supabase, { token, status, vendorId }) {
   return data || null;
 }
 
+/**
+ * ── LINKABILITY, ONE PREDICATE, TWO READERS (R-G13.5) ──────────────────────
+ * Extracted because G1.3 gave it a SECOND reader and a rule with two copies is
+ * a rule with two behaviours. `publicRoll` uses it to decide what renders; the
+ * team door uses it to decide who receives a lead, and R-G13.14 turns on those
+ * two answers being the same one.
+ *
+ * ⚠ `claimed` AND `vendor_id` ARE INDEPENDENT FACTS, which is why `v &&` is
+ * doing real work and is not defensive typing. `src/api/credits.js` rules it
+ * outright: the person opening a claim link is usually NOT on the platform,
+ * there is no session to identify them, so `settleCredit` is called with no
+ * vendor and the credit becomes `claimed` with the owner's typed name. The
+ * fixture holds a live specimen — `hair · Nir`, claimed since 2026-09-04 with a
+ * NULL `vendor_id`, permanently unlinkable and correctly so.
+ *
+ * A paused or inactive vendor is excluded for the roll's own stated reason:
+ * printing an address that would itself 404 is an invitation to a dead page.
+ */
+function isLinkable(credit, vendor) {
+  return Boolean(
+    credit
+    && credit.status === 'claimed'
+    && vendor
+    && vendor.status === 'active'
+    && vendor.discover_paused !== true,
+  );
+}
+
+/**
+ * ── THE TEAM, RESOLVED (R-G13.5) ───────────────────────────────────────────
+ * Who "Book the same team" reaches, computed in ONE place so the sheet that
+ * NAMES them and the door that WRITES to them cannot disagree. Consent to a
+ * named set is only consent if the set she read is the set that gets written.
+ *
+ * THE SET: `unique(vendor_id)` over credits that pass `isLinkable`, ∪ the page's
+ * owner. Three properties, each of which the fixture or the schema forced:
+ *
+ *  · UNIQUE BY VENDOR, NOT BY CREDIT. `wedding_credits` has no uniqueness on
+ *    (wedding_id, role) and none on (wedding_id, vendor_id) — one artist may
+ *    hold makeup AND hair on the same wedding. Keyed by credit, she would get
+ *    two leads for one enquiry and `createLead`'s dedupe would silently discard
+ *    the second, which looks identical to the write failing.
+ *  · THE OWNER IS ALWAYS IN, credited or not. The fixture proves she must be:
+ *    DEV440 owns the page and holds NO `shot_by` credit, because `createWedding`
+ *    does not auto-credit her. A team that excluded the photographer whose page
+ *    it is would be absurd.
+ *  · THE OWNER MAY ALSO BE A CREDIT, so she is de-duplicated by id like anyone
+ *    else — the `Map` keyed on vendor id is what makes that automatic instead of
+ *    a special case somebody has to remember.
+ *
+ * ⚠ IT RETURNS NAMES AS WELL AS IDS, and the names are the REGISTERED
+ * `business_name` — never the name typed into a credit. F-40.54 is why: a
+ * hurried credit once mislabelled another business, and this list is read aloud
+ * to a guest before she consents.
+ *
+ * ⚠ AND IT NEVER RETURNS A PHONE. R-G11.6, same as every other public shape in
+ * this file: the object is built field by field from an explicit list.
+ */
+async function teamTargets(supabase, { weddingId, ownerVendorId }) {
+  const credits = await creditsFor(supabase, weddingId);
+
+  const ids = [...new Set(credits.filter((c) => c.vendor_id).map((c) => c.vendor_id))];
+  const wanted = [...new Set([ownerVendorId, ...ids])];
+  if (!wanted.length) return [];
+
+  const { data: vs, error } = await supabase
+    .from('vendors')
+    .select('id, business_name, routing_handle, status, discover_paused')
+    .in('id', wanted);
+  if (error) throw error;
+  const byId = (vs || []).reduce((acc, v) => { acc[v.id] = v; return acc; }, {});
+
+  const out = new Map();
+
+  // The owner first, and she is held to the SAME liveness test as everyone else.
+  // A vendor who has paused her own storefront has withdrawn from being found —
+  // `weddingPage.js` already kills her whole page on that switch, so a door that
+  // wrote her a lead anyway would be writing from a page nobody can open.
+  const owner = byId[ownerVendorId];
+  if (owner && owner.status === 'active' && owner.discover_paused !== true) {
+    out.set(owner.id, {
+      vendor_id: owner.id,
+      name: owner.business_name,
+      handle: String(owner.routing_handle || '').toLowerCase(),
+      is_owner: true,
+    });
+  }
+
+  // Then the roll, in the roll's own ruled order — `creditsFor` already sorted
+  // by ROLE_INDEX, so the names a guest reads on the sheet appear in the same
+  // sequence as the credits above it rather than in id order.
+  for (const c of credits) {
+    const v = c.vendor_id ? byId[c.vendor_id] : null;
+    if (!isLinkable(c, v)) continue;
+    if (out.has(v.id)) continue;
+    out.set(v.id, {
+      vendor_id: v.id,
+      name: v.business_name,
+      handle: String(v.routing_handle || '').toLowerCase(),
+      is_owner: false,
+    });
+  }
+
+  // A target with no registered name is DROPPED, not printed nameless.
+  // `vendors.business_name` is nullable (PUBLIC_SCHEMA.md:1130, ordinal 3), so a
+  // claimed credit on an active vendor with a NULL name would otherwise be IN
+  // the write set and ABSENT from the roll — the exact divergence R-G13.14
+  // forbids, reachable through a column nobody has to touch.
+  return [...out.values()].filter((t) => t.name);
+}
+
 // ── THE PUBLIC SHAPE — R-G11.6 ENFORCED BY THE WIRE ─────────────────────────
 /**
  * ⚠ PHONES NEVER REACH THIS FUNCTION'S OUTPUT, AND `claim_token` NEVER DOES
@@ -568,26 +712,64 @@ function publicRoll(credits, vendorsById) {
     .filter((c) => c.status !== 'declined')
     .map((c) => {
       const v = c.vendor_id ? vendorsById[c.vendor_id] : null;
-      const linkable = Boolean(
-        c.status === 'claimed' && v && v.status === 'active' && v.discover_paused !== true,
-      );
+      const linkable = isLinkable(c, v);
       return {
         role:  c.role,
         label: ROLE_LABEL[c.role] || null,
         name:  linkable ? v.business_name : (c.name || (v ? v.business_name : null)),
         handle: linkable ? String(v.routing_handle || '').toLowerCase() : null,
+        // ── G1.3 · THE DOOR ON THE ROLL (R-G13.3) ─────────────────────────
+        // Built HERE, at the door, and never on the leaf. Two reasons, and the
+        // second is the one that would have bitten:
+        //
+        //  1. `ENQUIRE_BASE` is declared once at
+        //     `src/lib/discover/shapeVendor.js` and already serves every
+        //     Enquire tap in the estate. Composing a `wa.me` on the pwa side
+        //     would be a second home for the house number, and `waNumbers.js`'s
+        //     own header records what two homes cost last time — eleven
+        //     independent fallbacks, one of them on the wrong lane (F-05.23).
+        //
+        //  2. ⚠ THE MESSAGE BODY NEEDS THE UPPERCASE HANDLE AND THE WIRE
+        //     CARRIES THE LOWERCASE ONE. `handle` above is lowercased for the
+        //     `/v/<handle>` address; `vendorCard.js` is explicit that the token
+        //     is built from `routing_handle` UPPERCASE and "NOT from the wire's
+        //     `handle`". A leaf reusing the field beside it would have shipped
+        //     `TDW-makeupbyswatiroy`. It happens to route today only because
+        //     `vendorInbound.js` upper-cases the first word before matching —
+        //     which is a property of the intake, not a promise to this file.
+        //
+        // UNLINKABLE CREDITS KEEP NO DOOR: `null`, the same absence as `handle`.
+        // The roll is not a directory (R-G11.6) — an unclaimed credit has no
+        // storefront to send anyone to, and a TDW line with a code nobody owns
+        // would route an enquiry into nothing.
+        enquire_link: linkable ? ENQUIRE_BASE + String(v.routing_handle) : null,
       };
     })
     .filter((r) => r.name);
 }
 
+/**
+ * ⚠ SEASON IS STILL DERIVED AND STILL HAS ONE HOME (R-G11.16, R-G13.11).
+ * 0137 adds a date COLUMN, not a season column. The derivation simply gains a
+ * second source in order of authority: the calendar's own `event_date` first,
+ * the typed `wedding_date` only when there is no event behind the page.
+ *
+ * The event wins deliberately. If a page somehow carried both, the calendar row
+ * is the one the vendor maintains and the typed date is the one she entered once
+ * — preferring the typed value would let a stale keystroke outrank a live row.
+ *
+ * A page with neither renders NO season and the meta line drops the part, which
+ * is what `metaLine` already does for a deleted event (the FK is ON DELETE SET
+ * NULL). Never a guessed date.
+ */
 function publicWedding(wedding, eventDate) {
+  const dated = eventDate || wedding.wedding_date || null;
   return {
     slug:   wedding.slug,
     title:  wedding.title,
     venue:  wedding.venue,
     city:   wedding.city,
-    season: eventDate ? seasonYearFor(eventDate) : null,
+    season: dated ? seasonYearFor(dated) : null,
   };
 }
 
@@ -601,5 +783,5 @@ module.exports = {
   mintConsentToken, findWeddingByConsentToken, setConsentByToken,
   checkConsentLastFour, lastFourOf, CONSENT_MAX_ATTEMPTS,
   findCreditByToken, settleCredit,
-  publicRoll, publicWedding,
+  publicRoll, publicWedding, isLinkable, teamTargets,
 };
