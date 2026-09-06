@@ -1,0 +1,47 @@
+# scripts/floor-manifest-g13r7-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.3 rider 7 — F-40.210: the wamid that was never read.
+#
+# ⚠ RIDER 7, NOT 6. The relay said "rider 6"; that number is taken — the re-point
+# shipped as rider 6 at cc0464c. Derived at origin before cutting, not assumed.
+#
+# F-14.16: a dirty file outside this list is a STOP. Three files, this seat's,
+# on a tree clean at cc0464c before a byte moved.
+#
+# THE DEFECT. `recordAlert` read `out.wamid` and `out.messages[0].id`. NEITHER
+# EXISTS. Traced Meta-outward by command:
+#   metaCloud.js:156 -> { ok, wamid, raw }
+#   sendWa.js:252    -> { sent, mode, key, from, to, payload, RESULT: res }
+# The id is one level down. Both walk rows hold `wamid: null`, every receipt
+# reads `home=none matched=0 — NO ROW CARRIES THIS SID`, and F-40.177's cure —
+# the entire point of 0141 — never worked. The rows exist; the join did not.
+#
+# ⚠ THE MESSAGES ARRIVED. Never a delivery failure: both handsets got their
+# alert (Swati's included — F-40.176 closed on glass) and Railway logged both
+# wamids on the send line. This is bookkeeping, invisible for exactly the reason
+# F-06.143 was: the failure to record was itself unrecorded.
+#
+# ⚠ AND THE CELL IS THE HALF THAT MATTERS. The seat NAMED this hole one packet
+# before it bit — the bench stub had no `.insert`, so every row write in every
+# prior run failed into the module's own correct catch, twelve
+# `[leadAlert:record] insert failed` lines scrolling past a GREEN FLOOR — and
+# shipped anyway, saying the walk would cover it. C6e now DRIVES the write: the
+# stub learns `.insert`, the rows are captured, and their shape is asserted
+# against 0141's columns by name. `sendWa` is stubbed at its REAL shape, because
+# stubbing `{ wamid }` at the top level would have let the broken read pass.
+# Two mutations bite: reverting the read, and nulling the row's wamid. 22/22.
+#
+# "An assertion that reads is not an assertion that runs" — R-40.94's second
+# clause, and its third specimen in one day, this time on the seat that filed it.
+#
+# THE NULL THAT REMAINS IS MEANINGFUL. A `no_phone` or `opted_out` row still
+# carries `wamid: null`, because Meta never saw it. `status` carries the reason
+# and the cell asserts both together, so the two nulls stay distinguishable.
+#
+# OWED, NOT IN THIS PACKET: the two rows the walk already wrote hold null wamids
+# and cannot be repaired — Meta's receipts for them are gone. They stay as the
+# specimen. The pwa half (F-40.178's title, F-40.211's WEDDING chip) cuts at the
+# pwa tip after G3.4's micro, per the chair.
+
+scripts/b57_g13_team_bench.js
+scripts/floor-manifest-g13r7-dreamos.txt
+src/lib/vendor/weddingLeadAlert.js

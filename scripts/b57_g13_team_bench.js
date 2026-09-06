@@ -569,6 +569,100 @@ sec('C6d \u00b7 rider 5 (F-40.177 / F-40.179)');
   ok('0141 touches public.messages nowhere', !/ALTER TABLE public\.messages|INSERT INTO public\.messages/.test(sql));
 }
 
+// ── C6e · THE ALERT ROW IS DRIVEN, NOT READ (F-40.210) ─────────────────────
+// THE CELL THAT WAS MISSING, AND THE SEAT NAMED THE HOLE BEFORE IT SHIPPED.
+// C6c/C6d assert that `recordAlert(` APPEARS in the module. Appearing is not
+// working: this bench's stub had no `.insert`, so every row write in every prior
+// run FAILED and was swallowed by the module's own (correct) catch — twelve
+// `[leadAlert:record] insert failed` lines scrolled past a green floor, and the
+// walk then wrote two production rows with `wamid: null`.
+//
+// So the stub LEARNS `.insert`, CAPTURES the rows, and these cells assert their
+// SHAPE against 0141's columns. "An assertion that reads is not an assertion
+// that runs" — R-40.94's second clause, third specimen of the day.
+sec('C6e \u00b7 the lead_alerts row, driven (F-40.210)');
+function alertStubDb(rows) {
+  return {
+    from(t) {
+      if (t === 'lead_alerts') {
+        return { insert: async (r) => { rows.push(r); return { error: null }; } };
+      }
+      const api = {
+        _t: t, _ids: [],
+        select() { return api; },
+        in(_c, ids) { api._ids = ids || []; return api; },
+        then(res) { return Promise.resolve(api._rows()).then(res); },
+        _rows() {
+          if (api._t === 'vendors') {
+            return { data: api._ids.map((id) => ({ id, user_id: 'u' + id, business_name: 'Reg ' + id })) };
+          }
+          return { data: api._ids.map((id) => ({ id: id, phone: '+919812345678' })) };
+        },
+      };
+      return api;
+    },
+  };
+}
+asyncCells.push(async () => {
+  // `sendWa` is stubbed at its REAL shape — the one derived Meta-outward through
+  // metaCloud.js:156 -> sendWa.js:252 — so the extraction is exercised against
+  // exactly what it receives in production. Stubbing `{ wamid }` at the top
+  // level would have let the old, broken read pass.
+  const sendWaPath = require.resolve(P('src/lib/sendWa.js'));
+  const cached = require.cache[sendWaPath];
+  require.cache[sendWaPath] = {
+    id: sendWaPath, filename: sendWaPath, loaded: true, exports: {
+      sendWa: async () => ({
+        sent: true, mode: 'template', key: 'lead_alert_utility',
+        from: 'f', to: 't', payload: {},
+        result: { ok: true, wamid: 'wamid.TEST123', raw: {} },
+      }),
+    },
+  };
+  const rows = [];
+  let A2;
+  try {
+    A2 = fresh('src/lib/vendor/weddingLeadAlert.js');
+    await A2.alertWeddingLead(alertStubDb(rows), {
+      targets: [{ vendor_id: 'v1', name: 'Reg v1' }],
+      weddingDate: null, logger: null, source: 'wedding_team',
+    });
+  } finally {
+    if (cached) require.cache[sendWaPath] = cached; else delete require.cache[sendWaPath];
+  }
+
+  ok('a successful send writes exactly one lead_alerts row', rows.length === 1, String(rows.length));
+  const r = rows[0] || {};
+  // ⚠ THE ASSERTION F-40.210 NEEDED. A null here IS the defect: the row exists,
+  // the receipt router matches nothing, and the status freezes at `sent` while
+  // Meta reports delivered and read to nobody.
+  ok('...carrying the wamid from out.result.wamid, never null',
+    r.wamid === 'wamid.TEST123', String(r.wamid));
+  ok('...with status sent', r.status === 'sent', String(r.status));
+  // 0141's columns, by name. A row the table would reject fails SILENTLY,
+  // because recordAlert catches and warns by design.
+  const COLS = ['vendor_id', 'lead_id', 'source', 'template_key', 'wamid', 'status', 'error_code', 'error_title'];
+  ok('...and every key it writes is a column 0141 created',
+    Object.keys(r).every((k) => COLS.includes(k)), Object.keys(r).join(','));
+  ok('...naming the template actually sent, not one inferred from source',
+    r.template_key === 'lead_alert_utility', String(r.template_key));
+  ok('...and the source it was told', r.source === 'wedding_team', String(r.source));
+});
+asyncCells.push(async () => {
+  // A vendor with no phone: the row is still written and its wamid is null
+  // because META NEVER SAW IT. That null is meaningful; F-40.210's was a bug.
+  // The two are indistinguishable in the table, which is why `status` carries
+  // the reason and the cell asserts both together.
+  const A = fresh('src/lib/vendor/weddingLeadAlert.js');
+  const rows = [];
+  await A.alertOne(alertStubDb(rows), {
+    vendorId: 'v9', vendorName: 'A', userPhone: null, weddingDate: null, source: 'wedding_guest',
+  });
+  ok('a no_phone outcome is RECORDED, with a meaningful null wamid',
+    rows.length === 1 && rows[0].status === 'no_phone' && rows[0].wamid === null,
+    JSON.stringify(rows[0] || null));
+});
+
 // ── C7 · THE PROBE ──────────────────────────────────────────────────────────
 sec('C7 \u00b7 the reel probe (R-G13.10)');
 {
@@ -680,6 +774,10 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       ['src/lib/vendor/relayStatus.js', ".from('lead_alerts')", ".from('lead_alerts_gone')"],
       // 3k · a failed send stops being recorded.
       ['src/lib/vendor/weddingLeadAlert.js', 'wamid: null, status: reason,', 'wamid: null,'],
+      // 3l · the wamid read reverts to the shape that never existed — F-40.210.
+      ['src/lib/vendor/weddingLeadAlert.js', '(out.result && out.result.wamid)', '(out.nowhere)'],
+      // 3m · the alert row stops carrying the wamid at all.
+      ["src/lib/vendor/weddingLeadAlert.js", "template_key: TEMPLATE_KEY, wamid, status: 'sent'", "template_key: TEMPLATE_KEY, wamid: null, status: 'sent'"],
       // 4 · nameless targets no longer dropped.
       [LIB, 'return [...out.values()].filter((t) => t.name);', 'return [...out.values()];'],
       // 5 · the guest token spelled at the door again (F-40.111 restored).

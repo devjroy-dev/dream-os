@@ -149,7 +149,29 @@ async function alertOne(supabase, { vendorId, vendorName, userPhone, weddingDate
       vars: [vendorName || 'there', monthPhrase(weddingDate), VENDOR_LEADS_URL],
       supabase,
     });
-    const wamid = (out && (out.wamid || (out.messages && out.messages[0] && out.messages[0].id))) || null;
+    // ── THE WAMID LIVES AT `out.result.wamid` — F-40.210 ─────────────────────
+    // This line read `out.wamid` and `out.messages[0].id`. NEITHER EXISTS.
+    // Traced by command, Meta outward:
+    //   metaCloud.js:156  -> { ok, wamid, raw }
+    //   sendWa.js:252     -> { sent, mode, key, from, to, payload, RESULT: res }
+    // so the id is one level down, and both old paths returned undefined. Every
+    // `lead_alerts` row written on the 2026-09-07 walk holds `wamid: null`, the
+    // receipt router matches nothing, and F-40.177's cure — the whole point of
+    // 0141 — never worked. The rows exist; the join to Meta did not.
+    //
+    // ⚠ THE MESSAGES ARRIVED. This was never a delivery failure: both handsets
+    // got their alert and Railway logged both wamids on the send line. It is
+    // bookkeeping, and it was invisible for exactly the reason F-06.143 was —
+    // the failure to record was itself unrecorded.
+    //
+    // The fallbacks are KEPT, ordered real-first. `result.wamid` is what today's
+    // sendWa returns; the other two cost nothing and mean a shape change
+    // upstream degrades to a null rather than to a silent wrong.
+    const wamid = (out && (
+      (out.result && out.result.wamid)
+      || out.wamid
+      || (out.messages && out.messages[0] && out.messages[0].id)
+    )) || null;
     await recordAlert(supabase, {
       vendor_id: vendorId, lead_id: leadId || null, source: source || null,
       template_key: TEMPLATE_KEY, wamid, status: 'sent',
