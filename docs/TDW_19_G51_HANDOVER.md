@@ -1,6 +1,6 @@
 # TDW_19 G5.1 — THE OVERFLOW EXCHANGE · dream-os HALF · HANDOVER
 
-**Base** dream-os `38e52fc` (rider 2; the half sealed at `556f0c1`, this adds §6b and §9)
+**Base** dream-os `390c144` (SITTING 1 SEALED — see §11; rider 2 was the half sealed at `556f0c1`, this adds §6b and §9)
 **Sealed base** `3c0f8d6` (re-derived at the cut; the tip moved **three times** under this seat — see §6).
 **Delivery** 8 files, listed in `scripts/floor-manifest-g51-dreamos.txt`.
 **Chair** CE-40, rulings R-G51.1–.10 (relay 2), B8 and the migration number ruled at relay 3 (R-40.44).
@@ -142,3 +142,51 @@ The cure is a **classification in `LIST_WIRE_CENSUS`, amended by label — never
 Worth noting what the two instruments did between them. `b51` §8b is the cell that would have caught F-40.109 had it existed. `b36` is a cell that already existed and caught the *cure* the moment it moved something it guards. **The estate's older instruments are load-bearing for work written months after them**, and the right response to one of them reddening is to derive attribution first and only then decide whether the finding is against the delivery or against the cell.
 
 **Floor at `38e52fc`: `FLOOR = NAMED BASE, no delta`, exit 0, 15 RED, declared files unmoved.**
+
+---
+
+# 11 · SITTING 1 — SEALED
+
+**dream-os `fdc4b8c` · pwa `89bee50`.** Sealed by CE-40, 2026-09-06, on the founder's walk.
+
+## 11.1 · What is live
+
+`0135_lead_referrals` in production. The ladder was contiguous `0133 · 0134 · 0135` **at the seal** and has since reached `0138` under sibling seats — recorded as a moment, not as a standing fact, because a ladder claim in a handover is stale the day after it is written. The plane's one writer. A forward door that refuses **before** it writes. The room. The record's one control. The sheet with its refusal state. Both stamps. The `REFERRAL` chip. The hub row live — three of nine `Open`.
+
+`b51` **79/79** · `b40` **GREEN with C101** · both floors **NAMED BASE, no delta**.
+
+**Witnessed on the founder's phone, not asserted:** the forward landed; the original's state never moved (R-G51.3); `Source: Peer Referral` and `Forwarded by · Dev Roy Photography` on the peer's copy; `Sent 1 · Received 0` against `Sent 0 · Received 1`; and — the ruling made visible — a **basic-tier** vendor carrying the referrer's name and note **beside an upgrade line where her contact row should be** (R-G51.11). The chip on glass in two inks, teal `REFERRAL` beside brass `TDW`, is R-G51.16 witnessed.
+
+## 11.2 · Ten rulings, five findings cured
+
+R-G51.1 through .16. F-40.84 (the dedupe false-done), .85 (`referrer_name` rendered nowhere), .109 (a function with no caller), .119 (vendor prose title-cased), .120 (the note rendered twice).
+
+## 11.3 · What this sitting taught, once, five times over
+
+**A cell only sees what it looks at.**
+
+Deleting the dedupe refusal reddened nothing — the guards were outcome-equivalent. Leaking `phone` into the picker's columns reddened nothing — the refusal lived only in a comment. `referralStampsForLeads` shipped exported, benched and **mounted on no door**, and every bench was green because every bench tested the function rather than its reachability. The note rendered twice on one record and every bench was green because each asserted the note *reached* the wire, none counted how many places it *arrived* in. And `cap()` had been title-casing vendor prose across three slices since the sheet was built.
+
+**Three were found by breaking something on purpose. Two only by the founder's eye on glass.** Every cell in this delivery stopped at the wire; the glass is where the last two lived. R-39.15 earned its keep, F-40.123 files the question for Block 09, and a render-assertion arm was refused for now — a DOM cell per room is its own maintenance disease.
+
+Four **cell** defects were owned in band (§4, §10.4): a money scan that matched the local `inRes`; a sole-writer cell that counted files *naming* a table rather than *calling* it; an ordering claim it could not observe; and a batching matcher whose `[^)]*` could not cross a `)`. **A cell that cannot go red proves nothing, and the way to find out what a cell looks at is to break the thing it guards.**
+
+## 11.4 · Delivery discipline, for the record
+
+The tip moved **seven times** under this seat across the two halves. Every carry: `git diff --name-only` against the manifest **first** to prove disjoint, then stash → ff-merge → pop, then sha256 over every declared path on both sides — the set and the contents. **No carry moved a byte.**
+
+Three cuts were destroyed before they shipped. One was refused by `base_guard.sh`. One was built on a tree two commits stale because **the pwa half was pushed from the founder's console, so this workspace never carried the commit** — four of five files would have silently reverted work that landed after. One went stale mid-cut. The standing lesson: **a workspace that did not perform the push is not on the tip merely because its work is.**
+
+Two laws were banked from this seat's own mistakes (§9.2): a running floor's manifest is a **snapshot, not a subscription** — if a declared file must change, kill the run and restart; and a **DDL cell reads disk while only `information_schema` reads the database** — `0135` returned zero rows on the first ask with the bench fully green.
+
+## 11.5 · Open, and none of it closable here
+
+- **Sitting 2 · the WhatsApp alert to the peer (R-G51.15).** Chartered, held on the virgin number R-40.16 still waits for. Until it lands the room is honest but **quiet**: the peer learns she has work only by opening the app. This is the sitting that makes the room worth opening.
+- **R-40.57 · the typographic apostrophe, estate-wide.** `refusalGeneric` (`referrals.ts:110`) is **vetoed as it stands** (R-40.56) and left with its straight apostrophe **deliberately**: F-40.124 found the rule has never once shipped in a vendor-facing byte — 112 straight apostrophes across five copy homes, zero curly outside comments. Curing one byte would make this file the estate's only curly home and put two spellings of one mark on a single sheet. **The cure's home is R-40.57's estate-wide delivery**, this seat's, after the two build ZIPs. dream-os's template bodies are excluded by rule: those bytes must equal what Meta holds character for character.
+- **`PUBLIC_SCHEMA.md` regen.** Until it runs, `0135` is `lead_referrals`' **sole witness** — cite it by line, never by snapshot.
+- **F-40.121** — `set-state-in-effect`, now four solutions rooms, one cure owed.
+- **F-40.69** — chartered to the G2 seat; this sitting paid the toll one last time (359 → 362, exactly the three files the pwa half committed).
+
+## 11.6 · The unit, restated
+
+The room counts **forwards**, sent and received. Never weddings — the plane holds a lead. **Never money** — master §7, and there is no figure rule in the room's stylesheet to inherit. No score, no streak, no reciprocity nag: the balance is stated and left alone, because the moment it scolds, the balance becomes a debt and the exchange becomes the commission this block exists to refuse.
