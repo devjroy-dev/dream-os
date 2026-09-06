@@ -475,7 +475,14 @@ section('14. the doors refuse before they act');
   // The INTENT was never adjacency: it is that `/reminders` is reached before any
   // root mount can swallow it. Asserted as an ORDER over the mount list, which is
   // the property, and which survives the next reshuffle.
-  const coreMounts = [...read('src/api/vendor/core.js').matchAll(/router\.use\('([^']+)'/g)].map(m => m[1]);
+  // ⚠ `code()`, NEVER `read()`. The first cut scanned raw text and picked up a
+  // PHANTOM ROOT MOUNT out of core.js's own comment — the line explaining why the
+  // root mount did not move contains the string `router.use('/', schedules)`, and
+  // the regex matched it ahead of the real one, so the §0.3 cell went red against
+  // a mount that does not exist. Third time this class has bitten in this arc: the
+  // glyph cell read `formatRs`'s doc-comment, and this bench's absence cells read
+  // its own header. A cell that scans for CODE must strip comments first, always.
+  const coreMounts = [...code('src/api/vendor/core.js').matchAll(/router\.use\('([^']+)'/g)].map(m => m[1]);
   const iRem = coreMounts.indexOf('/reminders');
   const iRoot = coreMounts.indexOf('/');
   // ⚠ THE SECOND CUT OF THIS CELL PASSED FOR THE WRONG REASON and is recorded
@@ -492,9 +499,32 @@ section('14. the doors refuse before they act');
   ok('the reminders segment is mounted in core.js', iRem > -1);
   ok('no root-mounted router declares a competing /reminders route',
      !/router\.(get|post|patch|delete)\('\/reminders/.test(read('src/api/vendor/schedules.js')));
-  ok('the schedules root mount precedes /invoices, so the schedule GET is reachable (F-40.181)',
-     coreMounts.indexOf('/') > -1 && coreMounts.indexOf('/invoices') > -1 &&
-     coreMounts.indexOf('/') < coreMounts.indexOf('/invoices'));
+  // ⚠ THE PROPERTY MOVED WITH THE CURE, AND THE CELL MOVES WITH IT.
+  // The first cure lifted the ROOT mount above `/invoices`; that reddened `b46`
+  // §0.3, which needs `/money` above the root. No position satisfies both, so the
+  // router was split by address shape: `invoiceSchedule.js` mounts at `/invoices`
+  // ABOVE the invoices router, and the root mount returns to its old home.
+  // What must hold is now an ADJACENCY that is genuinely load-bearing — anything
+  // between the two `/invoices` mounts could match `/invoices/{uuid}/…` first.
+  // ⚠ THE MOUNT STRING CANNOT CARRY THIS ASSERTION. Both mounts are `/invoices`,
+  // so an index comparison over mount PATHS is [5,6] whichever router sits first —
+  // the first cut of this cell swapped the two routers in a mutation and went
+  // GREEN, proving nothing. What distinguishes them is the ROUTER EACH REQUIRES,
+  // so that is what the cell reads.
+  const invPairs = [...code('src/api/vendor/core.js')
+    .matchAll(/router\.use\('\/invoices',\s*require\('\.\/(\w+)'\)\)/g)].map(m => m[1]);
+  ok('both /invoices mounts exist and invoiceSchedule is FIRST (F-40.181)',
+     invPairs.length === 2 && invPairs[0] === 'invoiceSchedule' && invPairs[1] === 'invoices');
+  ok('and they are adjacent — nothing may match /invoices/:id/... between them',
+     /router\.use\('\/invoices',\s*require\('\.\/invoiceSchedule'\)\);\s*router\.use\('\/invoices',\s*require\('\.\/invoices'\)\);/
+       .test(code('src/api/vendor/core.js')));
+  ok('the schedule routes are declared relative to the /invoices mount, not renamed',
+     /router\.get\('\/:invoiceId\/schedule'/.test(code('src/api/vendor/invoiceSchedule.js')));
+  ok('schedules.js keeps only the /schedules shape, so the root mount can stay put',
+     !/\/invoices\/:invoiceId\/schedule'/.test(code('src/api/vendor/schedules.js')));
+  ok('b46 §0.3 holds — /money still stands above the bare root mount',
+     coreMounts.indexOf('/money') > -1 && coreMounts.indexOf('/') > -1 &&
+     coreMounts.indexOf('/money') < coreMounts.indexOf('/'));
 }
 
 console.log(`\n${pass}/${pass + fail} cells green.`);

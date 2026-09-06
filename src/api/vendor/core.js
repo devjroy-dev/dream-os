@@ -36,23 +36,21 @@ router.use('/today',    require('../vendor-engine/today'));     // Phase 4 flip 
 router.use('/worklist', require('./worklistToday'));
 router.use('/leads',    require('./leads'));
 router.use('/clients',  require('./clients'));
-// ── F-40.181 · THE SCHEDULES ROUTER GOES FIRST, AND THE ORDER IS THE CURE ──
-// It is mounted at the ROOT and owns `/invoices/:invoiceId/schedule`. Mounted
-// AFTER `/invoices`, its GET was unreachable: `invoices.js:75` owns
-// `GET /:vendorId`, so `GET /invoices/{uuid}/schedule` entered that router,
-// matched no route, and 404'd before the root mount was ever consulted.
+// ── F-40.181 · THE SCHEDULE ROUTES MOUNT HERE, ABOVE THE INVOICES ROUTER ───
+// `invoiceSchedule.js` declares `/:invoiceId/schedule` and must be reached before
+// `invoices.js`'s `GET /:vendorId`, which would otherwise match the same request
+// and 404 — the defect the founder's walk exposed once G3.4 flipped the schedule
+// panel's flag. Adjacency here is the whole cure; anything between them is a
+// router that could match `/invoices/{uuid}/...` first.
 //
-// ⚠ THE POST NEVER COLLIDED, WHICH IS WHY THIS HID FOR MONTHS. `/:vendorId` is a
-// GET, so `POST /invoices/{id}/schedule` fell through to the root mount and
-// worked. Create worked, re-read did not — and `SCHEDULE_ENABLED = false` kept
-// even that invisible until G3.4 flipped it. The stale flag's comment said it
-// guarded a 404 against a route that was not built; the route WAS built and the
-// 404 WAS real, by a different mechanism than anyone had looked for.
-//
-// Mounted at the root rather than given a segment because its two paths already
-// begin `/invoices/` and `/schedules/` — a segment would rename live addresses
-// the pwa holds, to cure an ordering problem that ordering cures.
-router.use('/',            require('./schedules'));
+// ⚠ THE ROOT MOUNT DID NOT MOVE. The first cure lifted `router.use('/', schedules)`
+// above `/invoices` and reddened `b46` §0.3, which asserts `/money` stands above
+// the bare root — a root mount is reached for every path and `/money`'s placement
+// was chosen for exactly that. No single position satisfies both: §0.3 wants the
+// root below `/money`, F-40.181 wants it above `/invoices`, and `/invoices` sits
+// above `/money`. So the router was split by address shape instead, and the root
+// mount stays where it always was.
+router.use('/invoices', require('./invoiceSchedule'));
 router.use('/invoices', require('./invoices'));
 router.use('/expenses', require('./expenses'));
 router.use('/events',   require('./events'));
@@ -102,6 +100,7 @@ router.use('/solutions',   require('./solutions/index'));
 // dodged. It is placement that stays correct when `schedules` grows a segment,
 // which is the failure the line below it was written for.
 router.use('/money',       require('./money'));
+router.use('/',            require('./schedules'));
 // ── BLOCK 19 · G3.4 — THE PAYMENT REMINDERS DOORS ─────────────────────────
 // Its own segment router rather than a door on `/solutions`, because that file
 // declares itself GET-only with POSTs conditional-withheld and this feature has

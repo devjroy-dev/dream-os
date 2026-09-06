@@ -72,9 +72,12 @@ const MUTATIONS = [
   // report CRASH. A harness that cannot detect its own blind spot is the thing
   // this file exists to stop being.
   // ── F-40.181 / R-G34.3 · THE RIDER'S TWO CURES, PROVEN BOTH WAYS ─────────
-  ['§12 mount /invoices before schedules', 'src/api/vendor/core.js',
-   "router.use('/',            require('./schedules'));\nrouter.use('/invoices', require('./invoices'));",
-   "router.use('/invoices', require('./invoices'));\nrouter.use('/',            require('./schedules'));"],
+  ['§12 invoices router mounted first', 'src/api/vendor/core.js',
+   "router.use('/invoices', require('./invoiceSchedule'));\nrouter.use('/invoices', require('./invoices'));",
+   "router.use('/invoices', require('./invoices'));\nrouter.use('/invoices', require('./invoiceSchedule'));"],
+  ['§15 root mount lifted above /invoices', 'src/api/vendor/core.js',
+   "router.use('/money',       require('./money'));\nrouter.use('/',            require('./schedules'));",
+   "router.use('/',            require('./schedules'));\nrouter.use('/money',       require('./money'));"],
   ['§13 drop the second phone home', 'src/lib/vendor/paymentReminders.js',
    "  const toPhone   = await resolveClientPhone(supabase, invoice);",
    "  const toPhone   = (invoice && invoice.client_phone) || null;"],

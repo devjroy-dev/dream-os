@@ -1,9 +1,13 @@
 // src/api/vendor/schedules.js
-// POST   /api/v2/vendor/invoices/:invoiceId/schedule  — create schedule
-// GET    /api/v2/vendor/invoices/:invoiceId/schedule  — get schedule
-// DELETE /api/v2/vendor/invoices/:invoiceId/schedule  — delete schedule
 // PATCH  /api/v2/vendor/schedules/:milestoneId        — update milestone
 // POST   /api/v2/vendor/schedules/:milestoneId/paid   — mark paid
+//
+// ⚠ THE THREE /invoices/:invoiceId/schedule ROUTES LEFT THIS FILE (F-40.181).
+// They live in `invoiceSchedule.js`, mounted at `/invoices` above the invoices
+// router, because at the bare root they sat below `/invoices` and `GET /:vendorId`
+// swallowed the GET. This router keeps the `/schedules/:milestoneId*` shape and
+// stays on the root mount in its original position, which is what `b46` §0.3
+// asserts — `/money` above the bare root. One router per address shape.
 'use strict';
 
 const express       = require('express');
@@ -12,39 +16,9 @@ const requireAuth   = require('../middleware/requireAuth');
 const resolveVendor = require('../middleware/resolveVendor');
 const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
-const { createSchedule, markMilestonePaid, deleteSchedule } = require('../../lib/vendor/schedules');
+const { markMilestonePaid } = require('../../lib/vendor/schedules');
 
 const authMw = [requireAuth, resolveVendor()];
-
-// POST /invoices/:invoiceId/schedule
-router.post('/invoices/:invoiceId/schedule', ...authMw, asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const { milestones } = req.body || {};
-  const result = await createSchedule(supabase, req.vendor.id, req.params.invoiceId, milestones);
-  if (!result.ok) return errRes(res, result.code === 409 ? 409 : 400, result.error);
-  return okRes(res, { schedule: result.schedule });
-}));
-
-// GET /invoices/:invoiceId/schedule
-router.get('/invoices/:invoiceId/schedule', ...authMw, asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const { data, error } = await supabase.from('payment_schedules')
-    .select('*')
-    .eq('invoice_id', req.params.invoiceId)
-    .eq('vendor_id', req.vendor.id)
-    .order('ordinal', { ascending: true });
-  if (error) return errRes(res, 500, error.message);
-  if (!data || data.length === 0) return errRes(res, 404, 'No schedule found for this invoice.');
-  return okRes(res, { schedule: data });
-}));
-
-// DELETE /invoices/:invoiceId/schedule
-router.delete('/invoices/:invoiceId/schedule', ...authMw, asyncHandler(async (req, res) => {
-  const supabase = req.app.locals.supabase;
-  const result = await deleteSchedule(supabase, req.vendor.id, req.params.invoiceId);
-  if (!result.ok) return errRes(res, 409, result.error);
-  return okRes(res, { deleted: true });
-}));
 
 // PATCH /schedules/:milestoneId
 router.patch('/schedules/:milestoneId', ...authMw, asyncHandler(async (req, res) => {
