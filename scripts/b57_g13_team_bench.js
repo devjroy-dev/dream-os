@@ -421,6 +421,72 @@ asyncCells.push(async () => {
     `status ${status} body ${JSON.stringify(body)}`);
 });
 
+// ── C6c · THE LEAD ALERT (R-40.72) ─────────────────────────────────────────
+// Nine leads were written across G1.2 and G1.3 and NOT ONE VENDOR WAS TOLD.
+// These cells drive the real module with a stubbed `sendWa`, so what is asserted
+// is behaviour and not the presence of a require.
+sec('C6c \u00b7 the wedding-lead alert (R-40.72)');
+{
+  const A = fresh('src/lib/vendor/weddingLeadAlert.js');
+  ok('the cap is TEN, and it is a named constant', A.MAX_ALERTS_PER_TAP === 10, String(A.MAX_ALERTS_PER_TAP));
+  const src = strip(read('src/lib/vendor/weddingLeadAlert.js'));
+  ok('the template is lead_alert_basic \u2014 identity-free, for everyone',
+    /templateKey: 'lead_alert_basic'/.test(src));
+  ok('UNTIERED \u2014 the paid template is never reached from here',
+    !/enquiry_alert_vendor/.test(src));
+  ok('not one variable carries the guest\u2019s identity',
+    !/bride|guest_name|\bphone\b\s*\]/.test(src.split('vars:')[1].split(']')[0]));
+  ok('the month rides monthPhrase\u2019s one home, so a blank month reads "upcoming"',
+    /monthPhrase\(weddingDate\)/.test(src) && !/'upcoming'/.test(src));
+  ok('the opt-out gate is sendWa\u2019s, not reimplemented',
+    !/isOptedOut|opted_out.*=.*await/.test(src) && /WaOptedOutError/.test(src));
+  ok('the room\u2019s told state reads wamid only', /wamid/.test(src) && !/body:.*out\./.test(src));
+}
+{
+  // BOTH DOORS CALL IT, AFTER THE WRITE.
+  const tm = strip(read(TEAM)), dl = strip(read(DOWNLOAD));
+  ok('the team door alerts', /alertWeddingLead\(/.test(tm));
+  ok('...with the SAME target set it wrote leads to', /targets, weddingDate/.test(tm));
+  ok('...after the writes, before the redirect',
+    tm.indexOf('alertWeddingLead(') > tm.indexOf('createLead(')
+    && tm.indexOf('alertWeddingLead(') < tm.lastIndexOf('res.redirect(303'));
+  ok('the download door alerts the OWNER, one target',
+    /alertWeddingLead\(/.test(dl) && /vendor_id: owner\.id/.test(dl));
+  ok('...and ONLY when a lead was actually written',
+    /if \(leadWritten\)/.test(dl));
+  ok('neither door can be turned into a 500 by a failed alert',
+    /alerts:threw/.test(tm) && /alert:threw/.test(dl));
+}
+asyncCells.push(async () => {
+  const A = fresh('src/lib/vendor/weddingLeadAlert.js');
+  // A stub db that answers the module's two reads, and 12 targets to prove the cap.
+  const many = Array.from({ length: 12 }, (_, i) => ({ vendor_id: 'v' + i, name: 'V' + i }));
+  const db = { from(t) { const api = { _t: t, _ids: null,
+      select() { return api; }, in(_c, ids) { api._ids = ids; return api; },
+      then(r) { return Promise.resolve(api._rows()).then(r); },
+      _rows() {
+        if (api._t === 'vendors') return { data: api._ids.map((id) => ({ id, user_id: 'u' + id, business_name: 'Reg ' + id })) };
+        return { data: api._ids.map((id) => ({ id, phone: '+9199' + id })) };
+      } }; return api; } };
+  let logged = null;
+  const out = await A.alertWeddingLead(db, { targets: many, weddingDate: null, logger: { error(k, v) { if (k === 'weddingLeadAlert:capped') logged = v; } } });
+  ok('twelve targets attempt TEN sends, never twelve', out.attempted === 10, String(out.attempted));
+  ok('...and the two it refused are REPORTED, never silently trimmed',
+    out.skipped === 2 && logged && logged.skipped === 2, JSON.stringify(logged));
+  const few = await A.alertWeddingLead(db, { targets: [{ vendor_id: 'v1', name: 'A' }], weddingDate: null, logger: null });
+  ok('a normal roll is not capped', few.attempted === 1 && few.skipped === 0);
+  const none = await A.alertWeddingLead(db, { targets: [], weddingDate: null, logger: null });
+  ok('no targets is an answer, not a throw', none.attempted === 0);
+});
+asyncCells.push(async () => {
+  const A = fresh('src/lib/vendor/weddingLeadAlert.js');
+  // A vendor with no phone is a FACT about that account, not a failure of ours —
+  // and the lead is already written, so refusing would undo nothing.
+  const r = await A.alertOne({}, { vendorId: 'v1', vendorName: 'A', userPhone: null, weddingDate: null });
+  ok('a vendor with no phone is reported, never thrown',
+    r.sent === false && r.reason === 'no_phone');
+});
+
 // ── C7 · THE PROBE ──────────────────────────────────────────────────────────
 sec('C7 \u00b7 the reel probe (R-G13.10)');
 {
@@ -520,6 +586,12 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       ['src/api/vendor/studio/weddings.js', 'sendConsentInvite, siteBase }', 'sendConsentInvite }'],
       // 3e · the list stops carrying the probe — the record goes back to the em dash.
       ['src/api/vendor/studio/weddings.js', 'weddings: rows, reel: reelShape(await readFfmpeg())', 'weddings: rows'],
+      // 3f · the alert cap is removed — one guest tap could message a whole roll.
+      ['src/lib/vendor/weddingLeadAlert.js', 'const MAX_ALERTS_PER_TAP = 10;', 'const MAX_ALERTS_PER_TAP = 9999;'],
+      // 3g · the download door alerts even when no lead was written.
+      ['src/api/public/weddingDownload.js', 'if (leadWritten) {', 'if (true) {'],
+      // 3h · the alert is tiered after all — the distinction with nothing behind it.
+      ['src/lib/vendor/weddingLeadAlert.js', "templateKey: 'lead_alert_basic',", "templateKey: 'enquiry_alert_vendor',"],
       // 4 · nameless targets no longer dropped.
       [LIB, 'return [...out.values()].filter((t) => t.name);', 'return [...out.values()];'],
       // 5 · the guest token spelled at the door again (F-40.111 restored).

@@ -38,6 +38,7 @@ const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
 const { createLead } = require('../../lib/vendor/leads');
 const { WEDDING_GUEST_SOURCE } = require('../../lib/vendor/leadSources');
+const { alertWeddingLead } = require('../../lib/vendor/weddingLeadAlert');
 const { signArchive, archiveDownloadUrl, nowTimestamp } = require('../../lib/cloudinarySign');
 const { mintSigned, verifySigned } = require('../../lib/signedSession');
 const { siteBase } = require('../../lib/vendor/creditInvite');
@@ -199,6 +200,32 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
     // nothing she could do about it. Reported, not swallowed: `lead` is on the
     // response so the walk can read it.
     req.app.locals.logger?.error?.('weddingDownload:createLead', e);
+  }
+
+  // ── THE ALERT (R-40.72) ─────────────────────────────────────────────────────
+  // ONE LEAD, ONE SEND, to the OWNER — the same asymmetry the fan-out ruling
+  // rests on. R-G12.3: this sheet asks one question naming ONE party, so a yes
+  // here reaches one vendor and cannot lawfully become N. The team door's alert
+  // is the N-shaped one because its sheet NAMES the set it will reach.
+  //
+  // ⚠ ONLY WHEN A LEAD WAS ACTUALLY WRITTEN. A guest who left the box unticked
+  // has no lead and gives no permission to be contacted; alerting a vendor about
+  // a lead that does not exist would be a message about nothing, and would train
+  // her to distrust the line. `leadWritten` is the gate, and it is the same flag
+  // the response already reports.
+  //
+  // Same ordering law as the team door: after the write, never before, and the
+  // archive below is untouched by whatever happens here.
+  if (leadWritten) {
+    try {
+      await alertWeddingLead(supabase, {
+        targets: [{ vendor_id: owner.id, name: owner.business_name }],
+        weddingDate,
+        logger: req.app.locals.logger,
+      });
+    } catch (e) {
+      req.app.locals.logger?.error?.('weddingDownload:alert:threw', e);
+    }
   }
 
   // ── THE ARCHIVE ───────────────────────────────────────────────────────────

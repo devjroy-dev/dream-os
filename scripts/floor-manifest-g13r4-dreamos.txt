@@ -1,0 +1,60 @@
+# scripts/floor-manifest-g13r4-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.3 RIDER 4 — R-40.72, the wedding-page lead alert.
+#
+# F-14.16: a dirty file outside this list is a STOP. All four authored by this
+# seat in this rider; the tree was clean at the base before a byte moved.
+#
+# WHY: nine leads were written across G1.2 and G1.3 and NOT ONE VENDOR WAS TOLD.
+# `createLead` has no notify path and neither wedding door imported anything from
+# the messaging side. Not a defect in either build — notification was never
+# chartered — but the largest live gap in the arc, and R-40.72 closes it.
+#
+# ONE HOME, TWO DOORS, TWO SHAPES. The download door alerts THE OWNER (one lead,
+# one send, R-G12.3: its sheet names one party). The team door alerts EACH TARGET
+# (N sends: its sheet NAMES the set it will reach). Two consents, two shapes, one
+# mechanism — a second copy at the second door is how the two start disagreeing.
+#
+# UNTIERED, and that is derived rather than shrugged: `enquiry_alert_vendor`'s
+# {{2}} is THE BRIDE'S NAME, and a wedding-page lead writes `name: null` — a
+# guest gives a number and a tick and is never asked who she is. A paid vendor
+# would receive 'a couple' and the two templates would carry identical
+# information. Tiering here is a distinction with nothing behind it.
+#
+# THE CAP IS TEN, and this is the FIRST PLACE IN THE ESTATE WHERE ONE GUEST
+# ACTION MULTIPLIES OUTBOUND MESSAGE COST. Every prior alert path was one
+# enquiry, one vendor, one send. N is the size of a roll a vendor controls, so an
+# uncapped fan-out is a bill a stranger can write. The LEADS are never capped —
+# a vendor silently missing a lead is a worse failure than one missing a message
+# — and the trim is logged, because a cap nobody can audit is not a cap.
+#
+# THE OPT-OUT GATE IS `sendWa`'s AND IS NOT REIMPLEMENTED. MARKETING category
+# means opting out is a RIGHT; `WaOptedOutError` is classified as `opted_out`,
+# a lawful outcome, not an error — a log that calls it a failure trains an
+# operator to ignore the line.
+#
+# THE HANDOVER SUPERSEDES the dream-os-half version committed at d422163 — that
+# document described ONE packet, and four riders, a pwa half and a micro landed
+# after it. A handover describing a third of an arc is worse than none. The
+# committed text is KEPT VERBATIM as an appendix rather than rewritten by
+# hindsight, including its floor numbers and its own disclosure.
+#
+# ⚠ THE BASE SET AT 74f5dec IS 23, NOT 21 — TWO REDS ARRIVED WITH G3.1.
+# b44_public_vendor_card_bench and b55_g2_reviews_bench both red on the SAME
+# fact: G3.1 sitting 1 added `date_check_enabled` to the card door’s CARD_KEYS
+# and to its vendors SELECT, and neither bench’s pinned list has been amended to
+# match. They are that seat’s cells to move by label, exactly as this seat moved
+# b53’s three when R-G13.11 and R-G13.2 superseded them.
+# PROVEN NOT THIS RIDER’S BY COMMAND: both red at the clean tip with rider 4
+# stashed, and red identically with it applied. Rider 4 touches neither
+# vendorCard.js nor the reviews plane. Carried loudly, not papered.
+#
+# ORDERING LAW: the alert runs AFTER the leads are written and never before, and
+# cannot turn a successful enquiry into a 500 for the guest. The rows are the
+# durable half; the message is the courtesy.
+
+docs/TDW_19_G13_HANDOVER.md
+scripts/b57_g13_team_bench.js
+scripts/floor-manifest-g13r4-dreamos.txt
+src/api/public/weddingDownload.js
+src/api/public/weddingTeam.js
+src/lib/vendor/weddingLeadAlert.js

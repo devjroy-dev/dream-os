@@ -47,6 +47,7 @@ const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
 const { createLead } = require('../../lib/vendor/leads');
 const { WEDDING_TEAM_SOURCE } = require('../../lib/vendor/leadSources');
+const { alertWeddingLead } = require('../../lib/vendor/weddingLeadAlert');
 const { siteBase } = require('../../lib/vendor/creditInvite');
 const { ENQUIRE_BASE } = require('../../lib/discover/shapeVendor');
 
@@ -219,6 +220,26 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
       req.app.locals.logger?.error?.('weddingTeam:createLead', e);
       written.push({ vendor_id: t.vendor_id, ok: false, deduped: false });
     }
+  }
+
+  // ── THE ALERT (R-40.72) ───────────────────────────────────────────────────
+  // AFTER the leads, BEFORE the redirect, and awaited — but never allowed to
+  // cost her the hand-off. The rows are the durable half and are already
+  // written; this is the courtesy, and `alertWeddingLead` is built never to
+  // throw. The try/catch is belt on braces: a notification module that somehow
+  // did throw must not turn a successful enquiry into a 500 for the guest.
+  //
+  // N sends, capped at ten inside the module. The LEADS are uncapped — a vendor
+  // silently missing a lead would be a worse failure than one missing a message.
+  try {
+    const alerts = await alertWeddingLead(supabase, {
+      targets, weddingDate, logger: req.app.locals.logger,
+    });
+    if (alerts.sent < alerts.attempted) {
+      req.app.locals.logger?.error?.('weddingTeam:alerts', alerts);
+    }
+  } catch (e) {
+    req.app.locals.logger?.error?.('weddingTeam:alerts:threw', e);
   }
 
   // ── THE HAND-OFF (R-G13.1) ────────────────────────────────────────────────
