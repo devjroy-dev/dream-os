@@ -199,12 +199,63 @@ const MAX_OTP_ATTEMPTS = 5;
 // a row written by any other path is NULL rather than silently 30 — TDW authors
 // no number in this instrument, and a database default would be TDW authoring one
 // for every writer that ever forgets to pass it.
-async function composeContract(supabase, vendorId, { clientId, eventId, invoiceId, title, depositPct }) {
-  if (!clientId) return { ok: false, error: 'client_id is required.' };
+// ── R-G32.17 · PROMOTE ON PICK ────────────────────────────────────────────
+// ⚠ THIS IS NOT THE ONE-LINE MICRO THE CHARTER EXPECTED, AND SAYING SO IS THE
+// POINT. `composeContract` had NO promotion call to add a `source` value to — it
+// took a `client_id` and nothing else. The one-liner assumed a call site that
+// this seat had never built, because at the mock it never knew it would need one.
+//
+// F-40.140 is why: `public.clients` has three writers (`add_client`,
+// `record_payment`, the Clients room's form) and all three need money or a manual
+// entry. DEV440 had NONE — `HTTP 200 · ok true · total 0` on the walk — and her
+// people live on the binder plane, in `engine.records`.
+//
+// `contracts_client_id_fkey` points at `public.clients`, so a binder id cannot
+// satisfy it: **the union is a display question and promotion is the only
+// mechanism.** The chair ruled it happens on the tap that names her.
+//
+// ⚠ AND IT GOES THROUGH `resolveOrCreateClient`, WHICH IS NOT NEGOTIABLE.
+// That function's own header calls itself *the ONLY allowed door to creating a
+// client*, and it carries the phone dedup that makes picking the same person
+// twice produce one row. A second insert here would be a second door, and the
+// duplicate it eventually created would be invisible until a vendor found two of
+// someone in her Clients room.
+async function composeContract(supabase, vendorId, { clientId, name, phone, eventId, invoiceId, title, depositPct }) {
+  let client = null;
+  let promoted = false;
 
-  const { data: client } = await supabase
-    .from('clients').select('id, name').eq('id', clientId).eq('vendor_id', vendorId).maybeSingle();
-  if (!client) return { ok: false, error: 'Client not found.' };
+  if (clientId) {
+    const { data } = await supabase
+      .from('clients').select('id, name').eq('id', clientId).eq('vendor_id', vendorId).maybeSingle();
+    client = data || null;
+    if (!client) return { ok: false, error: 'Client not found.' };
+  } else if (name && String(name).trim()) {
+    // R-G32.18 — `source: 'contract_compose'`. `clients.source` is
+    // `text NOT NULL default 'lead_promotion'` with NO CHECK (PUBLIC_SCHEMA :175),
+    // so a new value is free — and free is exactly why the chair ruled it rather
+    // than letting this seat choose. `lead_promotion` would have lied slightly
+    // about what happened, and a vocabulary that lies slightly is how a later
+    // reader learns the wrong history.
+    const { resolveOrCreateClient } = require('../clients');
+    try {
+      const r = await resolveOrCreateClient(supabase, vendorId, {
+        name: String(name).trim(),
+        phone: phone ? String(phone).trim() : null,
+        source: 'contract_compose',
+      });
+      client = r.client;
+      // ⚠ `promoted` IS THE RESOLVER'S `created`, NOT "we called the resolver".
+      // Phone dedup means picking someone who is ALREADY a client returns the
+      // existing row — and the record must not then say `Added to your clients.`
+      // about a person who was already there. The confirmation is true or it is
+      // not shown.
+      promoted = Boolean(r.created);
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  } else {
+    return { ok: false, error: 'client_id, or a name to add, is required.' };
+  }
 
   const pct = depositPct === undefined || depositPct === null
     ? DEFAULT_DEPOSIT_PCT : Number(depositPct);
@@ -218,7 +269,13 @@ async function composeContract(supabase, vendorId, { clientId, eventId, invoiceI
 
   const { data, error } = await supabase.from('contracts').insert({
     vendor_id:   vendorId,
-    client_id:   clientId,
+    // ⚠ `client.id`, NOT `clientId`. The first cut of the promotion path left this
+    // reading the ARGUMENT, which is undefined whenever a name was given instead of
+    // an id — so every promoted contract would have been written with a NULL
+    // counterparty, and the room would have shown a contract belonging to nobody.
+    // `client` is the resolved row on BOTH paths and is the only correct source.
+    // Caught by b56's own cell on the first run of the new section, not by review.
+    client_id:   client.id,
     event_id:    eventId   || null,
     invoice_id:  invoiceId || null,
     // ⚠ THE TITLE IS GENERATED, NOT TYPED. The upload sheet keeps its `Title *`
@@ -229,7 +286,7 @@ async function composeContract(supabase, vendorId, { clientId, eventId, invoiceI
     state:       'draft',
   }).select().single();
   if (error) return { ok: false, error: error.message };
-  return { ok: true, contract: data };
+  return { ok: true, contract: data, promoted };
 }
 
 // ── saveContractFill ──────────────────────────────────────────────────────

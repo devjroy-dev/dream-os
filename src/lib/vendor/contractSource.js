@@ -25,10 +25,14 @@
 // amendment actually lives.
 //
 // COLUMN WITNESS · SQL-PROVENANCE LAW (F-P3.12, R-40.27). Every name below is
-// witnessed in `docs/db/PUBLIC_SCHEMA.md` at d91ec6e except 0138's own, which are
-// witnessed by `db/migrations/0138_contract_fill_and_sign.sql` and are OWED a PAIR
-// regen — the snapshot does not describe them yet and this comment is the standing note
-// that it must (the same debt `invoicePdfSource` carries for 0130's four).
+// witnessed in `docs/db/PUBLIC_SCHEMA.md`.
+//
+// ⚠ THE DEBT THIS COMMENT USED TO CARRY IS PAID. The first cut said 0138's columns
+// were witnessed only by the migration and OWED a PAIR regen — F-40.99. The regen
+// landed at `5b3f61f`: 79 tables, 890 columns, `contract_profiles` and
+// `contract_signatures` described, and F-40.99 CLOSED. **The snapshot is now the
+// witness and this file cites it**, which is the whole point of retiring a standing
+// note the moment it stops being true rather than leaving it to be read as current.
 //   public.contracts          :232 — id vendor_id client_id lead_id invoice_id title
 //                                    storage_path state sent_at signed_at notes
 //                             0138 — event_id terms annexes deposit_pct deposit_received_at

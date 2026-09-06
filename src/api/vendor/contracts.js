@@ -126,11 +126,15 @@ router.delete('/:contractId', ...authMw, asyncHandler(async (req, res) => {
 router.post('/compose', ...authMw, asyncHandler(async (req, res) => {
   const b = req.body || {};
   const r = await C.composeContract(req.app.locals.supabase, req.vendor.id, {
-    clientId: b.client_id, eventId: b.event_id, invoiceId: b.invoice_id,
+    clientId: b.client_id, name: b.name, phone: b.phone,
+    eventId: b.event_id, invoiceId: b.invoice_id,
     title: b.title, depositPct: b.deposit_pct,
   });
   if (!r.ok) return errRes(res, 400, r.error);
-  return okRes(res, { contract: r.contract });
+  // `promoted` crosses so the record can say `Added to your clients.` ONLY when a
+  // row was actually created — R-G32.17's visibility, and it is a fact from the
+  // resolver rather than an inference from which argument the door was given.
+  return okRes(res, { contract: r.contract, promoted: r.promoted === true });
 }));
 
 // PATCH /:id/fill — the blanks

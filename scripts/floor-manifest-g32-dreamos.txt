@@ -115,3 +115,56 @@ src/lib/vendor/dateLock.js
 #   DELTA          ZERO
 #
 # CONTRACT_SIGN_SEND_ENABLED remains unset in every environment. Nothing sends.
+
+# ── MICRO 1 (2026-09-06) · derived at dream-os ce32c2e ──────────────────────
+# R-G32.17/.18 — promote on pick. THIS IS NOT THE ONE-LINE MICRO THE CHARTER
+# EXPECTED, and the difference is the finding: `composeContract` had NO promotion
+# call for a `source` value to be added to. It took a `client_id` and nothing
+# else, because at the mock this seat never knew it would need one — F-40.140.
+#
+#   src/lib/vendor/contracts.js   composeContract takes client_id OR {name, phone}
+#   src/api/vendor/contracts.js   the door passes them, and `promoted` crosses back
+#   scripts/b56_contract_bench.js §6 gains eight cells
+#
+#   b56    111/111  (102 -> 111), three mutations both ways:
+#       client_id back to the argument   -> 2 red
+#       source back to lead_promotion    -> 1 red
+#       promoted always true             -> 1 red
+#   FLOOR  THIS TREE   GREEN 110  RED 50  TOTAL 160
+#          CLEAN TIP   GREEN 110  RED 50  TOTAL 160   (ce32c2e, stashed -u)
+#          DELTA       ZERO
+#   ⚠ 160 not 159, and 50 RED not 49: G1.3 landed `b57_g13_team_bench.js` under
+#   this seat and it is RED at both trees. Inherited, named, NOT this delivery's —
+#   and the seat's own pwa bench is also called b57, which is a COLLISION ACROSS
+#   REPOS worth the chair's eye: `scripts/b57_contracts_wiring_bench.js` (pwa) and
+#   `scripts/b57_g13_team_bench.js` (dream-os) share a number. Two repos, so
+#   nothing breaks; a reader hearing "b57 is red" would be misled.
+#
+# ⚠ THE BENCH CAUGHT A REAL BUG IN THIS SEAT'S OWN PATCH ON THE FIRST RUN.
+# The insert still read `client_id: clientId` — the ARGUMENT, undefined on the
+# promotion path — so every promoted contract would have been written with a NULL
+# counterparty and the room would have shown a contract belonging to nobody.
+# `client.id` is the resolved row on both paths and is the only correct source.
+# Found by a cell, not by review.
+#
+# ⚠ THE CLONE WAS FIVE COMMITS BEHIND WHEN THIS MICRO WAS FIRST CUT, AND THE
+# FIRST ZIP WAS DESTROYED RATHER THAN SHIPPED. `git diff --stat origin/main`
+# against a stale clone read as 2,305 DELETIONS — G1.3's 0137, weddingTeam.js,
+# weddingCardPdf.js, b57_g13_team_bench.js, the PAIR regen and the chair's docs
+# cut, every one of them a file this seat's tree simply predated. The five files
+# in the ZIP could not have deleted any of it, but two of them (b56 and this
+# manifest) would have been written from a pre-regen tree.
+#
+# They turned out to be AHEAD, not behind — origin never touched either, and the
+# `+25`/`+23` were this seat's own additions read backwards. **The alarm was a
+# misread of my own diff.** It is recorded because the check was right even though
+# the reading was wrong: R-40.69's derived-at base is a claim that has to be
+# re-derived at the cut, and a clone that did not perform the push is not on the
+# tip merely because its work is (G5.1's standing lesson, met here).
+#
+# ⚠ AND ONE STANDING NOTE WAS RETIRED THE MOMENT IT STOPPED BEING TRUE.
+# `contractSource.js` carried "OWED a PAIR regen" for 0138's columns. The regen
+# landed at 5b3f61f — 79 tables, contract_profiles and contract_signatures
+# described, F-40.99 CLOSED — so the note is replaced with a citation. A comment
+# that outlives its fact is this estate's most-repeated defect class; leaving a
+# paid debt on the page would have been a new instance of it.

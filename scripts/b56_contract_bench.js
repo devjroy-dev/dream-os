@@ -292,6 +292,31 @@ section('6. token, then code, then signature');
   const bad = await C.composeContract(db, VENDOR, { clientId: 'client-priya', depositPct: 0 });
   ok('a zero deposit is refused with a sentence', bad.ok === false && /percent/.test(bad.error));
 
+  // ── R-G32.17/.18 · PROMOTE ON PICK ──────────────────────────────────────
+  // ⚠ THE WALK FOUND THIS AND NO BENCH COULD HAVE. `public.clients` was EMPTY
+  // for DEV440 — `HTTP 200 · ok true · total 0` — because its three writers all
+  // need money or a manual entry, and her people live on the binder plane. The
+  // composer had been built against a table this vendor had never populated.
+  const promo = await C.composeContract(db, VENDOR, { name: 'Sneha Kulkarni', phone: '+919812345678' });
+  ok('a name and a phone compose without a client_id', promo.ok === true);
+  ok('and the row says a client was CREATED', promo.promoted === true);
+  const made2 = db._tables.clients.find(c => c.name === 'Sneha Kulkarni');
+  ok('the client row exists', Boolean(made2));
+  ok("its source is 'contract_compose', not lead_promotion (R-G32.18)", made2 && made2.source === 'contract_compose');
+  ok('and the contract points at it', promo.contract.client_id === made2.id);
+
+  // ⚠ `promoted` IS THE RESOLVER'S `created`, NOT "we took the name path".
+  // Phone dedup returns the EXISTING row for someone already a client, and the
+  // record must not then claim it added her. The confirmation is true or absent.
+  const again = await C.composeContract(db, VENDOR, { name: 'Sneha Kulkarni', phone: '+919812345678' });
+  ok('picking her a second time reuses the row', again.contract.client_id === made2.id);
+  ok('AND DOES NOT CLAIM TO HAVE ADDED HER', again.promoted === false);
+  ok('so one person is one row', db._tables.clients.filter(c => c.name === 'Sneha Kulkarni').length === 1);
+
+  const neither = await C.composeContract(db, VENDOR, {});
+  ok('neither an id nor a name is refused with a sentence',
+     neither.ok === false && /name to add/.test(neither.error));
+
   const opened = await C.openSigning(db, VENDOR, made.contract.id, { signerPhone: '+919625759924' });
   ok('openSigning returns a token', opened.ok && typeof opened.token === 'string' && opened.token.length > 20);
   ok('and NO code — clause 12 sends it after she agrees', opened.code === undefined);
