@@ -423,6 +423,55 @@ section('11b. the client number has TWO homes, and both are reachable (R-G34.3, 
   ok('the sweep selects client_id', /client_name, client_phone, client_id/.test(src));
 }
 
+section('11c. the wamid is read off sendWa\'s ACTUAL return shape (F-40.210)');
+{
+  // ⚠ THIS CELL EXISTS FOR A DEFECT THIS PLANE DID NOT HAVE, AND THAT IS THE POINT.
+  // The G1.3 lane shipped a wamid extraction that read the wrong depth and stored a
+  // null for messages that had genuinely gone. This plane reads `res.result.wamid`
+  // and always did — not because the shape was checked, but because it copied
+  // `reviewAsk.js`, which was already right. Luck sitting on top of a good habit,
+  // not a check anyone ran. It is a check now.
+  //
+  // The assertion is against `sendWa`'s OWN return statement, never a literal: if
+  // sendWa ever flattens `result`, this reddens on BOTH sides at once instead of
+  // silently storing nulls that the room would then render as "not Sent".
+  const wa = code('src/lib/sendWa.js');
+  ok('sendWa returns the Meta response under `result`',
+     /return \{[^}]*\bresult:\s*res\b[^}]*\}/.test(wa));
+  ok('the writer reads through that same depth, not one level shallower',
+     /res\s*&&\s*res\.result\s*&&\s*res\.result\.wamid/.test(code('src/lib/vendor/paymentReminders.js')));
+
+  // And behaviourally, driven through the real writer with sendWa's real shape.
+  const db = makeDb();
+  const before = process.env.PAYMENT_REMINDER_SEND_ENABLED;
+  process.env.PAYMENT_REMINDER_SEND_ENABLED = '1';
+  await PR.sendOneReminder(db, {
+    vendorId: VENDOR, milestone: MS(), invoice: INV,
+    vendorName: 'Dev Roy Photography', source: 'vendor_tap',
+  }, { sendWa: async () => ({ sent: true, mode: 'template', key: PR.TEMPLATE_KEY, result: { wamid: 'wamid.REAL' } }) });
+  ok('the wamid reaches the row, not a null', db._t.payment_reminders[0].wamid === 'wamid.REAL');
+  if (before === undefined) delete process.env.PAYMENT_REMINDER_SEND_ENABLED;
+  else process.env.PAYMENT_REMINDER_SEND_ENABLED = before;
+}
+
+section('11d. the schedule door: an empty state is not a 404, and the control reads the row');
+{
+  const d = code('src/api/vendor/invoiceSchedule.js');
+  ok('F-40.208 — no 404 for an invoice with no schedule',
+     !/404, 'No schedule found/.test(d));
+  ok('and it answers 200 with an empty array instead',
+     /schedule\.length === 0\) return okRes\(res, \{ schedule: \[\] \}\)/.test(d));
+  ok('F-40.209 — the door joins payment_reminders',
+     /from\('payment_reminders'\)/.test(d));
+  ok('and returns reminded_at per milestone',
+     /reminded_at: remindedAt\.get\(m\.id\) \|\| null/.test(d));
+  ok('it is scoped to the caller vendor', /\.eq\('vendor_id', req\.vendor\.id\)[\s\S]{0,120}\.in\('milestone_id'/.test(d));
+  ok('the door never WRITES payment_reminders — the plane is its sole writer',
+     !/from\('payment_reminders'\)[\s\S]{0,200}\.(insert|update|upsert|delete)\(/.test(d));
+  ok('a failed join costs the control its knowledge, never her schedule',
+     /if \(remErr\) console\.error/.test(d) && !/if \(remErr\) return errRes/.test(d));
+}
+
 section('12. the cron minute is free and alone in its slot');
 {
   const c = read('src/cron.js');

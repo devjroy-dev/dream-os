@@ -84,6 +84,16 @@ const MUTATIONS = [
   ['§14 stop selecting client_id', 'src/api/vendor/reminders.js',
    "    .select('id, client_name, client_phone, client_id')",
    "    .select('id, client_name, client_phone')"],
+  // ── F-40.208 / .209 / .210 · the door and the wamid, both ways ───────────
+  ['§16 the empty schedule 404s again', 'src/api/vendor/invoiceSchedule.js',
+   "  if (schedule.length === 0) return okRes(res, { schedule: [] });",
+   "  if (schedule.length === 0) return errRes(res, 404, 'No schedule found for this invoice.');"],
+  ['§17 reminded_at dropped from the reply', 'src/api/vendor/invoiceSchedule.js',
+   "    schedule: schedule.map((m) => ({ ...m, reminded_at: remindedAt.get(m.id) || null })),",
+   "    schedule,"],
+  ['§18 the wamid read one level shallower', 'src/lib/vendor/paymentReminders.js',
+   "  const wamid = res && res.result && res.result.wamid;",
+   "  const wamid = res && res.wamid;"],
   ['§11 SELF-TEST — syntax broken on purpose', 'src/lib/vendor/paymentReminders.js',
    "function sendGate() {", "function sendGate( {"],
 ];
