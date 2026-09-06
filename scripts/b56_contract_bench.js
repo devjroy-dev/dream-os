@@ -85,7 +85,12 @@ function makeDb(seed = {}) {
     q.order = () => q;
     q.limit = () => q;
     const matched = () => rows.filter(r => q._f.every(f => f(r)));
-    q.maybeSingle = async () => ({ data: matched()[0] || null, error: null });
+    // ⚠ THE DOUBLE CAN NOW FAIL ONE TABLE ON PURPOSE. Without this, the guard on a
+    // failed vendor read had NO cell that could go red — the mutation that removed
+    // it scored zero, which is how a vacuous cell announces itself.
+    q.maybeSingle = async () => (tables.__fail === table
+      ? { data: null, error: { message: `column "nonesuch" does not exist` } }
+      : { data: matched()[0] || null, error: null });
     q.single      = async () => ({ data: matched()[0] || null, error: null });
     q.then = (res) => res({ data: matched(), error: null });
     q.insert = (payload) => {
@@ -481,6 +486,113 @@ section('10. the send is dark, and says so');
   ok('the door names the flag rather than sending', /CONTRACT_SIGN_SEND_ENABLED/.test(read('src/api/sign.js')));
 }
 
+// ══ §9b — R-40.80 · EVERY SELECTED COLUMN EXISTS ON ITS TABLE ══════════════
+section('9b. the snapshot answers what the double cannot');
+{
+  // ⚠ **THIS CELL EXISTS BECAUSE FOUR BENCHES AND 122 CELLS MISSED A COLUMN THAT
+  // WAS NEVER THERE.** `PDF_VENDOR_COLUMNS` asked for `whatsapp_number`;
+  // `public.vendors` has `phone`. The SELECT errored, the read was destructured
+  // without an error check, and the renderer printed a lawyer-passed agreement
+  // addressed from **Your Vendor** with nine blank fields (F-40.159).
+  //
+  // NO DOUBLE COULD HAVE CAUGHT IT. The in-memory supabase above answers any
+  // column asked of it — that is what makes it a useful transport double and what
+  // makes it blind here. The only witness is the snapshot, and the estate has a
+  // current one since the regen at `5b3f61f`: 79 tables, 890 columns.
+  //
+  // R-40.80 makes this a STANDING cell in every bench that selects. This is the
+  // first; the runner charter carries it to the rest.
+  const schema = read('docs/db/PUBLIC_SCHEMA.md');
+
+  // ⚠ **THE CELL'S AUTHORITY IS THE SNAPSHOT'S CURRENCY, AND THE SNAPSHOT WENT
+  // STALE WITHIN HOURS OF THE RULING.** Derived at `4b28e87`: the regen at
+  // `5b3f61f` states its ladder tip as `0138`, and `0140_date_check_switch.sql`
+  // has since landed with `vendors.date_check_enabled`. A select asking for a
+  // column added AFTER the snapshot would red here while being perfectly correct.
+  //
+  // That is not a reason to soften the cell — it is the reason the snapshot's own
+  // header states its tip "so this file's staleness is a readable fact, never
+  // archaeology". This cell inherits that discipline: it asserts the tip it is
+  // reading against, so a red here is always one of two things and never a
+  // mystery — a fabricated name, or a snapshot owed a regen.
+  const tip = /Applied ladder tip at snapshot:\*\*\s*`(\d+)`/.exec(schema);
+  ok('the snapshot states the ladder tip it was taken at', Boolean(tip));
+  ok(`and this cell is reading against ${tip ? tip[1] : '?'}`, Boolean(tip));
+
+  /** The column block for one table, out of the snapshot. Returns null when the
+   *  table is absent — which is itself a red, and a different one. */
+  function columnsOf(table) {
+    const m = new RegExp(`^## public\\.${table}\\b[^\\n]*\\n\\n\`\`\`\\n([\\s\\S]*?)\`\`\``, 'm').exec(schema);
+    if (!m) return null;
+    return m[1].split('\n')
+      .map(l => /^\s*\d+\.\s+(\w+)/.exec(l))
+      .filter(Boolean).map(x => x[1]);
+  }
+
+  /** A select list as this estate writes them: 'a, b, c' with newlines and
+   *  concatenation already resolved by the module that exports it. */
+  function assertSelect(label, table, list) {
+    const cols = columnsOf(table);
+    ok(`${table} is described in the snapshot`, Array.isArray(cols) && cols.length > 0);
+    if (!cols) return;
+    const asked = list.split(',').map(x => x.trim()).filter(Boolean);
+    const missing = asked.filter(c => !cols.includes(c));
+    ok(`${label}: every name exists on public.${table}` +
+       (missing.length ? ` — MISSING: ${missing.join(', ')}` : ''), missing.length === 0);
+  }
+
+  assertSelect('PDF_VENDOR_COLUMNS', 'vendors',   SRC.PDF_VENDOR_COLUMNS);
+  assertSelect('CONTRACT_COLUMNS',   'contracts', SRC.CONTRACT_COLUMNS);
+
+  // ⚠ THE CELL MUST BE ABLE TO FAIL, and a snapshot that described everything
+  // would make it vacuous. This asserts the mechanism itself: a name that is not
+  // a column is caught.
+  const vcols = columnsOf('vendors');
+  ok('the mechanism catches a fabricated name',
+     Array.isArray(vcols) && !vcols.includes('whatsapp_number'));
+  // ⚠ AND IT CAUGHT THE FIRST CURE TOO. `phone` was written in `whatsapp_number`'s
+  // place and is ALSO not on this table — `public.vendors` has forty-nine columns
+  // and not one is a number. This cell reddened on the replacement before it could
+  // ship, which is the whole argument for R-40.80 in four words.
+  ok('AND catches the first cure, which was a second fabrication',
+     Array.isArray(vcols) && !vcols.includes('phone'));
+  // The number's real home, asserted so a later seat cannot drift back.
+  ok('the vendor number lives on public.users',
+     (columnsOf('users') || []).includes('phone'));
+  ok('and the select carries the key that reaches it',
+     /user_id/.test(SRC.PDF_VENDOR_COLUMNS));
+}
+
+// ══ §9c — A FAILED VENDOR READ IS A FAILURE ════════════════════════════════
+section('9c. no document renders over an empty vendor');
+{
+  // ⚠ THIS IS F-40.159's LARGER HALF, AND IT HAD NO CELL UNTIL A MUTATION SCORED
+  // ZERO. The read destructured `{ data: vendor }` with no error check, so a broken
+  // SELECT was indistinguishable from a vendor with empty fields — and the renderer
+  // did what it is built to do: printed a lawyer-passed agreement, four pages,
+  // addressed from `Your Vendor`. **A CONTRACT PRINTED FOR NOBODY IS THE COSTUME
+  // CLASS ON PAPER.**
+  const seed = seedBase();
+  const dbBroken = makeDb({ ...seed, __fail: 'vendors',
+    contracts: [{ id: 'c-x', vendor_id: VENDOR, client_id: 'client-priya', state: 'draft',
+                  title: 'X', terms: {}, annexes: {}, deposit_pct: 30 }] });
+  const broken = await SRC.contractPdfSource(dbBroken, VENDOR, 'c-x');
+  ok('a failed vendor read returns ok:false', broken.ok === false);
+  ok('and says so in words a vendor can act on', /business details/.test(broken.error || ''));
+
+  const dbNoVendor = makeDb({ ...seed, vendors: [],
+    contracts: [{ id: 'c-y', vendor_id: VENDOR, client_id: 'client-priya', state: 'draft',
+                  title: 'Y', terms: {}, annexes: {}, deposit_pct: 30 }] });
+  const missing = await SRC.contractPdfSource(dbNoVendor, VENDOR, 'c-y');
+  ok('a MISSING vendor row is also a failure', missing.ok === false);
+
+  // ⚠ AND `renderContract` MUST NOT REACH THE RENDERER. The source returning
+  // ok:false is only half the guard if the one call site ignores it.
+  const rendered = await SRC.renderContract(dbBroken, VENDOR, 'c-x');
+  ok('renderContract refuses rather than rendering', rendered.ok === false);
+  ok('and produces no buffer at all', rendered.buffer === undefined);
+}
+
 // ══ §10b — F-40.152 · PREVIEW HANDS BACK A URL, NEVER BYTES ════════════════
 section('10b. a new tab carries no JWT, so the door hands it something it can open');
 {
@@ -505,7 +617,17 @@ section('10b. a new tab carries no JWT, so the door hands it something it can op
   ok('it is a POST, because it renders and writes', /router\.post\('\/:contractId\/preview'/.test(door));
   ok('and there is no GET preview left behind', !/router\.get\('\/:contractId\/preview'/.test(door));
   // ⚠ THE DRAFT AND THE SEALED COPY MAY NEVER REACH EACH OTHER'S PATH.
-  ok('the object is .draft.pdf', /\$\{req\.params\.contractId\}\.draft\.pdf/.test(door));
+  // ⚠ F-40.160 — THE NAME LEADS AND THE ID FOLLOWS. The path was
+  // `${contractId}.draft.pdf`, so a signed url handed a vendor a uuid to keep. The
+  // invoice's own cure is the PATH (`engine.js:1733`, `INVOICE-05.pdf`); this seat
+  // had taken that mechanism's signed url and left its naming.
+  ok('the object is CONTRACT-<name>-<id8>.draft.pdf', /CONTRACT-\$\{slug\}-\$\{String\(contract\.id\)\.slice\(0, 8\)\}\.draft\.pdf/.test(door));
+  ok('the human name leads the path', /`\$\{vendorId\}\/CONTRACT-/.test(door));
+  // ⚠ AND IT IS STILL UNIQUE. `contracts` has no number column and the generated
+  // title is `<client> — wedding services`, so two contracts for one client would
+  // collide on a title-only path and `upsert: true` would overwrite the other's
+  // draft in silence.
+  ok('and it stays unique per contract', /slice\(0, 8\)/.test(door));
   ok('the sign door writes .signed.pdf and only that', /\.signed\.pdf/.test(read('src/api/sign.js')));
   ok('the preview door never writes .signed.pdf', !/\.signed\.pdf/.test(doorCode));
   // TEN MINUTES. A preview is a glance, not a link to keep — `getDownloadUrl`'s

@@ -177,12 +177,39 @@ router.patch('/:contractId/fill', ...authMw, asyncHandler(async (req, res) => {
 // imported here and b56 §5 reds if it ever is.
 const PREVIEW_URL_TTL = 600;   // ten minutes — a preview is a glance, not a link to keep
 
+// ── F-40.160 · THE DOWNLOAD IS NAMED BY THE OBJECT KEY ─────────────────────
+// ⚠ A SUPABASE SIGNED URL NAMES THE SAVED FILE AFTER THE OBJECT PATH. The first
+// cut wrote `${vendorId}/${contractId}.draft.pdf`, so a vendor's Downloads folder
+// received `fd08429c-0b96-4527-8131-2396a0332a95_draft.pdf` — a uuid, for a
+// document she is meant to keep, read and send on.
+//
+// ⚠ **THE INVOICE CURED THIS EXACT THING AND THE CURE WAS THE PATH.**
+// `engine.js:1733` builds `${vendor.id}/INVOICE-05.pdf` precisely so the download
+// carries a name a person can read. This seat took that mechanism's SIGNED URL and
+// left its NAMING — the second of three specimens in one file of a precedent's
+// mechanism taken without its lesson (F-40.162).
+//
+// ⚠ THE SUFFIX IS NOT DECORATION. `contracts` has no number column — nothing like
+// `invoices.invoice_number` exists — and the generated title is
+// `<client> — wedding services`, so two contracts for one client would collide on
+// a title-only path and `upsert: true` would silently overwrite the other's draft.
+// Eight characters of the id keep them apart. The name leads, the id follows, and
+// the tradeoff is stated rather than hidden: a readable name that is still unique.
+function draftPath(vendorId, contract) {
+  const slug = String(contract.title || 'contract')
+    .replace(/[\u2014\u2013]/g, '-')            // em and en dashes
+    .replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || 'contract';
+  return `${vendorId}/CONTRACT-${slug}-${String(contract.id).slice(0, 8)}.draft.pdf`;
+}
+
 router.post('/:contractId/preview', ...authMw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const r = await renderContract(supabase, req.vendor.id, req.params.contractId);
   if (!r.ok) return errRes(res, 404, r.error);
 
-  const path = `${req.vendor.id}/${req.params.contractId}.draft.pdf`;
+  const path = draftPath(req.vendor.id, r.source.contract);
   const up = await supabase.storage.from(C.BUCKET)
     .upload(path, r.buffer, { contentType: 'application/pdf', upsert: true });
   if (up.error) return errRes(res, 500, up.error.message);

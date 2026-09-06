@@ -57,9 +57,37 @@ const CONTRACT_COLUMNS =
 // The vendor columns the DOCUMENT reads — not the ones a vendor row happens to have.
 // `invoicePdfSource`'s own header records what the alternative cost: seventeen selected,
 // nine read, eight the document needed never asked for.
+// ⚠ **F-40.159 — `whatsapp_number` WAS NOT A COLUMN AND NEVER HAD BEEN.**
+// `public.vendors` carries `phone` (column 4). This list asked for a name that does
+// not exist, so the SELECT ERRORED, `vendor` came back null, and `vendor || {}`
+// handed the renderer an empty object. Every vendor field then printed as an
+// underscore run and `business_name || 'Your Vendor'` printed the fallback — a
+// lawyer-passed agreement, four pages, addressed from **Your Vendor**, with no
+// address, no rails and no jurisdiction. ONE WRONG NAME BLANKED NINE FIELDS.
+//
+// It is R-40.27 / F-P3.12 broken by the file that cites them twelve lines above:
+// the list was written from what a vendors table OUGHT to have.
+//
+// ⚠ **AND THE FIRST CURE WAS A SECOND FABRICATION.** `phone` was written in its
+// place, from a grep across a line range that had run past this table's block into
+// a neighbour's. **`public.vendors` HAS NO NUMBER COLUMN AT ALL** — forty-nine
+// columns, and not one of them is a phone. R-40.80's cell, written in the same
+// hour, reddened on the replacement before it could ship. That is the cell doing
+// precisely what it was ruled for, to the seat that wrote it.
+//
+// THE VENDOR'S NUMBER LIVES ON `public.users`, reached through `vendors.user_id` —
+// `vendorHandset.js:72`, `admin/discover.js:112` and `vendorInbound.js:1045` all
+// read it there, and `auth.js` authenticates against it. The instrument needs it
+// twice (clause 1 and the signature block), so it is fetched as its own read
+// below rather than guessed at here.
+//
+// Every name in this list is witnessed in `docs/db/PUBLIC_SCHEMA.md` at the regen
+// (`5b3f61f`) and asserted by b56 §9b on every run — because no double can catch a
+// column that does not exist, which is why four benches and 122 cells let the
+// first one through to a document a couple would have signed.
 const PDF_VENDOR_COLUMNS =
-  'id, business_name, city, address, gstin, upi_id, account_name, account_number, ' +
-  'ifsc, routing_handle, whatsapp_number';
+  'id, user_id, business_name, city, address, gstin, upi_id, account_name, ' +
+  'account_number, ifsc, routing_handle';
 
 // ── deriveMoney ──────────────────────────────────────────────────────────────
 // THE ONE HOME (R-G32.6). Everything on the document that is an amount comes out of
@@ -189,8 +217,28 @@ async function contractPdfSource(supabase, vendorId, contractId) {
   if (error)    return { ok: false, error: error.message };
   if (!contract) return { ok: false, error: 'Contract not found.' };
 
-  const { data: vendor } = await supabase
+  // ⚠ **A FAILED VENDOR READ IS A FAILURE — F-40.159's larger half.**
+  // This read destructured `{ data: vendor }` and moved on, so a broken SELECT was
+  // indistinguishable from a vendor whose fields were empty. The renderer then did
+  // exactly what it is built to do: printed blanks, honestly, for the data it was
+  // handed. **A CONTRACT PRINTED FOR `Your Vendor` IS THE COSTUME CLASS ON PAPER** —
+  // an artefact that looks like the real thing and is not, and this one is a legal
+  // instrument. The door refuses now rather than rendering over `{}`.
+  const { data: vendor, error: vErr } = await supabase
     .from('vendors').select(PDF_VENDOR_COLUMNS).eq('id', vendorId).maybeSingle();
+  if (vErr)    return { ok: false, error: `Could not read your business details: ${vErr.message}` };
+  if (!vendor) return { ok: false, error: 'Could not read your business details.' };
+
+  // THE VENDOR'S NUMBER, from its one home. `public.users.phone`, reached through
+  // `vendors.user_id` — the same path `vendorHandset.js` and `auth.js` use. It is
+  // attached to the vendor object the renderer receives so the instrument keeps a
+  // single field name for a single fact; the SHAPE is this file's, the HOME is the
+  // estate's, and the two are not the same thing.
+  if (vendor.user_id) {
+    const { data: u } = await supabase
+      .from('users').select('phone').eq('id', vendor.user_id).maybeSingle();
+    vendor.phone = (u && u.phone) || null;
+  }
 
   let client = null;
   if (contract.client_id) {
@@ -244,7 +292,9 @@ async function contractPdfSource(supabase, vendorId, contractId) {
     .limit(1);
   if (sig && sig.length) signature = sig[0];
 
-  return { ok: true, contract, vendor: vendor || {}, client, profile, invoice, functions, money, signature };
+  // ⚠ NO `|| {}`. The guard above means `vendor` is a row or the door has already
+  // returned; a fallback here would put the swallowed failure straight back.
+  return { ok: true, contract, vendor, client, profile, invoice, functions, money, signature };
 }
 
 // ── renderContract — THE ONE CALL SITE ───────────────────────────────────────

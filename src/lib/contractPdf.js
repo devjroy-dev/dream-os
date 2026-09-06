@@ -368,7 +368,7 @@ async function generateContractPdf({ contract, vendor, client, functions, profil
       p(`Made on ${formatDate(T.agreement_date || new Date().toISOString())}, between:`);
       p(`${business} — a ${val(P.vendor_category_words)} business at ${val(vendor.address)}, ` +
         `${val(vendor.city)}, signing through ${val(P.vendor_signatory_name)}, on ` +
-        `${val(vendor.whatsapp_number || vendor.phone)}. Called "we" below.`);
+        `${val(vendor.phone)}. Called "we" below.`);
       p('and');
       p(`${val(client && client.name)} and ${val(T.partner_2_name)}, on ` +
         `${val(client && client.phone)}. Called "you" below.`);
@@ -469,7 +469,7 @@ async function generateContractPdf({ contract, vendor, client, functions, profil
         'the same effect.', true);
 
       rule();
-      p(`${val(P.vendor_signatory_name)}, for ${business} — ${val(vendor.whatsapp_number || vendor.phone)}`);
+      p(`${val(P.vendor_signatory_name)}, for ${business} \u2014 ${val(vendor.phone)}`);
       p(`${val(client && client.name)} and ${val(T.partner_2_name)} — ${val(client && client.phone)}`);
       p(`Attached: ${val(annexList(AX))}`);
 

@@ -210,3 +210,85 @@ src/lib/vendor/dateLock.js
 # R-40.69 says a base line means derived-at, and the honest way to keep that true
 # when a queue moves is to derive again — not to edit the line. The founder asked
 # for exactly this before applying, and he was right to.
+
+# ── MICRO 3 (2026-09-06) · derived at dream-os 4b28e87 ─────────────────────
+# The preview walk's findings. F-40.159, F-40.160, and R-40.80's first cell.
+#
+#   src/lib/vendor/contractSource.js   the column, the number's real home, the guard
+#   src/lib/contractPdf.js             reads vendor.phone
+#   src/api/vendor/contracts.js        the human-named draft path
+#   scripts/b56_contract_bench.js      §9b (R-40.80) and §9c, 132 -> 137
+#
+# ⚠ F-40.159 — `whatsapp_number` WAS NEVER A COLUMN, AND THE FIRST CURE WAS A
+# SECOND FABRICATION. `phone` was written in its place from a grep across a line
+# range that had run past `public.vendors` into a neighbour's block. **THAT TABLE
+# HAS FORTY-NINE COLUMNS AND NOT ONE IS A NUMBER.** R-40.80's cell — written in the
+# same hour, for this exact class — reddened on the replacement before it shipped.
+# The number lives on `public.users.phone` through `vendors.user_id`, which is where
+# vendorHandset.js, auth.js and admin/discover.js have always read it.
+#
+# ⚠ THE CELL CAUGHT THE SEAT THAT WROTE IT, ON ITS FIRST RUN. That is the whole
+# argument for the ruling, and it is recorded because the alternative reading — that
+# the seat found its own second mistake by care — would be false.
+#
+# ── MUTATIONS ──────────────────────────────────────────────────────────────
+#   whatsapp_number back in the select            -> 1 red
+#   phone back in the select (the first bad cure) -> 1 red
+#   the uuid draft path returns                   -> 3 red
+#   BOTH vendor guards removed                    -> BENCH CRASH, exit 1
+#
+# ⚠ **AND THE LAST ONE EXPOSED A DEFECT IN THIS SEAT'S MUTATION HARNESS, NOT IN THE
+# CELL.** The harness counts `FAIL` lines. Removing both vendor guards makes
+# `vendor` null, so `vendor.user_id` throws and the bench DIES — exit 1, `BENCH
+# ERROR TypeError`, and ZERO fail lines. The harness read that as "0 red" and this
+# seat nearly recorded a live cell as vacuous.
+#
+# A crash is a red. Every "0 red" reported in this arc's earlier manifests was read
+# the same way and none of them crashed — verified by re-running with exit codes —
+# but the harness has been half-blind all sitting and the record says so.
+#
+#   THIS TREE      GREEN 112  RED 49  TOTAL 161
+#   TIP 4b28e87    GREEN 112  RED 49  TOTAL 161
+#   DELTA          ZERO
+#
+# ⚠ HELD FOR RIDER 4, THEN RE-DERIVED — NOT RE-STAMPED. The chair halted this
+# packet at base `9988614`; five commits landed under the hold (G3.1 sitting 1 and
+# micro1-rev, F-40.146, the chair's docs, G1.3 rider 4). Verified by command that
+# NONE touched contractSource.js, contractPdf.js, api/vendor/contracts.js, b56 or
+# this manifest — `git diff --stat 9988614 origin/main --` over the five returned
+# empty. The files were reapplied ON `4b28e87` and every floor re-run there.
+#
+# The counts moved with the tree, not with this work: 160 -> 161 (G3.1's b58) and
+# 50 -> 49 RED (G3.1's micro1-rev cleared b44 and b55, F-40.169). Both trees agree.
+#
+# ── R-40.82 · THE COLLISION, CARRIED ────────────────────────────────────────
+# `public.contracts` HAS NO NUMBER COLUMN — nothing like `invoices.invoice_number`
+# exists, and `composeContract` generates the title as `<client> — wedding
+# services`. So two contracts for ONE client produce an IDENTICAL slug, and a
+# title-only object path with `upsert: true` would have one draft silently
+# overwrite the other's. A vendor previewing contract B would be handed contract
+# A's bytes under B's name — the costume class, in storage.
+#
+# Eight characters of the contract id follow the name. The name leads so the
+# download reads as a document; the id follows so it is still one object per
+# contract. The tradeoff is stated rather than hidden, and a cell drives it:
+# dropping the suffix reds `and it stays unique per contract`.
+#
+# ── R-40.80's CELL DECLARES WHAT IT READS AGAINST ──────────────────────────
+# ⚠ THE SNAPSHOT WENT STALE WITHIN HOURS OF THE RULING. The regen at `5b3f61f`
+# states its ladder tip as `0138`; `0140_date_check_switch.sql` has since landed
+# with `vendors.date_check_enabled`. A select asking for a post-snapshot column
+# would red here while being perfectly correct.
+#
+# That is not a reason to soften the cell. The snapshot's own header states its tip
+# "so this file's staleness is a readable fact, never archaeology", and the cell
+# now inherits that discipline: it ASSERTS the tip it is reading against, so a red
+# is always one of two things and never a mystery — a fabricated name, or a
+# snapshot owed a regen.
+#
+# ── MUTATIONS, harness reading EXIT CODES ──────────────────────────────────
+#   whatsapp_number back in the select              -> exit 1, 1 red
+#   phone back in the select (the first bad cure)   -> exit 1, 1 red
+#   the uuid draft path returns                     -> exit 1, 3 red
+#   drop the id suffix (R-40.82's collision)        -> exit 1, 2 red
+#   BOTH vendor guards removed                      -> exit 1, CRASH (a crash is a red)
