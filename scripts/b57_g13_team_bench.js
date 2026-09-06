@@ -272,7 +272,15 @@ ok('WEDDING_SOURCES is frozen', Object.isFrozen(LS.WEDDING_SOURCES));
   ok('...and hands the CONSTANT to createLead', /source:\s*WEDDING_GUEST_SOURCE/.test(dl));
   const tm = strip(read(TEAM));
   ok('the team door spells no token either', !/'wedding_team'/.test(tm));
-  ok('...and hands WEDDING_TEAM_SOURCE to createLead', /source:\s*WEDDING_TEAM_SOURCE/.test(tm));
+  // ⚠ SCOPED TO THE createLead CALL, not the whole file. Rider 5 gave this door a
+  // SECOND mention of the constant (the alert row's `source:`), and the loose
+  // regex then passed even when the lead itself was written with the wrong
+  // token — the mutation pass caught it, which is what it is for.
+  {
+    const call = tm.slice(tm.indexOf('createLead(supabase, t.vendor_id'), tm.indexOf('written.push'));
+    ok('...and hands WEDDING_TEAM_SOURCE to createLead itself',
+      /source:\s*WEDDING_TEAM_SOURCE/.test(call), call.slice(0, 0) || 'not in the createLead call');
+  }
 }
 
 // ── C5 · THE TEAM DOOR'S REFUSALS AND ITS ONE WRITER ────────────────────────
@@ -430,8 +438,14 @@ sec('C6c \u00b7 the wedding-lead alert (R-40.72)');
   const A = fresh('src/lib/vendor/weddingLeadAlert.js');
   ok('the cap is TEN, and it is a named constant', A.MAX_ALERTS_PER_TAP === 10, String(A.MAX_ALERTS_PER_TAP));
   const src = strip(read('src/lib/vendor/weddingLeadAlert.js'));
+  // ── LABELLED AMENDMENT · G1.3 rider 5, F-40.176. COUNT PRESERVED (1 -> 1).
+  // It asserted the literal AT THE CALL SITE. Rider 5 hoists it to TEMPLATE_KEY
+  // so the Utility re-point is one line, which is the whole point of the hoist —
+  // so the cell now asserts the CONSTANT'S VALUE and that the call site reads it.
+  // Asserting the literal where it used to be would have pinned the pre-cure
+  // shape and reddened the moment the cure landed.
   ok('the template is lead_alert_basic \u2014 identity-free, for everyone',
-    /templateKey: 'lead_alert_basic'/.test(src));
+    A.TEMPLATE_KEY === 'lead_alert_basic' && /templateKey: TEMPLATE_KEY/.test(src));
   ok('UNTIERED \u2014 the paid template is never reached from here',
     !/enquiry_alert_vendor/.test(src));
   ok('not one variable carries the guest\u2019s identity',
@@ -486,6 +500,51 @@ asyncCells.push(async () => {
   ok('a vendor with no phone is reported, never thrown',
     r.sent === false && r.reason === 'no_phone');
 });
+
+// ── C6d · RIDER 5 · THE ALERT IS RECORDED, THE NUMBER IS E.164 ─────────────
+sec('C6d \u00b7 rider 5 (F-40.177 / F-40.179)');
+{
+  const { toE164 } = fresh('src/lib/phone.js');
+  ok('toE164 turns the walk\u2019s bare digits into E.164',
+    toE164('8595363978') === '+918595363978', toE164('8595363978'));
+  ok('...and is idempotent on an already-normalised number',
+    toE164('+918595363978') === '+918595363978');
+  const tm = strip(read(TEAM)), dl = strip(read(DOWNLOAD));
+  // THE EXTENT, NOT THE SPECIMEN (R-40.64). The finding named the team door;
+  // the download door had the identical line and has been writing rows since G1.2.
+  ok('the team door normalises before createLead', /toE164\(String\(body\.phone/.test(tm));
+  ok('the download door does too \u2014 the extent, not the specimen',
+    /toE164\(String\(body\.phone/.test(dl));
+  ok('neither door normalises INSIDE createLead (it dedupes on the phone key)',
+    !/toE164/.test(strip(read('src/lib/vendor/leads.js'))));
+}
+{
+  const src = strip(read('src/lib/vendor/weddingLeadAlert.js'));
+  ok('every outcome writes a lead_alerts row, not just the good one',
+    (src.match(/recordAlert\(/g) || []).length >= 4, String((src.match(/recordAlert\(/g) || []).length));
+  ok('a failed send still records \u2014 wamid null, status the reason',
+    /wamid: null, status: reason/.test(src));
+  ok('no_phone is a recorded outcome, not a silent return', /status: 'no_phone'/.test(src));
+  ok('the template has ONE home, ready to re-point (F-40.176)',
+    /const TEMPLATE_KEY = 'lead_alert_basic'/.test(src)
+    && !/templateKey: 'lead_alert/.test(src));
+  ok('bookkeeping never throws \u2014 the send already happened',
+    /catch \(e\)[\s\S]{0,120}leadAlert:record/.test(src));
+  const rs = strip(read('src/lib/vendor/relayStatus.js'));
+  ok('the receipt router has a SECOND home for wamids',
+    /from\('lead_alerts'\)/.test(rs));
+  ok('...checked only on a MISS, so the conversation plane keeps priority',
+    rs.indexOf("from('lead_alerts')") > rs.indexOf("from('messages')"));
+  ok('...and it is .select()ed, never a blind update (F-06.143)',
+    /from\('lead_alerts'\)[\s\S]{0,320}\.select\(/.test(rs));
+  ok('the orphan sentence still runs when neither home matches',
+    /NO ROW CARRIES THIS SID/.test(rs));
+  const sql = read('db/migrations/0141_lead_alerts.sql');
+  ok('0141 makes the wamid UNIQUE where present \u2014 the ambiguity refusal needs it',
+    /CREATE UNIQUE INDEX[\s\S]{0,120}lead_alerts \(wamid\) WHERE wamid IS NOT NULL/.test(sql));
+  ok('...and the plain index is PARTIAL too', /idx_lead_alerts_wamid[\s\S]{0,80}WHERE wamid IS NOT NULL/.test(sql));
+  ok('0141 touches public.messages nowhere', !/ALTER TABLE public\.messages|INSERT INTO public\.messages/.test(sql));
+}
 
 // ── C7 · THE PROBE ──────────────────────────────────────────────────────────
 sec('C7 \u00b7 the reel probe (R-G13.10)');
@@ -591,7 +650,13 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       // 3g · the download door alerts even when no lead was written.
       ['src/api/public/weddingDownload.js', 'if (leadWritten) {', 'if (true) {'],
       // 3h · the alert is tiered after all — the distinction with nothing behind it.
-      ['src/lib/vendor/weddingLeadAlert.js', "templateKey: 'lead_alert_basic',", "templateKey: 'enquiry_alert_vendor',"],
+      ['src/lib/vendor/weddingLeadAlert.js', "const TEMPLATE_KEY = 'lead_alert_basic';", "const TEMPLATE_KEY = 'enquiry_alert_vendor';"],
+      // 3i · the team door stops normalising — F-40.179 restored.
+      ['src/api/public/weddingTeam.js', 'toE164(String(body.phone', 'String(body.phone'],
+      // 3j · the receipt router loses its second home — F-40.177 restored.
+      ['src/lib/vendor/relayStatus.js', ".from('lead_alerts')", ".from('lead_alerts_gone')"],
+      // 3k · a failed send stops being recorded.
+      ['src/lib/vendor/weddingLeadAlert.js', 'wamid: null, status: reason,', 'wamid: null,'],
       // 4 · nameless targets no longer dropped.
       [LIB, 'return [...out.values()].filter((t) => t.name);', 'return [...out.values()];'],
       // 5 · the guest token spelled at the door again (F-40.111 restored).

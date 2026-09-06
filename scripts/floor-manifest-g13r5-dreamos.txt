@@ -1,0 +1,73 @@
+# scripts/floor-manifest-g13r5-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.3 RIDER 5 — the four walk findings.
+#
+# F-14.16: a dirty file outside this list is a STOP. All authored by this seat in
+# this rider; the tree was clean at ea0b95f before a byte moved.
+#
+# F-40.177 · THE ALERT WAS RECORDED NOWHERE. The walk sent two alerts and every
+# receipt said `home=none matched=0 — NO ROW CARRIES THIS SID`. relayStatus looks
+# for a wamid in public.messages and nowhere else, and a lead alert is not a
+# conversation message. Meta reported one delivered and one failed; the estate
+# persisted neither. Cure: 0141 creates public.lead_alerts; the alert module
+# writes a row for EVERY outcome (a failed send's row is the only durable
+# evidence a vendor was skipped lawfully); relayStatus gains a SECOND home,
+# checked only on a miss so the conversation plane keeps priority, .select()ed
+# because a blind update is what F-06.143 was, and the orphan sentence still runs
+# when neither home matches.
+#
+# F-40.179 · THE NUMBER WAS STORED BARE. The walk wrote `8595363978` and the
+# room's WhatsApp control said 「missing country code」 — a lead a vendor could see
+# and could not answer.
+# ⚠ THE FINDING NAMED THE TEAM DOOR; THE DEFECT IS BOTH. The download door
+# carries the identical line and has been writing rows since G1.2. R-40.64 — the
+# specimen is never the extent. Both normalise through `toE164`, the estate's one
+# home (src/lib/phone.js, hoisted at F-04.109 after three copies had already
+# diverged once). NOT inside createLead: it dedupes on (vendor_id, phone), and a
+# writer that silently rewrote its own dedupe key would let two callers passing
+# the same human disagree about whether she is one row.
+# ⚠ THE CHAIR NAMED `asPhone`; NO SUCH FUNCTION EXISTS. The one home is `toE164`,
+# derived by command. Named here rather than an `asPhone` invented to match.
+#
+# F-40.176 · MARKETING IS THE WRONG CATEGORY. Meta dropped Swati's alert with
+# 131049 — the marketing throttle, which declines a MARKETING template to a user
+# who has not engaged recently. Dev Roy's arrived because he had messaged that
+# day. The throttle hits hardest the vendors who most need the alert: the quiet
+# ones. `TEMPLATE_KEY` is hoisted so the Utility re-point is ONE LINE; the bodies
+# are in docs/specs/TDW_19_G13_R5_VETO.md for the founder's veto. NOTHING IS
+# FILED — lead_alert_basic stays live, with the throttle named, until Meta
+# approves. `template_key` is stored PER ROW rather than inferred from `source`,
+# so rows written before and after the re-point stay truthful.
+#
+# F-40.178 (the lead titling as "Unknown") is the PWA HALF and is NOT in this
+# packet — it cuts after G3.4's pwa rider lands, on the chair's word.
+#
+# ⚠ `relayStatus.js` IS TDW_06's FILE, NOT THIS ARC'S. It is opened because
+# F-40.177's cure has nowhere else to live: the receipt router is the only thing
+# that sees a status webhook. The change is ADDITIVE and sited on the existing
+# miss path — no existing branch, sentence or return shape is altered, and the
+# `matched=0` line the chair's finding quoted still runs verbatim when neither
+# home matches.
+#
+# ⚠ THE BASE SET AT ea0b95f IS 22, NOT 20 — b46_money_books_bench and
+# b5_describe_bench arrived with what landed between 2227cc6 and ea0b95f.
+# PROVEN NOT THIS RIDER'S BY COMMAND: both red at the clean tip with rider 5
+# stashed, and red identically with it applied. Rider 5 touches neither the money
+# plane nor the describe plane. Carried loudly, not papered — the base was
+# RE-MEASURED at ea0b95f rather than reused from 2227cc6, because a comparison
+# across two tips is not a comparison.
+#
+# TWO MUTATIONS DID NOT BITE ON THE FIRST PASS AND BOTH WERE CELL WEAKNESSES,
+# cured rather than the mutations relaxed: 3h's anchor went stale the moment
+# TEMPLATE_KEY was hoisted, and C4's `source:` regex was satisfied by the
+# constant appearing ANYWHERE in the door — rider 5 gave that door a second
+# mention, so swapping the one that reaches createLead left the cell green. It is
+# now scoped to the createLead call. 20/20 bite.
+
+db/migrations/0141_lead_alerts.sql
+docs/specs/TDW_19_G13_R5_VETO.md
+scripts/b57_g13_team_bench.js
+scripts/floor-manifest-g13r5-dreamos.txt
+src/api/public/weddingDownload.js
+src/api/public/weddingTeam.js
+src/lib/vendor/relayStatus.js
+src/lib/vendor/weddingLeadAlert.js

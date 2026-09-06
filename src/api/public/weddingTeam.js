@@ -46,6 +46,7 @@ const router  = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
 const { createLead } = require('../../lib/vendor/leads');
+const { toE164 } = require('../../lib/phone');
 const { WEDDING_TEAM_SOURCE } = require('../../lib/vendor/leadSources');
 const { alertWeddingLead } = require('../../lib/vendor/weddingLeadAlert');
 const { siteBase } = require('../../lib/vendor/creditInvite');
@@ -143,7 +144,23 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
   const body  = req.body || {};
   const code  = String(req.params.code || '').trim();
   const slug  = String(req.params.slug || '').trim().toLowerCase();
-  const phone = String(body.phone || '').trim();
+  // ── E.164 AT THE DOOR — F-40.179 ──────────────────────────────────────────
+  // The walk stored `8595363978` bare, and the room's WhatsApp control then said
+  // 「missing country code」 — a lead a vendor could see and could not answer.
+  // `toE164` is the estate's ONE HOME for this (`src/lib/phone.js`, hoisted at
+  // F-04.109 after three byte-identical copies had already diverged once).
+  //
+  // ⚠ THE FINDING NAMED THE TEAM DOOR; THE DEFECT IS BOTH DOORS. The download
+  // door stores the same bare digits by the same line, and `createLead`
+  // normalises nothing. The specimen is never the extent (R-40.64) — curing only
+  // the named one would have left the identical bug on the door that has been
+  // writing rows since G1.2.
+  //
+  // Normalising HERE and not inside `createLead` is deliberate: `createLead`
+  // dedupes on `(vendor_id, phone)`, and a writer that silently rewrote the key
+  // it dedupes on would make two callers passing the same human disagree about
+  // whether she is one row. The doors agree on the shape before they knock.
+  const phone = toE164(String(body.phone || '').trim());
   if (!code || !slug) return notFound(res);
   if (!phone) return res.status(400).json({ ok: false, error: 'A number is required.' });
 
@@ -195,6 +212,7 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
   // inserts, and the whole point of this loop is that several of its iterations
   // may be for a number the estate has already seen.
   const written = [];
+  const leadIdByVendor = {};
   for (const t of targets) {
     try {
       const r = await createLead(supabase, t.vendor_id, {
@@ -211,6 +229,11 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
         ok: Boolean(r && r.ok !== false),
         deduped: Boolean(r && r.deduped),
       });
+      // F-40.177: the alert row points at the lead it is about. A dedupe hit
+      // returns the EXISTING row, which is the right one to point at — the
+      // vendor is being told about a guest she already holds.
+      if (r && r.lead && r.lead.id) leadIdByVendor[t.vendor_id] = r.lead.id;
+      else if (r && r.id) leadIdByVendor[t.vendor_id] = r.id;
     } catch (e) {
       // ⚠ ONE VENDOR'S FAILED WRITE DOES NOT COST HER THE OTHERS, and it does
       // not cost her the WhatsApp hand-off either. It is logged for an operator
@@ -234,6 +257,7 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
   try {
     const alerts = await alertWeddingLead(supabase, {
       targets, weddingDate, logger: req.app.locals.logger,
+      leadIdByVendor, source: WEDDING_TEAM_SOURCE,
     });
     if (alerts.sent < alerts.attempted) {
       req.app.locals.logger?.error?.('weddingTeam:alerts', alerts);

@@ -109,6 +109,21 @@ function errFields(status) {
   return `err=${code} err_title=${title}${more}`;
 }
 
+/** Meta's own code for the first error, or null. `errFields` already formats
+ *  these for the log line; `lead_alerts` stores them, so they are read once
+ *  here rather than parsed back out of a formatted string. */
+function firstErrCode(status) {
+  const e = status && Array.isArray(status.errors) ? status.errors[0] : null;
+  return e && e.code !== undefined && e.code !== null ? String(e.code) : null;
+}
+/** Meta's short title, untouched — spaces and all. The log line underscores it
+ *  for `k=v` parsing; a database column has no such constraint and storing the
+ *  mangled form would make `131049`'s title unreadable to a human. */
+function firstErrTitle(status) {
+  const e = status && Array.isArray(status.errors) ? status.errors[0] : null;
+  return e ? String(e.title || e.message || '').slice(0, 200) || null : null;
+}
+
 async function witnessStatusMatch(supabase, status) {
   const wamid = status && status.id ? String(status.id) : null;
   const want = status && status.status ? String(status.status) : null;
@@ -146,6 +161,43 @@ async function witnessStatusMatch(supabase, status) {
       // WORDS that this receipt is an ORPHAN — Meta is telling us about a
       // message the estate never persisted a wamid for. The original sentence
       // is preserved so the fact stays legible to a reader who knew the old one.
+      // ── THE SECOND HOME (F-40.177, G1.3 rider 5) ─────────────────────────
+      // `public.messages` is not the only table that persists a wamid any more.
+      // R-40.72's lead alerts write `public.lead_alerts`, and on the walk of
+      // 2026-09-06 EVERY receipt for them landed on the sentence below — Meta
+      // reported one `delivered` and one `failed` and the estate recorded
+      // neither, because this router had one place to look.
+      //
+      // ⚠ SECOND, NOT FIRST, AND ONLY ON A MISS. The conversation plane keeps
+      // priority: an alert is a notification, not a message in a thread, and a
+      // router that checked the newer table first would change what
+      // `delivery_status` means for every receipt the estate already handles.
+      //
+      // The update is `.select()`ed for the same reason the one above is — a
+      // blind update is what F-06.143 was. If this also matches nothing, the
+      // original sentence still runs, unchanged, and still says so.
+      const alt = await supabase
+        .from('lead_alerts')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, vendor_id, status');
+      const altRows = Array.isArray(alt && alt.data) ? alt.data : [];
+      if (altRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=lead_alert', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: altRows[0], reason: 'lead_alert' };
+      }
+      if (altRows.length > 1) {
+        // 0141's UNIQUE partial index makes this unreachable; it is checked
+        // anyway because the refusal above exists for exactly this shape and a
+        // second home that skipped it would be the weaker of the two.
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=lead_alert_ambiguous', `matched=${altRows.length}`, errFields(status),
+          '— SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: altRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

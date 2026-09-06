@@ -37,6 +37,7 @@ const router  = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
 const { createLead } = require('../../lib/vendor/leads');
+const { toE164 } = require('../../lib/phone');
 const { WEDDING_GUEST_SOURCE } = require('../../lib/vendor/leadSources');
 const { alertWeddingLead } = require('../../lib/vendor/weddingLeadAlert');
 const { signArchive, archiveDownloadUrl, nowTimestamp } = require('../../lib/cloudinarySign');
@@ -120,7 +121,23 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
   const body  = req.body || {};
   const code  = String(req.params.code || '').trim();
   const slug  = String(req.params.slug || '').trim().toLowerCase();
-  const phone = String(body.phone || '').trim();
+  // ── E.164 AT THE DOOR — F-40.179 ──────────────────────────────────────────
+  // The walk stored `8595363978` bare, and the room's WhatsApp control then said
+  // 「missing country code」 — a lead a vendor could see and could not answer.
+  // `toE164` is the estate's ONE HOME for this (`src/lib/phone.js`, hoisted at
+  // F-04.109 after three byte-identical copies had already diverged once).
+  //
+  // ⚠ THE FINDING NAMED THE TEAM DOOR; THE DEFECT IS BOTH DOORS. The download
+  // door stores the same bare digits by the same line, and `createLead`
+  // normalises nothing. The specimen is never the extent (R-40.64) — curing only
+  // the named one would have left the identical bug on the door that has been
+  // writing rows since G1.2.
+  //
+  // Normalising HERE and not inside `createLead` is deliberate: `createLead`
+  // dedupes on `(vendor_id, phone)`, and a writer that silently rewrote the key
+  // it dedupes on would make two callers passing the same human disagree about
+  // whether she is one row. The doors agree on the shape before they knock.
+  const phone = toE164(String(body.phone || '').trim());
   if (!code || !slug) return notFound(res);
   if (!phone) return res.status(400).json({ ok: false, error: 'A number is required.' });
 
@@ -221,6 +238,7 @@ router.post('/:code/:slug', asyncHandler(async (req, res) => {
       await alertWeddingLead(supabase, {
         targets: [{ vendor_id: owner.id, name: owner.business_name }],
         weddingDate,
+        source: WEDDING_GUEST_SOURCE,
         logger: req.app.locals.logger,
       });
     } catch (e) {

@@ -59,6 +59,21 @@ const VENDOR_LEADS_URL = require('../pwaPaths').vendorUrl('leadsList');
 const MAX_ALERTS_PER_TAP = 10;
 
 /**
+ * ── THE TEMPLATE, IN ONE PLACE, BECAUSE IT IS ABOUT TO MOVE (F-40.176) ──────
+ * The walk proved the cost of MARKETING: Meta dropped Swati's alert with
+ * `131049` — the marketing throttle, which silently declines a MARKETING
+ * template to a user who has not engaged recently. Dev Roy's arrived because he
+ * had. That will hit real vendors, and it will hit the ones who most need the
+ * alert: the quiet ones.
+ *
+ * R-40.72 is amended — a UTILITY body is authored and submitted, and this
+ * pointer moves to it on approval. It is a named constant rather than a literal
+ * at the call site precisely so that day is a one-line change with one cell
+ * guarding it, instead of a grep.
+ */
+const TEMPLATE_KEY = 'lead_alert_basic';
+
+/**
  * Alert one vendor about one wedding-page lead.
  *
  * Returns a plain result — never throws. A notification that fails must not cost
@@ -67,8 +82,38 @@ const MAX_ALERTS_PER_TAP = 10;
  *
  * @returns {{vendor_id: string, sent: boolean, reason: string|null, wamid: string|null}}
  */
-async function alertOne(supabase, { vendorId, vendorName, userPhone, weddingDate }) {
+/**
+ * ── THE ROW IS WRITTEN FOR EVERY OUTCOME, NOT JUST THE GOOD ONE (F-40.177) ──
+ * The walk sent two alerts and Railway said `home=none matched=0 — NO ROW
+ * CARRIES THIS SID` on every receipt, because the send wrote nothing anywhere.
+ * Meta then reported one `delivered` and one `failed` and the estate persisted
+ * neither. A room can never say 「told」 about a thing it did not write down.
+ *
+ * ⚠ FAILURES GET ROWS TOO, and they are the ones most worth having: an
+ * `opted_out` row is the only durable evidence that a vendor was skipped
+ * lawfully rather than missed. `wamid` is null there, which is exactly why 0141
+ * makes the unique index PARTIAL.
+ *
+ * Never throws. A bookkeeping failure must not cost a vendor her alert or a
+ * guest her enquiry — the send has already happened by the time this runs.
+ */
+async function recordAlert(supabase, row) {
+  if (!supabase) return;
+  try {
+    await supabase.from('lead_alerts').insert(row);
+  } catch (e) {
+    // Named, not swallowed. F-06.143's lesson: an unrecorded failure to record
+    // is how three days of dead notifications stayed invisible.
+    console.warn('[leadAlert:record] insert failed:', e && e.message);
+  }
+}
+
+async function alertOne(supabase, { vendorId, vendorName, userPhone, weddingDate, leadId, source }) {
   if (!userPhone) {
+    await recordAlert(supabase, {
+      vendor_id: vendorId, lead_id: leadId || null, source: source || null,
+      template_key: TEMPLATE_KEY, wamid: null, status: 'no_phone',
+    });
     // A vendor with no phone on `public.users` cannot be reached and this is not
     // an error — it is a fact about that account. `enquire.js` refuses the whole
     // enquiry in this case; here the LEAD IS ALREADY WRITTEN, so refusing would
@@ -79,7 +124,7 @@ async function alertOne(supabase, { vendorId, vendorName, userPhone, weddingDate
     const out = await sendWa({
       line: 'vendor',
       to: userPhone,
-      templateKey: 'lead_alert_basic',
+      templateKey: TEMPLATE_KEY,
       // Positional, in the registry's declared order. `monthPhrase(null)`
       // returns 'upcoming' — ONE HOME, already correct, and the reason a blank
       // month field needs no special case here. The seat's first reading of this
@@ -88,14 +133,19 @@ async function alertOne(supabase, { vendorId, vendorName, userPhone, weddingDate
       vars: [vendorName || 'there', monthPhrase(weddingDate), VENDOR_LEADS_URL],
       supabase,
     });
+    const wamid = (out && (out.wamid || (out.messages && out.messages[0] && out.messages[0].id))) || null;
+    await recordAlert(supabase, {
+      vendor_id: vendorId, lead_id: leadId || null, source: source || null,
+      template_key: TEMPLATE_KEY, wamid, status: 'sent',
+    });
     return {
       vendor_id: vendorId,
       sent: true,
       reason: null,
       // The room's told state reads `wamid` ONLY (R-40.72 §4) — never the body,
       // never the recipient. It is the one field Meta's own status webhook can
-      // be correlated against.
-      wamid: (out && (out.wamid || (out.messages && out.messages[0] && out.messages[0].id))) || null,
+      // be correlated against, and now the one 0141 indexes.
+      wamid,
     };
   } catch (e) {
     // ⚠ CLASSIFIED, NOT SWALLOWED. An opted-out vendor is a LAWFUL outcome and
@@ -105,6 +155,12 @@ async function alertOne(supabase, { vendorId, vendorName, userPhone, weddingDate
     // what happened rather than guess.
     const reason = (e && e.name === 'WaOptedOutError') ? 'opted_out'
                  : (e && (e.code || e.name)) || 'send_failed';
+    await recordAlert(supabase, {
+      vendor_id: vendorId, lead_id: leadId || null, source: source || null,
+      template_key: TEMPLATE_KEY, wamid: null, status: reason,
+      error_code: (e && e.code) ? String(e.code) : null,
+      error_title: (e && e.message) ? String(e.message).slice(0, 200) : null,
+    });
     return { vendor_id: vendorId, sent: false, reason, wamid: null };
   }
 }
@@ -124,7 +180,7 @@ async function alertOne(supabase, { vendorId, vendorName, userPhone, weddingDate
  * durable half; the message is the courtesy. If this whole module throws, the
  * caller must still have written its leads and answered its guest.
  */
-async function alertWeddingLead(supabase, { targets, weddingDate, logger }) {
+async function alertWeddingLead(supabase, { targets, weddingDate, logger, leadIdByVendor, source }) {
   const list = Array.isArray(targets) ? targets : [];
   const capped = list.slice(0, MAX_ALERTS_PER_TAP);
   const skipped = list.length - capped.length;
@@ -153,6 +209,8 @@ async function alertWeddingLead(supabase, { targets, weddingDate, logger }) {
       vendorName: (v && v.business_name) || t.name,
       userPhone: v ? phoneByUser[v.user_id] : null,
       weddingDate,
+      leadId: leadIdByVendor ? leadIdByVendor[t.vendor_id] : null,
+      source,
     });
     results.push(r);
     if (!r.sent && logger && logger.error) {
@@ -173,4 +231,4 @@ async function alertWeddingLead(supabase, { targets, weddingDate, logger }) {
   };
 }
 
-module.exports = { alertWeddingLead, alertOne, MAX_ALERTS_PER_TAP };
+module.exports = { alertWeddingLead, alertOne, recordAlert, MAX_ALERTS_PER_TAP, TEMPLATE_KEY };
