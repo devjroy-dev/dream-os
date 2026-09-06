@@ -118,6 +118,11 @@ const { ENQUIRE_BASE } = require('../../lib/discover/shapeVendor');
 // G2 · R-G2.9. The visibility rule is IMPORTED, never restated: `three` lives
 // once, beside the computation that produces the count it tests.
 const { sealIsVisible } = require('../../lib/vendor/seal');
+// G3.1. `publicWedding` is the ONE shaper of a wedding for a public wire
+// (`weddings.js:788`) and `weddingPage.js` already reads it. This door imports
+// it rather than restating five field names, so a sixth field added there
+// reaches both leaves in one edit and neither can drift into a private column.
+const { publicWedding } = require('../../lib/vendor/weddings');
 
 /**
  * THE WIRE SHAPE, DECLARED ONCE.
@@ -184,6 +189,20 @@ const CARD_KEYS = Object.freeze([
   // is no seal, and the wire says so by absence rather than by a flag the leaf
   // has to interpret. See `sealFor` below.
   'seal',
+  // ── BLOCK 19 · G3.1 — TWO MORE NAMED FIELDS (P2-A §3-1) ──────────────────
+  // `b44` §2.2/§3.5 diff this list, so the constant and its cells move in one
+  // edit. Neither is a flag the leaf has to interpret into prose:
+  //
+  //   `date_check_enabled` — R-40.77. Whether the vendor has permitted the
+  //   public date check. The leaf renders the control ONLY on true. It is
+  //   chrome; `public/availability.js` re-answers the same question and is the
+  //   actual enforcement, because a gate that lives in a renderer is a gate a
+  //   curl walks past.
+  //
+  //   `weddings` — an ARRAY, possibly empty, never null. Her published and
+  //   consented wedding pages, newest first. Empty renders no section at all
+  //   (F-40.164): a heading over nothing is a page that looks broken.
+  'date_check_enabled', 'weddings',
 ]);
 
 /**
@@ -191,13 +210,18 @@ const CARD_KEYS = Object.freeze([
  * `select('*')` is not merely discouraged here; there is no code path that
  * could produce one, because these are the strings the queries are built from.
  */
-const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, about, rate_min, rate_display';
+const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, date_check_enabled, about, rate_min, rate_display';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
 // `computed_at` is selected and WITHHELD — the page shows a fact, not an audit
 // trail, and "counted every night" is the room's sentence to the vendor, not the
 // couple's. Two of the three states this door's header names: fetched-and-sent,
 // and fetched-and-withheld.
 const SEAL_SELECT      = 'vendor_id, weddings, delivery_days, computed_at';
+// G3.1. Exactly what `publicWedding` consumes plus the two keys the ORDER needs
+// (`event_id` to join the calendar, `wedding_date` as its fallback). Neither
+// ordering key reaches the wire — `publicWedding` emits slug, title, venue, city
+// and a derived SEASON, and no exact date has ever crossed this lane.
+const WEDDINGS_SELECT  = 'slug, title, venue, city, event_id, wedding_date';
 const PORTFOLIO_SELECT = 'image_url, caption, is_hero, position';
 const DEMO_SELECT      = 'display_name, category, city, ig_handle, whatsapp_phone, active, about, photos';
 
@@ -408,6 +432,49 @@ router.get('/:code', async (req, res) => {
         sealRow = null;
       }
 
+      // ── G3.1 · HER REAL WEDDINGS, READ-ONLY ON THE WEDDINGS PLANE ─────────
+      // The predicate is `idx_weddings_live`'s own — `visibility='published'
+      // AND couple_consent = true` — the same pair `weddingPage.js` gates a
+      // page on and `sealFor` counts. Three readers, ONE predicate; this door
+      // re-derives none of it.
+      //
+      // ⚠ THE FAILURE POSTURE IS THE SEAL'S, DELIBERATELY: a throw here yields
+      // an EMPTY LIST and the page still serves. Losing a storefront because a
+      // secondary read hiccuped would trade the whole page for a section.
+      //
+      // ⚠ NEWEST FIRST BY THE CALENDAR'S DATE, THEN THE TYPED ONE. That is
+      // `publicWedding`'s own order of authority (weddings.js:776) — the event
+      // wins because it is the row the vendor maintains — so the ORDER and the
+      // SEASON cannot disagree about which date they mean.
+      let weddingRows = [];
+      try {
+        const { data: wr } = await supabase
+          .from('weddings')
+          .select(WEDDINGS_SELECT)
+          .eq('owner_vendor_id', v.id)
+          .eq('visibility', 'published')
+          .eq('couple_consent', true);
+        const rows = Array.isArray(wr) ? wr : [];
+        const eventIds = rows.map((r) => r.event_id).filter(Boolean);
+        const dateById = new Map();
+        if (eventIds.length) {
+          const { data: ev } = await supabase
+            .from('events')
+            .select('id, event_date')
+            .in('id', eventIds);
+          for (const e of (ev || [])) dateById.set(e.id, e.event_date);
+        }
+        weddingRows = rows
+          .map((r) => ({ row: r, when: dateById.get(r.event_id) || r.wedding_date || null }))
+          // Undated pages sort LAST rather than first: `null` in a descending
+          // sort is not "the newest", it is "we do not know", and a page whose
+          // event was deleted must not head her portfolio.
+          .sort((a, b) => (b.when || '').localeCompare(a.when || ''))
+          .map(({ row, when }) => publicWedding(row, when));
+      } catch (_wedErr) {
+        weddingRows = [];
+      }
+
       return res.status(200).json({
         ok: true,
         card: card({
@@ -416,6 +483,10 @@ router.get('/:code', async (req, res) => {
           city:          v.city,
           handle:        String(v.routing_handle).toLowerCase(),
           is_demo:       false,
+          // R-40.77. `=== true` and never `!== false`: for a consent flag the
+          // two coercions disagree exactly where it matters, on a null.
+          date_check_enabled: v.date_check_enabled === true,
+          weddings:      weddingRows,
           // ⚠ NULL FOR EVERY REAL VENDOR, AND THAT IS THE RULING, NOT AN
           // OVERSIGHT. `public.vendors` has no phone column and no
           // "number is public" flag; a vendor's number lives on

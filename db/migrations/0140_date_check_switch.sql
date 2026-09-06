@@ -1,0 +1,71 @@
+-- 0140_date_check_switch.sql
+-- TDW_19 · G3.1 · R-40.77 (F-40.157) — THE VENDOR'S PERMISSION FOR A PUBLIC
+-- DOOR ONTO HER CALENDAR.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+-- WHY THIS COLUMN EXISTS AT ALL
+-- ═══════════════════════════════════════════════════════════════════════════
+-- G3.1 puts a control on `/v/<code>` that answers a stranger one word about a
+-- named date. Master §2.4: consent is a switch the vendor or couple owns, and
+-- SILENCE NEVER MEANS YES. `discover_paused` is the only switch that touches
+-- `/v/` today and it means "do not show me publicly" — a vendor who left it off
+-- in August did not thereby agree that in September strangers could ask whether
+-- she is free on a named day. That is R-G11.6's reasoning one surface over, and
+-- the seat filed it rather than building either arm (§E2 of the G3.1 veto
+-- sheet); the founder ruled the switch.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+-- WHY `public.vendors` AND NOT A SIBLING OF `vendor_seal` — the chair asked for
+-- one home, derived, and named. Four reasons, in the order they decided it:
+-- ═══════════════════════════════════════════════════════════════════════════
+--   1. `vendor_seal` IS A COMPUTED CACHE. Four columns — vendor_id, weddings,
+--      delivery_days, computed_at — written by a job whose whole contract is
+--      "recompute me from `weddings`". A PERMISSION is not a computed fact, and
+--      a table that is rewritten on a schedule is the worst possible home for a
+--      value nobody may ever recompute. The seal job would have to learn to
+--      preserve one column, which is a rule waiting to be forgotten.
+--   2. `vendors` ALREADY HOLDS EVERY SWITCH OF THIS EXACT SHAPE.
+--      `discover_paused` (48), `rate_display` (47), `briefing_enabled` (19),
+--      `open_to_travel` (17). `rate_display` is the nearest sibling by meaning:
+--      a NOT NULL boolean deciding whether ONE FACT renders on the public card.
+--      This is that, for a different fact.
+--   3. THE PUBLIC CARD ALREADY READS `vendors` AND NOTHING ELSE FOR POSTURE.
+--      `vendorCard.js`'s `VENDOR_SELECT` is one row from this table; the seal is
+--      a second query precisely because it lives elsewhere. A switch on another
+--      plane would put a SECOND JOIN on the public hot path for one boolean.
+--   4. THE TWO COLUMNS THAT DECIDE WHETHER THE CHECK CAN ANSWER AT ALL ARE
+--      HERE. `category` (4) and `slot_capacity` (45) are what `describeDate`
+--      reads to resolve capacity, and R-40.78 makes `category` the reason the
+--      switch is ABSENT for an occupancy-off trade. The permission belongs
+--      beside the facts that gate it.
+--
+-- ⚠ `_enabled` AND NOT `_paused`, AND THE DEFAULT IS THE REASON.
+-- `discover_paused` is inverted — false means visible — because its product
+-- default is ON. R-40.77's default is OFF. Spelling this `date_check_paused`
+-- would force `default true` to mean the same thing, and a column whose safe
+-- state is `true` is one careless `coalesce` away from opening a door nobody
+-- opened. `briefing_enabled` is the naming precedent (:19); the default is the
+-- opposite of its default, and deliberately.
+--
+-- ── ORDER (R-40.44) ────────────────────────────────────────────────────────
+-- 0140, allocated by the chair in the G3.1 kickoff §5 ("0140 only if ruled").
+-- It is now ruled. 0139 is left free for G3.4's payment reminders, which the
+-- chair allocated first and which has not cut. The applied ladder tip is 0138,
+-- so this fills no reserved hole and OUT_OF_ORDER.json takes NO record —
+-- F-SW.3's cure applies only BELOW the tip, and 0140 is above it.
+--
+-- ── CONSTRAINTS (R-40.27) ──────────────────────────────────────────────────
+-- WRITES: public.vendors. Its constraints section at docs/db/PUBLIC_SCHEMA.md
+-- carries vendors_pkey (id), vendors_user_id_fkey, vendors_routing_handle_key
+-- and the status/tier CHECKs. THIS STATEMENT ADDS A COLUMN AND TOUCHES NONE OF
+-- THEM: no key, no FK, no CHECK is created, dropped or re-pointed, and no
+-- existing row's constrained columns are read or written. A NOT NULL column
+-- with a DEFAULT backfills every existing row to false in one pass — which is
+-- the intended state, because R-40.77's default is OFF and every vendor alive
+-- today has consented to nothing.
+
+alter table public.vendors
+  add column if not exists date_check_enabled boolean not null default false;
+
+comment on column public.vendors.date_check_enabled is
+  'TDW_19 G3.1 / R-40.77. The vendor''s permission for the public date check on /v/<code>. OFF by default: silence never means yes. Written only through PATCH /api/v2/vendor/me; read by the public card door and by the Storefront room. For a trade whose occupancy is off (R-40.78) the switch is not offered and this column is not consulted.';

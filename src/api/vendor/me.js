@@ -212,6 +212,11 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // are exact, never a guess about "not yet decided".
       rate_display:            vendor.rate_display            !== false,
       discover_paused:         vendor.discover_paused         === true,
+      // G3.1 · R-40.77. `=== true` and never `!== false`: the two coercions
+      // disagree on NULL, and for a consent flag the disagreement is the whole
+      // question. A row written before 0140 backfills to false, but a shape that
+      // read `!== false` would answer YES to a null it had never been given.
+      date_check_enabled:      vendor.date_check_enabled      === true,
     },
   });
 });
@@ -288,13 +293,25 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // and the removal of open_to_travel from both shapes below — is D-3,
                         // coordinated with OB-P through the chair, and the arc's completion
                         // cell (zero live readers at arc close) is what enforces it.
-                        'service_area', 'service_cities'];
+                        'service_area', 'service_cities',
+                        // ── BLOCK 19 · G3.1 · R-40.77 — THE DATE-CHECK SWITCH ──────────
+                        // It joins HERE for the reason the block above gives about
+                        // `about`, `rate_display` and `discover_paused`: it is the
+                        // vendor's OWN posture — whether strangers may ask her calendar
+                        // one question — and a second route would owe a second copy of
+                        // the locked-field checks for nothing. Same door, same guard.
+                        'date_check_enabled'];
 
 // The three booleans the vendor may now set. Guarded on the slot_capacity pattern
 // (:147 below): a 400 here, never a silent coercion. Without this, {"discover_paused":
 // "maybe"} reaches Postgres raw and the answer to "am I hidden?" becomes whatever the
 // driver decided that day.
-const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused'];
+// ⚠ `date_check_enabled` MUST BE IN THIS ARRAY, and it matters more here than
+// for the other four. Without it {"date_check_enabled":"maybe"} reaches Postgres
+// raw, and the answer to "may strangers read my calendar?" becomes whatever the
+// driver decided that day. That is a consent question (R-40.77), so a 400 is the
+// only honest answer to a value that is not a boolean.
+const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused', 'date_check_enabled'];
 
 // ── ARC OB · SERVICE-AREA VALIDATION (CE-31 ruling ①) ──────────────────────
 // A 400, never a silent coercion — the BOOLEAN_FIELDS doctrine directly above,
@@ -411,7 +428,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
 
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -422,7 +439,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, slot_capacity, discover_preview, service_area, service_cities')
+      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, slot_capacity, discover_preview, service_area, service_cities')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -466,6 +483,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       briefing_enabled: updated.briefing_enabled !== false,
       rate_display:     updated.rate_display     !== false,
       discover_paused:  updated.discover_paused  === true,
+      date_check_enabled: updated.date_check_enabled === true,
     },
   });
 }));

@@ -32,6 +32,13 @@ router.use('/public/vendor-card', require('./public/vendorCard'));
 // the same exposure class with a second path segment (R-G11.5's miss law).
 router.use('/public/wedding',     require('./public/weddingPage'));
 router.use('/public/wedding-download', require('./public/weddingDownload'));
+// BLOCK 19 · G3.1 — the public date check. Same exposure class as the three
+// above: unauthenticated, keyed on <code>, one indistinguishable miss for every
+// refusal. Mounted beside them rather than under './vendor/core', whose every
+// sibling carries requireAuth + resolveVendor — a door with no session mounted
+// among those would be read as guarded by association (the vendor-card line's
+// own reasoning, eight lines up).
+router.use('/public/availability', require('./public/availability'));
 // BLOCK 19 · G1.3 — "Book the same team". Same exposure class as the two above:
 // unauthenticated, keyed on the same <code>/<slug> pair, gated by the same three
 // page checks. Mounted beside them so the whole public wedding surface is one
