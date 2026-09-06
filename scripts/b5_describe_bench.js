@@ -105,9 +105,29 @@ console.log('\n── 1. IT NEVER RETURNS NULL. THIS IS THE WHOLE POINT. ──'
   assert.strictEqual((await describeDate(unmapped)).reason, 'unmapped');
   ok('unmapped category -> off/unmapped, never silence');
 
+  // ── AMENDED BY LABEL — R-G31.6 (Block 19 G3.1, 2026-09-06) ───────────────
+  // `delivery` COLLAPSES INTO `unmapped`. `describeDate`'s four branches lifted
+  // into `capacityVerdict`, the one ladder that `GET /me` also reads, and the
+  // collapse was ruled there rather than a third vendor-facing byte being
+  // authored for a state the seat believed nobody could reach.
+  //
+  // ⚠ THE SEAT'S OWN CENSUS WAS WRONG WHEN IT SAID SO. `b58` §5.5 asserted "no
+  // live category resolves `delivery`" against a HAND-WRITTEN list that omitted
+  // `designer` and `jewellery` — both `timelineType: 'delivery'`, both live
+  // (`categoryProfiles.js:76`, `:88`), and `designer` is this very fixture. The
+  // collapse was never free; it was only unexamined. §5.5 now derives the set
+  // from the profile map instead of naming it.
+  //
+  // What is LOST here is real and is named rather than shrugged at: a designer
+  // and a jewellery house are off for a REASON ("ready by" matters, "which day"
+  // does not) and now report the same word as a trade nobody has keyed yet. The
+  // room shows both the `unmapped` byte. That is the ruled behaviour and it is
+  // the softer of D6's two sentences, so it misleads gently rather than badly —
+  // but if a delivery trade ever needs its own line, this is the comment that
+  // says where the word went.
   const delivery = { supabase: makeSupabase({ vendor: { slot_capacity: null, category: 'designer' } }), vendorId: 'v', date: D };
-  assert.strictEqual((await describeDate(delivery)).reason, 'delivery');
-  ok('delivery vendor -> off/delivery ("ready by" matters, "which day" does not)');
+  assert.strictEqual((await describeDate(delivery)).reason, 'unmapped');
+  ok('delivery vendor -> off/unmapped (R-G31.6: the delivery branch collapses)');
 
   const noVendor = { supabase: makeSupabase({ vendor: null }), vendorId: 'v', date: D };
   assert.strictEqual((await describeDate(noVendor)).reason, 'no_vendor');

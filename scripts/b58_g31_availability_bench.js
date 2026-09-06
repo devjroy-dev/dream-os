@@ -290,11 +290,38 @@ function makeDb({ rows = [], vendor = null, vendorErr = null }) {
       : F('§5.6 the null-capacity branch is unreachable, and declared so',
           `${unkeyed.join(', ')} now reach it — §5.1 begins guarding a live branch`);
 
-    const delivery = CATS.filter((c) => c && profileFor(c).timelineType === 'delivery');
-    delivery.length === 0
-      ? P('§5.5 no live category resolves `delivery`', 'the collapse into `unmapped` stays free')
-      : F('§5.5 no live category resolves `delivery`',
-          `${delivery.join(', ')} now reach the collapsed branch — D6 owes a third byte`);
+    // ⚠ DERIVED FROM THE PROFILE MAP, NOT FILTERED FROM `CATS` — and the first
+    // cut of this cell is the specimen for why. It filtered a HAND-WRITTEN list
+    // that omitted `designer` and `jewellery`, both `timelineType: 'delivery'`
+    // and both live, and so reported "no live category resolves `delivery`"
+    // while TWO did — one of them `b5_describe_bench`'s own fixture. R-40.64:
+    // the radius of a claim is derived by command BEFORE the claim names it,
+    // and a census that lists is not a census.
+    //
+    // ⚠ AND IT WALKS BLOCKS, NOT A LAZY SPAN. `/key:\s*\{[\s\S]*?delivery/`
+    // reported `makeup` — the span ran from an earlier key straight through the
+    // next `delivery`, naming a trade that is nothing of the kind. Each profile
+    // is bounded by the NEXT top-level key; that boundary is the discriminator.
+    const profilesSrc = read('src/lib/vendor/categoryProfiles.js');
+    const starts = [...profilesSrc.matchAll(/^ {2}([a-z_]+):\s*\{/gm)];
+    const deliverySet = starts
+      .filter((m, i) => {
+        const from = m.index;
+        const to = i + 1 < starts.length ? starts[i + 1].index : profilesSrc.length;
+        return /timelineType:\s*'delivery'/.test(profilesSrc.slice(from, to));
+      })
+      .map((m) => m[1])
+      .sort();
+    // The collapse is RULED (R-G31.6), so a delivery trade EXISTING is not a red.
+    // What this cell holds is that the SET is known — it reddens when a trade
+    // joins or leaves it, which is the moment D6's third byte stops being
+    // hypothetical and someone can see the trade it would describe.
+    const KNOWN_DELIVERY = ['designer', 'jewellery'];
+    JSON.stringify(deliverySet) === JSON.stringify(KNOWN_DELIVERY)
+      ? P('§5.5 the delivery set is exactly the two known trades',
+          `${deliverySet.join(', ')} — collapsed into \`unmapped\` by R-G31.6`)
+      : F('§5.5 the delivery set is exactly the two known trades',
+          `now [${deliverySet.join(', ')}] — the collapse's cost changed and D6 owes a look`);
   }
 
   console.log(`\n${fail === 0 ? 'GREEN' : 'RED'} — ${pass} passed, ${fail} failed\n`);
