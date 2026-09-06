@@ -231,6 +231,72 @@ function makeDb({ rows = [], vendor = null, vendorErr = null }) {
       : F('§4.5 additive only');
   }
 
+  // ═══ §5 · ONE LADDER — R-G31.6 / F-40.172 ═══════════════════════════════
+  {
+    const { capacityVerdict, CATEGORY_CAPACITY } = require('../src/lib/vendor/occupancy');
+    const { capacityFacts }   = require('../src/api/vendor/me');
+
+    // THE IDENTITY, ASSERTED AND NOT TRUSTED. `applicable` is DEFINED as
+    // `reason === null`; a future branch that returns one without the other is
+    // the F-40.172 shape returning, and this is the cell that says so.
+    const CATS = ['photography', 'videography', 'makeup', 'decor', 'venue_catering',
+                  'planning', 'planner', 'hairstylist', 'performer', 'content_creator',
+                  'choreographer', 'mehendi', 'invitations', 'cake', '', null];
+    const broken = CATS.filter((c) => {
+      const v = capacityVerdict({ category: c });
+      return v.applicable !== (v.reason === null);
+    });
+    broken.length === 0
+      ? P('§5.1 applicable === (reason === null), every category', `${CATS.length} categories driven`)
+      : F('§5.1 applicable === (reason === null), every category', `broken: ${broken.join(', ')}`);
+
+    // THE TWO FIELDS CANNOT DISAGREE, because `me.js` reads the same ladder.
+    // This is F-40.172 itself, refused: seven categories used to split here.
+    const split = CATS.filter((c) => capacityFacts(c).capacity_applicable !== capacityVerdict({ category: c }).applicable);
+    split.length === 0
+      ? P('§5.2 capacity_applicable agrees with the ladder', 'the seven that split are joined')
+      : F('§5.2 capacity_applicable agrees with the ladder', `still split: ${split.join(', ')}`);
+
+    // The seven, BY NAME. A future map edit that silently re-enables one of them
+    // should be a red here rather than a switch appearing on a vendor's room.
+    const SEVEN = ['hairstylist', 'performer', 'content_creator', 'choreographer',
+                   'mehendi', 'invitations', 'cake'];
+    const wrong = SEVEN.filter((c) => capacityVerdict({ category: c }).reason !== 'unmapped');
+    wrong.length === 0
+      ? P('§5.3 the seven read `unmapped`, not `ruled_off`', 'a not-yet is not a decision')
+      : F('§5.3 the seven read `unmapped`, not `ruled_off`', wrong.join(', '));
+    capacityVerdict({ category: 'planning' }).reason === 'ruled_off'
+      ? P('§5.4 a planner reads `ruled_off`', 'branch order holds — planning keys to `other` and must not misfile as unmapped')
+      : F('§5.4 a planner reads `ruled_off`', JSON.stringify(capacityVerdict({ category: 'planning' })));
+
+    // ⚠ THE CELL THAT REDDENS WHEN D6's THIRD BYTE BECOMES REAL. `delivery`
+    // collapses into `unmapped` by ruling BECAUSE no live category reaches it.
+    // The day one does, that collapse stops being free and a vendor-facing byte
+    // is owed — written by someone who can see the trade it describes.
+    const { profileFor } = require('../src/lib/vendor/categoryProfiles');
+    // ⚠ AND THE SAME HONESTY ABOUT THE NULL-CAPACITY BRANCH. A mutation that
+    // returned `{applicable:true, reason:'unmapped'}` there left §5.1 GREEN —
+    // not because §5.1 is weak, but because NO LIVE CATEGORY REACHES that line:
+    // every non-`other` profile key is one of CATEGORY_CAPACITY's four, so the
+    // `other` branch above swallows everything else first. The branch is correct
+    // and currently dead, and saying so is worth more than a cell implying it
+    // was tested. This reddens the day a fifth key appears unkeyed — which is
+    // exactly when that branch starts deciding something.
+    const KEYED = Object.keys(CATEGORY_CAPACITY);
+    const unkeyed = [...new Set(CATS.filter(Boolean).map((c) => profileFor(c).key))]
+      .filter((k) => k !== 'other' && !KEYED.includes(k));
+    unkeyed.length === 0
+      ? P('§5.6 the null-capacity branch is unreachable, and declared so', 'every non-other key is in CATEGORY_CAPACITY')
+      : F('§5.6 the null-capacity branch is unreachable, and declared so',
+          `${unkeyed.join(', ')} now reach it — §5.1 begins guarding a live branch`);
+
+    const delivery = CATS.filter((c) => c && profileFor(c).timelineType === 'delivery');
+    delivery.length === 0
+      ? P('§5.5 no live category resolves `delivery`', 'the collapse into `unmapped` stays free')
+      : F('§5.5 no live category resolves `delivery`',
+          `${delivery.join(', ')} now reach the collapsed branch — D6 owes a third byte`);
+  }
+
   console.log(`\n${fail === 0 ? 'GREEN' : 'RED'} — ${pass} passed, ${fail} failed\n`);
   process.exit(fail === 0 ? 0 : 1);
 })().catch((e) => { console.error(e); process.exit(1); });

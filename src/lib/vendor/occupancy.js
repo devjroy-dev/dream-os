@@ -541,6 +541,63 @@ async function liveMemberRowsOn(supabase, vendorId, date, selfId) {
 
 // full_day consumes ALL slots (P3). So a row holds slot S if it IS S or if it is
 // full_day; and a full_day booking must find room in every slot of the day.
+/**
+ * ⚠ THE ONE LADDER THAT DECIDES WHETHER CAPACITY APPLIES — R-G31.6, F-40.172.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY THIS EXISTS: TWO LADDERS ANSWERED ONE QUESTION AND DISAGREED ON SEVEN
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `describeDate` refused four ways — RULED_OFF, `profile.key === 'other'`,
+ * `timelineType === 'delivery'`, and a null capacity. `me.js`'s `capacityFacts`
+ * asked a DIFFERENT question — `timelineType === 'event' && !RULED_OFF` — and
+ * shipped its answer to the PWA as `capacity_applicable`.
+ *
+ * They agree for photography, makeup, decor and venue_catering. They DISAGREE
+ * for seven: hairstylist, performer, content_creator, choreographer, mehendi,
+ * invitations and cake — every one of which reads `capacity_applicable: true`
+ * while every date check on that vendor returns `occupancy: 'off'`.
+ *
+ * That was latent from B6-S1 and cost nothing until a surface consulted BOTH.
+ * G3.1's room is that surface: gating the public date-check switch on
+ * `capacity_applicable` would have shown a hairstylist a switch she could flip,
+ * after which every guest checking a date would read "This page is no longer
+ * available" — the door refusing correctly while the room had promised.
+ *
+ * So the ladder moves HERE, once, and everything reads it: `describeDate` for
+ * its word, `capacityFacts` for `capacity_applicable`, and `GET /me` for
+ * `capacity_reason`. **`applicable` and `reason` cannot disagree, because one
+ * is defined as the other being null** — `b58` asserts that identity rather
+ * than trusting it.
+ *
+ * ⚠ THE ORDER OF THE BRANCHES IS LOAD-BEARING AND IS `describeDate`'S OWN.
+ * `planning` normalises to `planning` but its profile key is `other`, so a
+ * RULED_OFF check placed second would report a planner as `unmapped` — a
+ * decision misfiled as a not-yet, which is exactly the distinction D6's two
+ * bytes exist to keep.
+ *
+ * @param {{category: string|null}} vendor
+ * @returns {{applicable: boolean, reason: 'ruled_off'|'unmapped'|null}}
+ */
+function capacityVerdict(vendor) {
+  const { normaliseCategory } = require('./categoryFraming');
+  const { profileFor }        = require('./categoryProfiles');
+  const category = vendor && vendor.category;
+  const norm     = normaliseCategory(category);
+  const profile  = profileFor(category);
+
+  if (RULED_OFF.has(norm))     return { applicable: false, reason: 'ruled_off' };
+  if (profile.key === 'other') return { applicable: false, reason: 'unmapped' };
+  // ⚠ `delivery` COLLAPSES INTO `unmapped`, RULED, AND THE COLLAPSE IS NAMED
+  // HERE RATHER THAN HIDDEN. No live category reaches this branch — every one
+  // resolves `event` — so a third vendor-facing byte would have been authored
+  // blind for a state nobody could reach. `b58` carries a cell that REDDENS the
+  // day a category resolves `delivery`, which is when the byte gets written by
+  // someone who can see the trade it describes.
+  if (profile.timelineType === 'delivery') return { applicable: false, reason: 'unmapped' };
+  if (CATEGORY_CAPACITY[profile.key] == null) return { applicable: false, reason: 'unmapped' };
+  return { applicable: true, reason: null };
+}
+
 const DAY_SLOTS = ['morning', 'noon', 'evening'];
 function rowHolds(rowSlot, slot) {
   return rowSlot === slot || rowSlot === 'full_day';
@@ -554,7 +611,7 @@ module.exports = {
   // B6 (R-B6-1): P4.1's feed — the window aggregate fed by describeDate, and the
   // occupancy half of the date-pressure sentence. See their headers at file end.
   describeWindow, windowWords,
-  CATEGORY_CAPACITY, RULED_OFF, VERIFY_FAILED, SPATIAL_KEYS,
+  CATEGORY_CAPACITY, RULED_OFF, VERIFY_FAILED, SPATIAL_KEYS, capacityVerdict,
   // test seams — the bench drives the real function; these let it drive the parts.
   effectiveRow, slotOfRow, _unmappedSeen,
   // 04.5 P1 seam — the bench drives memberClashCheck directly over the real reader.
@@ -1079,15 +1136,16 @@ async function describeDate(ctx) {
   if (v.err) return { ...unknown('verify_failed'), blocked, blocked_slots };   // the block SURVIVES
   if (!v.vendor) return { ...off('no_vendor'), blocked, blocked_slots };
 
-  const { normaliseCategory } = require('./categoryFraming');
-  const { profileFor }        = require('./categoryProfiles');
-  const norm    = normaliseCategory(v.vendor.category);
+  const { profileFor } = require('./categoryProfiles');
   const profile = profileFor(v.vendor.category);
 
-  // Each of these is a `null` in the checker. Here each is a WORD.
-  if (RULED_OFF.has(norm))               return { ...off('ruled_off'), blocked, blocked_slots };
-  if (profile.key === 'other')           return { ...off('unmapped'), blocked, blocked_slots };
-  if (profile.timelineType === 'delivery') return { ...off('delivery'), blocked, blocked_slots };
+  // ⚠ THE FOUR BRANCHES THAT STOOD HERE ARE NOW `capacityVerdict`'s — R-G31.6.
+  // They have not changed; they moved, so that `GET /me` answers the same
+  // question from the same ladder instead of a second one that disagreed on
+  // seven categories (F-40.172). Each is still a `null` in the checker and a
+  // WORD here.
+  const verdict = capacityVerdict(v.vendor);
+  if (!verdict.applicable) return { ...off(verdict.reason), blocked, blocked_slots };
 
   // ── 3. CAPACITY — capacityCheck's arithmetic, by calling its parts ───────
   // `??` not `||`: 0 is a POSTURE (Q-SP-1, ruled), and `||` would silently promote

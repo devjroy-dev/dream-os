@@ -22,6 +22,8 @@ const { ok: okRes, err: errRes } = require('../../lib/response');
 // 0 is a lawful posture (Q-SP-1), the exact lesson capacityCheck's header teaches.
 const { CATEGORY_CAPACITY, RULED_OFF } = require('../../lib/vendor/occupancy');
 const { profileFor }        = require('../../lib/vendor/categoryProfiles');
+// R-G31.6 · the ONE ladder that decides whether capacity applies. Never restated.
+const { capacityVerdict }   = require('../../lib/vendor/occupancy');
 const { normaliseCategory } = require('../../lib/vendor/categoryFraming');
 // F-10.92 — the lane flag has to reach the CLIENT, not just the route.
 const { readLaneFlag } = require('../../lib/laneFlags');
@@ -45,12 +47,34 @@ const { vendorComplete } = require('../../lib/onboardingPredicate');
 // OFF by ruling until 04.5). Computed here, read by the PWA, one home.
 function capacityFacts(category) {
   const profile = profileFor(category);
-  const applicable = profile.timelineType === 'event'
-    && !RULED_OFF.has(normaliseCategory(category));
+  // ── R-G31.6 · ONE LADDER, AND THIS FUNCTION NO LONGER OWNS A SECOND ──────
+  // What stood here was `timelineType === 'event' && !RULED_OFF.has(...)`, which
+  // asked a DIFFERENT question from the one `describeDate` has always used to
+  // decide the door — and the two disagreed on SEVEN categories (F-40.172):
+  // hairstylist, performer, content_creator, choreographer, mehendi, invitations
+  // and cake all reported `capacity_applicable: true` while every date check on
+  // that vendor returned `occupancy: 'off'`.
+  //
+  // ⚠ CONSEQUENCE, TAKEN DELIBERATELY (F-40.173): those seven now report
+  // `capacity_applicable: FALSE`, so B6-S1's capacity stepper disappears for
+  // trades that never had capacity to set. That is the honest state and not a
+  // regression — the row was offering a number the checker would never consult.
+  // The stepper's frame is unchanged; one row is absent.
+  const verdict = capacityVerdict({ category });
   const def = CATEGORY_CAPACITY[profile.key];
   return {
-    capacity_applicable: applicable,
+    capacity_applicable: verdict.applicable,
     capacity_default:    def != null ? def : null,   // unmapped -> null (occupancy OFF until the vendor sets a number)
+    // ── G3.1 · R-G31.6 — THE REASON, BECAUSE ONE BIT COLLAPSES TWO FACTS ───
+    // `capacity_applicable` says WHETHER; the room needs WHY, because D6 has two
+    // bytes and they are not interchangeable: `ruled_off` is a DECISION (a
+    // planner, off by ruling until the crew math lands) and `unmapped` is a
+    // NOT-YET (nobody has keyed that trade). A sentence that is right half the
+    // time is the costume class, so the copy gets the fact it needs.
+    //
+    // `null` when capacity applies. The PWA carries NO copy of the rule — the
+    // same posture `capacity_default` has held since B6-S1.
+    capacity_reason:     verdict.reason,
   };
 }
 
@@ -545,3 +569,7 @@ router.patch('/invoice-prefix', requireAuth, resolveVendor(), asyncHandler(async
   return okRes(res, { prefix: cleaned, current_counter: v?.invoice_counter || 0 });
 }));
 module.exports = router;
+// R-G31.6 · exported so `b58` §5.2 can drive the REAL function and prove
+// `capacity_applicable` agrees with the ladder, rather than re-implementing the
+// comparison and testing its own copy (F-40.169's lesson, one file over).
+module.exports.capacityFacts = capacityFacts;
