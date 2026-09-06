@@ -1,0 +1,39 @@
+# scripts/floor-manifest-g51-f40146.txt
+# TDW_19 · F-40.146 — `leads.wedding_id` classified in R-37.4's census.
+#
+# ⚠ THE BENCH WENT RED BECAUSE THE SNAPSHOT FINALLY TOLD IT THE TRUTH. `0133`
+# added the column and `b36` leg A — the WITNESSED SCHEMA leg — could not see it
+# while `PUBLIC_SCHEMA.md` sat at ladder `0132`. The PAIR regen closed F-40.99,
+# the column appeared, and the census reddened within the hour. The bench was
+# BLIND, not wrong, and this red is the regen paying a debt nobody had billed.
+#
+# DISPOSITIONED PRESENT-IN-SCHEMA, ON-NO-WIRE — a record of a disposition that
+# ALREADY EXISTED, never a name appended to quiet a leg. `wedding_id` is written
+# once at creation by the guest-download door, is already in
+# `ENRICH_REFUSED_KEYS` with G1.2's reasoning at `leads.js:59`, and is asked for
+# by no door: legs B1, B2, C and D all stayed GREEN through the red, which is the
+# evidence that it never leaves the database. `WITHHELD_FIELDS` is untouched — it
+# reaches no vendor's screen, so it needs no tier treatment.
+#
+# The provenance note above the census was ALSO false and is re-derived: it
+# reasoned from a 2026-08-15 witness at ladder `0125` and had been wrong since
+# `0133`. Now 28 columns, 2026-09-06, ladder `0138`.
+#
+# Both ways: removing the classification reds leg A; making a door SELECT the
+# column reds leg B1 — the line is a record, not permission for a door to take it.
+
+scripts/floor-manifest-g51-f40146.txt
+src/lib/vendor/leadSerializer.js
+#
+# ── ONE INHERITED FLOOR DELTA, DECLARED AND NOT CARRIED ────────────────────
+# `b57_g13_team_bench` is 93/94 IDENTICALLY on this tree and on the clean tip
+# with this work stashed — run both ways before a word was written about it.
+# G1.3's, being cured by its owner.
+#
+# ⚠ AND THE FLOOR WAS RE-DERIVED AT THE MOVED BASE RATHER THAN CARRIED, WHICH
+# CHANGED THE ANSWER. At `74f5dec` this delivery recorded THREE inherited deltas;
+# G3.1's micro1-rev (`fded352`) touched `b44_public_vendor_card_bench` and
+# `b55_g2_reviews_bench` and cleared both. Quoting the earlier reading would have
+# declared two deltas that no longer exist and understated the tree by two green
+# benches — a floor number is a measurement of a MOMENT, not a property of a
+# delivery.

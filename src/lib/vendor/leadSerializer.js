@@ -313,18 +313,42 @@ function serializeLeadDetail(detail, tier, vendorId) {
 // never to append the name and move on.
 
 // `public.leads` as witnessed at docs/db/PUBLIC_SCHEMA.md (`## public.leads`,
-// 27 columns, snapshot 2026-08-15 at ladder tip 0125). Ladder tip at this
-// sitting is 0129; 0126 touches `public.couple_bookings`, 0127/0128
-// `public.engagements`, 0129 `engine.agents` — NONE touches this table, so the
-// snapshot is a valid witness here. Derived by reading those four files, not by
-// trusting the header's arithmetic alone.
+// 28 columns, snapshot 2026-09-06 at ladder tip 0138). Re-derived from the
+// regenerated snapshot, not carried: the note this replaces reasoned from a
+// 2026-08-15 witness at ladder 0125 and had been false since 0133.
+//
+// ── AMENDED BY LABEL · `wedding_id` CLASSIFIED (F-40.146 / R-37.4) ─────────
+// ⚠ THE BENCH WENT RED BECAUSE THE SNAPSHOT FINALLY TOLD IT THE TRUTH.
+// `0133` added `leads.wedding_id` and leg A — the WITNESSED SCHEMA leg — could
+// not see it while the snapshot sat at ladder `0132`. The PAIR regen closed
+// F-40.99, the column appeared, and the census reddened within the hour. The
+// bench was blind, not wrong; and a red that arrives the moment a stale witness
+// is refreshed is the instrument working exactly as designed.
+//
+// DISPOSITIONED **PRESENT IN THE SCHEMA, ON NO WIRE** — and this is a record of
+// a disposition that already existed, not a new one. `wedding_id` is:
+//   · WRITTEN once, at creation, by the guest-download door
+//     (`src/api/public/weddingDownload.js:191` -> `createLead`, leads.js:338);
+//   · REFUSED for enrichment — it is already in `ENRICH_REFUSED_KEYS`
+//     (`src/lib/vendor/leads.js:76`) with G1.2's reasoning at `:59`: a dedupe hit
+//     would otherwise attach a lead she made months ago to whichever page she
+//     most recently downloaded from, silently rewriting its provenance;
+//   · ASKED FOR BY NO DOOR and PUT ON NO WIRE — legs B1, B2, C and D all stayed
+//     GREEN through this red, which is precisely the evidence that it never
+//     leaves the database.
+//
+// So it belongs in THIS census and in no other. It needs no tier treatment
+// because it reaches no vendor's screen: `WITHHELD_FIELDS` is unchanged and
+// stays the founder-closed set it has always been. If a door ever selects this
+// column, legs B and C will red and THAT will be the ruling — this line is not
+// permission for it.
 const LEADS_COLUMN_CENSUS = [
   'id', 'vendor_id', 'name', 'phone', 'email', 'wedding_date', 'wedding_city',
   'event_types', 'budget_min', 'budget_max', 'source', 'referrer_name', 'state',
   'raw_message', 'notes', 'created_at', 'updated_at', 'client_id', 'deleted_at',
   'vendor_summary', 'intent_summary', 'intent_summary_at',
   'wedding_date_precision', 'function_count', 'wedding_days', 'functions',
-  'draft_meta',
+  'draft_meta', 'wedding_id',
 ];
 
 // The columns the LIST door asks the database for (src/api/vendor/leads.js,
