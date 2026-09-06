@@ -223,6 +223,38 @@ asyncCells.push(async () => {
     JSON.stringify(viaDoor) + ' vs ' + JSON.stringify(viaPage));
 });
 
+// ── C3c · THE OWNER'S OWN DOOR (F-40.136) ──────────────────────────────────
+// THE CELL THAT WAS MISSING. Every G1.3 cell asserted the SET and the WRITES;
+// not one asserted that the CONFIRMATION renders a control. The mock drew it
+// (frame T4-team-done) and a mock cannot fail, so the hand-off half of R-G13.1
+// shipped and never once rendered.
+sec('C3c \u00b7 the owner\u2019s door comes from the owner, not from the roll');
+{
+  const pg = strip(read('src/api/public/weddingPage.js'));
+  ok('the page serves owner.enquire_link', /enquire_link:\s*ENQUIRE_BASE/.test(pg));
+  ok('...built from the OWNER row, uppercased',
+    /ENQUIRE_BASE \+ String\(owner\.routing_handle \|\| ''\)\.toUpperCase\(\)/.test(pg));
+  ok('...and ENQUIRE_BASE is imported, never transcribed',
+    /require\(.*shapeVendor.*\)/.test(pg) && !/wa\.me/.test(pg));
+  // THE DEFAULT FIXTURE IS THE PROOF: DEV440 owns the page and holds NO credit,
+  // so a roll lookup finds nothing. The owner's door must survive that.
+  const rollHasOwner = W.publicRoll(CREDITS, BY_ID)
+    .some((r) => r.name === OWNER.business_name && r.enquire_link);
+  ok('the owner is NOT on the fixture roll \u2014 which is why the old lookup failed',
+    rollHasOwner === false);
+}
+{
+  const leaf = '../dreamos-pwa/app/v/[code]/w/[slug]/page.tsx';
+  const fsx = require('fs');
+  if (fsx.existsSync(P(leaf))) {
+    const lf = read(leaf);
+    ok('the leaf reads owner.enquire_link, not a roll lookup',
+      /owner\.enquire_link/.test(lf) && !/data\.roll\.find/.test(lf));
+  } else {
+    console.log('  REFUSED  sibling pwa absent \u2014 leaf cell not run');
+  }
+}
+
 // ── C4 · THE SOURCE TOKENS HAVE ONE HOME (F-40.111 / R-G13.2) ──────────────
 sec('C4 \u00b7 leadSources');
 ok('WEDDING_GUEST_SOURCE is the value the estate already writes',
@@ -391,6 +423,8 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       [LIB, 'if (out.has(v.id)) continue;', ''],
       // 3b · the page stops serving the team from the rows it holds.
       ['src/api/public/weddingPage.js', 'W.teamSet(credits, vendorsById, owner)', 'W.teamSet(credits, vendorsById, null)'],
+      // 3c · the owner's door stops being served — the hand-off dies silently.
+      ['src/api/public/weddingPage.js', "enquire_link: ENQUIRE_BASE + String(owner.routing_handle || '').toUpperCase(),", ''],
       // 4 · nameless targets no longer dropped.
       [LIB, 'return [...out.values()].filter((t) => t.name);', 'return [...out.values()];'],
       // 5 · the guest token spelled at the door again (F-40.111 restored).

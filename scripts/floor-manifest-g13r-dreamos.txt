@@ -1,0 +1,36 @@
+# scripts/floor-manifest-g13r-dreamos.txt
+# TDW_19 · BLOCK 19 · G1.3 RIDER 2 — the owner's own door (F-40.136).
+#
+# F-14.16: a dirty file outside this list is a STOP. Both files were authored by
+# THIS seat in THIS rider; nothing inherited. The tree was clean at the base
+# before a byte moved.
+#
+# ⚠ THE BASE MOVED AGAIN: G5.1 sitting 1 SEALED at de19290, above this seat's own
+# rider d79285b. Disjoint from both files below, proven by command, not by eye.
+#
+# ⚠ THE BASE SET AT 63a1735 IS 21, NOT 20 — b36_leadgate_a_bench IS INHERITED.
+# The PAIR regen (5b3f61f) brought `leads.wedding_id` into the witnessed schema
+# and R-37.4's census alarm fired on an UNCLASSIFIED column. That column was
+# added by 0133 in G1.2 and has existed since 2026-09-05; it became visible to
+# the census only when the snapshot caught up. PROVEN NOT MINE BY COMMAND: b36
+# reds at the clean tip with this rider stashed, and reds identically with it
+# applied. This rider touches neither the leads plane nor the census. Carried
+# loudly, not papered — the classification is owed by whoever owns R-37.4's
+# register, and the alarm is doing exactly what it was built to do.
+#
+# WHAT THIS RIDER IS. The G1.3 walk witnessed R-G13.1's DURABLE half — the first
+# lead this estate has written to a vendor who does not own the page — and
+# exposed that its HAND-OFF half had never rendered once. The leaf built the
+# owner's WhatsApp control by searching the ROLL for a row whose name matched
+# hers; `createWedding` does not self-credit, so the owner is almost never on the
+# roll, and the "degrade rather than emit a dead wa.me" branch was not a rare
+# safety net but THE DEFAULT PATH.
+#
+# ⚠ AND THE BENCH COULD NOT HAVE CAUGHT IT. Every G1.3 cell asserted the SET and
+# the WRITES; not one asserted that the confirmation renders a CONTROL. The mock
+# drew it (frame T4-team-done) and a mock cannot fail. The missing cell is added
+# here with its mutation: remove `owner.enquire_link` and the bench reds.
+
+scripts/b57_g13_team_bench.js
+scripts/floor-manifest-g13r-dreamos.txt
+src/api/public/weddingPage.js

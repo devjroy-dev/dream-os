@@ -38,6 +38,7 @@ const express = require('express');
 const router  = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
 const W = require('../../lib/vendor/weddings');
+const { ENQUIRE_BASE } = require('../../lib/discover/shapeVendor');
 
 // Byte-identical to `vendorCard.js:213`. One miss, one body, no reason leaked.
 function notFound(res) {
@@ -125,6 +126,20 @@ router.get('/:code/:slug', asyncHandler(async (req, res) => {
       owner: {
         business_name: owner.business_name,
         handle: String(owner.routing_handle || '').toLowerCase(),
+        // ── THE OWNER'S OWN DOOR — F-40.136 ───────────────────────────────
+        // R-G13.1's hand-off is: write the leads, then give the guest ONE
+        // message to send to the owner. The leaf built that control by looking
+        // for the owner ON THE ROLL — and the owner is almost never on the roll,
+        // because `createWedding` does not self-credit. So the "degrade rather
+        // than emit a dead wa.me" branch was not a rare safety net, it was THE
+        // DEFAULT PATH, and the hand-off half never rendered once.
+        //
+        // ⚠ THE OWNER'S LINK COMES FROM THE OWNER. Her `routing_handle` is right
+        // here; deriving her door from a credit she may not hold was the error.
+        // `handle` above is lowercased for `/v/`, so this is built off the same
+        // uppercase rule `vendorCard.js` states and `publicRoll` follows — one
+        // rule, three readers, none of them re-typing it.
+        enquire_link: ENQUIRE_BASE + String(owner.routing_handle || '').toUpperCase(),
       },
       roll:   W.publicRoll(credits, vendorsById),
       // ── THE TEAM RIDES THE PAGE'S OWN PAYLOAD (G1.3 rider) ────────────────
