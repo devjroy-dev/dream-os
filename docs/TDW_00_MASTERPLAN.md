@@ -52,7 +52,7 @@
 | 16 | BRIDGE | Engagements spine, the Signal (quotas/sovereignty/occupancy), money mirror, thread state, couture 80/20, featured v1 | SPEC READY |
 | 17 | EXPERIENCE | Chapters + Marriage Day + After, salons, signature gesture + sound, compare, boards+share, envelopes, onboarding gift, Full Table (+Addendum: social doors) | SPEC READY |
 | 18 | TROUSSEAU | Native Trousseau + The Stylist by callmeZ (account-first coupling), gap reports, the reunion — SHIPS AT LAUNCH; depends on the z-side partner-API session | SPEC READY (z-side block external) |
-| 19 | BUSINESS SOLUTIONS | Nine rooms (R-40.1 names), phases G0–G8 per `docs/specs/TDW_19_V2_BUSINESS_SOLUTIONS_MASTER.md`; Meta-gated features built dark | G0 SEALED 2026-09-04 (`2ad4637`) · G1.1 mock in flight · Block 09 opens the day after 19 seals |
+| 19 | BUSINESS SOLUTIONS | Nine rooms under one hub (R-40.1/.17), phases G0–G8 per `docs/specs/TDW_19_V2_BUSINESS_SOLUTIONS_MASTER.md` + Amendments 1–2; Meta-gated features built dark | G0 · G1.1 · G1.1c · G1.2 · G2 s1 · G5.1 s1 SEALED; G1.3, G3.2 in walk; G3.1, G3.4 chartered; G2 s2 opens 2026-10-27 (band 7 §6, 2026-09-06) |
 | 12 | NATIVE BRIDE | Second target, canvas re-authored vs recordings (BN-7 founder gate), dual-rail Full Table (+Addendum: social) | SPEC READY — built after 13–18 · **AMENDED AT CE-216 BANKING (R-30.39, founder-ruled 2026-08-12 「 go for it 」): NATIVE DEFERRED TO LAST — 11/12 together are the launch-hardening arc, built after everything else on the board; Report-G commission withdrawn; founder chores this month: Apple/Play developer accounts + the two name reservations (R-30.38: 「 TDW 」 · 「 TDW-Vendor Studio 」)** |
 
 Retired: SPEC-1/1.5 (folded into 02) · masterplan v1 · TDW_11 v1.

@@ -240,3 +240,15 @@ Block 19 is SEALED when every phase G0–G7 is built and walked on the founder's
 - **§5 I3 permission string** is `instagram_business_manage_insights` (R-40.6). **I7 and I8 are PARKED** to G7's charter — Facebook-Login-only under Meta's one-IG-setup-per-app rule; no third app (R-40.5, 06.5 §3 stands).
 - **§8 answered:** 1 (R-40.1) · 2 roles fixed: shot by · makeup · hair · décor · mehendi · planner · styled by · wearing · model · venue (R-40.7) · 3 Cloudinary at the current plan (R-40.8) · 8 G1.1 → G1.2 → G1.3 (R-40.10) · 9 the switch lives in the couple's Settings room, OFF by default (R-40.9). Open: 4, 5, 6, 7.
 - **§6 gates:** F-K4.1 CLOSED as duplicate (G0); the review-ask template is MARKETING (F-40.12); no missed-call template exists (F-40.13); ffmpeg unproven (F-40.16) — reels build dark.
+
+---
+## AMENDMENT 2 · 2026-09-06 (CE-40; founder-ruled in chat, banked in FINDINGS_LOG band 7 §6)
+- **§3 R3** is **Your website & SEO** (R-40.26). **§3 the hub:** the nine rooms live under the Business Solutions tile, the first tile of YOUR WORK, full-width (R-40.17/.20/.22); the nine replaced the six COMING rows (R-40.23).
+- **§4 G1.1 roles:** ten, with `model` (R-40.7); `:81`'s nine is superseded.
+- **§4 G1.2:** the guest download writes ONE lead, the owner's — a yes to one named vendor is not consent to N (R-G12.3/R-G13); "for every credited vendor" is superseded. **Book the same team** (G1.3) is the explicit fan-out (R-G13.1).
+- **§4 G2:** the seal is computed from `weddings` (`delivered_at`), never `events` (R-40.11, F-40.92); the rating is withheld until a source exists (R-G2.2).
+- **§4 G3.2/G3.3:** `events.state='booked'` and the Razorpay link are superseded — the date lock is `contracts.deposit_received_at`, derived at read, one exported home (R-G32.1); the deposit is the retainer at 30% editable, `contracts.deposit_pct` its one home, milestone 1 derived (R-40.37, R-G32.6); the sign doors are `/api/v2/sign` and the leaf `/sign/[token]` (R-G32.11), not `/c/:token`; the OTP is clause 12's as written (R-G32.2).
+- **§4 G5.1:** `lead_referrals` without `outcome` (R-G51.9); `source='peer_referral'` (R-G51.4); reciprocity in forwards (R-G51.6); the state never moves (R-G51.3).
+- **§5 I3** = `instagram_business_manage_insights` (R-40.6); I7/I8 parked (R-40.5).
+- **§8 answered:** 4 one generic + annexes (R-40.36) · 5 deposit 30% editable (R-40.37) · 6 free at beta (R-40.39) · 7 a hand-entered muhurat list (R-40.38) · 9 the couple's switch, off by default (R-40.9, built G1.1c). **Open: none.** The lawyer's guidance (R-40.43) and yes on v3 (R-40.46) govern G3.2's instrument.
+- **§6 gates:** the five templates Active Utility (`tdw_wedding_credit`, `tdw_wedding_consent`, `tdw_contract_sign`, `tdw_contract_sign_otp` AUTH, and the review ask MARKETING); F-40.123: the category is the Manager's to decide.
