@@ -641,27 +641,31 @@ function isLinkable(credit, vendor) {
  * ⚠ AND IT NEVER RETURNS A PHONE. R-G11.6, same as every other public shape in
  * this file: the object is built field by field from an explicit list.
  */
-async function teamTargets(supabase, { weddingId, ownerVendorId }) {
-  const credits = await creditsFor(supabase, weddingId);
-
-  const ids = [...new Set(credits.filter((c) => c.vendor_id).map((c) => c.vendor_id))];
-  const wanted = [...new Set([ownerVendorId, ...ids])];
-  if (!wanted.length) return [];
-
-  const { data: vs, error } = await supabase
-    .from('vendors')
-    .select('id, business_name, routing_handle, status, discover_paused')
-    .in('id', wanted);
-  if (error) throw error;
-  const byId = (vs || []).reduce((acc, v) => { acc[v.id] = v; return acc; }, {});
-
+/**
+ * ── THE SET-BUILDER IS PURE, AND THAT IS WHY IT IS SEPARATE (G1.3 rider) ────
+ * `teamSet` takes rows and returns the set; `teamTargets` fetches the rows and
+ * calls it. The split exists for one reason: the PAGE DOOR ALREADY HOLDS BOTH
+ * INPUTS. `weddingPage.js` reads `credits` and `vendorsById` to build the roll,
+ * and the team is the roll filtered by R-G13.5 — so serving the targets in the
+ * same payload costs ZERO extra reads, while calling `teamTargets` there would
+ * have re-queried `wedding_credits` and `vendors` for rows already in hand.
+ *
+ * ⚠ AND IT IS WHY THE SHEET'S ROSTER CANNOT DRIFT FROM THE WRITE SET. Two calls
+ * that agree today agree only until one of them changes. One builder, called
+ * from both places, cannot disagree with itself — which matters more here than
+ * anywhere else in the arc, because the roster is what the guest CONSENTS to and
+ * the write set is what her consent reaches.
+ *
+ * `vendorsById` need not contain the owner; she is passed as a row.
+ */
+function teamSet(credits, vendorsById, owner) {
+  const byId = vendorsById || {};
   const out = new Map();
 
   // The owner first, and she is held to the SAME liveness test as everyone else.
   // A vendor who has paused her own storefront has withdrawn from being found —
   // `weddingPage.js` already kills her whole page on that switch, so a door that
   // wrote her a lead anyway would be writing from a page nobody can open.
-  const owner = byId[ownerVendorId];
   if (owner && owner.status === 'active' && owner.discover_paused !== true) {
     out.set(owner.id, {
       vendor_id: owner.id,
@@ -692,6 +696,25 @@ async function teamTargets(supabase, { weddingId, ownerVendorId }) {
   // the write set and ABSENT from the roll — the exact divergence R-G13.14
   // forbids, reachable through a column nobody has to touch.
   return [...out.values()].filter((t) => t.name);
+}
+
+/**
+ * The fetching wrapper, for callers that hold no rows — the team door's `GET`
+ * and its `POST`. Shape unchanged from the sealed half.
+ */
+async function teamTargets(supabase, { weddingId, ownerVendorId }) {
+  const credits = await creditsFor(supabase, weddingId);
+  const ids = [...new Set(credits.filter((c) => c.vendor_id).map((c) => c.vendor_id))];
+  const wanted = [...new Set([ownerVendorId, ...ids])];
+  if (!wanted.length) return [];
+
+  const { data: vs, error } = await supabase
+    .from('vendors')
+    .select('id, business_name, routing_handle, status, discover_paused')
+    .in('id', wanted);
+  if (error) throw error;
+  const byId = (vs || []).reduce((acc, v) => { acc[v.id] = v; return acc; }, {});
+  return teamSet(credits, byId, byId[ownerVendorId] || null);
 }
 
 // ── THE PUBLIC SHAPE — R-G11.6 ENFORCED BY THE WIRE ─────────────────────────
@@ -783,5 +806,5 @@ module.exports = {
   mintConsentToken, findWeddingByConsentToken, setConsentByToken,
   checkConsentLastFour, lastFourOf, CONSENT_MAX_ATTEMPTS,
   findCreditByToken, settleCredit,
-  publicRoll, publicWedding, isLinkable, teamTargets,
+  publicRoll, publicWedding, isLinkable, teamSet, teamTargets,
 };

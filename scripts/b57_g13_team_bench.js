@@ -199,6 +199,30 @@ asyncCells.push(async () => {
     !targets.some((t) => t.is_owner), targets.map((t) => t.name).join(','));
 });
 
+// ── C3b · THE PAGE SERVES THE TEAM, AND IT IS THE SAME SET ─────────────────
+// The roster the guest reads and the set the POST writes must be ONE
+// computation, not two that agree. This is the cell that would red if the leaf
+// ever went back to calling the team door's GET.
+sec('C3b \u00b7 the page payload carries the team (G1.3 rider)');
+{
+  const pg = strip(read('src/api/public/weddingPage.js'));
+  ok('the page door serves a `team` field', /team:\s*W\.teamSet\(/.test(pg));
+  ok('...built from the rows it ALREADY holds — no third read',
+    /W\.teamSet\(credits, vendorsById, owner\)/.test(pg));
+  ok('...and no extra credits/vendors query was added for it',
+    (pg.match(/\.from\('wedding_credits'\)/g) || []).length === 0);
+  ok('the payload carries names and is_owner only — no id, no handle, no phone',
+    /\.map\(\(t\) => \(\{ name: t\.name, is_owner: t\.is_owner \}\)\)/.test(pg));
+}
+asyncCells.push(async () => {
+  // THE TWO PATHS MUST AGREE — driven, not asserted by reading.
+  const viaDoor = await W.teamTargets(stubDb(), { weddingId: 'w1', ownerVendorId: 'v-dev440' });
+  const viaPage = W.teamSet(CREDITS, BY_ID, OWNER);
+  ok('teamTargets and teamSet return the SAME set',
+    JSON.stringify(viaDoor) === JSON.stringify(viaPage),
+    JSON.stringify(viaDoor) + ' vs ' + JSON.stringify(viaPage));
+});
+
 // ── C4 · THE SOURCE TOKENS HAVE ONE HOME (F-40.111 / R-G13.2) ──────────────
 sec('C4 \u00b7 leadSources');
 ok('WEDDING_GUEST_SOURCE is the value the estate already writes',
@@ -365,6 +389,8 @@ ok('it is NOT mounted under /vendor (it carries no session)',
       [LIB, "&& vendor\n    && vendor.status === 'active'", "&& vendor.status === 'active'"],
       // 3 · the target set keyed by credit instead of by vendor.
       [LIB, 'if (out.has(v.id)) continue;', ''],
+      // 3b · the page stops serving the team from the rows it holds.
+      ['src/api/public/weddingPage.js', 'W.teamSet(credits, vendorsById, owner)', 'W.teamSet(credits, vendorsById, null)'],
       // 4 · nameless targets no longer dropped.
       [LIB, 'return [...out.values()].filter((t) => t.name);', 'return [...out.values()];'],
       // 5 · the guest token spelled at the door again (F-40.111 restored).

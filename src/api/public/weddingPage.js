@@ -127,6 +127,20 @@ router.get('/:code/:slug', asyncHandler(async (req, res) => {
         handle: String(owner.routing_handle || '').toLowerCase(),
       },
       roll:   W.publicRoll(credits, vendorsById),
+      // ── THE TEAM RIDES THE PAGE'S OWN PAYLOAD (G1.3 rider) ────────────────
+      // The team is the roll filtered by R-G13.5, so it is a PROPERTY OF THIS
+      // PAGE and the door that serves the roll serves it. `teamSet` is pure and
+      // takes the rows already in hand — ZERO extra reads. Calling the team
+      // door's own `GET` from the leaf would have been the two-homes shape one
+      // request over: two calls that agree today and only until one changes.
+      // Here the roster the guest CONSENTS to and the set her consent reaches
+      // are one computation, and cannot drift.
+      //
+      // NAMES AND `is_owner` ONLY. `teamSet` also carries `vendor_id` and
+      // `handle`, which nothing on the sheet needs — and a field nobody reads is
+      // a field somebody eventually renders (R-G11.6's own reasoning).
+      team:   W.teamSet(credits, vendorsById, owner)
+                .map((t) => ({ name: t.name, is_owner: t.is_owner })),
       photos: photos.map((p) => ({ url: p.url, position: p.position })),
     });
   } catch (e) {
