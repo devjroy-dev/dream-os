@@ -318,7 +318,17 @@ cell('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', ()
 
   cell('CARD_KEYS carries seal and nothing else moved', () => {
     const VC = fresh('src/api/public/vendorCard.js');
-    const want = ['business_name','category','city','handle','is_demo','enquiry_phone','about','starting_price','photos','enquire_link','seal'];
+    // ── AMENDED BY LABEL — R-G31.5 / R-40.77, F-40.168 (G3.1, 2026-09-06) ──
+    // This cell's name is "carries seal and NOTHING ELSE MOVED", and that is
+    // still what it asserts: `seal` keeps its position and the two G3.1 fields
+    // are APPENDED after it. The cell would have caught a reorder and did catch
+    // the growth, which is the cell working — it simply had to be told what the
+    // new right answer is.
+    //
+    // ⚠ DECLARATION ORDER, NOT SORTED. `b44` §2.2 sorts both sides; this one
+    // compares the list as written, and that asymmetry is deliberate — between
+    // them they hold both the SET and the ORDER.
+    const want = ['business_name','category','city','handle','is_demo','enquiry_phone','about','starting_price','photos','enquire_link','seal','date_check_enabled','weddings'];
     return VC.CARD_KEYS.join(',') === want.join(',') ? true : `CARD_KEYS is ${VC.CARD_KEYS.join(',')}`;
   });
 

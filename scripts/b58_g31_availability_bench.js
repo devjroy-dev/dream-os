@@ -156,6 +156,33 @@ function makeDb({ rows = [], vendor = null, vendorErr = null }) {
   /'date_check_enabled',\s*'weddings',/.test(vc)
     ? P('§3.1 both new fields are on the frozen key set', 'the door grows by named field only')
     : F('§3.1 both new fields are on the frozen key set');
+  {
+    // ══ §3.1b · F-40.169 — WHAT THE DOOR EMITS, NOT WHAT IT DECLARES ══════
+    // §3.1 above asks what `CARD_KEYS` CONTAINS. That is a path question, and
+    // the surface question was owed: `card()` is a separate function that
+    // destructures by name and spreads nothing, so a field can sit in the frozen
+    // list and never reach the wire. It did. §3.1 was GREEN while three `b44`
+    // cells were red and every public storefront was 500ing, because the pwa
+    // leaf read `card.weddings.length` on `undefined`.
+    //
+    // This cell drives the REAL builder and compares the EMITTED key set against
+    // the declared one. A name in `CARD_KEYS` that `card()` cannot produce is
+    // now a red here, at the seat, rather than a dead page in production.
+    const door = require('../src/api/public/vendorCard');
+    const emitted = Object.keys(door.card({ handle: 'x' })).sort();
+    const declared = door.CARD_KEYS.slice().sort();
+    JSON.stringify(emitted) === JSON.stringify(declared)
+      ? P('§3.1b the emitted card carries EVERY declared key', `${emitted.length} in, ${emitted.length} out`)
+      : F('§3.1b the emitted card carries EVERY declared key',
+          `declared but never emitted: ${declared.filter((k) => !emitted.includes(k)).join(', ') || 'none'}`
+          + ` | emitted but undeclared: ${emitted.filter((k) => !declared.includes(k)).join(', ') || 'none'}`);
+    // And the two G3.1 fields must be SHAPED, never passed through — absence is
+    // a false and an empty list, never a missing key.
+    const bare = door.card({ handle: 'x' });
+    (bare.date_check_enabled === false && Array.isArray(bare.weddings) && bare.weddings.length === 0)
+      ? P('§3.1c absence is a shape, not a hole', 'date_check_enabled:false, weddings:[]')
+      : F('§3.1c absence is a shape, not a hole', JSON.stringify({ d: bare.date_check_enabled, w: bare.weddings }));
+  }
   /date_check_enabled: v\.date_check_enabled === true/.test(vc)
     ? P('§3.2 the switch is coerced `=== true`', 'a null is not a yes')
     : F('§3.2 the switch is coerced `=== true`');

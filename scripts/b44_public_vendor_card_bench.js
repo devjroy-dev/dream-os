@@ -233,9 +233,20 @@ const B = '/api/v2/public/vendor-card';
 // fields only, and `CARD_KEYS` plus its two cells move in ONE edit. `seal` is
 // that edit. It is sorted into place rather than appended, because §2.1 and §2.2
 // both compare against the SORTED list.
-const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquire_link',
-                   'enquiry_phone', 'handle', 'is_demo', 'photos', 'seal',
-                   'starting_price'];
+// ── AMENDED BY LABEL — R-G31.5 / R-40.77, F-40.168 (Block 19 G3.1, 2026-09-06)
+// Two named fields joined the wire and this list is the ruling they are checked
+// against, so it moves in the same delivery or the cell reddens the whole floor.
+//
+//   `date_check_enabled` — R-40.77. Her permission for the public date check.
+//   `weddings`           — F-40.164. Her published, consented pages, newest
+//                          first, shaped by `publicWedding` at the door.
+//
+// ⚠ SORTED, BECAUSE §2.2 SORTS BOTH SIDES BEFORE COMPARING. Declaration order
+// is `b55`'s question, not this one's; appending here rather than inserting in
+// order would redden a correct door.
+const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
+                   'enquire_link', 'enquiry_phone', 'handle', 'is_demo', 'photos',
+                   'seal', 'starting_price', 'weddings'];
 
 (async () => {
   await new Promise((r) => { server = app.listen(0, '127.0.0.1', r); });
@@ -345,11 +356,17 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'enquire_link',
     chk(star.length === 0, '§3.2 no select(\u2018*\u2019) on public.vendors, ever',
         star.length ? 'A STAR SELECT REACHED THE PUBLIC DOOR' : 'zero star selects');
     // Written from the ruling, not read from the door.
-    const WANT = ['about', 'business_name', 'category', 'city', 'discover_paused',
-                  'id', 'rate_display', 'rate_min', 'routing_handle', 'status'];
+    // ── AMENDED BY LABEL — R-40.77, F-40.168 (G3.1, 2026-09-06) ───────────
+    // `date_check_enabled` joins the allowlist: the door must know whether the
+    // vendor has permitted the public date check before it decides whether to
+    // advertise the control. Eleven columns now, and both §3.3 and §3.5 read
+    // this one constant — so the SELECT and the ruling cannot drift apart.
+    const WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
+                  'discover_paused', 'id', 'rate_display', 'rate_min', 'routing_handle',
+                  'status'];
     const asked = [...new Set(vs.flatMap((s) => s.cols.split(',').map((x) => x.trim())))].sort();
     chk(JSON.stringify(asked) === JSON.stringify(WANT),
-        '§3.3 the vendors SELECT is exactly the ten allowlisted columns', asked.join(','));
+        '\u00a73.3 the vendors SELECT is exactly the eleven allowlisted columns', asked.join(','));
     const forbiddenAsked = asked.filter((c) => SELECT_FORBIDDEN.includes(c));
     chk(forbiddenAsked.length === 0, '§3.4 no select-forbidden column is even ASKED FOR',
         forbiddenAsked.length ? 'ASKED: ' + forbiddenAsked.join(', ') : 'the query never sees them');

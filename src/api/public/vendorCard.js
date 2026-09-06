@@ -289,7 +289,7 @@ function startingPrice(rate_display, rate_min) {
  *            about: string|null, starting_price: number|null,
  *            photos: Array<{url: string, caption: string|null, hero: boolean, position: number}>}}
  */
-function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal }) {
+function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings }) {
   return {
     business_name: business_name || null,
     category:      category      || null,
@@ -308,6 +308,29 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     // G2 · an OBJECT or NULL. `sealFor` has already decided; the card does not
     // second-guess it, exactly as it does not second-guess the portfolio's cap.
     seal:          seal || null,
+    // ── G3.1 · F-40.169 — THE TWO NAMES THIS BUILDER NEVER LEARNED ─────────
+    // The G3.1 delivery added both to `CARD_KEYS` and to the real leg's CALL
+    // SITE and never here. This function's own header says NOTHING IS SPREAD,
+    // so the two arguments arrived, were not destructured, and were dropped on
+    // the floor — the door advertised thirteen keys and emitted eleven.
+    //
+    // ⚠ THE COST WAS A DEAD PUBLIC PAGE, NOT A COSMETIC GAP. The pwa leaf reads
+    // `card.weddings.length`, which on `undefined` throws inside a Server
+    // Component render, so EVERY storefront 500ed — not only the vendor whose
+    // switch was on. `/v/dev440` was down from P1's deploy until this cure.
+    //
+    // ⚠ AND `b44` HAD THREE CELLS POINTED AT EXACTLY THIS. §2.1, §2b.2 and §5.4
+    // were red the moment S1 landed and were misread by this seat as stale pins.
+    // `b58` §3.1 went green beside them because it asked what `CARD_KEYS`
+    // CONTAINS rather than what the door EMITS — a path question where a surface
+    // question was owed, which is the hollow-green class this arc had already
+    // met once and did not carry forward. `b58` gains the emitted-object cell in
+    // this same delivery.
+    //
+    // Both are coerced to a SHAPE and never passed through: absence is a false
+    // and an empty list, never a missing key (§2b.2's law).
+    date_check_enabled: date_check_enabled === true,
+    weddings:      Array.isArray(weddings) ? weddings : [],
   };
 }
 
@@ -557,6 +580,22 @@ router.get('/:code', async (req, res) => {
           ? `https://wa.me/${String(d.whatsapp_phone).replace(/[^0-9]/g, '')}`
           : null,
         about:         d.about,
+        // ── G3.1 · F-40.169 · THE ONE-CARD LAW, HELD BY `card()` AND NOT HERE
+        // The first cut of this cure passed `date_check_enabled: false` and
+        // `weddings: []` explicitly on this leg. DELETING THOSE TWO LINES
+        // CHANGED NOTHING — `b44` stayed 59 GREEN — because `card()` already
+        // coerces both: `undefined === true` is false, and a non-array becomes
+        // `[]`. They were a SECOND STATEMENT of a decision that already has one
+        // home, and no instrument in the estate could have held them.
+        //
+        // Removing them also makes `card()`'s guards LOAD-BEARING rather than
+        // decorative: with nothing passed here, `weddings: weddings` raw would
+        // emit a missing key on this leg and §2b.2 reddens. The demo leg's
+        // silence is what gives the coercion something to do.
+        //
+        // A demo vendor has no calendar to permit and no wedding pages to
+        // publish, so `false` and `[]` are the honest values — and they are
+        // produced, once, where every other absence on this door is produced.
         // ⚠ NULL, AND NOT BECAUSE THE DEMO HAS NO PRICE — P2-A correction 5.
         // `demo_vendors.rate_display` is `text` (:476), a DISPLAY STRING like
         // "From Rs 80,000", while `vendors.rate_display` is `boolean NOT NULL`
@@ -580,6 +619,13 @@ router.get('/:code', async (req, res) => {
 
 module.exports = router;
 module.exports.CARD_KEYS = CARD_KEYS;
+// ── F-40.169 · THE BUILDER IS EXPORTED SO A BENCH CAN ASK WHAT IT EMITS ────
+// `CARD_KEYS` was already exported and `b44`/`b55`/`b58` all diffed it — and a
+// field can sit in that frozen list while `card()` silently fails to produce it,
+// because this function destructures by name and spreads nothing. That gap took
+// every public storefront down. The declared list and the emitted object are two
+// different facts; both are now reachable, and `b58` §3.1b compares them.
+module.exports.card = card;
 module.exports.VENDOR_SELECT = VENDOR_SELECT;
 module.exports.SEAL_SELECT = SEAL_SELECT;   // G2 · R-G2.9, so b44 can diff it
 module.exports.PORTFOLIO_SELECT = PORTFOLIO_SELECT;
