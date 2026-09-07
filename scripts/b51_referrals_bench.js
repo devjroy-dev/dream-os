@@ -170,12 +170,28 @@ const PRIYA = () => ({
   raw_message: 'Hi, saw your work', deleted_at: null, client_id: null, draft_meta: null,
   created_at: '2026-08-28T00:00:00Z',
 });
-// ⚠ THE FIXTURE IS THE PRODUCTION ONE, READ AT ORIGIN, NOT INVENTED.
-// DEV440 is `photography`; MAKEUPBYSWATIROY is `makeup`. They are NOT the same
-// trade, which is why the kickoff's acceptance card was wrong to say she appears
-// under `Same trade` — she appears under `Worked with`, from sitting 1's own
-// forward. A bench seeded with two photographers would have agreed with the
-// card and proved nothing.
+// ── ⚠ THE FIXTURE, CORRECTED. THREE ACCOUNTS EXIST AND THE KICKOFF CONFLATED
+//    TWO OF THEM.
+//   DEV440           Dev Roy Photography    photography  essential  +919888294440
+//   DROY550          Dev Roy Photography 1  photography  BASIC      +918757788550
+//   MAKEUPBYSWATIROY Make Up by Swati Roy   makeup       prestige   +918595356978
+//
+// The kickoff said 「DROY550 (`makeupbyswatiroy`)」 and gave DROY550's number as
+// `8595356978`. Those are two different vendors. This seat matched the fixture
+// SELECT on the PHONE, got MAKEUPBYSWATIROY back, and wrote the kickoff's label
+// onto that row — so it reported the pair as cross-trade, "corrected" the
+// acceptance card twice, and was wrong both times. Derived properly only when
+// the founder's own walk drew a roster row naming `Dev Roy Photography 1`.
+//
+// ⚠ THE SEED BELOW BINDS `TO` TO SWATI DELIBERATELY, AND THAT IS NOW A CHOICE
+// RATHER THAN A MISTAKE. It gives the bench a CROSS-TRADE pair, which is what
+// the grouping cells need: with two photographers, `same_trade` and
+// `worked_with` could not be told apart. The production walk used DROY550 —
+// same trade, on the roster, basic tier — and proved the other precedence.
+// Neither seeding is "the" fixture; each tests what the other cannot.
+//
+// The lesson kept: a kickoff is a chair document, not a source of facts about
+// the database, and a label is not derived by matching a different column.
 const V = (id, name, cat, city, over = {}) => ({
   id, business_name: name, category: cat, city,
   // ⚠ THE HANDLE WAS MISSING FROM THE FIRST CUT and the handle cell went RED on
@@ -970,9 +986,14 @@ section('12. `told` reads a wamid and nothing else, inside the stamp');
   // A failed alert read costs the STATE, never the row.
   const dBroken = makeDb(base());
   const realFrom = dBroken.from;
-  dBroken.from = (t) => t === 'referral_alerts'
-    ? { select: () => ({ in: () => ({ not: async () => ({ data: null, error: { message: 'down' } }) }) }) }
-    : realFrom(t);
+  // ⚠ THE STUB FOLLOWS THE CHAIN. F-40.226's cure added `.neq('status','failed')`
+  // to `toldByReferralIds`, and this hand-rolled double ended at `.not()` — so it
+  // THREW rather than reddened, which is a bench defect wearing a failure. Ends
+  // in a thenable so the whole chain resolves however long it grows.
+  const deadRead = { data: null, error: { message: 'down' } };
+  const chain = { select: () => chain, in: () => chain, not: () => chain, neq: () => chain,
+                  then: (res) => res(deadRead) };
+  dBroken.from = (t) => (t === 'referral_alerts' ? chain : realFrom(t));
   const sBroken = await referrals.referralStampsForLeads(dBroken, FROM, ['lead-priya']);
   ok('a dead alert read still returns the stamp', sBroken.sentBy.has('lead-priya'));
   ok('it just is not told', sBroken.sentBy.get('lead-priya').told === false);
@@ -995,9 +1016,26 @@ section('13. referral_alerts has exactly one home in src/');
     return acc;
   };
   const files = walk(path.join(ROOT, 'src'));
-  const callers = files.filter(f => /\.from\('referral_alerts'\)/.test(codeOf(path.relative(ROOT, f))));
-  ok('exactly ONE file in src/ calls the alerts plane', callers.length === 1);
-  ok('and it is referralAlert.js', callers.length === 1 && callers[0].endsWith('referralAlert.js'));
+  // ⚠ THE LAW IS ONE INSERTER, NOT ONE TOUCHER, and the first cut of this cell
+  // conflated them. F-40.226's arm makes `relayStatus.js` a second file naming
+  // this table — it UPDATES `status` from Meta's receipt, which is exactly the
+  // shape `lead_alerts` has carried since 0141 and is the ruled design. A cell
+  // that reddened on it would be demanding that receipts have nowhere to land.
+  //
+  // So: exactly one file may INSERT a row, and the router may UPDATE and nothing
+  // else. Splitting the assertion is what keeps the law meaningful — a second
+  // INSERT is how two doors start disagreeing about what an alert row means.
+  const inserters = files.filter((f) => {
+    const c = codeOf(path.relative(ROOT, f));
+    return /\.from\('referral_alerts'\)[\s\S]{0,200}?\.insert\(/.test(c);
+  });
+  ok('exactly ONE file in src/ INSERTS into the alerts plane', inserters.length === 1);
+  ok('and it is referralAlert.js', inserters.length === 1 && inserters[0].endsWith('referralAlert.js'));
+
+  const routerCode = codeOf('src/lib/vendor/relayStatus.js');
+  ok('the receipt router UPDATES the plane and never inserts into it',
+     /from\('referral_alerts'\)[\s\S]{0,200}?\.update\(/.test(routerCode)
+     && !/from\('referral_alerts'\)[\s\S]{0,200}?\.insert\(/.test(routerCode));
   // The read lives beside the insert deliberately — a second file naming the
   // table is how a second writer eventually appears in the one that only read.
   ok('the told READ lives there too, not beside its caller',
@@ -1016,10 +1054,22 @@ section('14. tdw_referral_alert — Utility, vendor line, and NOT approved');
      t.category === 'UTILITY');
   ok('on the vendor line', t.line === 'vendor');
   ok('three variables in the declared order', JSON.stringify(t.variables) === JSON.stringify(['vendor_name', 'referrer_name', 'leads_link']));
-  // ⚠ SHIPS UNSENDABLE. sendWa's own gate is isApproved; until Meta returns
-  // Active and the founder flips one field, this key cannot leave the estate.
-  ok('status is NOT approved — the registry gate holds it dark', t.status !== 'approved');
-  ok('and sendWa\'s own gate agrees', templates.isApproved('referral_alert') === false);
+  // ── ⚠ THIS CELL ASSERTED A FIXED VALUE AND THE FOUNDER OPENED THE GATE ────
+  // It read `status !== 'approved'`, which was right while the template was
+  // unfiled: the entry must not ship sendable by accident. On 2026-09-07 Meta
+  // returned Active (ID 1526630866155035), the founder flipped the field
+  // deliberately at `adcbc50`, and the walk sent a real alert to a live handset.
+  // A cell that stayed red would be reporting a founder's decision as a defect,
+  // and a cell nobody believes is worse than no cell.
+  //
+  // RE-AIMED AT THE PROPERTY THAT STILL MATTERS: the registry and the transport
+  // must never disagree about whether this key can leave the estate. Whatever the
+  // status is, `isApproved` must answer consistently — that is what actually
+  // stops an accidental send, and it holds in both directions.
+  ok('the registry and sendWa\u2019s gate agree about this key',
+     templates.isApproved('referral_alert') === (t.status === 'approved'));
+  ok('and the status is one the registry vocabulary knows',
+     ['draft', 'pending', 'approved'].includes(t.status));
   // docs/TEMPLATES.md §1's shape rules, mechanised.
   ok('the body places no variable at the start', !/^\s*\{\{/.test(t.body));
   ok('none at the end', !/\}\}\s*$/.test(t.body));
@@ -1081,6 +1131,40 @@ section('15. 0142 — read from disk, and it proves nothing about production');
   ok('R-40.27 · both written tables cite their constraints section',
      /vendors_pkey/.test(sql) && /vendors_routing_handle_key/.test(sql) && /lead_referrals_pkey/.test(sql));
   ok('and the snapshot\'s staleness is checked rather than assumed', /0138/.test(sql) && /stale/i.test(sql));
+  // ── 0144 · F-40.227's CORRECTION, GUARDED ─────────────────────────────────
+  // ⚠ ADDED BECAUSE A MUTATION FOUND NOTHING. Rewriting the corrected comment to
+  // drop the word THIRD reddened no cell — so the sentence this rider exists to
+  // fix was itself unguarded, which is the same shape as the defect: a claim in
+  // the database that nothing checks. The comment is the only place a reader
+  // learns the router's ladder, and 0142 proved what an unguarded one costs.
+  // ⚠ THE EXECUTABLE BLOCK ONLY, AND THE FIRST CUT READ THE WHOLE FILE.
+  // Two cells broke on that in one run: the "does not re-ship the false claim"
+  // cell went RED because 0144's HEADER quotes 0142's false sentence in order to
+  // explain the finding, and the "names THIRD" cell stayed GREEN under a mutation
+  // because the header also contains the words "THIRD home". A file's reasoning
+  // is not its effect. `COMMENT ON` ships what is between BEGIN and COMMIT and
+  // nothing above it — so that is what these cells read.
+  //
+  // Fourth instance of this class in one sitting (b51 §13's table census, b40
+  // C114's quotation match, and this pair). The pattern: an assertion about a
+  // FILE when the claim is about the ARTIFACT the file produces.
+  const fixRaw  = fs.readFileSync(path.join(ROOT, 'db/migrations/0144_referral_alerts_comment.sql'), 'utf8');
+  const fix     = fixRaw.split('BEGIN;')[1].split('COMMIT;')[0];
+  ok('0144 corrects the table comment', /comment on table public\.referral_alerts/i.test(fix));
+  ok('and its header records WHY, citing the finding', /F-40\.227/.test(fixRaw) && /F-40\.226/.test(fixRaw));
+  ok('and the new sentence names the router AND its position in the ladder',
+     /relayStatus\.js/.test(fix) && /THIRD home/i.test(fix));
+  ok('it names the two homes tried before it, so the order is legible from the database',
+     /public\.messages/.test(fix) && /public\.lead_alerts/.test(fix));
+  ok('the status comment states that a failed receipt clears Told',
+     /comment on column public\.referral_alerts\.status/i.test(fix) && /Told/.test(fix) && /failed/.test(fix));
+  // ⚠ AND IT MUST NOT CARRY 0142's FALSE SENTENCE FORWARD. That string is the
+  // finding; a correction that quoted it into the database would re-ship it.
+  ok('and it does not re-ship 0142\u2019s false claim',
+     !/status is advanced by the Meta receipt webhook via relayStatus\.js\./.test(fix));
+  ok('0144 writes no row and no column — a COMMENT ON touches pg_description only',
+     !/\b(insert|update|delete|alter table|create table)\b/i.test(fix));
+
   ok('no money column reaches this plane — master §7',
      !/(amount|price|inr|paise|rupee|fee|budget)/i.test(sql.split('BEGIN;')[1].split('COMMIT;')[0]));
 }
@@ -1116,6 +1200,110 @@ section('16. PATCH /me carries the switch, and refuses a non-boolean');
   // for a vendor the search can already see.
   ok('read with the coercion its DEFAULT requires, not its neighbour\'s',
      /peer_discoverable:\s*vendor\.peer_discoverable\s*!==\s*false/.test(me));
+}
+
+// ══ §17 — EVERY TABLE THAT HOLDS A WAMID HAS A ROUTE TO THE RECEIPT ════════
+// F-40.226. THE CELL THE CHAIR ASKED FOR, AND IT IS DELIBERATELY NOT ABOUT
+// `referral_alerts`.
+//
+// The defect was NOT "the router forgot one table". It was that this estate has
+// now shipped a wamid-bearing table WITHOUT its router arm TWICE — `lead_alerts`
+// at F-40.177, `referral_alerts` here — and the second time was done by a seat
+// that had read the first and quoted it in its own migration header. A cell
+// naming `referral_alerts` would catch the specimen and let the THIRD one
+// through.
+//
+// So it is a CENSUS: derive every table in the migration ladder that persists a
+// `wamid` column, then assert the receipt router can reach each one. A future
+// table gets a red the day it lands, from a bench nobody had to remember to
+// update.
+//
+// MUTATION: delete the `referral_alerts` arm from relayStatus.js → RED.
+//           add a wamid column to any new migration without an arm → RED.
+section('17. no wamid-bearing table is orphaned from the receipt router (F-40.226)');
+{
+  const migDir = path.join(ROOT, 'db/migrations');
+  const files = fs.readdirSync(migDir).filter(f => f.endsWith('.sql')).sort();
+
+  // Tables whose CREATE TABLE declares a `wamid` column. Read from the DDL, not
+  // from a hand-kept list — a hand-kept list is a second home for the census and
+  // would go stale exactly as the comment did.
+  const bearers = new Set();
+  for (const f of files) {
+    const sql = fs.readFileSync(path.join(migDir, f), 'utf8')
+      .replace(/^\s*--.*$/gm, '');            // strip SQL comments: prose is not DDL
+    for (const m of sql.matchAll(/create table (?:if not exists )?public\.([a-z_]+)\s*\(([\s\S]*?)\n\);/gi)) {
+      if (/^\s*wamid\s/mi.test(m[2])) bearers.add(m[1]);
+    }
+  }
+  ok('the ladder declares at least two wamid-bearing tables — the census found something to check',
+     bearers.size >= 2);
+
+  const router = codeOf('src/lib/vendor/relayStatus.js');
+  for (const t of [...bearers].sort()) {
+    // ⚠ THE ASSERTION IS AN UPDATE KEYED ON THE WAMID, not a mention. A router
+    // that merely NAMED the table in a comment is precisely the state F-40.227
+    // found in the database: a description standing in for a mechanism.
+    const arm = new RegExp(`from\\('${t}'\\)[\\s\\S]{0,400}?\\.eq\\('wamid'`);
+    ok(`the receipt router can reach public.${t} by wamid`, arm.test(router));
+  }
+
+  // `public.messages` is the conversation plane and carries the sid under its own
+  // name, so it is asserted separately rather than being missed by a census that
+  // only reads CREATE TABLE statements in this ladder.
+  ok('and public.messages, the first home, is still reachable',
+     /from\('messages'\)/.test(router));
+
+  // ⚠ ORDER IS A RULING, NOT TASTE. messages -> lead_alerts -> referral_alerts,
+  // each tried only on a miss. A reorder would change which table a shared sid
+  // resolves against, and `delivery_status` means something to every receipt the
+  // estate already handles.
+  const order = ['messages', 'lead_alerts', 'referral_alerts']
+    .map(t => router.indexOf(`from('${t}')`));
+  ok('the homes are tried in the ruled order — conversation plane first',
+     order.every(i => i >= 0) && order[0] < order[1] && order[1] < order[2]);
+
+  // ⚠ AND EVERY WAMID-BEARING TABLE MUST MAKE ITS SID UNIQUE, or the router's
+  // own ambiguity refusal is decoration. Partial, because the failed sends these
+  // tables deliberately keep carry a null wamid and would collide on it.
+  for (const t of [...bearers].sort()) {
+    const ddl = files.map(f => fs.readFileSync(path.join(migDir, f), 'utf8')).join('\n');
+    const uq = new RegExp(`create unique index[^;]*on public\\.${t} ?\\(wamid\\)[^;]*where wamid is not null`, 'i');
+    ok(`public.${t} makes its wamid UNIQUE where present, so no receipt matches ambiguously`,
+       uq.test(ddl));
+  }
+}
+
+// ══ §18 — 「Told」 RETREATS WHEN META RETRACTS ══════════════════════════════
+// MUTATION: drop the `.neq('status','failed')` from toldByReferralIds → RED.
+section('18. a failed receipt clears Told (F-40.226)');
+{
+  const base = () => ({ ...seedBase(), lead_referrals: [
+    { id: 'lr1', from_vendor_id: FROM, to_vendor_id: TO, lead_id: 'lead-priya', new_lead_id: 'copy-1', note: null, created_at: '2026-09-07T00:00:00Z' },
+  ] });
+  const row = (status) => ({ id: 'ra1', referral_id: 'lr1', to_vendor_id: TO,
+                             template_key: 'referral_alert', wamid: 'wamid.X', status });
+
+  const told = async (status) => {
+    const db = makeDb({ ...base(), referral_alerts: [row(status)] });
+    const s = await referrals.referralStampsForLeads(db, FROM, ['lead-priya']);
+    return s.sentBy.get('lead-priya').told;
+  };
+
+  ok('a `sent` receipt reads Told', await told('sent') === true);
+  ok('and `delivered` — the router can now advance it that far', await told('delivered') === true);
+  ok('and `read`', await told('read') === true);
+  // ⚠ THE RULING. A wamid whose receipt says failed is no longer proof, and
+  // leaving Told lit would be the estate claiming a delivery Meta has retracted
+  // — the false-done that Told exists to refuse, arriving three days late.
+  ok('a `failed` receipt CLEARS Told — Meta retracted, so the word retracts',
+     await told('failed') === false);
+  // ⚠ AND AN UNKNOWN STATUS DOES NOT. Meta's vocabulary grows; an allow-list of
+  // good statuses would silently un-tell every forward the day a new terminal
+  // status appears, reading UNKNOWN as FAILURE. Only a positively-known failure
+  // removes the word.
+  ok('an unrecognised status leaves Told standing — the wamid is still real',
+     await told('accepted') === true);
 }
 
 console.log(`\n${pass} PASS · ${fail} FAIL`);

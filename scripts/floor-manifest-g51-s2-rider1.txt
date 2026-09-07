@@ -1,0 +1,91 @@
+# scripts/floor-manifest-g51-s2-rider1.txt
+# TDW_19 · BLOCK 19 · G5.1 SITTING 2 RIDER 1 — dream-os only.
+# F-40.226 (the receipt router had no arm for referral_alerts) and F-40.227
+# (0142's COMMENT ON TABLE asserted a mechanism that did not exist).
+#
+# BASE 3a5be5b, re-derived at the cut and equal to the tip the chair named.
+#
+# BOTH FINDINGS CAME FROM THE FOUNDER'S WALK, NOT FROM AN INSTRUMENT. Meta
+# reported `sent` then `delivered` for a real referral alert and both landed on
+# `home=none matched=0 — NO ROW CARRIES THIS SID` in the deploy log.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+
+db/migrations/0144_referral_alerts_comment.sql
+docs/TDW_19_G51_S2_HANDOVER.md
+scripts/b51_referrals_bench.js
+scripts/floor-manifest-g51-s2-rider1.txt
+src/lib/vendor/referralAlert.js
+src/lib/vendor/relayStatus.js
+
+# ── WHAT MOVED ─────────────────────────────────────────────────────────────
+# relayStatus.js    referral_alerts as the THIRD home, on lead_alerts' own arm.
+#                   THIRD and not second: public.messages keeps priority, each
+#                   home tried only on a miss, so extending costs the earlier
+#                   arms nothing.
+# referralAlert.js  `toldByReferralIds` gains `.neq('status','failed')`. A wamid
+#                   whose receipt retracts it is no longer proof. `failed` ALONE,
+#                   never an allow-list of good statuses — an allow-list would
+#                   silently un-tell every forward the day Meta adds a status,
+#                   reading UNKNOWN as FAILURE.
+# 0144              The COMMENT ON correction. Writes no row and no column.
+# b51               §17 (the general census) and §18 (Told retreats). 201 -> 227.
+# handover          §6 amended for the walk; F-40.226/.227 recorded; the DROY550
+#                   fixture corrected.
+#
+# ── FIVE RIDER MUTATIONS, FIVE RED, ZERO VACUOUS ───────────────────────────
+# Delete the arm · match it on the wrong column · stop Told retreating · allow-
+# list good statuses · drop THIRD from the corrected comment. All restored
+# byte-exact, sha256-verified.
+#
+# ⚠ AND THE FIRST PASS FOUND TWO OF THIS SEAT'S OWN INSTRUMENT DEFECTS.
+# The 0144 cells read the WHOLE FILE, so one reddened on the header that quotes
+# 0142's false sentence to explain the finding, and another stayed green under a
+# mutation because the header also contains the words it was matching. A file's
+# reasoning is not its effect: they now read the block between BEGIN and COMMIT.
+# This is the FOURTH instance of one class in this sitting — an assertion about a
+# FILE when the claim is about the ARTIFACT the file produces.
+#
+# ── SIX DECLARED REDS, NONE OF THEM THIS RIDER'S CODE ──────────────────────
+# F-40.220 · the filed template body separates {{1}} and {{2}} with a comma where
+#   docs/TEMPLATES.md §1 requires real words. Meta accepted it; the estate's rule
+#   is the stricter one. Curing costs a re-file.
+# §17 x5 · reviews_asked (0134), payment_reminders (0139) and contract_sends
+#   (0143) hold a wamid and have NO router arm; two also lack the partial UNIQUE
+#   that makes a receipt match unambiguous. Other arcs' tables, out of radius,
+#   left RED and declared rather than scoped away — a cell narrowed to its own
+#   specimen would let the next one through exactly as this one was let through.
+#   contract_sends landed the same day, so the defect is not historical.
+
+# ── THE FLOOR, BATCHED IN THE FOREGROUND · R-40.63 ─────────────────────────
+# ⚠ THE FIRST ATTEMPT WAS DETACHED AND THE CHAIR CORRECTED IT. `nohup … &` was
+# reached for after a shell timeout SIGTERM'd a foreground run and stranded
+# F-40.231. That cure was worse than the disease: a detached run that dies leaves
+# the SAME stranded mutation with NO SHELL TO NOTICE. R-40.63 stands, and the
+# estate's answer is batching in the foreground, as G1.3 ran it.
+#
+# THE SET IS THE RUNNER'S OWN: `ls scripts/*.js` minus `_noop_middleware.js`
+# (E-1), 173 files, split six ways. Each batch: a discarded WARM-UP pass then a
+# measured pass (LESSON 1 — the first pass on a cold clone reddens ~14 benches
+# that are green standalone), then `git status` against this manifest. All six
+# tree checks came back clean; nothing was stranded.
+#
+# ⚠ AND THIS IS NOT THE FLOOR OF RECORD. A batched run conflates RED (exit 1),
+# REFUSED (exit 3) and ERROR under one test — `exit != 0` — so it cannot make
+# the count-vs-set distinction LESSON 2 exists for. The FOUNDER'S single
+# invocation of `--check` is the floor of record; this is the seat's evidence
+# that the delivery moves nothing.
+#
+# MEASURED: 22 non-zero. Against the sitting's own base — 16 RED + 1 ERROR
+# (b5b_movementb) + 4 REFUSED (b06_gauntlet, b5_wa_door_smoke,
+# bf1_bride_tool_fidelity, test-shape) = 21 — the delta is EXACTLY ONE NAME:
+#
+#   b55_g2_reviews_bench
+#
+# ⚠ AND IT IS NOT THIS RIDER'S. Proven, not asserted: `git stash -u` → run b55 at
+# the clean tip → exit 1 there too → `git stash pop`. It arrived with the carry
+# to 3a5be5b (G3.2 packets), and this rider touches nothing it reads.
+#
+# b51 itself: 227 cells, 221 PASS · 6 FAIL — F-40.220 plus the five §17 census
+# reds now minted F-40.228/.229/.230 and routed to their owning arcs under
+# R-40.110. Every one declared above, none of them this rider's code.

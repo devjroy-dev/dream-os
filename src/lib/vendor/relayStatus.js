@@ -198,6 +198,47 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: altRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE THIRD HOME (F-40.226, G5.1 s2 rider) ─────────────────────────
+      // ⚠ THE SECOND HOME'S PARAGRAPH ABOVE READS AS THOUGH IT CLOSED THE
+      // QUESTION, AND IT DID NOT. `public.referral_alerts` (0142) persists a
+      // wamid too, and on the G5.1 sitting-2 walk of 2026-09-07 Meta reported
+      // `sent` and then `delivered` for a real referral alert and BOTH landed on
+      // the orphan sentence below — `home=none matched=0`, twice, in the founder's
+      // deploy log. The table shipped and its router arm did not: the exact
+      // defect F-40.177 recorded for `lead_alerts` one sitting earlier, repeated
+      // by the seat that had read it and quoted it.
+      //
+      // ⚠ THIRD, NOT SECOND, AND THE ORDER IS NOT TASTE. `public.messages` is the
+      // conversation plane and keeps priority; `lead_alerts` was here first and a
+      // reorder would change which table a shared sid resolved against. Each home
+      // is tried only on a miss, so the ladder is stable and extending it costs
+      // the earlier arms nothing.
+      //
+      // `.select()`ed for the same reason as both arms above: a blind update is
+      // what F-06.143 was.
+      const ref = await supabase
+        .from('referral_alerts')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, referral_id, to_vendor_id, status');
+      const refRows = Array.isArray(ref && ref.data) ? ref.data : [];
+      if (refRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=referral_alert', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: refRows[0], reason: 'referral_alert' };
+      }
+      if (refRows.length > 1) {
+        // 0142's `uq_referral_alerts_wamid` is UNIQUE and PARTIAL on
+        // `wamid IS NOT NULL`, so this is unreachable. Checked anyway, because
+        // both arms above check it and a home that skipped the refusal would be
+        // the weakest of the three.
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=referral_alert_ambiguous', `matched=${refRows.length}`, errFields(status),
+          '— SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: refRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

@@ -207,13 +207,17 @@ async function alertPeerOfReferral(supabase, { referralId, toVendorId, referrerN
 /**
  * THE 「Told」 READ. Given the forwards on a page of leads, which of them landed.
  *
- * ⚠ IT READS A `wamid` AND NOTHING ELSE. Not "the flag was on", not "we called
- * `sendWa`" — the one field Meta's own status webhook can be correlated
- * against, which is why 0142 indexes it and makes it unique where present. A
- * row with `status: 'sent'` and a null wamid is NOT told: that is precisely the
- * F-40.210 state where the message may well have arrived and the estate cannot
- * prove it, and a surface that claims proof it does not have is worse than one
- * that stays quiet.
+ * ⚠ IT READS A `wamid`, AND SINCE F-40.226 IT ALSO READS THE RECEIPT. The wamid
+ * is the field Meta's own status webhook correlates against, which is why 0142
+ * indexes it and makes it unique where present. A row with `status: 'sent'` and
+ * a null wamid is NOT told: that is the F-40.210 state where the message may
+ * well have arrived and the estate cannot prove it, and a surface claiming proof
+ * it does not have is worse than one that stays quiet.
+ *
+ * AND A ROW WHOSE RECEIPT SAYS `failed` IS NO LONGER TOLD EITHER. That is a
+ * NEW capability rather than a tightening: before the router had an arm for this
+ * table, `status` could never move off `sent`, so a wamid was the most the
+ * estate could know. Now Meta can retract, and 「Told」 retracts with it.
  *
  * Returns a Set of referral ids. A Set and not a Map because the surface asks
  * one question — did this land — and a richer return would invite a second
@@ -228,11 +232,30 @@ async function toldByReferralIds(supabase, referralIds) {
   const ids = [...new Set((referralIds || []).filter(Boolean))];
   if (ids.length === 0) return new Set();
 
+  // ⚠ A WAMID IS NO LONGER SUFFICIENT — F-40.226's ruling.
+  // Until the receipt router had an arm for this table, `status` was frozen at
+  // `sent` forever and a wamid was the best proof obtainable. It is not any
+  // more: `relayStatus.js` now advances this column, so Meta can come back and
+  // say `failed` about a message it once accepted.
+  //
+  // A wamid whose receipt says FAILED IS NOT PROOF. Leaving 「Told」 lit on such a
+  // row would be the estate claiming a delivery Meta has retracted — the exact
+  // false-done that 「Told」 was built to refuse, arriving through the back door
+  // three days after the send. So the state RETREATS: a lead that read 「Told」
+  // stops reading it the moment a failure receipt lands.
+  //
+  // ⚠ AND THE LIST IS `failed` ALONE, NOT AN ALLOW-LIST OF GOOD STATUSES.
+  // Meta's vocabulary grows, and a `.in('status', ['sent','delivered','read'])`
+  // would silently un-tell every forward the day a new terminal status appears —
+  // reading an UNKNOWN status as a failure. Only a status the estate positively
+  // knows to mean failure removes the word; anything unrecognised leaves it,
+  // because the wamid is still real and the send still happened.
   const { data, error } = await supabase
     .from('referral_alerts')
     .select('referral_id')
     .in('referral_id', ids)
-    .not('wamid', 'is', null);
+    .not('wamid', 'is', null)
+    .neq('status', 'failed');
 
   if (error) {
     console.warn(`[referralAlert:told] unavailable: ${error.message}`);
