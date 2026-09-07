@@ -51,7 +51,7 @@ const { renderContract } = require('../lib/vendor/contractSource');
 // F-40.196 — clause 16.2's promise. Dark until CONTRACT_COPY_SEND_ENABLED and
 // Meta's Active both move; never throws, so a failed notification cannot turn a
 // completed signature into a 500.
-const { sendSealedCopy } = require('../lib/vendor/contractSend');
+const { sendSealedCopy, recordOtpSend } = require('../lib/vendor/contractSend');
 const { sendOtpCode } = require('../lib/otpSend');
 // ⚠ ONE HOME, IMPORTED — NEVER A LOCAL NORMALISER (F-40.185). `src/lib/phone.js`'s
 // own header says it was MOVED rather than rewritten, byte-identical to the three
@@ -147,9 +147,19 @@ router.post('/:token/code', asyncHandler(async (req, res) => {
       // `normalizeTo` strips and never adds, so without this the country code was
       // simply absent and Meta answered 200 to a message that reached nobody.
       const to = toE164(v.signing.signer_phone);
-      const r = await sendOtpCode({
-        to, code: issued.code, lane: 'vendor', templateKey: 'contract_sign_otp',
-      });
+      let r;
+      try {
+        r = await sendOtpCode({
+          to, code: issued.code, lane: 'vendor', templateKey: 'contract_sign_otp',
+        });
+      } catch (e) {
+        // F-40.258 — the refusal gets its row too, before it is rethrown to `reason`.
+        await recordOtpSend(supabase, { contractId: v.contract.id, vendorId: v.contract.vendor_id, toPhone: to, wamid: null, status: (e && e.code) || 'send_failed', error: e });
+        throw e;
+      }
+      // F-40.258: the row the receipt router matches on — `home=none matched=0` ends here.
+      await recordOtpSend(supabase, { contractId: v.contract.id, vendorId: v.contract.vendor_id, toPhone: to, wamid: (r && r.result && r.result.wamid) || null, status: 'sent' });
+
       // ⚠ **R-40.92 — THE SEND LOGS ITSELF, AND F-40.184 IS WHY.** Not one of the
       // four layers on this path logged a success: not `postMessage`, not
       // `sendMetaTemplate`, not `sendOtpCode`, not this door. Filtering the deploy

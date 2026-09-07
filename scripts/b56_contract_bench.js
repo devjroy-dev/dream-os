@@ -1407,6 +1407,51 @@ section('16. the sign link is sent, recorded, and E.164');
   ok('no number is no_phone, recorded', noPhone.reason === 'no_phone' && rows[1].status === 'no_phone' && rows[1].to_phone === null);
 }
 
+// ══ §17 — THE SIGNED COPY ARRIVES (F-40.257) AND THE OTP HAS A ROW (F-40.258) ═══
+//
+// MUTATION PROOFS (RED then GREEN at the seat):
+//   17a  hand sendOne the raw phone again                      → 17a flips RED
+//   17b  put createSignedUrl back as the document link         → 17b flips RED
+//   17c  drop recordOtpSend from the OTP door's success path   → 17c flips RED
+section('17. the signed copy is E.164 and publicly fetchable; the OTP send has a row');
+{
+  const SEND = require(path.join(ROOT, 'src/lib/vendor/contractSend.js'));
+  const sendSrc = code('src/lib/vendor/contractSend.js');
+  const signDoor = code('src/api/sign.js');
+  ok('sendOne takes the row\u2019s bytes and sends E.164', /toPhone: rawPhone[\s\S]{0,400}const toPhone = rawPhone \? toE164\(rawPhone\) : null;/.test(sendSrc));
+  ok('the document link is the wa-media public URL, not a signed private one', /link = await publishSealedForMeta\(supabase, sealedPath\)/.test(sendSrc) && !/createSignedUrl\(sealedPath/.test(sendSrc));
+  ok('the rehost lands in the estate\u2019s Meta-media home at an unguessable path', /WA_MEDIA_BUCKET = 'wa-media'/.test(sendSrc) && /contracts\/\$\{Date\.now\(\)\}-\$\{crypto\.randomUUID\(\)\}\.pdf/.test(sendSrc) && /contentType: 'application\/pdf', upsert: false/.test(sendSrc));
+  ok('a failed rehost refuses both sends by name', /reason: 'rehost_failed'/.test(sendSrc));
+  // the rehost, by function, on a fake storage
+  const calls = [];
+  const storage = {
+    from: (b) => ({
+      download: async (p) => { calls.push(['download', b, p]); return { data: { arrayBuffer: async () => new Uint8Array([37, 80, 68, 70]).buffer }, error: null }; },
+      upload: async (p, bytes, o) => { calls.push(['upload', b, p, o.contentType, bytes.length]); return { error: null }; },
+      getPublicUrl: (p) => ({ data: { publicUrl: `https://x.supabase.co/storage/v1/object/public/${b}/${p}` } }),
+    }),
+  };
+  const url = await SEND.publishSealedForMeta({ storage }, 'v1/k1.signed.pdf');
+  ok('it downloads from contracts and uploads to wa-media as a PDF', calls[0][1] === 'contracts' && calls[1][1] === 'wa-media' && calls[1][3] === 'application/pdf' && calls[1][4] === 4);
+  ok('and returns the public URL with no token', /\/object\/public\/wa-media\/contracts\/\d+-[0-9a-f-]{36}\.pdf$/.test(url) && !/token=/.test(url));
+  // the client half: ten digits become +91 on the copy send's row
+  const rows = [];
+  const db = { from: () => ({ insert: async (r) => { rows.push(r); return {}; } }) };
+  // sendOne is internal; drive it through sendSealedCopy with the flag on and a fake storage that rehosts
+  const prev = process.env.CONTRACT_COPY_SEND_ENABLED; process.env.CONTRACT_COPY_SEND_ENABLED = '1';
+  const out = await SEND.sendSealedCopy({ storage, from: db.from }, { contractId: 'k1', vendorId: VENDOR, sealedPath: 'v1/k1.signed.pdf', reference: 'DEV440/2026/0007', vendorName: 'V', vendorPhone: '+919888294440', clientName: 'C', clientPhone: '8595356978' });
+  if (prev === undefined) delete process.env.CONTRACT_COPY_SEND_ENABLED; else process.env.CONTRACT_COPY_SEND_ENABLED = prev;
+  ok('both sends were attempted', out.attempted === true && out.results.length === 2);
+  ok('the client row carries +91 (F-40.257\u2019s client half)', rows.some(r => r.recipient === 'client' && r.to_phone === '+918595356978'));
+  ok('neither refusal is the E.164 one any more', out.results.every(r => !/E\.164/.test(String(r.reason))));
+  // F-40.258
+  ok('the OTP door records its send', /recordOtpSend\(supabase, \{ contractId: v\.contract\.id[\s\S]{0,120}status: 'sent' \}\)/.test(signDoor));
+  ok('and records its refusal before rethrowing', /catch \(e\) \{[\s\S]{0,200}recordOtpSend\([\s\S]{0,200}throw e;/.test(signDoor));
+  const rows2 = [];
+  await SEND.recordOtpSend({ from: () => ({ insert: async (r) => { rows2.push(r); return {}; } }) }, { contractId: 'k1', vendorId: VENDOR, toPhone: '+918595356978', wamid: 'wamid.X', status: 'sent' });
+  ok('the OTP row is recipient client on the OTP template with its wamid', rows2[0].recipient === 'client' && rows2[0].template_key === 'contract_sign_otp' && rows2[0].wamid === 'wamid.X');
+}
+
 console.log(`\n${pass}/${pass + fail} cells green.`);
 process.exit(fail ? 1 : 0);
 

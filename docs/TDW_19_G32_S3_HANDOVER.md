@@ -155,3 +155,32 @@ JSX text and JSX attribute strings do not interpret backslash-u escapes; the roo
 ## 14 · WHAT THE WALK PROVED
 
 Compose from a name and a number, the manual function on the record, autosave, the thread, the checklist naming `Your fee` and `Who signs for you`, Send appearing once both were filled, the sent state opening on *Waiting for …*: all on glass. b57 187/187, b56 282/282.
+
+---
+
+# PACKET 4a · DREAM-OS — F-40.257 AND F-40.258 (the first signature's two `meta_send_failed` rows)
+
+**Base:** `dream-os 52f0b2f`. **Governed by:** R-40.124–.127 (recorded), the founder's SELECT on `contract_sends` for contract `5e21c3dc…`.
+
+## 15 · WHAT THE ROWS SAID, AND WHAT EACH ONE MEANT
+
+| Row | Reason | Cause, derived | Cure |
+|---|---|---|---|
+| `client · 8595356978 · contract_copy` | `recipient is not E.164 (got 10 digit(s))` — refused by `sendWa` before Meta | `sendOne` passed `clients.phone` as typed; `sendSignLink` (packet 3) normalises, the older arm never did | `toE164` in `sendOne` — the one home, the whole arm |
+| `vendor · +919888294440 · contract_copy` | Meta `400 (#132018) There's an issue with the parameters in your template` | the document header linked a **signed URL on the private `contracts` bucket** (`…/object/sign/…?token=<jwt>`, 600 s). Every other byte the estate hands Meta to fetch rides the **public `wa-media` bucket at an unguessable path** (`metaMedia.js`, F1); this header was the one exception | `publishSealedForMeta`: the sealed PDF is copied to `wa-media/contracts/<ts>-<uuid>.pdf` as `application/pdf` and the header links the public URL. The private object stays the record. A failed rehost refuses both sends as `rehost_failed` |
+
+**What this cure does not prove.** #132018 also fires on a shape mismatch between the payload and the template as filed at Meta. The payload here is one body `{{1}}` plus a document header (`buildTemplatePayload`, unchanged). **R-40.71 — the founder reads `tdw_contract_copy`'s detail page:** header = Document, body = one variable. If the glass says otherwise, that is the residue and it is a template question, not a code one.
+
+## 16 · F-40.258 — the OTP send has a row
+
+`api/sign.js`'s OTP door now writes `contract_sends` (`recipient client · template_key contract_sign_otp · wamid`) on success and the refusal's reason on failure, through `recordOtpSend` in the send home. The receipt router's `home=none matched=0 — NO ROW CARRIES THIS SID` for the OTP wamid ends here (the router's own matching is unchanged; it reads `contract_sends.wamid`).
+
+## 17 · BENCH
+
+b56 §17, twelve cells: E.164 in `sendOne` (driven through `sendSealedCopy` with the flag on and a fake storage), the rehost by function (download from `contracts`, upload to `wa-media` as PDF, public URL with no token), both refusal shapes, the OTP row on success and before rethrow. **294/294**; three mutations RED → GREEN.
+
+## 18 · THE RE-WALK (after Railway is Active)
+
+Open *Swati Roy Test Contract* (`Signed`) — the copy send fires only at signing, so: **Cancel** → *+ New contract → Someone new → 8595356978* → function → fee → Send → OTP → sign. Expect on both handsets (DEV440's +91 98882 94440 and 8595356978): *Your signed agreement with … is attached* with the PDF. Then the SELECT:
+`SELECT created_at, recipient, to_phone, template_key, status, wamid, error_code, error_title FROM public.contract_sends ORDER BY created_at DESC LIMIT 6;`
+Expect `contract_sign · delivered`, `contract_sign_otp · sent/delivered` with a wamid, `contract_copy × 2 · sent/delivered`. Any `#132018` surviving → the template's detail page (R-40.71).

@@ -70,7 +70,12 @@ async function recordSend(supabase, row) {
  *   copy names the client and the client's copy names the vendor, so each
  *   recipient reads who the agreement is with rather than her own name back.
  */
-async function sendOne(supabase, { contractId, vendorId, recipient, toPhone, otherParty, link, filename }) {
+async function sendOne(supabase, { contractId, vendorId, recipient, toPhone: rawPhone, otherParty, link, filename }) {
+  // ⚠ E.164 HERE — F-40.257's client half. The client row keeps what she typed
+  // (ten digits on the walk) and `sendWa` refuses anything that is not E.164;
+  // this arm passed the row's bytes straight through. `toE164` is the one home.
+  const { toE164 } = require('../phone');
+  const toPhone = rawPhone ? toE164(rawPhone) : null;
   const base = {
     contract_id: contractId, vendor_id: vendorId, recipient,
     to_phone: toPhone || null, template_key: TEMPLATE_KEY,
@@ -163,20 +168,29 @@ async function sendSealedCopy(supabase, {
   // ⚠ THE LINK IS MADE ONCE AND BOTH SENDS SHARE IT. One home for one fact.
   // Meta fetches it per send, and two signed URLs to the same object would be
   // two secrets where one is needed.
+  // ── THE LINK META FETCHES — F-40.257's vendor half ──────────────────────
+  // Until this cut the document header carried a SIGNED URL on the private
+  // `contracts` bucket (`…/object/sign/…?token=<jwt>`, 600 s), and Meta answered
+  // `#132018 There's an issue with the parameters in your template` on the
+  // founder's first signing. Every other byte this estate hands Meta to fetch
+  // rides the PUBLIC `wa-media` bucket at an unguessable path — `metaMedia.js`'s
+  // own policy (F1) — and a document header is that case one template over. The
+  // sealed PDF is copied there once per signing, under `contracts/<uuid>.pdf`,
+  // and the header links the public URL. The private object stays the record.
+  // ⚠ THE SECOND CHECK IS THE FOUNDER'S — R-40.71: the template's detail page
+  // at Meta must read header = Document, body = {{1}} only. This cure removes
+  // the estate-side cause; a shape mismatch at Meta would survive it and would
+  // still read #132018.
   let link = null;
   try {
-    const signed = await supabase.storage.from('contracts')
-      .createSignedUrl(sealedPath, SIGNED_URL_TTL);
-    if (!signed.error && signed.data) link = signed.data.signedUrl;
+    link = await publishSealedForMeta(supabase, sealedPath);
   } catch (e) {
-    console.warn('[contractSend] signed url failed:', e && e.message);
+    console.warn('[contractSend] rehost to wa-media failed:', e && e.message);
   }
   if (!link) {
     // ⚠ NO LINK MEANS NO DOCUMENT, AND A BODY-ONLY SEND IS NOT THIS TEMPLATE.
-    // `buildTemplatePayload` would refuse it anyway; refusing here says why in
-    // one line instead of surfacing as a vars error two files away.
-    console.warn(`[contractSend] no signed url for ${sealedPath}; refusing both sends`);
-    return { attempted: false, reason: 'signed_url_failed', results: [] };
+    console.warn(`[contractSend] no public link for ${sealedPath}; refusing both sends`);
+    return { attempted: false, reason: 'rehost_failed', results: [] };
   }
 
   // What the recipient sees in her chat. The agreement's own reference, never a
@@ -219,6 +233,34 @@ async function sendSealedCopy(supabase, {
 // ⚠ ONE RECORD PER ATTEMPT, SUCCESS OR FAILURE — `recordSend`'s own law. A
 // refusal here is a `contract_sends` row with `status = <reason>`, which is how a
 // walk that says "nothing arrived" gets an answer by SELECT rather than by guess.
+/** Copy the sealed PDF to the estate's Meta-fetchable home and return its public URL. */
+const WA_MEDIA_BUCKET = 'wa-media';   // PUBLIC bucket, unguessable object paths — metaMedia.js
+async function publishSealedForMeta(supabase, sealedPath) {
+  const crypto = require('crypto');
+  const dl = await supabase.storage.from('contracts').download(sealedPath);
+  if (dl.error || !dl.data) throw new Error(`download failed: ${dl.error ? dl.error.message : 'no data'}`);
+  const bytes = Buffer.from(await dl.data.arrayBuffer());
+  const objectPath = `contracts/${Date.now()}-${crypto.randomUUID()}.pdf`;
+  const up = await supabase.storage.from(WA_MEDIA_BUCKET)
+    .upload(objectPath, bytes, { contentType: 'application/pdf', upsert: false });
+  if (up.error) throw new Error(`upload failed: ${up.error.message}`);
+  const { data: pub } = supabase.storage.from(WA_MEDIA_BUCKET).getPublicUrl(objectPath);
+  if (!pub || !pub.publicUrl) throw new Error('getPublicUrl returned nothing');
+  return pub.publicUrl;
+}
+
+/** F-40.258: the sign-OTP send gets its row, so its receipt has a home. Called by
+ *  `api/sign.js` after `sendOtpCode`; never throws (recordSend's own law). */
+async function recordOtpSend(supabase, { contractId, vendorId, toPhone, wamid, status, error }) {
+  await recordSend(supabase, {
+    contract_id: contractId, vendor_id: vendorId, recipient: 'client',
+    to_phone: toPhone || null, template_key: 'contract_sign_otp',
+    wamid: wamid || null, status: status || (wamid ? 'sent' : 'send_failed'),
+    error_code: error && error.code ? String(error.code) : null,
+    error_title: error && error.message ? String(error.message).slice(0, 200) : null,
+  });
+}
+
 const SIGN_TEMPLATE_KEY = 'contract_sign';   // templates.js — tdw_contract_sign · owner · functions · link
 
 async function sendSignLink(supabase, { contractId, vendorId, toPhone, owner, functionsText, link }) {
@@ -264,4 +306,4 @@ async function sendSignLink(supabase, { contractId, vendorId, toPhone, owner, fu
   }
 }
 
-module.exports = { sendSealedCopy, sendSignLink, TEMPLATE_KEY, SIGN_TEMPLATE_KEY, SIGNED_URL_TTL };
+module.exports = { sendSealedCopy, sendSignLink, recordOtpSend, publishSealedForMeta, TEMPLATE_KEY, SIGN_TEMPLATE_KEY, SIGNED_URL_TTL, WA_MEDIA_BUCKET };
