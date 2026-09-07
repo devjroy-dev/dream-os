@@ -1,4 +1,5 @@
 // src/api/vendor/contracts.js
+// GET    /api/v2/vendor/contracts/annex-map            — which annexes the room offers
 // POST   /api/v2/vendor/contracts/upload-url           — get signed upload URL
 // POST   /api/v2/vendor/contracts/:id/finalize         — finalize after upload
 // GET    /api/v2/vendor/contracts                      — list contracts
@@ -6,6 +7,21 @@
 // PATCH  /api/v2/vendor/contracts/:id                  — update metadata
 // POST   /api/v2/vendor/contracts/:id/send             — mark sent
 // DELETE /api/v2/vendor/contracts/:id                  — soft delete (cancelled)
+// POST   /api/v2/vendor/contracts/compose              — start from the standard agreement
+// PATCH  /api/v2/vendor/contracts/:id/fill             — save her answers
+// POST   /api/v2/vendor/contracts/:id/preview          — render the PDF, unsigned
+// POST   /api/v2/vendor/contracts/:id/send-to-couple   — open signing, send the link
+// POST   /api/v2/vendor/contracts/:id/deposit          — mark the deposit received
+// GET    /api/v2/vendor/contracts/profile/fields       — her policies, read
+// POST   /api/v2/vendor/contracts/profile/fields       — her policies, written
+//
+// ⚠ THIS LIST WAS ALREADY SEVEN DOORS SHORT before `annex-map` was added — the
+// G3.2 sitting-1 routes (`compose`, `fill`, `preview`, `send-to-couple`,
+// `deposit`, and both `profile/fields`) shipped without it moving. A manifest
+// that stops being maintained is worse than no manifest, because a reader
+// trusts it. Completed by census against `router.<verb>(` at 9b6321f, not by
+// memory, and it is the FILE that is authoritative — this comment is a courtesy
+// and is now true.
 'use strict';
 
 const express       = require('express');
@@ -18,6 +34,11 @@ const C = require('../../lib/vendor/contracts');
 const { getUploadUrl, finalizeContract, getDownloadUrl } = C;
 const { renderContract } = require('../../lib/vendor/contractSource');
 const { siteBase } = require('../../lib/vendor/creditInvite');
+// ── THE MAP'S ONE HOME (F4). Read by this door and by the pure renderer, and
+// owned by neither — `contractAnnex.js` takes no supabase and must never take
+// one. Putting it in `lib/vendor/contracts.js` would hand the renderer a path to
+// the WRITE half it is constitutionally forbidden to have.
+const { annexesFor } = require('../../lib/contractAnnex');
 
 const authMw = [requireAuth, resolveVendor()];
 
@@ -28,6 +49,32 @@ router.post('/upload-url', ...authMw, asyncHandler(async (req, res) => {
   const result = await getUploadUrl(supabase, req.vendor.id, { title, clientId: client_id, leadId: lead_id, invoiceId: invoice_id, filename });
   if (!result.ok) return errRes(res, 400, result.error);
   return okRes(res, { contract_id: result.contract_id, upload_url: result.upload_url, expires_in: result.expires_in });
+}));
+
+// ── GET /annex-map — WHICH ANNEXES THE ROOM OFFERS FIRST (R-G32.13, F4) ────
+//
+// ⚠ ITS OWN READ, AND NOT A FIELD ON COMPOSE OR FILL'S RESPONSE. The map is a
+// fact about the ESTATE — which annexes exist, which trade usually attaches
+// which — not a fact about a contract. A map that arrived attached to a contract
+// would read as a property OF that contract, and the next seat would reasonably
+// wonder why two contracts for one vendor could disagree.
+//
+// ⚠ AND IT IS A SUGGESTION, NEVER A RULE. `vendors.category` :1204 carries no
+// CHECK, so nothing here is database-enforced: `others` is returned alongside
+// `offered` precisely so the room can draw every annex and let her attach any of
+// them. `mapped` is returned rather than inferred from `offered.length` — a
+// surface that read a length would collapse three states into one, which is
+// F-40.138's whole class.
+//
+// ⚠ MOUNTED ABOVE THE `/:contractId` ROUTES. `annex-map` would otherwise match
+// `/:contractId` and arrive as a contract id, which is why `/upload-url` sits at
+// the top of this file with the same comment. Express matches in order.
+router.get('/annex-map', ...authMw, asyncHandler(async (req, res) => {
+  // The category is read off the vendor row the middleware already resolved, so
+  // no second query and no chance of reading a different vendor than the one
+  // that authenticated.
+  const { mapped, offered, others } = annexesFor(req.vendor.category);
+  return okRes(res, { mapped, offered, others });
 }));
 
 // GET / — list

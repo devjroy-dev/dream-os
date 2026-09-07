@@ -48,6 +48,10 @@ const crypto  = require('crypto');
 const asyncHandler = require('../lib/asyncHandler');
 const C = require('../lib/vendor/contracts');
 const { renderContract } = require('../lib/vendor/contractSource');
+// F-40.196 — clause 16.2's promise. Dark until CONTRACT_COPY_SEND_ENABLED and
+// Meta's Active both move; never throws, so a failed notification cannot turn a
+// completed signature into a 500.
+const { sendSealedCopy } = require('../lib/vendor/contractSend');
 const { sendOtpCode } = require('../lib/otpSend');
 // ⚠ ONE HOME, IMPORTED — NEVER A LOCAL NORMALISER (F-40.185). `src/lib/phone.js`'s
 // own header says it was MOVED rather than rewritten, byte-identical to the three
@@ -255,6 +259,40 @@ router.post('/:token/sign', asyncHandler(async (req, res) => {
   const signedUrl = await supabase.storage.from(C.BUCKET)
     .createSignedUrl(sealedPath, SIGNED_URL_TTL);
   if (!signedUrl.error) pdfUrl = signedUrl.data.signedUrl;
+
+  // ── F-40.196 · CLAUSE 16.2'S PROMISE, NOW BUILT ───────────────────────────
+  // The comment above used to end "this sitting does not build that". It does
+  // now: `contractSend.js` sends the sealed PDF to BOTH parties as a document
+  // header on `tdw_contract_copy`. The couple's ten-minute link above STAYS —
+  // it is her copy in the seconds before WhatsApp arrives, and it costs nothing.
+  //
+  // ⚠ AFTER THE UPLOAD AND AFTER THE STATE FLIP, DELIBERATELY. The signature is
+  // complete and recorded before any notification is attempted, so a send that
+  // fails cannot leave a signed agreement looking unsigned. `sendSealedCopy`
+  // NEVER THROWS for the same reason — a bookkeeping or delivery failure must
+  // not turn a successful signature into a 500 for the couple who just signed.
+  //
+  // ⚠ DARK. `CONTRACT_COPY_SEND_ENABLED` is unset in every environment and
+  // `tdw_contract_copy` is `pending` at Meta, so today this writes one log line
+  // and returns. TWO GATES, and both must move.
+  //
+  // ⚠ DO NOT ARM THE FLAG BEFORE G3.2 PACKET 2 LANDS. `contracts.number` is
+  // added by `0143` but is not ALLOCATED until packet 2's compose writer, so
+  // `reference` is null here today and the filename would fall back to the
+  // contract's uuid — a legally correct document with a meaningless name in
+  // someone's chat. Packet 2 fills the column and the fallback goes unused.
+  const rows = await supabase.from('contracts')
+    .select('number').eq('id', v.contract.id).eq('vendor_id', vendorId).maybeSingle();
+  await sendSealedCopy(supabase, {
+    contractId:  v.contract.id,
+    vendorId,
+    sealedPath,
+    reference:   (rows && rows.data && rows.data.number) || null,
+    vendorName:  agreed.source && agreed.source.vendor  ? agreed.source.vendor.business_name : null,
+    vendorPhone: agreed.source && agreed.source.vendor  ? agreed.source.vendor.phone         : null,
+    clientName:  agreed.source && agreed.source.client  ? agreed.source.client.name          : null,
+    clientPhone: agreed.source && agreed.source.client  ? agreed.source.client.phone         : null,
+  });
 
   return res.status(200).json({ ok: true, signed: true, pdf_url: pdfUrl, expires_in: SIGNED_URL_TTL });
 }));

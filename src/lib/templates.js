@@ -818,6 +818,75 @@ const TEMPLATES = {
     status: 'pending',
   },
 
+  // ── THE SEALED COPY — R-40.108, F-40.196, G3.2 SITTING 2 ──────────────────
+  // v4 clause 16.2 promises each party receives the signed agreement by
+  // WhatsApp. Sitting 1 shipped the signature and could not keep that sentence:
+  // `sign.js:249-253` says so in its own comment — a ten-minute link on the done
+  // screen, and after that the couple has no copy at all. The instrument's
+  // sentence was running ahead of the product, and this entry is what closes it.
+  //
+  // ⚠ SHIPS `pending` AND SENDS NOTHING. `sendWa`'s `isApproved` gate refuses
+  // this key until Meta returns Active and the founder flips this one field —
+  // no code push. `CONTRACT_COPY_SEND_ENABLED` is the second, independent gate
+  // and is unset in every environment. Two gates, named separately, because
+  // they fail for different reasons and a walk must be able to say which one
+  // refused.
+  //
+  // FILED BY THE FOUNDER 2026-09-07 on this seat's word: Utility, English (NOT
+  // English (US) — `TEMPLATE_LANGUAGE` is 'en' and en_US would be Active at Meta
+  // and invisible to the send), document header, no footer, no buttons. Meta
+  // returned **In review**, founder-witnessed on the Manage templates screen.
+  // `status` moves to 'approved' and `meta_id` is filled from what the founder
+  // WITNESSES, never from what this seat expects.
+  //
+  // ── LINE IS 'vendor', AND IT IS DERIVED ───────────────────────────────────
+  // Both parties receive this on the VENDOR lane, and the couple's presence
+  // there is not an oversight. `contract_sign` and `contract_sign_otp` both ride
+  // `line: 'vendor'` for the reason stated at `contract_sign`: they invite a
+  // reply onto the number holding a waiting draft. The couple opened her link
+  // and typed her code in that thread, so the sealed copy lands in the same
+  // conversation she signed in rather than arriving cold from a number she has
+  // never seen. `review_request` goes to the bride lane for the opposite and
+  // equally derived reason — nothing waits on a review reply.
+  //
+  // ── THE BODY, AND WHY IT CLEARS TWO WALLS THE SIBLINGS DID NOT ────────────
+  // Meta refuses a body that STARTS or ENDS on a variable (F-40.91, which killed
+  // `contract_sign` cut 1). This opens on `Your` and closes on `records.`.
+  // Meta's pre-submission classifier reads code vocabulary as Authentication
+  // (cut 2). There is none here.
+  //
+  // ⚠ ONCE FILED, THIS STRING IS IMMUTABLE. Meta holds the body character for
+  // character; a registry that has drifted from the filed one builds a payload
+  // Meta rejects at send time. R-40.57's estate-wide apostrophe rule EXCLUDES
+  // template bodies for exactly this reason, and nothing here is "tidied".
+  //
+  // {{1}} is THE OTHER PARTY'S NAME — the vendor's copy names the client, the
+  // client's copy names the vendor. One template, two sends, and each recipient
+  // reads who the agreement is with rather than her own name back.
+  //
+  // [F-06.85: conditioned on a MECHANICAL fact — Meta's review state for
+  //  tdw_contract_copy. Mechanism: isApproved at the bottom of this file. When
+  //  that fact moves, this paragraph and `status` are re-read together.]
+  contract_copy: {
+    key: 'contract_copy',
+    name: 'tdw_contract_copy',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['other_party'],
+    body:
+      'Your signed agreement with {{1}} is attached. Keep this copy for your records.',
+    // ⚠ READ BY `buildTemplatePayload`. `variable` and `filenameVariable` are
+    // looked up in `vars` BY NAME, so they are invisible to the body's
+    // positional list and the two can never be confused.
+    header: {
+      type: 'document',
+      variable: 'document_link',
+      filenameVariable: 'document_name',
+    },
+    status: 'pending',
+  },
+
   // ── TDW_07 P5 · F-07.40 — THE VENDOR-LANE ENQUIRY CARRIER ──────────────────
   // RE-DERIVED AT 9b84c6d (this sitting, by command against this registry, not
   // carried from the prior sitting's claim). The vendor line's approved set is
@@ -1242,6 +1311,54 @@ function buildTemplatePayload(key, vars) {
         parameters: ordered.map((v) => ({ type: 'text', text: String(v) })),
       }]
     : [];
+
+  // ── G3.2 s2 · THE DOCUMENT-HEADER ARM (R-40.108, F-40.196) ────────────────
+  // Outside the 24-hour window a template is the only door, and a HEADER is the
+  // only place a document rides on one. Derived at 9b6321f, not assumed: the
+  // free-form arm cannot carry it — `whatsapp.js:135-139` REFUSES media on a
+  // Meta lane outright (`meta_media_unsupported`, M1's declared gap), so
+  // `engine.js`'s `attachments` path has never delivered a PDF on this
+  // transport (F-40.223). This arm is the estate's first working one.
+  //
+  // ⚠ `sendWa` NEEDS NO CHANGE, AND THAT IS THE POINT. The link rides in `vars`
+  // under the header's OWN variable name, exactly as the url button's suffix
+  // does one block down. The body's positional list is built from
+  // `t.variables`, so an extra key is invisible to it — the two never collide.
+  // One file changes to open a whole transport.
+  //
+  // ⚠ THE LINK MUST BE FETCHABLE BY META, NOT BY A BROWSER SESSION. The
+  // `contracts` bucket is PRIVATE, so the caller passes a SIGNED url; Meta
+  // fetches it once at send time and serves its own copy thereafter. Nothing is
+  // re-hosted to the public `wa-media` bucket — a sealed instrument carrying
+  // both parties' telephone numbers does not go on a public path (chair, F1).
+  //
+  // The filename is what the recipient sees in her chat, so it is the
+  // agreement's own reference and never a uuid.
+  if (t.header && t.header.type === 'document') {
+    const link = (vars && !Array.isArray(vars)) ? vars[t.header.variable] : undefined;
+    if (link == null || String(link).length === 0) {
+      throw new RangeError(
+        `template ${key} declares a document header and requires '${t.header.variable}' (a fetchable URL)`
+      );
+    }
+    const nameVar = t.header.filenameVariable;
+    const filename = (nameVar && vars && !Array.isArray(vars)) ? vars[nameVar] : undefined;
+    if (filename == null || String(filename).length === 0) {
+      throw new RangeError(
+        `template ${key} declares a document header and requires '${nameVar}' (the filename shown in the chat)`
+      );
+    }
+    // Meta renders components in the order given; the header leads the message,
+    // so it leads the array. `unshift` rather than a second push, because the
+    // body was already placed above.
+    components.unshift({
+      type: 'header',
+      parameters: [{
+        type: 'document',
+        document: { link: String(link), filename: String(filename) },
+      }],
+    });
+  }
 
   // The button component, when and only when the entry declares one. Its value
   // is read from `vars` by the button's OWN variable name — never from the body's
