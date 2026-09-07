@@ -42,12 +42,47 @@
 -- not a convention the code follows — so its presence is the single most
 -- load-bearing row in this whole card.
 --
--- EXPECT: three rows.
---   reviews_asked  reviews_asked_couple_key   UNIQUE  (couple_id)
---   vendor_seal    vendor_seal_pkey           PRIMARY KEY (vendor_id)
---   nudge_optout   nudge_optout_lane_check    CHECK   (… 'couple' …)
--- A missing third row means §3 of the migration did not run and the couple lane
--- is a value the database will refuse.
+-- ── AMENDED 2026-09-07 UNDER R-40.49 · TWO DEFECTS, BOTH THE SEAT'S ────────
+-- ① THE `WHERE` ASKED ABOUT ONE OF §3's TWO `ALTER`s. It named the lane CHECK
+--   and not the source CHECK, because this card was authored from §3's HEADING
+--   rather than from its statements. The `Stop messages` handler writes
+--   `source = 'inbound_stop_messages'`; had that second ALTER not applied, EVERY
+--   couple-stop write would have thrown while this card showed a clean green —
+--   and the founder would have had no reason to ask for the missing half. It was
+--   closed on 2026-09-05 by a follow-up statement, which is exactly the rescue
+--   a card exists to make unnecessary.
+-- ② THE EXPECT SAID "three rows" AND THE QUERY RETURNS TEN. Three was a count of
+--   things-worth-checking dressed as a row count, so a CORRECT GREEN read as a
+--   failure. An EXPECT names what must be PRESENT, never how many rows arrive —
+--   a count is a fact about the query's shape, and the reader is checking a fact
+--   about the database.
+--
+-- R-40.49 was promoted out of this defect and lives in protocol §13's amendment
+-- register. It is cited here, not restated: one home for one law.
+--
+-- EXPECT: these NAMED constraints, all present. ROW COUNT IS NOT THE TEST.
+--   reviews_asked  reviews_asked_couple_key      UNIQUE (couple_id)
+--                  ↑ THE ONCE-EVER GUARANTEE ITSELF. Not a convention the code
+--                    follows — the database refusing a second ask.
+--   reviews_asked  reviews_asked_pkey            PRIMARY KEY (id)
+--   reviews_asked  reviews_asked_couple_id_fkey  FK couples(id)   ON DELETE CASCADE
+--   reviews_asked  reviews_asked_wedding_id_fkey FK weddings(id)  ON DELETE SET NULL
+--   reviews_asked  reviews_asked_vendor_id_fkey  FK vendors(id)   ON DELETE SET NULL
+--                  ↑ SET NULL AND NOT CASCADE, DELIBERATELY: a deleted page must
+--                    never delete the evidence that we already wrote to that
+--                    couple, because that evidence IS the once-ever guarantee.
+--                    The row outlives the page on purpose.
+--   vendor_seal    vendor_seal_pkey              PRIMARY KEY (vendor_id)
+--   vendor_seal    vendor_seal_days_nonneg       CHECK (delivery_days IS NULL OR >= 0)
+--                  ↑ NULL is admitted as "not measurable"; negatives cannot land.
+--   vendor_seal    vendor_seal_weddings_nonneg   CHECK (weddings >= 0)
+--   vendor_seal    vendor_seal_vendor_id_fkey    FK vendors(id)   ON DELETE CASCADE
+--   nudge_optout   nudge_optout_lane_check       CHECK (… 'couple' …)
+--   nudge_optout   nudge_optout_source_check     CHECK (… 'inbound_stop_messages' …)
+--
+-- ⚠ THE LAST TWO MUST BOTH BE PRESENT. The lane CHECK alone proves §3 STARTED.
+-- Only the source CHECK proves it FINISHED — and a half-applied §3 throws on
+-- every couple-stop write while looking, from the lane CHECK alone, entirely fine.
 
 SELECT c.conrelid::regclass AS table_name,
        c.conname            AS constraint_name,
@@ -55,7 +90,7 @@ SELECT c.conrelid::regclass AS table_name,
        pg_get_constraintdef(c.oid) AS definition
   FROM pg_constraint c
  WHERE c.conrelid IN ('public.reviews_asked'::regclass, 'public.vendor_seal'::regclass)
-    OR c.conname = 'nudge_optout_lane_check'
+    OR c.conname IN ('nudge_optout_lane_check', 'nudge_optout_source_check')
  ORDER BY table_name, constraint_name;
 
 
@@ -159,10 +194,19 @@ SELECT n.phone,
 -- ═══════════════════════════════════════════════════════════════════════════
 -- WHAT IS STILL OWED AFTER THIS CARD IS READ
 -- ═══════════════════════════════════════════════════════════════════════════
--- · THE PAIR REGEN. `docs/db/PUBLIC_SCHEMA.md` describes neither new table and
---   still carries the pre-0134 two-value lane CHECK. Until it runs, `0134` is
---   the sole witness for all three under the SQL-provenance law, and the ladder
---   has since moved to 0136.
+-- · THE PAIR REGEN IS DISCHARGED, and this card's provenance now cites the
+--   SNAPSHOT rather than the migration. Read at `docs/db/PUBLIC_SCHEMA.md`,
+--   regen `5b3f61f`, 79 tables, **applied ladder tip `0138`**:
+--     public.reviews_asked  :938  ·  7 columns  (couple_id 2, wedding_id 3,
+--                                  vendor_id 4, asked_at 5, template 6, wamid 7)
+--     public.vendor_seal    :1177 ·  4 columns  (vendor_id 1, weddings 2,
+--                                  delivery_days 3, computed_at 4)
+--     nudge_optout's lane CHECK carries `'couple'::text` in the addendum.
+--   ⚠ STALENESS ARITHMETIC RUN, AND IT MATTERS HERE: `db/migrations/` now holds
+--   files through `0145`, SEVEN past the snapshot's tip. This document is
+--   therefore STALE for anything `0139`–`0145` touched — and NOT for the two
+--   tables above, which `0134` created well below the tip. A second regen is
+--   owed at the next seam and is the chair's, not this card's.
 -- · A FIXTURE WITH THREE DELIVERED WEDDINGS, or the seal-present case is
 --   DECLARED UNWITNESSABLE. Card 4 proves the ABSENCE is by rule; nothing on
 --   this estate can currently prove the PRESENT seal renders, because no vendor
