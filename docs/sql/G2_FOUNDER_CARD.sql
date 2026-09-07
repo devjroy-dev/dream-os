@@ -95,10 +95,28 @@ SELECT c.conrelid::regclass AS table_name,
 
 
 -- ═══ CARD 2 · WHAT WAS ASKED — THE DARK WITNESS ════════════════════════════
--- ZERO ROWS IS THE EXPECTED AND CORRECT ANSWER TODAY. The job claims a couple
--- only when it is about to send, and it cannot send: the flag is unset. If this
--- returns rows, either the flag was set or something wrote this table that is
--- not `reviewsNightly.js` — and there is supposed to be exactly one writer.
+-- ── EXPECT, UNDER R-40.49 · RELATIONSHIPS, NOT A ROW COUNT ─────────────────
+-- The first cut said ZERO ROWS. That was true on the day it was written and it
+-- EXPIRES ON THE EXACT EVENT THIS CARD EXISTS TO OBSERVE: the moment
+-- `REVIEW_ASK_SEND_ENABLED` is set to `1`, rows appear and a reader following the
+-- card reads correct behaviour as a failure. A card that goes wrong when the
+-- thing it watches finally happens is worse than no card.
+--
+-- EXPECT — these hold at ANY population, before the flag and after:
+--   · every `template` is `tdw_review_request`. Anything else means a second
+--     writer reached this table, and there is supposed to be exactly one
+--     (`reviewsNightly.js`).
+--   · NO COUPLE APPEARS TWICE. This is the once-ever guarantee seen from above;
+--     `reviews_asked_couple_key` makes a second row impossible, so two rows for
+--     one couple would mean the constraint is gone, not that the code slipped.
+--   · while the flag is unset, `reached_meta` is FALSE on every row — and the
+--     rows themselves are still legitimate: the job claims the couple BEFORE it
+--     sends, deliberately, so a burnt key with no send is the designed shape.
+--   · `asked_at` never precedes the wedding's `delivered_at`. An ask that
+--     predates delivery means the sweep read the wrong population.
+--
+-- WHILE THE FLAG IS UNSET this returns nothing, which satisfies all four
+-- vacuously — that is the dark ask working and it is not itself the test.
 --
 -- `wamid` IS THE HONEST COLUMN HERE. A row with `wamid IS NULL` is an ask that
 -- was CLAIMED and never delivered — which is the deliberate shape: the row is
@@ -124,10 +142,26 @@ SELECT r.asked_at,
 -- rather than a view: a view has no timestamp, so a night the sweep failed and a
 -- night it ran and found nothing would look identical.
 --
--- EXPECT: one row per ACTIVE vendor, every `computed_at` within the last 24
--- hours. A vendor missing from this list is a vendor the sweep did not reach.
--- `delivery_days IS NULL` is CORRECT for an all-back-catalogue studio and means
--- NOT MEASURABLE, never zero.
+-- ── EXPECT, UNDER R-40.49 · RELATIONSHIPS, NOT A ROW COUNT ─────────────────
+--   · the row set EQUALS the set of ACTIVE vendors — not a number, a set. The
+--     estate's vendor count is a fact about today; the equality is a fact about
+--     the sweep.
+--   · every `computed_at` is within the last 24 hours. Older than that is a
+--     night the job did not run for that vendor.
+--   · `seal_is_visible` is TRUE exactly where `weddings >= 3`. Anywhere else and
+--     the floor is not being applied.
+--   · `delivery_days IS NULL` is CORRECT and means NOT MEASURABLE — an
+--     all-back-catalogue studio has no wedding day to measure from. Never zero;
+--     zero would read as same-day delivery.
+--
+-- ⚠ THIS CARD CANNOT SHOW YOU AN ABSENCE, AND THAT IS ITS OWN BLIND SPOT.
+-- It selects FROM `vendor_seal`, so a vendor the sweep never reached has no row
+-- and is simply not in the result — invisible rather than flagged. Reading "the
+-- set equals the active vendors" therefore requires knowing the active vendor
+-- count from outside this card. It is the same family as F-40.107 (the card
+-- cannot tell "did not run" from "ran and found nothing"), and the same cure
+-- fixes both: a heartbeat the job writes whether or not it finds work. Named
+-- here so a reader does not mistake a short list for a complete one.
 
 SELECT v.business_name,
        v.routing_handle,
@@ -145,10 +179,29 @@ SELECT v.business_name,
 -- "no seal because she has one wedding" and "no seal because nothing ever
 -- computed" render exactly the same — nothing. Only this tells them apart.
 --
--- EXPECT: one row. `delivered_pages = 1`, `seal_row_exists = true`,
--- `seal_weddings = 1`, `seal_is_visible = false`.
---   · `seal_row_exists = false`  → the sweep never reached her. A real failure.
---   · `seal_is_visible = true`   → the floor is not being applied. Worse.
+-- ── EXPECT, UNDER R-40.49 · RELATIONSHIPS, NOT FIXTURE COUNTS ──────────────
+-- The first cut said `delivered_pages = 1`, `seal_weddings = 1` — numbers lifted
+-- from the kickoff's "the one delivered wedding on the estate" rather than
+-- derived. DEV440 has since published a second page, LAWFULLY, and the card read
+-- 2 against an EXPECT of 1: a correct green reported as a failure, which is
+-- precisely the defect R-40.49 was promoted out of, repeated in the card that
+-- earned it. Executor error e-10.
+--
+-- EXPECT — three relationships, true at any page count:
+--   · `seal_row_exists = true`. FALSE means the sweep never reached her, which
+--     is a real failure and the one this card exists to catch.
+--   · `delivered_pages = seal_weddings`. Both count published + consented +
+--     delivered, independently — this card by its own subquery, `seal.js` by
+--     `deliveredPages()`. A DISAGREEMENT means the two are reading different
+--     populations and one of them is wrong about what a delivered wedding is.
+--     THIS IS THE LOAD-BEARING LINE OF THE WHOLE CARD.
+--   · `seal_is_visible = (seal_weddings >= 3)`. Anything else and the floor is
+--     not being applied — worse than a missing sweep, because the storefront
+--     would be showing a seal that was not earned.
+--
+-- NO ABSOLUTE NUMBER BELONGS HERE. `delivered_pages`, `seal_weddings` and
+-- `delivery_days` are facts about today's fixture; only the relations between
+-- them are facts about the database being right.
 --
 -- `delivered_pages` counts with the SAME THREE CONDITIONS `seal.js` uses —
 -- published, consented, delivered — so if it disagrees with `seal_weddings`, the
@@ -172,10 +225,29 @@ SELECT v.business_name,
 
 
 -- ═══ CARD 5 · THE COUPLE LANE'S OPT-OUT HAS A HOME ═════════════════════════
--- R-G2.7's one home, and today it should be EMPTY — nobody has tapped
--- `Stop messages`, because `tdw_referral_invite` has no caller in the tree
--- (derived by grep, F-40.98's bound). This card is the standing witness for when
--- that changes.
+-- R-G2.7's one home. This card is the standing witness for the couple lane.
+--
+-- ── EXPECT, UNDER R-40.49 · RELATIONSHIPS, NOT A ROW COUNT ─────────────────
+-- The first cut said "should be EMPTY", and that expires the same way card 2's
+-- did: the day a couple finally taps `Stop messages`, the card's own expectation
+-- calls the cure firing a failure.
+--
+-- EXPECT — these hold at ANY population:
+--   · every row has `lane = 'couple'` — the WHERE guarantees it, so a row that
+--     could not satisfy it would mean the CHECK is gone.
+--   · a row from a tap carries `source = 'inbound_stop_messages'`, never
+--     `inbound_stop_mornings`. The two are separated deliberately: the vendor's
+--     STOP MORNINGS and the couple's Stop messages are different controls, and
+--     one source word for both would leave the audit unable to say which was
+--     pressed.
+--   · `state` is in the reversible vocabulary. THE COUPLE'S STOP IS A PAUSE, NOT
+--     A TERMINAL OPT-OUT — that is the whole of F-40.98's cure. A row here that
+--     ALSO appears as `opted_out` in `public.prospects` means the full stop
+--     swallowed it again and the branch ordering has regressed.
+--
+-- EMPTY TODAY, and that is expected rather than required: `tdw_referral_invite`
+-- has no caller in the tree, so the button has never been rendered by our code
+-- (F-40.98's bound, derived by grep). Empty satisfies all three vacuously.
 --
 -- It also answers the question F-40.98's census could not: from the day the
 -- G2 branch shipped, a couple's stop is RECORDED — lane-scoped and reversible,
@@ -207,8 +279,14 @@ SELECT n.phone,
 --   therefore STALE for anything `0139`–`0145` touched — and NOT for the two
 --   tables above, which `0134` created well below the tip. A second regen is
 --   owed at the next seam and is the chair's, not this card's.
--- · A FIXTURE WITH THREE DELIVERED WEDDINGS, or the seal-present case is
---   DECLARED UNWITNESSABLE. Card 4 proves the ABSENCE is by rule; nothing on
---   this estate can currently prove the PRESENT seal renders, because no vendor
---   has three delivered pages. Seeding one is a founder act with
---   provenance-shown SQL and it has not been ruled.
+-- · THE SEAL-PRESENT CASE IS WITNESSABLE BY WALK, AND NO LONGER NEEDS A SEED.
+--   The handover declared it unwitnessable on the finding that no vendor had
+--   three delivered pages and that seeding one was a founder act needing a ruled,
+--   provenance-shown INSERT. Card 4 then read DEV440 at TWO. She is ONE
+--   published, consented, delivered page from three — reachable through the
+--   product's own door, as a vendor would, with no SQL and no seed.
+--   At three: the sweep writes `weddings = 3`, `sealIsVisible` turns true, the
+--   public card door sends `seal`, and the storefront renders the mark. That is
+--   the whole G2 chain proven on real rows for the first time —
+--   publish → delivered_at → sweep → vendor_seal → CARD_KEYS → the leaf.
+--   RULED to run BEFORE sitting 2 (CE-40, 2026-09-07).
