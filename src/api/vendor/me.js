@@ -227,6 +227,8 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       style_notes:             vendor.style_notes             || null,
       travel_notes:            vendor.travel_notes            || null,
       about:                   vendor.about                   || null,
+      seo_title:               vendor.seo_title               || null,   // G3.1 s2 · 0147 §4
+      seo_description:         vendor.seo_description         || null,   // G3.1 s2 · 0147 §4
       invoice_prefix:          vendor.invoice_prefix          || null,
       // `!== false` not `=== true`: briefing_enabled is NOT NULL DEFAULT true in the
       // schema, so a missing value means ON, and the hook's old hardcoded `true` was

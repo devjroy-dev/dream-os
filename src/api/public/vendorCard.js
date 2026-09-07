@@ -203,6 +203,13 @@ const CARD_KEYS = Object.freeze([
   //   consented wedding pages, newest first. Empty renders no section at all
   //   (F-40.164): a heading over nothing is a page that looks broken.
   'date_check_enabled', 'weddings',
+  // ── BLOCK 19 · G3.1 s2 — WHAT GOOGLE SHOWS, AS ONE OBJECT (P2-A §3-1) ────
+  // `meta` is { title, description }, ALWAYS present, never null: NULL columns
+  // mean "derive", and the derivation lives HERE (`metaFor`), so the pwa leaf's
+  // generateMetadata and the JSON-LD read one object and never re-derive.
+  // `b44` §2.2/§3.5 and `b55` diff this list; both move in this edit
+  // (F-40.168's lesson — amended by label, in the same packet).
+  'meta',
 ]);
 
 /**
@@ -210,7 +217,7 @@ const CARD_KEYS = Object.freeze([
  * `select('*')` is not merely discouraged here; there is no code path that
  * could produce one, because these are the strings the queries are built from.
  */
-const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, date_check_enabled, about, rate_min, rate_display';
+const VENDOR_SELECT    = 'id, business_name, category, city, routing_handle, status, discover_paused, date_check_enabled, about, rate_min, rate_display, seo_title, seo_description';
 // G2 · the seal's own allowlist. `vendor_id` is the join key and is never sent;
 // `computed_at` is selected and WITHHELD — the page shows a fact, not an audit
 // trail, and "counted every night" is the room's sentence to the vendor, not the
@@ -283,13 +290,31 @@ function startingPrice(rate_display, rate_min) {
 }
 
 /**
+ * G3.1 s2 · WHAT GOOGLE SHOWS — the one derivation (0147 §4 comments name it).
+ * Her own bytes win when set; otherwise the title is `<name> · <category> · <city>`
+ * (empties dropped, so a vendor with no city is not "Name · Photographer · ")
+ * and the description is `about` cut at 200 — the same 200 the CHECK holds her
+ * own byte to, so a derived byte is never longer than an authored one may be.
+ * Exported for `b44`.
+ */
+function metaFor({ business_name, category, city, about, seo_title, seo_description }) {
+  const title = (seo_title && String(seo_title).trim())
+    || [business_name, category, city].map((x) => x && String(x).trim()).filter(Boolean).join(' \u00b7 ')
+    || null;
+  const description = (seo_description && String(seo_description).trim())
+    || (about ? String(about).trim().slice(0, 200) : null)
+    || null;
+  return { title, description };
+}
+
+/**
  * Build the card field by named field. Nothing is spread.
  * @returns {{business_name: string|null, category: string|null, city: string|null,
  *            handle: string, is_demo: boolean, enquiry_phone: string|null,
  *            about: string|null, starting_price: number|null,
  *            photos: Array<{url: string, caption: string|null, hero: boolean, position: number}>}}
  */
-function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings }) {
+function card({ business_name, category, city, handle, is_demo, enquiry_phone, about, starting_price, photos, enquire_link, seal, date_check_enabled, weddings, meta }) {
   return {
     business_name: business_name || null,
     category:      category      || null,
@@ -331,6 +356,10 @@ function card({ business_name, category, city, handle, is_demo, enquiry_phone, a
     // and an empty list, never a missing key (§2b.2's law).
     date_check_enabled: date_check_enabled === true,
     weddings:      Array.isArray(weddings) ? weddings : [],
+    // G3.1 s2 — F-40.169's lesson applied at authoring: destructured AND
+    // emitted in the same edit. Coerced to a shape: an absent `meta` becomes
+    // the derived one, never `undefined` on the wire.
+    meta:          meta && typeof meta === 'object' ? { title: meta.title || null, description: meta.description || null } : metaFor({ business_name, category, city, about }),
   };
 }
 
@@ -510,6 +539,7 @@ router.get('/:code', async (req, res) => {
           // two coercions disagree exactly where it matters, on a null.
           date_check_enabled: v.date_check_enabled === true,
           weddings:      weddingRows,
+          meta:          metaFor(v),   // G3.1 s2 · 0147 §4: her bytes or the derivation
           // ⚠ NULL FOR EVERY REAL VENDOR, AND THAT IS THE RULING, NOT AN
           // OVERSIGHT. `public.vendors` has no phone column and no
           // "number is public" flag; a vendor's number lives on
@@ -567,6 +597,7 @@ router.get('/:code', async (req, res) => {
         city:          d.city,
         handle:        d.ig_handle,
         is_demo:       true,
+        meta:          metaFor({ business_name: d.display_name, category: d.category, city: d.city, about: d.about || null }),   // G3.1 s2
         // Shipped, per the ruling. This is the business's own public Instagram
         // contact, gathered when the demo was built — not a private line — and
         // the page states it is a demo. The asymmetry is deliberate and is
@@ -626,6 +657,7 @@ module.exports.CARD_KEYS = CARD_KEYS;
 // every public storefront down. The declared list and the emitted object are two
 // different facts; both are now reachable, and `b58` §3.1b compares them.
 module.exports.card = card;
+module.exports.metaFor = metaFor;   // G3.1 s2 · so b44 can prove the derivation both ways
 module.exports.VENDOR_SELECT = VENDOR_SELECT;
 module.exports.SEAL_SELECT = SEAL_SELECT;   // G2 · R-G2.9, so b44 can diff it
 module.exports.PORTFOLIO_SELECT = PORTFOLIO_SELECT;

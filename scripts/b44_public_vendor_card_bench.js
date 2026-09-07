@@ -245,8 +245,8 @@ const B = '/api/v2/public/vendor-card';
 // is `b55`'s question, not this one's; appending here rather than inserting in
 // order would redden a correct door.
 const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
-                   'enquire_link', 'enquiry_phone', 'handle', 'is_demo', 'photos',
-                   'seal', 'starting_price', 'weddings'];
+                   'enquire_link', 'enquiry_phone', 'handle', 'is_demo', 'meta', 'photos',
+                   'seal', 'starting_price', 'weddings'];   // G3.1 s2: `meta` joins (0147 §4)
 
 (async () => {
   await new Promise((r) => { server = app.listen(0, '127.0.0.1', r); });
@@ -363,10 +363,10 @@ const CARD_WANT = ['about', 'business_name', 'category', 'city', 'date_check_ena
     // this one constant — so the SELECT and the ruling cannot drift apart.
     const WANT = ['about', 'business_name', 'category', 'city', 'date_check_enabled',
                   'discover_paused', 'id', 'rate_display', 'rate_min', 'routing_handle',
-                  'status'];
+                  'seo_description', 'seo_title', 'status'];   // G3.1 s2: thirteen — 0147 §4's two join the SELECT
     const asked = [...new Set(vs.flatMap((s) => s.cols.split(',').map((x) => x.trim())))].sort();
     chk(JSON.stringify(asked) === JSON.stringify(WANT),
-        '\u00a73.3 the vendors SELECT is exactly the eleven allowlisted columns', asked.join(','));
+        '\u00a73.3 the vendors SELECT is exactly the thirteen allowlisted columns', asked.join(','));
     const forbiddenAsked = asked.filter((c) => SELECT_FORBIDDEN.includes(c));
     chk(forbiddenAsked.length === 0, '§3.4 no select-forbidden column is even ASKED FOR',
         forbiddenAsked.length ? 'ASKED: ' + forbiddenAsked.join(', ') : 'the query never sees them');

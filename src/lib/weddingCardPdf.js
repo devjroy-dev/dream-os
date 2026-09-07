@@ -199,4 +199,4 @@ async function generateWeddingCards({ title, studioName, pageUrl }) {
   return { tent, insert };
 }
 
-module.exports = { generateWeddingCards, CARD_COPY };
+module.exports = { generateWeddingCards, CARD_COPY, qrPng };   // G3.1 s2: qrPng is the estate's one QR home; the storefront door calls it

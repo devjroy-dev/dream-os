@@ -483,4 +483,16 @@ router.get('/benchmarks', requireAuth, resolveVendor(), asyncHandler(async (req,
 //    site. When those phases are chartered with keys, their POSTs are declared
 //    in this section in the same form as P1 and P2 above.
 
+// ── G3.1 s2 · THE P1 BLOCK ABOVE IS OPENED IN ITS OWN FILE ───────────────────
+// google.js carries connect/callback/status/report/sync/disconnect with the gate
+// (`googleOAuth.isConfigured()`) as each handler's first line, exactly as the
+// stub's UNCOMMENT STEP asked. The callback is a GET, not the POST the stub
+// wrote — a browser redirect cannot POST (F-40.255). This mount sits AFTER
+// `GET /google` above so the bare address keeps answering G2's GoogleStatus
+// shape until G2 s2 gives it a source; a request for `/google/…` falls through
+// that handler into this router.
+router.use('/google', require('./google'));
+// G3.1 s2 · her address as a QR — see storefront.js; one call into the tent card's QR home.
+router.use('/storefront', require('./storefront'));
+
 module.exports = router;

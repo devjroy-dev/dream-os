@@ -372,7 +372,7 @@ cell('the registry gate is ALREADY OPEN \u2014 so the flag is the only hold', ()
     // ⚠ DECLARATION ORDER, NOT SORTED. `b44` §2.2 sorts both sides; this one
     // compares the list as written, and that asymmetry is deliberate — between
     // them they hold both the SET and the ORDER.
-    const want = ['business_name','category','city','handle','is_demo','enquiry_phone','about','starting_price','photos','enquire_link','seal','date_check_enabled','weddings'];
+    const want = ['business_name','category','city','handle','is_demo','enquiry_phone','about','starting_price','photos','enquire_link','seal','date_check_enabled','weddings','meta'];   // G3.1 s2: `meta` appended (0147 §4)
     return VC.CARD_KEYS.join(',') === want.join(',') ? true : `CARD_KEYS is ${VC.CARD_KEYS.join(',')}`;
   });
 
