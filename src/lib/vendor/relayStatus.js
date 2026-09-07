@@ -239,6 +239,44 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: refRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE FOURTH HOME (F-40.196, G3.2 s2) ──────────────────────────────
+      // `public.contract_sends` (0143) persists a wamid per party per sealed-copy
+      // send. It is added HERE, in the packet that creates the writer, because
+      // G5.1's rider proved what the alternative costs: `referral_alerts` shipped
+      // its table and its rows and NOT its router arm, and two real receipts landed
+      // on the orphan sentence below. `b51` §17 now reds for any wamid-bearing
+      // table with no route, and it red on THIS table the moment `0143` hit the
+      // tree — before a single send existed.
+      //
+      // FOURTH, and the order is not taste. `public.messages` is the conversation
+      // plane and keeps priority; the notification planes follow in the order they
+      // were built. Each home is tried only on a miss, so extending the ladder
+      // costs the earlier arms nothing.
+      //
+      // `.select()`ed for the same reason as all three arms above: a blind update
+      // is what F-06.143 was.
+      const cs = await supabase
+        .from('contract_sends')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, contract_id, vendor_id, recipient, status');
+      const csRows = Array.isArray(cs && cs.data) ? cs.data : [];
+      if (csRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=contract_send', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: csRows[0], reason: 'contract_send' };
+      }
+      if (csRows.length > 1) {
+        // `uq_contract_sends_wamid` is UNIQUE and PARTIAL on `wamid IS NOT NULL`, so
+        // this is unreachable. Checked anyway, because all three arms above check it
+        // and a home that skipped the refusal would be the weakest of the four.
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=contract_send_ambiguous', `matched=${csRows.length}`, errFields(status),
+          '— SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: csRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

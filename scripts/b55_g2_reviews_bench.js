@@ -59,7 +59,16 @@ function expectedBodyOnly(entry, vars) {
 
 cell('every entry that declares no button renders body-only', () => {
   const all  = Object.keys(T.TEMPLATES);
-  const keys = all.filter((k) => !T.TEMPLATES[k].button);
+  // ── AMENDED BY LABEL · G3.2 s2 · R-40.108 ────────────────────────────────
+  // ⚠ THE ASSERTION TIGHTENS RATHER THAN LOOSENS. This cell was written when a
+  // BODY and an optional URL BUTTON were the only shapes a payload could take, and
+  // it read "every entry that declares no button renders body-only". `contract_copy`
+  // declares a DOCUMENT HEADER — the estate's first outbound-document path
+  // (F-40.196) — and is therefore neither body-only nor a button entry. The cell
+  // now reads: **every entry declares its components, and the builder emits exactly
+  // those** — `body` alone, `body + url`, or `header + body`. An entry that grew a
+  // component it did not declare still reds, which is what this section is for.
+  const keys = all.filter((k) => !T.TEMPLATES[k].button && !T.TEMPLATES[k].header);
   // Derived, not hardcoded: exactly ONE entry declares a button, so buttonless
   // is total minus one. An appended entry moves both numbers together.
   // FULLY DERIVED. A hardcoded total is a second home for the census, and this
@@ -68,7 +77,14 @@ cell('every entry that declares no button renders body-only', () => {
   // entry declares a button and every other renders body-identical — both of
   // which are true at any registry size, so an appended entry never reddens this
   // cell for the wrong reason.
-  if (keys.length !== all.length - 1) return `${all.length - keys.length} entries declare a button; expected exactly 1`;
+  // Derived, not hardcoded: exactly one entry declares a button and exactly one
+  // declares a header, so the plain set is total minus two. Both counts move with
+  // the registry, so an appended entry never reds this cell for the wrong reason.
+  const buttons = all.filter((k) => T.TEMPLATES[k].button).length;
+  const headers = all.filter((k) => T.TEMPLATES[k].header).length;
+  if (buttons !== 1) return `${buttons} entries declare a button; expected exactly 1`;
+  if (headers !== 1) return `${headers} entries declare a header; expected exactly 1`;
+  if (keys.length !== all.length - 2) return `plain set is ${keys.length}, expected ${all.length - 2}`;
   for (const k of keys) {
     const e = T.TEMPLATES[k];
     if (e.category === 'AUTHENTICATION') continue;      // its own builder
@@ -81,15 +97,43 @@ cell('every entry that declares no button renders body-only', () => {
   return true;
 });
 
-cell('no buttonless payload carries a component of type button', () => {
+cell('no plain payload carries a button or a header component', () => {
   for (const k of Object.keys(T.TEMPLATES)) {
     const e = T.TEMPLATES[k];
-    if (e.button || e.category === 'AUTHENTICATION') continue;
+    // A declaring entry is excluded from the PLAIN set and asserted on its own
+    // terms below — the builder refuses to emit a header without its link, which is
+    // itself the guarantee that a header cannot arrive by accident.
+    if (e.button || e.header || e.category === 'AUTHENTICATION') continue;
     const vars = {};
     (e.variables || []).forEach((n, i) => { vars[n] = `v${i + 1}`; });
     const p = T.buildTemplatePayload(k, vars);
     if ((p.components || []).some((c) => c.type === 'button')) return `${k} grew a button`;
+    if ((p.components || []).some((c) => c.type === 'header')) return `${k} grew a header`;
   }
+  return true;
+});
+
+cell('the header entry emits header + body, in that order, and refuses without its link', () => {
+  const k = Object.keys(T.TEMPLATES).find((x) => T.TEMPLATES[x].header);
+  if (!k) return 'no entry declares a header';
+  const e = T.TEMPLATES[k];
+  const vars = {};
+  (e.variables || []).forEach((n, i) => { vars[n] = `v${i + 1}`; });
+  vars[e.header.variable] = 'https://example.invalid/x.pdf';
+  vars[e.header.filenameVariable] = 'X-2026-0001.pdf';
+  const p = T.buildTemplatePayload(k, vars);
+  const types = (p.components || []).map((c) => c.type).join('+');
+  if (types !== 'header+body') return `${k} emitted ${types}, expected header+body`;
+  const h = p.components[0].parameters[0];
+  if (h.type !== 'document' || !h.document || !h.document.link || !h.document.filename) {
+    return `${k}'s header parameter is not a document with link and filename`;
+  }
+  // ⚠ AND IT REFUSES RATHER THAN SENDING A HEADERLESS MESSAGE. A body-only send
+  // where a legal document was promised is worse than a throw.
+  const bare = {};
+  (e.variables || []).forEach((n, i) => { bare[n] = `v${i + 1}`; });
+  try { T.buildTemplatePayload(k, bare); return `${k} built a payload with no document link`; }
+  catch (err) { if (!/document header/.test(err.message)) return `refused for the wrong reason: ${err.message}`; }
   return true;
 });
 

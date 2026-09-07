@@ -267,8 +267,28 @@ async function composeContract(supabase, vendorId, { clientId, name, phone, even
     return { ok: false, error: 'Deposit must be more than 0 and at most 100 percent.' };
   }
 
+  // ── THE AGREEMENT'S REFERENCE — R-40.106, register §9A ──────────────────
+  // `invoices.js:75-91`'s mechanism, COPIED WITH ITS LESSON (F-40.221). The
+  // counter is incremented IN the UPDATE and the number is read from Postgres's
+  // answer, never from `v.contract_counter + 1` computed here — but that
+  // read-after-write is NOT the guarantee the register claimed it was: two
+  // concurrent composes both read 5, both write 6, and both read 6 back. What
+  // actually stops a duplicate is `contracts_vendor_number_unique` (0143), under
+  // which the second INSERT FAILS. The invoice line has had that index since
+  // Block 09 and the register never mentioned it.
+  //
+  // Padding 4 and NO YEARLY RESET (chair, 2026-09-07): `DEV440/2026/0001`, then
+  // 0002, and 2027's first contract is 0003. A reset would make the reference
+  // ambiguous across years unless the year were part of the key, and the year in
+  // the middle is chrome — it is the DATE, not a counter namespace.
+  const num = await allocateContractNumber(supabase, vendorId);
+  if (!num.ok) return { ok: false, error: num.error };
+
   const { data, error } = await supabase.from('contracts').insert({
     vendor_id:   vendorId,
+    // Chrome, not an instrument field: the reference appears in the paper's title
+    // block and in no clause, so it is not among v4's 168 tokens.
+    number:      num.number,
     // ⚠ `client.id`, NOT `clientId`. The first cut of the promotion path left this
     // reading the ARGUMENT, which is undefined whenever a name was given instead of
     // an id — so every promoted contract would have been written with a NULL
@@ -287,6 +307,53 @@ async function composeContract(supabase, vendorId, { clientId, name, phone, even
   }).select().single();
   if (error) return { ok: false, error: error.message };
   return { ok: true, contract: data, promoted };
+}
+
+// ── allocateContractNumber ────────────────────────────────────────────────
+// THE ONLY WRITER OF `vendors.contract_prefix` and `vendors.contract_counter`,
+// and the only place a `contracts.number` is composed.
+//
+// ⚠ CONTRACTS HAVE THEIR OWN PAIR. Sharing the invoice counter would make invoice
+// 7 and contract 7 impossible to hold at once, and one number would carry two
+// meanings (veto sheet §7).
+//
+// ⚠ THE NUMBER IS READ FROM POSTGRES'S ANSWER. `.select('contract_counter')` on
+// the UPDATE, not the locally computed value — so the reference printed is the one
+// that landed. The UNIQUE index is what makes a collision an error rather than a
+// duplicate; this function does not retry, because a second contract silently
+// taking a third number would hide the collision the index exists to reveal.
+async function allocateContractNumber(supabase, vendorId) {
+  const { data: v, error: vErr } = await supabase
+    .from('vendors')
+    .select('id, routing_handle, contract_prefix, contract_counter')
+    .eq('id', vendorId)
+    .single();
+  if (vErr) return { ok: false, error: vErr.message };
+  if (!v.routing_handle) return { ok: false, error: 'Onboarding incomplete -- cannot number a contract.' };
+
+  // The prefix is set once, from the handle, exactly as `invoice_prefix` is — but
+  // WITHOUT the `TDW/` that the invoice line carries. The reference the frames
+  // ratified is `DEV440/2026/0001`, not `TDW/DEV440/…`, and F-40.218 records that
+  // the invoice line's own shape does not match its ratified frame either. That is
+  // Block 09's to reconcile; this line takes the handle it was drawn with.
+  let prefix = v.contract_prefix;
+  if (!prefix) {
+    prefix = String(v.routing_handle).toUpperCase();
+    const { error } = await supabase.from('vendors')
+      .update({ contract_prefix: prefix }).eq('id', vendorId);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  const { data: upd, error: cErr } = await supabase
+    .from('vendors')
+    .update({ contract_counter: v.contract_counter + 1 })
+    .eq('id', vendorId)
+    .select('contract_counter')
+    .single();
+  if (cErr) return { ok: false, error: 'Counter update failed: ' + cErr.message };
+
+  const year = new Date().getFullYear();
+  return { ok: true, number: `${prefix}/${year}/${String(upd.contract_counter).padStart(4, '0')}` };
 }
 
 // ── saveContractFill ──────────────────────────────────────────────────────
@@ -467,7 +534,7 @@ async function setSealedPath(supabase, signatureId, { sha256, path, signedAt }) 
 
 module.exports = {
   getUploadUrl, finalizeContract, getDownloadUrl, attachFromUrl, cleanupDraftContracts,
-  composeContract, saveContractFill, markDepositReceived, openSigning, setSealedPath,
+  composeContract, allocateContractNumber, saveContractFill, markDepositReceived, openSigning, setSealedPath,
   findSigningByToken, issueSignCode, verifySignCode,
   hashOtp, DEFAULT_DEPOSIT_PCT, OTP_TTL_MS, TOKEN_TTL_MS, MAX_OTP_ATTEMPTS, BUCKET,
 };

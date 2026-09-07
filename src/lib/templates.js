@@ -884,7 +884,14 @@ const TEMPLATES = {
       variable: 'document_link',
       filenameVariable: 'document_name',
     },
-    status: 'pending',
+    // Meta returned **Active · Utility · English**, founder-witnessed on the
+    // template detail page 2026-09-07, and the founder confirmed on that same page
+    // that a **Header · Document** component is declared beside the Body — so the
+    // header this builder emits matches what Meta holds. (The Insights preview
+    // bubble renders body only; that is the panel's rendering, not the filing.)
+    // R-40.71: read on the detail page, never the edit screen.
+    status: 'approved',
+    meta_id: '1108780808723101',
   },
 
   // ── TDW_07 P5 · F-07.40 — THE VENDOR-LANE ENQUIRY CARRIER ──────────────────

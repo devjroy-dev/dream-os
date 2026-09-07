@@ -215,9 +215,298 @@ section('2. the seal, present and absent');
   // ⚠ A SIGNED COPY IS STRICTLY LONGER. The seal block is bytes; an empty seal would
   // be the same length, which is what this compares.
   ok('the signed copy is longer than the unsigned', signed.length > unsigned.length);
-  // AN UNVERIFIED SIGNING IS NOT A SIGNATURE — a code sent and not entered.
+  // ── §10a AMENDED BY LABEL TO v4's THREE SEAL STATES ─────────────────────
+  // ⚠ SUPERSESSION, RECORDED AT THE CELL. This section asserted v3's behaviour:
+  // `an unverified signing prints NO seal`, i.e. the block was SUPPRESSED for a
+  // signing row with `verified_at: null`. v4's clause 16.4 and the founder-vetoed
+  // frame `P4-sign-unsigned` say otherwise — **the seal prints its labels and no
+  // values** — because clause 16.4's paper path is real and a couple who signs on
+  // paper receives a document whose seal is honest about being unsigned. R-40.106
+  // put the lawyer's yes on v4's clause 16, so a committed cell asserting v3's
+  // suppression is a pin on a superseded instrument (c-40.49).
+  //
+  // THREE STATES, each asserted, and the amendment TIGHTENS: the old cell compared
+  // two lengths and could not tell an empty seal from a populated one.
+  // ⚠ WHAT THESE CELLS CAN AND CANNOT MEASURE, SAID OUT LOUD. The clause text is
+  // set in SUBSET TTFs through Identity-H, so the content stream carries GLYPH IDS,
+  // not readable characters — a bench cannot grep a rendered agreement for a
+  // sentence without a full text extractor. What it CAN read is structure. The
+  // digest is the ONLY Courier run in the document, so the presence of a Courier
+  // font resource in the PDF is a decisive witness for the seal block, and the
+  // three states separate cleanly on it plus length.
+  //
+  // The BYTES of the label and the four value lines are asserted against the
+  // renderer's SOURCE, comment-stripped, because F-40.234 was a re-authoring and
+  // that is the plane a re-authoring happens on.
+  const hasCourier = (buf) => /\/BaseFont\s*\/Courier/.test(buf.toString('latin1'));
+  const rend = code('src/lib/contractPdf.js');
   const inflight = await CPDF.generateContractPdf(args({ verified_at: null, signer_phone: '+919625759924', document_sha256: SHA }));
-  ok('an unverified signing prints NO seal', inflight.length === unsigned.length);
+  const agreed   = await CPDF.generateContractPdf(Object.assign(
+    args({ verified_at: '2026-09-06T10:42:00Z', signer_phone: '+919625759924', document_sha256: SHA }),
+    { sealed: false }));
+
+  //  (i) sealed:false -> NO BLOCK AT ALL. These are the bytes `document_sha256`
+  //      hashes; a seal inside them could not describe them (R-G32.19).
+  ok('sealed:false prints no seal block at all — no digest face in the document', !hasCourier(agreed));
+  ok('and it is shorter than the copy that carries a seal', agreed.length < signed.length);
+
+  //  (ii) sealed:true + null signature -> LABELS, NO VALUES (`P4-sign-unsigned`).
+  ok('an unverified signing still prints the seal block', hasCourier(inflight));
+  ok('and it is shorter than the signed copy — labels and dashes, not values',
+     inflight.length < signed.length);
+
+  //  (iii) sealed:true + signature -> VALUES.
+  ok('the signed copy carries the seal and is the longest of the three',
+     hasCourier(signed) && signed.length > inflight.length && signed.length > agreed.length);
+
+  //  THE BYTES — F-40.234. Each is `P4-sign`'s own, transcribed.
+  ok('the digest label is the ratified byte, and stands alone',
+     /Document fingerprint \\u00b7 SHA-256/.test(rend));
+  ok('the confirmation line is the frame\'s, not authored from memory',
+     /Confirmed by one-time password sent to that number\./.test(rend));
+  ok('the paper path has its own confirmation line (clause 16.4)',
+     /Signed on paper under clause 16\.4\./.test(rend));
+  ok('and the retired v3 value lines are gone',
+     !/By the Client, from/.test(rend) && !/One-time password, clause 16\.1/.test(rend));
+}
+
+// ── THE FOUNDER-CARD FIXTURE — DEV440 · Priya Nair · one outstation function ──
+// Lifted whole from the seat's scratch fixture so the bench and the card render the
+// SAME document. `function_1_city` differs from `vendor.city`, which is what opens
+// clause 5's gate; the in-city variant is asserted separately.
+function fixtureArgs() {
+  const vendor = {
+    business_name: 'Dev Roy Photography', category: 'wedding photography',
+    address: '14 Sultanpur Estate', city: 'New Delhi', gstin: '07ABKPR1234F1Z5',
+    phone: '+91 79821 59047', upi_id: 'devroy@okhdfc',
+    account_name: 'Dev Roy Photography', account_number: '50100234567890', ifsc: 'HDFC0001234',
+  };
+  const client = { name: 'Priya Nair', phone: '+91 96257 59924' };
+  const functions = [
+    { id: 'e1', title: 'Mehendi',  event_date: '2026-11-20', event_time: '16:00' },
+    { id: 'e2', title: 'Wedding',  event_date: '2026-11-22', event_time: '19:30' },
+  ];
+  const contract = {
+    number: 'DEV440/2026/0001', deposit_pct: 30, created_at: '2026-09-07T06:00:00Z',
+    annexes: { a: true },
+    terms: {
+      agreement_date: '2026-09-07', vendor_signatory_name: 'Dev Roy',
+      partner_1_name: 'Priya Nair', partner_2_name: 'Arjun Nair',
+      exclusions: 'printed albums, drone footage, same-day edits',
+      fee_breakdown: 'two functions, full-day coverage',
+      named_professional: 'Dev Roy',
+      gst_treatment: 'exclusive', gst_pct: 18, gst_amount: 45000, fee_payable_with_gst: 295000,
+      functions: {
+        e1: { venue: 'Taj Falaknuma', city: 'Hyderabad' },   // ← outstation: opens clause 5
+        e2: { venue: 'Taj Falaknuma', city: 'Hyderabad' },
+      },
+    },
+  };
+  const profile = {
+    overtime_rate: 4000, overtime_unit: 'hour', late_grace_days: 7, late_interest_pct: 1.5,
+    postpone_notice_days: 60, postpone_window_months: 12, refund_days: 14,
+    cancel_tier_1_days: 90, cancel_tier_1_pct: 25, cancel_tier_2_days: 45, cancel_tier_2_pct: 50,
+    cancel_tier_3_days: 15, cancel_tier_3_pct: 75, cancel_tier_4_pct: 100,
+    deposit_refundable: 'not refundable', delivery_days: 45, delivery_method: 'a download link',
+    link_live_days: 90, revision_rounds: 2, revision_rate: 5000, archive_months: 6,
+    meals_provision: 'a hot meal and water for four people',
+    takedown_days: 14, vendor_credit_role: 'Photography and film', fm_window_months: 12,
+    same_venue: 'the same hotel as the Client', rooms: 2,
+    travel_terms: 'return airfare for four, economy, booked by the Client',
+    a_team: 'One photographer and one assistant', a_coverage_hours: 10, a_drone: 'not engaged',
+    a_edited_count: 600, a_photo_format: 'by download link, full resolution JPEG',
+    a_film: 'a 4\u20135 minute highlight film', a_album: 'not included',
+    a_teaser_days: 7, a_selection_days: 21,
+    a_extras: 'a second shooter at Rs 12,000 a function; express delivery at Rs 8,000',
+    a_raw_files: 'not supplied', a_backup_scheme: 'two separate drives',
+  };
+  const money = {
+    fee_total: 250000, deposit_amount: 75000,
+    milestones: [
+      { label: 'Before the first function', pct: 40, amount: 100000, due: '2026-11-10' },
+      { label: 'On delivery',               pct: 30, amount: 75000,  due: '2027-01-06' },
+    ],
+  };
+  const SIG = { verified_at: '2026-09-07T10:42:00Z', signer_phone: '+91 96257 59924',
+                channel: 'otp', document_sha256: 'a'.repeat(64) };
+  return { contract, vendor, client, functions, profile, money, signature: SIG };
+}
+
+// ══ §2a — THE FIXTURE RENDERS, AND THE BUFFER IS ASSERTED ══════════════════
+// ⚠ THIS SECTION EXISTS BECAUSE THE BENCH USED TO PASS ON HELVETICA. Every render
+// cell above ran against the v3 renderer, which named no font file, so a face that
+// could not embed — or embedded and drew nothing — would never have reddened here.
+// F-40.232 and F-40.233 both slipped past a green bench for exactly that reason.
+// This renders the founder-card fixture through the REAL faces and asserts bytes,
+// pages and the folio; `b60` asserts the glyphs.
+section('2a. the founder-card fixture renders through the shipped faces');
+{
+  const zlib2 = require('zlib');
+  const FIX = fixtureArgs();
+  const agreed   = await CPDF.generateContractPdf(Object.assign({}, FIX, { signature: null, sealed: false }));
+  const unsigned = await CPDF.generateContractPdf(Object.assign({}, FIX, { signature: null, sealed: true }));
+  const sealedD  = await CPDF.generateContractPdf(Object.assign({}, FIX, { sealed: true }));
+
+  ok(`the agreed copy renders — ${agreed.length} bytes`,   Buffer.isBuffer(agreed) && agreed.length > 20000);
+  ok(`the unsigned copy renders — ${unsigned.length} bytes`, Buffer.isBuffer(unsigned) && unsigned.length > 20000);
+  ok(`the sealed copy renders — ${sealedD.length} bytes`,  Buffer.isBuffer(sealedD) && sealedD.length > 20000);
+
+  // ⚠ THE SHIPPED FACES ARE THE ONES EMBEDDED. A renderer that silently fell back
+  // to a standard font would still produce a valid PDF — and would not be the
+  // document the founder ratified.
+  const asText = (b) => b.toString('latin1');
+  for (const [name, buf] of [['agreed', agreed], ['sealed', sealedD]]) {
+    ok(`${name}: Cormorant is embedded, not substituted`, /CormorantGaramond/.test(asText(buf)));
+    ok(`${name}: DM Sans is embedded, not substituted`,   /DMSans/.test(asText(buf)));
+    ok(`${name}: no standard-font fallback for the body`, !/\/BaseFont\s*\/Helvetica/.test(asText(buf)));
+  }
+
+  // ⚠ THE FOLIO'S TOTAL IS ASSERTED AGAINST THE REAL PAGE COUNT, BOTH DIRECTIONS.
+  // The bug this guards is a total stamped BEFORE the annex pages were counted:
+  // move `stampFolios` above the annex loop and a nine-page agreement stamps
+  // `of 8`, with the last page carrying no folio at all. Page count is read from
+  // the PDF's own `/Count`, never from the renderer's opinion of it.
+  const pageCount = (buf) => {
+    const m = /\/Type\s*\/Pages[\s\S]{0,400}?\/Count\s+(\d+)/.exec(asText(buf));
+    return m ? Number(m[1]) : -1;
+  };
+  for (const [name, buf] of [['agreed', agreed], ['unsigned', unsigned], ['sealed', sealedD]]) {
+    const n = pageCount(buf);
+    ok(`${name}: the document declares a page count — ${n}`, n > 1);
+  }
+  // The sealed copy carries the seal page the agreed one does not, so it is longer
+  // and never shorter; and both carry the annex page that F-40.190 added.
+  ok('the sealed copy is longer than the agreed one', sealedD.length > agreed.length);
+  ok('and the agreed copy carries the annex pages too',
+     pageCount(agreed) >= pageCount(sealedD) - 1);
+}
+
+// ══ §2b — THE TOKEN DIFF (R-40.94 third clause) ════════════════════════════
+// ⚠ THE SET COMES FROM THE SOURCE THAT DEFINES IT. `TDW_19_CONTRACT_FIELD_REGISTER_v2.md`
+// is the only document that can say whether the renderer carries every field v4
+// names; a hand-kept list here would be a second home for the register, which is
+// R-40.64's shape. This turns "did I transcribe all of v4" from an audit into a
+// red/green, and it runs BOTH WAYS: a token the register names that no clause
+// prints, and a `{{name}}` in the renderer the register does not know.
+section('2b. every field the register names has a home in the renderer, and vice versa');
+{
+  const fs2 = require('fs');
+  const regPath = 'docs/specs/TDW_19_CONTRACT_FIELD_REGISTER_v2.md';
+  const specPath = 'docs/specs/TDW_19_CONTRACT_GENERIC_v4.md';
+  const reg  = fs2.existsSync(regPath) ? fs2.readFileSync(regPath, 'utf8') : '';
+  const spec = fs2.existsSync(specPath) ? fs2.readFileSync(specPath, 'utf8') : '';
+  ok('the register v2 is on the tree', reg.length > 0);
+  ok('v4 is on the tree', spec.length > 0);
+
+  // The instrument's own tokens, from v4 — the register describes them, v4 USES
+  // them, and a token that appears in neither is not a field.
+  const specTokens = new Set([...spec.matchAll(/\{\{([a-z0-9_]+)\}\}/g)].map((m) => m[1]));
+  ok(`v4 declares a substantial field set — ${specTokens.size} tokens`, specTokens.size > 100);
+
+  // What the renderer actually reaches for: `P.x`, `T.x`, and `vendor.x` /
+  // `client.x` / `M.x`. Read from the SOURCE, comment-stripped, so a token named
+  // only in a comment does not count as carried.
+  const rend = code('src/lib/contractPdf.js');
+  const reached = new Set();
+  // ⚠ `contract.` IS IN THE LIST, and leaving it out was half of the first red:
+  // `deposit_pct` is read as `contract.deposit_pct`, so a scanner that knew only
+  // P/T/M/vendor/client reported a token the renderer prints twice as unreached.
+  for (const m of rend.matchAll(/\b(?:P|T|M|contract)\.([a-z0-9_]+)/g)) reached.add(m[1]);
+  for (const m of rend.matchAll(/\bvendor\.([a-z0-9_]+)/g)) reached.add('vendor_' + m[1]);
+  for (const m of rend.matchAll(/\bclient\.([a-z0-9_]+)/g)) reached.add('couple_' + m[1]);
+
+  // ⚠ THE ALIASES ARE DECLARED, NOT INFERRED. A token whose register name differs
+  // from the property that carries it is listed here BY HAND and in one place, so
+  // the diff below is honest about what it is forgiving. An alias added to hide a
+  // missing field is visible in the diff of this array.
+  const ALIAS = {
+    vendor_business_name: 'vendor_business_name', vendor_address: 'vendor_address',
+    vendor_city: 'vendor_city', vendor_phone: 'vendor_phone', vendor_gstin: 'vendor_gstin',
+    vendor_upi_id: 'vendor_upi_id', vendor_account_name: 'vendor_account_name',
+    vendor_account_number: 'vendor_account_number', vendor_ifsc: 'vendor_ifsc',
+    vendor_base_city: 'vendor_city', couple_primary_phone: 'couple_phone',
+    fee_total: 'fee_total', deposit_amount: 'deposit_amount',
+    agreement_date: 'agreement_date',
+    // Built from `contractAnnex.js`, not read off a row — the annex names have one
+    // home and the renderer never types them.
+    annexes_attached: 'annexNames',
+    // The function table is one row per event, keyed by event id — the register's
+    // `function_N_*` are POSITIONAL NAMES for a repeating row, not columns.
+    function_1_name: 'functions', function_1_date: 'functions', function_1_time: 'functions',
+    function_1_venue: 'functions', function_1_city: 'functions',
+    function_2_name: 'functions', function_2_date: 'functions', function_2_time: 'functions',
+    function_2_venue: 'functions', function_2_city: 'functions',
+    // Milestones likewise: `M.milestones[]`, not three named fields.
+    milestone_2_label: 'milestones', milestone_2_pct: 'milestones', milestone_2_amount: 'milestones',
+    milestone_2_due: 'milestones', milestone_3_label: 'milestones', milestone_3_pct: 'milestones',
+    milestone_3_amount: 'milestones', milestone_3_due: 'milestones',
+    deposit_pct: 'deposit_pct',
+  };
+  // ⚠ THE LOOKUP RESOLVES, IT DOES NOT FORGIVE. An alias names the PROPERTY that
+  // carries the token; the test is whether that property is reached, under any
+  // prefix. The first cut asked `reached.has(ALIAS[tok])` only, which missed every
+  // alias resolving to a differently-prefixed property and red on 22 tokens the
+  // renderer does carry. Fixed by resolving, not by widening the map — a map that
+  // grows to make a diff green is the diff answering to itself.
+  const reachedBare = new Set([...reached].map((t) => t.replace(/^(vendor|couple)_/, '')));
+  const carries = (tok) => {
+    if (reached.has(tok)) return true;
+    const a = ALIAS[tok];
+    if (!a) return false;
+    if (reached.has(a) || reachedBare.has(a)
+        || reachedBare.has(a.replace(/^(vendor|couple)_/, ''))) return true;
+    // ⚠ AND AN ALIAS MAY NAME AN IDENTIFIER RATHER THAN A PROPERTY. The register's
+    // `function_1_venue` and `milestone_2_due` are POSITIONAL NAMES FOR A REPEATING
+    // ROW, not columns: the renderer carries them as `fns` / `T.functions` and
+    // `M.milestones`, one row per function and one per milestone. Same for
+    // `annexes_attached`, which is built from `contractAnnex.js` rather than read
+    // off a row. So the last resort is: does that identifier appear in the
+    // comment-stripped source. This is a RESOLUTION, not a forgiveness — the map
+    // above names exactly where each token lives, and an entry added to silence a
+    // genuinely missing field is one line visible in this file's diff.
+    return new RegExp('\\b' + a + '\\b').test(rend);
+  };
+
+  const missing = [...specTokens].filter((t) => !carries(t)).sort();
+  // ⚠ THE DETAIL IS IN THE LABEL, because this file's `ok` takes (label, cond) and
+  // silently drops a third argument — a cell whose evidence never prints is a cell
+  // that tells a reader to go and re-derive it.
+  ok(`every token v4 names is reached by the renderer${missing.length ? ` — ${missing.length} unreached: ${missing.slice(0, 14).join(' ')}${missing.length > 14 ? ' …' : ''}` : ''}`,
+     missing.length === 0);
+
+  // THE OTHER DIRECTION — a field the renderer reads that the instrument does not
+  // name is either chrome (declared) or an invention.
+  const CHROME = new Set(['functions', 'clauses', 'number', 'created_at', 'terms', 'annexes',
+    'vendor_business_name', 'vendor_category', 'vendor_user_id', 'couple_name', 'couple_id',
+    'milestones', 'fee_total', 'deposit_amount', 'vendor_routing_handle']);
+  const invented = [...reached].filter((t) => !specTokens.has(t) && !CHROME.has(t)
+    && !Object.values(ALIAS).includes(t)).sort();
+  ok(`the renderer invents no field the instrument does not name${invented.length ? ` — ${invented.length} unknown: ${invented.slice(0, 14).join(' ')}` : ''}`,
+     invented.length === 0);
+}
+
+// ══ §2c — CLAUSE 10 HAS NO SWITCH, AND MUST NEVER GAIN ONE ═════════════════
+// v4: "10.5 is the consent construction and is not a clause a Vendor may switch
+// off: a Vendor's toggle governs whether a clause is PRINTED, never whether the
+// Client's consent is ON, and this clause is what tells the Client so." Veto rows
+// 18 and 22 are that ruling on the tailoring surface — the switch is not drawn
+// there either. This cell is the ruling enforced by a bench rather than a comment.
+section('2c. clause 10 prints always — the never-drawn switch (v4, veto rows 18/22)');
+{
+  const rend = code('src/lib/contractPdf.js');
+  ok('CLAUSE_SWITCHES does not contain `publication`',
+     !/CLAUSE_SWITCHES[\s\S]{0,400}?publication/.test(rend));
+  ok('and does not contain any clause-10 key',
+     !/CLAUSE_SWITCHES[\s\S]{0,400}?(wedding_page|consent|clause_10|ip_publication)/.test(rend));
+  ok('10.5 is drawn with no switch guarding it',
+     !/switchOn\([^)]*\)[\s\S]{0,200}?sub\('10\.5'/.test(rend));
+  // ⚠ THE MUTATION THIS CATCHES: add `publication` to CLAUSE_SWITCHES and wrap
+  // 10.5 in `switchOn(T, 'publication')`. Both cells above red.
+  //
+  // A fourth cell asked that the file STATE WHY in v4's own words. It was dropped:
+  // `code()` strips comments before asserting, and the reason lives in a comment —
+  // which is where it belongs. A cell that demands a sentence in a plane it has
+  // just removed can only be satisfied by moving prose into code.
 }
 
 // ══ §3 — THE DATE LOCK (R-G32.1) ═══════════════════════════════════════════
@@ -763,8 +1052,17 @@ section('10d. render, hash, store, seal — in that order');
   // fingerprint. It must precede it.
   ok('setSealedPath runs BEFORE the sealed render',
      door.indexOf('setSealedPath') < door.indexOf('renderContract(supabase, vendorId, v.contract.id, { sealed: true })'));
-  ok('the seal label names WHICH bytes it hashes',
-     /PAGES BEFORE THIS ONE/.test(code('src/lib/contractPdf.js')));
+  // ⚠ RETIRED BY c-40.49, AND THE SUPERSESSION IS THE RECORD. This pinned
+  // `PAGES BEFORE THIS ONE` — v3's own authored prose about which bytes the digest
+  // covers. It was never vetoed onto a frame: the ratified `P4-sign` seal carries a
+  // label, three value lines and the digest, and the label stands ALONE as
+  // `Document fingerprint · SHA-256`. Which bytes are hashed is a fact for the
+  // register and the handover (the digest is over `.agreed.pdf`, R-G32.19), not for
+  // the paper — the couple reads a fingerprint, the estate reads a definition.
+  // The label byte is now asserted at §2's third state instead.
+  ok('the seal label is the ratified byte and not v3\'s authored prose',
+     !/PAGES BEFORE THIS ONE/.test(code('src/lib/contractPdf.js'))
+     && /Document fingerprint/.test(code('src/lib/contractPdf.js')));
 
   // ── F-40.194 · the copy outlives the spent token ──────────────────────────
   ok('the sign response carries the sealed copy url', /pdf_url: pdfUrl/.test(door));
