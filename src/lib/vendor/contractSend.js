@@ -235,7 +235,7 @@ async function sendSealedCopy(supabase, {
 // walk that says "nothing arrived" gets an answer by SELECT rather than by guess.
 /** Copy the sealed PDF to the estate's Meta-fetchable home and return its public URL. */
 const WA_MEDIA_BUCKET = 'wa-media';   // PUBLIC bucket, unguessable object paths — metaMedia.js
-async function publishSealedForMeta(supabase, sealedPath) {
+async function publishSealedForMeta(supabase, sealedPath, deps = {}) {
   const crypto = require('crypto');
   const dl = await supabase.storage.from('contracts').download(sealedPath);
   if (dl.error || !dl.data) throw new Error(`download failed: ${dl.error ? dl.error.message : 'no data'}`);
@@ -246,7 +246,32 @@ async function publishSealedForMeta(supabase, sealedPath) {
   if (up.error) throw new Error(`upload failed: ${up.error.message}`);
   const { data: pub } = supabase.storage.from(WA_MEDIA_BUCKET).getPublicUrl(objectPath);
   if (!pub || !pub.publicUrl) throw new Error('getPublicUrl returned nothing');
+  // ⚠ THE LINK IS HANDED TO META ONLY ONCE IT ANSWERS. The founder's second signing
+  // (2026-09-07 20:37): the vendor's copy, sent one second after the upload, came
+  // back `131053 Media upload error`; the couple's copy, one second later on the
+  // SAME URL, was read. The object was not yet readable on the public CDN at the
+  // instant Meta fetched it. So the send home confirms `200` first — a HEAD, up
+  // to five tries with a short backoff — and refuses by name if it never does.
+  await awaitReadable(pub.publicUrl, deps);
   return pub.publicUrl;
+}
+
+const READ_TRIES = 5;
+const READ_BACKOFF_MS = [200, 400, 800, 1200, 1600];
+async function awaitReadable(url, deps = {}) {
+  const doFetch = deps.fetch || (typeof fetch === 'function' ? fetch : null);
+  const sleep   = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  if (!doFetch) throw new Error('no fetch available to confirm the public link');
+  let last = null;
+  for (let i = 0; i < READ_TRIES; i += 1) {
+    try {
+      const res = await doFetch(url, { method: 'HEAD' });
+      if (res && res.status === 200) return true;
+      last = `status ${res && res.status}`;
+    } catch (e) { last = e && e.message; }
+    await sleep(READ_BACKOFF_MS[i]);
+  }
+  throw new Error(`public link not readable after ${READ_TRIES} tries (${last})`);
 }
 
 /** F-40.258: the sign-OTP send gets its row, so its receipt has a home. Called by
@@ -306,4 +331,4 @@ async function sendSignLink(supabase, { contractId, vendorId, toPhone, owner, fu
   }
 }
 
-module.exports = { sendSealedCopy, sendSignLink, recordOtpSend, publishSealedForMeta, TEMPLATE_KEY, SIGN_TEMPLATE_KEY, SIGNED_URL_TTL, WA_MEDIA_BUCKET };
+module.exports = { sendSealedCopy, sendSignLink, recordOtpSend, publishSealedForMeta, awaitReadable, TEMPLATE_KEY, SIGN_TEMPLATE_KEY, SIGNED_URL_TTL, WA_MEDIA_BUCKET };

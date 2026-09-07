@@ -1446,7 +1446,8 @@ section('17. the signed copy is E.164 and publicly fetchable; the OTP send has a
       getPublicUrl: (p) => ({ data: { publicUrl: `https://x.supabase.co/storage/v1/object/public/${b}/${p}` } }),
     }),
   };
-  const url = await SEND.publishSealedForMeta({ storage }, 'v1/k1.signed.pdf');
+  const okFetch = async () => ({ status: 200 });
+  const url = await SEND.publishSealedForMeta({ storage }, 'v1/k1.signed.pdf', { fetch: okFetch, sleep: async () => {} });
   ok('it downloads from contracts and uploads to wa-media as a PDF', calls[0][1] === 'contracts' && calls[1][1] === 'wa-media' && calls[1][3] === 'application/pdf' && calls[1][4] === 4);
   ok('and returns the public URL with no token', /\/object\/public\/wa-media\/contracts\/\d+-[0-9a-f-]{36}\.pdf$/.test(url) && !/token=/.test(url));
   // the client half: ten digits become +91 on the copy send's row
@@ -1454,7 +1455,9 @@ section('17. the signed copy is E.164 and publicly fetchable; the OTP send has a
   const db = { from: () => ({ insert: async (r) => { rows.push(r); return {}; } }) };
   // sendOne is internal; drive it through sendSealedCopy with the flag on and a fake storage that rehosts
   const prev = process.env.CONTRACT_COPY_SEND_ENABLED; process.env.CONTRACT_COPY_SEND_ENABLED = '1';
+  const realFetch = global.fetch; global.fetch = async () => ({ status: 200 });   // the public link answers at once in this cell
   const out = await SEND.sendSealedCopy({ storage, from: db.from }, { contractId: 'k1', vendorId: VENDOR, sealedPath: 'v1/k1.signed.pdf', reference: 'DEV440/2026/0007', vendorName: 'V', vendorPhone: '+919888294440', clientName: 'C', clientPhone: '8595356978' });
+  global.fetch = realFetch;
   if (prev === undefined) delete process.env.CONTRACT_COPY_SEND_ENABLED; else process.env.CONTRACT_COPY_SEND_ENABLED = prev;
   ok('both sends were attempted', out.attempted === true && out.results.length === 2);
   ok('the client row carries +91 (F-40.257\u2019s client half)', rows.some(r => r.recipient === 'client' && r.to_phone === '+918595356978'));
@@ -1535,6 +1538,33 @@ section('19. the sealed copy\u2019s four — slabs print, 12.2 has a home, 10.6 
   // 19d · F-40.268
   ok('a signed contract\u2019s preview serves the sealed object under its own name', /state === 'signed'[\s\S]{0,700}sealed_path[\s\S]{0,400}createSignedUrl\(sig\.sealed_path, PREVIEW_URL_TTL\)/.test(door) && /sealed: true/.test(door));
   ok('and only a signed one — a draft still renders', /if \(st && st\.state === 'signed'\)/.test(door) && /const r = await renderContract\(supabase, req\.vendor\.id, req\.params\.contractId\);/.test(door));
+}
+
+// ══ §20 — THE LINK IS HANDED TO META ONLY ONCE IT ANSWERS (the vendor's 131053) ═══
+//
+// MUTATION PROOFS (RED then GREEN at the seat):
+//   20a  drop `await awaitReadable(pub.publicUrl, deps)` from the rehost   → 20a flips RED
+//   20b  return true on the first non-200 in awaitReadable                  → 20b flips RED
+section('20. the public link answers 200 before either copy is sent');
+{
+  const SEND = require(path.join(ROOT, 'src/lib/vendor/contractSend.js'));
+  const sendSrc = code('src/lib/vendor/contractSend.js');
+  ok('the rehost waits for the link before returning it', /await awaitReadable\(pub\.publicUrl, deps\);\s*return pub\.publicUrl;/.test(sendSrc));
+  const calls = [];
+  const flaky = async () => { calls.push(1); return { status: calls.length < 3 ? 404 : 200 }; };
+  const t = await SEND.awaitReadable('https://x/y.pdf', { fetch: flaky, sleep: async () => {} });
+  ok('a link that answers 404 twice then 200 is waited for, not refused', t === true && calls.length === 3);
+  let threw = null;
+  try { await SEND.awaitReadable('https://x/y.pdf', { fetch: async () => ({ status: 404 }), sleep: async () => {} }); } catch (e) { threw = e.message; }
+  ok('a link that never answers is refused by name', /not readable after 5 tries \(status 404\)/.test(String(threw)));
+  const storage = { from: (b) => ({
+    download: async () => ({ data: { arrayBuffer: async () => new Uint8Array([1]).buffer }, error: null }),
+    upload: async () => ({ error: null }),
+    getPublicUrl: (p) => ({ data: { publicUrl: `https://x/${b}/${p}` } }),
+  }) };
+  let refused = null;
+  try { await SEND.publishSealedForMeta({ storage }, 'v1/k1.signed.pdf', { fetch: async () => ({ status: 403 }), sleep: async () => {} }); } catch (e) { refused = e.message; }
+  ok('and the rehost refuses with it, so both copies refuse as rehost_failed rather than one racing the CDN', /not readable/.test(String(refused)));
 }
 
 console.log(`\n${pass}/${pass + fail} cells green.`);

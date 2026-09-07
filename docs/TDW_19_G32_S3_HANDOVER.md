@@ -237,3 +237,15 @@ Re-derived on `c4145c8` (G2's `base_guard` cure on top of G3.1 s2's `0147`; none
 **Owed on the pwa (a rider in the pwa lane, behind G2 and G3.1):** the sheet's *Who attends* row for `named_professional` under *Your business*; the *After* screen already reads the sealed object through the same preview call, so nothing changes there for F-40.268.
 
 **Then:** the founder's walk of R-40.124–.126 on glass, and one signing → `contract_copy × 2 · delivered` (`tdw_contract_copy` Active with the document header since 23:21).
+
+---
+
+# PACKET 4c · DREAM-OS RIDER ON `7e0b6eba578f6fd397a2700f7f99f3428cfc229b` — THE VENDOR'S 131053
+
+**The founder's second signing (2026-09-07 20:35–20:37, client 8757788550):** `contract_sign · read` → `contract_sign_otp · read` → `contract_copy · client · read` — the couple received and opened the signed PDF (F-40.257's client half closed on data; the #132018 was the missing Document header, cured at Meta 23:21). **`contract_copy · vendor · failed · 131053 Media upload error`** — Meta accepted the message (a wamid) and could not fetch the document at `:04.5`; the couple's copy on the **same URL** at `:05.5` was read. The object was not yet readable on the public CDN at the instant of the first fetch.
+
+**Cure, in the send home:** `publishSealedForMeta` hands the link on only after `awaitReadable` — a HEAD that must answer `200`, five tries with a 200→1600 ms backoff — and refuses by name (`rehost_failed`, both copies) if it never does. `deps.fetch`/`deps.sleep` are injectable so the bench drives it without a network. b56 **§20**, four cells; §17's rehost cells stub the fetch; **318/318**; two mutations RED → GREEN. Candidate finding — chair to allocate.
+
+**Then:** one more signing → `contract_copy × 2 · read/delivered` and the PDF on both phones. That closes the card.
+
+**Also recorded:** the founder's screenshot of the sign link opening on the desktop showed the vendor's *Preview and send* screen, not `/sign/…`. The signing succeeded from the couple's phone (the OTP row proves it), so the desktop had a vendor session; whether `middleware.ts` redirects an authenticated vendor away from `/sign/<token>` is a read this seat has not made — named, not concluded.
