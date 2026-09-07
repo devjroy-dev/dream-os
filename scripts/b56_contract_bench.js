@@ -1083,6 +1083,175 @@ section('11. the sign door reads like its two siblings');
      !/publish_weddings|couple_consent/.test(s + read('src/lib/vendor/contracts.js')));
 }
 
+// ══ §14 — THE TRADE DEFAULTS AND CLAUSE 7.2's TWO ARMS ════════════════════
+//
+// R-40.114 (the sheet opens pre-filled), R-40.117 as amended by R-G32.21
+// (`delivery_basis`, and 7.2's on-the-day arm).
+//
+// BOTH-WAYS, by PRODUCTION mutation:
+//   14a  seed `link_live_days` into the makeup row      → §14a flips RED
+//   14b  give every trade `delivery_basis: 'days'`      → §14c flips RED
+//   14c  drop the on-the-day arm back to one sentence   → §14d flips RED
+//   14d  remove `category` from PDF_VENDOR_COLUMNS      → §14e flips RED
+section('14. what a trade starts with, and which clause 7.2 it prints');
+{
+  const ANX = require(path.join(ROOT, 'src/lib/contractAnnex.js'));
+  const trades = Object.keys(ANX.TRADE_DEFAULTS);
+
+  ok(`the table carries every mapped category (${trades.length})`,
+     trades.length === Object.keys(ANX.CATEGORY_ANNEXES).length);
+  // ⚠ THE TWO TABLES MUST NAME THE SAME TRADES. A category that can be offered
+  // an annex and cannot be seeded a policy is a vendor who meets half a room.
+  ok('and exactly the same ones the annex map does',
+     trades.every((t) => t in ANX.CATEGORY_ANNEXES));
+
+  // ── §14a · NO TRADE SEEDS A ROW IT OMITS — the chair's cell ─────────────
+  // ⚠ THE INVARIANT IS THE WHOLE POINT OF SEEDING BY TRADE. A row that is
+  // omitted from the sheet and seeded anyway is a value written to a legal
+  // instrument that the vendor was never shown — which is the one thing this
+  // sheet exists not to do.
+  // ⚠ THE FIRST CUT OF THIS CELL WAS VACUOUS AND CANNOT BE RESTORED. It read
+  // 「for each key in omittedFor(t), assert it is not in fields」 — and
+  // `omittedFor` is DERIVED from `fields`, so the intersection is empty by
+  // construction and the cell could never fail. It was driven with makeup
+  // seeding `link_live_days` and stayed green: a mutation that changes the
+  // behaviour and moves no cell is the definition of hollow green.
+  //
+  // The law the chair asked for needs a source of omission INDEPENDENT of the
+  // seed. The basis is that source, and it yields two falsifiable statements:
+  const seven = trades.filter((t) => ANX.tradeDefaultsFor(t).delivery_basis === 'on_the_day');
+  const rest  = trades.filter((t) => ANX.tradeDefaultsFor(t).delivery_basis === 'days');
+
+  // ⚠ ON-THE-DAY TRADES SEED NOTHING FROM CLAUSE 7. The sheet omits those rows,
+  // so a seed for one is a value written to a legal instrument that the vendor
+  // was never shown — the single thing this sheet exists not to do.
+  const leaked = [];
+  for (const t of seven) {
+    const f = ANX.tradeDefaultsFor(t).fields;
+    for (const k of ANX.DELIVERY_FAMILY) if (k in f) leaked.push(`${t}.${k}`);
+  }
+  ok(`no on-the-day trade seeds a clause 7 row (${seven.length} trades, ${leaked.length} leaked)`,
+     seven.length > 0 && leaked.length === 0);
+
+  // ⚠ AND EVERY DAYS TRADE SEEDS `delivery_days`, because for those trades it
+  // is still REQUIRED at Send (register :189) and 7.2's days arm interpolates
+  // it. A days trade without one draws a required row with no suggestion and
+  // omits 7.2 whole, which is the failure R-G32.21 was written to end.
+  const missing = rest.filter((t) => !('delivery_days' in ANX.tradeDefaultsFor(t).fields));
+  ok(`every days trade seeds delivery_days (${rest.length} trades, ${missing.length} without)`,
+     rest.length > 0 && missing.length === 0);
+
+  // And the omission list still answers per trade rather than per basis — the
+  // reason it reads the seed at all is jewellery, a days trade that hands over
+  // in person and so asks no gallery, revision or archive row.
+  ok('a days trade may still omit part of clause 7',
+     ANX.omittedFor('jewellery').includes('link_live_days') &&
+     !ANX.omittedFor('jewellery').includes('delivery_days'));
+  ok('and a photography trade omits none of it',
+     ANX.omittedFor('photography').length === 0);
+
+  // ── §14b · EVERY SEEDED VALUE IS STORABLE — F-40.237's cure ────────────
+  // ⚠ THIS IS THE CELL THAT WOULD HAVE CAUGHT THE DEFECT. The ratified frame's
+  // value column was rendered OUTPUT — 「Rs 4,000」, 「7 days」, 「1.5% a month」 —
+  // and `rs()` / `pct()` / clause 4.7's literal ` days` supply those forms
+  // themselves. A seed carrying one prints it twice on a signed agreement.
+  const NUMERIC = ['overtime_rate','late_grace_days','late_interest_pct','postpone_notice_days',
+                   'postpone_window_months','cancel_tier_1_pct','cancel_tier_2_pct',
+                   'cancel_tier_3_pct','cancel_tier_4_pct','refund_days','delivery_days',
+                   'link_live_days','revision_rounds','revision_rate','archive_months',
+                   'takedown_days','fm_window_months','gst_pct'];
+  let dirty = [];
+  for (const t of trades.concat([null])) {
+    const { fields } = ANX.tradeDefaultsFor(t);
+    for (const k of NUMERIC) {
+      if (!(k in fields)) continue;
+      if (!/^[0-9]+(\.[0-9]+)?$/.test(String(fields[k]))) dirty.push(`${t}.${k}=${fields[k]}`);
+    }
+  }
+  ok(`every numeric seed is a bare number (${dirty.length} carrying a unit)`, dirty.length === 0);
+  // ⚠ AND NO SEED CARRIES A CURRENCY OR A PERCENT SIGN ANYWHERE.
+  const allVals = trades.concat([null]).flatMap((t) => Object.values(ANX.tradeDefaultsFor(t).fields));
+  ok('no seed carries Rs or a percent sign',
+     !allVals.some((v) => /(^|\s)Rs\s|%/.test(String(v))));
+
+  // ── §14c · THE FOUR `Needed` ROWS ARE NEVER SEEDED ─────────────────────
+  // A signatory cannot be guessed (ruling F7), and the other three are hers to
+  // declare. They get placeholders, which are not values.
+  const NEVER = ['vendor_signatory_name','deposit_refundable','gst_treatment','gst_pct'];
+  ok('no trade defaults a Needed row',
+     trades.concat([null]).every((t) => {
+       const f = ANX.tradeDefaultsFor(t).fields;
+       return NEVER.every((k) => !(k in f));
+     }));
+  ok('the placeholders ship as bytes from this file',
+     typeof ANX.PROFILE_PLACEHOLDERS.vendor_signatory_name === 'string' &&
+     ANX.PROFILE_PLACEHOLDERS.vendor_signatory_name.includes('{name}'));
+  // ⚠ AND NO PLACEHOLDER CARRIES A REAL VENDOR'S NAME. The ratified frame read
+  // 「e.g. Swati Roy, proprietor」 because it was drawn on Swati's sheet; the
+  // literal on every vendor's screen is the costume class wearing a proper noun.
+  ok('and none carries one vendor\u2019s name to another\u2019s screen',
+     !/Swati|Priya|Dev Roy/.test(JSON.stringify(ANX.PROFILE_PLACEHOLDERS)));
+
+  // ── §14d · THE BASIS, AND BOTH ARMS OF 7.2 ─────────────────────────────
+  const bases = trades.map((t) => ANX.tradeDefaultsFor(t).delivery_basis);
+  ok('every trade declares a basis', bases.every((b) => b === 'days' || b === 'on_the_day'));
+  ok('and both kinds exist in the table',
+     bases.includes('days') && bases.includes('on_the_day'));
+  // ⚠ AN UNKNOWN OR NULL CATEGORY ANSWERS `days` — the SAFE direction. A days
+  // trade wrongly seeded shows one extra row she can clear; an on-the-day trade
+  // wrongly seeded HIDES a row clause 7.2 needs.
+  ok('an unmapped category fails toward days',
+     ANX.tradeDefaultsFor(null).delivery_basis === 'days' &&
+     ANX.tradeDefaultsFor('nope').delivery_basis === 'days');
+  ok('makeup hands over on the day', ANX.tradeDefaultsFor('makeup').delivery_basis === 'on_the_day');
+  ok('photography does not',        ANX.tradeDefaultsFor('photography').delivery_basis === 'days');
+
+  const pdf = code('src/lib/contractPdf.js');
+  ok('7.2 branches on the basis', /deliveryBasis === 'on_the_day'/.test(pdf));
+  ok('the on-the-day arm is there', /Delivery is on the day of the last function\./.test(pdf));
+  ok('the days arm survives',       /Delivery is within \$\{P\.delivery_days\} days/.test(pdf));
+  // ⚠ THE ON-THE-DAY ARM MUST CARRY NO INTERPOLATION, and that is the property
+  // that makes clauses 4.7 and 11 safe. `f` returns null when any value is
+  // absent, so an interpolated arm could vanish and leave two clauses pointing
+  // at a clause 7.2 that is not in the document — register `:196`'s own warning.
+  const arm = (pdf.match(/'Delivery is on the day[^']*'/) || [''])[0];
+  ok('and it interpolates nothing, so it can never be omitted',
+     arm.length > 40 && !arm.includes('${'));
+  // Both referring clauses still name 7.2, so the referent exists either way.
+  ok('4.7 still names the period stated in clause 7.2', /added to the period stated in clause 7\.2/.test(pdf));
+
+  // ── §14e · THE BASIS REACHES THE RENDERER, AND THE COLUMN REACHES THE BASIS
+  // ⚠ `category` WAS ABSENT FROM THE PDF SELECT AND THE ABSENCE WAS SILENT.
+  // `tradeDefaultsFor` takes null as legal input and answers `days`, so a
+  // missing column would not throw — every on-the-day vendor would simply have
+  // printed the days arm with a `delivery_days` she was never asked for.
+  const src = code('src/lib/vendor/contractSource.js');
+  ok('the PDF vendor SELECT reads category', /routing_handle, category/.test(src));
+  ok('the one call site resolves the basis', /deliveryBasis: tradeDefaultsFor\(/.test(src));
+  // ⚠ THE FIRST CUT OF THIS CELL ASSERTED THE RENDERER IMPORTS NOTHING FROM
+  // `contractAnnex.js` AND WENT RED ON CORRECT CODE. The renderer has required
+  // that file since ruling F4, for `annexTitle` and `attachedKeys` — that
+  // import IS the one-home cure, not a violation of it. What must be absent is
+  // the LOOKUP: the renderer is handed the resolved basis and must not resolve
+  // one, because two ways to learn a fact is the shape the file ended.
+  ok('the renderer takes the basis as a parameter',
+     /deliveryBasis = 'days'/.test(pdf));
+  ok('and never resolves one itself',
+     !/tradeDefaultsFor/.test(pdf));
+  ok('while still reading the annex titles from their one home',
+     /annexTitle/.test(pdf));
+
+  // ── §14f · ONE DOOR SERVES BOTH, AND `seeded` IS NOT `mapped` ──────────
+  const door = code('src/api/vendor/contracts.js');
+  ok('the annex-map door serves the defaults too', /defaults: fields/.test(door));
+  ok('and the omitted rows',                        /omitted: omittedFor\(/.test(door));
+  ok('and the placeholders',                        /placeholders: PROFILE_PLACEHOLDERS/.test(door));
+  ok('seeded is sent, never inferred from mapped',  /seeded,/.test(door));
+  // No second endpoint for one question.
+  ok('there is no second defaults door',
+     !/router\.(get|post)\('\/(trade-)?defaults/.test(door));
+}
+
 console.log(`\n${pass}/${pass + fail} cells green.`);
 process.exit(fail ? 1 : 0);
 

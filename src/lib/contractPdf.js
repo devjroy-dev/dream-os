@@ -164,7 +164,17 @@ function joinSentences(...parts) {
   return kept.length ? kept.join(' ') : null;
 }
 
-function generateContractPdf({ contract, vendor, client, functions, profile, money, signature, sealed = true }) {
+// ⚠ `deliveryBasis` IS A PARAMETER AND NOT A LOOKUP — R-G32.21, and the reason
+// is this file's own constitution. `contractAnnex.js` is below the renderer and
+// could be required here without touching the write half, but the basis is a
+// fact about the VENDOR'S TRADE and this function already takes `vendor`. Two
+// ways to learn one fact is the shape `contractAnnex.js` was created to end.
+// `contractSource.js` resolves it once, from the vendor row it has already
+// read, and hands it in with everything else.
+//
+// It defaults to `'days'` for the same fail-safe reason the unmapped seed does:
+// a caller that forgets it prints the clause v4 shipped with, never a shorter one.
+function generateContractPdf({ contract, vendor, client, functions, profile, money, signature, deliveryBasis = 'days', sealed = true }) {
   return new Promise((resolve, reject) => {
     try {
       // ⚠ `bufferPages` IS NOT DECORATION. The folio reads `Page 2 of 9` and the 9
@@ -418,7 +428,34 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
       // ═══ 7 · DELIVERABLES AND DELIVERY ════════════════════════════════════
       h2('7 \u00b7 Deliverables and delivery');
       sub('7.1', 'The Vendor shall deliver the items listed in the attached annexes.');
-      sub('7.2', f`Delivery is within ${P.delivery_days} days of the last function, unless an attached annex states a different period for a particular item. Days lost to a suspension under clause 4.7, or to an event stated in clause 11, are added to that period.`);
+      // ⚠ 7.2 HAS TWO ARMS AND EXACTLY ONE OF THEM ALWAYS PRINTS — R-G32.21,
+      // and it is the reason `delivery_basis` exists at all.
+      //
+      // Clause 4.7 and clause 11 both end 「…is added to the period stated in
+      // clause 7.2」. `f` returns null when any interpolated value is absent
+      // (:157), so on the single-arm version an unset `delivery_days` omitted
+      // 7.2 WHOLE while 4.7 and 11 printed intact — two clauses pointing at a
+      // clause not in the document. Register `:196` names that exact failure as
+      // the reason `delivery_days` was made REQUIRED at v4.
+      //
+      // Making it required was right while every trade delivered later. It is
+      // wrong for a trade whose work IS the function: a makeup artist has no
+      // delivery period, and forcing a number made her print 「within 0 days」.
+      // The basis gives 7.2 a sentence for both trades, so the referent exists
+      // either way and neither vendor states a period she does not mean.
+      //
+      // ⚠ THE ON-THE-DAY ARM CARRIES NO INTERPOLATION, so it cannot be omitted
+      // by an absent value — which is the property that makes 4.7 and 11 safe.
+      // R-40.88 still governs everything else in this clause: 7.3, 7.4 and 7.5
+      // omit as before, because a trade that hands over on the day has no
+      // gallery link, no revision rounds and no archive period to state.
+      //
+      // ⚠ AND 「the period stated in clause 7.2」 STILL READS CORRECTLY against
+      // it. The period named is a day; time lost to a suspension is added to it
+      // and the day moves. The chair's ruling says so and the sentence bears it.
+      sub('7.2', deliveryBasis === 'on_the_day'
+        ? 'Delivery is on the day of the last function. Time lost to a suspension under clause 4.7, or to an event stated in clause 11, moves that day accordingly.'
+        : f`Delivery is within ${P.delivery_days} days of the last function, unless an attached annex states a different period for a particular item. Days lost to a suspension under clause 4.7, or to an event stated in clause 11, are added to that period.`);
       // 7.3's LINK sentence is absent where delivery is not by link; the method
       // sentence is not.
       sub('7.3', joinSentences(

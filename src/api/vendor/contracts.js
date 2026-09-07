@@ -38,7 +38,8 @@ const { siteBase } = require('../../lib/vendor/creditInvite');
 // owned by neither — `contractAnnex.js` takes no supabase and must never take
 // one. Putting it in `lib/vendor/contracts.js` would hand the renderer a path to
 // the WRITE half it is constitutionally forbidden to have.
-const { annexesFor } = require('../../lib/contractAnnex');
+const { annexesFor, tradeDefaultsFor, omittedFor,
+        PROFILE_PLACEHOLDERS } = require('../../lib/contractAnnex');
 
 const authMw = [requireAuth, resolveVendor()];
 
@@ -74,7 +75,38 @@ router.get('/annex-map', ...authMw, asyncHandler(async (req, res) => {
   // no second query and no chance of reading a different vendor than the one
   // that authenticated.
   const { mapped, offered, others } = annexesFor(req.vendor.category);
-  return okRes(res, { mapped, offered, others });
+
+  // ── THE TRADE DEFAULTS RIDE THE SAME READ — R-40.114, R-G32.21 ──────────
+  // ⚠ ONE DOOR, BECAUSE THEY ANSWER ONE QUESTION. The map and the defaults are
+  // both 「what does this vendor's TRADE usually do」, both keyed on the same
+  // `vendors.category`, and both are facts about the estate rather than about a
+  // contract. A second endpoint would be a second round trip for one answer and
+  // a second place for the category to be read — which is how two surfaces come
+  // to disagree about a vendor whose trade nobody changed.
+  //
+  // ⚠ `seeded` AND `mapped` ARE BOTH RETURNED AND THEY ARE NOT THE SAME FLAG.
+  // They happen to agree today because both tables carry the same fourteen
+  // keys, and a room inferring one from the other would break silently the
+  // first time a category joins one table and not the other.
+  const { seeded, delivery_basis, fields } = tradeDefaultsFor(req.vendor.category);
+
+  return okRes(res, {
+    mapped, offered, others,
+    seeded,
+    delivery_basis,
+    defaults: fields,
+    // The clause-7 rows this trade never asks. Sent rather than derived in the
+    // room from `delivery_basis`, because the basis is not what decides it —
+    // a `days` trade that hands over in person omits four of them too.
+    omitted: omittedFor(req.vendor.category),
+    // ⚠ PLACEHOLDERS ARE BYTES AND THEY TRAVEL WITH THE DEFAULTS (R-40.116).
+    // A `Needed` row's greyed suggestion is as much a vendor-facing string as a
+    // label is; leaving it in the room would put half the sheet's copy on one
+    // plane and half on the other. `{name}` is substituted by the room from the
+    // session — the literal must never carry one vendor's name to another's
+    // screen, which is the mistake `clientFirstName` cures for 「Priya」.
+    placeholders: PROFILE_PLACEHOLDERS,
+  });
 }));
 
 // GET / — list

@@ -48,6 +48,7 @@
 'use strict';
 
 const { generateContractPdf } = require('../contractPdf');
+const { tradeDefaultsFor } = require('../contractAnnex');
 
 const CONTRACT_COLUMNS =
   'id, vendor_id, client_id, lead_id, invoice_id, event_id, title, storage_path, ' +
@@ -85,9 +86,23 @@ const CONTRACT_COLUMNS =
 // (`5b3f61f`) and asserted by b56 §9b on every run — because no double can catch a
 // column that does not exist, which is why four benches and 122 cells let the
 // first one through to a document a couple would have signed.
+// ⚠ `category` JOINS THIS LIST AT R-G32.21 AND IT IS LOAD-BEARING ON THE PAPER.
+// `public.vendors.category` — `PUBLIC_SCHEMA.md:1204`, `text`, NO CHECK at this
+// base (the same line `contractAnnex.js` cites for the annex map). It is read
+// here and nowhere else on this path, and `renderContract` hands the resolved
+// BASIS to the renderer rather than the raw value, so the renderer never learns
+// what a category is.
+//
+// ⚠ IT WAS ABSENT AND THE ABSENCE WOULD HAVE BEEN SILENT. `tradeDefaultsFor`
+// takes `null` and `undefined` as legal input — that is its NULL-first law —
+// and answers `days` for both. So a missing column would not have thrown; every
+// on-the-day vendor would simply have printed the days arm of clause 7.2, with
+// a `delivery_days` she was never asked for, and the document would have been
+// wrong in exactly the way this ruling exists to prevent. Caught by naming the
+// column against the schema before trusting the read, not by a bench.
 const PDF_VENDOR_COLUMNS =
   'id, user_id, business_name, city, address, gstin, upi_id, account_name, ' +
-  'account_number, ifsc, routing_handle';
+  'account_number, ifsc, routing_handle, category';
 
 // ── deriveMoney ──────────────────────────────────────────────────────────────
 // THE ONE HOME (R-G32.6). Everything on the document that is an amount comes out of
@@ -313,6 +328,13 @@ async function renderContract(supabase, vendorId, contractId, { sealed = true } 
     profile:   src.profile,
     money:     src.money,
     signature: src.signature,
+    // ⚠ RESOLVED FROM THE VENDOR ROW THIS FUNCTION HAS ALREADY READ — R-G32.21.
+    // The basis governs clause 7.2's arm and it is a fact about her TRADE, so it
+    // comes from the same table that seeds her policies and offers her annexes.
+    // The renderer is handed the answer rather than the map: `contractAnnex.js`
+    // sits below both, and a renderer that looked things up would be a renderer
+    // with a second way to learn something.
+    deliveryBasis: tradeDefaultsFor(src.vendor && src.vendor.category).delivery_basis,
   });
   return { ok: true, buffer, source: src };
 }

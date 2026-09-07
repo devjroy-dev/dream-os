@@ -158,12 +158,180 @@ function annexesFor(category) {
   };
 }
 
+// ═══ THE TRADE DEFAULTS · R-40.114, R-40.117 as amended by R-G32.21 ════════
+//
+// What `Your policies` opens PRE-FILLED with. It lives beside the annex map and
+// is served by the same door for one reason: both are facts about a TRADE and
+// neither is a fact about a contract, so a second home would be a second answer
+// to 「what does this vendor's trade usually do」.
+//
+// ⚠ EVERY VALUE HERE IS STORABLE, AND THAT IS THE WHOLE POINT OF THIS TABLE.
+// F-40.237: the ratified frame's value column was drawn as RENDERED OUTPUT —
+// 「Rs 4,000」, 「7 days」, 「1.5% a month」 — and a vendor typing what she saw
+// would have printed `Rs Rs 4,000` and `7 days days` on a signed agreement,
+// because `rs()` supplies the currency, `pct()` supplies the sign, and clause
+// 4.7 supplies the literal ` days`. Sixteen rows were affected. So the numbers
+// below are BARE. The unit is carried on the LABEL, where a vendor reads it and
+// the instrument never does.
+//
+// ⚠ AND A DEFAULT IS A SUGGESTION SHE OVERWRITES, NEVER A VALUE TDW ASSERTS.
+// The sheet marks every row `Default` · `Needed` · `Yours` precisely so a
+// pre-filled sheet cannot be mistaken for one she has answered. Nothing here is
+// written to `contract_profiles.fields` until she presses Save.
+//
+// ⚠ THE FOUR `Needed` ROWS ARE ABSENT FROM EVERY TRADE ROW, DELIBERATELY.
+// `vendor_signatory_name`, `deposit_refundable`, `gst_treatment` and `gst_pct`
+// carry no default in any trade: a signatory cannot be guessed (ruling F7 — a
+// seal naming only the Client is half a witness), and the other three are hers
+// to declare and wrong for this file to assume. They get PLACEHOLDERS instead,
+// below, which vanish on focus and are never stored (R-40.116).
+const TRADE_BASE = Object.freeze({
+  meals_provision:        'one hot meal per person',
+  travel_terms:           'at actual cost, agreed first',
+  overtime_unit:          'hour',
+  late_grace_days:        '7',
+  late_interest_pct:      '1.5',
+  postpone_notice_days:   '30',
+  postpone_window_months: '12',
+  cancel_tier_1_pct:      '30',
+  cancel_tier_2_pct:      '50',
+  cancel_tier_3_pct:      '75',
+  cancel_tier_4_pct:      '100',
+  refund_days:            '15',
+  takedown_days:          '7',
+  fm_window_months:       '6',
+});
+
+// The delivery family, for a trade that hands over LATER.
+const DELIVERS_LATER = Object.freeze({
+  delivery_days:   '45',
+  delivery_method: 'a private online gallery',
+  link_live_days:  '60',
+  revision_rounds: '1',
+  revision_rate:   '5000',
+  archive_months:  '12',
+});
+
+// ⚠ `delivery_basis` IS THE FIELD R-G32.21 ADDED, AND IT GOVERNS THREE PLACES.
+// `on_the_day` means: the sheet omits the 「Delivered within」 row, clause 7.2
+// prints its on-the-day arm, and `delivery_days` is NOT required at Send.
+//
+// ⚠ IT IS WHY `delivery_days` COULD NOT SIMPLY BE OMITTED FOR MAKEUP. Register
+// `:189` marks it REQUIRED at v4 because clauses 4.7 and 11 both add days *to
+// the period stated in clause 7.2*; `f` returns null when any value is absent,
+// so an unset `delivery_days` omits 7.2 WHOLE and leaves two clauses pointing
+// at a clause that is not in the document. The basis gives 7.2 a sentence for
+// both trades, so the referent always exists.
+//
+// ⚠ THE ASSIGNMENT OF EACH TRADE TO A BASIS IS A JUDGEMENT, NOT A DERIVATION.
+// Nothing in the estate records whether a trade hands over on the day; these
+// fourteen were assigned by what the trade does and are the chair's to correct
+// by row. The seven `on_the_day` trades are the ones whose work IS the function.
+const TRADE_DEFAULTS = Object.freeze({
+  makeup:          Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'makeup and hair',        vendor_credit_role: 'makeup',    exclusions: 'false lashes, hair extensions',        overtime_rate: '4000' }),
+  hairstylist:     Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'hair',                   vendor_credit_role: 'hair',      exclusions: 'hair extensions',                      overtime_rate: '4000' }),
+  photography:     Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'wedding photography',    vendor_credit_role: 'shot_by',   exclusions: 'printed albums, drone footage',        overtime_rate: '4000', ...DELIVERS_LATER }),
+  content_creator: Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'wedding content',        vendor_credit_role: 'shot_by',   exclusions: 'printed albums, drone footage',        overtime_rate: '3000', ...DELIVERS_LATER }),
+  decor:           Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'décor and production',   vendor_credit_role: 'decor',     exclusions: 'fresh flowers beyond the agreed list', overtime_rate: '6000' }),
+  planning:        Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'planning and coordination', vendor_credit_role: 'planner', exclusions: 'vendor payments made on your behalf', overtime_rate: '5000' }),
+  mehendi:         Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'mehendi',                vendor_credit_role: 'mehendi',   exclusions: 'cones for guests to take away',        overtime_rate: '2500' }),
+  venue_catering:  Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'venue and catering',     vendor_credit_role: 'venue',     exclusions: 'alcohol and its licences',             overtime_rate: '8000' }),
+  jewellery:       Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'jewellery',              vendor_credit_role: 'styled_by', exclusions: 'insurance while in your keeping',      overtime_rate: '3000', ...DELIVERS_LATER, delivery_days: '21', delivery_method: 'handed over in person', link_live_days: '', revision_rounds: '', revision_rate: '', archive_months: '' }),
+  designer:        Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'outfits',                vendor_credit_role: 'wearing',   exclusions: 'alterations after the final fitting',   overtime_rate: '3000', ...DELIVERS_LATER, delivery_days: '30', delivery_method: 'handed over in person', link_live_days: '', revision_rounds: '2', revision_rate: '3000', archive_months: '' }),
+  performer:       Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'live performance',       vendor_credit_role: 'styled_by', exclusions: 'sound and stage equipment',            overtime_rate: '6000' }),
+  choreographer:   Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'choreography',           vendor_credit_role: 'styled_by', exclusions: 'rehearsal space hire',                 overtime_rate: '3000' }),
+  invitations:     Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'invitations',            vendor_credit_role: 'styled_by', exclusions: 'postage and courier',                  overtime_rate: '2000', ...DELIVERS_LATER, delivery_days: '21', delivery_method: 'handed over in person', link_live_days: '', revision_rounds: '2', revision_rate: '2000', archive_months: '' }),
+  cake:            Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'cake and desserts',      vendor_credit_role: 'styled_by', exclusions: 'cake stands and serving ware',         overtime_rate: '2500' }),
+});
+
+// ⚠ AN UNMAPPED OR NULL CATEGORY SEEDS THE BASE AND NOTHING TRADE-SHAPED, and
+// its basis is `days` — the SAFE direction. A `days` trade wrongly seeded shows
+// one extra row she can clear; an `on_the_day` trade wrongly seeded HIDES a row
+// clause 7.2 needs. Fail toward the question being asked.
+const UNMAPPED_DEFAULTS = Object.freeze({ delivery_basis: 'days', ...DELIVERS_LATER });
+
+// ⚠ THE PLACEHOLDERS ARE BYTES AND THEY ARE LISTED HERE BECAUSE THEY SHIP.
+// R-40.116: a `Needed` row carries a greyed suggestion that vanishes on focus
+// and is NEVER stored. They live beside the defaults because a reader asking
+// 「what does this row start as」 must find one answer, whether the row starts
+// filled or empty.
+//
+// ⚠ `vendor_signatory_name` INTERPOLATES HER OWN NAME. The ratified frame reads
+// 「e.g. Swati Roy, proprietor」 because it was drawn on Swati's sheet; shipping
+// that literal would put one vendor's name on every vendor's screen — the
+// costume class wearing a proper noun, and the same mistake `clientFirstName`
+// cures for 「Priya」. `{name}` is substituted by the room from the session.
+const PROFILE_PLACEHOLDERS = Object.freeze({
+  vendor_signatory_name: 'e.g. {name}, proprietor',
+  gst_pct:               '18',
+});
+
+/**
+ * What `Your policies` opens with, for one vendor's category.
+ *
+ * ⚠ NULL FIRST, BEFORE ANY LOOKUP — the map's law 2, and for the same reason:
+ * `TRADE_DEFAULTS[category]` on `null` reads a property of nothing rather than
+ * falling through a default.
+ *
+ * @returns {{ seeded: boolean, delivery_basis: 'days'|'on_the_day', fields: Object }}
+ *   `seeded` is returned rather than inferred from `Object.keys(fields).length`,
+ *   which is F-40.138's class one plane over: the unmapped row has fields too.
+ */
+function tradeDefaultsFor(category) {
+  const raw = (category === null || category === undefined) ? null : String(category).trim();
+  const row = (raw && Object.prototype.hasOwnProperty.call(TRADE_DEFAULTS, raw))
+    ? TRADE_DEFAULTS[raw]
+    : null;
+  const merged = { ...TRADE_BASE, ...(row || UNMAPPED_DEFAULTS) };
+  const basis = merged.delivery_basis;
+  delete merged.delivery_basis;
+  // ⚠ AN EMPTY STRING IS NOT A DEFAULT. The `days` trades that hand over in
+  // person carry `link_live_days: ''` to CLEAR the gallery row they inherit
+  // from `DELIVERS_LATER`; shipping it would draw a blank marked `Default`,
+  // which is a suggestion of nothing.
+  for (const k of Object.keys(merged)) if (merged[k] === '') delete merged[k];
+  return { seeded: row !== null, delivery_basis: basis, fields: Object.freeze(merged) };
+}
+
+// The six rows of clause 7, which is the only clause whose rows vary by trade.
+// Every other row on the sheet is asked of everyone.
+const DELIVERY_FAMILY = Object.freeze([
+  'delivery_days', 'delivery_method', 'link_live_days',
+  'revision_rounds', 'revision_rate', 'archive_months',
+]);
+
+/**
+ * The rows a trade never asks.
+ *
+ * ⚠ DERIVED FROM THE SEED, NOT FROM THE BASIS, and the difference is a real
+ * one rather than a tidiness. Keying this on `delivery_basis === 'on_the_day'`
+ * returned `[]` for jewellery — a `days` trade that hands over in person and
+ * therefore seeds no gallery link, no revision rounds and no archive period.
+ * Those four rows would then have been DRAWN, empty, with no default and no
+ * `Needed` mark: a row with no answer, no suggestion and no reason to be there.
+ *
+ * So a trade omits exactly the clause-7 rows its own seed does not carry. The
+ * basis governs three other things — 7.2's arm, whether `delivery_days` is
+ * required at Send, and whether the hint line stands — and it does not govern
+ * this. One question, one source.
+ */
+function omittedFor(category) {
+  const { fields } = tradeDefaultsFor(category);
+  return Object.freeze(DELIVERY_FAMILY.filter((k) => !(k in fields)));
+}
+
 module.exports = {
   ANNEXES,
   ANNEX_KEYS,
   CATEGORY_ANNEXES,
+  TRADE_DEFAULTS,
+  TRADE_BASE,
+  DELIVERY_FAMILY,
+  PROFILE_PLACEHOLDERS,
   annexTitle,
   attachedTitles,
   attachedKeys,
   annexesFor,
+  tradeDefaultsFor,
+  omittedFor,
 };
