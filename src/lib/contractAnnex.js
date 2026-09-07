@@ -187,7 +187,10 @@ function annexesFor(category) {
 // below, which vanish on focus and are never stored (R-40.116).
 const TRADE_BASE = Object.freeze({
   meals_provision:        'one hot meal per person',
-  travel_terms:           'at actual cost, agreed first',
+  // R-40.120 C2 · register v3: ONE sentence for clause 5, in the vendor's own
+  // words, printed as written. R-40.73's two rooms at the couple's hotel survives
+  // as the SEED — a starting sentence she may change — never as a token.
+  travel_and_stay_terms:  'Travel at actual cost, agreed first. Stay in the same hotel as the couple, two rooms.',
   overtime_unit:          'hour',
   late_grace_days:        '7',
   late_interest_pct:      '1.5',

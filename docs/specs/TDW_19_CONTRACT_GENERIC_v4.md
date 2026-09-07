@@ -118,13 +118,13 @@ and
 
 **5.1** This clause applies to each function held outside `{{vendor_base_city}}`.
 
-**5.2** The Client shall provide accommodation for the Vendor's team at `{{same_venue}}`, comprising `{{rooms}}` room(s), for each night on which the team is required to be present.
+**5.2** Travel and accommodation are provided on the following terms: `{{travel_and_stay_terms}}`.
 
-**5.3** Travel is provided or reimbursed on the following terms: `{{travel_terms}}`.
+**5.3** Accommodation and travel provided under this clause are in addition to the fee stated in clause 4.1.
 
-**5.4** Accommodation and travel provided under this clause are in addition to the fee stated in clause 4.1.
+> *Omission: **OMITTED WHOLE** where no function is outside the Vendor's city, or where `travel_and_stay_terms` is unset. The clause's terms are **the Vendor's own words, printed as written**. R-40.73's default — the same hotel as the Client, two rooms — survives as the sentence a trade is seeded with (`contractAnnex.js TRADE_BASE`), a starting value the Vendor may change, on the same footing as the deposit's 30% under R-40.37. TDW imposes neither.*
 
-> *Omission: **OMITTED WHOLE** where no function is outside the Vendor's city, or where the clause's fields are unset. R-40.73's default — the same venue or hotel as the Client, two rooms — is a starting value the Vendor may change, on the same footing as the deposit's 30% under R-40.37. TDW imposes neither.*
+> **Amended 2026-09-07 — R-40.120 (C2) and R-40.121, the lawyer's yes.** Until this date 5.2 and 5.3 were two sentences over three fields (`same_venue`, `rooms`, `travel_terms`); the profile sheet never asked the first two, so 5.2 was omitted on every agreement rendered (F-40.244). The clause now carries one free-text field. R-40.106's yes on v4 extends to this wording (R-40.121). The two retired tokens and the renamed one are recorded in `TDW_19_CONTRACT_FIELD_REGISTER_v3.md`.
 
 ## 6 · POSTPONEMENT AND CANCELLATION
 

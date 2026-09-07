@@ -157,8 +157,24 @@ function f(strings, ...vals) {
   if (vals.some((v) => !present(v))) return null;
   return strings.reduce((a, s, i) => a + s + (i < vals.length ? String(vals[i]) : ''), '');
 }
-function rs(n)  { return present(n) ? `Rs ${formatRs(n)}` : null; }
-function pct(n) { return present(n) ? `${n}%` : null; }
+// ── A PLACEHOLDER PASSES THROUGH UNFORMATTED — R-40.120 (C5) ─────────────────
+// `GET /contracts/standard` renders v4 before a single value exists, so `M.fee_total`
+// arrives as `[your fee]` and `contract.deposit_pct` as `[the deposit %]`. `formatRs`
+// on a bracketed string would print `Rs [yo,ur fee]`; `pct` would print `[…]%`. A
+// value shaped `[…]` is a LABEL, never a number, and the renderer hands it on as
+// written. Nothing outside the placeholder source can produce this shape: fee and
+// deposit are numeric at the fill door and the money home, so a vendor's real
+// agreement never meets this branch.
+const isPlaceholder = (v) => typeof v === 'string' && /^\[[^\]]+\]$/.test(v.trim());
+function rs(n)  { return isPlaceholder(n) ? n : (present(n) ? `Rs ${formatRs(n)}` : null); }
+function pct(n) { return isPlaceholder(n) ? n : (present(n) ? `${n}%` : null); }
+// A vendor's own sentence prints as written, and the clause supplies its full stop
+// only when she did not: `…two rooms.` must not become `…two rooms..`.
+function ownWords(v) {
+  if (!present(v)) return null;
+  const t = String(v).trim();
+  return /[.!?]$/.test(t) ? t.slice(0, -1) : t;
+}
 function joinSentences(...parts) {
   const kept = parts.filter(present);
   return kept.length ? kept.join(' ') : null;
@@ -203,6 +219,14 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
       const AX  = (contract && contract.annexes) || {};
       const M   = money || {};
       const fns = Array.isArray(functions) ? functions : [];
+      // ── WHERE A FUNCTION IS HELD — ONE LOOKUP, TWO ARMS (R-40.118, C1) ─────
+      // An events-linked function carries its venue and city at `T.functions[id]`
+      // (the room's per-event writer). A MANUAL function — `terms.functions_manual`,
+      // normalised by `contractSource.functionsForContract` into the same row shape
+      // — carries them ON THE ROW. F-40.243: a client made from a phone number reaches
+      // no events, so before this arm the clause 3 table and the clause 5 gate read
+      // nothing and Send was unreachable. Both readers now go through here.
+      const placeOf = (e) => (T.functions && T.functions[e.id]) || { venue: e.venue, city: e.city };
       const business = vendor.business_name || 'Your Vendor';
       const attached = attachedKeys(AX);
       const annexNames = attached.map(annexTitle);
@@ -319,7 +343,14 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
 
       const identity = [vendor.address, vendor.city].filter(present).join(', ');
       const gstLine  = present(vendor.gstin) ? `GSTIN ${vendor.gstin}` : null;
-      const category = T.vendor_category_words || vendor.category;
+      // ⚠ PROFILE TOKENS READ FROM `P`, NEVER `T` — register v2 :87 :106 :130 :131.
+      // `vendor_category_words`, `exclusions`, `gst_treatment` and `gst_pct` are
+      // PROFILE (the room's sheet stores them in `contract_profiles.fields`; the
+      // annex map seeds them there) and this file read all four off TERMS, which
+      // nothing writes them to. So 2.2's "in particular" sentence, the tax block
+      // and the trade word never came from her sheet. Same class as the signatory
+      // read above; found by the standard render; candidate finding.
+      const category = P.vendor_category_words || vendor.category;
       const clientNames = [T.partner_1_name || (client && client.name), T.partner_2_name]
         .filter(present);
       // ⚠ THE REFERENCE IS CHROME, NOT AN INSTRUMENT FIELD (register §9A). It is not
@@ -337,7 +368,13 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
       // ═══ 1 · PARTIES — REQUIRED ═══════════════════════════════════════════
       h2('1 \u00b7 Parties');
       sub('1.1', f`This Agreement is made on ${dateWord} between:`);
-      sub('', f`${business}, a ${category} business at ${identity}, acting through ${T.vendor_signatory_name}, telephone ${vendor.phone} (\u201cthe Vendor\u201d);`);
+      // ⚠ THE SIGNATORY IS A PROFILE TOKEN — register v2 :90 — and this file read it
+      // off TERMS at five sites while the room stored it in `contract_profiles`. The
+      // Vendor line of 1.1 and the seal's vendor name were therefore omitted on every
+      // composed agreement; b56's fixture carried the name in `terms` and never saw
+      // it. Found by the standard-agreement render (R-40.120 C5); every read now
+      // goes to `P`. Candidate finding, chair to allocate.
+      sub('', f`${business}, a ${category} business at ${identity}, acting through ${P.vendor_signatory_name}, telephone ${vendor.phone} (\u201cthe Vendor\u201d);`);
       sub('', 'and');
       sub('', f`${clientNames.join(' and ')}, telephone ${client && client.phone} (together \u201cthe Client\u201d).`);
       sub('1.2', 'The Client comprises the two persons named in clause 1.1. They are jointly and severally bound by this Agreement.', true);
@@ -354,8 +391,8 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
       // ⚠ 2.2 PRINTS WITHOUT ITS LIST where `exclusions` is unset. The sentence is
       // the RULE and survives; only the list is omitted. v4 says so explicitly, and
       // it is the difference between omitting a parameter and omitting a term.
-      sub('2.2', present(T.exclusions)
-        ? `A service which is not described in this Agreement or in an attached annex is not included. In particular, the following are not included: ${T.exclusions}.`
+      sub('2.2', present(P.exclusions)
+        ? `A service which is not described in this Agreement or in an attached annex is not included. In particular, the following are not included: ${P.exclusions}.`
         : 'A service which is not described in this Agreement or in an attached annex is not included.', true);
       sub('2.3', f`The Vendor shall perform the services with the skill and care reasonably to be expected of a ${category} business, whether through its own personnel or through its team.`, true);
       sub('2.4', 'Either party may propose a variation of the services. A variation takes effect only when both parties have agreed it in writing and the Client has accepted the price stated by the Vendor for it.', true);
@@ -378,7 +415,7 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
       // zero rate and not a struck line. The T1 frame says the same to her:
       // "Absent — add your GSTIN in Settings".
       if (switchOn(T, 'tax_block')) {
-        sub('4.2', f`The fee is ${T.gst_treatment} of goods and services tax. Tax at ${pct(T.gst_pct)} amounts to ${rs(T.gst_amount)}, and the sum payable is ${rs(T.fee_payable_with_gst)}. The Vendor's GSTIN is ${vendor.gstin} and the Vendor shall issue a tax invoice for each payment received. Where the rate changes by operation of law before the first function, the sum payable changes accordingly.`, true);
+        sub('4.2', f`The fee is ${P.gst_treatment} of goods and services tax. Tax at ${pct(P.gst_pct)} amounts to ${rs(M.gst_amount)}, and the sum payable is ${rs(M.fee_payable_with_gst)}. The Vendor's GSTIN is ${vendor.gstin} and the Vendor shall issue a tax invoice for each payment received. Where the rate changes by operation of law before the first function, the sum payable changes accordingly.`, true);
       }
       sub('4.3', f`The deposit is ${pct(contract.deposit_pct)} of the fee, being ${rs(M.deposit_amount)}, payable on signature of this Agreement. The deposit is what reserves the dates under clause 3.2. No separate booking amount, retainer or advance is payable; this Agreement recognises one such sum, under one name.`);
       sub('4.4', 'The fee is payable as follows:');
@@ -401,16 +438,22 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
       // family there). The T1 row renders only when the gate is open, and its
       // caption is auto: "On — a function is outside New Delhi".
       const outstation = fns.some((e) => {
-        const k = (T.functions && T.functions[e.id]) || {};
+        const k = placeOf(e);
         return present(k.city) && present(vendor.city)
           && String(k.city).trim().toLowerCase() !== String(vendor.city).trim().toLowerCase();
       });
       if (outstation && switchOn(T, 'accommodation')) {
         h2('5 \u00b7 Accommodation and travel');
         sub('5.1', f`This clause applies to each function held outside ${vendor.city}.`);
-        sub('5.2', f`The Client shall provide accommodation for the Vendor's team at ${P.same_venue}, comprising ${P.rooms} room(s), for each night on which the team is required to be present.`, true);
-        sub('5.3', f`Travel is provided or reimbursed on the following terms: ${P.travel_terms}.`, true);
-        sub('5.4', 'Accommodation and travel provided under this clause are in addition to the fee stated in clause 4.1.', true);
+        // ⚠ 5.2 IS THE VENDOR'S OWN SENTENCE, PRINTED AS WRITTEN — register v3
+        // (R-40.120 C2; the lawyer's yes, R-40.121). v2 carried three tokens here
+        // — `same_venue`, `rooms`, `travel_terms` — and the profile sheet never asked
+        // the first two, so 5.2 was omitted on every agreement ever rendered
+        // (F-40.244). One free-text token now, seeded per trade in
+        // `contractAnnex.js TRADE_BASE`, and the clause is still OMITTED WHOLE when
+        // it is unset (R-40.88): `f` has no branch for a missing value.
+        sub('5.2', f`Travel and accommodation are provided on the following terms: ${ownWords(P.travel_and_stay_terms)}.`, true);
+        sub('5.3', 'Accommodation and travel provided under this clause are in addition to the fee stated in clause 4.1.', true);
       }
 
       // ═══ 6 · POSTPONEMENT AND CANCELLATION — prints ═══════════════════════
@@ -577,7 +620,7 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
         const COLS = [0.22, 0.16, 0.14, 0.28, 0.20];
         tRow(['Function', 'Date', 'Time', 'Venue', 'City'], COLS, { head: true });
         fns.forEach((e) => {
-          const k = (T.functions && T.functions[e.id]) || {};
+          const k = placeOf(e);
           tRow([
             present(e.title) ? e.title : '',
             formatDate(e.event_date) || '',
@@ -641,8 +684,8 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
           return doc.y;
         };
         const yA = col(X, 'For the Vendor', [
-          T.vendor_signatory_name,
-          present(T.vendor_signatory_name) ? `for ${business}` : business,
+          P.vendor_signatory_name,
+          present(P.vendor_signatory_name) ? `for ${business}` : business,
           vendor.phone,
         ]);
         doc.y = y0;
@@ -706,8 +749,8 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
               : 'Confirmed by one-time password sent to that number.')
           : DASH;
         // Ruling F7 — the Vendor's signatory, from the profile's `Who signs`.
-        const vendorLine = present(T.vendor_signatory_name)
-          ? [`${T.vendor_signatory_name}, for ${business}`, vendor.phone].filter(present).join(' \u00b7 ')
+        const vendorLine = present(P.vendor_signatory_name)
+          ? [`${P.vendor_signatory_name}, for ${business}`, vendor.phone].filter(present).join(' \u00b7 ')
           : DASH;
 
         label('Signed electronically');

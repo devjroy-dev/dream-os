@@ -189,6 +189,33 @@ function num(v) {
 // other values exist. The composer's answer is `terms.functions_manual` — she types the
 // rows — and the renderer's answer is the sentence at `dateTable`'s empty branch. Filed
 // as **F-40.117** so it is a known item rather than a surprise on a walk.
+/**
+ * THE MANUAL ARM — `terms.functions_manual`, normalised to the events row shape.
+ *
+ * R-40.118 (C1), closing F-40.243. A client made from a name and a number has no
+ * lead and reaches no events, so the composer's own rows are the document's clause 3.
+ * They come out of here in the SAME shape as an `events` row — `id title event_date
+ * event_time slot` — plus `venue` and `city` ON THE ROW, because a manual function has
+ * no event id for `terms.functions` to key on. The renderer's `placeOf` reads either.
+ *
+ * ⚠ THE EVENTS PATH WINS WHEN IT RETURNS ROWS. A contract that reaches real events
+ * prints them, and any manual rows are ignored rather than doubled — the events
+ * are the calendar's fact and the manual rows are a stand-in for its absence.
+ * ⚠ IDS ARE POSITIONAL AND SYNTHETIC (`m0`, `m1` …). They exist so `placeOf` has
+ * a key shape to miss on; nothing stores them.
+ */
+function manualFunctions(terms) {
+  const rows = terms && Array.isArray(terms.functions_manual) ? terms.functions_manual : [];
+  return rows
+    .filter((r) => r && typeof r === 'object' && String(r.title || '').trim() !== '' && String(r.date || '').trim() !== '')
+    .map((r, i) => ({
+      id: `m${i}`, manual: true,
+      title: String(r.title).trim(), event_date: String(r.date).trim(),
+      event_time: r.time ? String(r.time).trim() : null, slot: null, state: 'confirmed',
+      venue: r.venue ? String(r.venue).trim() : null, city: r.city ? String(r.city).trim() : null,
+    }));
+}
+
 async function functionsForContract(supabase, vendorId, contract) {
   const leadIds = [];
   if (contract.lead_id) leadIds.push(contract.lead_id);
@@ -199,7 +226,7 @@ async function functionsForContract(supabase, vendorId, contract) {
       .eq('vendor_id', vendorId).eq('client_id', contract.client_id);
     (leads || []).forEach((l) => { if (!leadIds.includes(l.id)) leadIds.push(l.id); });
   }
-  if (!leadIds.length) return [];
+  if (!leadIds.length) return manualFunctions(contract && contract.terms);
 
   const { data, error } = await supabase
     .from('events')
@@ -218,7 +245,24 @@ async function functionsForContract(supabase, vendorId, contract) {
     console.error('[contractSource:functions] read failed —', error.message);
     return [];
   }
-  return data || [];
+  // A lead with no events is the same hole as no lead (a lead promoted before any
+  // date was put on the calendar): the manual arm stands in there too.
+  return (data && data.length) ? data : manualFunctions(contract && contract.terms);
+}
+
+// ── effectiveProfile ──────────────────────────────────────────────────────────
+// R-40.120 (C4). Her policies are asked once (`contract_profiles.fields`) and may be
+// changed FOR ONE COUPLE at `terms.policy_overrides` — the same keys, this agreement
+// only. The renderer's `P` and `deriveMoney`'s `P` are both this merge, computed ONCE
+// here, so the paper and the money can never disagree about which value governs.
+// ⚠ AN OVERRIDE SET TO THE EMPTY STRING WINS AND OMITS. She may blank a policy for one
+// couple (no late charge for her sister's wedding); `present('')` is false, so the
+// clause is left out of this agreement and untouched on every other.
+function effectiveProfile(fields, terms) {
+  const base = (fields && typeof fields === 'object') ? fields : {};
+  const ov   = terms && terms.policy_overrides && typeof terms.policy_overrides === 'object'
+    ? terms.policy_overrides : {};
+  return { ...base, ...ov };
 }
 
 // ── contractPdfSource ────────────────────────────────────────────────────────
@@ -265,7 +309,7 @@ async function contractPdfSource(supabase, vendorId, contractId) {
 
   const { data: prof } = await supabase
     .from('contract_profiles').select('fields').eq('vendor_id', vendorId).maybeSingle();
-  const profile = (prof && prof.fields) || {};
+  const profile = effectiveProfile(prof && prof.fields, contract.terms);
 
   // GATED ON `invoice_id`, a real column, exactly as `has_schedule` gates the invoice
   // document's fifth read. No invoice → nothing to fetch, and no query to learn it.
@@ -316,10 +360,16 @@ async function contractPdfSource(supabase, vendorId, contractId) {
 // Everything that wants contract bytes calls THIS, and this calls the renderer. A door
 // that assembled its own arguments would be the second call site and the count is
 // asserted by a cell.
+// ⚠ THE ONE CALL. Both renders below hand their arguments here; a second
+// `generateContractPdf(` expression in this file would be a second call site in the
+// estate, and b56 §5 counts files rather than expressions only because there was
+// never more than one of either.
+function render(args) { return generateContractPdf(args); }
+
 async function renderContract(supabase, vendorId, contractId, { sealed = true } = {}) {
   const src = await contractPdfSource(supabase, vendorId, contractId);
   if (!src.ok) return src;
-  const buffer = await generateContractPdf({
+  const buffer = await render({
     sealed,
     contract:  src.contract,
     vendor:    src.vendor,
@@ -339,7 +389,63 @@ async function renderContract(supabase, vendorId, contractId, { sealed = true } 
   return { ok: true, buffer, source: src };
 }
 
+// ── THE STANDARD AGREEMENT, READ BEFORE ANYTHING EXISTS — R-40.120 (C5) ─────
+// "The door that was never built." v4 rendered through the ONE call with a
+// placeholder source: the vendor's real row, her real policies where she has them,
+// the trade seeds where she has not, and a `[labelled placeholder]` for every value
+// that can only come from a couple, a fee or a date. No contract row is created and
+// nothing is written. The bracket shape is what `contractPdf.js`'s `rs`/`pct` pass
+// through; every other token is text and `f` prints it as any other string.
+//
+// ⚠ EVERY LABEL BELOW IS A SURFACE BYTE THE FOUNDER VETOED ON THE PROTOTYPE
+// (R-40.120): `[your fee]`, `[the couple's names]`, `[the deposit %]` … Changing one
+// here changes what she reads in the room.
+const STANDARD_PLACEHOLDERS = Object.freeze({
+  vendor_signatory_name: '[who signs for you]',
+  deposit_refundable:    '[yes or no]',
+  gst_treatment:         '[included or added on top]',
+  gst_pct:               '[your GST rate]',
+});
+function standardAgreementArgs(vendor, storedFields) {
+  const seeds  = tradeDefaultsFor(vendor && vendor.category);
+  const stored = (storedFields && typeof storedFields === 'object') ? storedFields : {};
+  // Her answers over the seeds over the labelled blanks — the profile sheet's own
+  // precedence (R-40.114), applied to a document instead of a form.
+  const profile = { ...STANDARD_PLACEHOLDERS, ...seeds.fields, ...stored };
+  const contract = {
+    number: '[agreement number]', deposit_pct: '[the deposit %]', created_at: new Date().toISOString(),
+    annexes: {},
+    terms: { partner_1_name: "[the couple's names]", exclusions: profile.exclusions },
+  };
+  const client = { name: "[the couple's names]", phone: '[their number]' };
+  const functions = [{
+    id: 'std0', manual: true, title: '[each function]', event_date: null, event_time: null,
+    slot: '[date and time]', venue: '[venue]', city: '[city]', state: 'confirmed',
+  }];
+  const money = { fee_total: '[your fee]', deposit_amount: '[the deposit amount]',
+                  gst_amount: null, fee_payable_with_gst: null, milestones: [] };
+  return { contract, vendor, client, functions, profile, money, signature: null, sealed: false,
+           deliveryBasis: seeds.delivery_basis };
+}
+
+async function renderStandardAgreement(supabase, vendorId) {
+  const { data: vendor, error: vErr } = await supabase
+    .from('vendors').select(PDF_VENDOR_COLUMNS).eq('id', vendorId).maybeSingle();
+  if (vErr)    return { ok: false, error: `Could not read your business details: ${vErr.message}` };
+  if (!vendor) return { ok: false, error: 'Could not read your business details.' };
+  if (vendor.user_id) {
+    const { data: u } = await supabase.from('users').select('phone').eq('id', vendor.user_id).maybeSingle();
+    vendor.phone = (u && u.phone) || null;
+  }
+  const { data: prof } = await supabase
+    .from('contract_profiles').select('fields').eq('vendor_id', vendorId).maybeSingle();
+  const args = standardAgreementArgs(vendor, prof && prof.fields);
+  const buffer = await render(args);
+  return { ok: true, buffer, source: args };
+}
+
 module.exports = {
-  contractPdfSource, renderContract, deriveMoney, functionsForContract,
+  contractPdfSource, renderContract, deriveMoney, functionsForContract, manualFunctions,
+  effectiveProfile, standardAgreementArgs, renderStandardAgreement, STANDARD_PLACEHOLDERS,
   CONTRACT_COLUMNS, PDF_VENDOR_COLUMNS,
 };

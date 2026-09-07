@@ -32,7 +32,7 @@ const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const C = require('../../lib/vendor/contracts');
 const { getUploadUrl, finalizeContract, getDownloadUrl } = C;
-const { renderContract } = require('../../lib/vendor/contractSource');
+const { renderContract, renderStandardAgreement } = require('../../lib/vendor/contractSource');
 const { siteBase } = require('../../lib/vendor/creditInvite');
 // ── THE MAP'S ONE HOME (F4). Read by this door and by the pure renderer, and
 // owned by neither — `contractAnnex.js` takes no supabase and must never take
@@ -118,6 +118,29 @@ router.get('/annex-map', ...authMw, asyncHandler(async (req, res) => {
 // removed, because every existing caller expects the old shape and a silently widened
 // list would put cancelled rows into surfaces that never asked for them. Filed as
 // **F-40.115**; the room passes the param, nothing else does.
+const PREVIEW_URL_TTL = 600;   // ten minutes — a preview is a glance, not a link to keep
+
+// ── GET /standard — THE AGREEMENT SHE CAN READ BEFORE SHE FILLS ANYTHING ──────
+// R-40.120 (C5). v4 rendered from her real row and her real policies, with a
+// `[labelled placeholder]` wherever a couple, a fee or a date would go. NO ROW IS
+// CREATED and nothing is written to `contracts`: the only write is the draft PDF
+// to the bucket at a per-vendor path, upserted, so reading it twice costs one
+// object. Declared ABOVE the `/:contractId/…` routes on purpose — Express matches
+// in order, and `/standard` is a literal segment, never an id.
+router.get('/standard', ...authMw, asyncHandler(async (req, res) => {
+  const supabase = req.app.locals.supabase;
+  const r = await renderStandardAgreement(supabase, req.vendor.id);
+  if (!r.ok) return errRes(res, 404, r.error);
+  const path = `${req.vendor.id}/STANDARD-AGREEMENT.draft.pdf`;
+  const up = await supabase.storage.from(C.BUCKET)
+    .upload(path, r.buffer, { contentType: 'application/pdf', upsert: true });
+  if (up.error) return errRes(res, 500, up.error.message);
+  const { data, error } = await supabase.storage
+    .from(C.BUCKET).createSignedUrl(path, PREVIEW_URL_TTL);
+  if (error) return errRes(res, 500, error.message);
+  return okRes(res, { pdf_url: data.signedUrl, expires_in: PREVIEW_URL_TTL });
+}));
+
 router.get('/', ...authMw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const { client_id, lead_id, state, include_cancelled } = req.query;
@@ -254,7 +277,6 @@ router.patch('/:contractId/fill', ...authMw, asyncHandler(async (req, res) => {
 //
 // ⚠ THROUGH `renderContract`, THE ONE CALL SITE. `generateContractPdf` is not
 // imported here and b56 §5 reds if it ever is.
-const PREVIEW_URL_TTL = 600;   // ten minutes — a preview is a glance, not a link to keep
 
 // ── F-40.160 · THE DOWNLOAD IS NAMED BY THE OBJECT KEY ─────────────────────
 // ⚠ A SUPABASE SIGNED URL NAMES THE SAVED FILE AFTER THE OBJECT PATH. The first

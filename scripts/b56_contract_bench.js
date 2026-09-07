@@ -290,12 +290,15 @@ function fixtureArgs() {
     number: 'DEV440/2026/0001', deposit_pct: 30, created_at: '2026-09-07T06:00:00Z',
     annexes: { a: true },
     terms: {
-      agreement_date: '2026-09-07', vendor_signatory_name: 'Dev Roy',
+      // ⚠ PROFILE TOKENS ARE NOT HERE — register v3 §0-bis. This fixture carried
+      // `vendor_signatory_name`, `exclusions`, `gst_treatment`, `gst_pct` (PROFILE)
+      // and `gst_amount`, `fee_payable_with_gst` (DERIVED, money's) in TERMS, which
+      // is why five renderer reads off the wrong plane stayed green for two sittings.
+      // They now sit where the register puts them, below and in `money`.
+      agreement_date: '2026-09-07',
       partner_1_name: 'Priya Nair', partner_2_name: 'Arjun Nair',
-      exclusions: 'printed albums, drone footage, same-day edits',
       fee_breakdown: 'two functions, full-day coverage',
       named_professional: 'Dev Roy',
-      gst_treatment: 'exclusive', gst_pct: 18, gst_amount: 45000, fee_payable_with_gst: 295000,
       functions: {
         e1: { venue: 'Taj Falaknuma', city: 'Hyderabad' },   // ← outstation: opens clause 5
         e2: { venue: 'Taj Falaknuma', city: 'Hyderabad' },
@@ -303,6 +306,9 @@ function fixtureArgs() {
     },
   };
   const profile = {
+    vendor_signatory_name: 'Dev Roy', vendor_category_words: 'wedding photography',
+    exclusions: 'printed albums, drone footage, same-day edits',
+    gst_treatment: 'exclusive', gst_pct: 18,
     overtime_rate: 4000, overtime_unit: 'hour', late_grace_days: 7, late_interest_pct: 1.5,
     postpone_notice_days: 60, postpone_window_months: 12, refund_days: 14,
     cancel_tier_1_days: 90, cancel_tier_1_pct: 25, cancel_tier_2_days: 45, cancel_tier_2_pct: 50,
@@ -311,8 +317,8 @@ function fixtureArgs() {
     link_live_days: 90, revision_rounds: 2, revision_rate: 5000, archive_months: 6,
     meals_provision: 'a hot meal and water for four people',
     takedown_days: 14, vendor_credit_role: 'Photography and film', fm_window_months: 12,
-    same_venue: 'the same hotel as the Client', rooms: 2,
-    travel_terms: 'return airfare for four, economy, booked by the Client',
+    // register v3 §5 — one sentence, hers, printed as written
+    travel_and_stay_terms: 'Return airfare for four, economy, booked by the Client. Two rooms at the same hotel as the Client.',
     a_team: 'One photographer and one assistant', a_coverage_hours: 10, a_drone: 'not engaged',
     a_edited_count: 600, a_photo_format: 'by download link, full resolution JPEG',
     a_film: 'a 4\u20135 minute highlight film', a_album: 'not included',
@@ -322,6 +328,7 @@ function fixtureArgs() {
   };
   const money = {
     fee_total: 250000, deposit_amount: 75000,
+    gst_amount: 45000, fee_payable_with_gst: 295000,   // DERIVED — money's, never terms'
     milestones: [
       { label: 'Before the first function', pct: 40, amount: 100000, due: '2026-11-10' },
       { label: 'On delivery',               pct: 30, amount: 75000,  due: '2027-01-06' },
@@ -1250,6 +1257,127 @@ section('14. what a trade starts with, and which clause 7.2 it prints');
   // No second endpoint for one question.
   ok('there is no second defaults door',
      !/router\.(get|post)\('\/(trade-)?defaults/.test(door));
+}
+
+// ══ §15 — G3.2 SITTING 3: THE ROOM AS A VENDOR USES IT (R-40.120 / R-40.121) ═══
+//
+// MUTATION PROOFS (each run by hand at the seat, RED then GREEN):
+//   15a  put `travel_terms` back in TRADE_BASE / `P.rooms` back in 5.2   → 15a flips RED
+//   15b  make `functionsForContract` return [] on no lead               → 15b flips RED
+//   15c  drop the spread of `terms.policy_overrides` in effectiveProfile → 15c flips RED
+//   15d  remove the `isPlaceholder` branch from rs()                     → 15d flips RED
+//   15e  read `T.vendor_signatory_name` at 1.1 again                     → 15e flips RED
+//
+// ⚠ WHAT THESE CELLS CAN MEASURE. The clause text is set through Identity-H, so
+// a rendered agreement cannot be grepped for a sentence (§10a's note). What a
+// render CAN witness is LENGTH: a clause that prints is bytes, and a clause that
+// is omitted whole is fewer bytes. Every length cell below is paired with a
+// SOURCE cell so a length that moved for another reason is caught by the other.
+section('15. sitting 3 — the vendor\'s own words, her own functions, this couple only, and the agreement she reads first');
+{
+  const FIX  = fixtureArgs();
+  const rend = code('src/lib/contractPdf.js');
+  const src  = code('src/lib/vendor/contractSource.js');
+  const anx  = require(path.join(ROOT, 'src/lib/contractAnnex.js'));
+  const len  = async (over) => (await CPDF.generateContractPdf(Object.assign({}, FIX, over))).length;
+  const deep = (o) => JSON.parse(JSON.stringify(o));
+
+  // ── 15a · clause 5 is ONE sentence, hers, and the seed carries R-40.73 ────
+  ok('5.2 reads travel_and_stay_terms through ownWords', /ownWords\(P\.travel_and_stay_terms\)/.test(rend));
+  ok('the renderer reads neither retired token', !/P\.(same_venue|rooms|travel_terms)\b/.test(rend));
+  ok('TRADE_BASE seeds the one token', typeof anx.TRADE_BASE.travel_and_stay_terms === 'string');
+  ok('and the seed says what R-40.73 ruled — two rooms, the same hotel',
+     /two rooms/.test(anx.TRADE_BASE.travel_and_stay_terms) && /same hotel/.test(anx.TRADE_BASE.travel_and_stay_terms));
+  ok('TRADE_BASE carries no retired token', !('travel_terms' in anx.TRADE_BASE) && !('same_venue' in anx.TRADE_BASE) && !('rooms' in anx.TRADE_BASE));
+  ok('the instrument names exactly the one token at clause 5',
+     /\{\{travel_and_stay_terms\}\}/.test(read('docs/specs/TDW_19_CONTRACT_GENERIC_v4.md'))
+     && !/\{\{(same_venue|rooms|travel_terms)\}\}/.test(read('docs/specs/TDW_19_CONTRACT_GENERIC_v4.md')));
+  {
+    const withIt    = await len({});
+    const noProfile = deep(FIX.profile); delete noProfile.travel_and_stay_terms;
+    const without   = await len({ profile: noProfile });
+    ok(`clause 5 is omitted whole when her sentence is unset (${withIt} > ${without})`, withIt > without);
+  }
+
+  // ── 15b · the manual arm ───────────────────────────────────────────────────
+  {
+    const rows = SRC.manualFunctions({ functions_manual: [
+      { title: 'Wedding', date: '2026-11-21', time: '18:00', venue: 'Rambagh Palace', city: 'Jaipur' },
+      { title: '', date: '2026-11-22' },            // no title — dropped
+      { title: 'Reception', date: '' },             // no date  — dropped
+    ] });
+    ok('a manual row is normalised to the events shape', rows.length === 1 && rows[0].event_date === '2026-11-21' && rows[0].event_time === '18:00' && rows[0].id === 'm0');
+    ok('and carries venue and city ON THE ROW', rows[0].venue === 'Rambagh Palace' && rows[0].city === 'Jaipur');
+    ok('a row with no title or no date is not a function', SRC.manualFunctions({ functions_manual: [{ title: 'x' }, { date: '2026-01-01' }] }).length === 0);
+    ok('a non-array is no functions', SRC.manualFunctions({ functions_manual: 'Wedding' }).length === 0 && SRC.manualFunctions(null).length === 0);
+
+    // no lead, no events → the manual arm stands in (F-40.243's hole)
+    const db = makeDb(seedBase());
+    const noLead = await SRC.functionsForContract(db, VENDOR, { client_id: 'client-nobody', terms: { functions_manual: [{ title: 'Sangeet', date: '2026-12-01' }] } });
+    ok('no lead: the manual rows stand in', noLead.length === 1 && noLead[0].manual === true && noLead[0].title === 'Sangeet');
+    // a lead with events → the calendar wins and the manual rows are NOT doubled
+    const withLead = await SRC.functionsForContract(db, VENDOR, { client_id: 'client-priya', terms: { functions_manual: [{ title: 'Sangeet', date: '2026-12-01' }] } });
+    ok('events present: the calendar wins, nothing is doubled', withLead.length === 2 && withLead.every(r => !r.manual));
+
+    // the renderer reads the row's own place through one lookup
+    ok('the renderer has ONE place lookup', (rend.match(/placeOf\(e\)/g) || []).length === 2 && /const placeOf = \(e\) =>/.test(rend));
+    ok('and no bare T.functions[e.id] read survives beside it', !/T\.functions\[e\.id\]\) \|\| \{\}/.test(rend));
+    const manualOut = [{ id: 'm0', manual: true, title: 'Wedding', event_date: '2026-11-21', event_time: '18:00', slot: null, venue: 'Rambagh', city: 'Jaipur' }];
+    const manualIn  = [{ id: 'm0', manual: true, title: 'Wedding', event_date: '2026-11-21', event_time: '18:00', slot: null, venue: 'Leela', city: 'New Delhi' }];
+    const termsNoFn = deep(FIX.contract); termsNoFn.terms.functions = {};
+    const none = await len({ functions: [], contract: termsNoFn });
+    const out  = await len({ functions: manualOut, contract: termsNoFn });
+    const inn  = await len({ functions: manualIn,  contract: termsNoFn });
+    ok(`a manual function draws the clause 3 table (${out} > ${none})`, out > none);
+    ok(`a manual OUTSTATION function opens clause 5; an in-city one does not (${out} > ${inn})`, out > inn);
+  }
+
+  // ── 15c · this couple only ─────────────────────────────────────────────────
+  {
+    const eff = SRC.effectiveProfile({ late_grace_days: '7', late_interest_pct: '1.5', a: '1' },
+                                     { policy_overrides: { late_interest_pct: '2', b: '2' } });
+    ok('an override wins over the profile', eff.late_interest_pct === '2' && eff.late_grace_days === '7' && eff.b === '2');
+    ok('no overrides → the profile as stored', JSON.stringify(SRC.effectiveProfile({ x: 1 }, {})) === '{"x":1}' && JSON.stringify(SRC.effectiveProfile({ x: 1 }, null)) === '{"x":1}');
+    ok('the source computes it once, at the profile read', /const profile = effectiveProfile\(prof && prof\.fields, contract\.terms\)/.test(src));
+    const base    = await len({});
+    const blanked = await len({ profile: SRC.effectiveProfile(FIX.profile, { policy_overrides: { late_interest_pct: '' } }) });
+    ok(`an override of '' omits the clause for this agreement (${base} > ${blanked})`, base > blanked);
+  }
+
+  // ── 15d · the standard agreement, before anything exists ───────────────────
+  {
+    const db = makeDb(seedBase());
+    db.from('vendors'); // ensure table
+    const r = await SRC.renderStandardAgreement(db, VENDOR);
+    ok(`the standard agreement renders from a vendor row alone — ${r.ok ? r.buffer.length : 'FAILED: ' + r.error} bytes`, r.ok && r.buffer.length > 20000);
+    ok('its fee is a labelled placeholder, not a number', r.ok && r.source.money.fee_total === '[your fee]');
+    ok('its deposit is a labelled placeholder', r.ok && r.source.contract.deposit_pct === '[the deposit %]');
+    ok('it created no contract row', (db.from('contracts') && (await db.from('contracts').select().then(x => x.data))).length === 0);
+    ok('rs() and pct() pass a [placeholder] through', /const isPlaceholder = /.test(rend) && /function rs\(n\)\s*\{ return isPlaceholder\(n\) \? n :/.test(rend) && /function pct\(n\)\s*\{ return isPlaceholder\(n\) \? n :/.test(rend));
+    ok('a real number is still formatted', /formatRs\(n\)/.test(rend));
+    const door = code('src/api/vendor/contracts.js');
+    const iStd = door.indexOf("router.get('/standard'"), iId = door.indexOf("router.get('/:contractId/download'");
+    ok('GET /standard exists and is declared above the /:contractId routes', iStd > 0 && iId > 0 && iStd < iId);
+    ok('the door renders through the source, never the renderer', /renderStandardAgreement\(supabase, req\.vendor\.id\)/.test(door) && !/generateContractPdf/.test(door));
+    ok('§5 still holds: one file calls the renderer', (rend && true) && !/generateContractPdf\s*\(/.test(door));
+    ok('the source has ONE generateContractPdf expression', (src.match(/generateContractPdf\s*\(/g) || []).length === 1);
+  }
+
+  // ── 15e · profile tokens read from the profile — register v3 §0-bis ───────
+  {
+    ok('no PROFILE or DERIVED token is read off terms',
+       !/T\.(vendor_signatory_name|vendor_category_words|exclusions|gst_treatment|gst_pct|gst_amount|fee_payable_with_gst)\b/.test(rend));
+    ok('the signatory is read from the profile at 1.1 and the seal', (rend.match(/P\.vendor_signatory_name/g) || []).length >= 5);
+    ok('the tax block reads its money from M', /rs\(M\.gst_amount\)/.test(rend) && /rs\(M\.fee_payable_with_gst\)/.test(rend));
+    const full = await len({});
+    const noSig = deep(FIX.profile); delete noSig.vendor_signatory_name;
+    const withoutSig = await len({ profile: noSig });
+    ok(`no signatory in the profile → 1.1's Vendor line and the seal name are omitted (${full} > ${withoutSig})`, full > withoutSig);
+    // the reverse proof: the name in TERMS alone must NOT bring them back
+    const termsSig = deep(FIX.contract); termsSig.terms.vendor_signatory_name = 'Dev Roy';
+    const termsOnly = await len({ profile: noSig, contract: termsSig });
+    ok('a signatory in terms alone is not read (the old plane is dead)', termsOnly === withoutSig);
+  }
 }
 
 console.log(`\n${pass}/${pass + fail} cells green.`);
