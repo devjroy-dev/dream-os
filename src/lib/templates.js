@@ -815,7 +815,7 @@ const TEMPLATES = {
     body:
       "Hi {{1}}, {{2}} just passed you an enquiry on The Dream Wedding. " +
       "Open your Leads to see it: {{3}} \u2014 reply here if you need a hand.",
-    status: 'pending',
+    status: 'approved',
   },
 
   // ── THE SEALED COPY — R-40.108, F-40.196, G3.2 SITTING 2 ──────────────────
