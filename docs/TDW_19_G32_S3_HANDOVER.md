@@ -184,3 +184,56 @@ b56 §17, twelve cells: E.164 in `sendOne` (driven through `sendSealedCopy` with
 Open *Swati Roy Test Contract* (`Signed`) — the copy send fires only at signing, so: **Cancel** → *+ New contract → Someone new → 8595356978* → function → fee → Send → OTP → sign. Expect on both handsets (DEV440's +91 98882 94440 and 8595356978): *Your signed agreement with … is attached* with the PDF. Then the SELECT:
 `SELECT created_at, recipient, to_phone, template_key, status, wamid, error_code, error_title FROM public.contract_sends ORDER BY created_at DESC LIMIT 6;`
 Expect `contract_sign · delivered`, `contract_sign_otp · sent/delivered` with a wamid, `contract_copy × 2 · sent/delivered`. Any `#132018` surviving → the template's detail page (R-40.71).
+
+---
+
+# PACKET 4b · DREAM-OS — F-40.264, ONE TAXONOMY
+
+**Base:** `dream-os eefdd68`. **Governed by:** R-31.1 (nobody else holds a copy), the chair's relay of 2026-09-07.
+
+## 19 · WHAT WAS THERE, WHAT IS NOW
+
+`contractAnnex.js` keyed `CATEGORY_ANNEXES` and `TRADE_DEFAULTS` on **fourteen** keys of its own against a taxonomy of **eleven** (`src/agent/categories.js VENDOR_CATEGORIES`): four — `mehendi`, `choreographer`, `invitations`, `cake` — are tokens the taxonomy retired or folded into `other` / `performer`. Both readers matched the **raw** string, so an alias (`videographer`, `Photography`, `caterer`) fell to the unmapped branch. `bOB_taxonomy_bench` §6.1 had been red on main since the s2 rider.
+
+Now: the eleven and `normaliseCategory` come in **by import** (`../agent/categories`, `./vendor/categoryFraming`); one `tradeKey(category)` — null first, normalise, `other` is not a trade — feeds both readers; the four folded rows are gone and their trades read the unmapped branch as the taxonomy already says (mehendi's annex E stays in `ANNEXES`, offered under unmapped). `annexesFor`'s contract (`mapped`, `offered`, `others`) is unchanged.
+
+**Proofs:** `bOB_taxonomy_bench` **GREEN** (77 → 78/78). b56 **§18**, nine cells (every key of both tables ∈ the eleven by census, aliases reach their trade, folded tokens read unmapped, null first, both readers through `tradeKey`); **304/304**; two mutations RED → GREEN. One note on the proofs: bOB §6.1 tests for the import, so a stray key added back reddens **b56 §18**, not bOB — the census cell is the standing guard.
+
+**Radius by census:** `tradeDefaultsFor` / `annexesFor` / `omittedFor` callers (`contracts.js` annex-map door, `contractSource.standardAgreementArgs`) receive the same shapes; the pwa room reads `mapped`/`offered`/`others`/`defaults`/`delivery_basis` unchanged. A vendor stored as an alias now sees her trade's annex attached by default where before she saw all seven.
+
+---
+
+# PACKET 4 (pwa) · R-40.124–.126 AND F-40.256
+
+**Base:** `dreamos-pwa bfa3197`. Two files.
+
+| Ruling / finding | What landed |
+|---|---|
+| **R-40.124** a Needed row is filled where it is named | `neededField(r)` on *Preview and send*: one control per blank with the same meaning line and the **same writer** as the record — number to the client on blur, fee/deposit through `/fill` on blur, a function through the sheet. `requiredRows` rows carry a `key`. |
+| **R-40.125** a Needed policy row opens only that row | a policy blank is **one Field / ChoiceRow** from `PROFILE_SECTIONS`'s own register, saved on blur through `savePolicyRow` as `{ ...seeds, ...profile, [key]: v }` (R-40.114's merge rides with it); the sheet is never opened from the list. |
+| **R-40.126** the per-couple policies are one prominent tap | the section is a **card** (Cormorant title, CTA button *See or change them for {name}*), and when a policy blank still blocks Send the card says so on the record: *Still needed to send: Who signs for you.* — before Preview finds it. |
+| **F-40.256** `Rs Rs` | the four `Rs ${formatRs(…)}` sites now call `formatRs` alone (R-U25's one money home). |
+
+b57: five packet-3 pins re-cut under the rulings; four proof cells added (inline fill, single-row policy save with no `openProfile` in the branch, the card's CTA and gap line, no `Rs` beside `formatRs`); **190/190**; three mutations RED → GREEN. `tsc --noEmit` clean, eslint clean; `next build` at apply (R-40.66).
+
+**Not in this packet, named for the chair:** the sealed-copy paper defects (6.4 empty slabs — dream-os seeds + a sheet row; 12.2 with no name home — ruling; `shot_by` in 10.6 — ruling; the `_draft` name on a signed download — pwa one branch).
+
+---
+
+# PACKET 4b (final cut) · DREAM-OS ON `c4145c8ab3cace992f08f2034588b6a92422eb09` — F-40.264 + THE SEALED COPY'S FOUR
+
+Re-derived on `c4145c8` (G2's `base_guard` cure on top of G3.1 s2's `0147`; none of this packet's files moved under either — `git diff --stat a4fdc92..HEAD` on the seven is empty). The `eefdd68` and `a4fdc92` cuts are withdrawn. F-40.258 (the OTP row) is already on main at `52f0b2f`, verified by the founder's SELECT (`contract_sign_otp · delivered` with a wamid); nothing further rides here for it. No column is needed; no `0148` (R-40.44).
+
+| Finding | Home | Bytes |
+|---|---|---|
+| **F-40.264** | `contractAnnex.js` | keyed on the eleven by import; `tradeKey()` normalises; four folded rows gone (§19 above) |
+| **F-40.265** | `contractAnnex.js TRADE_BASE` | `cancel_tier_1/2/3_days` seeded 90/60/30; OMIT-ROW (the class the chair named) unchanged and now has rows to print |
+| **F-40.266** | `contractPdf.js` 12.2 | reads `P.named_professional` (PROFILE beside the signatory, register v3 §0-ter); the sheet's row rides the pwa rider |
+| **F-40.267** | `contractSource.js withCreditLabel` at both places `P` is built | the key resolves to `ROLE_LABEL` (*Shot by*), a phrase prints as written; the renderer stays pure (b56 §5's no-db law kept — the first cut put the require in the renderer and §5 reddened it) |
+| **F-40.268** | `contracts.js POST /:id/preview` | a `signed` contract returns a signed URL to `contract_signatures.sealed_path` (`<id>.signed.pdf`) with `sealed: true`; nothing is re-rendered under `.draft`; a draft still renders |
+
+**Proofs:** bOB GREEN 78/78 · b56 **314/314**: §18 (nine, F-40.264) and **§19** (ten — the seeded slabs print by render length, 12.2 prints from the profile and the old plane is dead by reverse proof, the label at both build sites, the signed branch and the draft fallthrough); six mutations RED → GREEN across §18/§19.
+
+**Owed on the pwa (a rider in the pwa lane, behind G2 and G3.1):** the sheet's *Who attends* row for `named_professional` under *Your business*; the *After* screen already reads the sealed object through the same preview call, so nothing changes there for F-40.268.
+
+**Then:** the founder's walk of R-40.124–.126 on glass, and one signing → `contract_copy × 2 · delivered` (`tdw_contract_copy` Active with the document header since 23:21).

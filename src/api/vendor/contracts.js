@@ -309,6 +309,23 @@ function draftPath(vendorId, contract) {
 
 router.post('/:contractId/preview', ...authMw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
+  // F-40.268: a SIGNED contract has one document — the sealed object at
+  // `contract_signatures.sealed_path` (`<vendor>/<id>.signed.pdf`). Re-rendering
+  // it under a `.draft.pdf` name handed the founder a signed agreement called
+  // draft. The sealed object is served under its own name; nothing is re-rendered.
+  const { data: st } = await supabase.from('contracts')
+    .select('state').eq('id', req.params.contractId).eq('vendor_id', req.vendor.id).maybeSingle();
+  if (st && st.state === 'signed') {
+    const { data: sig } = await supabase.from('contract_signatures')
+      .select('sealed_path').eq('contract_id', req.params.contractId).not('sealed_path', 'is', null)
+      .order('signed_at', { ascending: false }).limit(1).maybeSingle();
+    if (sig && sig.sealed_path) {
+      const { data, error } = await supabase.storage
+        .from(C.BUCKET).createSignedUrl(sig.sealed_path, PREVIEW_URL_TTL);
+      if (error) return errRes(res, 500, error.message);
+      return okRes(res, { pdf_url: data.signedUrl, expires_in: PREVIEW_URL_TTL, sealed: true });
+    }
+  }
   const r = await renderContract(supabase, req.vendor.id, req.params.contractId);
   if (!r.ok) return errRes(res, 404, r.error);
 

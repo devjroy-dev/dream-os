@@ -264,7 +264,21 @@ function effectiveProfile(fields, terms) {
   const base = (fields && typeof fields === 'object') ? fields : {};
   const ov   = terms && terms.policy_overrides && typeof terms.policy_overrides === 'object'
     ? terms.policy_overrides : {};
-  return { ...base, ...ov };
+  return withCreditLabel({ ...base, ...ov });
+}
+
+// F-40.267: `vendor_credit_role` is stored as the credits' ROLE KEY (`shot_by`,
+// `makeup` …) and 10.6 printed the key. The label is the estate's — `ROLE_LABEL`
+// in `weddings.js`, the founder's own words (R-40.7) — resolved HERE, where `P`
+// is built, so the renderer stays a pure function of its arguments (b56 §5's
+// no-db law). A value that is not a key — her own phrase, "Makeup by Swati Roy"
+// — prints as written.
+const { ROLE_LABEL } = require('./weddings');
+function withCreditLabel(p) {
+  const v = p && p.vendor_credit_role;
+  if (v === null || v === undefined || String(v).trim() === '') return p;
+  const k = String(v).trim();
+  return { ...p, vendor_credit_role: ROLE_LABEL[k] || k };
 }
 
 // ── contractPdfSource ────────────────────────────────────────────────────────
@@ -413,7 +427,7 @@ function standardAgreementArgs(vendor, storedFields) {
   const stored = (storedFields && typeof storedFields === 'object') ? storedFields : {};
   // Her answers over the seeds over the labelled blanks — the profile sheet's own
   // precedence (R-40.114), applied to a document instead of a form.
-  const profile = { ...STANDARD_PLACEHOLDERS, ...seeds.fields, ...stored };
+  const profile = withCreditLabel({ ...STANDARD_PLACEHOLDERS, ...seeds.fields, ...stored });
   const contract = {
     number: '[agreement number]', deposit_pct: '[the deposit %]', created_at: new Date().toISOString(),
     annexes: {},
@@ -448,6 +462,6 @@ async function renderStandardAgreement(supabase, vendorId) {
 
 module.exports = {
   contractPdfSource, renderContract, deriveMoney, functionsForContract, manualFunctions,
-  effectiveProfile, standardAgreementArgs, renderStandardAgreement, STANDARD_PLACEHOLDERS,
+  effectiveProfile, withCreditLabel, standardAgreementArgs, renderStandardAgreement, STANDARD_PLACEHOLDERS,
   CONTRACT_COLUMNS, PDF_VENDOR_COLUMNS,
 };

@@ -930,7 +930,7 @@ section('10b. a new tab carries no JWT, so the door hands it something it can op
   // hour is for a document she has already agreed to.
   ok('the url is short-lived', /PREVIEW_URL_TTL = 600/.test(door));
   // AND IT STILL GOES THROUGH THE ONE CALL SITE.
-  ok('preview renders through renderContract', /preview[\s\S]{0,400}renderContract\(/.test(door));
+  ok('preview renders through renderContract (after the signed branch, F-40.268)', /preview[\s\S]{0,1400}renderContract\(/.test(door));
   ok('generateContractPdf is not imported by any door', !/generateContractPdf/.test(doorCode));
 }
 
@@ -1465,6 +1465,76 @@ section('17. the signed copy is E.164 and publicly fetchable; the OTP send has a
   const rows2 = [];
   await SEND.recordOtpSend({ from: () => ({ insert: async (r) => { rows2.push(r); return {}; } }) }, { contractId: 'k1', vendorId: VENDOR, toPhone: '+918595356978', wamid: 'wamid.X', status: 'sent' });
   ok('the OTP row is recipient client on the OTP template with its wamid', rows2[0].recipient === 'client' && rows2[0].template_key === 'contract_sign_otp' && rows2[0].wamid === 'wamid.X');
+}
+
+// ══ §18 — ONE TAXONOMY (F-40.264, R-31.1): the trade tables are keyed on the eleven ═══
+//
+// MUTATION PROOFS (RED then GREEN at the seat):
+//   18a  add a `mehendi:` row back to TRADE_DEFAULTS      → 18a flips RED (and bOB §6.1)
+//   18b  make tradeKey return the raw string               → 18b flips RED
+section('18. one taxonomy — the trade tables import the eleven and normalise before they read');
+{
+  const ANX = require(path.join(ROOT, 'src/lib/contractAnnex.js'));
+  const { VENDOR_CATEGORIES } = require(path.join(ROOT, 'src/agent/categories.js'));
+  const src = code('src/lib/contractAnnex.js');
+  ok('the canonical list and the normaliser come in by import', /require\('\.\.\/agent\/categories'\)/.test(src) && /require\('\.\/vendor\/categoryFraming'\)/.test(src));
+  const bad = Object.keys(ANX.TRADE_DEFAULTS).filter(k => !VENDOR_CATEGORIES.includes(k));
+  ok(`every TRADE_DEFAULTS key is one of the eleven (${bad.length ? 'stray: ' + bad.join(' ') : 'none stray'})`, bad.length === 0);
+  const bad2 = Object.keys(ANX.CATEGORY_ANNEXES).filter(k => !VENDOR_CATEGORIES.includes(k));
+  ok('every CATEGORY_ANNEXES key is one of the eleven', bad2.length === 0);
+  ok('other is not a trade', !('other' in ANX.TRADE_DEFAULTS) && !('other' in ANX.CATEGORY_ANNEXES));
+  ok('an alias reaches its trade', ANX.tradeKey('videographer') === 'photography' && ANX.tradeKey('caterer') === 'venue_catering' && ANX.tradeKey(' Makeup ') === 'makeup');
+  ok('a folded token reads the unmapped branch', ANX.tradeKey('mehendi') === null && ANX.annexesFor('mehendi').mapped === false && ANX.tradeDefaultsFor('cake').seeded === false);
+  ok('null first, still', ANX.tradeKey(null) === null && ANX.tradeKey('') === null && ANX.annexesFor(null).mapped === false);
+  ok('both readers go through tradeKey', /function annexesFor\(category\) \{[\s\S]{0,200}const key\s+= tradeKey\(category\)/.test(src) && /function tradeDefaultsFor\(category\) \{[\s\S]{0,120}const key = tradeKey\(category\)/.test(src));
+  ok('an alias seeds its trade\u2019s defaults', ANX.tradeDefaultsFor('Videographer').fields.vendor_category_words === 'wedding photography');
+}
+
+// ══ §19 — THE SEALED COPY'S FOUR (F-40.265–.268) ═══════════════════════════
+//
+// MUTATION PROOFS (RED then GREEN at the seat):
+//   19a  remove cancel_tier_1_days from TRADE_BASE          → 19a flips RED
+//   19b  read T.named_professional at 12.2 again             → 19b flips RED
+//   19c  drop withCreditLabel from effectiveProfile          → 19c flips RED
+//   19d  remove the signed branch from the preview door      → 19d flips RED
+section('19. the sealed copy\u2019s four — slabs print, 12.2 has a home, 10.6 prints the label, a signed read is the sealed object');
+{
+  const FIX  = fixtureArgs();
+  const rend = code('src/lib/contractPdf.js');
+  const src  = code('src/lib/vendor/contractSource.js');
+  const door = code('src/api/vendor/contracts.js');
+  const ANX  = require(path.join(ROOT, 'src/lib/contractAnnex.js'));
+  const SRC  = require(path.join(ROOT, 'src/lib/vendor/contractSource.js'));
+  const len  = async (over) => (await CPDF.generateContractPdf(Object.assign({}, FIX, over))).length;
+  const deep = (o) => JSON.parse(JSON.stringify(o));
+  // 19a · F-40.265
+  ok('the three thresholds are seeded 90 / 60 / 30', ANX.TRADE_BASE.cancel_tier_1_days === '90' && ANX.TRADE_BASE.cancel_tier_2_days === '60' && ANX.TRADE_BASE.cancel_tier_3_days === '30');
+  {
+    const seeded = { ...ANX.tradeDefaultsFor('makeup').fields };
+    const withSlabs = await len({ profile: seeded });
+    const noDays = deep(seeded); delete noDays.cancel_tier_1_days; delete noDays.cancel_tier_2_days; delete noDays.cancel_tier_3_days;
+    const without = await len({ profile: noDays });
+    ok(`a seeded trade prints 6.4\u2019s table; without thresholds every row omits (${withSlabs} > ${without})`, withSlabs > without);
+  }
+  // 19b · F-40.266
+  ok('12.2 reads the name from the profile', /P\.named_professional\} shall attend personally/.test(rend) && !/T\.named_professional/.test(rend));
+  {
+    const p = deep(FIX.profile); p.named_professional = 'Dev Roy';
+    const t = deep(FIX.contract); delete t.terms.named_professional;
+    const on = await len({ profile: p, contract: t });
+    const q = deep(p); delete q.named_professional;
+    const off = await len({ profile: q, contract: t });
+    ok(`the profile name prints 12.2; a name in terms alone does not (${on} > ${off})`, on > off);
+    const tOnly = deep(t); tOnly.terms.named_professional = 'Dev Roy';
+    ok('the old plane is dead', (await len({ profile: q, contract: tOnly })) === off);
+  }
+  // 19c · F-40.267
+  ok('the label is resolved where P is built, and the renderer stays pure', /return withCreditLabel\(\{ \.\.\.base, \.\.\.ov \}\)/.test(src) && /require\('\.\/weddings'\)/.test(src) && !/require\('\.\/vendor\//.test(rend));
+  ok('a role key prints its label; a phrase prints as written', SRC.effectiveProfile({ vendor_credit_role: 'shot_by' }, {}).vendor_credit_role === 'Shot by' && SRC.effectiveProfile({ vendor_credit_role: 'Makeup by Swati Roy' }, {}).vendor_credit_role === 'Makeup by Swati Roy');
+  ok('the standard render resolves it too', /const profile = withCreditLabel\(\{ \.\.\.STANDARD_PLACEHOLDERS/.test(src));
+  // 19d · F-40.268
+  ok('a signed contract\u2019s preview serves the sealed object under its own name', /state === 'signed'[\s\S]{0,700}sealed_path[\s\S]{0,400}createSignedUrl\(sig\.sealed_path, PREVIEW_URL_TTL\)/.test(door) && /sealed: true/.test(door));
+  ok('and only a signed one — a draft still renders', /if \(st && st\.state === 'signed'\)/.test(door) && /const r = await renderContract\(supabase, req\.vendor\.id, req\.params\.contractId\);/.test(door));
 }
 
 console.log(`\n${pass}/${pass + fail} cells green.`);

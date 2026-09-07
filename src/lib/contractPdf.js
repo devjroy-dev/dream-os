@@ -555,7 +555,10 @@ function generateContractPdf({ contract, vendor, client, functions, profile, mon
       h2('12 \u00b7 Personnel and substitution');
       sub('12.1', 'The Vendor may perform the services through employees, assistants and freelancers, and remains responsible to the Client for their work and their conduct as if it were the Vendor\u2019s own.');
       if (switchOn(T, 'named_professional')) {
-        sub('12.2', f`${T.named_professional} shall attend personally. Where illness, injury or an event stated in clause 11 prevents that attendance, the Vendor shall provide a person of comparable skill at no additional cost, and shall inform the Client as soon as the Vendor knows. Where the Client does not accept the substitute, the Client may cancel that function, and the Vendor shall refund the value attributable to it; the tiers in clause 6.4 do not apply to that refund.`, true);
+        // F-40.266: the name is a PROFILE token beside `vendor_signatory_name`
+        // (register v3 §0-ter); it was read off TERMS, which no surface wrote, so
+        // the switch said Printed and 12.2 printed nothing.
+        sub('12.2', f`${P.named_professional} shall attend personally. Where illness, injury or an event stated in clause 11 prevents that attendance, the Vendor shall provide a person of comparable skill at no additional cost, and shall inform the Client as soon as the Vendor knows. Where the Client does not accept the substitute, the Client may cancel that function, and the Vendor shall refund the value attributable to it; the tiers in clause 6.4 do not apply to that refund.`, true);
       }
       sub('12.3', 'Where no individual is named, the Vendor shall allocate the team as the Vendor judges best, providing the number of persons stated in the attached annex.', true);
 

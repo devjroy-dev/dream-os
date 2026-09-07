@@ -95,3 +95,13 @@ Nothing writes these keys to `terms`; the profile sheet writes them to `contract
 ## WHAT DID NOT CHANGE
 
 Every other row of v2. The Omission column's three classes. R-40.88. The annex tokens. §9A's number. The category → annex map. The register's law one.
+
+---
+
+## §0-ter · TWO ROWS MOVED BY THE SEALED COPY (2026-09-08, the founder's first signed agreement)
+
+| Token | Was | Now | Ruling |
+|---|---|---|---|
+| `named_professional` | PER-CONTRACT, "No home" (v2 :206, :336) — the renderer read `T.named_professional`, which no surface wrote, so 12.2 never printed while its switch said Printed | **PROFILE**, beside `vendor_signatory_name`; read as `P.named_professional`; the sheet gains its row under *Your business* (pwa rider) | F-40.266 |
+| `vendor_credit_role` | printed as stored — the credits' ROLE KEY (`shot_by`) | stored as the key; **rendered through `ROLE_LABEL`** (`weddings.js`, R-40.7's own words) at the source where `P` is built; a value that is not a key prints as written | F-40.267 |
+| `cancel_tier_1/2/3_days` | PROFILE, OMIT-ROW, **no seed** — every row omitted, 6.4's lead dangled | seeded **90 / 60 / 30** in `TRADE_BASE` (the slab labels the founder vetoed); OMIT-ROW unchanged | F-40.265 |

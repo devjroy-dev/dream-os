@@ -103,6 +103,28 @@ function attachedKeys(annexes) {
 // `other` in `capacityVerdict`'s ladder — F-40.172's own load-bearing branch
 // order. This map does not reuse that ladder, and the divergence is deliberate
 // rather than an oversight to be reconciled later.
+// ── ONE TAXONOMY — F-40.264 (R-31.1: nobody else holds a copy) ──────────────
+// The trade tables below are keyed on the ELEVEN canonical tokens of
+// `src/agent/categories.js`, imported, never retyped; a vendor's stored value
+// is passed through `normaliseCategory` before either table is read, so an
+// alias (`videographer`, `Photography`, `caterer`) reaches its trade instead
+// of the unmapped branch. Until this cut the file carried fourteen keys of its
+// own — four of them (`mehendi`, `choreographer`, `invitations`, `cake`) are
+// tokens the taxonomy retired or folded (`other`, `performer`) — and matched
+// the raw string. `bOB_taxonomy_bench` §6.1 was red on main from the s2 rider
+// until here; a key outside the eleven reds it again (and b56 §18).
+const { VENDOR_CATEGORIES } = require('../agent/categories');
+const { normaliseCategory }  = require('./vendor/categoryFraming');
+
+/** The canonical key for a stored category, or `null` where the taxonomy says
+ *  `other` — which is not a trade and reads the unmapped branch. NULL FIRST. */
+function tradeKey(category) {
+  const raw = (category === null || category === undefined) ? null : String(category).trim();
+  if (!raw) return null;
+  const k = normaliseCategory(raw);
+  return (k && k !== 'other' && VENDOR_CATEGORIES.includes(k)) ? k : null;
+}
+
 const CATEGORY_ANNEXES = Object.freeze({
   makeup:          Object.freeze(['b']),
   hairstylist:     Object.freeze(['b']),
@@ -110,14 +132,10 @@ const CATEGORY_ANNEXES = Object.freeze({
   content_creator: Object.freeze(['a']),
   decor:           Object.freeze(['c']),
   planning:        Object.freeze(['d']),
-  mehendi:         Object.freeze(['e']),
   venue_catering:  Object.freeze(['f']),
   jewellery:       Object.freeze(['g']),
   designer:        Object.freeze(['g']),
   performer:       Object.freeze(['g']),
-  choreographer:   Object.freeze(['g']),
-  invitations:     Object.freeze(['g']),
-  cake:            Object.freeze(['g']),
 });
 
 // `all seven, G first` — the register's own wording for the NULL and unmapped
@@ -138,11 +156,9 @@ const ALL_G_FIRST = Object.freeze(['g', 'a', 'b', 'c', 'd', 'e', 'f']);
  * first section to stand empty. The shape changes, not just the contents.
  */
 function annexesFor(category) {
-  // ⚠ NULL FIRST, BEFORE ANY LOOKUP — law 2 above.
-  const raw = (category === null || category === undefined) ? null : String(category).trim();
-  const keys = (raw && Object.prototype.hasOwnProperty.call(CATEGORY_ANNEXES, raw))
-    ? CATEGORY_ANNEXES[raw]
-    : null;
+  // ⚠ NULL FIRST, BEFORE ANY LOOKUP — law 2 above; `tradeKey` keeps it.
+  const key  = tradeKey(category);
+  const keys = key ? (CATEGORY_ANNEXES[key] || null) : null;
 
   if (!keys) {
     return {
@@ -196,6 +212,12 @@ const TRADE_BASE = Object.freeze({
   late_interest_pct:      '1.5',
   postpone_notice_days:   '30',
   postpone_window_months: '12',
+  // F-40.265: 6.4's table is OMIT-ROW and the three THRESHOLDS had no seed, so
+  // every row omitted and 6.4's lead dangled on every agreement. 90 / 60 / 30
+  // are the slab labels the founder vetoed on the prototype.
+  cancel_tier_1_days:     '90',
+  cancel_tier_2_days:     '60',
+  cancel_tier_3_days:     '30',
   cancel_tier_1_pct:      '30',
   cancel_tier_2_pct:      '50',
   cancel_tier_3_pct:      '75',
@@ -228,8 +250,9 @@ const DELIVERS_LATER = Object.freeze({
 //
 // ⚠ THE ASSIGNMENT OF EACH TRADE TO A BASIS IS A JUDGEMENT, NOT A DERIVATION.
 // Nothing in the estate records whether a trade hands over on the day; these
-// fourteen were assigned by what the trade does and are the chair's to correct
-// by row. The seven `on_the_day` trades are the ones whose work IS the function.
+// ten were assigned by what the trade does and are the chair's to correct
+// by row. The `on_the_day` trades are the ones whose work IS the function. `other` is
+// not a trade: mehendi, invitations, cake and the rest read the unmapped branch.
 const TRADE_DEFAULTS = Object.freeze({
   makeup:          Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'makeup and hair',        vendor_credit_role: 'makeup',    exclusions: 'false lashes, hair extensions',        overtime_rate: '4000' }),
   hairstylist:     Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'hair',                   vendor_credit_role: 'hair',      exclusions: 'hair extensions',                      overtime_rate: '4000' }),
@@ -237,14 +260,10 @@ const TRADE_DEFAULTS = Object.freeze({
   content_creator: Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'wedding content',        vendor_credit_role: 'shot_by',   exclusions: 'printed albums, drone footage',        overtime_rate: '3000', ...DELIVERS_LATER }),
   decor:           Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'décor and production',   vendor_credit_role: 'decor',     exclusions: 'fresh flowers beyond the agreed list', overtime_rate: '6000' }),
   planning:        Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'planning and coordination', vendor_credit_role: 'planner', exclusions: 'vendor payments made on your behalf', overtime_rate: '5000' }),
-  mehendi:         Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'mehendi',                vendor_credit_role: 'mehendi',   exclusions: 'cones for guests to take away',        overtime_rate: '2500' }),
   venue_catering:  Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'venue and catering',     vendor_credit_role: 'venue',     exclusions: 'alcohol and its licences',             overtime_rate: '8000' }),
   jewellery:       Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'jewellery',              vendor_credit_role: 'styled_by', exclusions: 'insurance while in your keeping',      overtime_rate: '3000', ...DELIVERS_LATER, delivery_days: '21', delivery_method: 'handed over in person', link_live_days: '', revision_rounds: '', revision_rate: '', archive_months: '' }),
   designer:        Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'outfits',                vendor_credit_role: 'wearing',   exclusions: 'alterations after the final fitting',   overtime_rate: '3000', ...DELIVERS_LATER, delivery_days: '30', delivery_method: 'handed over in person', link_live_days: '', revision_rounds: '2', revision_rate: '3000', archive_months: '' }),
   performer:       Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'live performance',       vendor_credit_role: 'styled_by', exclusions: 'sound and stage equipment',            overtime_rate: '6000' }),
-  choreographer:   Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'choreography',           vendor_credit_role: 'styled_by', exclusions: 'rehearsal space hire',                 overtime_rate: '3000' }),
-  invitations:     Object.freeze({ delivery_basis: 'days',       vendor_category_words: 'invitations',            vendor_credit_role: 'styled_by', exclusions: 'postage and courier',                  overtime_rate: '2000', ...DELIVERS_LATER, delivery_days: '21', delivery_method: 'handed over in person', link_live_days: '', revision_rounds: '2', revision_rate: '2000', archive_months: '' }),
-  cake:            Object.freeze({ delivery_basis: 'on_the_day', vendor_category_words: 'cake and desserts',      vendor_credit_role: 'styled_by', exclusions: 'cake stands and serving ware',         overtime_rate: '2500' }),
 });
 
 // ⚠ AN UNMAPPED OR NULL CATEGORY SEEDS THE BASE AND NOTHING TRADE-SHAPED, and
@@ -281,10 +300,8 @@ const PROFILE_PLACEHOLDERS = Object.freeze({
  *   which is F-40.138's class one plane over: the unmapped row has fields too.
  */
 function tradeDefaultsFor(category) {
-  const raw = (category === null || category === undefined) ? null : String(category).trim();
-  const row = (raw && Object.prototype.hasOwnProperty.call(TRADE_DEFAULTS, raw))
-    ? TRADE_DEFAULTS[raw]
-    : null;
+  const key = tradeKey(category);
+  const row = key ? (TRADE_DEFAULTS[key] || null) : null;
   const merged = { ...TRADE_BASE, ...(row || UNMAPPED_DEFAULTS) };
   const basis = merged.delivery_basis;
   delete merged.delivery_basis;
@@ -335,6 +352,7 @@ module.exports = {
   attachedTitles,
   attachedKeys,
   annexesFor,
+  tradeKey,
   tradeDefaultsFor,
   omittedFor,
 };
