@@ -79,3 +79,55 @@ Ten other benches are red at this tree **and identically red at `3b6ded3`** in a
 `git fetch` → tips re-derived (`3b6ded3` / `82612b38`) → read: room, annex, source, renderer, doors, register, bench → census of every reader of `travel_terms`/`same_venue`/`rooms`/`T.functions` → edits → standard render found the §2 class → census of `T.*` against the register → cure at every site → fixture moved → §15 authored → five mutations RED, restored GREEN → ten pre-existing reds re-run at a clean clone of the tip → `0146` → register v3 → this note.
 
 `git status --short` at the cut: six modified, three new (`0146`, register v3, this file). Nothing pushed — the founder pushes.
+
+---
+
+# PACKET 2 · THE PWA — THE ROOM REPLACED TO THE PROTOTYPE (and a one-line dream-os rider)
+
+**Base:** `dreamos-pwa 82612b38` (re-derived at open; unchanged since the room read) · `dream-os 8c262cc` (packet 1, fresh clone). **Governed by:** R-40.120 C3, C6–C9 · R-40.101 · R-40.117 (s2's sheet mechanics carried by name) · R-40.118 · R-40.66 · F-40.242 · F-40.243 · F-40.245 · F-40.246 · F-40.252.
+
+## 7 · WHAT LANDED (pwa)
+
+| | Home | Bytes |
+|---|---|---|
+| **The room, replaced whole** | `app/vendor/(shell)/contracts/screen.tsx` | eight screens as one tree: Room (policies card first, C3) · Your contract policies (28 rows, a meaning line on every one, `You deliver on the day, so there's nothing to set here`) · Someone new (name + number → `composeContract({name, phone})`, R-G32.17) · From a client · The agreement (progress thread, functions she adds herself → `terms.functions_manual`, fee/deposit, what's included with the trade's annex attached by default (C7), *These are your policies* → `terms.policy_overrides` (C4), what's printed) · Preview and send (the missing rows named from `requiredRows`, no per-field sentences) · After sending (sent → signed → deposit received → the date is held, F-40.245) |
+| Autosave on blur | fee, deposit, partner, number (the number to the client, only when changed) | `Save and finish later` retired; the record is a screen, no scrim can drop typing (C9, F-40.246) |
+| The standard door's caller | `lib/vendor/api/vendor.ts fetchStandardAgreement()` · the card's *See the standard agreement* and the fork's *Read it* | asks the door, opens `pdf_url` (F-40.152's posture) |
+| Register v3 on the surface | `travel_and_stay_terms` as a textarea; no retired token | |
+| The dead pair | Venue/City on the record gone (F-40.242) | functions carry their own venue and city |
+| **The mock filed** | `docs/mocks/G32_S3_PROTOTYPE.html` | R-40.101 |
+| **b57** | 22 byte pins re-cut under R-40.120 (each marked at the cell); the structural pins moved to the replaced room's shape; **§11**, 31 cells; **183/183** | six mutations RED → GREEN (§9 below) |
+| dream-os rider | `contractSource.js:191` — the stale `F-40.117` citation → **F-40.243** | one comment, b56 272/272 |
+
+**Carried from sitting 2 by name, not re-derived (R-40.117):** `{ ...seedsNow, ...stored }` under her answers; `savedKeys` provenance; `ChoiceRow` closed vocabularies; placeholders from the door with `{name}` from the session; `omitted` rows and `requiredRows(…, basis)`. **One thing I first got wrong and corrected before the cut:** the first draft showed seeds as placeholders and posted only what she typed. The renderer reads `contract_profiles.fields` alone, so a seed she never saves never reaches paper — s2's design (post the merge whole, mark seeds *Suggested*) is the one that puts R-40.114's seeds on the agreement, and it is restored.
+
+## 8 · TWO BYTES NOT ON THE PROTOTYPE — ⚠ VETO ON THE GLASS
+
+The prototype drew the mapped trade and never the clause-10 line. The room needs both:
+
+1. **The unmapped trade** (2 of 29 vendors have no category): under *What's included* — *We don't have your trade on file yet, so nothing is attached. Pick what you provide.* — all seven, none attached.
+2. **Clause 10 has no switch anywhere in the estate** (the renderer's header; b56 reds on a mutation that adds one). Under *What's printed* — *The wedding page isn't a switch here — that one is Priya's, in her own account.*
+
+Both marked `⚠ VETO` in the source at the byte.
+
+## 9 · MUTATION PROOFS (pwa), RED then reverted by reversing the edit
+
+| # | Mutation | real FAILs |
+|---|---|---|
+| 11a | `doStandard` opens a URL literal instead of the door's `pdf_url` | 2 |
+| 11c | `fnPlaces` drops the manual rows | 1 |
+| 11d | overrides posted through `saveContractProfile` | 1 |
+| 11e | the fee Field loses its `onBlur` | 1 |
+| 11f | every composed contract routes to `record` | 1 |
+| 11g | the sheet's key back to `travel_terms` | 2 |
+| restored | | 0 · 183/183 |
+
+`tsc --noEmit` clean (the in-seat sweep, R-40.66); `eslint` clean on the room and the client (b57's own two `require()` lines are pre-existing). **`next build` is the founder's gate at apply** — seat containers cannot fetch Google Fonts.
+
+## 10 · OWED AFTER THIS PACKET
+
+- The founder's walk: Swati's phone → a new number → sent in under five minutes without asking what a word means. **That is the card (kickoff §5).**
+- The `/standard` door's first glass read (card → *See the standard agreement*).
+- The Send door still refuses on none of the six required fields; the room is the one home for the rule (sitting 2's note stands).
+- `PUBLIC_SCHEMA.md` regen for 0139–0146.
+- `G32V4_VETO_SHEET.md` rows the prototype superseded are not edited; the prototype is the sheet from R-40.120.

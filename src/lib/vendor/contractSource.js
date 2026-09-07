@@ -187,8 +187,10 @@ function num(v) {
 // ⚠ A CLIENT PROMOTED WITHOUT A LEAD REACHES NO EVENTS, and that is a real hole, not a
 // theoretical one: `clients.source` defaults to `lead_promotion` but is free text and
 // other values exist. The composer's answer is `terms.functions_manual` — she types the
-// rows — and the renderer's answer is the sentence at `dateTable`'s empty branch. Filed
-// as **F-40.117** so it is a known item rather than a surprise on a walk.
+// rows (`manualFunctions` below, R-40.118) — and until sitting 3 the renderer's only
+// answer was the sentence at `dateTable`'s empty branch. Filed as **F-40.243** (the
+// number this comment carried before the cut, F-40.117, was a source-file error —
+// corrected at R-40.120's relay).
 /**
  * THE MANUAL ARM — `terms.functions_manual`, normalised to the events row shape.
  *
