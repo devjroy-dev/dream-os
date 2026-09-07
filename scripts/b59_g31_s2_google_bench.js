@@ -167,9 +167,9 @@ cell('§5.1 CARD_KEYS names meta', () => VC.CARD_KEYS.includes('meta'));
 cell('§5.2 derived title drops empties: no city → "Name · Photographer"', () => VC.metaFor({ business_name: 'Dev Roy Photography', category: 'Photographer', city: null, about: null }).title === 'Dev Roy Photography \u00b7 Photographer');
 cell('§5.3 derived description is about cut at 200', () => VC.metaFor({ about: 'x'.repeat(250) }).description.length === 200);
 cell('§5.4 her own bytes win over the derivation', () => { const m = VC.metaFor({ business_name: 'N', category: 'C', city: 'D', about: 'a', seo_title: 'My title', seo_description: 'My description' }); return m.title === 'My title' && m.description === 'My description'; });
-cell('§5.5 a blank seo_title ("   ") falls back to the derivation, not to a blank', () => VC.metaFor({ business_name: 'N', category: 'C', city: 'D', seo_title: '   ' }).title === 'N \u00b7 C \u00b7 D');
+cell('§5.5 a blank seo_title ("   ") falls back to the derivation, not to a blank (F-40.277: the label, not the key)', () => VC.metaFor({ business_name: 'N', category: 'photography', city: 'D', seo_title: '   ' }).title === 'N \u00b7 Photographer \u00b7 D');
 cell('§5.6 card() EMITS meta when given (surface, not path — F-40.169)', () => { const c = VC.card({ handle: 'h', meta: { title: 'T', description: 'D' } }); return c.meta && c.meta.title === 'T' && c.meta.description === 'D'; });
-cell('§5.7 card() with no meta emits the derived object, never undefined', () => { const c = VC.card({ handle: 'h', business_name: 'N', category: 'C' }); return c.meta && c.meta.title === 'N \u00b7 C' && c.meta.description === null; });
+cell('§5.7 card() with no meta emits the derived object, never undefined (F-40.277 amended: label, not key)', () => { const c = VC.card({ handle: 'h', business_name: 'N', category: 'photography' }); return c.meta && c.meta.title === 'N \u00b7 Photographer' && c.meta.description === null; });
 cell('§5.8 VENDOR_SELECT asks for seo_title and seo_description', () => /seo_title/.test(VC.VENDOR_SELECT) && /seo_description/.test(VC.VENDOR_SELECT));
 
 // ═══ §6 · THE QR ═══════════════════════════════════════════════════════════════
@@ -179,10 +179,66 @@ cell('§6.1 the QR encodes the lowercase /v/ address off PWA_BASE_URL', () => SF
 cell('§6.2 weddingCardPdf exports qrPng — the storefront door does not draw its own', () => typeof fresh('src/lib/weddingCardPdf.js').qrPng === 'function');
 await acell('§6.3 qrPng yields a PNG', async () => { const b = await fresh('src/lib/weddingCardPdf.js').qrPng(SF.storefrontUrl('dev440')); return Buffer.isBuffer(b) && b.slice(1, 4).toString() === 'PNG'; });
 
+// ═══ §7 · THE SITEMAP DOOR (p2) ═══════════════════════════════════════════════
+sec('\u00a77 \u00b7 public/sitemap \u2014 the card door\u2019s predicates, three columns, lowercase');
+const SM = fresh('src/api/public/sitemap.js');
+function smDb() {
+  const calls = [];
+  const rows = { vendors: [{ id: 'v1', routing_handle: 'DEV440', updated_at: '2026-09-01T00:00:00Z' }, { id: 'v2', routing_handle: null, updated_at: null }],
+                 weddings: [{ owner_vendor_id: 'v1', slug: 'verma-event', updated_at: '2026-09-02T00:00:00Z' }] };
+  const q = (table) => { const st = { table, eq: [], not: [], in: [] }; calls.push(st);
+    const c = { select(cols) { st.cols = cols; return c; }, eq(k, v) { st.eq.push([k, v]); return c; }, not(k, op, v) { st.not.push([k, op, v]); return c; },
+                in(k, v) { st.in.push([k, v]); return c; }, then(res) { res({ data: rows[table], error: null }); } };
+    return c; };
+  return { from: q, calls };
+}
+await acell('§7.1 vendors are asked with status=active, discover_paused=false, routing_handle not null (vendorCard.js:445)', async () => {
+  const d = smDb(); await SM.listPages(d); const v = d.calls.find((c) => c.table === 'vendors');
+  return v && JSON.stringify(v.eq) === JSON.stringify([['status', 'active'], ['discover_paused', false]]) && v.not.length === 1 && v.not[0][0] === 'routing_handle';
+});
+await acell('§7.2 weddings are asked with visibility=published AND couple_consent=true (vendorCard.js:504–508)', async () => {
+  const d = smDb(); await SM.listPages(d); const w = d.calls.find((c) => c.table === 'weddings');
+  return w && JSON.stringify(w.eq) === JSON.stringify([['visibility', 'published'], ['couple_consent', true]]);
+});
+await acell('§7.3 handles are lowercased; a vendor with no handle is skipped; the wedding page rides its owner\u2019s handle', async () => {
+  const d = smDb(); const r = await SM.listPages(d);
+  return r.ok && r.pages.length === 2 && r.pages[0].handle === 'dev440' && r.pages[0].slug === null && r.pages[1].slug === 'verma-event' && r.pages[1].handle === 'dev440';
+});
+cell('§7.4 the two SELECTs name no phone, no name, no city, no about', () =>
+  !/phone|business_name|city|about|whatsapp/.test(SM.VENDOR_COLS + ' ' + SM.WEDDING_COLS));
+await acell('§7.5 a page row is exactly { handle, slug, updated_at }', async () => {
+  const r = await SM.listPages(smDb()); return r.pages.every((p) => JSON.stringify(Object.keys(p).sort()) === '["handle","slug","updated_at"]');
+});
+
+// ═══ §8 · THE NIGHTLY (p2) ════════════════════════════════════════════════════
+sec('\u00a78 \u00b7 searchConsoleNightly \u2014 its own minute, its own heartbeat, one read when there is no house');
+const cronSrc = require('fs').readFileSync(R('src/cron.js'), 'utf8').replace(/\/\/.*$/gm, '');
+cell('§8.1 cron.js registers the pull at 40 3 (IST) and no other daily sits on that minute', () => {
+  const mins = [...cronSrc.matchAll(/cron\.schedule\('([^']+)'/g)].map((m) => m[1]);
+  return mins.filter((m) => m === '40 3 * * *').length === 1 && mins.filter((m) => /^40 /.test(m)).length === 1;
+});
+cell('§8.2 the registration is Asia/Kolkata and requires searchConsoleNightly', () => /searchConsoleNightly'\)/.test(cronSrc) && /40 3 \* \* \*'[\s\S]{0,400}timezone: 'Asia\/Kolkata'/.test(cronSrc));
+await acell('§8.3 no house row → no_house after ONE read, nothing pulled, nothing written', async () => {
+  const N = fresh('src/lib/vendor/searchConsoleNightly.js'); const d = fakeDb();
+  const r = await N.runSearchConsoleNightly(d); return r.ok === false && r.reason === 'no_house' && d.writes.length === 0;
+});
+cell('§8.4 the heartbeat is the house row\u2019s last_synced_at (pull → markSynced(grantOwner))', () => {
+  const src = require('fs').readFileSync(R('src/lib/vendor/searchConsole.js'), 'utf8').replace(/\/\/.*$/gm, '');
+  return /markSynced\(supabase, grantOwner\)/.test(src);
+});
+
+// ═══ §9 · F-40.277 · THE TRADE AS A WORD ═════════════════════════════════════
+sec('\u00a79 \u00b7 metaFor \u2014 the profile label, sentence case, never the key');
+const VC2 = fresh('src/api/public/vendorCard.js');
+cell('§9.1 photography → Photographer in the derived title', () => VC2.metaFor({ business_name: 'Dev Roy Photography', category: 'photography', city: 'Delhi' }).title === 'Dev Roy Photography \u00b7 Photographer \u00b7 Delhi');
+cell('§9.2 makeup → Makeup artist', () => VC2.tradeWord('makeup') === 'Makeup artist');
+cell('§9.3 the catch-all trade is dropped, not printed as Vendor', () => VC2.metaFor({ business_name: 'N', category: 'other', city: 'D' }).title === 'N \u00b7 D');
+cell('§9.4 no category → no trade, no stray dot', () => VC2.metaFor({ business_name: 'N', category: null, city: 'D' }).title === 'N \u00b7 D');
+
 console.log(`\nb59_g31_s2_google_bench  ${pass} GREEN  ${fail} RED`);
 if (fail) { console.log(fails.map((f) => '  - ' + f).join('\n')); process.exit(1); }
 console.log(`
-NON-VACUITY — FIVE PRODUCTION MUTATIONS, EACH RED ON THE CELLS NAMED (run by hand, then reverse the edit — never \`git checkout --\`, R-40.65):
+NON-VACUITY — EIGHT PRODUCTION MUTATIONS, EACH RED ON THE CELLS NAMED (run by hand, then reverse the edit — never \`git checkout --\`, R-40.65):
   1 src/lib/vendor/tokenVault.js   make seal() return String(plain)            → §1.2 §1.5 §1.7 §3.6
   2 src/lib/vendor/googleOAuth.js  drop the pathname === GOOGLE_CALLBACK_PATH test → §2.2
   3 src/lib/vendor/searchConsole.js  WINDOW_DAYS = 30                          → §4.3 §4.4

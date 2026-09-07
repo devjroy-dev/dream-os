@@ -289,6 +289,16 @@ function startingPrice(rate_display, rate_min) {
   return rate_display === false ? null : (rate_min || null);
 }
 
+/** F-40.277 · the trade as a word: profile label, sentence case; null for the catch-all. */
+function tradeWord(category) {
+  if (!category) return null;
+  const { profileFor } = require('../../lib/vendor/categoryProfiles');
+  const p = profileFor(category);
+  if (!p || p.key === 'other' || !p.label) return null;
+  const w = String(p.label).trim();
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
 /**
  * G3.1 s2 · WHAT GOOGLE SHOWS — the one derivation (0147 §4 comments name it).
  * Her own bytes win when set; otherwise the title is `<name> · <category> · <city>`
@@ -298,8 +308,13 @@ function startingPrice(rate_display, rate_min) {
  * Exported for `b44`.
  */
 function metaFor({ business_name, category, city, about, seo_title, seo_description }) {
+  // F-40.277: the stored category is a KEY (`photography`); the word a couple
+  // reads is the profile's label (`photographer`, categoryProfiles.js), sentence-
+  // cased here because a Google title is prose. `other` maps to `vendor` and is
+  // dropped — "Name · Vendor · Delhi" says nothing.
+  const trade = tradeWord(category);
   const title = (seo_title && String(seo_title).trim())
-    || [business_name, category, city].map((x) => x && String(x).trim()).filter(Boolean).join(' \u00b7 ')
+    || [business_name, trade, city].map((x) => x && String(x).trim()).filter(Boolean).join(' \u00b7 ')
     || null;
   const description = (seo_description && String(seo_description).trim())
     || (about ? String(about).trim().slice(0, 200) : null)
@@ -658,6 +673,7 @@ module.exports.CARD_KEYS = CARD_KEYS;
 // different facts; both are now reachable, and `b58` §3.1b compares them.
 module.exports.card = card;
 module.exports.metaFor = metaFor;   // G3.1 s2 · so b44 can prove the derivation both ways
+module.exports.tradeWord = tradeWord;   // F-40.277
 module.exports.VENDOR_SELECT = VENDOR_SELECT;
 module.exports.SEAL_SELECT = SEAL_SELECT;   // G2 · R-G2.9, so b44 can diff it
 module.exports.PORTFOLIO_SELECT = PORTFOLIO_SELECT;

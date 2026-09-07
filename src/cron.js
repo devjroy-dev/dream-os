@@ -380,6 +380,21 @@ function startCronJobs({ supabase }) {
     timezone: 'Asia/Kolkata',
   });
 
+  // ── G3.1 s2 · THE SEARCH CONSOLE PULL (F-40.261 a) — 03:40 IST ────────────
+  // Its own minute in the night band (see searchConsoleNightly.js for the
+  // derivation); after the seal (:20) and the reminders (:25). Heartbeat: the
+  // house row's last_synced_at, written by the job itself (F-40.107).
+  cron.schedule('40 3 * * *', async () => {
+    try {
+      const { runSearchConsoleNightly } = require('./lib/vendor/searchConsoleNightly');
+      await runSearchConsoleNightly(supabase);
+    } catch (err) {
+      console.error('[cron:searchConsoleNightly] error:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
   // ── RELAY EXPIRY SWEEP — hourly, :05 IST (TDW_06/07 M3) ───────────────────
   // №16, THE ESTATE'S FIRST CLOCK-SPEAKER. A vendor approved bride-facing bytes,
   // the estate rang her doorbell, and her 24 hours ran out in silence. Every
