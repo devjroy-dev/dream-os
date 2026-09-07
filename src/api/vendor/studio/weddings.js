@@ -462,8 +462,16 @@ router.post('/:id/consent/resend', ...mw, asyncHandler(async (req, res) => {
 
 router.post('/:id/consent', ...mw, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
-  const phone    = String((req.body || {}).phone || '').trim();
-  if (!phone) return errRes(res, 400, 'A number is required.');
+  const typed    = String((req.body || {}).phone || '').trim();
+  if (!typed) return errRes(res, 400, 'A number is required.');
+
+  // ── F-40.248 · THE BELT · NORMALISE AT THE DOOR ───────────────────────────
+  // `postMessage` now normalises too (F-40.250), so this is belt and braces —
+  // and it is NOT redundant, because THIS is what gets STORED. `/consent/resend`
+  // re-sends `consent_phone` straight off the row with no field for the vendor
+  // to correct, so a bare-ten-digit row would have failed there forever. One
+  // normalisation at the door, two doors cured. `toE164` is F-04.109's one home.
+  const phone = toE164(typed);
 
   const minted = await W.mintConsentToken(supabase, {
     ownerVendorId: req.vendor.id, weddingId: req.params.id, phone,
@@ -482,6 +490,17 @@ router.post('/:id/consent', ...mw, asyncHandler(async (req, res) => {
     token:   minted.consent_token,
     supabase,
   });
+
+  // ── F-40.240 · A SEND THAT DID NOT GO LEAVES NO SCAR ──────────────────────
+  // Mint, send, and PUT THE OLD ONE BACK when the send reports false. A first
+  // attempt that fails leaves the row as though the vendor never pressed; a
+  // retry after a live link was already out restores that live link rather than
+  // killing it for an unrelated transport failure.
+  if (!invite || invite.sent !== true) {
+    await W.restoreConsentToken(supabase, {
+      ownerVendorId: req.vendor.id, weddingId: req.params.id, previous: minted.previous,
+    });
+  }
 
   // ── F-40.105 CURED · THE TOKEN NEVER REACHES THE VENDOR ───────────────────
   // The first cut returned `consent_url` here and the room printed it, so THE

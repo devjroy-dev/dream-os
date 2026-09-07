@@ -1,0 +1,10 @@
+# scripts/floor-manifest-g2-consent.txt
+# BLOCK 19 · THE CONSENT PACKET — F-40.250 · F-40.247 · F-40.248 · F-40.240.
+# Base: dream-os main 94ed742.
+scripts/b56_contract_bench.js
+scripts/b57_e164_guard_bench.js
+scripts/floor-manifest-g2-consent.txt
+src/api/vendor/studio/weddings.js
+src/lib/metaCloud.js
+src/lib/vendor/creditInvite.js
+src/lib/vendor/weddings.js

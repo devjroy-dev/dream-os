@@ -115,7 +115,14 @@ async function sendCreditInvite({ to, owner, role, wedding, token, supabase }) {
   } catch (e) {
     // The typed code is carried through so the caller can tell an opt-out from
     // an unapproved template from a bad number, rather than reading one word.
-    return { ok: false, sent: false, skipped: true, reason: e.code || e.message };
+    // ── F-40.247 · BOTH HALVES, NOT `||` ──────────────────────────────────
+    // This read `e.code || e.message`, and `e.code` is HARDCODED
+    // `meta_send_failed` in the MetaSendError constructor — so the `||` never
+    // fell through and `e.message`, the only field carrying Meta's own words,
+    // was UNREACHABLE BY CONSTRUCTION. Not a branch that sometimes missed: a
+    // branch that could not be taken. The founder retried four times against a
+    // number the transport was refusing, and the estate never once said why.
+    return { ok: false, sent: false, skipped: true, reason: `${e.code || 'error'}: ${e.message || '(no message)'}` };
   }
 }
 
@@ -157,7 +164,14 @@ async function sendConsentInvite({ to, owner, wedding, token, supabase }) {
     });
     return { ok: true, sent: true, result: res };
   } catch (e) {
-    return { ok: false, sent: false, skipped: true, reason: e.code || e.message };
+    // ── F-40.247 · BOTH HALVES, NOT `||` ──────────────────────────────────
+    // This read `e.code || e.message`, and `e.code` is HARDCODED
+    // `meta_send_failed` in the MetaSendError constructor — so the `||` never
+    // fell through and `e.message`, the only field carrying Meta's own words,
+    // was UNREACHABLE BY CONSTRUCTION. Not a branch that sometimes missed: a
+    // branch that could not be taken. The founder retried four times against a
+    // number the transport was refusing, and the estate never once said why.
+    return { ok: false, sent: false, skipped: true, reason: `${e.code || 'error'}: ${e.message || '(no message)'}` };
   }
 }
 

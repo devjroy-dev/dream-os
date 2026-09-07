@@ -40,6 +40,8 @@ class MetaSendError extends MetaError {
   }
 }
 
+const { toE164 } = require('./phone');
+
 // ── config resolution (env-referenced, never printed) ────────────────────────
 function resolveConfig(overrides = {}) {
   const token         = overrides.token         || process.env.META_WABA_TOKEN || null;
@@ -122,7 +124,43 @@ async function postMessage(body, { fetchImpl, ...overrides } = {}) {
 
   // ⚠ BEFORE THE REQUEST, NOT AFTER. A refusal that arrives as a Meta 200 is not
   // a refusal at all — that is the whole of F-40.185.
-  assertE164(body && body.to);
+  //
+  // ── F-40.250 · NORMALISE, THEN REFUSE ONLY THE UN-NORMALISABLE ────────────
+  // The guard alone turned a recoverable input into a dead send. A vendor typed
+  // ten digits at the consent door, this line refused it, and three layers
+  // discarded the reason — so the founder retried four times with four numbers
+  // before learning the number was never the problem. A guard that can repair
+  // its own input and refuses instead is strict where it should be kind.
+  //
+  // ⚠ THE WRAPPER IS LOAD-BEARING AND IS NOT A STYLE CHOICE.
+  // `toE164` ADDS a `+` — it was written for `users` and `circle_members`, which
+  // store E.164 with the plus. `assertE164` requires `/^\d+$/`, because that is
+  // what Meta's `to` field takes and `normalizeTo` has already stripped it one
+  // line above. Composed as `assertE164(toE164(body.to))` the two invert each
+  // other and EVERY SEND IN THE ESTATE THROWS — proven against all five real
+  // input shapes before a byte was written, which is why it never reached the
+  // wire (c-40.53). `normalizeTo` takes the plus back off; the guard sees what
+  // it has always seen.
+  //
+  // ⚠ `normalizeTo` IS NOT THE SITE FOR THIS AND MUST NOT BECOME IT. It is a key
+  // function for two tables, one of them the opt-out home — normalising there
+  // would silently re-key rows and re-enable messages to people who asked us to
+  // stop. That is a consent migration wearing a placement question.
+  //
+  // SCOPE, per the ruling: (1) `+`-prefixed → byte-identical after the strip;
+  // (2) exactly ten bare digits → `+91` then stripped to `91…`, the ONE shape
+  // that changes; (3) eleven to fifteen bare digits → sent as today, so a UK
+  // number stays `44…` and F-40.186's specimen is never recreated; (4) anything
+  // else → still refused. `scripts/b57_e164_guard_bench.js` drives all 21 send
+  // sites' real `to` through this line and asserts equality with today for
+  // (1), (3) and (4) — no regression PROVEN at the cut, not reasoned.
+  // ⚠ THE RESULT IS ASSIGNED BACK. `assertE164` VALIDATES AND RETURNS; it does
+  // not mutate. Normalising only for the guard would let a ten-digit number PASS
+  // and still be SENT as ten digits — Meta answers 200 with a wamid and nothing
+  // is delivered, which is F-40.185 exactly, reintroduced by the very line that
+  // cures it. The bench caught this by driving the real post rather than
+  // replicating the composition.
+  if (body) body.to = assertE164(normalizeTo(toE164(body.to)));
 
   const doFetch = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   if (!doFetch) throw new MetaError('no fetch implementation available', 'no_fetch');
@@ -144,6 +182,21 @@ async function postMessage(body, { fetchImpl, ...overrides } = {}) {
   if (!res || !res.ok) {
     const status  = res && res.status;
     const metaMsg = parsed && parsed.error && parsed.error.message;
+    // ── F-40.247 · LOG IT HERE, WHERE IT STILL EXISTS ────────────────────────
+    // This error was BUILT CORRECTLY and then thrown away three times: the
+    // catch in `sendConsentInvite` reads `e.code || e.message`, and `e.code` is
+    // hardcoded `meta_send_failed` on every MetaSendError — so the informative
+    // half was unreachable by construction, not by accident. The room then
+    // discarded even the code. Meta told us exactly what was wrong and nothing
+    // in the estate ever said it out loud.
+    //
+    // Logged BEFORE the throw, because a catch upstream may narrow it and the
+    // status and body are the two fields a founder can act on. No token, no
+    // recipient — the body is Meta's error envelope, not the message.
+    console.error(
+      `[meta] send failed status=${status} code=${parsed && parsed.error && parsed.error.code} ` +
+      `msg=${metaMsg || '(none)'} body=${JSON.stringify(parsed && parsed.error || null)}`
+    );
     throw new MetaSendError(
       `Meta send failed (status ${status})${metaMsg ? `: ${metaMsg}` : ''}`,
       status,

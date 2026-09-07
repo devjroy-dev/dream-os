@@ -428,6 +428,41 @@ async function mintConsentToken(supabase, { ownerVendorId, weddingId, phone }) {
   if (!wedding) return null;
   if (wedding.couple_id) return { refused: 'couple_on_platform' };
 
+  // ── F-40.240 · WHAT THIS ROW HELD BEFORE WE OVERWROTE IT ──────────────────
+  // Read FIRST, returned to the caller, so a send that fails can put it back.
+  // Minting cannot follow the send — the link the send carries IS the token —
+  // so the only honest shape is mint, send, and RESTORE ON FAILURE.
+  //
+  // A consent link already in a couple's hands is invalidated the moment a later
+  // attempt mints over it. The founder pressed this button four times against a
+  // number the transport was refusing; every press rotated a token, and had any
+  // earlier one been live and unanswered it would have died for a failure that
+  // had nothing to do with it.
+  //
+  // ⚠ ITS OWN SELECT, NOT `wedding`. `getForOwner` returns `WEDDING_COLS`, which
+  // does NOT carry the three consent columns — `consent_token` is a capability
+  // secret and is deliberately absent from the shape most callers get (F-04.106
+  // is the precedent for why widening it would be wrong). Reading `previous` off
+  // `wedding` gives three nulls on every call, and the "restore" would then
+  // BLANK A LIVE TOKEN rather than put it back — strictly worse than the defect
+  // this cure exists to fix.
+  //
+  // Column witness — docs/db/PUBLIC_SCHEMA.md, regen 5b3f61f, ladder tip 0138:
+  //   public.weddings  consent_token (14) · consent_sent_at (15) · consent_phone (16)
+  // The ladder now holds files through 0145, so that document is stale for
+  // 0139–0145 and NOT for these three, which predate the tip.
+  const { data: prior } = await supabase
+    .from('weddings')
+    .select('consent_token, consent_sent_at, consent_phone')
+    .eq('id', weddingId)
+    .eq('owner_vendor_id', ownerVendorId)
+    .maybeSingle();
+  const previous = {
+    consent_token:   (prior && prior.consent_token)   || null,
+    consent_sent_at: (prior && prior.consent_sent_at) || null,
+    consent_phone:   (prior && prior.consent_phone)   || null,
+  };
+
   const { data, error } = await supabase
     .from('weddings')
     .update({
@@ -441,7 +476,39 @@ async function mintConsentToken(supabase, { ownerVendorId, weddingId, phone }) {
     .select('id, slug, title, consent_token, consent_sent_at')
     .maybeSingle();
   if (error) throw error;
-  return data || null;
+  return data ? { ...data, previous } : null;
+}
+
+/**
+ * F-40.240 · PUT THE OLD TOKEN BACK.
+ *
+ * Called ONLY when the send reported `sent: false`. It restores the three
+ * consent columns to exactly what `mintConsentToken` read before it wrote —
+ * INCLUDING when all three were null, which is the common case: a first attempt
+ * that fails leaves the row as though the vendor had never pressed, rather than
+ * leaving a token nobody was ever sent.
+ *
+ * ⚠ BEST-EFFORT, AND IT SAYS SO. If the restore itself fails, the SEND failure is
+ * still the thing the vendor needs to hear about, so this reports and does not
+ * throw. A restore that masked the original error would be the worse trade.
+ */
+async function restoreConsentToken(supabase, { ownerVendorId, weddingId, previous }) {
+  if (!previous) return false;
+  const { error } = await supabase
+    .from('weddings')
+    .update({
+      consent_token:   previous.consent_token,
+      consent_sent_at: previous.consent_sent_at,
+      consent_phone:   previous.consent_phone,
+      updated_at:      new Date().toISOString(),
+    })
+    .eq('id', weddingId)
+    .eq('owner_vendor_id', ownerVendorId);
+  if (error) {
+    console.error(`[consent] restore failed for wedding ${weddingId}: ${error.message}`);
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -803,7 +870,7 @@ module.exports = {
   listForOwner, getForOwner, creditsFor, photosFor,
   createWedding, addCredit, publishWedding, addPhoto, deletePhoto,
   resolveCoupleForEvent, consentSeedFor,
-  mintConsentToken, findWeddingByConsentToken, setConsentByToken,
+  mintConsentToken, restoreConsentToken, findWeddingByConsentToken, setConsentByToken,
   checkConsentLastFour, lastFourOf, CONSENT_MAX_ATTEMPTS,
   findCreditByToken, settleCredit,
   publicRoll, publicWedding, isLinkable, teamSet, teamTargets,

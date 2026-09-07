@@ -992,7 +992,22 @@ section('10c. E.164 at the transport, a log at the door');
   // ⚠ AND THE GUARD FIRES BEFORE THE REQUEST, NOT AFTER. A refusal that arrives
   // as a Meta 200 is not a refusal — that is the whole of F-40.185.
   const mc = code('src/lib/metaCloud.js');
-  ok('assertE164 is called inside postMessage', /async function postMessage[\s\S]{0,400}assertE164\(body/.test(mc));
+  // ── AMENDED BY LABEL — F-40.250 · RATIFY-OR-REVERT ────────────────────────
+  // This read `assertE164(body` — the ARGUMENT SHAPE, not the property. F-40.250
+  // made the guard normalise before it refuses, so the call became
+  // `body.to = assertE164(normalizeTo(toE164(body.to)))` and this cell reddened
+  // on a correct build. Fifth time this arc that a cell pinned to a shape has
+  // gone red on lawful growth; the count moves, the property does not.
+  //
+  // IT ASSERTS MORE THAN BEFORE, not less: the guard must be CALLED inside
+  // postMessage AND its result ASSIGNED BACK. Validating without assigning would
+  // let a ten-digit number pass the guard and still be SENT as ten digits —
+  // F-40.185 re-created by the line curing it, which is exactly what the G2
+  // seat's bench caught by driving the real post.
+  ok('assertE164 is called inside postMessage',
+    /async function postMessage[\s\S]{0,900}assertE164\(/.test(mc));
+  ok('and its result is assigned back to body.to (F-40.250)',
+    /body\.to\s*=\s*assertE164\(/.test(mc));
   ok('and normalizeTo carries no guard', !/function normalizeTo[\s\S]{0,200}throw/.test(mc));
 }
 
