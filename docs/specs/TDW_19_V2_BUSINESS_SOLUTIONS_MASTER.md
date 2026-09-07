@@ -252,3 +252,15 @@ Block 19 is SEALED when every phase G0–G7 is built and walked on the founder's
 - **§5 I3** = `instagram_business_manage_insights` (R-40.6); I7/I8 parked (R-40.5).
 - **§8 answered:** 4 one generic + annexes (R-40.36) · 5 deposit 30% editable (R-40.37) · 6 free at beta (R-40.39) · 7 a hand-entered muhurat list (R-40.38) · 9 the couple's switch, off by default (R-40.9, built G1.1c). **Open: none.** The lawyer's guidance (R-40.43) and yes on v3 (R-40.46) govern G3.2's instrument.
 - **§6 gates:** the five templates Active Utility (`tdw_wedding_credit`, `tdw_wedding_consent`, `tdw_contract_sign`, `tdw_contract_sign_otp` AUTH, and the review ask MARKETING); F-40.123: the category is the Manager's to decide.
+
+---
+## AMENDMENT 3 · 2026-09-08 (CE-40; band 7 §7)
+- **§2.4 restated as R-40.118:** every Business Solutions plane serves the vendor's past events, her events not on TDW, and outsiders — or states at the writer why it cannot. First consequence: `reviews_asked` is re-keyed on the couple's number (F-40.238, G2 s2).
+- **§3:** R3 opens **inside** Business Solutions at `/vendor/your-website` (*Your website & SEO* on the hub row; *Your website* inside); the Storefront tile and room stand as before (R-40.132, superseding R-40.122). Contracts leaves the Rooms grid and is hosted by the hub (R-40.99).
+- **§4 G1.3:** built — the door on the roll, *Book the same team* (a server-side fan-out, never the intake), the printed cards, the reel dark behind a probe (F-40.16: no ffmpeg on the image); lead alerts Utility, untiered (R-40.72). **The wedding-page editor door is the next pass's first byte** (R-40.134).
+- **§4 G3.1:** built as sitting 1 (the date check, the switch R-40.77, JSON-LD) and sitting 2 (her page first, *What to fix*, the address + QR, *SEO — found on Google* on a **house** Search Console connection — R-40.261 — the sitemap door). P2 (own domain) waits on the registrar. **TDW's city/trade landing pages** join the roadmap (R-40.135).
+- **§4 G3.2:** built through sitting 3 — v4 (R-40.106/.121), the profile sheet pre-filled by trade (R-40.114–.117), the room designed as a vendor uses it (R-40.120, .124–.127), the sealed copy to both parties (F-40.196).
+- **§4 G3.4:** built — the collector, `tdw_payment_reminder`, one window at 3 days, the ledger outlives the schedule; sitting 2 = F-40.215.
+- **§4 G5.1:** built through sitting 2 — the peer found by search (R-40.104), told (R-G51.15), withdrawable (R-40.107).
+- **§6 gates:** templates Active on The Dream Wedding Direct: `tdw_wedding_credit`, `tdw_wedding_consent`, `tdw_review_request` (MARKETING), `tdw_contract_sign`, `tdw_contract_sign_otp` (AUTH), `tdw_payment_reminder`, `tdw_lead_alert_utility`, `tdw_referral_alert`, `tdw_contract_copy` (Document header). Google OAuth client on `tdw-business-solutions` (Testing; publish prerequisites in `TDW_INFRA_GOOGLE_OAUTH.md`).
+- **§7:** the seven-ink law (R-40.129) is the shell's palette.
