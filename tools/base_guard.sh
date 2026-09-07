@@ -85,11 +85,32 @@ esac
 
 git fetch -q origin || refuse "could not fetch origin"
 
+# ── F-40.147 · COMPARE COMMITS, NOT SPELLINGS ────────────────────────────────
+# This compared `git rev-parse --short HEAD` against the base AS STRINGS. Both
+# clones leave `core.abbrev` unset, so git picks a length by repo size — a seat's
+# clone abbreviated to EIGHT and the founder's to SEVEN, and the guard refused
+# `6967978e` against `6967978`: THE SAME COMMIT, refused on spelling.
+#
+# ⚠ THE FALSE REFUSAL IS THE CHEAP HALF. The expensive half is that a seat whose
+# clone abbreviates longer emits bases NO founder checkout can ever match — every
+# such delivery a coin-flip, and the ones that landed did so by luck. Eight round
+# trips this week.
+#
+# `$BASE^{commit}` resolves 7, 8 or a full 40 to the same object, so a genuinely
+# different commit still refuses — the guard is not loosened, it is asked the
+# question it always meant to ask. `2>/dev/null` keeps an unknown base refusing
+# rather than erroring, and the empty-string compare below is what makes that so.
+BASE_FULL=$(git rev-parse "${BASE}^{commit}" 2>/dev/null)
+HEAD_FULL=$(git rev-parse "HEAD^{commit}" 2>/dev/null)
 HEAD_SHORT=$(git rev-parse --short HEAD 2>/dev/null)
-[ "$HEAD_SHORT" = "$BASE" ] || refuse "HEAD is $HEAD_SHORT, base is $BASE — the local checkout is not on the base"
+[ -n "$BASE_FULL" ] || refuse "base $BASE is not a commit this clone knows — fetch, or check the base"
+[ "$HEAD_FULL" = "$BASE_FULL" ] || refuse "HEAD is $HEAD_SHORT, base is $BASE — the local checkout is not on the base"
 
 REMOTE_SHORT=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null)
-[ "$REMOTE_SHORT" = "$BASE" ] || refuse "origin/$BRANCH is $REMOTE_SHORT, base is $BASE — the branch moved beneath this delivery (R-38.16)"
+# Same cure, same reason: R-38.16's check must fire on a MOVED BRANCH, never on
+# a differently-spelled hash.
+REMOTE_FULL=$(git rev-parse "origin/$BRANCH^{commit}" 2>/dev/null)
+[ "$REMOTE_FULL" = "$BASE_FULL" ] || refuse "origin/$BRANCH is $REMOTE_SHORT, base is $BASE — the branch moved beneath this delivery (R-38.16)"
 
 DIRT=$(git status --porcelain)
 if [ -n "$DIRT" ]; then
