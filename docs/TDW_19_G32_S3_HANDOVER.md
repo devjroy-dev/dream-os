@@ -131,3 +131,27 @@ Both marked `⚠ VETO` in the source at the byte.
 - The Send door still refuses on none of the six required fields; the room is the one home for the rule (sitting 2's note stands).
 - `PUBLIC_SCHEMA.md` regen for 0139–0146.
 - `G32V4_VETO_SHEET.md` rows the prototype superseded are not edited; the prototype is the sheet from R-40.120.
+
+---
+
+# PACKET 3 · THE FOUNDER'S WALK (DEV440, 2026-09-07 20:47–20:56) — what it found, what this packet cures
+
+**Bases:** `dream-os ae781f5` · `dreamos-pwa 10dbce8`. The walk itself: `+ New contract → Someone new → 8595356978 → record → Add a function (Sangeet, 2026-09-08) → Preview and send → Send`, on a photography vendor. Railway: `[clients:resolveOrCreate] created new client 27a25f43 … for vendor 23165e38`. The card's mechanism held end to end; three things did not.
+
+## 11 · THE WHATSAPP THAT NEVER LEFT — the door had no send arm
+
+`POST /:id/send-to-couple` opened the signing and returned `sent: false` under **both** flag states; with `CONTRACT_SIGN_SEND_ENABLED=1` (set in production — a fact this seat had carried as "unset" from sitting 2's note and stated as current, F-40.130's shape, on record) it returned a hardcoded sentence about the template. Census at `ae781f5`: **no `sendWa` call for `tdw_contract_sign` anywhere in `src/`.** The template has been Active since 2026-09-06 (b56 §10). The room did the honest thing with what the door gave it: *Link copied — sending is not open yet*.
+
+**Cure:** `contractSend.js sendSignLink` — vendor lane, `tdw_contract_sign` (`owner · functions · link`), the number to **E.164 through `toE164`** (F-40.185's cousin: ten digits typed), one `contract_sends` row per attempt with the reason as `status`. The door calls it when the flag is on and returns the send's own answer. b56 §16, ten cells, three mutations RED→GREEN; **282/282**. Candidate finding — chair to allocate.
+
+## 12 · THE ESCAPE BLEED — F-40.199's class, 35 sites
+
+JSX text and JSX attribute strings do not interpret backslash-u escapes; the room's first cut used them in both. A vendor read `It\u2019s saved` on her own screen. Cure: every escape in the file is now the character itself (82 replaced, string literals included; `split(' — ')` byte-identical). b57 §11 reds on any escape returning; the mutation was run. Candidate finding — chair to allocate.
+
+## 13 · THE FOUNDER'S RULING ON THE GLASS — the missing rows are doors
+
+*Before you can send* now lists each blank as a tap: record rows open the record, policy rows open her policies (and come back). `requiredRows` carries `where`. Ruled by the founder on the walk, 2026-09-07.
+
+## 14 · WHAT THE WALK PROVED
+
+Compose from a name and a number, the manual function on the record, autosave, the thread, the checklist naming `Your fee` and `Who signs for you`, Send appearing once both were filled, the sent state opening on *Waiting for …*: all on glass. b57 187/187, b56 282/282.

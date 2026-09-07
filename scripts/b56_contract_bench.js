@@ -1380,6 +1380,33 @@ section('15. sitting 3 — the vendor\'s own words, her own functions, this coup
   }
 }
 
+// ══ §16 — THE SIGN LINK IS SENT (sitting 3, the founder's walk of 2026-09-07) ═══
+//
+// MUTATION PROOFS (RED then GREEN at the seat):
+//   16a  put the hardcoded `not approved` sentence back in the door   → 16a flips RED
+//   16b  drop toE164 from sendSignLink                                 → 16b flips RED
+//   16c  skip recordSend on the failure branch                         → 16c flips RED
+section('16. the sign link is sent, recorded, and E.164');
+{
+  const SEND = require(path.join(ROOT, 'src/lib/vendor/contractSend.js'));
+  const door = code('src/api/vendor/contracts.js');
+  const sendSrc = code('src/lib/vendor/contractSend.js');
+  ok('the door sends when the flag is on', /if \(!flagOn\) \{[\s\S]{0,300}\}\s*const src = await contractPdfSource[\s\S]{0,900}await sendSignLink\(supabase/.test(door));
+  ok('the hardcoded template sentence is gone', !/not approved on the sending WABA/.test(door));
+  ok('sent is the send\u2019s answer, never a literal', /sent: s\.sent, reason: s\.reason/.test(door) && !/sent: false,\s*reason: flagOn/.test(door));
+  ok('functions come from the one home', /src\.functions \|\| \[\]/.test(door) && /contractPdfSource\(supabase, req\.vendor\.id, req\.params\.contractId\)/.test(door));
+  ok('the arm rides the vendor lane on tdw_contract_sign', /SIGN_TEMPLATE_KEY = 'contract_sign'/.test(sendSrc) && /line: 'vendor',\s*to,\s*templateKey: SIGN_TEMPLATE_KEY/.test(sendSrc));
+  ok('the number is E.164 in the arm and nowhere else', /toPhone \? toE164\(toPhone\) : null/.test(sendSrc) && !/toE164/.test(door));
+  const rows = [];
+  const db = { from: () => ({ insert: async (r) => { rows.push(r); return {}; } }) };
+  const noLine = await SEND.sendSignLink(db, { contractId: 'k1', vendorId: VENDOR, toPhone: '8595356978', owner: 'X', functionsText: 'Sangeet', link: 'https://t/sign/a' });
+  ok('with no FROM number the refusal is named, not swallowed', noLine.sent === false && noLine.reason === 'line_not_configured');
+  ok('and it is a row on contract_sends with the reason as status', rows.length === 1 && rows[0].status === 'line_not_configured' && rows[0].template_key === 'contract_sign' && rows[0].recipient === 'client');
+  ok('ten digits went out as +91 (F-40.185\u2019s cousin)', rows[0].to_phone === '+918595356978');
+  const noPhone = await SEND.sendSignLink(db, { contractId: 'k1', vendorId: VENDOR, toPhone: null, link: 'x' });
+  ok('no number is no_phone, recorded', noPhone.reason === 'no_phone' && rows[1].status === 'no_phone' && rows[1].to_phone === null);
+}
+
 console.log(`\n${pass}/${pass + fail} cells green.`);
 process.exit(fail ? 1 : 0);
 

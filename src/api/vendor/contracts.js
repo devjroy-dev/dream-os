@@ -32,7 +32,9 @@ const asyncHandler  = require('../../lib/asyncHandler');
 const { ok: okRes, err: errRes } = require('../../lib/response');
 const C = require('../../lib/vendor/contracts');
 const { getUploadUrl, finalizeContract, getDownloadUrl } = C;
-const { renderContract, renderStandardAgreement } = require('../../lib/vendor/contractSource');
+const { renderContract, renderStandardAgreement, contractPdfSource } = require('../../lib/vendor/contractSource');
+const { sendSignLink } = require('../../lib/vendor/contractSend');
+const { formatDate } = require('../../lib/format');
 const { siteBase } = require('../../lib/vendor/creditInvite');
 // ── THE MAP'S ONE HOME (F4). Read by this door and by the pure renderer, and
 // owned by neither — `contractAnnex.js` takes no supabase and must never take
@@ -350,17 +352,31 @@ router.post('/:contractId/send-to-couple', ...authMw, asyncHandler(async (req, r
 
   const r = await C.openSigning(supabase, req.vendor.id, req.params.contractId, { signerPhone: phone });
   if (!r.ok) return errRes(res, 400, r.error);
+  const sign_url = `${siteBase()}/sign/${r.token}`;
 
+  // ── THE SEND — sitting 3, the founder's walk of 2026-09-07 ───────────────
+  // Until this cut the door returned `sent: false` under BOTH flag states, and
+  // under `=1` a sentence about the template that read nothing — the flag was
+  // set in production and no message existed to send. The flag now does what
+  // its name says; the result is the send's, never assumed. NEVER A FALSE DONE
+  // still holds: `sent` is Meta's answer, and a refusal comes back as a reason.
   const flagOn = String(process.env.CONTRACT_SIGN_SEND_ENABLED || '') === '1';
-  return okRes(res, {
-    contract_id: req.params.contractId,
-    sign_url: `${siteBase()}/sign/${r.token}`,
-    sent: false,
-    // NEVER A FALSE DONE. The template is dark, so nothing was sent and the reason is
-    // named rather than left for a walk to discover.
-    reason: flagOn ? 'template tdw_contract_sign is not approved on the sending WABA'
-                   : 'CONTRACT_SIGN_SEND_ENABLED is not set',
+  if (!flagOn) {
+    return okRes(res, { contract_id: req.params.contractId, sign_url, sent: false,
+                        reason: 'CONTRACT_SIGN_SEND_ENABLED is not set' });
+  }
+  const src = await contractPdfSource(supabase, req.vendor.id, req.params.contractId);
+  const owner = (src.ok && src.vendor && src.vendor.business_name) || null;
+  // `functions` is the template's second variable — the same rows clause 3 prints,
+  // events or manual, from the one home (`functionsForContract`).
+  const functionsText = src.ok
+    ? (src.functions || []).map((f) => [f.title, formatDate(f.event_date)].filter(Boolean).join(' \u00b7 ')).join(', ')
+    : '';
+  const s = await sendSignLink(supabase, {
+    contractId: req.params.contractId, vendorId: req.vendor.id,
+    toPhone: phone, owner, functionsText, link: sign_url,
   });
+  return okRes(res, { contract_id: req.params.contractId, sign_url, sent: s.sent, reason: s.reason, wamid: s.wamid });
 }));
 
 // POST /:id/deposit — vendor-marked only (master §7, veto row 52)

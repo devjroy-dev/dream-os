@@ -206,4 +206,62 @@ async function sendSealedCopy(supabase, {
   return { attempted: true, reason: null, results };
 }
 
-module.exports = { sendSealedCopy, TEMPLATE_KEY, SIGNED_URL_TTL };
+// ── THE SIGN LINK — THE SEND THAT `send-to-couple` NEVER HAD ─────────────────
+// G3.2 sitting 3, founder's walk of 2026-09-07: `CONTRACT_SIGN_SEND_ENABLED=1` in
+// production and no WhatsApp arrived, because the door opened the signing and then
+// returned `sent: false` with a hardcoded sentence — no `sendWa` call existed for
+// `tdw_contract_sign` anywhere in `src/` (census at `ae781f5`: zero). This is that
+// arm, in the file that already owns contract sends, recorded on the same table.
+//
+// ⚠ THE NUMBER IS E.164 HERE AND NOWHERE ELSE. F-40.185 was this door's own cousin:
+// ten digits handed to Meta, Meta answered 200, nothing arrived. `toE164` is the
+// estate's one home for the shape and the client row keeps whatever she typed.
+// ⚠ ONE RECORD PER ATTEMPT, SUCCESS OR FAILURE — `recordSend`'s own law. A
+// refusal here is a `contract_sends` row with `status = <reason>`, which is how a
+// walk that says "nothing arrived" gets an answer by SELECT rather than by guess.
+const SIGN_TEMPLATE_KEY = 'contract_sign';   // templates.js — tdw_contract_sign · owner · functions · link
+
+async function sendSignLink(supabase, { contractId, vendorId, toPhone, owner, functionsText, link }) {
+  const { toE164 } = require('../phone');
+  const to = toPhone ? toE164(toPhone) : null;
+  const base = {
+    contract_id: contractId, vendor_id: vendorId, recipient: 'client',
+    to_phone: to, template_key: SIGN_TEMPLATE_KEY,
+  };
+  if (!to) {
+    await recordSend(supabase, { ...base, wamid: null, status: 'no_phone' });
+    return { sent: false, reason: 'no_phone', wamid: null };
+  }
+  try {
+    const out = await sendWa({
+      line: 'vendor',
+      to,
+      templateKey: SIGN_TEMPLATE_KEY,
+      vars: {
+        owner:     owner || 'your vendor',
+        functions: functionsText || 'your wedding',
+        link,
+      },
+      supabase,
+    });
+    const wamid = (out && (
+      (out.result && out.result.wamid) || out.wamid
+      || (out.messages && out.messages[0] && out.messages[0].id)
+    )) || null;
+    await recordSend(supabase, { ...base, wamid, status: 'sent' });
+    console.log(`[contractSend:sign] contract=${contractId} client=${wamid || 'sent'}`);
+    return { sent: true, reason: null, wamid };
+  } catch (e) {
+    const reason = (e && e.name === 'WaOptedOutError') ? 'opted_out'
+                 : (e && (e.code || e.name)) || 'send_failed';
+    await recordSend(supabase, {
+      ...base, wamid: null, status: reason,
+      error_code:  (e && e.code) ? String(e.code) : null,
+      error_title: (e && e.message) ? String(e.message).slice(0, 200) : null,
+    });
+    console.warn(`[contractSend:sign] contract=${contractId} client=${reason} ${e && e.message ? e.message.slice(0, 120) : ''}`);
+    return { sent: false, reason, wamid: null };
+  }
+}
+
+module.exports = { sendSealedCopy, sendSignLink, TEMPLATE_KEY, SIGN_TEMPLATE_KEY, SIGNED_URL_TTL };
