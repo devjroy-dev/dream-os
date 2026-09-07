@@ -1,0 +1,92 @@
+# scripts/floor-manifest-g51-s2-dreamos.txt
+# TDW_19 · BLOCK 19 · G5.1 SITTING 2 — THE dream-os HALF.
+# The peer is found (R-40.104), the peer is told (R-G51.15), and she may
+# withdraw from being found (R-40.107).
+#
+# BASE 40fe6a3f7bfdbc3f6190e93a73dc507b6532a3f2 — RE-DERIVED AT THE CUT, AND IT
+# HAD MOVED. The floor above ran at 85bdac1; `git fetch` immediately before the
+# ZIP returned 40fe6a3, three commits on (G3.2-pre v4 dream-os, its handover, and
+# G3.2 sitting 1's). R-38.16: a moved tip between §0 and the cut is a report in
+# the handover, not a surprise in the apply.
+#
+# THE CARRY, in the estate's three steps and in this order:
+#   1. `git diff --name-only 85bdac1 origin/main` FIRST, against this list.
+#      The carry touches FOUR paths, all under docs/ — TDW_19_G32V4_HANDOVER.md,
+#      TDW_19_G32_S1_HANDOVER.md, and two contract specs. `comm -12` against the
+#      manifest returned ZERO lines: disjoint, proven before a byte moved.
+#   2. stash -u -> ff-merge -> stash pop.
+#   3. sha256 over all eight declared paths on BOTH sides. IDENTICAL — the set
+#      and the contents both, because "it looked fine" is not a check (F-38.25).
+# NO CARRY MOVED A BYTE.
+#
+# THE FLOOR IS NOT RE-RUN FOR THIS, and that is a derivation rather than a
+# shortcut: the carry is four markdown files, it touches no bench, no product
+# byte and no bench's subject, and F-38.27's disease is quoting a floor measured
+# against a tree that has since changed IN A WAY THAT COULD MOVE IT. Four docs
+# cannot. If the carry had touched one source file, the floor would be re-derived
+# at the new base rather than carried forward — sitting 1 §7 paid for that lesson.
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for. Every
+# path below was authored or edited by THIS seat in THIS sitting; nothing
+# inherited, nothing carried.
+#
+# ⚠ THE MANIFEST IS A SNAPSHOT, NOT A SUBSCRIPTION (sitting 1 §9.2, banked as a
+# law from this arc's own mistake). From the moment the floor starts, no file
+# named here moves until it exits. If one must change, the run is KILLED and
+# restarted — a floor measured over shifting source is not a floor. Sitting 1
+# broke this twice; this seat has not, and the handover is written AFTER the
+# floor exits for exactly that reason.
+#
+# 0142_referral_alerts.sql is FOUNDER-RUN in the Supabase editor BEFORE the ZIP
+# is applied. It is listed because it is dirt in this tree, not because the floor
+# executes it — and `searchPeers` names `peer_discoverable` in a predicate, so
+# applying the ZIP first would 400 the search until the migration lands. No bench
+# in this delivery touches a live database; §15 reads the .sql from DISK and says
+# so at every cell, because only `information_schema` reads the database.
+
+db/migrations/0142_referral_alerts.sql
+scripts/b51_referrals_bench.js
+scripts/floor-manifest-g51-s2-dreamos.txt
+src/api/vendor/me.js
+src/api/vendor/referrals.js
+src/lib/templates.js
+src/lib/vendor/referralAlert.js
+src/lib/vendor/referrals.js
+
+# ── WHAT MOVED, PER FILE ───────────────────────────────────────────────────
+# 0142                  NEW. Two written tables, both cited to their constraints
+#                       sections (R-40.27 as amended). Both unique indexes on
+#                       referral_alerts are PARTIAL — F9(b): a bare
+#                       UNIQUE(referral_id) would let one opted_out row block
+#                       the retry forever and make a peer un-tellable.
+# referralAlert.js      NEW. The plane's ONE home — the insert AND the told
+#                       read, together, so `.from('referral_alerts')` appears in
+#                       exactly one file. Shape copied from weddingLeadAlert.js
+#                       property for property.
+# referrals.js          forwardLead step 3 no longer reads vendor_roster
+#                       (R-40.104 repeals R-G51.1); searchPeers is new; `told`
+#                       joins the sender-side stamp; PEER_COLS moved here from
+#                       the router so the search and the write door share one
+#                       column list and one predicate.
+# api/vendor/referrals.js  GET /peers became a search. Address unchanged.
+# templates.js          One entry: referral_alert, Utility, vendor line.
+# me.js                 peer_discoverable joins ALLOWED_FIELDS and
+#                       BOOLEAN_FIELDS — AND the GET shape, the PATCH echo and
+#                       both vendor SELECTs, which the ruling did not name and
+#                       without which the switch renders frozen (F-40.209).
+# b51                   §4 rewritten for the repeal; §10–§16 new. 90 → 201 cells.
+#
+# ── TWO THINGS THIS FLOOR DOES NOT HIDE ────────────────────────────────────
+# F-40.220 · b51 §14 is RED BY DESIGN and it is a finding against the
+#   founder-vetoed template body, not against any code here. docs/TEMPLATES.md §1
+#   requires that every variable pair be separated by REAL WORDS; the approved
+#   body separates {{1}} and {{2}} with a comma. The cell was NOT relaxed to
+#   Meta's weaker whitespace test — that would have bought a green number with a
+#   real risk, which is the hollow green this estate forbids.
+#
+# A DECLARED SECOND HOME · `safeTerm` in referrals.js is byte-identical to
+#   `src/api/admin/search.js:101`, which is not exported and is not in this
+#   sitting's radius. Named in-comment with its twin, its reason and its owed
+#   cure — a micro lifting both into `src/lib/shared/` — rather than duplicated
+#   in silence. The sole-writer law forbids a silent second home; it does not
+#   forbid a declared one whose cure is sequenced.

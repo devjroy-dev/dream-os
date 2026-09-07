@@ -22,11 +22,62 @@
 'use strict';
 
 const { createLead, PEER_REFERRAL_SOURCE } = require('./leads');
+// G5.1 SITTING 2 — the alert's ONE home. This file calls it; it never writes
+// `referral_alerts` itself, and `toldByReferralIds` lives over there beside the
+// insert rather than here beside its caller, so `.from('referral_alerts')`
+// stays in exactly one file.
+const { alertPeerOfReferral, toldByReferralIds } = require('./referralAlert');
+
+const { normaliseCategory } = require('./categoryFraming');
 
 // The row shape the room and both lead records read. Explicit column list, never
 // `select('*')` — F-04.106 is what that costs.
 const REFERRAL_COLS =
   'id, from_vendor_id, to_vendor_id, lead_id, new_lead_id, note, created_at';
+
+// ── THE PEER SEARCH'S COLUMNS. Nothing else travels. ────────────────────────
+// Exactly the four the PUBLIC storefront card already serves a stranger
+// (`vendorCard.js:213`'s VENDOR_SELECT carries all four), which is precisely
+// the argument R-40.107 rests on: this directory publishes nothing she has not
+// already published. Add a fifth and that sentence stops being true and 0142's
+// §CONSTRAINTS paragraph becomes a lie. NOT the phone — the roster holds one,
+// `public.vendors` does not, and a picker that shipped it would hand one vendor
+// another's number for a list she only meant to choose from. A bench cell
+// reddens on any growth of this list.
+const PEER_COLS = 'id, business_name, category, city';
+
+// Two characters. Below it the door answers the ROSTER ONLY and never the whole
+// table: a one-character query against twenty-six vendors is not a search, it
+// is a directory dump wearing one.
+const MIN_PEER_QUERY = 2;
+// The server's cap, and the caller cannot raise it. Named rather than inlined
+// because it is the whole of F5's budget that lives in this file.
+const MAX_PEER_RESULTS = 30;
+
+// ── ⚠ A DECLARED SECOND HOME, AND ITS CURE IS NAMED ────────────────────────
+// `safeTerm` already exists at `src/api/admin/search.js:101`, byte-for-byte
+// this logic. It is not exported, and `src/api/admin/search.js` is NOT in this
+// sitting's radius — so promoting it to a shared module (which is the right
+// cure and would leave ONE home) is out of scope here.
+//
+// Written out rather than imported across a router boundary, and DECLARED
+// rather than quietly duplicated: the sole-writer law forbids a silent second
+// home, and the honest form of a duplication you cannot yet remove is a
+// comment naming the twin, the reason, and the owed cure. The cure is a micro
+// that lifts both into `src/lib/shared/`; until it runs, an edit to either must
+// be made to both, and a bench cell holds the two byte-identical.
+//
+// It strips PostgREST filter metacharacters AND LIKE wildcards together. Both
+// matter: a comma or a paren would break out of the `or(...)` filter string,
+// and a bare `%` would turn a two-character minimum into a match-everything.
+const MAX_PEER_TERM = 60;
+function safeTerm(raw) {
+  return String(raw == null ? '' : raw)
+    .slice(0, MAX_PEER_TERM)
+    .replace(/[,()"'\\%_*.:;<>=]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 // ── THE REFUSAL CODES ───────────────────────────────────────────────────────
 // Named constants rather than sentences, because the SENTENCE is the founder's
@@ -88,22 +139,56 @@ async function forwardLead(supabase, fromVendor, { leadId, toVendorId, note }) {
     return { ok: false, code: REFUSE.NO_PHONE, error: 'This enquiry has no phone number, so there is nothing to forward.' };
   }
 
-  // ── 3 · THE PEER MUST BE A LINKED PEER ON HER OWN ROSTER  (R-G51.1) ───────
-  // `member_vendor_id IS NOT NULL` is the whole predicate, and it is the same
-  // one src/api/vendor/collab.js:528 uses for its linked audience. A roster row
-  // with a NULL member is a manual phone-only entry — a name and a number the
-  // vendor typed — and it has no vendor behind it, so it has no Victor to take
-  // the enquiry from there. Forwarding to one would file a lead against nobody.
-  const { data: edge, error: edgeErr } = await supabase
-    .from('vendor_roster')
-    .select('id, member_vendor_id')
-    .eq('owner_vendor_id', fromVendor.id)
-    .eq('member_vendor_id', toVendorId)
+  // ── 3 · THE PEER MUST BE FORWARDABLE  (R-40.104, amending R-G51.1) ────────
+  // ⚠ THIS BLOCK USED TO READ `vendor_roster`. THE FOUNDER REPEALED THAT.
+  //
+  // R-G51.1 made a linked roster edge the boundary of the exchange: you could
+  // hand work only to someone you had already worked with. The reasoning was
+  // sound and the effect was a closed loop — the vendor who most needs to pass
+  // an enquiry on is the one who has no peer for that trade yet, and the ruling
+  // guaranteed she would never find one. R-40.104 opens the door to any vendor
+  // on the platform; the roster survives as the SUGGESTION above the search box
+  // (`Worked with`), never as the edge of the world.
+  //
+  // ⚠ THE PREDICATE IS THREE CLAUSES AND ALL THREE ARE LOAD-BEARING. It is the
+  // same predicate the search door shapes the choice with, re-derived here
+  // because a client-side list is not a permission — sitting 1's own law,
+  // unchanged by the repeal.
+  //
+  //   status = 'active'          — a retired account has no Victor to take the
+  //                                enquiry. `public.vendors` has no
+  //                                `deleted_at`; `status` is how a vendor
+  //                                leaves (PUBLIC_SCHEMA.md:1198+, col 9).
+  //   discover_paused = false    — she un-published her storefront with the one
+  //                                control she was given, so she has published
+  //                                nothing, so R-40.107's consent reasoning
+  //                                does not reach her. `vendorCard.js:417`
+  //                                gates the public card on exactly this pair.
+  //   peer_discoverable = true   — R-40.107, her withdrawal from the directory.
+  //                                `.eq(true)` and never `.not('is', false)`: a
+  //                                NULL passes the second and not the first.
+  //
+  // ⚠ THE CODE STAYS `NOT_A_PEER` AND ITS MEANING WIDENED. A new code would
+  // grow `ForwardRefusalCode`, and the pwa's `refusalSentence` is exhaustive by
+  // type with no `default` — so it would stop compiling until the founder had
+  // vetoed a new sentence for a state the sheet already prevents. The three
+  // clauses above are all invisible from the sheet (the search never lists such
+  // a vendor), so this refusal reaches `refusalGeneric`, which is the right
+  // sentence for a state that should not be reachable and sometimes is.
+  const { data: peer, error: peerErr } = await supabase
+    .from('vendors')
+    .select('id, status, discover_paused, peer_discoverable')
+    .eq('id', toVendorId)
     .maybeSingle();
 
-  if (edgeErr) return { ok: false, error: `Could not read your roster: ${edgeErr.message}` };
-  if (!edge) {
-    return { ok: false, code: REFUSE.NOT_A_PEER, error: 'That vendor is not a peer on your roster.' };
+  if (peerErr) return { ok: false, error: `Could not read that vendor: ${peerErr.message}` };
+  if (!peer || peer.status !== 'active' || peer.discover_paused === true || peer.peer_discoverable !== true) {
+    // ONE REFUSAL FOR ALL FOUR CASES, AND THAT IS THE PRIVACY DECISION, not a
+    // shortcut. Distinguishing "no such vendor" from "she has withdrawn" would
+    // let any vendor confirm another's existence and read her switch — which
+    // defeats the switch on the first attempt. The sender learns only that the
+    // forward cannot land.
+    return { ok: false, code: REFUSE.NOT_A_PEER, error: 'That vendor cannot receive a forward.' };
   }
 
   // ── 4 · THE DEDUPE CHECK, BEFORE ANY WRITE  (R-G51.2 · F-40.84) ───────────
@@ -231,6 +316,30 @@ async function forwardLead(supabase, fromVendor, { leadId, toVendorId, note }) {
     };
   }
 
+  // ── 7 · THE PEER IS TOLD  (R-G51.15) ──────────────────────────────────────
+  // ⚠ AFTER THE RECORD, AND OUTSIDE ITS FAILURE PATH. The lead and the row are
+  // the durable half; the message is the courtesy. `alertPeerOfReferral` never
+  // throws outward and its result is not consulted here: an alert that failed
+  // must not turn a successful forward into a refusal on the sender's glass.
+  // That would be a false-NOT-done — the same family of lie as F-40.84's
+  // false-done, and just as forbidden.
+  //
+  // ⚠ AWAITED, NOT FIRE-AND-FORGET, and that is deliberate against the local
+  // habit. `logActivity` one file over is fired without an await because a
+  // ledger row is nobody's evidence; this write is the ONLY evidence the room
+  // has for its 「Told」 state, and an unawaited promise on a serverless
+  // container can be killed with the response. R-40.63's sibling reasoning: a
+  // thing nobody waits for is a thing nobody can prove ran.
+  //
+  // `referrer_name` is the SENDER'S REGISTERED business name, off her vendor
+  // row — the same value step 5 stamps on the peer's lead, and never a string
+  // from the request body.
+  await alertPeerOfReferral(supabase, {
+    referralId:   referral.id,
+    toVendorId,
+    referrerName: fromVendor.business_name || null,
+  });
+
   return { ok: true, lead_delivered: true, referral, new_lead_id: created.lead.id };
 }
 
@@ -312,7 +421,11 @@ async function referralStampsForLeads(supabase, vendorId, leadIds) {
   if (!Array.isArray(leadIds) || leadIds.length === 0) return { ok: true, sentBy: new Map(), receivedBy: new Map() };
 
   const [outRes, inRes] = await Promise.all([
-    supabase.from('lead_referrals').select('lead_id, to_vendor_id, note, created_at')
+    // `id` JOINS THE SELECT THIS SITTING — it is the key the 「Told」 read needs
+    // and the only column added. F-04.106's law cuts both ways: a SELECT must
+    // not ask for what no line uses, and it must not make a caller guess at a
+    // key it already had.
+    supabase.from('lead_referrals').select('id, lead_id, to_vendor_id, note, created_at')
       .eq('from_vendor_id', vendorId).in('lead_id', leadIds),
     supabase.from('lead_referrals').select('new_lead_id, from_vendor_id, note, created_at')
       .eq('to_vendor_id', vendorId).in('new_lead_id', leadIds),
@@ -336,9 +449,33 @@ async function referralStampsForLeads(supabase, vendorId, leadIds) {
     for (const p of peers || []) nameById.set(p.id, p.business_name);
   }
 
+  // ── THE 「Told」 STATE  (R-G51.15) ─────────────────────────────────────────
+  // ONE batched read for the whole page, the shape every other stamp on this
+  // door already takes. It returns the ids of forwards that carry a WAMID —
+  // never a status, never a flag state (see `toldByReferralIds`' own note on
+  // why `status: 'sent'` with a null wamid is not told).
+  //
+  // ⚠ IT RIDES INSIDE THE STAMP OBJECT AND IS NOT A NEW TOP-LEVEL WIRE KEY,
+  // and that is a decision about two things at once. First the ruling: `told`
+  // is a fact about ONE FORWARD, and `forwarded_to` is the only place on this
+  // wire where one forward is described. Second the radius: `LIST_WIRE_CENSUS`
+  // (leadSerializer.js:399-403) classifies TOP-LEVEL keys, so a new one there
+  // would redden `b36` leg C — which is exactly what happened to
+  // `forwarded_to`/`forwarded_by` when they joined (sitting 1 handover §10.5) —
+  // and `leadSerializer.js` is not this sitting's to touch. Inside the stamp,
+  // the key passes through `serializeLeadRows` untouched and no census moves.
+  const toldIds = await toldByReferralIds(supabase, (outRes.data || []).map(r => r.id));
+
   const sentBy = new Map();
   for (const r of outRes.data || []) {
-    sentBy.set(r.lead_id, { peer_name: nameById.get(r.to_vendor_id) || null, note: r.note, at: r.created_at });
+    sentBy.set(r.lead_id, {
+      peer_name: nameById.get(r.to_vendor_id) || null,
+      note: r.note,
+      at: r.created_at,
+      // ⚠ ONLY ON THE SENDER'S SIDE. The peer was the one told; a stamp on HER
+      // record saying she was told is noise about a message she is holding.
+      told: toldIds.has(r.id),
+    });
   }
   const receivedBy = new Map();
   for (const r of inRes.data || []) {
@@ -348,9 +485,119 @@ async function referralStampsForLeads(supabase, vendorId, leadIds) {
   return { ok: true, sentBy, receivedBy };
 }
 
+/**
+ * THE PEER SEARCH  (R-40.104). Who this vendor may forward to.
+ *
+ * ⚠ THIS IS A READ AND NOT A PERMISSION. `forwardLead` step 3 re-derives the
+ * same three-clause predicate server-side before it writes. This door SHAPES
+ * the choice; sitting 1's law is unchanged by the repeal.
+ *
+ * Returns three groups in ruled order — `worked_with` · `same_trade` ·
+ * `everyone` — each ALPHABETICAL by business name, each MUTUALLY EXCLUSIVE (a
+ * peer appears once, in the highest group she qualifies for), and each OMITTED
+ * WHEN EMPTY so the surface can suppress its head without inspecting lengths.
+ *
+ * ⚠ NOTHING RANKS. No rating, no distance, no count of forwards, no ordering by
+ * volume. Master §7 refuses a spend-ranked or score-ranked surface and the
+ * refusal reaches a picker as surely as a storefront; alphabetical is the only
+ * order that is not a judgement wearing a sort.
+ *
+ * ⚠ AND THE PHONE IS NOT A KEY (c-40.45). The kickoff named phone as a third
+ * search key. It is struck: `public.vendors` carries no phone at all — a
+ * vendor's number lives on `public.users.phone`, which nothing publishes — and
+ * a phone match answers "whose number is this", the reverse of what a storefront
+ * answers and the one direction no surface on this estate offers. The RESULTS
+ * carrying no phone (R-G11.6) would not have closed it: the MATCH is the
+ * disclosure.
+ */
+async function searchPeers(supabase, vendorId, { q, limit } = {}) {
+  const term = safeTerm(q);
+  const cap = Math.min(MAX_PEER_RESULTS, Math.max(1, parseInt(limit, 10) || MAX_PEER_RESULTS));
+
+  // HER ROSTER FIRST, ALWAYS — it is the `Worked with` group and it is also the
+  // whole answer when the box is empty. Linked edges only: a roster row with a
+  // NULL member is a name and a number she typed, with no vendor behind it and
+  // no Victor to take an enquiry. That predicate outlived R-G51.1's repeal
+  // because it was never about permission — it is about whether a row denotes
+  // a vendor at all.
+  const { data: edges } = await supabase
+    .from('vendor_roster')
+    .select('member_vendor_id')
+    .eq('owner_vendor_id', vendorId)
+    .not('member_vendor_id', 'is', null);
+  const rosterIds = new Set((edges || []).map(e => e.member_vendor_id).filter(Boolean));
+
+  // MY OWN TRADE, normalised through the ONE home. `vendors.category` carries
+  // no CHECK (censused against PUBLIC_SCHEMA.md's constraints sections: no
+  // category constraint exists), so it is free text and `Makeup` would sort
+  // away from `makeup` under a raw compare. `normaliseCategory` is where that
+  // question is already answered for the whole estate.
+  const { data: me } = await supabase
+    .from('vendors').select('id, category').eq('id', vendorId).maybeSingle();
+  const myTrade = normaliseCategory(me && me.category);
+
+  // ⚠ THE THREE CLAUSES, IDENTICAL TO `forwardLead` STEP 3. If these ever
+  // disagree, the sheet offers a peer the door refuses — which is the shape of
+  // every "why did nothing happen" defect in this estate's log.
+  let query = supabase
+    .from('vendors')
+    .select(PEER_COLS)
+    .eq('peer_discoverable', true)
+    .eq('discover_paused', false)
+    .eq('status', 'active')
+    .neq('id', vendorId)                       // she cannot forward to herself
+    .limit(cap);
+
+  // ── THE BUDGET (F5 as ruled) ───────────────────────────────────────────────
+  // Vendor-auth only (the router's own middleware) · a MINIMUM of two
+  // characters · a server-side cap this caller cannot raise past
+  // MAX_PEER_RESULTS · exactly one `ilike` group over two columns. Below the
+  // minimum the door answers the ROSTER ONLY — never the whole table, which is
+  // what a one-character query would otherwise mean.
+  const searching = term.length >= MIN_PEER_QUERY;
+  if (searching) {
+    query = query.or(`business_name.ilike.*${term}*,routing_handle.ilike.*${term}*`);
+  } else if (rosterIds.size === 0) {
+    return { ok: true, groups: [], searching: false };
+  } else {
+    query = query.in('id', [...rosterIds]);
+  }
+
+  const { data: rows, error } = await query;
+  if (error) return { ok: false, error: `Could not search vendors: ${error.message}` };
+
+  // MUTUALLY EXCLUSIVE, highest group wins. A peer listed twice would make the
+  // vendor wonder which one is the real one.
+  const worked = [], trade = [], every = [];
+  for (const v of rows || []) {
+    if (rosterIds.has(v.id)) worked.push(v);
+    else if (normaliseCategory(v.category) === myTrade) trade.push(v);
+    else every.push(v);
+  }
+  const byName = (a, b) => String(a.business_name || '').localeCompare(String(b.business_name || ''));
+
+  const groups = [
+    { key: 'worked_with', peers: worked.sort(byName) },
+    { key: 'same_trade',  peers: trade.sort(byName)  },
+    { key: 'everyone',    peers: every.sort(byName)  },
+  // EMPTY GROUPS DO NOT TRAVEL. The head is suppressed when its group is empty
+  // (founder-vetoed), and a surface that had to check lengths to know that
+  // would be deciding the rule a second time. The door decides it once.
+  ].filter(g => g.peers.length > 0);
+
+  return { ok: true, groups, searching };
+}
+
 module.exports = {
   forwardLead, getReferralRoom, referralStampsForLeads,
+  // G5.1 SITTING 2 · R-40.104 — the picker became a search, and it lives here
+  // beside `forwardLead` because the two share one predicate and a predicate
+  // with two homes is a sheet that offers what the door refuses.
+  searchPeers,
   // Exported for the bench: the refusal codes are CODE, not prose, and a cell
   // asserts the door returns one rather than a sentence the founder never saw.
   REFUSE, REFERRAL_COLS,
+  // Cells assert against these directly; a cell that re-declares a constant it
+  // is testing has stopped testing this file (D-38.1).
+  PEER_COLS, MIN_PEER_QUERY, MAX_PEER_RESULTS, safeTerm,
 };

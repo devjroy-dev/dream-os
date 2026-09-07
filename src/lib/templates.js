@@ -752,6 +752,72 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── THE REFERRAL ALERT — R-G51.15, G5.1 SITTING 2 ─────────────────────────
+  // A peer has been handed an enquiry by another vendor and learns of it only
+  // by opening the app, or never. Sitting 1 shipped the whole exchange and told
+  // nobody; its own handover named this as the sitting that makes the room
+  // worth opening.
+  //
+  // ⚠ SHIPS `pending` AND SENDS NOTHING. `sendWa`'s isApproved gate refuses
+  // this key until Meta returns Active and the founder flips this one field —
+  // no code push. `REFERRAL_ALERT_SEND_ENABLED` is the second, independent gate
+  // and is unset in every environment. Two gates, named separately, because
+  // they fail for different reasons and a walk must be able to say which one
+  // refused.
+  //
+  // UTILITY, DERIVED RATHER THAN PREFERRED. F-40.176 is the specimen: Meta
+  // silently dropped Swati's MARKETING lead alert with `131049` — the marketing
+  // throttle, which declines to a user who has not engaged recently — while Dev
+  // Roy's arrived because he had messaged that day. A referral alert is
+  // transactional notice about something that just happened on the peer's own
+  // account, so Utility is the honest classification and not a category dodge;
+  // and the vendors a MARKETING template fails are exactly the quiet ones this
+  // feature exists to reach. R-40.58 still stands over all of it: no seat
+  // reasons a template's category, the Manager is the authority, and this
+  // paragraph is a submission argument rather than a verdict.
+  //
+  // THE VARIABLES, and what is deliberately absent:
+  //   {{1}} the PEER'S OWN business name — her greeting, never the couple's.
+  //   {{2}} the REFERRER'S business name, read off the sender's vendor row by
+  //         the door and never off a request body (`forwardLead` takes the same
+  //         posture for `referrer_name`: a name a client could set would be a
+  //         forgery surface).
+  //   {{3}} her LEADS link — the work is on her Leads, not in the Referrals
+  //         room, which is `lead_alert_utility`'s own precedent one line up.
+  // ⚠ THE COUPLE IS NAMED NOWHERE. Not her name, not her city, not her date.
+  // A forward is one vendor's decision about her own enquiry; it is not consent
+  // to announce a stranger's wedding over WhatsApp to a business she has never
+  // heard of. R-G51.7 says TDW tells the couple nothing, and this is its
+  // mirror: TDW tells the peer nothing ABOUT the couple until she opens the
+  // lead she now lawfully holds.
+  //
+  // Shaped to docs/TEMPLATES.md §1: single line, no adjacent variables, none at
+  // body start or end. Deliberately parallel to `lead_alert_utility` — same
+  // three-slot rhythm, same closing clause — so a vendor who receives both
+  // reads one product and not two.
+  //
+  // [F-06.85: conditioned on a MECHANICAL fact — Meta's review state for
+  //  tdw_referral_alert. Mechanism: isApproved at the bottom of this file. When
+  //  that fact moves, this paragraph and `status` are re-read together.]
+  referral_alert: {
+    key: 'referral_alert',
+    name: 'tdw_referral_alert',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['vendor_name', 'referrer_name', 'leads_link'],
+    // FOUNDER-VETOED 2026-09-07 as proposed (G51_S2_VETO_SHEET row T2).
+    // ⚠ ONCE FILED, THIS STRING IS IMMUTABLE. Meta holds the body character for
+    // character; a registry that has drifted from the filed one builds a
+    // payload Meta rejects at send time. R-40.57's estate-wide apostrophe rule
+    // EXCLUDES template bodies for exactly this reason — the em dash below is
+    // the one it shares with its sibling, and nothing here is "tidied".
+    body:
+      "Hi {{1}}, {{2}} just passed you an enquiry on The Dream Wedding. " +
+      "Open your Leads to see it: {{3}} \u2014 reply here if you need a hand.",
+    status: 'pending',
+  },
+
   // ── TDW_07 P5 · F-07.40 — THE VENDOR-LANE ENQUIRY CARRIER ──────────────────
   // RE-DERIVED AT 9b84c6d (this sitting, by command against this registry, not
   // carried from the prior sitting's claim). The vendor line's approved set is

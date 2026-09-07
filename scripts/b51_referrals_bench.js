@@ -18,6 +18,17 @@
 //   §6  delete the step-4 dedupe refusal from forwardLead        → §6 flips RED
 //   §6b add a tier gate to forwardLead                          → §6b flips RED
 //   §8b delete `forwarded_by` from the leads list mapper         → §8b flips RED
+//   ── SITTING 2 ──
+//   §10 drop `.eq('peer_discoverable', true)` from searchPeers   → §10 flips RED
+//   §10 drop `.neq('id', vendorId)` from searchPeers             → §10 flips RED
+//   §10 return empty groups instead of filtering them out        → §10 flips RED
+//   §10 raw category compare instead of normaliseCategory        → §10 flips RED
+//   §11 read `out.wamid` instead of `out.result.wamid`           → §11 flips RED
+//   §11 delete the recordAlert call on the failure path          → §11 flips RED
+//   §12 set `told` from status instead of from a wamid           → §12 flips RED
+//   §14 flip referral_alert's status to 'approved'               → §14 flips RED
+//   §15 drop the WHERE from uq_referral_alerts_referral_sent     → §15 flips RED
+//   §16 remove peer_discoverable from BOOLEAN_FIELDS             → §16 flips RED
 //       (BEHAVIOURALLY INERT — see §6's own note. The guard it removes is
 //        outcome-equivalent to createLead's own dedupe on this path, so §2's
 //        cells stay green. The cell that catches it is structural, and that
@@ -39,8 +50,38 @@ const path = require('path');
 const fs   = require('fs');
 const ROOT = path.resolve(__dirname, '..');
 
+// ⚠ ORDER IS LOAD-BEARING. `referralAlert.js` DESTRUCTURES `{ sendWa }` at
+// module load, so the export must be replaced BEFORE anything that requires it
+// is required. Patching after the fact would leave the real transport bound and
+// this bench would attempt a live Meta POST. Node's module cache is what makes
+// the swap reach the destructure: one object, mutated before the reader runs.
+const sendWaMod = require(path.join(ROOT, 'src/lib/sendWa.js'));
+let waCalls = [];
+let waBehaviour = 'ok';
+sendWaMod.sendWa = async (opts) => {
+  waCalls.push(opts);
+  if (waBehaviour === 'opted_out') { const e = new Error('opted out'); e.name = 'WaOptedOutError'; throw e; }
+  if (waBehaviour === 'boom')      { const e = new Error('meta said no'); e.code = '131049'; throw e; }
+  // THE RETURN SHAPE IS sendWa's OWN, asserted against the real file in §11 so
+  // a future flattening reds both sides at once (F-40.210's cell, inherited).
+  return { sent: true, mode: 'template', key: opts.templateKey, from: 'X', to: opts.to,
+           payload: {}, result: { ok: true, wamid: 'wamid.HBgM' + waCalls.length } };
+};
+
 const referrals = require(path.join(ROOT, 'src/lib/vendor/referrals.js'));
 const leadsLib  = require(path.join(ROOT, 'src/lib/vendor/leads.js'));
+const alertLib  = require(path.join(ROOT, 'src/lib/vendor/referralAlert.js'));
+const templates = require(path.join(ROOT, 'src/lib/templates.js'));
+
+// COMMENT-STRIPPED SOURCE. Three cells in sitting 1 read PROSE AS CODE — a
+// money cell matched the local `inRes`, a sole-writer cell counted a table named
+// in a comment, and §8b's regex could not cross a `)`. This sitting's own census
+// hit the same wall within the hour: `grep "from('referral_alerts')"` returned
+// TWO files, and the second was the comment in referrals.js explaining why there
+// is only one. Every textual assertion below reads `codeOf`, never the raw file.
+const codeOf = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')
+  .split('\n').map((l) => l.replace(/(^|[^:'"`\\])\/\/.*$/, '$1')).join('\n');
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => {
@@ -56,7 +97,8 @@ const fromVendor = { id: FROM, business_name: 'Dev Roy Photography' };
 
 // ── the in-memory supabase double (transport only) ──────────────────────────
 function makeDb(seed = {}) {
-  const tables = { leads: [], vendors: [], vendor_roster: [], lead_referrals: [], clients: [], ...seed };
+  const tables = { leads: [], vendors: [], vendor_roster: [], lead_referrals: [],
+                   referral_alerts: [], users: [], clients: [], ...seed };
   let uid = 0;
   const nextId = (p) => `${p}-${++uid}`;
 
@@ -68,9 +110,26 @@ function makeDb(seed = {}) {
     q.is  = (c, v) => { q._filters.push(r => (r[c] ?? null) === v); return q; };
     q.in  = (c, vs) => { q._filters.push(r => vs.includes(r[c])); return q; };
     q.not = (c, _op, v) => { q._filters.push(r => (r[c] ?? null) !== v); return q; };
+    q.neq = (c, v) => { q._filters.push(r => r[c] !== v); return q; };
+    // PostgREST's `or` takes `col.ilike.*term*` clauses joined by commas. PARSED
+    // here rather than accepted blindly, so a cell can prove WHICH columns the
+    // door searches — a double that ignored the filter string would let the
+    // phone key (c-40.45) come back and redden nothing.
+    q.or = (expr) => {
+      const clauses = String(expr).split(',').map((c) => {
+        const m = c.match(/^([a-z_]+)\.ilike\.\*(.*)\*$/i);
+        return m ? { col: m[1], term: m[2].toLowerCase() } : null;
+      }).filter(Boolean);
+      q._orCols = clauses.map((c) => c.col);
+      q._filters.push((r) => clauses.some((c) => String(r[c.col] == null ? '' : r[c.col]).toLowerCase().includes(c.term)));
+      return q;
+    };
     q.order = () => q;
-    q.limit = () => q;
-    const matched = () => rows.filter(r => q._filters.every(f => f(r)));
+    q.limit = (n) => { q._limit = n; return q; };
+    const matched = () => {
+      const hit = rows.filter(r => q._filters.every(f => f(r)));
+      return q._limit ? hit.slice(0, q._limit) : hit;
+    };
     q.maybeSingle = async () => ({ data: matched()[0] || null, error: null });
     q.single      = async () => ({ data: matched()[0] || null, error: null });
     q.then = (res) => res({ data: matched(), error: null });   // bare await
@@ -111,14 +170,47 @@ const PRIYA = () => ({
   raw_message: 'Hi, saw your work', deleted_at: null, client_id: null, draft_meta: null,
   created_at: '2026-08-28T00:00:00Z',
 });
+// ⚠ THE FIXTURE IS THE PRODUCTION ONE, READ AT ORIGIN, NOT INVENTED.
+// DEV440 is `photography`; MAKEUPBYSWATIROY is `makeup`. They are NOT the same
+// trade, which is why the kickoff's acceptance card was wrong to say she appears
+// under `Same trade` — she appears under `Worked with`, from sitting 1's own
+// forward. A bench seeded with two photographers would have agreed with the
+// card and proved nothing.
+const V = (id, name, cat, city, over = {}) => ({
+  id, business_name: name, category: cat, city,
+  // ⚠ THE HANDLE WAS MISSING FROM THE FIRST CUT and the handle cell went RED on
+  // correct code. A fixture that omits a column the door searches is a cell that
+  // tests nothing — the same family as sitting 1's four instrument defects.
+  routing_handle: name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20),
+  status: 'active', discover_paused: false, peer_discoverable: true,
+  user_id: 'user-' + id, tier: 'essential', ...over,
+});
 const seedBase = () => ({
   leads: [PRIYA()],
   vendors: [
-    { id: FROM, business_name: 'Dev Roy Photography', category: 'photography', city: 'Delhi' },
-    { id: TO,   business_name: 'DROY550',             category: 'photography', city: 'Jaipur' },
+    V(FROM, 'Dev Roy Photography',  'photography', 'Delhi'),
+    V(TO,   'Make Up by Swati Roy', 'makeup',      'Delhi'),
   ],
-  vendor_roster: [{ id: 'r1', owner_vendor_id: FROM, member_vendor_id: TO, name: 'DROY550', category: 'photography', source: 'collab_accepted' }],
+  users: [
+    { id: 'user-' + FROM, phone: '+919888294440' },
+    { id: 'user-' + TO,   phone: '+918595356978' },
+  ],
+  vendor_roster: [{ id: 'r1', owner_vendor_id: FROM, member_vendor_id: TO, name: 'Make Up by Swati Roy', category: 'makeup', source: 'collab_accepted' }],
 });
+
+// The wider table the SEARCH has to sort, group and refuse.
+const seedSearch = () => {
+  const base = seedBase();
+  base.vendors.push(
+    V('v-zeta',   'Zeta Films',       'videography', 'Delhi'),   // same trade, alias-normalised
+    V('v-anchal', 'Anchal Photo Co',  'Photography', 'Mumbai'),  // same trade, case differs
+    V('v-hidden', 'Hidden House',     'photography', 'Delhi', { peer_discoverable: false }),
+    V('v-paused', 'Paused Studio',    'photography', 'Delhi', { discover_paused: true }),
+    V('v-gone',   'Retired Studio',   'photography', 'Delhi', { status: 'inactive' }),
+    V('v-jewel',  'Aurum Jewellery',  'jewellery',   'Delhi'),
+  );
+  return base;
+};
 
 (async () => {
 
@@ -205,24 +297,62 @@ section('3. the provenance token is distinct from Victor\'s word-of-mouth `refer
 
 // ══ §4 — THE PEER MUST BE A LINKED PEER · R-G51.1 ══════════════════════════
 // MUTATION: drop `.eq('member_vendor_id', toVendorId)` → §4 goes RED.
-section('4. only a linked peer on her own roster can receive a forward');
+section('4. the peer must be FORWARDABLE — R-40.104 repealed the roster boundary');
 {
-  const db = makeDb(seedBase());
-  const r = await referrals.forwardLead(db, fromVendor, { leadId: 'lead-priya', toVendorId: STRANGER, note: null });
-  ok('a vendor who is not on her roster is refused', r.ok === false && r.code === referrals.REFUSE.NOT_A_PEER);
-  ok('nothing was written for a stranger', db._tables.lead_referrals.length === 0);
+  // ⚠ THIS SECTION USED TO ASSERT THE OPPOSITE, AND ITS OLD TITLE IS THE POINT:
+  // "only a linked peer on her own roster can receive a forward". R-G51.1 made
+  // that the law and R-40.104 repealed it. The cell is REWRITTEN rather than
+  // deleted, so a reader of this file can see which ruling moved and when — a
+  // deleted cell tells nobody that the rule ever existed.
+  const db = makeDb(seedSearch());
+  const rStranger = await referrals.forwardLead(db, fromVendor, { leadId: 'lead-priya', toVendorId: 'v-anchal', note: 'Overflow.' });
+  ok('A VENDOR SHE HAS NEVER WORKED WITH NOW RECEIVES THE FORWARD — the repeal, as behaviour',
+     rStranger.ok === true && !!rStranger.referral);
+  ok('and the peer actually holds the lead', !!db._tables.leads.find(l => l.vendor_id === 'v-anchal'));
 
-  // The phone-only roster row — a manual entry with no vendor behind it.
-  const seed2 = seedBase();
-  seed2.vendor_roster = [{ id: 'r2', owner_vendor_id: FROM, member_vendor_id: null, name: 'Someone', phone: '+919800000000', source: 'manual' }];
-  const db2 = makeDb(seed2);
-  const r2 = await referrals.forwardLead(db2, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: null });
-  ok('a phone-only roster row is NOT a forwardable peer — it has no Victor to take it from there',
-     r2.ok === false && r2.code === referrals.REFUSE.NOT_A_PEER);
+  // The three clauses, each refused on its own, each with the SAME code and the
+  // SAME sentence — see the door's own note on why they are not distinguished.
+  for (const [id, why] of [
+    ['v-hidden', 'a vendor who withdrew from peer search (R-40.107) cannot be forwarded to'],
+    ['v-paused', 'a vendor who un-published her storefront cannot be forwarded to — she published nothing'],
+    ['v-gone',   'a vendor whose status is not active cannot be forwarded to'],
+  ]) {
+    const d = makeDb(seedSearch());
+    const r = await referrals.forwardLead(d, fromVendor, { leadId: 'lead-priya', toVendorId: id, note: null });
+    ok(why, r.ok === false && r.code === referrals.REFUSE.NOT_A_PEER);
+    ok(`and nothing was written for ${id}`, d._tables.lead_referrals.length === 0);
+  }
 
-  const rSelf = await makeDb(seedBase()) && await referrals.forwardLead(makeDb(seedBase()), fromVendor, { leadId: 'lead-priya', toVendorId: FROM, note: null });
+  const dGhost = makeDb(seedSearch());
+  const rGhost = await referrals.forwardLead(dGhost, fromVendor, { leadId: 'lead-priya', toVendorId: 'vendor-does-not-exist', note: null });
+  ok('a vendor id that names nobody is refused with the same code — the sender cannot probe existence',
+     rGhost.ok === false && rGhost.code === referrals.REFUSE.NOT_A_PEER);
+
+  // ⚠ THE PRIVACY PROPERTY, ASSERTED AS A BEHAVIOUR AND NOT AS A COMMENT.
+  // Four different worlds, one indistinguishable answer. If a future seat splits
+  // these into named codes to be "helpful", this cell reds — and it should,
+  // because distinguishing them turns the forward door into an oracle for
+  // whether a given vendor exists and whether she has hidden herself.
+  const answers = [];
+  for (const id of ['v-hidden', 'v-paused', 'v-gone', 'vendor-does-not-exist']) {
+    const d = makeDb(seedSearch());
+    const r = await referrals.forwardLead(d, fromVendor, { leadId: 'lead-priya', toVendorId: id, note: null });
+    answers.push(JSON.stringify({ ok: r.ok, code: r.code, error: r.error }));
+  }
+  ok('all four refusals are BYTE-IDENTICAL — the door is not an existence oracle',
+     new Set(answers).size === 1);
+
+  const rSelf = await referrals.forwardLead(makeDb(seedBase()), fromVendor, { leadId: 'lead-priya', toVendorId: FROM, note: null });
   ok('a self-forward is refused at the door, where she can be told why — never by a 500 from a CHECK',
      rSelf.ok === false && rSelf.code === referrals.REFUSE.SELF);
+
+  // The roster is now a SUGGESTION and not a gate — proven from the door's own
+  // source, because the behavioural cells above cannot see the difference
+  // between "no roster read" and "a roster read that never refuses".
+  const fwdSrc = codeOf('src/lib/vendor/referrals.js').split('async function getReferralRoom')[0];
+  ok('forwardLead no longer reads vendor_roster at all', !/vendor_roster/.test(fwdSrc));
+  ok('and it refuses on the three-clause predicate instead',
+     /peer_discoverable/.test(fwdSrc) && /discover_paused/.test(fwdSrc) && /status/.test(fwdSrc));
 }
 
 // ══ §5 — THE ORIGINAL DOES NOT MOVE · R-G51.3 / F-40.87 / W-1 ══════════════
@@ -369,7 +499,8 @@ section('7. the room counts FORWARDS — never weddings, never money');
   ok('one peer row, both directions on it', room.peers.length === 1);
   ok('the peer row reads 2 sent', room.peers[0].sent === 2);
   ok('the peer row reads 1 received', room.peers[0].received === 1);
-  ok('the peer is named from her vendor row', room.peers[0].name === 'DROY550');
+  ok('the peer is named from her vendor row — her BUSINESS NAME, not her handle',
+     room.peers[0].name === 'Make Up by Swati Roy');
 
   // The head figures are the LENGTHS of the two lists, never a sum over peers —
   // one derivation per number (F-04.13).
@@ -405,7 +536,7 @@ section('8. the two lead records\' one row each, and the DDL\'s own guarantees')
 
   const s = await referrals.referralStampsForLeads(db, FROM, ['lead-priya']);
   ok('the sender\'s record gets a `Forwarded to` stamp', s.sentBy.has('lead-priya'));
-  ok('naming the peer', s.sentBy.get('lead-priya').peer_name === 'DROY550');
+  ok('naming the peer', s.sentBy.get('lead-priya').peer_name === 'Make Up by Swati Roy');
   ok('and carrying the note', s.sentBy.get('lead-priya').note === 'Booked that weekend.');
 
   const p = await referrals.referralStampsForLeads(db, TO, ['copy-1']);
@@ -527,15 +658,464 @@ section('9. sole-writer: lead_referrals has exactly one writer in src/');
   // opposite — that a peer's number never travels for a list she only means to
   // choose from. A refusal stated in a comment and guarded by nothing is a
   // refusal that lasts until the next person needs a phone number.
+  // ⚠ THE CONSTANT MOVED THIS SITTING and the cell followed it. PEER_COLS now
+  // lives in the LIB beside `forwardLead`, because the search and the write door
+  // must share one predicate and one column list; the router does address, auth
+  // and envelope. A cell left pointing at the router would have gone red on
+  // correct code — which is what it did, and is why this comment exists.
   const CONTACT = /^(phone|email|whatsapp|pin_hash|upi_id|account_number|ifsc|gstin|address)$/i;
-  const peerCols = doorSrc.match(/const PEER_COLS = '([^']+)'/);
-  ok('the picker declares its columns in one place', !!peerCols);
-  ok('and none of them is a contact detail — a picker is for choosing, not for reaching',
+  const libCode = codeOf('src/lib/vendor/referrals.js');
+  const peerCols = libCode.match(/const PEER_COLS = '([^']+)'/);
+  ok('the peer search declares its columns in one place', !!peerCols);
+  ok('and none of them is a contact detail — a search is for choosing, not for reaching',
      !!peerCols && !peerCols[1].split(',').map(c => c.trim()).some(c => CONTACT.test(c)));
+  ok('the router declares no column list of its own — one home, and it is the lib',
+     !/const PEER_COLS/.test(codeOf('src/api/vendor/referrals.js')));
+  // ⚠ AND THE FOUR ARE EXACTLY THE PUBLIC CARD'S. R-40.107's whole argument for
+  // default-ON is that this directory publishes nothing the storefront does not.
+  // Add a fifth column and that sentence becomes false and 0142 §2 becomes a
+  // lie — so the claim is asserted against vendorCard.js's OWN select, both
+  // ways: this cell reds if the peer list grows a column the public card lacks.
+  const cardSel = codeOf('src/api/public/vendorCard.js').match(/const VENDOR_SELECT\s*=\s*'([^']+)'/);
+  const cardCols = new Set((cardSel ? cardSel[1] : '').split(',').map(c => c.trim()));
+  ok('every peer-search column is already on the PUBLIC storefront card — R-40.107\'s premise, mechanised',
+     !!peerCols && !!cardSel && peerCols[1].split(',').map(c => c.trim()).every(c => cardCols.has(c)));
 
   const libSrc = fs.readFileSync(path.join(ROOT, 'src/lib/vendor/referrals.js'), 'utf8');
   ok('the plane mints the peer\'s lead through createLead and never through a raw INSERT',
      /createLead\(/.test(libSrc) && !/from\('leads'\)[\s\S]{0,80}\.insert\(/.test(libSrc));
+}
+
+// ══ §10 — THE PEER SEARCH · R-40.104 ═══════════════════════════════════════
+// MUTATIONS (each a real edit to searchPeers, reverted after):
+//   drop `.eq('peer_discoverable', true)`  → the withdrawn vendor appears → RED
+//   drop `.neq('id', vendorId)`            → she finds herself            → RED
+//   stop filtering empty groups            → the empty head travels       → RED
+//   raw `v.category === me.category`       → videography leaves the trade → RED
+section('10. the picker became a search — groups, predicate, budget');
+{
+  const db = makeDb(seedSearch());
+
+  // ── THE RESTING STATE. Empty box ⇒ the roster ONLY, never the whole table.
+  const rest = await referrals.searchPeers(db, FROM, { q: '' });
+  ok('an empty box is not a search', rest.searching === false);
+  ok('and it answers with the roster alone — one group', rest.groups.length === 1);
+  ok('which is `worked_with`', rest.groups[0].key === 'worked_with');
+  ok('holding the one peer she has actually worked with',
+     rest.groups[0].peers.length === 1 && rest.groups[0].peers[0].id === TO);
+
+  // ── BELOW THE MINIMUM. One character is not a search either; it must not
+  //    degrade into "return everyone".
+  const one = await referrals.searchPeers(db, FROM, { q: 'a' });
+  ok('a single character is below the minimum and does NOT open the table',
+     one.searching === false && one.groups.length === 1 && one.groups[0].key === 'worked_with');
+  ok('the minimum is declared, not inlined', referrals.MIN_PEER_QUERY === 2);
+
+  // ── THE WALK'S OWN PROBE. `swati` finds her — under WORKED WITH, because she
+  //    is on his roster from sitting 1's forward, and NOT under `same_trade`:
+  //    he is photography, she is makeup. The kickoff's card said otherwise and
+  //    the card was wrong; this cell is where that is written down.
+  const swati = await referrals.searchPeers(db, FROM, { q: 'swati' });
+  ok('`swati` is a search', swati.searching === true);
+  ok('and finds exactly one vendor', swati.groups.reduce((n, g) => n + g.peers.length, 0) === 1);
+  ok('under `worked_with` — the roster wins over the trade', swati.groups[0].key === 'worked_with');
+  ok('NOT under `same_trade`: photography and makeup are different trades',
+     !swati.groups.some(g => g.key === 'same_trade'));
+  // ⚠ EMPTY HEADS DO NOT TRAVEL. Founder-vetoed, and enforced at the door so the
+  // surface never decides it a second time.
+  ok('the empty groups are ABSENT from the wire, not present and empty',
+     swati.groups.length === 1);
+
+  // ── THE HANDLE IS THE SECOND KEY, AND THE ONLY OTHER ONE.
+  const byHandle = await referrals.searchPeers(db, FROM, { q: 'MAKEUPBY' });
+  ok('a routing handle finds her too', byHandle.groups.some(g => g.peers.some(p => p.id === TO)));
+  const orCols = [];
+  {
+    // Read the filter the door actually built, through the double's own parser.
+    const spy = makeDb(seedSearch());
+    const realFrom = spy.from;
+    spy.from = (t) => { const q = realFrom(t); const o = q.or; q.or = (e) => { orCols.push(...String(e).split(',').map(c => c.split('.')[0])); return o(e); }; return q; };
+    await referrals.searchPeers(spy, FROM, { q: 'swati' });
+  }
+  ok('the search matches business_name and routing_handle', orCols.includes('business_name') && orCols.includes('routing_handle'));
+  // ⚠ c-40.45 · THE PHONE IS NOT A KEY, AND THIS IS THE CELL THAT KEEPS IT OUT.
+  // R-40.104 named phone as a search key; it was struck because the MATCH is the
+  // disclosure — type a number, get a confirmed business name, which is a reverse
+  // lookup on a column nothing publishes. Re-add it and this reds.
+  ok('and NOTHING else — no phone key (c-40.45)', orCols.length === 2 && !orCols.some(c => /phone/.test(c)));
+
+  // ── SAME TRADE, THROUGH THE ONE HOME. `videography` normalises INTO
+  //    `photography` (categoryFraming.js:115) and `Photography` differs only by
+  //    case. A raw compare fails both; normaliseCategory is why it does not.
+  // ⚠ PER-VENDOR PROBES, AND THE FIRST CUT GOT THIS WRONG. It searched `q: 'o'`
+  // — ONE character, BELOW the minimum two cells above assert — so the door
+  // correctly answered with the roster and every grouping cell went red on
+  // correct code. The bench was wrong, not the door. Probing one vendor at a
+  // time also tests the rule more exactly: it asserts WHICH group she lands in,
+  // not merely that she is somewhere in the result.
+  const groupOf = async (q, id) => {
+    const res = await referrals.searchPeers(db, FROM, { q });
+    const g = res.groups.find((gr) => gr.peers.some((p) => p.id === id));
+    return g ? g.key : null;
+  };
+  ok('a videographer counts as the SAME TRADE as a photographer — normaliseCategory, not a raw compare',
+     await groupOf('zeta', 'v-zeta') === 'same_trade');
+  ok('and `Photography` matches `photography` — case is not a trade',
+     await groupOf('anchal', 'v-anchal') === 'same_trade');
+  ok('a jeweller lands in `everyone`, not in her trade',
+     await groupOf('aurum', 'v-jewel') === 'everyone');
+  const everyRes = await referrals.searchPeers(db, FROM, { q: 'aurum' });
+  const every = everyRes.groups.find(g => g.key === 'everyone');
+  ok('and her group is the only one that travels — the other two heads are suppressed',
+     everyRes.groups.length === 1);
+
+  // ── THE THREE CLAUSES, AS BEHAVIOUR. Each hidden vendor is absent from EVERY
+  //    group, not merely from the one she would have sorted into.
+  const all = (res) => res.groups.flatMap(g => g.peers.map(p => p.id));
+  // Two characters, matching every fixture vendor's handle suffix pattern is not
+  // available — so the exclusions are probed BY NAME, one each, which is what a
+  // vendor would actually type when she cannot find someone.
+  const wide = { groups: [] };
+  for (const [id, q] of [['v-hidden','hidden'],['v-paused','paused'],['v-gone','retired'],[FROM,'dev roy']]) {
+    const res = await referrals.searchPeers(db, FROM, { q });
+    wide.groups.push(...res.groups);
+    void id;
+  }
+  ok('a vendor who withdrew from peer search is absent (R-40.107)', !all(wide).includes('v-hidden'));
+  ok('a vendor who un-published her storefront is absent', !all(wide).includes('v-paused'));
+  ok('a vendor whose status is not active is absent', !all(wide).includes('v-gone'));
+  ok('and she never finds HERSELF', !all(wide).includes(FROM));
+
+  // ── ORDER. Alphabetical inside a group, because master §7 refuses a ranked
+  //    surface and every other order is a ranking wearing a sort.
+  const alpha = await referrals.searchPeers(db, FROM, { q: 'st' });
+  const alphaEvery = alpha.groups.find(g => g.key === 'everyone');
+  const names = (alphaEvery ? alphaEvery.peers : (every ? every.peers : [])).map(p => p.business_name);
+  ok('`everyone` is alphabetical by business name',
+     JSON.stringify(names) === JSON.stringify([...names].sort((a, b) => a.localeCompare(b))));
+
+  // ── MUTUAL EXCLUSION. A peer appears once.
+  const excl = await referrals.searchPeers(db, FROM, { q: 'st' });
+  const ids = all(excl);
+  ok('no peer appears in two groups', new Set(ids).size === ids.length);
+
+  // ── THE BUDGET. A cap the caller cannot raise.
+  const capped = await referrals.searchPeers(db, FROM, { q: 'o', limit: 9999 });
+  ok('the caller cannot raise the server cap',
+     capped.groups.reduce((n, g) => n + g.peers.length, 0) <= referrals.MAX_PEER_RESULTS);
+
+  // ── THE SANITISER. PostgREST metacharacters and LIKE wildcards, together.
+  ok('a comma cannot break out of the or() filter', !/[,()]/.test(referrals.safeTerm('a,b(c)')));
+  ok('a bare % cannot turn a two-character minimum into match-everything',
+     !/%/.test(referrals.safeTerm('%%%')) );
+  ok('and a term of only metacharacters collapses below the minimum rather than matching all',
+     referrals.safeTerm('%_*').length < referrals.MIN_PEER_QUERY);
+
+  // ── ⚠ THE SHEET AND THE DOOR MUST NOT DISAGREE. The search shapes the choice;
+  //    forwardLead authorises it. Asserted as BEHAVIOUR across both: everything
+  //    the search offers must actually forward, and nothing it hides may.
+  for (const id of all(excl)) {
+    const d = makeDb(seedSearch());
+    const r = await referrals.forwardLead(d, fromVendor, { leadId: 'lead-priya', toVendorId: id, note: null });
+    ok(`the door accepts ${id}, which the search offered`, r.ok === true);
+  }
+  for (const id of ['v-hidden', 'v-paused', 'v-gone']) {
+    const d = makeDb(seedSearch());
+    const r = await referrals.forwardLead(d, fromVendor, { leadId: 'lead-priya', toVendorId: id, note: null });
+    ok(`the door refuses ${id}, which the search hid`, r.ok === false);
+  }
+}
+
+// ══ §11 — THE ALERT · R-G51.15 ═════════════════════════════════════════════
+// MUTATIONS: read `out.wamid` → the wamid nulls → RED; delete the recordAlert
+// on the catch path → the opted-out row vanishes → RED.
+section('11. the peer is told, and every outcome is written down');
+{
+  const OLD = process.env.REFERRAL_ALERT_SEND_ENABLED;
+
+  // ── THE FLAG IS THE FIRST GATE, AND IT IS DOWN EVERYWHERE TODAY.
+  delete process.env.REFERRAL_ALERT_SEND_ENABLED;
+  waCalls = []; waBehaviour = 'ok';
+  const dark = makeDb(seedBase());
+  const rDark = await referrals.forwardLead(dark, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: 'Overflow.' });
+  ok('the forward still lands with the flag down — the alert is a courtesy, not a condition', rDark.ok === true);
+  ok('and NOTHING was sent', waCalls.length === 0);
+  ok('and no row was written for a decision about the feature, not about this peer',
+     dark._tables.referral_alerts.length === 0);
+  ok('the gate names itself so a walk can say WHICH gate refused',
+     alertLib.sendGate().on === false && /REFERRAL_ALERT_SEND_ENABLED/.test(alertLib.sendGate().reason));
+
+  // ── FLAG UP: the send, the row, the wamid.
+  process.env.REFERRAL_ALERT_SEND_ENABLED = '1';
+  waCalls = []; waBehaviour = 'ok';
+  const db = makeDb(seedBase());
+  const r = await referrals.forwardLead(db, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: 'Overflow.' });
+  ok('the forward lands', r.ok === true);
+  ok('exactly ONE message was sent', waCalls.length === 1);
+  ok('on the VENDOR line', waCalls[0].line === 'vendor');
+  ok('as a TEMPLATE, never free-form — she is out of window by construction', !!waCalls[0].templateKey && !waCalls[0].text);
+  ok('with the referral_alert key', waCalls[0].templateKey === alertLib.TEMPLATE_KEY);
+  ok('declared not-nudge-class, so a vendor who paused MORNINGS is not silenced on work',
+     waCalls[0].nudgeClass === false);
+  ok('to HER OWN number, off public.users via vendors.user_id', waCalls[0].to === '+918595356978');
+
+  const vars = waCalls[0].vars;
+  ok('three variables, positional', Array.isArray(vars) && vars.length === 3);
+  ok('{{1}} is the PEER\'s own business name', vars[0] === 'Make Up by Swati Roy');
+  ok('{{2}} is the REFERRER\'s business name, off her vendor row', vars[1] === 'Dev Roy Photography');
+  ok('{{3}} is her LEADS link — the work is on her Leads', /\/leads/i.test(String(vars[2])));
+  // ⚠ THE COUPLE APPEARS NOWHERE. Asserted against the actual couple fixture
+  // rather than against a list of field names, so a future variable carrying her
+  // city or her date reds too.
+  const forbidden = ['Priya', 'Nair', '9812345678', 'Jaipur', '2027-02-14', '350000'];
+  ok('and the COUPLE is named in none of them — not her name, city, date, phone or budget',
+     !forbidden.some(f => vars.some(v => String(v).includes(f))));
+
+  const rows = db._tables.referral_alerts;
+  ok('one referral_alerts row per send', rows.length === 1);
+  ok('keyed on the FORWARD, not on the lead', rows[0].referral_id === r.referral.id);
+  ok('R-40.92 · the row names its recipient', rows[0].to_vendor_id === TO);
+  ok('and the template it actually sent, per row (0141\'s lesson)', rows[0].template_key === alertLib.TEMPLATE_KEY);
+  ok('status sent', rows[0].status === 'sent');
+  // ⚠ F-40.210 · THE WAMID LIVES AT out.result.wamid. This is the cell that
+  // reds if a future edit reaches for `out.wamid`, which does not exist and
+  // which silently nulled every lead_alerts row on the 2026-09-07 walk.
+  ok('the wamid is READ, not null — F-40.210\'s cure held at the first cut', !!rows[0].wamid);
+  ok('and it is the one sendWa actually returned', rows[0].wamid === 'wamid.HBgM1');
+  // Asserted against sendWa's OWN return statement, so a flattening upstream
+  // reds both sides at once rather than only here.
+  ok('sendWa still returns the wamid one level down, under `result`',
+     /return\s*\{\s*sent:\s*true,\s*mode:\s*'template'[^}]*result:\s*res\s*\}/.test(codeOf('src/lib/sendWa.js')));
+
+  // ── FAILURES GET ROWS TOO, and they are the ones worth having.
+  waCalls = []; waBehaviour = 'opted_out';
+  const dOut = makeDb(seedBase());
+  const rOut = await referrals.forwardLead(dOut, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: null });
+  ok('an opted-out peer does NOT cost the sender her forward', rOut.ok === true);
+  ok('and the skip is WRITTEN DOWN — the only durable evidence she was skipped lawfully',
+     dOut._tables.referral_alerts.length === 1);
+  ok('classified as opted_out, not as a failure', dOut._tables.referral_alerts[0].status === 'opted_out');
+  ok('with a null wamid, which is why 0142\'s uniques are PARTIAL', dOut._tables.referral_alerts[0].wamid === null);
+
+  waCalls = []; waBehaviour = 'boom';
+  const dErr = makeDb(seedBase());
+  const rErr = await referrals.forwardLead(dErr, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: null });
+  ok('a Meta refusal does not turn a successful forward into a refusal on her glass', rErr.ok === true);
+  ok('the failure is recorded', dErr._tables.referral_alerts.length === 1);
+  ok('carrying Meta\'s own code so a walk can name what happened', dErr._tables.referral_alerts[0].error_code === '131049');
+
+  // ── NO PHONE. A fact about that account, not an error.
+  waCalls = []; waBehaviour = 'ok';
+  const noPhone = seedBase(); noPhone.users = [{ id: 'user-' + FROM, phone: '+919888294440' }];
+  const dNo = makeDb(noPhone);
+  const rNo = await referrals.forwardLead(dNo, fromVendor, { leadId: 'lead-priya', toVendorId: TO, note: null });
+  ok('a peer with no phone on public.users still receives the LEAD', rNo.ok === true);
+  ok('nothing was sent', waCalls.length === 0);
+  ok('and the reason is on the record', dNo._tables.referral_alerts[0].status === 'no_phone');
+
+  if (OLD === undefined) delete process.env.REFERRAL_ALERT_SEND_ENABLED;
+  else process.env.REFERRAL_ALERT_SEND_ENABLED = OLD;
+}
+
+// ══ §12 — THE 「Told」 STATE ═════════════════════════════════════════════════
+// MUTATION: set `told` from `status === 'sent'` rather than from a wamid → RED.
+section('12. `told` reads a wamid and nothing else, inside the stamp');
+{
+  const base = () => ({ ...seedBase(), lead_referrals: [
+    { id: 'lr1', from_vendor_id: FROM, to_vendor_id: TO, lead_id: 'lead-priya', new_lead_id: 'copy-1', note: 'Overflow.', created_at: '2026-09-07T00:00:00Z' },
+  ] });
+
+  const dNone = makeDb(base());
+  const sNone = await referrals.referralStampsForLeads(dNone, FROM, ['lead-priya']);
+  ok('an unalerted forward is NOT told', sNone.sentBy.get('lead-priya').told === false);
+
+  const dSent = makeDb({ ...base(), referral_alerts: [
+    { id: 'ra1', referral_id: 'lr1', to_vendor_id: TO, template_key: 'referral_alert', wamid: 'wamid.X', status: 'sent' },
+  ] });
+  const sSent = await referrals.referralStampsForLeads(dSent, FROM, ['lead-priya']);
+  ok('a forward whose alert carries a WAMID is told', sSent.sentBy.get('lead-priya').told === true);
+
+  // ⚠ THE CELL THAT MAKES THE RULING REAL. A row that says `sent` with a null
+  // wamid is the F-40.210 state: the message may well have arrived and the
+  // estate cannot prove it. A surface claiming proof it does not have is worse
+  // than one that stays quiet.
+  const dLies = makeDb({ ...base(), referral_alerts: [
+    { id: 'ra1', referral_id: 'lr1', to_vendor_id: TO, template_key: 'referral_alert', wamid: null, status: 'sent' },
+  ] });
+  const sLies = await referrals.referralStampsForLeads(dLies, FROM, ['lead-priya']);
+  ok('`status: sent` with a NULL wamid is NOT told — proof, not optimism',
+     sLies.sentBy.get('lead-priya').told === false);
+
+  const dFail = makeDb({ ...base(), referral_alerts: [
+    { id: 'ra1', referral_id: 'lr1', to_vendor_id: TO, template_key: 'referral_alert', wamid: null, status: 'opted_out' },
+  ] });
+  const sFail = await referrals.referralStampsForLeads(dFail, FROM, ['lead-priya']);
+  ok('and an opted-out peer is not told either', sFail.sentBy.get('lead-priya').told === false);
+
+  // ⚠ SENDER-SIDE ONLY. The peer was the one told; a stamp on her record saying
+  // so is noise about a message she is holding.
+  const sPeer = await referrals.referralStampsForLeads(dSent, TO, ['copy-1']);
+  ok('the peer\'s own `Forwarded by` stamp carries no told state',
+     sPeer.receivedBy.has('copy-1') && !('told' in sPeer.receivedBy.get('copy-1')));
+
+  // ⚠ INSIDE THE STAMP, NOT A TOP-LEVEL WIRE KEY. `LIST_WIRE_CENSUS` classifies
+  // top-level keys and `leadSerializer.js` is not this sitting's to touch; a new
+  // top-level key would redden b36 leg C, exactly as forwarded_to/forwarded_by
+  // did when they joined.
+  ok('`told` is not a new top-level wire key',
+     !/'told'/.test(codeOf('src/lib/vendor/leadSerializer.js')));
+  ok('and leadSerializer.js is untouched by this sitting',
+     !/G5\.1 SITTING 2|R-40\.104|R-40\.107/.test(codeOf('src/lib/vendor/leadSerializer.js')));
+
+  // A failed alert read costs the STATE, never the row.
+  const dBroken = makeDb(base());
+  const realFrom = dBroken.from;
+  dBroken.from = (t) => t === 'referral_alerts'
+    ? { select: () => ({ in: () => ({ not: async () => ({ data: null, error: { message: 'down' } }) }) }) }
+    : realFrom(t);
+  const sBroken = await referrals.referralStampsForLeads(dBroken, FROM, ['lead-priya']);
+  ok('a dead alert read still returns the stamp', sBroken.sentBy.has('lead-priya'));
+  ok('it just is not told', sBroken.sentBy.get('lead-priya').told === false);
+}
+
+// ══ §13 — SOLE WRITER: referral_alerts ═════════════════════════════════════
+section('13. referral_alerts has exactly one home in src/');
+{
+  // ⚠ COMMENT-STRIPPED, AND THIS SITTING EARNED THE LESSON AGAIN. A raw grep for
+  // `from('referral_alerts')` returns TWO files — the second is the comment in
+  // referrals.js explaining that there is only one. Sitting 1 filed the same
+  // defect (§4.2, a cell that counted files NAMING a table); a cell that reads
+  // prose as code proves that its author can spell.
+  const walk = (d, acc = []) => {
+    for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, f.name);
+      if (f.isDirectory()) { if (f.name !== 'node_modules' && f.name !== 'dist') walk(p, acc); }
+      else if (f.name.endsWith('.js') || f.name.endsWith('.ts')) acc.push(p);
+    }
+    return acc;
+  };
+  const files = walk(path.join(ROOT, 'src'));
+  const callers = files.filter(f => /\.from\('referral_alerts'\)/.test(codeOf(path.relative(ROOT, f))));
+  ok('exactly ONE file in src/ calls the alerts plane', callers.length === 1);
+  ok('and it is referralAlert.js', callers.length === 1 && callers[0].endsWith('referralAlert.js'));
+  // The read lives beside the insert deliberately — a second file naming the
+  // table is how a second writer eventually appears in the one that only read.
+  ok('the told READ lives there too, not beside its caller',
+     /toldByReferralIds/.test(codeOf('src/lib/vendor/referralAlert.js')));
+  ok('and referrals.js imports it rather than querying', /toldByReferralIds/.test(codeOf('src/lib/vendor/referrals.js')));
+}
+
+// ══ §14 — THE TEMPLATE, DARK ═══════════════════════════════════════════════
+// MUTATION: flip status to 'approved' → RED. It must not ship sendable.
+section('14. tdw_referral_alert — Utility, vendor line, and NOT approved');
+{
+  const t = templates.TEMPLATES.referral_alert;
+  ok('the entry exists', !!t);
+  ok('Meta name is tdw_referral_alert', t.name === 'tdw_referral_alert');
+  ok('UTILITY — F-40.176\'s lesson: a MARKETING alert is throttled to the quiet vendors who need it most',
+     t.category === 'UTILITY');
+  ok('on the vendor line', t.line === 'vendor');
+  ok('three variables in the declared order', JSON.stringify(t.variables) === JSON.stringify(['vendor_name', 'referrer_name', 'leads_link']));
+  // ⚠ SHIPS UNSENDABLE. sendWa's own gate is isApproved; until Meta returns
+  // Active and the founder flips one field, this key cannot leave the estate.
+  ok('status is NOT approved — the registry gate holds it dark', t.status !== 'approved');
+  ok('and sendWa\'s own gate agrees', templates.isApproved('referral_alert') === false);
+  // docs/TEMPLATES.md §1's shape rules, mechanised.
+  ok('the body places no variable at the start', !/^\s*\{\{/.test(t.body));
+  ok('none at the end', !/\}\}\s*$/.test(t.body));
+  // ⚠ F-40.220 · A DECLARED RED, AND IT IS AGAINST THE VETOED BYTE RATHER THAN
+  // AGAINST THIS CODE. docs/TEMPLATES.md §1 does not merely forbid variables
+  // with nothing between them — it requires that "every pair is separated by
+  // REAL WORDS". The approved body reads "Hi {{1}}, {{2}} just passed you…",
+  // where {{1}} and {{2}} are separated by a comma and a space and by no word at
+  // all. Every other body in this registry honours the rule.
+  //
+  // THE CELL IS LEFT ASSERTING THE ESTATE'S OWN RULE AND IS LEFT RED. The
+  // alternative was to relax it to Meta's weaker whitespace test, which would
+  // have turned a real filing risk into a green number — a hollow green, and
+  // worse than a declared gap. The seat does NOT reword a byte the founder
+  // vetoed an hour ago; the cure is one re-veto and the sheet's own alternative
+  // (1) already separates the pair with real words.
+  //
+  // NOTHING IS AT RISK WHILE THIS STANDS: the template ships `pending` and
+  // cannot send. The cost of shipping it unfixed is a rejected filing, which is
+  // a round-trip with Meta and not a defect on anyone's glass.
+  ok('[F-40.220 · DECLARED RED — against the vetoed body, not the code] every variable pair is separated by REAL WORDS (docs/TEMPLATES.md §1)',
+     !/\}\}[^A-Za-z]*\{\{/.test(t.body));
+  ok('the code\'s TEMPLATE_KEY points at this entry', alertLib.TEMPLATE_KEY === 'referral_alert');
+  ok('and it is a named constant, not a literal at the call site — a re-point is one line',
+     /const TEMPLATE_KEY = 'referral_alert'/.test(codeOf('src/lib/vendor/referralAlert.js')));
+}
+
+// ══ §15 — 0142's OWN GUARANTEES, READ FROM DISK ════════════════════════════
+// ⚠ THIS SECTION READS THE .sql FILE AND NOT THE DATABASE. It passes whether or
+// not the migration has run — sitting 1's §9.2 banked that law after 0135
+// returned zero rows with the bench fully green. The migration's footer names
+// the two information_schema witnesses that settle it.
+section('15. 0142 — read from disk, and it proves nothing about production');
+{
+  const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0142_referral_alerts.sql'), 'utf8');
+  ok('it creates referral_alerts', /create table if not exists public\.referral_alerts/i.test(sql));
+  ok('referral_id CASCADEs from lead_referrals — an alert about a forward that no longer exists is gone too',
+     /referral_id[\s\S]{0,120}references public\.lead_referrals\(id\) on delete cascade/i.test(sql));
+  ok('to_vendor_id is NOT NULL and CASCADEs — a row about nobody is not a row',
+     /to_vendor_id[\s\S]{0,120}not null references public\.vendors\(id\) on delete cascade/i.test(sql));
+  ok('template_key is stored per row, never inferred', /template_key\s+text not null/i.test(sql));
+  ok('wamid is NULLABLE — a send can fail before Meta ever sees it', /wamid\s+text\s+null/i.test(sql));
+
+  // ⚠ F9(b) · THE `WHERE` IS THE WHOLE RULING. A bare UNIQUE(referral_id) would
+  // let one opted_out row block the retry forever. Both uniques must be PARTIAL.
+  const uWamid = sql.match(/create unique index if not exists uq_referral_alerts_wamid[\s\S]*?;/i);
+  const uRef   = sql.match(/create unique index if not exists uq_referral_alerts_referral_sent[\s\S]*?;/i);
+  ok('the wamid is UNIQUE', !!uWamid);
+  ok('and PARTIAL, so failed sends do not collide on NULL', !!uWamid && /where wamid is not null/i.test(uWamid[0]));
+  ok('one SUCCESSFUL alert per forward', !!uRef);
+  ok('and it too is PARTIAL — a failure must never make a peer un-tellable forever',
+     !!uRef && /where wamid is not null/i.test(uRef[0]));
+
+  ok('R-40.107 · the column is added with DEFAULT true', /add column if not exists peer_discoverable boolean not null default true/i.test(sql));
+  ok('and the file explains the departure from 0140 rather than leaving two columns to contradict in silence',
+     /0140/.test(sql) && /vendorCard\.js:213/.test(sql));
+  // R-40.27 as amended: a statement that WRITES cites the constraints section
+  // for every table it writes, not the column block alone.
+  ok('R-40.27 · both written tables cite their constraints section',
+     /vendors_pkey/.test(sql) && /vendors_routing_handle_key/.test(sql) && /lead_referrals_pkey/.test(sql));
+  ok('and the snapshot\'s staleness is checked rather than assumed', /0138/.test(sql) && /stale/i.test(sql));
+  ok('no money column reaches this plane — master §7',
+     !/(amount|price|inr|paise|rupee|fee|budget)/i.test(sql.split('BEGIN;')[1].split('COMMIT;')[0]));
+}
+
+// ══ §16 — THE SWITCH IS WRITABLE, AND ONLY AS A BOOLEAN ════════════════════
+// MUTATION: remove peer_discoverable from BOOLEAN_FIELDS → RED.
+section('16. PATCH /me carries the switch, and refuses a non-boolean');
+{
+  const me = codeOf('src/api/vendor/me.js');
+  const allowed = me.match(/const ALLOWED_FIELDS = \[([\s\S]*?)\];/);
+  const booleans = me.match(/const BOOLEAN_FIELDS = \[([\s\S]*?)\];/);
+  ok('peer_discoverable is writable — without this the PATCH is dropped SILENTLY behind a 200',
+     !!allowed && /'peer_discoverable'/.test(allowed[1]));
+  // ⚠ IT MATTERS MORE HERE THAN FOR ANY SIBLING. This is the only column in the
+  // list whose DEFAULT IS TRUE, so a value the driver has to guess at fails
+  // OPEN — a vendor listed who asked not to be.
+  ok('and it is a declared BOOLEAN, so a non-boolean is a 400 and never a coercion',
+     !!booleans && /'peer_discoverable'/.test(booleans[1]));
+  ok('it is NOT in the locked list — it is her own posture, not TDW\'s claim about her',
+     !/LOCKED_FIELDS[\s\S]{0,400}peer_discoverable/.test(me));
+
+  // ⚠ F-40.209's LAW: a control's state is a fact about the database, and the
+  // only honest place to read it is the database. The switch cannot render, and
+  // cannot revert on refusal, unless the door both SELECTS and RETURNS it.
+  ok('the GET shape returns it, so the switch renders from the row', /peer_discoverable:\s*vendor\.peer_discoverable/.test(me));
+  ok('the PATCH echoes it, so an optimistic toggle can revert on refusal', /peer_discoverable:\s*updated\.peer_discoverable/.test(me));
+  const selects = me.match(/\.select\('id, business_name[^']*'\)/g) || [];
+  ok('and every vendor SELECT on this door actually ASKS for the column',
+     selects.length >= 2 && selects.every(sl => /peer_discoverable/.test(sl)));
+  // ⚠ `!== false` AND NOT `=== true`, WHICH IS THE OPPOSITE OF ITS NEIGHBOUR.
+  // date_check_enabled defaults FALSE so a null must read NO; this defaults TRUE
+  // so a null must read YES. Reading `=== true` here would draw the switch OFF
+  // for a vendor the search can already see.
+  ok('read with the coercion its DEFAULT requires, not its neighbour\'s',
+     /peer_discoverable:\s*vendor\.peer_discoverable\s*!==\s*false/.test(me));
 }
 
 console.log(`\n${pass} PASS · ${fail} FAIL`);

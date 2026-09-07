@@ -241,6 +241,16 @@ router.get('/', requireAuth, resolveVendor(), async (req, res) => {
       // question. A row written before 0140 backfills to false, but a shape that
       // read `!== false` would answer YES to a null it had never been given.
       date_check_enabled:      vendor.date_check_enabled      === true,
+      // G5.1 s2 · R-40.107. ⚠ `!== false` AND NOT `=== true`, WHICH IS THE
+      // OPPOSITE COERCION TO THE LINE DIRECTLY ABOVE, and the difference is the
+      // column's default rather than an inconsistency. `date_check_enabled`
+      // defaults FALSE, so a null must read NO. `peer_discoverable` defaults
+      // TRUE (0142 §2), so a null — a row read through a stale PostgREST cache
+      // before the migration lands, say — must read YES, which is the state the
+      // database will give it. Reading `=== true` here would draw the switch OFF
+      // for a vendor the search can already see, which is the worst of both: she
+      // is listed and her own settings screen tells her she is not.
+      peer_discoverable:       vendor.peer_discoverable       !== false,
     },
   });
 });
@@ -324,7 +334,28 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
                         // vendor's OWN posture — whether strangers may ask her calendar
                         // one question — and a second route would owe a second copy of
                         // the locked-field checks for nothing. Same door, same guard.
-                        'date_check_enabled'];
+                        'date_check_enabled',
+                        // ── BLOCK 19 · G5.1 SITTING 2 · R-40.107 — THE PEER
+                        //    DIRECTORY SWITCH ──────────────────────────────
+                        // It joins HERE for the same reason `date_check_enabled`
+                        // did one line up: it is the vendor's OWN posture —
+                        // whether other vendors may find her by name to pass her
+                        // work — and this handler already scopes every write with
+                        // `.eq('id', vendor.id)`, which is the guard. A second
+                        // route would owe a second copy of the locked-field
+                        // checks for nothing.
+                        //
+                        // ⚠ ON BY DEFAULT, unlike its neighbour, and 0142 §2
+                        // carries the derivation: the peer search returns only
+                        // `business_name`, `routing_handle`, `category` and
+                        // `city`, every one already on the PUBLIC storefront
+                        // card (`vendorCard.js:213`). So this switch is her
+                        // WITHDRAWAL from a directory built out of facts she has
+                        // already published, where `date_check_enabled` was
+                        // CONSENT to a new fact about her calendar. Opposite
+                        // defaults, one law — do not "fix" one to match the
+                        // other without reading that paragraph.
+                        'peer_discoverable'];
 
 // The three booleans the vendor may now set. Guarded on the slot_capacity pattern
 // (:147 below): a 400 here, never a silent coercion. Without this, {"discover_paused":
@@ -335,7 +366,13 @@ const ALLOWED_FIELDS = ['business_name', 'style_notes', 'city', 'open_to_travel'
 // raw, and the answer to "may strangers read my calendar?" becomes whatever the
 // driver decided that day. That is a consent question (R-40.77), so a 400 is the
 // only honest answer to a value that is not a boolean.
-const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused', 'date_check_enabled'];
+// ⚠ `peer_discoverable` MUST BE IN THIS ARRAY TOO, and for a reason 0142 makes
+// sharper than for any sibling: it is the ONLY column here whose default is
+// TRUE, so a value the driver has to guess at fails OPEN. `{"peer_discoverable":
+// "maybe"}` reaching Postgres raw would answer "may other vendors find me?" with
+// whatever that day's coercion decided, and the failure mode of a wrong guess is
+// a vendor listed who asked not to be. A 400 is the only honest answer.
+const BOOLEAN_FIELDS = ['open_to_travel', 'briefing_enabled', 'rate_display', 'discover_paused', 'date_check_enabled', 'peer_discoverable'];
 
 // ── ARC OB · SERVICE-AREA VALIDATION (CE-31 ruling ①) ──────────────────────
 // A 400, never a silent coercion — the BOOLEAN_FIELDS doctrine directly above,
@@ -452,7 +489,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
 
     const { data, error } = await supabase
       .from('vendors').update(update).eq('id', vendor.id)
-      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
+      .select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities, discover_eligible, discover_request_state, couture_eligible, featured_eligible')
       .maybeSingle();
     if (error) return errRes(res, 500, error.message);
     updated = data;
@@ -463,7 +500,7 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
   // If we only updated name, re-fetch vendor row for the response
   if (!updated) {
     const { data } = await supabase
-      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, slot_capacity, discover_preview, service_area, service_cities')
+      .from('vendors').select('id, business_name, city, style_notes, open_to_travel, travel_notes, instagram_handle, about, upi_id, gstin, address, account_name, account_number, ifsc, briefing_enabled, invoice_prefix, aesthetic_tags, rate_min, rate_max, rate_display, discover_paused, date_check_enabled, peer_discoverable, slot_capacity, discover_preview, service_area, service_cities')
       .eq('id', vendor.id).maybeSingle();
     updated = data;
   }
@@ -508,6 +545,11 @@ router.patch('/', requireAuth, resolveVendor(), asyncHandler(async (req, res) =>
       rate_display:     updated.rate_display     !== false,
       discover_paused:  updated.discover_paused  === true,
       date_check_enabled: updated.date_check_enabled === true,
+      // G5.1 s2 · R-40.107. The Settings switch is optimistic and REVERTS by
+      // reading the door's own echo (`screen.tsx:381`'s pattern). A key missing
+      // from this shape would make every successful write look like a refusal
+      // and flip the control back under the vendor's thumb.
+      peer_discoverable: updated.peer_discoverable !== false,
     },
   });
 }));
