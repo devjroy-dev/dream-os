@@ -1,8 +1,8 @@
 # FILING B3·1 — `api.thedreamwedding.in` (R-40.128) AND SEARCH CONSOLE VERIFICATION
 
-**Base:** dream-os `38a70b010180ab0f05128b8bf6b02e83c609b7cb`
+**Base:** dream-os `68d92c0f51f3c59e7104881f582d37fa49c3480e`
 **Seat:** CE-41 LE-B · 2026-09-08 · roadmap §3 item 8, first two links
-**Held in clone under the push freeze.** Executable by the founder the moment it lands.
+**On the tree at this base.** Executable by the founder the moment it lands.
 **Owed to:** G3.1 s2 (Search Console), G2 s2 (Business Profile, ≈2026-10-27), and to the
 publishing prerequisites at `TDW_INFRA_GOOGLE_OAUTH.md` §4 items 7, 8 and 10.
 
@@ -41,8 +41,22 @@ published within the last week states plainly that Google classifies
 `https://www.googleapis.com/auth/business.manage` as **Sensitive**. Sensitive means
 verification, a demo video and a branding check — **not** a security assessment.
 
-**F-41.8 therefore does not close on this fetch, and the derivation that closes it is one tap
-the founder already has.** The Cloud Console's **Data Access** page groups declared scopes into
+**F-41.8 IS CLOSED — by the founder's screen, 2026-09-08.** The Cloud Console's **Data access**
+table places **all five declared scopes as non-sensitive**. `business.manage` is therefore not
+restricted, CASA does not bind, and this seat's earlier alarm was wrong in the direction the
+chair suspected. **B3·2 runs on Branch A.**
+
+**One residue worth a line, since the number changed.** `TDW_INFRA_GOOGLE_OAUTH.md` §1 records
+**three** scopes declared on the client; the console shows **five**. The likeliest reading is
+Google's own documented behaviour — *"an initial set of scopes necessary for Google Sign-In are
+pre-filled in the Non-sensitive scopes section"* — in which case the extra two are `openid` and
+an identity scope. **If one of them is `userinfo.email`, then `TDW_INFRA_GOOGLE_OAUTH.md` §13's
+open fork** — *"Identity scopes — a fork, not a decision"*, left open for the founder — **has
+been settled by a console default rather than by anyone's choice.** Not urgent, no cost either
+way, and named only so a decision is not inherited as a fact. **The former text of this section
+is left below as written, because a correction that erases what it corrects teaches nothing.**
+
+**The reading that closed it, kept for the record:** The Cloud Console's **Data Access** page groups declared scopes into
 *non-sensitive*, *sensitive* and *restricted*. `TDW_INFRA_GOOGLE_OAUTH.md` §12 records all
 three landing in **non-sensitive**, with both other tables empty, and its author wrote *"Reason
 unknown — not resolved, not explained away."* That reading contradicts even *sensitive*, so the
@@ -230,70 +244,137 @@ A3, with the homepage link and the consent-screen URL identical.
 
 ---
 
-### 5a · VETO BLOCK — the Google-data section for `/privacy`
+### 5a · A4 — THE TRIO, AS A DIFF (R-41.50; the chair vetoes)
 
-**PROPOSED. NOT VETOED. NOT ON ANY SURFACE.** Every byte below is the founder's to strike or
-rewrite. It is written to satisfy Google's four requirements literally, and each paragraph
-names which requirement it discharges.
+**Derived at dreamos-pwa `3d20215236ed2b3af2628b8312fa24cf0a9b3ee2`** by fresh clone, read by
+command. Three bytes, one rider, cut by seat A. **This seat wrote none of them into `app/`.**
 
-> **Google account data**
->
-> If you connect your Google account to The Dream Wedding, we access data from that account
-> only with your permission and only to provide the features described below. You can withdraw
-> that permission at any time.
->
-> **What we access.** With your permission we read the search performance data for the website
-> you own — the queries people used to find your pages, and how those pages performed in Google
-> Search — through the Google Search Console API. We also use Google's Site Verification API to
-> confirm that you own the website you are connecting.
->
-> **Why we access it.** We use this data to show you, inside your own account, how couples are
-> finding your pages and what to improve. It is used for that feature and for nothing else.
->
-> **What we store.** We store the access credential Google issues, encrypted, so that the
-> feature keeps working without asking you to sign in again. We store the search figures needed
-> to draw your own reports. We do not store the contents of any other Google service.
->
-> **What we never do.** We do not sell Google account data. We do not share it with anyone
-> except where you ask us to, or where the law requires it. We do not use it for advertising.
-> We do not use it to train any AI or machine-learning model. We do not read your Gmail, your
-> Drive, your Calendar or your Contacts, and we do not ask for permission to.
->
-> **How to remove it.** You can disconnect your Google account from your settings at any time.
-> Disconnecting deletes the stored credential. You can also revoke our access directly from
-> your Google account at `myaccount.google.com/permissions`. Write to us at
-> `hello@thedreamwedding.in` to ask us to delete anything we hold.
->
-> **Limited Use.** The Dream Wedding's use of information received from Google APIs adheres to
-> the Google API Services User Data Policy, including the Limited Use requirements.
+#### The finding that changes the shape of this
 
-**Which requirement each part discharges** — so the founder can strike words without breaking
-compliance, and whoever checks it checks against Google's list rather than this seat's summary:
+The chair's derivation was that `/privacy` exists with a Google section. It does — and it is
+**worse than a missing section.** Read at `app/privacy/page.tsx:299-315`, §5 is headed
+**Google Business Profile** and says the app *"read[s] your profile details, reviews and
+performance metrics"* and *"update[s] the fields you edit in our app &mdash; your description,
+hours, services and photos &mdash; on your profile."*
 
-| Requirement (Google's own words, read 2026-09-08) | Discharged by |
+**Every word of that describes `business.manage`, which R-41.47 has just removed from the
+declared scopes.** And it describes **write** access, which the estate has never held: GBP is
+quota-blocked until ≈2026-10-27, `GBP_QUOTA_APPROVED` is unset, and no shipped code calls a
+Business Profile endpoint.
+
+So the live policy currently **describes Google access the app does not have, and omits the
+Google access it is about to request.** F-19.13 was filed as *"the privacy page names no Google
+data."* The truer statement is: it names the wrong Google data. A reviewer comparing the consent
+screen (Search Console, read-only) against the policy (Business Profile, read and write) sees a
+mismatch, and mismatch between what is declared and what is shown is the commonest rejection
+cause in Google's own guidance.
+
+**Amend §5. Do not add a §5b.** Two Google sections describing different scopes is the same
+mismatch with more words.
+
+#### BYTE 1 — `app/privacy/page.tsx`, the §5 heading
+
+Line 301. **OLD:**
+
+```
+            <span className="num">5</span> Google Business Profile
+```
+
+**NEW:**
+
+```
+            <span className="num">5</span> Your Google account
+```
+
+*Why:* the section now covers Search Console and site verification, and will cover Business
+Profile again at G2 s2. A heading naming one product goes stale every time the scope set moves.
+
+#### BYTE 2 — `app/privacy/page.tsx`, the §5 paragraph
+
+Lines 304-313, the whole paragraph between `<p>` (303) and `</p>` (314). **Replace entire.**
+
+**OLD** (verbatim at `3d20215`, for the applier to match against):
+
+```
+            If you connect your Google Business Profile to your vendor account, we
+            access it only with your consent, through Google&rsquo;s official APIs. We
+            read your profile details, reviews and performance metrics to show them in
+            your dashboard, and we update the fields you edit in our app &mdash; your
+            description, hours, services and photos &mdash; on your profile. We never
+            create profiles without your authorisation, never act on a profile you have
+            not connected, and never sync in the other direction. Your Google access
+            tokens are encrypted at rest and used only for these purposes. You can
+            disconnect at any time from your account settings, or revoke our access
+            directly from your Google account.
+```
+
+**NEW:**
+
+```
+            If you connect your Google account to your vendor account, we access it
+            only with your consent, through Google&rsquo;s official APIs. We read the
+            search performance of websites you own &mdash; the searches people used to
+            find your pages, and how those pages ranked in Google Search &mdash; and we
+            confirm that you own a site before we read anything about it. We show that
+            information to you in your own account and use it for nothing else. Your
+            Google access tokens are encrypted at rest. We never act on an account you
+            have not connected. We do not sell Google account data, we do not use it for
+            advertising, and we do not use it to train any AI or machine-learning model.
+            You can disconnect at any time from your account settings, or revoke our
+            access directly from your Google account.
+```
+
+**House style held:** `&rsquo;` and `&mdash;` as entities, matching the surrounding file — R-40.57's
+apostrophe rule and JSX escaping both. No raw apostrophe enters this file.
+
+**Each Google requirement, and the clause that discharges it** — so the chair can strike words
+without breaking compliance:
+
+| Google's requirement (read 2026-09-08) | Discharged by |
 |---|---|
-| The privacy policy must disclose the manner in which your application **accesses, uses, stores, or shares** Google user data | *What we access* · *Why we access it* · *What we store* · *What we never do* |
-| Use of Google user data limited to the practices the published policy discloses | *Why we access it* — "for that feature and for nothing else" |
-| Must comply with the **Limited Use requirements** | the closing Limited Use sentence, which is the form Google's own examples use |
-| Hosted on the **same domain** as the homepage; **linked from** the homepage; **linked from the consent screen**; the two links **identical** | not copy — **A4's job**: `https://thedreamwedding.in/privacy`, linked in the footer, and the same string in the consent screen's Privacy policy URI |
+| Discloses how the app **accesses** Google user data | *only with your consent, through Google&rsquo;s official APIs* |
+| Discloses what it **uses** the data for | *We show that information to you in your own account and use it for nothing else* |
+| Discloses how it **stores** the data | *Your Google access tokens are encrypted at rest* |
+| Discloses how it **shares** the data | *We do not sell &hellip; not for advertising &hellip; not to train any AI* |
+| Use **limited to the practices disclosed** | *use it for nothing else* — the sentence that binds the app to its own policy |
+| Deletion / revocation available to the user | *disconnect at any time &hellip; or revoke our access directly from your Google account* |
 
-**Three notes for the founder before he rules.**
+**Three notes for the chair before the veto.**
 
-1. **`business.manage` is deliberately absent.** Under R-41.47 the client no longer declares it,
-   so a paragraph about reading Google Business Profile data would describe access the app does
-   not have — which is its own compliance problem. **G2 s2 adds that paragraph in its own
-   packet**, in the same sitting that re-declares the scope.
-2. **The "no AI training" line is load-bearing and must be true.** Google's Limited Use rules
-   are strict about it, and the estate's data-handling declaration to Meta already names
-   Anthropic and DeepSeek as processors. If any Google-derived byte were ever to reach a model
-   prompt, this sentence becomes false and the policy becomes the violation. This seat believes
-   it is true today — no shipped code calls a Google API at all — and names it so the line is
-   re-read by whoever first pipes Search Console data anywhere near an agent.
-3. **The words are plain on purpose.** The reader is a wedding vendor, not a lawyer, and Google
-   requires the policy be *visible to users* — which a wall of legal text technically satisfies
-   and practically does not.
+1. **Business Profile is deliberately gone, not forgotten.** Under R-41.47 the app does not
+   declare `business.manage`, so a GBP paragraph would describe access it does not have.
+   **B3·3 restores it at G2 s2**, in the same sitting that re-declares the scope — and that
+   restoration must describe **read** and, if the sync ships, **write**, because the old text
+   claimed write the estate never had.
+2. **The AI sentence is R-41.49 as law, in the vendor's words.** It is true today only because
+   no shipped code calls a Google API at all. The first byte that puts Search Console data near
+   a model prompt makes the published policy false, which is a worse failure than the feature.
+   The sentence belongs here *and* the rule belongs in the protocol.
+3. **"how those pages ranked" replaces "average position"** deliberately. The reader is a
+   wedding vendor. Google requires the policy be *visible to users*, which a wall of API
+   vocabulary technically satisfies and practically does not.
 
----
+#### BYTE 3 — the homepage privacy link
+
+**Derived, not assumed:** `app/(landing)/page.tsx` at `3d20215` is 1,242 lines and contains
+**no link to `/privacy` or `/terms`** — the only match for *terms* is a code comment at `:910`.
+There is no footer component on that page.
+
+Google requires the privacy policy be **linked from the homepage so users can find it easily**,
+and that the link **match the Privacy policy URI on the consent screen exactly**.
+
+**Owed:** a visible link on `https://thedreamwedding.in` to **`https://thedreamwedding.in/privacy`**
+— that exact string, no trailing slash, no relative path that renders differently, because
+Google compares it to the consent-screen URI. A `/terms` link beside it costs nothing and is
+Google's *optional terms of service* line.
+
+**Placement and styling are seat A's and the founder's, not this seat's.** What is required is
+only that it be present, visible without signing in, and byte-identical to the consent-screen
+URI. This is the one byte of A4 whose *words* are not this seat's to draft — it is a link, and
+naming its label would be reaching into a surface.
+
+**The trio is BLOCKING B3·2.** Requirements 5 and 6 of B3·2 §2 are exactly these bytes, and they
+are the last thing between the estate and a durable refresh token.
 
 ## 6 · WHAT THIS PACKET DOES NOT DO
 

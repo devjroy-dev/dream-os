@@ -1,8 +1,14 @@
 # FILING B2·3 — `instagram_business_manage_messages` (the DM bridge, I2)
 
-**Base:** dream-os `38a70b010180ab0f05128b8bf6b02e83c609b7cb`
+**Base:** dream-os `68d92c0f51f3c59e7104881f582d37fa49c3480e`
 **Seat:** CE-41 LE-B · 2026-09-08 · roadmap §3 item 4 · master §5 row **I2**
-**STATUS OF THIS FILE: NOT FILEABLE. HELD IN CLONE UNDER THE PUSH FREEZE.**
+**STATUS OF THIS FILE: NOT FILEABLE. ON THE TREE, MARKED HELD.**
+
+**Held for a build reason, not a process one.** The push freeze that first held this file has
+lifted (C1 landed at `68d92c0`). Nothing about that changes §0: the DM bridge does not exist,
+and a permission for a feature that does not exist cannot be filmed. **This file is on the tree
+so the blocker is legible to the seat that builds I2, not because it is ready to file.** It
+becomes fileable when I2 is built dark and walked, and not one day before.
 
 This packet is written as far as it can honestly go and stops where it must. Two of its
 three parts are complete. The third — the shot list — **cannot be written**, and the
