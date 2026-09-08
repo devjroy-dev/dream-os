@@ -1,0 +1,134 @@
+# FILING B1 — THE CONCIERGE TEMPLATES AND THE INTRODUCTION · SEALED
+
+**Base:** dream-os `57d12d493e1719feb95b3186c9d9ec0a6ce84f29`
+**Seat:** CE-41 LE-B (the filing seat) · **Sealed by the chair 2026-09-08, 12:27 IST**
+**WABA:** The Dream Wedding Direct `1739793260373677` · business portfolio `995204059832918`
+**Rulings applied:** R-41.4 (a/b/c) · R-41.11 · R-41.13 · R-41.30 · R-41.31 · R-40.58 · R-40.128 n/a
+**Nothing here is code.** No send arm exists for any of the four. Every one is dark by absence,
+not by gate — which is a gap, not a comfort, and is named again at §5.
+
+---
+
+## 1 · WHAT WAS FILED, AND WHAT STANDS
+
+Four bodies, drafted by this seat against R-41.4/.11, vetoed and filed by the founder from
+WhatsApp Manager on his own glass, 2026-09-08. All four **Active** at 12:27 IST.
+
+| Meta name | Filed as | Stands as | Status | Meta ID | Lane |
+|---|---|---|---|---|---|
+| `tdw_assist_lead_outside` | UTILITY | **MARKETING** | Active – Quality pending | `1627376372249131` | marketing (R-41.13) |
+| `tdw_assist_found_vendor` | UTILITY | UTILITY | Active – Quality pending | `3160852754105015` | bride |
+| `tdw_assist_found_outside` | UTILITY | UTILITY | Active – Quality pending | `3115277355330375` | bride |
+| `tdw_introduction` | MARKETING | MARKETING | Active – Quality pending | `1757650692328688` | her WABA on R9; vendor line for J1 |
+
+Bodies, variables, buttons and the per-body compliance provenance are in
+`docs/TEMPLATES.md` §2 entries **10–13**; the tracker rows are §3 rows **10–13**.
+One template moved category at review. One was filed Marketing by design. Two held Utility.
+
+**The Manager banner is not about these.** *"2 of your utility templates were flagged or
+reclassified as marketing"* names **earlier submissions**, founder-confirmed. There is no
+24-hour clock on B1 and no appeal is owed. Recorded because the banner is standing and will
+be read again by someone who does not know this.
+
+---
+
+## 2 · THE KNOWN HOLE, AND ITS INSTRUMENT (R-41.30)
+
+**Course (a) is ruled: accept Marketing on `tdw_assist_lead_outside`.** No appeal, no re-file,
+no loop. The chair's reason, recorded as the reason: Meta's Utility definition needs a
+transaction or a request *the recipient made*, and an outsider vendor made none. The body is
+honest; the category is Meta's.
+
+**The hole.** As MARKETING, the outsider lead alert is subject to Meta's per-user marketing
+template message limits — the `131049` family, a cap on how many marketing templates any one
+WhatsApp user receives from any business. Its recipients have, by construction, never messaged
+TDW. That is the most exposed class there is, and it is the exact failure F-40.176 was opened
+against: **the throttle hits hardest the vendors who most need the alert.** For this one body
+the Utility cure that answered F-40.176 is unavailable at any wording.
+
+**The instrument.** `131049` returns **synchronously on the send call** — it is not a webhook
+receipt and does not need the router. Therefore the concierge forward arm (seat A, packet A2)
+records on `assistance_forwards`, per R-41.15's columns:
+
+- `status = 'failed'`
+- `error_code = 131049`
+
+and the admin queue renders that row as **not delivered — marketing limit**, a state distinct
+from *delivered* and distinct from *delivered and ignored*. A throttled outsider is visible in
+the queue and re-forwardable by the founder's hand. She is not silently lost.
+
+**This is the whole of the cure and it is deliberately small.** It does not stop the throttle;
+it makes the throttle legible. The walk that would close this remains what the G13_R5 veto
+document said it was, and it is **not** the approval mail: *a real alert arriving on the handset
+of an outsider who has not messaged us in a fortnight.*
+
+**Owed to J1 (R-41.11), by the same reasoning.** `tdw_introduction` is Marketing by design and
+every recipient is a stranger to the WABA, so the identical instrument is owed on the
+Introductions arm — the error code recorded per send, and the vendor told *not delivered*.
+R-41.11 forbids follow-up to an unanswered introduction; without the instrument she reads
+Meta's silence as the person's answer. Named here for J1's seat.
+
+---
+
+## 3 · ROWS FOR MASTER §6 (the chair writes the table; the seat hands the rows)
+
+| Gate | Blocks | State 2026-09-08 |
+|---|---|---|
+| Template `tdw_assist_lead_outside` (`1627376372249131`) | Concierge outsider forward (A2) | Filed and Active 09-08. Filed UTILITY, **approved MARKETING**. R-41.30 course (a): accepted, no appeal. `131049` exposure named; instrument = `status`/`error_code` on `assistance_forwards`. |
+| Template `tdw_assist_found_vendor` (`3160852754105015`) | Concierge bride reply, on-platform (A2) | Filed and Active 09-08, UTILITY as filed. |
+| Template `tdw_assist_found_outside` (`3115277355330375`) | Concierge bride reply, outsider (A2) | Filed and Active 09-08, UTILITY as filed. No button; handle only, no phone (roadmap §7). |
+| Template `tdw_introduction` (`1757650692328688`) | R9 J1 Introductions | Filed and Active 09-08, MARKETING as filed (R-41.11). Handle-only twin chartered, unfiled (R-41.31). |
+| Template `tdw_introduction_handle` | R9 J1 Introductions, handle shape | **Not filed** — B1b packet, at the founder's next Manager session (R-41.31). |
+
+Master §6's table header still reads *State 2026-09-02* and predates Amendment 3; the four rows
+above are current as of 2026-09-08.
+
+---
+
+## 4 · WHAT THE FILING SETTLED, AND WHAT IT DID NOT
+
+**Settled by the act of filing** — the bodies went in as drafted, so four opens from Record
+Note 00 are answered: the budget renders as a single figure in `Rs X,XX,XXX` grouping (wallet
+law held on the panel render, *Rs 1,50,000*); the WhatsApp link in `assist_found_outside` stays
+dropped; `STOP REQUESTS` stays on the outsider alert; and the near-duplicate risk between the
+two `found_` bodies cleared — both accepted, neither refused as duplicate content.
+
+**Not settled.**
+1. **§1's true text** — chair-owned at c-41.4, and F-40.220's disposal rides on it.
+2. **The outsider's opt-in.** Approval is not consent. Meta's Business Messaging Policy wants a
+   prior opt-in for any business-initiated template, and an outsider sourced from Instagram gave
+   TDW nothing. Raised once at Record Note 00, unruled, and unchanged by the filing. The
+   instrument that would show damage is the WABA's quality rating, not the template's status.
+3. **Slot order** — see §5.
+
+---
+
+## 5 · WHAT THIS SEAL DOES NOT PROVE
+
+**No message has been sent.** Unlike `circle_place_ready`, whose entry in `TEMPLATES.md` was
+authored from a wire witness — accepted, delivered, read, and **rendered on the founder's
+handset** — these four are witnessed only by the Manager's own preview.
+
+That matters for one specific reason, which `circle_place_ready`'s note states and this seal
+repeats: **parameters are positional and Meta only counts them.** A swapped order is accepted,
+delivered, and silently wrong. The render is the only thing that proves the slot order, and the
+render this seal has is the Manager's, not a handset's.
+
+So: **`variables` is ordered from the render, never from the filing form**, and for all four the
+handset render is still owed. The first live send on each is also its first order proof. Seat A's
+walk (test couple `9625759924` → MAKEUPBYSWATIROY) is where three of the four get it; J1's walk
+(DEV440 → the founder's handset) is where the fourth does.
+
+---
+
+## 6 · THE RECORD LINE
+
+```
+B1 · CE-41 · SEALED 2026-09-08
+tdw_assist_lead_outside   1627376372249131  MARKETING (filed UTILITY)  Active
+tdw_assist_found_vendor   3160852754105015  UTILITY                    Active
+tdw_assist_found_outside  3115277355330375  UTILITY                    Active
+tdw_introduction          1757650692328688  MARKETING (as filed)       Active
+WABA 1739793260373677 · en · no send arm on any · slot order unwitnessed on a handset
+R-41.30 accepted · R-41.31 chartered unfiled · banner's "2" = earlier submissions, not these
+```

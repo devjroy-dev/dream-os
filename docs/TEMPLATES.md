@@ -90,6 +90,50 @@ The filed body is **truthful rather than merely compliant**: `invite_circle_memb
 
 **Note (08):** `TDW_08_DEMO_FINAL.md` §P1 amends this body with a remove line ("Don't want this? {remove_link} — one tap, gone.") and re-submits. Not pulled forward; named so 08's executor finds the pointer here.
 
+### 10 · `assist_lead_outside` — **MARKETING** (filed UTILITY) · marketing line · Meta name **`tdw_assist_lead_outside`**
+**Added CE-41 seat B (B1, 2026-09-08) — the concierge's outsider lead alert, R-41.4(a).** Variables: `{{1}}` = vendor name as TDW holds it, `{{2}}` = wedding month, `{{3}}` = city, `{{4}}` = category, `{{5}}` = budget figure, digits only. Meta template ID **`1627376372249131`**.
+
+> Hi {{1}}, a couple planning a {{2}} wedding in {{3}} asked The Dream Wedding to find them a {{4}}, and their request has been matched to you with a budget of about Rs {{5}}. The request is held on the page below. Reply STOP REQUESTS if you would rather not receive these.
+
+Button: URL, label `View the request`, base `https://thedreamwedding.in/assist/` with a dynamic suffix (the request token). Fixed domain, one variable at the tail.
+
+**Category provenance — the reclassification, recorded as a decision.** Filed UTILITY and **approved as MARKETING**. Meta's Utility test requires the message be non-promotional **and also** specific to or requested by the recipient — clearly related to *their* order, account, services or transactions. An outside vendor made no request and holds no account, so the second prong fails on the recipient's side no matter how the body is worded. The body asks for nothing, names no benefit and carries no invitation verb (the sketch's "join to see it" was struck at draft precisely because Meta's own guidelines class a request to install or act in an app as App Promotion, which is Marketing); the category still moved. **R-41.30 rules course (a): accept.** No appeal, no re-file, no loop. Reason: an appeal spends goodwill on a loss, and Meta warns then restricts utility messaging for seven days where it judges a business to be pushing marketing content through the utility category — the whole estate's Utility lane is not worth one template's pricing.
+
+**The known hole, and its instrument (R-41.30).** As MARKETING this body is subject to Meta's **per-user marketing template message limits** — a cap on how many marketing templates any one WhatsApp user receives from any business, the `131049` family. Its recipients are, by construction, vendors who have never messaged TDW, which is the most exposed class there is. This is F-40.176's throttle, on the one body the Utility cure could not reach. **It is named, not discovered.** The cure is not a category and not a reword: `131049` returns **synchronously on the send call**, so the forward arm records `status='failed'` and `error_code=131049` on `assistance_forwards` (R-41.15's columns) and the admin queue shows the alert as *not delivered — marketing limit*, distinct from an alert that was delivered and ignored. A throttled outsider is therefore visible and re-forwardable by hand; she is not silently lost.
+
+**No caller ships with this template** at the seal. The concierge forward arm is seat A's (packet A2), dark behind the switchboard.
+
+### 11 · `assist_found_vendor` — UTILITY · bride line · Meta name **`tdw_assist_found_vendor`**
+**Added CE-41 seat B (B1, 2026-09-08) — R-41.4(b).** Variables: `{{1}}` = bride's name, `{{2}}` = category, `{{3}}` = wedding month, `{{4}}` = vendor's display name. Meta template ID **`3160852754105015`**.
+
+> Hi {{1}}, we have matched a {{2}} to the request you sent The Dream Wedding for your {{3}} wedding. {{4}} is on The Dream Wedding, and their recent work and open dates are on the page below.
+
+Button: URL, label `See their page`, base `https://thedreamwedding.in/v/` with a dynamic suffix (the vendor code, R-40.15's address family).
+
+**Copy provenance:** the verb **found** is deliberately absent. Meta's categorisation guide lists under *Retargeting* — which is Marketing **even where the user asked for it** — the example *"We found a {{car}} that meets your saved search."* The filed body leads instead with *the request you sent*, which names the bride's own action and puts the message inside Meta's second Utility prong. Approved UTILITY as filed; the manoeuvre held.
+
+### 12 · `assist_found_outside` — UTILITY · bride line · Meta name **`tdw_assist_found_outside`**
+**Added CE-41 seat B (B1, 2026-09-08) — R-41.4(c).** Variables: `{{1}}` = bride's name, `{{2}}` = wedding month, `{{3}}` = category, `{{4}}` = Instagram handle. Meta template ID **`3115277355330375`**. **No button.**
+
+> Hi {{1}}, the request you sent The Dream Wedding for your {{2}} wedding has been matched to a {{3}}, and their work is on Instagram at {{4}} — reply here and we will arrange the introduction.
+
+**Two departures from R-41.4(c) as written, both deliberate, both filed and approved.** *One:* the ruling names "the IG handle **and the TDW WhatsApp link**" as body text. The link was dropped — she is reading this on the bride line, so *reply here* reaches TDW with no link at all, and a link buys nothing while carrying a non-zero flag risk. *Two:* the opening clause is inverted relative to entry 11 so the two bodies are not near-duplicates; Meta rejects a template whose body duplicates an existing one, and `circle_place_ready` records the estate losing a cycle to the pre-submission classifier already. Both accepted; neither was refused as duplicate content.
+
+**Roadmap §7 held:** the outsider's phone does not appear, and the handle is the only identifier that leaves. The couple reaches an outside vendor only after that vendor joins.
+
+### 13 · `introduction` — MARKETING · her own WABA on R9; the vendor line for the J1 walk · Meta name **`tdw_introduction`**
+**Added CE-41 seat B (B1, 2026-09-08) — R-41.11, Victor as her closer.** Variables: `{{1}}` = recipient's name, `{{2}}` = vendor or business name, `{{3}}` = where they met. Meta template ID **`1757650692328688`**.
+
+> Hi {{1}}, this is {{2}}, and we met at {{3}} — I wanted to send you my work, so here is my page with recent weddings and my open dates. Reply STOP and I will not message you again.
+
+Button: URL, label `See my work`, base `https://thedreamwedding.in/v/` with a dynamic suffix (her storefront, wedding page or reel — all under the fixed domain).
+
+**Category, argued and not argued down.** MARKETING **as filed**, not a reclassification. A vendor sending a stranger her portfolio is promotional in Meta's frame and in plain English; arguing Utility here is the misuse that earns a written warning and a seven-day utility-messaging restriction on the WABA. Hence the opt-out sentence, present and mandatory.
+
+**What the marketing throttle means here.** Every recipient of an introduction has, by construction, never messaged that WABA, so a share of introductions will be silently withheld under the per-user marketing cap — and R-41.11 forbids any follow-up to an unanswered introduction. **A throttled introduction and an ignored introduction are indistinguishable to the vendor unless the send arm says otherwise.** The Utility cure that answered F-40.176 is not available to this body at any wording. R-41.30's instrument is therefore owed on J1's arm too: the error code recorded per send, and the vendor told *not delivered*, never left to read Meta's silence as the person's answer.
+
+**Open at the seal (R-41.31):** the handle-only shape of R-41.11 has no template. A body either carries a URL button or it does not, so a second template **`tdw_introduction_handle`** — no button, the handle as a variable in the body — is chartered for a B1b packet at the founder's next Manager session. Not blocking; R9 is gated regardless.
+
 ## 3. Submission tracker
 
 All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`) and **all six were approved the same day** (the four in review cleared within minutes). `status` mirrors the registry's `status` field in `src/lib/templates.js`; all six read `approved`. `demo_invite` was approved as **UTILITY** — the tightened copy held, so no category reconciliation was needed.
@@ -105,6 +149,17 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 | 7 | `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY | **approved** | 2026-07-29 — Meta approved ~17:31 UTC, Utility retained (dashboard: Active – Quality pending). Flipped in `src/lib/templates.js` at TDW_07 P2. |
 | 8 | `vendor_welcome` | `tdw_vendor_welcome` | UTILITY | **approved** | 2026-08-06 — filed by the founder for TDW_10 ADMIN P3's mint. The FIRST draft was refused by Meta's own pre-submission classifier as Marketing (「 so couples can find you 」 is a benefit claim); the filed body follows `demo_invite`'s Utility-earning precedent — an account that EXISTS and the action that services it, promising nothing. Dashboard: Active – Quality pending. Flipped in `src/lib/templates.js` at the P3 close. |
 | 9 | `circle_place_ready` | `tdw_circle_place_ready` | UTILITY | **approved** | 2026-08-13 — TDW_14 D-2. First draft refused by Meta's pre-submission classifier as Marketing; rewritten on `vendor_welcome`'s Utility-earning precedent and filed. Dashboard: **Active – Quality pending** (Active is the approval; "Quality pending" is the quality rating — the same reading `demo_lead_alert` and `enquiry_alert_vendor` carry). Meta ID `2069520823656352`. Wire-witnessed live: accepted, delivered, read, and rendered on the handset. |
+
+| 10 | `assist_lead_outside` | `tdw_assist_lead_outside` | **MARKETING** (filed UTILITY) | **approved** | 2026-09-08 — CE-41 B1. Filed UTILITY, **approved as MARKETING**; the category moved at review, not after. Dashboard: Active – Quality pending. Meta ID `1627376372249131`. R-41.30: accept, no appeal. The `131049` hole and its instrument are recorded at the §2 entry. |
+| 11 | `assist_found_vendor` | `tdw_assist_found_vendor` | UTILITY | **approved** | 2026-09-08 — CE-41 B1. Approved UTILITY as filed. Dashboard: Active – Quality pending. Meta ID `3160852754105015`. |
+| 12 | `assist_found_outside` | `tdw_assist_found_outside` | UTILITY | **approved** | 2026-09-08 — CE-41 B1. Approved UTILITY as filed. Dashboard: Active – Quality pending. Meta ID `3115277355330375`. |
+| 13 | `introduction` | `tdw_introduction` | MARKETING | **approved** | 2026-09-08 — CE-41 B1. MARKETING **as filed** (R-41.11), not a reclassification. Dashboard: Active – Quality pending. Meta ID `1757650692328688`. Its handle-only twin is chartered but unfiled (R-41.31). |
+
+**Reading of the four (CE-41 B1, 2026-09-08).** All four filed and Active on **The Dream Wedding Direct** (`1739793260373677`) on one day, language `en`, from WhatsApp Manager by the founder. **Wire-unwitnessed:** no send arm exists for any of them, so unlike `circle_place_ready` the slot order here is proven only by the Manager's own preview render, never by a message on a handset. The first send on each is therefore also its first order proof — `variables` is ordered from the render, never from the filing form, and that reading is still owed for all four.
+
+**Two records this file does not carry, named so the next reader does not mistake absence for cleanliness.** (i) §2 has no entry **8** — `vendor_welcome` appears in this tracker as row 8 but was never given a body entry above. (ii) This file documents thirteen templates; the WABA holds nineteen Active. §2 and §3 are behind the WABA and have been since Block 10. Neither is CE-41 seat B's to repair, and neither was repaired here.
+
+**A note on §1 and this cut.** Seat B wrote §2 and §3 only. **§1 is the chair's** at this seal (c-41.4): `FINDINGS_LOG:5057` banks an amendment — *real words or a comma-separated clause between variable pairs* — that line 20 of this file never received, and F-40.220's disposal rides on it. The four bodies above obey the **stricter** unamended reading regardless, so they are compliant under either text. **If this packet and the chair's §1 edit are in flight together, apply this one first**; two writers on one file is the collision that R-40.82 exists to catch.
 
 ## 4. Language code
 
