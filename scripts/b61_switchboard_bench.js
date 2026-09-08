@@ -286,11 +286,44 @@ const graphFetch = (statusWord, extra = []) => async (url) => ({
   }
   }
 
+  sec('§5b · C1b — THE RAW WABA LISTING, PAGINATED TO COMPLETION (F-41.6)');
+  if (sweep) {
+    const twoPages = (calls) => async (url) => {
+      calls.push(url);
+      if (/after=CUR2/.test(url)) return { ok: true, status: 200, json: async () => ({ data: [{ name: 'tdw_b', status: 'APPROVED', category: 'UTILITY', id: '2', language: 'en' }], paging: { cursors: { after: 'END' } } }) };
+      return { ok: true, status: 200, json: async () => ({ data: [{ name: 'tdw_c', status: 'PAUSED', category: 'MARKETING', id: '3', language: 'en' }, { name: 'tdw_a', status: 'REJECTED', category: 'UTILITY', id: '1', language: 'en' }], paging: { cursors: { after: 'CUR2' }, next: url + '&after=CUR2' } }) };
+    };
+    await cell('listWabaTemplates follows paging.next to the end and returns every row, sorted by name', async () => {
+      const calls = []; const r = await sweep.listWabaTemplates({ env: { META_WABA_ID: 'w', META_WABA_TOKEN: 't' }, fetch: twoPages(calls) });
+      return r.ok && r.pages === 2 && calls.length === 2 && r.templates.map((t) => t.name).join(',') === 'tdw_a,tdw_b,tdw_c' && r.templates[1].id === '2' && r.truncated === false ? true : JSON.stringify(r);
+    });
+    await cell('it asks for name,status,category,id and never calls fetch without META_WABA_ID', async () => {
+      const calls = []; await sweep.listWabaTemplates({ env: { META_WABA_ID: 'w', META_WABA_TOKEN: 't' }, fetch: twoPages(calls) });
+      const noId = await sweep.listWabaTemplates({ env: { META_WABA_TOKEN: 't' }, fetch: async () => { throw new Error('must not be called'); } });
+      return /fields=name,status,category,id/.test(calls[0]) && noId.ok === false && /META_WABA_ID/.test(noId.evidence) ? true : 'fields or guard wrong';
+    });
+    await cell('a mid-listing Graph refusal returns ok:false with the page named and the rows read so far', async () => {
+      let n = 0; const f = async (url) => { n++; if (n === 2) return { ok: false, status: 403, json: async () => ({ error: { code: 10, message: 'Permission denied' } }) }; return twoPages([])(url); };
+      const r = await sweep.listWabaTemplates({ env: { META_WABA_ID: 'w', META_WABA_TOKEN: 't' }, fetch: f });
+      return r.ok === false && r.templates.length === 2 && /page 2/.test(r.evidence) && /\(#10\)/.test(r.evidence) ? true : JSON.stringify(r);
+    });
+    await cell('maxPages stops a runaway cursor and says TRUNCATED', async () => {
+      const f = async (url) => ({ ok: true, status: 200, json: async () => ({ data: [{ name: 'x' + Math.random(), id: '9' }], paging: { next: url } }) });
+      const r = await sweep.listWabaTemplates({ env: { META_WABA_ID: 'w', META_WABA_TOKEN: 't' }, fetch: f, maxPages: 3 });
+      return r.pages === 3 && r.truncated === true && r.ok === false && /TRUNCATED/.test(r.evidence) ? true : JSON.stringify(r);
+    });
+    await cell('the door GET /waba_templates exists, is admin-auth, and only reads (no cap writer called)', () => {
+      const c = codeOf('src/api/admin/capabilities.js');
+      const block = c.slice(c.indexOf("router.get('/waba_templates'"), c.indexOf("router.post('/sweep'"));
+      return /requireAdmin, asyncHandler/.test(block) && /listWabaTemplates\(\)/.test(block) && !/cap\.(flip|recordSweep|setAutoOn|touch)\(/.test(block) ? true : 'door shape wrong';
+    });
+  }
+
   sec('§6 · THE ADMIN DOORS (shape, no express driven — the walk drives them)');
   await cell('router mounted at /admin/capabilities', () => /'\/admin\/capabilities',\s*require\('\.\/admin\/capabilities'\)/.test(codeOf('src/api/router.js')) ? true : 'not mounted');
-  await cell('five doors: GET /, POST /sweep, /:key/flip, /:key/auto_on, /:key/check', () => {
+  await cell('six doors: GET /, GET /waba_templates, POST /sweep, /:key/flip, /:key/auto_on, /:key/check', () => {
     const c = codeOf('src/api/admin/capabilities.js');
-    return ["router.get('/'", "router.post('/sweep'", "router.post('/:key/flip'", "router.post('/:key/auto_on'", "router.post('/:key/check'"].every((s) => c.includes(s)) ? true : 'a door is missing';
+    return ["router.get('/'", "router.get('/waba_templates'", "router.post('/sweep'", "router.post('/:key/flip'", "router.post('/:key/auto_on'", "router.post('/:key/check'"].every((s) => c.includes(s)) ? true : 'a door is missing';
   });
   await cell('every door is behind requireAdmin', () => {
     const c = codeOf('src/api/admin/capabilities.js');

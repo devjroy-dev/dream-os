@@ -130,6 +130,39 @@ async function probeTemplate(name, { env = process.env, fetch: f = globalThis.fe
 }
 
 /**
+ * C1b (F-41.6's instrument) — EVERY template on the WABA, raw, paginated to
+ * completion. Meta pages `message_templates` with `paging.next` (an absolute URL
+ * carrying the cursor); a listing that reads one page and stops would hand seat B
+ * a partial register and call it whole. Read-only; the admin door serves it.
+ * Returns { ok, templates: [{name,status,category,id,language?}], pages, evidence }.
+ */
+async function listWabaTemplates({ env = process.env, fetch: f = globalThis.fetch, maxPages = 20 } = {}) {
+  const waba = env.META_WABA_ID, token = env.META_WABA_TOKEN;
+  if (!waba)  return { ok: false, templates: [], pages: 0, evidence: 'META_WABA_ID is not set' };
+  if (!token) return { ok: false, templates: [], pages: 0, evidence: 'META_WABA_TOKEN is not set' };
+  let url = `${GRAPH_BASE}/${graphVersion(env)}/${waba}/message_templates?fields=name,status,category,id,language&limit=100`;
+  const out = []; let pages = 0;
+  while (url && pages < maxPages) {
+    let res, body;
+    try { res = await f(url, { headers: { Authorization: `Bearer ${token}` } }); body = await res.json().catch(() => null); }
+    catch (e) { return { ok: false, templates: out, pages, evidence: `Graph unreachable on page ${pages + 1}: ${e && e.message}` }; }
+    if (!res.ok || !body || body.error) {
+      const err = (body && body.error) || {};
+      return { ok: false, templates: out, pages, evidence: `Graph ${res.status} on page ${pages + 1}: (#${err.code || '?'}) ${err.message || 'no message'}` };
+    }
+    pages += 1;
+    for (const t of (Array.isArray(body.data) ? body.data : [])) {
+      if (t && t.name) out.push({ name: t.name, status: t.status || null, category: t.category || null, id: t.id || null, language: t.language || null });
+    }
+    url = body.paging && body.paging.next ? body.paging.next : null;
+  }
+  const truncated = !!url;
+  out.sort((a, b) => a.name.localeCompare(b.name));
+  return { ok: !truncated, templates: out, pages, truncated,
+    evidence: `${out.length} templates on WABA ${waba} across ${pages} page(s)${truncated ? ' — TRUNCATED at maxPages' : ''} · ${new Date().toISOString().slice(0, 16)}Z` };
+}
+
+/**
  * Google scope presence on the HOUSE grant via token-info. `scopeKey` is the
  * register's short form (R-41.43): `scope.google.webmasters.readonly` →
  * `https://www.googleapis.com/auth/webmasters.readonly`.
@@ -294,7 +327,7 @@ function startCapabilitiesSweep({ supabase }) {
 }
 
 module.exports = {
-  runSweep, probeTemplate, probeScope, applyReading, applyTemplateStatusEvent,
+  runSweep, probeTemplate, probeScope, applyReading, applyTemplateStatusEvent, listWabaTemplates,
   startCapabilitiesSweep, mapMetaTemplateStatus, scopeUrlFor, notifyFounder,
   TEMPLATE_GUARDS, SWEEP_CRON, IST,
 };

@@ -27,6 +27,10 @@ const MUT = [
     "    await cap.touch(row.key, { evidence: reading.evidence }, { supabase });", "    await supabase.from('capabilities').update({ evidence: reading.evidence }).eq('key', row.key);", 'touches the capabilities table'],
   ['M10 a door goes synchronous again', 'src/lib/vendor/referralAlert.js',
     "async function sendGate() {\n  const flagOn = cap.on(CAP_KEY);", "function sendGate() {\n  const flagOn = false;", 'every sendGate/consentSendGate in the four vendor libs is async'],
+  ['M11 the listing reads one page and stops', 'src/capabilitiesSweep.js',
+    "url = body.paging && body.paging.next ? body.paging.next : null;", "url = null;", 'follows paging.next to the end'],
+  ['M12 the listing door gains a writer', 'src/api/admin/capabilities.js',
+    "  const r = await sweep.listWabaTemplates();", "  const r = await sweep.listWabaTemplates(); await cap.touch('flag.wedding_reel', { evidence: 'x' }).catch(() => {});", 'only reads (no cap writer called)'],
 ];
 const only = process.argv[2] ? Number(process.argv[2]) : null;
 let bad = 0;

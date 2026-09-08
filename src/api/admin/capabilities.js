@@ -1,6 +1,7 @@
 // src/api/admin/capabilities.js — THE SWITCHBOARD'S ADMIN DOORS. CE-41 seat C, R-41.8.
 //
 //   GET  /api/v2/admin/capabilities            every row (fresh, not cached — the card is the truth)
+//   GET  /api/v2/admin/capabilities/waba_templates  C1b: the raw Graph listing of every template on META_WABA_ID (F-41.6)
 //   POST /api/v2/admin/capabilities/:key/flip  { to: 'on'|'off' }  → the founder's tap (armed|approved|on|off → on|off)
 //   POST /api/v2/admin/capabilities/:key/auto_on  { auto_on: bool, walk_ref?: text }  (fork iii: on needs walk_ref)
 //   POST /api/v2/admin/capabilities/:key/check    Check now — one live probe, the row's evidence line moves
@@ -34,6 +35,14 @@ router.get('/', requireAdmin, asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;
   const rows = await cap.list({ supabase, fresh: true });
   return okRes(res, { rows, guards: sweep.TEMPLATE_GUARDS });
+}));
+
+// C1b — the raw WABA listing (F-41.6's instrument): every template name with its
+// Meta status, category and id, paginated to completion. Read-only; writes nothing.
+router.get('/waba_templates', requireAdmin, asyncHandler(async (req, res) => {
+  const r = await sweep.listWabaTemplates();
+  if (!r.ok && r.templates.length === 0) return errRes(res, 502, r.evidence);
+  return okRes(res, { count: r.templates.length, pages: r.pages, truncated: !!r.truncated, evidence: r.evidence, templates: r.templates });
 }));
 
 router.post('/sweep', requireAdmin, asyncHandler(async (req, res) => {

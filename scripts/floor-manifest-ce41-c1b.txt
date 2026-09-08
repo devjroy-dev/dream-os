@@ -1,0 +1,10 @@
+# scripts/floor-manifest-ce41-c1b.txt
+# CE-41 · SEAT C · C1b — the raw WABA listing (F-41.6's instrument), one rider on C1.
+# BASE: c854978b428b81a52881a8cc32cfa78f0b7108eb — re-derived at the cut (fetch-first).
+# No migration, no seeds, no writer: GET /api/v2/admin/capabilities/waba_templates.
+src/capabilitiesSweep.js
+src/api/admin/capabilities.js
+scripts/b61_switchboard_bench.js
+scripts/b61_mutations.js
+scripts/floor-manifest-ce41-c1b.txt
+docs/TDW_CE41_C1_SWITCHBOARD_HANDOVER.md

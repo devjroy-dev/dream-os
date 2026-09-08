@@ -44,3 +44,9 @@ Each keeps its cell names and questions; only the LEVER moved from `process.env.
 ## 5 · The walk (kickoff §8) — after deploy, on the founder's phone via C2's card; until C2, via the doors with an admin bearer
 
 The `flag.payment_reminder_send` off → a due reminder in the fixture (`9888294440`) refuses with `flag.payment_reminder_send is off on the switchboard` in the Railway log → on → it sends to MAKEUPBYSWATIROY's handset · `Check now` on `template.tdw_assist_found_vendor` returns `approved` with `Meta: APPROVED · UTILITY · id 3160852754105015 · <ts>Z` and `checked_at` moves. Nothing else changes on any vendor's glass. **The walk outranks the bench.**
+
+## 6 · C1b — the raw WABA listing (cut at `c854978b428b81a52881a8cc32cfa78f0b7108eb`; manifest `scripts/floor-manifest-ce41-c1b.txt`)
+
+`GET /api/v2/admin/capabilities/waba_templates` (admin-auth, read-only, JSON): `listWabaTemplates()` in `src/capabilitiesSweep.js` walks `GET /{META_WABA_ID}/message_templates?fields=name,status,category,id,language&limit=100` following `paging.next` **to completion** (a `maxPages` fence of 20 marks `truncated` rather than pretending), returns every template sorted by name with its Meta status, category and id, and names the page on any Graph refusal. Its purpose is F-41.6: seat B's 38 names with IDs come from this door, never from memory. Nothing written; no seed, no migration. b61 **64/64** (five new cells incl. a two-page double and a mid-listing refusal) · **12/12** mutations (M11: read one page and stop; M12: the door gains a writer). No neighbour moved.
+
+**First read (the founder's, after deploy):** `curl -s -H "Authorization: Bearer <admin token>" https://dream-os-production.up.railway.app/api/v2/admin/capabilities/waba_templates | jq '.count, .pages, .truncated'` — expect `count` ≥ 32 (the registry's 28 + the concierge four; the exact number is Meta's word), `truncated: false`.
