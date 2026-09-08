@@ -752,6 +752,29 @@ const TEMPLATES = {
     status: 'approved',
   },
 
+  // ── BLOCK 20 · CONCIERGE s1 · F-41.26 — the founder's own notify ────────────
+  // Filed by the FOUNDER directly in WhatsApp Manager 2026-09-08 (not seat B —
+  // named in the A2-rider handover), Utility, Active – Quality pending,
+  // Meta ID 1106894635324625. Body byte-for-byte as the Manager preview renders.
+  // Recipient: ADMIN_PHONE only (env, F-07.76) on the vendor line — an
+  // admin-facing send, no vendor or couple byte (R-41.63: runs live).
+  // Static URL button "Open the queue" → https://thedreamwedding.in/admin/assistance
+  // — no parameter, so no `button:` arm here; Meta holds the URL.
+  // Mechanism: `isApproved` at the bottom of this file. If Meta pauses it,
+  // status flips here and notifyFounder lands a LOUD SKIP, not a send.
+  admin_assist_request: {
+    key: 'admin_assist_request',
+    name: 'tdw_admin_assist_request',
+    language: TEMPLATE_LANGUAGE,
+    line: 'vendor',
+    category: 'UTILITY',
+    variables: ['couple_name', 'date_words', 'city', 'categories_words', 'budget_rs'],
+    body:
+      "New assistance request from {{1}} for a wedding on {{2}} in {{3}}, asking for " +
+      "{{4}} with a total budget around Rs {{5}}. Open the admin queue to forward it.",
+    status: 'approved',
+  },
+
   // ── THE REFERRAL ALERT — R-G51.15, G5.1 SITTING 2 ─────────────────────────
   // A peer has been handed an enquiry by another vendor and learns of it only
   // by opening the app, or never. Sitting 1 shipped the whole exchange and told

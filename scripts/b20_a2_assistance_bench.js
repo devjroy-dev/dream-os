@@ -161,6 +161,11 @@ const ADMIN  = 'src/api/admin/assistance.js';
   ok('every FK names a witnessed parent: couples, vendors, prospects, leads, and the two own tables', ['couples', 'vendors', 'prospects', 'leads', 'assistance_requests', 'assistance_request_items'].every(t => new RegExp(`references\\s+public\\.${t}\\s*\\(id\\)`, 'i').test(migCode)));
   ok('target_kind ↔ target column agreement is a CHECK, not a comment', /constraint assistance_forwards_target_matches check/i.test(migCode));
   ok('OUT_OF_ORDER register untouched (0148 is above the tip, not a filled hole)', JSON.parse(read('db/migrations/OUT_OF_ORDER.json')).register.length === 0);
+  const MIG2 = 'db/migrations/0150_assistance_notify_wamid.sql';
+  const mig2 = exists(MIG2) ? read(MIG2).split('\n').filter(l => !l.trim().startsWith('--')).join('\n') : '';
+  ok('0150 exists: notify_wamid + notify_status + notify_error_code + notify_error_title + notify_sent_at on assistance_requests', ['notify_wamid', 'notify_status', 'notify_error_code', 'notify_error_title', 'notify_sent_at'].every(c => new RegExp(`add column if not exists ${c}\\s`, 'i').test(mig2)));
+  ok('0150: partial INDEX + partial UNIQUE on notify_wamid WHERE NOT NULL (R-40.110)', /create index if not exists idx_assistance_requests_notify_wamid[\s\S]*?\(notify_wamid\)\s*where\s+notify_wamid\s+is\s+not\s+null/i.test(mig2) && /create unique index if not exists uq_assistance_requests_notify_wamid[\s\S]*?\(notify_wamid\)\s*where\s+notify_wamid\s+is\s+not\s+null/i.test(mig2));
+  ok('0150 touches only assistance_requests (its own 0148 table)', !/alter table public\.(?!assistance_requests)/i.test(mig2) && (mig2.match(/alter table/gi) || []).length === 1);
 
   // ═══ §3 ═══
   section('§3 · THE CAPABILITIES STUB');
@@ -204,24 +209,32 @@ const ADMIN  = 'src/api/admin/assistance.js';
     db = makeDb();
     let sends = [];
     const env = { ADMIN_PHONE: '+919888294440' };
+    // F-41.26 / R-41.63: the notify is now a Utility TEMPLATE through sendWa (the one
+    // template-send home). The stub records the call and answers sendWa's success shape.
+    const okSend = async (o) => { sends.push(o); return { sent: true, mode: 'template', key: o.templateKey, result: { wamid: 'wamid.NOTIFY1' } }; };
     r = await A.createAssistanceRequest(db, {
       couple_id: 'couple-priya', phone: '+919625759924', name: 'Priya', city: 'Delhi', area: 'Hauz Khas',
       wedding_date: '2027-02-14', brief: 'Pastel florals, candlelight.', origin: 'bride',
       items: [{ category: 'photography', budget_rs: '2,50,000' }, { category: 'makeup', budget_rs: 40000 }, { category: 'makeup', budget_rs: 1 }],
-    }, { env, sendWhatsApp: async (to, body) => { sends.push({ to, body }); return { sent: true, sid: null }; } });
+    }, { env, sendWa: okSend });
     ok('a good sheet files ONE request, status open, origin bride, phone stored as the last ten', r.ok && db._t.assistance_requests.length === 1 && r.request.status === 'open' && r.request.origin === 'bride' && r.request.phone === '9625759924');
     ok('two items (the duplicate trade collapsed), budgets whole rupees, forwarded_count 0', r.ok && db._t.assistance_request_items.length === 2 && db._t.assistance_request_items.every(i => i.request_id === r.request.id) && db._t.assistance_request_items.find(i => i.category === 'photography').budget_rs === 250000);
-    ok('the founder was notified once, to ADMIN_PHONE, with Rs in Indian grouping and no glyph', sends.length === 1 && sends[0].to === '+919888294440' && /Rs 2,50,000/.test(sends[0].body) && !/₹/.test(sends[0].body) && r.notify.sent === true);
-    ok('a `{sent:true, sid:null}` reply counts as sent — `sent` is the only honest key', r.notify.sent === true);
+    const call = sends[0];
+    ok('the founder was notified ONCE, by TEMPLATE admin_assist_request on the vendor line to ADMIN_PHONE', sends.length === 1 && call.line === 'vendor' && call.to === '+919888294440' && call.templateKey === 'admin_assist_request' && r.notify.sent === true);
+    ok('the five vars: name, date in words, city, categories in words, summed budget in Indian grouping with no glyph', call.vars.couple_name === 'Priya' && call.vars.date_words === '14 February 2027' && call.vars.city === 'Delhi' && call.vars.categories_words === 'photography and makeup' && call.vars.budget_rs === '2,90,000' && !/\u20b9/.test(JSON.stringify(call.vars)));
+    ok('the wamid lands on the request row: notify_wamid + notify_status=sent + notify_sent_at (R-40.110 home, 0150)', db._t.assistance_requests[0].notify_wamid === 'wamid.NOTIFY1' && db._t.assistance_requests[0].notify_status === 'sent' && !!db._t.assistance_requests[0].notify_sent_at && r.notify.wamid === 'wamid.NOTIFY1');
+    ok('the registry carries admin_assist_request as approved, Utility, vendor line, five variables', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate ? t.getTemplate('admin_assist_request') : null; return t.isApproved('admin_assist_request') && e && e.name === 'tdw_admin_assist_request' && e.category === 'UTILITY' && e.line === 'vendor' && e.variables.length === 5; })());
     db = makeDb();
-    r = await A.createAssistanceRequest(db, { phone: '9625759924', items: [{ category: 'makeup', budget_rs: 40000 }] }, { env: {}, sendWhatsApp: async () => { throw new Error('must not send'); } });
-    ok('ADMIN_PHONE unset → the request is on file and the notify is a LOUD SKIP (admin_phone_unset), no send attempted (F-07.76)', r.ok && r.notify.sent === false && r.notify.refusal === 'admin_phone_unset');
+    r = await A.createAssistanceRequest(db, { phone: '9625759924', items: [{ category: 'makeup', budget_rs: 40000 }] }, { env: {}, sendWa: async () => { throw new Error('must not send'); } });
+    ok('ADMIN_PHONE unset → the request is on file, notify_status=skipped/admin_phone_unset, no send attempted (F-07.76)', r.ok && r.notify.sent === false && r.notify.refusal === 'admin_phone_unset' && db._t.assistance_requests[0].notify_status === 'skipped' && db._t.assistance_requests[0].notify_error_code === 'admin_phone_unset');
     db = makeDb();
-    r = await A.createAssistanceRequest(db, { phone: '9625759924', items: [{ category: 'makeup' }] }, { env, sendWhatsApp: async () => ({ sent: false, blocked: 'opted_out' }) });
-    ok('a returned refusal is read: notify.refusal = opted_out, the request still on file', r.ok && r.notify.sent === false && r.notify.refusal === 'opted_out' && db._t.assistance_requests.length === 1);
-    r = await A.createAssistanceRequest(db, { phone: '9625759924', items: [{ category: 'makeup' }] }, { env, sendWhatsApp: async () => { const e = new Error('meta down'); e.code = 'MetaSendError'; throw e; } });
-    ok('a THROWN send is caught and named; the request still on file', r.ok && r.notify.sent === false && r.notify.refusal === 'MetaSendError');
-  } else { for (let i = 0; i < 12; i++) ok('§5 cell (writer absent)', false); }
+    r = await A.createAssistanceRequest(db, { phone: '9625759924', items: [{ category: 'makeup' }] }, { env, sendWa: async () => { const e = new Error("template 'admin_assist_request' status is 'paused', not 'approved'"); e.name = 'WaTemplateNotApprovedError'; throw e; } });
+    ok('a THROWN refusal is caught and NAMED on the row: notify_status=failed, notify_error_code=WaTemplateNotApprovedError; the request still on file', r.ok && r.notify.sent === false && r.notify.refusal === 'WaTemplateNotApprovedError' && db._t.assistance_requests.length === 1 && db._t.assistance_requests[0].notify_status === 'failed' && db._t.assistance_requests[0].notify_error_code === 'WaTemplateNotApprovedError');
+    r = await A.createAssistanceRequest(db, { phone: '9625759924', items: [{ category: 'makeup' }] }, { env, sendWa: async () => ({ sent: false }) });
+    ok('a `{sent:false}` return (no throw) is read as a refusal, never as sent', r.ok && r.notify.sent === false && r.notify.refusal === 'unknown');
+    r = await A.createAssistanceRequest(db, { phone: '9625759924', items: [{ category: 'makeup' }] }, { env, sendWa: async () => ({ sent: true, result: { wamid: null } }) });
+    ok('sent but Meta gave no wamid → sent_no_wamid, never a null in the UNIQUE column', r.notify.sent === true && r.notify.wamid === null && db._t.assistance_requests[db._t.assistance_requests.length - 1].notify_status === 'sent_no_wamid');
+  } else { for (let i = 0; i < 15; i++) ok('§5 cell (writer absent)', false); }
 
   // ═══ §6 ═══
   section('§6 · FORWARD → VENDOR — through createLead, source tdw_assist');
@@ -303,7 +316,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'carrier_pigeon' } }, {});
     ok('an unknown target kind → refused bad_target', !f.ok && f.code === 'bad_target');
     const code = strip(read(ASSIST));
-    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp( outside notifyFounder', !/sendMetaTemplate\(/.test(code) && (code.match(/sendWhatsApp\(/g) || []).length === 1);
+    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp(; the one live send is sendWa in notifyFounder (admin-facing, R-41.63)', !/sendMetaTemplate\(/.test(code) && !/sendWhatsApp\(/.test(code) && (code.match(/await sendWaFn\(/g) || []).length === 1);
     ok('the send block exists in the RAW file as a comment with its UNCOMMENT STEP stated', /SEND \(uncomment when the register says ON\)/.test(read(ASSIST)) && /UNCOMMENT STEP/i.test(read(ASSIST)) && /sendMetaTemplate\(/.test(read(ASSIST)));
     ok('the read is cap.on() on the one key, never an env var', /cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code));
     ok('the filed template names + Meta ids are recorded once (TEMPLATE_REFS)', A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131' && A.TEMPLATE_REFS.found_vendor.meta_id === '3160852754105015' && A.TEMPLATE_REFS.found_outside.meta_id === '3115277355330375');
@@ -341,6 +354,12 @@ const ADMIN  = 'src/api/admin/assistance.js';
     ok('a wamid nobody holds still falls to home=none', w3.matched === 0 && w3.reason === 'no_row_for_sid');
     const failed = await relay.witnessStatusMatch(makeDb({ assistance_forwards: [{ id: 'af-9', wamid: 'wamid.F', status: 'sent' }] }), { id: 'wamid.F', status: 'failed', errors: [{ code: 131049, title: 'healthy ecosystem' }] });
     ok('a failed receipt writes error_code/error_title through the arm', failed.matched === 1 && failed.row.status === 'failed');
+    // F-41.26 · the fifth home: assistance_requests by notify_wamid (0150)
+    const dbn = makeDb({ assistance_requests: [{ id: 'ar-1', phone: '9625759924', notify_wamid: 'wamid.NOTIFY1', notify_status: 'sent' }] });
+    const wn = await relay.witnessStatusMatch(dbn, { id: 'wamid.NOTIFY1', status: 'delivered' });
+    ok('a receipt whose wamid is a request\'s notify_wamid is matched there (home=assistance_request_notify)', wn.matched === 1 && wn.reason === 'assistance_request_notify' && dbn._t.assistance_requests[0].notify_status === 'delivered');
+    const wf = await relay.witnessStatusMatch(makeDb({ assistance_requests: [{ id: 'ar-2', notify_wamid: 'wamid.N2', notify_status: 'sent' }] }), { id: 'wamid.N2', status: 'failed', errors: [{ code: 131047, title: 'Re-engagement message' }] });
+    ok('a failed notify receipt lands notify_status=failed with notify_error_code 131047 — the very refusal the founder saw', wf.matched === 1 && wf.row.notify_status === 'failed');
   } else { for (let i = 0; i < 4; i++) ok('§9 (relayStatus absent)', false); }
 
   // ═══ §10 ═══
@@ -358,6 +377,17 @@ const ADMIN  = 'src/api/admin/assistance.js';
   const brideDoor = strip(read(BRIDE));
   ok('the bride door reads her phone from users by session user_id and hands the writer user.phone, never body.phone', /\.from\('users'\)/.test(brideDoor) && /phone:\s*user\.phone/.test(brideDoor) && !/body\.phone/.test(brideDoor));
   ok('the bride door writes nothing to couples (R-41.25)', !/\.from\('couples'\)[\s\S]{0,200}\.(update|insert|upsert)\(/.test(brideDoor));
+  ok('F-41.29: the bride door has GET / reading the writer\'s getLatestAssistanceForCouple by the session couple_id', /router\.get\('\/'/.test(brideDoor) && /getLatestAssistanceForCouple\(req\.app\.locals\.supabase, req\.coupleUser\.couple_id\)/.test(brideDoor));
+  if (A) {
+    const dbr = seededDb(); const sr = await seedRequest(dbr);
+    await A.forwardAssistanceItem(dbr, { itemId: sr.makeup.id, target: { kind: 'vendor', vendor_id: 'v-swati' } }, { createLead: async () => ({ ok: true, lead: { id: 'l1' }, deduped: false }) });
+    await A.forwardAssistanceItem(dbr, { itemId: sr.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
+    const mine = await A.getLatestAssistanceForCouple(dbr, 'couple-priya');
+    const mk = mine.items.find(i => i.category === 'makeup'), ph = mine.items.find(i => i.category === 'photography');
+    ok('F-41.29: her read names the TDW vendor found (name + /v/ code) and counts outsiders unnamed — no queue, no wamid, no lead id', mine.ok && mine.request.id === sr.request.id && mk.found.length === 1 && mk.found[0].routing_handle === 'MAKEUPBYSWATIROY' && ph.found.length === 0 && ph.outsiders_asked === 1 && !('forwards' in ph) && !JSON.stringify(mine).includes('wamid') && !JSON.stringify(mine).includes('lead_id'));
+    const none = await A.getLatestAssistanceForCouple(dbr, 'couple-nobody');
+    ok('F-41.29: a couple with no request reads request:null', none.ok && none.request === null && none.items.length === 0);
+  }
   ok('the s2 public door is fully commented with its uncomment step stated (conditional-withheld)', !/publicRouter/.test(brideDoor) && /publicRouter/.test(read(BRIDE)) && /UNCOMMENT STEP/.test(read(BRIDE)));
   ok('no persona name in any string of the two doors or the writer', !/Victor|Donna|Harvey|Mira\b|Eliza|Meridian/.test(brideDoor + adminDoor + strip(read(ASSIST))));
   ok('the 0142 witness for peer_discoverable is named in the writer (R-41.9 regen owed)', /peer_discoverable[\s\S]{0,120}0142/.test(read(ASSIST)));

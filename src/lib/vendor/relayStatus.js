@@ -305,6 +305,29 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: afRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE FIFTH HOME · public.assistance_requests.notify_wamid (0150, F-41.26) ──
+      // The founder's own notify (tdw_admin_assist_request, Utility) lands its wamid
+      // on the request row under a NAMED column, because the same row will one day
+      // carry the couple-facing send too (seat D). Same shape, keyed on notify_wamid.
+      const an = await supabase
+        .from('assistance_requests')
+        .update({ notify_status: want, updated_at: new Date().toISOString(),
+                  notify_error_code: firstErrCode(status), notify_error_title: firstErrTitle(status) })
+        .eq('notify_wamid', wamid)
+        .select('id, phone, notify_status');
+      const anRows = Array.isArray(an && an.data) ? an.data : [];
+      if (anRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=assistance_request_notify', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: anRows[0], reason: 'assistance_request_notify' };
+      }
+      if (anRows.length > 1) {
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=assistance_request_notify_ambiguous', `matched=${anRows.length}`, errFields(status),
+          '— SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: anRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

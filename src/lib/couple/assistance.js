@@ -181,50 +181,96 @@ async function createAssistanceRequest(supabase, params, deps = {}) {
   // key). Deleting that notify silently would be a regression; it rides here so
   // the founder still hears a request land. Free-form text on the existing
   // session lane — NOT a template, NOT gated, exactly as before.
-  const notify = await notifyFounder(request, rows, deps);
+  const notify = await notifyFounder(supabase, request, rows, deps);
 
   return { ok: true, request, items: rows || [], notify };
 }
 
-// THE MECHANISM, carried from the folded door with its condition (F-06.85
-// convention): `sendWhatsApp` has FOUR exits and only ONE of them throws —
-//   opted out       -> RETURNS {blocked:'opted_out',              sent:false}  (whatsapp.js:133)
-//   media on Meta   -> RETURNS {blocked:'meta_media_unsupported', sent:false}  (whatsapp.js:139)
-//   no Meta lane    -> RETURNS {blocked:'no_meta_lane',           sent:false}  (whatsapp.js:153)
-//   sent            -> RETURNS {sid, wamid, meta, line, result,   sent:true }  (whatsapp.js:145)
-//   transport fault -> THROWS  MetaSendError                                   (metaCloud.js)
-// `sent` IS THE ONLY HONEST KEY: `.sid` carries `wamid` and whatsapp.js:142 admits
-// null on success. Every assertion below is on `sent === true`, strictly.
-// [F-06.85: this paragraph is conditioned on those four exits and the nullable
-//  wamid; if any exit is added, removed or re-shaped it is false and must be
-//  re-read before this block is trusted.]
-async function notifyFounder(request, items, deps) {
+// ── THE FOUNDER'S NOTIFY · F-41.26 / R-41.63 — a Utility TEMPLATE, live ──────
+// The free-form line carried from the folded door failed at Meta 131047
+// (re-engagement) outside the 24-hour window — the founder's glass, 2026-09-08
+// 18:00:57. It now rides `tdw_admin_assist_request` (Utility, founder-filed,
+// Meta ID 1106894635324625, registry key `admin_assist_request`) through the
+// estate's one template-send home, `sendWa` (src/lib/sendWa.js:189), on the
+// VENDOR line to ADMIN_PHONE only (env, F-07.76; unset ⇒ LOUD SKIP).
+//
+// THE MECHANISM, with its condition (F-06.85 convention): `sendWa` has FIVE
+// exits and FOUR of them THROW —
+//   registry/approval   -> THROWS WaTemplateNotApprovedError     (sendWa.js:218)
+//   vars                -> THROWS WaTemplateVarsError            (sendWa.js:228)
+//   opted out           -> THROWS WaOptedOutError                (sendWa.js:209)
+//   no FROM for line    -> THROWS WaLineNotConfiguredError       (sendWa.js:206)
+//   sent                -> RETURNS { sent:true, mode:'template', result:{ wamid } } (sendWa.js:234)
+// So every refusal is a NAMED throw caught below and written to the row as
+// notify_status='failed' + notify_error_code (R-41.30's shape, R-40.110's home),
+// and success is `out.sent === true` STRICTLY with `out.result.wamid` the only
+// honest handle (metaCloud.js:208 admits null). No bare `await sendWa(`.
+// [F-06.85: this paragraph is conditioned on those five exits; if sendWa gains
+//  or loses one it is false and must be re-read before this block is trusted.]
+// The row's notify_* columns: db/migrations/0150_assistance_notify_wamid.sql.
+async function notifyFounder(supabase, request, items, deps) {
   const ADMIN_PHONE = (deps.env || process.env).ADMIN_PHONE;
-  const sendWhatsApp = deps.sendWhatsApp || require('../whatsapp').sendWhatsApp;
-  const lines = [
-    'Assistance request',
-    '',
-    `${request.name || 'A couple'} · ${request.phone}`,
-    `${request.wedding_date || 'date TBD'}${request.city ? ` · ${request.city}` : ''}`,
-    (items || []).map(i => `${i.category}${i.budget_rs != null ? ` Rs ${formatRs(i.budget_rs)}` : ''}`).join(' · '),
-    request.brief ? `"${String(request.brief).slice(0, 160)}"` : '',
-    '',
-    '— TDW Admin',
-  ].filter(l => l !== null).join('\n').trim();
+  const sendWaFn = deps.sendWa || require('../sendWa').sendWa;
+  const vars = {
+    couple_name:      request.name || 'a couple',
+    date_words:       monthDayYear(request.wedding_date) || 'a date to be decided',
+    city:             request.city || 'a city to be decided',
+    categories_words: categoriesWords((items || []).map(i => i.category)),
+    budget_rs:        formatRs((items || []).reduce((n, i) => n + (Number(i.budget_rs) || 0), 0)),
+  };
+
+  const record = async (patch) => {
+    try {
+      await supabase.from('assistance_requests')
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq('id', request.id);
+    } catch (e) { console.error(`[assistance:create] notify_* write failed for ${request.id}: ${e && e.message}`); }
+  };
 
   if (!ADMIN_PHONE) {
     console.error(`[assistance:create] ADMIN_PHONE is not set — NO founder notify sent for request ${request.id} (F-07.76). The request IS on file.`);
-    return { sent: false, refusal: 'admin_phone_unset' };
+    await record({ notify_status: 'skipped', notify_error_code: 'admin_phone_unset' });
+    return { sent: false, refusal: 'admin_phone_unset', wamid: null };
   }
   try {
-    const out = await sendWhatsApp(ADMIN_PHONE, lines);
+    const out = await sendWaFn({ line: 'vendor', to: ADMIN_PHONE, templateKey: 'admin_assist_request', vars, supabase });
     const sent = !!(out && out.sent === true);
-    if (!sent) console.error(`[assistance:create] founder notify REFUSED (${(out && out.blocked) || 'unknown'}) for request ${request.id}. The request IS on file.`);
-    return { sent, refusal: sent ? null : ((out && out.blocked) || 'unknown') };
+    const wamid = sent && out.result && out.result.wamid ? String(out.result.wamid) : null;
+    if (!sent) {
+      console.error(`[assistance:create] founder notify REFUSED (unknown) for request ${request.id}. The request IS on file.`);
+      await record({ notify_status: 'failed', notify_error_code: 'unknown' });
+      return { sent: false, refusal: 'unknown', wamid: null };
+    }
+    await record({ notify_wamid: wamid, notify_status: wamid ? 'sent' : 'sent_no_wamid', notify_sent_at: new Date().toISOString() });
+    return { sent: true, refusal: null, wamid };
   } catch (err) {
-    console.error(`[assistance:create] founder notify THREW (${(err && (err.code || err.name)) || 'send_failed'}: ${err.message}) for request ${request.id}. The request IS on file.`);
-    return { sent: false, refusal: (err && (err.code || err.name)) || 'send_failed' };
+    const code = (err && (err.code || err.name)) || 'send_failed';
+    console.error(`[assistance:create] founder notify THREW (${code}: ${err && err.message}) for request ${request.id}. The request IS on file.`);
+    await record({ notify_status: 'failed', notify_error_code: String(code).slice(0, 80), notify_error_title: String(err && err.message || '').slice(0, 500) });
+    return { sent: false, refusal: code, wamid: null };
   }
+}
+
+// "22 December 2026" — words, never a locale abbreviation.
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function monthDayYear(iso) {
+  if (!iso) return null;
+  const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z');
+  if (isNaN(d.getTime())) return null;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+// Tokens → plain words for a message body: "photography and makeup".
+const CATEGORY_WORDS = Object.freeze({
+  planning: 'planning', designer: 'outfits', photography: 'photography', makeup: 'makeup', hairstylist: 'hair',
+  jewellery: 'jewellery', decor: 'décor', venue_catering: 'venue and catering', performer: 'music and anchors',
+  content_creator: 'content', other: 'mehendi and more',
+});
+function categoriesWords(tokens) {
+  const w = (tokens || []).map(t => CATEGORY_WORDS[t] || t);
+  if (w.length === 0) return 'vendors';
+  if (w.length === 1) return w[0];
+  return `${w.slice(0, -1).join(', ')} and ${w[w.length - 1]}`;
 }
 
 // Indian grouping, no glyph (wallet law). Twin of witnessLine.rupees for the
@@ -570,6 +616,54 @@ async function getAssistanceRequest(supabase, requestId) {
   };
 }
 
+// ── getLatestAssistanceForCouple — F-41.29, the couple's own read ───────────
+// She never sees a queue (roadmap §7): per item she gets the TDW vendors found
+// (name + /v/ code) and a COUNT of outsiders asked, unnamed until they join
+// (§6.3 as drawn; #30/#31 struck — no count of who was asked is shown, only
+// who was FOUND). Same tables, same one home.
+async function getLatestAssistanceForCouple(supabase, coupleId) {
+  const { data: request } = await supabase
+    .from('assistance_requests')
+    .select('id, status, city, area, wedding_date, brief, created_at')
+    .eq('couple_id', coupleId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!request) return { ok: true, request: null, items: [] };
+  const { data: items } = await supabase
+    .from('assistance_request_items')
+    .select('id, request_id, category, budget_rs, forwarded_count')
+    .eq('request_id', request.id)
+    .order('created_at', { ascending: true });
+  const itemIds = (items || []).map(i => i.id);
+  let forwards = [];
+  if (itemIds.length) {
+    const { data } = await supabase
+      .from('assistance_forwards')
+      .select('id, item_id, target_kind, vendor_id, status')
+      .in('item_id', itemIds);
+    forwards = data || [];
+  }
+  const vendorIds = [...new Set(forwards.filter(f => f.vendor_id).map(f => f.vendor_id))];
+  const vendors = new Map();
+  if (vendorIds.length) {
+    const { data } = await supabase.from('vendors').select('id, business_name, routing_handle').in('id', vendorIds);
+    for (const v of data || []) vendors.set(v.id, v);
+  }
+  return {
+    ok: true,
+    request,
+    items: (items || []).map(i => ({
+      id: i.id, category: i.category, budget_rs: i.budget_rs,
+      found: forwards.filter(f => f.item_id === i.id && f.target_kind === 'vendor').map(f => {
+        const v = vendors.get(f.vendor_id);
+        return v ? { business_name: v.business_name, routing_handle: v.routing_handle } : null;
+      }).filter(Boolean),
+      outsiders_asked: forwards.filter(f => f.item_id === i.id && f.target_kind === 'prospect').length,
+    })),
+  };
+}
+
 // ── searchForwardTargets — on-platform, trade-first, alphabetical, no ranking ─
 // roadmap §2/§7: same-category first, alphabetical, never spend- or volume-ranked.
 async function searchForwardTargets(supabase, { category, city, q, limit } = {}) {
@@ -597,7 +691,7 @@ async function searchForwardTargets(supabase, { category, city, q, limit } = {})
 
 module.exports = {
   createAssistanceRequest, forwardAssistanceItem, recordForwardOutcome, closeAssistanceRequest,
-  listAssistanceRequests, getAssistanceRequest, searchForwardTargets,
+  listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
   TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE,
 };

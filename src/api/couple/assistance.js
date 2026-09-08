@@ -12,7 +12,8 @@
 // (R-41.19) until A3 folds its caller.
 //
 // Body: { city?, area?, wedding_date?, brief?, items: [{ category, budget_rs }] }
-// 200: { ok:true, request_id, items:[{id, category, budget_rs}], message }
+// GET  → { ok, request|null, items:[{id, category, budget_rs, found:[{business_name, routing_handle}], outsiders_asked}] }
+// POST 200: { ok:true, request_id, items:[{id, category, budget_rs}], message }
 // 400: { ok:false, code, error }
 
 'use strict';
@@ -20,12 +21,20 @@
 const express      = require('express');
 const router       = express.Router();
 const asyncHandler = require('../../lib/asyncHandler');
-const { createAssistanceRequest, REFUSE } = require('../../lib/couple/assistance');
+const { createAssistanceRequest, getLatestAssistanceForCouple, REFUSE } = require('../../lib/couple/assistance');
 
 // The couple's one sentence after Send — #22 on the veto sheet, KEPT by the
 // founder 2026-09-08. The PWA renders its own frame (S2-sent); this string is
 // the API's, for a caller with no frame.
 const SENT_MESSAGE = 'Sent. We\u2019re on it.';
+
+// F-41.29 · GET /api/v2/couple/assistance — her latest request, read from the one
+// home. `request: null` when she has none; the sheet then mounts empty (S1). She
+// never sees a queue: TDW vendors found are named, outsiders are a count.
+router.get('/', asyncHandler(async (req, res) => {
+  const out = await getLatestAssistanceForCouple(req.app.locals.supabase, req.coupleUser.couple_id);
+  return res.json(out);
+}));
 
 router.post('/', asyncHandler(async (req, res) => {
   const supabase = req.app.locals.supabase;

@@ -173,19 +173,23 @@ const ASSIST_HOME = P('src/lib/couple/assistance.js');
 const BRIDE_DOOR  = P('src/api/couple/assistance.js');
 const con = strip(read(ASSIST_HOME));
 const conDoor = strip(read(CONCIERGE));
-t('§2.1 the send result is BOUND, not discarded (carried to notifyFounder)', () => {
-  assert.ok(/const\s+out\s*=\s*await\s+sendWhatsApp\(/.test(con), 'the founder notify is fire-and-forget again');
+// §2.1–.5 RE-AIMED A FOURTH TIME — F-41.26 / R-41.63 (CE-41 seat A): the founder notify
+// is a Utility TEMPLATE through sendWa now; sendWa THROWS on every refusal and RETURNS
+// only on success, so "a returned refusal is read" becomes "a `{sent:false}` return is
+// read" and the loud paths are the catch (THREW) and the non-throw (REFUSED). Same laws.
+t('§2.1 the send result is BOUND, not discarded (carried to notifyFounder, now sendWa)', () => {
+  assert.ok(/const\s+out\s*=\s*await\s+sendWaFn\(/.test(con), 'the founder notify is fire-and-forget again');
 });
-t('§2.2 NO bare `await sendWhatsApp(` survives anywhere in the writer', () => {
-  assert.ok(!/^\s*await\s+sendWhatsApp\(/m.test(con), 'a discarded send returned to the writer');
+t('§2.2 NO bare `await sendWhatsApp(` or `await sendWaFn(` survives anywhere in the writer', () => {
+  assert.ok(!/^\s*await\s+(sendWhatsApp|sendWaFn|sendWa)\(/m.test(con), 'a discarded send returned to the writer');
 });
 t('§2.3 success is decided on `sent === true`, STRICTLY — never on .sid', () => {
   assert.ok(/out\.sent\s*===\s*true/.test(con), 'the writer no longer tests sent === true');
   assert.ok(!/out\.sid/.test(con), 'the writer reads .sid, which whatsapp.js:142 admits as null on success');
 });
-t('§2.4 a refusal is LOUD — console.error naming the blocked code', () => {
-  assert.ok(/founder notify REFUSED/.test(con) && /out\.blocked/.test(con),
-    'a returned refusal no longer produces a loud log naming its code');
+t('§2.4 a refusal is LOUD — console.error on the non-throw refusal and on the named throw', () => {
+  assert.ok(/founder notify REFUSED/.test(con) && /notify_status: 'failed'/.test(con),
+    'a returned refusal no longer produces a loud log and a failed row');
 });
 t('§2.5 a THROW is caught and named separately from a returned refusal', () => {
   assert.ok(/founder notify THREW/.test(con), 'the throw path lost its distinct log');
@@ -413,7 +417,7 @@ t('§7.2 F-07.82 CLOSED — the reversible encoding is gone and the twins are co
 section('§8 · THE F-06.85 MECHANISM COMMENTS — conditioned prose names its fact');
 // ═════════════════════════════════════════════════════════════════════════════
 t('§8.1 the founder notify names the transport mechanism its paragraph rests on (carried to the writer, R-41.19)', () => {
-  assert.ok(/whatsapp\.js:133[\s\S]{0,900}F-06\.85/.test(read(ASSIST_HOME)),
+  assert.ok(/sendWa\.js:218[\s\S]{0,1200}F-06\.85/.test(read(ASSIST_HOME)),
     'the concierge soul-sentence does not name its mechanism in-comment');
 });
 t('§8.2 collab names the transport mechanism its paragraph rests on', () => {

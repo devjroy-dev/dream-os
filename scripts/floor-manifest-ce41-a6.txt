@@ -1,0 +1,21 @@
+# scripts/floor-manifest-ce41-a6.txt
+# CE-41 · A6 — the dream-os rider from the Concierge walk: F-41.26 (founder notify on
+# the Utility template, R-41.63, 0150 wamid home + fifth router arm) and F-41.29's read
+# door (GET /api/v2/couple/assistance). Seat A.
+# BASE 2a0d838a4c99cedd5082b49340e5fe80a30da72e, re-derived at the cut.
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+
+db/migrations/0150_assistance_notify_wamid.sql
+docs/TDW_CE41_A6_HANDOVER.md
+scripts/b07_f0776_doors_bench.js
+scripts/b20_a2_assistance_bench.js
+scripts/floor-manifest-ce41-a6.txt
+src/api/couple/assistance.js
+src/lib/couple/assistance.js
+src/lib/templates.js
+src/lib/vendor/relayStatus.js
+
+# FLOOR at the cured tree (per-bench loop, every outcome recorded): 21 non-green RED/ERROR
+# = scripts/floor-base.txt (the chair's re-base) exactly, plus the four env refusals the
+# base excludes (b06_gauntlet · b5_wa_door_smoke · bf1_bride_tool_fidelity · test-shape).
+# No bench moved. b20_a2 101/101 (was 90); b07_f0776 §2.1/.2/.4/§8.1 re-aimed to sendWa.
