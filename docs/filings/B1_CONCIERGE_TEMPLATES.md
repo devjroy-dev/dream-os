@@ -57,6 +57,29 @@ and the admin queue renders that row as **not delivered — marketing limit**, a
 from *delivered* and distinct from *delivered and ignored*. A throttled outsider is visible in
 the queue and re-forwardable by the founder's hand. She is not silently lost.
 
+**The second cost on the same ruling — the price (chair's addition to R-41.30's record).**
+Derived at Meta's own pricing page 2026-09-08 (`developers.facebook.com/docs/whatsapp/pricing`):
+per-message pricing since 2025-07-01; **utility templates delivered inside an open customer
+service window are free**; **marketing is charged on every delivery**; and **volume tiers exist
+for utility and authentication only — marketing carries no discount at any scale.** India moved
+to INR billing in January 2026, which the Manager panel confirms.
+
+The rupee figures are **not** derived at Meta — the rate card renders as an interactive element
+that did not yield numbers to this seat. Four independent BSP rate cards fetched the same day
+agree on India 2026: utility `Rs 0.12` per delivered message, marketing `Rs 0.86`. **The
+estate's own panel corroborates the utility figure to the paisa** — `tdw_referral_alert` shows
+`Rs 0.23` spent across 2 delivered, which is `Rs 0.12` each, the published list rate.
+
+So the reclassification's price is not simply 7.5×. It is: charged on **every** send with no
+window that can ever make it free — and the recipient is a stranger, so no customer service
+window can exist by construction; **no volume discount ever**; against a Utility alternative
+that would often have been **nothing at all**, since the concierge's on-platform recipients are
+frequently inside an open window. At roadmap §6's proposed three-vendor fan-out that is
+`Rs 2.59` per category per request where Utility would have been `Rs 0.35` or free.
+
+**The ruling does not move on price.** The category is Meta's, not ours, and delivery was
+always the argument. This is the record being complete.
+
 **This is the whole of the cure and it is deliberately small.** It does not stop the throttle;
 it makes the throttle legible. The walk that would close this remains what the G13_R5 veto
 document said it was, and it is **not** the approval mail: *a real alert arriving on the handset

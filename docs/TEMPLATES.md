@@ -134,6 +134,37 @@ Button: URL, label `See my work`, base `https://thedreamwedding.in/v/` with a dy
 
 **Open at the seal (R-41.31):** the handle-only shape of R-41.11 has no template. A body either carries a URL button or it does not, so a second template **`tdw_introduction_handle`** — no button, the handle as a variable in the body — is chartered for a B1b packet at the founder's next Manager session. Not blocking; R9 is gated regardless.
 
+### 14 · `referral_alert` — UTILITY · vendor line · Meta name **`tdw_referral_alert`**
+**Added CE-41 seat B (2026-09-08), F-41.6's first cure — the template existed, was filed,
+was sent, and appeared in this document nowhere.** G5.1's peer forward, founder-vetoed
+2026-09-07 (G51_S2_VETO_SHEET row T2). Variables: `{{1}}` = the vendor being told,
+`{{2}}` = the vendor who referred, `{{3}}` = leads link. Meta template ID **`1526630866155035`**.
+
+> Hi {{1}}, {{2}} just passed you an enquiry on The Dream Wedding. Open your Leads to see it: {{3}} — reply here if you need a hand.
+
+Registry witness: `src/lib/templates.js:802-820` at `e62ba2a` — `name`, `line: 'vendor'`,
+`category: 'UTILITY'`, `variables: ['vendor_name', 'referrer_name', 'leads_link']`,
+`status: 'approved'`. The registry string and the filed string agree character for character,
+which is the condition that entry's own comment at `:810-814` exists to protect: Meta holds the
+body exactly, and a registry that has drifted builds a payload Meta rejects at send time.
+
+**Wire witness (2026-09-08, Manager panel, founder-supplied):** Active – Quality pending ·
+**2 sent · 2 delivered · 2 read (100%) · 0 unique replies** · amount spent `Rs 0.23` · cost per
+message delivered `Rs 0.12`.
+
+**Slot order proven by render, not by the form.** The panel renders *"Hi Make Up by Swati Roy,
+Dev Roy Photography just passed you an enquiry…"* — `{{1}}` the vendor being told, `{{2}}` the
+vendor who referred. Reversed, the message tells Swati that she passed Dev an enquiry.
+Parameters are positional and Meta only counts them, so the swap would have been accepted,
+delivered and silently wrong. It was not.
+
+**This template is F-40.220's specimen and its disposal.** §1 as written requires real words
+between every variable pair; this body separates `{{1}}` and `{{2}}` with a comma. Meta's own
+adjacency test is whitespace (`{{1}} {{2}}`), which a comma clears — the estate wrote its rule
+stricter than Meta's. Meta accepted the filing, and the wire has now delivered and been read
+twice. The house-style red carried no behavioural cost and there is a witness for it rather
+than an argument. Disposed under c-41.4; `b51` §14 retired by ruling.
+
 ## 3. Submission tracker
 
 All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The Dream Wedding", language `en`) and **all six were approved the same day** (the four in review cleared within minutes). `status` mirrors the registry's `status` field in `src/lib/templates.js`; all six read `approved`. `demo_invite` was approved as **UTILITY** — the tightened copy held, so no category reconciliation was needed.
@@ -160,6 +191,8 @@ All six were filed with Meta on **2026-07-19** (WhatsApp Manager UI, WABA "The D
 **Two records this file does not carry, named so the next reader does not mistake absence for cleanliness.** (i) §2 has no entry **8** — `vendor_welcome` appears in this tracker as row 8 but was never given a body entry above. (ii) This file documents thirteen templates; the WABA holds nineteen Active. §2 and §3 are behind the WABA and have been since Block 10. Neither is CE-41 seat B's to repair, and neither was repaired here.
 
 **A note on §1 and this cut.** Seat B wrote §2 and §3 only. **§1 is the chair's** at this seal (c-41.4): `FINDINGS_LOG:5057` banks an amendment — *real words or a comma-separated clause between variable pairs* — that line 20 of this file never received, and F-40.220's disposal rides on it. The four bodies above obey the **stricter** unamended reading regardless, so they are compliant under either text. **If this packet and the chair's §1 edit are in flight together, apply this one first**; two writers on one file is the collision that R-40.82 exists to catch.
+
+| 14 | `referral_alert` | `tdw_referral_alert` | UTILITY | **approved** | 2026-09-08 recorded (filed 2026-09-07) — CE-41 F-41.6's first cure. Active – Quality pending. Meta ID `1526630866155035`. Wire-witnessed: 2 sent, 2 delivered, 2 read. Slot order proven by render. |
 
 ## 4. Language code
 
@@ -279,3 +312,71 @@ Per template (repeat for each key you file per §7.5):
 8. **Set both display names** (§7.1) before the first live OTP on each lane.
 
 **Not a template task (staged separately):** `tdw_marketing_opener` (§2 #1) is **already approved + filed** — do **not** re-file it. What remains open is its **live send test** on the real number (CE-30); stage that as a founder step alongside the first cutover, not as a template action here.
+
+---
+
+## 8. Registry census — what this document does and does not carry (F-41.6)
+
+**Derived by command at dream-os `e62ba2ac05c63528b3272c4aaf3abb9a5e62f050`** from
+`src/lib/templates.js`, never from memory or from a count. Regenerate it the same way; do not
+hand-edit it.
+
+**The seat that opened F-41.6 said the gap was six. It was wrong, and the arithmetic that
+produced it is worth naming so it is not repeated:** thirteen documented against "19/19 Active"
+(Amendment 3) gave six. But *Active on the WABA* and *present in the registry* are different
+populations, and the registry is the one this document is supposed to mirror. Against the
+registry the gap is **thirteen**, not six.
+
+**28 registry entries carrying a `tdw_` name. 15 appear in this document. 13 do not.**
+
+| registry key | Meta name | category | lane | registry `status` | in this document |
+|---|---|---|---|---|---|
+| `marketing_opener` | `tdw_marketing_opener` | MARKETING | marketing | approved | yes |
+| `morning_nudge_vendor` | `tdw_morning_nudge_vendor` | UTILITY | vendor | approved | yes |
+| `morning_nudge_bride` | `tdw_morning_nudge_bride` | UTILITY | bride | approved | yes |
+| `enquiry_update_couple` | `tdw_enquiry_update_couple` | UTILITY | vendor | approved | **no** |
+| `enquiry_brief_vendor` | `tdw_enquiry_brief_vendor` | UTILITY | vendor | approved | **no** |
+| `enquiry_reply_couple` | `tdw_enquiry_reply_couple` | UTILITY | vendor | approved | **no** |
+| `crew_assignment` | `tdw_crew_assignment` | UTILITY | vendor | approved | yes |
+| `wedding_credit` | `tdw_wedding_credit` | UTILITY | vendor | approved | **no** |
+| `wedding_consent` | `tdw_wedding_consent` | UTILITY | vendor | approved | **no** |
+| `contract_sign` | `tdw_contract_sign` | UTILITY | vendor | approved | **no** |
+| `contract_sign_otp` | `tdw_contract_sign_otp` | AUTHENTICATION | vendor | approved | **no** |
+| `review_request` | `tdw_review_request` | MARKETING | bride | approved | **no** |
+| `payment_reminder` | `tdw_payment_due` | UTILITY | vendor | approved | yes |
+| `payment_reminder_couple` | `tdw_payment_reminder` | UTILITY | bride | approved | yes |
+| `demo_invite` | `tdw_demo_invite` | UTILITY | marketing | approved | yes |
+| `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY | marketing | approved | yes |
+| `lead_alert_basic` | `tdw_lead_alert_basic` | MARKETING | vendor | approved | **no** |
+| `lead_alert_utility` | `tdw_lead_alert_utility` | UTILITY | vendor | approved | **no** |
+| `referral_alert` | `tdw_referral_alert` | UTILITY | vendor | approved | **no** |
+| `contract_copy` | `tdw_contract_copy` | UTILITY | vendor | approved | **no** |
+| `enquiry_alert_vendor` | `tdw_enquiry_alert_vendor` | UTILITY | vendor | approved | **no** |
+| `circle_place_ready` | `tdw_circle_place_ready` | UTILITY | bride | approved | yes |
+| `couple_login_otp` | `tdw_couple_login_otp` | AUTHENTICATION | bride | approved | yes |
+| `couple_reset_otp` | `tdw_couple_reset_otp` | AUTHENTICATION | bride | approved | yes |
+| `circle_join_otp` | `tdw_circle_join_otp` | AUTHENTICATION | bride | approved | yes |
+| `vendor_login_otp` | `tdw_vendor_login_otp` | AUTHENTICATION | vendor | approved | yes |
+| `vendor_reset_otp` | `tdw_vendor_reset_otp` | AUTHENTICATION | vendor | approved | yes |
+| `vendor_welcome` | `tdw_vendor_welcome` | UTILITY | vendor | approved | yes |
+
+**What this table is, and what it is not.** The `category`, `lane` and `status` columns are the
+**registry's** claim — what the code believes and what it will send under. They are **not** the
+WABA's word. **No Meta template ID and no live Manager status is derived here for any row
+except `tdw_referral_alert` and §2's entries 10–13**, because those are Manager facts and this
+seat reads the Manager only through what the founder supplies.
+
+**One false positive to know about.** `payment_reminder_couple` → `tdw_payment_reminder` shows
+*yes* only because that name appears in §6's reconciliation of the three **legacy** 2026-05
+templates. It has no entry of its own. Treat it as absent.
+
+**How the remaining thirteen get closed, and why not in this cut.** Each needs a §2 entry with
+its body, variables, provenance and — the part this seat cannot supply — its **Meta template ID
+and live status from the Manager**. Writing the first three from the registry and leaving the
+fourth blank would produce entries that look complete and are not, which is the costume class
+this estate refuses. The cure is one Manager sitting: open Manage templates, and for each of the
+thirteen record the name, the ID and the status. Thirteen rows, one screen. This seat then cuts
+the entries in a single docs packet with nothing authored from memory.
+
+**Until then this census is the honest statement of the gap**, and it is a better artifact than
+thirteen half-entries: a reader now knows exactly what is missing and what it would take.
