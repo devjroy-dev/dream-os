@@ -21,6 +21,7 @@ own ruling is that no terms acceptance happens on a document nobody has read who
 
 | Date | Item | What it needs from the founder | If it slips |
 |---|---|---|---|
+| **THIS WEEK — ranked first, ahead of its own date** | **RBI e-mandate — Google Cloud billing (prepare now, due 10-01)** | Confirm the mandate on the card backing `tdw-business-solutions` can be re-authorised, and diarise 10-01. **Also: keep the WhatsApp credit line well above monthly spend (F-41.32).** | **This is the only item on this list that stops something already running, and it stops it quietly** — a lapsed Indian mandate is a declined charge, not an alert. Read against Meta Terms §3.5–3.8 (invoiced/non-invoiced at Meta's sole discretion; credit report; suspension) and the 09-23 change that lets Meta **suspend on *approaching* the credit limit**, not only on non-payment: a failed charge is grounds to suspend the API the whole estate runs on. |
 | **2026-09-25** | **Meta pricing re-check (F-41.9)** | Open `developers.facebook.com/docs/whatsapp/pricing`. Read whether utility and service messages inside the customer service window become chargeable on 1 October. Report yes/no to the chair. | Nothing breaks. But the free-window claim is unverified, and if it is true the estate's whole nudge-and-reminder economy gains a per-message cost with no notice. Five minutes. |
 | **when B3·2 runs** | **Brand-verify and publish in ONE sitting** | Google's compliant verification result is valid **seven days**. Verify branding, read the result, and press **Publish branding** in the same sitting — then move Publishing status to In production. | The status reverts to *Need to re-verify* and the check runs again for nothing. Verify on a Friday, publish the Monday week, and the week is lost. |
 | **2026-10-01** | **RBI e-mandate — Google Cloud billing** | Reauthorise the billing mandate on the card backing `tdw-business-solutions`. Indian recurring-payment rules require re-authorisation; it does not renew itself. | **Payments lapse under the project.** APIs stop. This is the one on this list that breaks something already running. |
@@ -37,7 +38,7 @@ MFA has no reason to wait and one sharp reason not to: it sits seven days before
 on this list the estate has been counting toward since August. Enrolling it this week costs ten
 minutes and removes the single most annoying way October could go wrong.
 
-**The RBI mandate is the only item that breaks a running thing.** The others block something
+**The RBI mandate is the only item that breaks a running thing — hence its re-rank to the head of the table.** The others block something
 from starting. This one stops something already working, and it stops it quietly — a lapsed
 mandate is a declined charge, not an alert.
 

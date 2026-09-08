@@ -315,68 +315,104 @@ Per template (repeat for each key you file per §7.5):
 
 ---
 
-## 8. Registry census — what this document does and does not carry (F-41.6)
+## 8. Registry census — the estate's template truth (F-41.6, closed)
 
-**Derived by command at dream-os `e62ba2ac05c63528b3272c4aaf3abb9a5e62f050`** from
-`src/lib/templates.js`, never from memory or from a count. Regenerate it the same way; do not
-hand-edit it.
+**Derived by command at dream-os `534059f87527f6b0a3fd8c05167eed3042a2da16`**, joining two
+sources and nothing else:
 
-**The seat that opened F-41.6 said the gap was six. It was wrong, and the arithmetic that
-produced it is worth naming so it is not repeated:** thirteen documented against "19/19 Active"
-(Amendment 3) gave six. But *Active on the WABA* and *present in the registry* are different
-populations, and the registry is the one this document is supposed to mirror. Against the
-registry the gap is **thirteen**, not six.
+- **the WABA**, via seat C's listing door — `read_at 2026-09-08T10:25:12Z`, 38 templates,
+  1 page, `truncated: false`;
+- **the registry**, `src/lib/templates.js` at this commit — 29 `tdw_` entries.
 
-**28 registry entries carrying a `tdw_` name. 15 appear in this document. 13 do not.**
+**Regenerate it the same way. Do not hand-edit it, and do not read it as evidence** — see the
+measurement note below.
 
-| registry key | Meta name | category | lane | registry `status` | in this document |
-|---|---|---|---|---|---|
-| `marketing_opener` | `tdw_marketing_opener` | MARKETING | marketing | approved | yes |
-| `morning_nudge_vendor` | `tdw_morning_nudge_vendor` | UTILITY | vendor | approved | yes |
-| `morning_nudge_bride` | `tdw_morning_nudge_bride` | UTILITY | bride | approved | yes |
-| `enquiry_update_couple` | `tdw_enquiry_update_couple` | UTILITY | vendor | approved | **no** |
-| `enquiry_brief_vendor` | `tdw_enquiry_brief_vendor` | UTILITY | vendor | approved | **no** |
-| `enquiry_reply_couple` | `tdw_enquiry_reply_couple` | UTILITY | vendor | approved | **no** |
-| `crew_assignment` | `tdw_crew_assignment` | UTILITY | vendor | approved | yes |
-| `wedding_credit` | `tdw_wedding_credit` | UTILITY | vendor | approved | **no** |
-| `wedding_consent` | `tdw_wedding_consent` | UTILITY | vendor | approved | **no** |
-| `contract_sign` | `tdw_contract_sign` | UTILITY | vendor | approved | **no** |
-| `contract_sign_otp` | `tdw_contract_sign_otp` | AUTHENTICATION | vendor | approved | **no** |
-| `review_request` | `tdw_review_request` | MARKETING | bride | approved | **no** |
-| `payment_reminder` | `tdw_payment_due` | UTILITY | vendor | approved | yes |
-| `payment_reminder_couple` | `tdw_payment_reminder` | UTILITY | bride | approved | yes |
-| `demo_invite` | `tdw_demo_invite` | UTILITY | marketing | approved | yes |
-| `demo_lead_alert` | `tdw_demo_lead_alert` | UTILITY | marketing | approved | yes |
-| `lead_alert_basic` | `tdw_lead_alert_basic` | MARKETING | vendor | approved | **no** |
-| `lead_alert_utility` | `tdw_lead_alert_utility` | UTILITY | vendor | approved | **no** |
-| `referral_alert` | `tdw_referral_alert` | UTILITY | vendor | approved | **no** |
-| `contract_copy` | `tdw_contract_copy` | UTILITY | vendor | approved | **no** |
-| `enquiry_alert_vendor` | `tdw_enquiry_alert_vendor` | UTILITY | vendor | approved | **no** |
-| `circle_place_ready` | `tdw_circle_place_ready` | UTILITY | bride | approved | yes |
-| `couple_login_otp` | `tdw_couple_login_otp` | AUTHENTICATION | bride | approved | yes |
-| `couple_reset_otp` | `tdw_couple_reset_otp` | AUTHENTICATION | bride | approved | yes |
-| `circle_join_otp` | `tdw_circle_join_otp` | AUTHENTICATION | bride | approved | yes |
-| `vendor_login_otp` | `tdw_vendor_login_otp` | AUTHENTICATION | vendor | approved | yes |
-| `vendor_reset_otp` | `tdw_vendor_reset_otp` | AUTHENTICATION | vendor | approved | yes |
-| `vendor_welcome` | `tdw_vendor_welcome` | UTILITY | vendor | approved | yes |
+**39 distinct names. 38 on the WABA, 29 in the registry, 19 with no §2 entry and no §3 row.**
 
-**What this table is, and what it is not.** The `category`, `lane` and `status` columns are the
-**registry's** claim — what the code believes and what it will send under. They are **not** the
-WABA's word. **No Meta template ID and no live Manager status is derived here for any row
-except `tdw_referral_alert` and §2's entries 10–13**, because those are Manager facts and this
-seat reads the Manager only through what the founder supplies.
+| Meta name | Meta ID | Meta category | Meta status | registry key | lane | §2/§3 entry |
+|---|---|---|---|---|---|---|
+| `booking_confirmed_v1` | `2171941953351762` | UTILITY | APPROVED | **none** | — | **no** |
+| `tdw_admin_assist_request` | **not in snapshot** | — | — | `admin_assist_request` | vendor | **no** |
+| `tdw_admin_signup_alert` | `1527889481998455` | MARKETING | APPROVED | **none** | — | **no** |
+| `tdw_admin_signup_alert_v2` | `1079154258018145` | UTILITY | APPROVED | **none** | — | **no** |
+| `tdw_assist_found_outside` | `3115277355330375` | UTILITY | APPROVED | **none** | — | yes |
+| `tdw_assist_found_vendor` | `3160852754105015` | UTILITY | APPROVED | **none** | — | yes |
+| `tdw_assist_lead_outside` | `1627376372249131` | MARKETING | APPROVED | **none** | — | yes |
+| `tdw_bride_welcome` | `1771465944006011` | MARKETING | APPROVED | **none** | — | **no** |
+| `tdw_bride_welcome_v2` | `2509139082925568` | MARKETING | APPROVED | **none** | — | **no** |
+| `tdw_circle_join_otp` | `1045197921243934` | AUTHENTICATION | APPROVED | `circle_join_otp` | bride | yes |
+| `tdw_circle_place_ready` | `2069520823656352` | UTILITY | APPROVED | `circle_place_ready` | bride | yes |
+| `tdw_contract_copy` | `1108780808723101` | UTILITY | APPROVED | `contract_copy` | vendor | **no** |
+| `tdw_contract_sign` | `1599338985536926` | UTILITY | APPROVED | `contract_sign` | vendor | **no** |
+| `tdw_contract_sign_otp` | `1790948108915173` | AUTHENTICATION | APPROVED | `contract_sign_otp` | vendor | **no** |
+| `tdw_couple_login_otp` | `1807080077120201` | AUTHENTICATION | APPROVED | `couple_login_otp` | bride | yes |
+| `tdw_couple_reset_otp` | `897152556224351` | AUTHENTICATION | APPROVED | `couple_reset_otp` | bride | yes |
+| `tdw_crew_assignment` | `1586609669515026` | UTILITY | APPROVED | `crew_assignment` | vendor | yes |
+| `tdw_demo_invite` | `1460307722523713` | UTILITY | APPROVED | `demo_invite` | marketing | yes |
+| `tdw_demo_lead_alert` | `1014192204719385` | UTILITY | APPROVED | `demo_lead_alert` | marketing | yes |
+| `tdw_enquiry_alert_vendor` | `1569931651247221` | UTILITY | APPROVED | `enquiry_alert_vendor` | vendor | **no** |
+| `tdw_enquiry_brief_vendor` | `980859458308932` | UTILITY | APPROVED | `enquiry_brief_vendor` | vendor | **no** |
+| `tdw_enquiry_reply_couple` | `1739980970608062` | UTILITY | APPROVED | `enquiry_reply_couple` | vendor | **no** |
+| `tdw_enquiry_update_couple` | `2548033538980046` | UTILITY | APPROVED | `enquiry_update_couple` | vendor | **no** |
+| `tdw_introduction` | `1757650692328688` | MARKETING | APPROVED | **none** | — | yes |
+| `tdw_lead_alert_basic` | `966395332526543` | MARKETING | APPROVED | `lead_alert_basic` | vendor | **no** |
+| `tdw_lead_alert_utility` | `1753685715867036` | UTILITY | APPROVED | `lead_alert_utility` | vendor | **no** |
+| `tdw_marketing_opener` | `1336770165243551` | MARKETING | APPROVED | `marketing_opener` | marketing | yes |
+| `tdw_morning_nudge_bride` | `1011828918129845` | UTILITY | APPROVED | `morning_nudge_bride` | bride | yes |
+| `tdw_morning_nudge_vendor` | `1561878605718468` | UTILITY | APPROVED | `morning_nudge_vendor` | vendor | yes |
+| `tdw_payment_due` | `1933718834006817` | UTILITY | APPROVED | `payment_reminder` | vendor | yes |
+| `tdw_payment_reminder` | `1781270206634381` | UTILITY | APPROVED | `payment_reminder_couple` | bride | yes |
+| `tdw_referral_alert` | `1526630866155035` | UTILITY | APPROVED | `referral_alert` | vendor | yes |
+| `tdw_referral_invite` | `1557978505339198` | MARKETING | APPROVED | **none** | — | **no** |
+| `tdw_review_request` | `1713996623186968` | MARKETING | APPROVED | `review_request` | bride | **no** |
+| `tdw_vendor_login_otp` | `889453490444121` | AUTHENTICATION | APPROVED | `vendor_login_otp` | vendor | yes |
+| `tdw_vendor_reset_otp` | `2141803752887353` | AUTHENTICATION | APPROVED | `vendor_reset_otp` | vendor | yes |
+| `tdw_vendor_welcome` | `2269742787193968` | UTILITY | APPROVED | `vendor_welcome` | vendor | yes |
+| `tdw_wedding_consent` | `2247847469383400` | UTILITY | APPROVED | `wedding_consent` | vendor | **no** |
+| `tdw_wedding_credit` | `2392820361246855` | UTILITY | APPROVED | `wedding_credit` | vendor | **no** |
 
-**One false positive to know about.** `payment_reminder_couple` → `tdw_payment_reminder` shows
-*yes* only because that name appears in §6's reconciliation of the three **legacy** 2026-05
-templates. It has no entry of its own. Treat it as absent.
+### Three clean results, and they had never been checked (R-41.56)
 
-**How the remaining thirteen get closed, and why not in this cut.** Each needs a §2 entry with
-its body, variables, provenance and — the part this seat cannot supply — its **Meta template ID
-and live status from the Manager**. Writing the first three from the registry and leaving the
-fourth blank would produce entries that look complete and are not, which is the costume class
-this estate refuses. The cure is one Manager sitting: open Manage templates, and for each of the
-thirteen record the name, the ID and the status. Thirteen rows, one screen. This seat then cuts
-the entries in a single docs packet with nothing authored from memory.
+- **Every registry name exists at Meta.** No send can fail on a name Meta does not hold.
+- **Category agrees, registry against Meta, on all 28 names present in both** — including the
+  ones that moved: `tdw_lead_alert_basic` MARKETING, `tdw_review_request` MARKETING,
+  `tdw_lead_alert_utility` UTILITY. The code believes exactly what Meta holds.
+- **All 38 on the WABA are APPROVED.** Nothing paused, rejected or pending.
 
-**Until then this census is the honest statement of the gap**, and it is a better artifact than
-thirteen half-entries: a reader now knows exactly what is missing and what it would take.
+### The one row where the two sources disagree, and why that is correct
+
+`tdw_admin_assist_request` is **in the registry and not in the WABA snapshot**. It is not a
+drift: it arrived with seat A's A6 (`534059f`, F-41.26, Utility per R-41.63) **after** the
+listing door was read at 10:25. **The snapshot is one template behind the registry, by clock,
+not by error.** Re-run the door and the row fills.
+
+**This is the census working.** A join between two independently derived sources shows its own
+staleness; a hand-kept list does not.
+
+### The measurement note (c-41.15) — read before testing coverage against this file
+
+The seat that opened F-41.6 reported **six** templates absent from this document. It tested
+*"does this name appear anywhere in `TEMPLATES.md`"* — **but this census lists every name, so
+the test was reading its own table.** Circular.
+
+Run against the file **before** this section, the answer is **19**, not six, and not the 13 that
+a registry-only count gave earlier. **Any future check of document coverage must run against
+the prose sections (§2 and §3), never against §8.**
+
+The class is general and worth carrying: **an instrument must not score the artefact it wrote.**
+
+### What the census is, and what it is not
+
+The `Meta ID`, `Meta category` and `Meta status` columns are the **WABA's** word. The
+`registry key` and `lane` columns are the **code's**. Where a row says `**none**` under registry
+key, no shipped code calls that template — see the orphan finding (F-41.20).
+
+**Nineteen names still have no §2 entry.** They are not written here as prose, deliberately: a
+§2 entry's value is *provenance* — why this body, what Meta refused first, what the wire
+witnessed — and for those nineteen this seat has none. Restating registry bodies in longer form
+would be volume, not coverage. **§2 remains the place where a body with a story gets its story
+told; §8 is where every template is accounted for.**
+
+**The tree's own count was badly stale.** Amendment 3 and the succession both read
+"templates 19/19 Active on Direct." The WABA holds thirty-eight. The count had doubled and no
+document noticed, because the only instrument was a human counting rows in a panel.
