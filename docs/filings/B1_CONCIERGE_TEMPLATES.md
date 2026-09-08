@@ -1,6 +1,6 @@
 # FILING B1 — THE CONCIERGE TEMPLATES AND THE INTRODUCTION · SEALED
 
-**Base:** dream-os `57d12d493e1719feb95b3186c9d9ec0a6ce84f29`
+**Base:** dream-os `18e46be19684b65ad51ba44049694c389aeb9093`
 **Seat:** CE-41 LE-B (the filing seat) · **Sealed by the chair 2026-09-08, 12:27 IST**
 **WABA:** The Dream Wedding Direct `1739793260373677` · business portfolio `995204059832918`
 **Rulings applied:** R-41.4 (a/b/c) · R-41.11 · R-41.13 · R-41.30 · R-41.31 · R-40.58 · R-40.128 n/a
@@ -143,6 +143,39 @@ walk (test couple `9625759924` → MAKEUPBYSWATIROY) is where three of the four 
 (DEV440 → the founder's handset) is where the fourth does.
 
 ---
+
+## 5a · SLOT ORDER — WITNESSED, AND THE WARNING PAID OUT (2026-09-09)
+
+§5 above said the four templates' slot order was proven only by the Manager's preview, that a
+swapped order would be **accepted, delivered, and silently wrong**, and that `variables` must be
+ordered from the render and never from a filing form or a second document.
+
+**Both halves are now witnessed on `tdw_assist_lead_outside`.**
+
+- **At the Manager:** founder's capture, 01:30 2026-09-09 — the filed body verbatim, slot order
+  **month · city · category**, `STOP REQUESTS` present, the URL button attached. The filing
+  document was right.
+- **On the wire, in the wrong order:** the A10 send used the registry's permuted
+  `variables` array (`src/lib/templates.js:772-784`) and **rendered garbled on the founder's
+  handset.** Accepted by Meta, delivered, and wrong — the exact failure this section described
+  before it happened.
+
+**The cause was a second document, not a bad reading.** The registry entry was authored
+independently of the filing rather than derived from it. Cure is `src/`, F-41.63, seat D's.
+
+**Witnessed at source, 2026-09-09 — two of four.**
+
+| Template | At the Manager | On the wire |
+|---|---|---|
+| `tdw_assist_lead_outside` | **witnessed** — filing correct | **witnessed WRONG** (A10, registry's order, garbled) |
+| `tdw_assist_found_outside` | **witnessed** — body, 4 variables, order name · month · category · handle, no button, all as filed | not sent |
+| `tdw_assist_found_vendor` | preview only | not sent |
+| `tdw_introduction` | preview only | not sent |
+
+**What this changes for the other two.** `tdw_assist_found_vendor` and `tdw_introduction` remain
+**unwitnessed on the wire**, and their registry entries — whenever written — must be derived from
+the Manager, not authored beside it. **The first live send on each is still its first order
+proof, and that sentence has now cost the estate one garbled message.**
 
 ## 6 · THE RECORD LINE
 

@@ -101,6 +101,38 @@ Button: URL, label `View the request`, base `https://thedreamwedding.in/assist/`
 
 **The known hole, and its instrument (R-41.30).** As MARKETING this body is subject to Meta's **per-user marketing template message limits** — a cap on how many marketing templates any one WhatsApp user receives from any business, the `131049` family. Its recipients are, by construction, vendors who have never messaged TDW, which is the most exposed class there is. This is F-40.176's throttle, on the one body the Utility cure could not reach. **It is named, not discovered.** The cure is not a category and not a reword: `131049` returns **synchronously on the send call**, so the forward arm records `status='failed'` and `error_code=131049` on `assistance_forwards` (R-41.15's columns) and the admin queue shows the alert as *not delivered — marketing limit*, distinct from an alert that was delivered and ignored. A throttled outsider is therefore visible and re-forwardable by hand; she is not silently lost.
 
+**DIVERGENCE FOUND AND CORRECTED — 2026-09-09 (F-41.63).** The body and variable order above
+are **unchanged and correct**: witnessed at WhatsApp Manager's preview panel, founder's capture
+01:30 on 2026-09-09 — this body verbatim, slot order **month · city · category**, the
+`STOP REQUESTS` line present, the `View the request` URL button attached.
+
+**The registry disagreed with it.** `src/lib/templates.js:772-784` (at `6c7acdc`) carried a
+different body — *"Hello {{1}}, this is The Dream Wedding. A couple in {{2}} is looking for {{3}}
+for a wedding in {{4}}…"* — with `variables: ['name','city','category_words','month_year',
+'budget_rs']`. **Slots 2, 3 and 4 were permuted against the filing**, the `STOP REQUESTS` line
+was absent, the struck *"Join The Dream Wedding to see the request"* phrasing was back, and no
+button component was declared.
+
+**It was authored independently of the filing, not derived from it.** Meta holds the filing;
+the registry was wrong. The cure is a `src/` byte and is **F-41.63, seat D's** — not this
+document's, which was correct throughout.
+
+**What it cost before it was found: a garbled send.** The A10 walk put the registry's order on
+the wire against Meta's template, and the message rendered on the founder's handset with the
+month, city and category in the wrong slots. **Meta accepted it, delivered it, and it was
+nonsense** — parameters are positional and Meta only counts them.
+
+**This is the failure the B1 seal's §5 named as owed, arriving exactly as described.** The seal
+said the four templates' slot order was proven only by the Manager's preview, that a swapped
+order would be *"accepted, delivered, and silently wrong"*, and that `variables` must be ordered
+from the render and never from a second document. A second document was written, it was ordered
+from neither the render nor the filing, and the wire showed it.
+
+**Standing consequence, offered for the chair:** §2's body text cannot assert itself, but the
+**variable order can**. A cell asserting `templates.js`'s `variables` array against this section,
+slot for slot, would have caught this the day the registry entry appeared rather than on a
+handset.
+
 **No caller ships with this template** at the seal. The concierge forward arm is seat A's (packet A2), dark behind the switchboard.
 
 ### 11 · `assist_found_vendor` — UTILITY · bride line · Meta name **`tdw_assist_found_vendor`**
@@ -118,6 +150,24 @@ Button: URL, label `See their page`, base `https://thedreamwedding.in/v/` with a
 > Hi {{1}}, the request you sent The Dream Wedding for your {{2}} wedding has been matched to a {{3}}, and their work is on Instagram at {{4}} — reply here and we will arrange the introduction.
 
 **Two departures from R-41.4(c) as written, both deliberate, both filed and approved.** *One:* the ruling names "the IG handle **and the TDW WhatsApp link**" as body text. The link was dropped — she is reading this on the bride line, so *reply here* reaches TDW with no link at all, and a link buys nothing while carrying a non-zero flag risk. *Two:* the opening clause is inverted relative to entry 11 so the two bodies are not near-duplicates; Meta rejects a template whose body duplicates an existing one, and `circle_place_ready` records the estate losing a cycle to the pre-submission classifier already. Both accepted; neither was refused as duplicate content.
+
+**WITNESSED AT THE MANAGER — 2026-09-09.** Founder's capture of the preview panel, sample values
+as filed: *"Hi Priya, the request you sent The Dream Wedding for your November wedding has been
+matched to a makeup artist, and their work is on Instagram at @makeupbyswatiroy — reply here and
+we will arrange the introduction."*
+
+**It agrees with this entry on every point that can be got wrong.** Read against the sample
+values: `{{1}}` name (Priya) · `{{2}}` month (November) · `{{3}}` category (makeup artist) ·
+`{{4}}` handle (@makeupbyswatiroy). **Four variables, slot order name · month · category ·
+handle, no button in the preview** — the body verbatim, the count, the order and the absence of
+a button all as filed. Nothing is corrected here; the witness is recorded.
+
+**Why that is worth a paragraph rather than a tick.** Row 10's entry read equally settled until
+a second document was written beside it, and the divergence surfaced on a handset rather than in
+either document. This row is now witnessed **at the source**, so a future registry entry for
+`assist_found_outside` must be **derived from this reading**, not authored next to it. Under
+R-41.97 the bench cell asserts `templates.js`'s `variables` array against this section slot for
+slot, which is what makes the derivation checkable rather than merely intended.
 
 **Roadmap §7 held:** the outsider's phone does not appear, and the handle is the only identifier that leaves. The couple reaches an outside vendor only after that vendor joins.
 
