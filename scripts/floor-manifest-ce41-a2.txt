@@ -1,0 +1,57 @@
+# scripts/floor-manifest-ce41-a2.txt
+# TDW_20 · BLOCK 20 · CONCIERGE s1 — PACKET A2 (dream-os only). CE-41 seat A.
+# The assistance plane: 0148 (three tables, one writer), the writer, the bride
+# door, the admin doors, the concierge fold (R-41.19), the fourth receipt-router
+# home (R-41.15 / R-40.110), the capabilities stub (R-41.20), F-41.4's one-line
+# rider, three sealed benches carried under c-41.6, and the packet's own bench.
+#
+# BASE 38a70b010180ab0f05128b8bf6b02e83c609b7cb, re-derived at the cut (seat B's
+# docs-only push over 57d12d4; nothing under src/ moved between the two).
+#
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+
+db/migrations/0148_assistance_requests.sql
+docs/TDW_20_A2_HANDOVER.md
+scripts/b07_f0772_circle_auth_bench.js
+scripts/b07_f0776_doors_bench.js
+scripts/b07_f0784_panel_bench.js
+scripts/b20_a2_assistance_bench.js
+scripts/floor-manifest-ce41-a2.txt
+src/api/admin/assistance.js
+src/api/couple/assistance.js
+src/api/couple/concierge.js
+src/api/couple/core.js
+src/api/router.js
+src/lib/adminSession.js
+src/lib/capabilities.js
+src/lib/couple/assistance.js
+src/lib/vendor/relayStatus.js
+
+# ── THE FLOOR, COMPLETE SET, per-bench 120s timeout, every outcome recorded ──
+# (floor-batch.sh's single 400s ceiling was found to DROP benches silently —
+#  b07_f0772_circle_auth was absent from a batch-derived set that should have
+#  carried it; the set below was derived by a loop that records greens too.)
+#
+# BEFORE, at 38a70b0, preflight CLEAR (engine/dist present, pwa node_modules
+# present, sibling at 08a31d7):   176 benches · 151 GREEN · 25 non-green
+# AFTER, cured tree:               177 benches · 152 GREEN · 25 non-green
+# THE SET OF 25 IS IDENTICAL before and after (diff empty). The one movement is
+# b20_a2_assistance_bench: absent → GREEN (90/90); at the uncured tree it reads
+# RED 6/88 with exit 1.
+#
+# THE 25, EACH NAMED — none is this packet's:
+#   declared REDs on open findings:  b51_referrals (F-40.220 body; F-40.228/.229
+#     router arms) · b59_g34_reminders (F-40.229) · b59_mutations (its baseline
+#     is b59_g34, red) · b45_precutover_seat (F-38.p12, a /vendor/ literal)
+#   env refusals (rc 3):             b06_gauntlet · b5_wa_door_smoke
+#     (SUPABASE_*) · bf1_bride_tool_fidelity · test-shape (ANTHROPIC_API_KEY)
+#   red at the base, not mine, unchanged by this packet: b5b_movementb (ERROR)
+#     · b05_arc_m4 · b05_arc_m6 · b05_f0555_media_dedupe · b05_p4_crons ·
+#     b06_meter · b07_f0772_circle_auth (§12.14 only) · b07_f0774_stripper ·
+#     b07_f0791_guard_stack · b07_p4b_body · b07_p5 · b08_p1_lifecycle ·
+#     b08_p5_oow_relay · b08_p5_unblock · b10_p1_search · b10_p2_bridge ·
+#     b10_p3_mint_deck
+#
+# scripts/floor-base.txt names 16. The tip reads 25. The chair re-bases as its
+# own act after A2 seals (the succession's standing item); this file records the
+# count movement 16 → 25 → 25 and does not touch floor-base.txt.

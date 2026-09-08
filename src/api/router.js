@@ -84,6 +84,7 @@ router.use('/admin/discover-heroes', require('./admin/discoverHeroes').adminRout
 router.use('/admin/conversations',   require('./admin/conversations'));
 router.use('/admin/failed-turns',    require('./admin/failedTurns'));   // TDW_05 P1b: dead-letter list/replay/discard
 router.use('/admin/prospects',       require('./admin/prospects'));     // TDW_05 P3: prospect lane intake/board/cap/actions
+router.use('/admin/assistance',      require('./admin/assistance'));    // Block 20 Concierge s1: the queue, typed intake, the forward (R-41.3)
 router.use('/admin/vendors/:vendorId/portfolio', require('./admin/vendorPortfolio'));
 // Public endpoints for content surfaces
 router.use('/muse-pool',             require('./admin/musePool').publicRouter);

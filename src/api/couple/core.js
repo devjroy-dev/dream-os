@@ -46,8 +46,14 @@ router.use('/moments',  require('./moments'));
 // B-9: Meridian — personal concierge (skin, mind, body, decisions).
 router.use('/meridian', require('./meridian'));
 
-// B-10: Concierge — human escalation from Meridian.
+// B-10: Concierge — human escalation from Meridian. FOLDED (Block 20, R-41.19):
+// POST /concierge/request 308s to /assistance until A3 folds its one caller;
+// GET /concierge/requests is deleted (zero readers at 57d12d4). Seat D deletes the 308.
 router.use('/concierge', require('./concierge'));
+
+// B-12: Assistance — Block 20 Concierge s1, the bride's door to the one writer
+// (src/lib/couple/assistance.js). Under requireCoupleAuth like everything above.
+router.use('/assistance', require('./assistance'));
 
 // B-11: Enquiries — bride's "Enquired" list (Discover enquiries she made).
 router.use('/enquiries', require('./enquiries'));

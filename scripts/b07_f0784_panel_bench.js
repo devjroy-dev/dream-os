@@ -151,7 +151,13 @@ sec('§2 · F-07.85 — x-admin-password is read nowhere in src/');
   const conc = stripComments(read('src/api/couple/concierge.js'));
   ok('§2.7 THE THIRD AUTHORITY, found and folded: the couple route no longer reads the header',
      !/x-admin-password/.test(conc));
-  ok('§2.8 …and it verifies the same session material', /verifyAdminSession\(/.test(conc));
+  // §2.8 RE-AIMED — Block 20 fold (c-41.6, R-41.19): the couple-side admin read
+  // (GET /concierge/requests) is DELETED, so there is no session material for the
+  // door to verify; its admin reads moved to /api/v2/admin/assistance behind
+  // requireAdmin, which verifies exactly the material this section audits.
+  ok('§2.8 …the folded door verifies nothing (it has no admin read); the successor door sits behind requireAdmin',
+     !/verifyAdminSession\(/.test(conc) && !/router\.get\(/.test(conc) &&
+     /router\.use\(requireAdmin\)/.test(stripComments(read('src/api/admin/assistance.js'))));
 }
 
 // ── §3 · F-2 — THE JSON LOGIN DOOR ───────────────────────────────────────────

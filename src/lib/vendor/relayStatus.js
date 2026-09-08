@@ -277,6 +277,34 @@ async function witnessStatusMatch(supabase, status) {
         return { wamid, status: want, matched: csRows.length, row: null, reason: 'sid_not_unique' };
       }
 
+      // ── THE FOURTH HOME · public.assistance_forwards (0148, Block 20 s1) ─────
+      // R-40.110 by its wording (R-41.15): the table gained its wamid column, its
+      // partial INDEX and its partial UNIQUE in the same delivery as this arm. In
+      // s1 every send arm on that plane is DARK behind cap.on(), so no row carries
+      // a wamid and this branch matches nothing — it is wired now so the day a
+      // send wakes, its receipt has a home the day it lands, not a sitting later
+      // (F-40.228/.229's lesson: `reviews_asked` and `payment_reminders` shipped
+      // wamids with no arm, and the receipt fell to 'home=none'). Same shape as
+      // the three above: status + updated_at + error_* by wamid, refuse on >1.
+      const af = await supabase
+        .from('assistance_forwards')
+        .update({ status: want, updated_at: new Date().toISOString(),
+                  error_code: firstErrCode(status), error_title: firstErrTitle(status) })
+        .eq('wamid', wamid)
+        .select('id, item_id, target_kind, prospect_id, status');
+      const afRows = Array.isArray(af && af.data) ? af.data : [];
+      if (afRows.length === 1) {
+        console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=assistance_forward', 'matched=1', errFields(status)]));
+        return { wamid, status: want, matched: 1, row: afRows[0], reason: 'assistance_forward' };
+      }
+      if (afRows.length > 1) {
+        console.warn(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
+          'home=assistance_forward_ambiguous', `matched=${afRows.length}`, errFields(status),
+          '— SID IS NOT UNIQUE']));
+        return { wamid, status: want, matched: afRows.length, row: null, reason: 'sid_not_unique' };
+      }
+
       console.log(receiptLine(['[wa:receipt] webhook:meta', `wamid=${wamid}`, `status=${want}`,
         'home=none', 'matched=0', errFields(status), '— NO ROW CARRIES THIS SID']));
       return { wamid, status: want, matched: 0, row: null, reason: 'no_row_for_sid' };

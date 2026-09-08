@@ -73,7 +73,9 @@ section('§0 · THE CANARY — the stripper must not swallow live code (CE-120 l
 // Head/waist/tail anchors per stripped file. Each is LIVE CODE, not a comment, so
 // a stripper that eats a region eats one of these and this section reddens.
 const CANARIES = [
-  [CONCIERGE, ["const express          = require('express')", 'const waBody = [', 'module.exports = router;']],
+  // ── RE-ANCHORED, Block 20 fold (R-41.19): concierge.js is now the 308 door; its
+  // waist anchor `const waBody = [` no longer exists. Same file, same spread.
+  [CONCIERGE, ["const express = require('express');", "const NEW_DOOR = '/api/v2/couple/assistance';", 'module.exports = router;']],
   [COLLAB,    ["const { sendWhatsApp } = require('../../lib/whatsapp')", "if (action === 'interested') {", 'module.exports = router;']],
   // ── RE-AIMED, F-07.84/.82 fold (labeled per the both-sides clause, CE-59) ──
   // Three waist anchors named functions this delivery DELETED: demoAdmin's
@@ -157,47 +159,62 @@ t('§1.4 the three refusal codes are the ones the doors name', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 section('§2 · THE CONCIERGE DOOR — reads its send (F-05.48 slice one, fork 1b)');
 // ═════════════════════════════════════════════════════════════════════════════
-const con = strip(read(CONCIERGE));
-t('§2.1 the send result is BOUND, not discarded', () => {
-  assert.ok(/const\s+out\s*=\s*await\s+sendWhatsApp\(/.test(con), 'the concierge send is fire-and-forget again');
+// ── §2 RE-AIMED A THIRD TIME — Block 20 fold (CE-41 seat A, R-41.19) ─────────
+// concierge.js is now a 308 to /api/v2/couple/assistance and its GET is deleted.
+// The MECHANISM slice one cured — the founder's notify reads its own send result
+// (F-05.48), `sent === true` strictly, never `.sid`, loud REFUSED / THREW logs —
+// did not die with the door: it CARRIED into the one home, `notifyFounder` in
+// src/lib/couple/assistance.js. Per the BOTH-SIDES CLAUSE the cells follow the
+// mechanism; a green over a door nobody can reach is no test. Cells whose SUBJECT
+// is gone (the admin_activity_log request store; the couple sentence the founder
+// STRUCK at the A1 veto) are RETIRED-BY-RULING, named here rather than deleted
+// in silence. The folded door itself is asserted at §2.10.
+const ASSIST_HOME = P('src/lib/couple/assistance.js');
+const BRIDE_DOOR  = P('src/api/couple/assistance.js');
+const con = strip(read(ASSIST_HOME));
+const conDoor = strip(read(CONCIERGE));
+t('§2.1 the send result is BOUND, not discarded (carried to notifyFounder)', () => {
+  assert.ok(/const\s+out\s*=\s*await\s+sendWhatsApp\(/.test(con), 'the founder notify is fire-and-forget again');
 });
-t('§2.2 NO bare `await sendWhatsApp(` survives anywhere in the door', () => {
-  assert.ok(!/^\s*await\s+sendWhatsApp\(/m.test(con), 'a discarded send returned to the concierge door');
+t('§2.2 NO bare `await sendWhatsApp(` survives anywhere in the writer', () => {
+  assert.ok(!/^\s*await\s+sendWhatsApp\(/m.test(con), 'a discarded send returned to the writer');
 });
 t('§2.3 success is decided on `sent === true`, STRICTLY — never on .sid', () => {
-  assert.ok(/out\.sent\s*===\s*true/.test(con), 'the door no longer tests sent === true');
-  assert.ok(!/out\.sid/.test(con), 'the door reads .sid, which whatsapp.js:142 admits as null on success');
+  assert.ok(/out\.sent\s*===\s*true/.test(con), 'the writer no longer tests sent === true');
+  assert.ok(!/out\.sid/.test(con), 'the writer reads .sid, which whatsapp.js:142 admits as null on success');
 });
 t('§2.4 a refusal is LOUD — console.error naming the blocked code', () => {
-  assert.ok(/admin notify REFUSED/.test(con) && /out\.blocked/.test(con),
+  assert.ok(/founder notify REFUSED/.test(con) && /out\.blocked/.test(con),
     'a returned refusal no longer produces a loud log naming its code');
 });
 t('§2.5 a THROW is caught and named separately from a returned refusal', () => {
-  assert.ok(/admin notify THREW/.test(con), 'the throw path lost its distinct log');
+  assert.ok(/founder notify THREW/.test(con), 'the throw path lost its distinct log');
 });
-t('§2.6 admin_notified rides the JSON response (fork 1b operator-truth)', () => {
-  assert.ok(/admin_notified:\s*adminNotified/.test(con), 'the response field is gone');
-  assert.ok(/admin_notify_refusal:/.test(con), 'the refusal reason is gone from the response');
+t('§2.6 admin_notified rides the bride door\'s JSON response (fork 1b operator-truth)', () => {
+  const door = strip(read(BRIDE_DOOR));
+  assert.ok(/admin_notified:/.test(door), 'the response field is gone');
+  assert.ok(/admin_notify_refusal:/.test(door), 'the refusal reason is gone from the response');
 });
-t('§2.7 the admin_activity_log insert is READ, not swallowed', () => {
-  assert.ok(!/\.then\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)\.catch\(/.test(con), 'the swallowing then/catch returned');
-  assert.ok(/logged\s*=\s*true/.test(con), 'the row outcome is no longer bound');
+t('§2.7 RETIRED-BY-RULING — admin_activity_log is no longer a request store; the row is assistance_requests', () => {
+  assert.ok(!/admin_activity_log/.test(conDoor) && !/admin_activity_log/.test(con),
+    'the request store crept back into admin_activity_log');
 });
-t('§2.8 FROZEN COPY — the couple-facing sentence is byte-identical', () => {
-  assert.ok(con.includes("message: 'Our concierge will reach you at the earliest.'"),
-    'the frozen couple sentence moved — this delivery is copy-zero by ruling');
+t('§2.8 RETIRED-BY-RULING — the frozen sentence was STRUCK at the A1 veto (2026-09-08); it must not survive', () => {
+  assert.ok(!conDoor.includes('Our concierge will reach you at the earliest.') &&
+            !con.includes('Our concierge will reach you at the earliest.'),
+    'the struck couple sentence is still on the tree in this plane');
 });
-t('§2.9 ZERO new couple-facing strings (expected-zero, accepted at ruling)', () => {
-  // RE-AIMED AT THE MECHANISM, labeled: the first draft counted prose across the
-  // WHOLE file and convicted the new console.error text. A log line is operator-
-  // truth, not copy — fork 1(b)'s whole point. The couple-facing surface of this
-  // door is exactly what leaves it in a response body, so the cell reads the
-  // response objects and nothing else.
-  const bodies = con.match(/res\.json\(\{[\s\S]*?\}\);/g) || [];
-  assert.ok(bodies.length >= 2, 'the response bodies could not be extracted — the cell is blind');
-  const allowed = ["'Our concierge will reach you at the earliest.'", "'Unauthorized.'"];
-  bodies.join('\n').match(/'[^']{12,}'/g)?.forEach(s =>
-    assert.ok(allowed.includes(s), `an unapproved couple-facing string reached a response body: ${s}`));
+t('§2.9 the folded door emits NO couple-facing prose of its own', () => {
+  const bodies = conDoor.match(/res\.(?:status\(\d+\)\.)?json\(\{[\s\S]*?\}\);/g) || [];
+  assert.ok(bodies.length === 1, `expected exactly one response body in the 308 door, found ${bodies.length}`);
+  const strings = bodies.join('\n').match(/'[^']{12,}'/g) || [];
+  assert.ok(strings.length === 0, `prose reached the 308 body: ${strings.join(' | ')}`);
+});
+t('§2.10 the fold: POST /request is a 308 to the one door; GET /requests is gone; no adminSession read', () => {
+  assert.ok(/status\(308\)/.test(conDoor), 'the 308 is gone');
+  assert.ok(/\/api\/v2\/couple\/assistance/.test(conDoor), 'the Location no longer names the new door');
+  assert.ok(!/router\.get\(/.test(conDoor), 'a GET route returned to concierge.js');
+  assert.ok(!/adminSession|ADMIN_PHONE|sendWhatsApp/.test(conDoor), 'the folded door still reads what it folded');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -270,9 +287,11 @@ for (const [name, f] of TRAPDOOR_FILES) {
     assert.ok(!hit, `a secret-shaped literal fallback stands in ${name} — the trapdoor returned`);
   });
 }
-t('§5.concierge ADMIN_PHONE is env-only (fork 4b)', () => {
-  const hit = codeLines(CONCIERGE).find(l => PHONE_FALLBACK.test(l));
+t('§5.concierge ADMIN_PHONE is env-only (fork 4b) — carried to the writer, and the door reads none', () => {
+  const hit = codeLines(ASSIST_HOME).find(l => PHONE_FALLBACK.test(l));
   assert.ok(!hit, 'the ADMIN_PHONE literal returned — reach-by-accident restored');
+  assert.ok(codeLines(ASSIST_HOME).some(l => /ADMIN_PHONE/.test(l)), 'the writer no longer reads ADMIN_PHONE at all — the notify is gone, not env-only');
+  assert.ok(!codeLines(CONCIERGE).some(l => /ADMIN_PHONE/.test(l)), 'the folded door still reads ADMIN_PHONE');
 });
 t('§5.vacuity the tripwire FIRES on a planted secret-shaped fallback', () => {
   // Non-vacuity, proven in-cell with a value that is not and never was a secret.
@@ -393,8 +412,8 @@ t('§7.2 F-07.82 CLOSED — the reversible encoding is gone and the twins are co
 // ═════════════════════════════════════════════════════════════════════════════
 section('§8 · THE F-06.85 MECHANISM COMMENTS — conditioned prose names its fact');
 // ═════════════════════════════════════════════════════════════════════════════
-t('§8.1 concierge names the transport mechanism its paragraph rests on', () => {
-  assert.ok(/F-06\.85[\s\S]{0,400}whatsapp\.js:133/.test(read(CONCIERGE)),
+t('§8.1 the founder notify names the transport mechanism its paragraph rests on (carried to the writer, R-41.19)', () => {
+  assert.ok(/whatsapp\.js:133[\s\S]{0,900}F-06\.85/.test(read(ASSIST_HOME)),
     'the concierge soul-sentence does not name its mechanism in-comment');
 });
 t('§8.2 collab names the transport mechanism its paragraph rests on', () => {

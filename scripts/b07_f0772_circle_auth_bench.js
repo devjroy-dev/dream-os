@@ -263,12 +263,12 @@ t('§2.4 THE VERDICTS AGREE ON EVERY INPUT, the malformed ones included', () => 
   }
 });
 
-t('§2.5 the five admin call sites are UNTOUCHED — they still import the same names', () => {
+t('§2.5 the four admin call sites are UNTOUCHED — they still import the same names (concierge.js folded, R-41.19: it reads no session now)', () => {
   const sites = [
     'src/admin/middleware.js', 'src/admin/router.js',
     'src/api/admin/requireAdmin.js', 'src/api/admin/login.js',
-    'src/api/couple/concierge.js',
   ];
+  assert.ok(!/adminSession/.test(read('src/api/couple/concierge.js')), 'the folded concierge door imports adminSession again');
   for (const s of sites) {
     assert.ok(/require\((['"]).*adminSession\1\)/.test(read(s)), `${s} no longer imports adminSession`);
   }

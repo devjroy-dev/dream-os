@@ -50,7 +50,7 @@
 // agree on every input, the malformed ones included. This file's exports, their
 // names, their signatures and their five call sites are UNCHANGED:
 //   src/admin/middleware.js · src/admin/router.js · src/api/admin/requireAdmin.js
-//   src/api/admin/login.js  · src/api/couple/concierge.js
+//   src/api/admin/login.js  (concierge.js folded at Block 20 s1, R-41.19 — F-41.4)
 'use strict';
 
 const { mintSigned, verifySigned, bearerFrom, safeEquals } = require('./signedSession');
