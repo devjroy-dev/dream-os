@@ -98,6 +98,32 @@ async function processMarketingChange(subBody) {
   // Delivery receipts (P6 renders chips; here we log, no schema).
   for (const s of extractStatuses(subBody)) {
     console.log(statusLogLine(s));
+
+    // ── F-41.60 / R-41.92 · THE RECEIPT ROUTER IS REACHED FROM THIS LANE TOO ──
+    // The sibling of F-41.59, found by seat A. This loop logged its receipt and
+    // stopped, so `relayStatus.js`'s seven-home ladder was unreachable from the
+    // MARKETING lane exactly as it was from the bride lane until R-41.91. Every
+    // outsider join alert (`tdw_assist_lead_outside`, marketing line per
+    // `assistance.js:78` and R-41.13) therefore stopped at `sent` and could never
+    // reach `delivered` or `read` on its `assistance_forwards` row — seat A's own
+    // walk needs that word.
+    //
+    // THE LOG LINE ABOVE STAYS. `statusLogLine` carries this service's own error
+    // vocabulary (F-08.95's 131047 lesson) and is what the marketing lane's
+    // operator reads; the router's line answers a different question — WHICH TABLE
+    // holds the sid. Two lines, two questions, neither redundant.
+    //
+    // THIN SEAM, the shape `index.js:225` and `brideIndex.js` both use: a local
+    // require so the route stays cheap when no receipt arrives, and a guarded
+    // catch so a throw inside the router can never take inbound processing down.
+    // `sendWhatsApp` is passed for the same reason the other two pass it — the
+    // router's receipt half reads it — and its vendor-relay branch simply never
+    // fires on a marketing wamid.
+    try {
+      const { applyStatusEvent } = require('./lib/vendor/relayStatus');
+      const { sendWhatsApp } = require('./lib/whatsapp');
+      await applyStatusEvent(supabase, s, { sendWhatsApp, env: process.env });
+    } catch (e) { console.warn(`${SERVICE_TAG} status seam`, e && e.message); }
   }
 }
 

@@ -44,6 +44,11 @@ const MUT = [
   ['M16 the bride lane drops its own messages plane', 'src/brideIndex.js',
     "      try { await supabase.from('messages').update({ delivery_status: s.status }).eq('twilio_sid', s.id); }\n      catch (_e) { /* status best-effort */ }",
     "      ;", 'KEEPS its own messages update'],
+  ['M17 the marketing lane stops reaching the router (F-41.60 returns)', 'src/marketingIndex.js',
+    "      const { applyStatusEvent } = require('./lib/vendor/relayStatus');\n      const { sendWhatsApp } = require('./lib/whatsapp');\n      await applyStatusEvent(supabase, s, { sendWhatsApp, env: process.env });",
+    "      void 0;", 'the marketing service calls applyStatusEvent'],
+  ['M18 the marketing lane drops its own error vocabulary', 'src/marketingIndex.js',
+    "    console.log(statusLogLine(s));", "    ;", 'KEEPS statusLogLine'],
 ];
 let bad = 0;
 for (const [id, file, from, to, frag] of MUT) {

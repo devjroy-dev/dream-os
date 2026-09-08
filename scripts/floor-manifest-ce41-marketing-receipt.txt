@@ -1,0 +1,11 @@
+# scripts/floor-manifest-ce41-marketing-receipt.txt
+# CE-41 · SEAT C · F-41.60 / R-41.92 — the marketing service reaches the receipt router.
+# BASE: 31ff2f3c79ce65ba555924e98594ee858f11f24b — re-derived at the cut (fetch-first).
+# F-41.59's sibling, found by seat A: marketingIndex.js's status loop logged and stopped, so
+# every outsider join alert (tdw_assist_lead_outside, marketing line per assistance.js:78 and
+# R-41.13) died at `sent` and its assistance_forwards row could never read delivered/read.
+# One arm, mirroring index.js:225 and brideIndex.js; statusLogLine kept (F-08.95's vocabulary).
+src/marketingIndex.js
+scripts/b62_g34_s2_bench.js
+scripts/b62_mutations.js
+scripts/floor-manifest-ce41-marketing-receipt.txt

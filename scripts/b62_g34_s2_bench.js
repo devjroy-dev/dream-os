@@ -318,11 +318,34 @@ const INVOICE = { id: 'inv1', client_name: 'Priya Nair', client_phone: '96257599
     const lines = c.done();
     return db.t.payment_reminders[0].status === 'delivered' && lines.some(l => /home=payment_reminder/.test(l) && /matched=1/.test(l)) ? true : JSON.stringify({ out, row: db.t.payment_reminders[0], lines });
   });
-  await cell('the estate now has TWO callers of the router, and they are the two receivers', () => {
+  sec('§10 · F-41.60 / R-41.92 — the marketing lane reaches it too');
+  await cell('the marketing service calls applyStatusEvent in its status loop', () => {
+    const m = codeOf('src/marketingIndex.js');
+    const loop = m.slice(m.indexOf('for (const s of extractStatuses(subBody))'), m.indexOf('function statusLogLine'));
+    if (!/applyStatusEvent\(supabase, s,/.test(loop)) return 'the loop still ends at its own log line';
+    if (!/require\('\.\/lib\/vendor\/relayStatus'\)/.test(loop)) return 'it does not reach relayStatus';
+    return /catch \(e\)/.test(loop) ? true : 'the seam is unguarded';
+  });
+  await cell('and it KEEPS statusLogLine — this lane\'s own error vocabulary (F-08.95)', () => {
+    const m = codeOf('src/marketingIndex.js');
+    const loop = m.slice(m.indexOf('for (const s of extractStatuses(subBody))'), m.indexOf('function statusLogLine'));
+    return /console\.log\(statusLogLine\(s\)\)/.test(loop) && loop.indexOf('statusLogLine') < loop.indexOf('applyStatusEvent') ? true : 'the lane lost its own line';
+  });
+  await cell('driven: a MARKETING-lane outsider-alert receipt lands on assistance_forwards (seat A\'s walk)', async () => {
+    const rs = req('src/lib/vendor/relayStatus.js');
+    const db = makeDb({ messages: [], lead_alerts: [], referral_alerts: [], contract_sends: [], assistance_requests: [] });
+    db.t.assistance_forwards = [{ id: 'af1', wamid: 'wamid.MKT', status: 'sent', item_id: 'i1', target_kind: 'prospect', prospect_id: 'p1' }];
+    const c = capture();
+    const out = await rs.applyStatusEvent(db, { id: 'wamid.MKT', status: 'delivered' }, { env: {} });
+    const lines = c.done();
+    return db.t.assistance_forwards[0].status === 'delivered' && lines.some(l => /home=assistance_forward/.test(l) && /matched=1/.test(l)) ? true : JSON.stringify({ out, row: db.t.assistance_forwards[0] });
+  });
+
+  await cell('the estate now has THREE callers of the router, and they are the three receivers', () => {
     const files = [];
     (function walk(d) { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) { const p2 = path.join(d, e.name); if (e.isDirectory()) walk(p2); else if (e.name.endsWith('.js')) files.push(p2); } })('src');
     const callers = files.filter(f => f !== 'src/lib/vendor/relayStatus.js' && /applyStatusEvent\(/.test(codeOf(f))).sort();
-    return callers.length === 2 && callers.includes('src/index.js') && callers.includes('src/brideIndex.js') ? true : callers.join(', ') || 'none';
+    return callers.length === 3 && callers.includes('src/index.js') && callers.includes('src/brideIndex.js') && callers.includes('src/marketingIndex.js') ? true : callers.join(', ') || 'none';
   });
 
   console.log(`\n  b62_g34_s2  ${pass}/${pass + fail}`);
