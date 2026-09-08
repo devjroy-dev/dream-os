@@ -1661,11 +1661,17 @@ async function _processVendorInbound(inputs, deps, _noRetry) {
     // the module; a failed drain never costs the vendor his answer.
     const leadPings = await fetchLeadPings(supabase, vendor.id);
     // TDW_05 F-05.50(b) END
-    // TDW_06 P7b (F-06.1 second limb): the WA door resolves the SAME route the PWA door does —
-    // model.pwa_vendor.<tier> via resolveModel AND victor_mode read at the door — so both
-    // surfaces route identically (advisor -> deepseek; product tier otherwise). Before this
-    // seam the WA lane passed NO overrides and ran the engine's native-anthropic hard path.
-    const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId });
+    // TDW_06 P7b (F-06.1 second limb): the WA door resolves through the SAME builder the PWA
+    // door does — victor_mode read at the door, the product tier otherwise — so both surfaces
+    // route identically until someone chooses otherwise. Before that seam the WA lane passed
+    // NO overrides and ran the engine's native-anthropic hard path.
+    //
+    // CE-41 F-41.46: it now names its OWN surface. `model.wa_vendor.<tier>` with no row
+    // resolves through `model.pwa_vendor.<tier>` — so this line changes NOT ONE ROUTED BYTE
+    // until the founder taps the panel — and with a row it is a lane he can switch on its
+    // own, from a phone, without touching Victor in the app. That separation is the whole of
+    // the finding: two wires were sharing one switch and only one of them was labelled.
+    const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId, surface: 'wa_vendor' });
     // P6 FORK-B BEGIN (CE-ruled, ninth chair — the vendorCategory thread)
     // 04.5 P6: the SAME predicate that gated the gap line two statements above now gates
     // the VOICE — one home (lib/vendor/categoryFraming), read twice, never forked. That is

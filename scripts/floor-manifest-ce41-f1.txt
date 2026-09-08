@@ -1,0 +1,41 @@
+# scripts/floor-manifest-ce41-f1.txt
+scripts/tdw10_combined_cap_bench.js
+# CE-41 · F1 — MODEL ROUTES (R-41.85): F-41.46's borrowed lane split off with a fallback,
+# the read and write doors, R-41.87's success-path line, and 0153's seeds copied from the
+# founder's live rows of 2026-09-08.
+# BASE 0b27cc67a0bfe3dfc7bc5c9b57bb532df24dd67e, re-derived at the cut.
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+
+db/migrations/0153_wa_vendor_route_seed.sql
+docs/TDW_CE41_F1_HANDOVER.md
+scripts/b62_g34_s2_bench.js
+scripts/b63_f1_model_routes_bench.js
+scripts/b63_mutations.js
+scripts/floor-manifest-ce41-f1.txt
+scripts/tdw10_combined_cap_bench.js
+src/api/admin/capabilities.js
+src/api/admin/modelRoutes.js
+src/api/router.js
+src/api/vendor-engine/chat.js
+src/lib/modelRouter.js
+src/lib/vendorInbound.js
+
+# FLOOR at the cured tree, derived at the cut by `scripts/floor-batch.sh 1..20 20`
+# (R-40.63: a seat runs a floor that FITS ITS CALL — that file's own instruction — and
+# the founder's single `run-floor.sh --delivery ... --check` is the floor of record):
+#   23 non-green RED/ERROR + 4 env refusals (b06_gauntlet, b5_wa_door_smoke,
+#   bf1_bride_tool_fidelity_bench, test-shape).
+# scripts/floor-base.txt names 21. COMPARED BY NAME, NOT BY COUNT (LESSON 2):
+#   ABOVE the base — 2: b39_telemetry_bench · b61_mutations. Both were declared at A10
+#     as arriving with 0152 / the F-41.59 rider; both re-run RED at the uncured tip
+#     0b27cc6 with this packet absent and its preconditions intact. Neither is mine.
+#   BELOW the base — 0. Nothing that was green went red.
+# This is A10's floor exactly. FLOOR = NAMED BASE + A10's two, no delta.
+#
+# TWO BENCHES WERE RED HERE UNTIL THIS PACKET CARRIED THEIR CURE, and both were mine:
+#   tdw10_combined_cap §1.6 transcribed the WA door's call line, which F-41.46 moved (c-41.35)
+#   b62_g34_s2 §1 asserted 0152 was THE LADDER TAIL, which 0153 ended (c-41.36)
+# Both cured in this packet; both green at the cut. F-38.27's lesson: a cure that moves
+# a line carries the bench that transcribes it.
+#
+# b63_f1_model_routes 40/40 (1/40 at the uncured tree); b63_mutations 20/20.

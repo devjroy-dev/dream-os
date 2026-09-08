@@ -77,7 +77,14 @@ const INVOICE = { id: 'inv1', client_name: 'Priya Nair', client_phone: '96257599
   const MIG = 'db/migrations/0152_payment_reminders_receipts.sql';
 
   sec('§1 · 0152 — the plane (F-40.229 on the 0142 shape, R-41.59)');
-  ok('0152 exists and is the ladder tail', exists(MIG) && fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => /^\d{4}/.test(f)).sort().pop() === path.basename(MIG));
+  // c-41.36 (CE-41 seat F): this cell asserted 0152 was THE LADDER TAIL. A tail
+  // assertion cannot survive the next migration — 0153 landed and this went red
+  // against a tree where nothing was wrong, which is a finding against the
+  // instrument and not the tree (R-39.15's shape one floor over). The cell's real
+  // subject is that 0152 EXISTS and that nothing renumbered it, and that is what it
+  // now says. LD-8's append-only guarantee is unaffected: a re-used number would
+  // show as two files sharing the prefix, which is the check below.
+  ok('0152 exists and nothing renumbered it', exists(MIG) && fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => /^0152/.test(f)).length === 1);
   const mig = exists(MIG) ? read(MIG) : '';
   const migCode = mig.split('\n').filter(l => !l.trim().startsWith('--')).join('\n');
   ok('the four receipt columns', ['status', 'error_code', 'error_title', 'updated_at'].every(c => new RegExp(`add column if not exists\\s+${c}\\b`).test(migCode)));

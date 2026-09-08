@@ -101,6 +101,84 @@ const SURFACE_ALLOW = {
   wa_marketing: new Set([...HAIKU_CLASS, ...DEEPSEEK_CLASS]),
 };
 
+// ── CE-41 F1 (R-41.85) — THE SWITCHABLE SET, BUILT FROM THE CLASSES ABOVE ────
+// The founder's panel offers TWO providers per lane and no free text. This is
+// that ceiling's ONE home, and it MINTS NO STRING: both values are read out of
+// the F-08.84 classes six lines up, so a model name can never be true here and
+// stale there. `glm` is absent BY CONSTRUCTION rather than by omission — it is
+// in no live path (the harvest row is DeepSeek, founder's SELECT 2026-09-08)
+// and no glm class exists above to build it from.
+//
+// A LIVE VALUE OUTSIDE THIS SET IS NOT REWRITTEN. The write door refuses to
+// PUT one; the read door renders one it FINDS read-only, with its real words.
+// That distinction is deliberate: a panel that silently re-labels a row it
+// cannot express is the hollow green this estate keeps convicting.
+const SWITCHABLE = Object.freeze({
+  anthropic: HAIKU_CLASS[0],
+  deepseek:  DEEPSEEK_CLASS[0],
+});
+
+// ── CE-41 F1 — THE LANE REGISTRY (the door's only source of keys) ────────────
+// WHY A REGISTRY AND NOT `Object.keys(DEFAULTS)`. The two sets are NOT equal and
+// the difference is the whole finding of F0:
+//   · `model.pwa_vendor.basic` is in NEITHER the matrix nor the database, yet it
+//     is the tier `vendors.tier` DEFAULTS to and the tier 0115 renamed every old
+//     `trial` vendor into (0115:104). It resolves on the bare literal at the foot
+//     of `resolveModel` with NO donna split, and until this registry nothing in
+//     the estate could name it. UNNUMBERED FINDING, F0 §4 — the chair mints.
+//   · `model.pwa_vendor.trial` is a LIVE, well-formed row that no code path can
+//     ask for: `vendors_tier_check` (0115:118) admits four words and `trial` is
+//     not one of them. It is carried here `reachable: false` so the panel can SAY
+//     SO rather than offer a switch that moves nothing. F0 §5.
+//   · the `wa_vendor` lanes exist here BEFORE any row does — that is F-41.46.
+//
+// THE TIER WORDS ARE NOT TRANSCRIBED. They come from `CANON_TIERS`, the same
+// frozen list the billing flip writes from and the same four words the CHECK
+// constraint admits (R-40.94: the set is derived from the source that defines
+// it). If a fifth tier is ever added, this registry grows with it and the panel
+// grows a row; it cannot silently miss one the way 0115 missed this key.
+const { CANON_TIERS } = require('./billing/tierFlip');
+
+const VENDOR_ROLES = Object.freeze(['provider', 'donna']);
+function vendorLanes(surface, extra) {
+  return [...CANON_TIERS, 'advisor'].map((tier) => ({
+    key: `model.${surface}.${tier}`, surface, tier,
+    roles: VENDOR_ROLES, reachable: true, ...extra,
+  }));
+}
+
+const LANES = Object.freeze([
+  // Victor and Donna in the app. `advisor` is not a product tier — it is
+  // victor_mode, resolved through the tier slot (F-06.4) — and it is switchable
+  // like any other lane because the founder chooses who answers in that room too.
+  ...vendorLanes('pwa_vendor'),
+  // F-41.46 — Victor and Donna on WhatsApp. Same tiers, own rows, and until a
+  // row exists each one RESOLVES THROUGH ITS `pwa_vendor` TWIN. Zero behaviour
+  // change on the day this ships; a separately switchable lane the moment the
+  // founder taps it.
+  ...vendorLanes('wa_vendor', { fallback_surface: 'pwa_vendor' }),
+  { key: 'model.wa_marketing.default', surface: 'wa_marketing', tier: 'default',
+    roles: Object.freeze(['provider', 'nudge']), reachable: true },
+  { key: 'model.wa_couple.default', surface: 'wa_couple', tier: 'default',
+    roles: Object.freeze(['provider']), reachable: true },
+  { key: 'model.harvest.default', surface: 'harvest', tier: 'default',
+    roles: Object.freeze(['provider']), reachable: true },
+  // Live, well-formed, and asked for by nothing. Read-only on the glass.
+  { key: 'model.pwa_vendor.trial', surface: 'pwa_vendor', tier: 'trial',
+    roles: Object.freeze([]), reachable: false,
+    unreachable_because: 'vendors_tier_check admits basic|essential|signature|prestige (0115); no code path produces this key' },
+]);
+
+const LANE_BY_KEY = new Map(LANES.map((l) => [l.key, l]));
+
+// The ONE home of the fallback FACT. `buildLlmForTurn` asks this rather than
+// carrying its own `surface === 'wa_vendor' ? 'pwa_vendor' : null`, so the
+// borrowing is stated once, in the registry, where the door reads it too.
+function fallbackSurfaceFor(surface, tier) {
+  const lane = LANE_BY_KEY.get(`model.${surface}.${tier || 'default'}`);
+  return (lane && lane.fallback_surface) || null;
+}
+
 // Applied to the PRIMARY model and to any role-split model on the same route
 // (`nudge_model`, `donna_model`), because a split is a second model reaching the
 // same wire and a guard that covers one is F-04.38's class: a cure landing on
@@ -168,7 +246,7 @@ function guardKeys(route) {
   return route;
 }
 
-async function resolveModel(supabase, surface, tier) {
+async function resolveModel(supabase, surface, tier, opts = {}) {
   const key = `model.${surface}.${tier || 'default'}`;
 
   // 1 — the force switch overrides everything (spec precedence).
@@ -188,6 +266,36 @@ async function resolveModel(supabase, surface, tier) {
     if (data && data.value != null) route = parseRoute(data.value);
   } catch (e) { console.warn('[modelRouter] admin_config read failed (defaults apply):', e.message); }
 
+  // 2b — CE-41 F-41.46 — THE BORROWED LANE, AND THE TRAP INSIDE IT ───────────
+  // The WhatsApp vendor door has always routed on `model.pwa_vendor.<tier>`: it
+  // called the shared builder and the builder named that surface (chat.js P7b).
+  // It now names its OWN surface, and a `wa_vendor` key with no row DELEGATES to
+  // its `pwa_vendor` twin rather than falling through.
+  //
+  // WHY THIS SITS HERE AND NOT AT STEP 3. Step 3 cannot tell "no row" from "no
+  // route": `DEFAULTS` holds no `wa_vendor` entry, so a miss would land on the
+  // literal below — anthropic/Haiku, NO donna split — and that would silently
+  // retire DeepSeek from the essential lane and Donna's split from all four, on
+  // the WhatsApp wire, on the day this shipped. The exact opposite of the zero
+  // behaviour change F-41.46 promises. Only a GENUINE row miss delegates, and it
+  // delegates BEFORE any default can answer for it.
+  //
+  // THE RESOLVED VALUE CACHES UNDER THE PRIMARY KEY, never the fallback's. Cache
+  // it under the twin and a later `wa_vendor` seed is invisible for a window,
+  // which is F-08.72's shape one lane over. `bustRouteCache` below cascades for
+  // the same reason.
+  //
+  // THE ALLOW-SET APPLIED IS THE PRIMARY SURFACE'S, because the wire is the
+  // WhatsApp lane. Moot today — neither surface has a SURFACE_ALLOW entry (see
+  // F-08.84 above: silence means "not governed") — and stated because it will
+  // not be moot the day one does.
+  if (!route && opts.fallbackSurface && opts.fallbackSurface !== surface) {
+    const borrowed = await resolveModel(supabase, opts.fallbackSurface, tier);
+    const lent = enforceAllowSet(surface, { ...borrowed });
+    cache.set(key, { at: Date.now(), val: lent });
+    return lent;
+  }
+
   // 3 — the default matrix.
   if (!route) route = DEFAULTS[key] || { provider: 'anthropic', model: HAIKU };
 
@@ -201,7 +309,46 @@ async function resolveModel(supabase, surface, tier) {
 // one window and the read is cheap. It is WRONG for a two-lane bench run, where
 // the second lane inherits the first lane's route until the window expires and
 // its transcripts wear the other lane's name. `turnLock._reset()` is the
-// estate's own precedent for this shape. Production never calls it.
+// estate's own precedent for this shape.
+//
+// ⚠ CE-41 F1 — THIS COMMENT ONCE ENDED "Production never calls it." IT NO LONGER
+// CAN. The founder's panel writes a row and must not make him wait out a window
+// to see his own switch land, so production DOES bust the cache now — through
+// `bustRouteCache` below, which is a named seam with a named caller, NOT this
+// one. `_resetRouteCache` stays exactly what it was: the bench's whole-map
+// clear. The sentence is amended in the same breath as the seam that falsified
+// it, because a file carrying a sentence its neighbour disproves is how F-06.85
+// gets earned twice.
 function _resetRouteCache() { cache.clear(); }
 
-module.exports = { resolveModel, DEFAULTS, SURFACE_ALLOW, _resetRouteCache };
+// ── CE-41 F1 — THE PRODUCTION BUST, AND WHY IT CASCADES ─────────────────────
+// Called by `src/api/admin/modelRoutes.js` the moment a row is written.
+//
+// THE CASCADE IS NOT TIDINESS. A `wa_vendor` lane with no row of its own caches
+// its TWIN'S value under its OWN key (step 2b). Bust only the key the founder
+// wrote and the WhatsApp lane keeps serving the pre-flip answer for up to a
+// window while the panel shows the new one — the glass and the wire disagreeing,
+// which is R-39.15's whole subject. So writing `model.pwa_vendor.essential` also
+// drops every lane that borrows from `pwa_vendor` at that tier. Derived from the
+// registry, never a hand-kept list.
+//
+// IN-PROCESS, AND HONEST ABOUT IT. This clears THIS process's map. A second
+// Railway instance keeps its own until its window expires, so the founder's
+// switch is true "within 60 seconds" and never "instantly", and the panel says
+// so in those words.
+function bustRouteCache(key) {
+  if (!key) { cache.clear(); return; }
+  cache.delete(key);
+  const lane = LANE_BY_KEY.get(key);
+  if (!lane) return;
+  for (const dep of LANES) {
+    if (dep.fallback_surface === lane.surface && dep.tier === lane.tier) cache.delete(dep.key);
+  }
+}
+
+module.exports = {
+  resolveModel, DEFAULTS, SURFACE_ALLOW, _resetRouteCache,
+  // CE-41 F1 (R-41.85): the panel's three constants and the two seams. The door
+  // holds no key list, no provider list and no model string of its own.
+  SWITCHABLE, LANES, LANE_BY_KEY, fallbackSurfaceFor, bustRouteCache, CACHE_MS, HAIKU,
+};

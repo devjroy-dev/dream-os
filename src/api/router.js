@@ -77,6 +77,7 @@ router.use('/admin/couples',         require('./admin/couples'));
 router.use('/admin/hot-dates',       require('./admin/hotDates'));
 router.use('/admin/config',          require('./admin/config'));
 router.use('/admin/capabilities',    require('./admin/capabilities')); // CE-41 seat C: the switchboard (R-41.8)
+router.use('/admin/model_routes',    require('./admin/modelRoutes'));  // CE-41 seat F: who answers, per lane (R-41.85)
 router.use('/admin',                 require('./admin/content'));
 router.use('/admin/muse-pool',       require('./admin/musePool').adminRouter);
 router.use('/admin/surprise-pool',   require('./admin/surprisePool'));

@@ -39,7 +39,7 @@ const {
 } = require('../../lib/wireGuardVictor');
 const { runHarvest } = require('../../agent/harvest');                      // TDW_02 P4
 const { fetchRecentActivity, formatActivityBlock, logActivity } = require('../../lib/vendor/snapshot'); // TDW_02 P4 (CE-4)
-const { resolveModel } = require('../../lib/modelRouter');   // TDW_02 P5
+const { resolveModel, fallbackSurfaceFor } = require('../../lib/modelRouter');   // TDW_02 P5 · CE-41 F-41.46
 const { deriveFiling } = require('../../lib/undoContract');  // TDW_02 P6
 const { OCCUPYING_KINDS, isWeddingAnchor } = require('../../lib/vendor/occupancy'); // TDW_04 B3 — the one set + the one rule (Q-B3-10, CE-ratified)
 const { llmStream, llmCreate } = require('../../lib/llm');   // TDW_02 P5
@@ -2799,14 +2799,45 @@ async function readVictorMode({ supabase, agentId }) {
 // route builder both doors call, so the PWA door and the WA lane route IDENTICALLY (advisor
 // -> deepseek; product tier otherwise). The PWA door passes { supabase: req.app.locals.supabase,
 // vendor: req.vendor, agentId: req.agentId }; the WA lane (index.js) passes the same shape.
-async function buildLlmForTurn({ supabase, vendor, agentId }) {
+// CE-41 F1 · F-41.46 — `surface` IS NOW AN ARGUMENT, DEFAULTED TO THE OLD LITERAL.
+// This function is the one home both vendor doors route through, and until now that
+// meant both doors routed on `pwa_vendor` — the PWA lane's rows serving the WhatsApp
+// lane's turns, invisibly, with no key of their own to switch (F-41.46). The PWA door
+// passes nothing and is byte-identical; the WA door (`src/lib/vendorInbound.js`) passes
+// `surface: 'wa_vendor'` and gets its own key, falling back to the twin until a row
+// exists. The fallback FACT is not spelled here — `fallbackSurfaceFor` reads it off the
+// lane registry, so the borrowing is stated once, in `modelRouter.js`, where the admin
+// door reads the same registry.
+async function buildLlmForTurn({ supabase, vendor, agentId, surface = 'pwa_vendor' }) {
   const productTier = (vendor && vendor.tier) || 'basic';
   // F-06.4: the advisor room routes on its own key; every other mode routes on the
   // product tier exactly as before. The ENGINE tier (capabilities/caps) always follows
   // the PRODUCT tier — advisor changes only which MODEL serves Victor, not the tier.
   const victorMode = await readVictorMode({ supabase, agentId });
   const routeTier = victorMode === 'advisor' ? 'advisor' : productTier;
-  const route = await resolveModel(supabase, 'pwa_vendor', routeTier);
+  const route = await resolveModel(supabase, surface, routeTier,
+    { fallbackSurface: fallbackSurfaceFor(surface, routeTier) });
+  // ── CE-41 R-41.87 — THE SUCCESS PATH SAYS WHOSE HAND IT IS ─────────────────
+  // The founder's walk (§7) is: switch Donna on WhatsApp to Anthropic, send Victor
+  // one message that makes him ask her something, and READ THE RAILWAY LOG. He
+  // could not. The marketing lane has named its mouth since F-08.72
+  // (`closerEngine.js`, called_provider beside route_provider) and the couple lane
+  // names its own at `engine.js`; the two VENDOR lanes named nothing on success.
+  // Donna's provider appeared in one place only — `donna.ts`'s
+  // `[provider_downgrade]` — which fires when her hand FAILS. A switch whose only
+  // witness is its own failure is not a switch the founder can trust.
+  //
+  // ONE LINE PER HAND, AT THE ONE HOME BOTH DOORS CALL. Not at the three call
+  // sites: that is the same sentence three times and it drifts. The donna line
+  // prints ONLY when a split is live, so its ABSENCE is itself the record that she
+  // follows Victor — which is exactly what the basic tier needs (F0 §4: no row, no
+  // default, no split, and until now no way to see it).
+  console.log(`[model] surface=${surface} tier=${routeTier} role=victor `
+    + `provider=${route.provider} model=${route.model}`);
+  if (route.donna_provider) {
+    console.log(`[model] surface=${surface} tier=${routeTier} role=donna `
+      + `provider=${route.donna_provider} model=${route.donna_model}`);
+  }
   const tierOverride = ENGINE_TIER_MAP[productTier] || 'entry';
   // TDW_02 P7 (Amendment Two): optional per-role split — donna_provider/donna_model
   // route HER hand separately. Anthropic donna split => no donna transport (her own

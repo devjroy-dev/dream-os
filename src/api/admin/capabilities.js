@@ -86,3 +86,12 @@ router.post('/:key/check', requireAdmin, asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+// ── CE-41 R-41.88 (c-41.10's form) — ONE LABELLED CROSS-SEAT LINE ────────────
+// Seat F's model-routes door (`src/api/admin/modelRoutes.js`) stamps `changed_by`
+// on every row the founder's panel writes, and it must be THE SAME fingerprint
+// this door already writes to the switchboard — otherwise two admin surfaces
+// spell the same session two ways and neither log can be joined to the other.
+// The chair ruled: call across, no lift, one home. This is that line, and it is
+// the whole of seat F's reach into seat C's file. Chair-authorised while seat C
+// rests; seat C is told.
+module.exports.whoFlipped = whoFlipped;

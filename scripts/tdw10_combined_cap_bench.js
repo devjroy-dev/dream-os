@@ -181,7 +181,13 @@ t('§1.6 the gate sits BEFORE every turn input — calendar, scratchpad, lead-pi
     'const calendarSnapshot = await fetchCalendarSnapshot(supabase, vendor.id, vendor.category);',
     'const scratchpad = await fetchScratchpad(supabase, vendor.id);',
     'const leadPings = await fetchLeadPings(supabase, vendor.id);',
-    'const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId });',
+    // c-41.35 (CE-41 seat F): this marker is a TRANSCRIPTION of a production line,
+    // and F-41.46 moved that line — the WA door now names its own surface
+    // (`surface: 'wa_vendor'`). The cell's SUBJECT is unchanged and still true: the
+    // cap gate precedes the llm wiring. Only the spelling moved. F-38.27's exact
+    // lesson — a cure that changes a line carries the bench that transcribes it, or
+    // it ships a knowingly red floor and calls it someone else's.
+    "const llmWiring = await buildLlmForTurn({ supabase, vendor, agentId, surface: 'wa_vendor' });",
   ]) {
     const at = waText.indexOf(marker);
     assert.ok(at > 0, `marker vanished: ${marker.slice(0, 48)}`);
