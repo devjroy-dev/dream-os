@@ -295,6 +295,36 @@ const INVOICE = { id: 'inv1', client_name: 'Priya Nair', client_phone: '96257599
     return r.sent === false && sent === 0 && lines.some(l => /ADMIN_PHONE is not set/.test(l)) ? true : JSON.stringify(r);
   });
 
+  sec('§9 · F-41.59 / R-41.91 — the bride lane reaches the receipt router');
+  await cell('the bride service calls applyStatusEvent in its status loop, as the vendor one does', () => {
+    const b = codeOf('src/brideIndex.js');
+    const loop = b.slice(b.indexOf('for (const s of metaInbound.extractStatuses(req.body))'), b.indexOf('[bride-webhook:meta] inbound processing error'));
+    if (!/applyStatusEvent\(supabase, s,/.test(loop)) return 'the loop still ends at its own messages update';
+    if (!/require\('\.\/lib\/vendor\/relayStatus'\)/.test(loop)) return 'it does not reach relayStatus';
+    return /catch \(e\)/.test(loop) ? true : 'the seam is unguarded — a router throw would take inbound down';
+  });
+  await cell('and it KEEPS its own messages update — the router\'s first home, not a replacement', () => {
+    const b = codeOf('src/brideIndex.js');
+    const loop = b.slice(b.indexOf('for (const s of metaInbound.extractStatuses(req.body))'), b.indexOf('[bride-webhook:meta] inbound processing error'));
+    return /from\('messages'\)[\s\S]{0,120}delivery_status/.test(loop) && loop.indexOf("from('messages')") < loop.indexOf('applyStatusEvent') ? true : 'the lane lost its own plane';
+  });
+  await cell('driven: a BRIDE-lane reminder receipt now lands on payment_reminders (the walk that failed)', async () => {
+    const rs = req('src/lib/vendor/relayStatus.js');
+    const db = makeDb({ messages: [], lead_alerts: [], referral_alerts: [], contract_sends: [], assistance_forwards: [], assistance_requests: [] });
+    db.t.payment_reminders.push({ id: 'pr_bride', wamid: 'wamid.BRIDE', status: 'sent', vendor_id: 'v1', milestone_id: 'ms1', invoice_id: 'inv1' });
+    const c = capture();
+    // The exact call the bride loop now makes.
+    const out = await rs.applyStatusEvent(db, { id: 'wamid.BRIDE', status: 'delivered' }, { env: {} });
+    const lines = c.done();
+    return db.t.payment_reminders[0].status === 'delivered' && lines.some(l => /home=payment_reminder/.test(l) && /matched=1/.test(l)) ? true : JSON.stringify({ out, row: db.t.payment_reminders[0], lines });
+  });
+  await cell('the estate now has TWO callers of the router, and they are the two receivers', () => {
+    const files = [];
+    (function walk(d) { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) { const p2 = path.join(d, e.name); if (e.isDirectory()) walk(p2); else if (e.name.endsWith('.js')) files.push(p2); } })('src');
+    const callers = files.filter(f => f !== 'src/lib/vendor/relayStatus.js' && /applyStatusEvent\(/.test(codeOf(f))).sort();
+    return callers.length === 2 && callers.includes('src/index.js') && callers.includes('src/brideIndex.js') ? true : callers.join(', ') || 'none';
+  });
+
   console.log(`\n  b62_g34_s2  ${pass}/${pass + fail}`);
   if (fail) console.log('  FAILED: ' + fails.join(' · '));
   process.exit(fail ? 1 : 0);

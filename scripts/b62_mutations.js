@@ -38,6 +38,12 @@ const MUT = [
     "      templateKey: entry.templateKey, to: toPhone, ctx,", 'lost its REFUSED line'],
   ['M14 R-41.59 relaxes to every row (the guarantee dies)', 'db/migrations/0152_payment_reminders_receipts.sql',
     "  on public.payment_reminders (milestone_id, kind) where status <> 'failed';", "  on public.payment_reminders (milestone_id, kind) where status <> 'queued';", 'the once-per-milestone key is relaxed'],
+  ['M15 the bride lane stops reaching the router (F-41.59 returns)', 'src/brideIndex.js',
+    "        const { applyStatusEvent } = require('./lib/vendor/relayStatus');\n        await applyStatusEvent(supabase, s, { sendWhatsApp, env: process.env });",
+    "        void 0;", 'the bride service calls applyStatusEvent'],
+  ['M16 the bride lane drops its own messages plane', 'src/brideIndex.js',
+    "      try { await supabase.from('messages').update({ delivery_status: s.status }).eq('twilio_sid', s.id); }\n      catch (_e) { /* status best-effort */ }",
+    "      ;", 'KEEPS its own messages update'],
 ];
 let bad = 0;
 for (const [id, file, from, to, frag] of MUT) {

@@ -220,6 +220,31 @@ app.post('/webhook/meta', async (req, res) => {
       try { await supabase.from('messages').update({ delivery_status: s.status }).eq('twilio_sid', s.id); }
       catch (_e) { /* status best-effort */ }
       console.log(`[bride-webhook:meta] status wamid=${s.id} status=${s.status}`);
+
+      // ── F-41.59 / R-41.91 · THE RECEIPT ROUTER IS REACHED FROM THIS LANE TOO ──
+      // This loop handled its own receipts and stopped, so `relayStatus.js`'s
+      // seven-home ladder was reachable ONLY from the vendor service
+      // (`src/index.js:225` was its one caller in the whole estate). Every home
+      // that lives on a BRIDE-lane send therefore never matched: payment
+      // reminders (LANE 'bride', R-G34.2 — the founder's walk of 2026-09-08 saw
+      // its `sent` row never move to `delivered`), `reviews_asked` when F-40.228's
+      // arm lands, and both concierge bride templates. The arm was correct,
+      // benched and unreachable — the worst shape a cure can take.
+      //
+      // THE `messages` UPDATE ABOVE STAYS. It is this lane's own plane and it is
+      // also the router's FIRST home, so the router re-reads it and answers
+      // `home=messages matched=1` for a conversation wamid — the same answer it
+      // gives on the vendor side. Nothing is written twice that was not already
+      // written twice there; the ladder is idempotent by construction (each home
+      // is an update keyed on a wamid only one table can hold).
+      //
+      // THIN SEAM, mirroring `index.js:225` byte for byte in shape: the require
+      // is local so this route stays cheap when no receipt arrives, and a throw
+      // inside the router can never take down inbound processing.
+      try {
+        const { applyStatusEvent } = require('./lib/vendor/relayStatus');
+        await applyStatusEvent(supabase, s, { sendWhatsApp, env: process.env });
+      } catch (e) { console.warn('[bride-webhook:meta] status seam', e && e.message); }
     }
   } catch (err) {
     console.error('[bride-webhook:meta] inbound processing error:', err && err.message);

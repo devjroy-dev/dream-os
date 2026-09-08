@@ -1,0 +1,12 @@
+# scripts/floor-manifest-ce41-g34s2-bride.txt
+# CE-41 · SEAT C · F-41.59 / R-41.91 — the bride service reaches the receipt router.
+# BASE: 64347679330d559746d7d1706d2ba6c7b61fcdcf — re-derived at the cut (fetch-first).
+# One file, one loop: brideIndex.js's status loop calls applyStatusEvent exactly as
+# index.js:225 does; its own `messages` update stays as the router's first home.
+# Before this, relayStatus.js had ONE caller in the estate and every bride-lane home
+# (payment_reminders, reviews_asked when F-40.228 lands, both concierge bride templates)
+# was benched and unreachable.
+src/brideIndex.js
+scripts/b62_g34_s2_bench.js
+scripts/b62_mutations.js
+scripts/floor-manifest-ce41-g34s2-bride.txt
