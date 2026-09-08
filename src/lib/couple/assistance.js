@@ -59,6 +59,7 @@ const { VENDOR_CATEGORIES } = require('../../agent/categories');
 const { normalizeTo } = require('../metaCloud');
 const cap = require('../capabilities');
 const { monthPhrase } = require('../discover/demoLeadAlert');   // its ONE HOME (enquire.js:67 names the same coupling)
+const { logWaSend } = require('../waSendLog');                  // R-41.90: the estate's one send-log grammar, masked recipient
 const VENDOR_LEADS_URL = require('../pwaPaths').vendorUrl('leadsList');
 
 const TDW_ASSIST_SOURCE = 'tdw_assist';
@@ -280,6 +281,23 @@ const CATEGORY_WORDS = Object.freeze({
   jewellery: 'jewellery', decor: 'décor', venue_catering: 'venue and catering', performer: 'music and anchors',
   content_creator: 'content', other: 'mehendi and more',
 });
+// "February 2027" — the body reads "for a wedding in {{4}}".
+function monthYearOnly(iso) {
+  const w = monthDayYear(iso);
+  if (!w) return null;
+  const parts = w.split(' ');
+  return `${parts[1]} ${parts[2]}`;
+}
+
+// The trade as the outsider's body wants it: "a photographer", "a makeup artist".
+const CATEGORY_ARTICLE = Object.freeze({
+  planning: 'a wedding planner', designer: 'an outfit designer', photography: 'a photographer',
+  makeup: 'a makeup artist', hairstylist: 'a hairstylist', jewellery: 'a jeweller', decor: 'a decorator',
+  venue_catering: 'a venue and caterer', performer: 'a performer', content_creator: 'a content creator',
+  other: 'a mehendi artist or similar',
+});
+function categoryWords(token) { return CATEGORY_ARTICLE[token] || 'a vendor'; }
+
 function categoriesWords(tokens) {
   const w = (tokens || []).map(t => CATEGORY_WORDS[t] || t);
   if (w.length === 0) return 'vendors';
@@ -500,22 +518,26 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     prospect = inserted;
   }
 
-  // ── THE SEND ARM · DARK (R-41.8, R-41.20, conditional-withheld rule) ──────
-  // Everything runnable below reads the register; the send itself is fully
-  // commented. When seat C ships `public.capabilities` and the founder flips
-  // `template.tdw_assist_lead_outside` to ON, the UNCOMMENT STEP is: remove the
-  // `/*` and `*/` around the block marked SEND, and nothing else — the read, the
-  // key, the row write and the R-41.30 outcome path are already live.
+  // ── THE SEND ARM · LIVE (A10, R-41.83 as amended) ────────────────────────
+  // A2 shipped this commented; the chair woke it. The gate is the register key
+  // `template.tdw_assist_lead_outside` (Marketing, Meta 1627376372249131). When
+  // the key is ON this sends FOR REAL to whatever number the founder typed —
+  // there is no second gate, which is why the packet's first founder step is to
+  // shut the key before applying and the walk's first step is to open it.
+  // The wamid lands on assistance_forwards.wamid (the R-40.110 home 0148 built).
+  // ⚠ RECEIPTS: this rides the MARKETING lane, and src/marketingIndex.js:98-100
+  // LOGS status events without calling applyStatusEvent — the vendor and bride
+  // services route, marketing does not. So `sent` is where this row stops until
+  // that service gains the arm (F-41.59's sibling, named in the handover, not
+  // cured here). R-41.30 still holds for the SYNCHRONOUS refusal below.
   const capFn = (deps.cap && deps.cap.on) || cap.on;
+  const reasonFn = (deps.cap && deps.cap.reason) || cap.reason;
   const armed = capFn(cap.CAPABILITY_KEYS.TDW_ASSIST_LEAD_OUTSIDE) === true;
-  // `queued` only once the register says ON and the SEND block below is live;
-  // `dark` while it is not — the row says which, so the queue can too.
-  const status = armed ? 'queued' : 'dark';
-  const darkReason = armed ? null : 'template.tdw_assist_lead_outside is off in the capabilities register' + (cap.IS_STUB ? ' (stub; seat C ships the register)' : '');
+  const darkReason = armed ? null : (reasonFn ? reasonFn(cap.CAPABILITY_KEYS.TDW_ASSIST_LEAD_OUTSIDE) : `${cap.CAPABILITY_KEYS.TDW_ASSIST_LEAD_OUTSIDE} is off`);
 
   const forward = await writeForward(supabase, {
     item_id: item.id, target_kind: 'prospect', vendor_id: null, prospect_id: prospect.id,
-    lead_id: null, wamid: null, status,
+    lead_id: null, wamid: null, status: armed ? 'queued' : 'dark',
   });
   if (!forward.ok) return forward;
   await bumpForwarded(supabase, item, request);
@@ -525,38 +547,41 @@ async function forwardToProspect(supabase, { item, request, target }, deps) {
     return { ok: true, forward: forward.row, prospect, dark: { reason: darkReason } };
   }
 
-  /* ── SEND (uncomment when the register says ON) ──────────────────────────
-  // OWED BEFORE THE UNCOMMENT, named so the step is honest: `categoryWords()`
-  // (token → "a photographer") and `monthYear()` (date → "February 2027") do
-  // not exist in this file yet; the packet that wakes the arm writes them, and
-  // `sendMetaTemplate`'s exact signature is re-read at that tip (protocol §6).
-  const { sendMetaTemplate } = require('../metaCloud');
+  // The join message. Its five variables are the filed body's, in order
+  // (docs/mocks/TDW_20_CONCIERGE/TEMPLATE_BODIES.txt §1, superseded by seat B's
+  // filing but variable-for-variable the same): name, city, the trade in plain
+  // words, the month and year, the budget in Indian grouping (`Rs` is in the body).
+  const sendWaFn = deps.sendWa || require('../sendWa').sendWa;
   const t = TEMPLATE_REFS.lead_outside;
+  const to = prospect.phone;
+  const vars = [
+    prospect.name || 'there',
+    request.city || 'India',
+    categoryWords(item.category),
+    monthDayYear(request.wedding_date) ? monthYearOnly(request.wedding_date) : 'a date to be decided',
+    formatRs(item.budget_rs || 0),
+  ];
   try {
-    const out = await sendMetaTemplate({
-      to: prospect.phone,
-      name: t.name,
-      line: t.line,
-      bodyParams: [
-        prospect.name || 'there',
-        request.city || 'India',
-        categoryWords(item.category),
-        monthYear(request.wedding_date),
-        formatRs(item.budget_rs || 0),
-      ],
-    });
-    const wamid = out && out.wamid ? String(out.wamid) : null;
+    const out = await sendWaFn({ line: t.line === 'marketing' ? 'marketing' : t.line, to, templateKey: 'assist_lead_outside', vars, supabase });
+    const sent = !!(out && out.sent === true);
+    const wamid = sent && out.result && out.result.wamid ? String(out.result.wamid) : null;
+    logWaSend('marketing', { site: 'assistance:outsider', mode: 'template', templateKey: 'assist_lead_outside', to, out, ctx: `item=${item.id}` });
+    if (!sent) {
+      await recordForwardOutcome(supabase, forward.row.id, { status: 'failed', error_code: 'unknown' });
+      return { ok: true, forward: { ...forward.row, status: 'failed' }, prospect, alert: { sent: false, refusal: 'unknown' } };
+    }
     await supabase.from('assistance_forwards')
-      .update({ wamid, status: wamid ? 'sent' : 'failed', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .update({ wamid, status: wamid ? 'sent' : 'sent_no_wamid', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', forward.row.id);
-    console.log(`[assistance:forward] item=${item.id} → prospect=${prospect.id} template=${t.name} wamid=${wamid}`);
+    return { ok: true, forward: { ...forward.row, wamid, status: wamid ? 'sent' : 'sent_no_wamid' }, prospect, alert: { sent: true, wamid } };
   } catch (err) {
-    // R-41.30: a synchronous refusal (131049 and its kin) lands on the row.
-    await recordForwardOutcome(supabase, forward.row.id, { status: 'failed', error_code: err && err.code, error_title: err && err.message });
-    console.error(`[assistance:forward] item=${item.id} → prospect=${prospect.id} template=${t.name} REFUSED ${err && err.code}: ${err && err.message}`);
+    // R-41.30: a SYNCHRONOUS refusal (131049 and its kin) never reaches a webhook,
+    // so the row is the only place it can be written. It is written here.
+    const code = (err && (err.body && err.body.error && err.body.error.code)) || (err && err.code) || (err && err.name) || 'send_failed';
+    logWaSend('marketing', { site: 'assistance:outsider', mode: 'template', templateKey: 'assist_lead_outside', to, err, ctx: `item=${item.id}` });
+    await recordForwardOutcome(supabase, forward.row.id, { status: 'failed', error_code: code, error_title: (err && err.message) || null });
+    return { ok: true, forward: { ...forward.row, status: 'failed', error_code: String(code) }, prospect, alert: { sent: false, refusal: String(code) } };
   }
-  ── end SEND ─────────────────────────────────────────────────────────────── */
-
   return { ok: true, forward: forward.row, prospect };
 }
 
@@ -778,5 +803,5 @@ module.exports = {
   listAssistanceRequests, getAssistanceRequest, searchForwardTargets, getLatestAssistanceForCouple,
   normalizePhone, formatRs,
   TDW_ASSIST_SOURCE, TDW_REFERRER_NAME, TEMPLATE_REFS, FANOUT_DEFAULT, REFUSE,
-  ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen,
+  ASSIST_FORWARD_ALERT_FLAG, FORWARD_ALERT_TEMPLATE_KEY, findCoupleIdByLastTen, categoryWords, monthYearOnly,
 };

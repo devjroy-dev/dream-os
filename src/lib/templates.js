@@ -762,6 +762,27 @@ const TEMPLATES = {
   // — no parameter, so no `button:` arm here; Meta holds the URL.
   // Mechanism: `isApproved` at the bottom of this file. If Meta pauses it,
   // status flips here and notifyFounder lands a LOUD SKIP, not a send.
+  // ── BLOCK 20 · CONCIERGE s1 · the OUTSIDER's join alert (A10, R-41.83) ─────
+  // Filed by seat B, Meta id 1627376372249131, MARKETING — it goes to someone who
+  // has never written to us, so no window exists and only a template can reach.
+  // Rides MARKETING_PHONE_NUMBER_ID (sendWa.js:129). Body byte-for-byte as filed.
+  // ⚠ Its receipts do NOT route today: src/marketingIndex.js:98-100 logs status
+  // events without applyStatusEvent (F-41.59's sibling, named in A10's handover).
+  // NO PHONE OF THE COUPLE'S RIDES THIS BODY (roadmap §7, the standing refusal).
+  assist_lead_outside: {
+    key: 'assist_lead_outside',
+    name: 'tdw_assist_lead_outside',
+    language: TEMPLATE_LANGUAGE,
+    line: 'marketing',
+    category: 'MARKETING',
+    variables: ['name', 'city', 'category_words', 'month_year', 'budget_rs'],
+    body:
+      "Hello {{1}}, this is The Dream Wedding. A couple in {{2}} is looking for {{3}} " +
+      "for a wedding in {{4}}, with a budget around Rs {{5}}. Join The Dream Wedding to " +
+      "see the request and reply to them from your own account.",
+    status: 'approved',
+  },
+
   admin_assist_request: {
     key: 'admin_assist_request',
     name: 'tdw_admin_assist_request',

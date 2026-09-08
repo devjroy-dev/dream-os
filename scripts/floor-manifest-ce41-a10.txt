@@ -1,0 +1,17 @@
+# scripts/floor-manifest-ce41-a10.txt
+# CE-41 · A10 — the outsider join alert wakes (R-41.83 as amended): the arm is LIVE in code,
+# the gate is the register key `template.tdw_assist_lead_outside` (Marketing, Meta 1627376372249131).
+# BASE a6dfc23a411a00f582ddfd6cde82d358a54c5b2e, re-derived at the cut.
+# F-14.16: a dirty file outside this list is a STOP until accounted for.
+
+docs/TDW_CE41_A10_HANDOVER.md
+scripts/b20_a2_assistance_bench.js
+scripts/floor-manifest-ce41-a10.txt
+src/lib/couple/assistance.js
+src/lib/templates.js
+
+# FLOOR at the cured tree: 23 non-green RED/ERROR + 4 env refusals. scripts/floor-base.txt names 21.
+# THE TWO ABOVE THE BASE ARE NOT THIS PACKET'S — both are RED at a6dfc23 with this packet stashed:
+#   b39_telemetry_bench (cells 3.2, 5.3) · b61_mutations (M8 target matched 0 times)
+# They arrived with seat C's 0152 / the F-41.59 rider. The chair re-bases; this packet only names them.
+# b20_a2 126/126 (was 118); RED 112/126 at a6dfc23.

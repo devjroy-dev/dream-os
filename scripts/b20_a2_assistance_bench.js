@@ -322,7 +322,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-nophone' } },
       { createLead: okLead, cap: { on: () => true, reason: () => null }, sendWa: async (o) => { calls.push(o); return { sent: true, result: { wamid: 'x' } }; } });
     ok('a vendor with no users.phone → failed/no_vendor_phone, nothing sent', f.ok && calls.length === 0 && db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'no_vendor_phone');
-    ok('the alert is bound and strict: `const out = await sendWaFn(` twice, `out.sent === true` twice, no bare await', (() => { const code = strip(read(ASSIST)); return (code.match(/const out = await sendWaFn\(/g) || []).length === 2 && (code.match(/out\.sent === true/g) || []).length === 2 && !/^\s*await sendWaFn\(/m.test(code); })());
+    ok('the alert is bound and strict: three `const out = await sendWaFn(`, three `out.sent === true`, no bare await', (() => { const code = strip(read(ASSIST)); return (code.match(/const out = await sendWaFn\(/g) || []).length === 3 && (code.match(/out\.sent === true/g) || []).length === 3 && !/^\s*await sendWaFn\(/m.test(code); })());
   } else { for (let i = 0; i < 9; i++) ok('§6b (writer absent)', false); }
 
   // ═══ §6c · F-41.43 / R-41.69 — couple_id attached at write by last-ten ═══
@@ -356,10 +356,12 @@ const ADMIN  = 'src/api/admin/assistance.js';
   if (A) {
     let db = seededDb(); let s = await seedRequest(db);
     const sendSpy = { called: 0 };
-    let f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '+91 98111 22333', ig_handle: '@rahulshoots', name: 'Rahul' } }, { createLead: async () => { throw new Error('must not create a lead for an outsider'); } });
+    // A10: the arm is LIVE in code; the register decides. Key OFF here.
+    let f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '+91 98111 22333', ig_handle: '@rahulshoots', name: 'Rahul' } },
+      { createLead: async () => { throw new Error('must not create a lead for an outsider'); }, cap: { on: () => false, reason: (k) => `${k} is off on the switchboard` }, sendWa: async () => { throw new Error('must not send while off'); } });
     // c-41.10 · replaces `... && /stub/.test(f.dark.reason)`: the register is real, the row seeds
     // `approved` ("Meta yes, the founder not yet") and the reason no longer says stub.
-    ok('the outsider forward succeeds and reports dark with a reason', f.ok && f.dark && /capabilities register/.test(f.dark.reason) && !/stub/.test(f.dark.reason));
+    ok('key OFF → the outsider forward succeeds, is DARK, and quotes the switchboard\'s reason', f.ok && f.dark && f.dark.reason === 'template.tdw_assist_lead_outside is off on the switchboard');
     const pr = db._t.prospects;
     ok('ONE prospects row: source manual, state cold (R-41.14), phone 91+last ten (prospects.js:94\'s format), handle without @', pr.length === 1 && pr[0].source === 'manual' && pr[0].state === 'cold' && pr[0].phone === '919811122333' && pr[0].ig_handle === 'rahulshoots' && pr[0].name === 'Rahul');
     ok('prospects.category = the item\'s trade, city = the request\'s, notes name the item as a courtesy', pr[0].category === 'photography' && pr[0].city === 'Delhi' && pr[0].notes.includes(s.photo.id));
@@ -376,14 +378,31 @@ const ADMIN  = 'src/api/admin/assistance.js';
     f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'carrier_pigeon' } }, {});
     ok('an unknown target kind → refused bad_target', !f.ok && f.code === 'bad_target');
     const code = strip(read(ASSIST));
-    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp(; exactly TWO live sendWa sites — notifyFounder (R-41.63) and alertVendorOfForward (R-41.68, flag-gated)', !/sendMetaTemplate\(/.test(code) && !/sendWhatsApp\(/.test(code) && (code.match(/await sendWaFn\(/g) || []).length === 2);
-    ok('the send block exists in the RAW file as a comment with its UNCOMMENT STEP stated', /SEND \(uncomment when the register says ON\)/.test(read(ASSIST)) && /UNCOMMENT STEP/i.test(read(ASSIST)) && /sendMetaTemplate\(/.test(read(ASSIST)));
+    ok('DARK BY STRUCTURE: comment-stripped writer contains NO sendMetaTemplate( and NO sendWhatsApp(; exactly THREE gated sendWa sites — founder notify (R-41.63), vendor alert (R-41.68), outsider join (R-41.83)', !/sendMetaTemplate\(/.test(code) && !/sendWhatsApp\(/.test(code) && (code.match(/await sendWaFn\(/g) || []).length === 3);
+    // RETIRED-BY-RULING (A10/R-41.83): the block is the arm now, not a comment.
+    ok('the send is reached only through the register key — no env var, no second path', /capFn\(cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE\) === true/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code) && !/uncomment/i.test(read(ASSIST)));
     ok('the read is cap.on() on the one key, never an env var', /cap\.CAPABILITY_KEYS\.TDW_ASSIST_LEAD_OUTSIDE/.test(code) && !/process\.env\.\w*SEND_ENABLED/.test(code));
     ok('the filed template names + Meta ids are recorded once (TEMPLATE_REFS)', A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131' && A.TEMPLATE_REFS.found_vendor.meta_id === '3160852754105015' && A.TEMPLATE_REFS.found_outside.meta_id === '3115277355330375');
-    // armed → queued (behavioural, injected cap)
+    // ═══ A10 · the live arm, key ON ═══
+    db = seededDb(); s = await seedRequest(db); const sends = [];
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333', ig_handle: '@rahulshoots', name: 'Rahul' } },
+      { cap: { on: () => true }, sendWa: async (o) => { sends.push(o); return { sent: true, mode: 'template', result: { wamid: 'wamid.OUT1' } }; } });
+    const oc = sends[0] || {};
+    ok('key ON → ONE send on the MARKETING line to the prospect number, template assist_lead_outside', f.ok && sends.length === 1 && oc.line === 'marketing' && oc.to === '919811122333' && oc.templateKey === 'assist_lead_outside');
+    ok('five vars in the filed order: name · city · trade in words · month and year · budget in Indian grouping, no glyph', Array.isArray(oc.vars) && oc.vars.length === 5 && oc.vars[0] === 'Rahul' && oc.vars[1] === 'Delhi' && oc.vars[2] === 'a photographer' && oc.vars[3] === 'February 2027' && oc.vars[4] === '2,50,000' && !/\u20b9/.test(JSON.stringify(oc.vars)));
+    ok('NO phone of the couple rides the body (roadmap §7, the standing refusal)', !JSON.stringify(oc.vars || []).includes('9625759924') && !JSON.stringify(oc.vars || []).includes('+91'));
+    ok('the wamid lands on assistance_forwards.wamid with status sent + sent_at', db._t.assistance_forwards[0].wamid === 'wamid.OUT1' && db._t.assistance_forwards[0].status === 'sent' && !!db._t.assistance_forwards[0].sent_at && f.alert.sent === true);
+    ok('the registry entry is Marketing, approved, marketing line, five variables; the writer names Meta id', (() => { const t = require(P('src/lib/templates.js')); const e = t.getTemplate('assist_lead_outside'); return t.isApproved('assist_lead_outside') && e.category === 'MARKETING' && e.line === 'marketing' && e.variables.length === 5 && A.TEMPLATE_REFS.lead_outside.meta_id === '1627376372249131'; })());
     db = seededDb(); s = await seedRequest(db);
-    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, { cap: { on: () => true } });
-    ok('with the register ON the row is queued (the SEND block is still commented, so no send)', f.ok && !f.dark && db._t.assistance_forwards[0].status === 'queued' && sendSpy.called === 0);
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } },
+      { cap: { on: () => true }, sendWa: async () => { const e = new Error('This message was not delivered to maintain healthy ecosystem engagement.'); e.body = { error: { code: 131049 } }; throw e; } });
+    ok('R-41.30: a synchronous 131049 lands as failed + error_code 131049; the forward still stands', f.ok && db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === '131049' && /healthy ecosystem/.test(db._t.assistance_forwards[0].error_title || '') && f.alert.sent === false);
+    db = seededDb(); s = await seedRequest(db);
+    f = await A.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } },
+      { cap: { on: () => true }, sendWa: async () => { const e = new Error('paused'); e.name = 'WaTemplateNotApprovedError'; throw e; } });
+    ok('a named sendWa throw lands as failed + its name', db._t.assistance_forwards[0].status === 'failed' && db._t.assistance_forwards[0].error_code === 'WaTemplateNotApprovedError');
+    ok('the send is logged in the estate grammar (R-41.90 logWaSend, masked recipient), never a hand-rolled line', /logWaSend\('marketing', \{/.test(code) && (code.match(/logWaSend\(/g) || []).length === 2 && !/\[sendWa:template\]/.test(code));
+    ok('the marketing lane receipts are NAMED as unrouted in-file (marketingIndex logs, never applyStatusEvent)', /marketingIndex\.js:98-100[\s\S]{0,240}applyStatusEvent/.test(read(ASSIST)));
   } else { for (let i = 0; i < 13; i++) ok('§7 cell (writer absent)', false); }
 
   // ═══ §8 ═══
@@ -394,7 +413,7 @@ const ADMIN  = 'src/api/admin/assistance.js';
     const o = await A.recordForwardOutcome(db, f.forward.id, { status: 'failed', error_code: 131049, error_title: 'This message was not delivered to maintain healthy ecosystem engagement.' });
     const row = db._t.assistance_forwards.find(x => x.id === f.forward.id);
     ok('a synchronous 131049 lands as status failed with error_code + error_title on the row', o.ok && row.status === 'failed' && row.error_code === '131049' && /healthy ecosystem/.test(row.error_title) && row.updated_at);
-    ok('the writer calls it only inside the commented SEND block (dark caller)', !/await recordForwardOutcome\(/.test(strip(read(ASSIST))) && /await recordForwardOutcome\(/.test(read(ASSIST)));
+    ok('recordForwardOutcome has a live caller now — R-41.30 synchronous path', (strip(read(ASSIST)).match(/await recordForwardOutcome\(/g) || []).length === 2);
   } else { ok('§8 (writer absent)', false); ok('§8 (writer absent)', false); }
 
   // ═══ §9 ═══
@@ -460,9 +479,10 @@ const ADMIN  = 'src/api/admin/assistance.js';
     { const db = seededDb(); const s = await seedRequest(db); const calls = []; await M1.forwardAssistanceItem(db, { itemId: s.makeup.id, target: { kind: 'vendor', vendor_id: 'v-swati' } }, { createLead: async (sb, v, p) => { calls.push(p); return { ok: true, lead: { id: 'l' }, deduped: false }; } });
       ok('M1 · source literal mutated → the tdw_assist cell reds (non-vacuous)', calls[0].source !== 'tdw_assist'); }
     // M2: the dark gate inverted → §7's dark cell must red
-    const M2 = loadMutated(ASSIST, s => { const o = "const status = armed ? 'queued' : 'dark';"; if (!s.includes(o)) throw new Error('M2 anchor missing'); return s.replace(o, "const status = armed ? 'dark' : 'queued';"); });
-    { const db = seededDb(); const s = await seedRequest(db); await M2.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
-      ok('M2 · dark gate inverted → the status-dark cell reds (non-vacuous)', db._t.assistance_forwards[0].status !== 'dark'); }
+    // Absent anchor at the uncured tree → the cell FAILS, never throws.
+    const M2 = (() => { try { return loadMutated(ASSIST, s => { const o = "status: armed ? 'queued' : 'dark',"; if (!s.includes(o)) throw new Error('M2 anchor missing'); return s.replace(o, "status: armed ? 'dark' : 'queued',"); }); } catch { return null; } })();
+    if (M2) { const db = seededDb(); const s = await seedRequest(db); await M2.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, { cap: { on: () => false, reason: () => 'off' } });
+      ok('M2 · dark gate inverted → the status-dark cell reds (non-vacuous)', db._t.assistance_forwards[0].status !== 'dark'); } else ok('M2 · anchor present to mutate', false);
     // M3: prospects source changed → §7's manual cell must red
     const M3 = loadMutated(ASSIST, s => { const o = "source:    'manual',"; if (!s.includes(o)) throw new Error('M3 anchor missing'); return s.replace(o, "source:    'tdw_assist',"); });
     { const db = seededDb(); const s = await seedRequest(db); await M3.forwardAssistanceItem(db, { itemId: s.photo.id, target: { kind: 'prospect', phone: '9811122333' } }, {});
